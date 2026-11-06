@@ -40,3 +40,7 @@ live USB sessions or claim early-kernel hardware watchdog recovery. Preserve the
 old persistent boot default until an actual one-shot trial has booted and the
 authorized operator confirms its exact ID after local health. Never make a
 production update or USB refresh a side effect of building/testing this module.
+
+Awai Otehon (`network-awai/network-awai-apex` ADR 0026) is added as a profile
+separate from the native profile. Do not put Otehon dependencies in the native
+profile. The native profile rules above stay unchanged.
