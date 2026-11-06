@@ -1,0 +1,298 @@
+{
+  "source": {
+    "repository": "kotoba-lang/kotoba",
+    "path": "lib/kotoba.aiueos/distributions/awai/dapps",
+    "commit": "f1096f0e060fa9ac31b707762e040339a7340a1d"
+  },
+  "dapps": [
+    {
+      "id": "murakumo",
+      "dock": 1,
+      "title": "Murakumo",
+      "section": "Core",
+      "summary": "Local inference with the bounded micro bigram model, after Itonami's local-model consent",
+      "install": "os-image",
+      "offline": "local-core",
+      "remoteOperations": [
+        {
+          "operation": "remote-inference",
+          "service": "user-chosen inference rail",
+          "consent": "each-operation"
+        }
+      ]
+    },
+    {
+      "id": "itonami",
+      "dock": 2,
+      "title": "Itonami",
+      "section": "Core",
+      "summary": "The Goal, its local-model request and the device key",
+      "install": "os-image",
+      "offline": "local-core",
+      "remoteOperations": []
+    },
+    {
+      "id": "yataverse",
+      "dock": 3,
+      "title": "Yataverse",
+      "section": "Core",
+      "summary": "Content-addressed store: the 64-byte Goal record named as a raw CIDv1 and re-admitted by cid-v1-admit",
+      "install": "os-image",
+      "offline": "local-core",
+      "remoteOperations": [
+        {
+          "operation": "block-exchange",
+          "service": "yataverse peer",
+          "consent": "each-operation"
+        }
+      ]
+    },
+    {
+      "id": "aozora",
+      "dock": 4,
+      "title": "Aozora",
+      "section": "Core",
+      "summary": "Outbox: the 64-byte Goal record signed as a post with the device key and verified",
+      "install": "os-image",
+      "offline": "local-core",
+      "remoteOperations": [
+        {
+          "operation": "publish-post",
+          "service": "the user's AT Protocol PDS",
+          "consent": "each-operation"
+        }
+      ]
+    },
+    {
+      "id": "browser",
+      "dock": 5,
+      "title": "Browser",
+      "section": "Apps",
+      "summary": "Kotoba Browser: renders a local document with the shared browser surface",
+      "install": "os-image",
+      "offline": "local-core",
+      "remoteOperations": [
+        {
+          "operation": "fetch-document",
+          "service": "the origin the user typed",
+          "consent": "each-operation"
+        }
+      ]
+    },
+    {
+      "id": "yotei",
+      "dock": 6,
+      "title": "Yotei",
+      "section": "Apps",
+      "summary": "Calendar: local events as signed records on the device",
+      "install": "os-image",
+      "offline": "local-core",
+      "remoteOperations": [
+        {
+          "operation": "sync-calendar",
+          "service": "user-chosen calendar store",
+          "consent": "each-operation"
+        }
+      ]
+    },
+    {
+      "id": "shakai",
+      "dock": 7,
+      "title": "Shakai",
+      "section": "Apps",
+      "summary": "Social: reads and composes the local Aozora outbox timeline",
+      "install": "os-image",
+      "offline": "local-core",
+      "remoteOperations": [
+        {
+          "operation": "fetch-timeline",
+          "service": "the user's AT Protocol PDS",
+          "consent": "each-operation"
+        }
+      ]
+    },
+    {
+      "id": "saifu",
+      "dock": 8,
+      "title": "Saifu",
+      "section": "Apps",
+      "summary": "Wallet (read and verify only): shows the device key and verifies signatures",
+      "install": "os-image",
+      "offline": "local-core",
+      "remoteOperations": [
+        {
+          "operation": "read-chain-state",
+          "service": "user-chosen chain read endpoint",
+          "consent": "each-operation"
+        }
+      ]
+    },
+    {
+      "id": "bunsho",
+      "dock": 9,
+      "title": "Bunsho",
+      "section": "Apps",
+      "summary": "Word-processor dapp: local document editing",
+      "install": "os-image",
+      "offline": "local-core",
+      "remoteOperations": [
+        {
+          "operation": "export-document",
+          "service": "user-selected store",
+          "consent": "each-operation"
+        }
+      ]
+    },
+    {
+      "id": "hyokeisan",
+      "dock": 10,
+      "title": "Hyokeisan",
+      "section": "Apps",
+      "summary": "Spreadsheet dapp: local sheet editing and calculation",
+      "install": "os-image",
+      "offline": "local-core",
+      "remoteOperations": [
+        {
+          "operation": "export-sheet",
+          "service": "user-selected store",
+          "consent": "each-operation"
+        }
+      ]
+    },
+    {
+      "id": "zuhyo",
+      "dock": 11,
+      "title": "Zuhyo",
+      "section": "Apps",
+      "summary": "Presentation and chart dapp: local slides",
+      "install": "os-image",
+      "offline": "local-core",
+      "remoteOperations": [
+        {
+          "operation": "export-deck",
+          "service": "user-selected store",
+          "consent": "each-operation"
+        }
+      ]
+    },
+    {
+      "id": "tokei",
+      "dock": 12,
+      "title": "Tokei",
+      "section": "System",
+      "summary": "Clock: shows the calibrated TSC clock (PIT-calibrated, never raw TSC labelled as ms) and uptime",
+      "install": "os-image",
+      "offline": "local-core",
+      "remoteOperations": [
+        {
+          "operation": "sync-time",
+          "service": "user-chosen time source",
+          "consent": "each-operation"
+        }
+      ]
+    },
+    {
+      "id": "wifi",
+      "dock": 13,
+      "title": "Wi-Fi",
+      "section": "System",
+      "summary": "Network status and join: lists the link state",
+      "install": "os-image",
+      "offline": "local-core",
+      "remoteOperations": []
+    },
+    {
+      "id": "bluetooth",
+      "dock": 14,
+      "title": "Bluetooth",
+      "section": "System",
+      "summary": "Bluetooth status and pairing for HID devices (HOGP)",
+      "install": "os-image",
+      "offline": "local-core",
+      "remoteOperations": []
+    },
+    {
+      "id": "settei",
+      "dock": 15,
+      "title": "Settei",
+      "section": "System",
+      "summary": "Settings: display, sound, effects, key lifecycle and per-app consent review",
+      "install": "os-image",
+      "offline": "local-core",
+      "remoteOperations": []
+    },
+    {
+      "id": "itonami-apps",
+      "dock": 16,
+      "title": "Itonami Apps",
+      "section": "System",
+      "summary": "App store: lists the signed app catalog and installs an app from it",
+      "install": "os-image",
+      "offline": "local-core",
+      "remoteOperations": [
+        {
+          "operation": "fetch-catalog",
+          "service": "user-chosen app catalog origin",
+          "consent": "each-operation"
+        },
+        {
+          "operation": "download-app",
+          "service": "user-chosen artifact origin",
+          "consent": "each-operation"
+        }
+      ]
+    },
+    {
+      "id": "updates",
+      "dock": 17,
+      "title": "Updates",
+      "section": "System",
+      "summary": "Update manager: shows installed versions, channel and policy, and runs the staged signed-image update (AWAI-122) with its rollback copy",
+      "install": "os-image",
+      "offline": "local-core",
+      "remoteOperations": [
+        {
+          "operation": "check-updates",
+          "service": "user-chosen update origin",
+          "consent": "each-operation"
+        },
+        {
+          "operation": "download-update",
+          "service": "user-chosen update origin",
+          "consent": "each-operation"
+        }
+      ]
+    },
+    {
+      "id": "torihiki",
+      "dock": 18,
+      "title": "Torihiki",
+      "section": "Apps",
+      "summary": "Exchange client (devnet and demo accounts only): session key, order form, quotes",
+      "install": "os-image",
+      "offline": "local-core",
+      "remoteOperations": [
+        {
+          "operation": "read-quotes",
+          "service": "user-chosen torihiki devnet endpoint",
+          "consent": "each-operation"
+        },
+        {
+          "operation": "read-account",
+          "service": "user-chosen torihiki devnet endpoint",
+          "consent": "each-operation"
+        },
+        {
+          "operation": "request-devnet-funds",
+          "service": "user-chosen torihiki devnet endpoint",
+          "consent": "each-operation"
+        },
+        {
+          "operation": "submit-order",
+          "service": "user-chosen torihiki devnet endpoint",
+          "consent": "each-operation"
+        }
+      ]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 {
   "name": "awai-otehon-shell",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "scripts": {
     "build": "esbuild src/main.jsx --bundle --minify --jsx=automatic --loader:.css=css --outdir=dist/assets --define:process.env.NODE_ENV=\\\"production\\\" && cp index.html dist/index.html"
