@@ -1,91 +1,105 @@
 { config, lib, pkgs, ... }:
 let
   user = "otehon";
-  # Same desktop id as the upstream entry, so the Awai name replaces it.
-  renamed = id: name: exec: icon: lib.hiPrio (pkgs.makeDesktopItem {
-    name = id;
-    desktopName = name;
-    inherit exec icon;
-    categories = [ "Utility" ];
-  });
-  added = id: name: exec: icon: pkgs.makeDesktopItem {
-    name = id;
-    desktopName = name;
-    inherit exec icon;
-    categories = [ "Utility" ];
+
+  shell = pkgs.buildNpmPackage {
+    pname = "awai-otehon-shell";
+    version = config.system.image.version;
+    src = ./shell;
+    npmDepsHash = "sha256-uaZ0HmDxh8WxYJWxdwtPS47xW5yQc0kLHH2cGyqV2z8=";
+    installPhase = ''
+      runHook preInstall
+      cp -r dist $out
+      runHook postInstall
+    '';
   };
+
+  # The profile stays in the image. The DevTools port is on loopback and is how
+  # the boot report reads the page title.
+  browser = pkgs.writeShellScript "otehon-browser" ''
+    exec ${lib.getExe pkgs.chromium} \
+      --ozone-platform=wayland \
+      --kiosk \
+      --no-first-run \
+      --no-default-browser-check \
+      --password-store=basic \
+      --user-data-dir="$HOME/.local/state/otehon-chromium" \
+      --remote-debugging-address=127.0.0.1 \
+      --remote-debugging-port=9222 \
+      "file://${shell}/index.html"
+  '';
 in
 {
-  # Awai Otehon local desktop (ADR 0026). The user has no password and logs in
-  # automatically, so this image is for a local VM only. It has no SSH or keys.
+  # Awai Otehon local desktop (ADR 0026): a React shell in Chromium on Wayland,
+  # with cosmic-comp as the Smithay compositor. niri rejects software EGL, which
+  # is all this VM has. Zenoh and Matter listen on loopback only.
+  # The user has no password and logs in automatically, so this image is for a
+  # local VM only. It has no SSH or keys.
   imports = [ ./common.nix ];
 
   system.image.id = "awai-otehon-desktop";
-  system.image.version = "0.2.0";
+  system.image.version = "0.3.0";
 
-  services.displayManager.gdm.enable = true;
-  services.desktopManager.gnome.enable = true;
-  services.gnome.core-apps.enable = false;
-  services.gnome.core-developer-tools.enable = false;
-  services.gnome.games.enable = false;
-  services.gnome.gnome-initial-setup.enable = lib.mkForce false;
-  services.gnome.gnome-software.enable = true;
-  services.flatpak.enable = true;
-  environment.gnome.excludePackages = [ pkgs.gnome-tour pkgs.gnome-user-docs ];
+  hardware.graphics.enable = true;
   documentation.nixos.enable = false;
 
   users.users.${user} = {
     isNormalUser = true;
     hashedPassword = "!";
   };
-  services.displayManager.autoLogin = {
+  services.greetd = {
     enable = true;
-    inherit user;
+    settings = rec {
+      initial_session = {
+        command = "${lib.getExe pkgs.cosmic-comp} ${browser}";
+        inherit user;
+      };
+      default_session = initial_session;
+    };
   };
 
-  # Only apps with an Otehon installed in this image appear here.
-  environment.systemPackages = [
-    pkgs.gnome-clocks
-    pkgs.gnome-calendar
-    (renamed "org.gnome.Settings" "Settei" "gnome-control-center" "org.gnome.Settings")
-    (renamed "org.gnome.clocks" "Tokei" "gnome-clocks" "org.gnome.clocks")
-    (renamed "org.gnome.Calendar" "Yotei" "gnome-calendar" "org.gnome.Calendar")
-    (renamed "org.gnome.Software" "Itonami Apps" "gnome-software" "org.gnome.Software")
-    (added "awai-wifi" "Wi-Fi" "gnome-control-center wifi" "network-wireless")
-    (added "awai-bluetooth" "Bluetooth" "gnome-control-center bluetooth" "bluetooth")
-  ];
-
-  programs.dconf.profiles.user.databases = [{
+  services.zenohd = {
+    enable = true;
     settings = {
-      "org/gnome/shell" = {
-        favorite-apps = [
-          "org.gnome.Software.desktop"
-          "org.gnome.Calendar.desktop"
-          "org.gnome.clocks.desktop"
-          "awai-wifi.desktop"
-          "awai-bluetooth.desktop"
-          "org.gnome.Settings.desktop"
-        ];
-        welcome-dialog-last-shown-version = "999";
-      };
-      "org/gnome/desktop/session".idle-delay = lib.gvariant.mkUint32 0;
-      "org/gnome/desktop/screensaver".lock-enabled = false;
+      listen.endpoints = [ "tcp/127.0.0.1:7447" ];
+      scouting.multicast.enabled = false;
+      plugins.rest.http_port = "127.0.0.1:8000";
     };
-  }];
+  };
+
+  services.matter-server = {
+    enable = true;
+    extraArgs.listen-address = "127.0.0.1";
+  };
 
   systemd.services.otehon-boot-report = {
     wantedBy = lib.mkForce [ "graphical.target" ];
     after = lib.mkForce [ "graphical.target" ];
-    path = [ pkgs.procps ];
+    path = [ pkgs.curl pkgs.gnugrep pkgs.procps ];
     script = ''
-      shell=0
-      for _ in $(seq 1 90); do
-        if pgrep -u ${user} -f gnome-shell >/dev/null; then shell=1; break; fi
+      title=""
+      for _ in $(seq 1 120); do
+        title=$(curl -s --max-time 2 http://127.0.0.1:9222/json | grep -o '"title": "Awai Otehon [^"]*"' || true)
+        case "$title" in *"zenoh=1 matter=1"*) break ;; esac
         sleep 2
       done
-      sleep 10
+      sleep 5
+      compositor=0; pgrep -u ${user} -x cosmic-comp >/dev/null && compositor=1
+      chromium=0; pgrep -u ${user} -f chromium >/dev/null && chromium=1
+      react=0; zenoh=0; matter=0
+      [ -n "$title" ] && react=1
+      case "$title" in *zenoh=1*) zenoh=1 ;; esac
+      case "$title" in *matter=1*) matter=1 ;; esac
       failed=$(systemctl list-units --state=failed --no-legend | wc -l)
-      echo "OTEHON_BOOT_REPORT id=${config.system.image.id} version=${config.system.image.version} nixos=${config.system.nixos.version} gnome_shell=$shell failed=$failed"
+      case "$title" in
+        *"zenoh=1 matter=1"*) ;;
+        *)
+          ls -la /dev/dri || true
+          journalctl -b --no-pager -o cat -n 80 _UID=$(id -u ${user}) || true
+          journalctl -b --no-pager -o cat -n 20 -u matter-server -u zenohd || true
+          ;;
+      esac
+      echo "OTEHON_BOOT_REPORT id=${config.system.image.id} version=${config.system.image.version} nixos=${config.system.nixos.version} compositor=$compositor chromium=$chromium react=$react zenoh=$zenoh matter=$matter failed=$failed"
     '';
   };
 

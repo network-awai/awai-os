@@ -3,7 +3,7 @@
 # serial console and save a screenshot of the display.
 #
 # usage: desktop-check-qemu.sh <image> <serial-log> <screenshot.ppm> [timeout-seconds]
-# exit:  0 report with gnome_shell=1 and failed=0, and a screenshot was saved
+# exit:  0 report with every component up and failed=0, and a screenshot was saved
 #        1 report with another state, no report before the timeout, or no screenshot
 #        3 the check could not run
 set -u
@@ -43,7 +43,7 @@ while [ "$elapsed" -lt "$timeout" ]; do
     sleep 2
     [ -s "$shot" ] || { echo "FAIL no screenshot"; exit 1; }
     case "$report" in
-      *" gnome_shell=1 failed=0"*) exit 0 ;;
+      *" compositor=1 chromium=1 react=1 zenoh=1 matter=1 failed=0"*) exit 0 ;;
       *) echo "FAIL unexpected desktop state"; exit 1 ;;
     esac
   fi
