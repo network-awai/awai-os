@@ -1,0 +1,45 @@
+Awai Otehon base 0.4.0 check output, 2026-11-07
+Apple M1 Max, QEMU 10.0.3 with HVF, nixpkgs f5c082a40f7571c266e74e80ae2e68aadd8a9fc7
+Commands: nixos/otehon/base-make-key-disk.sh, nixos/otehon/base-check-qemu.sh
+Console control sequences before OTEHON_BOOT_REPORT are removed.
+
+== base, correct keys
+raw-sha256=4854ddb6fbb2644af17483f8af5ce63042cd92e1040ef6890323c2944c716b0e
+OTEHON_BOOT_REPORT id=awai-otehon-base version=0.4.0 stage=0 generation=a state=1 sops=1 listeners=1 marker=b9ff6e861303025c failed=0
+OTEHON_BOOT_REPORT id=awai-otehon-base version=0.4.0 stage=1 generation=b state=1 sops=1 listeners=1 marker=b9ff6e861303025c failed=0
+OTEHON_BOOT_REPORT id=awai-otehon-base version=0.4.0 stage=2 generation=a state=1 sops=1 listeners=1 marker=b9ff6e861303025c failed=0
+PORTS allowed=open closed=dropped
+DISK plain_canary=found encrypted_canary=absent
+PASS
+exit=0
+
+== used disk, another LUKS key
+OTEHON_BOOT_REPORT id=awai-otehon-base version=0.4.0 stage=none generation=a state=0 sops=0 listeners=1 marker=none failed=1
+FAIL state volume did not open
+serial: No key available with this passphrase.
+exit=1
+
+== used disk, no key disk
+OTEHON_BOOT_REPORT id=awai-otehon-base version=0.4.0 stage=none generation=a state=0 sops=0 listeners=1 marker=none failed=1
+FAIL state volume did not open
+serial: otehon-state: no key disk
+exit=1
+
+== new disk, wrong age key
+OTEHON_BOOT_REPORT id=awai-otehon-base version=0.4.0 stage=0 generation=a state=1 sops=0 listeners=1 marker=6953e5d1684dd46d failed=1
+exit=1
+
+== base-open-port
+raw-sha256=f81f5178a6f7aedabbcae556e4483a37371220798bf67213469c5c19a40ed51d
+OTEHON_BOOT_REPORT id=awai-otehon-base version=0.4.0 stage=0 generation=a state=1 sops=1 listeners=1 marker=f1b6045acbc2d7e7 failed=0
+OTEHON_BOOT_REPORT id=awai-otehon-base version=0.4.0 stage=1 generation=b state=1 sops=1 listeners=1 marker=f1b6045acbc2d7e7 failed=0
+OTEHON_BOOT_REPORT id=awai-otehon-base version=0.4.0 stage=2 generation=a state=1 sops=1 listeners=1 marker=f1b6045acbc2d7e7 failed=0
+FAIL closed port reachable
+exit=1
+
+== base-no-switch
+raw-sha256=76754805dae232c5523ef2a644530acf022fba43825aab44bde36e02ee6687bf
+OTEHON_BOOT_REPORT id=awai-otehon-base version=0.4.0 stage=0 generation=a state=1 sops=1 listeners=1 marker=45806598074ba723 failed=0
+OTEHON_BOOT_REPORT id=awai-otehon-base version=0.4.0 stage=1 generation=a state=1 sops=1 listeners=1 marker=45806598074ba723 failed=0
+FAIL stage 1 expected generation b
+exit=1
