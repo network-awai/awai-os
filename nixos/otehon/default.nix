@@ -1,8 +1,9 @@
+{ profile ? "vm" }:
 let
   nixpkgs = import ../../ci/nixpkgs.nix;
   system = import "${nixpkgs}/nixos/lib/eval-config.nix" {
     system = null;
-    modules = [ ./vm.nix ];
+    modules = [ (./. + "/${profile}.nix") ];
   };
 in
 system.config.system.build.image
