@@ -1,0 +1,67 @@
+:root {
+  color-scheme: dark;
+  font-family: "DejaVu Sans", sans-serif;
+  background: #15181c;
+  color: #eef1f4;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 64px 24px;
+}
+
+header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 40px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 600;
+}
+
+time {
+  font-size: 32px;
+  font-variant-numeric: tabular-nums;
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.service {
+  display: grid;
+  grid-template-columns: 120px 1fr auto;
+  gap: 16px;
+  align-items: center;
+  padding: 18px 20px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  background: #22272d;
+}
+
+.name {
+  font-weight: 600;
+}
+
+.role {
+  color: #aab3bc;
+}
+
+.up .state {
+  color: #7ddc9a;
+}
+
+.down .state {
+  color: #f09a8a;
+}
