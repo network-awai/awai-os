@@ -1,12 +1,14 @@
-# Awai Otehon desktop 0.3.0
+# Awai Otehon desktop 0.4.0
 
-A React shell in Chromium on Wayland, on the pinned NixOS system
-(`network-awai/network-awai-apex` ADR 0026 D9, AWAI-160). Zenoh and Matter run as
-system services, and the shell shows whether it can reach them.
+A chat-centred React shell in Chromium on Wayland, on the pinned NixOS system
+(`network-awai/network-awai-apex` ADR 0026 D9 and D12, AWAI-160). Each Itonami dapp
+is a context in the sidebar and has a panel with its declared properties. Zenoh and
+Matter run as system services, and the shell shows whether it can reach them.
 
 | Layer | Component |
 | --- | --- |
 | Shell | React 19, bundled by esbuild, loaded from a local file |
+| Dapp list | `nixos/otehon/shell/src/dapps.json`, a snapshot of `kotoba-lang/kotoba` `lib/kotoba.aiueos/distributions/awai/dapps` at `f1096f0e` |
 | Browser | Chromium in kiosk mode |
 | Compositor | cosmic-comp 1.2.0, built on Smithay |
 | Display protocol | Wayland |
@@ -43,28 +45,39 @@ nixos/otehon/desktop-check-qemu.sh otehon-desktop.qcow2 serial.log shot.ppm
 ```
 
 Exit codes: `0` report with `compositor=1 chromium=1 react=1 zenoh=1 matter=1
-failed=0` and a saved screenshot, `1` another state or no report, `3` the check
+dapps=1 failed=0` and a saved screenshot, `1` another state or no report, `3` the check
 could not run.
 
-`react`, `zenoh` and `matter` come from the page title, which React sets after it
-reaches each service. When a service is missing, the boot report also prints
+`react`, `zenoh`, `matter` and `dapps` come from the page title, which React sets
+after it reaches each service and counts the rendered dapps. `dapps=1` means that
+count matches the snapshot. When a service is missing, the boot report also prints
 recent logs to the serial console.
 
-The negative control is the `desktop-no-zenoh` profile, which must exit 1.
+The negative controls are the `desktop-no-zenoh` and `desktop-wrong-dapps` profiles,
+which must exit 1.
 
 ## Evidence (2026-11-07, Apple M1 Max, QEMU 10.0.3 with HVF)
 
 | Item | Result |
 | --- | --- |
 | nixpkgs | `f5c082a40f7571c266e74e80ae2e68aadd8a9fc7` |
-| Raw image SHA-256 | `c076961d4bf7f0c3317bd8c93ef53de78676dbf92430aa34ec3e92949825dcdf` |
-| Boot | `compositor=1 chromium=1 react=1 zenoh=1 matter=1 failed=0` at 56 s, exit 0 |
-| Screen | The shell shows Zenoh and Matter as Running |
-| Negative control | `desktop-no-zenoh` reported `zenoh=0`, exit 1 |
+| Raw image SHA-256 | `9d337ee5059b56509d4de41b13a843186e7880890fc44d801a025555d4d04f29` |
+| Boot | `compositor=1 chromium=1 react=1 zenoh=1 matter=1 dapps=1 failed=0` at 58 s, exit 0 |
+| Screen | The sidebar lists 18 dapps, and Zenoh and Matter show Running |
+| Negative control | `desktop-wrong-dapps` reported `dapps=0`, exit 1. It ran on the tile version of this shell, before the chat layout |
+| In a browser, not in the VM | Selecting a context opens its panel, a message is added to that context, and the thread survives a reload |
+
+`desktop-no-zenoh` passed on 0.3.0 (`zenoh=0`, exit 1) and was not rerun on 0.4.0.
 
 ## Known gaps
 
-- The shell only shows status. It cannot open apps yet.
+- No agent answers. Messages only stay in the browser on this device.
+- The dapp panel shows what the manifest declares. The dapps themselves do not run,
+  and the network operations listed there cannot be started.
+- Login and trust from ADR 0026 D13 are not implemented, so the screen opens with no
+  login.
+- The clock is in UTC. Japanese text and input were not checked in the VM, and the
+  image has no input method.
 - Zenoh is checked through its REST admin path on one node. No data passed between
   nodes.
 - Matter is checked by the server's WebSocket greeting. No device was commissioned.
