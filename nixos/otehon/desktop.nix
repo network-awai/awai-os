@@ -1,13 +1,26 @@
 { config, lib, pkgs, ... }:
 let
   user = "otehon";
-  expectedDapps = config.otehon.expectedDapps;
+  cfg = config.otehon;
 
   shell = pkgs.buildNpmPackage {
     pname = "awai-otehon-shell";
     version = config.system.image.version;
-    src = ./shell;
-    npmDepsHash = "sha256-LCI/lFpiF8idvR3uoqH+AbH7QMdRyhfjuzB0RkNqPxs=";
+    src = lib.cleanSourceWith {
+      src = ./shell;
+      filter = path: _: !(lib.elem (baseNameOf path) [ "node_modules" "dist" ]);
+    };
+    env = {
+      RELAY_ORIGIN = cfg.relayOrigin;
+      OTEHON_E2E = if cfg.e2e then "1" else "0";
+    };
+    doCheck = true;
+    checkPhase = ''
+      runHook preCheck
+      npm test
+      runHook postCheck
+    '';
+    npmDepsHash = "sha256-SMPG1zpW2aUw1E7Q0R1r4Cnhgm2SZaVBiQcUmXPvWRs=";
     installPhase = ''
       runHook preInstall
       cp -r dist $out
@@ -27,6 +40,7 @@ let
       --user-data-dir="$HOME/.local/state/otehon-chromium" \
       --remote-debugging-address=127.0.0.1 \
       --remote-debugging-port=9222 \
+      ${lib.escapeShellArgs cfg.browserArgs} \
       "file://${shell}/index.html"
   '';
 in
@@ -38,15 +52,31 @@ in
   # local VM only. It has no SSH or keys.
   imports = [ ./common.nix ];
 
-  # The number of tiles the shell must render, from its catalog snapshot.
-  options.otehon.expectedDapps = lib.mkOption {
-    type = lib.types.ints.positive;
-    default = builtins.length (lib.importJSON ./shell/src/dapps.json).dapps;
+  options.otehon = {
+    relayOrigin = lib.mkOption {
+      type = lib.types.str;
+      default = "https://relay.awai.network";
+      description = "The ciphertext relay for phone approval (ADR 0026 D13).";
+    };
+    browserArgs = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+    };
+    e2e = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "Build the sign-in test driver into the shell. Check images only.";
+    };
+    shell = lib.mkOption {
+      type = lib.types.package;
+      readOnly = true;
+      default = shell;
+    };
   };
 
   config = {
   system.image.id = "awai-otehon-desktop";
-  system.image.version = "0.4.0";
+  system.image.version = "0.5.0";
 
   hardware.graphics.enable = true;
   fonts.packages = [ pkgs.noto-fonts-cjk-sans ];
@@ -99,8 +129,9 @@ in
       [ -n "$title" ] && react=1
       case "$title" in *zenoh=1*) zenoh=1 ;; esac
       case "$title" in *matter=1*) matter=1 ;; esac
-      dapps=0
-      case "$title" in *"dapps=${toString expectedDapps}\""*) dapps=1 ;; esac
+      # The apps stay hidden until sign-in, so a fresh boot must show the gate.
+      gate=0
+      case "$title" in *"gate=1 dapps=0\""*) gate=1 ;; esac
       failed=$(systemctl list-units --state=failed --no-legend | wc -l)
       case "$title" in
         *"zenoh=1 matter=1"*) ;;
@@ -110,7 +141,7 @@ in
           journalctl -b --no-pager -o cat -n 20 -u matter-server -u zenohd || true
           ;;
       esac
-      echo "OTEHON_BOOT_REPORT id=${config.system.image.id} version=${config.system.image.version} nixos=${config.system.nixos.version} compositor=$compositor chromium=$chromium react=$react zenoh=$zenoh matter=$matter dapps=$dapps failed=$failed"
+      echo "OTEHON_BOOT_REPORT id=${config.system.image.id} version=${config.system.image.version} nixos=${config.system.nixos.version} compositor=$compositor chromium=$chromium react=$react zenoh=$zenoh matter=$matter gate=$gate failed=$failed"
     '';
   };
 

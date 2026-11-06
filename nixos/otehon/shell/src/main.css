@@ -324,3 +324,225 @@ time {
   color: #eef1f4;
   font-weight: 600;
 }
+
+.setup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  height: 100vh;
+  padding: 24px;
+}
+
+.setup-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: min(440px, 100%);
+  text-align: center;
+}
+
+.setup-card h1 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 600;
+}
+
+.setup-card h1.hello {
+  margin-bottom: 40px;
+  font-size: 56px;
+}
+
+.setup-card p {
+  margin: 0;
+  color: #c4ccd3;
+  line-height: 1.5;
+}
+
+.primary,
+.secondary {
+  min-height: 46px;
+  padding: 10px 24px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.setup-card .primary,
+.setup-card .secondary {
+  width: 100%;
+}
+
+.primary {
+  background: #eef1f4;
+  color: #15181c;
+}
+
+.secondary {
+  background: #2a3037;
+}
+
+.muted,
+.setup-card p.muted {
+  color: #98a2ac;
+  font-size: 13px;
+}
+
+.problem,
+.setup-card p.problem {
+  color: #f09a8a;
+}
+
+.choices {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #22272d;
+}
+
+.choices li + li {
+  border-top: 1px solid #2f363e;
+}
+
+.choices button {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 13px 16px;
+  background: transparent;
+  text-align: left;
+}
+
+.link-pending {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.qr {
+  width: 232px;
+  height: 232px;
+  border-radius: 10px;
+}
+
+.code {
+  color: #eef1f4;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.progress {
+  display: flex;
+  gap: 8px;
+}
+
+.progress li {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #414951;
+}
+
+.progress li.current {
+  background: #eef1f4;
+}
+
+.account-id {
+  overflow-wrap: anywhere;
+}
+
+.account-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  background: #2a3037;
+  font-size: 12px;
+  text-align: left;
+}
+
+.account-button.active,
+.account-button:hover {
+  background: #38424c;
+}
+
+.account-button .title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-view {
+  overflow-y: auto;
+}
+
+.account-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(620px, 100%);
+  margin: 0 auto;
+  padding: 48px 24px;
+}
+
+.account-body h1,
+.account-body h2,
+.account-body p {
+  margin: 0;
+}
+
+.account-body h1 {
+  font-size: 28px;
+}
+
+.account-body h2 {
+  margin-top: 16px;
+  font-size: 18px;
+}
+
+.sources {
+  overflow: hidden;
+  border-radius: 12px;
+  background: #22272d;
+  font-size: 14px;
+}
+
+.sources li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 8px 14px;
+}
+
+.sources li + li {
+  border-top: 1px solid #2f363e;
+}
+
+.sources button {
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: #38424c;
+  font-size: 13px;
+}
+
+.operations button.locked {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: #3a3227;
+  color: #e8c48a;
+  font-size: 12px;
+}
+
+.empty .primary {
+  margin-top: 20px;
+}

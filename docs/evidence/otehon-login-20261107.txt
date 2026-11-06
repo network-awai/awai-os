@@ -1,0 +1,13 @@
+Awai Otehon sign-in check output, 2026-11-07
+Apple M1 Max, QEMU 10.0.3 with HVF, nixpkgs f5c082a40f7571c266e74e80ae2e68aadd8a9fc7
+Command: nixos/otehon/desktop-login-check-qemu.sh
+
+== desktop-login
+raw-sha256=7d3e49223c8a91966dc92d324e6e4d323943e6f9c358a58f3cbc67f97b1be158
+OTEHON_LOGIN_E2E result=pass gate=1 setup_steps=1 consent_deny=1 consent_allow=1 wrong_signer=1 wrong_key=1 wallet=1 trust_lock=1 reload_keeps_login=1 tamper_returns_to_login=1 passkey=1 sign_out=1 elapsed=54s
+exit=0
+
+== desktop
+raw-sha256=101d4b411b095e2c9b1aa8157d02f11f71670b1e147fda7375ecde69da977bc1
+OTEHON_BOOT_REPORT id=awai-otehon-desktop version=0.5.0 nixos=26.05pre-git compositor=1 chromium=1 react=1 zenoh=1 matter=1 gate=1 failed=0 elapsed=56s
+exit=0

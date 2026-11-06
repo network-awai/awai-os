@@ -43,7 +43,7 @@ while [ "$elapsed" -lt "$timeout" ]; do
     sleep 2
     [ -s "$shot" ] || { echo "FAIL no screenshot"; exit 1; }
     case "$report" in
-      *" compositor=1 chromium=1 react=1 zenoh=1 matter=1 dapps=1 failed=0"*) exit 0 ;;
+      *" compositor=1 chromium=1 react=1 zenoh=1 matter=1 gate=1 failed=0"*) exit 0 ;;
       *) echo "FAIL unexpected desktop state"; exit 1 ;;
     esac
   fi
