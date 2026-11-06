@@ -17,7 +17,7 @@ podman volume create awai-otehon-nix
 ```
 
 ```bash
-podman run --rm --security-opt label=disable -v awai-otehon-nix:/nix -v "$PWD":/w -w /w --env NIX_CONFIG="sandbox = false" docker.io/nixos/nix@sha256:7a70027ba790d3a79fa82faeac5f3dddc048f89e83b3901ca69542c340c9fb5c nix-build nixos/otehon/default.nix
+podman run --rm --security-opt label=disable -v awai-otehon-nix:/nix -v "$PWD":/w -w /w --env NIX_CONFIG=$'sandbox = false\nfilter-syscalls = false' docker.io/nixos/nix@sha256:7a70027ba790d3a79fa82faeac5f3dddc048f89e83b3901ca69542c340c9fb5c nix-build nixos/otehon/default.nix
 ```
 
 `label=disable` is needed because a later container cannot read store files
