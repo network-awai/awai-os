@@ -1,0 +1,53 @@
+;; Talks MCP to the Basilisp server over stdio, as a client would, and checks refusals.
+;; usage: PYTHONPATH=src basilisp run test/check_mcp.lpy
+(ns check-mcp
+  (:import json subprocess sys time))
+
+(def started (time/monotonic))
+(def server (subprocess/Popen #py ["basilisp" "run" "mcp/server.lpy"]
+                              ** :stdin subprocess/PIPE :stdout subprocess/PIPE
+                              :stderr subprocess/PIPE :text true))
+
+(defn- from-json [value]
+  (cond
+    (instance? python/dict value) (into {} (map (fn [[k v]] [k (from-json v)]) (.items value)))
+    (instance? python/list value) (mapv from-json value)
+    :else value))
+
+(defn- tail [text size]
+  (subs text (max 0 (- (count text) size))))
+
+(defn- call
+  ([id method] (call id method #py {}))
+  ([id method params]
+   (.write (.-stdin server)
+           (str (json/dumps #py {"jsonrpc" "2.0" "id" id "method" method "params" params}) "\n"))
+   (.flush (.-stdin server))
+   (let [line (.readline (.-stdout server))]
+     (when-not (seq line)
+       (sys/exit (str "FAIL server closed: " (tail (.read (.-stderr server)) 600))))
+     (from-json (json/loads line)))))
+
+(defn- tool [id tool-name arguments]
+  (let [result (get (call id "tools/call" #py {"name" tool-name "arguments" arguments}) "result")]
+    [(get result "isError") (from-json (json/loads (get-in result ["content" 0 "text"])))]))
+
+(defn- check [got want]
+  (when (not= got want)
+    (sys/exit (str "FAIL got " (pr-str got) " want " (pr-str want)))))
+
+(check (get-in (call 1 "initialize") ["result" "serverInfo" "name"]) "saifu")
+(def ready (- (time/monotonic) started))
+(def names (vec (sort (map #(get % "name") (get-in (call 2 "tools/list") ["result" "tools"])))))
+(check names ["saifu_format_wei" "saifu_hex_to_decimal" "saifu_valid_address"])
+(check (tool 3 "saifu_format_wei" #py {"wei" "1500000000000000000"}) [false {"eth" "1.5"}])
+(check (tool 4 "saifu_hex_to_decimal" #py {"hex" "0xff"}) [false {"decimal" "255"}])
+(check (tool 5 "saifu_valid_address" #py {"address" "0x01"}) [false {"valid" false}])
+;; Refusals.
+(check (tool 6 "saifu_format_wei" #py {"wei" "12.5"}) [false {"eth" nil}])
+(check (tool 7 "saifu_format_wei" #py {}) [true {"error" "bad-arguments"}])
+(check (tool 8 "nope" #py {}) [true {"error" "unknown-tool"}])
+(check (get-in (call 9 "nope") ["error" "code"]) -32601)
+(.close (.-stdin server))
+(.wait server ** :timeout 10)
+(println (str "mcp ok: " (count names) " tools, ready in " (.format "{:.2f}" ready) "s"))
