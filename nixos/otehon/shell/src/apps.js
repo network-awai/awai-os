@@ -2,7 +2,10 @@
 // it does not download or execute external packages.
 export const BUNDLED_APPS = Object.freeze([
   Object.freeze({ id: "tokei", title: "Tokei", description: "A local clock and date.", type: "App" }),
+  Object.freeze({ id: "tsunagu", title: "Tsunagu", description: "Tailscale and Kekkai SSH for this VM, each after your approval.", type: "App" }),
 ]);
+// Installed for an account that has not chosen yet; removable in the Marketplace.
+export const DEFAULT_APPS = Object.freeze(["tokei", "tsunagu"]);
 const PREFIX = "otehon.installed-apps.v1:";
 const validAccount = (account) => typeof account === "string" && account.startsWith("did:") && account.length <= 512;
 const known = (id) => BUNDLED_APPS.some((app) => app.id === id);
@@ -11,7 +14,7 @@ export function installedApps(account, storage) {
   if (!validAccount(account)) return [];
   try {
     const raw = (storage ?? globalThis.localStorage).getItem(PREFIX + account);
-    if (raw === null) return ["tokei"];
+    if (raw === null) return [...DEFAULT_APPS];
     const value = JSON.parse(raw);
     return Array.isArray(value) ? [...new Set(value.filter(known))] : [];
   } catch { return []; }

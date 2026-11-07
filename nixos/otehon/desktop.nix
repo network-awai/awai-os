@@ -49,8 +49,9 @@ in
   # with cosmic-comp as the Smithay compositor. niri rejects software EGL, which
   # is all this VM has. Zenoh and Matter listen on loopback only.
   # The user has no password and logs in automatically, so this image is for a
-  # local VM only. It has no SSH or keys.
-  imports = [ ./common.nix ];
+  # local VM only. SSH has no keys until one is approved in Tsunagu
+  # (connect.nix), and then admits only murakumo-admin with that key.
+  imports = [ ./common.nix ./connect.nix ];
 
   options.otehon = {
     relayOrigin = lib.mkOption {

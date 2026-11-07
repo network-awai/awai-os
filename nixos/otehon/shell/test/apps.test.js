@@ -8,11 +8,13 @@ function storage() {
 }
 test("bundled app install and removal persist per account", () => {
   const s = storage();
-  assert.deepEqual(installedApps("did:test:a", s), ["tokei"]);
+  assert.deepEqual(installedApps("did:test:a", s), ["tokei", "tsunagu"]);
   assert.equal(setAppInstalled("did:test:a", "tokei", true, s), true);
-  assert.deepEqual(installedApps("did:test:a", s), ["tokei"]);
-  assert.deepEqual(installedApps("did:test:b", s), ["tokei"]);
+  assert.deepEqual(installedApps("did:test:a", s), ["tokei", "tsunagu"]);
+  assert.deepEqual(installedApps("did:test:b", s), ["tokei", "tsunagu"]);
   assert.equal(setAppInstalled("did:test:a", "tokei", false, s), true);
+  assert.deepEqual(installedApps("did:test:a", s), ["tsunagu"]);
+  assert.equal(setAppInstalled("did:test:a", "tsunagu", false, s), true);
   assert.deepEqual(installedApps("did:test:a", s), []);
 });
 test("unknown entries and failed storage cannot pretend to install", () => {

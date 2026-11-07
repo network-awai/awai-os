@@ -6,9 +6,11 @@ import registry from "./registry/itonami-index.json";
 import { REGISTRY_REVISION, searchRegistry } from "./discovery.js";
 import { clearSession, deviceDid, loadProofs, loadSession, saveProof } from "./identity/device.js";
 import { createBroker, osOperations, readPassport } from "./runtime.js";
-import { Setup } from "./setup.jsx";
+import { QrCode, Setup } from "./setup.jsx";
 import { Bunsho } from "./apps/bunsho.cljc";
 import { Hyokeisan } from "./apps/hyokeisan.cljc";
+import { Tsunagu } from "./apps/tsunagu.cljc";
+import { tailscaleAdapters } from "./connect.js";
 import { displayMessage, readAgeBand, saveAgeBand } from "./age.js";
 import {
   POINTS,
@@ -223,9 +225,10 @@ function Marketplace({ account, installed, onChange }) {
   </div></main>;
 }
 
-function AppView({ dapp, now, account }) {
+function AppView({ dapp, now, account, broker }) {
   if (dapp.id === "bunsho") return <Bunsho key={account.accountDid} accountDid={account.accountDid} />;
   if (dapp.id === "hyokeisan") return <Hyokeisan key={account.accountDid} accountDid={account.accountDid} />;
+  if (dapp.id === "tsunagu") return <Tsunagu broker={broker} QrCode={QrCode} />;
   if (dapp.id === "tokei") return <main className="chat account-view"><div className="account-body" data-app-view="tokei">
     <h1>Tokei</h1><p className="app-clock">{now.toLocaleTimeString()}</p><p>{now.toLocaleDateString(undefined, { dateStyle: "full" })}</p>
   </div></main>;
@@ -333,7 +336,7 @@ function Locked({ dapp, minimum, score, onRaise }) {
 }
 
 function DappPanel({ dapp, score, onRaise }) {
-  const available = dapp.id === "tokei" || dapp.id === "bunsho" || dapp.id === "hyokeisan";
+  const available = ["tokei", "bunsho", "hyokeisan", "tsunagu"].includes(dapp.id);
   return (
     <aside className="panel" aria-label={`${dapp.title} dapp`}>
       <div className="panel-head">
@@ -485,7 +488,7 @@ function Shell({ account, ageBand, onAgeSelected, proofs, score, broker, zenoh, 
   } else if (dapp && score < minimum) {
     body = <Locked dapp={dapp} minimum={minimum} score={score} onRaise={openAccount} />;
   } else if (dapp) {
-    body = <AppView dapp={dapp} now={now} account={account} />;
+    body = <AppView dapp={dapp} now={now} account={account} broker={broker} />;
   } else {
     body = (
       <Chat
@@ -520,7 +523,7 @@ function Shell({ account, ageBand, onAgeSelected, proofs, score, broker, zenoh, 
 function App() {
   const zenoh = useService(zenohUp);
   const matter = useService(matterUp);
-  const broker = useMemo(() => createBroker("index.html", osOperations(relayOrigin)), []);
+  const broker = useMemo(() => createBroker("index.html", osOperations(relayOrigin), tailscaleAdapters()), []);
   const [did, setDid] = useState(null);
   const [account, setAccount] = useState(null);
   const [finished, setFinished] = useState(setupFinished);
