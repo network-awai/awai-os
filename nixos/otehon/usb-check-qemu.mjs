@@ -47,7 +47,12 @@ try {
  send('AWAIUSBTEST'); await expect(process.env.LARGE_TEST_USB === '1' ? 'in use by this system' : 'too small',60); await expect(prompt,60);
  send('AWAI-TARGET-1'); await expect('Type ERASE',60); send('no'); await expect('Stopped. Nothing was written.',60); await expect(prompt,60);
  if(bytes('target') || bytes('small')) throw Error('scratch disks changed during refusals');
- if (process.env.ALLOW_SCRATCH_WRITE !== '1') {
+ if (process.env.TAMPER_TEST === '1') {
+   send('AWAI-TARGET-1'); await expect('Type ERASE',60); send('ERASE');
+   await expect('digest does not match',1800);
+   if(bytes('target') || bytes('small')) throw Error('scratch disk changed for tampered image');
+   console.log('PASS tampered image refused without target writes');
+ } else if (process.env.ALLOW_SCRATCH_WRITE !== '1') {
    console.log('PASS USB offline boot and refusal guards; write was not attempted');
  } else {
    send('AWAI-TARGET-1'); await expect('Type ERASE',60); send('ERASE'); await expect('INSTALLED on',7200);
