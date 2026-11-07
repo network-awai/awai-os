@@ -33,6 +33,7 @@ in
   fileSystems."/run/otehon-usb" = {
     device = "/dev/disk/by-label/AWAIUSB";
     fsType = "vfat";
+    noCheck = true;
     options = [ "ro" "nodev" "nosuid" "noexec" ];
   };
   systemd.services."otehon-install@" = {
