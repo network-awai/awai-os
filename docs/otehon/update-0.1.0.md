@@ -130,7 +130,10 @@ OTEHON_BOOT_REPORT ... compositor=1 chromium=1 react=1 zenoh=1 matter=1 gate=1 f
 
 Every trial on such a desktop would have rolled back. The fix has not been booted. The Mac ran out of
 disk before it could be: it reached 116 MiB free during the first build, which also made Podman report
-a malformed database, and it stayed between 131 MiB and 19 GiB for three hours after that.
+a malformed database, and it stayed between 131 MiB and 19 GiB for three hours after that. A later
+build of the fixed image finished (raw `ee4bdb86f4b75048ff9469a02110cbbfcf7daa56eb5b0eec999bc374a3c96945`)
+but was aborted at 2.5 GiB free before export, so it was never booted. Its store output alone was
+12.8 GB, so allow about 30 GiB free for one desktop image.
 
 ## Not verified or not implemented
 
