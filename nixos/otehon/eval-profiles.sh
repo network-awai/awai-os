@@ -13,7 +13,11 @@ command -v nix-instantiate >/dev/null || { echo "NOT_RUN no nix-instantiate"; ex
 # Every .nix file in nixos/otehon is a profile and is evaluated, except these modules, which other
 # profiles import and which are not built on their own. A new module left out of this list is
 # evaluated as a profile and fails, so it cannot be skipped silently.
-modules="default common base-module update gpu media backup hardware-6600h"
+modules="default common base-module update update-test-keys gpu media backup hardware-6600h desktop"
+# desktop has no update keys, so it does not build alone: desktop-check adds the test keys.
+# Release profiles that take their update keys from the builder (extraModule) are evaluated with
+# the test keys instead.
+keyed="disk-6600h netboot-6600h netboot-install-6600h"
 # Extra evaluations of a profile: "profile@arch".
 extra="vm@x86_64"
 
@@ -30,6 +34,10 @@ for f in "$dir"/*.nix; do
     *) profiles="$profiles $name" ;;
   esac
 done
+for k in $keyed; do
+  [ -f "$dir/$k.nix" ] || { echo "OTEHON_EVAL_STALE $k: listed in keyed but $k.nix does not exist"; status=1; }
+done
+keys="$(cd "$dir" && pwd)/update-test-keys.nix"
 for p in $extra; do
   [ -f "$dir/${p%@*}.nix" ] || { echo "OTEHON_EVAL_STALE $p: listed in extra but ${p%@*}.nix does not exist"; status=1; }
 done
@@ -37,6 +45,7 @@ done
 for p in $profiles $extra; do
   name=${p%@*}
   if [ "$name" = "$p" ]; then set -- --argstr profile "$name"; else set -- --argstr profile "$name" --argstr arch "${p#*@}"; fi
+  case " $keyed " in *" $name "*) set -- "$@" --argstr extraModule "$keys" ;; esac
   if drv=$(nix-instantiate "$dir/default.nix" "$@" 2>"${TMPDIR:-/tmp}/otehon-eval.err"); then
     echo "OTEHON_EVAL_OK $p $drv"
   else
