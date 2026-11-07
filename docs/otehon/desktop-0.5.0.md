@@ -64,6 +64,7 @@ The negative control is the `desktop-no-zenoh` profile, which must exit 1.
 | Raw image SHA-256 | `101d4b411b095e2c9b1aa8157d02f11f71670b1e147fda7375ecde69da977bc1` |
 | Boot | `compositor=1 chromium=1 react=1 zenoh=1 matter=1 gate=1 failed=0` at 56 s, exit 0 |
 | Screen | The Hello step of setup |
+| Negative control | `desktop-no-zenoh` reported `zenoh=0`, exit 1 |
 
 ## Known gaps
 

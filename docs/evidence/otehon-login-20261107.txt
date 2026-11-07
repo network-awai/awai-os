@@ -11,3 +11,9 @@ exit=0
 raw-sha256=101d4b411b095e2c9b1aa8157d02f11f71670b1e147fda7375ecde69da977bc1
 OTEHON_BOOT_REPORT id=awai-otehon-desktop version=0.5.0 nixos=26.05pre-git compositor=1 chromium=1 react=1 zenoh=1 matter=1 gate=1 failed=0 elapsed=56s
 exit=0
+
+== desktop-no-zenoh
+raw-sha256=f59eab2f656103f9a17463e73a47d687bb079cb30c3fa89c85b505092b108d23
+OTEHON_BOOT_REPORT id=awai-otehon-desktop version=0.5.0 nixos=26.05pre-git compositor=1 chromium=1 react=1 zenoh=0 matter=1 gate=1 failed=0 elapsed=292s
+FAIL unexpected desktop state
+exit=1
