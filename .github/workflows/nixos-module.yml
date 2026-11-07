@@ -47,3 +47,23 @@ jobs:
             --expr 'import ./tests/native-media-eval.nix { nixpkgsPath = ./nixpkgs; }'
           nix-build nixos/native-build.nix -A media --arg nixpkgsPath ./nixpkgs --no-out-link
           nix-build nixos/native-build.nix -A updateClient --arg nixpkgsPath ./nixpkgs --no-out-link
+
+  otehon:
+    # Awai Otehon (AWAI-169): a profile that no longer evaluates, or a failing shell test, fails here.
+    # It evaluates and tests only. It does not build an image or boot a VM (docs/otehon/operations-0.1.0.md).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Test the Otehon shell
+        working-directory: nixos/otehon/shell
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+      - uses: cachix/install-nix-action@b85815f71a6de0ddee80b8a80a98d43f4bcc66c7 # v31
+      - name: Evaluate every Otehon profile, aarch64 and the x86_64 vm
+        run: sh nixos/otehon/eval-profiles.sh .

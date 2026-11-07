@@ -31,19 +31,26 @@ a pin or a fact, so a host that lies about a fact defeats the core.
 
 ## Check
 
-From this directory, with `nix/shell.nix`:
+From this directory, `nix/shell.nix` gives Babashka and Basilisp. The pinned nixpkgs has no `nbb`,
+so nbb comes from outside the pin.
+
+```bash
+nix-shell nix/shell.nix --run 'bb --classpath src:test test/run_cases.clj'
+```
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 nix-shell nix/shell.nix --run 'PYTHONPATH=src:test basilisp run test/run_cases.lpy'
+```
 
 ```bash
 nbb --classpath src:test test/run_cases.cljs
 ```
 
-```bash
-bb --classpath src:test test/run_cases.clj
-```
+Basilisp writes bytecode beside its sources unless `PYTHONDONTWRITEBYTECODE=1` is set, and the Nix
+store is read-only, so it fails without it.
 
-```bash
-PYTHONPATH=src:test basilisp run test/run_cases.lpy
-```
+The `Sanka VM gate` workflow runs the first two and then `nixos/tests/sanka-v1.nix`. It is an
+Otehon job, not a required check, and the native profile does not depend on it.
 
 The generated JSON is checked in. To change a case, edit `test/gen_cases.lpy` and run `basilisp run test/gen_cases.lpy`.
 
@@ -84,10 +91,30 @@ llama.cpp 0.7.0 and `stories15M-q4_0.gguf` on an Apple M1 Max, on the macOS host
 The demand class is `replay`, because this is a test and not real demand. The order has no value and
 moves nothing. The model is a small test model, so its text is not a useful answer.
 
+### In a NixOS VM (2026-11-07, GitHub Actions)
+
+`nixos/tests/sanka-v1.nix` runs the same harness in a NixOS VM with no network, on an x86_64 GitHub
+Actions runner with KVM. The gateway is pinned to `cloud-kotoba-desktop` `1f8fe2b`, and the engine is
+nixpkgs llama.cpp 9190, not the 0.7.0 used on the host.
+
+Evidence: [`docs/evidence/sanka-v1-vm-20261107.json`](../../docs/evidence/sanka-v1-vm-20261107.json),
+from [run 42351054943](https://github.com/network-awai/cloud-murakumo-usb-installer/actions/runs/42351054943).
+
+| Check | Result |
+| --- | --- |
+| Babashka and Basilisp on Nix | 426 of 426 each |
+| The VM reaches `huggingface.co` | No |
+| Whole run | 29 of 29 checks, 24 completion tokens |
+| Gateway changed to lie about the output and keep plain text | 3 checks fail, exit 1 |
+| VM step | 861 seconds |
+
+Each run takes about 410 seconds, although the measured inference is under a second. Where the time
+goes is not measured.
+
 ### What V1 does not show
 
-- **The VM gate is open.** ADR 0027 asks for one VM. This ran on the macOS host, not on NixOS, and no
-  image was built, because this Mac has little free disk. That waits on the build host decision.
+- No Otehon image was built. The VM is a test machine, not a complete Awai Node, and it is x86_64,
+  while the earlier Otehon VMs were aarch64.
 - The gateway checks file digests and the path the engine reports. It does not attest what the engine
   really ran, and a dishonest provider could fake a receipt.
 - One order allows one call, so a Hermes turn that makes several calls does not fit yet (V2).
@@ -95,8 +122,7 @@ moves nothing. The model is a small test model, so its text is not a useful answ
 
 ## Not verified or not implemented
 
-- `nix/shell.nix` was not run, because this Mac has no Nix. The tools above came from Homebrew, the
-  user's bin directory and a local `uv` environment. That `pkgs.nbb` exists at the pinned nixpkgs is
-  also unchecked.
+- The macOS evidence above used tools from Homebrew, the user's bin directory and a local `uv`
+  environment, not `nix/shell.nix`.
+- nbb is not in CI, because the pinned nixpkgs has no `nbb`.
 - No screen, signer or ledger uses this core yet. Only the verifier does.
-- CI does not run these checks. Using JVM-free tools in this repository's CI is a separate decision.

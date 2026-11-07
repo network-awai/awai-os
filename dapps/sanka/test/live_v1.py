@@ -2,10 +2,11 @@
 """Runs one real order through llama.cpp and the Hy gateway, then tries to break it (ADR 0027 V1).
 
 It starts real processes on this machine, and writes the measured results to --evidence. The order
-has no value and moves nothing. This is not a VM, so it does not complete stage V1's VM gate.
+has no value and moves nothing. Only a run inside nixos/tests/sanka-v1.nix counts for the VM gate.
 
 usage: python3 test/live_v1.py --gateway DIR --python PY --basilisp BIN --llama-server BIN
-         --model GGUF --revision REV --model-sha256 HEX --work DIR --evidence FILE
+         --model GGUF --revision REV --model-sha256 HEX --source URL --environment TEXT
+         --work DIR --evidence FILE
 """
 import argparse
 import copy
@@ -164,7 +165,8 @@ class Live:
         result = subprocess.run(
             [self.args.basilisp, "run", "tools/verify_receipt.lpy", order_file, receipt_file,
              request_file, response_file, key_file],
-            cwd=self.args.dapp, env={**os.environ, "PYTHONPATH": "src"},
+            # Basilisp would otherwise write bytecode beside its sources, which Nix keeps read-only.
+            cwd=self.args.dapp, env={**os.environ, "PYTHONPATH": "src", "PYTHONDONTWRITEBYTECODE": "1"},
             capture_output=True, text=True, timeout=120)
         last = result.stdout.strip().splitlines()[-1] if result.stdout.strip() else "{}"
         try:
@@ -323,7 +325,7 @@ class Live:
         failed = [row["check"] for row in self.results if not row["passed"]]
         evidence = {
             "schema": "awai.sanka-live-v1/1",
-            "environment": "macOS host, not a VM, not NixOS",
+            "environment": args.environment,
             "date": time.strftime("%Y-%m-%d"),
             "value": "none: nothing moved, and the demand class is replay",
             "engine": {"binary-sha256": sha256_file(self.engine_binary), "version": self.engine_version},
@@ -358,7 +360,7 @@ class Live:
 def main():
     parser = argparse.ArgumentParser()
     for name in ["gateway", "python", "basilisp", "llama-server", "model", "revision", "model-sha256",
-                 "work", "evidence", "source"]:
+                 "work", "evidence", "source", "environment"]:
         parser.add_argument("--" + name, required=True)
     args = parser.parse_args()
     args.dapp = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
