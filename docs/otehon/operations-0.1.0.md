@@ -29,11 +29,13 @@ physical disk, publishes an update, or uses a real key.
 2. `sh nixos/otehon/eval-profiles.sh .` instantiates the image derivation of every profile with
    `nix-instantiate`: the 17 aarch64 profiles, `vm` for x86_64, and the three x86_64 profiles of the
    6600h PC (`disk-6600h`, `netboot-6600h`, `netboot-install-6600h`). Option types, assertions,
-   missing files and module errors fail it. It also fails when a `.nix` file in `nixos/otehon` is
-   neither a listed profile nor a listed module, so a new profile cannot be left out silently.
+   missing files and module errors fail it. Every `.nix` file in `nixos/otehon` is evaluated as a
+   profile unless it is in the script's `modules` list, so a new profile needs no listing and cannot
+   be left out. A new module that is not added to `modules` is evaluated as a profile and fails. A
+   name in `modules` or `extra` (`vm@x86_64`) with no file fails as `OTEHON_EVAL_STALE`.
 
-Exit codes of `eval-profiles.sh`: `0` every profile evaluated, `1` a profile failed or a file is
-not listed, `3` no `nix-instantiate`. Each profile prints `OTEHON_EVAL_OK <profile> <drv>` or
+Exit codes of `eval-profiles.sh`: `0` every profile evaluated, `1` a profile failed or a listed
+name has no file, `3` no `nix-instantiate`. Each profile prints `OTEHON_EVAL_OK <profile> <drv>` or
 `OTEHON_EVAL_FAIL <profile>` with the end of the error.
 
 There is no JVM, nbb or Babashka in this job. The shell tests run on Node.js (`node --test`). The
@@ -159,7 +161,10 @@ netboot). Which device to use is still the owner's decision.
 | aarch64 unchanged | The 16 aarch64 image `.drv` paths are identical to those from `origin/main` `4bfe327` (for example `vm` `qzjkbaah2nj7xp6krh6h3hnxzi0ndaxr`) |
 | x86_64 `vm` | `.drv` `ca7m4sbnlscyvrkg5cw7vsr5n6jghyjr`. Evaluated config: `system` `x86_64-linux`, `efiArch` `x64`, `console=ttyS0,115200n8` (aarch64: `aa64`, `console=ttyAMA0,115200n8`) |
 | Negative: type error | `services.openssh.enable = "yes"` in `vm.nix`: `OTEHON_EVAL_FAIL vm` and `vm@x86_64` with "is not of type `boolean'", the other 15 OK, exit 1 |
-| Negative: unlisted file | An extra `vm-extra.nix`: `OTEHON_EVAL_UNLISTED vm-extra.nix`, exit 1 |
+| Negative: unlisted file | With the first form (every profile listed): an extra `vm-extra.nix` gave `OTEHON_EVAL_UNLISTED vm-extra.nix`, exit 1. Replaced by the rows below |
+| Profiles found without a list (`main` `1caade4`) | 21 of 21 `OTEHON_EVAL_OK`, exit 0. A copy of `vm.nix` as `vm-extra.nix`, not listed anywhere: 22 OK, exit 0 |
+| Negative: module not listed | `extra-module.nix` with an empty module: `OTEHON_EVAL_FAIL extra-module`, exit 1 |
+| Negative: stale module name | `gone` added to `modules`: `OTEHON_EVAL_STALE gone`, exit 1 |
 | 6600h files on `main` `5c845cb` | Before listing them, CI on PR #61 failed with `OTEHON_EVAL_UNLISTED` for `disk-6600h.nix`, `hardware-6600h.nix`, `netboot-6600h.nix`, `netboot-install-6600h.nix`. After: 21 of 21 `OTEHON_EVAL_OK`, exit 0. `hardware-6600h` alone does not evaluate (it has no image), so it is listed as a module |
 | Negative: unknown arch | `--argstr arch riscv64`: "otehon: unknown arch riscv64, expected aarch64 or x86_64" |
 | Could not run | No `nix-instantiate` on the Mac: `NOT_RUN`, exit 3 |
