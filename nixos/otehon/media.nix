@@ -1,4 +1,4 @@
-{ lib, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 let
   port = 8770;
   modelsDir = "/var/lib/otehon-models";
@@ -27,16 +27,27 @@ in
   # Japanese is absent: Piper 1.4.2 refuses the hi_fi_captain voice with "'japanese' is not a
   # valid PhonemeType" (docs/otehon/media-0.1.0.md).
   # Local speech (Piper) and images (Qwen-Image through stable-diffusion.cpp on Vulkan). The Qwen
-  # weights are not in the image: they arrive on a virtiofs share tagged otehon-models, and
-  # without it the service reports that images are unavailable. With no GPU, Vulkan falls back
-  # to llvmpipe, which is far slower.
-  fileSystems.${modelsDir} = {
-    device = "otehon-models";
-    fsType = "virtiofs";
-    options = [ "ro" "nofail" "x-systemd.device-timeout=5s" ];
+  # weights are not in the image. With modelShare they arrive on a virtiofs share, and without it
+  # the service reports that images are unavailable. With no GPU, Vulkan falls back to llvmpipe,
+  # which is far slower.
+  options.otehon.media.modelShare = lib.mkOption {
+    type = lib.types.bool;
+    default = false;
+    description = ''
+      Mount a virtiofs share tagged otehon-models. Only for a VM that has the share: a mount with
+      no device is a failed unit, and otehon-update-health would then refuse every update.
+    '';
   };
 
-  systemd.services.otehon-media = {
+  config.fileSystems = lib.mkIf config.otehon.media.modelShare {
+    ${modelsDir} = {
+      device = "otehon-models";
+      fsType = "virtiofs";
+      options = [ "ro" "nofail" "x-systemd.device-timeout=5s" ];
+    };
+  };
+
+  config.systemd.services.otehon-media = {
     description = "Local speech and image generation";
     wantedBy = [ "graphical.target" ];
     after = [ "local-fs.target" ];

@@ -9,7 +9,7 @@ a command-line tool for each request.
 | Service | `nixos/otehon/media-service.py`, on `127.0.0.1:8770`. It runs as a dynamic user, and systemd denies it every address except localhost |
 | Speech | Piper 1.4.2 with the `en_US-lessac-medium` voice, which is in the image |
 | Images | `stable-diffusion.cpp` on Vulkan with the Qwen-Image `Q2_K` weights, which are not in the image |
-| Weights | Arrive on a read-only virtiofs share tagged `otehon-models`. Without it, images are refused with `image-model-missing` and the Image button is off |
+| Weights | Arrive on a read-only virtiofs share tagged `otehon-models`, mounted only when `otehon.media.modelShare` is set (the `desktop-media` check image). Without it, images are refused with `image-model-missing` and the Image button is off |
 | GPU in a VM | krunkit with Venus over MoltenVK, using `nixos/otehon/gpu.nix` and the Mesa patch in `nixos/otehon/mesa-venus-macos` |
 
 The service accepts the origin `null`, which is what the shell's `file://` page sends, and requests

@@ -28,8 +28,9 @@ VM. It is not an Itonami OS release or a complete Awai Node.
 
 ## Build
 
-Follow [vm-0.1.0.md](vm-0.1.0.md) and add `--argstr profile desktop` to
-`nix-build`. Node.js and npm are used only to build the shell, from
+Follow [vm-0.1.0.md](vm-0.1.0.md) and add `--argstr profile desktop-check` to
+`nix-build`. The `desktop` profile has no update keys and does not build alone: see
+[update-0.1.0.md](update-0.1.0.md). Node.js and npm are used only to build the shell, from
 `nixos/otehon/shell/package-lock.json`.
 
 ## Use
@@ -47,7 +48,7 @@ nixos/otehon/desktop-check-qemu.sh otehon-desktop.qcow2 serial.log shot.ppm
 ```
 
 Exit codes: `0` report with `compositor=1 chromium=1 react=1 zenoh=1 matter=1
-gate=1 failed=0` and a saved screenshot, `1` another state or no report, `3` the check
+gate=1 failed=0 updater=1 update_version=1` and a saved screenshot, `1` another state or no report, `3` the check
 could not run.
 
 `react`, `zenoh`, `matter` and `gate` come from the page title, which React sets
