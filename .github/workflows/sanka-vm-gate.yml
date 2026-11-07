@@ -1,0 +1,61 @@
+name: Sanka VM gate
+
+# ADR 0027 V0 and V1. Otehon only: the native profile and its gates do not depend on this job, and
+# this job is not a required check. It holds no secrets, and it moves nothing of value.
+on:
+  pull_request:
+    paths:
+      - .github/workflows/sanka-vm-gate.yml
+      - dapps/sanka/**
+      - dapps/saifu/nix/basilisp.nix
+      - nixos/tests/sanka-v1.nix
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sanka:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Allow this job to use KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: cachix/install-nix-action@b85815f71a6de0ddee80b8a80a98d43f4bcc66c7 # v31
+      - name: Record the runner
+        run: |
+          uname -srm
+          nproc
+          free -g | head -2
+          df -h / | tail -1
+          ls -l /dev/kvm
+          nix --version
+          nix config show system-features
+      - name: Shared cases on Babashka and Basilisp
+        working-directory: dapps/sanka
+        env:
+          # Basilisp would otherwise write its bytecode beside its sources, in the read-only store.
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          nix-shell nix/shell.nix --run 'bb --classpath src:test test/run_cases.clj'
+          nix-shell nix/shell.nix --run 'PYTHONPATH=src:test basilisp run test/run_cases.lpy'
+      - name: One real order in a NixOS VM
+        run: |
+          started=$(date +%s)
+          nix-build nixos/tests/sanka-v1.nix --out-link result
+          echo "VM gate took $(( $(date +%s) - started )) seconds"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: sanka-v1-evidence
+          path: |
+            result/evidence.json
+            result/lying.json
+          if-no-files-found: warn
