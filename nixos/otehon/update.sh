@@ -42,8 +42,8 @@ no_default() {
 # be inferred from their names, so do not remove or ignore an existing UKI when
 # arranging a trial boot. Refuse before changing either the profile or the ESP.
 check_esp() (
-  shopt -s nullglob
-  local images=("$1"/*.efi "$1"/*.EFI)
+  shopt -s nullglob nocaseglob
+  local images=("$1"/*.efi)
   [ "${#images[@]}" -eq 0 ] || refuse unmanaged-uki
 )
 

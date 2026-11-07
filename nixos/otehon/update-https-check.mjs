@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { createServer } from 'node:https';
-import { readFileSync, writeFileSync, mkdtempSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, mkdirSync, unlinkSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 const output = resolve(process.argv[2]);
 mkdirSync(output, {recursive:true});
@@ -33,11 +33,12 @@ try {
  const esp=join(tmp,'esp'); mkdirSync(esp);
  let espCheck=spawnSync('bash',['nixos/otehon/update.sh','check-esp',esp],{env,encoding:'utf8'});
  assert.equal(espCheck.status,0,espCheck.stderr);
- for (const name of ['other.efi','other.EFI']) {
+ for (const name of ['other.efi','other.EFI','other.eFi']) {
    const file=join(esp,name); writeFileSync(file,'unrelated boot entry');
    espCheck=spawnSync('bash',['nixos/otehon/update.sh','check-esp',esp],{env,encoding:'utf8'});
    assert.equal(espCheck.status,2); assert.match(espCheck.stdout,/REFUSED unmanaged-uki/);
    assert.equal(readFileSync(file,'utf8'),'unrelated boot entry');
+   unlinkSync(file);
  }
  const base=`https://localhost:${port}`;
  let r=await localCheck();assert.equal(r.code,0,r.err+r.out);assert.match(r.out,/^2 \/nix\/store\//);
