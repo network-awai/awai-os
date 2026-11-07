@@ -54,10 +54,14 @@ The PC has no key disk, so `disk-6600h.nix` replaces the base's unlock step:
 from outside the guest. It checks a wrong serial, a small disk, an answer other than `ERASE` and a changed
 image, each writing nothing. Then it checks a good install leaving the other disks untouched, and boots
 the written disk: partition growth, a short passphrase, a wrong passphrase, and two boots of the desktop.
+Status lines go to the screen, so the serial port shows only prompts. A person reads the desktop's
+screenshots in the work directory.
 
 ```bash
 python3 nixos/otehon/install-check-qemu.py <dir with the build output> <work dir>
 ```
 
-Results are in the AWAI-169 record. The emulator does not exercise the Radeon 660M, the Realtek network chip,
+On 2026-11-07 it passed on the build with image digest `4197fbe960dc3d48`. A 60 GB disk's state partition
+grew to 46 GB, and the desktop reached Hello on both boots, read from screenshots. A sign-in surviving a
+reboot was not checked. The emulator does not exercise the Radeon 660M, the Realtek network chip,
 the PC's firmware, or a real disk.

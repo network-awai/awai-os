@@ -11,6 +11,7 @@ import json
 import os
 import shutil
 import socket
+import struct
 import subprocess
 import sys
 import time
@@ -194,38 +195,74 @@ def installer():
         http.terminate()
 
 
+def sectors(start, count):
+    """Reads sectors of the written disk from outside the guest."""
+    path = os.path.join(work, "sectors.bin")
+    subprocess.run(
+        ["qemu-img", "dd", "-U", "-f", "qcow2", "-O", "raw", "bs=512", f"skip={start}", f"count={start + count}",
+         f"if={disk('target')}", f"of={path}"],
+        check=True,
+    )
+    with open(path, "rb") as file:
+        data = file.read()
+    os.remove(path)
+    return data
+
+
+def state_partition():
+    """The first and last sector of the third partition in the GPT."""
+    entry = sectors(2, 1)[2 * 128:3 * 128]
+    return struct.unpack("<QQ", entry[32:48])
+
+
+def shots(sock, name, minutes):
+    """The desktop draws on the screen only. A person reads these."""
+    for minute in range(minutes):
+        time.sleep(60)
+        monitor(sock, f"screendump {os.path.join(work, name)}-{minute:02}.png -f png")
+
+
+# Status lines go to /dev/console, which is the screen. The serial port gets only the prompts. So
+# a refusal shows as the prompt coming back, and the rest is read from the disk or the screen.
 def boot_written():
+    start, last = state_partition()
+    if stage == "all":
+        check("the image holds a small state partition before first boot", (last - start + 1) * 512 <= 2**28)
     process, sock = machine("boot", [("target", TARGET)], net=False)
     port = Serial(sock, os.path.join(work, "boot-serial.log"))
+    choose = "Choose a passphrase"
     try:
-        check("written disk grows its state partition", port.expect("otehon-state: size", timeout=2400))
-        check("first boot asks for a new passphrase", port.expect("Choose a passphrase", timeout=600))
-        time.sleep(3)
+        check("written disk starts and asks for a new passphrase", port.expect(choose, timeout=2400) == choose)
+        time.sleep(5)
         port.type("short")
-        check("a short passphrase is refused", port.expect("too short", timeout=300))
-        port.expect("Choose a passphrase", timeout=300)
-        time.sleep(3)
+        check("a short passphrase asks again", port.expect(choose, timeout=300) == choose)
+        time.sleep(5)
         port.type(PASSPHRASE)
         port.expect("Enter the passphrase again", timeout=300)
-        time.sleep(3)
+        time.sleep(5)
+        port.type("something else entirely")
+        check("a different second entry asks again", port.expect(choose, timeout=300) == choose)
+        time.sleep(5)
         port.type(PASSPHRASE)
-        check("state volume opens", port.expect("otehon-state: open", timeout=900))
-        report = port.expect("OTEHON_BOOT_REPORT", timeout=2400)
-        check("desktop reports its boot", report)
-        monitor(sock, f"screendump {os.path.join(work, 'first-boot.png')} -f png")
+        port.expect("Enter the passphrase again", timeout=300)
+        time.sleep(5)
+        port.type(PASSPHRASE)
+        shots(sock, "first-boot", 18)
+        start, last = state_partition()
+        size = (last - start + 1) * 512
+        check(f"state partition grew to {size // 10**9} GB", size > 40 * 10**9)
+        check("state partition is LUKS", sectors(start, 1)[:6] == b"LUKS\xba\xbe")
 
         monitor(sock, "system_reset")
-        check("next boot asks for the passphrase", port.expect("Passphrase for this PC", timeout=1200))
-        time.sleep(3)
+        unlock = "Passphrase for this PC"
+        check("next boot asks for the passphrase", port.expect(unlock, timeout=1800) == unlock)
+        time.sleep(5)
         port.type("not the passphrase at all")
-        check("a wrong passphrase does not open it", port.expect("did not open the data", timeout=600))
-        port.expect("Passphrase for this PC", timeout=300)
-        time.sleep(3)
+        check("a wrong passphrase asks again", port.expect(unlock, timeout=600) == unlock)
+        time.sleep(5)
         port.type(PASSPHRASE)
-        check("the right passphrase opens it", port.expect("otehon-state: open", timeout=600))
-        check("desktop reports its second boot", port.expect("OTEHON_BOOT_REPORT", timeout=2400))
-        monitor(sock, f"screendump {os.path.join(work, 'second-boot.png')} -f png")
-        time.sleep(2)
+        check("the right passphrase is not asked for again", port.expect(unlock, timeout=120) is None)
+        shots(sock, "second-boot", 16)
     finally:
         stop(process, sock)
 
