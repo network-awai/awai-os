@@ -30,6 +30,15 @@ const env={...process.env,OTEHON_UPDATE_BASE_VERSION:'1',OTEHON_UPDATE_PUBLIC_KE
 async function execute(url,extra={},action='check-https'){return await new Promise((ok,no)=>{const p=spawn('bash',['nixos/otehon/update.sh',action,url],{env:{...env,...extra}});let out='',err='';p.stdout.on('data',d=>out+=d);p.stderr.on('data',d=>err+=d);p.on('error',no);p.on('close',code=>ok({code,out,err}));});}
 async function localCheck(){return await new Promise((ok,no)=>{const p=spawn('bash',['nixos/otehon/update.sh','check',tmp],{env});let out='',err='';p.stdout.on('data',d=>out+=d);p.stderr.on('data',d=>err+=d);p.on('error',no);p.on('close',code=>ok({code,out,err}));});}
 try {
+ const esp=join(tmp,'esp'); mkdirSync(esp);
+ let espCheck=spawnSync('bash',['nixos/otehon/update.sh','check-esp',esp],{env,encoding:'utf8'});
+ assert.equal(espCheck.status,0,espCheck.stderr);
+ for (const name of ['other.efi','other.EFI']) {
+   const file=join(esp,name); writeFileSync(file,'unrelated boot entry');
+   espCheck=spawnSync('bash',['nixos/otehon/update.sh','check-esp',esp],{env,encoding:'utf8'});
+   assert.equal(espCheck.status,2); assert.match(espCheck.stdout,/REFUSED unmanaged-uki/);
+   assert.equal(readFileSync(file,'utf8'),'unrelated boot entry');
+ }
  const base=`https://localhost:${port}`;
  let r=await localCheck();assert.equal(r.code,0,r.err+r.out);assert.match(r.out,/^2 \/nix\/store\//);
  r=await execute(`${base}/good`);assert.equal(r.code,0,r.err+r.out);assert.match(r.out,/^2 \/nix\/store\//);
@@ -44,5 +53,5 @@ try {
  for(const url of [`http://localhost:${port}/good`,`${base}/../good`,`${base}/good?token=x`,`https://user@localhost:${port}/good`,`${base}/good#fragment`]) {
    r=await execute(url);assert.equal(r.code,2);assert.match(r.out,/REFUSED bad-feed-url/);assert.equal(requests,before);
  }
- console.log('PASS: local and signed HTTPS feeds, tamper, redirect, TLS, size, and invalid URL controls');
+ console.log('PASS: ESP ownership guard, local and signed HTTPS feeds, tamper, redirect, TLS, size, and invalid URL controls');
 } finally {server.close();}

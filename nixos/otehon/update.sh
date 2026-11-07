@@ -36,8 +36,16 @@ prepare() {
 
 no_default() {
   sed -i '/^default /d' /boot/loader/loader.conf
-  rm -f /boot/EFI/Linux/*.efi
 }
+
+# systemd-boot also discovers unified kernel images here. Their ownership cannot
+# be inferred from their names, so do not remove or ignore an existing UKI when
+# arranging a trial boot. Refuse before changing either the profile or the ESP.
+check_esp() (
+  shopt -s nullglob
+  local images=("$1"/*.efi "$1"/*.EFI)
+  [ "${#images[@]}" -eq 0 ] || refuse unmanaged-uki
+)
 
 check() (
   local feed=$1 manifest version system
@@ -62,6 +70,7 @@ apply() {
   checked=$(check "$feed") || { echo "$checked"; exit 2; }
   version=${checked%% *}
   system=${checked#* }
+  check_esp /boot/EFI/Linux
 
   # Nix refuses any path that the pinned cache key has not signed.
   nix copy --from "$cache" \
@@ -192,9 +201,10 @@ case "${1:-}" in
   apply) apply "$2" ;;
   check-https) https_feed check "$2" ;;
   apply-https) https_feed apply "$2" ;;
+  check-esp) check_esp "$2" ;;
   settle) settle ;;
   health) health ;;
   version) installed_version ;;
   ready) ready ;;
-  *) echo "usage: otehon-update check|apply <directory> | check-https|apply-https <base> | settle | health | version | ready" >&2; exit 64 ;;
+  *) echo "usage: otehon-update check|apply <directory> | check-https|apply-https <base> | check-esp <directory> | settle | health | version | ready" >&2; exit 64 ;;
 esac
