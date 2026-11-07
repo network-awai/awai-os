@@ -32,8 +32,7 @@ let
   # the boot report reads the page title.
   browser = pkgs.writeShellScript "otehon-browser" ''
     exec ${lib.getExe pkgs.chromium} \
-      --ozone-platform=wayland \
-      --kiosk \
+      ${if cfg.headless then "--headless=new --disable-gpu --window-size=1280,800" else "--ozone-platform=wayland --kiosk"} \
       --no-first-run \
       --no-default-browser-check \
       --password-store=basic \
@@ -62,6 +61,11 @@ in
       type = lib.types.listOf lib.types.str;
       default = [ ];
     };
+    headless = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "Run the shell in headless Chromium with no compositor, for a VM with no display. Check images only.";
+    };
     e2e = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -86,8 +90,20 @@ in
     isNormalUser = true;
     hashedPassword = "!";
   };
+  # krunkit's virtio-gpu has no display (the kernel logs "KMS disabled"), so a compositor cannot start there.
+  # greetd is what normally makes graphical.target the default.
+  systemd.defaultUnit = lib.mkIf cfg.headless "graphical.target";
+  systemd.services.otehon-headless-shell = lib.mkIf cfg.headless {
+    description = "The shell in headless Chromium";
+    wantedBy = [ "graphical.target" ];
+    serviceConfig = {
+      User = user;
+      ExecStart = browser;
+      Restart = "on-failure";
+    };
+  };
   services.greetd = {
-    enable = true;
+    enable = !cfg.headless;
     settings = rec {
       initial_session = {
         command = "${lib.getExe pkgs.cosmic-comp} ${browser}";

@@ -1,14 +1,21 @@
 { lib, ... }:
 {
-  # Check image for media.nix: signs in as desktop-login does, then generates speech and
-  # an image through the real shell. It is not a release.
+  # Check image for media.nix under krunkit: signs in as desktop-login does, then generates
+  # speech and an image through the real shell on the GPU. krunkit has no display, so the shell
+  # is in headless Chromium here. desktop-media-gui.nix checks the compositor path. It is not
+  # a release.
   imports = [ ./desktop-login.nix ./gpu.nix ];
 
   system.image.id = lib.mkOverride 40 "awai-otehon-desktop-media";
 
-  systemd.services.otehon-login-e2e.environment.OTEHON_MEDIA = "1";
+  otehon.headless = true;
 
-  # The driver saves screenshots here for the host.
+  systemd.services.otehon-login-e2e.environment = {
+    OTEHON_MEDIA = "1";
+    OTEHON_MEDIA_IMAGE = "1";
+  };
+
+  # The driver saves generated files and screenshots here for the host.
   fileSystems."/var/lib/otehon-results" = {
     device = "otehon-results";
     fsType = "virtiofs";

@@ -59,7 +59,7 @@ export async function requestSpeech(text, context, add, update) {
     if (!response.ok) throw new Error(body.error);
     update(context, id, { state: "done", url: body.url, seconds: body.seconds });
   } catch (error) {
-    update(context, id, { state: "failed", reason: error.message });
+    update(context, id, { state: "failed", reason: error.message === "unknown-voice" ? "no voice for this language" : error.message });
   }
 }
 

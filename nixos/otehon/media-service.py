@@ -26,7 +26,8 @@ VAE = MODELS / "qwen-vae.safetensors"
 # A file:// page sends the origin "null". No other page may use this service.
 ALLOWED_ORIGINS = {"null"}
 MAX_TEXT = 2000
-SIZES = {256, 384, 512}
+# Only 256 gives a clean picture on the checked weights: 384 gave noise, and exited 0.
+SIZES = {256}
 MAX_STEPS = 20
 SPEECH_TIMEOUT = 120
 IMAGE_TIMEOUT = 4 * 60 * 60
@@ -65,7 +66,7 @@ def speak(body):
     started = time.monotonic()
     try:
         run = subprocess.run(
-            [PIPER, "-m", VOICES[voice]["model"], "-c", VOICES[voice]["config"], "-f", str(OUT / name)],
+            [PIPER, "-m", VOICES[voice], "-f", str(OUT / name)],
             input=text.encode(),
             capture_output=True,
             timeout=SPEECH_TIMEOUT,
@@ -119,7 +120,7 @@ def start_image(body):
     if not image_ready():
         raise Refused(503, "image-model-missing")
     prompt = clean_text(body.get("prompt"))
-    size = body.get("size", 384)
+    size = body.get("size", 256)
     steps = body.get("steps", 8)
     seed = body.get("seed", 42)
     if size not in SIZES:
@@ -143,6 +144,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
+        if self.close_connection:
+            self.send_header("Connection", "close")
         self.cors()
         self.end_headers()
         self.wfile.write(data)
@@ -158,12 +161,17 @@ class Handler(BaseHTTPRequestHandler):
         host = self.headers.get("Host", "")
         # The Host check stops a web page from reaching this port through DNS rebinding.
         if host != f"127.0.0.1:{PORT}":
-            self.reply(403, {"error": "bad-host"})
+            self.refuse_and_close("bad-host")
             return False
         if origin is not None and origin not in ALLOWED_ORIGINS:
-            self.reply(403, {"error": "bad-origin"})
+            self.refuse_and_close("bad-origin")
             return False
         return True
+
+    def refuse_and_close(self, reason):
+        # The body is unread, so it must not be taken for the next request on this connection.
+        self.close_connection = True
+        self.reply(403, {"error": reason})
 
     def do_OPTIONS(self):
         self.send_response(204 if self.headers.get("Origin") in ALLOWED_ORIGINS else 403)
@@ -200,8 +208,11 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if not self.allowed():
             return
-        length = int(self.headers.get("Content-Length") or 0)
-        if length > MAX_TEXT * 8:
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            length = -1
+        if length < 0 or length > MAX_TEXT * 8:
             self.send_response(413)
             self.send_header("Content-Length", "0")
             self.send_header("Connection", "close")

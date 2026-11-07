@@ -7,22 +7,25 @@ let
     url = "https://huggingface.co/rhasspy/piper-voices/resolve/${voicesRev}/${path}";
     inherit sha256;
   };
+  # Piper 1.4.2 ignores -c and reads the config from the model path plus ".json", so each voice
+  # is a directory holding both files under those names.
+  voice = name: path: modelHash: configHash:
+    let
+      dir = pkgs.linkFarm "otehon-voice-${name}" [
+        { name = "${name}.onnx"; path = voiceFile "${path}/${name}.onnx" modelHash; }
+        { name = "${name}.onnx.json"; path = voiceFile "${path}/${name}.onnx.json" configHash; }
+      ];
+    in
+    "${dir}/${name}.onnx";
   voices = builtins.toJSON {
-    en = {
-      model = voiceFile "en/en_US/lessac/medium/en_US-lessac-medium.onnx"
-        "5efe09e69902187827af646e1a6e9d269dee769f9877d17b16b1b46eeaaf019f";
-      config = voiceFile "en/en_US/lessac/medium/en_US-lessac-medium.onnx.json"
-        "efe19c417bed055f2d69908248c6ba650fa135bc868b0e6abb3da181dab690a0";
-    };
-    ja = {
-      model = voiceFile "ja/ja_JP/hi_fi_captain/medium/ja_JP-hi_fi_captain-medium.onnx"
-        "5eafa1610fc7a0ff2e7fde9cbe0972d876266e23d8db331727eb2466f19460eb";
-      config = voiceFile "ja/ja_JP/hi_fi_captain/medium/ja_JP-hi_fi_captain-medium.onnx.json"
-        "fe9aeda38318607ba114926d1d7ee7d56295f9af3774a99a42b36f4354cabf27";
-    };
+    en = voice "en_US-lessac-medium" "en/en_US/lessac/medium"
+      "5efe09e69902187827af646e1a6e9d269dee769f9877d17b16b1b46eeaaf019f"
+      "efe19c417bed055f2d69908248c6ba650fa135bc868b0e6abb3da181dab690a0";
   };
 in
 {
+  # Japanese is absent: Piper 1.4.2 refuses the hi_fi_captain voice with "'japanese' is not a
+  # valid PhonemeType" (docs/otehon/media-0.1.0.md).
   # Local speech (Piper) and images (Qwen-Image through stable-diffusion.cpp on Vulkan). The Qwen
   # weights are not in the image: they arrive on a virtiofs share tagged otehon-models, and
   # without it the service reports that images are unavailable. With no GPU, Vulkan falls back

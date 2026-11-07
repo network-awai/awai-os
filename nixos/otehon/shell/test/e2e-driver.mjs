@@ -1,7 +1,9 @@
 // Drives the real shell in Chromium through DevTools, with trusted input, against a
 // real relay on loopback. A wallet and a passkey are simulated with random keys.
 // Built only for the desktop-login check image.
-import { writeFileSync } from "node:fs";
+import { execSync } from "node:child_process";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { connect as rawConnect } from "node:net";
 import { p256 } from "@noble/curves/nist.js";
 import { p256Did, parseLinkFragment, sealResponse } from "../src/identity/link.js";
 import { passkeyResponse, randomWallet, signPersonal, walletResponse } from "./signers.js";
@@ -32,7 +34,11 @@ async function connect() {
   throw new Error("no-devtools-target");
 }
 
-const socket = await connect();
+// Report a browser that never came up, rather than leave the host waiting for a result.
+const socket = await connect().catch((error) => {
+  console.log(`OTEHON_LOGIN_E2E result=fail browser=0 ${error.message}`);
+  process.exit(0);
+});
 let nextId = 0;
 const waiting = new Map();
 socket.onmessage = (event) => {
@@ -122,17 +128,43 @@ async function step(name, action) {
 }
 
 const MEDIA = "http://127.0.0.1:8770";
+const RESULTS = "/var/lib/otehon-results";
+
+function saveResult(name, data) {
+  mkdirSync(RESULTS, { recursive: true });
+  writeFileSync(`${RESULTS}/${name}`, data);
+}
 
 async function screenshot(name) {
   const { result } = await send("Page.captureScreenshot", { format: "png" });
-  writeFileSync(`/var/lib/otehon-results/${name}.png`, Buffer.from(result.data, "base64"));
+  saveResult(`${name}.png`, Buffer.from(result.data, "base64"));
 }
 
 async function refused(path, init, status, reason) {
   const response = await fetch(`${MEDIA}${path}`, init);
   const body = await response.json();
   if (response.status !== status || body.error !== reason) {
-    throw new Error(`expected ${status} ${reason}, got ${response.status} ${body.error}`);
+    throw new Error(`expected ${status} ${reason} on ${path}, got ${response.status} ${body.error}`);
+  }
+}
+
+// fetch normalizes "../" and will not send another Host, so these use a plain socket.
+function rawGet(path, host = "127.0.0.1:8770") {
+  return new Promise((resolve, reject) => {
+    let text = "";
+    const client = rawConnect(8770, "127.0.0.1", () =>
+      client.write(`GET ${path} HTTP/1.1\r\nHost: ${host}\r\nConnection: close\r\n\r\n`),
+    );
+    client.on("data", (data) => (text += data.toString("latin1")));
+    client.on("end", () => resolve(text));
+    client.on("error", reject);
+  });
+}
+
+async function rawRefused(path, host, status, reason) {
+  const text = await rawGet(path, host);
+  if (!text.startsWith(`HTTP/1.1 ${status} `) || !text.includes(`"${reason}"`) || text.includes("root:")) {
+    throw new Error(`expected ${status} ${reason} on ${path}, got ${text.slice(0, 80)}`);
   }
 }
 
@@ -147,28 +179,65 @@ async function sendFromComposer(text, kind) {
   await click(`[data-generate=${kind}]`);
 }
 
+// A silent or empty file must not pass. Piper writes a 44-byte header and 16-bit samples.
+function checkSpeech(wav, label) {
+  if (wav.subarray(0, 4).toString() !== "RIFF" || wav.subarray(8, 12).toString() !== "WAVE") throw new Error("not-wav");
+  const samples = new Int16Array(wav.buffer.slice(wav.byteOffset + 44, wav.byteOffset + wav.length - (wav.length % 2)));
+  const peak = samples.reduce((max, value) => Math.max(max, Math.abs(value)), 0);
+  if (samples.length < 4000 || peak < 500) throw new Error(`silent samples=${samples.length} peak=${peak}`);
+  console.log(`OTEHON_MEDIA speech ${label} samples=${samples.length} peak=${peak}`);
+}
+
+// llvmpipe never opens the render node, so an open one means the job is on the GPU.
+function jobHoldsRenderNode() {
+  const scan = `for d in /proc/[0-9]*; do case "$(cat $d/comm 2>/dev/null)" in *sd-cli*) ls -l $d/fd 2>/dev/null ;; esac; done | grep -c renderD128 || true`;
+  return Number(execSync(scan, { shell: "/bin/sh" }).toString().trim()) > 0;
+}
+
+async function imageFile(url, name) {
+  const png = Buffer.from(await (await fetch(`${MEDIA}${url}`)).arrayBuffer());
+  if (png.subarray(1, 4).toString() !== "PNG") throw new Error("not-png");
+  saveResult(name, png);
+  return png.length;
+}
+
 async function mediaSteps() {
+  const wantImage = process.env.OTEHON_MEDIA_IMAGE === "1";
   await step("media_refusals", async () => {
     await refused("/v1/audio/speech", post({ input: "", voice: "en" }), 400, "empty-text");
+    await refused("/v1/audio/speech", post({ input: "   ", voice: "en" }), 400, "empty-text");
     await refused("/v1/audio/speech", post({ input: "x".repeat(2001), voice: "en" }), 413, "text-too-long");
     await refused("/v1/audio/speech", post({ input: "hello", voice: "../../etc" }), 400, "unknown-voice");
+    await refused("/v1/audio/speech", post({ input: "hello", voice: "de" }), 400, "unknown-voice");
+    await refused("/v1/audio/speech", post({ input: "こんにちは", voice: "ja" }), 400, "unknown-voice");
     await refused("/v1/audio/speech", post({ input: "hello", voice: "en" }, "https://evil.example"), 403, "bad-origin");
-    await refused("/v1/images/generations", post({ prompt: "cat", size: 9999 }), 400, "bad-size");
-    await refused("/v1/images/generations", post({ prompt: "cat", steps: 9999 }), 400, "bad-steps");
-    await refused("/files/..%2f..%2fetc%2fpasswd", {}, 404, "not-found");
+    await rawRefused("/v1/capabilities", "evil.example", 403, "bad-host");
+    await rawRefused("/files/../../etc/passwd", undefined, 404, "not-found");
+    await rawRefused("/files/..%2f..%2fetc%2fpasswd", undefined, 404, "not-found");
+    await rawRefused(`/files/${"0".repeat(32)}.wav`, undefined, 404, "not-found");
+    await rawRefused("/v1/jobs/nope", undefined, 404, "unknown-job");
+    if (wantImage) {
+      await refused("/v1/images/generations", post({ prompt: "" }), 400, "empty-text");
+      await refused("/v1/images/generations", post({ prompt: "cat", size: 9999 }), 400, "bad-size");
+      await refused("/v1/images/generations", post({ prompt: "cat", size: 384 }), 400, "bad-size");
+      await refused("/v1/images/generations", post({ prompt: "cat", steps: 9999 }), 400, "bad-steps");
+      await refused("/v1/images/generations", post({ prompt: "cat", steps: 0 }), 400, "bad-steps");
+      await refused("/v1/images/generations", post({ prompt: "cat", seed: -1 }), 400, "bad-seed");
+      await refused("/v1/images/generations", post({ prompt: "cat", size: 256 }, "https://evil.example"), 403, "bad-origin");
+    } else {
+      // No model share: a good request is refused because the model is missing.
+      await refused("/v1/images/generations", post({ prompt: "cat" }), 503, "image-model-missing");
+    }
   });
-  for (const [voice, input] of [["en", "Hello from Itonami."], ["ja", "こんにちは、いとなみです。"]]) {
+  // The origin "null" is what the shell's file:// page sends: the service must accept it.
+  for (const [voice, input] of [["en", "Hello from Itonami."]]) {
     await step(`speech_${voice}`, async () => {
-      const made = await fetch(`${MEDIA}/v1/audio/speech`, post({ input, voice }));
+      const made = await fetch(`${MEDIA}/v1/audio/speech`, post({ input, voice }, "null"));
       const body = await made.json();
       if (!made.ok) throw new Error(`speech ${made.status} ${body.error}`);
       const wav = Buffer.from(await (await fetch(`${MEDIA}${body.url}`)).arrayBuffer());
-      if (wav.subarray(0, 4).toString() !== "RIFF" || wav.subarray(8, 12).toString() !== "WAVE") throw new Error("not-wav");
-      // A silent or empty file must not pass.
-      const samples = new Int16Array(wav.buffer, wav.byteOffset + 44, Math.floor((wav.length - 44) / 2));
-      const peak = samples.reduce((max, value) => Math.max(max, Math.abs(value)), 0);
-      if (samples.length < 4000 || peak < 500) throw new Error(`silent samples=${samples.length} peak=${peak}`);
-      console.log(`OTEHON_MEDIA speech voice=${voice} samples=${samples.length} peak=${peak} seconds=${body.seconds}`);
+      checkSpeech(wav, `voice=${voice} seconds=${body.seconds}`);
+      saveResult(`speech-${voice}.wav`, wav);
     });
   }
   await step("speech_in_shell", async () => {
@@ -176,24 +245,43 @@ async function mediaSteps() {
     await sendFromComposer("Hello from the Itonami shell.", "speech");
     await until("document.querySelector('[data-media=speech][data-state=done] audio')", "audio player", 120000);
     await until("document.querySelector('[data-media=speech] audio').duration > 0", "audio loads", 30000);
+    const src = await evaluate("document.querySelector('[data-media=speech] audio').getAttribute('src')");
+    checkSpeech(Buffer.from(await (await fetch(src)).arrayBuffer()), "voice=shell");
     await screenshot("shell-speech");
   });
+  await step("speech_no_japanese_voice", async () => {
+    await sendFromComposer("こんにちは", "speech");
+    await until("document.querySelector('[data-media=speech][data-state=failed] .problem')?.textContent.includes('no voice for this language')", "refusal", 30000);
+  });
+  if (!wantImage) {
+    await step("image_button_off", async () => {
+      await type(".composer textarea", "A red torii gate");
+      await until("document.querySelector('[data-generate=image]').disabled === true", "image button off");
+      await until("document.querySelector('[data-generate=speech]').disabled === false", "speech button on");
+    });
+    return;
+  }
   await step("image_in_shell", async () => {
     await until("!document.querySelector('[data-generate=image]').title", "image model available", 30000);
     await sendFromComposer("A red torii gate on a green hill, simple illustration", "image");
     await until("document.querySelector('[data-media=image]')", "image job");
-    const end = Date.now() + 4 * 60 * 60 * 1000;
+    const end = Date.now() + 60 * 60 * 1000;
+    let renderNode = false;
     for (;;) {
+      renderNode ||= jobHoldsRenderNode();
       const state = await evaluate("document.querySelector('[data-media=image]').dataset.state");
       if (state === "done") break;
       if (state === "failed") throw new Error(await evaluate("document.querySelector('[data-media=image] .problem').textContent"));
       if (Date.now() > end) throw new Error("image-timeout");
-      await sleep(5000);
+      await sleep(2000);
     }
     await until("document.querySelector('[data-media=image] img')?.naturalWidth > 0", "image decodes", 30000);
     const size = await evaluate("document.querySelector('[data-media=image] img').naturalWidth");
     const took = await evaluate("document.querySelector('[data-media=image] .muted')?.textContent");
-    console.log(`OTEHON_MEDIA image width=${size} ${took}`);
+    const src = await evaluate("document.querySelector('[data-media=image] img').getAttribute('src')");
+    const bytes = await imageFile(src.replace(MEDIA, ""), "image-shell-256.png");
+    console.log(`OTEHON_MEDIA image shell width=${size} bytes=${bytes} render_node=${renderNode ? 1 : 0} ${took}`);
+    if (!renderNode) throw new Error("image-not-on-gpu");
     await evaluate("document.querySelector('[data-media=image]').scrollIntoView()");
     await sleep(500);
     await screenshot("shell-image");
@@ -309,6 +397,19 @@ try {
   if (process.env.OTEHON_MEDIA === "1") await mediaSteps();
 } catch {
   outcome = "fail";
+}
+
+if (process.env.OTEHON_MEDIA === "1") {
+  const facts = `journalctl -u otehon-media --no-pager -o cat | grep 'image job' || true
+    systemctl show otehon-media -p IPAddressDeny -p IPAddressAllow -p User -p DynamicUser
+    grep -i ':2242 00000000:0000 ' /proc/net/tcp | cut -c1-40 || true`;
+  try {
+    for (const line of execSync(facts, { shell: "/bin/sh" }).toString().split("\n")) {
+      if (line) console.log(`OTEHON_MEDIA fact ${line}`);
+    }
+  } catch (error) {
+    console.log(`OTEHON_MEDIA fact-error ${error.message}`);
+  }
 }
 
 const summary = Object.entries(results).map(([name, value]) => `${name}=${value}`).join(" ");

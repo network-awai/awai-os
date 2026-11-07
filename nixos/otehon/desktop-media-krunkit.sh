@@ -1,6 +1,7 @@
 #!/bin/sh
 # Run the desktop-media check under krunkit on macOS: sign-in, then speech and an image through
-# the real shell on the GPU. The image is changed, so run it on a copy.
+# the real shell (in headless Chromium, because krunkit has no display) on the GPU.
+# The image is changed, so run it on a copy.
 #
 # usage: desktop-media-krunkit.sh <raw-image> <models-dir> <results-dir> <serial-log> [timeout-seconds]
 # exit:  0 every step passed. Look at the PNGs too: a step cannot judge a picture.
@@ -12,7 +13,7 @@ image=${1:-}
 models=${2:-}
 results=${3:-}
 log=${4:-}
-timeout=${5:-3600}
+timeout=${5:-1800}
 memory=${OTEHON_VM_MEMORY:-16384}
 
 [ -w "$image" ] || { echo "NOT_RUN no writable image: $image"; exit 3; }
