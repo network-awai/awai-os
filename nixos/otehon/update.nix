@@ -7,13 +7,13 @@ let
     export OTEHON_UPDATE_BASE_VERSION=${toString cfg.baseVersion}
     export OTEHON_UPDATE_PUBLIC_KEY=${cfg.publicKey}
     export OTEHON_UPDATE_CACHE_KEY=${cfg.cacheKey}
-    export OTEHON_UPDATE_FEED=${lib.escapeShellArg (if cfg.feed == null then "none" else cfg.feed)}
+    export OTEHON_UPDATE_FEED=${lib.escapeShellArg (if cfg.networkFeed != null then cfg.networkFeed else if cfg.feed == null then "none" else cfg.feed)}
   '';
   testKeys = [ ./fixtures/update/test-manifest.pub ./fixtures/update/test-cache.pub ];
   closure = pkgs.closureInfo { rootPaths = [ config.system.build.toplevel ]; };
   command = pkgs.writeShellApplication {
     name = "otehon-update";
-    runtimeInputs = with pkgs; [ config.nix.package config.systemd.package coreutils findutils gnused gnugrep jq minisign ];
+    runtimeInputs = with pkgs; [ config.nix.package config.systemd.package coreutils curl findutils gnused gnugrep jq minisign util-linux ];
     text = settings + builtins.readFile ./update.sh;
     # The script defines its own strict mode, and shellcheck has no view of the Nix paths.
     bashOptions = [ ];
@@ -58,6 +58,11 @@ in
       default = "daily";
       description = "systemd OnCalendar expression for looking in the feed directory.";
     };
+    networkFeed = lib.mkOption {
+      type = lib.types.nullOr (lib.types.strMatching "https://[A-Za-z0-9][A-Za-z0-9.-]*(:[0-9]{1,5})?(/[A-Za-z0-9._~-]+)*");
+      default = null;
+      description = "HTTPS base of a signed update feed. Null disables network checks. Staged updates wait for a reboot.";
+    };
     package = lib.mkOption {
       type = lib.types.package;
       readOnly = true;
@@ -71,6 +76,9 @@ in
       assertion = cfg.allowTestKeys || !lib.elem (builtins.readFile cfg.publicKey) (map builtins.readFile testKeys)
         && !lib.elem (builtins.readFile cfg.cacheKey) (map builtins.readFile testKeys);
       message = "otehon.update: this image would trust a test key from fixtures/update. Supply real public keys, or set allowTestKeys in a check image.";
+    } {
+      assertion = cfg.feed == null || cfg.networkFeed == null;
+      message = "otehon.update: choose either a local or network feed, not both.";
     }];
 
     environment.systemPackages = [ command ];
@@ -146,6 +154,23 @@ in
       description = "Look in the local feed directory for a signed update";
       wantedBy = [ "timers.target" ];
       timerConfig.OnCalendar = cfg.feedSchedule;
+    };
+    systemd.services.otehon-update-network = lib.mkIf (cfg.networkFeed != null) {
+      description = "Stage a signed update from the configured HTTPS feed";
+      wants = [ "network-online.target" ];
+      after = [ "network-online.target" "otehon-nix-db.service" "otehon-update-settle.service" ];
+      serviceConfig = {
+        Type = "oneshot";
+        ExecStart = "${lib.getExe command} apply-https ${lib.escapeShellArg cfg.networkFeed}";
+        SuccessExitStatus = 3;
+        StandardOutput = "journal+console";
+        StandardError = "journal+console";
+      };
+    };
+    systemd.timers.otehon-update-network = lib.mkIf (cfg.networkFeed != null) {
+      description = "Check the configured HTTPS update feed";
+      wantedBy = [ "timers.target" ];
+      timerConfig = { OnCalendar = cfg.feedSchedule; Persistent = true; RandomizedDelaySec = "15m"; };
     };
 
     image.repart.partitions = {
