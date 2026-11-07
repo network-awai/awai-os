@@ -4,7 +4,7 @@ The resident bot under New chat in the Otehon shell (AWAI-180). It is modeled on
 
 | Dots | Manimani | State |
 | --- | --- | --- |
-| In the sidebar under New chat | The same | Done. Checked in a preview, not in the VM |
+| In the sidebar under New chat | The same | Done. Checked in the VM |
 | Keeps running between conversations | `otehon-manimani`, restarted by systemd. State survives a restart | Done |
 | Own cloud computer | This device. Nothing leaves it | Done, by design |
 | Remembers context | `remember` tool, shown and clearable in the shell | Done. The small model rarely calls it |
@@ -14,6 +14,21 @@ The resident bot under New chat in the Otehon shell (AWAI-180). It is modeled on
 | Activity view, pause | The side panel | Done |
 | Voice | Not built yet | See below |
 | Reads your connected apps in the background | Not built | Out of this version |
+
+## VM check
+
+`desktop-manimani` signs in as `desktop-login` does, then uses Manimani through the real shell, with its real service and the local model. It is a check image, not a release. It passed on 2026-11-07 under QEMU with 8 GiB of memory, on arm64.
+
+| Step | What it shows |
+| --- | --- |
+| `manimani_under_new_chat` | Manimani comes right after New chat in the sidebar |
+| `manimani_ready` | The shell sees the service and the model |
+| `manimani_answers` | The local model answered through the shell |
+| `manimani_confined` | systemd allows loopback only |
+| `manimani_survives_a_kill` | systemd restarts it after SIGKILL |
+| `manimani_no_model_no_answer` | With the model stopped, the shell says so and no answer is invented |
+
+Not covered: the x86_64 PC, the delegate and schedule tools in the VM, and voice.
 
 ## Boundaries
 
