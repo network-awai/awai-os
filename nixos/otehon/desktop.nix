@@ -20,7 +20,7 @@ let
       npm test
       runHook postCheck
     '';
-    npmDepsHash = "sha256-S8J3cIFYr5vfoquXeBUudHilaUioKHwHQjHaS261JL4=";
+    npmDepsHash = "sha256-+eGDC+FhMI1HZAxJuKmVzPii0nsx/ZottLbE+B4LxVA=";
     installPhase = ''
       runHook preInstall
       cp -r dist $out

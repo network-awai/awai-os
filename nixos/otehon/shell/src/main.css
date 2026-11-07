@@ -573,3 +573,16 @@ time {
   max-height: 100vh;
   overflow-y: auto;
 }
+
+.discovery-results li {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #38424c;
+  border-radius: 10px;
+}
+
+.discovery-results p {
+  margin: 6px 0 0;
+  color: #aab3bc;
+  overflow-wrap: anywhere;
+}

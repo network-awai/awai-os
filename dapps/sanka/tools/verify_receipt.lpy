@@ -1,0 +1,125 @@
+;; Checks a receipt from outside the provider. It shares no code with the gateway: it works out the
+;; CIDs, the input hash and the signature itself, and sanka.core checks the rest. It does not judge
+;; the quality of the work, and it proves nothing about what the engine really ran.
+;;
+;; usage: PYTHONPATH=src basilisp run tools/verify_receipt.lpy ORDER RECEIPT REQUEST RESPONSE KEY
+;;   ORDER, RECEIPT, RESPONSE  JSON files
+;;   REQUEST                   the exact bytes sent to the provider
+;;   KEY                       a file holding the order's key
+;; Prints JSON and exits 0 only when every check passes.
+(ns verify-receipt
+  (:require [sanka.core :as core])
+  (:import base64
+           hashlib
+           hmac
+           json
+           sys
+           [cryptography.hazmat.primitives.asymmetric.ed25519 :as ed25519]))
+
+(def ^:private base58-alphabet "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
+(def ^:private cid-prefix (python/bytes #py [0x01 0xa9 0x02 0x12 0x20]))
+(def ^:private ed25519-prefix (python/bytes #py [0xed 0x01]))
+
+(defn- read-bytes [path]
+  (with-open [f (python/open path "rb")]
+    (.read f)))
+
+(defn- read-json [path]
+  (json/loads (read-bytes path)))
+
+(defn- canonical
+  "Sorted keys, no whitespace, the bytes that get hashed and signed."
+  [value]
+  (.encode (json/dumps value ** :sort-keys true :separators #py ("," ":") :ensure-ascii false)
+           "utf-8"))
+
+(defn- cid-of
+  "CIDv1 in lower-case base32, dag-json and sha2-256."
+  [data]
+  (let [digest (.digest (hashlib/sha256 data))
+        encoded (.decode (base64/b32encode (python/bytes (.join (python/bytes) #py [cid-prefix digest])))
+                         "ascii")]
+    (str "b" (.rstrip (.lower encoded) "="))))
+
+(defn- from-json
+  "A parsed JSON value with the keyword keys sanka.core expects."
+  [value]
+  (cond
+    (instance? python/dict value) (into {} (map (fn [[k v]] [(keyword k) (from-json v)]) (.items value)))
+    (instance? python/list value) (mapv from-json value)
+    :else value))
+
+(defn- base58-decode
+  "The bytes of a base58 string, or nil when a character is not in the alphabet."
+  [text]
+  (let [digits (map #(.find base58-alphabet %) (seq text))]
+    (when (every? #(>= % 0) digits)
+      (let [n (reduce (fn [acc d] (+ (* acc 58) d)) 0 digits)
+            size (quot (+ (.bit-length n) 7) 8)
+            zeros (count (take-while #(= % "1") (seq text)))]
+        (.join (python/bytes) #py [(python/bytes zeros) (.to-bytes n size "big")])))))
+
+(defn- slice-bytes [data start end]
+  (.__getitem__ data (python/slice start end)))
+
+(defn- signature-ok?
+  "True when the document's signature is good for the did:key that names its signer."
+  [document]
+  (try
+    (let [signer (.get document "signer")
+          raw (base58-decode (subs signer (count "did:key:z")))
+          key-bytes (slice-bytes raw 2 nil)
+          unsigned (python/dict (remove (fn [[k _]] (= k "signature")) (.items document)))
+          sig (.get document "signature")
+          padding (.join "" (repeat (mod (- 4 (mod (count sig) 4)) 4) "="))
+          signature (base64/urlsafe-b64decode (str sig padding))]
+      (and (= (slice-bytes raw 0 2) ed25519-prefix)
+           (= 32 (count key-bytes))
+           (do (.verify (.from-public-bytes ed25519/Ed25519PublicKey key-bytes)
+                        signature
+                        (canonical unsigned))
+               true)))
+    (catch python/Exception _ false)))
+
+(defn- verify
+  "Every problem found, in order. Nothing later depends on an earlier check passing."
+  [order-path receipt-path request-path response-path key-path]
+  (let [order-json (read-json order-path)
+        receipt-json (read-json receipt-path)
+        request (read-bytes request-path)
+        response (read-json response-path)
+        key-bytes (.strip (read-bytes key-path))
+        order (from-json order-json)
+        receipt (from-json receipt-json)
+        order-cid (cid-of (canonical order-json))
+        choice (.__getitem__ (.get response "choices") 0)
+        pins {:order-cid order-cid
+              :provider (:provider order)
+              :node (:node order)
+              :model-digest (get-in order [:model :digest])
+              :demand (:demand order)
+              :nonce (:nonce order)}
+        expected-input (str "hmac-sha256:" (.hexdigest (hmac/new key-bytes request "sha256")))
+        checked-order (core/check-order order)
+        checked-receipt (core/check-receipt receipt pins)]
+    {:order-cid order-cid
+     :receipt-cid (cid-of (canonical receipt-json))
+     :errors (vec
+              (concat
+               (:errors checked-order)
+               (:errors checked-receipt)
+               (when-not (signature-ok? receipt-json) ["verify/signature"])
+               (when-not (= expected-input (:input receipt)) ["verify/input"])
+               (when-not (= (cid-of (canonical (.get choice "message"))) (:output receipt))
+                 ["verify/output"])))}))
+
+(defn -main [args]
+  (let [result (apply verify args)
+        errors (:errors result)]
+    (println (json/dumps (python/dict #py {"ok" (empty? errors)
+                                           "errors" (python/list errors)
+                                           "order" (:order-cid result)
+                                           "receipt" (:receipt-cid result)})))
+    (sys/exit (if (seq errors) 1 0))))
+
+(-main (vec *command-line-args*))
