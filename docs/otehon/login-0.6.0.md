@@ -6,8 +6,8 @@ operations can require (`network-awai/network-awai-apex` ADR 0026 D13, AWAI-160)
 
 A phone is optional (owner decision 2026-11-07). A wallet signature on the device needs no
 network and no relay, so the desktop image can be signed in today by anyone who can sign the
-message it shows. Phone sign-in runs only in a VM with a relay on loopback, because
-`awai.network/link/` and `relay.awai.network` are not deployed.
+message it shows. Phone sign-in uses `awai.network/link/` and `relay.awai.network`
+(`deploy/awai-link`), or in a test VM, a relay on loopback.
 
 ## Setup
 
@@ -47,7 +47,8 @@ comes from outside the VM, and a kiosk browser normally has no wallet extension.
 A link lasts up to 30 days, and each device has its own. Linking a second device with the
 same wallet or passkey gives the same account. The link is verified again on each load.
 
-The relay is ntfy, with no custom server. It holds ciphertext, and the topic is random.
+The relay holds ciphertext, and the topic is random. The test VM runs ntfy. Production runs a
+small Worker with the same two routes (`deploy/awai-link/relay`), because no host runs ntfy yet.
 Both pages use the pinned shared broker in `nixos/otehon/shell/vendor` (see `PINS.json`),
 and a test checks its digests. The phone page is `nixos/otehon/shell/link`, built to
 `dist/link`.
