@@ -596,3 +596,21 @@ time {
   width: 320px;
   max-width: 100%;
 }
+
+.manimani-link { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.manimani-link .dot { width: 8px; height: 8px; border-radius: 50%; background: #8a8f98; flex: none; }
+.manimani-link .dot[data-status="ready"] { background: #3fb68b; }
+.manimani-link .dot[data-status="paused"] { background: #d9a441; }
+.manimani { display: grid; grid-template-columns: minmax(0, 1fr) 300px; min-height: 0; flex: 1; }
+.manimani-chat { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.manimani-messages { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 10px; }
+.manimani-message { max-width: 80%; padding: 8px 12px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.manimani-message[data-role="user"] { align-self: flex-end; background: rgba(127, 127, 127, 0.18); }
+.manimani-message[data-role="agent"], .manimani-message[data-role="task"], .manimani-message[data-role="notice"] { opacity: 0.75; font-size: 14px; }
+.manimani-composer { display: flex; gap: 8px; padding: 12px 24px 20px; }
+.manimani-composer input { flex: 1; min-width: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(127, 127, 127, 0.4); background: transparent; color: inherit; font: inherit; }
+.manimani-side { border-left: 1px solid rgba(127, 127, 127, 0.25); padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; font-size: 14px; }
+.manimani-side h2 { font-size: 12px; margin: 0 0 6px; opacity: 0.7; }
+.manimani-side ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.manimani-side li { overflow-wrap: anywhere; }
+.manimani-actions { display: flex; gap: 6px; margin-top: 4px; }

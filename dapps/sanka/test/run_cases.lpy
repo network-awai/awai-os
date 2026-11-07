@@ -1,0 +1,22 @@
+;; Runs the shared cases on Basilisp. usage: PYTHONPATH=src:test basilisp run test/run_cases.lpy
+(ns run-cases
+  (:require [sanka.runner :as runner])
+  (:import json sys))
+
+(defn from-json [value]
+  (cond
+    (instance? python/dict value) (into {} (map (fn [[k v]] [(keyword k) (from-json v)]) (.items value)))
+    (instance? python/list value) (mapv from-json value)
+    :else value))
+
+(defn read-json [path]
+  (from-json (json/loads (.read (python/open path)))))
+
+(defn -main []
+  (let [result (runner/run (read-json "test/cases.json") (read-json "test/scenarios.json"))
+        failures (:failures result)]
+    (doseq [failure failures] (println "FAIL" failure))
+    (println "basilisp checks" (:checks result) "failures" (count failures))
+    (sys/exit (if (seq failures) 1 0))))
+
+(-main)

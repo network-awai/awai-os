@@ -30,7 +30,7 @@ nix-shell nix/shell.nix --run 'npm ci && npx shadow-cljs compile test && node ou
 ```
 
 ```bash
-nix-shell nix/shell.nix --run 'PYTHONPATH=src basilisp run test/run_cases.lpy && PYTHONPATH=src python3 test/check_mcp.py'
+nix-shell nix/shell.nix --run 'PYTHONPATH=src basilisp run test/run_cases.lpy && PYTHONPATH=src basilisp run test/check_mcp.lpy'
 ```
 
 ## Evidence (2026-11-07, 5 vCPU aarch64 Linux container on Apple M1 Max)

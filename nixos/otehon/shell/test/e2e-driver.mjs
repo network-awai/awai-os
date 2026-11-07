@@ -288,6 +288,54 @@ async function mediaSteps() {
   });
 }
 
+// Manimani through the real shell, service and local model. Stopping the model is the negative
+// control: the shell must say so, and no answer may appear.
+async function checkManimani() {
+  const status = (value) => `document.querySelector('[data-manimani-status=${JSON.stringify(value)}]')`;
+  const answers = "document.querySelectorAll('.manimani-message[data-role=assistant]').length";
+  const say = async (text) => {
+    await type("input[aria-label='Message Manimani']", text);
+    await click(".manimani-composer button");
+  };
+  await step("manimani_under_new_chat", async () => {
+    await until("document.querySelector('.new-chat + [data-manimani-link]')", "Manimani under New chat");
+    await click("[data-manimani-link]");
+    await until("document.querySelector('[data-manimani]')", "Manimani screen");
+  });
+  await step("manimani_ready", async () => {
+    await until(status("ready"), "service and model", 600000);
+  });
+  await step("manimani_answers", async () => {
+    await say("Say hello in one short sentence.");
+    await until(`${answers} >= 1`, "an answer from the local model", 900000);
+    const text = await evaluate("document.querySelector('.manimani-message[data-role=assistant]').textContent");
+    console.log(`OTEHON_MANIMANI_ANSWER ${JSON.stringify(text.slice(0, 200))}`);
+  });
+  await step("manimani_confined", async () => {
+    const shown = execSync("systemctl show otehon-manimani -p IPAddressDeny -p IPAddressAllow").toString();
+    console.log(`OTEHON_MANIMANI_CONFINED ${JSON.stringify(shown)}`);
+    if (!/IPAddressDeny=\S/.test(shown)) throw new Error("not-confined");
+    if (execSync("systemctl is-enabled otehon-manimani").toString().trim() !== "enabled") throw new Error("not-enabled");
+  });
+  await step("manimani_survives_a_kill", async () => {
+    const before = await evaluate(answers);
+    execSync("systemctl kill -s SIGKILL otehon-manimani");
+    await until(status("stopped"), "the shell sees it stop", 30000);
+    await until(status("ready"), "systemd restarts it", 120000);
+    if ((await evaluate(answers)) !== before) throw new Error("lost-messages");
+  });
+  await step("manimani_no_model_no_answer", async () => {
+    const before = await evaluate(answers);
+    execSync("systemctl stop otehon-manimani-llm");
+    await until(status("model-unavailable"), "the shell sees the model stop", 120000);
+    await say("Are you there?");
+    await until("document.querySelector('.manimani-message[data-role=notice]')", "a notice", 60000);
+    if ((await evaluate(answers)) !== before) throw new Error("made-up-answer");
+    execSync("systemctl start otehon-manimani-llm");
+    await until(status("ready"), "the model returns", 600000);
+  });
+}
+
 const dappCount = "document.querySelectorAll('.dapp').length";
 const wallet = randomWallet();
 const passkey = p256.utils.randomSecretKey();
@@ -395,6 +443,7 @@ try {
     if (await evaluate("document.querySelector('dialog.kotoba-client-consent')?.open === true")) throw new Error("consent-for-local");
   });
   if (process.env.OTEHON_MEDIA === "1") await mediaSteps();
+  if (process.env.OTEHON_MANIMANI === "1") await checkManimani();
 } catch {
   outcome = "fail";
 }
