@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import catalog from "./dapps.json";
+import { BUNDLED_APPS, installedApps, setAppInstalled } from "./apps.js";
 import { clearSession, deviceDid, loadProofs, loadSession, saveProof } from "./identity/device.js";
 import { createBroker, osOperations, readPassport } from "./runtime.js";
 import { Setup } from "./setup.jsx";
@@ -19,6 +20,7 @@ const POLL_MS = 3000;
 const SECTIONS = ["Core", "Apps", "System"];
 const HOME = "home";
 const ACCOUNT = "account";
+const MARKETPLACE = "marketplace";
 const THREADS_KEY = "otehon.threads.v1";
 const SETUP_KEY = "otehon.setup.v1";
 const relayOrigin = RELAY_ORIGIN;
@@ -118,7 +120,7 @@ function Service({ name, up }) {
   );
 }
 
-function Sidebar({ context, onSelect, threads, now, zenoh, matter, account, score }) {
+function Sidebar({ context, onSelect, threads, now, zenoh, matter, account, score, installed }) {
   return (
     <nav className="sidebar" aria-label="Contexts">
       <div className="brand">Itonami</div>
@@ -136,7 +138,7 @@ function Sidebar({ context, onSelect, threads, now, zenoh, matter, account, scor
             <h2>{section}</h2>
             <ul>
               {catalog.dapps
-                .filter((dapp) => dapp.section === section)
+                .filter((dapp) => dapp.section === section && (dapp.id !== "tokei" || installed.includes("tokei")))
                 .map((dapp) => (
                   <li key={dapp.id}>
                     <button
@@ -160,6 +162,8 @@ function Sidebar({ context, onSelect, threads, now, zenoh, matter, account, scor
           </section>
         ))}
       </div>
+      <button type="button" className={context === MARKETPLACE ? "new-chat active" : "new-chat"}
+        data-marketplace onClick={() => onSelect(MARKETPLACE)}>Apps / Marketplace</button>
       <button
         type="button"
         className={context === ACCOUNT ? "account-button active" : "account-button"}
@@ -180,6 +184,39 @@ function Sidebar({ context, onSelect, threads, now, zenoh, matter, account, scor
       </footer>
     </nav>
   );
+}
+
+function Marketplace({ account, installed, onChange }) {
+  const [error, setError] = useState(false);
+  return <main className="chat account-view"><div className="account-body">
+    <h1>Apps / Marketplace</h1>
+    <p className="muted">Discover and manage the apps bundled with this preview. External registries are not connected yet.</p>
+    {BUNDLED_APPS.map((app) => {
+      const active = installed.includes(app.id);
+      return <section key={app.id} className="market-item" data-market-app={app.id}>
+        <h2>{app.title} <span className="tag">{app.type} · Included in this image</span></h2>
+        <p>{app.description}</p>
+        <button type="button" className="secondary" data-app-install={app.id} onClick={() => {
+          if (!setAppInstalled(account.accountDid, app.id, !active)) { setError(true); return; }
+          setError(false); onChange();
+        }}>{active ? "Uninstall" : "Install"}</button>
+      </section>;
+    })}
+    {error ? <p className="problem" role="alert">Could not save the app choice on this device.</p> : null}
+    <p className="muted">Install makes a bundled app available in the sidebar. Uninstall removes it from your sidebar; the image itself is unchanged.</p>
+    <h2>Plugins and external apps</h2>
+    <p className="muted">Registry discovery and verified installation are being developed.</p>
+  </div></main>;
+}
+
+function AppView({ dapp, now }) {
+  if (dapp.id === "tokei") return <main className="chat account-view"><div className="account-body" data-app-view="tokei">
+    <h1>Tokei</h1><p className="app-clock">{now.toLocaleTimeString()}</p><p>{now.toLocaleDateString(undefined, { dateStyle: "full" })}</p>
+  </div></main>;
+  return <main className="chat account-view"><div className="account-body" data-app-view={dapp.id}>
+    <h1>{dapp.title}</h1><p>{dapp.summary}</p>
+    <p className="muted">This app is listed in the catalog, but its application interface is not connected in this preview.</p>
+  </div></main>;
 }
 
 function Composer({ placeholder, onSend, context }) {
@@ -289,11 +326,12 @@ function DappPanel({ dapp, score, onRaise }) {
       <p>{dapp.summary}</p>
       <dl>
         <dt>Install</dt>
-        <dd>{dapp.install === "os-image" ? "Included in the OS image" : dapp.install}</dd>
+        <dd>{dapp.id === "tokei" ? "Bundled app" : "Not connected in this preview"}</dd>
         <dt>Offline</dt>
-        <dd>{dapp.offline === "local-core" ? "The local core works offline" : dapp.offline}</dd>
+        <dd>{dapp.id === "tokei" ? "Available offline" : "Not yet verified"}</dd>
       </dl>
-      <h3>Network operations</h3>
+      <h3>Catalog-declared operations</h3>
+      <p>These entries describe planned capabilities; they are not connected here.</p>
       {dapp.remoteOperations.length === 0 ? (
         <p>None. This app does not use the network.</p>
       ) : (
@@ -374,6 +412,8 @@ function Shell({ account, proofs, score, broker, zenoh, matter, onProof, onSignO
   const [context, setContext] = useState(HOME);
   const [threads, addMessage] = useThreads();
   const [passportState, setPassportState] = useState(null);
+  const [, refreshApps] = useState(0);
+  const installed = installedApps(account.accountDid);
   const dapp = catalog.dapps.find((item) => item.id === context);
   const minimum = dapp ? dappMinimum(dapp.id) : 0;
   const openAccount = () => setContext(ACCOUNT);
@@ -405,8 +445,12 @@ function Shell({ account, proofs, score, broker, zenoh, matter, onProof, onSignO
         onSignOut={onSignOut}
       />
     );
+  } else if (context === MARKETPLACE) {
+    body = <Marketplace account={account} installed={installed} onChange={() => refreshApps((value) => value + 1)} />;
   } else if (dapp && score < minimum) {
     body = <Locked dapp={dapp} minimum={minimum} score={score} onRaise={openAccount} />;
+  } else if (dapp) {
+    body = <AppView dapp={dapp} now={now} />;
   } else {
     body = (
       <Chat
@@ -429,6 +473,7 @@ function Shell({ account, proofs, score, broker, zenoh, matter, onProof, onSignO
         matter={matter}
         account={account}
         score={score}
+        installed={installed}
       />
       {body}
       {dapp ? <DappPanel dapp={dapp} score={score} onRaise={openAccount} /> : null}

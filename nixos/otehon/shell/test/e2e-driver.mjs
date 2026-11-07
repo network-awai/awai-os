@@ -180,6 +180,20 @@ try {
     await until("document.querySelector('[data-operation=submit-order][data-locked=true]')", "locked operation");
     await until("document.querySelector('[data-operation=read-quotes][data-locked=false]')", "open operation");
   });
+  await step("bundled_app", async () => {
+    await click("[data-dapp=tokei]");
+    await until("document.querySelector('[data-app-view=tokei]')", "clock app");
+    await click("[data-marketplace]");
+    await click("[data-app-install=tokei]");
+    await until("!document.querySelector('[data-dapp=tokei]')", "uninstalled app");
+    await send("Page.reload");
+    await sleep(1500);
+    await until("document.querySelector('[data-marketplace]')", "shell after reload");
+    if (await evaluate("Boolean(document.querySelector('[data-dapp=tokei]'))")) throw new Error("uninstall-not-persisted");
+    await click("[data-marketplace]");
+    await click("[data-app-install=tokei]");
+    await until("document.querySelector('[data-dapp=tokei]')", "installed app");
+  });
   await step("reload_keeps_login", async () => {
     await send("Page.reload");
     await sleep(1500);
