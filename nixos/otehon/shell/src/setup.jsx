@@ -15,6 +15,7 @@ import { signWithProvider } from "./identity/wallet.js";
 import { saveSession } from "./identity/device.js";
 import { awaitPhoneApproval } from "./runtime.js";
 import { POINTS } from "./trust.js";
+import { readAgeBand } from "./age.js";
 
 const TEXT = {
   en: {
@@ -27,6 +28,12 @@ const TEXT = {
     networkOnline: "This device reports a network connection.",
     networkOffline: "This device reports no network connection.",
     networkNote: "A wallet sign-in on this device needs no network. Phone sign-in does. Network settings are not available here yet.",
+    ageTitle: "Choose your age group",
+    ageBody: "This is self-declared, not identity verification. Your choice stays on this device and is used for content display.",
+    ageUnder13: "Under 13",
+    ageTeen: "13–17",
+    ageAdult: "18 or older",
+    ageSaveFailed: "Could not save your choice on this device. Please try again.",
     signInTitle: "Sign In",
     signInBody: "Use a Web3 wallet on this device, or approve with a passkey or wallet on your phone. There is no password or guest option.",
     signInAgain: "Sign in to open this device.",
@@ -63,6 +70,12 @@ const TEXT = {
     networkOnline: "この端末はネットワークに接続されています。",
     networkOffline: "この端末はネットワークに接続されていません。",
     networkNote: "この端末のウォレットでのサインインにネットワークは不要です。スマートフォンでのサインインには必要です。ここではまだネットワークを設定できません。",
+    ageTitle: "年齢区分を選択",
+    ageBody: "自己申告であり、本人確認ではありません。選択はこの端末に保存し、コンテンツの表示に使用します。",
+    ageUnder13: "13歳未満",
+    ageTeen: "13〜17歳",
+    ageAdult: "18歳以上",
+    ageSaveFailed: "この端末に保存できませんでした。もう一度お試しください。",
     signInTitle: "サインイン",
     signInBody: "この端末で Web3 ウォレットを使うか、スマートフォンでパスキーかウォレットを使って承認します。パスワードとゲストの利用はできません。",
     signInAgain: "この端末を開くには、サインインしてください。",
@@ -95,7 +108,7 @@ const LANGUAGES = [
   ["en", "English"],
   ["ja", "日本語"],
 ];
-const STEPS = ["hello", "language", "network", "signin", "trust", "done"];
+const STEPS = ["hello", "language", "network", "signin", "age", "trust", "done"];
 const LANGUAGE_KEY = "otehon.language.v1";
 
 function savedLanguage() {
@@ -328,9 +341,11 @@ function SignIn({ t, returning, broker, relayOrigin, did, onLinked }) {
 
 // A one-screen-per-step first run, modelled on the phone setup people know.
 // Signing in is required. There is no way past that step without a verified link.
-export function Setup({ broker, relayOrigin, did, account, returning, onLinked, score, onFinish }) {
+export function Setup({ broker, relayOrigin, did, account, ageBand, returning, onLinked, onAgeSelected, score, onFinish }) {
   const [language, setLanguage] = useState(savedLanguage);
-  const [step, setStep] = useState(returning ? "signin" : account ? "trust" : "hello");
+  const [step, setStep] = useState(returning ? (account && !ageBand ? "age" : "signin") : account ? (ageBand ? "trust" : "age") : "hello");
+  const [selectedAge, setSelectedAge] = useState(null);
+  const [ageError, setAgeError] = useState(false);
   const t = TEXT[language];
   const index = STEPS.indexOf(step);
   const next = () => setStep(STEPS[index + 1]);
@@ -397,10 +412,37 @@ export function Setup({ broker, relayOrigin, did, account, returning, onLinked, 
             did={did}
             onLinked={(linked) => {
               onLinked(linked);
-              if (returning) onFinish();
-              else next();
+              if (!readAgeBand(linked.accountDid)) setStep("age");
+              else if (returning) onFinish();
+              else setStep("trust");
             }}
           />
+        ) : null}
+        {step === "age" ? (
+          <>
+            <h1>{t.ageTitle}</h1>
+            <p>{t.ageBody}</p>
+            <ul className="choices">
+              {[
+                ["under-13", t.ageUnder13],
+                ["13-17", t.ageTeen],
+                ["18-plus", t.ageAdult],
+              ].map(([band, label]) => (
+                <li key={band}>
+                  <button type="button" data-age-band={band} aria-pressed={selectedAge === band}
+                    onClick={() => { setSelectedAge(band); setAgeError(false); }}>
+                    <span>{label}</span>{selectedAge === band ? <span aria-hidden="true">✓</span> : null}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            {ageError ? <p className="problem" role="alert">{t.ageSaveFailed}</p> : null}
+            <button type="button" className="primary" data-age-continue disabled={!selectedAge} onClick={() => {
+              if (!account || !onAgeSelected(account.accountDid, selectedAge)) { setAgeError(true); return; }
+              if (returning) onFinish();
+              else setStep("trust");
+            }}>{t.next}</button>
+          </>
         ) : null}
         {step === "trust" ? (
           <>
