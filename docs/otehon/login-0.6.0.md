@@ -1,11 +1,13 @@
-# Awai Otehon sign-in and trust 0.5.0
+# Awai Otehon sign-in and trust 0.6.0
 
-First-run setup, required sign-in with a phone, and a trust score that apps and
+First-run setup, a required sign-in with a Web3 wallet on the device or with a phone, and a
+trust score that apps and
 operations can require (`network-awai/network-awai-apex` ADR 0026 D13, AWAI-160).
 
-This runs in a VM with a relay on loopback. Nothing is deployed:
-`awai.network/link/` and `relay.awai.network` do not serve this yet, so a real phone
-cannot sign in. The desktop image opens at setup and cannot get past sign-in.
+A phone is optional (owner decision 2026-11-07). A wallet signature on the device needs no
+network and no relay, so the desktop image can be signed in today by anyone who can sign the
+message it shows. Phone sign-in runs only in a VM with a relay on loopback, because
+`awai.network/link/` and `relay.awai.network` are not deployed.
 
 ## Setup
 
@@ -14,7 +16,18 @@ is finished, a device with no valid link opens directly at sign-in. It is a setu
 assistant for an image that is already on the disk: it does not partition or install
 to a disk. Only the setup screens are translated (English and Japanese).
 
-## Sign-in
+## Sign-in on the device
+
+1. The person enters a wallet address, and the OS shows an EIP-4361 message for this device
+   and a new nonce.
+2. They sign it with any wallet (`personal_sign`) and paste the signature. If the browser has
+   an EIP-1193 wallet, one button does both steps.
+3. The OS verifies it. A wrong signature is refused and the apps stay hidden.
+
+This only proves control of the key. The image has no wallet of its own yet, so the signature
+comes from outside the VM, and a kiosk browser normally has no wallet extension.
+
+## Sign-in with a phone
 
 1. The OS asks for approval to connect to the relay through the shared consent host.
    Denying sends nothing.
@@ -73,7 +86,7 @@ random software keys in place of a wallet and a passkey.
 
 ## Evidence (2026-11-07, Apple M1 Max, QEMU 10.0.3 with HVF)
 
-Raw image `7d3e49223c8a91966dc92d324e6e4d323943e6f9c358a58f3cbc67f97b1be158`, 54 s, exit 0.
+Raw image `290e239fa2a7fadc48bb88688fdc654f771c96cd59e5e689ed4c0d8f127dfb49`, 54 s, exit 0.
 
 | Step | Checks |
 | --- | --- |
@@ -89,13 +102,16 @@ Raw image `7d3e49223c8a91966dc92d324e6e4d323943e6f9c358a58f3cbc67f97b1be158`, 54
 | `tamper_returns_to_login` | An edited link returns to sign-in |
 | `passkey` | Sign-in works with `did:key` |
 | `sign_out` | Sign-out returns to sign-in |
+| `local_wrong_signer` | A signature from another key is refused on the device, and the apps stay hidden |
+| `local_wallet` | A signature entered on the device signs in with no consent prompt or relay |
 
-17 unit tests also pass, including refusals for another device, origin, RP, challenge,
+18 unit tests also pass, including refusals for another device, origin, RP, challenge,
 expired request or session, an over-long session, and no user verification.
 
 ## Not verified or not implemented
 
-- A real phone, wallet or passkey. The phone page was only opened in a browser and its
+- A real phone, wallet or passkey. Signatures in the check come from random software keys.
+  The phone page was only opened in a browser and its
   buttons were not pressed.
 - The published origin, TLS, DNS and a relay on the internet.
 - Reading a Human Passport score above zero. One real call to the decoder for an address

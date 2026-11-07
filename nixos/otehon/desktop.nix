@@ -20,7 +20,7 @@ let
       npm test
       runHook postCheck
     '';
-    npmDepsHash = "sha256-SMPG1zpW2aUw1E7Q0R1r4Cnhgm2SZaVBiQcUmXPvWRs=";
+    npmDepsHash = "sha256-S8J3cIFYr5vfoquXeBUudHilaUioKHwHQjHaS261JL4=";
     installPhase = ''
       runHook preInstall
       cp -r dist $out
@@ -76,7 +76,7 @@ in
 
   config = {
   system.image.id = "awai-otehon-desktop";
-  system.image.version = "0.5.0";
+  system.image.version = "0.6.0";
 
   hardware.graphics.enable = true;
   fonts.packages = [ pkgs.noto-fonts-cjk-sans ];

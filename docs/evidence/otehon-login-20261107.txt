@@ -17,3 +17,8 @@ raw-sha256=f59eab2f656103f9a17463e73a47d687bb079cb30c3fa89c85b505092b108d23
 OTEHON_BOOT_REPORT id=awai-otehon-desktop version=0.5.0 nixos=26.05pre-git compositor=1 chromium=1 react=1 zenoh=0 matter=1 gate=1 failed=0 elapsed=292s
 FAIL unexpected desktop state
 exit=1
+
+== desktop-login 0.6.0
+raw-sha256=290e239fa2a7fadc48bb88688fdc654f771c96cd59e5e689ed4c0d8f127dfb49
+OTEHON_LOGIN_E2E result=pass gate=1 setup_steps=1 consent_deny=1 consent_allow=1 wrong_signer=1 wrong_key=1 wallet=1 trust_lock=1 reload_keeps_login=1 tamper_returns_to_login=1 passkey=1 sign_out=1 local_wrong_signer=1 local_wallet=1 elapsed=54s
+exit=0

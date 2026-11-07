@@ -15,7 +15,8 @@ import {
   sealResponse,
   verifyLink,
 } from "../src/identity/link.js";
-import { passkeyResponse, randomWallet, walletResponse } from "./signers.js";
+import { signWithProvider } from "../src/identity/wallet.js";
+import { passkeyResponse, randomWallet, signPersonal, walletResponse } from "./signers.js";
 
 const NOW = Date.parse("2026-11-07T00:00:00.000Z");
 const DEVICE = p256Did(p256.getPublicKey(p256.utils.randomSecretKey()));
@@ -127,4 +128,20 @@ test("passkey refusals", async () => {
     request,
     response: { ...sign(), publicKey: Buffer.from(p256.getPublicKey(p256.utils.randomSecretKey())).toString("base64url") },
   });
+});
+
+test("an EIP-1193 wallet on this device signs a verifiable link", async () => {
+  const wallet = randomWallet();
+  const { request } = await createLinkRequest(DEVICE);
+  const provider = {
+    async request({ method, params }) {
+      if (method === "eth_requestAccounts") return [wallet.address.toLowerCase()];
+      if (method === "eth_chainId") return "0x1";
+      assert.equal(method, "personal_sign");
+      return signPersonal(wallet, Buffer.from(params[0].slice(2), "hex").toString());
+    },
+  };
+  const response = await signWithProvider(provider, request);
+  const result = verifyLink({ request, response, deviceDid: DEVICE });
+  assert.equal(result.accountDid, `did:pkh:eip155:1:${wallet.address}`);
 });

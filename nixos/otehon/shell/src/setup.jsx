@@ -1,6 +1,17 @@
 import qrcode from "qrcode-generator";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { REQUEST_MS, confirmationCode, createLinkRequest, linkUrl, openResponse, verifyLink } from "./identity/link.js";
+import {
+  REQUEST_MS,
+  SESSION_MS,
+  checksumAddress,
+  confirmationCode,
+  createLinkRequest,
+  linkUrl,
+  openResponse,
+  siweMessage,
+  verifyLink,
+} from "./identity/link.js";
+import { signWithProvider } from "./identity/wallet.js";
 import { saveSession } from "./identity/device.js";
 import { awaitPhoneApproval } from "./runtime.js";
 import { POINTS } from "./trust.js";
@@ -15,11 +26,18 @@ const TEXT = {
     networkTitle: "Network",
     networkOnline: "This device reports a network connection.",
     networkOffline: "This device reports no network connection.",
-    networkNote: "Signing in needs the network. Network settings are not available here yet.",
-    signInTitle: "Sign in with your phone",
-    signInBody: "Approve this device on your phone with a passkey or a Web3 wallet. There is no password or guest option.",
-    signInAgain: "Sign in with your phone to open this device.",
+    networkNote: "A wallet sign-in on this device needs no network. Phone sign-in does. Network settings are not available here yet.",
+    signInTitle: "Sign In",
+    signInBody: "Use a Web3 wallet on this device, or approve with a passkey or wallet on your phone. There is no password or guest option.",
+    signInAgain: "Sign in to open this device.",
+    localStart: "Sign In with a Wallet",
     linkStart: "Link with Phone",
+    useWallet: "Use the Wallet in This Browser",
+    addressLabel: "Your wallet address",
+    signThis: "Sign this message with your wallet (personal_sign):",
+    signatureLabel: "Signature",
+    verify: "Verify and Sign In",
+    chooseOther: "Choose Another Way",
     scan: "Scan this code with your phone.",
     checkCode: "Check that your phone shows this code:",
     waiting: "Waiting for your phone…",
@@ -44,11 +62,18 @@ const TEXT = {
     networkTitle: "ネットワーク",
     networkOnline: "この端末はネットワークに接続されています。",
     networkOffline: "この端末はネットワークに接続されていません。",
-    networkNote: "サインインにはネットワークが必要です。ここではまだネットワークを設定できません。",
-    signInTitle: "スマートフォンでサインイン",
-    signInBody: "スマートフォンでパスキーか Web3 ウォレットを使い、この端末を承認します。パスワードとゲストの利用はできません。",
-    signInAgain: "この端末を開くには、スマートフォンでサインインしてください。",
+    networkNote: "この端末のウォレットでのサインインにネットワークは不要です。スマートフォンでのサインインには必要です。ここではまだネットワークを設定できません。",
+    signInTitle: "サインイン",
+    signInBody: "この端末で Web3 ウォレットを使うか、スマートフォンでパスキーかウォレットを使って承認します。パスワードとゲストの利用はできません。",
+    signInAgain: "この端末を開くには、サインインしてください。",
+    localStart: "ウォレットでサインイン",
     linkStart: "スマートフォンとリンク",
+    useWallet: "このブラウザーのウォレットを使う",
+    addressLabel: "ウォレットのアドレス",
+    signThis: "このメッセージをウォレットで署名してください（personal_sign）:",
+    signatureLabel: "署名",
+    verify: "確認してサインイン",
+    chooseOther: "別の方法を選ぶ",
     scan: "このコードをスマートフォンで読み取ってください。",
     checkCode: "スマートフォンに同じコードが出ていることを確認してください:",
     waiting: "スマートフォンの承認を待っています…",
@@ -104,7 +129,124 @@ function QrCode({ url }) {
   );
 }
 
+// Needs no relay and no network: the signature comes from any wallet the person has.
+function LocalWallet({ t, did, onLinked, onBack }) {
+  const [request, setRequest] = useState(null);
+  const [address, setAddress] = useState("");
+  const [signature, setSignature] = useState("");
+  const [refusal, setRefusal] = useState(null);
+  useEffect(() => {
+    createLinkRequest(did).then(({ request: created }) => setRequest(created));
+  }, [did]);
+
+  const valid = /^0x[0-9a-fA-F]{40}$/.test(address.trim());
+  const draft = useMemo(() => {
+    if (!request || !valid) return null;
+    const now = Date.now();
+    return {
+      method: "wallet",
+      address: checksumAddress(address.trim()),
+      chainId: 1,
+      issuedAt: new Date(now).toISOString(),
+      expiresAt: new Date(now + SESSION_MS).toISOString(),
+    };
+  }, [request, valid, address]);
+
+  const finish = (response) => {
+    try {
+      const account = verifyLink({ request, response, deviceDid: did });
+      saveSession(request, response);
+      onLinked(account);
+    } catch (error) {
+      setRefusal(error.message);
+    }
+  };
+
+  const useProvider = async () => {
+    setRefusal(null);
+    try {
+      finish(await signWithProvider(window.ethereum, request));
+    } catch (error) {
+      setRefusal(error.message);
+    }
+  };
+
+  return (
+    <>
+      <h1>{t.localStart}</h1>
+      {window.ethereum ? (
+        <button type="button" className="primary" id="local-provider" disabled={!request} onClick={useProvider}>
+          {t.useWallet}
+        </button>
+      ) : null}
+      <label className="field">
+        <span>{t.addressLabel}</span>
+        <input
+          id="local-address"
+          value={address}
+          spellCheck={false}
+          autoComplete="off"
+          placeholder="0x…"
+          onChange={(event) => setAddress(event.target.value)}
+        />
+      </label>
+      {draft ? (
+        <>
+          <label className="field">
+            <span>{t.signThis}</span>
+            <textarea
+              id="local-message"
+              readOnly
+              rows={9}
+              value={siweMessage({
+                address: draft.address,
+                chainId: draft.chainId,
+                device: request.device,
+                nonce: request.nonce,
+                issuedAt: draft.issuedAt,
+                expiresAt: draft.expiresAt,
+              })}
+            />
+          </label>
+          <label className="field">
+            <span>{t.signatureLabel}</span>
+            <input
+              id="local-signature"
+              value={signature}
+              spellCheck={false}
+              autoComplete="off"
+              placeholder="0x…"
+              onChange={(event) => setSignature(event.target.value)}
+            />
+          </label>
+          <button
+            type="button"
+            className="primary"
+            id="local-verify"
+            disabled={!signature.trim()}
+            onClick={() => {
+              setRefusal(null);
+              finish({ ...draft, signature: signature.trim() });
+            }}
+          >
+            {t.verify}
+          </button>
+        </>
+      ) : null}
+      {refusal ? (
+        <p className="problem" data-link-error={refusal}>
+          {t.refused}: {refusal}
+        </p>
+      ) : null}
+      <button type="button" className="secondary" onClick={onBack}>
+        {t.chooseOther}
+      </button>
+    </>
+  );
+}
+
 function SignIn({ t, returning, broker, relayOrigin, did, onLinked }) {
+  const [local, setLocal] = useState(false);
   const [state, setState] = useState("idle");
   const [pending, setPending] = useState(null);
   const [refusal, setRefusal] = useState(null);
@@ -146,6 +288,8 @@ function SignIn({ t, returning, broker, relayOrigin, did, onLinked }) {
     }
   };
 
+  if (local) return <LocalWallet t={t} did={did} onLinked={onLinked} onBack={() => setLocal(false)} />;
+
   return (
     <>
       <h1>{t.signInTitle}</h1>
@@ -169,9 +313,14 @@ function SignIn({ t, returning, broker, relayOrigin, did, onLinked }) {
         </p>
       ) : null}
       {pending || state === "asking" ? null : (
-        <button type="button" className="primary" id="link-start" onClick={start}>
-          {t.linkStart}
-        </button>
+        <>
+          <button type="button" className="primary" id="local-start" onClick={() => setLocal(true)}>
+            {t.localStart}
+          </button>
+          <button type="button" className="secondary" id="link-start" onClick={start}>
+            {t.linkStart}
+          </button>
+        </>
       )}
     </>
   );

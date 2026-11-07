@@ -3,23 +3,21 @@ import { createRoot } from "react-dom/client";
 import {
   RP_ID,
   SESSION_MS,
-  checksumAddress,
   compressP256,
   confirmationCode,
   fromBase64Url,
   parseLinkFragment,
   passkeyChallenge,
   sealResponse,
-  siweMessage,
   toBase64Url,
 } from "../src/identity/link.js";
+import { signWithProvider } from "../src/identity/wallet.js";
 import { createBroker, deliverApproval, phoneOperations } from "../src/runtime.js";
 import "./link.css";
 
 const relayOrigin = RELAY_ORIGIN;
 const PASSKEY_KEY = "awai.passkey.v1";
 const DEVICES_KEY = "awai.devices.v1";
-const encoder = new TextEncoder();
 
 function readJson(key, fallback) {
   try {
@@ -73,17 +71,8 @@ async function approveWithPasskey(request) {
   };
 }
 
-async function approveWithWallet(request) {
-  const [account] = await window.ethereum.request({ method: "eth_requestAccounts" });
-  const chainId = Number.parseInt(await window.ethereum.request({ method: "eth_chainId" }), 16);
-  const address = checksumAddress(account);
-  const now = Date.now();
-  const issuedAt = new Date(now).toISOString();
-  const expiresAt = new Date(now + SESSION_MS).toISOString();
-  const message = siweMessage({ address, chainId, device: request.device, nonce: request.nonce, issuedAt, expiresAt });
-  const hex = Array.from(encoder.encode(message), (byte) => byte.toString(16).padStart(2, "0")).join("");
-  const signature = await window.ethereum.request({ method: "personal_sign", params: [`0x${hex}`, address] });
-  return { method: "wallet", address, chainId, issuedAt, expiresAt, signature };
+function approveWithWallet(request) {
+  return signWithProvider(window.ethereum, request);
 }
 
 function readRequest() {
