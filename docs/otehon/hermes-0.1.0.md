@@ -2,7 +2,8 @@
 
 The OS agent (ADR 0026 D14, AWAI-167): the chat in the shell talks to Hermes Agent on this machine,
 and Hermes answers from a small local model. **Status: partial. No image has booted with this yet.**
-The VM check below is written and has never run, because the build machine ran out of disk. See
+The VM check below is written and has never run: the image does not fit its 16 GB root, and the
+build machine does not have the disk for a bigger one. See
 "Evidence" for what was seen.
 
 | Part | What it is |
@@ -34,8 +35,9 @@ The Hermes package uses `builtins.getFlake`, so these profiles need flakes on to
 NIX_CONFIG=$'sandbox = false\nfilter-syscalls = false\nexperimental-features = nix-command flakes'
 ```
 
-Check the disk first. The root partition is 16 GB and the raw image is written to the build machine
-in full, on top of what it already holds. This is what filled the disk (see Evidence).
+The 16 GB root is too small for `desktop-hermes` (see Evidence). A bigger root also needs more free
+disk on the build machine: the image exists about twice during the build, so a 24 GB root needs
+about 50 GiB free. 24 GB is a guess and has not been tried.
 
 ## Check
 
@@ -75,9 +77,10 @@ observation and does not fail the check, because a small model may not choose to
 | What | Result |
 | --- | --- |
 | Hermes package build | Exit 0 in 14m40s. Store path `a9mh3y1flkv2a4p7178c5bvb27blha83-hermes-agent-0.0.0` |
-| Hermes closure | 3.3 GiB, before the model (about 1 GiB). The full image size is not measured |
+| Hermes closure | 3.3 GiB, before the model (about 1 GiB) |
+| `desktop-hermes` system closure | Builds. `5lw4lnhikyih85k5n9pcwdbjsniama4k-nixos-system-awai-otehon-26.05pre-git`, 11.5 GiB (`nix path-info -S`). Building it runs the shell's `npm test`, agent tests included |
 | Shell unit tests for the agent client | `node --test test/agent.test.js`: 4 pass, 0 fail |
-| `desktop-hermes` image | **Not built.** The first try filled the host disk. The retry got `NOT_RUN only 14823496KiB free, need 30GiB`, exit 3, from `vm-lock.sh` |
+| `desktop-hermes` image | **Not built.** The first try filled the host disk. A retry got `NOT_RUN only 14823496KiB free, need 30GiB`, exit 3, from `vm-lock.sh`. The next try got `mkfs.ext4: No space left on device while populating file system`, exit 1 (`.agent-output/build-desktop-hermes.err`, line 155): the 11.5 GiB closure does not fit the 16 GB ext4 root |
 
 A smoke test ran in the Nix container, with no VM, no shell and **no real model**: Hermes, the test
 double and the real Saifu server on Basilisp, using a hand-written copy of the configuration.
@@ -104,7 +107,7 @@ double and the real Saifu server on Basilisp, using a hand-written copy of the c
 - **Everything in the Check section.** No VM has booted this. An answer through the real shell, the refusals through the real shell, `key.js` loading from `file:///run` under the page's CSP and the systemd settings have not been seen working.
 - **A real model answering Hermes.** llama.cpp has not run with this model, so its speed and whether it answers correctly are unknown. Hermes making a tool call from a real model's output has not been seen.
 - The terminal negative control has never produced a failure.
-- The image size, and whether 16 GB is enough.
+- The image size, and what root size is enough. 16 GB is not; 24 GB is untested.
 - `desktop-agent` has not been built or evaluated.
 - Whether `IPAddressDeny` stops an actual outgoing connection. These VMs have no network adapter.
 - llama.cpp has no key on loopback. Any local process, and any page in the browser, can use the model. Hermes itself needs the key.
@@ -113,5 +116,5 @@ double and the real Saifu server on Basilisp, using a hand-written copy of the c
 
 ## Blockers
 
-- **Disk space for the build.** The podman machine was restarted and trimmed by the coordinator. `nix-store --verify` printed no errors, and `--check-contents` was not run. `vm-lock.sh` now needs 30 GiB free, and at the retry the Mac had 14.8 GB. The scripts in this task's `.agent-output` (`measure.sh`, then `make-image.sh`) are ready to run under the lock: measure the closure first, and size the 16 GB root from it.
+- **Root size and disk space for the build.** The 11.5 GiB closure does not fit the 16 GB ext4 root (`mkfs.ext4: No space left on device`). A bigger root needs more free disk: the image exists about twice during the build, so a 24 GB root needs about 50 GiB free, and the Mac does not have that now. 24 GB is untested. The root size and `vm-lock.sh` are unchanged; the image build waits until the owner frees disk. The podman machine was restarted and trimmed by the coordinator. `nix-store --verify` printed no errors, and `--check-contents` was not run.
 - **The registry's `mihari` and `dandori` servers need `kbb`.** In `cloud-itonami/itonami-registry` `f107a79ba`, `mcp/mihari/manifest.json` and `mcp/dandori/manifest.json` have `"command": "kbb"`. ADR 0026 D3 does not allow it here, so they are not added. Generating `mcp_servers` from the registry (D14) is also not done: the Saifu entry is written by hand.
