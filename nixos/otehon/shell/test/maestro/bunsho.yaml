@@ -1,0 +1,15 @@
+url: http://127.0.0.1:18821/
+---
+- launchApp:
+    clearState: true
+- assertVisible: "Bunsho"
+- tapOn:
+    css: 'textarea[aria-label="Document"]'
+- inputText: "Maestro local draft"
+- tapOn: "Save document"
+- assertVisible: "Saved on this device."
+- stopApp
+- launchApp
+- assertVisible:
+    css: 'textarea[aria-label="Document"]'
+- assertVisible: "Maestro local draft"

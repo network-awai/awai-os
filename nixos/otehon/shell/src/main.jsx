@@ -7,6 +7,7 @@ import { REGISTRY_REVISION, searchRegistry } from "./discovery.js";
 import { clearSession, deviceDid, loadProofs, loadSession, saveProof } from "./identity/device.js";
 import { createBroker, osOperations, readPassport } from "./runtime.js";
 import { Setup } from "./setup.jsx";
+import { Bunsho } from "./apps/bunsho.cljc";
 import { displayMessage, readAgeBand, saveAgeBand } from "./age.js";
 import {
   POINTS,
@@ -221,7 +222,8 @@ function Marketplace({ account, installed, onChange }) {
   </div></main>;
 }
 
-function AppView({ dapp, now }) {
+function AppView({ dapp, now, account }) {
+  if (dapp.id === "bunsho") return <Bunsho key={account.accountDid} accountDid={account.accountDid} />;
   if (dapp.id === "tokei") return <main className="chat account-view"><div className="account-body" data-app-view="tokei">
     <h1>Tokei</h1><p className="app-clock">{now.toLocaleTimeString()}</p><p>{now.toLocaleDateString(undefined, { dateStyle: "full" })}</p>
   </div></main>;
@@ -329,18 +331,19 @@ function Locked({ dapp, minimum, score, onRaise }) {
 }
 
 function DappPanel({ dapp, score, onRaise }) {
+  const available = dapp.id === "tokei" || dapp.id === "bunsho";
   return (
     <aside className="panel" aria-label={`${dapp.title} dapp`}>
       <div className="panel-head">
         <h2>{dapp.title}</h2>
-        <span className="tag">Not connected</span>
+        <span className="tag">{available ? "Local preview" : "Not connected"}</span>
       </div>
       <p>{dapp.summary}</p>
       <dl>
         <dt>Install</dt>
-        <dd>{dapp.id === "tokei" ? "Bundled app" : "Not connected in this preview"}</dd>
+        <dd>{available ? "Bundled app" : "Not connected in this preview"}</dd>
         <dt>Offline</dt>
-        <dd>{dapp.id === "tokei" ? "Available offline" : "Not yet verified"}</dd>
+        <dd>{available ? "Available offline" : "Not yet verified"}</dd>
       </dl>
       <h3>Catalog-declared operations</h3>
       <p>These entries describe planned capabilities; they are not connected here.</p>
@@ -480,7 +483,7 @@ function Shell({ account, ageBand, onAgeSelected, proofs, score, broker, zenoh, 
   } else if (dapp && score < minimum) {
     body = <Locked dapp={dapp} minimum={minimum} score={score} onRaise={openAccount} />;
   } else if (dapp) {
-    body = <AppView dapp={dapp} now={now} />;
+    body = <AppView dapp={dapp} now={now} account={account} />;
   } else {
     body = (
       <Chat

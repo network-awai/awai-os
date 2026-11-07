@@ -1,6 +1,7 @@
 // Build the OS shell (dist/) and the phone page (dist/link/). The connect-src of each
 // page comes from its operations, through the shared runtime's own derivation.
 import { build } from "esbuild";
+import { compileString } from "cherry-cljs/index.js";
 import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { clientRuntimeConnectSrc } from "./vendor/kotoba-client-runtime.js";
 import { osOperations, phoneOperations, runtimeDescriptor } from "./src/runtime.js";
@@ -9,6 +10,17 @@ const relayOrigin = process.env.RELAY_ORIGIN ?? "https://relay.awai.network";
 const define = {
   "process.env.NODE_ENV": '"production"',
   RELAY_ORIGIN: JSON.stringify(relayOrigin),
+};
+
+// Compile the .cljc UI directly to a bundled browser module, without a JVM.
+const cljc = {
+  name: "cljc",
+  setup(builder) {
+    builder.onLoad({ filter: /\.cljc$/ }, async ({ path }) => ({
+      contents: compileString(await readFile(path, "utf8")),
+      loader: "js",
+    }));
+  },
 };
 
 async function page({ source, html, outdir, operations, appOrigins }) {
@@ -21,6 +33,7 @@ async function page({ source, html, outdir, operations, appOrigins }) {
     jsx: "automatic",
     outdir: `${outdir}/assets`,
     define,
+    plugins: [cljc],
     logLevel: "warning",
   });
   await copyFile("vendor/kotoba-client-consent.css", `${outdir}/assets/consent.css`);
