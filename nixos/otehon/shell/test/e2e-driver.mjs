@@ -2,7 +2,7 @@
 // real relay on loopback. A wallet and a passkey are simulated with random keys.
 // Built only for the desktop-login check image.
 import { execSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { connect as rawConnect } from "node:net";
 import { p256 } from "@noble/curves/nist.js";
 import { p256Did, parseLinkFragment, sealResponse } from "../src/identity/link.js";
@@ -334,6 +334,156 @@ async function checkManimani() {
     execSync("systemctl start otehon-manimani-llm");
     await until(status("ready"), "the model returns", 600000);
   });
+const AGENT = "http://127.0.0.1:8642";
+const DOUBLE_LOG = "/run/otehon-model-double/requests.jsonl";
+const TERMINAL_MARK = "/var/lib/otehon-hermes/TERMINAL_RAN";
+const run = (command) => execSync(command, { shell: "/bin/sh" }).toString();
+const agentNote = (text) => console.log(`OTEHON_AGENT ${text}`);
+
+const hermesCall = (path, { key, origin, method = "GET", body } = {}) =>
+  fetch(`${AGENT}${path}`, {
+    method,
+    headers: {
+      ...(key ? { authorization: `Bearer ${key}` } : {}),
+      ...(origin ? { origin } : {}),
+      ...(body ? { "content-type": "application/json" } : {}),
+    },
+    body,
+  });
+
+async function expectStatus(label, call, status) {
+  const response = await call();
+  const text = await response.text();
+  if (response.status !== status) throw new Error(`${label}: expected ${status}, got ${response.status} ${text.slice(0, 80)}`);
+  agentNote(`http ${label} status=${response.status}`);
+  return text;
+}
+
+const answers = "document.querySelectorAll('[data-agent]')";
+
+// Sends through the composer and waits for that message's answer to settle.
+async function askInShell(text, timeout = 300000) {
+  const before = await evaluate(`${answers}.length`);
+  await type(".composer textarea", text);
+  await click(".composer button[type=submit]");
+  await until(`${answers}.length > ${before}`, "answer item");
+  const started = Date.now();
+  await until(`${answers}[${before}].dataset.agent !== 'working'`, "answer settles", timeout);
+  const state = await evaluate(`${answers}[${before}].dataset.agent`);
+  const shown = await evaluate(`${answers}[${before}].textContent`);
+  agentNote(`shell state=${state} seconds=${Math.round((Date.now() - started) / 1000)} text=${JSON.stringify(shown)}`);
+  return { state, shown };
+}
+
+const lastDoubleRequests = () => readFileSync(DOUBLE_LOG, "utf8").trim().split("\n").map((line) => JSON.parse(line));
+const noticeSays = (status, timeout = 30000) =>
+  until(`document.querySelector('[data-agent-status=${status}]')`, `notice ${status}`, timeout);
+
+async function agentSteps() {
+  const key = readFileSync("/run/otehon-agent/hermes.env", "utf8").trim().split("=")[1];
+  const chat = JSON.stringify({ model: "hermes-agent", messages: [{ role: "user", content: "hello" }] });
+
+  await step("agent_connected", async () => {
+    const started = Date.now();
+    await click("[data-dapp=itonami]");
+    await noticeSays("connected", 600000);
+    agentNote(`connected_after_seconds=${Math.round((Date.now() - started) / 1000)}`);
+  });
+
+  await step("agent_real_answer", async () => {
+    const { state, shown } = await askInShell("What is the capital of France? Answer in one word.", 900000);
+    if (state !== "done") throw new Error(`state ${state}: ${shown}`);
+    if (!/paris/i.test(shown)) throw new Error(`not-the-answer ${shown}`);
+    await screenshot("shell-answer");
+    const slots = run("journalctl -u otehon-llama --no-pager -o cat | grep -c 'prompt eval time' || true").trim();
+    agentNote(`llama_prompt_evals=${slots}`);
+    if (Number(slots) < 1) throw new Error("llama-saw-nothing");
+  });
+
+  // Only an observation: a small model may or may not choose to call a tool.
+  try {
+    const { state, shown } = await askInShell("Use the saifu_format_wei tool to show 1500000000000000000 wei in ETH.", 600000);
+    const calls = run(`grep -ah 'mcp__saifu' /var/lib/otehon-hermes/.hermes/logs/*.log | tail -3 || true`);
+    agentNote(`real_model_tool state=${state} shown=${JSON.stringify(shown)} log=${JSON.stringify(calls)}`);
+  } catch (error) {
+    agentNote(`real_model_tool error=${error.message}`);
+  }
+
+  await step("agent_wrong_key", async () => {
+    await expectStatus("models_wrong_key", () => hermesCall("/v1/models", { key: "wrong-key-of-enough-length-000000", origin: "null" }), 401);
+    await expectStatus("models_no_key", () => hermesCall("/v1/models", { origin: "null" }), 401);
+    await expectStatus("chat_wrong_key", () => hermesCall("/v1/chat/completions", { key: "wrong-key-of-enough-length-000000", origin: "null", method: "POST", body: chat }), 401);
+    await expectStatus("models_right_key", () => hermesCall("/v1/models", { key, origin: "null" }), 200);
+    // The same refusal, shown in the shell.
+    await evaluate(`globalThis.__OTEHON_AGENT_KEY = "wrong-key-of-enough-length-000000"`);
+    const { state, shown } = await askInShell("This one has the wrong key.", 60000);
+    await evaluate(`globalThis.__OTEHON_AGENT_KEY = ${JSON.stringify(key)}`);
+    if (state !== "failed" || !shown.includes("refused the key")) throw new Error(`shell ${state}: ${shown}`);
+  });
+
+  await step("agent_bad_origin", async () => {
+    await expectStatus("models_evil_origin", () => hermesCall("/v1/models", { key, origin: "https://evil.example" }), 403);
+    await expectStatus("chat_evil_origin", () => hermesCall("/v1/chat/completions", { key, origin: "https://evil.example", method: "POST", body: chat }), 403);
+    await expectStatus("models_file_origin", () => hermesCall("/v1/models", { key, origin: "file://" }), 403);
+    await expectStatus("preflight_evil_origin", () => hermesCall("/v1/chat/completions", { origin: "https://evil.example", method: "OPTIONS" }), 403);
+    await expectStatus("preflight_null_origin", () => hermesCall("/v1/chat/completions", { origin: "null", method: "OPTIONS" }), 200);
+    await expectStatus("models_null_origin", () => hermesCall("/v1/models", { key, origin: "null" }), 200);
+  });
+
+  // From here the model is the scripted stand-in, under the same Hermes process and config.
+  run("systemctl stop otehon-llama && systemctl start otehon-model-double");
+  await noticeSays("connected");
+  agentNote("TEST DOUBLE in place of the model from here on");
+
+  await step("agent_context", async () => {
+    const { state, shown } = await askInShell("Hello from the check.");
+    if (state !== "done" || !shown.includes("TEST DOUBLE ANSWER")) throw new Error(`${state}: ${shown}`);
+    const seen = lastDoubleRequests().at(-1);
+    if (!seen.system.includes('working in the app "Itonami"')) throw new Error("no-dapp-context");
+    agentNote(`tools_offered=${JSON.stringify(seen.tools)}`);
+  });
+
+  await step("agent_saifu_call", async () => {
+    const { state, shown } = await askInShell("DOUBLE_CALL_SAIFU");
+    if (state !== "done" || !shown.includes("1.5")) throw new Error(`${state}: ${shown}`);
+    agentNote(`mcp_processes=${JSON.stringify(run("pgrep -a -f mcp/server.lpy || true"))}`);
+  });
+
+  await step("agent_no_terminal", async () => {
+    const offered = lastDoubleRequests().at(-1).tools;
+    const dangerous = ["terminal", "process", "read_file", "write_file", "patch", "search_files", "execute_code"];
+    const present = dangerous.filter((name) => offered.includes(name));
+    agentNote(`dangerous_tools_offered=${JSON.stringify(present)}`);
+    if (present.length) throw new Error(`offered ${present.join(",")}`);
+    const { state, shown } = await askInShell("DOUBLE_CALL_TERMINAL");
+    const ran = existsSync(TERMINAL_MARK);
+    agentNote(`terminal_call state=${state} ran=${ran ? 1 : 0}`);
+    agentNote(`terminal_turns=${JSON.stringify(lastDoubleRequests().slice(-2).map(({ last_role, last }) => ({ last_role, last })))}`);
+    if (ran) throw new Error("agent-ran-terminal");
+    if (shown.includes("TERMINAL_RAN")) throw new Error(`unexpected ${shown}`);
+  });
+
+  await step("agent_model_down", async () => {
+    run("systemctl stop otehon-model-double");
+    await noticeSays("none");
+    const { state, shown } = await askInShell("Is anyone there?", 600000);
+    if (state !== "failed") throw new Error(`state ${state}: ${shown}`);
+  });
+
+  await step("agent_down", async () => {
+    run("systemctl start otehon-model-double");
+    await noticeSays("connected");
+    run("systemctl stop otehon-hermes");
+    await noticeSays("none");
+    const { state, shown } = await askInShell("And now?", 60000);
+    if (state !== "failed" || !shown.includes("cannot be reached")) throw new Error(`state ${state}: ${shown}`);
+  });
+
+  for (const line of run(`systemctl show otehon-hermes -p IPAddressDeny -p IPAddressAllow -p User
+    systemctl show otehon-llama -p IPAddressDeny -p IPAddressAllow -p DynamicUser
+    grep -i -E ':(21C2|2243) 00000000:0000 ' /proc/net/tcp | cut -c1-40 || true`).split("\n")) {
+    if (line) agentNote(`fact ${line}`);
+  }
 }
 
 const dappCount = "document.querySelectorAll('.dapp').length";
@@ -444,6 +594,7 @@ try {
   });
   if (process.env.OTEHON_MEDIA === "1") await mediaSteps();
   if (process.env.OTEHON_MANIMANI === "1") await checkManimani();
+  if (process.env.OTEHON_AGENT === "1") await agentSteps();
 } catch {
   outcome = "fail";
 }

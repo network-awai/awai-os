@@ -5,6 +5,8 @@ import { MANIMANI, Manimani, ManimaniLink } from "./manimani.jsx";
 import { clearSession, deviceDid, loadProofs, loadSession, saveProof } from "./identity/device.js";
 import { createBroker, osOperations, readPassport } from "./runtime.js";
 import { MEDIA_ORIGIN, describeMessage, requestImage, requestSpeech, settleSavedItem, useMediaCapabilities } from "./media.js";
+import { askAgent, hasAgent } from "./agent.js";
+import { useAgentConnected } from "./agent-status.js";
 import { Setup } from "./setup.jsx";
 import {
   POINTS,
@@ -258,6 +260,15 @@ function Composer({ placeholder, onSend, onImage, onSpeech, capabilities, contex
 function Message({ item }) {
   const message = describeMessage(item);
   if (message.kind === "text") return <li>{message.text}</li>;
+  if (message.kind === "agent") {
+    return (
+      <li className="answer" data-agent={message.state}>
+        {message.text ? <span className="answer-text">{message.text}</span> : null}
+        {message.state === "working" && !message.text ? <span className="muted">The agent is working on this device.</span> : null}
+        {message.state === "failed" ? <span className="problem">No answer: {message.reason}</span> : null}
+      </li>
+    );
+  }
   return (
     <li className="media" data-media={message.kind} data-state={message.state}>
       <span className="prompt">{message.text}</span>
@@ -280,7 +291,7 @@ function Message({ item }) {
   );
 }
 
-function Chat({ dapp, context, messages, onSend, onImage, onSpeech, capabilities }) {
+function Chat({ dapp, context, messages, onSend, onImage, onSpeech, capabilities, agentConnected }) {
   const end = useRef(null);
   useEffect(() => {
     end.current?.scrollIntoView();
@@ -312,9 +323,15 @@ function Chat({ dapp, context, messages, onSend, onImage, onSpeech, capabilities
           capabilities={capabilities}
           placeholder={dapp ? `Message ${dapp.title}` : "Message Itonami"}
         />
-        <p className="notice">
-          No agent is connected in this image, so nothing answers yet. Messages stay on this device.
-        </p>
+        {agentConnected ? (
+          <p className="notice" data-agent-status="connected">
+            Answers come from Hermes and a small model on this device. Nothing leaves it.
+          </p>
+        ) : (
+          <p className="notice" data-agent-status="none">
+            No agent is connected, so nothing answers now. Messages stay on this device.
+          </p>
+        )}
       </div>
     </main>
   );
@@ -431,6 +448,7 @@ function Shell({ account, proofs, score, broker, zenoh, matter, onProof, onSignO
   const [context, setContext] = useState(HOME);
   const [threads, addMessage, updateMessage] = useThreads();
   const capabilities = useMediaCapabilities();
+  const agentConnected = useAgentConnected();
   const [passportState, setPassportState] = useState(null);
   const dapp = catalog.dapps.find((item) => item.id === context);
   const minimum = dapp ? dappMinimum(dapp.id) : 0;
@@ -473,7 +491,13 @@ function Shell({ account, proofs, score, broker, zenoh, matter, onProof, onSignO
         dapp={dapp}
         context={context}
         messages={threads[context] ?? []}
-        onSend={(text) => addMessage(context, text)}
+        onSend={(text) => {
+          const items = threads[context] ?? [];
+          addMessage(context, text);
+          // A stale status must not hide a failure, so this tries whenever the OS has an agent.
+          if (hasAgent()) askAgent({ dapp, context, items, text, add: addMessage, update: updateMessage });
+        }}
+        agentConnected={agentConnected}
         onSpeech={(text) => requestSpeech(text, context, addMessage, updateMessage)}
         onImage={(text) => requestImage(text, context, addMessage, updateMessage)}
         capabilities={capabilities}
