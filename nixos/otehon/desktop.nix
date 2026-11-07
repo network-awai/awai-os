@@ -44,8 +44,33 @@ let
       --disk-cache-dir=${userState}/cache/chromium \
       --remote-debugging-address=127.0.0.1 \
       --remote-debugging-port=9222 \
-      ${lib.escapeShellArgs cfg.browserArgs} \
+      ${lib.escapeShellArgs (cfg.inputArgs ++ cfg.browserArgs)} \
       "file://${shell}/index.html"
+  '';
+
+  # Ordinary web browsing (docs/otehon/daily-0.1.0.md): a normal Chromium window with an address
+  # bar, in a profile of its own on the encrypted volume. It has no DevTools port and none of the
+  # shell's browser arguments, so it cannot see the shell's data and the shell cannot drive it.
+  webBrowser = pkgs.writeShellScript "otehon-web-browser" ''
+    export XDG_CONFIG_HOME=${userState}/web/config XDG_CACHE_HOME=${userState}/web/cache XDG_DATA_HOME=${userState}/web/data
+    exec ${lib.getExe pkgs.chromium} \
+      --ozone-platform=wayland \
+      --no-first-run \
+      --no-default-browser-check \
+      --password-store=basic \
+      --user-data-dir=${userState}/web/chromium \
+      --disk-cache-dir=${userState}/web/cache/chromium \
+      ${lib.escapeShellArgs cfg.inputArgs} \
+      --new-window about:blank
+  '';
+
+  # The desktop session: the web launcher in the background, then the shell. cosmic-comp starts
+  # this with WAYLAND_DISPLAY set, so both browsers open on its display.
+  session = pkgs.writeShellScript "otehon-session" ''
+    ${cfg.sessionPrelude}
+    OTEHON_WEB_PORT=${toString cfg.settei.webPort} OTEHON_WEB_COMMAND=${webBrowser} \
+      ${lib.getExe pkgs.python3} -E -s ${cfg.settei.source}/web_launcher.py &
+    exec ${browser}
   '';
 in
 {
@@ -54,7 +79,7 @@ in
   # is all this VM has. Zenoh and Matter listen on loopback only.
   # The user has no password and logs in automatically, so this image is for a
   # local VM only. It has no SSH or keys.
-  imports = [ ./common.nix ./state.nix ./media.nix ./manimani/manimani.nix ];
+  imports = [ ./common.nix ./state.nix ./media.nix ./manimani/manimani.nix ./settei/settei.nix ];
 
   options.otehon = {
     relayOrigin = lib.mkOption {
@@ -65,6 +90,17 @@ in
     browserArgs = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [ ];
+      description = "Extra arguments for the shell's Chromium only.";
+    };
+    inputArgs = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      description = "Arguments for both Chromium windows that an input method needs (desktop-ime.nix).";
+    };
+    sessionPrelude = lib.mkOption {
+      type = lib.types.lines;
+      default = "";
+      description = "Shell lines run at the start of the desktop session, before the browsers.";
     };
     headless = lib.mkOption {
       type = lib.types.bool;
@@ -95,7 +131,7 @@ in
 
   config = {
   system.image.id = "awai-otehon-desktop";
-  system.image.version = "0.7.0";
+  system.image.version = "0.8.0";
 
   hardware.graphics.enable = true;
   fonts.packages = [ pkgs.noto-fonts-cjk-sans ];
@@ -137,7 +173,7 @@ in
     script = ''
       install -d -m 711 "$(dirname ${userState})"
       install -d -m 700 -o ${user} -g users ${userState}
-      for dir in chromium cache config data; do
+      for dir in chromium cache config data web; do
         install -d -m 700 -o ${user} -g users ${userState}/$dir
       done
     '';
@@ -161,7 +197,7 @@ in
     enable = !cfg.headless;
     settings = rec {
       initial_session = {
-        command = "${lib.getExe pkgs.cosmic-comp} ${browser}";
+        command = "${lib.getExe pkgs.cosmic-comp} ${session}";
         inherit user;
       };
       default_session = initial_session;

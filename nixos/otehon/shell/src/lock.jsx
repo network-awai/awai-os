@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { unlockMessage, verifyUnlock } from "./identity/lock.js";
 import { accountAddress } from "./trust.js";
+import { useText } from "./i18n.js";
 
 const ACTIVITY = ["pointerdown", "pointermove", "keydown", "wheel", "touchstart"];
 
@@ -27,6 +28,7 @@ export function useIdle(active, ms, onIdle) {
 const toHex = (text) => Array.from(new TextEncoder().encode(text), (byte) => byte.toString(16).padStart(2, "0")).join("");
 
 export function LockScreen({ lock, onUnlock, onErase }) {
+  const t = useText();
   const address = accountAddress(lock.accountDid);
   const message = address
     ? unlockMessage({ address, device: lock.device, nonce: lock.nonce, issuedAt: lock.issuedAt })
@@ -57,21 +59,21 @@ export function LockScreen({ lock, onUnlock, onErase }) {
   return (
     <div className="setup">
       <main className="setup-card" data-lock-screen>
-        <h1>Locked</h1>
+        <h1>{t("lockScreen.title")}</h1>
         <p className="account-id">{lock.accountDid}</p>
         {message ? (
           <>
             {window.ethereum ? (
               <button type="button" className="primary" id="unlock-provider" onClick={useProvider}>
-                Unlock with Your Wallet
+                {t("lockScreen.useWallet")}
               </button>
             ) : null}
             <label className="field">
-              <span>Sign this message with the wallet of this account (personal_sign):</span>
+              <span>{t("lockScreen.sign")}</span>
               <textarea id="unlock-message" readOnly rows={7} value={message} />
             </label>
             <label className="field">
-              <span>Signature</span>
+              <span>{t("lockScreen.signature")}</span>
               <input
                 id="unlock-signature"
                 value={signature}
@@ -88,27 +90,24 @@ export function LockScreen({ lock, onUnlock, onErase }) {
               disabled={!signature.trim()}
               onClick={() => attempt(signature)}
             >
-              Unlock
+              {t("lockScreen.unlock")}
             </button>
           </>
         ) : (
-          <p className="muted">
-            This account signed in with a passkey. A passkey cannot unlock this device yet, so the only way on is to
-            erase this device's data and sign in again.
-          </p>
+          <p className="muted">{t("lockScreen.passkey")}</p>
         )}
         {refusal ? (
-          <p className="problem" data-unlock-error={refusal}>
-            Not unlocked: {refusal}
+          <p className="problem" role="alert" data-unlock-error={refusal}>
+            {t("lockScreen.refused", { reason: refusal })}
           </p>
         ) : null}
         {erasing ? (
           <button type="button" className="secondary" id="lock-erase-confirm" onClick={onErase}>
-            Erase Messages and Sign-In on This Device
+            {t("lockScreen.eraseConfirm")}
           </button>
         ) : (
           <button type="button" className="secondary" id="lock-erase" onClick={() => setErasing(true)}>
-            Erase This Device's Data Instead
+            {t("lockScreen.erase")}
           </button>
         )}
       </main>
