@@ -2,6 +2,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { createConnection } from 'node:net';
 import { mkdir, rm, copyFile, chmod, appendFile } from 'node:fs/promises';
+import { statfsSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 const work = resolve(process.argv[2]);
 const media = resolve(process.argv[3]);
@@ -33,7 +34,7 @@ if(!serial){machine.kill();throw Error('serial socket unavailable')}
 let buffer='', ended=false;
 serial.on('data', data=>{buffer+=data.toString('utf8');appendFile(join(work,'serial.log'),data)});
 machine.on('exit',()=>{ended=true});
-async function expect(text,seconds=1800){const end=Date.now()+seconds*1000;while(Date.now()<end){const i=buffer.indexOf(text);if(i>=0){buffer=buffer.slice(i+text.length);console.log('PASS', text);return}if(ended)throw Error(`QEMU ended while waiting for ${text}`);await pause(500)}throw Error(`timeout waiting for ${text}`)}
+async function expect(text,seconds=1800){const end=Date.now()+seconds*1000;while(Date.now()<end){const fs=statfsSync(work);if(fs.bavail*fs.bsize<6*1024**3)throw Error('host free space below 6 GiB; stopping scratch VM');const i=buffer.indexOf(text);if(i>=0){buffer=buffer.slice(i+text.length);console.log('PASS', text);return}if(ended)throw Error(`QEMU ended while waiting for ${text}`);await pause(500)}throw Error(`timeout waiting for ${text}`)}
 const send = s => serial.write(`${s}\r`);
 const prompt='press Enter to list disks again: ';
 const bytes = name => JSON.parse(run('qemu-img',['map','-U','--output=json',join(work,`${name}.qcow2`)])).filter(e=>e.data).reduce((s,e)=>s+e.length,0);
@@ -42,8 +43,8 @@ try {
  if(bytes('target') || bytes('small')) throw Error('scratch disks changed before input');
  send('NOT-A-SERIAL'); await expect('No single disk has that serial',60); await expect(prompt,60);
  send('AWAI-SMALL-2'); await expect('too small',60); await expect(prompt,60);
- // This 6 GiB test media is rejected by the size guard before the mount guard.
- send('AWAIUSBTEST'); await expect('too small',60); await expect(prompt,60);
+ // Small media hits the size guard first; a large test medium reaches the mount guard.
+ send('AWAIUSBTEST'); await expect(process.env.LARGE_TEST_USB === '1' ? 'in use by this system' : 'too small',60); await expect(prompt,60);
  send('AWAI-TARGET-1'); await expect('Type ERASE',60); send('no'); await expect('Stopped. Nothing was written.',60); await expect(prompt,60);
  if(bytes('target') || bytes('small')) throw Error('scratch disks changed during refusals');
  if (process.env.ALLOW_SCRATCH_WRITE !== '1') {
