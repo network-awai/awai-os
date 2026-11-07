@@ -148,7 +148,7 @@ function Sidebar({ context, onSelect, threads, now, zenoh, matter, account, scor
                       className={context === dapp.id ? "dapp active" : "dapp"}
                       data-dapp={dapp.id}
                       aria-current={context === dapp.id ? "page" : undefined}
-                      onClick={() => onSelect(dapp.id)}
+                      onClick={() => onSelect(dapp.id === "itonami-apps" ? MARKETPLACE : dapp.id)}
                     >
                       <span className="mark" aria-hidden="true">
                         {dapp.title[0]}

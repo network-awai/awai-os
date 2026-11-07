@@ -183,7 +183,8 @@ try {
   await step("bundled_app", async () => {
     await click("[data-dapp=tokei]");
     await until("document.querySelector('[data-app-view=tokei]')", "clock app");
-    await click("[data-marketplace]");
+    await click("[data-dapp=itonami-apps]");
+    await until("document.querySelector('[data-market-app=tokei]')", "apps catalog");
     await click("[data-app-install=tokei]");
     await until("!document.querySelector('[data-dapp=tokei]')", "uninstalled app");
     await send("Page.reload");
