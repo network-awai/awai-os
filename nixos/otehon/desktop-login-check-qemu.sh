@@ -24,12 +24,12 @@ command -v nc >/dev/null || { echo "NOT_RUN no nc"; exit 3; }
 : > "$log"
 rm -f "$shot"
 qemu-system-aarch64 \
-  -machine virt,accel=hvf -cpu host -smp 4 -m "${OTEHON_QEMU_MEMORY:-4096}" \
+  -machine virt,accel=hvf -cpu host -smp ${OTEHON_VM_CPUS:-4} -m "${OTEHON_QEMU_MEMORY:-${OTEHON_VM_MEMORY:-4096}}" \
   -bios "$firmware" \
   -drive "if=virtio,format=qcow2,file=$image,snapshot=on" \
   -device virtio-gpu-pci,xres=1440,yres=900 \
   -device qemu-xhci -device usb-kbd -device usb-tablet \
-  -nic none -display none -monitor "unix:$monitor,server,nowait" -serial "file:$log" &
+  -nic none -display none -monitor "unix:$monitor,server,nowait" -serial "file:$log" ${OTEHON_QEMU_EXTRA:-} &
 qemu=$!
 trap 'kill "$qemu" 2>/dev/null; rm -f "$monitor"' EXIT
 

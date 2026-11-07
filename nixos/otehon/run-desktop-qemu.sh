@@ -12,7 +12,7 @@ firmware=${OTEHON_EDK2:-/opt/homebrew/share/qemu/edk2-aarch64-code.fd}
 [ -f "$firmware" ] || { echo "no firmware: $firmware" >&2; exit 3; }
 
 exec qemu-system-aarch64 \
-  -machine virt,accel=hvf -cpu host -smp 4 -m 4096 \
+  -machine virt,accel=hvf -cpu host -smp ${OTEHON_VM_CPUS:-4} -m ${OTEHON_VM_MEMORY:-4096} \
   -bios "$firmware" \
   -drive "if=virtio,format=qcow2,file=$image" \
   -device virtio-gpu-pci,xres=1440,yres=900 \

@@ -574,6 +574,29 @@ time {
   overflow-y: auto;
 }
 
+.composer .tool {
+  background: #38424c;
+  color: #eef1f4;
+  font-weight: 500;
+}
+
+.messages li.media {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.messages .media img {
+  max-width: 100%;
+  border-radius: 10px;
+}
+
+.messages .media audio {
+  width: 320px;
+  max-width: 100%;
+}
+
 .manimani-link { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
 .manimani-link .dot { width: 8px; height: 8px; border-radius: 50%; background: #8a8f98; flex: none; }
 .manimani-link .dot[data-status="ready"] { background: #3fb68b; }
