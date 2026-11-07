@@ -349,6 +349,12 @@ function DappPanel({ dapp, score, onRaise }) {
         <dd>{dapp.install === "os-image" ? "Included in the OS image" : dapp.install}</dd>
         <dt>Offline</dt>
         <dd>{dapp.offline === "local-core" ? "The local core works offline" : dapp.offline}</dd>
+        {dapp.id === "updates" ? (
+          <>
+            <dt>OS image version</dt>
+            <dd data-os-version={OS_IMAGE_VERSION}>{OS_IMAGE_VERSION}</dd>
+          </>
+        ) : null}
       </dl>
       <h3>Network operations</h3>
       {dapp.remoteOperations.length === 0 ? (

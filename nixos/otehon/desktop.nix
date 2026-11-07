@@ -12,6 +12,7 @@ let
     };
     env = {
       RELAY_ORIGIN = cfg.relayOrigin;
+      OTEHON_IMAGE_VERSION = config.system.image.version;
       OTEHON_E2E = if cfg.e2e then "1" else "0";
     };
     doCheck = true;
@@ -49,7 +50,10 @@ in
   # is all this VM has. Zenoh and Matter listen on loopback only.
   # The user has no password and logs in automatically, so this image is for a
   # local VM only. It has no SSH or keys.
-  imports = [ ./common.nix ./media.nix ./manimani/manimani.nix ];
+  #
+  # The desktop takes signed updates (update.nix). This profile sets no update keys, so it does
+  # not build alone: use desktop-check for a VM, or pass the builder's keys with extraModule.
+  imports = [ ./common.nix ./media.nix ./manimani/manimani.nix ./update.nix ];
 
   options.otehon = {
     relayOrigin = lib.mkOption {
@@ -132,10 +136,13 @@ in
     extraArgs.listen-address = "127.0.0.1";
   };
 
+  # A trial boot must also reach the desktop before it counts as healthy.
+  systemd.services.otehon-update-health.after = [ "graphical.target" ];
+
   systemd.services.otehon-boot-report = {
     wantedBy = lib.mkForce [ "graphical.target" ];
-    after = lib.mkForce [ "graphical.target" ];
-    path = [ pkgs.curl pkgs.gnugrep pkgs.procps ];
+    after = lib.mkForce [ "graphical.target" "otehon-update-settle.service" ];
+    path = [ pkgs.curl pkgs.gnugrep pkgs.procps cfg.update.package ];
     script = ''
       title=""
       for _ in $(seq 1 120); do
@@ -154,6 +161,8 @@ in
       gate=0
       case "$title" in *"gate=1 dapps=0\""*) gate=1 ;; esac
       failed=$(systemctl list-units --state=failed --no-legend | wc -l)
+      updater=0
+      otehon-update ready && updater=1
       case "$title" in
         *"zenoh=1 matter=1"*) ;;
         *)
@@ -162,16 +171,13 @@ in
           journalctl -b --no-pager -o cat -n 20 -u matter-server -u zenohd || true
           ;;
       esac
-      echo "OTEHON_BOOT_REPORT id=${config.system.image.id} version=${config.system.image.version} nixos=${config.system.nixos.version} compositor=$compositor chromium=$chromium react=$react zenoh=$zenoh matter=$matter gate=$gate failed=$failed"
+      echo "OTEHON_BOOT_REPORT id=${config.system.image.id} version=${config.system.image.version} nixos=${config.system.nixos.version} compositor=$compositor chromium=$chromium react=$react zenoh=$zenoh matter=$matter gate=$gate failed=$failed updater=$updater update_version=$(otehon-update version)"
     '';
   };
 
-  image.repart.partitions = {
-    esp.repartConfig.SizeMinBytes = "256M";
-    root.repartConfig = {
-      SizeMinBytes = "12G";
-      SizeMaxBytes = "12G";
-    };
+  image.repart.partitions.root.repartConfig = {
+    SizeMinBytes = "12G";
+    SizeMaxBytes = "12G";
   };
   };
 }

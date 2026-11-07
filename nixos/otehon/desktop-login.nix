@@ -15,7 +15,7 @@ in
   # Check image for ADR 0026 D13: the real shell, consent host and relay, driven through
   # DevTools by desktop-login-check-qemu.sh. It is not a release. The wallet and passkey
   # are simulated with random keys inside the driver.
-  imports = [ ./desktop.nix ];
+  imports = [ ./desktop.nix ./update-test-keys.nix ];
 
   system.image.id = lib.mkForce "awai-otehon-desktop-login";
 
@@ -53,6 +53,7 @@ in
     };
     environment = {
       RELAY_ORIGIN = relayOrigin;
+      OTEHON_IMAGE_VERSION = config.system.image.version;
       NODE_TLS_REJECT_UNAUTHORIZED = "0";
       EXPECTED_DAPPS = toString (builtins.length (lib.importJSON ./shell/src/dapps.json).dapps);
     };

@@ -1,4 +1,6 @@
-{ profile ? "vm", output ? "image", arch ? null }:
+# extraModule: absolute path of a NixOS module from the image builder. A real desktop image gets
+# its update keys this way, so that they are not in this repository.
+{ profile ? "vm", output ? "image", arch ? null, extraModule ? null }:
 let
   nixpkgs = import ../../ci/nixpkgs.nix;
   # arch = null keeps the profile's own platform (aarch64-linux from common.nix).
@@ -8,7 +10,8 @@ let
     else throw "otehon: unknown arch ${arch}, expected aarch64 or x86_64";
   system = import "${nixpkgs}/nixos/lib/eval-config.nix" {
     system = null;
-    modules = [ (./. + "/${profile}.nix") ] ++ platform;
+    modules = [ (./. + "/${profile}.nix") ] ++ platform
+      ++ (if extraModule == null then [ ] else [ (/. + extraModule) ]);
   };
 in
 system.config.system.build.${if output == "system" then "toplevel" else "image"}
