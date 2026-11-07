@@ -1,0 +1,101 @@
+Awai Otehon daily features 0.1.0 check output, 2026-11-07
+Apple M1 Max, macOS, Google Chrome 156.0.8078.80, Node.js v26.0.0, host Python 3.15.0, nixpkgs f5c082a40f7571c266e74e80ae2e68aadd8a9fc7
+No VM was booted for this record. One image was built. See docs/otehon/daily-0.1.0.md.
+
+== shared VM lock, 2026-11-07T09:36:55Z
+NOT_RUN only 13433924KiB free, need 30GiB (exit 3)
+
+== profiles evaluate (nix-instantiate, no build)
+desktop:             /nix/store/y8h4wyy59svkb63y0pjzr6sp7lgnb4r4-awai-otehon-desktop-0.8.0.drv
+desktop-ime:         /nix/store/jjd7z7640y2mg1w0aw08iidl7mfrdv5i-awai-otehon-desktop-ime-0.8.0.drv
+desktop-daily:       /nix/store/800xy67gvl1qkclkl4hsxxi94zfz5yy1-awai-otehon-desktop-daily-0.8.0.drv
+desktop-daily-fixed: /nix/store/8n919i4llafd2fq93krbdjppiqppfnm0-awai-otehon-desktop-daily-fixed-0.8.0.drv
+desktop-protect:     /nix/store/79nzxqnxak8flipmwvcabdcxighqh6vx-awai-otehon-desktop-protect-0.8.0.drv
+base (unchanged):    /nix/store/688hg7qw9b8xphj8qhmwfh2lg8509y7a-awai-otehon-base-0.4.0.drv
+
+== Settei helper source derivation, built in the Nix container (aarch64-linux), runs test_settei.py
+drv /nix/store/2in08kjzsb0xn7baas4pxn521m002ija-awai-otehon-settei.drv -> /nix/store/3lxbh8lm2lvvs56brxcwiyl4wgrb8q1a-awai-otehon-settei
+Ran 17 tests, OK, including KernelTable.test_finds_a_real_connection on the real /proc/net/tcp
+
+== Settei helper tests on macOS (python3 -I test_settei.py)
+Ran 17 tests, OK (skipped=1: KernelTable needs Linux)
+negative control, peer uid check disabled in local_service.py: FAILED (failures=3)
+  test_refuses_an_unknown_connection, Settei.test_refuses_another_user, Web.test_refuses_another_user
+negative control, zone list check disabled in settei_helper.py: FAILED (failures=1)
+  test_refuses_a_zone_that_is_not_in_the_list
+
+== shell unit tests (npm test)
+tests 29, pass 29, fail 0
+negative control, one Japanese key removed from i18n.js: pass 4, fail 2 (same keys; placeholders)
+
+== baseline accessibility audit: daily-browser-check.mjs BASELINE=1 on the shell at 29ac3f1
+baseline main.js sha256 86f824c8fe6b2484026d670989cf6b8f3e3515c3bb0d8a715c41fcda418664a5
+AUDIT setup-hello .. setup-done (7 screens): main-count-0 each
+AUDIT home, dapp, dapp-locked, manimani: unnamed-form each
+AUDIT account, lock: 0
+RESULT fail screens_audited=13 audit_findings=11 signin=1 screens=1 lock=1
+
+== daily browser check on this shell, main.js sha256 6643e4904842d8bd054b1d3b50f4650bf5029240e66cb50c8828ac06ee999373, exit 0
+KNOWN the shared consent dialog (vendor/kotoba-client-runtime.js) is English only and is not scanned
+AUDIT setup-hello findings=0 
+AUDIT setup-language findings=0 
+AUDIT setup-network findings=0 
+AUDIT setup-signin findings=0 
+AUDIT setup-wallet findings=0 
+AUDIT setup-trust findings=0 
+AUDIT setup-done findings=0 
+STEP signin_in_japanese=1
+AUDIT home findings=0 
+ENGLISH home hits=0
+AUDIT dapp findings=0 
+ENGLISH dapp hits=0
+AUDIT dapp-locked findings=0 
+ENGLISH dapp-locked hits=0
+AUDIT account findings=0 
+ENGLISH account hits=0
+AUDIT manimani findings=0 
+ENGLISH manimani hits=0
+AUDIT settei findings=0 
+ENGLISH settei hits=0
+AUDIT web findings=0 
+ENGLISH web hits=0
+AUDIT lock findings=0 
+ENGLISH lock hits=0
+STEP japanese_screens=1
+STEP language_survives_reload=1
+STEP time_zone=1
+STEP time_zone_refusal_shown=1
+STEP web_open=1
+ENGLISH settei-en hits=30 ["Contexts","New chat","System","Services","Account",", trust score","Not reachable","Settings"]
+ENGLISH home-en hits=21 ["Contexts","New chat","System","Services","Account",", trust score","Not reachable","The image model is not available on this device"]
+ENGLISH dapp-en hits=28 ["Contexts","New chat","System","Services","Account",", trust score","Not reachable","The image model is not available on this device"]
+STEP english_scan_finds_english=1
+RESULT pass screens_audited=15 audit_findings=0 signin_in_japanese=1 japanese_screens=1 language_survives_reload=1 time_zone=1 time_zone_refusal_shown=1 web_open=1 english_scan_finds_english=1
+
+== negative control: a hard-coded English sentence in the Settei screen
+ENGLISH settei hits=1 ["Not available here"]
+STEP japanese_screens=0 english-left settei
+RESULT fail screens_audited=15 audit_findings=0 signin_in_japanese=1 japanese_screens=0
+exit 1
+
+== regression: lock-browser-check.mjs on this shell (IDLE_LOCK_MS=15000 build)
+RESULT pass signin=1 message=1 idle_not_yet=1 idle_lock=1 reload_stays_locked=1 edited_session_stays_locked=1 forged_unlock=1 unlock=1 signin_again=1 lock_button=1 new_browser_starts_locked=1 erase=1
+
+== desktop-daily image build (vm-lock.sh, after free space rose to 35 GiB), 18:39-18:44 JST
+OUT=/nix/store/0982y03g4wf00s05al8zw1svw5wljqvf-awai-otehon-desktop-daily-0.8.0
+f6e364e431f3d497b45212e5cc42700208e1d468c354760cee34d96479f2a071  awai-otehon-desktop-daily_0.8.0.raw
+zstd: 13.3 GiB => 4.02 GiB
+shell build log (nix-store -l awai-otehon-shell-0.8.0): Running phase: checkPhase / tests 29 / pass 29 / fail 0
+settei build log (nix-store -l awai-otehon-settei): OK
+unpacked on the Mac with zstd -d --sparse: same SHA-256, du 11G
+
+== desktop-daily VM check under vm-lock.sh, with the image unpacked
+try 1 rc=3 NOT_RUN only 21459280KiB free, need 30GiB 18:45:25
+try 2 rc=3 NOT_RUN only 21453780KiB free, need 30GiB 18:46:25
+try 3 rc=3 NOT_RUN only 21465348KiB free, need 30GiB 18:47:25
+try 4 rc=3 NOT_RUN only 21387884KiB free, need 30GiB 18:48:25
+try 5 rc=3 NOT_RUN only 21479968KiB free, need 30GiB 18:49:25
+try 6 rc=3 NOT_RUN only 21437804KiB free, need 30GiB 18:50:25
+try 7 rc=3 NOT_RUN only 21470188KiB free, need 30GiB 18:51:25
+try 8 rc=3 NOT_RUN only 21463520KiB free, need 30GiB 18:52:25
+The image, its store output and the store paths built only from this branch were deleted afterwards.

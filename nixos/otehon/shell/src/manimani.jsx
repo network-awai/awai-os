@@ -1,6 +1,7 @@
 // Manimani, the resident bot under New chat. The service in manimani/manimani.nix runs it on this
 // device. Nothing goes through the shared broker, because nothing leaves the machine.
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useLanguage, useText } from "./i18n.js";
 
 export const MANIMANI = "manimani";
 export const MANIMANI_ORIGIN = "http://127.0.0.1:8771";
@@ -37,10 +38,10 @@ function statusOf(state) {
 }
 
 const STATUS_TEXT = {
-  stopped: "The Manimani service is not running.",
-  paused: "Paused. Scheduled work and tools are stopped.",
-  ready: "Running on this device.",
-  "model-unavailable": "The local model is not available. Nothing is sent elsewhere.",
+  stopped: "manimani.stopped",
+  paused: "manimani.paused",
+  ready: "manimani.ready",
+  "model-unavailable": "manimani.modelUnavailable",
 };
 
 export function ManimaniLink({ active, onSelect }) {
@@ -60,6 +61,8 @@ export function ManimaniLink({ active, onSelect }) {
 }
 
 export function Manimani() {
+  const t = useText();
+  const { language } = useLanguage();
   const [state, read] = useManimani();
   const [text, setText] = useState("");
   const bottom = useRef(null);
@@ -82,7 +85,7 @@ export function Manimani() {
     <div className="manimani" data-manimani>
       <main className="manimani-chat">
         <div className="manimani-messages" aria-live="polite">
-          {count === 0 ? <p>Manimani keeps running on this device, and coordinates your other agents.</p> : null}
+          {count === 0 ? <p>{t("manimani.intro")}</p> : null}
           {(state?.messages ?? []).map((message) => (
             <div key={`${message.at}-${message.role}`} className="manimani-message" data-role={message.role}>
               {message.text}
@@ -90,44 +93,46 @@ export function Manimani() {
           ))}
           <div ref={bottom} />
         </div>
-        <form className="manimani-composer" onSubmit={send}>
+        <form className="manimani-composer" aria-label={t("manimani.message")} onSubmit={send}>
           <input
-            aria-label="Message Manimani"
-            placeholder="Message Manimani"
+            aria-label={t("manimani.message")}
+            placeholder={t("manimani.message")}
             value={text}
             disabled={!state}
             onChange={(event) => setText(event.target.value)}
           />
           <button type="submit" disabled={!state || !text.trim()}>
-            Send
+            {t("manimani.send")}
           </button>
         </form>
       </main>
-      <aside className="manimani-side" aria-label="What Manimani is doing">
+      <aside className="manimani-side" aria-label={t("manimani.side")}>
         <section>
-          <h2>Status</h2>
-          <p data-manimani-status={statusOf(state)}>{STATUS_TEXT[statusOf(state)]}</p>
+          <h2>{t("manimani.status")}</h2>
+          <p data-manimani-status={statusOf(state)} role="status">
+            {STATUS_TEXT[statusOf(state)] ? t(STATUS_TEXT[statusOf(state)]) : statusOf(state)}
+          </p>
           {state ? (
             <div className="manimani-actions">
               <button type="button" onClick={() => act(post("/v1/pause", { paused: !state.paused }))}>
-                {state.paused ? "Resume" : "Pause"}
+                {state.paused ? t("manimani.resume") : t("manimani.pause")}
               </button>
             </div>
           ) : null}
         </section>
         {state?.approvals.length ? (
           <section>
-            <h2>Needs your approval</h2>
+            <h2>{t("manimani.approvals")}</h2>
             <ul>
               {state.approvals.map((item) => (
                 <li key={item.id}>
                   <strong>{item.name}</strong>: {item.prompt}
                   <div className="manimani-actions">
                     <button type="button" onClick={() => act(post(`/v1/approvals/${item.id}`, { approve: true }))}>
-                      Approve
+                      {t("manimani.approve")}
                     </button>
                     <button type="button" onClick={() => act(post(`/v1/approvals/${item.id}`, { approve: false }))}>
-                      Decline
+                      {t("manimani.decline")}
                     </button>
                   </div>
                 </li>
@@ -136,38 +141,38 @@ export function Manimani() {
           </section>
         ) : null}
         <section>
-          <h2>Agents</h2>
+          <h2>{t("manimani.agents")}</h2>
           {state?.agents.length ? (
             <ul>
               {state.agents.map((agent) => (
                 <li key={agent.id}>
-                  {agent.name}: {agent.approval === "auto" ? "runs on its own" : "asks you first"}
+                  {agent.name}: {agent.approval === "auto" ? t("manimani.auto") : t("manimani.asks")}
                 </li>
               ))}
             </ul>
           ) : (
-            <p>None connected yet.</p>
+            <p>{t("manimani.noAgents")}</p>
           )}
         </section>
         <section>
-          <h2>Scheduled</h2>
+          <h2>{t("manimani.scheduled")}</h2>
           {state?.tasks.length ? (
             <ul>
               {state.tasks.map((task) => (
                 <li key={task.id}>
-                  {task.title}, every {task["every-minutes"]} min{" "}
+                  {t("manimani.every", { title: task.title, minutes: task["every-minutes"] })}{" "}
                   <button type="button" onClick={() => act(post(`/v1/tasks/${task.id}/delete`))}>
-                    Remove
+                    {t("manimani.remove")}
                   </button>
                 </li>
               ))}
             </ul>
           ) : (
-            <p>Nothing scheduled.</p>
+            <p>{t("manimani.nothingScheduled")}</p>
           )}
         </section>
         <section>
-          <h2>Remembered</h2>
+          <h2>{t("manimani.remembered")}</h2>
           {state?.memory.length ? (
             <>
               <ul>
@@ -177,23 +182,23 @@ export function Manimani() {
               </ul>
               <div className="manimani-actions">
                 <button type="button" onClick={() => act(post("/v1/memory/clear"))}>
-                  Forget all
+                  {t("manimani.forget")}
                 </button>
               </div>
             </>
           ) : (
-            <p>Nothing yet.</p>
+            <p>{t("manimani.nothingYet")}</p>
           )}
         </section>
         <section>
-          <h2>Activity</h2>
+          <h2>{t("manimani.activity")}</h2>
           <ul>
             {(state?.activity ?? [])
               .slice(-12)
               .reverse()
               .map((item) => (
                 <li key={`${item.at}-${item.kind}`}>
-                  {new Date(item.at).toLocaleTimeString()} {item.kind}
+                  {new Date(item.at).toLocaleTimeString(language)} {item.kind}
                   {item.detail ? `: ${item.detail}` : ""}
                 </li>
               ))}

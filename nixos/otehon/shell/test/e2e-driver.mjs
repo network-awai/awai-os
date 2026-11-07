@@ -508,6 +508,168 @@ async function protectCheck() {
 
 if (process.env.OTEHON_PROTECT === "1") await protectCheck();
 
+// Daily features (docs/otehon/daily-0.1.0.md), over two boots of one disk: the time zone set from
+// the Settei screen through the real helper, polkit and timedated, and still set after a reboot.
+const DAILY = `${STATE}/daily-check`;
+const dailyFact = (line) => console.log(`OTEHON_DAILY_FACT ${line}`);
+const zoneNow = () => sh("timedatectl show --property=Timezone --value");
+const SETTEI = "http://127.0.0.1:8774/v1/timezone";
+
+// A request from the page itself, so it comes from Chromium as the desktop user.
+const pagePost = (zone) =>
+  evaluate(`fetch(${JSON.stringify(SETTEI)}, { method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ zone: ${JSON.stringify(zone)} }) }).then(async (r) => r.status + ' ' + (await r.text()))`);
+
+// The same request from another local user, with no browser in between.
+const otherUserPost = (user, zone) =>
+  sh(
+    `setpriv --reuid=${user} --regid=nogroup --clear-groups curl -s -o - -w ' %{http_code}' -H 'content-type: application/json' ` +
+      `--data '{"zone":"${zone}"}' ${SETTEI} || true`,
+  );
+
+async function chooseZone(zone) {
+  await evaluate(`(() => { const s = document.querySelector('#settei-zone');
+    const set = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; set.call(s, ${JSON.stringify(zone)});
+    s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+  await click("#settei-apply");
+}
+
+async function dailyFirstBoot(owner) {
+  await step("signin", async () => {
+    await until("document.querySelector('[data-step=hello]')", "first step");
+    await click("[data-next]");
+    await until("document.querySelector('[data-step=language]')", "language step");
+    await click("[data-language=ja]");
+    await until("document.documentElement.lang === 'ja'", "japanese");
+    for (const name of ["network", "signin"]) {
+      await click("[data-next]");
+      await until(`document.querySelector('[data-step=${name}]')`, `${name} step`);
+    }
+    await click("#local-start");
+    await type("#local-address", owner.address);
+    const message = await until("document.querySelector('#local-message')?.value", "message to sign");
+    await type("#local-signature", signPersonal(owner, message));
+    await click("#local-verify");
+    await until("document.querySelector('[data-step=trust]')", "trust step");
+    await click("[data-next]");
+    await click("[data-finish]");
+    await until(`${dappCount} === ${EXPECTED_DAPPS}`, "apps");
+  });
+  await step("zone_starts_utc", async () => {
+    const zone = zoneNow();
+    dailyFact(`zone_before=${zone} localtime=${sh("readlink /etc/localtime || echo none")}`);
+    if (zone !== "UTC") throw new Error(`zone-before ${zone}`);
+  });
+  await step("settei_sets_zone", async () => {
+    await click("[data-dapp=settei]");
+    await until("document.querySelector('[data-settei-zone=UTC]')", "settei shows UTC");
+    await chooseZone("Asia/Tokyo");
+    await until("document.querySelector('[data-settei-applied=\"Asia/Tokyo\"]')", "applied", 40000);
+    const zone = zoneNow();
+    const link = sh("readlink /etc/localtime || echo none");
+    dailyFact(`zone_after=${zone} localtime=${link}`);
+    if (zone !== "Asia/Tokyo" || !link.endsWith("Asia/Tokyo")) throw new Error(`zone-after ${zone} ${link}`);
+    const audit = sh("journalctl -u otehon-settei -o cat --no-pager | grep -c 'action=set-timezone uid=.* after=\"Asia/Tokyo\" result=\"ok\"' || true");
+    dailyFact(`audit_ok_lines=${audit}`);
+    if (audit === "0") throw new Error("no-audit-line");
+    // Chromium watches /etc/localtime. Report what it shows; the second boot requires it.
+    await sleep(3000);
+    dailyFact(`browser_zone_same_boot=${await evaluate("Intl.DateTimeFormat().resolvedOptions().timeZone")}`);
+  });
+  await step("invalid_zone_refused", async () => {
+    for (const zone of ["Mars/Olympus", "../../etc/passwd", "Asia/Tokyo;reboot"]) {
+      const answer = await pagePost(zone);
+      dailyFact(`invalid ${JSON.stringify(zone)} -> ${answer}`);
+      if (!answer.startsWith("400 ") || !answer.includes("unknown-zone")) throw new Error(`accepted ${zone}`);
+    }
+    if (zoneNow() !== "Asia/Tokyo") throw new Error("zone-changed-by-invalid-request");
+  });
+  await step("other_user_refused", async () => {
+    for (const user of ["nobody", "root"]) {
+      const answer = otherUserPost(user, "Europe/Berlin");
+      dailyFact(`other_user ${user} -> ${answer}`);
+      if (!answer.includes("not-desktop-user") || !answer.endsWith(" 403")) throw new Error(`accepted from ${user}`);
+    }
+    if (zoneNow() !== "Asia/Tokyo") throw new Error("zone-changed-by-another-user");
+  });
+  await step("helper_user_is_narrow", async () => {
+    // polkit gives the helper's user the time zone and nothing else.
+    const time = sh("setpriv --reuid=otehon-settei --regid=otehon-settei --clear-groups timedatectl set-ntp false 2>&1; echo \" exit=$?\"");
+    const host = sh("setpriv --reuid=otehon-settei --regid=otehon-settei --clear-groups hostnamectl set-hostname otehon-x 2>&1; echo \" exit=$?\"");
+    dailyFact(`helper_set_ntp=${JSON.stringify(time)} helper_hostname=${JSON.stringify(host)}`);
+    if (time.endsWith(" exit=0") || host.endsWith(" exit=0")) throw new Error("helper-user-can-do-more");
+  });
+  await step("web_window", async () => {
+    await click("[data-dapp=browser]");
+    await click("#web-open");
+    await until("document.querySelector('[data-web-state=opened]')", "opened");
+    let line = "";
+    for (let attempt = 0; attempt < 30 && !line; attempt += 1) {
+      line = sh("pgrep -a -u otehon -f 'user-data-dir=/var/lib/otehon/users/otehon/web/chromium' | head -n 1 || true");
+      if (!line) await sleep(1000);
+    }
+    dailyFact(`web_process=${JSON.stringify(line.slice(0, 300))}`);
+    if (!line) throw new Error("no-web-browser-process");
+    if (line.includes("remote-debugging")) throw new Error("web-browser-has-devtools");
+    const targets = await (await fetch("http://127.0.0.1:9222/json")).json();
+    if (targets.some((target) => target.type === "page" && !target.url.startsWith("file:"))) throw new Error("web-page-on-shell-devtools");
+    // The check script takes a screenshot now, for a person to see the address bar.
+    console.log("OTEHON_DAILY_SCREENSHOT web");
+    await sleep(8000);
+  });
+}
+
+async function dailySecondBoot(owner) {
+  await step("starts_locked", async () => {
+    await until("document.querySelector('[data-lock-screen]')", "lock screen");
+    const message = await until("document.querySelector('#unlock-message')?.value", "unlock message");
+    await type("#unlock-signature", signPersonal(owner, message));
+    await click("#unlock-verify");
+    await until(`${dappCount} === ${EXPECTED_DAPPS}`, "apps");
+  });
+  await step("zone_survives_reboot", async () => {
+    const zone = zoneNow();
+    const browser = await evaluate("Intl.DateTimeFormat().resolvedOptions().timeZone");
+    const lang = await evaluate("document.documentElement.lang");
+    dailyFact(`zone_after_reboot=${zone} browser_zone=${browser} lang=${lang} clock=${JSON.stringify(await evaluate("document.querySelector('[data-clock]')?.textContent"))} date=${JSON.stringify(sh("date"))}`);
+    if (zone !== "Asia/Tokyo" || browser !== "Asia/Tokyo") throw new Error(`zone ${zone} browser ${browser}`);
+    if (lang !== "ja") throw new Error(`language ${lang}`);
+    await click("[data-dapp=settei]");
+    await until("document.querySelector('[data-settei-zone=\"Asia/Tokyo\"]')", "settei shows Tokyo");
+  });
+}
+
+async function dailyCheck() {
+  let outcome = "pass";
+  let stage = "none";
+  try {
+    if (sh(`mountpoint -q ${STATE} && echo 1 || echo 0`) !== "1") throw new Error("state-volume-closed");
+    mkdirSync(DAILY, { recursive: true, mode: 0o700 });
+    stage = existsSync(`${DAILY}/stage`) ? readFileSync(`${DAILY}/stage`, "utf8").trim() : "0";
+    if (stage === "0") {
+      const owner = randomWallet();
+      // A test key, on the encrypted volume, for the second boot only.
+      writeFileSync(`${DAILY}/test-wallet.key`, Buffer.from(owner.secret).toString("hex"), { mode: 0o600 });
+      await dailyFirstBoot(owner);
+    } else if (stage === "1") {
+      await dailySecondBoot(walletFromSecret(Buffer.from(readFileSync(`${DAILY}/test-wallet.key`, "utf8"), "hex")));
+    } else {
+      throw new Error(`stage-${stage}`);
+    }
+  } catch (error) {
+    outcome = "fail";
+    dailyFact(`error=${JSON.stringify(error.message)}`);
+  }
+  const summary = Object.entries(results).map(([name, value]) => `${name}=${value}`).join(" ");
+  console.log(`OTEHON_DAILY stage=${stage} result=${outcome} ${summary}`);
+  if (outcome === "pass") writeFileSync(`${DAILY}/stage`, String(Number(stage) + 1));
+  sh("sync");
+  sh(outcome === "pass" && stage === "0" ? "systemctl reboot --no-block" : "systemctl poweroff --no-block");
+  process.exit(0);
+}
+
+if (process.env.OTEHON_DAILY === "1") await dailyCheck();
+
 const wallet = randomWallet();
 const passkey = p256.utils.randomSecretKey();
 let outcome = "pass";
