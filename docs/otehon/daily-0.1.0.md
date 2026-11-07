@@ -5,10 +5,12 @@ AWAI-168): the time zone, Japanese text for the shell, a Settei screen, an acces
 and a separate web browser window. Japanese input is a separate profile. It builds on
 [protection-0.1.0.md](protection-0.1.0.md) and raises the desktop image version to 0.8.0.
 
-**No VM check in this document has been run.** The shared lock (`vm-lock.sh`) refused to build or
-boot anything: the Mac had 13 GiB free and the lock needs 30 GiB. What was observed is listed under
-Evidence: unit tests, a Nix build of the helper with its tests, and the built shell in headless
-Chrome on macOS. Everything that needs the OS image is under Not verified.
+**No VM check in this document has been run.** The `desktop-daily` image was built once, when the
+Mac briefly had 35 GiB free. Unpacked, it took 11 GiB, which left 21 GiB, and the shared lock
+(`vm-lock.sh`) refuses to boot below 30 GiB. It refused eight times over seven minutes, and the image
+was deleted. What was observed is listed under Evidence: unit tests, the image build (which runs
+the helper's and the shell's tests), and the built shell in headless Chrome on macOS. Everything
+that needs a booted image is under Not verified.
 
 | Part | What it does | File |
 | --- | --- | --- |
@@ -156,7 +158,8 @@ The output is in [otehon-daily-20261107.txt](../evidence/otehon-daily-20261107.t
 
 | Check | Result |
 | --- | --- |
-| Profiles `desktop`, `desktop-ime`, `desktop-daily`, `desktop-daily-fixed`, `desktop-protect` | Evaluate (`nix-instantiate`). Not built |
+| Profiles `desktop`, `desktop-ime`, `desktop-daily-fixed`, `desktop-protect` | Evaluate (`nix-instantiate`). Not built |
+| `desktop-daily` image | Built. Raw image SHA-256 `f6e364e431f3d497b45212e5cc42700208e1d468c354760cee34d96479f2a071`, 13.3 GiB, 4.02 GiB as zstd. The unpacked copy on the Mac had the same hash. In that build, the shell's `npm test` ran 29 tests, 29 pass, and the helper's tests printed `OK` |
 | `base` derivation | `688hg7qw9b8xphj8qhmwfh2lg8509y7a`, unchanged |
 | Helper source derivation, aarch64-linux in the Nix container | Built; its 17 tests pass, including a real loopback connection found in the real `/proc/net/tcp` with the right uid |
 | Helper tests on macOS | 17 run, OK, 1 skipped (the Linux table test) |
@@ -168,7 +171,7 @@ The output is in [otehon-daily-20261107.txt](../evidence/otehon-daily-20261107.t
 | Daily browser check, Chrome 156.0.8078.80 headless, `main.js` `6643e490…99373` | 15 screens audited, 0 findings; no English on the 8 Japanese shell screens; language kept after reload; time zone set and refusal shown; web window asked for; the English control found 21 to 30 phrases per screen. Exit 0 |
 | Negative control: a hard-coded English sentence in Settei | `ENGLISH settei hits=1 ["Not available here"]`, exit 1 |
 | Regression: `lock-browser-check.mjs` on this shell | 12 steps pass |
-| VM checks | Not run. `vm-lock.sh` printed `NOT_RUN only 13433924KiB free, need 30GiB`, exit 3 |
+| VM checks | Not run. Before the build `vm-lock.sh` printed `NOT_RUN only 13433924KiB free, need 30GiB`; with the image unpacked, eight tries from 18:45 to 18:52 JST printed `NOT_RUN only 21463520KiB free` or similar, exit 3 |
 
 The browser checks ran on macOS against the files in `dist/`, with stand-ins for the helper and the
 launcher. They show the shell's behaviour. They show nothing about the helper in the image, polkit,
@@ -176,7 +179,8 @@ timedated, the session or the second browser window.
 
 ## Not verified or not implemented
 
-- **Every VM check above.** No image was built or booted. So none of these is observed: the zone
+- **Every VM check above.** The `desktop-daily` image was built but never booted, and the
+  `desktop-daily-fixed` and `desktop-ime` images were not built. So none of these is observed: the zone
   changing through polkit and timedated, the zone surviving a reboot, the audit line in the journal,
   the refusals inside the image, the helper user being refused other actions, the session starting
   the launcher, the web window opening on cosmic-comp, and the fixed-zone negative control.
@@ -200,5 +204,3 @@ timedated, the session or the second browser window.
 - **The DevTools port** is still open to every local process (protection-0.1.0.md). Anything that can
   reach it can drive the shell page, and so can ask the helper for a zone change as the desktop user.
 - **The time zone is readable on the plain root partition.**
-- The shell package was not built with Nix (`buildNpmPackage`); the npm dependencies did not change,
-  so `npmDepsHash` should still hold, but that was not observed.

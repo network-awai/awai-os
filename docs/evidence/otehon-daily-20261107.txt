@@ -1,6 +1,6 @@
 Awai Otehon daily features 0.1.0 check output, 2026-11-07
 Apple M1 Max, macOS, Google Chrome 156.0.8078.80, Node.js v26.0.0, host Python 3.15.0, nixpkgs f5c082a40f7571c266e74e80ae2e68aadd8a9fc7
-No VM was booted for this record. See docs/otehon/daily-0.1.0.md.
+No VM was booted for this record. One image was built. See docs/otehon/daily-0.1.0.md.
 
 == shared VM lock, 2026-11-07T09:36:55Z
 NOT_RUN only 13433924KiB free, need 30GiB (exit 3)
@@ -80,3 +80,22 @@ exit 1
 
 == regression: lock-browser-check.mjs on this shell (IDLE_LOCK_MS=15000 build)
 RESULT pass signin=1 message=1 idle_not_yet=1 idle_lock=1 reload_stays_locked=1 edited_session_stays_locked=1 forged_unlock=1 unlock=1 signin_again=1 lock_button=1 new_browser_starts_locked=1 erase=1
+
+== desktop-daily image build (vm-lock.sh, after free space rose to 35 GiB), 18:39-18:44 JST
+OUT=/nix/store/0982y03g4wf00s05al8zw1svw5wljqvf-awai-otehon-desktop-daily-0.8.0
+f6e364e431f3d497b45212e5cc42700208e1d468c354760cee34d96479f2a071  awai-otehon-desktop-daily_0.8.0.raw
+zstd: 13.3 GiB => 4.02 GiB
+shell build log (nix-store -l awai-otehon-shell-0.8.0): Running phase: checkPhase / tests 29 / pass 29 / fail 0
+settei build log (nix-store -l awai-otehon-settei): OK
+unpacked on the Mac with zstd -d --sparse: same SHA-256, du 11G
+
+== desktop-daily VM check under vm-lock.sh, with the image unpacked
+try 1 rc=3 NOT_RUN only 21459280KiB free, need 30GiB 18:45:25
+try 2 rc=3 NOT_RUN only 21453780KiB free, need 30GiB 18:46:25
+try 3 rc=3 NOT_RUN only 21465348KiB free, need 30GiB 18:47:25
+try 4 rc=3 NOT_RUN only 21387884KiB free, need 30GiB 18:48:25
+try 5 rc=3 NOT_RUN only 21479968KiB free, need 30GiB 18:49:25
+try 6 rc=3 NOT_RUN only 21437804KiB free, need 30GiB 18:50:25
+try 7 rc=3 NOT_RUN only 21470188KiB free, need 30GiB 18:51:25
+try 8 rc=3 NOT_RUN only 21463520KiB free, need 30GiB 18:52:25
+The image, its store output and the store paths built only from this branch were deleted afterwards.
