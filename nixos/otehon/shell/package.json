@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "node build.mjs",
-    "test": "node --test test/link.test.js test/trust.test.js test/apps.test.js test/discovery.test.js"
+    "test": "node --test test/*.test.js"
   },
   "dependencies": {
     "@noble/curves": "2.0.1",
