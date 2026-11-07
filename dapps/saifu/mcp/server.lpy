@@ -1,0 +1,70 @@
+;; Saifu tools for an agent, as a stdio MCP server on Basilisp. Pure functions of their input:
+;; it reads no network and holds no keys. usage: PYTHONPATH=src basilisp run mcp/server.lpy
+(ns saifu-mcp
+  (:require [saifu.core :as core])
+  (:import json sys))
+
+(def tools
+  {"saifu_valid_address"
+   {:description "Check that a string is a 0x EVM address." :required ["address"]
+    :run (fn [{:strs [address]}] {"valid" (core/valid-address? address)})}
+   "saifu_format_wei"
+   {:description "Show a decimal wei amount in ETH. Exact, for any size." :required ["wei"]
+    :run (fn [{:strs [wei]}] {"eth" (core/format-units wei 18)})}
+   "saifu_hex_to_decimal"
+   {:description "Convert a JSON-RPC hex quantity to a decimal string." :required ["hex"]
+    :run (fn [{:strs [hex]}] {"decimal" (core/hex->decimal hex)})}})
+
+(defn- to-python [value]
+  (cond
+    (map? value) (python/dict (map (fn [[k v]] #py (k (to-python v))) value))
+    (vector? value) (python/list (map to-python value))
+    :else value))
+
+(defn- from-python [value]
+  (if (instance? python/dict value)
+    (into {} (map (fn [[k v]] [k (from-python v)]) (.items value)))
+    value))
+
+(defn- tool-list []
+  (mapv (fn [[name {:keys [description required]}]]
+          {"name" name
+           "description" description
+           "inputSchema" {"type" "object"
+                          "properties" (into {} (map (fn [p] [p {"type" "string"}]) required))
+                          "required" (vec required)}})
+        tools))
+
+(defn- text-content [value is-error]
+  {"content" [{"type" "text" "text" (json/dumps (to-python value))}] "isError" is-error})
+
+(defn- call-tool [{:strs [name arguments]}]
+  (if-let [tool (get tools name)]
+    (let [args (from-python (or arguments {}))]
+      (if (every? #(string? (get args %)) (:required tool))
+        (text-content ((:run tool) args) false)
+        (text-content {"error" "bad-arguments"} true)))
+    (text-content {"error" "unknown-tool"} true)))
+
+(defn- respond [request]
+  (let [id (get request "id")
+        method (get request "method")
+        params (from-python (or (get request "params") {}))]
+    (when (some? id)
+      (case method
+        "initialize" {"jsonrpc" "2.0" "id" id
+                      "result" {"protocolVersion" "2025-06-18"
+                                "capabilities" {"tools" {}}
+                                "serverInfo" {"name" "saifu" "version" "0.1.0"}}}
+        "tools/list" {"jsonrpc" "2.0" "id" id "result" {"tools" (tool-list)}}
+        "tools/call" {"jsonrpc" "2.0" "id" id "result" (call-tool params)}
+        "ping" {"jsonrpc" "2.0" "id" id "result" {}}
+        {"jsonrpc" "2.0" "id" id "error" {"code" -32601 "message" "method not found"}}))))
+
+(loop [line (.readline sys/stdin)]
+  (when (seq line)
+    (when (seq (.strip line))
+      (when-let [reply (respond (from-python (json/loads line)))]
+        (.write sys/stdout (str (json/dumps (to-python reply)) "\n"))
+        (.flush sys/stdout)))
+    (recur (.readline sys/stdin))))
