@@ -17,7 +17,7 @@ physical disk, publishes an update, or uses a real key.
 | Publishing an update (real keys, a binary cache, a feed on the network) | Does not exist |
 | Fetching updates on a schedule, staged rollout | Does not exist |
 | CVE scan of the closure | Does not exist. The procedure below is a plan and was not run |
-| Installer that writes a device's disk | Not in this change. PR #45 (6600h netboot) is open and separate |
+| Installer that writes a device's disk | PR #45 (6600h netboot) is merged. Its profiles are evaluated in CI, not built or booted there |
 | A chosen target device | Not decided. AWAI-169 leaves the choice to the owner |
 
 ## CI
@@ -27,7 +27,8 @@ physical disk, publishes an update, or uses a real key.
 1. `npm ci` and `npm test` in `nixos/otehon/shell` (the link and trust tests). The `desktop`
    image runs the same tests in its Nix build, but CI does not build that image.
 2. `sh nixos/otehon/eval-profiles.sh .` instantiates the image derivation of every profile with
-   `nix-instantiate`: the 17 aarch64 profiles and `vm` for x86_64. Option types, assertions,
+   `nix-instantiate`: the 17 aarch64 profiles, `vm` for x86_64, and the three x86_64 profiles of the
+   6600h PC (`disk-6600h`, `netboot-6600h`, `netboot-install-6600h`). Option types, assertions,
    missing files and module errors fail it. It also fails when a `.nix` file in `nixos/otehon` is
    neither a listed profile nor a listed module, so a new profile cannot be left out silently.
 
@@ -36,7 +37,7 @@ not listed, `3` no `nix-instantiate`. Each profile prints `OTEHON_EVAL_OK <profi
 `OTEHON_EVAL_FAIL <profile>` with the end of the error.
 
 There is no JVM, nbb or Babashka in this job. The shell tests run on Node.js (`node --test`). The
-owner allowed Node.js in this CI job on 2026-11-07. ADR 0026 D3 does not list it yet.
+owner allowed Node.js in this CI job on 2026-11-07, recorded in ADR 0026 D3 (network-awai-apex PR #124).
 
 Run it locally in the Nix container from the repository root:
 
@@ -51,7 +52,7 @@ default and every aarch64 image derivation is unchanged. `default.nix --argstr a
 `x86_64-linux`. The serial console is `ttyAMA0` on aarch64 and `ttyS0` on x86. The ESP gets
 `BOOTX64.EFI` from `efiArch`. Any other `arch` value stops evaluation with an error.
 
-Only `vm` is evaluated for x86_64. The other profiles were written for the aarch64 VM (`gpu` is for
+For x86_64, `vm` and the 6600h profiles are evaluated (`hardware-6600h.nix` forces `x86_64-linux`). The other profiles were written for the aarch64 VM (`gpu` is for
 krunkit on the Mac), and were not tried on x86_64.
 
 Build on the Mac: the Podman machine runs x86_64 binaries through `qemu-x86_64` (binfmt), so add
@@ -132,8 +133,8 @@ in a shipped closure. The current images do not contain Ollama.
 ## Target device steps
 
 AWAI-169 requires that writing to a real device is approved for each write. The steps below stop
-before any write. PR #45 proposes one device (an x86_64 PC with a Ryzen 5 6600H, installed over
-netboot) and is reviewed on its own.
+before any write. PR #45 (merged) adds one device (an x86_64 PC with a Ryzen 5 6600H, installed over
+netboot). Which device to use is still the owner's decision.
 
 1. Owner decision: the device, its architecture, and whether its data may be erased.
 2. Check the firmware: UEFI boot, whether Secure Boot is on (Otehon has no Secure Boot signing yet),
@@ -159,6 +160,7 @@ netboot) and is reviewed on its own.
 | x86_64 `vm` | `.drv` `ca7m4sbnlscyvrkg5cw7vsr5n6jghyjr`. Evaluated config: `system` `x86_64-linux`, `efiArch` `x64`, `console=ttyS0,115200n8` (aarch64: `aa64`, `console=ttyAMA0,115200n8`) |
 | Negative: type error | `services.openssh.enable = "yes"` in `vm.nix`: `OTEHON_EVAL_FAIL vm` and `vm@x86_64` with "is not of type `boolean'", the other 15 OK, exit 1 |
 | Negative: unlisted file | An extra `vm-extra.nix`: `OTEHON_EVAL_UNLISTED vm-extra.nix`, exit 1 |
+| 6600h files on `main` `5c845cb` | Before listing them, CI on PR #61 failed with `OTEHON_EVAL_UNLISTED` for `disk-6600h.nix`, `hardware-6600h.nix`, `netboot-6600h.nix`, `netboot-install-6600h.nix`. After: 21 of 21 `OTEHON_EVAL_OK`, exit 0. `hardware-6600h` alone does not evaluate (it has no image), so it is listed as a module |
 | Negative: unknown arch | `--argstr arch riscv64`: "otehon: unknown arch riscv64, expected aarch64 or x86_64" |
 | Could not run | No `nix-instantiate` on the Mac: `NOT_RUN`, exit 3 |
 | Shell tests | Node 26.0.0: 19 pass, 0 fail, exit 0 |
