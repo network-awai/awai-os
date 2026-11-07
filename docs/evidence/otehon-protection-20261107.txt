@@ -1,0 +1,50 @@
+Awai Otehon protection 0.1.0 check output, 2026-11-07
+Apple M1 Max, macOS, Google Chrome 156.0.8078.80, Node.js v26.0.0, nixpkgs f5c082a40f7571c266e74e80ae2e68aadd8a9fc7
+No VM was booted for this record. See docs/otehon/protection-0.1.0.md.
+
+== base derivation after moving the state volume into state.nix (nix-instantiate, no build)
+before (47774e5): /nix/store/688hg7qw9b8xphj8qhmwfh2lg8509y7a-awai-otehon-base-0.4.0.drv
+after:            /nix/store/688hg7qw9b8xphj8qhmwfh2lg8509y7a-awai-otehon-base-0.4.0.drv
+system before and after: /nix/store/g0ji835akblbsqb6i2bcv8jd3pafkq7p-nixos-system-awai-otehon-26.05pre-git.drv
+negative control, state.nix mode default 700 -> 711: /nix/store/5x1hi463syg9cq204n4sdrh4k8dl09q5-awai-otehon-base-0.4.0.drv
+
+== desktop-protect evaluates (nix-instantiate, no build)
+desktop-protect:       /nix/store/dar8kp7arqij2ahy06cgplb079kpvlra-awai-otehon-desktop-protect-0.7.0.drv
+desktop-protect-plain: /nix/store/z55nzn97ql026agdbkgjs7akf9w3030w-awai-otehon-desktop-protect-plain-0.7.0.drv
+idleLockSeconds: desktop 300, desktop-login 86400, desktop-protect 60
+
+== unit tests (npm test in nixos/otehon/shell)
+tests 23, pass 23, fail 0
+negative control, verifyUnlock never compares the signer: pass 22, fail 1
+  failed: another key, another lock, a sign-in message and junk are refused
+
+== browser lock check, IDLE_LOCK_MS=15000 build, main.js sha256 006516ae2f213f08de06ddd0efc113ba653587f92ff0f97f349a0a1b10896876
+STEP signin=1
+STEP message=1
+STEP idle_not_yet=1
+FACT idle_lock_after_ms=15080
+STEP idle_lock=1
+STEP reload_stays_locked=1
+STEP edited_session_stays_locked=1
+STEP forged_unlock=1
+FACT after_unlock_without_session step=signin dapps=0
+STEP unlock=1
+STEP signin_again=1
+STEP lock_button=1
+STEP new_browser_starts_locked=1
+STEP erase=1
+RESULT pass signin=1 message=1 idle_not_yet=1 idle_lock=1 reload_stays_locked=1 edited_session_stays_locked=1 forged_unlock=1 unlock=1 signin_again=1 lock_button=1 new_browser_starts_locked=1 erase=1
+exit=0
+
+== negative control: the same check against the shell at 47774e5, which has no lock
+STEP signin=1
+STEP message=1
+STEP idle_not_yet=1
+STEP idle_lock=0 timeout: idle
+RESULT fail signin=1 message=1 idle_not_yet=1 idle_lock=0
+exit=1
+
+== VM checks
+$ vm-lock.sh echo would-build
+NOT_RUN only 14278552KiB free, need 30GiB
+exit=3

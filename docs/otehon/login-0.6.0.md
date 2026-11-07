@@ -126,4 +126,6 @@ expired request or session, an over-long session, and no user verification.
   so another phone cannot use it yet.
 - The device key is created but does not sign anything yet.
 - Network settings. The Network step only reports the browser's status.
-- Storing state in the encrypted volume from [base-0.4.0.md](base-0.4.0.md).
+- Storing state in the encrypted volume from [base-0.4.0.md](base-0.4.0.md). The profile now
+  moves there and the check images need a key disk ([protection-0.1.0.md](protection-0.1.0.md)),
+  but this sign-in check was not run again with it.

@@ -213,6 +213,23 @@ function checkWindow(response, request, now, atLink) {
   }
 }
 
+// Recovers the address that signed a personal_sign message, or throws.
+export function recoverAddress(message, signature) {
+  if (typeof signature !== "string" || !/^0x[0-9a-f]{130}$/i.test(signature)) throw new Error("invalid-signature");
+  const bytes = fromHex(signature.slice(2).toLowerCase());
+  const v = bytes[64] >= 27 ? bytes[64] - 27 : bytes[64];
+  if (v !== 0 && v !== 1) throw new Error("invalid-signature");
+  let recovered;
+  try {
+    const compact = Uint8Array.from([v, ...bytes.slice(0, 64)]);
+    recovered = secp256k1.recoverPublicKey(compact, personalMessageHash(message), { prehash: false });
+  } catch {
+    throw new Error("invalid-signature");
+  }
+  const uncompressed = secp256k1.Point.fromBytes(recovered).toBytes(false);
+  return checksumAddress(`0x${toHex(keccak_256(uncompressed.slice(1))).slice(-40)}`);
+}
+
 function verifyWallet(response, request) {
   const { address, chainId, issuedAt, expiresAt, signature } = response;
   if (!/^0x[0-9a-fA-F]{40}$/.test(address) || checksumAddress(address) !== address) {
@@ -221,24 +238,8 @@ function verifyWallet(response, request) {
   if (!Number.isSafeInteger(chainId) || chainId < 1) throw new Error("invalid-response");
   if (!Number.isFinite(Date.parse(issuedAt))) throw new Error("invalid-response");
   if (Date.parse(expiresAt) - Date.parse(issuedAt) > SESSION_MS) throw new Error("session-too-long");
-  if (typeof signature !== "string" || !/^0x[0-9a-f]{130}$/i.test(signature)) throw new Error("invalid-signature");
-
-  const bytes = fromHex(signature.slice(2).toLowerCase());
-  const v = bytes[64] >= 27 ? bytes[64] - 27 : bytes[64];
-  if (v !== 0 && v !== 1) throw new Error("invalid-signature");
-  const hash = personalMessageHash(
-    siweMessage({ address, chainId, device: request.device, nonce: request.nonce, issuedAt, expiresAt }),
-  );
-  let recovered;
-  try {
-    const compact = Uint8Array.from([v, ...bytes.slice(0, 64)]);
-    recovered = secp256k1.recoverPublicKey(compact, hash, { prehash: false });
-  } catch {
-    throw new Error("invalid-signature");
-  }
-  const uncompressed = secp256k1.Point.fromBytes(recovered).toBytes(false);
-  const signer = `0x${toHex(keccak_256(uncompressed.slice(1))).slice(-40)}`;
-  if (checksumAddress(signer) !== address) throw new Error("wrong-signer");
+  const message = siweMessage({ address, chainId, device: request.device, nonce: request.nonce, issuedAt, expiresAt });
+  if (recoverAddress(message, signature) !== address) throw new Error("wrong-signer");
   return `did:pkh:eip155:${chainId}:${address}`;
 }
 

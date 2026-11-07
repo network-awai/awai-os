@@ -18,7 +18,10 @@ const encoder = new TextEncoder();
 const hex = (bytes) => Buffer.from(bytes).toString("hex");
 
 export function randomWallet() {
-  const secret = secp256k1.utils.randomSecretKey();
+  return walletFromSecret(secp256k1.utils.randomSecretKey());
+}
+
+export function walletFromSecret(secret) {
   const publicKey = secp256k1.getPublicKey(secret, false);
   return { secret, address: checksumAddress(`0x${hex(keccak_256(publicKey.slice(1))).slice(-40)}`) };
 }

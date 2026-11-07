@@ -9,6 +9,7 @@ const relayOrigin = process.env.RELAY_ORIGIN ?? "https://relay.awai.network";
 const define = {
   "process.env.NODE_ENV": '"production"',
   RELAY_ORIGIN: JSON.stringify(relayOrigin),
+  IDLE_LOCK_MS: String(Number(process.env.IDLE_LOCK_MS ?? 300000)),
 };
 
 async function page({ source, html, outdir, operations, appOrigins }) {
