@@ -41,10 +41,11 @@ name has no file, `3` no `nix-instantiate`. Each profile prints `OTEHON_EVAL_OK 
 There is no JVM, nbb or Babashka in this job. The shell tests run on Node.js (`node --test`). The
 owner allowed Node.js in this CI job on 2026-11-07, recorded in ADR 0026 D3 (network-awai-apex PR #124).
 
-Run it locally in the Nix container from the repository root:
+Run it locally in the Nix container from the repository root. The Hermes profiles load Hermes with
+`builtins.getFlake`, so flakes must be on (`cachix/install-nix-action` turns them on in CI):
 
 ```bash
-podman run --rm --security-opt label=disable -v otehon-shell-nix:/nix -v "$PWD":/w -w /w --env NIX_CONFIG=$'sandbox = false\nfilter-syscalls = false' docker.io/nixos/nix@sha256:7a70027ba790d3a79fa82faeac5f3dddc048f89e83b3901ca69542c340c9fb5c sh nixos/otehon/eval-profiles.sh .
+podman run --rm --security-opt label=disable -v otehon-shell-nix:/nix -v "$PWD":/w -w /w --env NIX_CONFIG=$'sandbox = false\nfilter-syscalls = false\nexperimental-features = nix-command flakes' docker.io/nixos/nix@sha256:7a70027ba790d3a79fa82faeac5f3dddc048f89e83b3901ca69542c340c9fb5c sh nixos/otehon/eval-profiles.sh .
 ```
 
 ## x86_64

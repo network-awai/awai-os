@@ -614,3 +614,11 @@ time {
 .manimani-side ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .manimani-side li { overflow-wrap: anywhere; }
 .manimani-actions { display: flex; gap: 6px; margin-top: 4px; }
+.messages li.answer {
+  align-self: flex-start;
+  background: transparent;
+}
+
+.messages li.answer .problem {
+  margin: 0;
+}
