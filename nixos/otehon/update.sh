@@ -137,11 +137,27 @@ health() {
   [ -z "$units" ] || { log "UNHEALTHY $units"; exit 1; }
 }
 
+# Whether this system can take an update. Run as root. It says nothing about any feed.
+ready() {
+  local reason=""
+  [ -s "$OTEHON_UPDATE_PUBLIC_KEY" ] || reason=no-manifest-key
+  [ -s "$OTEHON_UPDATE_CACHE_KEY" ] || reason=no-cache-key
+  nix-store --check-validity "$(readlink -f /run/current-system)" 2>/dev/null || reason=no-nix-db
+  grep -Eq '^[^ ]+ /boot vfat rw[, ]' /proc/mounts || reason=no-writable-esp
+  systemctl is-active --quiet otehon-update-settle.service || reason=not-settled
+  systemctl is-active --quiet otehon-update-health.service || reason=unhealthy
+  if [ -n "$reason" ]; then log "NOT_READY $reason"; return 1; fi
+  local trial=0
+  [ ! -e "$pending" ] || trial=1
+  log "READY version=$(installed_version) feed=$OTEHON_UPDATE_FEED trial=$trial"
+}
+
 case "${1:-}" in
   check) check "$2" ;;
   apply) apply "$2" ;;
   settle) settle ;;
   health) health ;;
   version) installed_version ;;
-  *) echo "usage: otehon-update check|apply <feed> | settle | health | version" >&2; exit 64 ;;
+  ready) ready ;;
+  *) echo "usage: otehon-update check|apply <feed> | settle | health | version | ready" >&2; exit 64 ;;
 esac

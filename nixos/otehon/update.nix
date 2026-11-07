@@ -2,16 +2,19 @@
 let
   cfg = config.otehon.update;
   efiArch = config.nixpkgs.hostPlatform.efiArch;
-  updateEnv = {
-    OTEHON_UPDATE_BASE_VERSION = toString cfg.baseVersion;
-    OTEHON_UPDATE_PUBLIC_KEY = "${cfg.publicKey}";
-    OTEHON_UPDATE_CACHE_KEY = "${cfg.cacheKey}";
-  };
+  # Nothing but the image sets these, so every caller of the command sees the same keys.
+  settings = ''
+    export OTEHON_UPDATE_BASE_VERSION=${toString cfg.baseVersion}
+    export OTEHON_UPDATE_PUBLIC_KEY=${cfg.publicKey}
+    export OTEHON_UPDATE_CACHE_KEY=${cfg.cacheKey}
+    export OTEHON_UPDATE_FEED=${lib.escapeShellArg (if cfg.feed == null then "none" else cfg.feed)}
+  '';
+  testKeys = [ ./fixtures/update/test-manifest.pub ./fixtures/update/test-cache.pub ];
   closure = pkgs.closureInfo { rootPaths = [ config.system.build.toplevel ]; };
   command = pkgs.writeShellApplication {
     name = "otehon-update";
     runtimeInputs = with pkgs; [ config.nix.package config.systemd.package coreutils findutils gnused gnugrep jq minisign ];
-    text = builtins.readFile ./update.sh;
+    text = settings + builtins.readFile ./update.sh;
     # The script defines its own strict mode, and shellcheck has no view of the Nix paths.
     bashOptions = [ ];
     excludeShellChecks = [ "SC2155" ];
@@ -20,6 +23,9 @@ in
 {
   # Signed updates with a trial boot and automatic fallback (update.sh). A trial uses systemd-boot
   # boot counting on the ESP, so it does not depend on writable EFI variables.
+  #
+  # These three have no default on purpose: the image builder supplies them, so a build that
+  # forgot them fails instead of trusting a key from this repository.
   options.otehon.update = {
     baseVersion = lib.mkOption {
       type = lib.types.ints.positive;
@@ -33,11 +39,41 @@ in
       type = lib.types.path;
       description = "File with the Nix public key that signs the update closure.";
     };
+    allowTestKeys = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "Allow the keys in fixtures/update, whose private halves are public. Check images only.";
+    };
+    feed = lib.mkOption {
+      type = lib.types.nullOr (lib.types.strMatching "/.*");
+      default = null;
+      description = ''
+        A local directory holding a signed feed, such as a mounted medium. Null means no schedule
+        and no background update. This is not a network location: nothing here fetches from a
+        server, and a staged update waits for the next reboot, which this module does not start.
+      '';
+    };
+    feedSchedule = lib.mkOption {
+      type = lib.types.str;
+      default = "daily";
+      description = "systemd OnCalendar expression for looking in the feed directory.";
+    };
+    package = lib.mkOption {
+      type = lib.types.package;
+      readOnly = true;
+      default = command;
+      description = "The otehon-update command.";
+    };
   };
 
   config = {
+    assertions = [{
+      assertion = cfg.allowTestKeys || !lib.elem (builtins.readFile cfg.publicKey) (map builtins.readFile testKeys)
+        && !lib.elem (builtins.readFile cfg.cacheKey) (map builtins.readFile testKeys);
+      message = "otehon.update: this image would trust a test key from fixtures/update. Supply real public keys, or set allowTestKeys in a check image.";
+    }];
+
     environment.systemPackages = [ command ];
-    environment.sessionVariables = updateEnv;
 
     boot.loader.systemd-boot.enable = true;
     boot.loader.efi.canTouchEfiVariables = false;
@@ -78,7 +114,6 @@ in
         StandardOutput = "journal+console";
         StandardError = "journal+console";
       };
-      environment = updateEnv;
     };
 
     systemd.services.otehon-update-settle = {
@@ -92,7 +127,25 @@ in
         StandardOutput = "journal+console";
         StandardError = "journal+console";
       };
-      environment = updateEnv;
+    };
+
+    # A refused feed exits 2. That is an answer, not a failure of this service.
+    systemd.services.otehon-update-feed = lib.mkIf (cfg.feed != null) {
+      description = "Stage a signed update from the local feed directory";
+      after = [ "otehon-nix-db.service" "otehon-update-settle.service" ];
+      path = [ pkgs.util-linux "/run/current-system/sw" ];
+      serviceConfig = {
+        Type = "oneshot";
+        ExecStart = "${lib.getExe command} apply ${cfg.feed}";
+        SuccessExitStatus = 2;
+        StandardOutput = "journal+console";
+        StandardError = "journal+console";
+      };
+    };
+    systemd.timers.otehon-update-feed = lib.mkIf (cfg.feed != null) {
+      description = "Look in the local feed directory for a signed update";
+      wantedBy = [ "timers.target" ];
+      timerConfig.OnCalendar = cfg.feedSchedule;
     };
 
     image.repart.partitions = {

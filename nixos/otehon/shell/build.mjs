@@ -9,6 +9,7 @@ const relayOrigin = process.env.RELAY_ORIGIN ?? "https://relay.awai.network";
 const define = {
   "process.env.NODE_ENV": '"production"',
   RELAY_ORIGIN: JSON.stringify(relayOrigin),
+  OS_IMAGE_VERSION: JSON.stringify(process.env.OTEHON_IMAGE_VERSION ?? "unknown"),
 };
 
 async function page({ source, html, outdir, operations, appOrigins }) {

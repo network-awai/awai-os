@@ -396,6 +396,11 @@ try {
     await until("document.querySelector('[data-operation=submit-order][data-locked=true]')", "locked operation");
     await until("document.querySelector('[data-operation=read-quotes][data-locked=false]')", "open operation");
   });
+  await step("updates_panel", async () => {
+    await click("[data-dapp=updates]");
+    const shown = await until("document.querySelector('[data-os-version]')?.dataset.osVersion", "OS version");
+    if (shown !== process.env.OTEHON_IMAGE_VERSION) throw new Error(`version-${shown}`);
+  });
   await step("reload_keeps_login", async () => {
     await send("Page.reload");
     await sleep(1500);

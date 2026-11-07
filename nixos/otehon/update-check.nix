@@ -6,15 +6,10 @@ in
 {
   # Check image for update.nix, not a release. The keys in fixtures/update are test keys.
   # update-check-qemu.sh reads the reports. Each stage runs after the boot has settled.
-  imports = [ ./common.nix ./update.nix ];
+  imports = [ ./common.nix ./update.nix ./update-test-keys.nix ];
 
   system.image.id = "awai-otehon-update";
   system.image.version = lib.mkDefault "1";
-  otehon.update = {
-    baseVersion = 1;
-    publicKey = ./fixtures/update/test-manifest.pub;
-    cacheKey = ./fixtures/update/test-cache.pub;
-  };
   environment.etc."otehon-generation".text = lib.mkDefault "a";
 
   boot.kernelModules = [ "9p" "9pnet_virtio" ];
@@ -27,11 +22,6 @@ in
   systemd.services.otehon-boot-report = {
     after = [ "multi-user.target" "otehon-update-settle.service" ];
     path = [ config.nix.package pkgs.gnugrep pkgs.util-linux "/run/current-system/sw" ];
-    environment = {
-      OTEHON_UPDATE_BASE_VERSION = toString config.otehon.update.baseVersion;
-      OTEHON_UPDATE_PUBLIC_KEY = "${config.otehon.update.publicKey}";
-      OTEHON_UPDATE_CACHE_KEY = "${config.otehon.update.cacheKey}";
-    };
     script = ''
       # A failed trial is rebooting now, and nothing below may race it.
       if [ -e /var/lib/otehon-update/pending.json ]; then
