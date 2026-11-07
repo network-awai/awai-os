@@ -13,9 +13,9 @@ command -v nix-instantiate >/dev/null || { echo "NOT_RUN no nix-instantiate"; ex
 # Profiles: files default.nix can build. "profile" or "profile@arch".
 profiles="vm vm@x86_64 base base-no-switch base-open-port
 desktop desktop-login desktop-manimani desktop-media desktop-media-gui desktop-media-silent desktop-no-zenoh
-gpu-check gpu-generate-check update-check update-check-good update-check-bad"
+backup-check gpu-check gpu-generate-check update-check update-check-good update-check-bad"
 # Modules that other profiles import and that are not built on their own.
-modules="default common base-module update gpu media"
+modules="default common base-module update gpu media backup"
 
 status=0
 listed=" $modules "

@@ -27,7 +27,7 @@ physical disk, publishes an update, or uses a real key.
 1. `npm ci` and `npm test` in `nixos/otehon/shell` (the link and trust tests). The `desktop`
    image runs the same tests in its Nix build, but CI does not build that image.
 2. `sh nixos/otehon/eval-profiles.sh .` instantiates the image derivation of every profile with
-   `nix-instantiate`: the 16 aarch64 profiles and `vm` for x86_64. Option types, assertions,
+   `nix-instantiate`: the 17 aarch64 profiles and `vm` for x86_64. Option types, assertions,
    missing files and module errors fail it. It also fails when a `.nix` file in `nixos/otehon` is
    neither a listed profile nor a listed module, so a new profile cannot be left out silently.
 
@@ -35,7 +35,8 @@ Exit codes of `eval-profiles.sh`: `0` every profile evaluated, `1` a profile fai
 not listed, `3` no `nix-instantiate`. Each profile prints `OTEHON_EVAL_OK <profile> <drv>` or
 `OTEHON_EVAL_FAIL <profile>` with the end of the error.
 
-There is no JVM, nbb or Babashka in this job. The shell tests run on Node.js (`node --test`).
+There is no JVM, nbb or Babashka in this job. The shell tests run on Node.js (`node --test`). The
+owner allowed Node.js in this CI job on 2026-11-07. ADR 0026 D3 does not list it yet.
 
 Run it locally in the Nix container from the repository root:
 
