@@ -1,6 +1,7 @@
 // Drives the real shell in Chromium through DevTools, with trusted input, against a
 // real relay on loopback. A wallet and a passkey are simulated with random keys.
 // Built only for the desktop-login check image.
+import { writeFileSync } from "node:fs";
 import { p256 } from "@noble/curves/nist.js";
 import { p256Did, parseLinkFragment, sealResponse } from "../src/identity/link.js";
 import { passkeyResponse, randomWallet, signPersonal, walletResponse } from "./signers.js";
@@ -120,6 +121,85 @@ async function step(name, action) {
   }
 }
 
+const MEDIA = "http://127.0.0.1:8770";
+
+async function screenshot(name) {
+  const { result } = await send("Page.captureScreenshot", { format: "png" });
+  writeFileSync(`/var/lib/otehon-results/${name}.png`, Buffer.from(result.data, "base64"));
+}
+
+async function refused(path, init, status, reason) {
+  const response = await fetch(`${MEDIA}${path}`, init);
+  const body = await response.json();
+  if (response.status !== status || body.error !== reason) {
+    throw new Error(`expected ${status} ${reason}, got ${response.status} ${body.error}`);
+  }
+}
+
+const post = (body, origin) => ({
+  method: "POST",
+  headers: { "content-type": "application/json", ...(origin ? { origin } : {}) },
+  body: JSON.stringify(body),
+});
+
+async function sendFromComposer(text, kind) {
+  await type(".composer textarea", text);
+  await click(`[data-generate=${kind}]`);
+}
+
+async function mediaSteps() {
+  await step("media_refusals", async () => {
+    await refused("/v1/audio/speech", post({ input: "", voice: "en" }), 400, "empty-text");
+    await refused("/v1/audio/speech", post({ input: "x".repeat(2001), voice: "en" }), 413, "text-too-long");
+    await refused("/v1/audio/speech", post({ input: "hello", voice: "../../etc" }), 400, "unknown-voice");
+    await refused("/v1/audio/speech", post({ input: "hello", voice: "en" }, "https://evil.example"), 403, "bad-origin");
+    await refused("/v1/images/generations", post({ prompt: "cat", size: 9999 }), 400, "bad-size");
+    await refused("/v1/images/generations", post({ prompt: "cat", steps: 9999 }), 400, "bad-steps");
+    await refused("/files/..%2f..%2fetc%2fpasswd", {}, 404, "not-found");
+  });
+  for (const [voice, input] of [["en", "Hello from Itonami."], ["ja", "こんにちは、いとなみです。"]]) {
+    await step(`speech_${voice}`, async () => {
+      const made = await fetch(`${MEDIA}/v1/audio/speech`, post({ input, voice }));
+      const body = await made.json();
+      if (!made.ok) throw new Error(`speech ${made.status} ${body.error}`);
+      const wav = Buffer.from(await (await fetch(`${MEDIA}${body.url}`)).arrayBuffer());
+      if (wav.subarray(0, 4).toString() !== "RIFF" || wav.subarray(8, 12).toString() !== "WAVE") throw new Error("not-wav");
+      // A silent or empty file must not pass.
+      const samples = new Int16Array(wav.buffer, wav.byteOffset + 44, Math.floor((wav.length - 44) / 2));
+      const peak = samples.reduce((max, value) => Math.max(max, Math.abs(value)), 0);
+      if (samples.length < 4000 || peak < 500) throw new Error(`silent samples=${samples.length} peak=${peak}`);
+      console.log(`OTEHON_MEDIA speech voice=${voice} samples=${samples.length} peak=${peak} seconds=${body.seconds}`);
+    });
+  }
+  await step("speech_in_shell", async () => {
+    await click("[data-dapp=itonami]");
+    await sendFromComposer("Hello from the Itonami shell.", "speech");
+    await until("document.querySelector('[data-media=speech][data-state=done] audio')", "audio player", 120000);
+    await until("document.querySelector('[data-media=speech] audio').duration > 0", "audio loads", 30000);
+    await screenshot("shell-speech");
+  });
+  await step("image_in_shell", async () => {
+    await until("!document.querySelector('[data-generate=image]').title", "image model available", 30000);
+    await sendFromComposer("A red torii gate on a green hill, simple illustration", "image");
+    await until("document.querySelector('[data-media=image]')", "image job");
+    const end = Date.now() + 4 * 60 * 60 * 1000;
+    for (;;) {
+      const state = await evaluate("document.querySelector('[data-media=image]').dataset.state");
+      if (state === "done") break;
+      if (state === "failed") throw new Error(await evaluate("document.querySelector('[data-media=image] .problem').textContent"));
+      if (Date.now() > end) throw new Error("image-timeout");
+      await sleep(5000);
+    }
+    await until("document.querySelector('[data-media=image] img')?.naturalWidth > 0", "image decodes", 30000);
+    const size = await evaluate("document.querySelector('[data-media=image] img').naturalWidth");
+    const took = await evaluate("document.querySelector('[data-media=image] .muted')?.textContent");
+    console.log(`OTEHON_MEDIA image width=${size} ${took}`);
+    await evaluate("document.querySelector('[data-media=image]').scrollIntoView()");
+    await sleep(500);
+    await screenshot("shell-image");
+  });
+}
+
 const dappCount = "document.querySelectorAll('.dapp').length";
 const wallet = randomWallet();
 const passkey = p256.utils.randomSecretKey();
@@ -226,6 +306,7 @@ try {
     if (account !== `did:pkh:eip155:1:${wallet.address}`) throw new Error("wrong-account");
     if (await evaluate("document.querySelector('dialog.kotoba-client-consent')?.open === true")) throw new Error("consent-for-local");
   });
+  if (process.env.OTEHON_MEDIA === "1") await mediaSteps();
 } catch {
   outcome = "fail";
 }

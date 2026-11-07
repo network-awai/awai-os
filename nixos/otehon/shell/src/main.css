@@ -573,3 +573,26 @@ time {
   max-height: 100vh;
   overflow-y: auto;
 }
+
+.composer .tool {
+  background: #38424c;
+  color: #eef1f4;
+  font-weight: 500;
+}
+
+.messages li.media {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.messages .media img {
+  max-width: 100%;
+  border-radius: 10px;
+}
+
+.messages .media audio {
+  width: 320px;
+  max-width: 100%;
+}

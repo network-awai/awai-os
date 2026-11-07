@@ -71,3 +71,11 @@ test("the shared broker accepts both descriptors", () => {
     "connect-src https://mainnet.optimism.io https://relay.awai.network",
   );
 });
+
+test("the voice follows the text, and old string messages still read as text", async () => {
+  const { describeMessage, voiceFor } = await import("../src/media.js");
+  assert.equal(voiceFor("Hello"), "en");
+  assert.equal(voiceFor("こんにちは"), "ja");
+  assert.equal(voiceFor("東京"), "ja");
+  assert.deepEqual(describeMessage("hi"), { kind: "text", text: "hi" });
+});

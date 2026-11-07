@@ -20,7 +20,7 @@ let
       npm test
       runHook postCheck
     '';
-    npmDepsHash = "sha256-S8J3cIFYr5vfoquXeBUudHilaUioKHwHQjHaS261JL4=";
+    npmDepsHash = "sha256-g9JFQRRKKjIgHCyLRvETNKwnmtl1TsJTTEYJUNuvIxY=";
     installPhase = ''
       runHook preInstall
       cp -r dist $out
@@ -50,7 +50,7 @@ in
   # is all this VM has. Zenoh and Matter listen on loopback only.
   # The user has no password and logs in automatically, so this image is for a
   # local VM only. It has no SSH or keys.
-  imports = [ ./common.nix ];
+  imports = [ ./common.nix ./media.nix ];
 
   options.otehon = {
     relayOrigin = lib.mkOption {
@@ -76,7 +76,7 @@ in
 
   config = {
   system.image.id = "awai-otehon-desktop";
-  system.image.version = "0.6.0";
+  system.image.version = "0.7.0";
 
   hardware.graphics.enable = true;
   fonts.packages = [ pkgs.noto-fonts-cjk-sans ];
