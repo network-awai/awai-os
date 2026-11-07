@@ -1,0 +1,109 @@
+Awai Otehon backup 0.1.0 check output, 2026-11-07
+Apple M1 Max, QEMU 10.0.3 with HVF, nixpkgs f5c082a40f7571c266e74e80ae2e68aadd8a9fc7, restic 0.18.1
+Command: nixos/otehon/backup-check-qemu.sh backup-check.qcow2 <work>
+raw-sha256=949638e2b9ed6d2ec8966033234adee8a5bdde1b1260643a49ba77105268743c
+Lines starting with [disk mode] are restic and systemd output from the serial console.
+
+== run2, current script
+  [a backup] OTEHON_BACKUP_LOG Added to the repository: 4.003 MiB (4.002 MiB stored)
+  [a backup] OTEHON_BACKUP_LOG processed 3 files, 4.000 MiB in 0:00
+  [a backup] OTEHON_BACKUP_LOG snapshot 85a870e4 saved
+  [a backup] OTEHON_BACKUP_LOG restic-backups-otehon.service: Deactivated successfully.
+  [a backup] OTEHON_BACKUP_LOG Finished restic-backups-otehon.service.
+  [a backup] OTEHON_BACKUP_LOG restic-backups-otehon.service: Consumed 3.042s CPU time over 4.175s wall clock time, 112.4M memory peak, 40.7M read from disk.
+  [a backup] OTEHON_BACKUP_LOG create exclusive lock for repository
+  [a backup] OTEHON_BACKUP_LOG load indexes
+  [a backup] OTEHON_BACKUP_LOG check all packs
+  [a backup] OTEHON_BACKUP_LOG check snapshots, trees and blobs
+  [a backup] OTEHON_BACKUP_LOG [0:00] 100.00%  1 / 1 snapshots
+  [a backup] OTEHON_BACKUP_LOG read all data
+  [a backup] OTEHON_BACKUP_LOG [0:00] 100.00%  2 / 2 packs
+  [a backup] OTEHON_BACKUP_LOG no errors were found
+OTEHON_BACKUP_REPORT mode=backup state=1 target=1 key=1 hash=b2c194ad78f5ce85 backup=ok snapshots=1 check=ok failed=0
+SHARE packs=2 size_kib=4120 plain_canary=found backup_canary=absent keys=absent
+  [b restore] OTEHON_BACKUP_LOG restoring snapshot 85a870e4 of [/var/lib/otehon] at 2026-11-07 10:10:00.231538483 +0000 UTC by root@awai-otehon to /
+  [b restore] OTEHON_BACKUP_LOG Summary: Restored 8 files/dirs (4.000 MiB) in 0:00
+  [b restore] OTEHON_BACKUP_LOG create exclusive lock for repository
+  [b restore] OTEHON_BACKUP_LOG load indexes
+  [b restore] OTEHON_BACKUP_LOG check all packs
+  [b restore] OTEHON_BACKUP_LOG check snapshots, trees and blobs
+  [b restore] OTEHON_BACKUP_LOG [0:00] 100.00%  1 / 1 snapshots
+  [b restore] OTEHON_BACKUP_LOG read all data
+  [b restore] OTEHON_BACKUP_LOG [0:00] 100.00%  2 / 2 packs
+  [b restore] OTEHON_BACKUP_LOG no errors were found
+OTEHON_BACKUP_REPORT mode=restore state=1 target=1 key=1 pre=empty restore=ok reason=none hash=b2c194ad78f5ce85 check=ok failed=0
+MATCH backup=b2c194ad78f5ce85 restored=b2c194ad78f5ce85
+  [c restore] OTEHON_BACKUP_LOG Fatal: wrong password or no key found
+  [c restore] OTEHON_BACKUP_LOG using temporary cache in /var/lib/otehon/backup/cache/restic-check-cache-310952042
+  [c restore] OTEHON_BACKUP_LOG create exclusive lock for repository
+  [c restore] OTEHON_BACKUP_LOG Fatal: wrong password or no key found
+OTEHON_BACKUP_REPORT mode=restore state=1 target=1 key=1 pre=empty restore=fail reason=wrong-password hash=empty check=fail failed=0
+TAMPER pack=214f8e04b2cb4e554e70ddc02b6bbb56040431343b66d5b5d580969d34f6e6a1 size=4194937 offset=2097468 sha256 214f8e04b2cb4e55 -> cf979f055321e10a
+  [b verify] OTEHON_BACKUP_LOG 
+  [b verify] OTEHON_BACKUP_LOG The repository contains damaged pack files. These damaged files must be removed to repair the repository. This can be done using the following commands. Please read the troubleshooting guide at https://restic.readthedocs.io/en/stable/077_troubleshooting.html first.
+  [b verify] OTEHON_BACKUP_LOG 
+  [b verify] OTEHON_BACKUP_LOG restic repair packs 214f8e04b2cb4e554e70ddc02b6bbb56040431343b66d5b5d580969d34f6e6a1
+  [b verify] OTEHON_BACKUP_LOG restic repair snapshots --forget
+  [b verify] OTEHON_BACKUP_LOG 
+  [b verify] OTEHON_BACKUP_LOG Damaged pack files can be caused by backend problems, hardware problems or bugs in restic. Please open an issue at https://github.com/restic/restic/issues/new/choose for further troubleshooting!
+  [b verify] OTEHON_BACKUP_LOG Fatal: repository contains errors
+  [b verify] OTEHON_BACKUP_LOG restoring snapshot 85a870e4 of [/var/lib/otehon] at 2026-11-07 10:10:00.231538483 +0000 UTC by root@awai-otehon to /run/otehon-backup-check/restored
+  [b verify] OTEHON_BACKUP_LOG ignoring error for /var/lib/otehon/data/random.bin: decrypting blob <data/291281e9> from 214f8e04 failed: ciphertext verification failed
+  [b verify] OTEHON_BACKUP_LOG Summary: Restored 7 / 8 files/dirs (2.625 MiB / 4.000 MiB) in 0:00
+  [b verify] OTEHON_BACKUP_LOG Fatal: There were 1 errors
+  [b verify] OTEHON_BACKUP_LOG 
+OTEHON_BACKUP_REPORT mode=verify state=1 target=1 key=1 check=fail reason=integrity restore=fail restore_reason=integrity failed=0
+PASS
+exit=0
+
+== run1, same image, before the key search was added to step 2
+  [a backup] OTEHON_BACKUP_LOG Added to the repository: 4.003 MiB (4.002 MiB stored)
+  [a backup] OTEHON_BACKUP_LOG processed 3 files, 4.000 MiB in 0:00
+  [a backup] OTEHON_BACKUP_LOG snapshot 605caa0b saved
+  [a backup] OTEHON_BACKUP_LOG restic-backups-otehon.service: Deactivated successfully.
+  [a backup] OTEHON_BACKUP_LOG Finished restic-backups-otehon.service.
+  [a backup] OTEHON_BACKUP_LOG restic-backups-otehon.service: Consumed 3.301s CPU time over 4.684s wall clock time, 123.6M memory peak, 42.3M read from disk.
+  [a backup] OTEHON_BACKUP_LOG create exclusive lock for repository
+  [a backup] OTEHON_BACKUP_LOG load indexes
+  [a backup] OTEHON_BACKUP_LOG check all packs
+  [a backup] OTEHON_BACKUP_LOG check snapshots, trees and blobs
+  [a backup] OTEHON_BACKUP_LOG [0:00] 100.00%  1 / 1 snapshots
+  [a backup] OTEHON_BACKUP_LOG read all data
+  [a backup] OTEHON_BACKUP_LOG [0:00] 100.00%  2 / 2 packs
+  [a backup] OTEHON_BACKUP_LOG no errors were found
+OTEHON_BACKUP_REPORT mode=backup state=1 target=1 key=1 hash=71b2c2e7144cef5b backup=ok snapshots=1 check=ok failed=0
+SHARE packs=2 size_kib=4120 plain_canary=found backup_canary=absent
+  [b restore] OTEHON_BACKUP_LOG restoring snapshot 605caa0b of [/var/lib/otehon] at 2026-11-07 10:02:53.755481694 +0000 UTC by root@awai-otehon to /
+  [b restore] OTEHON_BACKUP_LOG Summary: Restored 8 files/dirs (4.000 MiB) in 0:00
+  [b restore] OTEHON_BACKUP_LOG create exclusive lock for repository
+  [b restore] OTEHON_BACKUP_LOG load indexes
+  [b restore] OTEHON_BACKUP_LOG check all packs
+  [b restore] OTEHON_BACKUP_LOG check snapshots, trees and blobs
+  [b restore] OTEHON_BACKUP_LOG [0:00] 100.00%  1 / 1 snapshots
+  [b restore] OTEHON_BACKUP_LOG read all data
+  [b restore] OTEHON_BACKUP_LOG [0:00] 100.00%  2 / 2 packs
+  [b restore] OTEHON_BACKUP_LOG no errors were found
+OTEHON_BACKUP_REPORT mode=restore state=1 target=1 key=1 pre=empty restore=ok reason=none hash=71b2c2e7144cef5b check=ok failed=0
+MATCH backup=71b2c2e7144cef5b restored=71b2c2e7144cef5b
+  [c restore] OTEHON_BACKUP_LOG Fatal: wrong password or no key found
+  [c restore] OTEHON_BACKUP_LOG using temporary cache in /var/lib/otehon/backup/cache/restic-check-cache-2960837156
+  [c restore] OTEHON_BACKUP_LOG create exclusive lock for repository
+  [c restore] OTEHON_BACKUP_LOG Fatal: wrong password or no key found
+OTEHON_BACKUP_REPORT mode=restore state=1 target=1 key=1 pre=empty restore=fail reason=wrong-password hash=empty check=fail failed=0
+TAMPER pack=705dcfb728dd11587acde779fb5df6f294477d296dba2468e47f6dccdaaf3649 size=4194853 offset=2097426 sha256 705dcfb728dd1158 -> 1aa37f5bb1b81fd2
+  [b verify] OTEHON_BACKUP_LOG 
+  [b verify] OTEHON_BACKUP_LOG The repository contains damaged pack files. These damaged files must be removed to repair the repository. This can be done using the following commands. Please read the troubleshooting guide at https://restic.readthedocs.io/en/stable/077_troubleshooting.html first.
+  [b verify] OTEHON_BACKUP_LOG 
+  [b verify] OTEHON_BACKUP_LOG restic repair packs 705dcfb728dd11587acde779fb5df6f294477d296dba2468e47f6dccdaaf3649
+  [b verify] OTEHON_BACKUP_LOG restic repair snapshots --forget
+  [b verify] OTEHON_BACKUP_LOG 
+  [b verify] OTEHON_BACKUP_LOG Damaged pack files can be caused by backend problems, hardware problems or bugs in restic. Please open an issue at https://github.com/restic/restic/issues/new/choose for further troubleshooting!
+  [b verify] OTEHON_BACKUP_LOG Fatal: repository contains errors
+  [b verify] OTEHON_BACKUP_LOG restoring snapshot 605caa0b of [/var/lib/otehon] at 2026-11-07 10:02:53.755481694 +0000 UTC by root@awai-otehon to /run/otehon-backup-check/restored
+  [b verify] OTEHON_BACKUP_LOG ignoring error for /var/lib/otehon/data/random.bin: decrypting blob <data/da58c606> from 705dcfb7 failed: ciphertext verification failed
+  [b verify] OTEHON_BACKUP_LOG Summary: Restored 7 / 8 files/dirs (400.476 KiB / 4.000 MiB) in 0:00
+  [b verify] OTEHON_BACKUP_LOG Fatal: There were 1 errors
+  [b verify] OTEHON_BACKUP_LOG 
+OTEHON_BACKUP_REPORT mode=verify state=1 target=1 key=1 check=fail reason=integrity restore=fail restore_reason=integrity failed=0
+PASS
+exit=0
