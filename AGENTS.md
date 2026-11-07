@@ -42,5 +42,7 @@ authorized operator confirms its exact ID after local health. Never make a
 production update or USB refresh a side effect of building/testing this module.
 
 Awai Otehon (`network-awai/network-awai-apex` ADR 0026) is added as a profile
-separate from the native profile. Do not put Otehon dependencies in the native
-profile. The native profile rules above stay unchanged.
+separate from the native profile. It is the Otehon edition of Itonami OS and may
+use `.cljc`, clj / JVM, cljs builds, nbb, babashka and the rest of ADR 0026 D3,
+pinned with Nix (owner decision 2026-11-07, D18). Do not put Otehon dependencies
+in the native profile. The native profile rules above stay unchanged.
