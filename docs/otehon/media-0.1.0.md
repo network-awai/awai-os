@@ -97,7 +97,22 @@ values, produced the speech and the image above.
 
 ### QEMU and the negative control
 
-Not recorded yet. These runs are in progress.
+QEMU 10.0.3 with HVF, on the same source. The `desktop-media-gui` profile shows that speech works
+with a real compositor and that the refusal for missing weights is specific. The
+`desktop-media-silent` profile shows that the speech check can fail.
+
+| Profile | Raw image | Exit | Result |
+| --- | --- | --- | --- |
+| `desktop-media-gui` | `76ed76605349f3522a7241712c88c59552ecbcfd316288bd00599ef4c3ee5203` | 0 | `result=pass` at 56 s |
+| `desktop-media-silent` | `5d09bc76efe3a920526928b29f82637792a07241f77f1427bdbdc6f3fbee021a` | 1 | `speech_en=0 silent samples=22050 peak=0` |
+
+In `desktop-media-gui`:
+
+- A good image request is refused with 503 `image-model-missing`, while the same service makes speech, with 27136 samples and peak 32767.
+- With text in the composer, the Image button is off and the Speak button is on. The screen dump shows this, the Itonami chat, an audio player for "Hello from the Itonami shell." and the Japanese refusal.
+
+In `desktop-media-silent`, the sign-in steps and refusals pass first, so it fails at the speech step
+and for the right reason: the voice wrote a valid WAV holding only silence.
 
 ### What earlier runs got wrong
 
@@ -107,6 +122,7 @@ These all reported something that looked fine, or failed for a reason that was n
 - A refused request left its body on a keep-alive connection, so the next request read it as a request line and got an HTML 400. Refusals now close the connection.
 - Piper ignores `-c` and reads the config from the model path plus `.json`, so a voice with separate store paths failed with `FileNotFoundError`. Each voice is now a directory holding both files.
 - With greetd off, `graphical.target` was no longer the default, so none of the services started. The VM looked idle until the timeout.
+- An earlier helper script printed the exit code of a pipe's `cut`, not of the check. The exit codes above were read directly.
 
 ## Not verified or not implemented
 
