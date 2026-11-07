@@ -1,0 +1,4 @@
+{
+  "torihiki": { "operations": { "submit-order": 50 } },
+  "saifu": { "operations": { "read-chain-state": 50 } }
+}
