@@ -1,0 +1,19 @@
+url: http://127.0.0.1:18821/?app=sheet
+---
+- launchApp:
+    clearState: true
+- assertVisible: "Hyokeisan"
+- tapOn:
+    css: 'input[aria-label="A1"]'
+- inputText: "12"
+- tapOn:
+    css: 'input[aria-label="B1"]'
+- inputText: "8"
+- assertVisible: "20"
+- tapOn: "Save sheet"
+- assertVisible: "Saved on this device."
+- stopApp
+- launchApp
+- assertVisible:
+    css: 'input[aria-label="A1"]'
+- assertVisible: "20"

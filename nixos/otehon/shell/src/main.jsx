@@ -8,6 +8,7 @@ import { clearSession, deviceDid, loadProofs, loadSession, saveProof } from "./i
 import { createBroker, osOperations, readPassport } from "./runtime.js";
 import { Setup } from "./setup.jsx";
 import { Bunsho } from "./apps/bunsho.cljc";
+import { Hyokeisan } from "./apps/hyokeisan.cljc";
 import { displayMessage, readAgeBand, saveAgeBand } from "./age.js";
 import {
   POINTS,
@@ -224,6 +225,7 @@ function Marketplace({ account, installed, onChange }) {
 
 function AppView({ dapp, now, account }) {
   if (dapp.id === "bunsho") return <Bunsho key={account.accountDid} accountDid={account.accountDid} />;
+  if (dapp.id === "hyokeisan") return <Hyokeisan key={account.accountDid} accountDid={account.accountDid} />;
   if (dapp.id === "tokei") return <main className="chat account-view"><div className="account-body" data-app-view="tokei">
     <h1>Tokei</h1><p className="app-clock">{now.toLocaleTimeString()}</p><p>{now.toLocaleDateString(undefined, { dateStyle: "full" })}</p>
   </div></main>;
@@ -331,7 +333,7 @@ function Locked({ dapp, minimum, score, onRaise }) {
 }
 
 function DappPanel({ dapp, score, onRaise }) {
-  const available = dapp.id === "tokei" || dapp.id === "bunsho";
+  const available = dapp.id === "tokei" || dapp.id === "bunsho" || dapp.id === "hyokeisan";
   return (
     <aside className="panel" aria-label={`${dapp.title} dapp`}>
       <div className="panel-head">

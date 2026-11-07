@@ -9,7 +9,7 @@ const result = await build({
 });
 const html = '<!doctype html><html><head><meta charset="utf-8"><title>Isolated Bunsho Test</title></head><body><div id="root"></div><script src="/main.js"></script></body></html>';
 createServer((req, res) => {
-  if (req.url === "/") { res.writeHead(200, { "content-type": "text/html" }).end(html); return; }
+  if (new URL(req.url, "http://localhost").pathname === "/") { res.writeHead(200, { "content-type": "text/html" }).end(html); return; }
   if (req.url === "/main.js") { res.writeHead(200, { "content-type": "text/javascript" }).end(result.outputFiles[0].contents); return; }
   res.writeHead(404).end();
 }).listen(18821, "127.0.0.1", () => console.log("MAESTRO_HARNESS_READY"));
