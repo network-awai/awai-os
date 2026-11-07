@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import catalog from "./dapps.json";
 import { BUNDLED_APPS, installedApps, setAppInstalled } from "./apps.js";
+import registry from "./registry/itonami-index.json";
+import { REGISTRY_REVISION, searchRegistry } from "./discovery.js";
 import { clearSession, deviceDid, loadProofs, loadSession, saveProof } from "./identity/device.js";
 import { createBroker, osOperations, readPassport } from "./runtime.js";
 import { Setup } from "./setup.jsx";
@@ -188,6 +190,8 @@ function Sidebar({ context, onSelect, threads, now, zenoh, matter, account, scor
 
 function Marketplace({ account, installed, onChange }) {
   const [error, setError] = useState(false);
+  const [query, setQuery] = useState("");
+  const results = searchRegistry(registry, query);
   return <main className="chat account-view"><div className="account-body">
     <h1>Apps / Marketplace</h1>
     <p className="muted">Discover and manage the apps bundled with this preview. External registries are not connected yet.</p>
@@ -205,7 +209,14 @@ function Marketplace({ account, installed, onChange }) {
     {error ? <p className="problem" role="alert">Could not save the app choice on this device.</p> : null}
     <p className="muted">Install makes a bundled app available in the sidebar. Uninstall removes it from your sidebar; the image itself is unchanged.</p>
     <h2>Plugins and external apps</h2>
-    <p className="muted">Registry discovery and verified installation are being developed.</p>
+    <p className="muted">Search a bundled, read-only Itonami Registry snapshot ({REGISTRY_REVISION.slice(0, 8)}). Listings are metadata; external installation is not connected.</p>
+    <label className="field">Search registry
+      <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search apps, skills and bots" />
+    </label>
+    {query.trim() ? <ul className="discovery-results">{results.map((item) =>
+      <li key={`${item.type}:${item.id}`}><strong>{item.name || item.id}</strong> <span className="tag">{item.type}</span><p>{item.description || "No description"}</p></li>
+    )}</ul> : null}
+    {query.trim() && results.length === 0 ? <p className="muted">No matching entries in this snapshot.</p> : null}
   </div></main>;
 }
 
