@@ -1,0 +1,12 @@
+{
+  // relay.awai.network, in the cloud-kotoba account that holds the awai.network zone.
+  "name": "network-awai-relay",
+  "account_id": "4da88288dc30d9ee257f319d3c33ecf0",
+  "main": "worker.js",
+  "compatibility_date": "2026-01-01",
+  "routes": [{ "pattern": "relay.awai.network", "custom_domain": true }],
+  "durable_objects": { "bindings": [{ "name": "TOPIC", "class_name": "Topic" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Topic"] }],
+  // Topics and traffic are not logged.
+  "observability": { "enabled": false }
+}

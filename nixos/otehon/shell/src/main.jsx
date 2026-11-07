@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import catalog from "./dapps.json";
+import { BUNDLED_APPS, installedApps, setAppInstalled } from "./apps.js";
+import registry from "./registry/itonami-index.json";
+import { REGISTRY_REVISION, searchRegistry } from "./discovery.js";
 import { clearSession, deviceDid, loadProofs, loadSession, saveProof } from "./identity/device.js";
 import { createBroker, osOperations, readPassport } from "./runtime.js";
 import { Setup } from "./setup.jsx";
+import { Bunsho } from "./apps/bunsho.cljc";
+import { displayMessage, readAgeBand, saveAgeBand } from "./age.js";
 import {
   POINTS,
   accountAddress,
@@ -19,6 +24,7 @@ const POLL_MS = 3000;
 const SECTIONS = ["Core", "Apps", "System"];
 const HOME = "home";
 const ACCOUNT = "account";
+const MARKETPLACE = "marketplace";
 const THREADS_KEY = "otehon.threads.v1";
 const SETUP_KEY = "otehon.setup.v1";
 const relayOrigin = RELAY_ORIGIN;
@@ -118,7 +124,7 @@ function Service({ name, up }) {
   );
 }
 
-function Sidebar({ context, onSelect, threads, now, zenoh, matter, account, score }) {
+function Sidebar({ context, onSelect, threads, now, zenoh, matter, account, score, installed }) {
   return (
     <nav className="sidebar" aria-label="Contexts">
       <div className="brand">Itonami</div>
@@ -136,7 +142,7 @@ function Sidebar({ context, onSelect, threads, now, zenoh, matter, account, scor
             <h2>{section}</h2>
             <ul>
               {catalog.dapps
-                .filter((dapp) => dapp.section === section)
+                .filter((dapp) => dapp.section === section && (dapp.id !== "tokei" || installed.includes("tokei")))
                 .map((dapp) => (
                   <li key={dapp.id}>
                     <button
@@ -144,7 +150,7 @@ function Sidebar({ context, onSelect, threads, now, zenoh, matter, account, scor
                       className={context === dapp.id ? "dapp active" : "dapp"}
                       data-dapp={dapp.id}
                       aria-current={context === dapp.id ? "page" : undefined}
-                      onClick={() => onSelect(dapp.id)}
+                      onClick={() => onSelect(dapp.id === "itonami-apps" ? MARKETPLACE : dapp.id)}
                     >
                       <span className="mark" aria-hidden="true">
                         {dapp.title[0]}
@@ -160,6 +166,8 @@ function Sidebar({ context, onSelect, threads, now, zenoh, matter, account, scor
           </section>
         ))}
       </div>
+      <button type="button" className={context === MARKETPLACE ? "new-chat active" : "new-chat"}
+        data-marketplace onClick={() => onSelect(MARKETPLACE)}>Apps / Marketplace</button>
       <button
         type="button"
         className={context === ACCOUNT ? "account-button active" : "account-button"}
@@ -180,6 +188,49 @@ function Sidebar({ context, onSelect, threads, now, zenoh, matter, account, scor
       </footer>
     </nav>
   );
+}
+
+function Marketplace({ account, installed, onChange }) {
+  const [error, setError] = useState(false);
+  const [query, setQuery] = useState("");
+  const results = searchRegistry(registry, query);
+  return <main className="chat account-view"><div className="account-body">
+    <h1>Apps / Marketplace</h1>
+    <p className="muted">Discover and manage the apps bundled with this preview. External registries are not connected yet.</p>
+    {BUNDLED_APPS.map((app) => {
+      const active = installed.includes(app.id);
+      return <section key={app.id} className="market-item" data-market-app={app.id}>
+        <h2>{app.title} <span className="tag">{app.type} · Included in this image</span></h2>
+        <p>{app.description}</p>
+        <button type="button" className="secondary" data-app-install={app.id} onClick={() => {
+          if (!setAppInstalled(account.accountDid, app.id, !active)) { setError(true); return; }
+          setError(false); onChange();
+        }}>{active ? "Uninstall" : "Install"}</button>
+      </section>;
+    })}
+    {error ? <p className="problem" role="alert">Could not save the app choice on this device.</p> : null}
+    <p className="muted">Install makes a bundled app available in the sidebar. Uninstall removes it from your sidebar; the image itself is unchanged.</p>
+    <h2>Plugins and external apps</h2>
+    <p className="muted">Search a bundled, read-only Itonami Registry snapshot ({REGISTRY_REVISION.slice(0, 8)}). Listings are metadata; external installation is not connected.</p>
+    <label className="field">Search registry
+      <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search apps, skills and bots" />
+    </label>
+    {query.trim() ? <ul className="discovery-results">{results.map((item) =>
+      <li key={`${item.type}:${item.id}`}><strong>{item.name || item.id}</strong> <span className="tag">{item.type}</span><p>{item.description || "No description"}</p></li>
+    )}</ul> : null}
+    {query.trim() && results.length === 0 ? <p className="muted">No matching entries in this snapshot.</p> : null}
+  </div></main>;
+}
+
+function AppView({ dapp, now, account }) {
+  if (dapp.id === "bunsho") return <Bunsho key={account.accountDid} accountDid={account.accountDid} />;
+  if (dapp.id === "tokei") return <main className="chat account-view"><div className="account-body" data-app-view="tokei">
+    <h1>Tokei</h1><p className="app-clock">{now.toLocaleTimeString()}</p><p>{now.toLocaleDateString(undefined, { dateStyle: "full" })}</p>
+  </div></main>;
+  return <main className="chat account-view"><div className="account-body" data-app-view={dapp.id}>
+    <h1>{dapp.title}</h1><p>{dapp.summary}</p>
+    <p className="muted">This app is listed in the catalog, but its application interface is not connected in this preview.</p>
+  </div></main>;
 }
 
 function Composer({ placeholder, onSend, context }) {
@@ -226,7 +277,7 @@ function Composer({ placeholder, onSend, context }) {
   );
 }
 
-function Chat({ dapp, context, messages, onSend }) {
+function Chat({ dapp, context, messages, onSend, ageBand }) {
   const end = useRef(null);
   useEffect(() => {
     end.current?.scrollIntoView();
@@ -242,8 +293,8 @@ function Chat({ dapp, context, messages, onSend }) {
           </div>
         ) : (
           <ol className="messages">
-            {messages.map((text, index) => (
-              <li key={index}>{text}</li>
+            {messages.map((message, index) => (
+              <li key={index}>{displayMessage(message, ageBand) ?? "Content hidden by your age setting."}</li>
             ))}
           </ol>
         )}
@@ -280,20 +331,22 @@ function Locked({ dapp, minimum, score, onRaise }) {
 }
 
 function DappPanel({ dapp, score, onRaise }) {
+  const available = dapp.id === "tokei" || dapp.id === "bunsho";
   return (
     <aside className="panel" aria-label={`${dapp.title} dapp`}>
       <div className="panel-head">
         <h2>{dapp.title}</h2>
-        <span className="tag">Not connected</span>
+        <span className="tag">{available ? "Local preview" : "Not connected"}</span>
       </div>
       <p>{dapp.summary}</p>
       <dl>
         <dt>Install</dt>
-        <dd>{dapp.install === "os-image" ? "Included in the OS image" : dapp.install}</dd>
+        <dd>{available ? "Bundled app" : "Not connected in this preview"}</dd>
         <dt>Offline</dt>
-        <dd>{dapp.offline === "local-core" ? "The local core works offline" : dapp.offline}</dd>
+        <dd>{available ? "Available offline" : "Not yet verified"}</dd>
       </dl>
-      <h3>Network operations</h3>
+      <h3>Catalog-declared operations</h3>
+      <p>These entries describe planned capabilities; they are not connected here.</p>
       {dapp.remoteOperations.length === 0 ? (
         <p>None. This app does not use the network.</p>
       ) : (
@@ -320,8 +373,10 @@ function DappPanel({ dapp, score, onRaise }) {
   );
 }
 
-function Account({ account, score, proofs, onCheckPassport, passportState, onSignOut }) {
+function Account({ account, ageBand, onAgeSelected, score, proofs, onCheckPassport, passportState, onSignOut }) {
   const address = accountAddress(account.accountDid);
+  const [selectedAge, setSelectedAge] = useState(ageBand);
+  const [ageError, setAgeError] = useState(false);
   return (
     <main className="chat account-view">
       <div className="account-body">
@@ -331,6 +386,20 @@ function Account({ account, score, proofs, onCheckPassport, passportState, onSig
           Signed in with {account.method === "wallet" ? "a Web3 wallet" : "a passkey"} until{" "}
           {new Date(account.expiresAt).toLocaleDateString()}.
         </p>
+        <h2>Age group</h2>
+        <p className="muted">Self-declared and saved on this device. This is not age verification.</p>
+        <label>
+          <span>Age group </span>
+          <select value={selectedAge} onChange={(event) => { setSelectedAge(event.target.value); setAgeError(false); }}>
+            <option value="under-13">Under 13</option>
+            <option value="13-17">13–17</option>
+            <option value="18-plus">18 or older</option>
+          </select>
+        </label>
+        <button type="button" disabled={selectedAge === ageBand} onClick={() => {
+          if (!onAgeSelected(account.accountDid, selectedAge)) setAgeError(true);
+        }}>Save age group</button>
+        {ageError ? <p className="problem" role="alert">Could not save your choice on this device.</p> : null}
         <h2>
           Trust score <span data-score={score}>{score}</span>
         </h2>
@@ -369,11 +438,13 @@ function Account({ account, score, proofs, onCheckPassport, passportState, onSig
   );
 }
 
-function Shell({ account, proofs, score, broker, zenoh, matter, onProof, onSignOut }) {
+function Shell({ account, ageBand, onAgeSelected, proofs, score, broker, zenoh, matter, onProof, onSignOut }) {
   const now = useNow();
   const [context, setContext] = useState(HOME);
   const [threads, addMessage] = useThreads();
   const [passportState, setPassportState] = useState(null);
+  const [, refreshApps] = useState(0);
+  const installed = installedApps(account.accountDid);
   const dapp = catalog.dapps.find((item) => item.id === context);
   const minimum = dapp ? dappMinimum(dapp.id) : 0;
   const openAccount = () => setContext(ACCOUNT);
@@ -398,6 +469,8 @@ function Shell({ account, proofs, score, broker, zenoh, matter, onProof, onSignO
     body = (
       <Account
         account={account}
+        ageBand={ageBand}
+        onAgeSelected={onAgeSelected}
         score={score}
         proofs={proofs}
         onCheckPassport={checkPassport}
@@ -405,21 +478,26 @@ function Shell({ account, proofs, score, broker, zenoh, matter, onProof, onSignO
         onSignOut={onSignOut}
       />
     );
+  } else if (context === MARKETPLACE) {
+    body = <Marketplace account={account} installed={installed} onChange={() => refreshApps((value) => value + 1)} />;
   } else if (dapp && score < minimum) {
     body = <Locked dapp={dapp} minimum={minimum} score={score} onRaise={openAccount} />;
+  } else if (dapp) {
+    body = <AppView dapp={dapp} now={now} account={account} />;
   } else {
     body = (
       <Chat
         dapp={dapp}
         context={context}
         messages={threads[context] ?? []}
+        ageBand={ageBand}
         onSend={(text) => addMessage(context, text)}
       />
     );
   }
 
   return (
-    <div className={dapp ? "shell with-panel" : "shell"}>
+    <div className={dapp ? "shell with-panel" : "shell"} data-age-band={ageBand}>
       <Sidebar
         context={context}
         onSelect={setContext}
@@ -429,6 +507,7 @@ function Shell({ account, proofs, score, broker, zenoh, matter, onProof, onSignO
         matter={matter}
         account={account}
         score={score}
+        installed={installed}
       />
       {body}
       {dapp ? <DappPanel dapp={dapp} score={score} onRaise={openAccount} /> : null}
@@ -444,8 +523,15 @@ function App() {
   const [account, setAccount] = useState(null);
   const [finished, setFinished] = useState(setupFinished);
   const [proofs, setProofs] = useState(loadProofs);
+  const [, refreshAge] = useState(0);
+  const ageBand = account ? readAgeBand(account.accountDid) : null;
+  const onAgeSelected = (accountDid, band) => {
+    const saved = saveAgeBand(accountDid, band);
+    if (saved) refreshAge((value) => value + 1);
+    return saved;
+  };
   const score = trustScore({ accountDid: account?.accountDid, proofs });
-  const open = Boolean(did && account && finished);
+  const open = Boolean(did && account && finished && ageBand);
 
   useEffect(() => {
     deviceDid().then((value) => {
@@ -469,9 +555,11 @@ function App() {
         relayOrigin={relayOrigin}
         did={did}
         account={account}
+        ageBand={ageBand}
         returning={finished}
         score={score}
         onLinked={setAccount}
+        onAgeSelected={onAgeSelected}
         onFinish={() => {
           localStorage.setItem(SETUP_KEY, "done");
           setFinished(true);
@@ -482,6 +570,8 @@ function App() {
   return (
     <Shell
       account={account}
+      ageBand={ageBand}
+      onAgeSelected={onAgeSelected}
       proofs={proofs}
       score={score}
       broker={broker}

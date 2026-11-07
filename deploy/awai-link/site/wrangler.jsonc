@@ -1,0 +1,13 @@
+{
+  // awai.network/link/: the phone page, as static files with no Worker code. A route runs before
+  // the apex Worker's custom domain, so this path needs no change to the apex site.
+  "name": "network-awai-link",
+  "account_id": "4da88288dc30d9ee257f319d3c33ecf0",
+  "compatibility_date": "2026-01-01",
+  "assets": {
+    "directory": "./public",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "none"
+  },
+  "routes": [{ "pattern": "awai.network/link*", "zone_name": "awai.network" }]
+}
