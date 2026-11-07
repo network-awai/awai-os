@@ -59,7 +59,7 @@ could not run. The driver runs the sign-in steps first and then these, through t
 | `agent_bad_origin` | Real | `https://evil.example` and `file://` get 403, and a preflight from evil gets 403 | Origin `null` gets 200 |
 | `agent_context` | Double | The system message Hermes sends holds the app | |
 | `agent_saifu_call` | Double | A scripted Saifu call returns its result | Shows that scripted calls do run, so a refused terminal call means something |
-| `agent_no_terminal` | Double | Terminal and file tools are not offered, and a scripted `terminal` call does not create its file | `desktop-hermes-terminal` must fail here |
+| `agent_no_terminal` | Double | A scripted `terminal` call does not create its file, and no terminal or file tool is offered | `desktop-hermes-terminal` must fail here, with `ran=1` in the log, because the call is tried before the tool list is checked |
 | `agent_model_down` | None | With no model, the notice returns and the message fails | |
 | `agent_down` | Double | With Hermes stopped, the shell says it cannot be reached | |
 
@@ -77,7 +77,7 @@ observation and does not fail the check, because a small model may not choose to
 | Hermes package build | Exit 0 in 14m40s. Store path `a9mh3y1flkv2a4p7178c5bvb27blha83-hermes-agent-0.0.0` |
 | Hermes closure | 3.3 GiB, before the model (about 1 GiB). The full image size is not measured |
 | Shell unit tests for the agent client | `node --test test/agent.test.js`: 4 pass, 0 fail |
-| `desktop-hermes` image | **Not built.** The host disk filled during the build |
+| `desktop-hermes` image | **Not built.** The first try filled the host disk. The retry got `NOT_RUN only 14823496KiB free, need 30GiB`, exit 3, from `vm-lock.sh` |
 
 A smoke test ran in the Nix container, with no VM, no shell and **no real model**: Hermes, the test
 double and the real Saifu server on Basilisp, using a hand-written copy of the configuration.
@@ -113,5 +113,5 @@ double and the real Saifu server on Basilisp, using a hand-written copy of the c
 
 ## Blockers
 
-- **The build machine.** See Evidence. It needs host disk space and a restart that this task may not do, and the Nix store volume may be damaged.
+- **Disk space for the build.** The podman machine was restarted and trimmed by the coordinator. `nix-store --verify` printed no errors, and `--check-contents` was not run. `vm-lock.sh` now needs 30 GiB free, and at the retry the Mac had 14.8 GB. The scripts in this task's `.agent-output` (`measure.sh`, then `make-image.sh`) are ready to run under the lock: measure the closure first, and size the 16 GB root from it.
 - **The registry's `mihari` and `dandori` servers need `kbb`.** In `cloud-itonami/itonami-registry` `f107a79ba`, `mcp/mihari/manifest.json` and `mcp/dandori/manifest.json` have `"command": "kbb"`. ADR 0026 D3 does not allow it here, so they are not added. Generating `mcp_servers` from the registry (D14) is also not done: the Saifu entry is written by hand.

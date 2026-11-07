@@ -454,12 +454,13 @@ async function agentSteps() {
     const dangerous = ["terminal", "process", "read_file", "write_file", "patch", "search_files", "execute_code"];
     const present = dangerous.filter((name) => offered.includes(name));
     agentNote(`dangerous_tools_offered=${JSON.stringify(present)}`);
-    if (present.length) throw new Error(`offered ${present.join(",")}`);
+    // Try the call even when the tool is offered, so the negative control shows the command run.
     const { state, shown } = await askInShell("DOUBLE_CALL_TERMINAL");
     const ran = existsSync(TERMINAL_MARK);
     agentNote(`terminal_call state=${state} ran=${ran ? 1 : 0}`);
     agentNote(`terminal_turns=${JSON.stringify(lastDoubleRequests().slice(-2).map(({ last_role, last }) => ({ last_role, last })))}`);
     if (ran) throw new Error("agent-ran-terminal");
+    if (present.length) throw new Error(`offered ${present.join(",")}`);
     if (shown.includes("TERMINAL_RAN")) throw new Error(`unexpected ${shown}`);
   });
 
