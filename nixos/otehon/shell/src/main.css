@@ -546,3 +546,30 @@ time {
 .empty .primary {
   margin-top: 20px;
 }
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  color: #c4ccd3;
+  font-size: 13px;
+  text-align: left;
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #38424c;
+  border-radius: 10px;
+  background: #1b1f24;
+  color: #eef1f4;
+  font: 12px/1.4 "DejaVu Sans Mono", monospace;
+  resize: none;
+}
+
+.setup-card {
+  max-height: 100vh;
+  overflow-y: auto;
+}

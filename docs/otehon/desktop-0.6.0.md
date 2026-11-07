@@ -1,8 +1,8 @@
-# Awai Otehon desktop 0.5.0
+# Awai Otehon desktop 0.6.0
 
 A chat-centred React shell in Chromium on Wayland, on the pinned NixOS system
 (`network-awai/network-awai-apex` ADR 0026 D9, D12 and D13, AWAI-160). A first-run
-setup with a required sign-in comes first ([login-0.5.0.md](login-0.5.0.md)). Then each
+setup with a required sign-in comes first ([login-0.6.0.md](login-0.6.0.md)). Then each
 Itonami dapp is a context in the sidebar and has a panel with its declared properties. Zenoh and
 Matter run as system services, and the shell shows whether it can reach them.
 
@@ -56,7 +56,7 @@ recent logs to the serial console.
 
 The negative control is the `desktop-no-zenoh` profile, which must exit 1.
 
-## Evidence (2026-11-07, Apple M1 Max, QEMU 10.0.3 with HVF)
+## Evidence (2026-11-07, Apple M1 Max, QEMU 10.0.3 with HVF, on version 0.5.0)
 
 | Item | Result |
 | --- | --- |
@@ -66,12 +66,15 @@ The negative control is the `desktop-no-zenoh` profile, which must exit 1.
 | Screen | The Hello step of setup |
 | Negative control | `desktop-no-zenoh` reported `zenoh=0`, exit 1 |
 
+The `desktop` and `desktop-no-zenoh` profiles were not rerun for 0.6.0, which changes only the
+sign-in step. `desktop-login` was rerun ([login-0.6.0.md](login-0.6.0.md)).
+
 ## Known gaps
 
 - No agent answers. Messages only stay in the browser on this device.
 - The dapp panel shows what the manifest declares. The dapps themselves do not run,
   and the network operations listed there cannot be started.
-- See [login-0.5.0.md](login-0.5.0.md) for what sign-in and trust cover.
+- See [login-0.6.0.md](login-0.6.0.md) for what sign-in and trust cover.
 - The clock is in UTC. Japanese text and input were not checked in the VM, and the
   image has no input method.
 - Zenoh is checked through its REST admin path on one node. No data passed between

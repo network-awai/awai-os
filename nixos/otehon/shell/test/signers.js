@@ -23,6 +23,11 @@ export function randomWallet() {
   return { secret, address: checksumAddress(`0x${hex(keccak_256(publicKey.slice(1))).slice(-40)}`) };
 }
 
+export function signPersonal(wallet, message) {
+  const recovered = secp256k1.sign(personalMessageHash(message), wallet.secret, { prehash: false, format: "recovered" });
+  return `0x${hex(recovered.slice(1))}${recovered[0].toString(16).padStart(2, "0")}`;
+}
+
 export function walletResponse(wallet, request, now, { lifetime = SESSION_MS, legacyV = false, chainId = 1 } = {}) {
   const issuedAt = new Date(now).toISOString();
   const expiresAt = new Date(now + lifetime).toISOString();

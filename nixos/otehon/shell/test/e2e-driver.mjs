@@ -3,7 +3,7 @@
 // Built only for the desktop-login check image.
 import { p256 } from "@noble/curves/nist.js";
 import { p256Did, parseLinkFragment, sealResponse } from "../src/identity/link.js";
-import { passkeyResponse, randomWallet, walletResponse } from "./signers.js";
+import { passkeyResponse, randomWallet, signPersonal, walletResponse } from "./signers.js";
 
 const RELAY = process.env.RELAY_ORIGIN;
 const EXPECTED_DAPPS = Number(process.env.EXPECTED_DAPPS);
@@ -81,6 +81,13 @@ async function click(selector) {
   await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: box.x, y: box.y });
   await send("Input.dispatchMouseEvent", { type: "mousePressed", ...mouse });
   await send("Input.dispatchMouseEvent", { type: "mouseReleased", ...mouse });
+}
+
+// Replaces the field's text. Clicking collapses a selection, so select after the click.
+async function type(selector, text) {
+  await click(selector);
+  await evaluate(`document.querySelector(${JSON.stringify(selector)}).select()`);
+  await send("Input.insertText", { text });
 }
 
 const ALLOW = "dialog.kotoba-client-consent button:last-of-type";
@@ -200,6 +207,24 @@ try {
     await click("[data-account]");
     await click("[data-sign-out]");
     await until("document.querySelector('[data-step=signin]')", "sign-in after sign-out");
+  });
+  await step("local_wrong_signer", async () => {
+    await click("#local-start");
+    await type("#local-address", wallet.address);
+    const message = await until("document.querySelector('#local-message')?.value", "message to sign");
+    await type("#local-signature", signPersonal(randomWallet(), message));
+    await click("#local-verify");
+    await until("document.querySelector('[data-link-error=wrong-signer]')", "refusal");
+    if ((await evaluate(dappCount)) !== 0) throw new Error("apps-visible-after-forgery");
+  });
+  await step("local_wallet", async () => {
+    const message = await until("document.querySelector('#local-message')?.value", "message to sign");
+    await type("#local-signature", signPersonal(wallet, message));
+    await click("#local-verify");
+    await until(`${dappCount} === ${EXPECTED_DAPPS}`, "apps with a local signature");
+    const account = await evaluate("document.querySelector('[data-account]').dataset.account");
+    if (account !== `did:pkh:eip155:1:${wallet.address}`) throw new Error("wrong-account");
+    if (await evaluate("document.querySelector('dialog.kotoba-client-consent')?.open === true")) throw new Error("consent-for-local");
   });
 } catch {
   outcome = "fail";
