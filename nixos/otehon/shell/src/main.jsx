@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import catalog from "./dapps.json";
+import { MANIMANI, Manimani, ManimaniLink } from "./manimani.jsx";
 import { clearSession, deviceDid, loadProofs, loadSession, saveProof } from "./identity/device.js";
 import { createBroker, osOperations, readPassport } from "./runtime.js";
 import { Setup } from "./setup.jsx";
@@ -130,6 +131,7 @@ function Sidebar({ context, onSelect, threads, now, zenoh, matter, account, scor
       >
         New chat
       </button>
+      <ManimaniLink active={context === MANIMANI} onSelect={() => onSelect(MANIMANI)} />
       <div className="contexts">
         {SECTIONS.map((section) => (
           <section key={section}>
@@ -405,6 +407,8 @@ function Shell({ account, proofs, score, broker, zenoh, matter, onProof, onSignO
         onSignOut={onSignOut}
       />
     );
+  } else if (context === MANIMANI) {
+    body = <Manimani />;
   } else if (dapp && score < minimum) {
     body = <Locked dapp={dapp} minimum={minimum} score={score} onRaise={openAccount} />;
   } else {

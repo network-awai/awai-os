@@ -24,7 +24,7 @@ command -v nc >/dev/null || { echo "NOT_RUN no nc"; exit 3; }
 : > "$log"
 rm -f "$shot"
 qemu-system-aarch64 \
-  -machine virt,accel=hvf -cpu host -smp 4 -m 4096 \
+  -machine virt,accel=hvf -cpu host -smp 4 -m "${OTEHON_QEMU_MEMORY:-4096}" \
   -bios "$firmware" \
   -drive "if=virtio,format=qcow2,file=$image,snapshot=on" \
   -device virtio-gpu-pci,xres=1440,yres=900 \
