@@ -3,7 +3,7 @@ let
   user = "otehon";
   cfg = config.otehon;
 
-  shell = pkgs.buildNpmPackage {
+  shell = cfg.shellPkgs.buildNpmPackage {
     pname = "awai-otehon-shell";
     version = config.system.image.version;
     src = lib.cleanSourceWith {
@@ -70,6 +70,11 @@ in
       type = lib.types.bool;
       default = false;
       description = "Build the sign-in test driver into the shell. Check images only.";
+    };
+    # The shell is static files, so it can come from another architecture's build.
+    shellPkgs = lib.mkOption {
+      type = lib.types.pkgs;
+      default = pkgs;
     };
     shell = lib.mkOption {
       type = lib.types.package;
