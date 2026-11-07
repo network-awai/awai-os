@@ -165,7 +165,8 @@ class Live:
         result = subprocess.run(
             [self.args.basilisp, "run", "tools/verify_receipt.lpy", order_file, receipt_file,
              request_file, response_file, key_file],
-            cwd=self.args.dapp, env={**os.environ, "PYTHONPATH": "src"},
+            # Basilisp would otherwise write bytecode beside its sources, which Nix keeps read-only.
+            cwd=self.args.dapp, env={**os.environ, "PYTHONPATH": "src", "PYTHONDONTWRITEBYTECODE": "1"},
             capture_output=True, text=True, timeout=120)
         last = result.stdout.strip().splitlines()[-1] if result.stdout.strip() else "{}"
         try:

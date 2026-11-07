@@ -40,6 +40,9 @@ jobs:
           nix config show system-features
       - name: Shared cases on Babashka and Basilisp
         working-directory: dapps/sanka
+        env:
+          # Basilisp would otherwise write its bytecode beside its sources, in the read-only store.
+          PYTHONDONTWRITEBYTECODE: "1"
         run: |
           nix-shell nix/shell.nix --run 'bb --classpath src:test test/run_cases.clj'
           nix-shell nix/shell.nix --run 'PYTHONPATH=src:test basilisp run test/run_cases.lpy'
