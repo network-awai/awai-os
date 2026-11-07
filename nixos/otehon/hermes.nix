@@ -2,7 +2,7 @@
 let
   cfg = config.otehon.agent;
   apiPort = 8642;
-  modelPort = 8771;
+  modelPort = 8773;
   home = "/var/lib/otehon-hermes";
   keyDir = "/run/otehon-agent";
 

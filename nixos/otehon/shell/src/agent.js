@@ -3,7 +3,7 @@
 // at boot; an image with no agent has no such file, so messages only stay on this device.
 
 export const AGENT_ORIGIN = "http://127.0.0.1:8642";
-export const MODEL_ORIGIN = "http://127.0.0.1:8771";
+export const MODEL_ORIGIN = "http://127.0.0.1:8773";
 
 export const agentKey = () => globalThis.__OTEHON_AGENT_KEY ?? "";
 export const hasAgent = () => agentKey() !== "";

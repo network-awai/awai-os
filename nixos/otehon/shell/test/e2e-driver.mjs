@@ -334,6 +334,8 @@ async function checkManimani() {
     execSync("systemctl start otehon-manimani-llm");
     await until(status("ready"), "the model returns", 600000);
   });
+}
+
 const AGENT = "http://127.0.0.1:8642";
 const DOUBLE_LOG = "/run/otehon-model-double/requests.jsonl";
 const TERMINAL_MARK = "/var/lib/otehon-hermes/TERMINAL_RAN";
@@ -482,7 +484,7 @@ async function agentSteps() {
 
   for (const line of run(`systemctl show otehon-hermes -p IPAddressDeny -p IPAddressAllow -p User
     systemctl show otehon-llama -p IPAddressDeny -p IPAddressAllow -p DynamicUser
-    grep -i -E ':(21C2|2243) 00000000:0000 ' /proc/net/tcp | cut -c1-40 || true`).split("\n")) {
+    grep -i -E ':(21C2|2245) 00000000:0000 ' /proc/net/tcp | cut -c1-40 || true`).split("\n")) {
     if (line) agentNote(`fact ${line}`);
   }
 }

@@ -10,7 +10,7 @@ build machine does not have the disk for a bigger one. See
 | --- | --- |
 | Module | `nixos/otehon/hermes.nix`. The profile `desktop-agent` adds it to the desktop. `desktop.nix` does not include it |
 | Hermes | Upstream commit `4d04303818b61bf3aa09278af48356315515965b`, through its own `flake.lock`, with no optional dependency groups. API server on `127.0.0.1:8642` |
-| Model | `qwen2.5-1.5b-instruct-q4_k_m.gguf`, in the image, through llama.cpp on `127.0.0.1:8771` with a 64000 token window |
+| Model | `qwen2.5-1.5b-instruct-q4_k_m.gguf`, in the image, through llama.cpp on `127.0.0.1:8773` (8771 is Manimani) with a 64000 token window |
 | Tools | `platform_toolsets.api_server = [saifu]`, so no terminal or file tools. The `tool_search` bridge is off |
 | Saifu | `dapps/saifu/mcp/server.lpy` on Basilisp, as an `mcp_servers` entry |
 | Shell | `shell/src/agent.js` sends chat with the app as a system message, streams the answer and shows errors. The "no agent" notice goes away only while Hermes accepts the key and the model answers `/health` |
