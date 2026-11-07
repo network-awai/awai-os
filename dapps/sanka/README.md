@@ -10,7 +10,7 @@ no screen, service, keys or ledger, and it is **not built into the OS image**.
 | Shared runner | `test/sanka/runner.cljc` | The same three |
 | Platform entry points | `test/run_cases.cljs`, `.clj`, `.lpy` | One each |
 | Shared data | `test/cases.json`, `test/scenarios.json` | All of them |
-| Data generator | `test/gen_cases.py` | Python, only to rewrite the JSON |
+| Data generator | `test/gen_cases.lpy` | Basilisp, only to rewrite the JSON |
 | Receipt verifier | `tools/verify_receipt.lpy` | Basilisp with `cryptography` |
 | Real order and attacks | `test/live_v1.py` | Python, driving real processes |
 
@@ -45,7 +45,7 @@ bb --classpath src:test test/run_cases.clj
 PYTHONPATH=src:test basilisp run test/run_cases.lpy
 ```
 
-The generated JSON is checked in. To change a case, edit `test/gen_cases.py` and run it.
+The generated JSON is checked in. To change a case, edit `test/gen_cases.lpy` and run `basilisp run test/gen_cases.lpy`.
 
 ## Evidence (2026-11-07, Apple M1 Max, macOS host)
 
