@@ -4,6 +4,7 @@ import catalog from "./dapps.json";
 import { clearSession, deviceDid, loadProofs, loadSession, saveProof } from "./identity/device.js";
 import { createBroker, osOperations, readPassport } from "./runtime.js";
 import { Setup } from "./setup.jsx";
+import { displayMessage, readAgeBand, saveAgeBand } from "./age.js";
 import {
   POINTS,
   accountAddress,
@@ -226,7 +227,7 @@ function Composer({ placeholder, onSend, context }) {
   );
 }
 
-function Chat({ dapp, context, messages, onSend }) {
+function Chat({ dapp, context, messages, onSend, ageBand }) {
   const end = useRef(null);
   useEffect(() => {
     end.current?.scrollIntoView();
@@ -242,8 +243,8 @@ function Chat({ dapp, context, messages, onSend }) {
           </div>
         ) : (
           <ol className="messages">
-            {messages.map((text, index) => (
-              <li key={index}>{text}</li>
+            {messages.map((message, index) => (
+              <li key={index}>{displayMessage(message, ageBand) ?? "Content hidden by your age setting."}</li>
             ))}
           </ol>
         )}
@@ -320,8 +321,10 @@ function DappPanel({ dapp, score, onRaise }) {
   );
 }
 
-function Account({ account, score, proofs, onCheckPassport, passportState, onSignOut }) {
+function Account({ account, ageBand, onAgeSelected, score, proofs, onCheckPassport, passportState, onSignOut }) {
   const address = accountAddress(account.accountDid);
+  const [selectedAge, setSelectedAge] = useState(ageBand);
+  const [ageError, setAgeError] = useState(false);
   return (
     <main className="chat account-view">
       <div className="account-body">
@@ -331,6 +334,20 @@ function Account({ account, score, proofs, onCheckPassport, passportState, onSig
           Signed in with {account.method === "wallet" ? "a Web3 wallet" : "a passkey"} until{" "}
           {new Date(account.expiresAt).toLocaleDateString()}.
         </p>
+        <h2>Age group</h2>
+        <p className="muted">Self-declared and saved on this device. This is not age verification.</p>
+        <label>
+          <span>Age group </span>
+          <select value={selectedAge} onChange={(event) => { setSelectedAge(event.target.value); setAgeError(false); }}>
+            <option value="under-13">Under 13</option>
+            <option value="13-17">13–17</option>
+            <option value="18-plus">18 or older</option>
+          </select>
+        </label>
+        <button type="button" disabled={selectedAge === ageBand} onClick={() => {
+          if (!onAgeSelected(account.accountDid, selectedAge)) setAgeError(true);
+        }}>Save age group</button>
+        {ageError ? <p className="problem" role="alert">Could not save your choice on this device.</p> : null}
         <h2>
           Trust score <span data-score={score}>{score}</span>
         </h2>
@@ -369,7 +386,7 @@ function Account({ account, score, proofs, onCheckPassport, passportState, onSig
   );
 }
 
-function Shell({ account, proofs, score, broker, zenoh, matter, onProof, onSignOut }) {
+function Shell({ account, ageBand, onAgeSelected, proofs, score, broker, zenoh, matter, onProof, onSignOut }) {
   const now = useNow();
   const [context, setContext] = useState(HOME);
   const [threads, addMessage] = useThreads();
@@ -398,6 +415,8 @@ function Shell({ account, proofs, score, broker, zenoh, matter, onProof, onSignO
     body = (
       <Account
         account={account}
+        ageBand={ageBand}
+        onAgeSelected={onAgeSelected}
         score={score}
         proofs={proofs}
         onCheckPassport={checkPassport}
@@ -413,13 +432,14 @@ function Shell({ account, proofs, score, broker, zenoh, matter, onProof, onSignO
         dapp={dapp}
         context={context}
         messages={threads[context] ?? []}
+        ageBand={ageBand}
         onSend={(text) => addMessage(context, text)}
       />
     );
   }
 
   return (
-    <div className={dapp ? "shell with-panel" : "shell"}>
+    <div className={dapp ? "shell with-panel" : "shell"} data-age-band={ageBand}>
       <Sidebar
         context={context}
         onSelect={setContext}
@@ -444,8 +464,15 @@ function App() {
   const [account, setAccount] = useState(null);
   const [finished, setFinished] = useState(setupFinished);
   const [proofs, setProofs] = useState(loadProofs);
+  const [, refreshAge] = useState(0);
+  const ageBand = account ? readAgeBand(account.accountDid) : null;
+  const onAgeSelected = (accountDid, band) => {
+    const saved = saveAgeBand(accountDid, band);
+    if (saved) refreshAge((value) => value + 1);
+    return saved;
+  };
   const score = trustScore({ accountDid: account?.accountDid, proofs });
-  const open = Boolean(did && account && finished);
+  const open = Boolean(did && account && finished && ageBand);
 
   useEffect(() => {
     deviceDid().then((value) => {
@@ -469,9 +496,11 @@ function App() {
         relayOrigin={relayOrigin}
         did={did}
         account={account}
+        ageBand={ageBand}
         returning={finished}
         score={score}
         onLinked={setAccount}
+        onAgeSelected={onAgeSelected}
         onFinish={() => {
           localStorage.setItem(SETUP_KEY, "done");
           setFinished(true);
@@ -482,6 +511,8 @@ function App() {
   return (
     <Shell
       account={account}
+      ageBand={ageBand}
+      onAgeSelected={onAgeSelected}
       proofs={proofs}
       score={score}
       broker={broker}
