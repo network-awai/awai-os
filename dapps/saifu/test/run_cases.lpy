@@ -1,0 +1,40 @@
+;; Runs the shared cases on Basilisp. usage: basilisp run test/run_cases.lpy
+(ns run-cases
+  (:require [saifu.core :as core])
+  (:import json sys))
+
+(def functions
+  {"valid-address?" core/valid-address?
+   "hex->decimal" core/hex->decimal
+   "format-units" core/format-units
+   "balance-request" core/balance-request
+   "read-balance" core/read-balance
+   "operation-gate" core/operation-gate})
+
+(defn from-json [value]
+  (cond
+    (instance? python/dict value) (into {} (map (fn [[k v]] [(keyword k) (from-json v)]) (.items value)))
+    (instance? python/list value) (mapv from-json value)
+    :else value))
+
+(defn plain [value]
+  (cond
+    (map? value) (into {} (map (fn [[k v]] [(name k) (plain v)]) value))
+    (vector? value) (mapv plain value)
+    (keyword? value) (name value)
+    :else value))
+
+(defn -main []
+  (let [cases (from-json (json/loads (.read (python/open "test/cases.json"))))
+        failures (remove nil?
+                         (map (fn [{:keys [fn args expect]}]
+                                (let [got (plain (apply (get functions fn) args))
+                                      want (plain expect)]
+                                  (when (not= got want)
+                                    (str fn " " args " got " got " want " want))))
+                              cases))]
+    (doseq [failure failures] (println "FAIL" failure))
+    (println "basilisp cases" (count cases) "failures" (count failures))
+    (sys/exit (if (seq failures) 1 0))))
+
+(-main)

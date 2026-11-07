@@ -1,0 +1,19 @@
+;; One read of a real EVM chain through the shared core: public data, no key, no signature.
+;; usage: PYTHONPATH=src basilisp run test/check_rpc.lpy
+(ns check-rpc
+  (:require [saifu.core :as core])
+  (:import json urllib.request))
+
+(defn- to-python [value]
+  (cond
+    (map? value) (python/dict (map (fn [[k v]] #py ((name k) (to-python v))) value))
+    (vector? value) (python/list (map to-python value))
+    :else value))
+
+(let [address "0x000000000000000000000000000000000000dEaD"
+      request (urllib.request/Request "https://mainnet.optimism.io"
+                                      ** :data (.encode (json/dumps (to-python (core/balance-request address 1))))
+                                      :headers #py {"content-type" "application/json" "user-agent" "otehon-check"})
+      body (json/loads (.read (urllib.request/urlopen request ** :timeout 20)))
+      read (core/read-balance {:result (.get body "result") :error (.get body "error")} 18)]
+  (println "chain read" address "->" read))

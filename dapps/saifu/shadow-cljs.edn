@@ -1,0 +1,5 @@
+{:source-paths ["src" "app/src" "test"]
+ :dependencies [[reagent "1.3.0"]]
+ :builds {:test {:target :node-script :output-to "out/test.js" :main run-cases/main}
+          :app {:target :browser :output-dir "out/app" :asset-path "."
+                :modules {:saifu {:init-fn saifu.app/init}}}}}
