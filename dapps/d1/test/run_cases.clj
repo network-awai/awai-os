@@ -14,7 +14,9 @@
    "annotation-problem" core/annotation-problem
    "digest-problem" core/digest-problem
    "bound-problem" core/bound-problem
-   "admission-eval" core/admission-eval})
+   "admission-eval" core/admission-eval
+   "contribution-dispatch-plan" core/contribution-dispatch-plan
+   "contribution-witness-evaluation" core/contribution-witness-evaluation})
 
 (defn keywordize [value]
   (walk/postwalk
