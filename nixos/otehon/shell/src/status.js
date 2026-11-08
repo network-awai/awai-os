@@ -4,7 +4,7 @@
 // below are the OS's own inventory, probed one by one.
 import { useEffect, useState } from "react";
 
-export const STATUS_ORIGIN = "http://127.0.0.1:8772";
+export const STATUS_ORIGIN = "http://127.0.0.1:8774";
 export const ZENOH_REST_ORIGIN = "http://127.0.0.1:8000";
 const PORT_POLL_MS = 5000;
 const SYSTEM_POLL_MS = 5000;
@@ -14,7 +14,7 @@ const SYSTEM_POLL_MS = 5000;
 export const OS_PORTS = [
   { port: 8770, service: "Media", path: "/v1/capabilities", kind: "http" },
   { port: 8771, service: "Manimani", path: "/v1/state", kind: "http" },
-  { port: 8772, service: "Status", path: "/v1/system", kind: "http" },
+  { port: 8774, service: "Status", path: "/v1/system", kind: "http" },
   { port: 8000, service: "Zenoh REST", path: "/@/*/router", kind: "http" },
   { port: 7447, service: "Zenoh", kind: "service", from: "zenoh" },
   { port: 5580, service: "Matter", kind: "service", from: "matter" },

@@ -134,7 +134,8 @@ in
     wantedBy = [ "graphical.target" ];
     after = [ "local-fs.target" ];
     environment = {
-      OTEHON_STATUS_PORT = "8772";
+      # 8772 already serves the Manimani LLM in this image.
+      OTEHON_STATUS_PORT = "8774";
     };
     serviceConfig = {
       ExecStart = "${lib.getExe pkgs.python3} ${./status-service.py}";

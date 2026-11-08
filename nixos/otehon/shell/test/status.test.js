@@ -15,11 +15,11 @@ test("OS ports are the shell's own loopback inventory", () => {
 });
 
 test("port rows merge probes with service checks", () => {
-  const rows = portRows({ 8770: true, 8771: false, 8772: true, 8000: true }, { zenoh: true, matter: false });
+  const rows = portRows({ 8770: true, 8771: false, 8774: true, 8000: true }, { zenoh: true, matter: false });
   const byPort = Object.fromEntries(rows.map((row) => [row.port, row.state]));
   assert.equal(byPort[8770], "up");
   assert.equal(byPort[8771], "down");
-  assert.equal(byPort[8772], "up");
+  assert.equal(byPort[8774], "up");
   assert.equal(byPort[8000], "up");
   assert.equal(byPort[7447], "up");
   assert.equal(byPort[5580], "down");
