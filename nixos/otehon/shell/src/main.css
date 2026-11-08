@@ -634,3 +634,81 @@ time {
 .net-form input { padding: 10px 12px; border-radius: 10px; border: 1px solid #38424c; background: #1b1f24; color: inherit; font: inherit; }
 .net-form .primary { min-height: 44px; }
 .net-error { color: #f09a8a; font-size: 13px; }
+
+/* Bottom docks (AWAI-231): device on the left, node on the right. */
+.dock-cluster {
+  position: fixed;
+  bottom: 12px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(360px, 40vw);
+}
+.dock-left { left: 12px; align-items: flex-start; }
+.dock-right { right: 12px; align-items: flex-end; }
+.dock-buttons { display: flex; gap: 8px; }
+.dock-button {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  background: #22272d;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.dock-button:hover { background: #2a3037; }
+.dock-button.active { background: #38424c; }
+.dock-label { color: #c4ccd3; font-weight: 600; }
+.dock-value { color: #98a2ac; font-variant-numeric: tabular-nums; }
+.dock-panel {
+  width: 320px;
+  max-width: 80vw;
+  max-height: min(52vh, 420px);
+  overflow-y: auto;
+  border-radius: 12px;
+  background: #1b1f24;
+  padding: 14px 16px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.dock-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.dock-panel-head h2 { margin: 0; font-size: 14px; font-weight: 600; }
+.dock-close {
+  padding: 2px 10px;
+  border-radius: 8px;
+  background: #2a3037;
+  font-size: 14px;
+}
+.dock-list { display: flex; flex-direction: column; }
+.dock-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  border-top: 1px solid #2f363e;
+}
+.dock-list li:first-child { border-top: 0; }
+.dock-list .muted { margin-left: auto; text-align: right; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: #8a8f98; flex: none; }
+.dot-up { background: #3fb68b; }
+.dot-down { background: #f09a8a; }
+.dot-internal { background: #5a636d; }
+.dock-facts { margin: 8px 0; }
+.dock-facts dt { color: #98a2ac; font-size: 12px; font-weight: 600; }
+.dock-facts dd { margin: 0 0 8px; overflow-wrap: anywhere; }
+.dock-panel .secondary { width: 100%; min-height: 40px; margin-top: 4px; }
+.meter {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: #2a3037;
+  margin: 10px 0 4px;
+}
+.meter span { display: block; height: 100%; background: #7fb4e6; }
