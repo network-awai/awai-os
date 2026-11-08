@@ -351,7 +351,11 @@ function DappPanel({ dapp, score, onRaise }) {
         <dd>{available ? "Available offline" : "Not yet verified"}</dd>
       </dl>
       <h3>Catalog-declared operations</h3>
-      <p>These entries describe planned capabilities; they are not connected here.</p>
+      <p>
+        {dapp.id === "tsunagu"
+          ? "These operations run on this VM, each only after you approve it."
+          : "These entries describe planned capabilities; they are not connected here."}
+      </p>
       {dapp.remoteOperations.length === 0 ? (
         <p>None. This app does not use the network.</p>
       ) : (
