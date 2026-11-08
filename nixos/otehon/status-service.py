@@ -110,13 +110,16 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if not self.allowed():
             return
-        if self.path == "/v1/system":
-            try:
-                self.reply(200, system())
-            except Refused as refused:
-                self.reply(refused.status, {"error": refused.reason})
-        else:
-            self.reply(404, {"error": "not-found"})
+        try:
+            if self.path == "/v1/system":
+                try:
+                    self.reply(200, system())
+                except Refused as refused:
+                    self.reply(refused.status, {"error": refused.reason})
+            else:
+                self.reply(404, {"error": "not-found"})
+        except (BrokenPipeError, ConnectionResetError):
+            self.close_connection = True
 
     def log_message(self, format, *args):
         pass
