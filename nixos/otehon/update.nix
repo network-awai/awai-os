@@ -11,6 +11,11 @@ let
   '';
   testKeys = [ ./fixtures/update/test-manifest.pub ./fixtures/update/test-cache.pub ];
   closure = pkgs.closureInfo { rootPaths = [ config.system.build.toplevel ]; };
+  initialUki = config.system.boot.loader.ukiFile;
+  initialUkiMarker = pkgs.runCommand "otehon-initial-uki-marker" { } ''
+    digest=$(sha256sum ${config.system.build.uki}/${lib.escapeShellArg initialUki} | cut -d ' ' -f 1)
+    printf '%s %s\n' "$digest" ${lib.escapeShellArg initialUki} > "$out"
+  '';
   command = pkgs.writeShellApplication {
     name = "otehon-update";
     runtimeInputs = with pkgs; [ config.nix.package config.systemd.package coreutils curl findutils gnused gnugrep jq minisign util-linux ];
@@ -72,6 +77,9 @@ in
   };
 
   config = {
+    # This marker belongs to the image, not to the system closure: referring to
+    # the UKI from the updater executable would create a build dependency cycle.
+    image.repart.partitions.esp.contents."/EFI/Awai/initial-uki.sha256".source = initialUkiMarker;
     assertions = [{
       assertion = cfg.allowTestKeys || !lib.elem (builtins.readFile cfg.publicKey) (map builtins.readFile testKeys)
         && !lib.elem (builtins.readFile cfg.cacheKey) (map builtins.readFile testKeys);

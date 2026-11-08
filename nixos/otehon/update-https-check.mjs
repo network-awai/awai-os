@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { createServer } from 'node:https';
+import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, mkdtempSync, mkdirSync, unlinkSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 const output = resolve(process.argv[2]);
@@ -40,6 +41,17 @@ try {
    assert.equal(readFileSync(file,'utf8'),'unrelated boot entry');
    unlinkSync(file);
  }
+ const own=join(esp,'awai-owned.efi'), marker=join(tmp,'initial-uki.sha256');
+ writeFileSync(own,'owned image');
+ writeFileSync(marker,`${createHash('sha256').update('owned image').digest('hex')} awai-owned.efi\n`);
+ espCheck=spawnSync('bash',['nixos/otehon/update.sh','check-esp',esp,marker],{env,encoding:'utf8'});
+ assert.equal(espCheck.status,0,espCheck.stdout+espCheck.stderr);
+ writeFileSync(own,'tampered image');
+ espCheck=spawnSync('bash',['nixos/otehon/update.sh','check-esp',esp,marker],{env,encoding:'utf8'});
+ assert.equal(espCheck.status,2); assert.equal(readFileSync(own,'utf8'),'tampered image');
+ writeFileSync(own,'owned image'); writeFileSync(join(esp,'other.eFi'),'unrelated');
+ espCheck=spawnSync('bash',['nixos/otehon/update.sh','check-esp',esp,marker],{env,encoding:'utf8'});
+ assert.equal(espCheck.status,2); assert.equal(readFileSync(join(esp,'other.eFi'),'utf8'),'unrelated');
  const base=`https://localhost:${port}`;
  let r=await localCheck();assert.equal(r.code,0,r.err+r.out);assert.match(r.out,/^2 \/nix\/store\//);
  r=await execute(`${base}/good`);assert.equal(r.code,0,r.err+r.out);assert.match(r.out,/^2 \/nix\/store\//);

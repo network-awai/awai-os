@@ -35,18 +35,36 @@ prepare() {
 }
 
 no_default() {
+  retire_initial_uki /boot/EFI/Linux /boot/EFI/Awai/initial-uki.sha256 /boot/EFI/Awai/retired
   sed -i '/^default /d' /boot/loader/loader.conf
 }
 
-# systemd-boot also discovers unified kernel images here. Their ownership cannot
-# be inferred from their names, so do not remove or ignore an existing UKI when
-# arranging a trial boot. Refuse before changing either the profile or the ESP.
+# The installer image supplies a marker for its own initial UKI. Refuse all
+# other images and any modified or missing marker; never delete an EFI image.
 check_esp() (
   shopt -s nullglob nocaseglob
+  local marker=${2:-} backup=${3:-} hash name extra actual
   local images=("$1"/*.efi)
-  [ "${#images[@]}" -eq 0 ] || refuse unmanaged-uki
+  [ "${#images[@]}" -ne 0 ] || return 0
+  [ "${#images[@]}" -eq 1 ] && [ -f "$marker" ] || refuse unmanaged-uki
+  read -r hash name extra < "$marker" || refuse unmanaged-uki
+  [[ "$hash" =~ ^[0-9a-f]{64}$ && "$name" =~ ^[A-Za-z0-9._+-]+\.efi$ && -z "${extra:-}" ]] || refuse unmanaged-uki
+  [ "${images[0]}" = "$1/$name" ] || refuse unmanaged-uki
+  actual=$(sha256sum "${images[0]}"); actual=${actual%% *}
+  [ "$actual" = "$hash" ] || refuse unmanaged-uki
+  [ -z "$backup" ] || [ ! -e "$backup/$name" ] || refuse uki-backup-exists
 )
 
+retire_initial_uki() (
+  local directory=$1 marker=$2 backup=$3 hash name extra
+  shopt -s nullglob nocaseglob
+  local images=("$directory"/*.efi)
+  [ "${#images[@]}" -ne 0 ] || return 0
+  check_esp "$directory" "$marker" "$backup"
+  read -r hash name extra < "$marker" || refuse unmanaged-uki
+  mkdir -p "$backup"
+  mv "$directory/$name" "$backup/$name"
+)
 check() (
   local feed=$1 manifest version system
   manifest=$(mktemp -d)
@@ -70,7 +88,7 @@ apply() {
   checked=$(check "$feed") || { echo "$checked"; exit 2; }
   version=${checked%% *}
   system=${checked#* }
-  check_esp /boot/EFI/Linux
+  check_esp /boot/EFI/Linux /boot/EFI/Awai/initial-uki.sha256 /boot/EFI/Awai/retired
 
   # Nix refuses any path that the pinned cache key has not signed.
   nix copy --from "$cache" \
@@ -201,10 +219,10 @@ case "${1:-}" in
   apply) apply "$2" ;;
   check-https) https_feed check "$2" ;;
   apply-https) https_feed apply "$2" ;;
-  check-esp) check_esp "$2" ;;
+  check-esp) check_esp "$2" "${3:-}" ;;
   settle) settle ;;
   health) health ;;
   version) installed_version ;;
   ready) ready ;;
-  *) echo "usage: otehon-update check|apply <directory> | check-https|apply-https <base> | check-esp <directory> | settle | health | version | ready" >&2; exit 64 ;;
+  *) echo "usage: otehon-update check|apply <directory> | check-https|apply-https <base> | check-esp <directory> [marker] | settle | health | version | ready" >&2; exit 64 ;;
 esac
