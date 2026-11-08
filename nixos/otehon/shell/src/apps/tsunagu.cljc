@@ -32,7 +32,11 @@
              note-state (react/useState "") note (aget note-state 0) set-note (aget note-state 1)
              busy-state (react/useState false) busy (aget busy-state 0) set-busy (aget busy-state 1)
              refresh (fn [] (-> (bridge "/status") (.then set-status)
-                                (.catch (fn [_] (set-status nil) (set-note "The connection service on this VM is not answering.")))))
+                                (.catch (fn [e]
+                                          (set-status nil)
+                                          (set-note (if (= (.-message e) "trusted_host_authorization_unavailable")
+                                                      "Connection controls are unavailable until trusted host authorization is configured."
+                                                      "The connection service on this VM is not answering."))))))
              act (fn [label f]
                    (set-busy true) (set-note "")
                    (-> (f) (.then (fn [_] (refresh)))
@@ -40,7 +44,7 @@
                        (.finally (fn [] (set-busy false)))))
              ts (when status (js->clj (.-tailscale status) :keywordize-keys true))
              kk (when status (js->clj (.-kekkai status) :keywordize-keys true))
-             ts-stage (tailscale-stage (:state ts))
+             ts-stage (if status (tailscale-stage (:state ts)) :unavailable)
              kk-stage (kekkai-stage kk)
              tail-ip (first (filter #(not (.includes % ":")) (:addresses ts)))]
          (react/useEffect (fn [] (refresh) (let [id (js/setInterval refresh 3000)] #(js/clearInterval id))) #js [])
@@ -53,6 +57,7 @@
              (el "section" #js {:data-tsunagu "tailscale"}
                (el "h2" nil "Tailscale")
                (case ts-stage
+                 :unavailable (el "p" #js {:className "muted"} "Tailscale status is unavailable.")
                  :off
                  (el "div" nil
                    (el "p" nil "Off. Nothing is sent to Tailscale until you approve it.")

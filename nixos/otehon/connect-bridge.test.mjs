@@ -9,11 +9,11 @@ import { connectHandler, summarize, pairingInfo, systemDependencies, PORT } from
 
 function fakeDeps(calls = []) {
   return {
-    status: async () => ({ state: 'Running', authURL: null, name: 'awai', addresses: ['100.64.0.9'] }),
+    status: async () => { calls.push('status'); return { state: 'Running', authURL: null, name: 'awai', addresses: ['100.64.0.9'] }; },
     connect: async () => { calls.push('connect'); return { state: 'NeedsLogin' }; },
     disconnect: async () => { calls.push('disconnect'); return { state: 'Stopped' }; },
     logout: async () => { calls.push('logout'); return { state: 'Stopped' }; },
-    pairing: async () => ({ available: true, code: '12345678' }),
+    pairing: async () => { calls.push('pairing'); return { available: true, code: '12345678' }; },
     pairingAction: async (v) => { calls.push(v); return v.fingerprint === 'changed' ? { error: 'operation_failed' } : {}; },
   };
 }
@@ -25,7 +25,7 @@ async function call(deps, { method = 'GET', path = '/status', headers = {}, body
   try {
     return await new Promise((resolve, reject) => {
       const req = http.request({ host: '127.0.0.1', port, method, path,
-        headers: { host: `127.0.0.1:${PORT}`, origin: 'null', 'x-otehon-connect': '1', ...headers } }, (res) => {
+        headers: Object.fromEntries(Object.entries({ host: `127.0.0.1:${PORT}`, origin: 'null', 'x-otehon-connect': '1', ...headers }).filter(([, value]) => value !== undefined)) }, (res) => {
         let text = '';
         res.on('data', (d) => { text += d; });
         res.on('end', () => resolve({ status: res.statusCode, body: text ? JSON.parse(text) : null, cors: res.headers['access-control-allow-origin'] }));
@@ -36,40 +36,28 @@ async function call(deps, { method = 'GET', path = '/status', headers = {}, body
   } finally { server.close(); }
 }
 
-test('status reports Tailscale and Kekkai to the shell origin only', async () => {
-  const ok = await call(fakeDeps());
-  assert.equal(ok.status, 200);
-  assert.equal(ok.cors, 'null');
-  assert.deepEqual(ok.body.tailscale.addresses, ['100.64.0.9']);
+test('status refuses to disclose pairing and tailnet information', async () => {
+  const calls = [];
+  const response = await call(fakeDeps(calls));
+  assert.equal(response.status, 503);
+  assert.deepEqual(response.body, { error: 'trusted_host_authorization_unavailable' });
+  assert.deepEqual(calls, []);
   assert.equal((await call(fakeDeps(), { headers: { origin: 'http://evil.example' } })).status, 403);
   assert.equal((await call(fakeDeps(), { headers: { host: 'localhost:8791' } })).status, 403);
-  assert.equal((await call(fakeDeps(), { headers: { 'x-otehon-connect': '0' } })).status, 403);
 });
 
-test('a refused or missing header sends no command', async () => {
+test('forged, absent, and opaque origins cannot invoke privileged operations', async () => {
   const calls = [];
-  assert.equal((await call(fakeDeps(calls), { method: 'POST', path: '/tailscale/connect', headers: { 'x-otehon-connect': '' } })).status, 403);
+  for (const p of ['/tailscale/connect', '/tailscale/disconnect', '/tailscale/logout', '/kekkai/open', '/kekkai/close', '/kekkai/revoke', '/kekkai/approve']) {
+    for (const headers of [{}, { origin: undefined }, { 'x-otehon-connect': '' }, { 'x-otehon-connect': '1' }]) {
+      const response = await call(fakeDeps(calls), { method: 'POST', path: p, headers, body: { fingerprint: 'SHA256:abc', kekkaiFingerprint: 'a'.repeat(64) } });
+      assert.equal(response.status, 503, p);
+      assert.equal(response.body.error, 'trusted_host_authorization_unavailable');
+    }
+  }
+  assert.equal((await call(fakeDeps(calls), { method: 'OPTIONS', path: '/tailscale/connect' })).status, 204);
   assert.equal((await call(fakeDeps(calls), { method: 'POST', path: '/tailscale/connect', headers: { origin: 'https://awai.network' } })).status, 403);
   assert.deepEqual(calls, []);
-});
-
-test('Tailscale actions map to one command each', async () => {
-  const calls = [];
-  for (const p of ['/tailscale/connect', '/tailscale/disconnect', '/tailscale/logout']) {
-    assert.equal((await call(fakeDeps(calls), { method: 'POST', path: p })).status, 200);
-  }
-  assert.deepEqual(calls, ['connect', 'disconnect', 'logout']);
-  assert.equal((await call(fakeDeps(calls), { method: 'POST', path: '/tailscale/exec' })).status, 404);
-});
-
-test('Kekkai approval passes the shown fingerprints and reports a changed request', async () => {
-  const calls = [];
-  const ok = await call(fakeDeps(calls), { method: 'POST', path: '/kekkai/approve', body: { fingerprint: 'SHA256:abc+/=', kekkaiFingerprint: 'a'.repeat(64) } });
-  assert.equal(ok.status, 200);
-  assert.deepEqual(calls[0], { action: 'approve', fingerprint: 'SHA256:abc+/=', kekkaiFingerprint: 'a'.repeat(64) });
-  assert.equal((await call(fakeDeps(), { method: 'POST', path: '/kekkai/approve', body: { fingerprint: 'changed' } })).status, 409);
-  assert.equal((await call(fakeDeps(), { method: 'POST', path: '/kekkai/approve', body: { fingerprint: 'x y' } })).status, 400);
-  assert.equal((await call(fakeDeps(), { method: 'POST', path: '/kekkai/approve', body: { fingerprint: 7 } })).status, 400);
 });
 
 test('summaries drop peers and keep only an https sign-in URL', () => {

@@ -86,8 +86,6 @@ export function systemDependencies({ run = execute, ask = control, state = STATE
   };
 }
 
-const HEX_OR_FINGERPRINT = /^[A-Za-z0-9+/=:]{1,128}$/;
-
 export function connectHandler(deps) {
   return async (req, res) => {
     const send = (code, value) => {
@@ -104,35 +102,16 @@ export function connectHandler(deps) {
     try {
       if (req.headers.host !== `127.0.0.1:${PORT}`) return send(403, { error: 'host_refused' });
       if (req.headers.origin !== undefined && req.headers.origin !== 'null') return send(403, { error: 'origin_refused' });
+      // Preflight carries no state and invokes no privileged operation. Allow
+      // it so the kiosk can read the actual fail-closed response below.
       if (req.method === 'OPTIONS') return send(204, null);
-      if (req.headers['x-otehon-connect'] !== '1') return send(403, { error: 'header_required' });
-      if (req.method === 'GET' && req.url === '/status') {
-        return send(200, { tailscale: await deps.status(), kekkai: await deps.pairing() });
-      }
-      if (req.method !== 'POST') return send(404, { error: 'not_found' });
-      const chunks = [];
-      let size = 0;
-      for await (const d of req) { size += d.length; if (size > 4096) throw Error('too_large'); chunks.push(Buffer.from(d)); }
-      const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : {};
-      switch (req.url) {
-        case '/tailscale/connect': return send(200, await deps.connect());
-        case '/tailscale/disconnect': return send(200, await deps.disconnect());
-        case '/tailscale/logout': return send(200, await deps.logout());
-        case '/kekkai/open': await deps.pairingAction({ action: 'open' }); return send(200, await deps.pairing());
-        case '/kekkai/close': await deps.pairingAction({ action: 'close' }); return send(200, await deps.pairing());
-        case '/kekkai/revoke': await deps.pairingAction({ action: 'revoke-ssh' }); return send(200, await deps.pairing());
-        case '/kekkai/approve': {
-          const { fingerprint, kekkaiFingerprint } = body;
-          for (const v of [fingerprint, kekkaiFingerprint]) {
-            if (v !== undefined && v !== null && (typeof v !== 'string' || !HEX_OR_FINGERPRINT.test(v))) return send(400, { error: 'invalid_request' });
-          }
-          // remote-access.mjs refuses the approval if the request changed since it was shown.
-          const result = await deps.pairingAction({ action: 'approve', fingerprint, kekkaiFingerprint });
-          if (result && result.error) return send(409, { error: 'approval_failed' });
-          return send(200, await deps.pairing());
-        }
-        default: return send(404, { error: 'not_found' });
-      }
+      // The browser's consent dialog cannot authenticate a caller to this root
+      // service. A null Origin and a fixed header are forgeable, including by
+      // another local process. Until an independently authenticated host channel
+      // exists, refuse *all* operations, including status (which contains the
+      // pairing code and the Tailscale sign-in URL). Do not add a browser-settable
+      // switch or credential here.
+      return send(503, { error: 'trusted_host_authorization_unavailable' });
     } catch {
       return send(500, { error: 'operation_failed' });
     }
