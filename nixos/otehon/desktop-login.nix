@@ -45,6 +45,8 @@ in
     description = "Drive the sign-in flow end to end";
     wantedBy = [ "graphical.target" ];
     after = [ "graphical.target" "ntfy-sh.service" ];
+    # Check-only tools for in-VM diagnosis. Never a release path.
+    path = [ pkgs.networkmanager pkgs.bluez pkgs.dbus pkgs.coreutils pkgs.bash ];
     serviceConfig = {
       Type = "oneshot";
       StandardOutput = "tty";

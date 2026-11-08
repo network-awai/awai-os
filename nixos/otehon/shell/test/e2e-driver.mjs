@@ -442,6 +442,83 @@ try {
     if (account !== `did:pkh:eip155:1:${wallet.address}`) throw new Error("wrong-account");
     if (await evaluate("document.querySelector('dialog.kotoba-client-consent')?.open === true")) throw new Error("consent-for-local");
   });
+  await step("net_setup", async () => {
+    for (const unit of ["otehon-net", "NetworkManager", "polkit"]) {
+      const active = execSync(`systemctl is-active ${unit}`).toString().trim();
+      console.log(`OTEHON_NET_UNIT ${unit}=${active}`);
+      if (active !== "active") {
+        for (const line of execSync(`journalctl -u ${unit} --no-pager -n 10 -o cat`).toString().split("\n")) {
+          if (line.trim()) console.log(`OTEHON_NET_JOURNAL ${unit} ${line.trim().slice(0, 200)}`);
+        }
+        throw new Error(`${unit} ${active}`);
+      }
+    }
+    // bluetooth.service carries ConditionPathIsDirectory=/sys/class/bluetooth, so it stays
+    // inactive without an adapter. Loaded proves BlueZ ships; ActiveState tells the rest.
+    const bt = execSync("systemctl show bluetooth -p LoadState,ActiveState --value").toString().trim().split("\n");
+    console.log(`OTEHON_NET_BT load=${bt[0]} active=${bt[1]}`);
+    if (bt[0] !== "loaded") throw new Error(`bluetooth ${bt[0]}`);
+    // nmcli lives in the otehon-net service, not in this driver: prove liveness on the bus instead.
+    const bus = execSync("busctl --timeout=8 --no-pager --list").toString();
+    console.log(`OTEHON_NET_BUS names=${bus.trim().split("\n").length}`);
+    if (!bus.includes("org.freedesktop.NetworkManager")) throw new Error("nm-not-on-bus");
+    if (!bus.includes("org.bluez")) console.log("OTEHON_NET_BUS no-bluez (no adapter, expected)");
+    for (const unit of ["polkit", "dbus"]) {
+      try {
+        console.log(`OTEHON_NET_UNIT ${unit}=${execSync(`systemctl is-active ${unit}`).toString().trim()}`);
+      } catch (error) {
+        console.log(`OTEHON_NET_UNIT ${unit} FAIL rc=${error.status}`);
+      }
+    }
+    const state = await (await fetch("http://127.0.0.1:8773/v1/status")).json();
+    if (state.link !== "down" || state.wifi.available !== false || state.bluetooth.available !== false) {
+      throw new Error(`net-unexpected ${JSON.stringify(state)}`);
+    }
+    const noWifi = await fetch("http://127.0.0.1:8773/v1/wifi/networks");
+    if (noWifi.status !== 503 || (await noWifi.json()).error !== "no-adapter") throw new Error("wifi-no-adapter");
+    const noBt = await fetch("http://127.0.0.1:8773/v1/bluetooth/devices");
+    if (noBt.status !== 503 || (await noBt.json()).error !== "no-adapter") throw new Error("bt-no-adapter");
+    const badJoin = await (
+      await fetch("http://127.0.0.1:8773/v1/wifi/join", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ssid: "" }),
+      })
+    ).json();
+    if (badJoin.error !== "bad-ssid") throw new Error("ssid-validation");
+    const badPair = await (
+      await fetch("http://127.0.0.1:8773/v1/bluetooth/pair", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ mac: "nope" }),
+      })
+    ).json();
+    if (badPair.error !== "bad-mac") throw new Error("mac-validation");
+    const badHost = await new Promise((resolve, reject) => {
+      let text = "";
+      const client = rawConnect(8773, "127.0.0.1", () =>
+        client.write("GET /v1/status HTTP/1.1\r\nHost: evil.example\r\nConnection: close\r\n\r\n"),
+      );
+      client.on("data", (data) => (text += data.toString("latin1")));
+      client.on("end", () => resolve(text));
+      client.on("error", reject);
+    });
+    if (!badHost.startsWith("HTTP/1.1 403 ") || !badHost.includes('"bad-host"')) {
+      throw new Error(`net-bad-host ${badHost.slice(0, 60)}`);
+    }
+    await click("[data-dapp=wifi]");
+    await until("document.querySelector('[data-net=wifi]')", "wifi screen");
+    await until(
+      "document.querySelector('[data-net=wifi]').textContent.includes('no Wi-Fi adapter')",
+      "wifi empty state",
+    );
+    await click("[data-dapp=bluetooth]");
+    await until("document.querySelector('[data-net=bluetooth]')", "bluetooth screen");
+    await until(
+      "document.querySelector('[data-net=bluetooth]').textContent.includes('no Bluetooth adapter')",
+      "bluetooth empty state",
+    );
+  });
   if (process.env.OTEHON_MEDIA === "1") await mediaSteps();
   if (process.env.OTEHON_MANIMANI === "1") await checkManimani();
 } catch {
