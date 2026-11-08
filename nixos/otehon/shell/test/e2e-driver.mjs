@@ -382,6 +382,10 @@ try {
   });
   await step("wallet", async () => {
     await publish(request.topic, await sealResponse(request, walletResponse(wallet, request, Date.now())));
+    await until("document.querySelector('[data-step=age]')", "age declaration");
+    if (!(await evaluate("document.querySelector('[data-age-continue]').disabled"))) throw new Error("age-can-be-skipped");
+    await click("[data-age-band='13-17']");
+    await click("[data-age-continue]");
     await until("document.querySelector('[data-step=trust]')", "trust step");
     if ((await evaluate("document.querySelector('[data-score]').dataset.score")) !== "10") throw new Error("score");
     await click("[data-next]");
@@ -389,6 +393,7 @@ try {
     await until(`${dappCount} === ${EXPECTED_DAPPS}`, "apps");
     const account = await evaluate("document.querySelector('[data-account]').dataset.account");
     if (account !== `did:pkh:eip155:1:${wallet.address}`) throw new Error("wrong-account");
+    if ((await evaluate("document.querySelector('.shell').dataset.ageBand")) !== "13-17") throw new Error("age-not-applied");
     await until("document.title.includes('gate=0')", "title");
   });
   await step("trust_lock", async () => {
@@ -396,10 +401,35 @@ try {
     await until("document.querySelector('[data-operation=submit-order][data-locked=true]')", "locked operation");
     await until("document.querySelector('[data-operation=read-quotes][data-locked=false]')", "open operation");
   });
+  await step("bundled_app", async () => {
+    await click("[data-dapp=tokei]");
+    await until("document.querySelector('[data-app-view=tokei]')", "clock app");
+    await click("[data-dapp=itonami-apps]");
+    await until("document.querySelector('[data-market-app=tokei]')", "apps catalog");
+    await click("[data-app-install=tokei]");
+    await until("!document.querySelector('[data-dapp=tokei]')", "uninstalled app");
+    await send("Page.reload");
+    await sleep(1500);
+    await until("document.querySelector('[data-marketplace]')", "shell after reload");
+    if (await evaluate("Boolean(document.querySelector('[data-dapp=tokei]'))")) throw new Error("uninstall-not-persisted");
+    await click("[data-marketplace]");
+    await click("[data-app-install=tokei]");
+    await until("document.querySelector('[data-dapp=tokei]')", "installed app");
+  });
   await step("reload_keeps_login", async () => {
     await send("Page.reload");
     await sleep(1500);
     await until(`${dappCount} === ${EXPECTED_DAPPS}`, "apps after reload");
+  });
+  await step("existing_account_age_migration", async () => {
+    await evaluate(`localStorage.removeItem(${JSON.stringify("otehon.age.v1:")} + ${JSON.stringify(`did:pkh:eip155:1:${wallet.address}`)})`);
+    await send("Page.reload");
+    await sleep(1500);
+    await until("document.querySelector('[data-step=age]')", "existing account age declaration");
+    if ((await evaluate(dappCount)) !== 0) throw new Error("apps-visible-without-age");
+    await click("[data-age-band='13-17']");
+    await click("[data-age-continue]");
+    await until(`${dappCount} === ${EXPECTED_DAPPS}`, "apps after age migration");
   });
   await step("tamper_returns_to_login", async () => {
     await evaluate(`(() => {
@@ -415,9 +445,13 @@ try {
   await step("passkey", async () => {
     const second = await allowLink();
     await publish(second.topic, await sealResponse(second, passkeyResponse(passkey, second, Date.now())));
+    await until("document.querySelector('[data-step=age]')", "new account age declaration");
+    await click("[data-age-band='under-13']");
+    await click("[data-age-continue]");
     await until(`${dappCount} === ${EXPECTED_DAPPS}`, "apps with passkey");
     const account = await evaluate("document.querySelector('[data-account]').dataset.account");
     if (account !== p256Did(p256.getPublicKey(passkey))) throw new Error("wrong-account");
+    if ((await evaluate("document.querySelector('.shell').dataset.ageBand")) !== "under-13") throw new Error("account-age-mixed");
   });
   await step("sign_out", async () => {
     await click("[data-account]");
@@ -440,6 +474,7 @@ try {
     await until(`${dappCount} === ${EXPECTED_DAPPS}`, "apps with a local signature");
     const account = await evaluate("document.querySelector('[data-account]').dataset.account");
     if (account !== `did:pkh:eip155:1:${wallet.address}`) throw new Error("wrong-account");
+    if ((await evaluate("document.querySelector('.shell').dataset.ageBand")) !== "13-17") throw new Error("account-age-not-restored");
     if (await evaluate("document.querySelector('dialog.kotoba-client-consent')?.open === true")) throw new Error("consent-for-local");
   });
   if (process.env.OTEHON_MEDIA === "1") await mediaSteps();
