@@ -6,6 +6,7 @@ import { clearSession, deviceDid, loadProofs, loadSession, saveProof } from "./i
 import { createBroker, osOperations, readPassport } from "./runtime.js";
 import { MEDIA_ORIGIN, describeMessage, requestImage, requestSpeech, settleSavedItem, useMediaCapabilities } from "./media.js";
 import { BluetoothPanel, WifiPanel } from "./net.jsx";
+import { DeviceDock, NodeDock } from "./docks.jsx";
 import { Setup } from "./setup.jsx";
 import {
   POINTS,
@@ -427,7 +428,7 @@ function Account({ account, score, proofs, onCheckPassport, passportState, onSig
   );
 }
 
-function Shell({ account, proofs, score, broker, zenoh, matter, onProof, onSignOut }) {
+function Shell({ did, account, proofs, score, broker, zenoh, matter, onProof, onSignOut }) {
   const now = useNow();
   const [context, setContext] = useState(HOME);
   const [threads, addMessage, updateMessage] = useThreads();
@@ -502,6 +503,16 @@ function Shell({ account, proofs, score, broker, zenoh, matter, onProof, onSignO
       />
       {body}
       {panel ? <DappPanel dapp={panel} score={score} onRaise={openAccount} /> : null}
+      <DeviceDock
+        account={account}
+        score={score}
+        proofs={proofs}
+        capabilities={capabilities}
+        zenoh={zenoh}
+        matter={matter}
+        onAccount={openAccount}
+      />
+      <NodeDock did={did} zenoh={zenoh} matter={matter} />
     </div>
   );
 }
@@ -551,6 +562,7 @@ function App() {
   }
   return (
     <Shell
+      did={did}
       account={account}
       proofs={proofs}
       score={score}

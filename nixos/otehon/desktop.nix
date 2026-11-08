@@ -127,6 +127,29 @@ in
     };
   };
 
+  # Loopback system metrics for the shell's node dock (AWAI-231). The shell shows
+  # the services without it; live CPU and memory need this endpoint.
+  systemd.services.otehon-status = {
+    description = "Loopback system metrics for the shell status UI";
+    wantedBy = [ "graphical.target" ];
+    after = [ "local-fs.target" ];
+    environment = {
+      OTEHON_STATUS_PORT = "8772";
+    };
+    serviceConfig = {
+      ExecStart = "${lib.getExe pkgs.python3} ${./status-service.py}";
+      DynamicUser = true;
+      IPAddressDeny = "any";
+      IPAddressAllow = "localhost";
+      ProtectSystem = "strict";
+      ProtectHome = true;
+      PrivateTmp = true;
+      NoNewPrivileges = true;
+      RestrictAddressFamilies = [ "AF_INET" "AF_UNIX" ];
+      Restart = "on-failure";
+    };
+  };
+
   services.matter-server = {
     enable = true;
     extraArgs.listen-address = "127.0.0.1";
