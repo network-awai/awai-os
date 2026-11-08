@@ -48,8 +48,30 @@ funds. It is **not built into the OS image**.
   the host must calculate the output digest. It does not verify either itself.
 
 These additions are not connected to the host executor, image, network or
-durable reservation store. They do not provide authenticated consent, a
+durable reservation store. They do not provide an installed consent broker, a
 cross-node protocol, an OCI bot run, or an independent signed witness receipt.
+
+`src/d1/dango_adapter.cljc` uses the canonical Dango `.cljc` verifier for
+both parties' signed presentations and checks a host-supplied revocation
+snapshot for age and expiry on each call. The host supplies pinned roots,
+the role-specific binding-to-resource/holder mapping, public-data
+classification, and an authenticated rollback-protected revocation source;
+none is implemented here. A fixture snapshot and static test keys do not prove
+the authenticity or freshness of a live revocation feed. This adapter is not
+registered in the OS and has no configured production trust roots.
+
+The real Dango verifier integration test was run with
+`kotoba-lang/kotoba` commit `f2c05798926e7d9ae1fdc6468da1d677be1c1c46`:
+
+```sh
+clojure -Sdeps '{:paths ["src" "test" "/path/to/kotoba/lib/kotoba.dango/oracle/src"]}' -M test/dango_adapter_test.clj
+```
+
+It passes 15 assertions using signed fixture presentations, including tamper,
+wrong scope, revoked CID, stale snapshot, and revocation after reservation. A
+mutant that discards the revoked CID set fails three assertions. The
+reservation and launcher in that test are synthetic. The Dango oracle's
+Babashka execution has not been qualified; the test above ran on local Clojure.
 
 `src/d1/dispatch.cljc` defines a host orchestration boundary: scoped consent
 verification precedes a durable atomic reservation, followed by a second
