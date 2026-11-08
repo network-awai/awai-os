@@ -51,7 +51,7 @@ in
   # The user has no password and logs in automatically, so this image is for a
   # local VM only. SSH has no keys until one is approved in Tsunagu
   # (connect.nix), and then admits only murakumo-admin with that key.
-  imports = [ ./common.nix ./connect.nix ];
+  imports = [ ./common.nix ./connect.nix ./inference-lane.nix ];
 
   options.otehon = {
     relayOrigin = lib.mkOption {
