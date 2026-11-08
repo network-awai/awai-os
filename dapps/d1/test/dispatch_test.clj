@@ -72,6 +72,12 @@
         changed (assoc host :reserve! (fn [b _] (reserve b 1)))]
     (is (= :plan-refused (:cause (dispatch/dispatch! changed request))))
     (is (not (some #{:launch} @events))))
+  (let [[host events _] (fixture {:reserve! (fn [_ _] (throw (ex-info "unknown" {})))})]
+    (is (= {:status :unknown :cause :adapter-exception} (dispatch/dispatch! host request)))
+    (is (not (some #{:launch} @events))))
+  (let [[host events _] (fixture {:launch! (fn [_] (throw (ex-info "response lost" {})))})]
+    (is (= {:status :unknown :cause :adapter-exception} (dispatch/dispatch! host request)))
+    (is (= 1 (count (filter #{:reserve} @events)))))
   (is (= :host-unavailable (:cause (dispatch/dispatch! {} request)))))
 
 (let [r (run-tests 'dispatch-test)]

@@ -58,8 +58,10 @@ adapters and must enforce the fence at the actual effect boundary; these
 checks alone cannot close a concurrent-revocation or split-brain race. The
 orchestrator does not register a host adapter, authenticate signatures, make a
 reservation, start containers, release an uncertain reservation, or guarantee
-an exception's effect has been rolled back. Its 21-assertion test uses only
-synthetic adapter results; bypassing revalidation produces eight failures.
+an exception's effect has been rolled back. Adapter exceptions produce
+`:unknown` and require reconciliation, including when a launcher might already
+have started a process. Its 25-assertion test uses only synthetic adapter
+results; bypassing revalidation produces eight failures.
 
 ## Check
 

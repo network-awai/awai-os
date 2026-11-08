@@ -22,7 +22,7 @@
        (= "public" (:data-class consent)) (= expected (:binding consent))
        (integer? (:expires consent)) (> (:expires consent) now)))
 
-(defn dispatch!
+(defn- dispatch-once!
   "Execute a contribution only via a trusted host.
 
   :reserve! must perform one atomic durable reservation and return its capacity
@@ -71,3 +71,12 @@
                   (if-not (= :valid fresh)
                     {:status :unknown :cause :revalidation-failed :reservation :held}
                     ((:launch! host) fresh-plan)))))))))))
+
+(defn dispatch!
+  "Attempt dispatch once. Adapter exceptions leave the outcome unknown;
+  callers must reconcile the durable reservation and any launched process."
+  [host request]
+  (try
+    (dispatch-once! host request)
+    (catch #?(:clj Exception :cljs :default :lpy python/Exception) _
+      {:status :unknown :cause :adapter-exception})))
