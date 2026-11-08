@@ -13,7 +13,7 @@ const post = (path, body = {}) =>
     body: JSON.stringify(body),
   });
 
-function useManimani() {
+export function useManimani() {
   const [state, setState] = useState(null);
   const read = useCallback(
     () =>
@@ -36,7 +36,7 @@ function statusOf(state) {
   return state.paused ? "paused" : state.status;
 }
 
-const STATUS_TEXT = {
+export const STATUS_TEXT = {
   stopped: "The Manimani service is not running.",
   paused: "Paused. Scheduled work and tools are stopped.",
   ready: "Running on this device.",

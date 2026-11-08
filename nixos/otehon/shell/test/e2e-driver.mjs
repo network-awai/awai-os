@@ -442,6 +442,43 @@ try {
     if (account !== `did:pkh:eip155:1:${wallet.address}`) throw new Error("wrong-account");
     if (await evaluate("document.querySelector('dialog.kotoba-client-consent')?.open === true")) throw new Error("consent-for-local");
   });
+  await step("status_docks", async () => {
+    // The check image has no curl: the driver itself runs in the VM, so use fetch.
+    const active = execSync("systemctl is-active otehon-status").toString().trim();
+    if (active !== "active") throw new Error(`otehon-status ${active}`);
+    const system = await (await fetch("http://127.0.0.1:8772/v1/system")).json();
+    if (!Number.isFinite(system.cpu_percent) || !Number.isFinite(system.mem_total_kb)) {
+      throw new Error("status-without-readings");
+    }
+    const badHost = await new Promise((resolve, reject) => {
+      let text = "";
+      const client = rawConnect(8772, "127.0.0.1", () =>
+        client.write("GET /v1/system HTTP/1.1\r\nHost: evil.example\r\nConnection: close\r\n\r\n"),
+      );
+      client.on("data", (data) => (text += data.toString("latin1")));
+      client.on("end", () => resolve(text));
+      client.on("error", reject);
+    });
+    if (!badHost.startsWith("HTTP/1.1 403 ") || !badHost.includes('"bad-host"')) {
+      throw new Error(`status-bad-host ${badHost.slice(0, 60)}`);
+    }
+    const missing = await fetch("http://127.0.0.1:8772/nope");
+    if (missing.status !== 404) throw new Error(`status-unknown-path ${missing.status}`);
+    await until("document.querySelector('[data-dock-left]')", "device dock");
+    await until("document.querySelector('[data-dock-right]')", "node dock");
+    const wallet = await until(
+      "document.querySelector('[data-dock-toggle=wallet]')?.textContent",
+      "wallet button",
+    );
+    if (!wallet.includes("Trust 10")) throw new Error("wallet without trust");
+    await click("[data-dock-toggle=hosts]");
+    await until("document.querySelector('[data-dock-panel=hosts]')", "hosts panel");
+    const device = await until("document.querySelector('[data-dock-device]')?.dataset.dockDevice", "this device");
+    if (!device.startsWith("did:key:")) throw new Error("device without did");
+    await click("[data-dock-toggle=ports]");
+    await until("document.querySelector('[data-dock-panel=ports] [data-dock-port='8770']')", "ports panel");
+    await click("[data-dock-toggle=ports]");
+  });
   if (process.env.OTEHON_MEDIA === "1") await mediaSteps();
   if (process.env.OTEHON_MANIMANI === "1") await checkManimani();
 } catch {
