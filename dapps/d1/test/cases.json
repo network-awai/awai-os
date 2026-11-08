@@ -1,0 +1,722 @@
+[
+  {
+    "fn": "transition",
+    "args": [
+      ":proposed",
+      ":approved"
+    ],
+    "expect": {
+      "state": ":approved"
+    }
+  },
+  {
+    "fn": "transition",
+    "args": [
+      ":proposed",
+      ":denied"
+    ],
+    "expect": {
+      "state": ":denied"
+    }
+  },
+  {
+    "fn": "transition",
+    "args": [
+      ":approved",
+      ":reserved"
+    ],
+    "expect": {
+      "state": ":reserved"
+    }
+  },
+  {
+    "fn": "transition",
+    "args": [
+      ":approved",
+      ":executing"
+    ],
+    "expect": {
+      "refused": true,
+      "from": ":approved",
+      "to": ":executing"
+    }
+  },
+  {
+    "fn": "transition",
+    "args": [
+      ":approved",
+      ":refused"
+    ],
+    "expect": {
+      "state": ":refused"
+    }
+  },
+  {
+    "fn": "transition",
+    "args": [
+      ":reserved",
+      ":executing"
+    ],
+    "expect": {
+      "state": ":executing"
+    }
+  },
+  {
+    "fn": "transition",
+    "args": [
+      ":reserved",
+      ":accepted"
+    ],
+    "expect": {
+      "refused": true,
+      "from": ":reserved",
+      "to": ":accepted"
+    }
+  },
+  {
+    "fn": "transition",
+    "args": [
+      ":reserved",
+      ":expired"
+    ],
+    "expect": {
+      "state": ":expired"
+    }
+  },
+  {
+    "fn": "transition",
+    "args": [
+      ":executing",
+      ":accepted"
+    ],
+    "expect": {
+      "state": ":accepted"
+    }
+  },
+  {
+    "fn": "transition",
+    "args": [
+      ":executing",
+      ":expired"
+    ],
+    "expect": {
+      "state": ":expired"
+    }
+  },
+  {
+    "fn": "transition",
+    "args": [
+      ":executing",
+      ":failed"
+    ],
+    "expect": {
+      "state": ":failed"
+    }
+  },
+  {
+    "fn": "transition",
+    "args": [
+      ":accepted",
+      ":recorded"
+    ],
+    "expect": {
+      "state": ":recorded"
+    }
+  },
+  {
+    "fn": "transition",
+    "args": [
+      ":accepted",
+      ":reserved"
+    ],
+    "expect": {
+      "refused": true,
+      "from": ":accepted",
+      "to": ":reserved"
+    }
+  },
+  {
+    "fn": "transition",
+    "args": [
+      ":recorded",
+      ":accepted"
+    ],
+    "expect": {
+      "refused": true,
+      "from": ":recorded",
+      "to": ":accepted"
+    }
+  },
+  {
+    "fn": "transition",
+    "args": [
+      ":denied",
+      ":proposed"
+    ],
+    "expect": {
+      "refused": true,
+      "from": ":denied",
+      "to": ":proposed"
+    }
+  },
+  {
+    "fn": "redeliver",
+    "args": [
+      ":executing"
+    ],
+    "expect": {
+      "replay": true,
+      "state": ":executing"
+    }
+  },
+  {
+    "fn": "redeliver",
+    "args": [
+      ":proposed"
+    ],
+    "expect": {
+      "refused": true,
+      "from": ":proposed",
+      "to": ":proposed"
+    }
+  },
+  {
+    "fn": "redeliver",
+    "args": [
+      ":recorded"
+    ],
+    "expect": {
+      "refused": true,
+      "from": ":recorded",
+      "to": ":recorded"
+    }
+  },
+  {
+    "fn": "receipt-problem",
+    "args": [
+      {
+        "kind": "awai.work-receipt/1",
+        "work-kind": ":compute",
+        "order": "bafyorder1",
+        "provider": "did:key:p1",
+        "node": "did:key:n1",
+        "input": "keyed-hash-abc",
+        "output": "bafyout1",
+        "engine": {
+          "name": "llama.cpp",
+          "version": "v1",
+          "digest": "sha256:aaaa"
+        },
+        "model": {
+          "revision": "r1",
+          "digest": "sha256:bbbb"
+        },
+        "measured": {
+          "prompt-tokens": 10,
+          "completion-tokens": 20,
+          "started-at": 100,
+          "finished-at": 200
+        },
+        "ledger-head": "bafyhead1",
+        "demand": ":owner-internal",
+        "nonce": "n1"
+      }
+    ],
+    "expect": null
+  },
+  {
+    "fn": "receipt-problem",
+    "args": [
+      {
+        "kind": "awai.work-receipt/1",
+        "work-kind": ":compute",
+        "order": "bafyorder1",
+        "provider": "did:key:p1",
+        "node": "did:key:n1",
+        "input": "keyed-hash-abc",
+        "output": "bafyout1",
+        "engine": {
+          "name": "llama.cpp",
+          "version": "v1",
+          "digest": "sha256:aaaa"
+        },
+        "model": {
+          "revision": "r1",
+          "digest": "sha256:bbbb"
+        },
+        "measured": {
+          "prompt-tokens": 10,
+          "completion-tokens": 20,
+          "started-at": 100,
+          "finished-at": 200
+        },
+        "ledger-head": "bafyhead1",
+        "demand": ":owner-internal"
+      }
+    ],
+    "expect": {
+      "refused": true,
+      "missing": [
+        ":nonce"
+      ],
+      "forbidden": [],
+      "engine-missing": [],
+      "model-missing": [],
+      "measured-missing": []
+    }
+  },
+  {
+    "fn": "receipt-problem",
+    "args": [
+      {
+        "kind": "awai.work-receipt/1",
+        "work-kind": ":compute",
+        "order": "bafyorder1",
+        "provider": "did:key:p1",
+        "node": "did:key:n1",
+        "input": "keyed-hash-abc",
+        "output": "bafyout1",
+        "body": "secret text",
+        "engine": {
+          "name": "llama.cpp",
+          "version": "v1",
+          "digest": "sha256:aaaa"
+        },
+        "model": {
+          "revision": "r1",
+          "digest": "sha256:bbbb"
+        },
+        "measured": {
+          "prompt-tokens": 10,
+          "completion-tokens": 20,
+          "started-at": 100,
+          "finished-at": 200
+        },
+        "ledger-head": "bafyhead1",
+        "demand": ":owner-internal",
+        "nonce": "n1"
+      }
+    ],
+    "expect": {
+      "refused": true,
+      "missing": [],
+      "forbidden": [
+        ":body"
+      ],
+      "engine-missing": [],
+      "model-missing": [],
+      "measured-missing": []
+    }
+  },
+  {
+    "fn": "receipt-problem",
+    "args": [
+      {
+        "kind": "awai.work-receipt/1",
+        "work-kind": ":compute",
+        "order": "bafyorder1",
+        "provider": "did:key:p1",
+        "node": "did:key:n1",
+        "input": "keyed-hash-abc",
+        "output": "bafyout1",
+        "engine": {
+          "name": "llama.cpp",
+          "version": "v1"
+        },
+        "model": {
+          "revision": "r1",
+          "digest": "sha256:bbbb"
+        },
+        "measured": {
+          "prompt-tokens": 10,
+          "completion-tokens": 20,
+          "started-at": 100,
+          "finished-at": 200
+        },
+        "ledger-head": "bafyhead1",
+        "demand": ":owner-internal",
+        "nonce": "n1"
+      }
+    ],
+    "expect": {
+      "refused": true,
+      "missing": [],
+      "forbidden": [],
+      "engine-missing": [
+        ":digest"
+      ],
+      "model-missing": [],
+      "measured-missing": []
+    }
+  },
+  {
+    "fn": "runtime-classes-problem",
+    "args": [
+      0
+    ],
+    "expect": "tsukasa/missing-runtime-classes"
+  },
+  {
+    "fn": "runtime-classes-problem",
+    "args": [
+      1
+    ],
+    "expect": "tsukasa/ok"
+  },
+  {
+    "fn": "runtime-classes-problem",
+    "args": [
+      2
+    ],
+    "expect": "tsukasa/ok"
+  },
+  {
+    "fn": "runtime-classes-problem",
+    "args": [
+      3
+    ],
+    "expect": "tsukasa/ok"
+  },
+  {
+    "fn": "runtime-classes-problem",
+    "args": [
+      4
+    ],
+    "expect": "tsukasa/unknown-runtime-class"
+  },
+  {
+    "fn": "runtime-classes-problem",
+    "args": [
+      7
+    ],
+    "expect": "tsukasa/unknown-runtime-class"
+  },
+  {
+    "fn": "runtime-classes-problem",
+    "args": [
+      8
+    ],
+    "expect": "tsukasa/unknown-runtime-class"
+  },
+  {
+    "fn": "runtime-classes-problem",
+    "args": [
+      -1
+    ],
+    "expect": "tsukasa/unknown-runtime-class"
+  },
+  {
+    "fn": "has-runtime-class?",
+    "args": [
+      1,
+      "wasm"
+    ],
+    "expect": true
+  },
+  {
+    "fn": "has-runtime-class?",
+    "args": [
+      1,
+      "container"
+    ],
+    "expect": false
+  },
+  {
+    "fn": "has-runtime-class?",
+    "args": [
+      3,
+      "container"
+    ],
+    "expect": true
+  },
+  {
+    "fn": "has-runtime-class?",
+    "args": [
+      2,
+      "wasm"
+    ],
+    "expect": false
+  },
+  {
+    "fn": "has-runtime-class?",
+    "args": [
+      4,
+      "container"
+    ],
+    "expect": false
+  },
+  {
+    "fn": "has-runtime-class?",
+    "args": [
+      4,
+      "microvm"
+    ],
+    "expect": false
+  },
+  {
+    "fn": "first-problem",
+    "args": [
+      "node1",
+      "did:key:abc",
+      "fd1",
+      "always-on",
+      2
+    ],
+    "expect": "tsukasa/ok"
+  },
+  {
+    "fn": "first-problem",
+    "args": [
+      "",
+      "bad",
+      "",
+      "sometimes",
+      0
+    ],
+    "expect": "tsukasa/missing-id"
+  },
+  {
+    "fn": "first-problem",
+    "args": [
+      "node1",
+      "not-a-did",
+      "fd1",
+      "always-on",
+      2
+    ],
+    "expect": "tsukasa/bad-did"
+  },
+  {
+    "fn": "first-problem",
+    "args": [
+      "node1",
+      "did:key:abc",
+      "",
+      "always-on",
+      2
+    ],
+    "expect": "tsukasa/missing-failure-domain"
+  },
+  {
+    "fn": "first-problem",
+    "args": [
+      "node1",
+      "did:key:abc",
+      "fd1",
+      "sometimes",
+      2
+    ],
+    "expect": "tsukasa/bad-availability"
+  },
+  {
+    "fn": "first-problem",
+    "args": [
+      "node1",
+      "did:key:abc",
+      "fd1",
+      "intermittent",
+      0
+    ],
+    "expect": "tsukasa/missing-runtime-classes"
+  },
+  {
+    "fn": "annotation-problem",
+    "args": [
+      "container",
+      "container"
+    ],
+    "expect": null
+  },
+  {
+    "fn": "annotation-problem",
+    "args": [
+      "wasm",
+      "container"
+    ],
+    "expect": "itonami/runtime-class-mismatch"
+  },
+  {
+    "fn": "digest-problem",
+    "args": [
+      "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ],
+    "expect": null
+  },
+  {
+    "fn": "digest-problem",
+    "args": [
+      "sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    ],
+    "expect": null
+  },
+  {
+    "fn": "digest-problem",
+    "args": [
+      "md5:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ],
+    "expect": "itonami/unsupported-digest"
+  },
+  {
+    "fn": "digest-problem",
+    "args": [
+      "sha256:abc"
+    ],
+    "expect": "itonami/unsupported-digest"
+  },
+  {
+    "fn": "bound-problem",
+    "args": [
+      {}
+    ],
+    "expect": null
+  },
+  {
+    "fn": "bound-problem",
+    "args": [
+      {
+        "layers": 33
+      }
+    ],
+    "expect": {
+      "refused": true,
+      "bound": ":layers",
+      "used": 33,
+      "limit": 32
+    }
+  },
+  {
+    "fn": "bound-problem",
+    "args": [
+      {
+        "path-bytes": 4097
+      }
+    ],
+    "expect": {
+      "refused": true,
+      "bound": ":path-bytes",
+      "used": 4097,
+      "limit": 4096
+    }
+  },
+  {
+    "fn": "bound-problem",
+    "args": [
+      {
+        "layer-bytes": -1
+      }
+    ],
+    "expect": {
+      "refused": true,
+      "bound": ":layer-bytes",
+      "used": -1,
+      "limit": 268435456
+    }
+  },
+  {
+    "fn": "admission-eval",
+    "args": [
+      {
+        "demand": 10,
+        "qualified": 100,
+        "reserve": 10,
+        "committed": 20,
+        "unmanaged": 5,
+        "fresh?": true,
+        "dry-run?": false
+      }
+    ],
+    "expect": {
+      "decision": ":allow"
+    }
+  },
+  {
+    "fn": "admission-eval",
+    "args": [
+      {
+        "demand": 66,
+        "qualified": 100,
+        "reserve": 10,
+        "committed": 20,
+        "unmanaged": 5,
+        "fresh?": true,
+        "dry-run?": false
+      }
+    ],
+    "expect": {
+      "decision": ":wait",
+      "cause": ":insufficient-capacity"
+    }
+  },
+  {
+    "fn": "admission-eval",
+    "args": [
+      {
+        "demand": 10,
+        "qualified": 100,
+        "reserve": 10,
+        "committed": 20,
+        "unmanaged": 5,
+        "fresh?": false,
+        "dry-run?": false
+      }
+    ],
+    "expect": {
+      "decision": ":wait",
+      "cause": ":stale-observation"
+    }
+  },
+  {
+    "fn": "admission-eval",
+    "args": [
+      {
+        "demand": -1,
+        "qualified": 100,
+        "reserve": 10,
+        "committed": 20,
+        "unmanaged": 5,
+        "fresh?": true,
+        "dry-run?": false
+      }
+    ],
+    "expect": {
+      "decision": ":refused",
+      "cause": ":invalid-amount"
+    }
+  },
+  {
+    "fn": "admission-eval",
+    "args": [
+      {
+        "demand": 10,
+        "qualified": 100,
+        "reserve": 10,
+        "committed": 20,
+        "unmanaged": 5,
+        "fresh?": true,
+        "dry-run?": true
+      }
+    ],
+    "expect": {
+      "decision": ":dry-run",
+      "would-allow": true
+    }
+  },
+  {
+    "fn": "admission-eval",
+    "args": [
+      {
+        "demand": 66,
+        "qualified": 100,
+        "reserve": 10,
+        "committed": 20,
+        "unmanaged": 5,
+        "fresh?": true,
+        "dry-run?": true
+      }
+    ],
+    "expect": {
+      "decision": ":dry-run",
+      "would-allow": false
+    }
+  }
+]

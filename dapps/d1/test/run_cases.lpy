@@ -1,0 +1,57 @@
+;; Runs the shared cases on Basilisp. usage: PYTHONPATH=src basilisp run test/run_cases.lpy
+(ns run-cases
+  (:require [d1.core :as core])
+  (:import json sys))
+
+(def functions
+  {"transition" core/transition
+   "redeliver" core/redeliver
+   "receipt-problem" core/receipt-problem
+   "runtime-classes-problem" core/runtime-classes-problem
+   "has-runtime-class?" core/has-runtime-class?
+   "first-problem" core/first-problem
+   "annotation-problem" core/annotation-problem
+   "digest-problem" core/digest-problem
+   "bound-problem" core/bound-problem
+   "admission-eval" core/admission-eval})
+
+(defn from-json [value]
+  (cond
+    (instance? python/dict value) (into {} (map (fn [[k v]] [(keyword k) (from-json v)]) (.items value)))
+    (instance? python/list value) (mapv from-json value)
+    :else value))
+
+(defn keywordize [value]
+  (cond
+    (map? value) (into {} (map (fn [[k v]] [k (keywordize v)]) value))
+    (vector? value) (mapv keywordize value)
+    (and (string? value) (> (count value) 0) (= (subs value 0 1) ":")) (keyword (subs value 1))
+    :else value))
+
+(defn plain [value]
+  (cond
+    (map? value) (into {} (map (fn [[k v]] [(if (keyword? k) (name k) k) (plain v)]) value))
+    (vector? value) (mapv plain value)
+    :else value))
+
+(defn enc [value]
+  (cond
+    (map? value) (into {} (map (fn [[k v]] [(if (keyword? k) (name k) k) (enc v)]) value))
+    (vector? value) (mapv enc value)
+    (keyword? value) (str ":" (name value))
+    :else value))
+
+(defn -main []
+  (let [cases (from-json (json/loads (.read (python/open "test/cases.json"))))
+        failures (remove nil?
+                         (map (fn [{:keys [fn args expect]}]
+                                (let [got (enc (apply (get functions fn) (keywordize args)))
+                                      want (plain expect)]
+                                  (when (not= got want)
+                                    (str fn " " args " got " got " want " want))))
+                              cases))]
+    (doseq [failure failures] (println "FAIL" failure))
+    (println "basilisp cases" (count cases) "failures" (count failures))
+    (sys/exit (if (seq failures) 1 0))))
+
+(-main)
