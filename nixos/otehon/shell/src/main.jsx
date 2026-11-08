@@ -5,6 +5,7 @@ import { MANIMANI, Manimani, ManimaniLink } from "./manimani.jsx";
 import { clearSession, deviceDid, loadProofs, loadSession, saveProof } from "./identity/device.js";
 import { createBroker, osOperations, readPassport } from "./runtime.js";
 import { MEDIA_ORIGIN, describeMessage, requestImage, requestSpeech, settleSavedItem, useMediaCapabilities } from "./media.js";
+import { BluetoothPanel, WifiPanel } from "./net.jsx";
 import { Setup } from "./setup.jsx";
 import {
   POINTS,
@@ -465,6 +466,10 @@ function Shell({ account, proofs, score, broker, zenoh, matter, onProof, onSignO
     );
   } else if (context === MANIMANI) {
     body = <Manimani />;
+  } else if (context === "wifi") {
+    body = <WifiPanel />;
+  } else if (context === "bluetooth") {
+    body = <BluetoothPanel />;
   } else if (dapp && score < minimum) {
     body = <Locked dapp={dapp} minimum={minimum} score={score} onRaise={openAccount} />;
   } else {
@@ -481,8 +486,10 @@ function Shell({ account, proofs, score, broker, zenoh, matter, onProof, onSignO
     );
   }
 
+  const panel = dapp && context !== "wifi" && context !== "bluetooth" ? dapp : null;
+
   return (
-    <div className={dapp ? "shell with-panel" : "shell"}>
+    <div className={panel ? "shell with-panel" : "shell"}>
       <Sidebar
         context={context}
         onSelect={setContext}
@@ -494,7 +501,7 @@ function Shell({ account, proofs, score, broker, zenoh, matter, onProof, onSignO
         score={score}
       />
       {body}
-      {dapp ? <DappPanel dapp={dapp} score={score} onRaise={openAccount} /> : null}
+      {panel ? <DappPanel dapp={panel} score={score} onRaise={openAccount} /> : null}
     </div>
   );
 }

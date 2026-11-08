@@ -132,6 +132,43 @@ in
     extraArgs.listen-address = "127.0.0.1";
   };
 
+  # Network setup (AWAI-168): NetworkManager owns wired and Wi-Fi, BlueZ owns
+  # Bluetooth. The shell drives both through the loopback otehon-net service
+  # below, never the raw tools. Profiles persist in root-owned NM keyfiles,
+  # so a joined network survives reboots. Radio silence by default.
+  networking.networkmanager.enable = true;
+  hardware.bluetooth = {
+    enable = true;
+    powerOnBoot = false;
+  };
+
+  # NetworkManager authorizes operations through polkit, but this image has no
+  # PolicyKit1 D-Bus activator, so on-demand start never happens and every
+  # authorized call hangs. Start polkit at boot instead of relying on activation.
+  systemd.services.polkit.wantedBy = [ "multi-user.target" ];
+
+  systemd.services.otehon-net = {
+    description = "Loopback network setup for the shell (Wi-Fi and Bluetooth)";
+    wantedBy = [ "graphical.target" ];
+    after = [ "local-fs.target" "NetworkManager.service" "bluetooth.service" ];
+    environment = {
+      OTEHON_NET_PORT = "8773";
+    };
+    path = [ pkgs.networkmanager pkgs.bluez ];
+    serviceConfig = {
+      ExecStart = "${lib.getExe pkgs.python3} ${./net-service.py}";
+      User = "root";
+      IPAddressDeny = "any";
+      IPAddressAllow = "localhost";
+      ProtectSystem = "strict";
+      ProtectHome = true;
+      PrivateTmp = true;
+      NoNewPrivileges = true;
+      RestrictAddressFamilies = [ "AF_INET" "AF_UNIX" "AF_NETLINK" ];
+      Restart = "on-failure";
+    };
+  };
+
   systemd.services.otehon-boot-report = {
     wantedBy = lib.mkForce [ "graphical.target" ];
     after = lib.mkForce [ "graphical.target" ];

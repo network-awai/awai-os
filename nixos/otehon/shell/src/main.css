@@ -614,3 +614,23 @@ time {
 .manimani-side ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .manimani-side li { overflow-wrap: anywhere; }
 .manimani-actions { display: flex; gap: 6px; margin-top: 4px; }
+
+/* Network setup screens (AWAI-168): Wi-Fi and Bluetooth. */
+.net-view { overflow-y: auto; }
+.net-body { width: min(620px, 100%); margin: 0 auto; padding: 48px 24px; display: flex; flex-direction: column; gap: 12px; }
+.net-body h1 { margin: 0; font-size: 28px; }
+.net-body h2 { margin: 16px 0 0; font-size: 15px; }
+.net-body p { margin: 0; }
+.net-list { display: flex; flex-direction: column; }
+.net-list li { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid #2f363e; font-size: 14px; }
+.net-list li:first-child { border-top: 0; }
+.net-list .muted { margin-left: auto; }
+.net-list button { padding: 6px 12px; border-radius: 8px; background: #38424c; font-size: 13px; flex: none; }
+.net-dot { width: 8px; height: 8px; border-radius: 50%; background: #8a8f98; flex: none; }
+.net-up { background: #3fb68b; }
+.net-down { background: #f09a8a; }
+.net-form { display: flex; flex-direction: column; gap: 10px; }
+.net-form label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #c4ccd3; }
+.net-form input { padding: 10px 12px; border-radius: 10px; border: 1px solid #38424c; background: #1b1f24; color: inherit; font: inherit; }
+.net-form .primary { min-height: 44px; }
+.net-error { color: #f09a8a; font-size: 13px; }
