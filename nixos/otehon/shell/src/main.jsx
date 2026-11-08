@@ -3,6 +3,8 @@ import { createRoot } from "react-dom/client";
 import catalog from "./dapps.json";
 import { MANIMANI, Manimani, ManimaniLink } from "./manimani.jsx";
 import { clearSession, deviceDid, loadProofs, loadSession, saveProof } from "./identity/device.js";
+import { clearLock, loadLock, markLocked, markUnlocked, newLock, saveLock, unlockedThisSession } from "./identity/lock.js";
+import { LockScreen, useIdle } from "./lock.jsx";
 import { createBroker, osOperations, readPassport } from "./runtime.js";
 import { MEDIA_ORIGIN, describeMessage, requestImage, requestSpeech, settleSavedItem, useMediaCapabilities } from "./media.js";
 import { Setup } from "./setup.jsx";
@@ -126,7 +128,7 @@ function Service({ name, up }) {
   );
 }
 
-function Sidebar({ context, onSelect, threads, now, zenoh, matter, account, score }) {
+function Sidebar({ context, onSelect, threads, now, zenoh, matter, account, score, onLock }) {
   return (
     <nav className="sidebar" aria-label="Contexts">
       <div className="brand">Itonami</div>
@@ -186,6 +188,9 @@ function Sidebar({ context, onSelect, threads, now, zenoh, matter, account, scor
           <Service name="Matter" up={matter} />
         </ul>
         <time>{now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>
+        <button type="button" className="secondary lock-now" data-lock-now onClick={onLock}>
+          Lock
+        </button>
       </footer>
     </nav>
   );
@@ -426,7 +431,7 @@ function Account({ account, score, proofs, onCheckPassport, passportState, onSig
   );
 }
 
-function Shell({ account, proofs, score, broker, zenoh, matter, onProof, onSignOut }) {
+function Shell({ account, proofs, score, broker, zenoh, matter, onProof, onSignOut, onLock }) {
   const now = useNow();
   const [context, setContext] = useState(HOME);
   const [threads, addMessage, updateMessage] = useThreads();
@@ -492,6 +497,7 @@ function Shell({ account, proofs, score, broker, zenoh, matter, onProof, onSignO
         matter={matter}
         account={account}
         score={score}
+        onLock={onLock}
       />
       {body}
       {dapp ? <DappPanel dapp={dapp} score={score} onRaise={openAccount} /> : null}
@@ -507,24 +513,60 @@ function App() {
   const [account, setAccount] = useState(null);
   const [finished, setFinished] = useState(setupFinished);
   const [proofs, setProofs] = useState(loadProofs);
+  const [lock, setLock] = useState(loadLock);
   const score = trustScore({ accountDid: account?.accountDid, proofs });
-  const open = Boolean(did && account && finished);
+  const open = Boolean(did && account && finished && !lock);
+
+  const lockNow = (accountDid = account?.accountDid, device = did) => {
+    if (!accountDid || !device) return;
+    const created = newLock(accountDid, device);
+    saveLock(created);
+    markLocked();
+    setLock(created);
+  };
 
   useEffect(() => {
     deviceDid().then((value) => {
-      setAccount(loadSession(value));
+      const saved = loadSession(value);
+      // A new browser, as after a reboot, starts locked. A reload of the same page does not.
+      if (saved && !loadLock() && !unlockedThisSession()) lockNow(saved.accountDid, value);
+      setAccount(saved);
       setDid(value);
     });
   }, []);
+
+  useIdle(open, IDLE_LOCK_MS, () => lockNow());
 
   // The boot report reads this title, so the check proves that React rendered and
   // that the apps stay hidden until sign-in.
   useEffect(() => {
     const dapps = document.querySelectorAll(".dapp").length;
-    document.title = `Awai Otehon zenoh=${zenoh ? 1 : 0} matter=${matter ? 1 : 0} gate=${open ? 0 : 1} dapps=${dapps}`;
-  }, [zenoh, matter, open, did]);
+    document.title = `Awai Otehon zenoh=${zenoh ? 1 : 0} matter=${matter ? 1 : 0} locked=${lock ? 1 : 0} gate=${open ? 0 : 1} dapps=${dapps}`;
+  }, [zenoh, matter, open, did, lock]);
 
   if (!did) return null;
+  // A lock holds whatever the session does: an expired or edited session cannot skip it.
+  if (lock) {
+    return (
+      <LockScreen
+        lock={lock}
+        onUnlock={() => {
+          clearLock();
+          markUnlocked();
+          setLock(null);
+        }}
+        onErase={() => {
+          localStorage.removeItem(THREADS_KEY);
+          clearSession();
+          clearLock();
+          markUnlocked();
+          setProofs({});
+          setAccount(null);
+          setLock(null);
+        }}
+      />
+    );
+  }
   if (!open) {
     return (
       <Setup
@@ -534,7 +576,10 @@ function App() {
         account={account}
         returning={finished}
         score={score}
-        onLinked={setAccount}
+        onLinked={(linked) => {
+          markUnlocked();
+          setAccount(linked);
+        }}
         onFinish={() => {
           localStorage.setItem(SETUP_KEY, "done");
           setFinished(true);
@@ -559,6 +604,7 @@ function App() {
         setProofs({});
         setAccount(null);
       }}
+      onLock={() => lockNow()}
     />
   );
 }

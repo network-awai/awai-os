@@ -614,3 +614,10 @@ time {
 .manimani-side ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .manimani-side li { overflow-wrap: anywhere; }
 .manimani-actions { display: flex; gap: 6px; margin-top: 4px; }
+
+.sidebar footer .lock-now {
+  min-height: 0;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+}

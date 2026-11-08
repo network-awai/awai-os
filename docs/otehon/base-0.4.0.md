@@ -7,7 +7,7 @@ rolled back.
 
 | Part | Component | File |
 | --- | --- | --- |
-| Encrypted state | LUKS volume at `/var/lib/otehon`, formatted on first boot | `nixos/otehon/base-module.nix` |
+| Encrypted state | LUKS volume at `/var/lib/otehon`, formatted on first boot | `nixos/otehon/state.nix`, imported by `base-module.nix` |
 | Secrets | sops-nix with an age key kept on the encrypted volume | `nixos/otehon/base-module.nix` |
 | Firewall | nftables, inbound closed by default | `nixos/otehon/base-module.nix` |
 | Generations | systemd-boot entries, Nix database registered on first boot | `nixos/otehon/base-module.nix` |
@@ -88,4 +88,5 @@ The report lines are in
 - The volume was not reopened with the right key after the wrong-key boot.
 - Secure Boot, a reproducing second build, x86_64, physical hardware and a CI image
   build are not verified.
-- The desktop profile does not use this module yet.
+- The desktop uses the state volume (`state.nix`, see [protection-0.1.0.md](protection-0.1.0.md)),
+  but not sops-nix, the nftables firewall or the generation check from this module.

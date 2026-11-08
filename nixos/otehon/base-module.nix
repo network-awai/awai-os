@@ -1,8 +1,6 @@
 { config, lib, pkgs, ... }:
 let
-  statePart = "otehon-state";
   stateDir = "/var/lib/otehon";
-  keyDisk = "/dev/disk/by-id/virtio-otehon-key";
   efiArch = config.nixpkgs.hostPlatform.efiArch;
   closure = pkgs.closureInfo { rootPaths = [ config.system.build.toplevel ]; };
   sops-nix = builtins.fetchTarball {
@@ -18,6 +16,7 @@ in
   # belongs in the encrypted state volume.
   imports = [
     ./common.nix
+    ./state.nix
     "${sops-nix}/modules/sops"
   ];
 
@@ -46,57 +45,6 @@ in
     '';
   };
 
-  # The volume is formatted on first boot, so each node gets its own volume key.
-  # With a missing or wrong key disk the unit fails and the volume stays closed.
-  systemd.services.otehon-state = {
-    description = "Unlock the encrypted Awai Otehon state volume";
-    wantedBy = [ "sysinit.target" ];
-    after = [ "local-fs.target" "systemd-udevd.service" "systemd-udev-trigger.service" ];
-    before = [ "sysinit.target" "shutdown.target" ];
-    conflicts = [ "shutdown.target" ];
-    unitConfig.DefaultDependencies = false;
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-      StandardOutput = "journal+console";
-      StandardError = "journal+console";
-    };
-    path = with pkgs; [ coreutils cryptsetup e2fsprogs gnutar systemd util-linux ];
-    script = ''
-      part=/dev/disk/by-partlabel/${statePart}
-      keys=/run/otehon-key
-      trap 'rm -rf "$keys"' EXIT
-      udevadm settle --timeout=30
-      for _ in $(seq 1 15); do
-        [ -b "$part" ] && [ -b ${keyDisk} ] && break
-        sleep 1
-      done
-      [ -b "$part" ] || { echo "otehon-state: no state partition"; exit 1; }
-      [ -b ${keyDisk} ] || { echo "otehon-state: no key disk"; exit 1; }
-
-      install -d -m 700 "$keys"
-      tar -xf ${keyDisk} -C "$keys"
-
-      if ! cryptsetup isLuks "$part"; then
-        if [ "$(head -c 1048576 "$part" | tr -d '\000' | wc -c)" != 0 ]; then
-          echo "otehon-state: refusing to format a partition that holds data"
-          exit 1
-        fi
-        cryptsetup luksFormat --batch-mode --key-file "$keys/luks.key" "$part"
-      fi
-      cryptsetup open --key-file "$keys/luks.key" "$part" otehon-state
-      if ! blkid -p /dev/mapper/otehon-state >/dev/null; then
-        mkfs.ext4 -q /dev/mapper/otehon-state
-      fi
-      install -d -m 700 ${stateDir}
-      mount /dev/mapper/otehon-state ${stateDir}
-      chmod 700 ${stateDir}
-      if [ ! -e ${stateDir}/age.key ]; then
-        install -m 400 "$keys/age.key" ${stateDir}/age.key
-      fi
-    '';
-  };
-
   sops = {
     useSystemdActivation = true;
     age.keyFile = "${stateDir}/age.key";
@@ -120,12 +68,6 @@ in
     root.repartConfig = {
       SizeMinBytes = "4G";
       SizeMaxBytes = "4G";
-    };
-    state.repartConfig = {
-      Type = "linux-generic";
-      Label = statePart;
-      SizeMinBytes = "256M";
-      SizeMaxBytes = "256M";
     };
   };
 }

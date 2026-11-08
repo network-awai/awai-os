@@ -22,6 +22,8 @@ in
   otehon = {
     inherit relayOrigin;
     e2e = true;
+    # The media and Manimani steps wait minutes with no input. Only desktop-protect tests the idle lock.
+    idleLockSeconds = lib.mkDefault 86400;
     browserArgs = [ "--ignore-certificate-errors" ];
   };
 

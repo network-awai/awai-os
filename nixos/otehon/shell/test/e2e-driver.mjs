@@ -2,14 +2,15 @@
 // real relay on loopback. A wallet and a passkey are simulated with random keys.
 // Built only for the desktop-login check image.
 import { execSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { connect as rawConnect } from "node:net";
 import { p256 } from "@noble/curves/nist.js";
 import { p256Did, parseLinkFragment, sealResponse } from "../src/identity/link.js";
-import { passkeyResponse, randomWallet, signPersonal, walletResponse } from "./signers.js";
+import { passkeyResponse, randomWallet, signPersonal, walletFromSecret, walletResponse } from "./signers.js";
 
 const RELAY = process.env.RELAY_ORIGIN;
 const EXPECTED_DAPPS = Number(process.env.EXPECTED_DAPPS);
+const IDLE_MS = Number(process.env.IDLE_LOCK_MS ?? 300000);
 const results = {};
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -337,6 +338,176 @@ async function checkManimani() {
 }
 
 const dappCount = "document.querySelectorAll('.dapp').length";
+
+// Data protection (docs/otehon/protection-0.1.0.md), over two boots of one disk. The canaries
+// are joined at run time, so the image itself never holds them and a disk search finds only
+// what was written.
+const STATE = "/var/lib/otehon";
+const PROTECT = `${STATE}/protect-check`;
+const canary = (kind) => ["OTEHON", kind, "CANARY"].join("_");
+const sh = (command) => execSync(command, { shell: "/bin/sh" }).toString().trim();
+const fact = (line) => console.log(`OTEHON_PROTECT_FACT ${line}`);
+const lockScreen = "document.querySelector('[data-lock-screen]')";
+const nothingShown = `document.querySelectorAll('.dapp, .messages, .thread, [data-account]').length === 0`;
+
+// Trusted input, which resets the idle timer like a person would.
+const nudge = () => send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 4 + Math.random(), y: 4 });
+
+async function signLocked(signer) {
+  const message = await until("document.querySelector('#unlock-message')?.value", "unlock message");
+  await type("#unlock-signature", signPersonal(signer, message));
+  await click("#unlock-verify");
+}
+
+async function lockedWithoutApps(text) {
+  await until(lockScreen, "lock screen");
+  await until(nothingShown, "no app, thread or account rendered");
+  await until("document.title.includes('locked=1 gate=1 dapps=0')", "title says locked");
+  if (await evaluate(`document.body.innerText.includes(${JSON.stringify(text)})`)) throw new Error("canary-on-lock-screen");
+}
+
+async function protectFirstBoot(text) {
+  const owner = randomWallet();
+  // A test key, kept on the encrypted volume for the second boot only.
+  writeFileSync(`${PROTECT}/test-wallet.key`, Buffer.from(owner.secret).toString("hex"), { mode: 0o600 });
+  await step("signin", async () => {
+    await until("document.querySelector('[data-step=hello]')", "first step");
+    for (const name of ["language", "network", "signin"]) {
+      await click("[data-next]");
+      await until(`document.querySelector('[data-step=${name}]')`, `${name} step`);
+    }
+    await click("#local-start");
+    await type("#local-address", owner.address);
+    const message = await until("document.querySelector('#local-message')?.value", "message to sign");
+    await type("#local-signature", signPersonal(owner, message));
+    await click("#local-verify");
+    await until("document.querySelector('[data-step=trust]')", "trust step");
+    await click("[data-next]");
+    await click("[data-finish]");
+    await until(`${dappCount} === ${EXPECTED_DAPPS}`, "apps");
+  });
+  await step("canary_in_profile", async () => {
+    await type(".composer textarea", text);
+    await click(".composer button[type=submit]");
+    await until(`document.querySelector('.messages')?.innerText.includes(${JSON.stringify(text)})`, "message shown");
+    // Chromium writes localStorage to disk a little later. Look for it in the profile files.
+    const profile = `${STATE}/users/otehon/chromium`;
+    const end = Date.now() + 120000;
+    let files = "";
+    while (!files && Date.now() < end) {
+      files = sh(`grep -rlaF ${JSON.stringify(text)} ${profile} || true`);
+      if (!files) {
+        await nudge();
+        await sleep(2000);
+      }
+    }
+    if (!files) throw new Error("canary-not-in-profile");
+    fact(`profile_files=${files.split("\n").length} first=${files.split("\n")[0]}`);
+    const source = sh(`findmnt -n -o SOURCE --target ${profile}`);
+    fact(`profile_source=${source}`);
+    if (!source.includes("otehon-state")) throw new Error(`profile-not-on-volume ${source}`);
+  });
+  await step("log_canary", async () => {
+    sh(`logger -t otehon-protect ${canary("LOG")}_${text.slice(-12)}`);
+    sh("journalctl --sync");
+    const journal = sh("findmnt -n -o SOURCE --target /var/log/journal");
+    const files = sh("ls /var/log/journal/*/system.journal 2>/dev/null | wc -l");
+    fact(`journal_source=${journal} persistent_files=${files}`);
+    if (!journal.includes("otehon-state") || files === "0") throw new Error("journal-not-on-volume");
+    if (!sh(`journalctl -t otehon-protect -o cat | grep -c ${canary("LOG")} || true`).startsWith("1")) {
+      throw new Error("log-canary-not-logged");
+    }
+    // The positive control for the disk search: the same kind of string on the plain root partition.
+    writeFileSync("/var/lib/otehon-plain-canary", `${canary("PLAIN")}\n`);
+    sh("sync");
+  });
+  let lastInput;
+  await step("idle_not_yet", async () => {
+    await nudge();
+    lastInput = Date.now();
+    await sleep(Math.min(10000, IDLE_MS / 4));
+    if (await evaluate(lockScreen)) throw new Error("locked-too-early");
+    if ((await evaluate(dappCount)) !== EXPECTED_DAPPS) throw new Error("apps-gone-early");
+  });
+  await step("idle_lock", async () => {
+    await until(lockScreen, "idle lock", IDLE_MS + 15000);
+    const after = Date.now() - lastInput;
+    fact(`idle_lock_after_ms=${after} idle_ms=${IDLE_MS}`);
+    if (after < IDLE_MS - 1000) throw new Error(`locked-before-idle ${after}`);
+    await lockedWithoutApps(text);
+  });
+  await step("reload_stays_locked", async () => {
+    await send("Page.reload");
+    await sleep(1500);
+    await lockedWithoutApps(text);
+  });
+  await step("forged_unlock", async () => {
+    await signLocked(randomWallet());
+    await until("document.querySelector('[data-unlock-error=wrong-signer]')", "refusal");
+    await lockedWithoutApps(text);
+  });
+  await step("unlock", async () => {
+    await signLocked(owner);
+    await until(`${dappCount} === ${EXPECTED_DAPPS}`, "apps after unlock");
+    await until(`document.querySelector('.messages')?.innerText.includes(${JSON.stringify(text)})`, "thread after unlock");
+  });
+  await step("lock_button", async () => {
+    await click("[data-lock-now]");
+    await lockedWithoutApps(text);
+    await signLocked(owner);
+    await until(`${dappCount} === ${EXPECTED_DAPPS}`, "apps after the second unlock");
+  });
+}
+
+async function protectSecondBoot(text) {
+  const owner = walletFromSecret(Buffer.from(readFileSync(`${PROTECT}/test-wallet.key`, "utf8"), "hex"));
+  // The first boot ended unlocked, so this lock comes from the new browser alone.
+  await step("starts_locked", async () => {
+    await lockedWithoutApps(text);
+  });
+  await step("survives_reboot", async () => {
+    await signLocked(owner);
+    await until(`${dappCount} === ${EXPECTED_DAPPS}`, "apps after reboot");
+    await until(`document.querySelector('.messages')?.innerText.includes(${JSON.stringify(text)})`, "thread after reboot");
+  });
+}
+
+async function protectCheck() {
+  let outcome = "pass";
+  let stage = "none";
+  try {
+    if (sh(`mountpoint -q ${STATE} && echo 1 || echo 0`) !== "1") throw new Error("state-volume-closed");
+    mkdirSync(PROTECT, { recursive: true, mode: 0o700 });
+    stage = existsSync(`${PROTECT}/stage`) ? readFileSync(`${PROTECT}/stage`, "utf8").trim() : "0";
+    if (stage === "0") {
+      const text = `${canary("SHELL")}_${Buffer.from(crypto.getRandomValues(new Uint8Array(8))).toString("hex")}`;
+      writeFileSync(`${PROTECT}/canary`, text, { mode: 0o600 });
+      await protectFirstBoot(text);
+    } else if (/^[1-9]$/.test(stage)) {
+      await protectSecondBoot(readFileSync(`${PROTECT}/canary`, "utf8"));
+    } else {
+      throw new Error(`stage-${stage}`);
+    }
+  } catch (error) {
+    outcome = "fail";
+    fact(`error=${JSON.stringify(error.message)}`);
+  }
+  const summary = Object.entries(results).map(([name, value]) => `${name}=${value}`).join(" ");
+  console.log(`OTEHON_PROTECT stage=${stage} result=${outcome} ${summary}`);
+  if (outcome === "pass" && stage === "0") {
+    writeFileSync(`${PROTECT}/stage`, "1");
+    sh("sync");
+    sh("systemctl reboot --no-block");
+  } else {
+    if (outcome === "pass") writeFileSync(`${PROTECT}/stage`, String(Number(stage) + 1));
+    sh("sync");
+    sh("systemctl poweroff --no-block");
+  }
+  process.exit(0);
+}
+
+if (process.env.OTEHON_PROTECT === "1") await protectCheck();
+
 const wallet = randomWallet();
 const passkey = p256.utils.randomSecretKey();
 let outcome = "pass";

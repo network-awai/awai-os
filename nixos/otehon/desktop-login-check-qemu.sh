@@ -3,6 +3,8 @@
 # from the serial console.
 #
 # usage: desktop-login-check-qemu.sh <image> <serial-log> <screenshot.ppm> [timeout-seconds]
+# The desktop opens its encrypted state volume with a key disk (protection-0.1.0.md). Set
+# OTEHON_KEY_DISK to one made by base-make-key-disk.sh; without it the desktop does not start.
 # exit:  0 every step passed
 #        1 a step failed, or no result before the timeout
 #        3 the check could not run
@@ -23,13 +25,15 @@ command -v nc >/dev/null || { echo "NOT_RUN no nc"; exit 3; }
 
 : > "$log"
 rm -f "$shot"
+key_args=""
+[ -z "${OTEHON_KEY_DISK:-}" ] || key_args="-drive if=none,id=keys,format=raw,readonly=on,file=$OTEHON_KEY_DISK -device virtio-blk-pci,drive=keys,serial=otehon-key"
 qemu-system-aarch64 \
   -machine virt,accel=hvf -cpu host -smp ${OTEHON_VM_CPUS:-4} -m "${OTEHON_QEMU_MEMORY:-${OTEHON_VM_MEMORY:-4096}}" \
   -bios "$firmware" \
   -drive "if=virtio,format=qcow2,file=$image,snapshot=on" \
   -device virtio-gpu-pci,xres=1440,yres=900 \
   -device qemu-xhci -device usb-kbd -device usb-tablet \
-  -nic none -display none -monitor "unix:$monitor,server,nowait" -serial "file:$log" ${OTEHON_QEMU_EXTRA:-} &
+  -nic none -display none -monitor "unix:$monitor,server,nowait" -serial "file:$log" $key_args ${OTEHON_QEMU_EXTRA:-} &
 qemu=$!
 trap 'kill "$qemu" 2>/dev/null; rm -f "$monitor"' EXIT
 
