@@ -35,14 +35,40 @@ prepare() {
 }
 
 no_default() {
+  retire_initial_uki /boot/EFI/Linux /boot/EFI/Awai/initial-uki.sha256 /boot/EFI/Awai/retired
   sed -i '/^default /d' /boot/loader/loader.conf
-  rm -f /boot/EFI/Linux/*.efi
 }
 
-check() {
+# The installer image supplies a marker for its own initial UKI. Refuse all
+# other images and any modified or missing marker; never delete an EFI image.
+check_esp() (
+  shopt -s nullglob nocaseglob
+  local marker=${2:-} backup=${3:-} hash name extra actual
+  local images=("$1"/*.efi)
+  [ "${#images[@]}" -ne 0 ] || return 0
+  [ "${#images[@]}" -eq 1 ] && [ -f "$marker" ] || refuse unmanaged-uki
+  read -r hash name extra < "$marker" || refuse unmanaged-uki
+  [[ "$hash" =~ ^[0-9a-f]{64}$ && "$name" =~ ^[A-Za-z0-9._+-]+\.efi$ && -z "${extra:-}" ]] || refuse unmanaged-uki
+  [ "${images[0]}" = "$1/$name" ] || refuse unmanaged-uki
+  actual=$(sha256sum "${images[0]}"); actual=${actual%% *}
+  [ "$actual" = "$hash" ] || refuse unmanaged-uki
+  [ -z "$backup" ] || [ ! -e "$backup/$name" ] || refuse uki-backup-exists
+)
+
+retire_initial_uki() (
+  local directory=$1 marker=$2 backup=$3 hash name extra
+  shopt -s nullglob nocaseglob
+  local images=("$directory"/*.efi)
+  [ "${#images[@]}" -ne 0 ] || return 0
+  check_esp "$directory" "$marker" "$backup"
+  read -r hash name extra < "$marker" || refuse unmanaged-uki
+  mkdir -p "$backup"
+  mv "$directory/$name" "$backup/$name"
+)
+check() (
   local feed=$1 manifest version system
   manifest=$(mktemp -d)
-  trap 'rm -rf "$manifest"' RETURN
+  trap 'rm -rf "$manifest"' EXIT
   cp "$feed/manifest.json" "$manifest/manifest.json" 2>/dev/null || refuse no-manifest
   cp "$feed/manifest.json.minisig" "$manifest/manifest.json.minisig" 2>/dev/null || refuse no-signature
   minisign -q -V -p "$OTEHON_UPDATE_PUBLIC_KEY" -m "$manifest/manifest.json" >/dev/null 2>&1 || refuse bad-signature
@@ -52,23 +78,27 @@ check() {
   ! is_blocked "$version" || refuse "blocked-version $version"
   [ ! -e "$pending" ] || refuse trial-in-progress
   echo "$version $system"
-}
+)
 
 apply() {
-  local feed=$1 checked version system generation
+  local feed=$1 cache=${2:-"file://$1/cache"} checked version system generation
+  mkdir -p "$state"
+  exec 9>"$state/apply.lock"
+  flock -n 9 || refuse update-busy
   checked=$(check "$feed") || { echo "$checked"; exit 2; }
   version=${checked%% *}
   system=${checked#* }
-  prepare
+  check_esp /boot/EFI/Linux /boot/EFI/Awai/initial-uki.sha256 /boot/EFI/Awai/retired
 
   # Nix refuses any path that the pinned cache key has not signed.
-  nix copy --from "file://$feed/cache" \
+  nix copy --from "$cache" \
     --option require-sigs true \
     --option trusted-public-keys "$(cat "$OTEHON_UPDATE_CACHE_KEY")" \
     --option substituters "" \
     --extra-experimental-features nix-command \
     "$system" || refuse bad-closure
 
+  prepare
   jq -n --argjson version "$version" --arg system "$system" '{version: $version, system: $system}' > "$pending.tmp"
   mv "$pending.tmp" "$pending"
   nix-env -p "$profile" --set "$system" >/dev/null
@@ -80,6 +110,38 @@ apply() {
   sync
   log "STAGED version=$version generation=$generation"
 }
+
+# Download only the two small signed-manifest files from a configured HTTPS base.
+# A response redirect is not followed; the binary cache is authenticated separately by Nix.
+https_feed() (
+  local action=$1 base=$2 tmp status path checked
+  [ ${#base} -le 2048 ] || refuse bad-feed-url
+  [[ "$base" =~ ^https://[A-Za-z0-9][A-Za-z0-9.-]*(:[0-9]{1,5})?(/[A-Za-z0-9._~-]+)*$ ]] || refuse bad-feed-url
+  case "$base/" in *'/../'*|*'/./'*|*'..'* ) refuse bad-feed-url ;; esac
+  tmp=$(mktemp -d)
+  trap 'rm -rf "$tmp"' EXIT
+  for path in manifest.json manifest.json.minisig; do
+    status=$(curl --silent --show-error --connect-timeout 10 --max-time 60 \
+      --max-filesize 65536 --proto '=https' --output "$tmp/$path" \
+      --write-out '%{http_code}' "$base/$path") || refuse feed-unavailable
+    [ "$status" = 200 ] || refuse feed-http-status
+  done
+  case "$action" in
+    check) check "$tmp" ;;
+    apply)
+      checked=$(check "$tmp") || {
+        printf '%s\n' "$checked"
+        if [[ "$checked" =~ ^otehon-update:\ REFUSED\ old-version\ ([0-9]+)$ ]] &&
+          [ "${BASH_REMATCH[1]}" -eq "$(installed_version)" ]; then
+          exit 3
+        fi
+        exit 2
+      }
+      apply "$tmp" "$base/cache"
+      ;;
+    *) refuse bad-feed-action ;;
+  esac
+)
 
 # Runs after otehon-update-health on each boot. The health unit decides whether systemd marks
 # the boot entry good. This settles the trial as confirmed, failed, or rolled back.
@@ -155,9 +217,12 @@ ready() {
 case "${1:-}" in
   check) check "$2" ;;
   apply) apply "$2" ;;
+  check-https) https_feed check "$2" ;;
+  apply-https) https_feed apply "$2" ;;
+  check-esp) check_esp "$2" "${3:-}" ;;
   settle) settle ;;
   health) health ;;
   version) installed_version ;;
   ready) ready ;;
-  *) echo "usage: otehon-update check|apply <feed> | settle | health | version | ready" >&2; exit 64 ;;
+  *) echo "usage: otehon-update check|apply <directory> | check-https|apply-https <base> | check-esp <directory> [marker] | settle | health | version | ready" >&2; exit 64 ;;
 esac
