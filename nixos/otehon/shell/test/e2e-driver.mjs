@@ -542,6 +542,14 @@ try {
     }
     const missing = await fetch("http://127.0.0.1:8774/nope");
     if (missing.status !== 404) throw new Error(`status-unknown-path ${missing.status}`);
+    const endState = execSync("systemctl is-active otehon-status").toString().trim();
+    console.log(`OTEHON_STATUS_END active=${endState}`);
+    if (endState !== "active") {
+      for (const line of execSync("journalctl -u otehon-status --no-pager -n 20 -o cat").toString().split("\n")) {
+        if (line.trim()) console.log(`OTEHON_STATUS_JOURNAL ${line.trim().slice(0, 200)}`);
+      }
+      throw new Error(`otehon-status ${endState} at end`);
+    }
     await until("document.querySelector('[data-dock-left]')", "device dock");
     await until("document.querySelector('[data-dock-right]')", "node dock");
     const wallet = await until(
@@ -554,7 +562,7 @@ try {
     const device = await until("document.querySelector('[data-dock-device]')?.dataset.dockDevice", "this device");
     if (!device.startsWith("did:key:")) throw new Error("device without did");
     await click("[data-dock-toggle=ports]");
-    await until("document.querySelector('[data-dock-panel=ports] [data-dock-port='8770']')", "ports panel");
+    await until('document.querySelector("[data-dock-panel=ports] [data-dock-port=\'8770\']")', "ports panel");
     await click("[data-dock-toggle=ports]");
   });
   if (process.env.OTEHON_MEDIA === "1") await mediaSteps();

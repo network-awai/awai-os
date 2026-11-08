@@ -75,10 +75,17 @@ function usePoll(read, ms) {
   return value;
 }
 
+// One slow service must not wedge the whole row: time out and report it down.
 async function probeHttp(origin, path) {
-  const response = await fetch(`${origin}${path}`);
-  if (!response.ok) return false;
-  return true;
+  const control = new AbortController();
+  const timer = setTimeout(() => control.abort(), 4000);
+  try {
+    const response = await fetch(`${origin}${path}`, { signal: control.signal });
+    if (!response.ok) return false;
+    return true;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // Live CPU and memory from the loopback status service. Null while the
@@ -87,11 +94,15 @@ export function useSystem() {
   const [system, setSystem] = useState(null);
   useEffect(() => {
     let live = true;
-    const run = () =>
-      fetch(`${STATUS_ORIGIN}/v1/system`)
+    const run = () => {
+      const control = new AbortController();
+      const guard = setTimeout(() => control.abort(), 4000);
+      return fetch(`${STATUS_ORIGIN}/v1/system`, { signal: control.signal })
         .then((response) => (response.ok ? response.json() : null))
         .then((value) => live && setSystem(value))
-        .catch(() => live && setSystem(null));
+        .catch(() => live && setSystem(null))
+        .finally(() => clearTimeout(guard));
+    };
     run();
     const timer = setInterval(run, SYSTEM_POLL_MS);
     return () => {
