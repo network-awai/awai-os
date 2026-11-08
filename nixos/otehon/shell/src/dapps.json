@@ -293,6 +293,27 @@
           "consent": "each-operation"
         }
       ]
+    },
+    {
+      "id": "tsunagu",
+      "dock": 19,
+      "title": "Tsunagu",
+      "section": "System",
+      "summary": "Tailscale and Kekkai SSH for this VM, each after your approval",
+      "install": "os-image",
+      "offline": "local-core",
+      "remoteOperations": [
+        {
+          "operation": "join-tailnet",
+          "service": "tailscale coordination server",
+          "consent": "each-operation"
+        },
+        {
+          "operation": "kekkai-ssh-pairing",
+          "service": "computer approved on this screen",
+          "consent": "each-operation"
+        }
+      ]
     }
   ]
 }

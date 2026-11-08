@@ -120,7 +120,7 @@ function savedLanguage() {
   }
 }
 
-function QrCode({ url }) {
+export function QrCode({ url }) {
   const { size, path } = useMemo(() => {
     const code = qrcode(0, "M");
     code.addData(url);

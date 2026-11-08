@@ -3,6 +3,7 @@
 import { createClientConsentHost, createClientOperationBroker } from "../vendor/kotoba-client-runtime.js";
 
 const PASSPORT_ORIGIN = "https://mainnet.optimism.io";
+const TAILSCALE_ORIGIN = "https://controlplane.tailscale.com";
 
 export function osOperations(relayOrigin) {
   return [
@@ -16,6 +17,16 @@ export function osOperations(relayOrigin) {
         origin: relayOrigin,
         routes: [{ method: "GET", path: "/:topic/json", "query-params": [] }],
       },
+    },
+    // tailscaled (connect.nix) talks to the coordination server, not this page,
+    // so it is a browser operation run by the Tsunagu adapter after approval.
+    {
+      capability: "awai-network",
+      service: "tailscale",
+      operation: "join-tailnet",
+      consent: "each-operation",
+      "data-categories": ["device-name", "node-public-key", "tailnet-addresses", "os-version"],
+      endpoint: { origin: TAILSCALE_ORIGIN, "browser-action": "tailscale-up" },
     },
     {
       capability: "awai-trust",
@@ -55,13 +66,14 @@ export function runtimeDescriptor(entry, operations) {
   };
 }
 
-export function createBroker(entry, operations) {
+export function createBroker(entry, operations, browserAdapters = {}) {
   const selector = (operation) => [operation.capability, operation.service, operation.operation];
   return createClientOperationBroker({
     runtime: runtimeDescriptor(entry, operations),
     requestedCapabilities: [...new Set(operations.map((operation) => operation.capability))],
     approvedOperations: operations,
     hostSupportedOperations: operations.map(selector),
+    browserAdapters,
     consentHost: createClientConsentHost(),
   });
 }

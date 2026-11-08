@@ -586,3 +586,16 @@ time {
   color: #aab3bc;
   overflow-wrap: anywhere;
 }
+
+/* Tsunagu: certificate and key fingerprints are long unbroken strings. */
+[data-tsunagu] p {
+  overflow-wrap: anywhere;
+}
+
+section[data-tsunagu] {
+  margin-bottom: 24px;
+}
+
+[data-tsunagu] button + button {
+  margin-left: 8px;
+}
