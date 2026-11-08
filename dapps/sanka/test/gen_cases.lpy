@@ -1,0 +1,400 @@
+;; Writes test/cases.json and test/scenarios.json from one good order and receipt.
+;;
+;; Each negative control changes one field of a good document, so a case cannot pass for a reason
+;; other than the one it names. The JSON files are the shared data, and they are checked in.
+;; usage: basilisp run test/gen_cases.lpy
+(ns gen-cases
+  (:import copy json os.path))
+
+(defn- ordered
+  "A Python dict in the order written. A Basilisp map or a #py {} literal hashes its keys, so its
+  order changes from run to run, and these files have to come out the same every time."
+  [& pairs]
+  (python/dict (partition 2 pairs)))
+
+(defn- times [text size]
+  (apply str (repeat size text)))
+
+(def buyer "did:key:zBuyer")
+(def provider "did:key:zProvider")
+(def node "did:key:zNode")
+(def owner "did:key:zOwner")
+(def sha-a (str "sha256:" (times "a" 64)))
+(def sha-b (str "sha256:" (times "b" 64)))
+(def hmac (str "hmac-sha256:" (times "c" 64)))
+(def order-cid (str "b" (times "a" 58)))
+(def other-cid (str "b" (times "c" 58)))
+(def output-cid (str "b" (times "d" 58)))
+(def head-cid (str "b" (times "e" 58)))
+(def receipt-cid (str "b" (times "f" 58)))
+
+(def good-order
+  (ordered "kind" "awai.order/1"
+           "work-kind" "compute"
+           "buyer" buyer
+           "provider" provider
+           "node" node
+           "asset" "native/engi/EN"
+           "amount" "1"
+           "value-class" "devnet"
+           "model" (ordered "revision" "rev-1" "digest" sha-a)
+           "max-tokens" 64
+           "expires-at" 2000000000
+           "data-categories" ["prompt"]
+           "policy" sha-b
+           "demand" "owner-internal"
+           "nonce" "n-1"))
+
+(def good-receipt
+  (ordered "kind" "awai.work-receipt/1"
+           "work-kind" "compute"
+           "order" order-cid
+           "provider" provider
+           "node" node
+           "input" hmac
+           "output" output-cid
+           "engine" (ordered "name" "llama.cpp" "version" "0.7.0" "digest" sha-b)
+           "model" (ordered "revision" "rev-1" "digest" sha-a)
+           "measured" (ordered "prompt-tokens" 3 "completion-tokens" 5 "started-at" 100 "finished-at" 101)
+           "ledger-head" head-cid
+           "demand" "owner-internal"
+           "nonce" "n-1"
+           "signer" node
+           "signature" "sig"))
+
+(def receipt-pins
+  (ordered "order-cid" order-cid
+           "provider" provider
+           "node" node
+           "model-digest" sha-a
+           "demand" "owner-internal"
+           "nonce" "n-1"))
+
+(def good-acceptance
+  (ordered "kind" "awai.acceptance/1"
+           "order" order-cid
+           "receipt" receipt-cid
+           "acceptor" owner
+           "verdict" "accepted"
+           "at" 102))
+
+(def acceptance-pins
+  (ordered "order-cid" order-cid
+           "receipt-cid" receipt-cid
+           "acceptor" owner
+           "provider" provider
+           "node" node))
+
+(defn- changed
+  "A copy of the document with one field set."
+  [document path value]
+  (let [out (copy/deepcopy document)
+        target (reduce get out (butlast path))]
+    (.__setitem__ target (last path) value)
+    out))
+
+(defn- without [document key]
+  (doto (copy/deepcopy document) (.pop key)))
+
+(defn- refused [& errors]
+  (ordered "ok" false "errors" (vec errors)))
+
+(def ok (ordered "ok" true))
+
+(defn- order-cases []
+  (mapv
+   (fn [[order expect]] (ordered "fn" "check-order" "args" [order] "expect" expect))
+   [[good-order ok]
+    [(changed good-order ["prompt"] "secret") (refused "order/unknown-field")]
+    [(changed good-order ["kind"] "awai.order/2") (refused "order/kind")]
+    [(changed good-order ["work-kind"] "mining") (refused "order/work-kind")]
+    [(changed good-order ["work-kind"] "storage") (refused "order/work-kind-not-open")]
+    [(changed good-order ["work-kind"] "human") (refused "order/work-kind-not-open")]
+    [(changed good-order ["buyer"] "0xabc") (refused "order/buyer")]
+    [(changed good-order ["provider"] "nope") (refused "order/provider")]
+    [(changed good-order ["node"] "did:web:x") (refused "order/node")]
+    [(changed good-order ["buyer"] provider) (refused "order/self-dealing")]
+    [(changed good-order ["node"] provider) (refused "order/node-as-payee")]
+    [(changed good-order ["asset"] "") (refused "order/asset")]
+    [(changed good-order ["amount"] "0") (refused "order/amount")]
+    [(changed good-order ["amount"] "1.5") (refused "order/amount")]
+    [(changed good-order ["amount"] 1) (refused "order/amount")]
+    [(changed good-order ["value-class"] "real") (refused "order/value-class")]
+    [(changed good-order ["value-class"] "live") (refused "order/live-not-approved")]
+    [(changed good-order ["model" "digest"] "sha256:short") (refused "order/model")]
+    [(changed good-order ["max-tokens"] 0) (refused "order/max-tokens")]
+    [(changed good-order ["max-tokens"] true) (refused "order/max-tokens")]
+    [(changed good-order ["expires-at"] -1) (refused "order/expires-at")]
+    [(changed good-order ["data-categories"] []) (refused "order/data-categories")]
+    [(changed good-order ["policy"] "x") (refused "order/policy")]
+    [(changed good-order ["demand"] "synthetic") (refused "order/demand")]
+    [(changed good-order ["nonce"] "") (refused "order/nonce")]
+    [(without good-order "nonce") (refused "order/nonce")]]))
+
+(defn- receipt-cases []
+  (mapv
+   (fn [[receipt expect]]
+     (ordered "fn" "check-receipt" "args" [receipt receipt-pins] "expect" expect))
+   [[good-receipt ok]
+    ;; A body cannot ride along in a receipt.
+    [(changed good-receipt ["prompt"] "secret") (refused "receipt/unknown-field")]
+    [(changed good-receipt ["output-text"] "secret") (refused "receipt/unknown-field")]
+    [(changed good-receipt ["kind"] "itonami.agent-step-receipt/2") (refused "receipt/kind")]
+    [(changed good-receipt ["work-kind"] "human") (refused "receipt/work-kind")]
+    [(changed good-receipt ["order"] other-cid) (refused "receipt/other-order")]
+    [(changed good-receipt ["order"] "nope") (refused "receipt/order" "receipt/other-order")]
+    [(changed good-receipt ["provider"] buyer) (refused "receipt/provider")]
+    [(changed good-receipt ["node"] buyer) (refused "receipt/node")]
+    [(changed good-receipt ["signer"] buyer) (refused "receipt/signer")]
+    [(changed good-receipt ["signature"] "") (refused "receipt/signature")]
+    [(changed good-receipt ["input"] sha-a) (refused "receipt/input")]
+    [(changed good-receipt ["output"] "nope") (refused "receipt/output")]
+    [(changed good-receipt ["engine" "digest"] "x") (refused "receipt/engine")]
+    [(changed good-receipt ["model" "digest"] sha-b) (refused "receipt/other-model")]
+    [(changed good-receipt ["measured" "prompt-tokens"] -1) (refused "receipt/measured")]
+    [(changed good-receipt ["measured" "finished-at"] 99) (refused "receipt/measured")]
+    [(changed good-receipt ["ledger-head"] "") (refused "receipt/ledger-head")]
+    [(changed good-receipt ["demand"] "external") (refused "receipt/demand")]
+    [(changed good-receipt ["nonce"] "n-2") (refused "receipt/nonce")]]))
+
+(defn- acceptance-cases []
+  (mapv
+   (fn [[acceptance pins expect]]
+     (ordered "fn" "check-acceptance" "args" [acceptance pins] "expect" expect))
+   [[good-acceptance acceptance-pins ok]
+    [(changed good-acceptance ["verdict"] "rejected") acceptance-pins ok]
+    [(changed good-acceptance ["body"] "x") acceptance-pins (refused "acceptance/unknown-field")]
+    [(changed good-acceptance ["kind"] "x") acceptance-pins (refused "acceptance/kind")]
+    [(changed good-acceptance ["order"] other-cid) acceptance-pins (refused "acceptance/other-order")]
+    [(changed good-acceptance ["receipt"] other-cid) acceptance-pins (refused "acceptance/other-receipt")]
+    [(changed good-acceptance ["acceptor"] buyer) acceptance-pins (refused "acceptance/acceptor")]
+    [(changed good-acceptance ["acceptor"] provider)
+     (changed acceptance-pins ["acceptor"] provider)
+     (refused "acceptance/self-judged")]
+    [(changed good-acceptance ["acceptor"] node)
+     (changed acceptance-pins ["acceptor"] node)
+     (refused "acceptance/self-judged")]
+    [(changed good-acceptance ["verdict"] "maybe") acceptance-pins (refused "acceptance/verdict")]
+    [(changed good-acceptance ["at"] 0) acceptance-pins (refused "acceptance/at")]]))
+
+(def good-facts
+  (ordered "approve" (ordered "human-approved" true)
+           "reserve" (ordered "balance-known" true "available" "1" "amount" "1")
+           "start" (ordered "reservation-persisted" true)
+           "receipt" (ordered "receipt-verified" true)
+           "accept" (ordered "acceptance-verified" true)
+           "submit" (ordered "amount" "1" "reserved" "1")
+           "record" (ordered "readback-match" true)))
+
+(defn- facts-for [event]
+  (.get good-facts event (ordered)))
+
+;; Every state, and every event the table allows from it.
+(def table
+  (ordered "proposed" (ordered "approve" "approved" "deny" "denied")
+           "approved" (ordered "reserve" "reserved" "refuse" "refused")
+           "reserved" (ordered "start" "executing" "expire" "expired")
+           "executing" (ordered "receipt" "receipted" "fail" "failed" "expire" "expired")
+           "receipted" (ordered "accept" "accepted" "reject" "rejected" "expire" "expired")
+           "accepted" (ordered "submit" "submitted" "release" "released")
+           "submitted" (ordered "finalize" "finalized" "lose-response" "ambiguous")
+           "ambiguous" (ordered "reconcile-finalized" "finalized" "reconcile-absent" "released")
+           "finalized" (ordered "record" "recorded")))
+
+(def terminal ["denied" "refused" "expired" "failed" "rejected" "released" "recorded"])
+
+(def reservation
+  (ordered "proposed" "none" "approved" "none" "denied" "none" "refused" "none"
+           "reserved" "held" "executing" "held" "receipted" "held" "accepted" "held"
+           "submitted" "held" "ambiguous" "held"
+           "expired" "released" "failed" "released" "rejected" "released" "released" "released"
+           "finalized" "spent" "recorded" "spent"))
+
+(def all-events
+  (vec (sort (set (mapcat (fn [events] (seq (.keys events))) (.values table))))))
+
+(defn- transition-case [state event facts expect]
+  (ordered "fn" "transition" "args" [state event facts] "expect" expect))
+
+(defn- invalid [state]
+  (ordered "state" state "error" "transition/invalid"))
+
+(defn- transition-cases []
+  (vec
+   (concat
+    (for [[state events] (seq (.items table))
+          event all-events]
+      (transition-case state event (facts-for event)
+                       (if-let [to (.get events event)]
+                         (ordered "state" to)
+                         (invalid state))))
+    (for [state terminal
+          event all-events]
+      (transition-case state event (facts-for event) (invalid state)))
+    (map
+     (fn [[state event facts error]]
+       (transition-case state event facts (ordered "state" state "error" error)))
+     [["proposed" "approve" (ordered) "approve/not-human"]
+      ["proposed" "approve" (ordered "human-approved" false) "approve/not-human"]
+      ["proposed" "approve" (ordered "human-approved" "true") "approve/not-human"]
+      ["approved" "reserve" (ordered) "reserve/balance-unknown"]
+      ["approved" "reserve" (ordered "balance-known" false "available" "0" "amount" "1")
+       "reserve/balance-unknown"]
+      ["approved" "reserve" (ordered "balance-known" true "amount" "1") "reserve/amount-unknown"]
+      ["approved" "reserve" (ordered "balance-known" true "available" "0" "amount" "1")
+       "reserve/over-available"]
+      ["approved" "reserve" (ordered "balance-known" true "available" "9" "amount" "10")
+       "reserve/over-available"]
+      ["reserved" "start" (ordered) "start/not-persisted"]
+      ["executing" "receipt" (ordered) "receipt/not-verified"]
+      ["receipted" "accept" (ordered) "accept/not-verified"]
+      ["accepted" "submit" (ordered "amount" "2" "reserved" "1") "submit/over-reservation"]
+      ["accepted" "submit" (ordered) "submit/over-reservation"]
+      ["finalized" "record" (ordered) "record/readback-mismatch"]
+      ["finalized" "record" (ordered "readback-match" false) "record/readback-mismatch"]])
+    [;; A large amount compares as digits, not as a rounded float.
+     (transition-case "approved" "reserve"
+                      (ordered "balance-known" true "available" "9007199254740992"
+                               "amount" "9007199254740993")
+                      (ordered "state" "approved" "error" "reserve/over-available"))
+     (transition-case "approved" "reserve"
+                      (ordered "balance-known" true "available" "010" "amount" "9")
+                      (ordered "state" "reserved"))
+     (transition-case "nope" "approve" (ordered) (invalid "nope"))])))
+
+(defn- state-cases []
+  (vec
+   (concat
+    (mapcat
+     (fn [[state held]]
+       [(ordered "fn" "reservation" "args" [state] "expect" held)
+        (ordered "fn" "terminal?" "args" [state] "expect" (contains? (set terminal) state))])
+     (seq (.items reservation)))
+    [(ordered "fn" "reservation" "args" ["nope"] "expect" nil)
+     (ordered "fn" "terminal?" "args" ["nope"] "expect" false)])))
+
+(def en "native/engi/EN")
+
+(defn- balance-line [raw & {:keys [known asset value-class]
+                            :or {known true asset en value-class "devnet"}}]
+  (ordered "asset" asset "value-class" value-class "known" known "raw" raw))
+
+(defn- view [text known]
+  (ordered "text" text "known" known "asset" en "value-class" "devnet"))
+
+(defn- sum [raw]
+  (ordered "raw" raw "asset" en "value-class" "devnet"))
+
+(defn- balance-cases []
+  (vec
+   (concat
+    (map
+     (fn [[row expect]] (ordered "fn" "balance-view" "args" [row] "expect" expect))
+     [[(balance-line "5") (view "5" true)]
+      [(balance-line "007") (view "7" true)]
+      [(balance-line "0") (view "0" true)]
+      ;; Unknown stays unknown: it never reads as zero.
+      [(balance-line "0" :known false) (view "unknown" false)]
+      [(balance-line nil :known false) (view "unknown" false)]
+      [(ordered "asset" en "value-class" "devnet") (view "unknown" false)]
+      [(balance-line "1.5") (view "unknown" false)]
+      [(balance-line "5" :value-class "real") (ordered "error" "balance/value-class")]
+      [(balance-line "5" :asset "") (ordered "error" "balance/asset")]])
+    (map
+     (fn [[lines expect]] (ordered "fn" "total" "args" [lines] "expect" expect))
+     [[[(balance-line "2") (balance-line "3")] (sum "5")]
+      [[(balance-line "999") (balance-line "1")] (sum "1000")]
+      ;; Above 2^53: a float would round this.
+      [[(balance-line "9007199254740993") (balance-line "1")] (sum "9007199254740994")]
+      [[] (ordered "error" "total/empty")]
+      [[(balance-line "2") (balance-line "3" :value-class "live")] (ordered "error" "total/mixed")]
+      [[(balance-line "2") (balance-line "3" :value-class "simulation")]
+       (ordered "error" "total/mixed")]
+      [[(balance-line "2") (balance-line "3" :asset "native/murakumo/KUMO")]
+       (ordered "error" "total/mixed")]
+      [[(balance-line "2") (balance-line "3" :known false)] (ordered "error" "total/unknown")]]))))
+
+(defn- step
+  ([event] (step event (facts-for event)))
+  ([event facts] (ordered "event" event "facts" facts)))
+
+(defn- then [walk & steps]
+  (into walk steps))
+
+(def to-reserved [(step "approve") (step "reserve")])
+(def to-executing (then to-reserved (step "start")))
+(def to-receipted (then to-executing (step "receipt")))
+(def to-accepted (then to-receipted (step "accept")))
+(def to-submitted (then to-accepted (step "submit")))
+
+(defn- pair
+  "A correct walk, and the walk that has to be refused in the same situation."
+  [title ok-events ok-state ok-reservation refused-events refused-state error held]
+  (ordered "name" title
+           "ok" (ordered "events" ok-events
+                         "expect" (ordered "state" ok-state "reservation" ok-reservation))
+           "refused" (ordered "events" refused-events
+                              "expect" (ordered "state" refused-state "error" error
+                                                "reservation" held))))
+
+(defn- scenarios []
+  [(pair "the whole order" (then to-submitted (step "finalize") (step "record")) "recorded" "spent"
+         (then to-submitted (step "finalize") (step "record" (ordered))) "finalized"
+         "record/readback-mismatch" "spent")
+   (pair "a person says no and nothing is sent" [(step "deny")] "denied" "none"
+         [(step "deny") (step "reserve")] "denied" "transition/invalid" "none")
+   (pair "a bot cannot approve for a person" [(step "approve")] "approved" "none"
+         [(step "approve" (ordered))] "proposed" "approve/not-human" "none")
+   (pair "an unknown balance is refused" [(step "approve") (step "refuse")] "refused" "none"
+         [(step "approve")
+          (step "reserve" (ordered "balance-known" false "available" "0" "amount" "1"))]
+         "approved" "reserve/balance-unknown" "none")
+   (pair "the reservation is saved before the work" to-executing "executing" "held"
+         (then to-reserved (step "start" (ordered))) "reserved" "start/not-persisted" "held")
+   (pair "work can run out of time before it starts" (then to-reserved (step "expire")) "expired" "released"
+         (then to-reserved (step "expire") (step "start")) "expired" "transition/invalid" "released")
+   (pair "a failed job pays nothing" (then to-executing (step "fail")) "failed" "released"
+         (then to-executing (step "fail") (step "receipt")) "failed" "transition/invalid" "released")
+   (pair "a receipt has to verify" to-receipted "receipted" "held"
+         (then to-executing (step "receipt" (ordered))) "executing" "receipt/not-verified" "held")
+   (pair "rejected work pays nothing" (then to-receipted (step "reject")) "rejected" "released"
+         (then to-receipted (step "reject") (step "submit")) "rejected" "transition/invalid" "released")
+   (pair "no payment without acceptance" to-accepted "accepted" "held"
+         (then to-receipted (step "submit")) "receipted" "transition/invalid" "held")
+   (pair "an acceptance has to verify" to-accepted "accepted" "held"
+         (then to-receipted (step "accept" (ordered))) "receipted" "accept/not-verified" "held")
+   (pair "accepted work can still be released" (then to-accepted (step "release")) "released" "released"
+         (then to-accepted (step "submit" (ordered "amount" "2" "reserved" "1"))) "accepted"
+         "submit/over-reservation" "held")
+   (pair "a lost response is looked up and not sent again"
+         (then to-submitted (step "lose-response") (step "reconcile-finalized") (step "record"))
+         "recorded" "spent"
+         (then to-submitted (step "lose-response") (step "submit")) "ambiguous" "transition/invalid" "held")
+   (pair "a transfer that never landed is released"
+         (then to-submitted (step "lose-response") (step "reconcile-absent")) "released" "released"
+         (then to-submitted (step "submit")) "submitted" "transition/invalid" "held")])
+
+(defn- to-python
+  "Vectors become lists for json, and dicts keep their order."
+  [value]
+  (cond
+    (instance? python/dict value) (python/dict (map (fn [[k v]] #py (k (to-python v))) (.items value)))
+    (vector? value) (python/list (map to-python value))
+    :else value))
+
+(defn- write-rows [path rows]
+  (with-open [out (python/open path "w" ** :encoding "utf-8")]
+    (.write out "[\n")
+    (.write out (.join ",\n" (map #(json/dumps (to-python %) ** :ensure_ascii false) rows)))
+    (.write out "\n]\n")))
+
+(defn- -main []
+  (let [here (os.path/dirname (os.path/abspath (:file (meta #'-main))))
+        cases (vec (concat (order-cases) (receipt-cases) (acceptance-cases) (transition-cases)
+                           (state-cases) (balance-cases)))
+        pairs (scenarios)]
+    (write-rows (os.path/join here "cases.json") cases)
+    (write-rows (os.path/join here "scenarios.json") pairs)
+    (println (str (count cases) " cases, " (count pairs) " scenario pairs"))))
+
+(-main)

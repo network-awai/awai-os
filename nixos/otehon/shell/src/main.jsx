@@ -4,8 +4,10 @@ import catalog from "./dapps.json";
 import { BUNDLED_APPS, installedApps, setAppInstalled } from "./apps.js";
 import registry from "./registry/itonami-index.json";
 import { REGISTRY_REVISION, searchRegistry } from "./discovery.js";
+import { MANIMANI, Manimani, ManimaniLink } from "./manimani.jsx";
 import { clearSession, deviceDid, loadProofs, loadSession, saveProof } from "./identity/device.js";
 import { createBroker, osOperations, readPassport } from "./runtime.js";
+import { MEDIA_ORIGIN, describeMessage, requestImage, requestSpeech, settleSavedItem, useMediaCapabilities } from "./media.js";
 import { Setup } from "./setup.jsx";
 import { Bunsho } from "./apps/bunsho.cljc";
 import { Hyokeisan } from "./apps/hyokeisan.cljc";
@@ -82,7 +84,8 @@ function useNow() {
 function loadThreads() {
   try {
     const saved = JSON.parse(localStorage.getItem(THREADS_KEY));
-    return saved && typeof saved === "object" ? saved : {};
+    if (!saved || typeof saved !== "object") return {};
+    return Object.fromEntries(Object.entries(saved).map(([context, items]) => [context, items.map(settleSavedItem)]));
   } catch {
     return {};
   }
@@ -98,12 +101,17 @@ function useThreads() {
       // The thread still works for this session.
     }
   }, [threads]);
-  const add = (context, text) =>
+  const add = (context, item) =>
     setThreads((current) => ({
       ...current,
-      [context]: [...(current[context] ?? []), text],
+      [context]: [...(current[context] ?? []), item],
     }));
-  return [threads, add];
+  const update = (context, id, changes) =>
+    setThreads((current) => ({
+      ...current,
+      [context]: (current[context] ?? []).map((item) => (item?.id === id ? { ...item, ...changes } : item)),
+    }));
+  return [threads, add, update];
 }
 
 function setupFinished() {
@@ -137,6 +145,7 @@ function Sidebar({ context, onSelect, threads, now, zenoh, matter, account, scor
       >
         New chat
       </button>
+      <ManimaniLink active={context === MANIMANI} onSelect={() => onSelect(MANIMANI)} />
       <div className="contexts">
         {SECTIONS.map((section) => (
           <section key={section}>
@@ -235,7 +244,7 @@ function AppView({ dapp, now, account }) {
   </div></main>;
 }
 
-function Composer({ placeholder, onSend, context }) {
+function Composer({ placeholder, onSend, onImage, onSpeech, capabilities, context }) {
   const [text, setText] = useState("");
   const input = useRef(null);
   useEffect(() => {
@@ -243,12 +252,13 @@ function Composer({ placeholder, onSend, context }) {
     input.current?.focus();
   }, [context]);
 
-  const send = () => {
+  const submit = (action) => {
     const trimmed = text.trim();
     if (!trimmed) return;
-    onSend(trimmed);
+    action(trimmed);
     setText("");
   };
+  const send = () => submit(onSend);
 
   return (
     <form
@@ -272,6 +282,25 @@ function Composer({ placeholder, onSend, context }) {
           }
         }}
       />
+      <button
+        type="button"
+        className="tool"
+        data-generate="speech"
+        disabled={!text.trim() || capabilities.speech.length === 0}
+        onClick={() => submit(onSpeech)}
+      >
+        Speak
+      </button>
+      <button
+        type="button"
+        className="tool"
+        data-generate="image"
+        title={capabilities.image ? undefined : "The image model is not available on this device"}
+        disabled={!text.trim() || !capabilities.image}
+        onClick={() => submit(onImage)}
+      >
+        Image
+      </button>
       <button type="submit" disabled={!text.trim()}>
         Send
       </button>
@@ -279,7 +308,32 @@ function Composer({ placeholder, onSend, context }) {
   );
 }
 
-function Chat({ dapp, context, messages, onSend, ageBand }) {
+function Message({ item }) {
+  const message = describeMessage(item);
+  if (message.kind === "text") return <li>{message.text}</li>;
+  return (
+    <li className="media" data-media={message.kind} data-state={message.state}>
+      <span className="prompt">{message.text}</span>
+      {message.state === "done" && message.kind === "speech" ? (
+        <audio controls preload="metadata" src={`${MEDIA_ORIGIN}${message.url}`} />
+      ) : null}
+      {message.state === "done" && message.kind === "image" ? (
+        <img alt={message.text} src={`${MEDIA_ORIGIN}${message.url}`} />
+      ) : null}
+      {message.state === "working" ? (
+        <span className="muted">
+          {message.kind === "image" ? "Generating on this device. This can take a long time." : "Generating…"}
+        </span>
+      ) : null}
+      {message.state === "failed" ? <span className="problem">Could not generate this: {message.reason}</span> : null}
+      {message.state === "done" && message.seconds != null ? (
+        <span className="muted">Generated on this device in {message.seconds} s</span>
+      ) : null}
+    </li>
+  );
+}
+
+function Chat({ dapp, context, messages, onSend, onImage, onSpeech, capabilities, ageBand }) {
   const end = useRef(null);
   useEffect(() => {
     end.current?.scrollIntoView();
@@ -295,8 +349,10 @@ function Chat({ dapp, context, messages, onSend, ageBand }) {
           </div>
         ) : (
           <ol className="messages">
-            {messages.map((message, index) => (
-              <li key={index}>{displayMessage(message, ageBand) ?? "Content hidden by your age setting."}</li>
+            {messages.map((item, index) => (
+              displayMessage(item, ageBand) === null
+                ? <li key={item?.id ?? index}>Content hidden by your age setting.</li>
+                : <Message key={item?.id ?? index} item={item} />
             ))}
           </ol>
         )}
@@ -306,6 +362,9 @@ function Chat({ dapp, context, messages, onSend, ageBand }) {
         <Composer
           context={context}
           onSend={onSend}
+          onImage={onImage}
+          onSpeech={onSpeech}
+          capabilities={capabilities}
           placeholder={dapp ? `Message ${dapp.title}` : "Message Itonami"}
         />
         <p className="notice">
@@ -443,7 +502,8 @@ function Account({ account, ageBand, onAgeSelected, score, proofs, onCheckPasspo
 function Shell({ account, ageBand, onAgeSelected, proofs, score, broker, zenoh, matter, onProof, onSignOut }) {
   const now = useNow();
   const [context, setContext] = useState(HOME);
-  const [threads, addMessage] = useThreads();
+  const [threads, addMessage, updateMessage] = useThreads();
+  const capabilities = useMediaCapabilities();
   const [passportState, setPassportState] = useState(null);
   const [, refreshApps] = useState(0);
   const installed = installedApps(account.accountDid);
@@ -482,6 +542,8 @@ function Shell({ account, ageBand, onAgeSelected, proofs, score, broker, zenoh, 
     );
   } else if (context === MARKETPLACE) {
     body = <Marketplace account={account} installed={installed} onChange={() => refreshApps((value) => value + 1)} />;
+  } else if (context === MANIMANI) {
+    body = <Manimani />;
   } else if (dapp && score < minimum) {
     body = <Locked dapp={dapp} minimum={minimum} score={score} onRaise={openAccount} />;
   } else if (dapp) {
@@ -494,6 +556,9 @@ function Shell({ account, ageBand, onAgeSelected, proofs, score, broker, zenoh, 
         messages={threads[context] ?? []}
         ageBand={ageBand}
         onSend={(text) => addMessage(context, text)}
+        onSpeech={(text) => requestSpeech(text, context, addMessage, updateMessage)}
+        onImage={(text) => requestImage(text, context, addMessage, updateMessage)}
+        capabilities={capabilities}
       />
     );
   }

@@ -15,6 +15,7 @@ Matter run as system services, and the shell shows whether it can reach them.
 | Display protocol | Wayland |
 | Data | Zenoh router, loopback only, multicast scouting off |
 | Home devices | `python-matter-server`, loopback only |
+| Speech and images | A loopback service, added in image version 0.7.0 ([media-0.1.0.md](media-0.1.0.md)) |
 
 The compositor is cosmic-comp because niri 26.04 logged
 `software EGL renderers are skipped` and showed nothing. This VM has only software
@@ -68,6 +69,13 @@ The negative control is the `desktop-no-zenoh` profile, which must exit 1.
 
 The `desktop` and `desktop-no-zenoh` profiles were not rerun for 0.6.0, which changes only the
 sign-in step. `desktop-login` was rerun ([login-0.6.0.md](login-0.6.0.md)).
+
+Image version 0.7.0 adds the media service and two buttons in the composer. The `desktop` and
+`desktop-no-zenoh` profiles were not rerun for it. The sign-in steps ran again as part of the media
+checks ([media-0.1.0.md](media-0.1.0.md)).
+
+The compositor does not start under krunkit, whose GPU has no display, so the GPU check runs the
+shell in headless Chromium through the `otehon.headless` option. That option is for check images.
 
 ## Known gaps
 

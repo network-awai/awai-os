@@ -3,7 +3,7 @@ let
   user = "otehon";
   cfg = config.otehon;
 
-  shell = pkgs.buildNpmPackage {
+  shell = cfg.shellPkgs.buildNpmPackage {
     pname = "awai-otehon-shell";
     version = config.system.image.version;
     src = lib.cleanSourceWith {
@@ -20,7 +20,7 @@ let
       npm test
       runHook postCheck
     '';
-    npmDepsHash = "sha256-+eGDC+FhMI1HZAxJuKmVzPii0nsx/ZottLbE+B4LxVA=";
+    npmDepsHash = "sha256-VPLLKSUECcPorE7R/z5reIVapeOTsRdMr94tdreWNzk=";
     installPhase = ''
       runHook preInstall
       cp -r dist $out
@@ -32,8 +32,7 @@ let
   # the boot report reads the page title.
   browser = pkgs.writeShellScript "otehon-browser" ''
     exec ${lib.getExe pkgs.chromium} \
-      --ozone-platform=wayland \
-      --kiosk \
+      ${if cfg.headless then "--headless=new --disable-gpu --window-size=1280,800" else "--ozone-platform=wayland --kiosk"} \
       --no-first-run \
       --no-default-browser-check \
       --password-store=basic \
@@ -50,7 +49,7 @@ in
   # is all this VM has. Zenoh and Matter listen on loopback only.
   # The user has no password and logs in automatically, so this image is for a
   # local VM only. It has no SSH or keys.
-  imports = [ ./common.nix ];
+  imports = [ ./common.nix ./media.nix ./manimani/manimani.nix ];
 
   options.otehon = {
     relayOrigin = lib.mkOption {
@@ -62,10 +61,20 @@ in
       type = lib.types.listOf lib.types.str;
       default = [ ];
     };
+    headless = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "Run the shell in headless Chromium with no compositor, for a VM with no display. Check images only.";
+    };
     e2e = lib.mkOption {
       type = lib.types.bool;
       default = false;
       description = "Build the sign-in test driver into the shell. Check images only.";
+    };
+    # The shell is static files, so it can come from another architecture's build.
+    shellPkgs = lib.mkOption {
+      type = lib.types.pkgs;
+      default = pkgs;
     };
     shell = lib.mkOption {
       type = lib.types.package;
@@ -76,7 +85,7 @@ in
 
   config = {
   system.image.id = "awai-otehon-desktop";
-  system.image.version = "0.6.0";
+  system.image.version = "0.7.0";
 
   hardware.graphics.enable = true;
   fonts.packages = [ pkgs.noto-fonts-cjk-sans ];
@@ -86,8 +95,20 @@ in
     isNormalUser = true;
     hashedPassword = "!";
   };
+  # krunkit's virtio-gpu has no display (the kernel logs "KMS disabled"), so a compositor cannot start there.
+  # greetd is what normally makes graphical.target the default.
+  systemd.defaultUnit = lib.mkIf cfg.headless "graphical.target";
+  systemd.services.otehon-headless-shell = lib.mkIf cfg.headless {
+    description = "The shell in headless Chromium";
+    wantedBy = [ "graphical.target" ];
+    serviceConfig = {
+      User = user;
+      ExecStart = browser;
+      Restart = "on-failure";
+    };
+  };
   services.greetd = {
-    enable = true;
+    enable = !cfg.headless;
     settings = rec {
       initial_session = {
         command = "${lib.getExe pkgs.cosmic-comp} ${browser}";

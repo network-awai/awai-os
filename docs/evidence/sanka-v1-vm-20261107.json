@@ -1,0 +1,491 @@
+{
+ "schema": "awai.sanka-vm-gate/1",
+ "date": "2026-11-07",
+ "commit": "b5b719d4350b5ab67c0f9019a1e0683d31b01ffd",
+ "run": "https://github.com/network-awai/cloud-murakumo-usb-installer/actions/runs/42351054943",
+ "artifact": "sanka-v1-evidence",
+ "runner": {
+  "kernel": "Linux 7.0.0-1019-azure x86_64",
+  "cpus": 4,
+  "memory-gib": 15,
+  "kvm": "/dev/kvm rw, system-features kvm nixos-test",
+  "nix": "2.35.2"
+ },
+ "shared-cases": {
+  "babashka": "426 checks, 0 failures",
+  "basilisp": "426 checks, 0 failures"
+ },
+ "timing-seconds": {
+  "good-run": 410.72,
+  "negative-control": 411.05,
+  "test-script": 844.16,
+  "vm-gate-step": 861
+ },
+ "evidence": {
+  "schema": "awai.sanka-live-v1/1",
+  "environment": "NixOS VM (nixos/tests/sanka-v1.nix), no network, on a GitHub Actions runner",
+  "date": "2026-11-07",
+  "value": "none: nothing moved, and the demand class is replay",
+  "engine": {
+   "binary-sha256": "28a61e739f2a8b881ec0c9b32c448cf7dbf869e62e05a1cc1a80c48a650aaa45",
+   "version": "version: 9190 (b64739e)"
+  },
+  "model": {
+   "source": "huggingface.co/ggml-org/models-moved/tinyllamas/stories15M-q4_0.gguf",
+   "revision": "499bc8821c6b12b4e53c5bffcb21ec206f212d81",
+   "sha256": "66967fbece6dbe97886593fdbb73589584927e29119ec31f08090732d1861739",
+   "bytes": 19077344
+  },
+  "order-cid": "baguqeerazqr5bcyufglw6e6dwbjlgaeqnifsehwsjc5olg4pymoiwo6ltlma",
+  "measured": {
+   "completion-tokens": 24,
+   "finished-at": 1794036276,
+   "prompt-tokens": 39,
+   "started-at": 1794036276
+  },
+  "receipt": {
+   "demand": "replay",
+   "engine": {
+    "digest": "sha256:28a61e739f2a8b881ec0c9b32c448cf7dbf869e62e05a1cc1a80c48a650aaa45",
+    "name": "llama.cpp",
+    "version": "version: 9190 (b64739e)"
+   },
+   "input": "hmac-sha256:628634195d83297c01508f5e8281c555e317f4c7a8557cb418028542e1eda3c6",
+   "kind": "awai.work-receipt/1",
+   "ledger-head": "baguqeeraisy7xq4ip2cdcd72e7iqujky7dure2nxt4x6i7w4naaaclqfywla",
+   "measured": {
+    "completion-tokens": 24,
+    "finished-at": 1794036276,
+    "prompt-tokens": 39,
+    "started-at": 1794036276
+   },
+   "model": {
+    "digest": "sha256:66967fbece6dbe97886593fdbb73589584927e29119ec31f08090732d1861739",
+    "revision": "499bc8821c6b12b4e53c5bffcb21ec206f212d81"
+   },
+   "node": "did:key:z6MkhaRH6rqvRpRiBQkN1ZTZo5HDB3sHjRfbDowatna3SoEJ",
+   "nonce": "live-v1-1-4225ef1b",
+   "order": "baguqeerazqr5bcyufglw6e6dwbjlgaeqnifsehwsjc5olg4pymoiwo6ltlma",
+   "output": "baguqeerafkqp4qvelispcpgorkl5wjrabavz5rhclf5vdmzbkye7hq4thpnq",
+   "provider": "did:key:z6MkLiveV1ProviderOperatorIsNotTheNodeKey",
+   "signature": "imoBzrMI1YfyagU6Q_NTV6cVJe3XXG_4B11WUvPQqHTQ_QoQEIPufNipp_B4n32WN44STApniaYp7qyvNOGgCA",
+   "signer": "did:key:z6MkhaRH6rqvRpRiBQkN1ZTZo5HDB3sHjRfbDowatna3SoEJ",
+   "work-kind": "compute"
+  },
+  "checks": [
+   {
+    "check": "the model file has the pinned digest",
+    "passed": true,
+    "detail": null
+   },
+   {
+    "check": "an order registers",
+    "passed": true,
+    "detail": 201
+   },
+   {
+    "check": "real inference answers",
+    "passed": true,
+    "detail": 200
+   },
+   {
+    "check": "the model produced text",
+    "passed": true,
+    "detail": "88 characters"
+   },
+   {
+    "check": "the receipt reads back",
+    "passed": true,
+    "detail": 200
+   },
+   {
+    "check": "the engine's own measurement is in the receipt",
+    "passed": true,
+    "detail": {
+     "completion-tokens": 24,
+     "finished-at": 1794036276,
+     "prompt-tokens": 39,
+     "started-at": 1794036276
+    }
+   },
+   {
+    "check": "the independent verifier accepts it",
+    "passed": true,
+    "detail": {
+     "errors": [],
+     "ok": true,
+     "order": "baguqeerazqr5bcyufglw6e6dwbjlgaeqnifsehwsjc5olg4pymoiwo6ltlma",
+     "receipt": "baguqeeraj5fplosyvkniuho7rtp3m2l6bm3zlncn3q3fcdznms7tydd7tlca"
+    }
+   },
+   {
+    "check": "the verifier and the gateway agree on the order CID",
+    "passed": true,
+    "detail": null
+   },
+   {
+    "check": "the verifier and the gateway agree on the receipt CID",
+    "passed": true,
+    "detail": null
+   },
+   {
+    "check": "a changed output is refused",
+    "passed": true,
+    "detail": [
+     "verify/output"
+    ]
+   },
+   {
+    "check": "a padded measurement is refused",
+    "passed": true,
+    "detail": [
+     "verify/signature"
+    ]
+   },
+   {
+    "check": "a forged signature is refused",
+    "passed": true,
+    "detail": [
+     "verify/signature"
+    ]
+   },
+   {
+    "check": "a different request is refused",
+    "passed": true,
+    "detail": [
+     "verify/input"
+    ]
+   },
+   {
+    "check": "the wrong key is refused",
+    "passed": true,
+    "detail": [
+     "verify/input"
+    ]
+   },
+   {
+    "check": "a receipt for another order is refused",
+    "passed": true,
+    "detail": [
+     "receipt/other-order",
+     "receipt/other-model"
+    ]
+   },
+   {
+    "check": "a receipt carrying the prompt is refused",
+    "passed": true,
+    "detail": [
+     "receipt/unknown-field",
+     "verify/signature"
+    ]
+   },
+   {
+    "check": "a used key is refused",
+    "passed": true,
+    "detail": 409
+   },
+   {
+    "check": "an unknown key is refused",
+    "passed": true,
+    "detail": 401
+   },
+   {
+    "check": "an order for another model is refused",
+    "passed": true,
+    "detail": 400
+   },
+   {
+    "check": "a live order is refused",
+    "passed": true,
+    "detail": 400
+   },
+   {
+    "check": "an order for another node is refused",
+    "passed": true,
+    "detail": 400
+   },
+   {
+    "check": "a streaming call works",
+    "passed": true,
+    "detail": 200
+   },
+   {
+    "check": "a streaming call has a receipt",
+    "passed": true,
+    "detail": 200
+   },
+   {
+    "check": "the provider kept no prompt, output or key",
+    "passed": true,
+    "detail": null
+   },
+   {
+    "check": "the receipt survives a restart",
+    "passed": true,
+    "detail": 200
+   },
+   {
+    "check": "the key stays spent after a restart",
+    "passed": true,
+    "detail": 409
+   },
+   {
+    "check": "the ledger head matches the receipt",
+    "passed": true,
+    "detail": 200
+   },
+   {
+    "check": "the ledger block has only hashes",
+    "passed": true,
+    "detail": 200
+   },
+   {
+    "check": "an engine serving another file is refused",
+    "passed": true,
+    "detail": 502
+   }
+  ],
+  "failed": []
+ },
+ "negative-control": {
+  "schema": "awai.sanka-live-v1/1",
+  "environment": "negative control",
+  "date": "2026-11-07",
+  "value": "none: nothing moved, and the demand class is replay",
+  "engine": {
+   "binary-sha256": "28a61e739f2a8b881ec0c9b32c448cf7dbf869e62e05a1cc1a80c48a650aaa45",
+   "version": "version: 9190 (b64739e)"
+  },
+  "model": {
+   "source": "huggingface.co/ggml-org/models-moved/tinyllamas/stories15M-q4_0.gguf",
+   "revision": "499bc8821c6b12b4e53c5bffcb21ec206f212d81",
+   "sha256": "66967fbece6dbe97886593fdbb73589584927e29119ec31f08090732d1861739",
+   "bytes": 19077344
+  },
+  "order-cid": "baguqeerasr5xkn2h2kty7huwk3pn436gukjrawyoo6cndqikbdlnx4uw75oa",
+  "measured": {
+   "completion-tokens": 24,
+   "finished-at": 1794036685,
+   "prompt-tokens": 39,
+   "started-at": 1794036685
+  },
+  "receipt": {
+   "demand": "replay",
+   "engine": {
+    "digest": "sha256:28a61e739f2a8b881ec0c9b32c448cf7dbf869e62e05a1cc1a80c48a650aaa45",
+    "name": "llama.cpp",
+    "version": "version: 9190 (b64739e)"
+   },
+   "input": "hmac-sha256:3156eb17eb41b8e509e1e9908fedb0c857291fe8fc1a03b5ae97905fa9b65751",
+   "kind": "awai.work-receipt/1",
+   "ledger-head": "baguqeeradjgnkewmjw37xi6aiiirij3nrszbdmk76eqf7r2fpkhe4gtujr5q",
+   "measured": {
+    "completion-tokens": 24,
+    "finished-at": 1794036685,
+    "prompt-tokens": 39,
+    "started-at": 1794036685
+   },
+   "model": {
+    "digest": "sha256:66967fbece6dbe97886593fdbb73589584927e29119ec31f08090732d1861739",
+    "revision": "499bc8821c6b12b4e53c5bffcb21ec206f212d81"
+   },
+   "node": "did:key:z6MkeX2FtpjZddgb256HXgD1GguBfT2TVHp4XPYyQ1B6MZjq",
+   "nonce": "live-v1-1-a6e3d4f8",
+   "order": "baguqeerasr5xkn2h2kty7huwk3pn436gukjrawyoo6cndqikbdlnx4uw75oa",
+   "output": "baguqeerahmxzck6jck7ljnbcta4axo6jedjogdwrcdkgjev4j4clisq7juia",
+   "provider": "did:key:z6MkLiveV1ProviderOperatorIsNotTheNodeKey",
+   "signature": "eKym4K1gsoTzDB3jlDQB2L-2-nJJUBfaEgepdoN5UzoW0URthzkqlhjRVB0Vcgi61PxBXvfmxUBtIIbUwDFqAg",
+   "signer": "did:key:z6MkeX2FtpjZddgb256HXgD1GguBfT2TVHp4XPYyQ1B6MZjq",
+   "work-kind": "compute"
+  },
+  "checks": [
+   {
+    "check": "the model file has the pinned digest",
+    "passed": true,
+    "detail": null
+   },
+   {
+    "check": "an order registers",
+    "passed": true,
+    "detail": 201
+   },
+   {
+    "check": "real inference answers",
+    "passed": true,
+    "detail": 200
+   },
+   {
+    "check": "the model produced text",
+    "passed": true,
+    "detail": "88 characters"
+   },
+   {
+    "check": "the receipt reads back",
+    "passed": true,
+    "detail": 200
+   },
+   {
+    "check": "the engine's own measurement is in the receipt",
+    "passed": true,
+    "detail": {
+     "completion-tokens": 24,
+     "finished-at": 1794036685,
+     "prompt-tokens": 39,
+     "started-at": 1794036685
+    }
+   },
+   {
+    "check": "the independent verifier accepts it",
+    "passed": false,
+    "detail": {
+     "order": "baguqeerasr5xkn2h2kty7huwk3pn436gukjrawyoo6cndqikbdlnx4uw75oa",
+     "errors": [
+      "verify/output"
+     ],
+     "receipt": "baguqeera62ybm7tha3vgjs3rpqdeu6hlfu2i6jgtqfnbupqyiveibohldv5q",
+     "ok": false
+    }
+   },
+   {
+    "check": "the verifier and the gateway agree on the order CID",
+    "passed": true,
+    "detail": null
+   },
+   {
+    "check": "the verifier and the gateway agree on the receipt CID",
+    "passed": true,
+    "detail": null
+   },
+   {
+    "check": "a changed output is refused",
+    "passed": true,
+    "detail": [
+     "verify/output"
+    ]
+   },
+   {
+    "check": "a padded measurement is refused",
+    "passed": true,
+    "detail": [
+     "verify/signature",
+     "verify/output"
+    ]
+   },
+   {
+    "check": "a forged signature is refused",
+    "passed": true,
+    "detail": [
+     "verify/signature",
+     "verify/output"
+    ]
+   },
+   {
+    "check": "a different request is refused",
+    "passed": true,
+    "detail": [
+     "verify/input",
+     "verify/output"
+    ]
+   },
+   {
+    "check": "the wrong key is refused",
+    "passed": true,
+    "detail": [
+     "verify/input",
+     "verify/output"
+    ]
+   },
+   {
+    "check": "a receipt for another order is refused",
+    "passed": true,
+    "detail": [
+     "receipt/other-order",
+     "receipt/other-model",
+     "verify/output"
+    ]
+   },
+   {
+    "check": "a receipt carrying the prompt is refused",
+    "passed": true,
+    "detail": [
+     "receipt/unknown-field",
+     "verify/signature",
+     "verify/output"
+    ]
+   },
+   {
+    "check": "a used key is refused",
+    "passed": true,
+    "detail": 409
+   },
+   {
+    "check": "an unknown key is refused",
+    "passed": true,
+    "detail": 401
+   },
+   {
+    "check": "an order for another model is refused",
+    "passed": true,
+    "detail": 400
+   },
+   {
+    "check": "a live order is refused",
+    "passed": true,
+    "detail": 400
+   },
+   {
+    "check": "an order for another node is refused",
+    "passed": true,
+    "detail": 400
+   },
+   {
+    "check": "a streaming call works",
+    "passed": true,
+    "detail": 200
+   },
+   {
+    "check": "a streaming call has a receipt",
+    "passed": true,
+    "detail": 200
+   },
+   {
+    "check": "the provider kept no prompt, output or key",
+    "passed": false,
+    "detail": [
+     "b8cd06e96a3e1506/kotoba-blocks/baguqeeratrs6t2o446lmzxkkwtziqo6i64pwj5boe6pd365ro5zshpuzdhva",
+     "b8cd06e96a3e1506/kotoba-blocks/baguqeeradjgnkewmjw37xi6aiiirij3nrszbdmk76eqf7r2fpkhe4gtujr5q"
+    ]
+   },
+   {
+    "check": "the receipt survives a restart",
+    "passed": true,
+    "detail": 200
+   },
+   {
+    "check": "the key stays spent after a restart",
+    "passed": true,
+    "detail": 409
+   },
+   {
+    "check": "the ledger head matches the receipt",
+    "passed": true,
+    "detail": 200
+   },
+   {
+    "check": "the ledger block has only hashes",
+    "passed": false,
+    "detail": 200
+   },
+   {
+    "check": "an engine serving another file is refused",
+    "passed": true,
+    "detail": 502
+   }
+  ],
+  "failed": [
+   "the independent verifier accepts it",
+   "the provider kept no prompt, output or key",
+   "the ledger block has only hashes"
+  ]
+ }
+}
