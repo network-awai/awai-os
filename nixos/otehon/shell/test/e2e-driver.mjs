@@ -622,6 +622,28 @@ try {
     await until('document.querySelector("[data-dock-panel=ports] [data-dock-port=\'8770\']")', "ports panel");
     await click("[data-dock-toggle=ports]");
   });
+  await step("ime_setup", async () => {
+    // Installation-level only: the check VM has no user session, so no
+    // daemon runs here. Conversion itself needs real key input.
+    // fcitx5 refuses to start without HOME, which this driver does not have.
+    const version = execSync("HOME=/tmp fcitx5 --version").toString().trim().split("\n")[0];
+    console.log(`OTEHON_IME_VERSION ${version}`);
+    if (!/^\d+\.\d+/.test(version)) throw new Error("fcitx5-missing");
+    const profile = execSync("cat /etc/xdg/fcitx5/profile").toString();
+    if (!profile.includes("Name=mozc")) throw new Error("mozc-not-in-group");
+    if (!profile.includes("DefaultIM=keyboard-us")) throw new Error("ime-default-changed");
+    execSync("test -f /etc/systemd/user/fcitx5-daemon.service");
+    console.log("OTEHON_IME_UNIT fcitx5-daemon=defined");
+    // The driver PATH carries bare fcitx5 as a probe tool; the desktop
+    // session runs the wrapped build. Assert on the system binary.
+    const sysBin = execSync("readlink -f /run/current-system/sw/bin/fcitx5").toString().trim();
+    console.log(`OTEHON_IME_SYSBIN ${sysBin}`);
+    if (!sysBin.includes("with-addons")) throw new Error("fcitx5-not-wrapped");
+    const addonDir = sysBin.replace(/\/bin\/fcitx5$/, "/share/fcitx5/addon");
+    const addons = execSync(`ls ${addonDir} 2>/dev/null || echo MISSING-DIR`).toString();
+    console.log(`OTEHON_IME_ADDONS ${addons.trim().split("\n").slice(0, 20).join(",")}`);
+    if (!addons.includes("mozc.conf")) throw new Error("mozc-addon-missing");
+  });
   if (process.env.OTEHON_MEDIA === "1") await mediaSteps();
   if (process.env.OTEHON_MANIMANI === "1") await checkManimani();
 } catch {
