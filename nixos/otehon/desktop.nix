@@ -203,6 +203,41 @@ in
     pulse.enable = false;
   };
 
+  # Japanese input (AWAI-168): fcitx5 with the mozc engine, started with the
+  # desktop user's graphical session. Keyboard stays the default group, so
+  # ordinary typing is unchanged; the standard trigger switches to mozc.
+  # The check VM has no user session, so this is installation-level here:
+  # conversion itself needs real key input (hardware or AWAI-199 Appium).
+  i18n.inputMethod = {
+    enable = true;
+    type = "fcitx5";
+    fcitx5.addons = with pkgs; [ fcitx5-mozc ];
+    fcitx5.settings.inputMethod = {
+      "Groups/0" = {
+        Name = "Default";
+        "Default Layout" = "us";
+        DefaultIM = "keyboard-us";
+      };
+      "Groups/0/Items/0" = {
+        Name = "keyboard-us";
+        Layout = "";
+      };
+      "Groups/0/Items/1" = {
+        Name = "mozc";
+        Layout = "";
+      };
+    };
+  };
+  systemd.user.services.fcitx5-daemon = {
+    description = "Japanese input through fcitx5 and mozc";
+    wantedBy = [ "graphical-session.target" ];
+    after = [ "graphical-session.target" ];
+    serviceConfig = {
+      ExecStart = "${lib.getExe pkgs.fcitx5} --disable=x11";
+      Restart = "on-failure";
+    };
+  };
+
   systemd.services.otehon-sound = {
     description = "Loopback sound setup for the shell (volume and mute)";
     wantedBy = [ "graphical.target" ];

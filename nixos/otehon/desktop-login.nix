@@ -46,7 +46,7 @@ in
     wantedBy = [ "graphical.target" ];
     after = [ "graphical.target" "ntfy-sh.service" ];
     # Check-only tools for in-VM diagnosis. Never a release path.
-    path = [ pkgs.networkmanager pkgs.bluez pkgs.dbus pkgs.coreutils pkgs.bash ];
+    path = [ pkgs.networkmanager pkgs.bluez pkgs.dbus pkgs.coreutils pkgs.bash pkgs.fcitx5 ];
     serviceConfig = {
       Type = "oneshot";
       StandardOutput = "tty";
