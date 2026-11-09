@@ -7,6 +7,7 @@ import { createBroker, osOperations, readPassport } from "./runtime.js";
 import { MEDIA_ORIGIN, describeMessage, requestImage, requestSpeech, settleSavedItem, useMediaCapabilities } from "./media.js";
 import { BluetoothPanel, WifiPanel } from "./net.jsx";
 import { SoundPanel } from "./sound.jsx";
+import { DisplayPanel } from "./display.jsx";
 import { DeviceDock, NodeDock } from "./docks.jsx";
 import { Setup } from "./setup.jsx";
 import {
@@ -474,6 +475,8 @@ function Shell({ did, account, proofs, score, broker, zenoh, matter, onProof, on
     body = <BluetoothPanel />;
   } else if (context === "sound") {
     body = <SoundPanel />;
+  } else if (context === "display") {
+    body = <DisplayPanel />;
   } else if (dapp && score < minimum) {
     body = <Locked dapp={dapp} minimum={minimum} score={score} onRaise={openAccount} />;
   } else {
@@ -490,7 +493,7 @@ function Shell({ did, account, proofs, score, broker, zenoh, matter, onProof, on
     );
   }
 
-  const panel = dapp && context !== "wifi" && context !== "bluetooth" && context !== "sound" ? dapp : null;
+  const panel = dapp && context !== "wifi" && context !== "bluetooth" && context !== "sound" && context !== "display" ? dapp : null;
 
   return (
     <div className={panel ? "shell with-panel" : "shell"}>

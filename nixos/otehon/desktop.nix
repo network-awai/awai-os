@@ -246,6 +246,33 @@ in
     };
   };
 
+  # Display setup (AWAI-168): screen brightness through brightnessctl, with
+  # the last setting kept in a root-owned state file and restored at boot,
+  # so it survives reboots. The shell shows an honest empty state when no
+  # backlight device exists.
+  systemd.services.otehon-display = {
+    description = "Loopback display setup for the shell (screen brightness)";
+    wantedBy = [ "graphical.target" ];
+    after = [ "local-fs.target" ];
+    environment = {
+      OTEHON_DISPLAY_PORT = "8776";
+    };
+    path = [ pkgs.brightnessctl pkgs.coreutils ];
+    serviceConfig = {
+      ExecStart = "${lib.getExe pkgs.python3} ${./display-service.py}";
+      User = "root";
+      StateDirectory = "otehon-display";
+      IPAddressDeny = "any";
+      IPAddressAllow = "localhost";
+      ProtectSystem = "strict";
+      ProtectHome = true;
+      PrivateTmp = true;
+      NoNewPrivileges = true;
+      RestrictAddressFamilies = [ "AF_INET" "AF_UNIX" "AF_NETLINK" ];
+      Restart = "on-failure";
+    };
+  };
+
   systemd.user.services.fcitx5-daemon = {
     description = "Japanese input through fcitx5 and mozc";
     wantedBy = [ "graphical-session.target" ];

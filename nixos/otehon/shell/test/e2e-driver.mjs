@@ -644,6 +644,56 @@ try {
     console.log(`OTEHON_IME_ADDONS ${addons.trim().split("\n").slice(0, 20).join(",")}`);
     if (!addons.includes("mozc.conf")) throw new Error("mozc-addon-missing");
   });
+  await step("display_setup", async () => {
+    const active = execSync("systemctl is-active otehon-display").toString().trim();
+    console.log(`OTEHON_DISPLAY_UNIT otehon-display=${active}`);
+    if (active !== "active") {
+      for (const line of execSync("journalctl -u otehon-display --no-pager -n 10 -o cat").toString().split("\n")) {
+        if (line.trim()) console.log(`OTEHON_DISPLAY_JOURNAL ${line.trim().slice(0, 200)}`);
+      }
+      throw new Error(`otehon-display ${active}`);
+    }
+    // The check VM has no backlight device: the service stays honest about that.
+    // A machine with one would exercise the live path and the restore instead.
+    const state = await (await fetch("http://127.0.0.1:8776/v1/status")).json();
+    if (state.available !== false || state.brightness !== null) {
+      throw new Error(`display-unexpected ${JSON.stringify(state)}`);
+    }
+    const badLevel = await (
+      await fetch("http://127.0.0.1:8776/v1/brightness", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ brightness: 101 }),
+      })
+    ).json();
+    if (badLevel.error !== "bad-brightness") throw new Error("brightness-validation");
+    const noSink = await (
+      await fetch("http://127.0.0.1:8776/v1/brightness", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ brightness: 80 }),
+      })
+    ).json();
+    if (noSink.error !== "no-adapter") throw new Error("brightness-no-adapter");
+    const badHost = await new Promise((resolve, reject) => {
+      let text = "";
+      const client = rawConnect(8776, "127.0.0.1", () =>
+        client.write("GET /v1/status HTTP/1.1\r\nHost: evil.example\r\nConnection: close\r\n\r\n"),
+      );
+      client.on("data", (data) => (text += data.toString("latin1")));
+      client.on("end", () => resolve(text));
+      client.on("error", reject);
+    });
+    if (!badHost.startsWith("HTTP/1.1 403 ") || !badHost.includes('"bad-host"')) {
+      throw new Error(`display-bad-host ${badHost.slice(0, 60)}`);
+    }
+    await click("[data-dapp=display]");
+    await until("document.querySelector('[data-net=display]')", "display screen");
+    await until(
+      "document.querySelector('[data-net=display]').textContent.includes('no brightness control')",
+      "display empty state",
+    );
+  });
   await step("screenreader_setup", async () => {
     // Installation and wiring only: the check VM has no session, so no
     // narration happens here. Actual speech needs a real session and audio.
