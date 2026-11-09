@@ -519,6 +519,63 @@ try {
       "bluetooth empty state",
     );
   });
+  await step("sound_setup", async () => {
+    const active = execSync("systemctl is-active otehon-sound").toString().trim();
+    console.log(`OTEHON_SOUND_UNIT otehon-sound=${active}`);
+    if (active !== "active") {
+      for (const line of execSync("journalctl -u otehon-sound --no-pager -n 10 -o cat").toString().split("\n")) {
+        if (line.trim()) console.log(`OTEHON_SOUND_JOURNAL ${line.trim().slice(0, 200)}`);
+      }
+      throw new Error(`otehon-sound ${active}`);
+    }
+    // The check VM has no output device: the service stays honest about that.
+    const state = await (await fetch("http://127.0.0.1:8775/v1/status")).json();
+    if (state.available !== false || state.volume !== null || state.muted !== null) {
+      throw new Error(`sound-unexpected ${JSON.stringify(state)}`);
+    }
+    const badVolume = await (
+      await fetch("http://127.0.0.1:8775/v1/volume", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ volume: 101 }),
+      })
+    ).json();
+    if (badVolume.error !== "bad-volume") throw new Error("volume-validation");
+    const noSink = await (
+      await fetch("http://127.0.0.1:8775/v1/volume", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ volume: 50 }),
+      })
+    ).json();
+    if (noSink.error !== "no-adapter") throw new Error("volume-no-adapter");
+    const badMute = await (
+      await fetch("http://127.0.0.1:8775/v1/mute", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ on: "yes" }),
+      })
+    ).json();
+    if (badMute.error !== "bad-mute") throw new Error("mute-validation");
+    const badHost = await new Promise((resolve, reject) => {
+      let text = "";
+      const client = rawConnect(8775, "127.0.0.1", () =>
+        client.write("GET /v1/status HTTP/1.1\r\nHost: evil.example\r\nConnection: close\r\n\r\n"),
+      );
+      client.on("data", (data) => (text += data.toString("latin1")));
+      client.on("end", () => resolve(text));
+      client.on("error", reject);
+    });
+    if (!badHost.startsWith("HTTP/1.1 403 ") || !badHost.includes('"bad-host"')) {
+      throw new Error(`sound-bad-host ${badHost.slice(0, 60)}`);
+    }
+    await click("[data-dapp=sound]");
+    await until("document.querySelector('[data-net=sound]')", "sound screen");
+    await until(
+      "document.querySelector('[data-net=sound]').textContent.includes('no sound output')",
+      "sound empty state",
+    );
+  });
   await step("status_docks", async () => {
     // The check image has no curl: the driver itself runs in the VM, so use fetch.
     // Port 8774: 8772 already serves the Manimani LLM in this image.

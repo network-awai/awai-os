@@ -632,6 +632,7 @@ time {
 .net-form { display: flex; flex-direction: column; gap: 10px; }
 .net-form label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #c4ccd3; }
 .net-form input { padding: 10px 12px; border-radius: 10px; border: 1px solid #38424c; background: #1b1f24; color: inherit; font: inherit; }
+.net-form input[type="range"] { padding: 0; accent-color: #7fb4e6; }
 .net-form .primary { min-height: 44px; }
 .net-error { color: #f09a8a; font-size: 13px; }
 

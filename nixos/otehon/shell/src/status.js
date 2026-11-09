@@ -14,7 +14,9 @@ const SYSTEM_POLL_MS = 5000;
 export const OS_PORTS = [
   { port: 8770, service: "Media", path: "/v1/capabilities", kind: "http" },
   { port: 8771, service: "Manimani", path: "/v1/state", kind: "http" },
+  { port: 8773, service: "Net", path: "/v1/status", kind: "http" },
   { port: 8774, service: "Status", path: "/v1/system", kind: "http" },
+  { port: 8775, service: "Sound", path: "/v1/status", kind: "http" },
   { port: 8000, service: "Zenoh REST", path: "/@/*/router", kind: "http" },
   { port: 7447, service: "Zenoh", kind: "service", from: "zenoh" },
   { port: 5580, service: "Matter", kind: "service", from: "matter" },
