@@ -193,6 +193,40 @@ in
     };
   };
 
+  # Sound setup (AWAI-168): PipeWire runs the audio graph in the desktop
+  # user's session, and the shell drives volume and mute through the loopback
+  # otehon-sound service below. The last setting is kept in a root-owned
+  # state file and restored at boot, so it survives reboots.
+  services.pipewire = {
+    enable = true;
+    alsa.enable = true;
+    pulse.enable = false;
+  };
+
+  systemd.services.otehon-sound = {
+    description = "Loopback sound setup for the shell (volume and mute)";
+    wantedBy = [ "graphical.target" ];
+    after = [ "local-fs.target" ];
+    environment = {
+      OTEHON_SOUND_PORT = "8775";
+      OTEHON_SOUND_USER = user;
+    };
+    path = [ pkgs.wireplumber pkgs.coreutils ];
+    serviceConfig = {
+      ExecStart = "${lib.getExe pkgs.python3} ${./sound-service.py}";
+      User = "root";
+      StateDirectory = "otehon-sound";
+      IPAddressDeny = "any";
+      IPAddressAllow = "localhost";
+      ProtectSystem = "strict";
+      ProtectHome = true;
+      PrivateTmp = true;
+      NoNewPrivileges = true;
+      RestrictAddressFamilies = [ "AF_INET" "AF_UNIX" "AF_NETLINK" ];
+      Restart = "on-failure";
+    };
+  };
+
   systemd.services.otehon-boot-report = {
     wantedBy = lib.mkForce [ "graphical.target" ];
     after = lib.mkForce [ "graphical.target" ];

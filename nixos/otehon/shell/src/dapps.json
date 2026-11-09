@@ -212,6 +212,16 @@
       "remoteOperations": []
     },
     {
+      "id": "sound",
+      "dock": 19,
+      "title": "Sound",
+      "section": "System",
+      "summary": "System volume and mute: the last setting stays saved",
+      "install": "os-image",
+      "offline": "local-core",
+      "remoteOperations": []
+    },
+    {
       "id": "settei",
       "dock": 15,
       "title": "Settei",
