@@ -222,6 +222,16 @@
       "remoteOperations": []
     },
     {
+      "id": "display",
+      "dock": 20,
+      "title": "Display",
+      "section": "System",
+      "summary": "Screen brightness: the last setting stays saved",
+      "install": "os-image",
+      "offline": "local-core",
+      "remoteOperations": []
+    },
+    {
       "id": "settei",
       "dock": 15,
       "title": "Settei",

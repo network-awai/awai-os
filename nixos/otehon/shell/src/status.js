@@ -17,6 +17,7 @@ export const OS_PORTS = [
   { port: 8773, service: "Net", path: "/v1/status", kind: "http" },
   { port: 8774, service: "Status", path: "/v1/system", kind: "http" },
   { port: 8775, service: "Sound", path: "/v1/status", kind: "http" },
+  { port: 8776, service: "Display", path: "/v1/status", kind: "http" },
   { port: 8000, service: "Zenoh REST", path: "/@/*/router", kind: "http" },
   { port: 7447, service: "Zenoh", kind: "service", from: "zenoh" },
   { port: 5580, service: "Matter", kind: "service", from: "matter" },
