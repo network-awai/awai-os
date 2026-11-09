@@ -644,6 +644,19 @@ try {
     console.log(`OTEHON_IME_ADDONS ${addons.trim().split("\n").slice(0, 20).join(",")}`);
     if (!addons.includes("mozc.conf")) throw new Error("mozc-addon-missing");
   });
+  await step("screenreader_setup", async () => {
+    // Installation and wiring only: the check VM has no session, so no
+    // narration happens here. Actual speech needs a real session and audio.
+    const version = execSync("HOME=/tmp orca --version").toString().trim().split("\n")[0];
+    console.log(`OTEHON_READER_VERSION ${version}`);
+    if (!/\d+\.\d+/.test(version)) throw new Error("orca-missing");
+    const unit = execSync("cat /etc/systemd/user/orca-reader.service").toString();
+    if (!unit.includes("ConditionPathExists=")) throw new Error("reader-not-opt-in");
+    if (!unit.includes("otehon-screen-reader/enabled")) throw new Error("reader-flag-path");
+    console.log("OTEHON_READER_UNIT orca-reader=defined,opt-in");
+    execSync("test -f /run/current-system/sw/share/dbus-1/services/org.a11y.Bus.service");
+    console.log("OTEHON_READER_BUS org.a11y.Bus=activatable");
+  });
   if (process.env.OTEHON_MEDIA === "1") await mediaSteps();
   if (process.env.OTEHON_MANIMANI === "1") await checkManimani();
 } catch {

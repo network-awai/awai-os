@@ -228,6 +228,24 @@ in
       };
     };
   };
+  # Screen reader (AWAI-168): Orca with the AT-SPI bus and speechd behind it.
+  # The reader starts only when the flag file exists, so boot stays silent;
+  # a future Settei toggle will manage the user-writable flag. The check VM
+  # has no session, so the e2e step asserts installation and wiring only:
+  # actual narration needs a real session and audio output.
+  services.orca.enable = true;
+
+  systemd.user.services.orca-reader = {
+    description = "Orca screen reader for the desktop session";
+    wantedBy = [ "graphical-session.target" ];
+    after = [ "graphical-session.target" ];
+    unitConfig.ConditionPathExists = "%h/.config/otehon-screen-reader/enabled";
+    serviceConfig = {
+      ExecStart = "${lib.getExe pkgs.orca} --replace";
+      Restart = "on-failure";
+    };
+  };
+
   systemd.user.services.fcitx5-daemon = {
     description = "Japanese input through fcitx5 and mozc";
     wantedBy = [ "graphical-session.target" ];
