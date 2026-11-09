@@ -1,0 +1,49 @@
+;; Runs the shared cases on Basilisp. usage: basilisp run -p src test/run_cases.lpy
+(ns run-cases
+  (:require [wellbecoming.core :as core]))
+
+(import builtins)
+(import json)
+(import operator)
+(import sys)
+
+(defn j->b
+  "Convert json/loads output (Python dicts/lists) to Basilisp maps/vectors,
+  keywordizing map keys the way cheshire does with `true` for the bb runner."
+  [x]
+  (cond
+    (builtins/isinstance x builtins/dict)
+    (into {} (map (fn [e] [(keyword (operator/getitem e 0))
+                           (j->b (operator/getitem e 1))])
+                  (. x items)))
+    (builtins/isinstance x builtins/list)
+    (mapv j->b x)
+    :else x))
+
+(def functions
+  {"dimension-delta" core/dimension-delta
+   "direction" core/direction
+   "local-index-milli" core/local-index-milli
+   "assess" core/assess
+   "confirm" core/confirm
+   "validate-export" core/validate-export
+   "export-record" core/export-record})
+
+(defn plain [value]
+  (cond
+    (map? value) (into {} (map (fn [[k v]] [(name k) (plain v)]) value))
+    (sequential? value) (mapv plain value)
+    (keyword? value) (name value)
+    :else value))
+
+(let [cases (j->b (json/loads (slurp "test/cases.json")))
+      failures (remove nil?
+                       (map (fn [{:keys [fn args expect note]}]
+                              (let [got (plain (apply (get functions fn) args))
+                                    want (plain expect)]
+                                (when (not= got want)
+                                  (str fn " [" note "] got " (pr-str got) " want " (pr-str want)))))
+                            cases))]
+  (doseq [failure failures] (println "FAIL" failure))
+  (println "basilisp cases" (count cases) "failures" (count failures))
+  (sys/exit (if (seq failures) 1 0)))

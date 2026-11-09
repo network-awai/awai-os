@@ -11,9 +11,9 @@ them later changes no code.
 
 | Part | File | Runs on |
 | --- | --- | --- |
-| Pure core | `src/wellbecoming/core.cljc` | Babashka and ClojureScript (nbb) checked; Basilisp not yet |
-| Shared cases | `test/cases.json` | Both runners |
-| Runners | `test/run_cases.clj`, `test/run_cases.cljs` | Babashka, nbb |
+| Pure core | `src/wellbecoming/core.cljc` | Babashka, ClojureScript (nbb) and Basilisp checked |
+| Shared cases | `test/cases.json` | All three runners |
+| Runners | `test/run_cases.clj`, `test/run_cases.cljs`, `test/run_cases.lpy` | Babashka, nbb, Basilisp |
 | Case generator | `test/gen_cases.py` | Python 3, only to rewrite the JSON |
 
 ## What the core decides
@@ -45,14 +45,17 @@ them nothing to join.
 ```bash
 bb --classpath src test/run_cases.clj
 nbb --classpath src test/run_cases.cljs
+basilisp run -p src test/run_cases.lpy
 ```
 
-## Evidence (2026-11-07, macOS arm64 laptop, bb v1.12.218, nbb v1.4.208, Python 3.15.0)
+## Evidence (2026-11-07 bb/nbb, macOS arm64 laptop, bb v1.12.218, nbb v1.4.208, Python 3.15.0;
+## 2026-11-09 Basilisp, same laptop, Basilisp 0.5.1)
 
 | Check | Result |
 | --- | --- |
 | Shared cases on Babashka | 93 of 93 |
 | Shared cases on nbb (ClojureScript) | 93 of 93 |
+| Shared cases on Basilisp | 93 of 93, exit 0; one tampered expectation fails with exit 1 |
 | Expected values | From `gen_cases.py`, an exact-fraction implementation that shares no code with the core |
 | `cases.json` regenerated | Byte-identical (fixed seed) |
 | 14 one-line breaks of the core (tau, floor, window edge, both minimum counts, MAD factor, even median, mixed, clip, x range, hysteresis, two forbidden names, the closed-set check) | Each fails at least one case, with the expected reason |
@@ -63,8 +66,9 @@ the floor example at -400.
 
 ## Not verified or not implemented
 
-- Basilisp, which D20 requires for the OS side. It is not installed here, so there is no `.lpy`
-  runner yet. Whether `clojure.string` calls and `quot` behave the same there is unchecked.
+- Basilisp (D20, OS side) is now checked via `test/run_cases.lpy`: 93 of 93 on Basilisp
+  0.5.1, using the same `core.cljc` with no code change. `clojure.string` calls and `quot`
+  behave the same there on the shared cases.
 - shadow-cljs and the browser build, and plain JVM Clojure.
 - Real observations. Every value is synthetic, and nothing here calibrates a threshold.
 - The encrypted payload, attestation and key handling. The core only checks the shape of the export
