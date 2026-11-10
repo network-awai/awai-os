@@ -1,29 +1,21 @@
 (ns saifu.app
-  "The Saifu screen. Reads an EVM balance through a wallet in the page, or through the host's
-  consent-checked broker. It never holds keys, and it cannot sign or send."
+  "The Saifu screen. Reads an EVM balance through the host's consent-checked broker.
+  It never holds keys, and it cannot sign or send."
   (:require [reagent.core :as r]
             [reagent.dom.client :as rdom]
             [saifu.core :as core]))
 
 (defonce state (r/atom {:address "" :status :idle}))
 
-(defn- provider-call [request]
-  (.request js/window.ethereum (clj->js (select-keys request [:method :params]))))
-
 (defn- read-through
-  "A JSON-RPC response as a map, from the host if it offers one, else from the page's wallet."
+  "A JSON-RPC response as a map from the host; fail closed when no host is connected."
   [request]
   (cond
     (some-> js/window .-saifuHost .-readChainState)
     (-> (.readChainState js/window.saifuHost (clj->js request))
         (.then #(js->clj % :keywordize-keys true)))
 
-    (.-ethereum js/window)
-    (-> (provider-call request)
-        (.then (fn [result] {:result result}))
-        (.catch (fn [_] {:error {:message "wallet-refused"}})))
-
-    :else (js/Promise.resolve {:error {:message "no-provider"}})))
+    :else (js/Promise.resolve {:error {:message "no-consent-host"}})))
 
 (defn- read-balance! []
   (let [request (core/balance-request (:address @state) 1)]
