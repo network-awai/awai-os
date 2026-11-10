@@ -81,6 +81,13 @@
     {:jsonrpc "2.0" :id id :method "eth_getBalance" :params [(lower-hex address) "latest"]}
     {:error :invalid-address}))
 
+(defn balance-request-for
+  "Only the implemented EVM read is available; other families fail closed."
+  [family address id]
+  (if (= family "evm")
+    (balance-request address id)
+    {:error :unsupported-chain}))
+
 (defn read-balance
   "The balance from a JSON-RPC response. Anything unexpected is an error, never a zero balance."
   [response decimals]

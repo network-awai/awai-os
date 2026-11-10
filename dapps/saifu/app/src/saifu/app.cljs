@@ -19,7 +19,7 @@
     :else (js/Promise.resolve {:error {:message "no-consent-host"}})))
 
 (defn- read-balance! []
-  (let [request (core/balance-request (:address @state) 1)]
+  (let [request (core/balance-request-for "evm" (:address @state) 1)]
     (if (:error request)
       (swap! state assoc :status :invalid)
       (do
@@ -36,10 +36,15 @@
   (let [{:keys [address status display]} @state]
     [:div.saifu
      [:h3 "Saifu"]
-     [:p "Read a balance. This app cannot sign or send."]
+     [:p "Passkey を基点とする Wallet を準備しています。署名・送金はできません。"]
+     [:ul {:aria-label "対応状況"}
+      [:li "EVM · ETH — Optimism の公開アドレスを確認"]
+      [:li "Bitcoin · BTC — 接続準備中"]
+      [:li "Solana · SOL — 接続準備中"]]
+     [:p "公開アドレスの照会時は、送信先と共有する情報を確認します。"]
      [:input {:aria-label "EVM address" :placeholder "0x…" :value address :spell-check false
               :on-change #(swap! state assoc :address (.. % -target -value) :status :idle)}]
-     [:button {:on-click read-balance! :disabled (= status :reading)} "Read Balance"]
+     [:button {:on-click read-balance! :disabled (= status :reading)} "ETH 残高を確認"]
      (case status
        :done [:p {:data-balance display} display " ETH"]
        :invalid [:p.problem {:data-state "invalid"} "That is not an EVM address."]
