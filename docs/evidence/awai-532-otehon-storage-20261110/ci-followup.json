@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-10",
+  "head": "ba9c7f7d0abb85ca7353b7bc3021e5cf78ad5c29",
+  "run": "https://github.com/network-awai/awai-os/actions/runs/42769262832",
+  "runner": "x86_64-linux (Nix 2.35.2 binary and Node x64 paths recorded in job log)",
+  "storageStep": "success",
+  "unitTests": 9,
+  "assertions": 32,
+  "processFaultCases": 25,
+  "nativeEvaluate": "failed: unchanged legacy client-runtime URL returns HTTP 404; existing same-digest canonical pin migration is in PR #79 / AWAI-542",
+  "otehonJob": "failed after the successful storage step because storage.nix was not listed as an imported module in eval-profiles.sh",
+  "fix": "Add storage to the explicit module inventory; standalone option behavior remains covered by module-check.nix",
+  "localProfileEvaluation": {
+    "exit": 0,
+    "successfulProfiles": 21,
+    "command": "podman run --rm --name awai-532-profile-eval -v awai-otehon-nix:/nix -v /Users/junkawasaki/github/wt/codex/awai-532-otehon-store:/work -w /work docker.io/nixos/nix@sha256:7a70027ba790d3a79fa82faeac5f3dddc048f89e83b3901ca69542c340c9fb5c sh nixos/otehon/eval-profiles.sh .",
+    "sourceSha256": "c69babd71ad17ee5cf431a57b4f83f68f0fdd32b3896e5a513d3c48e3a58da42"
+  },
+  "documentationMismatch": "docs/otehon/operations-0.1.0.md:41 still says no Babashka in this job. Current .github/workflows/nixos-module.yml runs the Nix-built Otehon storage check on Babashka; the versioned older operations document was not rewritten."
+}

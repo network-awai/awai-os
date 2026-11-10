@@ -1,0 +1,4 @@
+otehon	Build and test the Otehon checkpoint storage adapter	2026-11-10T06:33:36.9371903Z Ran 9 tests containing 32 assertions.
+otehon	Build and test the Otehon checkpoint storage adapter	2026-11-10T06:33:36.9372442Z 0 failures, 0 errors.
+otehon	Build and test the Otehon checkpoint storage adapter	2026-11-10T06:33:36.9419319Z {:cases 25, :pass true}
+otehon	Build and test the Otehon checkpoint storage adapter	2026-11-10T06:33:39.3561510Z {"disabledHasCli":false,"enabledHasCli":true,"startsDaemon":false}
