@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ed25519 } from "@noble/curves/ed25519.js";
-import { solanaProofMessage, verifySolanaAssetProof } from "../src/identity/solana-proof.js";
+import { createSolanaProofSession, solanaProofMessage, verifySolanaAssetProof } from "../src/identity/solana-proof.js";
 
 const alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 function base58(bytes) {
@@ -43,4 +43,24 @@ test("wrong account, key, nonce, origin text, signature, or expired challenge is
   assert.throws(() => verifySolanaAssetProof(challenge, output, now + 300000), /invalid-proof-window/);
   assert.throws(() => solanaProofMessage({ ...challenge, address: "0invalid" }, now), /invalid-solana-address/);
   assert.throws(() => solanaProofMessage({ ...challenge, nonce: "short" }, now), /invalid-nonce/);
+});
+
+test("a host-created Solana challenge is random, short-lived and consumed after one valid proof", () => {
+  const secret = ed25519.utils.randomSecretKey();
+  const accountDid = "did:key:zExample";
+  const address = base58(ed25519.getPublicKey(secret));
+  let time = now;
+  const create = () => createSolanaProofSession({ accountDid, address }, { clock: () => time });
+  const session = create();
+  const second = create();
+  assert.notEqual(session.input.nonce, second.input.nonce);
+  assert.equal(session.input.domain, "awai.network");
+  const challenge = { accountDid, address, nonce: session.input.nonce,
+    issuedAt: session.input.issuedAt, expirationTime: session.input.expirationTime };
+  const signedMessage = new TextEncoder().encode(solanaProofMessage(challenge, time));
+  const output = { signedMessage, signature: ed25519.sign(signedMessage, secret) };
+  assert.equal(session.verify(output).status, "asset-proof-only");
+  assert.throws(() => session.verify(output), /solana-proof-consumed/);
+  time += 300000;
+  assert.throws(() => second.verify(output), /invalid-proof-window/);
 });

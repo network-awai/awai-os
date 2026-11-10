@@ -63,9 +63,10 @@ or address alone is insufficient. No Passkey PRF is used as a seed for chain
 keys. This is an implementation target, not a claim of completed recovery.
 
 The current offline Solana prototype verifies the asset-key signature for one
-strict SIWS message and returns only an `asset-proof-only` result. It is not
-wired to a wallet provider, does not consume a nonce, and does not authorize the
-account side. The Bitcoin prototype computes a BIP-322 message hash against
+strict SIWS message and returns only an `asset-proof-only` result. A temporary
+host-side session can issue a random nonce and consume it once on success; it
+is not yet wired to a wallet provider or account-side authorization. The
+Bitcoin prototype computes a BIP-322 message hash against
 published vectors; it does not validate an address, a virtual transaction,
 or a Bitcoin signature. Neither prototype establishes a binding or is ready
 for real funds.

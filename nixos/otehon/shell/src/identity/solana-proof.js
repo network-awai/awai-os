@@ -1,6 +1,6 @@
 // A narrow, offline SIWS asset-key proof. This does not create a binding:
-// the account must separately authorize the same challenge, and a host must
-// enforce one-time consumption before accepting either proof.
+// the account must separately authorize the same challenge. Direct callers of
+// verifySolanaAssetProof must enforce one-time consumption themselves.
 import { ed25519 } from "@noble/curves/ed25519.js";
 
 const alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
@@ -46,4 +46,27 @@ export function verifySolanaAssetProof(challenge, output, now = Date.now()) {
   try { valid = ed25519.verify(output.signature, message, solanaKey(challenge.address), { zip215: false }); } catch { /* refuse */ }
   if (!valid) throw new Error("invalid-solana-proof");
   return Object.freeze({ status: "asset-proof-only", accountDid: challenge.accountDid, address: challenge.address });
+}
+
+// Ephemeral request object for a future host-driven consent flow. It never
+// creates a binding or grants signing authority, and does not persist a nonce.
+// The account DID must come from the host's verified identity, not the guest.
+export function createSolanaProofSession({ accountDid, address }, { clock = Date.now } = {}) {
+  const issued = clock();
+  if (!Number.isFinite(issued)) throw new Error("invalid-proof-window");
+  const nonce = Array.from(crypto.getRandomValues(new Uint8Array(16)), (x) => x.toString(16).padStart(2, "0")).join("");
+  const challenge = Object.freeze({ accountDid, address, nonce,
+    issuedAt: new Date(issued).toISOString(), expirationTime: new Date(issued + lifetime).toISOString() });
+  // Validate fields before exposing an input to a wallet.
+  solanaProofMessage(challenge, issued);
+  let consumed = false;
+  const input = Object.freeze({ domain: "awai.network", address,
+    statement: `Link this Solana address to ${accountDid}`, uri: "https://awai.network/link/",
+    version: "1", chainId: "mainnet", nonce, issuedAt: challenge.issuedAt, expirationTime: challenge.expirationTime });
+  return Object.freeze({ input, verify(output) {
+    if (consumed) throw new Error("solana-proof-consumed");
+    const result = verifySolanaAssetProof(challenge, output, clock());
+    consumed = true;
+    return result;
+  } });
 }
