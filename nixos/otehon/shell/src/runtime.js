@@ -37,11 +37,11 @@ export function osOperations(relayOrigin) {
 }
 
 // Fixed RPC method and endpoint; neither is supplied by a Dapp or a Bot.
-export async function readWalletBalance(broker, address) {
+export async function requestWalletBalance(broker, address, options) {
   if (typeof address !== "string" || !/^0x[0-9a-fA-F]{40}$/.test(address)) {
     throw new Error("invalid-wallet-address");
   }
-  const response = await broker.invoke(
+  return broker.invoke(
     { capability: "awai-wallet", service: "optimism-public-rpc", operation: "read-eth-balance" },
     {
       input: `${PASSPORT_ORIGIN}/`,
@@ -49,8 +49,12 @@ export async function readWalletBalance(broker, address) {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getBalance", params: [address, "latest"] }),
       },
-    },
+    }, options,
   );
+}
+
+export async function readWalletBalance(broker, address) {
+  const response = await requestWalletBalance(broker, address);
   if (!response.ok) throw new Error("balance-read-failed");
   const data = await response.json();
   if (!data || data.jsonrpc !== "2.0" || data.id !== 1 || typeof data.result !== "string"
