@@ -506,6 +506,12 @@ time {
   overflow-y: auto;
 }
 
+.saifu-container iframe {
+  border: 0;
+  width: 100%;
+  min-height: 420px;
+}
+
 .account-body {
   display: flex;
   flex-direction: column;

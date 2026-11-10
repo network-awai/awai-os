@@ -5,6 +5,7 @@ import { MANIMANI, Manimani, ManimaniLink } from "./manimani.jsx";
 import { clearSession, deviceDid, loadProofs, loadSession, saveProof } from "./identity/device.js";
 import { createBroker, osOperations, readPassport, readWalletBalance } from "./runtime.js";
 import { walletView } from "./wallet-model.js";
+import { SaifuView } from "./saifu-view.jsx";
 import { MEDIA_ORIGIN, describeMessage, requestImage, requestSpeech, settleSavedItem, useMediaCapabilities } from "./media.js";
 import { BluetoothPanel, WifiPanel } from "./net.jsx";
 import { SoundPanel } from "./sound.jsx";
@@ -506,6 +507,8 @@ function Shell({ did, account, proofs, score, broker, zenoh, matter, onProof, on
     body = <SoundPanel />;
   } else if (context === "display") {
     body = <DisplayPanel />;
+  } else if (context === "saifu") {
+    body = <SaifuView broker={broker} score={score} onAccount={openAccount} />;
   } else if (dapp && score < minimum) {
     body = <Locked dapp={dapp} minimum={minimum} score={score} onRaise={openAccount} />;
   } else {
@@ -522,7 +525,7 @@ function Shell({ did, account, proofs, score, broker, zenoh, matter, onProof, on
     );
   }
 
-  const panel = dapp && context !== "wifi" && context !== "bluetooth" && context !== "sound" && context !== "display" ? dapp : null;
+  const panel = dapp && context !== "wifi" && context !== "bluetooth" && context !== "sound" && context !== "display" && context !== "saifu" ? dapp : null;
 
   return (
     <div className={panel ? "shell with-panel" : "shell"}>

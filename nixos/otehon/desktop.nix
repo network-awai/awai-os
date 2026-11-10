@@ -13,6 +13,9 @@ let
     env = {
       RELAY_ORIGIN = cfg.relayOrigin;
       OTEHON_E2E = if cfg.e2e then "1" else "0";
+    } // lib.optionalAttrs (cfg.saifu.pins != null && cfg.saifu.bundle != null) {
+      OTEHON_SAIFU_PINS = toString cfg.saifu.pins;
+      OTEHON_SAIFU_BUNDLE = toString cfg.saifu.bundle;
     };
     doCheck = true;
     checkPhase = ''
@@ -71,6 +74,18 @@ in
       default = false;
       description = "Build the sign-in test driver into the shell. Check images only.";
     };
+    saifu = {
+      pins = lib.mkOption {
+        type = lib.types.nullOr lib.types.path;
+        default = null;
+        description = "Installer-owned public publisher and artifact pins; never supplied by the app.";
+      };
+      bundle = lib.mkOption {
+        type = lib.types.nullOr lib.types.path;
+        default = null;
+        description = "Signed Saifu descriptor and self-contained application bytes.";
+      };
+    };
     # The shell is static files, so it can come from another architecture's build.
     shellPkgs = lib.mkOption {
       type = lib.types.pkgs;
@@ -84,6 +99,10 @@ in
   };
 
   config = {
+  assertions = [{
+    assertion = (cfg.saifu.pins == null) == (cfg.saifu.bundle == null);
+    message = "Saifu requires both installer-owned pins and a signed bundle.";
+  }];
   system.image.id = "awai-otehon-desktop";
   system.image.version = "0.7.0";
 
