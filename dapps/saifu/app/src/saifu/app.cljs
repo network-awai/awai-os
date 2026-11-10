@@ -3,6 +3,7 @@
   It never holds keys, and it cannot sign or send."
   (:require [reagent.core :as r]
             [reagent.dom.client :as rdom]
+            ["./host-bridge.js" :as host-bridge]
             [saifu.core :as core]))
 
 (defonce state (r/atom {:address "" :status :idle}))
@@ -48,5 +49,6 @@
        nil)]))
 
 (defn init []
+  (host-bridge/installSaifuGuestBridge js/window)
   (when-let [el (.getElementById js/document "saifu")]
     (rdom/render (rdom/create-root el) [view])))
