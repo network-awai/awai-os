@@ -639,6 +639,10 @@ time {
 .manimani-side li { overflow-wrap: anywhere; }
 .manimani-actions { display: flex; gap: 6px; margin-top: 4px; }
 .manimani-launchers { flex-wrap: wrap; }
+.voice-status { margin: 0 24px 12px; color: var(--secondary-text); font-size: 12px; }
+.voice-status:empty { display: none; }
+.voice-bezel { position: fixed; inset: 2px; z-index: 100; border: 3px solid var(--focus); border-radius: 16px; box-shadow: inset 0 0 30px var(--focus); pointer-events: none; transition: opacity .12s; }
+@media (prefers-reduced-motion: reduce) { .voice-bezel { transition: none; opacity: .5 !important; } }
 
 /* Network setup screens (AWAI-168): Wi-Fi and Bluetooth. */
 .net-view { overflow-y: auto; }

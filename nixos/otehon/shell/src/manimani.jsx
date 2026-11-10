@@ -1,6 +1,7 @@
 // Manimani is the Bots home. The service in manimani/manimani.nix runs it on this
 // device. Nothing goes through the shared broker, because nothing leaves the machine.
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createLocalDictation } from "./voice-input.js";
 
 export const MANIMANI = "manimani";
 export const MANIMANI_ORIGIN = "http://127.0.0.1:8771";
@@ -62,6 +63,9 @@ export function ManimaniLink({ active, onSelect }) {
 export function Manimani({ onSelect, onOpenWallet }) {
   const [state, read] = useManimani();
   const [text, setText] = useState("");
+  const [voiceState, setVoiceState] = useState("idle");
+  const [voiceLevel, setVoiceLevel] = useState(0);
+  const voice = useRef(null);
   const bottom = useRef(null);
   const count = state?.messages.length ?? 0;
 
@@ -69,9 +73,22 @@ export function Manimani({ onSelect, onOpenWallet }) {
     bottom.current?.scrollIntoView();
   }, [count]);
 
+  useEffect(() => {
+    voice.current = createLocalDictation({
+      Recognition: window.SpeechRecognition ?? window.webkitSpeechRecognition,
+      mediaDevices: navigator.mediaDevices,
+      AudioContext: window.AudioContext,
+      onText: (next) => setText((previous) => `${previous}${previous ? " " : ""}${next}`),
+      onState: setVoiceState,
+      onLevel: setVoiceLevel,
+    });
+    return () => voice.current?.stop();
+  }, []);
+
   const act = (promise) => promise.then(read).catch(read);
   const send = (event) => {
     event.preventDefault();
+    voice.current?.stop();
     const value = text.trim();
     if (!value) return;
     setText("");
@@ -80,6 +97,7 @@ export function Manimani({ onSelect, onOpenWallet }) {
 
   return (
     <div className="manimani" data-manimani>
+      {voiceState === "listening" ? <div className="voice-bezel" aria-hidden="true" style={{ opacity: 0.2 + voiceLevel * 0.7 }} /> : null}
       <main className="manimani-chat">
         <div className="manimani-messages" aria-live="polite">
           {count === 0 ? <p>Manimani keeps running on this device, and coordinates your other agents.</p> : null}
@@ -98,10 +116,24 @@ export function Manimani({ onSelect, onOpenWallet }) {
             disabled={!state}
             onChange={(event) => setText(event.target.value)}
           />
+          <button
+            type="button"
+            aria-pressed={voiceState === "listening"}
+            disabled={!state || voiceState === "checking"}
+            onClick={() => voiceState === "listening" ? voice.current?.stop() : voice.current?.start()}
+          >
+            {voiceState === "listening" ? "音声を停止" : "音声入力"}
+          </button>
           <button type="submit" disabled={!state || !text.trim()}>
             Send
           </button>
         </form>
+        <p className="voice-status" role="status">
+          {voiceState === "listening" ? "聞いています。内容は送信前に確認できます。" : null}
+          {voiceState === "checking" ? "端末内の音声認識を確認しています。" : null}
+          {voiceState === "unavailable" ? "端末内の日本語音声認識を利用できません。文字入力をご利用ください。" : null}
+          {voiceState === "error" ? "音声入力を開始できませんでした。マイクの設定を確認してください。" : null}
+        </p>
       </main>
       <aside className="manimani-side" aria-label="What Manimani is doing">
         <section>
