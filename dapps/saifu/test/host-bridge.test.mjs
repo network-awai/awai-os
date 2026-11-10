@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { installSaifuGuestBridge } from "../app/src/saifu/host-bridge.mjs";
+import { installSaifuGuestBridge } from "../app/src/saifu/host-bridge.js";
 import { createSaifuHostBroker } from "../../../nixos/otehon/shell/src/saifu-host.js";
 
 const address = "0x00000000000000000000000000000000000000AB";
