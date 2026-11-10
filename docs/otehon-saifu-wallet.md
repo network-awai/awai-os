@@ -55,12 +55,20 @@ Recovery and controller changes have different outcomes:
 | Same Passkey synced or presented from another device | Verify the same RP-scoped key and link the device; keep the original Wallet descriptor. | Device link exists; Wallet descriptor association is not implemented. |
 | A newly created Passkey | Keep it a candidate until an existing on-chain owner explicitly adds it and the target chain confirms owner membership. | Owner-addition and chain receipt checks are not implemented in Otehon. |
 | All Wallet owners lost | Do not infer recovery from email, session, or a new Passkey; use only a separately implemented and audited recovery mechanism. | Guardian and delayed recovery are not implemented. |
-| Bitcoin or Solana wallet restored | Recover through that wallet's own mechanism, then privately re-establish both sides of the account binding. | External-wallet binding and verification are not implemented. |
+| Bitcoin or Solana wallet restored | Recover through that wallet's own mechanism, then privately re-establish both sides of the account binding. | External-wallet binding is not implemented. |
 
 The proposed first phase uses Bitcoin BIP-322 and Sign In With Solana for the
 asset-key proof; the account must also authorize the binding. A one-sided proof
 or address alone is insufficient. No Passkey PRF is used as a seed for chain
 keys. This is an implementation target, not a claim of completed recovery.
+
+The current offline Solana prototype verifies the asset-key signature for one
+strict SIWS message and returns only an `asset-proof-only` result. It is not
+wired to a wallet provider, does not consume a nonce, and does not authorize the
+account side. The Bitcoin prototype computes a BIP-322 message hash against
+published vectors; it does not validate an address, a virtual transaction,
+or a Bitcoin signature. Neither prototype establishes a binding or is ready
+for real funds.
 
 ## Installing Saifu into an Otehon image
 
