@@ -295,7 +295,7 @@ async function checkManimani() {
   const answers = "document.querySelectorAll('.manimani-message[data-role=assistant]').length";
   const say = async (text) => {
     await type("input[aria-label='Message Manimani']", text);
-    await click(".manimani-composer button");
+    await click(".manimani-composer button[type=submit]");
   };
   await step("manimani_bots_home", async () => {
     await until("document.querySelector('[data-manimani-link]')", "Bots navigation");
