@@ -39,7 +39,7 @@ test("weak, old, future or other-account proofs add nothing", () => {
 test("minimums apply to the listed operations and to whole dapps", () => {
   assert.equal(operationMinimum("torihiki", "submit-order"), 50);
   assert.equal(operationMinimum("torihiki", "read-quotes"), 0);
-  assert.equal(operationMinimum("saifu", "read-chain-state"), 50);
+  assert.equal(operationMinimum("saifu", "read-chain-state"), 0);
   assert.equal(dappMinimum("bunsho"), 0);
   const table = { closed: { minimum: 60, operations: { read: 20 } } };
   assert.equal(dappMinimum("closed", table), 60);

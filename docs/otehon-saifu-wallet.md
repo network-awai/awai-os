@@ -14,8 +14,9 @@ actual account bindings are available; a sign-in alone does not prove that any
 chain wallet exists.
 
 For a previously linked EVM address, Otehon can request an Optimism ETH balance
-after the user approves that specific external operation. The host enforces the
-existing Saifu chain-read Trust threshold of 50 for guest requests. Denial or an
+after the user approves that specific external operation. Public chain reads
+have no additional Trust threshold; approval remains required for each request.
+Denial or an
 unavailable account must not be represented as a zero balance. This is a
 read-only path; it does not perform a transaction.
 
