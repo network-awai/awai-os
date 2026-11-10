@@ -22,7 +22,9 @@ The compositor is cosmic-comp because niri 26.04 logged
 EGL, because the Homebrew QEMU has no `virtio-gpu-gl` device.
 
 The user has no password and logs in automatically, so this image is for a local
-VM only. It has no SSH, keys or network adapter in the commands below. Chromium's
+VM only. It has no SSH or provisioned keys. The desktop launcher below provides
+outbound connectivity through QEMU user-mode NAT by default; set `OTEHON_NETWORK=none`
+to run offline. The automated desktop check remains offline. Chromium's
 DevTools port, Zenoh REST and the Matter server are open to every process in the
 VM. It is not an Itonami OS release or a complete Awai Node.
 
@@ -39,6 +41,10 @@ nixos/otehon/run-desktop-qemu.sh otehon-desktop.qcow2
 ```
 
 The window writes changes to the image. Use a copy to keep the original.
+The usual desktop profile does not mount a model share. Profiles that need a
+virtiofs model share must explicitly enable `otehon.modelShare` and attach the
+`otehon-models` share. Without an image model, image generation reports that
+its model is unavailable.
 
 ## Check
 
