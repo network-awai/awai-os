@@ -1,0 +1,1 @@
+{:state {"cli" "value"}, :root {:format :awai.otehon-store/root-v1, :generation 3, :checkpoint 1, :tail 1, :snapshot "9ebfb38da0de767b669c97cfe5cbd757753ed6f4346ad28104294e668137e074", :log "83379632694222e71ce2558299e2a24f7b62107b8dfb7c09c987fe01223539e7"}, :degraded? false}

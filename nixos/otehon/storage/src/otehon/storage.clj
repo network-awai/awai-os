@@ -1,0 +1,244 @@
+(ns otehon.storage
+  "Bounded local hosted-file store for Otehon. No network or native fallback.
+  Immutable snapshot/WAL objects precede an atomic A/B root publication.
+  SHA-256 binds bytes; it does not authenticate a writer or encrypt data."
+  (:require [clojure.edn :as edn]
+            [awai.fs.wal :as wal])
+  (:import [java.nio ByteBuffer]
+           [java.nio.channels FileChannel]
+           [java.nio.file Files Path Paths LinkOption OpenOption StandardOpenOption
+            CopyOption StandardCopyOption]
+           [java.nio.file.attribute PosixFilePermissions FileAttribute]
+           [java.security MessageDigest]
+           [java.util UUID]))
+
+(def ^:private max-bytes (* 1024 1024))
+(def ^:dynamic *write-observer* nil)
+
+(defn- fail! [type message]
+  (throw (ex-info message {:type type})))
+
+(defn- observe! [event role]
+  (when *write-observer* (*write-observer* event role)))
+
+(defn- path [root name] (.resolve ^Path root ^String name))
+(defn- attrs [mode]
+  (into-array FileAttribute [(PosixFilePermissions/asFileAttribute
+                              (PosixFilePermissions/fromString mode))]))
+(defn- exists? [p] (Files/exists p (into-array LinkOption [LinkOption/NOFOLLOW_LINKS])))
+(defn- sha [^bytes bytes]
+  (apply str (map #(format "%02x" (bit-and 255 %))
+                  (.digest (MessageDigest/getInstance "SHA-256") bytes))))
+(defn- encode [value] (.getBytes (pr-str value) "UTF-8"))
+(defn- parse [bytes]
+  (with-open [r (java.io.PushbackReader. (java.io.StringReader. (String. ^bytes bytes "UTF-8")))]
+    (let [opts {:eof ::eof :readers {} :default (fn [& _] (fail! :invalid-edn "unknown EDN tag"))}
+          value (edn/read opts r)]
+      (when (or (= ::eof value) (not= ::eof (edn/read opts r)))
+        (fail! :invalid-edn "expected exactly one EDN value"))
+      value)))
+
+(defn- read-bytes [p]
+  (with-open [channel (FileChannel/open p (into-array OpenOption
+                                          [StandardOpenOption/READ LinkOption/NOFOLLOW_LINKS]))]
+    (let [n (.size channel)]
+      (when (> n max-bytes) (fail! :too-large "store record exceeds 1 MiB"))
+      (let [buffer (ByteBuffer/allocate (int n))]
+        (while (.hasRemaining buffer)
+          (when (neg? (.read channel buffer)) (fail! :short-read "store record shortened")))
+        (.array buffer)))))
+
+(defn- sync-dir! [root]
+  (with-open [channel (FileChannel/open root (into-array OpenOption [StandardOpenOption/READ]))]
+    (.force channel true)))
+
+(defn- write-record! [root name bytes role]
+  (when (> (alength ^bytes bytes) max-bytes) (fail! :too-large "store record exceeds 1 MiB"))
+  (let [tmp (path root (str ".pending-" (UUID/randomUUID)))
+        target (path root name)
+        half (quot (alength ^bytes bytes) 2)]
+    ;; Incomplete temporary files are deliberately preserved for inspection.
+    (with-open [out (FileChannel/open tmp
+                                     #{StandardOpenOption/CREATE_NEW StandardOpenOption/WRITE}
+                                     (attrs "rw-------"))]
+      (doseq [[start length event] [[0 half :half-written]
+                                    [half (- (alength ^bytes bytes) half) :written]]]
+        (let [buffer (ByteBuffer/wrap bytes start length)]
+          (while (.hasRemaining buffer) (.write out buffer)))
+        (observe! event role))
+      (.force out true)
+      (observe! :file-synced role))
+    (Files/move tmp target (into-array CopyOption [StandardCopyOption/ATOMIC_MOVE
+                                                  StandardCopyOption/REPLACE_EXISTING]))
+    (observe! :renamed role)
+    (sync-dir! root)
+    (observe! :dir-synced role)))
+
+(defn- object! [root value role]
+  (let [bytes (encode {:format :awai.otehon-store/object-v1 :value value})
+        digest (sha bytes)
+        name (str digest ".edn")]
+    (if (exists? (path root name))
+      (do
+        (when-not (= digest (sha (read-bytes (path root name))))
+          (fail! :corrupt-object "existing immutable object is corrupt"))
+        ;; A previous writer may have died after rename but before dir sync.
+        ;; Reusing that orphan must finish publication before a new root.
+        (sync-dir! root)
+        (observe! :reused-dir-synced role))
+      (write-record! root name bytes role))
+    digest))
+
+(defn- digest? [x] (and (string? x) (boolean (re-matches #"[0-9a-f]{64}" x))))
+(defn- load-object [root digest]
+  (when-not (digest? digest) (fail! :invalid-digest "invalid object reference"))
+  (when-not (exists? (path root (str digest ".edn")))
+    (fail! :missing-object "published root references a missing object"))
+  (let [bytes (read-bytes (path root (str digest ".edn")))]
+    (when-not (= digest (sha bytes)) (fail! :corrupt-object "immutable object digest mismatch"))
+    (let [obj (parse bytes)]
+      (when-not (and (= #{:format :value} (set (keys obj)))
+                     (= :awai.otehon-store/object-v1 (:format obj)))
+        (fail! :invalid-object "unsupported object format"))
+      (:value obj))))
+
+(defn- sequence? [x] (and (integer? x) (<= 0 x 9007199254740991)))
+(defn- root-valid? [value]
+  (and (map? value)
+       (= #{:format :generation :checkpoint :tail :snapshot :log} (set (keys value)))
+       (= :awai.otehon-store/root-v1 (:format value))
+       (sequence? (:generation value)) (pos? (:generation value))
+       (sequence? (:checkpoint value)) (sequence? (:tail value))
+       (<= (:checkpoint value) (:tail value))
+       (digest? (:snapshot value)) (digest? (:log value))))
+
+(defn- load-slot [root i]
+  (let [p (path root (str "root-" i ".edn"))]
+    (if-not (exists? p)
+      nil
+      (try
+        (let [{:keys [payload digest] :as envelope} (parse (read-bytes p))
+              _ (when-not (and (= #{:payload :digest} (set (keys envelope)))
+                                (string? payload) (digest? digest)
+                                (= digest (sha (.getBytes ^String payload "UTF-8"))))
+                  (fail! :corrupt-root "root envelope digest mismatch"))
+              value (parse (.getBytes ^String payload "UTF-8"))]
+          (when-not (and (root-valid? value) (= i (mod (:generation value) 2)))
+            (fail! :invalid-root "invalid root or slot generation"))
+          {:root value})
+        (catch Exception _ {:error :invalid-slot})))))
+
+(defn- root-path [directory]
+  (let [p (.normalize (.toAbsolutePath (Paths/get directory (make-array String 0))))]
+    (when-not (and (Files/isDirectory p (into-array LinkOption [LinkOption/NOFOLLOW_LINKS]))
+                   (= p (.toRealPath p (make-array LinkOption 0))))
+      (fail! :invalid-directory "store must be an existing real directory without symlinks"))
+    p))
+
+(defn- state? [value]
+  (and (map? value) (every? string? (keys value)) (every? string? (vals value))))
+(defn- frame-valid? [{:keys [op payload]}]
+  (and (map? payload) (string? (:key payload))
+       (case op
+         :put (and (= #{:key :value} (set (keys payload))) (string? (:value payload)))
+         :delete (= #{:key} (set (keys payload)))
+         false)))
+(defn- apply-frame [state {:keys [op payload]}]
+  (case op
+    :put (assoc state (:key payload) (:value payload))
+    :delete (dissoc state (:key payload))))
+
+(defn- recover* [root]
+  (let [slots (mapv #(load-slot root %) [0 1])
+        candidates (keep :root slots)
+        chosen (last (sort-by :generation candidates))]
+    (when-not chosen (fail! :no-root "no valid committed root; store preserved"))
+    ;; A valid newest root with missing/corrupt referenced data must refuse.
+    ;; Do not silently roll back an already published commit to an older slot.
+    (let [snapshot (load-object root (:snapshot chosen))
+          log (load-object root (:log chosen))
+          sb {:seq (:generation chosen)
+              :slots (mapv (fn [{:keys [root]}]
+                             (when root {:seq (:generation root) :committed true
+                                         :root (select-keys root [:checkpoint :tail])})) slots)}]
+      (when-not (and (map? snapshot) (state? (:state snapshot))
+                     (map? log) (vector? (:frames log))
+                     (every? frame-valid? (:frames log))
+                     (= (:tail chosen) (:seq log)))
+        (fail! :invalid-state "unsupported snapshot or WAL payload"))
+      {:state (wal/recover log sb snapshot apply-frame)
+       :root chosen :snapshot snapshot :log log
+       :degraded? (boolean (some :error slots))})))
+
+(defn read-store [directory]
+  (select-keys (recover* (root-path directory)) [:state :root :degraded?]))
+
+(defn- writable-state [root]
+  (let [recovered (recover* root)]
+    (when (:degraded? recovered)
+      (fail! :degraded-store "invalid root slot requires review before further writes"))
+    recovered))
+
+(defn- with-writer [root action]
+  (with-open [channel (FileChannel/open (path root ".writer.lock")
+                                       #{StandardOpenOption/CREATE StandardOpenOption/WRITE
+                                         LinkOption/NOFOLLOW_LINKS}
+                                       (attrs "rw-------"))]
+    (let [lock (try (.tryLock channel)
+                    (catch Exception e
+                      (if (= "java.nio.channels.OverlappingFileLockException" (.getName (class e)))
+                        nil
+                        (throw e))))]
+      (when-not lock (fail! :writer-busy "another writer owns this store"))
+      ;; Closing this channel releases its OS lock, including on exceptions.
+      (action))))
+
+(defn- publish! [root generation snapshot log]
+  (when-not (and (sequence? generation) (pos? generation))
+    (fail! :generation-exhausted "root generation exhausted"))
+  (let [snapshot-ref (object! root snapshot :snapshot)
+        log-ref (object! root log :wal)
+        value {:format :awai.otehon-store/root-v1 :generation generation
+               :checkpoint (:seq snapshot) :tail (:seq log)
+               :snapshot snapshot-ref :log log-ref}
+        payload (pr-str value)]
+    (write-record! root (str "root-" (mod generation 2) ".edn")
+                   (encode {:payload payload :digest (sha (.getBytes payload "UTF-8"))}) :root)
+    {:generation generation :tail (:seq log)}))
+
+(defn init! [directory]
+  ;; createDirectory refuses any existing path, including partial stores.
+  (let [p (.normalize (.toAbsolutePath (Paths/get directory (make-array String 0))))]
+    (Files/createDirectory p (attrs "rwx------"))
+    (sync-dir! (.getParent p))
+    (with-writer (root-path directory)
+      #(publish! p 1 {:seq 0 :state {}} (wal/empty-log)))))
+
+(defn transact! [directory op payload]
+  (when-not (frame-valid? {:op op :payload payload})
+    (fail! :invalid-operation "expected put/delete with string key/value"))
+  (let [root (root-path directory)]
+    (with-writer root
+      #(let [{:keys [snapshot log] current :root} (writable-state root)]
+         (when (= 9007199254740991 (:seq log))
+           (fail! :sequence-exhausted "WAL sequence exhausted"))
+         (publish! root (inc (:generation current)) snapshot (wal/append log op payload))))))
+
+(defn checkpoint! [directory]
+  (let [root (root-path directory)]
+    (with-writer root
+      #(let [{:keys [state log] current :root} (writable-state root)
+             n (:seq log)]
+         (publish! root (inc (:generation current)) {:seq n :state state}
+                   {:seq n :checkpoint n :frames []})))))
+
+(defn -main [& args]
+  (let [[command directory key value] args]
+    (prn
+      (case [command (count args)]
+        ["init" 2] (init! directory)
+        ["read" 2] (read-store directory)
+        ["put" 4] (transact! directory :put {:key key :value value})
+        ["delete" 3] (transact! directory :delete {:key key})
+        ["checkpoint" 2] (checkpoint! directory)
+        (fail! :usage "usage: otehon-storage init|read|checkpoint DIR; put DIR KEY VALUE; delete DIR KEY")))))

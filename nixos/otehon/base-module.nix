@@ -18,6 +18,7 @@ in
   # belongs in the encrypted state volume.
   imports = [
     ./common.nix
+    ./storage.nix
     "${sops-nix}/modules/sops"
   ];
 
