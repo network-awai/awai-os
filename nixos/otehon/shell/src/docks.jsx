@@ -67,7 +67,7 @@ function StateDot({ state }) {
 
 // Left: this device. Wallet and trust first, then what the device provides,
 // then what its resident bot has been doing.
-export function DeviceDock({ account, score, proofs, capabilities, zenoh, matter, onAccount }) {
+export function DeviceDock({ account, score, walletBalance, proofs, capabilities, zenoh, matter, onAccount }) {
   const [open, setOpen] = useState(null);
   const [manimani] = useManimani();
   const toggle = (name) => setOpen((current) => (current === name ? null : name));
@@ -107,7 +107,7 @@ export function DeviceDock({ account, score, proofs, capabilities, zenoh, matter
               {proofs.worldId?.account === account.accountDid ? `, World ID +${POINTS.worldId}` : ""})
             </dd>
           </dl>
-          <p className="muted">Balances need a chain read, which this image does not do.</p>
+          <p className="muted">{address ? "アカウントで接続先を確認してから ETH 残高を取得できます。" : "残高の確認には Wallet でのサインインが必要です。"}</p>
           <button type="button" className="secondary" onClick={onAccount}>
             Open Account
           </button>
@@ -144,7 +144,7 @@ export function DeviceDock({ account, score, proofs, capabilities, zenoh, matter
         </Panel>
       ) : null}
       <div className="dock-buttons" data-dock-left>
-        <DockButton active={open === "wallet"} label="Wallet" value={`Trust ${score}`} toggle={() => toggle("wallet")} panel="wallet" />
+        <DockButton active={open === "wallet"} label="Wallet" value={walletBalance === null ? "ETH —" : `${walletBalance} ETH`} toggle={() => toggle("wallet")} panel="wallet" />
         <DockButton
           active={open === "providing"}
           label="Providing"

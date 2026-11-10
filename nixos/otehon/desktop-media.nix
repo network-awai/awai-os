@@ -9,6 +9,7 @@
   system.image.id = lib.mkOverride 40 "awai-otehon-desktop-media";
 
   otehon.headless = true;
+  otehon.modelShare = true;
 
   systemd.services.otehon-login-e2e.environment = {
     OTEHON_MEDIA = "1";
