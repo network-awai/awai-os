@@ -4,9 +4,9 @@ export const THEMES = ["Asa", "Hiru", "Yoru"];
 export function readTheme(storage) {
   try {
     const saved = (storage ?? globalThis.localStorage).getItem(THEME_KEY);
-    return THEMES.includes(saved) ? saved : "Yoru";
+    return THEMES.includes(saved) ? saved : "Asa";
   } catch {
-    return "Yoru";
+    return "Asa";
   }
 }
 

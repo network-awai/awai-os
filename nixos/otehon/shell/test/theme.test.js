@@ -5,7 +5,7 @@ import { readTheme, saveTheme, THEME_KEY } from "../src/theme.js";
 test("each selected theme survives a new read, invalid values are ignored", () => {
   const values = new Map();
   const storage = { getItem: (key) => values.get(key), setItem: (key, value) => values.set(key, value) };
-  assert.equal(readTheme(storage), "Yoru");
+  assert.equal(readTheme(storage), "Asa");
   for (const name of ["Asa", "Hiru", "Yoru"]) {
     assert.equal(saveTheme(storage, name), true);
     assert.equal(readTheme(storage), name);
@@ -13,11 +13,11 @@ test("each selected theme survives a new read, invalid values are ignored", () =
   assert.equal(saveTheme(storage, "invalid"), false);
   assert.equal(values.get(THEME_KEY), "Yoru");
   values.set(THEME_KEY, "invalid");
-  assert.equal(readTheme(storage), "Yoru");
+  assert.equal(readTheme(storage), "Asa");
 });
 
 test("storage denial leaves the interface usable", () => {
   const denied = { getItem() { throw Error("denied"); }, setItem() { throw Error("denied"); } };
-  assert.equal(readTheme(denied), "Yoru");
+  assert.equal(readTheme(denied), "Asa");
   assert.equal(saveTheme(denied, "Asa"), false);
 });
