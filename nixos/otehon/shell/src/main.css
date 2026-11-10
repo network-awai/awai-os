@@ -24,7 +24,7 @@
 }
 :root {
   color-scheme: dark;
-  font-family: "DejaVu Sans", "Noto Sans CJK JP", sans-serif;
+  font-family: "Noto Sans JP", "Noto Sans CJK JP", "DejaVu Sans", sans-serif;
   background: var(--bg);
   color: var(--fg);
 }
