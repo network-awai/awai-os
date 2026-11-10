@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "node build.mjs",
-    "test": "node --test test/link.test.js test/trust.test.js test/net.test.js test/status.test.js test/sound.test.js test/display.test.js test/theme.test.js test/voice-input.test.js test/wallet-balance.test.js test/wallet-model.test.js test/saifu-host.test.js test/saifu-package.test.js"
+    "test": "node --test test/link.test.js test/trust.test.js test/net.test.js test/status.test.js test/sound.test.js test/display.test.js test/theme.test.js test/voice-input.test.js test/wallet-balance.test.js test/wallet-model.test.js test/passkey-smart-account.test.js test/saifu-host.test.js test/saifu-package.test.js"
   },
   "dependencies": {
     "@noble/curves": "2.0.1",
