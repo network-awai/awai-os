@@ -1,0 +1,10 @@
+{
+  "repository": "https://github.com/network-awai/network-awai-apex",
+  "revision": "a9c676ffe37e4814a786a3d2c57d7cbdaedb0a2e",
+  "pullRequest": 180,
+  "basePullRequest": 147,
+  "status": "open/unmerged dependency snapshot",
+  "path": "src/awai/fs/car.cljc",
+  "sha256": "6c11cf9d1022b628fce73c2ac8de589667f9d277e0ae69ad52742fc9bebf148b",
+  "profile": "CARv2 without optional on-disk index; raw leaves plus existing DAG-CBOR pack root"
+}

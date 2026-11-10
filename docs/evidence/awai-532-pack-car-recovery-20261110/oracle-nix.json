@@ -1,0 +1,17 @@
+{
+  "oracle": "@ipld/car@5.4.7 + @ipld/dag-cbor@10.0.2",
+  "node": "v26.0.0",
+  "carVersion": 2,
+  "carBytes": 131480,
+  "carSha256": "8ecf39755b177e6535bff36d2456b8a6ec5d65617cf8b960d18d88d87126fd14",
+  "rootCid": "bafyreiev2vnsudyn4uz7ybmhcddcy2p6mlwzvdtajkcsrioz375izrrcc4",
+  "blocks": 4,
+  "leaves": 3,
+  "allBlockDigestsVerified": true,
+  "dagCborLinksVerified": true,
+  "payloadBytes": 131085,
+  "payloadSha256": "d4fb8c638bb3deb8e3d5db33dbc8a3eb7281f90d4d0f012d29c98dd919058315",
+  "byteEqual": true,
+  "indexOffset": 0,
+  "pass": true
+}
