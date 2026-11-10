@@ -1,0 +1,7 @@
+{
+  "repository": "https://github.com/network-awai/network-awai-apex",
+  "revision": "68e820bc9c1c3beac4cadc3a18a5030d25db0b61",
+  "pullRequest": 179,
+  "path": "src/awai/fs/wal.cljc",
+  "sha256": "4eacacf51e46bb6601d4be59e9177e2ff6aaa387dedf99f65330c91f6d7142d2"
+}

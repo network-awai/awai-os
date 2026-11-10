@@ -1,0 +1,9 @@
+error:
+       … while evaluating the condition of the assertion '(((builtins).hashFile "sha256" wal) == (pin).sha256)'
+         at /work/.agent-output/pin-mutant/default.nix:8:1:
+            7| # Vendoring this one module keeps private-repository credentials out of Nix.
+            8| assert builtins.hashFile "sha256" wal == pin.sha256;
+             | ^
+            9| pkgs.writeShellScriptBin "otehon-storage" ''
+
+       error: string '"6baf161f4c482b578be57e7043eccf4041e38fa060bc08fef33b4e1396a731ab"' is not equal to string '"4eacacf51e46bb6601d4be59e9177e2ff6aaa387dedf99f65330c91f6d7142d2"'
