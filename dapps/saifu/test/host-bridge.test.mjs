@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { installSaifuGuestBridge } from "../app/src/saifu/host-bridge.mjs";
+import { createSaifuHostBroker } from "../../../nixos/otehon/shell/src/saifu-host.js";
 
 const address = "0x00000000000000000000000000000000000000AB";
 const request = { jsonrpc: "2.0", id: 1, method: "eth_getBalance", params: [address, "latest"] };
@@ -59,4 +60,24 @@ test("oversized or malformed RPC balances never reach the Dapp core", async () =
     await assert.rejects(result, /invalid-response/);
     bridge.close(); channel.port2.close();
   }
+});
+
+test("guest and restricted host exchange one fixed balance request", async () => {
+  const { win, listeners, bridge, channel } = setup();
+  let call;
+  const host = createSaifuHostBroker({ invoke: async (selector, payload) => {
+    call = { selector, payload };
+    return { ok: true, status: 200, body: JSON.stringify({ jsonrpc: "2.0", id: 1, result: "0xde0b6b3a7640000" }) };
+  } });
+  channel.port2.onmessage = async ({ data }) => {
+    try {
+      const response = await host.invoke(data.selector, data.payload);
+      channel.port2.postMessage({ id: data.id, ok: true, status: response.status, content: response.body });
+    } catch (error) { channel.port2.postMessage({ id: data.id, ok: false, error: error.message }); }
+  };
+  listeners.message({ source: win.parent, data: { protocol: "kotoba.client.host.v1" }, ports: [channel.port1] });
+  assert.equal((await win.saifuHost.readChainState(request)).result, "0xde0b6b3a7640000");
+  assert.equal(call.payload.input, "https://mainnet.optimism.io/");
+  assert.equal(JSON.parse(call.payload.init.body).method, "eth_getBalance");
+  bridge.close(); channel.port2.close();
 });
