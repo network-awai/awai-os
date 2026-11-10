@@ -2,7 +2,7 @@
 // change a DID, deploy a contract, prove chain readiness, or handle keys.
 import { p256 } from "@noble/curves/nist.js";
 import { keccak_256 } from "@noble/hashes/sha3.js";
-import { checksumAddress } from "./identity/link.js";
+import { checksumAddress, fromBase64Url, verifyLink } from "./identity/link.js";
 
 const PREFIX = "603d3d8160223d3973";
 const SUFFIX = "60095155f3363d3d373d3d363d7f360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc545af43d6000803e6038573d6000fd5b3d6000f3";
@@ -40,4 +40,16 @@ export function counterfactualPasskeyAddress({ ownerPublicKey, nonce, factory, i
   const initHash = keccak_256(concat(bytesFromHex(PREFIX), implementationBytes, bytesFromHex(SUFFIX)));
   const raw = keccak_256(concat(Uint8Array.of(255), factoryBytes, salt, initHash)).slice(12);
   return checksumAddress(`0x${Array.from(raw, (byte) => byte.toString(16).padStart(2, "0")).join("")}`);
+}
+
+// An explicit, unbound candidate only: a verified login proves this key was
+// used for this link, not that it controls an existing Principal or wallet.
+// The caller must supply the pinned account parameters rather than deriving
+// them from a DID or guessing another product's Principal mapping.
+export function candidateFromPasskeyLink({ request, response, deviceDid, now, atLink, nonce, factory, implementation }) {
+  const account = verifyLink({ request, response, deviceDid, now, atLink });
+  if (account.method !== "passkey") throw new Error("passkey-required");
+  const ownerPublicKey = p256.Point.fromBytes(fromBase64Url(response.publicKey)).toBytes(false);
+  const address = counterfactualPasskeyAddress({ ownerPublicKey, nonce, factory, implementation });
+  return Object.freeze({ identityDid: account.accountDid, address, status: "unbound-candidate" });
 }
