@@ -27,13 +27,23 @@ export async function admitSaifuPackage({ descriptorBytes, signature, publisherK
   if (!keysExactly(pins, ["publisherKey", "revision", "descriptorSha256", "appSha256", "appMaxBytes"])) {
     throw new Error("saifu-trust-pins-required");
   }
+  // Snapshot pins and bytes before awaiting signature verification: neither a
+  // mutable installer buffer nor a later pin change may alter what is admitted.
+  const trusted = Object.freeze({ ...pins });
+  if (!(descriptorBytes instanceof Uint8Array) || descriptorBytes.length > 262144
+      || !(appBytes instanceof Uint8Array) || !Number.isSafeInteger(trusted.appMaxBytes)
+      || trusted.appMaxBytes < 1 || trusted.appMaxBytes > 8388608 || appBytes.length > trusted.appMaxBytes) {
+    throw new Error("saifu-package-invalid-size");
+  }
+  const descriptorSnapshot = new Uint8Array(descriptorBytes);
+  const appSnapshot = new Uint8Array(appBytes);
   const descriptor = await verifySignedClientDescriptor({
-    bytes: descriptorBytes, signature, publicKey: publisherKey, pinnedPublicKey: pins.publisherKey,
-    revision: pins.revision, digest: pins.descriptorSha256, requestedCapabilities: ["awai-wallet"], appOrigins: [],
+    bytes: descriptorSnapshot, signature, publicKey: publisherKey, pinnedPublicKey: trusted.publisherKey,
+    revision: trusted.revision, digest: trusted.descriptorSha256, requestedCapabilities: ["awai-wallet"], appOrigins: [],
   });
   if (!isSupportedDescriptor(descriptor.runtime)) throw new Error("saifu-descriptor-not-supported");
-  const artifact = await verifyClientArtifact(appBytes, {
-    revision: pins.revision, sha256: pins.appSha256, "max-bytes": pins.appMaxBytes,
+  const artifact = await verifyClientArtifact(appSnapshot, {
+    revision: trusted.revision, sha256: trusted.appSha256, "max-bytes": trusted.appMaxBytes,
   });
   return Object.freeze({ descriptor, artifact });
 }

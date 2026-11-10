@@ -52,3 +52,18 @@ test("even a valid publisher cannot broaden the declared Saifu operation", async
     await assert.rejects(admitSaifuPackage(await fixture(value)), /descriptor-not-supported/);
   }
 });
+
+test("admission snapshots trusted pins and bytes before asynchronous verification", async () => {
+  const input = await fixture();
+  const expected = input.pins.appSha256;
+  const result = admitSaifuPackage(input);
+  input.appBytes[0] ^= 1;
+  input.pins.appSha256 = "0".repeat(64);
+  assert.equal((await result).artifact.sha256, expected);
+});
+
+test("oversized packages are refused before parsing or mounting", async () => {
+  const input = await fixture();
+  await assert.rejects(admitSaifuPackage({ ...input, pins: { ...input.pins, appMaxBytes: 8388609 } }), /invalid-size/);
+  await assert.rejects(admitSaifuPackage({ ...input, appBytes: new Uint8Array(1025) }), /invalid-size/);
+});
