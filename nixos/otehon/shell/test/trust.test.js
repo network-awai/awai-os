@@ -64,10 +64,10 @@ test("the shared broker accepts both descriptors", () => {
   const relay = "https://relay.awai.network";
   const os = runtimeDescriptor("index.html", osOperations(relay));
   const phone = runtimeDescriptor("index.html", phoneOperations(relay));
-  assert.deepEqual(clientRuntimeProblems(os, ["awai-link", "awai-trust"], []), []);
+  assert.deepEqual(clientRuntimeProblems(os, ["awai-link", "awai-trust", "awai-wallet"], []), []);
   assert.deepEqual(clientRuntimeProblems(phone, ["awai-link"], ["https://awai.network"]), []);
   assert.equal(
-    clientRuntimeConnectSrc(os, ["awai-link", "awai-trust"], [], []),
+    clientRuntimeConnectSrc(os, ["awai-link", "awai-trust", "awai-wallet"], [], []),
     "connect-src https://mainnet.optimism.io https://relay.awai.network",
   );
 });

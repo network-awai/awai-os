@@ -25,7 +25,46 @@ export function osOperations(relayOrigin) {
       "data-categories": ["wallet-address"],
       endpoint: { origin: PASSPORT_ORIGIN, method: "POST", path: "/" },
     },
+    {
+      capability: "awai-wallet",
+      service: "optimism-public-rpc",
+      operation: "read-eth-balance",
+      consent: "each-operation",
+      "data-categories": ["wallet-address"],
+      endpoint: { origin: PASSPORT_ORIGIN, method: "POST", path: "/" },
+    },
   ];
+}
+
+// Fixed RPC method and endpoint; neither is supplied by a Dapp or a Bot.
+export async function requestWalletBalance(broker, address, options) {
+  if (typeof address !== "string" || !/^0x[0-9a-fA-F]{40}$/.test(address)) {
+    throw new Error("invalid-wallet-address");
+  }
+  return broker.invoke(
+    { capability: "awai-wallet", service: "optimism-public-rpc", operation: "read-eth-balance" },
+    {
+      input: `${PASSPORT_ORIGIN}/`,
+      init: {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getBalance", params: [address, "latest"] }),
+      },
+    }, options,
+  );
+}
+
+export async function readWalletBalance(broker, address) {
+  const response = await requestWalletBalance(broker, address);
+  if (!response.ok) throw new Error("balance-read-failed");
+  const data = await response.json();
+  if (!data || data.jsonrpc !== "2.0" || data.id !== 1 || typeof data.result !== "string"
+      || !/^0x(?:0|[1-9a-fA-F][0-9a-fA-F]{0,63})$/.test(data.result)) {
+    throw new Error("invalid-balance-response");
+  }
+  const wei = BigInt(data.result);
+  const whole = wei / 10n ** 18n;
+  const fraction = (wei % 10n ** 18n).toString().padStart(18, "0").replace(/0+$/, "");
+  return fraction ? `${whole}.${fraction}` : String(whole);
 }
 
 export function phoneOperations(relayOrigin) {

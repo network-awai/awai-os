@@ -3,13 +3,14 @@ import { createRoot } from "react-dom/client";
 import catalog from "./dapps.json";
 import { MANIMANI, Manimani, ManimaniLink } from "./manimani.jsx";
 import { clearSession, deviceDid, loadProofs, loadSession, saveProof } from "./identity/device.js";
-import { createBroker, osOperations, readPassport } from "./runtime.js";
+import { createBroker, osOperations, readPassport, readWalletBalance } from "./runtime.js";
 import { MEDIA_ORIGIN, describeMessage, requestImage, requestSpeech, settleSavedItem, useMediaCapabilities } from "./media.js";
 import { BluetoothPanel, WifiPanel } from "./net.jsx";
 import { SoundPanel } from "./sound.jsx";
 import { DisplayPanel } from "./display.jsx";
 import { DeviceDock, NodeDock } from "./docks.jsx";
 import { Setup } from "./setup.jsx";
+import { readTheme, saveTheme, THEMES } from "./theme.js";
 import {
   POINTS,
   accountAddress,
@@ -134,14 +135,6 @@ function Sidebar({ context, onSelect, threads, now, zenoh, matter, account, scor
   return (
     <nav className="sidebar" aria-label="Contexts">
       <div className="brand">Itonami</div>
-      <button
-        type="button"
-        className={context === HOME ? "new-chat active" : "new-chat"}
-        aria-current={context === HOME ? "page" : undefined}
-        onClick={() => onSelect(HOME)}
-      >
-        New chat
-      </button>
       <ManimaniLink active={context === MANIMANI} onSelect={() => onSelect(MANIMANI)} />
       <div className="contexts">
         {SECTIONS.map((section) => (
@@ -381,7 +374,7 @@ function DappPanel({ dapp, score, onRaise }) {
   );
 }
 
-function Account({ account, score, proofs, onCheckPassport, passportState, onSignOut }) {
+function Account({ account, score, proofs, onCheckPassport, passportState, onReadBalance, balanceState, onSignOut }) {
   const address = accountAddress(account.accountDid);
   return (
     <main className="chat account-view">
@@ -392,6 +385,16 @@ function Account({ account, score, proofs, onCheckPassport, passportState, onSig
           Signed in with {account.method === "wallet" ? "a Web3 wallet" : "a passkey"} until{" "}
           {new Date(account.expiresAt).toLocaleDateString()}.
         </p>
+        <h2>Wallet</h2>
+        {address ? (
+          <>
+            <p className="muted">Optimism の ETH 残高。確認時に接続先と共有する情報を表示します。</p>
+            <button type="button" className="secondary" onClick={onReadBalance} disabled={balanceState?.loading}>
+              {balanceState?.loading ? "確認中…" : "ETH 残高を確認"}
+            </button>
+            {balanceState?.text ? <p role="status" className={balanceState.problem ? "problem" : "muted"}>{balanceState.text}</p> : null}
+          </>
+        ) : <p className="muted">残高の確認には Wallet でのサインインが必要です。</p>}
         <h2>
           Trust score <span data-score={score}>{score}</span>
         </h2>
@@ -432,10 +435,11 @@ function Account({ account, score, proofs, onCheckPassport, passportState, onSig
 
 function Shell({ did, account, proofs, score, broker, zenoh, matter, onProof, onSignOut }) {
   const now = useNow();
-  const [context, setContext] = useState(HOME);
+  const [context, setContext] = useState(MANIMANI);
   const [threads, addMessage, updateMessage] = useThreads();
   const capabilities = useMediaCapabilities();
   const [passportState, setPassportState] = useState(null);
+  const [balanceState, setBalanceState] = useState(null);
   const dapp = catalog.dapps.find((item) => item.id === context);
   const minimum = dapp ? dappMinimum(dapp.id) : 0;
   const openAccount = () => setContext(ACCOUNT);
@@ -455,6 +459,18 @@ function Shell({ did, account, proofs, score, broker, zenoh, matter, onProof, on
     }
   };
 
+  const checkBalance = async () => {
+    setBalanceState({ loading: true });
+    try {
+      const balance = await readWalletBalance(broker, accountAddress(account.accountDid));
+      setBalanceState({ amount: balance, text: `Optimism: ${balance} ETH` });
+    } catch (error) {
+      setBalanceState({ problem: true, text: /not approved/.test(error.message)
+        ? "承認されなかったため、リクエストは送信されませんでした。"
+        : "残高を確認できませんでした。後でもう一度お試しください。" });
+    }
+  };
+
   let body;
   if (context === ACCOUNT) {
     body = (
@@ -464,11 +480,13 @@ function Shell({ did, account, proofs, score, broker, zenoh, matter, onProof, on
         proofs={proofs}
         onCheckPassport={checkPassport}
         passportState={passportState}
+        onReadBalance={checkBalance}
+        balanceState={balanceState}
         onSignOut={onSignOut}
       />
     );
   } else if (context === MANIMANI) {
-    body = <Manimani />;
+    body = <Manimani onSelect={setContext} onOpenWallet={openAccount} />;
   } else if (context === "wifi") {
     body = <WifiPanel />;
   } else if (context === "bluetooth") {
@@ -512,6 +530,7 @@ function Shell({ did, account, proofs, score, broker, zenoh, matter, onProof, on
       <DeviceDock
         account={account}
         score={score}
+        walletBalance={balanceState?.amount ?? null}
         proofs={proofs}
         capabilities={capabilities}
         zenoh={zenoh}
@@ -588,4 +607,25 @@ function App() {
   );
 }
 
-createRoot(document.getElementById("root")).render(<App />);
+function ThemeApp() {
+  const [theme, setTheme] = useState(() => readTheme());
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    saveTheme(undefined, theme);
+  }, [theme]);
+  return (
+    <>
+      <App />
+      <fieldset className="theme-switcher" aria-label="テーマ">
+        <legend>テーマ</legend>
+        {THEMES.map((name) => (
+          <button key={name} type="button" aria-pressed={theme === name} onClick={() => setTheme(name)}>
+            {name}
+          </button>
+        ))}
+      </fieldset>
+    </>
+  );
+}
+
+createRoot(document.getElementById("root")).render(<ThemeApp />);
