@@ -36,6 +36,31 @@ read-only path; it does not perform a transaction.
   destination and obtain the applicable fresh user approval. The app runs on
   the user's device and communicates through the shared client-runtime broker.
 
+## Linking and recovery
+
+Otehon currently verifies an `awai.network` WebAuthn assertion and derives a
+`did:key` from that Passkey's public key. This is a login identity, not proof
+that the key controls an existing Cloud Itonami Principal or Wallet. A local
+helper can calculate an **unbound candidate** from a verified assertion and
+explicit factory, implementation and nonce; the caller must not treat this as
+an account migration, a published receive address, or proof of ownership.
+The stable Principal, first owner, nonce and contract configuration must be
+resolved and authenticated before an existing Wallet can be attached.
+
+Recovery and controller changes have different outcomes:
+
+| Situation | Required behavior | Current Otehon status |
+| --- | --- | --- |
+| Same Passkey synced or presented from another device | Verify the same RP-scoped key and link the device; keep the original Wallet descriptor. | Device link exists; Wallet descriptor association is not implemented. |
+| A newly created Passkey | Keep it a candidate until an existing on-chain owner explicitly adds it and the target chain confirms owner membership. | Owner-addition and chain receipt checks are not implemented in Otehon. |
+| All Wallet owners lost | Do not infer recovery from email, session, or a new Passkey; use only a separately implemented and audited recovery mechanism. | Guardian and delayed recovery are not implemented. |
+| Bitcoin or Solana wallet restored | Recover through that wallet's own mechanism, then privately re-establish both sides of the account binding. | External-wallet binding and verification are not implemented. |
+
+The proposed first phase uses Bitcoin BIP-322 and Sign In With Solana for the
+asset-key proof; the account must also authorize the binding. A one-sided proof
+or address alone is insufficient. No Passkey PRF is used as a seed for chain
+keys. This is an implementation target, not a claim of completed recovery.
+
 ## Installing Saifu into an Otehon image
 
 The default image has no Saifu package configured and displays it as not
