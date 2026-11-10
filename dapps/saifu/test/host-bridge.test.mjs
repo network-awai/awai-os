@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { installSaifuGuestBridge } from "../app/src/saifu/host-bridge.mjs";
+import { installSaifuGuestBridge } from "../app/src/saifu/host-bridge.js";
 import { createSaifuHostBroker } from "../../../nixos/otehon/shell/src/saifu-host.js";
 
 const address = "0x00000000000000000000000000000000000000AB";
@@ -68,7 +68,7 @@ test("guest and restricted host exchange one fixed balance request", async () =>
   const host = createSaifuHostBroker({ invoke: async (selector, payload) => {
     call = { selector, payload };
     return { ok: true, status: 200, body: JSON.stringify({ jsonrpc: "2.0", id: 1, result: "0xde0b6b3a7640000" }) };
-  } });
+  } }, { getScore: () => 50 });
   channel.port2.onmessage = async ({ data }) => {
     try {
       const response = await host.invoke(data.selector, data.payload);

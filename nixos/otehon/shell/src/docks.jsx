@@ -107,7 +107,7 @@ export function DeviceDock({ account, score, walletBalance, proofs, capabilities
               {proofs.worldId?.account === account.accountDid ? `, World ID +${POINTS.worldId}` : ""})
             </dd>
           </dl>
-          <p className="muted">{address ? "アカウントで接続先を確認してから ETH 残高を取得できます。" : "残高の確認には Wallet でのサインインが必要です。"}</p>
+          <p className="muted">{address ? "アカウントで接続先を確認してから ETH 残高を取得できます。" : account.method === "passkey" ? "この環境では Passkey を使う Wallet の作成は準備中です。" : "EVM Wallet の接続状態を確認できません。"}</p>
           <button type="button" className="secondary" onClick={onAccount}>
             Open Account
           </button>

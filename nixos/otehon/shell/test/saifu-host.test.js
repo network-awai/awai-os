@@ -8,7 +8,7 @@ const address = "0x00000000000000000000000000000000000000AB";
 test("Saifu can request only the host-constructed balance read through the shared broker", async () => {
   const calls = [];
   const response = { ok: true };
-  const host = createSaifuHostBroker({ invoke: async (...args) => { calls.push(args); return response; } });
+  const host = createSaifuHostBroker({ invoke: async (...args) => { calls.push(args); return response; } }, { getScore: () => 10 });
   const signal = new AbortController().signal;
   assert.equal(await host.invoke(selector, { address }, { signal }), response);
   assert.deepEqual(calls[0][0], selector);
@@ -19,7 +19,7 @@ test("Saifu can request only the host-constructed balance read through the share
 
 test("Saifu cannot choose another endpoint, method, selector or invalid address", async () => {
   let calls = 0;
-  const host = createSaifuHostBroker({ invoke() { calls++; } });
+  const host = createSaifuHostBroker({ invoke() { calls++; } }, { getScore: () => 50 });
   for (const [s, p] of [
     [{ ...selector, operation: "send-transaction" }, { address }],
     [{ ...selector, extra: true }, { address }],
@@ -31,6 +31,20 @@ test("Saifu cannot choose another endpoint, method, selector or invalid address"
 });
 
 test("a denied operation propagates without returning fabricated data", async () => {
-  const host = createSaifuHostBroker({ invoke: async () => { throw Error("client operation was not approved"); } });
+  const host = createSaifuHostBroker({ invoke: async () => { throw Error("client operation was not approved"); } }, { getScore: () => 50 });
   await assert.rejects(host.invoke(selector, { address }), /not approved/);
+});
+
+test("a public balance read requires no extra Trust but still needs a valid host score", async () => {
+  let score = 10;
+  let calls = 0;
+  const broker = { invoke: async () => { calls++; return { ok: true }; } };
+  const host = createSaifuHostBroker(broker, { getScore: () => score });
+  await host.invoke(selector, { address });
+  score = 0;
+  await host.invoke(selector, { address });
+  score = -1;
+  await assert.rejects(host.invoke(selector, { address }), /trust-insufficient/);
+  await assert.rejects(createSaifuHostBroker(broker).invoke(selector, { address }), /trust-insufficient/);
+  assert.equal(calls, 2);
 });

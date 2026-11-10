@@ -8,6 +8,7 @@
    "hex->decimal" core/hex->decimal
    "format-units" core/format-units
    "balance-request" core/balance-request
+   "balance-request-for" core/balance-request-for
    "read-balance" core/read-balance
    "operation-gate" core/operation-gate})
 

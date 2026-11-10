@@ -4,6 +4,8 @@ import catalog from "./dapps.json";
 import { MANIMANI, Manimani, ManimaniLink } from "./manimani.jsx";
 import { clearSession, deviceDid, loadProofs, loadSession, saveProof } from "./identity/device.js";
 import { createBroker, osOperations, readPassport, readWalletBalance } from "./runtime.js";
+import { walletView } from "./wallet-model.js";
+import { SaifuView } from "./saifu-view.jsx";
 import { MEDIA_ORIGIN, describeMessage, requestImage, requestSpeech, settleSavedItem, useMediaCapabilities } from "./media.js";
 import { BluetoothPanel, WifiPanel } from "./net.jsx";
 import { SoundPanel } from "./sound.jsx";
@@ -376,6 +378,7 @@ function DappPanel({ dapp, score, onRaise }) {
 
 function Account({ account, score, proofs, onCheckPassport, passportState, onReadBalance, balanceState, onSignOut }) {
   const address = accountAddress(account.accountDid);
+  const wallet = walletView(account);
   return (
     <main className="chat account-view">
       <div className="account-body">
@@ -386,6 +389,15 @@ function Account({ account, score, proofs, onCheckPassport, passportState, onRea
           {new Date(account.expiresAt).toLocaleDateString()}.
         </p>
         <h2>Wallet</h2>
+        {wallet.identity === "passkey" ? <p className="muted">Passkey でサインイン中。この環境では Passkey を使う Wallet の作成は準備中です。</p> : null}
+        <ul className="sources" aria-label="通貨の対応状況">
+          {wallet.assets.map((asset) => (
+            <li key={asset.id}>
+              <span>{asset.title} · {asset.currency}</span>
+              <span className="muted">{asset.status === "read-available" ? "残高を確認できます" : asset.status === "planned" ? "接続準備中" : "未接続"}</span>
+            </li>
+          ))}
+        </ul>
         {address ? (
           <>
             <p className="muted">Optimism の ETH 残高。確認時に接続先と共有する情報を表示します。</p>
@@ -394,7 +406,7 @@ function Account({ account, score, proofs, onCheckPassport, passportState, onRea
             </button>
             {balanceState?.text ? <p role="status" className={balanceState.problem ? "problem" : "muted"}>{balanceState.text}</p> : null}
           </>
-        ) : <p className="muted">残高の確認には Wallet でのサインインが必要です。</p>}
+        ) : <p className="muted">現在の ETH 残高確認には、EVM Wallet でのサインインが必要です。</p>}
         <h2>
           Trust score <span data-score={score}>{score}</span>
         </h2>
@@ -495,6 +507,8 @@ function Shell({ did, account, proofs, score, broker, zenoh, matter, onProof, on
     body = <SoundPanel />;
   } else if (context === "display") {
     body = <DisplayPanel />;
+  } else if (context === "saifu") {
+    body = <SaifuView broker={broker} score={score} onAccount={openAccount} />;
   } else if (dapp && score < minimum) {
     body = <Locked dapp={dapp} minimum={minimum} score={score} onRaise={openAccount} />;
   } else {
@@ -511,7 +525,7 @@ function Shell({ did, account, proofs, score, broker, zenoh, matter, onProof, on
     );
   }
 
-  const panel = dapp && context !== "wifi" && context !== "bluetooth" && context !== "sound" && context !== "display" ? dapp : null;
+  const panel = dapp && context !== "wifi" && context !== "bluetooth" && context !== "sound" && context !== "display" && context !== "saifu" ? dapp : null;
 
   return (
     <div className={panel ? "shell with-panel" : "shell"}>
