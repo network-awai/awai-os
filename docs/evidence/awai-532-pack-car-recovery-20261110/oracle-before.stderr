@@ -1,0 +1,17 @@
+file:///Users/junkawasaki/github/wt/codex/awai-532-pack-car-recovery/.agent-output/car-oracle/node_modules/@ipld/dag-cbor/src/index.js:122
+    throw new Error('Invalid CID for CBOR tag 42; expected leading 0x00')
+          ^
+
+Error: Invalid CID for CBOR tag 42; expected leading 0x00
+    at Object.cidDecoder (file:///Users/junkawasaki/github/wt/codex/awai-532-pack-car-recovery/.agent-output/car-oracle/node_modules/@ipld/dag-cbor/src/index.js:122:11)
+    at tokensToObject (file:///Users/junkawasaki/github/wt/codex/awai-532-pack-car-recovery/.agent-output/car-oracle/node_modules/cborg/lib/decode.js:259:47)
+    at tokenToArray (file:///Users/junkawasaki/github/wt/codex/awai-532-pack-car-recovery/.agent-output/car-oracle/node_modules/cborg/lib/decode.js:75:19)
+    at tokensToObject (file:///Users/junkawasaki/github/wt/codex/awai-532-pack-car-recovery/.agent-output/car-oracle/node_modules/cborg/lib/decode.js:249:12)
+    at tokenToMap (file:///Users/junkawasaki/github/wt/codex/awai-532-pack-car-recovery/.agent-output/car-oracle/node_modules/cborg/lib/decode.js:123:19)
+    at tokensToObject (file:///Users/junkawasaki/github/wt/codex/awai-532-pack-car-recovery/.agent-output/car-oracle/node_modules/cborg/lib/decode.js:253:12)
+    at decodeFirst (file:///Users/junkawasaki/github/wt/codex/awai-532-pack-car-recovery/.agent-output/car-oracle/node_modules/cborg/lib/decode.js:283:19)
+    at Module.decode (file:///Users/junkawasaki/github/wt/codex/awai-532-pack-car-recovery/.agent-output/car-oracle/node_modules/cborg/lib/decode.js:299:32)
+    at decode (file:///Users/junkawasaki/github/wt/codex/awai-532-pack-car-recovery/.agent-output/car-oracle/node_modules/@ipld/dag-cbor/src/index.js:161:39)
+    at readHeader (file:///Users/junkawasaki/github/wt/codex/awai-532-pack-car-recovery/.agent-output/car-oracle/node_modules/@ipld/car/src/decoder.js:33:17)
+
+Node.js v26.0.0

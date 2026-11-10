@@ -135,6 +135,37 @@
       (fail! :invalid-directory "store must be an existing real directory without symlinks"))
     p))
 
+(defn write-car!
+  "Publish bounded immutable CAR bytes before a metadata transaction. Call
+  from transact!'s before-publish hook to share its writer lock. Orphans are
+  retained; only committed metadata makes a CAR visible to Pack readers."
+  [directory bytes]
+  (when-not (and (bytes? bytes) (<= (alength ^bytes bytes) max-bytes))
+    (fail! :too-large "CAR requires a byte array of at most 1 MiB"))
+  (let [bytes (aclone ^bytes bytes)
+        root (root-path directory)
+        digest (sha bytes)
+        name (str digest ".car")]
+    (if (exists? (path root name))
+      (do
+        (when-not (= digest (sha (read-bytes (path root name))))
+          (fail! :corrupt-car "existing immutable CAR is corrupt"))
+        (sync-dir! root)
+        (observe! :reused-dir-synced :pack))
+      (write-record! root name bytes :pack))
+    digest))
+
+(defn read-car
+  "Read an immutable CAR by its exact byte digest, with the same 1 MiB bound,
+  no-symlink rule and corruption refusal as metadata objects."
+  [directory digest]
+  (when-not (digest? digest) (fail! :invalid-digest "invalid CAR reference"))
+  (let [p (path (root-path directory) (str digest ".car"))]
+    (when-not (exists? p) (fail! :missing-car "committed CAR is missing"))
+    (let [bytes (read-bytes p)]
+      (when-not (= digest (sha bytes)) (fail! :corrupt-car "CAR byte digest mismatch"))
+      bytes)))
+
 (defn- state? [value]
   (and (map? value) (every? string? (keys value)) (every? string? (vals value))))
 (defn- frame-valid? [{:keys [op payload]}]
@@ -214,23 +245,32 @@
     (with-writer (root-path directory)
       #(publish! p 1 {:seq 0 :state {}} (wal/empty-log)))))
 
-(defn transact! [directory op payload]
-  (when-not (frame-valid? {:op op :payload payload})
-    (fail! :invalid-operation "expected put/delete with string key/value"))
-  (let [root (root-path directory)]
-    (with-writer root
-      #(let [{:keys [snapshot log] current :root} (writable-state root)]
-         (when (= 9007199254740991 (:seq log))
-           (fail! :sequence-exhausted "WAL sequence exhausted"))
-         (publish! root (inc (:generation current)) snapshot (wal/append log op payload))))))
+(defn transact!
+  "Commit metadata. Optional before-publish runs under the writer lock with
+  [directory committed-state], before WAL/root publication; an exception
+  leaves metadata unchanged. It is a trusted hosted adapter hook, not consent."
+  ([directory op payload] (transact! directory op payload nil))
+  ([directory op payload before-publish]
+   (when-not (frame-valid? {:op op :payload payload})
+     (fail! :invalid-operation "expected put/delete with string key/value"))
+   (let [root (root-path directory)]
+     (with-writer root
+       #(let [{:keys [snapshot log state] current :root} (writable-state root)]
+          (when (= 9007199254740991 (:seq log))
+            (fail! :sequence-exhausted "WAL sequence exhausted"))
+          (when before-publish (before-publish (str root) state))
+          (publish! root (inc (:generation current)) snapshot (wal/append log op payload)))))))
 
-(defn checkpoint! [directory]
-  (let [root (root-path directory)]
-    (with-writer root
-      #(let [{:keys [state log] current :root} (writable-state root)
-             n (:seq log)]
-         (publish! root (inc (:generation current)) {:seq n :state state}
-                   {:seq n :checkpoint n :frames []})))))
+(defn checkpoint!
+  ([directory] (checkpoint! directory nil))
+  ([directory before-publish]
+   (let [root (root-path directory)]
+     (with-writer root
+       #(let [{:keys [state log] current :root} (writable-state root)
+              n (:seq log)]
+          (when before-publish (before-publish (str root) state))
+          (publish! root (inc (:generation current)) {:seq n :state state}
+                    {:seq n :checkpoint n :frames []}))))))
 
 (defn -main [& args]
   (let [[command directory key value] args]

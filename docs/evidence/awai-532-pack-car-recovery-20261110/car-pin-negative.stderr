@@ -1,0 +1,9 @@
+error:
+       … while evaluating the condition of the assertion '(((builtins).hashFile "sha256" /work/.agent-output/car-pin-negative/vendor/apex-car/src/awai/fs/car.cljc) == (carPin).sha256)'
+         at /work/.agent-output/car-pin-negative/default.nix:10:1:
+            9| assert builtins.hashFile "sha256" wal == pin.sha256;
+           10| assert builtins.hashFile "sha256" ./vendor/apex-car/src/awai/fs/car.cljc == carPin.sha256;
+             | ^
+           11| pkgs.writeShellScriptBin "otehon-storage" ''
+
+       error: string '"9cb6098dc1a9d32bb8da98d48292027d3feb8fef0ccc11af3678fc3529203878"' is not equal to string '"6c11cf9d1022b628fce73c2ac8de589667f9d277e0ae69ad52742fc9bebf148b"'

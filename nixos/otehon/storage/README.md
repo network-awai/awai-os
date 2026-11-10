@@ -2,9 +2,10 @@
 
 AWAI-532 connects the recovery contract merged in
 [network-awai-apex #179](https://github.com/network-awai/network-awai-apex/pull/179)
-to real local files. This is an experimental, bounded string-key/string-value
-store used to establish the snapshot/WAL publication boundary. It is not a
-Pack/CAR filesystem, a network service or the Kotoba/Amu native storage route.
+to real local files. The bounded string-key/string-value metadata store now
+publishes immutable Pack/CAR payloads through the same snapshot/WAL boundary.
+This is an experimental local Otehon adapter; it has no network service or
+Kotoba/Amu native runtime dependency.
 
 `vendor/source.json` pins the exact upstream revision, source path and SHA-256.
 `vendor/apex/src/awai/fs/wal.cljc` is a byte-identical dependency snapshot, not
@@ -13,6 +14,52 @@ digest. The private upstream archive cannot be fetched anonymously, so this
 single-file snapshot avoids credentials and dependency resolution at runtime.
 Update it only from the reviewed owning source, with a new revision/digest and
 fresh verification. The adapter directly calls `awai.fs.wal/recover`.
+
+`vendor/car-source.json` separately pins `awai.fs.car` to owning main revision
+`df68aad6101d7bf9587ea48bc30946b834aa4ba2`, landed through
+[apex #181](https://github.com/network-awai/network-awai-apex/pull/181).
+[apex #180](https://github.com/network-awai/network-awai-apex/pull/180) fixed
+the missing DAG-CBOR CID link prefix on #147's branch; #181 extracted only the
+reviewed codec, tests, evidence and Otehon CI into main. The vendored module is
+byte-identical to that main source and hash-checked by Nix. #147's remaining
+runtime/remote/auth changes stay open and are not a consumer dependency.
+The earlier measurement pin and final landing have identical codec bytes;
+neither establishes production qualification.
+
+## Pack/CAR publication and recovery
+
+`otehon.pack-store/put-data!` chunks up to 900 KiB into 64 KiB raw leaves and
+uses the pinned codec's existing DAG-CBOR root and CID functions. The bounded
+wire profile is CARv2 with no optional on-disk index, no padding or nonzero
+characteristics, one root after at most 64 raw leaves, and a maximum CAR size
+of 1 MiB. Imported CARs must match this exact profile. The source codec's
+optional index dialect is not qualified here. Previously emitted nonstandard
+DAG-CBOR links lacking the identity multibase prefix refuse; no automatic
+format migration or fallback occurs.
+
+Under the metadata writer lock, the adapter verifies current committed Pack
+references, writes `<sha256>.car`, forces/renames/syncs it, then publishes its
+catalog reference in the WAL/root. The reference binds CAR bytes, root CID,
+payload hash, payload size and leaf count. CAR SHA-256 filenames are internal
+byte references; the root CID identifies the linked DAG. They serve different
+purposes. An interrupted payload remains an orphan until metadata commits;
+retry verifies it and completes directory sync. Checkpoint uses the same
+reference verification before snapshot/root publication. Missing or corrupt
+committed CARs refuse recovery and Pack writes/checkpoints without rollback.
+
+Every `recover` starts with an empty process-local derived-index cache. It
+replays committed snapshot/WAL metadata, reads all referenced CARs, validates
+every block digest, root links, order and framing, and reconstructs byte-range
+indexes from CAR sections. No persistent cache or index sidecar is required.
+The handle retains that immutable snapshot basis; recover again to select a
+new committed root. Range reads return payload bytes across leaf boundaries
+and recheck the durable CAR's byte digest. The current bounded implementation
+reads the entire CAR; these are correctness checks, not range-I/O performance
+claims. Old CARs and pending files are retained; no garbage collector is added.
+
+The old string-map API remains a low-level metadata interface. Pack callers
+must use the Pack operations, including `pack-checkpoint`, rather than writing
+reserved `awai.pack/` catalog keys through raw `put`/`delete`/`checkpoint`.
 
 ## File and publication contract
 
@@ -62,6 +109,20 @@ otehon-storage read /var/lib/otehon/awai-fs-candidate
 otehon-storage delete /var/lib/otehon/awai-fs-candidate example
 ```
 
+For synthetic binary files in a disposable candidate store:
+
+```sh
+otehon-storage pack-put /var/lib/otehon/awai-fs-candidate example input.bin
+otehon-storage pack-checkpoint /var/lib/otehon/awai-fs-candidate
+otehon-storage pack-recover /var/lib/otehon/awai-fs-candidate
+otehon-storage pack-get /var/lib/otehon/awai-fs-candidate example recovered.bin
+otehon-storage car-export /var/lib/otehon/awai-fs-candidate example exported.car
+otehon-storage car-import /var/lib/otehon/awai-fs-candidate imported exported.car
+```
+
+Input reads are bounded and refuse symlinks. Explicit exports create new 0600
+files and refuse existing paths; they do not overwrite user files.
+
 This change does not enable the option in a shipping image, switch an installed
 system, touch the existing AwaiVol daemon or migrate its data. The Babashka
 dependency belongs only to the Otehon profile.
@@ -75,8 +136,8 @@ nix-build nixos/otehon/storage/check.nix --no-out-link
 nix-build nixos/otehon/storage/module-check.nix --no-out-link
 ```
 
-The first builds the actual CLI, checks put/read/checkpoint through it and runs
-unit and process-fault tests. The second evaluates enabled/disabled NixOS
+The first builds the actual CLI, checks metadata and Pack/CAR round trips
+through it and runs unit and process-fault tests. The second evaluates enabled/disabled NixOS
 configurations and checks that enabling installs the CLI without a daemon.
 The runtime and packages use the repository's immutable Nixpkgs pin.
 
@@ -90,6 +151,19 @@ write/read confirms the killed writer released its lock.
 The [2026-11-10 evidence](../../../docs/evidence/awai-532-otehon-storage-20261110/)
 records Mac and pinned Linux results, source hashes, upstream byte equality,
 commands and the changed-source refusal control. These are hosted process-death
-tests with a live OS page cache. They do not establish NixOS boot/VM behavior,
-power-loss/device durability, independent-peer recovery, Pack/CAR/encryption
-integration, native qualification, performance thresholds or production use.
+tests with a live OS page cache.
+
+The [Pack/CAR extension evidence](../../../docs/evidence/awai-532-pack-car-recovery-20261110/)
+adds 30 process-kill cases covering CAR/WAL/root writes and checkpoint
+snapshot/WAL/root writes. After each kill only durable root/object/CAR files
+are copied into a new directory, excluding pending files and the lock. A fresh
+process starts with zero cache entries, rebuilds indexes and checks exact
+payload bytes/ranges. A three-leaf checkpoint-plus-WAL replacement also
+round-trips through CAR export/import. Independent IPLD readers verify the
+resulting CARv2 envelope, root/leaf links and all block digests.
+
+These are hosted process-death and **empty application-cache** checks. The OS
+page cache remains live. They do not establish NixOS boot/VM behavior,
+power-loss/device durability, B2/remote restoration, independent-peer recovery,
+AEAD/key custody, native qualification, performance thresholds or production
+use. The optional package remains disabled in shipping profiles.
