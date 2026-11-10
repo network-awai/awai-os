@@ -135,14 +135,6 @@ function Sidebar({ context, onSelect, threads, now, zenoh, matter, account, scor
   return (
     <nav className="sidebar" aria-label="Contexts">
       <div className="brand">Itonami</div>
-      <button
-        type="button"
-        className={context === HOME ? "new-chat active" : "new-chat"}
-        aria-current={context === HOME ? "page" : undefined}
-        onClick={() => onSelect(HOME)}
-      >
-        New chat
-      </button>
       <ManimaniLink active={context === MANIMANI} onSelect={() => onSelect(MANIMANI)} />
       <div className="contexts">
         {SECTIONS.map((section) => (
@@ -433,7 +425,7 @@ function Account({ account, score, proofs, onCheckPassport, passportState, onSig
 
 function Shell({ did, account, proofs, score, broker, zenoh, matter, onProof, onSignOut }) {
   const now = useNow();
-  const [context, setContext] = useState(HOME);
+  const [context, setContext] = useState(MANIMANI);
   const [threads, addMessage, updateMessage] = useThreads();
   const capabilities = useMediaCapabilities();
   const [passportState, setPassportState] = useState(null);
@@ -469,7 +461,7 @@ function Shell({ did, account, proofs, score, broker, zenoh, matter, onProof, on
       />
     );
   } else if (context === MANIMANI) {
-    body = <Manimani />;
+    body = <Manimani onSelect={setContext} onOpenWallet={openAccount} />;
   } else if (context === "wifi") {
     body = <WifiPanel />;
   } else if (context === "bluetooth") {

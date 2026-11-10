@@ -1,4 +1,4 @@
-// Manimani, the resident bot under New chat. The service in manimani/manimani.nix runs it on this
+// Manimani is the Bots home. The service in manimani/manimani.nix runs it on this
 // device. Nothing goes through the shared broker, because nothing leaves the machine.
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -54,12 +54,12 @@ export function ManimaniLink({ active, onSelect }) {
       onClick={onSelect}
     >
       <span className="dot" data-status={statusOf(state)} aria-hidden="true" />
-      Manimani
+      Bots · Manimani
     </button>
   );
 }
 
-export function Manimani() {
+export function Manimani({ onSelect, onOpenWallet }) {
   const [state, read] = useManimani();
   const [text, setText] = useState("");
   const bottom = useRef(null);
@@ -104,6 +104,16 @@ export function Manimani() {
         </form>
       </main>
       <aside className="manimani-side" aria-label="What Manimani is doing">
+        <section>
+          <h2>Dapp と Wallet</h2>
+          <p>会話しながら、この端末の機能を開けます。</p>
+          <div className="manimani-actions manimani-launchers">
+            <button type="button" onClick={onOpenWallet}>Wallet / アカウント</button>
+            {[['wifi', 'Wi-Fi'], ['bluetooth', 'Bluetooth'], ['sound', 'Sound'], ['display', 'Display']].map(([id, label]) => (
+              <button key={id} type="button" onClick={() => onSelect(id)}>{label}</button>
+            ))}
+          </div>
+        </section>
         <section>
           <h2>Status</h2>
           <p data-manimani-status={statusOf(state)}>{STATUS_TEXT[statusOf(state)]}</p>

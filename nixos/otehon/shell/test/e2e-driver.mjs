@@ -297,8 +297,8 @@ async function checkManimani() {
     await type("input[aria-label='Message Manimani']", text);
     await click(".manimani-composer button");
   };
-  await step("manimani_under_new_chat", async () => {
-    await until("document.querySelector('.new-chat + [data-manimani-link]')", "Manimani under New chat");
+  await step("manimani_bots_home", async () => {
+    await until("document.querySelector('[data-manimani-link]')", "Bots navigation");
     await click("[data-manimani-link]");
     await until("document.querySelector('[data-manimani]')", "Manimani screen");
   });
@@ -387,6 +387,7 @@ try {
     await click("[data-next]");
     await click("[data-finish]");
     await until(`${dappCount} === ${EXPECTED_DAPPS}`, "apps");
+    await until("document.querySelector('[data-manimani-link][aria-current=page]')", "Bots selected after setup");
     const account = await evaluate("document.querySelector('[data-account]').dataset.account");
     if (account !== `did:pkh:eip155:1:${wallet.address}`) throw new Error("wrong-account");
     await until("document.title.includes('gate=0')", "title");
