@@ -10,6 +10,7 @@ import { SoundPanel } from "./sound.jsx";
 import { DisplayPanel } from "./display.jsx";
 import { DeviceDock, NodeDock } from "./docks.jsx";
 import { Setup } from "./setup.jsx";
+import { readTheme, saveTheme, THEMES } from "./theme.js";
 import {
   POINTS,
   accountAddress,
@@ -588,4 +589,25 @@ function App() {
   );
 }
 
-createRoot(document.getElementById("root")).render(<App />);
+function ThemeApp() {
+  const [theme, setTheme] = useState(() => readTheme());
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    saveTheme(undefined, theme);
+  }, [theme]);
+  return (
+    <>
+      <App />
+      <fieldset className="theme-switcher" aria-label="テーマ">
+        <legend>テーマ</legend>
+        {THEMES.map((name) => (
+          <button key={name} type="button" aria-pressed={theme === name} onClick={() => setTheme(name)}>
+            {name}
+          </button>
+        ))}
+      </fieldset>
+    </>
+  );
+}
+
+createRoot(document.getElementById("root")).render(<ThemeApp />);
