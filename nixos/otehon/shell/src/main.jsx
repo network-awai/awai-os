@@ -463,7 +463,7 @@ function Shell({ did, account, proofs, score, broker, zenoh, matter, onProof, on
     setBalanceState({ loading: true });
     try {
       const balance = await readWalletBalance(broker, accountAddress(account.accountDid));
-      setBalanceState({ text: `Optimism: ${balance} ETH` });
+      setBalanceState({ amount: balance, text: `Optimism: ${balance} ETH` });
     } catch (error) {
       setBalanceState({ problem: true, text: /not approved/.test(error.message)
         ? "承認されなかったため、リクエストは送信されませんでした。"
@@ -530,6 +530,7 @@ function Shell({ did, account, proofs, score, broker, zenoh, matter, onProof, on
       <DeviceDock
         account={account}
         score={score}
+        walletBalance={balanceState?.amount ?? null}
         proofs={proofs}
         capabilities={capabilities}
         zenoh={zenoh}
