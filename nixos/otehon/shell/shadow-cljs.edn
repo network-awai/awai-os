@@ -1,0 +1,11 @@
+{:source-paths ["src" "link" "vendor" "styles"]
+ :builds {:shell {:target :browser
+                  :output-dir "dist/assets"
+                  :asset-path "assets"
+                  :compiler-options {:externs ["externs/otehon-shell.js"]}
+                  :modules {:main {:init-fn shell.main/init}}}
+          :link {:target :browser
+                 :output-dir "dist/link/assets"
+                 :asset-path "assets"
+                 :compiler-options {:externs ["externs/otehon-shell.js"]}
+                 :modules {:main {:init-fn link.main/init}}}}}
