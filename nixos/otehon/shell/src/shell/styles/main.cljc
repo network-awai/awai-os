@@ -326,6 +326,7 @@
    [:.soshiki-profile-links {:margin "12px 0" :padding "12px" :border "1px solid var(--surface-selected)" :border-radius "12px"}]
    [".soshiki-profile-links summary" {:cursor "pointer" :font-size "13px" :font-weight 600}]
    [".soshiki-profile-links button" {:padding "8px 12px" :border-radius "8px"}]
+   [".soshiki-profile-links select" {:width "100%" :min-width 0 :max-width "100%"}]
    [:.soshiki-membership {:display "flex" :flex-wrap "wrap" :gap "10px" :border "1px solid var(--surface-selected)" :border-radius "10px" :padding "12px"}]
    [".soshiki-membership label" {:display "flex" :align-items "center" :gap "6px"}]
    [".soshiki-membership input" {:width "auto"}]

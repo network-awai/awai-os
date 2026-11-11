@@ -38,3 +38,11 @@ Follow-up verification:
 - Images: profile-circle.png and profile-bots.png. These use synthetic profiles and a software wallet; they do not establish connection to a live itonami process or modify the user's profile store.
 
 Run binding remains AWAI-2792 / 01a1c9f2-e2ba-79c2-a37f-d5c7c348a18a; follow-up base d3c6c04. Provider OpenAI / GPT-6 exact variant and reasoning setting unknown. Forecast and observed token fields remain unknown for lack of complete attributed telemetry; no zero or velocity inferred.
+
+## Existing-profile list selection
+
+The circle picker can now enumerate an existing itonami profiles directory, search its IDs/descriptions, select a profile, and bind it directly to the current circle without prior Bot registration or typing its ID. An already-bound profile reuses its Bot record. Only a selected profile becomes persistent organization state.
+
+Browser-local File System Access supplies read access: on first use choose `profiles` (or its `.itonami` parent). The browser may retain the read handle; subsequent reads check permission again. A separate action changes the folder. Enumeration opens only immediate, validly named profile directories and bounded `itonami.edn` files, never config.yaml, .env, workspace or session files. The manifest's itonami schema, runtime, and ID-to-directory match are checked before display. This does not assume a Manimani agent is an itonami profile. No app-origin API, background service, network call, profile-store write, or shared-runtime fork was added.
+
+Verification: Node tests 65/65 (including directory bounds, parent selection, remembered read permission, denial/cancel, unreadable input). The existing eight local itonami manifests were read using the same enumeration module through a filesystem adapter; a dedicated synthetic browser session displayed all eight and passed selection, bind, repeat/deduplicate, cancel preservation, and reload persistence. The browser picker itself was stubbed for this automated check; native folder-dialog permission remains a user action. Actual local inventory names/descriptions and its screenshot are retained locally, not published in this PR. Only aggregate counts are recorded here.
