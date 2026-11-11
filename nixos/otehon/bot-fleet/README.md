@@ -12,6 +12,8 @@ bb catalog.clj REGISTRY_DIRECTORY PROJECTS.json ISSUES.json REGISTRY_COMMIT NEW_
 node verify-cron.mjs NEW_CATALOG.json NEW_VERIFICATION_DIRECTORY
 node persist.mjs NEW_CATALOG.json NEW_VERIFICATION_DIRECTORY/schedules.json NEW_DIRECTORY_ON_AWAI_FS
 bb -cp src test/bot_fleet/core_test.clj
+node --test receipt.test.mjs
+node receipt.mjs BINDING.json MUSE_EVENTS.jsonl NEW_RECEIPT.json
 ```
 
 Run from this directory. `verify-cron.mjs` uses existing `gh` authorization to
