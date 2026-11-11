@@ -1,7 +1,12 @@
 // Trust score (ADR 0026 D13). The score is a condition for dapps and operations.
 // It does not mean goodwill, truth or verified identity. A service that accepts an
 // operation must check the proofs itself: this device's copy can be edited locally.
-import rules from "./dapp-trust.json" with { type: "json" };
+// Inlined from dapp-trust.json (removed): shadow-cljs cannot require JSON,
+// so the table lives here as the single source of truth.
+const rules = {
+  torihiki: { operations: { "submit-order": 50 } },
+  saifu: { operations: { "read-chain-state": 50 } },
+};
 
 export const POINTS = { login: 10, passport: 40, worldId: 50 };
 export const PASSPORT_PASSING_SCORE = 20;
