@@ -1,0 +1,5 @@
+cab3cbe7c96c76b2eb6f2dae63c64ec81bb2a36fad5d2546459fb079cc61f97d  scripts/otehon-c1/preflight.clj
+e0fd2abd39c18ee7a50ffdd403a41968ed287b44d638427f850f223d1f266eb7  scripts/otehon-c1/preflight_test.clj
+162065a6d03aa52f772a980eb0eda0373272e9390d8bfd5522245b362a13181c  scripts/otehon-c1/run-plan.edn
+45c72740fea1baa1b1ededb8aeff0721cc7d9b51c67b8b2d898d41a6514f6eeb  scripts/otehon-c1/check.nix
+cb8eeab8f49ac79c746de872a8e02b31f58d23e0bba6ed89243a9fb6eb9afe89  docs/evidence/otehon-c1-preflight-20261111/host-inventory.json

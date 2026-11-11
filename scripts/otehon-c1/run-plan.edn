@@ -1,0 +1,21 @@
+{:schema "awai.otehon.c1-run-plan/1"
+ :status :draft-not-executable
+ :issue "AWAI-2772"
+ :run-id nil
+ :nodes [{:alias "levi" :verified-identity nil :failure-domain nil :guest-digest nil}
+         {:alias "benjamin" :verified-identity nil :failure-domain nil :guest-digest nil}]
+ :public-fixture {:input-digest nil :expected-output-or-quality-contract nil}
+ :artifacts {:oci-digest nil :engine-digest nil :model-revision nil :model-digest nil}
+ :resource-ceilings {:cpu nil :ram-bytes nil :disk-bytes nil :network nil :deadline-ms nil}
+ :adapters {:consent-verifier nil :authenticated-revocation nil :reservation-authority nil
+            :effect-fence nil :oci-executor nil :witness nil :inference nil
+            :encrypted-storage nil :key-custody nil :backup-restore nil}
+ :slo {:status :unset-before-experiment
+       :success-rate-min nil :latency-p95-ms-max nil :rpo-ms-max nil :rto-ms-max nil
+       :foreground-latency-impact-max nil :revocation-stop-ms-max nil}
+ :soak {:proposed-duration-hours 24 :approved-protocol-digest nil :started-at nil}
+ :failure-matrix [:missing-consent :revoked-consent :capacity-exceeded :tampered-digest
+                  :replay :duplicate-request :timeout :partition :restart :stale-writer
+                  :corrupt-replica :provider-loss :backup-restore]
+ :evidence {:preflight nil :consent nil :reservation nil :execution nil :receipt nil
+            :witness nil :inference nil :storage nil :recovery nil :soak nil}}
