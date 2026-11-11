@@ -288,10 +288,16 @@
       "dock": 21,
       "title": "Soshiki",
       "section": "Apps",
-      "summary": "Organization design: Holaspirit-style circles and roles, bot profiles, and size view. Local-only.",
+      "summary": "Organization design: circles, roles, and existing itonami profiles from the local catalog.",
       "install": "os-image",
       "offline": "local-core",
-      "remoteOperations": []
+      "remoteOperations": [
+        {
+          "operation": "list-profiles",
+          "service": "local-itonami-profiles (HTTPS loopback)",
+          "consent": "each-operation"
+        }
+      ]
     },
     {
       "id": "torihiki",

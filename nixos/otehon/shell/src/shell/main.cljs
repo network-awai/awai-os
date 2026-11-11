@@ -367,7 +367,7 @@
                  (= context "bluetooth") [:f> bluetooth-panel]
                  (= context "sound") [:f> sound-panel]
                  (= context "display") [:f> display-panel]
-                 (= context "soshiki") [:f> soshiki account score open-account]
+                 (= context "soshiki") [:f> soshiki account score open-account broker]
                  (and dapp (< score minimum))
                  [locked dapp minimum score open-account]
                  :else

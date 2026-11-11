@@ -1,46 +1,47 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readProfileManifests } from "../src/profile-catalog.js";
+import { readExistingProfiles } from "../src/profile-catalog.js";
+import { osOperations } from "../src/runtime.js";
+import { catalogHandler } from "../../profiles/bridge.mjs";
 
-const manifest = (name, content, size = content.length) => ({
-  name, kind: "directory",
-  getFileHandle: async file => { assert.equal(file, "itonami.edn"); return { getFile: async () => ({ size, text: async () => content }) }; },
-});
-const directory = rows => ({ name: "profiles", async *values() { yield* rows; } });
-const forget = async () => undefined;
+const row = { id: "notes", description: "記録する", skills: ["notes"] };
+const body = profiles => ({ schema: "awai.itonami.profile-catalog.v1", profiles });
 
-test("directory catalog reads only bounded immediate itonami manifests", async () => {
-  let opened = 0;
-  const root = directory([manifest("notes", "EDN"), manifest("big", "SECRET", 262145),
-    { name: "../escape", kind: "directory", getFileHandle: () => { throw Error("must not read"); } },
-    { name: ".env", kind: "file" },
-    { name: "missing", kind: "directory", getFileHandle: async () => { throw Object.assign(Error(), { name: "NotFoundError" }); } }]);
-  const result = await readProfileManifests({ remember: forget, picker: async options => { opened++; assert.equal(options.mode, "read"); return root; } });
-  assert.deepEqual(result, [{ directory: "notes", text: "EDN" }]);
-  assert.equal(opened, 1);
-});
-
-test("a chosen .itonami root opens only its profiles directory", async () => {
-  const result = await readProfileManifests({ remember: forget, picker: async () => ({ name: ".itonami", getDirectoryHandle: async name => {
-    assert.equal(name, "profiles"); return directory([manifest("notes", "EDN")]);
-  } }) });
-  assert.equal(result[0].directory, "notes");
+test("profile catalog uses only the fixed declared TLS GET through its broker", async () => {
+  const calls = [];
+  const broker = { invoke: async (...args) => { calls.push(args); return { ok: true, json: async () => body([{ ...row, secret: "discard" }]) }; } };
+  assert.deepEqual(await readExistingProfiles(broker), [row]);
+  assert.equal(calls[0][1].input, "https://127.0.0.1:8777/v1/itonami/profiles");
+  assert.deepEqual(calls[0][1].init, { method: "GET" });
+  assert.deepEqual(calls[0][2], {});
+  const declaration = osOperations("https://example.invalid").find(op => op.capability === "awai-profile-catalog");
+  assert.equal(declaration.consent, "each-operation");
+  assert.deepEqual(declaration.endpoint.routes, [{ method: "GET", path: "/v1/itonami/profiles", "query-params": [] }]);
 });
 
-test("remembered handle rechecks read permission; denial reads nothing", async () => {
+test("denial and malformed/duplicate metadata never yield a catalog", async () => {
+  await assert.rejects(readExistingProfiles({ invoke: async () => { throw Error("denied"); } }), /denied/);
+  for (const profiles of [[row, row], [{ ...row, id: "../escape" }], [{ ...row, skills: [1] }]]) {
+    await assert.rejects(readExistingProfiles({ invoke: async () => ({ ok: true, json: async () => body(profiles) }) }), /invalid-profile-catalog/);
+  }
+});
+
+test("platform bridge rejects unknown origins, methods, paths and queries before reading", async () => {
   let reads = 0;
-  const root = { ...directory([]), queryPermission: async () => "prompt", requestPermission: async () => "denied",
-    values() { reads++; throw Error("must not read"); } };
-  await assert.rejects(readProfileManifests({ remember: async () => root, picker: () => { throw Error("no silent reprompt"); } }), /permission-denied/);
+  const handler = catalogHandler(async () => { reads++; return JSON.stringify(body([row])); });
+  for (const [origin, method, url, expected] of [
+    ["https://evil.invalid", "GET", "/v1/itonami/profiles", 403],
+    ["null", "POST", "/v1/itonami/profiles", 404],
+    ["null", "GET", "/v1/itonami/profiles?path=secret", 404],
+    ["null", "GET", "/private", 404],
+  ]) {
+    const response = { writeHead(status) { assert.equal(status, expected); }, end() {} };
+    await handler({ headers: { origin }, method, url }, response);
+  }
   assert.equal(reads, 0);
-  root.queryPermission = async () => "granted";
-  delete root.values;
-  root.values = directory([]).values;
-  assert.deepEqual(await readProfileManifests({ remember: async () => root }), []);
-});
-
-test("cancelling and unreadable directories do not produce a partial catalog", async () => {
-  await assert.rejects(readProfileManifests({ remember: forget, picker: async () => { throw Object.assign(Error("cancel"), { name: "AbortError" }); } }), /cancel/);
-  const root = directory([{ name: "blocked", kind: "directory", getFileHandle: async () => { throw Error("unreadable"); } }]);
-  await assert.rejects(readProfileManifests({ remember: forget, picker: async () => root }), /unreadable/);
+  let result;
+  await handler({ headers: { origin: "null" }, method: "GET", url: "/v1/itonami/profiles" },
+    { writeHead(status, headers) { assert.equal(status, 200); assert.equal(headers["cache-control"], "no-store"); }, end(text) { result = JSON.parse(text); } });
+  assert.equal(reads, 1);
+  assert.deepEqual(result, body([row]));
 });

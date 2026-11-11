@@ -1,8 +1,8 @@
 (ns shell.soshiki
   (:require [clojure.string]
             [cljs.reader :as reader]
-            ["../profile-catalog.js" :refer [readProfileManifests]]
-            ["react" :refer [useEffect useMemo useState]]
+            ["../profile-catalog.js" :refer [readExistingProfiles]]
+            ["react" :refer [useEffect useMemo useRef useState]]
             [shell.manimani :refer [use-manimani]]
             ["../soshiki.js" :refer [addBot addCircle addProposal addRole assignRole
                                      childrenOf circlePath computeSize decideProposal
@@ -289,14 +289,13 @@
         [bot-id set-bot-id] (useState "")
         members (filter #(.includes (.-circleIds %) (.-id circle)) (.-bots state))
         candidates (filter #(and (.-profileId %) (not (.includes (.-circleIds %) (.-id circle)))) (.-bots state))]
-    [:details.soshiki-profile-links
+    [:details.soshiki-profile-links {:open true}
      [:summary (str "Bot profile とサークルを対応づける · " (count members))]
      [:p.muted "この端末の組織情報として保存します。profile の実行設定・権限は変更しません。"]
-     [:p.muted "最初に itonami の profiles フォルダを選んでください。このブラウザで一覧を読み、選択したprofileだけを組織情報に保存します。"]
+     [:p.muted "端末の itonami profile を自動で一覧に表示します。選んだprofileだけを組織情報に保存します。"]
      [:div.soshiki-form
       [:button.soshiki-quiet {:type "button" :disabled loading :on-click #(load-catalog)}
-       (if loading "読み込み中…" (if catalog "既存profile一覧を更新" "既存profileのフォルダを選んで一覧を取得"))]
-      [:button.soshiki-quiet {:type "button" :disabled loading :on-click #(load-catalog true)} "保存先フォルダを変更"]
+       (if loading "読み込み中…" "既存profile一覧を更新")]
       (when catalog-error [:p.net-error {:role "alert"} catalog-error])
       (when catalog
         [:<>
@@ -346,18 +345,6 @@
                         :circleIds (.concat (.-circleIds bot) #js [(.-id circle)])})))
                       (set-bot-id "")))} "このサークルに対応づける"]]
        [:p.muted "未所属の profile はありません。Botタブで登録・ID設定ができます。"])]))
-
-(defn profile-metadata [manifest]
-  (let [id (:profile/id manifest)
-        description (:profile/description manifest)
-        skills (get-in manifest [:bundle :skills])]
-    (when (and (map? manifest)
-               (contains? #{"cloud.itonami.profile.v1" "cloud.itonami.profile.v2"} (:itonami/schema manifest))
-               (= :itonami-agent (get-in manifest [:runtime :engine]))
-               (string? id) (re-matches #"^[a-z0-9][a-z0-9_-]{0,63}$" id))
-      {:id id :description (if (string? description) (subs description 0 (min 280 (count description))) "")
-       :skills (if (and (vector? skills) (every? string? skills))
-                 (vec (take 12 (map #(subs % 0 (min 80 (count %))) (remove clojure.string/blank? skills)))) [])})))
 
 (defn profile-import [state apply-fn]
   (let [[draft set-draft] (useState nil)
@@ -867,28 +854,27 @@
                        ""
                        (str " · 充足率 " (js/Math.round (* 100 (.-fillRate row))) "%")))]]) (.-rows size))]]))
 
-(defn soshiki [account score on-account]
+(defn soshiki [account score on-account broker]
   (let [[state apply-fn save-failed] (use-soshiki)
         [tab set-tab] (useState "chart")
         [catalog set-catalog] (useState nil)
         [loading set-loading] (useState false)
         [catalog-error set-catalog-error] (useState nil)
-        load-catalog (fn [& [choose-new]]
+        catalog-abort (useRef nil)
+        load-catalog (fn []
+          (some-> catalog-abort .-current (.abort))
+          (let [controller (js/AbortController.)]
+          (set! (.-current catalog-abort) controller)
           (set-loading true) (set-catalog-error nil)
-          (-> (readProfileManifests #js {:chooseNew (= true choose-new)})
-              (.then (fn [manifests]
-                (let [profiles (keep (fn [entry]
-                                      (try
-                                        (let [profile (profile-metadata (reader/read-string (.-text entry)))]
-                                          (when (= (:id profile) (.-directory entry)) profile))
-                                        (catch :default _ nil))) manifests)]
-                  (set-catalog (clj->js (vec (sort-by :id profiles)))))))
-              (.catch (fn [_] (set-catalog-error "一覧を読み込めませんでした。Chrome / Chromium で itonami の profiles フォルダ（または .itonami）を選んでください。キャンセルした場合は変更されません。")))
-              (.finally (fn [] (set-loading false)))))
+          (-> (readExistingProfiles broker (.-signal controller))
+              (.then (fn [profiles] (set-catalog profiles)))
+              (.catch (fn [_] (set-catalog-error "一覧を取得できませんでした。取得を許可していない場合は要求を送信しません。端末のprofileサービスが起動していることも確認してください。")))
+              (.finally (fn [] (set-loading false))))))
         [manimani] (use-manimani)
         agents (or (some-> manimani (.-agents)) #js [])
         me (personNameForAccount (some-> account (.-accountDid)))
         method (some-> account (.-method))]
+    (useEffect (fn [] (load-catalog) (fn [] (some-> catalog-abort .-current (.abort)))) #js [])
     (let [score (or score 0)]
       [:main.chat.net-view {:data-soshiki true}
        [:div.net-body.soshiki-body
