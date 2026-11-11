@@ -15,7 +15,9 @@ import {
   decideProposal,
   loadSoshiki,
   moveCircle,
+  myRoles,
   parseList,
+  personNameForAccount,
   removeBot,
   removeCircle,
   removeRole,
@@ -131,9 +133,14 @@ function sizeClass(subtreeRoles) {
   return "s";
 }
 
-function RoleDetail({ state, role, apply, setError, botNames }) {
+function RoleDetail({ state, role, apply, setError, botNames, me }) {
   const [text, setText] = useState("");
   const circle = state.circles.find((item) => item.id === role.circleId);
+  const assignSelf = () => {
+    if (!me) return;
+    setError(apply(assignRole(state, { roleId: role.id, assignee: { kind: "person", name: me } })));
+    setText("");
+  };
   const submit = () => {
     const raw = text.trim();
     if (!raw) {
@@ -178,6 +185,11 @@ function RoleDetail({ state, role, apply, setError, botNames }) {
         <button type="button" onClick={submit}>
           割当
         </button>
+        {me ? (
+          <button type="button" className="soshiki-quiet" onClick={assignSelf}>
+            自分に割当
+          </button>
+        ) : null}
       </div>
       <p className="muted">削除・サークル移動は下の編集セクションで行います。</p>
     </div>
@@ -187,7 +199,7 @@ function RoleDetail({ state, role, apply, setError, botNames }) {
 // Holaspirit-style zoomable circle chart: the focused circle fills the view,
 // its background zooms into a sub-circle, the breadcrumb zooms out, and the
 // zoom stays saved on this device.
-function ChartView({ state, apply, setError, focusId, onFocus, query, highlight, selectedRoleId, onSelectRole, botNames }) {
+function ChartView({ state, apply, setError, focusId, onFocus, query, highlight, selectedRoleId, onSelectRole, botNames, me }) {
   const roots = childrenOf(state, null);
   const focus = state.circles.find((circle) => circle.id === focusId) ?? roots[0] ?? null;
   const size = useMemo(() => computeSize(state), [state]);
@@ -302,7 +314,7 @@ function ChartView({ state, apply, setError, focusId, onFocus, query, highlight,
           </li>
         ))}
       </ul>
-      {selected ? <RoleDetail state={state} role={selected} apply={apply} setError={setError} botNames={botNames} /> : null}
+      {selected ? <RoleDetail state={state} role={selected} apply={apply} setError={setError} botNames={botNames} me={me} /> : null}
     </div>
   );
 }
@@ -400,8 +412,10 @@ function CircleNode({ state, circle, depth, apply, setError, botNames }) {
   );
 }
 
-function ChartTab({ state, apply }) {
+function ChartTab({ state, apply, me, score, method, onAccount }) {
   const [error, setError] = useState(null);
+  const mine = myRoles(state, me);
+  const circleOf = (role) => state.circles.find((circle) => circle.id === role.circleId);
   const [circleName, setCircleName] = useState("");
   const [circlePurpose, setCirclePurpose] = useState("");
   const [circleParent, setCircleParent] = useState("");
@@ -486,6 +500,53 @@ function ChartTab({ state, apply }) {
   return (
     <div>
       {error ? <p className="net-error">{ERROR_TEXT[error] ?? "入力を確認してください。"}</p> : null}
+      {me ? (
+        <section className="soshiki-me" aria-label="あなたのプロフィール" data-me={me}>
+          <span className="soshiki-avatar" data-kind="person" aria-hidden="true">
+            {"@" + me.replace(/^@/, "")[0]}
+          </span>
+          <div>
+            <strong>あなた · {me}</strong>
+            <span className="muted">
+              Trust {score} · {method === "wallet" ? "Web3 wallet" : "Passkey"}
+            </span>
+          </div>
+          {onAccount ? (
+            <button type="button" className="soshiki-quiet" onClick={onAccount}>
+              アカウントを開く
+            </button>
+          ) : null}
+        </section>
+      ) : (
+        <p className="muted">サインインするとあなたがここに出ます。</p>
+      )}
+      <h2>My Roles</h2>
+      {!me ? <p className="muted">—</p> : null}
+      {me && mine.length === 0 ? (
+        <p className="muted">あなたのロールはまだありません。ロールの詳細から「自分に割当」できます。</p>
+      ) : null}
+      {mine.length ? (
+        <ul className="soshiki-rolegrid">
+          {mine.map((role) => (
+            <li key={role.id}>
+              <button
+                type="button"
+                className="soshiki-rolecard"
+                data-my-role={role.id}
+                onClick={() => {
+                  onFocus(role.circleId);
+                  setSelectedRoleId(role.id);
+                }}
+              >
+                <span className="hl-dot" data-hl="person" aria-hidden="true" />
+                <strong>{role.name}</strong>
+                <span className="muted">{circleOf(role)?.name ?? ""}</span>
+                <span className="soshiki-rolecard-purpose">{role.purpose}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       <div className="soshiki-chartbar">
         <input
           className="soshiki-search"
@@ -521,6 +582,7 @@ function ChartTab({ state, apply }) {
         selectedRoleId={selectedRoleId}
         onSelectRole={setSelectedRoleId}
         botNames={botNames}
+        me={me}
       />
       <h2>編集</h2>
       {roots.length === 0 ? <p className="muted">サークルはまだありません。下のフォームから作れます。</p> : null}
@@ -837,11 +899,13 @@ function SizeTab({ state }) {
   );
 }
 
-export function Soshiki() {
+export function Soshiki({ account, score = 0, onAccount }) {
   const [state, apply, saveFailed] = useSoshiki();
   const [tab, setTab] = useState("chart");
   const [manimani] = useManimani();
   const agents = manimani?.agents ?? [];
+  const me = personNameForAccount(account?.accountDid);
+  const method = account?.method;
 
   return (
     <main className="chat net-view" data-soshiki>
@@ -865,7 +929,7 @@ export function Soshiki() {
             </button>
           ))}
         </div>
-        {tab === "chart" ? <ChartTab state={state} apply={apply} /> : null}
+        {tab === "chart" ? <ChartTab state={state} apply={apply} me={me} score={score} method={method} onAccount={onAccount} /> : null}
         {tab === "bots" ? <BotsTab state={state} apply={apply} agents={agents} /> : null}
         {tab === "size" ? <SizeTab state={state} /> : null}
       </div>
