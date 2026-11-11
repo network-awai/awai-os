@@ -2,7 +2,7 @@
   "source": {
     "repository": "kotoba-lang/kotoba",
     "path": "lib/kotoba.aiueos/distributions/awai/dapps",
-    "commit": "f1096f0e060fa9ac31b707762e040339a7340a1d"
+    "commit": "a51492321e8daf05d1cd211d0dc6dbe5667900dc"
   },
   "dapps": [
     {
