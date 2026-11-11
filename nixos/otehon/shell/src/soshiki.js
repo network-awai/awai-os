@@ -163,6 +163,16 @@ export function rolesOf(state, circleId) {
   return state.roles.filter((role) => role.circleId === circleId);
 }
 
+// All roles in the circle and its descendants, for nested rendering.
+export function subtreeRoles(state, circleId) {
+  const ids = [circleId];
+  for (let i = 0; i < ids.length; i++) {
+    for (const child of childrenOf(state, ids[i])) ids.push(child.id);
+  }
+  const wanted = new Set(ids);
+  return state.roles.filter((role) => wanted.has(role.circleId));
+}
+
 export function addCircle(state, { name, purpose, parentId = null }) {
   if (nameError(name)) return { error: "bad-name" };
   if (purposeError(purpose)) return { error: "bad-purpose" };

@@ -859,12 +859,46 @@ time {
 .soshiki-crumb { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px; margin: 12px 0 8px; font-size: 13px; }
 .soshiki-crumb-link { background: transparent; color: var(--focus); padding: 2px 4px; border-radius: 6px; font-size: 13px; }
 .soshiki-crumb-link:hover { background: var(--surface-raised); }
-.soshiki-focus {
+.soshiki-nest {
   border-radius: 12px;
   background: var(--surface-low);
   padding: 14px 16px;
 }
-.soshiki-focus strong { font-size: 18px; }
+.soshiki-nest .soshiki-nest { background: var(--surface-raised); }
+.soshiki-nest .soshiki-nest .soshiki-nest { background: var(--surface-low); }
+.soshiki-nest .soshiki-nest .soshiki-nest .soshiki-nest { background: var(--surface-raised); }
+.soshiki-nest-head, .soshiki-nest-headtext {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  font-size: 18px;
+}
+.soshiki-nest-head { background: transparent; color: inherit; font: inherit; text-align: left; padding: 0; }
+.soshiki-nest-head:hover strong { text-decoration: underline; }
+.soshiki-nest[data-size="l"] > .soshiki-nest-head strong,
+.soshiki-nest[data-size="l"] > .soshiki-nest-headtext strong { font-size: 19px; }
+.soshiki-nest[data-depth="1"] > .soshiki-nest-head,
+.soshiki-nest[data-depth="1"] > .soshiki-nest-headtext { font-size: 15px; }
+.soshiki-kids {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+.soshiki-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.soshiki-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 10px;
+  background: var(--surface-selected);
+  font-size: 13px;
+}
+.soshiki-chip:hover { filter: brightness(1.08); }
+.soshiki-chip.active { box-shadow: 0 0 0 2px var(--focus); }
 .soshiki-members { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 10px; }
 .soshiki-members li { display: flex; align-items: center; gap: 6px; font-size: 13px; }
 .soshiki-avatar {
@@ -879,12 +913,12 @@ time {
   font-weight: 600;
   flex: none;
 }
-.soshiki-subgrid, .soshiki-rolegrid {
+.soshiki-rolegrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
   gap: 10px;
 }
-.soshiki-subcard, .soshiki-rolecard {
+.soshiki-rolecard {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -897,13 +931,9 @@ time {
   text-align: left;
   font-size: 13px;
 }
-.soshiki-subcard:hover, .soshiki-rolecard:hover { background: var(--surface-hover); }
-.soshiki-subcard[data-size="m"], .soshiki-rolecard.active { background: var(--surface-selected); }
-.soshiki-subcard[data-size="l"] { grid-column: span 2; min-height: 110px; }
-.soshiki-subcard[data-size="l"] strong { font-size: 16px; }
-.soshiki-subcard strong { font-size: 14px; }
-.soshiki-subcard .muted, .soshiki-rolecard .muted { font-size: 12px; }
-.soshiki-open { margin-top: auto; color: var(--focus); font-size: 12px; }
+.soshiki-rolecard:hover { background: var(--surface-hover); }
+.soshiki-rolecard .muted { font-size: 12px; }
+.soshiki-open { margin-left: auto; flex: none; color: var(--focus); font-size: 12px; }
 .soshiki-rolecard-purpose {
   display: -webkit-box;
   -webkit-line-clamp: 2;

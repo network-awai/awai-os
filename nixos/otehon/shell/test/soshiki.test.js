@@ -12,6 +12,7 @@ import {
   computeSize,
   myRoles,
   personNameForAccount,
+  subtreeRoles,
   decideProposal,
   loadSoshiki,
   moveCircle,
@@ -173,6 +174,22 @@ test("the signed-in person has a readable name and a My Roles list", () => {
   assert.equal(mine[0].name, "記録係");
   assert.deepEqual(myRoles(state, "someone-else"), []);
   assert.deepEqual(myRoles(state, null), []);
+});
+
+test("subtreeRoles collects the circle and its descendants", () => {
+  let state = blankState();
+  state = circle(state, "全体");
+  const general = state.circles[0].id;
+  state = circle(state, "子", "目的", general);
+  const child = state.circles.find((item) => item.name === "子").id;
+  state = addRole(state, { circleId: general, name: "R1", purpose: "p" }).state;
+  state = addRole(state, { circleId: child, name: "R2", purpose: "p" }).state;
+  assert.deepEqual(
+    subtreeRoles(state, general).map((role) => role.name).sort(),
+    ["R1", "R2"],
+  );
+  assert.deepEqual(subtreeRoles(state, child).map((role) => role.name), ["R2"]);
+  assert.deepEqual(subtreeRoles(state, "c9"), []);
 });
 
 test("parseList splits commas, Japanese commas and lines", () => {

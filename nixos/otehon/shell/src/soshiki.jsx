@@ -18,6 +18,7 @@ import {
   myRoles,
   parseList,
   personNameForAccount,
+  subtreeRoles,
   removeBot,
   removeCircle,
   removeRole,
@@ -199,6 +200,120 @@ function RoleDetail({ state, role, apply, setError, botNames, me }) {
 // Holaspirit-style zoomable circle chart: the focused circle fills the view,
 // its background zooms into a sub-circle, the breadcrumb zooms out, and the
 // zoom stays saved on this device.
+const MAX_NEST_DEPTH = 6;
+
+// A branch stays visible while filtering when the circle itself matches or
+// any role in its subtree passes the highlight and query filters.
+function branchMatches(state, circle, query, highlight) {
+  if (matchesQuery(`${circle.name} ${circle.purpose}`, query)) {
+    if (highlight === "all") return true;
+    return subtreeRoles(state, circle.id).some((role) => roleHighlight(role) === highlight);
+  }
+  return subtreeRoles(state, circle.id).some(
+    (role) =>
+      (highlight === "all" || roleHighlight(role) === highlight) &&
+      matchesQuery(`${role.name} ${role.purpose}`, query),
+  );
+}
+
+function RoleChip({ role, selected, onSelect }) {
+  const assignee = role.assignee ? `${role.assignee.kind === "bot" ? "" : "@"}${role.assignee.name}` : "空き";
+  return (
+    <button
+      type="button"
+      className={selected ? "soshiki-chip active" : "soshiki-chip"}
+      data-role={role.id}
+      title={`${role.name}（${assignee}）: ${role.purpose}`}
+      aria-expanded={selected}
+      onClick={() => onSelect(selected ? null : role.id)}
+    >
+      <span className="hl-dot" data-hl={roleHighlight(role)} aria-hidden="true" />
+      <span>{role.name}</span>
+    </button>
+  );
+}
+
+// Holaspirit-style nested circle: the box holds its roles as chips and its
+// sub-circles as boxes inside it. Headers below the focus zoom on click.
+function NestedCircle({ state, circle, depth, query, highlight, selectedRoleId, onSelectRole, onFocus, rows, members }) {
+  const children = childrenOf(state, circle.id);
+  const filtering = query.trim() !== "" || highlight !== "all";
+  const directRoles = rolesOf(state, circle.id).filter(
+    (role) =>
+      (highlight === "all" || roleHighlight(role) === highlight) &&
+      matchesQuery(`${role.name} ${role.purpose}`, query),
+  );
+  const visibleChildren = children.filter((child) => branchMatches(state, child, query, highlight));
+  const row = rows.get(circle.id);
+  const count = row?.subtreeRoles ?? subtreeRoles(state, circle.id).length;
+  const head = (
+    <>
+      <strong>{circle.name}</strong>
+      <span className="muted">
+        {count} roles · {row?.subtreeMembers ?? 0} members
+      </span>
+      {depth === 0 ? null : <span className="soshiki-open">開く ›</span>}
+    </>
+  );
+  return (
+    <div className="soshiki-nest" data-circle={circle.id} data-depth={depth} data-size={sizeClass(count)}>
+      {depth === 0 ? (
+        <div className="soshiki-nest-headtext">{head}</div>
+      ) : (
+        <button type="button" className="soshiki-nest-head" data-zoom={circle.id} onClick={() => onFocus(circle.id)}>
+          {head}
+        </button>
+      )}
+      <p className="soshiki-purpose">{circle.purpose}</p>
+      {members ? (
+        <ul className="soshiki-members" aria-label="メンバー">
+          {members.length === 0 ? <li className="muted">メンバーはまだいません。</li> : null}
+          {members.map(([name, kind]) => (
+            <li key={name} title={kind === "bot" ? "Bot" : "人"}>
+              <span className="soshiki-avatar" data-kind={kind} aria-hidden="true">
+                {(kind === "bot" ? "" : "@") + name[0]}
+              </span>
+              <span>{name}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {directRoles.length ? (
+        <ul className="soshiki-chips" aria-label={`${circle.name}のロール`}>
+          {directRoles.map((role) => (
+            <li key={role.id}>
+              <RoleChip role={role} selected={role.id === selectedRoleId} onSelect={onSelectRole} />
+            </li>
+          ))}
+        </ul>
+      ) : filtering ? (
+        <p className="muted">合致するロールはありません。</p>
+      ) : (
+        <p className="muted">ロールはまだありません。</p>
+      )}
+      {depth < MAX_NEST_DEPTH && visibleChildren.length ? (
+        <div className="soshiki-kids">
+          {visibleChildren.map((child) => (
+            <NestedCircle
+              key={child.id}
+              state={state}
+              circle={child}
+              depth={depth + 1}
+              query={query}
+              highlight={highlight}
+              selectedRoleId={selectedRoleId}
+              onSelectRole={onSelectRole}
+              onFocus={onFocus}
+              rows={rows}
+              members={null}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ChartView({ state, apply, setError, focusId, onFocus, query, highlight, selectedRoleId, onSelectRole, botNames, me }) {
   const roots = childrenOf(state, null);
   const focus = state.circles.find((circle) => circle.id === focusId) ?? roots[0] ?? null;
@@ -206,7 +321,6 @@ function ChartView({ state, apply, setError, focusId, onFocus, query, highlight,
   const rows = useMemo(() => new Map(size.rows.map((row) => [row.id, row])), [size]);
   if (!focus) return <p className="muted">サークルはまだありません。下の編集から作れます。</p>;
   const path = circlePath(state, focus.id);
-  const children = childrenOf(state, focus.id);
   const directRoles = rolesOf(state, focus.id);
   const members = useMemo(() => {
     const seen = new Map();
@@ -218,14 +332,7 @@ function ChartView({ state, apply, setError, focusId, onFocus, query, highlight,
     }
     return [...seen.entries()];
   }, [state.bots, directRoles, focus.id]);
-  const visibleChildren = children.filter((circle) => matchesQuery(`${circle.name} ${circle.purpose}`, query));
-  const visibleRoles = directRoles.filter(
-    (role) =>
-      (highlight === "all" || roleHighlight(role) === highlight) &&
-      matchesQuery(`${role.name} ${role.purpose}`, query),
-  );
-  const selected = directRoles.find((role) => role.id === selectedRoleId) ?? null;
-  const row = rows.get(focus.id);
+  const selected = state.roles.find((role) => role.id === selectedRoleId) ?? null;
 
   return (
     <div data-chart-focus={focus.id}>
@@ -245,75 +352,18 @@ function ChartView({ state, apply, setError, focusId, onFocus, query, highlight,
           ),
         )}
       </nav>
-      <section className="soshiki-focus" aria-label={`${focus.name}の詳細`}>
-        <div className="soshiki-circle-head">
-          <strong>{focus.name}</strong>
-          <span className="muted">
-            {row ? `${row.subtreeRoles} roles · ${row.subtreeMembers} members` : ""}
-          </span>
-        </div>
-        <p className="soshiki-purpose">{focus.purpose}</p>
-        <ul className="soshiki-members" aria-label="メンバー">
-          {members.length === 0 ? <li className="muted">メンバーはまだいません。</li> : null}
-          {members.map(([name, kind]) => (
-            <li key={name} title={kind === "bot" ? "Bot" : "人"}>
-              <span className="soshiki-avatar" data-kind={kind} aria-hidden="true">
-                {(kind === "bot" ? "" : "@") + name[0]}
-              </span>
-              <span>{name}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
-      {children.length ? (
-        <>
-          <h2>サブサークル</h2>
-          {visibleChildren.length === 0 ? <p className="muted">検索に合うサークルはありません。</p> : null}
-          <ul className="soshiki-subgrid">
-            {visibleChildren.map((circle) => {
-              const childRow = rows.get(circle.id);
-              const count = childRow?.subtreeRoles ?? rolesOf(state, circle.id).length;
-              return (
-                <li key={circle.id}>
-                  <button
-                    type="button"
-                    className="soshiki-subcard"
-                    data-size={sizeClass(count)}
-                    data-circle={circle.id}
-                    onClick={() => onFocus(circle.id)}
-                  >
-                    <strong>{circle.name}</strong>
-                    <span className="muted">
-                      {count} roles · {childRow?.subtreeMembers ?? 0} members
-                    </span>
-                    <span className="soshiki-open">開く ›</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </>
-      ) : null}
-      <h2>ロール</h2>
-      {visibleRoles.length === 0 ? <p className="muted">表示するロールはありません。</p> : null}
-      <ul className="soshiki-rolegrid">
-        {visibleRoles.map((role) => (
-          <li key={role.id}>
-            <button
-              type="button"
-              className={role.id === selected?.id ? "soshiki-rolecard active" : "soshiki-rolecard"}
-              data-role={role.id}
-              aria-expanded={role.id === selected?.id}
-              onClick={() => onSelectRole(role.id === selected?.id ? null : role.id)}
-            >
-              <span className="hl-dot" data-hl={roleHighlight(role)} aria-hidden="true" />
-              <strong>{role.name}</strong>
-              <span className="muted">{role.assignee ? `${role.assignee.kind === "bot" ? "" : "@"}${role.assignee.name}` : "空き"}</span>
-              <span className="soshiki-rolecard-purpose">{role.purpose}</span>
-            </button>
-          </li>
-        ))}
-      </ul>
+      <NestedCircle
+        state={state}
+        circle={focus}
+        depth={0}
+        query={query}
+        highlight={highlight}
+        selectedRoleId={selectedRoleId}
+        onSelectRole={onSelectRole}
+        onFocus={onFocus}
+        rows={rows}
+        members={members}
+      />
       {selected ? <RoleDetail state={state} role={selected} apply={apply} setError={setError} botNames={botNames} me={me} /> : null}
     </div>
   );
