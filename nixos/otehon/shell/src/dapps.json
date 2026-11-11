@@ -284,6 +284,16 @@
       ]
     },
     {
+      "id": "soshiki",
+      "dock": 21,
+      "title": "Soshiki",
+      "section": "Apps",
+      "summary": "Organization design: Holaspirit-style circles and roles, bot profiles, and size view. Local-only.",
+      "install": "os-image",
+      "offline": "local-core",
+      "remoteOperations": []
+    },
+    {
       "id": "torihiki",
       "dock": 18,
       "title": "Torihiki",

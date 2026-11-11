@@ -8,6 +8,7 @@ import { MEDIA_ORIGIN, describeMessage, requestImage, requestSpeech, settleSaved
 import { BluetoothPanel, WifiPanel } from "./net.jsx";
 import { SoundPanel } from "./sound.jsx";
 import { DisplayPanel } from "./display.jsx";
+import { Soshiki } from "./soshiki.jsx";
 import { DeviceDock, NodeDock } from "./docks.jsx";
 import { Setup } from "./setup.jsx";
 import { readTheme, saveTheme, THEMES } from "./theme.js";
@@ -495,6 +496,8 @@ function Shell({ did, account, proofs, score, broker, zenoh, matter, onProof, on
     body = <SoundPanel />;
   } else if (context === "display") {
     body = <DisplayPanel />;
+  } else if (context === "soshiki") {
+    body = <Soshiki />;
   } else if (dapp && score < minimum) {
     body = <Locked dapp={dapp} minimum={minimum} score={score} onRaise={openAccount} />;
   } else {

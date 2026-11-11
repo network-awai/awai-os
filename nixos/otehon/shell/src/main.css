@@ -748,3 +748,82 @@ time {
 .theme-switcher button { padding: 6px 10px; border-radius: 8px; background: transparent; color: var(--fg); font-size: 12px; }
 .theme-switcher button[aria-pressed="true"] { background: var(--surface-selected); font-weight: 700; }
 .setup { padding-top: 64px; }
+
+/* Soshiki dApp: Holaspirit-style circles/roles, bot profiles, size view. */
+.soshiki-body { width: min(760px, 100%); }
+.soshiki-body h2 { margin: 22px 0 8px; font-size: 15px; }
+.soshiki-tabs { display: flex; gap: 8px; margin: 16px 0 4px; }
+.soshiki-tab {
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: var(--surface-raised);
+  font-size: 14px;
+}
+.soshiki-tab:hover { background: var(--surface-hover); }
+.soshiki-tab.active { background: var(--surface-selected); }
+.soshiki-tab .muted { font-size: 12px; }
+.soshiki-tree, .soshiki-children { display: flex; flex-direction: column; gap: 10px; }
+.soshiki-children { margin: 10px 0 0 16px; padding-left: 12px; border-left: 1px solid var(--surface-hover); }
+.soshiki-circle, .soshiki-bot, .soshiki-sizes li, .soshiki-proposals li {
+  border-radius: 12px;
+  background: var(--surface-low);
+  padding: 12px 14px;
+}
+.soshiki-circle-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.soshiki-purpose { margin: 6px 0; color: var(--secondary-text); font-size: 14px; }
+.soshiki-roles { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.soshiki-role { border-top: 1px solid var(--surface-hover); padding-top: 8px; font-size: 13px; }
+.soshiki-role p { margin: 4px 0; }
+.soshiki-role-head { display: flex; justify-content: space-between; gap: 8px; }
+.soshiki-role-name { font-weight: 600; color: var(--fg); }
+.soshiki-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.soshiki-row input, .soshiki-row select {
+  flex: 1;
+  min-width: 140px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--surface-selected);
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+}
+.soshiki-row button, .soshiki-form .primary {
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 13px;
+  font-weight: 600;
+}
+.soshiki-quiet { background: var(--surface-selected) !important; color: var(--fg) !important; font-weight: 500 !important; }
+.soshiki-form { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.soshiki-field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--secondary-text); }
+.soshiki-field input, .soshiki-field select {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--surface-selected);
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+}
+.soshiki-bots, .soshiki-sizes, .soshiki-proposals { display: flex; flex-direction: column; gap: 10px; }
+.soshiki-bots p { margin: 4px 0; font-size: 13px; }
+.soshiki-totals { display: flex; gap: 8px; flex-wrap: wrap; }
+.soshiki-totals li {
+  flex: 1;
+  min-width: 88px;
+  border-radius: 12px;
+  background: var(--surface-low);
+  padding: 10px 12px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.soshiki-totals strong { font-size: 20px; font-variant-numeric: tabular-nums; }
+.soshiki-totals span { color: var(--muted); font-size: 12px; }
+.soshiki-meter-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) 32px; align-items: center; gap: 8px; font-size: 12px; }
+.soshiki-meter-row .meter { margin: 6px 0; }
+.soshiki-sizes .muted, .soshiki-bots .muted { font-size: 12px; }
