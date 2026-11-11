@@ -10,6 +10,7 @@ import {
   addRole,
   assignRole,
   childrenOf,
+  circlePath,
   computeSize,
   decideProposal,
   loadSoshiki,
@@ -90,6 +91,219 @@ function Field({ label, children }) {
       <span>{label}</span>
       {children}
     </label>
+  );
+}
+
+const SOSHIKI_UI_KEY = "otehon.soshiki.ui.v1";
+const HIGHLIGHTS = [
+  { id: "all", label: "すべて" },
+  { id: "open", label: "空き" },
+  { id: "bot", label: "Bot" },
+  { id: "person", label: "人" },
+];
+
+// Holaspirit-style highlight of a role: open, bot-held or person-held.
+function roleHighlight(role) {
+  if (!role.assignee) return "open";
+  return role.assignee.kind === "person" ? "person" : "bot";
+}
+
+function matchesQuery(text, query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return text.toLowerCase().includes(q);
+}
+
+function loadFocusId() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SOSHIKI_UI_KEY));
+    return typeof saved?.focusId === "string" ? saved.focusId : null;
+  } catch {
+    return null;
+  }
+}
+
+// Size weight of a sub-circle card: Holaspirit scales a circle by the roles
+// it contains. s/m/l by subtree role count.
+function sizeClass(subtreeRoles) {
+  if (subtreeRoles >= 5) return "l";
+  if (subtreeRoles >= 2) return "m";
+  return "s";
+}
+
+function RoleDetail({ state, role, apply, setError, botNames }) {
+  const [text, setText] = useState("");
+  const circle = state.circles.find((item) => item.id === role.circleId);
+  const submit = () => {
+    const raw = text.trim();
+    if (!raw) {
+      setError(apply(assignRole(state, { roleId: role.id, assignee: null })));
+      setText("");
+      return;
+    }
+    const kind = raw.startsWith("@") ? "person" : "bot";
+    const name = raw.startsWith("@") ? raw.slice(1).trim() : raw;
+    setError(apply(assignRole(state, { roleId: role.id, assignee: { kind, name } })));
+    setText("");
+  };
+  return (
+    <div className="soshiki-detail" data-role-detail={role.id}>
+      <div className="soshiki-circle-head">
+        <strong>
+          <span className="hl-dot" data-hl={roleHighlight(role)} aria-hidden="true" />
+          {role.name}
+        </strong>
+        <span className="muted">{circle ? circle.name : ""}</span>
+      </div>
+      <p>{role.purpose}</p>
+      {role.accountabilities.length ? <p>責任: {role.accountabilities.join(" / ")}</p> : null}
+      {role.skills.length ? <p className="muted">Skills: {role.skills.join(", ")}</p> : null}
+      {role.metric ? <p className="muted">Metric: {role.metric}</p> : null}
+      <p className="muted">
+        担当: {role.assignee ? `${role.assignee.kind === "bot" ? "" : "@"}${role.assignee.name}` : "空き"}
+      </p>
+      <div className="soshiki-row">
+        <input
+          aria-label={`${role.name}のアサイン`}
+          placeholder="Bot名か @人名、空で解除"
+          value={text}
+          list={`chart-bots-${role.id}`}
+          onChange={(event) => setText(event.target.value)}
+        />
+        <datalist id={`chart-bots-${role.id}`}>
+          {botNames.map((name) => (
+            <option key={name} value={name} />
+          ))}
+        </datalist>
+        <button type="button" onClick={submit}>
+          割当
+        </button>
+      </div>
+      <p className="muted">削除・サークル移動は下の編集セクションで行います。</p>
+    </div>
+  );
+}
+
+// Holaspirit-style zoomable circle chart: the focused circle fills the view,
+// its background zooms into a sub-circle, the breadcrumb zooms out, and the
+// zoom stays saved on this device.
+function ChartView({ state, apply, setError, focusId, onFocus, query, highlight, selectedRoleId, onSelectRole, botNames }) {
+  const roots = childrenOf(state, null);
+  const focus = state.circles.find((circle) => circle.id === focusId) ?? roots[0] ?? null;
+  const size = useMemo(() => computeSize(state), [state]);
+  const rows = useMemo(() => new Map(size.rows.map((row) => [row.id, row])), [size]);
+  if (!focus) return <p className="muted">サークルはまだありません。下の編集から作れます。</p>;
+  const path = circlePath(state, focus.id);
+  const children = childrenOf(state, focus.id);
+  const directRoles = rolesOf(state, focus.id);
+  const members = useMemo(() => {
+    const seen = new Map();
+    for (const role of directRoles) {
+      if (role.assignee && !seen.has(role.assignee.name)) seen.set(role.assignee.name, role.assignee.kind);
+    }
+    for (const bot of state.bots) {
+      if (bot.circleIds.includes(focus.id) && !seen.has(bot.name)) seen.set(bot.name, "bot");
+    }
+    return [...seen.entries()];
+  }, [state.bots, directRoles, focus.id]);
+  const visibleChildren = children.filter((circle) => matchesQuery(`${circle.name} ${circle.purpose}`, query));
+  const visibleRoles = directRoles.filter(
+    (role) =>
+      (highlight === "all" || roleHighlight(role) === highlight) &&
+      matchesQuery(`${role.name} ${role.purpose}`, query),
+  );
+  const selected = directRoles.find((role) => role.id === selectedRoleId) ?? null;
+  const row = rows.get(focus.id);
+
+  return (
+    <div data-chart-focus={focus.id}>
+      <nav className="soshiki-crumb" aria-label="サークルのパンくず">
+        {path.map((circle, index) =>
+          index < path.length - 1 ? (
+            <span key={circle.id}>
+              <button type="button" className="soshiki-crumb-link" onClick={() => onFocus(circle.id)}>
+                {circle.name}
+              </button>
+              <span aria-hidden="true"> › </span>
+            </span>
+          ) : (
+            <strong key={circle.id} aria-current="page">
+              {circle.name}
+            </strong>
+          ),
+        )}
+      </nav>
+      <section className="soshiki-focus" aria-label={`${focus.name}の詳細`}>
+        <div className="soshiki-circle-head">
+          <strong>{focus.name}</strong>
+          <span className="muted">
+            {row ? `${row.subtreeRoles} roles · ${row.subtreeMembers} members` : ""}
+          </span>
+        </div>
+        <p className="soshiki-purpose">{focus.purpose}</p>
+        <ul className="soshiki-members" aria-label="メンバー">
+          {members.length === 0 ? <li className="muted">メンバーはまだいません。</li> : null}
+          {members.map(([name, kind]) => (
+            <li key={name} title={kind === "bot" ? "Bot" : "人"}>
+              <span className="soshiki-avatar" data-kind={kind} aria-hidden="true">
+                {(kind === "bot" ? "" : "@") + name[0]}
+              </span>
+              <span>{name}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+      {children.length ? (
+        <>
+          <h2>サブサークル</h2>
+          {visibleChildren.length === 0 ? <p className="muted">検索に合うサークルはありません。</p> : null}
+          <ul className="soshiki-subgrid">
+            {visibleChildren.map((circle) => {
+              const childRow = rows.get(circle.id);
+              const count = childRow?.subtreeRoles ?? rolesOf(state, circle.id).length;
+              return (
+                <li key={circle.id}>
+                  <button
+                    type="button"
+                    className="soshiki-subcard"
+                    data-size={sizeClass(count)}
+                    data-circle={circle.id}
+                    onClick={() => onFocus(circle.id)}
+                  >
+                    <strong>{circle.name}</strong>
+                    <span className="muted">
+                      {count} roles · {childRow?.subtreeMembers ?? 0} members
+                    </span>
+                    <span className="soshiki-open">開く ›</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      ) : null}
+      <h2>ロール</h2>
+      {visibleRoles.length === 0 ? <p className="muted">表示するロールはありません。</p> : null}
+      <ul className="soshiki-rolegrid">
+        {visibleRoles.map((role) => (
+          <li key={role.id}>
+            <button
+              type="button"
+              className={role.id === selected?.id ? "soshiki-rolecard active" : "soshiki-rolecard"}
+              data-role={role.id}
+              aria-expanded={role.id === selected?.id}
+              onClick={() => onSelectRole(role.id === selected?.id ? null : role.id)}
+            >
+              <span className="hl-dot" data-hl={roleHighlight(role)} aria-hidden="true" />
+              <strong>{role.name}</strong>
+              <span className="muted">{role.assignee ? `${role.assignee.kind === "bot" ? "" : "@"}${role.assignee.name}` : "空き"}</span>
+              <span className="soshiki-rolecard-purpose">{role.purpose}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      {selected ? <RoleDetail state={state} role={selected} apply={apply} setError={setError} botNames={botNames} /> : null}
+    </div>
   );
 }
 
@@ -199,11 +413,32 @@ function ChartTab({ state, apply }) {
   const [roleMetric, setRoleMetric] = useState("");
   const [proposalTitle, setProposalTitle] = useState("");
   const [proposalDetail, setProposalDetail] = useState("");
+  const [focusId, setFocusId] = useState(loadFocusId);
+  const [query, setQuery] = useState("");
+  const [highlight, setHighlight] = useState("all");
+  const [selectedRoleId, setSelectedRoleId] = useState(null);
   const roots = childrenOf(state, null);
   const botNames = state.bots.map((bot) => bot.name);
   useEffect(() => {
     if (!state.circles.some((circle) => circle.id === roleCircle)) setRoleCircle(state.circles[0]?.id ?? "");
   }, [state.circles, roleCircle]);
+  useEffect(() => {
+    if (focusId && !state.circles.some((circle) => circle.id === focusId)) {
+      setFocusId(state.circles[0]?.id ?? null);
+      setSelectedRoleId(null);
+    }
+  }, [state.circles, focusId]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(SOSHIKI_UI_KEY, JSON.stringify({ focusId }));
+    } catch {
+      // The chart still works for this session.
+    }
+  }, [focusId]);
+  const onFocus = (id) => {
+    setFocusId(id);
+    setSelectedRoleId(null);
+  };
 
   const submitCircle = (event) => {
     event.preventDefault();
@@ -251,6 +486,43 @@ function ChartTab({ state, apply }) {
   return (
     <div>
       {error ? <p className="net-error">{ERROR_TEXT[error] ?? "入力を確認してください。"}</p> : null}
+      <div className="soshiki-chartbar">
+        <input
+          className="soshiki-search"
+          aria-label="サークルとロールを検索"
+          placeholder="検索: サークル・ロール名"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+        <div className="soshiki-legend" role="group" aria-label="ハイライト絞り込み">
+          {HIGHLIGHTS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={highlight === item.id ? "soshiki-legend-btn active" : "soshiki-legend-btn"}
+              aria-pressed={highlight === item.id}
+              data-highlight={item.id}
+              onClick={() => setHighlight(item.id)}
+            >
+              {item.id === "all" ? null : <span className="hl-dot" data-hl={item.id} aria-hidden="true" />}
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <ChartView
+        state={state}
+        apply={apply}
+        setError={setError}
+        focusId={focusId}
+        onFocus={onFocus}
+        query={query}
+        highlight={highlight}
+        selectedRoleId={selectedRoleId}
+        onSelectRole={setSelectedRoleId}
+        botNames={botNames}
+      />
+      <h2>編集</h2>
       {roots.length === 0 ? <p className="muted">サークルはまだありません。下のフォームから作れます。</p> : null}
       <ul className="soshiki-tree">
         {roots.map((circle) => (

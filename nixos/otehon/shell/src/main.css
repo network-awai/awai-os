@@ -827,3 +827,97 @@ time {
 .soshiki-meter-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) 32px; align-items: center; gap: 8px; font-size: 12px; }
 .soshiki-meter-row .meter { margin: 6px 0; }
 .soshiki-sizes .muted, .soshiki-bots .muted { font-size: 12px; }
+
+/* Soshiki circle chart: Holaspirit-style zoom, role cards, highlights. */
+.soshiki-chartbar { display: flex; flex-direction: column; gap: 8px; margin: 12px 0 4px; }
+.soshiki-search {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--surface-selected);
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+}
+.soshiki-legend { display: flex; gap: 6px; flex-wrap: wrap; }
+.soshiki-legend-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: var(--surface-raised);
+  font-size: 12px;
+}
+.soshiki-legend-btn:hover { background: var(--surface-hover); }
+.soshiki-legend-btn.active { background: var(--surface-selected); font-weight: 600; }
+.hl-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; display: inline-block; }
+.hl-dot[data-hl="open"] { background: var(--warning-text); }
+.hl-dot[data-hl="bot"] { background: var(--focus); }
+.hl-dot[data-hl="person"] { background: var(--success-text); }
+.soshiki-crumb { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px; margin: 12px 0 8px; font-size: 13px; }
+.soshiki-crumb-link { background: transparent; color: var(--focus); padding: 2px 4px; border-radius: 6px; font-size: 13px; }
+.soshiki-crumb-link:hover { background: var(--surface-raised); }
+.soshiki-focus {
+  border-radius: 12px;
+  background: var(--surface-low);
+  padding: 14px 16px;
+}
+.soshiki-focus strong { font-size: 18px; }
+.soshiki-members { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 10px; }
+.soshiki-members li { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.soshiki-avatar {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--mark);
+  color: var(--fg);
+  font-size: 13px;
+  font-weight: 600;
+  flex: none;
+}
+.soshiki-subgrid, .soshiki-rolegrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 10px;
+}
+.soshiki-subcard, .soshiki-rolecard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  min-height: 88px;
+  border-radius: 12px;
+  background: var(--surface-raised);
+  padding: 12px 14px;
+  text-align: left;
+  font-size: 13px;
+}
+.soshiki-subcard:hover, .soshiki-rolecard:hover { background: var(--surface-hover); }
+.soshiki-subcard[data-size="m"], .soshiki-rolecard.active { background: var(--surface-selected); }
+.soshiki-subcard[data-size="l"] { grid-column: span 2; min-height: 110px; }
+.soshiki-subcard[data-size="l"] strong { font-size: 16px; }
+.soshiki-subcard strong { font-size: 14px; }
+.soshiki-subcard .muted, .soshiki-rolecard .muted { font-size: 12px; }
+.soshiki-open { margin-top: auto; color: var(--focus); font-size: 12px; }
+.soshiki-rolecard-purpose {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--secondary-text);
+  font-size: 12px;
+}
+.soshiki-detail {
+  margin-top: 10px;
+  border-radius: 12px;
+  background: var(--surface-low);
+  padding: 12px 14px;
+  font-size: 13px;
+}
+.soshiki-detail p { margin: 6px 0; }
+.soshiki-detail strong { display: flex; align-items: center; gap: 8px; }
