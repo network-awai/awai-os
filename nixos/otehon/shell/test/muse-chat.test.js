@@ -33,7 +33,7 @@ test("Muse CLI parsing requires real meta completion and keeps tools disabled", 
 test("Muse host refuses undeclared origin/path/method without a model call", async () => {
   let calls = 0;
   const handler = chatHandler(async () => { calls++; });
-  for (const [origin, method, url] of [["https://evil.invalid", "POST", "/v1/chat/muse"], ["null", "GET", "/v1/chat/muse"], ["null", "POST", "/v1/chat/muse?provider=other"]]) {
+  for (const [origin, method, url] of [["null", "POST", "/v1/chat/muse"], ["https://evil.invalid", "POST", "/v1/chat/muse"], ["null", "GET", "/v1/chat/muse"], ["null", "POST", "/v1/chat/muse?provider=other"]]) {
     const response = new EventEmitter();response.writeHead = status => assert([403, 404].includes(status));response.end = () => {};
     await handler({ headers: { origin }, method, url }, response);
   }
@@ -67,4 +67,16 @@ console.log(JSON.stringify({payload_type:'run.terminal.completed',payload:{termi
     await assert.rejects(runMuse(body, undefined, { ...env, FAIL_MUSE: "1" }));
     assert.deepEqual(await readdir(workspace), []);
   } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+
+test("Muse host accepts the named loopback preview origin", async () => {
+  const { Readable } = await import("node:stream");
+  const request = Readable.from([Buffer.from(JSON.stringify({ messages: [{ role: "user", content: "日本語" }] }))]);
+  request.headers = { origin: "http://127.0.0.1:8901" };request.method = "POST";request.url = "/v1/chat/muse";
+  const response = new EventEmitter();response.writeHead = status => assert.equal(status, 200);
+  response.end = text => { assert.equal(JSON.parse(text).text, "fixture");response.writableEnded = true; };
+  let calls = 0;
+  await chatHandler(async body => { calls++;assert.equal(JSON.parse(body).messages[0].content, "日本語");return { text: "fixture" }; })(request, response);
+  assert.equal(calls, 1);
 });

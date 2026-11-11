@@ -2,11 +2,11 @@
 
 The 8901 static preview now offers Bots → Muse with a browser-local conversation history. The selected local Muse bot service has a fixed HTTPS POST endpoint on port 8778. Every send uses the unchanged canonical shared operation broker with prompt/history categories. Denial sends nothing; leaving the view aborts the request. The local-only Manimani path remains separate and has no silent remote fallback.
 
-The installed Muse Code 1.4.15 (1.4.15-R8339.1), meta provider, resolved to muse-spark-1.3. It uses existing Muse authentication, empty preset, low effort, max one model step, no workspace trust, no session log, shell/write/web/reminder/user-input tools disabled, and a dedicated empty workspace. The CLI requires a regular input file; each request creates an owner-only temporary prompt file and removes it in finally. Tests cover cleanup on success and failure. No credentials are copied into the browser or repository.
+The installed Muse Code 1.4.15 (1.4.15-R8339.1), meta provider, resolved to muse-spark-1.3. It uses existing Muse authentication, empty preset, low effort, max one model step, no workspace trust, no session log, shell/write/web/reminder/user-input tools disabled, and a dedicated empty workspace. The CLI requires a regular input file; each request creates an owner-only temporary prompt file and removes it in finally. Tests cover cleanup on success and failure. No credentials are copied into the browser or repository. The paid-provider host accepts named loopback preview origins only; opaque null/file origins are rejected before calling Muse. File-kiosk/OS integration is separately unqualified.
 
 Validation:
 
-- Node: 69/69, including bounded history, exact broker POST, CLI-output parsing, route denial, private regular-file input and cleanup.
+- Node: 70/70, including bounded history, exact broker POST, CLI-output parsing, route denial, private regular-file input and cleanup.
 - Muse conversation .cljc: 1 test / 8 assertions, including invalid/system-role/oversized/extra-field inputs.
 - File/kiosk and HTTP shell/link release builds passed, 0 Closure warnings (upstream Garden/JVM warnings remain).
 - Real 8901 headless Chrome, software wallet, real trusted TLS endpoint and live Muse subscription: rejecting send produced 0 requests; two approved requests returned real responses. The second recalled a fact from the first. Reload restored both exchanges without a new model call. Uncaught browser exceptions: 0. Screenshot browser.png uses only synthetic test dialogue.

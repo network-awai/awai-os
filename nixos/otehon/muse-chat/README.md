@@ -17,7 +17,7 @@ npm run preview
 
 `MUSE_COMMAND` / `BB_COMMAND` can select installed executables. `MUSE_CHAT_WORKSPACE` can choose the dedicated empty workspace (default is this repository's `.agent-output/muse-chat-workspace`). Use platform-managed `MUSE_CHAT_CERT` / `MUSE_CHAT_KEY` with `node ../muse-chat/bridge.mjs` when supplying TLS directly. The helper only generates a localhost leaf certificate in mkcert's existing application directory. It never installs a trust root or bypasses TLS validation.
 
-The service has one fixed POST route, rejects other origins/routes/methods/queries, bounds body size, accepts only alternating user/assistant text messages, and handles at most one model call at once. It returns the completed Muse text/model and available per-call usage counters. There is no app-origin proxy or prompt persistence on the host. Unexpected or incomplete CLI output is an error, never a fabricated response.
+The live-provider service accepts only the named loopback preview origins (8901/8902); opaque `null` origins, including file pages, are rejected. File-kiosk integration requires a separately qualified trusted host path. The service has one fixed POST route, rejects other origins/routes/methods/queries, bounds body size, accepts only alternating user/assistant text messages, and handles at most one model call at once. It returns the completed Muse text/model and available per-call usage counters. There is no app-origin proxy or prompt persistence on the host. Unexpected or incomplete CLI output is an error, never a fabricated response.
 
 ## Qualification
 

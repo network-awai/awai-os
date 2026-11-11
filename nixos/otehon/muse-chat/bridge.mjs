@@ -46,7 +46,7 @@ export function chatHandler(run = runMuse) {
     const origin = request.headers.origin;
     const headers = { "content-type": "application/json", "cache-control": "no-store", "vary": "Origin", "x-content-type-options": "nosniff" };
     const reply = (status, body) => { response.writeHead(status, headers); response.end(JSON.stringify(body)); };
-    if (!allowedOrigins.has(origin)) { reply(403, { error: "origin-denied" }); return; }
+    if (origin === "null" || !allowedOrigins.has(origin)) { reply(403, { error: "origin-denied" }); return; }
     headers["access-control-allow-origin"] = origin;
     // Simple POST (text/plain) needs no preflight or alternative browser operation.
     if (request.method !== "POST" || request.url !== "/v1/chat/muse") { reply(404, { error: "not-found" }); return; }
