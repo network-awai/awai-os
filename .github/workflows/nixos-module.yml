@@ -78,5 +78,10 @@ jobs:
           cat "$storage_check/unit-tests.txt" "$storage_check/crash-tests.edn" "$storage_check/pack-crash-tests.edn"
           module_check=$(nix-build nixos/otehon/storage/module-check.nix --no-out-link)
           cat "$module_check"
+      - name: Test Otehon bot work bindings and deduplicated usage receipts
+        # Pure source checks only; no Muse, GitHub, Linear or live fleet calls.
+        run: |
+          fleet_check=$(nix-build nixos/otehon/bot-fleet/check.nix --no-out-link)
+          cat "$fleet_check/core-tests.txt" "$fleet_check/receipt-tests.txt"
       - name: Evaluate every Otehon profile, aarch64 and the x86_64 vm
         run: sh nixos/otehon/eval-profiles.sh .

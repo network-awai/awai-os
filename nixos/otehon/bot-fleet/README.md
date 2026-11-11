@@ -14,6 +14,7 @@ node persist.mjs NEW_CATALOG.json NEW_VERIFICATION_DIRECTORY/schedules.json NEW_
 bb -cp src test/bot_fleet/core_test.clj
 node --test receipt.test.mjs
 node receipt.mjs BINDING.json MUSE_EVENTS.jsonl NEW_RECEIPT.json
+nix-build check.nix --no-out-link
 ```
 
 Run from this directory. `verify-cron.mjs` uses existing `gh` authorization to
