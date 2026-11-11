@@ -70,6 +70,43 @@ a workload. Keep credentials and private data outside source and evidence.
 The workload, SLOs, resource ceilings and failure matrix must be fixed before
 the experiment, not selected retrospectively from a passing result.
 
+The candidate plan now pins the observed inventory and the actual source
+revisions. The profile source is a boot profile, the local Pack store is not a
+replicated encrypted service, PR #69 is a draft model, and PR #53 has no live
+model/guest proof. None fills a `:real-adapter` slot. `:operators`, the inventory
+age bound, independent identities/domains, guest digests/readbacks, per-provider
+resource enforcement, model/fixture digests, adapter readbacks and protocol
+evidence remain explicit unknowns until independently observed.
+
+Check an operator plan without contacting a provider:
+
+```sh
+bb scripts/otehon-c1/run_plan_test.clj
+bb scripts/otehon-c1/run_plan.clj scripts/otehon-c1/run-plan.edn \
+  docs/evidence/otehon-c1-run-plan-20261111/host-inventory.json
+```
+
+The checker joins the exact SHA-256 of the supplied inventory bytes, rejects
+stale/future/missing observations and mismatched aliases, requires distinct
+declared identities/domains, and lists missing inputs with owning issues.
+Each input is a regular non-symlink file of at most 64 KiB: exactly one EDN map
+and one JSON object. Extra forms/objects are refused. Resource ceilings apply
+to each provider: CPU in vCPUs, RAM/disk in bytes, network in bytes/second and
+deadline in milliseconds. Comparing with observed physical bounds does not
+reserve capacity or prove enforcement. Per-provider readback digests are
+separate required inputs; free space on the home filesystem does not establish
+the guest's usable storage.
+
+Exit 2 means invalid or incomplete inputs. Exit 0 means only that the supplied
+metadata is structurally complete. The checker does not authenticate that
+metadata, verify signatures or capabilities, prove physical independence,
+contact adapters, download models, or grant authority. Its report always sets
+`executable`, `execution-authorized` and `operational-ready` to false. Explicit
+test metadata may exercise completeness but cannot qualify a node. Artifact
+checksums here join operator evidence; they do not redefine canonical block CIDs.
+The actual candidate remains blocked. All checks run in the same separate
+Nix-pinned Otehon job; Native has no dependency on them.
+
 The cycle closes only when the same run/job/node/artifact identities connect
 the live consent, reservation, execution, result verification, durable storage
 and recovery evidence. The initial 24h soak is an experiment, not a claim of
