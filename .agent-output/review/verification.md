@@ -19,3 +19,22 @@ Images: desktop.png (seed diagram), dark.png (Yoru after synthetic assignment), 
 No broker/descriptor changes or production deployment. Existing 8901 preview is preserved; this worktree's HTTP preview uses 8902. Nix image hash placeholders inherited from AWAI-2791 remain outside this UI task.
 
 Runtime binding: issue 3be182f3-b833-46e9-8977-4ba30cbbea9d / thread 01a1c9f2-e2ba-79c2-a37f-d5c7c348a18a / base e2c3f6a. Provider OpenAI; model GPT-6, exact variant and reasoning setting unknown. Forecast and observed input/cache-read/cache-write/output/reasoning tokens unknown because complete issue-attributed telemetry is unavailable. No zero usage or individual velocity is inferred. Source/browser unit completed; merge, deployment, and physical-device milestones remain separate.
+
+## Profile ↔ circle follow-up
+
+Owner requested itonami bot profile mapping after the initial circle UX unit. An optional, unique `profileId` (`profile-id` in the .cljc twin) now links each local Bot to an itonami profile ID. IDs use the owning manifest's lowercase/digit/underscore/hyphen name rule and 64-character limit. One profile may belong to multiple circles. Clearing its reference preserves membership and role assignments.
+
+Bot Profiles offers a profile ID field, multiple circle checkboxes, and user-selected `itonami.edn` import. The importer bounds file size to 256KiB, checks itonami schema/runtime/ID, and keeps only ID, description, and skills. It does not persist the manifest or act on inference, authority, credentials, or capabilities. This is metadata import, not complete manifest/runtime validation. Connected Manimani agent names are never assumed to be itonami IDs.
+
+Each focused circle offers direct profile membership editing and shows the linked IDs. Removing direct membership preserves role assignments. Existing version-1 state remains compatible; there is no filesystem/runtime/store write or new network request.
+
+Follow-up verification:
+
+- Node tests: 61/61.
+- Otehon .cljc: `bb -cp nixos/otehon/soshiki/src:nixos/otehon/soshiki/test nixos/otehon/soshiki/test/soshiki/core_test.clj` — 13 tests, 87 assertions, no failures/errors.
+- File/kiosk and HTTP shell/link release builds successful, 0 Closure warnings (upstream JVM/Garden warnings remain).
+- Browser regressions from the prior unit passed again.
+- Synthetic profile UI checks: manual ID, multiple memberships, circle-side unlink/relink, EDN import, persistence/reload, duplicate ID rejection, reference unlink, rejection of non-itonami input. A private sentinel field in the input never appeared in persisted state. No uncaught exceptions.
+- Images: profile-circle.png and profile-bots.png. These use synthetic profiles and a software wallet; they do not establish connection to a live itonami process or modify the user's profile store.
+
+Run binding remains AWAI-2792 / 01a1c9f2-e2ba-79c2-a37f-d5c7c348a18a; follow-up base d3c6c04. Provider OpenAI / GPT-6 exact variant and reasoning setting unknown. Forecast and observed token fields remain unknown for lack of complete attributed telemetry; no zero or velocity inferred.

@@ -220,3 +220,28 @@ test("the soshiki dapp stays local-only in the catalog", async () => {
   const docks = catalog.dapps.map((dapp) => dapp.dock);
   assert.equal(new Set(docks).size, docks.length);
 });
+
+
+test("itonami profile binding validates IDs, rejects duplicates, and preserves membership on reload", () => {
+  let state = seedState();
+  const bot = state.bots[0];
+  for (const profileId of ["../secret", "Bad", "", "a".repeat(65), 12]) {
+    assert.equal(updateBot(state, { id: bot.id, profileId }).error, "bad-profile");
+    assert.equal(addBot(state, { name: "Other", profileId }).error, "bad-profile");
+  }
+  state = updateBot(state, { id: bot.id, profileId: "manimani", circleIds: ["c2", "c3", "c2"] }).state;
+  assert.deepEqual(state.bots[0].circleIds, ["c2", "c3"]);
+  assert.equal(addBot(state, { name: "Other", profileId: "manimani" }).error, "profile-exists");
+  state = addBot(state, { name: "Other", profileId: "notes" }).state;
+  assert.equal(updateBot(state, { id: state.bots[1].id, profileId: "manimani" }).error, "profile-exists");
+  assert.equal(updateBot(state, { id: bot.id, circleIds: ["missing"] }).error, "unknown-circle");
+  let saved;
+  saveSoshiki({ setItem: (_, value) => { saved = value; } }, state);
+  state = loadSoshiki({ getItem: () => saved });
+  assert.equal(state.bots[0].profileId, "manimani");
+  assert.deepEqual(state.bots[0].circleIds, ["c2", "c3"]);
+  state = updateBot(state, { id: bot.id, profileId: null }).state;
+  assert.equal(state.bots[0].profileId, undefined);
+  assert.deepEqual(state.bots[0].circleIds, ["c2", "c3"]);
+  assert.equal(state.roles.find(role => role.name === "見守り").assignee.name, "Manimani");
+});

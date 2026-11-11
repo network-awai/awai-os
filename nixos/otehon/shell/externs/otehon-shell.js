@@ -408,3 +408,7 @@ Object.prototype.stopPropagation;
 Object.prototype.preventScroll;
 Object.prototype.block;
 Object.prototype.querySelector;
+Object.prototype.profileId;
+Object.prototype.files;
+Object.prototype.checked;
+Object.prototype.file;

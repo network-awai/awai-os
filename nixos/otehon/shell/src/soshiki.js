@@ -306,10 +306,19 @@ export function removeRole(state, id) {
   };
 }
 
+function profileError(state, profileId, botId) {
+  if (profileId == null) return null;
+  if (typeof profileId !== "string" || !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(profileId)) return "bad-profile";
+  if (state.bots.some((bot) => bot.id !== botId && bot.profileId === profileId)) return "profile-exists";
+  return null;
+}
+
 export function addBot(
   state,
-  { name, purpose = "", skills = [], circleIds = [], roleIds = [], approval = "ask" },
+  { name, purpose = "", skills = [], circleIds = [], roleIds = [], approval = "ask", profileId },
 ) {
+  const failedProfile = profileError(state, profileId);
+  if (failedProfile) return { error: failedProfile };
   if (nameError(name)) return { error: "bad-name" };
   if (purposeError(purpose, { required: false })) return { error: "bad-purpose" };
   if (listError(skills)) return { error: "bad-list" };
@@ -335,16 +344,23 @@ export function addBot(
           circleIds: [...new Set(circleIds)],
           roleIds: [...new Set(roleIds)],
           approval,
+          ...(profileId == null ? {} : { profileId }),
         },
       ],
     },
   };
 }
 
-export function updateBot(state, { id, purpose, skills, approval, circleIds }) {
+export function updateBot(state, { id, purpose, skills, approval, circleIds, profileId }) {
   const bot = state.bots.find((item) => item.id === id) ?? null;
   if (!bot) return { error: "unknown-bot" };
+  const failedProfile = profileError(state, profileId, id);
+  if (failedProfile) return { error: failedProfile };
   const next = { ...bot };
+  if (profileId !== undefined) {
+    if (profileId === null) delete next.profileId;
+    else next.profileId = profileId;
+  }
   if (purpose !== undefined) {
     if (purposeError(purpose, { required: false })) return { error: "bad-purpose" };
     next.purpose = cleanLine(purpose);

@@ -1,5 +1,6 @@
 (ns shell.soshiki
   (:require [clojure.string]
+            [cljs.reader :as reader]
             ["react" :refer [useEffect useMemo useState]]
             [shell.manimani :refer [use-manimani]]
             ["../soshiki.js" :refer [addBot addCircle addProposal addRole assignRole
@@ -15,7 +16,9 @@
    #js {:id "size" :label "サイズ" :sub "Size"}])
 
 (def error-text
-  {"bad-name" "名前を1〜80文字で入れてください。"
+  {"bad-profile" "profile ID は小文字英数字・_・- の1〜64文字で指定してください。"
+   "profile-exists" "この itonami profile は別のBotに対応づけられています。"
+   "bad-name" "名前を1〜80文字で入れてください。"
    "bad-purpose" "目的を確認してください（サークル・ロールは必須、280文字まで）。"
    "bad-list" "箇条書きは12件まで、1件80文字までです。"
    "bad-metric" "メトリクスは80文字までです。"
@@ -279,6 +282,84 @@
                                  :on-click #(set-error (apply-fn (removeCircle state (.-id circle))))}
          "削除"]]])))
 
+(defn circle-profile-links [state circle apply-fn set-error]
+  (let [[bot-id set-bot-id] (useState "")
+        members (filter #(.includes (.-circleIds %) (.-id circle)) (.-bots state))
+        candidates (filter #(and (.-profileId %) (not (.includes (.-circleIds %) (.-id circle)))) (.-bots state))]
+    [:details.soshiki-profile-links
+     [:summary (str "Bot profile とサークルを対応づける · " (count members))]
+     [:p.muted "この端末の組織情報として保存します。profile の実行設定・権限は変更しません。"]
+     [:ul.soshiki-bots
+      (map (fn [bot]
+             [:li {:key (.-id bot)}
+              [:strong (.-name bot)]
+              [:p.muted (if (.-profileId bot) (str "itonami / " (.-profileId bot)) "itonami profile 未設定")]
+              [:button.soshiki-quiet {:type "button" :aria-label (str (.-name bot) "の直接所属を解除")
+                                      :on-click #(set-error (apply-fn (updateBot state #js {:id (.-id bot)
+                                        :circleIds (.filter (.-circleIds bot) (fn [id] (not= id (.-id circle))))})))} "直接所属を解除"]]) members)]
+     [:p.muted "直接所属を解除しても、担当しているロールは保持されます。"]
+     (if (seq candidates)
+       [:div.soshiki-row
+        [:select {:aria-label "サークルに対応づけるBot profile" :value bot-id
+                  :on-change #(set-bot-id (.. % -target -value))}
+         [:option {:value ""} "itonami profile を選ぶ"]
+         (map (fn [bot] [:option {:key (.-id bot) :value (.-id bot)}
+                         (str (.-name bot) " / " (.-profileId bot))]) candidates)]
+        [:button {:type "button" :disabled (not (some #(= bot-id (.-id %)) candidates))
+                  :on-click (fn []
+                    (when-let [bot (some #(when (= bot-id (.-id %)) %) candidates)]
+                      (set-error (apply-fn (updateBot state #js {:id bot-id
+                        :circleIds (.concat (.-circleIds bot) #js [(.-id circle)])})))
+                      (set-bot-id "")))} "このサークルに対応づける"]]
+       [:p.muted "未所属の profile はありません。Botタブで登録・ID設定ができます。"])]))
+
+(defn profile-import [state apply-fn]
+  (let [[draft set-draft] (useState nil)
+        [error set-error] (useState nil)
+        [circle-id set-circle-id] (useState "")]
+    [:section.soshiki-profile-links
+     [:h2 "itonami profile を取り込む"]
+     [:p.muted "itonami.edn を選ぶと、ID・説明・スキルだけを読み込みます。実行設定や認証情報は保存しません。"]
+     [:input {:type "file" :accept ".edn" :aria-label "itonami.edn を選ぶ"
+              :on-change (fn [event]
+                (set-draft nil) (set-error nil)
+                (when-let [file (aget (.. event -target -files) 0)]
+                  (if (> (.-size file) 262144)
+                    (set-error "ファイルは256KB以下で指定してください。")
+                    (-> (.text file)
+                        (.then (fn [text]
+                          (try
+                            (let [manifest (reader/read-string text)
+                                  id (:profile/id manifest)
+                                  description (:profile/description manifest)
+                                  skills (get-in manifest [:bundle :skills])]
+                              (if (and (map? manifest)
+                                       (contains? #{"cloud.itonami.profile.v1" "cloud.itonami.profile.v2"} (:itonami/schema manifest))
+                                       (= :itonami-agent (get-in manifest [:runtime :engine]))
+                                       (string? id) (re-matches #"^[a-z0-9][a-z0-9_-]{0,63}$" id))
+                                (set-draft {:id id :purpose (if (string? description) (subs description 0 (min 280 (count description))) "")
+                                            :skills (if (and (vector? skills) (every? string? skills))
+                                                      (vec (take 12 (map #(subs % 0 (min 80 (count %))) (remove empty? skills)))) [])})
+                                (set-error "itonami-agent の profile ID / schema / runtime を確認してください。")))
+                            (catch :default _ (set-error "itonami.edn を読み取れませんでした。")))))
+                        (.catch (fn [_] (set-error "ファイルを読み取れませんでした。")))))))}]
+     (when error [:p.net-error {:role "alert"} error])
+     (when draft
+       [:div.soshiki-form
+        [:strong (str "itonami / " (:id draft))]
+        [:p.muted (:purpose draft)]
+        [field "最初に対応づけるサークル"
+         [:select {:aria-label "取り込むprofileのサークル" :value circle-id
+                   :on-change #(set-circle-id (.. % -target -value))}
+          [:option {:value ""} "あとで指定"]
+          (map (fn [circle] [:option {:key (.-id circle) :value (.-id circle)} (.-name circle)]) (.-circles state))]]
+        [:button.primary {:type "button" :on-click (fn []
+          (let [failed (apply-fn (addBot state #js {:name (:id draft) :profileId (:id draft)
+                           :purpose (:purpose draft) :skills (clj->js (:skills draft))
+                           :circleIds (if (empty? circle-id) #js [] #js [circle-id]) :approval "ask"}))]
+            (set-error (when failed (or (get error-text failed) "登録できませんでした。")))
+            (when-not failed (set-draft nil))))} "Bot profile を登録"]])]))
+
 (defn chart-view [state apply-fn set-error focus-id on-focus query highlight selected-role-id on-select-role bot-names me]
   (let [[view set-view] (useState "chart")
         roots (childrenOf state nil)
@@ -322,6 +403,7 @@
                                              :on-click #(on-focus (.-id child))}
                  (str (.-name child) " ›")])
               (filter #(branch-matches state % query highlight) (childrenOf state (.-id focus))))]
+        [:f> circle-profile-links state focus apply-fn set-error]
         [:p.muted {:role "status"} (str (count roles) " ロール")]
         [:div.soshiki-explorer-layout {:data-detail (boolean selected)}
          [:div.soshiki-map-stage
@@ -578,13 +660,16 @@
                       (let [edit (or (get edits (.-id bot))
                                      {:purpose (.-purpose bot)
                                       :skills (.join (.-skills bot) ", ")
-                                      :approval (.-approval bot)})
+                                      :approval (.-approval bot)
+                                      :profile-id (or (.-profileId bot) "")
+                                      :circle-ids (set (.-circleIds bot))})
                             failed (apply-fn (updateBot state #js {:id (.-id bot)
                                                                     :purpose (or (:purpose edit)
                                                                                  (.-purpose bot))
                                                                     :skills (parseList (or (:skills edit) ""))
-                                                                    :approval (or (:approval edit)
-                                                                                  (.-approval bot))}))]
+                                                                    :approval (or (:approval edit) (.-approval bot))
+                                                                    :profileId (when-not (empty? (:profile-id edit)) (:profile-id edit))
+                                                                    :circleIds (clj->js (vec (:circle-ids edit)))}))]
                         (set-error failed)
                         (when-not failed
                           (set-edits (fn [current] (assoc current (.-id bot) nil))))))]
@@ -610,6 +695,7 @@
                                                                  :approval (if (= "auto" (.-approval agent))
                                                                              "auto" "ask")})))}
                       "プロフィールを作る"]]]) candidates)]])
+       [:f> profile-import state apply-fn]
        [:h2 "Botプロフィール"]
        (when (zero? (.-length (.-bots state)))
          [:p.muted "Botはまだ登録されていません。"])
@@ -618,7 +704,9 @@
                 (let [edit (or (get edits (.-id bot))
                                {:purpose (.-purpose bot)
                                 :skills (.join (.-skills bot) ", ")
-                                :approval (.-approval bot)})]
+                                :approval (.-approval bot)
+                                      :profile-id (or (.-profileId bot) "")
+                                      :circle-ids (set (.-circleIds bot))})]
                   [:li.soshiki-bot {:key (.-id bot) :data-bot (.-id bot)}
                    [:div.soshiki-circle-head
                     [:strong (.-name bot)]
@@ -632,7 +720,27 @@
                                                  (.join (.map (.-circleIds bot) circle-name) " / ") "—"))]
                    [:p.muted (str "ロール: " (if (pos? (.-length (.-roleIds bot)))
                                                (.join (.map (.-roleIds bot) role-name) " / ") "—"))]
+                   [:p.muted (if (.-profileId bot) (str "itonami / " (.-profileId bot)) "itonami profile 未設定")]
                    [:div.soshiki-form
+                    [field "itonami profile ID（空欄で対応解除）"
+                     [:input {:aria-label (str (.-name bot) "のitonami profile ID")
+                              :value (:profile-id edit)
+                              :placeholder "例: manimani"
+                              :on-change #(set-edits (fn [current] (assoc current (.-id bot)
+                                                                        (assoc edit :profile-id (.. % -target -value)))))}]]
+                    [:fieldset.soshiki-membership
+                     [:legend "対応づけるサークル（複数選択可）"]
+                     (map (fn [circle]
+                            [:label {:key (.-id circle)}
+                             [:input {:type "checkbox" :checked (contains? (:circle-ids edit) (.-id circle))
+                                      :aria-label (str (.-name bot) "の所属: " (.-name circle))
+                                      :on-change (fn [event]
+                                        (let [checked (.. event -target -checked)]
+                                          (set-edits (fn [current]
+                                            (assoc current (.-id bot) (update edit :circle-ids
+                                              (if checked conj disj) (.-id circle)))))))}]
+                             (.-name circle)]) (.-circles state))]
+                    [:p.muted "IDは手動の参照、または取り込んだメタデータです。稼働・接続の確認や実行許可を表しません。"]
                     [field "目的"
                      [:input {:aria-label (str (.-name bot) "の目的")
                                :value (or (:purpose edit) "")
