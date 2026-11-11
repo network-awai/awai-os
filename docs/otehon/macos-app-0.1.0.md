@@ -41,7 +41,7 @@ QEMU/HVF 上で NixOS image を動かす interim 経路 (AWAI-2784)。
 ```
 ./nixos/otehon/macos-app/install-image.sh <out-dir>/otehon-desktop.qcow2 0.7.0
 ./nixos/otehon/macos-app/assemble-app.sh <dest-dir> 0.7.0
-open "<dest-dir>/Otehon Desktop.app"
+open "<dest-dir>/Awai Desktop.app"
 ```
 
 - install は sha256 を検証して `~/Library/Application Support/Otehon/`

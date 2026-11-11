@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
   <key>CFBundleName</key>
-  <string>Otehon Desktop</string>
+  <string>Awai Desktop</string>
   <key>CFBundleDisplayName</key>
-  <string>Otehon Desktop</string>
+  <string>Awai Desktop</string>
   <key>CFBundleIdentifier</key>
   <string>cloud.awai.otehon-desktop</string>
   <key>CFBundleVersion</key>
