@@ -7,6 +7,11 @@ const PASSPORT_ORIGIN = "https://mainnet.optimism.io";
 export function osOperations(relayOrigin) {
   return [
     {
+      capability: "awai-muse-chat", service: "muse-conversation-host", operation: "send-message",
+      consent: "each-operation", "data-categories": ["user-prompt", "conversation-history"],
+      endpoint: { origin: "https://127.0.0.1:8778", routes: [{ method: "POST", path: "/v1/chat/muse", "query-params": [] }] },
+    },
+    {
       capability: "awai-profile-catalog", service: "local-itonami-profiles", operation: "list-profiles",
       consent: "each-operation", "data-categories": ["profile-id", "profile-description", "skill-names"],
       endpoint: { origin: "https://127.0.0.1:8777", routes: [{ method: "GET", path: "/v1/itonami/profiles", "query-params": [] }] },

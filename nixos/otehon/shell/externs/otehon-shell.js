@@ -423,3 +423,7 @@ Object.prototype.getFileHandle;
 Object.prototype.getFile;
 Object.prototype.oncomplete;
 Object.prototype.onabort;
+Object.prototype.usage;
+Object.prototype.model;
+Object.prototype.provider;
+Object.prototype.content;
