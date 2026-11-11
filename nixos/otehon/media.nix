@@ -35,7 +35,12 @@ in
   config.fileSystems.${modelsDir} = lib.mkIf config.otehon.modelShare {
     device = "otehon-models";
     fsType = "virtiofs";
-    options = [ "ro" "nofail" "x-systemd.device-timeout=5s" ];
+    # Automount: weights arrive on demand, and a machine without the share
+    # boots with no failed unit (the health gate and update settle count
+    # every failed unit, so a boot-time mount failure would roll back every
+    # trial update). First access attempts the mount within the device
+    # timeout; media-service already reports images unavailable then.
+    options = [ "ro" "nofail" "x-systemd.automount" "x-systemd.device-timeout=5s" ];
   };
 
   config.systemd.services.otehon-media = {
