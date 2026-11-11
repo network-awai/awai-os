@@ -28,7 +28,15 @@
     (is (= "p" (get-in (fleet/bind-run b binding) [:binding :project-id])))
     (is (= "issue-outside-project" (:error (fleet/bind-run b (assoc binding :issue-id "AWAI-2")))))
     (is (= "incomplete-binding" (:error (fleet/bind-run b (dissoc binding :acceptance-unit)))))
+    (is (= "issue-already-closed" (:error (fleet/bind-run
+                                           (assoc-in b [:linear :issues 0 :status] "Done") binding))))
     (is (= "linear-unresolved" (:error (fleet/bind-run (bot []) binding))))))
+
+(deftest renames-need-explicit-evidence
+  (let [renamed (assoc project :name "cloud-itonami/app-itonami-a")
+        alias {:source "cloud-itonami/a" :repository (:name renamed) :githubId 123}]
+    (is (= "needs-reconciliation" (:state (fleet/linear-binding "cloud-itonami/a" [renamed] [issue]))))
+    (is (= "bound" (:state (fleet/linear-binding "cloud-itonami/a" [renamed] [issue] {(:source alias) alias}))))))
 
 (let [result (run-tests 'bot-fleet.core-test)]
   (when (pos? (+ (:fail result) (:error result))) (System/exit 1)))

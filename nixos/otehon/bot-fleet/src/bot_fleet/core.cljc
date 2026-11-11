@@ -14,17 +14,20 @@
          (string? (:checksum p))
          (boolean (re-matches #"sha256-tree:[0-9a-f]{64}" (:checksum p))))))
 
-(defn linear-binding [repository projects issues]
+(defn linear-binding [repository projects issues & [aliases]]
   ;; Exact repository names only. Renames and ambiguous matches need reconciliation.
-  (let [matches (filter #(= repository (:name %)) projects)
+  (let [alias (get aliases repository)
+        canonical (or (:repository alias) repository)
+        matches (filter #(= canonical (:name %)) projects)
         project (when (= 1 (count matches)) (first matches))
         initiative (when (= 1 (count (:initiatives project))) (first (:initiatives project)))
         candidates (filter #(= (:uuid project) (:projectId %)) issues)]
     {:state (if (and project initiative) "bound" "needs-reconciliation")
+     :source-repository repository :repository canonical :alias alias
      :project project :initiative initiative
      :issues (if project (vec candidates) [])}))
 
-(defn catalog [manifests projects issues registry-revision]
+(defn catalog [manifests projects issues registry-revision & [aliases]]
   (when-not (and (string? registry-revision) (re-matches #"[0-9a-f]{40}" registry-revision))
     (throw (ex-info "immutable registry revision required" {})))
   (when-not (every? pinned? manifests)
@@ -43,7 +46,7 @@
                        {:id (str "profile:" id) :name id :purpose (:description m)
                         :skills [] :circle-ids [(circle-id repo)] :role-ids [(str "role:" id)]
                         :approval "ask" :profile (:profile m)
-                        :linear (linear-binding repo projects issues)
+                        :linear (linear-binding repo projects issues aliases)
                         :schedule {:state "unresolved" :enabled false
                                    :source (first (filter #(= "cron/jobs.json" (:path %))
                                                           (get-in m [:profile :files])))}
@@ -65,6 +68,8 @@
   (cond
     (not= "bound" (get-in bot [:linear :state])) {:error "linear-unresolved"}
     (not (some #(= issue-id (:id %)) (get-in bot [:linear :issues]))) {:error "issue-outside-project"}
+    (some #(and (= issue-id (:id %)) (contains? #{"Done" "Canceled" "Cancelled" "Duplicate"} (:status %)))
+          (get-in bot [:linear :issues])) {:error "issue-already-closed"}
     (not (and (string? run-id) (not (str/blank? run-id))
               (string? revision) (re-matches #"[0-9a-f]{40}" revision)
               (string? acceptance-unit) (not (str/blank? acceptance-unit)))) {:error "incomplete-binding"}

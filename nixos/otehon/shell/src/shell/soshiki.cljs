@@ -1,5 +1,6 @@
 (ns shell.soshiki
-  (:require ["react" :refer [useEffect useMemo useState]]
+  (:require ["react" :refer [useEffect useMemo useRef useState]]
+            ["../soshiki-fleet.js" :refer [importFleet]]
             [shell.manimani :refer [use-manimani]]
             ["../soshiki.js" :refer [addBot addCircle addProposal addRole assignRole
                                      childrenOf circlePath computeSize decideProposal
@@ -681,6 +682,31 @@
                        ""
                        (str " · 充足率 " (js/Math.round (* 100 (.-fillRate row))) "%")))]]) (.-rows size))]]))
 
+(defn fleet-import [state apply-fn]
+  (let [[message set-message] (useState "")
+        current (useRef state)]
+    (set! (.-current current) state)
+    [:div.soshiki-fleet-import
+     [:label "Bot群の登録ファイルを取り込む"
+      [:input {:type "file" :accept ".json,application/json" :aria-label "Bot群の登録ファイル"
+               :on-change
+               (fn [event]
+                 (when-let [file (aget (.. event -target -files) 0)]
+                   (if (> (.-size file) 8388608)
+                     (set-message "ファイルは8 MiBまでです。")
+                     (-> (.text file)
+                         (.then (fn [text]
+                                  (try
+                                    (let [result (importFleet (.-current current) (js/JSON.parse text))
+                                          error (apply-fn result)]
+                                      (set-message (if error
+                                                     "取り込めませんでした。形式または既存の登録との競合を確認してください。"
+                                                     "Circle・ロール・Botを登録しました。Botの実行は開始していません。")))
+                                    (catch :default _ (set-message "登録ファイルを確認してください。")))))
+                         (.catch (fn [_] (set-message "ファイルを読み込めませんでした。")))))))}]]
+     [:p.muted "現在の登録を残して追加します。実行許可・cronの有効化は別途設定します。"]
+     (when (seq message) [:p {:role "status"} message])]))
+
 (defn soshiki [account score on-account]
   (let [[state apply-fn save-failed] (use-soshiki)
         [tab set-tab] (useState "chart")
@@ -693,6 +719,7 @@
        [:div.net-body.soshiki-body
         [:h1 "Soshiki"]
         [:p.muted "サークルとロールで組織を作り、Botにプロフィールを持たせる。すべてこのデバイスに保存します。"]
+        [:f> fleet-import state apply-fn]
         (when save-failed
           [:p.net-error "保存できませんでした。この画面の変更はこの表示の間だけ有効です。"])
         [:div.soshiki-tabs {:role "tablist" :aria-label "Soshiki views"}
