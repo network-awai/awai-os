@@ -10,6 +10,8 @@ import {
   blankState,
   circlePath,
   computeSize,
+  myRoles,
+  personNameForAccount,
   decideProposal,
   loadSoshiki,
   moveCircle,
@@ -152,6 +154,25 @@ test("circlePath returns the root-to-circle breadcrumb for zoom", () => {
   assert.deepEqual(circlePath(state, grand).map((item) => item.name), ["全体", "子", "孫"]);
   assert.deepEqual(circlePath(state, general).map((item) => item.name), ["全体"]);
   assert.deepEqual(circlePath(state, "c9"), []);
+});
+
+test("the signed-in person has a readable name and a My Roles list", () => {
+  assert.equal(personNameForAccount(null), null);
+  assert.equal(personNameForAccount(""), null);
+  assert.equal(personNameForAccount("did:key:zShort"), "did:key:zShort");
+  const long = "did:pkh:eip155:1:0x0000000000000000000000000000000000000001";
+  assert.equal(personNameForAccount(long), `${long.slice(0, 14)}…${long.slice(-8)}`);
+  let state = blankState();
+  state = circle(state, "全体");
+  const general = state.circles[0].id;
+  const me = personNameForAccount(long);
+  state = addRole(state, { circleId: general, name: "記録係", purpose: "記録する", assignee: { kind: "person", name: me } }).state;
+  state = addRole(state, { circleId: general, name: "見守り", purpose: "見守る", assignee: { kind: "bot", name: "Manimani" } }).state;
+  const mine = myRoles(state, me);
+  assert.equal(mine.length, 1);
+  assert.equal(mine[0].name, "記録係");
+  assert.deepEqual(myRoles(state, "someone-else"), []);
+  assert.deepEqual(myRoles(state, null), []);
 });
 
 test("parseList splits commas, Japanese commas and lines", () => {

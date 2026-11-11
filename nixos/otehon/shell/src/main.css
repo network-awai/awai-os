@@ -921,3 +921,20 @@ time {
 }
 .soshiki-detail p { margin: 6px 0; }
 .soshiki-detail strong { display: flex; align-items: center; gap: 8px; }
+
+/* Soshiki owner: the signed-in itonami profile and their roles. */
+.soshiki-me {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  border-radius: 12px;
+  background: var(--surface-low);
+  padding: 12px 14px;
+  margin-top: 12px;
+  font-size: 13px;
+}
+.soshiki-me div { display: flex; flex-direction: column; gap: 2px; flex: 1 1 180px; min-width: 0; }
+.soshiki-me strong { overflow-wrap: break-word; }
+.soshiki-me .muted { font-size: 12px; }
+.soshiki-me button { margin-left: auto; flex: none; padding: 8px 14px; border-radius: 8px; font-size: 13px; }

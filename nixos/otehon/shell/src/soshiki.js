@@ -35,6 +35,20 @@ function listError(items) {
   return null;
 }
 
+// The signed-in person, shown as the owner in the chart. Same shortening
+// as the shell sidebar. Null when signed out.
+export function personNameForAccount(accountDid) {
+  const did = cleanLine(accountDid);
+  if (!did) return null;
+  return did.length > 26 ? `${did.slice(0, 14)}…${did.slice(-8)}` : did;
+}
+
+// Holaspirit-style "My Roles": roles held by the named person.
+export function myRoles(state, personName) {
+  if (!personName) return [];
+  return state.roles.filter((role) => role.assignee?.kind === "person" && role.assignee.name === personName);
+}
+
 // "a, b, c" -> ["a", "b", "c"]. Used by the role/bot forms.
 export function parseList(value) {
   if (Array.isArray(value)) return value.map((item) => cleanLine(item)).filter(Boolean);

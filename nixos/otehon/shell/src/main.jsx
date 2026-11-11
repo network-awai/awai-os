@@ -497,7 +497,7 @@ function Shell({ did, account, proofs, score, broker, zenoh, matter, onProof, on
   } else if (context === "display") {
     body = <DisplayPanel />;
   } else if (context === "soshiki") {
-    body = <Soshiki />;
+    body = <Soshiki account={account} score={score} onAccount={openAccount} />;
   } else if (dapp && score < minimum) {
     body = <Locked dapp={dapp} minimum={minimum} score={score} onRaise={openAccount} />;
   } else {
