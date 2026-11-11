@@ -4,8 +4,13 @@ import { build } from "esbuild";
 import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { clientRuntimeConnectSrc } from "./vendor/kotoba-client-runtime.js";
 import { osOperations, phoneOperations, runtimeDescriptor } from "./src/runtime.js";
+import { scriptSrc, styleSrc } from "./src/csp.js";
 
 const relayOrigin = process.env.RELAY_ORIGIN ?? "https://relay.awai.network";
+// OTEHON_HTTP=1 builds the shell for the loopback preview server instead of
+// the file:// kiosk. The http output must never ship in the OS image: its
+// script/style sources allow 'self' so the page runs over http.
+const cspMode = process.env.OTEHON_HTTP === "1" ? "http" : "file";
 const define = {
   "process.env.NODE_ENV": '"production"',
   RELAY_ORIGIN: JSON.stringify(relayOrigin),
@@ -27,7 +32,13 @@ async function page({ source, html, outdir, operations, appOrigins }) {
   const capabilities = [...new Set(operations.map((operation) => operation.capability))];
   const connect = clientRuntimeConnectSrc(runtimeDescriptor("index.html", operations), capabilities, [], appOrigins);
   const template = await readFile(html, "utf8");
-  await writeFile(`${outdir}/index.html`, template.replace("__CONNECT_SRC__", connect));
+  await writeFile(
+    `${outdir}/index.html`,
+    template
+      .replace("__CONNECT_SRC__", connect)
+      .replace("__SCRIPT_SRC__", scriptSrc(cspMode))
+      .replace("__STYLE_SRC__", styleSrc(cspMode)),
+  );
 }
 
 await page({
