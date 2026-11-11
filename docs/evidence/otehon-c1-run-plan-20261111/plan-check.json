@@ -1,0 +1,68 @@
+{
+  "inventory-sha256" : "68083f5d85ff8f97b844c934b516790a8c8a1d323e695fd8bbde85369f23d194",
+  "schema" : "awai.otehon.c1-plan-check/1",
+  "evidence-class" : "operator-input-completeness-only",
+  "checked-at" : "2026-11-11T02:41:06.702613Z",
+  "operational-ready" : false,
+  "executable" : false,
+  "checks" : [ {
+    "id" : "plan-and-source",
+    "owner-issue" : "AWAI-2773",
+    "status" : "complete",
+    "missing-or-invalid" : [ ]
+  }, {
+    "id" : "host-observation",
+    "owner-issue" : "AWAI-2773",
+    "status" : "blocked",
+    "missing-or-invalid" : [ "inventory-age-and-clock" ]
+  }, {
+    "id" : "independent-nodes",
+    "owner-issue" : "AWAI-2773",
+    "status" : "blocked",
+    "missing-or-invalid" : [ "distinct-verified-identities", "distinct-failure-domains" ]
+  }, {
+    "id" : "dedicated-guests",
+    "owner-issue" : "AWAI-2773",
+    "status" : "blocked",
+    "missing-or-invalid" : [ "guest-digests", "guest-readbacks" ]
+  }, {
+    "id" : "resources",
+    "owner-issue" : "AWAI-2773",
+    "status" : "blocked",
+    "missing-or-invalid" : [ "positive-per-provider-ceilings-within-observed-physical-bounds", "per-provider-enforcement-readbacks" ]
+  }, {
+    "id" : "operators",
+    "owner-issue" : "AWAI-94",
+    "status" : "blocked",
+    "missing-or-invalid" : [ "named-operators-and-reviewer" ]
+  }, {
+    "id" : "fixture-and-artifacts",
+    "owner-issue" : "AWAI-2775",
+    "status" : "blocked",
+    "missing-or-invalid" : [ "public-fixture-input-digest", "quality-contract", "artifact-digests", "model-revision" ]
+  }, {
+    "id" : "contribution-adapters",
+    "owner-issue" : "AWAI-2774",
+    "status" : "blocked",
+    "missing-or-invalid" : [ "real-consent-revocation-reservation-fence-oci-witness-readbacks" ]
+  }, {
+    "id" : "inference-adapter",
+    "owner-issue" : "AWAI-2775",
+    "status" : "blocked",
+    "missing-or-invalid" : [ "real-authenticated-inference-readback" ]
+  }, {
+    "id" : "storage-adapters",
+    "owner-issue" : "AWAI-2776",
+    "status" : "blocked",
+    "missing-or-invalid" : [ "real-encrypted-storage-key-custody-backup-readbacks" ]
+  }, {
+    "id" : "experiment-protocol",
+    "owner-issue" : "AWAI-2777",
+    "status" : "blocked",
+    "missing-or-invalid" : [ "success-rate-min", "predeclared-slo-bounds", "protocol-evidence-digest" ]
+  } ],
+  "execution-authorized" : false,
+  "blocker-count" : 10,
+  "status" : "blocked",
+  "limits" : [ "Complete metadata does not verify truth, signatures, permissions, independent hardware or service readiness.", "Physical bounds are only upper bounds; reservations and enforced resource limits remain separate.", "Draft/source pins and fixture results cannot substitute for real adapter readbacks.", "This tool never contacts providers or starts guests, workloads, containers or services." ]
+}
