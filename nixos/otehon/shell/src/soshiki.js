@@ -131,6 +131,20 @@ export function childrenOf(state, parentId) {
   return state.circles.filter((circle) => circle.parentId === parentId);
 }
 
+// Root-to-circle breadcrumb for the zoomable chart. Unknown ids give [].
+export function circlePath(state, id) {
+  const byId = new Map(state.circles.map((circle) => [circle.id, circle]));
+  const path = [];
+  let current = byId.get(id) ?? null;
+  let guard = 0;
+  while (current && guard <= state.circles.length) {
+    path.unshift(current);
+    current = current.parentId ? (byId.get(current.parentId) ?? null) : null;
+    guard += 1;
+  }
+  return current ? [] : path;
+}
+
 export function rolesOf(state, circleId) {
   return state.roles.filter((role) => role.circleId === circleId);
 }

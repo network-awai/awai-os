@@ -8,6 +8,7 @@ import {
   addRole,
   assignRole,
   blankState,
+  circlePath,
   computeSize,
   decideProposal,
   loadSoshiki,
@@ -138,6 +139,19 @@ test("size rows carry depth, fill rate and subtree sums", () => {
   const kid = size.rows.find((item) => item.id === child);
   assert.equal(kid.depth, 1);
   assert.equal(kid.fillRate, 0);
+});
+
+test("circlePath returns the root-to-circle breadcrumb for zoom", () => {
+  let state = blankState();
+  state = circle(state, "全体");
+  const general = state.circles[0].id;
+  state = circle(state, "子", "目的", general);
+  const child = state.circles.find((item) => item.name === "子").id;
+  state = circle(state, "孫", "目的", child);
+  const grand = state.circles.find((item) => item.name === "孫").id;
+  assert.deepEqual(circlePath(state, grand).map((item) => item.name), ["全体", "子", "孫"]);
+  assert.deepEqual(circlePath(state, general).map((item) => item.name), ["全体"]);
+  assert.deepEqual(circlePath(state, "c9"), []);
 });
 
 test("parseList splits commas, Japanese commas and lines", () => {
