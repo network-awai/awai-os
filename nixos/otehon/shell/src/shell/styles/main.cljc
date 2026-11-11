@@ -271,7 +271,7 @@
    [".theme-switcher button[aria-pressed=\"true\"]" {:background "var(--surface-selected)"
                                                       :font-weight 700}]
    [".setup" {:padding-top "64px"}]
-   [:.soshiki-body {:width "min(760px, 100%)"}]
+   [:.soshiki-body {:width "min(1120px, 100%)"}]
    [".soshiki-body h2" {:margin "22px 0 8px" :font-size "15px"}]
    [:.soshiki-tabs {:display "flex" :gap "8px" :margin "16px 0 4px"}]
    [:.soshiki-tab {:padding "8px 14px" :border-radius "10px" :background "var(--surface-raised)"
@@ -323,12 +323,32 @@
                           :align-items "center" :gap "8px" :font-size "12px"}]
    [".soshiki-meter-row .meter" {:margin "6px 0"}]
    [".soshiki-sizes .muted, .soshiki-bots .muted" {:font-size "12px"}]
+   [:.soshiki-explorer {:overflow-wrap "anywhere" :margin-top "16px" :padding "16px" :border-radius "20px" :background "var(--surface-low)"}]
+   [:.soshiki-explorer-head {:display "flex" :justify-content "space-between" :align-items "center" :flex-wrap "wrap" :gap "12px"}]
+   [:.soshiki-explorer-layout {:display "flex" :flex-wrap "wrap" :gap "16px" :align-items "flex-start"}]
+   [:.soshiki-map-stage {:flex "1 1 400px" :min-width 0}]
+   [:.soshiki-map {:display "block" :width "100%" :max-height "70vh" :overflow "visible"}]
+   [:.soshiki-map-boundary {:fill "color-mix(in srgb, var(--focus) 9%, var(--surface))" :stroke "color-mix(in srgb, var(--focus) 28%, var(--surface))" :stroke-width 2 :cursor "pointer"}]
+   [".soshiki-map-role circle" {:fill "var(--focus)" :stroke "var(--surface)" :stroke-width 3 :cursor "pointer"}]
+   [".soshiki-map-role[data-hl=\"open\"] circle" {:fill "var(--surface-raised)" :stroke "var(--focus)" :stroke-dasharray "5 4"}]
+   [".soshiki-map-role[data-hl=\"person\"] circle" {:fill "var(--success-text)"}]
+   [:.soshiki-map-label {:fill "var(--fg)" :text-anchor "middle" :dominant-baseline "middle" :pointer-events "none" :font-weight 600}]
+   [".soshiki-map-role:not([data-hl=\"open\"]) text" {:fill "var(--bg)"}]
+   [:.soshiki-map-sub {:font-weight 400}]
+   [".soshiki-map circle:hover, .soshiki-map circle:focus-visible, .soshiki-map-role[data-selected=\"true\"] circle" {:stroke "var(--fg)" :stroke-width 4 :outline "none"}]
+   [:.soshiki-inspector {:flex "1 1 260px" :min-width 0 :padding "16px" :border-radius "14px" :background "var(--surface)"}]
+   [".soshiki-inspector .soshiki-row" {:flex-wrap "wrap"}]
+   [".soshiki-inspector input" {:min-width 0 :width "100%"}]
+   [:.soshiki-empty {:padding "16px" :text-align "center" :color "var(--secondary-text)"}]
+   [:.soshiki-edit {:margin-top "24px" :border-top "1px solid var(--surface-selected)" :padding-top "16px"}]
+   [".soshiki-edit > summary" {:cursor "pointer" :font-weight 600 :padding "8px 0"}]
+   [".soshiki-legend-btn[aria-pressed=\"true\"]" {:background "var(--surface-selected)" :font-weight 600}]
    [:.soshiki-chartbar {:display "flex" :flex-direction "column" :gap "8px" :margin "12px 0 4px"}]
    [:.soshiki-search {:width "100%" :padding "10px 12px" :border-radius "10px"
                        :border "1px solid var(--surface-selected)" :background "var(--surface)"
                        :color "var(--fg)" :font "inherit" :font-size "13px"}]
    [:.soshiki-legend {:display "flex" :gap "6px" :flex-wrap "wrap"}]
-   [:.soshiki-legend-btn {:display "flex" :align-items "center" :gap "6px" :padding "6px 12px"
+   [:.soshiki-legend-btn {:max-width "100%" :text-align "left" :display "flex" :align-items "center" :gap "6px" :padding "6px 12px"
                            :border-radius "10px" :background "var(--surface-raised)" :font-size "12px"}]
    [".soshiki-legend-btn:hover" {:background "var(--surface-hover)"}]
    [".soshiki-legend-btn.active" {:background "var(--surface-selected)" :font-weight 600}]
@@ -342,29 +362,6 @@
    [:.soshiki-crumb-link {:background "transparent" :color "var(--focus)" :padding "2px 4px"
                            :border-radius "6px" :font-size "13px"}]
    [".soshiki-crumb-link:hover" {:background "var(--surface-raised)"}]
-   [:.soshiki-nest {:border-radius "12px" :background "var(--surface-low)" :padding "14px 16px"}]
-   [".soshiki-nest .soshiki-nest" {:background "var(--surface-raised)"}]
-   [".soshiki-nest .soshiki-nest .soshiki-nest" {:background "var(--surface-low)"}]
-   [".soshiki-nest .soshiki-nest .soshiki-nest .soshiki-nest" {:background "var(--surface-raised)"}]
-   [".soshiki-nest-head, .soshiki-nest-headtext" {:display "flex" :align-items "baseline"
-                                                   :justify-content "space-between" :gap "10px"
-                                                   :width "100%" :font-size "18px"}]
-   [".soshiki-nest-head" {:background "transparent" :color "inherit" :font "inherit"
-                           :text-align "left" :padding 0}]
-   [".soshiki-nest-head:hover strong" {:text-decoration "underline"}]
-   [".soshiki-nest[data-size=\"l\"] > .soshiki-nest-head strong, .soshiki-nest[data-size=\"l\"] > .soshiki-nest-headtext strong"
-    {:font-size "19px"}]
-   [".soshiki-nest[data-depth=\"1\"] > .soshiki-nest-head, .soshiki-nest[data-depth=\"1\"] > .soshiki-nest-headtext"
-    {:font-size "15px"}]
-   [:.soshiki-kids {:display "grid" :grid-template-columns "repeat(auto-fill, minmax(220px, 1fr))"
-                     :gap "10px" :margin-top "10px"}]
-   [:.soshiki-chips {:display "flex" :flex-wrap "wrap" :gap "6px" :margin-top "10px"}]
-   [:.soshiki-chip {:display "inline-flex" :align-items "center" :gap "6px" :padding "5px 12px"
-                     :border-radius "10px" :background "var(--surface-selected)" :font-size "13px"}]
-   [".soshiki-chip:hover" {:filter "brightness(1.08)"}]
-   [".soshiki-chip.active" {:box-shadow "0 0 0 2px var(--focus)"}]
-   [:.soshiki-members {:display "flex" :flex-wrap "wrap" :gap "8px 14px" :margin-top "10px"}]
-   [".soshiki-members li" {:display "flex" :align-items "center" :gap "6px" :font-size "13px"}]
    [:.soshiki-avatar {:display "grid" :place-items "center" :width "28px" :height "28px"
                        :border-radius "50%" :background "var(--mark)" :color "var(--fg)"
                        :font-size "13px" :font-weight 600 :flex "none"}]
@@ -376,7 +373,6 @@
                          :font-size "13px"}]
    [".soshiki-rolecard:hover" {:background "var(--surface-hover)"}]
    [".soshiki-rolecard .muted" {:font-size "12px"}]
-   [:.soshiki-open {:margin-left "auto" :flex "none" :color "var(--focus)" :font-size "12px"}]
    [:.soshiki-rolecard-purpose {:display "-webkit-box" :-webkit-line-clamp 2 :-webkit-box-orient "vertical"
                                  :overflow "hidden" :color "var(--secondary-text)" :font-size "12px"}]
    [:.soshiki-detail {:margin-top "10px" :border-radius "12px" :background "var(--surface-low)"
@@ -392,4 +388,20 @@
    [".soshiki-me .muted" {:font-size "12px"}]
    [".soshiki-me button" {:margin-left "auto" :flex "none" :padding "8px 14px" :border-radius "8px"
                            :font-size "13px"}]
+   (at-media {:max-width "760px"}
+     [".shell:has(.soshiki-body)" {:grid-template-columns "72px minmax(0, 1fr)"}]
+     [".shell:has(.soshiki-body) > .panel" {:display "none"}]
+     [".shell:has(.soshiki-body) .sidebar" {:padding "12px 6px"}]
+     [".shell:has(.soshiki-body) .brand" {:font-size "12px" :padding "0 0 10px"}]
+     [".shell:has(.soshiki-body) .dapp" {:flex-direction "column" :gap "3px" :padding "8px 2px"}]
+     [".shell:has(.soshiki-body) .dapp .title" {:font-size "9px" :max-width "58px" :overflow "hidden" :text-overflow "ellipsis"}]
+     [".shell:has(.soshiki-body) .sidebar h2" {:font-size "10px"}]
+     [".shell:has(.soshiki-body) .sidebar footer" {:display "none"}]
+     [".shell:has(.soshiki-body) .account-button" {:flex-wrap "wrap" :overflow-wrap "anywhere"}]
+     [".shell:has(.soshiki-body) .account-button .title" {:display "none"}]
+     [".shell:has(.soshiki-body) .net-body" {:padding "16px 12px 100px"}]
+     [:.soshiki-explorer {:padding "10px"}]
+     [:.soshiki-rolegrid {:grid-template-columns "repeat(auto-fit, minmax(min(170px, 100%), 1fr))"}]
+     [:.soshiki-map-stage {:flex-basis "100%"}]
+     [:.soshiki-inspector {:flex-basis "100%"}])
    ])
