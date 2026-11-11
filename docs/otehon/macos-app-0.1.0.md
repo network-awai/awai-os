@@ -49,6 +49,10 @@ open "<dest-dir>/Awai Desktop.app"
 - `--bundle-image` を付けると qcow2 を Resources 内に同梱する (大きい)。
 - 初回起動は未署名のため右クリック → 開く。QEMU + HVF + cocoa。
 - headless 検証は `OTEHON_DISPLAY=none`。
+- network: `.app` は既定で user-mode NAT (`-nic user`) を付ける。VM 内から
+  外に出られるが、外からは入れない。repo の `run-desktop-qemu.sh` と
+  VM gate は radio silence (`-nic none`) のまま。無線に戻すときは
+  `OTEHON_NET=none`。
 
 ## Check (VM gate)
 

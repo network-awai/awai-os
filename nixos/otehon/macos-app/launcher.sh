@@ -45,4 +45,4 @@ exec qemu-system-aarch64 \
   -drive "if=virtio,format=qcow2,file=$image" \
   -device virtio-gpu-pci,xres=1440,yres=900 \
   -device qemu-xhci -device usb-kbd -device usb-tablet \
-  -nic none -display "${OTEHON_DISPLAY:-cocoa}" ${OTEHON_QEMU_EXTRA:-}
+  -nic "${OTEHON_NET:-user}" -display "${OTEHON_DISPLAY:-cocoa}" ${OTEHON_QEMU_EXTRA:-}
