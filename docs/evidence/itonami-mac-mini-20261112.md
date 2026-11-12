@@ -34,3 +34,46 @@ node execution/peer path. The current live VM arguments provide neither an
 incoming guest channel nor an enabled monitor. Do not infer distributed Bot
 execution, replicated Awai FS, inference or failover from these observations.
 Do not stop or expose the existing VMs as a side effect of collecting evidence.
+
+## Separate candidate qualification
+
+A new opt-in read-only guest-agent channel was built with the repository's
+Nixpkgs pin (`f5c082a40f7571c266e74e80ae2e68aadd8a9fc7`). The default desktop
+configuration leaves it disabled. Its positive RPC allowlist excludes guest
+exec, file writes, time changes and shutdown. The host observer refuses agents
+advertising broader enabled commands and refuses non-private socket directories.
+
+The minimal `observation-vm` image was built through the existing pinned Nix
+container and cache, then exported as a compressed raw image. Export SHA-256:
+`dc20e34a9ca7784673f82fa009c2b9de2490bba4813e7ce3348172d0850b7495`.
+The image is a qualification artifact, not a signed desktop release.
+
+One separate overlay VM was booted locally and then on each Mac mini, using
+1 vCPU, 1024 MiB, no NIC, no monitor and an owner-private virtio serial socket.
+Both remote image/script digests were checked before execution. Observations:
+
+| Qualification result | levi | benjamin |
+| --- | --- | --- |
+| Read-only guest response | Succeeded | Succeeded |
+| Observed OS | NixOS 26.05 | NixOS 26.05 |
+| Guest agent | QEMU 10.2.4 | QEMU 10.2.4 |
+| Interfaces | loopback only | loopback only |
+| Test process after qualification | Stopped | Stopped |
+| Pre-existing Awai VM after qualification | Still present | Still present |
+
+The source observer was also tested against stale/parser-error frames before
+the QGA synchronization sentinel, a wrong nonce, an agent exposing guest-exec,
+and a public socket directory. The actual local guest exposed a stale parse
+error on the initial flush byte; sentinel/nonce synchronization was corrected
+and the real probe then passed. Missing/failed initial observations were not
+counted as successes.
+
+Remote host tools: Node 26.5.0 and QEMU 11.1.3. The image's QGA is 10.2.4.
+One-shot Python host probes, source tools and generated artifacts remain in
+task evidence; no credentials, private profile payloads or source stores were
+transferred. All qualification images/logs are retained in task-owned workspace
+directories. Only the new test QEMU processes were stopped.
+
+This qualifies a read-only observation channel on two physical hosts. It does
+not qualify the old live guests' contents, inter-node traffic, grants, atomic
+occurrence/cursor admission, effect fencing, inference, Bot cron or failover.

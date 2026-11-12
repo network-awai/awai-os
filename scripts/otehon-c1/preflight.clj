@@ -27,7 +27,7 @@ for tool in docker podman limactl qemu-system-aarch64; do
 done
 if qemu_processes=$(ps -axo comm= 2>/dev/null); then
   printf 'qemu_checked=yes\\n'
-  printf '%s\\n' \"$qemu_processes\" | awk '/qemu-system-(aarch64|x86_64)$/ {n++} END {printf \"qemu_running=%d\\n\", n+0}'
+  printf '%s\\n' \"$qemu_processes\" | awk '/qemu-system-(aarch64|x86_64|aarc|x86)$/ {n++} END {printf \"qemu_running=%d\\n\", n+0}'
 fi
 if command -v limactl >/dev/null 2>&1; then
   if lima_status=$(limactl list --format '{{.Status}}' 2>/dev/null); then

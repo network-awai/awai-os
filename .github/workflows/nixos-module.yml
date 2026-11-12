@@ -83,5 +83,7 @@ jobs:
         run: |
           fleet_check=$(nix-build nixos/otehon/bot-fleet/check.nix --no-out-link)
           cat "$fleet_check/core-tests.txt" "$fleet_check/receipt-tests.txt"
+          observation_check=$(nix-build nixos/otehon/node-observation/check.nix --no-out-link)
+          cat "$observation_check/tests.txt"
       - name: Evaluate every Otehon profile, aarch64 and the x86_64 vm
         run: sh nixos/otehon/eval-profiles.sh .
