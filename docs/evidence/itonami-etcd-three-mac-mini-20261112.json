@@ -1,0 +1,113 @@
+{
+  "schema" : "awai.otehon.etcd-three-hosts.v1",
+  "failover" : {
+    "quorum-loss" : {
+      "state" : "unknown",
+      "model-callbacks" : 0
+    },
+    "observed-at" : "2026-11-12T03:38:49.976281Z",
+    "issue" : "AWAI-2795",
+    "machine-cold-boot" : "unverified",
+    "auth-preserved" : true,
+    "independent-hosts" : true,
+    "scope" : "new task-owned etcd services only; existing guests preserved",
+    "all-voter-process-restart" : {
+      "state" : "already-completed",
+      "invoked" : false,
+      "model-callbacks" : 0
+    },
+    "healthy-after" : 3,
+    "leader-process-loss" : {
+      "state" : "already-completed",
+      "invoked" : false,
+      "model-callbacks" : 0,
+      "stopped-node" : "levi"
+    },
+    "member-identities-preserved" : true,
+    "members" : 3
+  },
+  "permissions" : {
+    "observed-at" : "2026-11-12T03:19:15.513126Z",
+    "auth-enabled" : true,
+    "tls-client-auth" : true,
+    "issue" : "AWAI-2795",
+    "worker-result-write" : true,
+    "binary-mismatch-refused" : true,
+    "worker-enrollment-write-refused" : true,
+    "independent-hosts" : true,
+    "scope" : "new etcd control plane only; no Bot fleet cron",
+    "observer-write-refused" : true,
+    "members" : 3,
+    "identity-mismatch-refused" : true,
+    "observer-read" : true
+  },
+  "grpcOnly" : true,
+  "issue" : "AWAI-2795",
+  "actualModelRecovery" : {
+    "before" : "admitted",
+    "normal-replay" : {
+      "state" : "unknown",
+      "invoked" : false
+    },
+    "recovery" : {
+      "state" : "completed",
+      "invoked" : false
+    },
+    "after" : "completed",
+    "result" : {
+      "sha256" : "b195bd7a4a23a41c692bffbc82d483720e40dd65542a7f7843e5e17d63e408b5",
+      "cid" : "bafkreifrsw6xusrduqogsk77xsbnja3sbzan2zkufj7xqq7f4f6whzaiwu",
+      "muse-run-id" : "01a1cdda-5e56-7f42-b490-ca0e2fc65b16"
+    },
+    "source" : "02828b67ae0219d37c265960ffc7a71e102e7e62",
+    "independent-voter-hosts" : 3
+  },
+  "runtimeSourceArchiveSha256" : "d5846e3acb7eb89f35fc0b8f4b194e3c24cf81fca71b1b5775d6e85245448002",
+  "crossHostProtocolFixture" : [ {
+    "node" : "levi",
+    "state" : "unknown",
+    "invoked" : false,
+    "reason" : "admission-not-confirmed",
+    "effects" : 0,
+    "kind" : "deterministic-public-protocol-fixture-no-inference",
+    "revision" : "02828b67ae0219d37c265960ffc7a71e102e7e62"
+  }, {
+    "node" : "benjamin",
+    "state" : "completed",
+    "invoked" : true,
+    "reason" : null,
+    "effects" : 1,
+    "kind" : "deterministic-public-protocol-fixture-no-inference",
+    "revision" : "02828b67ae0219d37c265960ffc7a71e102e7e62"
+  } ],
+  "packageSha256" : "fd154573a1f4c098c214d8233507d2766c43a164f7e339c0385aae71d9a1afaf",
+  "tlsClientAuth" : true,
+  "scope" : "public payload control-plane qualification; not full Bot fleet/guest upgrade/cold boot",
+  "supervisor" : "launchd Background user domain",
+  "runtimeSourceRevision" : "02828b67ae0219d37c265960ffc7a71e102e7e62",
+  "firstFixtureRecovery" : {
+    "node" : "benjamin",
+    "state" : "completed",
+    "invoked" : false,
+    "kind" : "deterministic-fixture-reconciliation-no-inference"
+  },
+  "independentHosts" : true,
+  "fleetCronActivated" : false,
+  "observedAt" : "2026-11-12T03:53:18.823567Z",
+  "members" : [ {
+    "node" : "levi",
+    "status" : "healthy",
+    "version" : "3.6.14"
+  }, {
+    "node" : "benjamin",
+    "status" : "healthy",
+    "version" : "3.6.14"
+  }, {
+    "node" : "joseph",
+    "status" : "healthy",
+    "version" : "3.6.14"
+  } ],
+  "version" : "3.6.14",
+  "certificateCNAuth" : true,
+  "tlsPeerAuth" : true
+}

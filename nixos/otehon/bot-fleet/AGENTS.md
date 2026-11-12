@@ -1,5 +1,15 @@
 # Bot fleet work records
 
+Owner decision 2026-11-12, AWAI-2795: etcd is approved for the Otehon
+three-node execution control-plane ledger (ADR0026 D3, apex PR185). Use the
+reviewed Itonami `.cljc` occurrence protocol and pinned etcdctl gRPC transport,
+authenticated membership and scoped roles; HTTP developer fixtures and unsigned
+snapshots are not production admission. Node keys remain on their owning hosts.
+Unknown outcomes retain the original claim/cursor and must not be retried or
+transferred automatically. The host control plane is separate from existing
+Awai guests and Native; this decision does not itself grant profile capabilities,
+activate all schedules, change private-data policy or authorize a guest cutover.
+
 This is the Otehon control-plane administration path, separate from browser
 applications, Native builds and existing fleet owners. Registering a profile,
 Circle membership, a Project or an Initiative never grants execution authority.
