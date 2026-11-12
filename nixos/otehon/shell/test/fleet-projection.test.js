@@ -35,3 +35,15 @@ test('staged simulations stay queued until an actual bounded receipt arrives',()
  plan.rows[0].sourceProfile.commit='e'.repeat(40);
  assert.equal(projectFleet(catalog,{},[],now,sha,undefined,plan).bots[0].physicsRollout.state,'pin-mismatch');
 });
+test('VM placement and current replica reads remain separate from historical completed receipts',()=>{
+ const b={...bindings[0],mode:'adapted',reportSource:'vm',provider:'none',model:'deterministic',service:'awai.network-vm:enrolled'};
+ const row={'catalog-bot-id':bot.id,'job-id':b.jobId,state:'waiting','vm-health':[{node:'vm-levi',readback:true},{node:'vm-benjamin',readback:true}],
+  'last-result':{state:'completed','run-id':'vm-one',provider:'none',model:'deterministic','linear-result-confirmed':true,artifact:{readback:true},
+    'domain-result':{schema:'itonami.otehon.physics-measurement.v1',status:'measured',compute:'awai-network-vm','execution-node':'vm-levi','replica-node':'vm-benjamin',replicas:2}}};
+ const report={schema:'awai.original-job-observation.v1',scope:'original-bounded-jobs',observedAt:new Date(now).toISOString(),serviceLoaded:true,jobs:[row]};
+ const good=projectFleet(catalog,{vm:report},[b],now,sha);assert.equal(good.totals.vmJobsConfigured,1);assert.equal(good.totals.vmReplicasHealthy,1);
+ assert.equal(good.bots[0].jobs[0].lastRun.measurement.computeNode,'vm-levi');
+ row['vm-health'][1].readback=false;assert.equal(projectFleet(catalog,{vm:report},[b],now,sha).totals.vmReplicasHealthy,0);
+ report.observedAt=new Date(now-180001).toISOString();assert.equal(projectFleet(catalog,{vm:report},[b],now,sha).bots[0].jobs[0].currentReplicas,null);
+ assert.equal(projectFleet(catalog,{vm:report},[],now,sha).totals.configured,0);
+});

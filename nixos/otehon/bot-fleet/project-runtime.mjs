@@ -6,7 +6,9 @@ const sha=b=>createHash('sha256').update(b).digest('hex');
 const resources={readiness:'http://127.0.0.1:8586/itonami-bot-readiness-AWAI-2795-20261112-v1/current.json',
  original:'http://127.0.0.1:8586/itonami-job-results-AWAI-2795-v1/current.json',
  adapted:'http://127.0.0.1:8586/itonami-health-jobs-AWAI-2809-v1/current.json',
- physics:'http://127.0.0.1:8586/itonami-physics-jobs-AWAI-2809-v1/current.json'};
+ physics:'http://127.0.0.1:8586/itonami-physics-jobs-AWAI-2809-v1/current.json',
+ material:'http://127.0.0.1:8586/itonami-material-jobs-AWAI-2809-v1/current.json',
+ vm:'http://127.0.0.1:8586/itonami-vm-jobs-AWAI-2820-v1/current.json'};
 const output='http://127.0.0.1:8586/itonami-fleet-state-AWAI-2795-v1/current.json';
 const summaryOutput='http://127.0.0.1:8586/itonami-fleet-state-AWAI-2795-v1/summary.json';
 export async function atomic(file,text){
@@ -32,7 +34,7 @@ export async function projectOnce(cfg){
  }));
  const connections=await repositoryConnections(cfg);
  let physicsPlan;
- if(cfg.physicsPlanSha256){const text=await fs.readFile(path.join(cfg.stateRoot,'physics-plan-v1.json'),'utf8');if(sha(text)!==cfg.physicsPlanSha256)throw Error('physics-plan-pin-mismatch');physicsPlan=JSON.parse(text);}
+ if(cfg.physicsPlanSha256){const name=cfg.physicsPlanFile??'physics-plan-v1.json';if(!/^physics-plan-v[0-9]+\.json$/.test(name))throw Error('bounded-plan-file-required');const text=await fs.readFile(path.join(cfg.stateRoot,name),'utf8');if(sha(text)!==cfg.physicsPlanSha256)throw Error('physics-plan-pin-mismatch');physicsPlan=JSON.parse(text);}
  const payload=projectFleet(JSON.parse(catalogText),reports,JSON.parse(bindingsText),Date.now(),cfg.catalogSha256,connections,physicsPlan);
  const text=JSON.stringify({schema:'awai.fleet-artifact.v1',sha256:sha(JSON.stringify(payload)),payload});
  await atomic(path.join(cfg.stateRoot,'current.json'),text);

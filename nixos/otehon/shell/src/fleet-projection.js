@@ -23,7 +23,7 @@ function normalized(report,mode,now) {
   if(report?.schema!==schema||report.scope!==scope||!Number.isFinite(at)||!Array.isArray(report.jobs)
      ||report.jobs.length>1000||typeof report.serviceLoaded!=='boolean')return {state:'invalid-or-missing',jobs:[]};
   const rows=report.jobs.map(j=>({botId:j.botId??j['catalog-bot-id'],jobId:j.jobId??j['job-id'],state:j.state,
-    nextSlot:j.nextSlot??j['next-slot']??null,run:mode==='readiness'?j.lastRun:(j['last-result']??j),mode}));
+    nextSlot:j.nextSlot??j['next-slot']??null,run:mode==='readiness'?j.lastRun:(j['last-result']??j),health:j['vm-health']??null,mode}));
   if(rows.some(j=>!j.botId||!j.jobId||!states.has(j.state))
     ||new Set(rows.map(j=>`${j.botId}/${j.jobId}`)).size!==rows.length)return {state:'invalid-or-missing',jobs:[]};
   const fresh=at<=now&&now-at<=180000;
@@ -36,7 +36,7 @@ export function projectFleet(catalog,reports,bindings,now=Date.now(),catalogSha2
     ||!Array.isArray(catalog.organization?.bots)||catalog.organization.bots.length>10000
     ||!Array.isArray(bindings)||new Set(catalog.organization.bots.map(b=>b.id)).size!==catalog.organization.bots.length)
     throw Error('invalid-projection-input');
-  const sources={readiness:normalized(reports.readiness,'readiness',now),original:normalized(reports.original,'original',now),adapted:normalized(reports.adapted,'adapted',now),physics:normalized(reports.physics,'adapted',now)};
+  const sources={readiness:normalized(reports.readiness,'readiness',now),original:normalized(reports.original,'original',now),adapted:normalized(reports.adapted,'adapted',now),physics:normalized(reports.physics,'adapted',now),material:normalized(reports.material,'adapted',now),vm:normalized(reports.vm,'adapted',now)};
   const keys=bindings.map(b=>`${b.mode}/${b.botId}/${b.jobId}`);
   if(new Set(keys).size!==keys.length)throw Error('duplicate-approved-binding');
   const bots=catalog.organization.bots.map(bot=>{
@@ -53,6 +53,10 @@ export function projectFleet(catalog,reports,bindings,now=Date.now(),catalogSha2
         run?.['linear-result-confirmed']===true&&run?.artifact?.readback===true);
       const runId=b.mode==='readiness'?run?.runId:run?.['run-id'];
       const modelMatch=run?.provider===b.provider&&run?.model===b.model;
+      const health=row?.health;
+      const currentReplicas=source?.fresh&&Array.isArray(health)&&health.length===2
+        &&new Set(health.map(r=>r.node)).size===2&&health.every(r=>['vm-levi','vm-benjamin'].includes(r.node)&&typeof r.readback==='boolean')
+        ?health.filter(r=>r.readback).length:null;
       return {jobId:b.jobId,sourceJobId:b.sourceJobId,scope:b.mode,adaptation:b.adaptation??null,
         issueId:b.issueId,projectId:b.projectId,configured:matches,
         state:!matches?'binding-mismatch':!source?.fresh?(source?.state??'unobserved'):
@@ -64,9 +68,11 @@ export function projectFleet(catalog,reports,bindings,now=Date.now(),catalogSha2
           measurement:run['domain-result']?.schema==='itonami.otehon.physics-measurement.v1'?{
             status:run['domain-result'].status,scope:run['domain-result'].scope,
             count:run['domain-result']['probe-summary']?.count??null,expected:run['domain-result']['probe-summary']?.expected??null,
-            nativeTests:run['domain-result']['native-tests'],actuation:run['domain-result'].actuation}:null}:null,
+            nativeTests:run['domain-result']['native-tests'],actuation:run['domain-result'].actuation,
+            compute:run['domain-result'].compute??null,computeNode:run['domain-result']['execution-node']??null,
+            replicaNode:run['domain-result']['replica-node']??null,replicas:run['domain-result'].replicas??null}:null}:null,
         nextSlot:row?.nextSlot??null,owner:b.owner,capabilities:b.capabilities,grantCid:b.grantCid??null,service:b.service??null,calendarCompiled:b.calendarCompiled===true,
-        sourceObservedAt:source?.observedAt??null};
+        currentReplicas,sourceObservedAt:source?.observedAt??null};
     });
     const active=jobs.some(j=>j.configured);
     const sourceJobs=(bot.schedule?.jobs??[]).map(j=>{
@@ -104,6 +110,8 @@ export function projectFleet(catalog,reports,bindings,now=Date.now(),catalogSha2
       attention:count(b=>b.state==='attention'),queued:count(b=>b.state==='queued'),jobsConfigured:bots.flatMap(b=>b.jobs).filter(j=>j.configured).length,
       originalJobsConfigured:bots.reduce((n,b)=>n+b.originalJobsConfigured,0),
       adaptedJobsConfigured:bots.reduce((n,b)=>n+b.adaptedJobsConfigured,0),
+      vmJobsConfigured:bots.flatMap(b=>b.jobs).filter(j=>j.configured&&j.service?.startsWith('awai.network-vm:')).length,
+      vmReplicasHealthy:bots.flatMap(b=>b.jobs).filter(j=>j.configured&&j.currentReplicas===2).length,
       confirmedRuns:bots.flatMap(b=>b.jobs).filter(j=>j.lastRun?.confirmed).length,
       sourceJobs:bots.reduce((n,b)=>n+b.sourceJobs.length,0),linearBound:count(b=>b.linear.state==='bound'),
       circles:catalog.organization.circles.length,repositoryCircles:catalog.organization.circles.filter(c=>c.id.startsWith('repo:')).length},bots};

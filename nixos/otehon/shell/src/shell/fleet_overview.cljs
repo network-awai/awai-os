@@ -45,7 +45,9 @@
        [:li [:strong (if stale? "未確認" (:attention totals))] [:span "実行記録に要確認・Bot"]]
        [:li [:strong (:jobsConfigured totals)] [:span "設定済ジョブ（準備確認を含む）"]]
        [:li [:strong (:originalJobsConfigured totals)] [:span "元ジョブの設定済・件"]]
-       [:li [:strong (:adaptedJobsConfigured totals)] [:span "Itonami移植ジョブ・件"]]]
+       [:li [:strong (:adaptedJobsConfigured totals)] [:span "Itonami移植ジョブ・件"]]
+       [:li [:strong (:vmJobsConfigured totals)] [:span "Awai VM実行ジョブ"]]
+       [:li [:strong (if stale? "未確認" (:vmReplicasHealthy totals))] [:span "2VMの保存読戻し確認・ジョブ"]]]
       [:p (str "保存・Linear記録を確認した最新run: " (:confirmedRuns totals) " / " (:jobsConfigured totals) "設定ジョブ（累計実行数ではありません）")]
       [:progress {:aria-label "定期ジョブ設定済Bot数" :value (:configured totals) :max (:registered totals)}]
       [:p.muted "設定数は稼働率・業務成功率ではありません。準備確認は元業務の完了数に加えません。3分以上古い観測は現在の正常状態として扱いません。"]
@@ -77,6 +79,9 @@
            (when-let [m (get-in job [:lastRun :measurement])]
             [:p.muted (str "Otehon simulation: " (:status m) " · probe " (text (:count m)) "/" (text (:expected m))
                            " · Native tests: " (:nativeTests m) " · 実機操作: " (:actuation m))])
+           (when-let [node (get-in job [:lastRun :measurement :computeNode])]
+            [:p.muted (str "実行VM: " node " · 複製VM: " (get-in job [:lastRun :measurement :replicaNode])
+                           " · 現在の保存読戻し: " (if stale? "未確認" (text (:currentReplicas job))) "/2")])
            (when (= "queued" (:state job)) [:p.muted "まだ実行していません。確認済みの実行器で最新の未実行予定を順次処理します。"])
            (when-let [slot (:nextSlot job)] [:p.muted (str "次回: " (.toLocaleString (js/Date. slot) "ja-JP" #js {:timeZone "Asia/Tokyo"}) " JST")])])
          [:details [:summary (str "元ジョブ " (count (:sourceJobs bot)) "件・保留条件")]

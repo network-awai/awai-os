@@ -39,7 +39,9 @@
       public-row #(dissoc % :bot :src :issue :compiled :spec-file)
       report {:schema "awai.physics-rollout-plan.v1" :observedAt (str (java.time.Instant/now))
               :catalogSha256 (:catalogSha256 inventory) :scope "pinned-otehon-simulation-only" :sourceBots (count rows)
-              :eligible (count eligible) :held (- (count rows) (count eligible)) :rows (mapv public-row rows)}]
+              :eligible (count (filter #(= "eligible" (:state %)) rows))
+              :held (count (filter #(= "held" (:state %)) rows))
+              :selected-count (count eligible) :rows (mapv public-row rows)}]
  (if (= "plan" mode) (println (json/generate-string report))
   (let [home (System/getProperty "user.home") root (str home "/.itonami/bot-fleet/" (if selection "awai-2809-material-v1" "awai-2809-physics-v1"))
         ctrl (str home "/.itonami/control-plane/etcd/awai-bots-v1")
