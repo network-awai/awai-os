@@ -133,3 +133,45 @@ Existing linked VM state and live services must be preserved. Production
 route cutover, OS updates to an existing persistent VM and real settlement
 retain their separate approval boundaries. Creating this checklist does not
 authorize an app or bot to bypass fresh operation consent.
+
+## Public-fixture reliability gauges (AWAI-2776)
+
+The Awai OS right dock has an **Awai FS** panel. The static shell preview also
+provides `/fs-reliability/`. Both use the same pure `.cljc` summary and import
+an operator-selected `awai.fs-reliability-evidence.v1` JSON file locally.
+No app-origin API, storage operation, SSH call or automatic polling runs in
+the browser. A saved report stays in this browser's localStorage; its elapsed
+age updates every 30 seconds, while the observation itself does not refresh.
+
+Refresh the two existing PUBLIC fixture stores with a read-only audit:
+
+```sh
+node scripts/otehon-c1/reliability_audit.mjs \
+  .agent-output/two-host-public-pilot-v3/report.json \
+  .agent-output/reliability-evidence-now.json
+bb -cp nixos/otehon/shell/src scripts/otehon-c1/reliability_test.clj
+```
+
+The pilot report supplies the existing remote workspace; only the pinned
+fixture's `read` command is invoked over strict, existing SSH trust. Application
+JSON readbacks, matching root/CAR/payload hashes, byte counts and non-degraded
+state determine verified copies. Transport exit alone is not verification.
+Unreachable/unreadable observations stay unknown; mismatches are explicit.
+Historical corruption and staged archive restore tests retain their original
+timestamps. Missing tests and future observations are not zero or current proof.
+
+The recorded snapshot is `docs/evidence/awai-fs-reliability-20261112.json`:
+2026-11-12 10:47:44 JST, levi and benjamin both match (2/2 copies); earlier
+10:35:34 JST tests recorded 1/1 corrupt-clone refusal and 1/1 restoration to a
+new store. These are counts for a 131,109-byte public fixture on host storage,
+not durability probabilities, mounted AwaiVol health or private-data coverage.
+The expected-node count is this audit's scope, not a production replica target.
+Availability, durability probability, sync lag, RPO/RTO and actual node-loss
+tolerance remain unmeasured. There is no overall reliability percentage.
+
+The importer accepts at most 1 MiB, validates the schema, rejects duplicate or
+foreign nodes, derives counts rather than trusting a supplied score, and keeps
+the previous view on invalid input. Reports are operator evidence, not signed
+telemetry or an authorization grant. The Nix-pinned Otehon replica check runs
+the pure-model tests separately from Native. This source and local preview do
+not deploy the new panel to the running Mac mini fleet.

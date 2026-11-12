@@ -401,3 +401,4 @@ Object.prototype.whole;
 Object.prototype.withId;
 Object.prototype.zenoh;
 Object.prototype.v;
+Object.prototype.toLocaleString;

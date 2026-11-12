@@ -1,6 +1,7 @@
 (ns shell.docks
   (:require ["react" :refer [useState]]
             [shell.manimani :refer [status-text use-manimani]]
+            [shell.reliability :refer [reliability-view]]
             ["../trust.js" :refer [POINTS]]
             ["../status.js" :refer [formatKiB memUsedPercent portRows summarizeSystem
                                     useHttpPorts useSystem useZenohRouters]]))
@@ -148,7 +149,11 @@
                                  (= "up" (.-state row)) "Open on loopback"
                                  :else "Not reachable")]]) rows)]
         [:p.muted "The OS's own inventory. Nothing is scanned."]])
+     (when (= open "fs-reliability")
+        [panel "fs-reliability" "Awai FS" #(set-open nil)
+         [:f> reliability-view]])
      [:div.dock-buttons {:data-dock-right true}
+      [dock-button (= open "fs-reliability") "Awai FS" nil #(toggle "fs-reliability") "fs-reliability"]
       [dock-button (= open "hosts") "Hosts" (str (inc (.-length agents))) #(toggle "hosts") "hosts"]
       [dock-button (= open "resources") "Resources" (when summary (.-cpu summary)) #(toggle "resources") "resources"]
       [dock-button (= open "ports") "Ports" nil #(toggle "ports") "ports"]]]))
