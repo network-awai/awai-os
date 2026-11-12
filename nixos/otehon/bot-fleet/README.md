@@ -138,3 +138,56 @@ explicitly excluded from the899 registered fleet Bot counts. The view remains
 a local, timestamped snapshot import, not continuous monitoring or permission.
 Per-Bot Muse authorization, active work/capability/timebase and actual cron
 rollout remain incomplete. Preserve all existing disabled states and holds.
+
+## Limited recurring activation — owner request 2026-11-12
+
+Five registered identities now have **separate public-readiness-only jobs**.
+Their original effectful jobs remain held; this is not their mail, Git, shell,
+arbitrage-ledger or registry-registration executor. Each readiness run examines
+only a confirmed-public README at an immutable commit and records one proposed
+acceptance unit in the Bot's existing unfinished Linear Issue.
+
+| Registered Bot | Source interval retained | Owning Issue |
+| --- | --- | --- |
+| awai-arb | 6 hours | AWAI-750 |
+| mail-relay | 6 hours | AWAI-893 |
+| public-bots-registrar | 24 hours | AWAI-1012 |
+| rule-kaizen | 24 hours | AWAI-755 |
+| sec-toolkit-maturity | 12 hours | AWAI-943 |
+
+`prepare-readiness.clj` creates new Itonami profiles and a digest-pinned worker
+manifest, checks the original enabled interval and current Issue/Project, and
+enrolls distinct readiness job IDs in the authenticated3-host etcd ledger. It
+refuses existing paths/enrollments; preserve partial preparation for operator
+reconciliation. The deployment used exact Itonami source `a68e5bf` for all five
+initial real model calls, subsequently promoted to `f1a2341` for waiting-tick
+connector reduction. First-run bindings retain their actual `a68e5bf` revision.
+
+`activate-readiness.clj` requires completed model receipts and confirmed Linear
+results for every selected Bot before installing the new owned label
+`network.awai.itonami.readiness.awai2795`. Its60-second wakeup checks due slots;
+it does not replace individual frequencies. Waiting slots use etcd only. Sleep
+skips unstarted old slots; admitted/unknown work never skips or transfers.
+The current inference worker is local `jun-control`, using the physical3-host
+ledger. Independent remote Muse execution and machine cold boot are unqualified.
+
+`readiness-worker.clj` publishes only bounded public metadata/model counters to
+the explicitly selected existing loopback WebDAV resource:
+`http://127.0.0.1:8586/itonami-bot-readiness-AWAI-2795-20261112-v1/current.json`.
+It uses bounded PUT+GET readback, rejects redirects and does not write through
+the mounted volume in the launchd path: a mount-open stall was observed after
+model/cursor completion during service qualification. Local transcripts/auth
+references remain private. Hosted snapshots do not establish private/distributed
+filesystem qualification. Existing Awai guests, VKE and other labels are untouched.
+
+The existing Orca application connection provides scoped Linear reads/comments;
+the worker exports no credentials. Source effects and missing-timezone cron are
+held. `reconcile-rejected-forecasts.clj` is only for the observed definitive
+`linear_issue_required` UUID-target rejection, after complete no-comment and
+no-admission readback; never use it for an unknown transmitted write.
+
+Soshiki can import the public readiness report separately from integration-test
+receipts. It shows selected periodic configuration, latest actual completions,
+model/tokens and Linear confirmation. Browser display remains a local snapshot,
+not continuous synchronization, fleet uptime or all899 original jobs activated.
+The other894 registered identities are not activated by this deployment.
