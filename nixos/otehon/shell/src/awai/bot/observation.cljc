@@ -2,6 +2,7 @@
   "Display-only operator receipts. They never grant execution or imply fleet uptime."
   (:require [clojure.string :as str]))
 (def schema "awai.bot-runtime-receipts.v1")
+(def readiness-schema "awai.bot-readiness-observation.v1")
 (defn timestamp [s]
  (when (string? s)
   #?(:clj (try (.toEpochMilli (java.time.Instant/parse s)) (catch Exception _ nil))
@@ -40,3 +41,33 @@
                        (and (= "unknown" (get-in r [:quorumLoss :state]))
                             (= 0 (get-in r [:quorumLoss :modelCallbacks]))))
     :coldBoot "unverified" :fleetRunning "unknown"})))
+
+(defn readiness-summary [r now]
+ (if-not (and (= readiness-schema (:schema r)) (= "public-readiness-only" (:scope r))
+              (false? (:allOriginalJobsActivated r)) (boolean? (:serviceLoaded r)) (timestamp (:observedAt r))
+              (contains? #{"operator" "launchd"} (:invocation r))
+              (vector? (:jobs r)) (<= 1 (count (:jobs r)) 16)
+              (= (count (:jobs r)) (count (distinct (map :botId (:jobs r)))))
+              (every? (fn [j]
+                (and (every? short? (map j [:botId :name :jobId :issueId :worker]))
+                     (re-matches #"[A-Z][A-Z0-9]*-[0-9]+" (:issueId j))
+                     (= "public-readiness-only" (:scope j)) (= "held-unported-effects" (:originalJobState j))
+                     (boolean? (:configuredEnabled j)) (integer? (:intervalMinutes j)) (pos? (:intervalMinutes j))
+                     (contains? #{"waiting" "held" "unknown" "completed" "already-completed"} (:state j))
+                     (or (nil? (:lastRun j))
+                       (let [run (:lastRun j)]
+                        (and (= "meta" (:provider run)) (short? (:model run)) (short? (:runId run))
+                             (short? (:museRunId run)) (timestamp (:completedAt run))
+                             (contains? #{"completed" "unknown"} (:state run))
+                             (boolean? (:linearResultConfirmed run))
+                             (every? #(or (nil? %) (and (integer? %) (<= 0 %)))
+                               (map run [:inputTokens :outputTokens :reasoningTokens :rawCachedTokens]))))))) (:jobs r)))
+   {:valid? false}
+   (let [future? (> (timestamp (:observedAt r)) now)
+         jobs (if future? [] (:jobs r))
+         completed (filter #(= "completed" (get-in % [:lastRun :state])) jobs)]
+    {:valid? true :future? future? :observedAt (:observedAt r)
+     :ageSeconds (when-not future? (quot (- now (timestamp (:observedAt r))) 1000))
+     :serviceLoaded (when-not future? (:serviceLoaded r)) :invocation (:invocation r)
+     :enabled (when (and (not future?) (:serviceLoaded r)) (count (filter :configuredEnabled jobs)))
+     :completed (when (seq completed) (count completed)) :selected (count (:jobs r)) :jobs jobs})))
