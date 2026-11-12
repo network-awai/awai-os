@@ -124,6 +124,10 @@
       (is (= :segmented-zstd3 (get-in result [:compression :representation])))
       (is (= (get-in a [:files "file" :root-cid]) (get-in b [:files "file" :root-cid])))
       (is (= (seq (pack/export-car a "file")) (seq (pack/export-car b "file"))))
+      (pack/read-range-verified-leaves b "file" 65000 4096)
+      (is (= 1 (:decoder-processes @(:stats b))))
+      (pack/read-range-verified-leaves b "file" 65000 4096)
+      (is (= 1 (:decoder-processes @(:stats b))))
       (is (not (.exists (java.io.File. (str zipped "/" (get-in b [:files "file" :car-sha]) ".car")))))
       (doseq [h [a b] [offset length] [[0 4096] [65000 4096] [524280 8] [524288 0]]]
         (is (= (seq (java.util.Arrays/copyOfRange original offset (+ offset length)))

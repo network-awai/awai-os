@@ -219,6 +219,13 @@ not an admission/state cache. A cache-cold frame requires an external decoder
 process, so range CPU/latency tradeoffs must be measured separately from saved
 bytes. Fresh-process recovery does not rely on this cache.
 
+Selected independent Zstd frames missing from the cache are concatenated for
+one decoder invocation per read, with the sum of expected raw sizes as its
+output bound. Each frame's exact raw length and SHA-256 are checked again after
+splitting the result; stored frame checks are never skipped. Full recovery and
+strict export also batch decoding. This reduces process spawn cost without
+changing stored bytes, frame independence or integrity scope.
+
 CLI (existing store, new output paths only):
 
 ```sh

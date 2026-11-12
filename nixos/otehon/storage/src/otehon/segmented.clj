@@ -21,11 +21,13 @@
             (let [total (+ total n)]
               (when (> total ceiling) (fail! :zstd-output-too-large "Zstd output exceeds frame bound"))
               (.write out b 0 n) (recur total))))))))
-(defn- zstd [^bytes input decode?]
+(defn- zstd
+  ([input decode?] (zstd input decode? (+ frame-size 1024)))
+  ([^bytes input decode? output-ceiling]
   (let [command (into [(or (System/getenv "OTEHON_ZSTD") "zstd") "-q" "-T1"]
                       (if decode? ["-d" "--memory=8MB" "-c"] ["-3" "-c"]))
         p (.start (ProcessBuilder. ^java.util.List command))
-        output (future (bounded-stream (.getInputStream p) (+ frame-size 1024)))
+        output (future (bounded-stream (.getInputStream p) output-ceiling))
         error (future (bounded-stream (.getErrorStream p) 4096))
         writer (future (with-open [w (.getOutputStream p)] (.write w input)))]
     (try
@@ -35,7 +37,7 @@
       (let [result (deref output 1000 ::timeout)]
         (when (= ::timeout result) (fail! :zstd-timeout "Zstd output deadline exceeded"))
         result)
-      (finally (.destroyForcibly p) (future-cancel writer) (future-cancel output) (future-cancel error)))))
+      (finally (.destroyForcibly p) (future-cancel writer) (future-cancel output) (future-cancel error))))))
 (defn encode [^bytes car]
   (when-not (<= 1 (alength car) max-size) (fail! :too-large "invalid CAR size"))
   (let [parts (mapv (fn [start] (Arrays/copyOfRange car start (min (alength car) (+ start frame-size))))
@@ -93,18 +95,34 @@
                 (fail! :invalid-zpack "invalid or overlapping frame"))
               (recur more (+ raw (:raw-size f)) (+ stored (:stored-size f))))))
         (assoc h :prefix-size prefix :stored-size (alength bytes))))))
-(defn- decode-frame [f ^bytes stored]
-  (when-not (and (= (:stored-size f) (alength stored)) (= (:stored-sha f) (sha stored)))
-    (fail! :corrupt-frame "compressed frame digest mismatch"))
-  (let [raw (if (= :raw (:encoding f)) stored (zstd stored true))]
-    (when-not (and (= (:raw-size f) (alength ^bytes raw)) (= (:raw-sha f) (sha raw)))
-      (fail! :corrupt-frame "decoded frame digest/length mismatch")) raw))
+(defn- decode-frames [pairs]
+  ;; Independent Zstd frames concatenate losslessly. Batch only cache misses
+  ;; into one bounded decoder invocation, then verify each exact raw frame.
+  (doseq [[f ^bytes stored] pairs]
+    (when-not (and (= (:stored-size f) (alength stored)) (= (:stored-sha f) (sha stored)))
+      (fail! :corrupt-frame "compressed frame digest mismatch")))
+  (let [compressed (filterv #(= :zstd3 (:encoding (first %))) pairs)
+        expected (reduce + 0 (map #(:raw-size (first %)) compressed))
+        decoded (when (seq compressed)
+                  (with-open [out (ByteArrayOutputStream.)]
+                    (doseq [[_ bytes] compressed] (.write out ^bytes bytes))
+                    (zstd (.toByteArray out) true expected)))]
+    (when (and decoded (not= expected (alength ^bytes decoded)))
+      (fail! :corrupt-frame "batched decoded size mismatch"))
+    (loop [[[f stored] & more] pairs offset 0 out []]
+      (if-not f out
+        (let [z? (= :zstd3 (:encoding f))
+              raw (if z? (Arrays/copyOfRange ^bytes decoded offset (+ offset (:raw-size f))) stored)]
+          (when-not (and (= (:raw-size f) (alength ^bytes raw)) (= (:raw-sha f) (sha raw)))
+            (fail! :corrupt-frame "decoded frame digest/length mismatch"))
+          (recur more (if z? (+ offset (:raw-size f)) offset) (conj out raw)))))))
 (defn decode [^bytes bytes]
   (let [layout (parse-header bytes)]
     (with-open [out (ByteArrayOutputStream.)]
-      (doseq [f (:frames layout)]
-        (let [start (+ (:prefix-size layout) (:stored-offset f))]
-          (.write out ^bytes (decode-frame f (Arrays/copyOfRange bytes start (+ start (:stored-size f)))))))
+      (doseq [raw (decode-frames
+                    (mapv (fn [f] (let [start (+ (:prefix-size layout) (:stored-offset f))]
+                                    [f (Arrays/copyOfRange bytes start (+ start (:stored-size f)))])) (:frames layout)))]
+        (.write out ^bytes raw))
       {:car (.toByteArray out) :layout layout})))
 (defn- overlap? [a n b m] (and (< a (+ b m)) (< b (+ a n))))
 (defn- cache! [cache key value]
@@ -120,12 +138,17 @@
   (let [needed (filterv (fn [f] (some #(overlap? (:offset %) (:length %) (:raw-offset f) (:raw-size f)) spans)) (:frames layout))
         disk-spans (mapv (fn [f] {:offset (+ (:prefix-size layout) (:stored-offset f)) :length (:stored-size f)}) needed)
         stored (store/read-payload-segments directory digest "zpack" (:stored-size layout) disk-spans)
-        decoded (mapv (fn [f ^bytes bytes]
-                        (when-not (= (:stored-sha f) (sha bytes)) (fail! :corrupt-frame "selected frame changed"))
-                        (if-let [hit (get-in @cache [:values (:stored-sha f)])]
-                          (do (swap! stats update :decoded-cache-hits (fnil inc 0)) (cache! cache (:stored-sha f) hit))
-                          (do (swap! stats update :frame-decodes (fnil inc 0))
-                              (cache! cache (:stored-sha f) (decode-frame f bytes))))) needed stored)]
+        _ (doseq [[f bytes] (map vector needed stored)]
+            (when-not (= (:stored-sha f) (sha bytes)) (fail! :corrupt-frame "selected frame changed")))
+        hits (:values @cache)
+        misses (filterv (fn [[f _]] (not (contains? hits (:stored-sha f)))) (mapv vector needed stored))
+        fresh (zipmap (map #(:stored-sha (first %)) misses) (decode-frames misses))
+        _ (when (some #(= :zstd3 (:encoding (first %))) misses)
+            (swap! stats update :decoder-processes (fnil inc 0)))
+        decoded (mapv (fn [f]
+                        (let [key (:stored-sha f) hit (get hits key)]
+                          (swap! stats update (if hit :decoded-cache-hits :frame-decodes) (fnil inc 0))
+                          (cache! cache key (or hit (get fresh key))))) needed)]
     (swap! stats #(-> % (update :car-reads inc) (update :bytes-read + (reduce + 0 (map :stored-size needed)))))
     (mapv (fn [{:keys [offset length]}]
             (with-open [out (ByteArrayOutputStream.)]
