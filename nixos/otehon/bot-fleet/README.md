@@ -191,3 +191,16 @@ receipts. It shows selected periodic configuration, latest actual completions,
 model/tokens and Linear confirmation. Browser display remains a local snapshot,
 not continuous synchronization, fleet uptime or all899 original jobs activated.
 The other894 registered identities are not activated by this deployment.
+
+### Original cron timezone decision — 2026-11-12
+
+The owner subsequently chose `Asia/Tokyo` for missing original cron timezones.
+`resolve-timezones.mjs` applies the explicit decision to1,607 cron entries,
+preserves30 interval entries and all expressions/enabled/paused flags, and
+produces a new registration with source digests and per-job provenance. Existing
+explicit zones are retained. The previous immutable registration remains intact.
+This resolves the timezone prerequisite only; the inference-only recurring host
+does not become an effectful calendar executor. Its five live interval jobs
+and authenticated enrollment pins are unchanged. The decision/report and new
+registration are persisted through the selected existing WebDAV service with
+independent byte readback; see `docs/evidence/itonami-cron-timezone-20261112.json`.

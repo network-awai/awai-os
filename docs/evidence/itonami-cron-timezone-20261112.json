@@ -1,0 +1,20 @@
+{
+  "schema": "awai.bot-fleet-timezone-resolution.v1",
+  "decision": {
+    "id": "AWAI-2795-owner-timezone-20261112",
+    "issue": "AWAI-2795",
+    "timezone": "Asia/Tokyo",
+    "appliesTo": "missing-cron-timezone-only",
+    "ownerDecisionDate": "2026-11-12",
+    "recordedAt": "2026-11-12T05:08:33.865Z",
+    "sourceCatalogSha256": "a897218a715daad4e5a8d422151eefc6f5d9c93d1fd68a6dbae36b52517ebc7d",
+    "sourceSchedulesSha256": "6847ef6cdc81471b7507eecc9031633062b96152a801077e1854f050f3e51ad4"
+  },
+  "resolvedCronTimezones": 1607,
+  "preservedCronTimezones": 0,
+  "unchangedIntervals": 30,
+  "profiles": 899,
+  "originalJobsActivated": false,
+  "catalogSha256": "db61a8661eac91abaa886d88be28ba1a15a721dbf92007ca1ee3477d837853d2",
+  "schedulesSha256": "fb6f0581e111d11b0c5d58bb6edef41d217c7fdde39aca5cf7635990699d6c9e"
+}
