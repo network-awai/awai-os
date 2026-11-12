@@ -36,7 +36,7 @@ export function projectFleet(catalog,reports,bindings,now=Date.now(),catalogSha2
     ||!Array.isArray(catalog.organization?.bots)||catalog.organization.bots.length>10000
     ||!Array.isArray(bindings)||new Set(catalog.organization.bots.map(b=>b.id)).size!==catalog.organization.bots.length)
     throw Error('invalid-projection-input');
-  const sources={readiness:normalized(reports.readiness,'readiness',now),original:normalized(reports.original,'original',now)};
+  const sources={readiness:normalized(reports.readiness,'readiness',now),original:normalized(reports.original,'original',now),adapted:normalized(reports.adapted,'adapted',now)};
   const keys=bindings.map(b=>`${b.mode}/${b.botId}/${b.jobId}`);
   if(new Set(keys).size!==keys.length)throw Error('duplicate-approved-binding');
   const bots=catalog.organization.bots.map(bot=>{
@@ -53,13 +53,13 @@ export function projectFleet(catalog,reports,bindings,now=Date.now(),catalogSha2
         run?.['linear-result-confirmed']===true&&run?.artifact?.readback===true);
       const runId=b.mode==='readiness'?run?.runId:run?.['run-id'];
       const modelMatch=run?.provider===b.provider&&run?.model===b.model;
-      return {jobId:b.jobId,sourceJobId:b.sourceJobId,scope:b.mode==='readiness'?'readiness':'original',
+      return {jobId:b.jobId,sourceJobId:b.sourceJobId,scope:b.mode,adaptation:b.adaptation??null,
         issueId:b.issueId,projectId:b.projectId,configured:matches,
         state:!matches?'binding-mismatch':!source?.fresh?(source?.state??'unobserved'):row?.state??'unobserved',
         lastRun:runId?{id:runId,confirmed:!!(confirmed&&modelMatch),provider:run.provider,model:run.model,
           inputTokens:b.mode==='readiness'?run.inputTokens??null:null,outputTokens:b.mode==='readiness'?run.outputTokens??null:null,
           tokenMetric:b.mode==='readiness'?'provider-input-output':'not-applicable',
-          artifactCid:b.mode==='original'?run.artifact?.cid??null:null}:null,
+          artifactCid:b.mode!=='readiness'?run.artifact?.cid??null:null}:null,
         nextSlot:row?.nextSlot??null,owner:b.owner,capabilities:b.capabilities,grantCid:b.grantCid??null,service:b.service??null,
         sourceObservedAt:source?.observedAt??null};
     });
@@ -67,20 +67,22 @@ export function projectFleet(catalog,reports,bindings,now=Date.now(),catalogSha2
     const sourceJobs=(bot.schedule?.jobs??[]).map(j=>{
       const running=jobs.find(r=>r.configured&&r.scope==='original'&&r.sourceJobId===j.id);
       return {id:j.id,name:j.name,schedule:j.schedule,timezone:j.timezone??null,
-        enabled:!!running,holds:running?[]:[...scheduleHolds(bot,j),'scoped-executor-and-grant-required']};
+        enabled:!!running,adaptedJobId:jobs.find(r=>r.configured&&r.scope==='adapted'&&r.sourceJobId===j.id)?.jobId??null,
+        holds:running?[]:[...scheduleHolds(bot,j),'scoped-executor-and-grant-required']};
     });
     const holds=[...new Set(sourceJobs.length?sourceJobs.flatMap(j=>j.holds):scheduleHolds(bot,null))];
     const repo=bot.linear?.repository??bot.profile?.repository;
     if(!id(repo))throw Error('invalid-repository');
-    const original=jobs.filter(j=>j.configured&&j.scope==='original');
+    const connected=jobs.filter(j=>j.configured&&j.scope!=='readiness');
+    const original=connected.filter(j=>j.scope==='original');
     return {id:bot.id,name:bot.name,repository:repo,sourceRepository:bot.profile.repository,circleIds:bot['circle-ids'],
-      app:{id:`repo:${repo}`,kind:'repository-workspace',serviceConnected:original.some(j=>j.service),
-        service:original.find(j=>j.service)?.service??null,
-        contractState:original.some(j=>j.service)?'bounded-operator-connection':bot.name==='mail-relay'?'mail-account-required':'service-contract-required'},
+      app:{id:`repo:${repo}`,kind:'repository-workspace',serviceConnected:connected.some(j=>j.service),
+        service:connected.find(j=>j.service)?.service??null,
+        contractState:connected.some(j=>j.service)?'bounded-operator-connection':bot.name==='mail-relay'?'mail-account-required':'service-contract-required'},
       linear:{state:bot.linear?.state,project:bot.linear?.project?.name??null,projectId:bot.linear?.project?.uuid??null,
         initiativeId:bot.linear?.initiative?.id??null,issues:(bot.linear?.issues??[]).map(i=>i.id)},
       configured:active,state:!active?'held':jobs.some(j=>!['waiting','completed','already-completed'].includes(j.state))?'attention':'waiting',
-      originalJobsConfigured:original.length,jobs,sourceJobs,holds};
+      originalJobsConfigured:original.length,adaptedJobsConfigured:connected.length-original.length,jobs,sourceJobs,holds};
   });
   const count=fn=>bots.filter(fn).length;
   return {schema:FLEET_SCHEMA,observedAt:new Date(now).toISOString(),catalogSha256,registryRevision:catalog['registry-revision'],
@@ -88,6 +90,7 @@ export function projectFleet(catalog,reports,bindings,now=Date.now(),catalogSha2
     totals:{registered:bots.length,configured:count(b=>b.configured),held:count(b=>!b.configured),
       attention:count(b=>b.state==='attention'),jobsConfigured:bots.flatMap(b=>b.jobs).filter(j=>j.configured).length,
       originalJobsConfigured:bots.reduce((n,b)=>n+b.originalJobsConfigured,0),
+      adaptedJobsConfigured:bots.reduce((n,b)=>n+b.adaptedJobsConfigured,0),
       confirmedRuns:bots.flatMap(b=>b.jobs).filter(j=>j.lastRun?.confirmed).length,
       sourceJobs:bots.reduce((n,b)=>n+b.sourceJobs.length,0),linearBound:count(b=>b.linear.state==='bound'),
       circles:catalog.organization.circles.length,repositoryCircles:catalog.organization.circles.filter(c=>c.id.startsWith('repo:')).length},bots};

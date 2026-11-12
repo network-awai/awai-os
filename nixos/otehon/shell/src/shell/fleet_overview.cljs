@@ -43,7 +43,8 @@
        [:li [:strong (:held totals)] [:span "未有効・Bot"]]
        [:li [:strong (if stale? "未確認" (:attention totals))] [:span "実行記録に要確認・Bot"]]
        [:li [:strong (:jobsConfigured totals)] [:span "設定済ジョブ（準備確認を含む）"]]
-       [:li [:strong (:originalJobsConfigured totals)] [:span "元ジョブの設定済・件"]]]
+       [:li [:strong (:originalJobsConfigured totals)] [:span "元ジョブの設定済・件"]]
+       [:li [:strong (:adaptedJobsConfigured totals)] [:span "Itonami移植ジョブ・件"]]]
       [:progress {:aria-label "定期ジョブ設定済Bot数" :value (:configured totals) :max (:registered totals)}]
       [:p.muted "設定数は稼働率・業務成功率ではありません。準備確認は元業務の完了数に加えません。3分以上古い観測は現在の正常状態として扱いません。"]
       [:label.soshiki-field [:span "Bot / App / Projectを検索"]
@@ -61,7 +62,8 @@
          [:p.muted (str "実サービス: " (or (get-in bot [:app :service]) "未接続") " · " (get-in bot [:app :contractState]))]
          [:p (for [issue (get-in bot [:linear :issues])] ^{:key issue} [:a {:href (str "https://linear.app/kotobalabs/issue/" issue)} (str issue " ")])]
          (for [job (:jobs bot)] ^{:key (:jobId job)}
-          [:div [:p (str (if (= "original" (:scope job)) "元ジョブ" "準備確認") " · " (:state job) " · " (:owner job))]
+          [:div [:p (str (case (:scope job) "original" "元ジョブ" "adapted" "Itonami移植ジョブ" "準備確認") " · " (:state job) " · " (:owner job))]
+           (when (:adaptation job) [:p.muted (str "移植範囲: " (:adaptation job))])
            [:p.muted (str "権限: " (clojure.string/join ", " (:capabilities job)))]
            [:p.muted (str "最終run: " (or (get-in job [:lastRun :id]) "未確認") " · 記録確認: " (if (get-in job [:lastRun :confirmed]) "済" "未確認"))]
            (when-let [slot (:nextSlot job)] [:p.muted (str "次回: " (.toLocaleString (js/Date. slot) "ja-JP" #js {:timeZone "Asia/Tokyo"}) " JST")])])

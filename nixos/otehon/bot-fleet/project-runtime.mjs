@@ -3,7 +3,8 @@ import fs from 'node:fs/promises';import path from 'node:path';import {createHas
 import {projectFleet} from '../shell/src/fleet-projection.js';
 const sha=b=>createHash('sha256').update(b).digest('hex');
 const resources={readiness:'http://127.0.0.1:8586/itonami-bot-readiness-AWAI-2795-20261112-v1/current.json',
- original:'http://127.0.0.1:8586/itonami-job-results-AWAI-2795-v1/current.json'};
+ original:'http://127.0.0.1:8586/itonami-job-results-AWAI-2795-v1/current.json',
+ adapted:'http://127.0.0.1:8586/itonami-health-jobs-AWAI-2809-v1/current.json'};
 const output='http://127.0.0.1:8586/itonami-fleet-state-AWAI-2795-v1/current.json';
 const summaryOutput='http://127.0.0.1:8586/itonami-fleet-state-AWAI-2795-v1/summary.json';
 export async function atomic(file,text){
@@ -21,7 +22,8 @@ export async function projectOnce(cfg){
  if(cfg.schema!=='awai.fleet-projector.v1'||!path.isAbsolute(cfg.stateRoot)||!path.isAbsolute(cfg.staticArtifact)
    ||path.basename(cfg.staticArtifact)!=='fleet-state.json')throw Error('pinned-projector-config-required');
  const catalogText=await fs.readFile(path.join(cfg.stateRoot,'catalog.json'),'utf8');
- const bindingsText=await fs.readFile(path.join(cfg.stateRoot,'bindings.json'),'utf8');
+ if(cfg.bindingsFile&&!/^bindings(-v[0-9]+)?\.json$/.test(cfg.bindingsFile))throw Error('bounded-binding-file-required');
+ const bindingsText=await fs.readFile(path.join(cfg.stateRoot,cfg.bindingsFile??'bindings.json'),'utf8');
  if(sha(catalogText)!==cfg.catalogSha256||sha(bindingsText)!==cfg.bindingsSha256)throw Error('projection-input-pin-mismatch');
  const reports={};await Promise.all(Object.entries(resources).map(async([key,url])=>{
   try{reports[key]=JSON.parse(await bounded(url));}catch{reports[key]=null;}
@@ -33,7 +35,8 @@ export async function projectOnce(cfg){
  if(await bounded(output)!==text)throw Error('projection-storage-readback-mismatch');
  const summaryPayload={schema:'awai.fleet-health-summary.v1',observedAt:payload.observedAt,
   catalogSha256:payload.catalogSha256,totals:payload.totals,sources:payload.sources};
- const summary=JSON.stringify({schema:'awai.fleet-summary-artifact.v1',sha256:sha(JSON.stringify(summaryPayload)),payload:summaryPayload});
+ const summaryText=JSON.stringify(summaryPayload);
+ const summary=JSON.stringify({schema:'awai.fleet-summary-artifact.v1',sha256:sha(summaryText),payloadText:summaryText});
  await bounded(summaryOutput,{method:'PUT',headers:{'content-type':'application/json'},body:summary});
  if(await bounded(summaryOutput)!==summary)throw Error('summary-storage-readback-mismatch');
  await atomic(cfg.staticArtifact,text);

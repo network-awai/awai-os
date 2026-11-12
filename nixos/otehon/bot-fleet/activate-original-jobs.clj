@@ -12,7 +12,8 @@
                           (and (contains? #{"completed" "already-completed"} (:state r))
                                (true? (:linear-result-confirmed r)) (true? (get-in r [:artifact :readback])))) (:jobs report))
                 "every selected original job needs actual result, storage and Linear proofs")
-      home (System/getProperty "user.home") label "network.awai.itonami.jobs.awai2795"
+      home (System/getProperty "user.home") label (or (:worker-label cfg) "network.awai.itonami.jobs.awai2795")
+      _ (assert (contains? #{"network.awai.itonami.jobs.awai2795" "network.awai.itonami.health.awai2809"} label))
       uid (str/trim (:out (sh/sh "id" "-u" :in ""))) domain (str "gui/" uid) target (str domain "/" label)
       plist (str home "/Library/LaunchAgents/" label ".plist") capsule (str root "/original-worker.clj")
       _ (assert (and (not (.exists (java.io.File. plist))) (not (.exists (java.io.File. capsule)))
