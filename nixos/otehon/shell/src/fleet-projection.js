@@ -76,7 +76,7 @@ export function projectFleet(catalog,reports,bindings,now=Date.now(),catalogSha2
     if(!id(repo))throw Error('invalid-repository');
     const connected=jobs.filter(j=>j.configured&&j.scope!=='readiness');
     const original=connected.filter(j=>j.scope==='original');
-    const repository=(connections?.repositories??[]).find(r=>r.repository===repo);
+    const repository=(connections?.repositories??[]).find(r=>(r.requestedRepository??r.repository)===repo);
     const repositoryAge=now-Date.parse(repository?.observedAt);
     const repositoryState=!repository?'unobserved':!Number.isFinite(repositoryAge)||repositoryAge<0||repositoryAge>21600000?'stale':
       repository.disabled?'disabled':repository.archived?'archived':repository.private?'available-private':'available-public';

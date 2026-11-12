@@ -4,21 +4,27 @@ const exec=promisify(execFile);const orgs=['cloud-itonami','kotoba-lang','networ
 export async function repositoryConnections(cfg){
  const file=`${cfg.stateRoot}/repository-connections.json`;let prior;
  try{prior=JSON.parse(await fs.readFile(file,'utf8'));}catch{}
- if(prior?.schema==='awai.repository-connections.v1'&&prior.transportVersion===2&&Date.now()-Date.parse(prior.attemptedAt)<21600000)return prior;
+ if(prior?.schema==='awai.repository-connections.v1'&&prior.transportVersion===3&&Date.now()-Date.parse(prior.attemptedAt)<21600000)return prior;
  if(!cfg.github||!cfg.githubSha256)return prior??{schema:'awai.repository-connections.v1',repositories:[],errors:['connector-unconfigured']};
  if(createHash('sha256').update(await fs.readFile(cfg.github)).digest('hex')!==cfg.githubSha256)throw Error('github-connector-pin-mismatch');
- const observedAt=new Date().toISOString();const rows=[],errors=[];
- await Promise.all(orgs.map(async org=>{
-  try{
-   const {stdout}=await exec(cfg.github,['api','--paginate',`orgs/${org}/repos?per_page=100`,
-    '--jq','.[] | {repository:.full_name,private:.private,archived:.archived,disabled:.disabled}'],{timeout:45000,maxBuffer:2097152});
-   const values=stdout.trim()?stdout.trim().split('\n').map(line=>JSON.parse(line)):[];
-   if(!Array.isArray(values)||values.length>10000||values.some(v=>typeof v.repository!=='string'||!v.repository.startsWith(`${org}/`)
-      ||typeof v.private!=='boolean'||typeof v.archived!=='boolean'||typeof v.disabled!=='boolean'))throw Error('invalid-org-metadata');
-   rows.push(...values.map(v=>({...v,observedAt})));
-  }catch{errors.push(org);rows.push(...(prior?.repositories??[]).filter(v=>v.repository.startsWith(`${org}/`)));}
- }));
+ const catalog=JSON.parse(await fs.readFile(`${cfg.stateRoot}/catalog.json`,'utf8'));
+ const requested=[...new Set(catalog.organization.bots.map(b=>b.linear?.repository??b.profile.repository))];
+ if(requested.length>10000||requested.some(r=>!/^([\w.-]+)\/[\w.-]+$/.test(r)||!orgs.includes(r.split('/')[0])))throw Error('bounded-owned-repository-set-required');
+ const observedAt=new Date().toISOString();const rows=[],errors=[],chunks=[];
+ for(let i=0;i<requested.length;i+=25)chunks.push(requested.slice(i,i+25));
+ let next=0;
+ const worker=async()=>{while(next<chunks.length){const repos=chunks[next++];
+  const query=`query { ${repos.map((r,i)=>{const [owner,name]=r.split('/');return `r${i}:repository(owner:${JSON.stringify(owner)},name:${JSON.stringify(name)}){nameWithOwner isPrivate isArchived isDisabled}`;}).join(' ')} }`;
+  let stdout='';try{stdout=(await exec(cfg.github,['api','graphql','-f',`query=${query}`],{timeout:20000,maxBuffer:2097152})).stdout;}catch(error){stdout=typeof error.stdout==='string'?error.stdout:'';}
+  let data;try{data=JSON.parse(stdout).data;}catch{}
+  repos.forEach((requestedRepository,i)=>{const v=data?.[`r${i}`];
+   if(v&&typeof v.nameWithOwner==='string'&&typeof v.isPrivate==='boolean'&&typeof v.isArchived==='boolean'&&typeof v.isDisabled==='boolean')
+    rows.push({repository:v.nameWithOwner,requestedRepository,private:v.isPrivate,archived:v.isArchived,disabled:v.isDisabled,observedAt});
+   else {errors.push(requestedRepository);const old=prior?.repositories?.find(r=>(r.requestedRepository??r.repository)===requestedRepository);if(old)rows.push(old);}
+  });
+ }};
+ await Promise.all(Array.from({length:4},worker));
  rows.sort((a,b)=>a.repository.localeCompare(b.repository));
- const result={schema:'awai.repository-connections.v1',transportVersion:2,attemptedAt:observedAt,repositories:rows,errors};
+ const result={schema:'awai.repository-connections.v1',transportVersion:3,attemptedAt:observedAt,repositories:rows,errors};
  const temp=`${file}.pending`;await fs.writeFile(temp,JSON.stringify(result),{mode:0o600});await fs.rename(temp,file);return result;
 }
