@@ -4,7 +4,7 @@
  '[cheshire.core :as json] '[bot-fleet.daily :as daily] '[itonami.otehon.physics.runner :as physics]
  '[itonami.otehon.bundle :as b] '[itonami.otehon.occurrence :as o] '[itonami.otehon.job-contract :as c]
  '[itonami.otehon.etcd :as e] '[itonami.otehon.recurring-host :as h])
-(let [[mode catalog-path input-dir source-repo runtime] *command-line-args*
+(let [[mode catalog-path input-dir source-repo runtime selection-path] *command-line-args*
       _ (assert (and runtime (contains? #{"plan" "prepare"} mode)) "plan/prepare CATALOG SPEC_DIR SOURCE_REPO NEW_CAPSULE")
       catalog (json/parse-string (slurp catalog-path) true) inventory (json/parse-string (slurp (str input-dir "/inventory.json")) true)
       _ (assert (= (:catalogSha256 inventory) (e/binary-sha catalog-path)) "physics inventory/catalog mismatch")
@@ -30,13 +30,18 @@
               (assoc base :state "eligible" :bot bot :src src :issue issue :compiled compiled :spec-file path :spec-sha (:sha256 r)
                           :kinds (vec (sort (distinct (map (comp name :kind) (:cases spec)))))))
             (catch Exception _ (assoc base :state "held" :reason (if (= "verified-public" (:state r)) "scope-or-solver-budget-unqualified" (:state r))))))) (:rows inventory))
-      eligible (filterv #(= "eligible" (:state %)) rows)
+      selection (when selection-path (json/parse-string (slurp selection-path) true))
+      _ (when selection (assert (and (= "awai.material-wave-selection.v1" (:schema selection))
+                                   (vector? (:botIds selection)) (seq (:botIds selection))
+                                   (= (count (:botIds selection)) (count (set (:botIds selection)))))))
+      eligible (filterv #(and (= "eligible" (:state %)) (or (nil? selection) (contains? (set (:botIds selection)) (:botId %)))) rows)
+      _ (when selection (assert (= (set (:botIds selection)) (set (map :botId eligible))) "selected spec is not qualified"))
       public-row #(dissoc % :bot :src :issue :compiled :spec-file)
       report {:schema "awai.physics-rollout-plan.v1" :observedAt (str (java.time.Instant/now))
               :catalogSha256 (:catalogSha256 inventory) :scope "pinned-otehon-simulation-only" :sourceBots (count rows)
               :eligible (count eligible) :held (- (count rows) (count eligible)) :rows (mapv public-row rows)}]
  (if (= "plan" mode) (println (json/generate-string report))
-  (let [home (System/getProperty "user.home") root (str home "/.itonami/bot-fleet/awai-2809-physics-v1")
+  (let [home (System/getProperty "user.home") root (str home "/.itonami/bot-fleet/" (if selection "awai-2809-material-v1" "awai-2809-physics-v1"))
         ctrl (str home "/.itonami/control-plane/etcd/awai-bots-v1")
         _ (assert (seq eligible) "no qualified physics specs")
         _ (doseq [p (concat [root runtime] (map #(str home "/.itonami/profiles/" (get-in % [:bot :name])) eligible))]
@@ -73,8 +78,10 @@
              :enrollment en :physics-spec-sha spec-sha :physics-repository repository :runtime-root runtime :runtime-pins pins :bb bb :bb-sha bb-sha
              :binding {:issue-id (:id issue) :issue-uuid (:uuid issue) :project-id project :initiative-id (:initiative-id en)
                        :revision revision :acceptance-unit "one pinned Otehon physics probe; Native tests/growth/merge/actuation remain unqualified"}})) eligible)
-        cfg {:schema "itonami.physics-fleet-worker.v1" :state-root root :workspace "f8d70247-935b-44ce-a79e-28cd91de96ca"
-             :etcd-config (str ctrl "/jun-control-client.edn") :orca orca :orca-sha (e/binary-sha orca) :max-per-tick 4 :jobs jobs}
+        cfg (cond-> {:schema "itonami.physics-fleet-worker.v1" :state-root root :workspace "f8d70247-935b-44ce-a79e-28cd91de96ca"
+             :etcd-config (str ctrl "/jun-control-client.edn") :orca orca :orca-sha (e/binary-sha orca) :max-per-tick (if selection 2 4) :jobs jobs}
+              selection (assoc :worker-label "network.awai.itonami.material.awai2809"
+                               :result-url "http://127.0.0.1:8586/itonami-material-jobs-AWAI-2809-v1/current.json"))
         path (str root "/worker.edn")
         admin (e/client (assoc (edn/read-string (slurp (:etcd-config cfg))) :authenticated-node "root" :cert (str ctrl "/root.pem") :key (str ctrl "/root.key")))]
     (h/durable! (str root "/rollout-plan.json") (json/generate-string report))

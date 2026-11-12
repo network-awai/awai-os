@@ -9,7 +9,8 @@
                             (true? (get-in % [:last-result :artifact :readback]))
                             (= "measured" (get-in % [:last-result :domain-result :status]))) (:jobs report))
       _ (assert (and (= (count (:jobs cfg)) (count (:jobs report))) (>= (count proofs) 1)) "actual bounded first-wave proofs required")
-      home (System/getProperty "user.home") label "network.awai.itonami.physics.awai2809"
+      home (System/getProperty "user.home") label (or (:worker-label cfg) "network.awai.itonami.physics.awai2809")
+      _ (assert (contains? #{"network.awai.itonami.physics.awai2809" "network.awai.itonami.material.awai2809"} label))
       uid (str/trim (:out (sh/sh "id" "-u" :in ""))) domain (str "gui/" uid) target (str domain "/" label)
       plist (str home "/Library/LaunchAgents/" label ".plist") capsule (str root "/physics-worker.clj")
       _ (assert (and (not (.exists (java.io.File. plist))) (not (.exists (java.io.File. capsule)))

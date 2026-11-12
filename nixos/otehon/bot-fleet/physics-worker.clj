@@ -20,7 +20,11 @@
              confirmed (= "started" (get-in proof [:result :issue :state :type]))]
          (when confirmed (h/durable! (str dir "/confirmed.edn") (pr-str {:confirmed true :via "write-readback"}))) confirmed)))))
 (defn publish! [cfg rows]
- (let [uid (str/trim (:out (sh/sh "id" "-u" :in "")))
+ (let [label (or (:worker-label cfg) label) url (or (:result-url cfg) url)
+       _ (assert (contains? #{"network.awai.itonami.physics.awai2809" "network.awai.itonami.material.awai2809"} label))
+       _ (assert (contains? #{"http://127.0.0.1:8586/itonami-physics-jobs-AWAI-2809-v1/current.json"
+                             "http://127.0.0.1:8586/itonami-material-jobs-AWAI-2809-v1/current.json"} url))
+       uid (str/trim (:out (sh/sh "id" "-u" :in "")))
        loaded (zero? (:exit (sh/sh "launchctl" "print" (str "gui/" uid "/" label) :in "")))
        report {:schema "awai.original-job-observation.v1" :scope "original-bounded-jobs" :observedAt (str (java.time.Instant/now))
                :worker "jun-control" :serviceLoaded loaded :invocation (if (= label (System/getenv "XPC_SERVICE_NAME")) "launchd" "operator")
