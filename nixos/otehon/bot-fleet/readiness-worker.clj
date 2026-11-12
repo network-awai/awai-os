@@ -7,7 +7,7 @@
          "explicit selected loopback WebDAV resource only")
  (let [open (fn [method]
               (doto ^java.net.HttpURLConnection (.openConnection (.toURL (java.net.URI. url)))
-                (.setConnectTimeout 3000) (.setReadTimeout 5000)
+                (.setConnectTimeout 3000) (.setReadTimeout 30000)
                 (.setInstanceFollowRedirects false) (.setRequestMethod method)))
        ^java.net.HttpURLConnection put (open "PUT")]
   (.setDoOutput put true) (.setRequestProperty put "Content-Type" "application/json")

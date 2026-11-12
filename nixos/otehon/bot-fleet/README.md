@@ -174,7 +174,8 @@ ledger. Independent remote Muse execution and machine cold boot are unqualified.
 `readiness-worker.clj` publishes only bounded public metadata/model counters to
 the explicitly selected existing loopback WebDAV resource:
 `http://127.0.0.1:8586/itonami-bot-readiness-AWAI-2795-20261112-v1/current.json`.
-It uses bounded PUT+GET readback, rejects redirects and does not write through
+It uses bounded PUT+GET readback (3-second connect/30-second read timeout per
+request), rejects redirects and does not write through
 the mounted volume in the launchd path: a mount-open stall was observed after
 model/cursor completion during service qualification. Local transcripts/auth
 references remain private. Hosted snapshots do not establish private/distributed
