@@ -98,7 +98,7 @@ Actions runner with KVM. The gateway is pinned to `cloud-kotoba-desktop` `1f8fe2
 nixpkgs llama.cpp 9190, not the 0.7.0 used on the host.
 
 Evidence: [`docs/evidence/sanka-v1-vm-20261107.json`](../../docs/evidence/sanka-v1-vm-20261107.json),
-from [run 42351054943](https://github.com/network-awai/cloud-murakumo-usb-installer/actions/runs/42351054943).
+from [run 42351054943](https://github.com/network-awai/awai-os/actions/runs/42351054943).
 
 | Check | Result |
 | --- | --- |
