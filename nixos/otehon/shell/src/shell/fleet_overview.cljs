@@ -41,6 +41,7 @@
        [:li [:strong (:registered totals)] [:span "登録Bot"]]
        [:li [:strong (:configured totals)] [:span "定期ジョブが設定済・Bot"]]
        [:li [:strong (:held totals)] [:span "未有効・Bot"]]
+       [:li [:strong (if stale? "未確認" (:queued totals))] [:span "段階起動の実行待ち・Bot"]]
        [:li [:strong (if stale? "未確認" (:attention totals))] [:span "実行記録に要確認・Bot"]]
        [:li [:strong (:jobsConfigured totals)] [:span "設定済ジョブ（準備確認を含む）"]]
        [:li [:strong (:originalJobsConfigured totals)] [:span "元ジョブの設定済・件"]]
@@ -50,13 +51,13 @@
       [:label.soshiki-field [:span "Bot / App / Projectを検索"]
        [:input {:type "search" :aria-label "BotとAppを検索" :value query :on-change #(set-query (.. % -target -value))}]]
       [:label.soshiki-field [:span "状態"] [:select {:aria-label "統合Bot状態" :value filter-state :on-change #(set-filter (.. % -target -value))}
-       [:option {:value "all"} "すべて"] [:option {:value "waiting"} "定期待機"] [:option {:value "attention"} "要確認"] [:option {:value "held"} "未有効・保留"]]]
+       [:option {:value "all"} "すべて"] [:option {:value "queued"} "段階起動の実行待ち"] [:option {:value "waiting"} "定期待機"] [:option {:value "attention"} "要確認"] [:option {:value "held"} "未有効・保留"]]]
       [:p (str (count bots) "件を表示 / " (:registered totals) "Bot · " (:repositoryCircles totals) "担当リポジトリCircle")]
       [:ul.soshiki-bots
        (for [bot bots]
         ^{:key (:id bot)}
         [:li {:data-fleet-bot (:id bot)}
-         [:strong (:name bot)] [:span (str " · " (if (and stale? (:configured bot)) "観測更新待ち" ({"waiting" "定期待機" "attention" "要確認" "held" "未有効・保留"} (:state bot))))]
+         [:strong (:name bot)] [:span (str " · " (if (and stale? (:configured bot)) "観測更新待ち" ({"queued" "段階起動の実行待ち" "waiting" "定期待機" "attention" "要確認" "held" "未有効・保留"} (:state bot))))]
          [:p (str "App/担当repo: " (:repository bot))]
          [:p.muted (str "GitHub接続確認: " (get-in bot [:app :repositoryConnection :state]) "（運用者の参照確認・Bot権限とは別）")]
          (when (not= (:repository bot) (:sourceRepository bot)) [:p.muted (str "旧repo: " (:sourceRepository bot))])
@@ -67,6 +68,7 @@
            (when (:adaptation job) [:p.muted (str "移植範囲: " (:adaptation job))])
            [:p.muted (str "権限: " (clojure.string/join ", " (:capabilities job)))]
            [:p.muted (str "最終run: " (or (get-in job [:lastRun :id]) "未確認") " · 記録確認: " (if (get-in job [:lastRun :confirmed]) "済" "未確認"))]
+           (when (= "queued" (:state job)) [:p.muted "まだ実行していません。確認済みの実行器で最新の未実行予定を順次処理します。"])
            (when-let [slot (:nextSlot job)] [:p.muted (str "次回: " (.toLocaleString (js/Date. slot) "ja-JP" #js {:timeZone "Asia/Tokyo"}) " JST")])])
          [:details [:summary (str "元ジョブ " (count (:sourceJobs bot)) "件・保留条件")]
           (if (empty? (:sourceJobs bot)) [:p "元スケジュールなし・実行条件の確認待ち"]

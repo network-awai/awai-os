@@ -2,7 +2,7 @@
 export const FLEET_SCHEMA = 'awai.fleet-state.v1';
 const id = s => typeof s === 'string' && /^[\w.-]+\/[\w.-]+$/.test(s);
 const hash = s => typeof s === 'string' && /^[a-f0-9]{64}$/.test(s);
-const states = new Set(['waiting','held','unknown','completed','already-completed']);
+const states = new Set(['queued','waiting','held','unknown','completed','already-completed']);
 const closed = new Set(['Done','Canceled','Cancelled','Duplicate']);
 export function scheduleHolds(bot, job) {
   const reasons=[];
@@ -36,13 +36,13 @@ export function projectFleet(catalog,reports,bindings,now=Date.now(),catalogSha2
     ||!Array.isArray(catalog.organization?.bots)||catalog.organization.bots.length>10000
     ||!Array.isArray(bindings)||new Set(catalog.organization.bots.map(b=>b.id)).size!==catalog.organization.bots.length)
     throw Error('invalid-projection-input');
-  const sources={readiness:normalized(reports.readiness,'readiness',now),original:normalized(reports.original,'original',now),adapted:normalized(reports.adapted,'adapted',now)};
+  const sources={readiness:normalized(reports.readiness,'readiness',now),original:normalized(reports.original,'original',now),adapted:normalized(reports.adapted,'adapted',now),physics:normalized(reports.physics,'adapted',now)};
   const keys=bindings.map(b=>`${b.mode}/${b.botId}/${b.jobId}`);
   if(new Set(keys).size!==keys.length)throw Error('duplicate-approved-binding');
   const bots=catalog.organization.bots.map(bot=>{
     const bound=bindings.filter(b=>b.botId===bot.id);
     const jobs=bound.map(b=>{
-      const source=sources[b.mode];
+      const source=sources[b.reportSource??b.mode];
       const matches=bot.linear?.state==='bound'&&b.projectId===bot.linear.project?.uuid
         &&b.profileCommit===bot.profile.commit&&b.profileChecksum===bot.profile.checksum
         &&bot.linear.issues.some(i=>i.id===b.issueId)&&bot.schedule.jobs?.some(j=>j.id===b.sourceJobId);
@@ -87,14 +87,14 @@ export function projectFleet(catalog,reports,bindings,now=Date.now(),catalogSha2
         contractState:connected.some(j=>j.service)?'bounded-operator-connection':bot.name==='mail-relay'?'mail-account-required':'service-contract-required'},
       linear:{state:bot.linear?.state,project:bot.linear?.project?.name??null,projectId:bot.linear?.project?.uuid??null,
         initiativeId:bot.linear?.initiative?.id??null,issues:(bot.linear?.issues??[]).map(i=>i.id)},
-      configured:active,state:!active?'held':jobs.some(j=>!['waiting','completed','already-completed'].includes(j.state))?'attention':'waiting',
+      configured:active,state:!active?'held':jobs.some(j=>!['queued','waiting','completed','already-completed'].includes(j.state))?'attention':jobs.some(j=>j.state==='queued')?'queued':'waiting',
       originalJobsConfigured:original.length,adaptedJobsConfigured:connected.length-original.length,jobs,sourceJobs,holds};
   });
   const count=fn=>bots.filter(fn).length;
   return {schema:FLEET_SCHEMA,observedAt:new Date(now).toISOString(),catalogSha256,registryRevision:catalog['registry-revision'],
     authority:'display-only-operator-receipts',sources:Object.fromEntries(Object.entries(sources).map(([k,{jobs,...v}])=>[k,v])),
     totals:{registered:bots.length,configured:count(b=>b.configured),held:count(b=>!b.configured),
-      attention:count(b=>b.state==='attention'),jobsConfigured:bots.flatMap(b=>b.jobs).filter(j=>j.configured).length,
+      attention:count(b=>b.state==='attention'),queued:count(b=>b.state==='queued'),jobsConfigured:bots.flatMap(b=>b.jobs).filter(j=>j.configured).length,
       originalJobsConfigured:bots.reduce((n,b)=>n+b.originalJobsConfigured,0),
       adaptedJobsConfigured:bots.reduce((n,b)=>n+b.adaptedJobsConfigured,0),
       confirmedRuns:bots.flatMap(b=>b.jobs).filter(j=>j.lastRun?.confirmed).length,
@@ -106,7 +106,7 @@ export function validateFleet(value) {
     ||!Number.isFinite(Date.parse(value.observedAt))||!Array.isArray(value.bots)||value.bots.length>10000
     ||value.totals?.registered!==value.bots.length||new Set(value.bots.map(b=>b.id)).size!==value.bots.length
     ||value.bots.some(b=>typeof b.name!=='string'||!id(b.repository)||!Array.isArray(b.jobs)||!Array.isArray(b.sourceJobs)
-      ||!['held','attention','waiting'].includes(b.state)))throw Error('invalid-fleet-state');
+      ||!['queued','held','attention','waiting'].includes(b.state)))throw Error('invalid-fleet-state');
   return value;
 }
 export async function decodeFleetEnvelope(envelope,crypto) {

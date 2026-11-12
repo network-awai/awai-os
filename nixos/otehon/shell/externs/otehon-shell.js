@@ -499,3 +499,6 @@ Object.prototype.sourceJobs;
 Object.prototype.timezone;
 Object.prototype.tokenMetric;
 Object.prototype.uuid;
+Object.prototype.reportSource;
+Object.prototype.queued;
+Object.prototype.physics;

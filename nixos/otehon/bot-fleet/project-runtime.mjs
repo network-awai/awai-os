@@ -5,7 +5,8 @@ import {repositoryConnections} from './repository-connections.mjs';
 const sha=b=>createHash('sha256').update(b).digest('hex');
 const resources={readiness:'http://127.0.0.1:8586/itonami-bot-readiness-AWAI-2795-20261112-v1/current.json',
  original:'http://127.0.0.1:8586/itonami-job-results-AWAI-2795-v1/current.json',
- adapted:'http://127.0.0.1:8586/itonami-health-jobs-AWAI-2809-v1/current.json'};
+ adapted:'http://127.0.0.1:8586/itonami-health-jobs-AWAI-2809-v1/current.json',
+ physics:'http://127.0.0.1:8586/itonami-physics-jobs-AWAI-2809-v1/current.json'};
 const output='http://127.0.0.1:8586/itonami-fleet-state-AWAI-2795-v1/current.json';
 const summaryOutput='http://127.0.0.1:8586/itonami-fleet-state-AWAI-2795-v1/summary.json';
 export async function atomic(file,text){

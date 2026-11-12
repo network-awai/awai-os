@@ -19,3 +19,11 @@ test('operator repository visibility does not grant a bot; changed profile canno
  const r=projectFleet(catalog,{},[],now,sha,connections);assert.equal(r.bots[0].app.repositoryConnection.state,'available-private');assert.equal(r.totals.configured,0);assert.equal(r.bots[0].app.repositoryConnection.botGrant,false);
  assert.equal(projectFleet(catalog,reports,[{...bindings[0],profileCommit:'d'.repeat(40)}],now,sha).totals.configured,0);
 });
+test('staged simulations stay queued until an actual bounded receipt arrives',()=>{
+ const b={...bindings[0],mode:'adapted',reportSource:'physics',provider:'none',model:'deterministic',service:'Otehon pinned simulation'};
+ const report={schema:'awai.original-job-observation.v1',scope:'original-bounded-jobs',observedAt:new Date(now).toISOString(),serviceLoaded:true,
+  jobs:[{'catalog-bot-id':bot.id,'job-id':b.jobId,state:'queued'}]};
+ const r=projectFleet(catalog,{physics:report},[b],now,sha);assert.equal(r.totals.queued,1);assert.equal(r.totals.confirmedRuns,0);assert.equal(r.totals.originalJobsConfigured,0);assert.equal(r.totals.adaptedJobsConfigured,1);
+ report.jobs[0]={...report.jobs[0],state:'waiting','last-result':{state:'completed','run-id':'physical-one',provider:'none',model:'deterministic','linear-result-confirmed':true,artifact:{readback:true,cid:'cid'},'domain-result':{status:'unobserved'}}};
+ assert.equal(projectFleet(catalog,{physics:report},[b],now,sha).totals.attention,1);
+});
