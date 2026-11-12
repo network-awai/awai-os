@@ -1,0 +1,315 @@
+{
+  "repository": "cloud-itonami/app-itonami-itonami-agent",
+  "revision": "a9a1b2fc147cd7e9e5c640383fa6d72544c3449d",
+  "sourceDirectory": "otehon/src",
+  "files": [
+    {
+      "path": "itonami/otehon/adapters.cljc",
+      "sha256": "1af4d45282026370c7d01ea47b919dbef7e03b64b65433029b07d6ef43f907ba"
+    },
+    {
+      "path": "itonami/otehon/assembly.cljc",
+      "sha256": "2540cef4e399d72438feef6dfdb5fe5c1683ac7aac58c529475deecb8eee6b59"
+    },
+    {
+      "path": "itonami/otehon/browser.cljc",
+      "sha256": "dc523ecaf49b5ff949bfea573b41bdc850fcf65fac5aa49858ae8c9902e2c4b8"
+    },
+    {
+      "path": "itonami/otehon/browser_cloud.cljc",
+      "sha256": "05a0bb4a5b4e383d18290e5c0b7c3573cb859d4192f0edc3713c763de864e364"
+    },
+    {
+      "path": "itonami/otehon/browser_provider.cljc",
+      "sha256": "4f1dc983a7a7f75f2f046eddd75c04f24919f69c9754c211bfea91fe2baf8801"
+    },
+    {
+      "path": "itonami/otehon/bundle.cljc",
+      "sha256": "e8fa0bfbab728d74056635a159b0d84eaf6d82c830d2e051c98958ab2367dbe7"
+    },
+    {
+      "path": "itonami/otehon/cas.cljc",
+      "sha256": "4e82221722cd27ade403058a7591f8269f7ed2363a06bab86c8aa0f649221d69"
+    },
+    {
+      "path": "itonami/otehon/chat.cljc",
+      "sha256": "58e445eed2c38da3286ec604cc2c07e85c3b32fe331b7fa6984aeee9ed608d29"
+    },
+    {
+      "path": "itonami/otehon/clarify.cljc",
+      "sha256": "356cf47585f57381e992d7e70c175744ed08f47c2443401a7dfc541f7c5676a3"
+    },
+    {
+      "path": "itonami/otehon/cli.cljc",
+      "sha256": "05289b63c42a0c9a005037adcb7a8f44611d2ea7f66f2db4aadbbf0806376bbf"
+    },
+    {
+      "path": "itonami/otehon/code_rpc.cljc",
+      "sha256": "984497e567c18e8f11427cb5608fdd05164dc52bef57c90e2605684123c2e4ce"
+    },
+    {
+      "path": "itonami/otehon/collect.cljc",
+      "sha256": "a3adf33fa5732a57f9bf711242e7334a093a203cf0ba1e9eb6ac3cd4c3d7db9c"
+    },
+    {
+      "path": "itonami/otehon/collect_io.cljc",
+      "sha256": "892aa7fc6e3edbcb59a8e764e7dc0e6ee5acfedc938485d42d10558ca31837ab"
+    },
+    {
+      "path": "itonami/otehon/computer_use.cljc",
+      "sha256": "99190ce0ca942af3945e5d7346d33aed1c35d65199b5f1823469a5d00d9dca9e"
+    },
+    {
+      "path": "itonami/otehon/confine.cljc",
+      "sha256": "9d09ec315b87d2b469dc32ffac1b867c07b92adbbe53d5b5b2c082b0736d2a7d"
+    },
+    {
+      "path": "itonami/otehon/connections.cljc",
+      "sha256": "f3b7c095ee23b26098015586b3b0ddf79738d35b6f90895e48bbd13760ecc99e"
+    },
+    {
+      "path": "itonami/otehon/cron.cljc",
+      "sha256": "f627981c558e88ee68ef8e31a2713c7996a1b8a743e0a7eb663b0bd55047aaa7"
+    },
+    {
+      "path": "itonami/otehon/dapps.cljc",
+      "sha256": "2d35945519c714f8a577a9bed2220547d158130d3c1de32e406b8ed6b60cdc53"
+    },
+    {
+      "path": "itonami/otehon/delivery.cljc",
+      "sha256": "8de7394f078a12b933177809b9b7f7af9ce6cc232a91e9b3d5891578d1e639dd"
+    },
+    {
+      "path": "itonami/otehon/doctor.cljc",
+      "sha256": "07293929b344fbe13318e4fc0b41c27758e6f366be8333a737b8bcf655afdfce"
+    },
+    {
+      "path": "itonami/otehon/drain.cljc",
+      "sha256": "b0146bac843c94f50bff8055441c044d2a65728a3aa8696ffe62e86980279a21"
+    },
+    {
+      "path": "itonami/otehon/ed25519.cljc",
+      "sha256": "7d6c591faf38942b8525404bf7ff67a667fa1bf8929ddbf7d6b3ba9d5b7f40a1"
+    },
+    {
+      "path": "itonami/otehon/etcd.cljc",
+      "sha256": "5975239eef61fc03e605117c6575b1f27697be04532f081370955ff25b64aec8"
+    },
+    {
+      "path": "itonami/otehon/exec.cljc",
+      "sha256": "1c96d18989a08d591a8166c385d4dc7f25496f0a3acf8bda1ade6e174174e6c8"
+    },
+    {
+      "path": "itonami/otehon/execute.cljc",
+      "sha256": "5c0f30f31fd43087442bacce351c480bdc7d2edf61c2f97eefa634e354be025f"
+    },
+    {
+      "path": "itonami/otehon/gateway.cljc",
+      "sha256": "c0ca3d2b435924c2c5d46cd95bb1565af59b3628fff2ee0506f3dd5f0b8db62c"
+    },
+    {
+      "path": "itonami/otehon/homeassistant.cljc",
+      "sha256": "36bd0691fc95e0e6a2406a8a7a46e9d1a5409cc55fbbd87af433fc27c2997356"
+    },
+    {
+      "path": "itonami/otehon/io.cljc",
+      "sha256": "08ac21e42753bcf0037a0a527c6aab198d8302096dbfd862e5ed1117af8fc814"
+    },
+    {
+      "path": "itonami/otehon/job_contract.cljc",
+      "sha256": "eb72bee2f8023deb13a194aca83e05100f28425e67e28f296a7ff536abea18fb"
+    },
+    {
+      "path": "itonami/otehon/job_host.cljc",
+      "sha256": "b773a79e51c921b9d87019bc2d863c9790abd609e5be891c0aa318f9aa076bef"
+    },
+    {
+      "path": "itonami/otehon/ledger.cljc",
+      "sha256": "4fa5dd5ef25f7c3cbc89791bb62afbeeb3b4b1fd41a9ecd24ea48aa8fe3e2be7"
+    },
+    {
+      "path": "itonami/otehon/mail_host.cljc",
+      "sha256": "9bcdbd6ce1aae50d31f65311a695cc466ed67f86f0f8bf277b5b60e382757674"
+    },
+    {
+      "path": "itonami/otehon/manifest.cljc",
+      "sha256": "0bd024d8be380220e90937fb9bbe8c7c74c863ac58305eba6f7621d632e37213"
+    },
+    {
+      "path": "itonami/otehon/market.cljc",
+      "sha256": "0d2375a5a389712551ceee403611a804284e837f06c86d02a68f1229953d3887"
+    },
+    {
+      "path": "itonami/otehon/mcp.cljc",
+      "sha256": "c89698e961fb3fcac026cfcb8fab78fe739b8b3d630203e0c3480614092b34ac"
+    },
+    {
+      "path": "itonami/otehon/model.cljc",
+      "sha256": "8f63e8729988f470f2f95edec45c37f80219872b8f4c0f661e0e2826be1edeac"
+    },
+    {
+      "path": "itonami/otehon/muse.cljc",
+      "sha256": "ce5c366219c72e490d59ae2f9dd8443cb1aa966da5117e889abd3e3e0a8fecbc"
+    },
+    {
+      "path": "itonami/otehon/muse_host.cljc",
+      "sha256": "3d17f88d51277a0c8d87d7fd9ed84f8f093b8eb2b092cd508e4fc58051b51fd7"
+    },
+    {
+      "path": "itonami/otehon/notepad.cljc",
+      "sha256": "6874d180276dc3a3a8a84df73437b67b7108139fcd32a498c018a3f46ab52dd9"
+    },
+    {
+      "path": "itonami/otehon/oauth.cljc",
+      "sha256": "c3e70f6a188ec3321c69fe9c63473832fc887df4e4fed8be249fd56794e8d38d"
+    },
+    {
+      "path": "itonami/otehon/occurrence.cljc",
+      "sha256": "6bc04eec815a429acbe5e0a76340e8ec533a6dca143ba8dd067ae45c42183a12"
+    },
+    {
+      "path": "itonami/otehon/original_host.cljc",
+      "sha256": "13ec5d8b3cac8ab886fdbe3463f248b4b7f43de30c1f941f0d90b79e5ba1cad0"
+    },
+    {
+      "path": "itonami/otehon/pause.cljc",
+      "sha256": "90615efd55d541b9646940c867536013650fcb5afb5e275c69d4851ddf00d256"
+    },
+    {
+      "path": "itonami/otehon/peer.cljc",
+      "sha256": "c4e83f25cb79b9a5b54e7c3487e73a4f9a9e18d2b7555a144626565984296659"
+    },
+    {
+      "path": "itonami/otehon/physics/process/fluid.cljc",
+      "sha256": "357696652d4ceb9ff600fdf751a1bffbbef30612d712b28ddeee58d0115e47f9"
+    },
+    {
+      "path": "itonami/otehon/physics/process/manipulator.cljc",
+      "sha256": "5999a0a9fd086f81cf87342891a7bfa69baa175c88a0fd3e41cbb076e8f8e30d"
+    },
+    {
+      "path": "itonami/otehon/physics/process/thermal.cljc",
+      "sha256": "1533562faf518a86591acd2e13f430816c61c5fa947601abb53172af0788ef55"
+    },
+    {
+      "path": "itonami/otehon/physics/process/transport.cljc",
+      "sha256": "215e3f8757407b714763aab8f9edeac4a866d9ef0820660a160ff1a5281f2e90"
+    },
+    {
+      "path": "itonami/otehon/physics/process.cljc",
+      "sha256": "dd06528636ca83ec61405ec186612afff9ae0ff7d30af3d45fd9c2be524bd615"
+    },
+    {
+      "path": "itonami/otehon/physics/runner.cljc",
+      "sha256": "eb09cecc1f8ea186ba81f3b43d2df6a86480470d12dd1d8a081711936d400b16"
+    },
+    {
+      "path": "itonami/otehon/physics_host.cljc",
+      "sha256": "10f6eceee4f03ac8a3a8d9d174a757f5a8db79a18bd2b81db055cf1a530629c0"
+    },
+    {
+      "path": "itonami/otehon/process.cljc",
+      "sha256": "3e14efc0de1cb691c09ceb3d4e544b6980da1f69194756b3b5fa992b8df5587a"
+    },
+    {
+      "path": "itonami/otehon/profile.cljc",
+      "sha256": "dbb7724eb947700363769547f659c10b16a47e9d54b43ef2e2375c75b47b06cc"
+    },
+    {
+      "path": "itonami/otehon/query_plan.cljc",
+      "sha256": "ef9da18c11e28886eb9fd1e57691f271185ded95e00c432c85dd6155808f97e6"
+    },
+    {
+      "path": "itonami/otehon/queue.cljc",
+      "sha256": "977222536334fc7a9c9e389c3cad50e8bb5d329b8eb16b4e9585c1a5d6b1e73d"
+    },
+    {
+      "path": "itonami/otehon/quiet.cljc",
+      "sha256": "6ade38faacb222f01be6461d0d89ba8f18ae022c7244e3bcf4995e5a450d7508"
+    },
+    {
+      "path": "itonami/otehon/rail.cljc",
+      "sha256": "1c695691537e4dcfb8c225e92ce22637aa633c59446c0d2dab0f0eff057d7dd6"
+    },
+    {
+      "path": "itonami/otehon/rails.cljc",
+      "sha256": "56ebd513b051cadce9d3c017cc1d03338af809a6ffb4fdec881e1b2d0969876f"
+    },
+    {
+      "path": "itonami/otehon/recurring.cljc",
+      "sha256": "0bf0fc68fbd4b6e58aac40c8e940de0344674125486f95888192b1c067414953"
+    },
+    {
+      "path": "itonami/otehon/recurring_host.cljc",
+      "sha256": "cb924cd86955857795c4dc716fb4df458b54f7d4191386456200b089700e6e5f"
+    },
+    {
+      "path": "itonami/otehon/run.cljc",
+      "sha256": "4dd6cea5b8e19c994b3cc035de38a2c3afc579ebfcc7946f41ea35a738db2143"
+    },
+    {
+      "path": "itonami/otehon/scan_budget.cljc",
+      "sha256": "f1e540791fa84ff5ffa6033fa1ec6fb74eeb631337b45523f40b14d7321ad37b"
+    },
+    {
+      "path": "itonami/otehon/sessions.cljc",
+      "sha256": "8c0d81fffc86bec57135127fb05f892df00bbd7134bd7c58c02bf4077c3d9a64"
+    },
+    {
+      "path": "itonami/otehon/soul.cljc",
+      "sha256": "10ea5e0ae1931af3da22f3f21fe9e42c9a2893017c27836de516fd465067f842"
+    },
+    {
+      "path": "itonami/otehon/status.cljc",
+      "sha256": "55cff56b79a1588924d1b5ee62e9eddf5372c0f8305e85f0a4d69a480f4af42c"
+    },
+    {
+      "path": "itonami/otehon/store.cljc",
+      "sha256": "5227376a9768604750c7c486cd46fd98f636cb42bac5969f6f6db67d3503ede2"
+    },
+    {
+      "path": "itonami/otehon/store_fs.cljc",
+      "sha256": "1330753c2ee6d3bf68837445f658e896269aeb7ccf173e4c1ede9cb725f491ea"
+    },
+    {
+      "path": "itonami/otehon/text.cljc",
+      "sha256": "b851f308b3a08e0268a5c46cdb7f9b9eae72898dd5b0c96765414f79f17156d2"
+    },
+    {
+      "path": "itonami/otehon/tick.cljc",
+      "sha256": "a200506df6f3e35363050eb9f990299e773dcad9f454c8040b8faec225377ce5"
+    },
+    {
+      "path": "itonami/otehon/tools.cljc",
+      "sha256": "0e696444643bd2b8050ed2a0b2b8c5995e22f4f992bf837ff3b9839b8863cc20"
+    },
+    {
+      "path": "itonami/otehon/tts.cljc",
+      "sha256": "2def61717608c233e65cc48c3d84a67d94de1d3f9c36d303f1950aa9fb112cfa"
+    },
+    {
+      "path": "itonami/otehon/turn.cljc",
+      "sha256": "bb7b8bf75c5aa636205cfd88290aadcba4607da1fa5efc28bedea2d6b737172a"
+    },
+    {
+      "path": "itonami/otehon/vault.cljc",
+      "sha256": "b98489163f49750a7d2629d79366c7250fa412d54c170650aa5ae7d1b5e01934"
+    },
+    {
+      "path": "itonami/otehon/watcher.cljc",
+      "sha256": "8469bc575b1933e1fbe4780b8eaf827e02c9134fd06216c6a2c657981353cbb0"
+    },
+    {
+      "path": "itonami/otehon/webguard.cljc",
+      "sha256": "e60d16c868c625f70d0f75e1b81fa6da161cc5a11b7208800cf5ce6d81550077"
+    },
+    {
+      "path": "itonami/otehon/yakuwari.cljc",
+      "sha256": "65eb61123f7cb79b09cbfb292abe6a2f30f4fc407764941b1b87857ceb4df0dc"
+    },
+    {
+      "path": "itonami/otehon/yaml.cljc",
+      "sha256": "eca4f06abc8afee57ec08714cbb2993c444d803701942691b8f759fc73c91b25"
+    }
+  ]
+}
