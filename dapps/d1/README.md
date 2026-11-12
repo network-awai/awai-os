@@ -9,7 +9,7 @@ funds. It is **not built into the OS image**.
 | Part | File | Runs on |
 | --- | --- | --- |
 | Pure core | `src/d1/core.cljc` | Basilisp and Babashka, unchanged |
-| Reservation ledger | `src/d1/reservation.cljc` | Babashka (`test/reservation_test.clj`, 9 tests / 24 assertions) |
+| Reservation ledger | `src/d1/reservation.cljc` | Both: Babashka (`test/reservation_test.clj`, 9 tests / 24 assertions) and Basilisp (`test/reservation_run.lpy`, 10 checks) |
 | Shared cases | `test/cases.json` | Both (58 cases) |
 | Basilisp runner | `test/run_cases.lpy` | Basilisp: `basilisp run` |
 | Babashka runner | `test/run_cases.clj` | Babashka: `bb --classpath` |
@@ -43,6 +43,7 @@ cd dapps/d1
 PYTHONPATH=src basilisp run test/run_cases.lpy
 bb --classpath src:test test/run_cases.clj
 bb --classpath src:test test/reservation_test.clj
+PYTHONPATH=src basilisp run test/reservation_run.lpy
 ```
 
 A changed expectation fails on both core runners (exit 1); removing the
