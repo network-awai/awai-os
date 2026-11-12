@@ -1,4 +1,4 @@
-# cloud-murakumo-usb-installer
+# awai-os
 
 **Native Murakumo NixOS preview:** [profile, Itonami launcher and VM gates](docs/murakumo-nixos-native-preview.md).
 It runs Kaikei and Dandori judgment cores in browser Workers and a native host
@@ -207,7 +207,7 @@ concurrency and restart recovery remain unverified. Keep the serving Ubuntu
 installation until those checks and a recovery plan succeed.
 
 `cloud-murakumo-installer` owns the macOS/Linux CLI installation script;
-`cloud-murakumo-usb-installer` owns NixOS boot media and OS installation.
+`awai-os` owns NixOS boot media and OS installation.
 Windows node installation is a separate future platform path and is not
 advertised as supported by the current CLI script.
 
