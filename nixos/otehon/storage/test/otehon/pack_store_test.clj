@@ -2,6 +2,7 @@
   (:require [clojure.test :refer [deftest is]]
             [clojure.edn :as edn]
             [otehon.storage :as store]
+            [otehon.segmented :as segmented]
             [otehon.pack-store :as pack])
   (:import [java.nio.file Files Paths]
            [java.nio.file.attribute FileAttribute]))
@@ -114,3 +115,102 @@
     (is (= :too-large (error-type #(pack/put-data! d "huge" (byte-array (inc pack/max-data-bytes))))))
     (is (= :invalid-name (error-type #(pack/put-data! d "" (byte-array 0)))))
     (is (= :pack-not-found (error-type #(pack/read-data (pack/recover d) "unknown"))))))
+
+(deftest compressed-parity-fast-ranges-and-incompressible-policy
+  (let [raw (new-store) zipped (new-store) original (bytes-of 524288)]
+    (pack/put-data! raw "file" original)
+    (let [result (pack/put-data-zstd3! zipped "file" original)
+          a (pack/recover raw) b (pack/recover zipped)]
+      (is (= :segmented-zstd3 (get-in result [:compression :representation])))
+      (is (= (get-in a [:files "file" :root-cid]) (get-in b [:files "file" :root-cid])))
+      (is (= (seq (pack/export-car a "file")) (seq (pack/export-car b "file"))))
+      (is (not (.exists (java.io.File. (str zipped "/" (get-in b [:files "file" :car-sha]) ".car")))))
+      (doseq [h [a b] [offset length] [[0 4096] [65000 4096] [524280 8] [524288 0]]]
+        (is (= (seq (java.util.Arrays/copyOfRange original offset (+ offset length)))
+               (seq (pack/read-range-verified-leaves h "file" offset length)))))
+      (doseq [h [a b]]
+        (is (= :invalid-range (error-type #(pack/read-range-verified-leaves h "file" -1 4))))
+        (is (= :invalid-range (error-type #(pack/read-range-verified-leaves h "file" 0 524289)))))
+      (let [before (:bytes-read @(:stats a))]
+        (pack/read-range-verified-leaves a "file" 0 4096)
+        (is (= 65536 (- (:bytes-read @(:stats a)) before))))
+      (pack/checkpoint! zipped)
+      (is (= (seq original) (seq (pack/read-data (pack/recover zipped) "file")))))
+    (let [entropy (byte-array 131109)]
+      (.nextBytes (java.util.Random. 53120261112) entropy)
+      (let [r (pack/put-data-zstd3! zipped "entropy" entropy)]
+        (is (= :raw-car (get-in r [:compression :representation])))
+        (is (= :awai.otehon-store/pack-v1 (get-in r [:pack :format])))))))
+
+(deftest selected-leaf-and-frame-corruption-even-after-cache-hit
+  (doseq [zipped? [false true]]
+    (let [d (new-store) original (bytes-of 524288)
+          _ ((if zipped? pack/put-data-zstd3! pack/put-data!) d "file" original)
+          h (pack/recover d) ref (get-in h [:files "file"])
+          checked (get @(:index-cache h) (or (:stored-sha ref) (:car-sha ref)))
+          _ (pack/read-range-verified-leaves h "file" 0 4096)
+          _ (pack/read-range-verified-leaves h "file" 0 4096)
+          filename (str d "/" (or (:stored-sha ref) (:car-sha ref)) (if zipped? ".zpack" ".car"))
+          offset (if zipped? (:prefix-size (:layout checked)) (:offset (first (:index checked))))]
+      (with-open [f (java.io.RandomAccessFile. filename "rw")]
+        (.seek f offset) (let [b (.read f)] (.seek f offset) (.write f (bit-xor b 1))))
+      (is (= (if zipped? :corrupt-frame :cid-mismatch)
+             (error-type #(pack/read-range-verified-leaves h "file" 0 4096))))
+      (is (some? (error-type #(pack/read-data h "file"))))
+      (is (some? (error-type #(pack/recover d))))
+      (is (some? (error-type #(pack/checkpoint! d)))))))
+
+(deftest unread-damage-is-not-silently-claimed-scrubbed
+  (doseq [zipped? [false true]]
+    (let [d (new-store) original (bytes-of 524288)
+          _ ((if zipped? pack/put-data-zstd3! pack/put-data!) d "file" original)
+          h (pack/recover d) ref (get-in h [:files "file"])
+          checked (get @(:index-cache h) (or (:stored-sha ref) (:car-sha ref)))
+          filename (str d "/" (or (:stored-sha ref) (:car-sha ref)) (if zipped? ".zpack" ".car"))
+          offset (if zipped? (+ (:prefix-size (:layout checked)) (:stored-offset (last (get-in checked [:layout :frames]))))
+                             (:offset (last (:index checked))))]
+      (with-open [f (java.io.RandomAccessFile. filename "rw")]
+        (.seek f offset) (let [b (.read f)] (.seek f offset) (.write f (bit-xor b 1))))
+      (is (= (seq (java.util.Arrays/copyOfRange original 0 4096))
+             (seq (pack/read-range-verified-leaves h "file" 0 4096))))
+      (is (some? (error-type #(pack/export-car h "file"))))
+      (is (some? (error-type #(pack/recover d)))))))
+
+(deftest zpack-truncation-symlink-and-reference-tampering
+  (doseq [damage [:truncate :symlink :ref]]
+    (let [d (new-store) _ (pack/put-data-zstd3! d "file" (bytes-of 131109))
+          h (pack/recover d) ref (get-in h [:files "file"])
+          p (Paths/get (str d "/" (:stored-sha ref) ".zpack") (make-array String 0))]
+      (case damage
+        :truncate (with-open [f (java.io.RandomAccessFile. (str p) "rw")] (.setLength f 10))
+        :symlink (do (Files/delete p) (Files/createSymbolicLink p (Paths/get "not-a-payload" (make-array String 0)) (make-array FileAttribute 0)))
+        :ref (store/transact! d :put {:key "awai.pack/file" :value (pr-str (update ref :stored-size inc))}))
+      (is (thrown? Exception (pack/recover d)))
+      (when-not (= damage :ref)
+        (is (thrown? Exception (pack/read-range-verified-leaves h "file" 0 4)))))))
+
+(deftest segmented-directory-is-bounded-and-closed
+  (let [blob (segmented/encode (bytes-of 131109))]
+    (doseq [bad [(byte-array 12)
+                 (doto (aclone blob) (aset-byte 0 (byte 0)))
+                 (doto (aclone blob) (-> (java.nio.ByteBuffer/wrap 8 4) (.putInt -1)))
+                 (doto (aclone blob) (-> (java.nio.ByteBuffer/wrap 8 4) (.putInt 32769)))
+                 (java.util.Arrays/copyOf blob (dec (alength blob)))
+                 (byte-array (concat blob [(byte 0)]))]]
+      (is (thrown? Exception (segmented/decode bad))))))
+
+(deftest mixed-ranges-and-snapshot-wide-cache-ceiling
+  (let [d (new-store) original (bytes-of 131109)]
+    (doseq [i (range 3)]
+      (let [b (aclone original)] (aset-byte b 0 (byte i)) (pack/put-data-zstd3! d (str i) b)))
+    (let [h (pack/recover d) random (java.util.Random. 531)]
+      (dotimes [_ 20]
+        (let [i (.nextInt random 3) b (aclone original)
+              start (.nextInt random (inc (alength b)))
+              length (.nextInt random (inc (min 70000 (- (alength b) start))))]
+          (aset-byte b 0 (byte i))
+          (is (= (seq (java.util.Arrays/copyOfRange b start (+ start length)))
+                 (seq (pack/read-range-verified-leaves h (str i) start length))))))
+      (let [caches (map :decoded-cache (vals @(:index-cache h)))]
+        (is (apply identical? (take 2 caches)))
+        (is (<= (count (:values @(first caches))) 4))))))

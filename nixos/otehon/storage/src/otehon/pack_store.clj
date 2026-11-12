@@ -5,6 +5,7 @@
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             [awai.fs.car :as car]
+            [otehon.segmented :as segmented]
             [otehon.storage :as store])
   (:import [java.io ByteArrayOutputStream]
            [java.security MessageDigest]))
@@ -65,9 +66,16 @@
                :root-cid (car/cid-str (first roots))
                :data-sha (car/hex-encode (digest (mapcat :bytes raw)))
                :size size :leaf-count (count raw)}
-         :index (mapv (fn [section]
-                        {:offset (+ 51 (:data-offset section)) :length (:length section)})
-                      (butlast (car/carv2-sections v)))}))))
+         :car-size (alength ^bytes bytes)
+         :index (mapv (fn [section block]
+                        {:offset (+ 51 (:data-offset section)) :length (:length section)
+                         :sha (car/hex-encode (:digest (car/parse-cid (:cid block))))})
+                      (butlast (car/carv2-sections v)) raw)}))))
+
+(defn- compressed? [ref] (= :awai.otehon-store/pack-zstd3-v1 (:format ref)))
+(defn- cache-key [ref] (or (:stored-sha ref) (:car-sha ref)))
+(defn- canonical-ref [ref]
+  (-> ref (dissoc :stored-sha :stored-size) (assoc :format :awai.otehon-store/pack-v1)))
 
 (defn- pack-key [name]
   (when-not (and (string? name) (pos? (count name)) (<= (count name) 1024))
@@ -80,8 +88,13 @@
           value (edn/read opts r)]
       (when-not (and (= ::eof (edn/read opts r))
                      (map? value)
-                     (= #{:format :car-sha :root-cid :data-sha :size :leaf-count} (set (keys value)))
-                     (= :awai.otehon-store/pack-v1 (:format value))
+                     (= (if (compressed? value)
+                          #{:format :car-sha :root-cid :data-sha :size :leaf-count :stored-sha :stored-size}
+                          #{:format :car-sha :root-cid :data-sha :size :leaf-count}) (set (keys value)))
+                     (contains? #{:awai.otehon-store/pack-v1 :awai.otehon-store/pack-zstd3-v1} (:format value))
+                     (or (not (compressed? value))
+                         (and (string? (:stored-sha value)) (re-matches #"[0-9a-f]{64}" (:stored-sha value))
+                              (integer? (:stored-size value)) (<= 1 (:stored-size value) max-car-bytes)))
                      (every? #(and (string? %) (re-matches #"[0-9a-f]{64}" %))
                              [(:car-sha value) (:data-sha value)])
                      (string? (:root-cid value))
@@ -91,16 +104,21 @@
       value)))
 
 (defn- load-index [directory ref stats]
-  (let [bytes (store/read-car directory (:car-sha ref))
+  (let [stored (when (compressed? ref) (store/read-zpack directory (:stored-sha ref)))
+        decoded (when stored (segmented/decode stored))
+        bytes (if stored (:car decoded) (store/read-car directory (:car-sha ref)))
         checked (verify-car bytes)]
-    (swap! stats #(-> % (update :car-reads inc) (update :bytes-read + (alength ^bytes bytes))
+    (when (and stored (not= (:stored-size ref) (alength ^bytes stored)))
+      (fail! :pack-ref-mismatch "compressed representation size mismatch"))
+    (swap! stats #(-> % (update :car-reads inc) (update :bytes-read + (alength ^bytes (or stored bytes)))
                        (update :index-rebuilds inc)))
-    (when-not (= ref (:ref checked))
+    (when-not (= (canonical-ref ref) (:ref checked))
       (fail! :pack-ref-mismatch "CAR bytes do not match the committed Pack reference"))
-    checked))
+    (assoc checked :ref ref :layout (:layout decoded))))
 
 (defn- recover-map [directory state]
   (let [cache (atom {})
+        decoded-cache (atom {:order [] :values {}})
         stats (atom {:cache-entries-before 0 :index-rebuilds 0 :car-reads 0 :bytes-read 0})
         files (reduce-kv
                 (fn [out key value]
@@ -109,10 +127,11 @@
                     (let [name (subs key (count prefix))
                           _ (pack-key name)
                           ref (parse-ref value)
-                          checked (or (get @cache (:car-sha ref)) (load-index directory ref stats))]
+                          checked (assoc (or (get @cache (cache-key ref)) (load-index directory ref stats))
+                                         :decoded-cache decoded-cache)]
                       (when-not (= ref (:ref checked))
                         (fail! :pack-ref-mismatch "conflicting references to the same CAR"))
-                      (swap! cache assoc (:car-sha ref) checked)
+                      (swap! cache assoc (cache-key ref) checked)
                       (assoc out name ref)))) {} state)]
     {:directory directory :files files :index-cache cache :stats stats}))
 
@@ -128,27 +147,51 @@
   {:files (:files handle) :basis (:basis handle) :degraded? (:degraded? handle)
    :stats (assoc @(:stats handle) :index-cache-entries (count @(:index-cache handle)))})
 
-(defn import-car!
+(defn- import-representation!
   "Verify and durably publish a supported CAR before publishing its catalog
   reference through the existing WAL/root transaction, under one writer lock."
-  [directory name bytes]
+  [directory name bytes zstd3?]
   (vector-bytes bytes max-car-bytes)
   (let [bytes (aclone ^bytes bytes)
         key (pack-key name)
-        ref (:ref (verify-car bytes))
+        base-ref (:ref (verify-car bytes))
+        candidate (when zstd3? (segmented/encode bytes))
+        ;; Explicit size policy: the new container must beat the whole raw CAR,
+        ;; including its directory. Entropy stays in the existing raw format.
+        stored (when (and candidate (< (alength ^bytes candidate) (alength ^bytes bytes))) candidate)
+        _ (when (and stored (not (java.util.Arrays/equals ^bytes bytes ^bytes (:car (segmented/decode stored)))))
+            (fail! :compression-mismatch "compression did not preserve canonical CAR bytes"))
+        ref (if stored (assoc base-ref :format :awai.otehon-store/pack-zstd3-v1
+                              :stored-sha (segmented/sha stored) :stored-size (alength ^bytes stored)) base-ref)
         result (store/transact!
                  directory :put {:key key :value (pr-str ref)}
                  (fn [directory state]
                    (recover-map directory state)
-                   (when-not (= (:car-sha ref) (store/write-car! directory bytes))
+                   (when-not (= (cache-key ref) (if stored (store/write-zpack! directory stored)
+                                                           (store/write-car! directory bytes)))
                      (fail! :car-changed "CAR bytes changed during publication"))))]
-    (assoc result :pack ref)))
+    (cond-> (assoc result :pack ref)
+      zstd3? (assoc :compression {:requested :zstd3 :representation (if stored :segmented-zstd3 :raw-car)
+                                 :candidate-bytes (alength ^bytes candidate)
+                                 :stored-bytes (alength ^bytes (or stored bytes))}))))
+
+(defn import-car! [directory name bytes] (import-representation! directory name bytes false))
+(defn import-car-zstd3!
+  "Opt-in segmented physical representation. Exact canonical CAR/root retained;
+  no raw CAR duplicate is stored. Existing raw entries remain readable."
+  [directory name bytes] (import-representation! directory name bytes true))
 
 (defn put-data! [directory name bytes]
   (let [v (vector-bytes bytes max-data-bytes)
         leaves (mapv (fn [part] (let [v (vec part)] {:bytes v :digest (digest v)}))
                      (partition-all leaf-size v))]
     (import-car! directory name (byte-array-of (encode-pack leaves)))))
+
+(defn put-data-zstd3! [directory name bytes]
+  (let [v (vector-bytes bytes max-data-bytes)
+        leaves (mapv (fn [part] (let [v (vec part)] {:bytes v :digest (digest v)}))
+                     (partition-all leaf-size v))]
+    (import-car-zstd3! directory name (byte-array-of (encode-pack leaves)))))
 
 (defn checkpoint! [directory]
   (store/checkpoint! directory (fn [directory state] (recover-map directory state))))
@@ -158,8 +201,12 @@
   (or (get (:files handle) name) (fail! :pack-not-found "Pack name is not in the selected committed catalog")))
 
 (defn export-car [handle name]
-  (let [bytes (store/read-car (:directory handle) (:car-sha (ref-for handle name)))]
-    (swap! (:stats handle) #(-> % (update :car-reads inc) (update :bytes-read + (alength ^bytes bytes))))
+  (let [ref (ref-for handle name)
+        stored (when (compressed? ref) (store/read-zpack (:directory handle) (:stored-sha ref)))
+        bytes (if stored (:car (segmented/decode stored)) (store/read-car (:directory handle) (:car-sha ref)))]
+    (when (and stored (not= (:car-sha ref) (segmented/sha bytes)))
+      (fail! :corrupt-car "decoded canonical CAR digest mismatch"))
+    (swap! (:stats handle) #(-> % (update :car-reads inc) (update :bytes-read + (alength ^bytes (or stored bytes)))))
     bytes))
 
 (defn read-range [handle name offset length]
@@ -168,7 +215,7 @@
                    (<= 0 length (- (:size ref) offset)))
       (fail! :invalid-range "Pack range is outside the selected file"))
     (let [bytes (export-car handle name)
-          index (get-in @(:index-cache handle) [(:car-sha ref) :index])]
+          index (get-in @(:index-cache handle) [(cache-key ref) :index])]
       (when-not index (fail! :missing-index "Pack handle has no verified derived index"))
       (with-open [out (ByteArrayOutputStream.)]
         (doseq [{:keys [offset length]} (car/car-range-segments index offset length)]
@@ -177,3 +224,33 @@
 
 (defn read-data [handle name]
   (read-range handle name 0 (:size (ref-for handle name))))
+
+(defn read-range-verified-leaves
+  "Efficient explicit range operation against a fully verified recovered handle.
+  Re-verify touched WHOLE leaf CIDs; compressed reads also verify touched frames.
+  Does not scrub unread bytes. read-range/read-data/export/recover/checkpoint
+  retain their strict whole-representation integrity checks."
+  [handle name offset length]
+  (let [ref (ref-for handle name)
+        checked (get @(:index-cache handle) (cache-key ref))]
+    (when-not (and (integer? offset) (integer? length) (<= 0 offset (:size ref))
+                   (<= 0 length (- (:size ref) offset)))
+      (fail! :invalid-range "Pack range is outside the selected file"))
+    (when-not checked (fail! :missing-index "no verified snapshot index"))
+    (let [leaves (loop [[leaf & more] (:index checked) logical 0 out []]
+                   (if-not leaf out
+                     (recur more (+ logical (:length leaf))
+                       (if (and (pos? length) (< logical (+ offset length)) (< offset (+ logical (:length leaf))))
+                         (conj out (assoc leaf :logical logical)) out))))
+          spans (mapv #(select-keys % [:offset :length]) leaves)
+          raw (if (compressed? ref)
+                (segmented/read-ranges (:directory handle) (:stored-sha ref) (:layout checked)
+                                      spans (:decoded-cache checked) (:stats handle))
+                (let [parts (store/read-payload-segments (:directory handle) (:car-sha ref) "car" (:car-size checked) spans)]
+                  (swap! (:stats handle) #(-> % (update :car-reads inc) (update :bytes-read + (reduce + 0 (map :length spans))))) parts))]
+      (with-open [out (ByteArrayOutputStream.)]
+        (doseq [[leaf bytes] (map vector leaves raw)]
+          (when-not (= (:sha leaf) (segmented/sha bytes)) (fail! :cid-mismatch "selected leaf CID mismatch"))
+          (let [start (max offset (:logical leaf)) end (min (+ offset length) (+ (:logical leaf) (:length leaf)))]
+            (.write out ^bytes bytes (int (- start (:logical leaf))) (int (- end start)))))
+        (.toByteArray out)))))

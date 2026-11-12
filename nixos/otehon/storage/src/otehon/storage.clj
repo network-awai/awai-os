@@ -166,6 +166,56 @@
       (when-not (= digest (sha bytes)) (fail! :corrupt-car "CAR byte digest mismatch"))
       bytes)))
 
+(defn write-zpack!
+  "Opt-in physical representation; call only inside the metadata writer lock.
+  Publish/force/rename/sync ordering is identical to CAR publication."
+  [directory bytes]
+  (when-not (and (bytes? bytes) (<= (alength ^bytes bytes) max-bytes))
+    (fail! :too-large "segmented Pack exceeds 1 MiB"))
+  (let [bytes (aclone ^bytes bytes) root (root-path directory)
+        digest (sha bytes) name (str digest ".zpack")]
+    (if (exists? (path root name))
+      (do (when-not (= digest (sha (read-bytes (path root name))))
+            (fail! :corrupt-zpack "existing segmented Pack is corrupt"))
+          (sync-dir! root) (observe! :reused-dir-synced :zpack))
+      (write-record! root name bytes :zpack))
+    digest))
+
+(defn read-zpack [directory digest]
+  (when-not (digest? digest) (fail! :invalid-digest "invalid segmented Pack reference"))
+  (let [p (path (root-path directory) (str digest ".zpack"))]
+    (when-not (exists? p) (fail! :missing-zpack "committed segmented Pack is missing"))
+    (let [bytes (read-bytes p)]
+      (when-not (= digest (sha bytes)) (fail! :corrupt-zpack "segmented Pack digest mismatch"))
+      bytes)))
+
+(defn read-payload-segments
+  "Positioned reads for an explicitly selected range-verification operation.
+  Does not verify the whole-file digest; caller must verify every returned
+  complete leaf/frame against its previously verified immutable snapshot."
+  [directory digest extension expected-size spans]
+  (when-not (and (digest? digest) (contains? #{"car" "zpack"} extension)
+                 (integer? expected-size) (<= 0 expected-size max-bytes)
+                 (vector? spans) (<= (count spans) 64)
+                 (every? (fn [{:keys [offset length]}]
+                           (and (integer? offset) (integer? length)
+                                (<= 0 offset expected-size) (<= 0 length (- expected-size offset)))) spans)
+                 (<= (reduce + 0 (map :length spans)) max-bytes))
+    (fail! :invalid-range "invalid physical read bounds"))
+  (let [p (path (root-path directory) (str digest "." extension))]
+    (when-not (Files/isRegularFile p (into-array LinkOption [LinkOption/NOFOLLOW_LINKS]))
+      (fail! :missing-payload "range payload is not a regular file"))
+    (with-open [channel (FileChannel/open p (into-array OpenOption [StandardOpenOption/READ LinkOption/NOFOLLOW_LINKS]))]
+      (when-not (= expected-size (.size channel)) (fail! :changed-payload "range payload size changed"))
+      (mapv (fn [{:keys [offset length]}]
+              (let [b (ByteBuffer/allocate (int length))]
+                (loop [pos offset]
+                  (when (.hasRemaining b)
+                    (let [n (.read channel b (long pos))]
+                      (when (<= n 0) (fail! :short-read "range payload shortened"))
+                      (recur (+ pos n)))))
+                (.array b))) spans))))
+
 (defn- state? [value]
   (and (map? value) (every? string? (keys value)) (every? string? (vals value))))
 (defn- frame-valid? [{:keys [op payload]}]
