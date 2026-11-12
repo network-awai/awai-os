@@ -1,5 +1,21 @@
 # Otehon distributed operations C1
 
+The public immutable persistence pilot is separate from the read-only preflight:
+
+```sh
+bb --classpath nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:nixos/otehon/storage/vendor/apex-car/src scripts/otehon-c1/replica_fixture_test.clj
+node scripts/otehon-c1/replica_pilot.mjs HOST_A HOST_B .agent-output/NEW_PUBLIC_PILOT
+```
+
+Unlike preflight, the explicitly invoked pilot creates new task-only stores on
+both selected Mac hosts under `/Users/node/github/workspaces/codex/`. It transfers
+only verified source and a deterministic public fixture, never private Bot data.
+It uses existing strict SSH host trust, verifies codec pins/code archive bytes,
+and starts fresh BB processes for recovery. It preserves existing paths, damaged
+clones, and all evidence. It does not stop a provider, migrate a volume, establish
+encryption/authorization or activate a distributed mount/repair daemon. See
+`docs/evidence/awai-fs-two-host-public-replica-20261112.md` for the exact boundary.
+
 Tracking: [AWAI-2772](https://linear.app/kotobalabs/issue/AWAI-2772).
 This is an Otehon operations tool, separate from Native build/runtime gates.
 It does not enroll nodes, grant capabilities, launch workloads or move funds.
