@@ -3,6 +3,7 @@
   (:require [clojure.string :as str]))
 (def schema "awai.bot-runtime-receipts.v1")
 (def readiness-schema "awai.bot-readiness-observation.v1")
+(def original-schema "awai.original-job-observation.v1")
 (defn timestamp [s]
  (when (string? s)
   #?(:clj (try (.toEpochMilli (java.time.Instant/parse s)) (catch Exception _ nil))
@@ -71,3 +72,25 @@
      :serviceLoaded (when-not future? (:serviceLoaded r)) :invocation (:invocation r)
      :enabled (when (and (not future?) (:serviceLoaded r)) (count (filter :configuredEnabled jobs)))
      :completed (when (seq completed) (count completed)) :selected (count (:jobs r)) :jobs jobs})))
+
+(defn original-summary [r now]
+ (if-not (and (= original-schema (:schema r)) (= "original-bounded-jobs" (:scope r))
+              (timestamp (:observedAt r)) (boolean? (:serviceLoaded r))
+              (contains? #{"operator" "launchd"} (:invocation r))
+              (vector? (:jobs r)) (<= 1 (count (:jobs r)) 16)
+              (= (count (:jobs r)) (count (distinct (map :catalog-bot-id (:jobs r)))))
+              (every? #(and (every? short? (map % [:catalog-bot-id :job-id]))
+                            (contains? #{"waiting" "held" "unknown" "completed" "already-completed"} (:state %))
+                            (let [run (or (:last-result %) %)]
+                             (or (nil? (:run-id run))
+                                 (and (short? (:run-id run)) (= "none" (:provider run))
+                                      (= "deterministic" (:model run))
+                                      (contains? #{"unknown" "completed" "already-completed"} (:state run)))))) (:jobs r)))
+  {:valid? false}
+  (let [future? (> (timestamp (:observedAt r)) now) jobs (if future? [] (:jobs r))
+        done? #(let [run (or (:last-result %) %)]
+                 (and (contains? #{"completed" "already-completed"} (:state run))
+                      (true? (:linear-result-confirmed run)) (true? (get-in run [:artifact :readback]))))]
+   {:valid? true :observedAt (:observedAt r) :jobs jobs :serviceLoaded (when-not future? (:serviceLoaded r))
+    :ageSeconds (when-not future? (quot (- now (timestamp (:observedAt r))) 1000))
+    :completed (when-not future? (count (filter done? jobs))) :selected (count (:jobs r))})))

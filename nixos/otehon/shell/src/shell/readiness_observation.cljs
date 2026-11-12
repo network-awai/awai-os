@@ -49,4 +49,4 @@
           [:p (str (:provider run) " / " (:model run) " · " (:state run))]
           [:p.muted (str "入力 " (or (:inputTokens run) "不明") " / 出力 " (or (:outputTokens run) "不明") " tokens")]
           [:p.muted (str "Linear結果記録: " (if (:linearResultConfirmed run) "確認済" "未確認"))]])])]])
-   [:p.muted "有効なのは公開情報での準備確認・Issue整理です。元ジョブのメール・Git変更・スクリプト実行は保留中です。この表示は読込み時のスナップショットで、自動同期・全Botの稼働率ではありません。"]]))
+   [:p.muted "この欄は公開情報での準備確認・Issue整理です。元ジョブは別欄で確認できます。メール・Git変更・スクリプト実行は保留中です。読込み時のスナップショットで、自動同期・全Botの稼働率ではありません。"]]))

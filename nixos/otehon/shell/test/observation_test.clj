@@ -38,4 +38,15 @@
   (is (nil? (:completed (o/readiness-summary (assoc-in readiness [:jobs 0 :lastRun] nil) now))))
   (is (:valid? (o/readiness-summary (assoc-in readiness [:jobs 0 :lastRun :inputTokens] nil) now)))
   (is (not (:valid? (o/readiness-summary (assoc-in readiness [:jobs 0 :lastRun :inputTokens] -1) now))))))
+(deftest original-observations-require-storage-and-linear-proofs
+ (let [r {:schema o/original-schema :scope "original-bounded-jobs" :observedAt "2026-11-12T03:00:00Z"
+          :serviceLoaded true :invocation "launchd" :jobs [{:catalog-bot-id "profile:awai-arb" :job-id "original"
+          :state "waiting" :last-result {:run-id "one" :provider "none" :model "deterministic"
+           :state "completed" :linear-result-confirmed true :artifact {:readback true}}}]}
+       now (inc (o/timestamp (:observedAt r)))]
+  (is (= 1 (:completed (o/original-summary r now))))
+  (is (= 0 (:completed (o/original-summary (assoc-in r [:jobs 0 :last-result :artifact :readback] false) now))))
+  (is (nil? (:completed (o/original-summary r 0))))
+  (is (not (:valid? (o/original-summary (update r :jobs conj (first (:jobs r))) now))))
+  (is (not (:valid? (o/original-summary (assoc-in r [:jobs 0 :last-result :provider] "meta") now))))))
 (let [r (run-tests)] (when (pos? (+ (:fail r) (:error r))) (System/exit 1)))

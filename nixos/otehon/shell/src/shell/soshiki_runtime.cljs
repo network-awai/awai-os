@@ -2,6 +2,7 @@
   (:require ["react" :refer [useEffect useRef useState]]
             [shell.execution-observation :as execution]
             [shell.readiness-observation :as readiness]
+            [shell.original-observation :as original]
             [reagent.dom.client :as rdom]
             ["../soshiki-runtime.js" :refer [RUNTIME_KEY runtimeView validateObservation]]
             ["../soshiki-fleet.js" :refer [importFleet]]
@@ -23,6 +24,7 @@
      [:h2 "Botの稼働状況"]
      [:p "稼働状況は未確認です。登録・VM起動・CLIの存在だけでは稼働中と判定しません。"]
      [:f> readiness/panel]
+     [:f> original/panel]
      [:f> execution/panel]
      [:label.soshiki-field [:span "ノード観測レポート"]
       [:input {:type "file" :accept ".json,application/json" :aria-label "ノード観測レポート"
