@@ -228,3 +228,40 @@ unverified. The arb ledger contains measured service status and an unposted
 availability investigation draft; these are not financial return measurements.
 See `docs/evidence/itonami-original-jobs-20261112.json`. Mail/private-source/Git
 effects and broad original fleet activation remain unqualified.
+
+### Automatic fleet projection and staged rollout — 2026-11-12
+
+AWAI-2808/2809 extend the parent AWAI-2795. The operator-owned observer joins
+the immutable899-Bot catalog with explicitly pinned approved bindings and fresh
+readiness/original/adapted execution reports. It publishes digest-checked public
+artifacts to AwaiFS and, only after exact readback, atomically distributes a
+static artifact to the local Soshiki preview. The app origin serves files only;
+it performs no request-time joining, external proxying, scheduling or inference.
+Soshiki reads this same-origin artifact every30seconds without manual catalog
+selection. It shows all Bot/repository mappings, permissions, run IDs, next
+slots and per-source-job hold conditions. Older manual tools are collapsed.
+
+The new observer label `network.awai.itonami.fleet-observer.awai2795` wakes every
+60seconds. This is observation cadence, separate from each Bot's source schedule.
+Missing, future, duplicate, stale (>3minutes), changed profile/Project or unknown
+reports never become current healthy execution. Hash verification checks artifact
+integrity, not independent authentication or permission to execute.
+
+The pinned existing GitHub CLI checks only metadata for exact requested repos in
+the three owner organizations, in bounded GraphQL batches; results are cached
+for6hours. Public/private availability is an operator read check, not a Bot grant
+or a live App API qualification. Private source bodies and credentials are never
+included. Current inspection verified755 repo targets covering891 Bot mappings;
+six requested targets/eight Bot mappings remain unobserved.
+
+Wave2 adds the `cron-health` Itonami-only adaptation every60minutes. Its grant
+allows one exact public compact-summary GET, owned measurement/result writes and
+owning Linear records. It never reads Hermes stores/SQLite or runs imported
+Python scripts. The source Hermes monitoring job remains separately held. First
+measurement recorded transport unavailable, and a later distinct diagnostic
+received200/fresh summary; the first record remains unobserved and is displayed
+as attention, not rewritten into success. Its next scheduled occurrence remains
+at the original cadence. Current scope:6 identities/8 jobs=5 Muse readiness,
+2 bounded originals and1 deterministic adaptation;893 identities remain held.
+No automatic arbitrary capability granting or full-fleet business activation is
+implemented. See `docs/evidence/itonami-fleet-auto-integration-20261112.json`.

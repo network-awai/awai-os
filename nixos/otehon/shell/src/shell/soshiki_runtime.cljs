@@ -85,6 +85,7 @@
     [:main.chat.net-view [:div.net-body.soshiki-body
      [:h1 "Soshiki · 稼働状況"]
      [:f> fleet/panel]
+     [:details [:summary "補助レポートの手動確認"]
      [:label.soshiki-field [:span "登録カタログ（このプレビュー内だけに読込み）"]
       [:input {:type "file" :aria-label "登録カタログ" :accept ".json,application/json"
                :on-change (fn [event]
@@ -97,5 +98,5 @@
                                                           (catch :default _ (set-error "登録形式を確認してください。")))))
                                     (.catch (fn [_] (set-error "読込みに失敗しました。")))))))}]]
      (when error [:p.net-error {:role "alert"} error])
-     [:f> runtime-panel state]]]))
+     [:f> runtime-panel state]]]]))
 (defn init [] (rdom/render (rdom/create-root (.getElementById js/document "soshiki-runtime-root")) [:f> preview]))
