@@ -9,6 +9,7 @@ funds. It is **not built into the OS image**.
 | Part | File | Runs on |
 | --- | --- | --- |
 | Pure core | `src/d1/core.cljc` | Basilisp and Babashka, unchanged |
+| Reservation ledger | `src/d1/reservation.cljc` | Babashka (`test/reservation_test.clj`, 9 tests / 24 assertions) |
 | Shared cases | `test/cases.json` | Both (58 cases) |
 | Basilisp runner | `test/run_cases.lpy` | Basilisp: `basilisp run` |
 | Babashka runner | `test/run_cases.clj` | Babashka: `bb --classpath` |
@@ -41,10 +42,12 @@ funds. It is **not built into the OS image**.
 cd dapps/d1
 PYTHONPATH=src basilisp run test/run_cases.lpy
 bb --classpath src:test test/run_cases.clj
+bb --classpath src:test test/reservation_test.clj
 ```
 
-A changed expectation fails on both (exit 1); the run above is the
-negative control.
+A changed expectation fails on both core runners (exit 1); removing the
+fence check from `reservation.cljc` fails the ledger suite the same way.
+These runs are the negative controls.
 
 ## Evidence (2026-11-08, Apple M1 Max)
 
