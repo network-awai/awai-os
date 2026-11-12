@@ -312,3 +312,19 @@ four physics runs and subsequent autonomous batches were independently observed.
 See `docs/evidence/itonami-physics-rollout-20261112.json` for dated counts, source
 pins, scope, public artifact readbacks, held-gate manifest and validation. The
 local Soshiki preview is qualified; production guest UI cutover is not performed.
+
+Wave3 follow-up diagnostics retain the original eligibility limits: the102
+scope/solver/budget holds consist of70 unsupported material/J2 specs,19 total
+numerical work budgets exceeded,12 invalid thermal budgets and1 invalid solver
+budget. The detailed per-Bot data-only validation report has an immutable AwaiFS
+URL/digest/readback in the follow-up evidence; no additional simulation or grant
+was made for those held specs.
+
+If artifact publication becomes uncertain after a child has saved its result,
+the worker leaves that occurrence unknown and visibly in attention. It checks
+again after10minutes, retaining the same request/run/slot and etcd claim. Recovery
+uses the original saved simulation and artifact bytes; it must not reset the
+claim, change the scheduling checkpoint to force success, or start another child.
+The result is returned to waiting only after publication and scoped Linear
+recording are confirmed. Operator-assisted and fully automatic live recovery
+observations are kept separately from the initial successful-run baseline.
