@@ -265,3 +265,50 @@ at the original cadence. Current scope:6 identities/8 jobs=5 Muse readiness,
 2 bounded originals and1 deterministic adaptation;893 identities remain held.
 No automatic arbitrary capability granting or full-fleet business activation is
 implemented. See `docs/evidence/itonami-fleet-auto-integration-20261112.json`.
+
+### Wave3: pinned App physics adaptations — 2026-11-12 16:57 JST
+
+The earlier Wave2 counts above are a dated baseline. The live observer now joins
+525 configured identities/527 jobs:5 Muse readiness,2 bounded originals,
+1 cron-health adaptation and519 pinned physics adaptations. The899-identity
+catalog remains intact;374 identities are not enabled. Configuration is not a
+successful-run count. Soshiki separately shows queued, confirmed latest receipts,
+attention, App/repository, exact grant capabilities and next JST slot. The next
+normal cron-health occurrence recorded HTTP200; its earlier transport failure
+remains an unchanged historical observation.
+
+643 profiles shared the same legacy physical measurement script. A reviewed
+Otehon port replaces that runtime for519 supported immutable App specs; it does
+not invoke KBB, Python, Hermes stores or arbitrary imported scripts. Supported
+bounded models are transport, thermal, manipulator, tank-drain and pipe-flow.
+22 specs could not be retrieved at their pinned revision;102 failed the current
+scope/solver/budget checks. Those124 and250 other identities remain held with
+their original conditions in the all-Bot projection and dated gate artifact.
+
+`fetch-physics-specs.mjs` verifies public, nonarchived exact requested repositories,
+immutable commits and Git blob OIDs before saving bounded data. The preparation
+plan is display metadata and grants no authority. `prepare-physics-fleet.clj`
+checks source/schedule/spec/runtime pins and enrolls explicit typed grants through
+authenticated etcd CAS with independent readback. `daily.cljc` accepts only exact
+daily HH:MM in Asia/Tokyo/UTC; it preserves the source phase and refuses other
+cron shapes. `physics-worker.clj` admits at most4 due jobs per wake, catching up
+only the latest missed daily occurrence. Wakeup is60seconds after prior runs;
+it does not change each Bot's daily frequency. Unknown results reconcile only
+the original saved measurement and never blindly re-simulate.
+
+The new owned `network.awai.itonami.physics.awai2809` worker is live. Its compute
+currently runs on jun-control; admission and fencing use the three physical
+etcd hosts. This does not qualify distributed compute or cold boot. Each actual
+simulation saves an AwaiFS CID with byte readback and forecast/result records in
+its owning Project's unfinished Linear Issue. Initial Backlog issues move to
+In Progress after measured work; they are never automatically Done. The
+deterministic executor has no model call or applicable token counters. Native
+tests remain unmeasured, hardware actuation disabled, and code growth/landing
+held. Original source jobs remain separately identified.
+
+The observer runs immutable source776d9cd with the pinned527-binding manifest;
+the browser continues to read only its static same-origin artifact. The first
+four physics runs and subsequent autonomous batches were independently observed.
+See `docs/evidence/itonami-physics-rollout-20261112.json` for dated counts, source
+pins, scope, public artifact readbacks, held-gate manifest and validation. The
+local Soshiki preview is qualified; production guest UI cutover is not performed.
