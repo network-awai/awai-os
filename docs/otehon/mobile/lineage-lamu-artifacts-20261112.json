@@ -1,0 +1,33 @@
+{
+  "observedDate": "2026-11-12",
+  "source": "https://download.lineageos.org/api/v2/devices/lamu/builds",
+  "device": "lamu",
+  "buildDate": "2026-11-05",
+  "verification": "metadata only; image bytes not downloaded or hashed locally",
+  "files": [
+    {
+      "filename": "lineage-24.0-20261105-nightly-lamu-signed.zip",
+      "sha256": "786b591c15b72ac1bd64cceee1590f8d5c9b5ce5fb19ad8b22b5d81fb499ee5c",
+      "size": 1032059312,
+      "url": "https://mirrorbits.lineageos.org/full/lamu/20261105/lineage-24.0-20261105-nightly-lamu-signed.zip"
+    },
+    {
+      "filename": "boot.img",
+      "sha256": "29bc46fd46073ae2eef9dbf5020a0958fba1c3ce2a5a958f7e6a35afa2be5ea5",
+      "size": 67108864,
+      "url": "https://mirrorbits.lineageos.org/full/lamu/20261105/boot.img"
+    },
+    {
+      "filename": "dtbo.img",
+      "sha256": "b5d5e323900b9f6fca2bbb65a4bf7cf403da7e6726ea6445574baeca55541e80",
+      "size": 8388608,
+      "url": "https://mirrorbits.lineageos.org/full/lamu/20261105/dtbo.img"
+    },
+    {
+      "filename": "vendor_boot.img",
+      "sha256": "3d8b8985192db05061521b934b98c6a1ea90bb589dad25f7c8a09004c985e31b",
+      "size": 67108864,
+      "url": "https://mirrorbits.lineageos.org/full/lamu/20261105/vendor_boot.img"
+    }
+  ]
+}

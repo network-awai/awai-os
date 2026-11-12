@@ -121,3 +121,6 @@ D13 の中継配置、L1 取引系、grant/sealed-state はこの計画で決定
 次の実行単位は P3 の pinned APK build と offline 起動試験、または P1 の同 revision での VM 再現。
 全面置換を進める場合は、まず moto の公式 unlock 適格性と機種別復旧/BSP を確認する。
 Samsung は現状観察・純正復旧物の検証から別に再開する。
+
+追記: 同日の[LineageOS 解除・導入調査](mobile-lineage-research-20261112.md)で、XT2523-5 の公式機種定義と配布、
+maintainer の tanuki/kaeru 経路を確認した。SIM 待ちだけを進路とせず、この個体と bootloader の適合・復旧を次に確認する。
