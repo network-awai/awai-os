@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {createHash} from 'node:crypto';
-import {groupFor,buildPlan} from '../../bot-fleet/stabilization.mjs';import{scheduleHolds}from'../src/fleet-projection.js';
+const {groupFor,buildPlan}=await import(process.env.AWAI_STABILIZATION_MODULE??'../../bot-fleet/stabilization.mjs');import{scheduleHolds}from'../src/fleet-projection.js';
 const bot={id:'profile:fixture',name:'fixture',repository:'org/app',holds:[],configured:false,state:'held',linear:{projectId:'p',initiativeId:'i',issues:['AWAI-1']},physicsRollout:null};
 const source={...bot,profile:{commit:'a'.repeat(40),checksum:'sha256-tree:fixture'},schedule:{state:'verified',jobs:[]},linear:{state:'bound',issues:[{status:'Backlog'}]}};
 const now=Date.now(),payload={bots:[bot],observedAt:new Date(now).toISOString(),catalogSha256:'b'.repeat(64),totals:{configured:0}},envelope={schema:'awai.fleet-artifact.v1',payload,sha256:createHash('sha256').update(JSON.stringify(payload)).digest('hex')},catalog={schema:'awai.bot-fleet.v1',organization:{bots:[source]}},base={held:[bot]},work={event:{id:'AWAI-2835'}};

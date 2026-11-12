@@ -11,5 +11,6 @@ pkgs.runCommand "otehon-bot-fleet-check" {
   node --test ${./.}/resolve-timezones.test.mjs > "$out/timezone-tests.txt"
   node --test ${../shell}/test/soshiki-runtime.test.js > "$out/runtime-view-tests.txt"
   node --test ${../shell}/test/fleet-projection.test.js > "$out/fleet-projection-tests.txt"
+  AWAI_STABILIZATION_MODULE=${./stabilization.mjs} node --test ${../shell}/test/stabilization.test.js > "$out/stabilization-tests.txt"
   bb --classpath ${../shell}/src ${../shell}/test/observation_test.clj > "$out/observation-tests.txt"
 ''
