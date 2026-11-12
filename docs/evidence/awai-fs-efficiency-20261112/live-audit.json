@@ -1,0 +1,99 @@
+{
+  "schema": "awai.fs-efficiency.live.v1",
+  "startedAt": "2026-11-12T02:12:46.762Z",
+  "endedAt": "2026-11-12T02:12:57.801Z",
+  "scope": "installed-AwaiVol-read-only-snapshot",
+  "format": "raw-concatenated-chunks; .car suffix is not CARv2",
+  "manifest": {
+    "sha256": "d738081e93a4d7baece26732cb5c9c799ef732971e3aca64b8b130367d4464bb",
+    "bytes": 481604,
+    "unchangedDuringAudit": true,
+    "files": 1135,
+    "logicalBytes": 37838943,
+    "chunkReferences": 1157,
+    "uniqueChunks": 523,
+    "uniqueLiveChunkBytes": 35261893
+  },
+  "storage": {
+    "residentPacks": 498,
+    "residentPackBytes": 35261893,
+    "residentLiveIntervalBytes": 35261893,
+    "residentUnreferencedOrSlackBytes": 0,
+    "residentAllocatedBytes": 36352000,
+    "referencedPacks": 498,
+    "referencedPacksNotResident": 0,
+    "totalDeclaredPackBytes": 35261893,
+    "journalBytes": 0,
+    "note": "Nonresident may be tiered; unreferenced/slack is an estimate, not deletion authorization. APFS blocks are not exclusive billed space."
+  },
+  "compression": {
+    "sampleStrategy": "all nonempty resident packs at snapshot; <=64 MiB bound",
+    "packs": 498,
+    "rawBytes": 35261893,
+    "rawSha256": "944f68a07bf02b2f461f04e4c8a80e78fba804c83575df1e5ae19f09e13d9bad",
+    "levels": [
+      {
+        "level": 1,
+        "perPackBytes": 22027469,
+        "concatenatedBytes": 21583423,
+        "perPackCliMs": 1824.3744579999998,
+        "concatenatedDecodeCliMs": 24.67970799999989,
+        "roundtrip": true,
+        "ratioRawToPerPack": 1.6008145556804552
+      },
+      {
+        "level": 3,
+        "perPackBytes": 21972182,
+        "concatenatedBytes": 21391044,
+        "perPackCliMs": 1681.1151249999998,
+        "concatenatedDecodeCliMs": 23.07629100000031,
+        "roundtrip": true,
+        "ratioRawToPerPack": 1.6048425686625025
+      },
+      {
+        "level": 9,
+        "perPackBytes": 21761232,
+        "concatenatedBytes": 20741079,
+        "perPackCliMs": 2297.33025,
+        "concatenatedDecodeCliMs": 20.785125000000335,
+        "roundtrip": true,
+        "ratioRawToPerPack": 1.620399663033784
+      }
+    ],
+    "installedCompression": "none in inspected payload path",
+    "timingScope": "one CLI invocation per pack including spawn; single warm sample, not sustained throughput"
+  },
+  "query": {
+    "unit": "ms",
+    "cache": "warm process/page cache; 1 warmup +30 samples; no fs cache flush",
+    "manifestJsonParse": {
+      "n": 30,
+      "min": 1.3474169999990409,
+      "p50": 1.4012500000008004,
+      "p95": 1.5492080000003625,
+      "p99": 1.6263750000016444,
+      "max": 1.6263750000016444
+    },
+    "pointLookup1000": {
+      "n": 30,
+      "min": 0.006708999999318621,
+      "p50": 0.008457999998427113,
+      "p95": 0.024333999999726075,
+      "p99": 0.03504099999918253,
+      "max": 0.03504099999918253
+    },
+    "prefixScanAllPaths": {
+      "n": 30,
+      "min": 0.02291700000023411,
+      "p50": 0.02345900000000256,
+      "p95": 0.039999999999054126,
+      "p99": 0.048499999998966814,
+      "max": 0.048499999998966814
+    },
+    "datalog": "unmeasured: not an API of this installed file service"
+  },
+  "process": {
+    "node": "v26.0.0",
+    "zstd": "*** Zstandard CLI (64-bit) v1.5.7, by Yann Collet ***"
+  }
+}

@@ -7,6 +7,10 @@
 (import '[java.nio.file Files Paths CopyOption LinkOption]
         '[java.nio.file.attribute PosixFilePermissions FileAttribute])
 
+(def use-zstd3? (= "1" (System/getenv "OTEHON_TEST_ZSTD3")))
+(def put! (if use-zstd3? pack/put-data-zstd3! pack/put-data!))
+(def import! (if use-zstd3? pack/import-car-zstd3! pack/import-car!))
+
 (defn data [kind]
   (byte-array (map #(unchecked-byte (mod (+ (* % 19) (quot % 8191) (if (= kind :new) 73 0)) 256))
                    (range (if (= kind :large) 131085 4099)))))
@@ -34,7 +38,7 @@
                          (into-array FileAttribute
                            [(PosixFilePermissions/asFileAttribute
                               (PosixFilePermissions/fromString "rwx------"))]))
-  (let [files (filter #(re-matches #"(?:root-[01]|[0-9a-f]{64})\.edn|[0-9a-f]{64}\.car" (.getName %))
+  (let [files (filter #(re-matches #"(?:root-[01]|[0-9a-f]{64})\.edn|[0-9a-f]{64}\.(?:car|zpack)" (.getName %))
                       (.listFiles (io/file source)))]
     (doseq [file files]
       (demand (Files/isRegularFile (.toPath file) (into-array LinkOption [LinkOption/NOFOLLOW_LINKS]))
@@ -65,7 +69,7 @@
                 (Thread/sleep 30000)
                 (throw (ex-info "parent failed to kill writer" {}))))]
     (case operation
-      :put (pack/put-data! directory "file" (data :new))
+      :put (put! directory "file" (data :new))
       :checkpoint (pack/checkpoint! directory)))
   (throw (ex-info "selected write boundary was not reached" {})))
 
@@ -74,7 +78,7 @@
         directory (str base "-writer")
         restored (str base "-empty-cache")]
     (store/init! directory)
-    (pack/put-data! directory "file" (data :old))
+    (put! directory "file" (data :old))
     (let [writer (child script "write" directory (name operation) (name event) (name role))]
       (try
         (with-open [out (io/reader (.getInputStream writer))]
@@ -96,7 +100,7 @@
                        (= expected-cp (get-in observed [:basis :checkpoint])))
                   "publication boundary differs" {:observed observed})
           ;; Also exercise orphan reuse and prove process death released its lock.
-          (pack/put-data! directory "file" (data :new))
+          (put! directory "file" (data :new))
           (finish (child script "read" directory "new"))
           (prn {:operation operation :role role :event event :writer-exit 137
                 :tail expected-tail :checkpoint expected-cp :concurrent-writer :denied
@@ -109,18 +113,18 @@
         target (str (io/file output "multi-leaf-empty-cache"))
         imported (str (io/file output "imported"))]
     (store/init! source)
-    (pack/put-data! source "file" (data :old))
+    (put! source "file" (data :old))
     (pack/checkpoint! source)
     ;; Replay a replacement after the checkpoint. The old CAR is retained but
     ;; must not become the selected file or a recovered cache entry.
-    (pack/put-data! source "file" (data :large))
+    (put! source "file" (data :large))
     (let [copy (durable-copy! source target)
           observed (finish (child script "read" target "large"))
           bytes (pack/export-car (pack/recover target) "file")]
       (demand (and (= 1 (get-in observed [:basis :checkpoint]))
                    (= 2 (get-in observed [:basis :tail]))) "checkpoint/WAL replay basis differs" {})
       (store/init! imported)
-      (pack/import-car! imported "file" bytes)
+      (import! imported "file" bytes)
       (let [back (finish (child script "read" imported "large"))]
         (demand (= (:files observed) (:files back)) "CAR import changed identity" {})
         (demand (same-bytes? bytes (pack/export-car (pack/recover imported) "file"))
@@ -137,7 +141,7 @@
     "run" (try
             (demand (.mkdir (io/file directory)) "output must be new" {})
             (doseq [operation [:put :checkpoint]
-                    role (if (= operation :put) [:pack :wal :root] [:snapshot :wal :root])
+                    role (if (= operation :put) [(if use-zstd3? :zpack :pack) :wal :root] [:snapshot :wal :root])
                     event [:half-written :written :file-synced :renamed :dir-synced]]
               (run-case *file* directory operation event role))
             (cold-roundtrip *file* directory)

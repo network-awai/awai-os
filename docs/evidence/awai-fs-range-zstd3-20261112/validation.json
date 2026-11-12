@@ -1,0 +1,45 @@
+{
+  "baselineSource": "0fe5b31f52cca34efe2ae991c5f68f24b456f30c",
+  "initialCandidateSource": "2dd071b",
+  "candidateSource": "82daebc62bbc7c13ecf6ea4d40008ed525aa2392",
+  "driverHashes": [
+    {
+      "path": "nixos/otehon/storage/src/otehon/storage.clj",
+      "sha256": "11326c1d381eacee84d5d31f29c430e8cb781b426e48dbcb7c24f41a1ce59d6d"
+    },
+    {
+      "path": "nixos/otehon/storage/src/otehon/pack_store.clj",
+      "sha256": "d64317f10e9165c4b2bf9b170f69a99c9e3204d0a9b1722196aea7e842d63494"
+    },
+    {
+      "path": "nixos/otehon/storage/src/otehon/segmented.clj",
+      "sha256": "a241d4d62fcb1c86cc501032c1e7259c1f2abe6a17503317f1128c00e5880925"
+    },
+    {
+      "path": "scripts/storage-efficiency/compare-range.clj",
+      "sha256": "b4b3bd3bc3a528643073da75dcdf5acc765a9b41a79862d815c82103cda03c3a"
+    }
+  ],
+  "corpora": 4,
+  "candidateCases": 8,
+  "allRootCarPayloadHashesEqual": true,
+  "rangeOutputsVerified": true,
+  "noStoredPayloadExpansion": true,
+  "sourceTests": {
+    "nixResult": "/nix/store/8anslxzqpp19pmnaplhkx4milj2jb77g-otehon-storage-hosted-check",
+    "tests": 23,
+    "assertions": 139,
+    "rawPackKillCases": 30,
+    "compressedPackKillCases": 30,
+    "cliCarRangeParity": true
+  },
+  "cacheBytesCeiling": 262144,
+  "productionDeployment": false,
+  "usage": {
+    "provider": "unknown",
+    "model": "unknown",
+    "effort": "unknown",
+    "forecast": "unknown;uncalibrated",
+    "tokens": "unknown; no provider telemetry"
+  }
+}

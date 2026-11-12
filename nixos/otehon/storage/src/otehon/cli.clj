@@ -32,7 +32,12 @@
   (let [[command directory name filename] args]
     (case [command (count args)]
       ["pack-put" 4] (prn (pack/put-data! directory name (input-bytes filename)))
+      ["pack-put-zstd3" 4] (prn (pack/put-data-zstd3! directory name (input-bytes filename)))
       ["car-import" 4] (prn (pack/import-car! directory name (input-bytes filename)))
+      ["car-import-zstd3" 4] (prn (pack/import-car-zstd3! directory name (input-bytes filename)))
+      ["pack-range-verified" 6]
+      (prn (output! filename (pack/read-range-verified-leaves (pack/recover directory) name
+                                (Long/parseLong (nth args 4)) (Long/parseLong (nth args 5)))))
       ["pack-get" 4] (prn (output! filename (pack/read-data (pack/recover directory) name)))
       ["car-export" 4] (prn (output! filename (pack/export-car (pack/recover directory) name)))
       ["pack-recover" 2] (prn (pack/summary (pack/recover directory)))

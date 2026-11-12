@@ -1,0 +1,56 @@
+{
+  "sourceRevision": "8181b8f29d68b490a8bdd1518bdd58f76113126c",
+  "installedSourceHashes": [
+    {
+      "path": "awaivol.cljc",
+      "sha256": "4088a0c3d08de417b45bd062153194de12916cff1cfe94bc8be61e58ee85e8ee"
+    },
+    {
+      "path": "src/awai/fs/large_file.cljc",
+      "sha256": "79895ea25cda2946884b3ad6ac797a5776bff5fbc4f9f9484031bcf9dbdeb39f"
+    },
+    {
+      "path": "src/awai/fs/tier.cljc",
+      "sha256": "c365a0c30b4642f3cf53b9a997d708f49d13e92673aba1cdd4db7dc18c157d90"
+    },
+    {
+      "path": "src/awai/fs/hot_cache.cljc",
+      "sha256": "6cd8a385c0a35677432999ff013dcba4a2140629c563802fa67f3d3d62a69abc"
+    }
+  ],
+  "carCodec": {
+    "repository": "https://github.com/network-awai/network-awai-apex",
+    "revision": "df68aad6101d7bf9587ea48bc30946b834aa4ba2",
+    "pullRequest": 181,
+    "sourceFixPullRequest": 180,
+    "extractedFromPullRequest": 147,
+    "status": "merged to owning main; PR 147 runtime is not a dependency",
+    "path": "src/awai/fs/car.cljc",
+    "sha256": "6c11cf9d1022b628fce73c2ac8de589667f9d277e0ae69ad52742fc9bebf148b",
+    "profile": "CARv2 without optional on-disk index; raw leaves plus existing DAG-CBOR pack root"
+  },
+  "host": {
+    "hardware": "MacBookPro18,4",
+    "ramBytes": 34359738368,
+    "platform": "darwin",
+    "arch": "arm64",
+    "macOS": "26.4"
+  },
+  "runtimes": {
+    "node": "v26.0.0",
+    "babashka": "1.12.218",
+    "zstd": "1.5.7"
+  },
+  "loadIsolation": "nice15; existing host workload not isolated; no cache flush; no live writes",
+  "usage": {
+    "provider": "unknown",
+    "model": "unknown",
+    "effort": "unknown",
+    "forecast": "unknown; uncalibrated",
+    "input": "unknown",
+    "output": "unknown",
+    "cache": "unknown",
+    "reasoning": "unknown",
+    "attribution": "side measurement unit; provider token telemetry unavailable"
+  }
+}
