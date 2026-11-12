@@ -67,7 +67,20 @@
                                              [l3 stale] (r/settle l2 "k" da 4 :ok ra)
                                              [_ cur] (r/settle l3 "k" da 5 :ok ra)]
                                          (and (= {:refused true :cause :stale-writer :key "k"} stale)
-                                              (= {:state :completed :key "k" :receipt ra} cur))))] ])
+                                              (= {:state :completed :key "k" :receipt ra} cur))))]
+   ["unknown-reconciles-once" (fn [] (let [[l1 _] (r/reserve {} "k" da now ttl)
+                                           [l2 _] (r/settle l1 "k" da 0 :unverified nil)
+                                           [l3 d] (r/reconcile l2 "k" da :completed ra)
+                                           [l4 replay] (r/reserve l3 "k" da (+ now 1) ttl)]
+                                       (and (= {:state :completed :key "k" :receipt ra} d)
+                                            (= {:replay true :key "k" :receipt ra} replay))))]
+   ["reconcile-refuses-non-unknown" (fn [] (let [[l1 _] (r/reserve {} "k" da now ttl)
+                                                 [l2 d1] (r/reconcile l1 "k" da :completed ra)
+                                                 [u1 _] (r/settle l1 "k" da 0 :unverified nil)
+                                                 [u2 d2] (r/reconcile u1 "k" db :completed ra)]
+                                             (and (= {:refused true :cause :not-unknown :key "k"} d1)
+                                                  (= {:refused true :cause :conflict :key "k"} d2)
+                                                  (= l1 l2))))] ])
 
 (defn -main []
   (let [failures (remove nil? (map (fn [[nm f]] (when-not (f) nm)) checks))]

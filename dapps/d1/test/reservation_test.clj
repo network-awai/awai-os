@@ -89,6 +89,36 @@
     (let [[_ current] (r/settle ledger3 "k1" digest-a 5 :ok receipt-a)]
       (is (= {:state :completed :key "k1" :receipt receipt-a} current)))))
 
+(deftest reconcile-moves-only-unknown-to-authoritative-outcome
+  (let [[ledger1 _] (r/reserve ledger0 "k1" digest-a now ttl)
+        [ledger2 _] (r/settle ledger1 "k1" digest-a 0 :unverified nil)
+        [ledger3 decision] (r/reconcile ledger2 "k1" digest-a :completed receipt-a)]
+    (is (= {:state :completed :key "k1" :receipt receipt-a} decision))
+    (is (= :completed (get-in ledger3 [:reservations "k1" :state])))
+    (let [[ledger4 replay] (r/reserve ledger3 "k1" digest-a (+ now 1) ttl)]
+      (is (= {:replay true :key "k1" :receipt receipt-a} replay))
+      (is (= ledger3 ledger4))))
+  (let [[ledger1 _] (r/reserve ledger0 "k1" digest-a now ttl)
+        [ledger2 _] (r/settle ledger1 "k1" digest-a 0 :unverified nil)
+        [ledger3 decision] (r/reconcile ledger2 "k1" digest-a :failed receipt-a)]
+    (is (= {:state :failed :key "k1"} decision))
+    (is (= receipt-a (get-in ledger3 [:reservations "k1" :receipt]))))
+  (let [[ledger1 _] (r/reserve ledger0 "k1" digest-a now ttl)
+        [ledger2 _] (r/settle ledger1 "k1" digest-a 0 :unverified nil)]
+    (let [[ledger3 conflict] (r/reconcile ledger2 "k1" digest-b :completed receipt-a)]
+      (is (= {:refused true :cause :conflict :key "k1"} conflict))
+      (is (= ledger2 ledger3)))
+    (let [[ledger4 vague] (r/reconcile ledger2 "k1" digest-a :maybe receipt-a)]
+      (is (= {:refused true :cause :unknown-outcome :key "k1"} vague))
+      (is (= ledger2 ledger4))))
+  (let [[ledger1 _] (r/reserve ledger0 "k1" digest-a now ttl)
+        [ledger2 live] (r/reconcile ledger1 "k1" digest-a :completed receipt-a)]
+    (is (= {:refused true :cause :not-unknown :key "k1"} live))
+    (is (= ledger1 ledger2)))
+  (let [[ledger1 missing] (r/reconcile ledger0 "gone" digest-a :completed receipt-a)]
+    (is (= {:refused true :cause :not-unknown :key "gone"} missing))
+    (is (= ledger0 ledger1))))
+
 (deftest settle-refuses-digest-mismatch-and-stale-writer
   (let [ledger1 (assoc-in ledger0 [:reservations "k1"]
                           {:digest digest-a :expires (+ now ttl)

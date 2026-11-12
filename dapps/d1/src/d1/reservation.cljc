@@ -65,6 +65,28 @@
       [(assoc-in ledger [:reservations k :fence] epoch)
        {:fenced true :key k :fence epoch}])))
 
+(defn reconcile
+  "Authoritative resolution of an unknown entry. Only an :unknown entry
+  moves, and only to the outcome the authority reports for the same
+  digest; anything else is refused, never retried automatically."
+  [ledger k digest outcome receipt]
+  (let [entry (get-in ledger [:reservations k])]
+    (cond
+      (or (nil? entry) (not= :unknown (:state entry)))
+      [ledger {:refused true :cause :not-unknown :key k}]
+      (not= digest (:digest entry))
+      [ledger {:refused true :cause :conflict :key k}]
+      (= outcome :completed)
+      [(assoc-in ledger [:reservations k]
+                 (assoc entry :state :completed :receipt receipt))
+       {:state :completed :key k :receipt receipt}]
+      (= outcome :failed)
+      [(assoc-in ledger [:reservations k]
+                 (assoc entry :state :failed :receipt receipt))
+       {:state :failed :key k}]
+      :else
+      [ledger {:refused true :cause :unknown-outcome :key k}])))
+
 (defn settle
   "Terminal settle of a live reservation. Returns [ledger decision].
   effect is :ok, :failed or :unverified. epoch trails the recorded
