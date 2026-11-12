@@ -60,6 +60,35 @@
     (is (= {:refused true :cause :not-live :key "k1"} decision))
     (is (= ledger2 ledger3))))
 
+(deftest fence-ratchets-upward-never-rewinds
+  (let [[ledger1 _] (r/reserve ledger0 "k1" digest-a now ttl)
+        [ledger2 decision] (r/raise-fence ledger1 "k1" 5)]
+    (is (= {:fenced true :key "k1" :fence 5} decision))
+    (is (= 5 (get-in ledger2 [:reservations "k1" :fence])))
+    (let [[ledger3 rewound] (r/raise-fence ledger2 "k1" 5)]
+      (is (= {:refused true :cause :fence-rewind :key "k1"} rewound))
+      (is (= ledger2 ledger3)))
+    (let [[ledger4 backdated] (r/raise-fence ledger2 "k1" 3)]
+      (is (= {:refused true :cause :fence-rewind :key "k1"} backdated))
+      (is (= ledger2 ledger4))))
+  (let [[ledger1 missing] (r/raise-fence ledger0 "missing" 1)]
+    (is (= {:refused true :cause :not-live :key "missing"} missing))
+    (is (= ledger0 ledger1)))
+  (let [[ledger1 _] (r/reserve ledger0 "k1" digest-a now ttl)
+        [ledger2 _] (r/settle ledger1 "k1" digest-a 0 :ok receipt-a)
+        [ledger3 frozen] (r/raise-fence ledger2 "k1" 9)]
+    (is (= {:refused true :cause :not-live :key "k1"} frozen))
+    (is (= ledger2 ledger3))))
+
+(deftest raised-fence-refuses-stale-settle-and-admits-current
+  (let [[ledger1 _] (r/reserve ledger0 "k1" digest-a now ttl)
+        [ledger2 _] (r/raise-fence ledger1 "k1" 5)
+        [ledger3 stale] (r/settle ledger2 "k1" digest-a 4 :ok receipt-a)]
+    (is (= {:refused true :cause :stale-writer :key "k1"} stale))
+    (is (= ledger2 ledger3))
+    (let [[_ current] (r/settle ledger3 "k1" digest-a 5 :ok receipt-a)]
+      (is (= {:state :completed :key "k1" :receipt receipt-a} current)))))
+
 (deftest settle-refuses-digest-mismatch-and-stale-writer
   (let [ledger1 (assoc-in ledger0 [:reservations "k1"]
                           {:digest digest-a :expires (+ now ttl)

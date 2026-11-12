@@ -51,6 +51,20 @@
       :else
       [ledger {:replay true :key k :state (:state entry)}])))
 
+(defn raise-fence
+  "Monotonic fence ratchet for a live reservation. Only moves upward;
+  rewind, unknown keys and settled entries are refused, never applied."
+  [ledger k epoch]
+  (let [entry (get-in ledger [:reservations k])]
+    (cond
+      (or (nil? entry) (contains? terminal-states (:state entry)))
+      [ledger {:refused true :cause :not-live :key k}]
+      (or (not (integer? epoch)) (<= epoch (:fence entry 0)))
+      [ledger {:refused true :cause :fence-rewind :key k}]
+      :else
+      [(assoc-in ledger [:reservations k :fence] epoch)
+       {:fenced true :key k :fence epoch}])))
+
 (defn settle
   "Terminal settle of a live reservation. Returns [ledger decision].
   effect is :ok, :failed or :unverified. epoch trails the recorded
