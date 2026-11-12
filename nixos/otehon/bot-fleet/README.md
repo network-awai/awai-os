@@ -5,6 +5,22 @@ role per profile. Exact-name existing Linear Projects and their Initiatives are
 referenced rather than recreated. An Issue/run/revision/acceptance-unit binding
 is required separately; missing and ambiguous mappings remain unresolved.
 
+Itonami bots run on Itonami/Awai distributed nodes (owner decision 2026-11-12).
+The catalog names `itonami.distributed-execution.v1`: per-occurrence authority,
+Awai FS state, and an explicitly selected Muse/Meta inference rail. VKE and
+central-only/local-SQLite dispatch are incompatible configurations. An owner
+string or a matching descriptor is not an authenticated admission proof.
+Existing VKE services are outside this task; no migration to/from VKE is required.
+
+The existing integration seam is Itonami's `gateway_job_node.kotoba` composing
+Murakumo's job node, not the local cron execution ledger. That adapter itself
+still requires trusted schedule enrollment, a durable cursor, unknown-outcome
+reconciliation and cross-host fencing; see `kotoba-lang/itonami-agent` at
+`177c2bb1ae43b21c40ad18a4201e4027a9401308`,
+`docs/native-gateway-job-node.md`. This is an integration reference, not a
+qualified/pinned runtime closure for this Otehon fleet. Do not copy the Native
+implementation into Otehon or relabel the local ledger as distributed authority.
+
 Generate from owner-selected snapshots (JSON exports are not checked in):
 
 ```sh

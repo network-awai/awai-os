@@ -38,5 +38,18 @@
     (is (= "needs-reconciliation" (:state (fleet/linear-binding "cloud-itonami/a" [renamed] [issue]))))
     (is (= "bound" (:state (fleet/linear-binding "cloud-itonami/a" [renamed] [issue] {(:source alias) alias}))))))
 
+(deftest distributed-execution-is-required
+  (let [b (-> (bot [project])
+              (assoc-in [:schedule :state] "verified")
+              (assoc-in [:schedule :enabled] true)
+              (assoc-in [:runtime :owner] "node-a"))]
+    (is (= "itonami.distributed-execution.v1" (:kind fleet/execution-contract)))
+    ;; A compatible configuration still needs real node admission before execution.
+    (is (true? (fleet/schedule-eligible? b)))
+    (doseq [substrate [nil "vke" "mithril-vke" "local" "singleton"]]
+      (is (false? (fleet/schedule-eligible? (assoc-in b [:runtime :substrate] substrate)))))
+    (is (false? (fleet/schedule-eligible? (assoc-in b [:runtime :adapter] "local-sqlite"))))
+    (is (false? (fleet/schedule-eligible? (assoc-in b [:runtime :authority] "process-pid"))))))
+
 (let [result (run-tests 'bot-fleet.core-test)]
   (when (pos? (+ (:fail result) (:error result))) (System/exit 1)))

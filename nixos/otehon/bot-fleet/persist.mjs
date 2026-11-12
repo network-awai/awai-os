@@ -8,6 +8,13 @@ if (!directory) throw Error('usage: node persist.mjs CATALOG SCHEDULES NEW_DIREC
 const catalog = JSON.parse(await readFile(catalogPath, 'utf8'));
 const schedules = JSON.parse(await readFile(schedulesPath, 'utf8'));
 if (catalog.schema !== 'awai.bot-fleet.v1') throw Error('invalid catalog');
+const contract = catalog['execution-contract'];
+if (contract?.kind !== 'itonami.distributed-execution.v1'
+    || contract.substrate !== 'itonami-distributed' || contract.adapter !== 'awai-node'
+    || contract.authority !== 'per-occurrence'
+    || catalog.organization.bots.some(b => b.runtime?.substrate !== contract.substrate
+      || b.runtime?.adapter !== contract.adapter || b.runtime?.authority !== contract.authority))
+  throw Error('Itonami distributed execution contract required');
 const byId = new Map(schedules.map(s => [s.botId, s]));
 if (byId.size !== schedules.length || byId.size !== catalog.organization.bots.length)
   throw Error('schedule inventory mismatch');

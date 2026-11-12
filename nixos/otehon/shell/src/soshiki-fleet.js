@@ -18,7 +18,10 @@ export function importFleet(state, catalog) {
       return {id: b.id, name: short(b.name, 80), purpose: short(b.purpose, 280), skills: [],
         circleIds: b['circle-ids'], roleIds: b['role-ids'], approval: 'ask',
         fleet: {registryRevision: catalog['registry-revision'], profile: b.profile,
-          linear: b.linear, schedule: b.schedule, runtime: {state: 'not-started', grants: []}}};
+          linear: b.linear, schedule: b.schedule,
+          executionContract: catalog['execution-contract'],
+          runtime: {state: 'not-started', grants: [], substrate: 'itonami-distributed',
+            adapter: 'awai-node', authority: 'per-occurrence'}}};
     });
     for (const rows of [circles, roles, bots]) {
       if (new Set(rows.map(r => r.id)).size !== rows.length

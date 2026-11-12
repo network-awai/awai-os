@@ -4,6 +4,15 @@ This is the Otehon control-plane administration path, separate from browser
 applications, Native builds and existing fleet owners. Registering a profile,
 Circle membership, a Project or an Initiative never grants execution authority.
 
+Owner decision 2026-11-12: Itonami bots do not use VKE. Execution must be
+distributed through Itonami/Awai nodes; VKE ownership or migration is not a
+prerequisite. Do not route these bots through Mithril/VKE or substitute a
+central-only scheduler/local SQLite lock for distributed occurrence authority.
+Use the owning node's verified membership, atomic occurrence admission, durable
+cursor and fencing at effect sinks. An expired or lost lease with an uncertain
+outcome stays unknown until reconciliation. Source/hosted import checks and
+configuration eligibility are not proof of these distributed runtime properties.
+
 Each bot must reuse its exact owning repository's Kotoba Labs Linear Project
 and that Project's existing Initiative. Reconcile renames and ambiguous matches;
 do not create duplicate repository Projects or move unrelated Projects between

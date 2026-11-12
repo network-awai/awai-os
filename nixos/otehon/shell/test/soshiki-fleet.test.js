@@ -12,7 +12,8 @@ test('imports without granting authority; retry preserves existing work',()=>{
   const original={...blankState(),proposals:[{id:'local',title:'Keep'}]};
   const first=importFleet(original,catalog);
   assert.equal(first.state.bots[0].approval,'ask');
-  assert.deepEqual(first.state.bots[0].fleet.runtime,{state:'not-started',grants:[]});
+  assert.deepEqual(first.state.bots[0].fleet.runtime,{state:'not-started',grants:[],
+    substrate:'itonami-distributed',adapter:'awai-node',authority:'per-occurrence'});
   assert.deepEqual(first.state.proposals,original.proposals);
   assert.deepEqual(importFleet(first.state,catalog),first);
   const changed=structuredClone(first.state); changed.bots[0].purpose='Local edit';

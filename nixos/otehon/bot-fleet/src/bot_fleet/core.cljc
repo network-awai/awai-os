@@ -2,6 +2,24 @@
   "Otehon organization and work bindings. No I/O, inference or authority grants."
   (:require [clojure.string :as str]))
 
+(def execution-contract
+  {:kind "itonami.distributed-execution.v1"
+   :substrate "itonami-distributed" :adapter "awai-node"
+   :authority "per-occurrence" :storage "awai-fs"
+   :required ["verified-node-membership" "atomic-occurrence-admission"
+              "durable-cursor" "fenced-effects" "unknown-reconciliation"]
+   :inference {:executor "muse" :provider "meta" :fallback false}})
+
+(defn runtime-problem
+  "Configuration compatibility only, never an admission/lease proof. The owning
+  Awai node must verify membership, atomically admit the occurrence and fence effects."
+  [runtime]
+  (cond
+    (not= "itonami-distributed" (:substrate runtime)) "distributed-substrate-required"
+    (not= "awai-node" (:adapter runtime)) "awai-node-adapter-required"
+    (not= "per-occurrence" (:authority runtime)) "occurrence-authority-required"
+    :else nil))
+
 (defn pinned? [manifest]
   (let [p (:profile manifest)]
     (and (= "profile" (:type manifest))
@@ -50,9 +68,12 @@
                         :schedule {:state "unresolved" :enabled false
                                    :source (first (filter #(= "cron/jobs.json" (:path %))
                                                           (get-in m [:profile :files])))}
-                        :runtime {:state "not-started" :owner nil :grants []}}))
+                        :runtime {:state "not-started" :owner nil :grants []
+                                  :substrate "itonami-distributed" :adapter "awai-node"
+                                  :authority "per-occurrence"}}))
                    (sort-by :id manifests))]
     {:schema "awai.bot-fleet.v1" :registry-revision registry-revision
+     :execution-contract execution-contract
      :organization {:version 1 :next-id 1 :circles circles
                     :roles (mapv (fn [bot] {:id (first (:role-ids bot))
                                            :circle-id (first (:circle-ids bot)) :name (:name bot)
@@ -82,6 +103,7 @@
   Eligibility is not a lease, execution authorization, or a cron implementation."
   [bot]
   (and (= "bound" (get-in bot [:linear :state]))
+       (nil? (runtime-problem (:runtime bot)))
        (= "verified" (get-in bot [:schedule :state]))
        (true? (get-in bot [:schedule :enabled]))
        (string? (get-in bot [:runtime :owner]))
