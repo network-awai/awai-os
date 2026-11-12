@@ -1,0 +1,297 @@
+{
+  "schema" : "awai.fs-efficiency.pack.v1",
+  "observedAt" : "2026-11-12T02:14:16.158932Z",
+  "runtime" : "1.12.218",
+  "sourceRevision" : "8181b8f29d68b490a8bdd1518bdd58f76113126c",
+  "scope" : "bounded-isolated-Otehon-hosted-CARv2-indexless-public-fixtures",
+  "unit" : "ms unless bytes/percent declared",
+  "results" : [ {
+    "fullReadMs" : {
+      "n" : 30,
+      "rawMs" : [ 0.888208, 0.953125, 0.920792, 0.847458, 0.952459, 0.967875, 0.90675, 0.871541, 0.83775, 0.825958, 0.829792, 0.846166, 0.828167, 0.843583, 0.874667, 1.030459, 1.081834, 0.928042, 0.982583, 0.876709, 0.845125, 0.983459, 1.038625, 0.8925, 0.959791, 1.002625, 0.864583, 0.838708, 0.837959, 0.832875 ],
+      "min" : 0.825958,
+      "p50" : 0.876709,
+      "p95" : 1.038625,
+      "p99" : 1.081834,
+      "max" : 1.081834
+    },
+    "cacheScope" : "warm OS page cache; recovery resets process-local derived index; no disk cache flush",
+    "putMs" : {
+      "n" : 7,
+      "rawMs" : [ 236.305625, 312.771542, 329.816333, 430.199541, 308.226083, 302.593083, 302.918708 ],
+      "min" : 236.305625,
+      "p50" : 308.226083,
+      "p95" : 430.199541,
+      "p99" : 430.199541,
+      "max" : 430.199541
+    },
+    "retainedMetadataBytes" : 12041,
+    "payloadSha256" : "05bcfc6beb8aad88119c874da56942320529df363cb7c8e8519064f64bd2f130",
+    "carSha256" : "c93cd21a475eb2734d15877ad5bee95e73f882f39947acdf1ae354d7400446a2",
+    "fullAndRangeBytesVerified" : true,
+    "rangeReadBytesPerRequest" : 131504,
+    "framingBytes" : 395,
+    "payloadBytes" : 131109,
+    "corpus" : "pattern",
+    "recoverMs" : {
+      "n" : 7,
+      "rawMs" : [ 86.980666, 91.866333, 99.63025, 85.6835, 93.88575, 106.429666, 88.759667 ],
+      "min" : 85.6835,
+      "p50" : 91.866333,
+      "p95" : 106.429666,
+      "p99" : 106.429666,
+      "max" : 106.429666
+    },
+    "leafCount" : 3,
+    "framingPercent" : 0.301276037495519,
+    "percentileCaution" : "nearest-rank; n7 p95/p99 are max, not stable tail estimates",
+    "range4KiBMs" : {
+      "n" : 30,
+      "rawMs" : [ 0.819708, 0.833875, 0.807292, 0.792459, 0.77825, 0.894333, 0.881291, 0.80075, 0.791375, 0.778625, 0.901917, 0.982958, 0.895958, 0.858292, 0.854709, 0.84, 0.827417, 0.823416, 0.818083, 0.874834, 0.794, 0.773167, 0.840166, 0.787208, 1.03725, 0.869542, 1.075125, 0.838292, 0.821167, 0.832792 ],
+      "min" : 0.773167,
+      "p50" : 0.832792,
+      "p95" : 1.03725,
+      "p99" : 1.075125,
+      "max" : 1.075125
+    },
+    "carBytes" : 131504,
+    "checkpointMs" : 129.16525,
+    "retainedStoreFiles" : 15,
+    "recoverStats" : {
+      "cache-entries-before" : 0,
+      "index-rebuilds" : 1,
+      "car-reads" : 1,
+      "bytes-read" : 131504,
+      "index-cache-entries" : 1
+    },
+    "repeatPutMs" : {
+      "n" : 6,
+      "rawMs" : [ 312.771542, 329.816333, 430.199541, 308.226083, 302.593083, 302.918708 ],
+      "min" : 302.593083,
+      "p50" : 308.226083,
+      "p95" : 430.199541,
+      "p99" : 430.199541,
+      "max" : 430.199541
+    },
+    "retainedStoreBytes" : 143545,
+    "rootCid" : "bafyreibmkwfu2zj3s5l56ahflfwz7rn3w5g6gt4duxzcqnwraiff6a7owa",
+    "firstPutMs" : 236.305625,
+    "rangeReadAmplification" : 32.10546875
+  }, {
+    "fullReadMs" : {
+      "n" : 30,
+      "rawMs" : [ 0.881625, 0.854667, 0.84575, 0.850458, 0.899916, 1.098833, 1.076541, 0.96875, 0.863958, 0.890792, 0.834167, 0.829084, 0.833708, 3.124333, 1.019042, 0.901709, 0.897541, 0.850458, 0.840375, 0.844417, 0.907583, 1.10675, 0.867167, 1.059209, 1.044791, 0.925459, 0.834541, 0.854875, 0.828, 0.84025 ],
+      "min" : 0.828,
+      "p50" : 0.867167,
+      "p95" : 1.10675,
+      "p99" : 3.124333,
+      "max" : 3.124333
+    },
+    "cacheScope" : "warm OS page cache; recovery resets process-local derived index; no disk cache flush",
+    "putMs" : {
+      "n" : 7,
+      "rawMs" : [ 217.779292, 302.672708, 267.318334, 262.955375, 262.796833, 280.313584, 308.381375 ],
+      "min" : 217.779292,
+      "p50" : 267.318334,
+      "p95" : 308.381375,
+      "p99" : 308.381375,
+      "max" : 308.381375
+    },
+    "retainedMetadataBytes" : 12041,
+    "payloadSha256" : "2af32a745d7655c2bdbf9aa6737929e8f8503f5cfc85b839f1240c6c6e894acc",
+    "carSha256" : "1077d2467141c8064ef5db9f62f05cc933dee100dbc70afa2b9f9adacde10d89",
+    "fullAndRangeBytesVerified" : true,
+    "rangeReadBytesPerRequest" : 131504,
+    "framingBytes" : 395,
+    "payloadBytes" : 131109,
+    "corpus" : "json-like",
+    "recoverMs" : {
+      "n" : 7,
+      "rawMs" : [ 95.139084, 82.40075, 100.243416, 81.101375, 86.507708, 110.450083, 84.059583 ],
+      "min" : 81.101375,
+      "p50" : 86.507708,
+      "p95" : 110.450083,
+      "p99" : 110.450083,
+      "max" : 110.450083
+    },
+    "leafCount" : 3,
+    "framingPercent" : 0.301276037495519,
+    "percentileCaution" : "nearest-rank; n7 p95/p99 are max, not stable tail estimates",
+    "range4KiBMs" : {
+      "n" : 30,
+      "rawMs" : [ 0.778791, 0.774708, 0.769417, 0.769083, 0.774458, 0.789125, 0.769083, 0.770458, 0.765708, 0.766416, 0.892958, 0.908291, 0.788333, 0.772833, 0.773042, 0.836208, 0.944459, 0.910542, 0.797458, 0.880041, 0.872167, 0.799708, 0.866459, 0.876125, 0.78875, 0.779834, 0.770583, 0.772166, 0.867667, 0.79775 ],
+      "min" : 0.765708,
+      "p50" : 0.788333,
+      "p95" : 0.910542,
+      "p99" : 0.944459,
+      "max" : 0.944459
+    },
+    "carBytes" : 131504,
+    "checkpointMs" : 116.329833,
+    "retainedStoreFiles" : 15,
+    "recoverStats" : {
+      "cache-entries-before" : 0,
+      "index-rebuilds" : 1,
+      "car-reads" : 1,
+      "bytes-read" : 131504,
+      "index-cache-entries" : 1
+    },
+    "repeatPutMs" : {
+      "n" : 6,
+      "rawMs" : [ 302.672708, 267.318334, 262.955375, 262.796833, 280.313584, 308.381375 ],
+      "min" : 262.796833,
+      "p50" : 267.318334,
+      "p95" : 308.381375,
+      "p99" : 308.381375,
+      "max" : 308.381375
+    },
+    "retainedStoreBytes" : 143545,
+    "rootCid" : "bafyreicsemcqemdafkjvuk4oafuvbbkthwgs42yzdxk5ysvxphbuqvjtui",
+    "firstPutMs" : 217.779292,
+    "rangeReadAmplification" : 32.10546875
+  }, {
+    "fullReadMs" : {
+      "n" : 30,
+      "rawMs" : [ 0.896791, 0.875291, 1.027917, 1.022709, 0.958959, 0.958541, 0.881625, 0.875541, 0.870375, 0.873042, 0.867792, 0.90175, 0.869459, 1.013708, 3.4925, 1.0565, 0.991583, 0.9375, 1.0645, 0.981666, 0.960042, 0.88725, 0.881208, 0.90425, 1.042791, 2.051958, 0.999083, 0.974916, 0.876458, 0.854917 ],
+      "min" : 0.854917,
+      "p50" : 0.9375,
+      "p95" : 2.051958,
+      "p99" : 3.4925,
+      "max" : 3.4925
+    },
+    "cacheScope" : "warm OS page cache; recovery resets process-local derived index; no disk cache flush",
+    "putMs" : {
+      "n" : 7,
+      "rawMs" : [ 190.352, 253.014291, 253.554959, 255.221791, 249.119416, 253.247167, 287.959167 ],
+      "min" : 190.352,
+      "p50" : 253.247167,
+      "p95" : 287.959167,
+      "p99" : 287.959167,
+      "max" : 287.959167
+    },
+    "retainedMetadataBytes" : 12041,
+    "payloadSha256" : "64bf2d3e3fec8bed1390fde9231eb45ac85b8cc0d592f7873f5650f536efc045",
+    "carSha256" : "f4625018ec5ad17d4e5187d2428b7e44d745854aae9cb77766cf08e8a6f0adb3",
+    "fullAndRangeBytesVerified" : true,
+    "rangeReadBytesPerRequest" : 131504,
+    "framingBytes" : 395,
+    "payloadBytes" : 131109,
+    "corpus" : "entropy",
+    "recoverMs" : {
+      "n" : 7,
+      "rawMs" : [ 87.860625, 82.619083, 80.690792, 93.049375, 107.9475, 96.435375, 87.34525 ],
+      "min" : 80.690792,
+      "p50" : 87.860625,
+      "p95" : 107.9475,
+      "p99" : 107.9475,
+      "max" : 107.9475
+    },
+    "leafCount" : 3,
+    "framingPercent" : 0.301276037495519,
+    "percentileCaution" : "nearest-rank; n7 p95/p99 are max, not stable tail estimates",
+    "range4KiBMs" : {
+      "n" : 30,
+      "rawMs" : [ 0.853125, 1.381583, 0.948667, 1.018542, 2.523417, 2.396917, 1.055458, 0.899458, 0.85575, 0.853125, 0.999458, 0.962334, 0.8695, 0.881875, 0.889083, 10.552542, 1.188083, 1.177292, 1.005833, 1.091583, 0.990125, 1.052666, 6.991542, 1.021833, 0.891208, 0.83325, 0.80075, 0.861708, 0.801709, 0.906875 ],
+      "min" : 0.80075,
+      "p50" : 0.962334,
+      "p95" : 6.991542,
+      "p99" : 10.552542,
+      "max" : 10.552542
+    },
+    "carBytes" : 131504,
+    "checkpointMs" : 131.729791,
+    "retainedStoreFiles" : 15,
+    "recoverStats" : {
+      "cache-entries-before" : 0,
+      "index-rebuilds" : 1,
+      "car-reads" : 1,
+      "bytes-read" : 131504,
+      "index-cache-entries" : 1
+    },
+    "repeatPutMs" : {
+      "n" : 6,
+      "rawMs" : [ 253.014291, 253.554959, 255.221791, 249.119416, 253.247167, 287.959167 ],
+      "min" : 249.119416,
+      "p50" : 253.247167,
+      "p95" : 287.959167,
+      "p99" : 287.959167,
+      "max" : 287.959167
+    },
+    "retainedStoreBytes" : 143545,
+    "rootCid" : "bafyreieygfurcgs6ewvhbc6nh2znl7x4pz7qw55ooygnkbezjqcgv3tb54",
+    "firstPutMs" : 190.352,
+    "rangeReadAmplification" : 32.10546875
+  }, {
+    "fullReadMs" : {
+      "n" : 30,
+      "rawMs" : [ 3.408834, 3.222083, 3.415583, 3.392584, 3.259125, 3.311541, 3.491458, 3.38975, 3.2885, 3.293, 3.230459, 3.33575, 3.299959, 3.109167, 3.139583, 3.09625, 3.181042, 3.189375, 3.077666, 3.076542, 3.037917, 3.087625, 3.142792, 3.047167, 3.065792, 3.048917, 3.079209, 3.14225, 3.227667, 3.077167 ],
+      "min" : 3.037917,
+      "p50" : 3.181042,
+      "p95" : 3.415583,
+      "p99" : 3.491458,
+      "max" : 3.491458
+    },
+    "cacheScope" : "warm OS page cache; recovery resets process-local derived index; no disk cache flush",
+    "putMs" : {
+      "n" : 7,
+      "rawMs" : [ 728.347333, 1144.660667, 1200.69825, 1100.729208, 1155.686792, 1278.17925, 1048.932 ],
+      "min" : 728.347333,
+      "p50" : 1144.660667,
+      "p95" : 1278.17925,
+      "p99" : 1278.17925,
+      "max" : 1278.17925
+    },
+    "retainedMetadataBytes" : 12041,
+    "payloadSha256" : "8ab9f384590d5df6664b6f52df01dfec514ccb253ec00a938362235739e43996",
+    "carSha256" : "2df7c4092b6ba69b1de445ea0e110f271d78e0756b5a3cb07cc63b8318d35ee5",
+    "fullAndRangeBytesVerified" : true,
+    "rangeReadBytesPerRequest" : 525085,
+    "framingBytes" : 797,
+    "payloadBytes" : 524288,
+    "corpus" : "large-entropy",
+    "recoverMs" : {
+      "n" : 7,
+      "rawMs" : [ 371.647834, 320.009375, 325.162458, 384.673666, 322.417334, 389.088958, 322.854084 ],
+      "min" : 320.009375,
+      "p50" : 325.162458,
+      "p95" : 389.088958,
+      "p99" : 389.088958,
+      "max" : 389.088958
+    },
+    "leafCount" : 8,
+    "framingPercent" : 0.1520156860351562,
+    "percentileCaution" : "nearest-rank; n7 p95/p99 are max, not stable tail estimates",
+    "range4KiBMs" : {
+      "n" : 30,
+      "rawMs" : [ 2.908167, 2.866875, 2.873917, 3.094334, 3.223333, 3.136083, 3.093958, 2.985791, 3.02875, 2.991292, 3.055, 3.159833, 3.062, 3.13875, 3.211375, 3.019333, 3.050375, 2.943, 2.88475, 3.101625, 3.268583, 3.095166, 3.075917, 3.124958, 2.981833, 2.984333, 3.008542, 3.125333, 3.169458, 3.184167 ],
+      "min" : 2.866875,
+      "p50" : 3.062,
+      "p95" : 3.223333,
+      "p99" : 3.268583,
+      "max" : 3.268583
+    },
+    "carBytes" : 525085,
+    "checkpointMs" : 417.706,
+    "retainedStoreFiles" : 15,
+    "recoverStats" : {
+      "cache-entries-before" : 0,
+      "index-rebuilds" : 1,
+      "car-reads" : 1,
+      "bytes-read" : 525085,
+      "index-cache-entries" : 1
+    },
+    "repeatPutMs" : {
+      "n" : 6,
+      "rawMs" : [ 1144.660667, 1200.69825, 1100.729208, 1155.686792, 1278.17925, 1048.932 ],
+      "min" : 1048.932,
+      "p50" : 1144.660667,
+      "p95" : 1278.17925,
+      "p99" : 1278.17925,
+      "max" : 1278.17925
+    },
+    "retainedStoreBytes" : 537126,
+    "rootCid" : "bafyreiepwhsqhuyv4zgjiotka6hpwpqvr3bwmssftbatfltx7zk4oqvxx4",
+    "firstPutMs" : 728.347333,
+    "rangeReadAmplification" : 128.194580078125
+  } ]
+}
