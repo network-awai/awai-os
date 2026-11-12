@@ -328,3 +328,60 @@ claim, change the scheduling checkpoint to force success, or start another child
 The result is returned to waiting only after publication and scoped Linear
 recording are confirmed. Operator-assisted and fully automatic live recovery
 observations are kept separately from the initial successful-run baseline.
+
+### Wave4: physical Awai VMs and material/J2 — AWAI-2820
+
+Two additional task-owned NixOS/aarch64 VMs now run on levi and benjamin.
+Their fixed SSH command accepts only enrolled, pinned public physics work and
+verified CAR operations. Password/interactive login and forwarding are disabled;
+the forwarded guest port is host-loopback only. SSH host keys are pinned from
+independent host preparation; TLS/SSH server private keys stay on their owning
+hosts and outside the Nix image. The shared three-host authenticated etcd still
+owns admission/cursors/fences. `bot-vm.nix` is this operator-specific Otehon image,
+with the explicit public key in `vm/operator-authorized.pub`, not a generic
+end-user app or Native profile.
+
+The three platform qualification units executed in both VMs. A same-slot race
+admitted one owner/effect. Each canonical Awai Pack/CAR was recovered and exported
+identically from the peer VM; with the owner VM stopped its replica was still
+readable. The original CAR also survived the owned VM process restart. This
+qualifies those bounded public objects and that restart, not private distributed
+filesystem semantics, machine cold boot or power-loss durability. Maximum payload
+is900KiB/CAR1MiB; larger objects and full Native execution remain unqualified.
+
+Two registered source Bots, physai-unspsc-39 and physai-unspsc-43, now execute on
+different VMs at their original daily JST phases. The migration atomically
+compared the old enrollment, absent old cursor and absent successor enrollment,
+then retired the old authority and enrolled the VM successor. No admitted or
+unknown work was moved. The old host manifest now has517 unchanged job definitions.
+`vm-jobs-worker.clj` gates live unfinished work, persists the original dispatch
+intent, refuses redispatch on uncertainty, reconciles only the original owner,
+replicates canonical Pack/CARs, publishes a public AwaiFS CAR with byte readback,
+and independently checks the owning Linear result. Waiting ticks read both VM
+replicas without recomputation. The owned VM-job timer runs on jun-control;
+scheduling/Linear recording has not yet moved into an autonomous VM service.
+
+The separately pinned material/J2 port in Itonami source c14f7d4 qualified63
+additional immutable specs. Their new owned material timer runs two jobs per
+wake on jun-control, using its own profiles, enrollments and result channel;
+the older live a9a1b2f source capsule is unchanged. These63 have not yet moved to
+the VM image. Full source eligibility is582/held61; selection is63. The earlier
+selected-wave CLI's held580 aggregation is retained as historical evidence and
+corrected separately; it did not alter grants, source schedules or pauses.
+
+The automatic observer now joins590 bindings/588 configured identities, with311
+unenabled identities and their per-Bot gates. Soshiki displays the actual VM,
+replica VM and current two-VM readbacks separately from historical receipts.
+Current replica health needs a fresh report; a missing/degraded/stale response
+cannot become healthy from the original completed artifact. Per-run deterministic
+model counters are not applicable; coding/shared overhead stays unknown.
+The most recent cron-health occurrence recorded unavailable observation while
+a separate later diagnostic returned200/fresh; that original result is unchanged.
+
+See `docs/evidence/itonami-awai-vm-rollout-20261112.json` for image/source pins,
+distinct physical identities, race/replica/restart/migration proofs, per-Bot
+results, timed counts, source-gate holds and immutable AwaiFS byte readbacks.
+The targeted old Awai guest PIDs17245/96445 were preserved. VM credentials expire
+2027-02-10; automatic renewal remains unqualified. Open work includes the other
+Bot VM migrations, VM-local scheduling/Linear identity,61 physical source/budget
+holds,250 other service/mapping/executor holds and the missing mail account.
