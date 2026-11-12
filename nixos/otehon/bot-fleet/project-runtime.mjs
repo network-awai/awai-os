@@ -31,7 +31,9 @@ export async function projectOnce(cfg){
   try{reports[key]=JSON.parse(await bounded(url));}catch{reports[key]=null;}
  }));
  const connections=await repositoryConnections(cfg);
- const payload=projectFleet(JSON.parse(catalogText),reports,JSON.parse(bindingsText),Date.now(),cfg.catalogSha256,connections);
+ let physicsPlan;
+ if(cfg.physicsPlanSha256){const text=await fs.readFile(path.join(cfg.stateRoot,'physics-plan-v1.json'),'utf8');if(sha(text)!==cfg.physicsPlanSha256)throw Error('physics-plan-pin-mismatch');physicsPlan=JSON.parse(text);}
+ const payload=projectFleet(JSON.parse(catalogText),reports,JSON.parse(bindingsText),Date.now(),cfg.catalogSha256,connections,physicsPlan);
  const text=JSON.stringify({schema:'awai.fleet-artifact.v1',sha256:sha(JSON.stringify(payload)),payload});
  await atomic(path.join(cfg.stateRoot,'current.json'),text);
  await bounded(output,{method:'PUT',headers:{'content-type':'application/json'},body:text});

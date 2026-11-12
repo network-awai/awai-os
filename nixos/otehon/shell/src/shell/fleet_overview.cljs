@@ -46,6 +46,7 @@
        [:li [:strong (:jobsConfigured totals)] [:span "設定済ジョブ（準備確認を含む）"]]
        [:li [:strong (:originalJobsConfigured totals)] [:span "元ジョブの設定済・件"]]
        [:li [:strong (:adaptedJobsConfigured totals)] [:span "Itonami移植ジョブ・件"]]]
+      [:p (str "保存・Linear記録を確認した最新run: " (:confirmedRuns totals) " / " (:jobsConfigured totals) "設定ジョブ（累計実行数ではありません）")]
       [:progress {:aria-label "定期ジョブ設定済Bot数" :value (:configured totals) :max (:registered totals)}]
       [:p.muted "設定数は稼働率・業務成功率ではありません。準備確認は元業務の完了数に加えません。3分以上古い観測は現在の正常状態として扱いません。"]
       [:label.soshiki-field [:span "Bot / App / Projectを検索"]
@@ -62,12 +63,20 @@
          [:p.muted (str "GitHub接続確認: " (get-in bot [:app :repositoryConnection :state]) "（運用者の参照確認・Bot権限とは別）")]
          (when (not= (:repository bot) (:sourceRepository bot)) [:p.muted (str "旧repo: " (:sourceRepository bot))])
          [:p.muted (str "実サービス: " (or (get-in bot [:app :service]) "未接続") " · " (get-in bot [:app :contractState]))]
+         (when-let [plan (:physicsRollout bot)]
+          [:p.muted (str "共通physics移植判定: " (:state plan)
+                         (when (:reason plan) (str " · " ({"source-unavailable" "pinned仕様を取得できず保留"
+                          "scope-or-solver-budget-unqualified" "仕様・物理モデル・計算量の条件が未適合"} (:reason plan) (:reason plan)))))])
          [:p (for [issue (get-in bot [:linear :issues])] ^{:key issue} [:a {:href (str "https://linear.app/kotobalabs/issue/" issue)} (str issue " ")])]
          (for [job (:jobs bot)] ^{:key (:jobId job)}
           [:div [:p (str (case (:scope job) "original" "元ジョブ" "adapted" "Itonami移植ジョブ" "準備確認") " · " (:state job) " · " (:owner job))]
            (when (:adaptation job) [:p.muted (str "移植範囲: " (:adaptation job))])
            [:p.muted (str "権限: " (clojure.string/join ", " (:capabilities job)))]
            [:p.muted (str "最終run: " (or (get-in job [:lastRun :id]) "未確認") " · 記録確認: " (if (get-in job [:lastRun :confirmed]) "済" "未確認"))]
+           (when-let [run (:lastRun job)] [:p.muted (str "実行モデル: " (:provider run) " / " (:model run))])
+           (when-let [m (get-in job [:lastRun :measurement])]
+            [:p.muted (str "Otehon simulation: " (:status m) " · probe " (text (:count m)) "/" (text (:expected m))
+                           " · Native tests: " (:nativeTests m) " · 実機操作: " (:actuation m))])
            (when (= "queued" (:state job)) [:p.muted "まだ実行していません。確認済みの実行器で最新の未実行予定を順次処理します。"])
            (when-let [slot (:nextSlot job)] [:p.muted (str "次回: " (.toLocaleString (js/Date. slot) "ja-JP" #js {:timeZone "Asia/Tokyo"}) " JST")])])
          [:details [:summary (str "元ジョブ " (count (:sourceJobs bot)) "件・保留条件")]

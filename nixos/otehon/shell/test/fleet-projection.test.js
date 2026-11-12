@@ -26,4 +26,12 @@ test('staged simulations stay queued until an actual bounded receipt arrives',()
  const r=projectFleet(catalog,{physics:report},[b],now,sha);assert.equal(r.totals.queued,1);assert.equal(r.totals.confirmedRuns,0);assert.equal(r.totals.originalJobsConfigured,0);assert.equal(r.totals.adaptedJobsConfigured,1);
  report.jobs[0]={...report.jobs[0],state:'waiting','last-result':{state:'completed','run-id':'physical-one',provider:'none',model:'deterministic','linear-result-confirmed':true,artifact:{readback:true,cid:'cid'},'domain-result':{status:'unobserved'}}};
  assert.equal(projectFleet(catalog,{physics:report},[b],now,sha).totals.attention,1);
+ const plan={rows:[{botId:bot.id,sourceProfile:{commit:bot.profile.commit},state:'eligible'}]};
+ const qualified={...b,calendarCompiled:true};
+ const admitted=projectFleet(catalog,{physics:report},[qualified],now,sha,undefined,plan);
+ assert.equal(admitted.bots[0].physicsRollout.state,'eligible');
+ assert.ok(!admitted.bots[0].holds.includes('calendar-executor-required'));
+ assert.equal(projectFleet(catalog,{},[],now,sha,undefined,plan).totals.configured,0);
+ plan.rows[0].sourceProfile.commit='e'.repeat(40);
+ assert.equal(projectFleet(catalog,{},[],now,sha,undefined,plan).bots[0].physicsRollout.state,'pin-mismatch');
 });
