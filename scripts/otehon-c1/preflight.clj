@@ -25,6 +25,10 @@ for tool in docker podman limactl qemu-system-aarch64; do
     printf 'tool_%s=absent\\n' \"$tool\"
   fi
 done
+if qemu_processes=$(ps -axo comm= 2>/dev/null); then
+  printf 'qemu_checked=yes\\n'
+  printf '%s\\n' \"$qemu_processes\" | awk '/qemu-system-(aarch64|x86_64)$/ {n++} END {printf \"qemu_running=%d\\n\", n+0}'
+fi
 if command -v limactl >/dev/null 2>&1; then
   if lima_status=$(limactl list --format '{{.Status}}' 2>/dev/null); then
     printf 'lima_checked=yes\\n'
@@ -37,11 +41,14 @@ printf 'probe_complete=yes\\n'
 (def fact-keys
   #{"os" "arch" "cpus" "memory_bytes" "disk_available_kib"
     "tool_docker" "tool_podman" "tool_limactl" "tool_qemu-system-aarch64"
-    "lima_checked" "lima_status" "probe_complete"})
+    "lima_checked" "lima_status" "qemu_checked" "qemu_running" "probe_complete"})
 
 (defn positive-number [s]
   (when (and (string? s) (re-matches #"[0-9]{1,16}" s))
     (let [n (parse-long s)] (when (pos? n) n))))
+
+(defn- nonnegative-number [s]
+  (when (and (string? s) (re-matches #"[0-9]{1,6}" s)) (parse-long s)))
 
 (defn parse-facts [output]
   (when-not (and (string? output) (<= (count output) 8192))
@@ -59,6 +66,9 @@ printf 'probe_complete=yes\\n'
                       ["cpus" "memory_bytes" "disk_available_kib"])
                 (some #(not (#{"present" "absent"} (get facts %)))
                       ["tool_docker" "tool_podman" "tool_limactl" "tool_qemu-system-aarch64"])
+                (and (or (contains? facts "qemu_checked") (contains? facts "qemu_running"))
+                     (or (not= "yes" (get facts "qemu_checked"))
+                         (nil? (nonnegative-number (get facts "qemu_running")))))
                 (and (contains? facts "lima_checked")
                      (not= "yes" (get facts "lima_checked")))
                 (and (contains? facts "lima_status")
@@ -70,6 +80,9 @@ printf 'probe_complete=yes\\n'
        :cpu-count (positive-number (get facts "cpus"))
        :physical-memory-bytes (positive-number (get facts "memory_bytes"))
        :home-filesystem-available-kib (positive-number (get facts "disk_available_kib"))
+       :qemu (if (= "yes" (get facts "qemu_checked"))
+               {:status "observed" :processes (nonnegative-number (get facts "qemu_running"))}
+               {:status "unknown"})
        :tools (into {} (for [t ["docker" "podman" "limactl" "qemu-system-aarch64"]]
                         [t (get facts (str "tool_" t))]))
        :lima (if (= "yes" (get facts "lima_checked"))

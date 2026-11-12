@@ -51,6 +51,15 @@
   (is (= {:status "unknown"}
          (:lima (p/parse-facts (str/replace facts "lima_checked=yes\n" ""))))))
 
+(deftest qemu-is-independent-of-lima
+  (let [observed (p/parse-facts (str facts "qemu_checked=yes\nqemu_running=1\n"))]
+    (is (zero? (get-in observed [:lima :running])))
+    (is (= {:status "observed" :processes 1} (:qemu observed))))
+  (is (= {:status "unknown"} (:qemu (p/parse-facts facts))))
+  (is (= 0 (get-in (p/parse-facts (str facts "qemu_checked=yes\nqemu_running=0\n")) [:qemu :processes])))
+  (doseq [extra ["qemu_running=1\n" "qemu_checked=yes\n" "qemu_checked=yes\nqemu_running=-1\n"]]
+    (is (thrown? Exception (p/parse-facts (str facts extra))))))
+
 (deftest ssh-failure-does-not-export-diagnostics
   (with-redefs [p/run-probe-process (fn [& _] {:exit 255 :err "private diagnostic"})]
     (is (= {:status "unknown" :reason "ssh-or-probe-failed" :exit 255}

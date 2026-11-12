@@ -51,9 +51,13 @@ immutable nixpkgs pin. Native build/gate dependencies are unchanged.
 The probe reads OS/architecture, CPU count, physical RAM and the free space of
 the account's home filesystem. It looks for four executables in a fixed PATH
 and, if available, reads Lima instance status counts. It does not inventory
-other users' VMs or QEMU processes, contact Docker daemons, inspect inference
+other users' Lima inventories, contact Docker daemons, inspect inference
 endpoints or test any guest. Zero instances means only that the account's Lima
-inventory was empty at observation time.
+inventory was empty at observation time. The read-only process-name probe also
+counts visible QEMU system processes, independently of Lima. It exports no PID,
+VM name, command arguments or disk paths. A QEMU count proves process presence,
+not guest health, peer connectivity or distributed execution. A failed process
+probe remains unknown rather than zero.
 
 Exit 0 means **inventory collected**, not readiness. Exit 2 means incomplete
 collection or invalid CLI arguments. The report always states
