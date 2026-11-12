@@ -1,0 +1,53 @@
+{
+  "schema": "awai.stabilization-rollout-evidence.v1",
+  "issue": "AWAI-2809",
+  "generatedAt": "2026-11-12T23:15:36.139Z",
+  "coverage": 311,
+  "groups": {
+    "schedule": 49,
+    "executor": 174,
+    "paused": 12,
+    "mapping": 9,
+    "event": 6,
+    "solver": 39,
+    "source": 22
+  },
+  "totals": {
+    "registered": 899,
+    "configured": 588,
+    "held": 311,
+    "attention": 0,
+    "queued": 0,
+    "jobsConfigured": 590,
+    "originalJobsConfigured": 2,
+    "adaptedJobsConfigured": 583,
+    "vmJobsConfigured": 2,
+    "vmReplicasHealthy": 2,
+    "confirmedRuns": 590,
+    "sourceJobs": 1637,
+    "linearBound": 890,
+    "circles": 762,
+    "repositoryCircles": 761
+  },
+  "plan": {
+    "url": "http://127.0.0.1:8586/itonami-fleet-state-AWAI-2795-v1/stabilization311-20261112231536139.json",
+    "sha256": "3fe1c6c975bfc8caf8d284dc0721a0377a490016f681224509c2e65723a47b4f",
+    "readback": true
+  },
+  "source": {
+    "url": "http://127.0.0.1:8586/itonami-fleet-state-AWAI-2795-v1/source22-20261112231536139.json",
+    "sha256": "f4b516d2580b4b88988ca2c8dceae77329b07bb076ee0a8ebf1b8677ebc68542",
+    "readback": true
+  },
+  "budget": {
+    "url": "http://127.0.0.1:8586/itonami-fleet-state-AWAI-2795-v1/solver39-20261112231536139.json",
+    "sha256": "d911e2941f490be45365b957ab88f4a456d6f6a3c72c5cd9b0d96f5de36b00e5",
+    "readback": true
+  },
+  "newBotActivations": 0,
+  "stability": "not-qualified-for-unenabled-bots",
+  "runtimeGateFix": "verified empty cron remains held with explicit event/owner gates",
+  "codingModel": "unknown",
+  "codingForecast": "unknown",
+  "codingTokens": "unknown-shared-unallocated"
+}

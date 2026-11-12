@@ -9,7 +9,11 @@ export function scheduleHolds(bot, job) {
   if(bot.linear?.state!=='bound')reasons.push('linear-unresolved');
   if(!bot.linear?.issues?.some(i=>!closed.has(i.status)))reasons.push('unfinished-issue-required');
   if(bot.schedule?.state!=='verified')reasons.push(bot.schedule?.state==='no-source-cron'?'no-source-schedule':'source-verification-required');
-  if(!job)return reasons;
+  if(!job){
+    if(bot.schedule?.state==='verified'&&Array.isArray(bot.schedule.jobs)&&bot.schedule.jobs.length===0)
+      reasons.push('no-source-jobs','event-executor-and-owner-required');
+    return reasons;
+  }
   if(job.sourceEnabled!==true||job.paused)reasons.push('source-disabled-or-paused');
   if(job.needsScript)reasons.push('script-executor-review-required');
   if(job.schedule?.kind==='cron')reasons.push('calendar-executor-required');
