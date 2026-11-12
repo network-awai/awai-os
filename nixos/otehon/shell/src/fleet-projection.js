@@ -31,7 +31,7 @@ function normalized(report,mode,now) {
     observedAt:report.observedAt,ageSeconds:at<=now?Math.floor((now-at)/1000):null,
     jobs:rows,fresh:fresh&&report.serviceLoaded};
 }
-export function projectFleet(catalog,reports,bindings,now=Date.now(),catalogSha256) {
+export function projectFleet(catalog,reports,bindings,now=Date.now(),catalogSha256,connections) {
   if(catalog?.schema!=='awai.bot-fleet.v1'||!hash(catalogSha256)||!/^[a-f0-9]{40}$/.test(catalog['registry-revision'])
     ||!Array.isArray(catalog.organization?.bots)||catalog.organization.bots.length>10000
     ||!Array.isArray(bindings)||new Set(catalog.organization.bots.map(b=>b.id)).size!==catalog.organization.bots.length)
@@ -55,7 +55,8 @@ export function projectFleet(catalog,reports,bindings,now=Date.now(),catalogSha2
       const modelMatch=run?.provider===b.provider&&run?.model===b.model;
       return {jobId:b.jobId,sourceJobId:b.sourceJobId,scope:b.mode,adaptation:b.adaptation??null,
         issueId:b.issueId,projectId:b.projectId,configured:matches,
-        state:!matches?'binding-mismatch':!source?.fresh?(source?.state??'unobserved'):row?.state??'unobserved',
+        state:!matches?'binding-mismatch':!source?.fresh?(source?.state??'unobserved'):
+          run?.['domain-result']?.status==='unobserved'?'unobserved-result':row?.state??'unobserved',
         lastRun:runId?{id:runId,confirmed:!!(confirmed&&modelMatch),provider:run.provider,model:run.model,
           inputTokens:b.mode==='readiness'?run.inputTokens??null:null,outputTokens:b.mode==='readiness'?run.outputTokens??null:null,
           tokenMetric:b.mode==='readiness'?'provider-input-output':'not-applicable',
@@ -75,9 +76,14 @@ export function projectFleet(catalog,reports,bindings,now=Date.now(),catalogSha2
     if(!id(repo))throw Error('invalid-repository');
     const connected=jobs.filter(j=>j.configured&&j.scope!=='readiness');
     const original=connected.filter(j=>j.scope==='original');
+    const repository=(connections?.repositories??[]).find(r=>r.repository===repo);
+    const repositoryAge=now-Date.parse(repository?.observedAt);
+    const repositoryState=!repository?'unobserved':!Number.isFinite(repositoryAge)||repositoryAge<0||repositoryAge>21600000?'stale':
+      repository.disabled?'disabled':repository.archived?'archived':repository.private?'available-private':'available-public';
     return {id:bot.id,name:bot.name,repository:repo,sourceRepository:bot.profile.repository,circleIds:bot['circle-ids'],
       app:{id:`repo:${repo}`,kind:'repository-workspace',serviceConnected:connected.some(j=>j.service),
         service:connected.find(j=>j.service)?.service??null,
+        repositoryConnection:{state:repositoryState,observedAt:repository?.observedAt??null,botGrant:false},
         contractState:connected.some(j=>j.service)?'bounded-operator-connection':bot.name==='mail-relay'?'mail-account-required':'service-contract-required'},
       linear:{state:bot.linear?.state,project:bot.linear?.project?.name??null,projectId:bot.linear?.project?.uuid??null,
         initiativeId:bot.linear?.initiative?.id??null,issues:(bot.linear?.issues??[]).map(i=>i.id)},

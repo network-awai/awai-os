@@ -1,6 +1,7 @@
 // Otehon control-plane publisher; it runs outside the static app origin.
 import fs from 'node:fs/promises';import path from 'node:path';import {createHash,randomUUID} from 'node:crypto';
 import {projectFleet} from '../shell/src/fleet-projection.js';
+import {repositoryConnections} from './repository-connections.mjs';
 const sha=b=>createHash('sha256').update(b).digest('hex');
 const resources={readiness:'http://127.0.0.1:8586/itonami-bot-readiness-AWAI-2795-20261112-v1/current.json',
  original:'http://127.0.0.1:8586/itonami-job-results-AWAI-2795-v1/current.json',
@@ -28,7 +29,8 @@ export async function projectOnce(cfg){
  const reports={};await Promise.all(Object.entries(resources).map(async([key,url])=>{
   try{reports[key]=JSON.parse(await bounded(url));}catch{reports[key]=null;}
  }));
- const payload=projectFleet(JSON.parse(catalogText),reports,JSON.parse(bindingsText),Date.now(),cfg.catalogSha256);
+ const connections=await repositoryConnections(cfg);
+ const payload=projectFleet(JSON.parse(catalogText),reports,JSON.parse(bindingsText),Date.now(),cfg.catalogSha256,connections);
  const text=JSON.stringify({schema:'awai.fleet-artifact.v1',sha256:sha(JSON.stringify(payload)),payload});
  await atomic(path.join(cfg.stateRoot,'current.json'),text);
  await bounded(output,{method:'PUT',headers:{'content-type':'application/json'},body:text});

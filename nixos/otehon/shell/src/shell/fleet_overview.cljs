@@ -58,6 +58,7 @@
         [:li {:data-fleet-bot (:id bot)}
          [:strong (:name bot)] [:span (str " · " (if (and stale? (:configured bot)) "観測更新待ち" ({"waiting" "定期待機" "attention" "要確認" "held" "未有効・保留"} (:state bot))))]
          [:p (str "App/担当repo: " (:repository bot))]
+         [:p.muted (str "GitHub接続確認: " (get-in bot [:app :repositoryConnection :state]) "（運用者の参照確認・Bot権限とは別）")]
          (when (not= (:repository bot) (:sourceRepository bot)) [:p.muted (str "旧repo: " (:sourceRepository bot))])
          [:p.muted (str "実サービス: " (or (get-in bot [:app :service]) "未接続") " · " (get-in bot [:app :contractState]))]
          [:p (for [issue (get-in bot [:linear :issues])] ^{:key issue} [:a {:href (str "https://linear.app/kotobalabs/issue/" issue)} (str issue " ")])]
