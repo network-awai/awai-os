@@ -35,6 +35,34 @@ incoming guest channel nor an enabled monitor. Do not infer distributed Bot
 execution, replicated Awai FS, inference or failover from these observations.
 Do not stop or expose the existing VMs as a side effect of collecting evidence.
 
+## Full deployed Mac mini set
+
+The existing deployment owner issue is AWAI-433 (formerly JUN-318). Its recorded
+ten-host set was refreshed using the same read-only probe, existing SSH trust,
+and no guest commands or state changes. All ten hosts reported Mac mini hardware
+and a QEMU process named Awai. The ten retained hardware identity hashes are
+distinct. The image-parent naming also matches the old JUN-318 deployment;
+this does not establish the exact image contents of each running guest.
+
+| Deployed host | Host observed | Awai QEMU processes |
+| --- | --- | --- |
+| joseph | yes | 1 |
+| asher | yes | 1 |
+| benjamin | yes | 1 |
+| dan | yes | 1 |
+| issachar | yes | 1 |
+| judah | yes | 1 |
+| levi | yes | 1 |
+| naphtali | yes | 1 |
+| simeon | yes | 1 |
+| zebulun | yes | 1 |
+
+The other owner's jacob preview was not changed. Current process presence is
+verified for all ten; GUI health, authenticated guest access, peer connections,
+replicated state, distributed Bot work and restart continuity are separate
+unverified properties. Historical notes about desktop/network faults or a
+successful old setup were not substituted for live observations.
+
 ## Separate candidate qualification
 
 A new opt-in read-only guest-agent channel was built with the repository's
