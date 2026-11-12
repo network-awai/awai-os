@@ -3,6 +3,7 @@
             [shell.execution-observation :as execution]
             [shell.readiness-observation :as readiness]
             [shell.original-observation :as original]
+            [shell.fleet-overview :as fleet]
             [reagent.dom.client :as rdom]
             ["../soshiki-runtime.js" :refer [RUNTIME_KEY runtimeView validateObservation]]
             ["../soshiki-fleet.js" :refer [importFleet]]
@@ -83,6 +84,7 @@
         [error set-error] (useState nil)]
     [:main.chat.net-view [:div.net-body.soshiki-body
      [:h1 "Soshiki · 稼働状況"]
+     [:f> fleet/panel]
      [:label.soshiki-field [:span "登録カタログ（このプレビュー内だけに読込み）"]
       [:input {:type "file" :aria-label "登録カタログ" :accept ".json,application/json"
                :on-change (fn [event]
