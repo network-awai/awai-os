@@ -1,0 +1,22 @@
+OTEHON_MOBILE_P0_V1
+observed_at_utc=2026-11-12T07:19:45Z
+ro.product.manufacturer=motorola
+ro.product.model=moto g05
+ro.product.device=lamul
+ro.product.board=lamu
+ro.board.platform=mt6768
+ro.product.cpu.abi=arm64-v8a
+ro.build.version.release=15
+ro.build.version.security_patch=2025-10-01
+ro.build.display.id=VVTA35.51-137
+ro.boot.flash.locked=1
+ro.boot.vbmeta.device_state=locked
+ro.boot.verifiedbootstate=green
+sys.oem_unlock_allowed=0
+ro.oem_unlock_supported=unknown
+gsm.sim.state=ABSENT,ABSENT
+ro.treble.enabled=true
+ro.build.ab_update=true
+ro.boot.dynamic_partitions=true
+ro.boot.slot_suffix=_a
+collection_status=0
