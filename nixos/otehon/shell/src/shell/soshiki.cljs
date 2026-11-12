@@ -1,5 +1,8 @@
 (ns shell.soshiki
-  (:require ["react" :refer [useEffect useMemo useState]]
+  (:require [clojure.string]
+            [cljs.reader :as reader]
+            ["../profile-catalog.js" :refer [readExistingProfiles]]
+            ["react" :refer [useEffect useMemo useRef useState]]
             [shell.manimani :refer [use-manimani]]
             ["../soshiki.js" :refer [addBot addCircle addProposal addRole assignRole
                                      childrenOf circlePath computeSize decideProposal
@@ -14,7 +17,9 @@
    #js {:id "size" :label "サイズ" :sub "Size"}])
 
 (def error-text
-  {"bad-name" "名前を1〜80文字で入れてください。"
+  {"bad-profile" "profile ID は小文字英数字・_・- の1〜64文字で指定してください。"
+   "profile-exists" "この itonami profile は別のBotに対応づけられています。"
+   "bad-name" "名前を1〜80文字で入れてください。"
    "bad-purpose" "目的を確認してください（サークル・ロールは必須、280文字まで）。"
    "bad-list" "箇条書きは12件まで、1件80文字までです。"
    "bad-metric" "メトリクスは80文字までです。"
@@ -88,9 +93,6 @@
       (if (string? focus-id) focus-id nil))
     (catch :default _ nil)))
 
-(defn- size-class [n]
-  (cond (>= n 5) "l" (>= n 2) "m" :else "s"))
-
 (defn role-detail [state role apply-fn set-error bot-names me]
   (let [[text set-text] (useState "")
         circle (.find (.-circles state) (fn [item] (= (.-id item) (.-circleId role))))
@@ -110,7 +112,14 @@
                        (set-error (apply-fn (assignRole state #js {:roleId (.-id role)
                                                                    :assignee #js {:kind kind :name person-name}})))
                        (set-text "")))))]
-    [:div.soshiki-detail {:data-role-detail (.-id role)}
+    (useEffect
+     (fn []
+       (when-let [detail (.getElementById js/document "soshiki-role-detail")]
+         (.focus detail #js {:preventScroll true})
+         (.scrollIntoView detail #js {:block "nearest"}))
+       js/undefined)
+     #js [(.-id role)])
+    [:div.soshiki-detail {:id "soshiki-role-detail" :tab-index -1 :data-role-detail (.-id role)}
      [:div.soshiki-circle-head
       [:strong
        [:span.hl-dot {:data-hl (role-highlight role) :aria-hidden "true"}]
@@ -140,77 +149,70 @@
         [:button.soshiki-quiet {:type "button" :on-click assign-self} "自分に割当"])]
      [:p.muted "削除・サークル移動は下の編集セクションで行います。"]]))
 
-(def max-nest-depth 6)
+(defn- matching-role? [state role query highlight]
+  (let [circle (.find (.-circles state) #(= (.-id %) (.-circleId role)))]
+    (and (or (= highlight "all") (= (role-highlight role) highlight))
+         (matches-query (str (.-name role) " " (.-purpose role) " "
+                             (some-> circle (.-name)) " " (some-> circle (.-purpose))) query))))
 
 (defn- branch-matches [state circle query highlight]
-  (if (matches-query (str (.-name circle) " " (.-purpose circle)) query)
-    (if (= highlight "all")
-      true
-      (.some (subtreeRoles state (.-id circle))
-             (fn [role] (= (role-highlight role) highlight))))
-    (.some (subtreeRoles state (.-id circle))
-           (fn [role]
-             (and (or (= highlight "all") (= (role-highlight role) highlight))
-                  (matches-query (str (.-name role) " " (.-purpose role)) query))))))
+  (or (and (= highlight "all")
+           (matches-query (str (.-name circle) " " (.-purpose circle)) query))
+      (.some (subtreeRoles state (.-id circle)) #(matching-role? state % query highlight))
+      (.some (childrenOf state (.-id circle)) #(branch-matches state % query highlight))))
 
-(defn role-chip [role selected on-select]
-  (let [assignee (if (.-assignee role)
-                   (str (if (= "bot" (.-kind (.-assignee role))) "" "@")
-                        (.-name (.-assignee role)))
-                   "空き")]
-    [:button {:type "button"
-               :class (if selected "soshiki-chip active" "soshiki-chip")
-               :data-role (.-id role)
-               :title (str (.-name role) "（" assignee "）: " (.-purpose role))
-               :aria-expanded selected
-               :on-click #(on-select (if selected nil (.-id role)))}
-     [:span.hl-dot {:data-hl (role-highlight role) :aria-hidden "true"}]
-     [:span (.-name role)]]))
+;; Equal-radius siblings keep navigation stable while filtering. Counts are
+;; explicit; circle area does not claim to measure workload or membership.
+(defn- activate [action]
+  {:on-click (fn [event] (.stopPropagation event) (action))
+   :on-key-down (fn [event]
+                  (when (contains? #{"Enter" " "} (.-key event))
+                    (.preventDefault event) (.stopPropagation event) (action)))})
 
-(defn nested-circle [state circle depth query highlight selected-role-id on-select-role on-focus rows members]
-  (let [children (childrenOf state (.-id circle))
-        filtering (or (not (empty? (.trim query))) (not (= highlight "all")))
-        direct-roles (.filter (rolesOf state (.-id circle))
-                              (fn [role]
-                                (and (or (= highlight "all") (= (role-highlight role) highlight))
-                                     (matches-query (str (.-name role) " " (.-purpose role)) query))))
-        visible-children (.filter children (fn [child] (branch-matches state child query highlight)))
-        row (.get rows (.-id circle))
-        count (if row (.-subtreeRoles row) (.-length (subtreeRoles state (.-id circle))))
-        head [:<>
-              [:strong (.-name circle)]
-              [:span.muted (str count " roles · " (or (some-> row (.-subtreeMembers)) 0) " members")]
-              (when-not (zero? depth) [:span.soshiki-open "開く ›"])]]
-    [:div.soshiki-nest {:data-circle (.-id circle) :data-depth depth :data-size (size-class count)}
-     (if (zero? depth)
-       [:div.soshiki-nest-headtext head]
-       [:button.soshiki-nest-head {:type "button" :data-zoom (.-id circle)
-                                    :on-click #(on-focus (.-id circle))}
-        head])
-     [:p.soshiki-purpose (.-purpose circle)]
-     (when members
-       [:ul.soshiki-members {:aria-label "メンバー"}
-        (when (zero? (.-length members))
-          [:li.muted "メンバーはまだいません。"])
-        (map (fn [entry]
-                (let [[member-name kind] entry]
-                  [:li {:key member-name :title (if (= kind "bot") "Bot" "人")}
-                   [:span.soshiki-avatar {:data-kind kind :aria-hidden "true"}
-                    (str (if (= kind "bot") "" "@") (aget member-name 0))]
-                   [:span member-name]])) members)])
-     (if (pos? (.-length direct-roles))
-       [:ul.soshiki-chips {:aria-label (str (.-name circle) "のロール")}
-        (map (fn [role]
-                [:li {:key (.-id role)}
-                 [role-chip role (= (.-id role) selected-role-id) on-select-role]]) direct-roles)]
-       (if filtering
-         [:p.muted "合致するロールはありません。"]
-         [:p.muted "ロールはまだありません。"]))
-     (when (and (< depth max-nest-depth) (pos? (.-length visible-children)))
-       [:div.soshiki-kids
-        (map (fn [child]
-                [:f> nested-circle state child (inc depth) query highlight
-                 selected-role-id on-select-role on-focus rows nil]) visible-children)])]))
+(defn circle-map [state circle x y radius depth query highlight selected on-select on-focus]
+  (let [children (filter #(branch-matches state % query highlight) (childrenOf state (.-id circle)))
+        roles (filter #(matching-role? state % query highlight) (rolesOf state (.-id circle)))
+        entries (concat (map #(vector :circle %) children) (map #(vector :role %) roles))
+        n (count entries)
+        sine (js/Math.sin (/ js/Math.PI (max 2 n)))
+        inner (* radius 0.76)
+        r (if (= n 1) (* inner 0.7) (/ (* inner sine) (+ 1 sine)))
+        orbit (if (= n 1) 0 (- inner r))
+        label-size (min 22 (max 10 (* radius 0.12)))
+        count-roles (.-length (subtreeRoles state (.-id circle)))]
+    [:g.soshiki-map-circle {:data-circle (.-id circle) :data-depth depth}
+     [:circle (merge {:cx x :cy y :r radius :class "soshiki-map-boundary"
+                      :role "button" :tab-index 0 :data-zoom (.-id circle)
+                      :aria-label (str (.-name circle) "を開く · " count-roles "ロール")}
+                     (activate #(on-focus (.-id circle))))]
+     [:text.soshiki-map-label {:x x :y (- y (* radius 0.81)) :font-size label-size}
+      (if (> (count (.-name circle)) 12) (str (subs (.-name circle) 0 11) "…") (.-name circle))]
+     (if (and (< depth 3) (> r 20))
+       (map-indexed
+        (fn [index [kind item]]
+          (let [angle (- (* 2 js/Math.PI (/ index (max 1 n))) (/ js/Math.PI 2))
+                cx (+ x (* orbit (js/Math.cos angle)))
+                cy (+ y (* radius 0.12) (* orbit (js/Math.sin angle)))]
+            (if (= kind :circle)
+              ^{:key (.-id item)}
+              [circle-map state item cx cy r (inc depth) query highlight selected on-select on-focus]
+              [:g.soshiki-map-role {:key (.-id item) :data-hl (role-highlight item)
+                                    :data-selected (= selected (.-id item))}
+               [:circle (merge {:cx cx :cy cy :r (* r 0.94) :role "button" :tab-index 0
+                                :data-role (.-id item) :aria-pressed (= selected (.-id item))
+                                :aria-label (str (.-name item) " · " (if (.-assignee item)
+                                                                      (.-name (.-assignee item)) "空き"))}
+                               (activate #(on-select (.-id item))))]
+               [:text.soshiki-map-label {:x cx :y cy :font-size (min 18 (* r 0.28))}
+                (if (> (count (.-name item)) 10) (str (subs (.-name item) 0 9) "…") (.-name item))]
+               [:text.soshiki-map-label.soshiki-map-sub {:x cx :y (+ cy (min 24 (* r 0.4)))
+                                                       :font-size (min 12 (* r 0.2))}
+                (if (.-assignee item)
+                  (let [name (.-name (.-assignee item))]
+                    (if (> (count name) 12) (str (subs name 0 11) "…") name))
+                  "空きロール")]]))) entries)
+       (when (pos? n)
+         [:text.soshiki-map-label {:x x :y y :font-size label-size} (str count-roles " ロール · 開く ›")]))]))
 
 (defn circle-node [state circle depth apply-fn set-error bot-names]
   (let [children (childrenOf state (.-id circle))
@@ -281,49 +283,189 @@
                                  :on-click #(set-error (apply-fn (removeCircle state (.-id circle))))}
          "削除"]]])))
 
-(defn chart-view [state apply-fn set-error focus-id on-focus query highlight selected-role-id on-select-role bot-names me]
-  (let [roots (childrenOf state nil)
-        focus (or (.find (.-circles state) (fn [circle] (= (.-id circle) focus-id)))
-                  (aget (.-circles state) 0)
-                  nil)
-        size (useMemo (fn [] (computeSize state)) #js [state])
-        rows (useMemo (fn [] (js/Map. (.map (.-rows size)
-                                            (fn [row] #js [(.-id row) row]))))
-                      #js [size])]
-    (if-not focus
-      [:p.muted "サークルはまだありません。下の編集から作れます。"]
-      (let [path (circlePath state (.-id focus))
-            direct-roles (rolesOf state (.-id focus))
-            members (useMemo
-                     (fn []
-                       (let [seen (js/Map.)]
-                         (.forEach direct-roles
-                                   (fn [role]
-                                     (when (and (.-assignee role)
-                                                (not (.has seen (.-name (.-assignee role)))))
-                                       (.set seen (.-name (.-assignee role)) (.-kind (.-assignee role))))))
-                         (.forEach (.-bots state)
-                                   (fn [bot]
-                                     (when (and (.includes (.-circleIds bot) (.-id focus))
-                                                (not (.has seen (.-name bot))))
-                                       (.set seen (.-name bot) "bot"))))
-                         (.from js/Array (.entries seen))))
-                     #js [(.-bots state) direct-roles (.-id focus)])
-            selected (.find (.-roles state) (fn [role] (= (.-id role) selected-role-id)))]
-        [:div {:data-chart-focus (.-id focus)}
-         [:nav.soshiki-crumb {:aria-label "サークルのパンくず"}
-          (map-indexed (fn [index circle]
-                  (if (< index (dec (.-length path)))
-                    [:span {:key (.-id circle)}
-                     [:button.soshiki-crumb-link {:type "button" :on-click #(on-focus (.-id circle))}
-                      (.-name circle)]
-                     [:span {:aria-hidden "true"} " › "]]
-                    [:strong {:key (.-id circle) :aria-current "page"} (.-name circle)])) path)]
-         [:f> nested-circle state focus 0 query highlight selected-role-id on-select-role on-focus rows members]
-         (when selected
-           [:f> role-detail state selected apply-fn set-error bot-names me])]))))
+(defn circle-profile-links [state circle apply-fn set-error catalog loading catalog-error load-catalog]
+  (let [[profile-id set-profile-id] (useState "")
+        [profile-query set-profile-query] (useState "")
+        [bot-id set-bot-id] (useState "")
+        members (filter #(.includes (.-circleIds %) (.-id circle)) (.-bots state))
+        candidates (filter #(and (.-profileId %) (not (.includes (.-circleIds %) (.-id circle)))) (.-bots state))]
+    [:details.soshiki-profile-links {:open true}
+     [:summary (str "Bot profile とサークルを対応づける · " (count members))]
+     [:p.muted "この端末の組織情報として保存します。profile の実行設定・権限は変更しません。"]
+     [:p.muted "端末の itonami profile を自動で一覧に表示します。選んだprofileだけを組織情報に保存します。"]
+     [:div.soshiki-form
+      [:button.soshiki-quiet {:type "button" :disabled loading :on-click #(load-catalog)}
+       (if loading "読み込み中…" "既存profile一覧を更新")]
+      (when catalog-error [:p.net-error {:role "alert"} catalog-error])
+      (when catalog
+        [:<>
+         [:p.muted (str (.-length catalog) " profiles · itonami profile store")]
+         [:input.soshiki-search {:aria-label "既存profileを検索" :placeholder "profile ID・説明で検索"
+                                 :value profile-query :on-change (fn [event] (set-profile-query (.. event -target -value)) (set-profile-id ""))}]
+         [field "既存の itonami bot profile"
+          [:select {:aria-label "既存itonami profileを選ぶ" :value profile-id
+                    :on-change #(set-profile-id (.. % -target -value))}
+           [:option {:value ""} "一覧から選択"]
+           (map (fn [profile]
+                  [:option {:key (.-id profile) :value (.-id profile)}
+                   (str (.-id profile) (when-not (empty? (.-description profile)) (str " · " (.-description profile))))])
+                (filter #(matches-query (str (.-id %) " " (.-description %)) profile-query) catalog))]]
+         [:button {:type "button" :disabled (or loading (not (.some catalog #(= profile-id (.-id %)))))
+                   :on-click (fn []
+                     (when-let [profile (.find catalog #(= profile-id (.-id %)))]
+                       (let [bot (.find (.-bots state) #(= profile-id (.-profileId %)))
+                             name (loop [n 0]
+                                    (let [candidate (str profile-id (when (pos? n) (str " · " n)))]
+                                      (if (.some (.-bots state) #(= candidate (.-name %))) (recur (inc n)) candidate)))
+                             result (if bot
+                                      (updateBot state #js {:id (.-id bot) :circleIds (.concat (.-circleIds bot) #js [(.-id circle)])})
+                                      (addBot state #js {:name name :profileId profile-id :purpose (.-description profile)
+                                                        :skills (.-skills profile) :circleIds #js [(.-id circle)] :approval "ask"}))]
+                         (set-error (apply-fn result)))))} "選んだprofileをこのサークルに対応づける"]])]
+     [:ul.soshiki-bots
+      (map (fn [bot]
+             [:li {:key (.-id bot)}
+              [:strong (.-name bot)]
+              [:p.muted (if (.-profileId bot) (str "itonami / " (.-profileId bot)) "itonami profile 未設定")]
+              [:button.soshiki-quiet {:type "button" :aria-label (str (.-name bot) "の直接所属を解除")
+                                      :on-click #(set-error (apply-fn (updateBot state #js {:id (.-id bot)
+                                        :circleIds (.filter (.-circleIds bot) (fn [id] (not= id (.-id circle))))})))} "直接所属を解除"]]) members)]
+     [:p.muted "直接所属を解除しても、担当しているロールは保持されます。"]
+     (if (seq candidates)
+       [:div.soshiki-row
+        [:select {:aria-label "サークルに対応づけるBot profile" :value bot-id
+                  :on-change #(set-bot-id (.. % -target -value))}
+         [:option {:value ""} "itonami profile を選ぶ"]
+         (map (fn [bot] [:option {:key (.-id bot) :value (.-id bot)}
+                         (str (.-name bot) " / " (.-profileId bot))]) candidates)]
+        [:button {:type "button" :disabled (not (some #(= bot-id (.-id %)) candidates))
+                  :on-click (fn []
+                    (when-let [bot (some #(when (= bot-id (.-id %)) %) candidates)]
+                      (set-error (apply-fn (updateBot state #js {:id bot-id
+                        :circleIds (.concat (.-circleIds bot) #js [(.-id circle)])})))
+                      (set-bot-id "")))} "このサークルに対応づける"]]
+       [:p.muted "未所属の profile はありません。Botタブで登録・ID設定ができます。"])]))
 
-(defn chart-tab [state apply-fn me score method on-account]
+(defn profile-import [state apply-fn]
+  (let [[draft set-draft] (useState nil)
+        [error set-error] (useState nil)
+        [circle-id set-circle-id] (useState "")]
+    [:section.soshiki-profile-links
+     [:h2 "itonami profile を取り込む"]
+     [:p.muted "itonami.edn を選ぶと、ID・説明・スキルだけを読み込みます。実行設定や認証情報は保存しません。"]
+     [:input {:type "file" :accept ".edn" :aria-label "itonami.edn を選ぶ"
+              :on-change (fn [event]
+                (set-draft nil) (set-error nil)
+                (when-let [file (aget (.. event -target -files) 0)]
+                  (if (> (.-size file) 262144)
+                    (set-error "ファイルは256KB以下で指定してください。")
+                    (-> (.text file)
+                        (.then (fn [text]
+                          (try
+                            (let [manifest (reader/read-string text)
+                                  id (:profile/id manifest)
+                                  description (:profile/description manifest)
+                                  skills (get-in manifest [:bundle :skills])]
+                              (if (and (map? manifest)
+                                       (contains? #{"cloud.itonami.profile.v1" "cloud.itonami.profile.v2"} (:itonami/schema manifest))
+                                       (= :itonami-agent (get-in manifest [:runtime :engine]))
+                                       (string? id) (re-matches #"^[a-z0-9][a-z0-9_-]{0,63}$" id))
+                                (set-draft {:id id :purpose (if (string? description) (subs description 0 (min 280 (count description))) "")
+                                            :skills (if (and (vector? skills) (every? string? skills))
+                                                      (vec (take 12 (map #(subs % 0 (min 80 (count %))) (remove empty? skills)))) [])})
+                                (set-error "itonami-agent の profile ID / schema / runtime を確認してください。")))
+                            (catch :default _ (set-error "itonami.edn を読み取れませんでした。")))))
+                        (.catch (fn [_] (set-error "ファイルを読み取れませんでした。")))))))}]
+     (when error [:p.net-error {:role "alert"} error])
+     (when draft
+       [:div.soshiki-form
+        [:strong (str "itonami / " (:id draft))]
+        [:p.muted (:purpose draft)]
+        [field "最初に対応づけるサークル"
+         [:select {:aria-label "取り込むprofileのサークル" :value circle-id
+                   :on-change #(set-circle-id (.. % -target -value))}
+          [:option {:value ""} "あとで指定"]
+          (map (fn [circle] [:option {:key (.-id circle) :value (.-id circle)} (.-name circle)]) (.-circles state))]]
+        [:button.primary {:type "button" :on-click (fn []
+          (let [failed (apply-fn (addBot state #js {:name (:id draft) :profileId (:id draft)
+                           :purpose (:purpose draft) :skills (clj->js (:skills draft))
+                           :circleIds (if (empty? circle-id) #js [] #js [circle-id]) :approval "ask"}))]
+            (set-error (when failed (or (get error-text failed) "登録できませんでした。")))
+            (when-not failed (set-draft nil))))} "Bot profile を登録"]])]))
+
+(defn chart-view [state apply-fn set-error focus-id on-focus query highlight selected-role-id on-select-role bot-names me catalog loading catalog-error load-catalog]
+  (let [[view set-view] (useState "chart")
+        roots (childrenOf state nil)
+        focus (or (.find (.-circles state) #(= (.-id %) focus-id)) (aget (.-circles state) 0))
+        path (if focus (circlePath state (.-id focus)) #js [])
+        roles (if focus (filter #(matching-role? state % query highlight)
+                                (subtreeRoles state (.-id focus))) [])
+        selected (.find (.-roles state) #(= (.-id %) selected-role-id))
+        members (if focus
+                  (distinct (concat
+                    (keep #(some-> % (.-assignee) (.-name)) (rolesOf state (.-id focus)))
+                    (map #(.-name %) (filter #(.includes (.-circleIds %) (.-id focus)) (.-bots state))))) [])]
+    [:section.soshiki-explorer {:aria-label "組織の探索"}
+     [:div.soshiki-explorer-head
+      [:nav.soshiki-crumb {:aria-label "サークルのパンくず"}
+       (map-indexed
+        (fn [index circle]
+          [:span {:key (.-id circle)}
+           (when (pos? index) [:span {:aria-hidden "true"} " / "])
+           [:button.soshiki-crumb-link {:type "button" :aria-current (when (= index (dec (.-length path))) "page")
+                                        :on-click #(on-focus (.-id circle))} (.-name circle)]]) path)]
+      [:div.soshiki-legend {:role "group" :aria-label "表示方法"}
+       (map (fn [[id label]]
+              [:button.soshiki-legend-btn {:key id :type "button" :aria-pressed (= view id)
+                                           :on-click #(set-view id)} label])
+            [["chart" "サークル図"] ["roles" "ロール一覧"]])]]
+     (when (> (.-length roots) 1)
+       [:label.soshiki-field "全体サークル"
+        [:select {:aria-label "全体サークル" :value (some-> (aget path 0) (.-id))
+                  :on-change #(on-focus (.. % -target -value))}
+         (map (fn [root] [:option {:key (.-id root) :value (.-id root)} (.-name root)]) roots)]])
+     (if-not focus
+       [:p.muted "サークルはまだありません。下の編集から作れます。"]
+       [:div {:data-chart-focus (.-id focus)}
+        [:p.soshiki-purpose (.-purpose focus)]
+        (when (seq members)
+          [:p.muted (str "メンバー · " (clojure.string/join " / " members))])
+        [:nav.soshiki-legend {:aria-label "子サークル"}
+         (map (fn [child]
+                [:button.soshiki-legend-btn {:key (.-id child) :type "button"
+                                             :on-click #(on-focus (.-id child))}
+                 (str (.-name child) " ›")])
+              (filter #(branch-matches state % query highlight) (childrenOf state (.-id focus))))]
+        [:f> circle-profile-links state focus apply-fn set-error catalog loading catalog-error load-catalog]
+        [:p.muted {:role "status"} (str (count roles) " ロール")]
+        [:div.soshiki-explorer-layout {:data-detail (boolean selected)}
+         [:div.soshiki-map-stage
+          (if (= view "chart")
+            [:<>
+             [:svg.soshiki-map {:view-box "0 0 900 840" :role "group" :aria-label "サークル組織図"}
+              [circle-map state focus 450 420 395 0 query highlight selected-role-id on-select-role on-focus]]
+             [:p.muted "サークルを選んで拡大、ロールを選んで詳細を表示。円の大きさは人数を表しません。"]]
+            [:ul.soshiki-rolegrid
+             (map (fn [role]
+                    [:li {:key (.-id role)}
+                     [:button.soshiki-rolecard {:type "button" :data-role (.-id role)
+                                                :aria-pressed (= selected-role-id (.-id role))
+                                                :on-click #(on-select-role (.-id role))}
+                      [:span.hl-dot {:data-hl (role-highlight role) :aria-hidden "true"}]
+                      [:strong (.-name role)]
+                      [:span.muted (if (.-assignee role) (.-name (.-assignee role)) "空きロール")]
+                      [:span.soshiki-rolecard-purpose (.-purpose role)]]]) roles)])
+          (when (and (zero? (count roles)) (or (not (empty? query)) (not= highlight "all")))
+            [:p.soshiki-empty {:role "status"} "条件に合うロールはありません。検索や絞り込みを変更してください。"])]
+         (when selected
+           [:aside.soshiki-inspector {:aria-label "ロール詳細"}
+            [:button.soshiki-quiet {:type "button" :on-click (fn []
+                        (when-let [trigger (.querySelector js/document (str "[data-role='" selected-role-id "']"))]
+                          (.focus trigger))
+                        (on-select-role nil))} "詳細を閉じる"]
+            [:f> role-detail state selected apply-fn set-error bot-names me]])]])]))
+
+(defn chart-tab [state apply-fn me score method on-account catalog loading catalog-error load-catalog]
   (let [[error set-error] (useState nil)
         mine (myRoles state me)
         circle-of (fn [role] (.find (.-circles state) (fn [circle] (= (.-id circle) (.-circleId role)))))
@@ -427,7 +569,7 @@
         [:input.soshiki-search {:aria-label "サークルとロールを検索"
                                  :placeholder "検索: サークル・ロール名"
                                  :value query
-                                 :on-change #(set-query (.. % -target -value))}]
+                                 :on-change (fn [event] (set-query (.. event -target -value)) (set-selected-role-id nil))}]
         [:div.soshiki-legend {:role "group" :aria-label "ハイライト絞り込み"}
          (map (fn [item]
                  [:button {:key (.-id item)
@@ -436,12 +578,17 @@
                                      "soshiki-legend-btn active" "soshiki-legend-btn")
                             :aria-pressed (= highlight (.-id item))
                             :data-highlight (.-id item)
-                            :on-click #(set-highlight (.-id item))}
+                            :on-click (fn [] (set-highlight (.-id item)) (set-selected-role-id nil))}
                   (when-not (= "all" (.-id item))
                     [:span.hl-dot {:data-hl (.-id item) :aria-hidden "true"}])
-                  (.-label item)]) highlights)]]
+                  (.-label item)]) highlights)
+         (when (or (not (empty? query)) (not= highlight "all"))
+           [:button.soshiki-legend-btn {:type "button" :on-click (fn [] (set-query "") (set-highlight "all")
+                                                                       (set-selected-role-id nil))} "条件をクリア"])]]
        [:f> chart-view state apply-fn set-error focus-id on-focus query highlight
-        selected-role-id set-selected-role-id bot-names me]
+        selected-role-id set-selected-role-id bot-names me catalog loading catalog-error load-catalog]
+       [:details.soshiki-edit
+        [:summary "組織を編集・提案する"]
        [:h2 "編集"]
        (when (zero? (.-length roots))
          [:p.muted "サークルはまだありません。下のフォームから作れます。"])
@@ -512,7 +659,7 @@
         [field "詳細"
          [:input {:aria-label "提案の詳細" :value proposal-detail
                    :on-change #(set-proposal-detail (.. % -target -value))}]]
-        [:button.primary {:type "submit"} "提案する"]]])))
+        [:button.primary {:type "submit"} "提案する"]]]])))
 
 (defn bots-tab [state apply-fn agents]
   (let [[error set-error] (useState nil)
@@ -546,13 +693,16 @@
                       (let [edit (or (get edits (.-id bot))
                                      {:purpose (.-purpose bot)
                                       :skills (.join (.-skills bot) ", ")
-                                      :approval (.-approval bot)})
+                                      :approval (.-approval bot)
+                                      :profile-id (or (.-profileId bot) "")
+                                      :circle-ids (set (.-circleIds bot))})
                             failed (apply-fn (updateBot state #js {:id (.-id bot)
                                                                     :purpose (or (:purpose edit)
                                                                                  (.-purpose bot))
                                                                     :skills (parseList (or (:skills edit) ""))
-                                                                    :approval (or (:approval edit)
-                                                                                  (.-approval bot))}))]
+                                                                    :approval (or (:approval edit) (.-approval bot))
+                                                                    :profileId (when-not (empty? (:profile-id edit)) (:profile-id edit))
+                                                                    :circleIds (clj->js (vec (:circle-ids edit)))}))]
                         (set-error failed)
                         (when-not failed
                           (set-edits (fn [current] (assoc current (.-id bot) nil))))))]
@@ -578,6 +728,7 @@
                                                                  :approval (if (= "auto" (.-approval agent))
                                                                              "auto" "ask")})))}
                       "プロフィールを作る"]]]) candidates)]])
+       [:f> profile-import state apply-fn]
        [:h2 "Botプロフィール"]
        (when (zero? (.-length (.-bots state)))
          [:p.muted "Botはまだ登録されていません。"])
@@ -586,7 +737,9 @@
                 (let [edit (or (get edits (.-id bot))
                                {:purpose (.-purpose bot)
                                 :skills (.join (.-skills bot) ", ")
-                                :approval (.-approval bot)})]
+                                :approval (.-approval bot)
+                                      :profile-id (or (.-profileId bot) "")
+                                      :circle-ids (set (.-circleIds bot))})]
                   [:li.soshiki-bot {:key (.-id bot) :data-bot (.-id bot)}
                    [:div.soshiki-circle-head
                     [:strong (.-name bot)]
@@ -600,7 +753,27 @@
                                                  (.join (.map (.-circleIds bot) circle-name) " / ") "—"))]
                    [:p.muted (str "ロール: " (if (pos? (.-length (.-roleIds bot)))
                                                (.join (.map (.-roleIds bot) role-name) " / ") "—"))]
+                   [:p.muted (if (.-profileId bot) (str "itonami / " (.-profileId bot)) "itonami profile 未設定")]
                    [:div.soshiki-form
+                    [field "itonami profile ID（空欄で対応解除）"
+                     [:input {:aria-label (str (.-name bot) "のitonami profile ID")
+                              :value (:profile-id edit)
+                              :placeholder "例: manimani"
+                              :on-change #(set-edits (fn [current] (assoc current (.-id bot)
+                                                                        (assoc edit :profile-id (.. % -target -value)))))}]]
+                    [:fieldset.soshiki-membership
+                     [:legend "対応づけるサークル（複数選択可）"]
+                     (map (fn [circle]
+                            [:label {:key (.-id circle)}
+                             [:input {:type "checkbox" :checked (contains? (:circle-ids edit) (.-id circle))
+                                      :aria-label (str (.-name bot) "の所属: " (.-name circle))
+                                      :on-change (fn [event]
+                                        (let [checked (.. event -target -checked)]
+                                          (set-edits (fn [current]
+                                            (assoc current (.-id bot) (update edit :circle-ids
+                                              (if checked conj disj) (.-id circle)))))))}]
+                             (.-name circle)]) (.-circles state))]
+                    [:p.muted "IDは手動の参照、または取り込んだメタデータです。稼働・接続の確認や実行許可を表しません。"]
                     [field "目的"
                      [:input {:aria-label (str (.-name bot) "の目的")
                                :value (or (:purpose edit) "")
@@ -681,13 +854,27 @@
                        ""
                        (str " · 充足率 " (js/Math.round (* 100 (.-fillRate row))) "%")))]]) (.-rows size))]]))
 
-(defn soshiki [account score on-account]
+(defn soshiki [account score on-account broker]
   (let [[state apply-fn save-failed] (use-soshiki)
         [tab set-tab] (useState "chart")
+        [catalog set-catalog] (useState nil)
+        [loading set-loading] (useState false)
+        [catalog-error set-catalog-error] (useState nil)
+        catalog-abort (useRef nil)
+        load-catalog (fn []
+          (some-> catalog-abort .-current (.abort))
+          (let [controller (js/AbortController.)]
+          (set! (.-current catalog-abort) controller)
+          (set-loading true) (set-catalog-error nil)
+          (-> (readExistingProfiles broker (.-signal controller))
+              (.then (fn [profiles] (set-catalog profiles)))
+              (.catch (fn [_] (set-catalog-error "一覧を取得できませんでした。取得を許可していない場合は要求を送信しません。端末のprofileサービスが起動していることも確認してください。")))
+              (.finally (fn [] (set-loading false))))))
         [manimani] (use-manimani)
         agents (or (some-> manimani (.-agents)) #js [])
         me (personNameForAccount (some-> account (.-accountDid)))
         method (some-> account (.-method))]
+    (useEffect (fn [] (load-catalog) (fn [] (some-> catalog-abort .-current (.abort)))) #js [])
     (let [score (or score 0)]
       [:main.chat.net-view {:data-soshiki true}
        [:div.net-body.soshiki-body
@@ -707,7 +894,7 @@
                   (.-label item)
                   [:span.muted (str " " (.-sub item))]]) tabs)]
         (when (= tab "chart")
-          [:f> chart-tab state apply-fn me score method on-account])
+          [:f> chart-tab state apply-fn me score method on-account catalog loading catalog-error load-catalog])
         (when (= tab "bots")
           [:f> bots-tab state apply-fn agents])
         (when (= tab "size")

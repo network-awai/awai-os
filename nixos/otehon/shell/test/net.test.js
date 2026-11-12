@@ -1,3 +1,5 @@
+import { osOperations, runtimeDescriptor } from "../src/runtime.js";
+import { clientRuntimeConnectSrc } from "../vendor/kotoba-client-runtime.js";
 import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
@@ -31,7 +33,9 @@ test("the shell CSP allowlists every loopback service the UI fetches", async () 
   const html = await readFile(path.join(root, "index.html"), "utf8");
   const csp = html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)"/)[1];
   // build.mjs replaces the placeholder with the derived connect-src.
-  const built = csp.replace("__CONNECT_SRC__", "connect-src https://example.invalid");
+  const ops = osOperations("https://example.invalid");
+  const derived = clientRuntimeConnectSrc(runtimeDescriptor("index.html", ops), [...new Set(ops.map(op => op.capability))], [], []);
+  const built = csp.replace("__CONNECT_SRC__", derived);
   const connect = built
     .split(";")
     .map((part) => part.trim())

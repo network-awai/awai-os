@@ -1,5 +1,6 @@
 (ns shell.manimani
   (:require ["react" :refer [useCallback useEffect useRef useState]]
+            ["../muse-chat.js" :refer [requestMuseChat conversationFor]]
             ["../voice-input.js" :refer [createLocalDictation]]))
 
 (def MANIMANI "manimani")
@@ -39,18 +40,13 @@
    "model-unavailable" "The local model is not available. Nothing is sent elsewhere."})
 
 (defn manimani-link [active on-select]
-  (let [[state] (use-manimani)]
-    [:button {:type "button"
-               :class (if active "new-chat manimani-link active" "new-chat manimani-link")
-               :aria-current (when active "page")
-               :data-manimani-link true
-               :on-click on-select}
-     [:span.dot {:data-status (status-of state) :aria-hidden "true"}]
-     "Bots · Manimani"]))
+  [:button {:type "button" :class (if active "new-chat manimani-link active" "new-chat manimani-link")
+            :aria-current (when active "page") :data-manimani-link true :on-click on-select}
+   "Bots · Muse / Manimani"])
 
 (def launchers [["wifi" "Wi-Fi"] ["bluetooth" "Bluetooth"] ["sound" "Sound"] ["display" "Display"]])
 
-(defn manimani [on-select on-open-wallet]
+(defn local-manimani [on-select on-open-wallet]
   (let [[state read] (use-manimani)
         [text set-text] (useState "")
         [voice-state set-voice-state] (useState "idle")
@@ -184,3 +180,55 @@
                   [:li {:key (str (.-at item) "-" (.-kind item))}
                    (str (.toLocaleTimeString (js/Date. (.-at item))) " " (.-kind item)
                         (if (.-detail item) (str ": " (.-detail item)) ""))]) (reverse (take-last 12 (or (some-> state (.-activity)) #js []))))]]]])))
+
+
+(def muse-chat-key "otehon.muse.chat.v1")
+(defn muse-chat [broker]
+  (let [[messages set-messages] (useState (fn [] (try (let [value (.parse js/JSON (.getItem js/localStorage muse-chat-key))]
+                                                       (if (array? value) value #js [])) (catch :default _ #js []))))
+        [text set-text] (useState "")
+        [pending set-pending] (useState false)
+        [error set-error] (useState nil)
+        [model set-model] (useState "")
+        active (useRef nil)]
+    (useEffect (fn [] (fn [] (some-> active .-current (.abort)))) #js [])
+    (let [send (fn [event]
+                 (.preventDefault event)
+                 (when (and (not pending) (not (empty? (.trim text))))
+                   (let [controller (js/AbortController.)
+                         conversation (conversationFor messages text)]
+                     (set! (.-current active) controller)
+                     (set-pending true) (set-error nil)
+                     (-> (requestMuseChat broker conversation (.-signal controller))
+                         (.then (fn [reply]
+                           (let [next (.concat messages #js [#js {:role "user" :content (.trim text)} #js {:role "assistant" :content (.-text reply)}])]
+                             (set-messages next) (set-text "") (set-model (.-model reply))
+                             (try (.setItem js/localStorage muse-chat-key (.stringify js/JSON next))
+                                  (catch :default _ (set-error "会話を端末に保存できませんでした。"))))))
+                         (.catch (fn [_] (set-error "送信を許可していないか、Muse が応答できませんでした。入力は保持しています。")))
+                         (.finally (fn [] (set-pending false)))))))]
+      [:main.muse-chat {:data-muse-chat true}
+       [:header
+        [:h1 "Muse と会話"]
+        [:p.muted (if (empty? model) "Muse · 接続確認前" (str "Muse · " model " · 応答確認済み"))]
+        [:p.muted "Muse の既存ログインを使用します。送信時に入力とこの会話の履歴（長い場合は直近の範囲）を Muse へ渡します。ファイルの変更・コマンド実行は無効です。"]
+        [:button.soshiki-quiet {:type "button" :disabled pending :on-click (fn [] (set-messages #js []) (set-error nil) (.removeItem js/localStorage muse-chat-key))} "新しい会話"]]
+       [:ol.muse-messages {:aria-label "Museとの会話" :aria-live "polite"}
+        (when (zero? (.-length messages)) [:li.muted "話しかけてください。"])
+        (map-indexed (fn [i message]
+                       [:li {:key i :data-speaker (.-role message)}
+                        [:strong (if (= "user" (.-role message)) "あなた" "Muse")]
+                        [:p (.-content message)]]) messages)]
+       (when error [:p.net-error {:role "alert"} error])
+       [:form.muse-composer {:on-submit send}
+        [:textarea {:aria-label "Museへのメッセージ" :placeholder "Muse にメッセージを送る" :value text
+                    :max-length 8000 :disabled pending :on-change #(set-text (.. % -target -value))}]
+        [:button {:type "submit" :disabled (or pending (empty? (.trim text)))} (if pending "Muse の応答を待っています…" "Muse に送信")]]])))
+
+(defn manimani [on-select on-open-wallet broker]
+  (let [[provider set-provider] (useState "muse")]
+    [:section.bot-conversations
+     [:nav.soshiki-legend {:aria-label "会話するBot"}
+      [:button.soshiki-legend-btn {:type "button" :aria-pressed (= provider "muse") :on-click #(set-provider "muse")} "Muse"]
+      [:button.soshiki-legend-btn {:type "button" :aria-pressed (= provider "local") :on-click #(set-provider "local")} "Manimani（ローカル）"]]
+     (if (= provider "muse") [:f> muse-chat broker] [:f> local-manimani on-select on-open-wallet])]))

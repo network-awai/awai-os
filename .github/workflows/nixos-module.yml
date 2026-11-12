@@ -72,6 +72,14 @@ jobs:
         run: |
           preflight_check=$(nix-build scripts/otehon-c1/check.nix --no-out-link)
           cat "$preflight_check/tests.txt"
+      - name: Test the read-only itonami profile catalog
+        run: |
+          profile_check=$(nix-build nixos/otehon/profiles/check.nix --no-out-link)
+          cat "$profile_check/tests.txt"
+      - name: Test the bounded Muse conversation input (no live provider call)
+        run: |
+          muse_check=$(nix-build nixos/otehon/muse-chat/check.nix --no-out-link)
+          cat "$muse_check/tests.txt"
       - name: Build and test the Otehon Pack/CAR and checkpoint storage adapter
         run: |
           storage_check=$(nix-build nixos/otehon/storage/check.nix --no-out-link)

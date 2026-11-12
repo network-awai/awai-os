@@ -362,12 +362,12 @@
                  [:f> account account score proofs check-passport passport-state
                   check-balance balance-state on-sign-out]
                  (= context MANIMANI)
-                 [:f> manimani set-context open-account]
+                 [:f> manimani set-context open-account broker]
                  (= context "wifi") [:f> wifi-panel]
                  (= context "bluetooth") [:f> bluetooth-panel]
                  (= context "sound") [:f> sound-panel]
                  (= context "display") [:f> display-panel]
-                 (= context "soshiki") [:f> soshiki account score open-account]
+                 (= context "soshiki") [:f> soshiki account score open-account broker]
                  (and dapp (< score minimum))
                  [locked dapp minimum score open-account]
                  :else

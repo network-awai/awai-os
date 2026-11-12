@@ -155,5 +155,23 @@
 (deftest bad-shapes-fall-back-to-the-seed
   (is (= (core/seed-state) (core/settle-soshiki {:nope true}))))
 
+
+(deftest itonami-profile-binding-and-membership
+  (let [initial (core/seed-state)
+        id (:id (first (:bots initial)))
+        _ (doseq [profile-id ["../secret" "Bad" "" (apply str (repeat 65 "a")) 12]]
+            (is (= "bad-profile" (:error (core/update-bot initial {:id id :profile-id profile-id}))))
+            (is (= "bad-profile" (:error (core/add-bot initial {:name "Other" :profile-id profile-id})))))
+        state (:state (core/update-bot initial {:id id :profile-id "manimani" :circle-ids ["c2" "c3" "c2"]}))
+        state (:state (core/add-bot state {:name "Other" :profile-id "notes"}))]
+    (is (= ["c2" "c3"] (:circle-ids (first (:bots state)))))
+    (is (= "profile-exists" (:error (core/add-bot state {:name "Third" :profile-id "manimani"}))))
+    (is (= "profile-exists" (:error (core/update-bot state {:id (:id (second (:bots state))) :profile-id "manimani"}))))
+    (is (= "unknown-circle" (:error (core/update-bot state {:id id :circle-ids ["missing"]}))))
+    (let [cleared (:state (core/update-bot state {:id id :profile-id nil}))]
+      (is (nil? (:profile-id (first (:bots cleared)))))
+      (is (= ["c2" "c3"] (:circle-ids (first (:bots cleared)))))
+      (is (= "Manimani" (get-in cleared [:roles 1 :assignee :name]))))))
+
 (let [{:keys [fail error]} (run-tests 'soshiki.core-test)]
   (System/exit (if (zero? (+ fail error)) 0 1)))

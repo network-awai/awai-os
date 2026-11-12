@@ -183,9 +183,16 @@
                 (update :bots (fn [bots] (mapv #(update % :role-ids (fn [ids] (filterv (fn [r] (not (= r id))) ids))) bots))))}
     {:error "unknown-role"}))
 
-(defn add-bot [state {:keys [name purpose skills circle-ids role-ids approval]
+(defn- profile-error [state profile-id bot-id]
+  (cond
+    (nil? profile-id) nil
+    (not (and (string? profile-id) (re-matches #"^[a-z0-9][a-z0-9_-]{0,63}$" profile-id))) "bad-profile"
+    (some #(and (not= bot-id (:id %)) (= profile-id (:profile-id %))) (:bots state)) "profile-exists"))
+
+(defn add-bot [state {:keys [name purpose skills circle-ids role-ids approval profile-id]
                       :or {purpose "" skills [] circle-ids [] role-ids [] approval "ask"}}]
   (cond
+    (profile-error state profile-id nil) {:error (profile-error state profile-id nil)}
     (name-error name) {:error "bad-name"}
     (purpose-error purpose {:required false}) {:error "bad-purpose"}
     (list-error skills) {:error "bad-list"}
@@ -194,15 +201,19 @@
     (boolean (some #(nil? (circle-by-id state %)) circle-ids)) {:error "unknown-circle"}
     (boolean (some (fn [role-id] (nil? (first (filter #(= role-id (:id %)) (:roles state))))) role-ids)) {:error "unknown-role"}
     :else (let [[id state] (fresh-id state "b")]
-            {:state (update state :bots conj {:id id :name (clean-line name) :purpose (clean-line purpose)
+            {:state (update state :bots conj (cond-> {:id id :name (clean-line name) :purpose (clean-line purpose)
                                               :skills (mapv clean-line skills)
                                               :circle-ids (vec (distinct circle-ids))
                                               :role-ids (vec (distinct role-ids))
-                                              :approval approval})})))
+                                              :approval approval}
+                                                 (some? profile-id) (assoc :profile-id profile-id)))})))
 
 (defn update-bot [state {:keys [id] :as changes}]
   (if-let [bot (first (filter #(= id (:id %)) (:bots state)))]
-    (let [next (cond-> bot
+    (let [profile-id (:profile-id changes)
+          next (cond-> (if (contains? changes :profile-id)
+                         (if (nil? profile-id) (dissoc bot :profile-id) (assoc bot :profile-id profile-id))
+                         bot)
                  (contains? changes :purpose)
                  (assoc :purpose (clean-line (:purpose changes)))
                  (contains? changes :skills)
@@ -212,6 +223,7 @@
                  (contains? changes :circle-ids)
                  (assoc :circle-ids (vec (distinct (:circle-ids changes)))))]
       (cond
+        (profile-error state profile-id id) {:error (profile-error state profile-id id)}
         (and (contains? changes :purpose) (purpose-error (:purpose next) {:required false})) {:error "bad-purpose"}
         (and (contains? changes :skills) (list-error (:skills next))) {:error "bad-list"}
         (and (contains? changes :approval) (not (contains? #{"auto" "ask"} (:approval next)))) {:error "bad-approval"}
