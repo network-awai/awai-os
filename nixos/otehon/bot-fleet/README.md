@@ -205,3 +205,26 @@ does not become an effectful calendar executor. Its five live interval jobs
 and authenticated enrollment pins are unchanged. The decision/report and new
 registration are persisted through the selected existing WebDAV service with
 independent byte readback; see `docs/evidence/itonami-cron-timezone-20261112.json`.
+
+### Original bounded jobs — 2026-11-12
+
+`prepare-original-jobs.clj` enrolls only the reviewed public-bots-registrar
+24-hour and awai-arb6-hour original interval jobs. Typed operator grants permit
+two exact public registry GETs, owned arb ledger/pending-draft writes, AwaiFS
+artifact publication and owning Linear records. They grant no email send,
+registration POST, arbitrary scripts, Git merge or model tools. These tasks use
+a deterministic executor, with no inference call or applicable model token
+counters. The existing five Muse readiness jobs remain separately identified.
+
+`activate-original-jobs.clj` requires actual completed storage/Linear proofs
+before creating the owned `network.awai.itonami.jobs.awai2795` timer. Wakeup is
+60seconds; the enrolled source intervals remain unchanged. Unknown outcomes
+stay claimed and recover only from their original persisted observations.
+`original-worker.clj` publishes a separate `awai.original-job-observation.v1`
+snapshot at the selected WebDAV `/itonami-job-results-AWAI-2795-v1/current.json`.
+The live report has two completed observations and confirmed CID readbacks;
+registry metrics returned200/count9, catalog502, so registration remains
+unverified. The arb ledger contains measured service status and an unposted
+availability investigation draft; these are not financial return measurements.
+See `docs/evidence/itonami-original-jobs-20261112.json`. Mail/private-source/Git
+effects and broad original fleet activation remain unqualified.
