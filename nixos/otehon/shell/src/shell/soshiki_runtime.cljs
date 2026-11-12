@@ -1,5 +1,6 @@
 (ns shell.soshiki-runtime
   (:require ["react" :refer [useEffect useRef useState]]
+            [shell.execution-observation :as execution]
             [reagent.dom.client :as rdom]
             ["../soshiki-runtime.js" :refer [RUNTIME_KEY runtimeView validateObservation]]
             ["../soshiki-fleet.js" :refer [importFleet]]
@@ -20,6 +21,7 @@
     [:section {:data-runtime-status true}
      [:h2 "Botの稼働状況"]
      [:p "稼働状況は未確認です。登録・VM起動・CLIの存在だけでは稼働中と判定しません。"]
+     [:f> execution/panel]
      [:label.soshiki-field [:span "ノード観測レポート"]
       [:input {:type "file" :accept ".json,application/json" :aria-label "ノード観測レポート"
                :on-change (fn [e]
@@ -59,7 +61,7 @@
                        " · Muse: " (if (.-muse (.-tools node)) "あり" "なし")
                        " · Itonami: " (if (or (.-itonami (.-tools node)) (aget (.-tools node) "itonami-agent")) "あり" "なし"))]
            [:span " · 観測不能"])])]
-     [:p.muted "実行準備は未完了：Itonami→Muse実呼出し、ノード参加確認、実行単位の排他・永続カーソル・成果の重複防止。"]
+     [:p.muted "BotごとのMuse認証・実行権限・cron接続は未確認です。統合実行のレポートを下に表示します。"]
      [:label.soshiki-field [:span "サークル"]
       [:select {:aria-label "稼働状況のサークル" :value circle :on-change #(set-circle (.. % -target -value))}
        [:option {:value "all"} "すべて"]
@@ -70,7 +72,7 @@
                            [:strong (.-name bot)] [:span " · 稼働未確認"]
                            [:p.muted (str (or (.-project bot) "Linear未解決") " · Issue: " (or (.-issue bot) "未選択"))]
                            [:p.muted "担当ノード・モデル・最終run・永続化：未確認"]])]
-     [:p.muted "この観測は実行許可を付与しません。実行レシートの表示は、実アダプター接続後に対応します。"]]))
+     [:p.muted "この観測は実行許可を付与しません。"]]))
 
 (defn preview []
   (let [[state set-state] (useState (blankState))

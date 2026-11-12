@@ -1,0 +1,42 @@
+(ns awai.bot.observation
+  "Display-only operator receipts. They never grant execution or imply fleet uptime."
+  (:require [clojure.string :as str]))
+(def schema "awai.bot-runtime-receipts.v1")
+(defn timestamp [s]
+ (when (string? s)
+  #?(:clj (try (.toEpochMilli (java.time.Instant/parse s)) (catch Exception _ nil))
+     :cljs (let [v (js/Date.parse s)] (when (js/Number.isFinite v) v)))))
+(defn- short? [v] (and (string? v) (<= 1 (count v) 160)))
+(defn- valid? [r]
+ (and (= schema (:schema r)) (= "public-integration-and-control-plane" (:scope r))
+      (false? (:fleetCronActivated r)) (timestamp (:observedAt r))
+      (vector? (:nodes r)) (<= 1 (count (:nodes r)) 16)
+      (= (count (:nodes r)) (count (distinct (map :node (:nodes r)))))
+      (every? #(and (short? (:node %)) (re-matches #"[a-zA-Z][a-zA-Z0-9-]{0,62}" (:node %))
+                    (contains? #{"healthy" "unobserved"} (:status %))) (:nodes r))
+      (vector? (:runs r)) (<= 1 (count (:runs r)) 32)
+      (= (count (:runs r)) (count (distinct (map :runId (:runs r)))))
+      (= (count (:runs r)) (count (distinct (map :museRunId (:runs r)))))
+      (every? #(and (every? short? (map % [:runId :museRunId :model :node :issueId]))
+                    (re-matches #"[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}" (:museRunId %))
+                    (= "meta" (:provider %)) (false? (:catalogMember %))
+                    (contains? #{"completed" "unknown"} (:state %))) (:runs r))))
+(defn summary [r now]
+ (if-not (valid? r) {:valid? false :error "invalid-receipts"}
+  (let [future? (> (timestamp (:observedAt r)) now)]
+   {:valid? true :future? future? :observedAt (:observedAt r)
+    :ageSeconds (when-not future? (quot (- now (timestamp (:observedAt r))) 1000))
+    :healthy (when (and (not future?) (some #(= "healthy" (:status %)) (:nodes r)))
+               (count (filter #(= "healthy" (:status %)) (:nodes r))))
+    :total (count (:nodes r))
+    :completed (when (and (not future?) (some #(= "completed" (:state %)) (:runs r)))
+                 (count (filter #(= "completed" (:state %)) (:runs r))))
+    :nodes (if future? [] (:nodes r)) :runs (if future? [] (:runs r))
+    :recoveryNoReinvoke (when (and (not future?) (boolean? (get-in r [:recovery :completed]))
+                                  (boolean? (get-in r [:recovery :invoked])))
+                          (and (get-in r [:recovery :completed]) (false? (get-in r [:recovery :invoked]))))
+    :quorumLossHeld (when (and (not future?) (string? (get-in r [:quorumLoss :state]))
+                               (integer? (get-in r [:quorumLoss :modelCallbacks])))
+                       (and (= "unknown" (get-in r [:quorumLoss :state]))
+                            (= 0 (get-in r [:quorumLoss :modelCallbacks]))))
+    :coldBoot "unverified" :fleetRunning "unknown"})))

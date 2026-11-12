@@ -33,7 +33,7 @@ const report={schema:'awai.bot-fleet-observation.v1',observedAt:new Date().toISO
  registryRevision:catalog['registry-revision'],catalogSha256:createHash('sha256').update(bytes).digest('hex'),
  sourceIssue:'AWAI-2795',scope:'host-prerequisites-only',continuousMonitoring:false,
  nodes,runs:[],gates:{nodeAdmission:'unverified',durableCursor:'unverified',fencedEffects:'unverified',
- liveItonamiMuseAdapter:'not-connected',guestExecutor:'unverified'},
+ liveItonamiMuseAdapter:'unverified-by-this-census',guestExecutor:'unverified'},
  note:'Host CLI/process census is not VM access, bot execution or authorization. No dispatch performed.'};
 await writeFile(out,JSON.stringify(report,null,2)+'\n',{flag:'wx',mode:0o600});
 console.log(JSON.stringify({observedAt:report.observedAt,nodes: nodes.map(n=>({node:n.node,status:n.status,tools:n.tools})),qualifiedRuns:0}));

@@ -113,3 +113,28 @@ open. A separate Muse provider probe cannot fill these gaps. No fleet cron is
 activated here, and VKE is not used. Resume with a qualified Itonami/Muse host
 adapter and authenticated Awai-node occurrence/cursor/effect integration,
 then add attributable live run and recovery receipts to the observation schema.
+
+## Approved execution path and physical qualification
+
+Owner subsequently approved etcd for the Otehon control plane (2026-11-12,
+apex PR185). Itonami PR282 now provides the explicit `muse-oneshot` live adapter,
+`dispatch-muse!`/`recover-muse!`, a `.cljc` occurrence protocol and the pinned
+certificate-CN etcdctl gRPC transport. The historical Native gateway adapter
+reference above remains separate; old `oneshot`/`run-exec` pending routes have
+not silently become live inference.
+
+The [etcd operator runbook](etcd/README.md) and
+`docs/evidence/itonami-etcd-three-mac-mini-20261112.json` record the independently
+verified3-host deployment, scoped permissions, cross-host contention, quorum
+failure/process recovery and actual Muse recovery. Background launchd services
+are running on levi/benjamin/joseph; original Awai QEMU PIDs remained unchanged.
+These are host control-plane services, not an existing guest OS replacement.
+
+Soshiki's Runtime view can also import
+`docs/evidence/itonami-runtime-receipts-20261112.json`:3/3 current-point etcd
+responses,2 real physical-quorum Muse integration receipts with model/token
+records, and no-reinference recovery. These dedicated integration profiles are
+explicitly excluded from the899 registered fleet Bot counts. The view remains
+a local, timestamped snapshot import, not continuous monitoring or permission.
+Per-Bot Muse authorization, active work/capability/timebase and actual cron
+rollout remain incomplete. Preserve all existing disabled states and holds.
