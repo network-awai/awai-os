@@ -32,6 +32,9 @@ const clojure = (args) => execFileSync("clojure", [
 clojure(["-m", "shell.styles.build"]);
 clojure(["-m", "shadow.cljs.devtools.cli", "release", "shell"]);
 clojure(["-m", "shadow.cljs.devtools.cli", "release", "link"]);
+clojure(["-m", "shadow.cljs.devtools.cli", "release", "soshiki-runtime"]);
+await mkdir("dist/soshiki-runtime", { recursive: true });
+await copyFile("soshiki-runtime/index.html", "dist/soshiki-runtime/index.html");
 
 async function page({ html, outdir, operations, appOrigins }) {
   await mkdir(`${outdir}/assets`, { recursive: true });

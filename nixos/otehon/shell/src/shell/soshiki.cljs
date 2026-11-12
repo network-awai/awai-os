@@ -1,5 +1,6 @@
 (ns shell.soshiki
   (:require ["react" :refer [useEffect useMemo useRef useState]]
+            [shell.soshiki-runtime :refer [runtime-panel]]
             ["../soshiki-fleet.js" :refer [importFleet]]
             [shell.manimani :refer [use-manimani]]
             ["../soshiki.js" :refer [addBot addCircle addProposal addRole assignRole
@@ -12,6 +13,7 @@
 (def tabs
   [#js {:id "chart" :label "組織設計" :sub "Chart"}
    #js {:id "bots" :label "Bot" :sub "Profiles"}
+   #js {:id "runtime" :label "稼働状況" :sub "Runtime"}
    #js {:id "size" :label "サイズ" :sub "Size"}])
 
 (def error-text
@@ -737,5 +739,7 @@
           [:f> chart-tab state apply-fn me score method on-account])
         (when (= tab "bots")
           [:f> bots-tab state apply-fn agents])
+        (when (= tab "runtime")
+          [:f> runtime-panel state])
         (when (= tab "size")
           [:f> size-tab state])]])))
