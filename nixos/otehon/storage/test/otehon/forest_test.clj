@@ -22,10 +22,14 @@
         dir (new-store) path (Paths/get (str dir "/input.forest") (make-array String 0))
         write! #(Files/write path % (make-array java.nio.file.OpenOption 0))]
     (write! bytes)
-    (let [actual (forest/verify-file (str path))]
+    (let [actual (forest/verify-file (str path))
+          expected (#'pack/verify-car (#'pack/forest-car old))]
       (is (= (mapv :cid blocks) (mapv :cid (:blocks actual))))
       (is (= (mapv #(count (:bytes %)) blocks) (mapv :length (:blocks actual))))
-      (is (= (:frame-sha old) (:frame-sha actual))))
+      (is (= (:frame-sha old) (:frame-sha actual)))
+      (is (= (:ref expected) (:ref actual)))
+      (is (= (:index expected) (:index actual)))
+      (is (= (:car-size expected) (:car-size actual))))
     (doseq [offset [(dec (alength bytes)) 100 (+ (:index-pos old) 8) (+ (:index-pos old) 40)]]
       (let [bad (doto (aclone bytes) (aset-byte offset (unchecked-byte (bit-xor 1 (aget bytes offset)))))]
         (write! bad)

@@ -113,16 +113,20 @@
                   entries (vec (remove nil? slots)) offsets (vec (sort (distinct (map second entries))))]
               (when (or (empty? entries) (> (count offsets) 65) (some? (last slots)))
                 (fail! :invalid-forest "invalid frame count or sentinel"))
-              (let [header (vbytes (segmented/decode-forest-frame (file-range channel 0 (first offsets))))
+              (let [header-compressed (file-range channel 0 (first offsets))
+                    header (vbytes (segmented/decode-forest-frame header-compressed))
                     decoded-header (car/carv1-decode header) roots (:roots decoded-header)
                     _ (when-not (and (empty? (:blocks decoded-header)) (= 1 (count roots))
                                      (= header (car/carv1-encode {:roots roots :blocks []})))
                         (fail! :invalid-forest "noncanonical CAR header"))
                     ends (zipmap offsets (concat (rest offsets) [index-pos]))
+                    data-md (MessageDigest/getInstance "SHA-256")
                     result (reduce (fn [acc p]
                                      (let [compressed (file-range channel p (- (ends p) p))
                                            blocks (canonical-sections (vbytes (segmented/decode-forest-frame compressed)))]
                                        (when (empty? blocks) (fail! :invalid-forest "empty indexed frame"))
+                                       (doseq [b blocks :when (= car/codec-raw (:codec (car/parse-cid (:cid b))))]
+                                         (.update data-md (bytes-of (:bytes b))))
                                        (-> acc
                                            (update :pairs into (map #(vector (hash-cid (:cid %)) p) blocks))
                                            (update :blocks into (map (fn [b] {:cid (:cid b) :length (count (:bytes b)) :frame p}) blocks))
@@ -139,8 +143,41 @@
                 (doseq [[h group] (group-by first entries)]
                   (when-not (= (set (map second group)) (set (candidates slots buckets distance h)))
                     (fail! :invalid-forest-index "index probe cannot find its blocks")))
-                {:roots roots :blocks blocks :frame-sha (:frame-sha result)
-                 :slots slots :buckets buckets :distance distance :ends ends :index-pos index-pos :size n}))))))))
+                (let [index-result
+                      (reduce (fn [{:keys [offset] :as acc} b]
+                                (let [cid (:cid b) length (:length b)
+                                      varint (count (car/encode-uvarint (+ (count cid) length)))
+                                      next (+ offset varint (count cid) length)]
+                                  (-> acc (assoc :offset next)
+                                      (update :index conj {:offset (+ 51 offset varint (count cid))
+                                                           :length length :cid cid
+                                                           :sha (.formatHex (java.util.HexFormat/of)
+                                                                            (bytes-of (:digest (car/parse-cid cid))))}))))
+                              {:offset (count header) :index []} blocks)
+                      raw-size (:offset index-result)
+                      v2-header (vec (concat car/carv2-pragma (repeat 16 0)
+                                             (car/encode-u64-le 51) (car/encode-u64-le raw-size) (repeat 8 0)))
+                      car-md (MessageDigest/getInstance "SHA-256")]
+                  (.update car-md (bytes-of v2-header))
+                  (.update car-md (bytes-of header))
+                  (doseq [p offsets]
+                    (let [compressed (file-range channel p (- (ends p) p))]
+                      (when-not (= (get-in result [:frame-sha p]) (segmented/sha compressed))
+                        (fail! :changed-payload "Forest frame changed during verification"))
+                      (.update car-md (segmented/decode-forest-frame compressed))))
+                  (when-not (and (= n (.size channel))
+                                 (Arrays/equals ^bytes header-compressed ^bytes (file-range channel 0 (first offsets)))
+                                 (Arrays/equals ^bytes index ^bytes (file-range channel index-pos (- footer index-pos)))
+                                 (Arrays/equals ^bytes tail ^bytes (file-range channel footer 16)))
+                    (fail! :changed-payload "Forest header, index or footer changed during verification"))
+                  {:roots roots :blocks blocks :frame-sha (:frame-sha result)
+                   :index (vec (butlast (:index index-result))) :car-size (+ 51 raw-size)
+                   :ref {:format :awai.otehon-store/pack-v1
+                         :car-sha (.formatHex (java.util.HexFormat/of) (.digest car-md))
+                         :data-sha (.formatHex (java.util.HexFormat/of) (.digest data-md))
+                         :root-cid (car/cid-str (first roots)) :size (reduce + (map :length leafs))
+                         :leaf-count (count leafs)}
+                   :slots slots :buckets buckets :distance distance :ends ends :index-pos index-pos :size n})))))))))
 (defn open
   "Fully validate a bounded Forest v1 index and all SHA-256 blocks. Owns a copy.
   This experimental adapter accepts a single index skippable frame, <=1 MiB
