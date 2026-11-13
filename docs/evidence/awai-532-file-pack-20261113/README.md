@@ -207,3 +207,39 @@ Pack and writer suites passed 26 tests / 152 assertions. The hosted raw writer
 proof also passed its 2 MiB roundtrip, CID, mutation, interrupted-publication,
 and tool rejection checks. This is evidence of eliminating this particular
 retained reference, not a measured RSS reduction or full bounded-memory proof.
+
+### 2026-11-14: retained managed-heap comparison
+
+On one macOS host with Babashka 1.12.218, separate fresh processes opened the
+same already-committed 2 MiB / 3-Pack / 32-CID fixture (manifest CID above).
+After namespace loading, each requested GC three times, sampled
+`Runtime.totalMemory - Runtime.freeMemory`, retained the recovered handle,
+requested GC three more times, and sampled again. Baseline was Pack adapter
+`8c3fe061cb0a346f26b9354163a82da5d0c1955a`; candidate was
+`d068e93a770718b3d2fedc8c4fbd75af02e2e997`. All other sources and the store
+were the same. Three alternating baseline/candidate pairs returned these
+identical values in bytes (one initial pair and a later parameterized-driver
+pair returned the same values):
+
+| | before | after | delta | retained CID class |
+| --- | ---: | ---: | ---: | --- |
+| baseline | 2097152 | 29884416 | 27787264 | `APersistentVector$SubVector` |
+| candidate | 2097152 | 2621440 | 524288 | `PersistentVector` |
+
+This is a coarse Java Runtime managed-heap proxy after requested GC, **not RSS,
+peak allocation, native memory, a guarantee that GC completed, or a GiB-scale
+measurement**. Results were quantized in 524,288-byte increments; fixed order,
+one host and three pairs limit interpretation. They support the identified
+retained-reference mechanism for this fixture, not a general production
+memory bound. Baseline adapter source SHA-256:
+`edb44215ecb9e29bb07bdc1cd63fa12481a60fe3f1cc459a3be7fd7b2b8666cf`.
+Driver SHA-256:
+`00fd972cb32f2bfa9e48212688bab40f60ac1f6b948cfcbff5253d920f394887`.
+
+To reproduce, generate the three-Pack fixture using the raw writer proof above,
+then use its `store` directory. Create the baseline classpath with `git show
+8c3fe061cb0a346f26b9354163a82da5d0c1955a:nixos/otehon/storage/src/otehon/pack_store.clj`
+at `.agent-output/retention-baseline/otehon/pack_store.clj`, then run the driver
+in separate `bb` processes with that directory first in the classpath for the
+baseline, and without it for the candidate. The store used in this measurement
+was `.agent-output/raw-product-cli-store-20261113`.
