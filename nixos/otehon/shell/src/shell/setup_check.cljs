@@ -10,8 +10,8 @@
 ;; No relay, account, signature or network operation is needed to render a QR.
 (defn main []
   (doseq [locale ["ja" "en"]]
-   (let [html (renderToStaticMarkup (r/as-element [:f> workspace/panel [{:id "profile:sample" :name "sample" :repository "org/app" :configured true :state "waiting" :jobs [{:configured true :state "waiting" :sourceObservedAt (.toISOString (js/Date.))}]}] nil "catalog" false (js/Date.now) locale]))]
-    (when-not (and (.includes html "sample") (.includes html "agent-picker-row")) (throw (js/Error. "agent-picker-render-failed")))))
+   (let [html (renderToStaticMarkup (r/as-element [:f> workspace/panel (mapv (fn [i] {:id (str "profile:sample-" i) :name (str "sample-" i) :repository "org/app" :configured true :state "waiting" :jobs [{:configured true :state "waiting" :sourceObservedAt (.toISOString (js/Date.))}]}) (range 21)) nil "catalog" false (js/Date.now) locale]))]
+    (when-not (and (.includes html "sample") (.includes html "agent-picker-row") (.includes html (if (= locale "en") "Show more" "もっと見る"))) (throw (js/Error. "agent-picker-render-failed")))))
   (doseq [[locale expected] [["ja" "履歴を取得"] ["en" "Load history"]]]
     (let [html (renderToStaticMarkup (r/as-element [:f> bot-chat/panel {:id "profile:sample" :name "sample"} locale]))]
       (when-not (and (.includes html expected) (.includes html "<textarea") (.includes html "disabled"))

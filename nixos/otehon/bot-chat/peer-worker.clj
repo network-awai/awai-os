@@ -17,8 +17,7 @@
   :schedule {:type "interval" :every-ms 1000} :initial-slot (:initialSlot cfg)}
  _ (assert (o/enrollment-valid? enrollment)) ks (o/keys-for (:bot-id enrollment) (:job-id enrollment) (:initial-slot enrollment))
  prior ((:read transport) (:enrollment ks))
- _ (if prior (assert (= prior enrollment) "existing peer enrollment differs")
-      (assert (true? (:succeeded ((:transact transport) {:compare {(:enrollment ks) nil} :put {(:enrollment ks) (o/encode enrollment)}}))) "peer enrollment CAS unconfirmed"))
+ _ (assert (= prior enrollment) "reviewed owner enrollment required before peer execution")
  call! (fn [op body tag]
    (let [file (str root "/request-" tag ".json") text (j/generate-string {:operation op :body body})
          _ (h/durable! file text) r (hio/spawn-sync! [(:nodeBinary cfg) (:clientScript cfg) cfg-file digest file (hio/sha256-utf8 text)] {:timeout-ms 155000 :input ""})]

@@ -1,6 +1,7 @@
 // Quoted dictionary keys survive advanced property renaming. UI copy excludes imported content.
 export const UI_COPY = {
   "ja": {
+    "showMore": "もっと見る",
     "peerDialogue": "Bot間対話", "peerProgress": "対話 {done}/{total}", "dialogueCompleted": "対話完了", "peerReceived": "受信内容",
     "agentPicker": "Agentを選ぶ", "agentSearch": "Bot・App・Issueを検索",
     "residentCount": "常駐 {count}", "observedRunningCount": "処理中の観測 {count}",
@@ -167,6 +168,7 @@ export const UI_COPY = {
     "importedProfiles": "Bot登録を取り込む"
   },
   "en": {
+    "showMore": "Show more",
     "peerDialogue": "Peer dialogue", "peerProgress": "Turns {done}/{total}", "dialogueCompleted": "Dialogue complete", "peerReceived": "Received context",
     "agentPicker": "Choose an agent", "agentSearch": "Search bots, apps or issues",
     "residentCount": "Resident {count}", "observedRunningCount": "Observed processing {count}",
