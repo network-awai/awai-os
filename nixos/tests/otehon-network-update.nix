@@ -67,7 +67,7 @@ in pkgs.testers.runNixOSTest {
     virtualisation.memorySize = 1024;
   };
   testScript = ''
-    import json, shlex, time, select, types
+    import json, shlex, time, select, types, re
     # Pinned test-driver connect() checks each recv(1024) separately. UEFI
     # output can split its marker across packets and hang forever. Preserve
     # the same handshake, with buffering and a bounded test-only wait.
@@ -92,6 +92,19 @@ in pkgs.testers.runNixOSTest {
         # Deliberate fixture-only method replacement; the driver checker
         # disallows implicit instance-method shadowing via assignment.
         setattr(node, "connect", types.MethodType(bounded_connect, node))
+    console_cursor = 0
+    def await_console(pattern, timeout):
+        global console_cursor
+        end = time.monotonic() + timeout
+        while time.monotonic() < end:
+            # The pinned helper drains only one queued line per retry/second;
+            # a closure copy emits thousands. Scan the complete host-side log.
+            match = re.search(pattern, machine.get_console_log()[console_cursor:])
+            if match:
+                console_cursor += match.end()
+                return
+            time.sleep(0.1)
+        raise TimeoutError("OS console event: " + pattern)
     publisher.start()
     machine.start(allow_reboot=True)
     publisher.wait_for_unit("nginx.service",timeout=120)
@@ -137,9 +150,10 @@ in pkgs.testers.runNixOSTest {
     assert machine.succeed("cat /etc/ota-generation").strip()=="a"
     assert machine.succeed("sha256sum /home/otehon/ota-owner-file /etc/machine-id")==before
     # Explicit signed promotion, not self-reported automatic fleet authority.
+    console_cursor = len(machine.get_console_log())
     publish(2,"good",["canary","stable"])
-    machine.wait_for_console_text("STAGED version=2",timeout=600)
-    machine.wait_for_console_text("reboot: Restarting system",timeout=120)
+    await_console("STAGED version=2",600)
+    await_console("reboot: Restarting system",120)
     machine.connected = False
     machine.connect()
     machine.wait_until_succeeds("test $(cat /etc/ota-generation) = b",timeout=600)
@@ -148,13 +162,14 @@ in pkgs.testers.runNixOSTest {
     assert machine.succeed("sha256sum /home/otehon/ota-owner-file /etc/machine-id")==before
     machine.reboot()
     machine.wait_until_succeeds("node /etc/ota-profile-check.mjs read | grep CHROMIUM_STATE_OK",timeout=180)
+    console_cursor = len(machine.get_console_log())
     publish(3,"bad",["canary","stable"])
-    machine.wait_for_console_text("STAGED version=3",timeout=600)
-    machine.wait_for_console_text("reboot: Restarting system",timeout=120)
+    await_console("STAGED version=3",600)
+    await_console("reboot: Restarting system",120)
     machine.connected = False
     machine.connect()
-    machine.wait_for_console_text("TRIAL_FAILED version=3",timeout=180)
-    machine.wait_for_console_text("reboot: Restarting system",timeout=120)
+    await_console("TRIAL_FAILED version=3",180)
+    await_console("reboot: Restarting system",120)
     machine.connected = False
     machine.connect()
     machine.wait_until_succeeds("grep -qx 3 /var/lib/otehon-update/blocked",timeout=600)
