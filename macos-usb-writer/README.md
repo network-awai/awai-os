@@ -7,6 +7,10 @@ ISO file without a second ZIP-sized disk copy. It refuses redirects, unsupported
 archives and existing output files, then verifies both the GitHub ZIP digest and
 the independently observed ISO digest. Select a VM-passed artifact and its
 matching verification record; download integrity does not qualify a VM test.
+Expired delivery locations are renewed only through the same GitHub artifact
+endpoint. An explicit `--resume-prefix` may reuse an owned private `.part`
+cache; cached bytes remain unverified until both complete digests pass. Existing
+verified output is immutable. Signed locations and authentication are not logged.
 
 One administrator setup installs a root-owned compiled Swift helper and a sudoers
 rule for junkawasaki. The rule permits only the exact helper binary digest, with

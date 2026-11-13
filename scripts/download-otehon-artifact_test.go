@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 )
 
@@ -27,14 +28,18 @@ func TestRangesAndIdentity(t *testing.T) {
 	body := buf.Bytes()
 	ih := sha256.Sum256(image)
 	zh := sha256.Sum256(body)
-	mode := 0
+	var mode atomic.Int32
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if mode == 1 {
+		if mode.Load() == 1 {
 			w.WriteHeader(200)
 			return
 		}
-		if mode == 2 {
+		if mode.Load() == 2 {
 			http.Redirect(w, r, "/escape", 302)
+			return
+		}
+		if mode.Load() == 4 {
+			w.WriteHeader(403)
 			return
 		}
 		var a, b int64
@@ -62,13 +67,13 @@ func TestRangesAndIdentity(t *testing.T) {
 	if e := copyISO(r, hex.EncodeToString(ih[:]), hex.EncodeToString(zh[:]), out); e == nil {
 		t.Fatal("existing file overwritten")
 	}
-	for _, m := range []int{1, 2} {
-		mode = m
+	for _, m := range []int32{1, 2} {
+		mode.Store(m)
 		if e := copyISO(r, hex.EncodeToString(ih[:]), hex.EncodeToString(zh[:]), filepath.Join(dir, fmt.Sprint(m))); e == nil {
 			t.Fatal("unsafe response admitted")
 		}
 	}
-	mode = 0
+	mode.Store(0)
 	bad := filepath.Join(dir, "bad")
 	if e := copyISO(r, fmt.Sprintf("%064d", 0), hex.EncodeToString(zh[:]), bad); e == nil {
 		t.Fatal("wrong digest admitted")
@@ -78,6 +83,47 @@ func TestRangesAndIdentity(t *testing.T) {
 	}
 	if e := copyISO(r, hex.EncodeToString(ih[:]), fmt.Sprintf("%064d", 0), filepath.Join(dir, "badzip")); e == nil {
 		t.Fatal("wrong ZIP digest admitted")
+	}
+	var refreshed atomic.Int32
+	r.refresh = func() (string, error) { refreshed.Add(1); mode.Store(0); return server.URL, nil }
+	mode.Store(4)
+	if _, e := r.ReadAt(make([]byte, 20), 0); e != nil || refreshed.Load() != 1 {
+		t.Fatal("expired location refresh failed")
+	}
+	makePartial := func(name string, corrupt bool) string {
+		p := filepath.Join(dir, name+".part")
+		prefix := bytes.Clone(image[:16*1024*1024])
+		if corrupt {
+			prefix[0] ^= 1
+		}
+		if e := os.WriteFile(p, prefix, 0600); e != nil {
+			t.Fatal(e)
+		}
+		f, e := os.OpenFile(p, os.O_RDWR, 0600)
+		if e != nil {
+			t.Fatal(e)
+		}
+		if e = f.Truncate(int64(len(image))); e != nil {
+			t.Fatal(e)
+		}
+		f.Close()
+		return p
+	}
+	r.resume = true
+	r.prefix = 16 * 1024 * 1024
+	part := makePartial("resume", false)
+	if e := copyISO(r, hex.EncodeToString(ih[:]), hex.EncodeToString(zh[:]), part); e != nil {
+		t.Fatal(e)
+	}
+	if e := copyISO(r, hex.EncodeToString(ih[:]), hex.EncodeToString(zh[:]), part); e == nil {
+		t.Fatal("verified cache overwritten")
+	}
+	corrupt := makePartial("corrupt", true)
+	if e := copyISO(r, hex.EncodeToString(ih[:]), hex.EncodeToString(zh[:]), corrupt); e == nil {
+		t.Fatal("corrupt cached prefix admitted")
+	}
+	if _, e := os.Stat(corrupt + ".verified.json"); !os.IsNotExist(e) {
+		t.Fatal("corrupt cache receipt")
 	}
 }
 func TestDeliveryOrigins(t *testing.T) {

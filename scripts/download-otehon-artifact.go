@@ -19,6 +19,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 )
 
@@ -30,27 +31,52 @@ type ranged struct {
 	address    string
 	size       int64
 	artifactID string
+	mu         sync.Mutex
+	refresh    func() (string, error)
+	resume     bool
+	prefix     int64
 }
 
 func (r *ranged) ReadAt(p []byte, off int64) (int, error) {
 	if off < 0 || off+int64(len(p)) > r.size {
 		return 0, errors.New("range outside artifact")
 	}
-	req, e := http.NewRequest("GET", r.address, nil)
-	if e != nil {
-		return 0, errors.New("delivery request")
+	for attempt := 0; attempt < 2; attempt++ {
+		r.mu.Lock()
+		address := r.address
+		r.mu.Unlock()
+		req, e := http.NewRequest("GET", address, nil)
+		if e != nil {
+			return 0, errors.New("delivery request")
+		}
+		req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", off, off+int64(len(p))-1))
+		req.Header.Set("Accept-Encoding", "identity")
+		resp, e := r.client.Do(req)
+		if e != nil {
+			return 0, errors.New("delivery connection failed")
+		}
+		if (resp.StatusCode == 403 || resp.StatusCode == 401) && r.refresh != nil && attempt == 0 {
+			resp.Body.Close()
+			r.mu.Lock()
+			if r.address == address {
+				fresh, err := r.refresh()
+				if err != nil {
+					r.mu.Unlock()
+					return 0, err
+				}
+				r.address = fresh
+			}
+			r.mu.Unlock()
+			continue
+		}
+		defer resp.Body.Close()
+		want := fmt.Sprintf("bytes %d-%d/%d", off, off+int64(len(p))-1, r.size)
+		if resp.StatusCode != 206 || resp.Header.Get("Content-Range") != want {
+			return 0, fmt.Errorf("delivery range refused (status %d)", resp.StatusCode)
+		}
+		return io.ReadFull(resp.Body, p)
 	}
-	req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", off, off+int64(len(p))-1))
-	resp, e := r.client.Do(req)
-	if e != nil {
-		return 0, errors.New("delivery connection failed")
-	}
-	defer resp.Body.Close()
-	want := fmt.Sprintf("bytes %d-%d/%d", off, off+int64(len(p))-1, r.size)
-	if resp.StatusCode != 206 || resp.Header.Get("Content-Range") != want {
-		return 0, errors.New("delivery range refused")
-	}
-	return io.ReadFull(resp.Body, p)
+	return 0, errors.New("delivery refresh exhausted")
 }
 func deliveryURL(s string) bool {
 	u, e := url.Parse(s)
@@ -81,24 +107,49 @@ func copyISO(r *ranged, expectedISO, expectedZIP, output string) error {
 		return errors.New("invalid ZIP data offset")
 	}
 	size := int64(f.UncompressedSize64)
+	const chunk = int64(16 * 1024 * 1024)
+	if _, err := os.Lstat(output + ".verified.json"); !os.IsNotExist(err) {
+		return errors.New("verification receipt already exists")
+	}
 	if offset < 0 || offset > 1048576 || r.size-offset-size < 0 || r.size-offset-size > 1048576 {
 		return errors.New("artifact envelope bound")
 	}
-	out, e := os.OpenFile(output, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0600)
+	flags := os.O_CREATE | os.O_EXCL | os.O_RDWR
+	if r.resume {
+		info, err := os.Lstat(output)
+		if err != nil || !strings.HasSuffix(output, ".part") || !info.Mode().IsRegular() || info.Size() != size || info.Mode().Perm() != 0600 || r.prefix < 0 || r.prefix > size || r.prefix%chunk != 0 {
+			return errors.New("unsafe partial cache")
+		}
+		if info.Sys().(*syscall.Stat_t).Uid != uint32(os.Getuid()) || info.Sys().(*syscall.Stat_t).Nlink != 1 {
+			return errors.New("partial cache owner mismatch")
+		}
+		if _, err = os.Lstat(output + ".verified.json"); !os.IsNotExist(err) {
+			return errors.New("verified output is immutable")
+		}
+		flags = os.O_RDWR | syscall.O_NOFOLLOW
+	}
+	out, e := os.OpenFile(output, flags, 0600)
 	if e != nil {
 		return e
 	}
 	defer out.Close()
-	if e = out.Truncate(size); e != nil {
-		return e
+	if !r.resume {
+		if e = out.Truncate(size); e != nil {
+			return e
+		}
 	}
-	const chunk = int64(16 * 1024 * 1024)
 	jobs := make(chan int64)
 	var wg sync.WaitGroup
 	var fail error
 	var lock sync.Mutex
 	var done atomic.Int64
 	var mark atomic.Int64
+	start := int64(0)
+	if r.resume {
+		start = r.prefix
+	}
+	done.Store(start)
+	mark.Store(start / (1024 * 1024 * 1024))
 	for i := 0; i < 8; i++ {
 		wg.Add(1)
 		go func() {
@@ -138,12 +189,12 @@ func copyISO(r *ranged, expectedISO, expectedZIP, output string) error {
 				g := total / (1024 * 1024 * 1024)
 				prev := mark.Load()
 				if g > prev && mark.CompareAndSwap(prev, g) {
-					fmt.Printf("artifact progress: %d GiB fetched\n", g)
+					fmt.Printf("artifact assembled: %d GiB (cache plus fetched)\n", g)
 				}
 			}
 		}()
 	}
-	for pos := int64(0); pos < size; pos += chunk {
+	for pos := start; pos < size; pos += chunk {
 		jobs <- pos
 	}
 	close(jobs)
@@ -180,11 +231,22 @@ func copyISO(r *ranged, expectedISO, expectedZIP, output string) error {
 	if hex.EncodeToString(imageHash.Sum(nil)) != expectedISO || hex.EncodeToString(archiveHash.Sum(nil)) != expectedZIP {
 		return errors.New("digest mismatch; output remains unqualified")
 	}
-	proof := map[string]any{"artifactID": r.artifactID, "isoSha256": expectedISO, "zipSha256": expectedZIP, "isoBytes": size, "isoDigestVerified": true, "zipDigestVerified": true, "parallelRequests": 8, "rangeBytes": chunk, "startedAt": started, "finishedAt": time.Now().UTC(), "elapsedSeconds": time.Since(started).Seconds()}
+	proof := map[string]any{"artifactID": r.artifactID, "isoSha256": expectedISO, "zipSha256": expectedZIP, "isoBytes": size, "isoDigestVerified": true, "zipDigestVerified": true, "parallelRequests": 8, "rangeBytes": chunk, "reusedPrefixBytes": start, "startedAt": started, "finishedAt": time.Now().UTC(), "elapsedSeconds": time.Since(started).Seconds()}
 	data, _ := json.MarshalIndent(proof, "", "  ")
-	return os.WriteFile(output+".verified.json", append(data, '\n'), 0600)
+	receipt, err := os.OpenFile(output+".verified.json", os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	if err != nil {
+		return err
+	}
+	defer receipt.Close()
+	if _, err = receipt.Write(append(data, '\n')); err != nil {
+		return err
+	}
+	return receipt.Sync()
 }
-func run(id, sha, output string) error {
+func run(id, sha, output string, resumePrefix int64) error {
+	if os.Geteuid() == 0 {
+		return errors.New("run this operator downloader unprivileged")
+	}
 	if id == "" || strings.Trim(id, "0123456789") != "" || len(sha) != 64 {
 		return errors.New("artifact ID and expected ISO digest required")
 	}
@@ -199,6 +261,7 @@ func run(id, sha, output string) error {
 	request := func(path string) (*http.Response, error) {
 		req, _ := http.NewRequest("GET", repoAPI+path, nil)
 		req.Header.Set("Authorization", "Bearer "+strings.TrimSpace(string(token)))
+		req.Header.Set("Cache-Control", "no-cache")
 		resp, err := c.Do(req)
 		if err != nil {
 			return nil, errors.New("GitHub request failed")
@@ -223,27 +286,35 @@ func run(id, sha, output string) error {
 	if e != nil || fmt.Sprint(meta.ID) != id || meta.Size <= 0 || meta.Size > maxISO+2*1048576 || !strings.HasPrefix(meta.Digest, "sha256:") {
 		return errors.New("artifact metadata bound")
 	}
-	resp, e = request(id + "/zip")
+	refresh := func() (string, error) {
+		response, err := request(id + "/zip")
+		if err != nil {
+			return "", err
+		}
+		address := response.Header.Get("Location")
+		response.Body.Close()
+		if response.StatusCode != 302 || !deliveryURL(address) {
+			return "", errors.New("unapproved artifact delivery")
+		}
+		return address, nil
+	}
+	address, e := refresh()
 	if e != nil {
 		return e
 	}
-	address := resp.Header.Get("Location")
-	resp.Body.Close()
-	if resp.StatusCode != 302 || !deliveryURL(address) {
-		return errors.New("unapproved artifact delivery")
-	}
-	return copyISO(&ranged{client: c, address: address, size: meta.Size, artifactID: id}, sha, strings.TrimPrefix(meta.Digest, "sha256:"), output)
+	return copyISO(&ranged{client: c, address: address, size: meta.Size, artifactID: id, refresh: refresh, resume: resumePrefix >= 0, prefix: resumePrefix}, sha, strings.TrimPrefix(meta.Digest, "sha256:"), output)
 }
 func main() {
 	id := flag.String("artifact", "", "GitHub artifact ID")
 	sha := flag.String("sha256", "", "independently observed expected ISO digest")
 	out := flag.String("output", "", "new regular output file")
+	resume := flag.Int64("resume-prefix", -1, "explicit unverified .part cache prefix; complete digests still required")
 	flag.Parse()
 	if *out == "" {
 		fmt.Fprintln(os.Stderr, "output required")
 		os.Exit(1)
 	}
-	if e := run(*id, *sha, *out); e != nil {
+	if e := run(*id, *sha, *out, *resume); e != nil {
 		fmt.Fprintln(os.Stderr, e)
 		os.Exit(1)
 	}
