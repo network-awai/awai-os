@@ -15,6 +15,23 @@
         d (str p "/store")]
     (storage/init! d) d))
 (defn- digest [bytes] (mapv #(bit-and 255 %) (.digest (MessageDigest/getInstance "SHA-256") bytes)))
+(defn- digest [bytes] (mapv #(bit-and 255 %) (.digest (MessageDigest/getInstance "SHA-256") bytes)))
+
+(deftest file-verifier-matches-existing-reader-and-refuses-corruption
+  (let [bytes (fixture) old (forest/open bytes) blocks (:blocks (car/carv1-decode (:carv1 old)))
+        dir (new-store) path (Paths/get (str dir "/input.forest") (make-array String 0))
+        write! #(Files/write path % (make-array java.nio.file.OpenOption 0))]
+    (write! bytes)
+    (let [actual (forest/verify-file (str path))]
+      (is (= (mapv :cid blocks) (mapv :cid (:blocks actual))))
+      (is (= (mapv #(count (:bytes %)) blocks) (mapv :length (:blocks actual))))
+      (is (= (:frame-sha old) (:frame-sha actual))))
+    (doseq [offset [(dec (alength bytes)) 100 (+ (:index-pos old) 8) (+ (:index-pos old) 40)]]
+      (let [bad (doto (aclone bytes) (aset-byte offset (unchecked-byte (bit-xor 1 (aget bytes offset)))))]
+        (write! bad)
+        (is (thrown? Exception (forest/verify-file (str path))))))
+    (write! (Arrays/copyOf bytes 30))
+    (is (thrown? Exception (forest/verify-file (str path))))))
 
 (deftest independent-forest-fixture-blocks-and-cold-import
   (let [bytes (fixture) h (forest/open bytes)
