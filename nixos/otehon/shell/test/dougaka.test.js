@@ -31,7 +31,7 @@ test("dougaka page is re-laid for file:// with no network fetch", async () => {
   assert.equal(inlined.length, 6);
   const html = await readFile(path.join(outDir, "index.html"), "utf8");
   assert.ok(!html.includes('application/x-scittle" src='), "no remote scittle sources remain");
-  assert.ok(html.includes('<script src="./assets/dougaka-host.js">'), "bundled host referenced");
+  assert.ok(html.includes('<script defer src="./assets/dougaka-host.js">'), "bundled host deferred like the original module");
   assert.ok(!html.includes('type="module"'), "no ES module entry remains");
   assert.ok(html.includes("script-src 'self' file:"), "file: script sources");
   assert.ok(html.includes("connect-src https://generation.murakumo.cloud;"), "connect-src unchanged");

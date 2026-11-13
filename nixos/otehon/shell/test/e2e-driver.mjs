@@ -354,7 +354,7 @@ try {
     if (!shell) throw new Error("no-shell-page");
     shellUrl = shell.url;
     const base = shellUrl.replace(/\/index\.html$/, "");
-    await send("Page.navigate", { url: `${base}/dist/dougaka/index.html` });
+    await send("Page.navigate", { url: `${base}/dougaka/index.html` });
     await until("document.getElementById('dougaka-studio') !== null", "studio mount", 60000);
   });
   await step("dougaka_studio_boots", async () => {
