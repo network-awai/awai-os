@@ -36,3 +36,30 @@ test('every child is enclosed, siblings do not overlap, and search does not remo
   }
   assert.equal(circlePack([]).nodes.length, 1);
 });
+
+test('responsibility view covers known and new actors once without modifying repository overlays or authority', async () => {
+  const { default: catalog } = await import('../src/responsibility-catalog.js');
+  const bots = catalog.circles.flatMap(c => c.botIds.map(id => bot(id, 'repo:original/app', id === 'profile:codinator' ? 'waiting' : 'held')));
+  bots.push(bot('profile:future-bot', 'repo:future/app'));
+  const before = JSON.stringify(bots);
+  const view = circlePack(bots, { grouping: 'responsibility' });
+  assert.equal(view.nodes[0].count, bots.length);
+  assert.equal(new Set(view.nodes.filter(n => n.kind === 'bot').map(n => n.id)).size, bots.length);
+  assert.equal(view.nodes.find(n => n.id === 'circle:simulation').count, 683);
+  assert.equal(view.nodes.find(n => n.id === 'circle:platform:fleet-reliability').count, 9);
+  assert.equal(view.nodes.find(n => n.id === 'profile:future-bot').parentId, 'circle:pending');
+  assert.equal(view.nodes.find(n => n.id === 'profile:codinator').parentId, 'role:fleet:configuration');
+  assert.equal(view.nodes[0].goal.metrics.actors, bots.length);
+  assert.equal(view.nodes[0].goal.progress, null);
+  assert.ok(view.nodes[0].goal.keyResults.every(k => k.value === null && k.target === null));
+  assert.equal(JSON.stringify(bots), before);
+  const searched = circlePack(bots, { grouping: 'responsibility', query: 'Fleet信頼性', stale: true });
+  assert.equal(searched.nodes[0].matchCount, 9);
+  assert.equal(searched.nodes[0].goal.metrics.observation, 'stale');
+  assert.equal(searched.nodes.find(n => n.id === 'profile:codinator').state, 'unknown');
+  for (const n of view.nodes) {
+    if (!n.parentId) continue;
+    const p = view.nodes.find(p => p.id === n.parentId);
+    assert.ok(Math.hypot(n.x - p.x, n.y - p.y) + n.radius <= p.radius + 1e-7);
+  }
+});

@@ -18,8 +18,8 @@
   (let [bots [{:id "a" :name "a" :repository "current/app" :circleIds ["repo:original/app"] :state "waiting" :configured true}
               {:id "b" :name "b" :repository "current/app" :circleIds ["repo:original/app"] :state "held" :configured false}]
         html (renderToStaticMarkup (r/as-element [:f> circles/panel bots false 0 "" (fn [_]) (fn [_])]))]
-    (when-not (and (.includes html "2 Bot · 1 Circle")
-                   (.includes html "original")
+    (when-not (and (.includes html "2 Bot · 0責任Circle")
+                   (.includes html "配置確認")
                    (.includes html "定期待機 1")
                    (.includes html "未有効 1"))
       (throw (js/Error. "circle-advanced-interop-render-failed")))

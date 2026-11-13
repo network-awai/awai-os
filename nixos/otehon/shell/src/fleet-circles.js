@@ -1,4 +1,5 @@
 import { hierarchy, pack } from 'd3-hierarchy';
+import { responsibilityTree, circleGoal } from './fleet-responsibilities.js';
 import { botCycle } from './bot-cycle.js';
 import { blankOrganizations, organizationOptions, validateOrganizations } from './fleet-organizations.js';
 export const CIRCLE_STATES = ['waiting', 'queued', 'held', 'attention', 'unknown'];
@@ -6,7 +7,7 @@ const emptyCounts = () => Object.fromEntries(CIRCLE_STATES.map(s => [s, 0]));
 
 // Catalog Circle identity is independent of current App repository aliases.
 // Search highlights the full hierarchy; it never removes the other circles.
-export function circlePack(bots, { stale = false, query = '', now = Date.now(), orgState = blankOrganizations() } = {}) {
+export function circlePack(bots, { stale = false, query = '', now = Date.now(), orgState = blankOrganizations(), grouping = 'repository' } = {}) {
   if (new Set(bots.map(b => b.id)).size !== bots.length) throw new Error('duplicate-circle-bot');
   const rootData = { id: 'fleet', kind: 'fleet', label: 'Itonami', children: [] };
   validateOrganizations(orgState, bots);
@@ -38,9 +39,20 @@ export function circlePack(bots, { stale = false, query = '', now = Date.now(), 
       issues: bot.linear?.issues ?? [], circleId, linearProject: bot.linear?.project ?? null,
       cycle: botCycle(bot, now, stale) });
   }
-  const root = hierarchy(rootData).sum(d => d.kind === 'bot' ? 1 : 0)
+  if (grouping === 'responsibility') {
+    const tree = responsibilityTree(bots);
+    rootData.children = tree.children; rootData.label = tree.label; rootData.purpose = tree.purpose;
+    const decorated = new Map([...circles.values()].flatMap(c => c.children).map(b => [b.id, b]));
+    function decorate(n, weight = 1, inheritedMatch = false) {
+      const scopeMatch = inheritedMatch || (!!q && `${n.label} ${n.purpose ?? ''}`.toLowerCase().includes(q));
+      if (n.kind === 'bot') { Object.assign(n, decorated.get(n.id)); if (scopeMatch) n.matchCount = 1; n.layoutWeight = weight; return; }
+      for (const child of n.children) decorate(child, weight / n.children.length, scopeMatch);
+    }
+    decorate(rootData);
+  }
+  const root = hierarchy(rootData).sum(d => d.kind === 'bot' ? (d.layoutWeight ?? 1) : 0)
     .sort((a, b) => b.value - a.value || a.data.id.localeCompare(b.data.id));
-  pack().size([1000, 1000]).padding(d => d.depth === 0 ? 8 : d.data.kind === 'organization' ? 12 : .8)(root);
+  pack().size([1000, 1000]).padding(d => d.depth === 0 ? 8 : grouping === 'responsibility' && d.data.kind !== 'bot' ? 20 : d.data.kind === 'organization' ? 12 : .8)(root);
   root.eachAfter(node => {
     if (!node.children) return;
     node.data.counts = emptyCounts(); node.data.matchCount = 0;
@@ -51,11 +63,13 @@ export function circlePack(bots, { stale = false, query = '', now = Date.now(), 
   });
   // Empty roots still provide a usable full-view boundary.
   if (!bots.length) { rootData.counts = emptyCounts(); rootData.matchCount = 0; }
-  return { totalBots: bots.length, circleCount: catalogCircles.size, organizationCount: orgs.size,
+  return { totalBots: bots.length, circleCount: catalogCircles.size, organizationCount: orgs.size, charterCount: grouping === 'responsibility' ? root.descendants().filter(n => n.data.kind === 'responsibility' && n.data.purpose && n.data.id !== 'circle:pending').length : 0, grouping, responsibilityCount: grouping === 'responsibility' ? root.descendants().filter(n => n.data.kind === 'responsibility').length : 0,
     nodes: root.descendants().map(n => ({ id: n.data.id, kind: n.data.kind, label: n.data.label,
-      parentId: n.parent?.data.id ?? null, depth: n.depth, x: Number.isFinite(n.x) ? n.x : 500,
+      parentId: n.parent?.data.id ?? null, ancestorIds: n.ancestors().slice(1).map(a => a.data.id), depth: n.depth, x: Number.isFinite(n.x) ? n.x : 500,
       y: Number.isFinite(n.y) ? n.y : 500, radius: Number.isFinite(n.r) ? n.r : n.depth === 0 ? 500 : 0,
-      count: n.value, counts: n.data.counts, matchCount: n.data.matchCount,
+      count: Object.values(n.data.counts).reduce((a, b) => a + b, 0), counts: n.data.counts, matchCount: n.data.matchCount,
+      purpose: n.data.purpose ?? null,
+      goal: grouping === 'responsibility' && n.data.kind !== 'bot' ? circleGoal({ ...n.data, parentId: n.parent?.data.id }, n.leaves().filter(l => l.data.kind === 'bot').map(l => bots.find(b => b.id === l.data.id)), { stale }) : null,
       state: n.data.state ?? null, repository: n.data.repository ?? null,
       issues: n.data.issues ?? [], circleId: n.data.circleId ?? null,
       cycle: n.data.cycle ?? null, linearProject: n.data.linearProject ?? null, linearIssue: n.data.linearIssue ?? null })) };

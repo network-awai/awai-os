@@ -630,3 +630,31 @@ Object.prototype.validateOrganizations;
 Object.prototype.entityId;
 
 Object.prototype.organizations;
+
+// Responsibility grouping and Goals read by CLJS via js->clj.
+Object.prototype.assign;
+Object.prototype.circleGoal;
+Object.prototype.grouping;
+Object.prototype.layoutWeight;
+Object.prototype.leaves;
+Object.prototype.responsibilityTree;
+Object.prototype.values;
+Object.prototype.actors;
+Object.prototype.botIds;
+Object.prototype.catalog;
+Object.prototype.family;
+Object.prototype.issueBound;
+Object.prototype.observation;
+Object.prototype.unit;
+Object.prototype.goal;
+Object.prototype.keyResults;
+Object.prototype.parentGoalId;
+Object.prototype.ownerRoleId;
+Object.prototype.timeframe;
+Object.prototype.metrics;
+Object.prototype.issueKeys;
+Object.prototype.responsibilityCount;
+Object.prototype.charterCount;
+Object.prototype.ancestorIds;
+Object.prototype.ancestors;
+Object.prototype.progress;

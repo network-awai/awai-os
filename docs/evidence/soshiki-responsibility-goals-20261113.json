@@ -1,0 +1,137 @@
+{
+  "issue": "AWAI-2808",
+  "run": "circle-goals-20261113",
+  "date": "2026-11-13",
+  "baseline": "feaad12de9875f1df54d0f18a3c1fabc5095227b",
+  "scope": "browser-display-grouping-and-goal-proposals",
+  "sourceObservedAt": "2026-11-13T07:27:13.465Z",
+  "sourceArtifactSha256": "656cca49b3b053ea77b456ccf036da7a5272e06edae7783b3995691333b1d5fd",
+  "actual": {
+    "actors": 899,
+    "charters": 10,
+    "proposedPrimary": 781,
+    "pending": 118,
+    "rootCounts": {
+      "waiting": 589,
+      "queued": 0,
+      "held": 310,
+      "attention": 0,
+      "unknown": 0
+    },
+    "goalMetrics": {
+      "actors": 899,
+      "configured": 589,
+      "held": 310,
+      "issueBound": 845,
+      "observation": "current"
+    },
+    "goalProgress": null,
+    "simulationFamilies": [
+      {
+        "name": "ISIC",
+        "actors": 344
+      },
+      {
+        "name": "COFOG",
+        "actors": 5
+      },
+      {
+        "name": "JSIC",
+        "actors": 3
+      },
+      {
+        "name": "MARKETPLACE",
+        "actors": 1
+      },
+      {
+        "name": "SOUJI",
+        "actors": 1
+      },
+      {
+        "name": "UNSPSC",
+        "actors": 5
+      },
+      {
+        "name": "ISCO",
+        "actors": 324
+      }
+    ]
+  },
+  "checks": {
+    "nodeTests": 76,
+    "failed": 0,
+    "advancedComponentSSR": "passed",
+    "shellLinkStandaloneBuilds": "passed, 0 compiler warnings",
+    "jsonApiPathsPresent": [
+      "/okrs",
+      "/okrs/{okr_id}",
+      "/okrs/{okr_id}/results",
+      "/okrs/{okr_id}/results/{result_id}",
+      "/tasks/{task_id}/okrs",
+      "/metrics",
+      "/checklists",
+      "/tensions",
+      "/node-okrs"
+    ],
+    "diffCheck": "passed"
+  },
+  "browser": {
+    "surface": "authenticated Awai OS / Soshiki Runtime",
+    "responsibilityRootRenderedScopeNodes": 22,
+    "repositoryViewActors": 899,
+    "repositoryViewCircles": 761,
+    "existingFleetMonitorOverlayRetained": true,
+    "fleetRoles": 4,
+    "fleetActors": 9,
+    "fleetConfigured": 2,
+    "fleetHeld": 7,
+    "botObserved": "codinator",
+    "cronObserved": "11 * * * *",
+    "issueObserved": "AWAI-752",
+    "goalsShowUnknownOutcomeAndSeparateOperationalMetrics": true,
+    "responsive": [
+      {
+        "requestedOverride": {
+          "width": 390,
+          "height": 844
+        },
+        "observedCssWidth": 325,
+        "documentWidth": 325,
+        "horizontalOverflow": false
+      },
+      {
+        "requestedOverride": {
+          "width": 1024,
+          "height": 768
+        },
+        "observedCssWidth": 853,
+        "documentWidth": 853,
+        "horizontalOverflow": false
+      }
+    ],
+    "viewportOverrideReset": true,
+    "screenshot": "local .agent-output/soshiki-responsibility-goals-20261113.png",
+    "humanAcceptance": "unknown"
+  },
+  "holaspirit": {
+    "sources": [
+      "https://app.holaspirit.com/api/doc/",
+      "https://help.holaspirit.com/en/article/how-to-use-secondary-navigation-i7nbv6/",
+      "https://help.holaspirit.com/en/article/how-to-add-edit-or-delete-an-okr-nq3sz3/"
+    ],
+    "specSha256": "f05d4ae896f21d2fa868d12dcca3f88f40398312d92117e8f7a731edebd49d07",
+    "tenantRequests": 0
+  },
+  "unchanged": {
+    "cron": true,
+    "linearPlanningCycles": true,
+    "runtimeGrants": true,
+    "heldWorkers": true
+  },
+  "remaining": [
+    "No authoritative governance snapshot migration or AwaiFS shared editing",
+    "Goal owner/timeframe/targets and measured outcome progress remain unconfigured",
+    "Holaspirit connector and Linear goal synchronization not implemented",
+    "Formal NixOS image, merge and release qualification remain separate"
+  ]
+}
