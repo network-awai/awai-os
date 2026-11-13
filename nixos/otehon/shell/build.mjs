@@ -34,7 +34,8 @@ clojure(["-m", "shadow.cljs.devtools.cli", "release", "shell"]);
 clojure(["-m", "shadow.cljs.devtools.cli", "release", "link"]);
 clojure(["-m", "shadow.cljs.devtools.cli", "release", "soshiki-runtime"]);
 await mkdir("dist/soshiki-runtime", { recursive: true });
-await copyFile("soshiki-runtime/index.html", "dist/soshiki-runtime/index.html");
+const chatConnect = clientRuntimeConnectSrc(runtimeDescriptor("soshiki-runtime/index.html", osOperations(relayOrigin)), [...new Set(osOperations(relayOrigin).map(o => o.capability))], [], []);
+await writeFile("dist/soshiki-runtime/index.html", (await readFile("soshiki-runtime/index.html", "utf8")).replace("__CONNECT_SRC__", `${chatConnect} 'self'`));
 
 async function page({ html, outdir, operations, appOrigins }) {
   await mkdir(`${outdir}/assets`, { recursive: true });

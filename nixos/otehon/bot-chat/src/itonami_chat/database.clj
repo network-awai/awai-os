@@ -16,7 +16,9 @@
     (when (.exists (io/file (str root "/threads"))) (throw (ex-info "existing database key missing; restore required" {}))))
    (let [key (byte-array 32)] (.nextBytes (SecureRandom.) key)
     (with-open [out (java.nio.channels.FileChannel/open p #{StandardOpenOption/CREATE_NEW StandardOpenOption/WRITE} (attrs "rw-------"))]
-      (.write out (java.nio.ByteBuffer/wrap key)) (.force out true))))
+      (.write out (java.nio.ByteBuffer/wrap key)) (.force out true))
+    (with-open [dir (java.nio.channels.FileChannel/open (Paths/get root (make-array String 0)) (into-array OpenOption [StandardOpenOption/READ]))] (.force dir true))))
+  (with-open [dir (java.nio.channels.FileChannel/open (Paths/get root (make-array String 0)) (into-array OpenOption [StandardOpenOption/READ]))] (.force dir true))
   (let [b (Files/readAllBytes p)] (when-not (= 32 (alength b)) (throw (ex-info "invalid database key" {}))) b)))
 (defn crypto [key scope]
  (let [secret (SecretKeySpec. key "AES") aad (.getBytes (str "itonami-chat/kotobase-otehon/v1/" scope) "UTF-8")

@@ -1,0 +1,54 @@
+{
+  "schema": "awai.agent-conversation-source-check.v1",
+  "issue": "AWAI-2808",
+  "date": "2026-11-13",
+  "binding": {
+    "thread": "01a1c830-dd85-7993-847b-c183174d6e38",
+    "baseline": "aedd875"
+  },
+  "checks": {
+    "shellTests": {
+      "pass": 85,
+      "fail": 0
+    },
+    "agentTests": {
+      "pass": 6,
+      "fail": 0,
+      "executor": "synthetic test executor; real Kotobase/AwaiFS; no live Meta call"
+    },
+    "advancedComponents": [
+      "ja/en conversation",
+      "Circle",
+      "QR"
+    ],
+    "builds": [
+      "shell",
+      "link",
+      "soshiki-runtime"
+    ],
+    "warnings": 0
+  },
+  "architecture": {
+    "owner": "itonami-agent",
+    "engine": "kotobase-peer",
+    "backend": "awai-fs-otehon-pack",
+    "browserConversationPersistence": false,
+    "service": "independent private protocol service",
+    "consent": "canonical broker, each operation",
+    "model": "muse-spark-1.3",
+    "provider": "meta",
+    "tools": [],
+    "uncertainResult": "persist accepted request; never automatically redispatch"
+  },
+  "remaining": [
+    "live service/HTTPS owner validation",
+    "trusted user-approved first conversation",
+    "distributed private-state and off-host key recovery",
+    "main merge and image release"
+  ],
+  "usage": {
+    "forecast": "unknown",
+    "actual": "unknown",
+    "attribution": "shared session; unallocated unless explicitly bound"
+  }
+}

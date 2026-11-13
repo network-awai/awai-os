@@ -2,11 +2,16 @@
   (:require [reagent.core :as r]
             ["react-dom/server" :refer [renderToStaticMarkup]]
             [shell.setup :refer [qr-code]]
+            [shell.bot-chat :as bot-chat]
             [shell.fleet-circles :as circles]))
 
 ;; Exercise the actual component and npm import after advanced compilation.
 ;; No relay, account, signature or network operation is needed to render a QR.
 (defn main []
+  (doseq [[locale expected] [["ja" "履歴を取得"] ["en" "Load history"]]]
+    (let [html (renderToStaticMarkup (r/as-element [:f> bot-chat/panel {:id "profile:sample" :name "sample"} locale]))]
+      (when-not (and (.includes html expected) (.includes html "<textarea") (.includes html "disabled"))
+        (throw (js/Error. "agent-conversation-render-failed")))))
   (let [url "https://awai.network/link/#local-qr-regression"
         html (renderToStaticMarkup (r/as-element [:f> qr-code url]))]
     (when-not (and (.includes html "<svg")

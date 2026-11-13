@@ -4,6 +4,8 @@ pkgs.runCommand "otehon-agent-conversation-database-check" {
 } ''
   cp -R ${./.} bot-chat
   cp -R ${../storage} storage
+  mkdir -p bot-fleet/vm/vendor/itonami
+  cp -R ${../bot-fleet/vm/vendor/itonami/otehon} bot-fleet/vm/vendor/itonami/otehon
   export CHAT_TEST_ROOT="$TMPDIR/conversation-tests"
-  node --test bot-chat/test/database.test.mjs > "$out"
+  node --test bot-chat/test/database.test.mjs bot-chat/test/service.test.mjs bot-chat/test/result.test.mjs > "$out"
 ''

@@ -21,7 +21,7 @@
       [fact locale :artifact (:artifactCid run)]
       (when-let [execution (:execution job)] [fact locale :heartbeat (str (:node execution) " · " (ui/stamp locale (:heartbeatAt execution)))])]]]))
 (defn panel [selection on-select on-close on-details & [locale chat-component]]
-  (let [[limit set-limit] (useState 20) [tab set-tab] (useState "activity") bot (when (= "bot" (:kind selection)) (first (:agents selection)))]
+  (let [[limit set-limit] (useState 20) [tab set-tab] (useState (if (and (= "bot" (:kind selection)) chat-component) "conversation" "activity")) bot (when (= "bot" (:kind selection)) (first (:agents selection)))]
     [:aside.fleet-activity-panel {:aria-label (ui/t locale :inspector) :data-open (boolean selection) :data-tab tab}
      [:div.fleet-activity-heading [:h3 (ui/t locale :inspector)]
       (when selection [:button.secondary {:type "button" :on-click on-close :aria-label (ui/t locale :close)} "×"])]
@@ -38,7 +38,7 @@
           (for [[id label] [["activity" :activity] ["conversation" :conversation]]]
            ^{:key id} [:button.secondary {:type "button" :role "tab" :aria-selected (= tab id) :on-click #(set-tab id)} (ui/t locale label)])])
         (if (and bot chat-component (= tab "conversation"))
-         [:f> chat-component bot locale]
+         ^{:key (:id bot)} [:f> chat-component bot locale]
          [:div.fleet-activity-scroll
           (if bot
            [:div

@@ -1,5 +1,6 @@
 (ns shell.fleet-overview
  (:require [clojure.string :as str] ["react" :refer [useState useEffect]]
+           [shell.bot-chat :as bot-chat]
            [shell.fleet-circles :as circles] [shell.fleet-activity :as activity] [shell.ui-copy :as ui]
            ["../ui-copy.js" :refer [initialLocale saveLocale]]
            ["../fleet-projection.js" :refer [decodeFleetEnvelope]]))
@@ -51,7 +52,7 @@
        [metric locale :held (:held totals)] [metric locale :attention (when-not stale? (:attention totals))]]
       (when (= view "circle")
        [:f> circles/panel (:bots report) stale? now query set-query
-        (fn [name] (set-query name) (set-view "list")) locale])
+        (fn [name] (set-query name) (set-view "list")) locale bot-chat/panel])
       (when (= view "list")
        [:<>
         [:div.fleet-list-filters

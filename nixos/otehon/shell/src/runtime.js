@@ -1,3 +1,4 @@
+import {chatOperation,chatHistoryOperation} from './bot-chat-contract.js';
 // External operations of the OS shell and the phone page, through the shared
 // kotoba.app.client-runtime.v1 broker. Each one asks the person first.
 import { createClientConsentHost, createClientOperationBroker } from "./vendor-runtime.gen.js";
@@ -6,6 +7,7 @@ const PASSPORT_ORIGIN = "https://mainnet.optimism.io";
 
 export function osOperations(relayOrigin) {
   return [
+    chatOperation,chatHistoryOperation,
     {
       capability: "awai-link",
       service: "awai-relay",
