@@ -1,0 +1,26 @@
+{:operation :put, :role :wal, :event :half-written, :writer-exit 137, :tail 2, :checkpoint 0, :concurrent-writer :denied, :pass true}
+{:operation :put, :role :wal, :event :written, :writer-exit 137, :tail 2, :checkpoint 0, :concurrent-writer :denied, :pass true}
+{:operation :put, :role :wal, :event :file-synced, :writer-exit 137, :tail 2, :checkpoint 0, :concurrent-writer :denied, :pass true}
+{:operation :put, :role :wal, :event :renamed, :writer-exit 137, :tail 2, :checkpoint 0, :concurrent-writer :denied, :pass true}
+{:operation :put, :role :wal, :event :dir-synced, :writer-exit 137, :tail 2, :checkpoint 0, :concurrent-writer :denied, :pass true}
+{:operation :put, :role :root, :event :half-written, :writer-exit 137, :tail 2, :checkpoint 0, :concurrent-writer :denied, :pass true}
+{:operation :put, :role :root, :event :written, :writer-exit 137, :tail 2, :checkpoint 0, :concurrent-writer :denied, :pass true}
+{:operation :put, :role :root, :event :file-synced, :writer-exit 137, :tail 2, :checkpoint 0, :concurrent-writer :denied, :pass true}
+{:operation :put, :role :root, :event :renamed, :writer-exit 137, :tail 3, :checkpoint 0, :concurrent-writer :denied, :pass true}
+{:operation :put, :role :root, :event :dir-synced, :writer-exit 137, :tail 3, :checkpoint 0, :concurrent-writer :denied, :pass true}
+{:operation :checkpoint, :role :snapshot, :event :half-written, :writer-exit 137, :tail 2, :checkpoint 0, :concurrent-writer :denied, :pass true}
+{:operation :checkpoint, :role :snapshot, :event :written, :writer-exit 137, :tail 2, :checkpoint 0, :concurrent-writer :denied, :pass true}
+{:operation :checkpoint, :role :snapshot, :event :file-synced, :writer-exit 137, :tail 2, :checkpoint 0, :concurrent-writer :denied, :pass true}
+{:operation :checkpoint, :role :snapshot, :event :renamed, :writer-exit 137, :tail 2, :checkpoint 0, :concurrent-writer :denied, :pass true}
+{:operation :checkpoint, :role :snapshot, :event :dir-synced, :writer-exit 137, :tail 2, :checkpoint 0, :concurrent-writer :denied, :pass true}
+{:operation :checkpoint, :role :wal, :event :half-written, :writer-exit 137, :tail 2, :checkpoint 0, :concurrent-writer :denied, :pass true}
+{:operation :checkpoint, :role :wal, :event :written, :writer-exit 137, :tail 2, :checkpoint 0, :concurrent-writer :denied, :pass true}
+{:operation :checkpoint, :role :wal, :event :file-synced, :writer-exit 137, :tail 2, :checkpoint 0, :concurrent-writer :denied, :pass true}
+{:operation :checkpoint, :role :wal, :event :renamed, :writer-exit 137, :tail 2, :checkpoint 0, :concurrent-writer :denied, :pass true}
+{:operation :checkpoint, :role :wal, :event :dir-synced, :writer-exit 137, :tail 2, :checkpoint 0, :concurrent-writer :denied, :pass true}
+{:operation :checkpoint, :role :root, :event :half-written, :writer-exit 137, :tail 2, :checkpoint 0, :concurrent-writer :denied, :pass true}
+{:operation :checkpoint, :role :root, :event :written, :writer-exit 137, :tail 2, :checkpoint 0, :concurrent-writer :denied, :pass true}
+{:operation :checkpoint, :role :root, :event :file-synced, :writer-exit 137, :tail 2, :checkpoint 0, :concurrent-writer :denied, :pass true}
+{:operation :checkpoint, :role :root, :event :renamed, :writer-exit 137, :tail 2, :checkpoint 2, :concurrent-writer :denied, :pass true}
+{:operation :checkpoint, :role :root, :event :dir-synced, :writer-exit 137, :tail 2, :checkpoint 2, :concurrent-writer :denied, :pass true}
+{:cases 25, :pass true}

@@ -64,6 +64,19 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npm test
+      - name: Test the restricted Saifu guest bridge
+        run: node --test dapps/saifu/test/host-bridge.test.mjs
       - uses: cachix/install-nix-action@b85815f71a6de0ddee80b8a80a98d43f4bcc66c7 # v31
+      - name: Test the read-only Otehon C1 inventory tool (no SSH or node access)
+        # Native checks above have no dependency on this Otehon job.
+        run: |
+          preflight_check=$(nix-build scripts/otehon-c1/check.nix --no-out-link)
+          cat "$preflight_check/tests.txt"
+      - name: Build and test the Otehon Pack/CAR and checkpoint storage adapter
+        run: |
+          storage_check=$(nix-build nixos/otehon/storage/check.nix --no-out-link)
+          cat "$storage_check/unit-tests.txt" "$storage_check/crash-tests.edn" "$storage_check/pack-crash-tests.edn"
+          module_check=$(nix-build nixos/otehon/storage/module-check.nix --no-out-link)
+          cat "$module_check"
       - name: Evaluate every Otehon profile, aarch64 and the x86_64 vm
         run: sh nixos/otehon/eval-profiles.sh .

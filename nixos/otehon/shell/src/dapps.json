@@ -2,7 +2,7 @@
   "source": {
     "repository": "kotoba-lang/kotoba",
     "path": "lib/kotoba.aiueos/distributions/awai/dapps",
-    "commit": "f1096f0e060fa9ac31b707762e040339a7340a1d"
+    "commit": "a51492321e8daf05d1cd211d0dc6dbe5667900dc"
   },
   "dapps": [
     {
@@ -284,6 +284,16 @@
       ]
     },
     {
+      "id": "soshiki",
+      "dock": 21,
+      "title": "Soshiki",
+      "section": "Apps",
+      "summary": "Organization design: Holaspirit-style circles and roles, bot profiles, and size view. Local-only.",
+      "install": "os-image",
+      "offline": "local-core",
+      "remoteOperations": []
+    },
+    {
       "id": "torihiki",
       "dock": 18,
       "title": "Torihiki",
@@ -316,7 +326,7 @@
     },
     {
       "id": "otent",
-      "dock": 21,
+      "dock": 22,
       "title": "Otent",
       "section": "Apps",
       "summary": "Globe (read and render only): satellites, earthquakes, aircraft and vessels from the local snapshot",

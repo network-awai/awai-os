@@ -3,6 +3,36 @@ let
   user = "otehon";
   cfg = config.otehon;
 
+  # AWAI-2791: the shell is ClojureScript (shadow-cljs) with Garden
+  # stylesheets, so its build runs Nix-pinned JVM Clojure (owner decision
+  # 2026-11-11; the repo-wide JVM ban in CI/CD scripts (JUN-290) does not
+  # cover this Nix-pinned Otehon build input). The build sandbox has no
+  # network, so Maven artifacts come from the cljDeps fixed-output
+  # derivation below instead of ~/.m2; build.mjs points Clojure at it
+  # through MVN_REPO.
+  #
+  # UNTESTED 2026-11-11: the migration machine has no Nix toolchain, so the
+  # outputHash below and npmDepsHash are placeholders. Fill them where Nix
+  # runs: run the image build, copy each "got: sha256-…" from the hash
+  # mismatch error, and paste it over the matching TODO.
+  cljDeps = pkgs.stdenv.mkDerivation {
+    name = "awai-otehon-shell-clj-deps";
+    src = builtins.path { path = ./shell/deps.edn; };
+    nativeBuildInputs = [ pkgs.clojure ];
+    outputHashAlgo = "sha256";
+    outputHashMode = "recursive";
+    outputHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # TODO: fill from the mismatch error
+    buildPhase = ''
+      runHook preBuild
+      export HOME="$TMPDIR/home"
+      mkdir -p "$HOME" src vendor
+      cp "$src" ./deps.edn
+      clojure -Sdeps '{:mvn/local-repo "$out"}' -P
+      runHook postBuild
+    '';
+    installPhase = "runHook preInstall; runHook postInstall;";
+  };
+
   shell = cfg.shellPkgs.buildNpmPackage {
     pname = "awai-otehon-shell";
     version = config.system.image.version;
@@ -10,9 +40,11 @@ let
       src = ./shell;
       filter = path: _: !(lib.elem (baseNameOf path) [ "node_modules" "dist" ]);
     };
+    nativeBuildInputs = [ pkgs.clojure ];
     env = {
       RELAY_ORIGIN = cfg.relayOrigin;
       OTEHON_E2E = if cfg.e2e then "1" else "0";
+      MVN_REPO = "${cljDeps}";
     };
     doCheck = true;
     checkPhase = ''
@@ -20,6 +52,8 @@ let
       npm test
       runHook postCheck
     '';
+    # TODO: refresh for the current package-lock.json (react arrived with the
+    # Hiccup migration); run the image build and copy the "got: sha256-…".
     npmDepsHash = "sha256-g9JFQRRKKjIgHCyLRvETNKwnmtl1TsJTTEYJUNuvIxY=";
     installPhase = ''
       runHook preInstall

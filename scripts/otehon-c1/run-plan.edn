@@ -1,0 +1,39 @@
+{:schema "awai.otehon.c1-run-plan/1"
+ :status :draft-not-executable
+ :issue "AWAI-2772"
+ :run-id "c1-20261111-candidate-01"
+ :operators {:accountable-owner "Jun" :run-operator nil :reviewer nil}
+ :inventory-max-age-ms nil
+ :source-pins [{:repository "network-awai/awai-os"
+                :revision "4b692cc10735896da63935d02880001e6a12dcf5"
+                :path "nixos/otehon/default.nix" :qualification :profile-source-only}
+               {:repository "network-awai/awai-os"
+                :revision "4b692cc10735896da63935d02880001e6a12dcf5"
+                :path "nixos/otehon/storage/src/otehon/pack_store.clj" :qualification :local-single-node-only}
+               {:repository "network-awai/awai-os"
+                :revision "dbde1d5fbcffdd81206420795148e699cecbf870"
+                :path "dapps/d1/src/d1/dispatch.cljc" :qualification :draft-pr-69-model-only}
+               {:repository "network-awai/awai-os"
+                :revision "b2d75edca7801551d906b188a628d2fff9bbb281"
+                :path "nixos/otehon/hermes.nix" :qualification :open-pr-53-no-live-model-proof}]
+ :nodes [{:alias "levi" :verified-identity nil :failure-domain nil :guest-digest nil :guest-readback-digest nil}
+         {:alias "benjamin" :verified-identity nil :failure-domain nil :guest-digest nil :guest-readback-digest nil}]
+ :public-fixture {:input-digest nil :expected-output-or-quality-contract nil}
+ :artifacts {:oci-digest nil :engine-digest nil :model-revision nil :model-digest nil}
+ :resource-ceilings {:cpu nil :ram-bytes nil :disk-bytes nil :network nil :deadline-ms nil}
+ :resource-units {:cpu :vcpus :ram-bytes :bytes :disk-bytes :bytes
+                  :network :bytes-per-second :deadline-ms :milliseconds}
+ :resource-readbacks {"levi" nil "benjamin" nil}
+ :adapters {:consent-verifier nil :authenticated-revocation nil :reservation-authority nil
+            :effect-fence nil :oci-executor nil :witness nil :inference nil
+            :encrypted-storage nil :key-custody nil :backup-restore nil}
+ :slo {:status :unset-before-experiment
+       :success-rate-min nil :latency-p95-ms-max nil :rpo-ms-max nil :rto-ms-max nil
+       :foreground-latency-impact-max nil :revocation-stop-ms-max nil}
+ :soak {:proposed-duration-hours 24 :approved-protocol-digest nil :started-at nil}
+ :failure-matrix [:missing-consent :revoked-consent :capacity-exceeded :tampered-digest
+                  :replay :duplicate-request :timeout :partition :restart :stale-writer
+                  :corrupt-replica :provider-loss :backup-restore]
+ :evidence {:preflight {:path "docs/evidence/otehon-c1-run-plan-20261111/host-inventory.json"
+                        :sha256 "68083f5d85ff8f97b844c934b516790a8c8a1d323e695fd8bbde85369f23d194"} :consent nil :reservation nil :execution nil :receipt nil
+            :witness nil :inference nil :storage nil :recovery nil :soak nil}}

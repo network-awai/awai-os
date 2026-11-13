@@ -1,0 +1,56 @@
+{
+  "schema" : "awai.otehon.c1-preflight/1",
+  "observed-at" : "2026-11-11T01:29:45.346220Z",
+  "collection-status" : "collected",
+  "operational-ready" : false,
+  "evidence-class" : "host-inventory-only",
+  "nodes" : [ {
+    "node" : "levi",
+    "observation" : {
+      "status" : "observed",
+      "facts" : {
+        "os" : "Darwin",
+        "arch" : "arm64",
+        "cpu-count" : 10,
+        "physical-memory-bytes" : 17179869184,
+        "home-filesystem-available-kib" : 169082656,
+        "tools" : {
+          "docker" : "absent",
+          "podman" : "absent",
+          "limactl" : "present",
+          "qemu-system-aarch64" : "present"
+        },
+        "lima" : {
+          "status" : "observed",
+          "instances" : 0,
+          "running" : 0
+        }
+      }
+    }
+  }, {
+    "node" : "benjamin",
+    "observation" : {
+      "status" : "observed",
+      "facts" : {
+        "os" : "Darwin",
+        "arch" : "arm64",
+        "cpu-count" : 10,
+        "physical-memory-bytes" : 17179869184,
+        "home-filesystem-available-kib" : 168624176,
+        "tools" : {
+          "docker" : "present",
+          "podman" : "absent",
+          "limactl" : "present",
+          "qemu-system-aarch64" : "present"
+        },
+        "lima" : {
+          "status" : "observed",
+          "instances" : 0,
+          "running" : 0
+        }
+      }
+    }
+  } ],
+  "blockers" : [ "independent-host-identity-and-failure-domains-unverified", "pinned-otehon-guest-and-artifact-model-digests-unverified", "allocatable-capacity-and-hard-resource-limits-unverified", "live-consent-revocation-and-root-provisioning-unverified", "durable-reservation-lease-and-executor-fence-unverified", "real-oci-execution-and-independent-signed-witness-unverified", "authenticated-two-node-inference-and-complete-answer-unverified", "encrypted-authorized-replication-repair-and-backup-restore-unverified", "failure-injection-monitoring-and-soak-slo-unverified" ],
+  "limits" : [ "SSH aliases do not establish independent identities or failure domains.", "Physical RAM and filesystem free space are observations, not reservations.", "Executable presence and running VM counts do not establish service readiness.", "No model request, VM start/stop, container run, disk write or service change on targets." ]
+}

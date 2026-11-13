@@ -1,4 +1,4 @@
-{ lib, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 let
   port = 8770;
   modelsDir = "/var/lib/otehon-models";
@@ -30,7 +30,9 @@ in
   # weights are not in the image: they arrive on a virtiofs share tagged otehon-models, and
   # without it the service reports that images are unavailable. With no GPU, Vulkan falls back
   # to llvmpipe, which is far slower.
-  fileSystems.${modelsDir} = {
+  options.otehon.modelShare = lib.mkEnableOption "the optional otehon-models virtiofs share";
+
+  config.fileSystems.${modelsDir} = lib.mkIf config.otehon.modelShare {
     device = "otehon-models";
     fsType = "virtiofs";
     # Automount: weights arrive on demand, and a machine without the share
@@ -41,7 +43,7 @@ in
     options = [ "ro" "nofail" "x-systemd.automount" "x-systemd.device-timeout=5s" ];
   };
 
-  systemd.services.otehon-media = {
+  config.systemd.services.otehon-media = {
     description = "Local speech and image generation";
     wantedBy = [ "graphical.target" ];
     after = [ "local-fs.target" ];

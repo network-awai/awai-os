@@ -1,0 +1,8 @@
+these 2 derivations will be built:
+  /nix/store/52dx9g2vhjkxb42s5s1l4kyr8m482md0-otehon-storage.drv
+  /nix/store/srql5yisadszj2f9v5qys1y38c5j9r5b-otehon-storage-hosted-check.drv
+building '/nix/store/52dx9g2vhjkxb42s5s1l4kyr8m482md0-otehon-storage.drv'...
+building '/nix/store/srql5yisadszj2f9v5qys1y38c5j9r5b-otehon-storage-hosted-check.drv'...
+{:generation 1, :tail 0}
+{:generation 2, :tail 1}
+{:generation 3, :tail 1}

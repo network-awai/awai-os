@@ -38,8 +38,12 @@ Exit codes of `eval-profiles.sh`: `0` every profile evaluated, `1` a profile fai
 name has no file, `3` no `nix-instantiate`. Each profile prints `OTEHON_EVAL_OK <profile> <drv>` or
 `OTEHON_EVAL_FAIL <profile>` with the end of the error.
 
-There is no JVM, nbb or Babashka in this job. The shell tests run on Node.js (`node --test`). The
-owner allowed Node.js in this CI job on 2026-11-07, recorded in ADR 0026 D3 (network-awai-apex PR #124).
+Current additions (2026-11-11): the separate Otehon job also runs Nix-pinned
+Babashka checks for `scripts/otehon-c1/check.nix` (bounded host inventory and
+operator run-plan completeness, without SSH) and the local Pack/CAR storage
+adapter. The shell tests run on Node.js (`node --test`). These are Otehon tools
+under ADR 0026 D3/D18; the native build/gate/runtime does not depend on this job.
+The original description of a job without Babashka predates these checks.
 
 Run it locally in the Nix container from the repository root:
 

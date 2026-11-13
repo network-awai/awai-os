@@ -12,9 +12,10 @@ to test the approach, and it is **not built into the OS image yet**.
 | Shared cases | `test/cases.json` | Both |
 
 The core has no I/O, regular expressions, dates or platform numbers. Amounts stay as digit strings,
-so no float can round them. The screen reads through `window.saifuHost.readChainState` if the host
-offers it, which is where the shared consent broker belongs, and otherwise through an EIP-1193
-wallet in the page.
+so no float can round them. The screen reads only through `window.saifuHost.readChainState`;
+without a host it fails closed. The restricted guest bridge can receive a host MessageChannel,
+but it is not yet bundled into the OS or admitted as a signed application. The host must enforce
+the bounded operation through the shared consent broker before making a request.
 
 ## Tools
 
@@ -24,6 +25,10 @@ the OS. A record of that use is required by ADR 0026 D3, and using it in CI is a
 decision.
 
 ## Check
+
+```bash
+node --test test/host-bridge.test.mjs
+```
 
 ```bash
 nix-shell nix/shell.nix --run 'npm ci && npx shadow-cljs compile test && node out/test.js'

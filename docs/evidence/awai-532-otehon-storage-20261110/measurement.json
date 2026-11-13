@@ -1,0 +1,124 @@
+{
+  "date": "2026-11-10",
+  "issue": "AWAI-532",
+  "repository": "network-awai/awai-os",
+  "baseRevision": "72bda54702b0583d72b2f70891bddfc20821cb13",
+  "upstream": {
+    "repository": "https://github.com/network-awai/network-awai-apex",
+    "revision": "68e820bc9c1c3beac4cadc3a18a5030d25db0b61",
+    "pullRequest": 179,
+    "path": "src/awai/fs/wal.cljc",
+    "sha256": "4eacacf51e46bb6601d4be59e9177e2ff6aaa387dedf99f65330c91f6d7142d2"
+  },
+  "upstreamByteEquality": true,
+  "host": {
+    "macOS": "26.4",
+    "arch": "arm64",
+    "babashka": "1.12.218",
+    "linux": "Linux aarch64",
+    "nix": "2.28.4",
+    "nixpkgs": "f5c082a40f7571c266e74e80ae2e68aadd8a9fc7",
+    "container": "docker.io/nixos/nix@sha256:7a70027ba790d3a79fa82faeac5f3dddc048f89e83b3901ca69542c340c9fb5c"
+  },
+  "results": {
+    "macUnit": {
+      "tests": 9,
+      "assertions": 32,
+      "failures": 0,
+      "errors": 0
+    },
+    "linuxUnit": {
+      "tests": 9,
+      "assertions": 32,
+      "failures": 0,
+      "errors": 0
+    },
+    "macProcessFaultCases": 25,
+    "linuxProcessFaultCases": 25,
+    "eachCaseConcurrentWriterDenied": true,
+    "eachCaseWriteAfterKill": true,
+    "module": {
+      "disabledHasCli": false,
+      "enabledHasCli": true,
+      "startsDaemon": false
+    },
+    "mutatedWalPinRefused": true
+  },
+  "commands": [
+    {
+      "cwd": "repository root",
+      "argv": [
+        "bb",
+        "--classpath",
+        "nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:nixos/otehon/storage/test",
+        "-e",
+        "(require '[clojure.test :as t] 'otehon.storage-test)(let [r (t/run-tests 'otehon.storage-test)] (System/exit (+ (:fail r) (:error r))))"
+      ],
+      "output": "mac-unit-tests.txt"
+    },
+    {
+      "cwd": "repository root",
+      "argv": [
+        "bb",
+        "--classpath",
+        "nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:nixos/otehon/storage/test",
+        "nixos/otehon/storage/test/otehon/crash_runner.clj",
+        "run",
+        ".agent-output/crash-host-reviewed-20261110"
+      ],
+      "output": "mac-crash-tests.edn"
+    },
+    {
+      "cwd": "/work (task checkout mounted in task-owned container)",
+      "argv": [
+        "nix-build",
+        "nixos/otehon/storage/check.nix",
+        "--no-out-link"
+      ],
+      "result": "/nix/store/zqf1kj60y9fjsgwig29kpj1vq5lx25bv-otehon-storage-hosted-check"
+    },
+    {
+      "cwd": "/work",
+      "argv": [
+        "nix-build",
+        "nixos/otehon/storage/module-check.nix",
+        "--no-out-link"
+      ],
+      "result": "/nix/store/4srd0my8f18iwziadngxvv921diz5niq-otehon-storage-module-check.json"
+    },
+    {
+      "cwd": "/work",
+      "argv": [
+        "nix-instantiate",
+        "--eval",
+        "--strict",
+        "--expr",
+        "let pkgs = import (import /work/ci/nixpkgs.nix) {}; in (import /work/.agent-output/pin-mutant/default.nix { inherit pkgs; }).name"
+      ],
+      "mutation": "Appended newline and ;; digest mutation control to scratch copy of vendored wal.cljc",
+      "exit": 1,
+      "output": "pin-refusal.stderr"
+    }
+  ],
+  "inputs": "Every crash case starts with init, put a=old, put b=keep. Then put a=new or checkpoint, paused at half-written, written, file-synced, renamed or dir-synced for each new object/root. Each writer exit is 137; fresh process reader checks exact state/tail/checkpoint; concurrent writer denied while child owns lock; later write/read succeeds. All data is synthetic.",
+  "downloads": "No tooling installed. Existing Nix/babashka caches used. Anonymous GitHub source-archive prefetch returned HTTP 404; the dependency is an exact git-show copy of the authorized merged upstream module, verified byte-for-byte and pinned by SHA-256.",
+  "developmentNotes": [
+    "Fixed initial unsupported Babashka exception class import, a delimiter error and FileChannel.open overload selection during smoke checks. Closing the lock-owning channel replaces unavailable FileLock.release reflection.",
+    "An initial 4-test run exposed accidentally nested deftest forms; top-level forms were checked and the final 9-test suite is recorded.",
+    "Self-review added directory sync when reusing renamed orphan objects and refuses further mutation of degraded stores; final host and Linux checks were rerun.",
+    "Original unrelated read-only Nix container disappeared before artifact collection; outputs were copied using a task-owned one-shot container without altering another service."
+  ],
+  "qualification": "Otehon hosted Babashka adapter and Nix package tests on aarch64 Linux container, plus macOS. NixOS option evaluation, not NixOS boot or VM integration. No production install/cutover, real-user volume, Pack/CAR encryption, independent peer, hardware/power-loss, cache-cold, RPO/RTO or Kotoba/Amu native qualification.",
+  "sha256": {
+    "nixos/otehon/base-module.nix": "4ad4b4c927816d512432cafe95d732e75baf23d9b688e218b748fdd32be76238",
+    "nixos/otehon/storage.nix": "b405558850669c737e70a701f6889bb5392b40c1257af589b5c5ee8a61e495b6",
+    "nixos/otehon/storage/check.nix": "c2ffa1e17030d24fae2622309bbdc30e12b9322285d7cc709bfa682bdd915066",
+    "nixos/otehon/storage/default.nix": "644d5446c18aa80264a36503b909382e269665eba5b183db02e27ba43e2b9ba5",
+    "nixos/otehon/storage/module-check.nix": "d0a82fdb39d153c81f9ad0d494f985ace8e263cfc5eea36d28510f40bdaf8252",
+    "nixos/otehon/storage/src/otehon/storage.clj": "8eccc6bbe4373a63109528790d00e3c6a697c9c6f02ad6f0a6c5b03539609c5c",
+    "nixos/otehon/storage/test/otehon/crash_runner.clj": "ae730ec85b9384a9bbdede391de56eb0da055d3853980834599f970a97cbd490",
+    "nixos/otehon/storage/test/otehon/storage_test.clj": "c2d705bb6627550f184d3c5088c1ea624d14f6ec4c0bf93669b343007463b440",
+    "nixos/otehon/storage/vendor/apex/src/awai/fs/wal.cljc": "4eacacf51e46bb6601d4be59e9177e2ff6aaa387dedf99f65330c91f6d7142d2",
+    "nixos/otehon/storage/vendor/source.json": "0a596937808a7d4de035f3f43e1ff1f8391ab4b000f91da99f429cda5115c943"
+  }
+}
