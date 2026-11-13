@@ -31,6 +31,8 @@ let
       mkdir -p "$HOME" src vendor "$out"
       cp "$src" ./deps.edn
       clojure -Sdeps "{:mvn/local-repo \"$out\"}" -P
+      # Resolver bookkeeping embeds fetch timestamps; keep only immutable artifacts.
+      find "$out" -type f \( -name _remote.repositories -o -name '*.lastUpdated' -o -name resolver-status.properties \) -delete
       runHook postBuild
     '';
     installPhase = "runHook preInstall; runHook postInstall;";
