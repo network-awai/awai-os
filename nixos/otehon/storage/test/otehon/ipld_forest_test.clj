@@ -74,3 +74,53 @@
     (let [h (catalog/recover dir "prolly")]
       (is (= root (get-in h [:ref :root-cid])))
       (is (bytes? (catalog/get-block h root))))))
+
+(def policy-root "bafyreic73cz5ww6pbthvvyz62szwjs25afgaqr2a6va4xwl344bmfw4iri")
+(def split-roots ["bafyreia5f47e462gm43mxscjphe4n6wyi56ccevdmwq526i4jcjuuphala"
+                  "bafyreidb7f6i335vyhbordfkte377frwmtq5axfpd44gpvxodjor643mhy"])
+(defn split-inputs []
+  (let [base (or (System/getenv "IPLD_SPLIT_FIXTURES") "nixos/otehon/storage/test/fixtures/prolly-forest/split")]
+    (mapv (fn [i root-cid] {:root-cid root-cid
+                            :bytes (Files/readAllBytes (Paths/get (str base "/" i ".forest") (make-array String 0)))})
+          (range 2) split-roots)))
+(deftest multiple-archives-publish-as-one-group
+  (let [dir (new-store) parts (split-inputs)
+        blocks (mapcat #(-> % :bytes forest/open :carv1 car/carv1-decode :blocks) parts)
+        before (store/read-store dir)
+        missing (car/cid-str (car/cid-bytes car/codec-raw (vec (repeat 32 42))))]
+    (is (= 18 (count blocks)))
+    (is (= :invalid-ipld-basis (error-type #(catalog/publish-group! dir "graph" missing parts))))
+    (is (= before (store/read-store dir)))
+    (is (= :invalid-ipld-forest-group (error-type #(catalog/publish-group! dir "graph" policy-root [(first parts) (first parts)]))))
+    (let [group (catalog/publish-group! dir "graph" policy-root parts)
+          h (catalog/recover-group dir "graph")]
+      (is (= 2 (count (:archives group))))
+      (is (= policy-root (get-in h [:group :basis-cid])))
+      (doseq [{:keys [cid bytes]} blocks]
+        (is (= bytes (mapv #(bit-and 255 %) (catalog/get-group-block h (car/cid-str cid))))))
+      (is (nil? (catalog/get-group-block h missing)))
+      (let [ref (second (:archives group))
+            p (Paths/get (str dir "/" (:archive-sha ref) ".forest") (make-array String 0))]
+        (Files/move p (Paths/get (str p ".withheld") (make-array String 0)) (make-array java.nio.file.CopyOption 0))
+        (is (= :missing-forest (error-type #(catalog/recover-group dir "graph"))))))))
+
+(deftest interrupted-second-archive-preserves-prior-group
+  (let [dir (new-store) parts (split-inputs)
+        full-path (or (System/getenv "IPLD_POLICY_FIXTURE") "nixos/otehon/storage/test/fixtures/prolly-forest/policy.forest")
+        full (Files/readAllBytes (Paths/get full-path (make-array String 0)))
+        old [{:root-cid policy-root :bytes full}]]
+    (catalog/publish-group! dir "graph" policy-root old)
+    (let [root-before (:root (store/read-store dir)) seen (atom 0)]
+      (is (thrown? Exception
+            (binding [store/*write-observer* (fn [event role]
+                                               (when (= [event role] [:renamed :forest])
+                                                 (when (= 2 (swap! seen inc))
+                                                   (throw (ex-info "interrupted second archive" {})))))]
+              (catalog/publish-group! dir "graph" policy-root parts))))
+      (is (= 2 @seen))
+      (is (= root-before (:root (store/read-store dir))))
+      (let [h (catalog/recover-group dir "graph")]
+        (is (= 1 (count (get-in h [:group :archives]))))
+        (is (bytes? (catalog/get-group-block h policy-root))))
+      (catalog/publish-group! dir "graph" policy-root parts)
+      (is (= 2 (count (get-in (catalog/recover-group dir "graph") [:group :archives])))))))

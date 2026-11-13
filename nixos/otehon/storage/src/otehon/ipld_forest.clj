@@ -81,3 +81,78 @@
         (first (store/read-payload-segments (:directory handle) (:archive-sha ref)
                                            "forest" (:archive-size ref)
                                            [{:offset offset :length length}]))))))
+
+(def ^:private group-prefix "awai.ipld-forest-group/")
+(def ^:private max-group-archives 64)
+(defn- group-key [name]
+  (key-for name)
+  (str group-prefix name))
+(defn- checked-group [group]
+  (when-not (and (map? group) (= #{:format :basis-cid :archives} (set (keys group)))
+                 (= :awai.otehon-store/ipld-forest-group-v1 (:format group))
+                 (string? (:basis-cid group)) (vector? (:archives group))
+                 (<= 1 (count (:archives group)) max-group-archives))
+    (fail! :invalid-ipld-forest-group "invalid archive group"))
+  (cid-bytes (:basis-cid group))
+  (doseq [ref (:archives group)] (parse-ref (pr-str ref)))
+  (when-not (= (count (:archives group)) (count (set (map :archive-sha (:archives group)))))
+    (fail! :invalid-ipld-forest-group "duplicate archive"))
+  group)
+(defn- parse-group [text]
+  (with-open [r (java.io.PushbackReader. (java.io.StringReader. text))]
+    (let [opts {:eof ::eof :readers {} :default (fn [& _] (fail! :invalid-ipld-forest-group "unsupported tag"))}
+          group (edn/read opts r)]
+      (when-not (= ::eof (edn/read opts r)) (fail! :invalid-ipld-forest-group "trailing group data"))
+      (checked-group group))))
+(defn- group-has-cid? [opened cid]
+  (let [needle (cid-bytes cid)] (boolean (some #(forest/get-block % needle) opened))))
+
+(defn publish-group!
+  "Publish an ordered, bounded set of generic Forest archives under one WAL
+  transaction. Each entry is {:root-cid string :bytes byte-array}. All bytes,
+  roots and the declared basis are verified before any catalog publication."
+  [directory name basis archives]
+  (group-key name)
+  (when-not (and (vector? archives) (<= 1 (count archives) max-group-archives))
+    (fail! :invalid-ipld-forest-group "expected 1..64 archives"))
+  (let [owned (mapv (fn [{:keys [root-cid bytes] :as entry}]
+                      (when-not (and (map? entry) (= #{:root-cid :bytes} (set (keys entry))) (bytes? bytes))
+                        (fail! :invalid-ipld-forest-group "invalid archive input"))
+                      {:root-cid root-cid :bytes (aclone ^bytes bytes)}) archives)
+        opened (mapv #(verified (:bytes %) (:root-cid %)) owned)
+        refs (mapv (fn [{:keys [root-cid bytes]}]
+                     {:format :awai.otehon-store/ipld-forest-v1 :archive-sha (segmented/sha bytes)
+                      :archive-size (alength ^bytes bytes) :root-cid root-cid}) owned)
+        group (checked-group {:format :awai.otehon-store/ipld-forest-group-v1
+                              :basis-cid basis :archives refs})]
+    (when-not (group-has-cid? opened basis)
+      (fail! :invalid-ipld-basis "basis block is absent from archive group"))
+    (store/transact! directory :put {:key (group-key name) :value (pr-str group)}
+                     (fn [dir _]
+                       (doseq [[entry ref] (map vector owned refs)]
+                         (when-not (= (:archive-sha ref) (store/write-forest! dir (:bytes entry)))
+                           (fail! :changed-payload "archive digest changed")))))
+    group))
+
+(defn recover-group
+  "Fully verify every referenced archive and basis in a committed group."
+  [directory name]
+  (let [{:keys [state root degraded?]} (store/read-store directory)
+        text (get state (group-key name))]
+    (when-not text (fail! :ipld-forest-not-found "archive group is not published"))
+    (let [group (parse-group text)
+          opened (mapv (fn [ref]
+                         (let [bytes (store/read-forest directory (:archive-sha ref))]
+                           (when-not (= (:archive-size ref) (alength ^bytes bytes))
+                             (fail! :corrupt-forest "archive size differs from group"))
+                           (verified bytes (:root-cid ref)))) (:archives group))]
+      (when-not (group-has-cid? opened (:basis-cid group))
+        (fail! :invalid-ipld-basis "basis block is absent from archive group"))
+      {:directory directory :basis root :degraded? degraded? :group group
+       :archives (mapv (fn [ref h] {:directory directory :ref ref
+                                     :forest (dissoc h :bytes :carv1)}) (:archives group) opened)})))
+
+(defn get-group-block
+  "Find CID via the group's verified snapshot indexes and revalidate its frame."
+  [handle cid]
+  (some #(get-block % cid) (:archives handle)))
