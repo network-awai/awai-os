@@ -22,16 +22,21 @@
     {:bytes bytes :cid cid}))
 (let [[mode dir] *command-line-args*]
   (case mode
-    "create" (let [inputs (files) m (manifest inputs)]
+    ("create" "create-v2") (let [inputs (files) m (manifest inputs)]
                (store/init! dir)
-               (pack/import-logical-forest-files! dir "reboot" (paths) (:bytes m) (:cid m))
-               (println "created-logical-four-pack-file-import"))
-    "read" (let [h (pack/recover dir)
+               (pack/import-logical-forest-files! dir "reboot" (paths) (:bytes m) (:cid m)
+                                                  (if (= mode "create-v2") {:file-backed? true} {}))
+               (println "created-logical-four-pack-file-import" mode))
+    ("read" "read-v2") (let [h (pack/recover dir)
                  refs (get-in (pack/summary h) [:groups "reboot" :packs])
                  offset (- (* 8 65536) 20)
                  expected (byte-array (map #(unchecked-byte (mod (+ (* % 19) (quot % 8191)) 256))
                                            (range offset (+ offset 40))))]
              (ensure! (= (mapv segmented/sha (files)) (mapv :stored-sha refs)))
+             (ensure! (every? #(= (:format %)
+                                  (if (= mode "read-v2")
+                                    :awai.otehon-store/pack-forest-file-v2
+                                    :awai.otehon-store/pack-forest-v1)) refs))
              (ensure! (= expected-cid (get-in (pack/summary h) [:groups "reboot" :manifest-cid])))
              (ensure! (= 0 (get-in (pack/summary h) [:stats :cache-entries-before])))
              (ensure! (java.util.Arrays/equals expected (pack/read-group-range h "reboot" offset 40)))
@@ -39,5 +44,5 @@
                (let [expected (byte-array (map #(unchecked-byte (mod (+ (* % 19) (quot % 8191)) 256))
                                                (range start (+ start 262144))))]
                  (ensure! (java.util.Arrays/equals expected (pack/read-group-range h "reboot" start 262144)))))
-             (println "recovered-logical-four-packs-and-full-two-mib"))
-    (throw (ex-info "use create or read" {}))))
+             (println "recovered-logical-four-packs-and-full-two-mib" mode))
+    (throw (ex-info "use create, create-v2, read or read-v2" {}))))
