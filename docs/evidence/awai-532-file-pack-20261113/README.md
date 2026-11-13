@@ -32,3 +32,31 @@ assertions, zero failures/errors. `check.nix` now runs the file-input crash
 proof in addition to the existing byte-array proof. Nix was not installed on
 this macOS host, so the Nix derivation and its CI result were not locally
 verified.
+
+## Local comparison, 2026-11-13
+
+A single local macOS host, Babashka 1.12.218, same deterministic 2 MiB /
+4-Pack fixture, fresh store per run; the timer includes store initialization,
+manifest construction and publish, excludes fixture loading and process start.
+Three byte-array/file pairs were run in that order. Elapsed milliseconds:
+
+| run | byte-array | file |
+| --- | ---: | ---: |
+| 1 | 3965.264 | 3732.810 |
+| 2 | 3817.740 | 3739.220 |
+| 3 | 3839.804 | 3751.796 |
+
+Each reported the same canonical manifest CID
+`bafyreidqkmghsd65dwq22umpkrqecyamfhevsbq7xemjfe7tb6wnhvxsny` and four Packs.
+The benchmark driver preloads the source fixtures for both modes, so it cannot
+measure the memory benefit of file inputs. OS and application caches were not
+controlled, there are only three paired samples and fixed ordering may bias
+results. These numbers neither establish a performance improvement nor predict
+GiB behavior.
+
+```sh
+for n in 1 2 3; do
+  AWAI_FILE_INPUT=0 bb --classpath nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:nixos/otehon/storage/vendor/apex-car/src:nixos/otehon/storage/test docs/evidence/awai-532-file-pack-20261113/bench.clj ".agent-output/bench-memory-$n"
+  AWAI_FILE_INPUT=1 bb --classpath nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:nixos/otehon/storage/vendor/apex-car/src:nixos/otehon/storage/test docs/evidence/awai-532-file-pack-20261113/bench.clj ".agent-output/bench-file-round-$n"
+done
+```
