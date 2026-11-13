@@ -42,6 +42,7 @@
     {:outline "2px solid var(--focus)" :outline-offset "1px"}]
    [:.shell {:display "grid" :grid-template-columns "248px minmax(0, 1fr)" :height "100vh"}]
    [".shell.with-panel" {:grid-template-columns "248px minmax(0, 1fr) 320px"}]
+   [:.mobile-navigation {:display "none"}]
    [:.sidebar {:display "flex" :flex-direction "column" :min-height 0
                 :padding "16px 10px 12px" :background "var(--surface)"}]
    [:.brand {:padding "0 8px 12px" :font-size "17px" :font-weight 600}]
@@ -392,4 +393,27 @@
    [".soshiki-me .muted" {:font-size "12px"}]
    [".soshiki-me button" {:margin-left "auto" :flex "none" :padding "8px 14px" :border-radius "8px"
                            :font-size "13px"}]
+   (at-media {:min-width "641px" :max-width "1199px"}
+     [".shell, .shell.with-panel" {:grid-template-columns "180px minmax(0, 1fr)"}]
+     [".shell > .panel" {:display "none"}]
+     [".shell > main" {:min-width 0 :min-height 0}])
+   (at-media {:max-width "640px"}
+     [".shell, .shell.with-panel" {:grid-template-columns "minmax(0, 1fr)"
+                                   :grid-template-rows "auto minmax(0, 1fr)"}]
+     [".shell > .sidebar, .shell > .panel" {:display "none"}]
+     [:.mobile-navigation {:display "block" :padding "54px 12px 10px"
+                          :background "var(--surface)"}]
+     [".mobile-navigation select" {:max-width "100%" :padding "8px"
+                                   :font "inherit" :color "var(--fg)"
+                                   :background "var(--surface-raised)"}]
+     [:.soshiki-tabs {:flex-wrap "wrap"}]
+     [:.soshiki-tab {:flex "1 1 140px" :min-width 0}]
+     [".net-body, .account-body" {:padding "24px 16px 104px"}]
+     [:.dock-cluster {:left "8px" :right "8px" :max-width "calc(100vw - 16px)"}]
+     [:.dock-left {:bottom "44px"}]
+     [:.dock-right {:bottom "8px"}]
+     [:.dock-buttons {:width "100%" :gap "4px"}]
+     [:.dock-button {:flex "1 1 0" :min-width 0 :justify-content "center"
+                     :padding "6px 4px" :gap "4px" :font-size "11px"}]
+     [".shell > main" {:min-width 0 :min-height 0}])
    ])

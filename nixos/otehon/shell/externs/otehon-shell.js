@@ -530,3 +530,8 @@ Object.prototype.drift;
 Object.prototype.manifest;
 Object.prototype.sourceObservedAt;
 Object.prototype.manifestAudit;
+Object.prototype.navigator;
+Object.prototype.storage;
+Object.prototype.persist;
+Object.prototype.persisted;
+Object.prototype.persistent;

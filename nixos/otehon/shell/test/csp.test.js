@@ -3,7 +3,14 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { scriptSrc, styleSrc } from "../src/csp.js";
+import { scriptSrc, styleSrc, staticReportConnectSrc } from "../src/csp.js";
+
+test("only the HTTP shell permits the static same-origin report", () => {
+  const declared = "connect-src https://relay.awai.network";
+  assert.equal(staticReportConnectSrc(declared, "http", true), `${declared} 'self'`);
+  assert.equal(staticReportConnectSrc(declared, "file", true), declared);
+  assert.equal(staticReportConnectSrc(declared, "http", false), declared);
+});
 
 test("the file kiosk keeps the exact script/style sources", () => {
   assert.equal(scriptSrc("file"), "script-src file:");

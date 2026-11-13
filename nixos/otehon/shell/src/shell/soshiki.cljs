@@ -711,7 +711,7 @@
 
 (defn soshiki [account score on-account]
   (let [[state apply-fn save-failed] (use-soshiki)
-        [tab set-tab] (useState "chart")
+        [tab set-tab] (useState "runtime")
         [manimani] (use-manimani)
         agents (or (some-> manimani (.-agents)) #js [])
         me (personNameForAccount (some-> account (.-accountDid)))

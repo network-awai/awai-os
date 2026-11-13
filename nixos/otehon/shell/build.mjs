@@ -12,7 +12,7 @@ import { clientRuntimeConnectSrc } from "./vendor/kotoba-client-runtime.js";
 // The ClojureScript build reads the broker runtime from inside src/.
 await copyFile("vendor/kotoba-client-runtime.js", "src/vendor-runtime.gen.js");
 import { osOperations, phoneOperations, runtimeDescriptor } from "./src/runtime.js";
-import { scriptSrc, styleSrc } from "./src/csp.js";
+import { scriptSrc, styleSrc, staticReportConnectSrc } from "./src/csp.js";
 
 const relayOrigin = process.env.RELAY_ORIGIN ?? "https://relay.awai.network";
 // OTEHON_HTTP=1 builds the shell for the loopback preview server instead of
@@ -40,7 +40,10 @@ async function page({ html, outdir, operations, appOrigins }) {
   await mkdir(`${outdir}/assets`, { recursive: true });
   await copyFile("vendor/kotoba-client-consent.css", `${outdir}/assets/consent.css`);
   const capabilities = [...new Set(operations.map((operation) => operation.capability))];
-  const connect = clientRuntimeConnectSrc(runtimeDescriptor("index.html", operations), capabilities, [], appOrigins);
+  const connect = staticReportConnectSrc(
+    clientRuntimeConnectSrc(runtimeDescriptor("index.html", operations), capabilities, [], appOrigins),
+    cspMode, outdir === "dist",
+  );
   const template = await readFile(html, "utf8");
   // The dapp catalog cannot be required by shadow-cljs, so it is embedded as
   // JSON for the shell to parse. dapps.json stays the source of truth (Nix
