@@ -2,8 +2,9 @@
 (require '[clojure.edn :as edn] '[otehon.ipld-forest :as catalog] '[otehon.storage :as store] '[otehon.forest-writer :as writer] '[otehon.forest :as forest] '[awai.fs.car :as car] '[kotobase.engine.prolly :as prolly] '[kotobase.engine.contract :as eng] '[kotobase.engine.identity :as logical] '[kotobase.engine.frontier :as frontier] '[ed25519.sign :as ed] '[kotobase-peer.policy :as policy] '[dango.chain :as chain] '[datom.source :as source] '[datalog.core :as datalog])
 (import '[java.security MessageDigest] '[java.util HexFormat Random] '[java.nio.file Files Paths])
 (def mode (first *command-line-args*))
-(def tool (when (= mode "write") (or (System/getenv "FOREST_TOOL") (throw (ex-info "tool required" {})))))
-(def h (if (= mode "write")
+(def publishing? (contains? #{"write" "publish"} mode))
+(def tool (when publishing? (or (System/getenv "FOREST_TOOL") (throw (ex-info "tool required" {})))))
+(def h (if publishing?
          (catalog/recover-group (or (System/getenv "GROUP_FOREST_STORE") (throw (ex-info "GROUP_FOREST_STORE required for write" {}))) "test")
          (catalog/recover-group (str dest "/store") "signed-basis")))
 (def touched (atom #{}))
@@ -14,7 +15,7 @@
                                             (read-segments dir sha ext size spans))]
   (catalog/get-group-block h cid)))
 (def stored-proof (when (= mode "read") (edn/read-string (String. ^bytes (tracked-get (get-in h [:group :basis-cid])) "UTF-8"))))
-(def basis (if (= mode "write") (get-in h [:group :basis-cid]) (:physical-root stored-proof)))
+(def basis (if publishing? (get-in h [:group :basis-cid]) (:physical-root stored-proof)))
 (defn sha [s] (.formatHex (HexFormat/of) (.digest (MessageDigest/getInstance "SHA-256") (.getBytes (str s) "UTF-8"))))
 (def engine (prolly/prolly-engine {:put! (fn [& _] (throw (ex-info "read only" {}))) :get-fn tracked-get :blind-fn #(str "blind-fixture:" %) :encrypt-fn identity :decrypt-fn identity :digest-fn sha}))
 (def snap (eng/open-snapshot engine (eng/restore-state engine basis)))
@@ -28,7 +29,7 @@
 (def signer "did:key:fixture-issuer")
 (def checkpoint (eng/checkpoint engine snap))
 ;; The tx/schema/model roots and lack of parent proof are fixture placeholders.
-(def commit (logical/logical-commit {:format logical/logical-commit-format :database-id (:database-id checkpoint) :epoch (:epoch checkpoint) :parents [] :tx-root "unverified-fixture-tx" :logical-checkpoint-root (:logical-checkpoint-root checkpoint) :schema-root "fixture-schema" :model-contract-root "fixture-model" :admission-policy-root pcid}))
+(def commit (logical/logical-commit {:format logical/logical-commit-format :database-id (:database-id checkpoint) :epoch (:epoch checkpoint) :parents [] :tx-root (or (System/getenv "SIGNED_BASIS_FIXTURE_TX") "unverified-fixture-tx") :logical-checkpoint-root (:logical-checkpoint-root checkpoint) :schema-root "fixture-schema" :model-contract-root "fixture-model" :admission-policy-root pcid}))
 (def root (sha (logical/logical-commit-string commit)))
 (defn payload [r] (logical/signature-payload {:logical-commit-root r :issuer signer :key-id key-id}))
 (def proof {:physical-root basis :root root :commit commit :issuer signer :key-id key-id :signature (ed/sign (ed/secret-key! issuer) (payload-bytes (payload root)))})
@@ -45,15 +46,15 @@
        archive (Files/readAllBytes (Paths/get path (make-array String 0)))
        src (:blocks (car/carv1-decode (:carv1 (forest/open archive))))
        prolly (mapv (fn [{:keys [cid bytes]}] {:cid (car/cid-str cid) :bytes (byte-array (map unchecked-byte bytes))}) src)
-       rng (Random. 532174)
+       rng (Random. (Long/parseLong (or (System/getenv "SIGNED_BASIS_FIXTURE_SEED") "532174")))
        extras (mapv (fn [_] (let [b (byte-array (* 600 1024)) _ (.nextBytes rng b)
                                   digest (mapv #(bit-and 255 %) (.digest (MessageDigest/getInstance "SHA-256") b))]
                               {:cid (car/cid-str (car/cid-bytes car/codec-raw digest)) :bytes b})) (range 2))]
   (vec (concat (take 9 prolly) extras (drop 9 prolly)))))
 (case mode
- "write" (do (assert (.mkdir (java.io.File. dest))) (store/init! (str dest "/store"))
+ ("write" "publish") (do (when (= mode "write") (assert (.mkdir (java.io.File. dest))) (store/init! (str dest "/store")))
   (let [b (block proof) bs (conj (fixture-blocks) b)
-        result (writer/put-ipld-blocks! (str dest "/store") "signed-basis" (:cid b) bs (str dest "/stage") tool)]
+        result (writer/put-ipld-blocks! (str dest "/store") "signed-basis" (:cid b) bs (or (System/getenv "SIGNED_BASIS_STAGE") (str dest "/stage")) tool)]
    (assert (= 2 (:archive-count result)))
    (assert (= 21 (:block-count result)))
    (prn {:proof (:cid b) :root root :archives (:archive-count result) :blocks (:block-count result)})))
@@ -62,6 +63,8 @@
                verify-entry #(verify-proof % checkpoint pcid)
                result (frontier/accept-head {:candidate-root (:root entry) :path [entry] :verify-entry verify-entry})]
           (assert (= :initialized (:status result)))
+          (when-let [expected (System/getenv "SIGNED_BASIS_EXPECT_TX")]
+            (assert (= expected (get-in entry [:commit :tx-root]))))
           (doseq [bad [(assoc entry :root "wrong") (assoc-in entry [:commit :logical-checkpoint-root] "wrong") (assoc entry :signature (vec (repeat 64 0))) (assoc entry :issuer "other")]]
             (assert (not (verify-entry bad))))
           (assert (not (verify-proof entry (assoc checkpoint :logical-checkpoint-root "other") pcid)))
@@ -87,6 +90,6 @@
             (assert (= #{["bafyreidqkmghsd65dwq22umpkrqecyamfhevsbq7xemjfe7tb6wnhvxsny" "bafkreidxq3azg4pwxcuurzkrmjha3uuzhstmefbzx6dw6z5bjaqya64mra"]} allowed))
             (assert (empty? denied)))
           (assert (= 2 (count @touched)))
-          (prn {:archives-read (count @touched) :proof cid :physical-root basis :checkpoint (:logical-checkpoint-root checkpoint) :policy-cid pcid :signature :verified :tamper :rejected :query :passed :pass true}))
+          (prn {:archives-read (count @touched) :tx-root (get-in entry [:commit :tx-root]) :proof cid :physical-root basis :checkpoint (:logical-checkpoint-root checkpoint) :policy-cid pcid :signature :verified :tamper :rejected :query :passed :pass true}))
  (throw (ex-info "write/read required" {})))
 (shutdown-agents)

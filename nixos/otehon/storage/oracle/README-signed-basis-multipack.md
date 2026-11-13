@@ -39,3 +39,34 @@ Reproduce with the prior adapted classpath and data-group setup in
 fresh process, run `read` with only `SIGNED_BASIS_OUTPUT` and the classpath.
 The writer creates and retains its private output directory. JVM execution is
 a local reference oracle and is not a Native runtime or CI fallback.
+
+## Signed workload interrupted during publication
+
+A follow-up on 2026-11-14 JST used `signed_basis_crash.py` to launch the actual
+Forest writer as a child JVM and kill it at the second archive half-write,
+root half-write and root rename. The old and candidate groups had different
+signed logical-commit roots, produced by changing a **fixture** transaction
+root; changing the deterministic padding also caused both archives to be
+newly written. This is not a real transaction or a valid signed parent chain.
+For the first two boundaries a fresh JVM recovered the old signed proof and
+query; after the root rename it recovered the new proof and query. Each case
+then retried publication and a new process verified the new signed proof,
+complete checkpoint, actual policy CID, both archives and allowed/denied
+query. All three cases passed. The tests explicitly select expected signed
+fixture transaction roots so that unchanged snapshot contents alone cannot
+make the old and new outcomes indistinguishable.
+
+The oracle used Clojure CLI 1.12.5.1654, Python 3.15.0 for process
+orchestration, the already pinned local classpath and Forest tool, and no new
+downloads. Python is a local one-off test oracle, not a CI gate, build step,
+runtime dependency or fallback. Run `signed_basis_multipack.clj write` to a
+new initial output path as above; with `FOREST_TOOL` and `GROUP_FOREST_STORE`
+still set, run `python3 nixos/otehon/storage/oracle/signed_basis_crash.py
+<initial-output> <new-output>`. The latter refuses an existing output path and
+retains copied stores, staged artifacts and reader outputs.
+
+This replaces only the earlier statement that this exact workload had not been
+interrupted. These are process-kill and retry observations, not an OS reboot,
+OS cache eviction, filesystem or device power-loss test. The transaction
+roots and keys remain fixtures; no history, fencing, receipt integration,
+Native behavior or production qualification is established.
