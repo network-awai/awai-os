@@ -1,0 +1,187 @@
+{
+  "issue": "AWAI-2808",
+  "date": "2026-11-13",
+  "status": "design-not-applied",
+  "baselineRevision": "070b0b5dd58be30f56b4ae9f5668256837a5b3c5",
+  "fleetSource": {
+    "observedAt": "2026-11-13T07:27:13.465Z",
+    "registryRevision": "d4fcfcdced8678d24ab747edc46f5f3acd6f823d",
+    "catalogSha256": "db61a8661eac91abaa886d88be28ba1a15a721dbf92007ca1ee3477d837853d2",
+    "artifactSha256": "656cca49b3b053ea77b456ccf036da7a5272e06edae7783b3995691333b1d5fd"
+  },
+  "baseline": {
+    "bots": 899,
+    "repositoryCircles": 761,
+    "singleBotRepositoryCircles": 735,
+    "multiBotRepositoryCircles": 26,
+    "appAliasMismatches": 36,
+    "configuredBots": 589,
+    "heldBots": 310,
+    "projectMappedBots": 890,
+    "botsWithIssueKeys": 845,
+    "uniqueIssueKeys": 742,
+    "physics": {
+      "namedProfiles": 683,
+      "commonRolloutClassified": 643,
+      "withoutCommonClassification": 40
+    }
+  },
+  "proposal": {
+    "circles": 10,
+    "primaryAssignments": 781,
+    "unclassified": 118,
+    "duplicates": 0,
+    "botIdsAndRepositoriesChecked": true,
+    "parentCycles": 0
+  },
+  "holaspirit": {
+    "source": "https://app.holaspirit.com/api/doc/",
+    "retrieval": "Unauthenticated official Swagger HTML; embedded spec parsed as JSON, not evaluated",
+    "normalizedSpecSha256": "f05d4ae896f21d2fa868d12dcca3f88f40398312d92117e8f7a731edebd49d07",
+    "openapi": "3.0.3",
+    "verifiedGetPaths": [
+      "/api/organizations/{organization_id}/circles",
+      "/api/organizations/{organization_id}/circles/{circle_id}",
+      "/api/organizations/{organization_id}/roles",
+      "/api/organizations/{organization_id}/roles/{role_id}",
+      "/api/organizations/{organization_id}/roles/{role_id}/assignedmembers",
+      "/api/organizations/{organization_id}/domains",
+      "/api/organizations/{organization_id}/policies",
+      "/api/organizations/{organization_id}/roles/relations",
+      "/api/organizations/{organization_id}/roles-diagram",
+      "/api/organizations/{organization_id}/chartviews"
+    ],
+    "schemaFields": {
+      "Circle": [
+        "id",
+        "organization",
+        "name",
+        "slug",
+        "role",
+        "parentCircle",
+        "createdAt",
+        "updatedAt",
+        "timeSpent",
+        "settings",
+        "circleAdmins",
+        "decisionMakers",
+        "nonDecisionMakers",
+        "coreRoles",
+        "subRoles",
+        "assigner",
+        "lead",
+        "type",
+        "membersCount",
+        "rolesCount",
+        "version"
+      ],
+      "Role": [
+        "id",
+        "organization",
+        "name",
+        "translatedName",
+        "slug",
+        "purpose",
+        "translatedPurpose",
+        "parentCircle",
+        "circle",
+        "domains",
+        "members",
+        "accountabilities",
+        "transversalRoleDomains",
+        "transversalRoleAccountabilities",
+        "assignedMembers",
+        "transversalRoleMembers",
+        "transversalRoleTargets",
+        "transversalRolePolicies",
+        "hasAssignation",
+        "isTransversalRole",
+        "createdAt",
+        "updatedAt",
+        "template",
+        "transversalRole",
+        "visibleSubRoles",
+        "visibleSubMembers",
+        "policies",
+        "memberFocus",
+        "effortNeeded",
+        "timeSpent",
+        "settings",
+        "stats",
+        "currentEvolutionsCount",
+        "currentEvolutions",
+        "type",
+        "customFields",
+        "highlights",
+        "highlightsColor",
+        "version"
+      ],
+      "AssignedMember": [
+        "id",
+        "focus",
+        "member",
+        "role",
+        "timeSpent",
+        "assignedUntil",
+        "type",
+        "version"
+      ],
+      "Accountability": [
+        "id",
+        "description",
+        "role",
+        "type"
+      ],
+      "Domain": [
+        "id",
+        "description",
+        "role",
+        "policies",
+        "type"
+      ],
+      "Policy": [
+        "id",
+        "title",
+        "body",
+        "circle",
+        "domain",
+        "domainRole",
+        "type",
+        "version"
+      ],
+      "Context": [
+        "funnels",
+        "type"
+      ],
+      "ContextFunnel": [
+        "isSync",
+        "circle",
+        "role",
+        "members",
+        "type"
+      ]
+    },
+    "compatibilityLimit": "OpenAPI retains roles view=diagram and Role.stats despite removal notices in official changelog; live tenant semantics are not qualified",
+    "tenantRequests": 0,
+    "credentialsRequested": 0
+  },
+  "checks": [
+    "Candidate JSON parses",
+    "All899 source Bot IDs and current repositories accounted for exactly once across781 proposals+118 pending",
+    "Candidate totals and configured/held sums match source",
+    "All proposed parents resolve; no cycles",
+    "Referenced public GET paths present in captured OpenAPI",
+    "git diff --check"
+  ],
+  "runtimeChanges": 0,
+  "cronChanges": 0,
+  "grantsChanged": 0,
+  "linearPeriodCyclesChanged": 0,
+  "workerActivations": 0,
+  "limitations": [
+    "Purposes/role charters are proposals inferred from observed catalog metadata, not accepted governance",
+    "No Holaspirit live tenant connection or API compatibility claim",
+    "No governance state migration or AwaiFS shared snapshot implementation",
+    "No role assignment grants runtime authority"
+  ]
+}
