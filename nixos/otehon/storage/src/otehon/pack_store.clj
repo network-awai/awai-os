@@ -69,11 +69,13 @@
                :size size :leaf-count (count raw)}
          :car-size (alength ^bytes bytes)
          :index (mapv (fn [section block]
-                        {:offset (+ 51 (:data-offset section)) :length (:length section)
+                        {:offset (+ 51 (:data-offset section)) :length (:length section) :cid (:cid block)
                          :sha (car/hex-encode (:digest (car/parse-cid (:cid block))))})
                       (butlast (car/carv2-sections v)) raw)}))))
 
 (defn- compressed? [ref] (= :awai.otehon-store/pack-zstd3-v1 (:format ref)))
+(defn- forest? [ref] (= :awai.otehon-store/pack-forest-v1 (:format ref)))
+(defn- physical? [ref] (or (compressed? ref) (forest? ref)))
 (defn- cache-key [ref] (or (:stored-sha ref) (:car-sha ref)))
 (defn- canonical-ref [ref]
   (-> ref (dissoc :stored-sha :stored-size) (assoc :format :awai.otehon-store/pack-v1)))
@@ -89,11 +91,11 @@
           value (edn/read opts r)]
       (when-not (and (= ::eof (edn/read opts r))
                      (map? value)
-                     (= (if (compressed? value)
+                     (= (if (physical? value)
                           #{:format :car-sha :root-cid :data-sha :size :leaf-count :stored-sha :stored-size}
                           #{:format :car-sha :root-cid :data-sha :size :leaf-count}) (set (keys value)))
-                     (contains? #{:awai.otehon-store/pack-v1 :awai.otehon-store/pack-zstd3-v1} (:format value))
-                     (or (not (compressed? value))
+                     (contains? #{:awai.otehon-store/pack-v1 :awai.otehon-store/pack-zstd3-v1 :awai.otehon-store/pack-forest-v1} (:format value))
+                     (or (not (physical? value))
                          (and (string? (:stored-sha value)) (re-matches #"[0-9a-f]{64}" (:stored-sha value))
                               (integer? (:stored-size value)) (<= 1 (:stored-size value) max-car-bytes)))
                      (every? #(and (string? %) (re-matches #"[0-9a-f]{64}" %))
@@ -104,10 +106,21 @@
         (fail! :invalid-pack-ref "invalid Pack catalog reference"))
       value)))
 
+(defn- forest-car [opened]
+  (let [payload (:carv1 opened)
+        encoded (car/carv2-encode (car/carv1-decode payload))
+        end (first (car/decode-u64-le encoded 43))
+        car-v2 (into (into (subvec encoded 0 43) (repeat 8 0)) (subvec encoded 51 end))]
+    (when-not (= payload (subvec car-v2 51))
+      (fail! :unsupported-car-profile "Forest CAR payload is not canonical"))
+    (byte-array-of car-v2)))
+
 (defn- load-index [directory ref stats]
-  (let [stored (when (compressed? ref) (store/read-zpack directory (:stored-sha ref)))
-        decoded (when stored (segmented/decode stored))
-        bytes (if stored (:car decoded) (store/read-car directory (:car-sha ref)))
+  (let [stored (cond (compressed? ref) (store/read-zpack directory (:stored-sha ref))
+                     (forest? ref) (store/read-forest directory (:stored-sha ref)))
+        decoded (when (compressed? ref) (segmented/decode stored))
+        opened (when (forest? ref) (forest/open stored))
+        bytes (cond decoded (:car decoded) opened (forest-car opened) :else (store/read-car directory (:car-sha ref)))
         checked (verify-car bytes)]
     (when (and stored (not= (:stored-size ref) (alength ^bytes stored)))
       (fail! :pack-ref-mismatch "compressed representation size mismatch"))
@@ -115,7 +128,8 @@
                        (update :index-rebuilds inc)))
     (when-not (= (canonical-ref ref) (:ref checked))
       (fail! :pack-ref-mismatch "CAR bytes do not match the committed Pack reference"))
-    (assoc checked :ref ref :layout (:layout decoded))))
+    (assoc checked :ref ref :layout (:layout decoded)
+           :forest (when opened (dissoc opened :bytes :carv1)))))
 
 (defn- recover-map [directory state]
   (let [cache (atom {})
@@ -186,14 +200,22 @@
   "Validate a bounded Forest snapshot and import its exact CARv1 payload into
   the existing indexless CARv2 Pack profile. Stores the existing zpack format."
   [directory name bytes]
-  (let [payload (:carv1 (forest/open bytes))
-        decoded (car/carv1-decode payload)
-        encoded (car/carv2-encode decoded)
-        end (first (car/decode-u64-le encoded 43))
-        car-v2 (into (into (subvec encoded 0 43) (repeat 8 0)) (subvec encoded 51 end))]
-    (when-not (= payload (subvec car-v2 51))
-      (fail! :unsupported-car-profile "Forest CAR payload is not canonical"))
-    (import-car-zstd3! directory name (byte-array-of car-v2))))
+  (import-car-zstd3! directory name (forest-car (forest/open bytes))))
+
+(defn import-forest-direct!
+  "Publish exact Forest bytes and bind them to the canonical Pack root."
+  [directory name input]
+  (vector-bytes input max-car-bytes)
+  (let [bytes (aclone ^bytes input) opened (forest/open bytes)
+        base-ref (:ref (verify-car (forest-car opened)))
+        ref (assoc base-ref :format :awai.otehon-store/pack-forest-v1
+                   :stored-sha (segmented/sha bytes) :stored-size (alength bytes))
+        result (store/transact! directory :put {:key (pack-key name) :value (pr-str ref)}
+                 (fn [directory state]
+                   (recover-map directory state)
+                   (when-not (= (:stored-sha ref) (store/write-forest! directory bytes))
+                     (fail! :forest-changed "Forest bytes changed during publication"))))]
+    (assoc result :pack ref)))
 
 (defn put-data! [directory name bytes]
   (let [v (vector-bytes bytes max-data-bytes)
@@ -214,10 +236,35 @@
   (pack-key name)
   (or (get (:files handle) name) (fail! :pack-not-found "Pack name is not in the selected committed catalog")))
 
+(defn read-forest-block
+  "Read a CID from the durable Forest index after full recovery verification.
+  Only candidate frames are read; unread bytes are not scrubbed."
+  [handle name cid]
+  (let [ref (ref-for handle name)
+        checked (get @(:index-cache handle) (cache-key ref))]
+    (when-not (and (forest? ref) (:forest checked))
+      (fail! :unsupported-pack-profile "selected Pack is not a recovered Forest archive"))
+    (forest/get-block-from (:forest checked) cid
+      (fn [offset length]
+        (let [bytes (first (store/read-payload-segments (:directory handle) (:stored-sha ref)
+                                                        "forest" (:stored-size ref)
+                                                        [{:offset offset :length length}]))]
+          (swap! (:stats handle) #(-> % (update :car-reads inc) (update :bytes-read + length)
+                                        (update :forest-frame-reads (fnil inc 0))))
+          bytes)))))
+
+(defn export-forest [handle name]
+  (let [ref (ref-for handle name)]
+    (when-not (forest? ref) (fail! :unsupported-pack-profile "selected Pack is not Forest"))
+    (store/read-forest (:directory handle) (:stored-sha ref))))
+
 (defn export-car [handle name]
   (let [ref (ref-for handle name)
-        stored (when (compressed? ref) (store/read-zpack (:directory handle) (:stored-sha ref)))
-        bytes (if stored (:car (segmented/decode stored)) (store/read-car (:directory handle) (:car-sha ref)))]
+        stored (cond (compressed? ref) (store/read-zpack (:directory handle) (:stored-sha ref))
+                     (forest? ref) (store/read-forest (:directory handle) (:stored-sha ref)))
+        bytes (cond (compressed? ref) (:car (segmented/decode stored))
+                    (forest? ref) (forest-car (forest/open stored))
+                    :else (store/read-car (:directory handle) (:car-sha ref)))]
     (when (and stored (not= (:car-sha ref) (segmented/sha bytes)))
       (fail! :corrupt-car "decoded canonical CAR digest mismatch"))
     (swap! (:stats handle) #(-> % (update :car-reads inc) (update :bytes-read + (alength ^bytes (or stored bytes)))))
@@ -257,11 +304,14 @@
                        (if (and (pos? length) (< logical (+ offset length)) (< offset (+ logical (:length leaf))))
                          (conj out (assoc leaf :logical logical)) out))))
           spans (mapv #(select-keys % [:offset :length]) leaves)
-          raw (if (compressed? ref)
-                (segmented/read-ranges (:directory handle) (:stored-sha ref) (:layout checked)
+          raw (cond
+                (forest? ref) (mapv (fn [leaf]
+                                      (or (read-forest-block handle name (:cid leaf))
+                                          (fail! :missing-block "published Forest block is missing"))) leaves)
+                (compressed? ref) (segmented/read-ranges (:directory handle) (:stored-sha ref) (:layout checked)
                                       spans (:decoded-cache checked) (:stats handle))
-                (let [parts (store/read-payload-segments (:directory handle) (:car-sha ref) "car" (:car-size checked) spans)]
-                  (swap! (:stats handle) #(-> % (update :car-reads inc) (update :bytes-read + (reduce + 0 (map :length spans))))) parts))]
+                :else (let [parts (store/read-payload-segments (:directory handle) (:car-sha ref) "car" (:car-size checked) spans)]
+                        (swap! (:stats handle) #(-> % (update :car-reads inc) (update :bytes-read + (reduce + 0 (map :length spans))))) parts))]
       (with-open [out (ByteArrayOutputStream.)]
         (doseq [[leaf bytes] (map vector leaves raw)]
           (when-not (= (:sha leaf) (segmented/sha bytes)) (fail! :cid-mismatch "selected leaf CID mismatch"))
