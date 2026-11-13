@@ -11,7 +11,8 @@ let
   # same layout with the build machine's own tools. The partition labels are what the system
   # mounts by. Sizes are in 512-byte sectors.
   espSectors = 2097152;
-  rootSectors = 33554432;
+  # Current desktop closures exceed the old 16 GiB partition (JUN-1180).
+  rootSectors = 50331648; # 24 GiB; encrypted state grows separately on first boot.
   stateSectors = 524288;
   rootStart = 2048 + espSectors;
   stateStart = rootStart + rootSectors;
@@ -62,8 +63,9 @@ in
 
   system.image.id = lib.mkForce "awai-otehon-6600h";
 
-  # esbuild crashes under the x86 emulator on the build machine.
-  otehon.shellPkgs = import pkgs.path { system = "aarch64-linux"; };
+  # Native x86_64 builders need no aarch64 builder for static UI files.
+  # Cross-build operators may still supply a reviewed shellPkgs explicitly.
+  otehon.shellPkgs = lib.mkDefault pkgs;
 
   systemd.services.otehon-state = {
     after = [ "systemd-ask-password-console.path" ];

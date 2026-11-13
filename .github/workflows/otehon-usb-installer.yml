@@ -1,0 +1,52 @@
+name: Otehon offline USB installer
+on:
+  pull_request:
+    paths:
+      - nixos/otehon/**
+      - nixos/tests/otehon-usb.nix
+      - tests/otehon-usb-eval.nix
+      - scripts/check-otehon-usb-vm.py
+      - .github/workflows/otehon-usb-installer.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  usb-installer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Prepare capacity on this ephemeral GitHub runner
+        shell: bash
+        run: |
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          df -h /
+          # Regenerable SDKs in this disposable runner; never runs on an owner host.
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
+          df -h /
+      - uses: cachix/install-nix-action@b85815f71a6de0ddee80b8a80a98d43f4bcc66c7
+      - name: Evaluate, build and boot the actual offline USB installer
+        shell: bash
+        run: |
+          mkdir -p .agent-output
+          nix-instantiate --eval --strict --json --expr 'import ./tests/otehon-usb-eval.nix { nixpkgsPath = import ./ci/nixpkgs.nix; }'
+          nix-build nixos/tests/otehon-usb.nix --out-link result-otehon-usb-check --show-trace 2>&1 | tee .agent-output/usb-build.log
+          nix-build nixos/otehon/default.nix --argstr profile usb-install-6600h --out-link result-otehon-usb
+          sha256sum result-otehon-usb/iso/*.iso | tee .agent-output/usb-sha256.txt
+          git rev-parse HEAD > .agent-output/usb-source-revision.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: otehon-usb-verification
+          path: |
+            .agent-output/usb-*
+            result-otehon-usb-check/
+          include-hidden-files: true
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: awai-otehon-usb-x86_64
+          path: result-otehon-usb/iso/*.iso
+          compression-level: 0
