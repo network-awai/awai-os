@@ -132,3 +132,36 @@ Separate-process readback:
 ```sh
 bb --classpath nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:nixos/otehon/storage/vendor/apex-car/src docs/evidence/awai-532-file-pack-20261113/raw-forest-read.clj .agent-output/raw-forest-proof-final-20261113
 ```
+
+## Bounded Otehon raw-file writer
+
+`forest-file-put STORE NAME SOURCE NEW-STAGING-DIR FOREST-TOOL` reads a regular
+source with a fixed 64 KiB logical chunk profile, assembles up to 14 chunks per
+Pack and publishes up to 64 Packs as one root. The explicitly supplied tool must
+match a hard-coded 0.39.0 executable digest; it is copied into a private new
+staging directory, hashed again and executed from there. The directory, including
+that large tool copy and generated CAR/Forest files, is retained for inspection.
+The source is never deleted. A before/after size and mtime check detects ordinary
+source changes; it is not a filesystem snapshot or proof against same-size
+changes with restored timestamps.
+
+Using the macOS arm64 artifact above and Babashka 1.12.218, the product writer
+and CLI imported the deterministic 2 MiB file into three Packs; the logical
+manifest CID matched the previous four-Pack representation. A separate process
+restored all bytes. The hosted proof also verified rejection of an unpinned
+tool and interruption after the first Forest rename without root publication:
+
+```sh
+bb --classpath nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:nixos/otehon/storage/vendor/apex-car/src nixos/otehon/storage/test/otehon/forest_writer_proof.clj .agent-output/raw-product-proof-20261113 "$FOREST_TOOL"
+```
+
+Output: `:bytes 2097152`, `:packs 3`, `:logical-cid-match true`,
+`:untrusted-tool-rejected true`, `:interrupted-root-unchanged true`,
+`:roundtrip true`, `:pass true`. The CLI readback in another process matched
+all bytes. Existing unit suites passed 24 tests / 145 assertions and the new
+unpinned-tool unit test passed 1 test / 3 assertions. The Nix check contains
+that negative unit test, but the actual Forest-tool positive proof is not yet in
+Nix CI. The Linux artifact digest remains an observation without independent
+verification. This writer rejects empty inputs and files above 56 MiB; it does
+not implement GiB support, Native I/O, OS cache loss, physical power loss, real
+policy/receipt, or a consistent snapshot of a concurrently changing source.
