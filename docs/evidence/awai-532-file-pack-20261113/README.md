@@ -60,3 +60,15 @@ for n in 1 2 3; do
   AWAI_FILE_INPUT=1 bb --classpath nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:nixos/otehon/storage/vendor/apex-car/src:nixos/otehon/storage/test docs/evidence/awai-532-file-pack-20261113/bench.clj ".agent-output/bench-file-round-$n"
 done
 ```
+
+## Read-only fixture follow-up
+
+The Nix `otehon` check on PR head `6964923` failed the input-mutation case;
+the old test swallowed non-`:forest-changed` exceptions, so its log did not
+identify their type. On macOS, `Files/copy` from a `0444` source produced a
+`0444` target, while writing a new target from the same bytes produced `0644`.
+The test now creates its own writable copy and rethrows unexpected exceptions.
+Using copies of all four source fixtures made read-only (`0444`) as
+`CROSSPACK_FIXTURES`, the full file-input proof again passed its eight process
+kill cases and `:changed-input :rejected, :root-unchanged true`. This tests the
+identified permission behavior locally; the Nix CI rerun is still required.

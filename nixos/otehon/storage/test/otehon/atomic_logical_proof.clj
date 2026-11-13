@@ -120,7 +120,11 @@
                     paths (mapv (fn [i]
                                   (let [source (Paths/get (str fixture-dir "/part-" i ".forest.car.zst") (make-array String 0))
                                         target (Paths/get (str input-dir "/part-" i) (make-array String 0))]
-                                    (Files/copy source target (make-array CopyOption 0)) (str target)))
+                                    ;; Nix store fixtures are read-only; Files/copy preserves
+                                    ;; their permissions. Create a writable test-owned file.
+                                    (Files/write target (Files/readAllBytes source)
+                                                 (make-array java.nio.file.OpenOption 0))
+                                    (str target)))
                                 (range 4))
                     _ (store/init! target) before (:root (store/read-store target))
                     m (manifest files) mutated (atom false)]
@@ -131,7 +135,8 @@
                               (spit (nth paths 1) "changed after validation")))]
                   (ensure! (try (pack/import-logical-forest-files! target "proof" paths (:bytes m) (:cid m))
                                 false
-                                (catch Exception e (= :forest-changed (:type (ex-data e)))))
+                                (catch Exception e
+                                  (if (= :forest-changed (:type (ex-data e))) true (throw e))))
                            "changed input did not abort publication"))
                 (ensure! @mutated "source mutation boundary was not reached")
                 (ensure! (= before (:root (store/read-store target))) "changed input published a root")
