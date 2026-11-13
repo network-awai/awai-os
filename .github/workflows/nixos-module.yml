@@ -53,6 +53,10 @@ jobs:
           "$bb_path/bin/bb" --classpath "$classpath" "$blocks_proof" write "$RUNNER_TEMP/kotobase-blocks" "$tool"
           "$bb_path/bin/bb" --classpath "$classpath" "$blocks_proof" read "$RUNNER_TEMP/kotobase-blocks" "$tool"
           "$bb_path/bin/bb" --classpath "$classpath" "$blocks_proof" race "$RUNNER_TEMP/kotobase-blocks-race" "$tool"
+          transaction_proof=nixos/otehon/storage/test/otehon/kotobase_forest_transaction_proof.clj
+          "$bb_path/bin/bb" --classpath "$classpath" "$transaction_proof" write "$RUNNER_TEMP/kotobase-transaction" "$tool"
+          "$bb_path/bin/bb" --classpath "$classpath" "$transaction_proof" read "$RUNNER_TEMP/kotobase-transaction" "$tool"
+          "$bb_path/bin/bb" --classpath "$classpath" "$transaction_proof" fail "$RUNNER_TEMP/kotobase-transaction-fail" "$tool"
           cp -R "$RUNNER_TEMP/kotobase-blocks" "$RUNNER_TEMP/kotobase-blocks-invalidate"
           "$bb_path/bin/bb" --classpath "$classpath" "$blocks_proof" invalidate "$RUNNER_TEMP/kotobase-blocks-invalidate" "$tool"
           cp -R "$RUNNER_TEMP/kotobase-blocks" "$RUNNER_TEMP/kotobase-blocks-missing"

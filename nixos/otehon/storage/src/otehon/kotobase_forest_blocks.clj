@@ -130,3 +130,69 @@
         verify! (fn [cid] (when-not (contract/get-block blocks cid)
                             (fail! :missing-ref-target "ref target block is not published")))]
     (contract/compose {:blocks blocks :refs (refs/open-ref-store dir verify!)})))
+
+(defn open-transaction
+  "Create a bounded, synchronous write overlay for a Prolly operation.
+
+  :put! and :get-fn are volatile execution ports, not IBlockStore durability
+  acknowledgements. :publish! first persists the whole checked batch, then
+  performs backend ref CAS; :abort! discards only the in-memory overlay.
+  A failed or stale publish is terminal and can leave immutable orphan data.
+  Only a successful :publish! confirms that the ref advanced."
+  [backend]
+  (contract/validate-backend! backend)
+  (let [guard (Object.) state (atom {:phase :open :bytes 0 :blocks {}})
+        require-open! (fn [] (when-not (= :open (:phase @state))
+                               (fail! :transaction-closed "transaction is not open")))]
+    {:put! (fn [cid bytes]
+             (locking guard
+               (require-open!)
+               (try
+                 (let [b (first (:unique (checked-blocks [{:cid cid :bytes bytes}])))
+                       n (alength ^bytes (:bytes b)) old (get-in @state [:blocks cid])]
+                   (if old
+                     (when-not (Arrays/equals ^bytes (:bytes old) ^bytes (:bytes b))
+                       (fail! :cid-collision "duplicate CID differs"))
+                     (do
+                       (when (or (>= (count (:blocks @state)) max-batch-count)
+                                 (> (+ (:bytes @state) n) max-batch-bytes))
+                         (fail! :too-large "transaction buffer exceeds bound"))
+                       (swap! state #(-> % (update :bytes + n) (assoc-in [:blocks cid] b)))))
+                   cid)
+                 (catch Exception e
+                   (reset! state {:phase :failed :bytes 0 :blocks {}})
+                   (throw e)))))
+     :get-fn (fn [cid]
+               (locking guard
+                 (require-open!)
+                 (try
+                   (if-let [b (get-in @state [:blocks cid])]
+                     (aclone ^bytes (:bytes b))
+                     (contract/get-block backend cid))
+                   (catch Exception e
+                     (reset! state {:phase :failed :bytes 0 :blocks {}})
+                     (throw e)))))
+     :publish! (fn [name expected next]
+                 (locking guard
+                   (require-open!)
+                   (swap! state assoc :phase :publishing)
+                   (try
+                     (let [m (:blocks @state) batch (mapv m (sort (keys m)))
+                           expected-cids (mapv :cid batch)
+                           acknowledged (contract/-put-blocks! backend batch)]
+                       (when-not (= expected-cids acknowledged)
+                         (fail! :invalid-block-ack "block provider returned unexpected acknowledgement"))
+                       (let [result (contract/-compare-and-set-ref! backend name expected next)]
+                         (when-not (and (map? result) (boolean? (:published? result))
+                                        (if (:published? result) (= next (:current result)) true))
+                           (fail! :invalid-ref-ack "ref provider returned invalid acknowledgement"))
+                         (reset! state {:phase :finished :bytes 0 :blocks {}})
+                         result))
+                     (catch Exception e
+                       (reset! state {:phase :failed :bytes 0 :blocks {}})
+                       (throw e)))))
+     :abort! (fn []
+               (locking guard
+                 (require-open!)
+                 (reset! state {:phase :aborted :bytes 0 :blocks {}})
+                 true))}))
