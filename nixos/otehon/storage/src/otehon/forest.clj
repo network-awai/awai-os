@@ -66,19 +66,30 @@
           (recur (+ pos n)))))
     (.array buffer)))
 
-(defn- canonical-sections [v]
-  (loop [offset 0 out []]
-    (if (= offset (count v)) out
-      (let [[size start] (car/decode-uvarint v offset) end (+ start size)]
-        (when-not (and (pos? size) (<= end (count v))
-                       (= (subvec v offset start) (car/encode-uvarint size)))
-          (fail! :invalid-forest "invalid or noncanonical block extent"))
-        (let [{:keys [next-offset codec digest]} (car/parse-cid v start)]
-          (when (> next-offset end) (fail! :invalid-forest "CID exceeds frame"))
-          (let [cid (subvec v start next-offset) data (subvec v next-offset end)]
-            (when-not (and (= cid (car/cid-bytes codec digest)) (= digest (sha data)))
-              (fail! :cid-mismatch "block bytes or canonical CID mismatch"))
-            (recur end (conj out {:cid (vec cid) :bytes data}))))))))
+(defn- file-sections
+  "Parse and verify file-backed frames without boxing complete block payloads."
+  [^bytes frame]
+  (let [n (alength frame)]
+    (loop [offset 0 out []]
+      (if (= offset n) out
+        ;; The admitted CIDv1/sha256 profile has a bounded header. The payload
+        ;; is kept as bytes, while the owning CAR codec parses the small prefix.
+        (let [prefix (vbytes (slice frame offset (min n (+ offset 80))))
+              [size start] (car/decode-uvarint prefix 0)
+              end (+ offset start size)]
+          (when-not (and (pos? size) (<= end n)
+                         (= (subvec prefix 0 start) (car/encode-uvarint size)))
+            (fail! :invalid-forest "invalid or noncanonical block extent"))
+          (let [{:keys [next-offset codec digest]} (car/parse-cid prefix start)
+                cid (subvec prefix start next-offset)
+                data-start (+ offset next-offset)]
+            (when (> data-start end) (fail! :invalid-forest "CID exceeds frame"))
+            (let [md (MessageDigest/getInstance "SHA-256")]
+              (.update md frame (int data-start) (int (- end data-start)))
+              (when-not (and (= cid (car/cid-bytes codec digest))
+                             (= digest (vbytes (.digest md))))
+                (fail! :cid-mismatch "block bytes or canonical CID mismatch")))
+            (recur end (conj out {:cid (vec cid) :bytes (slice frame data-start end)}))))))))
 
 (defn verify-file
   "Verify a bounded file-backed Forest Pack a frame at a time. No archive-wide
@@ -123,17 +134,18 @@
                     data-md (MessageDigest/getInstance "SHA-256")
                     result (reduce (fn [acc p]
                                      (let [compressed (file-range channel p (- (ends p) p))
-                                           blocks (canonical-sections (vbytes (segmented/decode-forest-frame compressed)))]
+                                           blocks (file-sections (segmented/decode-forest-frame compressed))]
                                        (when (empty? blocks) (fail! :invalid-forest "empty indexed frame"))
                                        (doseq [b blocks :when (= car/codec-raw (:codec (car/parse-cid (:cid b))))]
-                                         (.update data-md (bytes-of (:bytes b))))
+                                         (.update data-md ^bytes (:bytes b)))
                                        (-> acc
                                            (update :pairs into (map #(vector (hash-cid (:cid %)) p) blocks))
-                                           (update :blocks into (map (fn [b] {:cid (:cid b) :length (count (:bytes b)) :frame p}) blocks))
+                                           (update :blocks into (map (fn [b] {:cid (:cid b) :length (alength ^bytes (:bytes b)) :frame p}) blocks))
                                            (assoc :last-block (last blocks))
                                            (assoc-in [:frame-sha p] (segmented/sha compressed)))))
                                    {:pairs #{} :blocks [] :frame-sha {}} offsets)
-                    blocks (:blocks result) leafs (vec (butlast blocks)) root (:last-block result)]
+                    blocks (:blocks result) leafs (vec (butlast blocks))
+                    root (update (:last-block result) :bytes vbytes)]
                 (when-not (and (<= 1 (count leafs) 64) (= (set entries) (:pairs result))
                                (every? #(= car/codec-raw (:codec (car/parse-cid (:cid %)))) leafs)
                                (= (first roots) (:cid root))
@@ -243,10 +255,11 @@
             (let [bytes (read-frame p (- (get (:ends handle) p) p))]
               (when-not (= (get (:frame-sha handle) p) (segmented/sha bytes))
                 (fail! :corrupt-frame "Forest frame changed after recovery"))
-              (some (fn [block] (when (= needle (:cid block)) (bytes-of (:bytes block))))
-                    (sections (if (:file-backed? handle)
-                                (vbytes (segmented/decode-forest-frame bytes))
-                                (decode bytes))))))
+              (if (:file-backed? handle)
+                (some (fn [block] (when (= needle (:cid block)) (:bytes block)))
+                      (file-sections (segmented/decode-forest-frame bytes)))
+                (some (fn [block] (when (= needle (:cid block)) (bytes-of (:bytes block))))
+                      (sections (decode bytes))))))
           positions)))
 (defn get-block
   "Find CID using the embedded index; verify the selected complete frame again.

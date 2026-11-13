@@ -17,6 +17,27 @@
 (defn- digest [bytes] (mapv #(bit-and 255 %) (.digest (MessageDigest/getInstance "SHA-256") bytes)))
 (defn- digest [bytes] (mapv #(bit-and 255 %) (.digest (MessageDigest/getInstance "SHA-256") bytes)))
 
+(deftest file-frame-parser-verifies-bounds-and-cids
+  (let [payload (byte-array (map #(unchecked-byte (mod % 251)) (range 100000)))
+        cid (car/cid-bytes car/codec-raw (digest payload))
+        size-prefix (car/encode-uvarint (+ (count cid) (alength payload)))
+        framed (byte-array (map unchecked-byte (concat size-prefix cid payload)))
+        noncanonical (byte-array (map unchecked-byte
+                                      (concat (butlast size-prefix)
+                                              [(bit-or 128 (last size-prefix)) 0]
+                                              cid payload)))
+        parsed (#'forest/file-sections framed)
+        corrupted (doto (aclone framed)
+                    (aset-byte (dec (alength framed))
+                               (unchecked-byte (bit-xor 1 (aget framed (dec (alength framed)))))))]
+    (is (= 1 (count parsed)))
+    (is (= cid (:cid (first parsed))))
+    (is (Arrays/equals payload (:bytes (first parsed))))
+    (is (thrown? Exception (#'forest/file-sections corrupted)))
+    (is (thrown? Exception (#'forest/file-sections noncanonical)))
+    (is (thrown? Exception (#'forest/file-sections (Arrays/copyOf framed (dec (alength framed))))))
+    (is (thrown? Exception (#'forest/file-sections (byte-array [0]))))))
+
 (deftest file-verifier-matches-existing-reader-and-refuses-corruption
   (let [bytes (fixture) old (forest/open bytes) blocks (:blocks (car/carv1-decode (:carv1 old)))
         dir (new-store) path (Paths/get (str dir "/input.forest") (make-array String 0))
