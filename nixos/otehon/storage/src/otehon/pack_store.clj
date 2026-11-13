@@ -82,7 +82,8 @@
 (defn- file-forest? [ref] (= :awai.otehon-store/pack-forest-file-v2 (:format ref)))
 (defn- forest? [ref] (contains? #{:awai.otehon-store/pack-forest-v1 :awai.otehon-store/pack-forest-file-v2} (:format ref)))
 (defn- physical? [ref] (or (compressed? ref) (forest? ref)))
-(defn- cache-key [ref] (or (:stored-sha ref) (:car-sha ref)))
+(defn- payload-key [ref] (or (:stored-sha ref) (:car-sha ref)))
+(defn- cache-key [ref] [(:format ref) (payload-key ref)])
 (defn- canonical-ref [ref]
   (-> ref (dissoc :stored-sha :stored-size) (assoc :format :awai.otehon-store/pack-v1)))
 
@@ -276,7 +277,7 @@
                  directory :put {:key key :value (pr-str ref)}
                  (fn [directory state]
                    (recover-map directory state)
-                   (when-not (= (cache-key ref) (if stored (store/write-zpack! directory stored)
+                   (when-not (= (payload-key ref) (if stored (store/write-zpack! directory stored)
                                                            (store/write-car! directory bytes)))
                      (fail! :car-changed "CAR bytes changed during publication"))))]
     (cond-> (assoc result :pack ref)

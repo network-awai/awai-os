@@ -172,7 +172,7 @@
     (let [d (new-store) original (bytes-of 524288)
           _ ((if zipped? pack/put-data-zstd3! pack/put-data!) d "file" original)
           h (pack/recover d) ref (get-in h [:files "file"])
-          checked (get @(:index-cache h) (or (:stored-sha ref) (:car-sha ref)))
+          checked (get @(:index-cache h) (#'pack/cache-key ref))
           _ (pack/read-range-verified-leaves h "file" 0 4096)
           _ (pack/read-range-verified-leaves h "file" 0 4096)
           filename (str d "/" (or (:stored-sha ref) (:car-sha ref)) (if zipped? ".zpack" ".car"))
@@ -190,7 +190,7 @@
     (let [d (new-store) original (bytes-of 524288)
           _ ((if zipped? pack/put-data-zstd3! pack/put-data!) d "file" original)
           h (pack/recover d) ref (get-in h [:files "file"])
-          checked (get @(:index-cache h) (or (:stored-sha ref) (:car-sha ref)))
+          checked (get @(:index-cache h) (#'pack/cache-key ref))
           filename (str d "/" (or (:stored-sha ref) (:car-sha ref)) (if zipped? ".zpack" ".car"))
           offset (if zipped? (+ (:prefix-size (:layout checked)) (:stored-offset (last (get-in checked [:layout :frames]))))
                              (:offset (last (:index checked))))]

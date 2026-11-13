@@ -84,6 +84,34 @@
       (is (Arrays/equals data (pack/read-data fresh "file")))
       (is (= (:carv1 h) (vec (map #(bit-and 255 %) (Arrays/copyOfRange (pack/export-car fresh "file") 51 (+ 51 (count (:carv1 h)))))))))))
 
+(deftest identical-forest-bytes-recover-across-representation-profiles
+  (let [bytes (fixture) h (forest/open bytes)
+        blocks (butlast (:blocks (car/carv1-decode (:carv1 h))))
+        chunks (second (reduce (fn [[offset out] block]
+                                 [(+ offset (count (:bytes block)))
+                                  (conj out {"cid" {:tag 42 :bytes (:cid block)}
+                                             "offset" offset "length" (count (:bytes block))})])
+                               [0 []] blocks))
+        size (reduce + (map #(count (:bytes %)) blocks))
+        wire (byte-array (map unchecked-byte
+                              (car/cbor-encode {"format" "awai.logical-file" "version" 1
+                                                "fileSize" size
+                                                "chunkProfile" {"kind" "fixed" "version" 1 "leafSize" 65536}
+                                                "chunks" chunks})))
+        cid (car/cid-str (car/cid-bytes car/codec-dag-cbor (digest wire)))
+        dir (new-store) path (str dir "/input.forest")]
+    (Files/write (Paths/get path (make-array String 0)) bytes (make-array java.nio.file.OpenOption 0))
+    (pack/import-forest-direct! dir "v1" bytes)
+    (pack/import-logical-forest-files! dir "v2" [path] wire cid {:file-backed? true})
+    (let [fresh (pack/recover dir)
+          summary (pack/summary fresh)
+          expected (byte-array (map unchecked-byte (mapcat :bytes blocks)))]
+      (is (= (get-in summary [:files "v1" :stored-sha])
+             (get-in summary [:groups "v2" :packs 0 :stored-sha])))
+      (is (= 2 (get-in summary [:stats :index-cache-entries])))
+      (is (Arrays/equals expected (pack/read-data fresh "v1")))
+      (is (Arrays/equals expected (pack/read-group-range fresh "v2" 0 size))))))
+
 (deftest forest-corruption-never-publishes
   (let [bytes (fixture) h (forest/open bytes) dir (new-store)
         before (storage/read-store dir)
