@@ -113,7 +113,7 @@ jobs:
       - name: Build and test the Otehon Pack/CAR and checkpoint storage adapter
         run: |
           storage_check=$(nix-build nixos/otehon/storage/check.nix --no-out-link)
-          cat "$storage_check/unit-tests.txt" "$storage_check/crash-tests.edn" "$storage_check/pack-crash-tests.edn"
+          cat "$storage_check/unit-tests.txt" "$storage_check/crash-tests.edn" "$storage_check/pack-crash-tests.edn" "$storage_check/ipld-forest-tests.txt"
           module_check=$(nix-build nixos/otehon/storage/module-check.nix --no-out-link)
           cat "$module_check"
       - name: Evaluate every Otehon profile, aarch64 and the x86_64 vm
