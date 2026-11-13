@@ -50,7 +50,7 @@
        [:button.secondary {:type "button" :aria-pressed (= view "circle") :on-click #(set-view "circle")} "Circle表示"]
        [:button.secondary {:type "button" :aria-pressed (= view "list") :on-click #(set-view "list")} "一覧・実行詳細"]]
       (when (= view "circle")
-        [:f> circles/panel (:bots report) stale? query set-query
+        [:f> circles/panel (:bots report) stale? now query set-query
          (fn [name] (set-query name) (set-view "list"))])
       [:ul.soshiki-totals
        [:li [:strong (:registered totals)] [:span "登録Bot"]]

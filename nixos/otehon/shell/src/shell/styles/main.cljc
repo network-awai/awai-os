@@ -281,6 +281,8 @@
    [:.fleet-pack-depth-1 {:fill "var(--surface-selected)" :stroke "var(--focus)" :stroke-width "0.9"}]
    [:.fleet-pack-depth-2 {:fill "var(--surface-raised)" :stroke "var(--border-strong)" :stroke-width "0.5"}]
    [:.fleet-pack-depth-3 {:stroke "var(--bg)" :stroke-width "0.25"}]
+   [:.fleet-pack-circle {:fill "var(--surface-raised)" :stroke "var(--border-strong)" :stroke-width "0.5"}]
+   [:.fleet-pack-bot {:stroke "var(--bg)" :stroke-width "0.25"}]
    [:.fleet-pack-selected {:stroke "var(--fg)" :stroke-width 2}]
    [".fleet-circle-node:focus circle, .fleet-circle-node:hover circle" {:stroke "var(--focus)" :stroke-width 2}]
    [:.fleet-pack-label {:fill "var(--fg)" :font-family "inherit" :font-weight 600 :pointer-events "none"

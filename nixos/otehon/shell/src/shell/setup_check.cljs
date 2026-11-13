@@ -17,7 +17,7 @@
     (js/console.log "PASS: phone sign-in QR renders after advanced compilation without a relay or identity"))
   (let [bots [{:id "a" :name "a" :repository "current/app" :circleIds ["repo:original/app"] :state "waiting" :configured true}
               {:id "b" :name "b" :repository "current/app" :circleIds ["repo:original/app"] :state "held" :configured false}]
-        html (renderToStaticMarkup (r/as-element [:f> circles/panel bots false "" (fn [_]) (fn [_])]))]
+        html (renderToStaticMarkup (r/as-element [:f> circles/panel bots false 0 "" (fn [_]) (fn [_])]))]
     (when-not (and (.includes html "2 Bot · 1 Circle")
                    (.includes html "original")
                    (.includes html "定期待機 1")

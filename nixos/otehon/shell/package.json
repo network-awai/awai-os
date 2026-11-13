@@ -9,7 +9,7 @@
     "test:fleet": "node --test test/soshiki-fleet.test.js test/fleet-projection.test.js test/stabilization.test.js",
     "serve": "node serve.mjs",
     "preview": "OTEHON_HTTP=1 node build.mjs && node serve.mjs",
-    "test": "node --test test/link.test.js test/device.test.js test/trust.test.js test/net.test.js test/status.test.js test/sound.test.js test/display.test.js test/theme.test.js test/voice-input.test.js test/wallet-balance.test.js test/saifu-host.test.js test/soshiki.test.js test/soshiki-fleet.test.js test/fleet-circles.test.js test/csp.test.js test/externs.test.js test/soshiki-runtime.test.js"
+    "test": "node --test test/link.test.js test/device.test.js test/trust.test.js test/net.test.js test/status.test.js test/sound.test.js test/display.test.js test/theme.test.js test/voice-input.test.js test/wallet-balance.test.js test/saifu-host.test.js test/soshiki.test.js test/soshiki-fleet.test.js test/fleet-circles.test.js test/bot-cycle-organizations.test.js test/csp.test.js test/externs.test.js test/soshiki-runtime.test.js"
   },
   "dependencies": {
     "@noble/curves": "2.0.1",
