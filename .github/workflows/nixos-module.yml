@@ -78,5 +78,10 @@ jobs:
           cat "$storage_check/unit-tests.txt" "$storage_check/crash-tests.edn" "$storage_check/pack-crash-tests.edn"
           module_check=$(nix-build nixos/otehon/storage/module-check.nix --no-out-link)
           cat "$module_check"
+      - name: Test HTTPS updater admission and evaluate desktop integration
+        run: |
+          python3 tests/otehon-network-update-test.py
+          bash -n nixos/otehon/update.sh
+          nix-instantiate --eval --strict --json --expr 'import ./tests/otehon-update-eval.nix { nixpkgsPath = import ./ci/nixpkgs.nix; }'
       - name: Evaluate every Otehon profile, aarch64 and the x86_64 vm
         run: sh nixos/otehon/eval-profiles.sh .

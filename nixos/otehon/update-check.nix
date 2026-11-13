@@ -11,6 +11,7 @@ in
   system.image.id = "awai-otehon-update";
   system.image.version = lib.mkDefault "1";
   otehon.update = {
+    enable = true;
     baseVersion = 1;
     publicKey = ./fixtures/update/test-manifest.pub;
     cacheKey = ./fixtures/update/test-cache.pub;
