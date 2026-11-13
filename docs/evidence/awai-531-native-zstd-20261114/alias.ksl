@@ -1,0 +1,9 @@
+KSL1
+entry /src/corpus.kotoba
+root /src
+file f833b81cbd0a00f6c2c5a73686497e350838d2aa6a7a1640816d67f6d447d978 /src/corpus.kotoba
+file 21d9f604f6be16b64ae85ca83bc084412fcd28ed9dd00962b94ef5976b9897ad /src/zstd/bits.kotoba
+file 2463119ef0a6d2668ce6bc5704f5261869717601f6d32f6f07f7a76e025cbb4f /src/zstd/core.kotoba
+file 990d77600b670b6e195f04273e320a97d0218761f073bb5cd295397a19effa92 /src/zstd/fse.kotoba
+file 8af5d6687fe47e0cb1acc69605547a42075776dc974598215a779be13e6a1103 /src/zstd/huff.kotoba
+file b604bb9e8ea01f851cc0c326ee6f0b187ffc36fdfe1d67237d5b1d40839c9748 /src/zstd/xxhash.kotoba
