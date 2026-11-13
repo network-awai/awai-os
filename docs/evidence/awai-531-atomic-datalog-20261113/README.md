@@ -76,3 +76,40 @@ result.json             1e7712e4e9b6d5feea3b6bc0ba180607aeb8c01408b88838a15c6257
 
 The oracle scripts are evidence only; neither nbb nor these reference sources
 were added to the Native gate, build, packaging or execution path.
+
+## Native logical-file primitive on actual macOS arm64
+
+On the same date, the existing `lib/kotoba.awaiFs/test/values.kotoba` from
+Kotoba revision `05fc7c5c62ca0e44fc9d7539fe9834ec9a6b0b14` was compiled and
+executed on macOS arm64. Its test exercises valid leaf verification, wrong and
+missing bytes, file/profile version refusal, excess chunk count, malformed
+bytes and size refusal. The final Native process returned exit 0.
+
+The ordinary Amu checkout binaries did not match the pinned input digests.
+Exact bytes were recovered into task scratch from Amu Git revision
+`ce982703375bedc0039b61b1a821407d228ea98a`, hash-checked and verified with
+`codesign --verify --strict`:
+
+```text
+amu-full-root.macho        369fc624cf5236b3f4a9dba2021bb057223bd1179736c882123506dee4fda082
+kotoba-packager-root.macho 7691467cf64ec5116de3534579a8383b4b0b17198e12a21076145afbc4bce31e
+values.kotoba              a1f2edd7c6b00591e36c241bf5e81d297420ccdca32a16be3b63925cb49cb934
+native-source.ksl          b9ae94a7b38a4c64ba3994de2b658b6b867e26b1dd0e72083110556d67c8e737
+program.kseed              6328e8ab13208651ec8909b5f8cfdf34538f4e20a3b0f05d69f4afff1d7fc6df
+program.raw                403e15d32613c82537174c33851ba4b6c36eed1476ed183986bce9e62a1c41e6
+program.macho              f5cf96e6c3d513f01584135a3d07b202ab9391744aa04aa012a8cf7eec12e598
+```
+
+With FD 3 open to the staged source directory and `PATH=/nonexistent LANG=C`,
+commands were `amu-full-root.macho compile /src/corpus.kotoba --target
+ aarch64-macos --output program.kseed --source-path /src --source-lock
+ source.ksl --source-lock-sha256 <the digest above>`, `amu-full-root.macho
+extract-native program.kseed --symbol main --output program.raw`, and
+`kotoba-packager-root.macho program-unsigned.macho program.raw
+fs2-cli-stdio-general 71480`. The generated artifact was ad-hoc signed and
+executed; all commands exited 0. `native-source.ksl` records every source
+input; the extracted `main` offset was 71480 and length 73589.
+
+This is a small primitive and negative-control execution. It does not execute
+the 2 MiB proof's logical manifest, the Forest adapter, native I/O, multi-Pack
+recovery, or physical power failure, and is not production qualification.
