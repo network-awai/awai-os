@@ -212,9 +212,93 @@
     "hermesState": false,
     "sourceScript": false,
     "modelTools": false,
-    "nextScheduledOccurrence": "pending",
+    "nextScheduledOccurrence": "verified",
     "longTermSLO": "unknown",
     "fullHostAudit": "unmeasured",
     "originalBusinessCompletion": false
+  },
+  "nextNormalOccurrence": {
+    "observation": {
+      "schema": "awai.original-job-observation.v1",
+      "observedAt": "2026-11-13T03:12:22.438279Z",
+      "worker": "jun-control",
+      "scope": "original-bounded-jobs",
+      "jobs": [
+        {
+          "job-id": "9e8961ac33a4-itonami-manifest-v1",
+          "catalog-bot-id": "profile:codinator",
+          "linear-result-confirmed": true,
+          "state": "completed",
+          "artifact": {
+            "cid": "bafkreiepykl3e2rppxmxhaq7rt7dyi2yf2g5wfm7mqm57ydtyx26ec5niu",
+            "sha256": "8fc297b26a2f7dd973821f8cfe3c23582e8ddb159f6419dfe073c5f5e20bad45",
+            "readback": true
+          },
+          "provider": "none",
+          "run-id": "original-codinator-1794539460000",
+          "domain-result": {
+            "hermes-observed": false,
+            "source-observed-at": "2026-11-13T03:12:17.054Z",
+            "expected-catalog-sha": "db61a8661eac91abaa886d88be28ba1a15a721dbf92007ca1ee3477d837853d2",
+            "uptime": "unmeasured",
+            "profiles-modified": false,
+            "full-host-manifest-audit": "unmeasured",
+            "scope": "itonami-public-manifest-summary-only",
+            "source-script-executed": false,
+            "observed-catalog-sha": "db61a8661eac91abaa886d88be28ba1a15a721dbf92007ca1ee3477d837853d2",
+            "http-status": 200,
+            "status": "measured",
+            "drift": false,
+            "kind": "fleet-manifest-drift"
+          },
+          "model": "deterministic"
+        }
+      ],
+      "serviceLoaded": true,
+      "invocation": "launchd"
+    },
+    "scheduledAt": "2026-11-13T03:11:00.000Z",
+    "scheduledToReportedCompletionSeconds": 82.438,
+    "artifactReadback": {
+      "url": "http://127.0.0.1:8586/itonami-job-results-AWAI-2795-v1/bafkreiepykl3e2rppxmxhaq7rt7dyi2yf2g5wfm7mqm57ydtyx26ec5niu.json",
+      "sha256": "8fc297b26a2f7dd973821f8cfe3c23582e8ddb159f6419dfe073c5f5e20bad45",
+      "confirmed": true
+    },
+    "linearReadback": {
+      "issue": "AWAI-752",
+      "fullCommentPage": true,
+      "eachRunForecastCount": 1,
+      "eachRunResultCount": 1,
+      "runCount": 2
+    },
+    "coverage": "first catchup + next normal due run; full process elapsed for normal run unknown, active/waiting unknown"
+  },
+  "driftAlertPromotion": {
+    "schema": "awai.projector-promotion.v1",
+    "revision": "1665e42711921854207295410c757b097ea74473",
+    "workerConfigUnchanged": true,
+    "configSha256": "93edb6fe08aa317f938846c47181a98125028e618c14326f7d5511502a048da8",
+    "archiveSha256": "8af688951084d9914a6bb66e2d57c46bd8b61d1536cd8e49f40ef0abf22e85bf",
+    "observedAt": "2026-11-13T03:14:41.396Z",
+    "totals": {
+      "registered": 899,
+      "configured": 589,
+      "held": 310,
+      "attention": 0,
+      "queued": 0,
+      "jobsConfigured": 591,
+      "originalJobsConfigured": 2,
+      "adaptedJobsConfigured": 584,
+      "vmJobsConfigured": 2,
+      "vmReplicasHealthy": 2,
+      "confirmedRuns": 591,
+      "sourceJobs": 1637,
+      "linearBound": 890,
+      "circles": 762,
+      "repositoryCircles": 761
+    },
+    "storageReadback": true,
+    "bothStaticArtifactsEqual": true,
+    "driftAlertEnabled": true
   }
 }

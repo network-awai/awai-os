@@ -106,5 +106,58 @@
   "uiBuildBaseRevision": "0d12959a964595cf45db2b5b23cd5aa97c42079a",
   "uiBuildDeltaFiles": [
     "nixos/otehon/shell/src/shell/setup.cljs"
-  ]
+  ],
+  "staticViewRestart": {
+    "schema": "awai.static-view-restart-proof.v1",
+    "label": "network.awai.otehon.fleet-preview.awai2808",
+    "at": "2026-11-13T03:25:36.343550+00:00",
+    "fault": "SIGKILL only newly owned static-only preview",
+    "recoveredSeconds": 0.22407787496922538,
+    "probeIntervalSeconds": 0.2,
+    "failedRecoveryProbes": 1,
+    "http200": true,
+    "sameStaticIndex": true,
+    "botWorkersInterrupted": false,
+    "guestCutover": false
+  },
+  "latestReadback": {
+    "at": "2026-11-13T03:25:36.763Z",
+    "artifacts": [
+      {
+        "url": "http://127.0.0.1:8906/fleet-state.json",
+        "sha256": "63eb5732e22df8ef21da82b8e38aafc8591bd378cd1f9ddec0950ddb2bc719ca",
+        "observedAt": "2026-11-13T03:24:53.538Z"
+      },
+      {
+        "url": "http://127.0.0.1:8906/soshiki-runtime/fleet-state.json",
+        "sha256": "63eb5732e22df8ef21da82b8e38aafc8591bd378cd1f9ddec0950ddb2bc719ca",
+        "observedAt": "2026-11-13T03:24:53.538Z"
+      },
+      {
+        "url": "http://127.0.0.1:8586/itonami-fleet-state-AWAI-2795-v1/current.json",
+        "sha256": "63eb5732e22df8ef21da82b8e38aafc8591bd378cd1f9ddec0950ddb2bc719ca",
+        "observedAt": "2026-11-13T03:24:53.538Z"
+      }
+    ],
+    "sameBytes": true,
+    "totals": {
+      "registered": 899,
+      "configured": 589,
+      "held": 310,
+      "attention": 0,
+      "queued": 0,
+      "jobsConfigured": 591,
+      "originalJobsConfigured": 2,
+      "adaptedJobsConfigured": 584,
+      "vmJobsConfigured": 2,
+      "vmReplicasHealthy": 2,
+      "confirmedRuns": 591,
+      "sourceJobs": 1637,
+      "linearBound": 890,
+      "circles": 762,
+      "repositoryCircles": 761
+    },
+    "heldLinked": 310
+  },
+  "note": "Initial screenshot is before codinator activation; current automatic report includes codinator and310 remaining holds. Account-scoped authenticated OS session/product guest release not qualified."
 }
