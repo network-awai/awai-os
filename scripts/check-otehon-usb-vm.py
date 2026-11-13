@@ -38,6 +38,7 @@ def main():
     sockets = Path.cwd() / "usb-vm-sockets"
     sockets.mkdir(mode=0o700, exist_ok=False)
     serial_path = sockets / "serial"
+    qmp_path = sockets / "qmp"
     if len(str(serial_path)) >= 104:
         p.error("Unix socket path too long")
     vars_file = out / "OVMF_VARS.fd"
@@ -49,7 +50,8 @@ def main():
                "-drive", f"if=pflash,format=raw,file={vars_file}",
                "-device", "qemu-xhci", "-drive", f"if=none,id=media,format=raw,readonly=on,file={iso}",
                "-device", "usb-storage,drive=media,bootindex=1,serial=OTEHON-USB-MEDIUM",
-               "-serial", f"unix:{serial_path},server=on,wait=off"]
+               "-serial", f"unix:{serial_path},server=on,wait=off",
+               "-qmp", f"unix:{qmp_path},server=on,wait=off"]
     for index, (name, serial, size) in enumerate(disks):
         disk = out / f"{name}.qcow2"
         subprocess.run(["qemu-img", "create", "-q", "-f", "qcow2", str(disk), size], check=True)
@@ -139,6 +141,24 @@ def main():
             proof["checks"].append("explicit target install verifies full raw digest; decoy and small untouched")
             proof["passed"] = True
     finally:
+        if not proof["passed"]:
+            print("USB_VM_CONSOLE_TAIL\n" + transcript[-24000:].decode(errors="replace"), flush=True)
+            print("USB_VM_QEMU_LOG\n" + (out / "qemu.log").read_text(errors="replace")[-4000:], flush=True)
+            if process and process.poll() is None:
+                try:
+                    with socket.socket(socket.AF_UNIX) as qmp:
+                        qmp.settimeout(5)
+                        qmp.connect(str(qmp_path))
+                        channel = qmp.makefile("rwb", buffering=0)
+                        channel.readline()
+                        for request in [{"execute": "qmp_capabilities"}, {"execute": "screendump", "arguments": {"filename": str(out / "screen.ppm")}}]:
+                            channel.write((json.dumps(request) + "\n").encode())
+                            while True:
+                                reply = json.loads(channel.readline())
+                                if "return" in reply or "error" in reply:
+                                    break
+                except Exception as e:
+                    print("screenshot unavailable: " + type(e).__name__, flush=True)
         if port:
             port.close()
         if process and process.poll() is None:

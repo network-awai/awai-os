@@ -30,15 +30,19 @@ jobs:
           sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
           df -h /
       - uses: cachix/install-nix-action@b85815f71a6de0ddee80b8a80a98d43f4bcc66c7
-      - name: Evaluate, build and boot the actual offline USB installer
+      - name: Evaluate and build the offline USB ISO
+        id: build-iso
         shell: bash
         run: |
           mkdir -p .agent-output
           nix-instantiate --eval --strict --json --expr 'import ./tests/otehon-usb-eval.nix { nixpkgsPath = import ./ci/nixpkgs.nix; }'
-          nix-build nixos/tests/otehon-usb.nix --out-link result-otehon-usb-check --show-trace 2>&1 | tee .agent-output/usb-build.log
-          nix-build nixos/otehon/default.nix --argstr profile usb-install-6600h --out-link result-otehon-usb
+          nix-build nixos/otehon/default.nix --argstr profile usb-install-6600h --out-link result-otehon-usb --show-trace 2>&1 | tee .agent-output/usb-build.log
           sha256sum result-otehon-usb/iso/*.iso | tee .agent-output/usb-sha256.txt
           git rev-parse HEAD > .agent-output/usb-source-revision.txt
+      - name: Boot and exercise actual USB ISO on scratch disks
+        id: vm
+        shell: bash
+        run: nix-build nixos/tests/otehon-usb.nix --out-link result-otehon-usb-check --keep-failed --show-trace 2>&1 | tee .agent-output/usb-vm.log
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
@@ -46,10 +50,12 @@ jobs:
           path: |
             .agent-output/usb-*
             result-otehon-usb-check/
+            /tmp/nix-build-otehon-offline-usb-vm-check.drv-*/**/proof/
           include-hidden-files: true
           if-no-files-found: ignore
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always() && steps.build-iso.outcome == 'success'
         with:
-          name: awai-otehon-usb-x86_64
+          name: awai-otehon-usb-x86_64-${{ steps.vm.outcome == 'success' && 'vm-passed' || 'unqualified-debug-only' }}
           path: result-otehon-usb/iso/*.iso
           compression-level: 0
