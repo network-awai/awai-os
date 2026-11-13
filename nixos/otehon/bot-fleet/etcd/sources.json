@@ -1,0 +1,17 @@
+{
+  "schema": "awai.otehon.etcd-sources.v1",
+  "version": "3.6.14",
+  "darwin-arm64": {
+    "url": "https://github.com/etcd-io/etcd/releases/download/v3.6.14/etcd-v3.6.14-darwin-arm64.zip",
+    "sha256": "fd154573a1f4c098c214d8233507d2766c43a164f7e339c0385aae71d9a1afaf"
+  },
+  "scope": "Otehon execution control plane; owner approved 2026-11-12; independent from Native",
+  "runtimeSource": {
+    "repository": "cloud-itonami/app-itonami-itonami-agent",
+    "revision": "02828b67ae0219d37c265960ffc7a71e102e7e62",
+    "archiveSha256": "d5846e3acb7eb89f35fc0b8f4b194e3c24cf81fca71b1b5775d6e85245448002",
+    "paths": [
+      "otehon/src"
+    ]
+  }
+}

@@ -1,0 +1,608 @@
+{
+  "schema": "awai.fleet-rollout-evidence.v1",
+  "issues": [
+    "AWAI-2808",
+    "AWAI-2809"
+  ],
+  "parent": "AWAI-2795",
+  "observedAt": "2026-11-12T07:58:26.450Z",
+  "totals": {
+    "registered": 899,
+    "configured": 525,
+    "held": 374,
+    "attention": 0,
+    "queued": 499,
+    "jobsConfigured": 527,
+    "originalJobsConfigured": 2,
+    "adaptedJobsConfigured": 520,
+    "confirmedRuns": 28,
+    "sourceJobs": 1637,
+    "linearBound": 890,
+    "circles": 762,
+    "repositoryCircles": 761
+  },
+  "physics": {
+    "sourceBots": 643,
+    "enrolled": 519,
+    "held": 124,
+    "holdReasons": {
+      "scope-or-solver-budget-unqualified": 102,
+      "source-unavailable": 22
+    },
+    "scope": "pinned-otehon-simulation-only",
+    "runtimeRevision": "a9a1b2fc147cd7e9e5c640383fa6d72544c3449d",
+    "manifestSha256": "1818d9f552e63779d3b8c6f2bfb7fef636af5523a9bc1146cba64c1742006150",
+    "timer": "network.awai.itonami.physics.awai2809",
+    "maxJobsPerWake": 4,
+    "wakeSeconds": 60,
+    "cadence": "original daily HH:MM Asia/Tokyo; latest due occurrence only",
+    "authority": "three-physical-host etcd authenticated CAS/fences; checkpoint is a hint",
+    "computePlacement": "jun-control only; remote compute not qualified",
+    "provider": "none",
+    "model": "deterministic",
+    "tokens": "not-applicable; not a measured zero",
+    "nativeTests": "unmeasured",
+    "actuation": "disabled",
+    "growthAndLand": "held"
+  },
+  "publisher": {
+    "label": "network.awai.itonami.fleet-observer.awai2795",
+    "revision": "776d9cdef7c429b7aebada9d051fcdf97b0fb62e",
+    "manifestSha256": "f7d1eafa9ebfb684a3b2bbadbfa16e434f474261b7e28b193b03d117efeaf4f9",
+    "archiveSha256": "f91b39fb58ab5b692f07869148b8292df0ece3e640b97de6d9409e9cb3a7aa07",
+    "staticOnly": true
+  },
+  "sources": {
+    "readiness": {
+      "state": "fresh",
+      "observedAt": "2026-11-12T07:57:42.458605Z",
+      "ageSeconds": 43,
+      "fresh": true
+    },
+    "original": {
+      "state": "fresh",
+      "observedAt": "2026-11-12T07:57:34.714126Z",
+      "ageSeconds": 51,
+      "fresh": true
+    },
+    "adapted": {
+      "state": "fresh",
+      "observedAt": "2026-11-12T07:57:16.672940Z",
+      "ageSeconds": 69,
+      "fresh": true
+    },
+    "physics": {
+      "state": "fresh",
+      "observedAt": "2026-11-12T07:57:33.162080Z",
+      "ageSeconds": 53,
+      "fresh": true
+    }
+  },
+  "storage": {
+    "snapshotURL": "http://127.0.0.1:8586/itonami-fleet-state-AWAI-2795-v1/wave3-20261112.json",
+    "snapshotSha256": "28c37046222de4420c755ba4d1c6445082d9a0fb3eba7fcc2e609429191f2fe0",
+    "payloadSha256": "77c10501030675eefbabc7eeea42af9e7fe58ea00102cec1ef222920f38f0902",
+    "heldGatesURL": "http://127.0.0.1:8586/itonami-fleet-state-AWAI-2795-v1/held-gates-wave3-20261112.json",
+    "heldGatesSha256": "cc7be05c2f3762b0f37a8521117310cbf6145ceb9435ceab4a63d9a9d6c6f4e5",
+    "readback": true
+  },
+  "remaining": {
+    "unconfiguredBots": 374,
+    "physics": 124,
+    "other": 250,
+    "conditionsNonExclusive": {
+      "no-source-schedule": 50,
+      "unfinished-issue-required": 54,
+      "calendar-executor-required": 304,
+      "scoped-executor-and-grant-required": 311,
+      "script-executor-review-required": 269,
+      "source-disabled-or-paused": 12,
+      "linear-unresolved": 9,
+      "source-verification-required": 7
+    },
+    "mail": "selected Itonami service requires owner account/invite; no authenticated request or fake identity",
+    "sourceDisabled": "preserved",
+    "unknownOutcomes": "reconcile original persisted observation; no simulation re-execution"
+  },
+  "validation": {
+    "nodeTests": 13,
+    "advancedTargets": [
+      "main",
+      "link",
+      "soshiki-runtime"
+    ],
+    "advancedWarnings": 0,
+    "nixStore": "/nix/store/jimp5hgn1v8iqjy3rf9snzq4a5bsqgdf-otehon-bot-fleet-check",
+    "sourceExactHeadCI": {
+      "revision": "a9a1b2fc147cd7e9e5c640383fa6d72544c3449d",
+      "conclusion": "SUCCESS",
+      "url": "https://github.com/cloud-itonami/app-itonami-itonami-agent/actions/runs/43174812448/job/131036371454"
+    },
+    "opsRemoteChecks": "none reported; local checks only",
+    "browser": "525 identities /527 jobs /374 held; per-bot App, typed grants, measured12/12 and original JST next slot visible",
+    "screenshot": ".agent-output/soshiki-physics-rollout-20261112.jpg",
+    "release": "open draft PRs; no production guest UI cutover"
+  },
+  "selected": [
+    {
+      "id": "profile:physai-cofog-03-2",
+      "name": "physai-cofog-03-2",
+      "repository": "cloud-itonami/cloud-itonami-cofog-03.2",
+      "sourceRepository": "cloud-itonami/cloud-itonami-cofog-03.2",
+      "circleIds": [
+        "repo:cloud-itonami/cloud-itonami-cofog-03.2"
+      ],
+      "app": {
+        "id": "repo:cloud-itonami/cloud-itonami-cofog-03.2",
+        "kind": "repository-workspace",
+        "serviceConnected": true,
+        "service": "local:Otehon-pinned-App-physics-spec",
+        "repositoryConnection": {
+          "state": "available-public",
+          "observedAt": "2026-11-12T06:44:53.880Z",
+          "botGrant": false
+        },
+        "contractState": "bounded-operator-connection"
+      },
+      "linear": {
+        "state": "bound",
+        "project": "cloud-itonami/cloud-itonami-cofog-03.2",
+        "projectId": "080b5791-ca41-4c0b-b8cd-42093537ab79",
+        "initiativeId": "a3ec046c-157a-45ec-bb0e-9c0c9aac4260",
+        "issues": [
+          "AWAI-1097"
+        ]
+      },
+      "configured": true,
+      "state": "waiting",
+      "originalJobsConfigured": 0,
+      "adaptedJobsConfigured": 1,
+      "physicsRollout": {
+        "state": "eligible",
+        "reason": null
+      },
+      "jobs": [
+        {
+          "jobId": "1201c64ee746-otehon-physics-v1",
+          "sourceJobId": "1201c64ee746",
+          "scope": "adapted",
+          "adaptation": "pinned Otehon physics only; Native tests/growth/land held",
+          "issueId": "AWAI-1097",
+          "projectId": "080b5791-ca41-4c0b-b8cd-42093537ab79",
+          "configured": true,
+          "state": "waiting",
+          "lastRun": {
+            "id": "original-physai-cofog-03-2-1794411960000",
+            "confirmed": true,
+            "provider": "none",
+            "model": "deterministic",
+            "inputTokens": null,
+            "outputTokens": null,
+            "tokenMetric": "not-applicable",
+            "artifactCid": "bafkreic4u5327kfk2hpyy24yfjnb7xvkyudvivtl5h7xhwkb72wkppb67i",
+            "measurement": {
+              "status": "measured",
+              "scope": "pinned-otehon-simulation-only",
+              "count": 12,
+              "expected": 12,
+              "nativeTests": "unmeasured",
+              "actuation": "disabled"
+            }
+          },
+          "nextSlot": 1794498360000,
+          "owner": "jun-control",
+          "capabilities": [
+            "pinned_physics_read",
+            "physics_simulate_otehon",
+            "result_write",
+            "linear_record"
+          ],
+          "grantCid": "bafkreiavwjwstshvonwsyudrajny5h7fwtyynav5jbttsnq2mtn775hzly",
+          "service": "local:Otehon-pinned-App-physics-spec",
+          "calendarCompiled": true,
+          "sourceObservedAt": "2026-11-12T07:57:33.162080Z"
+        }
+      ],
+      "sourceJobs": [
+        {
+          "id": "1201c64ee746",
+          "name": "physai-cofog-03-2-measure",
+          "schedule": {
+            "kind": "cron",
+            "expr": "46 0 * * *",
+            "display": "46 0 * * *"
+          },
+          "timezone": "Asia/Tokyo",
+          "enabled": false,
+          "adaptedJobId": "1201c64ee746-otehon-physics-v1",
+          "holds": [
+            "script-executor-review-required",
+            "scoped-executor-and-grant-required"
+          ]
+        },
+        {
+          "id": "62d15f86d25f",
+          "name": "physai-cofog-03-2-grow",
+          "schedule": {
+            "kind": "cron",
+            "expr": "7 0 23 * *",
+            "display": "7 0 23 * *"
+          },
+          "timezone": "Asia/Tokyo",
+          "enabled": false,
+          "adaptedJobId": null,
+          "holds": [
+            "script-executor-review-required",
+            "calendar-executor-required",
+            "scoped-executor-and-grant-required"
+          ]
+        }
+      ],
+      "holds": [
+        "script-executor-review-required",
+        "scoped-executor-and-grant-required",
+        "calendar-executor-required"
+      ]
+    },
+    {
+      "id": "profile:physai-cofog-05-1",
+      "name": "physai-cofog-05-1",
+      "repository": "cloud-itonami/cloud-itonami-cofog-05.1",
+      "sourceRepository": "cloud-itonami/cloud-itonami-cofog-05.1",
+      "circleIds": [
+        "repo:cloud-itonami/cloud-itonami-cofog-05.1"
+      ],
+      "app": {
+        "id": "repo:cloud-itonami/cloud-itonami-cofog-05.1",
+        "kind": "repository-workspace",
+        "serviceConnected": true,
+        "service": "local:Otehon-pinned-App-physics-spec",
+        "repositoryConnection": {
+          "state": "available-public",
+          "observedAt": "2026-11-12T06:44:53.880Z",
+          "botGrant": false
+        },
+        "contractState": "bounded-operator-connection"
+      },
+      "linear": {
+        "state": "bound",
+        "project": "cloud-itonami/cloud-itonami-cofog-05.1",
+        "projectId": "73431f83-417d-4ab5-84db-567b0f9e523a",
+        "initiativeId": "a3ec046c-157a-45ec-bb0e-9c0c9aac4260",
+        "issues": [
+          "AWAI-1099"
+        ]
+      },
+      "configured": true,
+      "state": "waiting",
+      "originalJobsConfigured": 0,
+      "adaptedJobsConfigured": 1,
+      "physicsRollout": {
+        "state": "eligible",
+        "reason": null
+      },
+      "jobs": [
+        {
+          "jobId": "cef8692329af-otehon-physics-v1",
+          "sourceJobId": "cef8692329af",
+          "scope": "adapted",
+          "adaptation": "pinned Otehon physics only; Native tests/growth/land held",
+          "issueId": "AWAI-1099",
+          "projectId": "73431f83-417d-4ab5-84db-567b0f9e523a",
+          "configured": true,
+          "state": "waiting",
+          "lastRun": {
+            "id": "original-physai-cofog-05-1-1794412200000",
+            "confirmed": true,
+            "provider": "none",
+            "model": "deterministic",
+            "inputTokens": null,
+            "outputTokens": null,
+            "tokenMetric": "not-applicable",
+            "artifactCid": "bafkreicnljza3tsayemqerwegq5vjxvyyvqkm6wrvp6g5tlvjsg7ik7ctm",
+            "measurement": {
+              "status": "measured",
+              "scope": "pinned-otehon-simulation-only",
+              "count": 10,
+              "expected": 10,
+              "nativeTests": "unmeasured",
+              "actuation": "disabled"
+            }
+          },
+          "nextSlot": 1794498600000,
+          "owner": "jun-control",
+          "capabilities": [
+            "pinned_physics_read",
+            "physics_simulate_otehon",
+            "result_write",
+            "linear_record"
+          ],
+          "grantCid": "bafkreiavwjwstshvonwsyudrajny5h7fwtyynav5jbttsnq2mtn775hzly",
+          "service": "local:Otehon-pinned-App-physics-spec",
+          "calendarCompiled": true,
+          "sourceObservedAt": "2026-11-12T07:57:33.162080Z"
+        }
+      ],
+      "sourceJobs": [
+        {
+          "id": "cef8692329af",
+          "name": "physai-cofog-05-1-measure",
+          "schedule": {
+            "kind": "cron",
+            "expr": "50 0 * * *",
+            "display": "50 0 * * *"
+          },
+          "timezone": "Asia/Tokyo",
+          "enabled": false,
+          "adaptedJobId": "cef8692329af-otehon-physics-v1",
+          "holds": [
+            "script-executor-review-required",
+            "scoped-executor-and-grant-required"
+          ]
+        },
+        {
+          "id": "0e2258b54c7f",
+          "name": "physai-cofog-05-1-grow",
+          "schedule": {
+            "kind": "cron",
+            "expr": "7 0 25 * *",
+            "display": "7 0 25 * *"
+          },
+          "timezone": "Asia/Tokyo",
+          "enabled": false,
+          "adaptedJobId": null,
+          "holds": [
+            "script-executor-review-required",
+            "calendar-executor-required",
+            "scoped-executor-and-grant-required"
+          ]
+        }
+      ],
+      "holds": [
+        "script-executor-review-required",
+        "scoped-executor-and-grant-required",
+        "calendar-executor-required"
+      ]
+    },
+    {
+      "id": "profile:physai-cofog-06-3",
+      "name": "physai-cofog-06-3",
+      "repository": "cloud-itonami/cloud-itonami-cofog-06.3",
+      "sourceRepository": "cloud-itonami/cloud-itonami-cofog-06.3",
+      "circleIds": [
+        "repo:cloud-itonami/cloud-itonami-cofog-06.3"
+      ],
+      "app": {
+        "id": "repo:cloud-itonami/cloud-itonami-cofog-06.3",
+        "kind": "repository-workspace",
+        "serviceConnected": true,
+        "service": "local:Otehon-pinned-App-physics-spec",
+        "repositoryConnection": {
+          "state": "available-public",
+          "observedAt": "2026-11-12T06:44:53.880Z",
+          "botGrant": false
+        },
+        "contractState": "bounded-operator-connection"
+      },
+      "linear": {
+        "state": "bound",
+        "project": "cloud-itonami/cloud-itonami-cofog-06.3",
+        "projectId": "0812a03a-be75-4d70-acae-ad6294b86e27",
+        "initiativeId": "a3ec046c-157a-45ec-bb0e-9c0c9aac4260",
+        "issues": [
+          "AWAI-1100"
+        ]
+      },
+      "configured": true,
+      "state": "waiting",
+      "originalJobsConfigured": 0,
+      "adaptedJobsConfigured": 1,
+      "physicsRollout": {
+        "state": "eligible",
+        "reason": null
+      },
+      "jobs": [
+        {
+          "jobId": "c56d84622a91-otehon-physics-v1",
+          "sourceJobId": "c56d84622a91",
+          "scope": "adapted",
+          "adaptation": "pinned Otehon physics only; Native tests/growth/land held",
+          "issueId": "AWAI-1100",
+          "projectId": "0812a03a-be75-4d70-acae-ad6294b86e27",
+          "configured": true,
+          "state": "waiting",
+          "lastRun": {
+            "id": "original-physai-cofog-06-3-1794412320000",
+            "confirmed": true,
+            "provider": "none",
+            "model": "deterministic",
+            "inputTokens": null,
+            "outputTokens": null,
+            "tokenMetric": "not-applicable",
+            "artifactCid": "bafkreig5t3c4d5dq3jggcfcwtxmon7ioewpxgs7cy6gemsskmmsdt6adxm",
+            "measurement": {
+              "status": "measured",
+              "scope": "pinned-otehon-simulation-only",
+              "count": 10,
+              "expected": 10,
+              "nativeTests": "unmeasured",
+              "actuation": "disabled"
+            }
+          },
+          "nextSlot": 1794498720000,
+          "owner": "jun-control",
+          "capabilities": [
+            "pinned_physics_read",
+            "physics_simulate_otehon",
+            "result_write",
+            "linear_record"
+          ],
+          "grantCid": "bafkreiavwjwstshvonwsyudrajny5h7fwtyynav5jbttsnq2mtn775hzly",
+          "service": "local:Otehon-pinned-App-physics-spec",
+          "calendarCompiled": true,
+          "sourceObservedAt": "2026-11-12T07:57:33.162080Z"
+        }
+      ],
+      "sourceJobs": [
+        {
+          "id": "c56d84622a91",
+          "name": "physai-cofog-06-3-measure",
+          "schedule": {
+            "kind": "cron",
+            "expr": "52 0 * * *",
+            "display": "52 0 * * *"
+          },
+          "timezone": "Asia/Tokyo",
+          "enabled": false,
+          "adaptedJobId": "c56d84622a91-otehon-physics-v1",
+          "holds": [
+            "script-executor-review-required",
+            "scoped-executor-and-grant-required"
+          ]
+        },
+        {
+          "id": "359b7575b633",
+          "name": "physai-cofog-06-3-grow",
+          "schedule": {
+            "kind": "cron",
+            "expr": "7 0 26 * *",
+            "display": "7 0 26 * *"
+          },
+          "timezone": "Asia/Tokyo",
+          "enabled": false,
+          "adaptedJobId": null,
+          "holds": [
+            "script-executor-review-required",
+            "calendar-executor-required",
+            "scoped-executor-and-grant-required"
+          ]
+        }
+      ],
+      "holds": [
+        "script-executor-review-required",
+        "scoped-executor-and-grant-required",
+        "calendar-executor-required"
+      ]
+    },
+    {
+      "id": "profile:physai-isco-0110",
+      "name": "physai-isco-0110",
+      "repository": "cloud-itonami/cloud-itonami-isco-0110",
+      "sourceRepository": "cloud-itonami/cloud-itonami-isco-0110",
+      "circleIds": [
+        "repo:cloud-itonami/cloud-itonami-isco-0110"
+      ],
+      "app": {
+        "id": "repo:cloud-itonami/cloud-itonami-isco-0110",
+        "kind": "repository-workspace",
+        "serviceConnected": true,
+        "service": "local:Otehon-pinned-App-physics-spec",
+        "repositoryConnection": {
+          "state": "available-public",
+          "observedAt": "2026-11-12T06:44:53.880Z",
+          "botGrant": false
+        },
+        "contractState": "bounded-operator-connection"
+      },
+      "linear": {
+        "state": "bound",
+        "project": "cloud-itonami/cloud-itonami-isco-0110",
+        "projectId": "5f034278-6239-4fe3-b6ab-a57652f52f99",
+        "initiativeId": "a3ec046c-157a-45ec-bb0e-9c0c9aac4260",
+        "issues": [
+          "AWAI-1119"
+        ]
+      },
+      "configured": true,
+      "state": "waiting",
+      "originalJobsConfigured": 0,
+      "adaptedJobsConfigured": 1,
+      "physicsRollout": {
+        "state": "eligible",
+        "reason": null
+      },
+      "jobs": [
+        {
+          "jobId": "8f4031b63e8c-otehon-physics-v1",
+          "sourceJobId": "8f4031b63e8c",
+          "scope": "adapted",
+          "adaptation": "pinned Otehon physics only; Native tests/growth/land held",
+          "issueId": "AWAI-1119",
+          "projectId": "5f034278-6239-4fe3-b6ab-a57652f52f99",
+          "configured": true,
+          "state": "waiting",
+          "lastRun": {
+            "id": "original-physai-isco-0110-1794412560000",
+            "confirmed": true,
+            "provider": "none",
+            "model": "deterministic",
+            "inputTokens": null,
+            "outputTokens": null,
+            "tokenMetric": "not-applicable",
+            "artifactCid": "bafkreifvbepmdmlnps6pymwptb46zsj54cg3heqqjnfbfrnijwrtk35mii",
+            "measurement": {
+              "status": "measured",
+              "scope": "pinned-otehon-simulation-only",
+              "count": 10,
+              "expected": 10,
+              "nativeTests": "unmeasured",
+              "actuation": "disabled"
+            }
+          },
+          "nextSlot": 1794498960000,
+          "owner": "jun-control",
+          "capabilities": [
+            "pinned_physics_read",
+            "physics_simulate_otehon",
+            "result_write",
+            "linear_record"
+          ],
+          "grantCid": "bafkreiavwjwstshvonwsyudrajny5h7fwtyynav5jbttsnq2mtn775hzly",
+          "service": "local:Otehon-pinned-App-physics-spec",
+          "calendarCompiled": true,
+          "sourceObservedAt": "2026-11-12T07:57:33.162080Z"
+        }
+      ],
+      "sourceJobs": [
+        {
+          "id": "8f4031b63e8c",
+          "name": "physai-isco-0110-measure",
+          "schedule": {
+            "kind": "cron",
+            "expr": "56 0 * * *",
+            "display": "56 0 * * *"
+          },
+          "timezone": "Asia/Tokyo",
+          "enabled": false,
+          "adaptedJobId": "8f4031b63e8c-otehon-physics-v1",
+          "holds": [
+            "script-executor-review-required",
+            "scoped-executor-and-grant-required"
+          ]
+        },
+        {
+          "id": "ad3578729b05",
+          "name": "physai-isco-0110-grow",
+          "schedule": {
+            "kind": "cron",
+            "expr": "7 0 28 * *",
+            "display": "7 0 28 * *"
+          },
+          "timezone": "Asia/Tokyo",
+          "enabled": false,
+          "adaptedJobId": null,
+          "holds": [
+            "script-executor-review-required",
+            "calendar-executor-required",
+            "scoped-executor-and-grant-required"
+          ]
+        }
+      ],
+      "holds": [
+        "script-executor-review-required",
+        "scoped-executor-and-grant-required",
+        "calendar-executor-required"
+      ]
+    }
+  ]
+}

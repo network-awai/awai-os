@@ -1,0 +1,179 @@
+{
+  "schema": "awai.physics-recovery-evidence.v1",
+  "issues": [
+    "AWAI-2809",
+    "AWAI-2808"
+  ],
+  "observedAt": "2026-11-12T08:17:20.194654Z",
+  "initialWaveEvidence": "itonami-physics-rollout-20261112.json",
+  "sourceRevision": "a9a1b2fc147cd7e9e5c640383fa6d72544c3449d",
+  "operatorRecovery": [
+    {
+      "bot": "profile:physai-isco-2113",
+      "run": "original-physai-isco-2113-1794415860000",
+      "state": "completed",
+      "simulationSha256": "7c37599d14cc908bce50d1677acbcf6de4afc409bbc8a2b854cdb5165e4cfaf2",
+      "childReexecuted": false,
+      "artifact": {
+        "cid": "bafkreieohapqibnvze3qody4ybrxov5gi645u7wd2khzjrgzqobwdyj2ii",
+        "sha256": "8e381f0405b5c937070f1cc0637757a647b9da7ec3d28f94c4d9838361e13a42",
+        "readback": true
+      },
+      "linear": true
+    },
+    {
+      "bot": "profile:physai-isco-2133",
+      "run": "original-physai-isco-2133-1794416280000",
+      "state": "completed",
+      "simulationSha256": "cf6d8cdb6d9fdd04593a04bca932636ef16ba6ccd272809b3198aa7758b4e63f",
+      "childReexecuted": false,
+      "artifact": {
+        "cid": "bafkreigospttfkelhcdhdwz3k3z73rmure4zf2vn4qytshg3cdgrjlosdy",
+        "sha256": "ce93e732a88b388671db3b56f3fdc594893992eaade431391cdb10cd14add21e",
+        "readback": true
+      },
+      "linear": true
+    }
+  ],
+  "automaticRecovery": {
+    "bot": "profile:physai-isco-2143",
+    "operatorRecoveryInvoked": false,
+    "checkpointMutation": false,
+    "simulationReexecuted": false,
+    "before": {
+      "observedAt": "2026-11-12T08:08:39.125721Z",
+      "scope": "read-only-existing-claims-no-dispatch",
+      "rows": [
+        {
+          "bot": "profile:physai-isco-2113",
+          "run": "original-physai-isco-2113-1794415860000",
+          "checkpointState": "unknown",
+          "claimState": "completed",
+          "simulationSha256": "7c37599d14cc908bce50d1677acbcf6de4afc409bbc8a2b854cdb5165e4cfaf2",
+          "resultSaved": true,
+          "linearConfirmed": true
+        },
+        {
+          "bot": "profile:physai-isco-2133",
+          "run": "original-physai-isco-2133-1794416280000",
+          "checkpointState": "unknown",
+          "claimState": "completed",
+          "simulationSha256": "cf6d8cdb6d9fdd04593a04bca932636ef16ba6ccd272809b3198aa7758b4e63f",
+          "resultSaved": true,
+          "linearConfirmed": true
+        },
+        {
+          "bot": "profile:physai-isco-2143",
+          "run": "original-physai-isco-2143-1794416640000",
+          "checkpointState": "unknown",
+          "claimState": "admitted",
+          "simulationSha256": "d138ddb7a37798ae8457315ba22b4347aca253c0f99575f043231696fc0c1e8b",
+          "resultSaved": false,
+          "linearConfirmed": false
+        }
+      ]
+    },
+    "after": {
+      "observedAt": "2026-11-12T08:17:20.194654Z",
+      "scope": "read-only-existing-claims-no-dispatch",
+      "rows": [
+        {
+          "bot": "profile:physai-isco-2113",
+          "run": "original-physai-isco-2113-1794415860000",
+          "checkpointState": "waiting",
+          "claimState": "completed",
+          "simulationSha256": "7c37599d14cc908bce50d1677acbcf6de4afc409bbc8a2b854cdb5165e4cfaf2",
+          "resultSaved": true,
+          "linearConfirmed": true
+        },
+        {
+          "bot": "profile:physai-isco-2133",
+          "run": "original-physai-isco-2133-1794416280000",
+          "checkpointState": "waiting",
+          "claimState": "completed",
+          "simulationSha256": "cf6d8cdb6d9fdd04593a04bca932636ef16ba6ccd272809b3198aa7758b4e63f",
+          "resultSaved": true,
+          "linearConfirmed": true
+        },
+        {
+          "bot": "profile:physai-isco-2143",
+          "run": "original-physai-isco-2143-1794416640000",
+          "checkpointState": "waiting",
+          "claimState": "completed",
+          "simulationSha256": "d138ddb7a37798ae8457315ba22b4347aca253c0f99575f043231696fc0c1e8b",
+          "resultSaved": true,
+          "linearConfirmed": true
+        }
+      ]
+    },
+    "linearReadback": {
+      "observedAt": "2026-11-12T08:17:22.874Z",
+      "scope": "independent-owning-Issue-comment-readback-no-write",
+      "rows": [
+        {
+          "bot": "profile:physai-isco-2113",
+          "issue": "AWAI-1152",
+          "issueUuid": "923413f8-64ff-447c-b5da-45873ded6431",
+          "project": "904d95ca-d7f7-4f86-8309-be9ff52d4bf2",
+          "workflow": "started",
+          "forecastComments": 1,
+          "resultComments": 1
+        },
+        {
+          "bot": "profile:physai-isco-2133",
+          "issue": "AWAI-1157",
+          "issueUuid": "be8a2e5e-3658-4ccd-a880-d580e0d7d188",
+          "project": "61029fd9-3985-47c0-9014-8d6ffac9c1af",
+          "workflow": "started",
+          "forecastComments": 1,
+          "resultComments": 1
+        },
+        {
+          "bot": "profile:physai-isco-2143",
+          "issue": "AWAI-1160",
+          "issueUuid": "4f91dfdc-8e48-4234-bdbc-7849b30c32c4",
+          "project": "b1396d17-6b91-4696-a3e1-c57f082804dd",
+          "workflow": "started",
+          "forecastComments": 1,
+          "resultComments": 1
+        }
+      ]
+    }
+  },
+  "rollout": {
+    "observedAt": "2026-11-12T08:17:18.499652Z",
+    "total": 519,
+    "states": {
+      "waiting": 49,
+      "queued": 470
+    },
+    "scope": "pinned-otehon-simulation-only",
+    "model": "none/deterministic",
+    "tokens": "not-applicable",
+    "nativeTests": "unmeasured",
+    "actuation": "disabled"
+  },
+  "holdAnalysis": {
+    "url": "http://127.0.0.1:8586/itonami-fleet-state-AWAI-2795-v1/physics-hold-analysis-wave3-20261112.json",
+    "sha256": "23b0bb618cf0483533189fae4997d49c17bff7cbea4d20dea23e108a9caee475",
+    "readback": true,
+    "counts": {
+      "pinned bounded physics spec required": 70,
+      "solver budget invalid": 1,
+      "total simulation budget exceeded": 19,
+      "thermal budget invalid": 12
+    }
+  },
+  "codeValidation": {
+    "opsRevision": "f851915398ef2007f5d60f25816de4e608b6fdcc",
+    "conclusion": "SUCCESS",
+    "checks": [
+      "evaluate",
+      "otehon"
+    ],
+    "url": "https://github.com/network-awai/awai-os/actions/runs/43179637179",
+    "sourceRevision": "a9a1b2fc147cd7e9e5c640383fa6d72544c3449d",
+    "sourceConclusion": "SUCCESS"
+  },
+  "qualification": "original result recovery verified; no full-App/Native/remote-compute or cold-boot claim"
+}

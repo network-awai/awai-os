@@ -69,6 +69,7 @@ test("externs cover every plain-JS boundary property", async () => {
   const jsFiles = [
     "src/runtime.js", "src/trust.js", "src/soshiki.js", "src/media.js",
     "src/net.js", "src/display.js", "src/sound.js", "src/status.js",
+    "src/soshiki-runtime.js", "src/soshiki-fleet.js", "src/fleet-projection.js",
     "src/saifu-host.js", "src/voice-input.js", "src/csp.js",
     "src/identity/link.js", "src/identity/device.js", "src/identity/wallet.js",
   ];

@@ -1,0 +1,720 @@
+{
+  "issue": "AWAI-2808",
+  "parent": "AWAI-2795",
+  "observedAt": "2026-11-12T06:54:05.448Z",
+  "schema": "awai.fleet-state.v1",
+  "catalogSha256": "db61a8661eac91abaa886d88be28ba1a15a721dbf92007ca1ee3477d837853d2",
+  "artifactSha256": "c70e5c329e8721fef9a8496f244daf032e8eedbad044e968cd1bc9e0ce15bc58",
+  "payloadSha256": "41677be3bcf8d91e38c3b41562f4d47c2d363c475b3da446f808e9154cffc802",
+  "publisherSource": "a641666",
+  "manifestSha256": "14a9081fea46ae8dda6fb3a4c1b33d67ae481fc8e2a0fd33a0a011a188ad8e93",
+  "totals": {
+    "registered": 899,
+    "configured": 6,
+    "held": 893,
+    "attention": 1,
+    "jobsConfigured": 8,
+    "originalJobsConfigured": 2,
+    "adaptedJobsConfigured": 1,
+    "confirmedRuns": 8,
+    "sourceJobs": 1637,
+    "linearBound": 890,
+    "circles": 762,
+    "repositoryCircles": 761
+  },
+  "connections": {
+    "verifiedRepositories": 755,
+    "unverifiedRequestedRepositories": [
+      "kotoba-lang/kami-engine-animation",
+      "kotoba-lang/codec-primitives",
+      "kotoba-lang/test",
+      "kotoba-lang/kotoba-vm",
+      "kotoba-lang/text",
+      "kotoba-lang/wasm-webcomponent"
+    ],
+    "botStates": {
+      "available-public": 889,
+      "unobserved": 8,
+      "archived": 2
+    }
+  },
+  "holds": {
+    "no-source-schedule": 50,
+    "unfinished-issue-required": 54,
+    "calendar-executor-required": 824,
+    "scoped-executor-and-grant-required": 836,
+    "script-executor-review-required": 791,
+    "source-disabled-or-paused": 12,
+    "linear-unresolved": 9,
+    "source-verification-required": 7
+  },
+  "selected": [
+    {
+      "id": "profile:awai-arb",
+      "name": "awai-arb",
+      "repository": "cloud-itonami/ao-arbitrage",
+      "sourceRepository": "cloud-itonami/ao-arbitrage",
+      "circleIds": [
+        "repo:cloud-itonami/ao-arbitrage"
+      ],
+      "app": {
+        "id": "repo:cloud-itonami/ao-arbitrage",
+        "kind": "repository-workspace",
+        "serviceConnected": true,
+        "service": "https://itonami.cloud",
+        "repositoryConnection": {
+          "state": "available-public",
+          "observedAt": "2026-11-12T06:44:53.880Z",
+          "botGrant": false
+        },
+        "contractState": "bounded-operator-connection"
+      },
+      "linear": {
+        "state": "bound",
+        "project": "cloud-itonami/ao-arbitrage",
+        "projectId": "826af322-426f-4f03-8f7b-9814ae9cb1f7",
+        "initiativeId": "a3ec046c-157a-45ec-bb0e-9c0c9aac4260",
+        "issues": [
+          "AWAI-750"
+        ]
+      },
+      "configured": true,
+      "state": "waiting",
+      "originalJobsConfigured": 1,
+      "adaptedJobsConfigured": 0,
+      "jobs": [
+        {
+          "jobId": "887b2183be7c-readiness-v1",
+          "sourceJobId": "887b2183be7c",
+          "scope": "readiness",
+          "adaptation": null,
+          "issueId": "AWAI-750",
+          "projectId": "826af322-426f-4f03-8f7b-9814ae9cb1f7",
+          "configured": true,
+          "state": "waiting",
+          "lastRun": {
+            "id": "readiness-awai-arb-1794458520000",
+            "confirmed": true,
+            "provider": "meta",
+            "model": "muse-spark-1.3",
+            "inputTokens": 21244,
+            "outputTokens": 862,
+            "tokenMetric": "provider-input-output",
+            "artifactCid": null
+          },
+          "nextSlot": 1794480120000,
+          "owner": "jun-control",
+          "capabilities": [
+            "inference_muse"
+          ],
+          "grantCid": null,
+          "service": null,
+          "sourceObservedAt": "2026-11-12T06:53:48.053632Z"
+        },
+        {
+          "jobId": "887b2183be7c",
+          "sourceJobId": "887b2183be7c",
+          "scope": "original",
+          "adaptation": null,
+          "issueId": "AWAI-750",
+          "projectId": "826af322-426f-4f03-8f7b-9814ae9cb1f7",
+          "configured": true,
+          "state": "waiting",
+          "lastRun": {
+            "id": "original-awai-arb-1794462569000",
+            "confirmed": true,
+            "provider": "none",
+            "model": "deterministic",
+            "inputTokens": null,
+            "outputTokens": null,
+            "tokenMetric": "not-applicable",
+            "artifactCid": "bafkreigkyun7odjrmvwuhmhynkyoid26g5bk6q5ekpuon352ssuk3quuea"
+          },
+          "nextSlot": 1794484169000,
+          "owner": "jun-control",
+          "capabilities": [
+            "registry_public_read",
+            "result_write",
+            "linear_record"
+          ],
+          "grantCid": "bafkreiaofinzr4b436444ch62vjpw2ykw7zxh3vlbgxw3zy3vfmj536sau",
+          "service": "https://itonami.cloud",
+          "sourceObservedAt": "2026-11-12T06:53:29.111101Z"
+        }
+      ],
+      "sourceJobs": [
+        {
+          "id": "f53b46a04c46",
+          "name": "awai-arb-measure",
+          "schedule": {
+            "kind": "interval",
+            "minutes": 30,
+            "display": "every 30m"
+          },
+          "timezone": null,
+          "enabled": false,
+          "adaptedJobId": null,
+          "holds": [
+            "script-executor-review-required",
+            "scoped-executor-and-grant-required"
+          ]
+        },
+        {
+          "id": "887b2183be7c",
+          "name": "awai-arb-ossekai-report",
+          "schedule": {
+            "kind": "interval",
+            "minutes": 360,
+            "display": "every 360m"
+          },
+          "timezone": null,
+          "enabled": true,
+          "adaptedJobId": null,
+          "holds": []
+        },
+        {
+          "id": "e0cf6db3143f",
+          "name": "awai-arb-propose-post",
+          "schedule": {
+            "kind": "interval",
+            "minutes": 30,
+            "display": "every 30m"
+          },
+          "timezone": null,
+          "enabled": false,
+          "adaptedJobId": null,
+          "holds": [
+            "script-executor-review-required",
+            "scoped-executor-and-grant-required"
+          ]
+        }
+      ],
+      "holds": [
+        "script-executor-review-required",
+        "scoped-executor-and-grant-required"
+      ]
+    },
+    {
+      "id": "profile:cron-health",
+      "name": "cron-health",
+      "repository": "cloud-itonami/ao-bot-fleet",
+      "sourceRepository": "cloud-itonami/ao-bot-fleet",
+      "circleIds": [
+        "repo:cloud-itonami/ao-bot-fleet"
+      ],
+      "app": {
+        "id": "repo:cloud-itonami/ao-bot-fleet",
+        "kind": "repository-workspace",
+        "serviceConnected": true,
+        "service": "http://127.0.0.1:8586/itonami-fleet-state-AWAI-2795-v1/summary.json",
+        "repositoryConnection": {
+          "state": "available-public",
+          "observedAt": "2026-11-12T06:44:53.880Z",
+          "botGrant": false
+        },
+        "contractState": "bounded-operator-connection"
+      },
+      "linear": {
+        "state": "bound",
+        "project": "cloud-itonami/ao-bot-fleet",
+        "projectId": "40a48fc3-99a2-4749-872a-500660a78e8b",
+        "initiativeId": "a3ec046c-157a-45ec-bb0e-9c0c9aac4260",
+        "issues": [
+          "AWAI-752"
+        ]
+      },
+      "configured": true,
+      "state": "attention",
+      "originalJobsConfigured": 0,
+      "adaptedJobsConfigured": 1,
+      "jobs": [
+        {
+          "jobId": "b777d8b13259-itonami-v1",
+          "sourceJobId": "b777d8b13259",
+          "scope": "adapted",
+          "adaptation": "itonami-only; no Hermes state",
+          "issueId": "AWAI-752",
+          "projectId": "40a48fc3-99a2-4749-872a-500660a78e8b",
+          "configured": true,
+          "state": "unobserved-result",
+          "lastRun": {
+            "id": "original-cron-health-1794465401000",
+            "confirmed": true,
+            "provider": "none",
+            "model": "deterministic",
+            "inputTokens": null,
+            "outputTokens": null,
+            "tokenMetric": "not-applicable",
+            "artifactCid": "bafkreifktzq4d3wz7a5f6dnomjltoaycrdeq3hlufvhmooxeq4favwdn5a"
+          },
+          "nextSlot": 1794469001000,
+          "owner": "jun-control",
+          "capabilities": [
+            "fleet_observation_read",
+            "result_write",
+            "linear_record"
+          ],
+          "grantCid": "bafkreiei3ta25qjmk4i2vdwxzrvwbdjtvnd6rrvx3ptjsfs4ftgd5edcue",
+          "service": "http://127.0.0.1:8586/itonami-fleet-state-AWAI-2795-v1/summary.json",
+          "sourceObservedAt": "2026-11-12T06:53:12.524595Z"
+        }
+      ],
+      "sourceJobs": [
+        {
+          "id": "b777d8b13259",
+          "name": "cron-health-measure",
+          "schedule": {
+            "kind": "interval",
+            "minutes": 60,
+            "display": "every 60m"
+          },
+          "timezone": null,
+          "enabled": false,
+          "adaptedJobId": "b777d8b13259-itonami-v1",
+          "holds": [
+            "script-executor-review-required",
+            "scoped-executor-and-grant-required"
+          ]
+        },
+        {
+          "id": "e29f637c3e82",
+          "name": "cron-health-report",
+          "schedule": {
+            "kind": "cron",
+            "expr": "20 0-23/12 * * *",
+            "display": "20 0-23/12 * * *"
+          },
+          "timezone": "Asia/Tokyo",
+          "enabled": false,
+          "adaptedJobId": null,
+          "holds": [
+            "calendar-executor-required",
+            "scoped-executor-and-grant-required"
+          ]
+        }
+      ],
+      "holds": [
+        "script-executor-review-required",
+        "scoped-executor-and-grant-required",
+        "calendar-executor-required"
+      ]
+    },
+    {
+      "id": "profile:mail-relay",
+      "name": "mail-relay",
+      "repository": "cloud-itonami/app-itonami-mail-relay",
+      "sourceRepository": "cloud-itonami/app-mail-relay",
+      "circleIds": [
+        "repo:cloud-itonami/app-mail-relay"
+      ],
+      "app": {
+        "id": "repo:cloud-itonami/app-itonami-mail-relay",
+        "kind": "repository-workspace",
+        "serviceConnected": false,
+        "service": null,
+        "repositoryConnection": {
+          "state": "available-public",
+          "observedAt": "2026-11-12T06:44:53.880Z",
+          "botGrant": false
+        },
+        "contractState": "mail-account-required"
+      },
+      "linear": {
+        "state": "bound",
+        "project": "cloud-itonami/app-itonami-mail-relay",
+        "projectId": "bff09474-9906-49aa-9265-a99623ef12f2",
+        "initiativeId": "a3ec046c-157a-45ec-bb0e-9c0c9aac4260",
+        "issues": [
+          "AWAI-893"
+        ]
+      },
+      "configured": true,
+      "state": "waiting",
+      "originalJobsConfigured": 0,
+      "adaptedJobsConfigured": 0,
+      "jobs": [
+        {
+          "jobId": "3926a8cfbb1a-readiness-v1",
+          "sourceJobId": "3926a8cfbb1a",
+          "scope": "readiness",
+          "adaptation": null,
+          "issueId": "AWAI-893",
+          "projectId": "bff09474-9906-49aa-9265-a99623ef12f2",
+          "configured": true,
+          "state": "waiting",
+          "lastRun": {
+            "id": "readiness-mail-relay-1794458520000",
+            "confirmed": true,
+            "provider": "meta",
+            "model": "muse-spark-1.3",
+            "inputTokens": 22499,
+            "outputTokens": 853,
+            "tokenMetric": "provider-input-output",
+            "artifactCid": null
+          },
+          "nextSlot": 1794480120000,
+          "owner": "jun-control",
+          "capabilities": [
+            "inference_muse"
+          ],
+          "grantCid": null,
+          "service": null,
+          "sourceObservedAt": "2026-11-12T06:53:48.053632Z"
+        }
+      ],
+      "sourceJobs": [
+        {
+          "id": "3926a8cfbb1a",
+          "name": "mail-relay-tick",
+          "schedule": {
+            "kind": "interval",
+            "minutes": 360,
+            "display": "every 360m"
+          },
+          "timezone": null,
+          "enabled": false,
+          "adaptedJobId": null,
+          "holds": [
+            "scoped-executor-and-grant-required"
+          ]
+        },
+        {
+          "id": "a23d8ac2918b",
+          "name": "mail-relay-dev",
+          "schedule": {
+            "kind": "interval",
+            "minutes": 360,
+            "display": "every 360m"
+          },
+          "timezone": null,
+          "enabled": false,
+          "adaptedJobId": null,
+          "holds": [
+            "scoped-executor-and-grant-required"
+          ]
+        }
+      ],
+      "holds": [
+        "scoped-executor-and-grant-required"
+      ]
+    },
+    {
+      "id": "profile:public-bots-registrar",
+      "name": "public-bots-registrar",
+      "repository": "cloud-itonami/cloud-itonami-app",
+      "sourceRepository": "cloud-itonami/cloud-itonami-app",
+      "circleIds": [
+        "repo:cloud-itonami/cloud-itonami-app"
+      ],
+      "app": {
+        "id": "repo:cloud-itonami/cloud-itonami-app",
+        "kind": "repository-workspace",
+        "serviceConnected": true,
+        "service": "https://itonami.cloud",
+        "repositoryConnection": {
+          "state": "available-public",
+          "observedAt": "2026-11-12T06:44:53.880Z",
+          "botGrant": false
+        },
+        "contractState": "bounded-operator-connection"
+      },
+      "linear": {
+        "state": "bound",
+        "project": "cloud-itonami/cloud-itonami-app",
+        "projectId": "1ebf0b00-f96c-41ae-8c24-acf5d49d5937",
+        "initiativeId": "a3ec046c-157a-45ec-bb0e-9c0c9aac4260",
+        "issues": [
+          "AWAI-1012"
+        ]
+      },
+      "configured": true,
+      "state": "waiting",
+      "originalJobsConfigured": 1,
+      "adaptedJobsConfigured": 0,
+      "jobs": [
+        {
+          "jobId": "08c4f34d927f-readiness-v1",
+          "sourceJobId": "08c4f34d927f",
+          "scope": "readiness",
+          "adaptation": null,
+          "issueId": "AWAI-1012",
+          "projectId": "1ebf0b00-f96c-41ae-8c24-acf5d49d5937",
+          "configured": true,
+          "state": "waiting",
+          "lastRun": {
+            "id": "readiness-public-bots-registrar-1794458520000",
+            "confirmed": true,
+            "provider": "meta",
+            "model": "muse-spark-1.3",
+            "inputTokens": 21032,
+            "outputTokens": 860,
+            "tokenMetric": "provider-input-output",
+            "artifactCid": null
+          },
+          "nextSlot": 1794544920000,
+          "owner": "jun-control",
+          "capabilities": [
+            "inference_muse"
+          ],
+          "grantCid": null,
+          "service": null,
+          "sourceObservedAt": "2026-11-12T06:53:48.053632Z"
+        },
+        {
+          "jobId": "08c4f34d927f",
+          "sourceJobId": "08c4f34d927f",
+          "scope": "original",
+          "adaptation": null,
+          "issueId": "AWAI-1012",
+          "projectId": "1ebf0b00-f96c-41ae-8c24-acf5d49d5937",
+          "configured": true,
+          "state": "waiting",
+          "lastRun": {
+            "id": "original-public-bots-registrar-1794462569000",
+            "confirmed": true,
+            "provider": "none",
+            "model": "deterministic",
+            "inputTokens": null,
+            "outputTokens": null,
+            "tokenMetric": "not-applicable",
+            "artifactCid": "bafkreibkasddlho3eh7rfuqnnfatu35iw5fvizere63mti4kn4woqmuf6m"
+          },
+          "nextSlot": 1794548969000,
+          "owner": "jun-control",
+          "capabilities": [
+            "registry_public_read",
+            "result_write",
+            "linear_record"
+          ],
+          "grantCid": "bafkreiehcmhbgfb4ro4n6zhgjuq676i5ljoptnrwq2t6bzey6fd6jjw3ji",
+          "service": "https://itonami.cloud",
+          "sourceObservedAt": "2026-11-12T06:53:29.111101Z"
+        }
+      ],
+      "sourceJobs": [
+        {
+          "id": "5ce455d1f879",
+          "name": "pbr-watch",
+          "schedule": {
+            "kind": "interval",
+            "minutes": 60,
+            "display": "every 60m"
+          },
+          "timezone": null,
+          "enabled": false,
+          "adaptedJobId": null,
+          "holds": [
+            "script-executor-review-required",
+            "scoped-executor-and-grant-required"
+          ]
+        },
+        {
+          "id": "08c4f34d927f",
+          "name": "pbr-agent",
+          "schedule": {
+            "kind": "interval",
+            "minutes": 1440,
+            "display": "every 1440m"
+          },
+          "timezone": null,
+          "enabled": true,
+          "adaptedJobId": null,
+          "holds": []
+        }
+      ],
+      "holds": [
+        "script-executor-review-required",
+        "scoped-executor-and-grant-required"
+      ]
+    },
+    {
+      "id": "profile:rule-kaizen",
+      "name": "rule-kaizen",
+      "repository": "cloud-itonami/ao-repo-steward",
+      "sourceRepository": "cloud-itonami/ao-repo-steward",
+      "circleIds": [
+        "repo:cloud-itonami/ao-repo-steward"
+      ],
+      "app": {
+        "id": "repo:cloud-itonami/ao-repo-steward",
+        "kind": "repository-workspace",
+        "serviceConnected": false,
+        "service": null,
+        "repositoryConnection": {
+          "state": "available-public",
+          "observedAt": "2026-11-12T06:44:53.880Z",
+          "botGrant": false
+        },
+        "contractState": "service-contract-required"
+      },
+      "linear": {
+        "state": "bound",
+        "project": "cloud-itonami/ao-repo-steward",
+        "projectId": "772006dd-e669-4daf-a131-9cb881983dac",
+        "initiativeId": "a3ec046c-157a-45ec-bb0e-9c0c9aac4260",
+        "issues": [
+          "AWAI-755"
+        ]
+      },
+      "configured": true,
+      "state": "waiting",
+      "originalJobsConfigured": 0,
+      "adaptedJobsConfigured": 0,
+      "jobs": [
+        {
+          "jobId": "24b4bec8c51b-readiness-v1",
+          "sourceJobId": "24b4bec8c51b",
+          "scope": "readiness",
+          "adaptation": null,
+          "issueId": "AWAI-755",
+          "projectId": "772006dd-e669-4daf-a131-9cb881983dac",
+          "configured": true,
+          "state": "waiting",
+          "lastRun": {
+            "id": "readiness-rule-kaizen-1794458520000",
+            "confirmed": true,
+            "provider": "meta",
+            "model": "muse-spark-1.3",
+            "inputTokens": 20227,
+            "outputTokens": 792,
+            "tokenMetric": "provider-input-output",
+            "artifactCid": null
+          },
+          "nextSlot": 1794544920000,
+          "owner": "jun-control",
+          "capabilities": [
+            "inference_muse"
+          ],
+          "grantCid": null,
+          "service": null,
+          "sourceObservedAt": "2026-11-12T06:53:48.053632Z"
+        }
+      ],
+      "sourceJobs": [
+        {
+          "id": "24b4bec8c51b",
+          "name": "rule-kaizen-tick",
+          "schedule": {
+            "kind": "interval",
+            "minutes": 1440,
+            "display": "every 1440m"
+          },
+          "timezone": null,
+          "enabled": false,
+          "adaptedJobId": null,
+          "holds": [
+            "scoped-executor-and-grant-required"
+          ]
+        }
+      ],
+      "holds": [
+        "scoped-executor-and-grant-required"
+      ]
+    },
+    {
+      "id": "profile:sec-toolkit-maturity",
+      "name": "sec-toolkit-maturity",
+      "repository": "cloud-itonami/app-itonami-security-toolkit",
+      "sourceRepository": "kotoba-lang/security-toolkit",
+      "circleIds": [
+        "repo:kotoba-lang/security-toolkit"
+      ],
+      "app": {
+        "id": "repo:cloud-itonami/app-itonami-security-toolkit",
+        "kind": "repository-workspace",
+        "serviceConnected": false,
+        "service": null,
+        "repositoryConnection": {
+          "state": "available-public",
+          "observedAt": "2026-11-12T06:44:53.880Z",
+          "botGrant": false
+        },
+        "contractState": "service-contract-required"
+      },
+      "linear": {
+        "state": "bound",
+        "project": "cloud-itonami/app-itonami-security-toolkit",
+        "projectId": "1a2cd9bb-dcf2-4292-936e-34f937762738",
+        "initiativeId": "a3ec046c-157a-45ec-bb0e-9c0c9aac4260",
+        "issues": [
+          "AWAI-943"
+        ]
+      },
+      "configured": true,
+      "state": "waiting",
+      "originalJobsConfigured": 0,
+      "adaptedJobsConfigured": 0,
+      "jobs": [
+        {
+          "jobId": "023434d42feb-readiness-v1",
+          "sourceJobId": "023434d42feb",
+          "scope": "readiness",
+          "adaptation": null,
+          "issueId": "AWAI-943",
+          "projectId": "1a2cd9bb-dcf2-4292-936e-34f937762738",
+          "configured": true,
+          "state": "waiting",
+          "lastRun": {
+            "id": "readiness-sec-toolkit-maturity-1794458520000",
+            "confirmed": true,
+            "provider": "meta",
+            "model": "muse-spark-1.3",
+            "inputTokens": 20410,
+            "outputTokens": 736,
+            "tokenMetric": "provider-input-output",
+            "artifactCid": null
+          },
+          "nextSlot": 1794501720000,
+          "owner": "jun-control",
+          "capabilities": [
+            "inference_muse"
+          ],
+          "grantCid": null,
+          "service": null,
+          "sourceObservedAt": "2026-11-12T06:53:48.053632Z"
+        }
+      ],
+      "sourceJobs": [
+        {
+          "id": "023434d42feb",
+          "name": "sec-toolkit-maturity-tick",
+          "schedule": {
+            "kind": "interval",
+            "minutes": 720,
+            "display": "every 720m"
+          },
+          "timezone": null,
+          "enabled": false,
+          "adaptedJobId": null,
+          "holds": [
+            "scoped-executor-and-grant-required"
+          ]
+        }
+      ],
+      "holds": [
+        "scoped-executor-and-grant-required"
+      ]
+    }
+  ],
+  "qualification": {
+    "webdavReadback": true,
+    "staticArtifactDistribution": true,
+    "browserAutomaticImport": true,
+    "browserAutomaticTimestampAdvance": [
+      "2026-11-12T06:48:45.198Z",
+      "2026-11-12T06:50:45.953Z"
+    ],
+    "all899Displayed": true,
+    "filterAndAppMapping": true,
+    "grantsFromDisplay": false,
+    "botBusinessSuccessRate": "unmeasured",
+    "allBotsActivated": false,
+    "nativeQualified": false,
+    "guestCutover": false
+  },
+  "tests": {
+    "node": 12,
+    "pinnedNix": "/nix/store/wxylzdlz6d8fjwcsyr0a2i08wl5xaa0c-otehon-bot-fleet-check",
+    "advancedBuildWarnings": 0
+  }
+}

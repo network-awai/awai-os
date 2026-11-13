@@ -1,0 +1,138 @@
+{
+  "schema": "awai.stabilization-rollout-evidence.v1",
+  "issue": "AWAI-2809",
+  "generatedAt": "2026-11-12T23:15:36.139Z",
+  "coverage": 311,
+  "groups": {
+    "schedule": 49,
+    "executor": 174,
+    "paused": 12,
+    "mapping": 9,
+    "event": 6,
+    "solver": 39,
+    "source": 22
+  },
+  "totals": {
+    "registered": 899,
+    "configured": 588,
+    "held": 311,
+    "attention": 0,
+    "queued": 0,
+    "jobsConfigured": 590,
+    "originalJobsConfigured": 2,
+    "adaptedJobsConfigured": 583,
+    "vmJobsConfigured": 2,
+    "vmReplicasHealthy": 2,
+    "confirmedRuns": 590,
+    "sourceJobs": 1637,
+    "linearBound": 890,
+    "circles": 762,
+    "repositoryCircles": 761
+  },
+  "plan": {
+    "url": "http://127.0.0.1:8586/itonami-fleet-state-AWAI-2795-v1/stabilization311-20261112231536139.json",
+    "sha256": "3fe1c6c975bfc8caf8d284dc0721a0377a490016f681224509c2e65723a47b4f",
+    "readback": true
+  },
+  "source": {
+    "url": "http://127.0.0.1:8586/itonami-fleet-state-AWAI-2795-v1/source22-20261112231536139.json",
+    "sha256": "f4b516d2580b4b88988ca2c8dceae77329b07bb076ee0a8ebf1b8677ebc68542",
+    "readback": true
+  },
+  "budget": {
+    "url": "http://127.0.0.1:8586/itonami-fleet-state-AWAI-2795-v1/solver39-20261112231536139.json",
+    "sha256": "d911e2941f490be45365b957ab88f4a456d6f6a3c72c5cd9b0d96f5de36b00e5",
+    "readback": true
+  },
+  "newBotActivations": 0,
+  "stability": "not-qualified-for-unenabled-bots",
+  "runtimeGateFix": "verified empty cron remains held with explicit event/owner gates",
+  "codingModel": "unknown",
+  "codingForecast": "unknown",
+  "codingTokens": "unknown-shared-unallocated",
+  "liveProjection": {
+    "schema": "awai.projector-promotion.v1",
+    "revision": "42e512c1e6fdfd238746deb652dfa8dc650406b9",
+    "previousProgramSha256": "065fd2f41dbe6abdc3bca9addd3cb77314a77c6fee7e39e9c8916edfc86a7ec2",
+    "archiveSha256": "9a8664b4a7c4dca4b3bb0d5dd7713232c31552d582f047e22c13bb4e4a2e1d90",
+    "configSha256": "14a16247477fb6d3753b561ce226db70f99aace60d86d820e3c3bc41b2b65c9a",
+    "manifestUnchanged": true,
+    "observedAt": "2026-11-12T23:18:55.758Z",
+    "heldBots": 311,
+    "allHeldReasonsPresent": true,
+    "totals": {
+      "registered": 899,
+      "configured": 588,
+      "held": 311,
+      "attention": 0,
+      "queued": 0,
+      "jobsConfigured": 590,
+      "originalJobsConfigured": 2,
+      "adaptedJobsConfigured": 583,
+      "vmJobsConfigured": 2,
+      "vmReplicasHealthy": 2,
+      "confirmedRuns": 590,
+      "sourceJobs": 1637,
+      "linearBound": 890,
+      "circles": 762,
+      "repositoryCircles": 761
+    },
+    "storageReadback": true,
+    "label": "network.awai.itonami.fleet-observer.awai2795"
+  },
+  "fixedSourceRetry": {
+    "count": 22,
+    "http404": 22,
+    "headSubstitution": false
+  },
+  "solverValidation": {
+    "count": 39,
+    "totalBudgetExceeded": 25,
+    "thermalBudgetInvalid": 13,
+    "solverBudgetInvalid": 1
+  },
+  "workstreams": {
+    "solver": {
+      "id": "AWAI-2829",
+      "uuid": "7c97c439-7f2f-4532-a1e3-2b8931e49787",
+      "url": "https://linear.app/kotobalabs/issue/AWAI-2829",
+      "title": "Itonami: 未有効39 physics Botの数値計算予算を検証・資格化"
+    },
+    "source": {
+      "id": "AWAI-2830",
+      "uuid": "3d822d18-1e37-4738-9d68-60ea4ac35f7d",
+      "url": "https://linear.app/kotobalabs/issue/AWAI-2830",
+      "title": "Itonami: 未取得22 physics Botの固定revision sourceを復旧"
+    },
+    "executor": {
+      "id": "AWAI-2831",
+      "uuid": "21de901d-4b7b-41f5-8d82-38336fda6cf6",
+      "url": "https://linear.app/kotobalabs/issue/AWAI-2831",
+      "title": "Itonami: 残174 BotのApp接続・型付きexecutor・cron権限を整備"
+    },
+    "schedule": {
+      "id": "AWAI-2832",
+      "uuid": "fa6508dd-c990-4650-8155-21cebef434f7",
+      "url": "https://linear.app/kotobalabs/issue/AWAI-2832",
+      "title": "Itonami: source scheduleがない49 Botの起動条件を確定"
+    },
+    "paused": {
+      "id": "AWAI-2833",
+      "uuid": "aacecb63-a87a-4dfc-b306-003236b960f1",
+      "url": "https://linear.app/kotobalabs/issue/AWAI-2833",
+      "title": "Itonami: 明示pause/disabledの12 Botを停止状態のまま監督"
+    },
+    "mapping": {
+      "id": "AWAI-2834",
+      "uuid": "8575d5e0-801f-4151-923f-fda6acd59904",
+      "url": "https://linear.app/kotobalabs/issue/AWAI-2834",
+      "title": "Itonami: 9 Botのsource/Linear Project・Issue対応を解消"
+    },
+    "event": {
+      "id": "AWAI-2835",
+      "uuid": "ec4a4913-2cfc-4bb9-be8a-e361680bf46b",
+      "url": "https://linear.app/kotobalabs/issue/AWAI-2835",
+      "title": "Itonami: cron空の6常駐・event Botの実行ownerを整備"
+    }
+  }
+}

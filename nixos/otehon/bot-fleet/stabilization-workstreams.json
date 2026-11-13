@@ -1,0 +1,44 @@
+{
+  "solver": {
+    "id": "AWAI-2829",
+    "uuid": "7c97c439-7f2f-4532-a1e3-2b8931e49787",
+    "url": "https://linear.app/kotobalabs/issue/AWAI-2829",
+    "title": "Itonami: 未有効39 physics Botの数値計算予算を検証・資格化"
+  },
+  "source": {
+    "id": "AWAI-2830",
+    "uuid": "3d822d18-1e37-4738-9d68-60ea4ac35f7d",
+    "url": "https://linear.app/kotobalabs/issue/AWAI-2830",
+    "title": "Itonami: 未取得22 physics Botの固定revision sourceを復旧"
+  },
+  "executor": {
+    "id": "AWAI-2831",
+    "uuid": "21de901d-4b7b-41f5-8d82-38336fda6cf6",
+    "url": "https://linear.app/kotobalabs/issue/AWAI-2831",
+    "title": "Itonami: 残174 BotのApp接続・型付きexecutor・cron権限を整備"
+  },
+  "schedule": {
+    "id": "AWAI-2832",
+    "uuid": "fa6508dd-c990-4650-8155-21cebef434f7",
+    "url": "https://linear.app/kotobalabs/issue/AWAI-2832",
+    "title": "Itonami: source scheduleがない49 Botの起動条件を確定"
+  },
+  "paused": {
+    "id": "AWAI-2833",
+    "uuid": "aacecb63-a87a-4dfc-b306-003236b960f1",
+    "url": "https://linear.app/kotobalabs/issue/AWAI-2833",
+    "title": "Itonami: 明示pause/disabledの12 Botを停止状態のまま監督"
+  },
+  "mapping": {
+    "id": "AWAI-2834",
+    "uuid": "8575d5e0-801f-4151-923f-fda6acd59904",
+    "url": "https://linear.app/kotobalabs/issue/AWAI-2834",
+    "title": "Itonami: 9 Botのsource/Linear Project・Issue対応を解消"
+  },
+  "event": {
+    "id": "AWAI-2835",
+    "uuid": "ec4a4913-2cfc-4bb9-be8a-e361680bf46b",
+    "url": "https://linear.app/kotobalabs/issue/AWAI-2835",
+    "title": "Itonami: cron空の6常駐・event Botの実行ownerを整備"
+  }
+}
