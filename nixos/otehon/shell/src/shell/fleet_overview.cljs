@@ -30,9 +30,10 @@
              (.then (fn [r] (when @live (set-report (js->clj r :keywordize-keys true)) (set-now (js/Date.now)) (set-error nil))))
              (.catch (fn [_] (when @live (set-error "自動更新を確認できません。前の表示を保持しています。"))))
              (.finally #(reset! busy false)))))
+          clock (js/setInterval #(set-now (js/Date.now)) 5000)
           timer (js/setInterval (fn [] (set-now (js/Date.now)) (refresh)) 30000)]
       (refresh)
-      (fn [] (reset! live false) (.abort controller) (js/clearInterval timer)))) #js [])
+      (fn [] (reset! live false) (.abort controller) (js/clearInterval timer) (js/clearInterval clock)))) #js [])
   (let [age (when report (- now (js/Date.parse (:observedAt report)))) stale? (or (nil? age) (< age 0) (> age 180000))
         q (.toLowerCase query)
         bots (filter #(and (or (= filter-state "all") (= filter-state (:state %)))

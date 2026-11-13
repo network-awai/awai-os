@@ -14,7 +14,7 @@ test('all Bots and catalog Circles coexist in one nested view despite current Ap
 });
 test('stale configured observations become unknown while intentional holds remain held', () => {
   const view = circlePack([bot('a', 'repo:org/a'), bot('b', 'repo:org/a', 'attention'), bot('c', 'repo:org/a', 'held')], { stale: true });
-  assert.deepEqual(view.nodes[0].counts, { waiting: 0, queued: 0, held: 1, attention: 0, unknown: 2 });
+  assert.deepEqual(view.nodes[0].counts, { running: 0, recovering: 0, waiting: 0, queued: 0, held: 1, attention: 0, unknown: 2 });
 });
 test('every child is enclosed, siblings do not overlap, and search does not remove or move nodes', () => {
   const bots = Array.from({ length: 899 }, (_, i) => bot(`b${i}`, `repo:org${i % 4}/app${i % 761}`));

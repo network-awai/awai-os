@@ -1,8 +1,9 @@
+import { verifiedExecution } from './fleet-activity.js';
 // Public control-plane receipt projection. This module never grants capabilities.
 export const FLEET_SCHEMA = 'awai.fleet-state.v1';
 const id = s => typeof s === 'string' && /^[\w.-]+\/[\w.-]+$/.test(s);
 const hash = s => typeof s === 'string' && /^[a-f0-9]{64}$/.test(s);
-const states = new Set(['queued','waiting','held','unknown','completed','already-completed']);
+const states = new Set(['queued','waiting','held','unknown','completed','already-completed','running','recovering']);
 const closed = new Set(['Done','Canceled','Cancelled','Duplicate']);
 export function scheduleHolds(bot, job) {
   const reasons=[];
@@ -27,7 +28,7 @@ function normalized(report,mode,now) {
   if(report?.schema!==schema||report.scope!==scope||!Number.isFinite(at)||!Array.isArray(report.jobs)
      ||report.jobs.length>1000||typeof report.serviceLoaded!=='boolean')return {state:'invalid-or-missing',jobs:[]};
   const rows=report.jobs.map(j=>({botId:j.botId??j['catalog-bot-id'],jobId:j.jobId??j['job-id'],state:j.state,
-    nextSlot:j.nextSlot??j['next-slot']??null,run:mode==='readiness'?j.lastRun:(j['last-result']??j),health:j['vm-health']??null,mode}));
+    nextSlot:j.nextSlot??j['next-slot']??null,run:mode==='readiness'?j.lastRun:(j['last-result']??j),health:j['vm-health']??null,execution:j.execution??null,mode}));
   if(rows.some(j=>!j.botId||!j.jobId||!states.has(j.state))
     ||new Set(rows.map(j=>`${j.botId}/${j.jobId}`)).size!==rows.length)return {state:'invalid-or-missing',jobs:[]};
   const fresh=at<=now&&now-at<=180000;
@@ -57,6 +58,7 @@ export function projectFleet(catalog,reports,bindings,now=Date.now(),catalogSha2
         run?.['linear-result-confirmed']===true&&run?.artifact?.readback===true);
       const runId=b.mode==='readiness'?run?.runId:run?.['run-id'];
       const modelMatch=run?.provider===b.provider&&run?.model===b.model;
+      const execution = source?.fresh ? verifiedExecution(row?.execution, bot.id, b.jobId, now) : null;
       const health=row?.health;
       const currentReplicas=source?.fresh&&Array.isArray(health)&&health.length===2
         &&new Set(health.map(r=>r.node)).size===2&&health.every(r=>['vm-levi','vm-benjamin'].includes(r.node)&&typeof r.readback==='boolean')
@@ -67,6 +69,7 @@ export function projectFleet(catalog,reports,bindings,now=Date.now(),catalogSha2
           run?.['domain-result']?.status==='unobserved'?'unobserved-result':
           run?.['domain-result']?.kind==='fleet-manifest-drift'&&run['domain-result'].drift===true?'manifest-drift':row?.state??'unobserved',
         lastRun:runId?{id:runId,confirmed:!!(confirmed&&modelMatch),provider:run.provider,model:run.model,
+          completedAt:b.mode==='readiness'?run.completedAt??null:null,
           inputTokens:b.mode==='readiness'?run.inputTokens??null:null,outputTokens:b.mode==='readiness'?run.outputTokens??null:null,
           tokenMetric:b.mode==='readiness'?'provider-input-output':'not-applicable',
           artifactCid:b.mode!=='readiness'?run.artifact?.cid??null:null,
@@ -77,7 +80,7 @@ export function projectFleet(catalog,reports,bindings,now=Date.now(),catalogSha2
             nativeTests:run['domain-result']['native-tests'],actuation:run['domain-result'].actuation,
             compute:run['domain-result'].compute??null,computeNode:run['domain-result']['execution-node']??null,
             replicaNode:run['domain-result']['replica-node']??null,replicas:run['domain-result'].replicas??null}:null}:null,
-        nextSlot:row?.nextSlot??null,owner:b.owner,capabilities:b.capabilities,grantCid:b.grantCid??null,service:b.service??null,calendarCompiled:b.calendarCompiled===true,
+        execution, nextSlot:row?.nextSlot??null,owner:b.owner,capabilities:b.capabilities,grantCid:b.grantCid??null,service:b.service??null,calendarCompiled:b.calendarCompiled===true,
         currentReplicas,sourceObservedAt:source?.observedAt??null};
     });
     const active=jobs.some(j=>j.configured);
@@ -106,7 +109,7 @@ export function projectFleet(catalog,reports,bindings,now=Date.now(),catalogSha2
         contractState:connected.some(j=>j.service)?'bounded-operator-connection':bot.name==='mail-relay'?'mail-account-required':'service-contract-required'},
       linear:{state:bot.linear?.state,project:bot.linear?.project?.name??null,projectId:bot.linear?.project?.uuid??null,
         initiativeId:bot.linear?.initiative?.id??null,issues:(bot.linear?.issues??[]).map(i=>i.id)},
-      configured:active,state:!active?'held':jobs.some(j=>!['queued','waiting','completed','already-completed'].includes(j.state))?'attention':jobs.some(j=>j.state==='queued')?'queued':'waiting',
+      configured:active,state:!active?'held':jobs.some(j=>j.execution?.phase==='running')?'running':jobs.some(j=>j.execution?.phase==='recovering')?'recovering':jobs.some(j=>!['queued','waiting','completed','already-completed'].includes(j.state))?'attention':jobs.some(j=>j.state==='queued')?'queued':'waiting',
       originalJobsConfigured:original.length,adaptedJobsConfigured:connected.length-original.length,physicsRollout:rollout,jobs,sourceJobs,holds};
   });
   const count=fn=>bots.filter(fn).length;
@@ -127,7 +130,7 @@ export function validateFleet(value) {
     ||!Number.isFinite(Date.parse(value.observedAt))||!Array.isArray(value.bots)||value.bots.length>10000
     ||value.totals?.registered!==value.bots.length||new Set(value.bots.map(b=>b.id)).size!==value.bots.length
     ||value.bots.some(b=>typeof b.name!=='string'||!id(b.repository)||!Array.isArray(b.jobs)||!Array.isArray(b.sourceJobs)
-      ||!['queued','held','attention','waiting'].includes(b.state)
+      ||!['queued','held','attention','waiting','running','recovering'].includes(b.state)
       ||(b.stabilization&&(!/^AWAI-\d+$/.test(b.stabilization.issueId)||!['source','solver','paused','mapping','schedule','event','executor'].includes(b.stabilization.group)))))throw Error('invalid-fleet-state');
   return value;
 }

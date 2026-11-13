@@ -1,11 +1,13 @@
 (ns shell.fleet-circles
   (:require [clojure.string :as str]
             ["react" :refer [useEffect useMemo useState]]
+            [shell.fleet-activity :as activity]
+            ["../fleet-activity.js" :refer [activitySelection]]
             [shell.fleet-goals :as goals]
             [shell.fleet-org-editor :as org-editor]
             ["../fleet-organizations.js" :refer [blankOrganizations loadOrganizations changeOrganization saveOrganizations]]
             ["../fleet-circles.js" :refer [circlePack]]))
-(def states [[:waiting "定期待機" "#267c62"] [:queued "実行待ち" "#377bc0"]
+(def states [[:running "実行観測" "#2084d4"] [:recovering "復旧観測" "#8d63c7"] [:waiting "定期待機" "#267c62"] [:queued "実行待ち" "#377bc0"]
              [:held "未有効" "#ae7323"] [:attention "要確認" "#c44343"] [:unknown "未確認" "#7b8190"]])
 (defn panel [bots stale? now query on-query on-details]
   (let [[focus-id set-focus] (useState "fleet") [grouping set-grouping] (useState "responsibility") [goals? set-goals] (useState false) [selected-id set-selected] (useState nil)
@@ -19,6 +21,7 @@
         view (useMemo (fn [] (js->clj (circlePack (clj->js (vec bots)) #js {:stale stale? :query query :now now :grouping grouping :orgState (.-state org-data)}) :keywordize-keys true)) #js [bots stale? query now org-data grouping])
         nodes (:nodes view) focus (or (first (filter #(= focus-id (:id %)) nodes)) (first nodes))
         selected (first (filter #(= selected-id (:id %)) nodes))
+        selection (js->clj (activitySelection (clj->js nodes) (clj->js (vec bots)) selected-id now stale?) :keywordize-keys true)
         responsibility? (= grouping "responsibility")
         visible-nodes (if responsibility? (filter #(and (or (= (:id %) (:id focus)) (some #{(:id focus)} (:ancestorIds %))) (<= (:depth %) (+ 2 (:depth focus))) (or (not= "bot" (:kind %)) (= (:parentId %) (:id focus)))) nodes) nodes)
         size (+ 24 (* 2 (:radius focus))) scale (/ 1000 size)
@@ -44,6 +47,8 @@
      [:p (if responsibility?
            (str (:totalBots view) " Bot · " (:charterCount view) "責任Circleの編成 · 配置確認を含む（元" (:circleCount view) " repo分類を保持）")
            (str (:totalBots view) " Bot · " (:circleCount view) " repo Circle · " (:organizationCount view) " 組織グループ"))]
+     [:div.fleet-workspace
+      [:div.fleet-map-column
      (when responsibility?
        [:div.fleet-circle-index
         (for [node (filter #(and (= "responsibility" (:kind %)) (= (:parentId %) (:id focus))) nodes)]
@@ -54,7 +59,7 @@
       (for [node visible-nodes]
         (let [bot? (= "bot" (:kind node))
               color (some (fn [[s _ c]] (when (= (name s) (:state node)) c)) states)
-              desc (str (:label node) " · " (:count node) " Bot · "
+              desc (str (get-in node [:activity :label]) " · " (:label node) " · " (:count node) " Bot · "
                         (apply str (for [[s title _] states] (str title " " (get-in node [:counts s]) " "))))]
           ^{:key (:id node)}
           [:g.fleet-circle-node {:role "button" :tab-index 0 :aria-label desc
@@ -75,13 +80,18 @@
                 [:circle {:cx (:x node) :cy (:y node) :r (:radius node) :fill "none" :stroke color
                           :stroke-width (/ 3 scale) :stroke-dasharray (str (* circumference portion) " " circumference)
                           :stroke-dashoffset (- (* circumference offset)) :transform (str "rotate(-90 " (:x node) " " (:y node) ")")}])])
-           (when (and bot? (get-in node [:cycle :animated]) (not reduced))
-             [:g.fleet-cycle-orbit {:aria-hidden true :pointer-events "none"}
-              [:line {:x1 (:x node) :y1 (:y node) :x2 (:x node) :y2 (- (:y node) (* 0.8 (:radius node))) :stroke "var(--bg)" :stroke-width 0.7}]
-              [:animateTransform {:attributeName "transform" :type "rotate"
-                                  :from (str (* 360 (or (get-in node [:cycle :phase]) 0)) " " (:x node) " " (:y node))
-                                  :to (str (+ 360 (* 360 (or (get-in node [:cycle :phase]) 0))) " " (:x node) " " (:y node))
-                                  :dur "12s" :repeatCount "indefinite"}]])]))
+           (when (and (not reduced) (not= "still" (get-in node [:activity :motion])))
+             (let [motion (get-in node [:activity :motion]) rotating? (contains? #{"rotate" "recover"} motion)
+                   tone (case motion "alert" "#c44343" "blink" "#377bc0" "recover" "#8d63c7" "rotate" "#2084d4" "#267c62")]
+               [:g.fleet-activity-motion {:aria-hidden true :pointer-events "none" :data-motion motion}
+                [:circle {:cx (:x node) :cy (:y node) :r (* 0.96 (:radius node)) :fill "none" :stroke tone
+                          :stroke-width (/ (if bot? 2 3) scale) :opacity 0.7
+                          :stroke-dasharray (when rotating? (str (* (:radius node) 0.9) " " (* (:radius node) 0.55)))}
+                 (if rotating?
+                   [:animateTransform {:attributeName "transform" :type "rotate"
+                                       :from (str "0 " (:x node) " " (:y node)) :to (str "360 " (:x node) " " (:y node))
+                                       :dur (if (= motion "recover") "4s" "2s") :repeatCount "indefinite"}]
+                   [:animate {:attributeName "opacity" :values "0.2;0.9;0.2" :dur (if (= motion "breathe") "4s" "2s") :repeatCount "indefinite"}])]]))]))
       (for [node visible-nodes
             :when (and (pos? (:depth node)) (> (* scale (:radius node)) 32)
                        (or (= (:id node) (:id focus)) (= (:parentId node) (:id focus)) (and responsibility? (= 2 (:depth node)) (= "fleet" (:id focus)))))]
@@ -95,7 +105,7 @@
      [:p.muted (str (if responsibility? "責任Circleは読みやすさを優先して配置。面積は人数比ではありません。Botの詳細は円を開くと表示します。" (str "全" (:totalBots view) " Botを同時描画。各Botの小円は同じ重み。囲む円の面積は厳密な人数比ではありません。"))
                     (when (seq query) " 検索は該当円を強調し、全体構造を保持します。")
                     (when stale? " 観測が古いため、設定済みBotは未確認で表示しています。"))]
-     [:p.muted "Botのcycleは元のcron・interval周期です。回転は12秒で1周する早送り表示で、実行中の意味ではありません。未有効・周期未確定・観測切れは静止し、動きを減らす設定にも従います。Linearの期間Cycleは変更しません。"]
+     [:p.muted "呼吸は観測済みの待機、点滅は実行待ち・要確認、パルスは確認済み結果の更新です。実行中の回転は45秒以内のheartbeatがある場合だけ表示します。元cron・Linear期間Cycleは変更せず、観測切れと未有効は静止します。"]
      (when message [:p {:role "status"} message])
       (when-not responsibility? [:f> org-editor/panel nodes selected change-org (.-error org-data)])
      (when responsibility?
@@ -104,20 +114,8 @@
           [:div.fleet-goals-grid
            (for [node (filter #(and (= "responsibility" (:kind %)) (:purpose %)) nodes)]
              ^{:key (:id node)} [:f> goals/panel node #(choose node)] )])])
-     (when selected
-       [:aside.fleet-circle-selection {:aria-label "選択したCircleの詳細"}
-        [:strong (:label selected)]
-        [:p (str (:count selected) " Bot · " (apply str (for [[s title _] states] (str title ": " (get-in selected [:counts s]) " "))))]
-        (when-let [issue (:linearIssue selected)] [:p [:a {:href (str "https://linear.app/kotobalabs/issue/" issue)} (str "対応Linear Issue: " issue)]])
-        (when (= "bot" (:kind selected))
-          [:<> [:p (str "App: " (:repository selected))]
-           [:p (str "Linear Project: " (:linearProject selected))]
-           [:p (str "cron cycle: " (or (get-in selected [:cycle :sourceSchedule]) "未設定")
-                    " · 状態: " (get-in selected [:cycle :cycleState]))]
-           (when-let [ms (get-in selected [:cycle :periodMs])] [:p (str "周期: " (/ ms 60000) "分")])
-           (when-let [slot (get-in selected [:cycle :nextSlot])]
-             [:p (str "次回: " (.toLocaleString (js/Date. slot) "ja-JP" #js {:timeZone "Asia/Tokyo"}) " JST")])
-           (when-let [phase (get-in selected [:cycle :phase])]
-             [:progress {:aria-label "元cron周期内の進行" :value phase :max 1}])
-           [:p (for [issue (:issues selected)] ^{:key issue} [:a {:href (str "https://linear.app/kotobalabs/issue/" issue)} (str issue " ")])]
-           [:button.secondary {:type "button" :on-click #(on-details (:label selected))} "App・実行記録を一覧で開く"]])])]))
+      ]
+      ^{:key (or selected-id "unselected")}
+      [:f> activity/panel selection
+       (fn [id] (when-let [node (first (filter #(= id (:id %)) nodes))] (choose node)))
+       #(set-selected nil) on-details]]]))

@@ -1,8 +1,9 @@
+import { botActivity, activitySummary } from './fleet-activity.js';
 import { hierarchy, pack } from 'd3-hierarchy';
 import { responsibilityTree, circleGoal } from './fleet-responsibilities.js';
 import { botCycle } from './bot-cycle.js';
 import { blankOrganizations, organizationOptions, validateOrganizations } from './fleet-organizations.js';
-export const CIRCLE_STATES = ['waiting', 'queued', 'held', 'attention', 'unknown'];
+export const CIRCLE_STATES = ['running', 'recovering', 'waiting', 'queued', 'held', 'attention', 'unknown'];
 const emptyCounts = () => Object.fromEntries(CIRCLE_STATES.map(s => [s, 0]));
 
 // Catalog Circle identity is independent of current App repository aliases.
@@ -37,7 +38,7 @@ export function circlePack(bots, { stale = false, query = '', now = Date.now(), 
     circles.get(placement).children.push({ id: bot.id, kind: 'bot', label: bot.name,
       repository: bot.repository, counts, state, matchCount: matched ? 1 : 0,
       issues: bot.linear?.issues ?? [], circleId, linearProject: bot.linear?.project ?? null,
-      cycle: botCycle(bot, now, stale) });
+      activity: botActivity(bot, now, stale), cycle: botCycle(bot, now, stale) });
   }
   if (grouping === 'responsibility') {
     const tree = responsibilityTree(bots);
@@ -68,6 +69,7 @@ export function circlePack(bots, { stale = false, query = '', now = Date.now(), 
       parentId: n.parent?.data.id ?? null, ancestorIds: n.ancestors().slice(1).map(a => a.data.id), depth: n.depth, x: Number.isFinite(n.x) ? n.x : 500,
       y: Number.isFinite(n.y) ? n.y : 500, radius: Number.isFinite(n.r) ? n.r : n.depth === 0 ? 500 : 0,
       count: Object.values(n.data.counts).reduce((a, b) => a + b, 0), counts: n.data.counts, matchCount: n.data.matchCount,
+      activity: n.data.kind === 'bot' ? n.data.activity : activitySummary(n.leaves().filter(l=>l.data.kind==='bot').map(l=>bots.find(b=>b.id===l.data.id)),now,stale),
       purpose: n.data.purpose ?? null,
       goal: grouping === 'responsibility' && n.data.kind !== 'bot' ? circleGoal({ ...n.data, parentId: n.parent?.data.id }, n.leaves().filter(l => l.data.kind === 'bot').map(l => bots.find(b => b.id === l.data.id)), { stale }) : null,
       state: n.data.state ?? null, repository: n.data.repository ?? null,

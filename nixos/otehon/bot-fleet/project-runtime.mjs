@@ -1,5 +1,6 @@
 // Otehon control-plane publisher; it runs outside the static app origin.
 import fs from 'node:fs/promises';import path from 'node:path';import {createHash,randomUUID} from 'node:crypto';
+import {attachActivityHistory} from './activity-history.mjs';
 import {projectFleet} from '../shell/src/fleet-projection.js';
 import {attachStabilization} from './stabilization.mjs';
 import {repositoryConnections} from './repository-connections.mjs';
@@ -44,6 +45,8 @@ export async function projectOnce(cfg){
   if(sha(plan)!==cfg.stabilizationPlanSha256)throw Error('stabilization-plan-pin-mismatch');
   payload=attachStabilization(payload,JSON.parse(plan),JSON.parse(catalogText));
  }
+ let previous;try{const e=JSON.parse(await fs.readFile(path.join(cfg.stateRoot,'current.json'),'utf8'));if(e.schema==='awai.fleet-artifact.v1'&&sha(JSON.stringify(e.payload))===e.sha256)previous=e.payload;}catch{}
+ payload=attachActivityHistory(payload,previous);
  const text=JSON.stringify({schema:'awai.fleet-artifact.v1',sha256:sha(JSON.stringify(payload)),payload});
  await atomic(path.join(cfg.stateRoot,'current.json'),text);
  await bounded(output,{method:'PUT',headers:{'content-type':'application/json'},body:text});

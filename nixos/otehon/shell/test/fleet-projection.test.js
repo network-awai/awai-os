@@ -54,3 +54,13 @@ test('manifest audit is identified as a bounded nonphysics observation',()=>{
  assert.equal(row.lastRun.manifestAudit.status,'measured');assert.equal(row.lastRun.manifestAudit.drift,false);assert.equal(row.lastRun.measurement,null);assert.equal(row.lastRun.tokenMetric,'not-applicable');
  const changed=structuredClone(report);changed.jobs[0]['last-result']['domain-result'].drift=true;const bad=projectFleet(catalog,{manifest:changed},[b],now,sha);assert.equal(bad.bots[0].state,'attention');assert.equal(bad.totals.attention,1);assert.equal(bad.bots[0].jobs[0].state,'manifest-drift');
 });
+
+test('execution state needs a source-matched current heartbeat, not a report label',()=>{
+ const execution={schema:'awai.bot-execution-observation.v1',source:'worker-heartbeat',botId:bot.id,jobId:bindings[0].jobId,runId:'active-r',phase:'running',node:'vm-a',startedAt:new Date(now-20000).toISOString(),heartbeatAt:new Date(now-1000).toISOString()};
+ const report={...reports.readiness,jobs:[{...reports.readiness.jobs[0],state:'running',execution}]};
+ assert.equal(projectFleet(catalog,{readiness:report},bindings,now,sha).bots[0].state,'running');
+ for(const invalid of [null,{...execution,botId:'other'},{...execution,heartbeatAt:new Date(now-45001).toISOString()}]) {
+  const bad={...report,jobs:[{...report.jobs[0],execution:invalid}]};
+  assert.equal(projectFleet(catalog,{readiness:bad},bindings,now,sha).bots[0].state,'attention');
+ }
+});
