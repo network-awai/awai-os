@@ -129,6 +129,18 @@ in
     root = toString shell;
     locations."/".tryFiles = "$uri $uri/ =404";
   };
+  otehon.update.healthCheck = pkgs.writeShellApplication {
+    name = "otehon-desktop-update-health";
+    runtimeInputs = [ pkgs.curl pkgs.jq pkgs.coreutils ];
+    text = ''
+      for _ in $(seq 1 60); do
+        if curl --fail --silent --max-time 2 http://127.0.0.1:9222/json/list | jq -e 'any(.[]; .type == "page" and .url == "http://127.0.0.1:8780/" and .title == "Awai Otehon")' >/dev/null; then exit 0; fi
+        sleep 1
+      done
+      echo "desktop-readiness failed" >&2
+      exit 1
+    '';
+  };
   system.image.id = "awai-otehon-desktop";
   system.image.version = "0.7.0";
 

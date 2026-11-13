@@ -6,6 +6,7 @@ let
     OTEHON_UPDATE_BASE_VERSION = toString cfg.baseVersion;
     OTEHON_UPDATE_PUBLIC_KEY = "${cfg.publicKey}";
     OTEHON_UPDATE_CACHE_KEY = "${cfg.cacheKey}";
+    OTEHON_UPDATE_HEALTH_CHECK = if cfg.healthCheck == null then "" else lib.getExe cfg.healthCheck;
   };
   closure = pkgs.closureInfo { rootPaths = [ config.system.build.toplevel ]; };
   command = pkgs.writeShellApplication {
@@ -22,6 +23,7 @@ in
   # boot counting on the ESP, so it does not depend on writable EFI variables.
   options.otehon.update = {
     enable = lib.mkEnableOption "signed Otehon OS generation trials";
+    healthCheck = lib.mkOption { type = lib.types.nullOr lib.types.package; default = null; description = "Additional local desktop readiness check before blessing a boot."; };
     baseVersion = lib.mkOption {
       type = lib.types.ints.positive;
       description = "The update version this image starts at. Older versions are refused.";

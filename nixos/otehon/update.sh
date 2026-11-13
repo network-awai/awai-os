@@ -136,6 +136,9 @@ health() {
   local units
   units=$(systemctl --failed --no-legend --plain | cut -d' ' -f1 | grep -v '^otehon-update-' || true)
   [ -z "$units" ] || { log "UNHEALTHY $units"; exit 1; }
+  if [ -n "${OTEHON_UPDATE_HEALTH_CHECK:-}" ]; then
+    "$OTEHON_UPDATE_HEALTH_CHECK" || { log "UNHEALTHY desktop-readiness"; exit 1; }
+  fi
 }
 
 case "${1:-}" in

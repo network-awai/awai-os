@@ -52,7 +52,7 @@ in pkgs.testers.runNixOSTest {
       bad = "${nodes.machine.system.build.otaBad}";
       stateContract = "chromium-${pkgs.chromium.version}-otehon-origin-v2";
     };
-    services.nix-serve = { enable = true; secretKeyFile = fixtures + /update/test-cache.key; };
+    services.nix-serve = { enable = true; secretKeyFile = toString (fixtures + /update/test-cache.key); };
     services.nginx = {
       enable = true;
       virtualHosts."publisher.test" = {
