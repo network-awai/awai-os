@@ -1,7 +1,7 @@
 // Quoted dictionary keys survive advanced property renaming. UI copy excludes imported content.
 export const UI_COPY = {
   "ja": {
-    "purpose": "Circleの目的", "plannedGoal": "計画", "cooperation": "Goalへの協働", "leadCircle": "主担当", "supportCircle": "協力",
+    "supportCircleCount": "協力Circle {count}", "purpose": "Circleの目的", "plannedGoal": "計画", "cooperation": "Goalへの協働", "leadCircle": "主担当", "supportCircle": "協力",
     "onDemandAgents": "オンデマンド",
     "showMore": "もっと見る",
     "peerDialogue": "Bot間対話", "peerProgress": "対話 {done}/{total}", "dialogueCompleted": "対話完了", "peerReceived": "受信内容",
@@ -170,7 +170,7 @@ export const UI_COPY = {
     "importedProfiles": "Bot登録を取り込む"
   },
   "en": {
-    "purpose": "Circle purpose", "plannedGoal": "Planned", "cooperation": "Working toward a goal", "leadCircle": "Lead", "supportCircle": "Support",
+    "supportCircleCount": "Supporting circles {count}", "purpose": "Circle purpose", "plannedGoal": "Planned", "cooperation": "Working toward a goal", "leadCircle": "Lead", "supportCircle": "Support",
     "onDemandAgents": "On demand",
     "showMore": "Show more",
     "peerDialogue": "Peer dialogue", "peerProgress": "Turns {done}/{total}", "dialogueCompleted": "Dialogue complete", "peerReceived": "Received context",

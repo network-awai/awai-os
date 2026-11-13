@@ -29,9 +29,12 @@
    [:h4 (:summary selected)]
    [:span.fleet-status (ui/t locale :notMeasured)]
    [:div.fleet-mission-assignments
-    (for [[id lead?] (cons [(:lead selected) true] (map #(vector % false) (:support selected)))] ^{:key id}
-     [:button.secondary {:type "button" :on-click #(on-circle id)}
-      [:small (ui/t locale (if lead? :leadCircle :supportCircle))] [:strong (get-in selected [:circleLabels (keyword id)] id)]])]]))
+    [:button.secondary {:type "button" :on-click #(on-circle (:lead selected))}
+     [:small (ui/t locale :leadCircle)] [:strong (get-in selected [:circleLabels (keyword (:lead selected))] (:lead selected))]]]
+   [:details.fleet-disclosure [:summary (ui/t locale :supportCircleCount {:count (count (:support selected))})]
+    [:div.fleet-mission-assignments
+     (for [id (:support selected)] ^{:key id}
+      [:button.secondary {:type "button" :on-click #(on-circle id)} [:strong (get-in selected [:circleLabels (keyword id)] id)]])]]]))
 (defn missions-panel [missions selected on-select on-circle locale]
  [:section.fleet-missions {:aria-label (ui/t locale :goals)}
   [:div.fleet-mission-options

@@ -40,7 +40,7 @@
                        (let [media (.matchMedia js/window "(prefers-reduced-motion: reduce)") update (fn [] (set-reduced (.-matches media)))]
                          (update) (.addEventListener media "change" update)
                          (fn [] (.removeEventListener media "change" update))))) #js [])
-    (useEffect (fn [] (when (and mission-id (.-current map-ref)) (.scrollIntoView (.-current map-ref) #js {:block "start" :behavior "instant"}))) #js [mission-id])
+    (useEffect (fn [] (when (and mission-id (.-current map-ref)) (.scrollIntoView (.-current map-ref) #js {:block "start" :behavior "instant"})) js/undefined) #js [mission-id])
     [:section.fleet-circle-view {:aria-label (ui/t locale :circlesTitle)}
      [:h3 (ui/t locale :circlesTitle)]
      (when responsibility?
@@ -120,10 +120,10 @@
                        (or (contains? peer-ids (:id node)) (= (:id node) (:id focus)) (= (:parentId node) (:id focus)) (and responsibility? (= 2 (:depth node)) (= "fleet" (:id focus)))))]
         ^{:key (str "label-" (:id node))}
         [:text {:x (:x node) :y (if (or (= "bot" (:kind node)) (and responsibility? (not-any? #(= (:parentId %) (:id node)) visible-nodes))) (- (:y node) (/ 8 scale)) (+ (- (:y node) (:radius node)) (/ 18 scale)))
-                :text-anchor "middle" :class "fleet-pack-label" :style {:font-size (/ (if (contains? #{"organization" "responsibility"} (:kind node)) 24 22) scale)}}
+                :text-anchor "middle" :class "fleet-pack-label" :style {:font-size (/ (if (contains? peer-ids (:id node)) 14 (if (contains? #{"organization" "responsibility"} (:kind node)) 24 22)) scale)}}
          (let [label (if (= "circle" (:kind node)) (last (str/split (:label node) #"/")) (:label node))
                limit (max 4 (min 25 (js/Math.floor (/ (* 1.6 (:radius node) scale) (if responsibility? 24 15)))))]
-           (if (> (count label) limit) (str (subs label 0 (dec limit)) "…") label))
+           (if (and (not (contains? peer-ids (:id node))) (> (count label) limit)) (str (subs label 0 (dec limit)) "…") label))
          [:tspan {:x (:x node) :dy (/ 23 scale) :style {:font-size (/ 18 scale)}} (ui/t locale :profileCount {:count (:count node)})]])]
      [:p.sr-only {:id "fleet-map-description"} (ui/t locale :chartDescription)]
      (when message [:p {:role "status"} message])
