@@ -24,7 +24,7 @@ let
     nativeBuildInputs = [ pkgs.clojure ];
     outputHashAlgo = "sha256";
     outputHashMode = "recursive";
-    outputHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # TODO: fill from the mismatch error
+    outputHash = "sha256-pQpattmS9VmO3ZIQUFn66az8GSmB4IvYhTTCFn6SUmo="; # filled 2026-11-13 where Nix runs (JUN-1180)
     buildPhase = ''
       runHook preBuild
       export HOME="$TMPDIR/home"
