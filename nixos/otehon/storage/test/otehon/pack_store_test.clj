@@ -21,6 +21,17 @@
 (defn- bytes-of [n]
   (byte-array (map #(unchecked-byte (mod (+ (* % 19) (quot % 8191)) 256)) (range n))))
 
+(deftest recovered-index-does-not-retain-car-via-cid-slices
+  (let [d (new-store) original (bytes-of (+ pack/leaf-size 11))]
+    (pack/put-data! d "file" original)
+    (let [h (pack/recover d)
+          indexes (mapcat :index (vals @(:index-cache h)))]
+      (is (= 2 (count indexes)))
+      (is (every? #(= 36 (count (:cid %))) indexes))
+      (is (every? #(not= "clojure.lang.APersistentVector$SubVector"
+                          (.getName (class (:cid %)))) indexes))
+      (is (= (seq original) (seq (pack/read-data h "file")))))))
+
 (deftest pinned-cbor-integer-boundaries
   (doseq [[n wire] [[4294967296 [27 0 0 0 1 0 0 0 0]]
                     [17179869184 [27 0 0 0 4 0 0 0 0]]]]

@@ -9,6 +9,7 @@
             [otehon.segmented :as segmented]
             [otehon.storage :as store])
   (:import [java.io ByteArrayOutputStream]
+           [java.nio.file Files Paths OpenOption LinkOption]
            [java.security MessageDigest]))
 
 (def max-data-bytes (* 900 1024))
@@ -71,7 +72,9 @@
                :size size :leaf-count (count raw)}
          :car-size (alength ^bytes bytes)
          :index (mapv (fn [section block]
-                        {:offset (+ 51 (:data-offset section)) :length (:length section) :cid (:cid block)
+                        ;; CAR's CID is a SubVector over the entire decoded CAR.
+                        ;; Copy the small identifier before retaining this index.
+                        {:offset (+ 51 (:data-offset section)) :length (:length section) :cid (into [] (:cid block))
                          :sha (car/hex-encode (:digest (car/parse-cid (:cid block))))})
                       (butlast (car/carv2-sections v)) raw)}))))
 
@@ -329,6 +332,50 @@
   (when-not (and (bytes? manifest) (string? manifest-cid))
     (fail! :invalid-logical-manifest "manifest bytes and CID are required"))
   (import-forest-group* directory name inputs manifest manifest-cid))
+
+(defn- read-bounded-forest-file [path]
+  (when-not (string? path) (fail! :invalid-pack-source "expected a file path"))
+  (with-open [in (Files/newInputStream (Paths/get path (make-array String 0))
+                                      (into-array OpenOption [LinkOption/NOFOLLOW_LINKS]))]
+    (let [bytes (.readNBytes in (inc max-car-bytes))]
+      (when (> (alength ^bytes bytes) max-car-bytes)
+        (fail! :too-large "Forest input exceeds the declared bound"))
+      bytes)))
+
+(defn import-logical-forest-files!
+  "Atomically publish canonical manifest and ordered Forest files. The files
+  are verified one at a time and re-read under the writer lock; changes between
+  passes abort publication. At most one input Pack is retained at a time."
+  [directory name paths manifest manifest-cid]
+  (group-key name)
+  (when-not (and (vector? paths) (<= 1 (count paths) max-group-packs))
+    (fail! :invalid-pack-group "expected 1..64 Forest Pack paths"))
+  (when-not (and (bytes? manifest) (string? manifest-cid))
+    (fail! :invalid-logical-manifest "manifest bytes and CID are required"))
+  (let [manifest (aclone ^bytes manifest)
+        candidates (mapv (fn [path]
+                           (let [bytes (read-bounded-forest-file path)
+                                 checked (verify-car (forest-car (forest/open bytes)))]
+                             {:path path :index (:index checked)
+                              :ref (assoc (:ref checked) :format :awai.otehon-store/pack-forest-v1
+                                          :stored-sha (segmented/sha bytes)
+                                          :stored-size (alength ^bytes bytes))})) paths)
+        _ (verify-logical-manifest manifest manifest-cid (mapv :index candidates))
+        group {:format :awai.otehon-store/logical-forest-v1
+               :packs (mapv :ref candidates)
+               :manifest-hex (car/hex-encode (vector-bytes manifest 131072))
+               :manifest-cid manifest-cid}
+        result (store/transact! directory :put {:key (group-key name) :value (pr-str group)}
+                 (fn [directory state]
+                   (recover-map directory state)
+                   (doseq [{:keys [path ref]} candidates]
+                     (let [bytes (read-bounded-forest-file path)]
+                       (when-not (and (= (:stored-size ref) (alength ^bytes bytes))
+                                      (= (:stored-sha ref) (segmented/sha bytes)))
+                         (fail! :forest-changed "Forest input changed during publication"))
+                       (when-not (= (:stored-sha ref) (store/write-forest! directory bytes))
+                         (fail! :forest-changed "Forest bytes changed during publication"))))))]
+    (assoc result :group group)))
 
 (defn put-data! [directory name bytes]
   (let [v (vector-bytes bytes max-data-bytes)

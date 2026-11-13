@@ -37,7 +37,10 @@
   (if (= 4 (count files))
     (let [{:keys [bytes cid]} (manifest files)]
       (ensure! (= cid "bafyreidqkmghsd65dwq22umpkrqecyamfhevsbq7xemjfe7tb6wnhvxsny") "native corpus CID mismatch")
-      (pack/import-logical-forest! dir "proof" files bytes cid))
+      (if (= "1" (System/getenv "AWAI_FILE_INPUT"))
+        (pack/import-logical-forest-files!
+          dir "proof" (mapv #(str fixture-dir "/part-" % ".forest.car.zst") (range 4)) bytes cid)
+        (pack/import-logical-forest! dir "proof" files bytes cid)))
     (pack/import-forest-group! dir "proof" files)))
 (defn writer [dir event role occurrence]
   (let [n (atom 0) files (fixtures)]
@@ -111,6 +114,33 @@
                   (ensure! (try (pack/checkpoint! dir) false (catch Exception _ true)) "missing group Pack checkpointed")
                   (ensure! (= root (:root (store/read-store dir))) "missing Pack changed root")
                   (finally (Files/move moved path (make-array CopyOption 0))))))
+            (when (= "1" (System/getenv "AWAI_FILE_INPUT"))
+              (let [target (str dir "/mutating") input-dir (str dir "/inputs") files (fixtures)
+                    _ (Files/createDirectory (Paths/get input-dir (make-array String 0)) (make-array FileAttribute 0))
+                    paths (mapv (fn [i]
+                                  (let [source (Paths/get (str fixture-dir "/part-" i ".forest.car.zst") (make-array String 0))
+                                        target (Paths/get (str input-dir "/part-" i) (make-array String 0))]
+                                    ;; Nix store fixtures are read-only; Files/copy preserves
+                                    ;; their permissions. Create a writable test-owned file.
+                                    (Files/write target (Files/readAllBytes source)
+                                                 (make-array java.nio.file.OpenOption 0))
+                                    (str target)))
+                                (range 4))
+                    _ (store/init! target) before (:root (store/read-store target))
+                    m (manifest files) mutated (atom false)]
+                (binding [store/*write-observer*
+                          (fn [event role]
+                            (when (and (= [event role] [:dir-synced :forest])
+                                       (compare-and-set! mutated false true))
+                              (spit (nth paths 1) "changed after validation")))]
+                  (ensure! (try (pack/import-logical-forest-files! target "proof" paths (:bytes m) (:cid m))
+                                false
+                                (catch Exception e
+                                  (if (= :forest-changed (:type (ex-data e))) true (throw e))))
+                           "changed input did not abort publication"))
+                (ensure! @mutated "source mutation boundary was not reached")
+                (ensure! (= before (:root (store/read-store target))) "changed input published a root")
+                (prn {:changed-input :rejected :root-unchanged true :pass true})))
             (prn {:cases 8 :cross-pack-range true :negative-cases true :pass true})
             (finally (shutdown-agents)))
     (throw (ex-info "use run, read or write" {}))))
