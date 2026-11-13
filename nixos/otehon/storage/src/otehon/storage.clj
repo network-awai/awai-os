@@ -211,6 +211,70 @@
       (when-not (= digest (sha bytes)) (fail! :corrupt-forest "Forest digest mismatch"))
       bytes)))
 
+(def ^:private max-forest-file-bytes (* 32 1024 1024))
+
+(defn- stream-hash! [source output expected-size]
+  (let [md (MessageDigest/getInstance "SHA-256") buffer (ByteBuffer/allocate 65536)]
+    (loop [total 0]
+      (.clear buffer)
+      (let [n (.read ^FileChannel source buffer)]
+        (cond
+          (neg? n)
+          (do (when-not (= total expected-size)
+                (fail! :changed-payload "Forest file length changed while reading"))
+              (apply str (map #(format "%02x" (bit-and 255 %)) (.digest md))))
+          (zero? n) (fail! :short-read "Forest file read made no progress")
+          :else
+          (let [next (+ total n)]
+            (when (> next expected-size)
+              (fail! :changed-payload "Forest file grew while reading"))
+            (.flip buffer)
+            (.update md (.asReadOnlyBuffer buffer))
+            (when output
+              (while (.hasRemaining buffer) (.write ^FileChannel output buffer)))
+            (recur next)))))))
+
+(defn write-forest-file!
+  "Copy a bounded Forest file under its expected SHA-256 using a fixed buffer.
+  Call inside the metadata writer lock. File sync, atomic rename and directory
+  sync precede root publication; failed temporary files remain for inspection.
+  This only verifies physical bytes, not Forest structure or block CIDs."
+  [directory source expected-size expected-sha]
+  (when-not (and (string? source) (digest? expected-sha)
+                 (integer? expected-size) (<= 1 expected-size max-forest-file-bytes))
+    (fail! :invalid-forest-source "invalid Forest source size or digest"))
+  (let [root (root-path directory) target (path root (str expected-sha ".forest"))
+        src (Paths/get source (make-array String 0))
+        opts (into-array OpenOption [StandardOpenOption/READ LinkOption/NOFOLLOW_LINKS])]
+    (when-not (Files/isRegularFile src (into-array LinkOption [LinkOption/NOFOLLOW_LINKS]))
+      (fail! :invalid-forest-source "Forest source must be a regular file"))
+    (with-open [in (FileChannel/open src opts)]
+      (when-not (= expected-size (.size in))
+        (fail! :changed-payload "Forest source size differs"))
+      (if (exists? target)
+        (with-open [existing (FileChannel/open target opts)]
+          (when-not (= expected-sha (stream-hash! in nil expected-size))
+            (fail! :corrupt-forest "Forest source digest mismatch"))
+          (when-not (and (= expected-size (.size existing))
+                         (= expected-sha (stream-hash! existing nil expected-size)))
+            (fail! :corrupt-forest "existing immutable Forest archive is corrupt"))
+          (sync-dir! root)
+          (observe! :reused-dir-synced :forest))
+        (let [tmp (path root (str ".pending-" (UUID/randomUUID)))]
+          (with-open [out (FileChannel/open tmp
+                             #{StandardOpenOption/CREATE_NEW StandardOpenOption/WRITE}
+                             (attrs "rw-------"))]
+            (when-not (= expected-sha (stream-hash! in out expected-size))
+              (fail! :corrupt-forest "Forest source digest mismatch"))
+            (observe! :written :forest)
+            (.force out true)
+            (observe! :file-synced :forest))
+          (Files/move tmp target (into-array CopyOption [StandardCopyOption/ATOMIC_MOVE]))
+          (observe! :renamed :forest)
+          (sync-dir! root)
+          (observe! :dir-synced :forest))))
+    expected-sha))
+
 (defn read-payload-segments
   "Positioned reads for an explicitly selected range-verification operation.
   Does not verify the whole-file digest; caller must verify every returned
