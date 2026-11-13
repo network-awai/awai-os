@@ -11,4 +11,12 @@
             (assoc-in job [:schedule :expr] "* * * * *") (assoc-in job [:schedule :expr] "46 0 23 * *")
             (assoc-in job [:schedule :expr] "60 24 * * *")]]
   (is (thrown? Exception (d/compile-daily j 0)))))
+(deftest exact-hourly-phase-does-not-invent-an-interval
+ (let [j (assoc-in job [:schedule :expr] "11 * * * *")
+       now (.toEpochMilli (java.time.Instant/parse "2026-11-13T02:03:00Z")) v (d/compile-hourly j now)]
+  (is (= "2026-11-13T01:11:00Z" (str (java.time.Instant/ofEpochMilli (:initial-slot v)))))
+  (is (= 3600000 (get-in v [:schedule :every-ms])))
+  (is (= "2026-11-13T02:11:00Z" (str (java.time.Instant/ofEpochMilli (+ (:initial-slot v) 3600000))))))
+ (doseq [expr ["* * * * *" "11 */2 * * *" "60 * * * *" "11 * * * 1"]]
+  (is (thrown? Exception (d/compile-hourly (assoc-in job [:schedule :expr] expr) 0)))))
 (let [v (run-tests)] (when (pos? (+ (:fail v) (:error v))) (System/exit 1)))

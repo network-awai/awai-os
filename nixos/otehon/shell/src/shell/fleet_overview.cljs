@@ -103,6 +103,9 @@
            [:p.muted (str "権限: " (clojure.string/join ", " (:capabilities job)))]
            [:p.muted (str "最終run: " (or (get-in job [:lastRun :id]) "未確認") " · 記録確認: " (if (get-in job [:lastRun :confirmed]) "済" "未確認"))]
            (when-let [run (:lastRun job)] [:p.muted (str "実行モデル: " (:provider run) " / " (:model run))])
+           (when-let [audit (get-in job [:lastRun :manifestAudit])]
+            [:p.muted (str "Itonami構成観測: " (:status audit) " · ダイジェストの変化: "
+                           (case (:drift audit) true "検出" false "なし" "未確認"))])
            (when-let [m (get-in job [:lastRun :measurement])]
             [:p.muted (str "Otehon simulation: " (:status m) " · probe " (text (:count m)) "/" (text (:expected m))
                            " · Native tests: " (:nativeTests m) " · 実機操作: " (:actuation m))])

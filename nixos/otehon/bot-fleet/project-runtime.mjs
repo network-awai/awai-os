@@ -4,7 +4,8 @@ import {projectFleet} from '../shell/src/fleet-projection.js';
 import {attachStabilization} from './stabilization.mjs';
 import {repositoryConnections} from './repository-connections.mjs';
 const sha=b=>createHash('sha256').update(b).digest('hex');
-const resources={readiness:'http://127.0.0.1:8586/itonami-bot-readiness-AWAI-2795-20261112-v1/current.json',
+const resources={manifest:'http://127.0.0.1:8586/itonami-manifest-jobs-AWAI-2831-v1/current.json',
+ readiness:'http://127.0.0.1:8586/itonami-bot-readiness-AWAI-2795-20261112-v1/current.json',
  original:'http://127.0.0.1:8586/itonami-job-results-AWAI-2795-v1/current.json',
  adapted:'http://127.0.0.1:8586/itonami-health-jobs-AWAI-2809-v1/current.json',
  physics:'http://127.0.0.1:8586/itonami-physics-jobs-AWAI-2809-v1/current.json',

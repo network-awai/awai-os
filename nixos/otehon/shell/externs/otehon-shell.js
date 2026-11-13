@@ -525,3 +525,8 @@ Object.prototype.vmReplicasHealthy;
 
 Object.prototype.group;
 Object.prototype.stabilization;
+
+Object.prototype.drift;
+Object.prototype.manifest;
+Object.prototype.sourceObservedAt;
+Object.prototype.manifestAudit;

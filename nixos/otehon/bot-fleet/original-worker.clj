@@ -6,7 +6,7 @@
       _ (assert (= digest (e/binary-sha manifest)) "manifest pin required")
       cfg (edn/read-string (slurp manifest))
       label (or (:worker-label cfg) "network.awai.itonami.jobs.awai2795")
-      _ (assert (contains? #{"network.awai.itonami.jobs.awai2795" "network.awai.itonami.health.awai2809"} label))
+      _ (assert (contains? #{"network.awai.itonami.jobs.awai2795" "network.awai.itonami.health.awai2809" "network.awai.itonami.manifest.awai2831"} label))
       uid (str/trim (:out (sh/sh "id" "-u" :in "")))
       loaded (zero? (:exit (sh/sh "launchctl" "print" (str "gui/" uid "/" label) :in "")))
       report (assoc (original/tick! cfg) :serviceLoaded loaded
@@ -14,7 +14,8 @@
       text (json/generate-string report {:pretty true})
       url (or (:status-url cfg) "http://127.0.0.1:8586/itonami-job-results-AWAI-2795-v1/current.json")
       _ (assert (contains? #{"http://127.0.0.1:8586/itonami-job-results-AWAI-2795-v1/current.json"
-                            "http://127.0.0.1:8586/itonami-health-jobs-AWAI-2809-v1/current.json"} url))
+                            "http://127.0.0.1:8586/itonami-health-jobs-AWAI-2809-v1/current.json"
+                            "http://127.0.0.1:8586/itonami-manifest-jobs-AWAI-2831-v1/current.json"} url))
       open (fn [method] (doto ^java.net.HttpURLConnection (.openConnection (.toURL (java.net.URI. url)))
                          (.setRequestMethod method) (.setInstanceFollowRedirects false)
                          (.setConnectTimeout 3000) (.setReadTimeout 30000)))]

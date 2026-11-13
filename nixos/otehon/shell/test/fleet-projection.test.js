@@ -47,3 +47,9 @@ test('VM placement and current replica reads remain separate from historical com
  report.observedAt=new Date(now-180001).toISOString();assert.equal(projectFleet(catalog,{vm:report},[b],now,sha).bots[0].jobs[0].currentReplicas,null);
  assert.equal(projectFleet(catalog,{vm:report},[],now,sha).totals.configured,0);
 });
+test('manifest audit is identified as a bounded nonphysics observation',()=>{
+ const b={...bindings[0],mode:'adapted',reportSource:'manifest',provider:'none',model:'deterministic'};
+ const report={schema:'awai.original-job-observation.v1',scope:'original-bounded-jobs',observedAt:new Date(now).toISOString(),serviceLoaded:true,jobs:[{'catalog-bot-id':bot.id,'job-id':b.jobId,state:'waiting','last-result':{state:'completed','run-id':'manifest-one',provider:'none',model:'deterministic','linear-result-confirmed':true,artifact:{readback:true},'domain-result':{kind:'fleet-manifest-drift',status:'measured',drift:false}}}]};
+ const row=projectFleet(catalog,{manifest:report},[b],now,sha).bots[0].jobs[0];
+ assert.equal(row.lastRun.manifestAudit.status,'measured');assert.equal(row.lastRun.manifestAudit.drift,false);assert.equal(row.lastRun.measurement,null);assert.equal(row.lastRun.tokenMetric,'not-applicable');
+});

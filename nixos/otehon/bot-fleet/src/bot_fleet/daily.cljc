@@ -15,3 +15,17 @@
    {:schedule {:type "interval" :every-ms 86400000} :initial-slot (.toEpochMilli (.toInstant latest))
     :source {:expr expr :timezone zone} :compilation "fixed-zone-daily-v1"
     :first-activation "latest-due-only"})))
+
+(defn compile-hourly [job now]
+ (let [expr (get-in job [:schedule :expr]) zone (:timezone job)
+       match (when (string? expr) (re-matches #"([0-9]{1,2}) \* \* \* \*" expr))]
+  (when-not (and (= "cron" (get-in job [:schedule :kind])) match
+                 (contains? #{"Asia/Tokyo" "UTC" "Etc/UTC"} zone))
+   (throw (ex-info "reviewed fixed-zone hourly cron required" {})))
+  (let [minute (Long/parseLong (nth match 1))
+        _ (when-not (<= 0 minute 59) (throw (ex-info "invalid hourly minute" {})))
+        current (.atZone (java.time.Instant/ofEpochMilli now) (java.time.ZoneId/of zone))
+        candidate (-> current (.withMinute (int minute)) (.withSecond 0) (.withNano 0))
+        latest (if (.isAfter candidate current) (.minusHours candidate 1) candidate)]
+   {:schedule {:type "interval" :every-ms 3600000} :initial-slot (.toEpochMilli (.toInstant latest))
+    :source {:expr expr :timezone zone} :compilation "fixed-zone-hourly-v1" :first-activation "latest-due-only"})))

@@ -40,7 +40,7 @@ export function projectFleet(catalog,reports,bindings,now=Date.now(),catalogSha2
     ||!Array.isArray(catalog.organization?.bots)||catalog.organization.bots.length>10000
     ||!Array.isArray(bindings)||new Set(catalog.organization.bots.map(b=>b.id)).size!==catalog.organization.bots.length)
     throw Error('invalid-projection-input');
-  const sources={readiness:normalized(reports.readiness,'readiness',now),original:normalized(reports.original,'original',now),adapted:normalized(reports.adapted,'adapted',now),physics:normalized(reports.physics,'adapted',now),material:normalized(reports.material,'adapted',now),vm:normalized(reports.vm,'adapted',now)};
+  const sources={manifest:normalized(reports.manifest,'adapted',now),readiness:normalized(reports.readiness,'readiness',now),original:normalized(reports.original,'original',now),adapted:normalized(reports.adapted,'adapted',now),physics:normalized(reports.physics,'adapted',now),material:normalized(reports.material,'adapted',now),vm:normalized(reports.vm,'adapted',now)};
   const keys=bindings.map(b=>`${b.mode}/${b.botId}/${b.jobId}`);
   if(new Set(keys).size!==keys.length)throw Error('duplicate-approved-binding');
   const bots=catalog.organization.bots.map(bot=>{
@@ -69,6 +69,7 @@ export function projectFleet(catalog,reports,bindings,now=Date.now(),catalogSha2
           inputTokens:b.mode==='readiness'?run.inputTokens??null:null,outputTokens:b.mode==='readiness'?run.outputTokens??null:null,
           tokenMetric:b.mode==='readiness'?'provider-input-output':'not-applicable',
           artifactCid:b.mode!=='readiness'?run.artifact?.cid??null:null,
+          manifestAudit:run?.['domain-result']?.kind==='fleet-manifest-drift'?{status:run['domain-result'].status,drift:run['domain-result'].drift??null,sourceObservedAt:run['domain-result']['source-observed-at']??null}:null,
           measurement:run['domain-result']?.schema==='itonami.otehon.physics-measurement.v1'?{
             status:run['domain-result'].status,scope:run['domain-result'].scope,
             count:run['domain-result']['probe-summary']?.count??null,expected:run['domain-result']['probe-summary']?.expected??null,
