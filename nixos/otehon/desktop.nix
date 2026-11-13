@@ -11,10 +11,8 @@ let
   # derivation below instead of ~/.m2; build.mjs points Clojure at it
   # through MVN_REPO.
   #
-  # UNTESTED 2026-11-11: the migration machine has no Nix toolchain, so the
-  # outputHash below and npmDepsHash are placeholders. Fill them where Nix
-  # runs: run the image build, copy each "got: sha256-…" from the hash
-  # mismatch error, and paste it over the matching TODO.
+  # Dependency hashes were measured in Nix CI on 2026-11-13. This only pins
+  # build inputs; image boot and desktop update qualification are separate.
   cljDeps = pkgs.stdenv.mkDerivation {
     name = "awai-otehon-shell-clj-deps";
     src = builtins.path { path = ./shell/deps.edn; };

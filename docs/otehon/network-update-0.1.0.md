@@ -13,6 +13,28 @@ up to2min jitter. These are configurable admission defaults, not new availabilit
 or performance thresholds. automaticReboot=true is explicit standing owner
 authorization limited to the enrolled feed/keys/channel/cohort/state contract.
 Otherwise a verified trial is staged and the operator controls reboot.
+Hours use the enrolled machine's local timezone (`time.timeZone`), not the
+publisher's timezone. Changing it changes the maintenance window.
+
+Example enrollment (replace all placeholders; this example activates nothing):
+
+```nix
+otehon.update = {
+  enable = true;
+  baseVersion = 1; # Must be the deployed release's actual monotonic version.
+  publicKey = /operator-managed/release-manifest.pub;
+  cacheKey = /operator-managed/release-cache.pub;
+  network = {
+    enable = true;
+    feedUrl = "https://updates.example.invalid/otehon/stable";
+    channel = "stable";
+    cohort = "canary";
+    interval = "30min";
+    maintenanceHours = [ 3 4 ];
+    automaticReboot = false;
+  };
+};
+```
 
 HTTPS uses the enrolled CA and refuses redirects/ambient proxies. Signature,
 version/failed-version, exact schema, expiry, architecture, channel, cohort and
