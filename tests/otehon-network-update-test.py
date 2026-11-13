@@ -1,4 +1,4 @@
-import importlib.util, unittest, tempfile, subprocess, ssl, http.server, threading, json, time
+import importlib.util, unittest, tempfile, subprocess, ssl, http.server, threading, json, time, urllib.request
 from pathlib import Path
 spec=importlib.util.spec_from_file_location('update_network',Path(__file__).parents[1]/'nixos/otehon/update-network.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 class Admission(unittest.TestCase):
@@ -28,12 +28,12 @@ class TLS(unittest.TestCase):
     def setUpClass(cls):
         cls.tmp=tempfile.TemporaryDirectory();cls.base=Path(cls.tmp.name)
         subprocess.run(['openssl','req','-x509','-newkey','rsa:2048','-nodes','-keyout',str(cls.base/'key.pem'),'-out',str(cls.base/'cert.pem'),'-days','1','-subj','/CN=localhost','-addext','subjectAltName=DNS:localhost'],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
-        cls.requests=[]
+        cls.requests=[];cls.bodies={}
         class Handler(http.server.BaseHTTPRequestHandler):
             def do_GET(self):
                 cls.requests.append(self.path)
                 if self.path=='/redirect':self.send_response(302);self.send_header('Location','https://example.invalid/escape');self.end_headers();return
-                self.send_response(200);self.end_headers();self.wfile.write(b'x'*100)
+                self.send_response(200);self.end_headers();self.wfile.write(cls.bodies.get(self.path,b'x'*100))
             def log_message(self,*a):pass
         cls.server=http.server.ThreadingHTTPServer(('localhost',0),Handler);ctx=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER);ctx.load_cert_chain(cls.base/'cert.pem',cls.base/'key.pem');cls.server.socket=ctx.wrap_socket(cls.server.socket,server_side=True);cls.thread=threading.Thread(target=cls.server.serve_forever,daemon=True);cls.thread.start()
     @classmethod
@@ -46,6 +46,18 @@ class TLS(unittest.TestCase):
     def test_redirect_not_followed(self):
         with tempfile.TemporaryDirectory() as d:
             with self.assertRaises(m.Refused):self.delivery().fetch('redirect',Path(d)/'out',100)
+    def test_untrusted_tls_refused(self):
+        d=self.delivery();d.opener=urllib.request.build_opener(urllib.request.ProxyHandler({}),m.NoRedirect(),urllib.request.HTTPSHandler(context=ssl.create_default_context()))
+        with tempfile.TemporaryDirectory() as p, self.assertRaises(Exception):d.fetch('ok',Path(p)/'no',100)
+    def test_aggregate_download_bound(self):
+        d=self.delivery();d.left=50
+        with tempfile.TemporaryDirectory() as p,self.assertRaises(m.Refused):d.fetch('ok',Path(p)/'small',100)
+    def test_narinfo_cannot_escape_origin(self):
+        key='0'*32;self.bodies['/cache/'+key+'.narinfo']=('StorePath: /nix/store/'+key+'-system\nURL: https://example.invalid/nar\nReferences: \nNarSize: 1\n').encode()
+        with tempfile.TemporaryDirectory() as p,self.assertRaisesRegex(m.Refused,'narinfo-origin'):self.delivery().cache('/nix/store/'+key+'-system',Path(p)/'cache')
+    def test_narinfo_invalid_reference(self):
+        key='1'*32;self.bodies['/cache/'+key+'.narinfo']=('StorePath: /nix/store/'+key+'-system\nURL: nar/good.nar\nReferences: ../escape\nNarSize: 1\n').encode()
+        with tempfile.TemporaryDirectory() as p,self.assertRaisesRegex(m.Refused,'narinfo-reference'):self.delivery().cache('/nix/store/'+key+'-system',Path(p)/'cache')
     def test_missing_ca_refused(self):
         with self.assertRaises(Exception):m.Delivery({'feedUrl':'https://localhost','maxDownloadBytes':1,'maxStorePaths':1,'caBundle':str(self.base/'absent')})
 if __name__=='__main__':unittest.main()

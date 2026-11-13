@@ -7,7 +7,7 @@ in pkgs.testers.runNixOSTest {
   nodes.machine = { config, lib, extendModules, nodes, ... }: {
     imports = [ ../otehon/desktop.nix ];
     nixpkgs.hostPlatform = lib.mkForce "x86_64-linux";
-    networking.hostName = "otehon-update-client";
+    networking.hostName = lib.mkForce "otehon-update-client";
     networking.extraHosts = "${nodes.publisher.networking.primaryIPAddress} publisher.test";
     otehon.headless = true;
     otehon.update = {
