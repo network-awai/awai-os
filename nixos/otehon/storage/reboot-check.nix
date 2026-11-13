@@ -26,6 +26,10 @@ pkgs.testers.runNixOSTest {
     machine.wait_for_unit("multi-user.target")
     assert machine.succeed("cat /proc/sys/kernel/random/boot_id").strip() != boot_id
     machine.succeed("forest-reboot-probe read /var/lib/forest-reboot/store")
+    # Control: corrupt one VM-owned immutable archive only after successful
+    # recovery, and require the precise digest rejection on a fresh process.
+    machine.succeed("f=$(find /var/lib/forest-reboot/store -type f -name '*.forest' -print -quit); test -n \"$f\"; printf x >> \"$f\"")
+    machine.succeed("if forest-reboot-probe read /var/lib/forest-reboot/store > /tmp/forest-corrupt.log 2>&1; then exit 1; fi; grep -q ':corrupt-forest' /tmp/forest-corrupt.log")
     print("FOREST-GROUP-GUEST-REBOOT-PASS")
   '';
 }

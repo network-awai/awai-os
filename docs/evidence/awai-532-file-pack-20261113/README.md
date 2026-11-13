@@ -231,6 +231,11 @@ Even then the host and virtual disk caches, physical power loss, real tool
 generation inside the guest, Native execution and GiB input remain outside
 the evidence.
 
+After the successful post-reboot read, the VM test now appends one byte to a
+VM-owned Forest archive and requires a fresh reader to report
+`:corrupt-forest`. The same corruption control passed locally on a separate
+copy of the test store; the updated VM test itself remains pending in CI.
+
 ### 2026-11-14: retained CAR backing vector
 
 A recovered Pack's 36-byte index CID was observed as
