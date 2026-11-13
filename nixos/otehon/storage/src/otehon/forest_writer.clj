@@ -20,7 +20,7 @@
 (defn- digest [v]
   (mapv #(bit-and 255 %) (.digest (MessageDigest/getInstance "SHA-256")
                                    (if (bytes? v) v (to-bytes v)))))
-(defn- tool-digest [path]
+(defn- file-digest [path]
   (let [md (MessageDigest/getInstance "SHA-256") buf (byte-array 65536)]
     (with-open [in (Files/newInputStream (Paths/get path (make-array String 0))
                                         (into-array OpenOption [LinkOption/NOFOLLOW_LINKS]))]
@@ -38,7 +38,7 @@
   [directory name source staging tool]
   (when-not (every? string? [directory name source staging tool])
     (fail! :invalid-argument "expected string paths and name"))
-  (when-not (contains? tool-digests (tool-digest tool))
+  (when-not (contains? tool-digests (file-digest tool))
     (fail! :untrusted-forest-tool "Forest tool does not match a pinned digest"))
   (let [src (Paths/get source (make-array String 0))
         nofollow (into-array LinkOption [LinkOption/NOFOLLOW_LINKS])
@@ -53,10 +53,11 @@
           _ (with-open [tool-in (Files/newInputStream (Paths/get tool (make-array String 0))
                                                       (into-array OpenOption [LinkOption/NOFOLLOW_LINKS]))]
               (Files/copy tool-in (Paths/get staged-tool (make-array String 0)) (make-array CopyOption 0)))
-          _ (when-not (contains? tool-digests (tool-digest staged-tool))
+          _ (when-not (contains? tool-digests (file-digest staged-tool))
               (fail! :untrusted-forest-tool "staged Forest tool does not match a pinned digest"))
           _ (Files/setPosixFilePermissions (Paths/get staged-tool (make-array String 0))
                                            (PosixFilePermissions/fromString "r-x------"))
+          source-digest (MessageDigest/getInstance "SHA-256")
           result
           (with-open [in (Files/newInputStream src (into-array OpenOption [LinkOption/NOFOLLOW_LINKS]))]
             (loop [i 0 offset 0 chunks [] paths []]
@@ -65,6 +66,7 @@
                   {:chunks chunks :paths paths :size offset}
                   (do
                     (when (>= i max-packs) (fail! :too-large "input grew beyond the Pack limit"))
+                    (.update source-digest ^bytes batch)
                     (let [leaves (mapv (fn [part] (let [v (mapv #(bit-and 255 %) part)]
                                                     {:bytes v :digest (digest v)}))
                                        (partition-all leaf-size batch))
@@ -88,6 +90,10 @@
                                           out))]
                       (recur (inc i) (+ offset (alength ^bytes batch)) next-chunks (conj paths forestpath))))))))]
       (when-not (and (= initial-size (:size result)) (= initial-size (Files/size src))
+                     (= initial-time (Files/getLastModifiedTime src nofollow))
+                     (= (car/hex-encode (mapv #(bit-and 255 %) (.digest source-digest)))
+                        (file-digest source))
+                     (= initial-size (Files/size src))
                      (= initial-time (Files/getLastModifiedTime src nofollow)))
         (fail! :source-changed "source file changed during import"))
       (let [manifest (car/cbor-encode {"format" "awai.logical-file" "version" 1 "fileSize" (:size result)

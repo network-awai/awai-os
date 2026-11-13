@@ -44,6 +44,23 @@
                  (into-array OpenOption [StandardOpenOption/APPEND]))
     (ensure! (= :source-changed (deref task 120000 :timeout)) "changed source was not refused")
     (ensure! (= before (:root (store/read-store target))) "changed source published root"))
+  (let [target (str dir "/same-size-store") stage (str dir "/same-size-stage")
+        source (Paths/get (str dir "/same-size-source") (make-array String 0))
+        _ (Files/write source data (make-array OpenOption 0))
+        original-time (Files/getLastModifiedTime source (make-array LinkOption 0))
+        _ (store/init! target) before (:root (store/read-store target))
+        task (future (try (writer/put-file! target "file" (str source) stage tool) :unexpected-success
+                          (catch Exception e (:type (ex-data e)))))
+        first-car (java.io.File. (str stage "/0.car"))]
+    (loop [n 0]
+      (when (and (not (.exists first-car)) (< n 12000) (not (realized? task)))
+        (Thread/sleep 10) (recur (inc n))))
+    (ensure! (.exists first-car) "same-size boundary not reached")
+    (with-open [f (java.io.RandomAccessFile. (str source) "rw")]
+      (let [first-byte (.read f)] (.seek f 0) (.write f (bit-xor first-byte 128))))
+    (Files/setLastModifiedTime source original-time)
+    (ensure! (= :source-changed (deref task 120000 :timeout)) "same-size source change was not refused")
+    (ensure! (= before (:root (store/read-store target))) "same-size change published root"))
   (prn {:bytes (alength data) :packs 3 :logical-cid-match true :untrusted-tool-rejected true
-        :interrupted-root-unchanged true :changed-source-rejected true :roundtrip true :pass true})
+        :interrupted-root-unchanged true :changed-source-rejected true :same-size-rejected true :roundtrip true :pass true})
   (shutdown-agents))

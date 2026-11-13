@@ -141,9 +141,9 @@ Pack and publishes up to 64 Packs as one root. The explicitly supplied tool must
 match a hard-coded 0.39.0 executable digest; it is copied into a private new
 staging directory, hashed again and executed from there. The directory, including
 that large tool copy and generated CAR/Forest files, is retained for inspection.
-The source is never deleted. A before/after size and mtime check detects ordinary
-source changes; it is not a filesystem snapshot or proof against same-size
-changes with restored timestamps.
+The source is never deleted. Size and mtime are checked before and after
+reading, and the source is re-read and hashed before publication. This detects
+ordinary changes but is not an immutable filesystem snapshot.
 
 Using the macOS arm64 artifact above and Babashka 1.12.218, the product writer
 and CLI imported the deterministic 2 MiB file into three Packs; the logical
@@ -175,3 +175,21 @@ the isolated store's root stayed unchanged. The full proof returned
 `:changed-source-rejected true`, along with the prior positive, unpinned-tool
 and injected-interruption checks. This covers an observable size change; it
 does not turn the before/after size and mtime check into an immutable snapshot.
+
+### 2026-11-14: same-size source mutation
+
+The hosted proof changed the first source byte after the first CAR was written,
+kept its size, and restored its original mtime. On the previous implementation
+this negative control was accepted and published. The writer now hashes the
+bytes consumed during chunking and compares them against a bounded streaming
+re-read before root publication, with size and mtime rechecked afterward. The
+same proof then rejected the change with `:source-changed` and left the root
+unchanged; positive roundtrip, unpinned-tool rejection, interruption and append
+rejection also passed. Run `forest_writer_proof.clj` as above with a fresh
+output directory and the pinned macOS tool. Final output included
+`:same-size-rejected true` and `:pass true`.
+
+A second read is not an atomic snapshot: a concurrently modified file can
+change again after or during verification. A filesystem snapshot or an
+explicit source ownership/fencing contract remains needed for that guarantee.
+The actual-tool positive/negative proof is still not run in Nix CI.
