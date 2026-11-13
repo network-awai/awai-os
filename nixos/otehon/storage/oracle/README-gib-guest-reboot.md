@@ -28,3 +28,12 @@ must be checked separately. If it passes, it establishes a guest OS restart
 and loss of that guest's page cache for this prebuilt group. It does not prove
 host OS cache loss, the writer's guest durability, device power loss, Native
 execution, signed Datalog query, independent nodes or production status.
+
+## Exact-head CI observation
+
+GitHub Actions [run 43518512335](https://github.com/network-awai/awai-os/actions/runs/43518512335)
+passed the NixOS `guest-reboot` job for commit
+`560263a23a6ee48a7e82118ff762341d0e5c195b` on 2026-11-13 UTC. The test
+completed its before/after full hash checks, changed-boot-ID assertion and
+missing-Pack rejection. The scope limitations above remain unchanged; this
+observation is for that exact commit, not a blanket statement about later heads.
