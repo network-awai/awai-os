@@ -1,5 +1,6 @@
 (ns otehon.cli
-  (:require [otehon.storage :as store]
+  (:require [awai.fs.car :as car]
+            [otehon.storage :as store]
             [otehon.pack-store :as pack])
   (:import [java.nio ByteBuffer]
            [java.nio.channels FileChannel]
@@ -36,6 +37,15 @@
       ["car-import" 4] (prn (pack/import-car! directory name (input-bytes filename)))
       ["car-import-zstd3" 4] (prn (pack/import-car-zstd3! directory name (input-bytes filename)))
       ["forest-import" 4] (prn (pack/import-forest! directory name (input-bytes filename)))
+      ["forest-import-direct" 4] (prn (pack/import-forest-direct! directory name (input-bytes filename)))
+      ["forest-export" 4] (prn (output! filename (pack/export-forest (pack/recover directory) name)))
+      ["forest-get-block" 5]
+      (let [cid-text (nth args 4)
+            _ (car/parse-cid-str cid-text)
+            cid (car/base32-decode (subs cid-text 1))
+            bytes (pack/read-forest-block (pack/recover directory) name cid)]
+        (when-not bytes (throw (ex-info "CID is absent" {:type :missing-block})))
+        (prn (output! filename bytes)))
       ["pack-range-verified" 6]
       (prn (output! filename (pack/read-range-verified-leaves (pack/recover directory) name
                                 (Long/parseLong (nth args 4)) (Long/parseLong (nth args 5)))))

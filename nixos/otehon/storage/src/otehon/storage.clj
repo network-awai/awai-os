@@ -189,12 +189,34 @@
       (when-not (= digest (sha bytes)) (fail! :corrupt-zpack "segmented Pack digest mismatch"))
       bytes)))
 
+(defn write-forest!
+  "Publish immutable Forest bytes inside the metadata writer lock."
+  [directory bytes]
+  (when-not (and (bytes? bytes) (<= 1 (alength ^bytes bytes) max-bytes))
+    (fail! :too-large "Forest archive exceeds 1 MiB"))
+  (let [bytes (aclone ^bytes bytes) root (root-path directory)
+        digest (sha bytes) name (str digest ".forest")]
+    (if (exists? (path root name))
+      (do (when-not (= digest (sha (read-bytes (path root name))))
+            (fail! :corrupt-forest "existing Forest archive is corrupt"))
+          (sync-dir! root) (observe! :reused-dir-synced :forest))
+      (write-record! root name bytes :forest))
+    digest))
+
+(defn read-forest [directory digest]
+  (when-not (digest? digest) (fail! :invalid-digest "invalid Forest reference"))
+  (let [p (path (root-path directory) (str digest ".forest"))]
+    (when-not (exists? p) (fail! :missing-forest "committed Forest archive is missing"))
+    (let [bytes (read-bytes p)]
+      (when-not (= digest (sha bytes)) (fail! :corrupt-forest "Forest digest mismatch"))
+      bytes)))
+
 (defn read-payload-segments
   "Positioned reads for an explicitly selected range-verification operation.
   Does not verify the whole-file digest; caller must verify every returned
   complete leaf/frame against its previously verified immutable snapshot."
   [directory digest extension expected-size spans]
-  (when-not (and (digest? digest) (contains? #{"car" "zpack"} extension)
+  (when-not (and (digest? digest) (contains? #{"car" "zpack" "forest"} extension)
                  (integer? expected-size) (<= 0 expected-size max-bytes)
                  (vector? spans) (<= (count spans) 64)
                  (every? (fn [{:keys [offset length]}]

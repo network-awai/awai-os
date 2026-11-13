@@ -104,14 +104,23 @@
             (let [all (into header (mapcat raw-frames offsets))]
               (when (> (count all) max-size) (fail! :too-large "decoded CAR exceeds 1 MiB"))
               (car/carv1-decode all)
-              {:bytes b :carv1 all :slots slots :buckets buckets :distance distance :ends ends :index-pos index-pos})))))))
+              {:bytes b :carv1 all :slots slots :buckets buckets :distance distance :ends ends :index-pos index-pos
+               :frame-sha (into {} (map (fn [p] [p (segmented/sha (slice b p (ends p)))]) offsets))})))))))
+(defn get-block-from
+  "Use a fully validated snapshot's Forest index and a positioned frame reader.
+  Recheck the stored frame digest and block CIDs; unread frames are not scrubbed."
+  [handle cid read-frame]
+  (let [needle (vec cid) h (hash-cid needle)
+        positions (distinct (candidates (:slots handle) (:buckets handle) (:distance handle) h))]
+    (some (fn [p]
+            (let [bytes (read-frame p (- (get (:ends handle) p) p))]
+              (when-not (= (get (:frame-sha handle) p) (segmented/sha bytes))
+                (fail! :corrupt-frame "Forest frame changed after recovery"))
+              (some (fn [block] (when (= needle (:cid block)) (bytes-of (:bytes block))))
+                    (sections (decode bytes)))))
+          positions)))
 (defn get-block
   "Find CID using the embedded index; verify the selected complete frame again.
   nil means absent from the fully verified snapshot."
   [handle cid]
-  (let [needle (vec cid) h (hash-cid needle)
-        positions (distinct (candidates (:slots handle) (:buckets handle) (:distance handle) h))]
-    (some (fn [p]
-            (some (fn [block] (when (= needle (:cid block)) (bytes-of (:bytes block))))
-                  (sections (decode (slice (:bytes handle) p (get (:ends handle) p))))))
-          positions)))
+  (get-block-from handle cid #(slice (:bytes handle) %1 (+ %1 %2))))
