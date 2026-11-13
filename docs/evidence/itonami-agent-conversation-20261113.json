@@ -41,8 +41,9 @@
     "uncertainResult": "persist accepted request; never automatically redispatch"
   },
   "remaining": [
-    "live service/HTTPS owner validation",
-    "trusted user-approved first conversation",
+    "administrative local MagicDNS repair before ordinary browser connection",
+    "trusted user-approved first conversation and live Meta result",
+    "392 missing catalog-pinned personas",
     "distributed private-state and off-host key recovery",
     "main merge and image release"
   ],
@@ -50,5 +51,60 @@
     "forecast": "unknown",
     "actual": "unknown",
     "attribution": "shared session; unallocated unless explicitly bound"
+  },
+  "runtime": {
+    "serviceRevision": "1a27c1ba58a24c399e5a3c7f38f7048c0375dd99",
+    "owner": "itonami-agent",
+    "launchdRunning": true,
+    "verifiedPersonas": 507,
+    "unavailablePersonas": 392,
+    "privateHttps": true,
+    "existingPublicFunnelUnchanged": true,
+    "existingFleetWorkersUnchanged": true,
+    "tlsOwnerHistoryReadback": {
+      "status": 200,
+      "certificateValidation": true,
+      "injectedOwnerIdentity": true,
+      "explicitIdentityHeaderSent": false,
+      "messages": 0,
+      "readback": true,
+      "engine": "kotobase-peer",
+      "backend": "awai-fs-otehon-pack",
+      "lookup": "operator diagnostic with explicit current Tailnet IP"
+    },
+    "rejectedOriginStatus": 403,
+    "defaultDns": "blocked: system resolver resolves private hostname through public DNS; MagicDNS diagnostic resolves correctly; administrative split-DNS repair remains",
+    "inferenceInvoked": false,
+    "canonicalStatePath": true,
+    "initialEmptyStoreRetained": true
+  },
+  "browser": {
+    "jaEn": true,
+    "phone": {
+      "requested": [
+        390,
+        844
+      ],
+      "observedCss": [
+        325,
+        703
+      ],
+      "horizontalOverflow": 0
+    },
+    "tablet": {
+      "requested": [
+        1024,
+        768
+      ],
+      "observedCss": [
+        853,
+        640
+      ],
+      "horizontalOverflow": 0
+    },
+    "routineAnnotations": "not visually displayed; accessible description retained",
+    "historyConsent": "canonical dialog inspected; denied, no request dispatched",
+    "errorLocaleSwitch": "ja denial changes to English on locale switch",
+    "conversationView": "Bot selected; history/send/form controls present; no browser persistence"
   }
 }

@@ -11,7 +11,7 @@
           (.then (fn [result] (let [rows (js->clj (.-messages result) :keywordize-keys true)]
                                (set-messages (if before (vec (concat rows messages)) rows))
                                (set-cursor (.-nextCursor result)) (set-store (.-store result)))))
-          (.catch #(set-message (tr (if (= "client operation was not approved" (.-message %)) :chatDenied :chatUnavailable)))) (.finally #(set-busy false))))
+          (.catch #(set-message (if (= "client operation was not approved" (.-message %)) :chatDenied :chatUnavailable))) (.finally #(set-busy false))))
        send (fn [event] (.preventDefault event)
          (when-not busy
           (try
@@ -22,9 +22,9 @@
               (set-messages (conj messages {:id (.-requestId result) :role "user" :text value}
                 {:id (str (.-requestId result) ":reply") :role "assistant" :text (.-text result) :runId (.-runId result) :model (.-model result)}))
               (set-store (.-store result)) (set-text "")))
-             (.catch #(set-message (if (= "client operation was not approved" (.-message %)) (tr :chatDenied) (tr :chatUnavailable))))
+             (.catch #(set-message (if (= "client operation was not approved" (.-message %)) :chatDenied :chatUnavailable)))
              (.finally #(set-busy false))))
-           (catch :default _ (set-message (tr :chatInvalid))))))]
+           (catch :default _ (set-message :chatInvalid)))))]
   [:section.bot-conversation {:aria-label (ui/t locale :conversation)}
    [:div.fleet-circle-path [:button.secondary {:type "button" :disabled busy :on-click #(history nil)} (tr :chatLoadHistory)]
     (when cursor [:button.secondary {:type "button" :disabled busy :on-click #(history cursor)} (tr :chatEarlier)])]
@@ -37,7 +37,7 @@
    [:ol.bot-conversation-history {:aria-label (tr :chatLoadHistory)}
     (when (empty? messages) [:li.muted (tr :chatEmpty)])
     (for [m messages] ^{:key (:id m)} [:li {:data-chat-role (:role m)} [:strong (if (= "user" (:role m)) (tr :chatYou) (:name bot))] [:p (:text m)]])]
-   (when message [:p.problem {:role "status"} message])
+   (when message [:p.problem {:role "status"} (tr message)])
    [:form {:on-submit send}
     [:label.soshiki-field [:span (tr :chatMessage)] [:textarea {:aria-label (tr :chatMessage) :value text :max-length 8192 :rows 3 :disabled busy :on-change #(set-text (.. % -target -value))}]]
     [:button.secondary {:type "submit" :disabled (or busy (empty? (.trim text)))} (if busy (tr :chatBusy) (tr :chatSend))]]]))
