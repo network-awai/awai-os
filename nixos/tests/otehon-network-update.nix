@@ -79,11 +79,35 @@ in pkgs.testers.runNixOSTest {
     machine.succeed("printf 'owner-file-stays\n' >/home/otehon/ota-owner-file; sync")
     before = machine.succeed("sha256sum /home/otehon/ota-owner-file /etc/machine-id")
     candidates = json.loads(publisher.succeed("cat /etc/ota-candidates.json"))
-    def publish(version, target, cohorts):
+    def publish(version, target, cohorts, **overrides):
         now = int(time.time())
         data = {"schema":"awai.otehon.release.v1","version":version,"system":candidates[target],"channel":"stable","cohorts":cohorts,"architecture":"x86_64","stateContract":candidates["stateContract"],"issuedAt":now-60,"expiresAt":now+3600}
+        data.update(overrides)
         publisher.succeed("printf '%s' " + shlex.quote(json.dumps(data)) + " >/var/lib/update-feed/manifest.json")
         publisher.succeed("minisign -S -q -W -s /etc/test-manifest.key -m /var/lib/update-feed/manifest.json -x /var/lib/update-feed/manifest.json.minisig; chmod 644 /var/lib/update-feed/*")
+    machine.succeed("systemctl stop otehon-update-poll.timer")
+    def unchanged():
+        assert machine.succeed("cat /etc/ota-generation").strip()=="a"
+        assert machine.succeed("sha256sum /home/otehon/ota-owner-file /etc/machine-id")==before
+        machine.succeed("test ! -e /var/lib/otehon-update/pending.json")
+    def poll_refuses(reason):
+        machine.succeed("systemctl reset-failed otehon-update-poll.service")
+        machine.fail("systemctl start otehon-update-poll.service")
+        machine.succeed("journalctl -u otehon-update-poll -n 12 --no-pager | grep " + shlex.quote(reason))
+        unchanged()
+    publish(2,"good",["stable"])
+    publisher.succeed("printf 'tampered' >>/var/lib/update-feed/manifest.json")
+    poll_refuses("manifest-admission")
+    publish(2,"good",["stable"],expiresAt=int(time.time())-1)
+    poll_refuses("release-time")
+    publish(2,"good",["stable"],stateContract="unqualified-browser-schema")
+    poll_refuses("state-contract")
+    publish(2,"good",["stable"])
+    publisher.succeed("systemctl stop nginx.service")
+    poll_refuses("URLError")
+    publisher.succeed("systemctl start nginx.service")
+    machine.succeed("systemctl reset-failed otehon-update-poll.service")
+    machine.succeed("systemctl start otehon-update-poll.timer")
     publish(2,"good",["canary"])
     machine.wait_until_succeeds("journalctl -u otehon-update-poll --no-pager | grep '\"reason\": \"cohort\"'",timeout=120)
     assert machine.succeed("cat /etc/ota-generation").strip()=="a"
