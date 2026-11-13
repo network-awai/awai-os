@@ -14,11 +14,13 @@ test('peer turns use canonical goal/session/speaker binding and stop after four 
   let turns=[];for(let n=0;n<4;n++){
    const plan=await bbJSON(cfg.bb,['-m','itonami-chat.peer'],{grant,turns});
    const request={schema:'awai.bot-chat-request.v1',botId:'profile:a',sessionId:cycle,requestId:randomUUID(),model,text:plan.prompt,peer:{cycleId:cycle,turn:n}};
-   if(n===0){assert.equal((await post('turn',request,'http://127.0.0.1:8906')).status,503);assert.equal(calls.length,0);assert.equal((await post('turn',request)).status,409);assert.equal(calls.length,0);allowAdmission=true;}
+   if(n===0){assert.equal((await post('turn',request,'http://127.0.0.1:8906')).status,409);assert.equal(calls.length,0);assert.equal((await post('turn',request)).status,409);assert.equal(calls.length,0);allowAdmission=true;}
    const response=await post('turn',request);assert.equal(response.status,200);const r=await response.json();assert.equal(r.speakerBotId,plan.speaker);assert.equal(r.peer.turn,n);turns.push({turn:n,speaker:r.speakerBotId,state:'completed',text:r.text});
   }
-  const extra=await post('turn',{schema:'awai.bot-chat-request.v1',botId:'profile:a',sessionId:cycle,requestId:randomUUID(),model,text:'Do more',peer:{cycleId:cycle,turn:4}});assert.equal(extra.status,503);
+  const extra=await post('turn',{schema:'awai.bot-chat-request.v1',botId:'profile:a',sessionId:cycle,requestId:randomUUID(),model,text:'Do more',peer:{cycleId:cycle,turn:4}});assert.equal(extra.status,409);
   assert.deepEqual(calls,['profile:a','profile:b','profile:a','profile:b']);
   const h=await(await post('history',{botId:'profile:a',sessionId:cycle})).json();assert.equal(h.messages.length,8);assert.equal(h.session.completedTurns,4);assert.equal(h.session.goal,grant.goal);
+  const linked=await(await post('sessions',{botId:'profile:b',action:'list'})).json();assert.ok(linked.sessions.some(s=>s.sessionId===cycle));
+  const other=await(await post('history',{botId:'profile:b',sessionId:cycle})).json();assert.equal(other.messages.length,8);assert.equal(other.store.headCid,h.store.headCid);
  }finally{await new Promise(r=>server.close(r));}
 });

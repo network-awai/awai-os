@@ -58,6 +58,6 @@
       [:strong (or (:speakerName m) (if (= "user" (:role m)) (tr :chatYou) (:name bot)))]
       (if (and (= "user" (:role m)) (:peer m)) [:details [:summary (tr :peerReceived)] [:p (:text m)]] [:p (:text m)])])]
    (when message [:p.problem {:role "status"} (tr message)])
-   [:form {:on-submit send}
+   (when-not (= "peer" (:kind session-info)) [:form {:on-submit send}
     [:label.soshiki-field [:span (tr :chatMessage)] [:textarea {:aria-label (tr :chatMessage) :value text :max-length 8192 :rows 3 :disabled busy :on-change #(set-text (.. % -target -value))}]]
-    [:button.secondary {:type "submit" :disabled (or busy (empty? (.trim text)))} (if busy (tr :chatBusy) (tr :chatSend))]]]))
+    [:button.secondary {:type "submit" :disabled (or busy (empty? (.trim text)))} (if busy (tr :chatBusy) (tr :chatSend))]])]))

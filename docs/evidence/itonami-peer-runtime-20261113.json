@@ -1,0 +1,74 @@
+{
+  "schema": "itonami.peer-runtime-check.v1",
+  "date": "2026-11-13",
+  "issue": "AWAI-2862",
+  "engineering": [
+    "AWAI-2808",
+    "AWAI-2861"
+  ],
+  "runtimeSource": "49988aadef654b1c1db5186514579026e12549c0",
+  "canonicalRuntimeSource": "f91b5a9",
+  "dialogue": {
+    "participants": [
+      "profile:codinator",
+      "profile:cron-health"
+    ],
+    "utterances": 4,
+    "messages": 8,
+    "provider": "meta",
+    "model": "muse-spark-1.3",
+    "cliReasoningEffort": "low",
+    "providerEffortTelemetry": "unknown",
+    "allCompleted": true,
+    "originalClaimResultRecovery": true,
+    "originalCronChanged": false,
+    "goalAchieved": "unmeasured"
+  },
+  "verification": {
+    "authenticatedLedgerReadback": 4,
+    "resultHashesVerified": 4,
+    "additionalModelRunsAfterCompletedRestart": 0,
+    "modelRunCountBeforeAndAfter": [
+      4,
+      4
+    ],
+    "browserObservedProcessing": 1,
+    "browserObservedFinalProcessing": 0,
+    "browserObservedDialogue": "4/4",
+    "publicMetadataRedacted": true
+  },
+  "usage": {
+    "inputTokens": 92740,
+    "outputTokens": 2081,
+    "reasoningTokens": 637,
+    "cachedRaw": 0,
+    "cacheReadTokens": "unknown",
+    "cacheWriteTokens": "unknown",
+    "uniqueRuns": 4,
+    "providerReportedCalls": 4,
+    "window": {
+      "start": "2026-11-13T10:40:06.783Z",
+      "end": "2026-11-13T10:43:36.940Z",
+      "elapsedWallMs": 210157,
+      "sumMuseProcessMs": 51990,
+      "activeInferenceMs": "unknown",
+      "waitingMs": "unknown",
+      "coverage": "only the4 explicitly bound peer model runs; includes operator gap in wall window; excludes earlier preflight/coding overhead"
+    },
+    "coverage": "only4 explicitly bound unique final run snapshots; coding shared/unallocated"
+  },
+  "proposalReview": {
+    "numberedCandidates": 4,
+    "routeToExistingHeartbeatWork": 1,
+    "alreadyPresentOrInputScopeGap": 2,
+    "incorrectResidualCalculation": 1,
+    "newOperationalAuthorityFromOutput": false
+  },
+  "remaining": [
+    "ordinary browser DNS owner-deferred",
+    "participant shared-head runtime readback after source promotion",
+    "full fleet execution heartbeat coverage",
+    "private off-host recovery",
+    "source/main/release"
+  ]
+}

@@ -306,9 +306,10 @@
    [:.agent-picker-list {:list-style "none" :padding 0 :margin 0 :display "grid" :gap "6px" :max-height "48dvh" :overflow-y "auto"}]
    [:.agent-picker-row {:display "grid" :grid-template-columns "minmax(0,1fr) auto" :gap "4px 8px" :width "100%" :text-align "start" :padding "12px" :min-height "56px" :border-radius "10px" :background "var(--surface-raised)" :border "1px solid transparent" :color "var(--fg)"}]
    [".agent-picker-row[aria-pressed=true]" {:background "var(--surface-selected)" :border-color "var(--border-strong)"}]
+   [".agent-picker-row strong" {:min-width 0 :overflow-wrap "anywhere"}]
    [".agent-picker-row small" {:grid-column "1 / -1" :overflow-wrap "anywhere" :opacity 0.7}]
    [:.agent-workspace-conversation {:min-width 0 :padding "14px" :border "1px solid var(--border-strong)" :border-radius "14px" :background "var(--surface)"}]
-   (at-media {:max-width "1000px"} [:.agent-workspace {:grid-template-columns "minmax(0,1fr)"}] [:.agent-picker-list {:max-height "32dvh"}])
+   (at-media {:max-width "700px"} [:.agent-workspace {:grid-template-columns "minmax(0,1fr)"}] [:.agent-picker-list {:max-height "32dvh"}])
    [:.bot-conversation {:display "flex" :flex-direction "column" :gap "12px" :min-width 0}]
    [:.bot-conversation-history {:display "grid" :gap "8px" :list-style "none" :padding 0 :margin 0 :max-height "32dvh" :overflow-y "auto" :overscroll-behavior "contain"}]
    [".bot-conversation-history li" {:padding "10px" :border-radius "10px" :background "var(--surface-raised)" :overflow-wrap "anywhere"}]

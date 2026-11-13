@@ -1,7 +1,7 @@
 (ns itonami.otehon.conversation
   "Agent-owned AwaiFS/Kotobase conversation sessions, shared by CLI and UI hosts.
   Legacy state.db browsing remains separate; never import Hermes state implicitly."
-  (:require [clojure.string :as str] [itonami.otehon.io :as io]))
+  (:require [clojure.string :as str] [itonami.otehon.io :as hio]))
 
 (defn valid-session? [id]
   (boolean (and (string? id) (or (= "default" id)
@@ -11,7 +11,7 @@
   (when-not (and (string? owner) (not (str/blank? owner)) (valid-bot? bot) (valid-session? id))
     (throw (ex-info "invalid Agent session scope" {})))
   ;; Preserve the original owner/Bot default partition exactly.
-  (io/sha256-utf8 (str "itonami-agent/conversation/v1\u0000" owner "\u0000" bot
+  (hio/sha256-utf8 (str "itonami-agent/conversation/v1\u0000" owner "\u0000" bot
                        (when-not (= id "default") (str "\u0000session\u0000" id)))))
 (defn session-list [events]
   (->> events
@@ -45,15 +45,15 @@
           _ (when-not (and (string? endpoint) (re-matches #"https://[A-Za-z0-9.-]+(?::[0-9]{1,5})?" endpoint))
               (throw (ex-info "explicit HTTPS Agent endpoint required" {})))
           file (get flags "--text-file")
-          _ (when (and file (not (io/file? file))) (throw (ex-info "message file missing" {})))
+          _ (when (and file (not (hio/file? file))) (throw (ex-info "message file missing" {})))
           plan (request-plan {:action action :botId (get flags "--bot") :sessionId (get flags "--session")
                               :model (get flags "--model") :requestId (get flags "--request")
-                              :title (get flags "--title" "") :text (when file (io/slurp-utf8 file))})
+                              :title (get flags "--title" "") :text (when file (hio/slurp-utf8 file))})
           ;; One explicit operator command, no shell, redirect, retry or provider fallback.
-          r (io/spawn-sync! ["curl" "--silent" "--show-error" "--fail-with-body" "--max-time" "150"
+          r (hio/spawn-sync! ["curl" "--silent" "--show-error" "--fail-with-body" "--max-time" "150"
                             "--request" "POST" "--header" "content-type: application/json"
                             "--data-binary" "@-" (str endpoint (:path plan))]
-                           {:input (io/json-str (:body plan)) :timeout-ms 155000})]
+                           {:input (hio/json-str (:body plan)) :timeout-ms 155000})]
       {:exit (if (zero? (:exit r)) 0 1) :lines [(if (zero? (:exit r)) (:stdout r) "Agent request unconfirmed; no automatic retry") ]})
     (catch #?(:clj Exception :cljs :default :lpy python/Exception) e
       {:exit 2 :lines [(ex-message e)]})))

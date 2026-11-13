@@ -26,7 +26,7 @@
      (for [row (:rows result) :let [bot (:bot row)]] ^{:key (:id bot)}
       [:li [:button.agent-picker-row {:type "button" :aria-pressed (= (:id bot) (.-botId selection))
                                     :on-click #(chooseAgent (:id bot))}
-       [:strong (:name bot)] [:span (ui/t locale (case (:state row) "responding" :responding "resident" :residentAgents "waiting" :scheduledAgents "held" :held "running" :processingAgents "unknown" :unknown :attention))]
+       [:strong (:name bot)] [:span (ui/t locale (case (if (and (= filter "conversation") (not (:running row)) (not (:resident row))) "on-demand" (:state row)) "on-demand" :onDemandAgents "responding" :responding "resident" :residentAgents "waiting" :scheduledAgents "held" :held "running" :processingAgents "unknown" :unknown :attention))]
        [:small (:repository bot)]]])]
     (when (< (count (:rows result)) (:total result)) [:button.secondary {:type "button" :on-click #(set-limit (+ limit 20))} (ui/t locale :showMore)])]
    [:section.agent-workspace-conversation {:aria-label (ui/t locale :conversation)}

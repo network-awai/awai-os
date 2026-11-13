@@ -1,22 +1,27 @@
 {
   "repository": "cloud-itonami/app-itonami-itonami-agent",
-  "revision": "f91b5a9438eb1447616488f7880294721845d0c4",
+  "revision": "6091410b81543e7c0f2d7069d982a341c68c721f",
   "files": [
     {
       "path": "otehon/src/itonami/otehon/conversation.cljc",
       "target": "itonami/src/itonami/otehon/conversation.cljc",
-      "sha256": "06d718f6be7f65fbb945190185fb58b1afaeddbd7bb6ca76199391968c290a29"
+      "sha256": "6e820f0bc9d7f6bd6ee207cef379eeb8a6463479996aed4f83099c32e92208c8"
     },
     {
       "path": "otehon/src/itonami/otehon/peer_talk.cljc",
       "target": "itonami/src/itonami/otehon/peer_talk.cljc",
-      "sha256": "b1bbbd7e929d6da79d2cc89e7ee75a926e40ce9875cc388c9fa1473614237846"
+      "sha256": "7974fb682fcb32a470a1da99f7b1e0a458f04d00e399d139d7c1edf5d1bdc037"
     },
     {
       "path": "otehon/src/itonami/otehon/occurrence.cljc",
       "target": "itonami/src/itonami/otehon/occurrence.cljc",
       "sha256": "ec1cbe693f1feb0282c4fca454b9e9b2111cf9a7c59234863d5c74c7ba1ec93f"
+    },
+    {
+      "path": "otehon/src/itonami/otehon/etcd.cljc",
+      "target": "itonami/src/itonami/otehon/etcd.cljc",
+      "sha256": "14cd161bc94d39e9723b5f9b56da57088466d862250cc95d6c7674916d0061ec"
     }
   ],
-  "scope": "Exact canonical Otehon session/peer/occurrence modules; pinned io/bundle/etcd; no Native qualification"
+  "scope": "Exact canonical Otehon session/peer/occurrence/TLS transport modules; pinned io/bundle dependencies; not Native qualification"
 }

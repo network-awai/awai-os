@@ -1,7 +1,7 @@
 (ns itonami.otehon.peer-talk
  "Bounded, tool-free peer dialogue. A peer message never grants tools or starts a new cycle."
  (:require [clojure.string :as str] [itonami.otehon.conversation :as c]
-           [itonami.otehon.bundle :as bundle] [itonami.otehon.io :as io]))
+           [itonami.otehon.bundle :as bundle] [itonami.otehon.io :as hio]))
 (defn sha? [x] (and (string? x) (boolean (re-matches #"[a-f0-9]{64}" x))))
 (defn grant-cid [g] (bundle/cid-raw (bundle/sorted-edn g)))
 (defn valid-grant? [g]
@@ -12,7 +12,7 @@
       (integer? (:max-turns g)) (<= 1 (:max-turns g) 4) (= [] (:tools g))
       (string? (:goal g)) (<= 1 (count (:goal g)) 800)
       (string? (:snapshot g)) (<= 1 (count (:snapshot g)) 3000)
-      (= (:snapshot-sha g) (io/sha256-utf8 (:snapshot g)))
+      (= (:snapshot-sha g) (hio/sha256-utf8 (:snapshot g)))
       (vector? (:participants g)) (= 2 (count (:participants g)))
       (= 2 (count (set (map :bot-id (:participants g)))))
       (every? #(and (c/valid-bot? (:bot-id %)) (sha? (:profile-sha %))) (:participants g))))
@@ -36,7 +36,7 @@
    {:state "ready" :turn n :speaker (:bot-id speaker) :profile-sha (:profile-sha speaker)
     :from (if (zero? n) "owner-goal" (:speaker (last turns)))
     :cycle-id (:cycle-id grant) :session-id (:session-id grant)
-    :prompt prompt :input-sha (io/sha256-utf8 prompt) :grant-cid (grant-cid grant)})))
+    :prompt prompt :input-sha (hio/sha256-utf8 prompt) :grant-cid (grant-cid grant)})))
 
 (defn command [args]
  (try
@@ -45,18 +45,18 @@
         flags (into {} (map vec (partition 2 tail)))
         _ (when (some #(not (contains? #{"--grant" "--turns" "--endpoint" "--admission" "--request"} %)) (keys flags))
             (throw (ex-info "unknown peer argument" {})))
-        grant (io/parse-json (io/slurp-utf8 (get flags "--grant")))
+        grant (hio/parse-json (hio/slurp-utf8 (get flags "--grant")))
         ;; JSON ports have string keys; the domain contract has keyword keys.
         keywordize (fn keywordize [v] (cond (map? v) (into {} (map (fn [[k x]] [(keyword k) (keywordize x)]) v))
                                            (vector? v) (mapv keywordize v) :else v))
         g (keywordize grant)
-        turns (keywordize (io/parse-json (io/slurp-utf8 (get flags "--turns"))))
+        turns (keywordize (hio/parse-json (hio/slurp-utf8 (get flags "--turns"))))
         plan (turn-plan g turns)]
    (case action
-    "plan" {:exit 0 :lines [(io/json-str plan)]}
+    "plan" {:exit 0 :lines [(hio/json-str plan)]}
     ("talk" "dm")
     (let [endpoint (get flags "--endpoint")
-          admission (keywordize (io/parse-json (io/slurp-utf8 (get flags "--admission"))))
+          admission (keywordize (hio/parse-json (hio/slurp-utf8 (get flags "--admission"))))
           id (get flags "--request")
           _ (when-not (and (= "ready" (:state plan)) (c/valid-session? id) (not= "default" id)
                      (string? endpoint) (re-matches #"https://[A-Za-z0-9.-]+(?::[0-9]{1,5})?" endpoint)
@@ -65,9 +65,9 @@
           body {:schema "awai.bot-chat-request.v1" :botId (get-in g [:participants 0 :bot-id])
                 :sessionId (:session-id g) :model (:model g) :requestId id :text (:prompt plan)
                 :peer {:cycleId (:cycle-id g) :turn (:turn plan) :admission admission}}
-          r (io/spawn-sync! ["curl" "--silent" "--show-error" "--fail-with-body" "--max-time" "150" "--request" "POST"
+          r (hio/spawn-sync! ["curl" "--silent" "--show-error" "--fail-with-body" "--max-time" "150" "--request" "POST"
                "--header" "content-type: application/json" "--data-binary" "@-" (str endpoint "/v1/bot-chat/turn")]
-               {:input (io/json-str body) :timeout-ms 155000})]
+               {:input (hio/json-str body) :timeout-ms 155000})]
       {:exit (if (zero? (:exit r)) 0 1) :lines [(if (zero? (:exit r)) (:stdout r) "Peer outcome unconfirmed; no automatic retry")]})
     {:exit 2 :lines ["usage: peer plan|talk|dm --grant FILE --turns FILE [--endpoint HTTPS --admission FILE --request UUID]"]}))
   (catch #?(:clj Exception :cljs :default :lpy python/Exception) e {:exit 2 :lines [(ex-message e)]})))

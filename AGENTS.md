@@ -66,3 +66,23 @@ hard-code layout widths to Japanese text, or use color/motion as the only
 status cue. Check Japanese and English at phone and tablet widths, keyboard
 focus and reduced-motion behavior. Imported profile names and user-authored
 content are not UI copy and must not be silently translated.
+
+## Shared Agent sessions and peer dialogue
+
+Keep Itonami and Soshiki on the same Agent conversation component and pinned
+canonical Itonami session contract. Authoritative messages belong to the Agent's
+Kotobase/AwaiFS store; browser navigation, drafts and rendered messages are
+transient. Participant views of a peer dialogue resolve the same canonical
+session; unrelated scopes stay isolated. Preserve legacy histories until an
+explicit migration is qualified.
+
+Show observed processing, residence, source-cron waiting and on-demand support
+as separate states. A loaded shared service or a registered profile does not
+prove an individual Bot is resident. Use current matched heartbeat evidence;
+unknown coverage stays unknown. Keep large catalogs searchable and paged.
+
+Peer output is proposal data, never tool authority. Bind each approved dialogue
+to its goal, named participants, source hashes, owning Issue, model and turn
+bound. Preserve original cron and the original distributed occurrence claim;
+uncertain results do not authorize replay or another cycle. Keep public presence
+and progress metadata free of transcripts, private identities and session IDs.

@@ -21,7 +21,7 @@
  call! (fn [op body tag]
    (let [file (str root "/request-" tag ".json") text (j/generate-string {:operation op :body body})
          _ (h/durable! file text) r (hio/spawn-sync! [(:nodeBinary cfg) (:clientScript cfg) cfg-file digest file (hio/sha256-utf8 text)] {:timeout-ms 155000 :input ""})]
-    (when-not (zero? (:exit r)) (throw (ex-info "private Agent result unconfirmed; no automatic retry" {})))
+    (when-not (zero? (:exit r)) (h/durable! (str root "/transport-error-" tag ".json") (j/generate-string {:exit (:exit r) :error (subs (:stderr r) 0 (min 2000 (count (:stderr r))))})) (throw (ex-info "private Agent result unconfirmed; no automatic retry" {})))
     (j/parse-string (:stdout r) true)))
  leader (get-in grant [:participants 0 :bot-id]) session (:session-id grant)
  _ (call! "sessions" {:botId leader :action "create" :sessionId session :title "Fleet信頼性 · Peer"} (str "session-" (java.util.UUID/randomUUID)))

@@ -25,12 +25,15 @@ export function handler(cfg,{db=database,execute=infer,loadBots,onProcess=()=>{}
   let bot,bots;try{bots=await loadBots();bot=bots.find(b=>b.id===request.botId);}catch{return reply(503,{error:'catalog-unavailable'});}
   if(!bot)return reply(404,{error:'bot-not-registered'});
   try{
-   const {thread,index}=await scopes(cfg,owner,bot.id,sessionId),rows=await sessionRows(cfg,index,db);
-   let session=rows.sessions.find(s=>s.sessionId===sessionId);const grant=peerGrant(cfg,sessionId);
+   const candidate=peerGrant(cfg,sessionId),grant=candidate?.participants.some(p=>p['bot-id']===bot.id)?candidate:null;
+   const canonicalBotId=grant?.participants[0]['bot-id']??bot.id;
+   const {thread,index}=await scopes(cfg,owner,canonicalBotId,sessionId),rows=await sessionRows(cfg,index,db);
+   let session=rows.sessions.find(s=>s.sessionId===sessionId);
    if(req.url.endsWith('/sessions')){
     if(request.action==='list'){
      const legacy=await db(cfg,(await scopes(cfg,owner,bot.id)).thread,'history');
      const sessions=[...rows.sessions];
+     for(const g of cfg.peerCycles??[]){if(!g.participants.some(p=>p['bot-id']===bot.id)||sessions.some(s=>s.sessionId===g['session-id']))continue;const target=await scopes(cfg,owner,g.participants[0]['bot-id'],g['session-id']);const linked=await sessionRows(cfg,target.index,db);const shared=linked.sessions.find(s=>s.sessionId===g['session-id']);if(shared)sessions.push(shared);}
      if(legacy.messages.length&&!sessions.some(s=>s.sessionId==='default'))sessions.push({sessionId:'default',title:bot.name,createdAt:legacy.messages[0].at,updatedAt:legacy.messages.at(-1).at,messageCount:legacy.messages.length,state:legacy.messages.at(-1).role==='assistant'?'completed':'unknown'});
      sessions.sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));return reply(200,{botId:bot.id,sessions:sessions.slice(0,100),store:rows.store});
     }
@@ -60,8 +63,10 @@ export function handler(cfg,{db=database,execute=infer,loadBots,onProcess=()=>{}
      if(history.messages.at(-1)?.id===answer.id&&session?.updatedAt!==answer.at)await recordSession(cfg,index,sessionId,sessionId+':'+request.requestId+':done',meta(history.messages,'completed'),db);
      return reply(200,{requestId:request.requestId,botId:bot.id,sessionId,state:'completed',text:answer.text,provider:answer.provider,model:answer.model,runId:answer.runId,usage:answer.usage,usageCoverage:answer.usageCoverage,speakerBotId:answer.speakerBotId,speakerName:answer.speakerName,peer:answer.peer,store:history.store});
     }
-    const peer=(request.peer||grant)?await authorizePeer(cfg,{...request,sessionId},history.messages,bots,origin):null;
-    if(peer&&!await checkAdmission(cfg,request,peer))return reply(409,{error:'peer-admission-unconfirmed-no-inference'});
+    let peer=null;
+    if(request.peer||grant){try{peer=await authorizePeer(cfg,{...request,sessionId},history.messages,bots,origin);}catch{return reply(409,{error:'peer-plan-refused-no-inference',requestId:request.requestId,modelInvoked:false});}
+     try{if(!await checkAdmission(cfg,request,peer))return reply(409,{error:'peer-admission-unconfirmed-no-inference',requestId:request.requestId,modelInvoked:false});}catch{return reply(503,{error:'peer-admission-unavailable-no-inference',requestId:request.requestId,modelInvoked:false});}}
+
     const message={id:request.requestId,role:'user',text:request.text,at:new Date().toISOString(),...(peer?{peer:peer.envelope,speakerName:peer.envelope.from==='owner-goal'?'Goal':peer.envelope.from}: {})};
     const accepted=await db(cfg,thread,'append',[message]);
     await recordSession(cfg,index,sessionId,sessionId+':'+request.requestId+':accepted',meta(accepted.messages,'unknown'),db);
