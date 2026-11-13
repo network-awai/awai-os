@@ -44,6 +44,11 @@ in {
       description = "Poll the enrolled signed HTTPS release feed";
       after = [ "network-online.target" "time-sync.target" "otehon-update-settle.service" ];
       wants = [ "network-online.target" ];
+      environment = {
+        OTEHON_UPDATE_BASE_VERSION = toString config.otehon.update.baseVersion;
+        OTEHON_UPDATE_PUBLIC_KEY = toString config.otehon.update.publicKey;
+        OTEHON_UPDATE_CACHE_KEY = toString config.otehon.update.cacheKey;
+      };
       restartIfChanged = false;
       serviceConfig = { Type = "oneshot"; ExecStart = lib.getExe updater; UMask = "0077"; TimeoutStartSec = "30min"; };
     };

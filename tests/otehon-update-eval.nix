@@ -18,6 +18,9 @@ in
 assert !builtins.hasAttr "otehon-update-poll" off.systemd.services;
 assert !builtins.hasAttr "otehon-update-health" off.systemd.services;
 assert on.systemd.timers.otehon-update-poll.timerConfig.OnUnitInactiveSec == "30min";
+assert on.systemd.services.otehon-update-poll.environment.OTEHON_UPDATE_BASE_VERSION == "1";
+assert on.systemd.services.otehon-update-poll.environment.OTEHON_UPDATE_PUBLIC_KEY == toString on.otehon.update.publicKey;
+assert on.systemd.services.otehon-update-poll.environment.OTEHON_UPDATE_CACHE_KEY == toString on.otehon.update.cacheKey;
 assert on.otehon.update.network.automaticReboot == false;
 assert !on.services.openssh.enable;
 assert !on.system.autoUpgrade.enable;
