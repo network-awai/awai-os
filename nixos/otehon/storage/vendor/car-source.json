@@ -1,11 +1,12 @@
 {
   "repository": "https://github.com/network-awai/network-awai-apex",
-  "revision": "df68aad6101d7bf9587ea48bc30946b834aa4ba2",
+  "revision": "9c9a6b09e92ba1802449041311bdc804076654b7",
   "pullRequest": 181,
   "sourceFixPullRequest": 180,
   "extractedFromPullRequest": 147,
   "status": "merged to owning main; PR 147 runtime is not a dependency",
   "path": "src/awai/fs/car.cljc",
-  "sha256": "6c11cf9d1022b628fce73c2ac8de589667f9d277e0ae69ad52742fc9bebf148b",
-  "profile": "CARv2 without optional on-disk index; raw leaves plus existing DAG-CBOR pack root"
+  "sha256": "b4233a14b1ffc22920223faaa451c9d99888d180519757cc4d30c86ddcd8553e",
+  "profile": "CARv2 without optional on-disk index; raw leaves plus existing DAG-CBOR pack root",
+  "integerFixPullRequest": 204
 }
