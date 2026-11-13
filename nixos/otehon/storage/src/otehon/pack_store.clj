@@ -9,7 +9,7 @@
             [otehon.segmented :as segmented]
             [otehon.storage :as store])
   (:import [java.io ByteArrayOutputStream]
-           [java.nio.file Files Paths OpenOption]
+           [java.nio.file Files Paths OpenOption LinkOption]
            [java.security MessageDigest]))
 
 (def max-data-bytes (* 900 1024))
@@ -334,7 +334,7 @@
 (defn- read-bounded-forest-file [path]
   (when-not (string? path) (fail! :invalid-pack-source "expected a file path"))
   (with-open [in (Files/newInputStream (Paths/get path (make-array String 0))
-                                      (make-array OpenOption 0))]
+                                      (into-array OpenOption [LinkOption/NOFOLLOW_LINKS]))]
     (let [bytes (.readNBytes in (inc max-car-bytes))]
       (when (> (alength ^bytes bytes) max-car-bytes)
         (fail! :too-large "Forest input exceeds the declared bound"))

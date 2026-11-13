@@ -72,3 +72,20 @@ Using copies of all four source fixtures made read-only (`0444`) as
 `CROSSPACK_FIXTURES`, the full file-input proof again passed its eight process
 kill cases and `:changed-input :rejected, :root-unchanged true`. This tests the
 identified permission behavior locally; the Nix CI rerun is still required.
+
+## CLI path
+
+The Otehon CLI accepts `logical-forest-import STORE NAME MANIFEST CID PACK...`
+and `forest-group-range STORE NAME OUTPUT OFFSET LENGTH`. A separate-process
+CLI proof imports the four fixture Packs, rejects a wrong manifest CID and a
+symlink Pack source without publishing a root, verifies a 40-byte range across
+the Pack boundary, and refuses to overwrite the output. Babashka 1.12.218 on
+this host returned `:cross-pack-range true`, `:bad-cid-rejected true`,
+`:symlink-rejected true`, `:overwrite-rejected true` and `:pass true`:
+
+```sh
+bb --classpath nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:nixos/otehon/storage/vendor/apex-car/src:nixos/otehon/storage/test nixos/otehon/storage/test/otehon/cli_logical_proof.clj .agent-output/cli-logical-proof-final-20261113
+```
+
+This is an Otehon hosted CLI using prebuilt Forest archives; it does not generate
+Forest archives from user files or change any GiB, Native or cache-loss limits.
