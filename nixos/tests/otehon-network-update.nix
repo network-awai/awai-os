@@ -52,7 +52,7 @@ in pkgs.testers.runNixOSTest {
       bad = "${nodes.machine.system.build.otaBad}";
       stateContract = "chromium-${pkgs.chromium.version}-otehon-origin-v2";
     };
-    services.nix-serve = { enable = true; secretKeyFile = toString (fixtures + /update/test-cache.key); };
+    services.nix-serve = { enable = true; secretKeyFile = "${fixtures + /update/test-cache.key}"; };
     services.nginx = {
       enable = true;
       virtualHosts."publisher.test" = {
@@ -70,10 +70,10 @@ in pkgs.testers.runNixOSTest {
     import json, shlex, time
     publisher.start()
     machine.start(allow_reboot=True)
-    publisher.wait_for_unit("nginx.service")
-    publisher.wait_for_unit("nix-serve.service")
-    machine.wait_for_unit("otehon-headless-shell.service")
-    machine.wait_for_unit("otehon-update-poll.timer")
+    publisher.wait_for_unit("nginx.service",timeout=120)
+    publisher.wait_for_unit("nix-serve.service",timeout=120)
+    machine.wait_for_unit("otehon-headless-shell.service",timeout=180)
+    machine.wait_for_unit("otehon-update-poll.timer",timeout=120)
     machine.wait_until_succeeds("curl -f http://127.0.0.1:9222/json/list | grep webSocketDebuggerUrl")
     machine.succeed("node /etc/ota-profile-check.mjs seed")
     machine.succeed("printf 'owner-file-stays\n' >/home/otehon/ota-owner-file; sync")

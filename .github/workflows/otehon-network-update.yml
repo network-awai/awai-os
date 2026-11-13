@@ -20,10 +20,13 @@ jobs:
           persist-credentials: false
       - uses: cachix/install-nix-action@b85815f71a6de0ddee80b8a80a98d43f4bcc66c7
       - name: Build and boot disposable HTTPS update desktop VM
-        run: nix-build nixos/tests/otehon-network-update.nix --no-out-link --show-trace
+        shell: bash
+        run: nix-build nixos/tests/otehon-network-update.nix --out-link result-otehon-network-update --show-trace 2>&1 | tee otehon-network-update-build.log
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: otehon-network-update-log
-          path: /tmp/nix-build-otehon-https-desktop-upgrade-state.drv-*/
+          path: |
+            otehon-network-update-build.log
+            result-otehon-network-update/
           if-no-files-found: ignore

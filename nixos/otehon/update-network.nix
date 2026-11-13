@@ -12,8 +12,8 @@ let
     inherit (cfg) feedUrl channel cohort maintenanceHours automaticReboot maxDownloadBytes maxImportBytes maxStorePaths minimumFreeBytes maxValiditySeconds;
     architecture = pkgs.stdenv.hostPlatform.parsed.cpu.name;
     stateContract = "chromium-${pkgs.chromium.version}-otehon-origin-v2";
-    caBundle = toString cfg.caBundle;
-    cacheKey = toString config.otehon.update.cacheKey;
+    caBundle = "${cfg.caBundle}";
+    cacheKey = "${config.otehon.update.cacheKey}";
     stateDirectory = "/var/lib/otehon-update";
   };
 in {
@@ -46,8 +46,8 @@ in {
       wants = [ "network-online.target" ];
       environment = {
         OTEHON_UPDATE_BASE_VERSION = toString config.otehon.update.baseVersion;
-        OTEHON_UPDATE_PUBLIC_KEY = toString config.otehon.update.publicKey;
-        OTEHON_UPDATE_CACHE_KEY = toString config.otehon.update.cacheKey;
+        OTEHON_UPDATE_PUBLIC_KEY = "${config.otehon.update.publicKey}";
+        OTEHON_UPDATE_CACHE_KEY = "${config.otehon.update.cacheKey}";
       };
       restartIfChanged = false;
       serviceConfig = { Type = "oneshot"; ExecStart = lib.getExe updater; UMask = "0077"; TimeoutStartSec = "30min"; };
