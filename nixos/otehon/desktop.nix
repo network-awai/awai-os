@@ -28,7 +28,7 @@ let
     buildPhase = ''
       runHook preBuild
       export HOME="$TMPDIR/home"
-      mkdir -p "$HOME" src vendor
+      mkdir -p "$HOME" src vendor "$out"
       cp "$src" ./deps.edn
       clojure -Sdeps '{:mvn/local-repo "$out"}' -P
       runHook postBuild
