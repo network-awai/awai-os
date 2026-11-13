@@ -244,7 +244,9 @@
               (when-not (= (get (:frame-sha handle) p) (segmented/sha bytes))
                 (fail! :corrupt-frame "Forest frame changed after recovery"))
               (some (fn [block] (when (= needle (:cid block)) (bytes-of (:bytes block))))
-                    (sections (decode bytes)))))
+                    (sections (if (:file-backed? handle)
+                                (vbytes (segmented/decode-forest-frame bytes))
+                                (decode bytes))))))
           positions)))
 (defn get-block
   "Find CID using the embedded index; verify the selected complete frame again.

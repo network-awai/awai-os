@@ -238,6 +238,27 @@
               (when half-now? (observe! :half-written :forest))
               (recur next (or half-observed? half-now?)))))))))
 
+(defn forest-source-digest
+  "Hash a bounded regular file without following its final symlink."
+  [source]
+  (when-not (string? source) (fail! :invalid-forest-source "expected file path"))
+  (let [p (Paths/get source (make-array String 0))]
+    (when-not (Files/isRegularFile p (into-array LinkOption [LinkOption/NOFOLLOW_LINKS]))
+      (fail! :invalid-forest-source "Forest source must be a regular file"))
+    (with-open [in (FileChannel/open p (into-array OpenOption [StandardOpenOption/READ LinkOption/NOFOLLOW_LINKS]))]
+      (let [n (.size in)]
+        (when-not (<= 1 n max-forest-file-bytes) (fail! :invalid-forest-source "Forest source size outside bound"))
+        {:size n :sha (stream-hash! in nil n)}))))
+
+(defn forest-file-path
+  "Resolve a content-addressed Forest object under an existing real store."
+  [directory digest]
+  (when-not (digest? digest) (fail! :invalid-digest "invalid Forest reference"))
+  (let [p (path (root-path directory) (str digest ".forest"))]
+    (when-not (Files/isRegularFile p (into-array LinkOption [LinkOption/NOFOLLOW_LINKS]))
+      (fail! :missing-forest "Forest object is missing or not regular"))
+    (str p)))
+
 (defn write-forest-file!
   "Copy a bounded Forest file under its expected SHA-256 using a fixed buffer.
   Call inside the metadata writer lock. File sync, atomic rename and directory
@@ -285,12 +306,12 @@
   complete leaf/frame against its previously verified immutable snapshot."
   [directory digest extension expected-size spans]
   (when-not (and (digest? digest) (contains? #{"car" "zpack" "forest"} extension)
-                 (integer? expected-size) (<= 0 expected-size max-bytes)
+                 (integer? expected-size) (<= 0 expected-size (if (= extension "forest") max-forest-file-bytes max-bytes))
                  (vector? spans) (<= (count spans) 64)
                  (every? (fn [{:keys [offset length]}]
                            (and (integer? offset) (integer? length)
                                 (<= 0 offset expected-size) (<= 0 length (- expected-size offset)))) spans)
-                 (<= (reduce + 0 (map :length spans)) max-bytes))
+                 (<= (reduce + 0 (map :length spans)) (if (= extension "forest") (* 2 max-bytes) max-bytes)))
     (fail! :invalid-range "invalid physical read bounds"))
   (let [p (path (root-path directory) (str digest "." extension))]
     (when-not (Files/isRegularFile p (into-array LinkOption [LinkOption/NOFOLLOW_LINKS]))

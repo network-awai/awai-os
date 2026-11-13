@@ -29,6 +29,13 @@ jobs:
           chmod 500 "$tool"
           bb_path=$(nix-build --no-out-link --expr '(import (import ./ci/nixpkgs.nix) {}).babashka')
           "$bb_path/bin/bb" --classpath nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:nixos/otehon/storage/vendor/apex-car/src:nixos/otehon/storage/test nixos/otehon/storage/test/otehon/forest_writer_proof.clj "$RUNNER_TEMP/forest-writer-proof" "$tool"
+          classpath=nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:nixos/otehon/storage/vendor/apex-car/src:nixos/otehon/storage/test
+          proof=nixos/otehon/storage/test/otehon/forest_large_proof.clj
+          "$bb_path/bin/bb" --classpath "$classpath" "$proof" generate "$RUNNER_TEMP/forest-large-proof"
+          "$tool" snapshot compress "$RUNNER_TEMP/forest-large-proof/input.car" --output-path "$RUNNER_TEMP/forest-large-proof/large.forest" --frame-size 1024
+          "$bb_path/bin/bb" --classpath "$classpath" "$proof" write "$RUNNER_TEMP/forest-large-proof"
+          "$bb_path/bin/bb" --classpath "$classpath" "$proof" read "$RUNNER_TEMP/forest-large-proof"
+          "$bb_path/bin/bb" --classpath "$classpath" "$proof" corrupt "$RUNNER_TEMP/forest-large-proof"
 
   evaluate:
     runs-on: ubuntu-latest
