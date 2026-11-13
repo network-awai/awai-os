@@ -18,11 +18,15 @@
   (let [bots [{:id "a" :name "a" :repository "current/app" :circleIds ["repo:original/app"] :state "waiting" :configured true}
               {:id "b" :name "b" :repository "current/app" :circleIds ["repo:original/app"] :state "held" :configured false}]
         html (renderToStaticMarkup (r/as-element [:f> circles/panel bots false 0 "" (fn [_]) (fn [_])]))]
-    (when-not (and (.includes html "2 Bot · 0責任Circle")
+    (when-not (and (.includes html "2 Bot · 0 Circle")
                    (.includes html "配置確認")
                    (.includes html "Agentの活動")
                    (not (.includes html "<animate"))
                    (.includes html "定期待機 1")
                    (.includes html "未有効 1"))
       (throw (js/Error. "circle-advanced-interop-render-failed")))
-    (js/console.log "PASS: Circle totals, catalog identity and state ring render after advanced compilation")))
+    (js/console.log "PASS: Circle totals, catalog identity and state ring render after advanced compilation")
+    (let [english (renderToStaticMarkup (r/as-element [:f> circles/panel bots false 0 "" (fn [_]) (fn [_]) "en"]))]
+      (when-not (and (.includes english "2 bots · 0 circles") (.includes english "Agent activity") (.includes english "Responsibilities"))
+        (throw (js/Error. "localized-circle-advanced-render-failed")))
+      (js/console.log "PASS: English copy and named counts survive advanced compilation"))))

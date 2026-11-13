@@ -46,3 +46,23 @@ separate from the native profile. It is the Otehon edition of Itonami OS and may
 use `.cljc`, clj / JVM, cljs builds, nbb, babashka and the rest of ADR 0026 D3,
 pinned with Nix (owner decision 2026-11-07, D18). Do not put Otehon dependencies
 in the native profile. The native profile rules above stay unchanged.
+
+## UI design and writing
+
+Apply [the shared UI rules](docs/design/interface-principles.md) to Awai OS and
+its bundled apps. Prefer recognizable controls, hierarchy, selection feedback
+and concise status labels over explanatory paragraphs. Keep implementation
+notes, measurement caveats and design rationale in engineering documentation;
+show optional technical facts through named disclosure controls. If an action
+needs a paragraph to explain it, simplify the interaction first.
+
+Keep actionable errors, stale/unknown states, destructive consequences and the
+canonical operation-consent disclosures visible when relevant. Moving a note
+out of the main view never grants capabilities or changes what a metric means.
+
+Use stable translation keys, complete messages with named placeholders, and
+locale-aware formatting. Do not assemble sentences from translated fragments,
+hard-code layout widths to Japanese text, or use color/motion as the only
+status cue. Check Japanese and English at phone and tablet widths, keyboard
+focus and reduced-motion behavior. Imported profile names and user-authored
+content are not UI copy and must not be silently translated.

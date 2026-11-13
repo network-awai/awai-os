@@ -1,22 +1,20 @@
-(ns shell.fleet-goals)
-(defn panel [scope on-open]
+(ns shell.fleet-goals (:require [shell.ui-copy :as ui]))
+(defn panel [scope on-open & [locale]]
   (when-let [goal (:goal scope)]
-    [:section.fleet-goal {:aria-label "CircleのGoalsと成果指標"}
-     [:p.fleet-goal-eyebrow "GOAL · 成果目標案"]
+    [:section.fleet-goal {:aria-label (ui/t locale :goal)}
+     [:div.fleet-card-heading [:span.fleet-goal-eyebrow (ui/t locale :goal)] [:span.fleet-status (ui/t locale :draft)]]
      [:h4 (:title goal)]
-     [:p.muted "Goal案 · 責任Roleの割当・観測期間・数値目標は未確定。達成度は未計測です。"]
-     [:ul.fleet-key-results
-      (for [kr (:keyResults goal)] ^{:key (:id kr)}
-        [:li [:strong (:title kr)] [:p (str "未計測 · " (:unit kr) " · 目標未設定")]])]
-     [:p.muted "観測値（Goalの達成率とは別）"]
+     [:span.fleet-status {:data-state "unknown"} (ui/t locale :notMeasured)]
      [:dl.fleet-goal-metrics
-      [:div [:dt "所属Bot"] [:dd (get-in goal [:metrics :actors])]]
-      [:div [:dt "設定済み"] [:dd (get-in goal [:metrics :configured])]]
-      [:div [:dt "未有効"] [:dd (get-in goal [:metrics :held])]]
-      [:div [:dt "Issue対応"] [:dd (str (get-in goal [:metrics :issueBound]) "/" (get-in goal [:metrics :actors]))]]]
-     (when (= "stale" (get-in goal [:metrics :observation])) [:p.problem "観測が古いため、現在の稼働状態は未確認です。"])
-     [:details [:summary (str "対応Linear Issue · " (count (:issueKeys goal)) "件")]
-      [:div.fleet-issue-links
-       (for [issue (:issueKeys goal)] ^{:key issue}
-         [:a {:href (str "https://linear.app/kotobalabs/issue/" issue)} issue])]]
-     (when on-open [:button.secondary {:type "button" :on-click on-open} "Circleを開く"])]))
+      (for [[key field] [[:actors :actors] [:configured :configured] [:held :held] [:issueBound :issueBound]]]
+       ^{:key key} [:div [:dt (ui/t locale key)] [:dd (if (= field :issueBound) (str (get-in goal [:metrics field]) "/" (get-in goal [:metrics :actors])) (get-in goal [:metrics field]))]])]
+     (when (= "stale" (get-in goal [:metrics :observation])) [:p.problem {:role "status"} (ui/t locale :stale)])
+     [:details.fleet-disclosure [:summary (ui/t locale :resultIndicators)]
+      [:ul.fleet-key-results
+       (for [kr (:keyResults goal)] ^{:key (:id kr)}
+        [:li [:strong (case (:id kr) "outcome" (ui/t locale :goalOutcome) "recovery" (ui/t locale :goalRecovery) (:title kr))]
+         [:span.fleet-status (ui/t locale :notMeasured)]])]
+      [:dl.fleet-facts (for [key [:goalOwner :goalPeriod :goalTarget]] ^{:key key} [:div [:dt (ui/t locale key)] [:dd (ui/t locale :unassigned)]])]]
+     [:details.fleet-disclosure [:summary (ui/t locale :issueCount {:count (count (:issueKeys goal))})]
+      [:div.fleet-issue-links (for [issue (:issueKeys goal)] ^{:key issue} [:a {:href (str "https://linear.app/kotobalabs/issue/" issue)} issue])]]
+     (when on-open [:button.secondary {:type "button" :on-click on-open} (ui/t locale :openCircle)])]))
