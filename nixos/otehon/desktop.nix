@@ -381,8 +381,10 @@ in
   image.repart.partitions = {
     esp.repartConfig.SizeMinBytes = "256M";
     root.repartConfig = {
-      SizeMinBytes = "12G";
-      SizeMaxBytes = "12G";
+      # 12G no longer fits the desktop-media-gui closure (LLVM/mesa).
+      # Measured 2026-11-13: repart wants 12.2G minimum (JUN-1180).
+      SizeMinBytes = "16G";
+      SizeMaxBytes = "16G";
     };
   };
   };
