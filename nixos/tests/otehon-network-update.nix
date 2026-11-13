@@ -107,8 +107,8 @@ in pkgs.testers.runNixOSTest {
     poll_refuses("URLError")
     publisher.succeed("systemctl start nginx.service")
     machine.succeed("systemctl reset-failed otehon-update-poll.service")
-    machine.succeed("systemctl start otehon-update-poll.timer")
     publish(2,"good",["canary"])
+    machine.succeed("systemctl start otehon-update-poll.timer")
     machine.wait_until_succeeds("journalctl -u otehon-update-poll --no-pager | grep '\"reason\": \"cohort\"'",timeout=120)
     assert machine.succeed("cat /etc/ota-generation").strip()=="a"
     assert machine.succeed("sha256sum /home/otehon/ota-owner-file /etc/machine-id")==before

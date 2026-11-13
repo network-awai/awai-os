@@ -24,13 +24,13 @@ let
     nativeBuildInputs = [ pkgs.clojure ];
     outputHashAlgo = "sha256";
     outputHashMode = "recursive";
-    outputHash = "sha256-pQpattmS9VmO3ZIQUFn66az8GSmB4IvYhTTCFn6SUmo="; # filled 2026-11-13 where Nix runs (JUN-1180)
+    outputHash = lib.fakeHash;
     buildPhase = ''
       runHook preBuild
       export HOME="$TMPDIR/home"
       mkdir -p "$HOME" src vendor "$out"
       cp "$src" ./deps.edn
-      clojure -Sdeps '{:mvn/local-repo "$out"}' -P
+      clojure -Sdeps "{:mvn/local-repo \"$out\"}" -P
       runHook postBuild
     '';
     installPhase = "runHook preInstall; runHook postInstall;";
