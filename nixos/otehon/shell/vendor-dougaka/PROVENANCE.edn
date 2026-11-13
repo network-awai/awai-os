@@ -5,4 +5,10 @@
 {:source-repo "cloud-itonami/app-itonami-dougaka"
  :source-rev "c29b87e59fdb1b8b3a2ca7295356cd0af1e9"
  :built "2026-11-13"
- :out-dir "out/site"}
+ :out-dir "out/site"
+ ;; 2026-11-13 JUN-1180 V2: kotoba-client-runtime.js re-vendored from the
+ ;; canonical broker source (it had drifted: no browser-action skip, so the
+ ;; Studio host threw "CSP does not match declared services" on boot).
+ :runtime-revendored {:canonical "kotoba-lang/kotoba/lib/kotoba.wasmWebcomponent/src/kotoba-client-runtime.js"
+                      :canonical-rev "d6fa95a8df09f1307b313dc1025602d54784eac3"
+                      :date "2026-11-13"}}

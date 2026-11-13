@@ -43,6 +43,7 @@ function validOrigin(value) {
 }
 
 const ENDPOINT_METHODS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE']);
+const METHOD_OVERRIDE_HEADERS = ['x-http-method-override', 'x-http-method', 'x-method-override'];
 const ENDPOINT_SEGMENT = /^[A-Za-z0-9._~!$&'()*+,;=:@_-]+$/;
 const ENDPOINT_PARAMETER = /^:[A-Za-z][A-Za-z0-9_]*$/;
 const ENDPOINT_QUERY_PARAMETER = /^[A-Za-z0-9._~_-]{1,128}$/;
@@ -176,7 +177,10 @@ function endpointRequestMatches(endpoint, payload, endpointOrigin) {
     return endpoint.routes.some((route) => route.method === request.method
       && (Object.hasOwn(route, 'path')
         ? endpointPathMatches(route.path, request.path)
-        : request.path.startsWith(route['path-prefix']))
+        // A prefix route admits paths it did not spell out; refuse `;` there,
+        // which servers such as Tomcat treat as a parameter of a dot segment
+        // (`/public/..;/admin` resolves to `/admin`).
+        : request.path.startsWith(route['path-prefix']) && !request.path.includes(';'))
       && request.queryParameters.every((parameter) => route['query-params'].includes(parameter))
       && (request.search === '' || request.searchParams.size === request.queryParameters.length)
       && Object.entries(route['query-values'] ?? {}).every(([parameter, value]) => (
@@ -214,7 +218,7 @@ function snapshotPayloadValue(value) {
   return globalThis.structuredClone(value);
 }
 
-async function snapshotOperationPayload(payload, operation, endpointOrigin, request) {
+async function snapshotOperationPayload(payload, operation, endpointOrigin, request, signal) {
   if (!record(payload) || !Object.hasOwn(payload, 'input') || typeof Request === 'undefined') {
     throw new Error('client operation request cannot be snapshotted');
   }
@@ -225,7 +229,15 @@ async function snapshotOperationPayload(payload, operation, endpointOrigin, requ
       (typeof URL !== 'undefined' && input instanceof URL) ? input.href : input,
       endpointOrigin,
     ).href;
-  const init = record(payload.init) ? { ...payload.init } : {};
+  // Only headers and body come from the caller's init. Other Fetch options
+  // (keepalive, priority, integrity, mode, browsingTopics, ...) are not shown
+  // in the consent dialog, so they are not taken.
+  const init = {};
+  if (record(payload.init)) {
+    for (const key of ['headers', 'body']) {
+      if (Object.hasOwn(payload.init, key)) init[key] = payload.init[key];
+    }
+  }
   const redirectOrigins = operation['redirect-origins'] ?? [];
   const redirect = redirectOrigins.length > 0
     && ['GET', 'HEAD'].includes(request.method)
@@ -238,12 +250,24 @@ async function snapshotOperationPayload(payload, operation, endpointOrigin, requ
     referrerPolicy: 'no-referrer',
     redirect,
   });
+  // A method-override header would let an approved method act as another.
+  for (const name of METHOD_OVERRIDE_HEADERS) {
+    if (captured.headers.has(name)) throw new Error('client request method override header refused');
+  }
   // Request.clone() alone does not freeze a caller-owned ReadableStream.
   // Materialize a bounded body before showing consent; a later stream write
   // cannot change what the user is being asked to send.
-  const body = captured.body ? await boundedBytes(captured.body, 16777216, 5000) : null;
-  const requestSnapshot = body === null ? captured : new Request(captured, {
-    body, credentials: 'omit', referrerPolicy: 'no-referrer', redirect,
+  const body = captured.body ? await boundedBytes(captured.body, 16777216, 5000, signal) : null;
+  // Rebuild from the URL so no option of a caller-supplied Request carries over.
+  const requestSnapshot = new Request(captured.url, {
+    method: captured.method,
+    headers: captured.headers,
+    ...(body === null ? {} : { body }),
+    credentials: 'omit',
+    referrerPolicy: 'no-referrer',
+    redirect,
+    mode: 'cors',
+    cache: 'no-store',
   });
   const requestUrl = new URL(requestSnapshot.url);
   if (requestUrl.origin !== endpointOrigin) {
@@ -263,13 +287,16 @@ async function snapshotOperationPayload(payload, operation, endpointOrigin, requ
 }
 
 /** Pure preflight/snapshot, not an approval or a transport capability. */
-export async function prepareClientOperationRequest(operation, payload) {
+export async function prepareClientOperationRequest(operation, payload, signal) {
+  if (signal !== undefined && !(signal instanceof AbortSignal)) throw new TypeError('invalid operation signal');
+  if (signal?.aborted) throw new Error('client operation cancelled');
   if (!validEndpoint(operation?.endpoint) || Object.hasOwn(operation.endpoint, 'browser-action')) throw new TypeError('HTTP endpoint declaration required');
   const pinned = freezeClone(operation), origin = pinned.endpoint.origin;
   if (origin === globalThis.location?.origin) throw new Error('app-origin API refused');
   const request = endpointRequest(payload, origin);
   if (!request || request.hasCredentials || !endpointRequestMatches(pinned.endpoint, payload, origin)) throw new Error('request scope is not declared');
-  const snapshot = await snapshotOperationPayload(payload, pinned, origin, request);
+  const snapshot = await snapshotOperationPayload(payload, pinned, origin, request, signal);
+  if (signal?.aborted) throw new Error('client operation cancelled');
   if (!endpointRequestMatches(pinned.endpoint, snapshot, origin)) throw new Error('request scope changed while snapshotting');
   return snapshot;
 }
@@ -358,7 +385,7 @@ export function clientRuntimeProblems(runtime, requestedCapabilities = [], appOr
 
   const state = runtime['local-state'];
   if (!exactKeys(state, ['adapter', 'schema', 'version'])
-      || !['indexeddb', 'opfs', 'localstorage'].includes(state.adapter)
+      || !['memory', 'indexeddb', 'opfs', 'localstorage'].includes(state.adapter)
       || !validName(state.schema)
       || !Number.isSafeInteger(state.version)
       || state.version < 1) {
@@ -585,12 +612,16 @@ export function applyOfflineClientPolicy(documentObject = globalThis.document) {
  * operation; this helper cannot widen the app's network boundary.
  */
 export function clientRuntimeConnectSrc(runtime, requestedCapabilities = [], additionalSources = [], appOrigins = globalThis.location?.origin) {
-  const problems = clientRuntimeProblems(runtime, requestedCapabilities, appOrigins);
+  // Validate and read one frozen copy, so a getter cannot answer differently.
+  const pinned = freezeClone(runtime);
+  const problems = clientRuntimeProblems(pinned, requestedCapabilities, appOrigins);
   if (problems.length) {
     throw new Error(`invalid client runtime descriptor: ${problems.map(({field, error}) => `${field}:${error}`).join(', ')}`);
   }
   const origins = new Set();
-  for (const operation of runtime.operations) {
+  for (const operation of pinned.operations) {
+    // A browser-action operation causes no fetch from the page.
+    if (Object.hasOwn(operation.endpoint, 'browser-action')) continue;
     origins.add(operation.endpoint.origin);
     for (const redirectOrigin of operation['redirect-origins'] ?? []) origins.add(redirectOrigin);
   }
@@ -643,8 +674,14 @@ function plainData(value, depth = 0, ancestors = new Set()) {
 /** Trusted shell only. Guests must be isolated from this document and handle.
  * A callback, synthetic DOM event, cached boolean or browser permission cannot
  * grant consent. One direct trusted click resolves one displayed invocation.
+ * Allow counts only after the dialog has been showing for ALLOW_ARM_MS and only
+ * for a press (pointerdown, or Enter/Space keydown) that starts after that: a
+ * click aimed at whatever was under the pointer when the dialog opened, or a
+ * double click, does not approve (KOTOBA-159 finding 3).
  * No approval token or approval store is exposed to application code.
  */
+const ALLOW_ARM_MS = 600;
+
 export function createClientConsentHost({ document: doc = globalThis.document } = {}) {
   if (doc !== globalThis.document || !doc?.body || typeof doc.createElement !== 'function') {
     throw new TypeError('consent requires the trusted host document');
@@ -658,24 +695,48 @@ export function createClientConsentHost({ document: doc = globalThis.document } 
   note.textContent = 'This choice applies only to the displayed operation. Denying sends no request. Browser permissions do not approve subsequent operations.';
   const deny = doc.createElement('button'); deny.type = 'button'; deny.textContent = 'Deny';
   const allow = doc.createElement('button'); allow.type = 'button'; allow.textContent = 'Allow once';
+  allow.disabled = true;
   dialog.append(title, scope, note, deny, allow); doc.body.append(dialog);
   let pending = null;
+  let pendingAbort = null;
   let destroyed = false;
+  // dialog.close() queues an asynchronous `close` event. Count the closes this host issues so
+  // that a late event from an already-settled request is not mistaken for a close of the next one.
+  let ownCloses = 0;
+  // armedAt: when Allow starts to count for the showing request; pressed: a trusted press on
+  // Allow began after that. Both reset on every show and every settlement.
+  const clock = () => doc.defaultView.performance.now();
+  let armedAt = Infinity;
+  let pressed = false;
+  let armTimer = null;
+  function disarm() {
+    armedAt = Infinity; pressed = false;
+    if (armTimer !== null) { clearTimeout(armTimer); armTimer = null; }
+    allow.disabled = true;
+  }
   function finish(approved) {
     if (!pending) return;
     const resolve = pending; pending = null;
-    if (dialog.open) dialog.close();
+    if (pendingAbort) { pendingAbort(); pendingAbort = null; }
+    disarm();
+    if (dialog.open) { ownCloses += 1; dialog.close(); }
     resolve(approved);
   }
+  const press = (event) => { pressed = event.isTrusted === true && dialog.open && clock() >= armedAt; };
+  allow.addEventListener('pointerdown', press);
+  allow.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') press(event); });
   allow.addEventListener('click', (event) => {
+    const fresh = pressed; pressed = false;
     if (event.isTrusted === true && event.currentTarget === allow
-        && event instanceof doc.defaultView.MouseEvent && dialog.open) finish(true);
+        && event instanceof doc.defaultView.MouseEvent && dialog.open
+        && fresh && clock() >= armedAt) finish(true);
   });
   deny.addEventListener('click', () => finish(false));
   dialog.addEventListener('cancel', (event) => { event.preventDefault(); finish(false); });
-  dialog.addEventListener('close', () => finish(false));
+  dialog.addEventListener('close', () => { if (ownCloses > 0) { ownCloses -= 1; return; } finish(false); });
   const handle = Object.freeze({ destroy() { destroyed = true; finish(false); dialog.remove(); } });
-  consentHosts.set(handle, async (details) => {
+  consentHosts.set(handle, async (details, signal) => {
+    if (signal?.aborted) return false;
     if (destroyed || pending || !dialog.isConnected) throw new Error('trusted consent UI is unavailable or busy');
     scope.textContent = [
       `Service: ${details.service}`, `Operation: ${details.operation}`,
@@ -686,8 +747,19 @@ export function createClientConsentHost({ document: doc = globalThis.document } 
     ].join('\n');
     return new Promise((resolve, reject) => {
       pending = resolve;
-      try { dialog.showModal(); deny.focus(); }
-      catch (error) { pending = null; reject(error); }
+      try {
+        if (signal) {
+          const onAbort = () => finish(false);
+          signal.addEventListener('abort', onAbort, { once: true });
+          pendingAbort = () => signal.removeEventListener('abort', onAbort);
+          if (signal.aborted) { finish(false); return; }
+        }
+        disarm();
+        dialog.showModal(); deny.focus();
+        armedAt = clock() + ALLOW_ARM_MS;
+        armTimer = setTimeout(() => { armTimer = null; if (pending === resolve) allow.disabled = false; }, ALLOW_ARM_MS);
+      }
+      catch (error) { pending = null; if (pendingAbort) { pendingAbort(); pendingAbort = null; } disarm(); reject(error); }
     });
   });
   return handle;
@@ -726,6 +798,8 @@ export async function mountRestrictedClientApp({ artifact, container, broker }) 
   if (!verifiedArtifacts.has(artifact) || !(container instanceof globalThis.HTMLElement)
       || typeof broker?.invoke !== 'function') throw new TypeError('verified app artifact and trusted host broker required');
   const html = await artifact.blob.text();
+  if (!container.isConnected || container.ownerDocument !== globalThis.document || container.getRootNode() !== document || typeof MutationObserver !== 'function')
+    throw new TypeError('connected host container and DOM observation required');
   if (html.length > 8388608) throw new Error('app HTML exceeds byte budget');
   const frame = document.createElement('iframe');
   frame.title = 'Restricted Kotoba application';
@@ -733,25 +807,42 @@ export async function mountRestrictedClientApp({ artifact, container, broker }) 
   frame.referrerPolicy = 'no-referrer';
   frame.srcdoc = '<!doctype html><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; connect-src \'none\'; script-src \'unsafe-inline\' blob: \'wasm-unsafe-eval\'; style-src \'unsafe-inline\'; img-src data: blob:; media-src blob:; worker-src blob:; frame-src \'none\'; object-src \'none\'; form-action \'none\'; base-uri \'none\'">' + html;
   let closed = false;
+  let loaded = false;
+  const lifetime = new AbortController();
   const channel = new MessageChannel();
+  const observer = new MutationObserver((records) => {
+    if (!frame.isConnected || frame.parentNode !== container || records.some(({ removedNodes }) =>
+      Array.from(removedNodes).some((node) => node === frame || node.contains?.(frame)))) close();
+  });
+  function close() {
+    if (closed) return;
+    closed = true; observer.disconnect(); lifetime.abort(); channel.port1.close(); frame.remove();
+  }
+  observer.observe(document, { childList: true, subtree: true });
   channel.port1.onmessage = async ({ data }) => {
     if (closed || !plainData(data) || !exactKeys(data, ['protocol', 'id', 'selector', 'payload'])
         || data.protocol !== 'kotoba.client.operation.v1' || !validName(data.id)) return;
     try {
-      const result = await broker.invoke(data.selector, data.payload);
+      const result = await broker.invoke(data.selector, data.payload, { signal: lifetime.signal });
+      if (closed) return;
       if (result instanceof Response) {
         // Bridge bounded service data, never the host's transport/credentials.
-        const bytes = result.body ? await boundedBytes(result.body, 1048576, 30000) : new Uint8Array();
+        const bytes = result.body ? await boundedBytes(result.body, 1048576, 30000, lifetime.signal) : new Uint8Array();
         const content = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-        channel.port1.postMessage({ id: data.id, ok: true, status: result.status, content });
-      } else channel.port1.postMessage({ id: data.id, ok: true, result });
-    } catch (error) { channel.port1.postMessage({ id: data.id, ok: false, error: String(error.message).slice(0, 1024) }); }
+        if (!closed) channel.port1.postMessage({ id: data.id, ok: true, status: result.status, content });
+      } else if (!closed) channel.port1.postMessage({ id: data.id, ok: true, result });
+    } catch (error) { if (!closed) channel.port1.postMessage({ id: data.id, ok: false, error: String(error.message).slice(0, 1024) }); }
   };
   frame.addEventListener('load', () => {
-    if (!closed) frame.contentWindow.postMessage({ protocol: 'kotoba.client.host.v1' }, '*', [channel.port2]);
-  }, { once: true });
+    if (closed) return;
+    // A later completed navigation replaces the admitted guest. Invalidate its
+    // channel and pending work; load does not detect navigation at its start.
+    if (loaded) { close(); return; }
+    loaded = true;
+    frame.contentWindow.postMessage({ protocol: 'kotoba.client.host.v1' }, '*', [channel.port2]);
+  });
   container.append(frame);
-  return Object.freeze({ close() { closed = true; channel.port1.close(); frame.remove(); } });
+  return Object.freeze({ close });
 }
 
 /** Verify exact descriptor bytes against a host-pinned Ed25519 publisher key.
@@ -777,21 +868,27 @@ async function boundedArtifact(response, declaration) {
   return verifyClientArtifact(await boundedBytes(response.body, declaration['max-bytes'], 120000), declaration);
 }
 
-async function boundedBytes(stream, maxBytes, deadlineMs) {
+async function boundedBytes(stream, maxBytes, deadlineMs, signal) {
+  if (signal?.aborted) throw new Error('client operation cancelled');
   const reader = stream.getReader();
   const chunks = []; let size = 0;
-  let timer;
+  let timer, onAbort;
   const deadline = new Promise((resolve, reject) => { timer = setTimeout(() => reject(new Error('body snapshot deadline exceeded')), deadlineMs); });
+  const cancelled = signal && new Promise((resolve, reject) => {
+    onAbort = () => reject(new Error('client operation cancelled'));
+    signal.addEventListener('abort', onAbort, { once: true });
+    if (signal.aborted) onAbort();
+  });
   try {
     while (true) {
-      const { done, value } = await Promise.race([reader.read(), deadline]);
+      const { done, value } = await Promise.race(cancelled ? [reader.read(), deadline, cancelled] : [reader.read(), deadline]);
       if (done) break;
       size += value.byteLength;
       if (size > maxBytes) throw new Error('body exceeds declared byte budget');
       chunks.push(value);
     }
   } catch (error) { reader.cancel().catch(() => {}); throw error; }
-  finally { clearTimeout(timer); try { reader.releaseLock(); } catch { /* cancelled pending read */ } }
+  finally { clearTimeout(timer); if (onAbort) signal.removeEventListener('abort', onAbort); try { reader.releaseLock(); } catch { /* cancelled pending read */ } }
   const bytes = new Uint8Array(size); let offset = 0;
   for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
   return bytes;
@@ -819,7 +916,9 @@ export function createClientOperationBroker(options) {
   const fetchRequest = globalThis.fetch.bind(globalThis);
   return Object.freeze({
     operations: Object.freeze(operations),
-    async invoke(selector, payload) {
+    async invoke(selector, payload, { signal } = {}) {
+      if (signal !== undefined && !(signal instanceof AbortSignal)) throw new TypeError('invalid operation signal');
+      if (signal?.aborted) throw new Error('client operation cancelled');
       const operation = bySelector.get(JSON.stringify([selector?.capability, selector?.service, selector?.operation]));
       if (!operation) throw new Error('client operation is not eligible and supported');
       const endpointOrigin = operation.endpoint.origin;
@@ -838,19 +937,22 @@ export function createClientOperationBroker(options) {
       } else {
         request = endpointRequest(payload, endpointOrigin);
         if (!request || request.hasCredentials || !endpointRequestMatches(operation.endpoint, payload, endpointOrigin)) throw new Error('request does not match declared service method/path/query');
-        approvedPayload = await prepareClientOperationRequest(operation, payload);
+        approvedPayload = await prepareClientOperationRequest(operation, payload, signal);
         request = endpointRequest(approvedPayload, endpointOrigin);
         if (!request || request.hasCredentials || !endpointRequestMatches(operation.endpoint, approvedPayload, endpointOrigin)) throw new Error('request scope changed while snapshotting');
       }
+      if (signal?.aborted) throw new Error('client operation cancelled');
       const allowed = await confirm(Object.freeze({
         capability: operation.capability, service: operation.service, operation: operation.operation,
         endpointOrigin, browserAction, endpointMethod: request?.method ?? null,
         endpointPath: request?.path ?? null, endpointSearch: request?.search ?? '',
         dataCategories: operation['data-categories'], redirectOrigins: Object.freeze([...(operation['redirect-origins'] ?? [])]),
-      }));
+      }), signal);
+      if (signal?.aborted) throw new Error('client operation cancelled');
       if (allowed !== true) throw new Error('client operation was not approved');
       if (browserAction) return handlers.get(operationSelector(operation))({ operation, payload: approvedPayload });
-      const result = await fetchRequest(approvedPayload.input);
+      const result = await fetchRequest(approvedPayload.input, signal ? { signal } : undefined);
+      if (signal?.aborted) throw new Error('client operation cancelled');
       if (result.type === 'opaqueredirect' || (result.status >= 300 && result.status < 400) || !result.url) throw new Error('service response redirect could not be verified');
       const responseOrigin = new URL(result.url).origin;
       if (![endpointOrigin, ...(operation['redirect-origins'] ?? [])].some((origin) => redirectOriginAllows(origin, responseOrigin))) throw new Error('service response redirect origin is not declared');

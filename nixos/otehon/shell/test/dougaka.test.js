@@ -41,6 +41,25 @@ test("dougaka page is re-laid for file:// with no network fetch", async () => {
   assert.ok(host.includes("dougaka-studio"), "host mounts the Studio root");
 });
 
+test("vendored studio host boot gate passes (no CSP mismatch throw)", async () => {
+  // Mirrors the boot assertion at the top of vendor-dougaka/studio-host.js:
+  // the host throws 'Dougaka CSP does not match declared services' when the
+  // vendored runtime derives anything but `connect-src ${generationOrigin}`.
+  // A stale kotoba-client-runtime.js without the browser-action skip broke
+  // this (JUN-1180 V2: studio tabs stayed 0, fallback text only).
+  const vendor = path.join(root, "vendor-dougaka");
+  const runtime = await import(path.join(vendor, "kotoba-client-runtime.js"));
+  const contract = await import(path.join(vendor, "studio-contract.js"));
+  assert.deepEqual(
+    runtime.clientRuntimeProblems(contract.runtimeDescriptor, contract.requestedCapabilities),
+    [],
+  );
+  assert.equal(
+    runtime.clientRuntimeConnectSrc(contract.runtimeDescriptor, contract.requestedCapabilities),
+    `connect-src ${contract.generationOrigin}`,
+  );
+});
+
 test("shell sidebar links to the dougaka page", async () => {
   const main = await readFile(path.join(root, "src", "shell", "main.cljs"), "utf8");
   assert.ok(main.includes('{:href "./dougaka/index.html"}'), "launcher anchor present");
