@@ -441,6 +441,26 @@
     (fail! :invalid-generation "expected a positive bounded store generation"))
   (transact* directory op payload before-publish expected-generation))
 
+(defn compare-and-set-value!
+  "Atomically compare a metadata value and publish a replacement under the
+  local writer lock. A mismatch changes no WAL or root. Expected nil denotes
+  absence. Ambiguous I/O failures must be resolved by reading the ref again."
+  [directory key expected next]
+  (when-not (and (string? key) (or (nil? expected) (string? expected)) (string? next))
+    (fail! :invalid-operation "CAS requires a string key/value and nil or string expected"))
+  (let [root (root-path directory)]
+    (with-writer root
+      #(let [{:keys [snapshot log state] current :root} (writable-state root)
+             old (get state key)]
+         (if (not= expected old)
+           {:published? false :current old :version (:generation current)}
+           (do
+             (when (= 9007199254740991 (:seq log))
+               (fail! :sequence-exhausted "WAL sequence exhausted"))
+             (let [published (publish! root (inc (:generation current)) snapshot
+                                       (wal/append log :put {:key key :value next}))]
+               {:published? true :current next :version (:generation published)})))))))
+
 (defn checkpoint!
   ([directory] (checkpoint! directory nil))
   ([directory before-publish]

@@ -1,7 +1,7 @@
 { pkgs ? import (import ../../../ci/nixpkgs.nix) { } }:
 let
   package = import ./default.nix { inherit pkgs; };
-  classpath = "${./src}:${./vendor/apex/src}:${./vendor/apex-car/src}:${./test}";
+  classpath = "${./src}:${./vendor/apex/src}:${./vendor/apex-car/src}:${./vendor/kotobase-storage/src}:${./test}";
 in
 pkgs.runCommand "otehon-storage-hosted-check" {
   nativeBuildInputs = [ pkgs.babashka pkgs.zstd package ];
@@ -9,6 +9,8 @@ pkgs.runCommand "otehon-storage-hosted-check" {
   mkdir -p "$out"
   bb --classpath ${classpath} -e "(require '[clojure.test :as t] 'otehon.storage-test 'otehon.pack-store-test)(binding [otehon.storage-test/*output* \"unit\" otehon.pack-store-test/*output* \"pack-unit\"] (let [r (t/run-tests 'otehon.storage-test 'otehon.pack-store-test)] (System/exit (+ (:fail r) (:error r)))))" > "$out/unit-tests.txt"
   bb --classpath ${classpath} -e "(require '[clojure.test :as t] 'otehon.forest-writer-test)(binding [otehon.forest-writer-test/*output* \"forest-writer-unit\"] (let [r (t/run-tests 'otehon.forest-writer-test)] (System/exit (+ (:fail r) (:error r)))))" > "$out/forest-writer-unit.txt"
+  bb --classpath ${classpath} -e "(require '[clojure.test :as t] 'otehon.kotobase-ref-test)(binding [otehon.kotobase-ref-test/*output* \"kotobase-ref-unit\"] (let [r (t/run-tests 'otehon.kotobase-ref-test)] (System/exit (+ (:fail r) (:error r)))))" > "$out/kotobase-ref-tests.txt"
+  bb --classpath ${classpath} ${./test/otehon/kotobase_ref_process.clj} run kotobase-ref-process > "$out/kotobase-ref-process.edn"
   FOREST_FIXTURE=${./test/fixtures/forest/sha256-pack.forest.car.zst} bb --classpath ${classpath} -e "(require '[clojure.test :as t] 'otehon.forest-test)(binding [otehon.forest-test/*output* \"forest-unit\"] (let [r (t/run-tests 'otehon.forest-test)] (System/exit (+ (:fail r) (:error r)))))" > "$out/forest-tests.txt"
   FOREST_FIXTURE=${./test/fixtures/forest/sha256-pack.forest.car.zst} IPLD_FOREST_FIXTURE=${./test/fixtures/prolly-forest/prolly.forest} IPLD_POLICY_FIXTURE=${./test/fixtures/prolly-forest/policy.forest} IPLD_SPLIT_FIXTURES=${./test/fixtures/prolly-forest/split} bb --classpath ${classpath} -e "(require '[clojure.test :as t] 'otehon.ipld-forest-test)(binding [otehon.ipld-forest-test/*output* \"ipld-forest-unit\"] (let [r (t/run-tests 'otehon.ipld-forest-test)] (System/exit (+ (:fail r) (:error r)))))" > "$out/ipld-forest-tests.txt"
   IPLD_POLICY_FIXTURE=${./test/fixtures/prolly-forest/policy.forest} IPLD_SPLIT_FIXTURES=${./test/fixtures/prolly-forest/split} bb --classpath ${classpath} ${./test/otehon/ipld_group_crash_proof.clj} run ipld-group-crash > "$out/ipld-group-crash.edn"
