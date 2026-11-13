@@ -26,6 +26,10 @@
             (check! (try (contract/-put-blocks! backend [(assoc (first bs) :bytes (.getBytes "bad" "UTF-8"))]) false (catch Exception _ true)) "bad CID accepted")
             (check! (= state (store/read-store dir)) "bad input changed store"))
           (check! (= [(:cid (extra-block))] (contract/-put-blocks! backend [(extra-block)])) "second batch")
+          (let [before (store/read-store dir)
+                missing (car/cid-str (car/cid-bytes car/codec-raw (vec (repeat 32 42))))]
+            (check! (= :missing-ref-target (kind #(contract/-compare-and-set-ref! backend "db" nil missing))) "missing target accepted")
+            (check! (= before (store/read-store dir)) "missing ref changed store"))
           (check! (:published? (contract/-compare-and-set-ref! backend "db" nil basis)) "ref CAS failed")
           (prn {:put-blocks (count bs) :idempotent true :bad-cid-refused true :ref-published true})))
     "race"

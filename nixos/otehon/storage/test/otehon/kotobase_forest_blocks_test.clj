@@ -29,3 +29,15 @@
     ;; Even an empty write must not be misrepresented as a durable write; it
     ;; contains no blocks and is a protocol no-op, so only read is checked here.
     ))
+
+(deftest composed-ref-refuses-missing-root-without-publication
+  (let [[dir staging] (temp-store) b (blocks/open-backend dir staging "unused")
+        before (store/read-store dir)]
+    (is (= :missing-ref-target
+           (try (contract/-compare-and-set-ref! b "db" nil cid) nil
+                (catch Exception e (:type (ex-data e))))))
+    (is (= before (store/read-store dir)))
+    (is (nil? (contract/-read-ref b "db")))
+    ;; A stale expected CID returns CAS refusal without dereferencing NEXT.
+    (is (false? (:published? (contract/-compare-and-set-ref! b "db" cid cid))))
+    (is (= before (store/read-store dir)))))

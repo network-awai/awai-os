@@ -63,3 +63,15 @@
     (is (:degraded? (store/read-store dir)))
     (is (= :degraded-store (try (contract/-read-ref r "db") nil (catch Exception e (:type (ex-data e))))))
     (is (= :degraded-store (try (contract/-compare-and-set-ref! r "db" cid-a cid-b) nil (catch Exception e (:type (ex-data e))))))))
+
+(deftest optional-target-check-is-under-writer-lock
+  (let [dir (new-store) started (promise) release (promise)
+        r (refs/open-ref-store dir (fn [_] (deliver started true) @release))
+        pending (future (contract/-compare-and-set-ref! r "db" nil cid-a))]
+    (try
+      (is (= true (deref started 5000 :timeout)))
+      (is (= :writer-busy (try (store/transact! dir :put {:key "other" :value "v"}) nil
+                               (catch Exception e (:type (ex-data e))))))
+      (finally (deliver release true)))
+    (is (:published? @pending))
+    (is (= cid-a (:cid (contract/-read-ref r "db"))))))

@@ -122,5 +122,11 @@
     (-get-blocks [_ cids] (fetch dir cache cids))
     contract/IBackendCapabilities
     (-capabilities [_] #{:immutable-blocks :cid-addressed-read :packed-blocks :range-read :batch-get :batch-put}))))
-(defn open-backend [dir staging-root tool]
-  (contract/compose {:blocks (open-block-store dir staging-root tool) :refs (refs/open-ref-store dir)}))
+(defn open-backend
+  "Compose the local Forest block and ref ports. Ref CAS verifies its target
+  exists under the same writer lock; it does not validate the target's closure."
+  [dir staging-root tool]
+  (let [blocks (open-block-store dir staging-root tool)
+        verify! (fn [cid] (when-not (contract/get-block blocks cid)
+                            (fail! :missing-ref-target "ref target block is not published")))]
+    (contract/compose {:blocks blocks :refs (refs/open-ref-store dir verify!)})))

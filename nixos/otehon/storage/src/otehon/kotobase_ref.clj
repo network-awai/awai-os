@@ -30,16 +30,22 @@
   "Return the canonical IRefStore port for an existing Otehon directory.
   Ref values do not establish that blocks are present, signed or durable;
   compose with a separately qualified IBlockStore before using as a backend.
-  Failures during a write may be ambiguous and require ref readback."
-  [dir]
+  An optional verifier throws on rejection under the writer lock, after the
+  expected ref matches and before publication. Failures during a write may be
+  ambiguous and require ref readback."
+  ([dir] (open-ref-store dir nil))
+  ([dir verify-target!]
+  (when-not (or (nil? verify-target!) (fn? verify-target!))
+    (throw (ex-info "invalid target verifier" {:type :invalid-target-verifier})))
   (reify
     contract/IRefStore
     (-read-ref [_ name] (read-ref dir name))
     (-compare-and-set-ref! [_ name expected next]
       (when (some? expected) (cid! expected))
       (cid! next)
-      (let [result (store/compare-and-set-value! dir (key-for name) expected next)]
+      (let [result (store/compare-and-set-value! dir (key-for name) expected next
+                     (when verify-target! (fn [_ _] (verify-target! next))))]
         (when-let [current (:current result)] (cid! current))
         result))
     contract/IBackendCapabilities
-    (-capabilities [_] #{:conditional-ref :single-writer-ref})))
+    (-capabilities [_] #{:conditional-ref :single-writer-ref}))))

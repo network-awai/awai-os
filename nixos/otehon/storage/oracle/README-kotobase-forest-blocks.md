@@ -53,3 +53,30 @@ verify the target exists. A separately supplied authority must validate signed
 basis; this adapter does not create signatures or bind receipts. This is a
 hosted bounded prototype, not a GiB generic-block writer, Native execution,
 OS-cache-loss qualification, device power-loss proof or production deployment.
+
+## Composed ref target admission
+
+The current `open-backend` adds a target check to the standalone ref port:
+if the expected ref matches, it reads and verifies the proposed target CID
+through the composed Forest block port while holding the same local writer
+lock, before appending WAL or publishing root. Missing targets fail with
+`:missing-ref-target`; a stale expected ref returns ordinary CAS refusal
+without dereferencing the proposed target. The standalone `open-ref-store`
+retains its original ref-only semantics. This supersedes the earlier sentence
+that the **composed** backend does not verify the target; separate block and
+ref publications remain unchanged.
+
+On 2026-11-14 JST, local hosted unit tests passed 42 tests / 272 assertions.
+They checked missing-target root invariance, stale-ref behavior and that the
+target callback holds the writer lock. The actual pinned Forest tool then
+published the two-Pack block fixture, rejected a missing target without a
+root change, published the existing target, and a separate process recovered
+21 blocks and the ref. Nix hosted CI includes the proof; its exact-head
+result remains separate.
+
+Only the named block is verified. This does not traverse the DAG or prove
+that linked blocks exist, authorize or authenticate the commit, protect
+against external file tampering after verification, provide safe GC, solve
+CID-based ABA, or provide distributed fencing. Block creation and ref CAS are
+still separate durable operations; an interrupted writer may leave unreferenced
+immutable data. This is not a Native or production qualification.
