@@ -1,0 +1,45 @@
+{
+  "schema": "awai.circle-goal-ledger-evidence.v1",
+  "date": "2026-11-13",
+  "trackingIssue": "AWAI-2864",
+  "newStateEpoch": true,
+  "legacyHistoryRestored": false,
+  "legacyLedgerReset": false,
+  "nodes": [
+    "levi",
+    "benjamin",
+    "joseph"
+  ],
+  "freshHardwareAndPortPreflight": true,
+  "ports": {
+    "client": 23989,
+    "peer": 23990
+  },
+  "label": "network.awai.otehon.circle-ledger",
+  "scope": "Goal contributions only",
+  "version": "3.6.14",
+  "packageSha256": "fd154573a1f4c098c214d8233507d2766c43a164f7e339c0385aae71d9a1afaf",
+  "threeMemberHealthAndAuth": true,
+  "workerEnrollmentAuthority": "read-only",
+  "oldAndNewLabelsObservedOnLevi": true,
+  "coldBootQualified": false,
+  "modelCalls": 0,
+  "sources": [
+    {
+      "path": "nixos/otehon/circle-ledger/prepare.py",
+      "sha256": "b42be58fe35ac3918b6e8ad75b6cd295dc6ccbd5723fe9f07c113f451aaf89bd"
+    },
+    {
+      "path": "nixos/otehon/circle-ledger/activate.py",
+      "sha256": "0c32999c904aa084d8de0a12e82642286b7aec5d736b05e89a89c3bfb3f12799"
+    },
+    {
+      "path": "nixos/otehon/circle-ledger/provision.clj",
+      "sha256": "e5568fac81058a789c8ea9fbe9f0bcf029874d05238dbcedf494dba5dc8136c8"
+    },
+    {
+      "path": "nixos/otehon/circle-ledger/bootstrap-auth.clj",
+      "sha256": "33729fdffd694366c6ec1370ae6c01f7fad67a84315a6752ead614dfc5896b5a"
+    }
+  ]
+}
