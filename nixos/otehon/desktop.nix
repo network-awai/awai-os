@@ -24,7 +24,7 @@ let
     nativeBuildInputs = [ pkgs.clojure ];
     outputHashAlgo = "sha256";
     outputHashMode = "recursive";
-    outputHash = lib.fakeHash;
+    outputHash = "sha256-hOWfIhjkuhE5E3q+ZxelbQICQmFWi9uYg21ljRQeLbE=";
     buildPhase = ''
       runHook preBuild
       export HOME="$TMPDIR/home"
@@ -161,6 +161,8 @@ in
   systemd.services.otehon-headless-shell = lib.mkIf cfg.headless {
     description = "The shell in headless Chromium";
     wantedBy = [ "graphical.target" ];
+    after = [ "nginx.service" ];
+    requires = [ "nginx.service" ];
     serviceConfig = {
       User = user;
       ExecStart = browser;
@@ -176,6 +178,10 @@ in
       };
       default_session = initial_session;
     };
+  };
+  systemd.services.greetd = lib.mkIf (!cfg.headless) {
+    after = [ "nginx.service" ];
+    requires = [ "nginx.service" ];
   };
 
   services.zenohd = {
