@@ -67,7 +67,29 @@ in pkgs.testers.runNixOSTest {
     virtualisation.memorySize = 1024;
   };
   testScript = ''
-    import json, shlex, time
+    import json, shlex, time, select, types
+    # Pinned test-driver connect() checks each recv(1024) separately. UEFI
+    # output can split its marker across packets and hang forever. Preserve
+    # the same handshake, with buffering and a bounded test-only wait.
+    def bounded_connect(self):
+        if self.connected:
+            return
+        self.start()
+        end = time.monotonic() + 180
+        received = b""
+        while b"Spawning backdoor root shell..." not in received:
+            if time.monotonic() >= end:
+                raise TimeoutError("test driver backdoor handshake")
+            if not select.select([self.shell], [], [], 1)[0]:
+                continue
+            data = self.shell.recv(1024)
+            if not data:
+                raise RuntimeError("test driver backdoor disconnected")
+            received = (received + data)[-4096:]
+        self.connected = True
+        self.log("connected to guest root shell (buffered UEFI handshake)")
+    for node in [publisher, machine]:
+        node.connect = types.MethodType(bounded_connect, node)
     publisher.start()
     machine.start(allow_reboot=True)
     publisher.wait_for_unit("nginx.service",timeout=120)
