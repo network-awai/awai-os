@@ -17,6 +17,7 @@ const CONTRACT_KEYS = [
   "adapter", "version",
   "capability", "service", "operation", "consent", "endpoint",
   "origin", "routes", "method", "path",
+  "totalNodes", "totalBots", "pages", "circleCount", "counts", "radius", "x", "y",
 ];
 
 function cljsProps(src) {
@@ -69,7 +70,7 @@ test("externs cover every plain-JS boundary property", async () => {
   const jsFiles = [
     "src/runtime.js", "src/trust.js", "src/soshiki.js", "src/media.js",
     "src/net.js", "src/display.js", "src/sound.js", "src/status.js",
-    "src/soshiki-runtime.js", "src/soshiki-fleet.js", "src/fleet-projection.js",
+    "src/soshiki-runtime.js", "src/soshiki-fleet.js", "src/fleet-projection.js", "src/fleet-circles.js",
     "src/saifu-host.js", "src/voice-input.js", "src/csp.js",
     "src/identity/link.js", "src/identity/device.js", "src/identity/wallet.js",
   ];

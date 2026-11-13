@@ -1,5 +1,6 @@
 (ns shell.fleet-overview
  (:require [clojure.string :as str] ["react" :refer [useState useEffect]]
+           [shell.fleet-circles :as circles]
            ["../fleet-projection.js" :refer [decodeFleetEnvelope]]))
 (def reasons {"linear-unresolved" "Linear対応の照合待ち" "unfinished-issue-required" "進行可能Issueの選択待ち"
  "no-source-schedule" "元スケジュールなし" "source-verification-required" "元定義の検証待ち"
@@ -16,7 +17,7 @@
 (defn text [v] (if (nil? v) "未確認" (str v)))
 (defn panel []
  (let [[report set-report] (useState nil) [error set-error] (useState nil)
-       [query set-query] (useState "") [filter-state set-filter] (useState "all") [group set-group] (useState "all") [now set-now] (useState (js/Date.now))]
+       [query set-query] (useState "") [view set-view] (useState "circle") [filter-state set-filter] (useState "all") [group set-group] (useState "all") [now set-now] (useState (js/Date.now))]
   (useEffect
    (fn []
     (let [controller (js/AbortController.) busy (atom false) live (atom true)
@@ -45,6 +46,12 @@
     (if-not report [:p "統合レポートを読み込んでいます。配布されていない場合は未確認です。"]
      [:<>
       [:p {:role (when stale? "status")} (str "観測: " (:observedAt report) " · " (if stale? "更新が古いか時刻不整合" (str (quot age 1000) "秒前")) " · 30秒ごとに配布artifactを確認")]
+      [:div.fleet-circle-path {:aria-label "稼働状況の表示方法"}
+       [:button.secondary {:type "button" :aria-pressed (= view "circle") :on-click #(set-view "circle")} "Circle表示"]
+       [:button.secondary {:type "button" :aria-pressed (= view "list") :on-click #(set-view "list")} "一覧・実行詳細"]]
+      (when (= view "circle")
+        [:f> circles/panel (:bots report) stale? query set-query
+         (fn [name] (set-query name) (set-view "list"))])
       [:ul.soshiki-totals
        [:li [:strong (:registered totals)] [:span "登録Bot"]]
        [:li [:strong (:configured totals)] [:span "定期ジョブが設定済・Bot"]]
@@ -76,7 +83,7 @@
       [:label.soshiki-field [:span "状態"] [:select {:aria-label "統合Bot状態" :value filter-state :on-change #(set-filter (.. % -target -value))}
        [:option {:value "all"} "すべて"] [:option {:value "queued"} "段階起動の実行待ち"] [:option {:value "waiting"} "定期待機"] [:option {:value "attention"} "要確認"] [:option {:value "held"} "未有効・保留"]]]
       [:p (str (count bots) "件を表示 / " (:registered totals) "Bot · " (:repositoryCircles totals) "担当リポジトリCircle")]
-      [:ul.soshiki-bots
+      [:ul.soshiki-bots {:style {:display (when (= view "circle") "none")}}
        (for [bot bots]
         ^{:key (:id bot)}
         [:li {:data-fleet-bot (:id bot)}
