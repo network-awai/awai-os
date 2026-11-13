@@ -741,3 +741,5 @@ Object.prototype.participants;
 // Shared Mission/peer read-model exports.
 Object.prototype.missionGoals;
 Object.prototype.circleCooperations;
+
+Object.prototype.today;

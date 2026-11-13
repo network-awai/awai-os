@@ -7,3 +7,10 @@ export function circleExecution(progress,botId,catalogSha,now=Date.now()){
  if(progress?.['catalogSha256']!==catalogSha||!fresh(progress?.['observedAt']))return null;
  return progress['executions'].find(e=>e['botId']===botId&&e['source']==='muse-process-heartbeat'&&e['phase']==='responding'&&e['invocationId']&&e['node']&&fresh(e['heartbeatAt'])&&Number.isFinite(Date.parse(e['startedAt']))&&Date.parse(e['startedAt'])<=Date.parse(e['heartbeatAt'])&&now-Date.parse(e['startedAt'])<=300000)??null;
 }
+export function goalEdges(progress,nodes,catalogSha,now=Date.now()){
+ if(progress?.['catalogSha256']!==catalogSha)return [];
+ const known=new Set(nodes.map(n=>n['id'])),edges=[];
+ for(const c of progress['circles']??[]){const receipts=c['contributions']??[];for(const r of receipts){if(r['state']!=='completed'||!r['storeReadback']||!r['linearConfirmed']||!known.has(r['botId']))continue;for(const p of r['peerInputs']??[]){const prior=receipts.find(x=>x['botId']===p['botId']&&x['artifactCid']===p['cid']&&x['storeReadback']&&x['linearConfirmed']);if(!prior||p['botId']===r['botId']||!known.has(p['botId']))continue;edges.push({'id':r['runId']+':'+p['botId'],'from':p['botId'],'to':r['botId'],'live':false});}}
+ for(const e of progress['executions']??[]){if(e['circleId']!==c['id']||!circleExecution(progress,e['botId'],catalogSha,now)||!known.has(e['botId']))continue;for(const p of e['peerInputs']??[]){if(receipts.some(r=>r['botId']===p['botId']&&r['artifactCid']===p['cid']&&r['storeReadback']&&r['linearConfirmed'])&&known.has(p['botId'])&&p['botId']!==e['botId'])edges.push({'id':e['runId']+':'+p['botId'],'from':p['botId'],'to':e['botId'],'live':true});}}
+ }return edges;
+}

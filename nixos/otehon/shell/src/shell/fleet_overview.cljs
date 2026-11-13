@@ -44,7 +44,8 @@
     (.then #(if (.-ok %) (.json %) (throw (js/Error. "unavailable")))) (.then decodeCircleWork)
     (.then #(when @live (set-circle-work (js->clj % :keywordize-keys true)))) (.catch (fn [_] nil)))) timer (js/setInterval refresh 5000)]
    (refresh) (fn [] (reset! live false) (.abort controller) (js/clearInterval timer)))) #js [])
-  (let [age (when report (- now (js/Date.parse (:observedAt report)))) stale? (or (nil? age) (< age 0) (> age 180000))
+  (let [peer-progress (when-not (= "new-epoch-legacy-not-restored" (:historyStatus circle-work)) peer-progress)
+        age (when report (- now (js/Date.parse (:observedAt report)))) stale? (or (nil? age) (< age 0) (> age 180000))
         all-bots (mapv (fn [bot] (let [d (directoryState (clj->js bot) (clj->js presence) (:catalogSha256 report) now stale?) observation (or (circleExecution (clj->js circle-work) (:id bot) (:catalogSha256 report) now) (.-observation d))]
           (cond-> bot observation (assoc :agentPresence (js->clj observation :keywordize-keys true) :state "running" :cronState (:state bot))))) (:bots report))
         q (str/lower-case query)

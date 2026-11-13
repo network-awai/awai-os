@@ -6,7 +6,7 @@
             ["../fleet-activity.js" :refer [activitySelection]]
             [shell.fleet-goals :as goals]
             [shell.fleet-cooperation :as cooperation] [shell.circle-work :as work]
-            ["../fleet-cooperation.js" :refer [missionGoals circleCooperations]]
+            ["../circle-work.js" :refer [goalEdges]] ["../fleet-cooperation.js" :refer [missionGoals circleCooperations]]
             [shell.fleet-org-editor :as org-editor]
             ["../fleet-organizations.js" :refer [blankOrganizations loadOrganizations changeOrganization saveOrganizations]]
             ["../fleet-circles.js" :refer [circlePack]]))
@@ -30,7 +30,8 @@
         missions (mapv #(assoc % :circleLabels (into {} (map (fn [n] [(keyword (:id n)) (:label n)]) nodes))) missions)
         mission (first (filter #(= mission-id (:key %)) missions))
         cycles (js->clj (circleCooperations (clj->js nodes) (clj->js bots) (clj->js (or (:cycles peer-progress) [])) now stale?) :keywordize-keys true)
-        peer-ids (set (mapcat #(map :id (:participants %)) cycles))
+        work-edges (js->clj (goalEdges (clj->js work-progress) (clj->js nodes) (:catalogSha256 work-progress) now) :keywordize-keys true)
+        peer-ids (into (set (mapcat #(map :id (:participants %)) cycles)) (mapcat (juxt :from :to) work-edges))
         visible-nodes (if responsibility? (filter #(and (or (= (:id %) (:id focus)) (some #{(:id focus)} (:ancestorIds %))) (<= (:depth %) (+ 2 (:depth focus))) (or (not= "bot" (:kind %)) (= (:parentId %) (:id focus)) (and (>= (:depth focus) 2) (contains? peer-ids (:id %))))) nodes) nodes)
         size (+ 24 (* 2 (:radius focus))) scale (/ 1000 size)
         choose (fn [node] (set-selected (:id node)) (if (= "bot" (:kind node)) (set-focus (:parentId node)) (set-focus (:id node))))
@@ -115,6 +116,10 @@
         [:path {:d (str "M " (:x a) " " (:y a) " Q " (/ (+ (:x a) (:x b)) 2) " " (- (min (:y a) (:y b)) (/ 30 scale)) " " (:x b) " " (:y b))
                 :fill "none" :stroke "var(--focus)" :stroke-width (/ 2 scale) :stroke-dasharray (str (/ 6 scale) " " (/ 4 scale))}
          (when (and (:live cycle) (not reduced)) [:animate {:attributeName "stroke-dashoffset" :from "20" :to "0" :dur "1s" :repeatCount "indefinite"}])]])
+      (for [edge work-edges :when (and (contains? visible-ids (:from edge)) (contains? visible-ids (:to edge)))
+            :let [a (first (filter #(= (:id %) (:from edge)) nodes)) b (first (filter #(= (:id %) (:to edge)) nodes))]]
+       ^{:key (:id edge)} [:path {:d (str "M " (:x a) " " (:y a) " L " (:x b) " " (:y b)) :fill "none" :stroke "var(--focus)" :stroke-width (/ 2 scale) :stroke-dasharray (str (/ 6 scale) " " (/ 4 scale)) :aria-hidden true :pointer-events "none"}
+        (when (and (:live edge) (not reduced)) [:animate {:attributeName "stroke-dashoffset" :from "20" :to "0" :dur "1s" :repeatCount "indefinite"}])])
       (for [node visible-nodes
             :when (and (pos? (:depth node)) (> (* scale (:radius node)) 32)
                        (or (contains? peer-ids (:id node)) (= (:id node) (:id focus)) (= (:parentId node) (:id focus)) (and responsibility? (= 2 (:depth node)) (= "fleet" (:id focus)))))]
@@ -136,7 +141,7 @@
              ^{:key (:id node)} [:f> goals/panel node #(choose node) locale] )])])
       ]
       [:div.fleet-inspector-stack
-       [work/panel work-progress (or selected-id focus-id) locale now]
+       [work/panel work-progress (or selected-id focus-id) locale now open-circle]
        [cooperation/mission-detail mission open-circle locale]
        (when responsibility? [cooperation/panel (if mission (filter #(= (:missionKey %) (:key mission)) cycles) cycles) open-circle open-circle locale])
        ^{:key (or selected-id "unselected")}
