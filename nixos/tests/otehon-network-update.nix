@@ -138,6 +138,10 @@ in pkgs.testers.runNixOSTest {
     assert machine.succeed("sha256sum /home/otehon/ota-owner-file /etc/machine-id")==before
     # Explicit signed promotion, not self-reported automatic fleet authority.
     publish(2,"good",["canary","stable"])
+    machine.wait_for_console_text("STAGED version=2",timeout=600)
+    machine.wait_for_console_text("reboot: Restarting system",timeout=120)
+    machine.connected = False
+    machine.connect()
     machine.wait_until_succeeds("test $(cat /etc/ota-generation) = b",timeout=600)
     machine.wait_until_succeeds("test $(cat /var/lib/otehon-update/version) = 2",timeout=180)
     machine.wait_until_succeeds("node /etc/ota-profile-check.mjs read | grep CHROMIUM_STATE_OK")
@@ -145,6 +149,14 @@ in pkgs.testers.runNixOSTest {
     machine.reboot()
     machine.wait_until_succeeds("node /etc/ota-profile-check.mjs read | grep CHROMIUM_STATE_OK",timeout=180)
     publish(3,"bad",["canary","stable"])
+    machine.wait_for_console_text("STAGED version=3",timeout=600)
+    machine.wait_for_console_text("reboot: Restarting system",timeout=120)
+    machine.connected = False
+    machine.connect()
+    machine.wait_for_console_text("TRIAL_FAILED version=3",timeout=180)
+    machine.wait_for_console_text("reboot: Restarting system",timeout=120)
+    machine.connected = False
+    machine.connect()
     machine.wait_until_succeeds("grep -qx 3 /var/lib/otehon-update/blocked",timeout=600)
     machine.wait_until_succeeds("test $(cat /etc/ota-generation) = b",timeout=180)
     machine.wait_until_succeeds("node /etc/ota-profile-check.mjs read | grep CHROMIUM_STATE_OK")
