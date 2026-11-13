@@ -1,7 +1,7 @@
 ;; Optional hosted integration proof: requires an explicitly pinned Forest tool.
 (require '[otehon.storage :as store] '[otehon.pack-store :as pack]
          '[otehon.forest-writer :as writer])
-(import '[java.nio.file Files Paths OpenOption LinkOption] '[java.nio.file.attribute FileAttribute]
+(import '[java.nio.file Files Paths OpenOption LinkOption StandardOpenOption] '[java.nio.file.attribute FileAttribute]
         '[java.io ByteArrayOutputStream] '[java.util Arrays])
 (defn ensure! [v message] (when-not v (throw (ex-info message {}))))
 (let [[dir tool] *command-line-args*
@@ -31,5 +31,19 @@
                     (catch Exception e (= :injected (:type (ex-data e))))) "failure not propagated"))
     (ensure! @triggered "failure boundary not reached")
     (ensure! (= before (:root (store/read-store failed))) "interrupted import published root"))
+  (let [target (str dir "/changed-store") stage (str dir "/changed-stage")
+        _ (store/init! target) before (:root (store/read-store target))
+        task (future (try (writer/put-file! target "file" src stage tool) :unexpected-success
+                          (catch Exception e (:type (ex-data e)))))
+        first-car (java.io.File. (str stage "/0.car"))]
+    (loop [n 0]
+      (when (and (not (.exists first-car)) (< n 12000) (not (realized? task)))
+        (Thread/sleep 10) (recur (inc n))))
+    (ensure! (.exists first-car) "first Pack boundary not reached")
+    (Files/write (Paths/get src (make-array String 0)) (byte-array [42])
+                 (into-array OpenOption [StandardOpenOption/APPEND]))
+    (ensure! (= :source-changed (deref task 120000 :timeout)) "changed source was not refused")
+    (ensure! (= before (:root (store/read-store target))) "changed source published root"))
   (prn {:bytes (alength data) :packs 3 :logical-cid-match true :untrusted-tool-rejected true
-        :interrupted-root-unchanged true :roundtrip true :pass true}))
+        :interrupted-root-unchanged true :changed-source-rejected true :roundtrip true :pass true})
+  (shutdown-agents))

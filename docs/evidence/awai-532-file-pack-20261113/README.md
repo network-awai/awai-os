@@ -165,3 +165,13 @@ Nix CI. The Linux artifact digest remains an observation without independent
 verification. This writer rejects empty inputs and files above 56 MiB; it does
 not implement GiB support, Native I/O, OS cache loss, physical power loss, real
 policy/receipt, or a consistent snapshot of a concurrently changing source.
+
+### Concurrent source change check
+
+With the same hosted artifact, `forest_writer_proof.clj` additionally waited
+until the first CAR appeared and appended one byte to the test-owned source
+while the writer was still active. The writer returned `:source-changed` and
+the isolated store's root stayed unchanged. The full proof returned
+`:changed-source-rejected true`, along with the prior positive, unpinned-tool
+and injected-interruption checks. This covers an observable size change; it
+does not turn the before/after size and mtime check into an immutable snapshot.
