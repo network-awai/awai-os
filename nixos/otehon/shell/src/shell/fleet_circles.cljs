@@ -2,21 +2,22 @@
   (:require [clojure.string :as str]
             ["react" :refer [useEffect useMemo useState]]
             [shell.fleet-activity :as activity]
+            [shell.ui-copy :as ui]
             ["../fleet-activity.js" :refer [activitySelection]]
             [shell.fleet-goals :as goals]
             [shell.fleet-org-editor :as org-editor]
             ["../fleet-organizations.js" :refer [blankOrganizations loadOrganizations changeOrganization saveOrganizations]]
             ["../fleet-circles.js" :refer [circlePack]]))
-(def states [[:running "実行観測" "#2084d4"] [:recovering "復旧観測" "#8d63c7"] [:waiting "定期待機" "#267c62"] [:queued "実行待ち" "#377bc0"]
-             [:held "未有効" "#ae7323"] [:attention "要確認" "#c44343"] [:unknown "未確認" "#7b8190"]])
-(defn panel [bots stale? now query on-query on-details]
+(def states [[:running :stateRunning "#2084d4"] [:recovering :stateRecovering "#8d63c7"] [:waiting :stateWaiting "#267c62"] [:queued :stateQueued "#377bc0"]
+             [:held :stateHeld "#ae7323"] [:attention :stateAttention "#c44343"] [:unknown :stateUnknown "#7b8190"]])
+(defn panel [bots stale? now query on-query on-details & [locale chat-component]]
   (let [[focus-id set-focus] (useState "fleet") [grouping set-grouping] (useState "responsibility") [goals? set-goals] (useState false) [selected-id set-selected] (useState nil)
         [org-data set-org-data] (useState (fn [] (if (and (exists? js/window) (exists? js/localStorage)) (loadOrganizations (clj->js (vec bots)) js/localStorage) #js {:state (blankOrganizations) :error nil})))
         [message set-message] (useState nil) [reduced set-reduced] (useState true)
         change-org (fn [action]
                      (try (let [next (changeOrganization (.-state org-data) action (clj->js (vec bots)))]
                             (saveOrganizations next (clj->js (vec bots)) js/localStorage)
-                            (set-org-data #js {:state next :error nil}) (set-message "組織と所属をこのブラウザーに保存しました。") true)
+                            (set-org-data #js {:state next :error nil}) (set-message (ui/t locale :savedOrganization)) true)
                           (catch :default error (set-message (.-message error)) false)))
         view (useMemo (fn [] (js->clj (circlePack (clj->js (vec bots)) #js {:stale stale? :query query :now now :grouping grouping :orgState (.-state org-data)}) :keywordize-keys true)) #js [bots stale? query now org-data grouping])
         nodes (:nodes view) focus (or (first (filter #(= focus-id (:id %)) nodes)) (first nodes))
@@ -30,37 +31,36 @@
                        (let [media (.matchMedia js/window "(prefers-reduced-motion: reduce)") update (fn [] (set-reduced (.-matches media)))]
                          (update) (.addEventListener media "change" update)
                          (fn [] (.removeEventListener media "change" update))))) #js [])
-    [:section.fleet-circle-view {:aria-label "CircleでBotの稼働を可視化"}
-     [:h3 "Circle · 組織全体をひとつの図で"]
-     [:p.muted "目的と責任でCircleを編成。円の中の円で全体を示し、Circleを開くとRole・Bot・元cronを確認できます。"]
-     [:div.fleet-circle-path {:aria-label "Circleの分類"}
-      (for [[mode title] [["responsibility" "責任Circle"] ["repository" "App・リポジトリ分類"]]]
+    [:section.fleet-circle-view {:aria-label (ui/t locale :circlesTitle)}
+     [:h3 (ui/t locale :circlesTitle)]
+     [:div.fleet-circle-path {:aria-label (ui/t locale :circlesTitle)}
+      (for [[mode title] [["responsibility" :responsibility] ["repository" :repositories]]]
         ^{:key mode} [:button.secondary {:type "button" :aria-pressed (= grouping mode)
-          :on-click #(do (set-grouping mode) (set-focus "fleet") (set-selected nil))} title])
-      [:button.secondary {:type "button" :aria-pressed goals? :on-click #(set-goals (not goals?))} "Goals一覧"]]
-     [:label.soshiki-field [:span "Circle / Bot / Appを検索して強調"]
-      [:input {:type "search" :aria-label "CircleとBotを検索" :value query :on-change #(on-query (.. % -target -value))}]]
+          :on-click #(do (set-grouping mode) (set-focus "fleet") (set-selected nil))} (ui/t locale title)])
+      [:button.secondary {:type "button" :aria-pressed goals? :on-click #(set-goals (not goals?))} (ui/t locale :goals)]]
+     [:label.soshiki-field [:span (ui/t locale :search)]
+      [:input {:type "search" :aria-label (ui/t locale :search) :placeholder (ui/t locale :searchPlaceholder) :value query :on-change #(on-query (.. % -target -value))}]]
      [:div.fleet-circle-path
-      [:button.secondary {:type "button" :on-click #(do (set-focus "fleet") (set-selected nil))} "全体を1 viewで見る"]
+      [:button.secondary {:type "button" :on-click #(do (set-focus "fleet") (set-selected nil))} (ui/t locale :overview)]
       (when (not= "fleet" (:id focus)) [:span (:label focus)])]
-     [:ul.fleet-circle-legend (for [[state label color] states] ^{:key state} [:li [:span {:style {:background color} :aria-hidden true}] label])]
-     [:p (if responsibility?
-           (str (:totalBots view) " Bot · " (:charterCount view) "責任Circleの編成 · 配置確認を含む（元" (:circleCount view) " repo分類を保持）")
-           (str (:totalBots view) " Bot · " (:circleCount view) " repo Circle · " (:organizationCount view) " 組織グループ"))]
+     [:ul.fleet-circle-legend {:aria-label (ui/t locale :stateLegend)} (for [[state label color] states :when (pos? (get-in (first nodes) [:counts state] 0))] ^{:key state} [:li [:span {:style {:background color} :aria-hidden true}] (ui/t locale label) [:strong (get-in (first nodes) [:counts state])]])]
+     [:p.fleet-map-total (ui/t locale (if responsibility? :structureCount :repositoryCount)
+                            {:bots (:totalBots view) :circles (if responsibility? (:charterCount view) (:circleCount view))})]
+     (when stale? [:span.fleet-status {:data-state "unknown" :role "status"} (ui/t locale :stale)])
      [:div.fleet-workspace
       [:div.fleet-map-column
      (when responsibility?
        [:div.fleet-circle-index
         (for [node (filter #(and (= "responsibility" (:kind %)) (= (:parentId %) (:id focus))) nodes)]
           ^{:key (:id node)} [:button.secondary {:type "button" :on-click #(choose node)}
-            [:strong (:label node)] [:span (str (:count node) " Bot")]])])
+            [:strong (:label node)] [:span (ui/t locale :profileCount {:count (:count node)})]])])
      [:svg.fleet-circle-map {:viewBox (str (- (:x focus) (/ size 2)) " " (- (:y focus) (/ size 2)) " " size " " size)
-                            :role "group" :aria-label "組織・Circle・全Botの入れ子マップ"}
+                            :role "group" :aria-label (ui/t locale :mapAria) :aria-describedby "fleet-map-description"}
       (for [node visible-nodes]
         (let [bot? (= "bot" (:kind node))
               color (some (fn [[s _ c]] (when (= (name s) (:state node)) c)) states)
-              desc (str (get-in node [:activity :label]) " · " (:label node) " · " (:count node) " Bot · "
-                        (apply str (for [[s title _] states] (str title " " (get-in node [:counts s]) " "))))]
+              desc (str (ui/state-label locale (get-in node [:activity :state])) " · " (:label node) " · " (ui/t locale :profileCount {:count (:count node)}) " · "
+                        (apply str (for [[s title _] states] (str (ui/t locale title) " " (get-in node [:counts s]) " "))))]
           ^{:key (:id node)}
           [:g.fleet-circle-node {:role "button" :tab-index 0 :aria-label desc
                                  :on-click #(choose node)
@@ -101,21 +101,18 @@
          (let [label (if (= "circle" (:kind node)) (last (str/split (:label node) #"/")) (:label node))
                limit (max 4 (min 25 (js/Math.floor (/ (* 1.6 (:radius node) scale) (if responsibility? 24 15)))))]
            (if (> (count label) limit) (str (subs label 0 (dec limit)) "…") label))
-         [:tspan {:x (:x node) :dy (/ 23 scale) :style {:font-size (/ 18 scale)}} (str (:count node) " Bot")]])]
-     [:p.muted (str (if responsibility? "責任Circleは読みやすさを優先して配置。面積は人数比ではありません。Botの詳細は円を開くと表示します。" (str "全" (:totalBots view) " Botを同時描画。各Botの小円は同じ重み。囲む円の面積は厳密な人数比ではありません。"))
-                    (when (seq query) " 検索は該当円を強調し、全体構造を保持します。")
-                    (when stale? " 観測が古いため、設定済みBotは未確認で表示しています。"))]
-     [:p.muted "呼吸は観測済みの待機、点滅は実行待ち・要確認、パルスは確認済み結果の更新です。実行中の回転は45秒以内のheartbeatがある場合だけ表示します。元cron・Linear期間Cycleは変更せず、観測切れと未有効は静止します。"]
+         [:tspan {:x (:x node) :dy (/ 23 scale) :style {:font-size (/ 18 scale)}} (ui/t locale :profileCount {:count (:count node)})]])]
+     [:p.sr-only {:id "fleet-map-description"} (ui/t locale :chartDescription)]
      (when message [:p {:role "status"} message])
       (when-not responsibility? [:f> org-editor/panel nodes selected change-org (.-error org-data)])
      (when responsibility?
-       [:<> [:f> goals/panel (or selected focus) nil]
+       [:<> [:f> goals/panel (or selected focus) nil locale]
         (when goals?
           [:div.fleet-goals-grid
            (for [node (filter #(and (= "responsibility" (:kind %)) (:purpose %)) nodes)]
-             ^{:key (:id node)} [:f> goals/panel node #(choose node)] )])])
+             ^{:key (:id node)} [:f> goals/panel node #(choose node) locale] )])])
       ]
       ^{:key (or selected-id "unselected")}
       [:f> activity/panel selection
        (fn [id] (when-let [node (first (filter #(= id (:id %)) nodes))] (choose node)))
-       #(set-selected nil) on-details]]]))
+       #(set-selected nil) on-details locale chat-component]]]))

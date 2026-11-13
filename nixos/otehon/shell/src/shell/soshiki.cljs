@@ -706,7 +706,6 @@
                                                      "Circle・ロール・Botを登録しました。Botの実行は開始していません。")))
                                     (catch :default _ (set-message "登録ファイルを確認してください。")))))
                          (.catch (fn [_] (set-message "ファイルを読み込めませんでした。")))))))}]]
-     [:p.muted "現在の登録を残して追加します。実行許可・cronの有効化は別途設定します。"]
      (when (seq message) [:p {:role "status"} message])]))
 
 (defn soshiki [account score on-account]
@@ -720,8 +719,8 @@
       [:main.chat.net-view {:data-soshiki true}
        [:div.net-body.soshiki-body
         [:h1 "Soshiki"]
-        [:p.muted "サークルとロールで組織を作り、Botにプロフィールを持たせる。すべてこのデバイスに保存します。"]
-        [:f> fleet-import state apply-fn]
+        [:details.fleet-disclosure [:summary "Bot登録を取り込む"]
+         [:f> fleet-import state apply-fn]]
         (when save-failed
           [:p.net-error "保存できませんでした。この画面の変更はこの表示の間だけ有効です。"])
         [:div.soshiki-tabs {:role "tablist" :aria-label "Soshiki views"}
