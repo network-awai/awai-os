@@ -20,7 +20,7 @@ jobs:
           persist-credentials: false
       - uses: cachix/install-nix-action@b85815f71a6de0ddee80b8a80a98d43f4bcc66c7
       - name: Build and boot disposable HTTPS update desktop VM
-        run: nix-build nixos/tests/otehon-network-update.nix --no-out-link -L
+        run: nix-build nixos/tests/otehon-network-update.nix --no-out-link --show-trace
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:

@@ -36,9 +36,10 @@ in pkgs.testers.runNixOSTest {
     environment.systemPackages = [ pkgs.nodejs pkgs.curl pkgs.jq ];
     environment.etc."ota-profile-check.mjs".source = ../otehon/update-profile-check.mjs;
     environment.etc."ota-generation".text = "a";
-    system.build.otaGood = (extendModules { modules = [{ environment.etc."ota-generation".text = lib.mkForce "b"; }]; }).config.system.build.toplevel;
+    system.build.otaGood = (extendModules { modules = [{ environment.etc."ota-generation".text = lib.mkForce "b"; system.image.version = lib.mkForce "0.7.1-update-check"; }]; }).config.system.build.toplevel;
     system.build.otaBad = (extendModules { modules = [{
       environment.etc."ota-generation".text = lib.mkForce "c";
+      system.image.version = lib.mkForce "0.7.2-update-check";
       systemd.services.otehon-broken = { wantedBy = [ "multi-user.target" ]; serviceConfig = { Type = "oneshot"; ExecStart = "${pkgs.coreutils}/bin/false"; }; };
     }]; }).config.system.build.toplevel;
   };
@@ -48,7 +49,7 @@ in pkgs.testers.runNixOSTest {
     environment.etc."ota-candidates.json".text = builtins.toJSON {
       good = "${nodes.machine.system.build.otaGood}";
       bad = "${nodes.machine.system.build.otaBad}";
-      stateContract = "chromium-${pkgs.chromium.version}-otehon-profile-v1";
+      stateContract = "chromium-${pkgs.chromium.version}-otehon-origin-v2";
     };
     services.nix-serve = { enable = true; secretKeyFile = fixtures + /update/test-cache.key; };
     services.nginx = {

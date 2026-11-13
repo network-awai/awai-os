@@ -77,7 +77,7 @@ let
       --remote-debugging-address=127.0.0.1 \
       --remote-debugging-port=9222 \
       ${lib.escapeShellArgs cfg.browserArgs} \
-      "file://${shell}/index.html"
+      "http://127.0.0.1:8780/"
   '';
 in
 {
@@ -121,6 +121,14 @@ in
   };
 
   config = {
+  # A stable origin is required for IndexedDB/localStorage across Nix store generations.
+  # Only immutable static artifacts are served; no API/state/inference on this origin.
+  services.nginx.enable = true;
+  services.nginx.virtualHosts."otehon-desktop" = {
+    listen = [ { addr = "127.0.0.1"; port = 8780; } ];
+    root = toString shell;
+    locations."/".tryFiles = "$uri $uri/ =404";
+  };
   system.image.id = "awai-otehon-desktop";
   system.image.version = "0.7.0";
 

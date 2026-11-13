@@ -11,7 +11,7 @@ let
   contract = {
     inherit (cfg) feedUrl channel cohort maintenanceHours automaticReboot maxDownloadBytes maxImportBytes maxStorePaths minimumFreeBytes maxValiditySeconds;
     architecture = pkgs.stdenv.hostPlatform.parsed.cpu.name;
-    stateContract = "chromium-${pkgs.chromium.version}-otehon-profile-v1";
+    stateContract = "chromium-${pkgs.chromium.version}-otehon-origin-v2";
     caBundle = toString cfg.caBundle;
     cacheKey = toString config.otehon.update.cacheKey;
     stateDirectory = "/var/lib/otehon-update";
