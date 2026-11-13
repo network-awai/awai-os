@@ -18,6 +18,10 @@ pkgs.testers.runNixOSTest {
     start_all()
     machine.wait_for_unit("multi-user.target")
     machine.succeed("mkdir -p /var/lib/forest-reboot")
+    # Prebuilt host-produced group: install into the guest disk and establish
+    # a full logical-file baseline before shutting down the guest OS.
+    machine.succeed("cp -R ${./test/fixtures/gib-reboot} /var/lib/forest-reboot/gib-store; chmod -R u+w /var/lib/forest-reboot/gib-store")
+    machine.succeed("forest-reboot-probe read-gib /var/lib/forest-reboot/gib-store", timeout=900)
     machine.succeed("forest-reboot-probe create /var/lib/forest-reboot/store")
     machine.succeed("forest-reboot-probe create-v2 /var/lib/forest-reboot/store-v2")
     machine.succeed("forest-reboot-probe read /var/lib/forest-reboot/store")
@@ -29,6 +33,10 @@ pkgs.testers.runNixOSTest {
     assert machine.succeed("cat /proc/sys/kernel/random/boot_id").strip() != boot_id
     machine.succeed("forest-reboot-probe read /var/lib/forest-reboot/store")
     machine.succeed("forest-reboot-probe read-v2 /var/lib/forest-reboot/store-v2")
+    machine.succeed("forest-reboot-probe read-gib /var/lib/forest-reboot/gib-store", timeout=900)
+    # The guest-owned GiB fixture must also fail closed if any Pack is missing.
+    machine.succeed("f=$(find /var/lib/forest-reboot/gib-store -type f -name '*.forest' -print -quit); test -n \"$f\"; mv \"$f\" /var/lib/forest-reboot/gib-missing.saved")
+    machine.succeed("if forest-reboot-probe read-gib /var/lib/forest-reboot/gib-store > /tmp/forest-gib-missing.log 2>&1; then exit 1; fi; grep -q ':missing-forest' /tmp/forest-gib-missing.log", timeout=900)
     # Control: corrupt one VM-owned immutable archive only after successful
     # recovery, and require the precise digest rejection on a fresh process.
     machine.succeed("f=$(find /var/lib/forest-reboot/store -type f -name '*.forest' -print -quit); test -n \"$f\"; printf x >> \"$f\"")

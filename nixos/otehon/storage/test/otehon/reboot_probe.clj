@@ -45,4 +45,14 @@
                                                (range start (+ start 262144))))]
                  (ensure! (java.util.Arrays/equals expected (pack/read-group-range h "reboot" start 262144)))))
              (println "recovered-logical-four-packs-and-full-two-mib" mode))
-    (throw (ex-info "use create, create-v2, read or read-v2" {}))))
+    "read-gib" (let [h (pack/recover dir)
+                     refs (get-in (pack/summary h) [:groups "gib" :packs])
+                     md (java.security.MessageDigest/getInstance "SHA-256")]
+                 (ensure! (= 64 (count refs) (count (set (map :stored-sha refs)))))
+                 (ensure! (= 0 (get-in (pack/summary h) [:stats :cache-entries-before])))
+                 (dotimes [i 1024]
+                   (.update md ^bytes (pack/read-group-range h "gib" (* i 1048576) 1048576)))
+                 (let [digest (.formatHex (java.util.HexFormat/of) (.digest md))]
+                   (ensure! (= "dd4ec50fea8f5a68daf225da4945af367e25bb870a09346060fa9dc088c001b0" digest))
+                   (println "recovered-full-gib-64-packs-sha256" digest)))
+    (throw (ex-info "unknown reboot probe mode" {}))))
