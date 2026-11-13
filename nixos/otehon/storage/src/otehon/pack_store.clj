@@ -16,6 +16,8 @@
 (def leaf-size 65536)
 (def max-leaves 64)
 (def ^:private prefix "awai.pack/")
+(def ^:private group-prefix "awai.pack-group/")
+(def ^:private max-group-packs 64)
 
 (defn- fail! [type message] (throw (ex-info message {:type type})))
 (defn- digest [v]
@@ -115,6 +117,24 @@
       (fail! :unsupported-car-profile "Forest CAR payload is not canonical"))
     (byte-array-of car-v2)))
 
+(defn- group-key [name]
+  (pack-key name)
+  (str group-prefix name))
+
+(defn- parse-group [text]
+  (with-open [r (java.io.PushbackReader. (java.io.StringReader. text))]
+    (let [opts {:eof ::eof :readers {} :default (fn [& _] (fail! :invalid-pack-group "unknown tag"))}
+          value (edn/read opts r)]
+      (when-not (and (= ::eof (edn/read opts r)) (map? value)
+                     (= #{:format :packs} (set (keys value)))
+                     (= :awai.otehon-store/forest-group-v1 (:format value))
+                     (vector? (:packs value)) (<= 1 (count (:packs value)) max-group-packs))
+        (fail! :invalid-pack-group "invalid bounded Pack group"))
+      (let [refs (mapv #(parse-ref (pr-str %)) (:packs value))]
+        (when-not (every? forest? refs)
+          (fail! :invalid-pack-group "group must contain Forest Pack references"))
+        (assoc value :packs refs)))))
+
 (defn- load-index [directory ref stats]
   (let [stored (cond (compressed? ref) (store/read-zpack directory (:stored-sha ref))
                      (forest? ref) (store/read-forest directory (:stored-sha ref)))
@@ -135,6 +155,12 @@
   (let [cache (atom {})
         decoded-cache (atom {:order [] :values {}})
         stats (atom {:cache-entries-before 0 :index-rebuilds 0 :car-reads 0 :bytes-read 0})
+        verify-ref (fn [ref]
+                     (let [checked (assoc (or (get @cache (cache-key ref)) (load-index directory ref stats))
+                                          :decoded-cache decoded-cache)]
+                       (when-not (= ref (:ref checked))
+                         (fail! :pack-ref-mismatch "conflicting references to the same CAR"))
+                       (swap! cache assoc (cache-key ref) checked)))
         files (reduce-kv
                 (fn [out key value]
                   (if-not (str/starts-with? key prefix)
@@ -142,13 +168,15 @@
                     (let [name (subs key (count prefix))
                           _ (pack-key name)
                           ref (parse-ref value)
-                          checked (assoc (or (get @cache (cache-key ref)) (load-index directory ref stats))
-                                         :decoded-cache decoded-cache)]
-                      (when-not (= ref (:ref checked))
-                        (fail! :pack-ref-mismatch "conflicting references to the same CAR"))
-                      (swap! cache assoc (cache-key ref) checked)
+                          _ (verify-ref ref)]
                       (assoc out name ref)))) {} state)]
-    {:directory directory :files files :index-cache cache :stats stats}))
+    (let [groups (reduce-kv (fn [out key value]
+                              (if-not (str/starts-with? key group-prefix) out
+                                (let [name (subs key (count group-prefix))
+                                      _ (group-key name) group (parse-group value)]
+                                  (doseq [ref (:packs group)] (verify-ref ref))
+                                  (assoc out name group)))) {} state)]
+      {:directory directory :files files :groups groups :index-cache cache :stats stats})))
 
 (defn recover
   "Verify every committed Pack and rebuild derived indexes from durable CAR
@@ -159,7 +187,7 @@
     (assoc (recover-map directory state) :basis root :degraded? degraded?)))
 
 (defn summary [handle]
-  {:files (:files handle) :basis (:basis handle) :degraded? (:degraded? handle)
+  {:files (:files handle) :groups (:groups handle) :basis (:basis handle) :degraded? (:degraded? handle)
    :stats (assoc @(:stats handle) :index-cache-entries (count @(:index-cache handle)))})
 
 (defn- import-representation!
@@ -216,6 +244,29 @@
                    (when-not (= (:stored-sha ref) (store/write-forest! directory bytes))
                      (fail! :forest-changed "Forest bytes changed during publication"))))]
     (assoc result :pack ref)))
+
+(defn import-forest-group!
+  "Atomically publish a bounded ordered group of verified Forest Packs.
+  This physical catalog is not a logical-file manifest or authorization receipt."
+  [directory name inputs]
+  (group-key name)
+  (when-not (and (vector? inputs) (<= 1 (count inputs) max-group-packs))
+    (fail! :invalid-pack-group "expected 1..64 Forest Packs"))
+  (let [candidates (mapv (fn [input]
+                           (vector-bytes input max-car-bytes)
+                           (let [bytes (aclone ^bytes input)
+                                 base (:ref (verify-car (forest-car (forest/open bytes))))]
+                             {:bytes bytes :ref (assoc base :format :awai.otehon-store/pack-forest-v1
+                                                       :stored-sha (segmented/sha bytes)
+                                                       :stored-size (alength bytes))})) inputs)
+        group {:format :awai.otehon-store/forest-group-v1 :packs (mapv :ref candidates)}
+        result (store/transact! directory :put {:key (group-key name) :value (pr-str group)}
+                 (fn [directory state]
+                   (recover-map directory state)
+                   (doseq [{:keys [bytes ref]} candidates]
+                     (when-not (= (:stored-sha ref) (store/write-forest! directory bytes))
+                       (fail! :forest-changed "Forest bytes changed during publication")))))]
+    (assoc result :group group)))
 
 (defn put-data! [directory name bytes]
   (let [v (vector-bytes bytes max-data-bytes)
@@ -318,3 +369,25 @@
           (let [start (max offset (:logical leaf)) end (min (+ offset length) (+ (:logical leaf) (:length leaf)))]
             (.write out ^bytes bytes (int (- start (:logical leaf))) (int (- end start)))))
         (.toByteArray out)))))
+
+(defn read-group-range
+  "Read at most 1 MiB across the ordered physical group; touched leaves are
+  CID-verified. A group is not a canonical logical-file manifest."
+  [handle name offset length]
+  (group-key name)
+  (let [refs (get-in handle [:groups name :packs])
+        size (reduce + 0 (map :size refs))]
+    (when-not refs (fail! :pack-group-not-found "Pack group not found"))
+    (when-not (and (integer? offset) (integer? length) (<= 0 offset size)
+                   (<= 0 length max-car-bytes) (<= length (- size offset)))
+      (fail! :invalid-range "group range exceeds file or read bound"))
+    (with-open [out (ByteArrayOutputStream.)]
+      (loop [remaining refs base 0]
+        (when-let [ref (first remaining)]
+          (let [end (+ base (:size ref)) lo (max offset base) hi (min (+ offset length) end)]
+            (when (< lo hi)
+              (.write out ^bytes (read-range-verified-leaves
+                                    (assoc handle :files {"group-read" ref})
+                                    "group-read" (- lo base) (- hi lo))))
+            (recur (next remaining) end))))
+      (.toByteArray out))))
