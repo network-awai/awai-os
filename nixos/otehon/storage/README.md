@@ -16,15 +16,16 @@ Update it only from the reviewed owning source, with a new revision/digest and
 fresh verification. The adapter directly calls `awai.fs.wal/recover`.
 
 `vendor/car-source.json` separately pins `awai.fs.car` to owning main revision
-`df68aad6101d7bf9587ea48bc30946b834aa4ba2`, landed through
+`9c9a6b09e92ba1802449041311bdc804076654b7`, landed through
+[apex #204](https://github.com/network-awai/network-awai-apex/pull/204),
+which fixes DAG-CBOR 64-bit integer endianness. The original codec landed through
 [apex #181](https://github.com/network-awai/network-awai-apex/pull/181).
 [apex #180](https://github.com/network-awai/network-awai-apex/pull/180) fixed
 the missing DAG-CBOR CID link prefix on #147's branch; #181 extracted only the
 reviewed codec, tests, evidence and Otehon CI into main. The vendored module is
 byte-identical to that main source and hash-checked by Nix. #147's remaining
 runtime/remote/auth changes stay open and are not a consumer dependency.
-The earlier measurement pin and final landing have identical codec bytes;
-neither establishes production qualification.
+This updated codec pin does not establish production qualification.
 
 ## Pack/CAR publication and recovery
 
