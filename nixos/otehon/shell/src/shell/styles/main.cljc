@@ -357,7 +357,7 @@
      [:.fleet-workspace {:grid-template-columns "minmax(0, 1fr)"}]
      [:.fleet-inspector-stack {:position "static" :max-height "none" :overflow-y "visible"}]
      [:.fleet-activity-panel {:position "static"}]
-     [".fleet-activity-panel[data-open=true]" {:position "fixed" :z-index 35 :left "12px" :right "12px" :bottom "90px" :max-height "44dvh" :overflow-y "auto" :box-shadow "0 0 24px rgba(0,0,0,.22)"}]
+     [".fleet-activity-panel[data-open=true]" {:position "fixed" :top "auto" :z-index 35 :left "12px" :right "12px" :bottom "90px" :max-height "44dvh" :overflow-y "auto" :box-shadow "0 0 24px rgba(0,0,0,.22)"}]
      [:.fleet-activity-scroll {:max-height "25dvh"}])
    [:.fleet-circle-view {:margin "12px 0 20px" :min-width 0}]
    [:.fleet-circle-map {:display "block" :width "100%" :max-width "760px" :height "auto" :max-height "70vh" :margin "12px auto"}]
