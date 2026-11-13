@@ -64,7 +64,8 @@ export function projectFleet(catalog,reports,bindings,now=Date.now(),catalogSha2
       return {jobId:b.jobId,sourceJobId:b.sourceJobId,scope:b.mode,adaptation:b.adaptation??null,
         issueId:b.issueId,projectId:b.projectId,configured:matches,
         state:!matches?'binding-mismatch':!source?.fresh?(source?.state??'unobserved'):
-          run?.['domain-result']?.status==='unobserved'?'unobserved-result':row?.state??'unobserved',
+          run?.['domain-result']?.status==='unobserved'?'unobserved-result':
+          run?.['domain-result']?.kind==='fleet-manifest-drift'&&run['domain-result'].drift===true?'manifest-drift':row?.state??'unobserved',
         lastRun:runId?{id:runId,confirmed:!!(confirmed&&modelMatch),provider:run.provider,model:run.model,
           inputTokens:b.mode==='readiness'?run.inputTokens??null:null,outputTokens:b.mode==='readiness'?run.outputTokens??null:null,
           tokenMetric:b.mode==='readiness'?'provider-input-output':'not-applicable',

@@ -52,4 +52,5 @@ test('manifest audit is identified as a bounded nonphysics observation',()=>{
  const report={schema:'awai.original-job-observation.v1',scope:'original-bounded-jobs',observedAt:new Date(now).toISOString(),serviceLoaded:true,jobs:[{'catalog-bot-id':bot.id,'job-id':b.jobId,state:'waiting','last-result':{state:'completed','run-id':'manifest-one',provider:'none',model:'deterministic','linear-result-confirmed':true,artifact:{readback:true},'domain-result':{kind:'fleet-manifest-drift',status:'measured',drift:false}}}]};
  const row=projectFleet(catalog,{manifest:report},[b],now,sha).bots[0].jobs[0];
  assert.equal(row.lastRun.manifestAudit.status,'measured');assert.equal(row.lastRun.manifestAudit.drift,false);assert.equal(row.lastRun.measurement,null);assert.equal(row.lastRun.tokenMetric,'not-applicable');
+ const changed=structuredClone(report);changed.jobs[0]['last-result']['domain-result'].drift=true;const bad=projectFleet(catalog,{manifest:changed},[b],now,sha);assert.equal(bad.bots[0].state,'attention');assert.equal(bad.totals.attention,1);assert.equal(bad.bots[0].jobs[0].state,'manifest-drift');
 });

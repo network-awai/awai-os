@@ -35,7 +35,7 @@
   (let [age (when report (- now (js/Date.parse (:observedAt report)))) stale? (or (nil? age) (< age 0) (> age 180000))
         q (.toLowerCase query)
         bots (filter #(and (or (= filter-state "all") (= filter-state (:state %)))
-                           (or (= group "all") (= group (get-in % [:stabilization :group])))
+                           (or (= group "all") (and (not (:configured %)) (= group (get-in % [:stabilization :group]))))
                            (.includes (.toLowerCase (str (:name %) " " (:repository %) " " (get-in % [:linear :project]) " " (get-in % [:stabilization :issueId]))) q)) (:bots report))
         totals (:totals report)]
    [:section {:data-fleet-overview true}
@@ -66,7 +66,7 @@
        (when-not stale? [:progress {:aria-label "2VM複製を確認したジョブ数" :value (:vmReplicasHealthy totals) :max (max 1 (:vmJobsConfigured totals))}])
        [:p (str "安定化課題への対応: " (text (get-in report [:stabilization :heldLinked])) "/" (:held totals) "未有効Bot")]
        [:p.muted "保存確認の割合とVM複製の読戻しです。稼働時間のSLO・元業務の成功率は未計測です。"]]
-      [:label.soshiki-field [:span "安定化の担当群"]
+      [:label.soshiki-field [:span "未有効Botの担当群"]
        [:select {:aria-label "安定化課題で絞り込み" :value group :on-change #(set-group (.. % -target -value))}
         [:option {:value "all"} "すべて"]
         (for [g ["executor" "solver" "source" "schedule" "paused" "mapping" "event"]]
