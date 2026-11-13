@@ -8,8 +8,12 @@ commands. The fixed target is KIOXIA TransMemory serial 0022CFF6B899CA205987CBC4
 parent rather than assuming disk6. Internal, non-USB, duplicate, missing, partition,
 and changed targets fail closed.
 
-The fixed request is ../murakumo-usb-auto-install-qa/usb-write-request.json (outside
-this repo). It contains action check/write, ISO path, length, and expected SHA256.
+The current candidate's fixed request is
+`/Users/junkawasaki/github/workspaces/codex/awai-usb-writer/usb-write-request.json`.
+This persistent tool inbox follows the canonical workspace layout. It contains
+action check/write, ISO path, length, and expected SHA256. Migrating from the
+older installed helper requires administrator setup with the new pinned binary;
+changing repository source alone does not update the installed helper.
 ISO input must be a regular file owned by uid 501, inside the configured QA folder,
 with ISO9660 magic, a sector-aligned 1 MiB–8 GiB length, and the expected SHA256.
 The helper drops effective user/group privileges before opening user input. It
@@ -21,8 +25,9 @@ ejecting. Temporary staging data is removed even when a failure occurs.
 
 Open KIOXIA-Initial-Setup.command once and enter the Mac administrator password.
 It installs the checked binary and validates sudoers, tests no-password execution
-with cached credentials deliberately ignored, and refuses extra arguments. It then writes the prepared ISO without another
-administrator prompt. Later updates use KIOXIA-Update.command.
+with cached credentials deliberately ignored, and refuses extra arguments. It
+performs read-only preflight and returns. Writing is a separate invocation of
+KIOXIA-Update.command with the owner's media-update authorization.
 The update action overwrites this specific USB. No password is stored.
 
 A future ISO needs only a freshly prepared request with its exact path, bytes, and

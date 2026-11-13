@@ -1,8 +1,8 @@
 #!/bin/sh
 set -eu
 [ "$(/usr/bin/id -u)" = 0 ] || { echo 'Administrator setup is required once.'; exit 1; }
-source=/Users/junkawasaki/github/murakumo-usb-auto-install-qa/murakumo-usb-writer
-expected=3b424555f51c72c90860cb1393d242ab6586750775c16a9938bf09da385da689
+source=/Users/junkawasaki/github/workspaces/codex/awai-usb-writer/murakumo-usb-writer
+expected=e98238cce44c4d4baf8df2319a2273caedcb806d062b086aafc4e6f318420e81
 helper=/Library/PrivilegedHelperTools/cloud.murakumo.kioxia-writer
 rule=/private/etc/sudoers.d/murakumo-kioxia-writer
 [ "$(/usr/bin/shasum -a 256 "$source" | /usr/bin/awk '{print $1}')" = "$expected" ]

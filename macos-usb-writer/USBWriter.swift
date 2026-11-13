@@ -5,8 +5,8 @@ import Darwin
 let owner: uid_t = 501
 let serial = "0022CFF6B899CA205987CBC4"
 let capacity: UInt64 = 61949214720
-let inbox = "/Users/junkawasaki/github/murakumo-usb-auto-install-qa/usb-write-request.json"
-let imageRoot = "/Users/junkawasaki/github/murakumo-usb-auto-install-qa/"
+let inbox = "/Users/junkawasaki/github/workspaces/codex/awai-usb-writer/usb-write-request.json"
+let imageRoot = "/Users/junkawasaki/github/workspaces/codex/awai-usb-writer/"
 struct Failure: Error, CustomStringConvertible { let description: String }
 func require(_ ok: Bool, _ message: String) throws { if !ok { throw Failure(description:message) } }
 func event(_ fields:[String:Any]) { if let data=try? JSONSerialization.data(withJSONObject:fields,options:[.sortedKeys]), let s=String(data:data,encoding:.utf8) { print(s);fflush(stdout) } }
