@@ -1,0 +1,1219 @@
+{
+  "schema": "awai.circle-goal-runtime-evidence.v1",
+  "observedAt": "2026-11-13T13:38:09.111Z",
+  "issue": "AWAI-2864",
+  "runtimeRevision": "9a15c160428b19d3682be8cbcff1e25fc06c730b",
+  "sourceRevision": "daf02bac0eebede3741fbf30d8eef4135e54f4f7",
+  "state": "new-owner-authorized-real-directory",
+  "legacyHistory": "unavailable-not-recovered",
+  "placement": {
+    "ledger": [
+      "levi",
+      "benjamin",
+      "joseph"
+    ],
+    "inference": [
+      "jun-control"
+    ],
+    "vmInference": "not-qualified",
+    "privateHistoryReplication": "not-qualified",
+    "coldBoot": "not-qualified"
+  },
+  "controller": {
+    "label": "network.awai.itonami.circle-goals.awai2864",
+    "sourceJobs": 1324,
+    "eligibleBots": 660,
+    "assignedBots": 781,
+    "heldAssignedBots": 121,
+    "unassignedBots": 118,
+    "dailyCallsPerCircle": 4,
+    "timezoneForMissingCron": "Asia/Tokyo",
+    "originalDisabledPaused": "preserved",
+    "linearCycle": "unchanged",
+    "tools": []
+  },
+  "totals": {
+    "uniqueCalls": 23,
+    "verifiedProposalUnits": 23,
+    "setupSeedUnits": 20,
+    "sourceCronUnits": 3,
+    "inputTokens": 503294,
+    "outputTokens": 13532,
+    "reasoningTokens": 5273,
+    "rawCachedTokens": 0,
+    "cacheReadTokens": "unknown",
+    "cacheWriteTokens": "unknown",
+    "cost": "unknown",
+    "codingOverhead": "unknown-unallocated"
+  },
+  "velocity": {
+    "unit": "durable-proposal-plus-store-ledger-and-Linear-readback",
+    "verifiedUnits": 23,
+    "startedAt": "2026-11-13T13:16:45.514Z",
+    "endedAt": "2026-11-13T13:36:14.500Z",
+    "elapsedWindowSeconds": 1168.986,
+    "unitsPerHour": 70.83061730422777,
+    "interpretation": "observed proposal throughput, not business Goal velocity or ETA",
+    "activeExecution": "unknown",
+    "waiting": "unknown"
+  },
+  "normalization": {
+    "reasoning": "output subset; not added",
+    "cache": "raw relationship unverified; not added",
+    "coverage": "one final cumulative provider snapshot per unique selected call; issue-level binding; no prior pilot or coding overhead"
+  },
+  "verifiedBusinessGoalOutcomes": null,
+  "tests": {
+    "shell": 94,
+    "agent": 11,
+    "circleWork": 7,
+    "combined": 18,
+    "syntheticPhysicalContenders": 6,
+    "admittedContenders": 1,
+    "duplicateInferenceCalls": 0,
+    "modelCallsInFixtures": 0,
+    "sourceEtcdAssertions": 13,
+    "advancedJaEn": "passed",
+    "httpBuilds": "3 passed",
+    "localNix": "unavailable",
+    "browser": "new activity counts/actors/Issue links observed; additional interaction and screenshot attempts blocked by browser tool timeouts; viewport override reset",
+    "tlsHistory": "shared head across two participants, hostname/certificate verified with explicit Tailnet lookup",
+    "sourceCI": "https://github.com/cloud-itonami/app-itonami-itonami-agent/actions/runs/43431925351",
+    "runtimeSourceCI": "https://github.com/network-awai/awai-os/actions/runs/43434335777",
+    "runtimeSourceCIResult": "success"
+  },
+  "receipts": [
+    {
+      "issueId": "AWAI-2870",
+      "botId": "profile:awai-store-removal",
+      "circleId": "circle:engineering:repo-delivery",
+      "goalKey": "use-create-share",
+      "trigger": "setup-seed",
+      "sourceSlot": "2026-11-13T12:28:00.000Z",
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "usage": {
+        "coverage": "selected-run-final-cumulative-snapshot",
+        "inputTokens": "unknown",
+        "outputTokens": "unknown",
+        "reasoningTokens": "unknown",
+        "rawCachedTokens": "unknown",
+        "cacheReadTokens": "unknown",
+        "cacheWriteTokens": "unknown",
+        "models": [
+          {
+            "model": "muse-spark-1.3",
+            "inputTokens": 21865,
+            "outputTokens": 801,
+            "reasoningTokens": 327,
+            "rawCachedTokens": 0,
+            "cacheReadTokens": "unknown",
+            "cacheWriteTokens": "unknown"
+          }
+        ],
+        "reasoning": "output subset; do not add",
+        "cached": "raw provider counter; relationship unverified; do not add"
+      },
+      "timing": {
+        "startedAt": "2026-11-13T13:20:43.927Z",
+        "processEndedAt": "2026-11-13T13:20:59.287Z",
+        "elapsedProcessMs": 15360,
+        "activeInferenceMs": "unknown",
+        "waitingMs": "unknown"
+      },
+      "startedAt": "2026-11-13T13:20:36.218Z",
+      "verifiedAt": "2026-11-13T13:21:08.944Z",
+      "elapsedUnitMs": 32725.63818359375,
+      "verifiedUnits": 1,
+      "unit": "durable-proposal-plus-store-ledger-and-Linear-readback",
+      "artifactCid": "bafkreibez3o5qdoqjw6usfixouf7pfeecdg4jxqgwo6l6rj37tli4t3odm",
+      "peerInputCids": [],
+      "storeReadback": true,
+      "linearConfirmed": true
+    },
+    {
+      "issueId": "AWAI-2874",
+      "botId": "profile:itonami-hermes-bridge",
+      "circleId": "circle:product:itonami",
+      "goalKey": "bot-work",
+      "trigger": "setup-seed",
+      "sourceSlot": "2026-11-13T12:28:00.000Z",
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "usage": {
+        "coverage": "selected-run-final-cumulative-snapshot",
+        "inputTokens": "unknown",
+        "outputTokens": "unknown",
+        "reasoningTokens": "unknown",
+        "rawCachedTokens": "unknown",
+        "cacheReadTokens": "unknown",
+        "cacheWriteTokens": "unknown",
+        "models": [
+          {
+            "model": "muse-spark-1.3",
+            "inputTokens": 21602,
+            "outputTokens": 499,
+            "reasoningTokens": 272,
+            "rawCachedTokens": 0,
+            "cacheReadTokens": "unknown",
+            "cacheWriteTokens": "unknown"
+          }
+        ],
+        "reasoning": "output subset; do not add",
+        "cached": "raw provider counter; relationship unverified; do not add"
+      },
+      "timing": {
+        "startedAt": "2026-11-13T13:24:49.491Z",
+        "processEndedAt": "2026-11-13T13:25:00.956Z",
+        "elapsedProcessMs": 11465,
+        "activeInferenceMs": "unknown",
+        "waitingMs": "unknown"
+      },
+      "startedAt": "2026-11-13T13:24:42.943Z",
+      "verifiedAt": "2026-11-13T13:25:08.218Z",
+      "elapsedUnitMs": 25275.093017578125,
+      "verifiedUnits": 1,
+      "unit": "durable-proposal-plus-store-ledger-and-Linear-readback",
+      "artifactCid": "bafkreif4ensvncrtqw5qfwc376oychtdn6yvsguuuj5yxlzk3lve77jjzy",
+      "peerInputCids": [
+        "bafkreideaibuu45yektfpf2asjiid3cpbkok635bw4yc3timei3ksheqty"
+      ],
+      "storeReadback": true,
+      "linearConfirmed": true
+    },
+    {
+      "issueId": "KOTOBA-947",
+      "botId": "profile:aiueos-handoff",
+      "circleId": "circle:engineering:language-os",
+      "goalKey": "distributed-foundation",
+      "trigger": "setup-seed",
+      "sourceSlot": "2026-11-13T12:28:00.000Z",
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "usage": {
+        "coverage": "selected-run-final-cumulative-snapshot",
+        "inputTokens": "unknown",
+        "outputTokens": "unknown",
+        "reasoningTokens": "unknown",
+        "rawCachedTokens": "unknown",
+        "cacheReadTokens": "unknown",
+        "cacheWriteTokens": "unknown",
+        "models": [
+          {
+            "model": "muse-spark-1.3",
+            "inputTokens": 21880,
+            "outputTokens": 443,
+            "reasoningTokens": 91,
+            "rawCachedTokens": 0,
+            "cacheReadTokens": "unknown",
+            "cacheWriteTokens": "unknown"
+          }
+        ],
+        "reasoning": "output subset; do not add",
+        "cached": "raw provider counter; relationship unverified; do not add"
+      },
+      "timing": {
+        "startedAt": "2026-11-13T13:23:43.939Z",
+        "processEndedAt": "2026-11-13T13:23:52.457Z",
+        "elapsedProcessMs": 8518,
+        "activeInferenceMs": "unknown",
+        "waitingMs": "unknown"
+      },
+      "startedAt": "2026-11-13T13:23:37.255Z",
+      "verifiedAt": "2026-11-13T13:23:59.317Z",
+      "elapsedUnitMs": 22061.6943359375,
+      "verifiedUnits": 1,
+      "unit": "durable-proposal-plus-store-ledger-and-Linear-readback",
+      "artifactCid": "bafkreia3ofh7kj7c6ebpd65wt7hs6x3yvc6zg6k2ngnoqu3pwtg4732bei",
+      "peerInputCids": [
+        "bafkreibzbm6eijr4goc2x5pryaityv5alfpsnsuz7ntzz57ykbid6ud6dy"
+      ],
+      "storeReadback": true,
+      "linearConfirmed": true
+    },
+    {
+      "issueId": "AWAI-2880",
+      "botId": "profile:physai-cofog-04-5",
+      "circleId": "circle:simulation",
+      "goalKey": "bot-work",
+      "trigger": "setup-seed",
+      "sourceSlot": "2026-11-13T12:28:00.000Z",
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "usage": {
+        "coverage": "selected-run-final-cumulative-snapshot",
+        "inputTokens": "unknown",
+        "outputTokens": "unknown",
+        "reasoningTokens": "unknown",
+        "rawCachedTokens": "unknown",
+        "cacheReadTokens": "unknown",
+        "cacheWriteTokens": "unknown",
+        "models": [
+          {
+            "model": "muse-spark-1.3",
+            "inputTokens": 22682,
+            "outputTokens": 826,
+            "reasoningTokens": 294,
+            "rawCachedTokens": 0,
+            "cacheReadTokens": "unknown",
+            "cacheWriteTokens": "unknown"
+          }
+        ],
+        "reasoning": "output subset; do not add",
+        "cached": "raw provider counter; relationship unverified; do not add"
+      },
+      "timing": {
+        "startedAt": "2026-11-13T13:30:36.388Z",
+        "processEndedAt": "2026-11-13T13:30:46.884Z",
+        "elapsedProcessMs": 10496,
+        "activeInferenceMs": "unknown",
+        "waitingMs": "unknown"
+      },
+      "startedAt": "2026-11-13T13:30:27.161Z",
+      "verifiedAt": "2026-11-13T13:30:54.222Z",
+      "elapsedUnitMs": 27060.636962890625,
+      "verifiedUnits": 1,
+      "unit": "durable-proposal-plus-store-ledger-and-Linear-readback",
+      "artifactCid": "bafkreiaqizch3vp5egfgim52oiwxye6nnqzcnhgyv2gj6t4gxhf7iz6upe",
+      "peerInputCids": [
+        "bafkreidb7u2dr7ol4kd76ywktibydwjmwt2wvjxltu7axxcjdp37vsgtgi"
+      ],
+      "storeReadback": true,
+      "linearConfirmed": true
+    },
+    {
+      "issueId": "KOTOBA-949",
+      "botId": "profile:murakumo-infer-maturity",
+      "circleId": "circle:product:inference",
+      "goalKey": "distributed-foundation",
+      "trigger": "setup-seed",
+      "sourceSlot": "2026-11-13T12:28:00.000Z",
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "usage": {
+        "coverage": "selected-run-final-cumulative-snapshot",
+        "inputTokens": "unknown",
+        "outputTokens": "unknown",
+        "reasoningTokens": "unknown",
+        "rawCachedTokens": "unknown",
+        "cacheReadTokens": "unknown",
+        "cacheWriteTokens": "unknown",
+        "models": [
+          {
+            "model": "muse-spark-1.3",
+            "inputTokens": 21853,
+            "outputTokens": 554,
+            "reasoningTokens": 176,
+            "rawCachedTokens": 0,
+            "cacheReadTokens": "unknown",
+            "cacheWriteTokens": "unknown"
+          }
+        ],
+        "reasoning": "output subset; do not add",
+        "cached": "raw provider counter; relationship unverified; do not add"
+      },
+      "timing": {
+        "startedAt": "2026-11-13T13:26:28.478Z",
+        "processEndedAt": "2026-11-13T13:26:42.190Z",
+        "elapsedProcessMs": 13712,
+        "activeInferenceMs": "unknown",
+        "waitingMs": "unknown"
+      },
+      "startedAt": "2026-11-13T13:26:22.601Z",
+      "verifiedAt": "2026-11-13T13:26:50.881Z",
+      "elapsedUnitMs": 28279.73486328125,
+      "verifiedUnits": 1,
+      "unit": "durable-proposal-plus-store-ledger-and-Linear-readback",
+      "artifactCid": "bafkreigvc2r7gpg273mv4jxwshjqknzepblco4pq3ee4qxi4unr3b4ouyi",
+      "peerInputCids": [
+        "bafkreihjr42vjz4zdgh2456dinqyj2tybfxuxy7l4kil4gd5e36wbiq3aq"
+      ],
+      "storeReadback": true,
+      "linearConfirmed": true
+    },
+    {
+      "issueId": "AWAI-2873",
+      "botId": "profile:itonami-cli-maint",
+      "circleId": "circle:product:itonami",
+      "goalKey": "bot-work",
+      "trigger": "setup-seed",
+      "sourceSlot": "2026-11-13T12:28:00.000Z",
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "usage": {
+        "coverage": "selected-run-final-cumulative-snapshot",
+        "inputTokens": "unknown",
+        "outputTokens": "unknown",
+        "reasoningTokens": "unknown",
+        "rawCachedTokens": "unknown",
+        "cacheReadTokens": "unknown",
+        "cacheWriteTokens": "unknown",
+        "models": [
+          {
+            "model": "muse-spark-1.3",
+            "inputTokens": 21622,
+            "outputTokens": 520,
+            "reasoningTokens": 81,
+            "rawCachedTokens": 0,
+            "cacheReadTokens": "unknown",
+            "cacheWriteTokens": "unknown"
+          }
+        ],
+        "reasoning": "output subset; do not add",
+        "cached": "raw provider counter; relationship unverified; do not add"
+      },
+      "timing": {
+        "startedAt": "2026-11-13T13:24:13.673Z",
+        "processEndedAt": "2026-11-13T13:24:27.118Z",
+        "elapsedProcessMs": 13445,
+        "activeInferenceMs": "unknown",
+        "waitingMs": "unknown"
+      },
+      "startedAt": "2026-11-13T13:24:07.714Z",
+      "verifiedAt": "2026-11-13T13:24:33.745Z",
+      "elapsedUnitMs": 26031.105712890625,
+      "verifiedUnits": 1,
+      "unit": "durable-proposal-plus-store-ledger-and-Linear-readback",
+      "artifactCid": "bafkreideaibuu45yektfpf2asjiid3cpbkok635bw4yc3timei3ksheqty",
+      "peerInputCids": [],
+      "storeReadback": true,
+      "linearConfirmed": true
+    },
+    {
+      "issueId": "AWAI-2878",
+      "botId": "profile:tobari",
+      "circleId": "circle:product:communication",
+      "goalKey": "bot-work",
+      "trigger": "setup-seed",
+      "sourceSlot": "2026-11-13T12:28:00.000Z",
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "usage": {
+        "coverage": "selected-run-final-cumulative-snapshot",
+        "inputTokens": "unknown",
+        "outputTokens": "unknown",
+        "reasoningTokens": "unknown",
+        "rawCachedTokens": "unknown",
+        "cacheReadTokens": "unknown",
+        "cacheWriteTokens": "unknown",
+        "models": [
+          {
+            "model": "muse-spark-1.3",
+            "inputTokens": 22623,
+            "outputTokens": 380,
+            "reasoningTokens": 172,
+            "rawCachedTokens": 0,
+            "cacheReadTokens": "unknown",
+            "cacheWriteTokens": "unknown"
+          }
+        ],
+        "reasoning": "output subset; do not add",
+        "cached": "raw provider counter; relationship unverified; do not add"
+      },
+      "timing": {
+        "startedAt": "2026-11-13T13:28:53.268Z",
+        "processEndedAt": "2026-11-13T13:29:03.406Z",
+        "elapsedProcessMs": 10138,
+        "activeInferenceMs": "unknown",
+        "waitingMs": "unknown"
+      },
+      "startedAt": "2026-11-13T13:28:46.674Z",
+      "verifiedAt": "2026-11-13T13:29:10.454Z",
+      "elapsedUnitMs": 23780.058837890625,
+      "verifiedUnits": 1,
+      "unit": "durable-proposal-plus-store-ledger-and-Linear-readback",
+      "artifactCid": "bafkreigmupesbhitbyuqgvlvzoday2x2ol5sx2bov2pt6txygki7kuydwy",
+      "peerInputCids": [
+        "bafkreifodwosawlhzoh5sl4qvynz5frghawjwwasx25jxt74znnq6r3h7a"
+      ],
+      "storeReadback": true,
+      "linearConfirmed": true
+    },
+    {
+      "issueId": "AWAI-2871",
+      "botId": "profile:cljk-finish",
+      "circleId": "circle:engineering:repo-delivery",
+      "goalKey": "use-create-share",
+      "trigger": "source-cron",
+      "sourceSlot": "2026-11-13T13:34:00.000Z",
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "usage": {
+        "coverage": "selected-run-final-cumulative-snapshot",
+        "inputTokens": "unknown",
+        "outputTokens": "unknown",
+        "reasoningTokens": "unknown",
+        "rawCachedTokens": "unknown",
+        "cacheReadTokens": "unknown",
+        "cacheWriteTokens": "unknown",
+        "models": [
+          {
+            "model": "muse-spark-1.3",
+            "inputTokens": 21870,
+            "outputTokens": 573,
+            "reasoningTokens": 221,
+            "rawCachedTokens": 0,
+            "cacheReadTokens": "unknown",
+            "cacheWriteTokens": "unknown"
+          }
+        ],
+        "reasoning": "output subset; do not add",
+        "cached": "raw provider counter; relationship unverified; do not add"
+      },
+      "timing": {
+        "startedAt": "2026-11-13T13:35:35.034Z",
+        "processEndedAt": "2026-11-13T13:35:53.510Z",
+        "elapsedProcessMs": 18476,
+        "activeInferenceMs": "unknown",
+        "waitingMs": "unknown"
+      },
+      "startedAt": "2026-11-13T13:35:15.278Z",
+      "verifiedAt": "2026-11-13T13:36:14.500Z",
+      "elapsedUnitMs": 59221.70703125,
+      "verifiedUnits": 1,
+      "unit": "durable-proposal-plus-store-ledger-and-Linear-readback",
+      "artifactCid": "bafkreif5522ogmi5gmfupntr7p3enwy4orduugyfgsyetvo4hhapuh3cje",
+      "peerInputCids": [
+        "bafkreibez3o5qdoqjw6usfixouf7pfeecdg4jxqgwo6l6rj37tli4t3odm"
+      ],
+      "storeReadback": true,
+      "linearConfirmed": true
+    },
+    {
+      "issueId": "AWAI-2882",
+      "botId": "profile:physai-isic-8810",
+      "circleId": "circle:simulation",
+      "goalKey": "bot-work",
+      "trigger": "source-cron",
+      "sourceSlot": "2026-11-13T13:33:00.000Z",
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "usage": {
+        "coverage": "selected-run-final-cumulative-snapshot",
+        "inputTokens": "unknown",
+        "outputTokens": "unknown",
+        "reasoningTokens": "unknown",
+        "rawCachedTokens": "unknown",
+        "cacheReadTokens": "unknown",
+        "cacheWriteTokens": "unknown",
+        "models": [
+          {
+            "model": "muse-spark-1.3",
+            "inputTokens": 23591,
+            "outputTokens": 928,
+            "reasoningTokens": 393,
+            "rawCachedTokens": 0,
+            "cacheReadTokens": "unknown",
+            "cacheWriteTokens": "unknown"
+          }
+        ],
+        "reasoning": "output subset; do not add",
+        "cached": "raw provider counter; relationship unverified; do not add"
+      },
+      "timing": {
+        "startedAt": "2026-11-13T13:33:46.384Z",
+        "processEndedAt": "2026-11-13T13:34:04.181Z",
+        "elapsedProcessMs": 17797,
+        "activeInferenceMs": "unknown",
+        "waitingMs": "unknown"
+      },
+      "startedAt": "2026-11-13T13:33:27.856Z",
+      "verifiedAt": "2026-11-13T13:34:19.951Z",
+      "elapsedUnitMs": 52094.65869140625,
+      "verifiedUnits": 1,
+      "unit": "durable-proposal-plus-store-ledger-and-Linear-readback",
+      "artifactCid": "bafkreiellngnqdpmj3gw3hsxghoqsjxv2dulbcybbf27ce7wvv6s6lynoe",
+      "peerInputCids": [
+        "bafkreiaqizch3vp5egfgim52oiwxye6nnqzcnhgyv2gj6t4gxhf7iz6upe",
+        "bafkreiagowaemo6albjohcynrsadoha5ejkaa5nhustga5ltri75muwaf4"
+      ],
+      "storeReadback": true,
+      "linearConfirmed": true
+    },
+    {
+      "issueId": "AWAI-2875",
+      "botId": "profile:data-source-gleif",
+      "circleId": "circle:product:data-knowledge",
+      "goalKey": "distributed-foundation",
+      "trigger": "setup-seed",
+      "sourceSlot": "2026-11-13T12:28:00.000Z",
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "usage": {
+        "coverage": "selected-run-final-cumulative-snapshot",
+        "inputTokens": "unknown",
+        "outputTokens": "unknown",
+        "reasoningTokens": "unknown",
+        "rawCachedTokens": "unknown",
+        "cacheReadTokens": "unknown",
+        "cacheWriteTokens": "unknown",
+        "models": [
+          {
+            "model": "muse-spark-1.3",
+            "inputTokens": 21089,
+            "outputTokens": 948,
+            "reasoningTokens": 685,
+            "rawCachedTokens": 0,
+            "cacheReadTokens": "unknown",
+            "cacheWriteTokens": "unknown"
+          }
+        ],
+        "reasoning": "output subset; do not add",
+        "cached": "raw provider counter; relationship unverified; do not add"
+      },
+      "timing": {
+        "startedAt": "2026-11-13T13:27:04.661Z",
+        "processEndedAt": "2026-11-13T13:27:21.460Z",
+        "elapsedProcessMs": 16799,
+        "activeInferenceMs": "unknown",
+        "waitingMs": "unknown"
+      },
+      "startedAt": "2026-11-13T13:26:59.297Z",
+      "verifiedAt": "2026-11-13T13:27:32.491Z",
+      "elapsedUnitMs": 33193.8486328125,
+      "verifiedUnits": 1,
+      "unit": "durable-proposal-plus-store-ledger-and-Linear-readback",
+      "artifactCid": "bafkreiaekkbbengrwmcdj6lejscs4pyo2ipwbhkdw33w3bazeqmrtnmfiq",
+      "peerInputCids": [],
+      "storeReadback": true,
+      "linearConfirmed": true
+    },
+    {
+      "issueId": "AWAI-2869",
+      "botId": "profile:tee-guest-maint",
+      "circleId": "circle:platform:persistence-runtime",
+      "goalKey": "distributed-foundation",
+      "trigger": "setup-seed",
+      "sourceSlot": "2026-11-13T12:28:00.000Z",
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "usage": {
+        "coverage": "selected-run-final-cumulative-snapshot",
+        "inputTokens": "unknown",
+        "outputTokens": "unknown",
+        "reasoningTokens": "unknown",
+        "rawCachedTokens": "unknown",
+        "cacheReadTokens": "unknown",
+        "cacheWriteTokens": "unknown",
+        "models": [
+          {
+            "model": "muse-spark-1.3",
+            "inputTokens": 22183,
+            "outputTokens": 593,
+            "reasoningTokens": 152,
+            "rawCachedTokens": 0,
+            "cacheReadTokens": "unknown",
+            "cacheWriteTokens": "unknown"
+          }
+        ],
+        "reasoning": "output subset; do not add",
+        "cached": "raw provider counter; relationship unverified; do not add"
+      },
+      "timing": {
+        "startedAt": "2026-11-13T13:19:53.633Z",
+        "processEndedAt": "2026-11-13T13:20:06.507Z",
+        "elapsedProcessMs": 12874,
+        "activeInferenceMs": "unknown",
+        "waitingMs": "unknown"
+      },
+      "startedAt": "2026-11-13T13:19:47.948Z",
+      "verifiedAt": "2026-11-13T13:20:16.544Z",
+      "elapsedUnitMs": 28595.870361328125,
+      "verifiedUnits": 1,
+      "unit": "durable-proposal-plus-store-ledger-and-Linear-readback",
+      "artifactCid": "bafkreiayg5bnjatjfv4ykdgxkbmaiavedhybepmaldz4awaywc3sdq42rm",
+      "peerInputCids": [
+        "bafkreie5x5pwfmnhz754yipxctfxdz4hjqj4yldss5sxxa3cpo3wj6ae3i"
+      ],
+      "storeReadback": true,
+      "linearConfirmed": true
+    },
+    {
+      "issueId": "AWAI-2876",
+      "botId": "profile:data-source-market-intel",
+      "circleId": "circle:product:data-knowledge",
+      "goalKey": "distributed-foundation",
+      "trigger": "setup-seed",
+      "sourceSlot": "2026-11-13T12:28:00.000Z",
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "usage": {
+        "coverage": "selected-run-final-cumulative-snapshot",
+        "inputTokens": "unknown",
+        "outputTokens": "unknown",
+        "reasoningTokens": "unknown",
+        "rawCachedTokens": "unknown",
+        "cacheReadTokens": "unknown",
+        "cacheWriteTokens": "unknown",
+        "models": [
+          {
+            "model": "muse-spark-1.3",
+            "inputTokens": 21330,
+            "outputTokens": 333,
+            "reasoningTokens": 105,
+            "rawCachedTokens": 0,
+            "cacheReadTokens": "unknown",
+            "cacheWriteTokens": "unknown"
+          }
+        ],
+        "reasoning": "output subset; do not add",
+        "cached": "raw provider counter; relationship unverified; do not add"
+      },
+      "timing": {
+        "startedAt": "2026-11-13T13:27:48.245Z",
+        "processEndedAt": "2026-11-13T13:27:58.051Z",
+        "elapsedProcessMs": 9806,
+        "activeInferenceMs": "unknown",
+        "waitingMs": "unknown"
+      },
+      "startedAt": "2026-11-13T13:27:40.075Z",
+      "verifiedAt": "2026-11-13T13:28:05.419Z",
+      "elapsedUnitMs": 25343.544189453125,
+      "verifiedUnits": 1,
+      "unit": "durable-proposal-plus-store-ledger-and-Linear-readback",
+      "artifactCid": "bafkreiciir6lnrpmbjftl5idamgzvtuaawq524zhy7ner55t42nqj3tvue",
+      "peerInputCids": [
+        "bafkreiaekkbbengrwmcdj6lejscs4pyo2ipwbhkdw33w3bazeqmrtnmfiq"
+      ],
+      "storeReadback": true,
+      "linearConfirmed": true
+    },
+    {
+      "issueId": "KOTOBA-948",
+      "botId": "profile:murakumo",
+      "circleId": "circle:product:inference",
+      "goalKey": "distributed-foundation",
+      "trigger": "setup-seed",
+      "sourceSlot": "2026-11-13T12:28:00.000Z",
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "usage": {
+        "coverage": "selected-run-final-cumulative-snapshot",
+        "inputTokens": "unknown",
+        "outputTokens": "unknown",
+        "reasoningTokens": "unknown",
+        "rawCachedTokens": "unknown",
+        "cacheReadTokens": "unknown",
+        "cacheWriteTokens": "unknown",
+        "models": [
+          {
+            "model": "muse-spark-1.3",
+            "inputTokens": 21353,
+            "outputTokens": 608,
+            "reasoningTokens": 180,
+            "rawCachedTokens": 0,
+            "cacheReadTokens": "unknown",
+            "cacheWriteTokens": "unknown"
+          }
+        ],
+        "reasoning": "output subset; do not add",
+        "cached": "raw provider counter; relationship unverified; do not add"
+      },
+      "timing": {
+        "startedAt": "2026-11-13T13:25:39.713Z",
+        "processEndedAt": "2026-11-13T13:25:53.280Z",
+        "elapsedProcessMs": 13567,
+        "activeInferenceMs": "unknown",
+        "waitingMs": "unknown"
+      },
+      "startedAt": "2026-11-13T13:25:19.744Z",
+      "verifiedAt": "2026-11-13T13:26:11.071Z",
+      "elapsedUnitMs": 51327.230712890625,
+      "verifiedUnits": 1,
+      "unit": "durable-proposal-plus-store-ledger-and-Linear-readback",
+      "artifactCid": "bafkreihjr42vjz4zdgh2456dinqyj2tybfxuxy7l4kil4gd5e36wbiq3aq",
+      "peerInputCids": [],
+      "storeReadback": true,
+      "linearConfirmed": true
+    },
+    {
+      "issueId": "KOTOBA-946",
+      "botId": "profile:aiueos-cfree",
+      "circleId": "circle:engineering:language-os",
+      "goalKey": "distributed-foundation",
+      "trigger": "setup-seed",
+      "sourceSlot": "2026-11-13T12:28:00.000Z",
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "usage": {
+        "coverage": "selected-run-final-cumulative-snapshot",
+        "inputTokens": "unknown",
+        "outputTokens": "unknown",
+        "reasoningTokens": "unknown",
+        "rawCachedTokens": "unknown",
+        "cacheReadTokens": "unknown",
+        "cacheWriteTokens": "unknown",
+        "models": [
+          {
+            "model": "muse-spark-1.3",
+            "inputTokens": 21272,
+            "outputTokens": 745,
+            "reasoningTokens": 363,
+            "rawCachedTokens": 0,
+            "cacheReadTokens": "unknown",
+            "cacheWriteTokens": "unknown"
+          }
+        ],
+        "reasoning": "output subset; do not add",
+        "cached": "raw provider counter; relationship unverified; do not add"
+      },
+      "timing": {
+        "startedAt": "2026-11-13T13:23:04.492Z",
+        "processEndedAt": "2026-11-13T13:23:20.198Z",
+        "elapsedProcessMs": 15706,
+        "activeInferenceMs": "unknown",
+        "waitingMs": "unknown"
+      },
+      "startedAt": "2026-11-13T13:22:58.704Z",
+      "verifiedAt": "2026-11-13T13:23:28.161Z",
+      "elapsedUnitMs": 29457.33154296875,
+      "verifiedUnits": 1,
+      "unit": "durable-proposal-plus-store-ledger-and-Linear-readback",
+      "artifactCid": "bafkreibzbm6eijr4goc2x5pryaityv5alfpsnsuz7ntzz57ykbid6ud6dy",
+      "peerInputCids": [],
+      "storeReadback": true,
+      "linearConfirmed": true
+    },
+    {
+      "issueId": "AWAI-2867",
+      "botId": "profile:cron-health",
+      "circleId": "circle:platform:fleet-reliability",
+      "goalKey": "verified-contribution",
+      "trigger": "setup-seed",
+      "sourceSlot": "2026-11-13T12:28:00.000Z",
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "usage": {
+        "coverage": "selected-run-final-cumulative-snapshot",
+        "inputTokens": "unknown",
+        "outputTokens": "unknown",
+        "reasoningTokens": "unknown",
+        "rawCachedTokens": "unknown",
+        "cacheReadTokens": "unknown",
+        "cacheWriteTokens": "unknown",
+        "models": [
+          {
+            "model": "muse-spark-1.3",
+            "inputTokens": 21870,
+            "outputTokens": 474,
+            "reasoningTokens": 150,
+            "rawCachedTokens": 0,
+            "cacheReadTokens": "unknown",
+            "cacheWriteTokens": "unknown"
+          }
+        ],
+        "reasoning": "output subset; do not add",
+        "cached": "raw provider counter; relationship unverified; do not add"
+      },
+      "timing": {
+        "startedAt": "2026-11-13T13:18:28.940Z",
+        "processEndedAt": "2026-11-13T13:18:40.890Z",
+        "elapsedProcessMs": 11950,
+        "activeInferenceMs": "unknown",
+        "waitingMs": "unknown"
+      },
+      "startedAt": "2026-11-13T13:18:21.177Z",
+      "verifiedAt": "2026-11-13T13:18:50.480Z",
+      "elapsedUnitMs": 29303.173095703125,
+      "verifiedUnits": 1,
+      "unit": "durable-proposal-plus-store-ledger-and-Linear-readback",
+      "artifactCid": "bafkreidr3eb3gbrin2h32d3pl3usheddb552i374lstgogttksckuptbmu",
+      "peerInputCids": [
+        "bafkreihs6qfqkdii2vjvul7iqubx5ftaezkrxgdtrk2ld62mmbzuz7xjey"
+      ],
+      "storeReadback": true,
+      "linearConfirmed": true
+    },
+    {
+      "issueId": "AWAI-2868",
+      "botId": "profile:kotobase-b2",
+      "circleId": "circle:platform:persistence-runtime",
+      "goalKey": "distributed-foundation",
+      "trigger": "setup-seed",
+      "sourceSlot": "2026-11-13T12:28:00.000Z",
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "usage": {
+        "coverage": "selected-run-final-cumulative-snapshot",
+        "inputTokens": "unknown",
+        "outputTokens": "unknown",
+        "reasoningTokens": "unknown",
+        "rawCachedTokens": "unknown",
+        "cacheReadTokens": "unknown",
+        "cacheWriteTokens": "unknown",
+        "models": [
+          {
+            "model": "muse-spark-1.3",
+            "inputTokens": 21282,
+            "outputTokens": 687,
+            "reasoningTokens": 315,
+            "rawCachedTokens": 0,
+            "cacheReadTokens": "unknown",
+            "cacheWriteTokens": "unknown"
+          }
+        ],
+        "reasoning": "output subset; do not add",
+        "cached": "raw provider counter; relationship unverified; do not add"
+      },
+      "timing": {
+        "startedAt": "2026-11-13T13:19:13.498Z",
+        "processEndedAt": "2026-11-13T13:19:27.962Z",
+        "elapsedProcessMs": 14464,
+        "activeInferenceMs": "unknown",
+        "waitingMs": "unknown"
+      },
+      "startedAt": "2026-11-13T13:19:06.426Z",
+      "verifiedAt": "2026-11-13T13:19:41.152Z",
+      "elapsedUnitMs": 34725.591552734375,
+      "verifiedUnits": 1,
+      "unit": "durable-proposal-plus-store-ledger-and-Linear-readback",
+      "artifactCid": "bafkreie5x5pwfmnhz754yipxctfxdz4hjqj4yldss5sxxa3cpo3wj6ae3i",
+      "peerInputCids": [],
+      "storeReadback": true,
+      "linearConfirmed": true
+    },
+    {
+      "issueId": "AWAI-2877",
+      "botId": "profile:mail-relay",
+      "circleId": "circle:product:communication",
+      "goalKey": "bot-work",
+      "trigger": "setup-seed",
+      "sourceSlot": "2026-11-13T12:28:00.000Z",
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "usage": {
+        "coverage": "selected-run-final-cumulative-snapshot",
+        "inputTokens": "unknown",
+        "outputTokens": "unknown",
+        "reasoningTokens": "unknown",
+        "rawCachedTokens": "unknown",
+        "cacheReadTokens": "unknown",
+        "cacheWriteTokens": "unknown",
+        "models": [
+          {
+            "model": "muse-spark-1.3",
+            "inputTokens": 21743,
+            "outputTokens": 437,
+            "reasoningTokens": 205,
+            "rawCachedTokens": 0,
+            "cacheReadTokens": "unknown",
+            "cacheWriteTokens": "unknown"
+          }
+        ],
+        "reasoning": "output subset; do not add",
+        "cached": "raw provider counter; relationship unverified; do not add"
+      },
+      "timing": {
+        "startedAt": "2026-11-13T13:28:21.344Z",
+        "processEndedAt": "2026-11-13T13:28:32.418Z",
+        "elapsedProcessMs": 11074,
+        "activeInferenceMs": "unknown",
+        "waitingMs": "unknown"
+      },
+      "startedAt": "2026-11-13T13:28:14.201Z",
+      "verifiedAt": "2026-11-13T13:28:38.835Z",
+      "elapsedUnitMs": 24633.951171875,
+      "verifiedUnits": 1,
+      "unit": "durable-proposal-plus-store-ledger-and-Linear-readback",
+      "artifactCid": "bafkreifodwosawlhzoh5sl4qvynz5frghawjwwasx25jxt74znnq6r3h7a",
+      "peerInputCids": [],
+      "storeReadback": true,
+      "linearConfirmed": true
+    },
+    {
+      "issueId": "AWAI-2872",
+      "botId": "profile:cyber-maint",
+      "circleId": "circle:engineering:security",
+      "goalKey": "verified-contribution",
+      "trigger": "setup-seed",
+      "sourceSlot": "2026-11-13T12:28:00.000Z",
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "usage": {
+        "coverage": "selected-run-final-cumulative-snapshot",
+        "inputTokens": "unknown",
+        "outputTokens": "unknown",
+        "reasoningTokens": "unknown",
+        "rawCachedTokens": "unknown",
+        "cacheReadTokens": "unknown",
+        "cacheWriteTokens": "unknown",
+        "models": [
+          {
+            "model": "muse-spark-1.3",
+            "inputTokens": 21563,
+            "outputTokens": 427,
+            "reasoningTokens": 166,
+            "rawCachedTokens": 0,
+            "cacheReadTokens": "unknown",
+            "cacheWriteTokens": "unknown"
+          }
+        ],
+        "reasoning": "output subset; do not add",
+        "cached": "raw provider counter; relationship unverified; do not add"
+      },
+      "timing": {
+        "startedAt": "2026-11-13T13:21:58.118Z",
+        "processEndedAt": "2026-11-13T13:22:08.909Z",
+        "elapsedProcessMs": 10791,
+        "activeInferenceMs": "unknown",
+        "waitingMs": "unknown"
+      },
+      "startedAt": "2026-11-13T13:21:51.487Z",
+      "verifiedAt": "2026-11-13T13:22:20.175Z",
+      "elapsedUnitMs": 28688.00390625,
+      "verifiedUnits": 1,
+      "unit": "durable-proposal-plus-store-ledger-and-Linear-readback",
+      "artifactCid": "bafkreif6ecta76t627pdurgzadsc7kmxagowbomr7fp4daaoaajbztp7my",
+      "peerInputCids": [],
+      "storeReadback": true,
+      "linearConfirmed": true
+    },
+    {
+      "issueId": "AWAI-2871",
+      "botId": "profile:cljk-finish",
+      "circleId": "circle:engineering:repo-delivery",
+      "goalKey": "use-create-share",
+      "trigger": "setup-seed",
+      "sourceSlot": "2026-11-13T12:28:00.000Z",
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "usage": {
+        "coverage": "selected-run-final-cumulative-snapshot",
+        "inputTokens": "unknown",
+        "outputTokens": "unknown",
+        "reasoningTokens": "unknown",
+        "rawCachedTokens": "unknown",
+        "cacheReadTokens": "unknown",
+        "cacheWriteTokens": "unknown",
+        "models": [
+          {
+            "model": "muse-spark-1.3",
+            "inputTokens": 21880,
+            "outputTokens": 489,
+            "reasoningTokens": 150,
+            "rawCachedTokens": 0,
+            "cacheReadTokens": "unknown",
+            "cacheWriteTokens": "unknown"
+          }
+        ],
+        "reasoning": "output subset; do not add",
+        "cached": "raw provider counter; relationship unverified; do not add"
+      },
+      "timing": {
+        "startedAt": "2026-11-13T13:21:22.235Z",
+        "processEndedAt": "2026-11-13T13:21:32.833Z",
+        "elapsedProcessMs": 10598,
+        "activeInferenceMs": "unknown",
+        "waitingMs": "unknown"
+      },
+      "startedAt": "2026-11-13T13:21:16.319Z",
+      "verifiedAt": "2026-11-13T13:21:44.054Z",
+      "elapsedUnitMs": 27735.404541015625,
+      "verifiedUnits": 1,
+      "unit": "durable-proposal-plus-store-ledger-and-Linear-readback",
+      "artifactCid": "bafkreih4mjil6yopjabdgtu4wt7mhum5tmikeivd3ups6oafoo4z6o65iu",
+      "peerInputCids": [
+        "bafkreibez3o5qdoqjw6usfixouf7pfeecdg4jxqgwo6l6rj37tli4t3odm"
+      ],
+      "storeReadback": true,
+      "linearConfirmed": true
+    },
+    {
+      "issueId": "AWAI-2866",
+      "botId": "profile:codinator",
+      "circleId": "circle:platform:fleet-reliability",
+      "goalKey": "verified-contribution",
+      "trigger": "setup-seed",
+      "sourceSlot": "2026-11-13T12:28:00.000Z",
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "usage": {
+        "coverage": "selected-run-final-cumulative-snapshot",
+        "inputTokens": "unknown",
+        "outputTokens": "unknown",
+        "reasoningTokens": "unknown",
+        "rawCachedTokens": "unknown",
+        "cacheReadTokens": "unknown",
+        "cacheWriteTokens": "unknown",
+        "models": [
+          {
+            "model": "muse-spark-1.3",
+            "inputTokens": 20637,
+            "outputTokens": 431,
+            "reasoningTokens": 179,
+            "rawCachedTokens": 0,
+            "cacheReadTokens": "unknown",
+            "cacheWriteTokens": "unknown"
+          }
+        ],
+        "reasoning": "output subset; do not add",
+        "cached": "raw provider counter; relationship unverified; do not add"
+      },
+      "timing": {
+        "startedAt": "2026-11-13T13:16:51.478Z",
+        "processEndedAt": "2026-11-13T13:17:02.218Z",
+        "elapsedProcessMs": 10740,
+        "activeInferenceMs": "unknown",
+        "waitingMs": "unknown"
+      },
+      "startedAt": "2026-11-13T13:16:45.514Z",
+      "verifiedAt": "2026-11-13T13:17:09.264Z",
+      "elapsedUnitMs": 23749.962158203125,
+      "verifiedUnits": 1,
+      "unit": "durable-proposal-plus-store-ledger-and-Linear-readback",
+      "artifactCid": "bafkreihs6qfqkdii2vjvul7iqubx5ftaezkrxgdtrk2ld62mmbzuz7xjey",
+      "peerInputCids": [],
+      "storeReadback": true,
+      "linearConfirmed": true
+    },
+    {
+      "issueId": "AWAI-2881",
+      "botId": "profile:physai-isic-8790",
+      "circleId": "circle:simulation",
+      "goalKey": "bot-work",
+      "trigger": "source-cron",
+      "sourceSlot": "2026-11-13T13:31:00.000Z",
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "usage": {
+        "coverage": "selected-run-final-cumulative-snapshot",
+        "inputTokens": "unknown",
+        "outputTokens": "unknown",
+        "reasoningTokens": "unknown",
+        "rawCachedTokens": "unknown",
+        "cacheReadTokens": "unknown",
+        "cacheWriteTokens": "unknown",
+        "models": [
+          {
+            "model": "muse-spark-1.3",
+            "inputTokens": 23498,
+            "outputTokens": 911,
+            "reasoningTokens": 371,
+            "rawCachedTokens": 0,
+            "cacheReadTokens": "unknown",
+            "cacheWriteTokens": "unknown"
+          }
+        ],
+        "reasoning": "output subset; do not add",
+        "cached": "raw provider counter; relationship unverified; do not add"
+      },
+      "timing": {
+        "startedAt": "2026-11-13T13:31:35.762Z",
+        "processEndedAt": "2026-11-13T13:31:57.674Z",
+        "elapsedProcessMs": 21912,
+        "activeInferenceMs": "unknown",
+        "waitingMs": "unknown"
+      },
+      "startedAt": "2026-11-13T13:31:23.501Z",
+      "verifiedAt": "2026-11-13T13:32:15.258Z",
+      "elapsedUnitMs": 51756.721435546875,
+      "verifiedUnits": 1,
+      "unit": "durable-proposal-plus-store-ledger-and-Linear-readback",
+      "artifactCid": "bafkreiagowaemo6albjohcynrsadoha5ejkaa5nhustga5ltri75muwaf4",
+      "peerInputCids": [
+        "bafkreidb7u2dr7ol4kd76ywktibydwjmwt2wvjxltu7axxcjdp37vsgtgi",
+        "bafkreiaqizch3vp5egfgim52oiwxye6nnqzcnhgyv2gj6t4gxhf7iz6upe"
+      ],
+      "storeReadback": true,
+      "linearConfirmed": true
+    },
+    {
+      "issueId": "KOTOBA-945",
+      "botId": "profile:sec-audit",
+      "circleId": "circle:engineering:security",
+      "goalKey": "verified-contribution",
+      "trigger": "setup-seed",
+      "sourceSlot": "2026-11-13T12:28:00.000Z",
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "usage": {
+        "coverage": "selected-run-final-cumulative-snapshot",
+        "inputTokens": "unknown",
+        "outputTokens": "unknown",
+        "reasoningTokens": "unknown",
+        "rawCachedTokens": "unknown",
+        "cacheReadTokens": "unknown",
+        "cacheWriteTokens": "unknown",
+        "models": [
+          {
+            "model": "muse-spark-1.3",
+            "inputTokens": 21823,
+            "outputTokens": 374,
+            "reasoningTokens": 79,
+            "rawCachedTokens": 0,
+            "cacheReadTokens": "unknown",
+            "cacheWriteTokens": "unknown"
+          }
+        ],
+        "reasoning": "output subset; do not add",
+        "cached": "raw provider counter; relationship unverified; do not add"
+      },
+      "timing": {
+        "startedAt": "2026-11-13T13:22:34.748Z",
+        "processEndedAt": "2026-11-13T13:22:44.139Z",
+        "elapsedProcessMs": 9391,
+        "activeInferenceMs": "unknown",
+        "waitingMs": "unknown"
+      },
+      "startedAt": "2026-11-13T13:22:29.155Z",
+      "verifiedAt": "2026-11-13T13:22:51.395Z",
+      "elapsedUnitMs": 22239.769287109375,
+      "verifiedUnits": 1,
+      "unit": "durable-proposal-plus-store-ledger-and-Linear-readback",
+      "artifactCid": "bafkreidzo6nvlufyk5hf7kipoegpnuc6ayjbcteyt4dgtxrvaybeegxfoy",
+      "peerInputCids": [
+        "bafkreif6ecta76t627pdurgzadsc7kmxagowbomr7fp4daaoaajbztp7my"
+      ],
+      "storeReadback": true,
+      "linearConfirmed": true
+    },
+    {
+      "issueId": "AWAI-2879",
+      "botId": "profile:physai-cofog-03-2",
+      "circleId": "circle:simulation",
+      "goalKey": "bot-work",
+      "trigger": "setup-seed",
+      "sourceSlot": "2026-11-13T12:28:00.000Z",
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "usage": {
+        "coverage": "selected-run-final-cumulative-snapshot",
+        "inputTokens": "unknown",
+        "outputTokens": "unknown",
+        "reasoningTokens": "unknown",
+        "rawCachedTokens": "unknown",
+        "cacheReadTokens": "unknown",
+        "cacheWriteTokens": "unknown",
+        "models": [
+          {
+            "model": "muse-spark-1.3",
+            "inputTokens": 22183,
+            "outputTokens": 551,
+            "reasoningTokens": 146,
+            "rawCachedTokens": 0,
+            "cacheReadTokens": "unknown",
+            "cacheWriteTokens": "unknown"
+          }
+        ],
+        "reasoning": "output subset; do not add",
+        "cached": "raw provider counter; relationship unverified; do not add"
+      },
+      "timing": {
+        "startedAt": "2026-11-13T13:29:25.043Z",
+        "processEndedAt": "2026-11-13T13:29:39.317Z",
+        "elapsedProcessMs": 14274,
+        "activeInferenceMs": "unknown",
+        "waitingMs": "unknown"
+      },
+      "startedAt": "2026-11-13T13:29:19.229Z",
+      "verifiedAt": "2026-11-13T13:30:15.281Z",
+      "elapsedUnitMs": 56052.10205078125,
+      "verifiedUnits": 1,
+      "unit": "durable-proposal-plus-store-ledger-and-Linear-readback",
+      "artifactCid": "bafkreidb7u2dr7ol4kd76ywktibydwjmwt2wvjxltu7axxcjdp37vsgtgi",
+      "peerInputCids": [],
+      "storeReadback": true,
+      "linearConfirmed": true
+    }
+  ]
+}
