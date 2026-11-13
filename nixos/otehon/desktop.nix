@@ -18,6 +18,9 @@ let
   cljDeps = pkgs.stdenv.mkDerivation {
     name = "awai-otehon-shell-clj-deps";
     src = builtins.path { path = ./shell/deps.edn; };
+    # Single-file src with a recursive fixed output: skip the archive
+    # unpack or the build dies before the hash check (JUN-1180 V2).
+    dontUnpack = true;
     nativeBuildInputs = [ pkgs.clojure ];
     outputHashAlgo = "sha256";
     outputHashMode = "recursive";
