@@ -17,3 +17,15 @@ bb --classpath '<bounded-classpath>:nixos/otehon/storage/src:nixos/otehon/storag
 ```
 
 The experiment applies graph and per-block bounds after the provider returns bytes; it does not bound provider allocations. Its callback is not installed as the product default. Source pin is to an unmerged draft, not a released dependency. It does not establish signed basis, actual policy/receipt, atomic multi-Pack product publication, Native I/O, OS cache loss or production acceptance.
+
+## Persisted deep child and separate process
+
+A follow-up on 2026-11-14 used the pinned real Forest tool SHA-256 `e5fb23076a46c055142b3dbf3efa1ad5a68532d14419ad9994785986719b205f` on a fresh private copy of the transaction fixture. `kotobase_persisted_bad_child.clj` wrote the 10,000-level child and a canonical root linking to it through two separate `-put-blocks!` calls. It checked that two new Forest groups were created. The child CID matches its stored bytes; its depth exceeds the configured decoder limit. The opt-in guard retrieved both blocks from the actual store, refused the child, and left the pre-existing `db` ref unchanged. A separate Clojure process reopened the store, verified the persisted bytes and link, repeated the refusal, and observed the same ref.
+
+To reproduce, prepare the pinned classpath as above; initialize a new private copy of the earlier transaction store with an empty staging directory. Set `KOTOBASE_TX_OUTPUT` to that private copy and `FOREST_TOOL` to the pinned tool. Run the following twice, replacing `write` by `read` for the second invocation:
+
+```sh
+clojure -Sdeps '{:paths ["<bounded-classpath>" "nixos/otehon/storage/src" "nixos/otehon/storage/vendor/apex/src" "nixos/otehon/storage/vendor/apex-car/src" "<previous-oracle-classpath>"]}' -M nixos/otehon/storage/oracle/kotobase_persisted_bad_child.clj write
+```
+
+The two immutable groups remain stored as unreachable data after rejection; no GC is tested. The callback is a narrow test guard, not a shipped default closure verifier. This is process restart evidence, not host OS cache loss, a power cut, or an atomic multi-Pack product transaction.
