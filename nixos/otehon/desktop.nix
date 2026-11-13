@@ -55,9 +55,9 @@ let
       npm test
       runHook postCheck
     '';
-    # TODO: refresh for the current package-lock.json (react arrived with the
-    # Hiccup migration); run the image build and copy the "got: sha256-…".
-    npmDepsHash = "sha256-g9JFQRRKKjIgHCyLRvETNKwnmtl1TsJTTEYJUNuvIxY=";
+    # Refreshed 2026-11-13 where Nix runs (JUN-1180) for the current
+    # package-lock.json.
+    npmDepsHash = "sha256-gEHDRiPWlGGh0mjcJB54WSThDCzn7uMsmMHX6sjni7Q=";
     installPhase = ''
       runHook preInstall
       cp -r dist $out
