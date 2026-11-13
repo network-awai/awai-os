@@ -68,6 +68,7 @@ in pkgs.testers.runNixOSTest {
   };
   testScript = ''
     import json, shlex, time, select, types
+    from typing import Callable, cast
     # Pinned test-driver connect() checks each recv(1024) separately. UEFI
     # output can split its marker across packets and hang forever. Preserve
     # the same handshake, with buffering and a bounded test-only wait.
@@ -89,7 +90,7 @@ in pkgs.testers.runNixOSTest {
         self.connected = True
         self.log("connected to guest root shell (buffered UEFI handshake)")
     for node in [publisher, machine]:
-        node.connect = types.MethodType(bounded_connect, node)
+        node.connect = cast(Callable[[], None], types.MethodType(bounded_connect, node))
     publisher.start()
     machine.start(allow_reboot=True)
     publisher.wait_for_unit("nginx.service",timeout=120)
@@ -147,8 +148,8 @@ in pkgs.testers.runNixOSTest {
     machine.wait_until_succeeds("test $(cat /etc/ota-generation) = b",timeout=180)
     machine.wait_until_succeeds("node /etc/ota-profile-check.mjs read | grep CHROMIUM_STATE_OK")
     assert machine.succeed("sha256sum /home/otehon/ota-owner-file /etc/machine-id")==before
-    machine.copy_from_vm("/var/lib/otehon-update/version","confirmed-version")
+    machine.copy_from_machine("/var/lib/otehon-update/version","confirmed-version")
     machine.succeed("journalctl -u otehon-update-poll -u otehon-update-settle >/var/lib/otehon-update/test-journal.txt")
-    machine.copy_from_vm("/var/lib/otehon-update/test-journal.txt","update-journal.txt")
+    machine.copy_from_machine("/var/lib/otehon-update/test-journal.txt","update-journal.txt")
   '';
 }
