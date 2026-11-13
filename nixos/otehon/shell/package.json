@@ -3,6 +3,7 @@
   "version": "0.7.0",
   "private": true,
   "scripts": {
+    "test:setup": "clojure -M -m shadow.cljs.devtools.cli release setup-check && node .shadow-cljs/setup-check.cjs",
     "build": "node build.mjs",
     "pretest": "node scripts/sync-vendor.mjs",
     "test:fleet": "node --test test/soshiki-fleet.test.js test/fleet-projection.test.js test/stabilization.test.js",

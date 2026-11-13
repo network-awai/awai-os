@@ -1,6 +1,6 @@
 (ns shell.setup
   (:require ["react" :refer [useEffect useMemo useRef useState]]
-            ["qrcode-generator" :default qrcode]
+            ["qrcode-generator" :as qrcode]
             ["../identity/link.js" :refer [REQUEST_MS SESSION_MS checksumAddress confirmationCode
                                            createLinkRequest linkUrl openResponse siweMessage verifyLink]]
             ["../identity/wallet.js" :refer [signWithProvider]]
@@ -25,6 +25,8 @@
          :localStart "Sign In with a Wallet"
          :linkStart "Link with Phone"
          :useWallet "Use the Wallet in This Browser"
+         :noWallet "No wallet was detected in this browser. Open this page in a browser with a wallet, link with your phone, or enter your address below to sign the displayed message with your wallet."
+         :preparing "Preparing phone sign-in…"
          :addressLabel "Your wallet address"
          :signThis "Sign this message with your wallet (personal_sign):"
          :signatureLabel "Signature"
@@ -60,6 +62,8 @@
          :localStart "ウォレットでサインイン"
          :linkStart "スマートフォンとリンク"
          :useWallet "このブラウザーのウォレットを使う"
+         :noWallet "このブラウザーにはウォレットが見つかりません。ウォレットのあるブラウザーで開くか、スマートフォンとリンクしてください。手動で署名する場合は、下にアドレスを入力すると署名用メッセージが表示されます。"
+         :preparing "スマートフォンとのサインインを準備しています…"
          :addressLabel "ウォレットのアドレス"
          :signThis "このメッセージをウォレットで署名してください（personal_sign）:"
          :signatureLabel "署名"
@@ -144,6 +148,8 @@
                        (set-refusal (.-message error)))))]
       [:<>
        [:h1 (:localStart t)]
+       (when-not (.-ethereum js/window)
+         [:p {:data-wallet-state "unavailable"} (:noWallet t)])
        (when (.-ethereum js/window)
          [:button.primary {:type "button" :id "local-provider" :disabled (not request)
                             :on-click (fn []
@@ -236,6 +242,8 @@
           [:<>
            [:h1 (:signInTitle t)]
            [:p (if returning (:signInAgain t) (:signInBody t))]
+           (when (= state "asking")
+             [:p {:role "status" :data-link-state "asking"} (:preparing t)])
            (when pending
              [:div.link-pending
               [:f> qr-code (.-url pending)]
@@ -293,10 +301,12 @@
          [:p.muted (:networkNote t)]
          [:button.primary {:type "button" :data-next true :on-click next-step} (:next t)]])
       (when (= step "signin")
-        [:f> sign-in t returning broker relay-origin did
-         (fn [linked]
-           (on-linked linked)
-           (if returning (on-finish) (next-step)))])
+        [:<>
+         [:f> sign-in t returning broker relay-origin did
+          (fn [linked]
+            (on-linked linked)
+            (if returning (on-finish) (next-step)))]
+         [:p.muted [:a {:href "./soshiki-runtime/" :data-bot-status-link true} (:botStatus t)]]])
       (when (= step "trust")
         [:<>
          [:h1 (:trustTitle t)]

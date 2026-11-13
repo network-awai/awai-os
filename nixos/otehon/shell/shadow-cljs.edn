@@ -1,5 +1,9 @@
 {:source-paths ["src" "link" "vendor" "styles"]
- :builds {:shell {:target :browser
+ :builds {:setup-check {:target :node-script
+                        :output-to ".shadow-cljs/setup-check.cjs"
+                        :main shell.setup-check/main
+                        :compiler-options {:externs ["externs/otehon-shell.js"]}}
+          :shell {:target :browser
                   :output-dir "dist/assets"
                   :asset-path "assets"
                   :compiler-options {:externs ["externs/otehon-shell.js"]}
