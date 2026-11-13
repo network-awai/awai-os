@@ -194,6 +194,24 @@ change again after or during verification. A filesystem snapshot or an
 explicit source ownership/fencing contract remains needed for that guarantee.
 The actual-tool positive/negative proof is still not run in Nix CI.
 
+### 2026-11-14: real writer CI admission
+
+The hosted workflow now defines a separate Ubuntu 24.04 job for the actual
+raw-file writer proof. It checks the Forest 0.39.0 Linux release archive
+against GitHub's published asset SHA-256, checks the extracted executable's
+previously observed SHA-256, and uses Babashka from the repository's pinned
+nixpkgs. It then runs `forest_writer_proof.clj` with the real tool, including
+the roundtrip, untrusted-tool, interrupted-publication and source-change
+checks. This job runs on the hosted runner, outside the Nix build sandbox,
+because the unmodified release executable uses the system ELF interpreter.
+It does not run in Native or establish release provenance beyond those pins.
+
+Locally the archive and executable hashes matched, the workflow YAML parsed,
+and its shell passed `bash -n`. The existing proof was rerun on macOS arm64
+with Babashka 1.12.218 and the separately pinned macOS tool: the 2 MiB,
+three-Pack roundtrip and all listed refusal checks passed. The Linux job's
+exact-head result is required separately; it is not a GiB or cache-loss test.
+
 ### 2026-11-14: retained CAR backing vector
 
 A recovered Pack's 36-byte index CID was observed as
