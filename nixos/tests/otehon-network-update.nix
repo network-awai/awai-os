@@ -3,6 +3,7 @@ let
   fixtures = ../otehon/fixtures;
 in pkgs.testers.runNixOSTest {
   name = "otehon-https-desktop-upgrade-state";
+  node.pkgsReadOnly = false;
   nodes.machine = { config, lib, extendModules, nodes, ... }: {
     imports = [ ../otehon/desktop.nix ];
     nixpkgs.hostPlatform = lib.mkForce "x86_64-linux";
