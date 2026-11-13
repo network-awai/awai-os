@@ -72,7 +72,9 @@
                :size size :leaf-count (count raw)}
          :car-size (alength ^bytes bytes)
          :index (mapv (fn [section block]
-                        {:offset (+ 51 (:data-offset section)) :length (:length section) :cid (:cid block)
+                        ;; CAR's CID is a SubVector over the entire decoded CAR.
+                        ;; Copy the small identifier before retaining this index.
+                        {:offset (+ 51 (:data-offset section)) :length (:length section) :cid (into [] (:cid block))
                          :sha (car/hex-encode (:digest (car/parse-cid (:cid block))))})
                       (butlast (car/carv2-sections v)) raw)}))))
 

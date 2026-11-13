@@ -193,3 +193,17 @@ A second read is not an atomic snapshot: a concurrently modified file can
 change again after or during verification. A filesystem snapshot or an
 explicit source ownership/fencing contract remains needed for that guarantee.
 The actual-tool positive/negative proof is still not run in Nix CI.
+
+### 2026-11-14: retained CAR backing vector
+
+A recovered Pack's 36-byte index CID was observed as
+`clojure.lang.APersistentVector$SubVector`, a view which retains its backing
+CAR vector. This can retain decoded CAR data through the index cache and
+undermine the file importer's per-Pack allocation boundary. The index now
+copies each CID into a standalone vector. A focused regression test failed on
+the old code and passes after the change; an existing persisted Forest store
+now reports `clojure.lang.PersistentVector` for the same-length CID. Storage,
+Pack and writer suites passed 26 tests / 152 assertions. The hosted raw writer
+proof also passed its 2 MiB roundtrip, CID, mutation, interrupted-publication,
+and tool rejection checks. This is evidence of eliminating this particular
+retained reference, not a measured RSS reduction or full bounded-memory proof.
