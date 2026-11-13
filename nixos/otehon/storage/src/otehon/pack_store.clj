@@ -364,7 +364,11 @@
   "Atomically publish canonical manifest and ordered Forest files. The files
   are verified one at a time and streamed again under the writer lock; changes
   between passes abort publication. Larger files use the distinct v2 ref."
-  [directory name paths manifest manifest-cid]
+  ([directory name paths manifest manifest-cid]
+   (import-logical-forest-files! directory name paths manifest manifest-cid {}))
+  ([directory name paths manifest manifest-cid options]
+  (when-not (contains? #{{} {:file-backed? true}} options)
+    (fail! :invalid-pack-group "unsupported file import options"))
   (group-key name)
   (when-not (and (vector? paths) (<= 1 (count paths) max-group-packs))
     (fail! :invalid-pack-group "expected 1..64 Forest Pack paths"))
@@ -373,7 +377,7 @@
   (let [manifest (aclone ^bytes manifest)
         candidates (mapv (fn [path]
                            (let [physical (store/forest-source-digest path)]
-                             (if (> (:size physical) max-car-bytes)
+                             (if (or (:file-backed? options) (> (:size physical) max-car-bytes))
                                (let [checked (checked-forest-file path)]
                                  (when-not (= physical {:size (:stored-size checked) :sha (:stored-sha checked)})
                                    (fail! :forest-changed "Forest input changed during verification"))
@@ -408,7 +412,7 @@
                                         (:type (ex-data e)))
                            (fail! :forest-changed "Forest input changed during publication")
                            (throw e)))))))]
-    (assoc result :group group)))
+    (assoc result :group group))))
 
 (defn put-data! [directory name bytes]
   (let [v (vector-bytes bytes max-data-bytes)

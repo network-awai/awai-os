@@ -36,6 +36,9 @@ jobs:
           "$bb_path/bin/bb" --classpath "$classpath" "$proof" write "$RUNNER_TEMP/forest-large-proof"
           "$bb_path/bin/bb" --classpath "$classpath" "$proof" read "$RUNNER_TEMP/forest-large-proof"
           "$bb_path/bin/bb" --classpath "$classpath" "$proof" corrupt "$RUNNER_TEMP/forest-large-proof"
+          writer_proof=nixos/otehon/storage/test/otehon/forest_large_writer_proof.clj
+          "$bb_path/bin/bb" --classpath "$classpath" "$writer_proof" write "$RUNNER_TEMP/forest-large-writer-proof" "$tool"
+          "$bb_path/bin/bb" --classpath "$classpath" "$writer_proof" read "$RUNNER_TEMP/forest-large-writer-proof" "$tool"
 
   evaluate:
     runs-on: ubuntu-latest
