@@ -1,6 +1,6 @@
 { config, lib, modulesPath, pkgs, ... }:
 let
-  disk = (import "${pkgs.path}/nixos/lib/eval-config.nix" {
+  disk = (import (pkgs.path + "/nixos/lib/eval-config.nix") {
     system = null;
     modules = [ ./disk-6600h.nix ];
   }).config.system.build.image;

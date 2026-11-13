@@ -1,6 +1,6 @@
 let
   pkgs = import (import ../../ci/nixpkgs.nix) { system = "x86_64-linux"; };
-  system = (import "${pkgs.path}/nixos/lib/eval-config.nix" {
+  system = (import (pkgs.path + "/nixos/lib/eval-config.nix") {
     system = null;
     modules = [ ../otehon/usb-install-6600h.nix ];
   }).config;
