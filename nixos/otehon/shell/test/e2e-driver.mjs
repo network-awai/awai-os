@@ -342,7 +342,7 @@ const passkey = p256.utils.randomSecretKey();
 let outcome = "pass";
 
 try {
-  // Dougaka Studio sub-page first (dist/dougaka, JUN-1180): it needs no
+  // Dougaka Studio sub-page first (dougaka/, JUN-1180): it needs no
   // login, and proving it up front keeps dougaka evidence even if the
   // sign-in flow later fails. The file:// bundle must boot its own broker,
   // render the Studio shell, and run the offline plan tool. The plan
@@ -354,7 +354,7 @@ try {
     if (!shell) throw new Error("no-shell-page");
     shellUrl = shell.url;
     const base = shellUrl.replace(/\/index\.html$/, "");
-    await send("Page.navigate", { url: `${base}/dist/dougaka/index.html` });
+    await send("Page.navigate", { url: `${base}/dougaka/index.html` });
     await until("document.getElementById('dougaka-studio') !== null", "studio mount", 60000);
   });
   await step("dougaka_studio_boots", async () => {
