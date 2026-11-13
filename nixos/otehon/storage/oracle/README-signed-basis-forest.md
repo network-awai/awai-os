@@ -56,3 +56,27 @@ scratch path. Run `signed_basis_forest.clj write` and then `read` in separate
 JVM processes with the same classpath as `prolly_forest_writer_policy.clj`.
 The writer requires a new output path and retains its artifacts. The JVM is a
 local reference oracle and is not the Native runtime, a CI gate, or fallback.
+
+## Policy CID bound to the recovered snapshot — follow-up
+
+The earlier results above describe the first fixture with a placeholder policy
+identifier. The current script replaces that placeholder: it scans the same
+recovered Prolly snapshot for `kotobase.policy/read`, reconstructs the policy
+with `kotobase-peer.policy/policy-of`, computes its actual `policy-cid`, and
+places that CID in the signed logical commit. After a fresh process recovers
+the proof and data, it recomputes both checkpoint and policy CID and checks
+them before querying the same snapshot using that policy and a Dango fixture
+capability. The allowed join returned its expected row, while the wrong-basis
+capability returned no rows. A separately computed CID for an altered policy
+was rejected by frontier admission before the query callback ran. Signature,
+root, issuer, checkpoint and expected-policy mismatches were also refused.
+
+The follow-up proof block was
+`bafkreibwiklgiqli7tecvfx7bobfvgord4cswimcp2q576t32lrhapwvaq`, and the
+policy CID was `bafyreidttvee6r2pduhuwto6ft4xmolglspprk4sseuhorsdpbchbswkuu`.
+The same local Clojure CLI, adapted classpath and separate-process procedure
+were used; no additional dependencies were downloaded. The capability roots,
+keys, clock and query are test fixtures. The earlier policy-identifier
+limitation no longer describes the current script; the remaining authority,
+history, separate-publication, persisted frontier, Native and cache-loss
+limitations above still apply. This oracle does not implement product admission.

@@ -1,5 +1,5 @@
 (def dest (or (System/getenv "SIGNED_BASIS_OUTPUT") (throw (ex-info "output required" {}))))
-(require '[clojure.edn :as edn] '[otehon.ipld-forest :as catalog] '[otehon.storage :as store] '[otehon.forest-writer :as writer] '[awai.fs.car :as car] '[kotobase.engine.prolly :as prolly] '[kotobase.engine.contract :as eng] '[kotobase.engine.identity :as logical] '[kotobase.engine.frontier :as frontier] '[ed25519.sign :as ed])
+(require '[clojure.edn :as edn] '[otehon.ipld-forest :as catalog] '[otehon.storage :as store] '[otehon.forest-writer :as writer] '[awai.fs.car :as car] '[kotobase.engine.prolly :as prolly] '[kotobase.engine.contract :as eng] '[kotobase.engine.identity :as logical] '[kotobase.engine.frontier :as frontier] '[ed25519.sign :as ed] '[kotobase-peer.policy :as policy] '[dango.chain :as chain] '[datom.source :as source] '[datalog.core :as datalog])
 (import '[java.security MessageDigest] '[java.util HexFormat])
 (def tool (or (System/getenv "FOREST_TOOL") (throw (ex-info "tool required" {}))))
 (def data-dir (or (System/getenv "GROUP_FOREST_STORE") (throw (ex-info "GROUP_FOREST_STORE required" {}))))
@@ -8,9 +8,9 @@
 (defn sha [s] (.formatHex (HexFormat/of) (.digest (MessageDigest/getInstance "SHA-256") (.getBytes (str s) "UTF-8"))))
 (def engine (prolly/prolly-engine {:put! (fn [& _] (throw (ex-info "read only" {}))) :get-fn #(catalog/get-group-block h %) :blind-fn #(str "blind-fixture:" %) :encrypt-fn identity :decrypt-fn identity :digest-fn sha}))
 (def snap (eng/open-snapshot engine (eng/restore-state engine basis)))
-;; The real policy is evaluated by the query oracle; this value is only a
-;; fixture authority identifier, not the canonical policy CID.
-(def pcid "fixture-policy")
+(def policy-rows (eng/scan engine snap ["kotobase.policy/read" nil nil]))
+(def read-policy (policy/policy-of (mapv (fn [{:keys [e a v]}] {:e e :a (str a) :v_edn (pr-str v)}) policy-rows)))
+(def pcid (or (policy/policy-cid read-policy) (throw (ex-info "missing policy" {}))))
 (def issuer (vec (repeat 32 3)))
 (defn payload-bytes [s] (mapv #(bit-and 255 %) (.getBytes s "UTF-8")))
 (defn block [x] (let [bytes (.getBytes (pr-str x) "UTF-8") digest (mapv #(bit-and 255 %) (.digest (MessageDigest/getInstance "SHA-256") bytes))] {:cid (car/cid-str (car/cid-bytes car/codec-raw digest)) :bytes bytes}))
@@ -42,8 +42,27 @@
           (doseq [bad [(assoc entry :root "wrong") (assoc-in entry [:commit :logical-checkpoint-root] "wrong") (assoc entry :signature (vec (repeat 64 0))) (assoc entry :issuer "other")]]
             (assert (not (verify-entry bad))))
           (assert (not (verify-proof entry (assoc checkpoint :logical-checkpoint-root "other") pcid)))
-          (assert (not (verify-proof entry checkpoint "other")))
-          (load-file "nixos/otehon/storage/oracle/prolly_forest_writer_policy.clj")
-          (prn {:proof cid :checkpoint (:logical-checkpoint-root checkpoint) :signature :verified :tamper :rejected :query :passed :pass true}))
+          (let [changed-policy (policy/policy-cid (assoc read-policy :protected-prefixes [":other/"]))
+                queries (atom 0)
+                admit-and-query (fn [expected-policy]
+                  (frontier/accept-head {:candidate-root (:root entry) :path [entry]
+                                         :verify-entry #(verify-proof % checkpoint expected-policy)})
+                  (swap! queries inc))]
+            (assert (not= pcid changed-policy))
+            (assert (try (admit-and-query changed-policy) false (catch Exception _ true)))
+            (assert (zero? @queries)))
+          ;; Run the query against the same snapshot and policy whose CID was
+          ;; checked above; the capability authority and clock remain fixtures.
+          (let [seed (vec (repeat 32 1)) resource (str "kotoba://basis/" basis)
+                token (chain/root {:issuer-seed seed :grant {:caps #{[:datom/read-protected resource]} :before 1800000000} :caveats [] :next-seed (vec (repeat 32 2))})
+                req {:req/kind :datom/read-protected :req/resource resource :req/now 1700000000}
+                decide (fn [request] (chain/verify (chain/present token) {:roots #{(ed/public-key seed)} :request request}))
+                src (reify source/IPatternSource (-scan [_ pattern] (mapv (fn [{:keys [e a v]}] {:s e :p a :o v}) (eng/scan engine snap pattern))))
+                q '{:find [?root ?cid] :where [["file" :file/root ?root] ["file" :file/chunk ?c] [?c :chunk/index 8] [?c :chunk/cid ?cid]]}
+                run (fn [decision] (let [caps (if (:dango/allowed? decision) #{policy/read-protected-capability} #{}) visible (policy/visible-for read-policy caps)] (datalog/q src q #(visible (update % :p str)))))
+                allowed (run (decide req)) denied (run (decide (assoc req :req/resource "kotoba://basis/wrong")))]
+            (assert (= #{["bafyreidqkmghsd65dwq22umpkrqecyamfhevsbq7xemjfe7tb6wnhvxsny" "bafkreidxq3azg4pwxcuurzkrmjha3uuzhstmefbzx6dw6z5bjaqya64mra"]} allowed))
+            (assert (empty? denied)))
+          (prn {:proof cid :checkpoint (:logical-checkpoint-root checkpoint) :policy-cid pcid :signature :verified :tamper :rejected :query :passed :pass true}))
  (throw (ex-info "write/read required" {})))
 (shutdown-agents)
