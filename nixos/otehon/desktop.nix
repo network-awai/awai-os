@@ -381,10 +381,11 @@ in
   image.repart.partitions = {
     esp.repartConfig.SizeMinBytes = "256M";
     root.repartConfig = {
-      # 12G no longer fits the desktop-media-gui closure (LLVM/mesa).
-      # Measured 2026-11-13: repart wants 12.2G minimum (JUN-1180).
-      SizeMinBytes = "16G";
-      SizeMaxBytes = "16G";
+      # 12G no longer fits the desktop closures (LLVM/mesa). The login
+      # profile measures 16.2G minimum; keep headroom for shell growth.
+      # Measured 2026-11-13 (JUN-1180).
+      SizeMinBytes = "20G";
+      SizeMaxBytes = "20G";
     };
   };
   };
