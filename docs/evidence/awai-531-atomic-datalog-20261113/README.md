@@ -113,3 +113,29 @@ input; the extracted `main` offset was 71480 and length 73589.
 This is a small primitive and negative-control execution. It does not execute
 the 2 MiB proof's logical manifest, the Forest adapter, native I/O, multi-Pack
 recovery, or physical power failure, and is not production qualification.
+
+## Native parity for the 2 MiB proof manifest
+
+Using the same pinned Native compiler, packager and macOS arm64 procedure,
+`native-2m.kotoba` constructs a fixed 65,536-byte chunk profile and the 32
+fixture CIDs from PR #111. It computes the logical-file CID and compares it to
+`bafyreidqkmghsd65dwq22umpkrqecyamfhevsbq7xemjfe7tb6wnhvxsny`.
+The native program returned **0**. The separately compiled negative control
+changes one character of the expected CID and returned **2**, the intended
+failure. The source was generated from `input.json` by
+`generate-native-2m.clj`; the two pinned KSL source locks are included.
+
+```text
+positive source     4e644147bb1f0905f96b14a73e76afcf0c16365a197d87a6dc2aa97bb0f4b261
+positive KSL        44a6be2f8aa86e14ddd3ea1dec5a6d7b244c51a1ef19a2f002f87195e64c7721
+positive artifact   e679e15637e519b0cbf452a49a30a04deb8eac101826dce4ba9845ab922dd433
+negative source     11f68528853aa8a65dbdc9372051c256fa3032b5404c9a3d16592cf4cacad200
+negative KSL        5e35d4f3fdc1f270fb87f7a3047da51dec48100ced1035c86ad68b58f244e0f8
+negative artifact   8a47cf99d45547cbee652651bd19c0be1ac5707019f5b6113edfb135861ff82e
+```
+
+Both artifacts were built with the commands and FD/source-lock convention in
+the preceding section; `extract-native` reported offset 71480, length 77931.
+These tests pass 32 existing CIDs as fixture input: they prove the Native
+manifest CID matches the Otehon reference for this case, not that Native read
+or hashed the original 2 MiB of data, nor Native Forest I/O or recovery.
