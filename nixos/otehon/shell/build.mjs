@@ -13,6 +13,7 @@ import { clientRuntimeConnectSrc } from "./vendor/kotoba-client-runtime.js";
 await copyFile("vendor/kotoba-client-runtime.js", "src/vendor-runtime.gen.js");
 import { osOperations, phoneOperations, runtimeDescriptor } from "./src/runtime.js";
 import { scriptSrc, styleSrc } from "./src/csp.js";
+import { buildDougaka } from "./dougaka-bundle.mjs";
 
 const relayOrigin = process.env.RELAY_ORIGIN ?? "https://relay.awai.network";
 // OTEHON_HTTP=1 builds the shell for the loopback preview server instead of
@@ -66,6 +67,11 @@ await page({
   operations: phoneOperations(relayOrigin),
   appOrigins: ["https://awai.network"],
 });
+
+// Dougaka Studio: the vendored static bundle re-laid for file://
+// (bundled host, inlined scittle, file: CSP). The page carries its own
+// descriptor and per-operation consent; no shell broker changes.
+await buildDougaka({ vendorDir: "vendor-dougaka", outDir: "dist/dougaka" });
 
 if (process.env.OTEHON_E2E === "1") {
   await build({

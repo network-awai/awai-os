@@ -157,6 +157,7 @@
     [:ul.services
      [service "Zenoh" zenoh]
      [service "Matter" matter]]
+    [:a {:href "./dougaka/index.html"} "Dougaka Studio"]
     [:time (.toLocaleTimeString now #js [] #js {:hour "2-digit" :minute "2-digit"})]]])
 
 (defn composer [context on-send on-image on-speech capabilities placeholder]
