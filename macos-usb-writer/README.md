@@ -1,5 +1,13 @@
 # KIOXIA-only recurring USB writer
 
+For large GitHub artifacts, `scripts/download-otehon-artifact.go` is an optional
+operator transport tool (Go standard library only, outside all OS/Native
+runtime paths). It uses eight bounded HTTPS ranges and writes one new private
+ISO file without a second ZIP-sized disk copy. It refuses redirects, unsupported
+archives and existing output files, then verifies both the GitHub ZIP digest and
+the independently observed ISO digest. Select a VM-passed artifact and its
+matching verification record; download integrity does not qualify a VM test.
+
 One administrator setup installs a root-owned compiled Swift helper and a sudoers
 rule for junkawasaki. The rule permits only the exact helper binary digest, with
 no arguments; it does not permit dd, Python, a shell, diskutil, or arbitrary root
