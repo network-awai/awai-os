@@ -125,7 +125,8 @@ export function validateFleet(value) {
     ||!Number.isFinite(Date.parse(value.observedAt))||!Array.isArray(value.bots)||value.bots.length>10000
     ||value.totals?.registered!==value.bots.length||new Set(value.bots.map(b=>b.id)).size!==value.bots.length
     ||value.bots.some(b=>typeof b.name!=='string'||!id(b.repository)||!Array.isArray(b.jobs)||!Array.isArray(b.sourceJobs)
-      ||!['queued','held','attention','waiting'].includes(b.state)))throw Error('invalid-fleet-state');
+      ||!['queued','held','attention','waiting'].includes(b.state)
+      ||(b.stabilization&&(!/^AWAI-\d+$/.test(b.stabilization.issueId)||!['source','solver','paused','mapping','schedule','event','executor'].includes(b.stabilization.group)))))throw Error('invalid-fleet-state');
   return value;
 }
 export async function decodeFleetEnvelope(envelope,crypto) {

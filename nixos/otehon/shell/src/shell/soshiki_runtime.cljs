@@ -12,7 +12,7 @@
 (defn- saved []
   (try (validateObservation (js/JSON.parse (.getItem js/localStorage RUNTIME_KEY)))
        (catch :default _ nil)))
-(defn runtime-panel [state]
+(defn legacy-runtime-panel [state]
   (let [[observation set-observation] (useState saved)
         [now set-now] (useState (js/Date.now))
         [circle set-circle] (useState "all")
@@ -79,6 +79,12 @@
                            [:p.muted "担当ノード・モデル・最終run・永続化：未確認"]])]
      [:p.muted "この観測は実行許可を付与しません。"]]))
 
+(defn runtime-panel [state]
+  [:section
+   [:f> fleet/panel]
+   [:details [:summary "補助レポートを手動確認"]
+    [:f> legacy-runtime-panel state]]])
+
 (defn preview []
   (let [[state set-state] (useState (blankState))
         [error set-error] (useState nil)]
@@ -98,5 +104,5 @@
                                                           (catch :default _ (set-error "登録形式を確認してください。")))))
                                     (.catch (fn [_] (set-error "読込みに失敗しました。")))))))}]]
      (when error [:p.net-error {:role "alert"} error])
-     [:f> runtime-panel state]]]]))
+     [:f> legacy-runtime-panel state]]]]))
 (defn init [] (rdom/render (rdom/create-root (.getElementById js/document "soshiki-runtime-root")) [:f> preview]))

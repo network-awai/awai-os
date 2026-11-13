@@ -31,3 +31,15 @@ export function buildPlan(catalog,envelope,baseline,workstreams,now=Date.now()){
  const counts={};for(const r of rows)counts[r.group]=(counts[r.group]||0)+1;
  return {schema:'awai.bot-stabilization-plan.v1',generatedAt:new Date(now).toISOString(),sourceObservedAt:envelope.payload.observedAt,sourceFresh:fresh,catalogSha256:envelope.payload.catalogSha256,baselineCount:rows.length,groups:counts,currentFleetTotals:envelope.payload.totals,authority:'plan-only-no-execution-grants',rows};
 }
+
+export function attachStabilization(payload,plan,catalog){
+ if(plan?.schema!=='awai.bot-stabilization-plan.v1'||plan.catalogSha256!==payload.catalogSha256||!Array.isArray(plan.rows)||plan.rows.length>10000
+   ||new Set(plan.rows.map(r=>r.botId)).size!==plan.rows.length)throw Error('stabilization-plan-binding-mismatch');
+ const source=new Map(catalog.organization.bots.map(b=>[b.id,b])),byId=new Map(),groups={};
+ for(const r of plan.rows){const b=source.get(r.botId);
+  if(!b||b.profile.commit!==r.profileRevision||b.profile.checksum!==r.profileChecksum||!Object.hasOwn(actions,r.group)||!/^AWAI-\d+$/.test(r.workstream))throw Error('stabilization-profile-binding-mismatch');
+  byId.set(r.botId,{issueId:r.workstream,group:r.group,nextAction:actions[r.group]});
+ }
+ let heldLinked=0;const bots=payload.bots.map(b=>{const step=byId.get(b.id);if(step&&!b.configured){heldLinked++;groups[step.group]=(groups[step.group]||0)+1;}return step?{...b,stabilization:step}:b;});
+ return {...payload,bots,stabilization:{plannedBots:plan.rows.length,heldLinked,groups,planGeneratedAt:plan.generatedAt,authority:'plan-only-no-execution-grants'}};
+}

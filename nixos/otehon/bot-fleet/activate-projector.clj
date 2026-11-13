@@ -13,7 +13,7 @@
       revision (command! "git" "-C" repo "rev-parse" "HEAD")
       archive (str root "/source.tar") _ (h/private-dir! runtime)
       _ (command! "git" "-C" repo "archive" "--format=tar" (str "--output=" archive) revision
-           "nixos/otehon/bot-fleet/project-runtime.mjs" "nixos/otehon/bot-fleet/repository-connections.mjs"
+           "nixos/otehon/bot-fleet/project-runtime.mjs" "nixos/otehon/bot-fleet/repository-connections.mjs" "nixos/otehon/bot-fleet/stabilization.mjs"
            "nixos/otehon/shell/src/fleet-projection.js" "nixos/otehon/shell/package.json")
       _ (command! "tar" "-xf" archive "-C" runtime)
       node (command! "which" "node") args [node (str runtime "/nixos/otehon/bot-fleet/project-runtime.mjs") manifest digest]

@@ -1,6 +1,7 @@
 // Otehon control-plane publisher; it runs outside the static app origin.
 import fs from 'node:fs/promises';import path from 'node:path';import {createHash,randomUUID} from 'node:crypto';
 import {projectFleet} from '../shell/src/fleet-projection.js';
+import {attachStabilization} from './stabilization.mjs';
 import {repositoryConnections} from './repository-connections.mjs';
 const sha=b=>createHash('sha256').update(b).digest('hex');
 const resources={readiness:'http://127.0.0.1:8586/itonami-bot-readiness-AWAI-2795-20261112-v1/current.json',
@@ -24,7 +25,7 @@ async function bounded(url,options={}){
 }
 export async function projectOnce(cfg){
  if(cfg.schema!=='awai.fleet-projector.v1'||!path.isAbsolute(cfg.stateRoot)||!path.isAbsolute(cfg.staticArtifact)
-   ||path.basename(cfg.staticArtifact)!=='fleet-state.json')throw Error('pinned-projector-config-required');
+   ||path.basename(cfg.staticArtifact)!=='fleet-state.json'||path.basename(path.dirname(cfg.staticArtifact))!=='soshiki-runtime')throw Error('pinned-projector-config-required');
  const catalogText=await fs.readFile(path.join(cfg.stateRoot,'catalog.json'),'utf8');
  if(cfg.bindingsFile&&!/^bindings(-v[0-9]+)?\.json$/.test(cfg.bindingsFile))throw Error('bounded-binding-file-required');
  const bindingsText=await fs.readFile(path.join(cfg.stateRoot,cfg.bindingsFile??'bindings.json'),'utf8');
@@ -35,7 +36,13 @@ export async function projectOnce(cfg){
  const connections=await repositoryConnections(cfg);
  let physicsPlan;
  if(cfg.physicsPlanSha256){const name=cfg.physicsPlanFile??'physics-plan-v1.json';if(!/^physics-plan-v[0-9]+\.json$/.test(name))throw Error('bounded-plan-file-required');const text=await fs.readFile(path.join(cfg.stateRoot,name),'utf8');if(sha(text)!==cfg.physicsPlanSha256)throw Error('physics-plan-pin-mismatch');physicsPlan=JSON.parse(text);}
- const payload=projectFleet(JSON.parse(catalogText),reports,JSON.parse(bindingsText),Date.now(),cfg.catalogSha256,connections,physicsPlan);
+ let payload=projectFleet(JSON.parse(catalogText),reports,JSON.parse(bindingsText),Date.now(),cfg.catalogSha256,connections,physicsPlan);
+ if(cfg.stabilizationPlanFile){
+  if(!/^stabilization-plan-v[0-9]+\.json$/.test(cfg.stabilizationPlanFile))throw Error('bounded-stabilization-file-required');
+  const plan=await fs.readFile(path.join(cfg.stateRoot,cfg.stabilizationPlanFile),'utf8');
+  if(sha(plan)!==cfg.stabilizationPlanSha256)throw Error('stabilization-plan-pin-mismatch');
+  payload=attachStabilization(payload,JSON.parse(plan),JSON.parse(catalogText));
+ }
  const text=JSON.stringify({schema:'awai.fleet-artifact.v1',sha256:sha(JSON.stringify(payload)),payload});
  await atomic(path.join(cfg.stateRoot,'current.json'),text);
  await bounded(output,{method:'PUT',headers:{'content-type':'application/json'},body:text});
@@ -47,7 +54,9 @@ export async function projectOnce(cfg){
  await bounded(summaryOutput,{method:'PUT',headers:{'content-type':'application/json'},body:summary});
  if(await bounded(summaryOutput)!==summary)throw Error('summary-storage-readback-mismatch');
  await atomic(cfg.staticArtifact,text);
- const receipt={observedAt:payload.observedAt,sha256:sha(text),storageReadback:true,staticArtifactWritten:true,totals:payload.totals};
+ const osArtifact=path.join(path.dirname(path.dirname(cfg.staticArtifact)),'fleet-state.json');
+ await atomic(osArtifact,text);
+ const receipt={observedAt:payload.observedAt,sha256:sha(text),storageReadback:true,staticArtifactWritten:true,osStaticArtifactWritten:true,totals:payload.totals};
  await atomic(path.join(cfg.stateRoot,'receipt.json'),JSON.stringify(receipt));return receipt;
 }
 if(process.argv[1]&&import.meta.url===new URL(`file://${process.argv[1]}`).href){

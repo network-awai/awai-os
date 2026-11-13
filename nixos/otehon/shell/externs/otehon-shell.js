@@ -522,3 +522,6 @@ Object.prototype.replicas;
 Object.prototype.currentReplicas;
 Object.prototype.vmJobsConfigured;
 Object.prototype.vmReplicasHealthy;
+
+Object.prototype.group;
+Object.prototype.stabilization;
