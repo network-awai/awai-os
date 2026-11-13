@@ -135,7 +135,7 @@ in
     runtimeInputs = [ pkgs.curl pkgs.jq pkgs.coreutils ];
     text = ''
       for _ in $(seq 1 60); do
-        if curl --fail --silent --max-time 2 http://127.0.0.1:9222/json/list | jq -e 'any(.[]; .type == "page" and .url == "http://127.0.0.1:8780/" and .title == "Awai Otehon")' >/dev/null; then exit 0; fi
+        if curl --fail --silent --max-time 2 http://127.0.0.1:9222/json/list | jq -e 'any(.[]; .type == "page" and .url == "http://127.0.0.1:8780/" and (.title | test("^Awai Otehon zenoh=[01] matter=[01] gate=[01] dapps=[0-9]+$")))' >/dev/null; then exit 0; fi
         sleep 1
       done
       echo "desktop-readiness failed" >&2
