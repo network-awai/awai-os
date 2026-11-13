@@ -16,6 +16,15 @@
     (let [html (renderToStaticMarkup (r/as-element [:f> bot-chat/panel {:id "profile:sample" :name "sample"} locale]))]
       (when-not (and (.includes html expected) (.includes html "<textarea") (.includes html "disabled"))
         (throw (js/Error. "agent-conversation-render-failed")))))
+  (doseq [locale ["ja" "en"]]
+   (let [bots [{:id "profile:codinator" :name "codinator" :repository "cloud-itonami/ao-bot-fleet" :configured false :state "held"}
+               {:id "profile:cron-health" :name "cron-health" :repository "cloud-itonami/ao-bot-fleet" :configured false :state "held"}]
+         peer {:cycles [{:cycleKey "fixture" :state "completed" :observedAt "2026-11-13T12:00:00Z" :goal "Fixture collaboration" :completedTurns 4 :maxTurns 4 :issueId "AWAI-2862"
+                        :participants ["profile:codinator" "profile:cron-health"]
+                        :turns (mapv (fn [i] {:turn i :speaker (if (even? i) "profile:codinator" "profile:cron-health") :state "completed"}) (range 4))}]}
+         html (renderToStaticMarkup (r/as-element [:f> circles/panel bots false 0 "" (fn [_]) (fn [_]) locale nil peer]))]
+    (when-not (and (.includes html "Fixture collaboration") (.includes html "構成監視") (.includes html "cron・復旧監督") (.includes html "I-15") (.includes html "AWAI-2862") (not (.includes html "<animate")))
+     (throw (js/Error. "mission-peer-advanced-render-failed")))))
   (let [url "https://awai.network/link/#local-qr-regression"
         html (renderToStaticMarkup (r/as-element [:f> qr-code url]))]
     (when-not (and (.includes html "<svg")

@@ -738,3 +738,6 @@ Object.prototype.cycles;
 Object.prototype.speakerName;
 Object.prototype.peer;
 Object.prototype.participants;
+// Shared Mission/peer read-model exports.
+Object.prototype.missionGoals;
+Object.prototype.circleCooperations;

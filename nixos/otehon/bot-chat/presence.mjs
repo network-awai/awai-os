@@ -7,7 +7,7 @@ export function presenceReporter(cfg,personas){
   for(const file of cfg.presenceArtifacts??[]){if(!path.isAbsolute(file)||path.basename(file)!=='agent-presence.json')throw Error('bounded presence artifact required');const tmp=file+'.'+randomUUID()+'.pending';await fs.writeFile(tmp,text,{flag:'wx',mode:0o600});await fs.rename(tmp,file);}
  };
  const schedule=()=>{last=last.catch(()=>{}).then(publish);return last;};
- const onProcess=value=>{if(value.phase==='running')active.set(value.invocationId,{botId:value.botId,invocationId:value.invocationId,phase:'responding',source:'muse-process-heartbeat',startedAt:value.startedAt,node:cfg.nodeId??'jun-control'});else active.delete(value.invocationId);void schedule().catch(()=>{});};
+ const onProcess=value=>{if(value.phase==='running')active.set(value.invocationId,{botId:value.botId,invocationId:value.invocationId,phase:'responding',source:'muse-process-heartbeat',startedAt:value.startedAt,...(/^[a-f0-9]{64}$/.test(value.peerCycleKey??'')?{peerCycleKey:value.peerCycleKey}:{}),node:cfg.nodeId??'jun-control'});else active.delete(value.invocationId);void schedule().catch(()=>{});};
  const timer=setInterval(()=>void schedule().catch(()=>{}),10000);void publish().catch(()=>{});
  return {onProcess,flush:schedule,close:()=>{closed=true;clearInterval(timer);}};
 }

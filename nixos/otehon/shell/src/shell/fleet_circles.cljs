@@ -1,17 +1,19 @@
 (ns shell.fleet-circles
   (:require [clojure.string :as str]
-            ["react" :refer [useEffect useMemo useState]]
+            ["react" :refer [useEffect useMemo useState useRef]]
             [shell.fleet-activity :as activity]
             [shell.ui-copy :as ui]
             ["../fleet-activity.js" :refer [activitySelection]]
             [shell.fleet-goals :as goals]
+            [shell.fleet-cooperation :as cooperation]
+            ["../fleet-cooperation.js" :refer [missionGoals circleCooperations]]
             [shell.fleet-org-editor :as org-editor]
             ["../fleet-organizations.js" :refer [blankOrganizations loadOrganizations changeOrganization saveOrganizations]]
             ["../fleet-circles.js" :refer [circlePack]]))
 (def states [[:running :stateRunning "#2084d4"] [:recovering :stateRecovering "#8d63c7"] [:waiting :stateWaiting "#267c62"] [:queued :stateQueued "#377bc0"]
              [:held :stateHeld "#ae7323"] [:attention :stateAttention "#c44343"] [:unknown :stateUnknown "#7b8190"]])
-(defn panel [bots stale? now query on-query on-details & [locale chat-component]]
-  (let [[focus-id set-focus] (useState "fleet") [grouping set-grouping] (useState "responsibility") [goals? set-goals] (useState false) [selected-id set-selected] (useState nil)
+(defn panel [bots stale? now query on-query on-details & [locale chat-component peer-progress]]
+  (let [[focus-id set-focus] (useState "fleet") [mission-id set-mission] (useState nil) map-ref (useRef nil) [grouping set-grouping] (useState "responsibility") [goals? set-goals] (useState false) [selected-id set-selected] (useState nil)
         [org-data set-org-data] (useState (fn [] (if (and (exists? js/window) (exists? js/localStorage)) (loadOrganizations (clj->js (vec bots)) js/localStorage) #js {:state (blankOrganizations) :error nil})))
         [message set-message] (useState nil) [reduced set-reduced] (useState true)
         change-org (fn [action]
@@ -24,15 +26,26 @@
         selected (first (filter #(= selected-id (:id %)) nodes))
         selection (js->clj (activitySelection (clj->js nodes) (clj->js (vec bots)) selected-id now stale?) :keywordize-keys true)
         responsibility? (= grouping "responsibility")
-        visible-nodes (if responsibility? (filter #(and (or (= (:id %) (:id focus)) (some #{(:id focus)} (:ancestorIds %))) (<= (:depth %) (+ 2 (:depth focus))) (or (not= "bot" (:kind %)) (= (:parentId %) (:id focus)))) nodes) nodes)
+        missions (js->clj (missionGoals (clj->js nodes) "fleet") :keywordize-keys true)
+        missions (mapv #(assoc % :circleLabels (into {} (map (fn [n] [(keyword (:id n)) (:label n)]) nodes))) missions)
+        mission (first (filter #(= mission-id (:key %)) missions))
+        cycles (js->clj (circleCooperations (clj->js nodes) (clj->js bots) (clj->js (or (:cycles peer-progress) [])) now stale?) :keywordize-keys true)
+        peer-ids (set (mapcat #(map :id (:participants %)) cycles))
+        visible-nodes (if responsibility? (filter #(and (or (= (:id %) (:id focus)) (some #{(:id focus)} (:ancestorIds %))) (<= (:depth %) (+ 2 (:depth focus))) (or (not= "bot" (:kind %)) (= (:parentId %) (:id focus)) (and (>= (:depth focus) 2) (contains? peer-ids (:id %))))) nodes) nodes)
         size (+ 24 (* 2 (:radius focus))) scale (/ 1000 size)
-        choose (fn [node] (set-selected (:id node)) (when-not (= "bot" (:kind node)) (set-focus (:id node))))]
+        choose (fn [node] (set-selected (:id node)) (if (= "bot" (:kind node)) (set-focus (:parentId node)) (set-focus (:id node))))
+        open-circle (fn [id] (when-let [n (first (filter #(= id (:id %)) nodes))] (choose n)))
+        visible-ids (set (map :id visible-nodes))]
     (useEffect (fn [] (when (exists? js/window)
                        (let [media (.matchMedia js/window "(prefers-reduced-motion: reduce)") update (fn [] (set-reduced (.-matches media)))]
                          (update) (.addEventListener media "change" update)
                          (fn [] (.removeEventListener media "change" update))))) #js [])
+    (useEffect (fn [] (when (and mission-id (.-current map-ref)) (.scrollIntoView (.-current map-ref) #js {:block "start" :behavior "instant"}))) #js [mission-id])
     [:section.fleet-circle-view {:aria-label (ui/t locale :circlesTitle)}
      [:h3 (ui/t locale :circlesTitle)]
+     (when responsibility?
+      [cooperation/missions-panel missions mission
+       (fn [goal] (set-mission (:key goal)) (open-circle (:lead goal))) open-circle locale])
      [:div.fleet-circle-path {:aria-label (ui/t locale :circlesTitle)}
       (for [[mode title] [["responsibility" :responsibility] ["repository" :repositories]]]
         ^{:key mode} [:button.secondary {:type "button" :aria-pressed (= grouping mode)
@@ -47,7 +60,7 @@
      [:p.fleet-map-total (ui/t locale (if responsibility? :structureCount :repositoryCount)
                             {:bots (:totalBots view) :circles (if responsibility? (:charterCount view) (:circleCount view))})]
      (when stale? [:span.fleet-status {:data-state "unknown" :role "status"} (ui/t locale :stale)])
-     [:div.fleet-workspace
+     [:div.fleet-workspace {:ref map-ref}
       [:div.fleet-map-column
      (when responsibility?
        [:div.fleet-circle-index
@@ -69,6 +82,8 @@
            [:circle {:cx (:x node) :cy (:y node) :r (:radius node)
                      :class (str "fleet-pack-" (:kind node) " fleet-pack-depth-" (:depth node) (when (= selected-id (:id node)) " fleet-pack-selected"))
                      :style {:fill (if bot? color (str "color-mix(in srgb, var(--focus) " (min 52 (+ 5 (* 10 (:depth node)))) "%, var(--bg))")) :opacity (if (and (seq query) (zero? (:matchCount node))) 0.18 1)}}]
+           (when (contains? peer-ids (:id node))
+            [:circle {:cx (:x node) :cy (:y node) :r (+ (:radius node) (/ 3 scale)) :fill "none" :stroke "var(--focus)" :stroke-width (/ 2 scale) :pointer-events "none"}])
            (when (and responsibility? (not bot?) (pos? (:depth node)) (pos? (:count node)))
              [:g {:aria-hidden true :pointer-events "none"}
               (for [[i [state _ color]] (map-indexed vector states)
@@ -92,9 +107,17 @@
                                        :from (str "0 " (:x node) " " (:y node)) :to (str "360 " (:x node) " " (:y node))
                                        :dur (if (= motion "recover") "4s" "2s") :repeatCount "indefinite"}]
                    [:animate {:attributeName "opacity" :values "0.2;0.9;0.2" :dur (if (= motion "breathe") "4s" "2s") :repeatCount "indefinite"}])]]))]))
+      (for [cycle cycles :when (every? #(contains? visible-ids (:id %)) (:participants cycle))
+            :let [a (first (filter #(= (:id %) (:id (first (:participants cycle)))) nodes))
+                  b (first (filter #(= (:id %) (:id (second (:participants cycle)))) nodes))]]
+       ^{:key (:cycleKey cycle)}
+       [:g {:aria-hidden true :pointer-events "none"}
+        [:path {:d (str "M " (:x a) " " (:y a) " Q " (/ (+ (:x a) (:x b)) 2) " " (- (min (:y a) (:y b)) (/ 30 scale)) " " (:x b) " " (:y b))
+                :fill "none" :stroke "var(--focus)" :stroke-width (/ 2 scale) :stroke-dasharray (str (/ 6 scale) " " (/ 4 scale))}
+         (when (and (:live cycle) (not reduced)) [:animate {:attributeName "stroke-dashoffset" :from "20" :to "0" :dur "1s" :repeatCount "indefinite"}])]])
       (for [node visible-nodes
             :when (and (pos? (:depth node)) (> (* scale (:radius node)) 32)
-                       (or (= (:id node) (:id focus)) (= (:parentId node) (:id focus)) (and responsibility? (= 2 (:depth node)) (= "fleet" (:id focus)))))]
+                       (or (contains? peer-ids (:id node)) (= (:id node) (:id focus)) (= (:parentId node) (:id focus)) (and responsibility? (= 2 (:depth node)) (= "fleet" (:id focus)))))]
         ^{:key (str "label-" (:id node))}
         [:text {:x (:x node) :y (if (or (= "bot" (:kind node)) (and responsibility? (not-any? #(= (:parentId %) (:id node)) visible-nodes))) (- (:y node) (/ 8 scale)) (+ (- (:y node) (:radius node)) (/ 18 scale)))
                 :text-anchor "middle" :class "fleet-pack-label" :style {:font-size (/ (if (contains? #{"organization" "responsibility"} (:kind node)) 24 22) scale)}}
@@ -106,13 +129,16 @@
      (when message [:p {:role "status"} message])
       (when-not responsibility? [:f> org-editor/panel nodes selected change-org (.-error org-data)])
      (when responsibility?
-       [:<> [:f> goals/panel (or selected focus) nil locale]
+       [:<> [:details.fleet-disclosure [:summary (ui/t locale :purpose)] [:f> goals/panel (or selected focus) nil locale]]
         (when goals?
           [:div.fleet-goals-grid
            (for [node (filter #(and (= "responsibility" (:kind %)) (:purpose %)) nodes)]
              ^{:key (:id node)} [:f> goals/panel node #(choose node) locale] )])])
       ]
-      ^{:key (or selected-id "unselected")}
-      [:f> activity/panel selection
+      [:div.fleet-inspector-stack
+       [cooperation/mission-detail mission open-circle locale]
+       (when responsibility? [cooperation/panel (if mission (filter #(= (:missionKey %) (:key mission)) cycles) cycles) open-circle open-circle locale])
+       ^{:key (or selected-id "unselected")}
+       [:f> activity/panel selection
        (fn [id] (when-let [node (first (filter #(= id (:id %)) nodes))] (choose node)))
-       #(set-selected nil) on-details locale chat-component]]]))
+       #(set-selected nil) on-details locale chat-component]]]]))

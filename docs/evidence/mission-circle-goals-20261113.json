@@ -1,0 +1,90 @@
+{
+  "schema": "awai.mission-circle-evidence.v1",
+  "date": "2026-11-13",
+  "trackingIssue": "AWAI-2863",
+  "sourceURLs": [
+    "https://itonami.cloud/",
+    "https://itonami.cloud/mission/",
+    "https://awai.network/"
+  ],
+  "awaiHomepageSha256": "03eca71163126b9b9f18760f3415ac5ce1c0b8c2537129cdaa397c4d0d482fb5",
+  "goals": [
+    {
+      "key": "bot-work",
+      "linear": {
+        "id": "I-12",
+        "uuid": "8d8c06b8-186b-4c58-92f6-ee315862f553",
+        "url": "https://linear.app/kotobalabs/initiative/itonami-bot協働で人の時間を取り戻す-448c9b41a481"
+      },
+      "lead": "circle:product:itonami",
+      "support": [
+        "circle:product:communication",
+        "circle:simulation"
+      ],
+      "status": "Planned",
+      "outcomeProgress": null
+    },
+    {
+      "key": "distributed-foundation",
+      "linear": {
+        "id": "I-13",
+        "uuid": "e8196c1d-c288-4211-afc2-b4457d770f2c",
+        "url": "https://linear.app/kotobalabs/initiative/awai-分散計算保存通信を復旧可能にする-636869962bbe"
+      },
+      "lead": "circle:platform:persistence-runtime",
+      "support": [
+        "circle:product:inference",
+        "circle:product:data-knowledge",
+        "circle:engineering:language-os",
+        "circle:product:communication"
+      ],
+      "status": "Planned",
+      "outcomeProgress": null
+    },
+    {
+      "key": "use-create-share",
+      "linear": {
+        "id": "I-14",
+        "uuid": "b3158de0-6f9a-41dd-bc1c-b62b3e5451f6",
+        "url": "https://linear.app/kotobalabs/initiative/awai-使う創る共有する体験を届ける-a1c54d7b1047"
+      },
+      "lead": "circle:engineering:repo-delivery",
+      "support": [
+        "circle:product:itonami",
+        "circle:product:inference",
+        "circle:product:data-knowledge"
+      ],
+      "status": "Planned",
+      "outcomeProgress": null
+    },
+    {
+      "key": "verified-contribution",
+      "linear": {
+        "id": "I-15",
+        "uuid": "a472e5b3-63c8-4be9-b419-d52bedb7d937",
+        "url": "https://linear.app/kotobalabs/initiative/awai-貢献と価値交換を検証可能につなぐ-c3a0e7e41993"
+      },
+      "lead": "circle:platform:fleet-reliability",
+      "support": [
+        "circle:engineering:security",
+        "circle:engineering:repo-delivery",
+        "circle:product:data-knowledge",
+        "circle:simulation"
+      ],
+      "status": "Planned",
+      "outcomeProgress": null
+    }
+  ],
+  "nativeLinearParentVerified": false,
+  "projectMemberships": "seven existing projects, additive",
+  "registeredBots": 899,
+  "uniqueBots": 899,
+  "roles": 25,
+  "explicitRoleBots": 98,
+  "simulationBots": 683,
+  "pendingClassification": 118,
+  "modelInvocationsByThisUnit": 0,
+  "cronChanges": 0,
+  "capabilityChanges": 0,
+  "privateTranscriptsPublished": false
+}

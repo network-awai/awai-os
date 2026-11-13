@@ -299,6 +299,12 @@
    [".fleet-inspector-tabs [aria-selected=true]" {:background "var(--surface-selected)" :font-weight 700}]
    [:.agent-workspace {:display "grid" :grid-template-columns "minmax(220px, .8fr) minmax(0, 1.2fr)" :gap "16px" :align-items "start"}]
    [:.agent-directory {:min-width 0}]
+   [:.fleet-mission-options {:display "grid" :grid-template-columns "repeat(auto-fit, minmax(min(100%, 210px), 1fr))" :gap "8px" :margin-bottom "12px"}]
+   [".fleet-mission-options button" ".fleet-mission-assignments button" ".fleet-peer-members button" {:display "flex" :flex-direction "column" :gap "4px" :text-align "start" :min-width 0 :overflow-wrap "anywhere"}]
+   [:.fleet-mission-detail {:padding "12px" :border "1px solid var(--border-strong)" :border-radius "12px" :margin-bottom "12px"}]
+   [:.fleet-mission-assignments :.fleet-peer-members {:display "flex" :flex-wrap "wrap" :gap "8px" :align-items "center" :margin "8px 0"}]
+   [:.fleet-peer-turns {:display "flex" :flex-wrap "wrap" :gap "6px" :list-style "none" :padding 0 :margin "8px 0"}]
+   [".fleet-peer-members button[data-active=true]" {:outline "2px solid var(--focus)"}]
    [:.agent-peer-cycle {:padding "12px" :border "1px solid var(--border-strong)" :border-radius "12px" :margin-bottom "12px" :background "var(--surface-raised)"}]
    [".agent-peer-cycle h3" ".agent-peer-cycle h4" {:font-size "15px" :margin "8px 0"}]
    [".agent-peer-cycle span" ".agent-peer-cycle a" {:display "inline-block" :margin-inline-end "12px"}]
@@ -330,6 +336,10 @@
    [:.fleet-key-results {:padding-left "20px"}]
    [:.fleet-goals-grid {:display "grid" :grid-template-columns "repeat(auto-fit, minmax(min(100%, 260px), 1fr))" :gap "12px"}]
    [".soshiki-body:has(.fleet-workspace)" {:width "min(1280px, 100%)"}]
+   (at-media {:min-width "1200px"}
+     [".shell.with-panel:has([data-fleet-overview])" {:grid-template-columns "248px minmax(0, 1fr)"}]
+     [".shell:has([data-fleet-overview]) > .panel" {:display "none"}])
+   [:.fleet-inspector-stack {:position "sticky" :top "12px" :min-width 0 :max-height "calc(100dvh - 110px)" :overflow-y "auto"}]
    [:.fleet-workspace {:display "grid" :grid-template-columns "minmax(0, 1fr) 290px" :gap "18px" :align-items "start"}]
    [:.fleet-map-column {:min-width 0}]
    [:.fleet-activity-panel {:position "sticky" :top "12px" :border "1px solid var(--border-strong)" :border-radius "14px" :background "var(--surface)" :padding "14px" :max-height "calc(100dvh - 112px)" :overflow-y "auto" :min-width 0 :overflow-wrap "anywhere"}]
@@ -345,6 +355,7 @@
    [".fleet-activity-agents span" {:white-space "nowrap" :font-size "11px"}]
    (at-media {:max-width "799px"}
      [:.fleet-workspace {:grid-template-columns "minmax(0, 1fr)"}]
+     [:.fleet-inspector-stack {:position "static" :max-height "none" :overflow-y "visible"}]
      [:.fleet-activity-panel {:position "static"}]
      [".fleet-activity-panel[data-open=true]" {:position "fixed" :z-index 35 :left "12px" :right "12px" :bottom "90px" :max-height "44dvh" :overflow-y "auto" :box-shadow "0 0 24px rgba(0,0,0,.22)"}]
      [:.fleet-activity-scroll {:max-height "25dvh"}])

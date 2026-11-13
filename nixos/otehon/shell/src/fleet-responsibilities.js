@@ -1,3 +1,4 @@
+import circleRoles from './circle-role-catalog.js';
 import catalog from './responsibility-catalog.js';
 const fleetRoles = [
   ['configuration', '構成監視', ['codinator']],
@@ -25,9 +26,17 @@ export function responsibilityTree(bots) {
     const r = node(`role:fleet:${id}`, title, 'responsibility-role');
     fleet.children.push(r); for (const name of members) roles.set(`profile:${name}`, r);
   }
+  const assignmentRoles = new Map();
+  for (const [circleId, definitions] of Object.entries(circleRoles)) {
+    const circle = nodes.get(circleId); if (!circle) throw new Error('missing-role-circle');
+    for (const [key, title, members] of definitions) {
+      const r = node('role:' + circleId.slice(7) + ':' + key, title, 'responsibility-role'); circle.children.push(r);
+      for (const name of members) { const id = 'profile:' + name; if (mapped.get(id) !== circleId || assignmentRoles.has(id)) throw new Error('invalid-role-assignment'); assignmentRoles.set(id, r); }
+    }
+  }
   for (const bot of bots) {
     const circle = nodes.get(mapped.get(bot.id)) ?? pending;
-    let parent = circle;
+    let parent = assignmentRoles.get(bot.id) ?? circle;
     if (circle === fleet) parent = roles.get(bot.id) ?? circle;
     if (circle.id === 'circle:simulation') {
       const family = bot.name.match(/^physai-(isic|isco|cofog|unspsc|jsic|marketplace|souji)(?:-|$)/)?.[1]?.toUpperCase() ?? 'その他';

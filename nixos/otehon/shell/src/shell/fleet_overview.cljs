@@ -65,7 +65,7 @@
       [:ul.soshiki-totals.fleet-primary-totals
        [metric locale :registered (:registered totals)] [metric locale :configured (:configured totals)]
        [metric locale :held (:held totals)] [metric locale :attention (when-not stale? (:attention totals))]]
-      (when (= (:catalogSha256 report) (:catalogSha256 peer-progress))
+      (when (and (not= view "circle") (= (:catalogSha256 report) (:catalogSha256 peer-progress)))
        [:div.agent-peer-cycles (for [cycle (:cycles peer-progress)] ^{:key (:cycleKey cycle)}
         [:article.agent-peer-cycle [:strong (ui/t locale :peerDialogue)] [:h3 (:goal cycle)]
          [:span (ui/t locale :peerProgress {:done (:completedTurns cycle) :total (:maxTurns cycle)})]
@@ -74,7 +74,7 @@
       (when (= view "agents") [:f> workspace/panel all-bots presence (:catalogSha256 report) stale? now locale])
       (when (= view "circle")
        [:f> circles/panel all-bots stale? now query set-query
-        (fn [name] (set-query name) (set-view "list")) locale bot-chat/panel])
+        (fn [name] (set-query name) (set-view "list")) locale bot-chat/panel (when (= (:catalogSha256 report) (:catalogSha256 peer-progress)) peer-progress)])
       (when (= view "list")
        [:<>
         [:div.fleet-list-filters

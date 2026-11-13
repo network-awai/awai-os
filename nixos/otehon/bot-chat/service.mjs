@@ -70,7 +70,7 @@ export function handler(cfg,{db=database,execute=infer,loadBots,onProcess=()=>{}
     const message={id:request.requestId,role:'user',text:request.text,at:new Date().toISOString(),...(peer?{peer:peer.envelope,speakerName:peer.envelope.from==='owner-goal'?'Goal':peer.envelope.from}: {})};
     const accepted=await db(cfg,thread,'append',[message]);
     await recordSession(cfg,index,sessionId,sessionId+':'+request.requestId+':accepted',meta(accepted.messages,'unknown'),db);
-    const result=await execute(cfg,peer?.bot??bot,{...request,sessionId,attributionIssue:peer?.grant['issue-id']??null,peer:peer?.envelope},history.messages,{onProcess});
+    const result=await execute(cfg,peer?.bot??bot,{...request,sessionId,attributionIssue:peer?.grant['issue-id']??null,peer:peer?.envelope},history.messages,{onProcess:value=>onProcess({...value,...(peer?{peerCycleKey:createHash('sha256').update(peer.grant['cycle-id']).digest('hex')}:{})})});
     if(result.provider!=='meta'||result.model!==cfg.model||typeof result.text!=='string'||!result.text.trim()||result.text.length>32768)throw Error('invalid-inference-result');
     const stored=await db(cfg,thread,'append',[{id:request.requestId+':reply',parentId:request.requestId,role:'assistant',text:result.text,at:new Date().toISOString(),provider:result.provider,model:result.model,runId:result.runId,usage:result.usage,usageCoverage:result.usageCoverage,...(peer?{peer:peer.envelope,speakerBotId:peer.bot.id,speakerName:peer.bot.name}: {})}]);
     await recordSession(cfg,index,sessionId,sessionId+':'+request.requestId+':done',meta(stored.messages,'completed'),db);
