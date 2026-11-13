@@ -13,6 +13,7 @@ import { clientRuntimeConnectSrc } from "./vendor/kotoba-client-runtime.js";
 await copyFile("vendor/kotoba-client-runtime.js", "src/vendor-runtime.gen.js");
 import { osOperations, phoneOperations, runtimeDescriptor } from "./src/runtime.js";
 import { scriptSrc, styleSrc } from "./src/csp.js";
+import { buildDougaka } from "./dougaka-bundle.mjs";
 
 const relayOrigin = process.env.RELAY_ORIGIN ?? "https://relay.awai.network";
 // OTEHON_HTTP=1 builds the shell for the loopback preview server instead of
@@ -21,10 +22,15 @@ const relayOrigin = process.env.RELAY_ORIGIN ?? "https://relay.awai.network";
 const cspMode = process.env.OTEHON_HTTP === "1" ? "http" : "file";
 
 const mvnRepo = process.env.MVN_REPO;
+// The Nix image build pins a read-only store path; Maven writes lock files
+// next to cached artifacts, so resolve a writable copy once. A writable
+// input (local ~/.m2 builds) is returned as-is.
+import { resolveWritableRepo } from "./mvn-repo.mjs";
+const activeMvnRepo = mvnRepo ? resolveWritableRepo(mvnRepo) : undefined;
 const clojure = (args) => execFileSync("clojure", [
   // The Nix image build pins an offline Maven repo (desktop.nix) because its
   // sandbox has no network. Local builds omit MVN_REPO and use ~/.m2.
-  ...(mvnRepo ? ["-Sdeps", `{:mvn/local-repo "${mvnRepo}"}`] : []),
+  ...(activeMvnRepo ? ["-Sdeps", `{:mvn/local-repo "${activeMvnRepo}"}`] : []),
   "-M", ...args,
 ], { stdio: "inherit" });
 
@@ -66,6 +72,11 @@ await page({
   operations: phoneOperations(relayOrigin),
   appOrigins: ["https://awai.network"],
 });
+
+// Dougaka Studio: the vendored static bundle re-laid for file://
+// (bundled host, inlined scittle, file: CSP). The page carries its own
+// descriptor and per-operation consent; no shell broker changes.
+await buildDougaka({ vendorDir: "vendor-dougaka", outDir: "dist/dougaka" });
 
 if (process.env.OTEHON_E2E === "1") {
   await build({

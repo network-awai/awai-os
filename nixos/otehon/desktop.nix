@@ -18,14 +18,17 @@ let
   cljDeps = pkgs.stdenv.mkDerivation {
     name = "awai-otehon-shell-clj-deps";
     src = builtins.path { path = ./shell/deps.edn; };
+    # Single-file src with a recursive fixed output: skip the archive
+    # unpack or the build dies before the hash check (JUN-1180 V2).
+    dontUnpack = true;
     nativeBuildInputs = [ pkgs.clojure ];
     outputHashAlgo = "sha256";
     outputHashMode = "recursive";
-    outputHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # TODO: fill from the mismatch error
+    outputHash = "sha256-pQpattmS9VmO3ZIQUFn66az8GSmB4IvYhTTCFn6SUmo="; # filled 2026-11-13 where Nix runs (JUN-1180)
     buildPhase = ''
       runHook preBuild
       export HOME="$TMPDIR/home"
-      mkdir -p "$HOME" src vendor
+      mkdir -p "$HOME" src vendor "$out"
       cp "$src" ./deps.edn
       clojure -Sdeps '{:mvn/local-repo "$out"}' -P
       runHook postBuild
@@ -52,9 +55,9 @@ let
       npm test
       runHook postCheck
     '';
-    # TODO: refresh for the current package-lock.json (react arrived with the
-    # Hiccup migration); run the image build and copy the "got: sha256-…".
-    npmDepsHash = "sha256-g9JFQRRKKjIgHCyLRvETNKwnmtl1TsJTTEYJUNuvIxY=";
+    # Refreshed 2026-11-13 where Nix runs (JUN-1180) for the current
+    # package-lock.json.
+    npmDepsHash = "sha256-gEHDRiPWlGGh0mjcJB54WSThDCzn7uMsmMHX6sjni7Q=";
     installPhase = ''
       runHook preInstall
       cp -r dist $out
@@ -378,8 +381,11 @@ in
   image.repart.partitions = {
     esp.repartConfig.SizeMinBytes = "256M";
     root.repartConfig = {
-      SizeMinBytes = "12G";
-      SizeMaxBytes = "12G";
+      # 12G no longer fits the desktop closures (LLVM/mesa). The login
+      # profile measures 16.2G minimum; keep headroom for shell growth.
+      # Measured 2026-11-13 (JUN-1180).
+      SizeMinBytes = "20G";
+      SizeMaxBytes = "20G";
     };
   };
   };
