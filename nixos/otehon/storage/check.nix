@@ -13,6 +13,8 @@ pkgs.runCommand "otehon-storage-hosted-check" {
   CROSSPACK_FIXTURES=${./test/fixtures/crosspack} bb --classpath ${classpath} ${./test/otehon/crosspack_proof.clj} run crosspack-proof > "$out/crosspack-proof.edn"
   CROSSPACK_FIXTURES=${./test/fixtures/crosspack} bb --classpath ${classpath} ${./test/otehon/atomic_pack_proof.clj} run atomic-pack-proof > "$out/atomic-pack-proof.edn"
   CROSSPACK_FIXTURES=${./test/fixtures/crosspack} bb --classpath ${classpath} ${./test/otehon/atomic_product_proof.clj} run atomic-product-proof > "$out/atomic-product-proof.edn"
+  CROSSPACK_FIXTURES=${./test/fixtures/crosspack} bb --classpath ${classpath} ${./test/otehon/logical_product_proof.clj} logical-product-proof > "$out/logical-product-proof.edn"
+  CROSSPACK_FIXTURES=${./test/fixtures/crosspack} bb --classpath ${classpath} ${./test/otehon/atomic_logical_proof.clj} run atomic-logical-proof > "$out/atomic-logical-proof.edn"
   bb --classpath ${classpath} ${./test/otehon/crash_runner.clj} run crash > "$out/crash-tests.edn"
   bb --classpath ${classpath} ${./test/otehon/pack_recovery_runner.clj} run pack-crash > "$out/pack-crash-tests.edn"
   OTEHON_TEST_ZSTD3=1 bb --classpath ${classpath} ${./test/otehon/pack_recovery_runner.clj} run zpack-crash > "$out/zpack-crash-tests.edn"
