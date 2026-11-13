@@ -124,3 +124,37 @@
         (is (bytes? (catalog/get-group-block h policy-root))))
       (catalog/publish-group! dir "graph" policy-root parts)
       (is (= 2 (count (get-in (catalog/recover-group dir "graph") [:group :archives])))))))
+
+(deftest conditional-group-publication-rejects-stale-generations
+  (let [dir (new-store) parts (split-inputs)
+        initial (:generation (:root (store/read-store dir)))]
+    (is (= :invalid-generation
+           (error-type #(catalog/publish-group! dir "graph" policy-root parts nil))))
+    (is (= :invalid-generation
+           (error-type #(catalog/publish-group! dir "graph" policy-root parts 0))))
+    (is (= initial (:generation (:root (store/read-store dir)))))
+    (catalog/publish-group! dir "graph" policy-root parts initial)
+    (let [after (store/read-store dir) writes (atom 0)]
+      (with-redefs [store/write-forest! (fn [& _] (swap! writes inc) (throw (ex-info "must not write" {})))]
+        (is (= :stale-generation
+               (error-type #(catalog/publish-group! dir "graph" policy-root parts initial)))))
+      (is (zero? @writes))
+      (is (= after (store/read-store dir)))
+      (is (= policy-root (get-in (catalog/recover-group dir "graph") [:group :basis-cid]))))))
+
+(deftest conditional-publication-serializes-racing-writers
+  (let [dir (new-store) parts (split-inputs)
+        expected (:generation (:root (store/read-store dir)))
+        gate (promise)
+        attempt (fn [] @gate
+                  (loop [tries 0]
+                    (let [result (try (catalog/publish-group! dir "graph" policy-root parts expected)
+                                      :published (catch Exception e (:type (ex-data e))))]
+                      (if (and (= :writer-busy result) (< tries 500))
+                        (do (Thread/sleep 5) (recur (inc tries)))
+                        result))))
+        writers [(future (attempt)) (future (attempt))]]
+    (deliver gate true)
+    (is (= #{:published :stale-generation} (set (mapv deref writers))))
+    (is (= (inc expected) (:generation (:root (store/read-store dir)))))
+    (is (= policy-root (get-in (catalog/recover-group dir "graph") [:group :basis-cid])))))

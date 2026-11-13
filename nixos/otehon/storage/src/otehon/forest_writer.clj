@@ -45,6 +45,7 @@
         (when-not (= size (.size channel)) (fail! :changed-payload "generated Forest file size changed"))
         (.array buffer)))))
 
+(def ^:private unconditional (Object.))
 (def ^:private max-ipld-block-bytes (* 850 1024))
 (def ^:private max-ipld-input-bytes (* 32 1024 1024))
 (def ^:private max-ipld-archive-bytes (* 900 1024))
@@ -76,8 +77,15 @@
 (defn put-ipld-blocks!
   "Build bounded Forest archives from canonical CID/byte pairs and atomically
   publish one generic group. The entire <=32 MiB input is owned in memory;
-  this is not a streaming or GiB writer. STAGING is new and retained."
-  [directory name basis blocks staging tool]
+  this is not a streaming or GiB writer. STAGING is new and retained. The
+  seven-argument form requires the observed store generation under the writer
+  lock; the six-argument form remains unconditional."
+  ([directory name basis blocks staging tool]
+   (put-ipld-blocks! directory name basis blocks staging tool unconditional))
+  ([directory name basis blocks staging tool expected-generation]
+  (when-not (or (identical? unconditional expected-generation)
+                (and (integer? expected-generation) (<= 1 expected-generation 9007199254740991)))
+    (fail! :invalid-generation "expected a positive bounded store generation"))
   (when-not (and (every? string? [directory name basis staging tool])
                  (vector? blocks) (<= 1 (count blocks) (* max-packs max-ipld-blocks-per-archive)))
     (fail! :invalid-argument "expected bounded blocks and string paths"))
@@ -129,8 +137,10 @@
                             (fail! :forest-content-mismatch "generated archive differs from input blocks"))
                           {:root-cid root :bytes bytes}))))
                   (range) batches)
-            group (ipld/publish-group! directory name basis archives)]
-        {:group group :archive-count (count archives) :block-count (count owned)}))))
+            group (if (identical? unconditional expected-generation)
+                    (ipld/publish-group! directory name basis archives)
+                    (ipld/publish-group! directory name basis archives expected-generation))]
+        {:group group :archive-count (count archives) :block-count (count owned)})))))
 
 (defn put-file!
   "Read a fixed-64KiB logical profile, generate bounded Forest Packs and publish

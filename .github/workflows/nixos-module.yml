@@ -48,6 +48,7 @@ jobs:
           ipld_writer=nixos/otehon/storage/test/otehon/ipld_forest_writer_proof.clj
           "$bb_path/bin/bb" --classpath "$classpath" "$ipld_writer" write "$RUNNER_TEMP/ipld-writer" "$tool"
           "$bb_path/bin/bb" --classpath "$classpath" "$ipld_writer" read "$RUNNER_TEMP/ipld-writer" "$tool"
+          "$bb_path/bin/bb" --classpath "$classpath" nixos/otehon/storage/test/otehon/ipld_forest_conditional_writer_proof.clj "$RUNNER_TEMP/ipld-conditional" "$tool"
           FOREST_TOOL="$tool" BABASHKA="$bb_path/bin/bb" "$bb_path/bin/bb" --classpath "$classpath" nixos/otehon/storage/test/otehon/ipld_forest_writer_crash_proof.clj run "$RUNNER_TEMP/ipld-writer-crash"
 
   evaluate:

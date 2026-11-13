@@ -406,21 +406,40 @@
     (with-writer (root-path directory)
       #(publish! p 1 {:seq 0 :state {}} (wal/empty-log)))))
 
+(defn- transact* [directory op payload before-publish expected-generation]
+  (when-not (frame-valid? {:op op :payload payload})
+    (fail! :invalid-operation "expected put/delete with string key/value"))
+  (let [root (root-path directory)]
+    (with-writer root
+      #(let [{:keys [snapshot log state] current :root} (writable-state root)]
+         ;; Comparison and publication share the same OS writer lock. Check
+         ;; before the hook so a stale caller cannot write immutable objects.
+         (when (and (some? expected-generation)
+                    (not= expected-generation (:generation current)))
+           (throw (ex-info "store generation changed"
+                           {:type :stale-generation :expected expected-generation
+                            :actual (:generation current)})))
+         (when (= 9007199254740991 (:seq log))
+           (fail! :sequence-exhausted "WAL sequence exhausted"))
+         (when before-publish (before-publish (str root) state))
+         (publish! root (inc (:generation current)) snapshot (wal/append log op payload))))))
+
 (defn transact!
   "Commit metadata. Optional before-publish runs under the writer lock with
   [directory committed-state], before WAL/root publication; an exception
   leaves metadata unchanged. It is a trusted hosted adapter hook, not consent."
   ([directory op payload] (transact! directory op payload nil))
   ([directory op payload before-publish]
-   (when-not (frame-valid? {:op op :payload payload})
-     (fail! :invalid-operation "expected put/delete with string key/value"))
-   (let [root (root-path directory)]
-     (with-writer root
-       #(let [{:keys [snapshot log state] current :root} (writable-state root)]
-          (when (= 9007199254740991 (:seq log))
-            (fail! :sequence-exhausted "WAL sequence exhausted"))
-          (when before-publish (before-publish (str root) state))
-          (publish! root (inc (:generation current)) snapshot (wal/append log op payload)))))))
+   (transact* directory op payload before-publish nil)))
+
+(defn transact-if-generation!
+  "Commit only if EXPECTED-GENERATION is still the committed store generation.
+  The check and callback run under the same local OS file lock. This is not a
+  distributed fencing or multi-node consensus guarantee."
+  [directory expected-generation op payload before-publish]
+  (when-not (and (sequence? expected-generation) (pos? expected-generation))
+    (fail! :invalid-generation "expected a positive bounded store generation"))
+  (transact* directory op payload before-publish expected-generation))
 
 (defn checkpoint!
   ([directory] (checkpoint! directory nil))

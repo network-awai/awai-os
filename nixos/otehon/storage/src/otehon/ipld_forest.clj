@@ -84,6 +84,7 @@
 
 (def ^:private group-prefix "awai.ipld-forest-group/")
 (def ^:private max-group-archives 64)
+(def ^:private unconditional (Object.))
 (defn- group-key [name]
   (key-for name)
   (str group-prefix name))
@@ -110,8 +111,15 @@
 (defn publish-group!
   "Publish an ordered, bounded set of generic Forest archives under one WAL
   transaction. Each entry is {:root-cid string :bytes byte-array}. All bytes,
-  roots and the declared basis are verified before any catalog publication."
-  [directory name basis archives]
+  roots and the declared basis are verified before any catalog publication.
+  The five-argument form conditionally publishes at the observed store
+  generation under the local writer lock; the four-argument form is unconditional."
+  ([directory name basis archives]
+   (publish-group! directory name basis archives unconditional))
+  ([directory name basis archives expected-generation]
+  (when-not (or (identical? unconditional expected-generation)
+                (and (integer? expected-generation) (<= 1 expected-generation 9007199254740991)))
+    (fail! :invalid-generation "expected a positive bounded store generation"))
   (group-key name)
   (when-not (and (vector? archives) (<= 1 (count archives) max-group-archives))
     (fail! :invalid-ipld-forest-group "expected 1..64 archives"))
@@ -127,12 +135,15 @@
                               :basis-cid basis :archives refs})]
     (when-not (group-has-cid? opened basis)
       (fail! :invalid-ipld-basis "basis block is absent from archive group"))
-    (store/transact! directory :put {:key (group-key name) :value (pr-str group)}
-                     (fn [dir _]
-                       (doseq [[entry ref] (map vector owned refs)]
-                         (when-not (= (:archive-sha ref) (store/write-forest! dir (:bytes entry)))
-                           (fail! :changed-payload "archive digest changed")))))
-    group))
+    (let [payload {:key (group-key name) :value (pr-str group)}
+          write-archives (fn [dir _]
+                           (doseq [[entry ref] (map vector owned refs)]
+                             (when-not (= (:archive-sha ref) (store/write-forest! dir (:bytes entry)))
+                               (fail! :changed-payload "archive digest changed"))))]
+      (if (identical? unconditional expected-generation)
+        (store/transact! directory :put payload write-archives)
+        (store/transact-if-generation! directory expected-generation :put payload write-archives)))
+    group)))
 
 (defn recover-group
   "Fully verify every referenced archive and basis in a committed group."
