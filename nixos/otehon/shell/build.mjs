@@ -22,10 +22,15 @@ const relayOrigin = process.env.RELAY_ORIGIN ?? "https://relay.awai.network";
 const cspMode = process.env.OTEHON_HTTP === "1" ? "http" : "file";
 
 const mvnRepo = process.env.MVN_REPO;
+// The Nix image build pins a read-only store path; Maven writes lock files
+// next to cached artifacts, so resolve a writable copy once. A writable
+// input (local ~/.m2 builds) is returned as-is.
+import { resolveWritableRepo } from "./mvn-repo.mjs";
+const activeMvnRepo = mvnRepo ? resolveWritableRepo(mvnRepo) : undefined;
 const clojure = (args) => execFileSync("clojure", [
   // The Nix image build pins an offline Maven repo (desktop.nix) because its
   // sandbox has no network. Local builds omit MVN_REPO and use ~/.m2.
-  ...(mvnRepo ? ["-Sdeps", `{:mvn/local-repo "${mvnRepo}"}`] : []),
+  ...(activeMvnRepo ? ["-Sdeps", `{:mvn/local-repo "${activeMvnRepo}"}`] : []),
   "-M", ...args,
 ], { stdio: "inherit" });
 
