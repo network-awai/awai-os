@@ -46,6 +46,7 @@ let
     nativeBuildInputs = [ pkgs.clojure ];
     env = {
       RELAY_ORIGIN = cfg.relayOrigin;
+      OTEHON_HTTP = "1";
       OTEHON_E2E = if cfg.e2e then "1" else "0";
       MVN_REPO = "${cljDeps}";
     };

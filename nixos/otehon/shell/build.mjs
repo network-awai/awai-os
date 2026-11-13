@@ -11,14 +11,13 @@ import { clientRuntimeConnectSrc } from "./vendor/kotoba-client-runtime.js";
 
 // The ClojureScript build reads the broker runtime from inside src/.
 await copyFile("vendor/kotoba-client-runtime.js", "src/vendor-runtime.gen.js");
-import { osOperations, phoneOperations, runtimeDescriptor } from "./src/runtime.js";
+const { osOperations, phoneOperations, runtimeDescriptor } = await import("./src/runtime.js");
 import { scriptSrc, styleSrc } from "./src/csp.js";
 import { buildDougaka } from "./dougaka-bundle.mjs";
 
 const relayOrigin = process.env.RELAY_ORIGIN ?? "https://relay.awai.network";
-// OTEHON_HTTP=1 builds the shell for the loopback preview server instead of
-// the file:// kiosk. The http output must never ship in the OS image: its
-// script/style sources allow 'self' so the page runs over http.
+// OTEHON_HTTP=1 builds for the stable loopback OS origin and HTTP preview.
+// File-mode remains only for legacy images; profile migration is a separate gate.
 const cspMode = process.env.OTEHON_HTTP === "1" ? "http" : "file";
 
 const mvnRepo = process.env.MVN_REPO;
