@@ -89,3 +89,46 @@ bb --classpath nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:nix
 
 This is an Otehon hosted CLI using prebuilt Forest archives; it does not generate
 Forest archives from user files or change any GiB, Native or cache-loss limits.
+
+## Raw file to Forest integration experiment
+
+On 2026-11-13 a local hosted reference driver generated a deterministic 2 MiB
+file, read it in 512 KiB batches, used the pinned Awai CAR codec to form four
+CARv1 files, converted them with the official Forest 0.39.0 tool, and passed
+those files and a canonical logical-file manifest to the product's file-backed
+atomic group importer. A separate Babashka process reopened the resulting
+store and read all 2 MiB through group range reads: bytes matched and the
+manifest CID was
+`bafyreidqkmghsd65dwq22umpkrqecyamfhevsbq7xemjfe7tb6wnhvxsny`.
+This uses a **reference driver**, not a product file-to-Forest writer. It is
+not a GiB, Native, OS-cache-loss, physical-power-loss, or performance test;
+the driver generates and compares a whole in-memory test corpus and reads the
+entire tool binary to hash it. The first draft unnecessarily boxed the tool
+bytes and reached about 3.5 GiB RSS before finishing; the recorded final driver
+hashes the existing byte array directly. No bounded total-RSS claim is made.
+
+The macOS arm64 release archive matched the earlier recorded SHA-256
+`a6bc8dac35e3e77b1768fa9b24b4955603f29b5383d705c04fb2bc926483ff69`;
+the extracted executable SHA-256 was
+`e5fb23076a46c055142b3dbf3efa1ad5a68532d14419ad9994785986719b205f`.
+The observed Linux amd64 archive and binary hashes were respectively
+`81224a9efed00353ec3c6cc5197f26abfdf48ed9458c1ce72b612e825d5bb64a` and
+`7af03845db7324da80c5bc2848fe6897303b39cbac8bb701675e57ad82033ba0`;
+the latter matches the checksum inside that same archive, not an independent
+verification. The Linux binary was not executed. Neither binary is included in
+the product or silently used as a Native fallback.
+
+```sh
+bb --classpath nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:nixos/otehon/storage/vendor/apex-car/src docs/evidence/awai-532-file-pack-20261113/raw-forest-proof.clj .agent-output/raw-forest-proof-final-20261113 "$FOREST_TOOL"
+```
+
+The output directory must not already exist; `FOREST_TOOL` must name the exact
+macOS executable above. Output included `:source-bytes 2097152`, `:packs 4`,
+`:chunks 32`, `:bytes-equal true`, `:pass true`. Independent-process restore
+reported `:separate-process true`, `:bytes 2097152`, `:equal true`.
+
+Separate-process readback:
+
+```sh
+bb --classpath nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:nixos/otehon/storage/vendor/apex-car/src docs/evidence/awai-532-file-pack-20261113/raw-forest-read.clj .agent-output/raw-forest-proof-final-20261113
+```
