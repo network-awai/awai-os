@@ -215,8 +215,10 @@
 
 (defn- stream-hash! [source output expected-size]
   (let [md (MessageDigest/getInstance "SHA-256") buffer (ByteBuffer/allocate 65536)]
-    (loop [total 0]
+    (loop [total 0 half-observed? false]
       (.clear buffer)
+      (when (and output (not half-observed?))
+        (.limit buffer (int (min 65536 (- (max 1 (quot expected-size 2)) total)))))
       (let [n (.read ^FileChannel source buffer)]
         (cond
           (neg? n)
@@ -232,7 +234,9 @@
             (.update md (.asReadOnlyBuffer buffer))
             (when output
               (while (.hasRemaining buffer) (.write ^FileChannel output buffer)))
-            (recur next)))))))
+            (let [half-now? (and output (not half-observed?) (>= next (max 1 (quot expected-size 2))))]
+              (when half-now? (observe! :half-written :forest))
+              (recur next (or half-observed? half-now?)))))))))
 
 (defn write-forest-file!
   "Copy a bounded Forest file under its expected SHA-256 using a fixed buffer.
@@ -254,7 +258,7 @@
       (if (exists? target)
         (with-open [existing (FileChannel/open target opts)]
           (when-not (= expected-sha (stream-hash! in nil expected-size))
-            (fail! :corrupt-forest "Forest source digest mismatch"))
+            (fail! :forest-source-changed "Forest source digest mismatch"))
           (when-not (and (= expected-size (.size existing))
                          (= expected-sha (stream-hash! existing nil expected-size)))
             (fail! :corrupt-forest "existing immutable Forest archive is corrupt"))
@@ -265,7 +269,7 @@
                              #{StandardOpenOption/CREATE_NEW StandardOpenOption/WRITE}
                              (attrs "rw-------"))]
             (when-not (= expected-sha (stream-hash! in out expected-size))
-              (fail! :corrupt-forest "Forest source digest mismatch"))
+              (fail! :forest-source-changed "Forest source digest mismatch"))
             (observe! :written :forest)
             (.force out true)
             (observe! :file-synced :forest))

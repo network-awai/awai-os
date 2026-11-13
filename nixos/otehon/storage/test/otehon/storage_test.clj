@@ -28,7 +28,7 @@
     (Files/write file data (make-array java.nio.file.OpenOption 0))
     (binding [store/*write-observer* #(swap! events conj [%1 %2])]
       (is (= digest (store/write-forest-file! d source (alength data) digest))))
-    (is (= [[:written :forest] [:file-synced :forest] [:renamed :forest] [:dir-synced :forest]] @events))
+    (is (= [[:half-written :forest] [:written :forest] [:file-synced :forest] [:renamed :forest] [:dir-synced :forest]] @events))
     (is (java.util.Arrays/equals data (Files/readAllBytes (Paths/get (str d "/" digest ".forest") (make-array String 0)))))
     (reset! events [])
     (binding [store/*write-observer* #(swap! events conj [%1 %2])]
@@ -36,13 +36,13 @@
     (is (= [[:reused-dir-synced :forest]] @events))
     (is (= :changed-payload (error-type #(store/write-forest-file! d source (dec (alength data)) digest))))
     (let [wrong (apply str (repeat 64 "0"))]
-      (is (= :corrupt-forest (error-type #(store/write-forest-file! d source (alength data) wrong))))
+      (is (= :forest-source-changed (error-type #(store/write-forest-file! d source (alength data) wrong))))
       (is (not (Files/exists (Paths/get (str d "/" wrong ".forest") (make-array String 0))
                              (make-array LinkOption 0)))))
     (is (= :invalid-forest-source (error-type #(store/write-forest-file! d source (inc (* 32 1024 1024)) digest))))
     (aset-byte data 0 (byte 3))
     (Files/write file data (make-array java.nio.file.OpenOption 0))
-    (is (= :corrupt-forest (error-type #(store/write-forest-file! d source (alength data) digest))))
+    (is (= :forest-source-changed (error-type #(store/write-forest-file! d source (alength data) digest))))
     (Files/write file (Files/readAllBytes (Paths/get (str d "/" digest ".forest") (make-array String 0)))
                  (make-array java.nio.file.OpenOption 0))
     (spit (str d "/" digest ".forest") "corrupt")

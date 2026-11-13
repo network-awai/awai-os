@@ -344,8 +344,9 @@
 
 (defn import-logical-forest-files!
   "Atomically publish canonical manifest and ordered Forest files. The files
-  are verified one at a time and re-read under the writer lock; changes between
-  passes abort publication. At most one input Pack is retained at a time."
+  are verified one at a time and streamed again under the writer lock; changes
+  between passes abort publication. The verification pass remains bounded to
+  the existing 1 MiB Forest profile."
   [directory name paths manifest manifest-cid]
   (group-key name)
   (when-not (and (vector? paths) (<= 1 (count paths) max-group-packs))
@@ -369,12 +370,13 @@
                  (fn [directory state]
                    (recover-map directory state)
                    (doseq [{:keys [path ref]} candidates]
-                     (let [bytes (read-bounded-forest-file path)]
-                       (when-not (and (= (:stored-size ref) (alength ^bytes bytes))
-                                      (= (:stored-sha ref) (segmented/sha bytes)))
-                         (fail! :forest-changed "Forest input changed during publication"))
-                       (when-not (= (:stored-sha ref) (store/write-forest! directory bytes))
-                         (fail! :forest-changed "Forest bytes changed during publication"))))))]
+                     (try
+                       (store/write-forest-file! directory path (:stored-size ref) (:stored-sha ref))
+                       (catch clojure.lang.ExceptionInfo e
+                         (if (contains? #{:forest-source-changed :changed-payload :short-read}
+                                        (:type (ex-data e)))
+                           (fail! :forest-changed "Forest input changed during publication")
+                           (throw e)))))))]
     (assoc result :group group)))
 
 (defn put-data! [directory name bytes]
