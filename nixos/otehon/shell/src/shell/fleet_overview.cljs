@@ -1,7 +1,7 @@
 (ns shell.fleet-overview
  (:require [clojure.string :as str] ["react" :refer [useState useEffect]]
            [shell.bot-chat :as bot-chat] [shell.agent-workspace :as workspace]
-           ["../agent-directory.js" :refer [decodeAgentPresence directoryState]]
+           ["../agent-directory.js" :refer [decodeAgentPresence directoryState decodePeerProgress]]
            [shell.fleet-circles :as circles] [shell.fleet-activity :as activity] [shell.ui-copy :as ui]
            ["../ui-copy.js" :refer [initialLocale saveLocale]]
            ["../fleet-projection.js" :refer [decodeFleetEnvelope]]))
@@ -11,7 +11,7 @@
  [:li [:strong (value-text locale value)] [:span (ui/t locale label)]])
 (defn panel [& [initial-view]]
  (let [[report set-report] (useState nil) [error set-error] (useState false) [locale set-locale] (useState initialLocale)
-       [query set-query] (useState "") [view set-view] (useState (or initial-view "circle")) [presence set-presence] (useState nil) [filter-state set-filter] (useState "all") [group set-group] (useState "all") [now set-now] (useState (js/Date.now))]
+       [query set-query] (useState "") [view set-view] (useState (or initial-view "circle")) [presence set-presence] (useState nil) [peer-progress set-peer-progress] (useState nil) [filter-state set-filter] (useState "all") [group set-group] (useState "all") [now set-now] (useState (js/Date.now))]
   (useEffect
    (fn []
     (let [controller (js/AbortController.) busy (atom false) live (atom true)
@@ -34,6 +34,11 @@
       (.then decodeAgentPresence) (.then #(when @live (set-presence (js->clj % :keywordize-keys true))))
       (.catch (fn [_] (when @live (set-presence nil)))))) timer (js/setInterval refresh 5000)]
     (refresh) (fn [] (reset! live false) (.abort controller) (js/clearInterval timer)))) #js [])
+  (useEffect (fn [] (let [live (atom true) controller (js/AbortController.)
+   refresh (fn [] (-> (js/fetch "./peer-cycles.json" #js {:cache "no-store" :credentials "omit" :redirect "error" :signal (.-signal controller)})
+    (.then #(if (.-ok %) (.json %) (throw (js/Error. "peer metadata unavailable")))) (.then decodePeerProgress)
+    (.then #(when @live (set-peer-progress (js->clj % :keywordize-keys true)))) (.catch (fn [_] nil)))) timer (js/setInterval refresh 5000)]
+   (refresh) (fn [] (reset! live false) (.abort controller) (js/clearInterval timer)))) #js [])
   (let [age (when report (- now (js/Date.parse (:observedAt report)))) stale? (or (nil? age) (< age 0) (> age 180000))
         all-bots (mapv (fn [bot] (let [d (directoryState (clj->js bot) (clj->js presence) (:catalogSha256 report) now stale?) observation (.-observation d)]
           (cond-> bot observation (assoc :agentPresence (js->clj observation :keywordize-keys true) :state "running" :cronState (:state bot))))) (:bots report))
@@ -60,6 +65,12 @@
       [:ul.soshiki-totals.fleet-primary-totals
        [metric locale :registered (:registered totals)] [metric locale :configured (:configured totals)]
        [metric locale :held (:held totals)] [metric locale :attention (when-not stale? (:attention totals))]]
+      (when (= (:catalogSha256 report) (:catalogSha256 peer-progress))
+       [:div.agent-peer-cycles (for [cycle (:cycles peer-progress)] ^{:key (:cycleKey cycle)}
+        [:article.agent-peer-cycle [:strong (ui/t locale :peerDialogue)] [:h3 (:goal cycle)]
+         [:span (ui/t locale :peerProgress {:done (:completedTurns cycle) :total (:maxTurns cycle)})]
+         [:span (ui/t locale (case (:state cycle) "completed" :dialogueCompleted "unknown" :unknown :processingAgents))]
+         [:a {:href (str "https://linear.app/kotobalabs/issue/" (:issueId cycle))} (:issueId cycle)]])])
       (when (= view "agents") [:f> workspace/panel all-bots presence (:catalogSha256 report) stale? now locale])
       (when (= view "circle")
        [:f> circles/panel all-bots stale? now query set-query

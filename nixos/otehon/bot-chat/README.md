@@ -49,3 +49,10 @@ Run `node --test nixos/otehon/bot-chat/test/*.test.mjs` for database, HTTP
 identity/origin/idempotency/restart and canonical Muse-result checks. HTTP tests
 use a synthetic executor and real Kotobase/AwaiFS; they do not prove a live
 Meta inference call. Never place conversation payloads in public fleet reports.
+
+Named sessions use the exact pinned canonical Itonami Otehon conversation/peer modules in `vendor/agent-session-source.json`. Both Itonami and Soshiki render the same conversation component. The peer worker is a separately approved, one-cycle host operation: its goal/grant/participants/source hashes and owning Issue are pinned; authenticated etcd admission is checked again before inference. Unknown outcomes recover only the original saved result or read the original Agent session; no model retry. The public presence/progress files contain metadata only and expire or retain dated completion facts; a shared service is never individual Bot residence. Ordinary browser DNS is owner-deferred; the bounded operator pilot explicitly resolves the known Tailnet address with full TLS verification. Original cron and held jobs are unchanged.
+
+The 1000ms spacing in the pilot occurrence ledger orders its four talk turns;
+it is not a Bot cron frequency or a Linear Cycle. Product Bot cycles remain the
+original source cron, whose expressions/timezones/next slots are retained as
+context. The one-off dialogue grant does not authorize recurring new cycles.

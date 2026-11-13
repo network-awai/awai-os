@@ -17,7 +17,7 @@
   (->> events
        (filter #(and (valid-session? (:sessionId %)) (string? (:updatedAt %))))
        (sort-by :updatedAt)
-       (reduce (fn [m e] (assoc m (:sessionId e) (select-keys e [:sessionId :title :createdAt :updatedAt :messageCount :state]))) {})
+       (reduce (fn [m e] (assoc m (:sessionId e) (select-keys e [:sessionId :title :createdAt :updatedAt :messageCount :state :kind :goal :cycleId :participants :maxTurns :completedTurns]))) {})
        vals (sort-by :updatedAt #(compare %2 %1)) vec))
 (defn request-plan [{:keys [action botId sessionId model text requestId title]}]
   (when-not (valid-bot? botId) (throw (ex-info "invalid Bot identity" {})))
@@ -38,7 +38,7 @@
   (try
     (let [[action & tail] (remove nil? args)
           _ (when (odd? (count tail)) (throw (ex-info "expected named argument/value pairs" {})))
-          flags (into {} (partition 2 tail))
+          flags (into {} (map vec (partition 2 tail)))
           _ (when (some #(not (contains? #{"--endpoint" "--bot" "--session" "--model" "--text-file" "--request" "--title"} %)) (keys flags))
               (throw (ex-info "unknown conversation argument" {})))
           endpoint (get flags "--endpoint")

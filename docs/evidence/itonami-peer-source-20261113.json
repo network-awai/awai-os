@@ -1,0 +1,64 @@
+{
+  "schema": "itonami.peer-source-check.v1",
+  "date": "2026-11-13",
+  "trackingIssue": "AWAI-2861",
+  "pilotIssue": "AWAI-2862",
+  "sessionIssue": "AWAI-2808",
+  "source": "f91b5a9",
+  "baselineOps": "7e6d8ff",
+  "scope": {
+    "participants": [
+      "profile:codinator",
+      "profile:cron-health"
+    ],
+    "goal": "Fleet信頼性：稼働状況を評価し、改善課題を提案する",
+    "maxTurns": 4,
+    "provider": "meta",
+    "model": "muse-spark-1.3",
+    "reasoningEffort": "low",
+    "tools": [],
+    "cronChanges": 0,
+    "cyclePolicy": "original Bot cron retained; one operator pilot; ledger spacing is not Bot cadence"
+  },
+  "checks": {
+    "shellTests": 88,
+    "agentTests": 10,
+    "sourceConversation": {
+      "tests": 4,
+      "assertions": 11
+    },
+    "sourcePeer": {
+      "tests": 4,
+      "assertions": 22
+    },
+    "sourceOccurrence": {
+      "tests": 5,
+      "assertions": 27
+    },
+    "advanced": [
+      "ja/en picker",
+      "ja/en conversation",
+      "Circle",
+      "QR"
+    ],
+    "builds": [
+      "shell",
+      "link",
+      "soshiki-runtime"
+    ],
+    "warnings": 0,
+    "worker": "compiled without invocation",
+    "inferenceExecutor": "synthetic fixtures; no live provider claim"
+  },
+  "admission": "worker and inference sink validate original authenticated3-node etcd occurrence, exact grant/model/input/binding; unknown is frozen",
+  "recovery": "original stored result, or read-only original session; no model redispatch",
+  "storage": "Agent-owned encrypted Kotobase/AwaiFS named session",
+  "publicMetadata": "process/progress only, no transcript/private identity/session ID",
+  "remaining": [
+    "checked service promotion",
+    "actual4-turn pilot and usage",
+    "browser runtime verification",
+    "owner-deferred ordinary DNS repair",
+    "main/release and off-host private recovery"
+  ]
+}

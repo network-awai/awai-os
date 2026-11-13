@@ -5,8 +5,9 @@ import {pathToFileURL} from 'node:url';
 import {database,verifySources} from './database.mjs';
 import {infer} from './inference.mjs';
 import {presenceReporter} from './presence.mjs';
+import {peerGrant,peerMetadata,authorizePeer,checkPeerAdmission} from './peer.mjs';
 import {scopes,sessionRows,recordSession,validSession} from './sessions.mjs';
-export function handler(cfg,{db=database,execute=infer,loadBots,onProcess=()=>{}}={}){
+export function handler(cfg,{db=database,execute=infer,loadBots,onProcess=()=>{},checkAdmission=checkPeerAdmission}={}){
  const active=new Set();
  return async(req,res)=>{
   const origin=req.headers.origin,allowedOrigin=cfg.origins.includes(origin);
@@ -21,11 +22,11 @@ export function handler(cfg,{db=database,execute=infer,loadBots,onProcess=()=>{}
   if(!request||typeof request!=='object'||Array.isArray(request))return reply(400,{error:'invalid-request'});
   if(!/^profile:[\w.-]+$/.test(request.botId??''))return reply(400,{error:'invalid-bot'});
   const sessionId=request.sessionId??'default';if(!validSession(sessionId))return reply(400,{error:'invalid-session'});
-  let bot;try{bot=(await loadBots()).find(b=>b.id===request.botId);}catch{return reply(503,{error:'catalog-unavailable'});}
+  let bot,bots;try{bots=await loadBots();bot=bots.find(b=>b.id===request.botId);}catch{return reply(503,{error:'catalog-unavailable'});}
   if(!bot)return reply(404,{error:'bot-not-registered'});
   try{
    const {thread,index}=await scopes(cfg,owner,bot.id,sessionId),rows=await sessionRows(cfg,index,db);
-   let session=rows.sessions.find(s=>s.sessionId===sessionId);
+   let session=rows.sessions.find(s=>s.sessionId===sessionId);const grant=peerGrant(cfg,sessionId);
    if(req.url.endsWith('/sessions')){
     if(request.action==='list'){
      const legacy=await db(cfg,(await scopes(cfg,owner,bot.id)).thread,'history');
@@ -37,7 +38,7 @@ export function handler(cfg,{db=database,execute=infer,loadBots,onProcess=()=>{}
     if(session)return reply(200,{botId:bot.id,session,store:rows.store});
     if(active.has(index))return reply(409,{error:'agent-conversation-busy-no-automatic-retry'});
     active.add(index);try{
-     const at=new Date().toISOString();session={sessionId,title:request.title.trim(),createdAt:at,updatedAt:at,messageCount:0,state:'empty'};
+     const at=new Date().toISOString();session={sessionId,title:request.title.trim(),createdAt:at,updatedAt:at,messageCount:0,state:'empty',...(grant?peerMetadata(grant):{})};
      const v=await recordSession(cfg,index,sessionId,sessionId,session,db);return reply(201,{botId:bot.id,session,store:v.store});
     }finally{active.delete(index);}
    }
@@ -45,28 +46,30 @@ export function handler(cfg,{db=database,execute=infer,loadBots,onProcess=()=>{}
    if(req.url.endsWith('/history')){
     const v=await db(cfg,thread,'history'),end=request.before?v.messages.findIndex(m=>m.id===request.before):v.messages.length;
     if(end<0)return reply(400,{error:'unknown-history-cursor'});const begin=Math.max(0,end-100),messages=v.messages.slice(begin,end);
-    return reply(200,{botId:bot.id,sessionId,messages,nextCursor:begin>0?messages[0].id:null,store:v.store});
+    return reply(200,{botId:bot.id,sessionId,session,messages,nextCursor:begin>0?messages[0].id:null,store:v.store});
    }
    if(request.schema!=='awai.bot-chat-request.v1'||request.model!==cfg.model||!/^[a-f0-9-]{36}$/.test(request.requestId??'')||typeof request.text!=='string'||!request.text.trim()||request.text.length>8192||request.history!==undefined)return reply(400,{error:'invalid-turn'});
    if(!bot.chatPersona?.available)return reply(409,{error:'verified-bot-profile-unavailable'});
    if(active.has(index))return reply(409,{error:'agent-conversation-busy-no-automatic-retry'});active.add(index);
    try{
     const history=await db(cfg,thread,'history'),prior=history.messages.find(m=>m.id===request.requestId),answer=history.messages.find(m=>m.parentId===request.requestId&&m.role==='assistant');
-    const meta=(messages,state)=>({title:session?.title??bot.name,createdAt:session?.createdAt??messages[0]?.at,updatedAt:messages.at(-1).at,messageCount:messages.length,state});
+    const meta=(messages,state)=>({title:session?.title??bot.name,createdAt:session?.createdAt??messages[0]?.at,updatedAt:messages.at(-1).at,messageCount:messages.length,state,...(grant?peerMetadata(grant,messages.filter(m=>m.role==='assistant').length):{})});
     if(prior){
-     if(prior.text!==request.text)return reply(409,{error:'request-id-conflict'});
+     if(prior.text!==request.text||(prior.peer&&(!request.peer||prior.peer.cycleId!==request.peer.cycleId||prior.peer.turn!==request.peer.turn)))return reply(409,{error:'request-id-conflict'});
      if(!answer)return reply(409,{error:'previous-outcome-unknown-no-redispatch'});
      if(history.messages.at(-1)?.id===answer.id&&session?.updatedAt!==answer.at)await recordSession(cfg,index,sessionId,sessionId+':'+request.requestId+':done',meta(history.messages,'completed'),db);
-     return reply(200,{requestId:request.requestId,botId:bot.id,sessionId,state:'completed',text:answer.text,provider:answer.provider,model:answer.model,runId:answer.runId,store:history.store});
+     return reply(200,{requestId:request.requestId,botId:bot.id,sessionId,state:'completed',text:answer.text,provider:answer.provider,model:answer.model,runId:answer.runId,usage:answer.usage,usageCoverage:answer.usageCoverage,speakerBotId:answer.speakerBotId,speakerName:answer.speakerName,peer:answer.peer,store:history.store});
     }
-    const message={id:request.requestId,role:'user',text:request.text,at:new Date().toISOString()};
+    const peer=(request.peer||grant)?await authorizePeer(cfg,{...request,sessionId},history.messages,bots,origin):null;
+    if(peer&&!await checkAdmission(cfg,request,peer))return reply(409,{error:'peer-admission-unconfirmed-no-inference'});
+    const message={id:request.requestId,role:'user',text:request.text,at:new Date().toISOString(),...(peer?{peer:peer.envelope,speakerName:peer.envelope.from==='owner-goal'?'Goal':peer.envelope.from}: {})};
     const accepted=await db(cfg,thread,'append',[message]);
     await recordSession(cfg,index,sessionId,sessionId+':'+request.requestId+':accepted',meta(accepted.messages,'unknown'),db);
-    const result=await execute(cfg,bot,{...request,sessionId},history.messages,{onProcess});
+    const result=await execute(cfg,peer?.bot??bot,{...request,sessionId,attributionIssue:peer?.grant['issue-id']??null,peer:peer?.envelope},history.messages,{onProcess});
     if(result.provider!=='meta'||result.model!==cfg.model||typeof result.text!=='string'||!result.text.trim()||result.text.length>32768)throw Error('invalid-inference-result');
-    const stored=await db(cfg,thread,'append',[{id:request.requestId+':reply',parentId:request.requestId,role:'assistant',text:result.text,at:new Date().toISOString(),provider:result.provider,model:result.model,runId:result.runId}]);
+    const stored=await db(cfg,thread,'append',[{id:request.requestId+':reply',parentId:request.requestId,role:'assistant',text:result.text,at:new Date().toISOString(),provider:result.provider,model:result.model,runId:result.runId,usage:result.usage,usageCoverage:result.usageCoverage,...(peer?{peer:peer.envelope,speakerBotId:peer.bot.id,speakerName:peer.bot.name}: {})}]);
     await recordSession(cfg,index,sessionId,sessionId+':'+request.requestId+':done',meta(stored.messages,'completed'),db);
-    return reply(200,{requestId:request.requestId,botId:bot.id,sessionId,state:'completed',...result,store:stored.store});
+    return reply(200,{requestId:request.requestId,botId:bot.id,sessionId,state:'completed',...result,...(peer?{peer:peer.envelope,speakerBotId:peer.bot.id,speakerName:peer.bot.name}:{}),store:stored.store});
    }finally{active.delete(index);}
   }catch{return reply(503,{error:'agent-result-or-storage-unconfirmed-no-automatic-retry'});}
  };
