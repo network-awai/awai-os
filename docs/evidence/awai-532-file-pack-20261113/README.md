@@ -212,6 +212,25 @@ with Babashka 1.12.218 and the separately pinned macOS tool: the 2 MiB,
 three-Pack roundtrip and all listed refusal checks passed. The Linux job's
 exact-head result is required separately; it is not a GiB or cache-loss test.
 
+At commit `a14b9024f555b4f05dba143fdf79e477da3af6cb`, GitHub Actions
+`forest-writer-linux` passed using the Linux release executable and this proof
+([run](https://github.com/network-awai/awai-os/actions/runs/43456092673)).
+The other jobs and any subsequent revision require their own results.
+
+### 2026-11-14: logical group guest-reboot probe
+
+The existing NixOS VM reboot probe now publishes the four fixture files via
+`import-logical-forest-files!` with the pinned canonical logical manifest CID,
+and validates every byte of the deterministic 2 MiB input in bounded range
+reads, as well as the cross-Pack range and empty process-local index cache.
+The create/read commands passed locally in separate macOS Babashka processes;
+that local result does not include a reboot. The existing NixOS VM test runs
+the same read before and after shutdown/start with a changed guest boot ID;
+the updated guest run must pass separately before claiming guest cache loss.
+Even then the host and virtual disk caches, physical power loss, real tool
+generation inside the guest, Native execution and GiB input remain outside
+the evidence.
+
 ### 2026-11-14: retained CAR backing vector
 
 A recovered Pack's 36-byte index CID was observed as
