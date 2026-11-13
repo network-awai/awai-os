@@ -38,6 +38,19 @@
 (defn- slice [^bytes b start end]
   (Arrays/copyOfRange b (int start) (int end)))
 (defn- decode [b] (vbytes (segmented/decode-bounded-zstd b max-size)))
+(defn- candidates [slots buckets distance h]
+  (when (pos? buckets)
+    (let [unsigned (bigint (Long/toUnsignedString h))
+          initial (long (quot (* unsigned buckets) 18446744073709551616N))]
+      (loop [i initial left distance found []]
+        (when (>= i (count slots)) (fail! :invalid-forest-index "unterminated probe"))
+        (if-let [[slot-h p] (nth slots i)]
+          (cond
+            (= h slot-h) (recur (inc i) left (conj found p))
+            (seq found) found
+            (zero? left) []
+            :else (recur (inc i) (dec left) found))
+          found)))))
 (defn open
   "Fully validate a bounded Forest v1 index and all SHA-256 blocks. Owns a copy.
   This experimental adapter accepts a single index skippable frame, <=1 MiB
@@ -84,18 +97,21 @@
                 indexed (set entries)]
             (when-not (= pairs indexed)
               (fail! :invalid-forest-index "index and verified frame blocks differ"))
+            (doseq [[h group] (group-by first entries)]
+              (when-not (= (set (map second group)) (set (candidates slots buckets distance h)))
+                (fail! :invalid-forest-index "Forest index probe cannot find its blocks")))
             ;; Validate CAR header and all block framing with the owning codec.
             (let [all (into header (mapcat raw-frames offsets))]
               (when (> (count all) max-size) (fail! :too-large "decoded CAR exceeds 1 MiB"))
               (car/carv1-decode all)
-              {:bytes b :carv1 all :index entries :ends ends :index-pos index-pos})))))))
+              {:bytes b :carv1 all :slots slots :buckets buckets :distance distance :ends ends :index-pos index-pos})))))))
 (defn get-block
   "Find CID using the embedded index; verify the selected complete frame again.
   nil means absent from the fully verified snapshot."
   [handle cid]
   (let [needle (vec cid) h (hash-cid needle)
-        candidates (distinct (map second (filter #(= h (first %)) (:index handle))))]
+        positions (distinct (candidates (:slots handle) (:buckets handle) (:distance handle) h))]
     (some (fn [p]
             (some (fn [block] (when (= needle (:cid block)) (bytes-of (:bytes block))))
                   (sections (decode (slice (:bytes handle) p (get (:ends handle) p))))))
-          candidates)))
+          positions)))

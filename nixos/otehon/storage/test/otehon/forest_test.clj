@@ -25,10 +25,13 @@
     (is (= 4 (count blocks)))
     (doseq [{:keys [cid bytes]} blocks]
       (is (= bytes (vec (map #(bit-and 255 %) (forest/get-block h cid))))))
-    (let [[hash-a pos-a] (first (:index h))
-          pos-b (second (second (:index h)))
-          collision (assoc h :index (into [[hash-a pos-b]] (:index h)))
-          matching (some #(when (forest/get-block (assoc h :index [[hash-a pos-a]]) (:cid %)) %) blocks)]
+    (let [entries (vec (remove nil? (:slots h)))
+          matching (first blocks)
+          hash-a (#'forest/hash-cid (:cid matching))
+          pos-a (second (first (filter #(= hash-a (first %)) entries)))
+          pos-b (second (first (remove #(= pos-a (second %)) entries)))
+          i (.indexOf ^java.util.List (:slots h) [hash-a pos-a])
+          collision (-> h (assoc-in [:slots i] [hash-a pos-b]) (assoc-in [:slots (inc i)] [hash-a pos-a]))]
       (is (some? matching))
       (is (= (:bytes matching) (vec (map #(bit-and 255 %) (forest/get-block collision (:cid matching)))))))
     (is (nil? (forest/get-block h missing)))
@@ -45,8 +48,9 @@
         bad-footer (doto (aclone bytes) (aset-byte (dec (alength bytes)) (byte 127)))
         bad-frame (doto (aclone bytes) (aset-byte 100 (unchecked-byte (bit-xor 1 (aget bytes 100)))))
         bad-version (doto (aclone bytes) (aset-byte (+ (:index-pos h) 8) (byte 0)))
-        bad-index (doto (aclone bytes) (aset-byte (+ (:index-pos h) 40) (byte 0)))]
-    (doseq [bad [bad-footer bad-frame bad-version bad-index (Arrays/copyOf bytes 30)]]
+        bad-index (doto (aclone bytes) (aset-byte (+ (:index-pos h) 40) (byte 0)))
+        bad-probe (doto (aclone bytes) (aset-byte (+ (:index-pos h) 32) (byte 1)))]
+    (doseq [bad [bad-footer bad-frame bad-version bad-index bad-probe (Arrays/copyOf bytes 30)]]
       (is (thrown? Exception (pack/import-forest! dir "bad" bad)))
       (is (= before (storage/read-store dir))))))
 
