@@ -14,11 +14,16 @@
   (when-not (and (string? name) (<= 1 (count name) 1024))
     (fail! :invalid-name "archive name must be a nonempty bounded string"))
   (str prefix name))
-(defn- cid-bytes [s]
+(defn cid-bytes
+  "Parse a complete canonical CIDv1 accepted by the hosted Forest profile."
+  [s]
   (when-not (string? s) (fail! :invalid-cid "expected CID string"))
   (car/parse-cid-str s)
-  (let [v (car/base32-decode (subs s 1))]
-    (when-not (= s (car/cid-str v)) (fail! :invalid-cid "noncanonical CID"))
+  (let [v (car/base32-decode (subs s 1))
+        {:keys [codec digest next-offset]} (car/parse-cid v)]
+    (when-not (and (= s (car/cid-str v)) (= next-offset (count v))
+                   (= v (car/cid-bytes codec digest)))
+      (fail! :invalid-cid "noncanonical or trailing CID bytes"))
     v))
 (defn- parse-ref [text]
   (with-open [r (java.io.PushbackReader. (java.io.StringReader. text))]

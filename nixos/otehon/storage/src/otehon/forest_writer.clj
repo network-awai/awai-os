@@ -51,7 +51,9 @@
 (def ^:private max-ipld-archive-bytes (* 900 1024))
 (def ^:private max-ipld-blocks-per-archive 64)
 
-(defn- validated-ipld-block [{:keys [cid bytes] :as block}]
+(defn validate-ipld-block
+  "Validate and copy one bounded canonical CID/byte pair."
+  [{:keys [cid bytes] :as block}]
   (when-not (and (map? block) (= #{:cid :bytes} (set (keys block)))
                  (string? cid) (bytes? bytes) (<= 0 (alength ^bytes bytes) max-ipld-block-bytes))
     (fail! :invalid-ipld-block "invalid CID or bounded block bytes"))
@@ -96,7 +98,7 @@
     (fail! :invalid-ipld-block "expected block byte arrays"))
   (when (> (reduce + 0 (map #(alength ^bytes (:bytes %)) blocks)) max-ipld-input-bytes)
     (fail! :too-large "IPLD input exceeds 32 MiB"))
-  (let [owned (mapv validated-ipld-block blocks)
+  (let [owned (mapv validate-ipld-block blocks)
         cids (mapv :cid owned)
         batches (ipld-batches owned)]
     (when-not (= (count cids) (count (set cids))) (fail! :duplicate-cid "duplicate block CID"))
