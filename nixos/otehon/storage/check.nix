@@ -11,6 +11,7 @@ pkgs.runCommand "otehon-storage-hosted-check" {
   FOREST_FIXTURE=${./test/fixtures/forest/sha256-pack.forest.car.zst} bb --classpath ${classpath} -e "(require '[clojure.test :as t] 'otehon.forest-test)(binding [otehon.forest-test/*output* \"forest-unit\"] (let [r (t/run-tests 'otehon.forest-test)] (System/exit (+ (:fail r) (:error r)))))" > "$out/forest-tests.txt"
   FOREST_FIXTURE=${./test/fixtures/forest/sha256-pack.forest.car.zst} bb --classpath ${classpath} ${./test/otehon/forest_crash_runner.clj} run forest-crash > "$out/forest-crash-tests.edn"
   CROSSPACK_FIXTURES=${./test/fixtures/crosspack} bb --classpath ${classpath} ${./test/otehon/crosspack_proof.clj} run crosspack-proof > "$out/crosspack-proof.edn"
+  CROSSPACK_FIXTURES=${./test/fixtures/crosspack} bb --classpath ${classpath} ${./test/otehon/atomic_pack_proof.clj} run atomic-pack-proof > "$out/atomic-pack-proof.edn"
   bb --classpath ${classpath} ${./test/otehon/crash_runner.clj} run crash > "$out/crash-tests.edn"
   bb --classpath ${classpath} ${./test/otehon/pack_recovery_runner.clj} run pack-crash > "$out/pack-crash-tests.edn"
   OTEHON_TEST_ZSTD3=1 bb --classpath ${classpath} ${./test/otehon/pack_recovery_runner.clj} run zpack-crash > "$out/zpack-crash-tests.edn"
