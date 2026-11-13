@@ -11,6 +11,7 @@
 (def text
   {"en" {:hello "Hello"
          :getStarted "Get Started"
+         :botStatus "View Bot status"
          :next "Continue"
          :back "Back"
          :languageTitle "Choose your language"
@@ -45,6 +46,7 @@
          :enter "Open Itonami"}
    "ja" {:hello "こんにちは"
          :getStarted "はじめる"
+         :botStatus "Botの稼働状況を見る"
          :next "続ける"
          :back "戻る"
          :languageTitle "言語を選択"
@@ -270,7 +272,8 @@
       (when (= step "hello")
         [:<>
          [:h1.hello (:hello t)]
-         [:button.primary {:type "button" :data-next true :on-click next-step} (:getStarted t)]])
+         [:button.primary {:type "button" :data-next true :on-click next-step} (:getStarted t)]
+         [:p.muted [:a {:href "./soshiki-runtime/" :data-bot-status-link true} (:botStatus t)]]])
       (when (= step "language")
         [:<>
          [:h1 (:languageTitle t)]
