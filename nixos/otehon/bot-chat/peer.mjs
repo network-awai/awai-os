@@ -1,6 +1,7 @@
 import {bbJSON} from './database.mjs';
 export const peerGrant=(cfg,sessionId)=>(cfg.peerCycles??[]).find(g=>g['session-id']===sessionId);
-export function peerMetadata(grant,turns=0){return {kind:'peer',goal:grant.goal,cycleId:grant['cycle-id'],participants:grant.participants.map(x=>x['bot-id']),maxTurns:grant['max-turns'],completedTurns:turns};}
+export const historyGrant=(cfg,sessionId)=>peerGrant(cfg,sessionId)??(cfg.circleHistory??[]).find(g=>g['session-id']===sessionId);
+export function peerMetadata(grant,turns=0){return {kind:grant.kind==='circle-work'?'circle-work':'peer',goal:grant.goal,cycleId:grant['cycle-id'],participants:grant.participants.map(x=>x['bot-id']),maxTurns:grant['max-turns'],completedTurns:turns};}
 export async function authorizePeer(cfg,request,messages,bots,origin){
  const g=peerGrant(cfg,request.sessionId);
  if(!g||origin!==undefined||!cfg.allowCLI||request.peer?.cycleId!==g['cycle-id']||request.botId!==g.participants[0]['bot-id'])throw Error('peer-grant-required');

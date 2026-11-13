@@ -48,7 +48,7 @@
      [:select {:aria-label (tr :conversationSessions) :value session-id :disabled busy :on-change #(history (.. % -target -value) nil)}
       (when-not (some #(= session-id (:sessionId %)) sessions) [:option {:value session-id} (tr :defaultConversation)])
       (for [s sessions] ^{:key (:sessionId s)} [:option {:value (:sessionId s)} (str (if (empty? (:title s)) (tr :newConversation) (:title s)) " · " (ui/stamp locale (:updatedAt s)))])]])
-   (when (= "peer" (:kind session-info)) [:article.agent-peer-cycle [:strong (tr :peerDialogue)] [:h4 (:goal session-info)] [:span (tr :peerProgress {:done (:completedTurns session-info) :total (:maxTurns session-info)})]])
+   (when (contains? #{"peer" "circle-work"} (:kind session-info)) [:article.agent-peer-cycle [:strong (tr :peerDialogue)] [:h4 (:goal session-info)] [:span (tr :peerProgress {:done (:completedTurns session-info) :total (:maxTurns session-info)})]])
    (when cursor [:button.secondary {:type "button" :disabled busy :on-click #(history session-id cursor)} (tr :chatEarlier)])
    (when store [:span.bot-chat-saved {:title "Itonami Agent · AwaiFS · Kotobase"} (tr :chatSaved)])
    [:details [:summary (tr :chatDetails)] [:p (tr :chatModelInfo {:model CHAT_MODEL})] [:p CHAT_ORIGIN]
@@ -56,8 +56,8 @@
    [:ol.bot-conversation-history {:aria-label (tr :chatLoadHistory)}
     (for [m messages] ^{:key (:id m)} [:li {:data-chat-role (:role m)}
       [:strong (or (:speakerName m) (if (= "user" (:role m)) (tr :chatYou) (:name bot)))]
-      (if (and (= "user" (:role m)) (:peer m)) [:details [:summary (tr :peerReceived)] [:p (:text m)]] [:p (:text m)])])]
+      (if (and (= "user" (:role m)) (or (:peer m) (:work m))) [:details [:summary (tr :peerReceived)] [:p (:text m)]] [:p (:text m)])])]
    (when message [:p.problem {:role "status"} (tr message)])
-   (when-not (= "peer" (:kind session-info)) [:form {:on-submit send}
+   (when-not (contains? #{"peer" "circle-work"} (:kind session-info)) [:form {:on-submit send}
     [:label.soshiki-field [:span (tr :chatMessage)] [:textarea {:aria-label (tr :chatMessage) :value text :max-length 8192 :rows 3 :disabled busy :on-change #(set-text (.. % -target -value))}]]
     [:button.secondary {:type "submit" :disabled (or busy (empty? (.trim text)))} (if busy (tr :chatBusy) (tr :chatSend))]])]))

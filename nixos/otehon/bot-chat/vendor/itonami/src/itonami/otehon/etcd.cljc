@@ -9,7 +9,7 @@
   (when-not (and (string? k) (re-matches #"/itonami/occurrence/v1/(enrollment|cursor|run)/[a-f0-9]{64}" k))
     (throw (ex-info "out-of-scope key" {}))))
 (defn transaction-input [{:keys [compare put]}]
-  (when-not (and (map? compare) (map? put) (<= 1 (count compare) 3) (<= 1 (count put) 2))
+  (when-not (and (map? compare) (map? put) (<= 1 (count compare) 4) (<= 1 (count put) 3))
     (throw (ex-info "bounded CAS required" {})))
   (doseq [k (concat (keys compare) (keys put))] (scope! k))
   (doseq [v (concat (remove nil? (vals compare)) (vals put))]

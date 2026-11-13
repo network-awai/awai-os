@@ -1,6 +1,6 @@
 {
   "repository": "cloud-itonami/app-itonami-itonami-agent",
-  "revision": "6091410b81543e7c0f2d7069d982a341c68c721f",
+  "revision": "daf02bac0eebede3741fbf30d8eef4135e54f4f7",
   "files": [
     {
       "path": "otehon/src/itonami/otehon/conversation.cljc",
@@ -20,7 +20,7 @@
     {
       "path": "otehon/src/itonami/otehon/etcd.cljc",
       "target": "itonami/src/itonami/otehon/etcd.cljc",
-      "sha256": "14cd161bc94d39e9723b5f9b56da57088466d862250cc95d6c7674916d0061ec"
+      "sha256": "db3bde63f51cfac7632394d84f576cc3e1c29b23e0cab80516af92c73a2516e4"
     }
   ],
   "scope": "Exact canonical Otehon session/peer/occurrence/TLS transport modules; pinned io/bundle dependencies; not Native qualification"

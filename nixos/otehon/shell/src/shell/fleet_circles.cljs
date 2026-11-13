@@ -5,14 +5,14 @@
             [shell.ui-copy :as ui]
             ["../fleet-activity.js" :refer [activitySelection]]
             [shell.fleet-goals :as goals]
-            [shell.fleet-cooperation :as cooperation]
+            [shell.fleet-cooperation :as cooperation] [shell.circle-work :as work]
             ["../fleet-cooperation.js" :refer [missionGoals circleCooperations]]
             [shell.fleet-org-editor :as org-editor]
             ["../fleet-organizations.js" :refer [blankOrganizations loadOrganizations changeOrganization saveOrganizations]]
             ["../fleet-circles.js" :refer [circlePack]]))
 (def states [[:running :stateRunning "#2084d4"] [:recovering :stateRecovering "#8d63c7"] [:waiting :stateWaiting "#267c62"] [:queued :stateQueued "#377bc0"]
              [:held :stateHeld "#ae7323"] [:attention :stateAttention "#c44343"] [:unknown :stateUnknown "#7b8190"]])
-(defn panel [bots stale? now query on-query on-details & [locale chat-component peer-progress]]
+(defn panel [bots stale? now query on-query on-details & [locale chat-component peer-progress work-progress]]
   (let [[focus-id set-focus] (useState "fleet") [mission-id set-mission] (useState nil) map-ref (useRef nil) [grouping set-grouping] (useState "responsibility") [goals? set-goals] (useState false) [selected-id set-selected] (useState nil)
         [org-data set-org-data] (useState (fn [] (if (and (exists? js/window) (exists? js/localStorage)) (loadOrganizations (clj->js (vec bots)) js/localStorage) #js {:state (blankOrganizations) :error nil})))
         [message set-message] (useState nil) [reduced set-reduced] (useState true)
@@ -136,6 +136,7 @@
              ^{:key (:id node)} [:f> goals/panel node #(choose node) locale] )])])
       ]
       [:div.fleet-inspector-stack
+       [work/panel work-progress (or selected-id focus-id) locale now]
        [cooperation/mission-detail mission open-circle locale]
        (when responsibility? [cooperation/panel (if mission (filter #(= (:missionKey %) (:key mission)) cycles) cycles) open-circle open-circle locale])
        ^{:key (or selected-id "unselected")}
