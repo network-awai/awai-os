@@ -25,6 +25,10 @@ digests and raw size are pinned into the installer. No download server is
 required. At the PC, enter the exact target disk serial and `ERASE` only if its
 listed contents may be destroyed. USB media creation never authorizes choosing
 or erasing an internal PC disk.
+The local payload must be a regular file on the mounted read-only ISO. It is
+hashed in place and streamed to the explicitly selected disk, avoiding a full
+compressed-image copy in RAM. A writable or different local source is refused;
+the existing network installer retains its private downloaded staging path.
 
 The installed root is now 24 GiB, replacing the previous 16 GiB layout which
 no longer fit the current desktop closure. The state partition grows on first

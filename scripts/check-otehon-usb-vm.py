@@ -45,7 +45,8 @@ def main():
     shutil.copyfile(a.ovmf_vars, vars_file)
     vars_file.chmod(0o600)
     disks = [("target", "OTEHON-USB-TARGET", "64G"), ("decoy", "OTEHON-USB-DECOY", "64G"), ("small", "OTEHON-USB-SMALL", "2G")]
-    command = ["qemu-system-x86_64", "-enable-kvm", "-m", "4096", "-smp", "2", "-display", "none", "-nic", "none",
+    command = ["qemu-system-x86_64", "-enable-kvm", "-machine", "q35", "-cpu", "host", "-vga", "virtio",
+               "-m", "4096", "-smp", "2", "-display", "none", "-nic", "none",
                "-drive", f"if=pflash,format=raw,readonly=on,file={a.ovmf_code}",
                "-drive", f"if=pflash,format=raw,file={vars_file}",
                "-device", "qemu-xhci", "-drive", f"if=none,id=media,format=raw,readonly=on,file={iso}",
@@ -81,13 +82,16 @@ def main():
             port.connect(str(serial_path))
             port.settimeout(1)
 
-            def expect(text, timeout=180):
+            def expect(text, timeout=180, fatal=()):
                 nonlocal unread
                 end = time.monotonic() + timeout
                 while time.monotonic() < end:
                     if text in unread:
                         unread = unread.split(text, 1)[1]
                         return
+                    for failure in fatal:
+                        if failure in unread:
+                            raise RuntimeError("installer refused or failed: " + failure)
                     if process.poll() is not None:
                         raise RuntimeError("QEMU exited")
                     try:
@@ -135,7 +139,7 @@ def main():
             send("OTEHON-USB-TARGET")
             expect("Type ERASE")
             send("ERASE")
-            expect("INSTALLED on", 1800)
+            expect("INSTALLED on", 1800, fatal=("Nothing was written", "WRITE FAILED", "CHECK FAILED"))
             if written("target") == 0 or written("decoy") or written("small"):
                 raise AssertionError("incorrect scratch write scope")
             proof["checks"].append("explicit target install verifies full raw digest; decoy and small untouched")

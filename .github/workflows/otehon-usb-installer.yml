@@ -43,6 +43,18 @@ jobs:
         id: vm
         shell: bash
         run: nix-build nixos/tests/otehon-usb.nix --out-link result-otehon-usb-check --keep-failed --show-trace 2>&1 | tee .agent-output/usb-vm.log
+      - name: Collect bounded failed VM evidence from Nix build directory
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p .agent-output/usb-vm-failure
+          while IFS= read -r proof; do
+            for file in result.json console.txt qemu.log screen.png; do
+              if sudo test -f "$proof/$file"; then
+                sudo install -o "$(id -u)" -g "$(id -g)" -m 644 "$proof/$file" ".agent-output/usb-vm-failure/$file"
+              fi
+            done
+          done < <(sudo find /nix/var/nix/builds -type d -name proof -print 2>/dev/null)
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:

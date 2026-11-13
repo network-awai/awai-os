@@ -50,38 +50,61 @@ in_use() {
   return 1
 }
 
+discard_download() { if [ -n "$1" ]; then rm -f -- "$1"; fi; }
+
 install_to() {
-  local disk=$1 serial=$2 file=$work/image.raw.zst got
-  mkdir -p "$work"
-  mountpoint -q "$work" || mount -t tmpfs -o size=90% tmpfs "$work"
-  echo "Fetching the image. Nothing is written yet."
-  if ! curl -fSs --retry 5 --retry-all-errors --retry-delay 3 -o "$file" "$IMAGE_URL"; then
-    echo "The image could not be fetched. Nothing was written."
-    rm -f "$file"
-    return 1
-  fi
+  local disk=$1 serial=$2 file=$work/image.raw.zst download="" got
+  case "$IMAGE_URL" in
+    file:///iso/otehon/image.raw.zst)
+      file=/iso/otehon/image.raw.zst
+      # Offline payload stays on the read-only ISO; do not duplicate gigabytes
+      # into RAM. Verify its pinned digest before any target write as usual.
+      if [ ! -f "$file" ] || [ -L "$file" ] ||
+         [ "$(findmnt -n -o FSTYPE --target "$file")" != iso9660 ]; then
+        echo "The offline image is not on installer media. Nothing was written."
+        return 1
+      fi
+      case ",$(findmnt -n -o OPTIONS --target "$file")," in
+        *,ro,*) ;;
+        *) echo "Installer media is not read-only. Nothing was written."; return 1 ;;
+      esac
+      echo "Checking the offline image. Nothing is written yet."
+      ;;
+    file:*) echo "Unapproved offline image path. Nothing was written."; return 1 ;;
+    *)
+      mkdir -p "$work"
+      mountpoint -q "$work" || mount -t tmpfs -o size=90% tmpfs "$work"
+      download=$file
+      echo "Fetching the image. Nothing is written yet."
+      if ! curl -fSs --retry 5 --retry-all-errors --retry-delay 3 -o "$file" "$IMAGE_URL"; then
+        echo "The image could not be fetched. Nothing was written."
+        discard_download "$download"
+        return 1
+      fi
+      ;;
+  esac
   got=$(sha256sum "$file" | cut -d' ' -f1)
   if [ "$got" != "$IMAGE_SHA256" ]; then
     echo "The image digest does not match. Nothing was written."
     echo "  expected $IMAGE_SHA256"
     echo "  got      $got"
-    rm -f "$file"
+    discard_download "$download"
     return 1
   fi
   # The disk could have changed while the image was downloading.
   if [ "$(find_serial "$serial" | cut -d' ' -f1)" != "$disk" ] || in_use "$disk"; then
     echo "That disk changed. Nothing was written."
-    rm -f "$file"
+    discard_download "$download"
     return 1
   fi
   echo "Digest checked. Writing to $disk (serial $serial)."
   sgdisk --zap-all "$disk" >/dev/null 2>&1
   if ! zstd -dc "$file" | dd of="$disk" bs=4M iflag=fullblock conv=fsync status=progress; then
     echo "WRITE FAILED. $disk may not start now, and its earlier contents are damaged."
-    rm -f "$file"
+    discard_download "$download"
     return 1
   fi
-  rm -f "$file"
+  discard_download "$download"
   blockdev --flushbufs "$disk"
   echo "Checking what was written."
   got=$(head -c "$RAW_BYTES" "$disk" | sha256sum | cut -d' ' -f1)
