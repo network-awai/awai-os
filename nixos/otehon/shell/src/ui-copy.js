@@ -1,6 +1,13 @@
 // Quoted dictionary keys survive advanced property renaming. UI copy excludes imported content.
 export const UI_COPY = {
   "ja": {
+    "agentPicker": "Agentを選ぶ", "agentSearch": "Bot・App・Issueを検索",
+    "residentCount": "常駐 {count}", "observedRunningCount": "処理中の観測 {count}",
+    "scheduledAgents": "定期待機", "processingAgents": "処理中", "residentAgents": "常駐",
+    "conversationAgents": "会話対応", "recentAgents": "最近選択", "directoryShown": "{total}件中{shown}件",
+    "residentUnobserved": "常駐Botの観測はまだありません。", "noAgentMatch": "該当するAgentはありません。",
+    "selectAgent": "Agentを選択", "responding": "会話処理中", "agentsView": "Agents",
+    "conversationSessions": "会話一覧", "newConversation": "新しい会話", "defaultConversation": "既存の会話",
     "chatLoadHistory": "履歴を取得",
     "chatEarlier": "以前の会話",
     "chatSend": "確認して送信",
@@ -159,6 +166,13 @@ export const UI_COPY = {
     "importedProfiles": "Bot登録を取り込む"
   },
   "en": {
+    "agentPicker": "Choose an agent", "agentSearch": "Search bots, apps or issues",
+    "residentCount": "Resident {count}", "observedRunningCount": "Observed processing {count}",
+    "scheduledAgents": "Scheduled", "processingAgents": "Processing", "residentAgents": "Resident",
+    "conversationAgents": "Chat supported", "recentAgents": "Recent selections", "directoryShown": "{shown} of {total}",
+    "residentUnobserved": "No resident Bot observations yet.", "noAgentMatch": "No matching agents.",
+    "selectAgent": "Select an agent", "responding": "Responding", "agentsView": "Agents",
+    "conversationSessions": "Conversations", "newConversation": "New conversation", "defaultConversation": "Existing conversation",
     "chatLoadHistory": "Load history",
     "chatEarlier": "Earlier messages",
     "chatSend": "Review and send",

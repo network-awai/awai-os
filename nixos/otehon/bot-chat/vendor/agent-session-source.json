@@ -1,0 +1,8 @@
+{
+  "repository": "cloud-itonami/app-itonami-itonami-agent",
+  "revision": "3f0bd76d4bb3c8cce97b6fba39d0b719417345e6",
+  "path": "otehon/src/itonami/otehon/conversation.cljc",
+  "target": "itonami/src/itonami/otehon/conversation.cljc",
+  "sha256": "b34131dd30ec8a1adf2e36df82f7f548aeecb532e3428c9be56065e99f3b6a2a",
+  "scope": "Exact canonical Otehon module; existing pinned Itonami io host dependency; no Native qualification"
+}

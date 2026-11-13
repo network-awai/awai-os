@@ -39,7 +39,7 @@
        database (k/hydrate-chain get-block head blind open)
        existing (into {} (map (fn [q] [(:s q) (json/parse-string (:o q) true)]) (k/q database [nil "chat/event" nil] (constantly true))))
        _ (when (or (> (count existing) 10000) (> (count events) 4)) (throw (ex-info "bounded conversation store limit" {})))
-       _ (doseq [e events] (when-not (and (string? (:id e)) (<= 1 (count (:id e)) 100) (string? (:text e)) (<= (count (:text e)) 32768) (contains? #{"user" "assistant"} (:role e))) (throw (ex-info "invalid conversation event" {}))))
+       _ (doseq [e events] (when-not (and (string? (:id e)) (<= 1 (count (:id e)) 100) (string? (:text e)) (<= (count (:text e)) 32768) (contains? #{"user" "assistant" "session"} (:role e))) (throw (ex-info "invalid conversation event" {}))))
        _ (doseq [e events :let [prior (get existing (:id e))] :when (and prior (not= prior e))] (throw (ex-info "message ID conflict; no overwrite" {})))
        added (vec (remove #(contains? existing (:id %)) events))
        commit (if (seq added) (k/commit! put-block get-block (mapv (fn [e] [(:id e) "chat/event" (json/generate-string e)]) added) head seal blind) head)]

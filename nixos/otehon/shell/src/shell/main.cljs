@@ -6,6 +6,7 @@
             [shell.sound :refer [sound-panel]]
             [shell.display :refer [display-panel]]
             [shell.soshiki :refer [soshiki]]
+            [shell.fleet-overview :as fleet]
             [shell.docks :refer [device-dock node-dock]]
             [shell.setup :refer [setup]]
             ["../identity/device.js" :refer [clearSession deviceDid loadProofs loadSession saveProof sessionRetention]]
@@ -390,6 +391,7 @@
                  (= context "soshiki") [:f> soshiki account score open-account]
                  (and dapp (< score minimum))
                  [locked dapp minimum score open-account]
+                 (= context "itonami") [:main.chat.net-view [:div.net-body [:h1 "Itonami Agent"] [:f> fleet/panel "agents"]]]
                  :else
                  [:f> chat dapp context (or (aget threads context) #js [])
                   (fn [text] (add-message context text))
@@ -398,7 +400,7 @@
                   capabilities])
 
           panel (when (and dapp
-                           (not (contains? #{"wifi" "bluetooth" "sound" "display"} context)))
+                           (not (contains? #{"wifi" "bluetooth" "sound" "display" "itonami"} context)))
                   dapp)]
       [:div {:class (if panel "shell with-panel" "shell")}
        [:nav.mobile-navigation {:aria-label "App navigation"}

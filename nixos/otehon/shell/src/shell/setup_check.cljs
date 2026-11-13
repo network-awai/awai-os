@@ -3,11 +3,15 @@
             ["react-dom/server" :refer [renderToStaticMarkup]]
             [shell.setup :refer [qr-code]]
             [shell.bot-chat :as bot-chat]
+            [shell.agent-workspace :as workspace]
             [shell.fleet-circles :as circles]))
 
 ;; Exercise the actual component and npm import after advanced compilation.
 ;; No relay, account, signature or network operation is needed to render a QR.
 (defn main []
+  (doseq [locale ["ja" "en"]]
+   (let [html (renderToStaticMarkup (r/as-element [:f> workspace/panel [{:id "profile:sample" :name "sample" :repository "org/app" :configured true :state "waiting" :jobs [{:configured true :state "waiting" :sourceObservedAt (.toISOString (js/Date.))}]}] nil "catalog" false (js/Date.now) locale]))]
+    (when-not (and (.includes html "sample") (.includes html "agent-picker-row")) (throw (js/Error. "agent-picker-render-failed")))))
   (doseq [[locale expected] [["ja" "履歴を取得"] ["en" "Load history"]]]
     (let [html (renderToStaticMarkup (r/as-element [:f> bot-chat/panel {:id "profile:sample" :name "sample"} locale]))]
       (when-not (and (.includes html expected) (.includes html "<textarea") (.includes html "disabled"))

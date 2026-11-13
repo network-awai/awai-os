@@ -1,6 +1,7 @@
 (ns shell.fleet-overview
  (:require [clojure.string :as str] ["react" :refer [useState useEffect]]
-           [shell.bot-chat :as bot-chat]
+           [shell.bot-chat :as bot-chat] [shell.agent-workspace :as workspace]
+           ["../agent-directory.js" :refer [decodeAgentPresence directoryState]]
            [shell.fleet-circles :as circles] [shell.fleet-activity :as activity] [shell.ui-copy :as ui]
            ["../ui-copy.js" :refer [initialLocale saveLocale]]
            ["../fleet-projection.js" :refer [decodeFleetEnvelope]]))
@@ -8,9 +9,9 @@
 (defn value-text [locale value] (if (nil? value) (ui/t locale :unknown) (str value)))
 (defn metric [locale label value]
  [:li [:strong (value-text locale value)] [:span (ui/t locale label)]])
-(defn panel []
+(defn panel [& [initial-view]]
  (let [[report set-report] (useState nil) [error set-error] (useState false) [locale set-locale] (useState initialLocale)
-       [query set-query] (useState "") [view set-view] (useState "circle") [filter-state set-filter] (useState "all") [group set-group] (useState "all") [now set-now] (useState (js/Date.now))]
+       [query set-query] (useState "") [view set-view] (useState (or initial-view "circle")) [presence set-presence] (useState nil) [filter-state set-filter] (useState "all") [group set-group] (useState "all") [now set-now] (useState (js/Date.now))]
   (useEffect
    (fn []
     (let [controller (js/AbortController.) busy (atom false) live (atom true)
@@ -27,11 +28,19 @@
           timer (js/setInterval refresh 30000)]
       (refresh)
       (fn [] (reset! live false) (.abort controller) (js/clearInterval timer) (js/clearInterval clock)))) #js [])
+  (useEffect (fn [] (let [live (atom true) controller (js/AbortController.)
+    refresh (fn [] (-> (js/fetch "./agent-presence.json" #js {:cache "no-store" :credentials "omit" :redirect "error" :signal (.-signal controller)})
+      (.then #(if (.-ok %) (.json %) (throw (js/Error. "presence unavailable"))))
+      (.then decodeAgentPresence) (.then #(when @live (set-presence (js->clj % :keywordize-keys true))))
+      (.catch (fn [_] (when @live (set-presence nil)))))) timer (js/setInterval refresh 5000)]
+    (refresh) (fn [] (reset! live false) (.abort controller) (js/clearInterval timer)))) #js [])
   (let [age (when report (- now (js/Date.parse (:observedAt report)))) stale? (or (nil? age) (< age 0) (> age 180000))
+        all-bots (mapv (fn [bot] (let [d (directoryState (clj->js bot) (clj->js presence) (:catalogSha256 report) now stale?) observation (.-observation d)]
+          (cond-> bot observation (assoc :agentPresence (js->clj observation :keywordize-keys true) :state "running" :cronState (:state bot))))) (:bots report))
         q (str/lower-case query)
         bots (filter #(and (or (= filter-state "all") (= filter-state (:state %)))
                            (or (= group "all") (and (not (:configured %)) (= group (get-in % [:stabilization :group]))))
-                           (str/includes? (str/lower-case (str (:name %) " " (:repository %) " " (get-in % [:linear :project]) " " (get-in % [:stabilization :issueId]))) q)) (:bots report))
+                           (str/includes? (str/lower-case (str (:name %) " " (:repository %) " " (get-in % [:linear :project]) " " (get-in % [:stabilization :issueId]))) q)) all-bots)
         totals (:totals report)]
    [:section {:data-fleet-overview true :lang locale}
     [:div.fleet-overview-heading [:h2 (ui/t locale :title)]
@@ -43,6 +52,7 @@
      [:<>
       [:div.fleet-overview-toolbar
        [:div.fleet-circle-path {:aria-label (ui/t locale :title)}
+        [:button.secondary {:type "button" :aria-pressed (= view "agents") :on-click #(set-view "agents")} (ui/t locale :agentsView)]
         [:button.secondary {:type "button" :aria-pressed (= view "circle") :on-click #(set-view "circle")} (ui/t locale :circleView)]
         [:button.secondary {:type "button" :aria-pressed (= view "list") :on-click #(set-view "list")} (ui/t locale :listView)]]
        [:span.fleet-status {:role (when stale? "status") :data-state (if stale? "unknown" "waiting") :title (ui/stamp locale (:observedAt report))}
@@ -50,8 +60,9 @@
       [:ul.soshiki-totals.fleet-primary-totals
        [metric locale :registered (:registered totals)] [metric locale :configured (:configured totals)]
        [metric locale :held (:held totals)] [metric locale :attention (when-not stale? (:attention totals))]]
+      (when (= view "agents") [:f> workspace/panel all-bots presence (:catalogSha256 report) stale? now locale])
       (when (= view "circle")
-       [:f> circles/panel (:bots report) stale? now query set-query
+       [:f> circles/panel all-bots stale? now query set-query
         (fn [name] (set-query name) (set-view "list")) locale bot-chat/panel])
       (when (= view "list")
        [:<>

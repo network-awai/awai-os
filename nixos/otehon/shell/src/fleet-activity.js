@@ -11,6 +11,8 @@ export function verifiedExecution(value, botId, jobId, now) {
   return {schema:value.schema,botId,jobId,phase:value.phase,runId:value.runId,node:value.node,source:value.source,heartbeatAt:value.heartbeatAt,startedAt:value.startedAt};
 }
 export function botActivity(bot, now, stale = false) {
+  const p=bot.agentPresence;
+  if(p?.botId===bot.id&&p.source==='muse-process-heartbeat'&&p.phase==='responding'&&p.invocationId&&p.node&&age(p.heartbeatAt,now)!==null&&age(p.heartbeatAt,now)<=45000&&age(p.startedAt,now)!==null&&age(p.startedAt,now)>=age(p.heartbeatAt,now))return {state:'running',label:'会話処理中',motion:'rotate',executionCoverage:'observed',lastObservedAt:p.heartbeatAt};
   const jobs = bot.jobs ?? [];
   const fresh = jobs.filter(j => j.configured && age(j.sourceObservedAt,now) !== null && age(j.sourceObservedAt,now) <= 180000);
   let state = 'unknown';

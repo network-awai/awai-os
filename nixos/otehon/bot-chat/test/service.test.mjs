@@ -21,3 +21,18 @@ test('an uncertain inference retains its accepted message and never redispatches
  let calls=0;const s=await serve(async()=>{calls++;throw Error('synthetic uncertain outcome');});const req={schema:'awai.bot-chat-request.v1',requestId:randomUUID(),botId:bot.id,model,text:'Synthetic uncertain request'};
  try{assert.equal((await post(s,'/v1/bot-chat/turn',req)).status,503);assert.equal((await post(s,'/v1/bot-chat/turn',req)).status,409);assert.equal(calls,1);const h=await(await post(s,'/v1/bot-chat/history',{botId:bot.id})).json();assert.ok(h.messages.some(m=>m.id===req.requestId));}finally{await s.close();}
 });
+test('named sessions share the Agent contract and isolate history without starting inference',async()=>{
+ let calls=0;const s=await serve(async()=>{calls++;return {provider:'meta',model,text:'Synthetic named-session response',runId:'synthetic-named'};});
+ const a=randomUUID(),b=randomUUID();try{
+  for(const sessionId of [a,b])assert.equal((await post(s,'/v1/bot-chat/sessions',{botId:bot.id,action:'create',sessionId,title:'Synthetic session'})).status,201);
+  assert.equal(calls,0);
+  const req={schema:'awai.bot-chat-request.v1',requestId:randomUUID(),botId:bot.id,model,text:'Synthetic scoped request',sessionId:a};
+  assert.equal((await post(s,'/v1/bot-chat/turn',req)).status,200);
+  assert.equal((await(await post(s,'/v1/bot-chat/history',{botId:bot.id,sessionId:a})).json()).messages.length,2);
+  assert.equal((await(await post(s,'/v1/bot-chat/history',{botId:bot.id,sessionId:b})).json()).messages.length,0);
+  assert.equal((await post(s,'/v1/bot-chat/turn',{...req,requestId:randomUUID(),text:'Second synthetic message'})).status,200);
+  assert.equal((await post(s,'/v1/bot-chat/turn',req)).status,200);assert.equal(calls,2);
+  const list=await(await post(s,'/v1/bot-chat/sessions',{botId:bot.id,action:'list'})).json();assert.equal(list.sessions.find(x=>x.sessionId===a).messageCount,4);assert.ok(list.sessions.every(x=>x.text===undefined));
+  assert.equal((await post(s,'/v1/bot-chat/history',{botId:bot.id,sessionId:randomUUID()})).status,404);
+ }finally{await s.close();}
+});
