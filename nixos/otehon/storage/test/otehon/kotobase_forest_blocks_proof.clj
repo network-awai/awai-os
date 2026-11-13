@@ -47,6 +47,22 @@
             (doseq [{:keys [cid bytes]} [x y]]
               (check! (java.util.Arrays/equals ^bytes bytes ^bytes (get got cid)) "racing batch lost")))
           (prn {:concurrent-batches 2 :both-recovered true :pass true})))
+    "guard"
+    (let [plain (adapter/open-backend dir staging tool) head (:cid (contract/-read-ref plain "db"))
+          before (store/read-store dir) called (atom 0)
+          denied (adapter/open-backend dir staging tool (fn [_ _] (swap! called inc) false))]
+      (check! (= :invalid-closure-verifier (kind #(adapter/open-backend dir staging tool nil))) "nil guard accepted")
+      (check! (false? (:published? (contract/-compare-and-set-ref! denied "db" nil head))) "stale ref accepted")
+      (check! (zero? @called) "guard ran on stale CAS")
+      (check! (= :closure-rejected (kind #(contract/-compare-and-set-ref! denied "db" head head))) "false guard accepted")
+      (check! (= before (store/read-store dir)) "rejected guard changed root")
+      (check! (= 1 @called) "guard not invoked")
+      (let [throws (adapter/open-backend dir staging tool (fn [_ _] (throw (ex-info "injected" {:type :guard-error}))))]
+        (check! (= :guard-error (kind #(contract/-compare-and-set-ref! throws "db" head head))) "guard exception ignored")
+        (check! (= before (store/read-store dir)) "guard exception changed root"))
+      (let [ok (adapter/open-backend dir staging tool (fn [get-block cid] (boolean (get-block cid))))]
+        (check! (:published? (contract/-compare-and-set-ref! ok "db" head head)) "valid guard rejected"))
+      (prn {:guard-refused true :root-unchanged true :valid-guard true :pass true}))
     "invalidate"
     (let [backend (adapter/open-backend dir staging tool)
           _ (check! (get (contract/-get-blocks backend [basis]) basis) "basis unavailable")
@@ -76,4 +92,4 @@
       (check! (empty? (contract/-get-blocks backend [missing])) "missing block returned")
       (check! (try (contract/-get-blocks backend [(car/cid-str (conj (car/base32-decode (subs basis 1)) 0))]) false (catch Exception _ true)) "trailing CID accepted")
       (prn {:recovered-blocks (count bs) :archives 2 :ref (:cid refs) :missing :omitted :pass true}))
-    (throw (ex-info "use write, read, race or invalidate" {}))))
+    (throw (ex-info "use write, read, race, guard or invalidate" {}))))

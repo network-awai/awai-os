@@ -122,14 +122,27 @@
     (-get-blocks [_ cids] (fetch dir cache cids))
     contract/IBackendCapabilities
     (-capabilities [_] #{:immutable-blocks :cid-addressed-read :packed-blocks :range-read :batch-get :batch-put}))))
-(defn open-backend
-  "Compose the local Forest block and ref ports. Ref CAS verifies its target
-  exists under the same writer lock; it does not validate the target's closure."
-  [dir staging-root tool]
+(defn- compose-backend [dir staging-root tool verify-closure!]
   (let [blocks (open-block-store dir staging-root tool)
-        verify! (fn [cid] (when-not (contract/get-block blocks cid)
-                            (fail! :missing-ref-target "ref target block is not published")))]
+        get-block #(contract/get-block blocks %)
+        verify! (fn [cid]
+                  (when-not (get-block cid)
+                    (fail! :missing-ref-target "ref target block is not published"))
+                  (when (and verify-closure! (not (true? (verify-closure! get-block cid))))
+                    (fail! :closure-rejected "closure verifier did not approve")))]
     (contract/compose {:blocks blocks :refs (refs/open-ref-store dir verify!)})))
+
+(defn open-backend
+  "Compose local Forest block and ref ports. The three-argument form checks
+  only the target block. The four-argument form additionally requires a trusted
+  closure verifier `(fn [get-block root-cid])` returning literal true. It runs
+  under the local writer lock before ref publication; exceptions reject. The
+  caller owns the verifier's codec, bounds and security semantics."
+  ([dir staging-root tool] (compose-backend dir staging-root tool nil))
+  ([dir staging-root tool verify-closure!]
+   (when-not (fn? verify-closure!)
+     (fail! :invalid-closure-verifier "closure verifier must be a function"))
+   (compose-backend dir staging-root tool verify-closure!)))
 
 (defn open-transaction
   "Create a bounded, synchronous write overlay for a Prolly operation.
