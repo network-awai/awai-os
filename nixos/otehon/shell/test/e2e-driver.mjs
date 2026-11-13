@@ -342,6 +342,37 @@ const passkey = p256.utils.randomSecretKey();
 let outcome = "pass";
 
 try {
+  // Dougaka Studio sub-page first (dist/dougaka, JUN-1180): it needs no
+  // login, and proving it up front keeps dougaka evidence even if the
+  // sign-in flow later fails. The file:// bundle must boot its own broker,
+  // render the Studio shell, and run the offline plan tool. The plan
+  // buttons carry no consent gate, so synthetic clicks suffice.
+  let shellUrl = null;
+  await step("dougaka_page_loads", async () => {
+    const targets = await (await fetch("http://127.0.0.1:9222/json")).json();
+    const shell = targets.find((target) => target.type === "page");
+    if (!shell) throw new Error("no-shell-page");
+    shellUrl = shell.url;
+    const base = shellUrl.replace(/\/index\.html$/, "");
+    await send("Page.navigate", { url: `${base}/dist/dougaka/index.html` });
+    await until("document.getElementById('dougaka-studio') !== null", "studio mount", 60000);
+  });
+  await step("dougaka_studio_boots", async () => {
+    await until("document.querySelectorAll('.studio-tab').length >= 5", "studio tabs", 60000);
+    await until("document.querySelector('#studio-local-domain') !== null", "management card", 30000);
+  });
+  await step("dougaka_plan_tool", async () => {
+    await evaluate("[...document.querySelectorAll('button')].find((b) => b.textContent.includes('サンプルを入れる')).click()");
+    await sleep(500);
+    await evaluate("[...document.querySelectorAll('button')].find((b) => b.textContent.includes('計画を作る')).click()");
+    await until("document.querySelector('.dougaka-table') !== null", "segments table", 30000);
+    const facts = await evaluate("document.querySelector('.dougaka-facts')?.textContent ?? ''");
+    if (!facts.includes("segments")) throw new Error("no-plan-facts");
+  });
+  await step("dougaka_back_to_shell", async () => {
+    await send("Page.navigate", { url: shellUrl });
+    await until("document.querySelector('[data-step=hello]') !== null", "shell hello", 60000);
+  });
   await step("gate", async () => {
     await until("document.querySelector('[data-step=hello]')", "first step");
     if ((await evaluate(dappCount)) !== 0) throw new Error("apps-visible-before-login");
@@ -710,29 +741,6 @@ try {
   });
   if (process.env.OTEHON_MEDIA === "1") await mediaSteps();
   if (process.env.OTEHON_MANIMANI === "1") await checkManimani();
-  // Dougaka Studio sub-page (dist/dougaka, JUN-1180): the file:// bundle must
-  // boot its own broker, render the Studio shell, and run the offline plan
-  // tool. The plan buttons carry no consent gate, so synthetic clicks suffice.
-  await step("dougaka_page_loads", async () => {
-    const targets = await (await fetch("http://127.0.0.1:9222/json")).json();
-    const shell = targets.find((target) => target.type === "page");
-    if (!shell) throw new Error("no-shell-page");
-    const base = shell.url.replace(/\/index\.html$/, "");
-    await send("Page.navigate", { url: `${base}/dist/dougaka/index.html` });
-    await until("document.getElementById('dougaka-studio') !== null", "studio mount", 60000);
-  });
-  await step("dougaka_studio_boots", async () => {
-    await until("document.querySelectorAll('.studio-tab').length >= 5", "studio tabs", 60000);
-    await until("document.querySelector('#studio-local-domain') !== null", "management card", 30000);
-  });
-  await step("dougaka_plan_tool", async () => {
-    await evaluate("[...document.querySelectorAll('button')].find((b) => b.textContent.includes('サンプルを入れる')).click()");
-    await sleep(500);
-    await evaluate("[...document.querySelectorAll('button')].find((b) => b.textContent.includes('計画を作る')).click()");
-    await until("document.querySelector('.dougaka-table') !== null", "segments table", 30000);
-    const facts = await evaluate("document.querySelector('.dougaka-facts')?.textContent ?? ''");
-    if (!facts.includes("segments")) throw new Error("no-plan-facts");
-  });
 } catch {
   outcome = "fail";
 }
