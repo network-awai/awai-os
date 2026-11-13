@@ -35,6 +35,7 @@
       ["pack-put-zstd3" 4] (prn (pack/put-data-zstd3! directory name (input-bytes filename)))
       ["car-import" 4] (prn (pack/import-car! directory name (input-bytes filename)))
       ["car-import-zstd3" 4] (prn (pack/import-car-zstd3! directory name (input-bytes filename)))
+      ["forest-import" 4] (prn (pack/import-forest! directory name (input-bytes filename)))
       ["pack-range-verified" 6]
       (prn (output! filename (pack/read-range-verified-leaves (pack/recover directory) name
                                 (Long/parseLong (nth args 4)) (Long/parseLong (nth args 5)))))

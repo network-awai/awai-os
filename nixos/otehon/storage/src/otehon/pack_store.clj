@@ -5,6 +5,7 @@
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             [awai.fs.car :as car]
+            [otehon.forest :as forest]
             [otehon.segmented :as segmented]
             [otehon.storage :as store])
   (:import [java.io ByteArrayOutputStream]
@@ -180,6 +181,19 @@
   "Opt-in segmented physical representation. Exact canonical CAR/root retained;
   no raw CAR duplicate is stored. Existing raw entries remain readable."
   [directory name bytes] (import-representation! directory name bytes true))
+
+(defn import-forest!
+  "Validate a bounded Forest snapshot and import its exact CARv1 payload into
+  the existing indexless CARv2 Pack profile. Stores the existing zpack format."
+  [directory name bytes]
+  (let [payload (:carv1 (forest/open bytes))
+        decoded (car/carv1-decode payload)
+        encoded (car/carv2-encode decoded)
+        end (first (car/decode-u64-le encoded 43))
+        car-v2 (into (into (subvec encoded 0 43) (repeat 8 0)) (subvec encoded 51 end))]
+    (when-not (= payload (subvec car-v2 51))
+      (fail! :unsupported-car-profile "Forest CAR payload is not canonical"))
+    (import-car-zstd3! directory name (byte-array-of car-v2))))
 
 (defn put-data! [directory name bytes]
   (let [v (vector-bytes bytes max-data-bytes)
