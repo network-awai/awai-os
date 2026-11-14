@@ -1,0 +1,5 @@
+# Guest-created 1 GiB Forest writer: candidate
+
+The NixOS reboot test calls the previously exercised `gib_actual_writer.clj` (SHA-256 `9b4239d1b7f063d0d1b09c89c3878db4f77b7c3c1c9615a07b65433b76160099`) inside the guest using the digest-pinned Linux Forest tool. It writes the actual 1 GiB synthetic file and 64 Packs, checks the full SHA before shutdown, requires a changed guest boot ID, repeats the full check, and then withholds a guest-owned Pack and requires `:missing-forest`. The test expands the VM disk to 6 GiB because the writer retains its 1 GiB uncompressed staging CAR data.
+
+The same script's macOS write/read/missing-Pack evidence is in `README-gib-actual-writer.md`. This revised VM test is not runnable locally because Nix is unavailable; an exact-head NixOS CI success is required before claiming the guest result. If it passes, it covers a synthetic, highly compressible 1 GiB file and guest OS reboot/page cache loss, not host OS cache eviction, real device power interruption, Native runtime, independent-node loss, or representative physical I/O performance. The previous prebuilt GiB and guest-written 17 MiB tests remain separate.

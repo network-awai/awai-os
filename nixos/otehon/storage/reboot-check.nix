@@ -19,14 +19,21 @@ let
     export PATH=${pkgs.lib.makeBinPath [ pkgs.zstd ]}:$PATH
     exec ${pkgs.babashka}/bin/bb --classpath ${classpath} ${./test/otehon/reboot_probe.clj} "$@"
   '';
+  gibWriterProbe = pkgs.writeShellScriptBin "forest-gib-writer-probe" ''
+    export FOREST_TOOL=${forestTool}/bin/forest-tool
+    export NIX_LD=/run/current-system/sw/share/nix-ld/lib/ld.so
+    export NIX_LD_LIBRARY_PATH=/run/current-system/sw/share/nix-ld/lib
+    export PATH=${pkgs.lib.makeBinPath [ pkgs.zstd ]}:$PATH
+    exec ${pkgs.babashka}/bin/bb --classpath ${classpath} ${./oracle/gib_actual_writer.clj} "$@"
+  '';
 in
 pkgs.testers.runNixOSTest {
   name = "otehon-forest-group-guest-reboot";
   nodes.machine = { ... }: {
     virtualisation.memorySize = 1024;
-    virtualisation.diskSize = 4096;
+    virtualisation.diskSize = 6144;
     programs.nix-ld.enable = true;
-    environment.systemPackages = [ probe forestTool ];
+    environment.systemPackages = [ probe gibWriterProbe forestTool ];
   };
   testScript = ''
     start_all()
@@ -40,6 +47,9 @@ pkgs.testers.runNixOSTest {
     machine.succeed("forest-reboot-probe create-v2 /var/lib/forest-reboot/store-v2")
     machine.succeed("forest-reboot-probe create-large /var/lib/forest-reboot/store-large", timeout=900)
     machine.succeed("forest-reboot-probe read-large /var/lib/forest-reboot/store-large", timeout=900)
+    # Guest creates and commits the full 1 GiB/64-Pack group itself.
+    machine.succeed("GIB_ACTUAL_OUTPUT=/var/lib/forest-reboot/gib-actual forest-gib-writer-probe write", timeout=1800)
+    machine.succeed("GIB_ACTUAL_OUTPUT=/var/lib/forest-reboot/gib-actual forest-gib-writer-probe read", timeout=1800)
     machine.succeed("forest-reboot-probe read /var/lib/forest-reboot/store")
     machine.succeed("forest-reboot-probe read-v2 /var/lib/forest-reboot/store-v2")
     boot_id = machine.succeed("cat /proc/sys/kernel/random/boot_id").strip()
@@ -51,6 +61,10 @@ pkgs.testers.runNixOSTest {
     machine.succeed("forest-reboot-probe read-v2 /var/lib/forest-reboot/store-v2")
     machine.succeed("forest-reboot-probe read-gib /var/lib/forest-reboot/gib-store", timeout=900)
     machine.succeed("forest-reboot-probe read-large /var/lib/forest-reboot/store-large", timeout=900)
+    machine.succeed("GIB_ACTUAL_OUTPUT=/var/lib/forest-reboot/gib-actual forest-gib-writer-probe read", timeout=1800)
+    # A missing guest-written Pack must not fall back to an older root.
+    machine.succeed("f=$(find /var/lib/forest-reboot/gib-actual/store -type f -name '*.forest' -print -quit); test -n \"$f\"; mv \"$f\" /var/lib/forest-reboot/gib-actual-missing.saved")
+    machine.succeed("if GIB_ACTUAL_OUTPUT=/var/lib/forest-reboot/gib-actual forest-gib-writer-probe read > /tmp/gib-actual-missing.log 2>&1; then exit 1; fi; grep -q ':missing-forest' /tmp/gib-actual-missing.log", timeout=1800)
     # Refuse a missing archive created by the guest's own writer.
     machine.succeed("f=$(find /var/lib/forest-reboot/store-large -type f -name '*.forest' -print -quit); test -n \"$f\"; mv \"$f\" /var/lib/forest-reboot/large-missing.saved")
     machine.succeed("if forest-reboot-probe read-large /var/lib/forest-reboot/store-large > /tmp/forest-large-missing.log 2>&1; then exit 1; fi; grep -q ':missing-forest' /tmp/forest-large-missing.log", timeout=900)
