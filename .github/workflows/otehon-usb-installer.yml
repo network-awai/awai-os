@@ -5,6 +5,7 @@ on:
       - nixos/otehon/**
       - nixos/tests/otehon-usb.nix
       - tests/otehon-usb-eval.nix
+      - tests/otehon/**
       - scripts/check-otehon-usb-vm.py
       - scripts/otehon-installed-boot.py
       - .github/workflows/otehon-usb-installer.yml
@@ -42,6 +43,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p .agent-output
+          python3 -m unittest discover -s tests/otehon -v
           nix-instantiate --eval --strict --json --expr 'import ./tests/otehon-usb-eval.nix { nixpkgsPath = import ./ci/nixpkgs.nix; }'
           nix-build nixos/otehon/default.nix --argstr profile usb-install-6600h --out-link result-otehon-usb --show-trace 2>&1 | tee .agent-output/usb-build.log
           sha256sum result-otehon-usb/iso/*.iso | tee .agent-output/usb-sha256.txt
@@ -56,7 +58,8 @@ jobs:
         run: |
           mkdir -p .agent-output/usb-vm-failure
           while IFS= read -r proof; do
-            for file in result.json console.txt qemu.log screen.png; do
+            for file in "$proof"/*.json "$proof"/*.txt "$proof"/*.log "$proof"/*.png; do
+              file=$(basename "$file")
               if sudo test -f "$proof/$file"; then
                 sudo install -o "$(id -u)" -g "$(id -g)" -m 644 "$proof/$file" ".agent-output/usb-vm-failure/$file"
               fi
@@ -79,6 +82,7 @@ jobs:
           path: result-otehon-usb/iso/*.iso
           compression-level: 0
   exact-image-installed-boot:
+    if: github.event_name == 'workflow_dispatch' && inputs.diagnose-only
     name: Previously flashed ISO — installed boot diagnosis
     runs-on: ubuntu-latest
     timeout-minutes: 60

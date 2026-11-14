@@ -59,6 +59,7 @@ in
     ./desktop.nix
     ./base-module.nix
     ./hardware-6600h.nix
+    ./first-boot-ui.nix
   ];
 
   system.image.id = lib.mkForce "awai-otehon-6600h";

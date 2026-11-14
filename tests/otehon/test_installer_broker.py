@@ -3,6 +3,10 @@ import base64
 import importlib.util
 from pathlib import Path
 import tempfile
+import hashlib
+import os
+import stat
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -44,5 +48,32 @@ class Protocol(unittest.TestCase):
             (d/'state.json').write_text('{"phase":"readback","writeStarted":true}')
             state=b.Broker(d,d).snapshot()
             self.assertEqual(state['phase'],'failed');self.assertTrue(state['writeStarted'])
+
+class FailureBoundary(unittest.TestCase):
+    def test_corrupt_source_never_opens_target(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d=Path(tmp);source=d/'payload';source.write_bytes(b'corrupt')
+            (d/'image').write_text('a'*64);(d/'raw').write_text('b'*64);(d/'bytes').write_text('100')
+            broker=b.Broker(d,d)
+            with patch.object(b,'SOURCE',source),patch.object(b,'LOCK',d/'lock'),patch.object(b,'command',side_effect=['iso9660','ro']),patch.object(b.os,'open',wraps=os.open) as opened:
+                broker.install({'id':'x'})
+                self.assertEqual(opened.call_count,1) # Source only, no target open.
+            self.assertEqual(broker.state['error'],'image-digest-mismatch')
+            self.assertFalse(broker.state['writeStarted'])
+    def test_first_destructive_operation_failure_is_partial(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d=Path(tmp);source=d/'payload';source.write_bytes(b'valid compressed fixture')
+            target=d/'fake-target';target.write_bytes(b'preserved')
+            (d/'image').write_text(hashlib.sha256(source.read_bytes()).hexdigest());(d/'raw').write_text('b'*64);(d/'bytes').write_text('100')
+            broker=b.Broker(d,d)
+            row={'id':'x','path':str(target),'size':101,'rdev':123,'used':False,'readOnly':False,'ambiguous':False}
+            original_fstat=os.fstat
+            def fstat(fd):
+                info=original_fstat(fd)
+                return SimpleNamespace(st_mode=stat.S_IFBLK,st_rdev=123) if info.st_ino==target.stat().st_ino else info
+            with patch.object(b,'SOURCE',source),patch.object(b,'LOCK',d/'lock'),patch.object(b,'command',side_effect=['iso9660','ro']),patch.object(b,'inventory',return_value=[row]),patch.object(b.os,'fstat',side_effect=fstat),patch.object(b.subprocess,'run',side_effect=OSError('fixture write failure')):
+                broker.install(row)
+            self.assertEqual(broker.state['phase'],'failed');self.assertTrue(broker.state['writeStarted'])
+            self.assertEqual(target.read_bytes(),b'preserved')
 
 if __name__=='__main__': unittest.main()

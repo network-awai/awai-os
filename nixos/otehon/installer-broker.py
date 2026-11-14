@@ -17,6 +17,7 @@ import time
 CHUNK = 4 * 1024 * 1024
 SOURCE = Path('/iso/otehon/image.raw.zst')
 RUNDIR = Path('/run/otehon-install')
+LOCK = Path('/run/otehon-install.lock')
 
 class Refused(Exception): pass
 class Cancelled(Exception): pass
@@ -124,7 +125,7 @@ class Broker:
     def install(self, row):
         process=None;fd=None
         try:
-            with Path('/run/otehon-install.lock').open('a') as lock:
+            with LOCK.open('a') as lock:
                 try: fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
                 except BlockingIOError: raise Refused('another-installer-active')
                 if SOURCE.is_symlink() or not SOURCE.is_file() or command(['findmnt','-n','-o','FSTYPE','--target',str(SOURCE)]) != 'iso9660': raise Refused('offline-source')
@@ -175,7 +176,10 @@ class Broker:
         except Exception as error:
             self.update(phase='failed',error=str(error) if isinstance(error,Refused) else type(error).__name__,message='書込みと照合を完了できませんでした。' if self.state.get('writeStarted') else '書込み前の確認に失敗しました。保存先は変更していません。')
         finally:
-            if process and process.poll() is None: process.terminate();process.wait(timeout=10)
+            if process and process.poll() is None:
+                process.terminate()
+                try: process.wait(timeout=10)
+                except subprocess.TimeoutExpired: process.kill();process.wait(timeout=10)
             if fd is not None: os.close(fd)
     def dispatch(self,op,args):
         if op=='LIST': return {'devices':inventory(),'rawBytes':self.raw_bytes,'state':self.snapshot()}

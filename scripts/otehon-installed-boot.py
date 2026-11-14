@@ -1,5 +1,6 @@
 """Scratch-target first boot verification; no guest shell, SSH or external network."""
 import json
+import os
 import socket
 import struct
 import subprocess
@@ -8,7 +9,7 @@ from pathlib import Path
 
 
 def read_screen(ppm, png):
-    text = subprocess.check_output(["tesseract", str(ppm), "stdout"], text=True, stderr=subprocess.DEVNULL)
+    text = subprocess.check_output(["tesseract", str(ppm), "stdout", "-l", os.environ.get("OTEHON_OCR_LANG", "eng")], text=True, stderr=subprocess.DEVNULL)
     # Full-page segmentation misses the white-on-dark onboarding button.
     # Retain both required labels; separately OCR its central lower viewport region.
     header = png.read_bytes()[:24]
@@ -83,7 +84,7 @@ class VisualGuest:
             if self.process.poll() is not None:
                 raise RuntimeError(f"installed QEMU exited while waiting for {label}")
             last = self.capture()
-            if all(s.lower() in last for s in strings):
+            if all("".join(s.lower().split()) in "".join(last.split()) for s in strings):
                 print("INSTALLED_VM " + label, flush=True)
                 # Keep each successful transition, rather than only the last screen.
                 for ext in ("png", "txt"):
@@ -92,6 +93,14 @@ class VisualGuest:
                 return
             time.sleep(2)
         raise TimeoutError(f"installed boot: {label}; last screen: {last[-3000:]}")
+
+    def click(self, x, y, width, height):
+        self.qmp("input-send-event", {"events":[
+            {"type":"abs","data":{"axis":"x","value":int(x*32767/width)}},
+            {"type":"abs","data":{"axis":"y","value":int(y*32767/height)}}]})
+        for down in (True,False):
+            self.qmp("input-send-event", {"events":[{"type":"btn","data":{"down":down,"button":"left"}}]})
+            time.sleep(.15)
 
     def type_fixture(self, text):
         # Only public fixed ASCII fixture strings, never owner credentials.
@@ -152,5 +161,65 @@ def verify_installed(out, sockets, code, variables, checks, target_bus="virtio")
         guest.type_fixture(fixture)
         guest.expect(["hello", "get started"], "desktop", timeout=600)
         checks.append("cold QEMU restart unlocks existing encrypted state and returns to desktop")
+    finally:
+        guest.close()
+
+
+def verify_graphical_install(command, serial, qmp, out, checks, untouched, written):
+    """Only QMP mouse/keyboard input; never invoke the broker or a guest shell."""
+    guest = VisualGuest(command, serial, qmp, out, 'installer')
+    def key(value): guest.qmp('human-monitor-command', {'command-line':'sendkey '+value})
+    def type_text(value):
+        for c in value:
+            if c == '-': code='minus'
+            elif c.isascii() and c.isalpha(): code=('shift-' if c.isupper() else '')+c.lower()
+            elif c.isdigit(): code=c
+            else: raise ValueError('non-fixture character')
+            key(code);time.sleep(.06)
+    def footer():
+        guest.capture()
+        header=(out/'installer-screen.png').read_bytes()[:24]
+        width,height=struct.unpack('>II',header[16:24])
+        guest.click(width-155,height-36,width,height)
+        time.sleep(1)
+    def click_text(needle):
+        guest.capture()
+        png=out/'installer-screen.png'
+        tsv=subprocess.check_output(['tesseract',str(png),'stdout','-l','eng+jpn','tsv'],stderr=subprocess.DEVNULL,text=True)
+        import csv,io
+        rows=list(csv.DictReader(io.StringIO(tsv),delimiter='\t'))
+        found=[r for r in rows if needle in (r.get('text') or '')]
+        if len(found)!=1: raise AssertionError('screen control not unique: '+needle)
+        r=found[0];width,height=struct.unpack('>II',png.read_bytes()[16:24])
+        guest.click(int(r['left'])+int(r['width'])//2,int(r['top'])+int(r['height'])//2,width,height)
+        time.sleep(1)
+    try:
+        guest.expect(['Awai','インストール'], 'welcome', timeout=420)
+        untouched();checks.append('graphical installer boots offline without target writes')
+        footer()
+        guest.expect(['TARGET','DECOY','SMALL'], 'disk-selection')
+        # The source and undersized disk are visibly unavailable; clicking either
+        # must not enter the destructive confirmation page or write anything.
+        click_text('SMALL');untouched()
+        guest.expect(['TARGET','DECOY','SMALL'], 'undersize-disabled')
+        click_text('MEDIUM');untouched()
+        guest.expect(['TARGET','DECOY','SMALL'], 'source-disabled')
+        click_text('TARGET')
+        guest.expect(['ERASE','TARGET'], 'overwrite-confirmation')
+        type_text('WRONG-SERIAL');key('tab');type_text('ERASE');footer();untouched()
+        guest.expect(['ERASE','TARGET'], 'mismatch-disabled')
+        key('shift-tab');key('ctrl-a');type_text('OTEHON-USB-TARGET')
+        guest.capture()
+        # Selection and exact typed approval occur through the displayed UI.
+        footer()
+        guest.expect(['照合','NVMe'], 'verified-complete',timeout=2100)
+        # A readback page also contains those words; require the actual completion
+        # title and power-off control before accepting the write.
+        guest.expect(['完了','電源を切る'], 'poweroff-ready',timeout=2100)
+        if written('target')==0 or written('decoy') or written('small'):
+            raise AssertionError('graphical installer changed incorrect scratch scope')
+        checks.append('mouse selection and exact keyboard approval install scratch NVMe; full readback completes; decoys unchanged')
+        footer();guest.process.wait(timeout=90)
+        checks.append('verified completion screen powers off via displayed control')
     finally:
         guest.close()

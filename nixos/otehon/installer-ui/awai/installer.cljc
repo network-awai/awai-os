@@ -54,7 +54,8 @@
         (add! main (label "この PC に Awai をインストール" 34 true)) (gap! main 16)
         (line! main "いまは USB 上のインストーラーで動いています。")
         (gap! main 24) (add! main (card "始める前に" ["必要なデータをバックアップしてください。" "AC 電源と USB を接続したままにしてください。" "選んだ保存先のデータはすべて消去されます。" "インストール後、USB を抜いて内蔵 NVMe から起動します。 "]))
-        (.add footer (button "保存先を選ぶ →" list! false) BorderLayout/EAST))
+        (.add footer (button "保存先を選ぶ →" list! false) BorderLayout/EAST)
+        (.add footer (button "文字での操作（tty2）" #(task! (fn [] (rpc "TEXT"))) false) BorderLayout/WEST))
       :devices (do
         (add! main (label "Awai を保存するディスク" 34 true)) (gap! main 12)
         (line! main "USB や使用中のディスクは選べません。型番・容量・シリアルを確認してください。") (gap! main 16)
@@ -72,7 +73,7 @@
         (add! main (card (str (:model d) "  /  " (:path d)) [(str "シリアル: " (:serial d)) (format "容量: %.1f GB" (/ (:size d) 1e9)) "既存の OS・ファイル・パーティションはすべて削除されます。 "]))
         (gap! main 16) (line! main "保存先のシリアルをそのまま入力")
         (doseq [field [serial erase]] (.setFont field (font 20 false)) (.setMaximumSize field (Dimension. 896 44)))
-        (add! main serial) (gap! main 12) (line! main "確認のため ERASE と入力") (add! main erase)
+        (add! main serial) (SwingUtilities/invokeLater #(.requestFocusInWindow serial)) (gap! main 12) (line! main "確認のため ERASE と入力") (add! main erase)
         (.setEnabled install false)
         (let [listener (reify javax.swing.event.DocumentListener
                          (insertUpdate [_ _] (.setEnabled install (and (= (.getText serial) (:serial d)) (= (.getText erase) "ERASE"))))
@@ -103,7 +104,8 @@
   (UIManager/setLookAndFeel (UIManager/getCrossPlatformLookAndFeelClassName))
   (SwingUtilities/invokeLater
     (fn []
-      (reset! window (doto (JFrame. "Awai Otehon — インストール") (.setDefaultCloseOperation JFrame/DO_NOTHING_ON_CLOSE) (.setSize 1280 800) (.setExtendedState JFrame/MAXIMIZED_BOTH)))
+      (reset! window (doto (JFrame. "Awai Otehon — インストール") (.setDefaultCloseOperation JFrame/DO_NOTHING_ON_CLOSE) (.setUndecorated true) (.setSize 1280 800)))
       (render!) (.setVisible @window true)
+      (.setFullScreenWindow (.getDefaultScreenDevice (java.awt.GraphicsEnvironment/getLocalGraphicsEnvironment)) @window)
       (.start (Timer. 1000 (reify ActionListener (actionPerformed [_ _]
         (when (= :progress (:page @state)) (task! #(let [s (rpc "STATUS")] (SwingUtilities/invokeLater (fn [] (change! {:status s})))))))))))))

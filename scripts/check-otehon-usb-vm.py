@@ -29,6 +29,8 @@ def main():
     p.add_argument("--installed-boot", action="store_true", help="also boot the installed scratch target and verify encrypted-state onboarding/restart")
     p.add_argument("--media-bytes", type=int, help="read-only sparse USB capacity, without duplicating the ISO")
     p.add_argument("--target-bus", choices=["virtio", "nvme"], default="virtio")
+    p.add_argument("--graphical", action="store_true")
+    p.add_argument("--visual-helper", type=Path, default=Path(__file__).with_name("otehon-installed-boot.py"))
     a = p.parse_args()
     if os.geteuid() == 0:
         p.error("run unprivileged; no physical drives may be attached")
@@ -58,7 +60,7 @@ def main():
                "-m", "4096", "-smp", "2", "-display", "none", "-nic", "none",
                "-drive", f"if=pflash,format=raw,readonly=on,file={a.ovmf_code}",
                "-drive", f"if=pflash,format=raw,file={vars_file}",
-               "-device", "qemu-xhci", "-drive", f"if=none,id=media,format={media_format},readonly=on,file={medium}",
+               "-device", "qemu-xhci", "-device", "usb-tablet", "-drive", f"if=none,id=media,format={media_format},readonly=on,file={medium}",
                "-device", "usb-storage,drive=media,bootindex=1,serial=OTEHON-USB-MEDIUM",
                "-serial", f"unix:{serial_path},server=on,wait=off",
                "-qmp", f"unix:{qmp_path},server=on,wait=off"]
@@ -80,92 +82,104 @@ def main():
     transcript = bytearray()
     unread = ""
     try:
-        with (out / "qemu.log").open("wb") as log:
-            process = subprocess.Popen(command, stdout=log, stderr=log)
-            deadline = time.monotonic() + 30
-            while not serial_path.exists():
-                if process.poll() is not None or time.monotonic() > deadline:
-                    raise RuntimeError("QEMU did not start")
-                time.sleep(0.1)
-            port = socket.socket(socket.AF_UNIX)
-            port.connect(str(serial_path))
-            port.settimeout(1)
-
-            def expect(text, timeout=180, fatal=()):
-                nonlocal unread
-                end = time.monotonic() + timeout
-                while time.monotonic() < end:
-                    if text in unread:
-                        unread = unread.split(text, 1)[1]
-                        return
-                    for failure in fatal:
-                        if failure in unread:
-                            raise RuntimeError("installer refused or failed: " + failure)
-                    if process.poll() is not None:
-                        raise RuntimeError("QEMU exited")
-                    try:
-                        block = port.recv(65536)
-                        if not block:
-                            raise RuntimeError("serial closed")
-                        transcript.extend(block)
-                        unread += block.decode(errors="replace")
-                        (out / "console.txt").write_bytes(transcript)
-                    except socket.timeout:
-                        pass
-                raise TimeoutError(text)
-
-            def send(text):
-                port.sendall((text + "\r").encode())
-
+        if a.graphical:
+            from importlib.util import spec_from_file_location, module_from_spec
+            spec = spec_from_file_location("otehon_installed_boot", a.visual_helper)
+            visual = module_from_spec(spec); spec.loader.exec_module(visual)
             def untouched():
                 if any(written(name) for name, _, _ in disks):
-                    raise AssertionError("scratch disk changed before authorized install")
-
-            prompt = "press Enter to list disks again: "
-            expect(prompt, 300)
-            untouched()
-            proof["checks"].append("UEFI actual USB ISO boots offline without writing targets")
-            send("WRONG-SERIAL")
-            expect("No single disk has that serial")
-            expect(prompt)
-            send("OTEHON-USB-SMALL")
-            expect("too small")
-            expect(prompt)
-            send("OTEHON-USB-TARGET")
-            expect("Type ERASE")
-            send("erase")
-            expect("Stopped. Nothing was written.")
-            expect(prompt)
-            untouched()
-            proof["checks"].append("wrong serial, undersize and non-ERASE refuse without writes")
-            # A physical-size source must be refused as mounted/in-use, not merely undersized.
-            send("OTEHON-USB-MEDIUM")
-            expect("in use by this system" if proof["mediaBytes"] > proof["rawBytes"] else "too small")
-            expect(prompt)
-            untouched()
-            proof["checks"].append("installer medium cannot select itself")
-            send("OTEHON-USB-TARGET")
-            expect("Type ERASE")
-            send("ERASE")
-            expect("INSTALLED on", 1800, fatal=("Nothing was written", "WRITE FAILED", "CHECK FAILED"))
-            if written("target") == 0 or written("decoy") or written("small"):
-                raise AssertionError("incorrect scratch write scope")
-            proof["checks"].append("explicit target install verifies full raw digest; decoy and small untouched")
+                    raise AssertionError("scratch disk changed before graphical approval")
+            visual.verify_graphical_install(command, serial_path, qmp_path, out, proof["checks"], untouched, written)
             if a.installed_boot:
-                port.close()
-                port = None
-                process.terminate()
-                process.wait(timeout=20)
-                from importlib.util import spec_from_file_location, module_from_spec
-                spec = spec_from_file_location("otehon_installed_boot", Path(__file__).with_name("otehon-installed-boot.py"))
-                installed = module_from_spec(spec)
-                spec.loader.exec_module(installed)
-                installed.verify_installed(out, sockets, a.ovmf_code, vars_file, proof["checks"], a.target_bus)
+                visual.verify_installed(out, sockets, a.ovmf_code, vars_file, proof["checks"], a.target_bus)
             proof["passed"] = True
+        else:
+            with (out / "qemu.log").open("wb") as log:
+                process = subprocess.Popen(command, stdout=log, stderr=log)
+                deadline = time.monotonic() + 30
+                while not serial_path.exists():
+                    if process.poll() is not None or time.monotonic() > deadline:
+                        raise RuntimeError("QEMU did not start")
+                    time.sleep(0.1)
+                port = socket.socket(socket.AF_UNIX)
+                port.connect(str(serial_path))
+                port.settimeout(1)
+
+                def expect(text, timeout=180, fatal=()):
+                    nonlocal unread
+                    end = time.monotonic() + timeout
+                    while time.monotonic() < end:
+                        if text in unread:
+                            unread = unread.split(text, 1)[1]
+                            return
+                        for failure in fatal:
+                            if failure in unread:
+                                raise RuntimeError("installer refused or failed: " + failure)
+                        if process.poll() is not None:
+                            raise RuntimeError("QEMU exited")
+                        try:
+                            block = port.recv(65536)
+                            if not block:
+                                raise RuntimeError("serial closed")
+                            transcript.extend(block)
+                            unread += block.decode(errors="replace")
+                            (out / "console.txt").write_bytes(transcript)
+                        except socket.timeout:
+                            pass
+                    raise TimeoutError(text)
+
+                def send(text):
+                    port.sendall((text + "\r").encode())
+
+                def untouched():
+                    if any(written(name) for name, _, _ in disks):
+                        raise AssertionError("scratch disk changed before authorized install")
+
+                prompt = "press Enter to list disks again: "
+                expect(prompt, 300)
+                untouched()
+                proof["checks"].append("UEFI actual USB ISO boots offline without writing targets")
+                send("WRONG-SERIAL")
+                expect("No single disk has that serial")
+                expect(prompt)
+                send("OTEHON-USB-SMALL")
+                expect("too small")
+                expect(prompt)
+                send("OTEHON-USB-TARGET")
+                expect("Type ERASE")
+                send("erase")
+                expect("Stopped. Nothing was written.")
+                expect(prompt)
+                untouched()
+                proof["checks"].append("wrong serial, undersize and non-ERASE refuse without writes")
+                # A physical-size source must be refused as mounted/in-use, not merely undersized.
+                send("OTEHON-USB-MEDIUM")
+                expect("in use by this system" if proof["mediaBytes"] > proof["rawBytes"] else "too small")
+                expect(prompt)
+                untouched()
+                proof["checks"].append("installer medium cannot select itself")
+                send("OTEHON-USB-TARGET")
+                expect("Type ERASE")
+                send("ERASE")
+                expect("INSTALLED on", 1800, fatal=("Nothing was written", "WRITE FAILED", "CHECK FAILED"))
+                if written("target") == 0 or written("decoy") or written("small"):
+                    raise AssertionError("incorrect scratch write scope")
+                proof["checks"].append("explicit target install verifies full raw digest; decoy and small untouched")
+                if a.installed_boot:
+                    port.close()
+                    port = None
+                    process.terminate()
+                    process.wait(timeout=20)
+                    from importlib.util import spec_from_file_location, module_from_spec
+                    spec = spec_from_file_location("otehon_installed_boot", Path(__file__).with_name("otehon-installed-boot.py"))
+                    installed = module_from_spec(spec)
+                    spec.loader.exec_module(installed)
+                    installed.verify_installed(out, sockets, a.ovmf_code, vars_file, proof["checks"], a.target_bus)
+                proof["passed"] = True
     finally:
         if not proof["passed"]:
             print("USB_VM_CONSOLE_TAIL\n" + transcript[-24000:].decode(errors="replace"), flush=True)
-            print("USB_VM_QEMU_LOG\n" + (out / "qemu.log").read_text(errors="replace")[-4000:], flush=True)
+            print("USB_VM_QEMU_LOG\n" + ((out / "qemu.log").read_text(errors="replace")[-4000:] if (out / "qemu.log").exists() else "see installer-qemu.log"), flush=True)
             if process and process.poll() is None:
                 try:
                     with socket.socket(socket.AF_UNIX) as qmp:
