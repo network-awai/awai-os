@@ -323,6 +323,37 @@
           "consent": "each-operation"
         }
       ]
+    },
+    {
+      "id": "otent",
+      "dock": 22,
+      "title": "Otent",
+      "section": "Apps",
+      "summary": "Globe (read and render only): satellites, earthquakes, aircraft and vessels from the local snapshot",
+      "install": "os-image",
+      "offline": "local-core",
+      "remoteOperations": [
+        {
+          "operation": "fetch-satellites",
+          "service": "CelesTrak GP element sets",
+          "consent": "each-operation"
+        },
+        {
+          "operation": "fetch-earthquakes",
+          "service": "USGS all-day feed",
+          "consent": "each-operation"
+        },
+        {
+          "operation": "fetch-aircraft",
+          "service": "OpenSky anonymous tier",
+          "consent": "each-operation"
+        },
+        {
+          "operation": "fetch-vessels",
+          "service": "Digitraffic AIS",
+          "consent": "each-operation"
+        }
+      ]
     }
   ]
 }
