@@ -12,8 +12,7 @@ let
     zstd -dc "$file" | wc -c > "$out/bytes"
   '';
 in {
-  # Offline UEFI/USB transport for the same reviewed, serial-confirmed installer.
-  # The desktop is in the payload, not an additional live desktop on this medium.
+  # Offline OS administration UI; the installed desktop remains a separate payload.
   imports = [ ./common.nix ./hardware-6600h.nix "${modulesPath}/installer/cd-dvd/iso-image.nix" ];
   fileSystems."/" = lib.mkForce config.lib.isoFileSystems."/";
   networking.hostName = lib.mkForce "otehon-usb-installer";
@@ -44,7 +43,45 @@ in {
       TTYPath = "/dev/%I"; TTYReset = true; Restart = "always"; RestartSec = 2;
     };
   };
-  systemd.targets.multi-user.wants = [ "otehon-install@tty1.service" "otehon-install@ttyS0.service" ];
+  # The report previously shared /dev/console with the installer prompt.
+  systemd.services.otehon-boot-report.enable = lib.mkForce false;
+  users.groups.otehon-installer = {};
+  users.users.otehon-installer = {
+    isNormalUser = true;
+    group = "otehon-installer";
+    hashedPassword = "!";
+  };
+  fonts.packages = [ pkgs.noto-fonts-cjk-sans ];
+  services.xserver.enable = true;
+  services.xserver.displayManager.lightdm.enable = true;
+  services.displayManager.autoLogin = { enable = true; user = "otehon-installer"; };
+  services.displayManager.defaultSession = "otehon-install";
+  services.xserver.displayManager.session = [{
+    name = "otehon-install";
+    manage = "desktop";
+    start = ''
+      ${pkgs.jdk}/bin/java -cp "${pkgs.clojure}/libexec/clojure-tools-${pkgs.clojure.version}.jar:${./installer-ui}" clojure.main -m awai.installer &
+      waitPID=$!
+    '';
+  }];
+  systemd.services.otehon-install-broker = {
+    description = "Bounded offline installer control (local Unix socket only)";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "local-fs.target" "systemd-udev-settle.service" ];
+    before = [ "display-manager.service" ];
+    environment.DIGESTS = "${digests}";
+    path = with pkgs; [ coreutils util-linux gptfdisk zstd config.systemd.package ];
+    serviceConfig = {
+      ExecStart = "${pkgs.python3}/bin/python3 ${./installer-broker.py}";
+      Restart = "on-failure";
+      UMask = "0077";
+      RestrictAddressFamilies = [ "AF_UNIX" ];
+      NoNewPrivileges = true;
+    };
+  };
+  # A serial operator can still use the original bounded text flow. tty2 is
+  # available via the explicit fallback action, without a root login shell.
+  systemd.targets.multi-user.wants = [ "otehon-install@ttyS0.service" ];
   system.build.image = lib.mkForce config.system.build.isoImage;
   system.build.otehonUsbDigests = digests;
 }
