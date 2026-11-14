@@ -26,6 +26,7 @@ def main():
     p.add_argument("--ovmf-code", type=Path, required=True)
     p.add_argument("--ovmf-vars", type=Path, required=True)
     p.add_argument("--digests", type=Path, required=True)
+    p.add_argument("--installed-boot", action="store_true", help="also boot the installed scratch target and verify encrypted-state onboarding/restart")
     a = p.parse_args()
     if os.geteuid() == 0:
         p.error("run unprivileged; no physical drives may be attached")
@@ -143,6 +144,16 @@ def main():
             if written("target") == 0 or written("decoy") or written("small"):
                 raise AssertionError("incorrect scratch write scope")
             proof["checks"].append("explicit target install verifies full raw digest; decoy and small untouched")
+            if a.installed_boot:
+                port.close()
+                port = None
+                process.terminate()
+                process.wait(timeout=20)
+                from importlib.util import spec_from_file_location, module_from_spec
+                spec = spec_from_file_location("otehon_installed_boot", Path(__file__).with_name("otehon-installed-boot.py"))
+                installed = module_from_spec(spec)
+                spec.loader.exec_module(installed)
+                installed.verify_installed(out, sockets, a.ovmf_code, vars_file, proof["checks"])
             proof["passed"] = True
     finally:
         if not proof["passed"]:
