@@ -79,3 +79,36 @@
       (is (zero? (:cas @s)))
       (is (nil? (:ref @s)))
       (is (thrown? Exception ((:publish! tx) "db" nil cid))))))
+
+(deftest scoped-publication-returns-only-after-validated-cas
+  (let [s (state) db (fake-backend s false) {:keys [cid bytes]} (pair "scoped") leaked (atom nil)]
+    (is (= :result
+           (forest/publish-scoped! db "db" nil
+             (fn [staged]
+               (reset! leaked staged)
+               (is (= [cid] (contract/-put-blocks! staged [{:cid cid :bytes bytes}])))
+               (is (= [0 0] [(:puts @s) (:cas @s)]))
+               (is (thrown? Exception (contract/-compare-and-set-ref! staged "db" nil cid)))
+               {:target cid :value :result})
+             (fn [get-block target]
+               (and (= cid target) (= (vec bytes) (vec (get-block cid))) (zero? (:cas @s)))))))
+    (is (= [1 1 cid] [(:puts @s) (:cas @s) (:ref @s)]))
+    (is (thrown? Exception (contract/-get-blocks @leaked [cid])))
+    (is (thrown? Exception (contract/-put-blocks! @leaked [{:cid cid :bytes bytes}])))))
+
+(deftest scoped-publication-fails-closed
+  (let [{:keys [cid bytes]} (pair "scoped-failure")
+        build (fn [staged] (contract/-put-blocks! staged [{:cid cid :bytes bytes}]) {:target cid :value :secret})]
+    (doseq [verify! [(fn [_ _] false) (fn [_ _] (throw (ex-info "failure" {})))]]
+      (let [s (state)]
+        (is (thrown? Exception (forest/publish-scoped! (fake-backend s false) "db" nil build verify!)))
+        (is (= [1 0 nil] [(:puts @s) (:cas @s) (:ref @s)]))))
+    (let [s (state) other (:cid (pair "other"))]
+      (swap! s assoc :ref other)
+      (is (= :stale-ref (try (forest/publish-scoped! (fake-backend s false) "db" nil build (fn [_ _] true)) nil
+                             (catch Exception e (:type (ex-data e))))))
+      (is (= other (:ref @s))))
+    (let [s (state)]
+      (is (thrown? Exception (forest/publish-scoped! (fake-backend s false) "db" nil
+                                (fn [staged] (build staged) (throw (ex-info "builder failed" {}))) (fn [_ _] true))))
+      (is (= [0 0 nil] [(:puts @s) (:cas @s) (:ref @s)])))))

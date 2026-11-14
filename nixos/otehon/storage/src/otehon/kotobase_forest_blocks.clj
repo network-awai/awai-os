@@ -267,6 +267,55 @@
                  (reset! state {:phase :aborted :bytes 0 :blocks {}})
                  true))}))
 
+(defn publish-scoped!
+  "Run a synchronous, trusted builder with a private volatile backend.
+
+  BUILD! returns exactly {:target CID :value value}. Its block acknowledgements
+  are provisional and must not be exposed as durable. Internal CAS is refused.
+  VERIFY! runs on persisted blocks before the ref CAS and must return true.
+  Only after a successful CAS does this function return :value. A stale CAS,
+  builder failure or verifier failure throws; immutable orphans can remain.
+  The scoped backend becomes unusable on exit. The caller must ensure BUILD!
+  has no externally visible side effects and does not treat provisional
+  acknowledgements as durability. This is not atomic with concurrent GC."
+  [backend ref-name expected build! verify!]
+  (when-not (and (fn? build!) (fn? verify!))
+    (fail! :invalid-builder "builder and semantic verifier must be functions"))
+  (let [tx (open-transaction backend) gate (Object.) active (atom true)
+        require-active! #(when-not @active (fail! :transaction-closed "scoped transaction is closed"))
+        scoped (reify
+                 contract/IBlockStore
+                 (-put-blocks! [_ items]
+                   (locking gate (require-active!)
+                     (when-not (and (vector? items) (<= (count items) max-batch-count))
+                       (fail! :invalid-ipld-block "expected bounded block vector"))
+                     (mapv (fn [{:keys [cid bytes] :as item}]
+                             (when-not (= #{:cid :bytes} (set (keys item)))
+                               (fail! :invalid-ipld-block "invalid block record"))
+                             ((:put! tx) cid bytes)) items)))
+                 (-get-blocks [_ cids]
+                   (locking gate (require-active!)
+                     (validate-cids! cids)
+                     (into {} (keep (fn [cid] (when-let [v ((:get-fn tx) cid)] [cid v]))) cids)))
+                 contract/IRefStore
+                 (-read-ref [_ name] (locking gate (require-active!) (contract/-read-ref backend name)))
+                 (-compare-and-set-ref! [_ _ _ _] (fail! :staged-cas-forbidden "staged ref CAS is forbidden"))
+                 contract/IBackendCapabilities
+                 (-capabilities [_] #{:immutable-blocks :cid-addressed-read :conditional-ref :single-writer-ref}))]
+    (locking gate
+      (try
+        (let [result (build! scoped)]
+          (when-not (and (map? result) (= #{:target :value} (set (keys result))))
+            (fail! :invalid-builder-result "builder must return target and value"))
+          (validate-cids! [(:target result)])
+          (let [ack ((:publish! tx) ref-name expected (:target result) verify!)]
+            (when-not (:published? ack) (fail! :stale-ref "ref changed before publication"))
+            (:value result)))
+        (catch Exception e
+          (try ((:abort! tx)) (catch Exception _ nil))
+          (throw e))
+        (finally (reset! active false))))))
+
 (defn- witnessed-root-verifier [verify-closure!]
   (when-not (fn? verify-closure!) (fail! :invalid-closure-verifier "trusted closure verifier required"))
   (fn [dir state]

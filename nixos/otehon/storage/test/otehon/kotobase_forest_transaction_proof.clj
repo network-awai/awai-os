@@ -1,15 +1,50 @@
 ;; Actual hosted Forest tool with explicit buffered transaction; modes are processes.
-(require '[kotobase.storage.core :as contract] '[otehon.storage :as store]
-         '[otehon.kotobase-forest-blocks :as forest] '[awai.fs.car :as car])
-(import '[java.security MessageDigest])
+(require '[clojure.string :as str] '[kotobase.storage.core :as contract] '[otehon.storage :as store]
+         '[otehon.kotobase-forest-blocks :as forest] '[otehon.ipld-forest :as catalog] '[awai.fs.car :as car])
+(import '[java.security MessageDigest] '[java.util Random Arrays])
 (defn block [text]
   (let [bytes (.getBytes text "UTF-8")
         digest (mapv #(bit-and 255 %) (.digest (MessageDigest/getInstance "SHA-256") bytes))]
     {:cid (car/cid-str (car/cid-bytes car/codec-raw digest)) :bytes bytes}))
 (def bs (mapv block ["batch-one" "batch-two" "batch-three"]))
+(defn large-blocks []
+  (let [rng (Random. 532174)]
+    (mapv (fn [_]
+            (let [bytes (byte-array (* 600 1024))
+                  _ (.nextBytes rng bytes)
+                  digest (mapv #(bit-and 255 %) (.digest (MessageDigest/getInstance "SHA-256") bytes))]
+              {:cid (car/cid-str (car/cid-bytes car/codec-raw digest)) :bytes bytes})) (range 2))))
 (defn check! [x msg] (when-not x (throw (ex-info msg {}))))
 (let [[mode base tool] *command-line-args* dir (str base "/store") stage (str base "/staging")]
   (case mode
+    "scoped-write" (do (check! (.mkdir (java.io.File. base)) "output exists")
+      (check! (.mkdir (java.io.File. stage)) "staging exists")
+      (store/init! dir)
+      (let [db (forest/open-backend dir stage tool) items (into bs (large-blocks))
+            target (:cid (first items)) leaked (atom nil)
+            value (forest/publish-scoped! db "db" nil
+                    (fn [staged] (reset! leaked staged)
+                      (check! (= (mapv :cid items) (contract/-put-blocks! staged items)) "staged blocks changed")
+                      (check! (nil? (contract/-read-ref db "db")) "premature ref")
+                      {:target target :value :published})
+                    (fn [get-block cid]
+                      (and (= cid target) (every? (fn [{:keys [cid bytes]}]
+                                                   (Arrays/equals ^bytes bytes ^bytes (get-block cid))) items))))]
+        (check! (= :published value) "not published")
+        (check! (try (contract/-get-blocks @leaked [target]) false (catch Exception _ true)) "scope remained usable")
+        (prn {:blocks (count items) :scoped-publication true :pass true})))
+    "scoped-read" (let [db (forest/open-backend dir stage tool) items (into bs (large-blocks))
+                        got (contract/-get-blocks db (mapv :cid items))
+                        state (:state (store/read-store dir))
+                        groups (filter #(str/starts-with? % "awai.ipld-forest-group/kotobase-blocks/") (keys state))]
+      (check! (= 1 (count groups)) "expected one group")
+      (check! (= (:cid (first items)) (:cid (contract/-read-ref db "db"))) "ref mismatch")
+      (doseq [{:keys [cid bytes]} items]
+        (check! (Arrays/equals ^bytes bytes ^bytes (get got cid)) "block mismatch"))
+      (let [name (subs (first groups) (count "awai.ipld-forest-group/"))
+            archives (get-in (catalog/recover-group dir name) [:group :archives])]
+        (check! (= 2 (count archives)) "expected two physical Packs"))
+      (prn {:blocks (count items) :packs 2 :fresh-process true :pass true}))
     "write" (do (check! (.mkdir (java.io.File. base)) "output exists")
       (check! (.mkdir (java.io.File. stage)) "staging exists")
       (store/init! dir)

@@ -73,6 +73,8 @@ jobs:
           "$bb_path/bin/bb" --classpath "$classpath" "$transaction_proof" write "$RUNNER_TEMP/kotobase-transaction" "$tool"
           "$bb_path/bin/bb" --classpath "$classpath" "$transaction_proof" read "$RUNNER_TEMP/kotobase-transaction" "$tool"
           "$bb_path/bin/bb" --classpath "$classpath" "$transaction_proof" fail "$RUNNER_TEMP/kotobase-transaction-fail" "$tool"
+          "$bb_path/bin/bb" --classpath "$classpath" "$transaction_proof" scoped-write "$RUNNER_TEMP/kotobase-scoped-transaction" "$tool"
+          "$bb_path/bin/bb" --classpath "$classpath" "$transaction_proof" scoped-read "$RUNNER_TEMP/kotobase-scoped-transaction" "$tool"
           cp -R "$RUNNER_TEMP/kotobase-blocks" "$RUNNER_TEMP/kotobase-blocks-invalidate"
           "$bb_path/bin/bb" --classpath "$classpath" "$blocks_proof" invalidate "$RUNNER_TEMP/kotobase-blocks-invalidate" "$tool"
           cp -R "$RUNNER_TEMP/kotobase-blocks" "$RUNNER_TEMP/kotobase-blocks-missing"
