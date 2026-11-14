@@ -1,9 +1,24 @@
 """Scratch-target first boot verification; no guest shell, SSH or external network."""
 import json
 import socket
+import struct
 import subprocess
 import time
 from pathlib import Path
+
+
+def read_screen(ppm, png):
+    text = subprocess.check_output(["tesseract", str(ppm), "stdout"], text=True, stderr=subprocess.DEVNULL)
+    # Full-page segmentation misses the white-on-dark onboarding button.
+    # Retain both required labels; separately OCR its central lower viewport region.
+    header = png.read_bytes()[:24]
+    if header[:8] != b"\x89PNG\r\n\x1a\n" or header[12:16] != b"IHDR":
+        raise ValueError("invalid screenshot header")
+    width, height = struct.unpack(">II", header[16:24])
+    crop = subprocess.check_output(["pamcut", f"-left={width // 4}", f"-top={height // 2}",
+                                    f"-width={width // 2}", f"-height={max(1,height // 5)}", str(ppm)])
+    region = subprocess.check_output(["tesseract", "stdin", "stdout", "--psm", "6"], input=crop, stderr=subprocess.DEVNULL).decode()
+    return text + "\n--- central control region ---\n" + region
 
 
 class VisualGuest:
@@ -53,10 +68,11 @@ class VisualGuest:
         (self.out / f"{self.phase}-console.txt").write_bytes(self.transcript)
         image = self.out / f"{self.phase}-screen.ppm"
         self.qmp("screendump", {"filename": str(image)})
-        text = subprocess.check_output(["tesseract", str(image), "stdout"], text=True, stderr=subprocess.DEVNULL)
-        (self.out / f"{self.phase}-screen.txt").write_text(text)
-        with (self.out / f"{self.phase}-screen.png").open("wb") as dest:
+        png = self.out / f"{self.phase}-screen.png"
+        with png.open("wb") as dest:
             subprocess.run(["pnmtopng", str(image)], stdout=dest, check=True)
+        text = read_screen(image, png)
+        (self.out / f"{self.phase}-screen.txt").write_text(text)
         image.unlink()
         return " ".join(text.lower().split())
 
@@ -104,7 +120,7 @@ class VisualGuest:
         self.log.close()
 
 
-def verify_installed(out, sockets, code, variables, checks):
+def verify_installed(out, sockets, code, variables, checks, target_bus="virtio"):
     # Only the disk just installed by the test is attached. No USB, decoy or host disk.
     fixture = "otehon-vm-fixture-passphrase"
     def boot(phase):
@@ -114,7 +130,7 @@ def verify_installed(out, sockets, code, variables, checks):
                    "-drive", f"if=pflash,format=raw,readonly=on,file={code}",
                    "-drive", f"if=pflash,format=raw,file={variables}",
                    "-drive", f"if=none,id=installed,format=qcow2,file={out / 'target.qcow2'},discard=unmap,detect-zeroes=unmap",
-                   "-device", "virtio-blk-pci,drive=installed,serial=OTEHON-USB-TARGET,bootindex=1",
+                   "-device", f"{'nvme' if target_bus == 'nvme' else 'virtio-blk-pci'},drive=installed,serial=OTEHON-USB-TARGET,bootindex=1",
                    "-serial", f"unix:{serial},server=on,wait=off", "-qmp", f"unix:{qmp},server=on,wait=off"]
         return VisualGuest(command, serial, qmp, out, phase)
     guest = boot("first-boot")

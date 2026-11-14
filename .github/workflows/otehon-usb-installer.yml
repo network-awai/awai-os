@@ -9,6 +9,11 @@ on:
       - scripts/otehon-installed-boot.py
       - .github/workflows/otehon-usb-installer.yml
   workflow_dispatch:
+    inputs:
+      diagnose-only:
+        description: Run only the exact previously flashed image diagnosis
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -16,6 +21,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   usb-installer:
+    if: github.event_name != 'workflow_dispatch' || !inputs.diagnose-only
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -101,7 +107,7 @@ jobs:
       - name: Install, remove USB, boot, initialize state and restart
         shell: bash
         run: |
-          nix-shell --expr 'let p = import (import ./ci/nixpkgs.nix) { system = "x86_64-linux"; }; in p.mkShell { packages = [ p.python3 p.qemu_test p.netpbm p.tesseract ]; OVMF_CODE = "${p.OVMF.fd}/FV/OVMF_CODE.fd"; OVMF_VARS = "${p.OVMF.fd}/FV/OVMF_VARS.fd"; }' --run 'python3 scripts/check-otehon-usb-vm.py --iso .agent-output/exact-image/*.iso --output "$PWD/.agent-output/exact-installed-proof" --ovmf-code "$OVMF_CODE" --ovmf-vars "$OVMF_VARS" --digests .agent-output/exact-digests --installed-boot' 2>&1 | tee .agent-output/exact-installed.log
+          nix-shell --expr 'let p = import (import ./ci/nixpkgs.nix) { system = "x86_64-linux"; }; in p.mkShell { packages = [ p.python3 p.qemu_test p.netpbm p.tesseract ]; OVMF_CODE = "${p.OVMF.fd}/FV/OVMF_CODE.fd"; OVMF_VARS = "${p.OVMF.fd}/FV/OVMF_VARS.fd"; }' --run 'python3 scripts/check-otehon-usb-vm.py --iso .agent-output/exact-image/*.iso --output "$PWD/.agent-output/exact-installed-proof" --ovmf-code "$OVMF_CODE" --ovmf-vars "$OVMF_VARS" --digests .agent-output/exact-digests --installed-boot --media-bytes 61949214720 --target-bus nvme' 2>&1 | tee .agent-output/exact-installed.log
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
