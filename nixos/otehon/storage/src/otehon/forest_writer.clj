@@ -102,3 +102,80 @@
             cid (car/cid-str (car/cid-bytes car/codec-dag-cbor (digest manifest)))
             committed (pack/import-logical-forest-files! directory name (:paths result) (to-bytes manifest) cid)]
         (assoc committed :manifest-cid cid :file-size (:size result) :pack-count (count (:paths result)))))))
+
+(defn put-file-large!
+  "Create a file with an explicit fixed 1 MiB logical profile and up to 64
+  16-leaf Forest Packs. Keeps at most one Pack of raw byte arrays in memory.
+  The source stays untouched; staging and interrupted objects are retained."
+  [directory name source staging tool]
+  (when-not (every? string? [directory name source staging tool])
+    (fail! :invalid-argument "expected string paths and name"))
+  (when-not (contains? tool-digests (file-digest tool))
+    (fail! :untrusted-forest-tool "Forest tool does not match a pinned digest"))
+  (let [src (Paths/get source (make-array String 0))
+        nofollow (into-array LinkOption [LinkOption/NOFOLLOW_LINKS])
+        initial-size (Files/size src) initial-time (Files/getLastModifiedTime src nofollow)
+        large-leaf (* 1024 1024) max-size (* max-packs 16 large-leaf)]
+    (when-not (and (pos? initial-size) (<= initial-size max-size))
+      (fail! :invalid-file-size "input exceeds 1 MiB profile bounds"))
+    (Files/createDirectory (Paths/get staging (make-array String 0))
+      (into-array FileAttribute [(PosixFilePermissions/asFileAttribute
+                                  (PosixFilePermissions/fromString "rwx------"))]))
+    (let [staged-tool (str staging "/forest-tool")
+          _ (with-open [tool-in (Files/newInputStream (Paths/get tool (make-array String 0))
+                                                      (into-array OpenOption [LinkOption/NOFOLLOW_LINKS]))]
+              (Files/copy tool-in (Paths/get staged-tool (make-array String 0)) (make-array CopyOption 0)))
+          _ (when-not (contains? tool-digests (file-digest staged-tool))
+              (fail! :untrusted-forest-tool "staged Forest tool does not match a pinned digest"))
+          _ (Files/setPosixFilePermissions (Paths/get staged-tool (make-array String 0))
+                                           (PosixFilePermissions/fromString "r-x------"))
+          source-digest (MessageDigest/getInstance "SHA-256")
+          result (with-open [in (Files/newInputStream src (into-array OpenOption [LinkOption/NOFOLLOW_LINKS]))]
+                   (loop [i 0 offset 0 chunks [] paths []]
+                     (let [leaves (loop [j 0 out []]
+                                    (if (= j 16) out
+                                      (let [b (.readNBytes in large-leaf)]
+                                        (if (zero? (alength ^bytes b)) out
+                                          (do (.update source-digest ^bytes b)
+                                              (recur (inc j) (conj out {:bytes b :digest (digest b)})))))))]
+                       (if (empty? leaves) {:chunks chunks :paths paths :size offset}
+                         (do
+                           (when (>= i max-packs) (fail! :too-large "input grew beyond Pack limit"))
+                           (let [cids (mapv #(car/cid-bytes car/codec-raw (:digest %)) leaves)
+                                 root (car/pack-root-block cids digest)
+                                 header (car/carv1-encode {:roots [(:cid root)] :blocks []})
+                                 carpath (str staging "/" i ".car") forestpath (str staging "/" i ".forest.car.zst")
+                                 _ (with-open [out (Files/newOutputStream (Paths/get carpath (make-array String 0))
+                                                           (into-array OpenOption [StandardOpenOption/CREATE_NEW StandardOpenOption/WRITE]))]
+                                     (.write out (to-bytes header))
+                                     (doseq [[leaf cid] (map vector leaves cids)]
+                                       (.write out (to-bytes (car/encode-uvarint (+ (count cid) (alength ^bytes (:bytes leaf))))))
+                                       (.write out (to-bytes cid))
+                                       (.write out ^bytes (:bytes leaf)))
+                                     (.write out (to-bytes (car/encode-uvarint (+ (count (:cid root)) (count (:bytes root))))))
+                                     (.write out (to-bytes (:cid root)))
+                                     (.write out (to-bytes (:bytes root))))
+                                 process (.start (doto (ProcessBuilder. ^java.util.List
+                                                    [staged-tool "snapshot" "compress" carpath "--output-path" forestpath "--frame-size" "1"])
+                                            (.redirectErrorStream true)
+                                            (.redirectOutput (java.io.File. (str staging "/" i ".log")))))]
+                             (when-not (.waitFor process 120 TimeUnit/SECONDS)
+                               (.destroyForcibly process) (fail! :forest-timeout "Forest compression timed out"))
+                             (when-not (zero? (.exitValue process)) (fail! :forest-failed "Forest compression failed; see staging log"))
+                             (let [[next-offset next-chunks]
+                                   (reduce (fn [[pos out] [leaf cid]]
+                                             (let [n (alength ^bytes (:bytes leaf))]
+                                               [(+ pos n) (conj out {"cid" {:tag 42 :bytes cid} "offset" pos "length" n})]))
+                                           [offset chunks] (map vector leaves cids))]
+                               (recur (inc i) next-offset next-chunks (conj paths forestpath)))))))))]
+      (when-not (and (= initial-size (:size result)) (= initial-size (Files/size src))
+                     (= initial-time (Files/getLastModifiedTime src nofollow))
+                     (= (car/hex-encode (mapv #(bit-and 255 %) (.digest source-digest))) (file-digest source))
+                     (= initial-size (Files/size src)) (= initial-time (Files/getLastModifiedTime src nofollow)))
+        (fail! :source-changed "source file changed during import"))
+      (let [manifest (car/cbor-encode {"format" "awai.logical-file" "version" 1 "fileSize" (:size result)
+                                        "chunkProfile" {"kind" "fixed" "version" 1 "leafSize" large-leaf}
+                                        "chunks" (:chunks result)})
+            cid (car/cid-str (car/cid-bytes car/codec-dag-cbor (digest manifest)))
+            committed (pack/import-logical-forest-files! directory name (:paths result) (to-bytes manifest) cid {:file-backed? true})]
+        (assoc committed :manifest-cid cid :file-size (:size result) :pack-count (count (:paths result)))))))

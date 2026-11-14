@@ -51,6 +51,7 @@ check() {
   [ "$version" -gt "$(installed_version)" ] || refuse "old-version $version"
   ! is_blocked "$version" || refuse "blocked-version $version"
   [ ! -e "$pending" ] || refuse trial-in-progress
+  [ "$system" != "$(readlink -f /run/current-system)" ] || refuse unchanged-system
   echo "$version $system"
 }
 
@@ -135,12 +136,15 @@ health() {
   local units
   units=$(systemctl --failed --no-legend --plain | cut -d' ' -f1 | grep -v '^otehon-update-' || true)
   [ -z "$units" ] || { log "UNHEALTHY $units"; exit 1; }
+  if [ -n "${OTEHON_UPDATE_HEALTH_CHECK:-}" ]; then
+    "$OTEHON_UPDATE_HEALTH_CHECK" || { log "UNHEALTHY desktop-readiness"; exit 1; }
+  fi
 }
 
 case "${1:-}" in
   check) check "$2" ;;
-  apply) apply "$2" ;;
-  settle) settle ;;
+  apply) exec 9>"$state/operation.lock"; flock -n 9 || refuse concurrent-update; apply "$2" ;;
+  settle) exec 9>"$state/operation.lock"; flock -n 9 || refuse concurrent-update; settle ;;
   health) health ;;
   version) installed_version ;;
   *) echo "usage: otehon-update check|apply <feed> | settle | health | version" >&2; exit 64 ;;
