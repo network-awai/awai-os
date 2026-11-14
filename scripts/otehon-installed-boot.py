@@ -19,8 +19,17 @@ def screen_matches(text, markers):
     return all(normalized_ocr(marker) in compact for marker in markers)
 
 
-def read_screen(ppm, png):
+def read_screen(ppm, png, console_text=False):
     text = subprocess.check_output(["tesseract", str(ppm), "stdout", "-l", os.environ.get("OTEHON_OCR_LANG", "eng")], text=True, stderr=subprocess.DEVNULL)
+    if console_text:
+        # VGA terminal glyphs need enlargement and dark-on-light polarity.
+        # Keep exact refusal/completion labels; do not normalize w/u or IDs.
+        gray = subprocess.check_output(["ppmtopgm", str(ppm)])
+        binary = subprocess.check_output(["pgmtopbm", "-threshold", "-value", "0.35"], input=gray)
+        inverse = subprocess.check_output(["pnminvert"], input=binary)
+        large = subprocess.check_output(["pamenlarge", "3"], input=inverse)
+        console = subprocess.check_output(["tesseract", "stdin", "stdout", "--psm", "6"], input=large, stderr=subprocess.DEVNULL).decode()
+        return text + "\n--- enlarged physical console ---\n" + console
     # Full-page segmentation misses the white-on-dark onboarding button.
     # Retain both required labels; separately OCR its central lower viewport region.
     header = png.read_bytes()[:24]
@@ -103,7 +112,7 @@ class VisualGuest:
         png = self.out / f"{self.phase}-screen.png"
         with png.open("wb") as dest:
             subprocess.run(["pnmtopng", str(image)], stdout=dest, check=True)
-        text = read_screen(image, png)
+        text = read_screen(image, png, console_text=self.phase=='text-installer')
         (self.out / f"{self.phase}-screen.txt").write_text(text)
         image.unlink()
         return " ".join(text.lower().split())

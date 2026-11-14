@@ -13,6 +13,7 @@ in pkgs.runCommand "otehon-offline-usb-vm-check" {
   for tool in pngtopnm pamcut ppmtopgm pgmtopbm pnminvert pamenlarge tesseract; do command -v "$tool" >/dev/null; done
   OTEHON_VISUAL_HELPER=${../../scripts/otehon-installed-boot.py} \
     OTEHON_HELLO_FIXTURE=${../../tests/otehon/fixtures/desktop-hello-logo.png} \
+    OTEHON_CONSOLE_FIXTURE=${../../tests/otehon/fixtures/console-erase-refused.png} \
     python3 ${../../tests/otehon/test_installer_ocr.py}
   ${pkgs.jdk}/bin/java -Djava.awt.headless=true -cp "${pkgs.clojure}/libexec/clojure-tools-${pkgs.clojure.version}.jar" \
     clojure.main ${../../tests/otehon/installer-client.clj} ${../otehon/installer-ui/awai/installer.cljc}
