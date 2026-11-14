@@ -45,8 +45,9 @@
       "headRefName": "codex/awai-532-forest-prolly",
       "headRefOid": "3a83e448a4d1565f3d365bfbfb6694cc91e9e8ef",
       "baseRefName": "main",
-      "isDraft": true,
-      "reviewState": "review-in-progress"
+      "isDraft": false,
+      "reviewState": "reviewed-and-merged",
+      "mergeCommit": "71551905c8d6cc976039c50217523d85c98c9742"
     },
     {
       "number": 122,
@@ -78,7 +79,8 @@
       "headRefOid": "b3a515e73c99016805c993b7c533cbaad5819ede",
       "baseRefName": "main",
       "isDraft": true,
-      "reviewState": "pending"
+      "reviewState": "closed-superseded-by-92-implementation-identical",
+      "preserved": true
     },
     {
       "number": 118,
@@ -117,8 +119,9 @@
       "headRefOid": "2b8f82bffa64188aba33ad03f196b3390fe52a5e",
       "baseRefName": "main",
       "isDraft": false,
-      "reviewState": "review-in-progress",
-      "finding": "Verify vendored broker matches pinned canonical revision; prior automatic review quota failure is not completed review."
+      "reviewState": "reviewed-and-merged",
+      "finding": "Verify vendored broker matches pinned canonical revision; prior automatic review quota failure is not completed review.",
+      "mergeCommit": "d2be4d0f4b4c0aaf5d5859c873852d205ee69f9c"
     },
     {
       "number": 103,
@@ -139,18 +142,20 @@
       "headRefOid": "f92eca0233d7d0b193e589a66809cbc757c2aa7c",
       "baseRefName": "main",
       "isDraft": false,
-      "reviewState": "pending"
+      "reviewState": "blocking-finding-reproduced",
+      "blocker": "Expired reservation resets fence and accepts prior-generation writer settlement"
     },
     {
       "number": 100,
       "title": "JUN-1178: register otent dapp in shell registry (dock 21)",
       "url": "https://github.com/network-awai/awai-os/pull/100",
       "headRefName": "jun784/jun-1178-otent-dapp",
-      "headRefOid": "57512762f96d1c5b922c44f906a3ff17dc6643ec",
+      "headRefOid": "803926f107f819e2747553c1fa4c47250f1c34a8",
       "baseRefName": "main",
       "isDraft": false,
-      "reviewState": "review-in-progress",
-      "finding": "Five unresolved historical threads; preserved mutable macOS VM image and relocatable checksum behavior still need attention. dapp source pin must be reconciled."
+      "reviewState": "review-fixes-pushed-canonical-1318-dependency-open",
+      "finding": "Five unresolved historical threads; preserved mutable macOS VM image and relocatable checksum behavior still need attention. dapp source pin must be reconciled.",
+      "blocker": "Pinned catalog source has no Otent; canonical PR1318 still open"
     },
     {
       "number": 98,
@@ -310,8 +315,9 @@
       "headRefName": "codex/awai-92-macos-vm",
       "headRefOid": "925d9dff435f6dcc0f18d7313946ff7b386d034e",
       "baseRefName": "main",
-      "isDraft": true,
-      "reviewState": "pending"
+      "isDraft": false,
+      "reviewState": "reviewed-and-merged",
+      "mergeCommit": "24008103fbae4cac9639583ee22c3f890bdce1f2"
     },
     {
       "number": 49,
@@ -321,7 +327,8 @@
       "headRefOid": "658273bd7bf0f77f3ae971a6b77c3156725e4e08",
       "baseRefName": "main",
       "isDraft": true,
-      "reviewState": "pending"
+      "reviewState": "requires-port-to-current-cljc-shell",
+      "blocker": "Changes target removed React setup/main; active shell is now ClojureScript"
     },
     {
       "number": 42,
