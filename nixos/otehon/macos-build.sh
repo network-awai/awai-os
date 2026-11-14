@@ -31,7 +31,9 @@ profile=${OTEHON_PROFILE:-desktop}
 nix_image=${OTEHON_NIX_IMAGE:-docker.io/nixos/nix@sha256:7a70027ba790d3a79fa82faeac5f3dddc048f89e83b3901ca69542c340c9fb5c}
 mkdir -p "$out"
 command -v podman >/dev/null || { echo "NOT_RUN no podman" >&2; exit 3; }
-command -v qemu-img >/dev/null || { echo "NOT_RUN no qemu-img" >&2; exit 3; }
+if [ "${SKIP_EXPORT:-0}" != 1 ]; then
+  command -v qemu-img >/dev/null || { echo "NOT_RUN no qemu-img" >&2; exit 3; }
+fi
 
 run_nix() {
   # /out is the out-dir mounted directly: never route bulk bytes through /w
@@ -45,8 +47,8 @@ run_nix() {
 podman volume create awai-otehon-nix >/dev/null 2>&1 || true
 if [ -n "${OTEHON_CACHE_FROM:-}" ]; then
   echo "--- pre-warm volume store from $OTEHON_CACHE_FROM ---"
-  if [ -f "$OTEHON_CACHE_FROM/result-path.txt" ] && [ -d "$OTEHON_CACHE_FROM/nix-cache" ]; then
-    want=$(cat "$OTEHON_CACHE_FROM/result-path.txt")
+  if [ -f "$OTEHON_CACHE_FROM/result-toplevel.txt" ] && [ -d "$OTEHON_CACHE_FROM/nix-cache" ]; then
+    want=$(cat "$OTEHON_CACHE_FROM/result-toplevel.txt")
     # Local provenance (written by this pipeline from the same store), so no
     # signature check: production feeds stay signed via update-make-feed.sh.
     podman run --rm --security-opt label=disable \
@@ -56,7 +58,7 @@ if [ -n "${OTEHON_CACHE_FROM:-}" ]; then
       --extra-experimental-features nix-command "$want" \
       || echo "(pre-warm skipped: $want not in cache)"
   else
-    echo "(pre-warm skipped: no result-path.txt + nix-cache in $OTEHON_CACHE_FROM)"
+    echo "(pre-warm skipped: no result-toplevel.txt + nix-cache in $OTEHON_CACHE_FROM)"
   fi
 fi
 if [ "${SKIP_BUILD:-0}" = 1 ]; then
@@ -109,7 +111,7 @@ echo "--- expand + convert compressed qcow2 ---"
 gzip -d -c "$out/image.raw.gz" > "$out/image.raw" || exit 1
 qemu-img convert -O qcow2 -c "$out/image.raw" "$out/otehon-desktop.qcow2" || exit 1
 rm -f "$out/image.raw" "$out/image.raw.gz"
-shasum -a 256 "$out/otehon-desktop.qcow2" | tee "$out/otehon-desktop.qcow2.sha256"
+(cd "$out" && shasum -a 256 otehon-desktop.qcow2) | tee "$out/otehon-desktop.qcow2.sha256"
 ls -lh "$out/otehon-desktop.qcow2"
 echo "$img" > "$out/exported-from.txt"
 echo "OK $out/otehon-desktop.qcow2"
