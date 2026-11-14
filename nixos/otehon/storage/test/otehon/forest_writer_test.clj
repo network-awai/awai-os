@@ -32,6 +32,32 @@
                 (is (thrown? java.nio.file.FileAlreadyExistsException
                              (cli/-main "forest-group-export" "store" "file" (str dest))))
                 (is (= (seq data) (seq (Files/readAllBytes dest)))))))))))
+
+(deftest export-refuses-failed-directory-sync
+  (.mkdirs (java.io.File. *output*))
+  (doseq [fail-at [1 2]]
+    (let [dir (Files/createTempDirectory (Paths/get *output* (make-array String 0)) "export-sync-failure-" (make-array FileAttribute 0))
+          dest (.resolve dir "result")
+          data (.getBytes "published bytes" "UTF-8")
+          calls (atom 0)
+          sync-dir @#'otehon.cli/sync-dir!]
+      (with-redefs [pack/recover (fn [_] :handle)
+                    pack/group-size (fn [_ _] (alength data))
+                    pack/read-group-range (fn [_ _ _ _] data)]
+        (with-redefs-fn {#'otehon.cli/sync-dir!
+                         (fn [path]
+                           (if (= fail-at (swap! calls inc))
+                             (throw (java.io.IOException. "injected directory sync failure"))
+                             (sync-dir path)))}
+          (fn []
+            (is (thrown? java.io.IOException
+                         (cli/-main "forest-group-export" "store" "file" (str dest))))))
+        (is (= fail-at @calls))
+        (is (= (seq data) (seq (Files/readAllBytes dest))))
+        (is (= (if (= fail-at 1) 2 1) (count (seq (.list (.toFile dir))))))
+        (is (thrown? java.nio.file.FileAlreadyExistsException
+                     (cli/-main "forest-group-export" "store" "file" (str dest))))
+        (is (= (seq data) (seq (Files/readAllBytes dest))))))))
 (deftest generic-writer-requires-explicit-valid-witness
   (.mkdirs (java.io.File. *output*))
   (let [d (Files/createTempDirectory (Paths/get *output* (make-array String 0)) "ipld-witness-" (make-array FileAttribute 0))
