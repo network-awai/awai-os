@@ -37,6 +37,9 @@ const clojure = (args) => execFileSync("clojure", [
 clojure(["-m", "shell.styles.build"]);
 clojure(["-m", "shadow.cljs.devtools.cli", "release", "shell"]);
 clojure(["-m", "shadow.cljs.devtools.cli", "release", "link"]);
+clojure(["-m", "shadow.cljs.devtools.cli", "release", "reliability"]);
+await mkdir("dist/fs-reliability", { recursive: true });
+await copyFile("fs-reliability/index.html", "dist/fs-reliability/index.html");
 
 async function page({ html, outdir, operations, appOrigins }) {
   await mkdir(`${outdir}/assets`, { recursive: true });

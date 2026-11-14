@@ -1,5 +1,10 @@
 {:source-paths ["src" "link" "vendor" "styles"]
- :builds {:shell {:target :browser
+ :builds {:reliability {:target :browser
+                        :output-dir "dist/assets"
+                        :asset-path "../assets"
+                        :compiler-options {:externs ["externs/otehon-shell.js"]}
+                        :modules {:fs-reliability {:init-fn shell.reliability/init}}}
+          :shell {:target :browser
                   :output-dir "dist/assets"
                   :asset-path "assets"
                   :compiler-options {:externs ["externs/otehon-shell.js"]}

@@ -114,6 +114,10 @@ jobs:
         run: |
           preflight_check=$(nix-build scripts/otehon-c1/check.nix --no-out-link)
           cat "$preflight_check/tests.txt"
+      - name: Test the public immutable replica fixture (no SSH or node access)
+        run: |
+          replica_check=$(nix-build scripts/otehon-c1/replica-check.nix --no-out-link)
+          cat "$replica_check/tests.txt"
       - name: Build and test the Otehon Pack/CAR and checkpoint storage adapter
         run: |
           storage_check=$(nix-build nixos/otehon/storage/check.nix --no-out-link)
