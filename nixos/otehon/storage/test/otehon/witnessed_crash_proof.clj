@@ -16,16 +16,22 @@
         bytes (byte-array (map unchecked-byte (car/cbor-encode value)))
         digest (mapv #(bit-and 255 %) (.digest (java.security.MessageDigest/getInstance "SHA-256") bytes))]
     {:paths paths :bytes bytes :cid (car/cid-str (car/cid-bytes car/codec-dag-cbor digest))}))
-(defn witness-write! [path root]
+(defn witness-write! [path root & [during-write]]
   (with-open [out (FileChannel/open (Paths/get path (make-array String 0))
                     (into-array OpenOption [StandardOpenOption/CREATE StandardOpenOption/WRITE StandardOpenOption/TRUNCATE_EXISTING]))]
-    (let [buf (ByteBuffer/wrap (.getBytes (pr-str root) "UTF-8"))]
+    (let [bytes (.getBytes (pr-str root) "UTF-8")
+          _ (when during-write
+              (let [partial (ByteBuffer/wrap bytes 0 1)]
+                (while (.hasRemaining partial) (.write out partial)))
+              (.force out true)
+              (during-write))
+          buf (ByteBuffer/wrap bytes (if during-write 1 0) (if during-write (dec (alength bytes)) (alength bytes)))]
       (while (.hasRemaining buf) (.write out buf)))
     (.force out true)))
-(defn witness [path]
+(defn witness [path & [during-write]]
   {:read! #(edn/read-string (slurp path))
    :compare-and-set! (fn [old new] (if (= old (edn/read-string (slurp path)))
-                                     (do (witness-write! path new) true) false))})
+                                     (do (witness-write! path new during-write) true) false))})
 (defn spawn [script mode dir & args]
   (.start (doto (ProcessBuilder. ^java.util.List (into [(or (System/getenv "BABASHKA") "bb") "--classpath" (cp/get-classpath) script mode dir] args)) (.redirectErrorStream true))))
 (defn finish [p]
@@ -39,7 +45,11 @@
               (fn [e r] (when (= [e r] [event role])
                           (prn {:ready true}) (flush) (Thread/sleep 30000)
                           (throw (ex-info "writer was not killed" {}))))]
-      (pack/import-logical-forest-files! dir "proof" paths bytes cid {:expected-generation 1 :witness (witness path)}))
+      (pack/import-logical-forest-files! dir "proof" paths bytes cid
+        {:expected-generation 1
+         :witness (witness path (when (= [event role] [:during-write :witness])
+                                  (fn [] (prn {:ready true}) (flush) (Thread/sleep 30000)
+                                    (throw (ex-info "writer was not killed" {})))))}))
     (throw (ex-info "boundary not reached" {}))))
 (defn read-child [dir path]
   (try (let [handle (pack/recover-witnessed dir (:read! (witness path)))
@@ -49,7 +59,7 @@
                  expected (byte-array (map #(unchecked-byte (mod (+ (* % 19) (quot % 8191)) 256)) (range offset (+ offset 40))))]
              (ensure! (java.util.Arrays/equals expected (pack/read-group-range handle "proof" offset 40)) "range changed" {})))
          {:generation (get-in (pack/summary handle) [:basis :generation]) :packs n})
-       (catch Exception e {:error (:type (ex-data e))})))
+       (catch Exception e {:error (or (:type (ex-data e)) :witness-read-failed)})))
 (defn run-case [script output event role expected]
   (let [base (str output "/" (name role) "-" (name event)) dir (str base "/store") path (str base "/witness.edn")]
     (ensure! (.mkdir (io/file base)) "case exists" {:base base})
@@ -63,6 +73,12 @@
         (ensure! (and (.waitFor writer 10 java.util.concurrent.TimeUnit/SECONDS) (= 137 (.exitValue writer))) "kill failed" {})
         (let [actual (finish (spawn script "read" dir path))]
           (ensure! (= expected actual) "unexpected recovered basis" {:actual actual :expected expected})
+          (when (= [event role] [:during-write :witness])
+            (ensure! (= 1 (Files/size (Paths/get path (make-array String 0)))) "witness was not partially written" {})
+            (let [unguarded (pack/summary (pack/recover dir))]
+              (ensure! (and (= 2 (get-in unguarded [:basis :generation]))
+                            (= 4 (count (get-in unguarded [:groups "proof" :packs]))))
+                       "partial-witness control did not retain a readable published group" {})))
           (prn {:event event :role role :result actual :pass true}))
         (finally (.destroyForcibly writer))))))
 (let [[mode dir a b c] *command-line-args*]
@@ -76,8 +92,9 @@
                                            [:half-written :root {:generation 1 :packs 0}]
                                            [:renamed :root {:error :witness-mismatch}]
                                            [:before-cas :witness {:error :witness-mismatch}]
+                                           [:during-write :witness {:error :witness-read-failed}]
                                            [:after-cas :witness {:generation 2 :packs 4}]]]
               (run-case *file* dir event role expected))
-            (prn {:cases 6 :pass true :independent-witness false :os-cache-loss false})
+            (prn {:cases 7 :pass true :independent-witness false :os-cache-loss false})
             (finally (shutdown-agents)))
     (throw (ex-info "use run, write or read" {}))))
