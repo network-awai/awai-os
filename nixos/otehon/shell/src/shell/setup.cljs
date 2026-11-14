@@ -267,6 +267,7 @@
      #js [language])
     [:div.setup {:data-step step}
      [:div.setup-card
+      [:img.setup-logo {:src "assets/awai-logo.png" :alt "Awai" :width 96 :height 96}]
       (when (= step "hello")
         [:<>
          [:h1.hello (:hello t)]
