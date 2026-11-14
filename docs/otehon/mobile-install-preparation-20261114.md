@@ -1,0 +1,79 @@
+# moto g05: 導入用 artifact の取得と host 準備
+
+[AWAI-681](https://linear.app/kotobalabs/issue/AWAI-681)、2026-11-14。
+Jun が前回の解除・LineageOS 導入手順を Lima/Windows 等で進めるよう指示したため、実行準備を開始した。
+ここでは取得と host の準備を記録し、端末での成功とは分ける。
+
+## 取得・検証済み
+
+公式 API `https://download.lineageos.org/api/v2/devices/lamu/builds` を再取得し、
+最新の同一 build `2026-11-12` の OS ZIP / boot.img / dtbo.img / vendor_boot.img を取得した。
+[4 artifact の URL・実バイト数・照合済み SHA-256](mobile/lineage-lamu-verified-20261114.json)を保存。
+API の期待値とローカルのサイズ・SHA-256 が4件とも一致した。署名の暗号学的検証・端末適合・起動確認は別段階。
+配布物は task worktree の `.agent-output/mobile-install-20261114/` に保全し、Git には入れていない。
+`init_boot`・`lk`・`vbmeta` は前回確認した導入手順が要求する追加書込みには含めない。
+
+## host の確認
+
+- macOS arm64、Lima 2.3.0、QEMU 11.1.3。
+- 既存の別taskのLima VMは変更しない。専用 `awai-681-mobile-x86` を QEMU/x86_64、2CPU/2GiB RAM/8GiB disk で新規作成した。
+  Ubuntu の image は日付付き URL と SHA-256 を指定。取得・照合後にローカル image へ切り替えて起動した。
+  コンテナ runtime は無効、mount は今回の task 出力のみ、SSH agent と既存公開鍵の取込みは無効。
+- 同梱 tanuki の antumbra は x86_64 Linux ELF。aarch64 VZ guest にそのまま配置しても実行環境の証明にならない。
+- Lima VZ の USB passthrough は、確認時点で [PR #5770](https://github.com/lima-vm/lima/pull/5770) /
+  [PR #5790](https://github.com/lima-vm/lima/pull/5790) が open。installed CLI に phone 用 USB attach コマンドはない。
+  今回は QEMU の usb-host/QMP 経路を検証する。raw block-device attach はスマホの MediaTek/fastboot USB 転送の代替にしない。
+- 別候補として [Penumbra v1.0.0](https://github.com/shomykohai/penumbra/releases/tag/v1.0.0) の
+  `antumbra-darwin-aarch64` を取得し、GitHub release API の期待 SHA-256
+  `2737efd7cdd0a0e8b2afe25b1b14cf1d2af3bca1ed1a9473fcdf647b44fbb0a7` と一致を確認。
+  macOS で `--help` と `x-flash --help` が exit 0。これは起動とコマンド表示のみで、USB通信・読み書き成功ではない。
+  tanuki 同梱版とは別versionのため、互換性未確認のまま差し替えて書かない。
+- Wine は未導入。Windows executable が起動することと MediaTek USB driver が使えることは別なので、
+  Linux経路を調べずWineだけを導入する手順にはしていない。
+
+## 未達と再開条件
+
+準備開始時、ADB と IOUSB の両方で moto は検出されなかった。
+接続とバックアップ状況を Jun に依頼済みで、回答待ち。端末への unlock/flash/wipe は実行していない。
+
+接続後、対象SKU/current firmware/bootloaderを再測定し、未変更の原本バックアップと純正復旧物の
+取得・照合方法を確認する。その後に USB の Android/MediaTek/fastboot 各 mode と再列挙を検証する。
+USB転送や firmware 適合が未確認のまま、書込みを始める tanuki 全体を起動しない。
+前回の同梱 ZIP は再照合済みで、取得物の SHA-256 は変わっていないが、独立した配布者期待 digest は未確認。
+
+## Lima 準備の完了と検証範囲
+
+専用 guest は Ubuntu 26.04 / x86_64 として起動し、Lima の5段階の readiness が
+2026-11-14T07:30:39Z に完了した。
+[同梱 Antumbra の help と fastboot 36.0.2 の version 試験](mobile/lima-tool-smoke-20261114.txt)が exit 0。
+ZIP 内の Linux binary に実行bitがなかったため、その2ファイルにだけ実行bitを付けて再試験した。
+
+[QMP の読取り結果](mobile/lima-qmp-capabilities-20261114.json)では installed QEMU に
+usb-host と hostport/vendorid/productid 等の properties があることを確認した。
+これは実機の転送成功ではない。guest の lsusb は仮想 root hub 2個のみで、host device は一つも attach していない。
+最終確認の host ADB には別作業の emulator が現れたが、対象 moto ではないため操作していない。
+再開時も adb の先頭端末や自動選択を使わず、対象 moto の serial を明示選択する。
+
+初回 boot は enp0s4→eth0 の rename が busy になり cloud-init が待機した。
+[Lima の既知 issue #4792](https://github.com/lima-vm/lima/issues/4792)と同じ症状で、2回目の boot では eth0 と SSH が使えた。
+初回の通常停止には反応しなかったため、今回作成した guest だけを force-stop して再起動した。
+既存 VM や別作業の emulator は停止・変更していない。
+
+Ubuntu image は 859,090,944 bytes、SHA-256 は
+`5645d0318ad21f643ebb1ac4567514620e9893380b07b0201fda163baa5b7eb5`。
+同じ URL の8MiB range probe は8.310秒（約1,009,412 bytes/s）、8並列の全 image 取得・結合・照合は81.976秒。
+単一接続の全取得時間は未測定なので、実測の時間短縮率とはしない。n=1、ネットワーク条件の統制なし。
+
+分割ファイル8件と probe 1件は、検証済み本体の各 byte range と再照合したうえで削除し、
+867,479,552 bytes の重複ファイルを除いた。本体、OS artifact、tanuki、VM disk、ログは保持。
+今回の PR/worktree は未merge・証跡ありなので削除しない。
+
+### 接続後の再開
+
+`limactl start awai-681-mobile-x86` で専用 guest を再開できる。
+共有先は guest の `/mnt/awai-681`、host の task出力 `.agent-output/mobile-install-20261114/`。
+接続とバックアップ状況の回答を確認し、対象個体の再測定、USBの各mode、復旧用原本保全へ進む。
+実際の unlock/flash/wipe/LineageOS 起動は未実施で、これらを host 準備の成功に含めない。
+
+readiness と tool smoke 後、端末接続待ちのため専用 guest を通常停止し、
+2026-11-14T07:31:13Z に Stopped を確認した。guest disk と task 出力は再開用に保持している。
