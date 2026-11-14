@@ -20,7 +20,16 @@ def read_screen(ppm, png):
                                     f"-width={width // 2}", f"-height={max(1,height // 5)}", str(ppm)])
     region = subprocess.check_output(["tesseract", "stdin", "stdout", "--psm", "6"], input=crop, stderr=subprocess.DEVNULL).decode()
     sparse = subprocess.check_output(["tesseract", str(ppm), "stdout", "--psm", "11", "-l", os.environ.get("OTEHON_OCR_LANG", "eng")], text=True, stderr=subprocess.DEVNULL)
-    return text + "\n--- central control region ---\n" + region + "\n--- sparse controls ---\n" + sparse
+    # Isolate the inner completion button, remove its border, and enlarge a
+    # binary inverse. Full-page OCR drops white-on-blue CJK control labels.
+    footer = subprocess.check_output(["pamcut", f"-left={max(0,width-270)}", f"-top={max(0,height-58)}",
+                                      f"-width={min(236,width)}", f"-height={min(44,height)}", str(ppm)])
+    gray = subprocess.check_output(["ppmtopgm"], input=footer)
+    binary = subprocess.check_output(["pgmtopbm", "-threshold", "-value", "0.5"], input=gray)
+    inverted = subprocess.check_output(["pnminvert"], input=binary)
+    enlarged = subprocess.check_output(["pamenlarge", "3"], input=inverted)
+    footer_text = subprocess.check_output(["tesseract", "stdin", "stdout", "--psm", "7", "-l", os.environ.get("OTEHON_OCR_LANG", "eng")], input=enlarged, stderr=subprocess.DEVNULL).decode()
+    return text + "\n--- central control region ---\n" + region + "\n--- sparse controls ---\n" + sparse + "\n--- right footer control ---\n" + footer_text
 
 
 class VisualGuest:
@@ -81,10 +90,14 @@ class VisualGuest:
     def expect(self, strings, label, timeout=300, fatal=()):
         end = time.monotonic() + timeout
         last = ""
+        last_log = 0
         while time.monotonic() < end:
             if self.process.poll() is not None:
                 raise RuntimeError(f"installed QEMU exited while waiting for {label}")
             last = self.capture()
+            if time.monotonic()-last_log >= 30:
+                print(f"VISIBLE_VM {self.phase} wait={label}: {last[:900]} ... {last[-350:]}", flush=True)
+                last_log=time.monotonic()
             if any("".join(s.lower().split()) in "".join(last.split()) for s in fatal):
                 raise RuntimeError(f"visible failure during {label}: {last[-3000:]}")
             if all("".join(s.lower().split()) in "".join(last.split()) for s in strings):
@@ -147,10 +160,10 @@ def verify_installed(out, sockets, code, variables, checks, target_bus="virtio",
         return VisualGuest(command, serial, qmp, out, phase)
     guest = boot("first-boot")
     try:
-        guest.expect((["Awai", "データを保護"] if graphical_state else []) + ["choose a passphrase"], "choose-passphrase")
+        guest.expect(["Awai", "データを保護", "12文字以上"] if graphical_state else ["choose a passphrase"], "choose-passphrase")
         checks.append("installed target boots UEFI without installer attached")
         guest.type_fixture(fixture)
-        guest.expect(["enter the passphrase again"], "confirm-passphrase")
+        guest.expect(["同じパスフレーズ"] if graphical_state else ["enter the passphrase again"], "confirm-passphrase")
         guest.type_fixture(fixture)
         guest.expect(["hello", "get started"], "desktop", timeout=600)
         checks.append("first boot provisions encrypted state and displays actual desktop onboarding")
@@ -160,7 +173,7 @@ def verify_installed(out, sockets, code, variables, checks, target_bus="virtio",
         guest.close()
     guest = boot("second-boot")
     try:
-        guest.expect((["Awai", "データを保護"] if graphical_state else []) + ["passphrase for this pc"], "unlock-state")
+        guest.expect(["Awai", "データを解除", "パスフレーズ"] if graphical_state else ["passphrase for this pc"], "unlock-state")
         guest.type_fixture(fixture)
         guest.expect(["hello", "get started"], "desktop", timeout=600)
         checks.append("cold QEMU restart unlocks existing encrypted state and returns to desktop")
@@ -191,7 +204,7 @@ def verify_graphical_install(command, serial, qmp, out, checks, untouched, writt
         tsv=subprocess.check_output(['tesseract',str(png),'stdout','-l','eng+jpn','--psm','11','tsv'],stderr=subprocess.DEVNULL,text=True)
         import csv,io
         rows=list(csv.DictReader(io.StringIO(tsv),delimiter='\t'))
-        found=[r for r in rows if needle in (r.get('text') or '')]
+        found=[r for r in rows if needle.lower() in (r.get('text') or '').lower()]
         if len(found)!=1: raise AssertionError('screen control not unique: '+needle)
         r=found[0];width,height=struct.unpack('>II',png.read_bytes()[16:24])
         guest.click(int(r['left'])+int(r['width'])//2,int(r['top'])+int(r['height'])//2,width,height)
@@ -215,10 +228,12 @@ def verify_graphical_install(command, serial, qmp, out, checks, untouched, writt
         guest.capture()
         # Selection and exact typed approval occur through the displayed UI.
         footer()
-        guest.expect(['照合','NVMe'], 'verified-complete',timeout=2100, fatal=['完了できませんでした','書込み前の確認に失敗','approval-stale','approval-expired','target-changed','target-in-use'])
-        # A readback page also contains those words; require the actual completion
-        # title and power-off control before accepting the write.
-        guest.expect(['完了','電源を切る'], 'poweroff-ready',timeout=2100)
+        failures=['完了できませんでした','書込み前の確認に失敗','approval-stale','approval-expired','target-changed','target-in-use']
+        guest.expect(['実際の処理状況'], 'approval-accepted',timeout=60, fatal=failures)
+        guest.expect(['照合','NVMe'], 'readback-observed',timeout=2100, fatal=failures)
+        # A readback page alone is insufficient. Require the unique completion
+        # title AND the displayed power-off control, including footer-region OCR.
+        guest.expect(['インストールが完了しました','電源を切る'], 'poweroff-ready',timeout=2100, fatal=failures)
         if written('target')==0 or written('decoy') or written('small'):
             raise AssertionError('graphical installer changed incorrect scratch scope')
         checks.append('mouse selection and exact keyboard approval install scratch NVMe; full readback completes; decoys unchanged')

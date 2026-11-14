@@ -16,7 +16,22 @@ prompt = text_sprite("起動を準備しています…", "20", 100, 340);
 entry = text_sprite("", "24", 100, 420);
 hint = text_sprite("入力して Enter で続ける", "18", 100, 490);
 fun password_callback(message, bullets) {
-  prompt.SetImage(Image.Text(message, 0.094, 0.137, 0.196, 1, "Noto Sans CJK JP 20"));
+  title = "データ保護の確認";
+  instruction = message;
+  if (message == "Choose a passphrase for this PC's data (12 characters or more). Without it the data is lost:") {
+    title = "この PC のデータを保護";
+    instruction = "12文字以上のパスフレーズを設定してください。";
+  }
+  if (message == "Enter the passphrase again:") {
+    title = "同じパスフレーズを入力";
+    instruction = "確認のため、もう一度入力してください。";
+  }
+  if (message == "Passphrase for this PC's data:") {
+    title = "この PC のデータを解除";
+    instruction = "設定したパスフレーズを入力してください。";
+  }
+  heading.SetImage(Image.Text(title, 0.094, 0.137, 0.196, 1, "Noto Sans CJK JP 34"));
+  prompt.SetImage(Image.Text(instruction, 0.094, 0.137, 0.196, 1, "Noto Sans CJK JP 20"));
   entry.SetOpacity(1);
   hidden = "";
   for (i = 0; i < bullets; i++) hidden += "●";
