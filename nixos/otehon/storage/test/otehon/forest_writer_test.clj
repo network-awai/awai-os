@@ -17,3 +17,14 @@
                   (catch Exception e (:type (ex-data e))))))
       (is (= before (:root (storage/read-store store))))
       (is (not (.exists (java.io.File. stage)))))))
+
+(deftest large-writer-refuses-invalid-generation-before-staging
+  (.mkdirs (java.io.File. *output*))
+  (let [dir (Files/createTempDirectory (Paths/get *output* (make-array String 0)) "large-generation-" (make-array FileAttribute 0))
+        stage (str dir "/stage")]
+    (doseq [options [{:expected-generation nil} {:expected-generation 0}
+                     {:expected-generation 9007199254740992} {:expected-generation false} {:unknown 1}]]
+      (is (= :invalid-generation
+             (try (writer/put-file-large! (str dir "/store") "file" (str dir "/source") stage (str dir "/tool") options) nil
+                  (catch Exception e (:type (ex-data e))))))
+      (is (not (.exists (java.io.File. stage)))))))

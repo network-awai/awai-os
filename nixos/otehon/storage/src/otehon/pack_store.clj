@@ -364,11 +364,17 @@
 (defn import-logical-forest-files!
   "Atomically publish canonical manifest and ordered Forest files. The files
   are verified one at a time and streamed again under the writer lock; changes
-  between passes abort publication. Larger files use the distinct v2 ref."
+  between passes abort publication. Larger files use the distinct v2 ref.
+  An explicit :expected-generation fences stale local writers under the lock."
   ([directory name paths manifest manifest-cid]
    (import-logical-forest-files! directory name paths manifest manifest-cid {}))
   ([directory name paths manifest manifest-cid options]
-  (when-not (contains? #{{} {:file-backed? true}} options)
+  (when-not (and (map? options)
+                 (every? #{:file-backed? :expected-generation} (keys options))
+                 (or (not (contains? options :file-backed?)) (true? (:file-backed? options)))
+                 (or (not (contains? options :expected-generation))
+                     (and (integer? (:expected-generation options))
+                          (<= 1 (:expected-generation options) 9007199254740991))))
     (fail! :invalid-pack-group "unsupported file import options"))
   (group-key name)
   (when-not (and (vector? paths) (<= 1 (count paths) max-group-packs))
@@ -396,8 +402,8 @@
                :packs (mapv :ref candidates)
                :manifest-hex (car/hex-encode (vector-bytes manifest 131072))
                :manifest-cid manifest-cid}
-        result (store/transact! directory :put {:key (group-key name) :value (pr-str group)}
-                 (fn [directory state]
+        payload {:key (group-key name) :value (pr-str group)}
+        before-publish (fn [directory state]
                    (recover-map directory state)
                    (doseq [{:keys [path ref]} candidates]
                      (try
@@ -412,7 +418,10 @@
                          (if (contains? #{:forest-source-changed :changed-payload :short-read}
                                         (:type (ex-data e)))
                            (fail! :forest-changed "Forest input changed during publication")
-                           (throw e)))))))]
+                           (throw e))))))
+        result (if (contains? options :expected-generation)
+                 (store/transact-if-generation! directory (:expected-generation options) :put payload before-publish)
+                 (store/transact! directory :put payload before-publish))]
     (assoc result :group group))))
 
 (defn put-data! [directory name bytes]

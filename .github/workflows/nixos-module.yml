@@ -39,6 +39,9 @@ jobs:
           writer_proof=nixos/otehon/storage/test/otehon/forest_large_writer_proof.clj
           "$bb_path/bin/bb" --classpath "$classpath" "$writer_proof" write "$RUNNER_TEMP/forest-large-writer-proof" "$tool"
           "$bb_path/bin/bb" --classpath "$classpath" "$writer_proof" read "$RUNNER_TEMP/forest-large-writer-proof" "$tool"
+          cas_proof=nixos/otehon/storage/test/otehon/forest_large_cas_proof.clj
+          "$bb_path/bin/bb" --classpath "$classpath" "$cas_proof" write "$RUNNER_TEMP/forest-large-cas-proof" "$tool"
+          "$bb_path/bin/bb" --classpath "$classpath" "$cas_proof" read "$RUNNER_TEMP/forest-large-cas-proof" "$tool"
           crash_proof=nixos/otehon/storage/test/otehon/forest_file_crash_proof.clj
           "$bb_path/bin/bb" --classpath "$classpath" "$crash_proof" generate "$RUNNER_TEMP/forest-file-crash"
           for i in 0 1; do

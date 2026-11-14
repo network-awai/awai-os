@@ -219,8 +219,16 @@
 (defn put-file-large!
   "Create a file with an explicit fixed 1 MiB logical profile and up to 64
   16-leaf Forest Packs. Keeps at most one Pack of raw byte arrays in memory.
-  The source stays untouched; staging and interrupted objects are retained."
-  [directory name source staging tool]
+  The source stays untouched; staging and interrupted objects are retained.
+  Optional :expected-generation fences stale local writers at publication."
+  ([directory name source staging tool]
+   (put-file-large! directory name source staging tool {}))
+  ([directory name source staging tool options]
+  (when-not (and (map? options) (every? #{:expected-generation} (keys options))
+                 (or (not (contains? options :expected-generation))
+                     (and (integer? (:expected-generation options))
+                          (<= 1 (:expected-generation options) 9007199254740991))))
+    (fail! :invalid-generation "expected a positive bounded store generation"))
   (when-not (every? string? [directory name source staging tool])
     (fail! :invalid-argument "expected string paths and name"))
   (when-not (contains? tool-digests (file-digest tool))
@@ -290,5 +298,5 @@
                                         "chunkProfile" {"kind" "fixed" "version" 1 "leafSize" large-leaf}
                                         "chunks" (:chunks result)})
             cid (car/cid-str (car/cid-bytes car/codec-dag-cbor (digest manifest)))
-            committed (pack/import-logical-forest-files! directory name (:paths result) (to-bytes manifest) cid {:file-backed? true})]
-        (assoc committed :manifest-cid cid :file-size (:size result) :pack-count (count (:paths result)))))))
+            committed (pack/import-logical-forest-files! directory name (:paths result) (to-bytes manifest) cid (assoc options :file-backed? true))]
+        (assoc committed :manifest-cid cid :file-size (:size result) :pack-count (count (:paths result))))))))
