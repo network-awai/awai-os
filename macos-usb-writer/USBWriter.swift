@@ -154,6 +154,23 @@ func tests() throws {
     print("PASS serial binding, dynamic whole-disk lookup, missing/duplicate/partition/path refusal")
 }
 do {try tests()}catch{fputs("\(error)\n",stderr);exit(1)}
+#elseif USB_MEDIA_READ_ONLY
+// Separate one-shot diagnostic binary: no request/action parser and no write path.
+do {
+    try require(CommandLine.arguments.count==1 && geteuid()==0,"Run the read-only diagnostic with sudo and no arguments")
+    let disk=try target()
+    let fd=open("/dev/r"+disk,O_RDONLY|O_NOFOLLOW|O_CLOEXEC)
+    try require(fd>=0,"Read-only USB access denied")
+    let input=FileHandle(fileDescriptor:fd,closeOnDealloc:true);defer{try? input.close()}
+    var st=stat();try require(fstat(fd,&st)==0 && st.st_mode & S_IFMT==S_IFCHR,"Unexpected device type")
+    let expected="5695f3c43f97912212289b59a11b79f6662c5ebbbbb45fd4aaa0e2d2b2840133"
+    let bytes:UInt64=6816595968
+    try require(try target()==disk,"USB changed before read")
+    let actual=try digest(input,bytes,phase:"media-read-only")
+    try require(try target()==disk,"USB changed during read")
+    event(["status":actual==expected ? "media-matches-qualified-iso":"media-differs-from-qualified-iso","bytes":bytes,"sha256":actual,"expected_sha256":expected,"disk":disk,"serialSuffix":String(serial.suffix(8)),"writeAccess":false])
+    if actual != expected {exit(2)}
+}catch{event(["status":"failed","error":String(describing:error)]);exit(1)}
 #else
 do {try main()}catch{event(["status":"failed","error":String(describing:error)]);exit(1)}
 #endif

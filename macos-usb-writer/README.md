@@ -68,3 +68,12 @@ completed without another password, matching all 2011299840 readback bytes and
 safely ejecting the USB. See docs/verification-passwordless-usb-2026-10-06.md.
 
 The writer clones the admitted open ISO descriptor using APFS copy-on-write into its root-private directory, protects and hashes that independent snapshot before unmounting the USB. This avoids allocating another whole ISO on a nearly full Mac. Unsupported filesystems, clone failure, or wrong digest refuse before USB writes; there is no full-copy fallback. Source mutations cannot change the cloned snapshot.
+
+For a media-only diagnosis of the exact Otehon0.7.0 image, compile a separate
+`xcrun swiftc -O -D USB_MEDIA_READ_ONLY USBWriter.swift -o <task-output>/kioxia-media-readonly`.
+This entry accepts no arguments or request actions and only opens the fixed
+KIOXIA raw device O_RDONLY, checks its identity before/after, and compares the
+complete qualified image length/digest. It does not write, unmount or eject.
+Record the compiled binary digest before the one-shot administrator invocation;
+do not replace the installed writer or broaden its sudoers rule for diagnosis.
+A matching medium does not qualify installed-disk boot or physical hardware.
