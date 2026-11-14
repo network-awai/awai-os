@@ -2,7 +2,7 @@
 (load-string (first (str/split (slurp "nixos/otehon/storage/oracle/postgres_witness_policy.clj") #"\(case \(first \*command-line-args\*\)" 2)))
 (require '[kotobase.governed-execution :as governed] '[kotobase.execution-identity :as id]
          '[kotobase.execution-keys :as keys] '[kotobase.core :as core] '[kotobase.causal-commit :as causal]
-         '[kotoba.value.codec :as codec] '[otehon.forest-writer :as writer])
+         '[kotoba.value.codec :as codec] '[kotobase.execution-contract :as contract] '[otehon.forest-writer :as writer])
 (def issuer (vec (repeat 32 3)))
 (def executor (vec (repeat 32 4)))
 (defn payload-bytes [s] (mapv #(bit-and 255 %) (.getBytes s "UTF-8")))
@@ -31,13 +31,28 @@
        manifest (assoc m :signature (sign "issuer" issuer m))
        evaluate (fn [_ _] (let [src (reify source/IPatternSource (-scan [_ pattern] (mapv (fn [{:keys [e a v]}] {:s e :p a :o v}) (engine/scan eng snap pattern)))) visible (policy/visible-for p #{policy/read-protected-capability})] (mapv (fn [[root cid]] {:file/root root :chunk/cid cid}) (datalog/q src query #(visible (update % :p str))))))]
   {:request request :manifest manifest :authority {:now "2026-09-02T14:30:00Z" :epoch 7 :consume-nonce! (fn [_] true)} :value-cid id/value-cid :verify verify-signature :plan-digest (fn [x] (id/value-cid (if x "fixture-plan" "no-plan"))) :cost (fn [] {:dependent-hops 0 :requests 0 :bytes 0 :cache-profile :unknown}) :implementation/build "hosted-reference-fixture" :sign #(sign "executor" executor %) :authorize! (fn [q] {:allowed? (:dango/allowed? decision) :projection (set (:find q)) :basis basis :policy-cid pcid}) :schema {:file/root {:class :public} :chunk/cid {:class :internal}} :grant {:granted #{:public :internal} :scopes #{}} :query q :evaluate! evaluate}))
-(defn sink [db name captured]
+(defn verify-bundle! [get-block receipt basis]
+ (let [req-cid (:request/digest receipt) manifest-cid (:execution/manifest receipt)
+       req-bytes (get-block req-cid) manifest-bytes (get-block manifest-cid)]
+  (ensure! (and req-bytes manifest-bytes) "missing execution bundle block")
+  (let [request (codec/decode-value req-bytes) manifest (codec/decode-value manifest-bytes)]
+   (ensure! (= req-cid (id/value-cid request)) "request CID mismatch")
+   (ensure! (= manifest-cid (id/value-cid manifest)) "manifest CID mismatch")
+   (contract/validate-manifest-request! manifest request)
+   (ensure! (= basis (:data/commit manifest)) "manifest basis mismatch")
+   (ensure! (true? (verify-signature {:record :execution-manifest :tenant "test" :epoch 7 :payload-cid (id/payload-cid manifest) :signature (:signature manifest)})) "bad manifest signature")
+   true)))
+(defn sink [db name captured request manifest]
  (fn [receipt]
-  (let [tx (blocks/open-transaction db) staged (overlay db tx) ack ((causal/execution-receipt-sink (open-db staged) {:expected-basis-cid nil :receipt-cid-fn id/value-cid}) receipt)
+  (let [tx (blocks/open-transaction db)
+        _ (doseq [value [request manifest]]
+            ((:put! tx) (id/value-cid value) (byte-array (map unchecked-byte (codec/encode-value value)))))
+        staged (overlay db tx) ack ((causal/execution-receipt-sink (open-db staged) {:expected-basis-cid nil :receipt-cid-fn id/value-cid}) receipt)
         commit (:receipt/commit-cid ack)]
     (println :sink-staged ack)
     (ensure! (:published? ((:publish! tx) name nil commit)) "receipt ref failed")
     (ensure! (= [receipt] (:receipt/records (causal/receipt-at (open-db db) commit (:receipt/cid ack)))) "persisted receipt mismatch")
+    (verify-bundle! #(storage/get-block db %) receipt (:base/commit request))
     (reset! captured ack) ack)))
 (case (first *command-line-args*)
  "write" (do (ensure! (.mkdir (java.io.File. staging)) "staging exists") (store/init! store-path)
@@ -46,15 +61,15 @@
    (ensure! (:published? (storage/-compare-and-set-ref! db "policy" nil policy-basis)) "basis publication failed")
    (let [recorded (atom nil) denied (atom nil) evaluations (atom 0) opts (ctx db)
          injected (with-redefs [writer/put-ipld-blocks! (fn [& _] (throw (ex-info "injected-publish-failure" {})))]
-                    (try (governed/execute! (assoc opts :commit! (sink db "receipt-failed" recorded))) :unexpected-return
+                    (try (governed/execute! (assoc opts :commit! (sink db "receipt-failed" recorded (:request opts) (:manifest opts)))) :unexpected-return
                          (catch Exception e (.getMessage e))))
          _ (ensure! (= "injected-publish-failure" injected) "failed publish returned rows")
          _ (ensure! (and (nil? @recorded) (nil? (storage/-read-ref db "receipt-failed"))) "failed publish advanced receipt")
          refusal (try (governed/execute! (assoc opts :authorize! (fn [_] {:allowed? false})
-                         :evaluate! (fn [& _] (swap! evaluations inc)) :commit! (sink db "receipt-deny" denied))) :unexpected-return
+                         :evaluate! (fn [& _] (swap! evaluations inc)) :commit! (sink db "receipt-deny" denied (:request opts) (:manifest opts)))) :unexpected-return
                      (catch Exception _ :refused))
          _ (ensure! (and (= :refused refusal) (zero? @evaluations) @denied) "denial evaluated or receipt missing")
-         result (governed/execute! (assoc opts :commit! (sink db "receipt-allow" recorded)))]
+         result (governed/execute! (assoc opts :commit! (sink db "receipt-allow" recorded (:request opts) (:manifest opts))))]
     (ensure! (= 1 (count (:rows result))) "wrong row count")
     (spit (str base "/receipt.edn") (pr-str {:allow @recorded :deny @denied}))
     (prn {:mode :write :allow @recorded :deny @denied :failed-publication :refused :deny-evaluations @evaluations :pass true}))))
@@ -64,6 +79,12 @@
          receipt (first (:receipt/records (causal/receipt-at (open-db db) commit (:receipt/cid ack))))]
     (ensure! (= commit (:receipt/commit-cid ack)) "commit mismatch")
     (ensure! (= kind (:authority/decision receipt)) "decision mismatch")
+    (let [get-block #(storage/get-block db %) basis (:cid (storage/-read-ref db "policy"))]
+     (verify-bundle! get-block receipt basis)
+     (ensure! (= "missing execution bundle block"
+                 (try (verify-bundle! #(when-not (= % (:request/digest receipt)) (get-block %)) receipt basis)
+                      :unexpected-return (catch Exception e (.getMessage e))))
+              "missing request was accepted"))
     (ensure! (true? (verify-signature {:record :execution-receipt :tenant "test" :epoch 7 :payload-cid (id/payload-cid receipt) :signature (:signature receipt)})) "bad signature")
     (prn {:mode :read :decision kind :commit commit :receipt (:receipt/cid ack) :signature :verified :pass true}))) )
  (throw (ex-info "write or read required" {})))
