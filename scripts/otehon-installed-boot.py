@@ -166,13 +166,13 @@ def verify_installed(out, sockets, code, variables, checks, target_bus="virtio",
                    "-drive", f"if=pflash,format=raw,readonly=on,file={code}",
                    "-drive", f"if=pflash,format=raw,file={variables}",
                    "-drive", f"if=none,id=installed,format=qcow2,file={out / 'target.qcow2'},discard=unmap,detect-zeroes=unmap",
-                   "-device", f"{'nvme' if target_bus == 'nvme' else 'virtio-blk-pci'},drive=installed,serial=OTEHON-USB-TARGET,bootindex=1",
+                   "-device", f"{'nvme' if target_bus == 'nvme' else 'virtio-blk-pci'},drive=installed,serial=OTEHON-USB-TARGET",
                    "-serial", f"unix:{serial},server=on,wait=off", "-qmp", f"unix:{qmp},server=on,wait=off"]
         return VisualGuest(command, serial, qmp, out, phase)
     guest = boot("first-boot")
     try:
         guest.expect(["Awai", "データを保護", "12文字以上"] if graphical_state else ["choose a passphrase"], "choose-passphrase")
-        checks.append("installed target boots UEFI without installer attached")
+        checks.append("installed target boots UEFI without installer attached or forced QEMU bootindex")
         guest.type_fixture(fixture)
         guest.expect(["同じパスフレーズ"] if graphical_state else ["enter the passphrase again"], "confirm-passphrase")
         guest.type_fixture(fixture)
@@ -250,5 +250,41 @@ def verify_graphical_install(command, serial, qmp, out, checks, untouched, writt
         checks.append('mouse selection and exact keyboard approval install scratch NVMe; full readback completes; decoys unchanged')
         footer();guest.process.wait(timeout=90)
         checks.append('verified completion screen powers off via displayed control')
+    finally:
+        guest.close()
+
+
+def verify_console_install(command, serial, qmp, out, checks, untouched, written):
+    """Select the shipped no-GUI entry, then type only into the displayed VT1."""
+    guest=VisualGuest(command,serial,qmp,out,'text-installer')
+    def key(value):guest.qmp('human-monitor-command',{'command-line':'sendkey '+value})
+    def enter(value):
+        for c in value:
+            if c=='-':code='minus'
+            elif c.isascii() and c.isalpha():code=('shift-' if c.isupper() else '')+c.lower()
+            elif c.isdigit():code=c
+            else:raise ValueError('non-fixture console character')
+            key(code);time.sleep(.06)
+        key('ret')
+    try:
+        guest.expect(['Awai','Text','0.7.1'],'boot-menu',timeout=120)
+        # The default entry is followed by the single text-installer specialisation.
+        key('down');key('ret')
+        guest.expect(['NOT INSTALLED YET','Type the serial','0.7.1','Build ID'],'physical-console-ready',timeout=420)
+        untouched();checks.append('display-manager-disabled entry exposes version/build and interactive physical VT1 without target writes')
+        enter('WRONG-SERIAL');guest.expect(['No single disk'],'wrong-serial',timeout=60);untouched()
+        enter('OTEHON-USB-SMALL');guest.expect(['too small'],'small-refused',timeout=60);untouched()
+        enter('OTEHON-USB-TARGET');guest.expect(['Type ERASE'],'review-target',timeout=60)
+        enter('erase');guest.expect(['Stopped. Nothing was written'],'mismatch-refused',timeout=60);untouched()
+        enter('OTEHON-USB-TARGET');guest.expect(['Type ERASE'],'exact-review',timeout=60)
+        enter('ERASE')
+        guest.expect(['INSTALLED on','POWEROFF'],'verified-completion',timeout=2100,
+                     fatal=['WRITE FAILED','CHECK FAILED','BOOT FAILED','image digest does not match'])
+        if written('target')==0 or written('decoy') or written('small'):
+            raise AssertionError('text console changed incorrect scratch scope')
+        checks.append('physical-console exact serial/ERASE installs NVMe, full readback and UEFI registration succeed; decoys unchanged')
+        enter('REBOOT');guest.process.wait(timeout=90)
+        if guest.process.returncode!=0:raise AssertionError('console reboot did not exit no-reboot QEMU normally')
+        checks.append('displayed console REBOOT requests actual guest restart; no-reboot QEMU exits before USB-detached installed boot')
     finally:
         guest.close()

@@ -19,6 +19,10 @@ SOURCE = Path('/iso/otehon/image.raw.zst')
 RUNDIR = Path('/run/otehon-install')
 LOCK = Path('/run/otehon-install.lock')
 
+def boot_check():
+    result=subprocess.run(['otehon-install-boot','check'],capture_output=True,timeout=15)
+    if result.returncode: raise Refused('USB を UEFI モードで起動し、起動情報へ書き込める状態にしてください。保存先は変更していません。')
+
 class Refused(Exception): pass
 class Cancelled(Exception): pass
 
@@ -108,7 +112,7 @@ class Broker:
                 with temp.open('w') as out:
                     os.fchmod(out.fileno(),0o600); json.dump(self.state,out);out.flush();os.fsync(out.fileno())
                 temp.replace(target); self.last_saved=time.monotonic()
-    def busy(self): return self.state['phase'] in ('verify','write','readback')
+    def busy(self): return self.state['phase'] in ('verify','write','readback','boot')
     def select(self, ident):
         with self.lock:
             if self.busy(): raise Refused('install-in-progress')
@@ -141,10 +145,12 @@ class Broker:
                         if self.cancel.is_set(): raise Cancelled()
                         h.update(chunk);done+=len(chunk);self.update(done=done)
                 if h.hexdigest()!=self.expected_image: raise Refused('image-digest-mismatch')
+                boot_check()
                 current=admit(inventory(),row['id'],self.raw_bytes)
                 fd=os.open(current['path'],os.O_RDWR|os.O_EXCL|os.O_NOFOLLOW|os.O_CLOEXEC)
                 info=os.fstat(fd)
                 if not stat.S_ISBLK(info.st_mode) or info.st_rdev!=row['rdev']: raise Refused('target-changed')
+                if struct.unpack('I',fcntl.ioctl(fd,0x1268,struct.pack('I',0)))[0]!=512: raise Refused('unsupported-logical-sector-size')
                 admit(inventory(),row['id'],self.raw_bytes)
                 with self.lock:
                     if self.cancel.is_set(): raise Cancelled()
@@ -172,11 +178,15 @@ class Broker:
                     if not chunk: raise Refused('readback-short')
                     h.update(chunk);done+=len(chunk);self.update(done=done)
                 if h.hexdigest()!=self.expected_raw: raise Refused('raw-digest-mismatch')
-                self.update(phase='complete',done=done,sha256=h.hexdigest(),message='NVMe へのインストールと全長照合が完了しました。')
+                self.update(phase='boot',message='照合済みの NVMe を UEFI 起動一覧に登録しています。')
+                registered=subprocess.run(['otehon-install-boot','register',str(fd)],pass_fds=(fd,),check=True,capture_output=True,text=True,timeout=45)
+                entry=json.loads(registered.stdout)
+                self.update(phase='complete',done=done,sha256=h.hexdigest(),bootEntry=entry['bootEntry'],bootNumber=entry['bootNumber'],message='NVMe への書込み・全長照合・Awai Otehon の起動登録が完了しました。')
         except Cancelled:
             self.update(phase='cancelled',message='この試行では保存先に書き込まずに中止しました。')
         except Exception as error:
-            self.update(phase='failed',error=str(error) if isinstance(error,Refused) else type(error).__name__,message='書込みと照合を完了できませんでした。' if self.state.get('writeStarted') else '書込み前の確認に失敗しました。保存先は変更していません。')
+            message=('OS データの書込みと照合は済みましたが、UEFI 起動登録に失敗しました。導入完了ではありません。' if self.state.get('phase')=='boot' else '書込みと照合を完了できませんでした。') if self.state.get('writeStarted') else '書込み前の確認に失敗しました。保存先は変更していません。'
+            self.update(phase='failed',error=str(error) if isinstance(error,Refused) else type(error).__name__,message=message)
         finally:
             if process and process.poll() is None:
                 process.terminate()

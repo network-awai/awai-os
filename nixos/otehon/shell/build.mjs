@@ -12,7 +12,7 @@ import { clientRuntimeConnectSrc } from "./vendor/kotoba-client-runtime.js";
 // The ClojureScript build reads the broker runtime from inside src/.
 await copyFile("vendor/kotoba-client-runtime.js", "src/vendor-runtime.gen.js");
 const { osOperations, phoneOperations, runtimeDescriptor } = await import("./src/runtime.js");
-import { scriptSrc, styleSrc } from "./src/csp.js";
+import { scriptSrc, styleSrc, imageSrc } from "./src/csp.js";
 import { buildDougaka } from "./dougaka-bundle.mjs";
 
 const relayOrigin = process.env.RELAY_ORIGIN ?? "https://relay.awai.network";
@@ -41,6 +41,7 @@ clojure(["-m", "shadow.cljs.devtools.cli", "release", "link"]);
 async function page({ html, outdir, operations, appOrigins }) {
   await mkdir(`${outdir}/assets`, { recursive: true });
   await copyFile("vendor/kotoba-client-consent.css", `${outdir}/assets/consent.css`);
+  await copyFile("assets/awai-logo.png", `${outdir}/assets/awai-logo.png`);
   const capabilities = [...new Set(operations.map((operation) => operation.capability))];
   const connect = clientRuntimeConnectSrc(runtimeDescriptor("index.html", operations), capabilities, [], appOrigins);
   const template = await readFile(html, "utf8");
@@ -54,6 +55,7 @@ async function page({ html, outdir, operations, appOrigins }) {
       .replace("__CONNECT_SRC__", connect)
       .replace("__SCRIPT_SRC__", scriptSrc(cspMode))
       .replace("__STYLE_SRC__", styleSrc(cspMode))
+      .replace("__IMAGE_SRC__", imageSrc(cspMode))
       .replace("__DAPPS_JSON__", catalog)
       .replace("__RELAY_ORIGIN__", relayOrigin),
   );

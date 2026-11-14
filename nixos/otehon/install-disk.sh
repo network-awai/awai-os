@@ -54,6 +54,16 @@ discard_download() { if [ -n "$1" ]; then rm -f -- "$1"; fi; }
 
 install_to() {
   local disk=$1 serial=$2 file=$work/image.raw.zst download="" got
+  if [ "${OTEHON_REGISTER_BOOT:-0}" = 1 ]; then
+    if ! otehon-install-boot check; then
+      echo "Boot this USB in UEFI mode with writable firmware variables. Nothing was written."
+      return 1
+    fi
+    if [ "$(blockdev --getss "$disk")" != 512 ]; then
+      echo "Unsupported logical sector size. Nothing was written."
+      return 1
+    fi
+  fi
   case "$IMAGE_URL" in
     file:///iso/otehon/image.raw.zst)
       file=/iso/otehon/image.raw.zst
@@ -113,12 +123,34 @@ install_to() {
     return 1
   fi
   partx -a "$disk" >/dev/null 2>&1 || true
+  if [ "${OTEHON_REGISTER_BOOT:-0}" = 1 ]; then
+    if [ "$(find_serial "$serial" | cut -d' ' -f1)" != "$disk" ] || in_use "$disk"; then
+      echo "BOOT FAILED: target identity/use changed after readback. OS bytes were written; installation is not complete."
+      return 1
+    fi
+    echo "Registering Awai Otehon in the UEFI boot menu."
+    exec 8<"$disk"
+    if ! otehon-install-boot register 8; then
+      exec 8<&-
+      echo "BOOT FAILED: OS bytes verified, but firmware registration failed. Do not treat this as a completed install."
+      return 1
+    fi
+    exec 8<&-
+  fi
   return 0
 }
 
 echo
-echo "=== Awai Otehon installer ==="
-echo "This PC is running from memory. Nothing has been written."
+echo "=== AWAI OTEHON / NIXOS INSTALLER (USB) ==="
+if [ -n "${OTEHON_INSTALLER_INFO:-}" ]; then
+  jq -r '"Installer: " + .version + "  NixOS: " + .nixos + "  Nix: " + .nix, "Build ID: " + .buildId' "$OTEHON_INSTALLER_INFO"
+  echo "Payload SHA-256: $RAW_SHA256"
+fi
+echo "NOT INSTALLED YET: booting this USB alone does NOT install to NVMe."
+echo "Text: Ctrl+Alt+F1 or F2. Graphical installer: Ctrl+Alt+F7 if available."
+echo "1. Select the internal disk by its exact serial below."
+echo "2. Confirm ERASE.  3. Wait for full readback and INSTALLED."
+echo "4. Power off, remove USB, then boot Awai Otehon from NVMe."
 
 while :; do
   show_disks
@@ -162,9 +194,11 @@ while :; do
   if install_to "$disk" "$serial"; then
     echo
     echo "INSTALLED on $disk (serial $serial)."
-    echo "Restart, and choose this disk in the PC's boot menu. On first start it asks you to choose a passphrase."
-    printf 'Type REBOOT to restart now: '
+    echo "NixOS/Awai OS bytes verified. Choose Awai Otehon on this disk at next boot."
+    echo "Power off and remove USB before starting the PC. First boot asks for a new data-protection passphrase."
+    printf 'Type POWEROFF (recommended) or REBOOT, then remove USB: '
     IFS= read -r answer || answer=""
+    [ "$answer" = POWEROFF ] && systemctl poweroff
     [ "$answer" = REBOOT ] && systemctl reboot
   fi
   exec 9>&-

@@ -8,6 +8,28 @@ permissions:
   contents: read
 
 jobs:
+  forest-writer-linux:
+    # Hosted Otehon integration, independent of Native qualification.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: cachix/install-nix-action@b85815f71a6de0ddee80b8a80a98d43f4bcc66c7 # v31
+      - name: Run real Forest raw-file writer and recovery proof
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/forest-v0.39.0-linux-amd64.zip"
+          tool="$RUNNER_TEMP/forest-tool"
+          curl --fail --location --retry 3 --output "$archive" https://github.com/ChainSafe/forest/releases/download/v0.39.0/forest-v0.39.0-linux-amd64.zip
+          printf '%s  %s\n' 81224a9efed00353ec3c6cc5197f26abfdf48ed9458c1ce72b612e825d5bb64a "$archive" | sha256sum --check
+          unzip -p "$archive" forest-v0.39.0/forest-tool > "$tool"
+          printf '%s  %s\n' 7af03845db7324da80c5bc2848fe6897303b39cbac8bb701675e57ad82033ba0 "$tool" | sha256sum --check
+          chmod 500 "$tool"
+          bb_path=$(nix-build --no-out-link --expr '(import (import ./ci/nixpkgs.nix) {}).babashka')
+          "$bb_path/bin/bb" --classpath nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:nixos/otehon/storage/vendor/apex-car/src:nixos/otehon/storage/test nixos/otehon/storage/test/otehon/forest_writer_proof.clj "$RUNNER_TEMP/forest-writer-proof" "$tool"
+
   evaluate:
     runs-on: ubuntu-latest
     steps:

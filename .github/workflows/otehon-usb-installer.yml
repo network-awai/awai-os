@@ -61,11 +61,15 @@ jobs:
         shell: bash
         run: |
           mkdir -p .agent-output/usb-vm-failure
+          proof_index=0
           while IFS= read -r proof; do
+            proof_index=$((proof_index + 1))
+            destination=".agent-output/usb-vm-failure/$proof_index"
+            mkdir -p "$destination"
             for file in "$proof"/*.json "$proof"/*.txt "$proof"/*.log "$proof"/*.png; do
               file=$(basename "$file")
               if sudo test -f "$proof/$file"; then
-                sudo install -o "$(id -u)" -g "$(id -g)" -m 644 "$proof/$file" ".agent-output/usb-vm-failure/$file"
+                sudo install -o "$(id -u)" -g "$(id -g)" -m 644 "$proof/$file" "$destination/$file"
               fi
             done
           done < <(sudo find /nix/var/nix/builds -type d -name proof -print 2>/dev/null)

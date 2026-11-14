@@ -5,7 +5,7 @@ let
     name = "otehon-update-network";
     runtimeInputs = [ pkgs.python3 pkgs.util-linux config.nix.package config.system.build.otehonUpdate ];
     text = ''
-      exec flock -n /var/lib/otehon-update/network.lock python3 ${./update-network.py} /etc/otehon-update/network.json
+      exec python3 ${./update-network.py} /etc/otehon-update/network.json
     '';
   };
   contract = {

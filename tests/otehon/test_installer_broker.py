@@ -7,6 +7,9 @@ import hashlib
 import os
 import stat
 import socket
+import struct
+import io
+import subprocess
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -66,6 +69,28 @@ class Protocol(unittest.TestCase):
             self.assertEqual(state['phase'],'failed');self.assertTrue(state['writeStarted'])
 
 class FailureBoundary(unittest.TestCase):
+    def test_verified_bytes_without_boot_registration_are_not_complete(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d=Path(tmp);source=d/'payload';source.write_bytes(b'compressed fixture')
+            raw=b'verified OS bytes';target=d/'target';target.write_bytes(b'x'*64)
+            (d/'image').write_text(hashlib.sha256(source.read_bytes()).hexdigest());(d/'raw').write_text(hashlib.sha256(raw).hexdigest());(d/'bytes').write_text(str(len(raw)))
+            broker=b.Broker(d,d)
+            row={'id':'x','path':str(target),'size':64,'rdev':123,'used':False,'readOnly':False,'ambiguous':False,'serial':'EXACT'}
+            original_fstat=os.fstat
+            def fstat(fd):
+                info=original_fstat(fd)
+                return SimpleNamespace(st_mode=stat.S_IFBLK,st_rdev=123) if info.st_ino==target.stat().st_ino else info
+            process=SimpleNamespace(stdout=io.BytesIO(raw),wait=lambda:0,poll=lambda:0)
+            def run(args,**kwargs):
+                if args[0]=='sgdisk':return SimpleNamespace(returncode=0)
+                raise subprocess.CalledProcessError(2,args)
+            with patch.object(b,'SOURCE',source),patch.object(b,'LOCK',d/'lock'),patch.object(b,'command',side_effect=['iso9660','ro']),patch.object(b,'boot_check'),patch.object(b,'inventory',return_value=[row]),patch.object(b.os,'fstat',side_effect=fstat),patch.object(b.fcntl,'ioctl',return_value=struct.pack('I',512)),patch.object(b.subprocess,'Popen',return_value=process),patch.object(b.subprocess,'run',side_effect=run):
+                broker.install(row)
+            self.assertEqual(target.read_bytes()[:len(raw)],raw)
+            self.assertEqual(broker.state['phase'],'failed')
+            self.assertIn('UEFI',broker.state['message'])
+            self.assertNotIn('bootEntry',broker.state)
+            with self.assertRaises(b.Refused):broker.dispatch('POWEROFF',[])
     def test_corrupt_source_never_opens_target(self):
         with tempfile.TemporaryDirectory() as tmp:
             d=Path(tmp);source=d/'payload';source.write_bytes(b'corrupt')
@@ -87,7 +112,7 @@ class FailureBoundary(unittest.TestCase):
             def fstat(fd):
                 info=original_fstat(fd)
                 return SimpleNamespace(st_mode=stat.S_IFBLK,st_rdev=123) if info.st_ino==target.stat().st_ino else info
-            with patch.object(b,'SOURCE',source),patch.object(b,'LOCK',d/'lock'),patch.object(b,'command',side_effect=['iso9660','ro']),patch.object(b,'inventory',return_value=[row]),patch.object(b.os,'fstat',side_effect=fstat),patch.object(b.subprocess,'run',side_effect=OSError('fixture write failure')):
+            with patch.object(b,'SOURCE',source),patch.object(b,'LOCK',d/'lock'),patch.object(b,'command',side_effect=['iso9660','ro']),patch.object(b,'boot_check'),patch.object(b,'inventory',return_value=[row]),patch.object(b.os,'fstat',side_effect=fstat),patch.object(b.fcntl,'ioctl',return_value=struct.pack('I',512)),patch.object(b.subprocess,'run',side_effect=OSError('fixture write failure')):
                 broker.install(row)
             self.assertEqual(broker.state['phase'],'failed');self.assertTrue(broker.state['writeStarted'])
             self.assertEqual(target.read_bytes(),b'preserved')

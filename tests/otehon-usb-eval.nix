@@ -17,6 +17,11 @@ assert c.systemd.services."otehon-install@".environment.IMAGE_URL == "file:///is
 assert !c.systemd.services."getty@tty1".enable;
 assert !c.systemd.services."getty@tty2".enable;
 assert builtins.elem "otehon-install@tty2.service" c.systemd.targets.multi-user.wants;
+assert builtins.elem "otehon-install@tty1.service" c.systemd.targets.multi-user.wants;
+assert c.services.xserver.displayManager.lightdm.extraConfig == "minimum-vt = 7";
+assert c.system.image.version == "0.7.1" && installed.system.image.version == "0.7.1";
+assert installed.nix.enable;
+assert c.systemd.services."otehon-install@".environment.OTEHON_REGISTER_BOOT == "1";
 assert c.services.xserver.enable;
 assert !c.systemd.services.otehon-boot-report.enable;
 assert c.users.users.otehon-installer.isNormalUser;

@@ -1,5 +1,25 @@
 # Awai Otehon を USB から内蔵 NVMe にインストールする
 
+## 0.7.1 候補の識別と文字画面（検証中）
+
+0.7.1 は、GUI が使えない場合も最初の文字画面 `tty1` で専用
+インストーラーを操作できる候補です。起動メニューには
+`Awai Otehon Installer 0.7.1` と GUI を起動しない `Text-installer-0.7.1`
+が表示されます。GUI は Ctrl+Alt+F7、文字画面は Ctrl+Alt+F1／F2 です。
+保存先のシリアル → `ERASE` → 全長照合・起動登録 → `INSTALLED on ...`
+の順に進み、最後に `POWEROFF` または `REBOOT` を入力します。
+起動しただけでは NVMe に導入されません。
+
+GUI のヘッダーと文字画面には installer の版、Build ID が表示され、
+開始画面には NixOS と Nix の版も表示されます。Build ID は installer の
+ソース・固定 nixpkgs・payload の保存先から導く識別子です。文字画面には
+payload SHA-256 全体も表示します。オフライン画面は最新配布を自動照会
+しないため、版と Build ID を配布記録と比較してください。
+
+この節は新候補の手順です。GUI 無効の実画面操作・NVMe 導入・再起動を含む
+VM gate と実 USB 更新が済むまでは、0.7.1 の配布完了を意味しません。
+以下の 0.7.0 の媒体証跡は履歴として区別します。
+
 この手順は、[Figma のインストール UI](https://www.figma.com/design/EFljF3PXOrrVNM2v9Wdis1?node-id=7-240)を組み込んだ GUI 版用です。
 VM の画面操作・NVMe 導入・初回設定・再起動解除は[同一イメージの CI](https://github.com/network-awai/awai-os/actions/runs/43580536450)で確認しました。
 USB 更新状況は[媒体の検証記録](../evidence/otehon-usb-gui-media-20261114.json)を参照してください。実 PC への導入完了とは別の記録です。

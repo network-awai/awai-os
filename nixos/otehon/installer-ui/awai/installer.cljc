@@ -44,6 +44,10 @@
                 (do (pause) (recur))))))))))
 (defonce state (atom {:page :welcome :devices [] :selected nil :error nil :status {}}))
 (defonce window (atom nil))
+(def installer-info
+  (if-let [path (System/getProperty "awai.installer.info")]
+    (edn/read-string (slurp path))
+    {:version "development" :build-id "unverified" :nixos "unknown" :nix "unknown"}))
 (declare render!)
 (defn change! [m] (swap! state merge m) (render!))
 (defn task! [f]
@@ -65,7 +69,7 @@
     (.setLayout main (BoxLayout. main BoxLayout/Y_AXIS))
     (.setLayout sidebar (BoxLayout. sidebar BoxLayout/Y_AXIS))
     (.setBorder header (BorderFactory/createEmptyBorder 16 32 16 32)) (.setPreferredSize header (Dimension. 1280 72))
-    (.add header (label "Awai Otehon" 24 true) BorderLayout/WEST)
+    (.add header (label (str "Awai Otehon  " (:version installer-info)) 24 true) BorderLayout/WEST)
     (.add header (label "USB から起動中" 18 true) BorderLayout/EAST)
     (.setBorder sidebar (BorderFactory/createEmptyBorder 32 24 32 24)) (.setPreferredSize sidebar (Dimension. 256 600))
     (doseq [[index text] (map-indexed vector ["1  はじめに" "2  保存先を選ぶ" "3  上書きを確認" "4  インストール" "5  完了"])]
@@ -76,10 +80,13 @@
         (add! sidebar item) (gap! sidebar 12)))
     (.setBorder main (BorderFactory/createEmptyBorder 32 64 24 64))
     (.setBorder footer (BorderFactory/createEmptyBorder 12 32 12 32)) (.setPreferredSize footer (Dimension. 1280 72))
+    (.add footer (label (str "Build " (subs (:build-id installer-info) 0 (min 12 (count (:build-id installer-info))))) 14 false) BorderLayout/CENTER)
     (case page
       :welcome (do
         (add! main (label "この PC に Awai をインストール" 34 true)) (gap! main 16)
         (line! main "いまは USB 上のインストーラーで動いています。")
+        (line! main "起動しただけでは、内蔵 NVMe にインストールされません。")
+        (line! main (str "NixOS " (:nixos installer-info) " / Nix " (:nix installer-info)))
         (gap! main 24) (add! main (card "始める前に" ["必要なデータをバックアップしてください。" "AC 電源と USB を接続したままにしてください。" "選んだ保存先のデータはすべて消去されます。" "インストール後、USB を抜いて内蔵 NVMe から起動します。 "]))
         (.add footer (button "保存先を選ぶ →" list! false) BorderLayout/EAST)
         (.add footer (button "文字での操作（tty2）" #(task! (fn [] (rpc "TEXT"))) false) BorderLayout/WEST))
@@ -120,7 +127,7 @@
         (.add footer install BorderLayout/EAST)
         (.add footer (button "← 保存先へ戻る" list! false) BorderLayout/WEST))
       :progress (let [phase (:phase status) done (or (:done status) 0) total (or (:total status) 0)]
-        (add! main (label (get {"verify" "USB の OS データを確認" "write" "NVMe に書き込んでいます" "readback" "書き込んだ内容を照合" "complete" "インストールが完了しました" "failed" "インストールを完了できませんでした" "cancelled" "書込み前に中止しました"} phase "処理状況") 34 true))
+        (add! main (label (get {"verify" "USB の OS データを確認" "write" "NVMe に書き込んでいます" "readback" "書き込んだ内容を照合" "boot" "UEFI の起動一覧に登録" "complete" "インストールが完了しました" "failed" "インストールを完了できませんでした" "cancelled" "書込み前に中止しました"} phase "処理状況") 34 true))
         (gap! main 20) (line! main (:message status "")) (gap! main 24)
         (add! main (doto (JProgressBar. 0 1000) (.setAlignmentX 0.0) (.setValue (if (pos? total) (int (* 1000 (/ done total))) 0))
                     (.setForeground (color :focus)) (.setMaximumSize (Dimension. 896 16))))
@@ -129,6 +136,8 @@
         (gap! main 20)
         (cond
           (= phase "complete") (do (line! main "電源を切ったら USB を抜いて、この PC の電源を入れてください。")
+            (line! main (str "導入先: " (get-in status [:target :path]) " / " (get-in status [:target :serial])))
+            (line! main (str "UEFI 起動項目: " (:bootEntry status) "  (" (:bootNumber status) ")"))
             (line! main "次回は内蔵 NVMe から起動し、データ保護の設定に進みます。")
             (.add footer (button "電源を切る" #(task! (fn [] (rpc "POWEROFF"))) false) BorderLayout/EAST))
           (= phase "verify") (.add footer (button "書込み前に中止" #(task! (fn [] (rpc "CANCEL"))) false) BorderLayout/WEST)

@@ -30,8 +30,10 @@ def main():
     p.add_argument("--media-bytes", type=int, help="read-only sparse USB capacity, without duplicating the ISO")
     p.add_argument("--target-bus", choices=["virtio", "nvme"], default="virtio")
     p.add_argument("--graphical", action="store_true")
+    p.add_argument("--text-console", action="store_true", help="select no-GUI boot entry and operate the physical console through QMP keys/OCR")
     p.add_argument("--visual-helper", type=Path, default=Path(__file__).with_name("otehon-installed-boot.py"))
     a = p.parse_args()
+    if a.graphical and a.text_console: p.error("choose one installer interface")
     if os.geteuid() == 0:
         p.error("run unprivileged; no physical drives may be attached")
     iso = a.iso.resolve(strict=True)
@@ -40,7 +42,7 @@ def main():
     out = a.output.resolve()
     out.mkdir(parents=True, exist_ok=False)
     # Short sockets are private to this builder's newly created work directory.
-    sockets = Path.cwd() / "usb-vm-sockets"
+    sockets = Path.cwd() / "u"
     sockets.mkdir(mode=0o700, exist_ok=False)
     serial_path = sockets / "serial"
     qmp_path = sockets / "qmp"
@@ -76,20 +78,23 @@ def main():
 
     proof = {"schema": "awai.otehon.usb-vm.v1", "isoSha256": digest(iso), "isoBytes": iso.stat().st_size,
              "rawSha256": (a.digests / "raw").read_text().strip(), "rawBytes": int((a.digests / "bytes").read_text()),
-             "externalNetwork": False, "physicalDisks": False, "installerInterface": "graphical" if a.graphical else "legacy-serial", "mediaBytes": a.media_bytes or iso.stat().st_size, "targetBus": a.target_bus, "checks": [], "passed": False}
+             "externalNetwork": False, "physicalDisks": False, "installerInterface": "physical-text-console" if a.text_console else "graphical" if a.graphical else "legacy-serial", "mediaBytes": a.media_bytes or iso.stat().st_size, "targetBus": a.target_bus, "checks": [], "passed": False}
     process = None
     port = None
     transcript = bytearray()
     unread = ""
     try:
-        if a.graphical:
+        if a.graphical or a.text_console:
             from importlib.util import spec_from_file_location, module_from_spec
             spec = spec_from_file_location("otehon_installed_boot", a.visual_helper)
             visual = module_from_spec(spec); spec.loader.exec_module(visual)
             def untouched():
                 if any(written(name) for name, _, _ in disks):
                     raise AssertionError("scratch disk changed before graphical approval")
-            visual.verify_graphical_install(command, serial_path, qmp_path, out, proof["checks"], untouched, written)
+            if a.text_console:
+                visual.verify_console_install(command+["-no-reboot"], serial_path, qmp_path, out, proof["checks"], untouched, written)
+            else:
+                visual.verify_graphical_install(command, serial_path, qmp_path, out, proof["checks"], untouched, written)
             if a.installed_boot:
                 visual.verify_installed(out, sockets, a.ovmf_code, vars_file, proof["checks"], a.target_bus, graphical_state=True)
             proof["passed"] = True

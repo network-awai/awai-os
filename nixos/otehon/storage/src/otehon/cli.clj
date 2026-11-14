@@ -1,6 +1,7 @@
 (ns otehon.cli
   (:require [awai.fs.car :as car]
             [otehon.storage :as store]
+            [otehon.forest-writer :as forest-writer]
             [otehon.pack-store :as pack])
   (:import [java.nio ByteBuffer]
            [java.nio.channels FileChannel]
@@ -38,6 +39,9 @@
       ["car-import-zstd3" 4] (prn (pack/import-car-zstd3! directory name (input-bytes filename)))
       ["forest-import" 4] (prn (pack/import-forest! directory name (input-bytes filename)))
       ["forest-import-direct" 4] (prn (pack/import-forest-direct! directory name (input-bytes filename)))
+      ["forest-file-put" 6]
+      (prn (select-keys (forest-writer/put-file! directory name filename (nth args 4) (nth args 5))
+                        [:generation :tail :manifest-cid :file-size :pack-count]))
       ["forest-export" 4] (prn (output! filename (pack/export-forest (pack/recover directory) name)))
       ["forest-get-block" 5]
       (let [cid-text (nth args 4)
@@ -49,8 +53,14 @@
       ["pack-range-verified" 6]
       (prn (output! filename (pack/read-range-verified-leaves (pack/recover directory) name
                                 (Long/parseLong (nth args 4)) (Long/parseLong (nth args 5)))))
+      ["forest-group-range" 6]
+      (prn (output! filename (pack/read-group-range (pack/recover directory) name
+                                (Long/parseLong (nth args 4)) (Long/parseLong (nth args 5)))))
       ["pack-get" 4] (prn (output! filename (pack/read-data (pack/recover directory) name)))
       ["car-export" 4] (prn (output! filename (pack/export-car (pack/recover directory) name)))
       ["pack-recover" 2] (prn (pack/summary (pack/recover directory)))
       ["pack-checkpoint" 2] (prn (pack/checkpoint! directory))
-      (apply store/-main args))))
+      (if (and (= command "logical-forest-import") (<= 6 (count args) 69))
+        (prn (pack/import-logical-forest-files! directory name (vec (drop 5 args))
+                                               (input-bytes filename) (nth args 4)))
+        (apply store/-main args)))))

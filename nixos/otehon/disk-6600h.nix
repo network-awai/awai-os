@@ -63,6 +63,7 @@ in
   ];
 
   system.image.id = lib.mkForce "awai-otehon-6600h";
+  system.image.version = lib.mkForce (lib.removeSuffix "\n" (builtins.readFile ./installer-version.txt));
 
   # Native x86_64 builders need no aarch64 builder for static UI files.
   # Cross-build operators may still supply a reviewed shellPkgs explicitly.
