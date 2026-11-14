@@ -1,6 +1,6 @@
 (ns awai.installer
   (:require [clojure.edn :as edn] [clojure.walk :as walk] [clojure.string :as str])
-  (:import [javax.swing JFrame JPanel JLabel JButton JTextField JScrollPane BoxLayout SwingUtilities Timer BorderFactory UIManager]
+  (:import [javax.swing JFrame JPanel JLabel JButton JTextField JScrollPane JProgressBar BoxLayout SwingUtilities Timer BorderFactory UIManager]
            [java.awt BorderLayout Color Font Dimension GridLayout]
            [java.awt.event ActionListener]
            [java.nio.channels SocketChannel Channels]
@@ -14,7 +14,7 @@
 (defn panel [layout] (doto (JPanel. layout) (.setBackground (color :bg))))
 (defn button [text action danger]
   (doto (JButton. text) (.setFont (font 18 true)) (.setBackground (color (if danger :danger :focus)))
-    (.setForeground Color/WHITE) (.setFocusPainted true) (.setPreferredSize (Dimension. 240 48))
+    (.setForeground Color/WHITE) (.setContentAreaFilled false) (.setOpaque true) (.setFocusPainted true) (.setPreferredSize (Dimension. 240 48))
     (.addActionListener (reify ActionListener (actionPerformed [_ _] (action))))))
 (defn rpc [op & args]
   (with-open [ch (SocketChannel/open (UnixDomainSocketAddress/of "/run/otehon-install/control.sock"))]
@@ -46,7 +46,11 @@
     (.add header (label "Awai Otehon" 24 true) BorderLayout/WEST)
     (.add header (label "USB から起動中" 18 true) BorderLayout/EAST)
     (.setBorder sidebar (BorderFactory/createEmptyBorder 32 24 32 24)) (.setPreferredSize sidebar (Dimension. 256 600))
-    (doseq [s ["1  はじめに" "2  保存先を選ぶ" "3  上書きを確認" "4  インストール" "5  完了"]] (add! sidebar (label s 18 true)))
+    (doseq [[index text] (map-indexed vector ["1  はじめに" "2  保存先を選ぶ" "3  上書きを確認" "4  インストール" "5  完了"])]
+      (let [active (= index (case page :welcome 0 :devices 1 :confirm 2 :progress (if (= "complete" (:phase status)) 4 3)))
+            item (label text 18 active)]
+        (.setOpaque item true) (.setBackground item (color (if active :selected :bg)))
+        (add! sidebar item)))
     (.setBorder main (BorderFactory/createEmptyBorder 32 48 24 48))
     (.setBorder footer (BorderFactory/createEmptyBorder 12 32 12 32)) (.setPreferredSize footer (Dimension. 1280 72))
     (case page
@@ -71,6 +75,9 @@
                                  (SwingUtilities/invokeLater (fn [] (change! {:page :progress :status r :error nil}))))))) true)]
         (add! main (label "この保存先を消去します" 34 true)) (gap! main 16)
         (add! main (card (str (:model d) "  /  " (:path d)) [(str "シリアル: " (:serial d)) (format "容量: %.1f GB" (/ (:size d) 1e9)) "既存の OS・ファイル・パーティションはすべて削除されます。 "]))
+        (gap! main 12)
+        (doseq [part (:partitions d)]
+          (line! main (str (:path part) "  " (:fstype part) "  " (:label part) "  " (format "%.1f GB" (/ (:size part) 1e9)))))
         (gap! main 16) (line! main "保存先のシリアルをそのまま入力")
         (doseq [field [serial erase]] (.setFont field (font 20 false)) (.setMaximumSize field (Dimension. 896 44)))
         (add! main serial) (SwingUtilities/invokeLater #(.requestFocusInWindow serial)) (gap! main 12) (line! main "確認のため ERASE と入力") (add! main erase)
@@ -85,6 +92,9 @@
       :progress (let [phase (:phase status) done (or (:done status) 0) total (or (:total status) 0)]
         (add! main (label (get {"verify" "USB の OS データを確認" "write" "NVMe に書き込んでいます" "readback" "書き込んだ内容を照合" "complete" "インストールが完了しました" "failed" "インストールを完了できませんでした" "cancelled" "書込み前に中止しました"} phase "処理状況") 34 true))
         (gap! main 20) (line! main (:message status "")) (gap! main 24)
+        (add! main (doto (JProgressBar. 0 1000) (.setValue (if (pos? total) (int (* 1000 (/ done total))) 0))
+                    (.setForeground (color :focus)) (.setMaximumSize (Dimension. 896 16))))
+        (gap! main 16)
         (add! main (card "実際の処理状況" [(format "%.2f / %.2f GB" (/ done 1e9) (/ total 1e9)) (str "経過 " (:elapsed status 0) " 秒  / 最終更新 " (:lastUpdateAgo status 0) " 秒前")]))
         (gap! main 20)
         (cond
@@ -97,7 +107,7 @@
             (line! main (str "診断: " (:error status "なし")))
             (.add footer (button "保存先から確認し直す" list! false) BorderLayout/EAST)))))
     (when error (gap! main 16) (line! main (str "確認: " error)))
-    (.add content sidebar BorderLayout/WEST) (.add content (JScrollPane. main) BorderLayout/CENTER)
+    (.add content sidebar BorderLayout/WEST) (.add content (doto (JScrollPane. main) (.setBorder (BorderFactory/createEmptyBorder))) BorderLayout/CENTER)
     (.add root header BorderLayout/NORTH) (.add root content BorderLayout/CENTER) (.add root footer BorderLayout/SOUTH)
     (.setContentPane @window root) (.revalidate @window) (.repaint @window)))
 (defn -main [& _]

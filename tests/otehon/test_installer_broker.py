@@ -32,6 +32,9 @@ class Protocol(unittest.TestCase):
             good={'id':'x','size':101,'ambiguous':False,'used':False,'readOnly':False,'serial':'EXACT'}
             with patch.object(b,'inventory',return_value=[good]),patch.object(b.threading.Thread,'start'):
                 selected=broker.select('x')
+                broker.selected_at-=601
+                with self.assertRaisesRegex(b.Refused,'expired'): broker.begin(selected['ticket'],'EXACT','ERASE')
+                selected=broker.select('x')
                 for args in [('wrong','EXACT','ERASE'),(selected['ticket'],'wrong','ERASE'),(selected['ticket'],'EXACT','erase')]:
                     with self.assertRaises(b.Refused): broker.begin(*args)
                 self.assertEqual(broker.state['phase'],'idle')

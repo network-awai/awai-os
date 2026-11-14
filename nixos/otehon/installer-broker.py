@@ -63,7 +63,8 @@ def inventory():
         path = row['path']; info = os.stat(path)
         if not stat.S_ISBLK(info.st_mode): continue
         serial = (row.get('serial') or '').strip()
-        identity = {'path':path,'serial':serial,'size':int(row['size']),'rdev':info.st_rdev,'majorMinor':row['maj:min']}
+        identity = {'path':path,'serial':serial,'size':int(row['size']),'rdev':info.st_rdev,'majorMinor':row['maj:min'],
+                    'diskseq':(Path('/sys/class/block') / Path(path).name / 'diskseq').read_text().strip()}
         ident = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
         result.append({**identity, 'id':ident,'model':(row.get('model') or 'Disk').strip(),
                        'used':used,'readOnly':bool(row.get('ro')),
@@ -112,11 +113,12 @@ class Broker:
         with self.lock:
             if self.busy(): raise Refused('install-in-progress')
             row=admit(inventory(),ident,self.raw_bytes)
-            self.selected=row;self.ticket=secrets.token_urlsafe(32)
+            self.selected=row;self.ticket=secrets.token_urlsafe(32);self.selected_at=time.monotonic()
             return {'target':row,'ticket':self.ticket}
     def begin(self, ticket, serial, confirmation):
         with self.lock:
             if self.busy() or not self.ticket or not secrets.compare_digest(ticket,self.ticket): raise Refused('approval-stale')
+            if time.monotonic()-self.selected_at > 600: self.ticket=None;raise Refused('approval-expired')
             if serial != self.selected['serial'] or confirmation != 'ERASE': raise Refused('approval-mismatch')
             row=admit(inventory(),self.selected['id'],self.raw_bytes)
             self.ticket=None;self.cancel.clear();self.started=time.monotonic()
