@@ -33,10 +33,10 @@
       "title": "AWAI-532 write and query atomic IPLD Forest groups",
       "url": "https://github.com/network-awai/awai-os/pull/124",
       "headRefName": "codex/awai-532-ipld-forest",
-      "headRefOid": "cdb781fb88ee3c41683a2eb4d685c952eeb64c8e",
+      "headRefOid": "50caeaa8053154ce0f60d8827e60ef518de75385",
       "baseRefName": "codex/awai-532-forest-prolly",
       "isDraft": true,
-      "reviewState": "another-session-fsync-fix-in-progress-do-not-mutate"
+      "reviewState": "another-session-active-head-moving-preserved"
     },
     {
       "number": 123,
@@ -87,10 +87,10 @@
       "title": "AWAI-450 add graphical USB installer and verified NVMe first boot",
       "url": "https://github.com/network-awai/awai-os/pull/118",
       "headRefName": "codex/awai-450-otehon-usb-20261113",
-      "headRefOid": "5d01451c06282df82d4ee6a74bcfecfcdb6e8d45",
+      "headRefOid": "a30de6524302fc01e6022d341f7b03b9ba0686e5",
       "baseRefName": "main",
       "isDraft": true,
-      "reviewState": "firmware-registration-failure-diagnostic-fix-ci-pending",
+      "reviewState": "gui-uefi-first-boot-observed-ocr-regression-fixed-full-gate-pending",
       "reviewedFixHead": "c242f68",
       "finding": "Real PC did not show custom GUI;0.7.1 adds VT1 fallback/version/UEFI registration and same-image no-GUI VM gate."
     },
@@ -142,8 +142,10 @@
       "headRefOid": "f92eca0233d7d0b193e589a66809cbc757c2aa7c",
       "baseRefName": "main",
       "isDraft": false,
-      "reviewState": "blocking-finding-reproduced",
-      "blocker": "Expired reservation resets fence and accepts prior-generation writer settlement"
+      "reviewState": "finding-fixed-by-127-after-external-merge",
+      "mergeCommit": "e55d6b6d19a9fbb7f540713b8bae58d3fcdb019d",
+      "fixPr": 127,
+      "fixMerge": "3bfeaf7750574916fb40c658a8ae03e3af09c6f3"
     },
     {
       "number": 100,
@@ -153,9 +155,10 @@
       "headRefOid": "803926f107f819e2747553c1fa4c47250f1c34a8",
       "baseRefName": "main",
       "isDraft": false,
-      "reviewState": "review-fixes-pushed-canonical-1318-dependency-open",
+      "reviewState": "canonical-1318-dependency-open-preservation-fix-merged-128",
       "finding": "Five unresolved historical threads; preserved mutable macOS VM image and relocatable checksum behavior still need attention. dapp source pin must be reconciled.",
-      "blocker": "Pinned catalog source has no Otent; canonical PR1318 still open"
+      "blocker": "Pinned catalog source has no Otent; canonical PR1318 still open",
+      "fixPr": 128
     },
     {
       "number": 98,
@@ -256,7 +259,8 @@
       "headRefOid": "8879442131fcfec8b81822b67d80d8df01c8b1db",
       "baseRefName": "claude/awai-164-desktop-update",
       "isDraft": true,
-      "reviewState": "pending"
+      "reviewState": "legacy-base-conflict-and-unique-unintegrated-delta",
+      "blocker": "Requires narrow current-base integration; #60 owns initial-UKI marker preservation and #42 has readiness/check deltas"
     },
     {
       "number": 56,
@@ -338,7 +342,26 @@
       "headRefOid": "f9f3492c955325adc62e7ea18c4dedcae9008b5d",
       "baseRefName": "main",
       "isDraft": false,
-      "reviewState": "pending"
+      "reviewState": "legacy-base-conflict-and-unique-unintegrated-delta",
+      "blocker": "Requires narrow current-base integration; #60 owns initial-UKI marker preservation and #42 has readiness/check deltas"
+    }
+  ],
+  "followUps": [
+    {
+      "number": 127,
+      "issue": "AWAI-2774",
+      "headRefOid": "9d41a6ae69b5b62c2f39e3b0d5a964ad1809cda8",
+      "mergeCommit": "3bfeaf7750574916fb40c658a8ae03e3af09c6f3",
+      "verification": "BB 16/86; Basilisp 19; shared 58 cases on both; four exact-head checks pass",
+      "scope": "Pure reservation oracle; host authority/durability remains open"
+    },
+    {
+      "number": 128,
+      "issue": "AWAI-2906",
+      "headRefOid": "375fafdebb7ca8a23ee7d2cda19c11e715933406",
+      "mergeCommit": "52da0308471bd9c24a7e0a344b0c0ded89f35c4e",
+      "verification": "Real filesystem no-clobber/relocation/corruption controls; four exact-head checks pass",
+      "scope": "Same preservation fix initially pushed in #100; do not count twice"
     }
   ]
 }
