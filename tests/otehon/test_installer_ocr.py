@@ -1,9 +1,13 @@
 """Regression guards from actual installed-boot OCR, not storage normalization."""
 import importlib.util
+import os
 from pathlib import Path
+import shutil
+import subprocess
+import tempfile
 import unittest
 
-spec=importlib.util.spec_from_file_location('visual',Path(__file__).parents[2]/'scripts/otehon-installed-boot.py')
+spec=importlib.util.spec_from_file_location('visual',Path(os.environ.get('OTEHON_VISUAL_HELPER',Path(__file__).parents[2]/'scripts/otehon-installed-boot.py')))
 v=importlib.util.module_from_spec(spec);spec.loader.exec_module(v)
 
 class GraphicalBootGuard(unittest.TestCase):
@@ -16,5 +20,13 @@ class GraphicalBootGuard(unittest.TestCase):
         self.assertFalse(v.screen_matches(actual,self.markers))
     def test_graphical_loading_without_request_is_not_success(self):
         self.assertFalse(v.screen_matches('Awai Otehon この PC のデータを保護 起動を準備しています',self.markers))
+    @unittest.skipUnless(all(shutil.which(t) for t in ['pngtopnm','pamcut','ppmtopgm','pgmtopbm','pnminvert','pamenlarge','tesseract']), 'real OCR tools are required in the Nix VM gate')
+    def test_actual_logo_onboarding_has_both_hello_and_primary_action(self):
+        png=Path(os.environ.get('OTEHON_HELLO_FIXTURE',Path(__file__).parent/'fixtures'/'desktop-hello-logo.png'))
+        with tempfile.TemporaryDirectory() as directory:
+            ppm=Path(directory)/'screen.ppm'
+            ppm.write_bytes(subprocess.check_output(['pngtopnm',str(png)]))
+            self.assertTrue(v.screen_matches(v.read_screen(ppm,png),['hello','get started']))
+        self.assertFalse(v.screen_matches('Hello',['hello','get started']))
 
 if __name__=='__main__': unittest.main()

@@ -40,7 +40,17 @@ def read_screen(ppm, png):
     inverted = subprocess.check_output(["pnminvert"], input=binary)
     enlarged = subprocess.check_output(["pamenlarge", "3"], input=inverted)
     footer_text = subprocess.check_output(["tesseract", "stdin", "stdout", "--psm", "7", "-l", os.environ.get("OTEHON_OCR_LANG", "eng")], input=enlarged, stderr=subprocess.DEVNULL).decode()
-    return text + "\n--- central control region ---\n" + region + "\n--- sparse controls ---\n" + sparse + "\n--- right footer control ---\n" + footer_text
+    # The adopted logo moves onboarding's dark primary button below the old
+    # central crop. Read its white text with the same inverse treatment; still
+    # require both Hello and Get Started rather than accepting a loading page.
+    primary = subprocess.check_output(["pamcut", f"-left={width // 3}", f"-top={height * 5 // 8}",
+                                      f"-width={width // 3}", f"-height={max(1,height // 10)}", str(ppm)])
+    primary_gray = subprocess.check_output(["ppmtopgm"], input=primary)
+    primary_binary = subprocess.check_output(["pgmtopbm", "-threshold", "-value", "0.5"], input=primary_gray)
+    primary_inverse = subprocess.check_output(["pnminvert"], input=primary_binary)
+    primary_large = subprocess.check_output(["pamenlarge", "3"], input=primary_inverse)
+    primary_text = subprocess.check_output(["tesseract", "stdin", "stdout", "--psm", "6"], input=primary_large, stderr=subprocess.DEVNULL).decode()
+    return text + "\n--- central control region ---\n" + region + "\n--- sparse controls ---\n" + sparse + "\n--- right footer control ---\n" + footer_text + "\n--- onboarding primary control ---\n" + primary_text
 
 
 class VisualGuest:
