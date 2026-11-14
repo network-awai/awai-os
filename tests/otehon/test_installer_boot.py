@@ -25,6 +25,10 @@ class Boot(unittest.TestCase):
     def test_exact_active_entry_and_boot_order_readback(self):
         listing=f'BootOrder: 0004,0001\nBoot0001* ubuntu HD(1,GPT,{GUID},0x800,0x200000)/File(\\EFI\\ubuntu\\shimx64.efi)\nBoot0004* Awai Otehon\tHD(1,GPT,{GUID},0x800,0x200000)/File({b.LOADER})\n'
         self.assertEqual(b.verified_entry(listing,GUID),'0004')
+        raw_path=listing.replace('File('+b.LOADER+')',b.LOADER)
+        self.assertEqual(b.verified_entry(raw_path,GUID),'0004')
+        for broken in [raw_path.replace(b.LOADER,b.LOADER+'.other'),raw_path.replace(b.LOADER,b.LOADER+r'\extra'),raw_path.replace('HD(1,GPT','HD(2,GPT')]:
+            with self.subTest(broken=broken),self.assertRaises(b.Refused):b.verified_entry(broken,GUID)
         for broken in [listing.replace('BootOrder: 0004,0001','BootOrder: 0001,0004'),listing.replace('Awai Otehon','Ubuntu'),listing.replace(GUID,'aaaaaaaa-1234-5678-9abc-0123456789ab'),listing.replace(b.LOADER,r'\EFI\other.efi'),listing.replace('Boot0004*','Boot0004 ')]:
             with self.subTest(broken=broken),self.assertRaises(b.Refused):b.verified_entry(broken,GUID)
     def test_legacy_and_readonly_efi_refused(self):

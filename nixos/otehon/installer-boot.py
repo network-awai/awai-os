@@ -38,8 +38,14 @@ def verified_entry(listing,guid):
     if not order: raise Refused('uefi-boot-order-readback')
     number = order.group(1)
     line = re.search(r'^Boot'+number+r'\*\s+Awai Otehon\s+(.+)$',listing,re.I|re.M)
-    if not line or not re.search(r'HD\(1,GPT,'+re.escape(guid)+r',',line.group(1),re.I) or ('File('+LOADER+')').casefold() not in line.group(1).casefold():
-        raise Refused('uefi-entry-readback')
+    # libefivar prints a file-path node as the path itself (dp-media.c /
+    # format_ucs2). Older renderings use File(path). Admit only the exact
+    # loader after this ESP node, not a substring or another EFI executable.
+    path = line.group(1).strip() if line else ''
+    expected = (r'HD\(1,GPT,'+re.escape(guid)+r',0x[0-9a-f]+,0x[0-9a-f]+\)/'
+                r'(?:'+re.escape(LOADER)+r'|File\('+re.escape(LOADER)+r'\))')
+    if not re.fullmatch(expected,path,re.I):
+        raise Refused('uefi-entry-readback: '+path[:1200])
     return number.upper()
 
 def register(fd):
