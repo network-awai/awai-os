@@ -1,0 +1,367 @@
+{
+  "schema": "awai.otehon.pr-review.v1",
+  "issue": "AWAI-2906",
+  "run": "awai-os-pr-integration-20261114",
+  "thread": "01a1c403-4751-72d2-84de-55853fc89649",
+  "baselineMain": "ee86af8f3629e12f3f8c0d2df7f7e519d5a6e0d4",
+  "initialOpenPrCount": 30,
+  "acceptanceUnit": "One initial PR with completed source review and verified disposition; merge count is not production maturity.",
+  "provider": "unknown",
+  "model": "unknown",
+  "settings": "unknown",
+  "estimateUnit": "unknown",
+  "tokenForecast": "unknown",
+  "observedTokenCounters": "unknown",
+  "cost": "unknown",
+  "activeWaitingSplit": "unknown",
+  "sharedUsage": "Unallocated; implementation child records are referenced, not summed again.",
+  "physicalUsbGate": "AWAI-450: refresh only after both exact-image GUI and no-GUI physical-console install/restart gates pass; physical PC installation remains owner acceptance.",
+  "pullRequests": [
+    {
+      "number": 125,
+      "title": "AWAI-2899: adopt Akatsuki logo in Otehon OS",
+      "url": "https://github.com/network-awai/awai-os/pull/125",
+      "headRefName": "codex/awai-2899-otehon-logo-20261114",
+      "headRefOid": "c07492473f2f4c91a0d8b72ed8185d45efe60a7b",
+      "baseRefName": "main",
+      "isDraft": false,
+      "reviewState": "reviewed-and-merged",
+      "mergeCommit": "c5e90ba97e6bc61c4065b429d130e356be9bb675"
+    },
+    {
+      "number": 124,
+      "title": "AWAI-532 write and query atomic IPLD Forest groups",
+      "url": "https://github.com/network-awai/awai-os/pull/124",
+      "headRefName": "codex/awai-532-ipld-forest",
+      "headRefOid": "50caeaa8053154ce0f60d8827e60ef518de75385",
+      "baseRefName": "codex/awai-532-forest-prolly",
+      "isDraft": true,
+      "reviewState": "another-session-active-head-moving-preserved"
+    },
+    {
+      "number": 123,
+      "title": "AWAI-532 verify persisted Forest Prolly query path",
+      "url": "https://github.com/network-awai/awai-os/pull/123",
+      "headRefName": "codex/awai-532-forest-prolly",
+      "headRefOid": "3a83e448a4d1565f3d365bfbfb6694cc91e9e8ef",
+      "baseRefName": "main",
+      "isDraft": false,
+      "reviewState": "reviewed-and-merged",
+      "mergeCommit": "71551905c8d6cc976039c50217523d85c98c9742"
+    },
+    {
+      "number": 122,
+      "title": "AWAI-532: Verify file-backed Forest after guest reboot",
+      "url": "https://github.com/network-awai/awai-os/pull/122",
+      "headRefName": "codex/awai-532-v2-guest-reboot",
+      "headRefOid": "0ce69258574eaa80ef2c3e384133ac76b16661a7",
+      "baseRefName": "main",
+      "isDraft": false,
+      "reviewState": "reviewed-and-merged",
+      "mergeCommit": "d6414efb34054781f397c713518d23d3b374e25a"
+    },
+    {
+      "number": 121,
+      "title": "AWAI-532: Stream bounded immutable Forest files",
+      "url": "https://github.com/network-awai/awai-os/pull/121",
+      "headRefName": "codex/awai-532-gib-stream",
+      "headRefOid": "52ee03da7d46cc2c803dc147b4b28a36ae823266",
+      "baseRefName": "main",
+      "isDraft": false,
+      "reviewState": "reviewed-and-merged",
+      "mergeCommit": "e64ede8fe52140c7efb741b9a2e00240b9c420cf"
+    },
+    {
+      "number": 119,
+      "title": "cleanup: land local branch awai/2791-hiccup-garden",
+      "url": "https://github.com/network-awai/awai-os/pull/119",
+      "headRefName": "awai/2791-hiccup-garden",
+      "headRefOid": "b3a515e73c99016805c993b7c533cbaad5819ede",
+      "baseRefName": "main",
+      "isDraft": true,
+      "reviewState": "closed-superseded-by-92-implementation-identical",
+      "preserved": true
+    },
+    {
+      "number": 118,
+      "title": "AWAI-450 add graphical USB installer and verified NVMe first boot",
+      "url": "https://github.com/network-awai/awai-os/pull/118",
+      "headRefName": "codex/awai-450-otehon-usb-20261113",
+      "headRefOid": "a30de6524302fc01e6022d341f7b03b9ba0686e5",
+      "baseRefName": "main",
+      "isDraft": true,
+      "reviewState": "gui-uefi-first-boot-observed-ocr-regression-fixed-full-gate-pending",
+      "reviewedFixHead": "c242f68",
+      "finding": "Real PC did not show custom GUI;0.7.1 adds VT1 fallback/version/UEFI registration and same-image no-GUI VM gate."
+    },
+    {
+      "number": 113,
+      "title": "AWAI-183: integrate signed network desktop updates and state continuity checks",
+      "url": "https://github.com/network-awai/awai-os/pull/113",
+      "headRefName": "codex/awai-164-network-update",
+      "headRefOid": "1db47a8c84c2ae72b58b7b04504a943859100c69",
+      "baseRefName": "main",
+      "isDraft": true,
+      "reviewState": "reviewed-fixed-and-merged",
+      "reviewedFixHead": "07d5d7739fbee1f2715cf83508e765dae97b083b",
+      "finding": "Interrupted staging cleanup; real SIGTERM/SIGKILL + fresh-poll recovery controls pass locally.",
+      "mergeCommit": "4056dbdccaeaa51f2791f7ccd6d07f5877c4324c",
+      "ciRuns": [
+        43591461171,
+        43591461155
+      ]
+    },
+    {
+      "number": 106,
+      "title": "JUN-1180 V2: fix dougaka boot on file://",
+      "url": "https://github.com/network-awai/awai-os/pull/106",
+      "headRefName": "jun-1180-v2c",
+      "headRefOid": "2b8f82bffa64188aba33ad03f196b3390fe52a5e",
+      "baseRefName": "main",
+      "isDraft": false,
+      "reviewState": "reviewed-and-merged",
+      "finding": "Verify vendored broker matches pinned canonical revision; prior automatic review quota failure is not completed review.",
+      "mergeCommit": "d2be4d0f4b4c0aaf5d5859c873852d205ee69f9c"
+    },
+    {
+      "number": 103,
+      "title": "AWAI-438: Inventory R2 dependencies and plan release migration",
+      "url": "https://github.com/network-awai/awai-os/pull/103",
+      "headRefName": "codex/awai-2821-r2-transition",
+      "headRefOid": "e3182c896f09d942806cd1902dc3607a63273b32",
+      "baseRefName": "main",
+      "isDraft": true,
+      "reviewState": "reviewed-and-merged",
+      "mergeCommit": "62b04bba22444e5e8d7c5b67956d322acc966fe0"
+    },
+    {
+      "number": 101,
+      "title": "AWAI-2772: 2026-11-12 C1 preflight evidence and draft-plan checker report",
+      "url": "https://github.com/network-awai/awai-os/pull/101",
+      "headRefName": "muse/awai-2772-otehon-c1",
+      "headRefOid": "f92eca0233d7d0b193e589a66809cbc757c2aa7c",
+      "baseRefName": "main",
+      "isDraft": false,
+      "reviewState": "finding-fixed-by-127-after-external-merge",
+      "mergeCommit": "e55d6b6d19a9fbb7f540713b8bae58d3fcdb019d",
+      "fixPr": 127,
+      "fixMerge": "3bfeaf7750574916fb40c658a8ae03e3af09c6f3"
+    },
+    {
+      "number": 100,
+      "title": "JUN-1178: register otent dapp in shell registry (dock 21)",
+      "url": "https://github.com/network-awai/awai-os/pull/100",
+      "headRefName": "jun784/jun-1178-otent-dapp",
+      "headRefOid": "803926f107f819e2747553c1fa4c47250f1c34a8",
+      "baseRefName": "main",
+      "isDraft": false,
+      "reviewState": "canonical-1318-dependency-open-preservation-fix-merged-128",
+      "finding": "Five unresolved historical threads; preserved mutable macOS VM image and relocatable checksum behavior still need attention. dapp source pin must be reconciled.",
+      "blocker": "Pinned catalog source has no Otent; canonical PR1318 still open",
+      "fixPr": 128
+    },
+    {
+      "number": 98,
+      "title": "AWAI-681: qualify mobile ports and research moto g05 LineageOS installation",
+      "url": "https://github.com/network-awai/awai-os/pull/98",
+      "headRefName": "codex/awai-681-mobile-plan",
+      "headRefOid": "e9fe04477c9c5da3f77bc55dee1bc067047f80b4",
+      "baseRefName": "main",
+      "isDraft": false,
+      "reviewState": "reviewed-and-merged",
+      "mergeCommit": "b1f87847189d566ed2f21cc8813aa4b2a7ab2139"
+    },
+    {
+      "number": 96,
+      "title": "AWAI-2776 verify public replicas and show persistence reliability gauges",
+      "url": "https://github.com/network-awai/awai-os/pull/96",
+      "headRefName": "codex/awai-2776-fs-replica",
+      "headRefOid": "29d7ec27fa0c55cbf9e3e298cc3597d7945fe43b",
+      "baseRefName": "main",
+      "isDraft": true,
+      "reviewState": "pending"
+    },
+    {
+      "number": 95,
+      "title": "Itonami fleet: Circle Goal cooperation, durable history and observed Soshiki activity",
+      "url": "https://github.com/network-awai/awai-os/pull/95",
+      "headRefName": "codex/awai-2795-bot-circles",
+      "headRefOid": "009103a77bf3b95015b72818405447a85104bc4f",
+      "baseRefName": "main",
+      "isDraft": true,
+      "reviewState": "pending"
+    },
+    {
+      "number": 93,
+      "title": "Otehon UI: Soshiki circles and real Muse conversations",
+      "url": "https://github.com/network-awai/awai-os/pull/93",
+      "headRefName": "codex/awai-2792-soshiki-ux",
+      "headRefOid": "1dff841dd6419187e9d4a0b6364cdf752e6b8f6b",
+      "baseRefName": "main",
+      "isDraft": false,
+      "reviewState": "pending"
+    },
+    {
+      "number": 81,
+      "title": "AWAI-542: prepare Passkey-first multichain Saifu",
+      "url": "https://github.com/network-awai/awai-os/pull/81",
+      "headRefName": "codex/awai-542-saifu-runtime",
+      "headRefOid": "42bc5480ecb22e5f6a0a7ddb1c9cfb8721a7ba7f",
+      "baseRefName": "main",
+      "isDraft": true,
+      "reviewState": "pending"
+    },
+    {
+      "number": 69,
+      "title": "AWAI-235: model Otehon contribution dispatch boundary",
+      "url": "https://github.com/network-awai/awai-os/pull/69",
+      "headRefName": "codex/awai-235-otehon-dispatch",
+      "headRefOid": "dbde1d5fbcffdd81206420795148e699cecbf870",
+      "baseRefName": "main",
+      "isDraft": true,
+      "reviewState": "pending"
+    },
+    {
+      "number": 66,
+      "title": "JUN-318: Contain unauthenticated connection bridge",
+      "url": "https://github.com/network-awai/awai-os/pull/66",
+      "headRefName": "codex/jun318-consent-guard",
+      "headRefOid": "50c8f5084747b384f0d88bfcda1f5cb661a5713b",
+      "baseRefName": "claude/jun318-vm-connect",
+      "isDraft": true,
+      "reviewState": "pending"
+    },
+    {
+      "number": 65,
+      "title": "JUN-318: Mishima inference lane in the Awai OS VM",
+      "url": "https://github.com/network-awai/awai-os/pull/65",
+      "headRefName": "claude/jun318-vm-lane",
+      "headRefOid": "a953da1c500bdf2351b79f868a413db6b3338bac",
+      "baseRefName": "claude/jun318-vm-connect",
+      "isDraft": true,
+      "reviewState": "pending"
+    },
+    {
+      "number": 64,
+      "title": "JUN-318: Tsunagu — Tailscale and Kekkai SSH inside the Awai OS VM",
+      "url": "https://github.com/network-awai/awai-os/pull/64",
+      "headRefName": "claude/jun318-vm-connect",
+      "headRefOid": "57003a39701ea920cd9e1c46520b9e08e1bc601f",
+      "baseRefName": "codex/awai-167-apps",
+      "isDraft": true,
+      "reviewState": "pending"
+    },
+    {
+      "number": 60,
+      "title": "AWAI-183: stage signed updates from HTTPS feeds",
+      "url": "https://github.com/network-awai/awai-os/pull/60",
+      "headRefName": "codex/awai-183-network-update",
+      "headRefOid": "8879442131fcfec8b81822b67d80d8df01c8b1db",
+      "baseRefName": "claude/awai-164-desktop-update",
+      "isDraft": true,
+      "reviewState": "legacy-base-conflict-and-unique-unintegrated-delta",
+      "blocker": "Requires narrow current-base integration; #60 owns initial-UKI marker preservation and #42 has readiness/check deltas"
+    },
+    {
+      "number": 56,
+      "title": "AWAI-169: integrate Awai desktop with 6600H installer",
+      "url": "https://github.com/network-awai/awai-os/pull/56",
+      "headRefName": "codex/awai-169-usb",
+      "headRefOid": "a82dfe5dcf4517f77f86312989ab36ecbb7ca478",
+      "baseRefName": "claude/awai-169-6600h-netboot",
+      "isDraft": true,
+      "reviewState": "pending"
+    },
+    {
+      "number": 55,
+      "title": "AWAI-168: Time zone helper, Settei screen, Japanese shell text, web window (partial)",
+      "url": "https://github.com/network-awai/awai-os/pull/55",
+      "headRefName": "claude/awai-168-daily",
+      "headRefOid": "b6bbe73291dbf6fe9ac9ce3f7c2da3fc70019cd5",
+      "baseRefName": "claude/awai-165-protect",
+      "isDraft": false,
+      "reviewState": "pending"
+    },
+    {
+      "number": 54,
+      "title": "AWAI-165: Desktop data on the LUKS volume and a screen lock (VM checks not run)",
+      "url": "https://github.com/network-awai/awai-os/pull/54",
+      "headRefName": "claude/awai-165-protect",
+      "headRefOid": "0e52fc7c652371ee4e08aec09a8e32334871fa66",
+      "baseRefName": "main",
+      "isDraft": false,
+      "reviewState": "pending"
+    },
+    {
+      "number": 53,
+      "title": "AWAI-167: Connect Hermes to the shell with local inference",
+      "url": "https://github.com/network-awai/awai-os/pull/53",
+      "headRefName": "claude/awai-167-hermes",
+      "headRefOid": "b2d75edca7801551d906b188a628d2fff9bbb281",
+      "baseRefName": "main",
+      "isDraft": false,
+      "reviewState": "pending"
+    },
+    {
+      "number": 51,
+      "title": "AWAI-167 AWAI-181: Integrate app marketplace and age setup",
+      "url": "https://github.com/network-awai/awai-os/pull/51",
+      "headRefName": "codex/awai-167-apps",
+      "headRefOid": "59c14e09e45c2070d5ea263e05eaa08ff6173494",
+      "baseRefName": "main",
+      "isDraft": true,
+      "reviewState": "pending"
+    },
+    {
+      "number": 50,
+      "title": "AWAI-92: Prototype an Apple Silicon VM launcher",
+      "url": "https://github.com/network-awai/awai-os/pull/50",
+      "headRefName": "codex/awai-92-macos-vm",
+      "headRefOid": "925d9dff435f6dcc0f18d7313946ff7b386d034e",
+      "baseRefName": "main",
+      "isDraft": false,
+      "reviewState": "reviewed-and-merged",
+      "mergeCommit": "24008103fbae4cac9639583ee22c3f890bdce1f2"
+    },
+    {
+      "number": 49,
+      "title": "AWAI-181: Ask for an age group during Awai OS setup",
+      "url": "https://github.com/network-awai/awai-os/pull/49",
+      "headRefName": "codex/awai-181-age-gate",
+      "headRefOid": "658273bd7bf0f77f3ae971a6b77c3156725e4e08",
+      "baseRefName": "main",
+      "isDraft": true,
+      "reviewState": "requires-port-to-current-cljc-shell",
+      "blocker": "Changes target removed React setup/main; active shell is now ClojureScript"
+    },
+    {
+      "number": 42,
+      "title": "AWAI-164: Signed updates on the Otehon desktop (VM checks not passed)",
+      "url": "https://github.com/network-awai/awai-os/pull/42",
+      "headRefName": "claude/awai-164-desktop-update",
+      "headRefOid": "f9f3492c955325adc62e7ea18c4dedcae9008b5d",
+      "baseRefName": "main",
+      "isDraft": false,
+      "reviewState": "legacy-base-conflict-and-unique-unintegrated-delta",
+      "blocker": "Requires narrow current-base integration; #60 owns initial-UKI marker preservation and #42 has readiness/check deltas"
+    }
+  ],
+  "followUps": [
+    {
+      "number": 127,
+      "issue": "AWAI-2774",
+      "headRefOid": "9d41a6ae69b5b62c2f39e3b0d5a964ad1809cda8",
+      "mergeCommit": "3bfeaf7750574916fb40c658a8ae03e3af09c6f3",
+      "verification": "BB 16/86; Basilisp 19; shared 58 cases on both; four exact-head checks pass",
+      "scope": "Pure reservation oracle; host authority/durability remains open"
+    },
+    {
+      "number": 128,
+      "issue": "AWAI-2906",
+      "headRefOid": "375fafdebb7ca8a23ee7d2cda19c11e715933406",
+      "mergeCommit": "52da0308471bd9c24a7e0a344b0c0ded89f35c4e",
+      "verification": "Real filesystem no-clobber/relocation/corruption controls; four exact-head checks pass",
+      "scope": "Same preservation fix initially pushed in #100; do not count twice"
+    }
+  ]
+}
