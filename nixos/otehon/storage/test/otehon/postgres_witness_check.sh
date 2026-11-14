@@ -1,8 +1,9 @@
 #!/bin/sh
 # Task-owned throwaway Unix-socket cluster only. Never connect to an existing DB.
 set -eu
-[ "$#" -eq 5 ] || { echo 'usage: check BASE SOCKET CLASSPATH PROOF FIXTURES' >&2; exit 2; }
+[ "$#" -eq 5 ] || [ "$#" -eq 6 ] || { echo 'usage: check BASE SOCKET CLASSPATH PROOF FIXTURES [CRASH]' >&2; exit 2; }
 base=$1 socket=$2 classpath=$3 proof=$4 fixtures=$5
+crash=${6:-nixos/otehon/storage/oracle/postgres_witness_crash.clj}
 unset PGHOST PGHOSTADDR PGPORT PGDATABASE PGUSER PGSERVICE PGOPTIONS PGTARGETSESSIONATTRS PGSSLMODE
 mkdir "$base" "$socket"
 chmod 700 "$socket"
@@ -22,5 +23,9 @@ pg_ctl -D "$base/data" -m fast -w stop >/dev/null
 bb --classpath "$classpath" "$proof" down
 start
 bb --classpath "$classpath" "$proof" verify
+bb --classpath "$classpath" "$crash" run
+pg_ctl -D "$base/data" -m fast -w stop >/dev/null
+start
+bb --classpath "$classpath" "$crash" verify
 stop
 trap - EXIT HUP INT TERM
