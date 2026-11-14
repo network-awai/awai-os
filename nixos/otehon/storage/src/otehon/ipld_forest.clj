@@ -96,6 +96,7 @@
 (def ^:private group-prefix "awai.ipld-forest-group/")
 (def ^:private max-group-archives 64)
 (def ^:private unconditional (Object.))
+(def ^:private unwitnessed (Object.))
 (defn- group-key [name]
   (key-for name)
   (str group-prefix name))
@@ -124,13 +125,22 @@
   transaction. Each entry is {:root-cid string :bytes byte-array}. All bytes,
   roots and the declared basis are verified before any catalog publication.
   The five-argument form conditionally publishes at the observed store
-  generation under the local writer lock; the four-argument form is unconditional."
+  generation under the local writer lock; the four-argument form is unconditional.
+  The witnessed form requires a trusted verifier for the complete root state;
+  a verifier that ignores any namespace cannot qualify this publication."
   ([directory name basis archives]
-   (publish-group! directory name basis archives unconditional))
+   (publish-group! directory name basis archives unconditional unwitnessed nil))
   ([directory name basis archives expected-generation]
+   (publish-group! directory name basis archives expected-generation unwitnessed nil))
+  ([directory name basis archives expected-generation witness-port verify-root!]
   (when-not (or (identical? unconditional expected-generation)
                 (and (integer? expected-generation) (<= 1 expected-generation 9007199254740991)))
     (fail! :invalid-generation "expected a positive bounded store generation"))
+  (when-not (or (and (identical? unwitnessed witness-port) (nil? verify-root!))
+                (and (not (identical? unwitnessed witness-port)) (some? witness-port)
+                     (fn? verify-root!) (not (identical? unconditional expected-generation))))
+    (fail! :invalid-witness "witnessed publication requires a generation and full-root verifier"))
+  (when-not (identical? unwitnessed witness-port) (store/validate-write-witness! witness-port))
   (group-key name)
   (when-not (and (vector? archives) (<= 1 (count archives) max-group-archives))
     (fail! :invalid-ipld-forest-group "expected 1..64 archives"))
@@ -147,13 +157,18 @@
     (when-not (group-has-cid? opened basis)
       (fail! :invalid-ipld-basis "basis block is absent from archive group"))
     (let [payload {:key (group-key name) :value (pr-str group)}
-          write-archives (fn [dir _]
+          verify-state! (when-not (identical? unwitnessed witness-port) (fn [dir state]
+                                             (when-not (true? (verify-root! dir state))
+                                               (fail! :catalog-verification-refused "root verifier did not approve"))))
+          write-archives (fn [dir state]
+                           (when verify-state! (verify-state! dir state))
                            (doseq [[entry ref] (map vector owned refs)]
                              (when-not (= (:archive-sha ref) (store/write-forest! dir (:bytes entry)))
                                (fail! :changed-payload "archive digest changed"))))]
-      (if (identical? unconditional expected-generation)
-        (store/transact! directory :put payload write-archives)
-        (store/transact-if-generation! directory expected-generation :put payload write-archives)))
+      (cond
+        (not (identical? unwitnessed witness-port)) (store/transact-if-generation-witnessed! directory expected-generation :put payload write-archives witness-port verify-state!)
+        (identical? unconditional expected-generation) (store/transact! directory :put payload write-archives)
+        :else (store/transact-if-generation! directory expected-generation :put payload write-archives)))
     group)))
 
 (defn recover-group

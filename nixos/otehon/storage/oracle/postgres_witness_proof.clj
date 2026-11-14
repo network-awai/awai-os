@@ -1,6 +1,6 @@
 ;; Task-owned isolated PostgreSQL service. Never run against an existing DB.
 (require '[clojure.edn :as edn] '[otehon.storage :as store] '[otehon.pack-store :as pack] '[otehon.ipld-forest :as ipld]
-         '[otehon.postgres-witness :as pg] '[otehon.witnessed-pack-test])
+         '[otehon.postgres-witness :as pg] '[otehon.witnessed-pack-test] '[otehon.ipld-forest-test])
 (import '[java.nio.file Files Paths CopyOption])
 (def base (or (System/getenv "PG_WITNESS_PROOF") (throw (ex-info "PG_WITNESS_PROOF required" {}))))
 (def psql (or (System/getenv "PG_WITNESS_PSQL") (throw (ex-info "PG_WITNESS_PSQL required" {}))))
@@ -70,5 +70,22 @@
    (ensure! (bytes? (ipld/get-block (ipld/recover-witnessed d "prolly" (:read! w)) @#'otehon.witnessed-pack-test/ipld-root)) "IPLD block missing")
    (ensure! (= 4 (count (get-in (pack/summary (pack/recover-witnessed d w)) [:groups "proof" :packs]))) "Pack group missing")
    (prn {:mode :mixed :missing-ipld :refused :recovered-ipld true :packs 4 :pass true}))
- (throw (ex-info "setup, verify, down or mixed required" {})))
+ "generic"
+ (let [d (str base "/generic") _ (store/init! d) initial (:root (store/read-store d))
+       id (apply str (repeat 64 "5")) _ (bootstrap! id initial) w (pg/port psql service id)
+       basis otehon.ipld-forest-test/policy-root parts (otehon.ipld-forest-test/split-inputs)
+       outcome (binding [store/*write-observer* (fn [event role]
+                         (when (= [event role] [:before-cas :witness]) (throw (ex-info "injected" {}))))]
+                 (error-type #(ipld/publish-group! d "graph" basis parts 1 w pack/verify-supported-catalog!)))
+       status ((:status! w))]
+   (ensure! (= :witness-commit-uncertain outcome) "interrupted generic write did not report uncertainty")
+   (ensure! (= initial (:root status)) "committed root advanced early")
+   (ensure! (= (:root (store/read-store d)) (:pending status)) "pending generic root mismatch")
+   (ensure! (= :witness-pending (error-type #(ipld/recover-group-witnessed d "graph" w))) "pending generic root was opened")
+   (ensure! (= :committed-pending (:outcome (pack/reconcile-witnessed! d w))) "generic root did not reconcile")
+   (let [h (ipld/recover-group-witnessed d "graph" w)]
+     (ensure! (= 2 (count (get-in h [:group :archives]))) "generic archive count changed")
+     (ensure! (bytes? (ipld/get-group-block h basis)) "generic basis block missing"))
+   (prn {:mode :generic :archives 2 :pending :refused :reconciled true :pass true}))
+ (throw (ex-info "setup, verify, down, mixed or generic required" {})))
 (shutdown-agents)

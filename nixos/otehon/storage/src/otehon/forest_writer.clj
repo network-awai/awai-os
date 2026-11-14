@@ -46,6 +46,7 @@
         (.array buffer)))))
 
 (def ^:private unconditional (Object.))
+(def ^:private unwitnessed (Object.))
 (def ^:private max-ipld-block-bytes (* 850 1024))
 (def ^:private max-ipld-input-bytes (* 32 1024 1024))
 (def ^:private max-ipld-archive-bytes (* 900 1024))
@@ -81,13 +82,19 @@
   publish one generic group. The entire <=32 MiB input is owned in memory;
   this is not a streaming or GiB writer. STAGING is new and retained. The
   seven-argument form requires the observed store generation under the writer
-  lock; the six-argument form remains unconditional."
+  lock; the six-argument form remains unconditional. The eight-argument form
+  additionally requires a witness and verifies the supported entire root."
   ([directory name basis blocks staging tool]
-   (put-ipld-blocks! directory name basis blocks staging tool unconditional))
+   (put-ipld-blocks! directory name basis blocks staging tool unconditional unwitnessed))
   ([directory name basis blocks staging tool expected-generation]
+   (put-ipld-blocks! directory name basis blocks staging tool expected-generation unwitnessed))
+  ([directory name basis blocks staging tool expected-generation witness-port]
   (when-not (or (identical? unconditional expected-generation)
                 (and (integer? expected-generation) (<= 1 expected-generation 9007199254740991)))
     (fail! :invalid-generation "expected a positive bounded store generation"))
+  (when-not (identical? unwitnessed witness-port)
+    (when (identical? unconditional expected-generation) (fail! :invalid-generation "witness requires generation"))
+    (store/validate-write-witness! witness-port))
   (when-not (and (every? string? [directory name basis staging tool])
                  (vector? blocks) (<= 1 (count blocks) (* max-packs max-ipld-blocks-per-archive)))
     (fail! :invalid-argument "expected bounded blocks and string paths"))
@@ -139,9 +146,10 @@
                             (fail! :forest-content-mismatch "generated archive differs from input blocks"))
                           {:root-cid root :bytes bytes}))))
                   (range) batches)
-            group (if (identical? unconditional expected-generation)
-                    (ipld/publish-group! directory name basis archives)
-                    (ipld/publish-group! directory name basis archives expected-generation))]
+            group (cond
+                    (not (identical? unwitnessed witness-port)) (ipld/publish-group! directory name basis archives expected-generation witness-port pack/verify-supported-catalog!)
+                    (identical? unconditional expected-generation) (ipld/publish-group! directory name basis archives)
+                    :else (ipld/publish-group! directory name basis archives expected-generation))]
         {:group group :archive-count (count archives) :block-count (count owned)})))))
 
 (defn put-file!

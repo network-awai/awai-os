@@ -256,7 +256,10 @@
     (when degraded? (fail! :degraded-store "invalid root slot requires review before reads"))
     (assoc (recover-map directory state) :basis root :degraded? degraded?)))
 
-(defn- verify-supported-catalog! [directory state]
+(defn verify-supported-catalog!
+  "Verify a complete supported Pack/IPLD root under the local writer lock.
+  Unknown root namespaces refuse; caller must supply the selected state."
+  [directory state]
   ;; A witness certifies the complete root, not just the newly written Pack.
   ;; Ref/metadata namespaces need their own validators before admission here.
   (when-not (every? (fn [k] (some #(str/starts-with? k %)

@@ -3,6 +3,7 @@
             [awai.fs.car :as car]
             [otehon.forest :as forest]
             [otehon.ipld-forest :as catalog]
+            [otehon.pack-store :as pack]
             [otehon.storage :as store])
   (:import [java.nio.file Files Paths LinkOption] [java.io RandomAccessFile]))
 (def root "bafyreiakmttcp6otxvnyqmdjpzlschlskibp7enadlvkguw3nnp47f5wqm")
@@ -83,6 +84,50 @@
     (mapv (fn [i root-cid] {:root-cid root-cid
                             :bytes (Files/readAllBytes (Paths/get (str base "/" i ".forest") (make-array String 0)))})
           (range 2) split-roots)))
+
+(defn- atom-witness [root calls]
+  {:read! #(deref root)
+   :compare-and-set! (fn [old new] (locking root (swap! calls inc)
+                                     (if (= @root old) (do (reset! root new) true) false)))})
+
+(deftest witnessed-generic-group-publication
+  (let [d (new-store) parts (split-inputs) before (:root (store/read-store d))
+        a (atom before) calls (atom 0) w (atom-witness a calls)]
+    (is (= :invalid-witness (error-type #(catalog/publish-group! d "graph" policy-root parts 1 nil nil))))
+    (is (= :invalid-witness (error-type #(catalog/publish-group! d "graph" policy-root parts 1 w nil))))
+    (is (= :catalog-verification-refused (error-type #(catalog/publish-group! d "graph" policy-root parts 1 w (fn [_ _] false)))))
+    (is (= before (:root (store/read-store d)))) (is (zero? @calls))
+    (catalog/publish-group! d "graph" policy-root parts 1 w pack/verify-supported-catalog!)
+    (is (= 1 @calls)) (is (= (:root (store/read-store d)) @a))
+    (let [h (catalog/recover-group-witnessed d "graph" (:read! w))]
+      (is (= 2 (count (get-in h [:group :archives]))))
+      (is (bytes? (catalog/get-group-block h policy-root))))
+    (is (= :stale-generation (error-type #(catalog/publish-group! d "stale" policy-root parts 1 w pack/verify-supported-catalog!))))))
+
+(deftest witnessed-generic-group-verifies-entire-root
+  (let [d (new-store) parts (split-inputs) prior-ref (catalog/publish! d "prior" root (bytes))
+        prior (:root (store/read-store d)) a (atom prior) calls (atom 0) w (atom-witness a calls)
+        path (Paths/get (str d "/" (:archive-sha prior-ref) ".forest") (make-array String 0))
+        saved (Paths/get (str d "-missing-prior") (make-array String 0))]
+    (Files/move path saved (make-array java.nio.file.CopyOption 0))
+    (is (= :missing-forest (error-type #(catalog/publish-group! d "graph" policy-root parts 2 w pack/verify-supported-catalog!))))
+    (is (= prior (:root (store/read-store d)))) (is (zero? @calls))
+    (Files/move saved path (make-array java.nio.file.CopyOption 0))
+    (let [removed (atom false) failure (binding [store/*write-observer*
+                       (fn [event role] (when (= [event role] [:dir-synced :root])
+                                          (Files/move path saved (make-array java.nio.file.CopyOption 0))
+                                          (reset! removed true)))]
+                    (error-type #(catalog/publish-group! d "graph" policy-root parts 2 w pack/verify-supported-catalog!)))]
+      (is @removed) (is (= :witness-commit-uncertain failure)) (is (= prior @a)) (is (zero? @calls)))))
+
+(deftest witnessed-generic-group-refuses-postpublication-verifier-failure
+  (let [d (new-store) parts (split-inputs) prior (:root (store/read-store d))
+        a (atom prior) calls (atom 0) verifier-calls (atom 0) w (atom-witness a calls)
+        verifier (fn [_ _] (= 1 (swap! verifier-calls inc)))]
+    (is (= :witness-commit-uncertain
+           (error-type #(catalog/publish-group! d "graph" policy-root parts 1 w verifier))))
+    (is (= 2 @verifier-calls)) (is (= 2 (get-in (store/read-store d) [:root :generation])))
+    (is (= prior @a)) (is (zero? @calls))))
 
 (deftest damaged-root-must-not-open-older-forest-catalog
   (let [dir (new-store) parts (split-inputs)]

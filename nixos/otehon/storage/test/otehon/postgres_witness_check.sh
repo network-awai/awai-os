@@ -27,6 +27,7 @@ bb --classpath "$classpath" "$proof" down
 start
 bb --classpath "$classpath" "$proof" verify
 bb --classpath "$classpath" "$proof" mixed
+bb --classpath "$classpath" "$proof" generic
 bb --classpath "$classpath" "$crash" run
 pg_ctl -D "$base/data" -m fast -w stop >/dev/null
 start
@@ -58,5 +59,8 @@ start
 bb --classpath "$classpath" "$db_interrupt" verify
 psql -X -q -v ON_ERROR_STOP=1 -d 'service=awai_witness_test' -c 'DROP TRIGGER pause_test_update ON awai_witness.root;'
 bb --classpath "$classpath" "$db_interrupt" reconcile
+if [ -n "${PG_WITNESS_TOOL:-}" ]; then
+  bb --classpath "$classpath" nixos/otehon/storage/oracle/postgres_ipld_writer_proof.clj
+fi
 stop
 trap - EXIT HUP INT TERM

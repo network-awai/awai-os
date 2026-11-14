@@ -6,6 +6,14 @@
             [otehon.storage :as storage])
   (:import [java.nio.file Files Paths OpenOption] [java.nio.file.attribute FileAttribute]))
 (def ^:dynamic *output* ".agent-output/forest-writer-test")
+(deftest generic-writer-requires-explicit-valid-witness
+  (.mkdirs (java.io.File. *output*))
+  (let [d (Files/createTempDirectory (Paths/get *output* (make-array String 0)) "ipld-witness-" (make-array FileAttribute 0))
+        stage (str d "/stage")]
+    (is (= :invalid-witness
+           (try (writer/put-ipld-blocks! "missing" "x" "x" [] stage "missing" 1 nil) nil
+                (catch Exception e (:type (ex-data e))))))
+    (is (not (.exists (java.io.File. stage))))))
 (deftest rejects-unpinned-tool-before-publication
   (.mkdirs (java.io.File. *output*))
   (let [dir (Files/createTempDirectory (Paths/get *output* (make-array String 0)) "writer-" (make-array FileAttribute 0))

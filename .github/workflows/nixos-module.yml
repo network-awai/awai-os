@@ -55,6 +55,12 @@ jobs:
           "$bb_path/bin/bb" --classpath "$classpath" "$ipld_writer" write "$RUNNER_TEMP/ipld-writer" "$tool"
           "$bb_path/bin/bb" --classpath "$classpath" "$ipld_writer" read "$RUNNER_TEMP/ipld-writer" "$tool"
           "$bb_path/bin/bb" --classpath "$classpath" nixos/otehon/storage/test/otehon/ipld_forest_conditional_writer_proof.clj "$RUNNER_TEMP/ipld-conditional" "$tool"
+          "$bb_path/bin/bb" --classpath "$classpath" nixos/otehon/storage/test/otehon/ipld_forest_witness_writer_proof.clj "$RUNNER_TEMP/ipld-witnessed" "$tool"
+          pg_path=$(nix-build --no-out-link --expr '(import (import ./ci/nixpkgs.nix) {}).postgresql')
+          PATH="$pg_path/bin:$bb_path/bin:$PATH" PG_WITNESS_TOOL="$tool" sh nixos/otehon/storage/test/otehon/postgres_witness_check.sh \
+            "$RUNNER_TEMP/pg-witness-tool" "$RUNNER_TEMP/pg-witness-socket" "$classpath" \
+            "$PWD/nixos/otehon/storage/oracle/postgres_witness_proof.clj" "$PWD/nixos/otehon/storage/test/fixtures/crosspack" \
+            "$PWD/nixos/otehon/storage/oracle/postgres_witness_crash.clj" "$PWD/nixos/otehon/storage/oracle/postgres_witness_db_interrupt.clj"
           blocks_proof=nixos/otehon/storage/test/otehon/kotobase_forest_blocks_proof.clj
           "$bb_path/bin/bb" --classpath "$classpath" "$blocks_proof" write "$RUNNER_TEMP/kotobase-blocks" "$tool"
           "$bb_path/bin/bb" --classpath "$classpath" "$blocks_proof" read "$RUNNER_TEMP/kotobase-blocks" "$tool"
