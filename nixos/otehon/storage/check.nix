@@ -4,7 +4,7 @@ let
   classpath = "${./src}:${./vendor/apex/src}:${./vendor/apex-car/src}:${./vendor/kotobase-storage/src}:${./test}";
 in
 pkgs.runCommand "otehon-storage-hosted-check" {
-  nativeBuildInputs = [ pkgs.babashka pkgs.zstd package ];
+  nativeBuildInputs = [ pkgs.babashka pkgs.zstd pkgs.postgresql package ];
 } ''
   mkdir -p "$out"
   bb --classpath ${classpath} -e "(require '[clojure.test :as t] 'otehon.storage-test 'otehon.pack-store-test)(binding [otehon.storage-test/*output* \"unit\" otehon.pack-store-test/*output* \"pack-unit\"] (let [r (t/run-tests 'otehon.storage-test 'otehon.pack-store-test)] (System/exit (+ (:fail r) (:error r)))))" > "$out/unit-tests.txt"
@@ -24,6 +24,7 @@ pkgs.runCommand "otehon-storage-hosted-check" {
   CROSSPACK_FIXTURES=${./test/fixtures/crosspack} bb --classpath ${classpath} ${./test/otehon/logical_product_proof.clj} logical-product-proof > "$out/logical-product-proof.edn"
   CROSSPACK_FIXTURES=${./test/fixtures/crosspack} bb --classpath ${classpath} ${./test/otehon/atomic_logical_proof.clj} run atomic-logical-proof > "$out/atomic-logical-proof.edn"
   CROSSPACK_FIXTURES=${./test/fixtures/crosspack} bb --classpath ${classpath} ${./test/otehon/witnessed_crash_proof.clj} run witnessed-crash-proof > "$out/witnessed-crash-proof.edn"
+  sh ${./test/otehon/postgres_witness_check.sh} "$PWD/pg-witness" "$PWD/pg-socket" "${classpath}" ${./oracle/postgres_witness_proof.clj} ${./test/fixtures/crosspack} > "$out/postgres-witness-proof.edn"
   AWAI_FILE_INPUT=1 CROSSPACK_FIXTURES=${./test/fixtures/crosspack} bb --classpath ${classpath} ${./test/otehon/atomic_logical_proof.clj} run atomic-logical-file-proof > "$out/atomic-logical-file-proof.edn"
   CROSSPACK_FIXTURES=${./test/fixtures/crosspack} bb --classpath ${classpath} ${./test/otehon/cli_logical_proof.clj} cli-logical-proof > "$out/cli-logical-proof.edn"
   bb --classpath ${classpath} ${./test/otehon/crash_runner.clj} run crash > "$out/crash-tests.edn"
