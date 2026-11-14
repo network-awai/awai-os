@@ -6,6 +6,7 @@ import tempfile
 import hashlib
 import os
 import stat
+import socket
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -19,6 +20,18 @@ class Protocol(unittest.TestCase):
         self.assertEqual(b.decode(b'SELECT\t'+base64.b64encode(b'target')+b'\n'), ('SELECT',['target']))
         for bad in [b'EXEC\n',b'STATUS\tx\n',b'SELECT\t!!!!\n',b'SELECT\tCg==\n',b'LIST',b'x'*4097+b'\n']:
             with self.subTest(bad=bad[:30]), self.assertRaises(b.Refused): b.decode(bad)
+    def test_disconnected_observer_does_not_terminate_service(self):
+        # Use real Unix stream sockets, not a mocked sendall: a closed observer
+        # must not raise out of the broker loop and kill its daemon write thread.
+        observer,service=socket.socketpair()
+        observer.close()
+        with service:
+            self.assertFalse(b.send_response(service,{'ok':True,'value':{'phase':'write'}}))
+        observer,service=socket.socketpair()
+        with observer,service:
+            self.assertTrue(b.send_response(service,{'ok':True,'value':{'phase':'readback'}}))
+            self.assertIn(b'readback',observer.recv(4096))
+
     def test_admission_refuses_unsafe_targets(self):
         good={'id':'x','size':101,'ambiguous':False,'used':False,'readOnly':False,'serial':'EXACT'}
         self.assertEqual(b.admit([good],'x',100),good)

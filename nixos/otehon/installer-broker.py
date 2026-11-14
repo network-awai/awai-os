@@ -204,6 +204,15 @@ class Broker:
             return {'ok':True}
         raise Refused('operation')
 
+def send_response(connection, response):
+    # A disappeared/timed-out GUI must not terminate the service and its active
+    # write thread. The root-owned job continues independently of its observer.
+    try:
+        connection.sendall((edn(response)+'\n').encode())
+        return True
+    except OSError:
+        return False
+
 def serve():
     if os.geteuid()!=0: raise Refused('root-service-required')
     user=pwd.getpwnam('otehon-installer')
@@ -225,6 +234,6 @@ def serve():
                     with connection.makefile('rb') as stream: op,args=decode(stream.readline(4098))
                     response={'ok':True,'value':broker.dispatch(op,args)}
                 except Exception as error: response={'ok':False,'error':str(error) if isinstance(error,Refused) else type(error).__name__}
-                connection.sendall((edn(response)+'\n').encode())
+                send_response(connection,response)
 
 if __name__=='__main__': serve()
