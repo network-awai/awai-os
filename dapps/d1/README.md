@@ -9,7 +9,7 @@ funds. It is **not built into the OS image**.
 | Part | File | Runs on |
 | --- | --- | --- |
 | Pure core | `src/d1/core.cljc` | Basilisp and Babashka, unchanged |
-| Reservation ledger | `src/d1/reservation.cljc` | Both: Babashka (`test/reservation_test.clj`, 15 tests / 74 assertions) and Basilisp (`test/reservation_run.lpy`, 18 checks) |
+| Reservation ledger | `src/d1/reservation.cljc` | Both: Babashka (`test/reservation_test.clj`, 16 tests / 86 assertions) and Basilisp (`test/reservation_run.lpy`, 19 checks) |
 | Shared cases | `test/cases.json` | Both (58 cases) |
 | Basilisp runner | `test/run_cases.lpy` | Basilisp: `basilisp run` |
 | Babashka runner | `test/run_cases.clj` | Babashka: `bb --classpath` |

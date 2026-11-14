@@ -111,8 +111,16 @@
                            (r/reconcile d "k" da 2 :completed ra)])
                   (= :completed (:state (second (r/reconcile d "k" da 1 :completed ra)))))))]] )
 
+(defn inert-state-check []
+  (every? (fn [state]
+            (let [a {:reservations {"k" {:digest da :expires 10 :state state :fence 5}}}]
+              (every? (fn [[unchanged refusal]]
+                        (and (= a unchanged) (= :not-live (:cause refusal))))
+                      [(r/settle a "k" da 5 :ok ra) (r/raise-fence a "k" 6)])))
+          [:expired :invalid nil]))
+
 (defn -main []
-  (let [all-checks (concat checks generation-checks)
+  (let [all-checks (concat checks generation-checks [["inert-states" inert-state-check]])
         failures (remove nil? (map (fn [[nm f]] (when-not (f) nm)) all-checks))]
     (doseq [nm failures] (println "FAIL" nm))
     (println "basilisp reservation checks" (count all-checks) "failures" (count failures))

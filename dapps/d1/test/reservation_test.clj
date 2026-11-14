@@ -168,5 +168,13 @@
       (is (= :stale-writer (:cause refusal))))
     (is (= :completed (:state (second (r/reconcile d "k" digest-a 1 :completed receipt-a)))))))
 
+(deftest expired-or-invalid-states-cannot-settle-or-raise-fences
+  (doseq [state [:expired :invalid nil]]
+    (let [a {:reservations {"k" {:digest digest-a :expires 10 :state state :fence 5}}}]
+      (doseq [[unchanged refusal] [(r/settle a "k" digest-a 5 :ok receipt-a)
+                                   (r/raise-fence a "k" 6)]]
+        (is (= a unchanged))
+        (is (= :not-live (:cause refusal)))))))
+
 (let [result (run-tests)]
   (when (pos? (+ (:fail result) (:error result))) (System/exit 1)))

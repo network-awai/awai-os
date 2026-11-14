@@ -62,7 +62,7 @@
   [ledger k epoch]
   (let [entry (get-in ledger [:reservations k])]
     (cond
-      (or (nil? entry) (contains? terminal-states (:state entry)))
+      (not (contains? #{:reserved :in-flight} (:state entry)))
       [ledger {:refused true :cause :not-live :key k}]
       (or (not (integer? epoch)) (<= epoch (:fence entry 0)))
       [ledger {:refused true :cause :fence-rewind :key k}]
@@ -104,7 +104,7 @@
   [ledger k digest epoch effect receipt]
   (let [entry (get-in ledger [:reservations k])]
     (cond
-      (or (nil? entry) (contains? terminal-states (:state entry)))
+      (not (contains? #{:reserved :in-flight} (:state entry)))
       [ledger {:refused true :cause :not-live :key k}]
       (not= digest (:digest entry))
       [ledger {:refused true :cause :conflict :key k}]
