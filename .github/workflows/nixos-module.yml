@@ -64,6 +64,8 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npm test
+      - name: Test read-only mobile inventory and report I/O refusal
+        run: sh scripts/otehon-mobile/test-collect-p0.sh
       - name: Test the restricted Saifu guest bridge
         run: node --test dapps/saifu/test/host-bridge.test.mjs
       - uses: cachix/install-nix-action@b85815f71a6de0ddee80b8a80a98d43f4bcc66c7 # v31

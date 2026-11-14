@@ -79,4 +79,11 @@ result=0
 sh "$root/collect-p0.sh" > "$fixture/report" 2> "$fixture/error" || result=$?
 [ "$result" = 2 ]
 [ ! -s "$P0_CALLS" ]
-printf 'PASS: fixed read-only commands, explicit target, missing property, transport refusal, redaction, usage\n'
+# A real stdout write error must not be reported as a complete collection.
+unset P0_MODE
+printf 'preserved\n' > "$fixture/read-only-output"
+result=0
+sh "$root/collect-p0.sh" test-device 1< "$fixture/read-only-output" 2> "$fixture/error" || result=$?
+[ "$result" -ne 0 ]
+grep -qx preserved "$fixture/read-only-output"
+printf 'PASS: fixed read-only commands, explicit target, missing property, transport refusal, redaction, usage, output I/O failure\n'

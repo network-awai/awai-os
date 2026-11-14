@@ -70,6 +70,7 @@ P0 の再測定は repository root で、serial を shell history 等に不用�
 
 ```sh
 # adb_serial は作業者が既に許可した端末を明示指定する値。collector は出力に載せない。
+mkdir -p .agent-output
 ( set -C; sh scripts/otehon-mobile/collect-p0.sh "$adb_serial" > .agent-output/p0-new.txt )
 sh scripts/otehon-mobile/test-collect-p0.sh
 ```

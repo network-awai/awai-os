@@ -1,7 +1,7 @@
 #!/bin/sh
 # Host-side, read-only Android inventory. No reboot, root, install or fastboot.
 # Select one already-authorized device explicitly; never print its serial.
-set -u
+set -eu
 if [ "$#" -ne 1 ] || [ -z "$1" ]; then
   echo 'usage: collect-p0.sh <adb-serial> (serial is not included in the report)' >&2
   exit 2
