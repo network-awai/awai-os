@@ -39,9 +39,19 @@
                 (when (> next 8192) (fail! :witness-service-error "witness response too large"))
                 (.write out buf 0 n) (recur next))))))))
 (defn- query! [psql service sql]
-  (let [p (.start (doto (ProcessBuilder. ^java.util.List
-                    [psql "-X" "-q" "-A" "-t" "-v" "ON_ERROR_STOP=1" "-d" (str "service=" service) "-f" "-"])
-                    (.redirectErrorStream true)))
+  (let [builder (doto (ProcessBuilder. ^java.util.List
+                       [psql "-X" "-q" "-A" "-t" "-v" "ON_ERROR_STOP=1" "-d" (str "service=" service) "-f" "-"])
+                  (.redirectErrorStream true))
+        env (.environment builder)
+        ;; Routing, session and TLS choices come from the selected service,
+        ;; never ambient overrides. PGSERVICEFILE and credentials may remain.
+        _ (doseq [k ["PGHOST" "PGHOSTADDR" "PGPORT" "PGDATABASE" "PGUSER" "PGSERVICE" "PGOPTIONS"
+                     "PGTARGETSESSIONATTRS" "PGLOADBALANCEHOSTS" "PGHOSTRECHECKSECONDS"
+                     "PGSSLMODE" "PGSSLCERT" "PGSSLKEY" "PGSSLROOTCERT" "PGSSLCRL" "PGSSLCRLDIR"
+                     "PGREQUIRESSL" "PGSSLCOMPRESSION" "PGSSLNEGOTIATION" "PGSSLSNI" "PGSSLKEYLOGFILE"
+                     "PGREQUIREAUTH" "PGCHANNELBINDING" "PGGSSENCMODE"]]
+            (.remove env k))
+        p (.start builder)
         output (future (read-bounded (.getInputStream p)))]
     (try
       (with-open [in (.getOutputStream p)] (.write in (.getBytes sql StandardCharsets/UTF_8)))
@@ -54,6 +64,8 @@
   "Return existing root read/CAS callbacks. The pre-provisioned table is
   awai_witness.root(store_id text primary key, root bytea not null). PSQL is
   an absolute executable path; SERVICE selects a trusted libpq service config.
+  Routing, TLS and session choices must be in that service configuration;
+  ambient libpq routing, TLS and session variables are not forwarded.
   Provisioning, authentication and rollback-resistant DB administration are
   external. A failed/ambiguous CAS must never be interpreted as success."
   [psql service store-id]

@@ -3,6 +3,7 @@
 set -eu
 [ "$#" -eq 5 ] || { echo 'usage: check BASE SOCKET CLASSPATH PROOF FIXTURES' >&2; exit 2; }
 base=$1 socket=$2 classpath=$3 proof=$4 fixtures=$5
+unset PGHOST PGHOSTADDR PGPORT PGDATABASE PGUSER PGSERVICE PGOPTIONS PGTARGETSESSIONATTRS PGSSLMODE
 mkdir "$base" "$socket"
 chmod 700 "$socket"
 initdb -D "$base/data" --auth=trust --no-locale --encoding=UTF8 > "$base/initdb.log"
@@ -16,7 +17,7 @@ export PGSERVICEFILE="$base/service.conf" PG_WITNESS_PSQL="$(command -v psql)" P
 export PG_WITNESS_PROOF="$base/proof" CROSSPACK_FIXTURES="$fixtures"
 mkdir "$PG_WITNESS_PROOF"
 psql -X -q -v ON_ERROR_STOP=1 -d 'service=awai_witness_test' -c 'CREATE SCHEMA awai_witness; CREATE TABLE awai_witness.root (store_id text PRIMARY KEY, root bytea NOT NULL);'
-bb --classpath "$classpath" "$proof" setup
+env PGHOST=/nonexistent PGPORT=1 PGOPTIONS='-c default_transaction_read_only=on' bb --classpath "$classpath" "$proof" setup
 pg_ctl -D "$base/data" -m fast -w stop >/dev/null
 bb --classpath "$classpath" "$proof" down
 start
