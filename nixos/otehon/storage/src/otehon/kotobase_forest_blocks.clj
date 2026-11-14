@@ -198,7 +198,10 @@
 
   :put! and :get-fn are volatile execution ports, not IBlockStore durability
   acknowledgements. :publish! first persists the whole checked batch, then
-  performs backend ref CAS; :abort! discards only the in-memory overlay.
+  performs backend ref CAS; its four-argument form invokes a caller-supplied
+  semantic verifier `(fn [get-block next-cid])` after persistence and before
+  CAS, requiring literal true. It is not atomic with concurrent GC.
+  :abort! discards only the in-memory overlay.
   A failed or stale publish is terminal and can leave immutable orphan data.
   Only a successful :publish! confirms that the ref advanced."
   [backend]
@@ -234,16 +237,21 @@
                    (catch Exception e
                      (reset! state {:phase :failed :bytes 0 :blocks {}})
                      (throw e)))))
-     :publish! (fn [name expected next]
+     :publish! (fn publish!
+                 ([name expected next] (publish! name expected next (fn [_ _] true)))
+                 ([name expected next verify!]
                  (locking guard
                    (require-open!)
                    (swap! state assoc :phase :publishing)
                    (try
-                     (let [m (:blocks @state) batch (mapv m (sort (keys m)))
+                     (let [_ (when-not (fn? verify!) (fail! :invalid-closure-verifier "semantic verifier must be a function"))
+                           m (:blocks @state) batch (mapv m (sort (keys m)))
                            expected-cids (mapv :cid batch)
                            acknowledged (contract/-put-blocks! backend batch)]
                        (when-not (= expected-cids acknowledged)
                          (fail! :invalid-block-ack "block provider returned unexpected acknowledgement"))
+                       (when-not (true? (verify! #(contract/get-block backend %) next))
+                         (fail! :closure-rejected "semantic verifier refused publication"))
                        (let [result (contract/-compare-and-set-ref! backend name expected next)]
                          (when-not (and (map? result) (boolean? (:published? result))
                                         (if (:published? result) (= next (:current result)) true))
@@ -252,7 +260,7 @@
                          result))
                      (catch Exception e
                        (reset! state {:phase :failed :bytes 0 :blocks {}})
-                       (throw e)))))
+                       (throw e))))))
      :abort! (fn []
                (locking guard
                  (require-open!)

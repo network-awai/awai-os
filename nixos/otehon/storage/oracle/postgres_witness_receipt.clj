@@ -42,7 +42,7 @@
    (ensure! (= basis (:data/commit manifest)) "manifest basis mismatch")
    (ensure! (true? (verify-signature {:record :execution-manifest :tenant "test" :epoch 7 :payload-cid (id/payload-cid manifest) :signature (:signature manifest)})) "bad manifest signature")
    true)))
-(defn sink [db name captured request manifest]
+(defn sink [db name captured request manifest & [omit-request?]]
  (fn [receipt]
   (let [tx (blocks/open-transaction db)
         _ (doseq [value [request manifest]]
@@ -50,7 +50,8 @@
         staged (overlay db tx) ack ((causal/execution-receipt-sink (open-db staged) {:expected-basis-cid nil :receipt-cid-fn id/value-cid}) receipt)
         commit (:receipt/commit-cid ack)]
     (println :sink-staged ack)
-    (ensure! (:published? ((:publish! tx) name nil commit)) "receipt ref failed")
+    (ensure! (:published? ((:publish! tx) name nil commit
+      (fn [get-block _] (verify-bundle! #(when-not (and omit-request? (= % (:request/digest receipt))) (get-block %)) receipt (:base/commit request))))) "receipt ref failed")
     (ensure! (= [receipt] (:receipt/records (causal/receipt-at (open-db db) commit (:receipt/cid ack)))) "persisted receipt mismatch")
     (verify-bundle! #(storage/get-block db %) receipt (:base/commit request))
     (reset! captured ack) ack)))
@@ -65,6 +66,10 @@
                          (catch Exception e (.getMessage e))))
          _ (ensure! (= "injected-publish-failure" injected) "failed publish returned rows")
          _ (ensure! (and (nil? @recorded) (nil? (storage/-read-ref db "receipt-failed"))) "failed publish advanced receipt")
+         missing (try (governed/execute! (assoc opts :commit! (sink db "receipt-missing" recorded (:request opts) (:manifest opts) true))) :unexpected-return
+                      (catch Exception e (.getMessage e)))
+         _ (ensure! (= "missing execution bundle block" missing) "missing bundle passed before CAS")
+         _ (ensure! (and (nil? @recorded) (nil? (storage/-read-ref db "receipt-missing"))) "missing bundle advanced receipt ref")
          refusal (try (governed/execute! (assoc opts :authorize! (fn [_] {:allowed? false})
                          :evaluate! (fn [& _] (swap! evaluations inc)) :commit! (sink db "receipt-deny" denied (:request opts) (:manifest opts)))) :unexpected-return
                      (catch Exception _ :refused))
@@ -72,7 +77,7 @@
          result (governed/execute! (assoc opts :commit! (sink db "receipt-allow" recorded (:request opts) (:manifest opts))))]
     (ensure! (= 1 (count (:rows result))) "wrong row count")
     (spit (str base "/receipt.edn") (pr-str {:allow @recorded :deny @denied}))
-    (prn {:mode :write :allow @recorded :deny @denied :failed-publication :refused :deny-evaluations @evaluations :pass true}))))
+    (prn {:mode :write :allow @recorded :deny @denied :failed-publication :refused :missing-bundle :refused-before-cas :deny-evaluations @evaluations :pass true}))))
  "read" (let [db (backend (verifier nil limits)) acks (edn/read-string (slurp (str base "/receipt.edn")))]
   (doseq [[kind name] [[:allow "receipt-allow"] [:deny "receipt-deny"]]]
    (let [ack (get acks kind) commit (:cid (storage/-read-ref db name))

@@ -65,3 +65,17 @@
       (is (= :too-large (try ((:put! tx) cid bytes) nil (catch Exception e (:type (ex-data e))))))
       (is (thrown? Exception ((:publish! tx) "db" nil cid))))
     (is (= [0 0] [(:puts @s) (:cas @s)]))))
+
+(deftest semantic-verification-precedes-ref-publication
+  (let [s (state) tx (forest/open-transaction (fake-backend s false)) {:keys [cid bytes]} (pair "semantic") calls (atom 0)]
+    ((:put! tx) cid bytes)
+    (is (:published? ((:publish! tx) "db" nil cid (fn [get-block root]
+      (swap! calls inc) (and (= root cid) (= (vec bytes) (vec (get-block cid))) (zero? (:cas @s)))))))
+    (is (= 1 @calls)))
+  (doseq [verifier [(fn [_ _] false) (fn [_ _] (throw (ex-info "rejected" {}))) nil]]
+    (let [s (state) tx (forest/open-transaction (fake-backend s false)) {:keys [cid bytes]} (pair "bad")]
+      ((:put! tx) cid bytes)
+      (is (thrown? Exception ((:publish! tx) "db" nil cid verifier)))
+      (is (zero? (:cas @s)))
+      (is (nil? (:ref @s)))
+      (is (thrown? Exception ((:publish! tx) "db" nil cid))))))
