@@ -8,6 +8,7 @@
     [:span.fleet-status {:data-state (if held? "attention" (if fresh? "waiting" "unknown"))} (if held? (ui/t locale :stateAttention) (if fresh? (ui/t locale :controllerConnected) (ui/t locale :stale)))]
     (for [c rows] ^{:key (:id c)}
      [:article.agent-peer-cycle [:strong (:name c)]
+      [:span (ui/t locale :verifiedWorkCount {:count (or (:verifiedWorkUnits c) 0)})]
       [:span (ui/t locale :proposalToday {:count (:completedProposals c) :today (:todayProposals c)})]
       (for [r (take 3 (:contributions c))] ^{:key (:runId r)}
        [:div [:button.secondary {:type "button" :on-click #(on-bot (:botId r))} (:name r)] [:a {:href (str "https://linear.app/kotobalabs/issue/" (:issueId r)) :target "_blank" :rel "noreferrer"} (:issueId r)]
