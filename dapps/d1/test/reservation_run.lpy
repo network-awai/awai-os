@@ -1,0 +1,91 @@
+;; Runs the reservation ledger checks on Basilisp. usage:
+;; PYTHONPATH=src basilisp run test/reservation_run.lpy (from dapps/d1).
+;; Reads the worktree source read-only; writes nothing.
+(ns reservation-run
+  (:require [d1.reservation :as r])
+  (:import sys))
+
+(def now 1700000000000)
+(def ttl 60000)
+(def da "digest-a")
+(def db "digest-b")
+(def ra {:receipt "a"})
+
+(def checks
+  [["admit" (fn [] (= {:admit true :key "k" :superseded false}
+                      (second (r/reserve {} "k" da now ttl))))]
+   ["replay-same" (fn [] (let [[l1 _] (r/reserve {} "k" da now ttl)]
+                           (= {:replay true :key "k" :state :reserved}
+                              (second (r/reserve l1 "k" da (+ now 1) ttl)))))]
+   ["conflict" (fn [] (let [[l1 _] (r/reserve {} "k" da now ttl)]
+                        (= {:refused true :cause :conflict :key "k"}
+                           (second (r/reserve l1 "k" db (+ now 1) ttl)))))]
+   ["retry-later" (fn [] (let [l1 (assoc-in {} [:reservations "k"]
+                                            {:digest da :expires (+ now ttl)
+                                             :state :in-flight :fence 0 :receipt nil})]
+                           (= {:retry-later true :key "k"}
+                              (second (r/reserve l1 "k" da (+ now 1) ttl)))))]
+   ["expiry-keeps-prior" (fn [] (let [l1 (assoc-in {} [:reservations "k"]
+                                                   {:digest da :expires now
+                                                    :state :completed :fence 0 :receipt ra})
+                                      [l2 d] (r/reserve l1 "k" db (+ now 1) ttl)]
+                                  (and (= {:admit true :key "k" :superseded true} d)
+                                       (= ra (get-in l2 [:reservations "k" :prior-receipt])))))]
+   ["settle-ok-replays" (fn [] (let [[l1 _] (r/reserve {} "k" da now ttl)
+                                     [l2 d] (r/settle l1 "k" da 0 :ok ra)]
+                                 (and (= {:state :completed :key "k" :receipt ra} d)
+                                      (= {:replay true :key "k" :receipt ra}
+                                         (second (r/reserve l2 "k" da (+ now 1) ttl))))))]
+   ["stale-writer" (fn [] (let [l1 (assoc-in {} [:reservations "k"]
+                                             {:digest da :expires (+ now ttl)
+                                              :state :reserved :fence 2 :receipt nil})]
+                            (= {:refused true :cause :stale-writer :key "k"}
+                               (second (r/settle l1 "k" da 1 :ok ra)))))]
+   ["unknown-recorded" (fn [] (let [[l1 _] (r/reserve {} "k" da now ttl)
+                                    [l2 d] (r/settle l1 "k" da 0 :unverified nil)]
+                                (and (= {:unknown true :key "k"} d)
+                                     (= :unknown (get-in l2 [:reservations "k" :state])))))]
+   ["double-settle-refused" (fn [] (let [[l1 _] (r/reserve {} "k" da now ttl)
+                                         [l2 _] (r/settle l1 "k" da 0 :failed ra)]
+                                     (= {:refused true :cause :not-live :key "k"}
+                                        (second (r/settle l2 "k" da 0 :ok ra)))))]
+   ["failed-terminal" (fn [] (let [[l1 _] (r/reserve {} "k" da now ttl)
+                                   [l2 d] (r/settle l1 "k" da 0 :failed ra)]
+                               (and (= {:state :failed :key "k"} d)
+                                    (= ra (get-in l2 [:reservations "k" :receipt])))))]
+   ["fence-raises" (fn [] (let [[l1 _] (r/reserve {} "k" da now ttl)
+                                [l2 d] (r/raise-fence l1 "k" 5)]
+                            (and (= {:fenced true :key "k" :fence 5} d)
+                                 (= 5 (get-in l2 [:reservations "k" :fence])))))]
+   ["fence-never-rewinds" (fn [] (let [[l1 _] (r/reserve {} "k" da now ttl)
+                                       [l2 _] (r/raise-fence l1 "k" 5)
+                                       [l3 d] (r/raise-fence l2 "k" 5)]
+                                   (and (= {:refused true :cause :fence-rewind :key "k"} d)
+                                        (= l2 l3))))]
+   ["raised-fence-blocks-stale" (fn [] (let [[l1 _] (r/reserve {} "k" da now ttl)
+                                             [l2 _] (r/raise-fence l1 "k" 5)
+                                             [l3 stale] (r/settle l2 "k" da 4 :ok ra)
+                                             [_ cur] (r/settle l3 "k" da 5 :ok ra)]
+                                         (and (= {:refused true :cause :stale-writer :key "k"} stale)
+                                              (= {:state :completed :key "k" :receipt ra} cur))))]
+   ["unknown-reconciles-once" (fn [] (let [[l1 _] (r/reserve {} "k" da now ttl)
+                                           [l2 _] (r/settle l1 "k" da 0 :unverified nil)
+                                           [l3 d] (r/reconcile l2 "k" da :completed ra)
+                                           [l4 replay] (r/reserve l3 "k" da (+ now 1) ttl)]
+                                       (and (= {:state :completed :key "k" :receipt ra} d)
+                                            (= {:replay true :key "k" :receipt ra} replay))))]
+   ["reconcile-refuses-non-unknown" (fn [] (let [[l1 _] (r/reserve {} "k" da now ttl)
+                                                 [l2 d1] (r/reconcile l1 "k" da :completed ra)
+                                                 [u1 _] (r/settle l1 "k" da 0 :unverified nil)
+                                                 [u2 d2] (r/reconcile u1 "k" db :completed ra)]
+                                             (and (= {:refused true :cause :not-unknown :key "k"} d1)
+                                                  (= {:refused true :cause :conflict :key "k"} d2)
+                                                  (= l1 l2))))] ])
+
+(defn -main []
+  (let [failures (remove nil? (map (fn [[nm f]] (when-not (f) nm)) checks))]
+    (doseq [nm failures] (println "FAIL" nm))
+    (println "basilisp reservation checks" (count checks) "failures" (count failures))
+    (sys/exit (if (seq failures) 1 0))))
+
+(-main)
