@@ -6,6 +6,7 @@
             [clojure.string :as str]
             [awai.fs.car :as car]
             [otehon.forest :as forest]
+            [otehon.root-witness :as witness]
             [otehon.segmented :as segmented]
             [otehon.storage :as store])
   (:import [java.io ByteArrayOutputStream]
@@ -253,6 +254,12 @@
   (let [{:keys [state root degraded?]} (store/read-store directory)]
     (when degraded? (fail! :degraded-store "invalid root slot requires review before reads"))
     (assoc (recover-map directory state) :basis root :degraded? degraded?)))
+
+(defn recover-witnessed
+  "Open only if a host-owned store-bound witness matches before and after.
+  A witness backed by the same rollback domain is not an anti-rollback anchor."
+  [directory read-witness!]
+  (witness/open-verified! directory read-witness! #(recover directory)))
 
 (defn summary [handle]
   {:files (:files handle) :groups (:groups handle) :basis (:basis handle) :degraded? (:degraded? handle)

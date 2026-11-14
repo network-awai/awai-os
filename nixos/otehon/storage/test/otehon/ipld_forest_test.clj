@@ -96,6 +96,16 @@
     (is (true? (:degraded? (store/read-store dir))))
     (is (= :degraded-store (error-type #(catalog/recover dir "prolly"))))
     (is (= :degraded-store (error-type #(catalog/recover-group dir "graph"))))))
+
+(deftest witnessed-single-and-group-recovery
+  (let [dir (new-store) parts (split-inputs)]
+    (catalog/publish! dir "prolly" root (bytes))
+    (catalog/publish-group! dir "graph" policy-root parts)
+    (let [basis (:root (store/read-store dir))]
+      (is (bytes? (catalog/get-block (catalog/recover-witnessed dir "prolly" (constantly basis)) root)))
+      (is (= policy-root (get-in (catalog/recover-group-witnessed dir "graph" (constantly basis)) [:group :basis-cid])))
+      (is (= :witness-mismatch (error-type #(catalog/recover-witnessed dir "prolly" (constantly (assoc basis :generation 4))))))
+      (is (= :witness-mismatch (error-type #(catalog/recover-group-witnessed dir "graph" (constantly (assoc basis :generation 4)))))))))
 (deftest multiple-archives-publish-as-one-group
   (let [dir (new-store) parts (split-inputs)
         blocks (mapcat #(-> % :bytes forest/open :carv1 car/carv1-decode :blocks) parts)

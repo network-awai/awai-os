@@ -5,6 +5,7 @@
   (:require [clojure.edn :as edn]
             [awai.fs.car :as car]
             [otehon.forest :as forest]
+            [otehon.root-witness :as witness]
             [otehon.segmented :as segmented]
             [otehon.storage :as store]))
 
@@ -87,6 +88,9 @@
         (first (store/read-payload-segments (:directory handle) (:archive-sha ref)
                                            "forest" (:archive-size ref)
                                            [{:offset offset :length length}]))))))
+
+(defn recover-witnessed [directory name read-witness!]
+  (witness/open-verified! directory read-witness! #(recover directory name)))
 
 (def ^:private group-prefix "awai.ipld-forest-group/")
 (def ^:private max-group-archives 64)
@@ -174,3 +178,6 @@
   "Find CID via the group's verified snapshot indexes and revalidate its frame."
   [handle cid]
   (some #(get-block % cid) (:archives handle)))
+
+(defn recover-group-witnessed [directory name read-witness!]
+  (witness/open-verified! directory read-witness! #(recover-group directory name)))

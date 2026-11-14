@@ -44,6 +44,24 @@
       (is (= :degraded-store (error-type #(pack/recover d))))
       (is (= :degraded-store (error-type #(pack/put-data! d "other" (.getBytes "x" "UTF-8"))))))))
 
+(deftest witnessed-recovery-refuses-valid-stale-root
+  (let [d (new-store) current (Paths/get (str d "/root-1.edn") (make-array String 0))
+        stale (Paths/get (str d "-generation1.saved") (make-array String 0))]
+    (Files/copy current stale (make-array java.nio.file.CopyOption 0))
+    (pack/put-data! d "file" (.getBytes "old" "UTF-8"))
+    (pack/put-data! d "file" (.getBytes "new" "UTF-8"))
+    (let [root (:root (store/read-store d)) witness (atom root) calls (atom 0)]
+      (is (= (seq (.getBytes "new" "UTF-8"))
+             (seq (pack/read-data (pack/recover-witnessed d #(deref witness)) "file"))))
+      (is (= :invalid-witness (error-type #(pack/recover-witnessed d (constantly nil)))))
+      (is (= :witness-changed
+             (error-type #(pack/recover-witnessed d (fn [] (if (= 1 (swap! calls inc)) root (assoc root :generation 4)))))))
+      (Files/copy stale current (into-array java.nio.file.CopyOption [java.nio.file.StandardCopyOption/REPLACE_EXISTING]))
+      ;; The ordinary recovery still exposes the valid but older pair. The
+      ;; witnessed route must refuse instead of returning the old bytes.
+      (is (= "old" (String. ^bytes (pack/read-data (pack/recover d) "file") "UTF-8")))
+      (is (= :witness-mismatch (error-type #(pack/recover-witnessed d (constantly root))))))))
+
 (deftest recovered-index-does-not-retain-car-via-cid-slices
   (let [d (new-store) original (bytes-of (+ pack/leaf-size 11))]
     (pack/put-data! d "file" original)
