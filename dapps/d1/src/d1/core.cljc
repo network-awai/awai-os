@@ -201,3 +201,61 @@
               (if ok?
                 {:decision :allow}
                 {:decision :wait :cause :insufficient-capacity}))))))
+
+;; The caller is a trusted Otehon host adapter, not the requester. It must
+;; verify signatures, obtain current revocation state and atomically persist
+;; the reservation before supplying these facts. This pure function makes a
+;; plan; it cannot start a process or authenticate the supplied maps.
+(defn contribution-dispatch-plan
+  [{:keys [job node policy artifact lease now provider-consent requester-consent
+           reservation capacity]}]
+  (let [binding {:job job :node node :policy policy :artifact artifact :lease lease}
+        complete? (every? #(and (string? %) (not (blank? %)))
+                          [job node policy artifact lease])
+        consent-ok? (fn [consent role]
+                      (and (map? consent) (= true (:authenticated? consent))
+                           (= false (:revoked? consent)) (= role (:role consent))
+                           (= "public" (:data-class consent))
+                           (= binding (:binding consent))
+                           (integer? (:expires consent)) (> (:expires consent) now)))
+        capacity-result (admission-eval capacity)]
+    (cond
+      (or (not complete?) (not (integer? now)) (<= now 0))
+      {:decision :refused :cause :invalid-binding}
+      (or (some? (digest-problem artifact))
+          (not (every? hex-char? (seq (subs artifact 7)))))
+      {:decision :refused :cause :invalid-artifact}
+      (not (consent-ok? provider-consent "provider"))
+      {:decision :refused :cause :provider-consent}
+      (not (consent-ok? requester-consent "requester"))
+      {:decision :refused :cause :requester-consent}
+      (or (not= true (:fresh? capacity)) (not= false (:dry-run? capacity))
+          (not (integer? (:demand capacity))) (not (pos? (:demand capacity)))
+          (not= {:decision :allow} capacity-result))
+      {:decision :refused :cause :capacity}
+      (not (and (map? reservation) (= true (:verified? reservation))
+                (= true (:persisted? reservation)) (= :active (:state reservation))
+                (= binding (:binding reservation))
+                (integer? (:expires reservation)) (> (:expires reservation) now)
+                (integer? (:fence reservation)) (pos? (:fence reservation))
+                (= (:demand capacity) (:amount reservation))))
+      {:decision :refused :cause :reservation}
+      :else
+      {:decision :launch-plan :binding binding :fence (:fence reservation)
+       :runtime "container" :network "none" :read-only true})))
+
+(defn contribution-witness-evaluation
+  "Compare the witness-observed output digest to the fixed public fixture.
+  Receipt authentication and byte hashing belong to the host."
+  [{:keys [receipt-verified? receipt-job receipt-output expected-job observed-output
+           expected-output provider witness rubric]}]
+  (cond
+    (not= true receipt-verified?) {:decision :refused :cause :receipt}
+    (or (not (every? #(and (string? %) (not (blank? %)))
+                     [receipt-job receipt-output expected-job observed-output
+                      expected-output provider witness rubric]))
+        (not= receipt-job expected-job) (not= receipt-output observed-output))
+    {:decision :refused :cause :binding}
+    (= provider witness) {:decision :refused :cause :witness-not-independent}
+    (= observed-output expected-output) {:decision :accepted :rubric rubric}
+    :else {:decision :rejected :cause :output-mismatch :rubric rubric}))
