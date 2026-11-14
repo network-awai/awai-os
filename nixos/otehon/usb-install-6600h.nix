@@ -53,7 +53,7 @@ in {
   systemd.services."serial-getty@ttyS0".enable = false;
   systemd.services."otehon-install@" = {
     description = "Offline Awai Otehon installer on %I";
-    after = [ "local-fs.target" "systemd-udev-settle.service" ];
+    after = [ "local-fs.target" "systemd-udev-settle.service" "systemd-user-sessions.service" ];
     path = with pkgs; [ bash config.systemd.package coreutils curl findutils gawk gnugrep gptfdisk jq util-linux zstd installBoot ];
     environment = { IMAGE_URL = "file:///iso/otehon/image.raw.zst"; DIGESTS = "${digests}"; OTEHON_INSTALLER_INFO = "${infoJson}"; OTEHON_REGISTER_BOOT = "1"; };
     serviceConfig = {
@@ -78,6 +78,11 @@ in {
   services.displayManager.autoLogin = { enable = true; user = "otehon-installer"; };
   services.displayManager.defaultSession = "otehon-install";
   boot.loader.timeout = 10;
+  # Keep boot progress out of the operator's prompt and version banner. Errors
+  # remain in the console/journal; only routine boot status is quieted.
+  boot.consoleLogLevel = 3;
+  boot.initrd.verbose = false;
+  boot.kernelParams = [ "quiet" "systemd.show_status=false" "rd.systemd.show_status=false" ];
   specialisation.text-installer.configuration = {
     system.nixos.label = lib.mkForce "Text-installer-${version}";
     systemd.services.display-manager.enable = lib.mkForce false;

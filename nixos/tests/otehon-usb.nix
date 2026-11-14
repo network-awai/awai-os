@@ -23,13 +23,13 @@ in pkgs.runCommand "otehon-offline-usb-vm-check" {
     --digests ${system.system.build.otehonUsbDigests} --graphical --installed-boot --target-bus nvme \
     --media-bytes 61949214720 --visual-helper ${../../scripts/otehon-installed-boot.py} || status=$?
   mkdir text-run
-  if [ "$status" = 0 ]; then
-    (cd text-run; python3 ${../../scripts/check-otehon-usb-vm.py} --iso "$iso" --output "$PWD/proof" \
+  # Independent scratch scope: collect console evidence even if the GUI path
+  # fails. A prior failure is retained; qualification still requires both.
+  (cd text-run; python3 ${../../scripts/check-otehon-usb-vm.py} --iso "$iso" --output "$PWD/proof" \
       --ovmf-code ${pkgs.OVMF.fd}/FV/OVMF_CODE.fd --ovmf-vars ${pkgs.OVMF.fd}/FV/OVMF_VARS.fd \
       --digests ${system.system.build.otehonUsbDigests} --text-console --installed-boot --target-bus nvme \
       --media-bytes 61949214720 --visual-helper ${../../scripts/otehon-installed-boot.py}) || status=$?
-    if [ -d text-run/proof ]; then cp -a text-run/proof proof/text-console; fi
-  fi
+  if [ -d text-run/proof ]; then cp -a text-run/proof proof/text-console; fi
   cp ${system.system.build.otehonInstallerInfo} proof/installer-info.json
   if [ -f proof/screen.ppm ]; then pnmtopng proof/screen.ppm > proof/screen.png; rm proof/screen.ppm; fi
   cp -a proof "$out"
