@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';import path from 'node:path';import {pathToFileURL} from 'node:url';
 import {sha,uuid,cid,durable,read,control,verifyPins,once} from './common.mjs';import {matches,nextSlot,jstDay} from './schedule.mjs';import {issue,comment} from './linear.mjs';import {database} from '../bot-chat/database.mjs';import {infer} from '../bot-chat/inference.mjs';import {scopes,recordSession} from '../bot-chat/sessions.mjs';
-import {audit} from './audit.mjs';
+import {audit,auditBytes} from './audit.mjs';
 const oldResult=r=>r?.state==='completed';
 export function due(job,now){for(let i=0;i<2;i++){const t=Math.floor(now/60000)*60000-i*60000;if(t>=job.anchor&&matches(job.source.schedule,t,job.timezone,job.anchor))return t;}return null;}
 export function enrollment(cfg,job,binding,seed=false){return {'schema':'itonami.occurrence-enrollment.v1','bot-id':job.name,'job-id':job.id+(seed?'-seed':''),'issue-id':binding.issueId,'project-id':job.projectId,'initiative-id':job.initiativeId,'profile-cid':job.profileCid,'schedule-cid':job.scheduleCid,'provider':'meta','model':cfg.model,'executor':'muse','grant-cid':job.grantCid,grant:job.grant,capabilities:['inference_muse'],nodes:[cfg.nodeId],'data-class':'public-readiness-only','missed-slot-policy':'skip-completed-only',schedule:{type:'interval','every-ms':60000},'initial-slot':job.anchor};}
@@ -34,7 +34,7 @@ export async function work(cfg,job,seed=false,{execute=infer,db=database,gate=co
   const budgetKey='/itonami/occurrence/v1/cursor/'+sha('goal-budget:'+cfg.epoch+job.circleId+jstDay(Date.now()));
   const a=await gate(cfg,'admit',{request:req,budgetKey,dailyCap:cfg.dailyCircleCap});if(a.state!=='admitted')return {...publicBase,state:a.state,reason:a.reason};
   if(!(await gate(cfg,'verify',{request:req})).verified)throw Error('effect fence unconfirmed');
-  if(intent.workEvidence){const a=await db(cfg,scope.thread,'append',[{id:id+':audit',role:'user',text:JSON.stringify(intent.workEvidence),at:intent.workEvidence.at,work:{kind:'verified-runtime-audit',artifactCid:intent.workEvidence.artifactCid}}]);if(!a.store.readback)throw Error('audit artifact readback unconfirmed');}
+  if(intent.workEvidence){const a=await db(cfg,scope.thread,'append',[{id:id+':audit',role:'user',text:auditBytes(intent.workEvidence),at:intent.workEvidence.at,work:{kind:'verified-runtime-audit',artifactCid:intent.workEvidence.artifactCid}}]);if(!a.store.readback)throw Error('audit artifact readback unconfirmed');}
   const at=new Date().toISOString();await db(cfg,scope.thread,'append',[{id,role:'user',text:intent.prompt,at,speakerName:'Goal',work:{circleId:job.circleId,goalKey:job.goalKey,runId:id,slot,trigger:publicBase.trigger}}]);
   const bot={id:job.botId,name:job.name,chatPersona:{available:true,sourceSha256:job.profileSha256}};
   const r=await execute(cfg,bot,{requestId:id,text:intent.prompt,sessionId:job.sessionId,attributionIssue:binding.issueId,workScope:'circle-goal-contribution'},[],{onProcess:v=>onProcess({...v,circleId:job.circleId,goalKey:job.goalKey,runId:id,peerInputs:intent.peerInputs})});
