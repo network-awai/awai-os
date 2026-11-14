@@ -1,0 +1,8 @@
+;; Vendored dougaka Studio static bundle (JUN-1180 V1).
+;; Source: cloud-itonami/app-itonami-dougaka, rev c29b87e (JUN-1179 merged main).
+;; Built with: npm run build:site (kbb scripts/build-site.cljk, zero-external-request gate).
+;; Per-file digests: SHA256SUMS. shell/dougaka-bundle.mjs transforms this into dist/dougaka/.
+{:source-repo "cloud-itonami/app-itonami-dougaka"
+ :source-rev "c29b87e59fdb1b8b3a2ca7295356cd0af1e9"
+ :built "2026-11-13"
+ :out-dir "out/site"}

@@ -129,7 +129,9 @@
 
 (defn sidebar [context on-select threads now zenoh matter account score]
   [:nav.sidebar {:aria-label "Contexts"}
-   [:div.brand "Itonami"]
+   [:div.brand
+    [:img.brand-logo {:src "assets/awai-logo.png" :alt "" :width 40 :height 40}]
+    [:span "Itonami"]]
    [:f> manimani-link (= context MANIMANI) #(on-select MANIMANI)]
    [:div.contexts
     (map (fn [section]
@@ -157,6 +159,7 @@
     [:ul.services
      [service "Zenoh" zenoh]
      [service "Matter" matter]]
+    [:a {:href "./dougaka/index.html"} "Dougaka Studio"]
     [:time (.toLocaleTimeString now #js [] #js {:hour "2-digit" :minute "2-digit"})]]])
 
 (defn composer [context on-send on-image on-speech capabilities placeholder]

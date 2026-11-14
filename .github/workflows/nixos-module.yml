@@ -8,6 +8,44 @@ permissions:
   contents: read
 
 jobs:
+  forest-writer-linux:
+    # Hosted Otehon integration, independent of Native qualification.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: cachix/install-nix-action@b85815f71a6de0ddee80b8a80a98d43f4bcc66c7 # v31
+      - name: Run real Forest raw-file writer and recovery proof
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/forest-v0.39.0-linux-amd64.zip"
+          tool="$RUNNER_TEMP/forest-tool"
+          curl --fail --location --retry 3 --output "$archive" https://github.com/ChainSafe/forest/releases/download/v0.39.0/forest-v0.39.0-linux-amd64.zip
+          printf '%s  %s\n' 81224a9efed00353ec3c6cc5197f26abfdf48ed9458c1ce72b612e825d5bb64a "$archive" | sha256sum --check
+          unzip -p "$archive" forest-v0.39.0/forest-tool > "$tool"
+          printf '%s  %s\n' 7af03845db7324da80c5bc2848fe6897303b39cbac8bb701675e57ad82033ba0 "$tool" | sha256sum --check
+          chmod 500 "$tool"
+          bb_path=$(nix-build --no-out-link --expr '(import (import ./ci/nixpkgs.nix) {}).babashka')
+          "$bb_path/bin/bb" --classpath nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:nixos/otehon/storage/vendor/apex-car/src:nixos/otehon/storage/test nixos/otehon/storage/test/otehon/forest_writer_proof.clj "$RUNNER_TEMP/forest-writer-proof" "$tool"
+          classpath=nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:nixos/otehon/storage/vendor/apex-car/src:nixos/otehon/storage/test
+          proof=nixos/otehon/storage/test/otehon/forest_large_proof.clj
+          "$bb_path/bin/bb" --classpath "$classpath" "$proof" generate "$RUNNER_TEMP/forest-large-proof"
+          "$tool" snapshot compress "$RUNNER_TEMP/forest-large-proof/input.car" --output-path "$RUNNER_TEMP/forest-large-proof/large.forest" --frame-size 1024
+          "$bb_path/bin/bb" --classpath "$classpath" "$proof" write "$RUNNER_TEMP/forest-large-proof"
+          "$bb_path/bin/bb" --classpath "$classpath" "$proof" read "$RUNNER_TEMP/forest-large-proof"
+          "$bb_path/bin/bb" --classpath "$classpath" "$proof" corrupt "$RUNNER_TEMP/forest-large-proof"
+          writer_proof=nixos/otehon/storage/test/otehon/forest_large_writer_proof.clj
+          "$bb_path/bin/bb" --classpath "$classpath" "$writer_proof" write "$RUNNER_TEMP/forest-large-writer-proof" "$tool"
+          "$bb_path/bin/bb" --classpath "$classpath" "$writer_proof" read "$RUNNER_TEMP/forest-large-writer-proof" "$tool"
+          crash_proof=nixos/otehon/storage/test/otehon/forest_file_crash_proof.clj
+          "$bb_path/bin/bb" --classpath "$classpath" "$crash_proof" generate "$RUNNER_TEMP/forest-file-crash"
+          for i in 0 1; do
+            "$tool" snapshot compress "$RUNNER_TEMP/forest-file-crash/fixtures/$i.car" --output-path "$RUNNER_TEMP/forest-file-crash/fixtures/$i.forest" --frame-size 1
+          done
+          BABASHKA="$bb_path/bin/bb" "$bb_path/bin/bb" --classpath "$classpath" "$crash_proof" run "$RUNNER_TEMP/forest-file-crash"
+
   evaluate:
     runs-on: ubuntu-latest
     steps:
@@ -64,6 +102,8 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npm test
+      - name: Test read-only mobile inventory and report I/O refusal
+        run: sh scripts/otehon-mobile/test-collect-p0.sh
       - name: Test the restricted Saifu guest bridge
         run: node --test dapps/saifu/test/host-bridge.test.mjs
       - uses: cachix/install-nix-action@b85815f71a6de0ddee80b8a80a98d43f4bcc66c7 # v31
@@ -78,5 +118,10 @@ jobs:
           cat "$storage_check/unit-tests.txt" "$storage_check/crash-tests.edn" "$storage_check/pack-crash-tests.edn"
           module_check=$(nix-build nixos/otehon/storage/module-check.nix --no-out-link)
           cat "$module_check"
+      - name: Test HTTPS updater admission and evaluate desktop integration
+        run: |
+          python3 tests/otehon-network-update-test.py
+          bash -n nixos/otehon/update.sh
+          nix-instantiate --eval --strict --json --expr 'import ./tests/otehon-update-eval.nix { nixpkgsPath = import ./ci/nixpkgs.nix; }'
       - name: Evaluate every Otehon profile, aarch64 and the x86_64 vm
         run: sh nixos/otehon/eval-profiles.sh .

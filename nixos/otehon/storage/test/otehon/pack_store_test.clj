@@ -1,6 +1,7 @@
 (ns otehon.pack-store-test
   (:require [clojure.test :refer [deftest is]]
             [clojure.edn :as edn]
+            [awai.fs.car :as car]
             [otehon.storage :as store]
             [otehon.segmented :as segmented]
             [otehon.pack-store :as pack])
@@ -19,6 +20,26 @@
   (try (f) nil (catch Exception e (:type (ex-data e)))))
 (defn- bytes-of [n]
   (byte-array (map #(unchecked-byte (mod (+ (* % 19) (quot % 8191)) 256)) (range n))))
+
+(deftest recovered-index-does-not-retain-car-via-cid-slices
+  (let [d (new-store) original (bytes-of (+ pack/leaf-size 11))]
+    (pack/put-data! d "file" original)
+    (let [h (pack/recover d)
+          indexes (mapcat :index (vals @(:index-cache h)))]
+      (is (= 2 (count indexes)))
+      (is (every? #(= 36 (count (:cid %))) indexes))
+      (is (every? #(not= "clojure.lang.APersistentVector$SubVector"
+                          (.getName (class (:cid %)))) indexes))
+      (is (= (seq original) (seq (pack/read-data h "file")))))))
+
+(deftest pinned-cbor-integer-boundaries
+  (doseq [[n wire] [[4294967296 [27 0 0 0 1 0 0 0 0]]
+                    [17179869184 [27 0 0 0 4 0 0 0 0]]]]
+    (is (= wire (car/cbor-encode n)))
+    (is (= [n 9] (car/cbor-decode wire 0))))
+  (is (= :awai.fs/cbor-integer-overflow
+         (error-type #(car/cbor-decode [27 0 32 0 0 0 0 0 0] 0))))
+  (is (= [1 0 0 0 0 0 0 0] (car/encode-u64-le 1))))
 
 (deftest multi-leaf-checkpoint-cold-recovery-and-ranges
   (let [d (new-store)

@@ -38,6 +38,20 @@
         (when (= ::timeout result) (fail! :zstd-timeout "Zstd output deadline exceeded"))
         result)
       (finally (.destroyForcibly p) (future-cancel writer) (future-cancel output) (future-cancel error))))))
+(defn decode-bounded-zstd
+  "Decode a complete caller-bounded Zstd stream under an explicit output limit."
+  [bytes ceiling]
+  (when-not (and (bytes? bytes) (integer? ceiling) (<= 1 ceiling max-size)
+                 (<= 1 (alength ^bytes bytes) max-size))
+    (fail! :invalid-zstd-bounds "invalid compressed input or output bound"))
+  (zstd bytes true ceiling))
+(defn decode-forest-frame
+  "Decode one Forest frame, with a separate explicit bound from zpack."
+  [bytes]
+  (let [ceiling (* 2 1024 1024)]
+    (when-not (and (bytes? bytes) (<= 1 (alength ^bytes bytes) ceiling))
+      (fail! :invalid-zstd-bounds "Forest frame exceeds bounded input"))
+    (zstd bytes true ceiling)))
 (defn encode [^bytes car]
   (when-not (<= 1 (alength car) max-size) (fail! :too-large "invalid CAR size"))
   (let [parts (mapv (fn [start] (Arrays/copyOfRange car start (min (alength car) (+ start frame-size))))
