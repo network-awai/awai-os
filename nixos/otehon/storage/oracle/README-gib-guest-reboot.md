@@ -37,3 +37,11 @@ passed the NixOS `guest-reboot` job for commit
 completed its before/after full hash checks, changed-boot-ID assertion and
 missing-Pack rejection. The scope limitations above remain unchanged; this
 observation is for that exact commit, not a blanket statement about later heads.
+
+## Guest-created large-file writer candidate
+
+The guest reboot test now includes a separate 17 MiB logical sparse input with distinct per-chunk markers. The guest runs the actual `put-file-large!` with an observed-generation condition and the pinned Linux Forest tool, reads and hashes both Packs before shutdown, reboots with a changed boot ID, reads and hashes them again, then requires `:missing-forest` after moving one guest-owned Pack aside. The 64-Pack prebuilt GiB case remains separate. The guest receives the exact release ZIP and binary already pinned by the hosted writer CI; `nix-ld` is enabled so the unmodified, digest-checked executable can run on NixOS.
+
+On 2026-11-14, macOS arm64 and Babashka 1.12.218 ran the actual `create-large` writer against a fresh store using the existing macOS Forest tool (SHA-256 `e5fb23076a46c055142b3dbf3efa1ad5a68532d14419ad9994785986719b205f`). A new process recovered two Packs and matched the full 17,825,792-byte source SHA-256 `9f35811d162d0cc95c7288dc4589dbda480dc29719f4160c3289f382669dfd71`. A copied store with one Pack moved aside failed with `:missing-forest`. An earlier actual attempt failed while copying the tool with `No space left on device`; its retained store remained generation 1 with empty state. These are sparse synthetic bytes and are not a physical-throughput result.
+
+The changed NixOS VM test has not been evaluated or run locally because Nix is unavailable. Only a successful exact-head CI run can establish the guest writer/reboot evidence. Even then it would cover this 17 MiB synthetic guest workload, not a guest GiB write, host OS cache loss, device power failure, Native I/O, signed basis or production qualification.
