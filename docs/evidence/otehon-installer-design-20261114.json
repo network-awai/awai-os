@@ -1,0 +1,360 @@
+{
+  "schema": "awai.otehon.installer-design.v1",
+  "date": "2026-11-14",
+  "issue": "AWAI-450",
+  "fileKey": "EFljF3PXOrrVNM2v9Wdis1",
+  "url": "https://www.figma.com/design/EFljF3PXOrrVNM2v9Wdis1",
+  "sessionId": "d0d1f656-fd01-4332-b8b8-98b71604f597",
+  "pages": {
+    "overview": "0:1",
+    "installer": "4:6",
+    "firstBoot": "4:7"
+  },
+  "boards": {
+    "overview": "4:31",
+    "installer": "7:240",
+    "firstBoot": "7:1008"
+  },
+  "distinctScreens": [
+    {
+      "key": "00",
+      "id": "7:247",
+      "name": "USB の起動メニュー",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "key": "01",
+      "id": "7:302",
+      "name": "始める前の確認",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "key": "02",
+      "id": "7:350",
+      "name": "保存先 — 未選択",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "key": "03",
+      "id": "7:404",
+      "name": "保存先 — NVMe を選択",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "key": "04",
+      "id": "7:452",
+      "name": "上書き確認 — 入力前",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "key": "05",
+      "id": "7:506",
+      "name": "上書き確認 — 入力一致",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "key": "06",
+      "id": "7:563",
+      "name": "USB イメージを確認中",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "key": "07",
+      "id": "7:613",
+      "name": "NVMe へ書込み中",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "key": "08",
+      "id": "7:658",
+      "name": "NVMe の全長照合",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "key": "09",
+      "id": "7:703",
+      "name": "インストール完了",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "key": "10",
+      "id": "7:749",
+      "name": "書込前の検証エラー",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "key": "11",
+      "id": "7:794",
+      "name": "書込途中のエラー",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "key": "12",
+      "id": "7:841",
+      "name": "起動と処理の診断",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "key": "13",
+      "id": "7:893",
+      "name": "書込前に中止",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "key": "14",
+      "id": "7:938",
+      "name": "再起動で USB に戻った",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "key": "15",
+      "id": "7:1015",
+      "name": "初回起動 — データ保護",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "key": "16",
+      "id": "7:1059",
+      "name": "次回の起動 — データ解除",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "key": "17",
+      "id": "7:1103",
+      "name": "Awai 初回設定",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "key": "18",
+      "id": "7:1139",
+      "name": "Awai へのサインイン",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "key": "19",
+      "id": "7:1181",
+      "name": "現在の文字インストーラー",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "key": "20",
+      "id": "7:1229",
+      "name": "起動時に止まったように見える",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "key": "21",
+      "id": "7:1278",
+      "name": "言語の設定",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "key": "22",
+      "id": "7:1319",
+      "name": "ネットワークの設定",
+      "width": 1280,
+      "height": 800
+    }
+  ],
+  "editableGalleryCopies": [
+    {
+      "sourceId": "7:247",
+      "previewId": "9:593",
+      "name": "USB の起動メニュー"
+    },
+    {
+      "sourceId": "7:302",
+      "previewId": "9:635",
+      "name": "始める前の確認"
+    },
+    {
+      "sourceId": "7:350",
+      "previewId": "9:676",
+      "name": "保存先 — 未選択"
+    },
+    {
+      "sourceId": "7:404",
+      "previewId": "9:718",
+      "name": "保存先 — NVMe を選択"
+    },
+    {
+      "sourceId": "7:452",
+      "previewId": "9:759",
+      "name": "上書き確認 — 入力前"
+    },
+    {
+      "sourceId": "7:506",
+      "previewId": "9:806",
+      "name": "上書き確認 — 入力一致"
+    },
+    {
+      "sourceId": "7:563",
+      "previewId": "9:853",
+      "name": "USB イメージを確認中"
+    },
+    {
+      "sourceId": "7:613",
+      "previewId": "9:896",
+      "name": "NVMe へ書込み中"
+    },
+    {
+      "sourceId": "7:658",
+      "previewId": "9:936",
+      "name": "NVMe の全長照合"
+    },
+    {
+      "sourceId": "7:703",
+      "previewId": "9:975",
+      "name": "インストール完了"
+    },
+    {
+      "sourceId": "7:749",
+      "previewId": "9:1014",
+      "name": "書込前の検証エラー"
+    },
+    {
+      "sourceId": "7:794",
+      "previewId": "9:1052",
+      "name": "書込途中のエラー"
+    },
+    {
+      "sourceId": "7:841",
+      "previewId": "9:1091",
+      "name": "起動と処理の診断"
+    },
+    {
+      "sourceId": "7:893",
+      "previewId": "9:1134",
+      "name": "書込前に中止"
+    },
+    {
+      "sourceId": "7:938",
+      "previewId": "9:1172",
+      "name": "再起動で USB に戻った"
+    },
+    {
+      "sourceId": "7:1015",
+      "previewId": "9:95",
+      "name": "初回起動 — データ保護"
+    },
+    {
+      "sourceId": "7:1059",
+      "previewId": "9:134",
+      "name": "次回の起動 — データ解除"
+    },
+    {
+      "sourceId": "7:1103",
+      "previewId": "9:171",
+      "name": "Awai 初回設定"
+    },
+    {
+      "sourceId": "7:1139",
+      "previewId": "9:201",
+      "name": "Awai へのサインイン"
+    },
+    {
+      "sourceId": "7:1181",
+      "previewId": "9:236",
+      "name": "現在の文字インストーラー"
+    },
+    {
+      "sourceId": "7:1229",
+      "previewId": "9:277",
+      "name": "起動時に止まったように見える"
+    },
+    {
+      "sourceId": "7:1278",
+      "previewId": "9:318",
+      "name": "言語の設定"
+    },
+    {
+      "sourceId": "7:1319",
+      "previewId": "9:352",
+      "name": "ネットワークの設定"
+    }
+  ],
+  "fontFamily": "Noto Sans JP",
+  "sourceTheme": "Asa",
+  "sourceTypography": "nixos/otehon/shell/src/shell/styles/main.cljc",
+  "importedComponents": [
+    {
+      "name": "Simple Design System / Button",
+      "key": "cc8b558dc7d9684011b6b99ce8e6509399bc836b"
+    },
+    {
+      "name": "Simple Design System / Button Danger",
+      "key": "3d3073170c1014cfacc5d047c23495cfed01e0a8"
+    },
+    {
+      "name": "Simple Design System / Input Field",
+      "key": "c28150b04d333d34ed9d2b77abd9f2f54e1a878a"
+    }
+  ],
+  "galleryNodeTypes": {
+    "installer": {
+      "TEXT": 308,
+      "FRAME": 147,
+      "INSTANCE": 128,
+      "RECTANGLE": 3
+    },
+    "firstBoot": {
+      "TEXT": 149,
+      "FRAME": 78,
+      "INSTANCE": 53
+    }
+  },
+  "prototypeLinks": {
+    "installerNodeActions": 33,
+    "firstBootNodeActions": 14,
+    "scope": "Read back from original prototype frames; includes component-level NODE actions, not unique screen transitions"
+  },
+  "qa": {
+    "nativeEditableLayers": true,
+    "fullUiRasterLayers": 0,
+    "allTextFamiliesVerified": true,
+    "mainPanelOverflowCount": 0,
+    "visualCompositionsInspected": true,
+    "contrastCorrectionApplied": true,
+    "singlePrimaryActionAlignmentCorrected": true,
+    "prototypeStartingPointsConfigured": true
+  },
+  "boundaries": {
+    "graphicalInstallerImplemented": false,
+    "newUsbImageBuilt": false,
+    "physicalDiskWritten": false,
+    "prototypesExecuteOperations": false,
+    "physicalTty1Acceptance": false
+  },
+  "measurement": {
+    "run": "450-install-ux-20261114",
+    "thread": "01a1c403-4751-72d2-84de-55853fc89649",
+    "baseline": "f5eefbb50b2505f31c3f36b3e6de496259bf84cd",
+    "model": "unknown",
+    "settings": "unknown",
+    "forecast": "unknown",
+    "tokens": "unknown",
+    "cost": "unknown"
+  }
+}

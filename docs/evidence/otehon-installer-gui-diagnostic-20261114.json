@@ -1,0 +1,27 @@
+{
+  "schema": "awai.otehon.installer-gui-check.v1",
+  "date": "2026-11-14",
+  "issue": "AWAI-450",
+  "source": "83c64a73684905a309b32e2c17d388fe034a689e",
+  "run": "https://github.com/network-awai/awai-os/actions/runs/43571810698",
+  "build": "passed",
+  "vm": "cancelled-for-diagnosis-not-qualified",
+  "observedLogStages": [
+    "welcome",
+    "disk-selection",
+    "undersize-disabled",
+    "source-disabled",
+    "overwrite-confirmation",
+    "mismatch-disabled",
+    "verified-complete (historical label; only readback entry, not verified completion)"
+  ],
+  "lastObservedStageAt": "2026-11-14T07:53:44Z",
+  "fullReadbackCompletion": "unknown",
+  "firstInstalledBoot": "not reached",
+  "lastScreenshot": "unavailable: Nix removed interrupted build directory",
+  "proofArtifact": 14105920412,
+  "proofZipSha256": "61b5c1a8e73296dedfee3dff6cdc337f0d1575a5f95c037de3655f5d8d8db3bd",
+  "isoSha256": "e126f7cb00f107d507ceb71b4d2fa62ba049b5348cef2c4472e4de915b58a243",
+  "physicalUsbUpdated": false,
+  "correction": "Separate readback entry from unique completion title plus footer control; OCR inner footer with threshold/inverse/enlarge; detect failures in both waits; bounded OCR log snapshots. Local completion positive/readback negative and actual VM reload-button control pass. First-boot theme localized into create/confirm/unlock states; runtime pending."
+}
