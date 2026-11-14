@@ -1,0 +1,37 @@
+{
+  "schema": "awai.otehon.usb-media.v1",
+  "version": "0.7.0",
+  "architecture": "x86_64",
+  "targetHardware": "Ryzen 5 6600H (boot not yet tested)",
+  "sourceRevision": "d4532034b8020ed5db302ad1a5445f83e5a4f944",
+  "qualifiedCiRun": "https://github.com/network-awai/awai-os/actions/runs/43436841197",
+  "artifactId": 14045326624,
+  "writerRevision": "d046652da5d67776fb1e4b0a8f93613b5e0a7f5a",
+  "writerSha256": "c9436228cd548bc7e3ba6ea5f81ace555509a71882b6be71d99daae4f1ede430",
+  "medium": {
+    "model": "KIOXIA TransMemory",
+    "serialSuffix": "5987CBC4",
+    "capacityBytes": 61949214720
+  },
+  "imageBytes": 6816595968,
+  "isoSha256": "5695f3c43f97912212289b59a11b79f6662c5ebbbbb45fd4aaa0e2d2b2840133",
+  "usbSha256": "5695f3c43f97912212289b59a11b79f6662c5ebbbbb45fd4aaa0e2d2b2840133",
+  "status": "verified-and-ejected",
+  "externalDiskAbsenceRechecked": true,
+  "requestResetToCheck": true,
+  "logSha256": "e95deff958fc5705e5c17555125d22fef05ca4cf022d951b8ef4e474a663d7c8",
+  "logWindow": {
+    "startedAt": "2026-11-14T01:17:36.796774+00:00",
+    "finishedAt": "2026-11-14T01:39:34.378636+00:00",
+    "elapsedSeconds": 1317.582,
+    "scope": "write invocation including staging hash, media write, synchronization, full readback and eject; excludes earlier setup/downloads"
+  },
+  "boundaries": {
+    "physicalUsbWritten": true,
+    "physicalPcBootVerified": false,
+    "internalDiskInstalled": false,
+    "productionUpdateEnrolled": false,
+    "nativeQualified": false
+  },
+  "tracking": "https://linear.app/kotobalabs/issue/AWAI-450"
+}
