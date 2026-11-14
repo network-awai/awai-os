@@ -56,4 +56,11 @@
   (ensure! (zero? (:exit (run-cli "forest-group-range" store-dir "file" output (str offset) "40"))) "CLI range failed")
   (ensure! (Arrays/equals expected (Files/readAllBytes (Paths/get output (make-array String 0)))) "cross-Pack range mismatch")
   (ensure! (not (zero? (:exit (run-cli "forest-group-range" store-dir "file" output (str offset) "40")))) "CLI overwrote output")
-  (prn {:manifest-cid cid :cross-pack-range true :bad-cid-rejected true :symlink-rejected true :overwrite-rejected true :stale-import-rejected true :pass true}))
+  (let [dest (str dir "/full.bin")
+        size (pack/group-size (pack/recover store-dir) "file")
+        expected-full (byte-array (map #(unchecked-byte (mod (+ (* % 19) (quot % 8191)) 256)) (range size)))]
+    (ensure! (zero? (:exit (run-cli "forest-group-export" store-dir "file" dest))) "CLI full export failed")
+    (ensure! (Arrays/equals expected-full (Files/readAllBytes (Paths/get dest (make-array String 0)))) "CLI full export mismatch")
+    (ensure! (not (zero? (:exit (run-cli "forest-group-export" store-dir "file" dest)))) "CLI full export overwrote output")
+    (ensure! (Arrays/equals expected-full (Files/readAllBytes (Paths/get dest (make-array String 0)))) "existing export changed"))
+  (prn {:manifest-cid cid :cross-pack-range true :full-export true :bad-cid-rejected true :symlink-rejected true :overwrite-rejected true :stale-import-rejected true :pass true}))

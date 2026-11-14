@@ -31,6 +31,15 @@
     (.force out true))
   {:bytes (alength ^bytes bytes)})
 
+(def ^:dynamic *export-observer* nil)
+
+(defn- observe-export! [event]
+  (when *export-observer* (*export-observer* event)))
+
+(defn- sync-dir! [dir]
+  (with-open [channel (FileChannel/open dir (into-array OpenOption [StandardOpenOption/READ]))]
+    (.force channel true)))
+
 (defn- export-group! [handle name filename]
   ;; Keep a failed staging file for inspection. Hard-link publication is
   ;; exclusive: an existing destination is never overwritten, even in a race.
@@ -55,8 +64,15 @@
             (while (.hasRemaining buf) (.write out buf))
             (recur (+ offset n)))))
       (.force out true))
+    (observe-export! :file-synced)
     (Files/createLink dest tmp)
+    (observe-export! :linked)
+    (sync-dir! parent)
+    (observe-export! :link-dir-synced)
     (Files/delete tmp)
+    (observe-export! :staging-unlinked)
+    (sync-dir! parent)
+    (observe-export! :unlink-dir-synced)
     {:bytes size :sha256 (car/hex-encode (mapv #(bit-and 255 %) (.digest md)))}))
 
 (defn- parse-generation! [text]

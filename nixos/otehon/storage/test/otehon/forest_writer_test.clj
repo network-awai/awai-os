@@ -6,6 +6,32 @@
             [otehon.storage :as storage])
   (:import [java.nio.file Files Paths OpenOption] [java.nio.file.attribute FileAttribute]))
 (def ^:dynamic *output* ".agent-output/forest-writer-test")
+
+(deftest export-publication-sync-and-interruption
+  (.mkdirs (java.io.File. *output*))
+  (doseq [stop [nil :linked :link-dir-synced]]
+    (let [dir (Files/createTempDirectory (Paths/get *output* (make-array String 0)) "export-sync-" (make-array FileAttribute 0))
+          dest (.resolve dir "result")
+          data (.getBytes "verified group bytes" "UTF-8")
+          events (atom [])]
+      (with-redefs [pack/recover (fn [_] :handle)
+                    pack/group-size (fn [_ _] (alength data))
+                    pack/read-group-range (fn [_ _ _ _] data)]
+        (let [error (binding [cli/*export-observer* (fn [event]
+                                                      (swap! events conj event)
+                                                      (when (= stop event)
+                                                        (throw (ex-info "injected interruption" {}))))]
+                      (try (with-out-str (cli/-main "forest-group-export" "store" "file" (str dest)))
+                           nil (catch Exception e e)))]
+          (is (= (boolean stop) (boolean error)))
+          (is (= (seq data) (seq (Files/readAllBytes dest))))
+          (if stop
+            (is (= 2 (count (seq (.list (.toFile dir))))))
+            (do (is (= [:file-synced :linked :link-dir-synced :staging-unlinked :unlink-dir-synced] @events))
+                (is (= ["result"] (vec (.list (.toFile dir)))))
+                (is (thrown? java.nio.file.FileAlreadyExistsException
+                             (cli/-main "forest-group-export" "store" "file" (str dest))))
+                (is (= (seq data) (seq (Files/readAllBytes dest)))))))))))
 (deftest generic-writer-requires-explicit-valid-witness
   (.mkdirs (java.io.File. *output*))
   (let [d (Files/createTempDirectory (Paths/get *output* (make-array String 0)) "ipld-witness-" (make-array FileAttribute 0))
