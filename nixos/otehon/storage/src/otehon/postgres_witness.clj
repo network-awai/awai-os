@@ -60,9 +60,13 @@
         (when (or (= s ::timeout) (not= 0 (.exitValue p))) (fail! :witness-service-error "witness query failed"))
         (str/trim s))
       (finally (.destroyForcibly p)))))
+(defn- transition! [old next]
+  (when-not (and (root? old) (root? next) (= (inc (:generation old)) (:generation next))
+                 (<= (:tail old) (:tail next)) (<= (:checkpoint old) (:checkpoint next)))
+    (fail! :invalid-witness "non-monotonic root update")))
 (defn port
-  "Return existing root read/CAS callbacks. The pre-provisioned table is
-  awai_witness.root(store_id text primary key, root bytea not null). PSQL is
+  "Return prepared-root read/CAS callbacks. The pre-provisioned table is
+  awai_witness.root(store_id text primary key, root bytea not null, pending bytea). PSQL is
   an absolute executable path; SERVICE selects a trusted libpq service config.
   Routing, TLS and session choices must be in that service configuration;
   ambient libpq routing, TLS and session variables are not forwarded.
@@ -72,15 +76,27 @@
   (when-not (and (string? psql) (.isAbsolute (java.io.File. psql))
                  (string? service) (re-matches #"[A-Za-z0-9_-]{1,64}" service) (digest? store-id))
     (fail! :invalid-witness "invalid PostgreSQL witness configuration"))
-  {:read! (fn [] (unwire (query! psql service (str "SELECT CASE WHEN pg_is_in_recovery() THEN 'replica' ELSE COALESCE((SELECT encode(root,'hex') FROM awai_witness.root WHERE store_id='" store-id "'),'missing') END;\n"))))
-   :compare-and-set!
-   (fn [old next]
-     (when-not (and (root? old) (root? next) (= (inc (:generation old)) (:generation next))
-                    (<= (:tail old) (:tail next)) (<= (:checkpoint old) (:checkpoint next)))
-       (fail! :invalid-witness "non-monotonic root update"))
-     (let [sql (str "SET synchronous_commit=on; WITH changed AS (UPDATE awai_witness.root SET root=decode('" (wire next)
-                    "','hex') WHERE store_id='" store-id "' AND root=decode('" (wire old)
-                    "','hex') RETURNING 1) SELECT count(*) FROM changed;\n")
-           result (query! psql service sql)]
-       (cond (= result "1") true (= result "0") false
-             :else (fail! :witness-service-error "unexpected witness CAS result"))))})
+  (letfn [(status []
+            (let [v (query! psql service (str "SELECT CASE WHEN pg_is_in_recovery() THEN 'replica' ELSE COALESCE((SELECT encode(root,'hex')||':'||COALESCE(encode(pending,'hex'),'-') FROM awai_witness.root WHERE store_id='" store-id "'),'missing') END;\n"))
+                  parts (str/split v #":" -1)]
+              (when-not (= 2 (count parts)) (fail! :invalid-witness "missing or invalid witness row"))
+              {:root (unwire (first parts)) :pending (when-not (= "-" (second parts)) (unwire (second parts)))}))
+          (update! [set-clause where-clause]
+            (let [result (query! psql service (str "SET synchronous_commit=on; WITH changed AS (UPDATE awai_witness.root SET " set-clause
+                                                  " WHERE store_id='" store-id "' AND " where-clause
+                                                  " RETURNING 1) SELECT count(*) FROM changed;\n"))]
+              (cond (= result "1") true (= result "0") false
+                    :else (fail! :witness-service-error "unexpected witness update result"))))]
+    {:read! (fn [] (let [{:keys [root pending]} (status)]
+                     (when pending (fail! :witness-pending "prepared root requires reconciliation"))
+                     root))
+     :status! status
+     :prepare! (fn [old next]
+                 (transition! old next)
+                 (let [o (wire old) n (wire next)]
+                   (update! (str "pending=decode('" n "','hex')")
+                            (str "root=decode('" o "','hex') AND (pending IS NULL OR pending=decode('" n "','hex'))"))))
+     :compare-and-set! (fn [old next]
+                         (transition! old next)
+                         (update! (str "root=decode('" (wire next) "','hex'), pending=NULL")
+                                  (str "root=decode('" (wire old) "','hex') AND pending=decode('" (wire next) "','hex')")))}))

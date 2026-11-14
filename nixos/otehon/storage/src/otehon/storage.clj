@@ -394,7 +394,9 @@
       ;; Closing this channel releases its OS lock, including on exceptions.
       (action))))
 
-(defn- publish! [root generation snapshot log]
+(defn- publish!
+  ([root generation snapshot log] (publish! root generation snapshot log nil))
+  ([root generation snapshot log before-root]
   (when-not (and (sequence? generation) (pos? generation))
     (fail! :generation-exhausted "root generation exhausted"))
   (let [snapshot-ref (object! root snapshot :snapshot)
@@ -403,9 +405,10 @@
                :checkpoint (:seq snapshot) :tail (:seq log)
                :snapshot snapshot-ref :log log-ref}
         payload (pr-str value)]
+    (when before-root (before-root value))
     (write-record! root (str "root-" (mod generation 2) ".edn")
                    (encode {:payload payload :digest (sha (.getBytes payload "UTF-8"))}) :root)
-    {:generation generation :tail (:seq log)}))
+    {:generation generation :tail (:seq log)})))
 
 (defn init! [directory]
   ;; createDirectory refuses any existing path, including partial stores.
@@ -420,8 +423,10 @@
   "Validate the host port shape, not witness independence or trust. CAS must
   atomically compare full root maps and return literal true only on success."
   [witness]
-  (when-not (and (map? witness) (= #{:read! :compare-and-set!} (set (keys witness)))
-                 (fn? (:read! witness)) (fn? (:compare-and-set! witness)))
+  (when-not (and (map? witness)
+                 (contains? #{#{:read! :compare-and-set!} #{:read! :compare-and-set! :prepare! :status!}}
+                            (set (keys witness)))
+                 (every? fn? (vals witness)))
     (fail! :invalid-witness "expected trusted read and conditional update ports"))
   witness)
 
@@ -447,7 +452,15 @@
          (when (and witness (not= current ((:read! witness))))
            (fail! :witness-changed "trusted witness changed before root publication"))
          (let [result (if witness
-                        (try (publish! root (inc (:generation current)) snapshot (wal/append log op payload))
+                        (try (publish! root (inc (:generation current)) snapshot (wal/append log op payload)
+                               (when (:prepare! witness)
+                                 (fn [candidate]
+                                   (observe! :before-prepare :witness)
+                                   (when-not (true? ((:prepare! witness) current candidate))
+                                     (fail! :witness-prepare-refused "witness rejected pending root"))
+                                   (when-not (= {:root current :pending candidate} ((:status! witness)))
+                                     (fail! :witness-prepare-mismatch "witness did not confirm pending root"))
+                                   (observe! :after-prepare :witness))))
                              (catch Exception e
                                (throw (ex-info "root publication outcome requires review"
                                                {:type :witness-commit-uncertain} e))))
@@ -464,6 +477,8 @@
                  (observe! :after-cas :witness)
                  (when-not (= next-root ((:read! witness)))
                    (fail! :witness-readback-mismatch "witness did not confirm published root"))
+                 (when (and (:status! witness) (not= {:root next-root :pending nil} ((:status! witness))))
+                   (fail! :witness-readback-mismatch "witness did not clear pending root"))
                  result)
                (catch Exception e
                  (throw (ex-info "local root published; witness outcome requires review"
@@ -503,6 +518,46 @@
   (when-not (or (nil? after-publish) (fn? after-publish))
     (fail! :invalid-operation "after-publish verifier must be a function"))
   (transact* directory op payload before-publish expected-generation witness after-publish)))
+
+(defn reconcile-witnessed!
+  "Explicitly reconcile a trusted prepared intent under the local writer lock.
+  VERIFY! must validate the entire local state and every referenced object.
+  The witness's pending intent must be authenticated and rollback-resistant;
+  this function does not make an untrusted or same-domain witness trustworthy."
+  [directory witness verify!]
+  (validate-write-witness! witness)
+  (when-not (and (:status! witness) (fn? verify!))
+    (fail! :invalid-witness "prepared witness and verifier required"))
+  (let [root (root-path directory)]
+    (with-writer root
+      #(let [{local :root state :state} (writable-state root)
+             status ((:status! witness)) old (:root status) pending (:pending status)]
+         (when-not (and (= #{:root :pending} (set (keys status))) (root-valid? old)
+                        (or (nil? pending)
+                            (and (root-valid? pending) (= (inc (:generation old)) (:generation pending))
+                                 (<= (:tail old) (:tail pending)) (<= (:checkpoint old) (:checkpoint pending)))))
+           (fail! :invalid-witness "invalid prepared witness state"))
+         (when-not (or (= local old) (= local pending))
+           (fail! :witness-mismatch "local root is not an authorized prepared state"))
+         (verify! (str root) state)
+         (when-not (= status ((:status! witness)))
+           (fail! :witness-changed "witness changed during reconciliation"))
+         (cond
+           (nil? pending) {:outcome :already-consistent :root old}
+           (= local old)
+           ;; The newer local root might have been published and then rolled
+           ;; back; old root alone cannot authorize cancelling this intent.
+           (fail! :witness-review-required "pending root is not present locally")
+           :else
+           (try
+             (when-not (true? ((:compare-and-set! witness) old pending))
+               (fail! :witness-changed "pending intent changed during commit"))
+             (when-not (= {:root pending :pending nil} ((:status! witness)))
+               (fail! :witness-reconcile-uncertain "commit readback mismatch"))
+             {:outcome :committed-pending :root pending}
+             (catch Exception e
+               (throw (ex-info "witness reconciliation outcome requires review"
+                               {:type :witness-reconcile-uncertain} e)))))))))
 
 (defn compare-and-set-value!
   "Compare and publish a metadata value under the local writer lock. A

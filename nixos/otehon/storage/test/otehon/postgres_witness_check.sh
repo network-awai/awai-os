@@ -20,7 +20,7 @@ chmod 600 "$base/service.conf"
 export PGSERVICEFILE="$base/service.conf" PG_WITNESS_PSQL="$(command -v psql)" PG_WITNESS_SERVICE=awai_witness_test
 export PG_WITNESS_PROOF="$base/proof" CROSSPACK_FIXTURES="$fixtures"
 mkdir "$PG_WITNESS_PROOF"
-psql -X -q -v ON_ERROR_STOP=1 -d 'service=awai_witness_test' -c 'CREATE SCHEMA awai_witness; CREATE TABLE awai_witness.root (store_id text PRIMARY KEY, root bytea NOT NULL);'
+psql -X -q -v ON_ERROR_STOP=1 -d 'service=awai_witness_test' -c 'CREATE SCHEMA awai_witness; CREATE TABLE awai_witness.root (store_id text PRIMARY KEY, root bytea NOT NULL, pending bytea);'
 env PGHOST=/nonexistent PGPORT=1 PGOPTIONS='-c default_transaction_read_only=on' bb --classpath "$classpath" "$proof" setup
 pg_ctl -D "$base/data" -m fast -w stop >/dev/null
 bb --classpath "$classpath" "$proof" down
@@ -30,12 +30,14 @@ bb --classpath "$classpath" "$crash" run
 pg_ctl -D "$base/data" -m fast -w stop >/dev/null
 start
 bb --classpath "$classpath" "$crash" verify
+bb --classpath "$classpath" "$crash" reconcile
 bb --classpath "$classpath" "$db_interrupt" prepare
 psql -X -q -v ON_ERROR_STOP=1 -d 'service=awai_witness_test' <<'SQL'
 CREATE FUNCTION awai_witness.pause_test_update() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN PERFORM pg_sleep(120); RETURN NEW; END $$;
 CREATE TRIGGER pause_test_update BEFORE UPDATE ON awai_witness.root
-  FOR EACH ROW WHEN (OLD.store_id = repeat('9',64)) EXECUTE FUNCTION awai_witness.pause_test_update();
+  FOR EACH ROW WHEN (OLD.store_id = repeat('9',64) AND OLD.pending IS NOT NULL AND NEW.pending IS NULL AND NEW.root IS DISTINCT FROM OLD.root)
+  EXECUTE FUNCTION awai_witness.pause_test_update();
 SQL
 bb --classpath "$classpath" "$db_interrupt" write > "$base/interrupted-writer.log" 2>&1 &
 fault_pid=$!
@@ -53,5 +55,7 @@ fault_pid=
 cat "$base/interrupted-writer.log"
 start
 bb --classpath "$classpath" "$db_interrupt" verify
+psql -X -q -v ON_ERROR_STOP=1 -d 'service=awai_witness_test' -c 'DROP TRIGGER pause_test_update ON awai_witness.root;'
+bb --classpath "$classpath" "$db_interrupt" reconcile
 stop
 trap - EXIT HUP INT TERM

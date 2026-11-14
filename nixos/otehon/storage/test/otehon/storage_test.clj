@@ -1,7 +1,8 @@
 (ns otehon.storage-test
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.edn :as edn]
-            [otehon.storage :as store])
+            [otehon.storage :as store]
+            [otehon.root-witness :as witness])
   (:import [java.nio.file Files Paths LinkOption]
            [java.nio.file.attribute FileAttribute]))
 
@@ -43,6 +44,15 @@
 (defn- atom-witness [root]
   {:read! #(deref root)
    :compare-and-set! (fn [old new] (locking root (if (= @root old) (do (reset! root new) true) false)))})
+
+(deftest prepared-witness-refuses-any-pending-value
+  (let [d (directory) _ (store/init! d) root (:root (store/read-store d))
+        open! #(hash-map :basis root)]
+    (is (= root (:basis (witness/open-verified! d {:status! #(hash-map :root root :pending nil)} open!))))
+    (is (= :witness-pending (error-type #(witness/open-verified! d {:status! (fn [] {:root root :pending false})} open!))))
+    (is (= :invalid-witness (error-type #(witness/open-verified! d {:status! (fn [] nil)} open!))))
+    (let [calls (atom 0) w {:status! #(if (= 1 (swap! calls inc)) {:root root :pending nil} {:root root :pending root})}]
+      (is (= :witness-pending (error-type #(witness/open-verified! d w open!)))))))
 
 (deftest witnessed-conditional-write-publishes-only-after-cas
   (let [d (directory) _ (store/init! d) initial (:root (store/read-store d))

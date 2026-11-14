@@ -7,8 +7,12 @@
   (:require [otehon.storage :as store]))
 
 (defn- fail! [type message] (throw (ex-info message {:type type})))
-(defn- witness-root! [read-witness!]
-  (let [root (read-witness!)]
+(defn- witness-root! [witness]
+  (let [status (when (map? witness) ((:status! witness)))
+        _ (when (and (map? witness) (not (and (map? status) (= #{:root :pending} (set (keys status))))))
+            (fail! :invalid-witness "invalid prepared witness status"))
+        _ (when (and status (some? (:pending status))) (fail! :witness-pending "prepared root requires reconciliation"))
+        root (if (map? witness) (:root status) (witness))]
     (when-not (and (map? root)
                    (= #{:format :generation :checkpoint :tail :snapshot :log} (set (keys root)))
                    (= :awai.otehon-store/root-v1 (:format root))
@@ -20,10 +24,10 @@
   "Read a store-bound witness, compare a local root, open and verify the
   snapshot, then re-read the witness. No handle is returned on mismatch.
   The host owns witness authentication, durability, binding and freshness."
-  [directory read-witness! open!]
-  (when-not (and (fn? read-witness!) (fn? open!))
+  [directory witness open!]
+  (when-not (and (or (fn? witness) (and (map? witness) (fn? (:status! witness)))) (fn? open!))
     (fail! :invalid-witness "witness and opener functions are required"))
-  (let [expected (witness-root! read-witness!)
+  (let [expected (witness-root! witness)
         local (store/read-store directory)]
     (when (:degraded? local) (fail! :degraded-store "invalid root slot"))
     (when-not (= expected (:root local))
@@ -31,7 +35,7 @@
     (let [handle (open!)
           _ (when-not (= expected (:basis handle))
               (fail! :witness-mismatch "opened snapshot differs from trusted witness"))
-          current (witness-root! read-witness!)]
+          current (witness-root! witness)]
       (when-not (= expected current)
         (fail! :witness-changed "trusted witness changed while opening snapshot"))
       handle)))

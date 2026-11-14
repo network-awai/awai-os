@@ -7,8 +7,9 @@
 (def psql (or (System/getenv "PG_WITNESS_PSQL") (throw (ex-info "psql required" {}))))
 (def service (or (System/getenv "PG_WITNESS_SERVICE") (throw (ex-info "service required" {}))))
 (def cases [{:name "forest" :role :forest :event :dir-synced :id "c" :want {:generation 1 :packs 0}}
-            {:name "root" :role :root :event :renamed :id "d" :want {:error :witness-mismatch}}
-            {:name "before" :role :witness :event :before-cas :id "e" :want {:error :witness-mismatch}}
+            {:name "prepared" :role :witness :event :after-prepare :id "8" :want {:error :witness-pending}}
+            {:name "root" :role :root :event :renamed :id "d" :want {:error :witness-pending}}
+            {:name "before" :role :witness :event :before-cas :id "e" :want {:error :witness-pending}}
             {:name "after" :role :witness :event :after-cas :id "f" :want {:generation 2 :packs 4}}])
 (defn ensure! [v msg data] (when-not v (throw (ex-info msg data))))
 (defn id [c] (apply str (repeat 64 (:id c))))
@@ -44,6 +45,20 @@
   (let [result (finish (spawn "read" (:name c)))]
     (ensure! (= (:want c) result) "unexpected witnessed recovery" {:case (:name c) :actual result :expected (:want c)})
     (prn {:case (:name c) :result result :pass true}) (flush)))
+(defn reconcile-case [c]
+  (let [w (port c) before ((:status! w))
+        result (try (pack/reconcile-witnessed! (path c) w)
+                    (catch clojure.lang.ExceptionInfo e {:error (:type (ex-data e))}))
+        expected (case (:name c) "prepared" :witness-review-required
+                       "root" :committed-pending "before" :committed-pending :already-consistent)]
+    (if (= "prepared" (:name c))
+      (do (ensure! (= expected (:error result)) "missing candidate should require review" {:result result})
+          (ensure! (= before ((:status! w))) "review changed witness" {}))
+      (do (ensure! (= expected (:outcome result)) "reconcile failed" {:result result})
+          (ensure! (= :already-consistent (:outcome (pack/reconcile-witnessed! (path c) w))) "reconcile not idempotent" {})
+          (when (#{"root" "before"} (:name c))
+            (ensure! (= {:generation 2 :packs 4} (reader c)) "reconciled data missing" {}))))
+    (prn {:case (:name c) :reconcile expected :pass true}) (flush)))
 (defn run-case [c]
   (store/init! (path c)) (bootstrap! c (:root (store/read-store (path c))))
   (let [p (spawn "write" (:name c))]
@@ -57,8 +72,9 @@
       (finally (.destroyForcibly p)))))
 (let [[mode name] *command-line-args* c (first (filter #(= name (:name %)) cases))]
   (case mode
-    "run" (try (doseq [item cases] (run-case item)) (prn {:mode :run :cases 4 :pass true}) (finally (shutdown-agents)))
-    "verify" (try (doseq [item cases] (verify-case item)) (prn {:mode :verify :cases 4 :pass true}) (finally (shutdown-agents)))
+    "run" (try (doseq [item cases] (run-case item)) (prn {:mode :run :cases 5 :pass true}) (finally (shutdown-agents)))
+    "verify" (try (doseq [item cases] (verify-case item)) (prn {:mode :verify :cases 5 :pass true}) (finally (shutdown-agents)))
+    "reconcile" (try (doseq [item cases] (reconcile-case item)) (prn {:mode :reconcile :cases 5 :pass true}) (finally (shutdown-agents)))
     "write" (do (ensure! c "unknown case" {}) (writer c))
     "read" (do (ensure! c "unknown case" {}) (prn (reader c)))
     (throw (ex-info "run, verify, write or read required" {}))))

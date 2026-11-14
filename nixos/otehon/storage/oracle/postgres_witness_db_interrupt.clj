@@ -22,11 +22,26 @@
    (ensure! (= :witness-commit-uncertain outcome) "writer reported wrong outcome")
    (prn {:mode :write :outcome outcome :pass true}))
  "verify"
- (let [w (port) trusted ((:read! w)) local (:root (store/read-store store-path)) unguarded (pack/summary (pack/recover store-path))]
+ (let [w (port) status ((:status! w)) trusted (:root status) local (:root (store/read-store store-path)) unguarded (pack/summary (pack/recover store-path))]
    (ensure! (= 1 (:generation trusted)) "DB unexpectedly committed the interrupted update")
+   (ensure! (= local (:pending status)) "DB did not retain prepared candidate")
    (ensure! (= 2 (:generation local)) "expected locally published root")
    (ensure! (= 4 (count (get-in unguarded [:groups "proof" :packs]))) "published Pack set incomplete")
-   (ensure! (= :witness-mismatch (error-type #(pack/recover-witnessed store-path (:read! w)))) "guarded read did not refuse")
+   (ensure! (= :witness-pending (error-type #(pack/recover-witnessed store-path w))) "guarded read did not refuse")
    (prn {:mode :verify :db-generation 1 :local-generation 2 :packs 4 :guard :refused :pass true}))
+ "reconcile"
+ (let [w (port) before ((:status! w))
+       f (first (filter #(re-matches #"[0-9a-f]{64}\.forest" (.getName %)) (.listFiles (java.io.File. store-path))))
+       withheld (java.nio.file.Paths/get (str base "/db-interrupt-withheld") (make-array String 0))]
+   (ensure! f "published Pack missing before negative control")
+   (java.nio.file.Files/move (.toPath f) withheld (make-array java.nio.file.CopyOption 0))
+   (try
+     (ensure! (= :missing-forest (error-type #(pack/reconcile-witnessed! store-path w))) "missing Pack was accepted")
+     (ensure! (= before ((:status! w))) "missing Pack changed witness")
+     (finally (java.nio.file.Files/move withheld (.toPath f) (make-array java.nio.file.CopyOption 0))))
+   (ensure! (= :committed-pending (:outcome (pack/reconcile-witnessed! store-path w))) "prepared candidate not committed")
+   (ensure! (= :already-consistent (:outcome (pack/reconcile-witnessed! store-path w))) "reconcile is not idempotent")
+   (ensure! (= 4 (count (get-in (pack/summary (pack/recover-witnessed store-path w)) [:groups "proof" :packs]))) "reconciled group missing")
+   (prn {:mode :reconcile :missing-pack :refused :witness :committed :packs 4 :pass true}))
  (throw (ex-info "prepare, write or verify required" {})))
 (shutdown-agents)

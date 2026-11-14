@@ -24,8 +24,8 @@
        _ (ensure! (= initial ((:read! w))) "initial root mismatch")
        n1 (assoc initial :generation 2 :tail 1 :log (apply str (repeat 64 "c")))
        n2 (assoc initial :generation 2 :tail 1 :log (apply str (repeat 64 "d")))
-       a (future ((:compare-and-set! race) initial n1))
-       b (future ((:compare-and-set! race) initial n2))
+       a (future (and ((:prepare! race) initial n1) ((:compare-and-set! race) initial n1)))
+       b (future (and ((:prepare! race) initial n2) ((:compare-and-set! race) initial n2)))
        outcomes [@a @b]]
    (ensure! (= [false true] (sort outcomes)) "concurrent CAS did not select exactly one")
    (ensure! (#{n1 n2} ((:read! race))) "CAS winner not persisted")

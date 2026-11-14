@@ -257,9 +257,17 @@
 
 (defn recover-witnessed
   "Open only if a host-owned store-bound witness matches before and after.
-  A witness backed by the same rollback domain is not an anti-rollback anchor."
-  [directory read-witness!]
-  (witness/open-verified! directory read-witness! #(recover directory)))
+  Pass the complete prepared witness to refuse unresolved intents. A callback
+  alone cannot detect them. A same-domain witness is not an anti-rollback anchor."
+  [directory witness-port]
+  (witness/open-verified! directory witness-port #(recover directory)))
+
+(defn reconcile-witnessed!
+  "Explicitly reconcile a trusted prepared root after verifying all Packs.
+  Requires the prepared witness to be independent and protected from rollback."
+  [directory prepared-witness]
+  (store/reconcile-witnessed! directory prepared-witness
+                              (fn [directory state] (recover-map directory state))))
 
 (defn summary [handle]
   {:files (:files handle) :groups (:groups handle) :basis (:basis handle) :degraded? (:degraded? handle)
