@@ -85,6 +85,8 @@
       ["pack-recover" 2] (prn (pack/summary (pack/recover directory)))
       ["pack-checkpoint" 2] (prn (pack/checkpoint! directory))
       (if (and (= command "logical-forest-import") (<= 6 (count args) 69))
-        (prn (pack/import-logical-forest-files! directory name (vec (drop 5 args))
-                                               (input-bytes filename) (nth args 4)))
+        (let [generation (observed-generation! directory)]
+          (prn (pack/import-logical-forest-files! directory name (vec (drop 5 args))
+                                                 (input-bytes filename) (nth args 4)
+                                                 {:expected-generation generation})))
         (apply store/-main args)))))

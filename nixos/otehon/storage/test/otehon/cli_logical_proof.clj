@@ -1,6 +1,7 @@
 ;; Exercise the product CLI in separate processes with real Forest fixtures.
 (require '[babashka.classpath :as cp] '[otehon.forest :as forest]
-         '[otehon.storage :as store] '[awai.fs.car :as car])
+         '[otehon.storage :as store] '[awai.fs.car :as car]
+         '[otehon.cli :as cli] '[otehon.pack-store :as pack])
 (import '[java.nio.file Files Paths OpenOption] '[java.nio.file.attribute FileAttribute]
         '[java.util Arrays] '[java.security MessageDigest])
 (def fixtures (or (System/getenv "CROSSPACK_FIXTURES") "nixos/otehon/storage/test/fixtures/crosspack"))
@@ -38,7 +39,21 @@
       (ensure! (not (zero? (:exit (apply run-cli (concat ["logical-forest-import" store-dir "file" manifest-path cid (str link)] (rest paths)))))) "symlink accepted")
       (ensure! (= before (:root (store/read-store store-dir))) "symlink published root")))
   (ensure! (zero? (:exit (apply run-cli (concat ["logical-forest-import" store-dir "file" manifest-path cid] paths)))) "CLI import failed")
+  ;; The real entry must capture generation before importer work. Inject a
+  ;; second local writer at that seam and prove the stale candidate is refused.
+  (let [original pack/import-logical-forest-files! after-other (atom nil)
+        outcome (with-redefs [pack/import-logical-forest-files!
+                              (fn [& args]
+                                (store/transact! store-dir :put {:key "other-writer" :value "advanced"})
+                                (reset! after-other (store/read-store store-dir))
+                                (apply original args))]
+                  (try (with-out-str (apply cli/-main (concat ["logical-forest-import" store-dir "file" manifest-path cid] paths)))
+                       :unexpected-success
+                       (catch Exception e (:type (ex-data e)))))]
+    (ensure! (= :stale-generation outcome) "racing import was not refused")
+    (ensure! (= @after-other (store/read-store store-dir)) "stale import changed store after competing write")
+    (ensure! (Arrays/equals expected (pack/read-group-range (pack/recover store-dir) "file" offset 40)) "stale import changed visible bytes"))
   (ensure! (zero? (:exit (run-cli "forest-group-range" store-dir "file" output (str offset) "40"))) "CLI range failed")
   (ensure! (Arrays/equals expected (Files/readAllBytes (Paths/get output (make-array String 0)))) "cross-Pack range mismatch")
   (ensure! (not (zero? (:exit (run-cli "forest-group-range" store-dir "file" output (str offset) "40")))) "CLI overwrote output")
-  (prn {:manifest-cid cid :cross-pack-range true :bad-cid-rejected true :symlink-rejected true :overwrite-rejected true :pass true}))
+  (prn {:manifest-cid cid :cross-pack-range true :bad-cid-rejected true :symlink-rejected true :overwrite-rejected true :stale-import-rejected true :pass true}))
