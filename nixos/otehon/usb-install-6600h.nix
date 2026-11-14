@@ -62,7 +62,7 @@ in {
     name = "otehon-install";
     manage = "desktop";
     start = ''
-      ${pkgs.jdk}/bin/java -cp "${pkgs.clojure}/libexec/clojure-tools-${pkgs.clojure.version}.jar:${./installer-ui}" clojure.main -m awai.installer &
+      ${pkgs.jdk}/bin/java -Dawt.useSystemAAFontSettings=on -Dswing.aatext=true -cp "${pkgs.clojure}/libexec/clojure-tools-${pkgs.clojure.version}.jar:${./installer-ui}" clojure.main -m awai.installer &
       waitPID=$!
     '';
   }];

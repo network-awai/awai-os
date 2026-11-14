@@ -90,6 +90,10 @@
           (let [blocked (or (:used d) (:readOnly d) (:ambiguous d) (<= (:size d) (or rawBytes Long/MAX_VALUE)))
                 b (button (format "%s  %.1f GB  [%s]%s" (:model d) (/ (:size d) 1e9) (:serial d) (if blocked " — 選択不可" ""))
                           #(task! (fn [] (let [r (rpc "SELECT" (:id d))] (SwingUtilities/invokeLater (fn [] (change! {:page :confirm :selected r :error nil})))))) false)]
+            (.setFont b (font 20 true)) (.setBackground b (color :surface)) (.setForeground b (color :ink))
+            (.setHorizontalAlignment b javax.swing.SwingConstants/LEFT)
+            (.setBorder b (BorderFactory/createCompoundBorder (BorderFactory/createLineBorder (color :line)) (BorderFactory/createEmptyBorder 12 16 12 16)))
+            (.setPreferredSize b (Dimension. 896 64)) (.setMaximumSize b (Dimension. 896 64))
             (.setEnabled b (not blocked)) (add! main b) (gap! main 12)))
         (.add footer (button "再読み込み" list! false) BorderLayout/EAST))
       :confirm (let [d (:target selected) serial (JTextField.) erase (JTextField.)
@@ -138,6 +142,7 @@
     (.setContentPane @window root) (.revalidate @window) (.repaint @window)))
 (defn -main [& _]
   (UIManager/setLookAndFeel (UIManager/getCrossPlatformLookAndFeelClassName))
+  (UIManager/put "Button.disabledText" (color :muted))
   (SwingUtilities/invokeLater
     (fn []
       (reset! window (doto (JFrame. "Awai Otehon — インストール") (.setDefaultCloseOperation JFrame/DO_NOTHING_ON_CLOSE) (.setUndecorated true) (.setSize 1280 800)))

@@ -91,7 +91,7 @@ def main():
                     raise AssertionError("scratch disk changed before graphical approval")
             visual.verify_graphical_install(command, serial_path, qmp_path, out, proof["checks"], untouched, written)
             if a.installed_boot:
-                visual.verify_installed(out, sockets, a.ovmf_code, vars_file, proof["checks"], a.target_bus)
+                visual.verify_installed(out, sockets, a.ovmf_code, vars_file, proof["checks"], a.target_bus, graphical_state=True)
             proof["passed"] = True
         else:
             with (out / "qemu.log").open("wb") as log:

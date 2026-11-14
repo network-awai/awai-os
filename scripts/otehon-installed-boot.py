@@ -19,7 +19,8 @@ def read_screen(ppm, png):
     crop = subprocess.check_output(["pamcut", f"-left={width // 4}", f"-top={height // 2}",
                                     f"-width={width // 2}", f"-height={max(1,height // 5)}", str(ppm)])
     region = subprocess.check_output(["tesseract", "stdin", "stdout", "--psm", "6"], input=crop, stderr=subprocess.DEVNULL).decode()
-    return text + "\n--- central control region ---\n" + region
+    sparse = subprocess.check_output(["tesseract", str(ppm), "stdout", "--psm", "11", "-l", os.environ.get("OTEHON_OCR_LANG", "eng")], text=True, stderr=subprocess.DEVNULL)
+    return text + "\n--- central control region ---\n" + region + "\n--- sparse controls ---\n" + sparse
 
 
 class VisualGuest:
@@ -77,13 +78,15 @@ class VisualGuest:
         image.unlink()
         return " ".join(text.lower().split())
 
-    def expect(self, strings, label, timeout=300):
+    def expect(self, strings, label, timeout=300, fatal=()):
         end = time.monotonic() + timeout
         last = ""
         while time.monotonic() < end:
             if self.process.poll() is not None:
                 raise RuntimeError(f"installed QEMU exited while waiting for {label}")
             last = self.capture()
+            if any("".join(s.lower().split()) in "".join(last.split()) for s in fatal):
+                raise RuntimeError(f"visible failure during {label}: {last[-3000:]}")
             if all("".join(s.lower().split()) in "".join(last.split()) for s in strings):
                 print("INSTALLED_VM " + label, flush=True)
                 # Keep each successful transition, rather than only the last screen.
@@ -129,7 +132,7 @@ class VisualGuest:
         self.log.close()
 
 
-def verify_installed(out, sockets, code, variables, checks, target_bus="virtio"):
+def verify_installed(out, sockets, code, variables, checks, target_bus="virtio", graphical_state=False):
     # Only the disk just installed by the test is attached. No USB, decoy or host disk.
     fixture = "otehon-vm-fixture-passphrase"
     def boot(phase):
@@ -144,7 +147,7 @@ def verify_installed(out, sockets, code, variables, checks, target_bus="virtio")
         return VisualGuest(command, serial, qmp, out, phase)
     guest = boot("first-boot")
     try:
-        guest.expect(["choose a passphrase"], "choose-passphrase")
+        guest.expect((["Awai", "データを保護"] if graphical_state else []) + ["choose a passphrase"], "choose-passphrase")
         checks.append("installed target boots UEFI without installer attached")
         guest.type_fixture(fixture)
         guest.expect(["enter the passphrase again"], "confirm-passphrase")
@@ -157,7 +160,7 @@ def verify_installed(out, sockets, code, variables, checks, target_bus="virtio")
         guest.close()
     guest = boot("second-boot")
     try:
-        guest.expect(["passphrase for this pc"], "unlock-state")
+        guest.expect((["Awai", "データを保護"] if graphical_state else []) + ["passphrase for this pc"], "unlock-state")
         guest.type_fixture(fixture)
         guest.expect(["hello", "get started"], "desktop", timeout=600)
         checks.append("cold QEMU restart unlocks existing encrypted state and returns to desktop")
@@ -185,7 +188,7 @@ def verify_graphical_install(command, serial, qmp, out, checks, untouched, writt
     def click_text(needle):
         guest.capture()
         png=out/'installer-screen.png'
-        tsv=subprocess.check_output(['tesseract',str(png),'stdout','-l','eng+jpn','tsv'],stderr=subprocess.DEVNULL,text=True)
+        tsv=subprocess.check_output(['tesseract',str(png),'stdout','-l','eng+jpn','--psm','11','tsv'],stderr=subprocess.DEVNULL,text=True)
         import csv,io
         rows=list(csv.DictReader(io.StringIO(tsv),delimiter='\t'))
         found=[r for r in rows if needle in (r.get('text') or '')]
@@ -197,22 +200,22 @@ def verify_graphical_install(command, serial, qmp, out, checks, untouched, writt
         guest.expect(['Awai','インストール'], 'welcome', timeout=420)
         untouched();checks.append('graphical installer boots offline without target writes')
         footer()
-        guest.expect(['TARGET','DECOY','SMALL'], 'disk-selection')
+        guest.expect(['TARGET','DECOY','SMALL'], 'disk-selection', timeout=60)
         # The source and undersized disk are visibly unavailable; clicking either
         # must not enter the destructive confirmation page or write anything.
         click_text('SMALL');untouched()
-        guest.expect(['TARGET','DECOY','SMALL'], 'undersize-disabled')
+        guest.expect(['TARGET','DECOY','SMALL'], 'undersize-disabled', timeout=60)
         click_text('MEDIUM');untouched()
-        guest.expect(['TARGET','DECOY','SMALL'], 'source-disabled')
+        guest.expect(['TARGET','DECOY','SMALL'], 'source-disabled', timeout=60)
         click_text('TARGET')
-        guest.expect(['ERASE','TARGET'], 'overwrite-confirmation')
+        guest.expect(['ERASE','TARGET'], 'overwrite-confirmation', timeout=60)
         type_text('WRONG-SERIAL');key('tab');type_text('ERASE');footer();untouched()
-        guest.expect(['ERASE','TARGET'], 'mismatch-disabled')
+        guest.expect(['ERASE','TARGET'], 'mismatch-disabled', timeout=60)
         key('shift-tab');key('ctrl-a');type_text('OTEHON-USB-TARGET')
         guest.capture()
         # Selection and exact typed approval occur through the displayed UI.
         footer()
-        guest.expect(['照合','NVMe'], 'verified-complete',timeout=2100)
+        guest.expect(['照合','NVMe'], 'verified-complete',timeout=2100, fatal=['完了できませんでした','書込み前の確認に失敗','approval-stale','approval-expired','target-changed','target-in-use'])
         # A readback page also contains those words; require the actual completion
         # title and power-off control before accepting the write.
         guest.expect(['完了','電源を切る'], 'poweroff-ready',timeout=2100)
