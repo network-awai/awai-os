@@ -1,0 +1,63 @@
+{
+  "schema": "awai.otehon.usb-vm.v1",
+  "isoSha256": "ef3dc7bf14a9d179a3a973dc3cabb8a72937cecda621515a04d00119455da909",
+  "isoBytes": 8492892160,
+  "rawSha256": "09667b124d32040bc087bfdd50888dff111af5c233f1a057102ce9e169d8cc4c",
+  "rawBytes": 27114078208,
+  "externalNetwork": false,
+  "physicalDisks": false,
+  "installerInterface": "graphical",
+  "mediaBytes": 61949214720,
+  "targetBus": "nvme",
+  "checks": [
+    "graphical installer boots offline without target writes",
+    "mouse selection and exact keyboard approval install scratch NVMe; full readback completes; decoys unchanged",
+    "verified completion screen powers off via displayed control",
+    "installed target boots UEFI without installer attached",
+    "first boot provisions encrypted state and displays actual desktop onboarding",
+    "cold QEMU restart unlocks existing encrypted state and returns to desktop"
+  ],
+  "passed": true,
+  "buildBranchRevision": "dbe50c5bd98b1df2411f1c347a7eb6f8de38c88e",
+  "buildCheckoutRevision": "29d7ea713cf7041aeb0459e9adf5508be45320af",
+  "buildTree": "94022e65ac7db76af7fdd60701e0eb467e18e816",
+  "verifierRevision": "9bc23ece1565826604936a73029b7cefd673b18b",
+  "fixture": "graphical-candidate",
+  "artifact": 14106689505,
+  "date": "2026-11-14",
+  "issue": "AWAI-450",
+  "run": "https://github.com/network-awai/awai-os/actions/runs/43580536450",
+  "qualifiedIsoArtifact": 14107864921,
+  "isoZipSha256": "9f6fbe0188960c07b2838a372c80a9da68f0d95d7d14fbf071234d1f6c256578",
+  "proofArtifact": 14108013972,
+  "proofZipSha256": "ed1b4a8696120c32de4677eb0be242324fb7f6acf4a6b03720109faebf47ba52",
+  "physicalPcBootVerified": false,
+  "nativeQualified": false,
+  "productionUpdateEnrolled": false,
+  "screenshots": [
+    {
+      "path": "docs/evidence/otehon-installer-gui-20261114/installer-disk-selection.png",
+      "sha256": "77b225295ede2647b22408136ae55336ca612dc426efc759cd1d5286d55a9305"
+    },
+    {
+      "path": "docs/evidence/otehon-installer-gui-20261114/installer-overwrite-confirmation.png",
+      "sha256": "b9433b580b40d089ad26b6e06769b26c89aa73c0763005bd880f22c628902679"
+    },
+    {
+      "path": "docs/evidence/otehon-installer-gui-20261114/installer-poweroff-ready.png",
+      "sha256": "7d83da69bfc0142f9bd5c7a426ac5e3ce281f306b15f8110e54d9bfb06963f43"
+    },
+    {
+      "path": "docs/evidence/otehon-installer-gui-20261114/first-boot-choose-passphrase.png",
+      "sha256": "65c878abcf42f214ac023ba26617c2633cf819c73f28fdb53e85c984df0cbeac"
+    },
+    {
+      "path": "docs/evidence/otehon-installer-gui-20261114/second-boot-unlock-state.png",
+      "sha256": "ab96f0ac23fa05b7c1e0e43e9dfd054a44d0a17c61aa2be293a14c51ab971930"
+    },
+    {
+      "path": "docs/evidence/otehon-installer-gui-20261114/second-boot-desktop.png",
+      "sha256": "24ccd0fc866a8e0df864be7c289901bd0171b60500a7ffebadccc17889138149"
+    }
+  ]
+}

@@ -5,21 +5,24 @@
 / [First boot and support gallery](https://www.figma.com/design/EFljF3PXOrrVNM2v9Wdis1?node-id=7-1008)
 
 AWAI-450. Owner requested a clearer install/overwrite procedure and a redesign
-of the initial NixOS installer through the Awai install process. The deliverable
-is a design proposal, a concrete [current-CLI Japanese guide](install-guide-ja.md),
-and this implementation handoff. It does not replace the current USB image.
+of the initial NixOS installer through the Awai install process. The initial design is now implemented for USB installation and encrypted-state
+setup/unlock. The [Japanese guide](install-guide-ja.md) describes the delivered
+controls. See [exact-image VM evidence](../evidence/otehon-installer-gui-vm-20261114.json)
+and [physical USB evidence](../evidence/otehon-usb-gui-media-20261114.json).
+Account/network onboarding retains the existing app composition; physical PC
+acceptance remains open.
 
 ## Flow and screen ownership
 
 | Figma screens | Purpose | Current implementation owner |
 | --- | --- | --- |
 | 00–01 | USB entry and preparation; boot environment always visible | `usb-install-6600h.nix`, `common.nix`, `hardware-6600h.nix` |
-| 02–03 | Explicit target selection; source USB unavailable as target | `install-disk.sh` disk enumeration and in-use checks |
-| 04–05 | Whole-disk overwrite review; exact serial + ERASE | `install-disk.sh` serial and approval checks |
-| 06–08 | Image verification, OS write and full readback as separate stages | `install-disk.sh` install_to |
-| 09, 14 | Verified completion; remove USB and boot installed NVMe | Existing `INSTALLED` / `REBOOT`; proposed poweroff guidance needs implementation |
-| 10–13 | Pre-write failure, partial-write failure, diagnosis, safe pre-write cancel | Current failure strings; structured status/cancel boundaries need implementation |
-| 15–16 | Initial encrypted-state setup and subsequent unlock | `disk-6600h.nix` / `otehon-state` |
+| 02–03 | Explicit target selection; source USB unavailable as target | `installer-broker.py` inventory and admission; fixed text fallback remains |
+| 04–05 | Whole-disk overwrite review; exact serial + ERASE | `installer-broker.py` single-use identity-bound ticket; native Swing review |
+| 06–08 | Image verification, OS write and full readback as separate stages | `installer-broker.py` source check, exclusive block FD, full raw readback |
+| 09, 14 | Verified completion; remove USB and boot installed NVMe | Verified GUI completion + fixed poweroff; text fallback retains `INSTALLED` / `REBOOT` |
+| 10–13 | Pre-write failure, partial-write failure, diagnosis, safe pre-write cancel | Typed broker status; pre-write cancel; partial-write error classification |
+| 15–16 | Initial encrypted-state setup and subsequent unlock | `first-boot-ui.nix` / `first-boot.script`; existing `otehon-state` encryption |
 | 17–18, 21–22 | Awai welcome, language, network and identity handoff | Existing shell setup/network/identity UI; new composition proposed |
 | 19–20 | Current text-console instructions and boot-report explanation | Japanese guide and current CLI |
 
@@ -69,7 +72,14 @@ performs approval or disk operations.
 
 ## Required implementation and acceptance work
 
-The design is ready for review; these remain runtime work:
+The following were the original implementation gates. The exact-image graphical
+VM gate now passes installation, target refusal/mismatch, full readback, poweroff,
+USB-detached first boot, encrypted-state initialization, and cold restart/unlock.
+Broker and transport tests cover additional bounded failure cases. Physical
+Ryzen/display/storage, physical power loss, complete keyboard-only accessibility,
+and owner recovery remain separate and are not claimed by this result.
+The list is retained as acceptance scope, not a claim that every hardware failure
+was injected in the VM:
 
 - Build the initial USB graphical/text entry and ensure the physical display
   (`tty1`) works without requiring the VM's serial console (`ttyS0`). Keep a usable
