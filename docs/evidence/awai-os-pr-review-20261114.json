@@ -36,7 +36,7 @@
       "headRefOid": "cdb781fb88ee3c41683a2eb4d685c952eeb64c8e",
       "baseRefName": "codex/awai-532-forest-prolly",
       "isDraft": true,
-      "reviewState": "pending"
+      "reviewState": "another-session-fsync-fix-in-progress-do-not-mutate"
     },
     {
       "number": 123,
@@ -44,9 +44,9 @@
       "url": "https://github.com/network-awai/awai-os/pull/123",
       "headRefName": "codex/awai-532-forest-prolly",
       "headRefOid": "3a83e448a4d1565f3d365bfbfb6694cc91e9e8ef",
-      "baseRefName": "codex/awai-532-gib-stream",
+      "baseRefName": "main",
       "isDraft": true,
-      "reviewState": "pending"
+      "reviewState": "review-in-progress"
     },
     {
       "number": 122,
@@ -54,9 +54,10 @@
       "url": "https://github.com/network-awai/awai-os/pull/122",
       "headRefName": "codex/awai-532-v2-guest-reboot",
       "headRefOid": "0ce69258574eaa80ef2c3e384133ac76b16661a7",
-      "baseRefName": "codex/awai-532-gib-stream",
-      "isDraft": true,
-      "reviewState": "pending"
+      "baseRefName": "main",
+      "isDraft": false,
+      "reviewState": "reviewed-and-merged",
+      "mergeCommit": "d6414efb34054781f397c713518d23d3b374e25a"
     },
     {
       "number": 121,
@@ -65,8 +66,9 @@
       "headRefName": "codex/awai-532-gib-stream",
       "headRefOid": "52ee03da7d46cc2c803dc147b4b28a36ae823266",
       "baseRefName": "main",
-      "isDraft": true,
-      "reviewState": "pending"
+      "isDraft": false,
+      "reviewState": "reviewed-and-merged",
+      "mergeCommit": "e64ede8fe52140c7efb741b9a2e00240b9c420cf"
     },
     {
       "number": 119,
@@ -83,10 +85,10 @@
       "title": "AWAI-450 add graphical USB installer and verified NVMe first boot",
       "url": "https://github.com/network-awai/awai-os/pull/118",
       "headRefName": "codex/awai-450-otehon-usb-20261113",
-      "headRefOid": "300a8dcb33364ee21984fdbd45dda909734ca30b",
-      "baseRefName": "codex/awai-164-network-update",
+      "headRefOid": "5d01451c06282df82d4ee6a74bcfecfcdb6e8d45",
+      "baseRefName": "main",
       "isDraft": true,
-      "reviewState": "installer-fix-pushed-awaiting-ci",
+      "reviewState": "firmware-registration-failure-diagnostic-fix-ci-pending",
       "reviewedFixHead": "c242f68",
       "finding": "Real PC did not show custom GUI;0.7.1 adds VT1 fallback/version/UEFI registration and same-image no-GUI VM gate."
     },
@@ -155,10 +157,11 @@
       "title": "AWAI-681: qualify mobile ports and research moto g05 LineageOS installation",
       "url": "https://github.com/network-awai/awai-os/pull/98",
       "headRefName": "codex/awai-681-mobile-plan",
-      "headRefOid": "5f74c0b539b75f06a6e87185c0703da65b8d5a55",
+      "headRefOid": "e9fe04477c9c5da3f77bc55dee1bc067047f80b4",
       "baseRefName": "main",
       "isDraft": false,
-      "reviewState": "pending"
+      "reviewState": "reviewed-and-merged",
+      "mergeCommit": "b1f87847189d566ed2f21cc8813aa4b2a7ab2139"
     },
     {
       "number": 96,
@@ -232,7 +235,7 @@
     },
     {
       "number": 64,
-      "title": "JUN-318: Tsunagu \u2014 Tailscale and Kekkai SSH inside the Awai OS VM",
+      "title": "JUN-318: Tsunagu — Tailscale and Kekkai SSH inside the Awai OS VM",
       "url": "https://github.com/network-awai/awai-os/pull/64",
       "headRefName": "claude/jun318-vm-connect",
       "headRefOid": "57003a39701ea920cd9e1c46520b9e08e1bc601f",
