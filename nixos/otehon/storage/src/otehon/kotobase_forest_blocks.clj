@@ -297,6 +297,33 @@
           (throw e))
         (finally (reset! active false))))))
 
+(defn receipt-publication-adapter
+  "Create explicit publication callbacks for a canonical receipt sink.
+
+  BUILD! receives provisional ports, receipt and prepared transaction and
+  returns the candidate commit CID. VERIFY! receives persisted get-block,
+  that CID, receipt and prepared transaction; it must check all semantics the
+  host requires before ref publication. The adapter returns a commit CID only
+  after successful local CAS; :read-ref! reads the same ref independently.
+  The host owns the codec, closure verification, ref scope, writer exclusivity
+  and trust inputs. Nonce, concurrent GC and distributed fencing are outside
+  this transaction. BUILD! is synchronous and must not leak provisional data."
+  [backend ref-name expected build! verify!]
+  (contract/validate-backend! backend)
+  (when-not (and (string? ref-name) (seq ref-name) (fn? build!) (fn? verify!))
+    (fail! :invalid-receipt-publication "invalid publication adapter options"))
+  (when (some? expected) (validate-cids! [expected]))
+  {:publish! (fn [{:keys [receipt prepared] :as input}]
+               (when-not (and (map? input) (= #{:receipt :prepared} (set (keys input)))
+                              (map? receipt) (map? prepared))
+                 (fail! :invalid-receipt-publication "invalid prepared receipt input"))
+               (publish-ports! backend ref-name expected
+                 (fn [ports]
+                   (let [cid (build! ports receipt prepared)]
+                     {:target cid :value cid}))
+                 (fn [get-block cid] (verify! get-block cid receipt prepared))))
+   :read-ref! (fn [] (:cid (contract/-read-ref backend ref-name)))})
+
 (defn publish-scoped!
   "Run a synchronous, trusted builder with a private volatile backend.
 

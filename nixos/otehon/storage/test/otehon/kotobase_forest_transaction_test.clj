@@ -145,3 +145,30 @@
       (is (thrown? Exception (forest/publish-ports! (fake-backend s false) "db" nil
                                 (fn [ports] (build ports) (throw (ex-info "builder failed" {}))) (fn [_ _] true))))
       (is (= [0 0 nil] [(:puts @s) (:cas @s) (:ref @s)])))))
+
+(deftest receipt-adapter-binds-publication-and-ref-readback
+  (let [{:keys [cid bytes]} (pair "receipt-adapter")
+        receipt {:receipt :value} prepared {:transaction :value}
+        input {:receipt receipt :prepared prepared}
+        build (fn [ports r p]
+                (is (= [receipt prepared] [r p]))
+                ((:put! ports) cid bytes))
+        verify (fn [get-block target r p]
+                 (and (= [cid receipt prepared] [target r p])
+                      (= (vec bytes) (vec (get-block target)))))]
+    (let [s (state) adapter (forest/receipt-publication-adapter (fake-backend s false) "receipt" nil build verify)]
+      (is (nil? ((:read-ref! adapter))))
+      (is (= cid ((:publish! adapter) input)))
+      (is (= cid ((:read-ref! adapter))))
+      (is (= [1 1 cid] [(:puts @s) (:cas @s) (:ref @s)])))
+    (let [s (state) adapter (forest/receipt-publication-adapter (fake-backend s false) "receipt" nil build (fn [& _] false))]
+      (is (= :closure-rejected (try ((:publish! adapter) input) nil (catch Exception e (:type (ex-data e))))))
+      (is (= [1 0 nil] [(:puts @s) (:cas @s) (:ref @s)])))
+    (let [s (state) other (:cid (pair "other"))]
+      (swap! s assoc :ref other)
+      (let [adapter (forest/receipt-publication-adapter (fake-backend s false) "receipt" nil build verify)]
+        (is (= :stale-ref (try ((:publish! adapter) input) nil (catch Exception e (:type (ex-data e))))))
+        (is (= other ((:read-ref! adapter))))))
+    (let [s (state) adapter (forest/receipt-publication-adapter (fake-backend s false) "receipt" nil build verify)]
+      (is (thrown? Exception ((:publish! adapter) {:receipt receipt})))
+      (is (= [0 0] [(:puts @s) (:cas @s)])))))
