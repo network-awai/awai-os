@@ -48,3 +48,16 @@
              (try (cli/-main "logical-forest-import" "store" "file" "missing" "cid" "pack") nil
                   (catch Exception e (:type (ex-data e))))))
       (is (false? @called)))))
+
+(deftest degraded-root-never-exports-older-file
+  (.mkdirs (java.io.File. *output*))
+  (let [dir (Files/createTempDirectory (Paths/get *output* (make-array String 0)) "degraded-export-" (make-array FileAttribute 0))
+        store (str dir "/store") output (str dir "/export")]
+    (storage/init! store)
+    (pack/put-data! store "file" (.getBytes "old" "UTF-8"))
+    (pack/put-data! store "file" (.getBytes "new" "UTF-8"))
+    (spit (str store "/root-1.edn") "broken root")
+    (is (= :degraded-store
+           (try (cli/-main "pack-get" store "file" output) nil
+                (catch Exception e (:type (ex-data e))))))
+    (is (not (.exists (java.io.File. output))))))

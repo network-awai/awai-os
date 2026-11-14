@@ -69,6 +69,7 @@
   [directory name]
   (let [{:keys [state root degraded?]} (store/read-store directory)
         value (get state (key-for name))]
+    (when degraded? (fail! :degraded-store "invalid root slot requires review before reads"))
     (when-not value (fail! :ipld-forest-not-found "archive is not published"))
     (let [ref (parse-ref value) bytes (store/read-forest directory (:archive-sha ref))]
       (when-not (= (:archive-size ref) (alength ^bytes bytes))
@@ -155,6 +156,7 @@
   [directory name]
   (let [{:keys [state root degraded?]} (store/read-store directory)
         text (get state (group-key name))]
+    (when degraded? (fail! :degraded-store "invalid root slot requires review before reads"))
     (when-not text (fail! :ipld-forest-not-found "archive group is not published"))
     (let [group (parse-group text)
           opened (mapv (fn [ref]

@@ -83,6 +83,19 @@
     (mapv (fn [i root-cid] {:root-cid root-cid
                             :bytes (Files/readAllBytes (Paths/get (str base "/" i ".forest") (make-array String 0)))})
           (range 2) split-roots)))
+
+(deftest damaged-root-must-not-open-older-forest-catalog
+  (let [dir (new-store) parts (split-inputs)]
+    (catalog/publish! dir "prolly" root (bytes))
+    (catalog/publish-group! dir "graph" policy-root parts)
+    (catalog/publish-group! dir "graph" policy-root parts)
+    (is (bytes? (catalog/get-block (catalog/recover dir "prolly") root)))
+    (is (= policy-root (get-in (catalog/recover-group dir "graph") [:group :basis-cid])))
+    (is (= 4 (get-in (store/read-store dir) [:root :generation])))
+    (spit (str dir "/root-0.edn") "broken root")
+    (is (true? (:degraded? (store/read-store dir))))
+    (is (= :degraded-store (error-type #(catalog/recover dir "prolly"))))
+    (is (= :degraded-store (error-type #(catalog/recover-group dir "graph"))))))
 (deftest multiple-archives-publish-as-one-group
   (let [dir (new-store) parts (split-inputs)
         blocks (mapcat #(-> % :bytes forest/open :carv1 car/carv1-decode :blocks) parts)

@@ -251,6 +251,7 @@
   The handle retains this snapshot basis; it is not a mutable-head authority."
   [directory]
   (let [{:keys [state root degraded?]} (store/read-store directory)]
+    (when degraded? (fail! :degraded-store "invalid root slot requires review before reads"))
     (assoc (recover-map directory state) :basis root :degraded? degraded?)))
 
 (defn summary [handle]

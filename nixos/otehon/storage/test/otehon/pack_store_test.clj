@@ -21,6 +21,16 @@
 (defn- bytes-of [n]
   (byte-array (map #(unchecked-byte (mod (+ (* % 19) (quot % 8191)) 256)) (range n))))
 
+(deftest damaged-newest-root-must-not-serve-the-previous-pack
+  (let [d (new-store) old (.getBytes "old" "UTF-8") new (.getBytes "new" "UTF-8")]
+    (pack/put-data! d "file" old)
+    (pack/put-data! d "file" new)
+    (is (= (seq new) (seq (pack/read-data (pack/recover d) "file"))))
+    (is (= 3 (get-in (store/read-store d) [:root :generation])))
+    (spit (str d "/root-1.edn") "broken root")
+    (is (true? (:degraded? (store/read-store d))))
+    (is (= :degraded-store (error-type #(pack/recover d))))))
+
 (deftest recovered-index-does-not-retain-car-via-cid-slices
   (let [d (new-store) original (bytes-of (+ pack/leaf-size 11))]
     (pack/put-data! d "file" original)
