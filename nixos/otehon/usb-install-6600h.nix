@@ -31,6 +31,8 @@ in {
   services.openssh.enable = false;
   systemd.services."getty@tty1".enable = false;
   systemd.services."autovt@tty1".enable = false;
+  systemd.services."getty@tty2".enable = false;
+  systemd.services."autovt@tty2".enable = false;
   systemd.services."serial-getty@ttyS0".enable = false;
   systemd.services."otehon-install@" = {
     description = "Offline Awai Otehon installer on %I";
@@ -51,7 +53,7 @@ in {
     group = "otehon-installer";
     hashedPassword = "!";
   };
-  fonts.packages = [ pkgs.noto-fonts-cjk-sans ];
+  fonts.packages = [ (pkgs.noto-fonts-cjk-sans.override { static = true; }) ];
   services.xserver.enable = true;
   services.xserver.displayManager.lightdm.enable = true;
   services.displayManager.autoLogin = { enable = true; user = "otehon-installer"; };
@@ -79,9 +81,9 @@ in {
       NoNewPrivileges = true;
     };
   };
-  # A serial operator can still use the original bounded text flow. tty2 is
-  # available via the explicit fallback action, without a root login shell.
-  systemd.targets.multi-user.wants = [ "otehon-install@ttyS0.service" ];
+  # tty2 remains available with Ctrl+Alt+F2 even if graphics fails; neither
+  # the local text screen nor serial operator receives a root login shell.
+  systemd.targets.multi-user.wants = [ "otehon-install@tty2.service" "otehon-install@ttyS0.service" ];
   system.build.image = lib.mkForce config.system.build.isoImage;
   system.build.otehonUsbDigests = digests;
 }

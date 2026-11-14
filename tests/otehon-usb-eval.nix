@@ -11,6 +11,8 @@ assert c.isoImage.makeEfiBootable && c.isoImage.makeUsbBootable;
 assert !c.services.openssh.enable;
 assert c.systemd.services."otehon-install@".environment.IMAGE_URL == "file:///iso/otehon/image.raw.zst";
 assert !c.systemd.services."getty@tty1".enable;
+assert !c.systemd.services."getty@tty2".enable;
+assert builtins.elem "otehon-install@tty2.service" c.systemd.targets.multi-user.wants;
 assert c.services.xserver.enable;
 assert !c.systemd.services.otehon-boot-report.enable;
 assert c.users.users.otehon-installer.isNormalUser;
