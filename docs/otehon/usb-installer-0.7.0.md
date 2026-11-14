@@ -1,5 +1,7 @@
 # Offline USB installer for Ryzen 5 6600H
 
+[日本語の操作手順](install-guide-ja.md) · [次版 UI/UX の Figma 設計](installer-ux-figma-20261114.md)
+
 AWAI-450 / AWAI-169. This is the Otehon edition, separate from the Native
 Murakumo live preview. It carries the current desktop as a compressed disk
 payload and boots a text installer. The installer does not start that desktop
