@@ -1,0 +1,22 @@
+{
+  "schema": "awai.otehon.installer-gui-check.v1",
+  "date": "2026-11-14",
+  "issue": "AWAI-450",
+  "source": "fb13ade642e1bac04c519f23c22a0d8c6978636c",
+  "run": "https://github.com/network-awai/awai-os/actions/runs/43569811434",
+  "build": "passed",
+  "vm": "failed-before-install",
+  "checksPassed": [
+    "Nix-pinned client transport 4 tests / 5 assertions",
+    "graphical welcome without target writes"
+  ],
+  "failure": "Full-page OCR omitted disk button text. Actual screenshot displayed all four disks. Installation was never approved.",
+  "correction": "Readable pale disk cards with dark text, font antialiasing, sparse-control OCR; final same-artifact VM gate still pending.",
+  "isoSha256": "a0a07bce9a0a11c36fbc0a977e59b8290253c676f2802ec1eb5e8bc27b20086f",
+  "isoBytes": 8494514176,
+  "proofArtifact": 14104009543,
+  "isoArtifact": 14103773240,
+  "isoQualified": false,
+  "physicalUsbUpdated": false,
+  "nativeQualified": false
+}

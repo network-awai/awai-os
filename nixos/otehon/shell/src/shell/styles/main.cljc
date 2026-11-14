@@ -44,7 +44,11 @@
    [".shell.with-panel" {:grid-template-columns "248px minmax(0, 1fr) 320px"}]
    [:.sidebar {:display "flex" :flex-direction "column" :min-height 0
                 :padding "16px 10px 12px" :background "var(--surface)"}]
-   [:.brand {:padding "0 8px 12px" :font-size "17px" :font-weight 600}]
+   [:.brand {:display "flex" :align-items "center" :gap "10px"
+             :padding "0 8px 12px" :font-size "17px" :font-weight 600}]
+   [:.brand-logo {:display "block" :flex "none" :width "40px" :height "40px" :border-radius "9px"}]
+   [:.setup-logo {:display "block" :width "96px" :height "96px"
+                  :margin "0 auto 24px" :border-radius "20px"}]
    [:.new-chat {:width "100%" :padding "9px 10px" :border-radius "8px"
                  :background "var(--surface-raised)" :font-size "14px" :text-align "left"}]
    [".new-chat:hover, .dapp:hover" {:background "var(--surface-hover)"}]

@@ -11,20 +11,25 @@ import { clientRuntimeConnectSrc } from "./vendor/kotoba-client-runtime.js";
 
 // The ClojureScript build reads the broker runtime from inside src/.
 await copyFile("vendor/kotoba-client-runtime.js", "src/vendor-runtime.gen.js");
-import { osOperations, phoneOperations, runtimeDescriptor } from "./src/runtime.js";
-import { scriptSrc, styleSrc } from "./src/csp.js";
+const { osOperations, phoneOperations, runtimeDescriptor } = await import("./src/runtime.js");
+import { scriptSrc, styleSrc, imageSrc } from "./src/csp.js";
+import { buildDougaka } from "./dougaka-bundle.mjs";
 
 const relayOrigin = process.env.RELAY_ORIGIN ?? "https://relay.awai.network";
-// OTEHON_HTTP=1 builds the shell for the loopback preview server instead of
-// the file:// kiosk. The http output must never ship in the OS image: its
-// script/style sources allow 'self' so the page runs over http.
+// OTEHON_HTTP=1 builds for the stable loopback OS origin and HTTP preview.
+// File-mode remains only for legacy images; profile migration is a separate gate.
 const cspMode = process.env.OTEHON_HTTP === "1" ? "http" : "file";
 
 const mvnRepo = process.env.MVN_REPO;
+// The Nix image build pins a read-only store path; Maven writes lock files
+// next to cached artifacts, so resolve a writable copy once. A writable
+// input (local ~/.m2 builds) is returned as-is.
+import { resolveWritableRepo } from "./mvn-repo.mjs";
+const activeMvnRepo = mvnRepo ? resolveWritableRepo(mvnRepo) : undefined;
 const clojure = (args) => execFileSync("clojure", [
   // The Nix image build pins an offline Maven repo (desktop.nix) because its
   // sandbox has no network. Local builds omit MVN_REPO and use ~/.m2.
-  ...(mvnRepo ? ["-Sdeps", `{:mvn/local-repo "${mvnRepo}"}`] : []),
+  ...(activeMvnRepo ? ["-Sdeps", `{:mvn/local-repo "${activeMvnRepo}"}`] : []),
   "-M", ...args,
 ], { stdio: "inherit" });
 
@@ -39,6 +44,7 @@ await copyFile("fs-reliability/index.html", "dist/fs-reliability/index.html");
 async function page({ html, outdir, operations, appOrigins }) {
   await mkdir(`${outdir}/assets`, { recursive: true });
   await copyFile("vendor/kotoba-client-consent.css", `${outdir}/assets/consent.css`);
+  await copyFile("assets/awai-logo.png", `${outdir}/assets/awai-logo.png`);
   const capabilities = [...new Set(operations.map((operation) => operation.capability))];
   const connect = clientRuntimeConnectSrc(runtimeDescriptor("index.html", operations), capabilities, [], appOrigins);
   const template = await readFile(html, "utf8");
@@ -52,6 +58,7 @@ async function page({ html, outdir, operations, appOrigins }) {
       .replace("__CONNECT_SRC__", connect)
       .replace("__SCRIPT_SRC__", scriptSrc(cspMode))
       .replace("__STYLE_SRC__", styleSrc(cspMode))
+      .replace("__IMAGE_SRC__", imageSrc(cspMode))
       .replace("__DAPPS_JSON__", catalog)
       .replace("__RELAY_ORIGIN__", relayOrigin),
   );
@@ -69,6 +76,11 @@ await page({
   operations: phoneOperations(relayOrigin),
   appOrigins: ["https://awai.network"],
 });
+
+// Dougaka Studio: the vendored static bundle re-laid for file://
+// (bundled host, inlined scittle, file: CSP). The page carries its own
+// descriptor and per-operation consent; no shell broker changes.
+await buildDougaka({ vendorDir: "vendor-dougaka", outDir: "dist/dougaka" });
 
 if (process.env.OTEHON_E2E === "1") {
   await build({

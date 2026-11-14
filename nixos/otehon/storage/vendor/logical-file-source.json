@@ -1,0 +1,8 @@
+{
+  "repository": "https://github.com/kotoba-lang/kotoba",
+  "revision": "05fc7c5c62ca0e44fc9d7539fe9834ec9a6b0b14",
+  "path": "lib/kotoba.awaiFs/src/awai/fs/logical_file.kotoba",
+  "sha256": "c143d1efd820ecfa3d3a4ca62192cb0488462bf03ae4904f350935f4338da27a",
+  "profile": "logical-file v1 fixed chunks; bounded Otehon Forest Packs",
+  "qualification": "Otehon validation against shared Native corpus; not Native Forest I/O"
+}

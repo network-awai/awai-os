@@ -11,23 +11,26 @@ let
   # derivation below instead of ~/.m2; build.mjs points Clojure at it
   # through MVN_REPO.
   #
-  # UNTESTED 2026-11-11: the migration machine has no Nix toolchain, so the
-  # outputHash below and npmDepsHash are placeholders. Fill them where Nix
-  # runs: run the image build, copy each "got: sha256-…" from the hash
-  # mismatch error, and paste it over the matching TODO.
+  # Dependency hashes were measured in Nix CI on 2026-11-13. This only pins
+  # build inputs; image boot and desktop update qualification are separate.
   cljDeps = pkgs.stdenv.mkDerivation {
     name = "awai-otehon-shell-clj-deps";
     src = builtins.path { path = ./shell/deps.edn; };
+    # Single-file src with a recursive fixed output: skip the archive
+    # unpack or the build dies before the hash check (JUN-1180 V2).
+    dontUnpack = true;
     nativeBuildInputs = [ pkgs.clojure ];
     outputHashAlgo = "sha256";
     outputHashMode = "recursive";
-    outputHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # TODO: fill from the mismatch error
+    outputHash = "sha256-hOWfIhjkuhE5E3q+ZxelbQICQmFWi9uYg21ljRQeLbE=";
     buildPhase = ''
       runHook preBuild
       export HOME="$TMPDIR/home"
-      mkdir -p "$HOME" src vendor
+      mkdir -p "$HOME" src vendor "$out"
       cp "$src" ./deps.edn
-      clojure -Sdeps '{:mvn/local-repo "$out"}' -P
+      clojure -Sdeps "{:mvn/local-repo \"$out\"}" -P
+      # Resolver bookkeeping embeds fetch timestamps; keep only immutable artifacts.
+      find "$out" -type f \( -name _remote.repositories -o -name '*.lastUpdated' -o -name resolver-status.properties \) -delete
       runHook postBuild
     '';
     installPhase = "runHook preInstall; runHook postInstall;";
@@ -43,6 +46,7 @@ let
     nativeBuildInputs = [ pkgs.clojure ];
     env = {
       RELAY_ORIGIN = cfg.relayOrigin;
+      OTEHON_HTTP = "1";
       OTEHON_E2E = if cfg.e2e then "1" else "0";
       MVN_REPO = "${cljDeps}";
     };
@@ -52,9 +56,9 @@ let
       npm test
       runHook postCheck
     '';
-    # TODO: refresh for the current package-lock.json (react arrived with the
-    # Hiccup migration); run the image build and copy the "got: sha256-…".
-    npmDepsHash = "sha256-g9JFQRRKKjIgHCyLRvETNKwnmtl1TsJTTEYJUNuvIxY=";
+    # Refreshed 2026-11-13 where Nix runs (JUN-1180) for the current
+    # package-lock.json.
+    npmDepsHash = "sha256-gEHDRiPWlGGh0mjcJB54WSThDCzn7uMsmMHX6sjni7Q=";
     installPhase = ''
       runHook preInstall
       cp -r dist $out
@@ -74,7 +78,7 @@ let
       --remote-debugging-address=127.0.0.1 \
       --remote-debugging-port=9222 \
       ${lib.escapeShellArgs cfg.browserArgs} \
-      "file://${shell}/index.html"
+      "http://127.0.0.1:8780/"
   '';
 in
 {
@@ -83,7 +87,7 @@ in
   # is all this VM has. Zenoh and Matter listen on loopback only.
   # The user has no password and logs in automatically, so this image is for a
   # local VM only. It has no SSH or keys.
-  imports = [ ./common.nix ./media.nix ./manimani/manimani.nix ];
+  imports = [ ./common.nix ./media.nix ./manimani/manimani.nix ./update.nix ./update-network.nix ];
 
   options.otehon = {
     relayOrigin = lib.mkOption {
@@ -118,6 +122,26 @@ in
   };
 
   config = {
+  # A stable origin is required for IndexedDB/localStorage across Nix store generations.
+  # Only immutable static artifacts are served; no API/state/inference on this origin.
+  services.nginx.enable = true;
+  services.nginx.virtualHosts."otehon-desktop" = {
+    listen = [ { addr = "127.0.0.1"; port = 8780; } ];
+    root = toString shell;
+    locations."/".tryFiles = "$uri $uri/ =404";
+  };
+  otehon.update.healthCheck = pkgs.writeShellApplication {
+    name = "otehon-desktop-update-health";
+    runtimeInputs = [ pkgs.curl pkgs.jq pkgs.coreutils ];
+    text = ''
+      for _ in $(seq 1 60); do
+        if curl --fail --silent --max-time 2 http://127.0.0.1:9222/json/list | jq -e 'any(.[]; .type == "page" and .url == "http://127.0.0.1:8780/" and (.title | test("^Awai Otehon zenoh=[01] matter=[01] gate=[01] dapps=[0-9]+$")))' >/dev/null; then exit 0; fi
+        sleep 1
+      done
+      echo "desktop-readiness failed" >&2
+      exit 1
+    '';
+  };
   system.image.id = "awai-otehon-desktop";
   system.image.version = "0.7.0";
 
@@ -135,6 +159,8 @@ in
   systemd.services.otehon-headless-shell = lib.mkIf cfg.headless {
     description = "The shell in headless Chromium";
     wantedBy = [ "graphical.target" ];
+    after = [ "nginx.service" ];
+    requires = [ "nginx.service" ];
     serviceConfig = {
       User = user;
       ExecStart = browser;
@@ -150,6 +176,10 @@ in
       };
       default_session = initial_session;
     };
+  };
+  systemd.services.greetd = lib.mkIf (!cfg.headless) {
+    after = [ "nginx.service" ];
+    requires = [ "nginx.service" ];
   };
 
   services.zenohd = {
@@ -378,9 +408,13 @@ in
   image.repart.partitions = {
     esp.repartConfig.SizeMinBytes = "256M";
     root.repartConfig = {
-      SizeMinBytes = "12G";
-      SizeMaxBytes = "12G";
+      # 12G no longer fits the desktop closures (LLVM/mesa). The login
+      # profile measures 16.2G minimum; keep headroom for shell growth.
+      # Measured 2026-11-13 (JUN-1180).
+      SizeMinBytes = "20G";
+      SizeMaxBytes = "20G";
     };
   };
   };
 }
+# JUN-1180 V3 rebuild 20261113-200047

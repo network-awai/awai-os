@@ -9,5 +9,6 @@ in
 assert builtins.hashFile "sha256" wal == pin.sha256;
 assert builtins.hashFile "sha256" ./vendor/apex-car/src/awai/fs/car.cljc == carPin.sha256;
 pkgs.writeShellScriptBin "otehon-storage" ''
+  export OTEHON_ZSTD=${pkgs.zstd}/bin/zstd
   exec ${pkgs.babashka}/bin/bb --classpath ${./src}:${./vendor/apex/src}:${./vendor/apex-car/src} -m otehon.cli "$@"
 ''

@@ -8,6 +8,7 @@ on:
       - .github/workflows/sanka-vm-gate.yml
       - dapps/sanka/**
       - dapps/d1/**
+      - dapps/reward-loop/**
       - dapps/saifu/nix/basilisp.nix
       - nixos/tests/sanka-v1.nix
   workflow_dispatch:
@@ -49,6 +50,16 @@ jobs:
           nix-shell nix/shell.nix --run 'PYTHONPATH=src:test basilisp run test/run_cases.lpy'
       - name: Shared cases for D1 on Babashka and Basilisp
         working-directory: dapps/d1
+        env:
+          # Same as above: no bytecode beside the sources in the read-only store.
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          nix-shell nix/shell.nix --run 'bb --classpath src:test test/run_cases.clj'
+          nix-shell nix/shell.nix --run 'PYTHONPATH=src basilisp run test/run_cases.lpy'
+          nix-shell nix/shell.nix --run 'bb --classpath src:test test/reservation_test.clj'
+          nix-shell nix/shell.nix --run 'PYTHONPATH=src basilisp run test/reservation_run.lpy'
+      - name: Shared cases for reward-loop on Babashka and Basilisp
+        working-directory: dapps/reward-loop
         env:
           # Same as above: no bytecode beside the sources in the read-only store.
           PYTHONDONTWRITEBYTECODE: "1"

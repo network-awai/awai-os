@@ -16,15 +16,16 @@ Update it only from the reviewed owning source, with a new revision/digest and
 fresh verification. The adapter directly calls `awai.fs.wal/recover`.
 
 `vendor/car-source.json` separately pins `awai.fs.car` to owning main revision
-`df68aad6101d7bf9587ea48bc30946b834aa4ba2`, landed through
+`9c9a6b09e92ba1802449041311bdc804076654b7`, landed through
+[apex #204](https://github.com/network-awai/network-awai-apex/pull/204),
+which fixes DAG-CBOR 64-bit integer endianness. The original codec landed through
 [apex #181](https://github.com/network-awai/network-awai-apex/pull/181).
 [apex #180](https://github.com/network-awai/network-awai-apex/pull/180) fixed
 the missing DAG-CBOR CID link prefix on #147's branch; #181 extracted only the
 reviewed codec, tests, evidence and Otehon CI into main. The vendored module is
 byte-identical to that main source and hash-checked by Nix. #147's remaining
 runtime/remote/auth changes stay open and are not a consumer dependency.
-The earlier measurement pin and final landing have identical codec bytes;
-neither establishes production qualification.
+This updated codec pin does not establish production qualification.
 
 ## Pack/CAR publication and recovery
 
@@ -167,3 +168,79 @@ page cache remains live. They do not establish NixOS boot/VM behavior,
 power-loss/device durability, B2/remote restoration, independent-peer recovery,
 AEAD/key custody, native qualification, performance thresholds or production
 use. The optional package remains disabled in shipping profiles.
+
+## Opt-in verified ranges and segmented Zstd-3 (AWAI-531)
+
+The original `read-range`, `read-data`, `export-car`, recovery, writer preflight
+and checkpoint retain whole-representation digest checks. A new, explicitly
+named `read-range-verified-leaves` API uses positioned reads against a fully
+verified recovered snapshot. It rereads and checks the complete touched raw
+leaf bytes against their canonical CID digests, then returns the requested
+slice. It does **not** scrub unread leaves, framing or headers. Unread damage
+still refuses strict export/read/recovery/checkpoint. This scope distinction is
+intentional and covered by negative tests; no existing read API silently loses
+its whole-CAR corruption check. File type/size/short-read bounds are checked
+through one `NOFOLLOW_LINKS` file descriptor per range operation.
+
+`put-data-zstd3!` / `import-car-zstd3!` opt into a versioned *physical*
+representation over the exact canonical CAR bytes. The logical DAG, raw leaf
+CIDs, root CID, payload hash, CAR framing and interchange/export bytes stay
+unchanged. A compressed store contains no duplicate uncompressed CAR. This is
+not a new CARv2 dialect and does not change the owning vendored codec/pin.
+
+The physical `.zpack` file starts with eight-byte `AWZP003\n`, a four-byte
+big-endian directory length (at most32768), one strict EDN directory and its
+contiguous frames. Directory keys: `:format :awai.otehon-store/zstd3-v1`,
+`:car-size`, `:frames`. Each frame binds raw offset/size, stored offset/size,
+`:encoding` (`:zstd3` or explicit `:raw`), raw SHA-256 and stored SHA-256.
+The directory/extents must exactly close; no gaps, overlap, trailing bytes,
+unknown fields/tags, padding or external file references. Frame raw size is
+64KiB except the final frame; at most16 frames and1MiB total. Zstd-3 uses one
+thread; decode has an8MiB window-memory limit, bounded output and a five-second
+per-frame process deadline. Nix pins the Zstd executable via `OTEHON_ZSTD`;
+raw APIs never spawn it. No JVM/JNI/native language fallback is introduced.
+
+Individual frames stay raw if compression expands them. If the complete
+container including its directory is not smaller than the canonical CAR,
+publication chooses the existing raw-CAR format and returns that decision in
+`:compression`. A failed codec operation refuses instead of silently switching
+representations. The new catalog format `:awai.otehon-store/pack-zstd3-v1` binds
+canonical CAR/root/payload attributes plus `:stored-sha` and `:stored-size`.
+Raw and compressed files can coexist. The same metadata lock and durable
+force→rename→directory-sync→WAL/root order publish either representation.
+Orphans/partial files are preserved; no migration, compaction or GC occurs.
+
+Recovery verifies the whole stored-byte digest, validates/decompresses every
+frame, checks every frame digest/length, then runs the original canonical CAR
+validator, rebuilding its root-bound leaf index. Strict export reconstructs
+and rechecks exact CAR bytes. Efficient compressed ranges reread and check
+selected stored frames even on decoded-cache hits, and then check whole leaf
+CIDs. A snapshot-wide LRU retains at most four decoded frames (256KiB); it is
+not an admission/state cache. A cache-cold frame requires an external decoder
+process, so range CPU/latency tradeoffs must be measured separately from saved
+bytes. Fresh-process recovery does not rely on this cache.
+
+Selected independent Zstd frames missing from the cache are concatenated for
+one decoder invocation per read, with the sum of expected raw sizes as its
+output bound. Each frame's exact raw length and SHA-256 are checked again after
+splitting the result; stored frame checks are never skipped. Full recovery and
+strict export also batch decoding. This reduces process spawn cost without
+changing stored bytes, frame independence or integrity scope.
+
+CLI (existing store, new output paths only):
+
+```sh
+otehon-storage pack-put-zstd3 STORE NAME INPUT
+otehon-storage car-import-zstd3 STORE NAME INPUT.car
+otehon-storage pack-range-verified STORE NAME NEW_OUTPUT OFFSET LENGTH
+otehon-storage car-export STORE NAME NEW_OUTPUT.car
+```
+
+`pack-range-verified` still does full recovery first; keeping a verified handle
+for repeated reads is a library/service integration decision. Standalone CLI
+end-to-end latency includes that recovery and must not be compared to repeated
+handle reads. The Nix check covers old behavior, new negative range/codec cases,
+CLI export/range parity, and30 extra actual process-kill/fresh-process recovery
+boundaries for compressed payload/WAL/root/checkpoint publication. None of this
+qualifies Native, encrypted private storage, remote providers, distributed
+failure tolerance, the installed AwaiVol daemon, or a production cutover.

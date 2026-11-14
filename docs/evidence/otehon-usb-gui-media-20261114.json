@@ -1,0 +1,39 @@
+{
+  "schema": "awai.otehon.usb-media.v1",
+  "version": "0.7.0",
+  "architecture": "x86_64",
+  "sourceRevision": "dbe50c5bd98b1df2411f1c347a7eb6f8de38c88e",
+  "buildCheckoutRevision": "29d7ea713cf7041aeb0459e9adf5508be45320af",
+  "qualifiedCiRun": "https://github.com/network-awai/awai-os/actions/runs/43580536450",
+  "artifactId": 14107864921,
+  "writerSha256": "c9436228cd548bc7e3ba6ea5f81ace555509a71882b6be71d99daae4f1ede430",
+  "medium": {
+    "model": "KIOXIA TransMemory",
+    "serialSuffix": "5987CBC4",
+    "capacityBytes": 61949214720
+  },
+  "imageBytes": 8492892160,
+  "isoSha256": "ef3dc7bf14a9d179a3a973dc3cabb8a72937cecda621515a04d00119455da909",
+  "usbSha256": "ef3dc7bf14a9d179a3a973dc3cabb8a72937cecda621515a04d00119455da909",
+  "status": "verified-and-ejected",
+  "externalDiskAbsenceRechecked": true,
+  "requestResetToCheck": true,
+  "writerExitCode": 0,
+  "logSha256": "17dc4c93aba30890902ecb18423a852e4a366298b0f7dfb5b8ea43aa1bb65156",
+  "logWindow": {
+    "startedAt": "2026-11-14T10:16:28.573850+00:00",
+    "finalEventLogMtime": "2026-11-14T10:46:56.090661+00:00",
+    "approximateElapsedSeconds": 1827.517,
+    "source": "operator invocation start UTC and final verified/ejected log filesystem mtime; wall-clock approximation, not an isolated media benchmark",
+    "resultObservedAt": "2026-11-14T11:18:50.152982+00:00"
+  },
+  "boundaries": {
+    "physicalUsbWritten": true,
+    "vmGraphicalInstallAndColdRestartVerified": true,
+    "physicalPcBootVerified": false,
+    "physicalPcInternalDiskInstalled": false,
+    "productionUpdateEnrolled": false,
+    "nativeQualified": false
+  },
+  "tracking": "https://linear.app/kotobalabs/issue/AWAI-450"
+}
