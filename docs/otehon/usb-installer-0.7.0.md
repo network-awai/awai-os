@@ -48,3 +48,23 @@ revision to the selected USB's model, serial and capacity. Verify the complete
 written length against that hash and eject. Preserve unrelated drives and live
 VMs. The current CI uploads the ISO only after its VM check succeeds; use the
 matching verification artifact, not a previous release's hash.
+
+## Recheck after a reported physical-install failure (2026-11-14)
+
+The reattached KIOXIA installer region (6,816,595,968 bytes) still matched the
+qualified ISO SHA-256 in a serial-bound read-only check, then was safely ejected.
+[Exact-image CI43562298206](https://github.com/network-awai/awai-os/actions/runs/43562298206)
+passed with a 61,949,214,720-byte read-only sparse USB and a new NVMe scratch
+target. It checks mounted-source refusal, installation/full raw readback, USB
+detachment, target-only UEFI boot, passphrase setup, graphical Hello/Get Started
+onboarding, shutdown, a new QEMU process, existing-passphrase unlock and desktop
+return. No external NIC or physical disk is attached. The original image is
+downloaded by immutable artifact ID and complete ZIP/ISO hashes, not rebuilt.
+
+The first extended run reached the desktop but its full-page OCR omitted the
+white-on-dark button; control-region OCR fixes that measurement while retaining
+both required labels and rejecting captured password screens. This was not an
+observed installer failure. See [structured evidence](../evidence/otehon-usb-diagnosis-20261114.json).
+The owner's physical installation stopped at an unknown message; that failure
+was not reproduced, and its cause remains unknown. VM success does not qualify
+the physical PC's storage controller, firmware or power/thermal behavior.
