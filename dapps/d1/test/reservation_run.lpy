@@ -12,7 +12,7 @@
 (def ra {:receipt "a"})
 
 (def checks
-  [["admit" (fn [] (= {:admit true :key "k" :superseded false}
+  [["admit" (fn [] (= {:admit true :key "k" :fence 0 :superseded false}
                       (second (r/reserve {} "k" da now ttl))))]
    ["replay-same" (fn [] (let [[l1 _] (r/reserve {} "k" da now ttl)]
                            (= {:replay true :key "k" :state :reserved}
@@ -29,7 +29,7 @@
                                                    {:digest da :expires now
                                                     :state :completed :fence 0 :receipt ra})
                                       [l2 d] (r/reserve l1 "k" db (+ now 1) ttl)]
-                                  (and (= {:admit true :key "k" :superseded true} d)
+                                  (and (= {:admit true :key "k" :fence 1 :superseded true} d)
                                        (= ra (get-in l2 [:reservations "k" :prior-receipt])))))]
    ["settle-ok-replays" (fn [] (let [[l1 _] (r/reserve {} "k" da now ttl)
                                      [l2 d] (r/settle l1 "k" da 0 :ok ra)]
@@ -82,10 +82,48 @@
                                                   (= {:refused true :cause :conflict :key "k"} d2)
                                                   (= l1 l2))))] ])
 
+(def generation-checks
+  [["expired-writer-fence"
+    (fn [] (let [[a _] (r/reserve {} "k" da 0 10)
+                 [b _] (r/raise-fence a "k" 5)
+                 [c decision] (r/reserve b "k" da 11 10)]
+             (and (= 6 (:fence decision))
+                  (every? (fn [epoch]
+                            (let [[unchanged refused] (r/settle c "k" da epoch :ok ra)]
+                              (and (= c unchanged) (= :stale-writer (:cause refused)))))
+                          [0 5 7 nil 6.0])
+                  (= :completed (:state (second (r/settle c "k" da 6 :ok ra)))))))]
+   ["unresolved-expiry"
+    (fn [] (every? (fn [state]
+                    (let [a {:reservations {"k" {:digest da :expires 10 :state state :fence 5}}}
+                          [b d] (r/reserve a "k" da 11 10)]
+                      (and (= a b) (= {:retry-later true :key "k"} d))))
+                  [:unknown :in-flight]))]
+   ["reconcile-generation"
+    (fn [] (let [[a _] (r/reserve {} "k" da 0 10)
+                 [b _] (r/settle a "k" da 0 :ok ra)
+                 [c _] (r/reserve b "k" da 11 10)
+                 [d _] (r/settle c "k" da 1 :unverified nil)]
+             (and (every? (fn [[unchanged refusal]]
+                            (and (= d unchanged) (= :stale-writer (:cause refusal))))
+                          [(r/reconcile d "k" da :completed ra)
+                           (r/reconcile d "k" da 0 :completed ra)
+                           (r/reconcile d "k" da 2 :completed ra)])
+                  (= :completed (:state (second (r/reconcile d "k" da 1 :completed ra)))))))]] )
+
+(defn inert-state-check []
+  (every? (fn [state]
+            (let [a {:reservations {"k" {:digest da :expires 10 :state state :fence 5}}}]
+              (every? (fn [[unchanged refusal]]
+                        (and (= a unchanged) (= :not-live (:cause refusal))))
+                      [(r/settle a "k" da 5 :ok ra) (r/raise-fence a "k" 6)])))
+          [:expired :invalid nil]))
+
 (defn -main []
-  (let [failures (remove nil? (map (fn [[nm f]] (when-not (f) nm)) checks))]
+  (let [all-checks (concat checks generation-checks [["inert-states" inert-state-check]])
+        failures (remove nil? (map (fn [[nm f]] (when-not (f) nm)) all-checks))]
     (doseq [nm failures] (println "FAIL" nm))
-    (println "basilisp reservation checks" (count checks) "failures" (count failures))
+    (println "basilisp reservation checks" (count all-checks) "failures" (count failures))
     (sys/exit (if (seq failures) 1 0))))
 
 (-main)
