@@ -1,6 +1,6 @@
 (ns otehon.forest-writer
   "Bounded hosted raw-file to Forest group writer. This is not Native I/O."
-  (:require [awai.fs.car :as car] [otehon.pack-store :as pack]
+  (:require [awai.fs.car :as car] [otehon.pack-store :as pack] [otehon.storage :as store]
             [otehon.forest :as forest] [otehon.ipld-forest :as ipld])
   (:import [java.nio ByteBuffer] [java.nio.channels FileChannel]
            [java.nio.file Files Paths OpenOption LinkOption StandardOpenOption CopyOption]
@@ -224,11 +224,13 @@
   ([directory name source staging tool]
    (put-file-large! directory name source staging tool {}))
   ([directory name source staging tool options]
-  (when-not (and (map? options) (every? #{:expected-generation} (keys options))
+  (when-not (and (map? options) (every? #{:expected-generation :witness} (keys options))
+                 (or (not (contains? options :witness)) (contains? options :expected-generation))
                  (or (not (contains? options :expected-generation))
                      (and (integer? (:expected-generation options))
                           (<= 1 (:expected-generation options) 9007199254740991))))
     (fail! :invalid-generation "expected a positive bounded store generation"))
+  (when (contains? options :witness) (store/validate-write-witness! (:witness options)))
   (when-not (every? string? [directory name source staging tool])
     (fail! :invalid-argument "expected string paths and name"))
   (when-not (contains? tool-digests (file-digest tool))

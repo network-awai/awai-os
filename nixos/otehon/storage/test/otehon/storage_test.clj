@@ -40,6 +40,50 @@
     (is (true? (:degraded? (store/read-store d))))
     (is (= :degraded-store (error-type #(store/transact! d :put {:key "a" :value "x"}))))))
 
+(defn- atom-witness [root]
+  {:read! #(deref root)
+   :compare-and-set! (fn [old new] (locking root (if (= @root old) (do (reset! root new) true) false)))})
+
+(deftest witnessed-conditional-write-publishes-only-after-cas
+  (let [d (directory) _ (store/init! d) initial (:root (store/read-store d))
+        trusted (atom initial) witness (atom-witness trusted)
+        result (store/transact-if-generation-witnessed! d 1 :put {:key "a" :value "new"} nil witness)]
+    (is (= 2 (:generation result)))
+    (is (= (:root (store/read-store d)) @trusted))
+    (is (= "new" (get-in (store/read-store d) [:state "a"])))
+    (is (= :stale-generation (error-type #(store/transact-if-generation-witnessed! d 1 :put {:key "b" :value "x"} nil witness))))
+    (is (= :invalid-witness (error-type #(store/transact-if-generation-witnessed! d 2 :put {:key "b" :value "x"} nil {}))))))
+
+(deftest witnessed-write-refuses-stale-and-ambiguous-outcomes
+  (let [d (directory) _ (store/init! d) initial (:root (store/read-store d))
+        other (assoc initial :snapshot (apply str (repeat 64 "a")))
+        calls (atom 0) witness {:read! #(if (= 1 (swap! calls inc)) initial other)
+                                :compare-and-set! (fn [_ _] (throw (ex-info "unexpected CAS" {})))}]
+    (is (= :witness-changed (error-type #(store/transact-if-generation-witnessed! d 1 :put {:key "a" :value "x"} nil witness))))
+    (is (= initial (:root (store/read-store d)))))
+  (doseq [failure [:before-cas :after-cas]]
+    (let [d (directory) _ (store/init! d) initial (:root (store/read-store d))
+          trusted (atom initial) witness (atom-witness trusted)
+          result (binding [store/*write-observer* (fn [event role]
+                          (when (= [event role] [failure :witness]) (throw (ex-info "injected" {}))))]
+                   (error-type #(store/transact-if-generation-witnessed! d 1 :put {:key "a" :value "new"} nil witness)))
+          actual (:root (store/read-store d))]
+      (is (= :witness-commit-uncertain result))
+      (is (= 2 (:generation actual)))
+      (is (= (= failure :after-cas) (= actual @trusted)))
+      (when (= failure :before-cas)
+        (is (= :witness-mismatch (error-type #(store/transact-if-generation-witnessed! d 2 :put {:key "b" :value "x"} nil witness))))))))
+
+(deftest witnessed-root-publication-failure-is-uncertain
+  (let [d (directory) _ (store/init! d) trusted (atom (:root (store/read-store d)))
+        witness (atom-witness trusted)]
+    (is (= :witness-commit-uncertain
+           (binding [store/*write-observer* (fn [event role]
+                      (when (= [event role] [:renamed :root]) (throw (ex-info "injected" {}))))]
+             (error-type #(store/transact-if-generation-witnessed! d 1 :put {:key "a" :value "new"} nil witness)))))
+    (is (= 2 (get-in (store/read-store d) [:root :generation])))
+    (is (not= @trusted (:root (store/read-store d))))))
+
 (deftest bounded-streamed-forest-publication
   (let [d (seeded) source (str d "-source")
         data (byte-array (map #(unchecked-byte (mod % 251)) (range (+ (* 2 1024 1024) 13))))

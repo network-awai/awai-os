@@ -378,12 +378,14 @@
    (import-logical-forest-files! directory name paths manifest manifest-cid {}))
   ([directory name paths manifest manifest-cid options]
   (when-not (and (map? options)
-                 (every? #{:file-backed? :expected-generation} (keys options))
+                 (every? #{:file-backed? :expected-generation :witness} (keys options))
+                 (or (not (contains? options :witness)) (contains? options :expected-generation))
                  (or (not (contains? options :file-backed?)) (true? (:file-backed? options)))
                  (or (not (contains? options :expected-generation))
                      (and (integer? (:expected-generation options))
                           (<= 1 (:expected-generation options) 9007199254740991))))
     (fail! :invalid-pack-group "unsupported file import options"))
+  (when (contains? options :witness) (store/validate-write-witness! (:witness options)))
   (group-key name)
   (when-not (and (vector? paths) (<= 1 (count paths) max-group-packs))
     (fail! :invalid-pack-group "expected 1..64 Forest Pack paths"))
@@ -427,9 +429,12 @@
                                         (:type (ex-data e)))
                            (fail! :forest-changed "Forest input changed during publication")
                            (throw e))))))
-        result (if (contains? options :expected-generation)
+        result (cond
+                 (contains? options :witness)
+                 (store/transact-if-generation-witnessed! directory (:expected-generation options) :put payload before-publish (:witness options))
+                 (contains? options :expected-generation)
                  (store/transact-if-generation! directory (:expected-generation options) :put payload before-publish)
-                 (store/transact! directory :put payload before-publish))]
+                 :else (store/transact! directory :put payload before-publish))]
     (assoc result :group group))))
 
 (defn put-data! [directory name bytes]
