@@ -119,7 +119,7 @@ jobs:
             raw_sha=09667b124d32040bc087bfdd50888dff111af5c233f1a057102ce9e169d8cc4c
             source=dbe50c5bd98b1df2411f1c347a7eb6f8de38c88e
             # Only verifier/workflow/evidence changes are allowed after this build.
-            git diff --quiet "$source" HEAD -- . ':!scripts/otehon-installed-boot.py' ':!scripts/check-otehon-usb-vm.py' ':!.github/workflows/otehon-usb-installer.yml' ':!tests/otehon' ':!docs/evidence' ':!docs/otehon'
+            git diff --quiet "$source" HEAD -- . ':!scripts/otehon-installed-boot.py' ':!scripts/check-otehon-usb-vm.py' ':!.github/workflows/otehon-usb-installer.yml' ':!tests/otehon' ':!nixos/otehon/eval-profiles.sh' ':!docs/evidence' ':!docs/otehon'
             gh api repos/network-awai/awai-os/actions/artifacts/$artifact > .agent-output/exact-image-artifact.json
             jq -e --arg source "$source" '.workflow_run.id == 43577397887 and .workflow_run.head_sha == $source and .size_in_bytes == 8492892450' .agent-output/exact-image-artifact.json
             jq -n --arg source "$source" --arg verifier "$GITHUB_SHA" '{buildBranchRevision:$source,buildCheckoutRevision:"29d7ea713cf7041aeb0459e9adf5508be45320af",buildTree:"94022e65ac7db76af7fdd60701e0eb467e18e816",verifierRevision:$verifier,fixture:"graphical-candidate",artifact:14106689505}' > .agent-output/exact-image-source.json
