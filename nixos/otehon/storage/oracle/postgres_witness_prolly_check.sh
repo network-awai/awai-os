@@ -1,11 +1,22 @@
 #!/bin/sh
 # Local hosted JVM oracle: fresh private PostgreSQL cluster and retained output.
 set -eu
-[ "$#" -eq 3 ] || { echo 'usage: check NEW_BASE NEW_SHORT_SOCKET PINNED_FOREST_TOOL' >&2; exit 2; }
+[ "$#" -eq 3 ] || [ "$#" -eq 4 ] || { echo 'usage: check NEW_BASE NEW_SHORT_SOCKET PINNED_FOREST_TOOL [prolly|policy]' >&2; exit 2; }
 base=$1 socket=$2 tool=$3
+mode=${4:-prolly}
+case "$mode" in
+  prolly) oracle=nixos/otehon/storage/oracle/postgres_witness_prolly.clj ;;
+  policy) oracle=nixos/otehon/storage/oracle/postgres_witness_policy.clj ;;
+  *) echo 'unknown oracle mode' >&2; exit 2 ;;
+esac
 unset PGHOST PGHOSTADDR PGPORT PGDATABASE PGUSER PGSERVICE PGOPTIONS PGTARGETSESSIONATTRS PGSSLMODE
 mkdir "$base" "$socket"
 chmod 700 "$socket"
+if [ "$mode" = policy ]; then
+  IPLD_POLICY_FIXTURE=nixos/otehon/storage/test/fixtures/prolly-forest/policy.forest
+  export IPLD_POLICY_FIXTURE
+  printf '%s  %s\n' 0ea6a8f7b6d2086a2a6565f9a787fcac316d7bb18b5856cdb6bf935df477b0ed "$IPLD_POLICY_FIXTURE" | shasum -a 256 -c > "$base/policy-hash.log"
+fi
 # The two overrides are pinned to the bounded decoder revision; the rest of
 # the adapted oracle classpath must match the recorded 200-file manifest.
 printf '%s  %s\n' \
@@ -24,9 +35,9 @@ mkdir "$base/proof"
 export PGSERVICEFILE="$base/service.conf" PG_PROLLY_OUTPUT="$base/proof" PG_WITNESS_PSQL="$(command -v psql)" PG_WITNESS_SERVICE=awai_prolly_test FOREST_TOOL="$tool"
 psql -X -q -v ON_ERROR_STOP=1 -d 'service=awai_prolly_test' -c 'CREATE SCHEMA awai_witness; CREATE TABLE awai_witness.root (store_id text PRIMARY KEY, root bytea NOT NULL, pending bytea);'
 deps='{:paths [".agent-output/bounded-closure/classpath" "nixos/otehon/storage/src" "nixos/otehon/storage/vendor/apex/src" "nixos/otehon/storage/vendor/apex-car/src" "nixos/otehon/storage/vendor/kotobase-storage/src" ".agent-output/policy-forest/classpath"]}'
-clojure -Sdeps "$deps" -M nixos/otehon/storage/oracle/postgres_witness_prolly.clj write
+clojure -Sdeps "$deps" -M "$oracle" write
 pg_ctl -D "$base/data" -m fast -w stop >/dev/null
 start
-clojure -Sdeps "$deps" -M nixos/otehon/storage/oracle/postgres_witness_prolly.clj read
+clojure -Sdeps "$deps" -M "$oracle" read
 stop
 trap - EXIT HUP INT TERM
