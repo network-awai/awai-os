@@ -211,18 +211,107 @@
       (when-not (= digest (sha bytes)) (fail! :corrupt-forest "Forest digest mismatch"))
       bytes)))
 
+(def ^:private max-forest-file-bytes (* 32 1024 1024))
+
+(defn- stream-hash! [source output expected-size]
+  (let [md (MessageDigest/getInstance "SHA-256") buffer (ByteBuffer/allocate 65536)]
+    (loop [total 0 half-observed? false]
+      (.clear buffer)
+      (when (and output (not half-observed?))
+        (.limit buffer (int (min 65536 (- (max 1 (quot expected-size 2)) total)))))
+      (let [n (.read ^FileChannel source buffer)]
+        (cond
+          (neg? n)
+          (do (when-not (= total expected-size)
+                (fail! :changed-payload "Forest file length changed while reading"))
+              (apply str (map #(format "%02x" (bit-and 255 %)) (.digest md))))
+          (zero? n) (fail! :short-read "Forest file read made no progress")
+          :else
+          (let [next (+ total n)]
+            (when (> next expected-size)
+              (fail! :changed-payload "Forest file grew while reading"))
+            (.flip buffer)
+            (.update md (.asReadOnlyBuffer buffer))
+            (when output
+              (while (.hasRemaining buffer) (.write ^FileChannel output buffer)))
+            (let [half-now? (and output (not half-observed?) (>= next (max 1 (quot expected-size 2))))]
+              (when half-now? (observe! :half-written :forest))
+              (recur next (or half-observed? half-now?)))))))))
+
+(defn forest-source-digest
+  "Hash a bounded regular file without following its final symlink."
+  [source]
+  (when-not (string? source) (fail! :invalid-forest-source "expected file path"))
+  (let [p (Paths/get source (make-array String 0))]
+    (when-not (Files/isRegularFile p (into-array LinkOption [LinkOption/NOFOLLOW_LINKS]))
+      (fail! :invalid-forest-source "Forest source must be a regular file"))
+    (with-open [in (FileChannel/open p (into-array OpenOption [StandardOpenOption/READ LinkOption/NOFOLLOW_LINKS]))]
+      (let [n (.size in)]
+        (when-not (<= 1 n max-forest-file-bytes) (fail! :invalid-forest-source "Forest source size outside bound"))
+        {:size n :sha (stream-hash! in nil n)}))))
+
+(defn forest-file-path
+  "Resolve a content-addressed Forest object under an existing real store."
+  [directory digest]
+  (when-not (digest? digest) (fail! :invalid-digest "invalid Forest reference"))
+  (let [p (path (root-path directory) (str digest ".forest"))]
+    (when-not (Files/isRegularFile p (into-array LinkOption [LinkOption/NOFOLLOW_LINKS]))
+      (fail! :missing-forest "Forest object is missing or not regular"))
+    (str p)))
+
+(defn write-forest-file!
+  "Copy a bounded Forest file under its expected SHA-256 using a fixed buffer.
+  Call inside the metadata writer lock. File sync, atomic rename and directory
+  sync precede root publication; failed temporary files remain for inspection.
+  This only verifies physical bytes, not Forest structure or block CIDs."
+  [directory source expected-size expected-sha]
+  (when-not (and (string? source) (digest? expected-sha)
+                 (integer? expected-size) (<= 1 expected-size max-forest-file-bytes))
+    (fail! :invalid-forest-source "invalid Forest source size or digest"))
+  (let [root (root-path directory) target (path root (str expected-sha ".forest"))
+        src (Paths/get source (make-array String 0))
+        opts (into-array OpenOption [StandardOpenOption/READ LinkOption/NOFOLLOW_LINKS])]
+    (when-not (Files/isRegularFile src (into-array LinkOption [LinkOption/NOFOLLOW_LINKS]))
+      (fail! :invalid-forest-source "Forest source must be a regular file"))
+    (with-open [in (FileChannel/open src opts)]
+      (when-not (= expected-size (.size in))
+        (fail! :changed-payload "Forest source size differs"))
+      (if (exists? target)
+        (with-open [existing (FileChannel/open target opts)]
+          (when-not (= expected-sha (stream-hash! in nil expected-size))
+            (fail! :forest-source-changed "Forest source digest mismatch"))
+          (when-not (and (= expected-size (.size existing))
+                         (= expected-sha (stream-hash! existing nil expected-size)))
+            (fail! :corrupt-forest "existing immutable Forest archive is corrupt"))
+          (sync-dir! root)
+          (observe! :reused-dir-synced :forest))
+        (let [tmp (path root (str ".pending-" (UUID/randomUUID)))]
+          (with-open [out (FileChannel/open tmp
+                             #{StandardOpenOption/CREATE_NEW StandardOpenOption/WRITE}
+                             (attrs "rw-------"))]
+            (when-not (= expected-sha (stream-hash! in out expected-size))
+              (fail! :forest-source-changed "Forest source digest mismatch"))
+            (observe! :written :forest)
+            (.force out true)
+            (observe! :file-synced :forest))
+          (Files/move tmp target (into-array CopyOption [StandardCopyOption/ATOMIC_MOVE]))
+          (observe! :renamed :forest)
+          (sync-dir! root)
+          (observe! :dir-synced :forest))))
+    expected-sha))
+
 (defn read-payload-segments
   "Positioned reads for an explicitly selected range-verification operation.
   Does not verify the whole-file digest; caller must verify every returned
   complete leaf/frame against its previously verified immutable snapshot."
   [directory digest extension expected-size spans]
   (when-not (and (digest? digest) (contains? #{"car" "zpack" "forest"} extension)
-                 (integer? expected-size) (<= 0 expected-size max-bytes)
+                 (integer? expected-size) (<= 0 expected-size (if (= extension "forest") max-forest-file-bytes max-bytes))
                  (vector? spans) (<= (count spans) 64)
                  (every? (fn [{:keys [offset length]}]
                            (and (integer? offset) (integer? length)
                                 (<= 0 offset expected-size) (<= 0 length (- expected-size offset)))) spans)
-                 (<= (reduce + 0 (map :length spans)) max-bytes))
+                 (<= (reduce + 0 (map :length spans)) (if (= extension "forest") (* 2 max-bytes) max-bytes)))
     (fail! :invalid-range "invalid physical read bounds"))
   (let [p (path (root-path directory) (str digest "." extension))]
     (when-not (Files/isRegularFile p (into-array LinkOption [LinkOption/NOFOLLOW_LINKS]))

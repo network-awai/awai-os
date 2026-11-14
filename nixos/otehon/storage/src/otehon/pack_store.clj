@@ -79,7 +79,8 @@
                       (butlast (car/carv2-sections v)) raw)}))))
 
 (defn- compressed? [ref] (= :awai.otehon-store/pack-zstd3-v1 (:format ref)))
-(defn- forest? [ref] (= :awai.otehon-store/pack-forest-v1 (:format ref)))
+(defn- file-forest? [ref] (= :awai.otehon-store/pack-forest-file-v2 (:format ref)))
+(defn- forest? [ref] (contains? #{:awai.otehon-store/pack-forest-v1 :awai.otehon-store/pack-forest-file-v2} (:format ref)))
 (defn- physical? [ref] (or (compressed? ref) (forest? ref)))
 (defn- cache-key [ref] (or (:stored-sha ref) (:car-sha ref)))
 (defn- canonical-ref [ref]
@@ -99,14 +100,14 @@
                      (= (if (physical? value)
                           #{:format :car-sha :root-cid :data-sha :size :leaf-count :stored-sha :stored-size}
                           #{:format :car-sha :root-cid :data-sha :size :leaf-count}) (set (keys value)))
-                     (contains? #{:awai.otehon-store/pack-v1 :awai.otehon-store/pack-zstd3-v1 :awai.otehon-store/pack-forest-v1} (:format value))
+                     (contains? #{:awai.otehon-store/pack-v1 :awai.otehon-store/pack-zstd3-v1 :awai.otehon-store/pack-forest-v1 :awai.otehon-store/pack-forest-file-v2} (:format value))
                      (or (not (physical? value))
                          (and (string? (:stored-sha value)) (re-matches #"[0-9a-f]{64}" (:stored-sha value))
-                              (integer? (:stored-size value)) (<= 1 (:stored-size value) max-car-bytes)))
+                              (integer? (:stored-size value)) (<= 1 (:stored-size value) (if (file-forest? value) (* 32 1024 1024) max-car-bytes))))
                      (every? #(and (string? %) (re-matches #"[0-9a-f]{64}" %))
                              [(:car-sha value) (:data-sha value)])
                      (string? (:root-cid value))
-                     (integer? (:size value)) (<= 0 (:size value) max-data-bytes)
+                     (integer? (:size value)) (<= 0 (:size value) (if (file-forest? value) (* 32 1024 1024) max-data-bytes))
                      (integer? (:leaf-count value)) (<= 0 (:leaf-count value) max-leaves))
         (fail! :invalid-pack-ref "invalid Pack catalog reference"))
       value)))
@@ -178,7 +179,24 @@
             (recur (inc i) (+ offset length))))))
     m))
 
+(defn- checked-forest-file [path]
+  (let [before (store/forest-source-digest path)
+        checked (forest/verify-file path)
+        after (store/forest-source-digest path)]
+    (when-not (and (= before after) (= (:size checked) (:size before)))
+      (fail! :forest-changed "Forest file changed during verification"))
+    (assoc checked :stored-sha (:sha before) :stored-size (:size before))))
+
 (defn- load-index [directory ref stats]
+  (if (file-forest? ref)
+    (let [checked (checked-forest-file (store/forest-file-path directory (:stored-sha ref)))]
+      (when-not (and (= (:stored-sha ref) (:stored-sha checked))
+                     (= (:stored-size ref) (:stored-size checked))
+                     (= (canonical-ref ref) (:ref checked)))
+        (fail! :pack-ref-mismatch "Forest file differs from committed reference"))
+      (swap! stats #(-> % (update :car-reads inc) (update :bytes-read + (:stored-size ref))
+                         (update :index-rebuilds inc)))
+      (assoc checked :ref ref :forest (assoc checked :file-backed? true)))
   (let [stored (cond (compressed? ref) (store/read-zpack directory (:stored-sha ref))
                      (forest? ref) (store/read-forest directory (:stored-sha ref)))
         decoded (when (compressed? ref) (segmented/decode stored))
@@ -192,7 +210,7 @@
     (when-not (= (canonical-ref ref) (:ref checked))
       (fail! :pack-ref-mismatch "CAR bytes do not match the committed Pack reference"))
     (assoc checked :ref ref :layout (:layout decoded)
-           :forest (when opened (dissoc opened :bytes :carv1)))))
+           :forest (when opened (dissoc opened :bytes :carv1))))))
 
 (defn- recover-map [directory state]
   (let [cache (atom {})
@@ -344,9 +362,13 @@
 
 (defn import-logical-forest-files!
   "Atomically publish canonical manifest and ordered Forest files. The files
-  are verified one at a time and re-read under the writer lock; changes between
-  passes abort publication. At most one input Pack is retained at a time."
-  [directory name paths manifest manifest-cid]
+  are verified one at a time and streamed again under the writer lock; changes
+  between passes abort publication. Larger files use the distinct v2 ref."
+  ([directory name paths manifest manifest-cid]
+   (import-logical-forest-files! directory name paths manifest manifest-cid {}))
+  ([directory name paths manifest manifest-cid options]
+  (when-not (contains? #{{} {:file-backed? true}} options)
+    (fail! :invalid-pack-group "unsupported file import options"))
   (group-key name)
   (when-not (and (vector? paths) (<= 1 (count paths) max-group-packs))
     (fail! :invalid-pack-group "expected 1..64 Forest Pack paths"))
@@ -354,12 +376,20 @@
     (fail! :invalid-logical-manifest "manifest bytes and CID are required"))
   (let [manifest (aclone ^bytes manifest)
         candidates (mapv (fn [path]
-                           (let [bytes (read-bounded-forest-file path)
-                                 checked (verify-car (forest-car (forest/open bytes)))]
-                             {:path path :index (:index checked)
-                              :ref (assoc (:ref checked) :format :awai.otehon-store/pack-forest-v1
-                                          :stored-sha (segmented/sha bytes)
-                                          :stored-size (alength ^bytes bytes))})) paths)
+                           (let [physical (store/forest-source-digest path)]
+                             (if (or (:file-backed? options) (> (:size physical) max-car-bytes))
+                               (let [checked (checked-forest-file path)]
+                                 (when-not (= physical {:size (:stored-size checked) :sha (:stored-sha checked)})
+                                   (fail! :forest-changed "Forest input changed during verification"))
+                                 {:path path :index (:index checked)
+                                  :ref (assoc (:ref checked) :format :awai.otehon-store/pack-forest-file-v2
+                                              :stored-sha (:sha physical) :stored-size (:size physical))})
+                               (let [bytes (read-bounded-forest-file path)
+                                     checked (verify-car (forest-car (forest/open bytes)))]
+                                 {:path path :index (:index checked)
+                                  :ref (assoc (:ref checked) :format :awai.otehon-store/pack-forest-v1
+                                              :stored-sha (segmented/sha bytes)
+                                              :stored-size (alength ^bytes bytes))})))) paths)
         _ (verify-logical-manifest manifest manifest-cid (mapv :index candidates))
         group {:format :awai.otehon-store/logical-forest-v1
                :packs (mapv :ref candidates)
@@ -369,13 +399,20 @@
                  (fn [directory state]
                    (recover-map directory state)
                    (doseq [{:keys [path ref]} candidates]
-                     (let [bytes (read-bounded-forest-file path)]
-                       (when-not (and (= (:stored-size ref) (alength ^bytes bytes))
-                                      (= (:stored-sha ref) (segmented/sha bytes)))
-                         (fail! :forest-changed "Forest input changed during publication"))
-                       (when-not (= (:stored-sha ref) (store/write-forest! directory bytes))
-                         (fail! :forest-changed "Forest bytes changed during publication"))))))]
-    (assoc result :group group)))
+                     (try
+                       (store/write-forest-file! directory path (:stored-size ref) (:stored-sha ref))
+                       (when (file-forest? ref)
+                         (let [stored (checked-forest-file (store/forest-file-path directory (:stored-sha ref)))]
+                           (when-not (and (= (:stored-sha ref) (:stored-sha stored))
+                                          (= (:stored-size ref) (:stored-size stored))
+                                          (= (canonical-ref ref) (:ref stored)))
+                             (fail! :forest-changed "published Forest verification differs"))))
+                       (catch clojure.lang.ExceptionInfo e
+                         (if (contains? #{:forest-source-changed :changed-payload :short-read}
+                                        (:type (ex-data e)))
+                           (fail! :forest-changed "Forest input changed during publication")
+                           (throw e)))))))]
+    (assoc result :group group))))
 
 (defn put-data! [directory name bytes]
   (let [v (vector-bytes bytes max-data-bytes)
@@ -416,10 +453,12 @@
 (defn export-forest [handle name]
   (let [ref (ref-for handle name)]
     (when-not (forest? ref) (fail! :unsupported-pack-profile "selected Pack is not Forest"))
+    (when (file-forest? ref) (fail! :unsupported-pack-profile "large Forest export requires a streaming API"))
     (store/read-forest (:directory handle) (:stored-sha ref))))
 
 (defn export-car [handle name]
   (let [ref (ref-for handle name)
+        _ (when (file-forest? ref) (fail! :unsupported-pack-profile "large CAR export requires a streaming API"))
         stored (cond (compressed? ref) (store/read-zpack (:directory handle) (:stored-sha ref))
                      (forest? ref) (store/read-forest (:directory handle) (:stored-sha ref)))
         bytes (cond (compressed? ref) (:car (segmented/decode stored))

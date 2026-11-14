@@ -29,6 +29,22 @@ jobs:
           chmod 500 "$tool"
           bb_path=$(nix-build --no-out-link --expr '(import (import ./ci/nixpkgs.nix) {}).babashka')
           "$bb_path/bin/bb" --classpath nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:nixos/otehon/storage/vendor/apex-car/src:nixos/otehon/storage/test nixos/otehon/storage/test/otehon/forest_writer_proof.clj "$RUNNER_TEMP/forest-writer-proof" "$tool"
+          classpath=nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:nixos/otehon/storage/vendor/apex-car/src:nixos/otehon/storage/test
+          proof=nixos/otehon/storage/test/otehon/forest_large_proof.clj
+          "$bb_path/bin/bb" --classpath "$classpath" "$proof" generate "$RUNNER_TEMP/forest-large-proof"
+          "$tool" snapshot compress "$RUNNER_TEMP/forest-large-proof/input.car" --output-path "$RUNNER_TEMP/forest-large-proof/large.forest" --frame-size 1024
+          "$bb_path/bin/bb" --classpath "$classpath" "$proof" write "$RUNNER_TEMP/forest-large-proof"
+          "$bb_path/bin/bb" --classpath "$classpath" "$proof" read "$RUNNER_TEMP/forest-large-proof"
+          "$bb_path/bin/bb" --classpath "$classpath" "$proof" corrupt "$RUNNER_TEMP/forest-large-proof"
+          writer_proof=nixos/otehon/storage/test/otehon/forest_large_writer_proof.clj
+          "$bb_path/bin/bb" --classpath "$classpath" "$writer_proof" write "$RUNNER_TEMP/forest-large-writer-proof" "$tool"
+          "$bb_path/bin/bb" --classpath "$classpath" "$writer_proof" read "$RUNNER_TEMP/forest-large-writer-proof" "$tool"
+          crash_proof=nixos/otehon/storage/test/otehon/forest_file_crash_proof.clj
+          "$bb_path/bin/bb" --classpath "$classpath" "$crash_proof" generate "$RUNNER_TEMP/forest-file-crash"
+          for i in 0 1; do
+            "$tool" snapshot compress "$RUNNER_TEMP/forest-file-crash/fixtures/$i.car" --output-path "$RUNNER_TEMP/forest-file-crash/fixtures/$i.forest" --frame-size 1
+          done
+          BABASHKA="$bb_path/bin/bb" "$bb_path/bin/bb" --classpath "$classpath" "$crash_proof" run "$RUNNER_TEMP/forest-file-crash"
 
   evaluate:
     runs-on: ubuntu-latest

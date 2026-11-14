@@ -42,6 +42,9 @@
       ["forest-file-put" 6]
       (prn (select-keys (forest-writer/put-file! directory name filename (nth args 4) (nth args 5))
                         [:generation :tail :manifest-cid :file-size :pack-count]))
+      ["forest-file-put-large" 6]
+      (prn (select-keys (forest-writer/put-file-large! directory name filename (nth args 4) (nth args 5))
+                        [:generation :tail :manifest-cid :file-size :pack-count]))
       ["forest-export" 4] (prn (output! filename (pack/export-forest (pack/recover directory) name)))
       ["forest-get-block" 5]
       (let [cid-text (nth args 4)
