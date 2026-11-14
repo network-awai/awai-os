@@ -18,7 +18,9 @@ import { join } from "node:path";
 
 const SCITTLE_RE = /<script type="application\/x-scittle" src="(\.\/[^"]+)"><\/script>/g;
 const MODULE_TAG = '<script type="module" src="./studio-host.js">';
-const BUNDLED_TAG = '<script src="./assets/dougaka-host.js">';
+// Classic scripts run immediately; the original module was deferred, so keep
+// defer to run after parsing (getElementById needs the body).
+const BUNDLED_TAG = '<script defer src="./assets/dougaka-host.js">';
 
 export async function buildDougaka({ vendorDir = "vendor-dougaka", outDir = "dist/dougaka" } = {}) {
   await mkdir(`${outDir}/assets`, { recursive: true });
