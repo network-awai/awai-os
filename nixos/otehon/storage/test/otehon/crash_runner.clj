@@ -82,10 +82,41 @@
           (.destroyForcibly writer)
           (.waitFor writer 10 java.util.concurrent.TimeUnit/SECONDS))))))
 
+(defn run-initial-case [script output event]
+  (let [directory (str (io/file output (str "first-root-" (name event))))]
+    (store/init! directory)
+    (let [writer (child script "write" directory "put" (name event) "root")]
+      (try
+        (with-open [out (io/reader (.getInputStream writer))]
+          (let [text (deref (future (.readLine ^java.io.BufferedReader out)) 10000 nil)]
+            (when-not (and text (:ready (edn/read-string text)))
+              (throw (ex-info "writer did not reach first-root boundary" {:event event :output text})))))
+        (.destroyForcibly writer)
+        (when-not (and (.waitFor writer 10 java.util.concurrent.TimeUnit/SECONDS) (= 137 (.exitValue writer)))
+          (throw (ex-info "first-root writer kill failed" {:event event})))
+        (let [published? (boolean (#{:renamed :dir-synced} event))
+              recovered (read-child script directory)]
+          (when-not (and (= (if published? {"a" "new"} {}) (:state recovered))
+                         (= (if published? 2 1) (get-in recovered [:root :generation]))
+                         (false? (:degraded? recovered)))
+            (throw (ex-info "first-root recovery mismatch" {:event event :observed recovered})))
+          (store/transact! directory :put {:key "after-kill" :value "ok"})
+          (when-not (= "ok" (get-in (read-child script directory) [:state "after-kill"]))
+            (throw (ex-info "first-root writer lock not released" {:event event})))
+          (prn {:event event :generation (get-in recovered [:root :generation]) :writer-exit 137 :pass true}))
+        (finally (.destroyForcibly writer) (.waitFor writer 10 java.util.concurrent.TimeUnit/SECONDS))))))
+
 (let [[mode directory operation event role] *command-line-args*]
   (case mode
     "write" (write-child directory (keyword operation) (keyword event) (keyword role))
     "read" (prn (store/read-store directory))
+    "run-initial" (try
+                    (when-not (.mkdir (io/file directory))
+                      (throw (ex-info "output directory must be new" {})))
+                    (doseq [event [:half-written :written :file-synced :renamed :dir-synced]]
+                      (run-initial-case *file* directory event))
+                    (prn {:cases 5 :pass true})
+                    (finally (shutdown-agents)))
     "run" (try
             (when-not (.mkdir (io/file directory))
               (throw (ex-info "output directory must be new" {})))

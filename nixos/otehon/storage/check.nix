@@ -1,24 +1,34 @@
 { pkgs ? import (import ../../../ci/nixpkgs.nix) { } }:
 let
   package = import ./default.nix { inherit pkgs; };
-  classpath = "${./src}:${./vendor/apex/src}:${./vendor/apex-car/src}:${./test}";
+  classpath = "${./src}:${./vendor/apex/src}:${./vendor/apex-car/src}:${./vendor/kotobase-storage/src}:${./test}";
 in
 pkgs.runCommand "otehon-storage-hosted-check" {
-  nativeBuildInputs = [ pkgs.babashka pkgs.zstd package ];
+  nativeBuildInputs = [ pkgs.babashka pkgs.zstd pkgs.postgresql package ];
 } ''
   mkdir -p "$out"
   bb --classpath ${classpath} -e "(require '[clojure.test :as t] 'otehon.storage-test 'otehon.pack-store-test)(binding [otehon.storage-test/*output* \"unit\" otehon.pack-store-test/*output* \"pack-unit\"] (let [r (t/run-tests 'otehon.storage-test 'otehon.pack-store-test)] (System/exit (+ (:fail r) (:error r)))))" > "$out/unit-tests.txt"
   bb --classpath ${classpath} -e "(require '[clojure.test :as t] 'otehon.forest-writer-test)(binding [otehon.forest-writer-test/*output* \"forest-writer-unit\"] (let [r (t/run-tests 'otehon.forest-writer-test)] (System/exit (+ (:fail r) (:error r)))))" > "$out/forest-writer-unit.txt"
+  CROSSPACK_FIXTURES=${./test/fixtures/crosspack} IPLD_FOREST_FIXTURE=${./test/fixtures/prolly-forest/prolly.forest} IPLD_SPLIT_FIXTURES=${./test/fixtures/prolly-forest/split} bb --classpath ${classpath} -e "(require '[clojure.test :as t] 'otehon.witnessed-pack-test)(binding [otehon.witnessed-pack-test/*output* \"witnessed-pack-unit\"] (let [r (t/run-tests 'otehon.witnessed-pack-test)] (System/exit (+ (:fail r) (:error r)))))" > "$out/witnessed-pack-unit.txt"
+  bb --classpath ${classpath} -e "(require '[clojure.test :as t] 'otehon.kotobase-ref-test)(binding [otehon.kotobase-ref-test/*output* \"kotobase-ref-unit\"] (let [r (t/run-tests 'otehon.kotobase-ref-test)] (System/exit (+ (:fail r) (:error r)))))" > "$out/kotobase-ref-tests.txt"
+  bb --classpath ${classpath} ${./test/otehon/kotobase_ref_process.clj} run kotobase-ref-process > "$out/kotobase-ref-process.edn"
+  bb --classpath ${classpath} -e "(require '[clojure.test :as t] 'otehon.kotobase-forest-transaction-test)(let [r (t/run-tests 'otehon.kotobase-forest-transaction-test)] (System/exit (+ (:fail r) (:error r))))" > "$out/kotobase-transaction-tests.txt"
+  IPLD_SPLIT_FIXTURES=${./test/fixtures/prolly-forest/split} bb --classpath ${classpath} -e "(require '[clojure.test :as t] 'otehon.kotobase-forest-blocks-test)(binding [otehon.kotobase-forest-blocks-test/*output* \"kotobase-blocks-unit\"] (let [r (t/run-tests 'otehon.kotobase-forest-blocks-test)] (System/exit (+ (:fail r) (:error r)))))" > "$out/kotobase-blocks-unit.txt"
   FOREST_FIXTURE=${./test/fixtures/forest/sha256-pack.forest.car.zst} bb --classpath ${classpath} -e "(require '[clojure.test :as t] 'otehon.forest-test)(binding [otehon.forest-test/*output* \"forest-unit\"] (let [r (t/run-tests 'otehon.forest-test)] (System/exit (+ (:fail r) (:error r)))))" > "$out/forest-tests.txt"
+  FOREST_FIXTURE=${./test/fixtures/forest/sha256-pack.forest.car.zst} IPLD_FOREST_FIXTURE=${./test/fixtures/prolly-forest/prolly.forest} IPLD_POLICY_FIXTURE=${./test/fixtures/prolly-forest/policy.forest} IPLD_SPLIT_FIXTURES=${./test/fixtures/prolly-forest/split} bb --classpath ${classpath} -e "(require '[clojure.test :as t] 'otehon.ipld-forest-test)(binding [otehon.ipld-forest-test/*output* \"ipld-forest-unit\"] (let [r (t/run-tests 'otehon.ipld-forest-test)] (System/exit (+ (:fail r) (:error r)))))" > "$out/ipld-forest-tests.txt"
+  IPLD_POLICY_FIXTURE=${./test/fixtures/prolly-forest/policy.forest} IPLD_SPLIT_FIXTURES=${./test/fixtures/prolly-forest/split} bb --classpath ${classpath} ${./test/otehon/ipld_group_crash_proof.clj} run ipld-group-crash > "$out/ipld-group-crash.edn"
   FOREST_FIXTURE=${./test/fixtures/forest/sha256-pack.forest.car.zst} bb --classpath ${classpath} ${./test/otehon/forest_crash_runner.clj} run forest-crash > "$out/forest-crash-tests.edn"
   CROSSPACK_FIXTURES=${./test/fixtures/crosspack} bb --classpath ${classpath} ${./test/otehon/crosspack_proof.clj} run crosspack-proof > "$out/crosspack-proof.edn"
   CROSSPACK_FIXTURES=${./test/fixtures/crosspack} bb --classpath ${classpath} ${./test/otehon/atomic_pack_proof.clj} run atomic-pack-proof > "$out/atomic-pack-proof.edn"
   CROSSPACK_FIXTURES=${./test/fixtures/crosspack} bb --classpath ${classpath} ${./test/otehon/atomic_product_proof.clj} run atomic-product-proof > "$out/atomic-product-proof.edn"
   CROSSPACK_FIXTURES=${./test/fixtures/crosspack} bb --classpath ${classpath} ${./test/otehon/logical_product_proof.clj} logical-product-proof > "$out/logical-product-proof.edn"
   CROSSPACK_FIXTURES=${./test/fixtures/crosspack} bb --classpath ${classpath} ${./test/otehon/atomic_logical_proof.clj} run atomic-logical-proof > "$out/atomic-logical-proof.edn"
+  CROSSPACK_FIXTURES=${./test/fixtures/crosspack} bb --classpath ${classpath} ${./test/otehon/witnessed_crash_proof.clj} run witnessed-crash-proof > "$out/witnessed-crash-proof.edn"
+  IPLD_FOREST_FIXTURE=${./test/fixtures/prolly-forest/prolly.forest} IPLD_SPLIT_FIXTURES=${./test/fixtures/prolly-forest/split} sh ${./test/otehon/postgres_witness_check.sh} "$PWD/pg-witness" "$PWD/pg-socket" "${classpath}" ${./oracle/postgres_witness_proof.clj} ${./test/fixtures/crosspack} ${./oracle/postgres_witness_crash.clj} ${./oracle/postgres_witness_db_interrupt.clj} > "$out/postgres-witness-proof.edn"
   AWAI_FILE_INPUT=1 CROSSPACK_FIXTURES=${./test/fixtures/crosspack} bb --classpath ${classpath} ${./test/otehon/atomic_logical_proof.clj} run atomic-logical-file-proof > "$out/atomic-logical-file-proof.edn"
   CROSSPACK_FIXTURES=${./test/fixtures/crosspack} bb --classpath ${classpath} ${./test/otehon/cli_logical_proof.clj} cli-logical-proof > "$out/cli-logical-proof.edn"
   bb --classpath ${classpath} ${./test/otehon/crash_runner.clj} run crash > "$out/crash-tests.edn"
+  bb --classpath ${classpath} ${./test/otehon/crash_runner.clj} run-initial initial-crash > "$out/initial-crash-tests.edn"
   bb --classpath ${classpath} ${./test/otehon/pack_recovery_runner.clj} run pack-crash > "$out/pack-crash-tests.edn"
   OTEHON_TEST_ZSTD3=1 bb --classpath ${classpath} ${./test/otehon/pack_recovery_runner.clj} run zpack-crash > "$out/zpack-crash-tests.edn"
   otehon-storage init "$PWD/cli-store"

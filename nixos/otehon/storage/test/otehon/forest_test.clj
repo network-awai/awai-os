@@ -17,6 +17,27 @@
 (defn- digest [bytes] (mapv #(bit-and 255 %) (.digest (MessageDigest/getInstance "SHA-256") bytes)))
 (defn- digest [bytes] (mapv #(bit-and 255 %) (.digest (MessageDigest/getInstance "SHA-256") bytes)))
 
+(deftest file-frame-parser-verifies-bounds-and-cids
+  (let [payload (byte-array (map #(unchecked-byte (mod % 251)) (range 100000)))
+        cid (car/cid-bytes car/codec-raw (digest payload))
+        size-prefix (car/encode-uvarint (+ (count cid) (alength payload)))
+        framed (byte-array (map unchecked-byte (concat size-prefix cid payload)))
+        noncanonical (byte-array (map unchecked-byte
+                                      (concat (butlast size-prefix)
+                                              [(bit-or 128 (last size-prefix)) 0]
+                                              cid payload)))
+        parsed (#'forest/file-sections framed)
+        corrupted (doto (aclone framed)
+                    (aset-byte (dec (alength framed))
+                               (unchecked-byte (bit-xor 1 (aget framed (dec (alength framed)))))))]
+    (is (= 1 (count parsed)))
+    (is (= cid (:cid (first parsed))))
+    (is (Arrays/equals payload (:bytes (first parsed))))
+    (is (thrown? Exception (#'forest/file-sections corrupted)))
+    (is (thrown? Exception (#'forest/file-sections noncanonical)))
+    (is (thrown? Exception (#'forest/file-sections (Arrays/copyOf framed (dec (alength framed))))))
+    (is (thrown? Exception (#'forest/file-sections (byte-array [0]))))))
+
 (deftest file-verifier-matches-existing-reader-and-refuses-corruption
   (let [bytes (fixture) old (forest/open bytes) blocks (:blocks (car/carv1-decode (:carv1 old)))
         dir (new-store) path (Paths/get (str dir "/input.forest") (make-array String 0))
@@ -62,6 +83,34 @@
       (is (zero? (get-in (pack/summary fresh) [:stats :cache-entries-before])))
       (is (Arrays/equals data (pack/read-data fresh "file")))
       (is (= (:carv1 h) (vec (map #(bit-and 255 %) (Arrays/copyOfRange (pack/export-car fresh "file") 51 (+ 51 (count (:carv1 h)))))))))))
+
+(deftest identical-forest-bytes-recover-across-representation-profiles
+  (let [bytes (fixture) h (forest/open bytes)
+        blocks (butlast (:blocks (car/carv1-decode (:carv1 h))))
+        chunks (second (reduce (fn [[offset out] block]
+                                 [(+ offset (count (:bytes block)))
+                                  (conj out {"cid" {:tag 42 :bytes (:cid block)}
+                                             "offset" offset "length" (count (:bytes block))})])
+                               [0 []] blocks))
+        size (reduce + (map #(count (:bytes %)) blocks))
+        wire (byte-array (map unchecked-byte
+                              (car/cbor-encode {"format" "awai.logical-file" "version" 1
+                                                "fileSize" size
+                                                "chunkProfile" {"kind" "fixed" "version" 1 "leafSize" 65536}
+                                                "chunks" chunks})))
+        cid (car/cid-str (car/cid-bytes car/codec-dag-cbor (digest wire)))
+        dir (new-store) path (str dir "/input.forest")]
+    (Files/write (Paths/get path (make-array String 0)) bytes (make-array java.nio.file.OpenOption 0))
+    (pack/import-forest-direct! dir "v1" bytes)
+    (pack/import-logical-forest-files! dir "v2" [path] wire cid {:file-backed? true})
+    (let [fresh (pack/recover dir)
+          summary (pack/summary fresh)
+          expected (byte-array (map unchecked-byte (mapcat :bytes blocks)))]
+      (is (= (get-in summary [:files "v1" :stored-sha])
+             (get-in summary [:groups "v2" :packs 0 :stored-sha])))
+      (is (= 2 (get-in summary [:stats :index-cache-entries])))
+      (is (Arrays/equals expected (pack/read-data fresh "v1")))
+      (is (Arrays/equals expected (pack/read-group-range fresh "v2" 0 size))))))
 
 (deftest forest-corruption-never-publishes
   (let [bytes (fixture) h (forest/open bytes) dir (new-store)

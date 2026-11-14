@@ -1,0 +1,228 @@
+(ns otehon.ipld-forest-test
+  (:require [clojure.test :refer [deftest is testing]]
+            [awai.fs.car :as car]
+            [otehon.forest :as forest]
+            [otehon.ipld-forest :as catalog]
+            [otehon.pack-store :as pack]
+            [otehon.storage :as store])
+  (:import [java.nio.file Files Paths LinkOption] [java.io RandomAccessFile]))
+(def root "bafyreiakmttcp6otxvnyqmdjpzlschlskibp7enadlvkguw3nnp47f5wqm")
+(def fixture (or (System/getenv "IPLD_FOREST_FIXTURE") "nixos/otehon/storage/test/fixtures/prolly-forest/prolly.forest"))
+(def ^:dynamic *output* ".agent-output")
+(defn bytes [] (Files/readAllBytes (Paths/get fixture (make-array String 0))))
+(defn new-store []
+  (let [_ (.mkdirs (java.io.File. *output*))
+        p (Files/createTempDirectory (Paths/get *output* (make-array String 0)) "ipld-forest-" (make-array java.nio.file.attribute.FileAttribute 0))
+        dir (str (.resolve p "store"))]
+    (store/init! dir) dir))
+(defn error-type [f] (try (f) nil (catch Exception e (:type (ex-data e)))))
+
+(deftest persisted-generic-blocks-use-positioned-verified-reads
+  (let [dir (new-store) a (bytes) decoded (forest/open a)
+        blocks (:blocks (car/carv1-decode (:carv1 decoded)))
+        ref (catalog/publish! dir "prolly" root a) handle (catalog/recover dir "prolly")
+        recorded (atom []) original store/read-payload-segments]
+    (is (= 12 (count blocks)))
+    (is (= root (get-in handle [:ref :root-cid])))
+    (is (= (:archive-sha ref) (get-in handle [:ref :archive-sha])))
+    (is (nil? (get-in handle [:forest :bytes])))
+    (with-redefs [store/read-payload-segments (fn [d sha ext size spans]
+                                                 (swap! recorded into spans)
+                                                 (original d sha ext size spans))]
+      (doseq [{:keys [cid bytes]} blocks]
+        (is (= bytes (mapv #(bit-and 255 %) (catalog/get-block handle (car/cid-str cid)))))))
+    (is (seq @recorded))
+    (is (every? #(< (:length %) (alength a)) @recorded))
+    (is (nil? (catalog/get-block handle
+                  (car/cid-str (car/cid-bytes car/codec-raw (vec (repeat 32 42)))))))))
+
+(deftest root-refusal-and-corruption-are-not-fallbacks
+  (let [dir (new-store) a (bytes)
+        other (car/cid-str (car/cid-bytes car/codec-raw (vec (repeat 32 42))))]
+    (is (= :invalid-ipld-root (error-type #(catalog/publish! dir "prolly" other a))))
+    (is (= :ipld-forest-not-found (error-type #(catalog/recover dir "prolly"))))
+    (catalog/publish! dir "prolly" root a)
+    (let [h (catalog/recover dir "prolly") offsets (atom []) original store/read-payload-segments]
+      (with-redefs [store/read-payload-segments (fn [d sha ext size spans]
+                                                   (swap! offsets into spans)
+                                                   (original d sha ext size spans))]
+        (is (bytes? (catalog/get-block h root))))
+      (let [path (str dir "/" (get-in h [:ref :archive-sha]) ".forest")
+            at (:offset (first @offsets))]
+        (with-open [f (RandomAccessFile. path "rw")]
+          (.seek f at) (let [b (.read f)] (.seek f at) (.write f (bit-xor 1 b))))
+        (is (= :corrupt-frame (error-type #(catalog/get-block h root))))
+        (is (= :corrupt-forest (error-type #(catalog/recover dir "prolly"))))))))
+
+(deftest missing-published-archive-refuses-recovery
+  (let [dir (new-store) a (bytes) ref (catalog/publish! dir "prolly" root a)
+        p (Paths/get (str dir "/" (:archive-sha ref) ".forest") (make-array String 0))
+        withheld (Paths/get (str p ".withheld") (make-array String 0))]
+    (Files/move p withheld (make-array java.nio.file.CopyOption 0))
+    (is (= :missing-forest (error-type #(catalog/recover dir "prolly"))))))
+
+(deftest interrupted-publish-keeps-old-catalog
+  (let [dir (new-store) initial (bytes)
+        other-path (or (System/getenv "FOREST_FIXTURE") "nixos/otehon/storage/test/fixtures/forest/sha256-pack.forest.car.zst")
+        other (Files/readAllBytes (Paths/get other-path (make-array String 0)))
+        other-root (car/cid-str (first (:roots (car/carv1-decode (:carv1 (forest/open other))))))]
+    (catalog/publish! dir "prolly" root initial)
+    (is (thrown? Exception
+          (binding [store/*write-observer* (fn [event role]
+                                             (when (= [event role] [:renamed :forest])
+                                               (throw (ex-info "injected interruption" {}))))]
+            (catalog/publish! dir "prolly" other-root other))))
+    (let [h (catalog/recover dir "prolly")]
+      (is (= root (get-in h [:ref :root-cid])))
+      (is (bytes? (catalog/get-block h root))))))
+
+(def policy-root "bafyreic73cz5ww6pbthvvyz62szwjs25afgaqr2a6va4xwl344bmfw4iri")
+(def split-roots ["bafyreia5f47e462gm43mxscjphe4n6wyi56ccevdmwq526i4jcjuuphala"
+                  "bafyreidb7f6i335vyhbordfkte377frwmtq5axfpd44gpvxodjor643mhy"])
+(defn split-inputs []
+  (let [base (or (System/getenv "IPLD_SPLIT_FIXTURES") "nixos/otehon/storage/test/fixtures/prolly-forest/split")]
+    (mapv (fn [i root-cid] {:root-cid root-cid
+                            :bytes (Files/readAllBytes (Paths/get (str base "/" i ".forest") (make-array String 0)))})
+          (range 2) split-roots)))
+
+(defn- atom-witness [root calls]
+  {:read! #(deref root)
+   :compare-and-set! (fn [old new] (locking root (swap! calls inc)
+                                     (if (= @root old) (do (reset! root new) true) false)))})
+
+(deftest witnessed-generic-group-publication
+  (let [d (new-store) parts (split-inputs) before (:root (store/read-store d))
+        a (atom before) calls (atom 0) w (atom-witness a calls)]
+    (is (= :invalid-witness (error-type #(catalog/publish-group! d "graph" policy-root parts 1 nil nil))))
+    (is (= :invalid-witness (error-type #(catalog/publish-group! d "graph" policy-root parts 1 w nil))))
+    (is (= :catalog-verification-refused (error-type #(catalog/publish-group! d "graph" policy-root parts 1 w (fn [_ _] false)))))
+    (is (= before (:root (store/read-store d)))) (is (zero? @calls))
+    (catalog/publish-group! d "graph" policy-root parts 1 w pack/verify-supported-catalog!)
+    (is (= 1 @calls)) (is (= (:root (store/read-store d)) @a))
+    (let [h (catalog/recover-group-witnessed d "graph" (:read! w))]
+      (is (= 2 (count (get-in h [:group :archives]))))
+      (is (bytes? (catalog/get-group-block h policy-root))))
+    (is (= :stale-generation (error-type #(catalog/publish-group! d "stale" policy-root parts 1 w pack/verify-supported-catalog!))))))
+
+(deftest witnessed-generic-group-verifies-entire-root
+  (let [d (new-store) parts (split-inputs) prior-ref (catalog/publish! d "prior" root (bytes))
+        prior (:root (store/read-store d)) a (atom prior) calls (atom 0) w (atom-witness a calls)
+        path (Paths/get (str d "/" (:archive-sha prior-ref) ".forest") (make-array String 0))
+        saved (Paths/get (str d "-missing-prior") (make-array String 0))]
+    (Files/move path saved (make-array java.nio.file.CopyOption 0))
+    (is (= :missing-forest (error-type #(catalog/publish-group! d "graph" policy-root parts 2 w pack/verify-supported-catalog!))))
+    (is (= prior (:root (store/read-store d)))) (is (zero? @calls))
+    (Files/move saved path (make-array java.nio.file.CopyOption 0))
+    (let [removed (atom false) failure (binding [store/*write-observer*
+                       (fn [event role] (when (= [event role] [:dir-synced :root])
+                                          (Files/move path saved (make-array java.nio.file.CopyOption 0))
+                                          (reset! removed true)))]
+                    (error-type #(catalog/publish-group! d "graph" policy-root parts 2 w pack/verify-supported-catalog!)))]
+      (is @removed) (is (= :witness-commit-uncertain failure)) (is (= prior @a)) (is (zero? @calls)))))
+
+(deftest witnessed-generic-group-refuses-postpublication-verifier-failure
+  (let [d (new-store) parts (split-inputs) prior (:root (store/read-store d))
+        a (atom prior) calls (atom 0) verifier-calls (atom 0) w (atom-witness a calls)
+        verifier (fn [_ _] (= 1 (swap! verifier-calls inc)))]
+    (is (= :witness-commit-uncertain
+           (error-type #(catalog/publish-group! d "graph" policy-root parts 1 w verifier))))
+    (is (= 2 @verifier-calls)) (is (= 2 (get-in (store/read-store d) [:root :generation])))
+    (is (= prior @a)) (is (zero? @calls))))
+
+(deftest damaged-root-must-not-open-older-forest-catalog
+  (let [dir (new-store) parts (split-inputs)]
+    (catalog/publish! dir "prolly" root (bytes))
+    (catalog/publish-group! dir "graph" policy-root parts)
+    (catalog/publish-group! dir "graph" policy-root parts)
+    (is (bytes? (catalog/get-block (catalog/recover dir "prolly") root)))
+    (is (= policy-root (get-in (catalog/recover-group dir "graph") [:group :basis-cid])))
+    (is (= 4 (get-in (store/read-store dir) [:root :generation])))
+    (spit (str dir "/root-0.edn") "broken root")
+    (is (true? (:degraded? (store/read-store dir))))
+    (is (= :degraded-store (error-type #(catalog/recover dir "prolly"))))
+    (is (= :degraded-store (error-type #(catalog/recover-group dir "graph"))))))
+
+(deftest witnessed-single-and-group-recovery
+  (let [dir (new-store) parts (split-inputs)]
+    (catalog/publish! dir "prolly" root (bytes))
+    (catalog/publish-group! dir "graph" policy-root parts)
+    (let [basis (:root (store/read-store dir))]
+      (is (bytes? (catalog/get-block (catalog/recover-witnessed dir "prolly" (constantly basis)) root)))
+      (is (= policy-root (get-in (catalog/recover-group-witnessed dir "graph" (constantly basis)) [:group :basis-cid])))
+      (is (= :witness-mismatch (error-type #(catalog/recover-witnessed dir "prolly" (constantly (assoc basis :generation 4))))))
+      (is (= :witness-mismatch (error-type #(catalog/recover-group-witnessed dir "graph" (constantly (assoc basis :generation 4)))))))))
+(deftest multiple-archives-publish-as-one-group
+  (let [dir (new-store) parts (split-inputs)
+        blocks (mapcat #(-> % :bytes forest/open :carv1 car/carv1-decode :blocks) parts)
+        before (store/read-store dir)
+        missing (car/cid-str (car/cid-bytes car/codec-raw (vec (repeat 32 42))))]
+    (is (= 18 (count blocks)))
+    (is (= :invalid-ipld-basis (error-type #(catalog/publish-group! dir "graph" missing parts))))
+    (is (= before (store/read-store dir)))
+    (is (= :invalid-ipld-forest-group (error-type #(catalog/publish-group! dir "graph" policy-root [(first parts) (first parts)]))))
+    (let [group (catalog/publish-group! dir "graph" policy-root parts)
+          h (catalog/recover-group dir "graph")]
+      (is (= 2 (count (:archives group))))
+      (is (= policy-root (get-in h [:group :basis-cid])))
+      (doseq [{:keys [cid bytes]} blocks]
+        (is (= bytes (mapv #(bit-and 255 %) (catalog/get-group-block h (car/cid-str cid))))))
+      (is (nil? (catalog/get-group-block h missing)))
+      (let [ref (second (:archives group))
+            p (Paths/get (str dir "/" (:archive-sha ref) ".forest") (make-array String 0))]
+        (Files/move p (Paths/get (str p ".withheld") (make-array String 0)) (make-array java.nio.file.CopyOption 0))
+        (is (= :missing-forest (error-type #(catalog/recover-group dir "graph"))))))))
+
+(deftest interrupted-second-archive-preserves-prior-group
+  (let [dir (new-store) parts (split-inputs)
+        full-path (or (System/getenv "IPLD_POLICY_FIXTURE") "nixos/otehon/storage/test/fixtures/prolly-forest/policy.forest")
+        full (Files/readAllBytes (Paths/get full-path (make-array String 0)))
+        old [{:root-cid policy-root :bytes full}]]
+    (catalog/publish-group! dir "graph" policy-root old)
+    (let [root-before (:root (store/read-store dir)) seen (atom 0)]
+      (is (thrown? Exception
+            (binding [store/*write-observer* (fn [event role]
+                                               (when (= [event role] [:renamed :forest])
+                                                 (when (= 2 (swap! seen inc))
+                                                   (throw (ex-info "interrupted second archive" {})))))]
+              (catalog/publish-group! dir "graph" policy-root parts))))
+      (is (= 2 @seen))
+      (is (= root-before (:root (store/read-store dir))))
+      (let [h (catalog/recover-group dir "graph")]
+        (is (= 1 (count (get-in h [:group :archives]))))
+        (is (bytes? (catalog/get-group-block h policy-root))))
+      (catalog/publish-group! dir "graph" policy-root parts)
+      (is (= 2 (count (get-in (catalog/recover-group dir "graph") [:group :archives])))))))
+
+(deftest conditional-group-publication-rejects-stale-generations
+  (let [dir (new-store) parts (split-inputs)
+        initial (:generation (:root (store/read-store dir)))]
+    (is (= :invalid-generation
+           (error-type #(catalog/publish-group! dir "graph" policy-root parts nil))))
+    (is (= :invalid-generation
+           (error-type #(catalog/publish-group! dir "graph" policy-root parts 0))))
+    (is (= initial (:generation (:root (store/read-store dir)))))
+    (catalog/publish-group! dir "graph" policy-root parts initial)
+    (let [after (store/read-store dir) writes (atom 0)]
+      (with-redefs [store/write-forest! (fn [& _] (swap! writes inc) (throw (ex-info "must not write" {})))]
+        (is (= :stale-generation
+               (error-type #(catalog/publish-group! dir "graph" policy-root parts initial)))))
+      (is (zero? @writes))
+      (is (= after (store/read-store dir)))
+      (is (= policy-root (get-in (catalog/recover-group dir "graph") [:group :basis-cid]))))))
+
+(deftest conditional-publication-serializes-racing-writers
+  (let [dir (new-store) parts (split-inputs)
+        expected (:generation (:root (store/read-store dir)))
+        gate (promise)
+        attempt (fn [] @gate
+                  (loop [tries 0]
+                    (let [result (try (catalog/publish-group! dir "graph" policy-root parts expected)
+                                      :published (catch Exception e (:type (ex-data e))))]
+                      (if (and (= :writer-busy result) (< tries 500))
+                        (do (Thread/sleep 5) (recur (inc tries)))
+                        result))))
+        writers [(future (attempt)) (future (attempt))]]
+    (deliver gate true)
+    (is (= #{:published :stale-generation} (set (mapv deref writers))))
+    (is (= (inc expected) (:generation (:root (store/read-store dir)))))
+    (is (= policy-root (get-in (catalog/recover-group dir "graph") [:group :basis-cid])))))

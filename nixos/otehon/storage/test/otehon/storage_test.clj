@@ -1,7 +1,8 @@
 (ns otehon.storage-test
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.edn :as edn]
-            [otehon.storage :as store])
+            [otehon.storage :as store]
+            [otehon.root-witness :as witness])
   (:import [java.nio.file Files Paths LinkOption]
            [java.nio.file.attribute FileAttribute]))
 
@@ -18,6 +19,80 @@
     (store/transact! d :put {:key "a" :value "old"})
     (store/transact! d :put {:key "b" :value "keep"})
     d))
+
+(deftest initialized-store-has-an-explicit-second-slot
+  (let [d (directory)]
+    (store/init! d)
+    (is (.exists (java.io.File. (str d "/root-0.edn"))))
+    (is (false? (:degraded? (store/read-store d))))
+    ;; An old single-slot store cannot be distinguished from a lost first
+    ;; commit. Preserve its bytes and require an explicit recovery decision.
+    (let [slot (Paths/get (str d "/root-0.edn") (make-array String 0))]
+      (when (Files/exists slot (make-array LinkOption 0))
+        (Files/move slot (Paths/get (str d "-initial-slot.saved") (make-array String 0))
+                    (make-array java.nio.file.CopyOption 0))))
+    (is (true? (:degraded? (store/read-store d))))
+    (is (= :degraded-store (error-type #(store/transact! d :put {:key "a" :value "x"}))))))
+
+(deftest stale-initial-marker-cannot-mask-a-later-generation
+  (let [d (seeded)]
+    (is (= 3 (get-in (store/read-store d) [:root :generation])))
+    (spit (str d "/root-0.edn") (pr-str {:format :awai.otehon-store/initial-slot-v1}))
+    (is (true? (:degraded? (store/read-store d))))
+    (is (= :degraded-store (error-type #(store/transact! d :put {:key "a" :value "x"}))))))
+
+(defn- atom-witness [root]
+  {:read! #(deref root)
+   :compare-and-set! (fn [old new] (locking root (if (= @root old) (do (reset! root new) true) false)))})
+
+(deftest prepared-witness-refuses-any-pending-value
+  (let [d (directory) _ (store/init! d) root (:root (store/read-store d))
+        open! #(hash-map :basis root)]
+    (is (= root (:basis (witness/open-verified! d {:status! #(hash-map :root root :pending nil)} open!))))
+    (is (= :witness-pending (error-type #(witness/open-verified! d {:status! (fn [] {:root root :pending false})} open!))))
+    (is (= :invalid-witness (error-type #(witness/open-verified! d {:status! (fn [] nil)} open!))))
+    (let [calls (atom 0) w {:status! #(if (= 1 (swap! calls inc)) {:root root :pending nil} {:root root :pending root})}]
+      (is (= :witness-pending (error-type #(witness/open-verified! d w open!)))))))
+
+(deftest witnessed-conditional-write-publishes-only-after-cas
+  (let [d (directory) _ (store/init! d) initial (:root (store/read-store d))
+        trusted (atom initial) witness (atom-witness trusted)
+        result (store/transact-if-generation-witnessed! d 1 :put {:key "a" :value "new"} nil witness)]
+    (is (= 2 (:generation result)))
+    (is (= (:root (store/read-store d)) @trusted))
+    (is (= "new" (get-in (store/read-store d) [:state "a"])))
+    (is (= :stale-generation (error-type #(store/transact-if-generation-witnessed! d 1 :put {:key "b" :value "x"} nil witness))))
+    (is (= :invalid-witness (error-type #(store/transact-if-generation-witnessed! d 2 :put {:key "b" :value "x"} nil {}))))))
+
+(deftest witnessed-write-refuses-stale-and-ambiguous-outcomes
+  (let [d (directory) _ (store/init! d) initial (:root (store/read-store d))
+        other (assoc initial :snapshot (apply str (repeat 64 "a")))
+        calls (atom 0) witness {:read! #(if (= 1 (swap! calls inc)) initial other)
+                                :compare-and-set! (fn [_ _] (throw (ex-info "unexpected CAS" {})))}]
+    (is (= :witness-changed (error-type #(store/transact-if-generation-witnessed! d 1 :put {:key "a" :value "x"} nil witness))))
+    (is (= initial (:root (store/read-store d)))))
+  (doseq [failure [:before-cas :after-cas]]
+    (let [d (directory) _ (store/init! d) initial (:root (store/read-store d))
+          trusted (atom initial) witness (atom-witness trusted)
+          result (binding [store/*write-observer* (fn [event role]
+                          (when (= [event role] [failure :witness]) (throw (ex-info "injected" {}))))]
+                   (error-type #(store/transact-if-generation-witnessed! d 1 :put {:key "a" :value "new"} nil witness)))
+          actual (:root (store/read-store d))]
+      (is (= :witness-commit-uncertain result))
+      (is (= 2 (:generation actual)))
+      (is (= (= failure :after-cas) (= actual @trusted)))
+      (when (= failure :before-cas)
+        (is (= :witness-mismatch (error-type #(store/transact-if-generation-witnessed! d 2 :put {:key "b" :value "x"} nil witness))))))))
+
+(deftest witnessed-root-publication-failure-is-uncertain
+  (let [d (directory) _ (store/init! d) trusted (atom (:root (store/read-store d)))
+        witness (atom-witness trusted)]
+    (is (= :witness-commit-uncertain
+           (binding [store/*write-observer* (fn [event role]
+                      (when (= [event role] [:renamed :root]) (throw (ex-info "injected" {}))))]
+             (error-type #(store/transact-if-generation-witnessed! d 1 :put {:key "a" :value "new"} nil witness)))))
+    (is (= 2 (get-in (store/read-store d) [:root :generation])))
+    (is (not= @trusted (:root (store/read-store d))))))
 
 (deftest bounded-streamed-forest-publication
   (let [d (seeded) source (str d "-source")

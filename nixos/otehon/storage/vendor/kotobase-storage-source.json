@@ -1,0 +1,8 @@
+{
+  "repository": "https://github.com/kotoba-lang/kotobase-storage",
+  "revision": "ce8640e24ee2b1b8a15129b7a71f020a22f979a8",
+  "path": "src/kotobase/storage/core.cljk",
+  "vendored_path": "vendor/kotobase-storage/src/kotobase/storage/core.cljc",
+  "sha256": "4ce94d0eb58ade7bc6afca48c946bf3eb79f7918a844b52ec911c1c0c37adef5",
+  "transformation": "extension only for hosted CLJC runtime; bytes unchanged"
+}

@@ -1,0 +1,5 @@
+(load-file "nixos/otehon/storage/oracle/signed_basis_receipt_common.clj")
+(def csrc (slurp "nixos/otehon/storage/oracle/causal_forest_receipt.clj"))
+(assert (str/includes? csrc "@stage-blocks)]"))
+(def csrc (str/replace csrc "@stage-blocks)]" "@stage-blocks) blocks (into blocks [(block request) (block manifest)])]"))
+(load-string (subs csrc (inc (str/index-of csrc "\n"))))

@@ -112,20 +112,28 @@
        (<= (:checkpoint value) (:tail value))
        (digest? (:snapshot value)) (digest? (:log value))))
 
+;; Slot 0 begins with this durable marker before generation 1 is published.
+;; Without it, a genuinely new store cannot be distinguished from a store
+;; whose generation-2 root disappeared. It is replaced by generation 2.
+(def ^:private initial-slot {:format :awai.otehon-store/initial-slot-v1})
+
 (defn- load-slot [root i]
   (let [p (path root (str "root-" i ".edn"))]
     (if-not (exists? p)
       nil
       (try
-        (let [{:keys [payload digest] :as envelope} (parse (read-bytes p))
-              _ (when-not (and (= #{:payload :digest} (set (keys envelope)))
-                                (string? payload) (digest? digest)
-                                (= digest (sha (.getBytes ^String payload "UTF-8"))))
-                  (fail! :corrupt-root "root envelope digest mismatch"))
-              value (parse (.getBytes ^String payload "UTF-8"))]
-          (when-not (and (root-valid? value) (= i (mod (:generation value) 2)))
-            (fail! :invalid-root "invalid root or slot generation"))
-          {:root value})
+        (let [envelope (parse (read-bytes p))]
+          (if (= initial-slot envelope)
+            (if (= i 0) {:initial? true} (fail! :invalid-root "initial slot in wrong location"))
+            (let [{:keys [payload digest]} envelope
+                  _ (when-not (and (map? envelope) (= #{:payload :digest} (set (keys envelope)))
+                                    (string? payload) (digest? digest)
+                                    (= digest (sha (.getBytes ^String payload "UTF-8"))))
+                      (fail! :corrupt-root "root envelope digest mismatch"))
+                  value (parse (.getBytes ^String payload "UTF-8"))]
+              (when-not (and (root-valid? value) (= i (mod (:generation value) 2)))
+                (fail! :invalid-root "invalid root or slot generation"))
+              {:root value})))
         (catch Exception _ {:error :invalid-slot})))))
 
 (defn- root-path [directory]
@@ -360,7 +368,8 @@
         (fail! :invalid-state "unsupported snapshot or WAL payload"))
       {:state (wal/recover log sb snapshot apply-frame)
        :root chosen :snapshot snapshot :log log
-       :degraded? (boolean (some :error slots))})))
+       :degraded? (boolean (or (some nil? slots) (some :error slots)
+                               (and (some :initial? slots) (not= 1 (:generation chosen)))))})))
 
 (defn read-store [directory]
   (select-keys (recover* (root-path directory)) [:state :root :degraded?]))
@@ -385,7 +394,9 @@
       ;; Closing this channel releases its OS lock, including on exceptions.
       (action))))
 
-(defn- publish! [root generation snapshot log]
+(defn- publish!
+  ([root generation snapshot log] (publish! root generation snapshot log nil))
+  ([root generation snapshot log before-root]
   (when-not (and (sequence? generation) (pos? generation))
     (fail! :generation-exhausted "root generation exhausted"))
   (let [snapshot-ref (object! root snapshot :snapshot)
@@ -394,9 +405,10 @@
                :checkpoint (:seq snapshot) :tail (:seq log)
                :snapshot snapshot-ref :log log-ref}
         payload (pr-str value)]
+    (when before-root (before-root value))
     (write-record! root (str "root-" (mod generation 2) ".edn")
                    (encode {:payload payload :digest (sha (.getBytes payload "UTF-8"))}) :root)
-    {:generation generation :tail (:seq log)}))
+    {:generation generation :tail (:seq log)})))
 
 (defn init! [directory]
   ;; createDirectory refuses any existing path, including partial stores.
@@ -404,7 +416,73 @@
     (Files/createDirectory p (attrs "rwx------"))
     (sync-dir! (.getParent p))
     (with-writer (root-path directory)
-      #(publish! p 1 {:seq 0 :state {}} (wal/empty-log)))))
+      #(do (write-record! p "root-0.edn" (encode initial-slot) :initial-slot)
+           (publish! p 1 {:seq 0 :state {}} (wal/empty-log))))))
+
+(defn validate-write-witness!
+  "Validate the host port shape, not witness independence or trust. CAS must
+  atomically compare full root maps and return literal true only on success."
+  [witness]
+  (when-not (and (map? witness)
+                 (contains? #{#{:read! :compare-and-set!} #{:read! :compare-and-set! :prepare! :status!}}
+                            (set (keys witness)))
+                 (every? fn? (vals witness)))
+    (fail! :invalid-witness "expected trusted read and conditional update ports"))
+  witness)
+
+(defn- transact* [directory op payload before-publish expected-generation witness after-publish]
+  (when-not (frame-valid? {:op op :payload payload})
+    (fail! :invalid-operation "expected put/delete with string key/value"))
+  (when witness (validate-write-witness! witness))
+  (let [root (root-path directory)]
+    (with-writer root
+      #(let [{:keys [snapshot log state] current :root} (writable-state root)]
+         ;; Comparison and publication share the same OS writer lock. Check
+         ;; before the hook so a stale caller cannot write immutable objects.
+         (when (and (some? expected-generation)
+                    (not= expected-generation (:generation current)))
+           (throw (ex-info "store generation changed"
+                           {:type :stale-generation :expected expected-generation
+                            :actual (:generation current)})))
+         (when (= 9007199254740991 (:seq log))
+           (fail! :sequence-exhausted "WAL sequence exhausted"))
+         (when (and witness (not= current ((:read! witness))))
+           (fail! :witness-mismatch "current root differs from trusted witness"))
+         (when before-publish (before-publish (str root) state))
+         (when (and witness (not= current ((:read! witness))))
+           (fail! :witness-changed "trusted witness changed before root publication"))
+         (let [result (if witness
+                        (try (publish! root (inc (:generation current)) snapshot (wal/append log op payload)
+                               (when (:prepare! witness)
+                                 (fn [candidate]
+                                   (observe! :before-prepare :witness)
+                                   (when-not (true? ((:prepare! witness) current candidate))
+                                     (fail! :witness-prepare-refused "witness rejected pending root"))
+                                   (when-not (= {:root current :pending candidate} ((:status! witness)))
+                                     (fail! :witness-prepare-mismatch "witness did not confirm pending root"))
+                                   (observe! :after-prepare :witness))))
+                             (catch Exception e
+                               (throw (ex-info "root publication outcome requires review"
+                                               {:type :witness-commit-uncertain} e))))
+                        (publish! root (inc (:generation current)) snapshot (wal/append log op payload)))]
+           (if-not witness result
+             (try
+               (let [{next-root :root next-state :state} (writable-state root)]
+                 (when-not (= (:generation result) (:generation next-root))
+                   (fail! :local-root-changed "published root changed during witness update"))
+                 (when after-publish (after-publish (str root) next-state))
+                 (observe! :before-cas :witness)
+                 (when-not (true? ((:compare-and-set! witness) current next-root))
+                   (fail! :witness-cas-refused "witness CAS refused"))
+                 (observe! :after-cas :witness)
+                 (when-not (= next-root ((:read! witness)))
+                   (fail! :witness-readback-mismatch "witness did not confirm published root"))
+                 (when (and (:status! witness) (not= {:root next-root :pending nil} ((:status! witness))))
+                   (fail! :witness-readback-mismatch "witness did not clear pending root"))
+                 result)
+               (catch Exception e
+                 (throw (ex-info "local root published; witness outcome requires review"
+                                 {:type :witness-commit-uncertain} e))))))))))
 
 (defn transact!
   "Commit metadata. Optional before-publish runs under the writer lock with
@@ -412,15 +490,97 @@
   leaves metadata unchanged. It is a trusted hosted adapter hook, not consent."
   ([directory op payload] (transact! directory op payload nil))
   ([directory op payload before-publish]
-   (when-not (frame-valid? {:op op :payload payload})
-     (fail! :invalid-operation "expected put/delete with string key/value"))
+   (transact* directory op payload before-publish nil nil nil)))
+
+(defn transact-if-generation!
+  "Commit only if EXPECTED-GENERATION is still the committed store generation.
+  The check and callback run under the same local OS file lock. This is not a
+  distributed fencing or multi-node consensus guarantee."
+  [directory expected-generation op payload before-publish]
+  (when-not (and (sequence? expected-generation) (pos? expected-generation))
+    (fail! :invalid-generation "expected a positive bounded store generation"))
+  (transact* directory op payload before-publish expected-generation nil nil))
+
+(defn transact-if-generation-witnessed!
+  "Conditional local commit followed by trusted witness CAS/readback.
+
+  The local root is durable before witness CAS. Once publication begins, an
+  exception can leave either commit state; guarded reads must fail closed and
+  the host must reconcile using independent evidence, never blindly retry.
+  The optional trusted after-publish verifier runs under the same local lock
+  before CAS, against the published state. It does not prevent later damage."
+  ([directory expected-generation op payload before-publish witness]
+   (transact-if-generation-witnessed! directory expected-generation op payload before-publish witness nil))
+  ([directory expected-generation op payload before-publish witness after-publish]
+  (when-not (and (sequence? expected-generation) (pos? expected-generation))
+    (fail! :invalid-generation "expected a positive bounded store generation"))
+  (validate-write-witness! witness)
+  (when-not (or (nil? after-publish) (fn? after-publish))
+    (fail! :invalid-operation "after-publish verifier must be a function"))
+  (transact* directory op payload before-publish expected-generation witness after-publish)))
+
+(defn reconcile-witnessed!
+  "Explicitly reconcile a trusted prepared intent under the local writer lock.
+  VERIFY! must validate the entire local state and every referenced object.
+  The witness's pending intent must be authenticated and rollback-resistant;
+  this function does not make an untrusted or same-domain witness trustworthy."
+  [directory witness verify!]
+  (validate-write-witness! witness)
+  (when-not (and (:status! witness) (fn? verify!))
+    (fail! :invalid-witness "prepared witness and verifier required"))
+  (let [root (root-path directory)]
+    (with-writer root
+      #(let [{local :root state :state} (writable-state root)
+             status ((:status! witness)) old (:root status) pending (:pending status)]
+         (when-not (and (= #{:root :pending} (set (keys status))) (root-valid? old)
+                        (or (nil? pending)
+                            (and (root-valid? pending) (= (inc (:generation old)) (:generation pending))
+                                 (<= (:tail old) (:tail pending)) (<= (:checkpoint old) (:checkpoint pending)))))
+           (fail! :invalid-witness "invalid prepared witness state"))
+         (when-not (or (= local old) (= local pending))
+           (fail! :witness-mismatch "local root is not an authorized prepared state"))
+         (verify! (str root) state)
+         (when-not (= status ((:status! witness)))
+           (fail! :witness-changed "witness changed during reconciliation"))
+         (cond
+           (nil? pending) {:outcome :already-consistent :root old}
+           (= local old)
+           ;; The newer local root might have been published and then rolled
+           ;; back; old root alone cannot authorize cancelling this intent.
+           (fail! :witness-review-required "pending root is not present locally")
+           :else
+           (try
+             (when-not (true? ((:compare-and-set! witness) old pending))
+               (fail! :witness-changed "pending intent changed during commit"))
+             (when-not (= {:root pending :pending nil} ((:status! witness)))
+               (fail! :witness-reconcile-uncertain "commit readback mismatch"))
+             {:outcome :committed-pending :root pending}
+             (catch Exception e
+               (throw (ex-info "witness reconciliation outcome requires review"
+                               {:type :witness-reconcile-uncertain} e)))))))))
+
+(defn compare-and-set-value!
+  "Compare and publish a metadata value under the local writer lock. A
+  mismatch changes no WAL/root. The optional trusted check runs under that
+  lock only after a match and before publication. I/O failure may be ambiguous."
+  ([directory key expected next] (compare-and-set-value! directory key expected next nil))
+  ([directory key expected next before-publish]
+   (when-not (and (string? key) (or (nil? expected) (string? expected)) (string? next)
+                  (or (nil? before-publish) (fn? before-publish)))
+     (fail! :invalid-operation "invalid CAS arguments"))
    (let [root (root-path directory)]
      (with-writer root
-       #(let [{:keys [snapshot log state] current :root} (writable-state root)]
-          (when (= 9007199254740991 (:seq log))
-            (fail! :sequence-exhausted "WAL sequence exhausted"))
-          (when before-publish (before-publish (str root) state))
-          (publish! root (inc (:generation current)) snapshot (wal/append log op payload)))))))
+       #(let [{:keys [snapshot log state] current :root} (writable-state root)
+              old (get state key)]
+          (if (not= expected old)
+            {:published? false :current old :version (:generation current)}
+            (do
+              (when (= 9007199254740991 (:seq log))
+                (fail! :sequence-exhausted "WAL sequence exhausted"))
+              (when before-publish (before-publish (str root) state))
+              (let [published (publish! root (inc (:generation current)) snapshot
+                                        (wal/append log :put {:key key :value next}))]
+                {:published? true :current next :version (:generation published)}))))))))
 
 (defn checkpoint!
   ([directory] (checkpoint! directory nil))

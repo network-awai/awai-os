@@ -29,7 +29,7 @@ jobs:
           chmod 500 "$tool"
           bb_path=$(nix-build --no-out-link --expr '(import (import ./ci/nixpkgs.nix) {}).babashka')
           "$bb_path/bin/bb" --classpath nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:nixos/otehon/storage/vendor/apex-car/src:nixos/otehon/storage/test nixos/otehon/storage/test/otehon/forest_writer_proof.clj "$RUNNER_TEMP/forest-writer-proof" "$tool"
-          classpath=nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:nixos/otehon/storage/vendor/apex-car/src:nixos/otehon/storage/test
+          classpath=nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:nixos/otehon/storage/vendor/apex-car/src:nixos/otehon/storage/vendor/kotobase-storage/src:nixos/otehon/storage/test
           proof=nixos/otehon/storage/test/otehon/forest_large_proof.clj
           "$bb_path/bin/bb" --classpath "$classpath" "$proof" generate "$RUNNER_TEMP/forest-large-proof"
           "$tool" snapshot compress "$RUNNER_TEMP/forest-large-proof/input.car" --output-path "$RUNNER_TEMP/forest-large-proof/large.forest" --frame-size 1024
@@ -39,12 +39,55 @@ jobs:
           writer_proof=nixos/otehon/storage/test/otehon/forest_large_writer_proof.clj
           "$bb_path/bin/bb" --classpath "$classpath" "$writer_proof" write "$RUNNER_TEMP/forest-large-writer-proof" "$tool"
           "$bb_path/bin/bb" --classpath "$classpath" "$writer_proof" read "$RUNNER_TEMP/forest-large-writer-proof" "$tool"
+          BABASHKA="$bb_path/bin/bb" "$bb_path/bin/bb" --classpath "$classpath" nixos/otehon/storage/test/otehon/forest_large_writer_crash_proof.clj run "$RUNNER_TEMP/forest-large-writer-crash" "$tool"
+          cas_proof=nixos/otehon/storage/test/otehon/forest_large_cas_proof.clj
+          "$bb_path/bin/bb" --classpath "$classpath" "$cas_proof" write "$RUNNER_TEMP/forest-large-cas-proof" "$tool"
+          "$bb_path/bin/bb" --classpath "$classpath" "$cas_proof" read "$RUNNER_TEMP/forest-large-cas-proof" "$tool"
+          cli_cas_proof=nixos/otehon/storage/test/otehon/forest_large_cli_cas_proof.clj
+          "$bb_path/bin/bb" --classpath "$classpath" "$cli_cas_proof" write "$RUNNER_TEMP/forest-large-cli-cas" "$tool" "$RUNNER_TEMP/forest-large-cas-proof"
+          "$bb_path/bin/bb" --classpath "$classpath" "$cli_cas_proof" read "$RUNNER_TEMP/forest-large-cli-cas" "$tool" "$RUNNER_TEMP/forest-large-cas-proof"
           crash_proof=nixos/otehon/storage/test/otehon/forest_file_crash_proof.clj
           "$bb_path/bin/bb" --classpath "$classpath" "$crash_proof" generate "$RUNNER_TEMP/forest-file-crash"
           for i in 0 1; do
             "$tool" snapshot compress "$RUNNER_TEMP/forest-file-crash/fixtures/$i.car" --output-path "$RUNNER_TEMP/forest-file-crash/fixtures/$i.forest" --frame-size 1
           done
           BABASHKA="$bb_path/bin/bb" "$bb_path/bin/bb" --classpath "$classpath" "$crash_proof" run "$RUNNER_TEMP/forest-file-crash"
+          ipld_writer=nixos/otehon/storage/test/otehon/ipld_forest_writer_proof.clj
+          "$bb_path/bin/bb" --classpath "$classpath" "$ipld_writer" write "$RUNNER_TEMP/ipld-writer" "$tool"
+          "$bb_path/bin/bb" --classpath "$classpath" "$ipld_writer" read "$RUNNER_TEMP/ipld-writer" "$tool"
+          "$bb_path/bin/bb" --classpath "$classpath" nixos/otehon/storage/test/otehon/ipld_forest_conditional_writer_proof.clj "$RUNNER_TEMP/ipld-conditional" "$tool"
+          "$bb_path/bin/bb" --classpath "$classpath" nixos/otehon/storage/test/otehon/ipld_forest_witness_writer_proof.clj "$RUNNER_TEMP/ipld-witnessed" "$tool"
+          pg_path=$(nix-build --no-out-link --expr '(import (import ./ci/nixpkgs.nix) {}).postgresql')
+          PATH="$pg_path/bin:$bb_path/bin:$PATH" PG_WITNESS_TOOL="$tool" sh nixos/otehon/storage/test/otehon/postgres_witness_check.sh \
+            "$RUNNER_TEMP/pg-witness-tool" "$RUNNER_TEMP/pg-witness-socket" "$classpath" \
+            "$PWD/nixos/otehon/storage/oracle/postgres_witness_proof.clj" "$PWD/nixos/otehon/storage/test/fixtures/crosspack" \
+            "$PWD/nixos/otehon/storage/oracle/postgres_witness_crash.clj" "$PWD/nixos/otehon/storage/oracle/postgres_witness_db_interrupt.clj"
+          blocks_proof=nixos/otehon/storage/test/otehon/kotobase_forest_blocks_proof.clj
+          "$bb_path/bin/bb" --classpath "$classpath" "$blocks_proof" write "$RUNNER_TEMP/kotobase-blocks" "$tool"
+          "$bb_path/bin/bb" --classpath "$classpath" "$blocks_proof" read "$RUNNER_TEMP/kotobase-blocks" "$tool"
+          "$bb_path/bin/bb" --classpath "$classpath" "$blocks_proof" race "$RUNNER_TEMP/kotobase-blocks-race" "$tool"
+          mkdir -p "$RUNNER_TEMP/kotobase-blocks-guard/staging"
+          cp -R "$RUNNER_TEMP/kotobase-blocks/store" "$RUNNER_TEMP/kotobase-blocks-guard/store"
+          "$bb_path/bin/bb" --classpath "$classpath" "$blocks_proof" guard "$RUNNER_TEMP/kotobase-blocks-guard" "$tool"
+          transaction_proof=nixos/otehon/storage/test/otehon/kotobase_forest_transaction_proof.clj
+          "$bb_path/bin/bb" --classpath "$classpath" "$transaction_proof" write "$RUNNER_TEMP/kotobase-transaction" "$tool"
+          "$bb_path/bin/bb" --classpath "$classpath" "$transaction_proof" read "$RUNNER_TEMP/kotobase-transaction" "$tool"
+          "$bb_path/bin/bb" --classpath "$classpath" "$transaction_proof" fail "$RUNNER_TEMP/kotobase-transaction-fail" "$tool"
+          "$bb_path/bin/bb" --classpath "$classpath" "$transaction_proof" scoped-write "$RUNNER_TEMP/kotobase-scoped-transaction" "$tool"
+          "$bb_path/bin/bb" --classpath "$classpath" "$transaction_proof" scoped-read "$RUNNER_TEMP/kotobase-scoped-transaction" "$tool"
+          "$bb_path/bin/bb" --classpath "$classpath" "$transaction_proof" ports-write "$RUNNER_TEMP/kotobase-ports-transaction" "$tool"
+          "$bb_path/bin/bb" --classpath "$classpath" "$transaction_proof" scoped-read "$RUNNER_TEMP/kotobase-ports-transaction" "$tool"
+          FOREST_TOOL="$tool" BABASHKA="$bb_path/bin/bb" "$bb_path/bin/bb" --classpath "$classpath" nixos/otehon/storage/test/otehon/scoped_forest_crash_proof.clj run "$RUNNER_TEMP/kotobase-scoped-crash"
+          FOREST_TOOL="$tool" BABASHKA="$bb_path/bin/bb" "$bb_path/bin/bb" --classpath "$classpath" nixos/otehon/storage/test/otehon/scoped_forest_crash_proof.clj run-ports "$RUNNER_TEMP/kotobase-ports-crash"
+          cp -R "$RUNNER_TEMP/kotobase-blocks" "$RUNNER_TEMP/kotobase-blocks-invalidate"
+          "$bb_path/bin/bb" --classpath "$classpath" "$blocks_proof" invalidate "$RUNNER_TEMP/kotobase-blocks-invalidate" "$tool"
+          cp -R "$RUNNER_TEMP/kotobase-blocks" "$RUNNER_TEMP/kotobase-blocks-missing"
+          missing=$(find "$RUNNER_TEMP/kotobase-blocks-missing/store" -name '*.forest' -print -quit)
+          test -n "$missing"
+          mv "$missing" "$RUNNER_TEMP/withheld-blocks.forest"
+          if "$bb_path/bin/bb" --classpath "$classpath" "$blocks_proof" read "$RUNNER_TEMP/kotobase-blocks-missing" "$tool" > "$RUNNER_TEMP/kotobase-missing.log" 2>&1; then exit 1; fi
+          grep -q ':missing-forest' "$RUNNER_TEMP/kotobase-missing.log"
+          FOREST_TOOL="$tool" BABASHKA="$bb_path/bin/bb" "$bb_path/bin/bb" --classpath "$classpath" nixos/otehon/storage/test/otehon/ipld_forest_writer_crash_proof.clj run "$RUNNER_TEMP/ipld-writer-crash"
 
   evaluate:
     runs-on: ubuntu-latest
@@ -113,7 +156,7 @@ jobs:
       - name: Build and test the Otehon Pack/CAR and checkpoint storage adapter
         run: |
           storage_check=$(nix-build nixos/otehon/storage/check.nix --no-out-link)
-          cat "$storage_check/unit-tests.txt" "$storage_check/crash-tests.edn" "$storage_check/pack-crash-tests.edn"
+          cat "$storage_check/unit-tests.txt" "$storage_check/crash-tests.edn" "$storage_check/pack-crash-tests.edn" "$storage_check/ipld-forest-tests.txt" "$storage_check/ipld-group-crash.edn"
           module_check=$(nix-build nixos/otehon/storage/module-check.nix --no-out-link)
           cat "$module_check"
       - name: Evaluate every Otehon profile, aarch64 and the x86_64 vm

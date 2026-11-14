@@ -21,6 +21,47 @@
 (defn- bytes-of [n]
   (byte-array (map #(unchecked-byte (mod (+ (* % 19) (quot % 8191)) 256)) (range n))))
 
+(deftest damaged-newest-root-must-not-serve-the-previous-pack
+  (let [d (new-store) old (.getBytes "old" "UTF-8") new (.getBytes "new" "UTF-8")]
+    (pack/put-data! d "file" old)
+    (pack/put-data! d "file" new)
+    (is (= (seq new) (seq (pack/read-data (pack/recover d) "file"))))
+    (is (= 3 (get-in (store/read-store d) [:root :generation])))
+    (spit (str d "/root-1.edn") "broken root")
+    (is (true? (:degraded? (store/read-store d))))
+    (is (= :degraded-store (error-type #(pack/recover d))))))
+
+(deftest missing-root-must-not-serve-a-prior-generation
+  (doseq [[writes missing-slot] [[1 0] [2 1]]]
+    (let [d (new-store)]
+      (pack/put-data! d "file" (.getBytes "old" "UTF-8"))
+      (when (= writes 2) (pack/put-data! d "file" (.getBytes "new" "UTF-8")))
+      (is (bytes? (pack/read-data (pack/recover d) "file")))
+      (Files/move (Paths/get (str d "/root-" missing-slot ".edn") (make-array String 0))
+                  (Paths/get (str d "-withheld-slot-" missing-slot) (make-array String 0))
+                  (make-array java.nio.file.CopyOption 0))
+      (is (true? (:degraded? (store/read-store d))))
+      (is (= :degraded-store (error-type #(pack/recover d))))
+      (is (= :degraded-store (error-type #(pack/put-data! d "other" (.getBytes "x" "UTF-8"))))))))
+
+(deftest witnessed-recovery-refuses-valid-stale-root
+  (let [d (new-store) current (Paths/get (str d "/root-1.edn") (make-array String 0))
+        stale (Paths/get (str d "-generation1.saved") (make-array String 0))]
+    (Files/copy current stale (make-array java.nio.file.CopyOption 0))
+    (pack/put-data! d "file" (.getBytes "old" "UTF-8"))
+    (pack/put-data! d "file" (.getBytes "new" "UTF-8"))
+    (let [root (:root (store/read-store d)) witness (atom root) calls (atom 0)]
+      (is (= (seq (.getBytes "new" "UTF-8"))
+             (seq (pack/read-data (pack/recover-witnessed d #(deref witness)) "file"))))
+      (is (= :invalid-witness (error-type #(pack/recover-witnessed d (constantly nil)))))
+      (is (= :witness-changed
+             (error-type #(pack/recover-witnessed d (fn [] (if (= 1 (swap! calls inc)) root (assoc root :generation 4)))))))
+      (Files/copy stale current (into-array java.nio.file.CopyOption [java.nio.file.StandardCopyOption/REPLACE_EXISTING]))
+      ;; The ordinary recovery still exposes the valid but older pair. The
+      ;; witnessed route must refuse instead of returning the old bytes.
+      (is (= "old" (String. ^bytes (pack/read-data (pack/recover d) "file") "UTF-8")))
+      (is (= :witness-mismatch (error-type #(pack/recover-witnessed d (constantly root))))))))
+
 (deftest recovered-index-does-not-retain-car-via-cid-slices
   (let [d (new-store) original (bytes-of (+ pack/leaf-size 11))]
     (pack/put-data! d "file" original)
@@ -172,7 +213,7 @@
     (let [d (new-store) original (bytes-of 524288)
           _ ((if zipped? pack/put-data-zstd3! pack/put-data!) d "file" original)
           h (pack/recover d) ref (get-in h [:files "file"])
-          checked (get @(:index-cache h) (or (:stored-sha ref) (:car-sha ref)))
+          checked (get @(:index-cache h) (#'pack/cache-key ref))
           _ (pack/read-range-verified-leaves h "file" 0 4096)
           _ (pack/read-range-verified-leaves h "file" 0 4096)
           filename (str d "/" (or (:stored-sha ref) (:car-sha ref)) (if zipped? ".zpack" ".car"))
@@ -190,7 +231,7 @@
     (let [d (new-store) original (bytes-of 524288)
           _ ((if zipped? pack/put-data-zstd3! pack/put-data!) d "file" original)
           h (pack/recover d) ref (get-in h [:files "file"])
-          checked (get @(:index-cache h) (or (:stored-sha ref) (:car-sha ref)))
+          checked (get @(:index-cache h) (#'pack/cache-key ref))
           filename (str d "/" (or (:stored-sha ref) (:car-sha ref)) (if zipped? ".zpack" ".car"))
           offset (if zipped? (+ (:prefix-size (:layout checked)) (:stored-offset (last (get-in checked [:layout :frames]))))
                              (:offset (last (:index checked))))]

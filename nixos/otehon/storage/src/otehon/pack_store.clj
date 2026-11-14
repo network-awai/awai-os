@@ -6,6 +6,8 @@
             [clojure.string :as str]
             [awai.fs.car :as car]
             [otehon.forest :as forest]
+            [otehon.ipld-forest :as ipld]
+            [otehon.root-witness :as witness]
             [otehon.segmented :as segmented]
             [otehon.storage :as store])
   (:import [java.io ByteArrayOutputStream]
@@ -82,7 +84,8 @@
 (defn- file-forest? [ref] (= :awai.otehon-store/pack-forest-file-v2 (:format ref)))
 (defn- forest? [ref] (contains? #{:awai.otehon-store/pack-forest-v1 :awai.otehon-store/pack-forest-file-v2} (:format ref)))
 (defn- physical? [ref] (or (compressed? ref) (forest? ref)))
-(defn- cache-key [ref] (or (:stored-sha ref) (:car-sha ref)))
+(defn- payload-key [ref] (or (:stored-sha ref) (:car-sha ref)))
+(defn- cache-key [ref] [(:format ref) (payload-key ref)])
 (defn- canonical-ref [ref]
   (-> ref (dissoc :stored-sha :stored-size) (assoc :format :awai.otehon-store/pack-v1)))
 
@@ -250,7 +253,46 @@
   The handle retains this snapshot basis; it is not a mutable-head authority."
   [directory]
   (let [{:keys [state root degraded?]} (store/read-store directory)]
+    (when degraded? (fail! :degraded-store "invalid root slot requires review before reads"))
     (assoc (recover-map directory state) :basis root :degraded? degraded?)))
+
+(defn verify-supported-catalog!
+  "Verify a complete supported Pack/IPLD root under the local writer lock.
+  Unknown namespaces refuse. The optional trusted ref verifier must validate
+  each name, target and closure, returning literal true."
+  ([directory state] (verify-supported-catalog! directory state nil))
+  ([directory state verify-ref!]
+  (when-not (or (nil? verify-ref!) (fn? verify-ref!))
+    (fail! :unverified-catalog-type "invalid ref verifier"))
+  ;; A witness certifies the complete root, not just the newly written Pack.
+  ;; Ref/metadata namespaces need their own validators before admission here.
+  (when-not (every? (fn [k] (or (some #(str/starts-with? k %)
+                                      [prefix group-prefix "awai.ipld-forest/" "awai.ipld-forest-group/"])
+                                (and verify-ref! (str/starts-with? k "awai.kotobase-ref/"))))
+                    (keys state))
+    (fail! :unverified-catalog-type "root includes a catalog with no witness verifier"))
+  (recover-map directory state)
+  (ipld/verify-catalog! directory state)
+  (when verify-ref!
+    (doseq [[k v] state :when (str/starts-with? k "awai.kotobase-ref/")]
+      (when-not (true? (verify-ref! directory state (subs k (count "awai.kotobase-ref/")) v))
+        (fail! :closure-rejected "ref verifier did not approve"))))
+  true))
+
+(defn recover-witnessed
+  "Open only if a host-owned store-bound witness matches before and after.
+  Pass the complete prepared witness to refuse unresolved intents. A callback
+  alone cannot detect them. A same-domain witness is not an anti-rollback anchor."
+  [directory witness-port]
+  (witness/open-verified! directory witness-port #(recover directory)))
+
+(defn reconcile-witnessed!
+  "Explicitly reconcile after verifying Pack and IPLD Forest catalog entries.
+  Unknown root namespaces are refused. Requires an independent witness
+  protected from rollback; this does not provide distributed fencing."
+  [directory prepared-witness]
+  (store/reconcile-witnessed! directory prepared-witness
+                              verify-supported-catalog!))
 
 (defn summary [handle]
   {:files (:files handle) :groups (:groups handle) :basis (:basis handle) :degraded? (:degraded? handle)
@@ -276,7 +318,7 @@
                  directory :put {:key key :value (pr-str ref)}
                  (fn [directory state]
                    (recover-map directory state)
-                   (when-not (= (cache-key ref) (if stored (store/write-zpack! directory stored)
+                   (when-not (= (payload-key ref) (if stored (store/write-zpack! directory stored)
                                                            (store/write-car! directory bytes)))
                      (fail! :car-changed "CAR bytes changed during publication"))))]
     (cond-> (assoc result :pack ref)
@@ -363,12 +405,20 @@
 (defn import-logical-forest-files!
   "Atomically publish canonical manifest and ordered Forest files. The files
   are verified one at a time and streamed again under the writer lock; changes
-  between passes abort publication. Larger files use the distinct v2 ref."
+  between passes abort publication. Larger files use the distinct v2 ref.
+  An explicit :expected-generation fences stale local writers under the lock."
   ([directory name paths manifest manifest-cid]
    (import-logical-forest-files! directory name paths manifest manifest-cid {}))
   ([directory name paths manifest manifest-cid options]
-  (when-not (contains? #{{} {:file-backed? true}} options)
+  (when-not (and (map? options)
+                 (every? #{:file-backed? :expected-generation :witness} (keys options))
+                 (or (not (contains? options :witness)) (contains? options :expected-generation))
+                 (or (not (contains? options :file-backed?)) (true? (:file-backed? options)))
+                 (or (not (contains? options :expected-generation))
+                     (and (integer? (:expected-generation options))
+                          (<= 1 (:expected-generation options) 9007199254740991))))
     (fail! :invalid-pack-group "unsupported file import options"))
+  (when (contains? options :witness) (store/validate-write-witness! (:witness options)))
   (group-key name)
   (when-not (and (vector? paths) (<= 1 (count paths) max-group-packs))
     (fail! :invalid-pack-group "expected 1..64 Forest Pack paths"))
@@ -395,9 +445,11 @@
                :packs (mapv :ref candidates)
                :manifest-hex (car/hex-encode (vector-bytes manifest 131072))
                :manifest-cid manifest-cid}
-        result (store/transact! directory :put {:key (group-key name) :value (pr-str group)}
-                 (fn [directory state]
-                   (recover-map directory state)
+        payload {:key (group-key name) :value (pr-str group)}
+        before-publish (fn [directory state]
+                   (if (contains? options :witness)
+                     (verify-supported-catalog! directory state)
+                     (recover-map directory state))
                    (doseq [{:keys [path ref]} candidates]
                      (try
                        (store/write-forest-file! directory path (:stored-size ref) (:stored-sha ref))
@@ -411,7 +463,14 @@
                          (if (contains? #{:forest-source-changed :changed-payload :short-read}
                                         (:type (ex-data e)))
                            (fail! :forest-changed "Forest input changed during publication")
-                           (throw e)))))))]
+                           (throw e))))))
+        result (cond
+                 (contains? options :witness)
+                 (store/transact-if-generation-witnessed! directory (:expected-generation options) :put payload before-publish (:witness options)
+                   verify-supported-catalog!)
+                 (contains? options :expected-generation)
+                 (store/transact-if-generation! directory (:expected-generation options) :put payload before-publish)
+                 :else (store/transact! directory :put payload before-publish))]
     (assoc result :group group))))
 
 (defn put-data! [directory name bytes]
@@ -539,3 +598,11 @@
                                     "group-read" (- lo base) (- hi lo))))
             (recur (next remaining) end))))
       (.toByteArray out))))
+
+(defn group-size
+  "Return the size of a group in this recovered snapshot."
+  [handle name]
+  (group-key name)
+  (let [refs (get-in handle [:groups name :packs])]
+    (when-not refs (fail! :pack-group-not-found "Pack group not found"))
+    (reduce + 0 (map :size refs))))
