@@ -18,6 +18,7 @@ mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 sed "s/__VERSION__/$version/g" "$here/Info.plist.template" > "$app/Contents/Info.plist"
 sed "s/__VERSION__/$version/g" "$here/launcher.sh" > "$app/Contents/MacOS/otehon-desktop"
 chmod +x "$app/Contents/MacOS/otehon-desktop"
+cp "$here/awai.icns" "$app/Contents/Resources/awai.icns"
 if [ "${3:-}" = "--bundle-image" ]; then
   [ -n "${4:-}" ] && [ -f "$4" ] || { echo "no image: $4" >&2; exit 64; }
   cp "$4" "$app/Contents/Resources/otehon-desktop.qcow2"

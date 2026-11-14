@@ -44,6 +44,14 @@ All cache metadata signatures are verified before NAR downloads; Nix verifies
 closure signatures/hash from the staged local cache at apply. Existing valid
 paths are reused. Space/byte/path/time limits fail closed before boot changes.
 
+The poller owns a nonblocking network lock, including direct invocations.
+After an interrupted download (SIGTERM or SIGKILL), the next poll removes only
+its private `network-` staging directories with the expected random-name shape,
+owner and permissions. It also takes the foundation operation lock while
+cleaning, so an active apply/settle keeps its cache. Cleanup runs before the
+pending-trial hold; pending state, operator files and other directory names are
+preserved. Symlinks or unsafe staging entries are refused rather than followed.
+
 Existing trial/boot-health/confirm/rollback is reused with apply/settle serialized.
 The desktop now serves immutable static artifacts at stable loopback origin
 http://127.0.0.1:8780. Versioned file:// Nix-store URLs do not provide a stable

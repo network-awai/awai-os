@@ -1,0 +1,2 @@
+(ns awai.fs.native-zstd-probe (:require [zstd.core :as z]) (:export [main]))
+(defn main [] :i64 (let [x (z/compress (vector-i64 1 2 3))] (if (= (vector-count x) 0) 1 0)))

@@ -1,4 +1,4 @@
-import importlib.util, unittest, tempfile, subprocess, ssl, http.server, threading, json, time, urllib.request
+import fcntl, importlib.util, unittest, tempfile, subprocess, ssl, http.server, threading, json, time, urllib.request, signal, sys
 from pathlib import Path
 spec=importlib.util.spec_from_file_location('update_network',Path(__file__).parents[1]/'nixos/otehon/update-network.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 class Admission(unittest.TestCase):
@@ -28,10 +28,15 @@ class TLS(unittest.TestCase):
     def setUpClass(cls):
         cls.tmp=tempfile.TemporaryDirectory();cls.base=Path(cls.tmp.name)
         subprocess.run(['openssl','req','-x509','-newkey','rsa:2048','-nodes','-keyout',str(cls.base/'key.pem'),'-out',str(cls.base/'cert.pem'),'-days','1','-subj','/CN=localhost','-addext','subjectAltName=DNS:localhost'],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
-        cls.requests=[];cls.bodies={}
+        cls.requests=[];cls.bodies={};cls.blocked={};cls.release={}
         class Handler(http.server.BaseHTTPRequestHandler):
             def do_GET(self):
                 cls.requests.append(self.path)
+                if self.path in cls.blocked:
+                    self.send_response(200);self.send_header('Content-Length','100');self.end_headers()
+                    self.wfile.write(b'{');self.wfile.flush();cls.blocked[self.path].set()
+                    cls.release[self.path].wait(20)
+                    return
                 if self.path=='/redirect':self.send_response(302);self.send_header('Location','https://example.invalid/escape');self.end_headers();return
                 self.send_response(200);self.end_headers();self.wfile.write(cls.bodies.get(self.path,b'x'*100))
             def log_message(self,*a):pass
@@ -60,4 +65,54 @@ class TLS(unittest.TestCase):
         with tempfile.TemporaryDirectory() as p,self.assertRaisesRegex(m.Refused,'narinfo-reference'):self.delivery().cache('/nix/store/'+key+'-system',Path(p)/'cache')
     def test_missing_ca_refused(self):
         with self.assertRaises(Exception):m.Delivery({'feedUrl':'https://localhost','maxDownloadBytes':1,'maxStorePaths':1,'caBundle':str(self.base/'absent')})
+    def test_sigterm_and_sigkill_next_poll_recovers_staging(self):
+        for sig in (signal.SIGTERM,signal.SIGKILL):
+            with self.subTest(signal=sig),tempfile.TemporaryDirectory() as directory:
+                state=Path(directory)/'state';state.mkdir(mode=0o700)
+                sentinel=state/'operator-notes';sentinel.write_bytes(b'preserve')
+                endpoint=f'/stall-{int(sig)}/manifest.json'
+                self.blocked[endpoint]=threading.Event();self.release[endpoint]=threading.Event()
+                config={'stateDirectory':str(state),'feedUrl':f'https://localhost:{self.server.server_port}/stall-{int(sig)}','caBundle':str(self.base/'cert.pem'),'maxDownloadBytes':500,'maxStorePaths':10}
+                config_path=Path(directory)/'config.json';config_path.write_text(json.dumps(config))
+                args=[sys.executable,str(Path(m.__file__)),str(config_path)]
+                process=subprocess.Popen(args,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                try:
+                    self.assertTrue(self.blocked[endpoint].wait(10),'real TLS download did not begin')
+                    deadline=time.monotonic()+5
+                    while not list(state.glob('network-*/manifest.json')) and time.monotonic()<deadline: time.sleep(0.01)
+                    stages=list(state.glob('network-*'));self.assertEqual(len(stages),1)
+                    self.assertTrue((stages[0]/'manifest.json').exists())
+                    concurrent=subprocess.run(args,capture_output=True,text=True,timeout=10)
+                    self.assertEqual(json.loads(concurrent.stdout)['reason'],'update-operation-in-progress')
+                    self.assertTrue(stages[0].exists(),'active download was swept')
+                    process.send_signal(sig);process.communicate(timeout=10)
+                    self.assertEqual(process.returncode,-int(sig))
+                    self.assertTrue(stages[0].exists(),'fixture did not leave interrupted staging')
+                    # Cleanup must also run when the next poll holds for a pending trial.
+                    pending=state/'pending.json';pending.write_bytes(b'{"version":2}')
+                    recovered=subprocess.run(args,capture_output=True,text=True,timeout=10)
+                    self.assertEqual(recovered.returncode,0,recovered.stderr)
+                    self.assertEqual(json.loads(recovered.stdout)['reason'],'trial-in-progress')
+                    self.assertFalse(stages[0].exists())
+                    self.assertEqual(pending.read_bytes(),b'{"version":2}')
+                    self.assertEqual(sentinel.read_bytes(),b'preserve')
+                finally:
+                    self.release[endpoint].set()
+                    if process.poll() is None: process.kill();process.communicate(timeout=10)
+
+class StagingSafety(unittest.TestCase):
+    def test_active_apply_preserves_staging(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state=Path(directory);stage=state/'network-abcdefgh';stage.mkdir(mode=0o700)
+            with (state/'operation.lock').open('a') as lock:
+                fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+                with self.assertRaises(m.Hold):m.poll({'stateDirectory':str(state)})
+                self.assertTrue(stage.exists())
+    def test_symlink_never_followed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base=Path(directory);state=base/'state';state.mkdir(mode=0o700)
+            outside=base/'outside';outside.mkdir();sentinel=outside/'keep';sentinel.write_bytes(b'owner')
+            (state/'network-abcdefgh').symlink_to(outside,target_is_directory=True)
+            with self.assertRaisesRegex(m.Refused,'unsafe-staging-entry'):m.poll({'stateDirectory':str(state)})
+            self.assertEqual(sentinel.read_bytes(),b'owner')
 if __name__=='__main__':unittest.main()

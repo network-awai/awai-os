@@ -1,5 +1,5 @@
 """AWAI-183: privileged Otehon OS administration, never an app-origin API."""
-import json, os, re, ssl, time, shutil, subprocess, tempfile, urllib.parse, urllib.request
+import fcntl, json, os, re, ssl, stat, time, shutil, subprocess, tempfile, urllib.parse, urllib.request
 from pathlib import Path
 
 class Refused(Exception): pass
@@ -92,9 +92,36 @@ def admit(manifest, config, now):
     if config["cohort"] not in cohorts: raise Hold("cohort")
     if time.localtime(now).tm_hour not in config["maintenanceHours"]: raise Hold("maintenance-window")
 
+def lock_file(path):
+    handle = path.open("a")
+    try:
+        fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        handle.close()
+        raise Hold("update-operation-in-progress")
+    return handle
+
+def clean_abandoned_stages(state):
+    # Both network polling and foundation apply/settle must be idle. In particular,
+    # a killed poller may have left an apply subprocess importing this cache.
+    with lock_file(state / "operation.lock"):
+        for child in state.iterdir():
+            if not re.fullmatch(r"network-[a-z0-9_]{8}", child.name): continue
+            info = child.lstat()
+            if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.geteuid() or info.st_mode & 0o077:
+                raise Refused("unsafe-staging-entry")
+            shutil.rmtree(child)
+
 def poll(config, command="otehon-update"):
     state = Path(config["stateDirectory"])
     state.mkdir(mode=0o700, parents=True, exist_ok=True)
+    # Own this lock in Python as well as the service lifetime: direct invocations
+    # must not sweep another active download. It is released by SIGTERM/SIGKILL.
+    with lock_file(state / "network.lock"):
+        clean_abandoned_stages(state)
+        return poll_locked(config, command, state)
+
+def poll_locked(config, command, state):
     if (state / "pending.json").exists(): raise Hold("trial-in-progress")
     stage = Path(tempfile.mkdtemp(prefix="network-", dir=state))
     try:
