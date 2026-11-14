@@ -1,6 +1,7 @@
 (ns otehon.forest-writer-test
   (:require [clojure.test :refer [deftest is]]
             [otehon.forest-writer :as writer]
+            [otehon.cli :as cli]
             [otehon.storage :as storage])
   (:import [java.nio.file Files Paths OpenOption] [java.nio.file.attribute FileAttribute]))
 (def ^:dynamic *output* ".agent-output/forest-writer-test")
@@ -28,3 +29,12 @@
              (try (writer/put-file-large! (str dir "/store") "file" (str dir "/source") stage (str dir "/tool") options) nil
                   (catch Exception e (:type (ex-data e))))))
       (is (not (.exists (java.io.File. stage)))))))
+
+(deftest large-cli-refuses-degraded-before-writing
+  (let [called (atom false)]
+    (with-redefs [storage/read-store (fn [_] {:degraded? true :root {:generation 1}})
+                  writer/put-file-large! (fn [& _] (reset! called true))]
+      (is (= :degraded-store
+             (try (cli/-main "forest-file-put-large" "store" "file" "source" "stage" "tool") nil
+                  (catch Exception e (:type (ex-data e))))))
+      (is (false? @called)))))

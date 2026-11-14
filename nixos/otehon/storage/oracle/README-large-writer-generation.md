@@ -12,3 +12,9 @@ bb --classpath 'nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:ni
 ```
 
 The Otehon Linux hosted workflow invokes both phases; exact-head CI is separate. Staging and rejected candidates are retained. The test does not establish concurrent adversarial source mutation safety, product callers choosing conditional generation, a 1 GiB write, Native I/O, OS cache loss, real power loss, or distributed fencing.
+
+## Conditional CLI entry
+
+The hosted `forest-file-put-large STORE NAME INPUT STAGE TOOL` CLI now reads the committed generation before staging and uses conditional publication. It refuses a degraded read. Callers may instead supply a seventh argument, a canonical positive decimal expected generation no larger than 9,007,199,254,740,991; malformed values are refused before staging. Unrelated writes between observation and publication can cause a conservative stale refusal. The lower-level legacy writer arity remains unconditional.
+
+On 2026-11-14, `forest_large_cli_cas_proof.clj` ran the real CLI function against the prior two 17 MiB source files and the pinned Forest tool. An injected other-writer commit after the CLI's implicit generation read caused a stale refusal with the old full hash intact. An explicit stale generation was also refused; an explicit current generation published two Packs. A separate Babashka process recovered and matched the new file's full SHA-256. Zero, leading-zero, negative, overflow and non-numeric generations were refused before staging; a unit test separately refused a degraded store before invoking the writer. `forest-writer-test` passed 3 tests / 15 assertions. The hosted Linux workflow now runs both phases following the earlier CAS proof. Local process restart is not OS cache loss or power-loss proof, and direct legacy library calls are not protected.

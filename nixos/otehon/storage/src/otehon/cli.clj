@@ -30,6 +30,24 @@
     (.force out true))
   {:bytes (alength ^bytes bytes)})
 
+(defn- parse-generation! [text]
+  (when-not (and (string? text) (re-matches #"[1-9][0-9]{0,15}" text))
+    (throw (ex-info "invalid expected generation" {:type :invalid-generation})))
+  (let [n (Long/parseLong text)]
+    (when (> n 9007199254740991)
+      (throw (ex-info "invalid expected generation" {:type :invalid-generation})))
+    n))
+
+(defn- observed-generation! [directory]
+  (let [{:keys [root degraded?]} (store/read-store directory)]
+    (when degraded? (throw (ex-info "cannot use degraded store" {:type :degraded-store})))
+    (or (:generation root) (throw (ex-info "store generation unavailable" {:type :invalid-generation})))))
+
+(defn- put-large! [directory name filename staging tool expected-generation]
+  (select-keys (forest-writer/put-file-large! directory name filename staging tool
+                                             {:expected-generation expected-generation})
+               [:generation :tail :manifest-cid :file-size :pack-count]))
+
 (defn -main [& args]
   (let [[command directory name filename] args]
     (case [command (count args)]
@@ -43,8 +61,11 @@
       (prn (select-keys (forest-writer/put-file! directory name filename (nth args 4) (nth args 5))
                         [:generation :tail :manifest-cid :file-size :pack-count]))
       ["forest-file-put-large" 6]
-      (prn (select-keys (forest-writer/put-file-large! directory name filename (nth args 4) (nth args 5))
-                        [:generation :tail :manifest-cid :file-size :pack-count]))
+      (prn (put-large! directory name filename (nth args 4) (nth args 5)
+                       (observed-generation! directory)))
+      ["forest-file-put-large" 7]
+      (prn (put-large! directory name filename (nth args 4) (nth args 5)
+                       (parse-generation! (nth args 6))))
       ["forest-export" 4] (prn (output! filename (pack/export-forest (pack/recover directory) name)))
       ["forest-get-block" 5]
       (let [cid-text (nth args 4)
