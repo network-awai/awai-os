@@ -1,6 +1,7 @@
 (ns otehon.witnessed-pack-test
   (:require [clojure.test :refer [deftest is]] [otehon.storage :as store]
-            [otehon.pack-store :as pack] [otehon.forest :as forest] [awai.fs.car :as car])
+            [otehon.pack-store :as pack] [otehon.ipld-forest :as ipld]
+            [otehon.forest :as forest] [awai.fs.car :as car])
   (:import [java.nio.file Files Paths] [java.nio.file.attribute FileAttribute]))
 (def ^:dynamic *output* ".agent-output/witnessed-pack-unit")
 (defn- dir [] (.mkdirs (java.io.File. *output*))
@@ -59,3 +60,79 @@
     (is (= initial @trusted))
     (is (zero? @calls))
     (is (= :witness-mismatch (error-type #(pack/recover-witnessed d (:read! w)))))))
+
+(defn- ipld-fixture []
+  (Files/readAllBytes (Paths/get (or (System/getenv "IPLD_FOREST_FIXTURE")
+                                    "nixos/otehon/storage/test/fixtures/prolly-forest/prolly.forest") (make-array String 0))))
+(def ^:private ipld-root "bafyreiakmttcp6otxvnyqmdjpzlschlskibp7enadlvkguw3nnp47f5wqm")
+(defn- atom-port [a calls]
+  (witness a (fn [old new] (locking a (swap! calls inc) (if (= @a old) (do (reset! a new) true) false)))))
+(deftest witness-verifies-coexisting-ipld-before-publishing
+  (let [{:keys [paths bytes cid]} (fixture)]
+    (doseq [missing? [false true]]
+      (let [d (dir) _ (store/init! d) ref (ipld/publish! d "prolly" ipld-root (ipld-fixture))
+            prior (:root (store/read-store d)) trusted (atom prior) calls (atom 0) w (atom-port trusted calls)
+            path (Paths/get (str d "/" (:archive-sha ref) ".forest") (make-array String 0))
+            saved (Paths/get (str d "-withheld-ipld") (make-array String 0))]
+        (when missing? (Files/move path saved (make-array java.nio.file.CopyOption 0)))
+        (let [result (error-type #(pack/import-logical-forest-files! d "proof" paths bytes cid {:expected-generation 2 :witness w}))]
+          (if missing?
+            (do (is (= :missing-forest result)) (is (= prior (:root (store/read-store d)))) (is (zero? @calls)))
+            (do (is (nil? result)) (is (= 1 @calls)) (is (= (:root (store/read-store d)) @trusted)))))))))
+
+(deftest witness-refuses-unknown-root-content
+  (let [{:keys [paths bytes cid]} (fixture) d (dir) _ (store/init! d)
+        _ (store/transact! d :put {:key "unknown/entry" :value "x"})
+        prior (:root (store/read-store d)) trusted (atom prior) calls (atom 0) w (atom-port trusted calls)]
+    (is (= :unverified-catalog-type
+           (error-type #(pack/import-logical-forest-files! d "proof" paths bytes cid {:expected-generation 2 :witness w}))))
+    (is (= prior (:root (store/read-store d)))) (is (zero? @calls))))
+
+(deftest witness-refuses-ipld-loss-after-root-publication
+  (let [{:keys [paths bytes cid]} (fixture) d (dir) _ (store/init! d)
+        ref (ipld/publish! d "prolly" ipld-root (ipld-fixture)) prior (:root (store/read-store d))
+        trusted (atom prior) calls (atom 0) w (atom-port trusted calls)
+        path (Paths/get (str d "/" (:archive-sha ref) ".forest") (make-array String 0))
+        saved (Paths/get (str d "-late-ipld-loss") (make-array String 0)) removed (atom false)
+        result (binding [store/*write-observer* (fn [event role]
+                         (when (= [event role] [:dir-synced :root])
+                           (Files/move path saved (make-array java.nio.file.CopyOption 0)) (reset! removed true)))]
+                 (error-type #(pack/import-logical-forest-files! d "proof" paths bytes cid {:expected-generation 2 :witness w})))]
+    (is @removed) (is (= :witness-commit-uncertain result)) (is (= 3 (get-in (store/read-store d) [:root :generation])))
+    (is (= prior @trusted)) (is (zero? @calls))))
+
+(deftest witness-refuses-missing-ipld-group-archive
+  (let [{:keys [paths bytes cid]} (fixture) d (dir) _ (store/init! d)
+        base (or (System/getenv "IPLD_SPLIT_FIXTURES") "nixos/otehon/storage/test/fixtures/prolly-forest/split")
+        roots ["bafyreia5f47e462gm43mxscjphe4n6wyi56ccevdmwq526i4jcjuuphala"
+               "bafyreidb7f6i335vyhbordfkte377frwmtq5axfpd44gpvxodjor643mhy"]
+        entries (mapv (fn [i root] {:root-cid root :bytes (Files/readAllBytes (Paths/get (str base "/" i ".forest") (make-array String 0)))}) (range 2) roots)
+        group (ipld/publish-group! d "graph" "bafyreic73cz5ww6pbthvvyz62szwjs25afgaqr2a6va4xwl344bmfw4iri" entries)
+        prior (:root (store/read-store d)) trusted (atom prior) calls (atom 0) w (atom-port trusted calls)
+        path (Paths/get (str d "/" (:archive-sha (first (:archives group))) ".forest") (make-array String 0))
+        saved (Paths/get (str d "-withheld-group") (make-array String 0))]
+    (Files/move path saved (make-array java.nio.file.CopyOption 0))
+    (is (= :missing-forest (error-type #(pack/import-logical-forest-files! d "proof" paths bytes cid {:expected-generation 2 :witness w}))))
+    (is (= prior (:root (store/read-store d)))) (is (zero? @calls))))
+
+(deftest reconcile-verifies-coexisting-ipld
+  (let [{:keys [paths bytes cid]} (fixture) d (dir) _ (store/init! d)
+        ref (ipld/publish! d "prolly" ipld-root (ipld-fixture)) prior (:root (store/read-store d))
+        trusted (atom prior) calls (atom 0) simple (atom-port trusted calls)]
+    (is (= :witness-commit-uncertain
+           (binding [store/*write-observer* (fn [event role]
+                     (when (= [event role] [:before-cas :witness]) (throw (ex-info "injected" {}))))]
+             (error-type #(pack/import-logical-forest-files! d "proof" paths bytes cid {:expected-generation 2 :witness simple})))))
+    (let [candidate (:root (store/read-store d)) status (atom {:root prior :pending candidate})
+          w {:read! #(deref trusted) :status! #(deref status) :prepare! (fn [_ _] false)
+             :compare-and-set! (fn [old new] (swap! calls inc)
+                                 (if (= @status {:root old :pending new})
+                                   (do (reset! trusted new) (reset! status {:root new :pending nil}) true) false))}
+          path (Paths/get (str d "/" (:archive-sha ref) ".forest") (make-array String 0))
+          saved (Paths/get (str d "-reconcile-withheld-ipld") (make-array String 0))]
+      (Files/move path saved (make-array java.nio.file.CopyOption 0))
+      (is (= :missing-forest (error-type #(pack/reconcile-witnessed! d w))))
+      (is (= {:root prior :pending candidate} @status)) (is (zero? @calls))
+      (Files/move saved path (make-array java.nio.file.CopyOption 0))
+      (is (= :committed-pending (:outcome (pack/reconcile-witnessed! d w))))
+      (is (= {:root candidate :pending nil} @status)))))

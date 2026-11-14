@@ -26,6 +26,7 @@ pg_ctl -D "$base/data" -m fast -w stop >/dev/null
 bb --classpath "$classpath" "$proof" down
 start
 bb --classpath "$classpath" "$proof" verify
+bb --classpath "$classpath" "$proof" mixed
 bb --classpath "$classpath" "$crash" run
 pg_ctl -D "$base/data" -m fast -w stop >/dev/null
 start

@@ -6,6 +6,7 @@
             [clojure.string :as str]
             [awai.fs.car :as car]
             [otehon.forest :as forest]
+            [otehon.ipld-forest :as ipld]
             [otehon.root-witness :as witness]
             [otehon.segmented :as segmented]
             [otehon.storage :as store])
@@ -255,6 +256,17 @@
     (when degraded? (fail! :degraded-store "invalid root slot requires review before reads"))
     (assoc (recover-map directory state) :basis root :degraded? degraded?)))
 
+(defn- verify-supported-catalog! [directory state]
+  ;; A witness certifies the complete root, not just the newly written Pack.
+  ;; Ref/metadata namespaces need their own validators before admission here.
+  (when-not (every? (fn [k] (some #(str/starts-with? k %)
+                                  [prefix group-prefix "awai.ipld-forest/" "awai.ipld-forest-group/"]))
+                    (keys state))
+    (fail! :unverified-catalog-type "root includes a catalog with no witness verifier"))
+  (recover-map directory state)
+  (ipld/verify-catalog! directory state)
+  true)
+
 (defn recover-witnessed
   "Open only if a host-owned store-bound witness matches before and after.
   Pass the complete prepared witness to refuse unresolved intents. A callback
@@ -263,11 +275,12 @@
   (witness/open-verified! directory witness-port #(recover directory)))
 
 (defn reconcile-witnessed!
-  "Explicitly reconcile a trusted prepared root after verifying all Packs.
-  Requires the prepared witness to be independent and protected from rollback."
+  "Explicitly reconcile after verifying Pack and IPLD Forest catalog entries.
+  Unknown root namespaces are refused. Requires an independent witness
+  protected from rollback; this does not provide distributed fencing."
   [directory prepared-witness]
   (store/reconcile-witnessed! directory prepared-witness
-                              (fn [directory state] (recover-map directory state))))
+                              verify-supported-catalog!))
 
 (defn summary [handle]
   {:files (:files handle) :groups (:groups handle) :basis (:basis handle) :degraded? (:degraded? handle)
@@ -422,7 +435,9 @@
                :manifest-cid manifest-cid}
         payload {:key (group-key name) :value (pr-str group)}
         before-publish (fn [directory state]
-                   (recover-map directory state)
+                   (if (contains? options :witness)
+                     (verify-supported-catalog! directory state)
+                     (recover-map directory state))
                    (doseq [{:keys [path ref]} candidates]
                      (try
                        (store/write-forest-file! directory path (:stored-size ref) (:stored-sha ref))
@@ -440,7 +455,7 @@
         result (cond
                  (contains? options :witness)
                  (store/transact-if-generation-witnessed! directory (:expected-generation options) :put payload before-publish (:witness options)
-                   (fn [directory state] (recover-map directory state)))
+                   verify-supported-catalog!)
                  (contains? options :expected-generation)
                  (store/transact-if-generation! directory (:expected-generation options) :put payload before-publish)
                  :else (store/transact! directory :put payload before-publish))]

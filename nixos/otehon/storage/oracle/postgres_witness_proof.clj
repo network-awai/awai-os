@@ -1,5 +1,5 @@
 ;; Task-owned isolated PostgreSQL service. Never run against an existing DB.
-(require '[clojure.edn :as edn] '[otehon.storage :as store] '[otehon.pack-store :as pack]
+(require '[clojure.edn :as edn] '[otehon.storage :as store] '[otehon.pack-store :as pack] '[otehon.ipld-forest :as ipld]
          '[otehon.postgres-witness :as pg] '[otehon.witnessed-pack-test])
 (import '[java.nio.file Files Paths CopyOption])
 (def base (or (System/getenv "PG_WITNESS_PROOF") (throw (ex-info "PG_WITNESS_PROOF required" {}))))
@@ -53,5 +53,22 @@
  (let [w (pg/port psql service store-id)]
    (ensure! (= :witness-service-error (error-type #((:read! w)))) "unavailable database accepted")
    (prn {:mode :down :service-unavailable :refused :pass true}))
- (throw (ex-info "setup, verify or down required" {})))
+ "mixed"
+ (let [d (str base "/mixed") _ (store/init! d)
+       old (ipld/publish! d "prolly" @#'otehon.witnessed-pack-test/ipld-root (#'otehon.witnessed-pack-test/ipld-fixture))
+       initial (:root (store/read-store d)) id (apply str (repeat 64 "6")) _ (bootstrap! id initial)
+       w (pg/port psql service id) {:keys [paths bytes cid]} (#'otehon.witnessed-pack-test/fixture)
+       p (Paths/get (str d "/" (:archive-sha old) ".forest") (make-array String 0))
+       saved (Paths/get (str base "/mixed-withheld") (make-array String 0))]
+   (Files/move p saved (make-array java.nio.file.CopyOption 0))
+   (try
+     (ensure! (= :missing-forest (error-type #(pack/import-logical-forest-files! d "proof" paths bytes cid {:expected-generation 2 :witness w}))) "missing IPLD archive was accepted")
+     (ensure! (= {:root initial :pending nil} ((:status! w))) "missing IPLD archive changed witness")
+     (ensure! (= initial (:root (store/read-store d))) "missing IPLD archive changed local root")
+     (finally (Files/move saved p (make-array java.nio.file.CopyOption 0))))
+   (pack/import-logical-forest-files! d "proof" paths bytes cid {:expected-generation 2 :witness w})
+   (ensure! (bytes? (ipld/get-block (ipld/recover-witnessed d "prolly" (:read! w)) @#'otehon.witnessed-pack-test/ipld-root)) "IPLD block missing")
+   (ensure! (= 4 (count (get-in (pack/summary (pack/recover-witnessed d w)) [:groups "proof" :packs]))) "Pack group missing")
+   (prn {:mode :mixed :missing-ipld :refused :recovered-ipld true :packs 4 :pass true}))
+ (throw (ex-info "setup, verify, down or mixed required" {})))
 (shutdown-agents)

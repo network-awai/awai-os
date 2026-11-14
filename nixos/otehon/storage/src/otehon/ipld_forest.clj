@@ -3,6 +3,7 @@
   Recovery verifies the complete archive; subsequent CID reads use the
   verified snapshot index and revalidate the selected frame and block."
   (:require [clojure.edn :as edn]
+            [clojure.string :as str]
             [awai.fs.car :as car]
             [otehon.forest :as forest]
             [otehon.root-witness :as witness]
@@ -181,3 +182,19 @@
 
 (defn recover-group-witnessed [directory name read-witness!]
   (witness/open-verified! directory read-witness! #(recover-group directory name)))
+
+(defn verify-catalog!
+  "Verify every supported generic IPLD entry against the supplied state.
+  Intended for use under the local writer lock before witness advancement."
+  [directory state]
+  (doseq [[k value] state]
+    (cond
+      (str/starts-with? k prefix)
+      (let [h (recover directory (subs k (count prefix)))]
+        (when-not (= (parse-ref value) (:ref h))
+          (fail! :catalog-changed "IPLD entry changed during verification")))
+      (str/starts-with? k group-prefix)
+      (let [h (recover-group directory (subs k (count group-prefix)))]
+        (when-not (= (parse-group value) (:group h))
+          (fail! :catalog-changed "IPLD group changed during verification")))))
+  true)
