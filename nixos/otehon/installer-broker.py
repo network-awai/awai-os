@@ -11,6 +11,7 @@ import socket
 import stat
 import struct
 import subprocess
+import sys
 import threading
 import time
 
@@ -186,7 +187,11 @@ class Broker:
             self.update(phase='cancelled',message='この試行では保存先に書き込まずに中止しました。')
         except Exception as error:
             message=('OS データの書込みと照合は済みましたが、UEFI 起動登録に失敗しました。導入完了ではありません。' if self.state.get('phase')=='boot' else '書込みと照合を完了できませんでした。') if self.state.get('writeStarted') else '書込み前の確認に失敗しました。保存先は変更していません。'
-            self.update(phase='failed',error=str(error) if isinstance(error,Refused) else type(error).__name__,message=message)
+            detail=str(error) if isinstance(error,Refused) else type(error).__name__
+            if self.state.get('phase')=='boot' and isinstance(error,subprocess.CalledProcessError):
+                detail += ': '+str(error.stderr or '')[:1800]
+                print(detail,file=sys.stderr,flush=True)
+            self.update(phase='failed',error=detail,message=message)
         finally:
             if process and process.poll() is None:
                 process.terminate()

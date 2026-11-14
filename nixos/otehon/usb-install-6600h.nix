@@ -8,7 +8,9 @@ let
   version = lib.removeSuffix "\n" (builtins.readFile ./installer-version.txt);
   buildId = builtins.hashString "sha256" (builtins.concatStringsSep "\n" (
     (map builtins.readFile [ ./usb-install-6600h.nix ./install-disk.sh ./installer-broker.py ./installer-boot.py ./installer-ui/awai/installer.cljc ../../ci/nixpkgs.nix ]) ++ [ (toString disk) ]));
-  info = { schema = "awai.otehon.installer.v1"; inherit version buildId; nixos = installed.system.nixos.version; nix = installed.nix.package.version; payload = toString disk; };
+  # This is an identity string, not a runtime reference: retaining its context
+  # would include a second compressed payload in the ISO's store closure.
+  info = { schema = "awai.otehon.installer.v1"; inherit version buildId; nixos = installed.system.nixos.version; nix = installed.nix.package.version; payload = builtins.unsafeDiscardStringContext (toString disk); };
   infoJson = pkgs.writeText "otehon-installer-info.json" (builtins.toJSON info);
   infoEdn = pkgs.writeText "otehon-installer-info.edn" ''
     {:version ${builtins.toJSON version} :build-id ${builtins.toJSON buildId} :nixos ${builtins.toJSON info.nixos} :nix ${builtins.toJSON info.nix}}

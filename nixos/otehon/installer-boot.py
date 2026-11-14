@@ -63,5 +63,10 @@ if __name__=='__main__':
         else: raise Refused('fixed-boot-operation-required')
         print(json.dumps(result))
     except Exception as error:
-        print('BOOT_FAILED '+(str(error) if isinstance(error,Refused) else type(error).__name__),file=sys.stderr)
+        detail = str(error) if isinstance(error,Refused) else type(error).__name__
+        if isinstance(error,subprocess.CalledProcessError):
+            # Fixed local administration commands only; preserve their bounded
+            # diagnostic so a real firmware failure is actionable.
+            detail += ': '+str(error.stderr or error.stdout or '')[:1500]
+        print('BOOT_FAILED '+detail,file=sys.stderr)
         sys.exit(2)

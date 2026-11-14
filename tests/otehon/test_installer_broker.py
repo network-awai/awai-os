@@ -83,12 +83,13 @@ class FailureBoundary(unittest.TestCase):
             process=SimpleNamespace(stdout=io.BytesIO(raw),wait=lambda:0,poll=lambda:0)
             def run(args,**kwargs):
                 if args[0]=='sgdisk':return SimpleNamespace(returncode=0)
-                raise subprocess.CalledProcessError(2,args)
+                raise subprocess.CalledProcessError(2,args,stderr='BOOT_FAILED firmware diagnostic')
             with patch.object(b,'SOURCE',source),patch.object(b,'LOCK',d/'lock'),patch.object(b,'command',side_effect=['iso9660','ro']),patch.object(b,'boot_check'),patch.object(b,'inventory',return_value=[row]),patch.object(b.os,'fstat',side_effect=fstat),patch.object(b.fcntl,'ioctl',return_value=struct.pack('I',512)),patch.object(b.subprocess,'Popen',return_value=process),patch.object(b.subprocess,'run',side_effect=run):
                 broker.install(row)
             self.assertEqual(target.read_bytes()[:len(raw)],raw)
             self.assertEqual(broker.state['phase'],'failed')
             self.assertIn('UEFI',broker.state['message'])
+            self.assertIn('firmware diagnostic',broker.state['error'])
             self.assertNotIn('bootEntry',broker.state)
             with self.assertRaises(b.Refused):broker.dispatch('POWEROFF',[])
     def test_corrupt_source_never_opens_target(self):
