@@ -1,5 +1,5 @@
 ;; Hosted Otehon proof: run write and read in separate processes.
-(require '[otehon.storage :as s] '[otehon.forest-writer :as w] '[otehon.pack-store :as p])
+(require '[otehon.storage :as s] '[otehon.forest-writer :as w] '[otehon.pack-store :as p] '[otehon.cli :as cli])
 (import '[java.nio.file Files Paths OpenOption StandardOpenOption] '[java.nio ByteBuffer]
         '[java.nio.channels FileChannel] '[java.security MessageDigest] '[java.util Random Arrays HexFormat])
 (def mode (first *command-line-args*))
@@ -37,5 +37,20 @@
    (dotimes [i 17] (.update md ^bytes (p/read-group-range h "file" (* i 1048576) 1048576)))
    (check! (= (:sha (s/forest-source-digest input)) (.formatHex (HexFormat/of) (.digest md))) "full file digest differs")
    (check! (Arrays/equals (byte-array 64) (p/read-group-range h "zeros" (- 1048576 32) 64)) "zero range differs")
+   (let [output (str base "/export") failed (str base "/failed-export")
+         original p/read-group-range]
+     (with-redefs [p/read-group-range (fn [handle name offset length]
+                                       (if (>= offset 1048576)
+                                         (throw (ex-info "injected failure" {}))
+                                         (original handle name offset length)))]
+       (check! (try (cli/-main "forest-group-export" target "file" failed) false
+                    (catch Exception _ true)) "injected export failure accepted"))
+     (check! (not (Files/exists (Paths/get failed (make-array String 0)) (make-array java.nio.file.LinkOption 0)))
+             "failed export was published")
+     (cli/-main "forest-group-export" target "file" output)
+     (check! (= (s/forest-source-digest input) (s/forest-source-digest output)) "streamed export differs")
+     (check! (try (cli/-main "forest-group-export" target "file" output) false
+                  (catch java.nio.file.FileAlreadyExistsException _ true)) "existing export overwritten")
+     (check! (= (s/forest-source-digest input) (s/forest-source-digest output)) "existing export changed"))
    (prn {:recovered true :full-file-sha :matched :cross-pack true :compressed-small true}))
  (throw (ex-info "unknown proof mode" {:mode mode})))

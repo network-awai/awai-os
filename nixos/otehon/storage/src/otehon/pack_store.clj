@@ -549,3 +549,11 @@
                                     "group-read" (- lo base) (- hi lo))))
             (recur (next remaining) end))))
       (.toByteArray out))))
+
+(defn group-size
+  "Return the size of a group in this recovered snapshot."
+  [handle name]
+  (group-key name)
+  (let [refs (get-in handle [:groups name :packs])]
+    (when-not refs (fail! :pack-group-not-found "Pack group not found"))
+    (reduce + 0 (map :size refs))))

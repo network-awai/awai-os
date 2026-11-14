@@ -5,7 +5,8 @@
             [otehon.pack-store :as pack])
   (:import [java.nio ByteBuffer]
            [java.nio.channels FileChannel]
-           [java.nio.file Paths OpenOption StandardOpenOption LinkOption]
+           [java.nio.file Files Paths OpenOption StandardOpenOption LinkOption]
+           [java.security MessageDigest]
            [java.nio.file.attribute FileAttribute PosixFilePermissions]))
 
 (defn- input-bytes [filename]
@@ -29,6 +30,34 @@
       (while (.hasRemaining buffer) (.write out buffer)))
     (.force out true))
   {:bytes (alength ^bytes bytes)})
+
+(defn- export-group! [handle name filename]
+  ;; Keep a failed staging file for inspection. Hard-link publication is
+  ;; exclusive: an existing destination is never overwritten, even in a race.
+  (let [size (pack/group-size handle name)
+        dest (.normalize (.toAbsolutePath (Paths/get filename (make-array String 0))))
+        parent (.getParent dest)
+        _ (when (Files/exists dest (into-array LinkOption [LinkOption/NOFOLLOW_LINKS]))
+            (throw (java.nio.file.FileAlreadyExistsException. (str dest))))
+        tmp (Files/createTempFile parent ".awai-export-" ".pending"
+              (into-array FileAttribute [(PosixFilePermissions/asFileAttribute
+                                            (PosixFilePermissions/fromString "rw-------"))]))
+        md (MessageDigest/getInstance "SHA-256")]
+    (with-open [out (FileChannel/open tmp (into-array OpenOption [StandardOpenOption/WRITE LinkOption/NOFOLLOW_LINKS]))]
+      (loop [offset 0]
+        (when (< offset size)
+          (let [n (min pack/max-car-bytes (- size offset))
+                data (pack/read-group-range handle name offset n)
+                buf (ByteBuffer/wrap ^bytes data)]
+            (when-not (= n (alength ^bytes data))
+              (throw (ex-info "short verified group read" {:type :short-read})))
+            (.update md ^bytes data)
+            (while (.hasRemaining buf) (.write out buf))
+            (recur (+ offset n)))))
+      (.force out true))
+    (Files/createLink dest tmp)
+    (Files/delete tmp)
+    {:bytes size :sha256 (car/hex-encode (mapv #(bit-and 255 %) (.digest md)))}))
 
 (defn- parse-generation! [text]
   (when-not (and (string? text) (re-matches #"[1-9][0-9]{0,15}" text))
@@ -67,6 +96,7 @@
       (prn (put-large! directory name filename (nth args 4) (nth args 5)
                        (parse-generation! (nth args 6))))
       ["forest-export" 4] (prn (output! filename (pack/export-forest (pack/recover directory) name)))
+      ["forest-group-export" 4] (prn (export-group! (pack/recover directory) name filename))
       ["forest-get-block" 5]
       (let [cid-text (nth args 4)
             _ (car/parse-cid-str cid-text)
