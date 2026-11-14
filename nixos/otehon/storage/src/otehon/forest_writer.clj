@@ -83,18 +83,22 @@
   this is not a streaming or GiB writer. STAGING is new and retained. The
   seven-argument form requires the observed store generation under the writer
   lock; the six-argument form remains unconditional. The eight-argument form
-  additionally requires a witness and verifies the supported entire root."
+  additionally requires a witness and verifies the supported entire root. The
+  nine-argument form requires a trusted complete-root verifier."
   ([directory name basis blocks staging tool]
-   (put-ipld-blocks! directory name basis blocks staging tool unconditional unwitnessed))
+   (put-ipld-blocks! directory name basis blocks staging tool unconditional unwitnessed nil))
   ([directory name basis blocks staging tool expected-generation]
-   (put-ipld-blocks! directory name basis blocks staging tool expected-generation unwitnessed))
+   (put-ipld-blocks! directory name basis blocks staging tool expected-generation unwitnessed nil))
   ([directory name basis blocks staging tool expected-generation witness-port]
+   (put-ipld-blocks! directory name basis blocks staging tool expected-generation witness-port pack/verify-supported-catalog!))
+  ([directory name basis blocks staging tool expected-generation witness-port verify-root!]
   (when-not (or (identical? unconditional expected-generation)
                 (and (integer? expected-generation) (<= 1 expected-generation 9007199254740991)))
     (fail! :invalid-generation "expected a positive bounded store generation"))
   (when-not (identical? unwitnessed witness-port)
     (when (identical? unconditional expected-generation) (fail! :invalid-generation "witness requires generation"))
-    (store/validate-write-witness! witness-port))
+    (store/validate-write-witness! witness-port)
+    (when-not (fn? verify-root!) (fail! :invalid-witness "complete root verifier required")))
   (when-not (and (every? string? [directory name basis staging tool])
                  (vector? blocks) (<= 1 (count blocks) (* max-packs max-ipld-blocks-per-archive)))
     (fail! :invalid-argument "expected bounded blocks and string paths"))
@@ -147,7 +151,7 @@
                           {:root-cid root :bytes bytes}))))
                   (range) batches)
             group (cond
-                    (not (identical? unwitnessed witness-port)) (ipld/publish-group! directory name basis archives expected-generation witness-port pack/verify-supported-catalog!)
+                    (not (identical? unwitnessed witness-port)) (ipld/publish-group! directory name basis archives expected-generation witness-port verify-root!)
                     (identical? unconditional expected-generation) (ipld/publish-group! directory name basis archives)
                     :else (ipld/publish-group! directory name basis archives expected-generation))]
         {:group group :archive-count (count archives) :block-count (count owned)})))))

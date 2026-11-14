@@ -258,17 +258,26 @@
 
 (defn verify-supported-catalog!
   "Verify a complete supported Pack/IPLD root under the local writer lock.
-  Unknown root namespaces refuse; caller must supply the selected state."
-  [directory state]
+  Unknown namespaces refuse. The optional trusted ref verifier must validate
+  each name, target and closure, returning literal true."
+  ([directory state] (verify-supported-catalog! directory state nil))
+  ([directory state verify-ref!]
+  (when-not (or (nil? verify-ref!) (fn? verify-ref!))
+    (fail! :unverified-catalog-type "invalid ref verifier"))
   ;; A witness certifies the complete root, not just the newly written Pack.
   ;; Ref/metadata namespaces need their own validators before admission here.
-  (when-not (every? (fn [k] (some #(str/starts-with? k %)
-                                  [prefix group-prefix "awai.ipld-forest/" "awai.ipld-forest-group/"]))
+  (when-not (every? (fn [k] (or (some #(str/starts-with? k %)
+                                      [prefix group-prefix "awai.ipld-forest/" "awai.ipld-forest-group/"])
+                                (and verify-ref! (str/starts-with? k "awai.kotobase-ref/"))))
                     (keys state))
     (fail! :unverified-catalog-type "root includes a catalog with no witness verifier"))
   (recover-map directory state)
   (ipld/verify-catalog! directory state)
-  true)
+  (when verify-ref!
+    (doseq [[k v] state :when (str/starts-with? k "awai.kotobase-ref/")]
+      (when-not (true? (verify-ref! directory state (subs k (count "awai.kotobase-ref/")) v))
+        (fail! :closure-rejected "ref verifier did not approve"))))
+  true))
 
 (defn recover-witnessed
   "Open only if a host-owned store-bound witness matches before and after.

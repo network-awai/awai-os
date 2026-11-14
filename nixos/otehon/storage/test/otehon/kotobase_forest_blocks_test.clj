@@ -1,7 +1,8 @@
 (ns otehon.kotobase-forest-blocks-test
   (:require [clojure.test :refer [deftest is]] [awai.fs.car :as car]
             [kotobase.storage.core :as contract] [otehon.storage :as store]
-            [otehon.kotobase-forest-blocks :as blocks])
+            [otehon.kotobase-forest-blocks :as blocks] [otehon.ipld-forest :as catalog]
+            [otehon.ipld-forest-test :as ipld-test])
   (:import [java.nio.file Files Paths] [java.nio.file.attribute FileAttribute]))
 (def ^:dynamic *output* ".agent-output")
 (def cid "bafyreic73cz5ww6pbthvvyz62szwjs25afgaqr2a6va4xwl344bmfw4iri")
@@ -59,3 +60,77 @@
     ;; A stale expected CID returns CAS refusal without dereferencing NEXT.
     (is (false? (:published? (contract/-compare-and-set-ref! b "db" cid cid))))
     (is (= before (store/read-store dir)))))
+
+(defn- prepared-port [initial]
+  (let [a (atom {:root initial :pending nil})]
+    {:status! #(deref a)
+     :read! #(let [{:keys [root pending]} @a]
+               (when pending (throw (ex-info "pending" {:type :witness-pending}))) root)
+     :prepare! (fn [old next] (locking a (if (= @a {:root old :pending nil})
+                                             (do (reset! a {:root old :pending next}) true) false)))
+     :compare-and-set! (fn [old next] (locking a (if (= @a {:root old :pending next})
+                                                  (do (reset! a {:root next :pending nil}) true) false)))}))
+
+(deftest witnessed-ref-closure-and-reconciliation
+  (let [[dir staging] (temp-store) parts (ipld-test/split-inputs) root ipld-test/policy-root
+        group (catalog/publish-group! dir "kotobase-blocks/test" root parts)
+        initial (:root (store/read-store dir)) w (prepared-port initial)
+        shallow (fn [get-block cid] (boolean (get-block cid)))
+        b (blocks/open-witnessed-backend dir staging "unused" w shallow)
+        missing (car/cid-str (car/cid-bytes car/codec-raw (vec (repeat 32 42))))]
+    (is (= :invalid-closure-verifier (error-type #(blocks/open-witnessed-backend dir staging "unused" w nil))))
+    (is (= :missing-ref-target (error-type #(contract/-compare-and-set-ref! b "db" nil missing))))
+    (is (= initial (:root (store/read-store dir))))
+    (is (true? (:published? (contract/-compare-and-set-ref! b "db" nil root))))
+    (is (= root (:cid (contract/-read-ref b "db"))))
+    (is (bytes? (get (contract/-get-blocks b [root]) root)))
+    (is (false? (:published? (contract/-compare-and-set-ref! b "db" nil root))))
+    (is (= :unverified-catalog-type
+           (error-type #(contract/-get-blocks (blocks/open-witnessed-block-store dir staging "unused" w) []))))
+    (let [denied (blocks/open-witnessed-backend dir staging "unused" w (fn [_ _] false))]
+      (is (= :closure-rejected (error-type #(contract/-read-ref denied "db")))))
+    (let [outcome (binding [store/*write-observer* (fn [event role]
+                          (when (= [event role] [:before-cas :witness]) (throw (ex-info "injected" {}))))]
+                    (error-type #(contract/-compare-and-set-ref! b "db" root root)))
+          prior ((:status! w))
+          archive (:archive-sha (first (:archives group)))
+          p (Paths/get (str dir "/" archive ".forest") (make-array String 0))
+          saved (Paths/get (str dir "-ref-withheld") (make-array String 0))]
+      (is (= :witness-commit-uncertain outcome))
+      (is (= :witness-pending (error-type #(contract/-read-ref b "db"))))
+      (Files/move p saved (make-array java.nio.file.CopyOption 0))
+      (is (= :missing-forest (error-type #(blocks/reconcile-witnessed-backend! dir w shallow))))
+      (is (= prior ((:status! w))))
+      (Files/move saved p (make-array java.nio.file.CopyOption 0))
+      (is (= :committed-pending (:outcome (blocks/reconcile-witnessed-backend! dir w shallow))))
+      (is (= :already-consistent (:outcome (blocks/reconcile-witnessed-backend! dir w shallow))))
+      (is (= root (:cid (contract/-read-ref b "db")))))))
+
+(deftest witnessed-ref-postpublication-closure-refusal
+  (let [[dir staging] (temp-store) root ipld-test/policy-root
+        _ (catalog/publish-group! dir "kotobase-blocks/test" root (ipld-test/split-inputs))
+        w (prepared-port (:root (store/read-store dir)))
+        good (fn [get-block cid] (boolean (get-block cid)))
+        stable (blocks/open-witnessed-backend dir staging "unused" w good)]
+    (is (true? (:published? (contract/-compare-and-set-ref! stable "db" nil root))))
+    (let [before ((:status! w)) n (atom 0)
+          limited (blocks/open-witnessed-backend dir staging "unused" w
+                    (fn [get-block cid] (and (boolean (get-block cid)) (< (swap! n inc) 3))))]
+      (is (= :witness-commit-uncertain (error-type #(contract/-compare-and-set-ref! limited "db" root root))))
+      (is (= 3 @n))
+      (is (= (:root before) (:root ((:status! w)))))
+      (is (= (:root (store/read-store dir)) (:pending ((:status! w)))))
+      (is (= :committed-pending (:outcome (blocks/reconcile-witnessed-backend! dir w good)))))))
+
+(deftest witnessed-root-verifies-every-ref
+  (let [[dir staging] (temp-store) root ipld-test/policy-root
+        _ (catalog/publish-group! dir "kotobase-blocks/test" root (ipld-test/split-inputs))
+        w (prepared-port (:root (store/read-store dir)))
+        good (fn [get-block cid] (boolean (get-block cid)))
+        backend (blocks/open-witnessed-backend dir staging "unused" w good)]
+    (is (true? (:published? (contract/-compare-and-set-ref! backend "a" nil root))))
+    (is (true? (:published? (contract/-compare-and-set-ref! backend "b" nil root))))
+    (let [calls (atom 0) deny-second (blocks/open-witnessed-backend dir staging "unused" w
+                     (fn [get-block cid] (and (boolean (get-block cid)) (< (swap! calls inc) 2))))]
+      (is (= :closure-rejected (error-type #(contract/-read-ref deny-second "a"))))
+      (is (= 2 @calls)))))

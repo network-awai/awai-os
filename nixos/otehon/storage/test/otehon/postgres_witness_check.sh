@@ -62,6 +62,7 @@ bb --classpath "$classpath" "$db_interrupt" reconcile
 if [ -n "${PG_WITNESS_TOOL:-}" ]; then
   bb --classpath "$classpath" nixos/otehon/storage/oracle/postgres_ipld_writer_proof.clj
   bb --classpath "$classpath" nixos/otehon/storage/oracle/postgres_kotobase_blocks_proof.clj
+  bb --classpath "$classpath" nixos/otehon/storage/oracle/postgres_kotobase_refs_proof.clj
 fi
 stop
 trap - EXIT HUP INT TERM

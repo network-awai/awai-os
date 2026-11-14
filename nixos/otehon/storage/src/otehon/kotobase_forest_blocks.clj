@@ -48,10 +48,12 @@
   (let [s (store/read-store dir)]
     (when (:degraded? s) (fail! :degraded-store "cannot use a degraded store"))
     s))
-(defn- guarded-snapshot [dir witness-port]
+(defn- verify-root-value! [verify-root! dir state]
+  (when-not (true? (verify-root! dir state)) (fail! :closure-rejected "root verifier refused")))
+(defn- guarded-snapshot [dir witness-port verify-root!]
   (:snapshot (witness/open-verified! dir witness-port
                #(let [s (snapshot dir)]
-                  (pack/verify-supported-catalog! dir (:state s))
+                  (verify-root-value! verify-root! dir (:state s))
                   {:basis (:root s) :snapshot s}))))
 (defn- group-names [state]
   (->> (keys state) (filter #(str/starts-with? % state-prefix))
@@ -71,24 +73,24 @@
                        (into-array FileAttribute [(PosixFilePermissions/asFileAttribute
                                                    (PosixFilePermissions/fromString "rwx------"))])) "stage"))))
 (defn- put-batch!
-  ([dir staging-root tool blocks] (put-batch! dir staging-root tool blocks nil))
-  ([dir staging-root tool blocks witness-port]
+  ([dir staging-root tool blocks] (put-batch! dir staging-root tool blocks nil nil))
+  ([dir staging-root tool blocks witness-port verify-root!]
   (let [name (batch-name blocks)]
     (loop [attempt 0]
-      (let [{:keys [state root]} (if witness-port (guarded-snapshot dir witness-port) (snapshot dir))
+      (let [{:keys [state root]} (if witness-port (guarded-snapshot dir witness-port verify-root!) (snapshot dir))
             group-key (str "awai.ipld-forest-group/" name)]
         (if (contains? state group-key)
           (if witness-port
             (:verified (witness/open-verified! dir witness-port
                          #(let [s (snapshot dir) h (catalog/recover-group dir name)]
                             (when-not (= (:root s) (:basis h)) (fail! :catalog-changed "root changed during batch check"))
-                            (pack/verify-supported-catalog! dir (:state s))
+                            (verify-root-value! verify-root! dir (:state s))
                             (verify-batch h blocks) {:basis (:basis h) :verified true})))
             (verify-batch (catalog/recover-group dir name) blocks))
           (let [stage (stage-path staging-root)
                 result (try
                          (if witness-port
-                           (writer/put-ipld-blocks! dir name (:cid (first blocks)) blocks stage tool (:generation root) witness-port)
+                           (writer/put-ipld-blocks! dir name (:cid (first blocks)) blocks stage tool (:generation root) witness-port verify-root!)
                            (writer/put-ipld-blocks! dir name (:cid (first blocks)) blocks stage tool (:generation root)))
                          :published
                          (catch Exception e
@@ -127,11 +129,11 @@
 (defn- fetch [dir cache cids]
   (validate-cids! cids)
   (fetch-state dir cache (:state (snapshot dir)) cids))
-(defn- witnessed-fetch [dir cache cids witness-port]
+(defn- witnessed-fetch [dir cache cids witness-port verify-root!]
   (validate-cids! cids)
   (:blocks (witness/open-verified! dir witness-port
              #(let [s (snapshot dir)]
-                (pack/verify-supported-catalog! dir (:state s))
+                (verify-root-value! verify-root! dir (:state s))
                 {:basis (:root s) :blocks (fetch-state dir cache (:state s) cids)}))))
 (defn open-block-store
   "Persist each bounded batch as an immutable Forest group; staging is retained.
@@ -151,21 +153,24 @@
 (defn open-witnessed-block-store
   "Explicit witnessed block port only. No ref CAS or query authorization is
   provided. The host must supply a trusted independent prepared witness and
-  ensure every writer of this store follows the same protocol."
-  [dir staging-root tool witness-port]
+  ensure every writer of this store follows the same protocol. A supplied
+  verifier is a trust boundary and must validate every root namespace."
+  ([dir staging-root tool witness-port]
+   (open-witnessed-block-store dir staging-root tool witness-port pack/verify-supported-catalog!))
+  ([dir staging-root tool witness-port verify-root!]
   (store/validate-write-witness! witness-port)
-  (when-not (:status! witness-port) (fail! :invalid-witness "prepared witness required"))
+  (when-not (and (:status! witness-port) (fn? verify-root!)) (fail! :invalid-witness "prepared witness and root verifier required"))
   (let [cache (atom {})]
     (reify
       contract/IBlockStore
       (-put-blocks! [_ blocks]
         (let [{:keys [ordered unique]} (checked-blocks blocks)]
-          (if (seq unique) (put-batch! dir staging-root tool unique witness-port)
-              (guarded-snapshot dir witness-port))
+          (if (seq unique) (put-batch! dir staging-root tool unique witness-port verify-root!)
+              (guarded-snapshot dir witness-port verify-root!))
           (mapv :cid ordered)))
-      (-get-blocks [_ cids] (witnessed-fetch dir cache cids witness-port))
+      (-get-blocks [_ cids] (witnessed-fetch dir cache cids witness-port verify-root!))
       contract/IBackendCapabilities
-      (-capabilities [_] #{:immutable-blocks :cid-addressed-read :packed-blocks :range-read :batch-get :batch-put}))))
+      (-capabilities [_] #{:immutable-blocks :cid-addressed-read :packed-blocks :range-read :batch-get :batch-put})))))
 (defn- compose-backend [dir staging-root tool verify-closure!]
   (let [blocks (open-block-store dir staging-root tool)
         get-block #(contract/get-block blocks %)
@@ -253,3 +258,35 @@
                  (require-open!)
                  (reset! state {:phase :aborted :bytes 0 :blocks {}})
                  true))}))
+
+(defn- witnessed-root-verifier [verify-closure!]
+  (when-not (fn? verify-closure!) (fail! :invalid-closure-verifier "trusted closure verifier required"))
+  (fn [dir state]
+    (let [cache (atom {})
+          get-block (fn [cid] (validate-cids! [cid]) (get (fetch-state dir cache state [cid]) cid))]
+      (pack/verify-supported-catalog!
+        dir state
+        (fn [_ _ name cid]
+          (when-not (and (string? name) (<= 1 (count name) 1024))
+            (fail! :invalid-ref-name "invalid witnessed ref name"))
+          (validate-cids! [cid])
+          (when-not (get-block cid) (fail! :missing-ref-target "witnessed ref target is missing"))
+          (when-not (true? (verify-closure! get-block cid))
+            (fail! :closure-rejected "witnessed ref closure was not approved"))
+          true)))))
+
+(defn open-witnessed-backend
+  "Explicit hosted block/ref backend. VERIFY-CLOSURE! is a trusted, bounded
+  `(fn [get-block cid])` validator and must return true for every ref. It does
+  not supply signature, authority, fencing or database anti-rollback trust."
+  [dir staging-root tool witness-port verify-closure!]
+  (let [verify-root! (witnessed-root-verifier verify-closure!)
+        blocks (open-witnessed-block-store dir staging-root tool witness-port verify-root!)
+        refs (refs/open-witnessed-ref-store dir witness-port verify-root!)]
+    (contract/compose {:blocks blocks :refs refs})))
+
+(defn reconcile-witnessed-backend!
+  "Reconcile only after the mandatory trusted closure verifier approves all
+  refs as well as the complete supported Pack/IPLD catalog."
+  [dir witness-port verify-closure!]
+  (store/reconcile-witnessed! dir witness-port (witnessed-root-verifier verify-closure!)))
