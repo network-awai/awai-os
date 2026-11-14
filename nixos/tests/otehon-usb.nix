@@ -5,10 +5,12 @@ let
     modules = [ ../otehon/usb-install-6600h.nix ];
   }).config;
 in pkgs.runCommand "otehon-offline-usb-vm-check" {
-  nativeBuildInputs = [ pkgs.python3 pkgs.qemu_test pkgs.netpbm (pkgs.tesseract.override { enableLanguages = [ "eng" "jpn" ]; }) ];
+  nativeBuildInputs = [ pkgs.python3 pkgs.jdk pkgs.qemu_test pkgs.netpbm (pkgs.tesseract.override { enableLanguages = [ "eng" "jpn" ]; }) ];
   OTEHON_OCR_LANG = "eng+jpn";
   requiredSystemFeatures = [ "kvm" ];
 } ''
+  ${pkgs.jdk}/bin/java -Djava.awt.headless=true -cp "${pkgs.clojure}/libexec/clojure-tools-${pkgs.clojure.version}.jar" \
+    clojure.main ${../../tests/otehon/installer-client.clj} ${../otehon/installer-ui/awai/installer.cljc}
   iso=$(echo ${system.system.build.isoImage}/iso/*.iso)
   status=0
   python3 ${../../scripts/check-otehon-usb-vm.py} --iso "$iso" --output "$PWD/proof" \
