@@ -82,7 +82,9 @@ in {
   # remain in the console/journal; only routine boot status is quieted.
   boot.consoleLogLevel = 3;
   boot.initrd.verbose = false;
-  boot.kernelParams = [ "quiet" "systemd.show_status=false" "rd.systemd.show_status=false" ];
+  # hardware-6600h appends rd.systemd.show_status=auto at mkAfter (1500).
+  # Put the installer override after it: the kernel uses the final value.
+  boot.kernelParams = lib.mkOrder 1600 [ "quiet" "systemd.show_status=false" "rd.systemd.show_status=false" ];
   specialisation.text-installer.configuration = {
     system.nixos.label = lib.mkForce "Text-installer-${version}";
     systemd.services.display-manager.enable = lib.mkForce false;
