@@ -75,6 +75,8 @@ jobs:
           "$bb_path/bin/bb" --classpath "$classpath" "$transaction_proof" fail "$RUNNER_TEMP/kotobase-transaction-fail" "$tool"
           "$bb_path/bin/bb" --classpath "$classpath" "$transaction_proof" scoped-write "$RUNNER_TEMP/kotobase-scoped-transaction" "$tool"
           "$bb_path/bin/bb" --classpath "$classpath" "$transaction_proof" scoped-read "$RUNNER_TEMP/kotobase-scoped-transaction" "$tool"
+          "$bb_path/bin/bb" --classpath "$classpath" "$transaction_proof" ports-write "$RUNNER_TEMP/kotobase-ports-transaction" "$tool"
+          "$bb_path/bin/bb" --classpath "$classpath" "$transaction_proof" scoped-read "$RUNNER_TEMP/kotobase-ports-transaction" "$tool"
           FOREST_TOOL="$tool" BABASHKA="$bb_path/bin/bb" "$bb_path/bin/bb" --classpath "$classpath" nixos/otehon/storage/test/otehon/scoped_forest_crash_proof.clj run "$RUNNER_TEMP/kotobase-scoped-crash"
           cp -R "$RUNNER_TEMP/kotobase-blocks" "$RUNNER_TEMP/kotobase-blocks-invalidate"
           "$bb_path/bin/bb" --classpath "$classpath" "$blocks_proof" invalidate "$RUNNER_TEMP/kotobase-blocks-invalidate" "$tool"

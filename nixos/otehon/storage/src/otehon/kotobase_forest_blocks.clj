@@ -267,6 +267,36 @@
                  (reset! state {:phase :aborted :bytes 0 :blocks {}})
                  true))}))
 
+(defn publish-ports!
+  "Publish a batch built through explicitly provisional :put! / :get-fn ports.
+
+  BUILD! is synchronous and returns exactly {:target CID :value value}; the
+  ports are not an IBlockStore and make no durability acknowledgement. VERIFY!
+  runs after block persistence and before ref CAS. Only a successful CAS
+  returns :value. Failed/stale publication may leave immutable orphan blocks.
+  Ports close on exit; a trusted builder must not cause external side effects.
+  Concurrent GC and distributed fencing are outside this local operation."
+  [backend ref-name expected build! verify!]
+  (when-not (and (fn? build!) (fn? verify!))
+    (fail! :invalid-builder "builder and semantic verifier must be functions"))
+  (let [tx (open-transaction backend) gate (Object.) active (atom true)
+        require-active! #(when-not @active (fail! :transaction-closed "scoped transaction is closed"))
+        ports {:put! (fn [cid bytes] (locking gate (require-active!) ((:put! tx) cid bytes)))
+               :get-fn (fn [cid] (locking gate (require-active!) (validate-cids! [cid]) ((:get-fn tx) cid)))}]
+    (locking gate
+      (try
+        (let [result (build! ports)]
+          (when-not (and (map? result) (= #{:target :value} (set (keys result))))
+            (fail! :invalid-builder-result "builder must return target and value"))
+          (validate-cids! [(:target result)])
+          (let [ack ((:publish! tx) ref-name expected (:target result) verify!)]
+            (when-not (:published? ack) (fail! :stale-ref "ref changed before publication"))
+            (:value result)))
+        (catch Exception e
+          (try ((:abort! tx)) (catch Exception _ nil))
+          (throw e))
+        (finally (reset! active false))))))
+
 (defn publish-scoped!
   "Run a synchronous, trusted builder with a private volatile backend.
 

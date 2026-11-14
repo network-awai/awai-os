@@ -17,22 +17,29 @@
 (defn check! [x msg] (when-not x (throw (ex-info msg {}))))
 (let [[mode base tool] *command-line-args* dir (str base "/store") stage (str base "/staging")]
   (case mode
-    "scoped-write" (do (check! (.mkdir (java.io.File. base)) "output exists")
+    ("scoped-write" "ports-write") (do (check! (.mkdir (java.io.File. base)) "output exists")
       (check! (.mkdir (java.io.File. stage)) "staging exists")
       (store/init! dir)
       (let [db (forest/open-backend dir stage tool) items (into bs (large-blocks))
             target (:cid (first items)) leaked (atom nil)
-            value (forest/publish-scoped! db "db" nil
-                    (fn [staged] (reset! leaked staged)
-                      (check! (= (mapv :cid items) (contract/-put-blocks! staged items)) "staged blocks changed")
-                      (check! (nil? (contract/-read-ref db "db")) "premature ref")
-                      {:target target :value :published})
-                    (fn [get-block cid]
+            verify! (fn [get-block cid]
                       (and (= cid target) (every? (fn [{:keys [cid bytes]}]
-                                                   (Arrays/equals ^bytes bytes ^bytes (get-block cid))) items))))]
+                                                   (Arrays/equals ^bytes bytes ^bytes (get-block cid))) items)))
+            value (if (= mode "ports-write")
+                    (forest/publish-ports! db "db" nil
+                      (fn [ports] (reset! leaked ports)
+                        (doseq [{:keys [cid bytes]} items] (check! (= cid ((:put! ports) cid bytes)) "staged block changed"))
+                        (check! (nil? (contract/-read-ref db "db")) "premature ref")
+                        {:target target :value :published}) verify!)
+                    (forest/publish-scoped! db "db" nil
+                      (fn [staged] (reset! leaked staged)
+                        (check! (= (mapv :cid items) (contract/-put-blocks! staged items)) "staged blocks changed")
+                        (check! (nil? (contract/-read-ref db "db")) "premature ref")
+                        {:target target :value :published}) verify!))]
         (check! (= :published value) "not published")
-        (check! (try (contract/-get-blocks @leaked [target]) false (catch Exception _ true)) "scope remained usable")
-        (prn {:blocks (count items) :scoped-publication true :pass true})))
+        (check! (try (if (= mode "ports-write") ((:get-fn @leaked) target) (contract/-get-blocks @leaked [target]))
+                     false (catch Exception _ true)) "scope remained usable")
+        (prn {:blocks (count items) :publication mode :pass true})))
     "scoped-read" (let [db (forest/open-backend dir stage tool) items (into bs (large-blocks))
                         got (contract/-get-blocks db (mapv :cid items))
                         state (:state (store/read-store dir))

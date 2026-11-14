@@ -112,3 +112,36 @@
       (is (thrown? Exception (forest/publish-scoped! (fake-backend s false) "db" nil
                                 (fn [staged] (build staged) (throw (ex-info "builder failed" {}))) (fn [_ _] true))))
       (is (= [0 0 nil] [(:puts @s) (:cas @s) (:ref @s)])))))
+
+(deftest explicit-provisional-ports-publish-only-after-cas
+  (let [s (state) db (fake-backend s false) {:keys [cid bytes]} (pair "port-value") saved (atom nil)]
+    (is (= :ok (forest/publish-ports! db "db" nil
+                 (fn [ports]
+                   (reset! saved ports)
+                   (is (not (contract/block-store? ports)))
+                   (is (= cid ((:put! ports) cid bytes)))
+                   (is (= (vec bytes) (vec ((:get-fn ports) cid))))
+                   (is (= [0 0] [(:puts @s) (:cas @s)]))
+                   {:target cid :value :ok})
+                 (fn [get-block target]
+                   (and (= target cid) (= (vec bytes) (vec (get-block cid))) (zero? (:cas @s)))))))
+    (is (= [1 1 cid] [(:puts @s) (:cas @s) (:ref @s)]))
+    (is (thrown? Exception ((:put! @saved) cid bytes)))
+    (is (thrown? Exception ((:get-fn @saved) cid)))))
+
+(deftest explicit-provisional-ports-fail-closed
+  (let [{:keys [cid bytes]} (pair "port-failure")
+        build (fn [ports] ((:put! ports) cid bytes) {:target cid :value :secret})]
+    (doseq [v [(fn [_ _] false) (fn [_ _] (throw (ex-info "failure" {})))]]
+      (let [s (state)]
+        (is (thrown? Exception (forest/publish-ports! (fake-backend s false) "db" nil build v)))
+        (is (= [1 0 nil] [(:puts @s) (:cas @s) (:ref @s)]))))
+    (let [s (state) other (:cid (pair "other"))]
+      (swap! s assoc :ref other)
+      (is (= :stale-ref (try (forest/publish-ports! (fake-backend s false) "db" nil build (fn [_ _] true)) nil
+                             (catch Exception e (:type (ex-data e))))))
+      (is (= other (:ref @s))))
+    (let [s (state)]
+      (is (thrown? Exception (forest/publish-ports! (fake-backend s false) "db" nil
+                                (fn [ports] (build ports) (throw (ex-info "builder failed" {}))) (fn [_ _] true))))
+      (is (= [0 0 nil] [(:puts @s) (:cas @s) (:ref @s)])))))
