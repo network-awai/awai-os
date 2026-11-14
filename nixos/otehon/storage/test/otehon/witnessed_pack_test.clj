@@ -36,3 +36,26 @@
             (is (= 4 (count (get-in (pack/summary handle) [:groups "proof" :packs]))))
             (is (= @root (:basis (pack/summary handle))))
             (is (java.util.Arrays/equals expected (pack/read-group-range handle "proof" offset 40)))))))))
+
+(deftest lost-pack-after-root-does-not-advance-witness
+  (let [{:keys [paths bytes cid]} (fixture) d (dir) _ (store/init! d)
+        initial (:root (store/read-store d)) trusted (atom initial) calls (atom 0)
+        w (witness trusted (fn [_ _] (swap! calls inc) true))
+        removed (atom false)
+        outcome (binding [store/*write-observer*
+                          (fn [event role]
+                            (when (= [event role] [:dir-synced :root])
+                              (let [f (first (filter #(re-matches #"[0-9a-f]{64}\.forest" (.getName %))
+                                                     (.listFiles (java.io.File. d))))]
+                                (when-not f (throw (ex-info "expected published pack" {})))
+                                (Files/move (.toPath f) (Paths/get (str d "-withheld.forest") (make-array String 0))
+                                            (make-array java.nio.file.CopyOption 0))
+                                (reset! removed true))))]
+                  (error-type #(pack/import-logical-forest-files! d "proof" paths bytes cid
+                                 {:expected-generation 1 :witness w})))]
+    (is @removed)
+    (is (= :witness-commit-uncertain outcome))
+    (is (= 2 (get-in (store/read-store d) [:root :generation])))
+    (is (= initial @trusted))
+    (is (zero? @calls))
+    (is (= :witness-mismatch (error-type #(pack/recover-witnessed d (:read! w)))))))

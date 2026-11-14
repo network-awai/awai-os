@@ -425,7 +425,7 @@
     (fail! :invalid-witness "expected trusted read and conditional update ports"))
   witness)
 
-(defn- transact* [directory op payload before-publish expected-generation witness]
+(defn- transact* [directory op payload before-publish expected-generation witness after-publish]
   (when-not (frame-valid? {:op op :payload payload})
     (fail! :invalid-operation "expected put/delete with string key/value"))
   (when witness (validate-write-witness! witness))
@@ -454,9 +454,10 @@
                         (publish! root (inc (:generation current)) snapshot (wal/append log op payload)))]
            (if-not witness result
              (try
-               (let [next-root (:root (writable-state root))]
+               (let [{next-root :root next-state :state} (writable-state root)]
                  (when-not (= (:generation result) (:generation next-root))
                    (fail! :local-root-changed "published root changed during witness update"))
+                 (when after-publish (after-publish (str root) next-state))
                  (observe! :before-cas :witness)
                  (when-not (true? ((:compare-and-set! witness) current next-root))
                    (fail! :witness-cas-refused "witness CAS refused"))
@@ -474,7 +475,7 @@
   leaves metadata unchanged. It is a trusted hosted adapter hook, not consent."
   ([directory op payload] (transact! directory op payload nil))
   ([directory op payload before-publish]
-   (transact* directory op payload before-publish nil nil)))
+   (transact* directory op payload before-publish nil nil nil)))
 
 (defn transact-if-generation!
   "Commit only if EXPECTED-GENERATION is still the committed store generation.
@@ -483,19 +484,25 @@
   [directory expected-generation op payload before-publish]
   (when-not (and (sequence? expected-generation) (pos? expected-generation))
     (fail! :invalid-generation "expected a positive bounded store generation"))
-  (transact* directory op payload before-publish expected-generation nil))
+  (transact* directory op payload before-publish expected-generation nil nil))
 
 (defn transact-if-generation-witnessed!
   "Conditional local commit followed by trusted witness CAS/readback.
 
   The local root is durable before witness CAS. Once publication begins, an
   exception can leave either commit state; guarded reads must fail closed and
-  the host must reconcile using independent evidence, never blindly retry."
-  [directory expected-generation op payload before-publish witness]
+  the host must reconcile using independent evidence, never blindly retry.
+  The optional trusted after-publish verifier runs under the same local lock
+  before CAS, against the published state. It does not prevent later damage."
+  ([directory expected-generation op payload before-publish witness]
+   (transact-if-generation-witnessed! directory expected-generation op payload before-publish witness nil))
+  ([directory expected-generation op payload before-publish witness after-publish]
   (when-not (and (sequence? expected-generation) (pos? expected-generation))
     (fail! :invalid-generation "expected a positive bounded store generation"))
   (validate-write-witness! witness)
-  (transact* directory op payload before-publish expected-generation witness))
+  (when-not (or (nil? after-publish) (fn? after-publish))
+    (fail! :invalid-operation "after-publish verifier must be a function"))
+  (transact* directory op payload before-publish expected-generation witness after-publish)))
 
 (defn compare-and-set-value!
   "Compare and publish a metadata value under the local writer lock. A

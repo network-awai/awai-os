@@ -431,7 +431,8 @@
                            (throw e))))))
         result (cond
                  (contains? options :witness)
-                 (store/transact-if-generation-witnessed! directory (:expected-generation options) :put payload before-publish (:witness options))
+                 (store/transact-if-generation-witnessed! directory (:expected-generation options) :put payload before-publish (:witness options)
+                   (fn [directory state] (recover-map directory state)))
                  (contains? options :expected-generation)
                  (store/transact-if-generation! directory (:expected-generation options) :put payload before-publish)
                  :else (store/transact! directory :put payload before-publish))]
