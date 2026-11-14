@@ -11,7 +11,7 @@
 
 (deftest fresh-key-admits
   (let [[ledger decision] (r/reserve ledger0 "k1" digest-a now ttl)]
-    (is (= {:admit true :key "k1" :superseded false} decision))
+    (is (= {:admit true :key "k1" :fence 0 :superseded false} decision))
     (is (= :reserved (get-in ledger [:reservations "k1" :state])))))
 
 (deftest same-key-same-digest-replays-without-change
@@ -39,7 +39,7 @@
                           {:digest digest-a :expires now
                            :state :completed :fence 0 :receipt receipt-a})
         [ledger2 decision] (r/reserve ledger1 "k1" digest-b (+ now 1) ttl)]
-    (is (= {:admit true :key "k1" :superseded true} decision))
+    (is (= {:admit true :key "k1" :fence 1 :superseded true} decision))
     (is (= receipt-a (get-in ledger2 [:reservations "k1" :prior-receipt])))))
 
 (deftest settle-completes-and-replays-receipt
@@ -137,6 +137,36 @@
     (let [[ledger3 redelivery] (r/settle ledger2 "k1" digest-a 0 :ok receipt-a)]
       (is (= {:refused true :cause :not-live :key "k1"} redelivery))
       (is (= ledger2 ledger3)))))
+
+(deftest expired-reuse-never-resets-a-writer-fence
+  (let [[a _] (r/reserve {} "k" digest-a 0 10)
+        [b _] (r/raise-fence a "k" 5)
+        [c d] (r/reserve b "k" digest-a 11 10)]
+    (is (= 6 (:fence d)))
+    (doseq [epoch [0 5 7 nil 6.0]]
+      (let [[unchanged refused] (r/settle c "k" digest-a epoch :ok receipt-a)]
+        (is (= :stale-writer (:cause refused)))
+        (is (= c unchanged))))
+    (is (= :completed (:state (second (r/settle c "k" digest-a 6 :ok receipt-a)))))))
+
+(deftest unresolved-effects-do-not-reenter-on-expiry
+  (doseq [state [:unknown :in-flight]]
+    (let [a {:reservations {"k" {:digest digest-a :expires 10 :state state :fence 5}}}
+          [b d] (r/reserve a "k" digest-a 11 10)]
+      (is (= a b))
+      (is (= {:retry-later true :key "k"} d)))))
+
+(deftest reconciliation-is-bound-to-the-current-reservation-fence
+  (let [[a _] (r/reserve {} "k" digest-a 0 10)
+        [b _] (r/settle a "k" digest-a 0 :ok receipt-a)
+        [c _] (r/reserve b "k" digest-a 11 10)
+        [d _] (r/settle c "k" digest-a 1 :unverified nil)]
+    (doseq [[unchanged refusal] [(r/reconcile d "k" digest-a :completed receipt-a)
+                                 (r/reconcile d "k" digest-a 0 :completed receipt-a)
+                                 (r/reconcile d "k" digest-a 2 :completed receipt-a)]]
+      (is (= d unchanged))
+      (is (= :stale-writer (:cause refusal))))
+    (is (= :completed (:state (second (r/reconcile d "k" digest-a 1 :completed receipt-a)))))))
 
 (let [result (run-tests)]
   (when (pos? (+ (:fail result) (:error result))) (System/exit 1)))
