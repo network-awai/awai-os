@@ -76,7 +76,7 @@ def main():
 
     proof = {"schema": "awai.otehon.usb-vm.v1", "isoSha256": digest(iso), "isoBytes": iso.stat().st_size,
              "rawSha256": (a.digests / "raw").read_text().strip(), "rawBytes": int((a.digests / "bytes").read_text()),
-             "externalNetwork": False, "physicalDisks": False, "mediaBytes": a.media_bytes or iso.stat().st_size, "targetBus": a.target_bus, "checks": [], "passed": False}
+             "externalNetwork": False, "physicalDisks": False, "installerInterface": "graphical" if a.graphical else "legacy-serial", "mediaBytes": a.media_bytes or iso.stat().st_size, "targetBus": a.target_bus, "checks": [], "passed": False}
     process = None
     port = None
     transcript = bytearray()

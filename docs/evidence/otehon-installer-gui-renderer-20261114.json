@@ -1,0 +1,32 @@
+{
+  "schema": "awai.otehon.usb-vm.v1",
+  "isoSha256": "ef3dc7bf14a9d179a3a973dc3cabb8a72937cecda621515a04d00119455da909",
+  "isoBytes": 8492892160,
+  "rawSha256": "09667b124d32040bc087bfdd50888dff111af5c233f1a057102ce9e169d8cc4c",
+  "rawBytes": 27114078208,
+  "externalNetwork": false,
+  "physicalDisks": false,
+  "mediaBytes": 61949214720,
+  "targetBus": "nvme",
+  "checks": [
+    "graphical installer boots offline without target writes",
+    "mouse selection and exact keyboard approval install scratch NVMe; full readback completes; decoys unchanged",
+    "verified completion screen powers off via displayed control"
+  ],
+  "passed": false,
+  "date": "2026-11-14",
+  "issue": "AWAI-450",
+  "buildBranchRevision": "dbe50c5bd98b1df2411f1c347a7eb6f8de38c88e",
+  "buildCheckoutRevision": "29d7ea713cf7041aeb0459e9adf5508be45320af",
+  "buildTree": "94022e65ac7db76af7fdd60701e0eb467e18e816",
+  "run": "https://github.com/network-awai/awai-os/actions/runs/43577397887",
+  "proofArtifact": 14107737247,
+  "proofZipSha256": "c83f0dbaca2e863c66d25d1f5c601a5185babf39df64f3fe93598eac1a9f4333",
+  "isoArtifact": 14106689505,
+  "isoZipSha256": "9f6fbe0188960c07b2838a372c80a9da68f0d95d7d14fbf071234d1f6c256578",
+  "graphicalFirstBootObserved": true,
+  "failure": "OCR recognized ordinary 12 as compatibility glyph U+246B. No password submitted; full initialization/restart unqualified.",
+  "correction": "NFKC for displayed-label matching only. Actual graphical OCR positive and prior actual console negative; 3 regression guards pass. Reuse this exact artifact only with unchanged runtime tree and full GUI/restart test.",
+  "physicalUsbUpdated": false,
+  "nativeQualified": false
+}

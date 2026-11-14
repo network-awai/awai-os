@@ -15,6 +15,10 @@ on:
         description: Run only the exact previously flashed image diagnosis
         type: boolean
         default: false
+      gui-candidate:
+        description: With diagnose-only, verify the exact pinned GUI candidate instead of the old flashed ISO
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -83,7 +87,7 @@ jobs:
           compression-level: 0
   exact-image-installed-boot:
     if: github.event_name == 'workflow_dispatch' && inputs.diagnose-only
-    name: Previously flashed ISO — installed boot diagnosis
+    name: ${{ inputs.gui-candidate && 'Pinned GUI candidate — full installed boot' || 'Previously flashed ISO — installed boot diagnosis' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
@@ -93,30 +97,68 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
+          fetch-depth: 0
+      - name: Prepare capacity on this ephemeral GitHub runner
+        shell: bash
+        run: |
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
+          df -h /
       - uses: cachix/install-nix-action@b85815f71a6de0ddee80b8a80a98d43f4bcc66c7
-      - name: Retrieve exact previously flashed immutable image
+      - name: Retrieve explicit immutable ISO fixture
         env:
           GH_TOKEN: ${{ github.token }}
+          GUI_CANDIDATE: ${{ inputs.gui-candidate }}
         shell: bash
         run: |
           mkdir -p .agent-output/exact-image .agent-output/exact-digests
-          gh api repos/network-awai/awai-os/actions/artifacts/14045326624/zip > .agent-output/qualified.zip
-          echo 'c2f2bccbdb2a364c2f0e2c565d2b9589a35e54a1a4135e7bd03c932f700aa937  .agent-output/qualified.zip' | sha256sum -c -
+          if [ "$GUI_CANDIDATE" = true ]; then
+            artifact=14106689505
+            zip_sha=9f6fbe0188960c07b2838a372c80a9da68f0d95d7d14fbf071234d1f6c256578
+            iso_sha=ef3dc7bf14a9d179a3a973dc3cabb8a72937cecda621515a04d00119455da909
+            raw_sha=09667b124d32040bc087bfdd50888dff111af5c233f1a057102ce9e169d8cc4c
+            source=dbe50c5bd98b1df2411f1c347a7eb6f8de38c88e
+            # Only verifier/workflow/evidence changes are allowed after this build.
+            git diff --quiet "$source" HEAD -- . ':!scripts/otehon-installed-boot.py' ':!scripts/check-otehon-usb-vm.py' ':!.github/workflows/otehon-usb-installer.yml' ':!tests/otehon' ':!docs/evidence' ':!docs/otehon'
+            gh api repos/network-awai/awai-os/actions/artifacts/$artifact > .agent-output/exact-image-artifact.json
+            jq -e --arg source "$source" '.workflow_run.id == 43577397887 and .workflow_run.head_sha == $source and .size_in_bytes == 8492892450' .agent-output/exact-image-artifact.json
+            jq -n --arg source "$source" --arg verifier "$GITHUB_SHA" '{buildBranchRevision:$source,buildCheckoutRevision:"29d7ea713cf7041aeb0459e9adf5508be45320af",buildTree:"94022e65ac7db76af7fdd60701e0eb467e18e816",verifierRevision:$verifier,fixture:"graphical-candidate",artifact:14106689505}' > .agent-output/exact-image-source.json
+          else
+            artifact=14045326624
+            zip_sha=c2f2bccbdb2a364c2f0e2c565d2b9589a35e54a1a4135e7bd03c932f700aa937
+            iso_sha=5695f3c43f97912212289b59a11b79f6662c5ebbbbb45fd4aaa0e2d2b2840133
+            raw_sha=35d1b37d8d83d0deb1d56293aaf695a36a65c841ae2449e9d012d3281bfe1032
+            printf '%s\n' legacy-previously-flashed > .agent-output/exact-image-source.txt
+          fi
+          gh api repos/network-awai/awai-os/actions/artifacts/$artifact/zip > .agent-output/qualified.zip
+          echo "$zip_sha  .agent-output/qualified.zip" | sha256sum -c -
           unzip -j .agent-output/qualified.zip '*.iso' -d .agent-output/exact-image
           rm .agent-output/qualified.zip
           iso=$(echo .agent-output/exact-image/*.iso)
-          echo "5695f3c43f97912212289b59a11b79f6662c5ebbbbb45fd4aaa0e2d2b2840133  $iso" | sha256sum -c -
-          printf '%s\n' 35d1b37d8d83d0deb1d56293aaf695a36a65c841ae2449e9d012d3281bfe1032 > .agent-output/exact-digests/raw
+          echo "$iso_sha  $iso" | sha256sum -c -
+          printf '%s\n' "$raw_sha" > .agent-output/exact-digests/raw
           printf '%s\n' 27114078208 > .agent-output/exact-digests/bytes
       - name: Install, remove USB, boot, initialize state and restart
+        id: exactvm
+        env:
+          GUI_CANDIDATE: ${{ inputs.gui-candidate }}
         shell: bash
         run: |
-          nix-shell --expr 'let p = import (import ./ci/nixpkgs.nix) { system = "x86_64-linux"; }; in p.mkShell { packages = [ p.python3 p.qemu_test p.netpbm p.tesseract ]; OVMF_CODE = "${p.OVMF.fd}/FV/OVMF_CODE.fd"; OVMF_VARS = "${p.OVMF.fd}/FV/OVMF_VARS.fd"; }' --run 'python3 scripts/check-otehon-usb-vm.py --iso .agent-output/exact-image/*.iso --output "$PWD/.agent-output/exact-installed-proof" --ovmf-code "$OVMF_CODE" --ovmf-vars "$OVMF_VARS" --digests .agent-output/exact-digests --installed-boot --media-bytes 61949214720 --target-bus nvme' 2>&1 | tee .agent-output/exact-installed.log
+          export OTEHON_OCR_LANG=eng
+          export GUI_ARGUMENT=''
+          if [ "$GUI_CANDIDATE" = true ]; then
+            export OTEHON_OCR_LANG=eng+jpn
+            export GUI_ARGUMENT=--graphical
+          fi
+          python3 -m unittest discover -s tests/otehon -v
+          nix-shell --expr 'let p = import (import ./ci/nixpkgs.nix) { system = "x86_64-linux"; }; in p.mkShell { packages = [ p.python3 p.qemu_test p.netpbm (p.tesseract.override { enableLanguages = [ "eng" "jpn" ]; }) ]; OVMF_CODE = "${p.OVMF.fd}/FV/OVMF_CODE.fd"; OVMF_VARS = "${p.OVMF.fd}/FV/OVMF_VARS.fd"; }' --run 'python3 scripts/check-otehon-usb-vm.py --iso .agent-output/exact-image/*.iso --output "$PWD/.agent-output/exact-installed-proof" --ovmf-code "$OVMF_CODE" --ovmf-vars "$OVMF_VARS" --digests .agent-output/exact-digests --installed-boot --media-bytes 61949214720 --target-bus nvme $GUI_ARGUMENT' 2>&1 | tee .agent-output/exact-installed.log
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: exact-flashed-iso-installed-boot
+          name: ${{ inputs.gui-candidate && 'exact-gui-iso-installed-boot' || 'exact-flashed-iso-installed-boot' }}
           path: |
+            .agent-output/exact-image-*.json
+            .agent-output/exact-image-source.txt
             .agent-output/exact-installed.log
             .agent-output/exact-installed-proof/*.json
             .agent-output/exact-installed-proof/*.txt
@@ -124,3 +166,9 @@ jobs:
             .agent-output/exact-installed-proof/*.png
           include-hidden-files: true
           if-no-files-found: warn
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: inputs.gui-candidate && steps.exactvm.outcome == 'success'
+        with:
+          name: awai-otehon-usb-x86_64-gui-vm-passed
+          path: .agent-output/exact-image/*.iso
+          compression-level: 0

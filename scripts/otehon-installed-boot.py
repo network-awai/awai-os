@@ -5,7 +5,18 @@ import socket
 import struct
 import subprocess
 import time
+import unicodedata
 from pathlib import Path
+
+
+def normalized_ocr(text):
+    # OCR emits compatibility glyphs such as circled 12 for ordinary UI digits.
+    # This applies to displayed-label matching only, never bytes, IDs or input.
+    return ''.join(unicodedata.normalize('NFKC',text).lower().split())
+
+def screen_matches(text, markers):
+    compact=normalized_ocr(text)
+    return all(normalized_ocr(marker) in compact for marker in markers)
 
 
 def read_screen(ppm, png):
@@ -98,9 +109,9 @@ class VisualGuest:
             if time.monotonic()-last_log >= 30:
                 print(f"VISIBLE_VM {self.phase} wait={label}: {last[:900]} ... {last[-350:]}", flush=True)
                 last_log=time.monotonic()
-            if any("".join(s.lower().split()) in "".join(last.split()) for s in fatal):
+            if any(screen_matches(last,[s]) for s in fatal):
                 raise RuntimeError(f"visible failure during {label}: {last[-3000:]}")
-            if all("".join(s.lower().split()) in "".join(last.split()) for s in strings):
+            if screen_matches(last,strings):
                 print("INSTALLED_VM " + label, flush=True)
                 # Keep each successful transition, rather than only the last screen.
                 for ext in ("png", "txt"):
@@ -204,7 +215,7 @@ def verify_graphical_install(command, serial, qmp, out, checks, untouched, writt
         tsv=subprocess.check_output(['tesseract',str(png),'stdout','-l','eng+jpn','--psm','11','tsv'],stderr=subprocess.DEVNULL,text=True)
         import csv,io
         rows=list(csv.DictReader(io.StringIO(tsv),delimiter='\t'))
-        found=[r for r in rows if needle.lower() in (r.get('text') or '').lower()]
+        found=[r for r in rows if normalized_ocr(needle) in normalized_ocr(r.get('text') or '')]
         if len(found)!=1: raise AssertionError('screen control not unique: '+needle)
         r=found[0];width,height=struct.unpack('>II',png.read_bytes()[16:24])
         guest.click(int(r['left'])+int(r['width'])//2,int(r['top'])+int(r['height'])//2,width,height)
