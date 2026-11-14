@@ -19,6 +19,27 @@
     (store/transact! d :put {:key "b" :value "keep"})
     d))
 
+(deftest initialized-store-has-an-explicit-second-slot
+  (let [d (directory)]
+    (store/init! d)
+    (is (.exists (java.io.File. (str d "/root-0.edn"))))
+    (is (false? (:degraded? (store/read-store d))))
+    ;; An old single-slot store cannot be distinguished from a lost first
+    ;; commit. Preserve its bytes and require an explicit recovery decision.
+    (let [slot (Paths/get (str d "/root-0.edn") (make-array String 0))]
+      (when (Files/exists slot (make-array LinkOption 0))
+        (Files/move slot (Paths/get (str d "-initial-slot.saved") (make-array String 0))
+                    (make-array java.nio.file.CopyOption 0))))
+    (is (true? (:degraded? (store/read-store d))))
+    (is (= :degraded-store (error-type #(store/transact! d :put {:key "a" :value "x"}))))))
+
+(deftest stale-initial-marker-cannot-mask-a-later-generation
+  (let [d (seeded)]
+    (is (= 3 (get-in (store/read-store d) [:root :generation])))
+    (spit (str d "/root-0.edn") (pr-str {:format :awai.otehon-store/initial-slot-v1}))
+    (is (true? (:degraded? (store/read-store d))))
+    (is (= :degraded-store (error-type #(store/transact! d :put {:key "a" :value "x"}))))))
+
 (deftest bounded-streamed-forest-publication
   (let [d (seeded) source (str d "-source")
         data (byte-array (map #(unchecked-byte (mod % 251)) (range (+ (* 2 1024 1024) 13))))

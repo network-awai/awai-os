@@ -112,20 +112,28 @@
        (<= (:checkpoint value) (:tail value))
        (digest? (:snapshot value)) (digest? (:log value))))
 
+;; Slot 0 begins with this durable marker before generation 1 is published.
+;; Without it, a genuinely new store cannot be distinguished from a store
+;; whose generation-2 root disappeared. It is replaced by generation 2.
+(def ^:private initial-slot {:format :awai.otehon-store/initial-slot-v1})
+
 (defn- load-slot [root i]
   (let [p (path root (str "root-" i ".edn"))]
     (if-not (exists? p)
       nil
       (try
-        (let [{:keys [payload digest] :as envelope} (parse (read-bytes p))
-              _ (when-not (and (= #{:payload :digest} (set (keys envelope)))
-                                (string? payload) (digest? digest)
-                                (= digest (sha (.getBytes ^String payload "UTF-8"))))
-                  (fail! :corrupt-root "root envelope digest mismatch"))
-              value (parse (.getBytes ^String payload "UTF-8"))]
-          (when-not (and (root-valid? value) (= i (mod (:generation value) 2)))
-            (fail! :invalid-root "invalid root or slot generation"))
-          {:root value})
+        (let [envelope (parse (read-bytes p))]
+          (if (= initial-slot envelope)
+            (if (= i 0) {:initial? true} (fail! :invalid-root "initial slot in wrong location"))
+            (let [{:keys [payload digest]} envelope
+                  _ (when-not (and (map? envelope) (= #{:payload :digest} (set (keys envelope)))
+                                    (string? payload) (digest? digest)
+                                    (= digest (sha (.getBytes ^String payload "UTF-8"))))
+                      (fail! :corrupt-root "root envelope digest mismatch"))
+                  value (parse (.getBytes ^String payload "UTF-8"))]
+              (when-not (and (root-valid? value) (= i (mod (:generation value) 2)))
+                (fail! :invalid-root "invalid root or slot generation"))
+              {:root value})))
         (catch Exception _ {:error :invalid-slot})))))
 
 (defn- root-path [directory]
@@ -360,7 +368,8 @@
         (fail! :invalid-state "unsupported snapshot or WAL payload"))
       {:state (wal/recover log sb snapshot apply-frame)
        :root chosen :snapshot snapshot :log log
-       :degraded? (boolean (some :error slots))})))
+       :degraded? (boolean (or (some nil? slots) (some :error slots)
+                               (and (some :initial? slots) (not= 1 (:generation chosen)))))})))
 
 (defn read-store [directory]
   (select-keys (recover* (root-path directory)) [:state :root :degraded?]))
@@ -404,7 +413,8 @@
     (Files/createDirectory p (attrs "rwx------"))
     (sync-dir! (.getParent p))
     (with-writer (root-path directory)
-      #(publish! p 1 {:seq 0 :state {}} (wal/empty-log)))))
+      #(do (write-record! p "root-0.edn" (encode initial-slot) :initial-slot)
+           (publish! p 1 {:seq 0 :state {}} (wal/empty-log))))))
 
 (defn- transact* [directory op payload before-publish expected-generation]
   (when-not (frame-valid? {:op op :payload payload})

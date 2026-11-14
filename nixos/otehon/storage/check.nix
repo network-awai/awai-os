@@ -25,6 +25,7 @@ pkgs.runCommand "otehon-storage-hosted-check" {
   AWAI_FILE_INPUT=1 CROSSPACK_FIXTURES=${./test/fixtures/crosspack} bb --classpath ${classpath} ${./test/otehon/atomic_logical_proof.clj} run atomic-logical-file-proof > "$out/atomic-logical-file-proof.edn"
   CROSSPACK_FIXTURES=${./test/fixtures/crosspack} bb --classpath ${classpath} ${./test/otehon/cli_logical_proof.clj} cli-logical-proof > "$out/cli-logical-proof.edn"
   bb --classpath ${classpath} ${./test/otehon/crash_runner.clj} run crash > "$out/crash-tests.edn"
+  bb --classpath ${classpath} ${./test/otehon/crash_runner.clj} run-initial initial-crash > "$out/initial-crash-tests.edn"
   bb --classpath ${classpath} ${./test/otehon/pack_recovery_runner.clj} run pack-crash > "$out/pack-crash-tests.edn"
   OTEHON_TEST_ZSTD3=1 bb --classpath ${classpath} ${./test/otehon/pack_recovery_runner.clj} run zpack-crash > "$out/zpack-crash-tests.edn"
   otehon-storage init "$PWD/cli-store"

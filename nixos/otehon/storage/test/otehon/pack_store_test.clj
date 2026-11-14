@@ -31,6 +31,19 @@
     (is (true? (:degraded? (store/read-store d))))
     (is (= :degraded-store (error-type #(pack/recover d))))))
 
+(deftest missing-root-must-not-serve-a-prior-generation
+  (doseq [[writes missing-slot] [[1 0] [2 1]]]
+    (let [d (new-store)]
+      (pack/put-data! d "file" (.getBytes "old" "UTF-8"))
+      (when (= writes 2) (pack/put-data! d "file" (.getBytes "new" "UTF-8")))
+      (is (bytes? (pack/read-data (pack/recover d) "file")))
+      (Files/move (Paths/get (str d "/root-" missing-slot ".edn") (make-array String 0))
+                  (Paths/get (str d "-withheld-slot-" missing-slot) (make-array String 0))
+                  (make-array java.nio.file.CopyOption 0))
+      (is (true? (:degraded? (store/read-store d))))
+      (is (= :degraded-store (error-type #(pack/recover d))))
+      (is (= :degraded-store (error-type #(pack/put-data! d "other" (.getBytes "x" "UTF-8"))))))))
+
 (deftest recovered-index-does-not-retain-car-via-cid-slices
   (let [d (new-store) original (bytes-of (+ pack/leaf-size 11))]
     (pack/put-data! d "file" original)
