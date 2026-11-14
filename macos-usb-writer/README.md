@@ -66,3 +66,5 @@ warning stopped the original global post-install check; it is not modified.
 Installer validation is now scoped to this rule. Real USB write verification is
 completed without another password, matching all 2011299840 readback bytes and
 safely ejecting the USB. See docs/verification-passwordless-usb-2026-10-06.md.
+
+The writer clones the admitted open ISO descriptor using APFS copy-on-write into its root-private directory, protects and hashes that independent snapshot before unmounting the USB. This avoids allocating another whole ISO on a nearly full Mac. Unsupported filesystems, clone failure, or wrong digest refuse before USB writes; there is no full-copy fallback. Source mutations cannot change the cloned snapshot.

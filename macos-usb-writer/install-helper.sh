@@ -2,7 +2,7 @@
 set -eu
 [ "$(/usr/bin/id -u)" = 0 ] || { echo 'Administrator setup is required once.'; exit 1; }
 source=/Users/junkawasaki/github/workspaces/codex/awai-usb-writer/murakumo-usb-writer
-expected=e98238cce44c4d4baf8df2319a2273caedcb806d062b086aafc4e6f318420e81
+expected=c9436228cd548bc7e3ba6ea5f81ace555509a71882b6be71d99daae4f1ede430
 helper=/Library/PrivilegedHelperTools/cloud.murakumo.kioxia-writer
 rule=/private/etc/sudoers.d/murakumo-kioxia-writer
 [ "$(/usr/bin/shasum -a 256 "$source" | /usr/bin/awk '{print $1}')" = "$expected" ]
