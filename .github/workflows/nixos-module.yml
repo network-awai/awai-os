@@ -39,6 +39,7 @@ jobs:
           writer_proof=nixos/otehon/storage/test/otehon/forest_large_writer_proof.clj
           "$bb_path/bin/bb" --classpath "$classpath" "$writer_proof" write "$RUNNER_TEMP/forest-large-writer-proof" "$tool"
           "$bb_path/bin/bb" --classpath "$classpath" "$writer_proof" read "$RUNNER_TEMP/forest-large-writer-proof" "$tool"
+          BABASHKA="$bb_path/bin/bb" "$bb_path/bin/bb" --classpath "$classpath" nixos/otehon/storage/test/otehon/forest_large_writer_crash_proof.clj run "$RUNNER_TEMP/forest-large-writer-crash" "$tool"
           cas_proof=nixos/otehon/storage/test/otehon/forest_large_cas_proof.clj
           "$bb_path/bin/bb" --classpath "$classpath" "$cas_proof" write "$RUNNER_TEMP/forest-large-cas-proof" "$tool"
           "$bb_path/bin/bb" --classpath "$classpath" "$cas_proof" read "$RUNNER_TEMP/forest-large-cas-proof" "$tool"
