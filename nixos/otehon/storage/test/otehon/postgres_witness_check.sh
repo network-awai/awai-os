@@ -61,6 +61,7 @@ psql -X -q -v ON_ERROR_STOP=1 -d 'service=awai_witness_test' -c 'DROP TRIGGER pa
 bb --classpath "$classpath" "$db_interrupt" reconcile
 if [ -n "${PG_WITNESS_TOOL:-}" ]; then
   bb --classpath "$classpath" nixos/otehon/storage/oracle/postgres_ipld_writer_proof.clj
+  bb --classpath "$classpath" nixos/otehon/storage/oracle/postgres_kotobase_blocks_proof.clj
 fi
 stop
 trap - EXIT HUP INT TERM

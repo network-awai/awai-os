@@ -10,6 +10,24 @@
   (let [base (Files/createTempDirectory (Paths/get *output* (make-array String 0)) "kotobase-blocks-" (make-array FileAttribute 0))
         dir (str (.resolve base "store")) staging (str (.resolve base "staging"))]
     (store/init! dir) (.mkdir (java.io.File. staging)) [dir staging]))
+(defn error-type [f] (try (f) nil (catch Exception e (:type (ex-data e)))))
+(deftest witnessed-port-refuses-pending-and-unsupported-roots
+  (let [[dir staging] (temp-store) initial (:root (store/read-store dir))
+        status (atom {:root initial :pending nil})
+        w {:read! #(:root @status) :status! #(deref status)
+           :prepare! (fn [_ _] false) :compare-and-set! (fn [_ _] false)}]
+    (is (= :invalid-witness (error-type #(blocks/open-witnessed-block-store dir staging "unused" nil))))
+    (is (= :invalid-witness (error-type #(blocks/open-witnessed-block-store dir staging "unused"
+                                          {:read! (fn [] initial) :compare-and-set! (fn [_ _] false)}))))
+    (let [b (blocks/open-witnessed-block-store dir staging "unused" w)]
+      (is (= [] (contract/-put-blocks! b []))) (is (= {} (contract/-get-blocks b [])))
+      (swap! status assoc :pending initial)
+      (is (= :witness-pending (error-type #(contract/-put-blocks! b []))))
+      (is (= :witness-pending (error-type #(contract/-get-blocks b []))))
+      (swap! status assoc :pending nil)
+      (store/transact! dir :put {:key "unknown/entry" :value "x"})
+      (reset! status {:root (:root (store/read-store dir)) :pending nil})
+      (is (= :unverified-catalog-type (error-type #(contract/-get-blocks b [])))))))
 (deftest empty-invalid-and-bounded-inputs
   (let [[dir staging] (temp-store) b (blocks/open-block-store dir staging "unused") before (store/read-store dir)
         trailing (car/cid-str (conj (car/base32-decode (subs cid 1)) 0))]

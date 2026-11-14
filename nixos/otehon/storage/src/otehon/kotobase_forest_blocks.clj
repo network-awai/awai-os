@@ -2,7 +2,8 @@
   "Bounded hosted Kotobase immutable-block port over Forest archive groups."
   (:require [clojure.string :as str] [kotobase.storage.core :as contract]
             [otehon.storage :as store] [otehon.ipld-forest :as catalog]
-            [otehon.forest-writer :as writer] [otehon.kotobase-ref :as refs])
+            [otehon.forest-writer :as writer] [otehon.kotobase-ref :as refs]
+            [otehon.root-witness :as witness] [otehon.pack-store :as pack])
   (:import [java.nio.file Files Paths LinkOption] [java.nio.file.attribute FileAttribute PosixFilePermissions]
            [java.security MessageDigest] [java.util Arrays HexFormat]))
 
@@ -47,6 +48,11 @@
   (let [s (store/read-store dir)]
     (when (:degraded? s) (fail! :degraded-store "cannot use a degraded store"))
     s))
+(defn- guarded-snapshot [dir witness-port]
+  (:snapshot (witness/open-verified! dir witness-port
+               #(let [s (snapshot dir)]
+                  (pack/verify-supported-catalog! dir (:state s))
+                  {:basis (:root s) :snapshot s}))))
 (defn- group-names [state]
   (->> (keys state) (filter #(str/starts-with? % state-prefix))
        (map #(subs % (count "awai.ipld-forest-group/"))) sort vec))
@@ -64,23 +70,33 @@
     (str (.resolve (Files/createTempDirectory p "kotobase-batch-"
                        (into-array FileAttribute [(PosixFilePermissions/asFileAttribute
                                                    (PosixFilePermissions/fromString "rwx------"))])) "stage"))))
-(defn- put-batch! [dir staging-root tool blocks]
+(defn- put-batch!
+  ([dir staging-root tool blocks] (put-batch! dir staging-root tool blocks nil))
+  ([dir staging-root tool blocks witness-port]
   (let [name (batch-name blocks)]
     (loop [attempt 0]
-      (let [{:keys [state root]} (snapshot dir)
+      (let [{:keys [state root]} (if witness-port (guarded-snapshot dir witness-port) (snapshot dir))
             group-key (str "awai.ipld-forest-group/" name)]
         (if (contains? state group-key)
-          (verify-batch (catalog/recover-group dir name) blocks)
+          (if witness-port
+            (:verified (witness/open-verified! dir witness-port
+                         #(let [s (snapshot dir) h (catalog/recover-group dir name)]
+                            (when-not (= (:root s) (:basis h)) (fail! :catalog-changed "root changed during batch check"))
+                            (pack/verify-supported-catalog! dir (:state s))
+                            (verify-batch h blocks) {:basis (:basis h) :verified true})))
+            (verify-batch (catalog/recover-group dir name) blocks))
           (let [stage (stage-path staging-root)
                 result (try
-                         (writer/put-ipld-blocks! dir name (:cid (first blocks)) blocks stage tool (:generation root))
+                         (if witness-port
+                           (writer/put-ipld-blocks! dir name (:cid (first blocks)) blocks stage tool (:generation root) witness-port)
+                           (writer/put-ipld-blocks! dir name (:cid (first blocks)) blocks stage tool (:generation root)))
                          :published
                          (catch Exception e
                            (if (contains? #{:writer-busy :stale-generation} (:type (ex-data e))) :retry (throw e))))]
             (if (= :published result)
               true
               (if (< attempt 15) (do (Thread/sleep 10) (recur (inc attempt)))
-                (fail! :writer-busy "conditional Forest publish did not converge")))))))))
+                (fail! :writer-busy "conditional Forest publish did not converge"))))))))))
 (defn- snapshot-group [dir cache state name]
   (let [text (get state (str "awai.ipld-forest-group/" name))
         cached (get @cache name)]
@@ -97,16 +113,26 @@
                            (dissoc m (first (sort (remove #{name} (keys m)))))
                            m))))
         h))))
-(defn- fetch [dir cache cids]
-  (when-not (and (vector? cids) (<= (count cids) max-batch-count))
-    (fail! :invalid-cid "expected bounded CID vector"))
-  (doseq [cid cids] (catalog/cid-bytes cid))
-  (let [{:keys [state]} (snapshot dir) wanted (set cids)]
+(defn- fetch-state [dir cache state cids]
+  (let [wanted (set cids)]
     (loop [names (seq (group-names state)) missing wanted found {}]
       (if (or (empty? missing) (nil? names)) found
         (let [h (snapshot-group dir cache state (first names))
               hits (into {} (keep (fn [cid] (when-let [bytes (catalog/get-group-block h cid)] [cid bytes]))) missing)]
           (recur (next names) (reduce disj missing (keys hits)) (merge found hits)))))))
+(defn- validate-cids! [cids]
+  (when-not (and (vector? cids) (<= (count cids) max-batch-count))
+    (fail! :invalid-cid "expected bounded CID vector"))
+  (doseq [cid cids] (catalog/cid-bytes cid)))
+(defn- fetch [dir cache cids]
+  (validate-cids! cids)
+  (fetch-state dir cache (:state (snapshot dir)) cids))
+(defn- witnessed-fetch [dir cache cids witness-port]
+  (validate-cids! cids)
+  (:blocks (witness/open-verified! dir witness-port
+             #(let [s (snapshot dir)]
+                (pack/verify-supported-catalog! dir (:state s))
+                {:basis (:root s) :blocks (fetch-state dir cache (:state s) cids)}))))
 (defn open-block-store
   "Persist each bounded batch as an immutable Forest group; staging is retained.
   Lookup scans batch groups; a bounded cache retains at most 64 verified group
@@ -122,6 +148,24 @@
     (-get-blocks [_ cids] (fetch dir cache cids))
     contract/IBackendCapabilities
     (-capabilities [_] #{:immutable-blocks :cid-addressed-read :packed-blocks :range-read :batch-get :batch-put}))))
+(defn open-witnessed-block-store
+  "Explicit witnessed block port only. No ref CAS or query authorization is
+  provided. The host must supply a trusted independent prepared witness and
+  ensure every writer of this store follows the same protocol."
+  [dir staging-root tool witness-port]
+  (store/validate-write-witness! witness-port)
+  (when-not (:status! witness-port) (fail! :invalid-witness "prepared witness required"))
+  (let [cache (atom {})]
+    (reify
+      contract/IBlockStore
+      (-put-blocks! [_ blocks]
+        (let [{:keys [ordered unique]} (checked-blocks blocks)]
+          (if (seq unique) (put-batch! dir staging-root tool unique witness-port)
+              (guarded-snapshot dir witness-port))
+          (mapv :cid ordered)))
+      (-get-blocks [_ cids] (witnessed-fetch dir cache cids witness-port))
+      contract/IBackendCapabilities
+      (-capabilities [_] #{:immutable-blocks :cid-addressed-read :packed-blocks :range-read :batch-get :batch-put}))))
 (defn- compose-backend [dir staging-root tool verify-closure!]
   (let [blocks (open-block-store dir staging-root tool)
         get-block #(contract/get-block blocks %)
