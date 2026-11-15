@@ -109,7 +109,7 @@ class Broker:
         self.raw_bytes = int((digests/'bytes').read_text())
         if not all(len(x)==64 and all(c in '0123456789abcdef' for c in x) for x in [self.expected_image,self.expected_raw]) or not 0 < self.raw_bytes <= 128*1024**3: raise Refused('invalid-pinned-digests')
         self.lock = threading.RLock(); self.cancel = threading.Event(); self.selected = None; self.ticket = None
-        self.state = {'phase':'idle','done':0,'total':0,'writeStarted':False,'message':'USB から起動中です。保存先はまだ選択していません。'}
+        self.state = {'phase':'idle','done':0,'total':0,'writeStarted':False,'message':('LAN 診断モードです。書込みはできません。' if read_only else 'USB から起動中です。保存先はまだ選択していません。')}
         self.started = time.monotonic(); self.last_saved = 0
         old = rundir/'state.json'
         if old.exists():

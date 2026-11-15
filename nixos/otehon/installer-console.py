@@ -87,8 +87,16 @@ def partition_text(row):
 
 def header(info, title):
     print('\033[2J\033[H', end='')
-    print('Awai Otehon ' + info['version'] + ' インストーラー（USB）')
+    transport = 'LAN 診断・読取専用' if os.environ.get('OTEHON_DIAGNOSTIC_MODE') == '1' else 'USB'
+    print('Awai Otehon ' + info['version'] + ' インストーラー（' + transport + '）')
     print('Build ID: ' + info['buildId'][:12] + '   NixOS: ' + info['nixos'] + '   Nix: ' + info['nix'])
+    fingerprint = os.environ.get('OTEHON_DIAGNOSTIC_FINGERPRINT')
+    if fingerprint:
+        try:
+            print('LAN 診断 SSH ホスト鍵: ' + safe(Path(fingerprint).read_text().strip(), 200))
+            print('接続先: 10.77.0.2:2222  （表示した鍵を Mac 側で照合）')
+        except OSError:
+            print('LAN 診断のホスト鍵を確認できません。接続しないでください。')
     print('\n' + title + '\n')
 
 def describe(row):
@@ -160,11 +168,12 @@ def main():
             inventory = rpc('LIST')
             rows = choices(inventory['devices'], inventory['rawBytes'])
             header(info, '1 / 4  インストール先を選んでください')
-            print('USB から起動中です。保存先にはまだ書き込みません。')
+            print('LAN 診断モードです。保存先には書き込みません。' if os.environ.get('OTEHON_DIAGNOSTIC_MODE') == '1' else 'USB から起動中です。保存先にはまだ書き込みません。')
             if notice: print('\n' + notice)
             for number, row in enumerate(rows, 1):
                 print('\n%d. %s  %.1f GB  %s' % (number, safe(row['model'], 48), row['size'] / 10**9, safe(row['path'])))
-                print('   ' + (unavailable(row, inventory['rawBytes']) or 'インストールできます') + ' | 領域: ' + partition_text(row))
+                availability = '診断のみ（選択不可）' if os.environ.get('OTEHON_DIAGNOSTIC_MODE') == '1' else (unavailable(row, inventory['rawBytes']) or 'インストールできます')
+                print('   ' + availability + ' | 領域: ' + partition_text(row))
             print('\n0. ディスク一覧を更新')
             answer = input('保存先の番号を入力して Enter: ').strip()
             if answer in ('', '0'):
