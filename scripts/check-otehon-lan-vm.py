@@ -30,6 +30,7 @@ def main():
     p.add_argument('--ovmf-vars', required=True)
     p.add_argument('--timeout', type=int, default=1200)
     p.add_argument('--source-revision', required=True)
+    p.add_argument('--memory-mib', type=int, default=8192)
     args = p.parse_args()
     if not re.fullmatch(r'[0-9a-f]{40}', args.source_revision):
         raise ValueError('invalid source revision')
@@ -59,7 +60,7 @@ def main():
     command = [
         'qemu-system-x86_64', '-machine', 'q35', '-accel',
         'kvm' if os.access('/dev/kvm', os.R_OK | os.W_OK) else 'tcg', '-cpu', 'max',
-        '-smp', '4', '-m', '8192', '-display', 'none', '-no-reboot',
+        '-smp', '4', '-m', str(args.memory_mib), '-display', 'none', '-no-reboot',
         '-drive', f'if=pflash,format=raw,readonly=on,file={args.ovmf_code}',
         '-drive', f'if=pflash,format=raw,file={out / "vars.fd"}',
         '-drive', f'if=none,id=target,format=qcow2,file={target},snapshot=on',
