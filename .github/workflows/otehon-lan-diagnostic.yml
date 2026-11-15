@@ -63,7 +63,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          nix-shell --expr 'let p = import (import ./ci/nixpkgs.nix) { system = "x86_64-linux"; }; in p.mkShell { packages = [ p.python3 p.qemu_test p.openssh ]; OVMF_CODE = "${p.OVMF.fd}/FV/OVMF_CODE.fd"; OVMF_VARS = "${p.OVMF.fd}/FV/OVMF_VARS.fd"; }' --run 'python3 scripts/check-otehon-lan-vm.py --image result-otehon-lan --source-revision "$GITHUB_SHA" --output .agent-output/lan/proof --key .agent-output/lan/operator --bad-key .agent-output/lan/unauthorized --ovmf-code "$OVMF_CODE" --ovmf-vars "$OVMF_VARS"'
+          nix-shell --expr 'let p = import (import ./ci/nixpkgs.nix) { system = "x86_64-linux"; }; in p.mkShell { packages = [ p.python3 p.qemu_test p.openssh ]; OVMF_CODE = "${p.OVMF.fd}/FV/OVMF_CODE.fd"; OVMF_VARS = "${p.OVMF.fd}/FV/OVMF_VARS.fd"; }' --run 'python3 scripts/check-otehon-lan-vm.py --image result-otehon-lan --memory-mib 16384 --source-revision "$GITHUB_SHA" --output .agent-output/lan/proof --key .agent-output/lan/operator --bad-key .agent-output/lan/unauthorized --ovmf-code "$OVMF_CODE" --ovmf-vars "$OVMF_VARS"'
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
