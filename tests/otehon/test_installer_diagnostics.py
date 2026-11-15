@@ -56,7 +56,12 @@ class Diagnostics(unittest.TestCase):
     def test_journal_transfer_is_bounded_and_fixed_command(self):
         class Result: stdout = b'x' * (d.MAX_LOG + 1)
         with patch.object(d.subprocess, 'run', return_value=Result()) as run:
-            value = d.journal()
+            value = d.journal('broker')
         self.assertEqual(len(value['text']), d.MAX_LOG)
         self.assertTrue(value['truncated'])
         self.assertIn('--unit=otehon-install-broker.service', run.call_args.args[0])
+        with patch.object(d.subprocess, 'run', return_value=Result()) as run:
+            d.journal('kernel')
+        self.assertIn('--dmesg', run.call_args.args[0])
+        self.assertIn('--priority=warning', run.call_args.args[0])
+        with self.assertRaises(ValueError): d.journal('other-service')

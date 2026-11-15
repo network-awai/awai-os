@@ -32,9 +32,12 @@ def broker(op):
     return value['value']
 
 
-def journal():
-    command = ['journalctl', '--no-pager', '--output=cat', '--lines=100',
-               '--unit=otehon-install-broker.service']
+def journal(source):
+    if source not in ('broker', 'kernel'):
+        raise ValueError('unsupported journal source')
+    command = ['journalctl', '--no-pager', '--output=cat', '--lines=100']
+    command += (['--unit=otehon-install-broker.service'] if source == 'broker'
+                else ['--dmesg', '--priority=warning'])
     try:
         output = subprocess.run(command, check=True, stdout=subprocess.PIPE,
                                 stderr=subprocess.DEVNULL, timeout=10).stdout
@@ -55,7 +58,7 @@ def main():
         if result['status'].get('readOnly') is not True:
             raise ValueError('broker is not read-only')
         result['inventory'] = broker('LIST')
-        result['journal'] = journal()
+        result['journal'] = {source: journal(source) for source in ('broker', 'kernel')}
     except (KeyError, OSError, ValueError, json.JSONDecodeError):
         print(json.dumps({'schema': result['schema'], 'error': 'diagnostics-unavailable'}))
         return 1

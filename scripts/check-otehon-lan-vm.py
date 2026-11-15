@@ -97,7 +97,7 @@ def main():
         value = json.loads(valid.stdout)
         if value.get('readOnly') is not True or value.get('status', {}).get('readOnly') is not True:
             raise RuntimeError('broker did not establish read-only mode')
-        if not value.get('journal', {}).get('available'):
+        if not all(value.get('journal', {}).get(source, {}).get('available') for source in ('broker', 'kernel')):
             raise RuntimeError('installer journal not available')
         if not any(row.get('path', '').startswith('/dev/nvme') for row in value.get('inventory', {}).get('devices', [])):
             raise RuntimeError('scratch NVMe not present in inventory')
