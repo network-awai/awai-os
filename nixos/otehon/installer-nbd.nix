@@ -5,11 +5,16 @@ in {
     enable = lib.mkEnableOption "verified read-only installer ISO over direct LAN NBD";
     sha256 = lib.mkOption { type = lib.types.str; default = ""; };
     bytes = lib.mkOption { type = lib.types.ints.unsigned; default = 0; };
+    payloadSha256 = lib.mkOption { type = lib.types.str; default = ""; };
+    rawSha256 = lib.mkOption { type = lib.types.str; default = ""; };
+    rawBytes = lib.mkOption { type = lib.types.ints.unsigned; default = 0; };
   };
   config = lib.mkIf cfg.enable {
     assertions = [{
-      assertion = builtins.match "[0-9a-f]{64}" cfg.sha256 != null && cfg.bytes > 0;
-      message = "The installer NBD source requires a pinned ISO size and SHA-256.";
+      assertion = builtins.match "[0-9a-f]{64}" cfg.sha256 != null && cfg.bytes > 0
+        && builtins.match "[0-9a-f]{64}" cfg.payloadSha256 != null
+        && builtins.match "[0-9a-f]{64}" cfg.rawSha256 != null && cfg.rawBytes > 0;
+      message = "The installer NBD source requires pinned ISO and compressed/raw payload identities.";
     }];
     boot.kernelModules = [ "nbd" ];
     systemd.services.otehon-installer-source = {

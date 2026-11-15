@@ -1,0 +1,18 @@
+{
+  "schema": "awai.otehon.lan-payload-pin.v1",
+  "measuredAt": "2026-11-15T07:25:00Z",
+  "sourceRelease": "otehon-installer-release-0.7.3.json",
+  "isoSha256": "34b813c2ff6089b008d5901fac32c381c518f4514cd15c9173df0c7cf72ce704",
+  "isoBytes": 8497463296,
+  "payloadPath": "otehon/image.raw.zst",
+  "compressedSha256": "dda29e61981ec03d51c39381b86064c20051d37ab2e220747aa02d895bfb7efa",
+  "rawSha256": "632c8a236b25717d84a594dd9dc12a4b88a54cf925fd37f95e3f8383eb03daa5",
+  "rawBytes": 27114078208,
+  "measurement": {
+    "compressed": "tar -xOf qualified.iso otehon/image.raw.zst | shasum -a 256",
+    "raw": "tar -xOf qualified.iso otehon/image.raw.zst | zstd -dc | shasum -a 256",
+    "tools": ["bsdtar 3.5.3 / libarchive 3.7.4", "zstd 1.5.7", "macOS shasum -a 256"],
+    "rawIdentityMatchesQualifiedRelease": true,
+    "scope": "payload identity measurement; VM and physical installation acceptance recorded separately"
+  }
+}

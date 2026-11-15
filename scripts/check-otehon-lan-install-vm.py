@@ -46,7 +46,7 @@ def main():
     nbd_command = export.command(a.iso, manifest['image']['isoSha256'], manifest['image']['isoBytes'], '127.0.0.1', 10809)
     proof = {'schema': 'awai.otehon.lan-install-vm.v1', 'sourceRevision': a.source_revision,
              'isoSha256': manifest['image']['isoSha256'], 'isoBytes': manifest['image']['isoBytes'],
-             'physicalDisks': False, 'externalNetwork': False, 'checks': [], 'passed': False}
+             'physicalDisks': False, 'installerNetwork': 'QEMU user networking; external access not measured', 'installedNetwork': 'none', 'checks': [], 'passed': False}
     proof['artifacts'] = {}
     for name in ('ipxe.efi', 'kernel', 'initrd', 'installer-info.json'):
         h = hashlib.sha256()

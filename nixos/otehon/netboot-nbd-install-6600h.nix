@@ -25,6 +25,9 @@ in {
     # by the shared broker's compressed/raw digests before and after writing.
     sha256 = "34b813c2ff6089b008d5901fac32c381c518f4514cd15c9173df0c7cf72ce704";
     bytes = 8497463296;
+    payloadSha256 = "dda29e61981ec03d51c39381b86064c20051d37ab2e220747aa02d895bfb7efa";
+    rawSha256 = "632c8a236b25717d84a594dd9dc12a4b88a54cf925fd37f95e3f8383eb03daa5";
+    rawBytes = 27114078208;
   };
   systemd.services.otehon-install-broker.environment.OTEHON_DIAGNOSTIC_READ_ONLY = lib.mkForce "0";
   systemd.services."otehon-install@".environment = {
