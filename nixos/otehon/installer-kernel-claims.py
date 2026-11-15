@@ -101,11 +101,11 @@ kprobe:bdev_open /pid == PID_FILTER/ {
     // Sysfs can omit an unhashed/deleted partition whose inode is still held.
     // Walk the bdev pseudo-filesystem's inode list, not the visible part_tbl.
     // This is an unlocked, bounded metadata snapshot, never a release action.
-    $head = &$b->bd_mapping->host->i_sb->s_inodes;
+    $head = (struct list_head *)((uint64)$b->bd_mapping->host->i_sb + offsetof(struct super_block, s_inodes));
     $link = $head->next;
     $scanned = 0;
     $matched = 0;
-    while ($link && $link != $head && $scanned < 512 && $matched < 32) {
+    while ((uint64)$link != 0 && (uint64)$link != (uint64)$head && $scanned < 512 && $matched < 32) {
       $inode = (struct inode *)((uint64)$link - offsetof(struct inode, i_sb_list));
       $child = (struct block_device *)((uint64)$inode - offsetof(struct bdev_inode, vfs_inode));
       if ($child->bd_disk == $b->bd_disk && ($child->__bd_flags.counter & 255)) {
@@ -113,17 +113,17 @@ kprobe:bdev_open /pid == PID_FILTER/ {
         printf("PART %u %u %u %d %d %d %d\n", $b->bd_dev, $child->bd_dev,
           $child->__bd_flags.counter & 255, $child->bd_holders,
           $child->bd_openers.counter, $child->bd_writers, $inode->i_count.counter);
-        if ((uint64)$child->bd_holder_ops == kaddr("fs_holder_ops") && $child->bd_holder) {
+        if ((uint64)$child->bd_holder_ops == kaddr("fs_holder_ops") && (uint64)$child->bd_holder != 0) {
           $sb = (struct super_block *)$child->bd_holder;
           printf("PARTFS %u %u %s\n", $b->bd_dev, $child->bd_dev, str($sb->s_type->name, 32));
-        } else if (!$child->bd_holder_ops && $child->bd_holder &&
+        } else if ((uint64)$child->bd_holder_ops == 0 && (uint64)$child->bd_holder != 0 &&
                    (uint64)$child->bd_holder != kaddr("bd_may_claim")) {
           $file = (struct file *)$child->bd_holder;
           if ((uint64)$file->f_op == kaddr("def_blk_fops")) {
             printf("PARTFILE %u %u %u %u\n", $b->bd_dev, $child->bd_dev,
               $file->f_flags, $file->f_cred->uid.val);
           }
-        } else if ($child->bd_holder_ops && $child->bd_holder_ops->mark_dead) {
+        } else if ((uint64)$child->bd_holder_ops != 0 && (uint64)$child->bd_holder_ops->mark_dead != 0) {
           printf("PARTCALLBACK %u %u %s\n", $b->bd_dev, $child->bd_dev,
             ksym((uint64)$child->bd_holder_ops->mark_dead));
         }
@@ -132,7 +132,7 @@ kprobe:bdev_open /pid == PID_FILTER/ {
       $scanned++;
     }
     printf("SCAN %u %u %u %d %u\n", $b->bd_dev, $scanned, $matched,
-      $link && $link != $head, $b->bd_disk->open_partitions);
+      (uint64)$link != 0 && (uint64)$link != (uint64)$head, $b->bd_disk->open_partitions);
   }
 }
 kretprobe:bdev_open /pid == PID_FILTER && @device[tid]/ {
