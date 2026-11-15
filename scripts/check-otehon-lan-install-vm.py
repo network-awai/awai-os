@@ -171,6 +171,12 @@ def main():
             status = json.loads(observed.stdout)
             if status.get('readOnly') is not True or status.get('status', {}).get('readOnly') is not False:
                 raise RuntimeError('unexpected installer observation')
+            usage = status.get('deviceUsage', {})
+            if usage.get('readOnly') is not True or not usage.get('available'):
+                raise RuntimeError('bounded device usage observer unavailable')
+            target_usage = [r for r in usage.get('devices', []) if r['path'] == '/dev/nvme0n1']
+            if len(target_usage) != 1 or target_usage[0]['exclusiveReadOnlyOpen'].get('opened') is not True:
+                raise RuntimeError('scratch NVMe not available to read-only exclusive probe')
             (out / 'before.json').write_text(json.dumps(status, indent=2))
             proof['checks'].append('shell and non-PTY console rejected; bounded observer available')
         proof['authenticatedObserverChecked'] = bool(a.key)

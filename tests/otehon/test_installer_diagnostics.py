@@ -21,10 +21,10 @@ class Diagnostics(unittest.TestCase):
             info = Path(temp) / 'info.json'
             info.write_text('{}')
             with patch.dict(os.environ, {'OTEHON_INSTALLER_INFO': str(info), 'OTEHON_ALLOW_INSTALL_OBSERVATION': '1'}), \
-                 patch.object(d, 'broker', side_effect=[{'readOnly': False}, {'devices': []}]) as broker, \
+                 patch.object(d, 'broker', side_effect=[{'readOnly': False}, {'devices': []}, {'readOnly': True}]) as broker, \
                  patch.object(d, 'journal', return_value={}), patch('sys.stdout', io.StringIO()):
                 self.assertEqual(d.main(), 0)
-            self.assertEqual([call.args[0] for call in broker.call_args_list], ['STATUS', 'LIST'])
+            self.assertEqual([call.args[0] for call in broker.call_args_list], ['STATUS', 'LIST', 'INSPECT'])
 
     def test_installer_observer_preserves_source_logs_when_broker_absent(self):
         with tempfile.TemporaryDirectory() as temp:

@@ -4,9 +4,11 @@ import errno
 import fcntl
 import hashlib
 import json
+import itertools
 import os
 from pathlib import Path
 import pwd
+import re
 import secrets
 import socket
 import stat
@@ -84,7 +86,7 @@ def inventory():
                     'diskseq':(Path('/sys/class/block') / Path(path).name / 'diskseq').read_text().strip()}
         ident = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
         result.append({**identity, 'id':ident,'model':(row.get('model') or 'Disk').strip(),
-                       'used':used,'readOnly':bool(row.get('ro')),
+                       'used':used,'readOnly':bool(row.get('ro')),'fileSystem':row.get('fstype') or '',
                        'partitions':[{'path':n['path'],'fstype':n.get('fstype') or '', 'label':n.get('label') or n.get('partlabel') or '', 'size':int(n['size'])} for n in nodes[1:]]})
     counts = {}
     for r in result: counts[r['serial']] = counts.get(r['serial'],0)+1
@@ -99,6 +101,88 @@ def admit(rows, ident, raw_bytes):
     if row['used'] or row['readOnly']: raise Refused('target-in-use')
     if row['size'] <= raw_bytes: raise Refused('target-too-small')
     return row
+
+
+def device_usage(rows, proc_root=Path('/proc'), sys_root=Path('/sys/class/block'), budget=3.0, max_pids=2048, max_fds=256):
+    """Bounded metadata and O_RDONLY probes; never read payloads or write disks."""
+    deadline = time.monotonic() + budget
+    result = {'available': True, 'readOnly': True, 'truncated': len(rows) > 8,
+              'processesScanned': 0, 'namespaceViewsScanned': 0, 'errors': 0, 'devices': []}
+    owners = {}; paths = {}; seen_mounts = set(); seen_views = set()
+    def small(path, limit):
+        with path.open('rb') as stream: data = stream.read(limit + 1)
+        if len(data) > limit: result['truncated'] = True
+        return data[:limit].decode('utf-8', 'replace')
+    def entries(path, maximum):
+        with os.scandir(path) as scan: found = list(itertools.islice(scan, maximum + 1))
+        if len(found) > maximum: result['truncated'] = True
+        return [Path(entry.path) for entry in found[:maximum]]
+    for row in rows[:8]:
+        item = {'id': row['id'], 'path': row['path'], 'majorMinor': row['majorMinor'],
+                'fileSystem': row.get('fileSystem', ''), 'holders': [], 'mountNamespaceReferences': [], 'openFdReferences': []}
+        result['devices'].append(item)
+        owners[row['majorMinor']] = item; paths[row['path']] = item
+        node = sys_root / Path(row['path']).name
+        try:
+            item['holders'] = [p.name for p in entries(node / 'holders', 32)]
+            for child in entries(node, 256):
+                if (child / 'partition').is_file():
+                    owners[small(child / 'dev', 64).strip()] = item
+                    paths['/dev/' + child.name] = item
+        except OSError: result['errors'] += 1
+    try: processes = (p for p in entries(proc_root, max_pids + 64) if p.name.isdecimal())
+    except OSError: result['available'] = False; return result
+    for proc in processes:
+        if result['processesScanned'] >= max_pids or time.monotonic() >= deadline:
+            result['truncated'] = True; break
+        result['processesScanned'] += 1
+        try:
+            comm = ''.join(c if c.isprintable() else '?' for c in small(proc / 'comm', 128).strip())[:32]
+            namespace = os.readlink(proc / 'ns/mnt')
+            unit = ''
+            try:
+                units = re.findall(r'(?:^|/)([A-Za-z0-9_.@:-]{1,128}\.service)(?:/|$)', small(proc / 'cgroup', 4096))
+                unit = units[-1] if units else ''
+            except OSError: pass
+            mounts = {}
+            for line in small(proc / 'mountinfo', 65536).splitlines():
+                fields = line.split(); split = fields.index('-')
+                if len(fields) < split + 3: continue
+                if fields[2] not in owners: continue
+                item = owners[fields[2]]; mounts[fields[0]] = item
+                key = (namespace, fields[0], fields[2])
+                if key not in seen_mounts and len(item['mountNamespaceReferences']) < 64:
+                    item['mountNamespaceReferences'].append({'namespace': namespace, 'representativePid': int(proc.name),
+                        'representativeComm': comm, 'unit': unit, 'majorMinor': fields[2], 'fsType': fields[split + 1]})
+                    seen_mounts.add(key)
+            seen_views.add(namespace); result['namespaceViewsScanned'] = len(seen_views)
+            fds = (p for p in entries(proc / 'fd', max_fds) if p.name.isdecimal())
+            for index, fd in enumerate(fds):
+                if index >= max_fds or time.monotonic() >= deadline:
+                    result['truncated'] = True; break
+                try:
+                    link = os.readlink(fd)
+                    info = dict(line.split(':', 1) for line in small(proc / 'fdinfo' / fd.name, 4096).splitlines() if ':' in line)
+                    item = paths.get(link) or mounts.get(info.get('mnt_id', '').strip())
+                    if item is not None:
+                        if len(item['openFdReferences']) >= 128: result['truncated'] = True; continue
+                        item['openFdReferences'].append({'pid': int(proc.name), 'comm': comm, 'fd': int(fd.name),
+                            'unit': unit, 'flags': info.get('flags', '').strip()[:16],
+                            'reference': 'block-device-path' if link in paths else 'file-on-device-mount'})
+                except OSError: result['errors'] += 1
+        except (OSError, ValueError): result['errors'] += 1
+    for item in result['devices']:
+        if time.monotonic() >= deadline:
+            result['truncated'] = True; item['exclusiveReadOnlyOpen'] = {'available': False}; continue
+        fd = None
+        try:
+            fd = os.open(item['path'], os.O_RDONLY | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC)
+            item['exclusiveReadOnlyOpen'] = {'available': True, 'opened': stat.S_ISBLK(os.fstat(fd).st_mode)}
+        except OSError as error:
+            item['exclusiveReadOnlyOpen'] = {'available': True, 'opened': False, 'errno': error.errno}
+        finally:
+            if fd is not None: os.close(fd)
+    return result
 
 class Broker:
     def __init__(self, digests, rundir=RUNDIR, read_only=False):
@@ -242,10 +326,15 @@ class Broker:
     def dispatch(self,op,args):
         # Diagnostic boots must never turn a remote observer into a writer.
         # Reject before target selection, process creation, or power controls.
-        if self.read_only and op not in ('LIST', 'STATUS'):
+        if self.read_only and op not in ('LIST', 'STATUS', 'INSPECT'):
             raise Refused('diagnostic-read-only')
         if op=='LIST': return {'devices':inventory(),'rawBytes':self.raw_bytes,'state':self.snapshot()}
         if op=='STATUS': return self.snapshot()
+        if op=='INSPECT':
+            if args: raise Refused('fixed-inspection-operation')
+            if self.busy(): return {'available': False, 'readOnly': True, 'reason': 'install-in-progress'}
+            rows = [r for r in inventory() if not r['readOnly'] and r['size'] > self.raw_bytes]
+            return device_usage(rows)
         if op=='SELECT': return self.select(*args)
         if op=='INSTALL': self.begin(*args);return self.snapshot()
         if op=='CANCEL':

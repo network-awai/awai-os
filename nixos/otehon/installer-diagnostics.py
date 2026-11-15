@@ -18,7 +18,7 @@ MAX_LOG = 131072
 
 
 def broker(op):
-    if op not in ('STATUS', 'LIST'):
+    if op not in ('STATUS', 'LIST', 'INSPECT'):
         raise ValueError('unsupported operation')
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as conn:
         conn.settimeout(5)
@@ -97,6 +97,10 @@ def main():
                 result['status'] = {'available': False}
                 result['inventory'] = {'available': False}
                 result['error'] = 'broker-unavailable'
+            try:
+                result['deviceUsage'] = broker('INSPECT')
+            except (OSError, ValueError):
+                result['deviceUsage'] = {'available': False}
             print(json.dumps(result, ensure_ascii=True, separators=(',', ':')))
             return 0
         result['status'] = broker('STATUS')
