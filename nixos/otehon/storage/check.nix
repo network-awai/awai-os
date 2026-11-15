@@ -19,6 +19,7 @@ pkgs.runCommand "otehon-storage-hosted-check" {
   IPLD_POLICY_FIXTURE=${./test/fixtures/prolly-forest/policy.forest} IPLD_SPLIT_FIXTURES=${./test/fixtures/prolly-forest/split} bb --classpath ${classpath} ${./test/otehon/ipld_group_crash_proof.clj} run ipld-group-crash > "$out/ipld-group-crash.edn"
   IPLD_SPLIT_FIXTURES=${./test/fixtures/prolly-forest/split} bb --classpath ${classpath} ${./test/otehon/atomic_group_ref_crash_proof.clj} run atomic-group-ref-crash > "$out/atomic-group-ref-crash.edn"
   IPLD_SPLIT_FIXTURES=${./test/fixtures/prolly-forest/split} bb --classpath ${classpath} ${./test/otehon/atomic_nonce_crash_proof.clj} run atomic-nonce-crash > "$out/atomic-nonce-crash.edn"
+  IPLD_SPLIT_FIXTURES=${./test/fixtures/prolly-forest/split} bb --classpath ${classpath} ${./test/otehon/strict_group_binding_proof.clj} strict-group-binding > "$out/strict-group-binding.edn"
   FOREST_FIXTURE=${./test/fixtures/forest/sha256-pack.forest.car.zst} bb --classpath ${classpath} ${./test/otehon/forest_crash_runner.clj} run forest-crash > "$out/forest-crash-tests.edn"
   CROSSPACK_FIXTURES=${./test/fixtures/crosspack} bb --classpath ${classpath} ${./test/otehon/crosspack_proof.clj} run crosspack-proof > "$out/crosspack-proof.edn"
   CROSSPACK_FIXTURES=${./test/fixtures/crosspack} bb --classpath ${classpath} ${./test/otehon/atomic_pack_proof.clj} run atomic-pack-proof > "$out/atomic-pack-proof.edn"

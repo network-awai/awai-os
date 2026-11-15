@@ -8,10 +8,13 @@
             [otehon.forest :as forest]
             [otehon.root-witness :as witness]
             [otehon.segmented :as segmented]
-            [otehon.storage :as store]))
+            [otehon.storage :as store])
+  (:import [java.security MessageDigest] [java.util HexFormat]))
 
 (def ^:private prefix "awai.ipld-forest/")
 (defn- fail! [type msg] (throw (ex-info msg {:type type})))
+(defn- catalog-digest [text]
+  (.formatHex (HexFormat/of) (.digest (MessageDigest/getInstance "SHA-256") (.getBytes ^String text "UTF-8"))))
 (defn- key-for [name]
   (when-not (and (string? name) (<= 1 (count name) 1024))
     (fail! :invalid-name "archive name must be a nonempty bounded string"))
@@ -195,11 +198,13 @@
   ([directory name basis archives expected-generation ref-name expected-ref target verify!]
    (publish-file-group-and-ref! directory name basis archives expected-generation ref-name expected-ref target verify! nil))
   ([directory name basis archives expected-generation ref-name expected-ref target verify! nonce]
+   (publish-file-group-and-ref! directory name basis archives expected-generation ref-name expected-ref target verify! nonce false))
+  ([directory name basis archives expected-generation ref-name expected-ref target verify! nonce bind-group?]
   (group-key name)
   (when-not (and (string? ref-name) (<= 1 (count ref-name) 1024)
                  (integer? expected-generation) (<= 1 expected-generation 9007199254740991)
                  (vector? archives) (<= 1 (count archives) max-group-archives)
-                 (fn? verify!))
+                 (fn? verify!) (boolean? bind-group?))
     (fail! :invalid-ipld-forest-group "invalid grouped publication arguments"))
   (when (some? expected-ref) (cid-bytes expected-ref))
   (cid-bytes target)
@@ -221,14 +226,22 @@
         opened (mapv :forest checked)
         group (checked-group {:format :awai.otehon-store/ipld-forest-group-v1
                               :basis-cid basis :archives (mapv :ref checked)})
-        ref-key (str "awai.kotobase-ref/" ref-name)]
+        ref-key (str "awai.kotobase-ref/" ref-name)
+        binding-key (str "awai.kotobase-group-binding/" ref-name)
+        binding (pr-str {:format :awai.otehon-store/ref-group-v1 :group name :target target
+                         :catalog-sha256 (catalog-digest (pr-str group))})]
     (when-not (and (group-has-cid? opened basis) (group-has-cid? opened target)
                    (or (nil? nonce) (group-has-cid? opened (:marker-cid nonce))))
       (fail! :invalid-ipld-basis "basis, target or nonce marker is absent from archive group"))
     (store/compare-and-set-values! directory expected-generation ref-key expected-ref
       (cond-> [[(group-key name) (pr-str group)] [ref-key target]]
-        nonce (conj [(str "awai.kotobase-ref/" (:ref-name nonce)) (:marker-cid nonce)]))
+        nonce (conj [(str "awai.kotobase-ref/" (:ref-name nonce)) (:marker-cid nonce)])
+        bind-group? (conj [binding-key binding]))
       (fn [dir state]
+        (when (and (not bind-group?) (contains? state binding-key))
+          (fail! :group-binding-required "bound ref requires bound publication"))
+        (when (and bind-group? (nil? expected-ref) (contains? state binding-key))
+          (fail! :group-binding-conflict "binding exists for an absent ref"))
         (when (and nonce (contains? state (str "awai.kotobase-ref/" (:ref-name nonce))))
           (fail! :nonce-replayed "nonce reference already exists"))
         (when-let [existing (get state (group-key name))]
@@ -312,6 +325,40 @@
   "Find CID via the group's verified snapshot indexes and revalidate its frame."
   [handle cid]
   (some #(get-block % cid) (:archives handle)))
+
+(defn recover-bound-ref
+  "Recover exactly the group atomically bound to REF-NAME. Legacy unbound
+  refs are refused. This verifies every named archive and the target but does
+  not authenticate the root, verify arbitrary DAG closure, or pin a snapshot
+  against subsequent mutation or GC."
+  [directory ref-name]
+  (when-not (and (string? ref-name) (<= 1 (count ref-name) 1024))
+    (fail! :invalid-name "invalid bound ref name"))
+  (let [{:keys [state root degraded?]} (store/read-store directory)
+        text (get state (str "awai.kotobase-group-binding/" ref-name))
+        target (get state (str "awai.kotobase-ref/" ref-name))]
+    (when degraded? (fail! :degraded-store "invalid root slot"))
+    (when-not (and (string? text) (string? target))
+      (fail! :missing-group-binding "ref or group binding is missing"))
+    (let [binding (with-open [r (java.io.PushbackReader. (java.io.StringReader. text))]
+                    (let [opts {:eof ::eof :readers {} :default (fn [& _] (fail! :invalid-group-binding "unsupported tag"))}
+                          v (edn/read opts r)]
+                      (when-not (= ::eof (edn/read opts r))
+                        (fail! :invalid-group-binding "trailing binding data"))
+                      v))]
+      (when-not (and (map? binding) (= #{:format :group :target :catalog-sha256} (set (keys binding)))
+                     (= :awai.otehon-store/ref-group-v1 (:format binding))
+                     (string? (:group binding)) (= target (:target binding))
+                     (string? (:catalog-sha256 binding)) (re-matches #"[0-9a-f]{64}" (:catalog-sha256 binding)))
+        (fail! :invalid-group-binding "invalid binding or mismatched target"))
+      (cid-bytes target)
+      (let [group-text (get state (group-key (:group binding)))]
+        (when-not (and (string? group-text) (= (:catalog-sha256 binding) (catalog-digest group-text)))
+          (fail! :invalid-group-binding "bound group catalog differs")))
+      (let [h (recover-group directory (:group binding))]
+        (when-not (= root (:basis h)) (fail! :catalog-changed "root changed during bound recovery"))
+        (when-not (get-group-block h target) (fail! :invalid-ipld-basis "bound target missing"))
+        {:target target :group (:group binding) :handle h}))))
 
 (defn recover-group-witnessed [directory name read-witness!]
   (witness/open-verified! directory read-witness! #(recover-group directory name)))
