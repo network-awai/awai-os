@@ -1,0 +1,86 @@
+import importlib.util
+import os
+from pathlib import Path
+import tempfile
+from types import SimpleNamespace
+import unittest
+from unittest.mock import patch
+
+source = Path(__file__).parents[2] / 'nixos/otehon/drive/prepare.py'
+spec = importlib.util.spec_from_file_location('drive_prepare', source)
+p = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(p)
+
+
+class Prepare(unittest.TestCase):
+    def run_prepare(self, root, encrypted=True):
+        home = root / 'home'
+        home.mkdir(exist_ok=True)
+        user = SimpleNamespace(pw_uid=os.getuid(), pw_gid=os.getgid(), pw_dir=str(home))
+        config = {'state': str(root / 'home/.local/state/awai-drive'), 'mount': str(home / 'Awai'),
+                  'user': 'fixture', 'defaultSave': True}
+        with patch.object(p.pwd, 'getpwnam', return_value=user), \
+             patch.object(p.subprocess, 'check_output', side_effect=['253:0\n', '253:0\n' if encrypted else '253:1\n']):
+            p.prepare(config)
+
+    def test_refuses_unencrypted_state_before_creating_store_or_credentials(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with self.assertRaises(RuntimeError):
+                self.run_prepare(root, encrypted=False)
+            self.assertFalse((root / 'home/.local/state/awai-drive').exists())
+
+    def test_fresh_defaults_private_credentials_and_existing_preferences_preserved(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.run_prepare(root)
+            credentials = root / 'home/.local/state/awai-drive/credentials'
+            old = credentials.read_bytes()
+            self.assertEqual(credentials.stat().st_mode & 0o777, 0o600)
+            self.assertIn(b'RCLONE_WEBDAV_BEARER_TOKEN=', old)
+            dirs = root / 'home/.config/user-dirs.dirs'
+            self.assertIn(str(root / 'home/Awai'), dirs.read_text())
+            self.assertIn('Awai Drive', (root / 'home/.config/gtk-3.0/bookmarks').read_text())
+            dirs.write_text('XDG_DOCUMENTS_DIR="$HOME/original"\n')
+            self.run_prepare(root)
+            self.assertEqual(credentials.read_bytes(), old)
+            self.assertEqual(dirs.read_text(), 'XDG_DOCUMENTS_DIR="$HOME/original"\n')
+
+    def test_incomplete_or_mismatched_credentials_are_preserved_and_refused(self):
+        for content in ['', 'AWAI_VOL_TOKEN=partial\n', 'AWAI_VOL_TOKEN=' + 'a'*64 + '\nRCLONE_WEBDAV_BEARER_TOKEN=' + 'b'*64 + '\n']:
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                self.run_prepare(root)
+                credentials = root / 'home/.local/state/awai-drive/credentials'
+                credentials.write_text(content)
+                with self.assertRaises(RuntimeError):
+                    self.run_prepare(root)
+                self.assertEqual(credentials.read_text(), content)
+
+    def test_only_managed_alias_is_withdrawn_on_prepare(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.run_prepare(root)
+            public = root / 'home/Awai'
+            public.symlink_to(root / 'home/.local/state/awai-drive/mount')
+            self.run_prepare(root)
+            self.assertFalse(public.is_symlink())
+            public.symlink_to(root / 'unrelated')
+            with self.assertRaises(RuntimeError):
+                self.run_prepare(root)
+            self.assertTrue(public.is_symlink())
+
+    def test_existing_mount_content_and_credential_symlinks_are_preserved_and_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'home/Awai').mkdir(parents=True)
+            keep = root / 'home/Awai/owner.txt'
+            keep.write_text('unique WIP')
+            with self.assertRaises(RuntimeError):
+                self.run_prepare(root)
+            self.assertEqual(keep.read_text(), 'unique WIP')
+            keep.unlink()
+            (root / 'home/.local/state/awai-drive/credentials').symlink_to(keep)
+            with self.assertRaises(RuntimeError):
+                self.run_prepare(root)
+            self.assertTrue((root / 'home/.local/state/awai-drive/credentials').is_symlink())
