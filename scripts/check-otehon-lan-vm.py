@@ -49,7 +49,8 @@ def main():
     thread = threading.Thread(target=http.serve_forever, daemon=True)
     thread.start()
     command = [
-        'qemu-system-x86_64', '-machine', 'q35', '-accel', 'kvm:tcg', '-cpu', 'max',
+        'qemu-system-x86_64', '-machine', 'q35', '-accel',
+        'kvm' if os.access('/dev/kvm', os.R_OK | os.W_OK) else 'tcg', '-cpu', 'max',
         '-smp', '4', '-m', '8192', '-display', 'none', '-no-reboot',
         '-drive', f'if=pflash,format=raw,readonly=on,file={args.ovmf_code}',
         '-drive', f'if=pflash,format=raw,file={out / "vars.fd"}',

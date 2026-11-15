@@ -8,6 +8,11 @@ on:
       - scripts/check-otehon-lan-vm.py
       - .github/workflows/otehon-lan-diagnostic.yml
   workflow_dispatch:
+    inputs:
+      operator_public_key:
+        description: 'Optional Ed25519 public key for a separate physical test candidate (never a private key)'
+        required: false
+        type: string
 permissions:
   contents: read
 concurrency:
@@ -41,6 +46,24 @@ jobs:
         run: |
           set -euo pipefail
           nix-shell --expr 'let p = import (import ./ci/nixpkgs.nix) { system = "x86_64-linux"; }; in p.mkShell { packages = [ p.python3 p.qemu_test p.openssh ]; OVMF_CODE = "${p.OVMF.fd}/FV/OVMF_CODE.fd"; OVMF_VARS = "${p.OVMF.fd}/FV/OVMF_VARS.fd"; }' --run 'python3 scripts/check-otehon-lan-vm.py --image result-otehon-lan --output .agent-output/lan/proof --key .agent-output/lan/operator --bad-key .agent-output/lan/unauthorized --ovmf-code "$OVMF_CODE" --ovmf-vars "$OVMF_VARS"'
+      - name: Build separately keyed physical candidate
+        if: github.event_name == 'workflow_dispatch' && inputs.operator_public_key != ''
+        env:
+          OPERATOR_PUBLIC_KEY: ${{ inputs.operator_public_key }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          nix-build nixos/otehon/default.nix --argstr profile netboot-diagnostic-6600h --argstr diagnosticPublicKey "$OPERATOR_PUBLIC_KEY" --out-link result-otehon-lan-candidate --show-trace
+          mkdir -p .agent-output/lan/candidate
+          for file in ipxe.efi kernel initrd installer-info.json; do cp -L "result-otehon-lan-candidate/$file" ".agent-output/lan/candidate/$file"; done
+          (cd .agent-output/lan/candidate; sha256sum ipxe.efi kernel initrd installer-info.json > SHA256SUMS)
+          git rev-parse HEAD > .agent-output/lan/candidate/SOURCE_REVISION
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: success() && github.event_name == 'workflow_dispatch' && inputs.operator_public_key != ''
+        with:
+          name: awai-lan-physical-candidate
+          path: .agent-output/lan/candidate/
+          compression-level: 0
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
