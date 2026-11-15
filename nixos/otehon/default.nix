@@ -1,4 +1,4 @@
-{ profile ? "vm", output ? "image", arch ? null }:
+{ profile ? "vm", output ? "image", arch ? null, diagnosticPublicKey ? "" }:
 let
   nixpkgs = import ../../ci/nixpkgs.nix;
   # arch = null keeps the profile's own platform (aarch64-linux from common.nix).
@@ -8,7 +8,8 @@ let
     else throw "otehon: unknown arch ${arch}, expected aarch64 or x86_64";
   system = import "${nixpkgs}/nixos/lib/eval-config.nix" {
     system = null;
-    modules = [ (./. + "/${profile}.nix") ] ++ platform;
+    modules = [ (./. + "/${profile}.nix") ] ++ platform
+      ++ (if profile == "netboot-diagnostic-6600h" then [ { otehon.diagnosticPublicKey = diagnosticPublicKey; } ] else [ ]);
   };
 in
 system.config.system.build.${if output == "system" then "toplevel" else "image"}

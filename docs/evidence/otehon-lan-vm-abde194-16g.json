@@ -1,0 +1,19 @@
+{
+  "schema": "awai.otehon.netboot-vm.v1",
+  "physicalDisks": false,
+  "sourceRevision": "abde194a0a9b8964f3742057c7f7c09edafad3f8",
+  "artifacts": {
+    "ipxe.efi": "c8f897b1435fe4d8ba0160e03c4817912aee7e06a888197a926c16f289d02a49",
+    "kernel": "d2b93e3505bb2ae229da98a29ddcb19dfe6cd9b9c6be672490b776d701070207",
+    "initrd": "e5e163287eb75efd80d045e5a12289245f8fd31578e4b5d84ccf954694a5c561"
+  },
+  "checks": [
+    "scratch NVMe selection refused by read-only broker",
+    "console host key matches SSH host key",
+    "unapproved key rejected",
+    "password authentication rejected",
+    "approved key sees bounded read-only diagnostics, not shell output",
+    "forwarding rejected"
+  ],
+  "passed": true
+}

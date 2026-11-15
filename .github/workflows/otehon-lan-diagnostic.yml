@@ -1,0 +1,76 @@
+name: Otehon LAN diagnostic boot
+on:
+  pull_request:
+    paths:
+      - nixos/otehon/**
+      - tests/otehon/**
+      - tests/otehon-netboot-eval.nix
+      - scripts/check-otehon-lan-vm.py
+      - .github/workflows/otehon-lan-diagnostic.yml
+  workflow_dispatch:
+    inputs:
+      operator_public_key:
+        description: 'Optional Ed25519 public key for a separate physical test candidate (never a private key)'
+        required: false
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: otehon-lan-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  lan-diagnostic-vm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Prepare space on the ephemeral runner
+        run: |
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
+          df -h /
+      - uses: cachix/install-nix-action@b85815f71a6de0ddee80b8a80a98d43f4bcc66c7
+      - name: Build with ephemeral test operator key
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .agent-output/lan
+          ssh-keygen -q -t ed25519 -N '' -f .agent-output/lan/operator
+          ssh-keygen -q -t ed25519 -N '' -f .agent-output/lan/unauthorized
+          nix-instantiate --eval --strict --json --expr 'import ./tests/otehon-netboot-eval.nix { nixpkgsPath = import ./ci/nixpkgs.nix; }'
+          nix-build nixos/otehon/default.nix --argstr profile netboot-diagnostic-6600h --argstr diagnosticPublicKey "$(cat .agent-output/lan/operator.pub)" --out-link result-otehon-lan --show-trace
+      - name: Build separately keyed physical candidate
+        if: github.event_name == 'workflow_dispatch' && inputs.operator_public_key != ''
+        env:
+          OPERATOR_PUBLIC_KEY: ${{ inputs.operator_public_key }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          nix-build nixos/otehon/default.nix --argstr profile netboot-diagnostic-6600h --argstr diagnosticPublicKey "$OPERATOR_PUBLIC_KEY" --out-link result-otehon-lan-candidate --show-trace
+          mkdir -p .agent-output/lan/candidate
+          for file in ipxe.efi kernel initrd installer-info.json; do cp -L "result-otehon-lan-candidate/$file" ".agent-output/lan/candidate/$file"; done
+          (cd .agent-output/lan/candidate; sha256sum ipxe.efi kernel initrd installer-info.json > SHA256SUMS)
+          git rev-parse HEAD > .agent-output/lan/candidate/SOURCE_REVISION
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: success() && github.event_name == 'workflow_dispatch' && inputs.operator_public_key != ''
+        with:
+          name: awai-lan-physical-candidate-unqualified
+          path: .agent-output/lan/candidate/
+          compression-level: 0
+      - name: Boot real image and verify authenticated diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          nix-shell --expr 'let p = import (import ./ci/nixpkgs.nix) { system = "x86_64-linux"; }; in p.mkShell { packages = [ p.python3 p.qemu_test p.openssh ]; OVMF_CODE = "${p.OVMF.fd}/FV/OVMF_CODE.fd"; OVMF_VARS = "${p.OVMF.fd}/FV/OVMF_VARS.fd"; }' --run 'python3 scripts/check-otehon-lan-vm.py --image result-otehon-lan --memory-mib 16384 --source-revision "$GITHUB_SHA" --output .agent-output/lan/proof --key .agent-output/lan/operator --bad-key .agent-output/lan/unauthorized --ovmf-code "$OVMF_CODE" --ovmf-vars "$OVMF_VARS"'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: awai-lan-diagnostic-vm-proof
+          if-no-files-found: ignore
+          path: |
+            .agent-output/lan/proof/proof.json
+            .agent-output/lan/proof/serial.log
+            .agent-output/lan/proof/qemu.log
+            .agent-output/lan/proof/diagnostics.json
