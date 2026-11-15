@@ -152,6 +152,34 @@
     (-get-blocks [_ cids] (fetch dir cache cids))
     contract/IBackendCapabilities
     (-capabilities [_] #{:immutable-blocks :cid-addressed-read :packed-blocks :range-read :batch-get :batch-put}))))
+(defn open-bound-block-store
+  "Read-only IBlockStore pinned to one ref's strictly verified Forest group.
+
+  Opening verifies the binding and all named archives; every batch checks the
+  root before and after reading and never searches another group. This is a
+  block-only port: it provides no ref/write capabilities and refuses puts.
+  The host must exclude concurrent file mutation and GC and authenticate the
+  selected root; a handle is not an immutable filesystem snapshot. Root
+  changes require the caller to reopen and reauthorize."
+  [dir ref-name]
+  (let [bound (catalog/recover-bound-ref dir ref-name)
+        handle (:handle bound)
+        basis (:basis handle)
+        check-root! (fn []
+                      (when-not (= basis (:root (snapshot dir)))
+                        (fail! :catalog-changed "root changed during bound read")))]
+    (reify
+      contract/IBlockStore
+      (-put-blocks! [_ _] (fail! :read-only "bound block port does not write"))
+      (-get-blocks [_ cids]
+        (validate-cids! cids)
+        (check-root!)
+        (let [found (into {} (keep (fn [cid] (when-let [b (catalog/get-group-block handle cid)] [cid b]))) cids)]
+          (check-root!)
+          found))
+      contract/IBackendCapabilities
+      (-capabilities [_] #{:immutable-blocks :cid-addressed-read :packed-blocks :range-read :batch-get}))))
+
 (defn open-witnessed-block-store
   "Explicit witnessed block port only. No ref CAS or query authorization is
   provided. The host must supply a trusted independent prepared witness and

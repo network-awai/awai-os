@@ -62,7 +62,20 @@
         (check! (= #{group-key "awai.kotobase-ref/receipt" "awai.kotobase-group-binding/receipt" (str "awai.kotobase-ref/" nonce-ref)} keys*) "group, receipt, binding and nonce not in one frame")
         (check! (<= 2 (count (:archives group))) "expected multiple Packs")
         (check! (= :nonce-replayed (error #((:publish! replay) input))) "replay accepted")
-        (check! (= after (store/read-store dir)) "replay changed root")))))
+        (check! (= after (store/read-store dir)) "replay changed root")
+        (let [db (blocks/open-block-store dir stage tool)]
+          (contract/-put-blocks! db [key-block])
+          (let [bound (blocks/open-bound-block-store dir "receipt")]
+            (check! (nil? (contract/get-block bound (:cid key-block))) "bound lookup searched another group")
+            (check! (Arrays/equals ^bytes (:bytes key-block) ^bytes (contract/get-block db (:cid key-block))) "global control missing")
+            (check! (= :read-only (error #(contract/-put-blocks! bound [key-block]))) "bound port accepted write")
+            (contract/-put-blocks! db [(block 21)])
+            (check! (= :catalog-changed (error #(contract/get-block bound target))) "stale bound handle accepted")
+            (let [fresh (blocks/open-bound-block-store dir "receipt") original catalog/get-group-block once (atom true)]
+              (with-redefs [catalog/get-group-block (fn [h cid]
+                           (when (compare-and-set! once true false) (contract/-put-blocks! db [(block 22)]))
+                           (original h cid))]
+                (check! (= :catalog-changed (error #(contract/get-block fresh target))) "root change during batch accepted")))))))))
   "read"
   (let [db (blocks/open-backend dir stage tool) bound (catalog/recover-bound-ref dir "receipt")]
    (check! (= target (:cid (contract/-read-ref db "receipt"))) "receipt ref missing")
