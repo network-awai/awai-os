@@ -194,6 +194,30 @@
      (fail! :invalid-closure-verifier "closure verifier must be a function"))
    (compose-backend dir staging-root tool verify-closure!)))
 
+(defn open-logical-read-store
+  "Read a recovered, authenticated logical-file view and a separate block
+  store through one read-only Kotobase block port. FILE-HANDLE must be a fully
+  recovered Pack snapshot and EXPECTED-MANIFEST-CID must come from the caller's
+  authenticated state. The file view is checked first; corruption is propagated
+  and never falls back to BASE. No write, ref, authorization, freshness,
+  concurrent-GC, or cross-store atomicity guarantee is provided."
+  [base file-handle name expected-manifest-cid]
+  (contract/validate-block-store! base)
+  (let [view (pack/logical-block-view file-handle name expected-manifest-cid)
+        get-file (:get-block view)]
+    (reify
+      contract/IBlockStore
+      (-put-blocks! [_ _] (fail! :read-only "logical read store cannot publish blocks"))
+      (-get-blocks [_ cids]
+        (validate-cids! cids)
+        (let [found (into {} (keep (fn [cid] (when-let [b (get-file cid)] [cid b]))) cids)
+              missing (vec (distinct (remove #(contains? found %) cids)))]
+          (if (seq missing)
+            (merge (contract/-get-blocks base missing) found)
+            found)))
+      contract/IBackendCapabilities
+      (-capabilities [_] #{:immutable-blocks :cid-addressed-read :packed-blocks :range-read :batch-get}))))
+
 (defn open-transaction
   "Create a bounded, synchronous write overlay for a Prolly operation.
 

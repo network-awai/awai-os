@@ -1,6 +1,7 @@
 ;; Real Otehon group publication against the Kotoba v1 logical-file corpus.
 (require '[awai.fs.car :as car] '[cheshire.core :as json] '[otehon.pack-store :as pack]
-         '[otehon.storage :as store])
+         '[otehon.storage :as store] '[otehon.kotobase-forest-blocks :as blocks]
+         '[kotobase.storage.core :as contract])
 (import '[java.nio.file Files Paths] '[java.security MessageDigest])
 (def fixtures (or (System/getenv "CROSSPACK_FIXTURES") "nixos/otehon/storage/test/fixtures/crosspack"))
 (defn ensure! [x message] (when-not x (throw (ex-info message {}))))
@@ -65,7 +66,27 @@
       (ensure! (nil? (get! unknown)) "unknown CID was returned")
       (ensure! (refuses? #(get! "not-a-cid")) "invalid CID accepted")
       (ensure! (refuses? #(pack/logical-block-view (assoc-in h [:groups "file" :manifest-hex] "00") "file" (:cid m))) "modified snapshot manifest accepted")
-      (ensure! (refuses? #(pack/logical-block-view h "file" unknown)) "wrong expected manifest accepted"))
+      (ensure! (refuses? #(pack/logical-block-view h "file" unknown)) "wrong expected manifest accepted")
+      (let [calls (atom 0)
+            base (reify contract/IBlockStore
+                   (-put-blocks! [_ _] (throw (ex-info "unexpected write" {})))
+                   (-get-blocks [_ cids] (swap! calls inc)
+                     (if (some #{unknown} cids) {unknown (byte-array [42])} {}))
+                   contract/IBackendCapabilities
+                   (-capabilities [_] #{:immutable-blocks :cid-addressed-read}))
+            overlay (blocks/open-logical-read-store base h "file" (:cid m))
+            result (contract/-get-blocks overlay [(:cid m) cid unknown])]
+        (ensure! (java.util.Arrays/equals (:bytes m) (get result (:cid m))) "overlay manifest differs")
+        (ensure! (java.util.Arrays/equals expected (get result cid)) "overlay chunk differs")
+        (ensure! (java.util.Arrays/equals (byte-array [42]) (get result unknown)) "overlay fallback differs")
+        (ensure! (= 1 @calls) "overlay fallback count differs")
+        (ensure! (refuses? #(contract/-put-blocks! overlay [])) "read-only overlay accepted write")
+        (ensure! (refuses? #(contract/-get-blocks overlay ["not-a-cid"])) "overlay accepted invalid CID")
+        (let [corrupt (aclone ^bytes expected)]
+          (aset-byte corrupt 0 (byte 99))
+          (with-redefs [pack/read-group-range (fn [& _] corrupt)]
+            (ensure! (refuses? #(contract/-get-blocks overlay [cid])) "overlay hid corruption")))
+        (ensure! (= 1 @calls) "overlay fell back after corruption")))
     ;; Tamper the committed manifest while preserving a syntactically valid root.
     (let [root (:root (store/read-store directory))]
       (store/transact! directory :put {:key "awai.pack-group/file" :value (pr-str (assoc group :manifest-cid "wrong"))})
