@@ -41,3 +41,17 @@ PR #98 は 2026-11-14T12:43:59Z に merge commit
 `b1f87847189d566ed2f21cc8813aa4b2a7ab2139` で merge 済み。
 その成果は collector/計画/host 準備であり、今回の実機 LineageOS 起動や Awai 動作を証明しない。
 本記録の USB 成功も MediaTek 接続や解除成功へ読み替えない。
+
+## 電源OFF接続の検証
+
+Jun の電源OFF→再接続後、host に MediaTek `0e8d:2000` / MT65xx Preloader が現れた。
+同じ物理ポートだけを対象に QMP USB を attach したところ、guest kernel でも device を認識したが、
+`string descriptor 0 read error: -75` と `can't set config #1, error -32` の後に切断した。
+同梱 Antumbra 1.1.0 の `pgpt` は読取り待ちのままで成功せず、停止した。
+これにより fastboot の USB 成功だけでは MediaTek の転送を認定できないことが実測で確認された。
+
+その QMP device を削除し、Mac 用 Antumbra 1.0.0 の `pgpt` による直接接続を検証中。
+既に release digest を照合した別版であり、同梱1.1.0の代替として書込みに使えるとは認定しない。
+最初の待機は接続待ちで時間切れ。再接続を依頼し、次の読取りを待機した。
+ここまで原本パーティションの読取り成功・保存は0件、unlock/flash/wipeも未実施。
+生ログと tool 状態は task-local に保存し、private partition や device ID を Git に入れない。
