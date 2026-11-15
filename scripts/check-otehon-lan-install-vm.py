@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Install over real PXE/HTTP + read-only NBD onto fresh QEMU NVMe only."""
 import argparse
+import codecs
 from functools import partial
 import hashlib
 import http.server
@@ -88,6 +89,7 @@ def main():
     nbd = process = port = None
     transcript = bytearray()
     unread = ''
+    decoder = codecs.getincrementaldecoder('utf-8')(errors='replace')
     def capture_wait_screen():
         # Read the actual VGA console when the broker is not ready yet.
         try:
@@ -128,7 +130,7 @@ def main():
                 block = port.recv(65536)
                 if not block: raise RuntimeError('serial closed')
                 transcript.extend(block)
-                unread += block.decode(errors='replace')
+                unread += decoder.decode(block)
                 (out / 'console.txt').write_bytes(transcript)
             except socket.timeout: pass
         raise TimeoutError(text)
