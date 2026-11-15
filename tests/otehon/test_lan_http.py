@@ -38,6 +38,26 @@ class Candidate(unittest.TestCase):
                 server.server_close()
                 thread.join()
 
+    def test_install_proof_binds_all_four_artifacts(self):
+        with tempfile.TemporaryDirectory() as temp:
+            d = Path(temp)
+            revision = 'c' * 40
+            (d / 'SOURCE_REVISION').write_text(revision)
+            hashes = {}
+            for name in h.FILES:
+                (d / name).write_bytes(name.encode())
+                hashes[name] = hashlib.sha256(name.encode()).hexdigest()
+            (d / 'SHA256SUMS').write_text('\n'.join(value + '  ' + name for name, value in hashes.items()))
+            proof = d / 'proof.json'
+            data = {'schema': 'awai.otehon.lan-install-vm.v1', 'passed': True,
+                    'physicalDisks': False, 'sourceRevision': revision, 'artifacts': hashes}
+            proof.write_text(json.dumps(data))
+            h.validate(d, revision, proof)
+            for changed in ({'sourceRevision': 'd' * 40}, {'passed': False},
+                            {'artifacts': {k: v for k, v in hashes.items() if k != 'installer-info.json'}}):
+                proof.write_text(json.dumps({**data, **changed}))
+                with self.assertRaises(ValueError): h.validate(d, revision, proof)
+
     def test_revision_and_every_digest_must_match(self):
         with tempfile.TemporaryDirectory() as temp:
             d = Path(temp)

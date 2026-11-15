@@ -27,9 +27,11 @@ def validate(directory, expected_revision, vm_proof):
     if set(expected) != set(FILES):
         raise ValueError('incomplete checksum manifest')
     proof = json.loads(vm_proof.read_text())
-    if proof.get('schema') != 'awai.otehon.netboot-vm.v1' or proof.get('passed') is not True or proof.get('physicalDisks') is not False or proof.get('sourceRevision') != expected_revision:
+    schema = proof.get('schema')
+    if schema not in ('awai.otehon.netboot-vm.v1', 'awai.otehon.lan-install-vm.v1') or proof.get('passed') is not True or proof.get('physicalDisks') is not False or proof.get('sourceRevision') != expected_revision:
         raise ValueError('matching successful VM proof required')
-    if proof.get('artifacts') != {name: expected[name] for name in ('ipxe.efi', 'kernel', 'initrd')}:
+    checked_files = FILES if schema == 'awai.otehon.lan-install-vm.v1' else ('ipxe.efi', 'kernel', 'initrd')
+    if proof.get('artifacts') != {name: expected[name] for name in checked_files}:
         raise ValueError('VM checked different boot artifacts')
     for name in FILES:
         path = directory / name

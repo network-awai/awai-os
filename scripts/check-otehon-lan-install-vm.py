@@ -26,8 +26,9 @@ def load(name, path):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    for name in ('image', 'iso', 'output', 'ovmf-code', 'ovmf-vars', 'key', 'bad-key'):
+    for name in ('image', 'iso', 'output', 'ovmf-code', 'ovmf-vars', 'bad-key'):
         p.add_argument('--' + name, type=Path, required=True)
+    p.add_argument('--key', type=Path, help='optional private fixture key; omitted for operator-keyed artifact')
     p.add_argument('--source-revision', required=True)
     p.add_argument('--memory-mib', type=int, default=16384)
     a = p.parse_args()
@@ -135,27 +136,31 @@ def main():
             raise RuntimeError('console and SSH host identities differ')
         (out / 'known_hosts').write_text(scan.stdout)
         if ssh('diagnostics', key=a.bad_key).returncode == 0: raise RuntimeError('unauthorized key accepted')
-        if ssh('id').returncode == 0: raise RuntimeError('arbitrary command accepted')
-        if ssh('console').returncode == 0: raise RuntimeError('console accepted without PTY')
-        observed = ssh('diagnostics')
-        if observed.returncode: raise RuntimeError('bounded observer failed: ' + observed.stderr)
-        status = json.loads(observed.stdout)
-        if status.get('readOnly') is not True or status.get('status', {}).get('readOnly') is not False:
-            raise RuntimeError('unexpected installer observation')
-        (out / 'before.json').write_text(json.dumps(status, indent=2))
-        proof['checks'].append('host identity matched; unauthorized key, shell and non-PTY console rejected; bounded observer available')
+        if a.key:
+            if ssh('id').returncode == 0: raise RuntimeError('arbitrary command accepted')
+            if ssh('console').returncode == 0: raise RuntimeError('console accepted without PTY')
+            observed = ssh('diagnostics')
+            if observed.returncode: raise RuntimeError('bounded observer failed: ' + observed.stderr)
+            status = json.loads(observed.stdout)
+            if status.get('readOnly') is not True or status.get('status', {}).get('readOnly') is not False:
+                raise RuntimeError('unexpected installer observation')
+            (out / 'before.json').write_text(json.dumps(status, indent=2))
+            proof['checks'].append('shell and non-PTY console rejected; bounded observer available')
+        proof['authenticatedObserverChecked'] = bool(a.key)
+        proof['checks'].append('displayed host identity matched and unauthorized key rejected')
         send('99'); expect('表示されている番号'); expect('保存先の番号を入力して Enter'); untouched()
         send('1'); expect('すべて消去してインストール'); send('0'); expect('中止しました'); expect('保存先の番号を入力して Enter'); untouched()
         proof['checks'].append('invalid choice and cancelled overwrite leave all scratch disks untouched')
         send('1'); expect('すべて消去してインストール'); send('1')
         expect('INSTALL COMPLETE', timeout=2400)
         if not written('target') or written('decoy') or written('small'): raise AssertionError('wrong write scope')
-        completed = ssh('diagnostics')
-        if completed.returncode: raise RuntimeError('completion evidence unavailable')
-        final = json.loads(completed.stdout)
-        if final['status']['phase'] != 'complete' or not final['status'].get('bootEntry'):
-            raise RuntimeError('readback and UEFI completion not established')
-        (out / 'complete.json').write_text(json.dumps(final, indent=2))
+        if a.key:
+            completed = ssh('diagnostics')
+            if completed.returncode: raise RuntimeError('completion evidence unavailable')
+            final = json.loads(completed.stdout)
+            if final['status']['phase'] != 'complete' or not final['status'].get('bootEntry'):
+                raise RuntimeError('readback and UEFI completion not established')
+            (out / 'complete.json').write_text(json.dumps(final, indent=2))
         proof['checks'].append('explicit NVMe approval writes actual bytes; full readback and UEFI registration succeed; decoys untouched')
         send('2'); process.wait(timeout=90)
         if process.returncode: raise RuntimeError('displayed reboot failed')

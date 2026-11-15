@@ -53,28 +53,35 @@ jobs:
           rm .agent-output/lan-install/qualified.zip
           echo "$(jq -r .image.isoSha256 "$manifest")  "$(echo .agent-output/lan-install/iso/*.iso) | sha256sum -c -
       - name: Evaluate and build real LAN installer
+        env:
+          OPERATOR_PUBLIC_KEY: ${{ inputs.operator_public_key }}
         run: |
           set -euo pipefail
           ssh-keygen -q -t ed25519 -N '' -f .agent-output/lan-install/operator
           ssh-keygen -q -t ed25519 -N '' -f .agent-output/lan-install/unauthorized
           python3 -m unittest discover -s tests/otehon -q
           nix-instantiate --eval --strict --json --expr 'import ./tests/otehon-nbd-eval.nix { nixpkgsPath = import ./ci/nixpkgs.nix; }'
-          nix-build nixos/otehon/default.nix --argstr profile netboot-nbd-install-6600h --argstr diagnosticPublicKey "$(cat .agent-output/lan-install/operator.pub)" --out-link result-otehon-lan-install --show-trace
+          public_key=$(cat .agent-output/lan-install/operator.pub)
+          echo 'VM_SSH_ARGUMENTS=--key .agent-output/lan-install/operator' >> "$GITHUB_ENV"
+          if [ -n "$OPERATOR_PUBLIC_KEY" ]; then
+            public_key="$OPERATOR_PUBLIC_KEY"
+            echo 'VM_SSH_ARGUMENTS=' >> "$GITHUB_ENV"
+          fi
+          nix-build nixos/otehon/default.nix --argstr profile netboot-nbd-install-6600h --argstr diagnosticPublicKey "$public_key" --out-link result-otehon-lan-install --show-trace
       - name: LAN install then boot NVMe without USB or network
         env:
           OTEHON_OCR_LANG: eng+jpn
         run: |
           set -euo pipefail
-          nix-shell --expr 'let p = import (import ./ci/nixpkgs.nix) { system = "x86_64-linux"; }; in p.mkShell { packages = [ p.python3 p.qemu_test p.openssh p.netpbm (p.tesseract.override { enableLanguages = [ "eng" "jpn" ]; }) ]; OVMF_CODE = "${p.OVMF.fd}/FV/OVMF_CODE.fd"; OVMF_VARS = "${p.OVMF.fd}/FV/OVMF_VARS.fd"; }' --run 'python3 scripts/check-otehon-lan-install-vm.py --image result-otehon-lan-install --iso .agent-output/lan-install/iso/*.iso --output "$PWD/.agent-output/li/proof" --key .agent-output/lan-install/operator --bad-key .agent-output/lan-install/unauthorized --ovmf-code "$OVMF_CODE" --ovmf-vars "$OVMF_VARS" --source-revision "$GITHUB_SHA"' 2>&1 | tee .agent-output/lan-install/vm.log
-      - name: Build separately keyed physical candidate after VM success
+          nix-shell --expr 'let p = import (import ./ci/nixpkgs.nix) { system = "x86_64-linux"; }; in p.mkShell { packages = [ p.python3 p.qemu_test p.openssh p.netpbm (p.tesseract.override { enableLanguages = [ "eng" "jpn" ]; }) ]; OVMF_CODE = "${p.OVMF.fd}/FV/OVMF_CODE.fd"; OVMF_VARS = "${p.OVMF.fd}/FV/OVMF_VARS.fd"; }' --run 'python3 scripts/check-otehon-lan-install-vm.py --image result-otehon-lan-install --iso .agent-output/lan-install/iso/*.iso --output "$PWD/.agent-output/li/proof" $VM_SSH_ARGUMENTS --bad-key .agent-output/lan-install/unauthorized --ovmf-code "$OVMF_CODE" --ovmf-vars "$OVMF_VARS" --source-revision "$GITHUB_SHA"' 2>&1 | tee .agent-output/lan-install/vm.log
+      - name: Package exact VM-tested operator-keyed candidate
         if: github.event_name == 'workflow_dispatch' && inputs.operator_public_key != ''
         env:
           OPERATOR_PUBLIC_KEY: ${{ inputs.operator_public_key }}
         run: |
           set -euo pipefail
-          nix-build nixos/otehon/default.nix --argstr profile netboot-nbd-install-6600h --argstr diagnosticPublicKey "$OPERATOR_PUBLIC_KEY" --out-link result-otehon-lan-candidate --show-trace
           mkdir -p .agent-output/lan-install/candidate
-          for file in ipxe.efi kernel initrd installer-info.json; do cp -L "result-otehon-lan-candidate/$file" ".agent-output/lan-install/candidate/$file"; done
+          for file in ipxe.efi kernel initrd installer-info.json; do cp -L "result-otehon-lan-install/$file" ".agent-output/lan-install/candidate/$file"; done
           (cd .agent-output/lan-install/candidate; sha256sum ipxe.efi kernel initrd installer-info.json > SHA256SUMS)
           git rev-parse HEAD > .agent-output/lan-install/candidate/SOURCE_REVISION
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
