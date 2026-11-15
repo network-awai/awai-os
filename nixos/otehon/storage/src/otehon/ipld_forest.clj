@@ -187,8 +187,14 @@
   frame/root update. VERIFY! is a trusted synchronous closure verifier over the
   staged group's persisted CID blocks. EXPECTED-GENERATION and EXPECTED-REF
   are compared under the local writer lock. Staged files may remain orphaned
-  on failure. No external store, witness, concurrent GC or fencing is covered."
-  [directory name basis archives expected-generation ref-name expected-ref target verify!]
+  on failure. Optional NONCE names a nonce/v1/<key-cid> ref and marker CID:
+  the ref must be absent under that lock and the marker must be staged. VERIFY!
+  must validate the marker's canonical semantics and authorization context.
+  This does not itself reserve a nonce before evaluation. No external store,
+  witness, concurrent GC or fencing is covered."
+  ([directory name basis archives expected-generation ref-name expected-ref target verify!]
+   (publish-file-group-and-ref! directory name basis archives expected-generation ref-name expected-ref target verify! nil))
+  ([directory name basis archives expected-generation ref-name expected-ref target verify! nonce]
   (group-key name)
   (when-not (and (string? ref-name) (<= 1 (count ref-name) 1024)
                  (integer? expected-generation) (<= 1 expected-generation 9007199254740991)
@@ -197,6 +203,13 @@
     (fail! :invalid-ipld-forest-group "invalid grouped publication arguments"))
   (when (some? expected-ref) (cid-bytes expected-ref))
   (cid-bytes target)
+  (when (some? nonce)
+    (when-not (and (map? nonce) (= #{:ref-name :marker-cid} (set (keys nonce)))
+                   (string? (:ref-name nonce)) (str/starts-with? (:ref-name nonce) "nonce/v1/")
+                   (not= ref-name (:ref-name nonce)))
+      (fail! :invalid-nonce "invalid nonce marker reference"))
+    (cid-bytes (subs (:ref-name nonce) (count "nonce/v1/")))
+    (cid-bytes (:marker-cid nonce)))
   (let [checked (mapv (fn [{:keys [path root-cid] :as entry}]
                         (when-not (and (map? entry) (= #{:path :root-cid} (set (keys entry)))
                                        (string? path) (string? root-cid))
@@ -209,11 +222,15 @@
         group (checked-group {:format :awai.otehon-store/ipld-forest-group-v1
                               :basis-cid basis :archives (mapv :ref checked)})
         ref-key (str "awai.kotobase-ref/" ref-name)]
-    (when-not (and (group-has-cid? opened basis) (group-has-cid? opened target))
-      (fail! :invalid-ipld-basis "basis or target is absent from archive group"))
+    (when-not (and (group-has-cid? opened basis) (group-has-cid? opened target)
+                   (or (nil? nonce) (group-has-cid? opened (:marker-cid nonce))))
+      (fail! :invalid-ipld-basis "basis, target or nonce marker is absent from archive group"))
     (store/compare-and-set-values! directory expected-generation ref-key expected-ref
-      [[(group-key name) (pr-str group)] [ref-key target]]
+      (cond-> [[(group-key name) (pr-str group)] [ref-key target]]
+        nonce (conj [(str "awai.kotobase-ref/" (:ref-name nonce)) (:marker-cid nonce)]))
       (fn [dir state]
+        (when (and nonce (contains? state (str "awai.kotobase-ref/" (:ref-name nonce))))
+          (fail! :nonce-replayed "nonce reference already exists"))
         (when-let [existing (get state (group-key name))]
           (when-not (= existing (pr-str group))
             (fail! :group-conflict "existing group cannot be replaced")))
@@ -223,7 +240,7 @@
                                :forest (verified-file (store/forest-file-path dir (:archive-sha ref)) ref)}) checked)
               get-candidate (fn [cid] (some #(get-block % cid) handles))]
           (when-not (true? (verify! get-candidate target))
-            (fail! :closure-rejected "candidate closure verifier refused")))))))
+            (fail! :closure-rejected "candidate closure verifier refused"))))))))
 
 (defn publish-group!
   "Publish an ordered, bounded set of generic Forest archives under one WAL

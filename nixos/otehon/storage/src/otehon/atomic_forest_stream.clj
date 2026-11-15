@@ -39,7 +39,9 @@
   archives and 32 blocks / 17 MiB per archive. Staging files remain on failure.
   This is local, not witnessed; no concurrent GC, fencing or external-store
   atomicity is provided. The caller must check the full semantic closure."
-  [directory staging tool ref-name expected get-existing! build! verify!]
+  ([directory staging tool ref-name expected get-existing! build! verify!]
+   (publish! directory staging tool ref-name expected get-existing! build! verify! nil))
+  ([directory staging tool ref-name expected get-existing! build! verify! nonce]
   (when-not (and (every? string? [directory staging tool ref-name]) (seq ref-name)
                  (or (nil? expected) (string? expected))
                  (fn? get-existing!) (fn? build!) (fn? verify!))
@@ -127,7 +129,7 @@
                           (mapv #(select-keys % [:path :root-cid]) archives) (:generation root)
                           ref-name expected (:target result)
                           (fn [candidate cid]
-                            (verify! (fn [requested] (or (candidate requested) (get-checked-existing requested))) cid)))]
+                            (verify! (fn [requested] (or (candidate requested) (get-checked-existing requested))) cid)) nonce)]
                 (when-not (:published? ack) (fail! :stale-ref "ref changed before publication"))
                 (:value result))))
-          (finally (swap! state assoc :phase :closed :pending [] :pending-bytes 0)))))))
+          (finally (swap! state assoc :phase :closed :pending [] :pending-bytes 0))))))))

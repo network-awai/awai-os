@@ -313,14 +313,18 @@
   BUILD! receives provisional put/get ports and returns {:target CID :value x}.
   VERIFY! must verify the complete closure before publication. Existing blocks
   come from this local store; concurrent GC, external-store atomicity, witness,
-  distributed fencing and host authority are outside this operation."
-  [dir staging-root tool ref-name expected build! verify!]
+  distributed fencing and host authority are outside this operation. Optional
+  NONCE binds an absent nonce ref and staged marker to the same WAL frame;
+  VERIFY! must authenticate its semantics. This is not pre-evaluation admission."
+  ([dir staging-root tool ref-name expected build! verify!]
+   (publish-atomic-stream-ports! dir staging-root tool ref-name expected build! verify! nil))
+  ([dir staging-root tool ref-name expected build! verify! nonce]
   (when-not (and (string? ref-name) (seq ref-name) (fn? build!) (fn? verify!))
     (fail! :invalid-atomic-publication "invalid streamed publication options"))
   (when (some? expected) (validate-cids! [expected]))
   (let [base (open-block-store dir staging-root tool)]
     (atomic-stream/publish! dir (stage-path staging-root) tool ref-name expected
-      #(contract/get-block base %) build! verify!)))
+      #(contract/get-block base %) build! verify! nonce))))
 
 (defn atomic-stream-receipt-publication-adapter
   "Receipt callback adapter over one bounded, file-staged group/ref commit.

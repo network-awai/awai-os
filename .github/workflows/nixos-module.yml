@@ -41,6 +41,9 @@ jobs:
           "$bb_path/bin/bb" -Xmx512M --classpath "$classpath" nixos/otehon/storage/test/otehon/atomic_receipt_ports_proof.clj read "$RUNNER_TEMP/atomic-receipt-ports" /nonexistent/forest-tool
           "$bb_path/bin/bb" -Xmx768M --classpath "$classpath" nixos/otehon/storage/test/otehon/atomic_stream_proof.clj write "$RUNNER_TEMP/atomic-stream-proof" "$tool"
           "$bb_path/bin/bb" -Xmx768M --classpath "$classpath" nixos/otehon/storage/test/otehon/atomic_stream_proof.clj read "$RUNNER_TEMP/atomic-stream-proof" /nonexistent/forest-tool
+          "$bb_path/bin/bb" -Xmx768M --classpath "$classpath" nixos/otehon/storage/test/otehon/atomic_nonce_group_proof.clj write "$RUNNER_TEMP/atomic-nonce-group-proof" "$tool"
+          "$bb_path/bin/bb" -Xmx768M --classpath "$classpath" nixos/otehon/storage/test/otehon/atomic_nonce_group_proof.clj read "$RUNNER_TEMP/atomic-nonce-group-proof" /nonexistent/forest-tool
+          "$bb_path/bin/bb" -Xmx768M --classpath "$classpath" nixos/otehon/storage/test/otehon/atomic_nonce_race_proof.clj "$RUNNER_TEMP/atomic-nonce-race-proof" "$tool"
           "$bb_path/bin/bb" -Xmx512M --classpath "$classpath" nixos/otehon/storage/test/otehon/generic_stream_mib_proof.clj write "$RUNNER_TEMP/generic-stream-mib" "$tool"
           "$bb_path/bin/bb" -Xmx512M --classpath "$classpath" nixos/otehon/storage/test/otehon/generic_stream_mib_proof.clj read "$RUNNER_TEMP/generic-stream-mib" /nonexistent/forest-tool
           proof=nixos/otehon/storage/test/otehon/forest_large_proof.clj
