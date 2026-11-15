@@ -15,6 +15,11 @@ let
         assert target['exclusiveReadOnlyOpen']['errno'] == errno.EBUSY
         assert any(r['namespace'] != os.readlink('/proc/self/ns/mnt') for r in target['mountNamespaceReferences'])
         assert any(r['unit'] == 'usage-fd-fixture.service' for r in target['openFdReferences'])
+    elif sys.argv[1] == 'loop':
+        assert target['exclusiveReadOnlyOpen']['errno'] == errno.EBUSY
+        assert target['loopReferences'], 'kernel loop backing reference must survive an orphaned mount'
+        assert not target['mountNamespaceReferences']
+        assert not target['openFdReferences']
     else:
         assert target['exclusiveReadOnlyOpen']['opened']
         assert not target['mountNamespaceReferences']
@@ -36,7 +41,8 @@ in pkgs.testers.runNixOSTest {
     };
     systemd.services.usage-fd-fixture = {
       script = ''
-        exec ${pkgs.python3}/bin/python3 -c 'import os,time; fd=os.open("/dev/vdb",os.O_RDONLY); open("/run/usage-fd-ready","w").close(); time.sleep(600)'
+        cp -a /dev/vdb /run/usage-alias
+        exec ${pkgs.python3}/bin/python3 -c 'import os,time; fd=os.open("/run/usage-alias",os.O_RDONLY); open("/run/usage-fd-ready","w").close(); time.sleep(600)'
       '';
     };
   };
@@ -48,6 +54,10 @@ in pkgs.testers.runNixOSTest {
     machine.wait_until_succeeds("test -f /run/usage-mount-ready -a -f /run/usage-fd-ready")
     machine.succeed("${pkgs.python3}/bin/python3 ${check} held")
     machine.succeed("systemctl stop usage-mount-fixture usage-fd-fixture")
+    machine.succeed("${pkgs.python3}/bin/python3 ${check} released")
+    machine.succeed("mount /dev/vdb /mnt/usage-fixture; truncate -s 8M /mnt/usage-fixture/backing; losetup --find --show /mnt/usage-fixture/backing > /run/usage-loop; umount -l /mnt/usage-fixture")
+    machine.succeed("${pkgs.python3}/bin/python3 ${check} loop")
+    machine.succeed("losetup -d $(cat /run/usage-loop)")
     machine.succeed("${pkgs.python3}/bin/python3 ${check} released")
     machine.succeed("sha256sum -c /run/usage-before")
   '';

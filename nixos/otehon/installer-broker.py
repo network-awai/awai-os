@@ -103,23 +103,28 @@ def admit(rows, ident, raw_bytes):
     return row
 
 
-def device_usage(rows, proc_root=Path('/proc'), sys_root=Path('/sys/class/block'), budget=3.0, max_pids=2048, max_fds=256):
+def device_usage(rows, proc_root=Path('/proc'), sys_root=Path('/sys/class/block'), budget=3.0, max_pids=2048, max_fds=1024):
     """Bounded metadata and O_RDONLY probes; never read payloads or write disks."""
     deadline = time.monotonic() + budget
     result = {'available': True, 'readOnly': True, 'truncated': len(rows) > 8,
-              'processesScanned': 0, 'namespaceViewsScanned': 0, 'errors': 0, 'devices': []}
+              'processesScanned': 0, 'namespaceViewsScanned': 0, 'errors': 0, 'devices': [], 'truncationReasons': [],
+              'kernelConsumers': {name: (sys_root.parent.parent / 'module' / name).is_dir() for name in ('zfs', 'btrfs', 'dm_mod', 'md_mod', 'loop')}}
+    def truncated(reason):
+        result['truncated'] = True
+        if reason not in result['truncationReasons']: result['truncationReasons'].append(reason)
     owners = {}; paths = {}; seen_mounts = set(); seen_views = set()
     def small(path, limit):
         with path.open('rb') as stream: data = stream.read(limit + 1)
-        if len(data) > limit: result['truncated'] = True
+        if len(data) > limit: truncated('metadata-size')
         return data[:limit].decode('utf-8', 'replace')
     def entries(path, maximum):
         with os.scandir(path) as scan: found = list(itertools.islice(scan, maximum + 1))
-        if len(found) > maximum: result['truncated'] = True
+        if len(found) > maximum: truncated('directory-entry-count')
         return [Path(entry.path) for entry in found[:maximum]]
     for row in rows[:8]:
         item = {'id': row['id'], 'path': row['path'], 'majorMinor': row['majorMinor'],
-                'fileSystem': row.get('fileSystem', ''), 'holders': [], 'mountNamespaceReferences': [], 'openFdReferences': []}
+                'fileSystem': row.get('fileSystem', ''), 'holders': [], 'mountNamespaceReferences': [], 'openFdReferences': [],
+                'swapReferences': [], 'loopReferences': [], 'multiDeviceFileSystems': []}
         result['devices'].append(item)
         owners[row['majorMinor']] = item; paths[row['path']] = item
         node = sys_root / Path(row['path']).name
@@ -130,11 +135,51 @@ def device_usage(rows, proc_root=Path('/proc'), sys_root=Path('/sys/class/block'
                     owners[small(child / 'dev', 64).strip()] = item
                     paths['/dev/' + child.name] = item
         except OSError: result['errors'] += 1
+    def match_device(path):
+        if str(path) in paths: return paths[str(path)]
+        try:
+            info = os.stat(path)
+            number = info.st_rdev if stat.S_ISBLK(info.st_mode) else info.st_dev
+            return owners.get(str(os.major(number)) + ':' + str(os.minor(number)))
+        except OSError: return None
+    try:
+        for line in small(proc_root / 'swaps', 65536).splitlines()[1:]:
+            fields = line.split()
+            if not fields: continue
+            item = match_device(fields[0])
+            if item is not None: item['swapReferences'].append({'type': fields[1] if len(fields)>1 else 'unknown'})
+    except OSError: pass
+    try:
+        for node in entries(sys_root, 256):
+            if not re.fullmatch(r'loop[0-9]+', node.name): continue
+            fd = None
+            try:
+                fd = os.open('/dev/' + node.name, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+                # LOOP_GET_STATUS64 exposes the backing device even when its
+                # mount namespace has no surviving process. Discard filenames.
+                info = fcntl.ioctl(fd, 0x4C05, bytes(232))
+                number = struct.unpack_from('=Q', info)[0]
+                major = (number >> 8) & 0xfff
+                minor = (number & 0xff) | ((number >> 12) & 0xfff00)
+                item = owners.get(str(major) + ':' + str(minor))
+                if item is not None: item['loopReferences'].append({'device': node.name})
+            except OSError: pass
+            finally:
+                if fd is not None: os.close(fd)
+        btrfs_root = sys_root.parent.parent / 'fs/btrfs'
+        if btrfs_root.is_dir():
+            for fs in entries(btrfs_root, 64):
+                if not (fs / 'devices').is_dir(): continue
+                for device in entries(fs / 'devices', 64):
+                    try: item = owners.get(small(device / 'dev', 64).strip())
+                    except OSError: continue
+                    if item is not None: item['multiDeviceFileSystems'].append({'type': 'btrfs'})
+    except OSError: result['errors'] += 1
     try: processes = (p for p in entries(proc_root, max_pids + 64) if p.name.isdecimal())
     except OSError: result['available'] = False; return result
     for proc in processes:
         if result['processesScanned'] >= max_pids or time.monotonic() >= deadline:
-            result['truncated'] = True; break
+            truncated('process-or-time-budget'); break
         result['processesScanned'] += 1
         try:
             comm = ''.join(c if c.isprintable() else '?' for c in small(proc / 'comm', 128).strip())[:32]
@@ -148,8 +193,9 @@ def device_usage(rows, proc_root=Path('/proc'), sys_root=Path('/sys/class/block'
             for line in small(proc / 'mountinfo', 65536).splitlines():
                 fields = line.split(); split = fields.index('-')
                 if len(fields) < split + 3: continue
-                if fields[2] not in owners: continue
-                item = owners[fields[2]]; mounts[fields[0]] = item
+                item = owners.get(fields[2]) or (match_device(fields[split + 2]) if fields[split + 2].startswith('/dev/') else None)
+                if item is None: continue
+                mounts[fields[0]] = item
                 key = (namespace, fields[0], fields[2])
                 if key not in seen_mounts and len(item['mountNamespaceReferences']) < 64:
                     item['mountNamespaceReferences'].append({'namespace': namespace, 'representativePid': int(proc.name),
@@ -159,21 +205,21 @@ def device_usage(rows, proc_root=Path('/proc'), sys_root=Path('/sys/class/block'
             fds = (p for p in entries(proc / 'fd', max_fds) if p.name.isdecimal())
             for index, fd in enumerate(fds):
                 if index >= max_fds or time.monotonic() >= deadline:
-                    result['truncated'] = True; break
+                    truncated('fd-or-time-budget'); break
                 try:
                     link = os.readlink(fd)
                     info = dict(line.split(':', 1) for line in small(proc / 'fdinfo' / fd.name, 4096).splitlines() if ':' in line)
-                    item = paths.get(link) or mounts.get(info.get('mnt_id', '').strip())
+                    item = paths.get(link) or mounts.get(info.get('mnt_id', '').strip()) or match_device(fd)
                     if item is not None:
-                        if len(item['openFdReferences']) >= 128: result['truncated'] = True; continue
+                        if len(item['openFdReferences']) >= 128: truncated('fd-output-count'); continue
                         item['openFdReferences'].append({'pid': int(proc.name), 'comm': comm, 'fd': int(fd.name),
                             'unit': unit, 'flags': info.get('flags', '').strip()[:16],
-                            'reference': 'block-device-path' if link in paths else 'file-on-device-mount'})
+                            'reference': 'block-device-path' if link in paths else 'device-id-or-mount'})
                 except OSError: result['errors'] += 1
         except (OSError, ValueError): result['errors'] += 1
     for item in result['devices']:
         if time.monotonic() >= deadline:
-            result['truncated'] = True; item['exclusiveReadOnlyOpen'] = {'available': False}; continue
+            truncated('probe-time-budget'); item['exclusiveReadOnlyOpen'] = {'available': False}; continue
         fd = None
         try:
             fd = os.open(item['path'], os.O_RDONLY | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC)

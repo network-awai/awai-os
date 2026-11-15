@@ -86,3 +86,28 @@ class Usage(unittest.TestCase):
    broker.state['phase']='write'
    with patch.object(b,'inventory') as inv:
     self.assertEqual(broker.dispatch('INSPECT',[])['reason'],'install-in-progress');inv.assert_not_called()
+
+ def test_anonymous_filesystem_source_and_swap_match_without_paths(self):
+  with tempfile.TemporaryDirectory() as temp:
+   proc,sys,rows=self.fixture(Path(temp))
+   for pid in ('10','20'):
+    (proc/pid/'mountinfo').write_text('7 1 0:33 / /private-fixture rw - btrfs /dev/nvme0n1 rw\n')
+   (proc/'swaps').write_text('Filename Type Size Used Priority\n/dev/nvme0n1 partition 1 0 -2\n')
+   with patch.object(b.os,'open',side_effect=OSError(errno.EBUSY,'busy')):
+    result=b.device_usage(rows,proc,sys)
+   target=result['devices'][0]
+   self.assertEqual(target['mountNamespaceReferences'][0]['fsType'],'btrfs')
+   self.assertEqual(target['swapReferences'],[{'type':'partition'}])
+   self.assertNotIn('private-fixture',json.dumps(result))
+ def test_loop_backing_device_ioctl_without_disclosing_filename(self):
+  with tempfile.TemporaryDirectory() as temp:
+   proc,sys,rows=self.fixture(Path(temp));(sys/'loop7').mkdir()
+   payload=b.struct.pack('=Q',66304)+bytes(224)
+   def opening(path,flags):
+    self.assertEqual(flags & os.O_ACCMODE,os.O_RDONLY)
+    if path=='/dev/loop7':return 77
+    raise OSError(errno.EBUSY,'busy')
+   with patch.object(b.os,'open',side_effect=opening),patch.object(b.os,'close') as closing,patch.object(b.fcntl,'ioctl',return_value=payload) as ioctl:
+    result=b.device_usage(rows,proc,sys)
+   self.assertEqual(result['devices'][0]['loopReferences'],[{'device':'loop7'}])
+   ioctl.assert_called_once_with(77,0x4C05,bytes(232));closing.assert_called_once_with(77)
