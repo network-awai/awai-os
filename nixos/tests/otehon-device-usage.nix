@@ -29,6 +29,7 @@ in pkgs.testers.runNixOSTest {
   name = "otehon-read-only-device-usage";
   nodes.machine = { ... }: {
     virtualisation = { memorySize = 1024; emptyDiskImages = [ 64 64 ]; };
+    boot.kernelModules = [ "loop" ];
     environment.systemPackages = [ pkgs.python3 pkgs.util-linux pkgs.e2fsprogs ];
     systemd.services.usage-mount-fixture = {
       path = [ pkgs.coreutils pkgs.util-linux ];
@@ -56,6 +57,10 @@ in pkgs.testers.runNixOSTest {
     machine.succeed("systemctl stop usage-mount-fixture usage-fd-fixture")
     machine.succeed("${pkgs.python3}/bin/python3 ${check} released")
     machine.succeed("mount /dev/vdb /mnt/usage-fixture; truncate -s 8M /mnt/usage-fixture/backing; losetup --find --show /mnt/usage-fixture/backing > /run/usage-loop; umount -l /mnt/usage-fixture")
+    machine.succeed("${pkgs.python3}/bin/python3 ${check} loop")
+    machine.succeed("losetup -d $(cat /run/usage-loop)")
+    machine.succeed("${pkgs.python3}/bin/python3 ${check} released")
+    machine.succeed("losetup --find --show /dev/vdb > /run/usage-loop")
     machine.succeed("${pkgs.python3}/bin/python3 ${check} loop")
     machine.succeed("losetup -d $(cat /run/usage-loop)")
     machine.succeed("${pkgs.python3}/bin/python3 ${check} released")

@@ -102,7 +102,7 @@ class Usage(unittest.TestCase):
  def test_loop_backing_device_ioctl_without_disclosing_filename(self):
   with tempfile.TemporaryDirectory() as temp:
    proc,sys,rows=self.fixture(Path(temp));(sys/'loop7').mkdir()
-   payload=b.struct.pack('=Q',66304)+bytes(224)
+   payload=b.struct.pack('=QQQ',5,0,66304)+bytes(208)
    def opening(path,flags):
     self.assertEqual(flags & os.O_ACCMODE,os.O_RDONLY)
     if path=='/dev/loop7':return 77

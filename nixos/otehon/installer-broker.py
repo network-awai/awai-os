@@ -158,11 +158,17 @@ def device_usage(rows, proc_root=Path('/proc'), sys_root=Path('/sys/class/block'
                 # LOOP_GET_STATUS64 exposes the backing device even when its
                 # mount namespace has no surviving process. Discard filenames.
                 info = fcntl.ioctl(fd, 0x4C05, bytes(232))
-                number = struct.unpack_from('=Q', info)[0]
-                major = (number >> 8) & 0xfff
-                minor = (number & 0xff) | ((number >> 12) & 0xfff00)
-                item = owners.get(str(major) + ':' + str(minor))
-                if item is not None: item['loopReferences'].append({'device': node.name})
+                matched = set()
+                # lo_device identifies a backing file's filesystem; lo_rdevice
+                # identifies a raw block-device backing file instead.
+                for offset in (0, 16):
+                    number = struct.unpack_from('=Q', info, offset)[0]
+                    major = (number >> 8) & 0xfff
+                    minor = (number & 0xff) | ((number >> 12) & 0xfff00)
+                    item = owners.get(str(major) + ':' + str(minor))
+                    if item is not None and item['id'] not in matched:
+                        item['loopReferences'].append({'device': node.name})
+                        matched.add(item['id'])
             except OSError: pass
             finally:
                 if fd is not None: os.close(fd)
