@@ -29,6 +29,12 @@
       (loop [] (let [n (.read in buf)]
                  (when (pos? n) (.update md buf 0 n) (recur)))))
     (car/hex-encode (mapv #(bit-and 255 %) (.digest md)))))
+(defn verify-pinned-tool!
+  "Refuse a Forest tool whose bytes do not match the pinned release."
+  [path]
+  (when-not (contains? tool-digests (file-digest path))
+    (fail! :untrusted-forest-tool "Forest tool does not match a pinned digest"))
+  true)
 (defn- write-new! [path data]
   (Files/write (Paths/get path (make-array String 0)) data
                (into-array OpenOption [StandardOpenOption/CREATE_NEW StandardOpenOption/WRITE])))

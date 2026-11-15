@@ -3,7 +3,8 @@
   (:require [clojure.string :as str] [kotobase.storage.core :as contract]
             [otehon.storage :as store] [otehon.ipld-forest :as catalog]
             [otehon.forest-writer :as writer] [otehon.kotobase-ref :as refs]
-            [otehon.root-witness :as witness] [otehon.pack-store :as pack])
+            [otehon.root-witness :as witness] [otehon.pack-store :as pack]
+            [otehon.atomic-forest-stream :as atomic-stream])
   (:import [java.nio.file Files Paths LinkOption] [java.nio.file.attribute FileAttribute PosixFilePermissions]
            [java.security MessageDigest] [java.util Arrays HexFormat]))
 
@@ -305,6 +306,25 @@
                (publish-atomic-ports! dir staging-root tool ref-name expected
                  (fn [ports] (let [cid (build! ports receipt prepared)] {:target cid :value cid}))
                  (fn [get-block cid] (verify! get-block cid receipt prepared))))
+   :read-ref! (fn [] (:cid (contract/-read-ref (refs/open-ref-store dir) ref-name)))})
+
+(defn atomic-stream-receipt-publication-adapter
+  "Receipt callback adapter over one bounded, file-staged group/ref commit.
+  The host must authenticate and verify the closure and exclude concurrent GC.
+  This path is not witnessed or a transaction across independent stores."
+  [dir staging-root tool ref-name expected build! verify!]
+  (when-not (and (string? ref-name) (seq ref-name) (fn? build!) (fn? verify!))
+    (fail! :invalid-receipt-publication "invalid publication adapter options"))
+  (when (some? expected) (validate-cids! [expected]))
+  {:publish! (fn [{:keys [receipt prepared] :as input}]
+               (when-not (and (map? input) (= #{:receipt :prepared} (set (keys input)))
+                              (map? receipt) (map? prepared))
+                 (fail! :invalid-receipt-publication "invalid prepared receipt input"))
+               (let [base (open-block-store dir staging-root tool)]
+                 (atomic-stream/publish! dir (stage-path staging-root) tool ref-name expected
+                   #(contract/get-block base %)
+                   (fn [ports] (let [cid (build! ports receipt prepared)] {:target cid :value cid}))
+                   (fn [get-block cid] (verify! get-block cid receipt prepared)))))
    :read-ref! (fn [] (:cid (contract/-read-ref (refs/open-ref-store dir) ref-name)))})
 
 (defn open-transaction
