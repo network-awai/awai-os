@@ -4,6 +4,7 @@ on:
     paths:
       - nixos/otehon/drive.nix
       - nixos/otehon/drive/**
+      - nixos/otehon/disk-6600h.nix
       - .github/workflows/otehon-drive.yml
   workflow_dispatch:
 permissions:

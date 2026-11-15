@@ -33,11 +33,16 @@ def prepare(config):
     state, mount = Path(config['state']), Path(config['mount'])
     user = pwd.getpwnam(config['user'])
     source = subprocess.check_output(
-        ['findmnt', '-n', '-o', 'MAJ:MIN', '--target', str(state.parent)], text=True).strip()
+        ['findmnt', '-n', '-o', 'MAJ:MIN', '--target', user.pw_dir], text=True).strip()
     encrypted = subprocess.check_output(
         ['lsblk', '-ndo', 'MAJ:MIN', '/dev/mapper/otehon-state'], text=True).strip()
     if not encrypted or source != encrypted:
         raise RuntimeError('Drive requires the unlocked Otehon encrypted state')
+    # The encrypted volume's root stays root-only. Access through its existing
+    # per-user home bind, rather than relaxing /var/lib/otehon permissions.
+    for parent in reversed(list(state.parents)):
+        if parent != Path(user.pw_dir) and Path(user.pw_dir) in parent.parents:
+            directory(parent, user.pw_uid, user.pw_gid)
     directory(state, user.pw_uid, user.pw_gid)
     directory(state / 'cache', user.pw_uid, user.pw_gid)
     if mount.is_symlink() or (mount.exists() and any(mount.iterdir())):
@@ -57,6 +62,11 @@ def prepare(config):
         dirs = config_dir / 'user-dirs.dirs'
         if not dirs.exists() and not dirs.is_symlink():
             create_private(dirs, 'XDG_DOCUMENTS_DIR=' + json.dumps(str(mount)) + '\n', user.pw_uid, user.pw_gid)
+        gtk = config_dir / 'gtk-3.0'
+        directory(gtk, user.pw_uid, user.pw_gid)
+        bookmarks = gtk / 'bookmarks'
+        if not bookmarks.exists() and not bookmarks.is_symlink():
+            create_private(bookmarks, mount.as_uri() + ' Awai Drive\n', user.pw_uid, user.pw_gid)
 
 
 if __name__ == '__main__':

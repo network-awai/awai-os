@@ -28,6 +28,7 @@ in pkgs.testers.runNixOSTest {
         if ! blkid /dev/mapper/otehon-state; then mkfs.ext4 -q /dev/mapper/otehon-state; fi
         mkdir -p /var/lib/otehon
         mount /dev/mapper/otehon-state /var/lib/otehon
+        chmod 700 /var/lib/otehon
         install -d -m 700 -o otehon -g users /var/lib/otehon/home /home/otehon
         mount --bind /var/lib/otehon/home /home/otehon
       '';
@@ -45,10 +46,10 @@ in pkgs.testers.runNixOSTest {
     expected = machine.succeed("runuser -u otehon -- sha256sum /home/otehon/Awai/saved.bin").split()[0]
     machine.succeed("runuser -u otehon -- mv /home/otehon/Awai/saved.bin /home/otehon/Awai/renamed.bin")
     machine.succeed("runuser -u otehon -- drive-probe verify /home/otehon/Awai/renamed.bin")
-    machine.succeed("test $(stat -c %a /var/lib/otehon/drive/credentials) = 600")
+    machine.succeed("test $(stat -c %a /home/otehon/.local/state/awai-drive/credentials) = 600")
     # All bytes have explicit backend readback before treating this VM cache as clean.
     machine.succeed("systemctl stop otehon-drive-mount.service otehon-drive-volume.service")
-    machine.succeed("mv /var/lib/otehon/drive/cache /var/lib/otehon/drive/cache-before-reboot; install -d -m 700 -o otehon -g users /var/lib/otehon/drive/cache")
+    machine.succeed("mv /home/otehon/.local/state/awai-drive/cache /home/otehon/.local/state/awai-drive/cache-before-reboot; install -d -m 700 -o otehon -g users /home/otehon/.local/state/awai-drive/cache")
     boot_id = machine.succeed("cat /proc/sys/kernel/random/boot_id").strip()
     machine.shutdown()
     machine.start()
@@ -60,11 +61,12 @@ in pkgs.testers.runNixOSTest {
     machine.succeed("runuser -u otehon -- test ! -e /home/otehon/Awai/saved.bin")
     # Missing/altered committed Pack must refuse startup rather than initialize or roll back.
     machine.succeed("systemctl stop otehon-drive-mount.service otehon-drive-volume.service")
-    management = "find /var/lib/otehon/drive/volume -type f ! -path '*/packs/*' -exec sha256sum {} + | sort | sha256sum"
+    management = "find /home/otehon/.local/state/awai-drive/volume -type f ! -path '*/packs/*' -exec sha256sum {} + | sort | sha256sum"
     before = machine.succeed(management)
-    machine.succeed("f=$(find /var/lib/otehon/drive/volume/packs -name '*.car' -print -quit); test -n \"$f\"; printf x >> \"$f\"")
+    machine.succeed("f=$(find /home/otehon/.local/state/awai-drive/volume/packs -name '*.car' -print -quit); test -n \"$f\"; printf x >> \"$f\"")
     machine.execute("systemctl start otehon-drive-volume.service")
-    machine.wait_until_succeeds("! systemctl is-active --quiet otehon-drive-volume.service")
+    machine.wait_until_succeeds("journalctl -u otehon-drive-volume.service --no-pager | grep -q 'committed Pack'")
+    machine.fail("curl --fail --max-time 2 http://127.0.0.1:8588/")
     machine.fail("runuser -u otehon -- awai-drive")
     assert machine.succeed(management) == before
     print("AWAI-2930 DRIVE SAVE/RENAME/GUEST-REBOOT/EMPTY-VFS-CACHE/CORRUPTION-REFUSAL PASS; LOCAL ENCRYPTED STATE ONLY")

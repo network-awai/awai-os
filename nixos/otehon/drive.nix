@@ -3,7 +3,7 @@ let
   cfg = config.otehon.drive;
   volume = import ./drive/package.nix { inherit pkgs; };
   home = config.users.users.${cfg.user}.home;
-  state = "/var/lib/otehon/drive";
+  state = "${home}/.local/state/awai-drive";
   mount = "${home}/Awai";
   settings = pkgs.writeText "otehon-drive-settings.json" (builtins.toJSON {
     inherit state mount; inherit (cfg) user; defaultSave = cfg.defaultSave;
@@ -47,6 +47,9 @@ in {
       path = [ pkgs.util-linux pkgs.coreutils ];
       serviceConfig = { Type = "oneshot"; RemainAfterExit = true; ExecStart = prepare; UMask = "0077"; };
     };
+    systemd.services.greetd = lib.mkIf config.services.greetd.enable {
+      after = [ "otehon-drive-prepare.service" ];
+    };
     systemd.services.otehon-drive-volume = {
       description = "AwaiFS single-writer local volume";
       wantedBy = [ "multi-user.target" ];
@@ -58,13 +61,14 @@ in {
         ExecStartPre = pkgs.writeShellScript "otehon-drive-init" ''
           if [ ! -e ${state}/volume ]; then
             ${volume}/bin/awai-otehon-volume init ${state}/volume
+            ${volume}/bin/awai-otehon-volume put ${state}/volume "Awai Drive について.txt" ${./drive/welcome.txt}
           fi
           ${volume}/bin/awai-otehon-volume inspect ${state}/volume >/dev/null
         '';
         ExecStart = "${volume}/bin/awai-otehon-volume serve ${state}/volume ${toString cfg.port}";
         Restart = "on-failure"; RestartSec = 2;
         NoNewPrivileges = true; PrivateTmp = true; ProtectSystem = "strict";
-        ReadWritePaths = [ state ]; ProtectHome = true;
+        ReadWritePaths = [ state ]; ProtectHome = "read-only";
       };
     };
     systemd.services.otehon-drive-mount = {

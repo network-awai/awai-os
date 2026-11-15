@@ -9,7 +9,7 @@ import urllib.request
 
 
 def backend(name):
-    credentials = Path('/var/lib/otehon/drive/credentials').read_text().splitlines()
+    credentials = (Path.home() / '.local/state/awai-drive/credentials').read_text().splitlines()
     token = next(line.split('=', 1)[1] for line in credentials if line.startswith('AWAI_VOL_TOKEN='))
     request = urllib.request.Request('http://127.0.0.1:8588/' + urllib.parse.quote(name, safe=''),
                                      headers={'Authorization': 'Bearer ' + token})

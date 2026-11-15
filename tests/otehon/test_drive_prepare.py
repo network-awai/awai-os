@@ -17,7 +17,7 @@ class Prepare(unittest.TestCase):
         home = root / 'home'
         home.mkdir(exist_ok=True)
         user = SimpleNamespace(pw_uid=os.getuid(), pw_gid=os.getgid(), pw_dir=str(home))
-        config = {'state': str(root / 'drive'), 'mount': str(home / 'Awai'),
+        config = {'state': str(root / 'home/.local/state/awai-drive'), 'mount': str(home / 'Awai'),
                   'user': 'fixture', 'defaultSave': True}
         with patch.object(p.pwd, 'getpwnam', return_value=user), \
              patch.object(p.subprocess, 'check_output', side_effect=['253:0\n', '253:0\n' if encrypted else '253:1\n']):
@@ -28,18 +28,19 @@ class Prepare(unittest.TestCase):
             root = Path(tmp)
             with self.assertRaises(RuntimeError):
                 self.run_prepare(root, encrypted=False)
-            self.assertFalse((root / 'drive').exists())
+            self.assertFalse((root / 'home/.local/state/awai-drive').exists())
 
     def test_fresh_defaults_private_credentials_and_existing_preferences_preserved(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             self.run_prepare(root)
-            credentials = root / 'drive/credentials'
+            credentials = root / 'home/.local/state/awai-drive/credentials'
             old = credentials.read_bytes()
             self.assertEqual(credentials.stat().st_mode & 0o777, 0o600)
             self.assertIn(b'RCLONE_WEBDAV_BEARER_TOKEN=', old)
             dirs = root / 'home/.config/user-dirs.dirs'
             self.assertIn(str(root / 'home/Awai'), dirs.read_text())
+            self.assertIn('Awai Drive', (root / 'home/.config/gtk-3.0/bookmarks').read_text())
             dirs.write_text('XDG_DOCUMENTS_DIR="$HOME/original"\n')
             self.run_prepare(root)
             self.assertEqual(credentials.read_bytes(), old)
@@ -55,7 +56,7 @@ class Prepare(unittest.TestCase):
                 self.run_prepare(root)
             self.assertEqual(keep.read_text(), 'unique WIP')
             keep.unlink()
-            (root / 'drive/credentials').symlink_to(keep)
+            (root / 'home/.local/state/awai-drive/credentials').symlink_to(keep)
             with self.assertRaises(RuntimeError):
                 self.run_prepare(root)
-            self.assertTrue((root / 'drive/credentials').is_symlink())
+            self.assertTrue((root / 'home/.local/state/awai-drive/credentials').is_symlink())
