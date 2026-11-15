@@ -38,7 +38,7 @@ let
   '';
 in {
   # Transport-independent installer services, UI, broker and payload contract.
-  imports = [ ./common.nix ./hardware-6600h.nix ];
+  imports = [ ./common.nix ./hardware-6600h.nix ./installer-nbd.nix ];
   system.image.version = version;
   users.users.root.hashedPassword = "!";
   services.openssh.enable = false;

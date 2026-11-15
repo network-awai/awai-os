@@ -50,6 +50,7 @@ jobs:
           python3 -m unittest discover -s tests/otehon -v
           nix-instantiate --eval --strict --json --expr 'import ./tests/otehon-usb-eval.nix { nixpkgsPath = import ./ci/nixpkgs.nix; }'
           nix-instantiate --eval --strict --json --expr 'import ./tests/otehon-netboot-eval.nix { nixpkgsPath = import ./ci/nixpkgs.nix; }'
+          nix-instantiate --eval --strict --json --expr 'import ./tests/otehon-nbd-eval.nix { nixpkgsPath = import ./ci/nixpkgs.nix; }'
           nix-build nixos/otehon/default.nix --argstr profile usb-install-6600h --out-link result-otehon-usb --show-trace 2>&1 | tee .agent-output/usb-build.log
           sha256sum result-otehon-usb/iso/*.iso | tee .agent-output/usb-sha256.txt
           git rev-parse HEAD > .agent-output/usb-source-revision.txt
