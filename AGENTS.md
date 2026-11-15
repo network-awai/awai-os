@@ -120,7 +120,9 @@ not an in-place update to that DID. Address reservation/stop, SMTP routing,
 decryption and send grants are separate states and acceptance claims.
 
 For AWAI-2933, the owner service enrolls its verified catalog at startup and
-resumes newly registered profiles on reconciliation. Reuse committed principal
+resumes newly registered profiles on reconciliation. Pin the approved Bot ID
+allowlist in owner configuration from the digest-verified private manifest;
+unsigned reports and request fields cannot widen it. Reuse committed principal
 IDs and the existing D7 per-profile/epoch derivation. Scope registration CAS to
 `/itonami/identity/v1/`; never reuse occurrence grants or funding keys. Keep the
 root secret and recovery credential in owner Keychain items; encrypted seed,

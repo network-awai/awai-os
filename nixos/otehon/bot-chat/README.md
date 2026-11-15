@@ -13,9 +13,13 @@ plumbing calls the CLJC host only.
 
 The digest-pinned owner config sets identityRoot, identityNamespace,
 identityCustody: {type: "macos-keychain"}, identityEtcdConfig, and
-identityAutoEnroll: true. Only verified catalog profiles are accepted by the
-HTTP host. Startup enrolls that catalog in bounded batches; reconciliation
-resumes interrupted enrollment and newly registered profiles. Stable principal
+identityAutoEnroll: true, and an explicit identityAllowedBots list compiled from
+the owner's digest-pinned profile manifest. Only these approved catalog profiles
+are accepted by the HTTP host. Startup enrolls that catalog in bounded batches;
+reconciliation resumes interrupted enrollment and newly registered profiles.
+New profile IDs require an owner policy update; an unsigned public report or
+request cannot widen this enrollment allowlist. The host checks the CLJC boot
+acknowledgment schema/count before reporting enrollment completion. Stable principal
 UUIDs and existing D7 per-profile Ed25519 derivation are persisted with structured
 key-possession signatures; a DID supplied in a request cannot authorize itself.
 Registration uses authenticated three-endpoint etcd CAS in a separate

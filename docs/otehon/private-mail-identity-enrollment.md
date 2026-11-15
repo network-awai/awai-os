@@ -137,3 +137,7 @@ The complete alias intent is encrypted durably before the pending claim, whose
 event digest binds the chosen random address. Restart/reload can finish that
 same intent even when the alias append never ran; it does not depend on browser
 memory or issue a second address after an uncertain operation.
+Enrollment additionally intersects each Bot ID with the owner configuration's
+explicit approved list, compiled from its digest-pinned private profile
+manifest. A public fleet report can trigger reconciliation but cannot authorize
+another ID; a policy update is required for newly approved subjects.

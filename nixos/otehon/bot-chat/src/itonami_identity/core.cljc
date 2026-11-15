@@ -36,6 +36,9 @@
     {:binding (some-> v :messages last :text (j/parse-string true)) :store (:store v)}))
   (defn enroll! [cfg key seed bot client]
    (m/require! (m/bot? bot) "invalid-bot")
+   (m/require! (or (true? (:identityFixture cfg))
+                  (and (vector? (:identityAllowedBots cfg)) (<= (count (:identityAllowedBots cfg)) 10000)
+                       (some #{bot} (:identityAllowedBots cfg)))) "identity-enrollment-policy-required")
    (let [{:keys [binding store]} (local-binding cfg key bot)
          _ (when-not binding (m/require! (:identityAutoEnroll cfg) "identity-enrollment-policy-required"))
          id (or (:derivationId binding) (subs bot 8))

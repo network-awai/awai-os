@@ -8,7 +8,7 @@ import {presenceReporter} from './presence.mjs';
 import {peerGrant,historyGrant,peerMetadata,authorizePeer,checkPeerAdmission} from './peer.mjs';
 import {scopes,sessionRows,recordSession,validSession} from './sessions.mjs';
 // Thin HTTP/process bridge. Identity, custody, recovery and alias policy live in CLJC.
-export async function identityCall(cfg,request){return bbJSON(cfg.bb,['-m','itonami-identity.core'],{config:{identityRoot:cfg.identityRoot,identityNamespace:cfg.identityNamespace,identityCustody:cfg.identityCustody,identityEtcdConfig:cfg.identityEtcdConfig,identityAutoEnroll:cfg.identityAutoEnroll,identityFixture:cfg.identityFixture,fixtureLedgerRoot:cfg.fixtureLedgerRoot},request});}
+export async function identityCall(cfg,request){return bbJSON(cfg.bb,['-m','itonami-identity.core'],{config:{identityRoot:cfg.identityRoot,identityNamespace:cfg.identityNamespace,identityCustody:cfg.identityCustody,identityEtcdConfig:cfg.identityEtcdConfig,identityAutoEnroll:cfg.identityAutoEnroll,identityAllowedBots:cfg.identityAllowedBots,identityFixture:cfg.identityFixture,fixtureLedgerRoot:cfg.fixtureLedgerRoot},request});}
 export function handler(cfg,{db=database,execute=infer,loadBots,onProcess=()=>{},checkAdmission=checkPeerAdmission,identity=identityCall}={}){
  const active=new Set();
  return async(req,res)=>{
@@ -97,5 +97,5 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
  http.createServer(handler(cfg,{loadBots,onProcess:presence.onProcess})).listen(cfg.port,'127.0.0.1',()=>console.log('Itonami Agent conversation service ready on private loopback'));
  // Startup enrolls the verified catalog under the owner policy. Small batches bound
  // process time; ordinary bot selection also resumes an interrupted enrollment.
- if(cfg.identityAutoEnroll===true){const seen=new Set();let reconciling=false;const reconcile=async()=>{if(reconciling)return;reconciling=true;try{const pending=(await loadBots()).filter(b=>!seen.has(b.id));for(let i=0;i<pending.length;i+=5){const ids=pending.slice(i,i+5).map(b=>b.id),v=await identityCall(cfg,{action:'boot',bots:ids});if(v.error)throw Error('identity-enrollment-unconfirmed');for(const id of ids)seen.add(id);}console.log('Identity catalog enrollment readback complete: '+seen.size);}catch{console.error('Identity enrollment requires recovery or operator attention');}finally{reconciling=false;}};setInterval(reconcile,60000);void reconcile();}
+ if(cfg.identityAutoEnroll===true){const seen=new Set();let reconciling=false;const reconcile=async()=>{if(reconciling)return;reconciling=true;try{const pending=(await loadBots()).filter(b=>!seen.has(b.id));for(let i=0;i<pending.length;i+=5){const ids=pending.slice(i,i+5).map(b=>b.id),v=await identityCall(cfg,{action:'boot',bots:ids});if(v.error||v.schema!=='itonami.identity-boot.v1'||v.verified!==ids.length)throw Error('identity-enrollment-unconfirmed');for(const id of ids)seen.add(id);}console.log('Identity catalog enrollment readback complete: '+seen.size);}catch{console.error('Identity enrollment requires recovery or operator attention');}finally{reconciling=false;}};setInterval(reconcile,60000);void reconcile();}
 }

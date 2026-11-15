@@ -108,4 +108,11 @@
    (is (= 1 (count (:aliases readback))))
    (is (= "remembered-privately" (get-in readback [:aliases 0 :purpose])))
    (is (= readback (i/operation! cfg request))))))
+(deftest owner-policy-does-not-follow-caller-or-public-catalog
+ (let [cfg (config) _ (boot cfg)]
+  (c/locked cfg #(c/with-custody cfg (fn [key seed]
+   (let [client (ledger/client cfg) policy (assoc cfg :identityFixture false :identityAllowedBots [bot])]
+    (is (= bot (get-in (i/enroll! policy key seed bot client) [:binding :botId])))
+    (is (thrown-with-msg? Exception #"identity-enrollment-policy-required" (i/enroll! policy key seed "profile:injected" client)))
+    (is (thrown-with-msg? Exception #"identity-enrollment-policy-required" (i/enroll! (dissoc policy :identityAllowedBots) key seed bot client)))))))))
 (defn -main [& _] (let [r (run-tests 'itonami-identity.test)] (when (pos? (+ (:fail r) (:error r))) (System/exit 1))))
