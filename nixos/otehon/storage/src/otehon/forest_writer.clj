@@ -94,6 +94,8 @@
   ([directory name basis blocks staging tool expected-generation witness-port]
    (put-ipld-blocks! directory name basis blocks staging tool expected-generation witness-port pack/verify-supported-catalog!))
   ([directory name basis blocks staging tool expected-generation witness-port verify-root!]
+   (put-ipld-blocks! directory name basis blocks staging tool expected-generation witness-port verify-root! nil))
+  ([directory name basis blocks staging tool expected-generation witness-port verify-root! atomic-ref]
   (when-not (or (identical? unconditional expected-generation)
                 (and (integer? expected-generation) (<= 1 expected-generation 9007199254740991)))
     (fail! :invalid-generation "expected a positive bounded store generation"))
@@ -104,6 +106,13 @@
   (when-not (and (every? string? [directory name basis staging tool])
                  (vector? blocks) (<= 1 (count blocks) (* max-packs max-ipld-blocks-per-archive)))
     (fail! :invalid-argument "expected bounded blocks and string paths"))
+  (when (and atomic-ref
+             (not (and (map? atomic-ref) (= #{:name :expected :target :verify!} (set (keys atomic-ref)))
+                       (string? (:name atomic-ref)) (string? (:target atomic-ref))
+                       (or (nil? (:expected atomic-ref)) (string? (:expected atomic-ref)))
+                       (fn? (:verify! atomic-ref)) (not (identical? unconditional expected-generation))
+                       (identical? unwitnessed witness-port))))
+    (fail! :invalid-atomic-publication "invalid atomic ref publication options"))
   (when-not (contains? tool-digests (file-digest tool))
     (fail! :untrusted-forest-tool "Forest tool does not match a pinned digest"))
   ;; Check the aggregate bound before copying caller-owned arrays.
@@ -114,7 +123,7 @@
   (let [owned (mapv validate-ipld-block blocks)
         cids (mapv :cid owned)
         batches (ipld-batches owned)
-        file-backed? (boolean (some #(> (alength ^bytes (:bytes %)) max-ipld-inline-block-bytes) owned))]
+        file-backed? (boolean (or atomic-ref (some #(> (alength ^bytes (:bytes %)) max-ipld-inline-block-bytes) owned)))]
     (when-not (= (count cids) (count (set cids))) (fail! :duplicate-cid "duplicate block CID"))
     (when-not (some #{basis} cids) (fail! :invalid-ipld-basis "basis block missing from input"))
     (when (> (count batches) max-packs) (fail! :too-large "IPLD input exceeds archive count"))
@@ -162,13 +171,24 @@
                           {:root-cid root :bytes bytes}))))
                   (range) batches)
             group (cond
+                    atomic-ref (ipld/publish-file-group-and-ref! directory name basis archives expected-generation
+                                 (:name atomic-ref) (:expected atomic-ref) (:target atomic-ref) (:verify! atomic-ref))
                     (and file-backed? (not (identical? unwitnessed witness-port)))
                     (ipld/publish-file-group! directory name basis archives expected-generation witness-port verify-root!)
                     file-backed? (ipld/publish-file-group! directory name basis archives expected-generation)
                     (not (identical? unwitnessed witness-port)) (ipld/publish-group! directory name basis archives expected-generation witness-port verify-root!)
                     (identical? unconditional expected-generation) (ipld/publish-group! directory name basis archives)
                     :else (ipld/publish-group! directory name basis archives expected-generation))]
-        {:group group :archive-count (count archives) :block-count (count owned)})))))
+        (if atomic-ref
+          {:publication group :archive-count (count archives) :block-count (count owned)}
+          {:group group :archive-count (count archives) :block-count (count owned)}))))))
+
+(defn put-ipld-blocks-and-ref!
+  "Build a bounded batch and publish its group and ref in one local WAL root.
+  The trusted verifier checks the full candidate closure before publication."
+  [directory name basis blocks staging tool expected-generation ref-name expected-ref target verify!]
+  (put-ipld-blocks! directory name basis blocks staging tool expected-generation unwitnessed nil
+                    {:name ref-name :expected expected-ref :target target :verify! verify!}))
 
 (defn put-file!
   "Read a fixed-64KiB logical profile, generate bounded Forest Packs and publish

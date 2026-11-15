@@ -35,6 +35,8 @@ jobs:
           "$bb_path/bin/bb" --classpath "$classpath" nixos/otehon/storage/test/otehon/generic_large_block_proof.clj write "$RUNNER_TEMP/generic-large-block-proof" "$tool"
           "$bb_path/bin/bb" --classpath "$classpath" nixos/otehon/storage/test/otehon/generic_large_block_proof.clj read "$RUNNER_TEMP/generic-large-block-proof" /nonexistent/forest-tool
           "$bb_path/bin/bb" --classpath "$classpath" nixos/otehon/storage/test/otehon/generic_large_witness_proof.clj "$RUNNER_TEMP/generic-large-witness-proof" "$tool"
+          "$bb_path/bin/bb" -Xmx512M --classpath "$classpath" nixos/otehon/storage/test/otehon/generic_atomic_batch_proof.clj write "$RUNNER_TEMP/generic-atomic-batch" "$tool"
+          "$bb_path/bin/bb" -Xmx512M --classpath "$classpath" nixos/otehon/storage/test/otehon/generic_atomic_batch_proof.clj read "$RUNNER_TEMP/generic-atomic-batch" /nonexistent/forest-tool
           "$bb_path/bin/bb" -Xmx512M --classpath "$classpath" nixos/otehon/storage/test/otehon/generic_stream_mib_proof.clj write "$RUNNER_TEMP/generic-stream-mib" "$tool"
           "$bb_path/bin/bb" -Xmx512M --classpath "$classpath" nixos/otehon/storage/test/otehon/generic_stream_mib_proof.clj read "$RUNNER_TEMP/generic-stream-mib" /nonexistent/forest-tool
           proof=nixos/otehon/storage/test/otehon/forest_large_proof.clj

@@ -218,6 +218,24 @@
       contract/IBackendCapabilities
       (-capabilities [_] #{:immutable-blocks :cid-addressed-read :packed-blocks :range-read :batch-get}))))
 
+(defn publish-atomic-batch!
+  "Generate Forest archives and conditionally publish their catalog group and
+  ref in one local WAL/root update. VERIFY! must validate the entire required
+  closure from the candidate group's persisted CID blocks. This bounded batch
+  owns <=32 MiB; it is not streamed, witnessed or safe against concurrent GC."
+  [dir staging-root tool ref-name expected target blocks verify!]
+  (when-not (and (string? ref-name) (seq ref-name) (fn? verify!))
+    (fail! :invalid-atomic-publication "invalid atomic publication arguments"))
+  (validate-cids! (cond-> [target] expected (conj expected)))
+  (let [{:keys [unique]} (checked-blocks blocks)]
+    (when (empty? unique) (fail! :invalid-atomic-publication "empty block batch"))
+    (let [{:keys [root]} (snapshot dir)
+          result (writer/put-ipld-blocks-and-ref!
+                   dir (batch-name unique) (:cid (first unique)) unique
+                   (stage-path staging-root) tool (:generation root)
+                   ref-name expected target verify!)]
+      (:publication result))))
+
 (defn open-transaction
   "Create a bounded, synchronous write overlay for a Prolly operation.
 
