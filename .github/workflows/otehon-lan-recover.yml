@@ -1,0 +1,74 @@
+name: Recover qualified Otehon LAN artifact
+on:
+  workflow_call:
+    inputs:
+      operator_public_key:
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: 991430d9b232f68a80102a376ddfbda0efa4dcd9
+          persist-credentials: false
+      - name: Prepare ephemeral runner capacity
+        run: |
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
+      - uses: cachix/install-nix-action@b85815f71a6de0ddee80b8a80a98d43f4bcc66c7
+      - name: Retrieve immutable successful VM proof
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p .agent-output/recover/candidate
+          test "$(git rev-parse HEAD)" = 991430d9b232f68a80102a376ddfbda0efa4dcd9
+          gh api repos/network-awai/awai-os/actions/artifacts/14153175580 > .agent-output/recover/artifact.json
+          jq -e '.expired == false and .workflow_run.id == 43691471662 and .workflow_run.head_sha == "991430d9b232f68a80102a376ddfbda0efa4dcd9"' .agent-output/recover/artifact.json
+          gh api repos/network-awai/awai-os/actions/artifacts/14153175580/zip > .agent-output/recover/proof.zip
+          echo 'ee86153dbf8ba88cbef4a99b9fdab071d70020df7303cb62ca09c5188887400e  .agent-output/recover/proof.zip' | sha256sum -c -
+          unzip -j .agent-output/recover/proof.zip li/proof/proof.json -d .agent-output/recover/
+      - name: Rebuild exact qualified source with operator key
+        env:
+          OPERATOR_PUBLIC_KEY: ${{ inputs.operator_public_key }}
+        run: |
+          set -euo pipefail
+          test -n "$OPERATOR_PUBLIC_KEY"
+          nix-build nixos/otehon/default.nix --argstr profile netboot-nbd-install-6600h --argstr diagnosticPublicKey "$OPERATOR_PUBLIC_KEY" --out-link result-qualified-lan --show-trace
+          for file in ipxe.efi kernel initrd installer-info.json; do cp -L "result-qualified-lan/$file" ".agent-output/recover/candidate/$file"; done
+          git rev-parse HEAD > .agent-output/recover/candidate/SOURCE_REVISION
+          (cd .agent-output/recover/candidate; sha256sum ipxe.efi kernel initrd installer-info.json > SHA256SUMS)
+      - name: Require byte identity with passed VM artifacts
+        run: |
+          python3 - <<'PY'
+          from importlib.util import spec_from_file_location, module_from_spec
+          import json, os
+          from pathlib import Path
+          spec = spec_from_file_location('lan_http', 'scripts/otehon-lan-http.py')
+          module = module_from_spec(spec); spec.loader.exec_module(module)
+          directory = Path('.agent-output/recover/candidate')
+          proof = Path('.agent-output/recover/proof.json')
+          module.validate(directory, '991430d9b232f68a80102a376ddfbda0efa4dcd9', proof)
+          (directory / 'proof.json').write_bytes(proof.read_bytes())
+          (directory / 'RECOVERY.json').write_text(json.dumps({
+            'schema': 'awai.otehon.qualified-artifact-recovery.v1',
+            'buildSource': '991430d9b232f68a80102a376ddfbda0efa4dcd9',
+            'workflowRevision': os.environ['GITHUB_SHA'],
+            'proofArtifact': 14153175580, 'proofRun': 43691471662,
+            'recoveryRun': os.environ['GITHUB_RUN_ID'],
+            'sameSourceAndAllFourArtifactDigests': True,
+            'newVmExecution': False,
+          }, indent=2) + '\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: awai-lan-install-physical-candidate-recovered
+          path: .agent-output/recover/candidate/
+          compression-level: 0
+          include-hidden-files: true

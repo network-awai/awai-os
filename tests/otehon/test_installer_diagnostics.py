@@ -16,6 +16,31 @@ spec.loader.exec_module(d)
 
 
 class Diagnostics(unittest.TestCase):
+    def test_explicit_installer_observer_only_reads(self):
+        with tempfile.TemporaryDirectory() as temp:
+            info = Path(temp) / 'info.json'
+            info.write_text('{}')
+            with patch.dict(os.environ, {'OTEHON_INSTALLER_INFO': str(info), 'OTEHON_ALLOW_INSTALL_OBSERVATION': '1'}), \
+                 patch.object(d, 'broker', side_effect=[{'readOnly': False}, {'devices': []}, {'readOnly': True}]) as broker, \
+                 patch.object(d, 'journal', return_value={}), patch('sys.stdout', io.StringIO()):
+                self.assertEqual(d.main(), 0)
+            self.assertEqual([call.args[0] for call in broker.call_args_list], ['STATUS', 'LIST', 'INSPECT'])
+
+    def test_installer_observer_preserves_source_logs_when_broker_absent(self):
+        with tempfile.TemporaryDirectory() as temp:
+            info = Path(temp) / 'info.json'; info.write_text('{}')
+            output = io.StringIO()
+            with patch.dict(os.environ, {'OTEHON_INSTALLER_INFO': str(info), 'OTEHON_ALLOW_INSTALL_OBSERVATION': '1'}), \
+                 patch.object(d, 'broker', side_effect=FileNotFoundError), \
+                 patch.object(d, 'journal', return_value={'available': True, 'text': 'source failed'}) as journal, \
+                 patch('sys.stdout', output):
+                self.assertEqual(d.main(), 0)
+            value = json.loads(output.getvalue())
+            self.assertTrue(value['readOnly'])
+            self.assertEqual(value['error'], 'broker-unavailable')
+            self.assertFalse(value['status']['available'])
+            self.assertEqual([c.args[0] for c in journal.call_args_list], ['source', 'broker', 'kernel'])
+
     def test_actual_socket_only_asks_for_status_and_inventory(self):
         with tempfile.TemporaryDirectory() as temp:
             path = str(Path(temp) / 'control.sock')

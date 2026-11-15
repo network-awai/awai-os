@@ -55,7 +55,7 @@ class Protocol(unittest.TestCase):
     def test_admission_refuses_unsafe_targets(self):
         good={'id':'x','size':101,'ambiguous':False,'used':False,'readOnly':False,'serial':'EXACT'}
         self.assertEqual(b.admit([good],'x',100),good)
-        for mutation in [{'used':True},{'readOnly':True},{'ambiguous':True},{'size':100},{'id':'changed'}]:
+        for mutation in [{'used':True},{'loopReferences':['loop0']},{'readOnly':True},{'ambiguous':True},{'size':100},{'id':'changed'}]:
             with self.subTest(mutation=mutation), self.assertRaises(b.Refused): b.admit([{**good,**mutation}],'x',100)
         with self.assertRaises(b.Refused): b.admit([good,good],'x',100)
     def test_ticket_and_exact_approval_and_replay(self):

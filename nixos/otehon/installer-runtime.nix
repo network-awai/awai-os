@@ -7,7 +7,7 @@ let
   disk = installed.system.build.image;
   version = lib.removeSuffix "\n" (builtins.readFile ./installer-version.txt);
   buildId = builtins.hashString "sha256" (builtins.concatStringsSep "\n" (
-    (map builtins.readFile [ ./usb-install-6600h.nix ./installer-runtime.nix ./installer-console.py ./installer-broker.py ./installer-boot.py ./installer-ui/awai/installer.cljc ../../ci/nixpkgs.nix ]) ++ [ (toString disk) ]));
+    (map builtins.readFile [ ./usb-install-6600h.nix ./installer-runtime.nix ./installer-storage-isolation.nix ./installer-console.py ./installer-nbd.nix ./netboot-nbd-install-6600h.nix ./installer-broker.py ./installer-kernel-claims.py ./installer-diagnostics.py ./installer-boot.py ./installer-ui/awai/installer.cljc ../../ci/nixpkgs.nix ]) ++ [ (builtins.unsafeDiscardStringContext (toString disk)) ]));
   # This is an identity string, not a runtime reference: retaining its context
   # would include a second compressed payload in the ISO's store closure.
   info = { schema = "awai.otehon.installer.v1"; inherit version buildId; nixos = installed.system.nixos.version; nix = installed.nix.package.version; payload = builtins.unsafeDiscardStringContext (toString disk); };
@@ -29,7 +29,15 @@ let
       *) exec ${pkgs.python3}/bin/python3 ${./installer-console.py} ;;
     esac
   '';
-  digests = pkgs.runCommand "otehon-usb-payload-digests" { nativeBuildInputs = [ pkgs.zstd ]; } ''
+  source = config.otehon.installerNbd;
+  # A rebuilt disk has fresh filesystem/GPT identifiers. Network delivery must
+  # admit the exact qualified ISO payload, never hashes of a different rebuild.
+  digests = if source.enable then pkgs.runCommand "otehon-pinned-network-digests" {} ''
+    mkdir "$out"
+    printf '%s\n' ${lib.escapeShellArg source.payloadSha256} > "$out/image"
+    printf '%s\n' ${lib.escapeShellArg source.rawSha256} > "$out/raw"
+    printf '%s\n' ${lib.escapeShellArg (toString source.rawBytes)} > "$out/bytes"
+  '' else pkgs.runCommand "otehon-usb-payload-digests" { nativeBuildInputs = [ pkgs.zstd ]; } ''
     mkdir "$out"
     file=$(echo ${disk}/*.raw.zst)
     sha256sum "$file" | cut -d' ' -f1 > "$out/image"
@@ -38,7 +46,7 @@ let
   '';
 in {
   # Transport-independent installer services, UI, broker and payload contract.
-  imports = [ ./common.nix ./hardware-6600h.nix ];
+  imports = [ ./common.nix ./hardware-6600h.nix ./installer-nbd.nix ./installer-storage-isolation.nix ];
   system.image.version = version;
   users.users.root.hashedPassword = "!";
   services.openssh.enable = false;
@@ -120,6 +128,7 @@ in {
   # the local text screen nor serial operator receives a root login shell.
   systemd.targets.multi-user.wants = [ "otehon-install@tty1.service" "otehon-install@tty2.service" "otehon-install@ttyS0.service" ];
   system.build.otehonInstallerPayload = disk;
+  system.build.otehonInstallerConsole = console;
   system.build.otehonUsbDigests = digests;
   system.build.otehonInstallerInfo = infoJson;
 

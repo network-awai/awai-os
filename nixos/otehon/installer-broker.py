@@ -4,10 +4,13 @@ import errno
 import fcntl
 import hashlib
 import json
+import itertools
 import os
 from pathlib import Path
 import pwd
+import re
 import secrets
+import signal
 import socket
 import stat
 import struct
@@ -55,7 +58,7 @@ def decode(line):
     if len(line) > 4096 or not line.endswith(b'\n'): raise Refused('request-bound')
     fields = line[:-1].split(b'\t')
     op = fields[0].decode('ascii')
-    arity = {'LIST':0, 'STATUS':0, 'SELECT':1, 'INSTALL':3, 'CANCEL':0, 'TEXT':0, 'REBOOT':0, 'POWEROFF':0}
+    arity = {'LIST':0, 'STATUS':0, 'INSPECT':0, 'KERNEL_INSPECT':0, 'SELECT':1, 'INSTALL':3, 'CANCEL':0, 'TEXT':0, 'REBOOT':0, 'POWEROFF':0}
     if op not in arity or len(fields)-1 != arity[op]: raise Refused('request-shape')
     values = []
     for field in fields[1:]:
@@ -65,9 +68,36 @@ def decode(line):
         values.append(value)
     return op, values
 
+def loop_backing_references(sys_root=Path('/sys/class/block')):
+    """Read only LOOP_GET_STATUS64 metadata; an incomplete scan refuses admission."""
+    references = {}
+    with os.scandir(sys_root) as scan: nodes = list(itertools.islice(scan, 257))
+    if len(nodes) > 256: raise Refused('loop-inspection-bound')
+    for node in nodes:
+        if not re.fullmatch(r'loop[0-9]+', node.name): continue
+        fd = None
+        try:
+            fd = os.open('/dev/' + node.name, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+            info = fcntl.ioctl(fd, 0x4C05, bytes(232))
+            for offset in (0, 16):
+                number = struct.unpack_from('=Q', info, offset)[0]
+                key = str((number >> 8) & 0xfff) + ':' + str((number & 0xff) | ((number >> 12) & 0xfff00))
+                names = references.setdefault(key, [])
+                if node.name not in names: names.append(node.name)
+        except OSError as error:
+            if error.errno not in (errno.ENXIO, errno.ENODEV, errno.ENOENT):
+                raise Refused('loop-inspection-unavailable') from None
+        finally:
+            if fd is not None: os.close(fd)
+    return references
+
+
 def inventory():
-    rows = json.loads(command(['lsblk','-J','-b','-o','PATH,TYPE,SIZE,MODEL,SERIAL,FSTYPE,LABEL,PARTLABEL,MOUNTPOINTS,MAJ:MIN,RO']))['blockdevices']
+    # Without NAME or --tree util-linux returns flat JSON: filtering physical
+    # disks then silently loses partitions and their mapper descendants.
+    rows = json.loads(command(['lsblk','-J','--tree','-b','-o','PATH,TYPE,SIZE,MODEL,SERIAL,FSTYPE,LABEL,PARTLABEL,MOUNTPOINTS,MAJ:MIN,RO']))['blockdevices']
     swaps = {x.split()[0] for x in Path('/proc/swaps').read_text().splitlines()[1:]}
+    loops = loop_backing_references()
     def descendants(row):
         yield row
         for child in row.get('children', []): yield from descendants(child)
@@ -75,8 +105,8 @@ def inventory():
     for row in rows:
         if row.get('type') != 'disk': continue
         nodes = list(descendants(row))
-        used = any(any(n.get('mountpoints') or []) or n['path'] in swaps or
-                   any((Path('/sys/class/block') / Path(n['path']).name / 'holders').iterdir()) for n in nodes)
+        used = any(any(n.get('mountpoints') or []) or n['path'] in swaps or loops.get(n['maj:min']) or
+                   any((Path('/sys/dev/block') / n['maj:min'] / 'holders').iterdir()) for n in nodes)
         path = row['path']; info = os.stat(path)
         if not stat.S_ISBLK(info.st_mode): continue
         serial = (row.get('serial') or '').strip()
@@ -84,8 +114,10 @@ def inventory():
                     'diskseq':(Path('/sys/class/block') / Path(path).name / 'diskseq').read_text().strip()}
         ident = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
         result.append({**identity, 'id':ident,'model':(row.get('model') or 'Disk').strip(),
-                       'used':used,'readOnly':bool(row.get('ro')),
-                       'partitions':[{'path':n['path'],'fstype':n.get('fstype') or '', 'label':n.get('label') or n.get('partlabel') or '', 'size':int(n['size'])} for n in nodes[1:]]})
+                       'used':used,'readOnly':bool(row.get('ro')),'fileSystem':row.get('fstype') or '',
+                       'loopReferences': sorted({name for n in nodes for name in loops.get(n['maj:min'], [])}),
+                       'partitions':[{'path':n['path'],'type':n['type'],'majorMinor':n['maj:min'],
+                           'fstype':n.get('fstype') or '', 'label':n.get('label') or n.get('partlabel') or '', 'size':int(n['size'])} for n in nodes[1:]]})
     counts = {}
     for r in result: counts[r['serial']] = counts.get(r['serial'],0)+1
     for r in result: r['ambiguous'] = not r['serial'] or counts[r['serial']] != 1
@@ -96,9 +128,151 @@ def admit(rows, ident, raw_bytes):
     if len(found) != 1: raise Refused('target-changed')
     row = found[0]
     if row['ambiguous']: raise Refused('missing-or-ambiguous-serial')
-    if row['used'] or row['readOnly']: raise Refused('target-in-use')
+    if row['used'] or row['readOnly'] or row.get('loopReferences'): raise Refused('target-in-use')
     if row['size'] <= raw_bytes: raise Refused('target-too-small')
     return row
+
+
+def device_usage(rows, proc_root=Path('/proc'), sys_root=Path('/sys/class/block'), budget=3.0, max_pids=2048, max_fds=1024):
+    """Bounded metadata and O_RDONLY probes; never read payloads or write disks."""
+    deadline = time.monotonic() + budget
+    result = {'available': True, 'readOnly': True, 'truncated': len(rows) > 8,
+              'processesScanned': 0, 'namespaceViewsScanned': 0, 'errors': 0, 'devices': [], 'truncationReasons': [],
+              'kernelConsumers': {name: (sys_root.parent.parent / 'module' / name).is_dir() for name in ('zfs', 'btrfs', 'dm_mod', 'md_mod', 'loop')}}
+    def truncated(reason):
+        result['truncated'] = True
+        if reason not in result['truncationReasons']: result['truncationReasons'].append(reason)
+    owners = {}; paths = {}; seen_mounts = set(); seen_views = set(); namespace_mounts = {}
+    def small(path, limit):
+        with path.open('rb') as stream: data = stream.read(limit + 1)
+        if len(data) > limit: truncated('metadata-size')
+        return data[:limit].decode('utf-8', 'replace')
+    def entries(path, maximum):
+        with os.scandir(path) as scan: found = list(itertools.islice(scan, maximum + 1))
+        if len(found) > maximum: truncated('directory-entry-count')
+        return [Path(entry.path) for entry in found[:maximum]]
+    def holder_graph(node, item, visited, depth=0):
+        if depth > 8 or len(visited) >= 128:
+            truncated('holder-graph-bound'); return
+        number = small(node / 'dev', 64).strip()
+        if not re.fullmatch(r'[0-9]+:[0-9]+', number): raise OSError('invalid sysfs device identity')
+        owners[number] = item
+        if number in visited: return
+        visited.add(number)
+        for holder in entries(node / 'holders', 32):
+            held_number = small(holder / 'dev', 64).strip()
+            row = {'sourceMajorMinor': number, 'device': holder.name, 'majorMinor': held_number}
+            if (holder / 'dm').is_dir():
+                name = small(holder / 'dm/name', 256).strip()
+                uuid = small(holder / 'dm/uuid', 256).strip()
+                row.update(kind='device-mapper', mapperKind='LVM' if uuid.startswith('LVM-') else 'CRYPT' if uuid.startswith('CRYPT-') else 'other',
+                           mapperName=name if re.fullmatch(r'[A-Za-z0-9+_.:-]{1,128}', name) else 'unknown')
+            item['holderGraph'].append(row)
+            holder_graph(holder, item, visited, depth+1)
+    for row in rows[:8]:
+        item = {'id': row['id'], 'path': row['path'], 'majorMinor': row['majorMinor'],
+                'fileSystem': row.get('fileSystem', ''), 'holders': [], 'mountNamespaceReferences': [], 'openFdReferences': [],
+                'swapReferences': [], 'loopReferences': [], 'multiDeviceFileSystems': [], 'holderGraph': []}
+        result['devices'].append(item)
+        owners[row['majorMinor']] = item; paths[row['path']] = item
+        node = sys_root / Path(row['path']).name
+        try:
+            item['holders'] = [p.name for p in entries(node / 'holders', 32)]
+            visited = set()
+            holder_graph(node, item, visited)
+            for child in entries(node, 256):
+                if (child / 'partition').is_file():
+                    owners[small(child / 'dev', 64).strip()] = item
+                    paths['/dev/' + child.name] = item
+                    holder_graph(child, item, visited)
+        except OSError: result['errors'] += 1
+    def match_device(path):
+        if str(path) in paths: return paths[str(path)]
+        try:
+            info = os.stat(path)
+            number = info.st_rdev if stat.S_ISBLK(info.st_mode) else info.st_dev
+            return owners.get(str(os.major(number)) + ':' + str(os.minor(number)))
+        except OSError: return None
+    try:
+        for line in small(proc_root / 'swaps', 65536).splitlines()[1:]:
+            fields = line.split()
+            if not fields: continue
+            item = match_device(fields[0])
+            if item is not None: item['swapReferences'].append({'type': fields[1] if len(fields)>1 else 'unknown'})
+    except OSError: pass
+    try:
+        loops = loop_backing_references(sys_root)
+        for number, names in loops.items():
+            item = owners.get(number)
+            if item is not None: item['loopReferences'].extend({'device': name} for name in names)
+        btrfs_root = sys_root.parent.parent / 'fs/btrfs'
+        if btrfs_root.is_dir():
+            for fs in entries(btrfs_root, 64):
+                if not (fs / 'devices').is_dir(): continue
+                for device in entries(fs / 'devices', 64):
+                    try: item = owners.get(small(device / 'dev', 64).strip())
+                    except OSError: continue
+                    if item is not None: item['multiDeviceFileSystems'].append({'type': 'btrfs'})
+    except (OSError, Refused):
+        result['errors'] += 1
+        result['loopInspectionAvailable'] = False
+    try: processes = (p for p in entries(proc_root, max_pids + 64) if p.name.isdecimal())
+    except OSError: result['available'] = False; return result
+    for proc in processes:
+        if result['processesScanned'] >= max_pids or time.monotonic() >= deadline:
+            truncated('process-or-time-budget'); break
+        result['processesScanned'] += 1
+        try:
+            comm = ''.join(c if c.isprintable() else '?' for c in small(proc / 'comm', 128).strip())[:32]
+            namespace = os.readlink(proc / 'ns/mnt')
+            unit = ''
+            try:
+                units = re.findall(r'(?:^|/)([A-Za-z0-9_.@:-]{1,128}\.service)(?:/|$)', small(proc / 'cgroup', 4096))
+                unit = units[-1] if units else ''
+            except OSError: pass
+            mounts = namespace_mounts.get(namespace)
+            lines = [] if mounts is not None else small(proc / 'mountinfo', 1048576).splitlines()
+            if mounts is None: mounts = {}
+            for line in lines:
+                fields = line.split(); split = fields.index('-')
+                if len(fields) < split + 3: continue
+                item = owners.get(fields[2]) or (match_device(fields[split + 2]) if fields[split + 2].startswith('/dev/') else None)
+                if item is None: continue
+                mounts[fields[0]] = item
+                key = (namespace, fields[0], fields[2])
+                if key not in seen_mounts and len(item['mountNamespaceReferences']) < 64:
+                    item['mountNamespaceReferences'].append({'namespace': namespace, 'representativePid': int(proc.name),
+                        'representativeComm': comm, 'unit': unit, 'majorMinor': fields[2], 'fsType': fields[split + 1]})
+                    seen_mounts.add(key)
+            namespace_mounts[namespace] = mounts
+            seen_views.add(namespace); result['namespaceViewsScanned'] = len(seen_views)
+            fds = (p for p in entries(proc / 'fd', max_fds) if p.name.isdecimal())
+            for index, fd in enumerate(fds):
+                if index >= max_fds or time.monotonic() >= deadline:
+                    truncated('fd-or-time-budget'); break
+                try:
+                    link = os.readlink(fd)
+                    info = dict(line.split(':', 1) for line in small(proc / 'fdinfo' / fd.name, 4096).splitlines() if ':' in line)
+                    item = paths.get(link) or mounts.get(info.get('mnt_id', '').strip()) or match_device(fd)
+                    if item is not None:
+                        if len(item['openFdReferences']) >= 128: truncated('fd-output-count'); continue
+                        item['openFdReferences'].append({'pid': int(proc.name), 'comm': comm, 'fd': int(fd.name),
+                            'unit': unit, 'flags': info.get('flags', '').strip()[:16],
+                            'reference': 'block-device-path' if link in paths else 'device-id-or-mount'})
+                except OSError: result['errors'] += 1
+        except (OSError, ValueError): result['errors'] += 1
+    for item in result['devices']:
+        if time.monotonic() >= deadline:
+            truncated('probe-time-budget'); item['exclusiveReadOnlyOpen'] = {'available': False}; continue
+        fd = None
+        try:
+            fd = os.open(item['path'], os.O_RDONLY | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC)
+            item['exclusiveReadOnlyOpen'] = {'available': True, 'opened': stat.S_ISBLK(os.fstat(fd).st_mode)}
+        except OSError as error:
+            item['exclusiveReadOnlyOpen'] = {'available': True, 'opened': False, 'errno': error.errno}
+        finally:
+            if fd is not None: os.close(fd)
+    return result
 
 class Broker:
     def __init__(self, digests, rundir=RUNDIR, read_only=False):
@@ -242,10 +416,31 @@ class Broker:
     def dispatch(self,op,args):
         # Diagnostic boots must never turn a remote observer into a writer.
         # Reject before target selection, process creation, or power controls.
-        if self.read_only and op not in ('LIST', 'STATUS'):
+        if self.read_only and op not in ('LIST', 'STATUS', 'INSPECT'):
             raise Refused('diagnostic-read-only')
         if op=='LIST': return {'devices':inventory(),'rawBytes':self.raw_bytes,'state':self.snapshot()}
         if op=='STATUS': return self.snapshot()
+        if op=='KERNEL_INSPECT':
+            if args: raise Refused('fixed-kernel-inspection-operation')
+            if self.busy(): return {'available': False, 'readOnly': True, 'reason': 'install-in-progress'}
+            script = os.environ.get('OTEHON_KERNEL_CLAIM_SCRIPT')
+            if not script: return {'available': False, 'readOnly': True, 'reason': 'disabled'}
+            rows = [r for r in inventory() if not r['readOnly'] and r['size'] > self.raw_bytes]
+            process = subprocess.Popen([sys.executable, script], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, start_new_session=True)
+            try:
+                output, _ = process.communicate(json.dumps(rows).encode(), timeout=25)
+                if process.returncode or len(output)>65536: raise Refused('kernel-inspection-failed')
+                return json.loads(output)
+            finally:
+                if process.poll() is None:
+                    os.killpg(process.pid, signal.SIGTERM)
+                    try: process.wait(timeout=2)
+                    except subprocess.TimeoutExpired: os.killpg(process.pid, signal.SIGKILL); process.wait()
+        if op=='INSPECT':
+            if args: raise Refused('fixed-inspection-operation')
+            if self.busy(): return {'available': False, 'readOnly': True, 'reason': 'install-in-progress'}
+            rows = [r for r in inventory() if not r['readOnly'] and r['size'] > self.raw_bytes]
+            return device_usage(rows)
         if op=='SELECT': return self.select(*args)
         if op=='INSTALL': self.begin(*args);return self.snapshot()
         if op=='CANCEL':

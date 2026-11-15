@@ -1,0 +1,109 @@
+name: Otehon LAN NVMe installation
+on:
+  pull_request:
+    paths:
+      - nixos/otehon/**
+      - tests/otehon-nbd-eval.nix
+      - nixos/tests/otehon-device-usage.nix
+      - nixos/tests/otehon-existing-lvm.nix
+      - scripts/check-otehon-lan-install-vm.py
+      - scripts/otehon-lan-iso.py
+      - scripts/otehon-installed-boot.py
+      - .github/workflows/otehon-lan-install.yml
+  workflow_call:
+    inputs:
+      operator_public_key:
+        required: false
+        default: ""
+        type: string
+  workflow_dispatch:
+    inputs:
+      operator_public_key:
+        description: Optional operator Ed25519 public key for a separate physical candidate
+        required: false
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: otehon-lan-install-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  lan-install-vm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Prepare ephemeral runner capacity
+        run: |
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
+          df -h /
+      - uses: cachix/install-nix-action@b85815f71a6de0ddee80b8a80a98d43f4bcc66c7
+      - name: Evaluate and build real LAN installer
+        env:
+          OPERATOR_PUBLIC_KEY: ${{ inputs.operator_public_key }}
+        run: |
+          set -euo pipefail
+          mkdir -p .agent-output/lan-install
+          ssh-keygen -q -t ed25519 -N '' -f .agent-output/lan-install/operator
+          ssh-keygen -q -t ed25519 -N '' -f .agent-output/lan-install/unauthorized
+          python3 -m unittest discover -s tests/otehon -q
+          nix-instantiate --eval --strict --json --expr 'import ./tests/otehon-nbd-eval.nix { nixpkgsPath = import ./ci/nixpkgs.nix; }'
+          nix-build nixos/tests/otehon-device-usage.nix --out-link result-device-usage-vm --show-trace
+          nix-build nixos/tests/otehon-existing-lvm.nix --out-link result-existing-lvm-vm --show-trace
+          public_key=$(cat .agent-output/lan-install/operator.pub)
+          echo 'VM_SSH_ARGUMENTS=--key .agent-output/lan-install/operator' >> "$GITHUB_ENV"
+          if [ -n "$OPERATOR_PUBLIC_KEY" ]; then
+            public_key="$OPERATOR_PUBLIC_KEY"
+            echo 'VM_SSH_ARGUMENTS=' >> "$GITHUB_ENV"
+          fi
+          nix-build nixos/otehon/default.nix --argstr profile netboot-nbd-install-6600h --argstr diagnosticPublicKey "$public_key" --out-link result-otehon-lan-install --show-trace
+      - name: Retrieve digest-pinned qualified ISO
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p .agent-output/lan-install/iso
+          manifest=docs/evidence/otehon-installer-release-0.7.3.json
+          artifact=$(jq -r .artifactId "$manifest")
+          gh api "repos/network-awai/awai-os/actions/artifacts/$artifact/zip" > .agent-output/lan-install/qualified.zip
+          echo "$(jq -r .artifactZipSha256 "$manifest")  .agent-output/lan-install/qualified.zip" | sha256sum -c -
+          unzip -j .agent-output/lan-install/qualified.zip '*.iso' -d .agent-output/lan-install/iso
+          rm .agent-output/lan-install/qualified.zip
+          echo "$(jq -r .image.isoSha256 "$manifest")  "$(echo .agent-output/lan-install/iso/*.iso) | sha256sum -c -
+      - name: LAN install then boot NVMe without USB or network
+        env:
+          OTEHON_OCR_LANG: eng+jpn
+        run: |
+          set -euo pipefail
+          nix-shell --expr 'let p = import (import ./ci/nixpkgs.nix) { system = "x86_64-linux"; }; in p.mkShell { packages = [ p.python3 p.qemu_test p.openssh p.netpbm (p.tesseract.override { enableLanguages = [ "eng" "jpn" ]; }) ]; OVMF_CODE = "${p.OVMF.fd}/FV/OVMF_CODE.fd"; OVMF_VARS = "${p.OVMF.fd}/FV/OVMF_VARS.fd"; }' --run 'python3 scripts/check-otehon-lan-install-vm.py --image result-otehon-lan-install --iso .agent-output/lan-install/iso/*.iso --output "$PWD/.agent-output/li/proof" $VM_SSH_ARGUMENTS --bad-key .agent-output/lan-install/unauthorized --ovmf-code "$OVMF_CODE" --ovmf-vars "$OVMF_VARS" --source-revision "$GITHUB_SHA"' 2>&1 | tee .agent-output/lan-install/vm.log
+      - name: Package exact VM-tested operator-keyed candidate
+        if: github.event_name == 'workflow_dispatch' && inputs.operator_public_key != ''
+        env:
+          OPERATOR_PUBLIC_KEY: ${{ inputs.operator_public_key }}
+        run: |
+          set -euo pipefail
+          mkdir -p .agent-output/lan-install/candidate
+          for file in ipxe.efi kernel initrd installer-info.json; do cp -L "result-otehon-lan-install/$file" ".agent-output/lan-install/candidate/$file"; done
+          (cd .agent-output/lan-install/candidate; sha256sum ipxe.efi kernel initrd installer-info.json > SHA256SUMS)
+          git rev-parse HEAD > .agent-output/lan-install/candidate/SOURCE_REVISION
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: success() && github.event_name == 'workflow_dispatch' && inputs.operator_public_key != ''
+        with:
+          name: awai-lan-install-physical-candidate
+          path: .agent-output/lan-install/candidate/
+          compression-level: 0
+          include-hidden-files: true
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: awai-lan-install-vm-proof
+          path: |
+            .agent-output/lan-install/vm.log
+            .agent-output/li/proof/*.json
+            .agent-output/li/proof/*.txt
+            .agent-output/li/proof/*.log
+            .agent-output/li/proof/*.png
+          include-hidden-files: true

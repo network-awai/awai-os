@@ -87,7 +87,7 @@ def partition_text(row):
 
 def header(info, title):
     print('\033[2J\033[H', end='')
-    transport = 'LAN 診断・読取専用' if os.environ.get('OTEHON_DIAGNOSTIC_MODE') == '1' else 'USB'
+    transport = 'LAN 診断・読取専用' if os.environ.get('OTEHON_DIAGNOSTIC_MODE') == '1' else os.environ.get('OTEHON_MEDIA_LABEL', 'USB')
     print('Awai Otehon ' + info['version'] + ' インストーラー（' + transport + '）')
     print('Build ID: ' + info['buildId'][:12] + '   NixOS: ' + info['nixos'] + '   Nix: ' + info['nix'])
     fingerprint = os.environ.get('OTEHON_DIAGNOSTIC_FINGERPRINT')
@@ -115,7 +115,7 @@ def observe(info):
                 header(info, '3 / 4  インストール中')
                 print(state['message'])
                 print('\n処理済み: %.2f / %.2f GB' % (state.get('done', 0) / 10**9, state.get('total', 0) / 10**9))
-                print('\n電源と USB を接続したままお待ちください。')
+                print('\n電源と ' + ('LAN ケーブル' if os.environ.get('OTEHON_MEDIA_LABEL') else 'USB') + ' を接続したままお待ちください。')
                 previous = marker
             time.sleep(1)
             continue
@@ -168,7 +168,7 @@ def main():
             inventory = rpc('LIST')
             rows = choices(inventory['devices'], inventory['rawBytes'])
             header(info, '1 / 4  インストール先を選んでください')
-            print('LAN 診断モードです。保存先には書き込みません。' if os.environ.get('OTEHON_DIAGNOSTIC_MODE') == '1' else 'USB から起動中です。保存先にはまだ書き込みません。')
+            print('LAN 診断モードです。保存先には書き込みません。' if os.environ.get('OTEHON_DIAGNOSTIC_MODE') == '1' else os.environ.get('OTEHON_MEDIA_LABEL', 'USB') + ' から起動中です。保存先にはまだ書き込みません。')
             if notice: print('\n' + notice)
             for number, row in enumerate(rows, 1):
                 print('\n%d. %s  %.1f GB  %s' % (number, safe(row['model'], 48), row['size'] / 10**9, safe(row['path'])))
