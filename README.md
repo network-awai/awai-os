@@ -1,9 +1,9 @@
 # awai-os
 
-**Awai Otehon 0.7.1 installer (Ryzen 5 6600H / x86_64):**
+**Awai Otehon 0.7.2 installer (Ryzen 5 6600H / x86_64):**
 [GUI・文字画面からの導入手順](docs/otehon/install-guide-ja.md) /
-[検証済み ISO・USB の版と Build ID](docs/otehon/usb-installer-0.7.1.md)。
-GUI が表示されない場合は起動メニューの `Text-installer-0.7.1` を選びます。
+[検証済み ISO の版と Build ID](docs/otehon/usb-installer-0.7.2.md)。
+GUI が表示されない場合は起動メニューの `Text-installer-0.7.2` を選びます。
 画面の版・Build ID を配布記録と照合できます。
 
 **Native Murakumo NixOS preview:** [profile, Itonami launcher and VM gates](docs/murakumo-nixos-native-preview.md).

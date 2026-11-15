@@ -1,6 +1,9 @@
 # Awai Otehon 0.7.2 を USB から NVMe に導入する
 
-0.7.2 は日本語の文字版ディスク選択を備えた更新候補です。配布時には版・Build ID と同一 ISO の VM/USB 証跡を別途対応させます。
+配布版 **0.7.2** / Build ID `b65ffc3e4c402213ad1fa0bf150975ffb34190d7f6dad98d7296d00999de597b`。
+NixOS `26.05pre-git` / Nix `2.34.8`。
+[VM検証](https://github.com/network-awai/awai-os/actions/runs/43666484029)と[ISO/USBの配布記録](usb-installer-0.7.2.md)を対応させています。
+実6600Hの導入完了は別の受入です。
 
 ## GUI が出ないとき
 
@@ -14,13 +17,17 @@
 
 完了画面の `2. 再起動` も選べます。起動USB・使用中・容量不足などのディスクは選択できません。
 
-以下は 0.7.1 の旧画面です（0.7.2 の受入証跡ではありません）:
+番号を選ぶ画面（実 ISO の VM）:
 
-![文字版の起動画面](assets/installer-0.7.1-text-ready.png)
+![文字版の起動画面](assets/installer-0.7.2-text-ready.png)
 
-0.7.1 の旧完了画面:
+選んだディスクを確認して消去を承認する画面（VM）:
 
-![文字版の導入完了](assets/installer-0.7.1-text-complete.png)
+![上書きの確認](assets/installer-0.7.2-text-review.png)
+
+全長照合・起動登録後の完了画面（VM）:
+
+![文字版の導入完了](assets/installer-0.7.2-text-complete.png)
 
 ## GUI で導入するとき
 
@@ -39,7 +46,7 @@ USBから起動しただけでは内蔵ディスクへ導入されません。�
 
 ## 検証範囲
 
-0.7.2 は同一 ISO の GUI/GUI無効の日本語文字版で、番号選択、拒否/戻る、NVMe導入、全長照合、UEFI登録、USBなし起動、暗号化状態の初期設定、冷再起動と解除を検証してから配布します。
+同一 ISO の GUI/GUI無効の日本語文字版で、番号選択、誤入力・起動USB・容量不足の拒否、上書き確認から戻る操作、NVMe導入、全長照合、UEFI登録、USBなし起動、暗号化状態の初期設定、冷再起動と解除を検証しました。
 0.7.1 の受入は[以前の配布記録](usb-installer-0.7.1.md)に保持しています。
 実6600HのGPU/firmware/内蔵媒体、実電源断、Secure Boot、本番ネット更新のenrollmentは別の受入です。
 
