@@ -38,7 +38,7 @@ in pkgs.testers.runNixOSTest {
     start_all()
     machine.wait_for_unit("otehon-drive-volume.service")
     machine.wait_for_unit("otehon-drive-mount.service")
-    machine.wait_until_succeeds("mountpoint -q /home/otehon/Awai")
+    machine.wait_until_succeeds("runuser -u otehon -- mountpoint -q /home/otehon/Awai", timeout=120)
     machine.succeed("test $(findmnt -n -o FSTYPE --target /var/lib/otehon) = ext4; cryptsetup status otehon-state")
     machine.succeed("test $(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8588/) = 401")
     machine.succeed("test $(runuser -u otehon -- xdg-user-dir DOCUMENTS) = /home/otehon/Awai")
@@ -54,7 +54,7 @@ in pkgs.testers.runNixOSTest {
     machine.shutdown()
     machine.start()
     machine.wait_for_unit("otehon-drive-mount.service")
-    machine.wait_until_succeeds("mountpoint -q /home/otehon/Awai")
+    machine.wait_until_succeeds("runuser -u otehon -- mountpoint -q /home/otehon/Awai", timeout=120)
     assert machine.succeed("cat /proc/sys/kernel/random/boot_id").strip() != boot_id
     assert machine.succeed("runuser -u otehon -- sha256sum /home/otehon/Awai/renamed.bin").split()[0] == expected
     machine.succeed("runuser -u otehon -- drive-probe verify /home/otehon/Awai/renamed.bin")

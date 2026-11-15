@@ -1,6 +1,6 @@
 {
   "repository": "network-awai/network-awai-apex",
-  "revision": "47bd12666ac14d4035136fc958fc1a70926ae835",
+  "revision": "cb17370fbe5f8f0397d1f3073abf3e97aaeb0595",
   "files": {
     "src/awai/fs/adl.cljc": "0a3d38b00af7e3934cb496c4b817f9f292799dc0e37fd4359d9b722869262180",
     "src/awai/fs/b2.cljc": "6aa05b178dd59fe593fbd2c2c38efcccc03dd417c0e497b6ff7465ff30db112c",
@@ -38,9 +38,9 @@
     "src/awai/fs/unixfs.cljc": "94c46c084de904018e8331b1b3c41f5cd4976796ef92728c32054196708ba2c9",
     "src/awai/fs/vector_scan.cljc": "b213303d75415601183253b2e440440f486d32069aedd7112e77060e49668591",
     "src/awai/fs/wal.cljc": "4eacacf51e46bb6601d4be59e9177e2ff6aaa387dedf99f65330c91f6d7142d2",
-    "scripts/awaivol.cljc": "1e0db51382b865a1b14be2d28838d27ba1f32d2ddeacb0c64ba1c02b1c39696f",
+    "scripts/awaivol.cljc": "77e7051936c7d542ae3c4935b90e3a2a3c1dfbb9fe7d403d294619770216f39c",
     "ci/otehon-nbb.nix": "d1efbd3648a31cad1841a649da2a5b861837bdfa19466ff1d21132617af39860",
     "ci/otehon-volume.nix": "b2c57e68de55bac61effdebaab426ae2d181d2b6c5093911f9772b2c3a4b0038",
-    "oracle/awai-fs-format/v1/VOLUME.md": "e0e69ee9ba773edc7b0868021fe36c6636ff40f3cdd9a1fdb2cd43275a876951"
+    "oracle/awai-fs-format/v1/VOLUME.md": "d2ea96a141d22d2099a2df45f2a8e4c20e42ac9f9dc398fab0a9f256bfbfb48e"
   }
 }

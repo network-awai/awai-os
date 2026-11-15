@@ -1040,11 +1040,15 @@
             self (if (= prefix "")
                    (dav-response-dir "" "")
                    (dav-response-dir "/" (subs prefix 0 (dec (count prefix)))))]
-        (if (and (= depth "0") (not= dname ""))
-          (if (or (seq child-files) (seq child-dirs))
-            (send-text res 207 {"Content-Type" "application/xml; charset=utf-8"}
-                       (dav-multistatus [self]))
-            (do (.writeHead res 404) (.end res)))
+        (cond
+          ;; Collections are implicit in this profile. A nonexistent non-root
+          ;; path must not masquerade as a collection at Depth 1 either.
+          (and (not= dname "") (empty? child-files) (empty? child-dirs))
+          (do (.writeHead res 404) (.end res))
+          (= depth "0")
+          (send-text res 207 {"Content-Type" "application/xml; charset=utf-8"}
+                     (dav-multistatus [self]))
+          :else
           (let [dir-part (map #(dav-response-dir (str "/" prefix) %) (sort child-dirs))
                 file-part (map #(dav-response-file (str "/" prefix) %
                                                    (get files (str prefix %)))

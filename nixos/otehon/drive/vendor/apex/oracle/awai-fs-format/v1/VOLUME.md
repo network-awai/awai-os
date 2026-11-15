@@ -19,6 +19,13 @@ not an adversarial capability or distributed fencing mechanism.
 
 ## Supported records and limits
 
+WebDAV collections remain implicit. PROPFIND returns 404 for a nonexistent
+non-root path at both Depth 0 and Depth 1; it must not invent an empty collection
+for a new filename. Existing files and implied directories return 207, and
+Depth 0 lists only the requested resource. MKCOL remains unsupported (501).
+The pinned Linux check exercises an actual rclone PUT/MOVE/GET roundtrip; this
+is client interoperability, not POSIX, distributed durability or E2EE admission.
+
 - `init ROOT [LEAF_SIZE]` creates a new, empty v1 volume. Existing nonempty
   directories and legacy `manifest.json`/journal volumes are refused. There is
   no implicit migration, fallback or live-daemon cutover. Both root slots are
