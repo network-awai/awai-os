@@ -46,3 +46,12 @@ separate from the native profile. It is the Otehon edition of Itonami OS and may
 use `.cljc`, clj / JVM, cljs builds, nbb, babashka and the rest of ADR 0026 D3,
 pinned with Nix (owner decision 2026-11-07, D18). Do not put Otehon dependencies
 in the native profile. The native profile rules above stay unchanged.
+
+Screen-bearing apps (kaisha/kaikei class) are taken in as MCP Apps-style
+iframes, not as vendored code (ADR 0026 D12; owner decision 2026-11-15,
+AWAI-155): `itonami.dapp.v1` operations with `ui://` screens in a sandboxed
+iframe over postMessage JSON-RPC, CSP derived from `remoteOperations`, and the
+shared `each-operation` consent. No `window.openai`, no server-held business
+state, no ChatGPT approval. The Hermes `mcp_servers` route (D14) is for
+agent-invoked tools, not for apps with a screen. Implementation is still open;
+this records only the intake choice.
