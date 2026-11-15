@@ -94,6 +94,8 @@ kprobe:bdev_open /pid == PID_FILTER/ {
           if ((uint64)$file->f_op == kaddr("def_blk_fops")) {
             printf("KIND %u block-file\n", $b->bd_dev);
             printf("FILE %u %u %u\n", $b->bd_dev, $file->f_flags, $file->f_cred->uid.val);
+          } else if (str($b->bd_holder, 32) == "I belong to device-mapper") {
+            printf("KIND %u device-mapper\n", $b->bd_dev);
           } else { printf("KIND %u unknown\n", $b->bd_dev); }
         }
       }
@@ -123,10 +125,15 @@ kprobe:bdev_open /pid == PID_FILTER/ {
           if ((uint64)$file->f_op == kaddr("def_blk_fops")) {
             printf("PARTFILE %u %u %u %u\n", $b->bd_dev, $child->bd_dev,
               $file->f_flags, $file->f_cred->uid.val);
+          } else if (str($child->bd_holder, 32) == "I belong to device-mapper") {
+            printf("PARTKIND %u %u device-mapper\n", $b->bd_dev, $child->bd_dev);
+          } else { printf("PARTKIND %u %u unknown\n", $b->bd_dev, $child->bd_dev); }
+        } else if ((uint64)$child->bd_holder_ops != 0) {
+          printf("PARTKIND %u %u other\n", $b->bd_dev, $child->bd_dev);
+          if ((uint64)$child->bd_holder_ops->mark_dead != 0) {
+            printf("PARTCALLBACK %u %u %s\n", $b->bd_dev, $child->bd_dev,
+              ksym((uint64)$child->bd_holder_ops->mark_dead));
           }
-        } else if ((uint64)$child->bd_holder_ops != 0 && (uint64)$child->bd_holder_ops->mark_dead != 0) {
-          printf("PARTCALLBACK %u %u %s\n", $b->bd_dev, $child->bd_dev,
-            ksym((uint64)$child->bd_holder_ops->mark_dead));
         }
       }
       $link = $link->next;
@@ -173,7 +180,7 @@ def parse(output, devices):
             children.append({'deviceNumber': number, 'majorMinor': str(number >> 20)+':'+str(number & (2**20-1)),
                              'partitionNumber': partno, 'holders': holders, 'openers': openers,
                              'writers': writers, 'inodeReferences': refs})
-        elif fields[0] in ('PARTFS', 'PARTFILE', 'PARTCALLBACK'):
+        elif fields[0] in ('PARTFS', 'PARTFILE', 'PARTCALLBACK', 'PARTKIND'):
             if len(fields) not in (4, 5) or not fields[2].isdecimal(): continue
             child = next((p for p in item.get('kernel', {}).get('partitions', []) if p['deviceNumber'] == int(fields[2])), None)
             if child is None: continue
@@ -183,6 +190,7 @@ def parse(output, devices):
             elif len(fields) == 4:
                 value = fields[3] if re.fullmatch(r'[A-Za-z_][A-Za-z0-9_.-]{0,95}', fields[3]) else 'unknown'
                 if fields[0] == 'PARTFS': child.update(holderKind='filesystem', fileSystem=value)
+                elif fields[0] == 'PARTKIND': child['holderKind'] = value
                 else: child.update(holderKind='other', markDeadCallback=value)
         elif fields[0] == 'SCAN' and len(fields) == 6:
             try: scanned, matched, truncated, opened = map(int, fields[2:])

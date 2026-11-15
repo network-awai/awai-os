@@ -15,7 +15,9 @@ b=importlib.util.module_from_spec(spec);spec.loader.exec_module(b)
 class Usage(unittest.TestCase):
  def fixture(self,root):
   proc=root/'proc';proc.mkdir();sys=root/'sys';node=sys/'nvme0n1';(node/'holders').mkdir(parents=True)
+  (node/'dev').write_text('259:0')
   child=node/'nvme0n1p1';child.mkdir();(child/'partition').write_text('1');(child/'dev').write_text('259:1')
+  (child/'holders').mkdir()
   for pid in ('10','20'):
    p=proc/pid;(p/'fd').mkdir(parents=True);(p/'fdinfo').mkdir();(p/'ns').mkdir()
    (p/'ns/mnt').symlink_to('mnt:[42]');(p/'comm').write_text('fixture-holder\n')
@@ -70,6 +72,20 @@ class Usage(unittest.TestCase):
      thread.join(3)
     self.assertEqual(response,{'ok':True,'value':expected});self.assertFalse(thread.is_alive())
    with self.assertRaises(b.Refused):b.decode(b'INSPECT\tL2V0Yy9zaGFkb3c=\n')
+ def test_partition_mapper_graph_connects_owner_and_mount_without_uuid_or_paths(self):
+  with tempfile.TemporaryDirectory() as temp:
+   proc,sys,rows=self.fixture(Path(temp));mapper=sys/'dm-0';(mapper/'holders').mkdir(parents=True)
+   (mapper/'dev').write_text('253:0');(mapper/'dm').mkdir()
+   (mapper/'dm/name').write_text('previous--os-root');(mapper/'dm/uuid').write_text('LVM-private-uuid')
+   (sys/'nvme0n1/nvme0n1p1/holders/dm-0').symlink_to(mapper)
+   for pid in ('10','20'):
+    (proc/pid/'mountinfo').write_text('7 1 253:0 / /private-fixture rw - ext4 /dev/mapper/previous--os-root rw\n')
+   with patch.object(b.os,'open',side_effect=OSError(errno.EBUSY,'busy')): report=b.device_usage(rows,proc,sys)
+   target=report['devices'][0];edge=target['holderGraph'][0]
+   self.assertEqual(edge['sourceMajorMinor'],'259:1');self.assertEqual(edge['majorMinor'],'253:0')
+   self.assertEqual(edge['mapperKind'],'LVM');self.assertEqual(edge['mapperName'],'previous--os-root')
+   self.assertEqual(target['mountNamespaceReferences'][0]['majorMinor'],'253:0')
+   self.assertNotIn('private-fixture',json.dumps(report));self.assertNotIn('private-uuid',json.dumps(report))
  def test_zero_budget_marks_incomplete_and_never_probes_device(self):
   with tempfile.TemporaryDirectory() as temp:
    proc,sys,rows=self.fixture(Path(temp))

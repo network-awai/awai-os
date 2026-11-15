@@ -93,7 +93,9 @@ def loop_backing_references(sys_root=Path('/sys/class/block')):
 
 
 def inventory():
-    rows = json.loads(command(['lsblk','-J','-b','-o','PATH,TYPE,SIZE,MODEL,SERIAL,FSTYPE,LABEL,PARTLABEL,MOUNTPOINTS,MAJ:MIN,RO']))['blockdevices']
+    # Without NAME or --tree util-linux returns flat JSON: filtering physical
+    # disks then silently loses partitions and their mapper descendants.
+    rows = json.loads(command(['lsblk','-J','--tree','-b','-o','PATH,TYPE,SIZE,MODEL,SERIAL,FSTYPE,LABEL,PARTLABEL,MOUNTPOINTS,MAJ:MIN,RO']))['blockdevices']
     swaps = {x.split()[0] for x in Path('/proc/swaps').read_text().splitlines()[1:]}
     loops = loop_backing_references()
     def descendants(row):
@@ -104,7 +106,7 @@ def inventory():
         if row.get('type') != 'disk': continue
         nodes = list(descendants(row))
         used = any(any(n.get('mountpoints') or []) or n['path'] in swaps or loops.get(n['maj:min']) or
-                   any((Path('/sys/class/block') / Path(n['path']).name / 'holders').iterdir()) for n in nodes)
+                   any((Path('/sys/dev/block') / n['maj:min'] / 'holders').iterdir()) for n in nodes)
         path = row['path']; info = os.stat(path)
         if not stat.S_ISBLK(info.st_mode): continue
         serial = (row.get('serial') or '').strip()
@@ -114,7 +116,8 @@ def inventory():
         result.append({**identity, 'id':ident,'model':(row.get('model') or 'Disk').strip(),
                        'used':used,'readOnly':bool(row.get('ro')),'fileSystem':row.get('fstype') or '',
                        'loopReferences': sorted({name for n in nodes for name in loops.get(n['maj:min'], [])}),
-                       'partitions':[{'path':n['path'],'fstype':n.get('fstype') or '', 'label':n.get('label') or n.get('partlabel') or '', 'size':int(n['size'])} for n in nodes[1:]]})
+                       'partitions':[{'path':n['path'],'type':n['type'],'majorMinor':n['maj:min'],
+                           'fstype':n.get('fstype') or '', 'label':n.get('label') or n.get('partlabel') or '', 'size':int(n['size'])} for n in nodes[1:]]})
     counts = {}
     for r in result: counts[r['serial']] = counts.get(r['serial'],0)+1
     for r in result: r['ambiguous'] = not r['serial'] or counts[r['serial']] != 1
@@ -139,7 +142,7 @@ def device_usage(rows, proc_root=Path('/proc'), sys_root=Path('/sys/class/block'
     def truncated(reason):
         result['truncated'] = True
         if reason not in result['truncationReasons']: result['truncationReasons'].append(reason)
-    owners = {}; paths = {}; seen_mounts = set(); seen_views = set()
+    owners = {}; paths = {}; seen_mounts = set(); seen_views = set(); namespace_mounts = {}
     def small(path, limit):
         with path.open('rb') as stream: data = stream.read(limit + 1)
         if len(data) > limit: truncated('metadata-size')
@@ -148,19 +151,40 @@ def device_usage(rows, proc_root=Path('/proc'), sys_root=Path('/sys/class/block'
         with os.scandir(path) as scan: found = list(itertools.islice(scan, maximum + 1))
         if len(found) > maximum: truncated('directory-entry-count')
         return [Path(entry.path) for entry in found[:maximum]]
+    def holder_graph(node, item, visited, depth=0):
+        if depth > 8 or len(visited) >= 128:
+            truncated('holder-graph-bound'); return
+        number = small(node / 'dev', 64).strip()
+        if not re.fullmatch(r'[0-9]+:[0-9]+', number): raise OSError('invalid sysfs device identity')
+        owners[number] = item
+        if number in visited: return
+        visited.add(number)
+        for holder in entries(node / 'holders', 32):
+            held_number = small(holder / 'dev', 64).strip()
+            row = {'sourceMajorMinor': number, 'device': holder.name, 'majorMinor': held_number}
+            if (holder / 'dm').is_dir():
+                name = small(holder / 'dm/name', 256).strip()
+                uuid = small(holder / 'dm/uuid', 256).strip()
+                row.update(kind='device-mapper', mapperKind='LVM' if uuid.startswith('LVM-') else 'CRYPT' if uuid.startswith('CRYPT-') else 'other',
+                           mapperName=name if re.fullmatch(r'[A-Za-z0-9+_.:-]{1,128}', name) else 'unknown')
+            item['holderGraph'].append(row)
+            holder_graph(holder, item, visited, depth+1)
     for row in rows[:8]:
         item = {'id': row['id'], 'path': row['path'], 'majorMinor': row['majorMinor'],
                 'fileSystem': row.get('fileSystem', ''), 'holders': [], 'mountNamespaceReferences': [], 'openFdReferences': [],
-                'swapReferences': [], 'loopReferences': [], 'multiDeviceFileSystems': []}
+                'swapReferences': [], 'loopReferences': [], 'multiDeviceFileSystems': [], 'holderGraph': []}
         result['devices'].append(item)
         owners[row['majorMinor']] = item; paths[row['path']] = item
         node = sys_root / Path(row['path']).name
         try:
             item['holders'] = [p.name for p in entries(node / 'holders', 32)]
+            visited = set()
+            holder_graph(node, item, visited)
             for child in entries(node, 256):
                 if (child / 'partition').is_file():
                     owners[small(child / 'dev', 64).strip()] = item
                     paths['/dev/' + child.name] = item
+                    holder_graph(child, item, visited)
         except OSError: result['errors'] += 1
     def match_device(path):
         if str(path) in paths: return paths[str(path)]
@@ -206,8 +230,10 @@ def device_usage(rows, proc_root=Path('/proc'), sys_root=Path('/sys/class/block'
                 units = re.findall(r'(?:^|/)([A-Za-z0-9_.@:-]{1,128}\.service)(?:/|$)', small(proc / 'cgroup', 4096))
                 unit = units[-1] if units else ''
             except OSError: pass
-            mounts = {}
-            for line in small(proc / 'mountinfo', 65536).splitlines():
+            mounts = namespace_mounts.get(namespace)
+            lines = [] if mounts is not None else small(proc / 'mountinfo', 1048576).splitlines()
+            if mounts is None: mounts = {}
+            for line in lines:
                 fields = line.split(); split = fields.index('-')
                 if len(fields) < split + 3: continue
                 item = owners.get(fields[2]) or (match_device(fields[split + 2]) if fields[split + 2].startswith('/dev/') else None)
@@ -218,6 +244,7 @@ def device_usage(rows, proc_root=Path('/proc'), sys_root=Path('/sys/class/block'
                     item['mountNamespaceReferences'].append({'namespace': namespace, 'representativePid': int(proc.name),
                         'representativeComm': comm, 'unit': unit, 'majorMinor': fields[2], 'fsType': fields[split + 1]})
                     seen_mounts.add(key)
+            namespace_mounts[namespace] = mounts
             seen_views.add(namespace); result['namespaceViewsScanned'] = len(seen_views)
             fds = (p for p in entries(proc / 'fd', max_fds) if p.name.isdecimal())
             for index, fd in enumerate(fds):

@@ -9,14 +9,23 @@ let
     rows = [r for r in b.inventory() if r['path'] in ('/dev/vdb', '/dev/vdc')]
     assert len(rows) == 2
     assert all(not r["ambiguous"] for r in rows), "fixture disks need real unique QEMU serials"
-    if sys.argv[1] not in ('loop', 'raw-loop', 'partition-fs'):
+    if sys.argv[1] not in ('loop', 'raw-loop', 'partition-fs', 'partition-dm'):
         assert not any(r['used'] for r in rows), 'fixture must be invisible to root mount namespace'
     report = b.device_usage(rows)
     target = next(r for r in report['devices'] if r['path'] == '/dev/vdb')
     other = next(r for r in report['devices'] if r['path'] == '/dev/vdc')
     assert other['exclusiveReadOnlyOpen']['opened']
-    if sys.argv[1] in ('partition-fs', 'partition-file'):
+    if sys.argv[1] in ('partition-fs', 'partition-file', 'partition-dm'):
         assert target['exclusiveReadOnlyOpen']['errno'] == errno.EBUSY
+        disk = next(r for r in rows if r['path']=='/dev/vdb')
+        assert any(p['type']=='part' for p in disk['partitions']), disk
+        if sys.argv[1]!='partition-file':
+            assert disk['used'], disk
+            try: b.admit(rows, disk['id'], 1)
+            except b.Refused as error: assert str(error)=='target-in-use'
+            else: raise AssertionError('held partition admitted')
+        if sys.argv[1]=='partition-dm':
+            assert any(e.get('kind')=='device-mapper' and e.get('mapperName')=='usage-mapping' for e in target['holderGraph']), target
     elif sys.argv[1] == 'held':
         assert target['exclusiveReadOnlyOpen']['errno'] == errno.EBUSY
         assert any(r['namespace'] != os.readlink('/proc/self/ns/mnt') for r in target['mountNamespaceReferences'])
@@ -39,19 +48,20 @@ let
     else:
         assert target['exclusiveReadOnlyOpen']['opened']
         assert not target['mountNamespaceReferences']
-    if sys.argv[1] in ('held', 'exclusive', 'released', 'partition-fs', 'partition-file'):
+    if sys.argv[1] in ('held', 'exclusive', 'released', 'partition-fs', 'partition-file', 'partition-dm'):
         trace = claims.inspect(rows)
         assert trace['available'], trace
         held = next(r for r in trace['devices'] if r['path']=='/dev/vdb')
         assert not held['kernel']['partitionScan']['truncated'], trace
-        if sys.argv[1] in ('partition-fs', 'partition-file'):
+        if sys.argv[1] in ('partition-fs', 'partition-file', 'partition-dm'):
             assert held['kernel']['holderKind']=='partition-claim', trace
             assert held['kernel']['returnCode']==-errno.EBUSY, trace
             part = next(p for p in held['kernel']['partitions'] if p['partitionNumber']==1)
             assert part['holders'] > 0 and part['openers'] > 0, trace
-            assert part['holderKind']==('filesystem' if sys.argv[1]=='partition-fs' else 'block-file'), trace
+            expected = {'partition-fs':'filesystem', 'partition-file':'block-file', 'partition-dm':'device-mapper'}[sys.argv[1]]
+            assert part['holderKind']==expected, trace
             if sys.argv[1]=='partition-fs': assert part['fileSystem']=='ext4', trace
-            else: assert part['holderUid']==0, trace
+            elif sys.argv[1]=='partition-file': assert part['holderUid']==0, trace
         elif sys.argv[1] == 'held':
             assert held['kernel']['hasHolder']
             assert held['kernel']['holderOps']=='fs_holder_ops', trace
@@ -78,7 +88,7 @@ in pkgs.testers.runNixOSTest {
       ];
     };
     boot.kernelModules = [ "loop" ];
-    environment.systemPackages = [ pkgs.python3 pkgs.util-linux pkgs.e2fsprogs pkgs.bpftrace ];
+    environment.systemPackages = [ pkgs.python3 pkgs.util-linux pkgs.e2fsprogs pkgs.bpftrace pkgs.lvm2 ];
     systemd.services.usage-mount-fixture = {
       path = [ pkgs.coreutils pkgs.util-linux ];
       serviceConfig.PrivateMounts = true;
@@ -137,6 +147,10 @@ in pkgs.testers.runNixOSTest {
     machine.wait_until_succeeds("test -f /run/usage-partition-ready", timeout=30)
     machine.succeed("${pkgs.python3}/bin/python3 ${check} partition-file")
     machine.succeed("systemctl stop usage-partition-fixture")
+    machine.succeed("${pkgs.python3}/bin/python3 ${check} released")
+    machine.succeed("dmsetup create usage-mapping --table '0 8192 linear /dev/vdb1 0'; udevadm settle")
+    machine.succeed("${pkgs.python3}/bin/python3 ${check} partition-dm")
+    machine.succeed("dmsetup remove usage-mapping; udevadm settle")
     machine.succeed("${pkgs.python3}/bin/python3 ${check} released")
     machine.succeed("sha256sum -c /run/usage-before")
   '';

@@ -5,6 +5,7 @@ on:
       - nixos/otehon/**
       - tests/otehon-nbd-eval.nix
       - nixos/tests/otehon-device-usage.nix
+      - nixos/tests/otehon-existing-lvm.nix
       - scripts/check-otehon-lan-install-vm.py
       - scripts/otehon-lan-iso.py
       - scripts/otehon-installed-boot.py
@@ -51,6 +52,7 @@ jobs:
           python3 -m unittest discover -s tests/otehon -q
           nix-instantiate --eval --strict --json --expr 'import ./tests/otehon-nbd-eval.nix { nixpkgsPath = import ./ci/nixpkgs.nix; }'
           nix-build nixos/tests/otehon-device-usage.nix --out-link result-device-usage-vm --show-trace
+          nix-build nixos/tests/otehon-existing-lvm.nix --out-link result-existing-lvm-vm --show-trace
           public_key=$(cat .agent-output/lan-install/operator.pub)
           echo 'VM_SSH_ARGUMENTS=--key .agent-output/lan-install/operator' >> "$GITHUB_ENV"
           if [ -n "$OPERATOR_PUBLIC_KEY" ]; then
