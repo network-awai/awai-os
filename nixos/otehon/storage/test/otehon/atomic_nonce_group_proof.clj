@@ -1,6 +1,7 @@
 ;; Local atomic group/ref/nonce boundary; the host must validate marker semantics.
 (require '[awai.fs.car :as car] '[otehon.storage :as store] '[otehon.kotobase-forest-blocks :as blocks]
          '[otehon.ipld-forest :as catalog]
+         '[otehon.kotobase-ref :as refs]
          '[kotobase.storage.core :as contract] '[clojure.edn :as edn] '[clojure.string :as str])
 (import '[java.security MessageDigest] '[java.util Random Arrays])
 (defn check! [v msg] (when-not v (throw (ex-info msg {}))))
@@ -41,6 +42,14 @@
        (check! (= target ((:publish! adapter) input)) "atomic receipt publication failed")
        (check! (= target ((:read-ref! adapter))) "adapter receipt ref missing")
        (check! (= (:cid marker) (:cid ((:read-nonce-ref! adapter) nonce-ref))) "adapter nonce ref missing")
+       (let [view (blocks/open-bound-read-view dir "receipt")]
+         (check! (= target ((:read-ref! view))) "view target mismatch")
+         (check! (not (satisfies? contract/IRefStore (:blocks view))) "view advertises ref protocol")
+         (check! (not (contains? (contract/-capabilities (:blocks view)) :batch-put)) "view advertises writes")
+         (contract/validate-block-store! (:blocks view))
+         (check! (= (:cid marker) (:cid ((:read-nonce-ref! view) nonce-ref))) "view nonce mismatch")
+         (check! (nil? ((:read-nonce-ref! view) (str "nonce/v1/" (:cid (first batch))))) "absent nonce was present")
+         (check! (= :invalid-nonce (error #((:read-nonce-ref! view) "other"))) "invalid nonce name accepted"))
        (let [bound (catalog/recover-bound-ref dir "receipt")]
          (with-redefs [catalog/recover-bound-ref (fn [_ _] (update-in bound [:handle :basis :generation] inc))]
            (check! (= :catalog-changed (error #((:read-nonce-ref! adapter) nonce-ref))) "mixed root nonce read accepted")))
@@ -65,17 +74,29 @@
         (check! (= after (store/read-store dir)) "replay changed root")
         (let [db (blocks/open-block-store dir stage tool)]
           (contract/-put-blocks! db [key-block])
-          (let [bound (blocks/open-bound-block-store dir "receipt")]
+          (let [foreign (str "nonce/v1/" (:cid marker))
+                refs (refs/open-ref-store dir)]
+            (check! (:published? (contract/-compare-and-set-ref! refs foreign nil (:cid key-block))) "foreign ref setup failed")
+            (let [view (blocks/open-bound-read-view dir "receipt")]
+              (check! (= :invalid-ipld-basis (error #((:read-nonce-ref! view) foreign))) "foreign marker accepted")))
+          (let [view (blocks/open-bound-read-view dir "receipt") bound (:blocks view)]
             (check! (nil? (contract/get-block bound (:cid key-block))) "bound lookup searched another group")
             (check! (Arrays/equals ^bytes (:bytes key-block) ^bytes (contract/get-block db (:cid key-block))) "global control missing")
             (check! (= :read-only (error #(contract/-put-blocks! bound [key-block]))) "bound port accepted write")
             (contract/-put-blocks! db [(block 21)])
             (check! (= :catalog-changed (error #(contract/get-block bound target))) "stale bound handle accepted")
+            (check! (= :catalog-changed (error #((:read-ref! view)))) "stale view ref accepted")
+            (check! (= :catalog-changed (error #((:read-nonce-ref! view) nonce-ref))) "stale view nonce accepted")
             (let [fresh (blocks/open-bound-block-store dir "receipt") original catalog/get-group-block once (atom true)]
               (with-redefs [catalog/get-group-block (fn [h cid]
                            (when (compare-and-set! once true false) (contract/-put-blocks! db [(block 22)]))
                            (original h cid))]
-                (check! (= :catalog-changed (error #(contract/get-block fresh target))) "root change during batch accepted")))))))))
+                (check! (= :catalog-changed (error #(contract/get-block fresh target))) "root change during batch accepted")))
+            (let [fresh (blocks/open-bound-read-view dir "receipt") original catalog/get-group-block once (atom true)]
+              (with-redefs [catalog/get-group-block (fn [h cid]
+                           (when (compare-and-set! once true false) (contract/-put-blocks! db [(block 23)]))
+                           (original h cid))]
+                (check! (= :catalog-changed (error #((:read-nonce-ref! fresh) nonce-ref))) "root change during nonce read accepted")))))))))
   "read"
   (let [db (blocks/open-backend dir stage tool) bound (catalog/recover-bound-ref dir "receipt")]
    (check! (= target (:cid (contract/-read-ref db "receipt"))) "receipt ref missing")

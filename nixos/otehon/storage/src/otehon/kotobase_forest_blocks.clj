@@ -152,33 +152,53 @@
     (-get-blocks [_ cids] (fetch dir cache cids))
     contract/IBackendCapabilities
     (-capabilities [_] #{:immutable-blocks :cid-addressed-read :packed-blocks :range-read :batch-get :batch-put}))))
-(defn open-bound-block-store
-  "Read-only IBlockStore pinned to one ref's strictly verified Forest group.
+(defn open-bound-read-view
+  "Open a read-only target/nonce/block view from one validated root/group.
 
-  Opening verifies the binding and all named archives; every batch checks the
-  root before and after reading and never searches another group. This is a
-  block-only port: it provides no ref/write capabilities and refuses puts.
-  The host must exclude concurrent file mutation and GC and authenticate the
-  selected root; a handle is not an immutable filesystem snapshot. Root
-  changes require the caller to reopen and reauthorize."
+  Ref and nonce lookups and block batches check the root before and after
+  access. A nonce ref is returned only if its marker block exists in this exact
+  group. The host must derive and authenticate the requested nonce scope and
+  marker semantics, authenticate the root, and exclude file mutation and GC.
+  This is not an independent witness, write/CAS port or filesystem snapshot."
   [dir ref-name]
   (let [bound (catalog/recover-bound-ref dir ref-name)
         handle (:handle bound)
         basis (:basis handle)
+        snap (snapshot dir)
         check-root! (fn []
                       (when-not (= basis (:root (snapshot dir)))
-                        (fail! :catalog-changed "root changed during bound read")))]
-    (reify
-      contract/IBlockStore
-      (-put-blocks! [_ _] (fail! :read-only "bound block port does not write"))
-      (-get-blocks [_ cids]
-        (validate-cids! cids)
-        (check-root!)
-        (let [found (into {} (keep (fn [cid] (when-let [b (catalog/get-group-block handle cid)] [cid b]))) cids)]
-          (check-root!)
-          found))
-      contract/IBackendCapabilities
-      (-capabilities [_] #{:immutable-blocks :cid-addressed-read :packed-blocks :range-read :batch-get}))))
+                        (fail! :catalog-changed "root changed during bound read")))
+        _ (when-not (= basis (:root snap)) (fail! :catalog-changed "root changed while opening bound view"))
+        block-port (reify
+                     contract/IBlockStore
+                     (-put-blocks! [_ _] (fail! :read-only "bound block port does not write"))
+                     (-get-blocks [_ cids]
+                       (validate-cids! cids)
+                       (check-root!)
+                       (let [found (into {} (keep (fn [cid] (when-let [b (catalog/get-group-block handle cid)] [cid b]))) cids)]
+                         (check-root!)
+                         found))
+                     contract/IBackendCapabilities
+                     (-capabilities [_] #{:immutable-blocks :cid-addressed-read :packed-blocks :range-read :batch-get}))]
+    {:blocks block-port
+     :read-ref! (fn [] (check-root!) (let [cid (:target bound)] (check-root!) cid))
+     :read-nonce-ref! (fn [nonce-ref]
+                        (when-not (and (string? nonce-ref) (str/starts-with? nonce-ref "nonce/v1/"))
+                          (fail! :invalid-nonce "invalid nonce reference"))
+                        (catalog/cid-bytes (subs nonce-ref (count "nonce/v1/")))
+                        (check-root!)
+                        (let [cid (get (:state snap) (str "awai.kotobase-ref/" nonce-ref))]
+                          (when cid
+                            (catalog/cid-bytes cid)
+                            (when-not (catalog/get-group-block handle cid)
+                              (fail! :invalid-ipld-basis "nonce marker is outside bound group")))
+                          (check-root!)
+                          (when cid {:cid cid :version (:generation basis)})))}))
+
+(defn open-bound-block-store
+  "Open the read-only block port of a strict bound view; see open-bound-read-view."
+  [dir ref-name]
+  (:blocks (open-bound-read-view dir ref-name)))
 
 (defn open-witnessed-block-store
   "Explicit witnessed block port only. No ref CAS or query authorization is
