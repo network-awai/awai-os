@@ -31,6 +31,7 @@ jobs:
           "$bb_path/bin/bb" --classpath nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:nixos/otehon/storage/vendor/apex-car/src:nixos/otehon/storage/test nixos/otehon/storage/test/otehon/forest_writer_proof.clj "$RUNNER_TEMP/forest-writer-proof" "$tool"
           classpath=nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:nixos/otehon/storage/vendor/apex-car/src:nixos/otehon/storage/vendor/kotobase-storage/src:nixos/otehon/storage/test
           "$bb_path/bin/bb" --classpath "$classpath" nixos/otehon/storage/test/otehon/generic_forest_file_proof.clj "$RUNNER_TEMP/generic-forest-file-proof" "$tool"
+          ATOMIC_LARGE_FOREST="$RUNNER_TEMP/generic-forest-file-proof/data.forest" BABASHKA="$bb_path/bin/bb" "$bb_path/bin/bb" --classpath "$classpath" nixos/otehon/storage/test/otehon/atomic_group_ref_crash_proof.clj run "$RUNNER_TEMP/atomic-group-ref-mib-crash"
           "$bb_path/bin/bb" --classpath "$classpath" nixos/otehon/storage/test/otehon/generic_large_block_proof.clj write "$RUNNER_TEMP/generic-large-block-proof" "$tool"
           "$bb_path/bin/bb" --classpath "$classpath" nixos/otehon/storage/test/otehon/generic_large_block_proof.clj read "$RUNNER_TEMP/generic-large-block-proof" /nonexistent/forest-tool
           "$bb_path/bin/bb" --classpath "$classpath" nixos/otehon/storage/test/otehon/generic_large_witness_proof.clj "$RUNNER_TEMP/generic-large-witness-proof" "$tool"
