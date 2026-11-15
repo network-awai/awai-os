@@ -11,6 +11,11 @@ It runs Kaikei and Dandori judgment cores in browser Workers and a native host
 observer under systemd. It is an independent VM/live candidate; full network
 Node/Cell integration and physical hardware remain separate acceptance work.
 
+**Otehon dapp intake (owner decision 2026-11-15, AWAI-155):** screen-bearing
+apps (kaisha/kaikei class) are taken in as MCP Apps-style iframes per
+`network-awai-apex` ADR 0026 D12, not as vendored code. Agent-only use stays on
+the Hermes `mcp_servers` route (D14). See [AGENTS.md](AGENTS.md).
+
 For installed native systems, see [network updates and retained-generation
 recovery](docs/native-network-updates.md). This opt-in SSH/Nix/UEFI route is
 separate from the historical updater below; it is disabled on live USB media
