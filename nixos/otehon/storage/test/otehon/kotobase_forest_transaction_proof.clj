@@ -14,9 +14,35 @@
                   _ (.nextBytes rng bytes)
                   digest (mapv #(bit-and 255 %) (.digest (MessageDigest/getInstance "SHA-256") bytes))]
               {:cid (car/cid-str (car/cid-bytes car/codec-raw digest)) :bytes bytes})) (range 2))))
+(defn stream-blocks []
+  (mapv (fn [i]
+          (let [bytes (byte-array (* 820 1024)) _ (aset-byte bytes 0 (byte i))
+                digest (mapv #(bit-and 255 %) (.digest (MessageDigest/getInstance "SHA-256") bytes))]
+            {:cid (car/cid-str (car/cid-bytes car/codec-raw digest)) :bytes bytes})) (range 41)))
 (defn check! [x msg] (when-not x (throw (ex-info msg {}))))
 (let [[mode base tool] *command-line-args* dir (str base "/store") stage (str base "/staging")]
   (case mode
+    "stream-write" (do (check! (.mkdir (java.io.File. base)) "output exists")
+      (check! (.mkdir (java.io.File. stage)) "staging exists")
+      (store/init! dir)
+      (let [db (forest/open-backend dir stage tool) items (stream-blocks) target (:cid (last items))
+            adapter (forest/streamed-receipt-publication-adapter db "stream" nil {:max-bytes (* 40 1024 1024) :max-blocks 50}
+                     (fn [ports _ _] (doseq [{:keys [cid bytes]} items] ((:put! ports) cid bytes))
+                       (check! (nil? (contract/-read-ref db "stream")) "premature ref")
+                       target)
+                     (fn [get-block root _ _] (and (= root target)
+                       (every? (fn [{:keys [cid bytes]}] (Arrays/equals ^bytes bytes ^bytes (get-block cid))) items))))
+            result ((:publish! adapter) {:receipt {:fixture true} :prepared {:fixture true}})]
+        (check! (= target result ((:read-ref! adapter))) "not published")
+        (prn {:publication :streamed :blocks (count items) :logical-bytes (* 41 820 1024) :pass true})))
+    "stream-read" (let [db (forest/open-backend dir stage tool) items (stream-blocks)
+                        groups (filter #(str/starts-with? % "awai.ipld-forest-group/kotobase-blocks/")
+                                       (keys (:state (store/read-store dir))))]
+      (check! (= 2 (count groups)) "expected two independent batches")
+      (check! (= (:cid (last items)) (:cid (contract/-read-ref db "stream"))) "ref mismatch")
+      (doseq [{:keys [cid bytes]} items]
+        (check! (Arrays/equals ^bytes bytes ^bytes (contract/get-block db cid)) "block mismatch"))
+      (prn {:fresh-process true :batches 2 :blocks (count items) :logical-bytes (* 41 820 1024) :pass true}))
     ("scoped-write" "ports-write") (do (check! (.mkdir (java.io.File. base)) "output exists")
       (check! (.mkdir (java.io.File. stage)) "staging exists")
       (store/init! dir)

@@ -58,6 +58,8 @@ pkgs.testers.runNixOSTest {
     machine.succeed("forest-scoped-probe scoped-read /var/lib/forest-reboot/scoped", timeout=900)
     machine.succeed("forest-scoped-probe ports-write /var/lib/forest-reboot/ports", timeout=900)
     machine.succeed("forest-scoped-probe scoped-read /var/lib/forest-reboot/ports", timeout=900)
+    machine.succeed("forest-scoped-probe stream-write /var/lib/forest-reboot/stream", timeout=900)
+    machine.succeed("forest-scoped-probe stream-read /var/lib/forest-reboot/stream", timeout=900)
     machine.succeed("forest-reboot-probe read-large /var/lib/forest-reboot/store-large", timeout=900)
     # Guest creates and commits the full 1 GiB/64-Pack group itself.
     machine.succeed("GIB_ACTUAL_OUTPUT=/var/lib/forest-reboot/gib-actual forest-gib-writer-probe write", timeout=1800)
@@ -73,12 +75,15 @@ pkgs.testers.runNixOSTest {
     # the explicit-ports writer's actual two-Pack ref and byte/CID recovery.
     machine.succeed("forest-scoped-probe scoped-read /var/lib/forest-reboot/ports", timeout=900)
     machine.succeed("forest-scoped-probe scoped-read /var/lib/forest-reboot/scoped", timeout=900)
+    machine.succeed("forest-scoped-probe stream-read /var/lib/forest-reboot/stream", timeout=900)
     machine.succeed("forest-reboot-probe read /var/lib/forest-reboot/store")
     machine.succeed("forest-reboot-probe read-v2 /var/lib/forest-reboot/store-v2")
     machine.succeed("forest-reboot-probe read-gib /var/lib/forest-reboot/gib-store", timeout=900)
     machine.succeed("forest-reboot-probe read-large /var/lib/forest-reboot/store-large", timeout=900)
     machine.succeed("GIB_ACTUAL_OUTPUT=/var/lib/forest-reboot/gib-actual forest-gib-writer-probe read", timeout=1800)
     # Refuse a withheld Pack from each guest-created two-Pack group.
+    machine.succeed("f=$(find /var/lib/forest-reboot/stream/store -type f -name '*.forest' -print -quit); test -n \"$f\"; mv \"$f\" /var/lib/forest-reboot/stream-missing.saved")
+    machine.succeed("if forest-scoped-probe stream-read /var/lib/forest-reboot/stream > /tmp/stream-missing.log 2>&1; then exit 1; fi; grep -q ':missing-forest' /tmp/stream-missing.log", timeout=900)
     machine.succeed("f=$(find /var/lib/forest-reboot/ports/store -type f -name '*.forest' -print -quit); test -n \"$f\"; mv \"$f\" /var/lib/forest-reboot/ports-missing.saved")
     machine.succeed("if forest-scoped-probe scoped-read /var/lib/forest-reboot/ports > /tmp/ports-missing.log 2>&1; then exit 1; fi; grep -q ':missing-forest' /tmp/ports-missing.log", timeout=900)
     machine.succeed("f=$(find /var/lib/forest-reboot/scoped/store -type f -name '*.forest' -print -quit); test -n \"$f\"; mv \"$f\" /var/lib/forest-reboot/scoped-missing.saved")

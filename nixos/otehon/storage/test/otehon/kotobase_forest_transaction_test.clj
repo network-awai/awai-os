@@ -25,6 +25,87 @@
     contract/IBackendCapabilities
     (-capabilities [_] #{:immutable-blocks :cid-addressed-read :conditional-ref :single-writer-ref})))
 (defn state [] (atom {:puts 0 :cas 0 :blocks {} :ref nil}))
+(deftest streamed-publication-crosses-batch-bound-with-one-ref-cas
+  (let [s (state) db (fake-backend s false)
+        blocks (mapv (fn [i]
+                       (let [bytes (byte-array (* 820 1024))
+                             _ (aset-byte bytes 0 (byte i))
+                             digest (mapv #(bit-and 255 %) (.digest (MessageDigest/getInstance "SHA-256") bytes))]
+                         {:cid (car/cid-str (car/cid-bytes car/codec-raw digest)) :bytes bytes})) (range 41))
+        target (:cid (last blocks)) saved (atom nil)]
+    (is (> (reduce + (map #(alength ^bytes (:bytes %)) blocks)) (* 32 1024 1024)))
+    (is (= :published
+           (forest/publish-streamed-ports! db "db" nil {:max-bytes (* 40 1024 1024) :max-blocks 50}
+             (fn [ports]
+               (reset! saved ports)
+               (doseq [{:keys [cid bytes]} blocks] ((:put! ports) cid bytes))
+               (is (= 1 (:puts @s)))
+               (is (nil? (:ref @s)))
+               (is (= (vec (:bytes (first blocks))) (vec ((:get-fn ports) (:cid (first blocks))))))
+               {:target target :value :published})
+             (fn [get-block root]
+               (is (thrown? Exception ((:put! @saved) target (:bytes (last blocks)))))
+               (and (= target root) (zero? (:cas @s))
+                    (every? (fn [{:keys [cid bytes]}] (= (vec bytes) (vec (get-block cid)))) blocks))))))
+    (is (= [2 1 target] [(:puts @s) (:cas @s) (:ref @s)]))
+    (is (thrown? Exception ((:get-fn @saved) target)))))
+
+(deftest streamed-publication-refuses-failure-before-cas
+  (let [items (mapv pair ["a" "b" "c"]) target (:cid (last items))]
+    (let [s (state)]
+      (is (thrown? Exception
+            (forest/publish-streamed-ports! (fake-backend s false) "db" nil {:max-bytes 100 :max-blocks 2}
+              (fn [ports] (doseq [{:keys [cid bytes]} items] (try ((:put! ports) cid bytes) (catch Exception _ nil)))
+                {:target target :value :must-not-return}) (fn [& _] true))))
+      (is (= [0 0 nil] [(:puts @s) (:cas @s) (:ref @s)])))
+    (let [s (state)]
+      (is (thrown? Exception
+            (forest/publish-streamed-ports! (fake-backend s false) "db" nil {:max-bytes 100 :max-blocks 3}
+              (fn [ports] (doseq [{:keys [cid bytes]} items] ((:put! ports) cid bytes)) {:target target :value :secret})
+              (fn [& _] false))))
+      (is (= [1 0 nil] [(:puts @s) (:cas @s) (:ref @s)])))
+    (let [s (state) other (:cid (pair "other"))]
+      (swap! s assoc :ref other)
+      (is (= :stale-ref
+             (try (forest/publish-streamed-ports! (fake-backend s false) "db" nil {:max-bytes 100 :max-blocks 3}
+                    (fn [ports] (doseq [{:keys [cid bytes]} items] ((:put! ports) cid bytes)) {:target target :value :secret})
+                    (fn [& _] true)) nil (catch Exception e (:type (ex-data e))))))
+      (is (= other (:ref @s))))))
+
+(deftest streamed-publication-requires-a-persisted-target
+  (let [s (state) missing (:cid (pair "missing"))]
+    (is (= :missing-ref-target
+           (try (forest/publish-streamed-ports! (fake-backend s false) "db" nil {:max-bytes 100 :max-blocks 1}
+                  (fn [_] {:target missing :value :secret}) (fn [& _] true)) nil
+                (catch Exception e (:type (ex-data e))))))
+    (is (zero? (:cas @s))) (is (nil? (:ref @s)))))
+
+(deftest streamed-receipt-adapter-requires-verification-and-ref-cas
+  (let [{:keys [cid bytes]} (pair "receipt-stream") input {:receipt {:r 1} :prepared {:p 2}}
+        build (fn [ports _ _] ((:put! ports) cid bytes))
+        verify (fn [get-block target receipt prepared]
+                 (and (= [target receipt prepared] [cid (:receipt input) (:prepared input)])
+                      (= (vec bytes) (vec (get-block cid)))))
+        limits {:max-bytes 100 :max-blocks 10}]
+    (let [s (state) adapter (forest/streamed-receipt-publication-adapter (fake-backend s false) "r" nil limits build verify)]
+      (is (= cid ((:publish! adapter) input)))
+      (is (= cid ((:read-ref! adapter))))
+      (is (= [1 1] [(:puts @s) (:cas @s)])))
+    (let [s (state) adapter (forest/streamed-receipt-publication-adapter (fake-backend s false) "r" nil limits build (fn [& _] false))]
+      (is (= :closure-rejected (try ((:publish! adapter) input) nil (catch Exception e (:type (ex-data e))))))
+      (is (nil? (:ref @s))) (is (zero? (:cas @s))))))
+
+(deftest streamed-builder-failure-after-flush-leaves-only-orphans
+  (let [s (state) leaked (atom nil) target (:cid (pair "unpublished"))]
+    (is (thrown? Exception
+          (forest/publish-streamed-ports! (fake-backend s false) "db" nil {:max-bytes 100000 :max-blocks 4100}
+            (fn [ports]
+              (reset! leaked ports)
+              (doseq [i (range 4097)] (let [{:keys [cid bytes]} (pair (str i))] ((:put! ports) cid bytes)))
+              (throw (ex-info "after flush" {})))
+            (fn [& _] true))))
+    (is (= [1 0 nil 4096] [(:puts @s) (:cas @s) (:ref @s) (count (:blocks @s))]))
+    (is (thrown? Exception ((:get-fn @leaked) target)))))
 (deftest overlay-publishes-only-after-blocks
   (let [s (state) db (fake-backend s false) tx (forest/open-transaction db) {:keys [cid bytes]} (pair "value")]
     (is (= cid ((:put! tx) cid bytes)))

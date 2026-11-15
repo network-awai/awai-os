@@ -297,6 +297,82 @@
           (throw e))
         (finally (reset! active false))))))
 
+(defn publish-streamed-ports!
+  "Build a bounded multi-batch publication, then verify and CAS one ref.
+
+  Each put acknowledgement is provisional, even when a full batch has already
+  been stored. Stored blocks are visible by CID and may remain orphaned after
+  any failure. BUILD! must be synchronous and must not expose a success before
+  this function returns. VERIFY! must check the entire required closure from
+  persisted bytes. Concurrent GC, writer fencing, cross-ref atomicity, and
+  ambiguous CAS outcomes remain host responsibilities."
+  [backend ref-name expected {:keys [max-bytes max-blocks] :as limits} build! verify!]
+  (contract/validate-backend! backend)
+  (when-not (and (map? limits) (= #{:max-bytes :max-blocks} (set (keys limits)))
+                 (integer? max-bytes) (<= 1 max-bytes (* 4 1024 1024 1024))
+                 (integer? max-blocks) (<= 1 max-blocks 1048576)
+                 (fn? build!) (fn? verify!))
+    (fail! :invalid-stream-options "invalid streamed publication bounds or callbacks"))
+  (let [gate (Object.) state (atom {:phase :open :bytes 0 :count 0 :buffer-bytes 0 :blocks {}})
+        require-open! #(when-not (= :open (:phase @state)) (fail! :transaction-closed "stream is not open"))
+        fail-stream! #(swap! state assoc :phase :failed :blocks {} :buffer-bytes 0)
+        flush! (fn []
+                 (let [m (:blocks @state)]
+                   (when (seq m)
+                     (let [batch (mapv m (sort (keys m))) cids (mapv :cid batch)
+                           ack (contract/-put-blocks! backend batch)]
+                       (when-not (= cids ack) (fail! :invalid-block-ack "unexpected batch acknowledgement"))
+                       (swap! state assoc :blocks {} :buffer-bytes 0)))))
+        ports {:put! (fn [cid bytes]
+                       (locking gate
+                         (require-open!)
+                         (try
+                           (let [block (first (:unique (checked-blocks [{:cid cid :bytes bytes}])))
+                                 n (alength ^bytes (:bytes block)) old (get-in @state [:blocks cid])]
+                             (when (or (> (+ (:bytes @state) n) max-bytes)
+                                       (>= (:count @state) max-blocks))
+                               (fail! :too-large "stream exceeds declared bounds"))
+                             (when (and old (not (Arrays/equals ^bytes (:bytes old) ^bytes (:bytes block))))
+                               (fail! :cid-collision "duplicate CID differs"))
+                             (when (and (not old) (or (>= (count (:blocks @state)) max-batch-count)
+                                                      (> (+ (:buffer-bytes @state) n) max-batch-bytes)))
+                               (flush!))
+                             (swap! state #(cond-> (-> % (update :bytes + n) (update :count inc))
+                                             (not old) (-> (update :buffer-bytes + n) (assoc-in [:blocks cid] block))))
+                             cid)
+                           (catch Exception e (fail-stream!) (throw e)))))
+               :get-fn (fn [cid]
+                         (locking gate
+                           (require-open!)
+                           (try
+                             (validate-cids! [cid])
+                             (if-let [b (get-in @state [:blocks cid])]
+                               (aclone ^bytes (:bytes b))
+                               (contract/get-block backend cid))
+                             (catch Exception e (fail-stream!) (throw e)))))}]
+    (locking gate
+      (try
+        (let [result (build! ports)]
+          (require-open!)
+          (when-not (and (map? result) (= #{:target :value} (set (keys result))))
+            (fail! :invalid-builder-result "builder must return target and value"))
+          (validate-cids! [(:target result)])
+          (swap! state assoc :phase :publishing)
+          (flush!)
+          (when-not (contract/get-block backend (:target result))
+            (fail! :missing-ref-target "stream target block is not published"))
+          (when-not (true? (verify! #(contract/get-block backend %) (:target result)))
+            (fail! :closure-rejected "semantic verifier refused publication"))
+          (let [ack (contract/-compare-and-set-ref! backend ref-name expected (:target result))]
+            (when-not (and (map? ack) (boolean? (:published? ack))
+                           (if (:published? ack) (= (:target result) (:current ack)) true))
+              (fail! :invalid-ref-ack "ref provider returned invalid acknowledgement"))
+            (when-not (:published? ack) (fail! :stale-ref "ref changed before publication"))
+            (swap! state assoc :phase :finished :blocks {} :buffer-bytes 0)
+            (:value result)))
+        (catch Exception e (fail-stream!) (throw e))
+        (finally (swap! state assoc :phase :closed :blocks {} :buffer-bytes 0))))))
+
 (defn receipt-publication-adapter
   "Create explicit publication callbacks for a canonical receipt sink.
 
@@ -321,6 +397,27 @@
                  (fn [ports]
                    (let [cid (build! ports receipt prepared)]
                      {:target cid :value cid}))
+                 (fn [get-block cid] (verify! get-block cid receipt prepared))))
+   :read-ref! (fn [] (:cid (contract/-read-ref backend ref-name)))})
+
+(defn streamed-receipt-publication-adapter
+  "Receipt publication callbacks using bounded incremental batch persistence.
+
+  The host supplies total bounds and the semantic closure verifier. Block
+  visibility, orphaning, GC, fencing, nonce and ambiguous CAS caveats are the
+  same as `publish-streamed-ports!`. This does not make provisional puts durable
+  acknowledgements or prove a product receipt closure."
+  [backend ref-name expected limits build! verify!]
+  (contract/validate-backend! backend)
+  (when-not (and (string? ref-name) (seq ref-name) (fn? build!) (fn? verify!))
+    (fail! :invalid-receipt-publication "invalid publication adapter options"))
+  (when (some? expected) (validate-cids! [expected]))
+  {:publish! (fn [{:keys [receipt prepared] :as input}]
+               (when-not (and (map? input) (= #{:receipt :prepared} (set (keys input)))
+                              (map? receipt) (map? prepared))
+                 (fail! :invalid-receipt-publication "invalid prepared receipt input"))
+               (publish-streamed-ports! backend ref-name expected limits
+                 (fn [ports] (let [cid (build! ports receipt prepared)] {:target cid :value cid}))
                  (fn [get-block cid] (verify! get-block cid receipt prepared))))
    :read-ref! (fn [] (:cid (contract/-read-ref backend ref-name)))})
 
