@@ -1,6 +1,6 @@
 (ns shell.fleet-overview
  (:require [clojure.string :as str] ["react" :refer [useState useEffect]]
-           ["../circle-work.js" :refer [decodeCircleWork circleExecution]] [shell.bot-chat :as bot-chat] [shell.agent-workspace :as workspace]
+           ["../mail-progress.js" :refer [decodeMailProgress]] ["../circle-work.js" :refer [decodeCircleWork circleExecution]] [shell.bot-chat :as bot-chat] [shell.agent-workspace :as workspace]
            ["../agent-directory.js" :refer [decodeAgentPresence directoryState decodePeerProgress]]
            [shell.fleet-circles :as circles] [shell.fleet-activity :as activity] [shell.ui-copy :as ui]
            ["../ui-copy.js" :refer [initialLocale saveLocale]]
@@ -11,7 +11,7 @@
  [:li [:strong (value-text locale value)] [:span (ui/t locale label)]])
 (defn panel [& [initial-view]]
  (let [[report set-report] (useState nil) [error set-error] (useState false) [locale set-locale] (useState initialLocale)
-       [query set-query] (useState "") [view set-view] (useState (or initial-view "circle")) [presence set-presence] (useState nil) [peer-progress set-peer-progress] (useState nil) [circle-work set-circle-work] (useState nil) [filter-state set-filter] (useState "all") [group set-group] (useState "all") [now set-now] (useState (js/Date.now))]
+       [query set-query] (useState "") [view set-view] (useState (or initial-view "circle")) [presence set-presence] (useState nil) [peer-progress set-peer-progress] (useState nil) [circle-work set-circle-work] (useState nil) [mail-progress set-mail-progress] (useState nil) [filter-state set-filter] (useState "all") [group set-group] (useState "all") [now set-now] (useState (js/Date.now))]
   (useEffect
    (fn []
     (let [controller (js/AbortController.) busy (atom false) live (atom true)
@@ -43,6 +43,11 @@
    refresh (fn [] (-> (js/fetch "./circle-work-state.json" #js {:cache "no-store" :credentials "omit" :redirect "error" :signal (.-signal controller)})
     (.then #(if (.-ok %) (.json %) (throw (js/Error. "unavailable")))) (.then decodeCircleWork)
     (.then #(when @live (set-circle-work (js->clj % :keywordize-keys true)))) (.catch (fn [_] nil)))) timer (js/setInterval refresh 5000)]
+   (refresh) (fn [] (reset! live false) (.abort controller) (js/clearInterval timer)))) #js [])
+  (useEffect (fn [] (let [controller (js/AbortController.) live (atom true)
+   refresh (fn [] (-> (js/fetch "./mail-executor-state.json" #js {:cache "no-store" :credentials "omit" :redirect "error" :signal (.-signal controller)})
+    (.then #(if (.-ok %) (.json %) (throw (js/Error. "mail metadata unavailable")))) (.then decodeMailProgress)
+    (.then #(when @live (set-mail-progress (js->clj % :keywordize-keys true)))) (.catch (fn [_] nil)))) timer (js/setInterval refresh 30000)]
    (refresh) (fn [] (reset! live false) (.abort controller) (js/clearInterval timer)))) #js [])
   (let [peer-progress (when-not (= "new-epoch-legacy-not-restored" (:historyStatus circle-work)) peer-progress)
         age (when report (- now (js/Date.parse (:observedAt report)))) stale? (or (nil? age) (< age 0) (> age 180000))
@@ -80,7 +85,7 @@
       (when (= view "agents") [:f> workspace/panel all-bots presence (:catalogSha256 report) stale? now locale])
       (when (= view "circle")
        [:f> circles/panel all-bots stale? now query set-query
-        (fn [name] (set-query name) (set-view "list")) locale bot-chat/panel (when (= (:catalogSha256 report) (:catalogSha256 peer-progress)) peer-progress) (when (= (:catalogSha256 report) (:catalogSha256 circle-work)) circle-work)])
+        (fn [name] (set-query name) (set-view "list")) locale bot-chat/panel (when (= (:catalogSha256 report) (:catalogSha256 peer-progress)) peer-progress) (when (= (:catalogSha256 report) (:catalogSha256 circle-work)) circle-work) (when (= (:catalogSha256 report) (:catalogSha256 mail-progress)) mail-progress)])
       (when (= view "list")
        [:<>
         [:div.fleet-list-filters

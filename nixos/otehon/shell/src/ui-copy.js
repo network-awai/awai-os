@@ -1,6 +1,7 @@
 // Quoted dictionary keys survive advanced property renaming. UI copy excludes imported content.
 export const UI_COPY = {
   "ja": {
+    "botMail": "Botメール", "mailAddress": "メールアドレス", "mailReservedCount": "登録予約 {count}件", "mailRoutingPending": "配送接続待ち", "mailKeysPending": "鍵登録待ち", "mailSendNotGranted": "送信未許可", "mailGatewayGoogle": "現在のMX：Google Workspace。既存メールの経路は維持しています。",
     "verifiedWorkCount": "検証済み成果 {count}",
     "goalActivity": "Goalへの活動", "controllerConnected": "接続中", "proposalCount": "{count} 成果案", "proposalToday": "{count} 成果案 · 本日 {today}/4", "executionDetails": "実行情報", "newStateHistory": "新しい保存領域。過去の会話は未復元です。", "proposalNotOutcome": "成果案の保存件数。Goal達成度は未計測です。",
     "supportCircleCount": "協力Circle {count}", "purpose": "Circleの目的", "plannedGoal": "計画", "cooperation": "Goalへの協働", "leadCircle": "主担当", "supportCircle": "協力",
@@ -172,6 +173,7 @@ export const UI_COPY = {
     "importedProfiles": "Bot登録を取り込む"
   },
   "en": {
+    "botMail": "Bot mail", "mailAddress": "Email address", "mailReservedCount": "{count} reserved addresses", "mailRoutingPending": "Routing not connected", "mailKeysPending": "Key enrollment pending", "mailSendNotGranted": "Sending not granted", "mailGatewayGoogle": "Current MX: Google Workspace. Existing mail routes are preserved.",
     "verifiedWorkCount": "Verified results {count}",
     "goalActivity": "Goal activity", "controllerConnected": "Connected", "proposalCount": "{count} proposals", "proposalToday": "{count} proposals · today {today}/4", "executionDetails": "Execution details", "newStateHistory": "New state epoch. Legacy conversations are unavailable.", "proposalNotOutcome": "Counts saved proposals. Goal outcomes are unmeasured.",
     "supportCircleCount": "Supporting circles {count}", "purpose": "Circle purpose", "plannedGoal": "Planned", "cooperation": "Working toward a goal", "leadCircle": "Lead", "supportCircle": "Support",

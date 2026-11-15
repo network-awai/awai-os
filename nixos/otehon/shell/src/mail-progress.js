@@ -1,0 +1,4 @@
+export async function decodeMailProgress(e,cryptoImpl=globalThis.crypto){
+ const p=e?.['payload'];if(e?.['schema']!=='itonami.mail-status-artifact.v1'||p?.['schema']!=='itonami.mail-status.v1'||!Array.isArray(p['entries'])||p['entries'].length>10000)throw Error('invalid-mail-status');
+ const hash=Array.from(new Uint8Array(await cryptoImpl.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(p)))),b=>b.toString(16).padStart(2,'0')).join('');if(hash!==e['sha256']||new Set(p['entries'].map(x=>x['botId'])).size!==p['entries'].length||p['entries'].some(x=>typeof x['botId']!=='string'||typeof x['address']!=='string'||!/^bot-[a-z0-9-]+@awai\.network$/.test(x['address'])||x['state']!=='reserved'||x['routing']!=='not-provisioned'||x['keyEnrollment']!=='pending'||x['rights']?.length!==0))throw Error('mail-status-binding');return p;
+}
