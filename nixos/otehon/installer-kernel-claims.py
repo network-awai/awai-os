@@ -52,6 +52,41 @@ kprobe:bdev_open /pid == PID_FILTER/ {
         }
       }
     }
+    // Sysfs can omit an unhashed/deleted partition whose inode is still held.
+    // Walk the bdev pseudo-filesystem's inode list, not the visible part_tbl.
+    // This is an unlocked, bounded metadata snapshot, never a release action.
+    $head = &$b->bd_mapping->host->i_sb->s_inodes;
+    $link = $head->next;
+    $scanned = 0;
+    $matched = 0;
+    while ($link && $link != $head && $scanned < 512 && $matched < 32) {
+      $inode = (struct inode *)((uint64)$link - offsetof(struct inode, i_sb_list));
+      $child = (struct block_device *)((uint64)$inode - offsetof(struct bdev_inode, vfs_inode));
+      if ($child->bd_disk == $b->bd_disk && ($child->__bd_flags.counter & 255)) {
+        $matched++;
+        printf("PART %u %u %u %d %d %d %d\n", $b->bd_dev, $child->bd_dev,
+          $child->__bd_flags.counter & 255, $child->bd_holders,
+          $child->bd_openers.counter, $child->bd_writers, $inode->i_count.counter);
+        if ((uint64)$child->bd_holder_ops == kaddr("fs_holder_ops") && $child->bd_holder) {
+          $sb = (struct super_block *)$child->bd_holder;
+          printf("PARTFS %u %u %s\n", $b->bd_dev, $child->bd_dev, str($sb->s_type->name, 32));
+        } else if (!$child->bd_holder_ops && $child->bd_holder &&
+                   (uint64)$child->bd_holder != kaddr("bd_may_claim")) {
+          $file = (struct file *)$child->bd_holder;
+          if ((uint64)$file->f_op == kaddr("def_blk_fops")) {
+            printf("PARTFILE %u %u %u %u\n", $b->bd_dev, $child->bd_dev,
+              $file->f_flags, $file->f_cred->uid.val);
+          }
+        } else if ($child->bd_holder_ops && $child->bd_holder_ops->mark_dead) {
+          printf("PARTCALLBACK %u %u %s\n", $b->bd_dev, $child->bd_dev,
+            ksym((uint64)$child->bd_holder_ops->mark_dead));
+        }
+      }
+      $link = $link->next;
+      $scanned++;
+    }
+    printf("SCAN %u %u %u %d %u\n", $b->bd_dev, $scanned, $matched,
+      $link && $link != $head, $b->bd_disk->open_partitions);
   }
 }
 kretprobe:bdev_open /pid == PID_FILTER && @device[tid]/ {
@@ -82,6 +117,31 @@ def parse(output, devices):
         elif fields[0] == 'RETURN' and len(fields) == 3:
             try: item.setdefault('kernel', {})['returnCode'] = int(fields[2])
             except ValueError: pass
+        elif fields[0] == 'PART' and len(fields) == 8:
+            try: number, partno, holders, openers, writers, refs = map(int, fields[2:])
+            except ValueError: continue
+            if not 0 < number < 2**32 or not 1 <= partno <= 255: continue
+            children = item.setdefault('kernel', {}).setdefault('partitions', [])
+            if len(children) >= 32 or any(p['deviceNumber'] == number for p in children): continue
+            children.append({'deviceNumber': number, 'majorMinor': str(number >> 20)+':'+str(number & (2**20-1)),
+                             'partitionNumber': partno, 'holders': holders, 'openers': openers,
+                             'writers': writers, 'inodeReferences': refs})
+        elif fields[0] in ('PARTFS', 'PARTFILE', 'PARTCALLBACK'):
+            if len(fields) not in (4, 5) or not fields[2].isdecimal(): continue
+            child = next((p for p in item.get('kernel', {}).get('partitions', []) if p['deviceNumber'] == int(fields[2])), None)
+            if child is None: continue
+            if fields[0] == 'PARTFILE' and len(fields) == 5:
+                try: child.update(holderKind='block-file', holderFileFlags=int(fields[3]), holderUid=int(fields[4]))
+                except ValueError: pass
+            elif len(fields) == 4:
+                value = fields[3] if re.fullmatch(r'[A-Za-z_][A-Za-z0-9_.-]{0,95}', fields[3]) else 'unknown'
+                if fields[0] == 'PARTFS': child.update(holderKind='filesystem', fileSystem=value)
+                else: child.update(holderKind='other', markDeadCallback=value)
+        elif fields[0] == 'SCAN' and len(fields) == 6:
+            try: scanned, matched, truncated, opened = map(int, fields[2:])
+            except ValueError: continue
+            item.setdefault('kernel', {})['partitionScan'] = {'inodesScanned': scanned, 'partitionsMatched': matched,
+                'truncated': bool(truncated), 'openPartitions': opened, 'atomic': False}
 
 
 def inspect(rows, tracer='bpftrace'):

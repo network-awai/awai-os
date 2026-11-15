@@ -9,13 +9,15 @@ let
     rows = [r for r in b.inventory() if r['path'] in ('/dev/vdb', '/dev/vdc')]
     assert len(rows) == 2
     assert all(not r["ambiguous"] for r in rows), "fixture disks need real unique QEMU serials"
-    if sys.argv[1] not in ('loop', 'raw-loop'):
+    if sys.argv[1] not in ('loop', 'raw-loop', 'partition-fs'):
         assert not any(r['used'] for r in rows), 'fixture must be invisible to root mount namespace'
     report = b.device_usage(rows)
     target = next(r for r in report['devices'] if r['path'] == '/dev/vdb')
     other = next(r for r in report['devices'] if r['path'] == '/dev/vdc')
     assert other['exclusiveReadOnlyOpen']['opened']
-    if sys.argv[1] == 'held':
+    if sys.argv[1] in ('partition-fs', 'partition-file'):
+        assert target['exclusiveReadOnlyOpen']['errno'] == errno.EBUSY
+    elif sys.argv[1] == 'held':
         assert target['exclusiveReadOnlyOpen']['errno'] == errno.EBUSY
         assert any(r['namespace'] != os.readlink('/proc/self/ns/mnt') for r in target['mountNamespaceReferences'])
         assert any(r['unit'] == 'usage-fd-fixture.service' for r in target['openFdReferences'])
@@ -37,11 +39,20 @@ let
     else:
         assert target['exclusiveReadOnlyOpen']['opened']
         assert not target['mountNamespaceReferences']
-    if sys.argv[1] in ('held', 'exclusive', 'released'):
+    if sys.argv[1] in ('held', 'exclusive', 'released', 'partition-fs', 'partition-file'):
         trace = claims.inspect(rows)
         assert trace['available'], trace
         held = next(r for r in trace['devices'] if r['path']=='/dev/vdb')
-        if sys.argv[1] == 'held':
+        assert not held['kernel']['partitionScan']['truncated'], trace
+        if sys.argv[1] in ('partition-fs', 'partition-file'):
+            assert held['kernel']['holderKind']=='partition-claim', trace
+            assert held['kernel']['returnCode']==-errno.EBUSY, trace
+            part = next(p for p in held['kernel']['partitions'] if p['partitionNumber']==1)
+            assert part['holders'] > 0 and part['openers'] > 0, trace
+            assert part['holderKind']==('filesystem' if sys.argv[1]=='partition-fs' else 'block-file'), trace
+            if sys.argv[1]=='partition-fs': assert part['fileSystem']=='ext4', trace
+            else: assert part['holderUid']==0, trace
+        elif sys.argv[1] == 'held':
             assert held['kernel']['hasHolder']
             assert held['kernel']['holderOps']=='fs_holder_ops', trace
             assert held['kernel']['fileSystem']=='ext4', trace
@@ -88,6 +99,11 @@ in pkgs.testers.runNixOSTest {
         exec ${pkgs.python3}/bin/python3 -c 'import os,time; fd=os.open("/dev/usage-alias",os.O_RDONLY); open("/run/usage-fd-ready","w").close(); time.sleep(600)'
       '';
     };
+    systemd.services.usage-partition-fixture = {
+      script = ''
+        exec ${pkgs.python3}/bin/python3 -c 'import os,time; fd=os.open("/dev/vdb1",os.O_RDONLY|os.O_EXCL); open("/run/usage-partition-ready","w").close(); time.sleep(600)'
+      '';
+    };
   };
   testScript = ''
     start_all()
@@ -110,6 +126,17 @@ in pkgs.testers.runNixOSTest {
     machine.succeed("losetup --find --show /dev/vdb > /run/usage-loop")
     machine.succeed("${pkgs.python3}/bin/python3 ${check} raw-loop")
     machine.succeed("losetup -d $(cat /run/usage-loop)")
+    machine.succeed("${pkgs.python3}/bin/python3 ${check} released")
+    machine.succeed("sha256sum -c /run/usage-before")
+    machine.succeed("wipefs -a /dev/vdb; printf 'label: gpt\\n,32M,L\\n' | sfdisk /dev/vdb; udevadm settle; mkfs.ext4 -q -F /dev/vdb1")
+    machine.succeed("mount /dev/vdb1 /mnt/usage-fixture")
+    machine.succeed("${pkgs.python3}/bin/python3 ${check} partition-fs")
+    machine.succeed("umount /mnt/usage-fixture")
+    machine.succeed("${pkgs.python3}/bin/python3 ${check} released")
+    machine.succeed("systemctl start usage-partition-fixture")
+    machine.wait_until_succeeds("test -f /run/usage-partition-ready", timeout=30)
+    machine.succeed("${pkgs.python3}/bin/python3 ${check} partition-file")
+    machine.succeed("systemctl stop usage-partition-fixture")
     machine.succeed("${pkgs.python3}/bin/python3 ${check} released")
     machine.succeed("sha256sum -c /run/usage-before")
   '';

@@ -26,6 +26,17 @@ class Claims(unittest.TestCase):
   self.assertEqual(target['kernel']['fileSystem'],'ext4');self.assertEqual(target['kernel']['returnCode'],-16)
   k.parse('OPS 7 0xffff123456789abc\n',devices)
   self.assertEqual(target['kernel']['holderOps'],'unknown');self.assertNotIn('0xffff',str(target))
+ def test_retained_partition_metadata_is_bounded_and_matches_parent(self):
+  target={};devices={7:target}
+  k.parse('PART 7 271581185 1 1 1 0 2\nPARTFS 7 271581185 ext4\nPART 8 271581186 2 1 1 0 1\nSCAN 7 18 1 0 1\n',devices)
+  part=target['kernel']['partitions'][0]
+  self.assertEqual(part['majorMinor'],'259:1');self.assertEqual(part['holderKind'],'filesystem')
+  self.assertEqual(part['fileSystem'],'ext4');self.assertEqual(len(target['kernel']['partitions']),1)
+  self.assertFalse(target['kernel']['partitionScan']['truncated'])
+  k.parse('PARTFILE 7 271581185 32768 0\nPARTCALLBACK 7 271581185 0xffff1234\n',devices)
+  self.assertEqual(part['markDeadCallback'],'unknown');self.assertNotIn('0xffff',str(target))
+  self.assertIn('$scanned < 512',k.program(123,[7]))
+  self.assertIn('$matched < 32',k.program(123,[7]))
  def test_unsupported_paths_and_count_do_not_start_tracer(self):
   with patch.object(k.subprocess,'Popen') as process:
    self.assertFalse(k.inspect([])['available'])
