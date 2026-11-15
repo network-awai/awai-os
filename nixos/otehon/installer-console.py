@@ -24,7 +24,16 @@ def rpc(op, *args):
         line += b'\t' + base64.b64encode(arg.encode('utf-8'))
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
         connection.settimeout(10)
-        connection.connect(SOCKET)
+        deadline = time.monotonic() + 15
+        while True:
+            try:
+                connection.connect(SOCKET)
+                break
+            except (FileNotFoundError, ConnectionRefusedError):
+                if time.monotonic() >= deadline:
+                    raise RuntimeError('制御サービスに接続できません。Enter で再確認してください。')
+                time.sleep(.2)
+        # Retry only connection establishment, never an uncertain INSTALL.
         connection.sendall(line + b'\n')
         with connection.makefile('rb') as stream:
             data = stream.readline(262145)

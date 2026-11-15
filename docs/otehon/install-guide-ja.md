@@ -16,11 +16,11 @@
 
 以下は 0.7.1 の旧画面です（0.7.2 の受入証跡ではありません）:
 
-![文字版の起動画面](assets/installer-0.7.2-text-ready.png)
+![文字版の起動画面](assets/installer-0.7.1-text-ready.png)
 
 0.7.1 の旧完了画面:
 
-![文字版の導入完了](assets/installer-0.7.2-text-complete.png)
+![文字版の導入完了](assets/installer-0.7.1-text-complete.png)
 
 ## GUI で導入するとき
 

@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import socket
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
 
@@ -61,3 +62,22 @@ class Console(unittest.TestCase):
             self.assertEqual(json.loads(a.recv(4096))['value'],'保存先')
             self.assertTrue(b.send_response(z, {'ok':True,'value':'保存先'}))
             self.assertTrue(a.recv(4096).startswith(b'{"ok" true'))
+
+    def test_console_json_request_uses_bounded_existing_operation_decoder(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path=str(Path(temp)/'control.sock')
+            with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as server:
+                server.bind(path);server.listen(1);server.settimeout(3)
+                received=[]
+                def answer():
+                    connection,_=server.accept()
+                    with connection:
+                        data=connection.makefile('rb').readline(4098)
+                        self.assertTrue(data.startswith(b'JSON\t'))
+                        received.append(b.decode(data[5:]))
+                        b.send_response(connection,{'ok':True,'value':{'message':'保存先を確認'}},True)
+                thread=threading.Thread(target=answer);thread.start()
+                with patch.object(c,'SOCKET',path):
+                    self.assertEqual(c.rpc('SELECT','disk-identity')['message'],'保存先を確認')
+                thread.join(timeout=3);self.assertFalse(thread.is_alive())
+                self.assertEqual(received,[('SELECT',['disk-identity'])])
