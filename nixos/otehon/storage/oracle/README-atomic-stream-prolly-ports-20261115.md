@@ -1,0 +1,11 @@
+# Product streamed ports with Prolly and Datalog — 2026-11-15
+
+On macOS arm64, the product `publish-atomic-stream-ports!` staged 18 deterministic random 1 MiB blocks and an actual Prolly transaction. A closure verifier opened the staged Prolly root, ran Datalog for a block CID, and read and compared every block. The resulting catalog contained two Forest Packs; the catalog group and ref were committed together as one `:put-many` WAL frame. A separate JVM with a deliberately unavailable writer reopened the ref, reran the query and compared all blocks. Root CID: `bafyreib24r4de3fjga445jnx2326jewvbotonhm3q264bymfxgmmcpwi5y`.
+
+The separate product Babashka test checked a successful conditional ref update using an existing block, a stale writer refusal with unchanged root, malformed and CID-mismatched existing-block refusal, buffer ownership, and fresh-process recovery. Its initial group contained 18 MiB / two Packs, followed by one replacement block.
+
+The one-off hosted Prolly oracle used Clojure CLI 1.12.5.1654, Temurin 21.0.1 and the previously adapted 200-file reference classpath (`.agent-output/atomic-stream-prolly-classpath.sha256`, manifest SHA-256 `39ff9fd784038fe319688240371c245b38cab5be94b7a0ca8f234204d7cfca89`). The adapter/stream tests used Babashka 1.12.218. No dependencies were downloaded. Oracle SHA-256 `04d0ed5a60a5dd372f6e32ca797867e3ceeaeccb75f01a2a0a461202cf0e7c81`; product adapter SHA-256 `7a1a93ce3b4cc39389a7ffcbba71eaa82a5afefc0fe2323bff50b615db55e74b`; macOS Forest tool SHA-256 `e5fb23076a46c055142b3dbf3efa1ad5a68532d14419ad9994785986719b205f`. Scratch source and outputs were retained.
+
+Reproduce with the input classpath described in `README-prolly-forest-policy.md`, a pinned Forest tool and a new output directory. Invoke `atomic_stream_prolly_ports.clj write OUTPUT TOOL`, then `read OUTPUT /nonexistent/forest-tool` in a fresh JVM, with the Otehon storage source, vendored storage libraries and adapted classpath on `-Sdeps :paths`.
+
+The engine uses fixture blinding and identity encryption; the query uses a fixture visibility predicate. This is not signed authority, real policy, durable nonce/receipt, Native execution, cross-store atomicity, independent node durability, or OS-cache/power-loss qualification. The oracle is not a Native gate or fallback.

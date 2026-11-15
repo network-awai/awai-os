@@ -10,7 +10,7 @@
        h (mapv #(bit-and 255 %) (.digest (MessageDigest/getInstance "SHA-256") b))]
   {:cid (car/cid-str (car/cid-bytes car/codec-raw h)) :bytes b}))
 (let [[mode root tool] *command-line-args* dir (str root "/store") stage (str root "/stage")
-      batch (mapv block (range 18)) target (:cid (last batch))]
+      batch (mapv block (range 18)) target (:cid (last batch)) next-block (block 19) next-target (:cid next-block)]
  (case mode
   "write"
   (do (check! (.mkdir (java.io.File. root)) "fresh root required")
@@ -57,11 +57,24 @@
         (check! (= 2 (count (:archives group))) "expected two archives")
         (check! (= 1 (count (get-in log [:value :frames]))) "expected one WAL frame")
         (check! (= :put-many (get-in log [:value :frames 0 :op])) "expected grouped WAL")
-        (check! (= :transaction-closed (error #((:put! @leaked) target (:bytes (last batch))))) "successful scope remained open"))))
+        (check! (= :transaction-closed (error #((:put! @leaked) target (:bytes (last batch))))) "successful scope remained open")
+        (let [build (fn [ports]
+                      (check! (Arrays/equals ^bytes (:bytes (first batch)) ^bytes ((:get-fn ports) (:cid (first batch)))) "existing product block missing")
+                      ((:put! ports) next-target (:bytes next-block))
+                      {:target next-target :value :published})
+              verify (fn [get-block cid]
+                       (and (= cid next-target)
+                            (Arrays/equals ^bytes (:bytes next-block) ^bytes (get-block next-target))
+                            (Arrays/equals ^bytes (:bytes (first batch)) ^bytes (get-block (:cid (first batch))))))]
+         (check! (= :published (blocks/publish-atomic-stream-ports! dir stage tool "db" target build verify)) "generic streamed publish failed")
+         (let [updated (store/read-store dir)]
+          (check! (= next-target (:cid (contract/-read-ref (blocks/open-backend dir stage tool) "db"))) "generic ref mismatch")
+          (check! (= :stale-ref (error #(blocks/publish-atomic-stream-ports! dir stage tool "db" target build verify))) "stale generic writer accepted")
+          (check! (= updated (store/read-store dir)) "stale generic writer changed root"))))))
   "read"
   (let [db (blocks/open-backend dir stage tool)]
-   (check! (= target (:cid (contract/-read-ref db "db"))) "ref missing")
-   (doseq [{:keys [cid bytes]} batch] (check! (Arrays/equals ^bytes bytes ^bytes (contract/get-block db cid)) "readback mismatch")))
+   (check! (= next-target (:cid (contract/-read-ref db "db"))) "ref missing")
+   (doseq [{:keys [cid bytes]} (conj batch next-block)] (check! (Arrays/equals ^bytes bytes ^bytes (contract/get-block db cid)) "readback mismatch")))
   (throw (ex-info "expected write/read" {})))
- (prn {:mode mode :blocks (count batch) :logical-bytes (* 18 1024 1024) :archives 2 :pass true}))
+ (prn {:mode mode :initial-blocks (count batch) :replacement-blocks 1 :initial-logical-bytes (* 18 1024 1024) :initial-archives 2 :pass true}))
 (shutdown-agents)

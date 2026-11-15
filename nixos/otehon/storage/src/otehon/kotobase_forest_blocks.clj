@@ -308,6 +308,20 @@
                  (fn [get-block cid] (verify! get-block cid receipt prepared))))
    :read-ref! (fn [] (:cid (contract/-read-ref (refs/open-ref-store dir) ref-name)))})
 
+(defn publish-atomic-stream-ports!
+  "Build and publish a bounded streamed Forest group and ref in one local root.
+  BUILD! receives provisional put/get ports and returns {:target CID :value x}.
+  VERIFY! must verify the complete closure before publication. Existing blocks
+  come from this local store; concurrent GC, external-store atomicity, witness,
+  distributed fencing and host authority are outside this operation."
+  [dir staging-root tool ref-name expected build! verify!]
+  (when-not (and (string? ref-name) (seq ref-name) (fn? build!) (fn? verify!))
+    (fail! :invalid-atomic-publication "invalid streamed publication options"))
+  (when (some? expected) (validate-cids! [expected]))
+  (let [base (open-block-store dir staging-root tool)]
+    (atomic-stream/publish! dir (stage-path staging-root) tool ref-name expected
+      #(contract/get-block base %) build! verify!)))
+
 (defn atomic-stream-receipt-publication-adapter
   "Receipt callback adapter over one bounded, file-staged group/ref commit.
   The host must authenticate and verify the closure and exclude concurrent GC.
@@ -320,11 +334,9 @@
                (when-not (and (map? input) (= #{:receipt :prepared} (set (keys input)))
                               (map? receipt) (map? prepared))
                  (fail! :invalid-receipt-publication "invalid prepared receipt input"))
-               (let [base (open-block-store dir staging-root tool)]
-                 (atomic-stream/publish! dir (stage-path staging-root) tool ref-name expected
-                   #(contract/get-block base %)
-                   (fn [ports] (let [cid (build! ports receipt prepared)] {:target cid :value cid}))
-                   (fn [get-block cid] (verify! get-block cid receipt prepared)))))
+               (publish-atomic-stream-ports! dir staging-root tool ref-name expected
+                 (fn [ports] (let [cid (build! ports receipt prepared)] {:target cid :value cid}))
+                 (fn [get-block cid] (verify! get-block cid receipt prepared))))
    :read-ref! (fn [] (:cid (contract/-read-ref (refs/open-ref-store dir) ref-name)))})
 
 (defn open-transaction
