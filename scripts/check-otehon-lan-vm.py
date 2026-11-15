@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import socket
 import socketserver
 import subprocess
 import threading
@@ -48,6 +49,9 @@ def main():
     http = Server(('127.0.0.1', 8080), partial(Quiet, directory=str(serve)))
     thread = threading.Thread(target=http.serve_forever, daemon=True)
     thread.start()
+    with socket.socket() as port_reservation:
+        port_reservation.bind(('127.0.0.1', 0))
+        serial_port = port_reservation.getsockname()[1]
     command = [
         'qemu-system-x86_64', '-machine', 'q35', '-accel',
         'kvm' if os.access('/dev/kvm', os.R_OK | os.W_OK) else 'tcg', '-cpu', 'max',
@@ -57,12 +61,34 @@ def main():
         '-drive', f'if=none,id=target,format=qcow2,file={target},snapshot=on',
         '-device', 'nvme,drive=target,serial=VM-SCRATCH',
         '-netdev', f'user,id=n,net=10.77.0.0/24,host=10.77.0.1,dhcpstart=10.77.0.2,tftp={serve},bootfile=ipxe.efi,hostfwd=tcp:127.0.0.1:22222-10.77.0.2:2222',
-        '-device', 'virtio-net-pci,netdev=n,bootindex=1', '-serial', f'file:{serial}',
+        '-device', 'virtio-net-pci,netdev=n,bootindex=1',
+        '-serial', f'tcp:127.0.0.1:{serial_port},server=on,wait=off',
     ]
     proc = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=(out / 'qemu.log').open('wb'))
     proof = {'schema': 'awai.otehon.netboot-vm.v1', 'physicalDisks': False, 'checks': []}
+    serial_conn = None
+    serial_reader = None
     try:
         deadline = time.monotonic() + args.timeout
+        while time.monotonic() < deadline:
+            try:
+                serial_conn = socket.create_connection(('127.0.0.1', serial_port), timeout=2)
+                serial_conn.settimeout(None)
+                break
+            except OSError:
+                if proc.poll() is not None: raise RuntimeError('QEMU exited before serial console')
+                time.sleep(1)
+        if serial_conn is None: raise RuntimeError('serial console unavailable')
+        def record_serial():
+            with serial.open('wb') as output:
+                while True:
+                    try: data = serial_conn.recv(8192)
+                    except OSError: break
+                    if not data: break
+                    output.write(data)
+                    output.flush()
+        serial_reader = threading.Thread(target=record_serial, daemon=True)
+        serial_reader.start()
         fingerprint = None
         scanned = ''
         while time.monotonic() < deadline:
@@ -77,6 +103,20 @@ def main():
             time.sleep(3)
         if not fingerprint:
             raise RuntimeError('Timed out waiting for local fingerprint and SSH')
+        # The real installer console talks to the same broker as USB. Selecting
+        # the scratch NVMe must be rejected by diagnostic read-only mode.
+        while time.monotonic() < deadline:
+            if '保存先の番号を入力して Enter' in serial.read_text(errors='replace'):
+                break
+            time.sleep(2)
+        else: raise RuntimeError('installer console did not reach disk selection')
+        serial_conn.sendall(b'1\n')
+        while time.monotonic() < deadline:
+            if '診断モードのため、ディスクの選択や書込みはできません' in serial.read_text(errors='replace'):
+                break
+            time.sleep(2)
+        else: raise RuntimeError('read-only broker did not reject console selection')
+        proof['checks'].append('scratch NVMe selection refused by read-only broker')
         scanned_key = run(['ssh-keygen', '-lf', '-', '-E', 'sha256'], input=scanned)
         if scanned_key.returncode or fingerprint not in scanned_key.stdout:
             raise RuntimeError('Local console and network host key do not match')
@@ -91,6 +131,11 @@ def main():
         if bad.returncode == 0:
             raise RuntimeError('unapproved key unexpectedly authenticated')
         proof['checks'].append('unapproved key rejected')
+        password = run(ssh + ['-o', 'PubkeyAuthentication=no', '-o', 'PreferredAuthentications=password',
+                              'otehon-installer@127.0.0.1'])
+        if password.returncode == 0:
+            raise RuntimeError('password authentication unexpectedly permitted')
+        proof['checks'].append('password authentication rejected')
         valid = run(ssh + ['-i', args.key, 'otehon-installer@127.0.0.1', 'id'])
         if valid.returncode:
             raise RuntimeError('approved key rejected: ' + valid.stderr[-1000:])
@@ -114,6 +159,8 @@ def main():
         except subprocess.TimeoutExpired:
             proc.kill()
             proc.wait()
+        if serial_conn is not None: serial_conn.close()
+        if serial_reader is not None: serial_reader.join(timeout=5)
         http.shutdown()
         http.server_close()
         (out / 'proof.json').write_text(json.dumps(proof, indent=2))
