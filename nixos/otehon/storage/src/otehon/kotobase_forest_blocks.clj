@@ -9,7 +9,7 @@
 
 (def ^:private name-prefix "kotobase-blocks/")
 (def ^:private state-prefix (str "awai.ipld-forest-group/" name-prefix))
-(def ^:private max-block-bytes (* 850 1024))
+(def ^:private max-block-bytes (* 1024 1024))
 (def ^:private max-batch-bytes (* 32 1024 1024))
 (def ^:private max-stream-batch-bytes (* 4 1024 1024))
 (def ^:private max-batch-count (* 64 64))

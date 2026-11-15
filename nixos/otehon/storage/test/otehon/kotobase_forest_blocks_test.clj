@@ -37,7 +37,7 @@
     (is (= {} (contract/-get-blocks b [])))
     (is (thrown? Exception (contract/-get-blocks b [trailing])))
     (is (thrown? Exception (contract/-put-blocks! b [{:cid cid :bytes [1 -1]}])))
-    (is (thrown? Exception (contract/-put-blocks! b [{:cid cid :bytes (byte-array (inc (* 850 1024)))}])))
+    (is (thrown? Exception (contract/-put-blocks! b [{:cid cid :bytes (byte-array (inc (* 1024 1024)))}])))
     (is (thrown? Exception (contract/-put-blocks! b [{:cid cid :bytes [0]}])))
     (is (= before (store/read-store dir)))))
 (deftest degraded-catalog-refuses-read-and-write

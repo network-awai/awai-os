@@ -1,0 +1,7 @@
+# Generic Kotobase blocks up to 1 MiB — 2026-11-15
+
+The hosted Kotobase block store and Forest writer now accept canonical blocks up to 1 MiB. A batch containing any block over 850 KiB uses the file-backed v2 group path: each archive is checked against the caller's ordered CIDs, and all archive references are published in one generation-conditional local catalog update. Smaller-only batches continue on the existing v1 path. Large-block unconditional and witnessed forms are rejected before staging; this is not witnessed publication or distributed fencing.
+
+On macOS ARM, the real Forest tool wrote two deterministic incompressible 1 MiB blocks through the Kotobase block port, yielding two file-backed archives within one catalog group. A separate process with a nonexistent writer tool recovered both and compared every byte. Controls refused unconditional and witnessed large writes before staging without changing the root; the block port rejects inputs above 1 MiB. Existing IPLD, Kotobase Forest and writer suites passed 28 tests / 194 assertions. The real-tool write/read proof is in the Linux pinned Forest job. An initial edit had a parse delimiter error and was fixed before any proof data was created.
+
+The batch API remains bounded to 32 MiB in memory; the streamed publication API persists separate provisional groups before its ref CAS. This does not establish atomicity across file, authority, nonce and receipt stores, Native I/O, post-reboot large generic block recovery or production policy.
