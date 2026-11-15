@@ -73,7 +73,9 @@ in pkgs.testers.runNixOSTest {
     import json
     from pathlib import Path
 
-    start_all()
+    jacob.start(allow_reboot=True)
+    for vm in [dan, judah, disabled]:
+        vm.start()
     for vm in [jacob, dan, judah, disabled]:
         vm.wait_for_unit("multi-user.target")
 

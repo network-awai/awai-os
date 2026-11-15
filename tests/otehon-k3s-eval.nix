@@ -5,9 +5,15 @@ let
   args = node: { inherit node addresses; interface = "eth1"; tokenFile = "/run/secrets/otehon-k3s-token"; };
   eval = modules: (import (nixpkgsPath + "/nixos/lib/eval-config.nix") {
     system = "x86_64-linux";
-    modules = [ ../nixos/otehon/k3s/default.nix { system.stateVersion = "26.05"; } ] ++ modules;
+    modules = [ ../nixos/otehon/k3s/default.nix {
+      system.stateVersion = "26.05";
+      fileSystems."/" = { device = "/dev/disk/by-label/evaluation-only"; fsType = "ext4"; };
+      boot.loader.grub.enable = false;
+    } ] ++ modules;
   }).config;
   valid = c: builtins.all (a: a.assertion) c.assertions;
+  requireValid = c: lib.assertMsg (valid c)
+    (lib.concatMapStringsSep "\n" (a: a.message) (builtins.filter (a: !a.assertion) c.assertions));
   off = eval [ ];
   nodes = lib.genAttrs [ "jacob" "dan" "judah" ] (n: eval [ (import ../nixos/otehon/k3s/fleet.nix (args n)) ]);
   desktop = arch: (import (nixpkgsPath + "/nixos/lib/eval-config.nix") {
@@ -20,7 +26,7 @@ let
 in
 assert !(off.systemd.services ? k3s);
 assert off.networking.firewall.allowedTCPPorts == [ ];
-assert lib.all valid (builtins.attrValues nodes);
+assert lib.all requireValid (builtins.attrValues nodes);
 assert nodes.jacob.services.k3s.role == "server";
 assert !nodes.jacob.services.k3s.clusterInit;
 assert nodes.dan.services.k3s.role == "agent" && nodes.judah.services.k3s.role == "agent";
@@ -36,7 +42,7 @@ assert !(valid (bad { serverAddress = "http://192.168.1.1:6443"; }));
 assert !(valid (bad { podCIDR = "10.43.0.0/16"; }));
 assert !(valid (eval [ (import ../nixos/otehon/k3s/fleet.nix
   ((args "dan") // { addresses = addresses // { judah = addresses.dan; }; })) ]));
-assert lib.all (arch: valid (desktop arch)) [ "aarch64" "x86_64" ];
+assert lib.all (arch: requireValid (desktop arch)) [ "aarch64" "x86_64" ];
 assert (desktop "aarch64").services.greetd.enable;
 assert (desktop "aarch64").image.repart.partitions.state.repartConfig.SizeMinBytes == "16G";
 {
