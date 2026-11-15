@@ -28,7 +28,13 @@
        (check! (= before (store/read-store dir)) "missing marker changed root")
        (check! (= :closure-rejected (error #(blocks/publish-atomic-stream-ports! dir stage tool "receipt" nil build (fn [& _] false) nonce))) "bad marker verifier accepted")
        (check! (= before (store/read-store dir)) "refused closure changed root")
-       (check! (= :done (blocks/publish-atomic-stream-ports! dir stage tool "receipt" nil build verify nonce)) "atomic publication failed")
+       (let [prepared-nonce (assoc nonce :marker {} :bytes (:bytes marker))
+             receipt-build (fn [ports _ _] (:target (build ports)))
+             receipt-verify (fn [get-block cid _ _] (verify get-block cid))
+             adapter (blocks/atomic-stream-receipt-publication-adapter dir stage tool "receipt" nil receipt-build receipt-verify prepared-nonce)
+             replay (blocks/atomic-stream-receipt-publication-adapter dir stage tool "receipt2" nil receipt-build receipt-verify prepared-nonce)
+             input {:receipt {} :prepared {}}]
+       (check! (= target ((:publish! adapter) input)) "atomic receipt publication failed")
        (let [after (store/read-store dir) log (edn/read-string (slurp (str dir "/" (get-in after [:root :log]) ".edn")))
              frames (get-in log [:value :frames]) keys* (set (map first (get-in (first frames) [:payload :puts])))
              group-key (first (filter #(str/starts-with? % "awai.ipld-forest-group/") keys*))
@@ -37,8 +43,8 @@
         (check! (= :put-many (:op (first frames))) "expected put-many")
         (check! (= #{group-key "awai.kotobase-ref/receipt" (str "awai.kotobase-ref/" nonce-ref)} keys*) "group, receipt and nonce not in one frame")
         (check! (<= 2 (count (:archives group))) "expected multiple Packs")
-        (check! (= :nonce-replayed (error #(blocks/publish-atomic-stream-ports! dir stage tool "receipt2" nil build verify nonce))) "replay accepted")
-        (check! (= after (store/read-store dir)) "replay changed root"))))
+        (check! (= :nonce-replayed (error #((:publish! replay) input))) "replay accepted")
+        (check! (= after (store/read-store dir)) "replay changed root")))))
   "read"
   (let [db (blocks/open-backend dir stage tool)]
    (check! (= target (:cid (contract/-read-ref db "receipt"))) "receipt ref missing")

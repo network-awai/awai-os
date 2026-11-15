@@ -1,0 +1,9 @@
+# Prepared nonce in streamed receipt publication — 2026-11-15
+
+The hosted streamed receipt adapter accepts an optional prepared nonce from Kotobase `prepare-marker`. It stages the marker and verifies its bytes while publishing the group, receipt ref and absent nonce ref in one local WAL frame. The host must bind scope and marker to the actual request. A separate availability observation is non-reserving and cannot itself authorize release; the under-lock publication remains the deciding check.
+
+On macOS arm64, the product Babashka 1.12.218 proof wrote and reopened 19 blocks across at least two Packs through the receipt adapter, rejected missing marker, bad closure and replay without root change, and passed the preexisting no-nonce path. A separate JVM oracle used the actual Kotoba canonical nonce codec and `available?` from Kotobase PR #101 commit `224d1cb`: fresh preflight caused no write, publication included receipt/group/nonce in one frame, invalid closure and replay left root unchanged, and a fresh JVM with no writer refused the consumed nonce. The latter used a small receipt fixture, not a governed query.
+
+Clojure/JVM and pinned reference classpath are described in `README-product-ports-gib-receipt-issue-20261115.md`. Product adapter SHA-256 `7a768b33f448889a3447efead557d9c1d4ea1248291c7588cab058f0bfb3515d`, Babashka proof `43f10ef94338d3429eada9e93f3dcef915bc64692703dfa6c4a8602786fb42c5`, and JVM oracle `bff3dcce86e936056260f9d3955d5a2491482739d295ff45e9ac438756db38a0`. Staging and outputs remain in task scratch; no downloads were made. The JVM is a hosted oracle, not Native fallback or CI.
+
+This does not yet wire the guarded query to this adapter, reserve a nonce before evaluation, provide distributed fencing or atomicity across stores, or establish production key custody, host cache loss or Native execution. The host must use the same canonical scope/request at preflight and publication.

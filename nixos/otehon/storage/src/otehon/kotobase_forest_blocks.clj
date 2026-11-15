@@ -329,19 +329,36 @@
 (defn atomic-stream-receipt-publication-adapter
   "Receipt callback adapter over one bounded, file-staged group/ref commit.
   The host must authenticate and verify the closure and exclude concurrent GC.
-  This path is not witnessed or a transaction across independent stores."
-  [dir staging-root tool ref-name expected build! verify!]
+  This path is not witnessed or a transaction across independent stores.
+  Optional prepared nonce is staged and conditionally committed with the ref;
+  the host must bind its canonical scope and bytes to the actual request."
+  ([dir staging-root tool ref-name expected build! verify!]
+   (atomic-stream-receipt-publication-adapter dir staging-root tool ref-name expected build! verify! nil))
+  ([dir staging-root tool ref-name expected build! verify! prepared-nonce]
   (when-not (and (string? ref-name) (seq ref-name) (fn? build!) (fn? verify!))
     (fail! :invalid-receipt-publication "invalid publication adapter options"))
   (when (some? expected) (validate-cids! [expected]))
+  (when (and (some? prepared-nonce)
+             (not (and (map? prepared-nonce)
+                       (= #{:ref-name :marker-cid :marker :bytes} (set (keys prepared-nonce))))))
+    (fail! :invalid-receipt-publication "invalid prepared nonce"))
+  (let [marker (when prepared-nonce
+                 (writer/validate-ipld-block {:cid (:marker-cid prepared-nonce)
+                                              :bytes (owned-bytes (:bytes prepared-nonce))}))
+        nonce (when marker (select-keys prepared-nonce [:ref-name :marker-cid]))]
   {:publish! (fn [{:keys [receipt prepared] :as input}]
                (when-not (and (map? input) (= #{:receipt :prepared} (set (keys input)))
                               (map? receipt) (map? prepared))
                  (fail! :invalid-receipt-publication "invalid prepared receipt input"))
                (publish-atomic-stream-ports! dir staging-root tool ref-name expected
-                 (fn [ports] (let [cid (build! ports receipt prepared)] {:target cid :value cid}))
-                 (fn [get-block cid] (verify! get-block cid receipt prepared))))
-   :read-ref! (fn [] (:cid (contract/-read-ref (refs/open-ref-store dir) ref-name)))})
+                 (fn [ports]
+                   (when marker ((:put! ports) (:cid marker) (:bytes marker)))
+                   (let [cid (build! ports receipt prepared)] {:target cid :value cid}))
+                 (fn [get-block cid]
+                   (and (or (nil? marker)
+                            (Arrays/equals ^bytes (:bytes marker) ^bytes (get-block (:cid marker))))
+                        (true? (verify! get-block cid receipt prepared)))) nonce))
+   :read-ref! (fn [] (:cid (contract/-read-ref (refs/open-ref-store dir) ref-name)))})))
 
 (defn open-transaction
   "Create a bounded, synchronous write overlay for a Prolly operation.
