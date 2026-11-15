@@ -111,3 +111,9 @@ class Usage(unittest.TestCase):
     result=b.device_usage(rows,proc,sys)
    self.assertEqual(result['devices'][0]['loopReferences'],[{'device':'loop7'}])
    ioctl.assert_called_once_with(77,0x4C05,bytes(232));closing.assert_called_once_with(77)
+
+ def test_loop_inspection_unavailable_refuses_instead_of_reporting_empty(self):
+  with tempfile.TemporaryDirectory() as temp:
+   root=Path(temp);(root/'loop0').mkdir()
+   with patch.object(b.os,'open',side_effect=OSError(errno.EACCES,'blocked')):
+    with self.assertRaisesRegex(b.Refused,'loop-inspection-unavailable'):b.loop_backing_references(root)

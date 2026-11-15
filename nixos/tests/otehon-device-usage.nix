@@ -6,7 +6,8 @@ let
     b = importlib.util.module_from_spec(spec); spec.loader.exec_module(b)
     rows = [r for r in b.inventory() if r['path'] in ('/dev/vdb', '/dev/vdc')]
     assert len(rows) == 2
-    assert not any(r['used'] for r in rows), 'fixture must be invisible to root mount namespace'
+    if sys.argv[1] not in ('loop', 'raw-loop'):
+        assert not any(r['used'] for r in rows), 'fixture must be invisible to root mount namespace'
     report = b.device_usage(rows)
     target = next(r for r in report['devices'] if r['path'] == '/dev/vdb')
     other = next(r for r in report['devices'] if r['path'] == '/dev/vdc')
@@ -15,8 +16,15 @@ let
         assert target['exclusiveReadOnlyOpen']['errno'] == errno.EBUSY
         assert any(r['namespace'] != os.readlink('/proc/self/ns/mnt') for r in target['mountNamespaceReferences'])
         assert any(r['unit'] == 'usage-fd-fixture.service' for r in target['openFdReferences'])
-    elif sys.argv[1] == 'loop':
-        assert target['exclusiveReadOnlyOpen']['errno'] == errno.EBUSY
+    elif sys.argv[1] in ('loop', 'raw-loop'):
+        if sys.argv[1] == 'loop':
+            assert target['exclusiveReadOnlyOpen']['errno'] == errno.EBUSY
+        else:
+            assert target['exclusiveReadOnlyOpen']['opened'], 'raw loop illustrates why O_EXCL alone is insufficient'
+        assert next(r for r in rows if r['path']=='/dev/vdb')['used']
+        try: b.admit(rows, target['id'], 1)
+        except b.Refused as error: assert str(error)=='target-in-use'
+        else: raise AssertionError('loop-backed disk admitted for install')
         assert target['loopReferences'], 'kernel loop backing reference must survive an orphaned mount'
         assert not target['mountNamespaceReferences']
         assert not target['openFdReferences']
@@ -61,7 +69,7 @@ in pkgs.testers.runNixOSTest {
     machine.succeed("losetup -d $(cat /run/usage-loop)")
     machine.succeed("${pkgs.python3}/bin/python3 ${check} released")
     machine.succeed("losetup --find --show /dev/vdb > /run/usage-loop")
-    machine.succeed("${pkgs.python3}/bin/python3 ${check} loop")
+    machine.succeed("${pkgs.python3}/bin/python3 ${check} raw-loop")
     machine.succeed("losetup -d $(cat /run/usage-loop)")
     machine.succeed("${pkgs.python3}/bin/python3 ${check} released")
     machine.succeed("sha256sum -c /run/usage-before")

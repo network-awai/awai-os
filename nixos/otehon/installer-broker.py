@@ -67,9 +67,34 @@ def decode(line):
         values.append(value)
     return op, values
 
+def loop_backing_references(sys_root=Path('/sys/class/block')):
+    """Read only LOOP_GET_STATUS64 metadata; an incomplete scan refuses admission."""
+    references = {}
+    with os.scandir(sys_root) as scan: nodes = list(itertools.islice(scan, 257))
+    if len(nodes) > 256: raise Refused('loop-inspection-bound')
+    for node in nodes:
+        if not re.fullmatch(r'loop[0-9]+', node.name): continue
+        fd = None
+        try:
+            fd = os.open('/dev/' + node.name, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+            info = fcntl.ioctl(fd, 0x4C05, bytes(232))
+            for offset in (0, 16):
+                number = struct.unpack_from('=Q', info, offset)[0]
+                key = str((number >> 8) & 0xfff) + ':' + str((number & 0xff) | ((number >> 12) & 0xfff00))
+                names = references.setdefault(key, [])
+                if node.name not in names: names.append(node.name)
+        except OSError as error:
+            if error.errno not in (errno.ENXIO, errno.ENODEV, errno.ENOENT):
+                raise Refused('loop-inspection-unavailable') from None
+        finally:
+            if fd is not None: os.close(fd)
+    return references
+
+
 def inventory():
     rows = json.loads(command(['lsblk','-J','-b','-o','PATH,TYPE,SIZE,MODEL,SERIAL,FSTYPE,LABEL,PARTLABEL,MOUNTPOINTS,MAJ:MIN,RO']))['blockdevices']
     swaps = {x.split()[0] for x in Path('/proc/swaps').read_text().splitlines()[1:]}
+    loops = loop_backing_references()
     def descendants(row):
         yield row
         for child in row.get('children', []): yield from descendants(child)
@@ -77,7 +102,7 @@ def inventory():
     for row in rows:
         if row.get('type') != 'disk': continue
         nodes = list(descendants(row))
-        used = any(any(n.get('mountpoints') or []) or n['path'] in swaps or
+        used = any(any(n.get('mountpoints') or []) or n['path'] in swaps or loops.get(n['maj:min']) or
                    any((Path('/sys/class/block') / Path(n['path']).name / 'holders').iterdir()) for n in nodes)
         path = row['path']; info = os.stat(path)
         if not stat.S_ISBLK(info.st_mode): continue
@@ -87,6 +112,7 @@ def inventory():
         ident = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
         result.append({**identity, 'id':ident,'model':(row.get('model') or 'Disk').strip(),
                        'used':used,'readOnly':bool(row.get('ro')),'fileSystem':row.get('fstype') or '',
+                       'loopReferences': sorted({name for n in nodes for name in loops.get(n['maj:min'], [])}),
                        'partitions':[{'path':n['path'],'fstype':n.get('fstype') or '', 'label':n.get('label') or n.get('partlabel') or '', 'size':int(n['size'])} for n in nodes[1:]]})
     counts = {}
     for r in result: counts[r['serial']] = counts.get(r['serial'],0)+1
@@ -98,7 +124,7 @@ def admit(rows, ident, raw_bytes):
     if len(found) != 1: raise Refused('target-changed')
     row = found[0]
     if row['ambiguous']: raise Refused('missing-or-ambiguous-serial')
-    if row['used'] or row['readOnly']: raise Refused('target-in-use')
+    if row['used'] or row['readOnly'] or row.get('loopReferences'): raise Refused('target-in-use')
     if row['size'] <= raw_bytes: raise Refused('target-too-small')
     return row
 
@@ -150,28 +176,10 @@ def device_usage(rows, proc_root=Path('/proc'), sys_root=Path('/sys/class/block'
             if item is not None: item['swapReferences'].append({'type': fields[1] if len(fields)>1 else 'unknown'})
     except OSError: pass
     try:
-        for node in entries(sys_root, 256):
-            if not re.fullmatch(r'loop[0-9]+', node.name): continue
-            fd = None
-            try:
-                fd = os.open('/dev/' + node.name, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
-                # LOOP_GET_STATUS64 exposes the backing device even when its
-                # mount namespace has no surviving process. Discard filenames.
-                info = fcntl.ioctl(fd, 0x4C05, bytes(232))
-                matched = set()
-                # lo_device identifies a backing file's filesystem; lo_rdevice
-                # identifies a raw block-device backing file instead.
-                for offset in (0, 16):
-                    number = struct.unpack_from('=Q', info, offset)[0]
-                    major = (number >> 8) & 0xfff
-                    minor = (number & 0xff) | ((number >> 12) & 0xfff00)
-                    item = owners.get(str(major) + ':' + str(minor))
-                    if item is not None and item['id'] not in matched:
-                        item['loopReferences'].append({'device': node.name})
-                        matched.add(item['id'])
-            except OSError: pass
-            finally:
-                if fd is not None: os.close(fd)
+        loops = loop_backing_references(sys_root)
+        for number, names in loops.items():
+            item = owners.get(number)
+            if item is not None: item['loopReferences'].extend({'device': name} for name in names)
         btrfs_root = sys_root.parent.parent / 'fs/btrfs'
         if btrfs_root.is_dir():
             for fs in entries(btrfs_root, 64):
@@ -180,7 +188,9 @@ def device_usage(rows, proc_root=Path('/proc'), sys_root=Path('/sys/class/block'
                     try: item = owners.get(small(device / 'dev', 64).strip())
                     except OSError: continue
                     if item is not None: item['multiDeviceFileSystems'].append({'type': 'btrfs'})
-    except OSError: result['errors'] += 1
+    except (OSError, Refused):
+        result['errors'] += 1
+        result['loopInspectionAvailable'] = False
     try: processes = (p for p in entries(proc_root, max_pids + 64) if p.name.isdecimal())
     except OSError: result['available'] = False; return result
     for proc in processes:
