@@ -65,8 +65,10 @@ in {
       };
     };
     networking.firewall.allowedTCPPorts = lib.optionals enabled [ 2222 ];
-    systemd.services.sshd.after = lib.optionals enabled [ "network-online.target" ];
-    systemd.services.sshd.wants = lib.optionals enabled [ "network-online.target" ];
+    systemd.services.sshd = lib.mkIf enabled {
+      after = [ "network-online.target" ];
+      wants = [ "network-online.target" ];
+    };
     users.users.otehon-installer.openssh.authorizedKeys.keys = lib.optional enabled cfg.diagnosticPublicKey;
     users.users.otehon-installer.extraGroups = lib.optionals enabled [ "systemd-journal" ];
     systemd.services.otehon-debug-fingerprint = lib.mkIf enabled {
