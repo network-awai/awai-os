@@ -41,11 +41,6 @@ jobs:
           ssh-keygen -q -t ed25519 -N '' -f .agent-output/lan/unauthorized
           nix-instantiate --eval --strict --json --expr 'import ./tests/otehon-netboot-eval.nix { nixpkgsPath = import ./ci/nixpkgs.nix; }'
           nix-build nixos/otehon/default.nix --argstr profile netboot-diagnostic-6600h --argstr diagnosticPublicKey "$(cat .agent-output/lan/operator.pub)" --out-link result-otehon-lan --show-trace
-      - name: Boot real image and verify authenticated diagnostics
-        shell: bash
-        run: |
-          set -euo pipefail
-          nix-shell --expr 'let p = import (import ./ci/nixpkgs.nix) { system = "x86_64-linux"; }; in p.mkShell { packages = [ p.python3 p.qemu_test p.openssh ]; OVMF_CODE = "${p.OVMF.fd}/FV/OVMF_CODE.fd"; OVMF_VARS = "${p.OVMF.fd}/FV/OVMF_VARS.fd"; }' --run 'python3 scripts/check-otehon-lan-vm.py --image result-otehon-lan --output .agent-output/lan/proof --key .agent-output/lan/operator --bad-key .agent-output/lan/unauthorized --ovmf-code "$OVMF_CODE" --ovmf-vars "$OVMF_VARS"'
       - name: Build separately keyed physical candidate
         if: github.event_name == 'workflow_dispatch' && inputs.operator_public_key != ''
         env:
@@ -61,9 +56,14 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: success() && github.event_name == 'workflow_dispatch' && inputs.operator_public_key != ''
         with:
-          name: awai-lan-physical-candidate
+          name: awai-lan-physical-candidate-unqualified
           path: .agent-output/lan/candidate/
           compression-level: 0
+      - name: Boot real image and verify authenticated diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          nix-shell --expr 'let p = import (import ./ci/nixpkgs.nix) { system = "x86_64-linux"; }; in p.mkShell { packages = [ p.python3 p.qemu_test p.openssh ]; OVMF_CODE = "${p.OVMF.fd}/FV/OVMF_CODE.fd"; OVMF_VARS = "${p.OVMF.fd}/FV/OVMF_VARS.fd"; }' --run 'python3 scripts/check-otehon-lan-vm.py --image result-otehon-lan --output .agent-output/lan/proof --key .agent-output/lan/operator --bad-key .agent-output/lan/unauthorized --ovmf-code "$OVMF_CODE" --ovmf-vars "$OVMF_VARS"'
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
