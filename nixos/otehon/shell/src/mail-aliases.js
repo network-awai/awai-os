@@ -8,7 +8,7 @@ export async function manageAliases(botId,action,values={},broker){
  if(!/^profile:[\w.-]+$/.test(botId)||!['list','issue','stop'].includes(action))throw Error('invalid-mail-request');
  const operation=aliasOperations.find(o=>o.operation===action+'-alias');broker??=createBroker('index.html',[operation]);
  const r=await broker.invoke({capability:operation.capability,service:operation.service,operation:operation.operation},{input:MAIL_ORIGIN+'/v1/mail/aliases/'+action,init:{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({...values,botId,action})}});
- if(!r.ok){const e=await r.json().catch(()=>({}));throw Error(e.error==='identity-recovery-required'?'identityRecoveryRequired':e.error==='mail-binding-required'?'mailBindingRequired':e.error==='mail-basis-changed'?'mailReloadRequired':'mailAliasUnavailable');}
+ if(!r.ok){const e=await r.json().catch(()=>({}));throw Error(e.error==='identity-store-stale'?'identityStoreStale':e.error==='identity-recovery-required'?'identityRecoveryRequired':e.error==='mail-binding-required'?'mailBindingRequired':e.error==='mail-basis-changed'?'mailReloadRequired':'mailAliasUnavailable');}
  return validateAliases(await r.json(),botId);
 }
 export async function manageIdentity(botId,action,broker){

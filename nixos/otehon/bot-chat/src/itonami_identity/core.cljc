@@ -50,17 +50,28 @@
                    [{:id "enrollment" :role "session" :at (str (Instant/now)) :text (j/generate-string committed)}] (:headCid store))]
       (m/require! (= committed (j/parse-string (get-in v [:messages 0 :text]) true)) "identity-readback-unconfirmed")
       {:binding committed :store (:store v)}))))
-  (defn aliases! [cfg key b request]
+  (defn aliases! [cfg key b request client]
    (verify-binding! b)
    (let [thread (db/sha (str "itonami/private-mail-alias/v1\u0000" (:principalId b) "\u0000" (:botId b)))
          old (db! cfg key thread "history" []) events (mapv #(j/parse-string (:text %) true) (:messages old))
          now (System/currentTimeMillis) at (str (Instant/ofEpochMilli now))
+         authority-key (ledger/key-for (:identityNamespace cfg) (db/sha (str "mail-head/" (:principalId b) "/" (:botId b))))
+         observed ((:read client) authority-key)
+         completed (when (= "pending" (:state observed)) (first (filter #(and (= (:requestId observed) (:requestId %)) (= (:requestSha observed) (:requestSha %))) events)))
+         _ (when completed (m/require! ((:cas client) authority-key observed {:state "committed" :headCid (get-in old [:store :headCid])}) "mail-basis-changed"))
+         authority (if completed ((:read client) authority-key) observed)
          args {:now now :at at :aliasId (c/hex (c/random-bytes 16)) :local (c/hex (c/random-bytes 20))
                :requestSha (db/sha (j/generate-string (m/request-data request (:principalId b))))
                :expiryMs (when (:expiresAt request) (try (.toEpochMilli (Instant/parse (:expiresAt request))) (catch Exception _ nil)))}
          planned (m/plan b events request args)
+         own-pending? (and (= "pending" (:state authority)) (= (:requestId authority) (:requestId request)) (= (:requestSha authority) (:requestSha args)))
+         _ (m/require! (or (and (not= "pending" (:state authority)) (= (:headCid authority) (get-in old [:store :headCid])))
+                           (and own-pending? (= (:basis authority) (get-in old [:store :headCid])))) "identity-store-stale")
          _ (when (:event planned) (m/require! (and (contains? request :basis) (= (:basis request) (get-in old [:store :headCid]))) "mail-basis-changed"))
-         saved (if-let [e (:event planned)] (db! cfg key thread "append" [{:id (:requestId request) :role "session" :text (j/generate-string e) :at at}] (get-in old [:store :headCid])) old)]
+         pending {:state "pending" :basis (get-in old [:store :headCid]) :requestId (:requestId request) :requestSha (:requestSha args)}
+         _ (when (:event planned) (m/require! (or own-pending? ((:cas client) authority-key authority pending)) "mail-basis-changed"))
+         saved (if-let [e (:event planned)] (db! cfg key thread "append" [{:id (:requestId request) :role "session" :text (j/generate-string e) :at at}] (get-in old [:store :headCid])) old)
+         _ (when (:event planned) (m/require! ((:cas client) authority-key pending {:state "committed" :headCid (get-in saved [:store :headCid])}) "mail-result-unconfirmed"))]
     (merge {:schema "itonami.mail-alias-result.v1" :botId (:botId b) :basis (get-in saved [:store :headCid]) :store (:store saved) :routing "not-provisioned"}
            (m/directory (mapv #(j/parse-string (:text %) true) (:messages saved)) b now))))
   (defn operation! [cfg request]
@@ -82,7 +93,7 @@
          :else (let [{:keys [binding store]} (enroll! cfg key seed (:botId request) client)]
           (if (contains? #{"status" "recover" "restore-recovery"} (:action request))
            {:schema "itonami.identity-status.v1" :state "verified" :botId (:botId binding) :principalId (:principalId binding) :did (:did binding) :epoch (:epoch binding) :store store}
-           (aliases! cfg key binding request))))))))))
+           (aliases! cfg key binding request client))))))))))
   (defn -main [& _]
    (try (let [{:keys [config request]} (j/parse-string (slurp *in*) true)] (println (j/generate-string (operation! config request))))
-    (catch Exception e (println (j/generate-string {:error (if (contains? #{"identity-recovery-required" "mail-binding-required" "mail-basis-changed" "mail-request-conflict" "mail-alias-not-found" "invalid-mail-request" "identity-custody-required" "keychain-unavailable" "identity-enrollment-policy-required"} (ex-message e)) (ex-message e) "identity-operation-unconfirmed")})))))))
+    (catch Exception e (println (j/generate-string {:error (if (contains? #{"identity-recovery-required" "identity-store-stale" "mail-binding-required" "mail-basis-changed" "mail-request-conflict" "mail-alias-not-found" "invalid-mail-request" "identity-custody-required" "keychain-unavailable" "identity-enrollment-policy-required"} (ex-message e)) (ex-message e) "identity-operation-unconfirmed")})))))))

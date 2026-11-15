@@ -12,7 +12,7 @@
         (set-busy true) (set-problem nil) (set-notice nil)
         (-> (manageAliases selected action (clj->js values))
          (.then #(do (set-view (js->clj % :keywordize-keys true)) (when (= "issue" action) (set-pending nil) (set-purpose "") (set-party "")) (set-stop-id nil)))
-         (.catch #(set-problem (if (contains? #{"mailBindingRequired" "mailReloadRequired" "identityRecoveryRequired"} (.-message %)) (keyword (.-message %)) :mailAliasUnavailable)))
+         (.catch #(set-problem (if (contains? #{"mailBindingRequired" "mailReloadRequired" "identityRecoveryRequired" "identityStoreStale"} (.-message %)) (keyword (.-message %)) :mailAliasUnavailable)))
          (.finally #(set-busy false))))
        submit (fn [e] (.preventDefault e)
         (when-not busy

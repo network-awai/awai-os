@@ -14,14 +14,14 @@
    (let [file (io/file p) tmp (str p "." (java.util.UUID/randomUUID))]
     (db/private-dir! (.getParent file))
     (with-open [out (FileChannel/open (Paths/get tmp (make-array String 0)) #{StandardOpenOption/CREATE_NEW StandardOpenOption/WRITE} (db/attrs "rw-------"))]
-     (.write out (java.nio.ByteBuffer/wrap b)) (.force out true))
+     (let [buffer (java.nio.ByteBuffer/wrap b)] (while (.hasRemaining buffer) (.write out buffer))) (.force out true))
     (if replace?
      (Files/move (Paths/get tmp (make-array String 0)) (Paths/get p (make-array String 0)) (into-array java.nio.file.CopyOption [StandardCopyOption/ATOMIC_MOVE StandardCopyOption/REPLACE_EXISTING]))
      (try (Files/createLink (Paths/get p (make-array String 0)) (Paths/get tmp (make-array String 0))) (finally (Files/deleteIfExists (Paths/get tmp (make-array String 0))))))
     (with-open [dir (FileChannel/open (Paths/get (.getParent file) (make-array String 0)) (into-array OpenOption [StandardOpenOption/READ]))] (.force dir true))))
   (defn private-bytes [p]
    (let [v (Paths/get p (make-array String 0))]
-    (m/require! (and (not (Files/isSymbolicLink v)) (Files/isRegularFile v (make-array LinkOption 0))
+    (m/require! (and (not (Files/isSymbolicLink v)) (Files/isRegularFile v (make-array LinkOption 0)) (< (Files/size v) (* 16 1024 1024))
                      (= "rw-------" (java.nio.file.attribute.PosixFilePermissions/toString (Files/getPosixFilePermissions v (make-array LinkOption 0))))) "identity-private-file-required")
     (Files/readAllBytes v)))
   (defn credential [cfg kind value replace?]
@@ -114,9 +114,13 @@
       (try
        (m/require! (= (:keySha256 mark) (hex (sha-bytes key))) "identity-recovery-required")
        ((:open (db/crypto key (str "identity/fleet/" namespace))) (private-bytes (str bundle "/fleet.sealed")))
-       (m/require! (and (nil? (credential cfg "primary" nil false)) (nil? (credential cfg "recovery" nil false))) "identity-existing-target-refused")
+       (let [existing-key (credential cfg "primary" nil false) existing-recovery (credential cfg "recovery" nil false)]
+        (try (m/require! (and (or (nil? existing-key) (= (seq key) (seq existing-key)))
+                             (or (nil? existing-recovery) (= (seq recovery) (seq existing-recovery)))) "identity-existing-target-refused")
        (copy-ciphertext! bundle (:identityRoot cfg))
-       (credential cfg "recovery" recovery false) (credential cfg "primary" key false)
+         (when-not existing-recovery (credential cfg "recovery" recovery false))
+         (when-not existing-key (credential cfg "primary" key false))
+         (finally (when existing-key (java.util.Arrays/fill existing-key (byte 0))) (when existing-recovery (java.util.Arrays/fill existing-recovery (byte 0))))))
        (finally (java.util.Arrays/fill key (byte 0)))))
      (finally (java.util.Arrays/fill recovery (byte 0))))))
   (defn with-custody [cfg f] (let [{:keys [key seed]} (unlock! cfg)] (try (f key seed) (finally (java.util.Arrays/fill key (byte 0)) (java.util.Arrays/fill seed (byte 0))))))))

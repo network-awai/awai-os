@@ -125,3 +125,11 @@ portable owner recovery and ciphertext canaries. Real macOS Keychain and
 authenticated etcd are additionally probed with synthetic identities. None of
 these probes proves independent hardware durability, whole-device production
 backup, arbitrary same-UID isolation, distributed alias writes or SMTP delivery.
+
+Before live activation, recovery validation added an etcd-anchored alias-head
+CAS. Pending request IDs are retained and interrupted local/head publication
+reconciles the same event. Old snapshots refuse reads/updates when their head
+differs from the latest authority, so recovery cannot revive stopped aliases.
+Native file writes drain the complete buffer and private credential reads
+require exact0600 permissions and bounded sizes. Recovery into a new store may
+reuse matching existing Keychain custody, but cannot overwrite different keys.

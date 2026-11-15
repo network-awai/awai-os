@@ -1,7 +1,7 @@
 (ns itonami-identity.test
  (:require [clojure.test :refer [deftest is testing run-tests]] [clojure.java.io :as io]
   [clojure.java.shell :as sh]
-  [itonami-identity.core :as i] [itonami-identity.custody :as c] [itonami-identity.mail :as m] [cheshire.core :as j]))
+  [itonami-identity.core :as i] [itonami-identity.custody :as c] [itonami-identity.mail :as m] [itonami-identity.ledger :as ledger] [cheshire.core :as j]))
 (defn config [] (let [root (str (or (System/getenv "CHAT_TEST_ROOT") (str (System/getProperty "user.dir") "/.agent-output")) "/identity-" (java.util.UUID/randomUUID))]
  {:identityRoot root :identityNamespace (str "fixture-" (java.util.UUID/randomUUID)) :identityFixture true :identityAutoEnroll true
   :identityCustody {:type "fixture" :root (str root "/credentials")} :fixtureLedgerRoot (str root "/ledger")}))
@@ -73,4 +73,24 @@
    (let [a (future (child cfg {:action "status" :botId "profile:race"})) b (future (child other {:action "status" :botId "profile:race"}))
          pick #(select-keys % [:principalId :did :epoch])]
     (is (= (pick @a) (pick @b)))))))
+(deftest old-backup-cannot-reactivate-stopped-address
+ (let [cfg (config) _ (boot cfg) saved (issue cfg (i/operation! cfg {:action "list" :botId bot}))
+       backup (i/operation! cfg {:action "export-recovery" :output (str (:identityRoot cfg) "/before-stop")})
+       stopped (i/operation! cfg {:action "stop" :botId bot :requestId (str (java.util.UUID/randomUUID)) :basis (:basis saved) :aliasId (get-in saved [:aliases 0 :aliasId])})
+       target (assoc cfg :identityRoot (str (:identityRoot cfg) "-stale") :identityCustody {:type "fixture" :root (str (:identityRoot cfg) "-stale-credentials")})]
+  (i/operation! target {:action "restore-recovery" :botId bot :bundle (:bundle backup) :ownerKeyFile (:ownerKeyFile backup)})
+  (is (thrown-with-msg? Exception #"identity-store-stale" (i/operation! target {:action "list" :botId bot})))
+  (is (thrown-with-msg? Exception #"identity-store-stale" (issue target saved)))
+  (is (= "stopped" (get-in (i/operation! cfg {:action "list" :botId bot}) [:aliases 0 :state])))
+  (let [p (str (:identityRoot cfg) "/overly-readable.key")]
+   (c/file! p (c/random-bytes 32) false)
+   (java.nio.file.Files/setPosixFilePermissions (.toPath (io/file p)) (java.nio.file.attribute.PosixFilePermissions/fromString "rw-r--r--"))
+   (is (thrown? Exception (c/private-bytes p))))))
+(deftest uncertain-head-publication-reconciles-without-new-alias
+ (let [cfg (config) _ (boot cfg) view (i/operation! cfg {:action "list" :botId bot})
+       request {:botId bot :action "issue" :requestId (str (java.util.UUID/randomUUID)) :basis (:basis view) :purpose "fixture" :counterparty "fixture"}
+       client (ledger/client cfg) calls (atom 0) uncertain (assoc client :cas (fn [k old value] (if (= 2 (swap! calls inc)) false ((:cas client) k old value))))]
+  (is (thrown? Exception (c/locked cfg #(c/with-custody cfg (fn [key _] (i/aliases! cfg key (:binding (i/local-binding cfg key bot)) request uncertain))))))
+  (let [reconciled (i/operation! cfg {:action "list" :botId bot}) replay (i/operation! cfg request)]
+   (is (= 1 (count (:aliases reconciled)))) (is (= reconciled replay)))))
 (defn -main [& _] (let [r (run-tests 'itonami-identity.test)] (when (pos? (+ (:fail r) (:error r))) (System/exit 1))))
