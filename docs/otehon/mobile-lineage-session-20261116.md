@@ -55,3 +55,53 @@ Jun の電源OFF→再接続後、host に MediaTek `0e8d:2000` / MT65xx Preload
 最初の待機は接続待ちで時間切れ。再接続を依頼し、次の読取りを待機した。
 ここまで原本パーティションの読取り成功・保存は0件、unlock/flash/wipeも未実施。
 生ログと tool 状態は task-local に保存し、private partition や device ID を Git に入れない。
+
+## Mac での診断と追跡の分離
+
+物理導入の追跡は [AWAI-2967](https://linear.app/kotobalabs/issue/AWAI-2967) へ分離した。
+AWAI-681 は PR #98 の merge を確認した設計/準備単位として Done に修正し、
+未導入の端末が稼働済みと解釈されないようにした。以前の利用量は親issueに残し、子へ重複計上しない。
+
+Mac版1.0.0は再接続後も待機。接続失敗を握りつぶす upstream 実装を確認し、
+[Penumbra 1.1.0](https://github.com/shomykohai/penumbra/tree/92e12caf665441bbc1e1cbfd7ecf6914f09fc6dc)
+を固定して取得した。接続探索/オープン失敗の表示だけを加えた
+[診断patch](mobile/penumbra-open-diagnostic-20261116.patch)で確認した。
+端末への書込み処理や接続の成功条件は変更していない。
+
+- 開発用hostで `cargo build --locked -p antumbra --manifest-path .agent-output/penumbra-source/Cargo.toml`。
+  rustc 1.99.1 / cargo 1.99.1、upstream Cargo.lock の Rust 依存を取得。
+  59.26秒でbuild成功（警告あり）。これは単発の運用tool構築で、Awai native build/gateへの依存追加ではない。
+- NUSB版のSHA-256は `9c6c87640894922308295b83de46ff9fc72a250b8cca0ce779a0a8de2a8b49bb`。
+- 一般権限で `pgpt` を待機してから再接続すると、
+  `could not open interface for exclusive access (error 0xe00002c5)` を観測。
+- macOS認証ダイアログでJunが認証した管理者権限でも、同じ排他アクセスエラーを再現。
+  単なる一般ユーザー権限の不足とは判定できない。失敗メッセージの反復数を独立した試行数として数えない。
+- 管理者読取りプロセスは通常の停止後も生存したため、そのtask processだけをSIGKILLして停止。
+  他のVM/アプリ/プロセスやOSのドライバー設定は変更していない。
+- `cargo build --locked -p antumbra --features penumbra/serial --manifest-path .agent-output/penumbra-source/Cargo.toml`
+  により upstream の serial 接続実装を選んだ別候補を17.01秒でbuild成功。
+  SHA-256は `2780445b73fdbaa4b1c3b20fbec9467dc8f696ab191ec103b233ce515349d77e`。
+  version/help表示とbuildは実機での読取り・書込み互換性の証明ではない。
+  一般権限で `pgpt` のみを試験し、次の電源OFF再接続を待機する。
+
+現時点で原本保存、unlock、flash、wipe、LineageOS起動はすべて未達。
+生ログ/ソース/バイナリは task-local `.agent-output` に保全し、デバイス識別子を公開記録に含めない。
+
+## シリアル接続の成功と原本保存
+
+電源OFF再接続でシリアル版の handshake、DA1/DA2 実行、DA SLA challenge、
+partition table 読取りが成功した。`pgpt` は exit 0。
+DA extensions の upload は失敗し、upstream が extensions なしで継続したため、
+extensions を必要とする操作や書込み全般の互換性は認定しない。
+
+一般権限の `read` で preloader / preloader_backup / oem_mfd / proinfo / frp /
+misc / lk_a / lk_b / seccfg / boot_a / boot_b の11領域、合計160,956,416 bytesを
+task-local に保存し、別の読取り処理で11ファイルのsize/SHA-256を再照合した。
+これはホスト上のファイルの再照合であり、実機からの独立二重読取りではない。
+private設定領域の実バイト、ハッシュ一覧、device stateはGitに入れず、専用private directoryに保全する。
+未変更原本をその場でpatchするtanukiの動作は実行していない。
+
+vendor_boot_a の `read` は I/O timeoutで終了し、0-byte出力を証跡として保持。
+その後の読取り候補はまだ接続待ち。残りのvendor_boot/dtbo/init_boot両slotを
+別のupstreamコマンド `read-flash` で保存する試験を準備し、電源OFF再接続を依頼した。
+実機の原本保存は一部成功したが、復旧一式・write/readback・解除・導入は未達。
