@@ -42,6 +42,18 @@ class Claims(unittest.TestCase):
    self.assertFalse(k.inspect([])['available'])
    self.assertFalse(k.inspect([{'path':'/etc/shadow','majorMinor':'1:1','id':'x'}])['available'])
    process.assert_not_called()
+ def test_partition_reference_scan_returns_ids_without_paths_or_payloads(self):
+  with tempfile.TemporaryDirectory() as temp:
+   proc=Path(temp);process=proc/'123';(process/'fd').mkdir(parents=True);(process/'ns').mkdir()
+   (process/'fd/3').write_text('private payload')
+   number=(process/'fd/3').stat().st_dev;identity=str(os.major(number))+':'+str(os.minor(number))
+   (process/'ns/mnt').symlink_to('mnt:[17]')
+   (process/'mountinfo').write_text('10 1 '+identity+' / /private-name rw - ext4 /secret rw\n')
+   child={'majorMinor':identity};devices=[{'kernel':{'partitions':[child]}}]
+   k.partition_references(devices,proc)
+   self.assertEqual({r['kind'] for r in child['references']},{'file-fd','mount-namespace'})
+   self.assertFalse(devices[0]['kernel']['referenceScan']['truncated'])
+   self.assertNotIn('private',str(devices));self.assertNotIn('secret',str(devices))
  def test_fixed_operation_disabled_by_default_and_refused_while_writing(self):
   self.assertEqual(b.decode(b'KERNEL_INSPECT\n'),('KERNEL_INSPECT',[]))
   with self.assertRaises(b.Refused):b.decode(b'KERNEL_INSPECT\tL2V0Yy9zaGFkb3c=\n')

@@ -1,5 +1,6 @@
 """Fixed transient kernel metadata trace around read-only exclusive disk probes."""
 import json
+import itertools
 import os
 from pathlib import Path
 import re
@@ -11,6 +12,51 @@ import sys
 import time
 
 MAX_OUTPUT = 16384
+
+
+def partition_references(devices, proc=Path('/proc')):
+    """Correlate retained kernel children with FD/mount metadata, not paths/data."""
+    children = [p for d in devices for p in d.get('kernel', {}).get('partitions', [])]
+    by_number = {p['majorMinor']: p for p in children}
+    if not children: return
+    for child in children: child['references'] = []
+    namespaces = set(); scanned = 0; fds = 0; truncated = False
+    deadline = time.monotonic() + 2
+    for process in itertools.islice(proc.iterdir(), 2049):
+        if not process.name.isdecimal(): continue
+        if scanned >= 2048 or time.monotonic() >= deadline or fds >= 8192:
+            truncated = True; break
+        scanned += 1
+        try:
+            with os.scandir(process / 'fd') as entries:
+                for index, entry in enumerate(itertools.islice(entries, 129)):
+                    if index == 128: truncated = True; break
+                    fds += 1
+                    if fds >= 8192 or time.monotonic() >= deadline:
+                        truncated = True; break
+                    try: info = entry.stat()
+                    except OSError: continue
+                    number = info.st_rdev if stat.S_ISBLK(info.st_mode) else info.st_dev
+                    child = by_number.get(str(os.major(number))+':'+str(os.minor(number)))
+                    if child is not None and len(child['references']) < 32:
+                        child['references'].append({'pid': int(process.name), 'kind': 'block-fd' if stat.S_ISBLK(info.st_mode) else 'file-fd', 'fd': int(entry.name)})
+        except OSError: pass
+        try:
+            namespace = os.readlink(process / 'ns/mnt')
+            if namespace in namespaces: continue
+            if len(namespaces) >= 64: truncated = True; continue
+            namespaces.add(namespace)
+            with (process / 'mountinfo').open() as source: data = source.read(262145)
+            if len(data) > 262144: truncated = True; continue
+            for line in data.splitlines():
+                fields = line.split()
+                child = by_number.get(fields[2]) if len(fields) > 3 else None
+                if child is not None and len(child['references']) < 32:
+                    child['references'].append({'pid': int(process.name), 'kind': 'mount-namespace', 'namespace': namespace})
+        except OSError: pass
+    for device in devices:
+        device.setdefault('kernel', {})['referenceScan'] = {'processesScanned': scanned, 'fdsScanned': fds,
+            'namespacesScanned': len(namespaces), 'truncated': truncated, 'atomic': False}
 
 
 def program(pid, devices):
@@ -187,6 +233,7 @@ def inspect(rows, tracer='bpftrace'):
         captured.extend(tail)
         if process.returncode or len(captured) > MAX_OUTPUT: raise RuntimeError('tracer completion')
         parse(captured.decode('utf-8', 'replace'), by_device)
+        partition_references(result['devices'])
         result['available'] = all('returnCode' in item.get('kernel', {}) for item in result['devices'])
         if not result['available']: result['reason'] = 'no-matching-kernel-event'
     except (OSError, RuntimeError, TimeoutError, subprocess.SubprocessError) as error:
