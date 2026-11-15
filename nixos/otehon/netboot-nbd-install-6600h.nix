@@ -8,6 +8,10 @@ let
     export PATH=${lib.makeBinPath [ pkgs.systemd ]}
     case "''${SSH_ORIGINAL_COMMAND-}" in
       ""|diagnostics) exec ${pkgs.python3}/bin/python3 ${./installer-diagnostics.py} ;;
+      kernel-claims)
+        export OTEHON_ALLOW_KERNEL_CLAIMS=1
+        exec ${pkgs.python3}/bin/python3 ${./installer-diagnostics.py}
+        ;;
       console)
         test -n "''${SSH_TTY-}" || exit 64
         exec ${build.otehonInstallerConsole} ssh
@@ -41,6 +45,8 @@ in {
       cat /run/otehon-debug-fingerprint
     '';
   };
+  systemd.services.otehon-install-broker.path = [ pkgs.bpftrace ];
+  systemd.services.otehon-install-broker.environment.OTEHON_KERNEL_CLAIM_SCRIPT = "${./installer-kernel-claims.py}";
   services.openssh.settings = lib.mkIf (config.otehon.diagnosticPublicKey != "") {
     ForceCommand = lib.mkForce "${remote}";
     PermitTTY = lib.mkForce true;

@@ -25,7 +25,7 @@ def check_key(expected, scan, fingerprint):
         raise ValueError('host fingerprint mismatch')
 
 
-def collect(key, expected, output, scratch, installer_observer=False):
+def collect(key, expected, output, scratch, installer_observer=False, kernel_claims=False):
     scan = subprocess.run(['ssh-keyscan', '-T', '5', '-t', 'ed25519', '-p', PORT, HOST],
                           capture_output=True, text=True, timeout=10)
     fingerprint = subprocess.run(['ssh-keygen', '-lf', '-', '-E', 'sha256'], input=scan.stdout,
@@ -39,8 +39,8 @@ def collect(key, expected, output, scratch, installer_observer=False):
             '-o', 'BatchMode=yes', '-o', 'IdentitiesOnly=yes',
             '-o', 'StrictHostKeyChecking=yes', '-o', f'UserKnownHostsFile={known}',
             '-o', 'GlobalKnownHostsFile=/dev/null', '-o', 'ConnectTimeout=10',
-            'otehon-installer@' + HOST,
-        ], capture_output=True, text=True, timeout=30)
+            'otehon-installer@' + HOST, *(['kernel-claims'] if kernel_claims else []),
+        ], capture_output=True, text=True, timeout=45)
     if response.returncode != 0 or len(response.stdout) > 1024 * 1024:
         raise ValueError('diagnostics failed or exceeded the response limit')
     result = json.loads(response.stdout)
@@ -60,8 +60,9 @@ def main():
     parser.add_argument('--output', type=Path, required=True, help='new file for diagnostic evidence')
     parser.add_argument('--scratch', type=Path, required=True, help='existing task-local scratch directory')
     parser.add_argument('--installer-observer', action='store_true', help='observe writable installer through its read-only collector')
+    parser.add_argument('--kernel-claims', action='store_true', help='fixed transient kernel metadata trace; no disk writes')
     args = parser.parse_args()
-    collect(args.key, args.fingerprint, args.output, args.scratch, args.installer_observer)
+    collect(args.key, args.fingerprint, args.output, args.scratch, args.installer_observer, args.kernel_claims)
     print('診断情報を保存しました: ' + str(args.output))
 
 

@@ -10,6 +10,7 @@ from pathlib import Path
 import pwd
 import re
 import secrets
+import signal
 import socket
 import stat
 import struct
@@ -57,7 +58,7 @@ def decode(line):
     if len(line) > 4096 or not line.endswith(b'\n'): raise Refused('request-bound')
     fields = line[:-1].split(b'\t')
     op = fields[0].decode('ascii')
-    arity = {'LIST':0, 'STATUS':0, 'INSPECT':0, 'SELECT':1, 'INSTALL':3, 'CANCEL':0, 'TEXT':0, 'REBOOT':0, 'POWEROFF':0}
+    arity = {'LIST':0, 'STATUS':0, 'INSPECT':0, 'KERNEL_INSPECT':0, 'SELECT':1, 'INSTALL':3, 'CANCEL':0, 'TEXT':0, 'REBOOT':0, 'POWEROFF':0}
     if op not in arity or len(fields)-1 != arity[op]: raise Refused('request-shape')
     values = []
     for field in fields[1:]:
@@ -392,6 +393,22 @@ class Broker:
             raise Refused('diagnostic-read-only')
         if op=='LIST': return {'devices':inventory(),'rawBytes':self.raw_bytes,'state':self.snapshot()}
         if op=='STATUS': return self.snapshot()
+        if op=='KERNEL_INSPECT':
+            if args: raise Refused('fixed-kernel-inspection-operation')
+            if self.busy(): return {'available': False, 'readOnly': True, 'reason': 'install-in-progress'}
+            script = os.environ.get('OTEHON_KERNEL_CLAIM_SCRIPT')
+            if not script: return {'available': False, 'readOnly': True, 'reason': 'disabled'}
+            rows = [r for r in inventory() if not r['readOnly'] and r['size'] > self.raw_bytes]
+            process = subprocess.Popen([sys.executable, script], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, start_new_session=True)
+            try:
+                output, _ = process.communicate(json.dumps(rows).encode(), timeout=25)
+                if process.returncode or len(output)>65536: raise Refused('kernel-inspection-failed')
+                return json.loads(output)
+            finally:
+                if process.poll() is None:
+                    os.killpg(process.pid, signal.SIGTERM)
+                    try: process.wait(timeout=2)
+                    except subprocess.TimeoutExpired: os.killpg(process.pid, signal.SIGKILL); process.wait()
         if op=='INSPECT':
             if args: raise Refused('fixed-inspection-operation')
             if self.busy(): return {'available': False, 'readOnly': True, 'reason': 'install-in-progress'}

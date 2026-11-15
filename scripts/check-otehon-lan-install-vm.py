@@ -178,6 +178,17 @@ def main():
             if len(target_usage) != 1 or target_usage[0]['exclusiveReadOnlyOpen'].get('opened') is not True:
                 raise RuntimeError('scratch NVMe not available to read-only exclusive probe')
             (out / 'before.json').write_text(json.dumps(status, indent=2))
+            traced = ssh('kernel-claims')
+            if traced.returncode: raise RuntimeError('fixed kernel claim observer failed')
+            traced_value = json.loads(traced.stdout)
+            claims = traced_value.get('kernelClaims', {})
+            if not claims.get('available') or not claims.get('readOnly') or not claims.get('transientKernelTrace'):
+                raise RuntimeError('kernel claim observer unavailable: ' + json.dumps(claims))
+            target_claim = next(r for r in claims['devices'] if r['path']=='/dev/nvme0n1')
+            if target_claim['kernel']['returnCode'] != 0 or traced_value['status']['writeStarted']:
+                raise RuntimeError('kernel claim observation altered scratch state')
+            (out / 'kernel-claims.json').write_text(json.dumps(traced_value, indent=2))
+            proof['checks'].append('fixed transient kernel claim observer preserves idle scratch state')
             proof['checks'].append('shell and non-PTY console rejected; bounded observer available')
         proof['authenticatedObserverChecked'] = bool(a.key)
         proof['checks'].append('displayed host identity matched and unauthorized key rejected')

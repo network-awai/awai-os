@@ -18,10 +18,10 @@ MAX_LOG = 131072
 
 
 def broker(op):
-    if op not in ('STATUS', 'LIST', 'INSPECT'):
+    if op not in ('STATUS', 'LIST', 'INSPECT', 'KERNEL_INSPECT'):
         raise ValueError('unsupported operation')
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as conn:
-        conn.settimeout(5)
+        conn.settimeout(30 if op == 'KERNEL_INSPECT' else 5)
         conn.connect(SOCKET)
         conn.sendall(('JSON\t' + op + '\n').encode('ascii'))
         with conn.makefile('rb') as stream:
@@ -101,6 +101,9 @@ def main():
                 result['deviceUsage'] = broker('INSPECT')
             except (OSError, ValueError):
                 result['deviceUsage'] = {'available': False}
+            if os.environ.get('OTEHON_ALLOW_KERNEL_CLAIMS') == '1':
+                try: result['kernelClaims'] = broker('KERNEL_INSPECT')
+                except (OSError, ValueError): result['kernelClaims'] = {'available': False}
             print(json.dumps(result, ensure_ascii=True, separators=(',', ':')))
             return 0
         result['status'] = broker('STATUS')

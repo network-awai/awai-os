@@ -4,6 +4,8 @@ let
     import errno, importlib.util, json, os, sys
     spec = importlib.util.spec_from_file_location('broker', '${../otehon/installer-broker.py}')
     b = importlib.util.module_from_spec(spec); spec.loader.exec_module(b)
+    trace_spec = importlib.util.spec_from_file_location('claims', '${../otehon/installer-kernel-claims.py}')
+    claims = importlib.util.module_from_spec(trace_spec); trace_spec.loader.exec_module(claims)
     rows = [r for r in b.inventory() if r['path'] in ('/dev/vdb', '/dev/vdc')]
     assert len(rows) == 2
     assert all(not r["ambiguous"] for r in rows), "fixture disks need real unique QEMU serials"
@@ -32,20 +34,32 @@ let
     else:
         assert target['exclusiveReadOnlyOpen']['opened']
         assert not target['mountNamespaceReferences']
+    if sys.argv[1] in ('held', 'released'):
+        trace = claims.inspect(rows)
+        assert trace['available'], trace
+        held = next(r for r in trace['devices'] if r['path']=='/dev/vdb')
+        if sys.argv[1] == 'held':
+            assert held['kernel']['hasHolder']
+            assert held['kernel']['holderOps']=='fs_holder_ops', trace
+            assert held['kernel']['fileSystem']=='ext4', trace
+            assert held['kernel']['returnCode']==-errno.EBUSY, trace
+        else:
+            assert not held['kernel']['hasHolder'], trace
+            assert held['kernel']['returnCode']==0, trace
     print(json.dumps({'schema':'awai.otehon.device-usage-vm.v1','physicalDisks':False,'case':sys.argv[1],'passed':True}))
   '';
 in pkgs.testers.runNixOSTest {
   name = "otehon-read-only-device-usage";
   nodes.machine = { ... }: {
     virtualisation = {
-      memorySize = 1024;
+      memorySize = 2048;
       emptyDiskImages = [
         { size = 64; driveConfig.deviceExtraOpts.serial = "USAGE-TARGET"; }
         { size = 64; driveConfig.deviceExtraOpts.serial = "USAGE-DECOY"; }
       ];
     };
     boot.kernelModules = [ "loop" ];
-    environment.systemPackages = [ pkgs.python3 pkgs.util-linux pkgs.e2fsprogs ];
+    environment.systemPackages = [ pkgs.python3 pkgs.util-linux pkgs.e2fsprogs pkgs.bpftrace ];
     systemd.services.usage-mount-fixture = {
       path = [ pkgs.coreutils pkgs.util-linux ];
       serviceConfig.PrivateMounts = true;
