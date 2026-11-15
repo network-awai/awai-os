@@ -5,6 +5,7 @@ let
   home = config.users.users.${cfg.user}.home;
   state = "${home}/.local/state/awai-drive";
   mount = "${home}/Awai";
+  control = "/run/otehon-drive/control.sock";
   settings = pkgs.writeText "otehon-drive-settings.json" (builtins.toJSON {
     inherit state mount; inherit (cfg) user; defaultSave = cfg.defaultSave;
   });
@@ -15,6 +16,9 @@ let
     name = "awai-drive";
     runtimeInputs = [ pkgs.util-linux pkgs.xfce.thunar ];
     text = ''
+      if [ "''${1:-}" = --status ]; then
+        exec ${pkgs.python3}/bin/python3 ${./drive/status.py} ${lib.escapeShellArg control} ${lib.escapeShellArg mount}
+      fi
       if ! mountpoint -q ${lib.escapeShellArg mount}; then
         echo 'Awai Drive は未接続です。暗号化データの解除と保存サービスを確認してください。' >&2
         exit 1
@@ -88,7 +92,8 @@ in {
           done
           exit 1
         '';
-        ExecStart = "${pkgs.rclone}/bin/rclone mount :webdav: ${mount} --config /dev/null --webdav-url http://127.0.0.1:${toString cfg.port}/ --webdav-vendor other --vfs-cache-mode writes --cache-dir ${state}/cache --vfs-write-back 0s --dir-cache-time 1s --attr-timeout 1s --buffer-size 1M --transfers 1 --umask 077 --log-level ERROR";
+        ExecStart = "${pkgs.rclone}/bin/rclone mount :webdav: ${mount} --config /dev/null --webdav-url http://127.0.0.1:${toString cfg.port}/ --webdav-vendor other --vfs-cache-mode writes --cache-dir ${state}/cache --vfs-write-back 0s --dir-cache-time 1s --attr-timeout 1s --buffer-size 1M --transfers 1 --umask 077 --log-level ERROR --log-file ${state}/mount-errors.log --rc --rc-addr unix://${control}";
+        RuntimeDirectory = "otehon-drive"; RuntimeDirectoryMode = "0700";
         ExecStop = "/run/wrappers/bin/fusermount3 -u ${mount}";
         Restart = "on-failure"; RestartSec = 2; TimeoutStopSec = 120;
         Environment = "PATH=/run/wrappers/bin:${lib.makeBinPath [ pkgs.fuse3 pkgs.coreutils ]}";

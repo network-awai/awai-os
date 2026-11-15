@@ -46,6 +46,7 @@ in pkgs.testers.runNixOSTest {
     expected = machine.succeed("runuser -u otehon -- sha256sum /home/otehon/Awai/saved.bin").split()[0]
     machine.succeed("runuser -u otehon -- mv /home/otehon/Awai/saved.bin /home/otehon/Awai/renamed.bin")
     machine.succeed("runuser -u otehon -- drive-probe verify /home/otehon/Awai/renamed.bin")
+    machine.wait_until_succeeds("runuser -u otehon -- awai-drive --status | ${pkgs.python3}/bin/python3 -c 'import json,sys; s=json.load(sys.stdin); assert s[\"localState\"] == \"transfer-idle\" and not s[\"distributedPolicyMet\"]'", timeout=120)
     machine.succeed("test $(stat -c %a /home/otehon/.local/state/awai-drive/credentials) = 600")
     # All bytes have explicit backend readback before treating this VM cache as clean.
     machine.succeed("systemctl stop otehon-drive-mount.service otehon-drive-volume.service")

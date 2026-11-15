@@ -28,6 +28,11 @@ backend の永続化 receipt とみなしません。転送に失敗した dirty
 暗号化 state に保持されるため、手動削除しないでください。cache の退避を
 分散の保持条件成立・backup 完了と読み替えません。
 
+`awai-drive --status` は owner 専用 Unix socket から未転送/転送中/エラー件数を
+取得します。欠測は unknown とし、`transfer-idle` でも backend readback や
+分散保持成立の receipt を発行しません。RPC を TCP に公開せず、転送エラーの
+詳細は暗号化 home の private log に置き、システム journal にファイル名を送りません。
+
 この候補のローカルデータは LUKS で保護されます。owner envelope・Passkey・
 private metadata の E2EE、独立 pin/replica/repair、地域最適化配信は未接続です。
 外部 storage 宛先を設定せず、平文 Pack を他人のノードへ同期しません。
