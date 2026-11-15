@@ -9,7 +9,7 @@ let
   system = import "${nixpkgs}/nixos/lib/eval-config.nix" {
     system = null;
     modules = [ (./. + "/${profile}.nix") ] ++ platform
-      ++ (if profile == "netboot-diagnostic-6600h" then [ { otehon.diagnosticPublicKey = diagnosticPublicKey; } ] else [ ]);
+      ++ (if builtins.elem profile [ "netboot-diagnostic-6600h" "netboot-nbd-install-6600h" ] then [ { otehon.diagnosticPublicKey = diagnosticPublicKey; } ] else [ ]);
   };
 in
 system.config.system.build.${if output == "system" then "toplevel" else "image"}

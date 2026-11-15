@@ -25,7 +25,7 @@ def check_key(expected, scan, fingerprint):
         raise ValueError('host fingerprint mismatch')
 
 
-def collect(key, expected, output, scratch):
+def collect(key, expected, output, scratch, installer_observer=False):
     scan = subprocess.run(['ssh-keyscan', '-T', '5', '-t', 'ed25519', '-p', PORT, HOST],
                           capture_output=True, text=True, timeout=10)
     fingerprint = subprocess.run(['ssh-keygen', '-lf', '-', '-E', 'sha256'], input=scan.stdout,
@@ -44,7 +44,7 @@ def collect(key, expected, output, scratch):
     if response.returncode != 0 or len(response.stdout) > 1024 * 1024:
         raise ValueError('diagnostics failed or exceeded the response limit')
     result = json.loads(response.stdout)
-    if result.get('schema') != 'awai.otehon.installer-diagnostics.v1' or result.get('readOnly') is not True or result.get('status', {}).get('readOnly') is not True:
+    if result.get('schema') != 'awai.otehon.installer-diagnostics.v1' or result.get('readOnly') is not True or (not installer_observer and result.get('status', {}).get('readOnly') is not True):
         raise ValueError('unexpected or non-read-only diagnostics')
     # Preserve existing evidence: fail if the destination already exists.
     fd = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -59,8 +59,9 @@ def main():
     parser.add_argument('--fingerprint', required=True, help='SHA256 fingerprint displayed on the 6600H screen')
     parser.add_argument('--output', type=Path, required=True, help='new file for diagnostic evidence')
     parser.add_argument('--scratch', type=Path, required=True, help='existing task-local scratch directory')
+    parser.add_argument('--installer-observer', action='store_true', help='observe writable installer through its read-only collector')
     args = parser.parse_args()
-    collect(args.key, args.fingerprint, args.output, args.scratch)
+    collect(args.key, args.fingerprint, args.output, args.scratch, args.installer_observer)
     print('診断情報を保存しました: ' + str(args.output))
 
 

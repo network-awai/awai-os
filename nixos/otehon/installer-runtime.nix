@@ -120,6 +120,7 @@ in {
   # the local text screen nor serial operator receives a root login shell.
   systemd.targets.multi-user.wants = [ "otehon-install@tty1.service" "otehon-install@tty2.service" "otehon-install@ttyS0.service" ];
   system.build.otehonInstallerPayload = disk;
+  system.build.otehonInstallerConsole = console;
   system.build.otehonUsbDigests = digests;
   system.build.otehonInstallerInfo = infoJson;
 
