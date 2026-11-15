@@ -63,9 +63,10 @@ in pkgs.testers.runNixOSTest {
     dan = machine "dan";
     judah = machine "judah";
     disabled = { ... }: {
-      imports = [ ../otehon/k3s ];
+      imports = [ ../otehon/k3s/default.nix ];
       virtualisation.memorySize = 512;
       environment.systemPackages = [ pkgs.curl ];
+      networking.interfaces.eth1.ipv4.addresses = lib.mkForce [{ address = "192.168.1.4"; prefixLength = 24; }];
     };
   };
   testScript = ''

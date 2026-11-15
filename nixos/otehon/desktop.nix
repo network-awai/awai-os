@@ -87,7 +87,7 @@ in
   # is all this VM has. Zenoh and Matter listen on loopback only.
   # The user has no password and logs in automatically, so this image is for a
   # local VM only. It has no SSH or keys.
-  imports = [ ./common.nix ./media.nix ./manimani/manimani.nix ./update.nix ./update-network.nix ./k3s ];
+  imports = [ ./common.nix ./media.nix ./manimani/manimani.nix ./update.nix ./update-network.nix ./k3s/default.nix ];
 
   options.otehon = {
     relayOrigin = lib.mkOption {

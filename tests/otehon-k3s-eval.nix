@@ -5,7 +5,7 @@ let
   args = node: { inherit node addresses; interface = "eth1"; tokenFile = "/run/secrets/otehon-k3s-token"; };
   eval = modules: (import (nixpkgsPath + "/nixos/lib/eval-config.nix") {
     system = "x86_64-linux";
-    modules = [ ../nixos/otehon/k3s { system.stateVersion = "26.05"; } ] ++ modules;
+    modules = [ ../nixos/otehon/k3s/default.nix { system.stateVersion = "26.05"; } ] ++ modules;
   }).config;
   valid = c: builtins.all (a: a.assertion) c.assertions;
   off = eval [ ];
