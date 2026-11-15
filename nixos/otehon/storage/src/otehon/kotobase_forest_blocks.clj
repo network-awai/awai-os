@@ -236,6 +236,77 @@
                    ref-name expected target verify!)]
       (:publication result))))
 
+(defn publish-atomic-ports!
+  "Build a bounded provisional batch and atomically publish its group and ref.
+  The trusted verifier must check the full closure. Existing blocks may be read
+  from the same local store. No witness, concurrent GC, distributed fencing,
+  cross-store transaction or streamed/GiB atomicity is provided."
+  [dir staging-root tool ref-name expected build! verify!]
+  (when-not (and (fn? build!) (fn? verify!))
+    (fail! :invalid-builder "builder and verifier must be functions"))
+  (let [base (open-block-store dir staging-root tool) gate (Object.)
+        state (atom {:phase :open :bytes 0 :blocks {}})
+        require-open! #(when-not (= :open (:phase @state)) (fail! :transaction-closed "atomic scope is closed"))
+        ports {:put! (fn [cid bytes]
+                       (locking gate
+                         (require-open!)
+                         (try
+                           (let [block (first (:unique (checked-blocks [{:cid cid :bytes bytes}])))
+                                 n (alength ^bytes (:bytes block)) old (get-in @state [:blocks cid])]
+                             (if old
+                               (when-not (Arrays/equals ^bytes (:bytes old) ^bytes (:bytes block))
+                                 (fail! :cid-collision "duplicate CID differs"))
+                               (do
+                                 (when (or (>= (count (:blocks @state)) max-batch-count)
+                                           (> (+ (:bytes @state) n) max-batch-bytes))
+                                   (fail! :too-large "atomic batch exceeds bounds"))
+                                 (swap! state #(-> % (update :bytes + n) (assoc-in [:blocks cid] block)))))
+                             cid)
+                           (catch Exception e (swap! state assoc :phase :failed) (throw e)))))
+               :get-fn (fn [cid]
+                         (locking gate
+                           (require-open!)
+                           (try
+                             (validate-cids! [cid])
+                             (if-let [b (get-in @state [:blocks cid])]
+                               (aclone ^bytes (:bytes b))
+                               (contract/get-block base cid))
+                             (catch Exception e (swap! state assoc :phase :failed) (throw e)))))}]
+    (locking gate
+      (try
+        (let [result (build! ports)]
+          (require-open!)
+          (when-not (and (map? result) (= #{:target :value} (set (keys result))))
+            (fail! :invalid-builder-result "builder must return target and value"))
+          (validate-cids! [(:target result)])
+          (let [m (:blocks @state) batch (mapv m (sort (keys m)))
+                _ (swap! state assoc :phase :publishing)
+                ack (publish-atomic-batch! dir staging-root tool ref-name expected (:target result) batch
+                      (fn [get-candidate cid]
+                        (verify! (fn [requested]
+                                   (or (get-candidate requested) (contract/get-block base requested))) cid)))]
+            (when-not (and (map? ack) (boolean? (:published? ack))
+                           (if (:published? ack) (= (:target result) (:current ack)) true))
+              (fail! :invalid-ref-ack "atomic provider returned invalid acknowledgement"))
+            (when-not (:published? ack) (fail! :stale-ref "ref changed before publication"))
+            (:value result)))
+        (finally (reset! state {:phase :closed :bytes 0 :blocks {}}))))))
+
+(defn atomic-receipt-publication-adapter
+  "Build canonical receipt callbacks over one bounded local group/ref commit."
+  [dir staging-root tool ref-name expected build! verify!]
+  (when-not (and (string? ref-name) (seq ref-name) (fn? build!) (fn? verify!))
+    (fail! :invalid-receipt-publication "invalid publication adapter options"))
+  (when (some? expected) (validate-cids! [expected]))
+  {:publish! (fn [{:keys [receipt prepared] :as input}]
+               (when-not (and (map? input) (= #{:receipt :prepared} (set (keys input)))
+                              (map? receipt) (map? prepared))
+                 (fail! :invalid-receipt-publication "invalid prepared receipt input"))
+               (publish-atomic-ports! dir staging-root tool ref-name expected
+                 (fn [ports] (let [cid (build! ports receipt prepared)] {:target cid :value cid}))
+                 (fn [get-block cid] (verify! get-block cid receipt prepared))))
+   :read-ref! (fn [] (:cid (contract/-read-ref (refs/open-ref-store dir) ref-name)))})
+
 (defn open-transaction
   "Create a bounded, synchronous write overlay for a Prolly operation.
 
