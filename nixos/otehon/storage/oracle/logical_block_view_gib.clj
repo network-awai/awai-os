@@ -1,0 +1,28 @@
+;; Read-only, fixed-corpus hosted reference for the canonical GiB block view.
+(require '[otehon.pack-store :as pack] '[awai.fs.car :as car])
+(import '[java.nio.file Files Paths OpenOption] '[java.security MessageDigest] '[java.util Arrays HexFormat])
+(def base (or (System/getenv "GIB_SOURCE") (throw (ex-info "GIB_SOURCE required" {}))))
+(def expected "bafyreidk3dxbsrqaocvdhfr624j4n75v6ddgmyfgkyu24z3lirlg5aj4g4")
+(def h (pack/recover (str base "/store")))
+(def view (pack/logical-block-view h "gib" expected))
+(assert (= 1073741824 (:file-size view)))
+(assert (= 1024 (:chunk-count view)))
+(def manifest ((:get-block view) expected))
+(def parsed (first (car/cbor-decode (mapv #(bit-and 255 %) manifest) 0)))
+(def chunks (get parsed "chunks"))
+(def source-sha (MessageDigest/getInstance "SHA-256"))
+(def read-sha (MessageDigest/getInstance "SHA-256"))
+(with-open [in (Files/newInputStream (Paths/get (str base "/source") (make-array String 0)) (make-array OpenOption 0))]
+  (doseq [[i chunk] (map-indexed vector chunks)]
+    (let [cid (car/cid-str (get-in chunk ["cid" :bytes]))
+          expected-bytes (.readNBytes in (int (get chunk "length")))
+          actual ((:get-block view) cid)]
+      (assert (Arrays/equals ^bytes expected-bytes ^bytes actual))
+      (.update source-sha ^bytes expected-bytes)
+      (.update read-sha ^bytes actual)
+      (when (zero? (mod (inc i) 128)) (prn {:checked (inc i)}) (flush))))
+  (assert (= -1 (.read in))))
+(def source-hex (.formatHex (HexFormat/of) (.digest source-sha)))
+(def read-hex (.formatHex (HexFormat/of) (.digest read-sha)))
+(assert (= source-hex read-hex))
+(prn {:bytes 1073741824 :blocks 1024 :manifest expected :sha256 read-hex :pass true})

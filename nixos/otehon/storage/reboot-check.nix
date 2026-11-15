@@ -26,6 +26,10 @@ let
     export PATH=${pkgs.lib.makeBinPath [ pkgs.zstd ]}:$PATH
     exec ${pkgs.babashka}/bin/bb --classpath ${classpath} ${./oracle/gib_actual_writer.clj} "$@"
   '';
+  logicalBlockProbe = pkgs.writeShellScriptBin "forest-logical-block-gib-probe" ''
+    export PATH=${pkgs.lib.makeBinPath [ pkgs.zstd ]}:$PATH
+    exec ${pkgs.babashka}/bin/bb -Xmx512M --classpath ${classpath} ${./oracle/logical_block_view_gib.clj}
+  '';
   scopedProbe = pkgs.writeShellScriptBin "forest-scoped-probe" ''
     export NIX_LD=/run/current-system/sw/share/nix-ld/lib/ld.so
     export NIX_LD_LIBRARY_PATH=/run/current-system/sw/share/nix-ld/lib
@@ -41,7 +45,7 @@ pkgs.testers.runNixOSTest {
     virtualisation.memorySize = 1024;
     virtualisation.diskSize = 6144;
     programs.nix-ld.enable = true;
-    environment.systemPackages = [ probe gibWriterProbe scopedProbe forestTool ];
+    environment.systemPackages = [ probe gibWriterProbe logicalBlockProbe scopedProbe forestTool ];
   };
   testScript = ''
     start_all()
@@ -81,6 +85,7 @@ pkgs.testers.runNixOSTest {
     machine.succeed("forest-reboot-probe read-gib /var/lib/forest-reboot/gib-store", timeout=900)
     machine.succeed("forest-reboot-probe read-large /var/lib/forest-reboot/store-large", timeout=900)
     machine.succeed("GIB_ACTUAL_OUTPUT=/var/lib/forest-reboot/gib-actual forest-gib-writer-probe read", timeout=1800)
+    machine.succeed("GIB_SOURCE=/var/lib/forest-reboot/gib-actual forest-logical-block-gib-probe", timeout=1800)
     # Refuse a withheld Pack from each guest-created two-Pack group.
     machine.succeed("f=$(find /var/lib/forest-reboot/stream/store -type f -name '*.forest' -print -quit); test -n \"$f\"; mv \"$f\" /var/lib/forest-reboot/stream-missing.saved")
     machine.succeed("if forest-scoped-probe stream-read /var/lib/forest-reboot/stream > /tmp/stream-missing.log 2>&1; then exit 1; fi; grep -q ':missing-forest' /tmp/stream-missing.log", timeout=900)

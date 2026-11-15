@@ -606,3 +606,44 @@
   (let [refs (get-in handle [:groups name :packs])]
     (when-not refs (fail! :pack-group-not-found "Pack group not found"))
     (reduce + 0 (map :size refs))))
+
+(defn logical-block-view
+  "Expose a verified logical-file manifest and its <=1 MiB leaves by CID.
+
+  HANDLE must be a recovered snapshot and EXPECTED-MANIFEST-CID must come from
+  the caller's authenticated context. The returned synchronous :get-block
+  returns nil for an absent valid CID; malformed CIDs and corrupted data fail.
+  This read-only view does not establish freshness, fencing, authorization,
+  reachability of unrelated blocks, or protection against concurrent GC."
+  [handle name expected-manifest-cid]
+  (group-key name)
+  (ipld/cid-bytes expected-manifest-cid)
+  (let [group (get-in handle [:groups name])]
+    (when-not (= :awai.otehon-store/logical-forest-v1 (:format group))
+      (fail! :invalid-logical-manifest "expected a recovered logical-file group"))
+    (when-not (= expected-manifest-cid (:manifest-cid group))
+      (fail! :logical-manifest-mismatch "manifest differs from authenticated CID"))
+    (let [manifest (byte-array-of (car/hex-decode (:manifest-hex group)))
+          indexes (mapv #(get-in @(:index-cache handle) [(cache-key %) :index]) (:packs group))
+          value (verify-logical-manifest manifest expected-manifest-cid indexes)
+          chunks (get value "chunks")]
+      (when-not (and (vector? chunks)
+                     (every? #(<= 1 (get % "length") max-car-bytes) chunks))
+        (fail! :unsupported-logical-profile "logical block view supports leaves through 1 MiB"))
+      (let [locations (reduce (fn [m chunk]
+                                (let [cid (car/cid-str (get-in chunk ["cid" :bytes]))]
+                                  (if (contains? m cid) m
+                                    (assoc m cid [(get chunk "offset") (get chunk "length")]))))
+                              {} chunks)]
+        {:catalog-basis (:basis handle) :manifest-cid expected-manifest-cid
+         :file-size (get value "fileSize") :chunk-count (count chunks)
+         :get-block (fn [cid]
+                      (ipld/cid-bytes cid)
+                      (if (= cid expected-manifest-cid)
+                        (aclone ^bytes manifest)
+                        (when-let [[offset length] (get locations cid)]
+                          (let [bytes (read-group-range handle name offset length)
+                                hash (mapv #(bit-and 255 %) (.digest (MessageDigest/getInstance "SHA-256") ^bytes bytes))]
+                            (when-not (= cid (car/cid-str (car/cid-bytes car/codec-raw hash)))
+                              (fail! :cid-mismatch "logical leaf differs from requested CID"))
+                            bytes))))}))))

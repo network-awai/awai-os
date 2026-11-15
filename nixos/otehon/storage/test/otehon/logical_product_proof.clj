@@ -49,6 +49,23 @@
         expected-bytes (arr (map #(mod (+ (* % 19) (quot % 8191)) 256) (range offset (+ offset 40))))]
     (ensure! (= (:cid m) (:manifest-cid group)) "recovered manifest CID differs")
     (ensure! (java.util.Arrays/equals expected-bytes (pack/read-group-range h "file" offset 40)) "cross-Pack read differs")
+    (let [view (pack/logical-block-view h "file" (:cid m)) get! (:get-block view)
+          chunk (first (get-in m [:value "chunks"]))
+          cid (car/cid-str (get-in chunk ["cid" :bytes]))
+          expected (arr (map #(mod (+ (* % 19) (quot % 8191)) 256) (range 65536)))
+          unknown (car/cid-str (car/cid-bytes car/codec-raw (digest [42])))]
+      (ensure! (java.util.Arrays/equals (:bytes m) (get! (:cid m))) "manifest block differs")
+      (let [returned (get! (:cid m))] (aset-byte returned 0 (byte 0)))
+      (ensure! (java.util.Arrays/equals (:bytes m) (get! (:cid m))) "manifest buffer was not isolated")
+      (ensure! (java.util.Arrays/equals expected (get! cid)) "logical block differs")
+      (let [corrupt (aclone ^bytes expected)]
+        (aset-byte corrupt 0 (byte 99))
+        (with-redefs [pack/read-group-range (fn [& _] corrupt)]
+          (ensure! (refuses? #(get! cid)) "modified block accepted")))
+      (ensure! (nil? (get! unknown)) "unknown CID was returned")
+      (ensure! (refuses? #(get! "not-a-cid")) "invalid CID accepted")
+      (ensure! (refuses? #(pack/logical-block-view (assoc-in h [:groups "file" :manifest-hex] "00") "file" (:cid m))) "modified snapshot manifest accepted")
+      (ensure! (refuses? #(pack/logical-block-view h "file" unknown)) "wrong expected manifest accepted"))
     ;; Tamper the committed manifest while preserving a syntactically valid root.
     (let [root (:root (store/read-store directory))]
       (store/transact! directory :put {:key "awai.pack-group/file" :value (pr-str (assoc group :manifest-cid "wrong"))})
