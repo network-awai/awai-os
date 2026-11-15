@@ -139,7 +139,10 @@ in pkgs.testers.runNixOSTest {
         jacob.wait_until_succeeds("kubectl wait --for=condition=Ready node/jacob node/dan node/judah --timeout=20s", timeout=300)
         assert jacob.succeed("kubectl get node jacob -o jsonpath='{.metadata.uid}'").strip() == uid
         assert jacob.succeed("kubectl get configmap persisted -o jsonpath='{.data.value}'").strip() == "survives-reboot"
-        jacob.succeed("kubectl exec work-dan -- cat /tmp/www/index.html | grep worker-ok")
+        # Restored Ready conditions precede the agents' websocket reconnection.
+        # Wait for a real read operation; never treat cached Ready as recovery.
+        jacob.wait_until_succeeds("kubectl exec work-dan -- cat /tmp/www/index.html | grep worker-ok", timeout=180)
+        jacob.wait_until_succeeds(f"kubectl exec work-dan -- wget -qO- http://{remote_ip}:8080 | grep worker-ok", timeout=180)
 
     evidence = {"scope": "isolated-x86_64-nixos-vm-test-not-live-fleet", "roles": {"jacob": "server", "dan": "agent", "judah": "agent"},
                 "disabled": True, "missingToken": True, "wrongToken": True, "lockedState": True,
