@@ -190,6 +190,72 @@
                          :root-cid (car/cid-str (first roots)) :size (reduce + (map :length leafs))
                          :leaf-count (count leafs)}
                    :slots slots :buckets buckets :distance distance :ends ends :index-pos index-pos :size n})))))))))
+(defn verify-generic-file
+  "Verify a bounded generic IPLD Forest archive one frame at a time. Returns
+  a file-backed index for get-block-from, without retaining block contents.
+  This only validates an archive; it neither publishes nor authenticates it."
+  [source]
+  (when-not (string? source) (fail! :invalid-forest "expected file path"))
+  (let [path (Paths/get source (make-array String 0))
+        nofollow (into-array LinkOption [LinkOption/NOFOLLOW_LINKS])]
+    (when-not (Files/isRegularFile path nofollow) (fail! :invalid-forest "not a regular file"))
+    (with-open [channel (FileChannel/open path (into-array OpenOption [StandardOpenOption/READ LinkOption/NOFOLLOW_LINKS]))]
+      (let [n (.size channel)]
+        (when-not (<= 64 n (* 32 1024 1024)) (fail! :invalid-forest "archive size outside profile"))
+        (let [footer (- n 16) tail (file-range channel footer 16) index-pos (- (le-long tail 8) 8)]
+          (when-not (and (= 0x184d2a50 (le-int tail 0)) (= 8 (le-int tail 4))
+                         (<= 1 index-pos (- footer 40)) (<= (- footer index-pos) 131072))
+            (fail! :invalid-forest "invalid footer or index extent"))
+          (let [index (file-range channel index-pos (- footer index-pos)) size (alength ^bytes index)
+                table 40 version (le-long index 8) distance (le-long index 16) buckets (le-long index 32)]
+            (when-not (and (= 0x184d2a50 (le-int index 0)) (= (- size 8) (le-int index 4))
+                           (= version 0xdeadbef0) (not (neg? distance)) (not (neg? buckets))
+                           (zero? (mod (- size table) 16)) (<= 1 (quot (- size table) 16))
+                           (<= buckets (quot (- size table) 16)) (<= distance (quot (- size table) 16)))
+              (fail! :invalid-forest "invalid index header"))
+            (let [slots (mapv (fn [at]
+                                (let [h (le-long index at) p (le-long index (+ at 8))]
+                                  (cond (and (= -1 h) (= -1 p)) nil
+                                        (or (= -1 h) (<= p 0) (>= p index-pos)) (fail! :invalid-forest "invalid index slot")
+                                        :else [h p]))) (range table size 16))
+                  entries (vec (remove nil? slots)) offsets (vec (sort (distinct (map second entries))))]
+              (when (or (empty? entries) (> (count offsets) 64) (some? (last slots)))
+                (fail! :invalid-forest "invalid frame count or sentinel"))
+              (let [header-compressed (file-range channel 0 (first offsets))
+                    header (vbytes (segmented/decode-forest-frame header-compressed))
+                    decoded (car/carv1-decode header) roots (:roots decoded)
+                    _ (when-not (and (empty? (:blocks decoded)) (= 1 (count roots))
+                                     (= header (car/carv1-encode {:roots roots :blocks []})))
+                        (fail! :invalid-forest "noncanonical CAR header"))
+                    ends (zipmap offsets (concat (rest offsets) [index-pos]))
+                    result (reduce (fn [acc p]
+                                     (let [compressed (file-range channel p (- (ends p) p))
+                                           blocks (file-sections (segmented/decode-forest-frame compressed))]
+                                       (when (empty? blocks) (fail! :invalid-forest "empty indexed frame"))
+                                       (-> acc
+                                           (update :pairs into (map #(vector (hash-cid (:cid %)) p) blocks))
+                                           (update :cids into (map :cid blocks))
+                                           (assoc-in [:frame-sha p] (segmented/sha compressed)))))
+                                   {:pairs #{} :cids [] :frame-sha {}} offsets)
+                    cids (:cids result)]
+                (when-not (and (<= 1 (count cids) 64) (= (count cids) (count (set cids)))
+                               (= (count entries) (count (set entries)))
+                               (= (set entries) (:pairs result)) (some #{(first roots)} cids))
+                  (fail! :invalid-forest "invalid blocks, index or missing root"))
+                (doseq [[h group] (group-by first entries)]
+                  (when-not (= (set (map second group)) (set (candidates slots buckets distance h)))
+                    (fail! :invalid-forest-index "index probe cannot find its blocks")))
+                (doseq [p offsets]
+                  (when-not (= (get-in result [:frame-sha p]) (segmented/sha (file-range channel p (- (ends p) p))))
+                    (fail! :changed-payload "Forest frame changed during verification")))
+                (when-not (and (= n (.size channel))
+                               (Arrays/equals ^bytes header-compressed ^bytes (file-range channel 0 (first offsets)))
+                               (Arrays/equals ^bytes index ^bytes (file-range channel index-pos (- footer index-pos)))
+                               (Arrays/equals ^bytes tail ^bytes (file-range channel footer 16)))
+                  (fail! :changed-payload "Forest metadata changed during verification"))
+                {:file-backed? true :roots roots :cids cids :frame-sha (:frame-sha result)
+                 :slots slots :buckets buckets :distance distance :ends ends :index-pos index-pos :size n}))))))))
+
 (defn open
   "Fully validate a bounded Forest v1 index and all SHA-256 blocks. Owns a copy.
   This experimental adapter accepts a single index skippable frame, <=1 MiB

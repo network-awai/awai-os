@@ -1,0 +1,7 @@
+# Generic IPLD Forest file verifier — 2026-11-15
+
+`forest/verify-generic-file` validates a bounded generic Forest archive from a regular file, one bounded frame at a time. It validates the CAR header/root, every canonical CID and block, the index and its probes, and frame hashes; it rereads frames and metadata to detect modification during validation. The returned index contains no block payloads and can be used with `get-block-from`, which rechecks a selected frame. Archives are limited to 32 MiB, 64 frames and 64 distinct blocks; ambiguous duplicate index pairs are refused. This verifier does not publish files, authenticate a root, or provide atomicity, authorization or Native I/O.
+
+The local hosted proof used pinned Forest 0.39.0 on macOS ARM to build a deterministic incompressible 1,048,576-byte raw block: archive size 1,048,807 bytes exceeds the old in-memory profile. It verified the root and full returned block and refused both selected-frame mutation and a corrupted archive. Existing Forest unit tests passed 9 tests / 89 assertions. The proof is included in the pinned Forest Linux CI job. No production or performance qualification is implied.
+
+The first local load encountered an unmatched parenthesis and was fixed before running the proof. Integrating this verifier into generic catalog publication and recovery, then safely accepting 1 MiB generic writes and checking multi-Pack atomic publication, remain separate work.
