@@ -46,8 +46,8 @@ def main():
     class Server(socketserver.ThreadingTCPServer):
         allow_reuse_address = True
         daemon_threads = True
-    http = Server(('127.0.0.1', 8080), partial(Quiet, directory=str(serve)))
-    thread = threading.Thread(target=http.serve_forever, daemon=True)
+    httpd = Server(('127.0.0.1', 8080), partial(Quiet, directory=str(serve)))
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
     with socket.socket() as port_reservation:
         port_reservation.bind(('127.0.0.1', 0))
@@ -161,8 +161,8 @@ def main():
             proc.wait()
         if serial_conn is not None: serial_conn.close()
         if serial_reader is not None: serial_reader.join(timeout=5)
-        http.shutdown()
-        http.server_close()
+        httpd.shutdown()
+        httpd.server_close()
         (out / 'proof.json').write_text(json.dumps(proof, indent=2))
 
 
