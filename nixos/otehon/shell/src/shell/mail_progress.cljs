@@ -1,18 +1,18 @@
 (ns shell.mail-progress (:require [shell.ui-copy :as ui]
  ["react" :refer [useState useEffect useId]]
- ["../mail-aliases.js" :refer [manageAliases]]
+ ["../mail-aliases.js" :refer [manageAliases manageIdentity]]
  ["../mail-alias-contract.js" :refer [MAIL_ORIGIN]]))
 (defn manager [selected locale]
  (let [[view set-view] (useState nil) [busy set-busy] (useState false)
-       [problem set-problem] (useState nil) [purpose set-purpose] (useState "") [party set-party] (useState "")
+       [problem set-problem] (useState nil) [notice set-notice] (useState nil) [purpose set-purpose] (useState "") [party set-party] (useState "")
        [pending set-pending] (useState nil) [stop-id set-stop-id] (useState nil) id (useId)
        tr (fn [k] (ui/t locale k))
        _ (useEffect (fn [] (set-view nil) (set-pending nil) (set-problem nil) (set-purpose "") (set-party "") js/undefined) #js [selected])
        call (fn [action values]
-        (set-busy true) (set-problem nil)
+        (set-busy true) (set-problem nil) (set-notice nil)
         (-> (manageAliases selected action (clj->js values))
          (.then #(do (set-view (js->clj % :keywordize-keys true)) (when (= "issue" action) (set-pending nil) (set-purpose "") (set-party "")) (set-stop-id nil)))
-         (.catch #(set-problem (if (contains? #{"mailBindingRequired" "mailReloadRequired"} (.-message %)) (keyword (.-message %)) :mailAliasUnavailable)))
+         (.catch #(set-problem (if (contains? #{"mailBindingRequired" "mailReloadRequired" "identityRecoveryRequired"} (.-message %)) (keyword (.-message %)) :mailAliasUnavailable)))
          (.finally #(set-busy false))))
        submit (fn [e] (.preventDefault e)
         (when-not busy
@@ -21,6 +21,13 @@
   [:div.mail-alias-manager
    [:button.secondary {:type "button" :disabled busy :on-click #(call "list" {})} (tr :mailManage)]
    (when problem [:p.problem {:role "status"} (tr problem)])
+   (when notice [:p {:role "status"} (tr notice)])
+   (when (= problem :identityRecoveryRequired)
+    [:button.secondary {:type "button" :disabled busy :on-click
+     #(do (set-busy true)
+       (-> (manageIdentity selected "recover")
+        (.then (fn [_] (set-problem nil) (set-notice :identityRecovered) (set-view nil)))
+        (.catch (fn [_] (set-problem :identityRecoveryRequired))) (.finally (fn [] (set-busy false)))))} (tr :identityRecover)])
    (when view
     [:div
      [:details [:summary (tr :mailIdentity)] [:dl.fleet-facts [:dt "ID"] [:dd (:principalId view)] [:dt "DID"] [:dd {:style {:overflow-wrap "anywhere"}} (:did view)]]]

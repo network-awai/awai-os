@@ -2,7 +2,8 @@
 
 Design record, 2026-11-15. Tracking: [AWAI-2933](https://linear.app/kotobalabs/issue/AWAI-2933),
 parent [AWAI-328](https://linear.app/kotobalabs/issue/AWAI-328).
-This is the missing enrollment design, not deployed key provisioning.
+This records the design and its CLJC implementation. Source, synthetic recovery,
+live owner-host enrollment and independent hardware qualification are separate.
 
 ## Verified source inventory
 
@@ -28,8 +29,8 @@ an output stream. Missing/invalid existing data can therefore reach a different
 path than the stated invariant. Do not reuse that fallback for enrollment or
 rewrite the old source/document as part of this task.
 
-The inspected live fleet artifact has 899 profiles, zero DID fields; the Agent
-service config has no `mailAliasBindings`. Owner confirmed no prior enrollment.
+At the design inventory, the live fleet artifact had 899 profiles, zero DID
+fields and no owner binding configuration. Owner confirmed no prior enrollment.
 Neither a profile ID nor a mailbox hash is a verified DID binding.
 
 ## Registration state machine
@@ -95,6 +96,32 @@ recovery require a real integration and tests before enabling this flow.
   Current API requires a digest-pinned owner config plus key-possession proof.
   Its aliases remain reservations until separate SMTP/gateway qualification.
 
-Implementation record: Awai OS PR95 `36a9e1c` implements alias lifecycle and local
-encrypted database readback; it does not implement this enrollment state machine
-or qualify off-host recovery, production identity custody or SMTP delivery.
+## Implementation update — AWAI-2933
+
+Awai OS PR95 now implements the lifecycle in `bot-chat/src/itonami_identity/`:
+`mail.cljc` (pure alias policy), `custody.cljc` (OS-keychain and explicit fixture
+ports, encrypted seed/recovery, native export/restore), `ledger.cljc`
+(authenticated namespace/agent CAS), `core.cljc` (existing D7 derivation,
+structured signing, verification and encrypted registry/mail readback).
+The previous `mail-aliases.mjs` domain implementation is removed. Existing MJS
+is HTTP/process plumbing; browser controls remain ClojureScript.
+
+The verified catalog is enrolled at owner-service startup and reconciled for new
+profiles. A selected known Bot can resume interrupted registration. Namespace
+markers and ledger fingerprints prevent lost credentials from minting another
+identity. Primary recovery uses the separate Keychain recovery credential;
+native ciphertext export plus a separately held owner key supports a new target.
+The alias mapping and signatures are private encrypted Kotobase/AwaiFS data;
+the identity master key is supplied in memory, not a database key file.
+
+This uses the existing provider-local Otehon AES-GCM/IPLD crypto port. Canonical
+hybrid envelope interoperability is not claimed. Current enrollment is epoch0;
+rotation/owner re-authorization beyond recovery remains a separate transition.
+An owner-approved alias-management policy is not Bot read/decrypt/send authority.
+
+Tests include fresh creation, restart in another process, racing registration
+from separate stores, missing/wrong keys, forged binding, inactive aliases,
+portable owner recovery and ciphertext canaries. Real macOS Keychain and
+authenticated etcd are additionally probed with synthetic identities. None of
+these probes proves independent hardware durability, whole-device production
+backup, arbitrary same-UID isolation, distributed alias writes or SMTP delivery.

@@ -26,10 +26,12 @@
   {:seal (fn [bytes] (let [n (byte-array 12)] (.nextBytes (SecureRandom.) n) (ipld/encode {"v" 1 "n" n "c" (crypt Cipher/ENCRYPT_MODE n bytes)})))
    :open (fn [bytes] (let [e (ipld/decode bytes)] (when-not (= 1 (get e "v")) (throw (ex-info "unsupported private database envelope" {}))) (crypt Cipher/DECRYPT_MODE (byte-array (get e "n")) (byte-array (get e "c")))))
    :blind (fn [s] (let [m (Mac/getInstance "HmacSHA256")] (.init m (SecretKeySpec. key "HmacSHA256")) (apply str (map #(format "%02x" (bit-and 255 %)) (.doFinal m (.getBytes s "UTF-8"))))))}))
-(defn operation! [root {:keys [op thread events basis] :as request}]
+(defn operation!
+ ([root request] (operation! root request nil))
+ ([root {:keys [op thread events basis] :as request} owner-key]
  (when-not (and (string? root) (.isAbsolute (io/file root)) (string? thread) (re-matches #"[a-f0-9]{64}" thread) (contains? #{"history" "append"} op)) (throw (ex-info "invalid database operation" {})))
  (private-dir! root)
- (let [key (db-key! root) parent (str root "/threads") _ (private-dir! parent) directory (str parent "/" thread)
+ (let [key (or owner-key (db-key! root)) parent (str root "/threads") _ (private-dir! parent) directory (str parent "/" thread)
        _ (when-not (.exists (io/file directory)) (store/init! directory))
        recovered (store/read-store directory) head (get (:state recovered) "itonami.chat/kotobase-head")
        _ (when (and (contains? request :basis) (not= basis head)) (throw (ex-info "database basis changed" {})))
@@ -52,7 +54,7 @@
          db (k/hydrate-chain #(pack/read-data fresh (str "kotobase/" %)) h blind open)]
     (when-not (every? #(seq (k/q db [(:id %) "chat/event" (json/generate-string %)] (constantly true))) added) (throw (ex-info "conversation readback unconfirmed" {})))))
   {:messages (vec (sort-by (juxt :at :id) (vals (merge existing (into {} (map (juxt :id identity) added))))))
-   :store {:owner "itonami-agent" :engine "kotobase-peer" :backend "awai-fs-otehon-pack" :headCid commit :readback true}}))
+   :store {:owner "itonami-agent" :engine "kotobase-peer" :backend "awai-fs-otehon-pack" :headCid commit :readback true}})))
 (defn -main [& [root]]
  (try (println (json/generate-string (operation! root (json/parse-string (slurp *in*) true))))
   (catch Exception e (binding [*out* *err*] (println (.getMessage e))) (System/exit 1))))

@@ -2,13 +2,14 @@ import fs from 'node:fs/promises';
 import http from 'node:http';
 import {createHash} from 'node:crypto';
 import {pathToFileURL} from 'node:url';
-import {database,verifySources} from './database.mjs';
+import {database,verifySources,bbJSON} from './database.mjs';
 import {infer} from './inference.mjs';
 import {presenceReporter} from './presence.mjs';
 import {peerGrant,historyGrant,peerMetadata,authorizePeer,checkPeerAdmission} from './peer.mjs';
 import {scopes,sessionRows,recordSession,validSession} from './sessions.mjs';
-import {aliases} from './mail-aliases.mjs';
-export function handler(cfg,{db=database,execute=infer,loadBots,onProcess=()=>{},checkAdmission=checkPeerAdmission}={}){
+// Thin HTTP/process bridge. Identity, custody, recovery and alias policy live in CLJC.
+export async function identityCall(cfg,request){return bbJSON(cfg.bb,['-m','itonami-identity.core'],{config:{identityRoot:cfg.identityRoot,identityNamespace:cfg.identityNamespace,identityCustody:cfg.identityCustody,identityEtcdConfig:cfg.identityEtcdConfig,identityAutoEnroll:cfg.identityAutoEnroll,identityFixture:cfg.identityFixture,fixtureLedgerRoot:cfg.fixtureLedgerRoot},request});}
+export function handler(cfg,{db=database,execute=infer,loadBots,onProcess=()=>{},checkAdmission=checkPeerAdmission,identity=identityCall}={}){
  const active=new Set();
  return async(req,res)=>{
   const origin=req.headers.origin,allowedOrigin=cfg.origins.includes(origin);
@@ -18,17 +19,17 @@ export function handler(cfg,{db=database,execute=infer,loadBots,onProcess=()=>{}
   if(req.method==='OPTIONS'){res.writeHead(204);return res.end();}
   const owner=req.headers['tailscale-user-login'];
   if(typeof owner!=='string'||owner!==cfg.ownerLogin)return reply(403,{error:'owner-identity-required'});
-  if(req.method!=='POST'||!['/v1/bot-chat/history','/v1/bot-chat/turn','/v1/bot-chat/sessions','/v1/mail/aliases/list','/v1/mail/aliases/issue','/v1/mail/aliases/stop'].includes(req.url)||req.headers['content-type']!=='application/json')return reply(404,{error:'unsupported-operation'});
+  if(req.method!=='POST'||!['/v1/bot-chat/history','/v1/bot-chat/turn','/v1/bot-chat/sessions','/v1/mail/aliases/list','/v1/mail/aliases/issue','/v1/mail/aliases/stop','/v1/mail/identity/status','/v1/mail/identity/recover'].includes(req.url)||req.headers['content-type']!=='application/json')return reply(404,{error:'unsupported-operation'});
   let request;try{let body='';for await(const chunk of req){body+=chunk;if(body.length>40000)throw Error();}request=JSON.parse(body);}catch{return reply(400,{error:'invalid-request'});}
   if(!request||typeof request!=='object'||Array.isArray(request))return reply(400,{error:'invalid-request'});
   if(!/^profile:[\w.-]+$/.test(request.botId??''))return reply(400,{error:'invalid-bot'});
   const sessionId=request.sessionId??'default';if(!validSession(sessionId))return reply(400,{error:'invalid-session'});
   let bot,bots;try{bots=await loadBots();bot=bots.find(b=>b.id===request.botId);}catch{return reply(503,{error:'catalog-unavailable'});}
   if(!bot)return reply(404,{error:'bot-not-registered'});
-  if(req.url.startsWith('/v1/mail/aliases/')){
+  if(req.url.startsWith('/v1/mail/')){
    const action=req.url.split('/').at(-1);if(request.action!==action)return reply(400,{error:'invalid-mail-action'});
    const scope='mail:'+bot.id;if(active.has(scope))return reply(409,{error:'mail-directory-busy'});
-   active.add(scope);try{return reply(200,await aliases(cfg,request,{db}));}catch(e){const error=['mail-binding-required','mail-operation-not-granted','mail-basis-changed','mail-request-conflict','invalid-mail-request','mail-alias-not-found','mail-directory-limit'].includes(e.message)?e.message:'mail-storage-unconfirmed';return reply(error==='mail-binding-required'||error==='mail-operation-not-granted'?403:409,{error});}finally{active.delete(scope);}
+   active.add(scope);try{const v=await identity(cfg,request);return reply(v.error?409:200,v);}catch{return reply(503,{error:'identity-operation-unconfirmed'});}finally{active.delete(scope);}
   }
   try{
    const candidate=historyGrant(cfg,sessionId),grant=candidate?.participants.some(p=>p['bot-id']===bot.id)?candidate:null;
@@ -94,4 +95,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
  const loadBots=async()=>{const e=JSON.parse(await fs.readFile(cfg.fleetArtifact));if(createHash('sha256').update(JSON.stringify(e.payload)).digest('hex')!==e.sha256)throw Error('catalog-digest-mismatch');if(e.payload.catalogSha256!==personas.catalogSha256)throw Error('persona-catalog-mismatch');return e.payload.bots.map(b=>({...b,chatPersona:personas.rows.find(p=>p.botId===b.id)}));};
  const presence=presenceReporter(cfg,personas);
  http.createServer(handler(cfg,{loadBots,onProcess:presence.onProcess})).listen(cfg.port,'127.0.0.1',()=>console.log('Itonami Agent conversation service ready on private loopback'));
+ // Startup enrolls the verified catalog under the owner policy. Small batches bound
+ // process time; ordinary bot selection also resumes an interrupted enrollment.
+ if(cfg.identityAutoEnroll===true){const seen=new Set();let reconciling=false;const reconcile=async()=>{if(reconciling)return;reconciling=true;try{const pending=(await loadBots()).filter(b=>!seen.has(b.id));for(let i=0;i<pending.length;i+=5){const ids=pending.slice(i,i+5).map(b=>b.id),v=await identityCall(cfg,{action:'boot',bots:ids});if(v.error)throw Error('identity-enrollment-unconfirmed');for(const id of ids)seen.add(id);}console.log('Identity catalog enrollment readback complete: '+seen.size);}catch{console.error('Identity enrollment requires recovery or operator attention');}finally{reconciling=false;}};setInterval(reconcile,60000);void reconcile();}
 }

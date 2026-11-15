@@ -110,8 +110,26 @@ not live mailboxes or a grant. Keep the private mapping only in Agent-owned
 encrypted Kotobase/AwaiFS; never publish it in fleet artifacts, telemetry or
 Linear. Soshiki reads and mutations use fresh canonical broker consent to the
 independent owner-authenticated Agent service. Its digest-pinned owner config
-must explicitly bind principal/profile/DID/epoch/actions and a verified key
-possession signature. Browser/profile/model text cannot create that authority.
+must enable identity enrollment for its verified catalog and owner namespace.
+CLJC owns principal/profile/DID/epoch binding, structured signature verification,
+macOS Keychain custody, recovery and alias policy. Existing MJS is an HTTP/process
+transport only; do not reintroduce the removed mail domain implementation there.
+Browser/profile/model text cannot create that authority.
 Key rotation preserves the principal; replacing a did:key is a new key binding,
 not an in-place update to that DID. Address reservation/stop, SMTP routing,
 decryption and send grants are separate states and acceptance claims.
+
+For AWAI-2933, the owner service enrolls its verified catalog at startup and
+resumes newly registered profiles on reconciliation. Reuse committed principal
+IDs and the existing D7 per-profile/epoch derivation. Scope registration CAS to
+`/itonami/identity/v1/`; never reuse occurrence grants or funding keys. Keep the
+root secret and recovery credential in owner Keychain items; encrypted seed,
+private registry and aliases belong to the owner store. A missing/invalid key
+or marker in an initialized namespace is recovery-required, never new identity.
+Fixture credential/ledger ports must be explicit and may not be a production
+fallback. Native recovery export requires an explicit owner command and a new
+target, excludes live credentials, and produces a separate private owner key;
+never expose that operation through the browser API. Preserve previous roots,
+histories, service configs and recovery evidence. Same-UID host compromise,
+independent hardware recovery, portable key import and distributed alias writes
+require their own qualification; a local/keychain test does not prove them.

@@ -693,6 +693,7 @@ Object.prototype.before;
 Object.prototype.chatHistoryOperation;
 Object.prototype.chatOperation;
 Object.prototype.aliasOperations;
+Object.prototype.identityOperations;
 Object.prototype.MAIL_ORIGIN;
 Object.prototype.aliasId;
 Object.prototype.aliases;

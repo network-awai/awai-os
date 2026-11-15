@@ -1,22 +1,51 @@
 # Itonami Agent conversation service (Otehon)
 
-## Private mail aliases (AWAI-328)
+## Automatic identity and private mail (AWAI-2933 / AWAI-328)
 
 The same independent owner-authenticated Agent service exposes exactly
 `POST /v1/mail/aliases/list`, `/issue`, `/stop`. Each is a distinct browser
 operation with fresh canonical consent. No automatic read or app-origin API is
-introduced. `mailAliasBindings` in the digest-pinned owner service config must
-explicitly list `{botId, principalId, did, epoch, actions, signature}`. Principal
-IDs are stable UUIDs; only Ed25519 did:key bindings are currently supported.
-`bindingStatement(binding)` supplies the exact UTF-8 signing bytes; signature is
-standard base64 Ed25519. Verify the statement using the existing identity signer
-and install the public binding in owner configuration. This does not create or
-export a signing key. A self-signed DID supplied by a request does not authorize
-a principal: owner configuration is also required. Missing/revoked/forged
-bindings fail closed. A replacement key needs a newly owner-approved binding
-and proof, retaining the principal ID and epoch advancement; did:key itself is
-not a mutable/rotatable identifier. No production bindings were provisioned by
-the synthetic tests.
+introduced. Owner-only POST /v1/mail/identity/status and /recover operations
+have separate fresh consent. Domain logic is CLJC under src/itonami_identity/:
+pure mail policy, custody, registration ledger and host adapter. The former
+mail-aliases.mjs domain implementation was removed; existing Node HTTP/process
+plumbing calls the CLJC host only.
+
+The digest-pinned owner config sets identityRoot, identityNamespace,
+identityCustody: {type: "macos-keychain"}, identityEtcdConfig, and
+identityAutoEnroll: true. Only verified catalog profiles are accepted by the
+HTTP host. Startup enrolls that catalog in bounded batches; reconciliation
+resumes interrupted enrollment and newly registered profiles. Stable principal
+UUIDs and existing D7 per-profile Ed25519 derivation are persisted with structured
+key-possession signatures; a DID supplied in a request cannot authorize itself.
+Registration uses authenticated three-endpoint etcd CAS in a separate
+/itonami/identity/v1/ namespace and independent encrypted Kotobase/AwaiFS
+readback. CAS claims contain public bindings only. No occurrence/funding grants
+are reused. Current enrollment supports epoch0 and refuses conflicting bindings;
+key rotation is a separate transition, never an implicit new identity on boot.
+
+The new identity store uses a Keychain-held primary credential and a separate
+Keychain recovery credential. Secrets enter /usr/bin/security private stdin,
+not argv/env/logs. The seed, recovery wrap and database use the existing Otehon
+database AES-GCM/IPLD crypto port; no new cipher is defined. Raw master keys are
+not written into the identity database. This is the existing provider-local
+crypto profile, not canonical hybrid-envelope/Native interoperability.
+Missing/corrupt custody in an initialized namespace refuses; recovery unwraps
+the original primary and preserves principal, DID and aliases. Do not delete
+namespace markers to recover. Same-UID host compromise is outside this isolation
+boundary; OS Keychain alone does not make arbitrary local agents untrusted.
+
+Native owner JSON commands export-recovery (new absolute output directory)
+and restore-recovery (bundle, private0600 ownerKeyFile, known botId) are
+available via bb --classpath <host-classpath> -m itonami-identity.core, with
+{config,request} on stdin. They are deliberately absent from HTTP routes.
+The export contains a ciphertext directory plus a separate private owner key
+file. Store that key separately from the ciphertext and retain it before a
+whole-device/Keychain loss. Restore requires a new namespace target and
+authenticates the wrapped primary before copying; it refuses existing targets.
+Exports contain no live Keychain entries or conversation master keys. Portable
+restore is tested in separate processes/stores; independent hardware recovery
+and production off-host backup are separate operational qualification.
 
 Issue requests bind an operation UUID and previous directory head. Addresses
 use independent 160-bit random local parts; private purpose/counterparty and
@@ -25,7 +54,7 @@ tombstones. Existing IDs/addresses are never reassigned; same request ID returns
 the saved result and refuses changed input. Stale heads refuse before writing.
 UI retains an uncertain issue UUID for explicit result checking. Reads recover
 from durable storage in a new process. This reuses the existing database crypto
-profile and host key custody below; it is not canonical-envelope E2EE or
+profile and Keychain custody above; it is not canonical-envelope E2EE or
 independent-node recovery qualification. Current addresses are **reserved**:
 no SMTP ingress/egress, Google MX changes, source-cron send authority or public
 fleet aliases are created. Stopped/expired addresses are refused by the alias
