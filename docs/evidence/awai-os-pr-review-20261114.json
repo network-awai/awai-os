@@ -15,7 +15,7 @@
   "cost": "unknown",
   "activeWaitingSplit": "unknown",
   "sharedUsage": "Unallocated; implementation child records are referenced, not summed again.",
-  "physicalUsbGate": "AWAI-450: refresh only after both exact-image GUI and no-GUI physical-console install/restart gates pass; physical PC installation remains owner acceptance.",
+  "physicalUsbGate": "AWAI-450 source implementation Done (#118). Under AWAI-169, fixed KIOXIA full write/sync completed; after host reboot interruption, independent O_RDONLY full8495337472-byte read matched qualified ISO, then separate serial-bound eject/absence/check-reset verification succeeded 2026-11-15T00:17:15Z. Physical6600H acceptance remains unobserved.",
   "pullRequests": [
     {
       "number": 125,
@@ -87,12 +87,15 @@
       "title": "AWAI-450 add graphical USB installer and verified NVMe first boot",
       "url": "https://github.com/network-awai/awai-os/pull/118",
       "headRefName": "codex/awai-450-otehon-usb-20261113",
-      "headRefOid": "a30de6524302fc01e6022d341f7b03b9ba0686e5",
+      "headRefOid": "8212f978e071dc12d834255aaa52bc0be7e8c4d2",
       "baseRefName": "main",
-      "isDraft": true,
-      "reviewState": "gui-uefi-first-boot-observed-ocr-regression-fixed-full-gate-pending",
+      "isDraft": false,
+      "reviewState": "reviewed-and-merged",
       "reviewedFixHead": "c242f68",
-      "finding": "Real PC did not show custom GUI;0.7.1 adds VT1 fallback/version/UEFI registration and same-image no-GUI VM gate."
+      "finding": "Real PC did not show custom GUI;0.7.1 adds VT1 fallback/version/UEFI registration and same-image no-GUI VM gate.",
+      "mergeCommit": "82c6575852d44ee5d8ba8ec207511eac77ce10c2",
+      "verification": "Both independent GUI and physical-console actual-ISO VM paths pass all six checks each; all five exact-head checks pass",
+      "ci": "https://github.com/network-awai/awai-os/actions/runs/43605076927"
     },
     {
       "number": 113,
@@ -176,10 +179,14 @@
       "title": "AWAI-2776 verify public replicas and show persistence reliability gauges",
       "url": "https://github.com/network-awai/awai-os/pull/96",
       "headRefName": "codex/awai-2776-fs-replica",
-      "headRefOid": "29d7ec27fa0c55cbf9e3e298cc3597d7945fe43b",
+      "headRefOid": "bb90c55fc6a5af904287e4141d44e781291be5ff",
       "baseRefName": "main",
-      "isDraft": true,
-      "reviewState": "pending"
+      "isDraft": false,
+      "reviewState": "reviewed-and-merged",
+      "mergeCommit": "5169556fff50423f948a109b60a9a60793c0d77b",
+      "mergedAt": "2026-11-15T00:06:07Z",
+      "verification": "All 18 files reviewed; current-main integration; local fixture 2/9 + model3/10; all five exact-head CI checks pass",
+      "ci": "https://github.com/network-awai/awai-os/actions/runs/43608518591"
     },
     {
       "number": 95,
@@ -363,5 +370,424 @@
       "verification": "Real filesystem no-clobber/relocation/corruption controls; four exact-head checks pass",
       "scope": "Same preservation fix initially pushed in #100; do not count twice"
     }
-  ]
+  ],
+  "initialPrDisposition": {
+    "merged": 12,
+    "closedSuperseded": 1,
+    "open": 17,
+    "scope": "Initial30 cohort; follow-up PRs not counted twice; remaining source reviews incomplete."
+  },
+  "integrationAudit": {
+    "schema": "awai.pr-current-main-merge-audit.v1",
+    "issue": "AWAI-2906",
+    "observedAt": "2026-11-14T14:46:44.973615+00:00",
+    "main": "1dd311a2e04cadf5f2980140656498335491f3ae",
+    "scope": "read-only merge-tree feasibility; not completed source review, CI, merge or production qualification",
+    "pullRequests": [
+      {
+        "number": 124,
+        "head": "6d8352122c0357cbbe77a88d28080709ce4b51b9",
+        "baseBranch": "codex/awai-532-forest-prolly",
+        "currentMainIntegration": "concurrent-owner-session-deferred"
+      },
+      {
+        "number": 118,
+        "head": "8212f978e071dc12d834255aaa52bc0be7e8c4d2",
+        "baseBranch": "main",
+        "currentMainIntegration": "clean-merge-tree",
+        "conflictPaths": []
+      },
+      {
+        "number": 100,
+        "head": "803926f107f819e2747553c1fa4c47250f1c34a8",
+        "baseBranch": "main",
+        "currentMainIntegration": "clean-merge-tree",
+        "conflictPaths": []
+      },
+      {
+        "number": 96,
+        "head": "29d7ec27fa0c55cbf9e3e298cc3597d7945fe43b",
+        "baseBranch": "main",
+        "currentMainIntegration": "clean-merge-tree",
+        "conflictPaths": []
+      },
+      {
+        "number": 95,
+        "head": "009103a77bf3b95015b72818405447a85104bc4f",
+        "baseBranch": "main",
+        "currentMainIntegration": "conflicts",
+        "conflictPaths": [
+          ".github/workflows/nixos-module.yml",
+          "nixos/otehon/desktop.nix",
+          "nixos/otehon/eval-profiles.sh",
+          "nixos/otehon/shell/build.mjs",
+          "nixos/otehon/shell/package.json",
+          "nixos/otehon/shell/src/csp.js",
+          "nixos/otehon/shell/test/csp.test.js"
+        ]
+      },
+      {
+        "number": 93,
+        "head": "1dff841dd6419187e9d4a0b6364cdf752e6b8f6b",
+        "baseBranch": "main",
+        "currentMainIntegration": "conflicts",
+        "conflictPaths": [
+          "nixos/otehon/shell/index.html",
+          "nixos/otehon/shell/package.json"
+        ]
+      },
+      {
+        "number": 81,
+        "head": "42bc5480ecb22e5f6a0a7ddb1c9cfb8721a7ba7f",
+        "baseBranch": "main",
+        "currentMainIntegration": "conflicts",
+        "conflictPaths": [
+          "nixos/otehon/desktop.nix",
+          "nixos/otehon/shell/build.mjs",
+          "nixos/otehon/shell/index.html",
+          "nixos/otehon/shell/package.json",
+          "nixos/otehon/shell/src/dapp-trust.json",
+          "nixos/otehon/shell/src/docks.jsx",
+          "nixos/otehon/shell/src/main.css",
+          "nixos/otehon/shell/src/main.jsx"
+        ]
+      },
+      {
+        "number": 69,
+        "head": "dbde1d5fbcffdd81206420795148e699cecbf870",
+        "baseBranch": "main",
+        "currentMainIntegration": "conflicts",
+        "conflictPaths": [
+          "dapps/d1/README.md"
+        ]
+      },
+      {
+        "number": 66,
+        "head": "50c8f5084747b384f0d88bfcda1f5cb661a5713b",
+        "baseBranch": "claude/jun318-vm-connect",
+        "currentMainIntegration": "conflicts",
+        "conflictPaths": [
+          "nixos/otehon/desktop.nix",
+          "nixos/otehon/shell/build.mjs",
+          "nixos/otehon/shell/index.html",
+          "nixos/otehon/shell/package-lock.json",
+          "nixos/otehon/shell/package.json",
+          "nixos/otehon/shell/src/main.css",
+          "nixos/otehon/shell/src/main.jsx",
+          "nixos/otehon/shell/src/setup.jsx",
+          "nixos/otehon/shell/test/trust.test.js"
+        ]
+      },
+      {
+        "number": 65,
+        "head": "a953da1c500bdf2351b79f868a413db6b3338bac",
+        "baseBranch": "claude/jun318-vm-connect",
+        "currentMainIntegration": "conflicts",
+        "conflictPaths": [
+          "nixos/otehon/desktop.nix",
+          "nixos/otehon/shell/build.mjs",
+          "nixos/otehon/shell/index.html",
+          "nixos/otehon/shell/package-lock.json",
+          "nixos/otehon/shell/package.json",
+          "nixos/otehon/shell/src/main.css",
+          "nixos/otehon/shell/src/main.jsx",
+          "nixos/otehon/shell/src/setup.jsx",
+          "nixos/otehon/shell/test/trust.test.js"
+        ]
+      },
+      {
+        "number": 64,
+        "head": "57003a39701ea920cd9e1c46520b9e08e1bc601f",
+        "baseBranch": "codex/awai-167-apps",
+        "currentMainIntegration": "conflicts",
+        "conflictPaths": [
+          "nixos/otehon/desktop.nix",
+          "nixos/otehon/shell/build.mjs",
+          "nixos/otehon/shell/index.html",
+          "nixos/otehon/shell/package-lock.json",
+          "nixos/otehon/shell/package.json",
+          "nixos/otehon/shell/src/main.css",
+          "nixos/otehon/shell/src/main.jsx",
+          "nixos/otehon/shell/src/setup.jsx",
+          "nixos/otehon/shell/test/trust.test.js"
+        ]
+      },
+      {
+        "number": 60,
+        "head": "8879442131fcfec8b81822b67d80d8df01c8b1db",
+        "baseBranch": "claude/awai-164-desktop-update",
+        "currentMainIntegration": "conflicts",
+        "conflictPaths": [
+          "nixos/otehon/default.nix",
+          "nixos/otehon/desktop-media.nix",
+          "nixos/otehon/desktop.nix",
+          "nixos/otehon/media.nix",
+          "nixos/otehon/shell/build.mjs",
+          "nixos/otehon/shell/src/main.jsx",
+          "nixos/otehon/update-check.nix",
+          "nixos/otehon/update.nix",
+          "nixos/otehon/update.sh"
+        ]
+      },
+      {
+        "number": 56,
+        "head": "a82dfe5dcf4517f77f86312989ab36ecbb7ca478",
+        "baseBranch": "claude/awai-169-6600h-netboot",
+        "currentMainIntegration": "conflicts",
+        "conflictPaths": [
+          "nixos/otehon/desktop.nix",
+          "nixos/otehon/shell/build.mjs",
+          "nixos/otehon/shell/package-lock.json",
+          "nixos/otehon/shell/package.json",
+          "nixos/otehon/shell/src/main.css",
+          "nixos/otehon/shell/src/main.jsx",
+          "nixos/otehon/shell/src/setup.jsx"
+        ]
+      },
+      {
+        "number": 55,
+        "head": "b6bbe73291dbf6fe9ac9ce3f7c2da3fc70019cd5",
+        "baseBranch": "claude/awai-165-protect",
+        "currentMainIntegration": "conflicts",
+        "conflictPaths": [
+          "nixos/otehon/base-module.nix",
+          "nixos/otehon/desktop.nix",
+          "nixos/otehon/eval-profiles.sh",
+          "nixos/otehon/run-desktop-qemu.sh",
+          "nixos/otehon/shell/build.mjs",
+          "nixos/otehon/shell/index.html",
+          "nixos/otehon/shell/package.json",
+          "nixos/otehon/shell/src/main.css",
+          "nixos/otehon/shell/src/main.jsx",
+          "nixos/otehon/shell/src/manimani.jsx",
+          "nixos/otehon/shell/src/setup.jsx"
+        ]
+      },
+      {
+        "number": 54,
+        "head": "0e52fc7c652371ee4e08aec09a8e32334871fa66",
+        "baseBranch": "main",
+        "currentMainIntegration": "conflicts",
+        "conflictPaths": [
+          "nixos/otehon/base-module.nix",
+          "nixos/otehon/desktop.nix",
+          "nixos/otehon/eval-profiles.sh",
+          "nixos/otehon/run-desktop-qemu.sh",
+          "nixos/otehon/shell/build.mjs",
+          "nixos/otehon/shell/package.json",
+          "nixos/otehon/shell/src/main.css",
+          "nixos/otehon/shell/src/main.jsx"
+        ]
+      },
+      {
+        "number": 53,
+        "head": "b2d75edca7801551d906b188a628d2fff9bbb281",
+        "baseBranch": "main",
+        "currentMainIntegration": "conflicts",
+        "conflictPaths": [
+          "nixos/otehon/eval-profiles.sh",
+          "nixos/otehon/shell/index.html",
+          "nixos/otehon/shell/package.json",
+          "nixos/otehon/shell/src/main.css",
+          "nixos/otehon/shell/src/main.jsx"
+        ]
+      },
+      {
+        "number": 51,
+        "head": "59c14e09e45c2070d5ea263e05eaa08ff6173494",
+        "baseBranch": "main",
+        "currentMainIntegration": "conflicts",
+        "conflictPaths": [
+          "nixos/otehon/desktop.nix",
+          "nixos/otehon/shell/build.mjs",
+          "nixos/otehon/shell/package-lock.json",
+          "nixos/otehon/shell/package.json",
+          "nixos/otehon/shell/src/main.css",
+          "nixos/otehon/shell/src/main.jsx",
+          "nixos/otehon/shell/src/setup.jsx"
+        ]
+      },
+      {
+        "number": 49,
+        "head": "658273bd7bf0f77f3ae971a6b77c3156725e4e08",
+        "baseBranch": "main",
+        "currentMainIntegration": "conflicts",
+        "conflictPaths": [
+          "nixos/otehon/shell/package.json",
+          "nixos/otehon/shell/src/main.jsx",
+          "nixos/otehon/shell/src/setup.jsx"
+        ]
+      },
+      {
+        "number": 42,
+        "head": "f9f3492c955325adc62e7ea18c4dedcae9008b5d",
+        "baseBranch": "main",
+        "currentMainIntegration": "conflicts",
+        "conflictPaths": [
+          "nixos/otehon/desktop-media.nix",
+          "nixos/otehon/desktop.nix",
+          "nixos/otehon/eval-profiles.sh",
+          "nixos/otehon/media.nix",
+          "nixos/otehon/shell/build.mjs",
+          "nixos/otehon/shell/src/main.jsx",
+          "nixos/otehon/update-check.nix",
+          "nixos/otehon/update.nix"
+        ]
+      }
+    ]
+  },
+  "installerGateMeasurement": {
+    "issue": "AWAI-450",
+    "desiredOutcome": "Same qualified ISO completes both GUI and no-GUI NVMe recovery paths before physical USB delivery",
+    "unit": "workflow elapsed milliseconds; not task active execution, serial wall time, cost or physical reliability",
+    "scope": "Five selected failed workflow attempts; partial session coverage",
+    "source": "GitHub Actions run timing API snapshots; raw counters retained",
+    "attempts": [
+      {
+        "run": 43593727941,
+        "url": "https://github.com/network-awai/awai-os/actions/runs/43593727941",
+        "workflowDurationMs": 1272000,
+        "rawTiming": {
+          "billable": {
+            "UBUNTU": {
+              "total_ms": 0,
+              "jobs": 2,
+              "job_runs": [
+                {
+                  "job_id": 132443710665,
+                  "duration_ms": 0
+                },
+                {
+                  "job_id": 132443711855,
+                  "duration_ms": 0
+                }
+              ]
+            }
+          },
+          "run_duration_ms": 1272000
+        }
+      },
+      {
+        "run": 43596215454,
+        "url": "https://github.com/network-awai/awai-os/actions/runs/43596215454",
+        "workflowDurationMs": 1070000,
+        "rawTiming": {
+          "billable": {
+            "UBUNTU": {
+              "total_ms": 0,
+              "jobs": 2,
+              "job_runs": [
+                {
+                  "job_id": 132451156665,
+                  "duration_ms": 0
+                },
+                {
+                  "job_id": 132451157793,
+                  "duration_ms": 0
+                }
+              ]
+            }
+          },
+          "run_duration_ms": 1070000
+        }
+      },
+      {
+        "run": 43597861923,
+        "url": "https://github.com/network-awai/awai-os/actions/runs/43597861923",
+        "workflowDurationMs": 1678000,
+        "rawTiming": {
+          "billable": {
+            "UBUNTU": {
+              "total_ms": 0,
+              "jobs": 2,
+              "job_runs": [
+                {
+                  "job_id": 132456109199,
+                  "duration_ms": 0
+                },
+                {
+                  "job_id": 132456110753,
+                  "duration_ms": 0
+                }
+              ]
+            }
+          },
+          "run_duration_ms": 1678000
+        }
+      },
+      {
+        "run": 43600587553,
+        "url": "https://github.com/network-awai/awai-os/actions/runs/43600587553",
+        "workflowDurationMs": 1498000,
+        "rawTiming": {
+          "billable": {
+            "UBUNTU": {
+              "total_ms": 0,
+              "jobs": 2,
+              "job_runs": [
+                {
+                  "job_id": 132464256264,
+                  "duration_ms": 0
+                },
+                {
+                  "job_id": 132464257721,
+                  "duration_ms": 0
+                }
+              ]
+            }
+          },
+          "run_duration_ms": 1498000
+        }
+      },
+      {
+        "run": 43602904635,
+        "url": "https://github.com/network-awai/awai-os/actions/runs/43602904635",
+        "workflowDurationMs": 1113000,
+        "rawTiming": {
+          "billable": {
+            "UBUNTU": {
+              "total_ms": 0,
+              "jobs": 2,
+              "job_runs": [
+                {
+                  "job_id": 132471337389,
+                  "duration_ms": 0
+                },
+                {
+                  "job_id": 132471338476,
+                  "duration_ms": 0
+                }
+              ]
+            }
+          },
+          "run_duration_ms": 1113000
+        }
+      }
+    ],
+    "summedWorkflowDurationMs": 6631000,
+    "zeroCounterCaveat": "Raw Ubuntu billable/job duration counters report zero while workflow elapsed time is nonzero. Cost and attributable execution remain unknown; zero is not treated as measured free execution.",
+    "baseline": "unknown",
+    "benefit": "Final both-path same-ISO gate passes after runtime and screen-verifier fixes; no counterfactual production-failure reduction quantified",
+    "physicalPcOutcome": "unobserved",
+    "attributableTokens": "unknown",
+    "cost": "unknown"
+  },
+  "issueStatusPolicy": {
+    "ownerDecision": "2026-11-14, replacement AGENTS received2026-11-15 JST",
+    "implementation": "Done immediately on confirmed PR merge",
+    "deviceDeploymentAcceptance": "Separate actual evidence/follow-up; never inferred from merge or Done",
+    "cleanup": "After merge when safe; preserved evidence does not delay Done"
+  },
+  "deliveryRecord": "otehon-usb-media-20261115.json",
+  "cleanup": {
+    "removedLocalReferences": [
+      "codex/awai-2906-mobile-review",
+      "codex/awai-2906-image-preservation-fix",
+      "codex/awai-2774-reservation-generation",
+      "codex/awai-2906-pr-integration-20261114"
+    ],
+    "preserved": "Task worktrees contain unique source/test/VM evidence or active delivery docs; unrelated/shared/unmerged work preserved. No force removal or stash deletion.",
+    "accidentalPush": "Own new mistaken PR96 destination had no PR; deleted immediately after fast-forward push to verified existing PR branch.",
+    "diskReclaimed": "unknown; removed references only"
+  }
 }
