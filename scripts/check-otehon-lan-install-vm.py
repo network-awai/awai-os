@@ -80,16 +80,38 @@ def main():
                '-drive', f'if=pflash,format=raw,file={variables}',
                '-netdev', f'user,id=n,net=10.77.0.0/24,host=10.77.0.1,dhcpstart=10.77.0.2,tftp={a.image.resolve()},bootfile=ipxe.efi,hostfwd=tcp:127.0.0.1:22222-10.77.0.2:2222',
                '-device', 'virtio-net-pci,netdev=n,bootindex=1',
-               '-serial', f'tcp:127.0.0.1:{serial_port},server=on,wait=off']
+               '-serial', f'tcp:127.0.0.1:{serial_port},server=on,wait=off',
+               '-qmp', f'unix:{sockets / "installer.qmp"},server=on,wait=off']
     for index, name in enumerate(('target', 'decoy', 'small')):
         command += ['-drive', f'if=none,id=d{index},format=qcow2,file={out / (name + ".qcow2")},discard=unmap,detect-zeroes=unmap',
                     '-device', f'{"nvme" if index == 0 else "virtio-blk-pci"},drive=d{index},serial=OTEHON-USB-{name.upper()}']
     nbd = process = port = None
     transcript = bytearray()
     unread = ''
+    def capture_wait_screen():
+        # Read the actual VGA console when the broker is not ready yet.
+        try:
+            with socket.socket(socket.AF_UNIX) as qmp:
+                qmp.settimeout(10); qmp.connect(str(sockets / 'installer.qmp'))
+                with qmp.makefile('rwb', buffering=0) as stream:
+                    stream.readline()
+                    for request in ({'execute': 'qmp_capabilities'}, {'execute': 'screendump', 'arguments': {'filename': str(out / 'waiting.ppm')}}):
+                        stream.write((json.dumps(request) + '\n').encode())
+                        while True:
+                            reply = json.loads(stream.readline())
+                            if 'error' in reply: raise RuntimeError(str(reply['error']))
+                            if 'return' in reply: break
+            with (out / 'waiting.png').open('wb') as png:
+                subprocess.run(['pnmtopng', str(out / 'waiting.ppm')], stdout=png, stderr=subprocess.DEVNULL, check=True)
+            screen = subprocess.check_output(['tesseract', str(out / 'waiting.ppm'), 'stdout', '-l', 'eng+jpn'], text=True, stderr=subprocess.DEVNULL, timeout=30)
+            (out / 'waiting.txt').write_text(screen)
+            print('LAN_VM waiting screen: ' + screen[-2000:], flush=True)
+        except (OSError, subprocess.SubprocessError, RuntimeError) as error:
+            print('LAN_VM waiting capture: ' + str(error), flush=True)
     def expect(text, timeout=1200):
         nonlocal unread
         end = time.monotonic() + timeout
+        last_screen = time.monotonic()
         while time.monotonic() < end:
             if text in unread:
                 unread = unread.split(text, 1)[1]
@@ -99,6 +121,9 @@ def main():
                 raise RuntimeError('installer reported failure; see console.txt')
             if process.poll() is not None:
                 raise RuntimeError('QEMU exited before ' + text)
+            if time.monotonic() - last_screen >= 45:
+                capture_wait_screen()
+                last_screen = time.monotonic()
             try:
                 block = port.recv(65536)
                 if not block: raise RuntimeError('serial closed')

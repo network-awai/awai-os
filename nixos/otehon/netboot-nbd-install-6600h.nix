@@ -34,6 +34,13 @@ in {
     OTEHON_DIAGNOSTIC_MODE = lib.mkForce "0";
     OTEHON_MEDIA_LABEL = "LAN インストール";
   };
+  systemd.services.otehon-debug-fingerprint = lib.mkIf (config.otehon.diagnosticPublicKey != "") {
+    serviceConfig.StandardOutput = "journal+console";
+    script = lib.mkAfter ''
+      echo 'LAN installer SSH host key (compare on Mac before connecting):'
+      cat /run/otehon-debug-fingerprint
+    '';
+  };
   services.openssh.settings = lib.mkIf (config.otehon.diagnosticPublicKey != "") {
     ForceCommand = lib.mkForce "${remote}";
     PermitTTY = lib.mkForce true;

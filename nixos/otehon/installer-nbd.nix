@@ -28,23 +28,29 @@ in {
         Type = "oneshot";
         RemainAfterExit = true;
         TimeoutStartSec = 1200;
+        StandardOutput = "journal+console";
+        StandardError = "journal+console";
       };
       script = ''
         set -euo pipefail
+        echo 'AWAI_NBD: connecting read-only installer source; NVMe untouched'
+        trap 'echo "AWAI_NBD: source admission failed; NVMe untouched"' ERR
         # Reserved only for this explicit installer profile. Never use a
         # physical disk as the network source or silently choose another one.
         if nbd-client -c /dev/nbd0; then exit 1; else test "$?" = 1; fi
         if mountpoint -q /iso; then exit 1; fi
         nbd-client -R 10.77.0.1 10809 /dev/nbd0
-        trap 'if mountpoint -q /iso; then umount /iso; fi; nbd-client -d /dev/nbd0' ERR
+        trap 'echo "AWAI_NBD: source admission failed; NVMe untouched"; if mountpoint -q /iso; then umount /iso; fi; nbd-client -d /dev/nbd0' ERR
         test "$(blockdev --getro /dev/nbd0)" = 1
         test "$(blockdev --getsize64 /dev/nbd0)" = ${lib.escapeShellArg (toString cfg.bytes)}
+        echo 'AWAI_NBD: checking full ISO digest'
         actual=$(sha256sum /dev/nbd0)
         test "''${actual%% *}" = ${lib.escapeShellArg cfg.sha256}
         mkdir -p /iso
         mount -t iso9660 -o ro,nodev,nosuid,noexec /dev/nbd0 /iso
         test -f /iso/otehon/image.raw.zst
         test "$(findmnt -n -o FSTYPE --target /iso/otehon/image.raw.zst)" = iso9660
+        echo 'AWAI_NBD: verified ISO mounted; starting installer'
         trap - ERR
       '';
       preStop = ''

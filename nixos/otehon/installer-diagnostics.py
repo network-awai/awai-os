@@ -68,11 +68,11 @@ def read_bounded(command):
 
 
 def journal(source):
-    if source not in ('broker', 'kernel'):
+    if source not in ('broker', 'kernel', 'source'):
         raise ValueError('unsupported journal source')
     command = ['journalctl', '--no-pager', '--output=cat', '--lines=100']
-    command += (['--unit=otehon-install-broker.service'] if source == 'broker'
-                else ['--dmesg', '--priority=warning'])
+    command += (['--dmesg', '--priority=warning'] if source == 'kernel'
+                else ['--unit=otehon-installer-source.service' if source == 'source' else '--unit=otehon-install-broker.service'])
     try:
         output, truncated = read_bounded(command)
     except (OSError, subprocess.SubprocessError):
@@ -88,6 +88,17 @@ def main():
     try:
         info_path = Path(os.environ['OTEHON_INSTALLER_INFO'])
         result['installer'] = json.loads(info_path.read_text(encoding='utf-8'))
+        if os.environ.get('OTEHON_ALLOW_INSTALL_OBSERVATION') == '1':
+            result['journal'] = {source: journal(source) for source in ('source', 'broker', 'kernel')}
+            try:
+                result['status'] = broker('STATUS')
+                result['inventory'] = broker('LIST')
+            except (OSError, ValueError):
+                result['status'] = {'available': False}
+                result['inventory'] = {'available': False}
+                result['error'] = 'broker-unavailable'
+            print(json.dumps(result, ensure_ascii=True, separators=(',', ':')))
+            return 0
         result['status'] = broker('STATUS')
         if result['status'].get('readOnly') is not True and os.environ.get('OTEHON_ALLOW_INSTALL_OBSERVATION') != '1':
             raise ValueError('broker is not read-only')
