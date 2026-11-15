@@ -86,3 +86,15 @@ to its goal, named participants, source hashes, owning Issue, model and turn
 bound. Preserve original cron and the original distributed occurrence claim;
 uncertain results do not authorize replay or another cycle. Keep public presence
 and progress metadata free of transcripts, private identities and session IDs.
+
+## Current release codename — Meiji
+
+Owner decision 2026-11-15: the current Awai OS release codename is **Meiji**.
+Manage the product name, version number and release codename separately, following
+macOS Tahoe's naming concept. Use `Awai OS Meiji` when a release name is needed.
+The source of the current codename is `release.json`; tracking is
+[AWAI-2925](https://linear.app/kotobalabs/issue/AWAI-2925).
+Future names and any sequence rule require a separate owner decision; do not
+infer an era-based sequence or change package versions/runtime architecture IDs
+as a side effect of the codename. Record source metadata and deployed UI/image
+branding separately.
