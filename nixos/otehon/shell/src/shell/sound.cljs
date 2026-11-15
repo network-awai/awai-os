@@ -1,5 +1,6 @@
 (ns shell.sound
   (:require ["react" :refer [useEffect useState]]
+            [shell.feel :refer [feel-settings]]
             ["../sound.js" :refer [setMuted setVolume useSoundStatus volumeError]]))
 
 (def error-text
@@ -47,6 +48,7 @@
       [:main.chat.net-view {:data-net "sound"}
        [:div.net-body
         [:h1 "Sound"]
+        [:f> feel-settings]
         (when-not status [:p.muted "Checking…"])
         (when (some-> status (.-error)) (problem (.-error status)))
         (when (and status (not (.-error status)) (not (.-available status)))

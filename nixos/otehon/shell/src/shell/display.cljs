@@ -1,5 +1,6 @@
 (ns shell.display
   (:require ["react" :refer [useEffect useState]]
+            ["../theme.js" :refer [readTheme saveTheme THEMES]]
             ["../display.js" :refer [brightnessError setBrightness useDisplayStatus]]))
 
 (def error-text
@@ -11,6 +12,18 @@
 
 (defn problem [error]
   [:p.net-error (get error-text error "Something went wrong.")])
+
+(defn theme-settings []
+  (let [[theme set-theme] (useState readTheme)]
+    [:fieldset.theme-switcher {:aria-label "テーマ"}
+     [:legend "テーマ"]
+     (map (fn [name]
+            [:button {:key name :type "button" :aria-pressed (= theme name)
+                      :on-click (fn []
+                                  (set-theme name)
+                                  (saveTheme js/undefined name)
+                                  (set! (.. js/document -documentElement -dataset -theme) name))}
+             name]) THEMES)]))
 
 (defn display-panel []
   (let [status (useDisplayStatus)
@@ -36,6 +49,7 @@
       [:main.chat.net-view {:data-net "display"}
        [:div.net-body
         [:h1 "Display"]
+        [:f> theme-settings]
         (when-not status [:p.muted "Checking…"])
         (when (some-> status (.-error)) (problem (.-error status)))
         (when (and status (not (.-error status)) (not (.-available status)))

@@ -8,11 +8,12 @@
             [shell.soshiki :refer [soshiki]]
             [shell.docks :refer [device-dock node-dock]]
             [shell.setup :refer [setup]]
+            ["../feel.js" :refer [installFeedback]]
             ["../identity/device.js" :refer [clearSession deviceDid loadProofs loadSession saveProof]]
             ["../runtime.js" :refer [createBroker osOperations readPassport readWalletBalance]]
             ["../media.js" :refer [MEDIA_ORIGIN describeMessage requestImage requestSpeech
                                    settleSavedItem useMediaCapabilities]]
-            ["../theme.js" :refer [readTheme saveTheme THEMES]]
+            ["../theme.js" :refer [readTheme]]
             ["../trust.js" :refer [POINTS accountAddress dappMinimum operationMinimum
                                    parsePassportResponse passportCall trustScore]]))
 
@@ -419,7 +420,10 @@
                     " dapps=" dapps))) js/undefined)
      #js [zenoh matter open did])
     (if-not did
-      nil
+      [:main.boot-screen {:role "status" :aria-live "polite"}
+       [:img.boot-emblem {:src "assets/awai-boot-logo.png" :alt "" :width 256 :height 256}]
+       [:h1 "Awai Otehon"]
+       [:p "この端末を準備しています…"]]
       (if-not open
         [:f> setup broker relay-origin did account finished set-account score
          (fn []
@@ -437,22 +441,13 @@
            (set-account nil))]))))
 
 (defn theme-app []
-  (let [[theme set-theme] (useState readTheme)]
-    (useEffect
-     (fn []
-       (set! (.. js/document -documentElement -dataset -theme) theme)
-       (saveTheme js/undefined theme) js/undefined)
-     #js [theme])
-    [:<>
-     [:f> app]
-     [:fieldset.theme-switcher {:aria-label "テーマ"}
-      [:legend "テーマ"]
-      (map (fn [theme-name]
-             [:button {:key theme-name :type "button"
-                        :aria-pressed (= theme theme-name)
-                        :on-click #(set-theme theme-name)}
-              theme-name])
-           THEMES)]]))
+  (useEffect (fn [] (installFeedback)) #js [])
+  (useEffect
+   (fn []
+     (set! (.. js/document -documentElement -dataset -theme) (readTheme))
+     js/undefined)
+   #js [])
+  [:f> app])
 
 (defn init []
   (let [root (rdom/create-root (.getElementById js/document "root"))]

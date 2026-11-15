@@ -4,11 +4,13 @@
   font stacks, functions like min() and var()) are plain strings; simple
   selectors and single identifiers are keywords."
   (:require [garden.core :as garden]
-            [garden.stylesheet :refer [at-media]]))
+            [garden.stylesheet :refer [at-media at-keyframes]]))
 
 (def styles
   [[":root"
-    {:--bg "#15181c" :--surface "#1b1f24" :--surface-low "#22272d"
+    {:--awai-warm-light "#fff0da" :--awai-ao-pale "#edf1f8" :--awai-aka-pale "#faebee"
+     :--awai-entry-ink "#182332" :--awai-entry-muted "#485c74" :--awai-action "#1e50a2"
+     :--bg "#15181c" :--surface "#1b1f24" :--surface-low "#22272d"
      :--surface-raised "#2a3037" :--surface-hover "#2f363e" :--surface-selected "#38424c"
      :--mark "#33424f" :--fg "#eef1f4" :--secondary-text "#c4ccd3"
      :--muted "#aeb8c2" :--muted-soft "#b5bec8" :--disabled-bg "#414951"
@@ -35,6 +37,50 @@
      :color "var(--fg)"}]
    [:* {:box-sizing "border-box"}]
    [:body {:margin 0}]
+   [:.boot-screen {:min-height "100vh" :display "flex" :flex-direction "column"
+                   :align-items "center" :justify-content "center" :gap "24px"
+                   :padding "32px" :text-align "center"}]
+   [".boot-screen h1" {:font-size "40px" :font-weight 400 :margin 0}]
+   [".boot-screen p" {:color "var(--muted)"}]
+   [:.boot-emblem {:display "block" :object-fit "contain" :transform-origin "50% 50%"}]
+   [".setup, .boot-screen"
+    {:isolation "isolate" :color-scheme "light"
+     :--bg "#fff" :--fg "var(--awai-entry-ink)" :--muted "var(--awai-entry-muted)"
+     :--secondary-text "var(--awai-entry-muted)" :--surface-low "#ffffffa6"
+     :--surface-raised "#e7ebf1" :--focus "var(--awai-action)" :--error "#a32b29"
+     :color "var(--fg)" :background-color "#fbfaff" :background-size "cover"
+     :background-position "center"
+     :background-image "radial-gradient(ellipse at center in oklab, #ffffffeb, #ffffffb8), url(awai-atmosphere.png)"}]
+   ;; Feather only the outer 12% backdrop; the mark lies within this boundary.
+   ;; This is presentation of the original asset, not a regenerated logo.
+   [".setup .boot-emblem, .boot-screen .boot-emblem"
+    {:mix-blend-mode "multiply"
+     :mask-image "linear-gradient(to right, transparent, #000 12% 88%, transparent), linear-gradient(to bottom, transparent, #000 12% 88%, transparent)"
+     :mask-composite "intersect"}]
+   [".setup .setup-logo" {:width "112px" :height "auto" :border-radius 0
+                         :margin "0 auto 16px"}]
+   [".setup[data-step=\"hello\"] .setup-logo" {:width "min(256px, 42vw)" :margin-bottom "24px"}]
+   [".setup .primary" {:background "var(--awai-action)" :color "#fff"
+                      :box-shadow "0 8px 24px #1e50a226, 0 2px 5px #1e50a21a"}]
+   [".setup .primary:hover:not(:disabled)" {:background "#1b3d76"}]
+   [:.feel-settings {:display "grid" :gap "12px" :padding "24px" :border-radius "12px"
+                    :background "var(--surface)" :text-align "left"}]
+   [".feel-settings h2, .feel-settings p" {:margin 0}]
+   [:.feel-choice {:display "flex" :align-items "center" :justify-content "space-between"
+                  :gap "24px" :min-height "48px"}]
+   [".feel-choice input" {:width "24px" :height "24px" :accent-color "var(--focus)"}]
+   ["input:focus-visible, summary:focus-visible" {:outline "2px solid var(--focus)" :outline-offset "4px"}]
+   [".setup button, .shell button" {:transition "background-color 120ms ease-out"}]
+   (at-keyframes :awai-boot-emblem
+                 ["0%" {:opacity 0 :transform "scale(.94)"}]
+                 ["35%, 100%" {:opacity 1 :transform "scale(1)"}])
+   (at-media {:prefers-reduced-motion "no-preference"}
+             ["html:not([data-reduce-motion=\"true\"]) .boot-emblem"
+              {:animation "awai-boot-emblem 2s cubic-bezier(0,0,.58,1) 1 both"}]
+             ["html:not([data-reduce-motion=\"true\"]) .setup button, html:not([data-reduce-motion=\"true\"]) .shell button"
+              {:transition "transform 120ms ease-out, background-color 120ms ease-out"}]
+             ["html:not([data-reduce-motion=\"true\"]) .setup button:active:not(:disabled), html:not([data-reduce-motion=\"true\"]) .shell button:active:not(:disabled)"
+              {:transform "scale(.97)"}])
    ["ul, ol" {:margin 0 :padding 0 :list-style "none"}]
    ["button, textarea" {:font "inherit" :color "inherit"}]
    [:button {:border 0 :cursor "pointer"}]
@@ -109,11 +155,11 @@
                        :font-size "13px"}]
    [".operations .title" {:color "var(--fg)" :font-weight 600}]
    [:.setup {:display "flex" :flex-direction "column" :align-items "center"
-              :justify-content "center" :gap "28px" :height "100vh" :padding "24px"}]
+              :justify-content "center" :gap "28px" :min-height "100vh" :padding "48px 24px"}]
    [:.setup-card {:display "flex" :flex-direction "column" :align-items "center" :gap "16px"
                    :width "min(440px, 100%)" :text-align "center"}]
    [".setup-card h1" {:margin 0 :font-size "30px" :font-weight 600}]
-   [".setup-card h1.hello" {:margin-bottom "40px" :font-size "56px"}]
+   [".setup-card h1.hello" {:margin-bottom "8px" :font-size "clamp(32px, 5vw, 48px)" :font-weight 400}]
    [".setup-card p" {:margin 0 :color "var(--secondary-text)" :line-height 1.5}]
    [".primary, .secondary" {:min-height "46px" :padding "10px 24px" :border-radius "12px"
                              :font-size "15px" :font-weight 600}]
@@ -163,7 +209,7 @@
                                       :color "var(--fg)"
                                       :font "12px/1.4 \"DejaVu Sans Mono\", monospace"
                                       :resize "none"}]
-   [:.setup-card {:max-height "100vh" :overflow-y "auto"}]
+   [:.setup-card {:overflow-wrap "anywhere"}]
    [".composer .tool" {:background "var(--surface-selected)" :color "var(--fg)" :font-weight 500}]
    [".messages li.media" {:display "flex" :flex-direction "column" :gap "8px" :max-width "100%"}]
    [".messages .media img" {:max-width "100%" :border-radius "10px"}]
@@ -265,16 +311,14 @@
    [:.meter {:height "6px" :overflow "hidden" :border-radius "3px"
               :background "var(--surface-raised)" :margin "10px 0 4px"}]
    [".meter span" {:display "block" :height "100%" :background "var(--focus)"}]
-   [:.theme-switcher {:position "fixed" :z-index 50 :top "12px" :right "14px" :display "flex"
+   [:.theme-switcher {:display "flex" :flex-wrap "wrap"
                        :gap "3px" :margin 0 :padding "4px" :border "1px solid var(--border-strong)"
                        :border-radius "12px" :background "var(--surface)"}]
-   [".theme-switcher legend" {:position "absolute" :width "1px" :height "1px" :overflow "hidden"
-                               :clip-path "inset(50%)"}]
+   [".theme-switcher legend" {:padding-inline "8px"}]
    [".theme-switcher button" {:padding "6px 10px" :border-radius "8px" :background "transparent"
                                :color "var(--fg)" :font-size "12px"}]
    [".theme-switcher button[aria-pressed=\"true\"]" {:background "var(--surface-selected)"
                                                       :font-weight 700}]
-   [".setup" {:padding-top "64px"}]
    [:.soshiki-body {:width "min(760px, 100%)"}]
    [".soshiki-body h2" {:margin "22px 0 8px" :font-size "15px"}]
    [:.soshiki-tabs {:display "flex" :gap "8px" :margin "16px 0 4px"}]

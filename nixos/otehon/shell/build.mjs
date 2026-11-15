@@ -45,6 +45,8 @@ async function page({ html, outdir, operations, appOrigins }) {
   await mkdir(`${outdir}/assets`, { recursive: true });
   await copyFile("vendor/kotoba-client-consent.css", `${outdir}/assets/consent.css`);
   await copyFile("assets/awai-logo.png", `${outdir}/assets/awai-logo.png`);
+  await copyFile("assets/awai-boot-logo.png", `${outdir}/assets/awai-boot-logo.png`);
+  await copyFile("assets/awai-atmosphere.png", `${outdir}/assets/awai-atmosphere.png`);
   const capabilities = [...new Set(operations.map((operation) => operation.capability))];
   const connect = clientRuntimeConnectSrc(runtimeDescriptor("index.html", operations), capabilities, [], appOrigins);
   const template = await readFile(html, "utf8");

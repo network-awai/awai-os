@@ -1,6 +1,26 @@
 # Murakumo NixOS
 
 Follow the workspace-level AGENTS.md architecture and Linear tracking rules.
+
+## Awai experience defaults (owner decision 2026-11-16, AWAI-2962)
+
+- Deliver the Awai-defined experience first. Initial setup is not a preference
+  questionnaire: do not expose sound, motion, theme or appearance controls on
+  welcome/account setup. Put customization in the relevant post-setup settings.
+- Use the defined subtle sound/motion and Asa brand defaults without asking.
+  Honor OS mute/volume and reduced-motion automatically. User-requested settings
+  and accessibility are retained; defaults do not override them.
+- Share the logo's atmosphere across entry backgrounds, surfaces and emphasis:
+  pale blue, lavender, warm light and restrained red; avoid a boxed logo on an
+  unrelated canvas. Reuse shared tokens and components in code and Figma.
+- Setup collects only what is necessary to proceed. Detect language and an
+  existing network when possible. Show choices when action is actually needed,
+  preserve consent for external operations, and never infer encryption/recovery
+  success from account login or hide a real security failure.
+- The intended account-linked protection avoids an additional routine disk
+  passphrase. Keep current encryption/key slots until the replacement's unlock,
+  recovery, update and rollback gates pass. See AWAI-165 and the experience doc.
+
 The native product entry is `nixos/murakumo-nixos.nix`. Keep it separate from
 the historical `node-base.nix` setup/provider/update closure. Never add those
 Node.js tools as a native profile fallback, and do not stop existing services.

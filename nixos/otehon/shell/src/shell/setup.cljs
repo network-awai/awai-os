@@ -85,7 +85,8 @@
 (defn- saved-language []
   (try
     (let [saved (.getItem js/localStorage language-key)]
-      (if (or (= saved "ja") (= saved "en")) saved "en"))
+      (if (or (= saved "ja") (= saved "en")) saved
+          (if (.startsWith (or (.-language js/navigator) "en") "ja") "ja" "en")))
     (catch :default _ "en")))
 
 (defn qr-code [url]
@@ -267,11 +268,12 @@
      #js [language])
     [:div.setup {:data-step step}
      [:div.setup-card
-      [:img.setup-logo {:src "assets/awai-logo.png" :alt "Awai" :width 96 :height 96}]
+      [:img.setup-logo.boot-emblem {:src "assets/awai-boot-logo.png" :alt "Awai" :width 256 :height 256}]
       (when (= step "hello")
         [:<>
          [:h1.hello (:hello t)]
-         [:button.primary {:type "button" :data-next true :on-click next-step} (:getStarted t)]])
+         [:p.muted (if (= language "ja") "あなたの場所を、ひらく。" "A place to make your own.")]
+         [:button.primary {:type "button" :data-next true :data-ui-sound "startup" :on-click next-step} (:getStarted t)]])
       (when (= step "language")
         [:<>
          [:h1 (:languageTitle t)]
