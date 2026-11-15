@@ -1,16 +1,25 @@
 {:source-paths ["src" "link" "vendor" "styles"]
+ ;; react bundles guard on the bare `process` global. An empty module keeps
+ ;; browsers on the `typeof process` guard's false branch with no runtime
+ ;; reference at all. :js-options lives at the build level, not inside
+ ;; :compiler-options. No new npm dependency, so the Nix npmDepsHash
+ ;; is untouched. Applies to every browser build, including :reliability
+ ;; (shell.reliability also requires react).
  :builds {:reliability {:target :browser
                         :output-dir "dist/assets"
                         :asset-path "../assets"
                         :compiler-options {:externs ["externs/otehon-shell.js"]}
+                        :js-options {:resolve {"process" false}}
                         :modules {:fs-reliability {:init-fn shell.reliability/init}}}
           :shell {:target :browser
                   :output-dir "dist/assets"
                   :asset-path "assets"
                   :compiler-options {:externs ["externs/otehon-shell.js"]}
+                  :js-options {:resolve {"process" false}}
                   :modules {:main {:init-fn shell.main/init}}}
           :link {:target :browser
                  :output-dir "dist/link/assets"
                  :asset-path "assets"
                  :compiler-options {:externs ["externs/otehon-shell.js"]}
+                 :js-options {:resolve {"process" false}}
                  :modules {:main {:init-fn link.main/init}}}}}
