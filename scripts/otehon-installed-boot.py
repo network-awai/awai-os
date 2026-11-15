@@ -286,9 +286,9 @@ def verify_console_install(command, serial, qmp, out, checks, untouched, written
             key(code);time.sleep(.06)
         key('ret')
     try:
-        guest.expect(['Awai','Text','0.7.2'],'boot-menu',timeout=120)
+        guest.expect(['Awai','Text','0.7.3'],'boot-menu',timeout=120)
         key('down');key('ret')
-        guest.expect(['インストール先','保存先の番号','0.7.2','Build ID'],'physical-console-ready',timeout=420)
+        guest.expect(['インストール先','保存先の番号','0.7.3','Build ID'],'physical-console-ready',timeout=420)
         untouched();checks.append('display-manager-disabled Japanese physical VT1 renders version/build and numbered disks without writes')
         enter('99');guest.expect(['表示されている番号'],'invalid-choice',timeout=60);untouched()
         enter('3');guest.expect(['使用中'],'source-refused',timeout=60);untouched()

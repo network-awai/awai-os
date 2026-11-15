@@ -22,6 +22,16 @@ class Console(unittest.TestCase):
     row = {'id':'id', 'path':'/dev/nvme0n1', 'model':'Internal', 'serial':'HARDWARE-ID',
            'size':200, 'partitions':[], 'used':False, 'readOnly':False, 'ambiguous':False}
 
+    def test_failed_screen_includes_japanese_operation_and_write_boundary(self):
+        state={'error':'target-sync: OSError: ENOSPC (28)', 'done':8, 'total':16,
+               'writeStarted':True, 'diagnostic':{'operation':'target-sync'}}
+        lines='\n'.join(c.diagnostic_lines(state))
+        self.assertIn('NVMe の書込みを同期',lines)
+        self.assertIn('ENOSPC (28)',lines)
+        self.assertIn('書込み開始済み',lines)
+        state['writeStarted']=False
+        self.assertIn('書込みを開始していません','\n'.join(c.diagnostic_lines(state)))
+
     def test_no_default_or_escape_sequence_selects_a_disk(self):
         for value in ['', '0', '-1', '2', '\x1b[A', '/dev/nvme0n1', 'HARDWARE-ID', '１', '10000']:
             self.assertIsNone(c.choose([self.row], value), value)

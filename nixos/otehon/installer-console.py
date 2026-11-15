@@ -17,6 +17,24 @@ ERRORS = {
     'install-in-progress': '別の画面でインストール中です。完了をお待ちください。',
     'another-installer-active': '別のインストールが実行中です。',
 }
+OPERATIONS = {'install-lock':'処理の排他制御','source-check':'USB の保存元を確認',
+              'source-open':'USB の OS データを開く','source-read':'USB の OS データを読み出す',
+              'uefi-preflight':'UEFI の事前確認','target-admission':'保存先の再確認',
+              'target-open':'NVMe を開く','target-identity':'NVMe の識別情報を確認',
+              'target-sector-size':'NVMe の sector サイズを確認','target-erase':'既存の領域を消去',
+              'decode-start':'OS データの展開を開始','decode-read':'OS データを展開',
+              'decode-finish':'展開結果を確認','target-write':'NVMe へ書き込む',
+              'target-sync':'NVMe の書込みを同期','target-cache-flush':'NVMe の cache を同期',
+              'target-rewind':'読み戻し位置を設定','target-readback':'NVMe を読み戻す',
+              'uefi-register':'UEFI に起動登録'}
+
+def diagnostic_lines(state):
+    d=state.get('diagnostic') or {}
+    op=d.get('operation','unknown')
+    return ['失敗した処理: '+OPERATIONS.get(op,'処理を確認できません')+' ('+safe(op)+')',
+            '診断コード: '+safe(state.get('error','unknown'),300),
+            '処理済み: %.2f / %.2f GB' % (state.get('done',0)/10**9,state.get('total',0)/10**9),
+            ('書込み開始済みです。導入完了として起動しないでください。' if state.get('writeStarted') else '今回の処理では書込みを開始していません。')]
 
 def rpc(op, *args):
     line = b'JSON\t' + op.encode('ascii')
@@ -110,7 +128,7 @@ def observe(info):
         if state['phase'] == 'failed':
             header(info, 'インストールを完了できませんでした')
             print(state['message'])
-            print('診断コード: ' + safe(state.get('error', 'unknown'), 300))
+            print('\n'.join(diagnostic_lines(state)))
             if state.get('writeStarted'): print('保存先は変更されています。元の OS のままとは限りません。')
             input('\nEnter で保存先の画面へ戻ります: ')
         return
@@ -119,6 +137,7 @@ def main():
     info = json.loads(Path(os.environ['OTEHON_INSTALLER_INFO']).read_text())
     notice = ''
     seen_complete = False
+    seen_failure = None
     while True:
         try:
             state = rpc('STATUS')
@@ -132,6 +151,11 @@ def main():
                 continue
             if state['phase'] == 'failed':
                 notice = state['message'] + (' 保存先は変更されている可能性があります。' if state.get('writeStarted') else '')
+                marker=(state.get('updated'),state.get('error'))
+                if marker != seen_failure:
+                    observe(info)
+                    seen_failure=marker
+                    continue
             inventory = rpc('LIST')
             rows = choices(inventory['devices'], inventory['rawBytes'])
             header(info, '1 / 4  インストール先を選んでください')

@@ -42,6 +42,17 @@
                 (let [response (walk/keywordize-keys (edn/read-string (.toString reply "UTF-8")))]
                   (if (:ok response) (:value response) (throw (ex-info (:error response) {}))))
                 (do (pause) (recur))))))))))
+(def failure-operations
+  {"install-lock" "処理の排他制御" "source-check" "USB の保存元を確認"
+   "source-open" "USB の OS データを開く" "source-read" "USB の OS データを読み出す"
+   "uefi-preflight" "UEFI の事前確認" "target-admission" "保存先の再確認"
+   "target-open" "NVMe を開く" "target-identity" "NVMe の識別情報を確認"
+   "target-sector-size" "NVMe の sector サイズを確認" "target-erase" "既存の領域を消去"
+   "decode-start" "OS データの展開を開始" "decode-read" "OS データを展開"
+   "decode-finish" "展開結果を確認" "target-write" "NVMe へ書き込む"
+   "target-sync" "NVMe の書込みを同期" "target-cache-flush" "NVMe の cache を同期"
+   "target-rewind" "読み戻し位置を設定" "target-readback" "NVMe を読み戻す"
+   "uefi-register" "UEFI に起動登録"})
 (defonce state (atom {:page :welcome :devices [] :selected nil :error nil :status {}}))
 (defonce window (atom nil))
 (def installer-info
@@ -144,6 +155,9 @@
           (#{"failed" "cancelled"} phase) (do
             (when (:writeStarted status) (line! main "保存先は一部変更された可能性があります。正常起動できるとは限りません。"))
             (line! main (str "診断: " (:error status "なし")))
+            (when-let [d (:diagnostic status)]
+              (line! main (str "失敗した処理: " (get failure-operations (:operation d) (:operation d))))
+              (line! main (if (:writeStarted d) "書込み開始済みです。導入完了として起動しないでください。" "今回の処理では書込みを開始していません。")))
             (.add footer (button "保存先から確認し直す" list! false) BorderLayout/EAST)))))
     (when error (gap! main 16) (line! main (str "確認: " error)))
     (.add content sidebar BorderLayout/WEST) (.add content (doto (JScrollPane. main) (.setBorder (BorderFactory/createEmptyBorder))) BorderLayout/CENTER)

@@ -1,5 +1,6 @@
 """Otehon OS administration: fixed offline installer, AF_UNIX only, no shell/API origin."""
 import base64
+import errno
 import fcntl
 import hashlib
 import json
@@ -26,6 +27,17 @@ def boot_check():
 
 class Refused(Exception): pass
 class Cancelled(Exception): pass
+
+def failure_diagnostic(error, operation, state):
+    """Bounded metadata only: no filename, command, environment or payload."""
+    clean=lambda value: ''.join(c if c.isprintable() else '?' for c in str(value))[:160]
+    number=error.errno if isinstance(error,OSError) else None
+    return {'operation':operation,'phase':state.get('phase','unknown'),
+            'exception':type(error).__name__,'errno':number,
+            'errnoName':errno.errorcode.get(number,'UNKNOWN') if number is not None else '',
+            'detail':clean(error.strerror or 'OS operation failed') if isinstance(error,OSError) else '',
+            'done':state.get('done',0),'total':state.get('total',0),
+            'writeStarted':bool(state.get('writeStarted'))}
 
 def command(args, **kw):
     return subprocess.check_output(args, text=True, **kw).strip()
@@ -101,7 +113,9 @@ class Broker:
         old = rundir/'state.json'
         if old.exists():
             previous=json.loads(old.read_text())
-            if previous.get('writeStarted') and previous.get('phase') != 'complete':
+            if previous.get('phase')=='failed':
+                self.state=previous
+            elif previous.get('writeStarted') and previous.get('phase') != 'complete':
                 self.state={'phase':'failed','writeStarted':True,'done':0,'total':0,'message':'前の処理が途中で停止しました。保存先は一部変更された可能性があります。','error':'interrupted-write'}
     def snapshot(self):
         with self.lock: return {**self.state,'elapsed':int(time.monotonic()-self.started),'lastUpdateAgo':int(time.monotonic()-self.state.get('updated',self.started))}
@@ -131,67 +145,93 @@ class Broker:
             threading.Thread(target=self.install,args=(row,),daemon=True).start()
     def install(self, row):
         process=None;fd=None
+        operation='install-lock'
         try:
             with LOCK.open('a') as lock:
                 try: fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
                 except BlockingIOError: raise Refused('another-installer-active')
+                operation='source-check'
                 if SOURCE.is_symlink() or not SOURCE.is_file() or command(['findmnt','-n','-o','FSTYPE','--target',str(SOURCE)]) != 'iso9660': raise Refused('offline-source')
                 if 'ro' not in command(['findmnt','-n','-o','OPTIONS','--target',str(SOURCE)]).split(','): raise Refused('source-not-read-only')
+                operation='source-open'
                 source_fd=os.open(SOURCE,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
                 with os.fdopen(source_fd,'rb') as source:
                     size=os.fstat(source.fileno()).st_size
                     if not 0 < size <= 8*1024**3: raise Refused('source-bound')
                     h=hashlib.sha256();done=0;self.update(total=size)
+                    operation='source-read'
                     while chunk:=source.read(CHUNK):
                         if self.cancel.is_set(): raise Cancelled()
                         h.update(chunk);done+=len(chunk);self.update(done=done)
                 if h.hexdigest()!=self.expected_image: raise Refused('image-digest-mismatch')
+                operation='uefi-preflight'
                 boot_check()
+                operation='target-admission'
                 current=admit(inventory(),row['id'],self.raw_bytes)
+                operation='target-open'
                 fd=os.open(current['path'],os.O_RDWR|os.O_EXCL|os.O_NOFOLLOW|os.O_CLOEXEC)
+                operation='target-identity'
                 info=os.fstat(fd)
                 if not stat.S_ISBLK(info.st_mode) or info.st_rdev!=row['rdev']: raise Refused('target-changed')
+                operation='target-sector-size'
                 if struct.unpack('I',fcntl.ioctl(fd,0x1268,struct.pack('I',0)))[0]!=512: raise Refused('unsupported-logical-sector-size')
                 admit(inventory(),row['id'],self.raw_bytes)
                 with self.lock:
                     if self.cancel.is_set(): raise Cancelled()
                     self.update(phase='write',done=0,total=self.raw_bytes,writeStarted=True,message='保存先を変更しています。電源と USB は接続したままにしてください。')
                 # Operate on the already-admitted open device, never reopen a hotplug path.
+                operation='target-erase'
                 subprocess.run(['sgdisk','--zap-all',f'/proc/self/fd/{fd}'],pass_fds=(fd,),check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
                 os.lseek(fd,0,os.SEEK_SET)
+                operation='decode-start'
                 process=subprocess.Popen(['zstd','-dc','--',str(SOURCE)],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
                 done=0
-                while chunk:=process.stdout.read(CHUNK):
+                while True:
+                    operation='decode-read'
+                    chunk=process.stdout.read(CHUNK)
+                    if not chunk: break
                     if done+len(chunk)>self.raw_bytes: raise Refused('raw-size-overflow')
                     view=memoryview(chunk)
+                    operation='target-write'
                     while view:
                         count=os.write(fd,view)
                         if count<=0: raise OSError('short write')
                         view=view[count:]
-                    done+=len(chunk);self.update(done=done)
+                        done+=count;self.update(done=done)
+                operation='decode-finish'
                 if process.wait()!=0 or done!=self.raw_bytes: raise Refused('raw-size-or-decode')
-                os.fsync(fd);fcntl.ioctl(fd,0x1261) # BLKFLSBUF, fixed Linux block-device ABI.
+                operation='target-sync'
+                os.fsync(fd)
+                operation='target-cache-flush'
+                fcntl.ioctl(fd,0x1261) # BLKFLSBUF, fixed Linux block-device ABI.
+                operation='target-rewind'
                 os.lseek(fd,0,os.SEEK_SET)
                 self.update(phase='readback',done=0,total=self.raw_bytes,message='NVMe から全長を読み戻して照合しています。')
                 h=hashlib.sha256();done=0
+                operation='target-readback'
                 while done<self.raw_bytes:
                     chunk=os.read(fd,min(CHUNK,self.raw_bytes-done))
                     if not chunk: raise Refused('readback-short')
                     h.update(chunk);done+=len(chunk);self.update(done=done)
                 if h.hexdigest()!=self.expected_raw: raise Refused('raw-digest-mismatch')
                 self.update(phase='boot',message='照合済みの NVMe を UEFI 起動一覧に登録しています。')
+                operation='uefi-register'
                 registered=subprocess.run(['otehon-install-boot','register',str(fd)],pass_fds=(fd,),check=True,capture_output=True,text=True,timeout=45)
                 entry=json.loads(registered.stdout)
                 self.update(phase='complete',done=done,sha256=h.hexdigest(),bootEntry=entry['bootEntry'],bootNumber=entry['bootNumber'],message='NVMe への書込み・全長照合・Awai Otehon の起動登録が完了しました。')
         except Cancelled:
             self.update(phase='cancelled',message='この試行では保存先に書き込まずに中止しました。')
         except Exception as error:
+            diagnostic=failure_diagnostic(error,operation,self.state)
             message=('OS データの書込みと照合は済みましたが、UEFI 起動登録に失敗しました。導入完了ではありません。' if self.state.get('phase')=='boot' else '書込みと照合を完了できませんでした。') if self.state.get('writeStarted') else '書込み前の確認に失敗しました。保存先は変更していません。'
             detail=str(error) if isinstance(error,Refused) else type(error).__name__
+            if isinstance(error,OSError):
+                detail=operation+': '+type(error).__name__+': '+diagnostic['errnoName']+' ('+str(diagnostic['errno'])+') '+diagnostic['detail']
             if self.state.get('phase')=='boot' and isinstance(error,subprocess.CalledProcessError):
                 detail += ': '+str(error.stderr or '')[:1800]
                 print(detail,file=sys.stderr,flush=True)
-            self.update(phase='failed',error=detail,message=message)
+            print(json.dumps({'installerFailure':diagnostic},ensure_ascii=True),file=sys.stderr,flush=True)
+            self.update(phase='failed',error=detail,message=message,diagnostic=diagnostic)
         finally:
             if process and process.poll() is None:
                 process.terminate()
