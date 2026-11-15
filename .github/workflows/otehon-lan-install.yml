@@ -45,6 +45,7 @@ jobs:
           OPERATOR_PUBLIC_KEY: ${{ inputs.operator_public_key }}
         run: |
           set -euo pipefail
+          mkdir -p .agent-output/lan-install
           ssh-keygen -q -t ed25519 -N '' -f .agent-output/lan-install/operator
           ssh-keygen -q -t ed25519 -N '' -f .agent-output/lan-install/unauthorized
           python3 -m unittest discover -s tests/otehon -q
