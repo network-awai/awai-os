@@ -21,6 +21,21 @@ import ./nixos/otehon/k3s/desktop.nix {
 }
 ```
 
+The corresponding build entry is `nixos/otehon/k3s/build.nix`, taking the same
+arguments plus `arch` (`aarch64`, default, or `x86_64`) and `output` (`image`,
+default, or `system`). For example, with an operator-owned non-secret guest
+address mapping:
+
+```sh
+nix-build nixos/otehon/k3s/build.nix --argstr node jacob \
+  --arg addresses 'import ./verified-guest-addresses.nix' \
+  --argstr interface eth1 --argstr tokenFile /run/secrets/otehon-k3s-token
+```
+
+Repeat with `node` set to dan/judah for the workers. Image IDs include the node
+name (`awai-otehon-k3s-jacob`, etc.). Building is not deployment and the runtime
+token file is never read/copied by the build.
+
 There are no production IP defaults. Mac host LAN/Tailscale addresses are not
 guest addresses. Provision the same nonempty root-owned 0400/0600 token file on
 all three guests through the existing secret-delivery boundary. Never put token

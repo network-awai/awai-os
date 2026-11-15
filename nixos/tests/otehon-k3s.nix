@@ -71,6 +71,7 @@ in pkgs.testers.runNixOSTest {
   };
   testScript = ''
     import json
+    import os
     from pathlib import Path
 
     jacob.start(allow_reboot=True)
@@ -144,8 +145,6 @@ in pkgs.testers.runNixOSTest {
                 "disabled": True, "missingToken": True, "wrongToken": True, "lockedState": True,
                 "peerFirewall": True, "workerPods": True, "crossNodePodNetwork": True,
                 "agentRestart": True, "encryptedServerReboot": True, "existingServicePreserved": True}
-    Path("/tmp/k3s-evidence.json").write_text(json.dumps(evidence, indent=2))
-    import shutil
-    shutil.copy("/tmp/k3s-evidence.json", "${placeholder "out"}/k3s-evidence.json")
+    Path(os.environ["out"], "k3s-evidence.json").write_text(json.dumps(evidence, indent=2))
   '';
 }

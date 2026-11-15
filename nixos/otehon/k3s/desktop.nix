@@ -2,6 +2,7 @@
 args@{ node, addresses, interface, tokenFile, managementAddresses ? [ ] }:
 { lib, ... }: {
   imports = [ ../desktop.nix ../base-module.nix (import ./fleet.nix args) ];
+  system.image.id = lib.mkForce "awai-otehon-k3s-${node}";
   image.repart.partitions = {
     # Resolve desktop/base fixture sizes deliberately for this opt-in profile.
     esp.repartConfig.SizeMinBytes = lib.mkForce "512M";

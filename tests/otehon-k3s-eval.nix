@@ -49,6 +49,7 @@ assert !(valid (eval [ (import ../nixos/otehon/k3s/fleet.nix
   ((args "dan") // { addresses = addresses // { judah = addresses.dan; }; })) ]));
 assert lib.all (arch: requireValid (desktop arch)) [ "aarch64" "x86_64" ];
 assert (desktop "aarch64").services.greetd.enable;
+assert (desktop "aarch64").system.image.id == "awai-otehon-k3s-jacob";
 assert (desktop "aarch64").image.repart.partitions.state.repartConfig.SizeMinBytes == "16G";
 {
   disabledHasNoService = true;
