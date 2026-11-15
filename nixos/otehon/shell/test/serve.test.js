@@ -1,29 +1,33 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { mkdtemp, mkdir, copyFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { once } from "node:events";
 import { test } from "node:test";
 
-const PORT = 8909;
-const PAGE = `http://127.0.0.1:${PORT}/assets/main.js`;
-
-async function waitUp(proc, tries = 50) {
-  for (let i = 0; i < tries; i += 1) {
-    try {
-      const res = await fetch(PAGE);
-      if (res.ok) return res;
-    } catch {
-      // Server is still starting.
-    }
-    await new Promise((resolve) => { setTimeout(resolve, 100); });
-  }
-  throw new Error("preview server did not come up");
-}
-
 test("preview server never caches bundles", async (t) => {
-  const proc = spawn(process.execPath, ["serve.mjs", String(PORT)], {
-    cwd: new URL("..", import.meta.url),
+  const dir = await mkdtemp(path.join(tmpdir(), "otehon-preview-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await mkdir(path.join(dir, "dist", "assets"), { recursive: true });
+  await copyFile(new URL("../serve.mjs", import.meta.url), path.join(dir, "serve.mjs"));
+  await writeFile(path.join(dir, "dist", "assets", "main.js"), "fixture");
+  const proc = spawn(process.execPath, [path.join(dir, "serve.mjs"), "0"]);
+  t.after(async () => {
+    if (proc.exitCode === null && proc.signalCode === null) {
+      const exited = once(proc, "exit");
+      proc.kill();
+      await exited;
+    }
   });
-  t.after(() => proc.kill());
-  const res = await waitUp(proc);
+  const [chunk] = await Promise.race([
+    once(proc.stdout, "data"),
+    once(proc, "exit").then(([code]) => { throw new Error(`preview server exited: ${code}`); }),
+  ]);
+  const url = String(chunk).match(/http:\/\/127\.0\.0\.1:\d+\//)?.[0];
+  assert.ok(url, `missing server address: ${chunk}`);
+  const res = await fetch(new URL("assets/main.js", url));
+  assert.equal(res.status, 200);
   assert.equal(res.headers.get("cache-control"), "no-store");
-  await res.arrayBuffer();
+  assert.equal(await res.text(), "fixture");
 });

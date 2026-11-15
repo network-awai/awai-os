@@ -52,5 +52,5 @@ const server = createServer(async (request, response) => {
 });
 
 server.listen(port, host, () => {
-  console.log(`otehon shell preview on http://${host}:${port}/`);
+  console.log(`otehon shell preview on http://${host}:${server.address().port}/`);
 });
