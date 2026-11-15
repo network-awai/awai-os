@@ -48,7 +48,8 @@ let
             assert held['kernel']['returnCode']==-errno.EBUSY, trace
         elif sys.argv[1] == 'exclusive':
             assert held['kernel']['holderKind']=='block-file', trace
-            assert held['kernel']['holderFileFlags'] & os.O_EXCL, trace
+            assert held['kernel']['holderFileFlags'] & os.O_ACCMODE == os.O_RDONLY, trace
+            assert held['kernel']['holderUid']==0, trace
             assert held['kernel']['returnCode']==-errno.EBUSY, trace
         else:
             assert not held['kernel']['hasHolder'], trace
