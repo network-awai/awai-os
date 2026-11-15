@@ -1,0 +1,7 @@
+# Hosted GiB replacement process-kill proof — 2026-11-15
+
+The adjacent hosted JVM probe first publishes a nonempty old ref and block, then streams the previously verified synthetic 1 GiB logical file (1,024 chunks) into a new Forest group as a conditional replacement. A parent process kills the real writer at three observer boundaries; a fresh independent process checks the resulting ref and data. After WAL rename and during root half-write, the old ref and old bytes remained and no candidate group was published. Immediately after root rename, the new ref and all 1,024 chunks verified against SHA-256 `1f7e0c0d3fefe5579e556a04f7796b7de01278916e49a6d31df864e16adf1708`, and the old block remained accessible. Three cases passed in 3:05.10, parent peak RSS 528,968 KiB.
+
+This is a process SIGKILL check, not VM or host cache loss, power failure, distributed fencing or a governed receipt/nonce transaction. The source is mostly-zero synthetic data; old root contains one small block, not a real production catalog. The root-renamed case verifies all new data; the two earlier cases verify the complete old fixture and absence of a published candidate group. The dedicated guest disk and all staging/case directories remain preserved.
+
+Task-local evidence `.agent-output/atomic-gib-replace-kill-evidence.tar.gz` SHA-256 `dd2c01b972c0583f8550f2e9d3a648edded302b3fa4539ddb99715a9bfe74462` includes the oracle, output and timing. Hosted local oracle only; no Native or CI fallback.
