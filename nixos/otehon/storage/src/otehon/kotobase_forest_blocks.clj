@@ -360,6 +360,35 @@
                         (true? (verify! get-block cid receipt prepared)))) nonce))
    :read-ref! (fn [] (:cid (contract/-read-ref (refs/open-ref-store dir) ref-name)))})))
 
+(defn atomic-stream-governed-receipt-adapter
+  "Adapt a trusted governed receipt sink to a single-root Forest transaction.
+
+  `:publish!` receives exactly {:receipt :prepared :nonce}; BUILD! receives
+  provisional ports, receipt and prepared transaction. VERIFY! receives the
+  candidate block getter, target CID, receipt, prepared transaction and owned
+  nonce marker. It MUST authenticate the nonce's scope/bytes against the actual
+  request and verify the complete closure. The caller authenticates identity,
+  excludes concurrent GC, and supplies a stable replay domain. Ref readback is
+  not a witness, anti-rollback protection or cross-store atomicity."
+  [dir staging-root tool ref-name expected build! verify!]
+  (when-not (and (string? ref-name) (seq ref-name) (fn? build!) (fn? verify!))
+    (fail! :invalid-receipt-publication "invalid governed receipt adapter options"))
+  (when (some? expected) (validate-cids! [expected]))
+  (let [ref-store (refs/open-ref-store dir)]
+    {:publish! (fn [{:keys [receipt prepared nonce] :as input}]
+                 (when-not (and (map? input) (= #{:receipt :prepared :nonce} (set (keys input)))
+                                (map? receipt) (map? prepared) (map? nonce)
+                                (= #{:ref-name :marker-cid :marker :bytes} (set (keys nonce))))
+                   (fail! :invalid-receipt-publication "invalid governed receipt input"))
+                 (let [owned-nonce (update nonce :bytes owned-bytes)
+                       adapter (atomic-stream-receipt-publication-adapter
+                                 dir staging-root tool ref-name expected build!
+                                 (fn [get-block cid r p] (verify! get-block cid r p owned-nonce))
+                                 owned-nonce)]
+                   ((:publish! adapter) {:receipt receipt :prepared prepared})))
+     :read-ref! (fn [] (:cid (contract/-read-ref ref-store ref-name)))
+     :read-nonce-ref! (fn [nonce-ref] (contract/-read-ref ref-store nonce-ref))}))
+
 (defn open-transaction
   "Create a bounded, synchronous write overlay for a Prolly operation.
 
