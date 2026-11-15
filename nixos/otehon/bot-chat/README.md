@@ -1,5 +1,36 @@
 # Itonami Agent conversation service (Otehon)
 
+## Private mail aliases (AWAI-328)
+
+The same independent owner-authenticated Agent service exposes exactly
+`POST /v1/mail/aliases/list`, `/issue`, `/stop`. Each is a distinct browser
+operation with fresh canonical consent. No automatic read or app-origin API is
+introduced. `mailAliasBindings` in the digest-pinned owner service config must
+explicitly list `{botId, principalId, did, epoch, actions, signature}`. Principal
+IDs are stable UUIDs; only Ed25519 did:key bindings are currently supported.
+`bindingStatement(binding)` supplies the exact UTF-8 signing bytes; signature is
+standard base64 Ed25519. Verify the statement using the existing identity signer
+and install the public binding in owner configuration. This does not create or
+export a signing key. A self-signed DID supplied by a request does not authorize
+a principal: owner configuration is also required. Missing/revoked/forged
+bindings fail closed. A replacement key needs a newly owner-approved binding
+and proof, retaining the principal ID and epoch advancement; did:key itself is
+not a mutable/rotatable identifier. No production bindings were provisioned by
+the synthetic tests.
+
+Issue requests bind an operation UUID and previous directory head. Addresses
+use independent 160-bit random local parts; private purpose/counterparty and
+binding data become encrypted Kotobase events over AwaiFS Pack/CAR. Stops append
+tombstones. Existing IDs/addresses are never reassigned; same request ID returns
+the saved result and refuses changed input. Stale heads refuse before writing.
+UI retains an uncertain issue UUID for explicit result checking. Reads recover
+from durable storage in a new process. This reuses the existing database crypto
+profile and host key custody below; it is not canonical-envelope E2EE or
+independent-node recovery qualification. Current addresses are **reserved**:
+no SMTP ingress/egress, Google MX changes, source-cron send authority or public
+fleet aliases are created. Stopped/expired addresses are refused by the alias
+selector; a future gateway must enforce these states at each delivery/send.
+
 AWAI-2808. The Agent owns conversation state. Browser persistence is not used.
 The database is the real pinned `kotobase-peer` CLJC engine over the existing
 Otehon AwaiFS Pack/CAR + WAL adapter. `vendor/sources.json` lists byte hashes,

@@ -98,3 +98,20 @@ Future names and any sequence rule require a separate owner decision; do not
 infer an era-based sequence or change package versions/runtime architecture IDs
 as a side effect of the codename. Record source metadata and deployed UI/image
 branding separately.
+
+## Private mail aliases (AWAI-328)
+
+Keep durable principal IDs, verified DID/key bindings, mailbox storage and public
+mail addresses separate. For awai.network, issue independent random aliases per
+purpose/counterparty, retain the same alias through replies and keep stopped
+aliases as permanent tombstones. Do not derive public addresses from profile
+names, DIDs or their hashes. Existing bot-* reservations are compatibility data,
+not live mailboxes or a grant. Keep the private mapping only in Agent-owned
+encrypted Kotobase/AwaiFS; never publish it in fleet artifacts, telemetry or
+Linear. Soshiki reads and mutations use fresh canonical broker consent to the
+independent owner-authenticated Agent service. Its digest-pinned owner config
+must explicitly bind principal/profile/DID/epoch/actions and a verified key
+possession signature. Browser/profile/model text cannot create that authority.
+Key rotation preserves the principal; replacing a did:key is a new key binding,
+not an in-place update to that DID. Address reservation/stop, SMTP routing,
+decryption and send grants are separate states and acceptance claims.

@@ -1,6 +1,8 @@
 // Quoted dictionary keys survive advanced property renaming. UI copy excludes imported content.
 export const UI_COPY = {
   "ja": {
+    "mailLegacyAddress": "旧固定アドレスの予約",
+    "mailManage": "メールを管理", "mailIdentity": "主体ID・DID", "mailNewAlias": "新しいアドレス", "mailPurpose": "用途（必須）", "mailCounterparty": "相手・サービス（必須）", "mailIssue": "アドレスを発行", "mailCheckIssue": "発行結果を再確認", "mailStop": "停止", "mailConfirmStop": "このアドレスを停止", "mailCancel": "キャンセル", "mailStopped": "停止済み", "mailExpired": "期限切れ", "mailBindingRequired": "主体ID・DIDの登録が必要です。", "mailReloadRequired": "更新されています。メールを管理から読み直してください。", "mailAliasUnavailable": "結果を確認できません。接続または発行結果を再確認してください。",
     "botMail": "Botメール", "mailAddress": "メールアドレス", "mailReservedCount": "登録予約 {count}件", "mailRoutingPending": "配送接続待ち", "mailKeysPending": "鍵登録待ち", "mailSendNotGranted": "送信未許可", "mailGatewayGoogle": "現在のMX：Google Workspace。既存メールの経路は維持しています。",
     "verifiedWorkCount": "検証済み成果 {count}",
     "goalActivity": "Goalへの活動", "controllerConnected": "接続中", "proposalCount": "{count} 成果案", "proposalToday": "{count} 成果案 · 本日 {today}/4", "executionDetails": "実行情報", "newStateHistory": "新しい保存領域。過去の会話は未復元です。", "proposalNotOutcome": "成果案の保存件数。Goal達成度は未計測です。",
@@ -173,6 +175,8 @@ export const UI_COPY = {
     "importedProfiles": "Bot登録を取り込む"
   },
   "en": {
+    "mailLegacyAddress": "Legacy fixed-address reservation",
+    "mailManage": "Manage mail", "mailIdentity": "Principal ID and DID", "mailNewAlias": "New address", "mailPurpose": "Purpose (required)", "mailCounterparty": "Person or service (required)", "mailIssue": "Issue address", "mailCheckIssue": "Check issuance result", "mailStop": "Stop", "mailConfirmStop": "Stop this address", "mailCancel": "Cancel", "mailStopped": "Stopped", "mailExpired": "Expired", "mailBindingRequired": "Register the principal ID and DID first.", "mailReloadRequired": "The directory changed. Choose Manage mail to reload.", "mailAliasUnavailable": "Result unconfirmed. Check the connection or issuance result.",
     "botMail": "Bot mail", "mailAddress": "Email address", "mailReservedCount": "{count} reserved addresses", "mailRoutingPending": "Routing not connected", "mailKeysPending": "Key enrollment pending", "mailSendNotGranted": "Sending not granted", "mailGatewayGoogle": "Current MX: Google Workspace. Existing mail routes are preserved.",
     "verifiedWorkCount": "Verified results {count}",
     "goalActivity": "Goal activity", "controllerConnected": "Connected", "proposalCount": "{count} proposals", "proposalToday": "{count} proposals · today {today}/4", "executionDetails": "Execution details", "newStateHistory": "New state epoch. Legacy conversations are unavailable.", "proposalNotOutcome": "Counts saved proposals. Goal outcomes are unmeasured.",

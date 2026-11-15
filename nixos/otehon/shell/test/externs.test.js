@@ -13,6 +13,7 @@ const externsPath = path.join(root, "externs/otehon-shell.js");
 // device binding) keep the original spelling. That mismatch boots in dev
 // and fails in release, so this test guards the release-only behavior.
 const CONTRACT_KEYS = [
+  "aliasOperations", "MAIL_ORIGIN", "aliasId", "aliases", "backend", "basis", "counterparty", "engine", "epoch", "headCid", "principalId", "routing",
   "schema", "target", "profile", "entry", "operations",
   "adapter", "version",
   "capability", "service", "operation", "consent", "endpoint",

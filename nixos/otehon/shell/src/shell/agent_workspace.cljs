@@ -1,5 +1,5 @@
 (ns shell.agent-workspace
- (:require ["react" :refer [useState useEffect]] [shell.ui-copy :as ui] [shell.bot-chat :as chat]
+ (:require ["react" :refer [useState useEffect]] [shell.ui-copy :as ui] [shell.bot-chat :as chat] [shell.mail-progress :as mail]
   ["../agent-directory.js" :refer [directoryRows directoryState]]
   ["../agent-ui-state.js" :refer [readAgentSelection chooseAgent subscribeAgentSelection]]))
 (defn panel [bots presence catalog-sha stale? now locale]
@@ -30,5 +30,5 @@
        [:small (:repository bot)]]])]
     (when (< (count (:rows result)) (:total result)) [:button.secondary {:type "button" :on-click #(set-limit (+ limit 20))} (ui/t locale :showMore)])]
    [:section.agent-workspace-conversation {:aria-label (ui/t locale :conversation)}
-    (if selected [:<> [:h3 (:name selected)] ^{:key (:id selected)} [:f> chat/panel selected locale]]
+    (if selected [:<> [:h3 (:name selected)] ^{:key (str "mail:" (:id selected))} [:f> mail/manager (:id selected) locale] ^{:key (:id selected)} [:f> chat/panel selected locale]]
      [:div.fleet-empty [:span {:aria-hidden true} "◎"] [:strong (ui/t locale :selectAgent)]])]]))

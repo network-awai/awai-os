@@ -26,12 +26,13 @@
   {:seal (fn [bytes] (let [n (byte-array 12)] (.nextBytes (SecureRandom.) n) (ipld/encode {"v" 1 "n" n "c" (crypt Cipher/ENCRYPT_MODE n bytes)})))
    :open (fn [bytes] (let [e (ipld/decode bytes)] (when-not (= 1 (get e "v")) (throw (ex-info "unsupported private database envelope" {}))) (crypt Cipher/DECRYPT_MODE (byte-array (get e "n")) (byte-array (get e "c")))))
    :blind (fn [s] (let [m (Mac/getInstance "HmacSHA256")] (.init m (SecretKeySpec. key "HmacSHA256")) (apply str (map #(format "%02x" (bit-and 255 %)) (.doFinal m (.getBytes s "UTF-8"))))))}))
-(defn operation! [root {:keys [op thread events]}]
+(defn operation! [root {:keys [op thread events basis] :as request}]
  (when-not (and (string? root) (.isAbsolute (io/file root)) (string? thread) (re-matches #"[a-f0-9]{64}" thread) (contains? #{"history" "append"} op)) (throw (ex-info "invalid database operation" {})))
  (private-dir! root)
  (let [key (db-key! root) parent (str root "/threads") _ (private-dir! parent) directory (str parent "/" thread)
        _ (when-not (.exists (io/file directory)) (store/init! directory))
        recovered (store/read-store directory) head (get (:state recovered) "itonami.chat/kotobase-head")
+       _ (when (and (contains? request :basis) (not= basis head)) (throw (ex-info "database basis changed" {})))
        handle (pack/recover directory) staged (atom {})
        get-block (fn [cid] (or (get @staged cid) (pack/read-data handle (str "kotobase/" cid))))
        put-block (fn [cid bytes] (when-not (= cid (ipld/cid bytes)) (throw (ex-info "Kotobase block CID mismatch" {}))) (pack/put-data! directory (str "kotobase/" cid) bytes) (swap! staged assoc cid bytes) cid)

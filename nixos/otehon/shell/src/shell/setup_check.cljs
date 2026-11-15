@@ -4,11 +4,18 @@
             [shell.setup :refer [qr-code]]
             [shell.bot-chat :as bot-chat]
             [shell.agent-workspace :as workspace]
+            [shell.mail-progress :as mail]
+            ["../mail-aliases.js" :refer [validateAliases]]
             [shell.fleet-circles :as circles]))
 
 ;; Exercise the actual component and npm import after advanced compilation.
 ;; No relay, account, signature or network operation is needed to render a QR.
 (defn main []
+  (doseq [[locale expected] [["ja" "メールを管理"] ["en" "Manage mail"]]]
+   (let [html (renderToStaticMarkup (r/as-element [:f> mail/manager "profile:fixture" locale]))]
+    (when-not (.includes html expected) (throw (js/Error. "mail-manager-render-failed")))))
+  (let [value (js/JSON.parse "{\"schema\":\"itonami.mail-alias-result.v1\",\"botId\":\"profile:fixture\",\"principalId\":\"10000000-0000-4000-8000-000000000000\",\"did\":\"did:key:z6MkrJVnaZkeFzdQyT6c4k7YVQBgYzG5wJE9G4o5eFssEUYh\",\"epoch\":0,\"routing\":\"not-provisioned\",\"basis\":null,\"store\":{\"owner\":\"itonami-agent\",\"readback\":true,\"engine\":\"kotobase-peer\",\"backend\":\"awai-fs-otehon-pack\",\"headCid\":null},\"aliases\":[]}")]
+   (validateAliases value "profile:fixture"))
   (doseq [locale ["ja" "en"]]
    (let [html (renderToStaticMarkup (r/as-element [:f> workspace/panel (mapv (fn [i] {:id (str "profile:sample-" i) :name (str "sample-" i) :repository "org/app" :configured true :state "waiting" :jobs [{:configured true :state "waiting" :sourceObservedAt (.toISOString (js/Date.))}]}) (range 21)) nil "catalog" false (js/Date.now) locale]))]
     (when-not (and (.includes html "sample") (.includes html "agent-picker-row") (.includes html (if (= locale "en") "Show more" "もっと見る"))) (throw (js/Error. "agent-picker-render-failed")))))

@@ -7,6 +7,7 @@ import {infer} from './inference.mjs';
 import {presenceReporter} from './presence.mjs';
 import {peerGrant,historyGrant,peerMetadata,authorizePeer,checkPeerAdmission} from './peer.mjs';
 import {scopes,sessionRows,recordSession,validSession} from './sessions.mjs';
+import {aliases} from './mail-aliases.mjs';
 export function handler(cfg,{db=database,execute=infer,loadBots,onProcess=()=>{},checkAdmission=checkPeerAdmission}={}){
  const active=new Set();
  return async(req,res)=>{
@@ -17,13 +18,18 @@ export function handler(cfg,{db=database,execute=infer,loadBots,onProcess=()=>{}
   if(req.method==='OPTIONS'){res.writeHead(204);return res.end();}
   const owner=req.headers['tailscale-user-login'];
   if(typeof owner!=='string'||owner!==cfg.ownerLogin)return reply(403,{error:'owner-identity-required'});
-  if(req.method!=='POST'||!['/v1/bot-chat/history','/v1/bot-chat/turn','/v1/bot-chat/sessions'].includes(req.url)||req.headers['content-type']!=='application/json')return reply(404,{error:'unsupported-operation'});
+  if(req.method!=='POST'||!['/v1/bot-chat/history','/v1/bot-chat/turn','/v1/bot-chat/sessions','/v1/mail/aliases/list','/v1/mail/aliases/issue','/v1/mail/aliases/stop'].includes(req.url)||req.headers['content-type']!=='application/json')return reply(404,{error:'unsupported-operation'});
   let request;try{let body='';for await(const chunk of req){body+=chunk;if(body.length>40000)throw Error();}request=JSON.parse(body);}catch{return reply(400,{error:'invalid-request'});}
   if(!request||typeof request!=='object'||Array.isArray(request))return reply(400,{error:'invalid-request'});
   if(!/^profile:[\w.-]+$/.test(request.botId??''))return reply(400,{error:'invalid-bot'});
   const sessionId=request.sessionId??'default';if(!validSession(sessionId))return reply(400,{error:'invalid-session'});
   let bot,bots;try{bots=await loadBots();bot=bots.find(b=>b.id===request.botId);}catch{return reply(503,{error:'catalog-unavailable'});}
   if(!bot)return reply(404,{error:'bot-not-registered'});
+  if(req.url.startsWith('/v1/mail/aliases/')){
+   const action=req.url.split('/').at(-1);if(request.action!==action)return reply(400,{error:'invalid-mail-action'});
+   const scope='mail:'+bot.id;if(active.has(scope))return reply(409,{error:'mail-directory-busy'});
+   active.add(scope);try{return reply(200,await aliases(cfg,request,{db}));}catch(e){const error=['mail-binding-required','mail-operation-not-granted','mail-basis-changed','mail-request-conflict','invalid-mail-request','mail-alias-not-found','mail-directory-limit'].includes(e.message)?e.message:'mail-storage-unconfirmed';return reply(error==='mail-binding-required'||error==='mail-operation-not-granted'?403:409,{error});}finally{active.delete(scope);}
+  }
   try{
    const candidate=historyGrant(cfg,sessionId),grant=candidate?.participants.some(p=>p['bot-id']===bot.id)?candidate:null;
    const canonicalBotId=grant?.participants[0]['bot-id']??bot.id;
