@@ -52,6 +52,23 @@ class Console(unittest.TestCase):
         calls = self.run_ui(['1', '1'])
         self.assertIn(('INSTALL', ('ticket', 'HARDWARE-ID', 'ERASE')), calls)
 
+    def test_disconnect_before_confirmation_exits_without_install(self):
+        for inputs in ([EOFError()], ['1', EOFError()]):
+            calls = []
+            def rpc(op, *args):
+                calls.append(op)
+                return {'STATUS': {'phase': 'idle'},
+                        'LIST': {'devices': [self.row], 'rawBytes': 100},
+                        'SELECT': {'target': self.row, 'ticket': 'ticket'}}[op]
+            with tempfile.TemporaryDirectory() as temp:
+                info = Path(temp) / 'info.json'
+                info.write_text(json.dumps({'version':'test','buildId':'a'*64,'nixos':'test','nix':'test'}))
+                with patch.dict(c.os.environ, {'OTEHON_INSTALLER_INFO': str(info)}), \
+                     patch.object(c, 'rpc', side_effect=rpc), \
+                     patch('builtins.input', side_effect=inputs), patch('sys.stdout', new=io.StringIO()):
+                    c.main()
+            self.assertNotIn('INSTALL', calls)
+
     def run_ui(self, inputs):
         calls = []
         def rpc(op, *args):

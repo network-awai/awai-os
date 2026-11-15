@@ -199,8 +199,12 @@ def main():
             header(info, '確認が必要です')
             print(safe(str(error), 400))
             try: input('\nEnter で再確認: ')
-            except (EOFError, KeyboardInterrupt): time.sleep(2)
+            except EOFError: return
+            except KeyboardInterrupt: time.sleep(2)
         except EOFError:
-            time.sleep(2)
+            # A disconnected terminal cannot approve anything. Exit rather than
+            # leaving a detached remote session looping indefinitely; systemd
+            # will restart the physical console if its terminal disappears.
+            return
 
 if __name__ == '__main__': main()
