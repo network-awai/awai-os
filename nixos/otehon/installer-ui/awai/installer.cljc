@@ -144,6 +144,9 @@
           (#{"failed" "cancelled"} phase) (do
             (when (:writeStarted status) (line! main "保存先は一部変更された可能性があります。正常起動できるとは限りません。"))
             (line! main (str "診断: " (:error status "なし")))
+            (when-let [d (:diagnostic status)]
+              (line! main (str "失敗した処理: " (:operation d) " / " (:errnoName d) " " (:errno d)))
+              (line! main (if (:writeStarted d) "書込み開始済みです。導入完了として起動しないでください。" "今回の処理では書込みを開始していません。")))
             (.add footer (button "保存先から確認し直す" list! false) BorderLayout/EAST)))))
     (when error (gap! main 16) (line! main (str "確認: " error)))
     (.add content sidebar BorderLayout/WEST) (.add content (doto (JScrollPane. main) (.setBorder (BorderFactory/createEmptyBorder))) BorderLayout/CENTER)
