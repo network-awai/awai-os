@@ -119,7 +119,7 @@ class Broker:
             elif previous.get('writeStarted') and previous.get('phase') != 'complete':
                 self.state={'phase':'failed','writeStarted':True,'done':0,'total':0,'message':'前の処理が途中で停止しました。保存先は一部変更された可能性があります。','error':'interrupted-write'}
     def snapshot(self):
-        with self.lock: return {**self.state,'elapsed':int(time.monotonic()-self.started),'lastUpdateAgo':int(time.monotonic()-self.state.get('updated',self.started))}
+        with self.lock: return {**self.state,'readOnly':self.read_only,'elapsed':int(time.monotonic()-self.started),'lastUpdateAgo':int(time.monotonic()-self.state.get('updated',self.started))}
     def update(self, **fields):
         with self.lock:
             self.state.update(fields); self.state['updated']=time.monotonic()
