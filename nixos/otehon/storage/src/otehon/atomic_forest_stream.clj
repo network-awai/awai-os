@@ -86,6 +86,10 @@
                                (when (some #{(catalog/cid-bytes cid)} (:cids handle))
                                  (forest/get-block-from handle (catalog/cid-bytes cid) #(frame-read path %1 %2))))
                              (:archives @state)))
+          get-checked-existing (fn [cid]
+                                 (if-some [bytes (get-existing! cid)]
+                                   (:bytes (writer/validate-ipld-block {:cid cid :bytes bytes}))
+                                   nil))
           ports {:put! (fn [cid bytes]
                          (locking gate
                            (require-open!)
@@ -106,7 +110,7 @@
                              (try (catalog/cid-bytes cid)
                                   (if-let [b (some #(when (= cid (:cid %)) %) (:pending @state))]
                                     (aclone ^bytes (:bytes b))
-                                    (or (get-staged cid) (get-existing! cid)))
+                                    (or (get-staged cid) (get-checked-existing cid)))
                                   (catch Exception e (swap! state assoc :phase :failed) (throw e)))))}]
       (locking gate
         (try
@@ -123,7 +127,7 @@
                           (mapv #(select-keys % [:path :root-cid]) archives) (:generation root)
                           ref-name expected (:target result)
                           (fn [candidate cid]
-                            (verify! (fn [requested] (or (candidate requested) (get-existing! requested))) cid)))]
+                            (verify! (fn [requested] (or (candidate requested) (get-checked-existing requested))) cid)))]
                 (when-not (:published? ack) (fail! :stale-ref "ref changed before publication"))
                 (:value result))))
           (finally (swap! state assoc :phase :closed :pending [] :pending-bytes 0)))))))

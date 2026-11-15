@@ -1,5 +1,6 @@
 ;; Actual hosted atomic staged stream, more than one 17 MiB archive.
 (require '[awai.fs.car :as car] '[otehon.storage :as store] '[otehon.kotobase-forest-blocks :as blocks]
+         '[otehon.atomic-forest-stream :as stream]
          '[kotobase.storage.core :as contract] '[clojure.edn :as edn] '[clojure.string :as str])
 (import '[java.security MessageDigest] '[java.util Arrays Random])
 (defn check! [v msg] (when-not v (throw (ex-info msg {}))))
@@ -25,6 +26,24 @@
                       (and (= cid target) (every? (fn [{:keys [cid bytes]}] (Arrays/equals ^bytes bytes ^bytes (get-block cid))) batch)))
             input {:receipt {:fixture true} :prepared {:fixture true}}
             bad (blocks/atomic-stream-receipt-publication-adapter dir stage tool "db" nil build! (fn [& _] false))]
+       (let [external (:cid (first batch)) damaged (byte-array [1 2 3])
+             existing (fn [_] damaged)
+             probe (fn [ports] ((:get-fn ports) external) {:target target :value target})
+             staged (fn [ports] ((:put! ports) target (:bytes (last batch))) {:target target :value target})]
+        (check! (= :cid-mismatch (error #(stream/publish! dir (str stage "/bad-build") tool "db" nil existing probe (fn [& _] true)))) "bad existing block accepted during build")
+        (check! (= before (store/read-store dir)) "bad build changed root")
+        (check! (= :invalid-ipld-block (error #(stream/publish! dir (str stage "/bad-type") tool "db" nil (fn [_] false) probe (fn [& _] true)))) "invalid callback result accepted")
+        (check! (= before (store/read-store dir)) "bad callback type changed root")
+        (check! (= :cid-mismatch (error #(stream/publish! dir (str stage "/bad-closure") tool "db" nil existing staged (fn [get-block _] (get-block external) true)))) "bad existing block accepted during closure")
+        (check! (= before (store/read-store dir)) "bad closure changed root")
+        (let [original (:bytes (first batch))
+              valid-probe (fn [ports]
+                            (let [got ((:get-fn ports) external)]
+                              (check! (Arrays/equals ^bytes original ^bytes got) "valid existing block rejected")
+                              (check! (not (identical? original got)) "existing callback buffer escaped"))
+                            (throw (ex-info "probe complete" {:type :probe-complete})))]
+         (check! (= :probe-complete (error #(stream/publish! dir (str stage "/good-existing") tool "db" nil (fn [_] original) valid-probe (fn [& _] true)))) "valid fallback probe failed")
+         (check! (= before (store/read-store dir)) "valid probe changed root")))
        (check! (= :closure-rejected (error #((:publish! bad) input))) "closure refusal missing")
        (check! (= before (store/read-store dir)) "failed closure changed root")
        (check! (= :transaction-closed (error #((:get-fn @leaked) target))) "scope remained open")
