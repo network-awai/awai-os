@@ -1,0 +1,94 @@
+{
+  "schema": "awai.otehon.usb-media.v1",
+  "version": "0.7.1",
+  "architecture": "x86_64",
+  "targetHardware": "Ryzen 5 6600H; physical acceptance unobserved",
+  "sourceRevision": "8212f978e071dc12d834255aaa52bc0be7e8c4d2",
+  "ciCheckoutRevision": "925f9e07aa7ccb5615e28a4427e8c029c61184bb",
+  "sourceTree": "1320e4c330100b7a8e3163019b433a38f0f1f726",
+  "mergeCommit": "82c6575852d44ee5d8ba8ec207511eac77ce10c2",
+  "buildId": "7e5cabf799097056fdc3d0a07337909c704ac28cfa11ec4311aa50040aa39cfe",
+  "nixos": "26.05pre-git",
+  "nix": "2.34.8",
+  "qualifiedCiRun": "https://github.com/network-awai/awai-os/actions/runs/43605076927",
+  "artifactId": 14119285788,
+  "artifactZipSha256": "197693ed67076fca835057c5ed8e37b6886b14eda0e252e9a2f3e37db4f3588b",
+  "verificationArtifactId": 14118776320,
+  "writerSha256": "c9436228cd548bc7e3ba6ea5f81ace555509a71882b6be71d99daae4f1ede430",
+  "medium": {
+    "model": "KIOXIA TransMemory",
+    "serialSuffix": "5987CBC4",
+    "capacityBytes": 61949214720
+  },
+  "imageBytes": 8495337472,
+  "isoSha256": "300692e239e4b94554ca0ca32b305a40262033d24612b302cda4767abf069bdc",
+  "usbSha256": "300692e239e4b94554ca0ca32b305a40262033d24612b302cda4767abf069bdc",
+  "status": "readback-verified-and-ejected",
+  "readOnlyResult": "media-matches-qualified-iso",
+  "externalDiskAbsenceRechecked": true,
+  "requestResetToCheck": true,
+  "originalWriterLogSha256": "a59a386995d27e9fcf6a5a55b6a3f87456bf2618fe520f64774e3a5616aa57fc",
+  "originalWriteAttempt": {
+    "startedAt": "2026-11-14T15:19:17.836821+00:00",
+    "scope": "Original invocation interrupted; no success event. Host reboot/overnight waiting not allocated as active writer time.",
+    "outcome": "interrupted-during-readback-before-host-reboot",
+    "lastReadbackBytes": 4026531840,
+    "writeBytes": 8495337472,
+    "writeSynchronizationCompleted": true,
+    "lastProgressLogMtime": 1794670346.1784015,
+    "helperCompletedAt": "unknown",
+    "finishedAt": "unknown",
+    "elapsedSeconds": "unknown"
+  },
+  "readOnlyLogSha256": "a34896cb3f03bdb6b04457f2b23f4c040d0ec460e2eac509cea4b0dacc8a3365",
+  "readOnlyWindow": {
+    "startedAt": "2026-11-15T00:09:56+00:00",
+    "startSource": "ps process creation time, one-second precision; excludes earlier authentication wait",
+    "finishedAt": "2026-11-15T00:17:00.022118+00:00",
+    "scope": "Full raw USB read-only SHA256 verification; no write path",
+    "finishSource": "final verification log mtime",
+    "elapsedSeconds": 424.022,
+    "timingPrecision": "start timestamp has one-second precision"
+  },
+  "readOnlyVerifierSha256": "579f775a681ae30066c8074ca5543731deb76cf2d73ffb6934bb1b472e08ed85",
+  "eject": {
+    "status": "ejected",
+    "serialSuffix": "5987CBC4",
+    "capacityBytes": 61949214720,
+    "externalDiskAbsenceRechecked": true,
+    "ejectedAt": "2026-11-15T00:17:15.501399+00:00"
+  },
+  "download": {
+    "startedAt": "2026-11-14T15:00:35.072162Z",
+    "finishedAt": "2026-11-14T15:19:00.831447Z",
+    "elapsedSeconds": 1105.759285,
+    "isoDigestVerified": true,
+    "zipDigestVerified": true
+  },
+  "vmAcceptance": {
+    "graphicalChecksPassed": 6,
+    "physicalConsoleChecksPassed": 6,
+    "fullReadback": true,
+    "uefiEntry": true,
+    "usbDetachedFirstBoot": true,
+    "coldRestartUnlock": true,
+    "textRebootObserved": true
+  },
+  "boundaries": {
+    "physicalUsbWritten": true,
+    "physicalPcBootVerified": false,
+    "physicalPcInternalDiskInstalled": false,
+    "productionUpdateEnrolled": false,
+    "nativeQualified": false,
+    "physicalPowerLossTested": false
+  },
+  "tracking": "https://linear.app/kotobalabs/issue/AWAI-450",
+  "usage": {
+    "provider": "unknown",
+    "model": "unknown",
+    "settings": "unknown",
+    "tokens": "unknown",
+    "cost": "unknown",
+    "activeWaitingSplit": "unknown"
+  }
+}
