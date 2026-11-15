@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import socket
+import sys
 import tempfile
 import threading
 import unittest
@@ -54,14 +55,21 @@ class Diagnostics(unittest.TestCase):
             self.assertEqual(json.loads(output.getvalue())['error'], 'diagnostics-unavailable')
 
     def test_journal_transfer_is_bounded_and_fixed_command(self):
-        class Result: stdout = b'x' * (d.MAX_LOG + 1)
-        with patch.object(d.subprocess, 'run', return_value=Result()) as run:
+        with patch.object(d, 'read_bounded', return_value=(b'x' * d.MAX_LOG, True)) as run:
             value = d.journal('broker')
         self.assertEqual(len(value['text']), d.MAX_LOG)
         self.assertTrue(value['truncated'])
         self.assertIn('--unit=otehon-install-broker.service', run.call_args.args[0])
-        with patch.object(d.subprocess, 'run', return_value=Result()) as run:
+        with patch.object(d, 'read_bounded', return_value=(b'x', False)) as run:
             d.journal('kernel')
         self.assertIn('--dmesg', run.call_args.args[0])
         self.assertIn('--priority=warning', run.call_args.args[0])
         with self.assertRaises(ValueError): d.journal('other-service')
+
+    def test_subprocess_output_is_bounded_before_capture(self):
+        output, truncated = d.read_bounded([sys.executable, '-c', 'import sys; sys.stdout.write("x" * 200000)'])
+        self.assertTrue(truncated)
+        self.assertEqual(len(output), d.MAX_LOG)
+        output, truncated = d.read_bounded([sys.executable, '-c', 'print("ok")'])
+        self.assertFalse(truncated)
+        self.assertEqual(output, b'ok\n')

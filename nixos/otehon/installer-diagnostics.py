@@ -6,9 +6,11 @@ host identity are the transport's responsibility; it never grants write access.
 import json
 import os
 from pathlib import Path
+import selectors
 import socket
 import subprocess
 import sys
+import time
 
 SOCKET = '/run/otehon-install/control.sock'
 MAX_RESPONSE = 262144
@@ -32,6 +34,39 @@ def broker(op):
     return value['value']
 
 
+def read_bounded(command):
+    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    selector = selectors.DefaultSelector()
+    try:
+        selector.register(proc.stdout, selectors.EVENT_READ)
+        data = bytearray()
+        deadline = time.monotonic() + 10
+        truncated = False
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0 or not selector.select(remaining):
+                raise subprocess.TimeoutExpired(command, 10)
+            chunk = os.read(proc.stdout.fileno(), min(32768, MAX_LOG + 1 - len(data)))
+            if not chunk:
+                break
+            data.extend(chunk)
+            if len(data) > MAX_LOG:
+                truncated = True
+                break
+        if truncated:
+            proc.kill()
+        status = proc.wait(timeout=max(0.1, deadline - time.monotonic()))
+        if status and not truncated:
+            raise subprocess.CalledProcessError(status, command)
+        return bytes(data[:MAX_LOG]), truncated
+    finally:
+        selector.close()
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait()
+        proc.stdout.close()
+
+
 def journal(source):
     if source not in ('broker', 'kernel'):
         raise ValueError('unsupported journal source')
@@ -39,14 +74,13 @@ def journal(source):
     command += (['--unit=otehon-install-broker.service'] if source == 'broker'
                 else ['--dmesg', '--priority=warning'])
     try:
-        output = subprocess.run(command, check=True, stdout=subprocess.PIPE,
-                                stderr=subprocess.DEVNULL, timeout=10).stdout
+        output, truncated = read_bounded(command)
     except (OSError, subprocess.SubprocessError):
         return {'available': False, 'text': '', 'truncated': False}
     # Escape control characters in the JSON encoder; bound transfer even when
     # a device error or journal line contains an unexpectedly long string.
-    return {'available': True, 'text': output[-MAX_LOG:].decode('utf-8', 'replace'),
-            'truncated': len(output) > MAX_LOG}
+    return {'available': True, 'text': output.decode('utf-8', 'replace'),
+            'truncated': truncated}
 
 
 def main():
