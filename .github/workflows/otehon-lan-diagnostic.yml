@@ -9,6 +9,11 @@ on:
       - .github/workflows/otehon-lan-diagnostic.yml
   workflow_dispatch:
     inputs:
+      recover_candidate:
+        description: Recover only artifacts identical to pinned successful VM proof
+        required: false
+        default: false
+        type: boolean
       install_candidate:
         description: Validate LAN NVMe installation and build its operator-keyed candidate
         required: false
@@ -20,17 +25,23 @@ on:
         type: string
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: otehon-lan-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
+  recover-qualified-candidate:
+    if: github.event_name == 'workflow_dispatch' && inputs.recover_candidate
+    uses: ./.github/workflows/otehon-lan-recover.yml
+    with:
+      operator_public_key: ${{ inputs.operator_public_key }}
   lan-install-candidate:
-    if: github.event_name == 'workflow_dispatch' && inputs.install_candidate
+    if: github.event_name == 'workflow_dispatch' && inputs.install_candidate && !inputs.recover_candidate
     uses: ./.github/workflows/otehon-lan-install.yml
     with:
       operator_public_key: ${{ inputs.operator_public_key }}
   lan-diagnostic-vm:
-    if: github.event_name != 'workflow_dispatch' || !inputs.install_candidate
+    if: github.event_name != 'workflow_dispatch' || (!inputs.install_candidate && !inputs.recover_candidate)
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
