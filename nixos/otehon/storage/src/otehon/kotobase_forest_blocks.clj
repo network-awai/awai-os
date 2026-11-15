@@ -152,15 +152,38 @@
     (-get-blocks [_ cids] (fetch dir cache cids))
     contract/IBackendCapabilities
     (-capabilities [_] #{:immutable-blocks :cid-addressed-read :packed-blocks :range-read :batch-get :batch-put}))))
+(defn read-bound-nonce-ref!
+  "Read a nonce using its own binding under a single captured local root.
+  Does not require a receipt ref to exist and does not authenticate the root."
+  [dir nonce-ref]
+  (when-not (and (string? nonce-ref) (str/starts-with? nonce-ref "nonce/v1/"))
+    (fail! :invalid-nonce "invalid nonce reference"))
+  (catalog/cid-bytes (subs nonce-ref (count "nonce/v1/")))
+  (let [snap (snapshot dir) basis (:root snap)
+        cid (get (:state snap) (str "awai.kotobase-ref/" nonce-ref))]
+    (when (and (nil? cid) (contains? (:state snap) (str "awai.kotobase-group-binding/" nonce-ref)))
+      (fail! :group-binding-conflict "binding exists for an absent nonce ref"))
+    (when cid
+      (catalog/cid-bytes cid)
+      (let [bound (catalog/recover-bound-ref dir nonce-ref)]
+        (when-not (and (= cid (:target bound)) (= basis (get-in bound [:handle :basis])))
+          (fail! :catalog-changed "nonce binding differs from captured root"))))
+    (when-not (= basis (:root (snapshot dir))) (fail! :catalog-changed "root changed during nonce read"))
+    (when cid {:cid cid :version (:generation basis)})))
+
 (defn open-bound-read-view
   "Open a read-only target/nonce/block view from one validated root/group.
 
   Ref and nonce lookups and block batches check the root before and after
-  access. A nonce ref is returned only if its marker block exists in this exact
-  group. The host must derive and authenticate the requested nonce scope and
+  access. The two-argument compatibility form requires the nonce marker in
+  the receipt group. With require-nonce-binding? true, the nonce has its own
+  binding and may belong to a different group under the same captured root;
+  legacy unbound nonce refs are rejected. The host must derive and authenticate the requested nonce scope and
   marker semantics, authenticate the root, and exclude file mutation and GC.
   This is not an independent witness, write/CAS port or filesystem snapshot."
-  [dir ref-name]
+  ([dir ref-name] (open-bound-read-view dir ref-name false))
+  ([dir ref-name require-nonce-binding?]
+  (when-not (boolean? require-nonce-binding?) (fail! :invalid-nonce "invalid nonce binding option"))
   (let [bound (catalog/recover-bound-ref dir ref-name)
         handle (:handle bound)
         basis (:basis handle)
@@ -188,12 +211,20 @@
                         (catalog/cid-bytes (subs nonce-ref (count "nonce/v1/")))
                         (check-root!)
                         (let [cid (get (:state snap) (str "awai.kotobase-ref/" nonce-ref))]
+                          (when (and require-nonce-binding? (nil? cid)
+                                     (contains? (:state snap) (str "awai.kotobase-group-binding/" nonce-ref)))
+                            (fail! :group-binding-conflict "binding exists for an absent nonce ref"))
                           (when cid
                             (catalog/cid-bytes cid)
-                            (when-not (catalog/get-group-block handle cid)
-                              (fail! :invalid-ipld-basis "nonce marker is outside bound group")))
+                            (if require-nonce-binding?
+                              (let [nonce-bound (catalog/recover-bound-ref dir nonce-ref)]
+                                (when-not (and (= cid (:target nonce-bound))
+                                               (= basis (get-in nonce-bound [:handle :basis])))
+                                  (fail! :catalog-changed "nonce binding differs from captured root")))
+                              (when-not (catalog/get-group-block handle cid)
+                                (fail! :invalid-ipld-basis "nonce marker is outside bound group"))))
                           (check-root!)
-                          (when cid {:cid cid :version (:generation basis)})))}))
+                          (when cid {:cid cid :version (:generation basis)})))})))
 
 (defn open-bound-block-store
   "Open the read-only block port of a strict bound view; see open-bound-read-view."
@@ -443,14 +474,9 @@
      :read-ref! (fn [] (if bind-group? (:target (catalog/recover-bound-ref dir ref-name))
                            (:cid (contract/-read-ref ref-store ref-name))))
      :read-nonce-ref! (fn [nonce-ref]
-                        (let [ref (contract/-read-ref ref-store nonce-ref)]
-                          (when (and bind-group? ref)
-                            (let [bound (catalog/recover-bound-ref dir ref-name)]
-                              (when-not (= (:version ref) (get-in bound [:handle :basis :generation]))
-                                (fail! :catalog-changed "root changed during nonce readback"))
-                              (when-not (catalog/get-group-block (:handle bound) (:cid ref))
-                                (fail! :invalid-ipld-basis "nonce marker missing from bound group"))))
-                          ref))})))
+                        (if bind-group?
+                          (read-bound-nonce-ref! dir nonce-ref)
+                          (contract/-read-ref ref-store nonce-ref)))})))
 
 (defn open-transaction
   "Create a bounded, synchronous write overlay for a Prolly operation.

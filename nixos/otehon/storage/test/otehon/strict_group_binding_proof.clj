@@ -22,7 +22,8 @@
         frame (last (get-in log [:value :frames]))]
     (assert (= :put-many (:op frame)))
     (assert (= #{"awai.ipld-forest-group/kotobase-blocks/z" "awai.kotobase-ref/receipt"
-                 "awai.kotobase-group-binding/receipt" (str "awai.kotobase-ref/" nonce-ref)}
+                 "awai.kotobase-group-binding/receipt" (str "awai.kotobase-ref/" nonce-ref)
+                 (str "awai.kotobase-group-binding/" nonce-ref)}
                (set (map first (get-in frame [:payload :puts]))))))
   (assert (= root (:target (catalog/recover-bound-ref dir "receipt"))))
   (assert (= :missing-group-binding (try (catalog/recover-bound-ref dir "legacy") nil (catch Exception e (:type (ex-data e))))))

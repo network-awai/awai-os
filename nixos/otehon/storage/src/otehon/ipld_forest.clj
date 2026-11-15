@@ -228,15 +228,20 @@
                               :basis-cid basis :archives (mapv :ref checked)})
         ref-key (str "awai.kotobase-ref/" ref-name)
         binding-key (str "awai.kotobase-group-binding/" ref-name)
+        nonce-binding-key (when nonce (str "awai.kotobase-group-binding/" (:ref-name nonce)))
         binding (pr-str {:format :awai.otehon-store/ref-group-v1 :group name :target target
-                         :catalog-sha256 (catalog-digest (pr-str group))})]
+                         :catalog-sha256 (catalog-digest (pr-str group))})
+        nonce-binding (when nonce (pr-str {:format :awai.otehon-store/ref-group-v1 :group name
+                                           :target (:marker-cid nonce)
+                                           :catalog-sha256 (catalog-digest (pr-str group))}))]
     (when-not (and (group-has-cid? opened basis) (group-has-cid? opened target)
                    (or (nil? nonce) (group-has-cid? opened (:marker-cid nonce))))
       (fail! :invalid-ipld-basis "basis, target or nonce marker is absent from archive group"))
     (store/compare-and-set-values! directory expected-generation ref-key expected-ref
       (cond-> [[(group-key name) (pr-str group)] [ref-key target]]
         nonce (conj [(str "awai.kotobase-ref/" (:ref-name nonce)) (:marker-cid nonce)])
-        bind-group? (conj [binding-key binding]))
+        bind-group? (conj [binding-key binding])
+        (and bind-group? nonce) (conj [nonce-binding-key nonce-binding]))
       (fn [dir state]
         (when (and (not bind-group?) (contains? state binding-key))
           (fail! :group-binding-required "bound ref requires bound publication"))
@@ -244,6 +249,8 @@
           (fail! :group-binding-conflict "binding exists for an absent ref"))
         (when (and nonce (contains? state (str "awai.kotobase-ref/" (:ref-name nonce))))
           (fail! :nonce-replayed "nonce reference already exists"))
+        (when (and nonce (contains? state nonce-binding-key))
+          (fail! :group-binding-conflict "binding exists for an absent nonce ref"))
         (when-let [existing (get state (group-key name))]
           (when-not (= existing (pr-str group))
             (fail! :group-conflict "existing group cannot be replaced")))

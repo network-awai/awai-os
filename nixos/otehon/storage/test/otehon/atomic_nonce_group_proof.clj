@@ -36,12 +36,14 @@
              adapter (blocks/atomic-stream-governed-receipt-adapter dir stage tool "receipt" nil receipt-build receipt-verify true)
              replay (blocks/atomic-stream-governed-receipt-adapter dir stage tool "receipt2" nil receipt-build receipt-verify true)
              input {:receipt {} :prepared {} :nonce prepared-nonce}]
+       (check! (nil? ((:read-nonce-ref! adapter) nonce-ref)) "unused nonce requires a receipt")
        (check! (= :invalid-receipt-publication (error #((:publish! adapter) (dissoc input :nonce)))) "missing nonce accepted")
        (check! (= :closure-rejected (error #((:publish! adapter) (assoc-in input [:nonce :marker] {:domain "wrong"})))) "wrong marker semantics accepted")
        (check! (= before (store/read-store dir)) "invalid governed input changed root")
        (check! (= target ((:publish! adapter) input)) "atomic receipt publication failed")
        (check! (= target ((:read-ref! adapter))) "adapter receipt ref missing")
        (check! (= (:cid marker) (:cid ((:read-nonce-ref! adapter) nonce-ref))) "adapter nonce ref missing")
+       (check! (= (:cid marker) (:target (catalog/recover-bound-ref dir nonce-ref))) "nonce binding missing")
        (let [view (blocks/open-bound-read-view dir "receipt")]
          (check! (= target ((:read-ref! view))) "view target mismatch")
          (check! (not (satisfies? contract/IRefStore (:blocks view))) "view advertises ref protocol")
@@ -68,17 +70,27 @@
              group (edn/read-string (get-in after [:state group-key]))]
         (check! (= 1 (count frames)) "expected one frame")
         (check! (= :put-many (:op (first frames))) "expected put-many")
-        (check! (= #{group-key "awai.kotobase-ref/receipt" "awai.kotobase-group-binding/receipt" (str "awai.kotobase-ref/" nonce-ref)} keys*) "group, receipt, binding and nonce not in one frame")
+        (check! (= #{group-key "awai.kotobase-ref/receipt" "awai.kotobase-group-binding/receipt" (str "awai.kotobase-ref/" nonce-ref) (str "awai.kotobase-group-binding/" nonce-ref)} keys*) "group, receipt, nonce and bindings not in one frame")
         (check! (<= 2 (count (:archives group))) "expected multiple Packs")
         (check! (= :nonce-replayed (error #((:publish! replay) input))) "replay accepted")
         (check! (= after (store/read-store dir)) "replay changed root")
+        (let [next-nonce {:ref-name (str "nonce/v1/" (:cid (first batch))) :marker-cid (:cid key-block)
+                          :marker {:domain "fixture"} :bytes (:bytes key-block)}
+              next-build (fn [ports _ _] (doseq [{:keys [cid bytes]} (conj batch key-block)] ((:put! ports) cid bytes)) target)
+              next-verify (fn [get-block cid _ _ n] (and (= target cid) (some? (get-block (:marker-cid n)))))
+              next-adapter (blocks/atomic-stream-governed-receipt-adapter dir stage tool "receipt-next" nil next-build next-verify true)]
+          (check! (= target ((:publish! next-adapter) {:receipt {} :prepared {} :nonce next-nonce})) "second group publish failed")
+          (check! (not= (:group (catalog/recover-bound-ref dir "receipt-next")) (:group (catalog/recover-bound-ref dir nonce-ref))) "test groups not distinct")
+          (check! (= (:cid marker) (:cid ((:read-nonce-ref! next-adapter) nonce-ref))) "prior group nonce not recovered"))
         (let [db (blocks/open-block-store dir stage tool)]
           (contract/-put-blocks! db [key-block])
           (let [foreign (str "nonce/v1/" (:cid marker))
                 refs (refs/open-ref-store dir)]
             (check! (:published? (contract/-compare-and-set-ref! refs foreign nil (:cid key-block))) "foreign ref setup failed")
             (let [view (blocks/open-bound-read-view dir "receipt")]
-              (check! (= :invalid-ipld-basis (error #((:read-nonce-ref! view) foreign))) "foreign marker accepted")))
+              (check! (= :invalid-ipld-basis (error #((:read-nonce-ref! view) foreign))) "foreign marker accepted"))
+            (let [view (blocks/open-bound-read-view dir "receipt" true)]
+              (check! (= :missing-group-binding (error #((:read-nonce-ref! view) foreign))) "unbound foreign marker accepted")))
           (let [view (blocks/open-bound-read-view dir "receipt") bound (:blocks view)]
             (check! (nil? (contract/get-block bound (:cid key-block))) "bound lookup searched another group")
             (check! (Arrays/equals ^bytes (:bytes key-block) ^bytes (contract/get-block db (:cid key-block))) "global control missing")
@@ -101,6 +113,8 @@
   (let [db (blocks/open-backend dir stage tool) bound (catalog/recover-bound-ref dir "receipt")]
    (check! (= target (:cid (contract/-read-ref db "receipt"))) "receipt ref missing")
    (check! (= (:cid marker) (:cid (contract/-read-ref db nonce-ref))) "nonce ref missing")
+   (check! (not= (:group bound) (:group (catalog/recover-bound-ref dir "receipt-next"))) "reopened groups not distinct")
+   (check! (= (:cid marker) (:cid (blocks/read-bound-nonce-ref! dir nonce-ref))) "reopened prior nonce missing")
    (doseq [{:keys [cid bytes]} (conj batch marker)]
     (check! (Arrays/equals ^bytes bytes ^bytes (catalog/get-group-block (:handle bound) cid)) "bound readback mismatch")
     (check! (Arrays/equals ^bytes bytes ^bytes (contract/get-block db cid)) "readback mismatch")))
