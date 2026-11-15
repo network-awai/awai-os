@@ -6,6 +6,7 @@ let
     b = importlib.util.module_from_spec(spec); spec.loader.exec_module(b)
     rows = [r for r in b.inventory() if r['path'] in ('/dev/vdb', '/dev/vdc')]
     assert len(rows) == 2
+    assert all(not r["ambiguous"] for r in rows), "fixture disks need real unique QEMU serials"
     if sys.argv[1] not in ('loop', 'raw-loop'):
         assert not any(r['used'] for r in rows), 'fixture must be invisible to root mount namespace'
     report = b.device_usage(rows)
@@ -36,7 +37,13 @@ let
 in pkgs.testers.runNixOSTest {
   name = "otehon-read-only-device-usage";
   nodes.machine = { ... }: {
-    virtualisation = { memorySize = 1024; emptyDiskImages = [ 64 64 ]; };
+    virtualisation = {
+      memorySize = 1024;
+      emptyDiskImages = [
+        { size = 64; driveConfig.deviceExtraOpts.serial = "USAGE-TARGET"; }
+        { size = 64; driveConfig.deviceExtraOpts.serial = "USAGE-DECOY"; }
+      ];
+    };
     boot.kernelModules = [ "loop" ];
     environment.systemPackages = [ pkgs.python3 pkgs.util-linux pkgs.e2fsprogs ];
     systemd.services.usage-mount-fixture = {
