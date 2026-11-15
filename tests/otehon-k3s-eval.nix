@@ -34,6 +34,7 @@ assert nodes.dan.services.k3s.serverAddr == "https://192.168.1.1:6443";
 assert nodes.jacob.services.k3s.nodeTaint != [ ];
 assert lib.elem "otehon-state.service" nodes.jacob.systemd.services.k3s.bindsTo;
 assert nodes.jacob.services.k3s.token == "";
+assert nodes.jacob.environment.sessionVariables.KUBECONFIG == "/var/lib/otehon/k3s/admin.yaml";
 assert nodes.jacob.networking.firewall.allowedTCPPorts == [ ];
 assert !(valid (bad { tokenFile = "/nix/store/public-token"; }));
 assert !(valid (bad { tokenFile = null; }));

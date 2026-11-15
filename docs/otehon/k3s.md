@@ -45,7 +45,8 @@ still applies. Missing keys or a missing/private-token failure block startup.
   Bot, schedule, admission/fence or unknown run is automatically migrated.
 - The separate K3s SQLite database, secrets and certificates live under
   `/var/lib/otehon/k3s` on the unlocked LUKS state volume. The kubeconfig is
-  root-only. Existing Bot/Circle etcd remains independent.
+  root-only at `/var/lib/otehon/k3s/admin.yaml`, on that same encrypted volume.
+  Existing Bot/Circle etcd remains independent.
 - Pinned K3s airgap images are provisioned into the actual encrypted data
   directory. Application images require separate pinning/provisioning. Default
   ingress, service load balancer, local storage and metrics server are disabled.

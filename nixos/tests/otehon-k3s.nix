@@ -20,7 +20,7 @@ let
     networking.interfaces.eth1.ipv4.addresses = lib.mkForce [{ address = addresses.${node}; prefixLength = 24; }];
     otehon.k3s.images = [ config.services.k3s.package.airgap-images image ];
     environment.systemPackages = with pkgs; [ kubectl jq cryptsetup ];
-    environment.variables.KUBECONFIG = "/etc/rancher/k3s/k3s.yaml";
+    environment.variables.KUBECONFIG = "/var/lib/otehon/k3s/admin.yaml";
     # Runtime-only fixture credentials/blank test disks. This fixture is NOT an
     # image profile and never connects to the real fleet or formats a host disk.
     systemd.services.otehon-state = {
@@ -107,7 +107,8 @@ in pkgs.testers.runNixOSTest {
     with subtest("three named nodes ready; API inaccessible from unlisted peer"):
         jacob.wait_until_succeeds("kubectl wait --for=condition=Ready node/jacob node/dan node/judah --timeout=20s", timeout=300)
         disabled.fail("curl --connect-timeout 3 -sk https://192.168.1.1:6443/readyz")
-        jacob.succeed("test $(stat -c %a /etc/rancher/k3s/k3s.yaml) = 600")
+        jacob.succeed("test $(stat -c %a /var/lib/otehon/k3s/admin.yaml) = 600")
+        jacob.fail("test -e /etc/rancher/k3s/k3s.yaml")
         jacob.succeed("test -f /var/lib/otehon/k3s/server/db/state.db")
 
     sentinel = {vm.name: vm.succeed("systemctl show existing-service -p MainPID --value").strip() for vm in [jacob, dan, judah]}

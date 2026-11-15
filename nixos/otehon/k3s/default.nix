@@ -115,6 +115,7 @@ in {
         "--tls-san=${cfg.nodeAddress}"
         "--cluster-cidr=${cfg.podCIDR}"
         "--service-cidr=${cfg.serviceCIDR}"
+        "--write-kubeconfig=${data}/admin.yaml"
         "--write-kubeconfig-mode=0600"
         "--secrets-encryption"
       ];
@@ -123,6 +124,7 @@ in {
         containerLogMaxFiles = 2;
       };
     };
+    environment.sessionVariables = lib.mkIf server { KUBECONFIG = "${data}/admin.yaml"; };
     systemd.services.otehon-k3s-prepare = {
       description = "Require private token and unlocked Otehon encrypted state before K3s";
       requires = [ "otehon-state.service" ];
