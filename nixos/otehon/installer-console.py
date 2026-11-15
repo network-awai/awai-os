@@ -8,6 +8,7 @@ import time
 
 SOCKET = '/run/otehon-install/control.sock'
 ERRORS = {
+    'diagnostic-read-only': '診断モードのため、ディスクの選択や書込みはできません。',
     'target-too-small': '容量が不足しています。このディスクは選択できません。',
     'target-in-use': '起動 USB または使用中のディスクです。選択できません。',
     'missing-or-ambiguous-serial': 'ディスクを一意に識別できません。選択できません。',

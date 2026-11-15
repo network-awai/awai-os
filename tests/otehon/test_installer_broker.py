@@ -18,6 +18,23 @@ spec = importlib.util.spec_from_file_location('broker', Path(__file__).parents[2
 b = importlib.util.module_from_spec(spec); spec.loader.exec_module(b)
 
 class Protocol(unittest.TestCase):
+    def test_diagnostic_mode_allows_observation_but_rejects_mutations(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            (d / 'image').write_text('a' * 64)
+            (d / 'raw').write_text('b' * 64)
+            (d / 'bytes').write_text('100')
+            broker = b.Broker(d, d, read_only=True)
+            self.assertEqual(broker.dispatch('STATUS', [])['phase'], 'idle')
+            with patch.object(b, 'inventory', return_value=[]):
+                self.assertEqual(broker.dispatch('LIST', [])['devices'], [])
+            for op, args in [('SELECT', ['target']), ('INSTALL', ['a', 'b', 'ERASE']),
+                             ('CANCEL', []), ('TEXT', []), ('POWEROFF', []), ('REBOOT', [])]:
+                with self.subTest(op=op), self.assertRaisesRegex(b.Refused, 'diagnostic-read-only'):
+                    broker.dispatch(op, args)
+            self.assertIsNone(broker.selected)
+            self.assertFalse(broker.state['writeStarted'])
+
     def test_bounded_fixed_operations(self):
         self.assertEqual(b.decode(b'STATUS\n'), ('STATUS', []))
         self.assertEqual(b.decode(b'SELECT\t'+base64.b64encode(b'target')+b'\n'), ('SELECT',['target']))

@@ -101,8 +101,9 @@ def admit(rows, ident, raw_bytes):
     return row
 
 class Broker:
-    def __init__(self, digests, rundir=RUNDIR):
+    def __init__(self, digests, rundir=RUNDIR, read_only=False):
         self.rundir = rundir
+        self.read_only = read_only
         self.expected_image = (digests/'image').read_text().strip()
         self.expected_raw = (digests/'raw').read_text().strip()
         self.raw_bytes = int((digests/'bytes').read_text())
@@ -239,6 +240,10 @@ class Broker:
                 except subprocess.TimeoutExpired: process.kill();process.wait(timeout=10)
             if fd is not None: os.close(fd)
     def dispatch(self,op,args):
+        # Diagnostic boots must never turn a remote observer into a writer.
+        # Reject before target selection, process creation, or power controls.
+        if self.read_only and op not in ('LIST', 'STATUS'):
+            raise Refused('diagnostic-read-only')
         if op=='LIST': return {'devices':inventory(),'rawBytes':self.raw_bytes,'state':self.snapshot()}
         if op=='STATUS': return self.snapshot()
         if op=='SELECT': return self.select(*args)
@@ -272,7 +277,9 @@ def serve():
     if os.geteuid()!=0: raise Refused('root-service-required')
     user=pwd.getpwnam('otehon-installer')
     RUNDIR.mkdir(mode=0o750,exist_ok=True);os.chown(RUNDIR,0,user.pw_gid);os.chmod(RUNDIR,0o750)
-    broker=Broker(Path(os.environ['DIGESTS']))
+    debug_mode = os.environ.get('OTEHON_DIAGNOSTIC_READ_ONLY', '0')
+    if debug_mode not in ('0', '1'): raise Refused('invalid-diagnostic-mode')
+    broker=Broker(Path(os.environ['DIGESTS']), read_only=(debug_mode == '1'))
     path=RUNDIR/'control.sock'
     if path.exists():
         if not stat.S_ISSOCK(path.lstat().st_mode): raise Refused('socket-path')
