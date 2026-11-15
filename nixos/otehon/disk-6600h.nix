@@ -60,7 +60,12 @@ in
     ./base-module.nix
     ./hardware-6600h.nix
     ./first-boot-ui.nix
+    ./drive.nix
   ];
+
+  # Fresh installed homes expose the bounded local AwaiFS volume through the
+  # standard Documents picker. Existing preferences/data are never migrated.
+  otehon.drive.enable = lib.mkDefault true;
 
   system.image.id = lib.mkForce "awai-otehon-6600h";
   system.image.version = lib.mkForce (lib.removeSuffix "\n" (builtins.readFile ./installer-version.txt));

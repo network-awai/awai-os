@@ -24,6 +24,8 @@ assert builtins.elem "systemd.show_status=false" c.boot.kernelParams;
 assert builtins.elemAt c.boot.kernelParams ((builtins.length c.boot.kernelParams) - 1) == "rd.systemd.show_status=false";
 assert builtins.elem "systemd-user-sessions.service" c.systemd.services."otehon-install@".after;
 assert c.system.image.version == "0.7.3" && installed.system.image.version == "0.7.3";
+assert installed.otehon.drive.enable && installed.otehon.drive.defaultSave;
+assert !(c.otehon.drive.enable or false);
 assert c.systemd.services."otehon-install@".serviceConfig.User == "otehon-installer";
 assert c.systemd.services."otehon-install@".serviceConfig.CapabilityBoundingSet == [ "CAP_SYS_TTY_CONFIG" ];
 assert builtins.elem "otehon-install-broker.service" c.systemd.services."otehon-install@".requires;
