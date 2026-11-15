@@ -1,0 +1,5 @@
+# Grouped local metadata CAS — 2026-11-15
+
+`compare-and-set-values!` validates up to 64 distinct string key/value pairs and publishes them in one `:put-many` WAL frame and one local A/B root update. The local writer lock protects both the expected generation and the compared key; an optional host callback runs after they match and before publication. Invalid/duplicate input, stale generation, mismatched expected value and callback failure do not publish. As with existing local writes, staged objects may be orphaned and an I/O error after publication can be ambiguous.
+
+The hosted storage suite passed 17 tests / 84 assertions, including one-frame recovery and checkpoint, retained old state on rejection, and existing put/delete coverage. A `:put-many` frame is a new WAL operation: older readers without support reject it rather than understand the state; do not assume rollback compatibility. This is not yet connected to the generic Forest group/ref publication, witness, distributed fencing, Native or power-loss validation.

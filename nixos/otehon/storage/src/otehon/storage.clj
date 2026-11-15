@@ -338,15 +338,20 @@
 (defn- state? [value]
   (and (map? value) (every? string? (keys value)) (every? string? (vals value))))
 (defn- frame-valid? [{:keys [op payload]}]
-  (and (map? payload) (string? (:key payload))
+  (and (map? payload)
        (case op
-         :put (and (= #{:key :value} (set (keys payload))) (string? (:value payload)))
-         :delete (= #{:key} (set (keys payload)))
+         :put (and (= #{:key :value} (set (keys payload))) (string? (:key payload)) (string? (:value payload)))
+         :delete (and (= #{:key} (set (keys payload))) (string? (:key payload)))
+         :put-many (let [puts (:puts payload)]
+                     (and (= #{:puts} (set (keys payload))) (vector? puts) (<= 1 (count puts) 64)
+                          (every? #(and (vector? %) (= 2 (count %)) (every? string? %)) puts)
+                          (= (count puts) (count (set (map first puts))))))
          false)))
 (defn- apply-frame [state {:keys [op payload]}]
   (case op
     :put (assoc state (:key payload) (:value payload))
-    :delete (dissoc state (:key payload))))
+    :delete (dissoc state (:key payload))
+    :put-many (reduce (fn [s [key value]] (assoc s key value)) state (:puts payload))))
 
 (defn- recover* [root]
   (let [slots (mapv #(load-slot root %) [0 1])
@@ -558,6 +563,37 @@
              (catch Exception e
                (throw (ex-info "witness reconciliation outcome requires review"
                                {:type :witness-reconcile-uncertain} e)))))))))
+
+(defn compare-and-set-values!
+  "Publish a bounded group of metadata values as one WAL frame and root.
+  Require both the observed generation and the expected value of KEY under
+  the local writer lock. BEFORE-PUBLISH may verify staged objects; it is a
+  trusted host callback, and failures may leave staged objects. An I/O error
+  after root publication remains ambiguous and requires independent readback.
+  Old readers that do not support :put-many will reject this WAL frame."
+  [directory expected-generation key expected puts before-publish]
+  (when-not (and (integer? expected-generation) (<= 1 expected-generation 9007199254740991)
+                 (string? key) (or (nil? expected) (string? expected))
+                 (or (nil? before-publish) (fn? before-publish))
+                 (frame-valid? {:op :put-many :payload {:puts puts}})
+                 (some #(= key (first %)) puts))
+    (fail! :invalid-operation "invalid grouped CAS arguments"))
+  (let [root (root-path directory)]
+    (with-writer root
+      #(let [{:keys [snapshot log state] current :root} (writable-state root)
+             old (get state key)]
+         (when-not (= expected-generation (:generation current))
+           (throw (ex-info "store generation changed" {:type :stale-generation
+                    :expected expected-generation :actual (:generation current)})))
+         (if (not= expected old)
+           {:published? false :current old :version (:generation current)}
+           (do
+             (when (= 9007199254740991 (:seq log)) (fail! :sequence-exhausted "WAL sequence exhausted"))
+             (when before-publish (before-publish (str root) state))
+             (let [published (publish! root (inc (:generation current)) snapshot
+                                       (wal/append log :put-many {:puts puts}))]
+               {:published? true :current (second (first (filter (fn [pair] (= key (first pair))) puts)))
+                :version (:generation published)})))))))
 
 (defn compare-and-set-value!
   "Compare and publish a metadata value under the local writer lock. A

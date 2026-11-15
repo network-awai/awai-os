@@ -174,6 +174,26 @@
     (is (= :too-large (error-type #(store/transact! d :put {:key "huge" :value (apply str (repeat 1100000 "x"))}))))
     (is (= before (store/read-store d)))))
 
+(deftest grouped-cas-publishes-one-recoverable-frame
+  (let [d (seeded) before (store/read-store d) generation (get-in before [:root :generation])
+        puts [["group" "packs"] ["ref" "target"]]]
+    (is (= :invalid-operation (error-type #(store/compare-and-set-values! d generation "ref" nil [["ref" "x"] ["ref" "y"]] nil))))
+    (is (= :invalid-operation (error-type #(store/compare-and-set-values! d generation "ref" nil [["group" "x"]] nil))))
+    (is (= :stale-generation (error-type #(store/compare-and-set-values! d (inc generation) "ref" nil puts nil))))
+    (is (false? (:published? (store/compare-and-set-values! d generation "ref" "wrong" puts nil))))
+    (is (= :injected (error-type #(store/compare-and-set-values! d generation "ref" nil puts
+                                 (fn [_ _] (throw (ex-info "stop" {:type :injected})))))))
+    (is (= before (store/read-store d)))
+    (let [ack (store/compare-and-set-values! d generation "ref" nil puts nil)
+          recovered (store/read-store d)]
+      (is (true? (:published? ack)))
+      (is (= "target" (:current ack)))
+      (is (= (inc generation) (get-in recovered [:root :generation])))
+      (is (= "packs" (get-in recovered [:state "group"])))
+      (is (= "target" (get-in recovered [:state "ref"])))
+      (store/checkpoint! d)
+      (is (= (:state recovered) (:state (store/read-store d)))))))
+
 (deftest observes-real-io-publication-order
   (let [d (seeded)
         events (atom [])]
