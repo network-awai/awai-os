@@ -219,11 +219,11 @@ class Broker:
             return {'ok':True}
         raise Refused('operation')
 
-def send_response(connection, response):
+def send_response(connection, response, as_json=False):
     # A disappeared/timed-out GUI must not terminate the service and its active
     # write thread. The root-owned job continues independently of its observer.
     try:
-        connection.sendall((edn(response)+'\n').encode())
+        connection.sendall(((json.dumps(response, ensure_ascii=False) if as_json else edn(response))+'\n').encode())
         return True
     except OSError:
         return False
@@ -245,10 +245,13 @@ def serve():
                 connection.settimeout(3)
                 _,uid,_=struct.unpack('3i',connection.getsockopt(socket.SOL_SOCKET,socket.SO_PEERCRED,12))
                 if uid!=user.pw_uid: continue
+                as_json=False
                 try:
-                    with connection.makefile('rb') as stream: op,args=decode(stream.readline(4098))
+                    with connection.makefile('rb') as stream: request=stream.readline(4098)
+                    as_json=request.startswith(b'JSON\t')
+                    op,args=decode(request[5:] if as_json else request)
                     response={'ok':True,'value':broker.dispatch(op,args)}
                 except Exception as error: response={'ok':False,'error':str(error) if isinstance(error,Refused) else type(error).__name__}
-                send_response(connection,response)
+                send_response(connection,response,as_json)
 
 if __name__=='__main__': serve()

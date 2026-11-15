@@ -7,7 +7,7 @@ let
   disk = installed.system.build.image;
   version = lib.removeSuffix "\n" (builtins.readFile ./installer-version.txt);
   buildId = builtins.hashString "sha256" (builtins.concatStringsSep "\n" (
-    (map builtins.readFile [ ./usb-install-6600h.nix ./install-disk.sh ./installer-broker.py ./installer-boot.py ./installer-ui/awai/installer.cljc ../../ci/nixpkgs.nix ]) ++ [ (toString disk) ]));
+    (map builtins.readFile [ ./usb-install-6600h.nix ./installer-console.py ./installer-broker.py ./installer-boot.py ./installer-ui/awai/installer.cljc ../../ci/nixpkgs.nix ]) ++ [ (toString disk) ]));
   # This is an identity string, not a runtime reference: retaining its context
   # would include a second compressed payload in the ISO's store closure.
   info = { schema = "awai.otehon.installer.v1"; inherit version buildId; nixos = installed.system.nixos.version; nix = installed.nix.package.version; payload = builtins.unsafeDiscardStringContext (toString disk); };
@@ -20,6 +20,15 @@ let
     runtimeInputs = [ pkgs.efibootmgr pkgs.util-linux ];
     text = ''exec ${pkgs.python3}/bin/python3 ${./installer-boot.py} "$@"'';
   };
+  console = pkgs.writeShellScript "otehon-installer-console" ''
+    export LANG=ja_JP.UTF-8 LC_ALL=ja_JP.UTF-8 PYTHONUTF8=1
+    case "$1" in
+      tty[0-9]*)
+        exec ${pkgs.fbterm}/bin/fbterm --font-names="Noto Sans CJK JP" --font-size=22 -- ${pkgs.python3}/bin/python3 ${./installer-console.py}
+        ;;
+      *) exec ${pkgs.python3}/bin/python3 ${./installer-console.py} ;;
+    esac
+  '';
   digests = pkgs.runCommand "otehon-usb-payload-digests" { nativeBuildInputs = [ pkgs.zstd ]; } ''
     mkdir "$out"
     file=$(echo ${disk}/*.raw.zst)
@@ -53,11 +62,16 @@ in {
   systemd.services."serial-getty@ttyS0".enable = false;
   systemd.services."otehon-install@" = {
     description = "Offline Awai Otehon installer on %I";
-    after = [ "local-fs.target" "systemd-udev-settle.service" "systemd-user-sessions.service" ];
-    path = with pkgs; [ bash config.systemd.package coreutils curl findutils gawk gnugrep gptfdisk jq util-linux zstd installBoot ];
+    after = [ "local-fs.target" "systemd-udev-settle.service" "systemd-user-sessions.service" "otehon-install-broker.service" ];
+    requires = [ "otehon-install-broker.service" ];
     environment = { IMAGE_URL = "file:///iso/otehon/image.raw.zst"; DIGESTS = "${digests}"; OTEHON_INSTALLER_INFO = "${infoJson}"; OTEHON_REGISTER_BOOT = "1"; };
     serviceConfig = {
-      ExecStart = "${pkgs.bash}/bin/bash ${./install-disk.sh}";
+      ExecStart = "${console} %I";
+      User = "otehon-installer";
+      SupplementaryGroups = [ "video" "tty" ];
+      AmbientCapabilities = [ "CAP_SYS_TTY_CONFIG" ];
+      CapabilityBoundingSet = [ "CAP_SYS_TTY_CONFIG" ];
+      NoNewPrivileges = true;
       StandardInput = "tty-force"; StandardOutput = "tty"; StandardError = "tty";
       TTYPath = "/dev/%I"; TTYReset = true; Restart = "always"; RestartSec = 2;
     };
@@ -71,6 +85,8 @@ in {
     hashedPassword = "!";
   };
   fonts.packages = [ (pkgs.noto-fonts-cjk-sans.override { static = true; }) ];
+  fonts.fontconfig.enable = true;
+  i18n.supportedLocales = [ "ja_JP.UTF-8/UTF-8" "en_US.UTF-8/UTF-8" ];
   services.xserver.enable = true;
   services.xserver.displayManager.lightdm.enable = true;
   # Keep the physical text installer on VT1 even when GPU/session startup fails.
