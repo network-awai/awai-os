@@ -38,6 +38,14 @@ let
     if [ "$1" = scoped-read ] || [ "$1" = stream-read ]; then tool=/nonexistent/no-forest-writer; fi
     exec ${pkgs.babashka}/bin/bb -Xmx512M --classpath ${classpath} ${./test/otehon/kotobase_forest_transaction_proof.clj} "$@" "$tool"
   '';
+  genericLargeProbe = pkgs.writeShellScriptBin "forest-generic-large-probe" ''
+    export NIX_LD=/run/current-system/sw/share/nix-ld/lib/ld.so
+    export NIX_LD_LIBRARY_PATH=/run/current-system/sw/share/nix-ld/lib
+    export PATH=${pkgs.lib.makeBinPath [ pkgs.zstd ]}:$PATH
+    tool=${forestTool}/bin/forest-tool
+    if [ "$1" = read ]; then tool=/nonexistent/no-forest-writer; fi
+    exec ${pkgs.babashka}/bin/bb -Xmx512M --classpath ${classpath} ${./test/otehon/generic_large_block_proof.clj} "$@" "$tool"
+  '';
 in
 pkgs.testers.runNixOSTest {
   name = "otehon-forest-group-guest-reboot";
@@ -45,7 +53,7 @@ pkgs.testers.runNixOSTest {
     virtualisation.memorySize = 1024;
     virtualisation.diskSize = 6144;
     programs.nix-ld.enable = true;
-    environment.systemPackages = [ probe gibWriterProbe logicalBlockProbe scopedProbe forestTool ];
+    environment.systemPackages = [ probe gibWriterProbe logicalBlockProbe scopedProbe genericLargeProbe forestTool ];
   };
   testScript = ''
     start_all()
@@ -64,6 +72,7 @@ pkgs.testers.runNixOSTest {
     machine.succeed("forest-scoped-probe scoped-read /var/lib/forest-reboot/ports", timeout=900)
     machine.succeed("forest-scoped-probe stream-write /var/lib/forest-reboot/stream", timeout=900)
     machine.succeed("forest-scoped-probe stream-read /var/lib/forest-reboot/stream", timeout=900)
+    machine.succeed("forest-generic-large-probe write /var/lib/forest-reboot/generic-large", timeout=900)
     machine.succeed("forest-reboot-probe read-large /var/lib/forest-reboot/store-large", timeout=900)
     # Guest creates and commits the full 1 GiB/64-Pack group itself.
     machine.succeed("GIB_ACTUAL_OUTPUT=/var/lib/forest-reboot/gib-actual forest-gib-writer-probe write", timeout=1800)
@@ -75,8 +84,9 @@ pkgs.testers.runNixOSTest {
     machine.start()
     machine.wait_for_unit("multi-user.target")
     assert machine.succeed("cat /proc/sys/kernel/random/boot_id").strip() != boot_id
-    # No pre-read hash scan: the first task data read after reboot exercises
-    # the explicit-ports writer's actual two-Pack ref and byte/CID recovery.
+    # The first task read uses the new 1 MiB generic block route with no writer.
+    machine.succeed("forest-generic-large-probe read /var/lib/forest-reboot/generic-large", timeout=900)
+    # Continue with the explicit-ports writer's two-Pack ref and byte recovery.
     machine.succeed("forest-scoped-probe scoped-read /var/lib/forest-reboot/ports", timeout=900)
     machine.succeed("forest-scoped-probe scoped-read /var/lib/forest-reboot/scoped", timeout=900)
     machine.succeed("forest-scoped-probe stream-read /var/lib/forest-reboot/stream", timeout=900)
@@ -87,6 +97,8 @@ pkgs.testers.runNixOSTest {
     machine.succeed("GIB_ACTUAL_OUTPUT=/var/lib/forest-reboot/gib-actual forest-gib-writer-probe read", timeout=1800)
     machine.succeed("GIB_SOURCE=/var/lib/forest-reboot/gib-actual forest-logical-block-gib-probe", timeout=1800)
     # Refuse a withheld Pack from each guest-created two-Pack group.
+    machine.succeed("f=$(find /var/lib/forest-reboot/generic-large/store -type f -name '*.forest' -print -quit); test -n \"$f\"; mv \"$f\" /var/lib/forest-reboot/generic-large-missing.saved")
+    machine.succeed("if forest-generic-large-probe read /var/lib/forest-reboot/generic-large > /tmp/generic-large-missing.log 2>&1; then exit 1; fi; grep -q ':missing-forest' /tmp/generic-large-missing.log", timeout=900)
     machine.succeed("f=$(find /var/lib/forest-reboot/stream/store -type f -name '*.forest' -print -quit); test -n \"$f\"; mv \"$f\" /var/lib/forest-reboot/stream-missing.saved")
     machine.succeed("if forest-scoped-probe stream-read /var/lib/forest-reboot/stream > /tmp/stream-missing.log 2>&1; then exit 1; fi; grep -q ':missing-forest' /tmp/stream-missing.log", timeout=900)
     machine.succeed("f=$(find /var/lib/forest-reboot/ports/store -type f -name '*.forest' -print -quit); test -n \"$f\"; mv \"$f\" /var/lib/forest-reboot/ports-missing.saved")
