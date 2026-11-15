@@ -197,7 +197,7 @@ class Broker:
                         count=os.write(fd,view)
                         if count<=0: raise OSError('short write')
                         view=view[count:]
-                    done+=len(chunk);self.update(done=done)
+                        done+=count;self.update(done=done)
                 operation='decode-finish'
                 if process.wait()!=0 or done!=self.raw_bytes: raise Refused('raw-size-or-decode')
                 operation='target-sync'

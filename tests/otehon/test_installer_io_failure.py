@@ -80,7 +80,9 @@ class Faults(unittest.TestCase):
                 self.assertEqual(broker.state['writeStarted'],written)
                 if operation=='source-read':self.assertEqual(diagnostic['done'],4)
                 if not written:self.assertEqual(target.read_bytes(),original)
-                if operation=='target-write':self.assertEqual(target.read_bytes()[:4],raw[:4])
+                if operation=='target-write':
+                    self.assertEqual(target.read_bytes()[:4],raw[:4])
+                    self.assertEqual(diagnostic['done'],4)
                 for action in ['REBOOT','POWEROFF']:
                     with self.assertRaises(b.Refused):broker.dispatch(action,[])
                 self.assertEqual(b.Broker(d,d).state['diagnostic'],diagnostic)
