@@ -38,11 +38,11 @@
     "stream-read" (let [db (forest/open-backend dir stage tool) items (stream-blocks)
                         groups (filter #(str/starts-with? % "awai.ipld-forest-group/kotobase-blocks/")
                                        (keys (:state (store/read-store dir))))]
-      (check! (= 2 (count groups)) "expected two independent batches")
+      (check! (= 11 (count groups)) "expected eleven independent batches")
       (check! (= (:cid (last items)) (:cid (contract/-read-ref db "stream"))) "ref mismatch")
       (doseq [{:keys [cid bytes]} items]
         (check! (Arrays/equals ^bytes bytes ^bytes (contract/get-block db cid)) "block mismatch"))
-      (prn {:fresh-process true :batches 2 :blocks (count items) :logical-bytes (* 41 820 1024) :pass true}))
+      (prn {:fresh-process true :batches 11 :blocks (count items) :logical-bytes (* 41 820 1024) :pass true}))
     ("scoped-write" "ports-write") (do (check! (.mkdir (java.io.File. base)) "output exists")
       (check! (.mkdir (java.io.File. stage)) "staging exists")
       (store/init! dir)

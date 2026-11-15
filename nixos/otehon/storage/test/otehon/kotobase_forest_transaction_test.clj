@@ -39,7 +39,7 @@
              (fn [ports]
                (reset! saved ports)
                (doseq [{:keys [cid bytes]} blocks] ((:put! ports) cid bytes))
-               (is (= 1 (:puts @s)))
+               (is (= 10 (:puts @s)))
                (is (nil? (:ref @s)))
                (is (= (vec (:bytes (first blocks))) (vec ((:get-fn ports) (:cid (first blocks))))))
                {:target target :value :published})
@@ -47,7 +47,7 @@
                (is (thrown? Exception ((:put! @saved) target (:bytes (last blocks)))))
                (and (= target root) (zero? (:cas @s))
                     (every? (fn [{:keys [cid bytes]}] (= (vec bytes) (vec (get-block cid)))) blocks))))))
-    (is (= [2 1 target] [(:puts @s) (:cas @s) (:ref @s)]))
+    (is (= [11 1 target] [(:puts @s) (:cas @s) (:ref @s)]))
     (is (thrown? Exception ((:get-fn @saved) target)))))
 
 (deftest streamed-publication-refuses-failure-before-cas

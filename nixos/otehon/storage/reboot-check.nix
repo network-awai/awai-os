@@ -31,8 +31,8 @@ let
     export NIX_LD_LIBRARY_PATH=/run/current-system/sw/share/nix-ld/lib
     export PATH=${pkgs.lib.makeBinPath [ pkgs.zstd ]}:$PATH
     tool=${forestTool}/bin/forest-tool
-    if [ "$1" = scoped-read ]; then tool=/nonexistent/no-forest-writer; fi
-    exec ${pkgs.babashka}/bin/bb --classpath ${classpath} ${./test/otehon/kotobase_forest_transaction_proof.clj} "$@" "$tool"
+    if [ "$1" = scoped-read ] || [ "$1" = stream-read ]; then tool=/nonexistent/no-forest-writer; fi
+    exec ${pkgs.babashka}/bin/bb -Xmx512M --classpath ${classpath} ${./test/otehon/kotobase_forest_transaction_proof.clj} "$@" "$tool"
   '';
 in
 pkgs.testers.runNixOSTest {

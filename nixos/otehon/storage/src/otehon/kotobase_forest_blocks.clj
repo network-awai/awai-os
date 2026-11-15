@@ -11,6 +11,7 @@
 (def ^:private state-prefix (str "awai.ipld-forest-group/" name-prefix))
 (def ^:private max-block-bytes (* 850 1024))
 (def ^:private max-batch-bytes (* 32 1024 1024))
+(def ^:private max-stream-batch-bytes (* 4 1024 1024))
 (def ^:private max-batch-count (* 64 64))
 (defn- fail! [type message] (throw (ex-info message {:type type})))
 (defn- owned-bytes [x]
@@ -335,7 +336,7 @@
                              (when (and old (not (Arrays/equals ^bytes (:bytes old) ^bytes (:bytes block))))
                                (fail! :cid-collision "duplicate CID differs"))
                              (when (and (not old) (or (>= (count (:blocks @state)) max-batch-count)
-                                                      (> (+ (:buffer-bytes @state) n) max-batch-bytes)))
+                                                      (> (+ (:buffer-bytes @state) n) max-stream-batch-bytes)))
                                (flush!))
                              (swap! state #(cond-> (-> % (update :bytes + n) (update :count inc))
                                              (not old) (-> (update :buffer-bytes + n) (assoc-in [:blocks cid] block))))
