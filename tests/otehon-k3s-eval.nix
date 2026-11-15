@@ -40,6 +40,10 @@ assert !(valid (bad { tokenFile = null; }));
 assert !(valid (bad { interface = "lo"; }));
 assert !(valid (bad { serverAddress = "http://192.168.1.1:6443"; }));
 assert !(valid (bad { podCIDR = "10.43.0.0/16"; }));
+assert !(valid (bad { podCIDR = "10.43.1.0/24"; }));
+assert !(valid (bad { podCIDR = "192.168.0.0/16"; }));
+assert !(valid (bad { nodeAddress = "999.1.1.1"; }));
+assert !(valid (bad { tokenFile = "/run/keys/../../nix/store/public-token"; }));
 assert !(valid (eval [ (import ../nixos/otehon/k3s/fleet.nix
   ((args "dan") // { addresses = addresses // { judah = addresses.dan; }; })) ]));
 assert lib.all (arch: requireValid (desktop arch)) [ "aarch64" "x86_64" ];

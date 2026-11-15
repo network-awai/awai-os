@@ -3,10 +3,25 @@ let
   cfg = config.otehon.k3s;
   enabled = cfg.role != "off";
   server = cfg.role == "server";
-  ipv4 = value: builtins.match "[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+" value != null;
+  octet = "([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])";
+  ipv4 = value: builtins.match (lib.concatStringsSep "\\." (lib.replicate 4 octet)) value != null;
+  cidrValid = value:
+    let parts = lib.splitString "/" value;
+    in builtins.length parts == 2 && ipv4 (builtins.head parts)
+      && builtins.match "([0-9]|[12][0-9]|3[0-2])" (builtins.elemAt parts 1) != null;
+  addressNumber = value: lib.foldl' (acc: part: acc * 256 + lib.toInt part) 0 (lib.splitString "." value);
+  network = value:
+    let parts = lib.splitString "/" value;
+    in {
+      ip = addressNumber (builtins.head parts);
+      size = lib.foldl' (acc: _: acc * 2) 1 (builtins.genList (_: null) (32 - lib.toInt (builtins.elemAt parts 1)));
+    };
+  overlaps = a: b: let x = network a; y = network b; size = lib.max x.size y.size;
+    in builtins.div x.ip size == builtins.div y.ip size;
   runtimePath = value: value != null && lib.hasPrefix "/" value
     && !(lib.hasPrefix "/nix/store/" value)
-    && builtins.match "[a-zA-Z0-9/_.-]+" value != null;
+    && builtins.match "[a-zA-Z0-9/_.-]+" value != null
+    && !(lib.any (part: lib.elem part [ "." ".." ]) (lib.splitString "/" value));
   peers = lib.concatStringsSep ", " cfg.peerAddresses;
   data = "${cfg.stateMount}/k3s";
   prepare = pkgs.writeShellScript "otehon-k3s-prepare" ''
@@ -69,9 +84,12 @@ in {
       { assertion = if server then cfg.serverAddress == "" else
           builtins.match "https://[a-zA-Z0-9.-]+:6443" cfg.serverAddress != null;
         message = "Otehon K3s agent requires an explicit HTTPS server on port 6443; server bootstraps locally."; }
-      { assertion = cfg.podCIDR != cfg.serviceCIDR
-          && lib.all (cidr: builtins.match "[0-9./]+" cidr != null) [ cfg.podCIDR cfg.serviceCIDR ];
-        message = "Otehon K3s requires distinct IPv4 Pod and Service CIDRs."; }
+      { assertion = lib.all cidrValid [ cfg.podCIDR cfg.serviceCIDR ]
+          && !(overlaps cfg.podCIDR cfg.serviceCIDR)
+          && lib.all (ip: ipv4 ip && lib.all (cidr:
+            let n = network cidr; in builtins.div (addressNumber ip) n.size != builtins.div n.ip n.size
+          ) [ cfg.podCIDR cfg.serviceCIDR ]) cfg.peerAddresses;
+        message = "Otehon K3s Pod, Service and peer networks must not overlap."; }
       { assertion = config.services.k3s.token == "" && config.services.k3s.agentToken == ""
           && config.services.k3s.configPath == null;
         message = "Otehon K3s credentials must use the private runtime token file."; }
