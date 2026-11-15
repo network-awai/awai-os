@@ -42,8 +42,8 @@ in pkgs.testers.runNixOSTest {
     };
     systemd.services.usage-fd-fixture = {
       script = ''
-        cp -a /dev/vdb /run/usage-alias
-        exec ${pkgs.python3}/bin/python3 -c 'import os,time; fd=os.open("/run/usage-alias",os.O_RDONLY); open("/run/usage-fd-ready","w").close(); time.sleep(600)'
+        cp -a /dev/vdb /dev/usage-alias
+        exec ${pkgs.python3}/bin/python3 -c 'import os,time; fd=os.open("/dev/usage-alias",os.O_RDONLY); open("/run/usage-fd-ready","w").close(); time.sleep(600)'
       '';
     };
   };
@@ -52,7 +52,7 @@ in pkgs.testers.runNixOSTest {
     machine.wait_for_unit("multi-user.target")
     machine.succeed("mkdir -p /mnt/usage-fixture; mkfs.ext4 -q -F /dev/vdb; sha256sum /dev/vdc > /run/usage-before")
     machine.succeed("systemctl start usage-mount-fixture usage-fd-fixture")
-    machine.wait_until_succeeds("test -f /run/usage-mount-ready -a -f /run/usage-fd-ready")
+    machine.wait_until_succeeds("test -f /run/usage-mount-ready -a -f /run/usage-fd-ready", timeout=30)
     machine.succeed("${pkgs.python3}/bin/python3 ${check} held")
     machine.succeed("systemctl stop usage-mount-fixture usage-fd-fixture")
     machine.succeed("${pkgs.python3}/bin/python3 ${check} released")
