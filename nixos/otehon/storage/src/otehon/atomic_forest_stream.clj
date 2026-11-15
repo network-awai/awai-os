@@ -42,9 +42,11 @@
   ([directory staging tool ref-name expected get-existing! build! verify!]
    (publish! directory staging tool ref-name expected get-existing! build! verify! nil))
   ([directory staging tool ref-name expected get-existing! build! verify! nonce]
+   (publish! directory staging tool ref-name expected get-existing! build! verify! nonce false))
+  ([directory staging tool ref-name expected get-existing! build! verify! nonce bind-group?]
   (when-not (and (every? string? [directory staging tool ref-name]) (seq ref-name)
                  (or (nil? expected) (string? expected))
-                 (fn? get-existing!) (fn? build!) (fn? verify!))
+                 (fn? get-existing!) (fn? build!) (fn? verify!) (boolean? bind-group?))
     (fail! :invalid-atomic-stream "invalid stream arguments"))
   (when expected (catalog/cid-bytes expected))
   (writer/verify-pinned-tool! tool)
@@ -129,7 +131,9 @@
                           (mapv #(select-keys % [:path :root-cid]) archives) (:generation root)
                           ref-name expected (:target result)
                           (fn [candidate cid]
-                            (verify! (fn [requested] (or (candidate requested) (get-checked-existing requested))) cid)) nonce)]
+                            (verify! (if bind-group? candidate
+                                       (fn [requested] (or (candidate requested) (get-checked-existing requested)))) cid))
+                          nonce bind-group?)]
                 (when-not (:published? ack) (fail! :stale-ref "ref changed before publication"))
                 (:value result))))
           (finally (swap! state assoc :phase :closed :pending [] :pending-bytes 0))))))))

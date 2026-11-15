@@ -27,7 +27,7 @@
      (fn [get-block target _ _ owned-nonce]
       (and (= (select-keys marker [:ref-name :marker-cid :marker]) (select-keys owned-nonce [:ref-name :marker-cid :marker]))
            (= (:marker marker) (codec/verify-value-cid-structurally-bounded (:marker-cid marker) (get-block (:marker-cid marker)) {:max-bytes 4096 :max-depth 8 :max-items 32}))
-           (verify! get-block basis-cid) (verify get-block target))))]
+           (verify! get-block basis-cid) (verify get-block target))) true)]
    ((:publish! adapter) {:receipt receipt :prepared prepared :nonce marker}) @result)))
 ")
 (def source (String. raw "UTF-8"))
@@ -53,8 +53,12 @@
  "sink (causal/published-atomic-execution-receipt-sink
          (open-db db)
          {:expected-basis-cid nil :receipt-cid-fn id/value-cid
-          :read-ref! (fn [] (:cid (storage/-read-ref db ref-name)))
-          :read-nonce-ref! (fn [name] (storage/-read-ref db name))
+          :read-ref! (fn [] (:target (catalog/recover-bound-ref (str receipt-out \"/store\") ref-name)))
+          :read-nonce-ref! (fn [name]
+            (let [ref (storage/-read-ref db name)
+                  h (:handle (catalog/recover-bound-ref (str receipt-out \"/store\") ref-name))]
+              (when (and ref (not (catalog/get-group-block h (:cid ref)))) (throw (ex-info \"nonce outside bound group\" {})))
+              ref))
           :publish! (fn [{:keys [receipt prepared nonce]}]
             (:receipt/commit-cid
              (atomic-publish-ports! db ref-name nil receipt prepared nonce
@@ -63,7 +67,10 @@
                (let [commit (peer/commit! (:put! ports) (:get-fn ports) (:tx-data prepared) (:receipt/basis-cid prepared) identity)]
                 {:target commit :value {:receipt/cid (:receipt/cid prepared) :receipt/commit-cid commit}}))
               (fn [get-block _] (bundle! get-block receipt)))))} )]")
-(def integrated (str (subs modified 0 sink-start) integrated-sink (subs modified sink-end)))
+(def integrated (replace-one
+                  (str (subs modified 0 sink-start) integrated-sink (subs modified sink-end))
+                  "(prn {:after-reboot :verified"
+                  "(doseq [name [\"allow\" \"deny\"]] (let [h (:handle (catalog/recover-bound-ref (str receipt-out \"/store\") name))] (assert (verify! (fn [cid] (catalog/get-group-block h cid)) basis-cid)))) (prn {:after-reboot :verified"))
 (load-string (if (= "read" (first *command-line-args*))
                (replace-one (replace-one integrated old-basis read-basis) ":after-reboot :verified" ":fresh-process :verified")
                integrated))

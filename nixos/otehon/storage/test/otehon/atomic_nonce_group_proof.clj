@@ -1,5 +1,6 @@
 ;; Local atomic group/ref/nonce boundary; the host must validate marker semantics.
 (require '[awai.fs.car :as car] '[otehon.storage :as store] '[otehon.kotobase-forest-blocks :as blocks]
+         '[otehon.ipld-forest :as catalog]
          '[kotobase.storage.core :as contract] '[clojure.edn :as edn] '[clojure.string :as str])
 (import '[java.security MessageDigest] '[java.util Random Arrays])
 (defn check! [v msg] (when-not v (throw (ex-info msg {}))))
@@ -31,8 +32,8 @@
        (let [prepared-nonce (assoc nonce :marker {:domain "fixture"} :bytes (:bytes marker))
              receipt-build (fn [ports _ _] (:target (build ports)))
              receipt-verify (fn [get-block cid _ _ n] (and (= {:domain "fixture"} (:marker n)) (verify get-block cid)))
-             adapter (blocks/atomic-stream-governed-receipt-adapter dir stage tool "receipt" nil receipt-build receipt-verify)
-             replay (blocks/atomic-stream-governed-receipt-adapter dir stage tool "receipt2" nil receipt-build receipt-verify)
+             adapter (blocks/atomic-stream-governed-receipt-adapter dir stage tool "receipt" nil receipt-build receipt-verify true)
+             replay (blocks/atomic-stream-governed-receipt-adapter dir stage tool "receipt2" nil receipt-build receipt-verify true)
              input {:receipt {} :prepared {} :nonce prepared-nonce}]
        (check! (= :invalid-receipt-publication (error #((:publish! adapter) (dissoc input :nonce)))) "missing nonce accepted")
        (check! (= :closure-rejected (error #((:publish! adapter) (assoc-in input [:nonce :marker] {:domain "wrong"})))) "wrong marker semantics accepted")
@@ -40,21 +41,34 @@
        (check! (= target ((:publish! adapter) input)) "atomic receipt publication failed")
        (check! (= target ((:read-ref! adapter))) "adapter receipt ref missing")
        (check! (= (:cid marker) (:cid ((:read-nonce-ref! adapter) nonce-ref))) "adapter nonce ref missing")
+       (let [bound (catalog/recover-bound-ref dir "receipt")]
+         (with-redefs [catalog/recover-bound-ref (fn [_ _] (update-in bound [:handle :basis :generation] inc))]
+           (check! (= :catalog-changed (error #((:read-nonce-ref! adapter) nonce-ref))) "mixed root nonce read accepted")))
+       (check! (= :missing-group-binding (error #((:read-ref! replay)))) "unbound ref accepted")
+       (let [before-strict (store/read-store dir)
+             next-nonce {:ref-name (str "nonce/v1/" (:cid marker)) :marker-cid (:cid key-block)
+                         :marker {:domain "fixture"} :bytes (:bytes key-block)}
+             sparse-build (fn [ports _ _] ((:put! ports) target (:bytes (last batch))) target)
+             needs-old (fn [get-block _ _ _ _] (some? (get-block (:cid (first batch)))))
+             strict (blocks/atomic-stream-governed-receipt-adapter dir stage tool "receipt3" nil sparse-build needs-old true)]
+         (check! (= :closure-rejected (error #((:publish! strict) {:receipt {} :prepared {} :nonce next-nonce}))) "existing-only closure accepted")
+         (check! (= before-strict (store/read-store dir)) "incomplete bound closure changed root"))
        (let [after (store/read-store dir) log (edn/read-string (slurp (str dir "/" (get-in after [:root :log]) ".edn")))
              frames (get-in log [:value :frames]) keys* (set (map first (get-in (first frames) [:payload :puts])))
              group-key (first (filter #(str/starts-with? % "awai.ipld-forest-group/") keys*))
              group (edn/read-string (get-in after [:state group-key]))]
         (check! (= 1 (count frames)) "expected one frame")
         (check! (= :put-many (:op (first frames))) "expected put-many")
-        (check! (= #{group-key "awai.kotobase-ref/receipt" (str "awai.kotobase-ref/" nonce-ref)} keys*) "group, receipt and nonce not in one frame")
+        (check! (= #{group-key "awai.kotobase-ref/receipt" "awai.kotobase-group-binding/receipt" (str "awai.kotobase-ref/" nonce-ref)} keys*) "group, receipt, binding and nonce not in one frame")
         (check! (<= 2 (count (:archives group))) "expected multiple Packs")
         (check! (= :nonce-replayed (error #((:publish! replay) input))) "replay accepted")
         (check! (= after (store/read-store dir)) "replay changed root")))))
   "read"
-  (let [db (blocks/open-backend dir stage tool)]
+  (let [db (blocks/open-backend dir stage tool) bound (catalog/recover-bound-ref dir "receipt")]
    (check! (= target (:cid (contract/-read-ref db "receipt"))) "receipt ref missing")
    (check! (= (:cid marker) (:cid (contract/-read-ref db nonce-ref))) "nonce ref missing")
    (doseq [{:keys [cid bytes]} (conj batch marker)]
+    (check! (Arrays/equals ^bytes bytes ^bytes (catalog/get-group-block (:handle bound) cid)) "bound readback mismatch")
     (check! (Arrays/equals ^bytes bytes ^bytes (contract/get-block db cid)) "readback mismatch")))
   (throw (ex-info "expected write/read" {})))
  (prn {:mode mode :blocks 19 :group-ref-nonce :same-frame :pass true}))

@@ -319,12 +319,14 @@
   ([dir staging-root tool ref-name expected build! verify!]
    (publish-atomic-stream-ports! dir staging-root tool ref-name expected build! verify! nil))
   ([dir staging-root tool ref-name expected build! verify! nonce]
-  (when-not (and (string? ref-name) (seq ref-name) (fn? build!) (fn? verify!))
+   (publish-atomic-stream-ports! dir staging-root tool ref-name expected build! verify! nonce false))
+  ([dir staging-root tool ref-name expected build! verify! nonce bind-group?]
+  (when-not (and (string? ref-name) (seq ref-name) (fn? build!) (fn? verify!) (boolean? bind-group?))
     (fail! :invalid-atomic-publication "invalid streamed publication options"))
   (when (some? expected) (validate-cids! [expected]))
   (let [base (open-block-store dir staging-root tool)]
     (atomic-stream/publish! dir (stage-path staging-root) tool ref-name expected
-      #(contract/get-block base %) build! verify! nonce))))
+      #(contract/get-block base %) build! verify! nonce bind-group?))))
 
 (defn atomic-stream-receipt-publication-adapter
   "Receipt callback adapter over one bounded, file-staged group/ref commit.
@@ -335,7 +337,9 @@
   ([dir staging-root tool ref-name expected build! verify!]
    (atomic-stream-receipt-publication-adapter dir staging-root tool ref-name expected build! verify! nil))
   ([dir staging-root tool ref-name expected build! verify! prepared-nonce]
-  (when-not (and (string? ref-name) (seq ref-name) (fn? build!) (fn? verify!))
+   (atomic-stream-receipt-publication-adapter dir staging-root tool ref-name expected build! verify! prepared-nonce false))
+  ([dir staging-root tool ref-name expected build! verify! prepared-nonce bind-group?]
+  (when-not (and (string? ref-name) (seq ref-name) (fn? build!) (fn? verify!) (boolean? bind-group?))
     (fail! :invalid-receipt-publication "invalid publication adapter options"))
   (when (some? expected) (validate-cids! [expected]))
   (when (and (some? prepared-nonce)
@@ -357,7 +361,7 @@
                  (fn [get-block cid]
                    (and (or (nil? marker)
                             (Arrays/equals ^bytes (:bytes marker) ^bytes (get-block (:cid marker))))
-                        (true? (verify! get-block cid receipt prepared)))) nonce))
+                        (true? (verify! get-block cid receipt prepared)))) nonce bind-group?))
    :read-ref! (fn [] (:cid (contract/-read-ref (refs/open-ref-store dir) ref-name)))})))
 
 (defn atomic-stream-governed-receipt-adapter
@@ -368,10 +372,12 @@
   candidate block getter, target CID, receipt, prepared transaction and owned
   nonce marker. It MUST authenticate the nonce's scope/bytes against the actual
   request and verify the complete closure. The caller authenticates identity,
-  excludes concurrent GC, and supplies a stable replay domain. Ref readback is
+  excludes concurrent GC and mutations during readback, and supplies a stable replay domain. Ref readback is
   not a witness, anti-rollback protection or cross-store atomicity."
-  [dir staging-root tool ref-name expected build! verify!]
-  (when-not (and (string? ref-name) (seq ref-name) (fn? build!) (fn? verify!))
+  ([dir staging-root tool ref-name expected build! verify!]
+   (atomic-stream-governed-receipt-adapter dir staging-root tool ref-name expected build! verify! false))
+  ([dir staging-root tool ref-name expected build! verify! bind-group?]
+  (when-not (and (string? ref-name) (seq ref-name) (fn? build!) (fn? verify!) (boolean? bind-group?))
     (fail! :invalid-receipt-publication "invalid governed receipt adapter options"))
   (when (some? expected) (validate-cids! [expected]))
   (let [ref-store (refs/open-ref-store dir)]
@@ -384,10 +390,19 @@
                        adapter (atomic-stream-receipt-publication-adapter
                                  dir staging-root tool ref-name expected build!
                                  (fn [get-block cid r p] (verify! get-block cid r p owned-nonce))
-                                 owned-nonce)]
+                                 owned-nonce bind-group?)]
                    ((:publish! adapter) {:receipt receipt :prepared prepared})))
-     :read-ref! (fn [] (:cid (contract/-read-ref ref-store ref-name)))
-     :read-nonce-ref! (fn [nonce-ref] (contract/-read-ref ref-store nonce-ref))}))
+     :read-ref! (fn [] (if bind-group? (:target (catalog/recover-bound-ref dir ref-name))
+                           (:cid (contract/-read-ref ref-store ref-name))))
+     :read-nonce-ref! (fn [nonce-ref]
+                        (let [ref (contract/-read-ref ref-store nonce-ref)]
+                          (when (and bind-group? ref)
+                            (let [bound (catalog/recover-bound-ref dir ref-name)]
+                              (when-not (= (:version ref) (get-in bound [:handle :basis :generation]))
+                                (fail! :catalog-changed "root changed during nonce readback"))
+                              (when-not (catalog/get-group-block (:handle bound) (:cid ref))
+                                (fail! :invalid-ipld-basis "nonce marker missing from bound group"))))
+                          ref))})))
 
 (defn open-transaction
   "Create a bounded, synchronous write overlay for a Prolly operation.
