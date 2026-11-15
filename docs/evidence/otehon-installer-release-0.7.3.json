@@ -1,0 +1,82 @@
+{
+  "sourceRevision": "5b498b479f3ac01b3c17b7356dee23ab76712f76",
+  "ciCheckoutRevision": "f932e179e791bff099b66b6cfbecee16a2345003",
+  "sourceTree": "bd88618c9d229f41b914bb543ce1678f0883a384",
+  "mergeCommit": "6769cb1b6ae59ad851c3ebb7f69e91a7ce8647f2",
+  "artifactId": 14146162142,
+  "artifactZipSha256": "e800f0a61ba5ac00167fd8f164458055d80c0b059b5ebd43eaa7fce03fe2fd08",
+  "verificationArtifactId": 14145772851,
+  "qualifiedCiRun": "https://github.com/network-awai/awai-os/actions/runs/43673981942",
+  "schema": "awai.otehon.installer-release.v1",
+  "version": "0.7.3",
+  "installer": {
+    "buildId": "a73c2f90a6307ce2cb580b0e6bf843161adaec295e72f4795f058c6cc1c2c364",
+    "nix": "2.34.8",
+    "nixos": "26.05pre-git",
+    "payload": "/nix/store/rn1pjqry34w6qq6055gxsy0bk6rzcn1g-awai-otehon-6600h-disk",
+    "schema": "awai.otehon.installer.v1",
+    "version": "0.7.3"
+  },
+  "image": {
+    "isoSha256": "34b813c2ff6089b008d5901fac32c381c518f4514cd15c9173df0c7cf72ce704",
+    "isoBytes": 8497463296,
+    "rawSha256": "632c8a236b25717d84a594dd9dc12a4b88a54cf925fd37f95e3f8383eb03daa5",
+    "rawBytes": 27114078208
+  },
+  "vmProofs": [
+    {
+      "schema": "awai.otehon.usb-vm.v1",
+      "isoSha256": "34b813c2ff6089b008d5901fac32c381c518f4514cd15c9173df0c7cf72ce704",
+      "isoBytes": 8497463296,
+      "rawSha256": "632c8a236b25717d84a594dd9dc12a4b88a54cf925fd37f95e3f8383eb03daa5",
+      "rawBytes": 27114078208,
+      "externalNetwork": false,
+      "physicalDisks": false,
+      "installerInterface": "graphical",
+      "mediaBytes": 61949214720,
+      "targetBus": "nvme",
+      "checks": [
+        "graphical installer boots offline without target writes",
+        "mouse selection and exact keyboard approval install scratch NVMe; full readback completes; decoys unchanged",
+        "verified completion screen powers off via displayed control",
+        "installed target boots UEFI without installer attached or forced QEMU bootindex",
+        "first boot provisions encrypted state and displays actual desktop onboarding",
+        "cold QEMU restart unlocks existing encrypted state and returns to desktop"
+      ],
+      "passed": true
+    },
+    {
+      "schema": "awai.otehon.usb-vm.v1",
+      "isoSha256": "34b813c2ff6089b008d5901fac32c381c518f4514cd15c9173df0c7cf72ce704",
+      "isoBytes": 8497463296,
+      "rawSha256": "632c8a236b25717d84a594dd9dc12a4b88a54cf925fd37f95e3f8383eb03daa5",
+      "rawBytes": 27114078208,
+      "externalNetwork": false,
+      "physicalDisks": false,
+      "installerInterface": "physical-text-console",
+      "mediaBytes": 61949214720,
+      "targetBus": "nvme",
+      "checks": [
+        "display-manager-disabled Japanese physical VT1 renders version/build and numbered disks without writes",
+        "Japanese numbered selection and separate erase approval install NVMe without serial entry; full readback/UEFI succeed; invalid/source/small/back leave decoys unchanged",
+        "Japanese displayed restart choice requests actual reboot before USB-detached installed boot",
+        "installed target boots UEFI without installer attached or forced QEMU bootindex",
+        "first boot provisions encrypted state and displays actual desktop onboarding",
+        "cold QEMU restart unlocks existing encrypted state and returns to desktop"
+      ],
+      "passed": true
+    }
+  ],
+  "scope": "same-ISO VM qualification; individual physical-media acceptance is recorded separately",
+  "individualMediaEvidence": "https://linear.app/kotobalabs/issue/AWAI-2921",
+  "physicalHardwareAcceptance": "https://linear.app/kotobalabs/issue/AWAI-2912",
+  "physicalPcQualified": false,
+  "nativeQualified": false,
+  "productionUpdateEnrolled": false,
+  "diagnosis": {
+    "physicalFailureRootCause": "unknown",
+    "localTestCount": 26,
+    "injectedIoSubcases": 8,
+    "scope": "local fault injection; not physical I/O fault reproduction"
+  }
+}
