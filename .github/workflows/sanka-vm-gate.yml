@@ -56,6 +56,8 @@ jobs:
         run: |
           nix-shell nix/shell.nix --run 'bb --classpath src:test test/run_cases.clj'
           nix-shell nix/shell.nix --run 'PYTHONPATH=src basilisp run test/run_cases.lpy'
+          nix-shell nix/shell.nix --run 'bb --classpath src:test test/reservation_test.clj'
+          nix-shell nix/shell.nix --run 'PYTHONPATH=src basilisp run test/reservation_run.lpy'
       - name: Shared cases for reward-loop on Babashka and Basilisp
         working-directory: dapps/reward-loop
         env:

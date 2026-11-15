@@ -50,38 +50,71 @@ in_use() {
   return 1
 }
 
+discard_download() { if [ -n "$1" ]; then rm -f -- "$1"; fi; }
+
 install_to() {
-  local disk=$1 serial=$2 file=$work/image.raw.zst got
-  mkdir -p "$work"
-  mountpoint -q "$work" || mount -t tmpfs -o size=90% tmpfs "$work"
-  echo "Fetching the image. Nothing is written yet."
-  if ! curl -fSs --retry 5 --retry-all-errors --retry-delay 3 -o "$file" "$IMAGE_URL"; then
-    echo "The image could not be fetched. Nothing was written."
-    rm -f "$file"
-    return 1
+  local disk=$1 serial=$2 file=$work/image.raw.zst download="" got
+  if [ "${OTEHON_REGISTER_BOOT:-0}" = 1 ]; then
+    if ! otehon-install-boot check; then
+      echo "Boot this USB in UEFI mode with writable firmware variables. Nothing was written."
+      return 1
+    fi
+    if [ "$(blockdev --getss "$disk")" != 512 ]; then
+      echo "Unsupported logical sector size. Nothing was written."
+      return 1
+    fi
   fi
+  case "$IMAGE_URL" in
+    file:///iso/otehon/image.raw.zst)
+      file=/iso/otehon/image.raw.zst
+      # Offline payload stays on the read-only ISO; do not duplicate gigabytes
+      # into RAM. Verify its pinned digest before any target write as usual.
+      if [ ! -f "$file" ] || [ -L "$file" ] ||
+         [ "$(findmnt -n -o FSTYPE --target "$file")" != iso9660 ]; then
+        echo "The offline image is not on installer media. Nothing was written."
+        return 1
+      fi
+      case ",$(findmnt -n -o OPTIONS --target "$file")," in
+        *,ro,*) ;;
+        *) echo "Installer media is not read-only. Nothing was written."; return 1 ;;
+      esac
+      echo "Checking the offline image. Nothing is written yet."
+      ;;
+    file:*) echo "Unapproved offline image path. Nothing was written."; return 1 ;;
+    *)
+      mkdir -p "$work"
+      mountpoint -q "$work" || mount -t tmpfs -o size=90% tmpfs "$work"
+      download=$file
+      echo "Fetching the image. Nothing is written yet."
+      if ! curl -fSs --retry 5 --retry-all-errors --retry-delay 3 -o "$file" "$IMAGE_URL"; then
+        echo "The image could not be fetched. Nothing was written."
+        discard_download "$download"
+        return 1
+      fi
+      ;;
+  esac
   got=$(sha256sum "$file" | cut -d' ' -f1)
   if [ "$got" != "$IMAGE_SHA256" ]; then
     echo "The image digest does not match. Nothing was written."
     echo "  expected $IMAGE_SHA256"
     echo "  got      $got"
-    rm -f "$file"
+    discard_download "$download"
     return 1
   fi
   # The disk could have changed while the image was downloading.
   if [ "$(find_serial "$serial" | cut -d' ' -f1)" != "$disk" ] || in_use "$disk"; then
     echo "That disk changed. Nothing was written."
-    rm -f "$file"
+    discard_download "$download"
     return 1
   fi
   echo "Digest checked. Writing to $disk (serial $serial)."
   sgdisk --zap-all "$disk" >/dev/null 2>&1
   if ! zstd -dc "$file" | dd of="$disk" bs=4M iflag=fullblock conv=fsync status=progress; then
     echo "WRITE FAILED. $disk may not start now, and its earlier contents are damaged."
-    rm -f "$file"
+    discard_download "$download"
     return 1
   fi
-  rm -f "$file"
+  discard_download "$download"
   blockdev --flushbufs "$disk"
   echo "Checking what was written."
   got=$(head -c "$RAW_BYTES" "$disk" | sha256sum | cut -d' ' -f1)
@@ -90,12 +123,34 @@ install_to() {
     return 1
   fi
   partx -a "$disk" >/dev/null 2>&1 || true
+  if [ "${OTEHON_REGISTER_BOOT:-0}" = 1 ]; then
+    if [ "$(find_serial "$serial" | cut -d' ' -f1)" != "$disk" ] || in_use "$disk"; then
+      echo "BOOT FAILED: target identity/use changed after readback. OS bytes were written; installation is not complete."
+      return 1
+    fi
+    echo "Registering Awai Otehon in the UEFI boot menu."
+    exec 8<"$disk"
+    if ! otehon-install-boot register 8; then
+      exec 8<&-
+      echo "BOOT FAILED: OS bytes verified, but firmware registration failed. Do not treat this as a completed install."
+      return 1
+    fi
+    exec 8<&-
+  fi
   return 0
 }
 
 echo
-echo "=== Awai Otehon installer ==="
-echo "This PC is running from memory. Nothing has been written."
+echo "=== AWAI OTEHON / NIXOS INSTALLER (USB) ==="
+if [ -n "${OTEHON_INSTALLER_INFO:-}" ]; then
+  jq -r '"Installer: " + .version + "  NixOS: " + .nixos + "  Nix: " + .nix, "Build ID: " + .buildId' "$OTEHON_INSTALLER_INFO"
+  echo "Payload SHA-256: $RAW_SHA256"
+fi
+echo "NOT INSTALLED YET: booting this USB alone does NOT install to NVMe."
+echo "Text: Ctrl+Alt+F1 or F2. Graphical installer: Ctrl+Alt+F7 if available."
+echo "1. Select the internal disk by its exact serial below."
+echo "2. Confirm ERASE.  3. Wait for full readback and INSTALLED."
+echo "4. Power off, remove USB, then boot Awai Otehon from NVMe."
 
 while :; do
   show_disks
@@ -139,9 +194,11 @@ while :; do
   if install_to "$disk" "$serial"; then
     echo
     echo "INSTALLED on $disk (serial $serial)."
-    echo "Restart, and choose this disk in the PC's boot menu. On first start it asks you to choose a passphrase."
-    printf 'Type REBOOT to restart now: '
+    echo "NixOS/Awai OS bytes verified. Choose Awai Otehon on this disk at next boot."
+    echo "Power off and remove USB before starting the PC. First boot asks for a new data-protection passphrase."
+    printf 'Type POWEROFF (recommended) or REBOOT, then remove USB: '
     IFS= read -r answer || answer=""
+    [ "$answer" = POWEROFF ] && systemctl poweroff
     [ "$answer" = REBOOT ] && systemctl reboot
   fi
   exec 9>&-

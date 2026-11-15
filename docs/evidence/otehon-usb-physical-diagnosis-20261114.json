@@ -1,0 +1,18 @@
+{
+  "schema": "awai.otehon.media-diagnosis.v1",
+  "date": "2026-11-14",
+  "issue": "AWAI-450",
+  "mediumSerialSuffix": "5987CBC4",
+  "imageBytes": 8492892160,
+  "expectedIsoSha256": "ef3dc7bf14a9d179a3a973dc3cabb8a72937cecda621515a04d00119455da909",
+  "physicalReadOnlySha256": "ef3dc7bf14a9d179a3a973dc3cabb8a72937cecda621515a04d00119455da909",
+  "status": "media-matches-qualified-iso",
+  "writeAccess": false,
+  "logSha256": "215782ac03b58545794923b7d0f55cb61c8e1d503b6cdbcba4db4b7933b95566",
+  "ownerObservation": {
+    "oldUbuntuDesktopStillBoots": true,
+    "customGraphicalInstallerNotObserved": true,
+    "otherNixOSTextScreenObserved": true
+  },
+  "conclusion": "Checked USB region matches the previously qualified0.7.0 GUI ISO; physical GUI startup, explicit installation completion and intended NVMe installation are unverified. Initial-console fallback and boot-registration fixes are a0.7.1 candidate, not yet published."
+}

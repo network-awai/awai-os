@@ -1,9 +1,20 @@
 # awai-os
 
+**Awai Otehon 0.7.3 installer (Ryzen 5 6600H / x86_64):**
+[GUI・文字画面からの導入手順](docs/otehon/install-guide-ja.md) /
+[検証済み ISO の版と Build ID](docs/otehon/usb-installer-0.7.3.md)。
+GUI が表示されない場合は起動メニューの `Text-installer-0.7.3` を選びます。
+画面の版・Build ID を配布記録と照合できます。
+
 **Native Murakumo NixOS preview:** [profile, Itonami launcher and VM gates](docs/murakumo-nixos-native-preview.md).
 It runs Kaikei and Dandori judgment cores in browser Workers and a native host
 observer under systemd. It is an independent VM/live candidate; full network
 Node/Cell integration and physical hardware remain separate acceptance work.
+
+**Otehon dapp intake (owner decision 2026-11-15, AWAI-155):** screen-bearing
+apps (kaisha/kaikei class) are taken in as MCP Apps-style iframes per
+`network-awai-apex` ADR 0026 D12, not as vendored code. Agent-only use stays on
+the Hermes `mcp_servers` route (D14). See [AGENTS.md](AGENTS.md).
 
 For installed native systems, see [network updates and retained-generation
 recovery](docs/native-network-updates.md). This opt-in SSH/Nix/UEFI route is

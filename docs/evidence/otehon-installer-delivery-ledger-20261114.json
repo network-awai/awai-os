@@ -1,0 +1,127 @@
+{
+  "schema": "awai.agent.unit-ledger.v1",
+  "issue": "AWAI-450",
+  "issueUuid": "267b0ea5-fcd2-4651-85b3-8d351f7d84c6",
+  "run": "450-install-gui-20261114",
+  "thread": "01a1c403-4751-72d2-84de-55853fc89649",
+  "baselineRevision": "b32125750631b16b3bfcaac32a758f8dbd31321c",
+  "runtimeRevision": "dbe50c5bd98b1df2411f1c347a7eb6f8de38c88e",
+  "verifierRevision": "9bc23ece1565826604936a73029b7cefd673b18b",
+  "ciClassificationRevision": "89b7e996b51f52f3558e392be02a9e8855f5183b",
+  "estimate": {
+    "value": "unknown",
+    "configuredUnit": "unknown"
+  },
+  "provider": "unknown",
+  "model": "unknown",
+  "settings": "unknown",
+  "tokenForecast": "unknown",
+  "tokens": {
+    "input": "unknown",
+    "cacheRead": "unknown",
+    "cacheWrite": "unknown",
+    "output": "unknown",
+    "reasoningOutputSubset": "unknown"
+  },
+  "cost": "unknown",
+  "sessionStart": "unknown",
+  "sessionEnd": "unknown",
+  "sessionElapsedSeconds": "unknown",
+  "agentActiveSeconds": "unknown",
+  "agentWaitingSeconds": "unknown",
+  "attributionCoverage": "Issue/run/revision binding only; provider usage counters unavailable. No allocation from mixed sessions.",
+  "acceptanceUnit": "The six named exact-image VM checks in otehon-installer-gui-vm-20261114.json; physical USB full-length digest plus eject is a separate delivery unit.",
+  "velocity": "unknown; no comparable complete issue-level measurement interval",
+  "measuredOperatorWindows": {
+    "download": {
+      "artifactID": "14107864921",
+      "elapsedSeconds": 1124.560055,
+      "finishedAt": "2026-11-14T10:01:00.562251Z",
+      "isoBytes": 8492892160,
+      "isoDigestVerified": true,
+      "isoSha256": "ef3dc7bf14a9d179a3a973dc3cabb8a72937cecda621515a04d00119455da909",
+      "parallelRequests": 8,
+      "rangeBytes": 16777216,
+      "reusedPrefixBytes": 0,
+      "startedAt": "2026-11-14T09:42:16.002196Z",
+      "zipDigestVerified": true,
+      "zipSha256": "9f6fbe0188960c07b2838a372c80a9da68f0d95d7d14fbf071234d1f6c256578"
+    },
+    "usbWrite": {
+      "startedAt": "2026-11-14T10:16:28.573850+00:00",
+      "finalEventLogMtime": "2026-11-14T10:46:56.090661+00:00",
+      "approximateElapsedSeconds": 1827.517,
+      "source": "operator invocation start UTC and final verified/ejected log filesystem mtime; wall-clock approximation, not an isolated media benchmark",
+      "resultObservedAt": "2026-11-14T11:18:50.152982+00:00"
+    }
+  },
+  "boundaries": [
+    "VM proof is Otehon only; no Native qualification.",
+    "USB media publication does not prove physical Ryzen boot or installation.",
+    "Actual account/phone recovery, production update enrollment, physical power loss remain separate."
+  ],
+  "reclaimedReproducibleOutput": {
+    "date": "2026-11-14T10:42:08.993307+00:00",
+    "scope": "task-owned old downloaded ISO only",
+    "artifactId": 14045326624,
+    "remoteArtifactExpired": false,
+    "sourceHashRechecked": "5695f3c43f97912212289b59a11b79f6662c5ebbbbb45fd4aaa0e2d2b2840133",
+    "bytes": 6816595968,
+    "receiptPreserved": true,
+    "currentGuiIsoPreserved": true,
+    "reason": "Mac free space fell below 300 MiB during current GUI USB readback; this old downloaded build output is reproducible from the verified remote artifact."
+  },
+  "ciEvidence": [
+    {
+      "conclusion": "success",
+      "createdAt": "2026-11-14T09:26:08Z",
+      "databaseId": 43580536450,
+      "headSha": "9bc23ece1565826604936a73029b7cefd673b18b",
+      "startedAt": "2026-11-14T09:26:08Z",
+      "status": "completed",
+      "updatedAt": "2026-11-14T09:39:49Z",
+      "url": "https://github.com/network-awai/awai-os/actions/runs/43580536450"
+    },
+    {
+      "conclusion": "success",
+      "createdAt": "2026-11-14T10:18:13Z",
+      "databaseId": 43584624112,
+      "headSha": "97d0a7574272a99760641617b61c347a01848645",
+      "startedAt": "2026-11-14T10:18:13Z",
+      "status": "completed",
+      "updatedAt": "2026-11-14T10:22:48Z",
+      "url": "https://github.com/network-awai/awai-os/actions/runs/43584624112"
+    },
+    {
+      "conclusion": "success",
+      "createdAt": "2026-11-14T10:18:13Z",
+      "databaseId": 43584624106,
+      "headSha": "97d0a7574272a99760641617b61c347a01848645",
+      "startedAt": "2026-11-14T10:18:13Z",
+      "status": "completed",
+      "updatedAt": "2026-11-14T10:33:21Z",
+      "url": "https://github.com/network-awai/awai-os/actions/runs/43584624106"
+    },
+    {
+      "conclusion": "success",
+      "createdAt": "2026-11-14T10:18:13Z",
+      "databaseId": 43584624234,
+      "headSha": "97d0a7574272a99760641617b61c347a01848645",
+      "startedAt": "2026-11-14T10:18:13Z",
+      "status": "completed",
+      "updatedAt": "2026-11-14T10:37:37Z",
+      "url": "https://github.com/network-awai/awai-os/actions/runs/43584624234"
+    }
+  ],
+  "outcomes": {
+    "exactImageVmChecksPassed": 6,
+    "physicalUsbFullReadbackAndEjectPassed": true,
+    "acceptanceDefinitionChanged": false
+  },
+  "residue": {
+    "worktree": "retained: open draft PR118 plus unique local evidence and ISO",
+    "branch": "retained: unmerged open PR118",
+    "taskOwnedStashesCreated": 0,
+    "unrelatedResidue": "untouched"
+  }
+}

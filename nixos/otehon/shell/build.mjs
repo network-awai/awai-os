@@ -11,14 +11,13 @@ import { clientRuntimeConnectSrc } from "./vendor/kotoba-client-runtime.js";
 
 // The ClojureScript build reads the broker runtime from inside src/.
 await copyFile("vendor/kotoba-client-runtime.js", "src/vendor-runtime.gen.js");
-import { osOperations, phoneOperations, runtimeDescriptor } from "./src/runtime.js";
-import { scriptSrc, styleSrc } from "./src/csp.js";
+const { osOperations, phoneOperations, runtimeDescriptor } = await import("./src/runtime.js");
+import { scriptSrc, styleSrc, imageSrc } from "./src/csp.js";
 import { buildDougaka } from "./dougaka-bundle.mjs";
 
 const relayOrigin = process.env.RELAY_ORIGIN ?? "https://relay.awai.network";
-// OTEHON_HTTP=1 builds the shell for the loopback preview server instead of
-// the file:// kiosk. The http output must never ship in the OS image: its
-// script/style sources allow 'self' so the page runs over http.
+// OTEHON_HTTP=1 builds for the stable loopback OS origin and HTTP preview.
+// File-mode remains only for legacy images; profile migration is a separate gate.
 const cspMode = process.env.OTEHON_HTTP === "1" ? "http" : "file";
 
 const mvnRepo = process.env.MVN_REPO;
@@ -38,10 +37,14 @@ const clojure = (args) => execFileSync("clojure", [
 clojure(["-m", "shell.styles.build"]);
 clojure(["-m", "shadow.cljs.devtools.cli", "release", "shell"]);
 clojure(["-m", "shadow.cljs.devtools.cli", "release", "link"]);
+clojure(["-m", "shadow.cljs.devtools.cli", "release", "reliability"]);
+await mkdir("dist/fs-reliability", { recursive: true });
+await copyFile("fs-reliability/index.html", "dist/fs-reliability/index.html");
 
 async function page({ html, outdir, operations, appOrigins }) {
   await mkdir(`${outdir}/assets`, { recursive: true });
   await copyFile("vendor/kotoba-client-consent.css", `${outdir}/assets/consent.css`);
+  await copyFile("assets/awai-logo.png", `${outdir}/assets/awai-logo.png`);
   const capabilities = [...new Set(operations.map((operation) => operation.capability))];
   const connect = clientRuntimeConnectSrc(runtimeDescriptor("index.html", operations), capabilities, [], appOrigins);
   const template = await readFile(html, "utf8");
@@ -55,6 +58,7 @@ async function page({ html, outdir, operations, appOrigins }) {
       .replace("__CONNECT_SRC__", connect)
       .replace("__SCRIPT_SRC__", scriptSrc(cspMode))
       .replace("__STYLE_SRC__", styleSrc(cspMode))
+      .replace("__IMAGE_SRC__", imageSrc(cspMode))
       .replace("__DAPPS_JSON__", catalog)
       .replace("__RELAY_ORIGIN__", relayOrigin),
   );

@@ -44,7 +44,11 @@
    [".shell.with-panel" {:grid-template-columns "248px minmax(0, 1fr) 320px"}]
    [:.sidebar {:display "flex" :flex-direction "column" :min-height 0
                 :padding "16px 10px 12px" :background "var(--surface)"}]
-   [:.brand {:padding "0 8px 12px" :font-size "17px" :font-weight 600}]
+   [:.brand {:display "flex" :align-items "center" :gap "10px"
+             :padding "0 8px 12px" :font-size "17px" :font-weight 600}]
+   [:.brand-logo {:display "block" :flex "none" :width "40px" :height "40px" :border-radius "9px"}]
+   [:.setup-logo {:display "block" :width "96px" :height "96px"
+                  :margin "0 auto 24px" :border-radius "20px"}]
    [:.new-chat {:width "100%" :padding "9px 10px" :border-radius "8px"
                  :background "var(--surface-raised)" :font-size "14px" :text-align "left"}]
    [".new-chat:hover, .dapp:hover" {:background "var(--surface-hover)"}]
@@ -392,4 +396,30 @@
    [".soshiki-me .muted" {:font-size "12px"}]
    [".soshiki-me button" {:margin-left "auto" :flex "none" :padding "8px 14px" :border-radius "8px"
                            :font-size "13px"}]
+   [:.fs-preview {:max-width "1040px" :margin "0 auto" :padding "32px 20px"}]
+   [:.fs-reliability {:display "grid" :gap "18px" :min-width 0}]
+   [".fs-reliability h1, .fs-reliability h2, .fs-reliability h3, .fs-reliability p" {:margin 0}]
+   [".fs-reliability h1" {:font-size "30px"}]
+   [".fs-reliability h2" {:font-size "18px" :margin-top "8px"}]
+   [".fs-reliability h3" {:font-size "14px" :font-weight 500}]
+   [:.fs-verdict {:color "var(--warning-text)" :padding-top "8px"}]
+   [:.fs-summary {:display "grid" :grid-template-columns "repeat(auto-fit, minmax(min(100%, 210px), 1fr))" :gap "24px" :align-items "center"}]
+   [".fs-summary p" {:margin-bottom "10px"}]
+   [:.fs-overall {:position "relative" :max-width "240px" :text-align "center"}]
+   [".fs-overall svg" {:width "100%" :display "block"}]
+   [".fs-overall strong" {:position "absolute" :top "48%" :left 0 :right 0 :font-size "25px" :font-weight 500}]
+   [".fs-overall > span" {:display "block" :font-size "13px" :color "var(--muted)"}]
+   [:.fs-import {:display "grid" :gap "8px" :font-size "14px"}]
+   [".fs-import input" {:max-width "100%" :font "inherit"}]
+   [:.fs-grid {:display "grid" :grid-template-columns "repeat(auto-fit, minmax(min(100%, 205px), 1fr))" :gap "14px"}]
+   [:.fs-stat {:display "grid" :gap "8px" :padding "16px" :background "var(--surface)" :border-radius "10px" :min-width 0}]
+   [:.fs-stat-value {:font-size "25px" :font-variant-numeric "tabular-nums"}]
+   [".fs-stat .muted" {:font-size "12px"}]
+   [:.fs-track {:height "8px" :background "var(--surface-selected)" :border-radius "4px" :overflow "hidden"}]
+   [".fs-track > span" {:display "block" :height "100%" :background "var(--focus)"}]
+   [:.fs-unknown {:opacity 0.45}]
+   [:.fs-nodes {:display "grid" :gap "8px" :padding-bottom "12px"}]
+   [".fs-nodes li" {:display "flex" :justify-content "space-between" :gap "16px"}]
+   [:.fs-cid {:overflow-wrap "anywhere" :display "block" :padding-top "8px"}]
+   [:.fs-footnote {:color "var(--muted)" :font-size "13px"}]
    ])

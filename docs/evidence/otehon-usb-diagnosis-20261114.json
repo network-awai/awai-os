@@ -1,0 +1,71 @@
+{
+  "schema": "awai.otehon.usb-install-diagnosis.v1",
+  "date": "2026-11-14",
+  "tracking": "https://linear.app/kotobalabs/issue/AWAI-450",
+  "ownerReport": {
+    "stage": "during installation",
+    "lastVisibleMessage": "unknown",
+    "failureReproducedInVM": false
+  },
+  "physicalMedium": {
+    "status": "media-matches-qualified-iso",
+    "bytes": 6816595968,
+    "sha256": "5695f3c43f97912212289b59a11b79f6662c5ebbbbb45fd4aaa0e2d2b2840133",
+    "expected_sha256": "5695f3c43f97912212289b59a11b79f6662c5ebbbbb45fd4aaa0e2d2b2840133",
+    "serialSuffix": "5987CBC4",
+    "writeAccess": false
+  },
+  "physicalMediumSafelyEjected": true,
+  "physicalReadLogSha256": "dff1e071aba57b16c5af02bb954197b2162c26f233ef92ec19e31161ffb646cb",
+  "readOnlyBinarySha256": "b789746632cb9d37a56c65b51bfc71bc8916ab840257a14769a4d04e18840748",
+  "installedWriterUnchangedSha256": "c9436228cd548bc7e3ba6ea5f81ace555509a71882b6be71d99daae4f1ede430",
+  "sourceArtifactId": 14045326624,
+  "sourceZipSha256": "c2f2bccbdb2a364c2f0e2c565d2b9589a35e54a1a4135e7bd03c932f700aa937",
+  "vm": {
+    "schema": "awai.otehon.usb-vm.v1",
+    "isoSha256": "5695f3c43f97912212289b59a11b79f6662c5ebbbbb45fd4aaa0e2d2b2840133",
+    "isoBytes": 6816595968,
+    "rawSha256": "35d1b37d8d83d0deb1d56293aaf695a36a65c841ae2449e9d012d3281bfe1032",
+    "rawBytes": 27114078208,
+    "externalNetwork": false,
+    "physicalDisks": false,
+    "mediaBytes": 61949214720,
+    "targetBus": "nvme",
+    "checks": [
+      "UEFI actual USB ISO boots offline without writing targets",
+      "wrong serial, undersize and non-ERASE refuse without writes",
+      "installer medium cannot select itself",
+      "explicit target install verifies full raw digest; decoy and small untouched",
+      "installed target boots UEFI without installer attached",
+      "first boot provisions encrypted state and displays actual desktop onboarding",
+      "cold QEMU restart unlocks existing encrypted state and returns to desktop"
+    ],
+    "passed": true
+  },
+  "vmCiRun": "https://github.com/network-awai/awai-os/actions/runs/43562298206",
+  "testRevision": "45c1b646b23839f410c006f72163869fa2520563",
+  "verificationArtifactId": 14101063333,
+  "firstDesktopPngSha256": "24ccd0fc866a8e0df864be7c289901bd0171b60500a7ffebadccc17889138149",
+  "secondDesktopPngSha256": "24ccd0fc866a8e0df864be7c289901bd0171b60500a7ffebadccc17889138149",
+  "priorRun": {
+    "id": 43560627585,
+    "outcome": "false negative in full-page OCR of dark onboarding button; actual initial desktop reached",
+    "correction": "central-control OCR retains Hello and Get Started; both captured password screens remain negative controls"
+  },
+  "boundaries": [
+    "physical PC controller/firmware/thermal/network behavior not qualified",
+    "reported physical failure cause remains unknown",
+    "no real disk installation or USB rewrite in diagnosis",
+    "VM shutdown/restart does not qualify physical power-loss recovery",
+    "no production update enrollment or Native qualification"
+  ],
+  "measurement": {
+    "run": "450-otehon-usb-repro-20261114",
+    "model": "unknown",
+    "settings": "unknown",
+    "forecast": "unknown",
+    "tokens": "unknown",
+    "cost": "unknown",
+    "activeWaitingSplit": "unknown"
+  }
+}

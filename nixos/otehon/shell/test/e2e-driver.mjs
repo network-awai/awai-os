@@ -342,7 +342,7 @@ const passkey = p256.utils.randomSecretKey();
 let outcome = "pass";
 
 try {
-  // Dougaka Studio sub-page first (dist/dougaka, JUN-1180): it needs no
+  // Dougaka Studio sub-page first (dougaka/, JUN-1180): it needs no
   // login, and proving it up front keeps dougaka evidence even if the
   // sign-in flow later fails. The file:// bundle must boot its own broker,
   // render the Studio shell, and run the offline plan tool. The plan
@@ -354,8 +354,23 @@ try {
     if (!shell) throw new Error("no-shell-page");
     shellUrl = shell.url;
     const base = shellUrl.replace(/\/index\.html$/, "");
-    await send("Page.navigate", { url: `${base}/dist/dougaka/index.html` });
+    await send("Page.navigate", { url: `${base}/dougaka/index.html` });
     await until("document.getElementById('dougaka-studio') !== null", "studio mount", 60000);
+  });
+  await step("dougaka_diagnose", async () => {
+    const info = await evaluate(`(() => {
+      const scripts = [...document.querySelectorAll('script')].map((s) => (s.src || ('inline:' + s.type)) + ' len=' + (s.textContent || '').length);
+      let storage = 'untested';
+      try { window.localStorage.getItem('__probe'); storage = 'ok'; }
+      catch (e) { storage = 'blocked:' + ((e && e.name) || e); }
+      let evalOk = 'untested';
+      try { evalOk = (new Function('return 1'))() === 1 ? 'ok' : 'wrong'; }
+      catch (e) { evalOk = 'blocked:' + ((e && e.name) || e); }
+      return JSON.stringify({ readyState: document.readyState, scripts,
+        hasMount: !!document.getElementById('dougaka-studio'),
+        tabs: document.querySelectorAll('.studio-tab').length, storage, evalOk });
+    })()`);
+    console.log(`DOUGAKA_DIAG ${info}`);
   });
   await step("dougaka_studio_boots", async () => {
     await until("document.querySelectorAll('.studio-tab').length >= 5", "studio tabs", 60000);

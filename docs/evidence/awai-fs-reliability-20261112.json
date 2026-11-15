@@ -1,0 +1,42 @@
+{
+  "schema": "awai.fs-reliability-evidence.v1",
+  "scope": "public-fixture-host-storage",
+  "observedAt": "2026-11-12T01:47:44.546Z",
+  "expectedNodes": [
+    "levi",
+    "benjamin"
+  ],
+  "dataset": {
+    "rootCid": "bafyreibmkwfu2zj3s5l56ahflfwz7rn3w5g6gt4duxzcqnwraiff6a7owa",
+    "carSha": "c93cd21a475eb2734d15877ad5bee95e73f882f39947acdf1ae354d7400446a2",
+    "payloadSha": "05bcfc6beb8aad88119c874da56942320529df363cb7c8e8519064f64bd2f130",
+    "bytes": 131109
+  },
+  "observations": [
+    {
+      "node": "levi",
+      "status": "read",
+      "rootCid": "bafyreibmkwfu2zj3s5l56ahflfwz7rn3w5g6gt4duxzcqnwraiff6a7owa",
+      "carSha": "c93cd21a475eb2734d15877ad5bee95e73f882f39947acdf1ae354d7400446a2",
+      "payloadSha": "05bcfc6beb8aad88119c874da56942320529df363cb7c8e8519064f64bd2f130",
+      "bytes": 131109,
+      "degraded": false
+    },
+    {
+      "node": "benjamin",
+      "status": "read",
+      "rootCid": "bafyreibmkwfu2zj3s5l56ahflfwz7rn3w5g6gt4duxzcqnwraiff6a7owa",
+      "carSha": "c93cd21a475eb2734d15877ad5bee95e73f882f39947acdf1ae354d7400446a2",
+      "payloadSha": "05bcfc6beb8aad88119c874da56942320529df363cb7c8e8519064f64bd2f130",
+      "bytes": 131109,
+      "degraded": false
+    }
+  ],
+  "historicalTests": {
+    "observedAt": "2026-11-12T01:35:34.737Z",
+    "corruptCloneRefused": true,
+    "stagedArchiveRestore": true
+  },
+  "sourceIssue": "AWAI-2776",
+  "continuousMonitoring": false
+}

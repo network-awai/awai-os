@@ -1,0 +1,30 @@
+{
+  "observedAt": "2026-11-14T07:23:37.599Z",
+  "status": {
+    "status": "running",
+    "running": true
+  },
+  "usbHostProperties": [
+    "pcap",
+    "port",
+    "msos-desc",
+    "serial",
+    "pipeline",
+    "hostbus",
+    "isobufs",
+    "vendorid",
+    "productid",
+    "hostport",
+    "hostdevice",
+    "hostaddr",
+    "suppress-remote-wake",
+    "loglevel",
+    "isobsize",
+    "guest-resets-all",
+    "guest-reset",
+    "bootindex",
+    "attached"
+  ],
+  "attachedUSB": "",
+  "note": "read-only QMP capability inspection; no host device attached or captured"
+}

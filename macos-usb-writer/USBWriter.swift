@@ -5,8 +5,8 @@ import Darwin
 let owner: uid_t = 501
 let serial = "0022CFF6B899CA205987CBC4"
 let capacity: UInt64 = 61949214720
-let inbox = "/Users/junkawasaki/github/murakumo-usb-auto-install-qa/usb-write-request.json"
-let imageRoot = "/Users/junkawasaki/github/murakumo-usb-auto-install-qa/"
+let inbox = "/Users/junkawasaki/github/workspaces/codex/awai-usb-writer/usb-write-request.json"
+let imageRoot = "/Users/junkawasaki/github/workspaces/codex/awai-usb-writer/"
 struct Failure: Error, CustomStringConvertible { let description: String }
 func require(_ ok: Bool, _ message: String) throws { if !ok { throw Failure(description:message) } }
 func event(_ fields:[String:Any]) { if let data=try? JSONSerialization.data(withJSONObject:fields,options:[.sortedKeys]), let s=String(data:data,encoding:.utf8) { print(s);fflush(stdout) } }
@@ -73,6 +73,25 @@ func digest(_ handle:FileHandle,_ bytes:UInt64,copy:FileHandle?=nil,phase:String
     }
     return hash.finalize().map{String(format:"%02x",$0)}.joined()
 }
+// Clone the admitted open file descriptor, never reopen a user-controlled path.
+// APFS copy-on-write gives an independent private snapshot without a second ISO allocation.
+func snapshot(_ input:FileHandle, directory:String, bytes:UInt64, expected:String) throws -> FileHandle {
+    let dirfd=open(directory,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC)
+    try require(dirfd>=0,"Cannot open private snapshot directory");defer{close(dirfd)}
+    try require(fclonefileat(input.fileDescriptor,dirfd,"image",0)==0,"Cannot clone ISO on this filesystem; USB unchanged")
+    let fd=openat(dirfd,"image",O_RDWR|O_NOFOLLOW|O_CLOEXEC)
+    try require(fd>=0,"Cannot open cloned ISO")
+    let staged=FileHandle(fileDescriptor:fd,closeOnDealloc:true)
+    do {
+        var st=stat()
+        try require(fstat(fd,&st)==0 && st.st_mode & S_IFMT==S_IFREG && UInt64(st.st_size)==bytes,"Invalid snapshot")
+        try require(fchown(fd,geteuid(),getegid())==0 && fchmod(fd,0o600)==0,"Cannot protect snapshot")
+        let hash=try digest(staged,bytes,phase:"staging")
+        try require(hash==expected,"ISO SHA256 mismatch; USB unchanged")
+        try staged.synchronize();try staged.seek(toOffset:0)
+        return staged
+    } catch {try? staged.close();throw error}
+}
 func main() throws {
     try require(CommandLine.arguments.count==1,"Arguments are not allowed")
     try require(geteuid()==0,"Run the installed helper with sudo")
@@ -89,10 +108,8 @@ func main() throws {
     var template=Array("/var/run/murakumo-usb.XXXXXX".utf8CString)
     guard let raw=mkdtemp(&template) else{throw Failure(description:"Cannot create private snapshot")}
     let dir=String(cString:raw);defer{try? FileManager.default.removeItem(atPath:dir)}
-    let fd=open(dir+"/image",O_CREAT|O_EXCL|O_RDWR|O_NOFOLLOW|O_CLOEXEC,0o600)
-    try require(fd>=0,"Cannot stage ISO");let staged=FileHandle(fileDescriptor:fd,closeOnDealloc:true);defer{try? staged.close()}
-    let hash=try digest(input,r.bytes,copy:staged,phase:"staging");try require(hash==r.sha256,"ISO SHA256 mismatch; USB unchanged")
-    try staged.synchronize();try staged.seek(toOffset:0)
+    let staged=try snapshot(input,directory:dir,bytes:r.bytes,expected:r.sha256)
+    defer{try? staged.close()}
     _=try command("/usr/sbin/diskutil",["unmountDisk","/dev/"+disk])
     try require(try target()==disk,"USB changed before writing")
     let rawFD=open("/dev/r"+disk,O_RDWR|O_NOFOLLOW|O_CLOEXEC|O_EXCL)
@@ -118,9 +135,42 @@ func tests() throws {
     for names in [[],["disk1","disk2"],["disk1s1"],["../../disk0"]] {
         do{_=try selected(names);throw Failure(description:"Unsafe selection accepted")}catch let e as Failure{try require(e.description != "Unsafe selection accepted","Unsafe selection accepted")}
     }
+    let scratch=FileManager.default.currentDirectoryPath+"/.agent-output/clone-test-"+UUID().uuidString
+    try FileManager.default.createDirectory(atPath:scratch,withIntermediateDirectories:true,attributes:[.posixPermissions:0o700])
+    defer{try? FileManager.default.removeItem(atPath:scratch)}
+    let bytes=Data(repeating:0x5a,count:1048576)
+    let expected=SHA256.hash(data:bytes).map{String(format:"%02x",$0)}.joined()
+    let source=scratch+"/source";try bytes.write(to:URL(fileURLWithPath:source))
+    let input=try FileHandle(forReadingFrom:URL(fileURLWithPath:source));defer{try? input.close()}
+    let dir=scratch+"/snapshot";try FileManager.default.createDirectory(atPath:dir,withIntermediateDirectories:false,attributes:[.posixPermissions:0o700])
+    let cloned=try snapshot(input,directory:dir,bytes:UInt64(bytes.count),expected:expected);defer{try? cloned.close()}
+    let writer=try FileHandle(forWritingTo:URL(fileURLWithPath:source));try writer.write(contentsOf:Data([0]));try writer.close()
+    try require(try digest(cloned,UInt64(bytes.count),phase:"test-snapshot-after-source-change")==expected,"Source modification changed snapshot")
+    var st=stat();try require(fstat(cloned.fileDescriptor,&st)==0 && st.st_uid==geteuid() && st.st_mode & 0o777==0o600,"Snapshot permissions")
+    do{_=try snapshot(input,directory:dir,bytes:UInt64(bytes.count),expected:expected);throw Failure(description:"Existing snapshot overwritten")}catch let e as Failure{try require(e.description != "Existing snapshot overwritten","Existing snapshot overwritten")}
+    let bad=scratch+"/bad";try FileManager.default.createDirectory(atPath:bad,withIntermediateDirectories:false)
+    do{_=try snapshot(input,directory:bad,bytes:UInt64(bytes.count),expected:expected);throw Failure(description:"Corrupt source admitted")}catch let e as Failure{try require(e.description != "Corrupt source admitted","Corrupt source admitted")}
+    print("PASS APFS clone isolation, private permissions, exclusive destination and corrupt source refusal")
     print("PASS serial binding, dynamic whole-disk lookup, missing/duplicate/partition/path refusal")
 }
 do {try tests()}catch{fputs("\(error)\n",stderr);exit(1)}
+#elseif USB_MEDIA_READ_ONLY
+// Separate one-shot diagnostic binary: no request/action parser and no write path.
+do {
+    try require(CommandLine.arguments.count==1 && geteuid()==0,"Run the read-only diagnostic with sudo and no arguments")
+    let disk=try target()
+    let fd=open("/dev/r"+disk,O_RDONLY|O_NOFOLLOW|O_CLOEXEC)
+    try require(fd>=0,"Read-only USB access denied")
+    let input=FileHandle(fileDescriptor:fd,closeOnDealloc:true);defer{try? input.close()}
+    var st=stat();try require(fstat(fd,&st)==0 && st.st_mode & S_IFMT==S_IFCHR,"Unexpected device type")
+    let expected="5695f3c43f97912212289b59a11b79f6662c5ebbbbb45fd4aaa0e2d2b2840133"
+    let bytes:UInt64=6816595968
+    try require(try target()==disk,"USB changed before read")
+    let actual=try digest(input,bytes,phase:"media-read-only")
+    try require(try target()==disk,"USB changed during read")
+    event(["status":actual==expected ? "media-matches-qualified-iso":"media-differs-from-qualified-iso","bytes":bytes,"sha256":actual,"expected_sha256":expected,"disk":disk,"serialSuffix":String(serial.suffix(8)),"writeAccess":false])
+    if actual != expected {exit(2)}
+}catch{event(["status":"failed","error":String(describing:error)]);exit(1)}
 #else
 do {try main()}catch{event(["status":"failed","error":String(describing:error)]);exit(1)}
 #endif

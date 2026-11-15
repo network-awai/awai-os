@@ -1,0 +1,27 @@
+{
+  "schema": "awai.otehon.usb-vm.v1",
+  "isoSha256": "58de71df0640a1e4ca13e2ddf43a9bc90840e3dd677cd13c0c01b87c21139a43",
+  "isoBytes": 8492605440,
+  "rawSha256": "e8029b07decc8cf844492c95eaa1e16b43eb19416693c999f5e42c37a095e773",
+  "rawBytes": 27114078208,
+  "externalNetwork": false,
+  "physicalDisks": false,
+  "mediaBytes": 61949214720,
+  "targetBus": "nvme",
+  "checks": [
+    "graphical installer boots offline without target writes",
+    "mouse selection and exact keyboard approval install scratch NVMe; full readback completes; decoys unchanged",
+    "verified completion screen powers off via displayed control"
+  ],
+  "passed": false,
+  "date": "2026-11-14",
+  "issue": "AWAI-450",
+  "source": "71615c2a7c44ae99aec7f6880ce7d193ea6f1148",
+  "run": "https://github.com/network-awai/awai-os/actions/runs/43575127952",
+  "proofArtifact": 14106756307,
+  "proofZipSha256": "8b649e562987a163f2db609230221962ed85ebd270f97b564a7b460bdaacdd94",
+  "failure": "Installed NVMe first boot reached data passphrase prompt, but Plymouth used text/details rather than the required graphical protection UI. Graphical guard correctly rejected it.",
+  "correction": "Keep serial console diagnostics; explicitly ignore serial consoles for Plymouth renderer selection. Full first boot/restart GUI gate remains required.",
+  "physicalUsbUpdated": false,
+  "nativeQualified": false
+}

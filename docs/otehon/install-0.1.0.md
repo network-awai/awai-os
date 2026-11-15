@@ -42,8 +42,8 @@ The PC has no key disk, so `disk-6600h.nix` replaces the base's unlock step:
 - **Physical access:** after the passphrase, the desktop logs in by itself and the OS sign-in is its only
   gate. The system on the root partition is not encrypted, and it holds only public files.
 - **Secure Boot:** the boot files are unsigned, so Secure Boot must be off.
-- **Updates:** signed updates (`update.nix`) are not in this image yet.
-- **Root partition:** it is a fixed 16 GB, which limits how many generations fit.
+- **Updates:** signed update modules are imported by the desktop but disabled until explicit enrollment.
+- **Root partition:** the current source uses a fixed 24 GiB root; the November 7 evidence below used 16 GiB.
 - **Build:** `systemd-repart` cannot run under the x86 emulator on the build machine, so this image is
   assembled with `sgdisk`, `mkfs.vfat` and `mke2fs`, not `image.repart`. A native x86_64 builder could
   go back to it.

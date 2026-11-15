@@ -1,0 +1,45 @@
+// Native early-boot UI. Password characters are never drawn or logged.
+Window.SetBackgroundTopColor(1, 1, 1);
+Window.SetBackgroundBottomColor(1, 1, 1);
+fun text_sprite(text, size, x, y) {
+  image = Image.Text(text, 0.094, 0.137, 0.196, 1, "Noto Sans CJK JP " + size);
+  sprite = Sprite(image);
+  sprite.SetPosition(x, y, 10);
+  return sprite;
+}
+brand = text_sprite("Awai Otehon", "24", 32, 24);
+environment = text_sprite("内蔵 NVMe から起動中", "18", Window.GetWidth() - 300, 28);
+heading = text_sprite("この PC のデータを保護", "34", 100, 150);
+explanation = text_sprite("パスフレーズはこの PC 内のデータを守ります。", "20", 100, 225);
+warning = text_sprite("忘れるとデータを復元できません。Awai アカウントとは別です。", "18", 100, 270);
+prompt = text_sprite("起動を準備しています…", "20", 100, 340);
+entry = text_sprite("", "24", 100, 420);
+hint = text_sprite("入力して Enter で続ける", "18", 100, 490);
+fun password_callback(message, bullets) {
+  title = "データ保護の確認";
+  instruction = message;
+  if (message == "Choose a passphrase for this PC's data (12 characters or more). Without it the data is lost:") {
+    title = "この PC のデータを保護";
+    instruction = "12文字以上のパスフレーズを設定してください。";
+  }
+  if (message == "Enter the passphrase again:") {
+    title = "同じパスフレーズを入力";
+    instruction = "確認のため、もう一度入力してください。";
+  }
+  if (message == "Passphrase for this PC's data:") {
+    title = "この PC のデータを解除";
+    instruction = "設定したパスフレーズを入力してください。";
+  }
+  heading.SetImage(Image.Text(title, 0.094, 0.137, 0.196, 1, "Noto Sans CJK JP 34"));
+  prompt.SetImage(Image.Text(instruction, 0.094, 0.137, 0.196, 1, "Noto Sans CJK JP 20"));
+  entry.SetOpacity(1);
+  hidden = "";
+  for (i = 0; i < bullets; i++) hidden += "●";
+  entry.SetImage(Image.Text(hidden, 0.094, 0.137, 0.196, 1, "Noto Sans CJK JP 24"));
+}
+fun normal_callback() {
+  prompt.SetImage(Image.Text("確認しています…", 0.094, 0.137, 0.196, 1, "Noto Sans CJK JP 20"));
+  entry.SetOpacity(0);
+}
+Plymouth.SetDisplayPasswordFunction(password_callback);
+Plymouth.SetDisplayNormalFunction(normal_callback);

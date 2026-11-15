@@ -9,6 +9,7 @@ funds. It is **not built into the OS image**.
 | Part | File | Runs on |
 | --- | --- | --- |
 | Pure core | `src/d1/core.cljc` | Basilisp and Babashka, unchanged |
+| Reservation ledger | `src/d1/reservation.cljc` | Both: Babashka (`test/reservation_test.clj`, 16 tests / 86 assertions) and Basilisp (`test/reservation_run.lpy`, 19 checks) |
 | Shared cases | `test/cases.json` | Both (58 cases) |
 | Basilisp runner | `test/run_cases.lpy` | Basilisp: `basilisp run` |
 | Babashka runner | `test/run_cases.clj` | Babashka: `bb --classpath` |
@@ -41,10 +42,20 @@ funds. It is **not built into the OS image**.
 cd dapps/d1
 PYTHONPATH=src basilisp run test/run_cases.lpy
 bb --classpath src:test test/run_cases.clj
+bb --classpath src:test test/reservation_test.clj
+PYTHONPATH=src basilisp run test/reservation_run.lpy
 ```
 
-A changed expectation fails on both (exit 1); the run above is the
-negative control.
+A changed expectation fails on both core runners (exit 1); removing the
+fence check from `reservation.cljc` fails the ledger suite the same way.
+These runs are the negative controls.
+
+Reusing an expired resolved claim advances its recorded fence and returns that
+fence in the admission decision. Settlement must match it exactly. Expired
+in-flight or unknown effects remain pending instead of being admitted again.
+Authoritative reconciliation takes the same epoch; its legacy five-argument
+form applies only to epoch zero. The host still owns authority, durable
+persistence, trusted clocks and retention of spent keys beyond expiry.
 
 ## Evidence (2026-11-08, Apple M1 Max)
 

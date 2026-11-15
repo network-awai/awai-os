@@ -22,23 +22,23 @@
         cid (car/cid-str (car/cid-bytes car/codec-dag-cbor digest))]
     (ensure! (= expected-cid cid))
     {:bytes bytes :cid cid}))
-(let [[mode dir] *command-line-args*]
-  (case mode
-    ("create" "create-v2") (let [inputs (files) m (manifest inputs)]
+(let [[mode dir] *command-line-args*
+      v2? (contains? #{"create-v2" "read-v2"} mode)
+      action (case mode "create-v2" "create" "read-v2" "read" mode)]
+  (case action
+    "create" (let [inputs (files) m (manifest inputs)]
                (store/init! dir)
                (pack/import-logical-forest-files! dir "reboot" (paths) (:bytes m) (:cid m)
-                                                  (if (= mode "create-v2") {:file-backed? true} {}))
-               (println "created-logical-four-pack-file-import" mode))
-    ("read" "read-v2") (let [h (pack/recover dir)
+                                                  (if v2? {:file-backed? true} {}))
+               (println (if v2? "created-v2-four-packs" "created-logical-four-pack-file-import")))
+    "read" (let [h (pack/recover dir)
                  refs (get-in (pack/summary h) [:groups "reboot" :packs])
                  offset (- (* 8 65536) 20)
                  expected (byte-array (map #(unchecked-byte (mod (+ (* % 19) (quot % 8191)) 256))
                                            (range offset (+ offset 40))))]
              (ensure! (= (mapv segmented/sha (files)) (mapv :stored-sha refs)))
-             (ensure! (every? #(= (:format %)
-                                  (if (= mode "read-v2")
-                                    :awai.otehon-store/pack-forest-file-v2
-                                    :awai.otehon-store/pack-forest-v1)) refs))
+             (ensure! (every? #(= (if v2? :awai.otehon-store/pack-forest-file-v2
+                                          :awai.otehon-store/pack-forest-v1) (:format %)) refs))
              (ensure! (= expected-cid (get-in (pack/summary h) [:groups "reboot" :manifest-cid])))
              (ensure! (= 0 (get-in (pack/summary h) [:stats :cache-entries-before])))
              (ensure! (java.util.Arrays/equals expected (pack/read-group-range h "reboot" offset 40)))
@@ -46,7 +46,8 @@
                (let [expected (byte-array (map #(unchecked-byte (mod (+ (* % 19) (quot % 8191)) 256))
                                                (range start (+ start 262144))))]
                  (ensure! (java.util.Arrays/equals expected (pack/read-group-range h "reboot" start 262144)))))
-             (println "recovered-logical-four-packs-and-full-two-mib" mode))
+             (println (if v2? "recovered-v2-four-packs-and-full-two-mib"
+                                "recovered-logical-four-packs-and-full-two-mib")))
     "create-large" (let [source (str dir "-input") stage (str dir "-stage")
                          tool (or (System/getenv "FOREST_TOOL") (throw (ex-info "FOREST_TOOL required" {})))]
                      ;; Sparse input keeps the guest fixture small on disk while
