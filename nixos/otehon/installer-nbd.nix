@@ -17,6 +17,9 @@ in {
       message = "The installer NBD source requires pinned ISO and compressed/raw payload identities.";
     }];
     boot.kernelModules = [ "nbd" ];
+    # Exactly one source device. Unconnected default NBD devices otherwise
+    # fill the physical disk chooser with sixteen zero-capacity rows.
+    boot.extraModprobeConfig = "options nbd nbds_max=1";
     systemd.services.otehon-installer-source = {
       description = "Verify and mount the read-only network installer ISO";
       wantedBy = [ "multi-user.target" ];
