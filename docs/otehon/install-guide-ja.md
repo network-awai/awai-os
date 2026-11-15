@@ -1,14 +1,14 @@
-# Awai Otehon 0.7.2 を USB から NVMe に導入する
+# Awai Otehon 0.7.3 を USB から NVMe に導入する
 
-配布版 **0.7.2** / Build ID `b65ffc3e4c402213ad1fa0bf150975ffb34190d7f6dad98d7296d00999de597b`。
+配布版 **0.7.3** / Build ID `a73c2f90a6307ce2cb580b0e6bf843161adaec295e72f4795f058c6cc1c2c364`。
 NixOS `26.05pre-git` / Nix `2.34.8`。
-[VM検証](https://github.com/network-awai/awai-os/actions/runs/43666484029)と[ISO/USBの配布記録](usb-installer-0.7.2.md)を対応させています。
+[VM検証](https://github.com/network-awai/awai-os/actions/runs/43673981942)と[ISO/USBの配布記録](usb-installer-0.7.3.md)を対応させています。
 実6600Hの導入完了は別の受入です。
 
 ## GUI が出ないとき
 
 1. UEFI の起動メニューで KIOXIA USB を選びます。
-2. Awai の起動メニューで `Text-installer-0.7.2` を選びます。通常起動後は Ctrl+Alt+F1/F2 でも文字版へ移れます。
+2. Awai の起動メニューで `Text-installer-0.7.3` を選びます。通常起動後は Ctrl+Alt+F1/F2 でも文字版へ移れます。
 3. 画面の版・Build IDを上の配布記録と比較します。オフライン画面は最新版を自動照会しません。
 4. ディスク一覧で内蔵 NVMe の型番・容量・現在の領域を確認し、左の番号を入力します。シリアル番号の手入力は不要です。
 5. 別画面に表示された保存先を再確認し、上書きしてよければ `1. すべて消去してインストール` を選びます。既存OS・ファイルは削除されます。`0` で戻れば書き込みません。
@@ -19,15 +19,15 @@ NixOS `26.05pre-git` / Nix `2.34.8`。
 
 番号を選ぶ画面（実 ISO の VM）:
 
-![文字版の起動画面](assets/installer-0.7.2-text-ready.png)
+![文字版の起動画面](assets/installer-0.7.3-text-ready.png)
 
 選んだディスクを確認して消去を承認する画面（VM）:
 
-![上書きの確認](assets/installer-0.7.2-text-review.png)
+![上書きの確認](assets/installer-0.7.3-text-review.png)
 
 全長照合・起動登録後の完了画面（VM）:
 
-![文字版の導入完了](assets/installer-0.7.2-text-complete.png)
+![文字版の導入完了](assets/installer-0.7.3-text-complete.png)
 
 ## GUI で導入するとき
 
@@ -41,7 +41,7 @@ USBから起動しただけでは内蔵ディスクへ導入されません。�
 
 データ保護のパスフレーズをPC上で設定します。次回起動時は同じパスフレーズで解除します。値をチャットへ送る必要はありません。
 
-失敗表示・診断コードが出た場合は導入完了として扱わず、版・Build ID・保存先の型番/容量と最後の画面を記録してください。
+失敗表示が出た場合は導入完了として扱わず、版・Build ID・「失敗した処理」・「診断コード」・処理済み量・書込み開始の表示を記録してください。0.7.3 は失敗した処理と errno 名・番号を表示します。既報の 6600H の OSError の原因はまだ特定できていません。
 書込み開始後の失敗では選択先が変更されている可能性があります。
 
 ## 検証範囲
