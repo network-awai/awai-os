@@ -35,8 +35,8 @@ class Claims(unittest.TestCase):
   self.assertFalse(target['kernel']['partitionScan']['truncated'])
   k.parse('PARTFILE 7 271581185 32768 0\nPARTCALLBACK 7 271581185 0xffff1234\n',devices)
   self.assertEqual(part['markDeadCallback'],'unknown');self.assertNotIn('0xffff',str(target))
-  self.assertIn('$scanned < 512',k.program(123,[7]))
-  self.assertIn('$matched < 32',k.program(123,[7]))
+  self.assertIn('for ($iteration : 0..512)',k.program(123,[7]))
+  self.assertIn('$matched >= 32',k.program(123,[7]))
  def test_unsupported_paths_and_count_do_not_start_tracer(self):
   with patch.object(k.subprocess,'Popen') as process:
    self.assertFalse(k.inspect([])['available'])

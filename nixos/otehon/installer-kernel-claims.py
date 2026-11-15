@@ -105,7 +105,8 @@ kprobe:bdev_open /pid == PID_FILTER/ {
     $link = $head->next;
     $scanned = 0;
     $matched = 0;
-    while ((uint64)$link != 0 && (uint64)$link != (uint64)$head && $scanned < 512 && $matched < 32) {
+    for ($iteration : 0..512) {
+      if ((uint64)$link == 0 || (uint64)$link == (uint64)$head || $matched >= 32) { break; }
       $inode = (struct inode *)((uint64)$link - offsetof(struct inode, i_sb_list));
       $child = (struct block_device *)((uint64)$inode - offsetof(struct bdev_inode, vfs_inode));
       if ($child->bd_disk == $b->bd_disk && ($child->__bd_flags.counter & 255)) {
