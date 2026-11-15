@@ -33,6 +33,7 @@ jobs:
           "$bb_path/bin/bb" --classpath "$classpath" nixos/otehon/storage/test/otehon/generic_forest_file_proof.clj "$RUNNER_TEMP/generic-forest-file-proof" "$tool"
           "$bb_path/bin/bb" --classpath "$classpath" nixos/otehon/storage/test/otehon/generic_large_block_proof.clj write "$RUNNER_TEMP/generic-large-block-proof" "$tool"
           "$bb_path/bin/bb" --classpath "$classpath" nixos/otehon/storage/test/otehon/generic_large_block_proof.clj read "$RUNNER_TEMP/generic-large-block-proof" /nonexistent/forest-tool
+          "$bb_path/bin/bb" --classpath "$classpath" nixos/otehon/storage/test/otehon/generic_large_witness_proof.clj "$RUNNER_TEMP/generic-large-witness-proof" "$tool"
           proof=nixos/otehon/storage/test/otehon/forest_large_proof.clj
           "$bb_path/bin/bb" --classpath "$classpath" "$proof" generate "$RUNNER_TEMP/forest-large-proof"
           "$tool" snapshot compress "$RUNNER_TEMP/forest-large-proof/input.car" --output-path "$RUNNER_TEMP/forest-large-proof/large.forest" --frame-size 1024

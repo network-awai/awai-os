@@ -143,12 +143,19 @@
 (defn publish-file-group!
   "Conditionally publish 1..64 fully verified generic Forest files as one
   catalog transaction. Immutable objects are synced before root publication;
-  failures may leave orphan objects. Expected generation is required."
-  [directory name basis archives expected-generation]
+  failures may leave orphan objects. Expected generation is required. The
+  witnessed form also requires a trusted complete-root verifier."
+  ([directory name basis archives expected-generation]
+   (publish-file-group! directory name basis archives expected-generation nil nil))
+  ([directory name basis archives expected-generation witness-port verify-root!]
   (group-key name)
   (when-not (and (integer? expected-generation) (<= 1 expected-generation 9007199254740991)
                  (vector? archives) (<= 1 (count archives) max-group-archives))
     (fail! :invalid-ipld-forest-group "expected bounded files and generation"))
+  (when-not (or (and (nil? witness-port) (nil? verify-root!))
+                (and (some? witness-port) (fn? verify-root!)))
+    (fail! :invalid-witness "witnessed publication requires a full-root verifier"))
+  (when witness-port (store/validate-write-witness! witness-port))
   (let [checked (mapv (fn [{:keys [path root-cid] :as entry}]
                         (when-not (and (map? entry) (= #{:path :root-cid} (set (keys entry)))
                                        (string? path) (string? root-cid))
@@ -161,13 +168,19 @@
                               :basis-cid basis :archives (mapv :ref checked)})]
     (when-not (group-has-cid? (mapv :forest checked) basis)
       (fail! :invalid-ipld-basis "basis block is absent from archive group"))
-    (store/transact-if-generation! directory expected-generation :put
-      {:key (group-key name) :value (pr-str group)}
-      (fn [dir _]
-        (doseq [{:keys [path ref]} checked]
-          (store/write-forest-file! dir path (:archive-size ref) (:archive-sha ref))
-          (verified-file (store/forest-file-path dir (:archive-sha ref)) ref))))
-    group))
+    (let [payload {:key (group-key name) :value (pr-str group)}
+          verify-state! (when witness-port (fn [dir state]
+                                           (when-not (true? (verify-root! dir state))
+                                             (fail! :catalog-verification-refused "root verifier did not approve"))))
+          publish-files! (fn [dir state]
+                           (when verify-state! (verify-state! dir state))
+                           (doseq [{:keys [path ref]} checked]
+                             (store/write-forest-file! dir path (:archive-size ref) (:archive-sha ref))
+                             (verified-file (store/forest-file-path dir (:archive-sha ref)) ref)))]
+      (if witness-port
+        (store/transact-if-generation-witnessed! directory expected-generation :put payload publish-files! witness-port verify-state!)
+        (store/transact-if-generation! directory expected-generation :put payload publish-files!)))
+    group)))
 
 (defn publish-group!
   "Publish an ordered, bounded set of generic Forest archives under one WAL

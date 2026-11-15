@@ -84,8 +84,7 @@
   this is not a streaming or GiB writer. STAGING is new and retained. The
   seven-argument form requires the observed store generation under the writer
   lock; the six-argument form remains unconditional for blocks <=850 KiB.
-  Larger blocks up to 1 MiB require the seven-argument conditional form; the
-  witnessed large-block path is not yet supported. The eight-argument form
+  Larger blocks up to 1 MiB require a conditional generation. The eight-argument form
   requires a witness and verifies the supported entire root; the nine-argument
   form requires a trusted complete-root verifier."
   ([directory name basis blocks staging tool]
@@ -119,9 +118,8 @@
     (when-not (= (count cids) (count (set cids))) (fail! :duplicate-cid "duplicate block CID"))
     (when-not (some #{basis} cids) (fail! :invalid-ipld-basis "basis block missing from input"))
     (when (> (count batches) max-packs) (fail! :too-large "IPLD input exceeds archive count"))
-    (when (and file-backed? (or (identical? unconditional expected-generation)
-                                (not (identical? unwitnessed witness-port))))
-      (fail! :unsupported-file-publication "large blocks require an unwitnessed conditional generation"))
+    (when (and file-backed? (identical? unconditional expected-generation))
+      (fail! :unsupported-file-publication "large blocks require a conditional generation"))
     (Files/createDirectory (Paths/get staging (make-array String 0))
       (into-array FileAttribute [(PosixFilePermissions/asFileAttribute
                                   (PosixFilePermissions/fromString "rwx------"))]))
@@ -164,6 +162,8 @@
                           {:root-cid root :bytes bytes}))))
                   (range) batches)
             group (cond
+                    (and file-backed? (not (identical? unwitnessed witness-port)))
+                    (ipld/publish-file-group! directory name basis archives expected-generation witness-port verify-root!)
                     file-backed? (ipld/publish-file-group! directory name basis archives expected-generation)
                     (not (identical? unwitnessed witness-port)) (ipld/publish-group! directory name basis archives expected-generation witness-port verify-root!)
                     (identical? unconditional expected-generation) (ipld/publish-group! directory name basis archives)

@@ -15,10 +15,9 @@
   (do (ensure! (.mkdir (java.io.File. root)) "fresh root required")
       (ensure! (.mkdir (java.io.File. staging)) "fresh staging required")
       (store/init! dir)
-      (let [initial (:root (store/read-store dir)) generation (:generation initial)
-            guard-stage (str root "/guard-stage") w {:read! (fn [] initial) :compare-and-set! (fn [_ _] false)}]
+      (let [initial (:root (store/read-store dir))
+            guard-stage (str root "/guard-stage")]
         (ensure! (refused? #(writer/put-ipld-blocks! dir "unsafe" (:cid a) batch guard-stage tool)) "unconditional large write accepted")
-        (ensure! (refused? #(writer/put-ipld-blocks! dir "unsafe" (:cid a) batch guard-stage tool generation w)) "witnessed large write accepted")
         (ensure! (not (.exists (java.io.File. guard-stage))) "refused write created staging")
         (ensure! (= initial (:root (store/read-store dir))) "refused write changed root"))
       (let [backend (blocks/open-block-store dir staging tool)

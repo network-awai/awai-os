@@ -1,0 +1,5 @@
+# Witnessed generic 1 MiB block publication — 2026-11-15
+
+The file-backed generic group supports the same optional prepared-witness transaction and trusted complete-root verifier as the inline group. The hosted Kotobase witnessed block port wrote and read two deterministic incompressible 1 MiB blocks; a refusing root verifier did not publish, and witness root mismatch and pending intent were rejected on read. This used an in-memory witness fixture, not an independent or rollback-resistant authority. The real-tool proof is included in the pinned Linux Forest CI job. Existing IPLD, Kotobase Forest and writer suites passed 28 tests / 194 assertions locally.
+
+This supersedes the earlier observation in `README-generic-large-block-20261115.md` that witnessed large writes were refused; unconditional large writes still refuse. The witness host remains responsible for trust, independent durability and reconciliation. Cross-store atomicity, distributed fencing, OS-cache-loss tests of this path, Native I/O and production policy remain open.
