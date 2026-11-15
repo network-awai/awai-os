@@ -33,9 +33,11 @@
           ref (edn/read opts r)]
       (when-not (and (= ::eof (edn/read opts r)) (map? ref)
                      (= #{:format :archive-sha :archive-size :root-cid} (set (keys ref)))
-                     (= :awai.otehon-store/ipld-forest-v1 (:format ref))
+                     (contains? #{:awai.otehon-store/ipld-forest-v1 :awai.otehon-store/ipld-forest-file-v2} (:format ref))
                      (string? (:archive-sha ref)) (re-matches #"[0-9a-f]{64}" (:archive-sha ref))
-                     (integer? (:archive-size ref)) (<= 64 (:archive-size ref) forest/max-size)
+                     (integer? (:archive-size ref))
+                     (<= 64 (:archive-size ref) (if (= :awai.otehon-store/ipld-forest-v1 (:format ref))
+                                                  forest/max-size (* 32 1024 1024)))
                      (string? (:root-cid ref)))
         (fail! :invalid-ipld-forest-ref "invalid archive reference"))
       (cid-bytes (:root-cid ref))
@@ -47,6 +49,24 @@
     (when-not (and (= [root-bytes] roots) (forest/get-block h root-bytes))
       (fail! :invalid-ipld-root "CAR root must be present and match declared root"))
     h))
+
+(defn- verified-file [path ref]
+  (let [expected {:size (:archive-size ref) :sha (:archive-sha ref)}
+        before (store/forest-source-digest path)
+        _ (when-not (= expected before) (fail! :corrupt-forest "Forest digest or size differs"))
+        h (forest/verify-generic-file path)
+        after (store/forest-source-digest path)]
+    (when-not (and (= before after) (= [ (cid-bytes (:root-cid ref)) ] (:roots h)))
+      (fail! :corrupt-forest "Forest changed or root differs"))
+    h))
+
+(defn- open-ref [directory ref]
+  (if (= :awai.otehon-store/ipld-forest-file-v2 (:format ref))
+    (verified-file (store/forest-file-path directory (:archive-sha ref)) ref)
+    (let [bytes (store/read-forest directory (:archive-sha ref))]
+      (when-not (= (:archive-size ref) (alength ^bytes bytes))
+        (fail! :corrupt-forest "archive size differs from reference"))
+      (verified bytes (:root-cid ref)))))
 
 (defn publish!
   "Verify a bounded generic Forest archive and atomically publish its name.
@@ -73,11 +93,9 @@
         value (get state (key-for name))]
     (when degraded? (fail! :degraded-store "invalid root slot requires review before reads"))
     (when-not value (fail! :ipld-forest-not-found "archive is not published"))
-    (let [ref (parse-ref value) bytes (store/read-forest directory (:archive-sha ref))]
-      (when-not (= (:archive-size ref) (alength ^bytes bytes))
-        (fail! :corrupt-forest "archive size differs from published reference"))
+    (let [ref (parse-ref value)]
       {:directory directory :basis root :degraded? degraded? :ref ref
-       :forest (dissoc (verified bytes (:root-cid ref)) :bytes :carv1)})))
+       :forest (dissoc (open-ref directory ref) :bytes :carv1)})))
 
 (defn get-block
   "Read and verify the selected CID via positioned frame reads. A nil result
@@ -118,7 +136,38 @@
       (when-not (= ::eof (edn/read opts r)) (fail! :invalid-ipld-forest-group "trailing group data"))
       (checked-group group))))
 (defn- group-has-cid? [opened cid]
-  (let [needle (cid-bytes cid)] (boolean (some #(forest/get-block % needle) opened))))
+  (let [needle (cid-bytes cid)]
+    (boolean (some #(if (:file-backed? %) (some #{needle} (:cids %))
+                        (forest/get-block % needle)) opened))))
+
+(defn publish-file-group!
+  "Conditionally publish 1..64 fully verified generic Forest files as one
+  catalog transaction. Immutable objects are synced before root publication;
+  failures may leave orphan objects. Expected generation is required."
+  [directory name basis archives expected-generation]
+  (group-key name)
+  (when-not (and (integer? expected-generation) (<= 1 expected-generation 9007199254740991)
+                 (vector? archives) (<= 1 (count archives) max-group-archives))
+    (fail! :invalid-ipld-forest-group "expected bounded files and generation"))
+  (let [checked (mapv (fn [{:keys [path root-cid] :as entry}]
+                        (when-not (and (map? entry) (= #{:path :root-cid} (set (keys entry)))
+                                       (string? path) (string? root-cid))
+                          (fail! :invalid-ipld-forest-group "invalid file entry"))
+                        (let [{:keys [size sha]} (store/forest-source-digest path)
+                              ref {:format :awai.otehon-store/ipld-forest-file-v2
+                                   :archive-sha sha :archive-size size :root-cid root-cid}]
+                          {:path path :ref ref :forest (verified-file path ref)})) archives)
+        group (checked-group {:format :awai.otehon-store/ipld-forest-group-v1
+                              :basis-cid basis :archives (mapv :ref checked)})]
+    (when-not (group-has-cid? (mapv :forest checked) basis)
+      (fail! :invalid-ipld-basis "basis block is absent from archive group"))
+    (store/transact-if-generation! directory expected-generation :put
+      {:key (group-key name) :value (pr-str group)}
+      (fn [dir _]
+        (doseq [{:keys [path ref]} checked]
+          (store/write-forest-file! dir path (:archive-size ref) (:archive-sha ref))
+          (verified-file (store/forest-file-path dir (:archive-sha ref)) ref))))
+    group))
 
 (defn publish-group!
   "Publish an ordered, bounded set of generic Forest archives under one WAL
@@ -179,11 +228,7 @@
     (when degraded? (fail! :degraded-store "invalid root slot requires review before reads"))
     (when-not text (fail! :ipld-forest-not-found "archive group is not published"))
     (let [group (parse-group text)
-          opened (mapv (fn [ref]
-                         (let [bytes (store/read-forest directory (:archive-sha ref))]
-                           (when-not (= (:archive-size ref) (alength ^bytes bytes))
-                             (fail! :corrupt-forest "archive size differs from group"))
-                           (verified bytes (:root-cid ref)))) (:archives group))]
+          opened (mapv #(open-ref directory %) (:archives group))]
       (when-not (group-has-cid? opened (:basis-cid group))
         (fail! :invalid-ipld-basis "basis block is absent from archive group"))
       {:directory directory :basis root :degraded? degraded? :group group

@@ -1,5 +1,6 @@
 ;; Hosted generic file verifier: incompressible 1 MiB block and corruption.
-(require '[awai.fs.car :as car] '[otehon.forest :as forest])
+(require '[awai.fs.car :as car] '[otehon.forest :as forest]
+         '[otehon.ipld-forest :as ipld] '[otehon.storage :as store])
 (import '[java.nio.file Files Paths OpenOption StandardOpenOption] '[java.security MessageDigest] '[java.util Arrays Random])
 (defn ensure! [x message] (when-not x (throw (ex-info message {}))))
 (defn refused? [f] (try (f) false (catch Exception _ true)))
@@ -29,5 +30,31 @@
         (aset-byte copy (int (+ frame 3)) (unchecked-byte (bit-xor 1 (aget copy (int (+ frame 3))))))
         (Files/write (Paths/get bad (make-array String 0)) copy (into-array OpenOption [StandardOpenOption/CREATE_NEW StandardOpenOption/WRITE]))
         (ensure! (refused? #(forest/verify-generic-file bad)) "corrupt archive accepted"))
+      (let [dir (str base "/store") other "nixos/otehon/storage/test/fixtures/prolly-forest/prolly.forest"
+            other-root (car/cid-str (first (:roots (forest/verify-generic-file other))))
+            root-cid (car/cid-str cid) entries [{:path out :root-cid root-cid} {:path other :root-cid other-root}]]
+        (store/init! dir)
+        (let [old (:root (store/read-store dir)) generation (:generation old)]
+          (ensure! (refused? #(ipld/publish-file-group! dir "g" root-cid entries (inc generation))) "stale generation accepted")
+          (ensure! (= old (:root (store/read-store dir))) "stale write changed root")
+          (let [original store/write-forest-file! calls (atom 0)]
+            (with-redefs [store/write-forest-file! (fn [& args]
+                                                   (if (= 2 (swap! calls inc))
+                                                     (throw (ex-info "injected second-object failure" {}))
+                                                     (apply original args)))]
+              (ensure! (refused? #(ipld/publish-file-group! dir "g" root-cid entries generation)) "interrupted publication accepted"))
+            (ensure! (= old (:root (store/read-store dir))) "interrupted publication changed root"))
+          (ipld/publish-file-group! dir "g" root-cid entries generation)
+          (let [handle (ipld/recover-group dir "g") ref (first (get-in handle [:group :archives]))]
+            (ensure! (= 2 (count (get-in handle [:group :archives]))) "two archives not published")
+            (ensure! (Arrays/equals payload (ipld/get-group-block handle root-cid)) "recovered block mismatch")
+            (ensure! (some? (ipld/get-group-block handle other-root)) "second archive root missing")
+            (let [path (store/forest-file-path dir (:archive-sha ref))]
+              (with-open [f (java.io.RandomAccessFile. path "rw")]
+                (.seek f (+ frame 3)) (let [v (.read f)] (.seek f (+ frame 3)) (.write f (bit-xor 1 v))))
+              (ensure! (refused? #(ipld/get-group-block handle root-cid)) "selected corruption accepted")
+              (ensure! (refused? #(ipld/recover-group dir "g")) "committed corruption accepted")
+              (Files/move (Paths/get path (make-array String 0)) (Paths/get (str path ".withheld") (make-array String 0)) (make-array java.nio.file.CopyOption 0))
+              (ensure! (refused? #(ipld/recover-group dir "g")) "missing archive accepted")))))
       (prn {:block-bytes (alength payload) :forest-bytes (:size h) :cid (car/cid-str cid) :changed-frame :refused :corrupt-archive :refused :pass true}))))
 (shutdown-agents)

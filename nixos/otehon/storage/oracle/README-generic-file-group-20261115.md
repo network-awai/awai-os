@@ -1,0 +1,7 @@
+# File-backed generic Forest group — 2026-11-15
+
+`ipld/publish-file-group!` verifies up to 64 file-backed generic Forest archives, records a versioned `ipld-forest-file-v2` reference for each, and conditionally publishes the entire group in one local WAL/root transaction. Under the writer lock, each content-addressed file is copied and synced before catalog publication and the stored object is verified again. An interrupted publish can leave unreachable objects. Recovery checks each physical digest, complete Forest structure and root, then selected reads recheck their frames. Existing v1 archive references remain readable; older readers do not understand the new v2 reference.
+
+The hosted local proof publishes two archives, including an incompressible 1 MiB block whose Forest file is 1,048,807 bytes. It reads both archive roots and checks that a stale generation or injected failure at the second object leaves the previous root unchanged. Corrupted selected frames, committed corruption and a withheld committed archive are refused. Existing IPLD and Kotobase Forest suites passed 20 tests / 149 assertions. The proof also runs in the pinned Linux Forest CI job.
+
+This is a group publication API, not yet the generic block writer or Kotobase transaction path. The injected failure is synchronous, not a process kill, OS cache loss or physical power cut. There is no witness, distributed fencing, GC safety, Native execution or cross-store atomicity claim.
