@@ -42,7 +42,7 @@
  (replace-one "(assert (= 1 @evals))"
   "(assert (= 1 @evals)) (let [before (store/read-store (str receipt-out \"/store\")) replay (execute (decision resource) \"allow\")] (assert (= :nonce-replayed (get-in replay [:error :kotobase.authority-window/reason]))) (assert (= 1 @evals)) (assert (= before (store/read-store (str receipt-out \"/store\")))) (prn {:governed-replay :refused :roots-unchanged true}))")
  (replace-one "(assert (verify! data-get basis-cid))"
-  "(let [before (store/read-store (str receipt-out \"/store\"))] (doseq [[ref n] [[\"allow\" \"allow\"] [\"deny\" \"deny\"]]] (let [view (fb/open-bound-read-view (str receipt-out \"/store\") ref) marker (nonce/prepare-marker (nonce-scope) n) observed ((:read-nonce-ref! view) (:ref-name marker)) bytes (storage/get-block (:blocks view) (:marker-cid marker))] (assert (= (:marker-cid marker) (:cid observed))) (assert (= (:marker marker) (codec/verify-value-cid-structurally-bounded (:marker-cid marker) bytes {:max-bytes 4096 :max-depth 8 :max-items 32}))))) (assert (= before (store/read-store (str receipt-out \"/store\")))) (prn {:bound-nonce-markers :verified :root-unchanged true})) (assert (verify! data-get basis-cid))")
+  "(let [before (store/read-store (str receipt-out \"/store\"))] (doseq [[ref n] [[\"allow\" \"allow\"] [\"deny\" \"deny\"]]] (let [view (fb/open-bound-read-view (str receipt-out \"/store\") ref true) marker (nonce/prepare-marker (nonce-scope) n) observed ((:read-nonce-ref! view) (:ref-name marker)) bytes (storage/get-block (:blocks view) (:marker-cid marker))] (assert (= (:marker-cid marker) (:cid observed))) (assert (= (:marker marker) (codec/verify-value-cid-structurally-bounded (:marker-cid marker) bytes {:max-bytes 4096 :max-depth 8 :max-items 32}))))) (assert (= before (store/read-store (str receipt-out \"/store\")))) (prn {:bound-nonce-markers :verified :root-unchanged true})) (assert (verify! data-get basis-cid))")
  (replace-one "(case (first *command-line-args*)" (str helper "(case (first *command-line-args*)"))))
 (def old-basis "(def basis-cid (:cid (storage/-read-ref (refs/open-ref-store (str out \"/store\")) \"gib-prolly\")))")
 (def read-basis "(def basis-cid (:basis (edn/read-string (slurp (str receipt-out \"/ids.edn\")))))")
@@ -54,11 +54,7 @@
          (open-db db)
          {:expected-basis-cid nil :receipt-cid-fn id/value-cid
           :read-ref! (fn [] (:target (catalog/recover-bound-ref (str receipt-out \"/store\") ref-name)))
-          :read-nonce-ref! (fn [name]
-            (let [ref (storage/-read-ref db name)
-                  h (:handle (catalog/recover-bound-ref (str receipt-out \"/store\") ref-name))]
-              (when (and ref (not (catalog/get-group-block h (:cid ref)))) (throw (ex-info \"nonce outside bound group\" {})))
-              ref))
+          :read-nonce-ref! (fn [name] (fb/read-bound-nonce-ref! (str receipt-out \"/store\") name))
           :publish! (fn [{:keys [receipt prepared nonce]}]
             (:receipt/commit-cid
              (atomic-publish-ports! db ref-name nil receipt prepared nonce
@@ -77,6 +73,6 @@
                    (replace-one "(def data-db (fb/open-backend (str out \"/store\") (str out \"/unused-stage\") \"/absent-writer\"))"
                                 "(def data-db (fb/open-bound-block-store (str out \"/store\") \"allow\"))")
                    (replace-one "(let [commit (:cid (storage/-read-ref db ref)) receipt (first (:receipt/records (causal/receipt-at (open-db db) commit cid)))]"
-                                "(let [view (fb/open-bound-read-view (str receipt-out \"/store\") ref) commit ((:read-ref! view)) scoped (:blocks view) get-block (fn [c] (storage/get-block scoped c)) snapshot (peer/hydrate-chain get-block commit pr-str identity) receipt (first (:receipt/records (causal/receipt-at-query (fn [pattern] (peer/q snapshot pattern (constantly true))) commit cid)))]")
+                                "(let [view (fb/open-bound-read-view (str receipt-out \"/store\") ref true) commit ((:read-ref! view)) scoped (:blocks view) get-block (fn [c] (storage/get-block scoped c)) snapshot (peer/hydrate-chain get-block commit pr-str identity) receipt (first (:receipt/records (causal/receipt-at-query (fn [pattern] (peer/q snapshot pattern (constantly true))) commit cid)))]")
                    (replace-one ":after-reboot :verified" ":bound-prolly-read :verified"))
                integrated))
