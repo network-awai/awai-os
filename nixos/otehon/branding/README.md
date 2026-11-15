@@ -15,3 +15,11 @@ On macOS with Node, FFmpeg and iconutil, regenerate with `node nixos/otehon/bran
 ## Verification boundary
 
 Shell tests (65/65), preview/file builds, copied image digests, macOS ICNS packaging and plist validation are checked locally. Browser HTTP preview shows the setup logo without errors. The in-app browser blocks file-protocol navigation, so direct file-kiosk rendering is unobserved; the default file build and its CSP were checked as artifacts. NixOS VM boot, an installed desktop image, an installed macOS Dock icon, signed distribution and production publication remain independent checks.
+
+## Desktop icon selection — 2026-11-15
+
+For iOS, Android and Mac desktop, the owner selected **04: A / 光のあわい** from the latest sun/Earth/moon comparison. `awai-desktop-logo.png` is the exact 1254-square selected source, SHA-256 `4637ce4a054ea77ddf427889b2eff1b54c71df380aec4bd4cdea3ad8095f6fef`. `desktop-selection.json` records the immutable study revision/path and archive links; other candidates remain in the apex design archive and Linear Resources.
+
+`render-icons.mjs` uses that desktop source for every ICNS representation. Both Awai Desktop and the macOS Otehon Preview bundle package this ICNS and declare `CFBundleIconFile=awai`. The shell source/512 image above retain their original selected composition. This distinguishes full-bleed application icons from the general OS-shell mark.
+
+The existing upper verification section is dated evidence from the earlier selection. Current source/build/installed observations are recorded separately in the AWAI-2899 issue; rebuilding an icon does not update an installed VM image or publish a signed distribution.
