@@ -3,6 +3,7 @@
 import argparse
 from functools import partial
 import http.server
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -28,7 +29,10 @@ def main():
     p.add_argument('--ovmf-code', required=True)
     p.add_argument('--ovmf-vars', required=True)
     p.add_argument('--timeout', type=int, default=1200)
+    p.add_argument('--source-revision', required=True)
     args = p.parse_args()
+    if not re.fullmatch(r'[0-9a-f]{40}', args.source_revision):
+        raise ValueError('invalid source revision')
     out = Path(args.output).resolve()
     out.mkdir(parents=True, exist_ok=True)
     image = Path(args.image).resolve()
@@ -64,8 +68,15 @@ def main():
         '-device', 'virtio-net-pci,netdev=n,bootindex=1',
         '-serial', f'tcp:127.0.0.1:{serial_port},server=on,wait=off',
     ]
+    artifacts = {}
+    for name in ('ipxe.efi', 'kernel', 'initrd'):
+        digest = hashlib.sha256()
+        with (serve / name).open('rb') as source:
+            while block := source.read(1024 * 1024): digest.update(block)
+        artifacts[name] = digest.hexdigest()
+    proof = {'schema': 'awai.otehon.netboot-vm.v1', 'physicalDisks': False,
+             'sourceRevision': args.source_revision, 'artifacts': artifacts, 'checks': []}
     proc = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=(out / 'qemu.log').open('wb'))
-    proof = {'schema': 'awai.otehon.netboot-vm.v1', 'physicalDisks': False, 'checks': []}
     serial_conn = None
     serial_reader = None
     try:

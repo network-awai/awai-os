@@ -2,6 +2,7 @@ import hashlib
 import functools
 import http.server
 import importlib.util
+import json
 from pathlib import Path
 import tempfile
 import threading
@@ -48,10 +49,19 @@ class Candidate(unittest.TestCase):
                 (d / name).write_bytes(data)
                 lines.append(hashlib.sha256(data).hexdigest() + '  ' + name)
             (d / 'SHA256SUMS').write_text('\n'.join(lines) + '\n')
-            h.validate(d, revision)
-            with self.assertRaises(ValueError): h.validate(d, 'b' * 40)
+            proof = d / 'proof.json'
+            data = {'schema':'awai.otehon.netboot-vm.v1','passed':True,'physicalDisks':False,
+                    'sourceRevision':revision,'artifacts':{name: hashlib.sha256(name.encode()).hexdigest() for name in ('ipxe.efi','kernel','initrd')}}
+            proof.write_text(json.dumps(data))
+            h.validate(d, revision, proof)
+            proof.write_text(json.dumps({**data,'passed':False}))
+            with self.assertRaises(ValueError): h.validate(d, revision, proof)
+            proof.write_text(json.dumps({**data,'artifacts':{}}))
+            with self.assertRaises(ValueError): h.validate(d, revision, proof)
+            proof.write_text(json.dumps(data))
+            with self.assertRaises(ValueError): h.validate(d, 'b' * 40, proof)
             (d / 'kernel').write_bytes(b'corrupted')
-            with self.assertRaises(ValueError): h.validate(d, revision)
+            with self.assertRaises(ValueError): h.validate(d, revision, proof)
             (d / 'kernel').unlink()
             (d / 'kernel').symlink_to(d / 'initrd')
-            with self.assertRaises(ValueError): h.validate(d, revision)
+            with self.assertRaises(ValueError): h.validate(d, revision, proof)

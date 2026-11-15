@@ -4,6 +4,7 @@ import argparse
 import functools
 import hashlib
 import http.server
+import json
 from pathlib import Path
 import re
 from urllib.parse import urlsplit
@@ -11,7 +12,7 @@ from urllib.parse import urlsplit
 FILES = ('ipxe.efi', 'kernel', 'initrd', 'installer-info.json')
 
 
-def validate(directory, expected_revision):
+def validate(directory, expected_revision, vm_proof):
     if not re.fullmatch(r'[0-9a-f]{40}', expected_revision):
         raise ValueError('invalid source revision')
     if (directory / 'SOURCE_REVISION').read_text().strip() != expected_revision:
@@ -25,6 +26,11 @@ def validate(directory, expected_revision):
         expected[match.group(2)] = match.group(1)
     if set(expected) != set(FILES):
         raise ValueError('incomplete checksum manifest')
+    proof = json.loads(vm_proof.read_text())
+    if proof.get('schema') != 'awai.otehon.netboot-vm.v1' or proof.get('passed') is not True or proof.get('physicalDisks') is not False or proof.get('sourceRevision') != expected_revision:
+        raise ValueError('matching successful VM proof required')
+    if proof.get('artifacts') != {name: expected[name] for name in ('ipxe.efi', 'kernel', 'initrd')}:
+        raise ValueError('VM checked different boot artifacts')
     for name in FILES:
         path = directory / name
         if path.is_symlink() or not path.is_file() or path.stat().st_size > 8 * 1024**3:
@@ -55,9 +61,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--directory', type=Path, required=True)
     parser.add_argument('--expected-revision', required=True)
+    parser.add_argument('--vm-proof', type=Path, required=True)
     args = parser.parse_args()
     directory = args.directory.resolve(strict=True)
-    validate(directory, args.expected_revision)
+    validate(directory, args.expected_revision, args.vm_proof)
     handler = functools.partial(Handler, directory=str(directory))
     with http.server.ThreadingHTTPServer(('10.77.0.1', 8080), handler) as server:
         print('LAN boot HTTP: 10.77.0.1:8080', flush=True)
