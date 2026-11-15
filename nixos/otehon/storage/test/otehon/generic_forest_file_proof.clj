@@ -1,6 +1,8 @@
 ;; Hosted generic file verifier: incompressible 1 MiB block and corruption.
 (require '[awai.fs.car :as car] '[otehon.forest :as forest]
-         '[otehon.ipld-forest :as ipld] '[otehon.storage :as store])
+         '[otehon.ipld-forest :as ipld] '[otehon.storage :as store]
+         '[otehon.kotobase-ref :as refs] '[kotobase.storage.core :as contract]
+         '[clojure.edn :as edn])
 (import '[java.nio.file Files Paths OpenOption StandardOpenOption] '[java.security MessageDigest] '[java.util Arrays Random])
 (defn ensure! [x message] (when-not x (throw (ex-info message {}))))
 (defn refused? [f] (try (f) false (catch Exception _ true)))
@@ -33,6 +35,28 @@
       (let [dir (str base "/store") other "nixos/otehon/storage/test/fixtures/prolly-forest/prolly.forest"
             other-root (car/cid-str (first (:roots (forest/verify-generic-file other))))
             root-cid (car/cid-str cid) entries [{:path out :root-cid root-cid} {:path other :root-cid other-root}]]
+        (let [atomic-dir (str base "/atomic-store")]
+          (store/init! atomic-dir)
+          (let [before (store/read-store atomic-dir) generation (get-in before [:root :generation])
+                verify! (fn [get-block target] (and (= target root-cid)
+                                                    (Arrays/equals payload ^bytes (get-block root-cid))
+                                                    (some? (get-block other-root))))]
+            (ensure! (refused? #(ipld/publish-file-group-and-ref! atomic-dir "g" root-cid entries generation "db" nil root-cid (fn [_ _] false))) "refused closure published")
+            (ensure! (= before (store/read-store atomic-dir)) "closure refusal changed root")
+            (ensure! (false? (:published? (ipld/publish-file-group-and-ref! atomic-dir "g" root-cid entries generation "db" other-root root-cid verify!))) "stale ref published")
+            (ensure! (= before (store/read-store atomic-dir)) "stale ref changed root")
+            (ensure! (:published? (ipld/publish-file-group-and-ref! atomic-dir "g" root-cid entries generation "db" nil root-cid verify!)) "atomic publication failed")
+            (let [after (store/read-store atomic-dir) handle (ipld/recover-group atomic-dir "g")]
+              (ensure! (= (inc generation) (get-in after [:root :generation])) "expected one root update")
+              (let [log-object (edn/read-string (slurp (str atomic-dir "/" (get-in after [:root :log]) ".edn")))
+                    frames (get-in log-object [:value :frames])]
+                (ensure! (and (= 1 (count frames)) (= :put-many (:op (first frames)))) "not one grouped WAL frame"))
+              (ensure! (= root-cid (:cid (contract/-read-ref (refs/open-ref-store atomic-dir) "db"))) "atomic ref mismatch")
+              (ensure! (Arrays/equals payload (ipld/get-group-block handle root-cid)) "atomic group mismatch")
+              (ensure! (refused? #(ipld/publish-file-group-and-ref! atomic-dir "g" other-root
+                                   [{:path other :root-cid other-root}] (get-in after [:root :generation])
+                                   "other" nil other-root (fn [_ _] true))) "existing group replacement accepted")
+              (ensure! (= after (store/read-store atomic-dir)) "group conflict changed root"))))
         (store/init! dir)
         (let [old (:root (store/read-store dir)) generation (:generation old)]
           (ensure! (refused? #(ipld/publish-file-group! dir "g" root-cid entries (inc generation))) "stale generation accepted")

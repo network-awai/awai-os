@@ -1,0 +1,7 @@
+# Atomic local file group and ref — 2026-11-15
+
+`ipld/publish-file-group-and-ref!` validates file-backed generic Forest archives and requires the basis and ref target to be present. Under the local writer lock, a caller-supplied closure verifier reads the persisted candidate blocks; the store then publishes the group catalog value and Kotobase ref together in one `:put-many` WAL frame and one root update. The operation checks both the expected generation and previous ref, refuses replacement of a different existing group, and can leave staged immutable orphans on failure.
+
+A hosted real-Forest proof used two archives including an incompressible 1 MiB block. It confirmed the group and ref after one generation / one WAL frame, and checked that closure refusal, stale ref and group-name conflict preserve the old root. Existing storage/IPLD/Kotobase suites passed 37 tests / 233 assertions. The first proof assertion inspected a field intentionally omitted from `read-store`; the corrected proof reads the content-addressed WAL object and passed. The proof is included in the pinned Linux Forest CI job.
+
+The closure callback is trusted host code and this API is not yet wired to the streamed Kotobase transaction builder. The new WAL operation is not readable by older code. This is one local store only, without prepared witness, concurrent-GC safety, distributed fencing, Native, process-kill or power-loss qualification.

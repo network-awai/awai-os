@@ -182,6 +182,49 @@
         (store/transact-if-generation! directory expected-generation :put payload publish-files!)))
     group)))
 
+(defn publish-file-group-and-ref!
+  "Publish a verified file-backed group and a Kotobase ref in one local WAL
+  frame/root update. VERIFY! is a trusted synchronous closure verifier over the
+  staged group's persisted CID blocks. EXPECTED-GENERATION and EXPECTED-REF
+  are compared under the local writer lock. Staged files may remain orphaned
+  on failure. No external store, witness, concurrent GC or fencing is covered."
+  [directory name basis archives expected-generation ref-name expected-ref target verify!]
+  (group-key name)
+  (when-not (and (string? ref-name) (<= 1 (count ref-name) 1024)
+                 (integer? expected-generation) (<= 1 expected-generation 9007199254740991)
+                 (vector? archives) (<= 1 (count archives) max-group-archives)
+                 (fn? verify!))
+    (fail! :invalid-ipld-forest-group "invalid grouped publication arguments"))
+  (when (some? expected-ref) (cid-bytes expected-ref))
+  (cid-bytes target)
+  (let [checked (mapv (fn [{:keys [path root-cid] :as entry}]
+                        (when-not (and (map? entry) (= #{:path :root-cid} (set (keys entry)))
+                                       (string? path) (string? root-cid))
+                          (fail! :invalid-ipld-forest-group "invalid file entry"))
+                        (let [{:keys [size sha]} (store/forest-source-digest path)
+                              ref {:format :awai.otehon-store/ipld-forest-file-v2
+                                   :archive-sha sha :archive-size size :root-cid root-cid}]
+                          {:path path :ref ref :forest (verified-file path ref)})) archives)
+        opened (mapv :forest checked)
+        group (checked-group {:format :awai.otehon-store/ipld-forest-group-v1
+                              :basis-cid basis :archives (mapv :ref checked)})
+        ref-key (str "awai.kotobase-ref/" ref-name)]
+    (when-not (and (group-has-cid? opened basis) (group-has-cid? opened target))
+      (fail! :invalid-ipld-basis "basis or target is absent from archive group"))
+    (store/compare-and-set-values! directory expected-generation ref-key expected-ref
+      [[(group-key name) (pr-str group)] [ref-key target]]
+      (fn [dir state]
+        (when-let [existing (get state (group-key name))]
+          (when-not (= existing (pr-str group))
+            (fail! :group-conflict "existing group cannot be replaced")))
+        (let [handles (mapv (fn [{:keys [path ref]}]
+                              (store/write-forest-file! dir path (:archive-size ref) (:archive-sha ref))
+                              {:directory dir :ref ref
+                               :forest (verified-file (store/forest-file-path dir (:archive-sha ref)) ref)}) checked)
+              get-candidate (fn [cid] (some #(get-block % cid) handles))]
+          (when-not (true? (verify! get-candidate target))
+            (fail! :closure-rejected "candidate closure verifier refused")))))))
+
 (defn publish-group!
   "Publish an ordered, bounded set of generic Forest archives under one WAL
   transaction. Each entry is {:root-cid string :bytes byte-array}. All bytes,
