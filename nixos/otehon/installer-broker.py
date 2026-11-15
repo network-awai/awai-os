@@ -57,7 +57,7 @@ def decode(line):
     if len(line) > 4096 or not line.endswith(b'\n'): raise Refused('request-bound')
     fields = line[:-1].split(b'\t')
     op = fields[0].decode('ascii')
-    arity = {'LIST':0, 'STATUS':0, 'SELECT':1, 'INSTALL':3, 'CANCEL':0, 'TEXT':0, 'REBOOT':0, 'POWEROFF':0}
+    arity = {'LIST':0, 'STATUS':0, 'INSPECT':0, 'SELECT':1, 'INSTALL':3, 'CANCEL':0, 'TEXT':0, 'REBOOT':0, 'POWEROFF':0}
     if op not in arity or len(fields)-1 != arity[op]: raise Refused('request-shape')
     values = []
     for field in fields[1:]:

@@ -4,6 +4,8 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import socket
+import threading
 import unittest
 from unittest.mock import patch
 
@@ -41,6 +43,33 @@ class Usage(unittest.TestCase):
    self.assertNotIn('never-disclose',json.dumps(result));self.assertNotIn('private-command',json.dumps(result));self.assertNotIn('private-env',json.dumps(result))
    flags=opening.call_args.args[1]
    self.assertEqual(flags & os.O_ACCMODE,os.O_RDONLY);self.assertTrue(flags & os.O_EXCL)
+ def test_inspect_crosses_real_socket_decoder_and_dispatch(self):
+  with tempfile.TemporaryDirectory() as temp:
+   root=Path(temp)
+   for name,value in [('image','a'*64),('raw','b'*64),('bytes','1')]: (root/name).write_text(value)
+   broker=b.Broker(root,rundir=root,read_only=True)
+   path=str(root/'control.sock')
+   expected={'available':True,'readOnly':True,'devices':[]}
+   with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as server:
+    server.bind(path);server.listen(1);server.settimeout(3)
+    def serve():
+     conn,_=server.accept()
+     with conn:
+      request=conn.makefile('rb').readline()
+      try:
+       self.assertTrue(request.startswith(b'JSON\t'))
+       op,args=b.decode(request[5:]);value=broker.dispatch(op,args)
+       result={'ok':True,'value':value}
+      except Exception as error:result={'ok':False,'error':type(error).__name__}
+      conn.sendall(json.dumps(result).encode()+b'\n')
+    with patch.object(b,'inventory',return_value=[]),patch.object(b,'device_usage',return_value=expected):
+     thread=threading.Thread(target=serve);thread.start()
+     with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as client:
+      client.settimeout(3);client.connect(path);client.sendall(b'JSON\tINSPECT\n')
+      response=json.loads(client.makefile('rb').readline())
+     thread.join(3)
+    self.assertEqual(response,{'ok':True,'value':expected});self.assertFalse(thread.is_alive())
+   with self.assertRaises(b.Refused):b.decode(b'INSPECT\tL2V0Yy9zaGFkb3c=\n')
  def test_zero_budget_marks_incomplete_and_never_probes_device(self):
   with tempfile.TemporaryDirectory() as temp:
    proc,sys,rows=self.fixture(Path(temp))
