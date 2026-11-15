@@ -21,7 +21,8 @@ class Claims(unittest.TestCase):
    with self.assertRaises(AssertionError):k.program(pid,devices)
  def test_parser_returns_symbol_metadata_but_no_kernel_addresses(self):
   target={};devices={7:target}
-  k.parse('BDEV 7 1 2 3 0 1 9\nOPS 7 fs_holder_ops\nFS 7 ext4\nRETURN 7 -16\n',devices)
+  k.parse('BDEV 7 1 2 3 0 1 9\nOPS 7 fs_holder_ops\nFS 7 ext4\nKIND 7 filesystem\nFILE 7 128 0\nRETURN 7 -16\n',devices)
+  self.assertEqual(target['kernel']['holderKind'],'filesystem');self.assertEqual(target['kernel']['holderFileFlags'],128)
   self.assertEqual(target['kernel']['fileSystem'],'ext4');self.assertEqual(target['kernel']['returnCode'],-16)
   k.parse('OPS 7 0xffff123456789abc\n',devices)
   self.assertEqual(target['kernel']['holderOps'],'unknown');self.assertNotIn('0xffff',str(target))

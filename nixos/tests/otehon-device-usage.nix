@@ -19,6 +19,9 @@ let
         assert target['exclusiveReadOnlyOpen']['errno'] == errno.EBUSY
         assert any(r['namespace'] != os.readlink('/proc/self/ns/mnt') for r in target['mountNamespaceReferences'])
         assert any(r['unit'] == 'usage-fd-fixture.service' for r in target['openFdReferences'])
+    elif sys.argv[1] == 'exclusive':
+        assert target['exclusiveReadOnlyOpen']['errno'] == errno.EBUSY
+        assert any(r['unit']=='usage-exclusive-fixture.service' for r in target['openFdReferences'])
     elif sys.argv[1] in ('loop', 'raw-loop'):
         if sys.argv[1] == 'loop':
             assert target['exclusiveReadOnlyOpen']['errno'] == errno.EBUSY
@@ -34,7 +37,7 @@ let
     else:
         assert target['exclusiveReadOnlyOpen']['opened']
         assert not target['mountNamespaceReferences']
-    if sys.argv[1] in ('held', 'released'):
+    if sys.argv[1] in ('held', 'exclusive', 'released'):
         trace = claims.inspect(rows)
         assert trace['available'], trace
         held = next(r for r in trace['devices'] if r['path']=='/dev/vdb')
@@ -42,6 +45,10 @@ let
             assert held['kernel']['hasHolder']
             assert held['kernel']['holderOps']=='fs_holder_ops', trace
             assert held['kernel']['fileSystem']=='ext4', trace
+            assert held['kernel']['returnCode']==-errno.EBUSY, trace
+        elif sys.argv[1] == 'exclusive':
+            assert held['kernel']['holderKind']=='block-file', trace
+            assert held['kernel']['holderFileFlags'] & os.O_EXCL, trace
             assert held['kernel']['returnCode']==-errno.EBUSY, trace
         else:
             assert not held['kernel']['hasHolder'], trace
@@ -69,6 +76,11 @@ in pkgs.testers.runNixOSTest {
         sleep infinity
       '';
     };
+    systemd.services.usage-exclusive-fixture = {
+      script = ''
+        exec ${pkgs.python3}/bin/python3 -c 'import os,time; fd=os.open("/dev/vdb",os.O_RDONLY|os.O_EXCL); open("/run/usage-exclusive-ready","w").close(); time.sleep(600)'
+      '';
+    };
     systemd.services.usage-fd-fixture = {
       script = ''
         cp -a /dev/vdb /dev/usage-alias
@@ -84,6 +96,11 @@ in pkgs.testers.runNixOSTest {
     machine.wait_until_succeeds("test -f /run/usage-mount-ready -a -f /run/usage-fd-ready", timeout=30)
     machine.succeed("${pkgs.python3}/bin/python3 ${check} held")
     machine.succeed("systemctl stop usage-mount-fixture usage-fd-fixture")
+    machine.succeed("${pkgs.python3}/bin/python3 ${check} released")
+    machine.succeed("systemctl start usage-exclusive-fixture")
+    machine.wait_until_succeeds("test -f /run/usage-exclusive-ready", timeout=30)
+    machine.succeed("${pkgs.python3}/bin/python3 ${check} exclusive")
+    machine.succeed("systemctl stop usage-exclusive-fixture")
     machine.succeed("${pkgs.python3}/bin/python3 ${check} released")
     machine.succeed("mount /dev/vdb /mnt/usage-fixture; truncate -s 8M /mnt/usage-fixture/backing; losetup --find --show /mnt/usage-fixture/backing > /run/usage-loop; umount -l /mnt/usage-fixture")
     machine.succeed("${pkgs.python3}/bin/python3 ${check} loop")

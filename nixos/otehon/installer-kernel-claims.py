@@ -26,12 +26,31 @@ kprobe:bdev_open /pid == PID_FILTER/ {
     printf("BDEV %u %d %d %d %d %d %u\n", $b->bd_dev,
       $b->bd_holder != 0, $b->bd_holders, $b->bd_openers.counter,
       $b->bd_writers, $whole->bd_holder != 0, arg1);
-    if ($b->bd_holder_ops) {
-      printf("OPS %u %s\n", $b->bd_dev, ksym((uint64)$b->bd_holder_ops));
-    } else { printf("OPS %u none\n", $b->bd_dev); }
-    if ($b->bd_holder && (uint64)$b->bd_holder_ops == kaddr("fs_holder_ops")) {
-      $sb = (struct super_block *)$b->bd_holder;
-      printf("FS %u %s\n", $b->bd_dev, str($sb->s_type->name, 32));
+    if ((uint64)$b->bd_holder_ops == kaddr("fs_holder_ops")) {
+      printf("OPS %u fs_holder_ops\n", $b->bd_dev);
+      printf("KIND %u filesystem\n", $b->bd_dev);
+      if ($b->bd_holder) {
+        $sb = (struct super_block *)$b->bd_holder;
+        printf("FS %u %s\n", $b->bd_dev, str($sb->s_type->name, 32));
+      }
+    } else if ($b->bd_holder_ops) {
+      printf("OPS %u other\n", $b->bd_dev);
+      if ($b->bd_holder_ops->mark_dead) {
+        printf("CALLBACK %u %s\n", $b->bd_dev, ksym((uint64)$b->bd_holder_ops->mark_dead));
+      }
+    } else {
+      printf("OPS %u none\n", $b->bd_dev);
+      if ($b->bd_holder) {
+        if ((uint64)$b->bd_holder == kaddr("bd_may_claim")) {
+          printf("KIND %u partition-claim\n", $b->bd_dev);
+        } else {
+          $file = (struct file *)$b->bd_holder;
+          if ((uint64)$file->f_op == kaddr("def_blk_fops")) {
+            printf("KIND %u block-file\n", $b->bd_dev);
+            printf("FILE %u %u %u\n", $b->bd_dev, $file->f_flags, $file->f_cred->uid.val);
+          } else { printf("KIND %u unknown\n", $b->bd_dev); }
+        }
+      }
     }
   }
 }
@@ -54,9 +73,12 @@ def parse(output, devices):
             try: values = [int(n) for n in fields[2:]]
             except ValueError: continue
             item['kernel'] = dict(zip(('hasHolder', 'holders', 'openers', 'writers', 'wholeHasHolder', 'openMode'), values))
-        elif fields[0] in ('OPS', 'FS') and len(fields) == 3:
+        elif fields[0] in ('OPS', 'FS', 'KIND', 'CALLBACK') and len(fields) == 3:
             value = fields[2] if re.fullmatch(r'[A-Za-z_][A-Za-z0-9_.-]{0,95}', fields[2]) else 'unknown'
-            item.setdefault('kernel', {})['holderOps' if fields[0] == 'OPS' else 'fileSystem'] = value
+            item.setdefault('kernel', {})[{'OPS':'holderOps','FS':'fileSystem','KIND':'holderKind','CALLBACK':'markDeadCallback'}[fields[0]]] = value
+        elif fields[0] == 'FILE' and len(fields) == 4:
+            try: item.setdefault('kernel', {}).update(holderFileFlags=int(fields[2]), holderUid=int(fields[3]))
+            except ValueError: pass
         elif fields[0] == 'RETURN' and len(fields) == 3:
             try: item.setdefault('kernel', {})['returnCode'] = int(fields[2])
             except ValueError: pass
