@@ -8,6 +8,12 @@ on:
       - scripts/otehon-lan-iso.py
       - scripts/otehon-installed-boot.py
       - .github/workflows/otehon-lan-install.yml
+  workflow_call:
+    inputs:
+      operator_public_key:
+        required: false
+        default: ""
+        type: string
   workflow_dispatch:
     inputs:
       operator_public_key:

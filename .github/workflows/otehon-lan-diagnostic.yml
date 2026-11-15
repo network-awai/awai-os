@@ -9,6 +9,11 @@ on:
       - .github/workflows/otehon-lan-diagnostic.yml
   workflow_dispatch:
     inputs:
+      install_candidate:
+        description: Validate LAN NVMe installation and build its operator-keyed candidate
+        required: false
+        default: false
+        type: boolean
       operator_public_key:
         description: 'Optional Ed25519 public key for a separate physical test candidate (never a private key)'
         required: false
@@ -19,7 +24,13 @@ concurrency:
   group: otehon-lan-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
+  lan-install-candidate:
+    if: github.event_name == 'workflow_dispatch' && inputs.install_candidate
+    uses: ./.github/workflows/otehon-lan-install.yml
+    with:
+      operator_public_key: ${{ inputs.operator_public_key }}
   lan-diagnostic-vm:
+    if: github.event_name != 'workflow_dispatch' || !inputs.install_candidate
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
