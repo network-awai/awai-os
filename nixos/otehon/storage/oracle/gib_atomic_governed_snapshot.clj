@@ -2,7 +2,7 @@
 ;; Issuance, nonce, authority, and the original stores are not one transaction.
 (require '[clojure.string :as str] '[clojure.edn :as edn]
          '[otehon.ipld-forest :as catalog] '[otehon.storage :as store]
-         '[otehon.atomic-forest-stream :as stream] '[otehon.forest :as forest] '[awai.fs.car :as car]
+         '[otehon.forest :as forest] '[awai.fs.car :as car]
          '[kotobase.storage.core :as storage] '[kotoba.value.codec :as codec])
 (import '[java.security MessageDigest] '[java.util HexFormat])
 (def mode (first *command-line-args*))
@@ -59,7 +59,8 @@
                          :allow (:allow ids) :allow-commit ac :deny (:deny ids) :deny-commit dc}]
            (assert (= basis-cid (:basis ids))) (assert ac) (assert dc)
            (assert (.mkdir (java.io.File. dest))) (store/init! (str dest "/store"))
-           (stream/publish! (str dest "/store") (str dest "/stage") tool "snapshot" nil (constantly nil)
+           (assert (.mkdir (java.io.File. (str dest "/stage"))))
+           (fb/publish-atomic-stream-ports! (str dest "/store") (str dest "/stage") tool "snapshot" nil
             (fn [ports]
               (doseq [cid dcids] ((:put! ports) cid (or (data-get cid) (throw (ex-info "missing source data" {})))))
               (doseq [cid rcids] ((:put! ports) cid (or (storage/get-block receipt-db cid) (throw (ex-info "missing source receipt" {})))))
