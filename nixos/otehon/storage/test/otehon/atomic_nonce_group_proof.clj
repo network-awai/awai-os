@@ -80,6 +80,7 @@
               next-verify (fn [get-block cid _ _ n] (and (= target cid) (some? (get-block (:marker-cid n)))))
               next-adapter (blocks/atomic-stream-governed-receipt-adapter dir stage tool "receipt-next" nil next-build next-verify true)]
           (check! (= target ((:publish! next-adapter) {:receipt {} :prepared {} :nonce next-nonce})) "second group publish failed")
+          (check! (= :catalog-changed (error #((:read-nonce-ref! adapter) nonce-ref))) "adapter accepted nonce from a later root")
           (check! (not= (:group (catalog/recover-bound-ref dir "receipt-next")) (:group (catalog/recover-bound-ref dir nonce-ref))) "test groups not distinct")
           (check! (= (:cid marker) (:cid ((:read-nonce-ref! next-adapter) nonce-ref))) "prior group nonce not recovered"))
         (let [db (blocks/open-block-store dir stage tool)]

@@ -451,7 +451,11 @@
   candidate block getter, target CID, receipt, prepared transaction and owned
   nonce marker. It MUST authenticate the nonce's scope/bytes against the actual
   request and verify the complete closure. The caller authenticates identity,
-  excludes concurrent GC and mutations during readback, and supplies a stable replay domain. Ref readback is
+  excludes concurrent GC, file mutations and concurrent use of this adapter,
+  and supplies a stable replay domain. Strict post-publication ref and nonce
+  reads share one captured root and refuse a subsequent root change. Create a
+  fresh adapter for each publication and read the ref only after publication.
+  Ref readback is
   not a witness, anti-rollback protection or cross-store atomicity."
   ([dir staging-root tool ref-name expected build! verify!]
    (atomic-stream-governed-receipt-adapter dir staging-root tool ref-name expected build! verify! false))
@@ -459,7 +463,8 @@
   (when-not (and (string? ref-name) (seq ref-name) (fn? build!) (fn? verify!) (boolean? bind-group?))
     (fail! :invalid-receipt-publication "invalid governed receipt adapter options"))
   (when (some? expected) (validate-cids! [expected]))
-  (let [ref-store (refs/open-ref-store dir)]
+  (let [ref-store (refs/open-ref-store dir)
+        read-view (atom nil)]
     {:publish! (fn [{:keys [receipt prepared nonce] :as input}]
                  (when-not (and (map? input) (= #{:receipt :prepared :nonce} (set (keys input)))
                                 (map? receipt) (map? prepared) (map? nonce)
@@ -471,11 +476,18 @@
                                  (fn [get-block cid r p] (verify! get-block cid r p owned-nonce))
                                  owned-nonce bind-group?)]
                    ((:publish! adapter) {:receipt receipt :prepared prepared})))
-     :read-ref! (fn [] (if bind-group? (:target (catalog/recover-bound-ref dir ref-name))
-                           (:cid (contract/-read-ref ref-store ref-name))))
+     :read-ref! (fn [] (if bind-group?
+                         (let [view (or @read-view
+                                        (let [candidate (open-bound-read-view dir ref-name true)]
+                                          (compare-and-set! read-view nil candidate)
+                                          @read-view))]
+                           ((:read-ref! view)))
+                         (:cid (contract/-read-ref ref-store ref-name))))
      :read-nonce-ref! (fn [nonce-ref]
                         (if bind-group?
-                          (read-bound-nonce-ref! dir nonce-ref)
+                          (if-let [view @read-view]
+                            ((:read-nonce-ref! view) nonce-ref)
+                            (read-bound-nonce-ref! dir nonce-ref))
                           (contract/-read-ref ref-store nonce-ref)))})))
 
 (defn open-transaction
