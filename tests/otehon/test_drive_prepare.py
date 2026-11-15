@@ -46,6 +46,30 @@ class Prepare(unittest.TestCase):
             self.assertEqual(credentials.read_bytes(), old)
             self.assertEqual(dirs.read_text(), 'XDG_DOCUMENTS_DIR="$HOME/original"\n')
 
+    def test_incomplete_or_mismatched_credentials_are_preserved_and_refused(self):
+        for content in ['', 'AWAI_VOL_TOKEN=partial\n', 'AWAI_VOL_TOKEN=' + 'a'*64 + '\nRCLONE_WEBDAV_BEARER_TOKEN=' + 'b'*64 + '\n']:
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                self.run_prepare(root)
+                credentials = root / 'home/.local/state/awai-drive/credentials'
+                credentials.write_text(content)
+                with self.assertRaises(RuntimeError):
+                    self.run_prepare(root)
+                self.assertEqual(credentials.read_text(), content)
+
+    def test_only_managed_alias_is_withdrawn_on_prepare(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.run_prepare(root)
+            public = root / 'home/Awai'
+            public.symlink_to(root / 'home/.local/state/awai-drive/mount')
+            self.run_prepare(root)
+            self.assertFalse(public.is_symlink())
+            public.symlink_to(root / 'unrelated')
+            with self.assertRaises(RuntimeError):
+                self.run_prepare(root)
+            self.assertTrue(public.is_symlink())
+
     def test_existing_mount_content_and_credential_symlinks_are_preserved_and_refused(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

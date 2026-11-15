@@ -62,3 +62,13 @@ fixture key は実機の鍵や installer に入れません。
 別端末 agent は [AWAI-2930](https://linear.app/kotobalabs/issue/AWAI-2930) の
 最新コメントと PR head/CI を再取得し、専用 worktree で同じ gate を実行してください。
 本番の cache・鍵・mount を試験用 namespace と取り違えないでください。
+
+### 接続停止時の保存先
+
+`~/Awai` は private FUSE mount の接続後だけ公開する管理 symlink です。
+通常のサービス停止では公開を取り下げてから unmount するため、停止中の書込みを
+通常ディレクトリへ黙って保存しません。既存の同名ファイル・ディレクトリや不明な
+symlink は上書きせず起動を拒否します。予期しない private mount 下のファイルも
+削除しません。管理者による直接 unmount や kernel 障害との原子的連動を保証する
+ものではありません。credentials は2値一致・固定形式を起動前に検証し、部分書込みを
+検出した場合も再生成せず拒否します。

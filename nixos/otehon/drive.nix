@@ -5,6 +5,10 @@ let
   home = config.users.users.${cfg.user}.home;
   state = "${home}/.local/state/awai-drive";
   mount = "${home}/Awai";
+  target = "${state}/mount";
+  alias = pkgs.writeShellScript "otehon-drive-alias" ''
+    exec ${pkgs.python3}/bin/python3 ${./drive/alias.py} "$1" ${lib.escapeShellArg target} ${lib.escapeShellArg mount}
+  '';
   control = "/run/otehon-drive/control.sock";
   settings = pkgs.writeText "otehon-drive-settings.json" (builtins.toJSON {
     inherit state mount; inherit (cfg) user; defaultSave = cfg.defaultSave;
@@ -17,7 +21,7 @@ let
     runtimeInputs = [ pkgs.util-linux pkgs.xfce.thunar ];
     text = ''
       if [ "''${1:-}" = --status ]; then
-        exec ${pkgs.python3}/bin/python3 ${./drive/status.py} ${lib.escapeShellArg control} ${lib.escapeShellArg mount}
+        exec ${pkgs.python3}/bin/python3 ${./drive/status.py} ${lib.escapeShellArg control} ${lib.escapeShellArg target} ${lib.escapeShellArg mount}
       fi
       if ! mountpoint -q ${lib.escapeShellArg mount}; then
         echo 'Awai Drive は未接続です。暗号化データの解除と保存サービスを確認してください。' >&2
@@ -92,9 +96,22 @@ in {
           done
           exit 1
         '';
-        ExecStart = "${pkgs.rclone}/bin/rclone mount :webdav: ${mount} --config /dev/null --webdav-url http://127.0.0.1:${toString cfg.port}/ --webdav-vendor other --vfs-cache-mode writes --cache-dir ${state}/cache --vfs-write-back 0s --dir-cache-time 1s --attr-timeout 1s --buffer-size 1M --transfers 1 --umask 077 --log-level ERROR --log-file ${state}/mount-errors.log --rc --rc-addr unix://${control}";
+        ExecStart = "${pkgs.rclone}/bin/rclone mount :webdav: ${target} --config /dev/null --webdav-url http://127.0.0.1:${toString cfg.port}/ --webdav-vendor other --vfs-cache-mode writes --cache-dir ${state}/cache --vfs-write-back 0s --dir-cache-time 1s --attr-timeout 1s --buffer-size 1M --transfers 1 --umask 077 --log-level ERROR --log-file ${state}/mount-errors.log --rc --rc-addr unix://${control}";
         RuntimeDirectory = "otehon-drive"; RuntimeDirectoryMode = "0700";
-        ExecStop = "/run/wrappers/bin/fusermount3 -u ${mount}";
+        ExecStartPost = pkgs.writeShellScript "otehon-drive-publish" ''
+          for _ in $(${pkgs.coreutils}/bin/seq 1 60); do
+            if ${pkgs.util-linux}/bin/mountpoint -q ${target}; then
+              exec ${alias} publish
+            fi
+            ${pkgs.coreutils}/bin/sleep 1
+          done
+          exit 1
+        '';
+        ExecStop = pkgs.writeShellScript "otehon-drive-unmount" ''
+          ${alias} withdraw
+          exec /run/wrappers/bin/fusermount3 -u ${target}
+        '';
+        ExecStopPost = "${alias} withdraw";
         Restart = "on-failure"; RestartSec = 2; TimeoutStopSec = 120;
         Environment = "PATH=/run/wrappers/bin:${lib.makeBinPath [ pkgs.fuse3 pkgs.coreutils ]}";
       };

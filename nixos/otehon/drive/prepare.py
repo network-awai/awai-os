@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import pwd
+import re
 import secrets
 import stat
 import subprocess
@@ -45,9 +46,16 @@ def prepare(config):
             directory(parent, user.pw_uid, user.pw_gid)
     directory(state, user.pw_uid, user.pw_gid)
     directory(state / 'cache', user.pw_uid, user.pw_gid)
-    if mount.is_symlink() or (mount.exists() and any(mount.iterdir())):
-        raise RuntimeError('Drive mount must be empty; existing files are preserved')
-    directory(mount, user.pw_uid, user.pw_gid)
+    target = state / 'mount'
+    if mount.is_symlink():
+        if os.readlink(mount) != str(target) or mount.lstat().st_uid != user.pw_uid:
+            raise RuntimeError('unmanaged Drive path preserved')
+        mount.unlink()
+    elif mount.exists():
+        raise RuntimeError('existing Drive path preserved')
+    if target.is_symlink() or (target.exists() and any(target.iterdir())):
+        raise RuntimeError('private mount must be empty; existing files preserved')
+    directory(target, user.pw_uid, user.pw_gid)
     credentials = state / 'credentials'
     if not credentials.exists() and not credentials.is_symlink():
         token = secrets.token_hex(32)
@@ -55,6 +63,10 @@ def prepare(config):
     info = credentials.lstat()
     if not stat.S_ISREG(info.st_mode) or info.st_uid != user.pw_uid or info.st_mode & 0o077:
         raise RuntimeError('unsafe Drive credential file')
+    content = credentials.read_text()
+    match = re.fullmatch(r'AWAI_VOL_TOKEN=([0-9a-f]{64})\nRCLONE_WEBDAV_BEARER_TOKEN=([0-9a-f]{64})\n', content)
+    if not match or match[1] != match[2]:
+        raise RuntimeError('invalid Drive credentials; preserved for owner recovery')
     # Only fresh homes receive the default; never rewrite existing preferences.
     config_dir = Path(user.pw_dir) / '.config'
     if config['defaultSave']:

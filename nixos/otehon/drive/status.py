@@ -1,6 +1,7 @@
 """Bounded, owner-local VFS counters. Never return paths, credentials or receipts."""
 import http.client
 import json
+import os
 from pathlib import Path
 import socket
 import sys
@@ -38,7 +39,7 @@ class LocalConnection(http.client.HTTPConnection):
         self.sock.connect(self.path)
 
 
-def read_status(control, mount):
+def read_status(control, mount, alias=None):
     stats = None
     mounted = False
     try:
@@ -46,6 +47,8 @@ def read_status(control, mount):
             fields = line.split()
             if len(fields) > 6 and fields[4] == mount and fields[fields.index('-') + 1].startswith('fuse'):
                 mounted = True
+        if alias is not None and (not Path(alias).is_symlink() or os.readlink(alias) != mount):
+            mounted = False
         connection = LocalConnection(control)
         try:
             connection.request('POST', '/vfs/stats', body=b'{}', headers={'Content-Type': 'application/json'})
@@ -61,4 +64,4 @@ def read_status(control, mount):
 
 
 if __name__ == '__main__':
-    print(json.dumps(read_status(*sys.argv[1:3])))
+    print(json.dumps(read_status(*sys.argv[1:4])))

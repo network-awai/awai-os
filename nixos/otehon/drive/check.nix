@@ -51,6 +51,8 @@ in pkgs.testers.runNixOSTest {
     machine.succeed("test $(stat -c %a /home/otehon/.local/state/awai-drive/credentials) = 600")
     # All bytes have explicit backend readback before treating this VM cache as clean.
     machine.succeed("systemctl stop otehon-drive-mount.service otehon-drive-volume.service")
+    machine.fail("runuser -u otehon -- touch /home/otehon/Awai/must-not-fall-back.bin")
+    machine.succeed("test ! -L /home/otehon/Awai")
     machine.succeed("mv /home/otehon/.local/state/awai-drive/cache /home/otehon/.local/state/awai-drive/cache-before-reboot; install -d -m 700 -o otehon -g users /home/otehon/.local/state/awai-drive/cache")
     boot_id = machine.succeed("cat /proc/sys/kernel/random/boot_id").strip()
     machine.shutdown()
