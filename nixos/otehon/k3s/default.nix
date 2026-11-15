@@ -137,7 +137,6 @@ in {
       requires = [ "otehon-k3s-prepare.service" ];
       after = [ "otehon-k3s-prepare.service" ];
       bindsTo = [ "otehon-state.service" ];
-      serviceConfig.UMask = "0077";
     };
     networking.nftables.enable = true;
     networking.firewall = {

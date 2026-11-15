@@ -108,8 +108,9 @@ in pkgs.testers.runNixOSTest {
         jacob.wait_until_succeeds("kubectl wait --for=condition=Ready node/jacob node/dan node/judah --timeout=20s", timeout=300)
         disabled.fail("curl --connect-timeout 3 -sk https://192.168.1.1:6443/readyz")
         jacob.succeed("test $(stat -c %a /var/lib/otehon/k3s/admin.yaml) = 600")
-        jacob.fail("test -e /etc/rancher/k3s/k3s.yaml")
+        jacob.succeed("test -L /etc/rancher/k3s/k3s.yaml; test $(readlink -f /etc/rancher/k3s/k3s.yaml) = /var/lib/otehon/k3s/admin.yaml")
         jacob.succeed("test -f /var/lib/otehon/k3s/server/db/state.db")
+        jacob.succeed("kubectl -n kube-system rollout status deployment/coredns --timeout=180s")
 
     sentinel = {vm.name: vm.succeed("systemctl show existing-service -p MainPID --value").strip() for vm in [jacob, dan, judah]}
     with subtest("real Pods run on workers and communicate across nodes"):
