@@ -117,7 +117,7 @@ in pkgs.testers.runNixOSTest {
     before = machine.succeed("sha256sum /home/otehon/ota-owner-file /etc/machine-id")
     candidates = json.loads(publisher.succeed("cat /etc/ota-candidates.json"))
     def publish(version, target, cohorts, **overrides):
-        now = int(time.time())
+        now = int(machine.succeed("date +%s").strip())
         data = {"schema":"awai.otehon.release.v1","version":version,"system":candidates[target],"channel":"stable","cohorts":cohorts,"architecture":"x86_64","stateContract":candidates["stateContract"],"issuedAt":now-60,"expiresAt":now+3600}
         data.update(overrides)
         publisher.succeed("printf '%s' " + shlex.quote(json.dumps(data)) + " >/var/lib/update-feed/manifest.json")
@@ -135,7 +135,8 @@ in pkgs.testers.runNixOSTest {
     publish(2,"good",["stable"])
     publisher.succeed("printf 'tampered' >>/var/lib/update-feed/manifest.json")
     poll_refuses("manifest-admission")
-    publish(2,"good",["stable"],expiresAt=int(time.time())-1)
+    # Signed and structurally valid, but expired independently of host/guest skew.
+    publish(2,"good",["stable"],issuedAt=0,expiresAt=1)
     poll_refuses("release-time")
     publish(2,"good",["stable"],stateContract="unqualified-browser-schema")
     poll_refuses("state-contract")
