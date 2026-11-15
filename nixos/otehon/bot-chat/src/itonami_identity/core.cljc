@@ -53,10 +53,20 @@
   (defn aliases! [cfg key b request client]
    (verify-binding! b)
    (let [thread (db/sha (str "itonami/private-mail-alias/v1\u0000" (:principalId b) "\u0000" (:botId b)))
-         old (db! cfg key thread "history" []) events (mapv #(j/parse-string (:text %) true) (:messages old))
+         initial (db! cfg key thread "history" [])
+         intent-thread (db/sha (str thread "/private-intents"))
+         intents (db! cfg key intent-thread "history" [])
          now (System/currentTimeMillis) at (str (Instant/ofEpochMilli now))
          authority-key (ledger/key-for (:identityNamespace cfg) (db/sha (str "mail-head/" (:principalId b) "/" (:botId b))))
          observed ((:read client) authority-key)
+         pending-row (when (= "pending" (:state observed)) (first (filter #(= (:requestId observed) (:id %)) (:messages intents))))
+         pending-event (some-> pending-row :text (j/parse-string true))
+         has-local? (some #(= (:requestId observed) (:id %)) (:messages initial))
+         resume? (and pending-row (not has-local?) (= (:basis observed) (get-in initial [:store :headCid]))
+                      (= (:eventSha observed) (db/sha (:text pending-row))) (= (:requestSha observed) (:requestSha pending-event))
+                      (= (:principalId b) (:principalId pending-event)) (= (:botId b) (:botId pending-event)) (= (:did b) (:did pending-event)))
+         old (if resume? (db! cfg key thread "append" [pending-row] (get-in initial [:store :headCid])) initial)
+         events (mapv #(j/parse-string (:text %) true) (:messages old))
          completed (when (= "pending" (:state observed)) (first (filter #(and (= (:requestId observed) (:requestId %)) (= (:requestSha observed) (:requestSha %))) events)))
          _ (when completed (m/require! ((:cas client) authority-key observed {:state "committed" :headCid (get-in old [:store :headCid])}) "mail-basis-changed"))
          authority (if completed ((:read client) authority-key) observed)
@@ -68,9 +78,13 @@
          _ (m/require! (or (and (not= "pending" (:state authority)) (= (:headCid authority) (get-in old [:store :headCid])))
                            (and own-pending? (= (:basis authority) (get-in old [:store :headCid])))) "identity-store-stale")
          _ (when (:event planned) (m/require! (and (contains? request :basis) (= (:basis request) (get-in old [:store :headCid]))) "mail-basis-changed"))
-         pending {:state "pending" :basis (get-in old [:store :headCid]) :requestId (:requestId request) :requestSha (:requestSha args)}
+         prior-intent (first (filter #(= (:requestId request) (:id %)) (:messages intents)))
+         intent (when-let [e (:event planned)] (or prior-intent {:id (:requestId request) :role "session" :text (j/generate-string e) :at at}))
+         _ (when prior-intent (m/require! (= (:requestSha args) (:requestSha (j/parse-string (:text prior-intent) true))) "mail-request-conflict"))
+         _ (when (and intent (nil? prior-intent)) (db! cfg key intent-thread "append" [intent] (get-in intents [:store :headCid])))
+         pending {:state "pending" :basis (get-in old [:store :headCid]) :requestId (:requestId request) :requestSha (:requestSha args) :eventSha (when intent (db/sha (:text intent)))}
          _ (when (:event planned) (m/require! (or own-pending? ((:cas client) authority-key authority pending)) "mail-basis-changed"))
-         saved (if-let [e (:event planned)] (db! cfg key thread "append" [{:id (:requestId request) :role "session" :text (j/generate-string e) :at at}] (get-in old [:store :headCid])) old)
+         saved (if intent (db! cfg key thread "append" [intent] (get-in old [:store :headCid])) old)
          _ (when (:event planned) (m/require! ((:cas client) authority-key pending {:state "committed" :headCid (get-in saved [:store :headCid])}) "mail-result-unconfirmed"))]
     (merge {:schema "itonami.mail-alias-result.v1" :botId (:botId b) :basis (get-in saved [:store :headCid]) :store (:store saved) :routing "not-provisioned"}
            (m/directory (mapv #(j/parse-string (:text %) true) (:messages saved)) b now))))

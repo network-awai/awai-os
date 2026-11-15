@@ -56,7 +56,11 @@ UI retains an uncertain issue UUID for explicit result checking. Reads recover
 from durable storage in a new process. Each alias directory's committed head
 is also anchored by authenticated etcd CAS. A write reserves a pending request
 before local publication and acknowledges only after durable readback and head
-publication. An interrupted head update reconciles the same persisted event;
+publication. The complete request/event intent is first encrypted into the
+Agent database, and its digest is bound into the pending authority. An
+interruption before the alias append can resume that same private intent after
+browser/process loss; the browser is not the recovery source. An interrupted
+head update reconciles the same persisted event;
 a restored old snapshot cannot reactivate a stopped alias or write over newer
 state. A pending request without a local result requires resuming the same
 request; it is never silently discarded. This reuses the existing database crypto

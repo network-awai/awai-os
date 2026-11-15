@@ -133,3 +133,7 @@ differs from the latest authority, so recovery cannot revive stopped aliases.
 Native file writes drain the complete buffer and private credential reads
 require exact0600 permissions and bounded sizes. Recovery into a new store may
 reuse matching existing Keychain custody, but cannot overwrite different keys.
+The complete alias intent is encrypted durably before the pending claim, whose
+event digest binds the chosen random address. Restart/reload can finish that
+same intent even when the alias append never ran; it does not depend on browser
+memory or issue a second address after an uncertain operation.

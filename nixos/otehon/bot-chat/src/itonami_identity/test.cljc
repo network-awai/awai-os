@@ -93,4 +93,19 @@
   (is (thrown? Exception (c/locked cfg #(c/with-custody cfg (fn [key _] (i/aliases! cfg key (:binding (i/local-binding cfg key bot)) request uncertain))))))
   (let [reconciled (i/operation! cfg {:action "list" :botId bot}) replay (i/operation! cfg request)]
    (is (= 1 (count (:aliases reconciled)))) (is (= reconciled replay)))))
+(deftest browser-loss-before-local-commit-recovers-private-intent
+ (let [cfg (config) _ (boot cfg) view (i/operation! cfg {:action "list" :botId bot})
+       request {:botId bot :action "issue" :requestId (str (java.util.UUID/randomUUID)) :basis (:basis view) :purpose "remembered-privately" :counterparty "fixture"}
+       db-fn i/db! failed (atom false) appends (atom 0)]
+  (is (thrown? Exception
+    (with-redefs [i/db! (fn [config key thread op events & [basis]]
+      ;; The first append is the encrypted intent. Fail the following alias append.
+      (when (and (= "append" op) (= 2 (swap! appends inc)))
+       (reset! failed true) (throw (ex-info "synthetic-interruption" {})))
+      (db-fn config key thread op events basis))] (i/operation! cfg request))))
+  (is @failed)
+  (let [readback (i/operation! cfg {:action "list" :botId bot})]
+   (is (= 1 (count (:aliases readback))))
+   (is (= "remembered-privately" (get-in readback [:aliases 0 :purpose])))
+   (is (= readback (i/operation! cfg request))))))
 (defn -main [& _] (let [r (run-tests 'itonami-identity.test)] (when (pos? (+ (:fail r) (:error r))) (System/exit 1))))
