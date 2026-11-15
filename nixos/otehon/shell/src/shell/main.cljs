@@ -275,7 +275,7 @@
                    [:button.locked {:type "button" :on-click on-raise}
                     (str "Needs trust " minimum ". Yours is " score ".")])])) (.-remoteOperations dapp))])])
 
-(defn account [account score proofs on-check-passport passport-state on-read-balance balance-state on-sign-out]
+(defn account-view [account score proofs on-check-passport passport-state on-read-balance balance-state on-sign-out]
   (let [address (accountAddress (.-accountDid account))]
     [:main.chat.account-view
      [:div.account-body
@@ -362,7 +362,7 @@
                                                     "残高を確認できませんでした。後でもう一度お試しください。")})))))]
     (let [body (cond
                  (= context ACCOUNT)
-                 [:f> account account score proofs check-passport passport-state
+                 [:f> account-view account score proofs check-passport passport-state
                   check-balance balance-state on-sign-out]
                  (= context MANIMANI)
                  [:f> manimani set-context open-account]

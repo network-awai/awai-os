@@ -38,7 +38,12 @@ const server = createServer(async (request, response) => {
       return;
     }
     const body = await readFile(file);
-    response.writeHead(200, { "content-type": TYPES[path.extname(pathname)] ?? "application/octet-stream" });
+    // Preview-only: never cache, so a fixed bundle can't stick around.
+    // The OS image loads over file:// and never sees this header.
+    response.writeHead(200, {
+      "content-type": TYPES[path.extname(pathname)] ?? "application/octet-stream",
+      "cache-control": "no-store",
+    });
     response.end(body);
   } catch {
     response.writeHead(404);
@@ -47,5 +52,5 @@ const server = createServer(async (request, response) => {
 });
 
 server.listen(port, host, () => {
-  console.log(`otehon shell preview on http://${host}:${port}/`);
+  console.log(`otehon shell preview on http://${host}:${server.address().port}/`);
 });
