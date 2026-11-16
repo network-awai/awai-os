@@ -33,7 +33,7 @@
     :root[data-home-motion=true] .home.first-appearance > :not(.home-atmosphere) { animation:awai-arrive .36s ease-out both; }
   }
   .date { font-size:.875rem; font-weight:500; }
-  .clock { font-size:4.5rem; font-weight:300; letter-spacing:-.02em; line-height:1.45; font-variant-numeric:tabular-nums; }
+  .clock { font-size:min(4.5rem,23cqi); white-space:nowrap; font-weight:300; letter-spacing:-.02em; line-height:1.45; font-variant-numeric:tabular-nums; }
   .card { padding:1.25rem; border-radius:28px; background:var(--surface); display:flex; flex-direction:column; gap:.5rem; }
   .card.primary { background:var(--container); padding:1.5rem; gap:1rem; }
   .muted { color:var(--muted); }
