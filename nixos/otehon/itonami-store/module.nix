@@ -44,5 +44,6 @@ in {
       '';
     };
     environment.systemPackages = [ launcher ];
+    fonts.packages = [ pkgs.noto-fonts-cjk-sans ];
   };
 }
