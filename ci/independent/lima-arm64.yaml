@@ -1,0 +1,73 @@
+# AWAI-2987: dedicated non-GitHub ARM Linux qualification, never x86 evidence.
+vmType: vz
+arch: aarch64
+cpus: 2
+memory: 4GiB
+disk: 32GiB
+images:
+  - location: https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-arm64.img
+    arch: aarch64
+    digest: sha256:50e24e1fb79e89116e939d90aa7738f7af48c442fa1bc2510131e0b39c50348e
+mounts: []
+mountInotify: false
+ssh:
+  loadDotSSHPubKeys: false
+  forwardAgent: false
+  forwardX11: false
+containerd:
+  system: false
+  user: false
+propagateProxyEnv: false
+portForwards:
+  - guestPortRange: [1, 65535]
+    ignore: true
+user:
+  name: awai-ci
+  uid: 1001
+  home: /home/awai-ci
+  shell: /bin/bash
+provision:
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -euo pipefail
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update -qq
+      apt-get install -y --no-install-recommends ca-certificates curl xz-utils git python3 bzip2 iptables
+      # Compatible with Lima2.0: enforce host-loopback isolation in the guest.
+      iptables -N AWAI_CI_HOSTBLOCK 2>/dev/null || true
+      iptables -F AWAI_CI_HOSTBLOCK
+      iptables -C OUTPUT -j AWAI_CI_HOSTBLOCK 2>/dev/null || iptables -I OUTPUT 1 -j AWAI_CI_HOSTBLOCK
+      iptables -A AWAI_CI_HOSTBLOCK -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
+      iptables -A AWAI_CI_HOSTBLOCK -p udp --dport 53 -j RETURN
+      iptables -A AWAI_CI_HOSTBLOCK -p tcp --dport 53 -j RETURN
+      iptables -A AWAI_CI_HOSTBLOCK -p udp --dport 67 -j RETURN
+      iptables -A AWAI_CI_HOSTBLOCK -d 192.168.5.0/24 -j REJECT
+      iptables -A AWAI_CI_HOSTBLOCK -d 169.254.169.254 -j REJECT
+      ip6tables -N AWAI_CI_HOSTBLOCK 2>/dev/null || true
+      ip6tables -F AWAI_CI_HOSTBLOCK
+      ip6tables -C OUTPUT -j AWAI_CI_HOSTBLOCK 2>/dev/null || ip6tables -I OUTPUT 1 -j AWAI_CI_HOSTBLOCK
+      ip6tables -A AWAI_CI_HOSTBLOCK -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
+      ip6tables -A AWAI_CI_HOSTBLOCK -d fe80::/10 -j REJECT
+      if [ ! -x /nix/var/nix/profiles/default/bin/nix ]; then
+      dir=$(mktemp -d)
+      cd "$dir"
+      curl --fail --proto '=https' --retry 3 --max-time 300 https://releases.nixos.org/nix/nix-2.31.2/nix-2.31.2-aarch64-linux.tar.xz -o nix.tar.xz
+      printf '%s  nix.tar.xz\n' 64db528412096d718b4bf8f78f85e5ac2b714b774e5005500dee37d23f560456 | sha256sum -c -
+      tar -xf nix.tar.xz
+      # A login context supplies the real root HOME required by Nix installer.
+      sudo --login -- "$PWD/nix-2.31.2-aarch64-linux/install" --daemon --yes --no-channel-add
+      fi
+      /nix/var/nix/profiles/default/bin/nix --version | grep -Fx 'nix (Nix) 2.31.2' 
+      printf '\nexperimental-features = nix-command flakes\nsandbox = true\n' >> /etc/nix/nix.conf
+      systemctl restart nix-daemon
+      printf '%s\n' AWAI-2987/isolated-arm64 > /etc/awai-ci-executor-id
+probes:
+  - mode: readiness
+    description: Pinned Nix and guest network guard
+    script: |
+      #!/bin/sh
+      set -eu
+      /nix/var/nix/profiles/default/bin/nix --version | grep -Fx 'nix (Nix) 2.31.2'
+      sudo iptables -C OUTPUT -j AWAI_CI_HOSTBLOCK
+    hint: Inspect the dedicated guest cloud-init log; READY alone is not bootstrap proof.

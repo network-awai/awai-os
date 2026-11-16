@@ -1,0 +1,33 @@
+{
+  "passed": true,
+  "exitCode": 0,
+  "sourceRevision": "8673a587668077513bc7292087a0005d51c5cf91",
+  "architecture": "aarch64",
+  "execution": "unprivileged tests and fresh derivations, isolated Nix daemon/network namespace, loopback only",
+  "scope": "Otehon evaluation/core tests only; not x86/KVM, installer, Native or production release",
+  "schema": "awai.ci.operator-evidence.v1",
+  "issue": "AWAI-2987",
+  "date": "2026-11-16",
+  "executor": "dedicated Tailscale jacob Lima ARM Linux guest",
+  "controllerSources": {
+    "ci/independent/admit-inputs.py": "44450537957ca594aa3b4260a513035f602b999e384be2385ae55308924e0b1e",
+    "ci/independent/lima-arm64.yaml": "e933b3db5132cbb00a9e6845619ed2d40087bc263215549a1895318a395b51ca",
+    "ci/independent/offline-otehon.sh": "8aa748385149d3ba837516aa40f6a6fbb85847a5b925dff621f50dea1ed4dfc8",
+    "ci/independent/run-offline-otehon.sh": "52c076f2d5cfe0f23374820f77126e9881090e43563440657ebf9a38c8581e54"
+  },
+  "inputLockSha256": "b79cd179b3a726034c5223da4876c26f632b7967e2d322aad948a302340b4790",
+  "buildLogSha256": "9a7855d519587d67a2ddaf03588148d1485849df4ccdd1f819bd0ae4f6ac0724",
+  "bootstrapNetwork": "Public source/dependencies were acquired before network-isolated qualification; complete mirrored bootstrap closure remains pending",
+  "substituters": "disabled during final qualification",
+  "remaining": [
+    "x86/KVM installer/reboot",
+    "remaining historical GitHub artifact migration",
+    "all workflow parity and automatic scheduling",
+    "signed release/promotion and production cutover"
+  ],
+  "telemetry": {
+    "exactModel": "unknown",
+    "tokenUsage": "unknown",
+    "activeWaitingTimes": "unknown"
+  }
+}
