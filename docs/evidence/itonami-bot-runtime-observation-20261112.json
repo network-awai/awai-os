@@ -1,0 +1,140 @@
+{
+  "schema": "awai.bot-fleet-observation.v1",
+  "observedAt": "2026-11-12T02:01:53.579Z",
+  "registryRevision": "d4fcfcdced8678d24ab747edc46f5f3acd6f823d",
+  "catalogSha256": "a897218a715daad4e5a8d422151eefc6f5d9c93d1fd68a6dbae36b52517ebc7d",
+  "sourceIssue": "AWAI-2795",
+  "scope": "host-prerequisites-only",
+  "continuousMonitoring": false,
+  "nodes": [
+    {
+      "node": "joseph",
+      "status": "observed",
+      "schema": "awai.host-bot-prerequisites.v1",
+      "tools": {
+        "bb": true,
+        "muse": false,
+        "itonami": false,
+        "itonami-agent": false
+      },
+      "unattributedProcessCount": 0
+    },
+    {
+      "node": "asher",
+      "status": "observed",
+      "schema": "awai.host-bot-prerequisites.v1",
+      "tools": {
+        "bb": true,
+        "muse": false,
+        "itonami": false,
+        "itonami-agent": false
+      },
+      "unattributedProcessCount": 0
+    },
+    {
+      "node": "benjamin",
+      "status": "observed",
+      "schema": "awai.host-bot-prerequisites.v1",
+      "tools": {
+        "bb": true,
+        "muse": false,
+        "itonami": false,
+        "itonami-agent": false
+      },
+      "unattributedProcessCount": 0
+    },
+    {
+      "node": "dan",
+      "status": "observed",
+      "schema": "awai.host-bot-prerequisites.v1",
+      "tools": {
+        "bb": true,
+        "muse": false,
+        "itonami": false,
+        "itonami-agent": false
+      },
+      "unattributedProcessCount": 0
+    },
+    {
+      "node": "issachar",
+      "status": "observed",
+      "schema": "awai.host-bot-prerequisites.v1",
+      "tools": {
+        "bb": true,
+        "muse": false,
+        "itonami": false,
+        "itonami-agent": false
+      },
+      "unattributedProcessCount": 0
+    },
+    {
+      "node": "judah",
+      "status": "observed",
+      "schema": "awai.host-bot-prerequisites.v1",
+      "tools": {
+        "bb": true,
+        "muse": false,
+        "itonami": false,
+        "itonami-agent": false
+      },
+      "unattributedProcessCount": 0
+    },
+    {
+      "node": "levi",
+      "status": "observed",
+      "schema": "awai.host-bot-prerequisites.v1",
+      "tools": {
+        "bb": true,
+        "muse": false,
+        "itonami": false,
+        "itonami-agent": false
+      },
+      "unattributedProcessCount": 0
+    },
+    {
+      "node": "naphtali",
+      "status": "observed",
+      "schema": "awai.host-bot-prerequisites.v1",
+      "tools": {
+        "bb": true,
+        "muse": false,
+        "itonami": false,
+        "itonami-agent": false
+      },
+      "unattributedProcessCount": 0
+    },
+    {
+      "node": "simeon",
+      "status": "observed",
+      "schema": "awai.host-bot-prerequisites.v1",
+      "tools": {
+        "bb": true,
+        "muse": false,
+        "itonami": false,
+        "itonami-agent": false
+      },
+      "unattributedProcessCount": 0
+    },
+    {
+      "node": "zebulun",
+      "status": "observed",
+      "schema": "awai.host-bot-prerequisites.v1",
+      "tools": {
+        "bb": true,
+        "muse": false,
+        "itonami": false,
+        "itonami-agent": false
+      },
+      "unattributedProcessCount": 0
+    }
+  ],
+  "runs": [],
+  "gates": {
+    "nodeAdmission": "unverified",
+    "durableCursor": "unverified",
+    "fencedEffects": "unverified",
+    "liveItonamiMuseAdapter": "not-connected",
+    "guestExecutor": "unverified"
+  },
+  "note": "Host CLI/process census is not VM access, bot execution or authorization. No dispatch performed."
+}

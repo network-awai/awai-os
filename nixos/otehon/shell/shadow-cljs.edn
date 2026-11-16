@@ -11,12 +11,22 @@
                         :compiler-options {:externs ["externs/otehon-shell.js"]}
                         :js-options {:resolve {"process" false}}
                         :modules {:fs-reliability {:init-fn shell.reliability/init}}}
+          :setup-check {:target :node-script
+                        :output-to ".shadow-cljs/setup-check.cjs"
+                        :main shell.setup-check/main
+                        :compiler-options {:externs ["externs/otehon-shell.js"]}}
           :shell {:target :browser
                   :output-dir "dist/assets"
                   :asset-path "assets"
                   :compiler-options {:externs ["externs/otehon-shell.js"]}
                   :js-options {:resolve {"process" false}}
                   :modules {:main {:init-fn shell.main/init}}}
+          :soshiki-runtime {:target :browser
+                 :output-dir "dist/assets"
+                 :asset-path "../assets"
+                 :compiler-options {:externs ["externs/otehon-shell.js"]}
+                 :js-options {:resolve {"process" false}}
+                 :modules {:soshiki-runtime {:init-fn shell.soshiki-runtime/init}}}
           :link {:target :browser
                  :output-dir "dist/link/assets"
                  :asset-path "assets"

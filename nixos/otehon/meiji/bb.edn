@@ -1,0 +1,4 @@
+{:paths ["src" "test"]
+ :tasks {test {:task (do (require 'meiji.host-test)
+                        (let [r (clojure.test/run-tests 'meiji.host-test)]
+                          (when (pos? (+ (:fail r) (:error r))) (System/exit 1))))}}}

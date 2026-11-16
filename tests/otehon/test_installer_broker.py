@@ -35,6 +35,21 @@ class Protocol(unittest.TestCase):
             self.assertIsNone(broker.selected)
             self.assertFalse(broker.state['writeStarted'])
 
+    def test_installed_logs_disabled_unless_idle_diagnostic_and_no_arguments(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            for name, value in [('image', 'a'*64), ('raw', 'b'*64), ('bytes', '100')]:
+                (d/name).write_text(value)
+            with patch.dict(os.environ, {}, clear=True), patch.object(b.subprocess, 'Popen') as spawn:
+                diagnostic = b.Broker(d, d, read_only=True)
+                self.assertEqual(diagnostic.dispatch('INSTALLED_LOGS', [])['reason'], 'disabled')
+                with self.assertRaises(b.Refused): diagnostic.dispatch('INSTALLED_LOGS', ['/etc/shadow'])
+                normal = b.Broker(d, d)
+                self.assertEqual(normal.dispatch('INSTALLED_LOGS', [])['reason'], 'not-diagnostic-idle')
+                spawn.assert_not_called()
+            self.assertEqual(b.decode(b'INSTALLED_LOGS\n'), ('INSTALLED_LOGS', []))
+            with self.assertRaises(b.Refused): b.decode(b'INSTALLED_LOGS\tx\n')
+
     def test_bounded_fixed_operations(self):
         self.assertEqual(b.decode(b'STATUS\n'), ('STATUS', []))
         self.assertEqual(b.decode(b'SELECT\t'+base64.b64encode(b'target')+b'\n'), ('SELECT',['target']))

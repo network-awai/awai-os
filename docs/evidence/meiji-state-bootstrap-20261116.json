@@ -1,0 +1,16 @@
+{
+  "schema": "meiji.state-bootstrap-evidence.v1",
+  "issue": "AWAI-2820",
+  "run": "01a1c830-dd85-7993-847b-c183174d6e38",
+  "stateRoot": "/.itonami/",
+  "collections": ["/.itonami/", "/.itonami/recovery/", "/.itonami/runtime/", "/.itonami/receipts/"],
+  "record": "/.itonami/recovery/awai-2820-a06bd4e9-399f-4f98-b203-319ebaca1f18.json",
+  "sha256": "3d9474aca3e1aaec715547ef624155b7ef6eda20824b32988d95b0fce48d5664",
+  "httpReadback": true,
+  "localManifestReadback": true,
+  "serviceStatus": {"files": 5218, "packs": 2956, "journal": 0, "namespace-write-state": "ready", "pending-sync": false, "last-snapshot": "isolated-worker"},
+  "remoteReplicaIndependentlyRead": false,
+  "credentialsRestored": false,
+  "runtimeReady": false,
+  "newProductionBotCutovers": 0
+}

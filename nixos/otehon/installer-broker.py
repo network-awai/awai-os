@@ -58,7 +58,7 @@ def decode(line):
     if len(line) > 4096 or not line.endswith(b'\n'): raise Refused('request-bound')
     fields = line[:-1].split(b'\t')
     op = fields[0].decode('ascii')
-    arity = {'LIST':0, 'STATUS':0, 'INSPECT':0, 'KERNEL_INSPECT':0, 'SELECT':1, 'INSTALL':3, 'CANCEL':0, 'TEXT':0, 'REBOOT':0, 'POWEROFF':0}
+    arity = {'LIST':0, 'STATUS':0, 'INSPECT':0, 'KERNEL_INSPECT':0, 'INSTALLED_LOGS':0, 'SELECT':1, 'INSTALL':3, 'CANCEL':0, 'TEXT':0, 'REBOOT':0, 'POWEROFF':0}
     if op not in arity or len(fields)-1 != arity[op]: raise Refused('request-shape')
     values = []
     for field in fields[1:]:
@@ -416,10 +416,24 @@ class Broker:
     def dispatch(self,op,args):
         # Diagnostic boots must never turn a remote observer into a writer.
         # Reject before target selection, process creation, or power controls.
-        if self.read_only and op not in ('LIST', 'STATUS', 'INSPECT'):
+        if self.read_only and op not in ('LIST', 'STATUS', 'INSPECT', 'INSTALLED_LOGS'):
             raise Refused('diagnostic-read-only')
         if op=='LIST': return {'devices':inventory(),'rawBytes':self.raw_bytes,'state':self.snapshot()}
         if op=='STATUS': return self.snapshot()
+        if op=='INSTALLED_LOGS':
+            if args: raise Refused('fixed-installed-log-operation')
+            if not self.read_only or self.busy(): return {'available': False, 'reason': 'not-diagnostic-idle'}
+            script = os.environ.get('OTEHON_INSTALLED_LOG_SCRIPT')
+            if not script: return {'available': False, 'reason': 'disabled'}
+            process = subprocess.Popen(['unshare', '--mount', '--propagation', 'private', sys.executable, script], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, start_new_session=True)
+            try:
+                output, _ = process.communicate(timeout=35)
+                if process.returncode or len(output)>65536: raise Refused('installed-log-inspection-failed')
+                return json.loads(output)
+            finally:
+                if process.poll() is None:
+                    os.killpg(process.pid, signal.SIGKILL)
+                    process.wait()
         if op=='KERNEL_INSPECT':
             if args: raise Refused('fixed-kernel-inspection-operation')
             if self.busy(): return {'available': False, 'readOnly': True, 'reason': 'install-in-progress'}

@@ -2,7 +2,7 @@
   "source": {
     "repository": "kotoba-lang/kotoba",
     "path": "lib/kotoba.aiueos/distributions/awai/dapps",
-    "commit": "a51492321e8daf05d1cd211d0dc6dbe5667900dc"
+    "commit": "c8fca4bbc70e6e5eb0a481b2159e688053f9051c"
   },
   "dapps": [
     {
@@ -320,6 +320,37 @@
         {
           "operation": "submit-order",
           "service": "user-chosen torihiki devnet endpoint",
+          "consent": "each-operation"
+        }
+      ]
+    },
+    {
+      "id": "otent",
+      "dock": 22,
+      "title": "Otent",
+      "section": "Apps",
+      "summary": "Globe (read and render only): satellites, earthquakes, aircraft and vessels from the local snapshot",
+      "install": "os-image",
+      "offline": "local-core",
+      "remoteOperations": [
+        {
+          "operation": "fetch-satellites",
+          "service": "CelesTrak GP element sets",
+          "consent": "each-operation"
+        },
+        {
+          "operation": "fetch-earthquakes",
+          "service": "USGS all-day feed",
+          "consent": "each-operation"
+        },
+        {
+          "operation": "fetch-aircraft",
+          "service": "OpenSky anonymous tier",
+          "consent": "each-operation"
+        },
+        {
+          "operation": "fetch-vessels",
+          "service": "Digitraffic AIS",
           "consent": "each-operation"
         }
       ]

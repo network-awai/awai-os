@@ -1,0 +1,10 @@
+--- a/core/src/connection/port.rs
++++ b/core/src/connection/port.rs
+@@ -12 +12 @@
+-pub const MAX_TIMEOUT: Duration = Duration::from_millis(1000);
++pub const MAX_TIMEOUT: Duration = Duration::from_millis(10000);
+--- a/core/src/connection/backend/serial_backend.rs
++++ b/core/src/connection/backend/serial_backend.rs
+@@ -60 +60 @@
+-                .timeout(Duration::from_millis(1000))
++                .timeout(Duration::from_millis(10000))

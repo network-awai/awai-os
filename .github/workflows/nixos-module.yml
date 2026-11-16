@@ -8,6 +8,21 @@ permissions:
   contents: read
 
 jobs:
+  itonami-gms-core:
+    # Otehon only. Neither a Google API qualification nor a Native dependency.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: cachix/install-nix-action@b85815f71a6de0ddee80b8a80a98d43f4bcc66c7 # v31
+      - name: Check common Store core and disabled/enabled module
+        run: |
+          nix-build nixos/otehon/itonami-gms/check.nix --no-out-link
+          nix-build nixos/otehon/itonami-gms/module-check.nix --no-out-link
+          package=$(nix-build nixos/otehon/itonami-gms/package.nix --no-out-link)
+          "$package/bin/itonami-gms" contract
   forest-writer-linux:
     # Hosted Otehon integration, independent of Native qualification.
     runs-on: ubuntu-24.04
@@ -130,5 +145,21 @@ jobs:
           bash -n nixos/otehon/update.sh
           nix-instantiate --eval --strict --json --expr 'import ./tests/otehon-update-eval.nix { nixpkgsPath = import ./ci/nixpkgs.nix; }'
           nix-instantiate --eval --strict --json --expr 'import ./tests/otehon-usb-eval.nix { nixpkgsPath = import ./ci/nixpkgs.nix; }'
+      - name: Test Otehon bot work bindings and deduplicated usage receipts
+        # Pure source checks only; no Muse, GitHub, Linear or live fleet calls.
+        run: |
+          fleet_check=$(nix-build nixos/otehon/bot-fleet/check.nix --no-out-link)
+          cat "$fleet_check/core-tests.txt" "$fleet_check/receipt-tests.txt"
+          observation_check=$(nix-build nixos/otehon/node-observation/check.nix --no-out-link)
+          cat "$observation_check/tests.txt"
+      - name: Test the Otehon Agent conversation database over AwaiFS
+        run: |
+          chat_check=$(nix-build nixos/otehon/bot-chat/check.nix --no-out-link)
+          cat "$chat_check"
       - name: Evaluate every Otehon profile, aarch64 and the x86_64 vm
         run: sh nixos/otehon/eval-profiles.sh .
+      - name: Test bounded Meiji controller and inference protocol (no VM or GPU)
+        # Otehon Babashka path; Native checks above do not depend on this job.
+        run: |
+          meiji_check=$(nix-build nixos/otehon/meiji/check.nix --no-out-link)
+          cat "$meiji_check"

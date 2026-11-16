@@ -14,3 +14,10 @@ export function styleSrc(mode) {
 export function imageSrc(mode) {
   return mode === "http" ? "img-src 'self'" : "img-src file:";
 }
+
+// The HTTP shell reads the same-origin static fleet-state.json artifact.
+// serve.mjs exposes static files only; this adds no API or external operation.
+// Keep the file kiosk and phone consent page's connection policy unchanged.
+export function staticReportConnectSrc(connect, mode, shell) {
+  return mode === "http" && shell ? `${connect} 'self'` : connect;
+}

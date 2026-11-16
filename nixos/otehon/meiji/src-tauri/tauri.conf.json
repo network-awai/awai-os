@@ -1,0 +1,19 @@
+{
+  "$schema": "https://schema.tauri.app/config/3",
+  "productName": "Awai Meiji",
+  "version": "0.1.0",
+  "identifier": "network.awai.meiji",
+  "build": { "frontendDist": "../dist" },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [{ "label": "main", "title": "Awai Meiji", "url": "soshiki-runtime/index.html", "width": 1160, "height": 820, "minWidth": 360, "minHeight": 560 }],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src ipc: http://ipc.localhost; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "resources": { "../src/": "meiji-src/", "bin/": "bin/" },
+    "macOS": { "minimumSystemVersion": "14.0" }
+  }
+}

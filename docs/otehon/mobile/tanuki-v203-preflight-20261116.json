@@ -1,0 +1,16 @@
+{
+  "bootchain_original_matches": {
+    "preloader": true,
+    "preloader_backup": true,
+    "lk_a": true,
+    "lk_b": true,
+    "seccfg": true
+  },
+  "proinfo_identity_matches_original_or_known_patch": true,
+  "frp_checksum_valid": true,
+  "frp_oem_byte": 0,
+  "oem_factory_byte": 1,
+  "proinfo_factory_byte": 1,
+  "frp_matches_previous_valid_snapshot": true,
+  "stage_eligible": true
+}

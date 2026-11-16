@@ -1,0 +1,6 @@
+const core=globalThis.ItonamiDomain;
+export const SCHEMA='itonami.yotei.state.v1';
+export function validateEvents(events){if(!Array.isArray(events)||events.length>200)throw Error('invalid-events');const ids=new Set();for(const e of events){if(!e||typeof e.id!=='string'||!e.id.trim()||e.id.length>80||ids.has(e.id)||typeof e.title!=='string'||!e.title.trim()||e.title.length>160||!Number.isSafeInteger(e.at)||e.at<=0||e.at>8640000000000000)throw Error('invalid-event');ids.add(e.id);}let checked=[];for(const event of events){const result=JSON.parse(core.saveEvent(JSON.stringify(checked),JSON.stringify(event)));if(result.error)throw Error(result.error);checked=result.events;}return checked;}
+export function decode(value){if(value===null)return {schema:SCHEMA,events:[]};if(value?.schema!==SCHEMA)throw Error('unknown-state-schema');return {schema:SCHEMA,events:validateEvents(value.events)};}
+export function saveEvent(state,event){const events=validateEvents([...state.events.filter(e=>e.id!==event.id),event]);return {schema:SCHEMA,events};}
+export function importEvents(raw){let v;try{v=JSON.parse(raw);}catch{throw Error('invalid-backup');}return Array.isArray(v)?validateEvents(v):decode(v).events;}

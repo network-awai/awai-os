@@ -41,6 +41,15 @@ class Diagnostics(unittest.TestCase):
             self.assertFalse(value['status']['available'])
             self.assertEqual([c.args[0] for c in journal.call_args_list], ['source', 'broker', 'kernel'])
 
+    def test_installed_logs_require_explicit_read_only_profile(self):
+        with tempfile.TemporaryDirectory() as temp:
+            info = Path(temp)/'info.json'; info.write_text('{}')
+            output = io.StringIO()
+            with patch.dict(os.environ, {'OTEHON_INSTALLER_INFO': str(info), 'OTEHON_ALLOW_INSTALLED_BOOT_LOGS': '1'}), patch.object(d, 'broker', side_effect=[{'readOnly': True}, {}, {'available': True}]) as broker, patch.object(d, 'journal', return_value={}), patch('sys.stdout', output):
+                self.assertEqual(d.main(), 0)
+            self.assertEqual([c.args[0] for c in broker.call_args_list], ['STATUS', 'LIST', 'INSTALLED_LOGS'])
+            self.assertTrue(json.loads(output.getvalue())['installedBoot']['available'])
+
     def test_actual_socket_only_asks_for_status_and_inventory(self):
         with tempfile.TemporaryDirectory() as temp:
             path = str(Path(temp) / 'control.sock')
