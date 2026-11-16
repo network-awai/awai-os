@@ -25,7 +25,6 @@ public abstract class HostActivity extends Activity {
     protected WebView web;
     private Set<String> assets;
     private JSONArray cachedApps;
-    private Catalog catalog;
     private boolean ready;
     private boolean installing;
     protected abstract String mode();
@@ -84,7 +83,7 @@ public abstract class HostActivity extends Activity {
     @Override protected void onNewIntent(Intent intent) { super.onNewIntent(intent);setIntent(intent);if(ready&&"home".equals(mode()))web.evaluateJavascript("window.awaiGoHome && window.awaiGoHome()",null); }
     @Override public void onTrimMemory(int level) { super.onTrimMemory(level); if(level>=TRIM_MEMORY_UI_HIDDEN)cachedApps=null; }
     @Override protected void onDestroy() { if(web!=null){web.removeJavascriptInterface("AwaiHost");web.destroy();}super.onDestroy(); }
-    private Catalog trustedCatalog() throws Exception { if(catalog==null)catalog=new Catalog(this);return catalog; }
+    private Catalog trustedCatalog() throws Exception { return new Catalog(this); }
     private void message(String msg) { getSharedPreferences("host",0).edit().putString("message",msg).apply();runOnUiThread(()->{if(ready)web.evaluateJavascript("window.awaiRefresh && window.awaiRefresh()",null);}); }
     private JSONArray launchable() throws Exception {
         if(cachedApps!=null)return cachedApps;
