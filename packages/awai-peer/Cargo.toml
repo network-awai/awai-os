@@ -1,0 +1,30 @@
+[package]
+name = "awai-peer-runtime"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.95"
+license = "MIT"
+
+[dependencies]
+anyhow = "1"
+base64 = "0.22"
+# Upstream PR #77: only two Cargo.toml dependency lines change; avoids the
+# unresolvable/yanked core2 dependency in the published 0.5.0 release.
+beetswap = { git = "https://github.com/eigerco/beetswap", rev = "2c8b134b64725733a6f4215183342ddadb36eabb" }
+blockstore = "=0.8.0"
+cid = "0.11"
+futures = "0.3"
+# beetswap 0.5's NetworkBehaviour uses libp2p-swarm 0.47 (libp2p 0.56).
+libp2p = { version = "=0.56.0", default-features = false, features = ["tokio", "quic", "tcp", "noise", "yamux", "ping", "identify", "macros", "ed25519", "relay", "dcutr", "autonat", "request-response", "cbor"] }
+multihash-codetable = { version = "0.2.2", features = ["sha2", "blake3"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync", "io-util"] }
+
+serde_ipld_dagcbor = "0.6"
+ipld-core = "0.4"
+unsigned-varint = "0.8"
+
+[[bin]]
+name = "awai-peer"
+path = "src/main.rs"
