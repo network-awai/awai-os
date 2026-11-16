@@ -328,10 +328,6 @@
         [:button.secondary {:type "button" :data-network-back true
                             :on-click #(set-step "network")}
          (if (= language "ja") "ネットワーク設定へ戻る" "Back to network settings")])
-      (when (= step "signin")
-        [:button.secondary {:type "button" :data-network-back true
-                             :on-click #(set-step "network")}
-         (if (= language "ja") "ネットワーク設定へ戻る" "Back to network settings")])
       (when (and (pos? index) (< index 3))
         [:button.secondary {:type "button"
                              :on-click #(set-step (aget steps (dec index)))}

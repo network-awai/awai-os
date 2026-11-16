@@ -79,8 +79,7 @@
       (when (some-> status (.-error)) (problem (.-error status)))
       (when (and status (not (.-error status)) (not (some-> wifi (.-available))))
         [:p.muted "Wi-Fi アダプターが見つかりません。有線または USB 接続も利用できます。"])
-      (when (some-> wifi (.-available))
-        [:<>
+      [:<>
          [:h2 "有線・USB 接続"]
          (when (some-> status (.-iphone) (.-attached))
            [:div
@@ -101,6 +100,8 @@
                               :on-click #(do (set-busy true) (-> (connectDevice (.-name device))
                                 (.then (fn [done] (set-busy false) (set-result done)))))} "接続"])])
                (or (some-> status (.-devices)) #js []))]
+         (when (some-> wifi (.-available))
+          [:<>
          [:h2 "近くの Wi-Fi"]
          (when (some-> networks (.-error)) (problem (.-error networks)))
          (when (and networks (not (some-> networks (.-error))) (zero? (.-length found)))
@@ -122,10 +123,6 @@
                      :value psk :on-change #(set-psk (.. % -target -value))}]]
           [:button.primary {:type "submit" :disabled busy}
            (if busy "接続しています…" "接続")]]
-         (when (and result (not (.-ok result))) (problem (.-error result)))
-         (when (some-> result (.-ok))
-           [:p {:role "status" :data-net-joined (.-connected result)}
-            (str (.-connected result) " に接続しました。")])
          [:h2 "保存済み Wi-Fi"]
          (when (some-> known (.-error)) (problem (.-error known)))
          (when (and (zero? (.-length saved)) (not (some-> known (.-error))))
@@ -134,7 +131,12 @@
           (map (fn [item]
                   [:li {:key (.-name item)}
                    [:span (.-name item)]
-                   [:button {:type "button" :on-click #(forget (.-name item))} "削除"]]) saved)]])]]))
+                   [:button {:type "button" :on-click #(forget (.-name item))} "削除"]]) saved)]])
+         (when (and result (not (.-ok result))) (problem (.-error result)))
+         (when (some-> result (.-ok))
+           [:p {:role "status" :data-net-joined (.-connected result)}
+            (str (.-connected result) " に接続しました。")])
+]]]))
 
 (defn bluetooth-panel []
   (let [status (useNetStatus)
