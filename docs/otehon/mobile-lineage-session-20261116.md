@@ -331,3 +331,22 @@ miscは保存原本が既にcurrent requestを含むため一致すれば書込�
 新たなroot汎用shell/daemon、sudoers変更、lock spoof操作は作らない。
 復旧は保存済み両stock preloader/LK/config/misc/seccfgを照合復元する固定操作。
 この時点ではhelper未実行、端末への新たな書込みもない。
+
+## 14:45 JST 現行試行は原本照合で停止・今後の計画をLinearへ整理
+
+JunのTerminal認証後、ADBのpoweroffでMediaTek接続を捕捉した。
+helperのoem_mfd/proinfo照合は通ったが、FRPは原本/旧patchどちらのhashにも一致せず
+CONFIG_MISMATCH frpで停止。最初のmutationより前のguardなので新規書込みはない。
+管理者helperは終了し、直近はDA/MediaTek modeでADB/Fastbootなし。
+
+新FRPは同サイズで原本と34bytes異なる。差は先頭digestと末尾付近に限定され、
+末尾OEM値は0に戻っていた。AOSP15形式に従う計算で、原本と新読取りのdigestは有効、
+旧1byte変更コピーだけ無効。AOSPのenforceChecksumValidityは不一致時に
+formatPartitionLocked(false)を呼ぶため、Android起動後の許可0と整合する。
+実機内部でその経路が走ったログはないため因果断定せず、黒画面原因とも分ける。
+新snapshotと差分metadataはprivateに保持。checksumを無視して再試行しない。
+
+Junの「ここまでをLinearへ記録し今後の計画をまとめる」指示により、
+既存AWAI-2967の古いdescriptionを現在状態・調査結果・段階別完了条件へ更新。
+[次の計画](mobile-lineage-next-plan-20261116.md)にも同じ内容を保存。
+導入は未完了、次は通常起動の復帰確認と現在FRPの新baseline整理から再開する。
