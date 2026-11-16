@@ -467,3 +467,20 @@ output263672（reasoning149804は内数）、total108280391。
 このsnapshot時点はsigned ZIP sideload中であり、Lineage実機受入は0件。
 Mac側47%で処理継続し、JunもRecoveryのInstalling update/Step表示を確認。
 エラーや完了とは扱わず、端末書込み処理に介入せず監視を継続する。
+
+## sideload監視期限の問題と端末Step2の確認
+
+user/hostのsideload待機一致後、検証済み署名ZIPを明示対象に送信開始。
+host表示47%で待機し、JunはRecoveryのInstalling/Step2を確認した。
+15分に近づいた時点で、正常処理中を監視期限で切らない対処を試みたが、
+対象client PIDは既に存在せず、SIGSTOP等は一切送られていない。
+元のwrapperが900.037秒でtimeout処理に入りadb clientを終了していた。
+[raw host結果](mobile/lineage-sideload-host-timeout-20261116.json)を保存。
+Total xfer完了出力はなく、host成功とは扱わない。
+これは当方の監視設定の不備でありJunへ説明・謝罪済み。
+
+端末はその後もsideload接続として認識されるが、成功/失敗は未確定。
+追加送信・reboot・強制中断は行わず、Step2後の正確なRecovery表示を確認中。
+公開payload manifestにはsystem/bin/otapreopt_scriptとvendor/bin/checkpoint_gcの
+optional postinstallが存在する。長いStep2との関係は仮説で、実機logによる確定ではない。
+再試行が必要な場合は新しいlogへ保存し、正常処理を一律時間でkillするwrapperを使わない。
