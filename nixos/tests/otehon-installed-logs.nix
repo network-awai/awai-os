@@ -24,7 +24,7 @@ in pkgs.testers.runNixOSTest {
     target = "/dev/disk/by-id/virtio-INSTALLED-LOGS"
     prepare.start()
     prepare.wait_for_unit("multi-user.target")
-    prepare.succeed(f"printf 'label: gpt\\n,192M,L,name=otehon-root\\n,,L,name=otehon-state\\n' | sfdisk {target}; udevadm settle")
+    prepare.succeed(f"printf 'label: gpt\\nsize=192M, type=L, name=otehon-root\\ntype=L, name=otehon-state\\n' | sfdisk {target}; udevadm settle")
     prepare.succeed(f"mkfs.ext4 -F {target}-part1; mkdir /mnt/installed; mount {target}-part1 /mnt/installed; mkdir -p /mnt/installed/var/log/journal")
     prepare.succeed("systemd-run --wait --unit=greetd /bin/sh -c 'echo AWAI_PREVIOUS_BOOT_COMPOSITOR_FAILURE; exit 1' || true")
     prepare.succeed("journalctl --flush; journalctl --sync; cp -a /var/log/journal/. /mnt/installed/var/log/journal/; umount /mnt/installed; sync")
