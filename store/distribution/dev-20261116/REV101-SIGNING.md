@@ -13,8 +13,8 @@ rev100 の形式に合わせた）。
   Yotei エントリは rev100 の値をそのまま保持。新規 Itonami エントリは
   `apps[1]` に追加。承認層（`Catalog.java`＋共有 domain）は本 PR で多アプリ化。
 - `itonami.apk`: package `network.itonami.app`、versionCode 1000 / 0.1.0、
-  x86_64 debug。bytes 32685869、
-  sha256 `673fcaffafbf63dc6e6c927039a414a28dc6292e624cbb5a3bf399ca1f2c697f`、
+  x86_64 debug。bytes 32644749、
+  sha256 `09e92086e6b5edde9c91804a4fc30b6c980299cd64d4924a2f1c65e74e9da5cb`、
   signer SHA-256 `2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29`
  （Yotei dev と同一の Android development debug 署名。本番鍵ではない）。
 - 有効期限は生成時 +30 日（開発 preview の運用を踏襲）。
@@ -43,7 +43,7 @@ rev101 受理、改ざん 3 件（bytes 書換・entry 削除・asset 差替）�
 ## 残り（owner 側）
 
 - オンライン経路での rev101 受理（固定 URL 取得）は利用者の canonical broker 承認が
-  要る。merge 後の固定 commit に対する pins（catalog URL＋sha256 `5bef1e6c…`、
+  要る。merge 後の固定 commit に対する pins（catalog URL＋sha256 `cdfba84b…`、
   apk URL＋sha256）で承認依頼を出す。詳細は
   [AWAI-3003](https://linear.app/kotobalabs/issue/AWAI-3003)。
 - production 鍵・ROM 組込は別 scope。
