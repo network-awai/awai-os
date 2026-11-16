@@ -84,7 +84,8 @@ Button review instances are176×52dp; shortcut targets80×96dp, app nav items121
 | Notifications/QS/keyguard | [AOSP SystemUI](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/main/packages/SystemUI/) | OS implementation layer |
 | Home/all apps/recents | [AOSP Launcher3/Quickstep](https://android.googlesource.com/platform/packages/apps/Launcher3/+/refs/heads/main/), [Lineage Trebuchet](https://github.com/LineageOS/android_packages_apps_Trebuchet) | launcher and gesture/task integration |
 | Settings preferences | [Lineage Settings](https://github.com/LineageOS/android_packages_apps_Settings) | settings hierarchy and preference implementation |
-| Runtime permissions/installer integration | [AOSP PermissionController](https://android.googlesource.com/platform/packages/modules/Permission/+/refs/heads/main/PermissionController/) | privileged OS flow, not a web dialog grant |
+| Runtime permissions | [AOSP PermissionController](https://android.googlesource.com/platform/packages/modules/Permission/+/refs/heads/main/PermissionController/) | privileged permission flow, not a web dialog grant |
+| OS installation confirmation | [AOSP PackageInstaller](https://android.googlesource.com/platform/packages/apps/PackageInstaller/+/refs/heads/main/) | app installation UI; separate from runtime permission prompts |
 | Resource theming | [AOSP RRO](https://source.android.com/docs/core/runtime/rros) | existing overlayable resources; cannot replace arbitrary control code |
 
 Checked2026-11-16. These upstream references are navigation starting points; implementation must pin the exact manifest/revisions matching Lineage24/Android17 on g05. The direct Figma Community kit page could not be fetched by the web reader, so no fetched-content verification of that page is claimed; the available Material3 library was verified through Figma MCP. One site does not contain every OS implementation part.
