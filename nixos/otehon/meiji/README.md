@@ -104,7 +104,7 @@ shared consent broker. Existing browser deployments are unchanged.
 
 ## Validation boundary (2026-11-16)
 
-- Babashka 1.12.218: 9 tests, 82 assertions. Five GPU backend names were tested
+- Babashka 1.12.218: 11 tests, 102 assertions. Five GPU backend names were tested
   against a loopback protocol fixture, **not five physical GPUs**.
 - Existing shell: 97 tests pass. Shell/link/Soshiki ClojureScript release
   builds pass without compiler warnings.
@@ -145,11 +145,37 @@ SHA-256, model directory/revisions, per-file SHA-256 manifest, literal local
 port, context and private token-file path. It rechecks file digests, then
 launches `kapitsa serve --config -` with the API key on stdin. It forces
 `private=true`, `local=true`, empty peers, one slot and model switching off.
-The test context is 2048; idle unload after one minute limits retention.
+The test context is 2048; idle unload follows the engine's `auto` policy.
+Disk prefix caching is disabled. Execution requires `enabled=true` explicitly.
 The native Metal worker is outside the Meiji VM, with separate lifecycle and
 permissions. It is not a Linux/Windows engine and does not expose a public
 inference service. GPU inference acceptance is recorded separately from the
 artifact verification and protocol fixture tests above.
+
+Owner clarification: do **not** start Kapitsa on the local owner workstation.
+Its local configuration is disabled and its local provider was removed; no
+LaunchAgent was created there. The earlier local probe did not complete
+successfully and is not GPU inference acceptance.
+
+Owner selected **jacob** as the deployment target. It is an Apple Silicon
+16 GiB node with account `node`. Its Meiji capsule retains engine 0.2.36 and
+explicitly uses `qwen3.6-35b-a3b:16gb`: source
+`unsloth/Qwen3.6-35B-A3B-GGUF@a483e9e6cbd595906af30beda3187c2663a1118c`,
+file `Qwen3.6-35B-A3B-UD-IQ2_XXS.gguf`, SHA-256
+`2e8f5f705355c56311432d0a8a5d14a696dbb7e4b197d05c75ba805fc1857bef`.
+The pinned engine imports this into its native layout; the generated manifest
+and every imported model file receive a separate local SHA-256 baseline.
+The imported pack is a different quantization from the 4-bit pack above and
+does not claim equal numerical output or quality.
+
+The desktop's owner-configured provider can select an SSH forward to jacob.
+The `.cljc` transport fixes the node, Tailnet IP, SSH account, literal local
+bind and remote loopback port. It uses strict host-key checks and waits for
+the SSH client's bind receipt before making a request; bind/auth failures
+cannot fall through to another local inference server. Only the owned
+forward is closed when the desktop controller exits. API credentials are
+kept in private files and are never supplied to the WebView. The target
+worker remains node-side, independent of the desktop window.
 
 Remaining: GUI Stop/limit editing acceptance, signed release image
 provisioning, pinned runtime license/digest packaging, cljrs qualification,

@@ -1,7 +1,7 @@
 (ns meiji.host
   "Otehon host controller. One locked, serialized stdio session. No HTTP listener.
    Tauri carries JSON only; lifecycle, policy, persistence and GPU adapter live here."
-  (:require [meiji.policy :as policy] [babashka.fs :as fs]
+  (:require [meiji.policy :as policy] [meiji.transport :as transport] [babashka.fs :as fs]
             [cheshire.core :as json] [clojure.edn :as edn]
             [clojure.java.io :as io] [clojure.string :as str]
             [org.httpkit.client :as http])
@@ -55,7 +55,7 @@
     (policy/require! (and (vector? vms) (<= (count vms) 32)
                           (= (count vms) (count (set (map :id vms))))) "invalid-catalog")
     {:host (host-platform) :config config :state-dir state-dir :settings-path settings-path
-     :overrides (atom overrides) :children (atom {})}))
+     :overrides (atom overrides) :children (atom {}) :tunnels (atom {})}))
 
 (defn vm-for [controller id]
   (let [vm (first (filter #(= id (:id %)) (get-in controller [:config :vms])))]
@@ -72,10 +72,11 @@
    :vms (mapv #(cond-> (policy/public-vm (vm-for controller (:id %))
                 (let [child (get @(:children controller) (:id %))]
                   (cond (alive? controller (:id %)) (if (:stopping child) "stopping" "running")
+                        (:stopped-by-owner child) "stopped"
                         (and child (not (zero? (.exitValue (:process child))))) "failed"
                         :else "stopped")))
                 (:inference-provider %) (assoc :inference
-                  (try (select-keys (provider! controller (:id %)) [:id :origin :backend :model])
+                  (try (select-keys (provider! controller (:id %)) [:id :origin :backend :model :node])
                        (catch Exception _ {:state "unconfigured"}))))
               (get-in controller [:config :vms]))})
 
@@ -105,7 +106,8 @@
     (policy/require! (and p (.isAlive p)) "not-running")
     (if force?
       (do (.destroyForcibly p)
-          (policy/require! (.waitFor p 5 TimeUnit/SECONDS) "stop-timeout"))
+          (policy/require! (.waitFor p 5 TimeUnit/SECONDS) "stop-timeout")
+          (swap! (:children controller) update id assoc :stopped-by-owner true))
       (do
         (policy/require! (= :qemu (:backend vm)) "graceful-stop-unavailable")
         (let [out (.getOutputStream p)]
@@ -134,13 +136,33 @@
                          (nil? (.getUserInfo uri)) (nil? (.getQuery uri)) (nil? (.getFragment uri))
                          (contains? #{"" "/"} (.getPath uri))
                          (contains? (get policy/gpu-backends (get-in controller [:host :os]) #{}) (:backend p))
+                         (let [timeout (:timeout-ms p 15000)]
+                           (and (integer? timeout) (<= 1000 timeout 180000)))
                          (string? (:model p)) (seq (:model p))) "inference-not-configured")
+    (when (:tunnel p) (transport/ssh-argv p))
     p))
+
+(defn ensure-tunnel! [controller provider]
+  (when (:tunnel provider)
+    (let [id (:id provider) existing (get @(:tunnels controller) id)]
+      (when-not (and existing (.isAlive existing))
+        (let [p (process! (transport/ssh-argv provider)) ready (promise)
+              bound (str "debug1: Local forwarding listening on 127.0.0.1 port " (get-in provider [:tunnel :local-port]) ".")]
+          (future (slurp (.getInputStream p)))
+          (future (with-open [reader (io/reader (.getErrorStream p))]
+                    (doseq [line (line-seq reader)]
+                      (when (str/starts-with? line bound) (deliver ready true)))))
+          (swap! (:tunnels controller) assoc id p)
+          ;; Wait for the client's bind receipt, not a timing guess or an arbitrary local listener.
+          (when-not (and (deref ready 10000 false) (.isAlive p))
+            (.destroy p) (policy/fail "inference-tunnel-failed")))))))
 
 (defn inference-check! [controller id]
   (let [p (provider! controller id)
+        _ (ensure-tunnel! controller p)
+        started (System/nanoTime)
         response @(http/post (str (str/replace (:origin p) #"/$" "") "/v1/chat/completions")
-                    {:timeout 15000 :follow-redirects false
+                    {:timeout (:timeout-ms p 15000) :follow-redirects false
                      :headers (cond-> {"content-type" "application/json"}
                                 (:token-file p) (assoc "authorization" (str "Bearer " (str/trim (slurp (configured-file! (:token-file p)))))))
                      :body (json/generate-string {:model (:model p) :stream false :max_tokens 4
@@ -151,6 +173,8 @@
       (policy/require! (and (= (:model p) (:model body (:model p)))
                            (seq (get-in body [:choices 0 :message :content]))) "inference-empty-response")
       {:schema policy/version :provider (:id p) :backend (:backend p) :model (:model p)
+       :observed-at (str (java.time.Instant/now))
+       :duration-ms (quot (- (System/nanoTime) started) 1000000)
        :state "responded" :gpu-use "unknown" :usage (:usage body)})))
 
 (def report-files #{"fleet-state.json" "agent-presence.json" "peer-cycles.json"
@@ -180,6 +204,7 @@
 
 (defn shutdown! [controller]
   ;; An abnormal controller exit must not leave unowned hypervisors behind.
+  (doseq [[_ process] @(:tunnels controller)] (.destroy process))
   (doseq [[_ {:keys [process]}] @(:children controller)]
     (when (.isAlive process) (.destroy process)
       (when-not (.waitFor process 2 TimeUnit/SECONDS) (.destroyForcibly process)))))

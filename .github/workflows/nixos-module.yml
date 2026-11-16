@@ -91,3 +91,8 @@ jobs:
           cat "$chat_check"
       - name: Evaluate every Otehon profile, aarch64 and the x86_64 vm
         run: sh nixos/otehon/eval-profiles.sh .
+      - name: Test bounded Meiji controller and inference protocol (no VM or GPU)
+        # Otehon Babashka path; Native checks above do not depend on this job.
+        run: |
+          meiji_check=$(nix-build nixos/otehon/meiji/check.nix --no-out-link)
+          cat "$meiji_check"

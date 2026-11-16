@@ -1,7 +1,7 @@
 (ns meiji.host-test
   (:require [clojure.test :refer [deftest is testing]] [meiji.policy :as p]
             [meiji.host :as host] [babashka.fs :as fs] [org.httpkit.server :as server]
-            [cheshire.core :as json] [meiji.kapitsa :as kapitsa]))
+            [cheshire.core :as json] [meiji.kapitsa :as kapitsa] [meiji.transport :as transport]))
 
 (def fixture {:id "meiji-test" :name "Meiji" :backend :qemu :arch :aarch64
               :format :qcow2 :image "/owner/base.qcow2" :sha256 (apply str (repeat 64 "a"))
@@ -58,26 +58,28 @@
   ;; Real child process, simulated hypervisor: never presented as a VM boot test.
   (with-controller
     (fn [c _ _]
-      (let [p (host/process! ["/bin/sleep" "30"])]
+      (let [p (host/process! [(str (fs/which "sleep")) "30"])]
         (swap! (:children c) assoc "meiji-test" {:process p})
         (is (= "running" (:state (first (:vms (host/snapshot c))))))
         (is (thrown? Exception (host/set-limits! c "meiji-test" {:cpus 1 :memory-mib 512})))
         (is (thrown? Exception (host/stop! c "other" true)))
         (is (.isAlive p))
         (host/stop! c "meiji-test" true)
-        (is (not (.isAlive p)))))))
+        (is (not (.isAlive p)))
+        (is (= "stopped" (:state (first (:vms (host/snapshot c))))))))))
 
 (deftest provider-boundaries
   (with-controller
     (fn [c _ _]
-      (doseq [origin ["https://example.com" "http://localhost:8080" "http://127.0.0.1:8080/evil"
+      (let [backend (if (= :macos (get-in c [:host :os])) :metal :cuda)]
+       (doseq [origin ["https://example.com" "http://localhost:8080" "http://127.0.0.1:8080/evil"
                        "http://user@127.0.0.1:8080" "http://127.0.0.1:8080/?target=x"]]
         (let [c (-> c (assoc-in [:config :vms 0 :inference-provider] "gpu")
-                    (assoc-in [:config :providers] [{:id "gpu" :origin origin :model "pinned-model" :backend :metal}]))]
+                    (assoc-in [:config :providers] [{:id "gpu" :origin origin :model "pinned-model" :backend backend}]))]
           (is (thrown? Exception (host/provider! c "meiji-test")))))
       (let [c (-> c (assoc-in [:config :vms 0 :inference-provider] "gpu")
-                  (assoc-in [:config :providers] [{:id "gpu" :origin "http://127.0.0.1:8080" :model "pinned-model" :backend :metal}]))]
-        (is (= :metal (:backend (host/provider! c "meiji-test"))))))))
+                  (assoc-in [:config :providers] [{:id "gpu" :origin "http://127.0.0.1:8080" :model "pinned-model" :backend backend}]))]
+        (is (= backend (:backend (host/provider! c "meiji-test")))))))))
 
 (deftest public-report-integrity
   (with-controller
@@ -114,6 +116,9 @@
       (finally (stop)))))
 
 (deftest kapitsa-private-fixed-model
+  (is (thrown? Exception (kapitsa/enabled! {})))
+  (is (thrown? Exception (kapitsa/enabled! {:enabled false})))
+  (is (nil? (kapitsa/enabled! {:enabled true})))
   (let [dir (fs/create-temp-dir {:prefix "meiji-kapitsa-test-"})
         config {:port 18095 :context 2048 :model-dir (str dir) :model-revision kapitsa/model-revision}
         token (apply str (repeat 43 "t"))]
@@ -124,6 +129,15 @@
           (is (true? (:local request))) (is (false? (:allow_switch request)))
           (is (= kapitsa/model-id (:model_id request)))
           (is (= [] (:peer request)))
+          (is (= "0" (:disk_cache request)))
+          (is (= kapitsa/jacob-model-id
+                 (:model_id (kapitsa/serve-config
+                              (assoc config :model-id kapitsa/jacob-model-id
+                                            :model-revision kapitsa/jacob-model-revision
+                                            :source-sha256 kapitsa/jacob-source-sha256) token))))
+          (is (thrown? Exception (kapitsa/model! {:model-id kapitsa/jacob-model-id
+                                                 :model-revision kapitsa/jacob-model-revision
+                                                 :source-sha256 "unverified"})))
           (is (thrown? Exception (kapitsa/serve-config (assoc config :model-revision "main") token)))
           (is (thrown? Exception (kapitsa/serve-config (assoc config :context 262144) token)))))
       (with-redefs [host/host-platform (constantly {:os :linux :arch :x86_64})]
@@ -145,3 +159,33 @@
                     (is (zero? (.exitValue p))) (is (empty? @error))
                     (is (= p/version (get-in (json/parse-string @output true) [:ok :schema])))))]
         (run) (run)))))
+
+(deftest model-manifest-boundaries
+  (is (thrown? Exception (kapitsa/verified-model! {:files []})))
+  (is (thrown? Exception (kapitsa/verified-model! {:files (vec (repeat 13 {:file "config.json" :sha256 "x"}))})))
+  (when (= :macos (:os (host/host-platform)))
+    (let [dir (fs/create-temp-dir {:prefix "meiji-model-hash-test-"})
+          names (sort kapitsa/required-model-files)
+          expected "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"]
+      (try
+        (doseq [name names]
+          (let [path (fs/path dir name)] (fs/create-dirs (fs/parent path)) (spit (str path) "abc")))
+        (let [config {:model-dir (str dir) :model-revision kapitsa/model-revision :files (mapv #(hash-map :file % :sha256 expected) names)}]
+          (is (= expected (kapitsa/model-sha256 (str (fs/path dir "config.json")))))
+          (is (nil? (kapitsa/verified-model! config)))
+          (spit (str (fs/path dir "config.json")) "tampered")
+          (is (thrown? Exception (kapitsa/verified-model! config))))
+        (finally (fs/delete-tree dir))))))
+
+(deftest ssh-node-binding
+  (let [p {:id "jacob-kapitsa" :node "jacob" :origin "http://127.0.0.1:18095"
+           :tunnel {:host "jacob" :user "node" :tail-ip "100.117.208.83" :local-port 18095 :remote-port 18095}}
+        args (transport/ssh-argv p)]
+    (is (some #{"StrictHostKeyChecking=yes"} args))
+    (is (some #{"ExitOnForwardFailure=yes"} args))
+    (is (some #{"127.0.0.1:18095:127.0.0.1:18095"} args))
+    (doseq [bad [(assoc p :node "other") (assoc p :origin "http://127.0.0.1:9999")
+                  (assoc-in p [:tunnel :host] "jacob;sh")
+                  (assoc-in p [:tunnel :tail-ip] "8.8.8.8")
+                  (assoc-in p [:tunnel :user] "node -oProxyCommand=sh")]]
+      (is (thrown? Exception (transport/ssh-argv bad))))))

@@ -6,7 +6,7 @@
      (def copy
        {:ja {:title "Meiji" :start "起動" :stop "停止" :force "強制停止" :save "上限を保存"
              :cpus "CPU（コア）" :memory "メモリ（MiB）" :check "推論を確認"
-             :running "稼働中" :stopping "停止中" :stopped "停止済み" :failed "起動失敗"
+             :running "稼働中" :stopping "停止中" :stopped "停止済み" :failed "異常終了"
              :setup "セットアップが必要です" :saved "反映しました" :responded "推論に応答しました"
              :unknown-gpu "GPU使用：未確認" :close "VMを停止してから終了してください"
              :failed-action "操作できませんでした" :stop-first "停止してから変更してください"
@@ -48,7 +48,7 @@
             [:button {:type "submit"} (t :save)]]]
           (when (:inference-provider vm)
             [:div
-             [:p (str (get-in vm [:inference :backend]) " · " (get-in vm [:inference :origin]))]
+             [:p (str (get-in vm [:inference :node]) " · " (get-in vm [:inference :backend]) " · " (get-in vm [:inference :origin]))]
              [:button {:type "button" :disabled (or busy (not (get-in vm [:inference :origin])))
                        :on-click #(action {:op "inference-check" :id id})} (t :check)]])]))
      (defn panel []

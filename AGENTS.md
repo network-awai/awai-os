@@ -76,6 +76,18 @@ in the native profile. The native profile rules above stay unchanged.
   Kapitsa is Apple-Silicon-only; never claim Linux/Windows support for it.
   Force private/local execution, no discovery or model switching, and pass
   API credentials over private files/stdin, never argv or environment.
+- Owner clarification (2026-11-16): **do not start Kapitsa on this local owner
+  workstation**. Do not run its serve, pull, probe or benchmark commands here.
+  The local worker configuration is disabled and its provider was removed.
+  A different Awai execution node must be explicitly identified before any
+  deployment there. Pure configuration/protocol tests do not launch Kapitsa.
+- Owner selected **jacob** as the execution node. Its verified account is
+  `node` and it has 16 GiB unified memory; deploy the explicitly pinned
+  Qwen3.6-35B-A3B `16gb` variant there, not the 22 GB 4-bit pack. Treat this
+  quantization as a separate measured configuration. Keep its worker private
+  to jacob and use a strict-host-key SSH forward for the desktop connection.
+  No public port, unknown-host-key acceptance, node failover or local engine
+  startup is implied by that forward.
 - Preserve working disks and AwaiFS/Kotobase state across launcher updates.
   VM snapshots do not undo external operations or prove distributed backups.
   Do not replace or disable live cron, fleet or authentication services when
