@@ -1,6 +1,7 @@
 (ns shell.fleet-overview
  (:require [clojure.string :as str] ["react" :refer [useState useEffect]]
            [meiji.client :as meiji]
+           [shell.fleet-projection :as projection]
            ["../mail-progress.js" :refer [decodeMailProgress]] ["../circle-work.js" :refer [decodeCircleWork circleExecution]] [shell.bot-chat :as bot-chat] [shell.agent-workspace :as workspace]
            ["../agent-directory.js" :refer [decodeAgentPresence directoryState decodePeerProgress]]
            [shell.fleet-circles :as circles] [shell.fleet-activity :as activity] [shell.ui-copy :as ui]
@@ -52,8 +53,7 @@
    (refresh) (fn [] (reset! live false) (.abort controller) (js/clearInterval timer)))) #js [])
   (let [peer-progress (when-not (= "new-epoch-legacy-not-restored" (:historyStatus circle-work)) peer-progress)
         age (when report (- now (js/Date.parse (:observedAt report)))) stale? (or (nil? age) (< age 0) (> age 180000))
-        all-bots (mapv (fn [bot] (let [d (directoryState (clj->js bot) (clj->js presence) (:catalogSha256 report) now stale?) observation (or (circleExecution (clj->js circle-work) (:id bot) (:catalogSha256 report) now) (.-observation d))]
-          (cond-> bot observation (assoc :agentPresence (js->clj observation :keywordize-keys true) :state "running" :cronState (:state bot))))) (:bots report))
+        all-bots (projection/annotate (:bots report) presence circle-work (:catalogSha256 report) now stale?)
         q (str/lower-case query)
         bots (filter #(and (or (= filter-state "all") (= filter-state (:state %)))
                            (or (= group "all") (and (not (:configured %)) (= group (get-in % [:stabilization :group]))))

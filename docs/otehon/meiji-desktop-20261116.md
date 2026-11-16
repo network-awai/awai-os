@@ -119,3 +119,21 @@ reconfigured by this deployment.
   release compilation and Tauri debug app bundle completed. This candidate is
   not a signed release or a production Bot VM adoption.
 
+At 07:46 UTC, factored the fleet annotation into `shell/fleet_projection.cljc`.
+The previous path converted the shared 549612-byte Circle work report once per
+Bot per render (899 times). Shared reports now convert once per render. A
+one-shot nbb 1.4.208 / Node 26 reference measurement on the existing public
+899-Bot snapshot observed 5950.95 ms before and 34.58 ms after, with equal
+results. This is one old-then-new sample with possible warmup effects, not a
+WebView interaction/throughput benchmark. Fresh heartbeat, stale heartbeat and
+catalog-mismatch boundaries also passed separately.
+
+Rebuilt the release CLJS and debug Tauri app and verified actual UI actions:
+Bot/Circle view opened, Operations Circle selected, `codinator` selected,
+right-side conversation UI and activity tab opened, original schedule
+disclosure, historical runs and AWAI-752 link visible. The stale catalog stayed
+`unknown` rather than becoming `running`. Circle contributions showed their
+separate dated receipts; they do not prove the old VM scheduler is healthy.
+These interactions succeeded; sustained resource use and production current
+fleet observation remain unqualified.
+
