@@ -12,6 +12,19 @@
   (let [result (apply sh/sh args)]
     (p/require! (zero? (:exit result)) "migration-command-unconfirmed") (:out result)))
 
+(defn root-keydisk! [root old]
+  ;; GNU tar in the guest preserves numeric ownership. Mac UID 25001 makes
+  ;; OpenSSH StrictModes reject root's AuthorizedKeysFile, even with mode 600.
+  (let [pending (str root "/key-disk." (random-uuid) ".pending.tar")]
+    (run! "/usr/bin/tar" "--uid" "0" "--gid" "0" "--uname" "root" "--gname" "root"
+          "-cf" pending "-C" old "node.edn" "client.key" "client.pem" "client-ca.pem" "ssh_host_ed25519_key"
+          "-C" root "operator_authorized_keys")
+    (fs/set-posix-file-permissions pending "rw-------")
+    (p/require! (= (slurp (str root "/operator_authorized_keys"))
+                   (run! "/usr/bin/tar" "-xOf" pending "operator_authorized_keys")) "keydisk-public-key-mismatch")
+    (java.nio.file.Files/move (fs/path pending) (fs/path (str root "/key-disk.tar"))
+      (into-array java.nio.file.CopyOption [StandardCopyOption/ATOMIC_MOVE StandardCopyOption/REPLACE_EXISTING]))))
+
 (defn held! [cfg digest]
   (let [enrollments (audit/rows (audit/read-prefix! cfg "/itonami/occurrence/v1/enrollment/"))
         cursors (audit/rows (audit/read-prefix! cfg "/itonami/occurrence/v1/cursor/"))
@@ -81,10 +94,7 @@
             (recovery/private-dir! root)
             (recovery/private-write! (str root "/operator_authorized_keys") (slurp (str image-root "/operator_authorized_keys")))
             (p/require! (= node (:node (edn/read-string (slurp (str old "/node.edn"))))) "preserve-node-identity")
-            (run! "/usr/bin/tar" "-cf" (str root "/key-disk.tar") "-C" old
-                  "node.edn" "client.key" "client.pem" "client-ca.pem" "ssh_host_ed25519_key"
-                  "-C" root "operator_authorized_keys")
-            (fs/set-posix-file-permissions (str root "/key-disk.tar") "rw-------")
+            (root-keydisk! root old)
             (run! "/opt/homebrew/bin/qemu-img" "create" "-f" "qcow2" "-F" "qcow2"
                   "-b" image (str root "/vm-disk.qcow2"))
             (recovery/private-write! (str root "/old-launch.plist") (slurp plist))
@@ -106,6 +116,8 @@
                       (p/require! (< attempt 100) "old-service-still-loaded")
                       (Thread/sleep 200) (recur (inc attempt))))
                 _ (with-open [_ (ServerSocket. 22280)] true)
+                _ (p/require! (= operator-sha (host/sha256 (str root "/operator_authorized_keys"))) "prepared-operator-pin-mismatch")
+                _ (when (= phase "reconfigure") (root-keydisk! root old))
                 history-sha (host/sha256 (str old "/vm-disk.qcow2"))
                 job {:Label label :ProgramArguments (qemu-argv root old image) :WorkingDirectory root
                      :RunAtLoad true :KeepAlive {:SuccessfulExit false} :ThrottleInterval 15
