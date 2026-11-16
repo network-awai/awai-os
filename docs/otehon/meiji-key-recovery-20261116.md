@@ -140,3 +140,20 @@ now distinguishes unavailable storage from an artifact conflict. On recovery,
 semantic equality handles reordered maps while exact original JSON bytes stay
 immutable. Reviewer tests: 7 tests / 19 assertions, including no overwrite on
 changed contents or unavailable storage.
+
+## Offsite encrypted-envelope readback
+
+The v6 envelope was then recovered directly from a B2 manifest snapshot and its
+remote Pack object, with zero local Pack reads and no remote writes. Twelve
+chunk hashes and the complete ciphertext SHA matched; AES-GCM decryption using
+the original wrapping Keychain yielded all 23 files. Four HTTP requests took
+5,131 ms. This proves remote storage/readback of this encrypted recovery bundle,
+not replacement-device execution or recovery without the original wrapping key.
+The sanitized receipt is
+`docs/evidence/meiji-encrypted-offsite-readback-20261116.json`.
+
+The recurring DAV slowdown was addressed separately by the immutable-manifest
+metadata index in network-awai-apex PR243, merged into main at
+`b72a5e94f21d4ef63a4ff2872311ecc189652a4d`. Its new runtime capsule retains the
+previous app/config/catalog. Six populated listing/status samples passed; this
+remains bounded availability evidence rather than a long-duration SLO.
