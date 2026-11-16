@@ -77,5 +77,23 @@
   .empty { padding:1.5rem 0; }
   @media (prefers-color-scheme:dark) { .static-icon { filter:invert(1); } }
   @media (min-width:50em) { .page { padding:2rem; } .app-grid { grid-template-columns:repeat(6,minmax(0,1fr)); } .home .app-grid { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+  /* AWAI-2992 / Figma 225:94: share the Android launcher, not a second shell. */
+  @media (min-width:70em) {
+    .page.home {
+      inline-size:min(100%,80rem);
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      grid-template-rows:auto auto auto minmax(3rem,1fr) auto auto;
+      column-gap:4rem;
+      align-content:start;
+    }
+    .home > .date { grid-column:1; grid-row:1; }
+    .home > .clock { grid-column:1; grid-row:2; }
+    .home > .card { grid-column:1; grid-row:3; min-inline-size:0; text-align:start; }
+    .home > .app-grid { grid-column:2; grid-row:1 / 4; align-self:center; }
+    .home > .space { grid-column:1 / -1; grid-row:4; }
+    .home > .home-bottom { grid-column:1 / -1; grid-row:5; inline-size:min(100%,45rem); justify-self:center; margin-block-start:0; }
+    .home > .button { grid-column:1 / -1; grid-row:6; }
+  }
   @media (prefers-reduced-motion:no-preference) { button { transition:background-color .12s ease; } }
 }
