@@ -90,7 +90,8 @@ public abstract class HostActivity extends Activity {
     }
     private static WebResourceResponse denied() { return new WebResourceResponse("text/plain","UTF-8",403,"Blocked",Collections.emptyMap(),new ByteArrayInputStream(new byte[0])); }
     private void fail(String message) { new AlertDialog.Builder(this).setTitle("Awai").setMessage(message).setPositiveButton("閉じる",(d,w)->finish()).show(); }
-    @Override protected void onResume() { super.onResume(); cachedApps=null; if (ready) web.evaluateJavascript("window.awaiRefresh && window.awaiRefresh()",null); }
+    @Override protected void onPause() { if(web!=null)web.evaluateJavascript("window.awaiVisibility && window.awaiVisibility(true)",null); super.onPause(); }
+    @Override protected void onResume() { super.onResume(); if(web!=null)web.evaluateJavascript("window.awaiVisibility && window.awaiVisibility(false)",null); cachedApps=null; if (ready) web.evaluateJavascript("window.awaiRefresh && window.awaiRefresh()",null); }
     @Override protected void onNewIntent(Intent intent) { super.onNewIntent(intent);setIntent(intent);if(ready&&"home".equals(mode()))web.evaluateJavascript("window.awaiGoHome && window.awaiGoHome()",null); }
     @Override public void onTrimMemory(int level) { super.onTrimMemory(level); if(level>=TRIM_MEMORY_UI_HIDDEN)cachedApps=null; }
     @Override protected void onDestroy() { if(web!=null){web.removeJavascriptInterface("AwaiHost");web.destroy();}super.onDestroy(); }
@@ -118,6 +119,7 @@ public abstract class HostActivity extends Activity {
         @JavascriptInterface public String snapshot(){try{
             JSONObject o=new JSONObject();o.put("mode",mode());o.put("platform","android");o.put("runtime","android");o.put("apps","home".equals(mode())?launchable():new JSONArray());
             JSONObject installed=new JSONObject();try{installed.put("network.itonami.yotei",getPackageManager().getPackageInfo("network.itonami.yotei",0).getLongVersionCode());}catch(PackageManager.NameNotFoundException absent){}
+            o.put("motionReduced",Settings.Global.getFloat(getContentResolver(),Settings.Global.ANIMATOR_DURATION_SCALE,1f)==0f || getSystemService(PowerManager.class).isPowerSaveMode());
             o.put("installed",installed);RoleManager roles=getSystemService(RoleManager.class);o.put("isDefaultHome",roles!=null&&roles.isRoleHeld(RoleManager.ROLE_HOME));
             JSONArray agenda=new JSONArray();if("home".equals(mode())){try(Cursor c=getContentResolver().query(Uri.parse("content://network.itonami.yotei.agenda/events"),null,null,null,null)){if(c!=null&&c.moveToFirst())agenda=new JSONArray(c.getString(0));}catch(Exception absent){}}
             o.put("agenda",agenda);o.put("catalogOnline","store".equals(mode())&&getSharedPreferences("online",0).contains("raw"));String msg=getSharedPreferences("host",0).getString("message","");o.put("message",msg);getSharedPreferences("host",0).edit().remove("message").apply();return o.toString();

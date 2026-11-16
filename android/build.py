@@ -22,6 +22,8 @@ def manifest(pkg, activity, version, kind, online=False):
     if kind == 'yotei':
         perms = '<permission android:name="network.awai.permission.READ_AGENDA" android:protectionLevel="signature"/>'
         extra = '<provider android:name="network.itonami.yotei.AgendaProvider" android:authorities="network.itonami.yotei.agenda" android:exported="true" android:readPermission="network.awai.permission.READ_AGENDA" android:writePermission="network.awai.permission.READ_AGENDA"/>'
+    theme='AwaiHomeTheme' if kind=='home' else 'AwaiTheme'
+    appicon='@drawable/awai_mark' if kind=='home' else '@android:drawable/ic_menu_today'
     title={'home':'Awai Home','store':'itonami Store','yotei':'Yotei'}[kind]
     return f'''<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="{pkg}" android:versionCode="{version}" android:versionName="0.1.{version-1}">
       <uses-sdk android:minSdkVersion="35" android:targetSdkVersion="37"/>{perms}
@@ -29,7 +31,7 @@ def manifest(pkg, activity, version, kind, online=False):
       <intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.APP_BROWSER"/></intent>
       <intent><action android:name="android.intent.action.DIAL"/></intent><intent><action android:name="android.media.action.STILL_IMAGE_CAMERA"/></intent>
       <package android:name="network.itonami.yotei"/><package android:name="network.awai.store"/><provider android:authorities="network.itonami.yotei.agenda"/></queries>
-      <application android:theme="@style/AwaiTheme" android:label="{title}" android:icon="@android:drawable/ic_menu_today" android:allowBackup="false" android:usesCleartextTraffic="false" android:debuggable="true" android:enableOnBackInvokedCallback="true">
+      <application android:theme="@style/{theme}" android:label="{title}" android:icon="{appicon}" android:allowBackup="false" android:usesCleartextTraffic="false" android:debuggable="true" android:enableOnBackInvokedCallback="true">
       <activity android:name="{activity}" android:exported="true" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize">
       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>{home}</activity>{extra}</application></manifest>'''
 
@@ -67,6 +69,11 @@ def main():
     for mode,parent in [('light','android:style/Theme.Material.Light.NoActionBar'),('dark','android:style/Theme.Material.NoActionBar')]:
         folder=resources/('values'if mode=='light'else'values-night');folder.mkdir(parents=True,exist_ok=True)
         (folder/'styles.xml').write_text(f'<resources><style name="AwaiTheme" parent="{parent}"><item name="android:fontFamily">sans</item><item name="android:windowActionModeOverlay">true</item><item name="android:colorAccent">{common["palette"][mode]["primary"]}</item></style><color name="awai_background">{common["palette"][mode]["background"]}</color></resources>')
+    drawable=resources/'drawable-nodpi';drawable.mkdir(parents=True,exist_ok=True)
+    shutil.copyfile(ROOT/'nixos/otehon/branding/awai-desktop-logo.png',drawable/'awai_mark.png')
+    for folder in [resources/'values',resources/'values-night']:
+        path=folder/'styles.xml'
+        path.write_text(path.read_text().replace('</resources>','<style name="AwaiHomeTheme" parent="AwaiTheme"><item name="android:windowSplashScreenBackground">@color/awai_background</item><item name="android:windowSplashScreenAnimatedIcon">@drawable/awai_mark</item><item name="android:windowSplashScreenBehavior">icon_preferred</item></style></resources>'))
     run([args.java/'javac','-d',out,ROOT/'android/SignCatalog.java'])
     # SignCatalog emits only a public certificate fingerprint; private key/password never enter output artifacts.
     probe=out/'probe';probe.write_bytes(b'fingerprint')
