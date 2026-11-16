@@ -7,7 +7,7 @@ import {spawnSync} from 'node:child_process';
 const app=fileURLToPath(new URL('../',import.meta.url)),repo=resolve(app,'../..');
 const profiles=JSON.parse(await readFile(resolve(app,'profiles/apps.json'),'utf8'));
 const prepared=JSON.parse(await readFile(resolve(app,'generated/prepared.json'),'utf8'));
-if(prepared.schema!=='awai.dapp.prepared.v1')throw Error('Carrier preparation required');
+if(prepared.schema!=='awai.dapp.prepared.v1'||prepared.platform!=='android')throw Error('Carrier preparation required');
 for(const [file,hash]of Object.entries(prepared.sourceHashes))if(createHash('sha256').update(await readFile(resolve(app,file))).digest('hex')!==hash)throw Error('Carrier source changed; prepare again: '+file);
 const keys=process.argv.slice(2),selected=profiles.apps.filter(p=>!keys.length||keys.includes(p.key));
 if(keys.length&&selected.length!==keys.length)throw Error('Unknown or duplicate profile');

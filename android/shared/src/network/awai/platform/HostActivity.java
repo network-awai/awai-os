@@ -95,6 +95,9 @@ public abstract class HostActivity extends Activity {
     @Override protected void onNewIntent(Intent intent) { super.onNewIntent(intent);setIntent(intent);if(ready&&"home".equals(mode()))web.evaluateJavascript("window.awaiGoHome && window.awaiGoHome()",null); }
     @Override public void onTrimMemory(int level) { super.onTrimMemory(level); if(level>=TRIM_MEMORY_UI_HIDDEN)cachedApps=null; }
     @Override protected void onDestroy() { if(web!=null){web.removeJavascriptInterface("AwaiHost");web.destroy();}super.onDestroy(); }
+    private String storageKind(){
+        try{return StorageProfile.kind(getFilesDir().getCanonicalPath(),new String(Integrity.read(new FileInputStream("/proc/self/mounts"),1048576),StandardCharsets.UTF_8));}catch(Exception unavailable){return "unknown";}
+    }
     private Catalog trustedCatalog() throws Exception { return new Catalog(this); }
     private void message(String msg) { getSharedPreferences("host",0).edit().putString("message",msg).apply();runOnUiThread(()->{if(ready)web.evaluateJavascript("window.awaiRefresh && window.awaiRefresh()",null);}); }
     private JSONArray launchable() throws Exception {
@@ -120,6 +123,7 @@ public abstract class HostActivity extends Activity {
             JSONObject o=new JSONObject();o.put("mode",mode());o.put("platform","android");o.put("runtime","android");o.put("apps","home".equals(mode())?launchable():new JSONArray());
             JSONObject installed=new JSONObject();JSONArray known="store".equals(mode())?new JSONObject(trustedCatalog().json()).getJSONArray("apps"):new JSONArray("[{\"id\":\"network.itonami.yotei\"}]");
             for(int i=0;i<known.length();i++){String id=known.getJSONObject(i).getString("id");try{installed.put(id,getPackageManager().getPackageInfo(id,0).getLongVersionCode());}catch(PackageManager.NameNotFoundException absent){}}
+            o.put("storageKind",storageKind());o.put("temporaryStorage","temporary".equals(storageKind()));
             o.put("motionReduced",Settings.Global.getFloat(getContentResolver(),Settings.Global.ANIMATOR_DURATION_SCALE,1f)==0f || getSystemService(PowerManager.class).isPowerSaveMode());
             o.put("installed",installed);RoleManager roles=getSystemService(RoleManager.class);o.put("isDefaultHome",roles!=null&&roles.isRoleHeld(RoleManager.ROLE_HOME));
             JSONArray agenda=new JSONArray();if("home".equals(mode())){try(Cursor c=getContentResolver().query(Uri.parse("content://network.itonami.yotei.agenda/events"),null,null,null,null)){if(c!=null&&c.moveToFirst())agenda=new JSONArray(c.getString(0));}catch(Exception absent){}}
@@ -178,9 +182,11 @@ public abstract class HostActivity extends Activity {
                 new AlertDialog.Builder(this).setTitle("Android の追加設定").setMessage("Itonami Store からアプリを追加するには、次の Android 設定でこの Store からの追加を許可してください。その後、追加内容をもう一度確認できます。")
                     .setPositiveButton("Android 設定を開く",(d,w)->startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,Uri.parse("package:"+getPackageName())))).setNegativeButton("今は追加しない",null).show();return;
             }
-            new AlertDialog.Builder(this).setTitle(app.getString("name")+" の追加を確認")
-                .setMessage("配布元: "+app.getString("publisher")+"\n版: "+app.getString("versionName")+"\n取得先: "+(trustedCatalog().online?"オンライン配信・検証済みキャッシュ":"この Store に同梱")+"\n外部への送信: なし（取得時に配信先へ IP 等が伝わります）\n\n署名と SHA-256 を確認した後、Android のインストール画面に進みます。\n\nSHA-256\n"+a.getString("sha256"))
-                .setPositiveButton("今回の追加に進む",(d,w)->install(id)).setNegativeButton("今は追加しない",null).show();
+            String previous=null;try{previous=getPackageManager().getPackageInfo(id,0).versionName;}catch(PackageManager.NameNotFoundException absent){}
+            String operation=previous==null?"追加":"更新";
+            new AlertDialog.Builder(this).setTitle(app.getString("name")+" の"+operation+"を確認")
+                .setMessage("配布元: "+app.getString("publisher")+"\n版: "+(previous==null?"":previous+" → ")+app.getString("versionName")+"\n取得先: "+(trustedCatalog().online?"オンライン配信・検証済みキャッシュ":"この Store に同梱")+"\n外部への送信: "+(trustedCatalog().online?"取得時に配信先へ IP・要求 URL 等":"なし")+"\n\n署名と SHA-256 を確認した後、Android のインストール画面に進みます。\n\nSHA-256\n"+a.getString("sha256"))
+                .setPositiveButton("今回の"+operation+"に進む",(d,w)->install(id)).setNegativeButton("今は追加しない",null).show();
         }catch(Exception invalid){message("配布元またはカタログを確認できません。追加を停止しました。");}
     }
     private void install(String id){installing=true;new Thread(()->{

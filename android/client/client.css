@@ -91,3 +91,5 @@
   @media (min-width:50em) { .page { padding:2rem; } .app-grid { grid-template-columns:repeat(6,minmax(0,1fr)); } .home .app-grid { grid-template-columns:repeat(4,minmax(0,1fr)); } }
   @media (prefers-reduced-motion:no-preference) { button { transition:background-color .12s ease; } }
 }
+
+@layer components{.session-notice{max-inline-size:720px;margin:1rem auto;padding:1rem;border-radius:12px;background:var(--container);color:var(--text)}}

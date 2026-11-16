@@ -3,17 +3,17 @@ import {fileURLToPath} from 'node:url';
 import {mkdir} from 'node:fs/promises';
 const peer='12D3KooWJxXy9juQKbQW8wSCuW7oGiNTJWmfg3ZkCqfaRoiLBM4P';
 const cid='bafyreifxwjkaji62sdkwexji2cwtqqzqtim4yusgmc33zal2kbemqxdtja';
-async function nativeFixture(page){await page.addInitScript(()=>{
+async function nativeFixture(page,storageKind="app-private"){await page.addInitScript((storageKind)=>{
  window.peerCalls=[];window.sessionFixture=[];
  window.__TAURI__={core:{invoke:async(command,args)=>{
   window.peerCalls.push({command,args});
   if(command==='awai_host_info')return {schema:'awai.shell.host.v1'};
-  if(command==='peer_host_info')return {schema:'awai.shell.peer.v1',peerId:'local-fixture'};
+  if(command==='peer_host_info')return {schema:'awai.shell.peer.v1',peerId:'local-fixture',storageKind};
   if(command==='peer_sessions')return window.sessionFixture;
   if(command==='peer_reserve')return 'fixture-operation';
   if(command==='peer_snapshot_execute'){if(args.endpoint.action==='receive-snapshot'){window.sessionFixture=[{id:'fixture-session',state:'receiving',until:Math.floor(Date.now()/1000)+600}];return {sessionId:'fixture-session',state:'receiving',until:window.sessionFixture[0].until};}return {snapshot:args.endpoint.scope['snapshot-cid'],verified:true};}if(command==='peer_stop'){window.sessionFixture=[];return;}
  }}};
- });}
+ },storageKind);}
 test('canonical scope is visible and denial dispatches no native transfer',async({page})=>{
  await nativeFixture(page);await page.goto('/yataverse/');await expect(page.locator('#awai-local-peer')).toHaveText('local-fixture');
  await page.locator('#awai-snapshot').fill(cid);await page.locator('#awai-address').fill(`/ip4/127.0.0.1/tcp/40213/p2p/${peer}`);
@@ -47,4 +47,9 @@ test('receive read-back is a separate choice and Stop closes the named session',
  const allow=page.getByRole('button',{name:'Allow once',exact:true});await expect(allow).toBeEnabled();await allow.click();await expect(page.locator('#awai-session-status')).toContainText('Receiving');
  await page.getByRole('button',{name:'Stop receiving',exact:true}).click();await expect(page.locator('#awai-session-status')).toHaveText('Not receiving');
  const stop=await page.evaluate(()=>window.peerCalls.find(c=>c.command==='peer_stop'));expect(stop.args).toEqual({sessionId:'fixture-session'});
+});
+
+test('known temporary native storage is visible before using a snapshot',async({browser})=>{
+ const context=await browser.newContext({locale:'ja-JP',viewport:{width:390,height:844}});const page=await context.newPage();await nativeFixture(page,'temporary');await page.goto('/yataverse/');await expect(page.getByRole('note')).toContainText('再起動すると');expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.goto('/aozora/');await expect(page.locator('body > .awai-storage-notice')).toBeVisible();await page.locator('#awai-open-peer').click();await expect(page.getByRole('dialog').getByRole('note')).toContainText('失われます');await context.close();
 });

@@ -60,8 +60,10 @@ fn identity(app: &tauri::AppHandle) -> Result<awai_peer_runtime::PeerIdentity, S
 }
 #[tauri::command]
 fn peer_host_info(app: tauri::AppHandle) -> Result<Value, String> {
+    let peer = identity(&app)?.public().to_peer_id().to_string();
+    let storage_kind = awai_peer_runtime::snapshot::storage_kind(&root(&app)?).unwrap_or("unknown");
     Ok(
-        json!({"schema":"awai.shell.peer.v1","peerId":identity(&app)?.public().to_peer_id().to_string(),"snapshotProtocol":provider::PROTOCOL,"maxCarBytes":268435456,"foregroundReceive":cfg!(target_os="android"),"automaticStart":false}),
+        json!({"schema":"awai.shell.peer.v1","peerId":peer,"storageKind":storage_kind,"snapshotProtocol":provider::PROTOCOL,"maxCarBytes":268435456,"foregroundReceive":cfg!(target_os="android"),"automaticStart":false}),
     )
 }
 #[tauri::command]

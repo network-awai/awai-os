@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.content.Context;
 import network.awai.platform.Catalog;
 import network.awai.platform.Integrity;
+import network.awai.platform.StorageProfile;
 import java.util.Arrays;
 import java.security.KeyPairGenerator;
 import java.security.KeyPair;
@@ -40,6 +41,10 @@ public final class StoreInstrumentation extends Instrumentation {
         byte[] altered=apk.clone();altered[altered.length-1]^=1;check(!Integrity.sha256(apk).equals(Integrity.sha256(altered)),"changed APK digest");
         check(Integrity.sha256("abc".getBytes(StandardCharsets.UTF_8)).equals("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"),"SHA256 known answer");
         refuses(()->Integrity.read(new java.io.ByteArrayInputStream(new byte[10]),5),"size bound");
+        check("temporary".equals(StorageProfile.kind("/data/user/0/app/files","/dev/root / erofs ro 0 0\ntmpfs /data tmpfs rw 0 0\n")),"RAM session classification");
+        check("app-private".equals(StorageProfile.kind("/data/user/0/app/files","/dev/data /data ext4 rw 0 0\ntmpfs /data-other tmpfs rw 0 0\n")),"mount prefix boundary");
+        check("app-private".equals(StorageProfile.kind("/data/user/0/app/files","tmpfs /data tmpfs rw 0 0\n/dev/block /data/user/0/app ext4 rw 0 0\n")),"longest nested mount wins");
+        check("unknown".equals(StorageProfile.kind("/data/user/0/app/files","invalid")),"unknown storage is not durability");
         result.putString("stream","Awai Android store integrity: "+assertions+" assertions passed\n");finish(-1,result);
     }catch(Throwable e){result.putString("stream","FAIL: "+e.getClass().getSimpleName()+" "+e.getMessage());finish(0,result);}}
 }

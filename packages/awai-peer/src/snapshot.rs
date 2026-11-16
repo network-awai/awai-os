@@ -11,6 +11,31 @@ use std::{
     path::{Path, PathBuf},
 };
 
+/// Classify known RAM filesystems only; other app-private storage is not a durability claim.
+pub fn storage_kind(root: &Path) -> Result<&'static str> {
+    #[cfg(any(target_os = "android", target_os = "linux"))]
+    {
+        use std::{ffi::CString, mem::MaybeUninit, os::unix::ffi::OsStrExt};
+        let path = CString::new(root.as_os_str().as_bytes())?;
+        let mut stat = MaybeUninit::<libc::statfs>::uninit();
+        // The path is a native-owned app directory and the buffer matches libc's ABI.
+        if unsafe { libc::statfs(path.as_ptr(), stat.as_mut_ptr()) } != 0 {
+            return Err(std::io::Error::last_os_error().into());
+        }
+        let stat = unsafe { stat.assume_init() };
+        return Ok(if matches!(stat.f_type as u64, 0x01021994 | 0x858458f6) {
+            "temporary"
+        } else {
+            "app-private"
+        });
+    }
+    #[cfg(not(any(target_os = "android", target_os = "linux")))]
+    {
+        let _ = root;
+        Ok("unknown")
+    }
+}
+
 const MAX_CAR: u64 = 256 * 1024 * 1024;
 const MAX_BLOCKS: usize = 10000;
 #[derive(Debug, Clone, Serialize, Deserialize)]
