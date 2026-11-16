@@ -58,6 +58,39 @@ class Candidate(unittest.TestCase):
                 proof.write_text(json.dumps({**data, **changed}))
                 with self.assertRaises(ValueError): h.validate(d, revision, proof)
 
+    def test_unqualified_mode_is_explicit_and_only_read_only_diagnostic(self):
+        with tempfile.TemporaryDirectory() as temp:
+            d = Path(temp); revision = 'a'*40
+            (d/'SOURCE_REVISION').write_text(revision)
+            for name in h.FILES: (d/name).write_bytes(name.encode())
+            (d/'SHA256SUMS').write_text('\n'.join(hashlib.sha256(name.encode()).hexdigest()+'  '+name for name in h.FILES))
+            with self.assertRaises(ValueError): h.validate(d, revision)
+            marker = {'schema': 'awai.otehon.diagnostic-candidate.v1', 'sourceRevision': revision,
+                      'profile': 'netboot-diagnostic-6600h', 'readOnly': True}
+            (d/'DIAGNOSTIC_ONLY.json').write_text(json.dumps(marker))
+            h.validate(d, revision, diagnostic_only=True)
+            for delta in ({'readOnly': False}, {'profile': 'netboot-nbd-install-6600h'}, {'sourceRevision': 'b'*40}):
+                (d/'DIAGNOSTIC_ONLY.json').write_text(json.dumps({**marker, **delta}))
+                with self.assertRaises(ValueError): h.validate(d, revision, diagnostic_only=True)
+            (d/'DIAGNOSTIC_ONLY.json').write_text(json.dumps(marker))
+            (d/'kernel').write_bytes(b'changed')
+            with self.assertRaises(ValueError): h.validate(d, revision, diagnostic_only=True)
+
+    def test_maintenance_is_explicit_and_cannot_claim_read_only(self):
+        with tempfile.TemporaryDirectory() as temp:
+            d = Path(temp); revision = 'a'*40
+            (d/'SOURCE_REVISION').write_text(revision)
+            for name in h.FILES: (d/name).write_bytes(name.encode())
+            (d/'SHA256SUMS').write_text('\n'.join(hashlib.sha256(name.encode()).hexdigest()+'  '+name for name in h.FILES))
+            marker = {'schema':'awai.otehon.maintenance-candidate.v1','sourceRevision':revision,
+                      'profile':'netboot-diagnostic-6600h','readOnly':False,'operatorAccess':'key-only-root-shell'}
+            (d/'MAINTENANCE.json').write_text(json.dumps(marker))
+            h.validate(d, revision, maintenance=True)
+            with self.assertRaises(ValueError): h.validate(d, revision)
+            with self.assertRaises(ValueError): h.validate(d, revision, maintenance=True, diagnostic_only=True)
+            (d/'MAINTENANCE.json').write_text(json.dumps({**marker,'readOnly':True}))
+            with self.assertRaises(ValueError): h.validate(d, revision, maintenance=True)
+
     def test_revision_and_every_digest_must_match(self):
         with tempfile.TemporaryDirectory() as temp:
             d = Path(temp)

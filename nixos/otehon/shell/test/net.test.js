@@ -71,3 +71,24 @@ test("device addresses and saved names are strict", () => {
   assert.equal(nameError(""), "bad-name");
   assert.equal(nameError("a\nb"), "bad-name");
 });
+
+test('connection badge follows OS readback, names Wi-Fi and distinguishes local-only links', async () => {
+  const { networkSummary } = await import('../src/net.js');
+  assert.equal(networkSummary(null).state, 'unknown');
+  assert.equal(networkSummary({devices:[{route:'wifi',ssid:'selected-only',connected:false}]}).state,'offline');
+  const local = networkSummary({devices:[{route:'wifi',ssid:'home:lab',connected:true}],connectivity:'limited'});
+  assert.equal(local.state,'local');assert.ok(local.text.includes('home:lab'));assert.ok(local.text.includes('未確認'));
+  const usb = networkSummary({devices:[{route:'iphone-usb',connected:true},{route:'ethernet',connected:false}],connectivity:'full'});
+  assert.equal(usb.state,'online');assert.ok(usb.text.includes('iPhone USB'));assert.ok(!usb.text.includes('有線'));
+  assert.equal(networkSummary({error:'unreachable',devices:[{connected:true}]}).state,'unknown');
+});
+
+
+test('relay diagnostics distinguish service/network/denial without leaking topics', async () => {
+  const { relayFailureCode, awaitPhoneApproval } = await import('../src/runtime.js');
+  assert.equal(relayFailureCode(new TypeError('Failed to fetch private-topic')), 'browser-network-error');
+  assert.equal(relayFailureCode(new Error('client operation not approved')), 'operation-denied');
+  assert.equal(relayFailureCode({code:'private-key',message:'private-topic'}), 'client-error');
+  const broker={invoke:async()=>new Response(null,{status:403})};
+  await assert.rejects(awaitPhoneApproval(broker,'https://example.invalid','fixture',new AbortController().signal),e=>relayFailureCode(e)==='relay-http-403');
+});

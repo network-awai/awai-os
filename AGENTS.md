@@ -1,6 +1,18 @@
 # Murakumo NixOS
 
 Follow the workspace-level AGENTS.md architecture and Linear tracking rules.
+
+## Awai Otehon UI: Figma design first (AWAI-538)
+
+For Otehon UI work, follow [the design-first contract](docs/otehon/design-first.md)
+and its [pinned baseline](docs/otehon/ui-baseline.json). Preserve the existing
+Core / Apps / System navigation, Manimani workspace and docks. Design affected
+states in Figma before changing UI code; implement within the existing shell,
+then compare rendered screens and verify on 6600H. Do not substitute the rejected
+standalone `/workspace/` candidate or treat a fixture as physical acceptance.
+This owner-selected Figma contract controls visual composition; source code and
+tests remain evidence of actual behavior, not proof that the design is accepted.
+
 The native product entry is `nixos/murakumo-nixos.nix`. Keep it separate from
 the historical `node-base.nix` setup/provider/update closure. Never add those
 Node.js tools as a native profile fallback, and do not stop existing services.

@@ -2,13 +2,30 @@
 let
   cfg = config.otehon;
   enabled = cfg.diagnosticPublicKey != "";
+  maintenance = enabled && cfg.diagnosticMaintenance && !cfg.installerNbd.enable;
   build = config.system.build;
   server = "http://10.77.0.1:8080";
   cmdline = "init=${build.toplevel}/init ${toString config.boot.kernelParams}";
+  # Read-only diagnostics never admit or fetch a writable payload. Reuse the
+  # qualified USB contract for inventory sizing without rebuilding its 27 GiB
+  # disk just to read a previous boot journal.
+  diagnosticDigests = pkgs.runCommand "otehon-diagnostic-digests" {} ''
+    mkdir "$out"
+    printf '%s\n' dda29e61981ec03d51c39381b86064c20051d37ab2e220747aa02d895bfb7efa > "$out/image"
+    printf '%s\n' 632c8a236b25717d84a594dd9dc12a4b88a54cf925fd37f95e3f8383eb03daa5 > "$out/raw"
+    printf '%s\n' 27114078208 > "$out/bytes"
+  '';
   diagnostic = pkgs.writeShellScript "otehon-diagnostic-command" ''
+    export OTEHON_ALLOW_INSTALLED_BOOT_LOGS=1
     export OTEHON_INSTALLER_INFO=${build.otehonInstallerInfo}
     export PATH=${lib.makeBinPath [ pkgs.systemd ]}
     exec ${pkgs.python3}/bin/python3 ${./installer-diagnostics.py}
+  '';
+  maintenanceCommand = pkgs.writeShellScript "otehon-operator-maintenance" ''
+    if [ -n "''${SSH_ORIGINAL_COMMAND-}" ]; then
+      exec /run/wrappers/bin/sudo -n -- ${pkgs.bash}/bin/bash -c "$SSH_ORIGINAL_COMMAND"
+    fi
+    exec /run/wrappers/bin/sudo -n -- ${pkgs.bash}/bin/bash
   '';
   ipxe = pkgs.ipxe.override {
     embedScript = pkgs.writeText "otehon-diagnostic.ipxe" ''
@@ -33,17 +50,38 @@ in {
     default = "";
     description = "Explicit operator Ed25519 public key; empty disables remote diagnostics.";
   };
+  options.otehon.diagnosticMaintenance = lib.mkOption {
+    type = lib.types.bool;
+    default = false;
+    description = "Explicit temporary operator maintenance SSH in RAM; requires a key and cannot accompany the writable installer.";
+  };
   config = {
     assertions = [{
       assertion = !enabled || builtins.match "ssh-ed25519 [A-Za-z0-9+/=]+( [^\n\r]*)?" cfg.diagnosticPublicKey != null;
       message = "The LAN diagnostic public key must be one single Ed25519 public key.";
+    } {
+      assertion = !cfg.diagnosticMaintenance || (enabled && !cfg.installerNbd.enable);
+      message = "Maintenance requires an operator key and a diagnostic-only RAM boot.";
+    }];
+    security.sudo.enable = lib.mkIf maintenance true;
+    security.sudo.extraRules = lib.optionals maintenance [{
+      users = [ "otehon-installer" ];
+      commands = [{ command = "${pkgs.bash}/bin/bash"; options = [ "NOPASSWD" ]; }];
     }];
     system.image.id = lib.mkForce "awai-otehon-netboot-diagnostic";
     networking.hostName = lib.mkForce "otehon-diagnostic";
     networking.useDHCP = true;
     systemd.services.display-manager.enable = lib.mkForce false;
-    systemd.services.otehon-install-broker.environment.OTEHON_DIAGNOSTIC_READ_ONLY = "1";
-    systemd.services."otehon-install@".environment.OTEHON_DIAGNOSTIC_MODE = "1";
+    systemd.services.otehon-install-broker.environment = {
+      OTEHON_DIAGNOSTIC_READ_ONLY = "1";
+      OTEHON_INSTALLED_LOG_SCRIPT = "${./installer-installed-logs.py}";
+      DIGESTS = lib.mkIf (!config.otehon.installerNbd.enable) (lib.mkForce "${diagnosticDigests}");
+    };
+    systemd.services."otehon-install@".environment = {
+      OTEHON_DIAGNOSTIC_MODE = "1";
+      OTEHON_MAINTENANCE_MODE = if maintenance then "1" else "0";
+      DIGESTS = lib.mkIf (!config.otehon.installerNbd.enable) (lib.mkForce "${diagnosticDigests}");
+    };
     netboot.squashfsCompression = "zstd -Xcompression-level 6";
     system.build.image = lib.mkForce image;
 
@@ -57,8 +95,8 @@ in {
         PasswordAuthentication = false;
         KbdInteractiveAuthentication = false;
         AllowUsers = [ "otehon-installer" ];
-        ForceCommand = "${diagnostic}";
-        PermitTTY = false;
+        ForceCommand = if maintenance then "${maintenanceCommand}" else "${diagnostic}";
+        PermitTTY = maintenance;
         DisableForwarding = true;
         PermitUserEnvironment = false;
         PermitUserRC = false;

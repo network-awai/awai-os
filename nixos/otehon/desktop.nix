@@ -69,6 +69,9 @@ let
   # The profile stays in the image. The DevTools port is on loopback and is how
   # the boot report reads the page title.
   browser = pkgs.writeShellScript "otehon-browser" ''
+    ${lib.optionalString (cfg.mirrorStartupOutputs && !cfg.headless) ''
+      ${pkgs.python3}/bin/python3 ${./desktop-layout.py} --randr ${lib.getExe pkgs.cosmic-randr}
+    ''}
     exec ${lib.getExe pkgs.chromium} \
       ${if cfg.headless then "--headless=new --disable-gpu --window-size=1280,800" else "--ozone-platform=wayland --kiosk"} \
       --no-first-run \
@@ -91,6 +94,11 @@ in
   imports = [ ./common.nix ./media.nix ./manimani/manimani.nix ./update.nix ./update-network.nix ./k3s/default.nix ];
 
   options.otehon = {
+    mirrorStartupOutputs = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "Mirror enabled outputs before launching the single-window kiosk shell.";
+    };
     relayOrigin = lib.mkOption {
       type = lib.types.str;
       default = "https://relay.awai.network";
@@ -226,6 +234,8 @@ in
   # below, never the raw tools. Profiles persist in root-owned NM keyfiles,
   # so a joined network survives reboots. Radio silence by default.
   networking.networkmanager.enable = true;
+  services.usbmuxd.enable = true;
+  boot.kernelModules = [ "ipheth" "rndis_host" "cdc_ether" "cdc_ncm" "bnep" ];
   hardware.bluetooth = {
     enable = true;
     powerOnBoot = false;
@@ -243,9 +253,9 @@ in
     environment = {
       OTEHON_NET_PORT = "8773";
     };
-    path = [ pkgs.networkmanager pkgs.bluez ];
+    path = [ pkgs.networkmanager pkgs.bluez pkgs.libimobiledevice ];
     serviceConfig = {
-      ExecStart = "${lib.getExe pkgs.python3} ${./net-service.py}";
+      ExecStart = "${lib.getExe (pkgs.python3.withPackages (ps: [ ps.dbus-next ]))} ${./net-service.py}";
       User = "root";
       IPAddressDeny = "any";
       IPAddressAllow = "localhost";
