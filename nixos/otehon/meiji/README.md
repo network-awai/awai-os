@@ -104,7 +104,7 @@ shared consent broker. Existing browser deployments are unchanged.
 
 ## Validation boundary (2026-11-16)
 
-- Babashka 1.12.218: 11 tests, 102 assertions. Five GPU backend names were tested
+- Babashka 1.12.218: 12 tests, 105 assertions. Five GPU backend names were tested
   against a loopback protocol fixture, **not five physical GPUs**.
 - Existing shell: 97 tests pass. Shell/link/Soshiki ClojureScript release
   builds pass without compiler warnings.

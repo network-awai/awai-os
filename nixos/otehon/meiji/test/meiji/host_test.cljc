@@ -189,3 +189,15 @@
                   (assoc-in p [:tunnel :tail-ip] "8.8.8.8")
                   (assoc-in p [:tunnel :user] "node -oProxyCommand=sh")]]
       (is (thrown? Exception (transport/ssh-argv bad))))))
+
+(deftest remote-gpu-os-is-node-os
+  (with-controller
+    (fn [c _ _]
+      (let [provider {:id "jacob" :node "jacob" :execution-os :macos :backend :metal
+                      :model kapitsa/jacob-model-id :origin "http://127.0.0.1:18095"
+                      :tunnel {:host "jacob" :user "node" :tail-ip "100.117.208.83" :local-port 18095 :remote-port 18095}}]
+        (doseq [os [:linux :windows :macos]]
+          (let [controller (-> c (assoc-in [:host :os] os)
+                               (assoc-in [:config :vms 0 :inference-provider] "jacob")
+                               (assoc-in [:config :providers] [provider]))]
+            (is (= :metal (:backend (host/provider! controller "meiji-test"))))))))))

@@ -135,7 +135,8 @@
                          (contains? #{"127.0.0.1" "[::1]"} (.getHost uri))
                          (nil? (.getUserInfo uri)) (nil? (.getQuery uri)) (nil? (.getFragment uri))
                          (contains? #{"" "/"} (.getPath uri))
-                         (contains? (get policy/gpu-backends (get-in controller [:host :os]) #{}) (:backend p))
+                         (contains? (get policy/gpu-backends
+                                         (if (:tunnel p) (:execution-os p) (get-in controller [:host :os])) #{}) (:backend p))
                          (let [timeout (:timeout-ms p 15000)]
                            (and (integer? timeout) (<= 1000 timeout 180000)))
                          (string? (:model p)) (seq (:model p))) "inference-not-configured")
@@ -146,7 +147,9 @@
   (when (:tunnel provider)
     (let [id (:id provider) existing (get @(:tunnels controller) id)]
       (when-not (and existing (.isAlive existing))
-        (let [p (process! (transport/ssh-argv provider)) ready (promise)
+        (let [ssh (if (= :windows (get-in controller [:host :os]))
+                    (str (System/getenv "SystemRoot") "/System32/OpenSSH/ssh.exe") "/usr/bin/ssh")
+              p (process! (transport/ssh-argv provider (configured-file! ssh))) ready (promise)
               bound (str "debug1: Local forwarding listening on 127.0.0.1 port " (get-in provider [:tunnel :local-port]) ".")]
           (future (slurp (.getInputStream p)))
           (future (with-open [reader (io/reader (.getErrorStream p))]
