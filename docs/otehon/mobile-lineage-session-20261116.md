@@ -211,3 +211,41 @@ LK/Lineage image書込み、unlock/wipeは未実施。
 Junの認証回数を減らす要望に対し、正常系は追加osascript呼出し0を目標としたが、
 今回はboot失敗の復旧で新たな管理者処理が必要となった。実際のOS認証prompt数/待ち時間はunknown。
 復旧/限定再試行を1つの期限付きhelperへまとめ、実機boot/データ復元結果と認証launch数を分けて記録する。
+
+## 純正復旧と通常boot成功 (10:14 JST)
+
+osascript認証呼出しは、Junの認証完了回答後もroot処理を開始できず待機したため取り消した。
+Terminalの固定`.command`からsudo認証を1回行う一時処理へ切替。
+Terminal表示で認証完了と処理起動を確認した。パスワードは取得・記録していない。
+復旧helperは対象の3設定領域のoriginal/patch hashで個体を照合し、両純正preloaderをDownloadして
+named uploadで確認。両方ともraw payloadだけでなく4MiB領域全体が最初の原本と一致した。
+設定3領域も元bytesへ戻して各hashを確認し、全5領域の復元を完了した。
+miscはこのセッションで実際には書き換えておらず、LK/OS/userdataの書込みも未実施。
+
+通常boot要求後にJunがPowerで起動し、Motorola/Android表示を確認。
+[復旧後P0](mobile/moto-g05-p0-restored-20261116.txt)とADBで、元のVVTA35.51-153、
+locked/green、OEM permission0、slot_bを確認した。これは純正復旧の実機成功でありLineageOS成功ではない。
+純正fastbootへADBから遷移し、product/lock/secure/slotを確認、unlock_ability=0。
+
+新preloader配布物は再投入しない。純正preloaderを保つ限定経路として、認証済み一時処理内の
+固定actionを起動し、3設定の原本一致を再確認して設定だけ再適用・readbackする。
+通常fastboot reboot途中のMediaTekをhelperが捕捉したため、追加USB操作や管理者認証は不要だった。
+予定していたADB待機→poweroff候補は、DA処理中にwait timeoutとなり、poweroffを実行していない。
+次は3設定適用後の通常bootと、純正bootloaderのunlock_abilityを確認する。
+
+## 利用量の観測可能性の更新
+
+初期のforecast/model/counter不明という記録は当時のbaselineとして保持する。
+後から当該chatの構造化usage metadataを発見し、
+[01:11:02Zまでのsnapshot](mobile/usage-snapshot-20261116T011102Z.json)を保存。
+記録上の設定はgpt-6.1-sol / mediumで共通。これはlogged configurationでありprovider請求modelの独立確認ではない。
+response_idで重複を除き、cacheはinputの内数、reasoningはoutputの内数として扱う。
+251 response、重複/conflict0、各usageの総和はlogged thread cumulativeと全counterで一致。
+明示binding内に連続checkpointがあるものだけを681/2967へ配賦し、境界/前段はshared/unallocatedへ残す。
+子の量を親へ再加算しない。sourceは当該chatのみで、provider-wide/外部review量、金額、active/wait分離はunknown。
+初期forecastはactualから遡って作らず、Lineage/Awai実機受入はこのsnapshot時点で0件・未完了。
+
+限定再試行は3領域とも変更コピーへのreadback一致で完了し、純正preloaderは保持したまま。
+通常boot要求後に期限付き管理者helperは終了した。次はPowerでAndroidを起動し、
+通常権限のADB/fastbootでOEM許可とunlock_abilityを再測定する。
+現状態は純正bootchain＋解除用設定3領域のみ変更で、unlock/wipe/Lineage導入はまだ未実施。
