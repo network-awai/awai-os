@@ -132,7 +132,7 @@
   [:nav.sidebar {:aria-label "Contexts"}
    [:div.brand
     [:img.brand-logo {:src "assets/awai-logo.png" :alt "" :width 40 :height 40}]
-    [:span "Itonami"]]
+    [:span "Awai"]]
    [:f> manimani-link (= context MANIMANI) #(on-select MANIMANI)]
    [:div.contexts
     (map (fn [section]
