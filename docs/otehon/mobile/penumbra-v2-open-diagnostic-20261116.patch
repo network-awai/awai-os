@@ -1,0 +1,14 @@
+--- a/tui/src/cli/helpers/device.rs
++++ b/tui/src/cli/helpers/device.rs
+@@ -35 +35,3 @@
+-        if let Ok(Some(mut port)) = PortType::find_and_open(args.vid, args.pid, args.backend) {
++        let opened = PortType::find_and_open(args.vid, args.pid, args.backend);
++        if let Err(ref error) = opened { eprintln!("MTK2_OPEN_FAILED: {error:?}"); }
++        if let Ok(Some(mut port)) = opened {
+--- a/core/src/port/backend/libusb_backend.rs
++++ b/core/src/port/backend/libusb_backend.rs
+@@ -127,2 +127,2 @@
+-        let handle = device.open().ok()?;
+-        let (in_endpoint, out_endpoint) = Self::find_bulk_endpoints(device)?;
++        let handle = match device.open() { Ok(h) => h, Err(e) => { eprintln!("MTK2_HANDLE_FAILED: {e:?}"); return None; } };
++        let (in_endpoint, out_endpoint) = match Self::find_bulk_endpoints(device) { Some(p) => p, None => { eprintln!("MTK2_ENDPOINTS_FAILED"); return None; } };

@@ -150,3 +150,28 @@ Mac CLIは上流設定でlibusbを使用する。stableではacon依存のnightl
 --manifest-path .agent-output/penumbra-v2/Cargo.toml`が35.15秒で成功。
 version2.0.0/help成功、SHA-256は `ce4acd1caa4394678c7065943f8d741c029f01cc30147f4f01253108183ffec5`。
 2.0は実機に接続していない。新機能の遠隔認証も設定・実行していない。
+
+## 2.0 Mac libusb と設定3領域の変更成功 (09:30 JST)
+
+シリアル版の設定変更候補は、最初の原本読取り中にBroken pipeとなり、書込み前に停止。
+2.0に[接続失敗の表示だけを加えたpatch](mobile/penumbra-v2-open-diagnostic-20261116.patch)を適用し、
+固定nightly/locked buildが6.20秒で成功。診断候補SHA-256は
+`816682b860d70a4793344864cbf0c343c0847e9706bfe8e2e1dd4dff73af239e`。
+Mac libusb/管理者権限でpgptがexit0、handshake/DA1/DA2/local SLA/partition一覧が成功した。
+遠隔署名は未使用。最初の認証と接続のタイミングでは捕捉できず、起動済み状態での再接続で成功。
+
+Junが認証した同じ経路で、既に承認された解除用設定変更を実行した。
+3領域のnamed uploadを先に行い、すべて元のsize/hashと一致した後、
+oem_mfd→proinfo→frpの順でmaintainer指定のSetRscInfo書込みとnamed upload再読取りを行った。
+各領域のreadback全体が準備した1byte変更コピーと一致し、3件とも成功。
+副次的に確認した比較処理でも3ファイルが変更コピーとbyte一致した。
+原本17領域は未変更でprivateに保全。
+
+proinfo転送中に監視側timeoutを避けるためtask監視processへのSTOPを試したが、
+その時点で既に3領域が完了しておりNo such processで終了。停止や中断は実際には発生しなかった。
+preloader/LK、unlock/wipe、OS導入はこの時点では未実施。
+
+次のpreloader段階に備え、保持済み両原本からGFH FILE_INFOのfile_lenに従って
+未加工のstock raw候補も別保存した（330708/331428 bytes）。これは復旧形式の保全であり、
+書き戻し成功の証拠ではない。次は両preloaderの再読取り、機種専用配布物のdownload、
+再読取りで配布bytesの一致を確認し、bootloaderへの遷移へ進む。
