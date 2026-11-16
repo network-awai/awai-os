@@ -40,3 +40,6 @@ Sources: [v2 home](https://www.figma.com/design/umqCqP5KSjLWh9fhCI1HaN?node-id=1
 
 Tracking: [AWAI-2977](https://linear.app/kotobalabs/issue/AWAI-2977), parent[AWAI-2975](https://linear.app/kotobalabs/issue/AWAI-2975). Issue/run binding: chat01a1e187-0e12-7813-b500-73aa77f2a03e, branch codex/awai-2977-android-store-device-20261116, base3a0e46a. Forecast/estimate units/attributed counters/cost/active-wait are unknown; current session-context model gpt-6.1-sol/medium is not complete billing telemetry.
 
+## Shared NixOS client
+
+`export-web.py` copies the exact build's browser UI, compiled domain, signed catalog and pinned runtime without Android APK payloads. See [`nixos/otehon/itonami-store/README.md`](../nixos/otehon/itonami-store/README.md) for the opt-in static NixOS module and digest checks. This is a bundled browser-app path; native Nix/Waydroid installers remain separate work.
