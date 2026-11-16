@@ -1,6 +1,6 @@
 (ns shell.net
   (:require ["react" :refer [useState]]
-            ["../net.js" :refer [connectDevice forgetWifi joinWifi macError nameError pairBluetooth
+            ["../net.js" :refer [requestIphoneTrust connectDevice forgetWifi joinWifi macError nameError pairBluetooth
                                  pskError setBluetoothPower ssidError useBluetoothDevices
                                  useNetStatus useWifiKnown useWifiNetworks]]))
 
@@ -82,6 +82,15 @@
       (when (some-> wifi (.-available))
         [:<>
          [:h2 "有線・USB 接続"]
+         (when (some-> status (.-iphone) (.-attached))
+           [:div
+            [:p "iPhone のロックを解除し、インターネット共有を有効にしてください。"]
+            [:button {:type "button" :disabled busy :on-click #(do (set-busy true)
+              (-> (requestIphoneTrust) (.then (fn [done] (set-busy false) (set-result done)))))} "iPhone に信頼確認を表示"]
+            (when (some-> result (.-trust))
+              [:p {:role "status"}
+               (if (= "paired" (.-trust result)) "信頼を確認しました。下の USB 接続を選んでください。"
+                 "iPhone 側でロックを解除して、この PC を信頼してください。")])])
          [:ul.net-list
           (map (fn [device]
                  [:li {:key (.-name device)}

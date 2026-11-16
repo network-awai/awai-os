@@ -187,12 +187,35 @@ def connect_wired(body):
     return {"connected": name}
 
 
+def iphone_attached():
+    # Enumerate locally, return a boolean only; never return or log device IDs.
+    done = run("idevice_id", "-l", timeout=2)
+    return done.returncode == 0 and bool(done.stdout.strip())
+
+
+def iphone_trust(body):
+    if not iphone_attached():
+        raise Refused(503, "no-iphone")
+    # Pairing initiates the standard Trust prompt. Only the phone owner can
+    # approve it; this never extracts a passcode or grants approval for them.
+    done = run("idevicepair", "pair", timeout=10)
+    if done.returncode == 0:
+        return {"trust": "paired"}
+    detail = (done.stdout + done.stderr).lower()
+    if "trust" in detail:
+        return {"trust": "confirm-on-iphone"}
+    if "locked" in detail or "password" in detail:
+        return {"trust": "unlock-iphone"}
+    raise Refused(400, "iphone-not-ready")
+
+
 def status():
     wifi = wifi_device()
     powered = bluetooth_powered()
     return {
         "link": "up" if link_up() else "down",
         "devices": network_devices()["devices"],
+        "iphone": {"attached": iphone_attached()},
         "connectivity": (nm_ok("nmcli", "-t", "-f", "CONNECTIVITY", "general") or "unknown").strip(),
         "wifi": {"available": wifi is not None, "enabled": wifi_enabled()},
         "bluetooth": {"available": powered is not None, "powered": bool(powered)},
@@ -501,6 +524,10 @@ class Handler(BaseHTTPRequestHandler):
             body = self.body()
             if self.path == "/v1/wifi/join":
                 self.reply(200, wifi_join(body))
+            elif self.path == "/v1/iphone/trust":
+                self.reply(200, iphone_trust(body))
+            elif self.path == "/v1/iphone/trust":
+                self.reply(200, iphone_trust(body))
             elif self.path == "/v1/devices/connect":
                 self.reply(200, connect_wired(body))
             elif self.path == "/v1/wifi/forget":

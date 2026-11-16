@@ -252,7 +252,7 @@ in
     environment = {
       OTEHON_NET_PORT = "8773";
     };
-    path = [ pkgs.networkmanager pkgs.bluez ];
+    path = [ pkgs.networkmanager pkgs.bluez pkgs.libimobiledevice ];
     serviceConfig = {
       ExecStart = "${lib.getExe (pkgs.python3.withPackages (ps: [ ps.dbus-next ]))} ${./net-service.py}";
       User = "root";

@@ -408,3 +408,7 @@ Object.prototype.managed;
 Object.prototype.route;
 
 Object.prototype.connectivity;
+
+Object.prototype.iphone;
+Object.prototype.attached;
+Object.prototype.trust;

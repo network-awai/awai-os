@@ -205,6 +205,8 @@
    (at-media {:prefers-reduced-motion "reduce"}
              [".voice-bezel" {:transition "none" :opacity ".5 !important"}])
    [:.net-view {:overflow-y "auto"}]
+   [:.setup-network {:width "100%" :min-width "0"}]
+   [".setup-network" {:width "100%" :min-width "0"}]
    [".setup-network .net-body" {:padding "0" :width "100%" :text-align "left"}]
    [".setup-network .net-list" {:max-height "24vh" :overflow-y "auto"}]
    [".setup-network .net-list button" {:min-height "32px"}]

@@ -110,3 +110,5 @@ export const setBluetoothPower = (on) => post("/v1/bluetooth/power", { on });
 export const pairBluetooth = (mac) => post("/v1/bluetooth/pair", { mac });
 
 export const connectDevice = (device) => post("/v1/devices/connect", { device });
+
+export const requestIphoneTrust = () => post("/v1/iphone/trust", {});

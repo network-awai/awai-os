@@ -77,3 +77,13 @@ class DeviceBoundaryTests(unittest.TestCase):
         from types import SimpleNamespace
         with patch.object(net,'network_devices',return_value={'devices':[device]}),patch.object(net,'run',return_value=SimpleNamespace(returncode=0)):
             with self.assertRaises(net.Refused):net.connect_wired({'device':'usb0'})
+
+class IphoneTrustBoundaryTests(unittest.TestCase):
+    def test_phone_confirmation_stays_on_the_phone(self):
+        from types import SimpleNamespace
+        reply=SimpleNamespace(returncode=1,stdout='Please accept the trust dialog device-private-id',stderr='')
+        with patch.object(net,'iphone_attached',return_value=True),patch.object(net,'run',return_value=reply):
+            self.assertEqual(net.iphone_trust({}),{'trust':'confirm-on-iphone'})
+    def test_absent_phone_never_starts_pairing(self):
+        with patch.object(net,'iphone_attached',return_value=False),patch.object(net,'run',side_effect=AssertionError('no device')):
+            with self.assertRaises(net.Refused):net.iphone_trust({})
