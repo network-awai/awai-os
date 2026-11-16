@@ -1,11 +1,13 @@
 (ns meiji.policy)
 
 (def version "meiji.host.v1")
-(def operations #{"snapshot" "start" "stop" "force-stop" "limits" "inference-check"})
+(def operations #{"snapshot" "report" "start" "stop" "force-stop" "limits" "inference-check"})
 (def backends {[:macos :aarch64] #{:qemu :krunkit}
                [:macos :x86_64] #{:qemu}
                [:linux :aarch64] #{:qemu} [:linux :x86_64] #{:qemu}
                [:windows :x86_64] #{:qemu}})
+(def gpu-backends {:macos #{:metal :vulkan} :linux #{:cuda :rocm :vulkan}
+                   :windows #{:cuda :directml :vulkan}})
 
 (defn fail [code] (throw (ex-info code {:code code})))
 (defn require! [condition code] (when-not condition (fail code)))

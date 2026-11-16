@@ -1,5 +1,6 @@
 (ns shell.fleet-overview
  (:require [clojure.string :as str] ["react" :refer [useState useEffect]]
+           [meiji.client :as meiji]
            ["../mail-progress.js" :refer [decodeMailProgress]] ["../circle-work.js" :refer [decodeCircleWork circleExecution]] [shell.bot-chat :as bot-chat] [shell.agent-workspace :as workspace]
            ["../agent-directory.js" :refer [decodeAgentPresence directoryState decodePeerProgress]]
            [shell.fleet-circles :as circles] [shell.fleet-activity :as activity] [shell.ui-copy :as ui]
@@ -18,7 +19,7 @@
           refresh (fn []
            (when-not @busy
             (reset! busy true)
-            (-> (js/fetch "./fleet-state.json" #js {:cache "no-store" :credentials "omit" :redirect "error" :signal (.-signal controller)})
+            (-> (meiji/report-response "fleet-state.json" #js {:cache "no-store" :credentials "omit" :redirect "error" :signal (.-signal controller)})
              (.then (fn [response] (if (.-ok response) (.json response) (throw (js/Error. "artifact unavailable")))))
              (.then #(decodeFleetEnvelope % js/crypto))
              (.then (fn [r] (when @live (set-report (js->clj r :keywordize-keys true)) (set-now (js/Date.now)) (set-error false))))
@@ -29,23 +30,23 @@
       (refresh)
       (fn [] (reset! live false) (.abort controller) (js/clearInterval timer) (js/clearInterval clock)))) #js [])
   (useEffect (fn [] (let [live (atom true) controller (js/AbortController.)
-    refresh (fn [] (-> (js/fetch "./agent-presence.json" #js {:cache "no-store" :credentials "omit" :redirect "error" :signal (.-signal controller)})
+    refresh (fn [] (-> (meiji/report-response "agent-presence.json" #js {:cache "no-store" :credentials "omit" :redirect "error" :signal (.-signal controller)})
       (.then #(if (.-ok %) (.json %) (throw (js/Error. "presence unavailable"))))
       (.then decodeAgentPresence) (.then #(when @live (set-presence (js->clj % :keywordize-keys true))))
       (.catch (fn [_] (when @live (set-presence nil)))))) timer (js/setInterval refresh 5000)]
     (refresh) (fn [] (reset! live false) (.abort controller) (js/clearInterval timer)))) #js [])
   (useEffect (fn [] (let [live (atom true) controller (js/AbortController.)
-   refresh (fn [] (-> (js/fetch "./peer-cycles.json" #js {:cache "no-store" :credentials "omit" :redirect "error" :signal (.-signal controller)})
+   refresh (fn [] (-> (meiji/report-response "peer-cycles.json" #js {:cache "no-store" :credentials "omit" :redirect "error" :signal (.-signal controller)})
     (.then #(if (.-ok %) (.json %) (throw (js/Error. "peer metadata unavailable")))) (.then decodePeerProgress)
     (.then #(when @live (set-peer-progress (js->clj % :keywordize-keys true)))) (.catch (fn [_] nil)))) timer (js/setInterval refresh 5000)]
    (refresh) (fn [] (reset! live false) (.abort controller) (js/clearInterval timer)))) #js [])
   (useEffect (fn [] (let [controller (js/AbortController.) live (atom true)
-   refresh (fn [] (-> (js/fetch "./circle-work-state.json" #js {:cache "no-store" :credentials "omit" :redirect "error" :signal (.-signal controller)})
+   refresh (fn [] (-> (meiji/report-response "circle-work-state.json" #js {:cache "no-store" :credentials "omit" :redirect "error" :signal (.-signal controller)})
     (.then #(if (.-ok %) (.json %) (throw (js/Error. "unavailable")))) (.then decodeCircleWork)
     (.then #(when @live (set-circle-work (js->clj % :keywordize-keys true)))) (.catch (fn [_] nil)))) timer (js/setInterval refresh 5000)]
    (refresh) (fn [] (reset! live false) (.abort controller) (js/clearInterval timer)))) #js [])
   (useEffect (fn [] (let [controller (js/AbortController.) live (atom true)
-   refresh (fn [] (-> (js/fetch "./mail-executor-state.json" #js {:cache "no-store" :credentials "omit" :redirect "error" :signal (.-signal controller)})
+   refresh (fn [] (-> (meiji/report-response "mail-executor-state.json" #js {:cache "no-store" :credentials "omit" :redirect "error" :signal (.-signal controller)})
     (.then #(if (.-ok %) (.json %) (throw (js/Error. "mail metadata unavailable")))) (.then decodeMailProgress)
     (.then #(when @live (set-mail-progress (js->clj % :keywordize-keys true)))) (.catch (fn [_] nil)))) timer (js/setInterval refresh 30000)]
    (refresh) (fn [] (reset! live false) (.abort controller) (js/clearInterval timer)))) #js [])

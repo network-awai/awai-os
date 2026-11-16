@@ -47,6 +47,34 @@ use `.cljc`, clj / JVM, cljs builds, nbb, babashka and the rest of ADR 0026 D3,
 pinned with Nix (owner decision 2026-11-07, D18). Do not put Otehon dependencies
 in the native profile. The native profile rules above stay unchanged.
 
+## Meiji desktop entry (AWAI-195, owner direction 2026-11-16)
+
+- Awai Otehon OS codename is **Meiji**. Use **Tauri v3** as the desktop entry
+  managing Meiji VMs; do not silently select v2. v3 is Alpha at implementation
+  time: pin exact published crate versions and keep release qualification open.
+- Implement lifecycle policy, resource validation, persistence, inference
+  adapters and desktop views in `.cljc` under `nixos/otehon/meiji/src/`.
+  Rust is the thin Tauri IPC/process adapter. The Babashka Otehon development
+  controller does not establish the ADR 0031 `cljrs` AOT target as completed.
+- Soshiki displays Bot observations and controls VM start/stop and vCPU/guest
+  RAM allocation. A running hypervisor is not guest health or Bot liveness.
+  Missing/stale reports and unmeasured GPU use remain unknown.
+- Permit only locally configured VM IDs, signed image digests, executable
+  paths, resource ceilings and selected inference providers. No shell or
+  arbitrary command/path/endpoint arguments from WebViews. Never adopt or stop
+  an unrelated existing VM. Require a stopped VM for resource changes.
+- Keep UI/operation approval, Bot executor grants, and VM administration
+  distinct. Tauri capabilities do not replace the shared Kotoba external
+  operation consent contract. Keep UI/workflows in the local WebView; no BFF.
+- Local GPU worker connections (Metal/CUDA/ROCm/Vulkan/DirectML) are explicit
+  host inference routes, not evidence of VM GPU passthrough. No remote/CPU
+  fallback. Test each actual OS/device/model separately before qualification.
+- Preserve working disks and AwaiFS/Kotobase state across launcher updates.
+  VM snapshots do not undo external operations or prove distributed backups.
+  Do not replace or disable live cron, fleet or authentication services when
+  testing the desktop entry. Record source/build/hypervisor/guest/GPU/installer
+  evidence separately in Linear. Packaging the app does not qualify its worker.
+
 ## UI design and writing
 
 Apply [the shared UI rules](docs/design/interface-principles.md) to Awai OS and

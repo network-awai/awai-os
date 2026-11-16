@@ -1,5 +1,6 @@
 (ns shell.soshiki-runtime
   (:require ["react" :refer [useEffect useRef useState]]
+            [meiji.panel :as meiji]
             [shell.execution-observation :as execution]
             [shell.readiness-observation :as readiness]
             [shell.original-observation :as original]
@@ -81,6 +82,7 @@
 
 (defn runtime-panel [state]
   [:section
+   [:f> meiji/panel]
    [:f> fleet/panel]
    [:details [:summary "補助レポートを手動確認"]
     [:f> legacy-runtime-panel state]]])
@@ -90,6 +92,7 @@
         [error set-error] (useState nil)]
     [:main.chat.net-view [:div.net-body.soshiki-body
      [:h1 "Soshiki · 稼働状況"]
+     [:f> meiji/panel]
      [:f> fleet/panel]
      [:details [:summary "補助レポートの手動確認"]
      [:label.soshiki-field [:span "登録カタログ（このプレビュー内だけに読込み）"]

@@ -1,0 +1,12 @@
+.meiji-control { margin-block: 1rem 2rem; }
+.meiji-vms { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: 1rem; }
+.meiji-vm { border: 1px solid #767676; border-radius: 1.25rem; padding: 1.25rem; }
+.meiji-vm header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; }
+.meiji-vm h3 { margin: 0; }
+.meiji-vm form { margin-block: 1rem; }
+.meiji-vm fieldset { display: grid; gap: .5rem; border: 0; padding: 0; min-inline-size: 0; }
+.meiji-vm input, .meiji-vm button { font: inherit; font-size: max(1rem, 1em); min-block-size: 3rem; padding: .5rem .75rem; }
+.meiji-vm input { inline-size: 100%; box-sizing: border-box; }
+.meiji-vm input:user-invalid { border-color: #b42318; }
+.meiji-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.meiji-vm :is(input,button):focus-visible { outline: 3px solid #2764ba; outline-offset: 3px; }

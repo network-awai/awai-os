@@ -1,6 +1,7 @@
 (ns meiji.host-test
   (:require [clojure.test :refer [deftest is testing]] [meiji.policy :as p]
-            [meiji.host :as host] [babashka.fs :as fs]))
+            [meiji.host :as host] [babashka.fs :as fs] [org.httpkit.server :as server]
+            [cheshire.core :as json]))
 
 (def fixture {:id "meiji-test" :name "Meiji" :backend :qemu :arch :aarch64
               :format :qcow2 :image "/owner/base.qcow2" :sha256 (apply str (repeat 64 "a"))
@@ -77,3 +78,37 @@
       (let [c (-> c (assoc-in [:config :vms 0 :inference-provider] "gpu")
                   (assoc-in [:config :providers] [{:id "gpu" :origin "http://127.0.0.1:8080" :model "pinned-model" :backend :metal}]))]
         (is (= :metal (:backend (host/provider! c "meiji-test")))))))))
+
+(deftest public-report-integrity
+  (with-controller
+    (fn [c _ dir]
+      (let [c (assoc-in c [:config :reports-dir] (str dir))
+            text "{\"schema\":\"awai.fleet-artifact.v1\",\"payload\":{\"z\":1,\"a\":2}}"]
+        (spit (str (fs/path dir "fleet-state.json")) text)
+        (is (= text (:text (host/dispatch! c {:op "report" :id "fleet-state.json"}))))
+        (is (thrown? Exception (host/dispatch! c {:op "report" :id "../config.edn"})))
+        (is (thrown? Exception (host/dispatch! c {:op "report" :id "secrets.json"})))))))
+
+(deftest explicit-inference-rail
+  (let [calls (atom [])
+        stop (server/run-server
+               (fn [request]
+                 (swap! calls conj {:uri (:uri request) :body (json/parse-string (slurp (:body request)) true)})
+                 {:status 200 :headers {"Content-Type" "application/json"}
+                  :body (json/generate-string {:choices [{:message {:content "OK"}}]
+                                               :usage {:prompt_tokens 3 :completion_tokens 1}})})
+               {:ip "127.0.0.1" :port 0})]
+    (try
+      (with-controller
+        (fn [c _ _]
+          (doseq [[os backend] [[:macos :metal] [:linux :cuda] [:linux :rocm] [:linux :vulkan] [:windows :directml]]]
+            (let [c (-> c (assoc-in [:host :os] os) (assoc-in [:config :vms 0 :inference-provider] "gpu")
+                        (assoc-in [:config :providers] [{:id "gpu" :origin (str "http://127.0.0.1:" (:local-port (meta stop)))
+                                                        :model "fixture-model" :backend backend}]))
+                  r (host/inference-check! c "meiji-test")]
+              (is (= "responded" (:state r))) (is (= "unknown" (:gpu-use r)))
+              (is (= backend (:backend r)))))))
+      (is (= 5 (count @calls)))
+      (is (every? #(= "/v1/chat/completions" (:uri %)) @calls))
+      (is (every? #(= "fixture-model" (get-in % [:body :model])) @calls))
+      (finally (stop)))))

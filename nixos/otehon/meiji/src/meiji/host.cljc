@@ -65,13 +65,18 @@
 (defn alive? [controller id]
   (boolean (when-let [child (get @(:children controller) id)] (.isAlive (:process child)))))
 
+(declare provider!)
+
 (defn snapshot [controller]
   {:schema policy/version :host (:host controller)
-   :vms (mapv #(policy/public-vm (vm-for controller (:id %))
+   :vms (mapv #(cond-> (policy/public-vm (vm-for controller (:id %))
                 (let [child (get @(:children controller) (:id %))]
                   (cond (alive? controller (:id %)) (if (:stopping child) "stopping" "running")
                         (and child (not (zero? (.exitValue (:process child))))) "failed"
                         :else "stopped")))
+                (:inference-provider %) (assoc :inference
+                  (try (select-keys (provider! controller (:id %)) [:id :origin :backend :model])
+                       (catch Exception _ {:state "unconfigured"}))))
               (get-in controller [:config :vms]))})
 
 (defn start! [controller id]
@@ -128,7 +133,7 @@
                          (contains? #{"127.0.0.1" "[::1]"} (.getHost uri))
                          (nil? (.getUserInfo uri)) (nil? (.getQuery uri)) (nil? (.getFragment uri))
                          (contains? #{"" "/"} (.getPath uri))
-                         (contains? #{:metal :cuda :rocm :vulkan :directml} (:backend p))
+                         (contains? (get policy/gpu-backends (get-in controller [:host :os]) #{}) (:backend p))
                          (string? (:model p)) (seq (:model p))) "inference-not-configured")
     p))
 
@@ -146,10 +151,25 @@
       {:schema policy/version :provider (:id p) :backend (:backend p) :model (:model p)
        :state "responded" :gpu-use "unknown" :usage (:usage body)})))
 
+(def report-files #{"fleet-state.json" "agent-presence.json" "peer-cycles.json"
+                    "circle-work-state.json" "mail-executor-state.json"})
+(defn report [controller id]
+  (policy/require! (contains? report-files id) "unknown-report")
+  (let [dir (get-in controller [:config :reports-dir])]
+    (policy/require! (and (string? dir) (fs/absolute? dir)) "reports-not-configured")
+    (let [path (str (fs/path dir id))]
+      (configured-file! path)
+      (policy/require! (<= (fs/size path) 8388608) "report-too-large")
+      ;; Public observation only. Existing Soshiki schema/freshness checks still apply.
+      ;; Preserve the original JSON text: reordering payload map keys breaks the
+      ;; existing fleet envelope's JSON.stringify digest even if values match.
+      {:text (slurp path)})))
+
 (defn dispatch! [controller request]
   (policy/request! request)
   (case (:op request)
     "snapshot" (snapshot controller)
+    "report" (report controller (:id request))
     "start" (start! controller (:id request))
     "stop" (stop! controller (:id request) false)
     "force-stop" (stop! controller (:id request) true)
