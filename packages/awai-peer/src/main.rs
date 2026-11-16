@@ -6,6 +6,18 @@ use std::{path::Path, time::Duration};
 async fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
     match args.get(1).map(String::as_str) {
+        Some("relay") => {
+            ensure!(args.len()==6,"relay <identity-dir> <literal-bind> <allowed-PeerIDs-json> <seconds <=21600>");
+            ensure!(std::fs::metadata(&args[4])?.len()<=4096,"relay participants too large");
+            let names:Vec<String>=serde_json::from_slice(&std::fs::read(&args[4])?)?;
+            let allowed=names.iter().map(|name|name.parse()).collect::<Result<Vec<_>,_>>()?;
+            let key=awai_peer_runtime::load_identity(Path::new(&args[2]))?;
+            let(tx,rx)=tokio::sync::oneshot::channel();let(_stop,stopped)=tokio::sync::oneshot::channel();
+            let task=tokio::spawn(awai_peer_runtime::nat::run_relay(key,args[3].parse()?,allowed,Duration::from_secs(args[5].parse()?),tx,stopped));
+            let address=tokio::time::timeout(Duration::from_secs(30),rx).await??;
+            println!("{}",serde_json::json!({"relay":address.to_string(),"protocol":"/libp2p/circuit/relay/0.2.0"}));
+            {use std::io::Write;std::io::stdout().flush()?;}task.await??;
+        }
         Some("identity") => {
             ensure!(args.len()==3,"identity <app-private-state-dir>");
             let key=awai_peer_runtime::load_identity(Path::new(&args[2]))?;

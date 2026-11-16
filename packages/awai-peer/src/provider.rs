@@ -143,8 +143,12 @@ impl Response {
 struct Wire {
     messages: request_response::cbor::Behaviour<Request, Response>,
     limits: libp2p::connection_limits::Behaviour,
+    relay_client: libp2p::relay::client::Behaviour,
+    identify: libp2p::identify::Behaviour,
+    dcutr: libp2p::swarm::behaviour::toggle::Toggle<libp2p::dcutr::Behaviour>,
+    autonat: libp2p::swarm::behaviour::toggle::Toggle<libp2p::autonat::Behaviour>,
 }
-fn swarm(key: identity::Keypair) -> Result<Swarm<Wire>> {
+fn swarm(key: identity::Keypair, relay: Option<(PeerId, Multiaddr)>) -> Result<Swarm<Wire>> {
     Ok(SwarmBuilder::with_existing_identity(key)
         .with_tokio()
         .with_tcp(
@@ -153,23 +157,51 @@ fn swarm(key: identity::Keypair) -> Result<Swarm<Wire>> {
             libp2p::yamux::Config::default,
         )?
         .with_quic()
-        .with_behaviour(|_| Wire {
-            messages: request_response::Behaviour::with_codec(
-                request_response::cbor::codec::Codec::default()
-                    .set_request_size_maximum(FRAME)
-                    .set_response_size_maximum(FRAME),
-                [(StreamProtocol::new(PROTOCOL), ProtocolSupport::Full)],
-                request_response::Config::default()
-                    .with_request_timeout(Duration::from_secs(15))
-                    .with_max_concurrent_streams(4),
-            ),
-            limits: libp2p::connection_limits::Behaviour::new(
-                libp2p::connection_limits::ConnectionLimits::default()
-                    .with_max_established(Some(8))
-                    .with_max_pending_incoming(Some(4))
-                    .with_max_pending_outgoing(Some(4))
-                    .with_max_established_per_peer(Some(2)),
-            ),
+        .with_relay_client(libp2p::noise::Config::new, libp2p::yamux::Config::default)?
+        .with_behaviour(|key, relay_client| {
+            let id = key.public().to_peer_id();
+            let autonat = relay.as_ref().map(|(peer, address)| {
+                let mut behavior = libp2p::autonat::Behaviour::new(
+                    id,
+                    libp2p::autonat::Config {
+                        use_connected: false,
+                        max_peer_addresses: 4,
+                        throttle_clients_global_max: 0,
+                        boot_delay: Duration::from_secs(2),
+                        ..Default::default()
+                    },
+                );
+                behavior.add_server(*peer, Some(address.clone()));
+                behavior
+            });
+            Wire {
+                relay_client,
+                identify: libp2p::identify::Behaviour::new(
+                    libp2p::identify::Config::new("/awai/peer/1.0.0".into(), key.public())
+                        .with_push_listen_addr_updates(false),
+                ),
+                dcutr: relay
+                    .as_ref()
+                    .map(|_| libp2p::dcutr::Behaviour::new(id))
+                    .into(),
+                autonat: autonat.into(),
+                messages: request_response::Behaviour::with_codec(
+                    request_response::cbor::codec::Codec::default()
+                        .set_request_size_maximum(FRAME)
+                        .set_response_size_maximum(FRAME),
+                    [(StreamProtocol::new(PROTOCOL), ProtocolSupport::Full)],
+                    request_response::Config::default()
+                        .with_request_timeout(Duration::from_secs(15))
+                        .with_max_concurrent_streams(4),
+                ),
+                limits: libp2p::connection_limits::Behaviour::new(
+                    libp2p::connection_limits::ConnectionLimits::default()
+                        .with_max_established(Some(8))
+                        .with_max_pending_incoming(Some(4))
+                        .with_max_pending_outgoing(Some(4))
+                        .with_max_established_per_peer(Some(2)),
+                ),
+            }
         })?
         .with_swarm_config(|c| {
             c.with_idle_connection_timeout(Duration::from_secs(60))
@@ -308,17 +340,20 @@ impl Provider {
         ready: oneshot::Sender<Multiaddr>,
         stop: oneshot::Receiver<()>,
     ) -> Result<()> {
-        ensure!(
-            matches!(
-                bind.iter().collect::<Vec<_>>().as_slice(),
-                [Protocol::Ip4(_), Protocol::Tcp(_)]
-                    | [Protocol::Ip4(_), Protocol::Udp(_), Protocol::QuicV1]
-            ),
-            "literal TCP/QUIC bind required"
-        );
-        let mut node = swarm(self.key.clone())?;
+        let relay = crate::nat::relay_bind(&bind)?;
+        let mut node = swarm(self.key.clone(), relay.clone())?;
         let id = *node.local_peer_id();
-        node.listen_on(bind)?;
+        if let Some((_, address)) = relay.as_ref() {
+            node.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
+            node.listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?)?;
+            node.dial(address.clone())?;
+        }
+        let mut pending_bind = if relay.is_some() {
+            Some(bind)
+        } else {
+            node.listen_on(bind)?;
+            None
+        };
         let mut ready = Some(ready);
         tokio::pin!(stop);
         let expiry = self.grants.iter().map(|g| g.expires_at).max().unwrap();
@@ -328,11 +363,21 @@ impl Provider {
             tokio::select! {
                 _=&mut stop=>return Ok(()), _=&mut deadline=>return Ok(()),
                 event=node.select_next_some()=>match event {
-                    SwarmEvent::NewListenAddr{address,..}=>if let Some(tx)=ready.take(){let _=tx.send(address.with(Protocol::P2p(id)));},
+                    SwarmEvent::NewListenAddr{address,..}=>{
+                        let relayed=address.iter().any(|p|matches!(p,Protocol::P2pCircuit));
+                        if relay.is_none() || relayed {
+                            let address=if matches!(address.iter().last(),Some(Protocol::P2p(peer)) if peer==id){address}else{address.with(Protocol::P2p(id))};
+                            if let Some(tx)=ready.take(){let _=tx.send(address);}
+                        }
+                    },
+                    SwarmEvent::Behaviour(WireEvent::Identify(libp2p::identify::Event::Received{peer_id,info,..}))=>{
+                        if relay.as_ref().is_some_and(|(id,_)|*id==peer_id) && crate::nat::literal_transport(&info.observed_addr,false).is_ok(){node.add_external_address(info.observed_addr);if let Some(bind)=pending_bind.take(){node.listen_on(bind)?;}}
+                    },
                     SwarmEvent::Behaviour(WireEvent::Messages(request_response::Event::Message{peer,message:request_response::Message::Request{request,channel,..},..}))=>{
                         let result=self.handle(peer,request).unwrap_or_else(|_|Response::refused());
                         let _=node.behaviour_mut().messages.send_response(channel,result);
                     },
+                    SwarmEvent::ListenerError {error,..}=>return Err(error.into()),
                     _=>(),
                 }
             }
@@ -346,32 +391,55 @@ pub async fn exchange(
     address: Multiaddr,
     request: Request,
 ) -> Result<Response> {
-    let parts: Vec<_> = address.iter().collect();
-    let peer = match parts.as_slice() {
-        [Protocol::Ip4(ip), Protocol::Tcp(port), Protocol::P2p(id)]
-        | [Protocol::Ip4(ip), Protocol::Udp(port), Protocol::QuicV1, Protocol::P2p(id)] => {
-            ensure!(
-                !ip.is_unspecified() && !ip.is_multicast() && !ip.is_broadcast() && *port != 0,
-                "invalid destination"
-            );
-            *id
-        }
-        _ => return Err(anyhow!("explicit literal TCP/QUIC PeerID required")),
-    };
+    let (peer, relay) = crate::nat::target(&address)?;
     ensure!(request.snapshot().len() <= 128, "snapshot length");
-    let mut node = swarm(key)?;
-    node.dial(
-        libp2p::swarm::dial_opts::DialOpts::peer_id(peer)
-            .addresses(vec![address])
-            .build(),
-    )?;
+    let mut node = swarm(key, relay.clone())?;
+    if let Some((_, relay_address)) = relay.as_ref() {
+        node.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
+        node.listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?)?;
+        node.dial(relay_address.clone())?;
+    }
+    let mut pending_dial = if relay.is_some() {
+        Some(address)
+    } else {
+        node.dial(
+            libp2p::swarm::dial_opts::DialOpts::peer_id(peer)
+                .addresses(vec![address])
+                .build(),
+        )?;
+        None
+    };
     tokio::time::timeout(Duration::from_secs(20), async {
         let mut pending = Some(request);
         let mut query = None;
         loop {
             match node.select_next_some().await {
+                SwarmEvent::Behaviour(WireEvent::Identify(libp2p::identify::Event::Received {
+                    peer_id,
+                    info,
+                    ..
+                })) => {
+                    if relay.as_ref().is_some_and(|(id, _)| *id == peer_id)
+                        && crate::nat::literal_transport(&info.observed_addr, false).is_ok()
+                    {
+                        node.add_external_address(info.observed_addr);
+                        if let Some(address) = pending_dial.take() {
+                            node.dial(
+                                libp2p::swarm::dial_opts::DialOpts::peer_id(peer)
+                                    .addresses(vec![address])
+                                    .build(),
+                            )?;
+                        }
+                    }
+                }
                 SwarmEvent::ConnectionEstablished { peer_id, .. } => {
-                    ensure!(peer_id == peer, "authenticated peer mismatch");
+                    if peer_id != peer {
+                        ensure!(
+                            relay.as_ref().is_some_and(|(id, _)| *id == peer_id),
+                            "unexpected peer"
+                        );
+                        continue;
+                    }
                     if let Some(request) = pending.take() {
                         query = Some(node.behaviour_mut().messages.send_request(&peer, request));
                     }
@@ -572,6 +640,72 @@ mod tests {
         assert!(!query.ok);
         let _ = stop.send(());
         task.await??;
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn real_circuit_v2_transfer_with_explicit_relay() -> Result<()> {
+        let sender = identity::Keypair::generate_ed25519();
+        let receiver = identity::Keypair::generate_ed25519();
+        let relay = identity::Keypair::generate_ed25519();
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../.agent-output")
+            .join(format!("relay-{}", relay.public().to_peer_id()));
+        std::fs::create_dir_all(&root)?;
+        let source = DiskStore::open(&root.join("source"))?;
+        let data = b"relay v2 WNFS ciphertext transfer";
+        let block = Cid::new_v1(0x55, Code::Blake3_256.digest(data));
+        source.put(&block, data)?;
+        let value = crate::snapshot::Snapshot {
+            schema: "awai.wnfs.snapshot.v1".into(),
+            roots: vec![block],
+            blocks: vec![block],
+        };
+        let bytes = serde_ipld_dagcbor::to_vec(&value)?;
+        let snapshot = Cid::new_v1(0x71, Code::Sha2_256.digest(&bytes));
+        source.put(&snapshot, &bytes)?;
+        let (rtx, rrx) = oneshot::channel();
+        let (rstop, rstopped) = oneshot::channel();
+        let relay_task = tokio::spawn(crate::nat::run_relay(
+            relay,
+            "/ip4/127.0.0.1/tcp/0".parse()?,
+            vec![sender.public().to_peer_id(), receiver.public().to_peer_id()],
+            Duration::from_secs(60),
+            rtx,
+            rstopped,
+        ));
+        let relay_address = tokio::time::timeout(Duration::from_secs(5), rrx).await??;
+        let provider = Provider::new(
+            root.join("receiver"),
+            receiver,
+            vec![Grant {
+                peer_id: sender.public().to_peer_id().to_string(),
+                snapshot: snapshot.to_string(),
+                max_bytes: 100000,
+                expires_at: now() + 60,
+            }],
+        )?;
+        let (tx, rx) = oneshot::channel();
+        let (stop, stopped) = oneshot::channel();
+        let task =
+            tokio::spawn(provider.run(relay_address.with(Protocol::P2pCircuit), tx, stopped));
+        let address = tokio::time::timeout(Duration::from_secs(10), rx).await??;
+        assert!(address.to_string().contains("/p2p-circuit/p2p/"));
+        let receipt = push_snapshot(sender.clone(), &source, address.clone(), snapshot).await?;
+        assert_eq!(
+            receipt
+                .verify(crate::nat::target(&address)?.0, &snapshot.to_string())?
+                .bytes,
+            data.len()
+        );
+        let destination = DiskStore::open(&root.join("destination"))?;
+        pull_snapshot(sender, &destination, address, snapshot).await?;
+        assert_eq!(destination.get(&block)?, data);
+        let _ = stop.send(());
+        task.await??;
+        let _ = rstop.send(());
+        relay_task.await??;
         std::fs::remove_dir_all(root)?;
         Ok(())
     }

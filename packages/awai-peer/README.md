@@ -64,3 +64,25 @@ across provider restarts, with no automatic GC/root adoption. Grants must be
 supplied explicitly on restart. The CLI is separate from app operations, which
 must enter through the canonical broker. Existing HTTPS Yataverse tenant/grant
 APIs are not silently invoked or bypassed by this protocol.
+
+## Explicit relay profile
+
+Provider bind and client addresses may name one literal-IP Circuit Relay v2:
+`/ip4/<relay-IP>/tcp/<port>/p2p/<relay-ID>/p2p-circuit[/p2p/<target-ID>]`.
+The selected relay is authenticated before reservation/target dialing. DCUtR
+and AutoNAT are enabled only for this explicit profile; AutoNAT probes only the
+selected relay (`use_connected=false`). DNS transport, relay discovery, public
+STUN/TURN and HTTP fallback remain absent. Failed direct upgrades do not justify
+claiming a direct connection; transfer may use the explicitly selected circuit.
+The relay role accepts at most 16 configured participant IDs, 16 circuits, two
+circuits/peer, 32 MiB/circuit and 120 seconds/circuit; its process lasts at most
+six hours. It does not store app data. The caller must approve that relay role
+separately from provider storage and sender transfer.
+
+```
+awai-peer relay <identity-dir> /ip4/127.0.0.1/tcp/0 <allowed-PeerIDs-json> 300
+```
+
+Seven Rust tests include a real three-peer Circuit v2 session and snapshot
+push/pull. Loopback routing is not NAT simulation or independent-network hole
+punch qualification. Android's foreground-service lifecycle is a separate layer.

@@ -540,3 +540,5 @@ mod tests {
 
 pub mod provider;
 pub mod snapshot;
+
+pub mod nat;
