@@ -175,3 +175,18 @@ preloader/LK、unlock/wipe、OS導入はこの時点では未実施。
 未加工のstock raw候補も別保存した（330708/331428 bytes）。これは復旧形式の保全であり、
 書き戻し成功の証拠ではない。次は両preloaderの再読取り、機種専用配布物のdownload、
 再読取りで配布bytesの一致を確認し、bootloaderへの遷移へ進む。
+
+## preloader 両コピーの変更と照合成功 (09:36 JST)
+
+次の管理者単位で、preloader / preloader_backupをnamed uploadで再読取りし、
+両方とも最初の4MiB原本のsize/hashと一致した。
+固定SHA-256を確認したmaintainer ZIPからpreloader_raw.imgを取り出し、
+GFH FILE_INFO / declared file_len=329588が実長と一致することを確認。
+`write`(named Download)で1領域ずつ書き、各領域をnamed uploadで読み戻した。
+両readbackとも4MiBで、GFH offset2048からの329588 bytesが配布raw全体と一致した。
+一方を照合する前に次の領域へは進めていない。
+
+この時点では設定3領域とpreloader両コピーが変更済み。
+原本17領域と両stock raw候補を保持。LK書換え・unlock・wipe・OS導入は未実施で、
+新preloaderでの実bootと復旧の実証も未達。次はmiscのbootonce-bootloader指定を
+読み戻し確認し、Junの音量ボタン操作に合わせてDAから再起動する。
