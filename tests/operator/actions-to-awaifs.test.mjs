@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import {admitArtifact,admitRedirect,split,readLegacyPart,deletionAllowed,confirmAbsent,PART} from '../../scripts/operator/actions-to-awaifs.mjs';
+import {admitArtifact,admitRedirect,split,readLegacyPart,deletionAllowed,confirmAbsent,installedFingerprint,PART} from '../../scripts/operator/actions-to-awaifs.mjs';
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
 const a={id:10,digest:'sha256:'+'a'.repeat(64),size_in_bytes:8,expired:false,workflow_run:{id:9}};
 test('admission rejects unknown digest, expired archive, changed size and unbound run',()=>{
@@ -14,6 +14,9 @@ test('eventually consistent source deletion is retried, an unknown outcome never
  let calls=0;await confirmAbsent(()=>++calls<3?{status:0,stderr:''}:{status:1,stderr:'HTTP 404'},async()=>{});assert.equal(calls,3);
  await assert.rejects(()=>confirmAbsent(()=>({status:0,stderr:''}),async()=>{}));
  await assert.rejects(()=>confirmAbsent(()=>({status:1,stderr:'HTTP 401'}),async()=>{}));
+});
+test('a changed installed helper changes the runtime admission fingerprint',()=>{
+ const base=path.resolve('.agent-output/operator-tests');fs.mkdirSync(base,{recursive:true});const app=fs.mkdtempSync(path.join(base,'app-'));fs.mkdirSync(path.join(app,'src'));fs.writeFileSync(path.join(app,'awaivol.cljc'),'one');fs.writeFileSync(path.join(app,'src','hash.cljc'),'two');const before=installedFingerprint(app);fs.writeFileSync(path.join(app,'src','hash.cljc'),'changed');assert.notEqual(installedFingerprint(app),before);fs.rmSync(app,{recursive:true});
 });
 test('signed CDN redirect is HTTPS-only and never an arbitrary credential recipient',()=>{
  assert.equal(admitRedirect('https://productionresultssa1.blob.core.windows.net/a?sig=private').hostname,'productionresultssa1.blob.core.windows.net');

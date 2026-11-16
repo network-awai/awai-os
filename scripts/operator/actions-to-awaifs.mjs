@@ -12,6 +12,11 @@ const MAX_ARTIFACT=32*1024**3, MAX_COLD=2*1024**3;
 const hash=b=>crypto.createHash('sha256').update(b).digest('hex');
 const check=(v,m)=>{if(!v)throw Error(m);};
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
+export function installedFingerprint(app){
+ const rows=[];let total=0;
+ function visit(dir){for(const name of fs.readdirSync(dir).sort()){const p=path.join(dir,name),s=fs.lstatSync(p);check(!s.isSymbolicLink(),'source symlink refused');if(s.isDirectory())visit(p);else if(/\.(cljc|cjs|mjs|js)$/.test(name)){total+=s.size;check(rows.length<10000&&total<=128*1024**2,'source fingerprint bound');rows.push([path.relative(app,p),hash(fs.readFileSync(p))]);}}}
+ for(const name of fs.readdirSync(app).filter(n=>/\.(cljc|cjs|mjs|js)$/.test(n)).sort()){const p=path.join(app,name);check(fs.lstatSync(p).isFile()&&!fs.lstatSync(p).isSymbolicLink(),'source file refused');rows.push([name,hash(fs.readFileSync(p))]);}visit(path.join(app,'src'));return hash(Buffer.from(JSON.stringify(rows)));
+}
 export function admitArtifact(a){
  check(Number.isSafeInteger(a.id)&&a.id>0&&!a.expired&&/^sha256:[a-f0-9]{64}$/.test(a.digest),'unqualified artifact identity');
  check(Number.isSafeInteger(a.size_in_bytes)&&a.size_in_bytes>=0&&a.size_in_bytes<=MAX_ARTIFACT,'artifact bound');
@@ -50,8 +55,8 @@ const gh=args=>JSON.parse(exec('gh',['api',...args]));
 export async function run(config){
  const {work,volume,app,credentialsPlist,maxArtifacts=441,maxArtifactBytes=MAX_ARTIFACT,batchBytes=128*1024**2,applyDelete=false}=config;
  for(const p of [work,volume,app,credentialsPlist])check(path.isAbsolute(p),'explicit absolute paths required');
- check(volume.startsWith(path.join(process.env.HOME,'.awaivol','archives')+path.sep),'dedicated managed archive volume only');
- check(batchBytes>=PART&&batchBytes<=256*1024**2,'batch staging bound');
+ check(volume===path.join(process.env.HOME,'.awaivol','archives','awai-os-actions-20261116'),'fixed dedicated archive namespace only');
+ check(batchBytes>=PART&&batchBytes<=1024**3,'batch staging bound');
  fs.mkdirSync(work,{recursive:true,mode:0o700});fs.mkdirSync(volume,{recursive:true,mode:0o700});
  check(!fs.lstatSync(volume).isSymbolicLink()&&!fs.lstatSync(work).isSymbolicLink(),'no symlink storage roots');
  const lock=path.join(volume,'.operator-writer');fs.mkdirSync(lock,{mode:0o700});
@@ -60,6 +65,8 @@ export async function run(config){
  const installed=path.join(app,'awaivol.cljc');const pin={source:installed,sha256:hash(fs.readFileSync(installed)),node:process.version,nbb:exec('/opt/homebrew/bin/nbb',['--version']).trim(),rclone:exec('rclone',['version']).split('\n')[0]};
  let state=fs.existsSync(saveFile)?JSON.parse(fs.readFileSync(saveFile)): {schema:'awai.operator.github-archive-progress.v1',repo:REPO,pin,artifacts:{}};
  check(state.repo===REPO&&state.pin.sha256===pin.sha256,'archive binding/source changed');
+ const runtimeFingerprint=installedFingerprint(app);state.runtimeFingerprint??=runtimeFingerprint;check(state.runtimeFingerprint===runtimeFingerprint,'installed helper/source changed');
+ log({event:'run-start',operatorSha256:hash(fs.readFileSync(fileURLToPath(import.meta.url))),runtimeFingerprint,applyDelete,maxArtifacts,maxArtifactBytes,batchBytes});
  const ownerFile=path.join(volume,'operator-binding.json');const owner={repo:REPO,work,sourceSha256:pin.sha256};
  if(fs.existsSync(ownerFile))check(JSON.stringify(JSON.parse(fs.readFileSync(ownerFile)))===JSON.stringify(owner),'foreign archive volume');
  else{check(fs.readdirSync(volume).every(x=>x==='.operator-writer'),'new volume must be empty');atomic(ownerFile,owner);}
@@ -73,6 +80,7 @@ export async function run(config){
  const rclone=args=>{try{return exec('rclone',[...args,'--retries','2','--low-level-retries','2','--contimeout','15s','--timeout','180s'],{env,timeout:1800000,maxBuffer:8*1024**2});}catch{throw Error('bounded AwaiFS remote operation refused; no source deletion qualified');}};
  let origin,pending=[],staged=0;const fresh=new Set(),coldHashes=new Map();
  async function start(){
+  check(hash(fs.readFileSync(installed))===state.pin.sha256&&installedFingerprint(app)===runtimeFingerprint,'installed AwaiFS changed; qualification held');
   exec(process.execPath,['/opt/homebrew/bin/nbb','-cp',path.join(app,'src'),installed,'init',volume],{cwd:app,timeout:60000});
   const probe=net.createServer();probe.listen(0,'127.0.0.1');await once(probe,'listening');const port=probe.address().port;await new Promise(r=>probe.close(r));
   const fd=fs.openSync(path.join(work,'volume-server.log'),'a',0o600);child=cp.spawn(process.execPath,['/opt/homebrew/bin/nbb','-cp',path.join(app,'src'),installed,'serve',volume,String(port)],{cwd:app,stdio:['ignore',fd,fd]});fs.closeSync(fd);origin=`http://127.0.0.1:${port}`;
@@ -115,10 +123,15 @@ export async function run(config){
    p.verified=true;p.snapshot=snapshot;fresh.add(p.name);
   }
   atomic(saveFile,state);
+  if(Object.values(state.artifacts).some(s=>!s.deleted&&deletionAllowed(s.source,s,fresh))){
+   const root={schema:'awai.operator.archive-root.v1',repo:REPO,catalog:snapshot,profile:'installed-legacy-raw-pack',publishedAt:new Date().toISOString()};
+   const rootFile=path.join(work,'recovery-root.json');atomic(rootFile,root);rclone(['copyto',rootFile,remote+'/recovery-root.json','--checksum']);rclone(['copyto',remote+'/recovery-root.json',path.join(cold,'root.json')]);check(hash(fs.readFileSync(rootFile))===hash(fs.readFileSync(path.join(cold,'root.json'))),'recovery root publication refused');
+   state.recoveryRoot=root;atomic(saveFile,state);log({event:'recovery-root-published',catalog:snapshot});
+  }
   // Only this exclusive volume's independently restored immutable Pack cache.
   // The primary volume, its cache, credentials and unrelated WIP are untouched.
   for(const name of local)fs.unlinkSync(path.join(volume,'packs',name));
-  log({event:'cold-readback-verified',files:pending.length,bytes:staged,snapshot,evictedLocalPacks:local.length});pending=[];staged=0;
+  log({event:'cold-readback-verified',files:pending.length,bytes:staged,coldPackBytes:coldBytes,snapshot,evictedLocalPacks:local.length});pending=[];staged=0;
   fs.rmSync(cold,{recursive:true});
   await deleteQualified();
   await start();

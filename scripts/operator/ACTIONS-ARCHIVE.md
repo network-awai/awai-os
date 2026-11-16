@@ -71,3 +71,30 @@ artifact copied to the existing AwaiFS B2 backend and recovered from an empty
 cache, with original retained. This does not yet qualify all441 artifacts,
 large images, process-crash resume, hardware power loss, independent-node repair
 or the complete non-GitHub OS release pipeline. Record later evidence separately.
+
+Later qualification (2026-11-16):370 proof/log artifacts (114860993bytes) passed
+source digest checks, independent offsite readback and verified GitHub deletion.
+An already deleted original ZIP was reconstructed through `recover-actions.mjs`
+using AwaiFS alone, with its caller-pinned original SHA256. Remaining71 larger
+images are a separate operational milestone. Eight archive/recovery tests pass.
+
+`publish-recovery-root.mjs CONFIG` publishes only a checkpoint already present in
+the successful cold-readback ledger, rechecks the actual remote catalog hash, and
+reads back its locator. The migration engine also publishes this locator before
+newly qualified deletions. This locator is operator metadata, **not** a signed
+production OS release. A consumer must independently pin the expected original
+ZIP digest; the locator never authorizes a new installer or code execution.
+
+`recover-actions.mjs CONFIG` has no GitHub access. Its private config names an
+absolute new `work`, new `output`, the existing `credentialsPlist`, positive
+`artifactId` and caller-pinned64-character `expectedSha256`. It resolves the
+AwaiFS catalog, validates the provenance receipt, reconstructs each ordered
+8MiB member from raw-Pack extents and verifies the complete original ZIP before
+no-overwrite publication. Partial failures stay unpublished for diagnosis.
+
+Ingest remains bounded8MiB in memory. An operator can select up to1GiB staging
+batches; independent cold staging is capped2GiB and reserves4GiB disk space.
+Oversized fragmented recovery plans hold rather than exceeding the bound; resume
+with a smaller batch after verifying that this run's writer has stopped. The
+installed AwaiFS implementation and helper source fingerprint is rechecked at
+every restart; a live runtime upgrade must not silently change archive semantics.
