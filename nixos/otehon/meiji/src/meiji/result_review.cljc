@@ -9,6 +9,10 @@
 
 (def prefix "/awai/meiji/review/v1/")
 (def model "qwen3.6-35b-a3b:16gb")
+(defn controller [provider]
+  {:host (host/host-platform) :config {:vms [{:id "review" :inference-provider (:id provider)}]
+                                     :providers [provider]}
+   :overrides (atom {}) :tunnels (atom {})})
 (defn public-input [report]
   (let [jobs (mapv (fn [row]
                      (let [r (:last-result row) d (:domain-result r)]
@@ -35,12 +39,33 @@
                      (p/require! (:succeeded ((:transact client)
                                    {:compare {key (occurrence/encode original)} :put {key (occurrence/encode done)}}))
                                  "review-completion-unconfirmed")
-                     (p/require! (= done ((:read client) key)) "review-completion-readback-unconfirmed") result))]
+                     (p/require! (= done ((:read client) key)) "review-completion-readback-unconfirmed") result))
+        invoke-original (fn [original]
+                          (let [result (assoc (invoke input) :state "completed" :input-sha digest :model model)]
+                            (durable/durable! (str directory "/result.edn") (pr-str result))
+                            (complete original result)))]
     (cond
       (= "completed" (:state live))
       (do (p/require! (and (= digest (get-in live [:result :input-sha]))
                            (= model (get-in live [:result :model]))) "saved-review-binding-mismatch") (:result live))
-      live (if saved (complete live saved) {:state "unknown" :reason "original-review-outcome-unknown-no-retry"})
+      live
+      (if saved (complete live saved)
+        ;; Explicit operator evidence for a known pre-HTTP initialization error.
+        ;; No generic retry: a CAS consumption marker fences this one recovery.
+        (if-let [recovery (:verified-pre-http-recovery cfg)]
+          (let [proof (edn/read-string (slurp (:path recovery)))
+                _ (p/require! (and (= (:sha256 recovery) (host/sha256 (:path recovery)))
+                                   (= "meiji.verified-pre-http-failure.v1" (:schema proof))
+                                   (= digest (:input-sha proof)) (= "AWAI-2820" (:owner-decision proof))
+                                   (= "missing-controller-overrides-before-tunnel" (:failure proof))
+                                   (= (:authenticated-node client) (:owner live))
+                                   (= "admitted" (:state live)) (nil? (:pre-http-recovery live))) "verified-original-pre-http-failure-required")
+                next (assoc live :pre-http-recovery (:sha256 recovery))]
+            (p/require! (:succeeded ((:transact client) {:compare {key (occurrence/encode live)}
+                                                       :put {key (occurrence/encode next)}})) "pre-http-recovery-fence-unconfirmed")
+            (p/require! (= next ((:read client) key)) "pre-http-recovery-readback-unconfirmed")
+            (invoke-original next))
+          {:state "unknown" :reason "original-review-outcome-unknown-no-retry"}))
       :else
       (do
         (p/require! (not (durable/saved (str directory "/intent.edn"))) "review-intent-without-claim-preserve")
@@ -48,16 +73,13 @@
                     "review-admission-unconfirmed")
         (p/require! (= claim ((:read client) key)) "review-admission-readback-unconfirmed")
         (durable/durable! (str directory "/intent.edn") (pr-str claim))
-        (let [result (assoc (invoke input) :state "completed" :input-sha digest :model model)]
-          (durable/durable! (str directory "/result.edn") (pr-str result))
-          (complete claim result))))))
+        (invoke-original claim)))))
 
 (defn infer! [cfg input]
   (let [provider (:provider cfg)
         _ (p/require! (and (= "jacob" (:node provider)) (= model (:model provider))
                            (= "jacob-kapitsa" (:id provider))) "owner-selected-jacob-required")
-        controller {:host (host/host-platform) :config {:vms [{:id "review" :inference-provider (:id provider)}]
-                                                       :providers [provider]} :tunnels (atom {})}
+        controller (controller provider)
         provider (host/provider! controller "review")
         started (System/nanoTime)]
     (try
@@ -96,7 +118,9 @@
       (p/require! (and (= 200 (:status readback)) (= text (:body readback))) "review-artifact-readback-unconfirmed"))))
 
 (defn run! [cfg report]
-  (let [input (public-input report) digest (occurrence/digest [model input])
+  (let [_ (host/provider! (controller (:provider cfg)) "review")
+        _ (host/configured-file! (get-in cfg [:provider :token-file]))
+        input (public-input report) digest (occurrence/digest [model input])
         dir (str (:state-root cfg) "/reviews/" digest)
         _ (durable/private-dir! dir)
         job (assoc (:binding cfg) :run-id (str "meiji-review-" digest) :record-prefix "meiji-review")
