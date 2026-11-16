@@ -1,0 +1,253 @@
+{
+  "schema": "awai.apk.v012.interop.v1",
+  "checkedAt": "2026-11-16T23:54:23.896Z",
+  "issue": "AWAI-3001",
+  "thread": "01a1e34c-759f-7d81-966b-f033403032e9",
+  "runtimeSourceRevision": "cfdacb7be5900c5082aecb443dd2fb063356eabc",
+  "deviceUpdateEvidence": "20261117-v012-device-updates.json",
+  "direct": [
+    {
+      "schema": "awai.apk.peer.device.v1",
+      "workingTreeCandidate": true,
+      "checkedAt": "2026-11-16T23:48:17.077Z",
+      "devices": [
+        "macOS",
+        "MQ"
+      ],
+      "androidAbi": "x86_64",
+      "androidApi": "37",
+      "tauri": "3.0.0-alpha.6",
+      "package": "network.itonami.yataverse.preview",
+      "sender": "12D3KooWKqeczhhySNvQ6jqTpLzphQURzZPGZfj1Rbk1sgxpKz38",
+      "receiver": "12D3KooWRfpqRG7XgNWfdBXCNoWJw1C4QXxyoCproM1Y8Zkqg3kY",
+      "snapshot": "bafyreifxwjkaji62sdkwexji2cwtqqzqtim4yusgmc33zal2kbemqxdtja",
+      "blocks": 8,
+      "carBytes": 5179,
+      "carSha256": "f5c2bfb227ce42cbbe4b6d85c244a661f9bccf12c60b11fa104cbaa9fd8704d2",
+      "returnedCarSha256": "f5c2bfb227ce42cbbe4b6d85c244a661f9bccf12c60b11fa104cbaa9fd8704d2",
+      "canonicalTrustedUiApproval": true,
+      "foregroundService": true,
+      "storageKind": "temporary",
+      "preexistingSnapshotVerified": true,
+      "backgroundLanRoundTrip": true,
+      "explicitStopRefusedTraffic": true,
+      "independentDevices": true,
+      "independentNetworks": false,
+      "controlChannel": "installation, own WebView UI control and diagnostics only; ciphertext travels over literal IPv4 TCP/Noise/Yamux",
+      "restoredStore": "/Users/junkawasaki/github/wt/codex/awai-3001-p2p-dapps/.agent-output/apk-receive-1794872894582/restored",
+      "output": "/Users/junkawasaki/github/wt/codex/awai-3001-p2p-dapps/.agent-output/apk-receive-1794872894582"
+    },
+    {
+      "schema": "awai.apk.peer.device.v1",
+      "workingTreeCandidate": true,
+      "checkedAt": "2026-11-16T23:49:09.303Z",
+      "devices": [
+        "macOS",
+        "moto g05"
+      ],
+      "androidAbi": "arm64-v8a",
+      "androidApi": "37",
+      "tauri": "3.0.0-alpha.6",
+      "package": "network.itonami.yataverse.preview",
+      "sender": "12D3KooWKqeczhhySNvQ6jqTpLzphQURzZPGZfj1Rbk1sgxpKz38",
+      "receiver": "12D3KooWGRBdm5PUSyPgZARk7uPSHCWuLuuNGYuQ7dBEDrjk6xgg",
+      "snapshot": "bafyreifxwjkaji62sdkwexji2cwtqqzqtim4yusgmc33zal2kbemqxdtja",
+      "blocks": 8,
+      "carBytes": 5179,
+      "carSha256": "f5c2bfb227ce42cbbe4b6d85c244a661f9bccf12c60b11fa104cbaa9fd8704d2",
+      "returnedCarSha256": "f5c2bfb227ce42cbbe4b6d85c244a661f9bccf12c60b11fa104cbaa9fd8704d2",
+      "canonicalTrustedUiApproval": true,
+      "foregroundService": true,
+      "storageKind": "app-private",
+      "preexistingSnapshotVerified": true,
+      "backgroundLanRoundTrip": true,
+      "explicitStopRefusedTraffic": true,
+      "independentDevices": true,
+      "independentNetworks": false,
+      "controlChannel": "installation, own WebView UI control and diagnostics only; ciphertext travels over literal IPv4 TCP/Noise/Yamux",
+      "restoredStore": "/Users/junkawasaki/github/wt/codex/awai-3001-p2p-dapps/.agent-output/apk-receive-1794872938909/restored",
+      "output": "/Users/junkawasaki/github/wt/codex/awai-3001-p2p-dapps/.agent-output/apk-receive-1794872938909"
+    }
+  ],
+  "localRelay": {
+    "schema": "awai.apk.peer.pair.v1",
+    "checkedAt": "2026-11-16T23:49:53.602Z",
+    "sourceRevision": "edc07b81f1cb37ac3fbd6fff2b742e081c85a75f",
+    "package": "network.itonami.yataverse.preview",
+    "tauri": "3.0.0-alpha.6",
+    "devices": [
+      {
+        "role": "sender",
+        "abi": "arm64-v8a",
+        "peer": "12D3KooWGRBdm5PUSyPgZARk7uPSHCWuLuuNGYuQ7dBEDrjk6xgg"
+      },
+      {
+        "role": "receiver",
+        "abi": "x86_64",
+        "peer": "12D3KooWRfpqRG7XgNWfdBXCNoWJw1C4QXxyoCproM1Y8Zkqg3kY"
+      }
+    ],
+    "snapshot": "bafyreifxwjkaji62sdkwexji2cwtqqzqtim4yusgmc33zal2kbemqxdtja",
+    "relay": "12D3KooWJeMere6YzK8q68qaqUeFEkAQ656c2vxTwodbToPVj3FX",
+    "explicitRelayCircuit": true,
+    "canonicalTrustedUiApproval": true,
+    "backgroundReceiver": true,
+    "push": true,
+    "verifiedPinQuery": true,
+    "pull": true,
+    "explicitStop": true,
+    "independentDevices": true,
+    "localNetworkSegments": 2,
+    "wanNatHolePunchQualified": false,
+    "results": {
+      "push": {
+        "receipt": {
+          "blocks": 8,
+          "bytes": 4817,
+          "observed_at": 1794872991,
+          "provider": "12D3KooWRfpqRG7XgNWfdBXCNoWJw1C4QXxyoCproM1Y8Zkqg3kY",
+          "retain_until": 1794873586,
+          "schema": "yataverse.pin.receipt.v1",
+          "snapshot": "bafyreifxwjkaji62sdkwexji2cwtqqzqtim4yusgmc33zal2kbemqxdtja"
+        },
+        "snapshot": "bafyreifxwjkaji62sdkwexji2cwtqqzqtim4yusgmc33zal2kbemqxdtja",
+        "verified": true
+      },
+      "query": {
+        "receipt": {
+          "blocks": 8,
+          "bytes": 4817,
+          "observed_at": 1794872992,
+          "provider": "12D3KooWRfpqRG7XgNWfdBXCNoWJw1C4QXxyoCproM1Y8Zkqg3kY",
+          "retain_until": 1794873586,
+          "schema": "yataverse.pin.receipt.v1",
+          "snapshot": "bafyreifxwjkaji62sdkwexji2cwtqqzqtim4yusgmc33zal2kbemqxdtja"
+        },
+        "verified": true
+      },
+      "pull": {
+        "snapshot": "bafyreifxwjkaji62sdkwexji2cwtqqzqtim4yusgmc33zal2kbemqxdtja",
+        "state": "stored",
+        "verified": true
+      }
+    }
+  },
+  "dozeShortTrial": {
+    "schema": "awai.apk.forced-doze.v1",
+    "checkedAt": "2026-11-16T23:50:04.919Z",
+    "sourceRevision": "edc07b81f1cb37ac3fbd6fff2b742e081c85a75f",
+    "package": "network.itonami.yataverse.preview",
+    "snapshot": "bafyreifxwjkaji62sdkwexji2cwtqqzqtim4yusgmc33zal2kbemqxdtja",
+    "forcedIdle": true,
+    "adbUsbAttached": true,
+    "naturalOvernightQualified": false,
+    "networkSettingsChanged": false,
+    "phases": [
+      {
+        "label": "background-before-idle",
+        "before": "ACTIVE",
+        "after": "ACTIVE",
+        "elapsedMs": 2244,
+        "success": true,
+        "blocks": 8,
+        "bytes": 5179,
+        "carSha256": "f5c2bfb227ce42cbbe4b6d85c244a661f9bccf12c60b11fa104cbaa9fd8704d2"
+      },
+      {
+        "label": "doze-default",
+        "before": "IDLE",
+        "after": "IDLE",
+        "elapsedMs": 2249,
+        "success": true,
+        "blocks": 8,
+        "bytes": 5179,
+        "carSha256": "f5c2bfb227ce42cbbe4b6d85c244a661f9bccf12c60b11fa104cbaa9fd8704d2"
+      },
+      {
+        "label": "doze-temporarily-exempt",
+        "before": "IDLE",
+        "after": "IDLE",
+        "elapsedMs": 2597,
+        "success": true,
+        "blocks": 8,
+        "bytes": 5179,
+        "carSha256": "f5c2bfb227ce42cbbe4b6d85c244a661f9bccf12c60b11fa104cbaa9fd8704d2"
+      },
+      {
+        "label": "after-idle-recovery",
+        "before": "ACTIVE",
+        "after": "ACTIVE",
+        "elapsedMs": 2270,
+        "success": true,
+        "blocks": 8,
+        "bytes": 5179,
+        "carSha256": "f5c2bfb227ce42cbbe4b6d85c244a661f9bccf12c60b11fa104cbaa9fd8704d2"
+      }
+    ],
+    "cleanup": {
+      "deep": "ACTIVE",
+      "force": "false",
+      "batteryRestored": true,
+      "persistentWhitelistUnchanged": true,
+      "foregroundReceiverStopped": false
+    },
+    "receiver": "12D3KooWGRBdm5PUSyPgZARk7uPSHCWuLuuNGYuQ7dBEDrjk6xgg",
+    "sender": "12D3KooWKqeczhhySNvQ6jqTpLzphQURzZPGZfj1Rbk1sgxpKz38",
+    "canonicalRuntime": {
+      "revision": "5a49411f586f094b6056724a36d56da2bac0ca4b",
+      "sha256": "739a24fa73f2d4d08436cdac4816abe940344b31a4363b8a879cea29cb547f0e"
+    },
+    "address": "/ip4/192.168.1.55/tcp/40217/p2p/12D3KooWGRBdm5PUSyPgZARk7uPSHCWuLuuNGYuQ7dBEDrjk6xgg",
+    "temporaryExemption": {
+      "scope": "network.itonami.yataverse.preview",
+      "requestedMs": 120000,
+      "source": "Explicit ADB diagnostic fixture; not product authority or human settings qualification"
+    },
+    "temporarilyExemptReceive": true,
+    "qualification": "Partial trial: four successful round trips, reported IDLE before/after both idle phases. No settling delay or contemporaneous PowerManager/netpolicy assertion. Final UI Stop failed because screen was locked; NOT a complete Doze qualification.",
+    "subsequentCleanup": {
+      "onlyPreviewForceStopped": true,
+      "deep": "ACTIVE",
+      "force": false,
+      "batterySimulationReset": true,
+      "temporaryExemptionRemoved": true,
+      "persistentExemptionUnchanged": true,
+      "wifiOn": 1,
+      "mobileData": 0
+    },
+    "nextTrial": "Prepared uncommitted helper adds 15-second settling, PowerManager and network-policy assertions, and scoped native cancellation. Fresh receive approval awaits Moto unlock."
+  },
+  "networkScope": {
+    "networkSwitchingAuthorized": false,
+    "independentWanNatQualified": false,
+    "dcutrQualified": false,
+    "localSegments": 2,
+    "permanentProviderDeployed": false,
+    "httpDnsSnapshotPath": false
+  },
+  "tests": {
+    "canonicalSuites": 4,
+    "browserTests": 9,
+    "actualInstalledWebViews": 10,
+    "directRoundTrips": 2,
+    "localApkRelayRoundTrip": true
+  },
+  "remaining": [
+    "Moto unlock and settled forced-Doze rerun with full cleanup",
+    "Natural extended idle/Doze and power-consumption acceptance",
+    "Independent-WAN NAT/DCUtR trial; owner requested no network switching",
+    "Broker PR1345 review/merge",
+    "WNFS domain-state adoption/merge and Web/ui:// integration",
+    "Ongakuka/営 domain UI, production Aozora/iOS/public release"
+  ],
+  "measurement": {
+    "start": "2026-11-16T23:30:07.170Z",
+    "providerModelSettings": "unknown",
+    "tokens": "unknown",
+    "cost": "unknown",
+    "activeTime": "unknown",
+    "waitingTime": "unknown",
+    "estimate": null,
+    "estimateUnit": "unknown"
+  }
+}

@@ -40,14 +40,9 @@ UI proposal: https://www.figma.com/design/umqCqP5KSjLWh9fhCI1HaN?node-id=236-263
 
 `device-pair-test.mjs` exercises two explicitly selected disposable Yataverse APKs through canonical UI choices and an operator-started relay limited to those two peers. A successful local-segment relay test is distinct from WAN NAT hole-punch qualification. Fixture OS permissions and scripted trusted UI clicks are test setup, not evidence of a human consent study.
 
-`device-store-test.mjs` exercises only an explicitly selected disposable Store preview and absent preview app IDs. It walks browser review, independent native confirmation, Android PackageInstaller confirmation and Store launch, then waits for the app-specific WebView and shared peer host. It refuses existing app replacements and retains installation checkpoints when startup diagnostics fail.
+`device-rebuild-test.mjs <serial> <distribution-directory> <owned-CDP-port>`
+updates only the five pinned preview packages with `adb install -r`. It checks
+the runtime digest served by each actual WebView, package version, native host
+readiness and preservation of any existing preview PeerID. This is separate
+from the Store installation workflow.
 
-The existing Dougaka vendor `PROVENANCE.edn:6` contains a malformed upstream revision (`c29b87e59fdb1b8b3a2ca7295356cd0af1e9`). It is preserved. Carrier static files are checked byte-for-byte against the OS vendor input at `c7f1008cf06f4eacb7817d3602f7a9c0373146c5`; the profile's full upstream revision is a reference, not proof of a reconstructed upstream build. Production provenance qualification remains open.
-
-The owning WNFS CLJC provider currently imports Node crypto/filesystem modules, including prime generation/checking. It cannot simply run inside Android WebView. This carrier transports/restores its opaque encrypted snapshots; browser-provider, key-authority, active-root adoption and concurrent domain-state merge must be integrated in the owning shared implementation, rather than replaced with product-local Rust WNFS semantics.
-
-App release versions are configured in `profiles/apps.json` (`version`). Android Store updates compare the resulting versionCode; bump the app version before distributing changed bytes. The current candidate is 0.1.2 (Android 1002), pinned to the main-based scope broker in kotoba PR #1345 (still a draft at preparation time). `prepare.mjs --platform android` emits Android cdylib/rlib outputs without unused static archives; `--platform ios` retains the staticlib interface but does not qualify an iOS build.
-
-Known RAM storage is reported by the native host and shown before using an app. The tested Android Desktop `/data` is tmpfs: data and installations belong to the current boot session. `app-private` on other filesystems is a location classification, not a power-loss/recovery guarantee. Native receive sessions do not resume after reboot.
-
-`device-store-update-test.mjs` updates the task's recorded preview identities through all three confirmation layers, then checks version, native-host startup, the RAM notice and the previous public PeerID. `device-receive-test.mjs` can query the existing snapshot before any push (`AWAI_FIXTURE_QUERY_BEFORE_PUSH=1`) to verify retained ciphertext across an APK update. Neither test changes the production Store, HOME role or production Aozora package.
