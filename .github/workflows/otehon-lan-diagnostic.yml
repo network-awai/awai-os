@@ -76,6 +76,11 @@ jobs:
           for file in ipxe.efi kernel initrd installer-info.json; do cp -L "result-otehon-lan-candidate/$file" ".agent-output/lan/candidate/$file"; done
           (cd .agent-output/lan/candidate; sha256sum ipxe.efi kernel initrd installer-info.json > SHA256SUMS)
           git rev-parse HEAD > .agent-output/lan/candidate/SOURCE_REVISION
+          python3 - <<'PYMETA'
+          import json, os
+          from pathlib import Path
+          Path('.agent-output/lan/candidate/DIAGNOSTIC_ONLY.json').write_text(json.dumps({'schema': 'awai.otehon.diagnostic-candidate.v1', 'sourceRevision': os.environ['GITHUB_SHA'], 'profile': 'netboot-diagnostic-6600h', 'readOnly': True}))
+          PYMETA
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: success() && github.event_name == 'workflow_dispatch' && inputs.operator_public_key != ''
         with:

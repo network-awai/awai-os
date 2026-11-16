@@ -5,6 +5,15 @@ let
   build = config.system.build;
   server = "http://10.77.0.1:8080";
   cmdline = "init=${build.toplevel}/init ${toString config.boot.kernelParams}";
+  # Read-only diagnostics never admit or fetch a writable payload. Reuse the
+  # qualified USB contract for inventory sizing without rebuilding its 27 GiB
+  # disk just to read a previous boot journal.
+  diagnosticDigests = pkgs.runCommand "otehon-diagnostic-digests" {} ''
+    mkdir "$out"
+    printf '%s\n' dda29e61981ec03d51c39381b86064c20051d37ab2e220747aa02d895bfb7efa > "$out/image"
+    printf '%s\n' 632c8a236b25717d84a594dd9dc12a4b88a54cf925fd37f95e3f8383eb03daa5 > "$out/raw"
+    printf '%s\n' 27114078208 > "$out/bytes"
+  '';
   diagnostic = pkgs.writeShellScript "otehon-diagnostic-command" ''
     export OTEHON_ALLOW_INSTALLED_BOOT_LOGS=1
     export OTEHON_INSTALLER_INFO=${build.otehonInstallerInfo}
@@ -46,8 +55,12 @@ in {
     systemd.services.otehon-install-broker.environment = {
       OTEHON_DIAGNOSTIC_READ_ONLY = "1";
       OTEHON_INSTALLED_LOG_SCRIPT = "${./installer-installed-logs.py}";
+      DIGESTS = lib.mkIf (!config.otehon.installerNbd.enable) (lib.mkForce "${diagnosticDigests}");
     };
-    systemd.services."otehon-install@".environment.OTEHON_DIAGNOSTIC_MODE = "1";
+    systemd.services."otehon-install@".environment = {
+      OTEHON_DIAGNOSTIC_MODE = "1";
+      DIGESTS = lib.mkIf (!config.otehon.installerNbd.enable) (lib.mkForce "${diagnosticDigests}");
+    };
     netboot.squashfsCompression = "zstd -Xcompression-level 6";
     system.build.image = lib.mkForce image;
 
