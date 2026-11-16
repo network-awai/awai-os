@@ -268,3 +268,36 @@ unlock_ability0ではDeveloper optionsのOEM unlockingを有効にする手順�
 Androidへ通常rebootし、ADB接続時にDeveloper optionsを開く処理を待機。
 JunにOEMロック解除のON/gray/項目なしの確認を依頼した。
 これは汎用Android仕様と実機の許可0の対応であり、このSKUで設定可能と認定していない。
+
+## 14:30 JST OEM解除の無効状態を実機で確認
+
+JunはOEMロック解除が灰色で、説明に通信事業者・インターネット接続の文言があると報告。
+端末ブラウザでページが開けることも確認した。Wi-Fi疎通は解除許可の証明ではない。
+ADB待機読取りが成功し、sys.oem_unlock_allowed=0、ro.boot.flash.locked=1、
+ro.boot.verifiedbootstate=green、ro.boot.facmode=1を確認。
+ro.oem_unlock_supportedは空、global oem_unlock_allowedはnullで、非対応の断定には使わない。
+USB構成はadbであり、File transferの常時有効は診断の前提ではない。
+
+AOSP Android15のOemUnlockPreferenceControllerの該当説明は、carrier許可と
+base no_factory_reset制約の判定に対応する。端末のdumpsys userの対象フィルタには
+no_factory_reset/no_oem_unlockは現れなかったが、vendor実装の原因を確定したわけではない。
+IOemLockService公開AIDLで照合した状態取得transaction3/5/6/7は全て権限拒否。
+成功した許可値とは扱わない。PDB dumpも内部詳細の読取りは拒否された。
+OEM設定変更のBinder呼出し、unlock、wipe、新たなflashは実行していない。
+
+AOSP参照:
+- https://github.com/aosp-mirror/platform_packages_apps_settings/blob/android15-release/src/com/android/settings/development/OemUnlockPreferenceController.java
+- https://github.com/aosp-mirror/platform_frameworks_base/blob/android15-release/core/java/android/service/oemlock/IOemLockService.aidl
+
+保存済みraw preloaderの静的比較では、active原本330708bytesにVVTAS35.51-153系、
+backup原本331428bytesと配布329588bytesにVVTA35.51系のbuild pathがある。
+これは配布品と現行原本の差の証拠であり、rollback/DRAM/署名のどれが黒画面原因かは未確定。
+配布preloaderは再投入せず、現在の純正bootchainを保持する。
+現行の3設定変更だけでは純正bootloaderの許可gateを通過しなかった。
+次の実機書込み前に、解除経路と当該firmware/preloaderの互換性を解決する必要がある。
+factory表示の解消も未完了であり通常状態の受入とは扱わない。
+
+この診断単位はAWAI-2967/chat01a1e187-0e12-7813-b500-73aa77f2a03e、
+開始revision be755bfへ継続binding。logged model/effortは前snapshotから変更観測なし、
+今回のtoken counters/費用/active-wait内訳/残forecastはunknown。
+古いusage snapshotの測定範囲をこの診断へ拡大したと扱わない。
