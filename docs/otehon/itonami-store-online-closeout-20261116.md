@@ -1,0 +1,15 @@
+# AWAI-2977 / AWAI-2979 reviewed development delivery
+
+Chat: 01a1e187-0e12-7813-b500-73aa77f2a03e. This supersedes the earlier device qualification's offline-only NixOS availability statement.
+
+On moto g05 / LineageOS 24 / Android 17, the user approved each catalog/APK acquisition through the canonical broker. Store admitted signed catalog revision 100, verified the immutable APK and installed Yotei 0.1.3 (versionCode 4). PackageManager identifies `network.awai.store` as installer; the cached/public APK SHA-256 is `0f5b2d0abac6b7b20689bc2cd5d446678bb1e9ef4ab81266f8dd375ec8f81eec`. Denial produced zero observed declared network requests in the capture window. Lineage's per-app REJECT_ALL caused the initial network failure; Wi-Fi is now allowed with cellular/VPN rejected. No resolver, TLS or consent bypass was introduced.
+
+The immutable development payload is retained by annotated tag `itonami-store-dev-20261116`, targeting 2cbd32f31b3053fd148e04dda25cbfd8e2f0b726. Debug signing is not production trust. The separately prepared web archive is not published.
+
+The final pinned aarch64 NixOS VM test passed under explicit QEMU TCG (no KVM), creating a Yotei event through the real Chromium UI, shutting down normally, booting again and observing retained library/event data. Result: `/nix/store/qfiiamypn4vw4w1y31m3rvsrc22cxp8f-vm-test-run-awai-itonami-store-browser`; test script 595.62 seconds. Screenshots were inspected, including Japanese glyphs. The module's disabled-path evaluation and corrupted-asset negative control passed. Browser profile is user-owned and persistent under `.local/state/itonami-store/chromium`. Five Android browser/online tests passed; native integrity instrumentation previously passed ten assertions.
+
+This qualifies the shared browser Store and bundled browser-mode Yotei, not a native NixOS package installer, Waydroid, physical GPU/6600H deployment or cross-device synchronization. AWAI-2979 remains open for its broader platform services/Waydroid scope; AWAI-2980 tracks identity/sync and AWAI-2982 production trust. Main's independent Tauri 3 alpha Yotei remains the selected native direction: AWAI-2990 Android migration/Store enrollment and AWAI-2991 native NixOS qualification. The earlier development fixture is not a Tauri fallback. Preserve its larger-artifact ceiling and user-data migration as explicit follow-up decisions.
+
+Review: exact immutable endpoints and CSP, canonical runtime provenance, signature/digest/rollback bounds, no private signing material, native installer separation, static-only delivery and independent Tauri changes were checked. GitHub Actions are disabled by owner; local/device/VM evidence is not exact-head CI. Original launcher and phone partition backups remain preserved.
+
+Issue estimate/unit, attributable provider token counters, active/wait time and cost are unknown. VM duration is test execution evidence, not issue velocity. Session usage is mixed/unallocated. Unique raw evidence is retained outside public source during session cleanup.
