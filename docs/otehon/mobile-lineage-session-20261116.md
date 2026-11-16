@@ -301,3 +301,33 @@ factory表示の解消も未完了であり通常状態の受入とは扱わな�
 開始revision be755bfへ継続binding。logged model/effortは前snapshotから変更観測なし、
 今回のtoken counters/費用/active-wait内訳/残forecastはunknown。
 古いusage snapshotの測定範囲をこの診断へ拡大したと扱わない。
+
+## 現行XDAの直接確認とv2.0.3の静的調査
+
+Junはpreloader失敗原因の調査と解除・LineageOS導入の継続を明示指示。
+Lineage Wikiの機種定義が指定するXDAをChromeで直接開き、OPが現在指定する
+tanuki-lamu-v2.0.3を取得した。旧blog/CDN ZIPと同じ現行方式だと扱った説明を訂正する。
+[配布物比較](mobile/tanuki-route-comparison-20261116.json)にサイズ・hashと取得元を保存。
+OPのpreloaderを変更しない注意書きに対し、配布scriptは両preloaderを書き込む。
+この文書とコードの食い違いもJunへ報告済みで、実際の書込み範囲はコードから判定する。
+macOS/ARMはOPのサポート外で、現行packageのx86バイナリをMac上で動かさない。
+使用候補は既に同一DAでnamed write/RSC writeと読戻しが動作したsource-pinned native2.0。
+これは公式Mac対応の主張ではなく、transportを適用した限定候補である。
+
+旧版は3設定変更→preloader→純正LK起動→flashing unlock→kaeru。
+現行はpreloader→kaeru両slot→misc→初回再起動→kaeru内からseccfg-unlock。
+preloaderとDAとmisc requestは旧・現行でbyte-identical、kaeruとscriptは異なる。
+よってpreloader単体の世代差という説明では足りず、旧版で再起動時に残した
+純正LKと配布preloaderの組合せ、およびboot時認証の差を調査対象とする。
+無出力の黒画面からDRAM・署名・rollbackのどれかを確定する証拠はまだない。
+現行kaeru sourceのlamu実装にもcert bypass後のseccfg解除とfactory抑止処理があるが、
+current sourceと配布binaryの同一build再現性は未検証。
+
+現行script指定のpairを一回でstaging/readbackする固定helperをprivate領域に準備し、
+Python構文・zsh構文を検査。全原本/許容configのlive照合に成功するまで書き込まない。
+旧3設定を原本へ戻し、両preloaderと両LKを指定pairへ変更、全readback一致後のみreboot。
+miscは保存原本が既にcurrent requestを含むため一致すれば書込みを省略する。
+1回のTerminal sudo認証内に、pair試行と固定stock復旧の選択だけを用意。
+新たなroot汎用shell/daemon、sudoers変更、lock spoof操作は作らない。
+復旧は保存済み両stock preloader/LK/config/misc/seccfgを照合復元する固定操作。
+この時点ではhelper未実行、端末への新たな書込みもない。

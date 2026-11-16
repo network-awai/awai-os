@@ -1,0 +1,56 @@
+{
+  "source": "https://xdaforums.com/t/unlock-bootloader-motorola-motorola-g15-power-g05-e15-lamu-lamul-lamulg.4780735/",
+  "current_package_url": "https://files.kaerulabs.com/s/eH6jg-MuZsyDor5FAjlpjD5LEqlG4QvR-jT7AoMTDFw/tanuki-lamu-v2.0.3.zip",
+  "current_package_sha256": "d0a89f5f293c0309150af6d2cd56db203d280665cd45c0106c06add737361555",
+  "digest_coverage": "locally computed after HTTPS download from OP-linked source; independent publisher digest unavailable",
+  "files": [
+    {
+      "file": "bin/preloader_raw.img",
+      "old_bytes": 329588,
+      "new_bytes": 329588,
+      "identical": true,
+      "old_sha256": "88cb52fdd7ed47dba224bfb359868901ce6926a52d219c764150d59ff7835b6b",
+      "new_sha256": "88cb52fdd7ed47dba224bfb359868901ce6926a52d219c764150d59ff7835b6b"
+    },
+    {
+      "file": "bin/DA_BR.bin",
+      "old_bytes": 639072,
+      "new_bytes": 639072,
+      "identical": true,
+      "old_sha256": "e564554d2188d8b4b74cbb6e8ad6d5602ab51915f7b0d819ae28b9f846144a93",
+      "new_sha256": "e564554d2188d8b4b74cbb6e8ad6d5602ab51915f7b0d819ae28b9f846144a93"
+    },
+    {
+      "file": "bin/lamu-kaeru.bin",
+      "old_bytes": 1848936,
+      "new_bytes": 1849384,
+      "identical": false,
+      "old_sha256": "39c3fdc3a08c8d7ba1ac6b9ad591d97aa84b062bbc67d52d5d778f119469ca5e",
+      "new_sha256": "24f6170f73672e5795bca1d910b035987cb4cefaf22cd29b8cc2242c7915352c"
+    },
+    {
+      "file": "bin/boot-bootloader.bin",
+      "old_bytes": 20,
+      "new_bytes": 20,
+      "identical": true,
+      "old_sha256": "4d994db70a9b55010b2a611739b79862adf9a6379b2ca4297b5ca0fa14d8c321",
+      "new_sha256": "4d994db70a9b55010b2a611739b79862adf9a6379b2ca4297b5ca0fa14d8c321"
+    },
+    {
+      "file": "bin/antumbra",
+      "old_bytes": 1771632,
+      "new_bytes": 1771632,
+      "identical": false,
+      "old_sha256": "3ca7cbfbcc97721843e1ab9ddccb581161be8c978b6447632ef8fbee8cd009fc",
+      "new_sha256": "8cc454b7304d22a98706909add357c934b6271db9f896d9415d0f643f18f602a"
+    },
+    {
+      "file": "tanuki.sh",
+      "old_bytes": 5423,
+      "new_bytes": 3161,
+      "identical": false,
+      "old_sha256": "0d6457d5e4a107c7b6bf58ccce91bb7938c4a7df37fdba8cb2450db77405d425",
+      "new_sha256": "19233dd67b3dfe1fa7fb7266d8cb0cdd0c4302b05b02b445db7663c700b1c238"
+    }
+  ]
+}
