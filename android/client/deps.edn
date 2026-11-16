@@ -1,0 +1,4 @@
+{:paths ["src" "../contracts/src"]
+ :deps {org.clojure/clojure {:mvn/version "1.12.1"}
+        org.clojure/clojurescript {:mvn/version "1.12.145"}}
+ :aliases {:build {:main-opts ["-m" "cljs.main" "-O" "advanced" "-co" "build.edn" "-c" "itonami.store.bridge"]}}}
