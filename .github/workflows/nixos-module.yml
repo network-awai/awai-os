@@ -8,6 +8,21 @@ permissions:
   contents: read
 
 jobs:
+  itonami-gms-core:
+    # Otehon only. Neither a Google API qualification nor a Native dependency.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: cachix/install-nix-action@b85815f71a6de0ddee80b8a80a98d43f4bcc66c7 # v31
+      - name: Check common Store core and disabled/enabled module
+        run: |
+          nix-build nixos/otehon/itonami-gms/check.nix --no-out-link
+          nix-build nixos/otehon/itonami-gms/module-check.nix --no-out-link
+          package=$(nix-build nixos/otehon/itonami-gms/package.nix --no-out-link)
+          "$package/bin/itonami-gms" contract
   forest-writer-linux:
     # Hosted Otehon integration, independent of Native qualification.
     runs-on: ubuntu-24.04
