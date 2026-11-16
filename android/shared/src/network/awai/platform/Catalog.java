@@ -30,31 +30,58 @@ public final class Catalog {
         if (!"itonami.store.bundled.v1".equals(value.getString("schema")) || value.getLong("revision") < 1
                 || value.getLong("expiresAt") <= now) throw new SecurityException("catalog-expired");
         JSONArray apps = value.getJSONArray("apps");
-        if (apps.length() != 1 || !"network.itonami.yotei".equals(apps.getJSONObject(0).getString("id")))
-            throw new SecurityException("catalog-app");
-        JSONObject app=apps.getJSONObject(0);
-        if(app.getLong("versionCode")<1||app.getDouble("versionCode")!=app.getLong("versionCode"))throw new SecurityException("catalog-version");
+        if (apps.length() < 1) throw new SecurityException("catalog-app");
+        for (int i = 0; i < apps.length(); i++) {
+            JSONObject entry = apps.getJSONObject(i);
+            assetFor(entry.getString("id"));
+            if(entry.getLong("versionCode")<1||entry.getDouble("versionCode")!=entry.getLong("versionCode"))
+                throw new SecurityException("catalog-version");
+        }
         return value;
+    }
+    // Admitted store apps. Unknown ids are refused; per-app asset name, staged
+    // download filename and byte budget are fixed here, never taken from callers.
+    public static String assetFor(String id) throws SecurityException {
+        if ("network.itonami.yotei".equals(id)) return "packages/yotei.apk";
+        if ("network.itonami.app".equals(id)) return "packages/itonami.apk";
+        throw new SecurityException("unknown-app");
+    }
+    public static String onlineFileFor(String id) throws SecurityException {
+        if ("network.itonami.yotei".equals(id)) return "online-yotei.apk";
+        if ("network.itonami.app".equals(id)) return "online-itonami.apk";
+        throw new SecurityException("unknown-app");
+    }
+    public static int maxApkBytes(String id) throws SecurityException {
+        if ("network.itonami.yotei".equals(id)) return 20 * 1024 * 1024;
+        if ("network.itonami.app".equals(id)) return 64 * 1024 * 1024;
+        throw new SecurityException("unknown-app");
     }
     public long valueRevision() throws Exception { return value.getLong("revision"); }
     public String json() { return value.toString(); }
     public JSONObject app(String id) throws Exception {
-        JSONObject app = value.getJSONArray("apps").getJSONObject(0);
-        if (!app.getString("id").equals(id)) throw new SecurityException("unknown-app");
-        return app;
+        assetFor(id);
+        JSONArray apps = value.getJSONArray("apps");
+        for (int i = 0; i < apps.length(); i++) {
+            JSONObject app = apps.getJSONObject(i);
+            if (app.getString("id").equals(id)) return app;
+        }
+        throw new SecurityException("unknown-app");
     }
     public JSONObject artifact(String id) throws Exception {
+        String asset = assetFor(id);
         JSONArray entries = app(id).getJSONArray("artifacts");
         for (int i = 0; i < entries.length(); i++) {
             JSONObject a = entries.getJSONObject(i);
             if ("android".equals(a.getString("platform")) && "android".equals(a.getString("runtime"))
-                    && "apk".equals(a.getString("kind")) && "packages/yotei.apk".equals(a.getString("asset"))) return a;
+                    && "apk".equals(a.getString("kind")) && asset.equals(a.getString("asset"))) return a;
         }
         throw new SecurityException("no-android-artifact");
     }
     public byte[] verifiedApk(Context context, String id) throws Exception {
+        String onlineFile = onlineFileFor(id);
+        int budget = maxApkBytes(id);
         JSONObject app = app(id), a = artifact(id);
-        byte[] bytes = Integrity.read((online ? new FileInputStream(new File(context.getFilesDir(),"online-yotei.apk")) : context.getAssets().open(a.getString("asset"))), 20 * 1024 * 1024);
+        byte[] bytes = Integrity.read((online ? new FileInputStream(new File(context.getFilesDir(),onlineFile)) : context.getAssets().open(a.getString("asset"))), budget);
         if (bytes.length != a.getLong("bytes") || !Integrity.sha256(bytes).equals(a.getString("sha256")))
             throw new SecurityException("artifact-integrity");
         File file = File.createTempFile("awai-verify-", ".apk", context.getCacheDir());

@@ -23,6 +23,13 @@ test('untrusted paths and signer fields are refused by actual browser core',()=>
     assert.equal(d.appState(JSON.stringify(bad),'android','android',null),'unavailable');
   }
 });
+test('multi-app catalog admits a Tauri-sized artifact within the shared ceiling',()=>{
+  const big={...apk,asset:'packages/itonami.apk',bytes:32685869};
+  const second={...app,id:'network.itonami.app',artifacts:[big]};
+  assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,second]}),100),true);
+  const over={...app,artifacts:[{...apk,bytes:64*1024*1024+1}]};
+  assert.equal(d.validCatalog(JSON.stringify({...c,apps:[over]}),100),false);
+});
 test('local event lifecycle is shared and bounded',()=>{
   const e={id:'1',title:'散歩 <img src=x onerror=alert(1)>',at:200};
   const saved=JSON.parse(d.saveEvent('[]',JSON.stringify(e)));
