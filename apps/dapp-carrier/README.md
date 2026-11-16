@@ -1,6 +1,6 @@
 # Awai dapp Tauri 3 carrier (development preview)
 
-One thin Rust/libp2p host and one canonical consent broker are shared by independently identified Android packages. Five profiles target ARM64 phones and x86_64 Android Desktop. All app-origin artifacts are static; the host exposes bounded snapshot operations, never general HTTP, shell or arbitrary filesystem access.
+The snapshot panel shares one thin Rust/libp2p host and a pinned canonical consent broker across independently identified Android packages. Preserved product artifacts retain their own pinned runtime attestations; this does not claim that every existing product operation migrated to the new broker revision. Five profiles target ARM64 phones and x86_64 Android Desktop. All app-origin artifacts are static; the host exposes bounded snapshot operations, never general HTTP, shell or arbitrary filesystem access.
 
 Aozora and Dougaka preserve their pinned existing static interfaces. Ongakuka and Itonami currently package a **P2P connectivity preview**; their creative/agent domain interfaces have not been ported. Yataverse exposes snapshot receiving, pin receipts and queries. These packages are not production store releases. Aozora's production update ID remains `app.aozora`; this fixture uses a separate preview ID and cannot replace the production app.
 
@@ -39,3 +39,9 @@ UI proposal: https://www.figma.com/design/umqCqP5KSjLWh9fhCI1HaN?node-id=236-263
 `node scripts/export.mjs` verifies prepared static bytes, APK identity, signer and both ABIs, then creates a task-local `distribution.json`, five APKs and five static `.dapp.zip` bundles. It performs no upload or installation. Bundles use the explicit `awai.dapp.bundle.v1` carrier schema; they do not claim implementation of the separate native `itonami.dapp.v1` / `ui://` sandbox intake. Snapshot operations in these static previews require the Tauri host; Web transport parity remains open.
 
 `device-pair-test.mjs` exercises two explicitly selected disposable Yataverse APKs through canonical UI choices and an operator-started relay limited to those two peers. A successful local-segment relay test is distinct from WAN NAT hole-punch qualification. Fixture OS permissions and scripted trusted UI clicks are test setup, not evidence of a human consent study.
+
+`device-store-test.mjs` exercises only an explicitly selected disposable Store preview and absent preview app IDs. It walks browser review, independent native confirmation, Android PackageInstaller confirmation and Store launch, then waits for the app-specific WebView and shared peer host. It refuses existing app replacements and retains installation checkpoints when startup diagnostics fail.
+
+The existing Dougaka vendor `PROVENANCE.edn:6` contains a malformed upstream revision (`c29b87e59fdb1b8b3a2ca7295356cd0af1e9`). It is preserved. Carrier static files are checked byte-for-byte against the OS vendor input at `c7f1008cf06f4eacb7817d3602f7a9c0373146c5`; the profile's full upstream revision is a reference, not proof of a reconstructed upstream build. Production provenance qualification remains open.
+
+The owning WNFS CLJC provider currently imports Node crypto/filesystem modules, including prime generation/checking. It cannot simply run inside Android WebView. This carrier transports/restores its opaque encrypted snapshots; browser-provider, key-authority, active-root adoption and concurrent domain-state merge must be integrated in the owning shared implementation, rather than replaced with product-local Rust WNFS semantics.
