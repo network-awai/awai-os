@@ -69,6 +69,9 @@ let
   # The profile stays in the image. The DevTools port is on loopback and is how
   # the boot report reads the page title.
   browser = pkgs.writeShellScript "otehon-browser" ''
+    ${lib.optionalString (cfg.mirrorStartupOutputs && !cfg.headless) ''
+      ${pkgs.python3}/bin/python3 ${./desktop-layout.py} --randr ${lib.getExe pkgs.cosmic-randr}
+    ''}
     exec ${lib.getExe pkgs.chromium} \
       ${if cfg.headless then "--headless=new --disable-gpu --window-size=1280,800" else "--ozone-platform=wayland --kiosk"} \
       --no-first-run \
@@ -90,6 +93,11 @@ in
   imports = [ ./common.nix ./media.nix ./manimani/manimani.nix ./update.nix ./update-network.nix ./k3s/default.nix ];
 
   options.otehon = {
+    mirrorStartupOutputs = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "Mirror enabled outputs before launching the single-window kiosk shell.";
+    };
     relayOrigin = lib.mkOption {
       type = lib.types.str;
       default = "https://relay.awai.network";
