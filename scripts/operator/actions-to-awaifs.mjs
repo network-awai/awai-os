@@ -26,15 +26,19 @@ export async function* split(stream,size=PART){
  for await(const item of stream){const c=Buffer.from(item);let i=0;while(i<c.length){const take=Math.min(c.length-i,size-n);c.copy(b,n,i,i+take);n+=take;i+=take;if(n===size){yield b;b=Buffer.alloc(size);n=0;}}}
  if(n)yield b.subarray(0,n);
 }
-export function readLegacyPart(root,fm,expected){
+export function readLegacyPart(root,fm,expected,onBytes=()=>{}){
  check(fm&&fm['file-size']===expected.bytes&&expected.bytes<=PART&&Array.isArray(fm.entries),'cold file size');
  const whole=crypto.createHash('sha256');let total=0;
  for(const e of fm.entries){
   check(e.offset===total&&Number.isSafeInteger(e.length)&&e.length>0&&e.length<=PART&&Number.isSafeInteger(e.pack)&&e.pack>=0&&Number.isSafeInteger(e['pack-offset'])&&e['pack-offset']>=0&&/^[a-f0-9]{64}$/.test(e.sha),'cold extent contract');
   const fd=fs.openSync(path.join(root,'packs',`pack-${e.pack}.car`),fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW);
-  try{check(fs.fstatSync(fd).isFile()&&e['pack-offset']+e.length<=fs.fstatSync(fd).size,'cold pack extent');const bytes=Buffer.alloc(e.length);check(fs.readSync(fd,bytes,0,e.length,e['pack-offset'])===e.length&&hash(bytes)===e.sha,'cold chunk SHA256');whole.update(bytes);total+=bytes.length;}finally{fs.closeSync(fd);}
+  try{check(fs.fstatSync(fd).isFile()&&e['pack-offset']+e.length<=fs.fstatSync(fd).size,'cold pack extent');const bytes=Buffer.alloc(e.length);check(fs.readSync(fd,bytes,0,e.length,e['pack-offset'])===e.length&&hash(bytes)===e.sha,'cold chunk SHA256');whole.update(bytes);onBytes(bytes);total+=bytes.length;}finally{fs.closeSync(fd);}
  }
  check(total===expected.bytes&&whole.digest('hex')===expected.sha256,'cold part SHA256');return true;
+}
+export async function confirmAbsent(read,wait=pause){
+ for(let i=0;i<10;i++){const r=read();if(r.status!==0&&/HTTP 404/.test(r.stderr))return;await wait(1000);}
+ throw Error('deletion readback unknown');
 }
 export function deletionAllowed(a,s,fresh=new Set()){
  return !!(s&&s.id===a.id&&s.digest===a.digest&&s.sourceRun===a.workflow_run.id&&s.bytes===a.size_in_bytes&&s.sha256===a.digest.slice(7)&&s.receipt?.verified&&fresh.has(s.receipt.name)&&s.parts.length&&s.parts.every(p=>p.verified&&p.snapshot&&fresh.has(p.name)));
@@ -44,7 +48,7 @@ const exec=(bin,args,options={})=>cp.execFileSync(bin,args,{encoding:'utf8',stdi
 const gh=args=>JSON.parse(exec('gh',['api',...args]));
 
 export async function run(config){
- const {work,volume,app,credentialsPlist,maxArtifacts=441,batchBytes=128*1024**2,applyDelete=false}=config;
+ const {work,volume,app,credentialsPlist,maxArtifacts=441,maxArtifactBytes=MAX_ARTIFACT,batchBytes=128*1024**2,applyDelete=false}=config;
  for(const p of [work,volume,app,credentialsPlist])check(path.isAbsolute(p),'explicit absolute paths required');
  check(volume.startsWith(path.join(process.env.HOME,'.awaivol','archives')+path.sep),'dedicated managed archive volume only');
  check(batchBytes>=PART&&batchBytes<=256*1024**2,'batch staging bound');
@@ -67,7 +71,7 @@ export async function run(config){
  const env={...process.env,RCLONE_CONFIG_AWAIARCHIVE_TYPE:'b2',RCLONE_CONFIG_AWAIARCHIVE_ACCOUNT:vars.AWAI_B2_KEY_ID,RCLONE_CONFIG_AWAIARCHIVE_KEY:vars.AWAI_B2_APP_KEY};
  check(vars.AWAI_B2_KEY_ID&&vars.AWAI_B2_APP_KEY&&vars.AWAI_B2_BUCKET_NAME,'existing AwaiFS credentials required');
  const rclone=args=>{try{return exec('rclone',[...args,'--retries','2','--low-level-retries','2','--contimeout','15s','--timeout','180s'],{env,timeout:1800000,maxBuffer:8*1024**2});}catch{throw Error('bounded AwaiFS remote operation refused; no source deletion qualified');}};
- let origin,pending=[],staged=0;const fresh=new Set();
+ let origin,pending=[],staged=0;const fresh=new Set(),coldHashes=new Map();
  async function start(){
   exec(process.execPath,['/opt/homebrew/bin/nbb','-cp',path.join(app,'src'),installed,'init',volume],{cwd:app,timeout:60000});
   const probe=net.createServer();probe.listen(0,'127.0.0.1');await once(probe,'listening');const port=probe.address().port;await new Promise(r=>probe.close(r));
@@ -104,7 +108,12 @@ export async function run(config){
   check(hash(fs.readFileSync(path.join(cold,'manifest.json')))===snapshot,'remote catalog SHA256');
   rclone(['copy',remote+'/packs',path.join(cold,'packs'),'--files-from-raw',list,'--transfers','4','--checkers','4','--no-traverse']);
   for(const name of local){const a=fs.readFileSync(path.join(volume,'packs',name)),b=fs.readFileSync(path.join(cold,'packs',name));check(hash(a)===hash(b),'remote complete Pack SHA256');}
-  for(const p of pending){readLegacyPart(cold,catalog.files[p.name],p);p.verified=true;p.snapshot=snapshot;fresh.add(p.name);}
+  for(const p of pending){
+   const match=p.name.match(/^github-actions\/(\d+)\/part-(\d+)\.bin$/);let sum;
+   if(match){const id=Number(match[1]);if(!coldHashes.has(id))coldHashes.set(id,{next:0,bytes:0,h:crypto.createHash('sha256')});sum=coldHashes.get(id);check(sum.next===Number(match[2]),'cold artifact part order');}
+   readLegacyPart(cold,catalog.files[p.name],p,b=>{if(sum){sum.h.update(b);sum.bytes+=b.length;}});if(sum)sum.next++;
+   p.verified=true;p.snapshot=snapshot;fresh.add(p.name);
+  }
   atomic(saveFile,state);
   // Only this exclusive volume's independently restored immutable Pack cache.
   // The primary volume, its cache, credentials and unrelated WIP are untouched.
@@ -117,14 +126,15 @@ export async function run(config){
  async function deleteQualified(){
   for(const s of Object.values(state.artifacts)){
    const a=s.source;if(s.deleted||!deletionAllowed(a,s,fresh))continue;
+   const sum=coldHashes.get(a.id);check(sum&&sum.next===s.parts.length&&sum.bytes===a.size_in_bytes,'cold complete artifact coverage');sum.sha256??=sum.h.digest('hex');check(sum.sha256===a.digest.slice(7),'cold complete original ZIP SHA256');
    if(!applyDelete){log({event:'deletion-qualified-plan-only',id:a.id});continue;}
    let current;try{current=gh([`repos/${REPO}/actions/artifacts/${a.id}`]);}catch(error){
     if(/HTTP 404/.test(String(error.stderr))){s.deleted=true;s.deletedAt=new Date().toISOString();s.observedAbsent=true;atomic(saveFile,state);log({event:'verified-copy-source-already-absent',id:a.id});continue;}
     throw Error('source metadata readback failed; deletion held');
    }
    check(current.id===a.id&&current.digest===a.digest&&current.workflow_run?.id===a.workflow_run.id,'source identity changed; deletion held');
-   exec('gh',['api','-X','DELETE',`repos/${REPO}/actions/artifacts/${a.id}`]);
-   const result=cp.spawnSync('gh',['api',`repos/${REPO}/actions/artifacts/${a.id}`],{encoding:'utf8'});check(result.status!==0&&/HTTP 404/.test(result.stderr),'deletion readback unknown');
+   s.deleteIntentAt=new Date().toISOString();atomic(saveFile,state);exec('gh',['api','-X','DELETE',`repos/${REPO}/actions/artifacts/${a.id}`]);
+   await confirmAbsent(()=>cp.spawnSync('gh',['api',`repos/${REPO}/actions/artifacts/${a.id}`],{encoding:'utf8'}));
    s.deleted=true;s.deletedAt=new Date().toISOString();atomic(saveFile,state);log({event:'github-artifact-deleted',id:a.id,bytes:a.size_in_bytes,sha256:s.sha256});
   }
  }
@@ -132,8 +142,16 @@ export async function run(config){
   check(gh([`repos/${REPO}`]).private===false,'expected public source repository');
   const inventory=[];for(let page=1;;page++){const x=gh([`repos/${REPO}/actions/artifacts?per_page=100&page=${page}`]);inventory.push(...x.artifacts);if(x.artifacts.length<100)break;}
   for(const a of inventory)admitArtifact(a);atomic(path.join(work,'inventory.json'),inventory);atomic(saveFile,state);
-  await deleteQualified();await start();let completed=0;
-  for(const a of inventory.sort((a,b)=>a.size_in_bytes-b.size_in_bytes)){
+  await start();const present=new Set(inventory.map(a=>a.id));
+  // A previous DELETE may have succeeded before its readback/ledger update.
+  // Reconstruct that whole ZIP and receipt from remote storage before recording
+  // absence; do not trust a saved verification flag or re-delete blindly.
+  for(const s of Object.values(state.artifacts).filter(s=>!s.deleted&&!present.has(s.id))){
+   check(s.receipt?.verified&&s.parts.every(p=>p.verified),'missing source without complete preserved copy');
+   for(const p of [...s.parts,s.receipt]){pending.push(p);staged+=p.bytes;if(staged>=batchBytes)await flush();}await flush();
+  }
+  let completed=0;
+  for(const a of inventory.filter(a=>a.size_in_bytes<=maxArtifactBytes).sort((a,b)=>a.size_in_bytes-b.size_in_bytes)){
    if(completed>=maxArtifacts)break;
    let s=state.artifacts[a.id];if(s?.deleted)continue;
    s??=state.artifacts[a.id]={id:a.id,digest:a.digest,sourceRun:a.workflow_run.id,source:a,parts:[]};

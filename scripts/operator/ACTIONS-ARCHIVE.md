@@ -22,8 +22,9 @@ Every newly stored Pack and the catalog are downloaded to an independent empty
 recovery directory. Complete Pack SHA256, every logical extent's SHA256, coverage,
 and the whole transport part SHA256 must match. The artifact's provenance receipt
 is itself stored and independently read back through the same path. Only then may
-`applyDelete:true` delete the exact, freshly rechecked GitHub artifact ID. A final
-GET must return404. Saved `verified` booleans alone never permit deletion after a
+`applyDelete:true` delete the exact, freshly rechecked GitHub artifact ID. A bounded retry of the final GET must return404 (the API can briefly retain
+a just-deleted record). A missing post-delete ledger entry is independently
+recovered and the complete original ZIP is SHA256-checked before recording absence. Saved `verified` booleans alone never permit deletion after a
 restart: original input binding and remote readback must be repeated.
 
 Only this stopped, exclusively owned volume's independently restored local Pack
@@ -65,7 +66,7 @@ before clearing only its own hold. Keep unique recovery evidence. A missing
 member, corrupted byte, changed source, unsafe redirect or uncertain deletion
 stops the operation; it is never converted to a successful migration.
 
-Initial qualification: five local negative/streaming tests and one real small
+Initial qualification: six local negative/streaming tests and one real small
 artifact copied to the existing AwaiFS B2 backend and recovered from an empty
 cache, with original retained. This does not yet qualify all441 artifacts,
 large images, process-crash resume, hardware power loss, independent-node repair
