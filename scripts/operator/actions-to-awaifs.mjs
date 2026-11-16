@@ -160,6 +160,10 @@ export async function run(config){
   // The primary volume, its cache, credentials and unrelated WIP are untouched.
   for(const name of local)fs.unlinkSync(path.join(volume,'packs',name));
   log({event:'cold-readback-verified',files:pending.length,bytes:staged,coldPackBytes:coldBytes,snapshot,evictedLocalPacks:local.length,recoveryPeer:coldHost||'local'});pending=[];staged=0;
+  // The immutable remote catalog was just read back and hash checked. Keep
+  // its hash/proof, canonical volume manifest and state; release only this
+  // duplicate local snapshot so hundreds of batches cannot fill the disk.
+  fs.unlinkSync(snapshotFile);
   fs.rmSync(cold,{recursive:true});
   if(peerCold)remoteJS(`import fs from'node:fs';fs.rmSync(${JSON.stringify(peerCold)},{recursive:true});`);
   await deleteQualified();
