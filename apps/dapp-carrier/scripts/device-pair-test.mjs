@@ -17,17 +17,19 @@ const [phone,desktop]=browsers.map(b=>b.contexts()[0].pages().find(p=>p.url()===
 const phonePeer=await phone.locator('#awai-local-peer').textContent(),desktopPeer=await desktop.locator('#awai-local-peer').textContent();assert(phonePeer!==desktopPeer);
 const participants=resolve(output,'participants.json');await writeFile(participants,JSON.stringify([phonePeer,desktopPeer]));
 const relay=spawn(resolve(repo,'packages/awai-peer/target/debug/awai-peer'),['relay',output+'/relay','/ip4/0.0.0.0/tcp/40218',participants,'300'],{stdio:['ignore','pipe','pipe']});let relayErrors='';relay.stderr.on('data',d=>relayErrors+=d);let receiving=false;
+async function hideKeyboard(page,serial){const ime=await adb(serial,'shell','dumpsys input_method | grep mInputShown').catch(()=>({stdout:''}));if(ime.stdout.includes('mInputShown=true')){await adb(serial,'shell','input','keyevent','KEYCODE_BACK');await page.waitForFunction(()=>!window.visualViewport?.offsetTop);}}
 async function approve(page,button,expected){await page.locator(button).click();const dialog=page.getByRole('dialog');for(const text of expected)await expect(dialog).toContainText(text);const allow=page.getByRole('button',{name:'Allow once',exact:true});await expect(allow).toBeEnabled();await allow.click();}
 try{
  const ready=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('relay startup timeout '+relayErrors)),30000);createInterface({input:relay.stdout}).once('line',line=>{clearTimeout(timer);try{resolve(JSON.parse(line));}catch(e){reject(e);}});relay.once('exit',code=>{clearTimeout(timer);reject(Error('relay stopped '+code+' '+relayErrors));});});
  const relayPeer=ready.relay.split('/').at(-1);assert(/^12D3KooW/.test(relayPeer));
  await desktop.locator('#awai-snapshot').fill(snapshot);if(!await desktop.locator('#awai-source-peer').isVisible())await desktop.locator('#awai-transfer details summary').click();
- await desktop.locator('#awai-source-peer').fill(phonePeer);await desktop.locator('#awai-listen').fill(`/ip4/${desktopRelayIp}/tcp/40218/p2p/${relayPeer}/p2p-circuit`);await desktop.locator('#awai-read-back').check();
+ await desktop.locator('#awai-source-peer').fill(phonePeer);await desktop.locator('#awai-listen').fill(`/ip4/${desktopRelayIp}/tcp/40218/p2p/${relayPeer}/p2p-circuit`);await hideKeyboard(desktop,desktopSerial);await desktop.locator('#awai-read-back').check();
  await approve(desktop,'button[value=receive]',[snapshot,phonePeer,relayPeer,'"allow-read-back":true']);
  await expect(desktop.locator('#awai-session-status')).toContainText(/受信中|Receiving/,{timeout:65000});receiving=true;
  const service=(await adb(desktopSerial,'shell','dumpsys','activity','services','network.itonami.yataverse.preview')).stdout;assert(service.includes('isForeground=true'));
  await adb(desktopSerial,'shell','input','keyevent','KEYCODE_HOME');
  await phone.locator('#awai-snapshot').fill(snapshot);await phone.locator('#awai-address').fill(`/ip4/${phoneRelayIp}/tcp/40218/p2p/${relayPeer}/p2p-circuit/p2p/${desktopPeer}`);
+ await hideKeyboard(phone,phoneSerial);
  const results={};
  for(const action of ['push','query','pull']){
   await approve(phone,`button[value=${action}]`,[snapshot,desktopPeer,relayPeer]);
