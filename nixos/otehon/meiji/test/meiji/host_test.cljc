@@ -1,7 +1,19 @@
 (ns meiji.host-test
   (:require [clojure.test :refer [deftest is testing]] [meiji.policy :as p]
             [meiji.host :as host] [babashka.fs :as fs] [org.httpkit.server :as server]
-            [cheshire.core :as json] [meiji.kapitsa :as kapitsa] [meiji.transport :as transport]))
+            [cheshire.core :as json] [meiji.kapitsa :as kapitsa] [meiji.transport :as transport]
+            [meiji.fleet-audit :as audit]))
+
+(deftest recovery-is-not-liveness
+  (let [enrollment {:bot-id "bot" :job-id "original" :nodes ["vm-benjamin"]
+                    :grant {:private-payload "must not be published"}}
+        rows (audit/public-inventory {"/enrollment/a" enrollment
+                                      "/enrollment/b" (assoc enrollment :nodes ["host"])} {})]
+    (is (= 1 (count rows)))
+    (is (= {:state "unknown"} (:cursor (first rows))))
+    (is (not (contains? (first rows) :grant)))
+    (is (= "unknown" (:liveness (first (audit/public-inventory
+         {"/enrollment/a" enrollment} {"/cursor/a" {:state "completed" :slot 123}})))))))
 
 (def fixture {:id "meiji-test" :name "Meiji" :backend :qemu :arch :aarch64
               :format :qcow2 :image "/owner/base.qcow2" :sha256 (apply str (repeat 64 "a"))
