@@ -1,0 +1,1 @@
+{"identifier":"yotei-local","description":"Bounded local agenda migration and projection only; no external network, filesystem, installer or shell permissions.","windows":["main"],"permissions":["allow-awai-host-info","allow-awai-legacy-agenda","allow-awai-project-agenda"]}
