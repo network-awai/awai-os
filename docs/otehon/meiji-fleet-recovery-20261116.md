@@ -74,3 +74,30 @@ When the original state is found:
 4. Qualify guest-local scheduler/inference grants, signed Meiji image and
    guest-to-jacob transport before additional Bot cutover. Native UI fixture
    success and historical physics receipts do not satisfy these conditions.
+
+## Owner-selected new WebDAV state root
+
+The owner subsequently chose to create a **new** `.itonami` folder through
+WebDAV. At 07:56 UTC this task created `/.itonami/`, `recovery/`, `runtime/`
+and `receipts/` without replacing existing state. The bootstrap `.cljc` script
+stored public recovery metadata only. No key, credential, transcript or private
+Bot payload was uploaded. Two append-only bootstrap records remain preserved:
+the first write's verification hit a response-body type mismatch, then text
+decoding was corrected and a second immutable record was verified.
+
+The verified record is
+`/.itonami/recovery/awai-2820-a06bd4e9-399f-4f98-b203-319ebaca1f18.json`, SHA-256
+`3d9474aca3e1aaec715547ef624155b7ef6eda20824b32988d95b0fce48d5664`.
+HTTP bytes match the locally prepared record, and the local persistent manifest
+contains both records and all four collections. The daemon reports journal 0,
+namespace `ready`, pending-sync false and last-snapshot `isolated-worker`.
+An independent remote-replica read, process-kill recovery and availability SLO
+were not established. Evidence: `docs/evidence/meiji-state-bootstrap-20261116.json`.
+
+The folder-location question is resolved by this new-state choice. It does
+**not** restore the former execution/admin keys or reconnect existing guests.
+Current local identities and existing guest keys/disks are retained in their
+managed application directories. Production migration remains open on original
+key/config recovery or a reconciled identity/authority recovery, followed by
+guest scheduler and bounded jacob inference qualification. Do not point the
+live scheduler at an empty WebDAV directory or place plaintext keys there.
