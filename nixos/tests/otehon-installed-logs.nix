@@ -25,7 +25,7 @@ in pkgs.testers.runNixOSTest {
     prepare.start()
     prepare.wait_for_unit("multi-user.target")
     prepare.succeed(f"printf 'label: gpt\\nsize=192M, type=L, name=otehon-root\\ntype=L, name=otehon-state\\n' | sfdisk {target}; udevadm settle")
-    prepare.succeed(f"mkfs.ext4 -F {target}-part1; mkdir /mnt/installed; mount {target}-part1 /mnt/installed; mkdir -p /mnt/installed/var/log/journal")
+    prepare.succeed(f"mkfs.ext4 -F {target}-part1; mkdir -p /mnt/installed; mount {target}-part1 /mnt/installed; mkdir -p /mnt/installed/var/log/journal")
     prepare.succeed("systemd-run --wait --unit=greetd /bin/sh -c 'echo AWAI_PREVIOUS_BOOT_COMPOSITOR_FAILURE; exit 1' || true")
     prepare.succeed("journalctl --flush; journalctl --sync; cp -a /var/log/journal/. /mnt/installed/var/log/journal/; umount /mnt/installed; sync")
     before = prepare.succeed(f"sha256sum {target}").split()[0]
@@ -40,7 +40,7 @@ in pkgs.testers.runNixOSTest {
     assert "AWAI_PREVIOUS_BOOT_COMPOSITOR_FAILURE" in journal["text"], result
     assert inspect.succeed(f"sha256sum {target}").split()[0] == before, "offline read modified installed disk"
     # Mounted partitions are refused, even if someone else mounted them read-only.
-    inspect.succeed(f"mkdir /mnt/installed; mount -o ro,noload {target}-part1 /mnt/installed")
+    inspect.succeed(f"mkdir -p /mnt/installed; mount -o ro,noload {target}-part1 /mnt/installed")
     refused = json.loads(inspect.succeed("${reader}"))
     assert not refused["available"] and refused["reason"] == "root-already-mounted", refused
     inspect.succeed("umount /mnt/installed")

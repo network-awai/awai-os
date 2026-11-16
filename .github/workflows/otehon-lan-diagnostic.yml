@@ -31,6 +31,17 @@ concurrency:
   group: otehon-lan-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
+  installed-journal-vm:
+    if: github.event_name != 'workflow_dispatch' || (!inputs.install_candidate && !inputs.recover_candidate)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: cachix/install-nix-action@b85815f71a6de0ddee80b8a80a98d43f4bcc66c7
+      - name: Verify prior boot journal recovery without disk writes
+        run: nix-build nixos/tests/otehon-installed-logs.nix --no-out-link --show-trace
   recover-qualified-candidate:
     if: github.event_name == 'workflow_dispatch' && inputs.recover_candidate
     uses: ./.github/workflows/otehon-lan-recover.yml
@@ -87,8 +98,6 @@ jobs:
           name: awai-lan-physical-candidate-unqualified
           path: .agent-output/lan/candidate/
           compression-level: 0
-      - name: Verify prior boot journal recovery without disk writes
-        run: nix-build nixos/tests/otehon-installed-logs.nix --no-out-link --show-trace
       - name: Boot real image and verify authenticated diagnostics
         shell: bash
         run: |
