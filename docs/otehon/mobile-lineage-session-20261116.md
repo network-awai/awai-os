@@ -190,3 +190,24 @@ GFH FILE_INFO / declared file_len=329588が実長と一致することを確認�
 原本17領域と両stock raw候補を保持。LK書換え・unlock・wipe・OS導入は未実施で、
 新preloaderでの実bootと復旧の実証も未達。次はmiscのbootonce-bootloader指定を
 読み戻し確認し、Junの音量ボタン操作に合わせてDAから再起動する。
+
+## 新preloaderの起動確認失敗と純正復旧への切替
+
+miscは最初から`bootonce-bootloader`を含んでおり、この段階の書込みは不要だった。
+再読取りで期待値を確認した後、認証済みhelper内でJunの音量UP準備の合図を待ち、
+DA rebootを実行した。toolは成功を返したが、Fastbootは検出されず、Junの画面観察も黒いまま。
+USBを抜いてPower+VolumeUpを30秒押す公開手順も、boot menuを表示できなかった。
+したがって新preloaderの実bootは失敗/未確認で、readback一致を起動成功と扱わない。
+原因を現在のfirmware/地域/DRAM/bootloaderのどれかに断定しない。
+LK/Lineage image書込み、unlock/wipeは未実施。
+
+次は、同じ実機から保存した両stock preloader rawと設定3領域を戻し、
+各readbackを照合してから通常bootを試す。原本17領域と不成功ログは保持。
+新しい復旧helperはこの実機のoriginal/patch hash一致を入口条件にし、固定された復旧操作だけを持つ。
+同じ一時認証処理内で、復旧後の終了または純正preloaderを保持する解除設定の限定再試行を選べるようにした。
+任意command/socket serviceや恒久的な管理者認証ポリシーは導入していない。
+後者は純正bootを確認した後にのみ判断し、現時点ではまだ実行しない。
+
+Junの認証回数を減らす要望に対し、正常系は追加osascript呼出し0を目標としたが、
+今回はboot失敗の復旧で新たな管理者処理が必要となった。実際のOS認証prompt数/待ち時間はunknown。
+復旧/限定再試行を1つの期限付きhelperへまとめ、実機boot/データ復元結果と認証launch数を分けて記録する。
