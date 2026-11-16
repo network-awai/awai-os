@@ -31,6 +31,11 @@ export async function* split(stream,size=PART){
  for await(const item of stream){const c=Buffer.from(item);let i=0;while(i<c.length){const take=Math.min(c.length-i,size-n);c.copy(b,n,i,i+take);n+=take;i+=take;if(n===size){yield b;b=Buffer.alloc(size);n=0;}}}
  if(n)yield b.subarray(0,n);
 }
+export async function verifyColdTranscript(stream,parts,onBytes=()=>{},onComplete=()=>{}){
+ let i=0,seen=0,h=crypto.createHash('sha256');
+ for await(const item of stream){let offset=0;while(offset<item.length){const p=parts[i];check(p&&p.bytes>0&&p.bytes<=PART,'unexpected cold proof bytes');const n=Math.min(p.bytes-seen,item.length-offset),b=item.subarray(offset,offset+n);h.update(b);onBytes(p,b);offset+=n;seen+=n;if(seen===p.bytes){check(h.digest('hex')===p.sha256,'cold transcript SHA256');onComplete(p);i++;seen=0;h=crypto.createHash('sha256');}}}
+ check(i===parts.length&&seen===0,'cold transcript truncated');
+}
 export function readLegacyPart(root,fm,expected,onBytes=()=>{}){
  check(fm&&fm['file-size']===expected.bytes&&expected.bytes<=PART&&Array.isArray(fm.entries),'cold file size');
  const whole=crypto.createHash('sha256');let total=0;
@@ -53,7 +58,8 @@ const exec=(bin,args,options={})=>cp.execFileSync(bin,args,{encoding:'utf8',stdi
 const gh=args=>JSON.parse(exec('gh',['api',...args]));
 
 export async function run(config){
- const {work,volume,app,credentialsPlist,maxArtifacts=441,maxArtifactBytes=MAX_ARTIFACT,batchBytes=128*1024**2,applyDelete=false}=config;
+ const {work,volume,app,credentialsPlist,maxArtifacts=441,maxArtifactBytes=MAX_ARTIFACT,batchBytes=128*1024**2,applyDelete=false,coldHost}=config;
+ check(!coldHost||coldHost==='jacob','only the reviewed Tailscale peer is admitted');
  for(const p of [work,volume,app,credentialsPlist])check(path.isAbsolute(p),'explicit absolute paths required');
  check(volume===path.join(process.env.HOME,'.awaivol','archives','awai-os-actions-20261116'),'fixed dedicated archive namespace only');
  check(batchBytes>=PART&&batchBytes<=1024**3,'batch staging bound');
@@ -76,9 +82,19 @@ export async function run(config){
  check(!prefix.split('/').some(x=>!x||x==='.'||x==='..'),'remote namespace');
  const remote=`awaiarchive:${vars.AWAI_B2_BUCKET_NAME}/${prefix}`;
  const env={...process.env,RCLONE_CONFIG_AWAIARCHIVE_TYPE:'b2',RCLONE_CONFIG_AWAIARCHIVE_ACCOUNT:vars.AWAI_B2_KEY_ID,RCLONE_CONFIG_AWAIARCHIVE_KEY:vars.AWAI_B2_APP_KEY};
+ if(coldHost)Object.assign(env,{RCLONE_CONFIG_COLDPROOF_TYPE:'sftp',RCLONE_CONFIG_COLDPROOF_SSH:'ssh -l node -o BatchMode=yes -o StrictHostKeyChecking=yes jacob',RCLONE_CONFIG_COLDPROOF_DISABLE_HASHCHECK:'true'});
  check(vars.AWAI_B2_KEY_ID&&vars.AWAI_B2_APP_KEY&&vars.AWAI_B2_BUCKET_NAME,'existing AwaiFS credentials required');
  const rclone=args=>{try{return exec('rclone',[...args,'--retries','2','--low-level-retries','2','--contimeout','15s','--timeout','180s'],{env,timeout:1800000,maxBuffer:8*1024**2});}catch{throw Error('bounded AwaiFS remote operation refused; no source deletion qualified');}};
  let origin,pending=[],staged=0;const fresh=new Set(),coldHashes=new Map();
+ const sshArgs=['-l','node','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes','jacob'];
+ const remoteJS=code=>exec('ssh',[...sshArgs,'/opt/homebrew/bin/node --input-type=module'],{input:code,timeout:60000});
+ let remoteTools;
+ if(coldHost){
+  const files=['actions-to-awaifs.mjs','remote-cold-proof.mjs'].map(name=>({name,bytes:fs.readFileSync(new URL(name,import.meta.url))}));const id=hash(Buffer.concat(files.map(x=>x.bytes)));remoteTools=`/Users/node/github/workspaces/codex/awai-2987/.agent-output/archive-tools/${id}`;
+  remoteJS(`import fs from'node:fs';fs.mkdirSync(${JSON.stringify(remoteTools)},{recursive:true,mode:0o700});`);
+  for(const f of files)exec('ssh',[...sshArgs,`cat > ${remoteTools}/${f.name}`],{input:f.bytes});
+  const actual=JSON.parse(remoteJS(`import fs from'node:fs';import crypto from'node:crypto';console.log(JSON.stringify(${JSON.stringify(files.map(x=>x.name))}.map(n=>crypto.createHash('sha256').update(fs.readFileSync(${JSON.stringify(remoteTools)}+'/'+n)).digest('hex'))));`));check(actual.every((h,i)=>h===hash(files[i].bytes)),'peer verification source changed');
+ }
  async function start(){
   check(hash(fs.readFileSync(installed))===state.pin.sha256&&installedFingerprint(app)===runtimeFingerprint,'installed AwaiFS changed; qualification held');
   exec(process.execPath,['/opt/homebrew/bin/nbb','-cp',path.join(app,'src'),installed,'init',volume],{cwd:app,timeout:60000});
@@ -107,20 +123,32 @@ export async function run(config){
   const indices=new Set(local.map(x=>Number(x.match(/\d+/)[0])));for(const p of pending)for(const e of catalog.files[p.name].entries)indices.add(e.pack);
   const descriptors=new Map(catalog.packs.map(p=>[p['pack-index'],p.bytes]));
   let coldBytes=0;for(const i of indices){check(Number.isSafeInteger(i)&&i>=0&&Number.isSafeInteger(descriptors.get(i)),'unknown cold Pack');coldBytes+=descriptors.get(i);}check(coldBytes<=MAX_COLD,'cold recovery staging bound');
-  const space=fs.statfsSync(work);check(space.bavail*space.bsize>coldBytes+4*1024**3,'recovery disk reserve');
+  let peerCold;
+  if(coldHost){peerCold='/Users/node/github/workspaces/codex/awai-2987/.agent-output/archive-cold/cold-'+crypto.randomUUID();const space=JSON.parse(remoteJS(`import fs from'node:fs';fs.mkdirSync(${JSON.stringify(peerCold+'/packs')},{recursive:true,mode:0o700});const s=fs.statfsSync(${JSON.stringify(peerCold)});console.log(JSON.stringify({free:s.bavail*s.bsize}));`));check(space.free>coldBytes+4*1024**3,'peer recovery disk reserve');}
+  else{const space=fs.statfsSync(work);check(space.bavail*space.bsize>coldBytes+4*1024**3,'recovery disk reserve');}
   const cold=fs.mkdtempSync(path.join(work,'cold-'));fs.mkdirSync(path.join(cold,'packs'));
   const list=path.join(cold,'selected-packs.txt');fs.writeFileSync(list,[...indices].map(i=>`pack-${i}.car`).join('\n')+'\n',{mode:0o600});
   rclone(['copy',path.join(volume,'packs'),remote+'/packs','--checksum','--immutable','--transfers','4','--checkers','4']);
   rclone(['copyto',snapshotFile,remote+`/manifests/sha256-${snapshot}.json`,'--checksum','--immutable']);
-  rclone(['copyto',remote+`/manifests/sha256-${snapshot}.json`,path.join(cold,'manifest.json')]);
-  check(hash(fs.readFileSync(path.join(cold,'manifest.json')))===snapshot,'remote catalog SHA256');
-  rclone(['copy',remote+'/packs',path.join(cold,'packs'),'--files-from-raw',list,'--transfers','4','--checkers','4','--no-traverse']);
-  for(const name of local){const a=fs.readFileSync(path.join(volume,'packs',name)),b=fs.readFileSync(path.join(cold,'packs',name));check(hash(a)===hash(b),'remote complete Pack SHA256');}
-  for(const p of pending){
+  const coldTarget=peerCold?'coldproof:'+peerCold:cold;
+  rclone(['copyto',remote+`/manifests/sha256-${snapshot}.json`,coldTarget+'/manifest.json']);
+  rclone(['copy',remote+'/packs',coldTarget+'/packs','--files-from-raw',list,'--transfers','4','--checkers','4','--no-traverse']);
+  function context(p){
    const match=p.name.match(/^github-actions\/(\d+)\/part-(\d+)\.bin$/);let sum;
    if(match){const id=Number(match[1]);if(!coldHashes.has(id))coldHashes.set(id,{next:0,bytes:0,h:crypto.createHash('sha256')});sum=coldHashes.get(id);check(sum.next===Number(match[2]),'cold artifact part order');}
-   readLegacyPart(cold,catalog.files[p.name],p,b=>{if(sum){sum.h.update(b);sum.bytes+=b.length;}});if(sum)sum.next++;
-   p.verified=true;p.snapshot=snapshot;fresh.add(p.name);
+   return sum;
+  }
+  function finish(p,sum){if(sum)sum.next++;p.verified=true;p.snapshot=snapshot;fresh.add(p.name);}
+  if(peerCold){
+   const localPacks=local.map(name=>{const b=fs.readFileSync(path.join(volume,'packs',name));return{name,bytes:b.length,sha256:hash(b)};});
+   const request={snapshot,localPacks,parts:pending.map(({name,bytes,sha256})=>({name,bytes,sha256}))};remoteJS(`import fs from'node:fs';fs.writeFileSync(${JSON.stringify(peerCold+'/request.json')},${JSON.stringify(JSON.stringify(request))},{mode:0o600});`);
+   const proc=cp.spawn('ssh',[...sshArgs,`/opt/homebrew/bin/node ${remoteTools}/remote-cold-proof.mjs ${peerCold}`],{stdio:['ignore','pipe','pipe']});let stderr='';proc.stderr.on('data',b=>{stderr+=b;if(stderr.length>1024**2)proc.kill();});const done=new Promise((resolve,reject)=>{proc.once('error',reject);proc.once('close',code=>code===0?resolve():reject(Error('peer cold proof failed')));});done.catch(()=>{});let activeName,active;
+   try{await verifyColdTranscript(proc.stdout,pending,(p,b)=>{if(activeName!==p.name){activeName=p.name;active=context(p);}if(active){active.h.update(b);active.bytes+=b.length;}},p=>finish(p,active));await done;}catch(e){proc.kill();await done.catch(()=>{});throw e;}
+   const report=JSON.parse(stderr.trim().split('\n').at(-1));check(report.verified===true&&report.snapshot===snapshot,'peer proof receipt');
+  }else{
+   check(hash(fs.readFileSync(path.join(cold,'manifest.json')))===snapshot,'remote catalog SHA256');
+   for(const name of local){const a=fs.readFileSync(path.join(volume,'packs',name)),b=fs.readFileSync(path.join(cold,'packs',name));check(hash(a)===hash(b),'remote complete Pack SHA256');}
+   for(const p of pending){const sum=context(p);readLegacyPart(cold,catalog.files[p.name],p,b=>{if(sum){sum.h.update(b);sum.bytes+=b.length;}});finish(p,sum);}
   }
   atomic(saveFile,state);
   if(Object.values(state.artifacts).some(s=>!s.deleted&&deletionAllowed(s.source,s,fresh))){
@@ -131,8 +159,13 @@ export async function run(config){
   // Only this exclusive volume's independently restored immutable Pack cache.
   // The primary volume, its cache, credentials and unrelated WIP are untouched.
   for(const name of local)fs.unlinkSync(path.join(volume,'packs',name));
-  log({event:'cold-readback-verified',files:pending.length,bytes:staged,coldPackBytes:coldBytes,snapshot,evictedLocalPacks:local.length});pending=[];staged=0;
+  log({event:'cold-readback-verified',files:pending.length,bytes:staged,coldPackBytes:coldBytes,snapshot,evictedLocalPacks:local.length,recoveryPeer:coldHost||'local'});pending=[];staged=0;
+  // The immutable remote catalog was just read back and hash checked. Keep
+  // its hash/proof, canonical volume manifest and state; release only this
+  // duplicate local snapshot so hundreds of batches cannot fill the disk.
+  fs.unlinkSync(snapshotFile);
   fs.rmSync(cold,{recursive:true});
+  if(peerCold)remoteJS(`import fs from'node:fs';fs.rmSync(${JSON.stringify(peerCold)},{recursive:true});`);
   await deleteQualified();
   await start();
  }
@@ -159,9 +192,11 @@ export async function run(config){
   // A previous DELETE may have succeeded before its readback/ledger update.
   // Reconstruct that whole ZIP and receipt from remote storage before recording
   // absence; do not trust a saved verification flag or re-delete blindly.
-  for(const s of Object.values(state.artifacts).filter(s=>!s.deleted&&!present.has(s.id))){
-   check(s.receipt?.verified&&s.parts.every(p=>p.verified),'missing source without complete preserved copy');
-   for(const p of [...s.parts,s.receipt]){pending.push(p);staged+=p.bytes;if(staged>=batchBytes)await flush();}await flush();
+  for(const s of Object.values(state.artifacts).filter(s=>!s.deleted)){
+   if(!present.has(s.id))check(s.receipt?.verified&&s.parts.every(p=>p.verified),'missing source without complete preserved copy');
+   // Drain previously staged data before accepting new source bytes. This also
+   // makes a copied-but-not-yet-verified prefix readable after cache removal.
+   for(const p of [...s.parts,...(s.receipt?[s.receipt]:[])]){pending.push(p);staged+=p.bytes;if(staged>=batchBytes)await flush();}await flush();
   }
   let completed=0;
   for(const a of inventory.filter(a=>a.size_in_bytes<=maxArtifactBytes).sort((a,b)=>a.size_in_bytes-b.size_in_bytes)){
@@ -181,7 +216,7 @@ export async function run(config){
     if(!p.verified)await put(name,b);
     // Saved booleans do not authorize deletion after a restart. Re-download the
     // source, rebind every part, and require fresh independent remote readback.
-    if(!pending.includes(p)){pending.push(p);staged+=b.length;}index++;atomic(saveFile,state);if(staged>=batchBytes)await flush();
+    if(!fresh.has(p.name)&&!pending.includes(p)){pending.push(p);staged+=b.length;}index++;atomic(saveFile,state);if(staged>=batchBytes)await flush();
    }
    check(bytes===a.size_in_bytes&&whole.digest('hex')===a.digest.slice(7)&&s.parts.length===index,'original archive bytes/SHA256 differ');s.bytes=bytes;s.sha256=a.digest.slice(7);
    const receipt={schema:'awai.operator.github-artifact.v1',repo:REPO,source:a,bytes,sha256:s.sha256,parts:s.parts.map(({name,bytes,sha256})=>({name,bytes,sha256})),storage:'installed legacy AwaiFS; bounded raw-Pack operator archive; not CARv2/WNFS/Native qualification',pin:state.pin};

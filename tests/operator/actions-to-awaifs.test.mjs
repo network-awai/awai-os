@@ -3,12 +3,20 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import {admitArtifact,admitRedirect,split,readLegacyPart,deletionAllowed,confirmAbsent,installedFingerprint,PART} from '../../scripts/operator/actions-to-awaifs.mjs';
+import {admitArtifact,admitRedirect,split,readLegacyPart,deletionAllowed,confirmAbsent,installedFingerprint,verifyColdTranscript,PART} from '../../scripts/operator/actions-to-awaifs.mjs';
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
 const a={id:10,digest:'sha256:'+'a'.repeat(64),size_in_bytes:8,expired:false,workflow_run:{id:9}};
 test('admission rejects unknown digest, expired archive, changed size and unbound run',()=>{
  assert.equal(admitArtifact(a),a);
  for(const p of [{digest:null},{expired:true},{size_in_bytes:33*1024**3},{workflow_run:null},{id:-1}])assert.throws(()=>admitArtifact({...a,...p}));
+});
+test('a peer proof byte stream must cover exactly the ordered parts, never only a peer success flag',async()=>{
+ const a=Buffer.from('first'),b=Buffer.from('second'),parts=[{bytes:a.length,sha256:sha(a)},{bytes:b.length,sha256:sha(b)}],bytes=Buffer.concat([a,b]);
+ async function* feed(buf){yield buf.subarray(0,2);yield buf.subarray(2,8);yield buf.subarray(8);}
+ await verifyColdTranscript(feed(bytes),parts);
+ await assert.rejects(()=>verifyColdTranscript(feed(bytes.subarray(0,bytes.length-1)),parts));
+ await assert.rejects(()=>verifyColdTranscript(feed(Buffer.concat([bytes,Buffer.from('extra')])),parts));
+ const wrong=Buffer.from(bytes);wrong[3]^=1;await assert.rejects(()=>verifyColdTranscript(feed(wrong),parts));
 });
 test('eventually consistent source deletion is retried, an unknown outcome never becomes success',async()=>{
  let calls=0;await confirmAbsent(()=>++calls<3?{status:0,stderr:''}:{status:1,stderr:'HTTP 404'},async()=>{});assert.equal(calls,3);

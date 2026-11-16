@@ -5,7 +5,8 @@ const config=JSON.parse(fs.readFileSync(process.argv[2]));
 for(const p of [config.work,config.credentialsPlist])if(!path.isAbsolute(p))throw Error('explicit operator paths required');
 const events=fs.readFileSync(path.join(config.work,'events.jsonl'),'utf8').trim().split('\n').map(JSON.parse);
 const proof=events.filter(x=>x.event==='cold-readback-verified').at(-1);if(!/^[a-f0-9]{64}$/.test(proof?.snapshot))throw Error('no verified checkpoint');
-const bytes=fs.readFileSync(path.join(config.work,`catalog-${proof.snapshot}.json`));if(hash(bytes)!==proof.snapshot)throw Error('checkpoint changed');
+// The successful ledger pins the independently verified remote snapshot; its
+// duplicate local cache may already have been released by the migration.
 const root={schema:'awai.operator.archive-root.v1',repo:REPO,catalog:proof.snapshot,profile:'installed-legacy-raw-pack',publishedAt:new Date().toISOString()};
 const cold=fs.mkdtempSync(path.join(config.work,'root-proof-')),file=path.join(cold,'root.json');fs.writeFileSync(file,JSON.stringify(root),{mode:0o600});
 const store=offsite(config.credentialsPlist);store.pull(`manifests/sha256-${proof.snapshot}.json`,path.join(cold,'catalog.json'));if(hash(fs.readFileSync(path.join(cold,'catalog.json')))!==proof.snapshot)throw Error('remote checkpoint differs');
