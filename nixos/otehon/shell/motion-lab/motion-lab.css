@@ -1,0 +1,28 @@
+:root { font-family:"Noto Sans JP","Noto Sans CJK JP",sans-serif; color:#182332; background:#f8f7fc; }
+body { margin:0; background:linear-gradient(130deg in oklab,#edf1f8aa,#fff0da66,#faebee88),url(awai-atmosphere.png) center/cover fixed; }
+main { max-width:1280px; margin:auto; padding:64px clamp(20px,5vw,64px); }
+.intro { max-width:720px; margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:.18em; color:#485c74; }
+h1 { font-weight:400; font-size:clamp(36px,5vw,64px); line-height:1.35; margin:20px 0; letter-spacing:-.04em; }
+.intro p { line-height:1.8; color:#485c74; }
+button { font:inherit; cursor:pointer; border:0; border-radius:999px; padding:14px 28px; background:#1e50a2; color:white; min-height:48px; }
+button:focus-visible { outline:3px solid #1e50a2; outline-offset:5px; }
+.note { font-size:12px; margin-top:22px; }
+#patterns { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr)); gap:28px; }
+.motion-card { background:#ffffffdf; border:1px solid #ffffff; border-radius:28px; overflow:hidden; box-shadow:0 12px 40px #2748790a; }
+.motion-card header { padding:28px 28px 20px; }
+h2 { font-size:24px; font-weight:500; margin:12px 0; }
+.motion-card header p { line-height:1.7; color:#485c74; font-size:14px; margin:0; }
+.stage { position:relative; height:280px; isolation:isolate; content-visibility:auto; contain-intrinsic-size:auto 280px; background:#14110f; }
+.pattern-focus .stage, .pattern-transfer .stage { background:#fff; }
+.pattern-focus .demo-action, .pattern-transfer .demo-action { color:#14110f; background:#1e50a20a; border-color:#1e50a255; }
+.pattern-focus .stage-note, .pattern-transfer .stage-note { color:#14110f99; }
+canvas { position:absolute; width:100%; height:100%; pointer-events:none; }
+.demo-action { position:absolute; left:50%; top:55%; transform:translate(-50%,-50%); min-width:160px; padding:12px 28px; background:#ffffff0a; border:1px solid #ffffff55; color:#fff; }
+.demo-action:focus-visible { outline-color:#fff; }
+.pattern-focus .demo-action:focus-visible, .pattern-transfer .demo-action:focus-visible { outline-color:#1e50a2; }
+.stage-note { position:absolute; bottom:22px; width:100%; text-align:center; color:#ffffffaa; font-size:11px; letter-spacing:.12em; pointer-events:none; }
+.demo-status { margin:0; padding:18px 28px; color:#485c74; font-size:12px; }
+footer { text-align:center; color:#485c74; padding:56px 0 8px; font-size:13px; }
+@media (prefers-reduced-motion:no-preference) { button { transition:background-color 120ms ease-out; } }
+@media (forced-colors:active) { canvas { display:none; } .demo-action { border:1px solid ButtonText; } }

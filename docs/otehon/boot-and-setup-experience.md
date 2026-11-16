@@ -89,3 +89,42 @@ bundled as assets/awai-atmosphere.png. Tokens and the shared Figma paint style
 define the atmosphere. The foreground feather affects only the original
 asset's outer 12% backdrop, leaving the mark itself intact. Avoid animated
 background filters or persistent decorative loops.
+
+## Particle interaction vocabulary — five contextual patterns
+
+[Editable Figma studies](https://www.figma.com/design/umqCqP5KSjLWh9fhCI1HaN?node-id=158-74).
+**Deferred / not adopted by owner on 2026-11-16 (AWAI-2969).**
+The five studies are not sufficiently polished. All production setup links
+are removed. Resume refinement only after a new owner request.
+The preview is generated only with `OTEHON_MOTION_LAB=1`; a normal build
+removes stale lab output before packaging. Its path is `/motion-lab/`; it is a design lab, not a setup
+preference picker. No remote operations are declared or performed.
+
+| Context | Pattern | Maximum timeline |
+| --- | --- | --- |
+| Boot / initial action | Assemble a cloud into a button boundary | 900 ms |
+| Focus / selection | Gather the surrounding points around the target | 420 ms |
+| Button response | Contract into a short confirmation gesture | 560 ms |
+| Local move / save visualization | Preserve particles while moving to a destination | 800 ms |
+| Open an app / panel | Expand a small volume into a surface | 760 ms |
+
+Particles use **only** shiro `#ffffff`, ao `#1e50a2`, aka `#bc002d`, kuro
+`#14110f` and alpha. No orange or extra neon palette. Density, size and alpha
+express depth. Light/dark stages demonstrate the same palette, not a theme
+choice. Reference images inform movement/volume only; their scientific claims
+and third-party UI are not part of the specification.
+
+The browser preview shares a deterministic point/endpoint model with the Figma
+studies. Figma uses 96 editable points per pattern; browser rendering uses 240
+per canvas with a hard 320 limit and capped device pixel ratio. It is a finite
+Canvas2D morph, not a 3D physics engine or persistent particle background.
+Figma's editable timeline samples start/mid/end and loops in its editor; the
+browser uses continuous interpolation and stops at the endpoint. Do not claim
+pixel-identical intermediate frames. Review the actual preview for motion.
+
+Semantic HTML buttons and status text are independent of the decorative,
+aria-hidden canvas. Activation is immediate. Reduced motion shows the resting
+state without scheduling animation. Hidden/offscreen work is canceled through
+visibility/content-visibility, with an IntersectionObserver fallback. Dispose
+observers, media listeners and frame callbacks on teardown. There is no fake
+storage/identity success receipt: every status in this lab is explicitly a demo.

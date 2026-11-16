@@ -6,7 +6,7 @@
 // through the shared runtime's own derivation.
 import { execFileSync } from "node:child_process";
 import { build } from "esbuild";
-import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, writeFile, rm } from "node:fs/promises";
 import { clientRuntimeConnectSrc } from "./vendor/kotoba-client-runtime.js";
 
 // The ClojureScript build reads the broker runtime from inside src/.
@@ -78,6 +78,17 @@ await page({
   operations: phoneOperations(relayOrigin),
   appOrigins: ["https://awai.network"],
 });
+
+// Deferred design study (owner 2026-11-16): never part of the default OS image.
+if (process.env.OTEHON_MOTION_LAB === "1") {
+  await page({ html: "motion-lab/index.html", outdir: "dist/motion-lab", operations: [], appOrigins: [] });
+  await copyFile("motion-lab/motion-lab.css", "dist/motion-lab/assets/motion-lab.css");
+  await build({ entryPoints: ["src/motion-lab.js"], bundle: true, format: "esm", platform: "browser",
+    outfile: "dist/motion-lab/assets/motion-lab.js", minify: true });
+} else {
+  // An earlier opt-in local build must not leak into a later normal package.
+  await rm("dist/motion-lab", { recursive: true, force: true });
+}
 
 // Dougaka Studio: the vendored static bundle re-laid for file://
 // (bundled host, inlined scittle, file: CSP). The page carries its own

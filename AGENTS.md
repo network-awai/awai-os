@@ -13,6 +13,15 @@ Follow the workspace-level AGENTS.md architecture and Linear tracking rules.
 - Share the logo's atmosphere across entry backgrounds, surfaces and emphasis:
   pale blue, lavender, warm light and restrained red; avoid a boxed logo on an
   unrelated canvas. Reuse shared tokens and components in code and Figma.
+- Particle motion uses only shiro #ffffff, ao #1e50a2, aka #bc002d and kuro
+  #14110f with alpha. Express depth through density, size and transparency,
+  not extra orange/neon hues. Assemble, focus, confirm, transfer and open are
+  contextual product motions, not five user-selectable modes. Keep them finite,
+  semantic controls immediately usable, and reduced-motion static.
+  The current five particle studies are DEFERRED / NOT ADOPTED by the owner
+  (2026-11-16): preserve them as design references, do not connect them to the
+  default setup or ship the motion lab in the OS image. Resume only on a new
+  owner request. Standard non-particle entry UX is a separate review unit.
 - Setup collects only what is necessary to proceed. Detect language and an
   existing network when possible. Show choices when action is actually needed,
   preserve consent for external operations, and never infer encryption/recovery
