@@ -368,3 +368,26 @@ preflight不一致時にも、限定認証枠からfixed normal-rebootかfinish�
 root汎用コマンドの受入れはない。Python構文/zsh構文は確認済み、r2はまだ未実行。
 復旧が必要ならFRPは初回原本ではなくtrial直前valid snapshotを用いる。
 新たな端末書込みはこの単位ではない。start revision=a0f8e89、同じAWAI-2967/chat binding。
+
+## boot完了値の確定とoem_mfdの動的差分
+
+boot完了ADBでVVTAS35.51-153-3、2026-06-05 patch、bootloader0x0614、slot_a、
+locked1/green/OEM0/facmode1を確認。初回観測のVVTA35.51-153/April patch/slot_bと区別する。
+bootctlは存在せず、PDB内部詳細は権限拒否。これらを成功した読取りとして扱わない。
+
+r2は最初のoem_mfd照合で停止し、新規書込みはなし。直近読取りは旧patchに対して
+39bytes差でoffset36961〜37198の限られた範囲。factory byte4096は1のまま。
+この領域の意味/変化原因は未確定。旧原本全体を書き戻すと現在metadataまで失うため、
+動的領域は保存して、当方が変更したfactoryの1byteだけを戻す方針へ修正する。
+認証済みr2のfixed normal-rebootを選び、コマンド完了・helper終了を確認。
+ADB復帰は60秒で未確認、通常表示の再確認が次の実機操作。
+
+r3は変更対象9領域を先に全読取りし、private manifestと非機密の判定summaryを保存して
+fixed review gateで待つ。読取り途中で動的hash差だけを理由に残りの観測を失わない。
+個体照合は保存済みproinfo原本/既知patchとの全byte一致を必須とし、両preloader/LKと
+seccfgの原本一致もstage条件に維持する。FRPはchecksum有効/OEM0を必須にして維持。
+oem_mfd/proinfoはfresh snapshotから4096/552の既知変更byteだけ0へ戻し、
+その他の新metadataは全byte保存。miscもfresh値を保ちboot request prefixだけ指定する。
+全入力のhashはreview前にmemoryへ固定し、stage直前に再検証する。
+review結果に基づくcurrent pair試行、normal-reboot、finishと、試行後stock復旧だけを
+受け付ける期限付き固定controller。r3のPython/zsh構文チェック済み、まだ未実行。
