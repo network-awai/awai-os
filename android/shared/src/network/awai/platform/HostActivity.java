@@ -79,7 +79,7 @@ public abstract class HostActivity extends Activity {
                 String file = path.substring(6);
                 if (!assets.contains(file)) return denied();
                 try {
-                    String mime=file.endsWith(".html")?"text/html":file.endsWith(".js")?"text/javascript":file.endsWith(".css")?"text/css":file.endsWith(".svg")?"image/svg+xml":"image/png";
+                    String mime=file.endsWith(".html")?"text/html":file.endsWith(".js")?"text/javascript":file.endsWith(".css")?"text/css":file.endsWith(".svg")?"image/svg+xml":file.endsWith(".woff2")?"font/woff2":"image/png";
                     return new WebResourceResponse(mime,"UTF-8",200,"OK",Collections.singletonMap("Cache-Control","no-store"),getAssets().open(file));
                 } catch (IOException e) { return denied(); }
             }
@@ -116,6 +116,30 @@ public abstract class HostActivity extends Activity {
         }catch(Exception e){message("このアプリは起動できません。");}
     }
     public final class Bridge {
+        @JavascriptInterface public String setupSnapshot(){
+            if(!"home".equals(mode()))return "null";
+            try{return Class.forName("network.awai.home.SetupPlatform").getMethod("snapshot",android.content.Context.class).invoke(null,HostActivity.this).toString();}
+            catch(Exception unavailable){return "null";}
+        }
+        @JavascriptInterface public boolean setupTransition(String action,int expected){
+            if(!"home".equals(mode()))return false;
+            try{return (Boolean)Class.forName("network.awai.home.SetupPlatform").getMethod("transition",android.content.Context.class,String.class,int.class).invoke(null,HostActivity.this,action,expected);}
+            catch(Exception unavailable){return false;}
+        }
+        @JavascriptInterface public void setupSettings(String kind){
+            if(!"home".equals(mode()))return;
+            runOnUiThread(()->{
+                String action="language".equals(kind)?Settings.ACTION_LOCALE_SETTINGS:
+                    "network".equals(kind)?Settings.ACTION_WIRELESS_SETTINGS:
+                    "wifi".equals(kind)?Settings.ACTION_WIFI_SETTINGS:
+                    "tether".equals(kind)?Settings.ACTION_WIRELESS_SETTINGS:
+                    "datetime".equals(kind)?Settings.ACTION_DATE_SETTINGS:
+                    "accessibility".equals(kind)?Settings.ACTION_ACCESSIBILITY_SETTINGS:
+                    "lock".equals(kind)?android.app.admin.DevicePolicyManager.ACTION_SET_NEW_PASSWORD:null;
+                if(action==null)return;
+                try{startActivity(new Intent(action));}catch(ActivityNotFoundException unavailable){message("対応する Android 設定が見つかりません。");}
+            });
+        }
         @JavascriptInterface public String snapshot(){try{
             JSONObject o=new JSONObject();o.put("mode",mode());o.put("platform","android");o.put("runtime","android");o.put("apps","home".equals(mode())?launchable():new JSONArray());
             JSONObject installed=new JSONObject();try{installed.put("network.itonami.yotei",getPackageManager().getPackageInfo("network.itonami.yotei",0).getLongVersionCode());}catch(PackageManager.NameNotFoundException absent){}

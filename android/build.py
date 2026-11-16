@@ -14,7 +14,7 @@ def manifest(pkg, activity, version, kind, online=False):
     extra = ''
     home = ''
     if kind == 'home':
-        perms = '<uses-permission android:name="network.awai.permission.READ_AGENDA"/><uses-permission android:name="android.permission.SET_WALLPAPER"/>'
+        perms = '<uses-permission android:name="network.awai.permission.READ_AGENDA"/><uses-permission android:name="android.permission.SET_WALLPAPER"/><uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>'
         extra = '<activity android:name="network.awai.home.AppearanceActivity" android:exported="false" android:label="Awai の外観"/>'
         home = '<intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.HOME"/><category android:name="android.intent.category.DEFAULT"/></intent-filter>'
     if kind == 'store':
@@ -47,7 +47,7 @@ def main():
     if not (ROOT/'android/client/generated/domain.js').is_file():raise SystemExit('shared CLJS domain is not built')
     run(['bb','-cp','android/contracts/src','android/contracts/export.clj',out/'shared.json'],cwd=ROOT)
     common=json.loads((out/'shared.json').read_text());assets=out/'web';assets.mkdir(exist_ok=True)
-    for name in ['index.html','client.css','client.js','online.js']:shutil.copyfile(ROOT/'android/client'/name,assets/name)
+    for name in ['index.html','client.css','client.js','online.js','setup.js','setup.css']:shutil.copyfile(ROOT/'android/client'/name,assets/name)
     shutil.copytree(ROOT/'android/client/assets',assets/'assets',dirs_exist_ok=True)
     shutil.copyfile(ROOT/'android/client/generated/domain.js',assets/'domain.js')
     pins=json.loads((ROOT/'nixos/otehon/shell/vendor/PINS.json').read_text());runtime=ROOT/'nixos/otehon/shell/vendor/kotoba-client-runtime.js'

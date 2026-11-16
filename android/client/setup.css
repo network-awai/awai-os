@@ -1,0 +1,23 @@
+@font-face { font-family:'Awai Setup Noto Sans JP'; src:url('assets/setup-noto-jp.woff2') format('woff2'); font-weight:100 900; font-display:swap; }
+@layer components {
+  .setup-page { font-family:'Awai Setup Noto Sans JP','Noto Sans CJK JP',sans-serif; min-block-size:100dvh; position:relative; isolation:isolate; display:grid; grid-template-columns:minmax(0,520px) minmax(0,520px); align-content:start; justify-content:start; gap:160px; padding:180px max(32px,calc((100vw - 1216px)/2)) 100px; background:var(--background); }
+  .setup-background { position:absolute; inset:0; inline-size:100%; block-size:100%; object-fit:cover; opacity:.17; z-index:-1; pointer-events:none; }
+  .setup-context { display:flex; flex-direction:column; align-items:start; gap:24px; }
+  .setup-mark { object-fit:contain; mix-blend-mode:multiply; }
+  .setup-context h1 { font-size:44px; line-height:1.5; font-weight:400; white-space:pre-line; }
+  .setup-context.welcome h1 { font-size:52px; }
+  .setup-subtitle { font-size:20px; line-height:1.5; }
+  .setup-panel { display:flex; flex-direction:column; gap:24px; padding:32px; border-radius:28px; background:var(--surface); margin-block-start:16px; }
+  .setup-panel h2 { font-size:22px; line-height:1.5; }
+  .setup-row { display:flex; align-items:center; justify-content:center; gap:16px; padding:12px 16px; min-block-size:80px; text-align:start; inline-size:100%; }
+  .setup-row:disabled { opacity:1; color:var(--text); }
+  .setup-labels { display:flex; flex-direction:column; gap:2px; inline-size:259px; max-inline-size:100%; font-size:16px; line-height:1.45; }
+  .setup-labels small { font-size:12px; }
+  .setup-actions { display:flex; justify-content:space-between; gap:24px; }
+  .setup-actions .button { inline-size:176px; min-inline-size:0; }
+  .setup-status { position:absolute; inset-inline-start:max(32px,calc((100vw - 1216px)/2)); inset-block-end:40px; font-size:14px; }
+  .setup-error { color:var(--error); }
+  @keyframes kf_241_5_opacity_0 { 0% { animation-timing-function:ease-out; opacity:0; } 30%,100% { opacity:1; } }
+  @media (prefers-reduced-motion:no-preference) { .setup-page[data-motion-reduced=false] .setup-context.welcome { animation:kf_241_5_opacity_0 2s linear 1; } }
+  @media(max-width:1100px) { .setup-page { grid-template-columns:minmax(0,520px); justify-content:center; padding:32px 24px 100px; gap:24px; } .setup-context h1,.setup-context.welcome h1 { font-size:32px; } .setup-context.welcome .setup-mark { inline-size:104px; block-size:104px; } .setup-panel { padding:24px; } .setup-status { inset-inline-start:24px; } }
+}
