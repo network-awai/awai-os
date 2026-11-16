@@ -4,14 +4,16 @@
 #?(:cljs
    (do
      (def copy
-       {:ja {:title "Meiji" :start "起動" :stop "停止" :force "強制停止" :save "上限を保存"
+       {:ja {:title "Meiji" :vms "VM" :agents "Bot・Circle" :navigation "Soshiki"
+             :start "起動" :stop "停止" :force "強制停止" :save "上限を保存"
              :cpus "CPU（コア）" :memory "メモリ（MiB）" :check "推論を確認"
              :running "稼働中" :stopping "停止中" :stopped "停止済み" :failed "異常終了"
              :setup "セットアップが必要です" :saved "反映しました" :responded "推論に応答しました"
              :unknown-gpu "GPU使用：未確認" :close "VMを停止してから終了してください"
              :failed-action "操作できませんでした" :stop-first "停止してから変更してください"
              :invalid "上限の範囲内で入力してください" :vm-health "ゲストの状態：未確認"}
-        :en {:title "Meiji" :start "Start" :stop "Stop" :force "Force stop" :save "Save limits"
+        :en {:title "Meiji" :vms "VMs" :agents "Bots & Circles" :navigation "Soshiki"
+             :start "Start" :stop "Stop" :force "Force stop" :save "Save limits"
              :cpus "CPU cores" :memory "Memory (MiB)" :check "Check inference"
              :running "Running" :stopping "Stopping" :stopped "Stopped" :failed "Failed"
              :setup "Setup required" :saved "Saved" :responded "Inference responded"
@@ -86,4 +88,15 @@
             (when error [:p.net-error {:role "alert"} error])
             (when (and snapshot (empty? (:vms snapshot))) [:p (t :setup)])
             [:div.meiji-vms
-             (for [vm (:vms snapshot)] ^{:key (:id vm)} [:f> vm-card vm busy action])]])))))
+             (for [vm (:vms snapshot)] ^{:key (:id vm)} [:f> vm-card vm busy action])]])))
+     (defn desktop-workspace [fleet-panel]
+       ;; Mount only the selected workspace: the dense Circle view and its
+       ;; polling must not run while the operator is controlling VM lifecycle.
+       (let [[view set-view] (useState :vms)]
+         [:section
+          [:nav.meiji-navigation {:aria-label (t :navigation)}
+           (for [item [:vms :agents]]
+             ^{:key item}
+             [:button {:type "button" :aria-current (when (= view item) "page")
+                       :on-click #(set-view item)} (t item)])]
+          (if (= view :vms) [:f> panel] [:f> fleet-panel])]))))

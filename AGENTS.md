@@ -49,6 +49,11 @@ in the native profile. The native profile rules above stay unchanged.
 
 ## Meiji desktop entry (AWAI-195, owner direction 2026-11-16)
 
+VM lifecycle controls and the dense Bot/Circle workspace must mount separately
+in the desktop entry. Qualify lifecycle UI on a disposable guest first; record
+production guest shutdown/drain and Bot work separately. A blank fixture's
+QMP stop request is not evidence of a guest acknowledging clean shutdown.
+
 - Awai Otehon OS codename is **Meiji**. Use **Tauri v3** as the desktop entry
   managing Meiji VMs; do not silently select v2. v3 is Alpha at implementation
   time: pin exact published crate versions and keep release qualification open.

@@ -94,3 +94,28 @@ image provisioning, distributed state recovery, `cljrs` AOT, Windows/Linux
 device runs, installers/notarization and full UI acceptance remain open.
 The existing fleet, cron, passkeys, DID/key custody and mail routing were not
 reconfigured by this deployment.
+# Follow-up: native workspace isolation and live readback
+
+2026-11-16 07:35–07:37 UTC, AWAI-195 / AWAI-2820:
+
+- Reproduced a WebKit content process at over one CPU core after the dense
+  fleet view loaded; native accessibility interactions timed out. This is an
+  observation, not a measured root-cause diagnosis.
+- The Tauri entry now mounts either VM controls or Bot/Circle workspace.
+  VM controls remain responsive while the fleet workspace is unmounted.
+  Browser entry behavior is unchanged. Fleet workspace performance still needs
+  separate qualification; workspace isolation does not prove it is fixed.
+- Through the actual Tauri v3 window, saved the disposable fixture's allocation
+  from 1 CPU / 512 MiB to 2 CPUs / 768 MiB, started it, observed `running`, sent
+  graceful stop and observed `stopping`, then explicitly force-stopped it and
+  observed `stopped`. The blank fixture has no guest OS to acknowledge ACPI.
+  This proves the control path, not a production guest's clean shutdown.
+- A native UI inference check returned `responded` through the configured SSH
+  tunnel to jacob's Metal Kapitsa worker. GPU utilization remains unknown.
+  No Kapitsa engine was started on the owner's Mac.
+- Quit/reopened the app and observed the same 2 CPU / 768 MiB allocation in
+  the real form; independently read its durable `limits.edn`.
+- Local CPU/protocol suite: 12 tests / 105 assertions passed. Shell/Soshiki
+  release compilation and Tauri debug app bundle completed. This candidate is
+  not a signed release or a production Bot VM adoption.
+
