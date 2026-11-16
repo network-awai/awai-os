@@ -12,7 +12,7 @@ public final class SetupInstrumentation extends Instrumentation {
         return (Boolean)Class.forName("network.awai.home.SetupPlatform").getMethod("transition",Context.class,String.class,int.class).invoke(null,c,action,stage);
     }
     @Override public void onCreate(Bundle args){super.onCreate(args);if(!"disposable-emulator".equals(args.getString("scope")))throw new SecurityException("explicit disposable scope required");start();}
-    @Override public void onStart(){Bundle result=new Bundle();Context c=getTargetContext();try{
+    @Override public void onStart(){Bundle result=new Bundle();Context c=getTargetContext();int resultCode=-1;try{
         check(android.os.Build.HARDWARE.contains("ranchu"),"emulator only");
         c.getSharedPreferences("android-setup-v1",0).edit().clear().commit();
         check(!move(c,"finish",0),"no premature completion");
@@ -28,7 +28,8 @@ public final class SetupInstrumentation extends Instrumentation {
         if(!s.getBoolean("secure"))check(!move(c,"next",6),"no fake PIN acceptance");
         check(!move(c,"finish",6),"no skip to Home");
         check(!s.getBoolean("identityEnrollment")&&!s.getBoolean("osProvisioning"),"capability limits truthful");
-        result.putString("stream","Android setup boundary: "+assertions+" assertions passed\n");finish(-1,result);
-    }catch(Throwable e){result.putString("stream","FAIL "+e.toString());finish(0,result);}
-    finally{c.getSharedPreferences("android-setup-v1",0).edit().clear().commit();}}
+        result.putString("stream","Android setup boundary: "+assertions+" assertions passed\n");
+    }catch(Throwable e){result.putString("stream","FAIL "+e.toString());resultCode=0;}
+    finally{c.getSharedPreferences("android-setup-v1",0).edit().clear().commit();}
+    finish(resultCode,result);}
 }
