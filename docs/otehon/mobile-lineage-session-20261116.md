@@ -350,3 +350,21 @@ Junの「ここまでをLinearへ記録し今後の計画をまとめる」指�
 既存AWAI-2967の古いdescriptionを現在状態・調査結果・段階別完了条件へ更新。
 [次の計画](mobile-lineage-next-plan-20261116.md)にも同じ内容を保存。
 導入は未完了、次は通常起動の復帰確認と現在FRPの新baseline整理から再開する。
+
+## 計画に沿った再開: 通常起動とFRP baseline guardの更新
+
+Junが計画の実行継続を指示。Powerのみの操作でAndroid表示を確認し、起動直後ADBも応答した。
+ただしdisplay.id=VVTAS35.51-153-3、slot_suffix=_aで、以前のVVTA35.51-153/_bと異なる。
+locked=1/green/facmode=1、電池100%/28.0C。sys.oem_unlock_allowedはこの読取りでは空。
+boot完了後の値ではない可能性があるため空を0として扱わない。
+その後USB/ADBが消失し、boot完了後propertyと各領域の再照合を待機している。
+Android表示だけでbootchain byte同一とは認定しない。
+
+新r2固定helperは、FRPを最初の原本/不正checksumのpatchだけに限定せず、
+直近のvalid snapshotのpin済みhashと全byte照合する。checksum有効・末尾OEM0も必須。
+全原本・個体・両preloader/LK/seccfg/miscの照合は維持し、FRPそのものはtrialで書かない。
+oem_mfd/proinfoの旧factory設定だけ原本へ戻し、現行指定pairをstagingする候補。
+preflight不一致時にも、限定認証枠からfixed normal-rebootかfinishだけを選べる。
+root汎用コマンドの受入れはない。Python構文/zsh構文は確認済み、r2はまだ未実行。
+復旧が必要ならFRPは初回原本ではなくtrial直前valid snapshotを用いる。
+新たな端末書込みはこの単位ではない。start revision=a0f8e89、同じAWAI-2967/chat binding。
