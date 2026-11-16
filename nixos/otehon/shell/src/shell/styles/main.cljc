@@ -205,6 +205,10 @@
    (at-media {:prefers-reduced-motion "reduce"}
              [".voice-bezel" {:transition "none" :opacity ".5 !important"}])
    [:.net-view {:overflow-y "auto"}]
+   [".setup-network .net-body" {:padding "0" :width "100%" :text-align "left"}]
+   [".setup-network .net-list" {:max-height "24vh" :overflow-y "auto"}]
+   [".setup-network .net-list button" {:min-height "32px"}]
+   [".setup-network .net-form input" {:min-width "0" :width "100%"}]
    [:.net-body {:width "min(620px, 100%)" :margin "0 auto" :padding "48px 24px"
                  :display "flex" :flex-direction "column" :gap "12px"}]
    [".net-body h1" {:margin 0 :font-size "28px"}]

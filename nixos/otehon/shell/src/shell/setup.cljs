@@ -1,5 +1,7 @@
 (ns shell.setup
-  (:require ["react" :refer [useEffect useMemo useRef useState]]
+  (:require [shell.net :refer [wifi-panel]]
+            ["../net.js" :refer [useNetStatus]]
+            ["react" :refer [useEffect useMemo useRef useState]]
             ["qrcode-generator" :default qrcode]
             ["../identity/link.js" :refer [REQUEST_MS SESSION_MS checksumAddress confirmationCode
                                            createLinkRequest linkUrl openResponse siweMessage verifyLink]]
@@ -17,7 +19,7 @@
          :networkTitle "Network"
          :networkOnline "This device reports a network connection."
          :networkOffline "This device reports no network connection."
-         :networkNote "A wallet sign-in on this device needs no network. Phone sign-in does. Network settings are not available here yet."
+         :networkNote "A wallet sign-in on this device needs no network. Phone sign-in needs Internet. Connect below, or continue to use a local wallet."
          :signInTitle "Sign In"
          :signInBody "Use a Web3 wallet on this device, or approve with a passkey or wallet on your phone. There is no password or guest option."
          :signInAgain "Sign in to open this device."
@@ -51,7 +53,7 @@
          :networkTitle "ネットワーク"
          :networkOnline "この端末はネットワークに接続されています。"
          :networkOffline "この端末はネットワークに接続されていません。"
-         :networkNote "この端末のウォレットでのサインインにネットワークは不要です。スマートフォンでのサインインには必要です。ここではまだネットワークを設定できません。"
+         :networkNote "この端末のウォレットでのサインインにネットワークは不要です。スマートフォンでのサインインにはインターネット接続が必要です。下で接続するか、この端末のウォレットで続けられます。"
          :signInTitle "サインイン"
          :signInBody "この端末で Web3 ウォレットを使うか、スマートフォンでパスキーかウォレットを使って承認します。パスワードとゲストの利用はできません。"
          :signInAgain "この端末を開くには、サインインしてください。"
@@ -255,6 +257,7 @@
 (defn setup [broker relay-origin did account returning on-linked score on-finish]
   (let [[language set-language] (useState saved-language)
         [step set-step] (useState (if returning "signin" (if account "trust" "hello")))
+        network (useNetStatus)
         t (get text language)
         index (.indexOf steps step)
         next-step (fn [] (set-step (aget steps (inc index))))]
@@ -287,8 +290,18 @@
       (when (= step "network")
         [:<>
          [:h1 (:networkTitle t)]
-         [:p (if (.-onLine js/navigator) (:networkOnline t) (:networkOffline t))]
+         [:p {:role "status"}
+          (if (= "full" (some-> network (.-connectivity)))
+            (if (= language "ja") "インターネット接続を確認しました。" "Internet connection confirmed.")
+            (if (= language "ja") "インターネット接続はまだ確認できていません。下で接続できます。" "Internet access is not confirmed. Connect below."))]
          [:p.muted (:networkNote t)]
+         [:f> wifi-panel {:embedded true}]
+         [:details
+          [:summary "有線 LAN・iPhone／Android のテザリング"]
+          [:p "有線はルーターへ接続してください。Mac との診断用 LAN だけではインターネットには接続しません。"]
+          [:p "Wi-Fi テザリングは、スマートフォンでインターネット共有を有効にし、上の Wi-Fi 一覧から選びます。"]
+          [:p "iPhone USB はインターネット共有を有効にし、データ対応ケーブルで接続して、iPhone 側でこの PC を信頼してください。"]
+          [:p "Bluetooth PAN は相手端末の対応とペアリング確認が必要です。準備状況は接続サービスで確認します。"]]
          [:button.primary {:type "button" :data-next true :on-click next-step} (:next t)]])
       (when (= step "signin")
         [:f> sign-in t returning broker relay-origin did

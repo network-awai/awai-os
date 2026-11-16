@@ -1,6 +1,6 @@
 (ns shell.net
   (:require ["react" :refer [useState]]
-            ["../net.js" :refer [forgetWifi joinWifi macError nameError pairBluetooth
+            ["../net.js" :refer [connectDevice forgetWifi joinWifi macError nameError pairBluetooth
                                  pskError setBluetoothPower ssidError useBluetoothDevices
                                  useNetStatus useWifiKnown useWifiNetworks]]))
 
@@ -12,7 +12,11 @@
    "bad-json" "The request was not understood."
    "no-adapter" "This device has no such adapter."
    "no-network" "No network with that name answered."
-   "auth-failed" "The key was refused."
+   "auth-failed" "パスワードを確認して、もう一度お試しください。"
+   "auth-required" "Wi-Fi パスワードを入力してください。"
+   "unsupported-security" "この認証方式にはまだ対応していません。WPA2 Personal の Wi-Fi または有線をお使いください。"
+   "join-timeout" "接続を確認できませんでした。電波とパスワードを確認してください。"
+   "join-busy" "接続処理中です。しばらくお待ちください。"
    "join-failed" "Joining failed. Check the name and try again."
    "unknown-connection" "That saved connection is already gone."
    "power-failed" "The adapter did not switch."
@@ -21,7 +25,7 @@
    "unreachable" "The network service is not reachable."})
 
 (defn problem [error]
-  [:p.net-error (get error-text error "Something went wrong.")])
+  [:p.net-error {:role "status"} (get error-text error "Something went wrong.")])
 
 (defn dot [up]
   [:span {:class (if up "net-dot net-up" "net-dot net-down") :aria-hidden "true"}])
@@ -31,10 +35,11 @@
    [dot true]
    [:span ssid]
    [:span.muted (str signal "%" (if security (str " · " security) ""))]
-   [:button {:type "button" :on-click on-join} "Join"]])
+   [:button {:type "button" :on-click on-join} "接続"]])
 
-(defn wifi-panel []
-  (let [status (useNetStatus)
+(defn wifi-panel [props]
+  (let [embedded (boolean (:embedded props))
+        status (useNetStatus)
         wifi (some-> status (.-wifi))
         networks (useWifiNetworks (boolean (some-> wifi (.-available))))
         known (useWifiKnown (boolean (some-> wifi (.-available))))
@@ -45,68 +50,82 @@
         invalid (or (ssidError ssid) (pskError psk))
         join-fn (fn [event]
                   (.preventDefault event)
+                  (when invalid (set-result #js {:ok false :error invalid}))
                   (when-not (or invalid busy)
                     (set-busy true)
                     (set-result nil)
-                    (-> (joinWifi (.trim ssid) (if (empty? psk) js/undefined psk))
+                    (-> (joinWifi ssid (if (empty? psk) js/undefined psk))
                         (.then (fn [done]
                                  (set-busy false)
-                                 (set-result done))))))
+                                 (set-result done)
+                                 (when (.-ok done) (set-psk "")))))))
         forget (fn [network-name]
                  (when-not (nameError network-name)
                    (-> (forgetWifi network-name)
                        (.then (fn [done] (set-result done))))))
         found (or (some-> networks (.-networks)) #js [])
         saved (or (some-> known (.-known)) #js [])]
-    [:main.chat.net-view {:data-net "wifi"}
+    [(if embedded :section :main.chat.net-view) {:data-net "wifi" :class (when embedded "setup-network") :lang "ja"}
      [:div.net-body
-      [:h1 "Wi-Fi"]
+      [(if embedded :h2 :h1) "Wi-Fi"]
       [:p.muted {:data-net-link (or (some-> status (.-link)) "unknown")}
        [dot (= "up" (some-> status (.-link)))] " "
        (cond
-         (nil? status) "Checking…"
-         (.-error status) "Unknown"
-         (= "up" (some-> status (.-link))) "Connected"
-         :else "Not connected")]
-      (when-not status [:p.muted "Checking…"])
+         (nil? status) "確認しています…"
+         (.-error status) "確認できません"
+         (= "up" (some-> status (.-link))) "接続済み（インターネットは別途確認）"
+         :else "未接続")]
+      (when-not status [:p.muted "確認しています…"])
       (when (some-> status (.-error)) (problem (.-error status)))
       (when (and status (not (.-error status)) (not (some-> wifi (.-available))))
-        [:p.muted "This device has no Wi-Fi adapter. Saved networks stay saved."])
+        [:p.muted "Wi-Fi アダプターが見つかりません。有線または USB 接続も利用できます。"])
       (when (some-> wifi (.-available))
         [:<>
-         [:h2 "Networks"]
+         [:h2 "有線・USB 接続"]
+         [:ul.net-list
+          (map (fn [device]
+                 [:li {:key (.-name device)}
+                  [:span (str (.-name device) " · " (.-route device))]
+                  [:span.muted (if (.-connected device) "接続済み" (if (.-managed device) "未接続" "診断用 LAN・管理対象外"))]
+                  (when (and (.-managed device) (not= "wifi" (.-route device)) (not= "bluetooth-pan" (.-route device)))
+                    [:button {:type "button" :disabled busy
+                              :on-click #(do (set-busy true) (-> (connectDevice (.-name device))
+                                (.then (fn [done] (set-busy false) (set-result done)))))} "接続"])])
+               (or (some-> status (.-devices)) #js []))]
+         [:h2 "近くの Wi-Fi"]
          (when (some-> networks (.-error)) (problem (.-error networks)))
          (when (and networks (not (some-> networks (.-error))) (zero? (.-length found)))
-           [:p.muted "No networks found."])
+           [:p.muted "Wi-Fi が見つかりません。スマートフォンの「インターネット共有」も確認してください。"])
          [:ul.net-list
           (map (fn [item]
                   [network-row (.-ssid item) (.-signal item) (.-security item)
-                   #(set-ssid (.-ssid item))]) found)]
-         [:h2 "Join a network"]
+                   #(do (set-ssid (.-ssid item))
+                         (js/requestAnimationFrame (fn [] (some-> (.getElementById js/document "wifi-key") (.focus)))))]) found)]
+         [:h2 "Wi-Fi に接続"]
          [:form.net-form {:on-submit join-fn}
-          [:label
-           "Network name"
-           [:input {:aria-label "Network name" :value ssid
+          [:label {:for "wifi-ssid"}
+           "ネットワーク名"
+           [:input {:aria-label "ネットワーク名" :id "wifi-ssid" :required true :value ssid
                      :on-change #(set-ssid (.. % -target -value))}]]
-          [:label
-           "Key, when the network needs one"
-           [:input {:aria-label "Network key" :type "password" :auto-complete "off"
+          [:label {:for "wifi-key"}
+           "パスワード（必要な場合）"
+           [:input {:id "wifi-key" :aria-label "Wi-Fi パスワード" :type "password" :auto-complete "current-password"
                      :value psk :on-change #(set-psk (.. % -target -value))}]]
-          [:button.primary {:type "submit" :disabled (or (some? invalid) busy)}
-           (if busy "Joining…" "Join")]]
+          [:button.primary {:type "submit" :disabled busy}
+           (if busy "接続しています…" "接続")]]
          (when (and result (not (.-ok result))) (problem (.-error result)))
          (when (some-> result (.-ok))
-           [:p {:data-net-joined (.-connected result)}
-            (str "Joined " (.-connected result) ".")])
-         [:h2 "Saved networks"]
+           [:p {:role "status" :data-net-joined (.-connected result)}
+            (str (.-connected result) " に接続しました。")])
+         [:h2 "保存済み Wi-Fi"]
          (when (some-> known (.-error)) (problem (.-error known)))
          (when (and (zero? (.-length saved)) (not (some-> known (.-error))))
-           [:p.muted "None saved."])
+           [:p.muted "保存済みの接続はありません。"])
          [:ul.net-list
           (map (fn [item]
                   [:li {:key (.-name item)}
                    [:span (.-name item)]
-                   [:button {:type "button" :on-click #(forget (.-name item))} "Forget"]]) saved)]])]]))
+                   [:button {:type "button" :on-click #(forget (.-name item))} "削除"]]) saved)]])]]))
 
 (defn bluetooth-panel []
   (let [status (useNetStatus)
@@ -136,7 +155,7 @@
     [:main.chat.net-view {:data-net "bluetooth"}
      [:div.net-body
       [:h1 "Bluetooth"]
-      (when-not status [:p.muted "Checking…"])
+      (when-not status [:p.muted "確認しています…"])
       (when (some-> status (.-error)) (problem (.-error status)))
       (when (and status (not (.-error status)) (not (.-available bluetooth)))
         [:p.muted "This device has no Bluetooth adapter."])

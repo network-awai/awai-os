@@ -233,6 +233,8 @@ in
   # below, never the raw tools. Profiles persist in root-owned NM keyfiles,
   # so a joined network survives reboots. Radio silence by default.
   networking.networkmanager.enable = true;
+  services.usbmuxd.enable = true;
+  boot.kernelModules = [ "ipheth" "rndis_host" "cdc_ether" "cdc_ncm" "bnep" ];
   hardware.bluetooth = {
     enable = true;
     powerOnBoot = false;
@@ -252,7 +254,7 @@ in
     };
     path = [ pkgs.networkmanager pkgs.bluez ];
     serviceConfig = {
-      ExecStart = "${lib.getExe pkgs.python3} ${./net-service.py}";
+      ExecStart = "${lib.getExe (pkgs.python3.withPackages (ps: [ ps.dbus-next ]))} ${./net-service.py}";
       User = "root";
       IPAddressDeny = "any";
       IPAddressAllow = "localhost";

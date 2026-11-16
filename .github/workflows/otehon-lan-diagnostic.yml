@@ -40,6 +40,17 @@ concurrency:
   group: otehon-lan-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
+  desktop-network-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Check bounded kiosk layout and loopback network contract
+        run: |
+          python3 -m unittest discover -s tests/otehon -p 'test_desktop_layout.py'
+          python3 -m unittest discover -s tests/otehon -p 'test_net_setup_service.py'
   installed-journal-vm:
     if: github.event_name != 'workflow_dispatch' || (!inputs.install_candidate && !inputs.recover_candidate)
     runs-on: ubuntu-latest

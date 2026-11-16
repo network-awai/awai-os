@@ -20,7 +20,7 @@ export function pskError(value) {
   if (value === "" || value == null) return null;
   if (typeof value !== "string") return "bad-psk";
   if (/^[0-9a-fA-F]{64}$/.test(value)) return null;
-  if (value.length >= 8 && value.length <= 63) return null;
+  if (value.length >= 8 && value.length <= 63 && !/[\x00-\x1f\x7f]/.test(value)) return null;
   return "bad-psk";
 }
 
@@ -37,7 +37,7 @@ export function nameError(value) {
 
 async function get(path) {
   const control = new AbortController();
-  const guard = setTimeout(() => control.abort(), 4000);
+  const guard = setTimeout(() => control.abort(), path === "/v1/wifi/networks" ? 15000 : 4000);
   try {
     const response = await fetch(`${NET_ORIGIN}${path}`, { signal: control.signal });
     if (!response.ok) return { error: `http-${response.status}` };
@@ -108,3 +108,5 @@ export const joinWifi = (ssid, psk) => post("/v1/wifi/join", psk ? { ssid, psk }
 export const forgetWifi = (name) => post("/v1/wifi/forget", { name });
 export const setBluetoothPower = (on) => post("/v1/bluetooth/power", { on });
 export const pairBluetooth = (mac) => post("/v1/bluetooth/pair", { mac });
+
+export const connectDevice = (device) => post("/v1/devices/connect", { device });
