@@ -411,3 +411,24 @@ ROMはLK/preloaderその他firmwareも更新するため手動導入範囲と区
 
 次は検査済みv2.0.3指定の完全pairを1回stagingし、各読戻しが通ってから再起動する。
 これは組合せ/起動順の仮説検証であり、この段階で黒画面原因解決や解除成功と認定しない。
+
+## 現行pair起動と解除の実機成功
+
+r3のfixed stageを選択し、factoryの既知2byteだけをfresh metadata内で0へ正規化。
+各領域の読戻しが一致。両preloader payload、両kaeru payloadも読戻し一致、
+FRP全byte不変とmisc request一致を確認してから通常再起動した。
+その結果、USB Fastbootを認識しproduct=lamul、kaeru v2.0.0-g65a7db9-dirtyを確認。
+getvar unlocked=yes、is-spoofing=0、bldr_spoof statusもdisabled。
+現行scriptのoem seccfg-unlockが成功し、reboot-bootloader後もproduct/kaeru版/
+unlocked=yes/is-spoofing=0を再確認した。slot_a。
+これは解除の実機成功であり、Lineage起動/受入はまだ未実施。
+
+同じ配布preloaderで現行完全pairは起動したため、前回の黒画面を
+当該preloader自体が個体非対応だと断定する説明は取り下げる。
+前回との差は純正LK/kaeruの組合せ、factory flags、起動順で、内部失敗関数は未同定。
+EMI tableは全て同一という静的結果とも整合する。
+
+OS imageの導入前にroot controllerのfinishを指定した。以後のOS導入中に
+このtrial用stock復旧を選んで誤って再lockすることはない。
+boot/dtbo/vendor_bootと署名ZIPのサイズ/SHA256を今回も再確認し、全て一致。
+次は通常権限の明示対象FastbootでLineage Recovery導入へ進む。
