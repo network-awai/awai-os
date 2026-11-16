@@ -12,14 +12,27 @@
      (def words
        {:ja {:title "本番のBot" :waiting "次回を待機" :unknown "要確認" :stale "観測待ち"
              :result "最新の成果" :next "次回" :replicas "保存先" :observed "確認時刻"
-             :unavailable "観測データがありません" :measured "測定済み"}
+             :unavailable "観測データがありません" :measured "測定済み" :review "業務レポート"
+             :usage "モデル・使用量" :input "入力" :output "出力" :not-measured "未計測" :draft "下書き"}
         :en {:title "Production bots" :waiting "Scheduled" :unknown "Needs attention" :stale "Awaiting observation"
              :result "Latest result" :next "Next run" :replicas "Replicas" :observed "Observed"
-             :unavailable "No observation available" :measured "Measured"}})
+             :unavailable "No observation available" :measured "Measured" :review "Work report"
+             :usage "Model & usage" :input "Input" :output "Output" :not-measured "Unknown" :draft "Draft"}})
      (defn t [key] (get-in words [(if (.startsWith (or (.-language js/navigator) "en") "ja") :ja :en) key]))
      (defn time-label [value] (when value (.toLocaleString (js/Date. value))))
+     (defn review-card [result]
+       [:article.meiji-vm
+        [:header [:h3 (t :review)] (when-not (= "complete" (:quality result)) [:strong (t :draft)])]
+        [:p "jacob · Kapitsa"]
+        [:time {:date-time (:observedAt result)} (time-label (:observedAt result))]
+        [:pre {:style {:white-space "pre-wrap" :overflow-wrap "anywhere" :font "inherit"}} (:text result)]
+        [:details
+         [:summary (t :usage)]
+         [:p (:model result)]
+         [:p (t :input) " · " (or (get-in result [:usage :prompt_tokens]) (get-in result [:usage :input_tokens]) (t :not-measured))]
+         [:p (t :output) " · " (or (get-in result [:usage :completion_tokens]) (get-in result [:usage :output_tokens]) (t :not-measured))]]])
      (defn panel []
-       (let [[report set-report] (useState nil) [now set-now] (useState (.now js/Date))]
+       (let [[report set-report] (useState nil) [review set-review] (useState nil) [now set-now] (useState (.now js/Date))]
          (useEffect (fn []
                       (let [live (atom true)
                             load #(do (set-now (.now js/Date))
@@ -29,6 +42,14 @@
                                                    (let [value (js->clj data :keywordize-keys true)]
                                                      (when (and @live (= "awai.meiji-production.v1" (:schema value)))
                                                        (set-report value)))))
+                                          (.catch (fn [_] nil)))
+                                      (-> (client/report-response "meiji-review.json" nil)
+                                          (.then (fn [response] (.json response)))
+                                          (.then (fn [data]
+                                                   (let [value (js->clj data :keywordize-keys true)]
+                                                     (when (and @live (= "completed" (:state value))
+                                                                (= "kapitsa" (:provider value)) (= "jacob" (:node value)))
+                                                       (set-review value)))))
                                           (.catch (fn [_] nil))))
                             timer (js/setInterval load 15000)]
                         (load)
@@ -55,4 +76,5 @@
                     [:p (t :replicas) " · " (:replicas domain)]
                     [:p (:run-id result)]])
                  (when (and (string? issue) (re-matches #"AWAI-[0-9]+" issue))
-                   [:a {:href (str "https://linear.app/kotobalabs/issue/" issue) :target "_blank" :rel "noopener noreferrer"} issue])])]])]))))
+                   [:a {:href (str "https://linear.app/kotobalabs/issue/" issue) :target "_blank" :rel "noopener noreferrer"} issue])])]
+             (when review [:f> review-card review])])]))))

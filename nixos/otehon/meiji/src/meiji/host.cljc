@@ -181,7 +181,7 @@
        :state "responded" :gpu-use "unknown" :usage (:usage body)})))
 
 (def report-files #{"fleet-state.json" "agent-presence.json" "peer-cycles.json"
-                    "circle-work-state.json" "mail-executor-state.json" "meiji-production.json"})
+                    "circle-work-state.json" "mail-executor-state.json" "meiji-production.json" "meiji-review.json"})
 (defn report [controller id]
   (policy/require! (contains? report-files id) "unknown-report")
   (let [dir (get-in controller [:config :reports-dir])]

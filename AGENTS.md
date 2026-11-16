@@ -195,3 +195,21 @@ never expose that operation through the browser API. Preserve previous roots,
 histories, service configs and recovery evidence. Same-UID host compromise,
 independent hardware recovery, portable key import and distributed alias writes
 require their own qualification; a local/keychain test does not prove them.
+
+### Meiji recovered production execution (AWAI-2820)
+
+Keep the recovered ledger, original cron phase, node identities and read-only
+history disks intact. The recovered owner-side coordinator only wakes the
+original ledger schedule; computation runs on enrolled Meiji guests. Do not
+describe this as autonomous guest scheduling or fleet-wide liveness. Routine
+recording uses its read-only etcd identity; root credentials are maintenance only.
+The jacob Kapitsa public-result reviewer is a separate scoped service, not an
+expansion of deterministic physics Bot grants. Model text is an artifact, never
+a command or capability. Unknown HTTP outcomes stay held. A known pre-HTTP
+failure may resume only its original owner/input using explicit reviewed
+evidence and a one-time CAS recovery marker; never reset the claim to retry.
+Persist model counters with their exact run binding; missing counters remain
+unknown. Show output-limited or unqualified review text as a draft. Stale
+observations must not imply current execution. Keep private custody backups
+encrypted in AwaiVol; a Keychain-dependent decrypt check is not independent
+disaster recovery.

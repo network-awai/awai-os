@@ -95,3 +95,32 @@ encrypted v4 recovery envelope (16 files). Exact decrypt/readback matched.
 Loss of the wrapping Keychain and independent remote-tier recovery remain
 unqualified. Old CA trust has not been revoked; existing node clients still
 depend on it.
+
+## Separate jacob result review
+
+`meiji.result-review` consumes only the two confirmed public physics results;
+it does not modify their grants or claim the physics Bots use inference.
+The owner-selected Kapitsa worker on jacob returned a real result in 27,681 ms:
+Qwen3.6-35B-A3B `16gb`, prompt 409 / completion 512 / total 921 provider tokens.
+Cached tokens were 0 within the prompt counter for this one call. Reasoning
+tokens and GPU utilization were not reported. Coding-session usage remains
+unknown/unallocated. The result and raw usage are persisted on AwaiVol and
+recorded on AWAI-2820 under the explicit review input digest.
+
+The 512-token response ends at the analysis heading. It is a draft, not a
+finished analysis acceptance unit. Tauri 本番 displays it with a 下書き badge;
+モデル・使用量 expands to the actual model and 409/512 counters. Future new
+input sets request three short bullets and retain terminal finish reason;
+the existing input is not reinferred to improve its truncated answer.
+
+The review identity has a separate single-key CAS namespace and cannot write
+occurrences. An initial controller error was proven to precede tunnel/HTTP
+dispatch. Recovery retained the original claim/owner and consumed a specific
+operator-evidence marker by CAS before one invocation. Generic unknown HTTP
+outcomes never retry. The canonical occurrence transport's allowed key scope
+was kept unchanged. Tests cover scope rejection, uncertain admission, lost
+terminal, completed reuse and one-time pre-HTTP recovery.
+
+Encrypted recovery v6 additionally includes active coordinator/reviewer config,
+the recovery receipt and delegated jacob API credential (23 files total).
+No plaintext key or token is stored in WebDAV or Git.
