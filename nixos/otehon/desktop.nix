@@ -72,6 +72,7 @@ let
     exec ${lib.getExe pkgs.chromium} \
       ${if cfg.headless then "--headless=new --disable-gpu --window-size=1280,800" else "--ozone-platform=wayland --kiosk"} \
       --no-first-run \
+      --disable-features=Translate \
       --no-default-browser-check \
       --password-store=basic \
       --user-data-dir="$HOME/.local/state/otehon-chromium" \
