@@ -112,3 +112,19 @@ export const pairBluetooth = (mac) => post("/v1/bluetooth/pair", { mac });
 export const connectDevice = (device) => post("/v1/devices/connect", { device });
 
 export const requestIphoneTrust = () => post("/v1/iphone/trust", {});
+
+// Display only the OS's observed links. Selecting an SSID is not a connection.
+export function networkSummary(status) {
+  if (!status || status.error) return { state: "unknown", text: "接続状態を確認できません" };
+  const links = Array.isArray(status.devices) ? status.devices.filter(d => d.connected === true) : [];
+  if (!links.length) return { state: "offline", text: "ネットワーク未接続" };
+  const labels = links.map(d => ({
+    wifi: d.ssid ? `Wi-Fi · ${d.ssid}` : "Wi-Fi",
+    "iphone-usb": "iPhone USB", "usb-tether": "USB テザリング",
+    ethernet: "有線 LAN", "bluetooth-pan": "Bluetooth PAN",
+  })[d.route] ?? "ネットワーク");
+  const internet = { "full": "インターネット接続済み", "portal": "ログインが必要",
+    "limited": "インターネット未確認", "none": "インターネット未確認", "unknown": "インターネット未確認" };
+  return { state: status.connectivity === "full" ? "online" : "local",
+    text: `${[...new Set(labels)].join(" ＋ ")} ／ ${internet[status.connectivity] ?? internet["unknown"]}` };
+}

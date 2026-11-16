@@ -87,3 +87,13 @@ class IphoneTrustBoundaryTests(unittest.TestCase):
     def test_absent_phone_never_starts_pairing(self):
         with patch.object(net,'iphone_attached',return_value=False),patch.object(net,'run',side_effect=AssertionError('no device')):
             with self.assertRaises(net.Refused):net.iphone_trust({})
+
+class ConnectedSsidTests(unittest.TestCase):
+    def test_ssid_comes_from_active_ap_and_escaped_fields(self):
+        devices=[{'name':'wlan0','route':'wifi','connected':True}]
+        with patch.object(net,'network_devices',return_value={'devices':devices}),patch.object(net,'nm_ok',return_value=':not-active:wlan0\n*:home\\:lab:wlan0'):
+            self.assertEqual(net.connected_devices()[0]['ssid'],'home:lab')
+    def test_disconnected_selection_is_not_labelled_connected(self):
+        devices=[{'name':'wlan0','route':'wifi','connected':False}]
+        with patch.object(net,'network_devices',return_value={'devices':devices}),patch.object(net,'nm_ok',side_effect=AssertionError('no connected wifi')):
+            self.assertNotIn('ssid',net.connected_devices()[0])

@@ -209,12 +209,24 @@ def iphone_trust(body):
     raise Refused(400, "iphone-not-ready")
 
 
+def connected_devices():
+    devices = network_devices()["devices"]
+    wifi = {d["name"]: d for d in devices if d["route"] == "wifi" and d["connected"]}
+    if wifi:
+        out = nm_ok("nmcli", "-t", "-f", "IN-USE,SSID,DEVICE", "device", "wifi", "list", "--rescan", "no", timeout=2)
+        for line in (out or "").splitlines():
+            active, ssid, name = (terse_fields(line) + ["", "", ""])[:3]
+            if active == "*" and name in wifi:
+                wifi[name]["ssid"] = ssid
+    return devices
+
+
 def status():
     wifi = wifi_device()
     powered = bluetooth_powered()
     return {
         "link": "up" if link_up() else "down",
-        "devices": network_devices()["devices"],
+        "devices": connected_devices(),
         "iphone": {"attached": iphone_attached()},
         "connectivity": (nm_ok("nmcli", "-t", "-f", "CONNECTIVITY", "general") or "unknown").strip(),
         "wifi": {"available": wifi is not None, "enabled": wifi_enabled()},
