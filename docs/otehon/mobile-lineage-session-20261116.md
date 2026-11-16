@@ -432,3 +432,13 @@ OS imageの導入前にroot controllerのfinishを指定した。以後のOS導�
 このtrial用stock復旧を選んで誤って再lockすることはない。
 boot/dtbo/vendor_bootと署名ZIPのサイズ/SHA256を今回も再確認し、全て一致。
 次は通常権限の明示対象FastbootでLineage Recovery導入へ進む。
+
+## Lineage Recovery boot stackを書込み
+
+現行Lineage Wikiのlamu定義とboot_stack/custom/generic/recovery_reboot templatesを再確認。
+明示対象のproduct/解除/spoof無効を再検査し、同一20261112buildの検証済み
+boot→dtbo→reboot bootloader→vendor_bootの順でslot_aへ書込み、全command成功。
+[host実行記録](mobile/lineage-recovery-flash-20261116.json)を保存。
+init_boot/vbmeta/LK等の追加手動flashは行っていない。
+FastbootからRecoveryをメニュー選択する公式手順をJunへ案内し、実機表示を待機。
+これはRecovery起動の成功証明でも、Lineage ZIP導入済みの意味でもない。
