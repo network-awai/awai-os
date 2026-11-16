@@ -419,7 +419,7 @@
     "Ongakuka/Itonami domain UI",
     "Canonical ui:// intake and Web snapshot transport parity",
     "Production Aozora signing/store update, iOS packaging and public release",
-    "Shared canonical broker review/merge (kotoba PR1343)",
+    "Canonical scope extension PR1345 review/merge and rebuild/device requalification with the resulting shared runtime",
     "Dougaka upstream rebuild provenance correspondence"
   ],
   "figma": {
@@ -450,5 +450,28 @@
       "source": "Linear source-unit comment and local evidence timestamps",
       "coverage": "Post-source-commit device qualification window; active/wait and earlier build time not allocated"
     }
+  },
+  "reviewReferenceCorrection": {
+    "checkedAt": "2026-11-16T15:34:59.821Z",
+    "originalPeerBroker": {
+      "pr": "https://github.com/kotoba-lang/kotoba/pull/1343",
+      "mergedHead": "0b3b77d3c34774cff7a195d8ad0de2758352edc4",
+      "mergeCommit": "d6cbbc70973232af74d8d31995fec9fd7b8b9505",
+      "mergedAt": "2026-11-16T11:34:36Z"
+    },
+    "scopeExtension": {
+      "pr": "https://github.com/kotoba-lang/kotoba/pull/1345",
+      "revision": "5a49411f",
+      "state": "draft; unmerged",
+      "base": "ad6b6e88",
+      "tests": [
+        "peer",
+        "consent-host",
+        "broker-review",
+        "memory-state"
+      ],
+      "apkRequalification": false
+    },
+    "note": "Tested APKs still pin ee6a910, including the postmerge scope extension. PR1345 replays that extension onto current main and preserves intervening review fixes; it is not byte-identical to the APK runtime. The prior statement that PR1343 was draft/unmerged was incorrect."
   }
 }
