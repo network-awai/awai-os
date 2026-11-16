@@ -6,11 +6,17 @@ let
     mkdir -p "$out"
     cp -r ${cfg.bundle}/. "$out/"
   '';
+  browser = pkgs.writeShellScript "itonami-store-browser" ''
+    state="''${XDG_STATE_HOME:-$HOME/.local/state}/itonami-store"
+    mkdir -p "$state"
+    chmod 700 "$state"
+    exec ${lib.getExe pkgs.chromium} --no-first-run --user-data-dir="$state/chromium" --app=http://127.0.0.1:${toString cfg.port}/
+  '';
   launcher = pkgs.makeDesktopItem {
     name = "awai-itonami-store";
     desktopName = "Itonami Store";
     comment = "Awai shared browser application catalog";
-    exec = "${lib.getExe pkgs.chromium} --app=http://127.0.0.1:${toString cfg.port}/";
+    exec = "${browser}";
     categories = [ "Utility" ];
   };
 in {
