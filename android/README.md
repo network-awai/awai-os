@@ -43,3 +43,11 @@ Tracking: [AWAI-2977](https://linear.app/kotobalabs/issue/AWAI-2977), parent[AWA
 ## Shared NixOS client
 
 `export-web.py` copies the exact build's browser UI, compiled domain, signed catalog and pinned runtime without Android APK payloads. See [`nixos/otehon/itonami-store/README.md`](../nixos/otehon/itonami-store/README.md) for the opt-in static NixOS module and digest checks. This is a bundled browser-app path; native Nix/Waydroid installers remain separate work.
+
+## Explicit online development build
+
+The offline build remains the default. `python3 android/build.py --version 5 --skip-cljs --online-pins android/online-pins.dev.json` includes a fixed immutable catalog/APK source and grants INTERNET only to Store. The canonical runtime broker handles each real browser download, with exact paths, no credentials/referrer, no redirects, byte bounds and expected digest. Browser signature/expiry/revision verification is followed by independent Android catalog/identity verification and OS install confirmation. Denial sends no request; an app/bot must not synthesize the trusted user's approval.
+
+The public development payload is under `store/distribution/dev-20261116` at commit `2cbd32f31b3053fd148e04dda25cbfd8e2f0b726`. Pins are immutable and must not be changed to `main` or an arbitrary URL. The signed catalog is revision100 and expires30 days after packaging. No production key rotation/revocation or automatic mutable latest channel is claimed. Browser-state and host-state failures remain visible; cached signed APKs can be installed offline with fresh native/OS confirmation.
+
+`node --test android/tests/domain.test.mjs android/tests/online.test.mjs` checks compiled domain behavior, exact URL scope, signature alteration, metadata expiry and revision floor. Build/runtime/online/NixOS evidence remain separate. See `docs/otehon/itonami-store-shared-install-sync-20261116.md` for the common auth/permission/sync recommendation and current native-Nix/sync boundaries.

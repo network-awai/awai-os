@@ -30,6 +30,7 @@ export function createOnline(base,pins) {
   }};
 }
 export async function authenticateCatalog(envelope,publicKey,domain,minimumRevision=1) {
+  if(!Number.isSafeInteger(minimumRevision)||minimumRevision<1)throw Error('保存済みのカタログ履歴を確認できません。');
   if(!envelope||typeof envelope.raw!=='string'||envelope.raw.length>131072||typeof envelope.signature!=='string'||envelope.signature.length>8192)throw Error('カタログの形式を確認できません。');
   const bytes=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
   const key=await crypto.subtle.importKey('spki',bytes(publicKey),{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['verify']);

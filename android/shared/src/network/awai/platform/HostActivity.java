@@ -59,7 +59,7 @@ public abstract class HostActivity extends Activity {
                 onlineUrls.add(url);
             }
         }catch(Exception absent){onlineUrls.clear();}
-        WebSettings s = web.getSettings(); s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true);
+        WebSettings s = web.getSettings(); s.setBlockNetworkLoads(onlineUrls.isEmpty()); s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true);
         s.setAllowFileAccess(false); s.setAllowContentAccess(false); s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         s.setSupportMultipleWindows(false); s.setBuiltInZoomControls(true); s.setDisplayZoomControls(false);
         s.setUseWideViewPort(true); s.setLoadWithOverviewMode(true);

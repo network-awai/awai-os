@@ -24,5 +24,6 @@ test('catalog signature, expiry and highest accepted revision fail closed',async
  assert.equal((await authenticateCatalog(envelope,key,domain,100)).revision,100);
  await assert.rejects(authenticateCatalog({...envelope,raw:raw+' '},key,domain));
  await assert.rejects(authenticateCatalog(envelope,key,domain,101));
+ await assert.rejects(authenticateCatalog(envelope,key,domain,NaN));
  const old=JSON.stringify({...JSON.parse(raw),expiresAt:1});await assert.rejects(authenticateCatalog({raw:old,signature:sign('sha256',Buffer.from(old),privateKey).toString('base64')},key,domain));
 });
