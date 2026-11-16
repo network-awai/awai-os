@@ -171,6 +171,7 @@ dependencies = [
  "cid",
  "futures",
  "ipld-core",
+ "libc",
  "libp2p",
  "multihash-codetable",
  "serde",

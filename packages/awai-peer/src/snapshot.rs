@@ -102,7 +102,7 @@ impl DiskStore {
         let result = (|| {
             file.write_all(data)?;
             file.sync_all()?;
-            match fs::hard_link(&temp, &path) {
+            match publish_no_replace(&temp, &path) {
                 Ok(()) => (),
                 Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
                     ensure!(self.get(cid)? == data, "existing block differs")
@@ -224,6 +224,35 @@ fn sync_dir(path: &Path) -> Result<()> {
     #[cfg(unix)]
     fs::File::open(path)?.sync_all()?;
     Ok(())
+}
+
+// Android SELinux denies hard links to shell_data_file in device fixtures.
+// Kernel renameat2(NOREPLACE) provides the same atomic no-clobber contract.
+// Unsupported kernels fail closed; plain overwriting rename is never used.
+#[cfg(target_os = "android")]
+fn publish_no_replace(source: &Path, target: &Path) -> std::io::Result<()> {
+    use std::os::unix::ffi::OsStrExt;
+    let source = std::ffi::CString::new(source.as_os_str().as_bytes())?;
+    let target = std::ffi::CString::new(target.as_os_str().as_bytes())?;
+    let result = unsafe {
+        libc::syscall(
+            libc::SYS_renameat2,
+            libc::AT_FDCWD,
+            source.as_ptr(),
+            libc::AT_FDCWD,
+            target.as_ptr(),
+            libc::RENAME_NOREPLACE,
+        )
+    };
+    if result == 0 {
+        Ok(())
+    } else {
+        Err(std::io::Error::last_os_error())
+    }
+}
+#[cfg(not(target_os = "android"))]
+fn publish_no_replace(source: &Path, target: &Path) -> std::io::Result<()> {
+    fs::hard_link(source, target)
 }
 
 #[cfg(test)]
