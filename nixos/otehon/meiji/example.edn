@@ -1,0 +1,25 @@
+;; Owner-edited file; UI cannot supply paths, executable arguments or endpoint origins.
+;; Place at the Tauri app_config_dir/network.awai.meiji/meiji.edn for your platform.
+;; All paths must be absolute. Do not put signing private keys in this file.
+{:version 1
+ :reports-dir "/absolute/path/to/public-soshiki-reports"
+ :vms [{:id "meiji" :name "Meiji"
+        :arch :aarch64 :backend :qemu :format :qcow2
+        :executable "/absolute/path/to/qemu-system-aarch64"
+        :firmware "/absolute/path/to/edk2-aarch64-code.fd"
+        :image "/absolute/path/to/signed-base.qcow2"
+        :signature "/absolute/path/to/signed-base.qcow2.minisig"
+        :minisign "/absolute/path/to/minisign"
+        :public-key "REPLACE_WITH_OWNER_MINISIGN_PUBLIC_KEY"
+        :sha256 "REPLACE_WITH_BASE_IMAGE_SHA256"
+        :limits {:cpus 2 :memory-mib 4096}
+        :ceiling {:cpus 4 :memory-mib 8192}
+        :inference-provider "host-gpu"}]
+ ;; Explicit host-local inference rail, not a VM GPU or automatic CPU fallback.
+ ;; macOS: :metal; Linux: :cuda/:rocm/:vulkan; Windows: :cuda/:directml/:vulkan.
+ ;; Existing Murakumo/Mishima engine selection remains owner-configured.
+ :providers [{:id "host-gpu" :backend :metal :origin "http://127.0.0.1:8080"
+              :model "REPLACE_WITH_PINNED_MODEL_ID"
+              ;; Optional absolute path to a private token file; never returned to UI.
+              ;; :token-file "/absolute/private/path"
+              }]}

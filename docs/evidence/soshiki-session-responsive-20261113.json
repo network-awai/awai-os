@@ -1,0 +1,50 @@
+{
+  "issue": "AWAI-2808",
+  "date": "2026-11-13",
+  "baseline": "05a61d59c9d89c8524dc87e51108faafcb3b58b4",
+  "scope": "Authenticated local Otehon Soshiki, browser authentication continuity, phone/tablet layout",
+  "causes": [
+    "HTTP shell CSP omitted the static same-origin fleet-state.json connection",
+    "Fixed 248px sidebar plus 320px auxiliary panel reduced the main grid track to zero at narrow widths",
+    "Account renderer name was shadowed by the account data argument, causing a.call is not a function"
+  ],
+  "changes": [
+    "Permit same-origin static report reads only in the HTTP shell build; file kiosk and phone connection policy unchanged",
+    "Soshiki opens Runtime by default",
+    "Phone layout uses App selector and full-width main; tablet uses 180px sidebar and main; auxiliary panel appears at 1200px and above",
+    "Phone tabs wrap and bottom docks occupy separate rows",
+    "Fix account renderer shadowing; show saved authentication, signed expiry and actual browser eviction-protection result",
+    "Provide explicit local browser storage-protection request without exporting keys or renewing proofs"
+  ],
+  "browser": {
+    "authenticatedOsRuntime": true,
+    "observedCounts": { "registered": 899, "configuredBots": 589, "configuredJobs": 591, "heldBots": 310, "latestReceipts": 591, "attention": 0 },
+    "filter": "codinator",
+    "reloadRestoredWithoutAuthentication": true,
+    "newSameBrowserTabRestoredWithoutAuthentication": true,
+    "passkeySessionExpiryDate": "2026-12-13",
+    "storageEvictionProtectionRequested": true,
+    "storageEvictionProtectionGranted": false,
+    "viewportChecks": [
+      { "width": 390, "height": 844, "documentWidth": 390, "mainWidth": 390, "mainScrollWidth": 390, "sidebarVisible": false },
+      { "width": 1024, "height": 768, "documentWidth": 1024, "mainWidth": 844, "mainScrollWidth": 844, "sidebarVisible": true, "auxiliaryPanelVisible": false },
+      { "width": 1440, "height": 900, "documentWidth": 1440, "mainWidth": 872, "mainScrollWidth": 872, "auxiliaryPanelVisible": true }
+    ],
+    "viewportResetAfterTesting": true,
+    "screenshots": "Local task output only; phone 390x844 and tablet 1024x768"
+  },
+  "verification": {
+    "npmTest": "69 passed, zero failures",
+    "targetedDeviceCspExternTests": "10 passed, including expired and tampered Passkey proof rejection and explicit/denied/unsupported storage protection",
+    "advancedHttpBuilds": "shell/link/soshiki-runtime: pass, zero compiler warnings",
+    "gardenStylesBuild": "pass after final responsive CSS changes",
+    "diffCheck": "pass"
+  },
+  "limits": [
+    "Browser restart, OS restart and indefinite storage retention are not qualified by reload/new-tab tests",
+    "Browser refused eviction protection; existing local saved authentication works but is not guaranteed immune to eviction or user data deletion",
+    "Signed 30-day session expiry remains enforced; no approval reuse, auth bypass or private-key export",
+    "No production guest image publication or merge; installed VM UI remains separate",
+    "Counts are latest job receipts and configuration, not uptime SLO or business completion rate"
+  ]
+}

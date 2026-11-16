@@ -7,9 +7,10 @@
             [shell.sound :refer [sound-panel]]
             [shell.display :refer [display-panel]]
             [shell.soshiki :refer [soshiki]]
+            [shell.fleet-overview :as fleet]
             [shell.docks :refer [device-dock node-dock]]
             [shell.setup :refer [setup]]
-            ["../identity/device.js" :refer [clearSession deviceDid loadProofs loadSession saveProof]]
+            ["../identity/device.js" :refer [clearSession deviceDid loadProofs loadSession saveProof sessionRetention]]
             ["../runtime.js" :refer [createBroker osOperations readPassport readWalletBalance]]
             ["../media.js" :refer [MEDIA_ORIGIN describeMessage requestImage requestSpeech
                                    settleSavedItem useMediaCapabilities]]
@@ -276,6 +277,25 @@
                    [:button.locked {:type "button" :on-click on-raise}
                     (str "Needs trust " minimum ". Yours is " score ".")])])) (.-remoteOperations dapp))])])
 
+(defn session-retention []
+  (let [[status set-status] (useState nil)
+        refresh (fn [request?] (-> (sessionRetention request?) (.then set-status)))]
+    (useEffect (fn [] (refresh false) js/undefined) #js [])
+    [:section {:data-session-retention true}
+     [:h2 "このブラウザーで認証を保持"]
+     [:p (if (some-> status .-saved)
+           "認証情報はこのブラウザーに保存済みです。同じブラウザーで http://127.0.0.1:8906/ を開くと、有効期限内は再認証なしで復元します。"
+           "認証情報の保存を確認しています。")]
+     [:p "端末鍵はIndexedDB、署名済みセッションはローカルストレージに保存します。ブラウザーのデータ削除・別プロファイル・別アドレスには引き継がれません。"]
+     [:p {:role "status"}
+      (cond
+        (true? (some-> status .-persistent)) "ストレージの自動削除からの保護: 有効"
+        (false? (some-> status .-persistent)) "ストレージの自動削除からの保護: 未許可（保存済みの認証は利用できます）"
+        :else "ストレージの自動削除からの保護: 未確認・非対応")]
+     (when-not (true? (some-> status .-persistent))
+       [:button.secondary {:type "button" :on-click #(refresh true)} "このブラウザーで保持する"])
+     [:p.muted "認証の有効期限は延長しません。期限切れ後はPasskeyで再認証します。外部操作の承認は毎回必要です。"]]))
+
 (defn account-view [account score proofs on-check-passport passport-state on-read-balance balance-state on-sign-out]
   (let [address (accountAddress (.-accountDid account))]
     [:main.chat.account-view
@@ -286,6 +306,7 @@
                      (if (= "wallet" (.-method account)) "a Web3 wallet" "a passkey")
                      " until "
                      (.toLocaleDateString (js/Date. (.-expiresAt account))) ".")]
+      [:f> session-retention]
       [:h2 "Wallet"]
       (if address
         [:<>
@@ -374,6 +395,7 @@
                  (= context "soshiki") [:f> soshiki account score open-account]
                  (and dapp (< score minimum))
                  [locked dapp minimum score open-account]
+                 (= context "itonami") [:main.chat.net-view [:div.net-body [:h1 "Itonami Agent"] [:f> fleet/panel "agents"]]]
                  :else
                  [:f> chat dapp context (or (aget threads context) #js [])
                   (fn [text] (add-message context text))
@@ -382,9 +404,16 @@
                   capabilities])
 
           panel (when (and dapp
-                           (not (contains? #{"wifi" "bluetooth" "sound" "display"} context)))
+                           (not (contains? #{"wifi" "bluetooth" "sound" "display" "itonami"} context)))
                   dapp)]
       [:div {:class (if panel "shell with-panel" "shell")}
+       [:nav.mobile-navigation {:aria-label "App navigation"}
+        [:label "App "
+         [:select {:aria-label "開くApp" :value context
+                   :on-change #(set-context (.. % -target -value))}
+          [:option {:value MANIMANI} "Bots · Manimani"]
+          (map (fn [item] [:option {:key (.-id item) :value (.-id item)} (.-title item)]) (.-dapps catalog))
+          [:option {:value ACCOUNT} "Account / 認証の保存"]]]]
        [:f> sidebar context set-context threads now zenoh matter account score]
        body
        (when panel [:f> dapp-panel panel score open-account])

@@ -1,0 +1,8 @@
+{
+  "schema": "awai.os.release.v1",
+  "product": "Awai OS",
+  "codename": "Meiji",
+  "displayName": "Awai OS Meiji",
+  "decidedOn": "2026-11-15",
+  "trackingIssue": "AWAI-2925"
+}

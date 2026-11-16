@@ -1,0 +1,35 @@
+{
+  "issue": "AWAI-2808",
+  "date": "2026-11-13",
+  "baseline": "d81063b0856d48384c5a40c61c425f8c5b6e9a36",
+  "scope": "Evidence-driven activity motions, right activity panel, bounded observer history",
+  "validation": {
+    "shellTests": 79,
+    "activityAndProjectionTests": 11,
+    "advancedComponentSSR": "passed",
+    "httpShellLinkStandaloneBuilds": "passed, zero compiler warnings",
+    "authenticatedBrowser": {
+      "circleSelection": "Fleet reliability:9 distinct Agents; 2 waiting/7 held",
+      "botSelection": "codinator: run, provider/model, artifact CID, next slot and AWAI-752 read back",
+      "observedLayout": "CSS width910: two columns374/290",
+      "observedMotions": "breathe; no fabricated execution rotation",
+      "consoleErrors": 0
+    }
+  },
+  "semantics": {
+    "waiting": "4s breathing only for fresh configured source observations",
+    "queued": "2s opacity pulse",
+    "attention": "2s warning pulse",
+    "resultChanged": "45s indication after a changed confirmed receipt; baseline never pulses",
+    "execution": "rotation only with matching Bot/job/run, node and worker heartbeat within45s",
+    "staleOrHeld": "static",
+    "reducedMotion": "SMIL omitted when preferred; SSR defaults to reduced",
+    "history": "up to12 metadata-only receipts per Bot; first observation is not completion time"
+  },
+  "coverage": {
+    "existingWorkerExecutionHeartbeats": "not emitted by current workers; live execution remains unobserved",
+    "runtimeObserverHistoryPromotion": "pending at source-unit validation",
+    "chat": "requested next; not included in this source unit",
+    "noBotSchedulesGrantsOrProvidersChanged": true
+  }
+}
