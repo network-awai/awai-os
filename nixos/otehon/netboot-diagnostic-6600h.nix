@@ -6,6 +6,7 @@ let
   server = "http://10.77.0.1:8080";
   cmdline = "init=${build.toplevel}/init ${toString config.boot.kernelParams}";
   diagnostic = pkgs.writeShellScript "otehon-diagnostic-command" ''
+    export OTEHON_ALLOW_INSTALLED_BOOT_LOGS=1
     export OTEHON_INSTALLER_INFO=${build.otehonInstallerInfo}
     export PATH=${lib.makeBinPath [ pkgs.systemd ]}
     exec ${pkgs.python3}/bin/python3 ${./installer-diagnostics.py}
@@ -42,7 +43,10 @@ in {
     networking.hostName = lib.mkForce "otehon-diagnostic";
     networking.useDHCP = true;
     systemd.services.display-manager.enable = lib.mkForce false;
-    systemd.services.otehon-install-broker.environment.OTEHON_DIAGNOSTIC_READ_ONLY = "1";
+    systemd.services.otehon-install-broker.environment = {
+      OTEHON_DIAGNOSTIC_READ_ONLY = "1";
+      OTEHON_INSTALLED_LOG_SCRIPT = "${./installer-installed-logs.py}";
+    };
     systemd.services."otehon-install@".environment.OTEHON_DIAGNOSTIC_MODE = "1";
     netboot.squashfsCompression = "zstd -Xcompression-level 6";
     system.build.image = lib.mkForce image;

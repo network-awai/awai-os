@@ -18,10 +18,10 @@ MAX_LOG = 131072
 
 
 def broker(op):
-    if op not in ('STATUS', 'LIST', 'INSPECT', 'KERNEL_INSPECT'):
+    if op not in ('STATUS', 'LIST', 'INSPECT', 'KERNEL_INSPECT', 'INSTALLED_LOGS'):
         raise ValueError('unsupported operation')
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as conn:
-        conn.settimeout(30 if op == 'KERNEL_INSPECT' else 5)
+        conn.settimeout(38 if op == 'INSTALLED_LOGS' else 30 if op == 'KERNEL_INSPECT' else 5)
         conn.connect(SOCKET)
         conn.sendall(('JSON\t' + op + '\n').encode('ascii'))
         with conn.makefile('rb') as stream:
@@ -111,6 +111,8 @@ def main():
             raise ValueError('broker is not read-only')
         result['inventory'] = broker('LIST')
         result['journal'] = {source: journal(source) for source in ('broker', 'kernel')}
+        if os.environ.get('OTEHON_ALLOW_INSTALLED_BOOT_LOGS') == '1':
+            result['installedBoot'] = broker('INSTALLED_LOGS')
     except (KeyError, OSError, ValueError, json.JSONDecodeError):
         print(json.dumps({'schema': result['schema'], 'error': 'diagnostics-unavailable'}))
         return 1
