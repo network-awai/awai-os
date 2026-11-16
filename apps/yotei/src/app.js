@@ -7,7 +7,7 @@ if(clientRuntimeProblems(descriptor,[],location.origin).length)throw Error('inva
 createClientOperationBroker({runtime:descriptor,requestedCapabilities:[],approvedOperations:[],hostSupportedOperations:[],consentHost:createClientConsentHost()});
 const host=createHost({appId:'network.itonami.yotei'}),$=id=>document.getElementById(id);let snapshot,state,busy=false,projectionPending=false;
 function el(tag,text){const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;}
-function status(text){$('status').textContent=text;}
+function status(text){$('status').textContent=text;const dialog=document.querySelector('dialog[open]');if(dialog){let message=dialog.querySelector('[role=status]');if(!message){message=el('p');message.setAttribute('role','status');dialog.append(message);}message.textContent=text;}}
 function error(e){const labels={'state-conflict':'別の画面で変更されました。再読込みしてからお試しください。','unreadable-state':'保存内容を読めません。元のデータは保持し、上書きを停止しました。','atomic-write-unavailable':'このブラウザでは安全な同時保存を利用できません。対応ブラウザで開いてください。','storage-unavailable':'保存領域を利用できません。元のデータは保持しています。','event-limit':'保存できる予定は200件までです。'};status(labels[e.code||e.message]||'処理を完了できませんでした。入力・バックアップの形式と保存領域を確認してください。');}
 function button(text,action,secondary=false){const b=el('button',text);b.type='button';if(secondary)b.className='secondary';b.addEventListener('click',e=>{if(e.isTrusted)action();});return b;}
 async function project(){projectionPending=false;try{await host.projectAgenda(state.events);}catch{projectionPending=true;}}
