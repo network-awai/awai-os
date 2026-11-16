@@ -42,3 +42,35 @@ all liveness remain unknown. It does not operate the scheduler or validate
 guest result replicas. Two independent Range reads are not claimed to be an
 atomic snapshot; both revisions are emitted. The node's configured cluster ID
 and etcdctl SHA-256 must match before any output is accepted.
+
+## AwaiVol retreat lookup
+
+The owner identified **AwaiVol** as the retreat location. Read-only lookup at
+07:48–07:53 UTC checked the active logical file index (5216 entries), HTTP
+Depth-1 listings of Itonami report/result roots and the workspace/volume roots,
+the accessible resident checkpoint metadata, and four local saved indexes
+(1140, 1140, 1675, 4854 entries; overlapping snapshots, not additive coverage).
+No indexed path matched `.itonami`, `itonami-state`, `operator_ed25519`,
+`worker.edn` or `root.key` in that inspected scope. Itonami registration,
+execution report and VM result namespaces do exist. The mounted WebDAV path
+occasionally blocked; direct HTTP listing/metadata reads worked, while one
+VM report GET timed out at 8 seconds. This is not storage availability/SLO
+qualification and does not prove the backup is absent from other volumes,
+encrypted archives or historical remote versions. The owner was asked for the
+specific retreat folder/volume/snapshot name. No AwaiVol data was changed.
+
+When the original state is found:
+
+1. Stage it privately outside the loaded LaunchAgent's active config path.
+   Verify the operator public key against `vm/operator-authorized.pub`, client
+   certificates against the preserved cluster CA, and configuration against the
+   original LaunchAgent manifest digest. Do not print/copy keys into Git.
+2. Read the authoritative enrollments, cursor and original guest result for
+   each job; preserve completed/uncertain slots, identity and disk ownership.
+   Restore original cron/timezone/paused fields, not a newly generated cadence.
+3. Drain the task-owned coordinator before atomically installing the verified
+   restored configuration. Verify fixed-command SSH and persisted result
+   readback before resuming a due slot. Do not substitute a new job ID.
+4. Qualify guest-local scheduler/inference grants, signed Meiji image and
+   guest-to-jacob transport before additional Bot cutover. Native UI fixture
+   success and historical physics receipts do not satisfy these conditions.
