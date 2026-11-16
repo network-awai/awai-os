@@ -16,6 +16,18 @@ Initial tests: 14 tests / 115 assertions pass, including ciphertext/context
 tampering, wrong wrapping key, fresh nonce and absence of plaintext in the
 envelope. This does not yet prove production credential backup/restoration.
 
+At 08:09 UTC, replacement CA/root-client/fixed-command operator credentials
+were generated in the private managed application directory. The encrypted
+AwaiVol record `/.itonami/recovery/keys/awai-2820-20261116-v1.json` was fetched,
+authenticated/decrypted through the Keychain wrapping key, and all six original
+files matched. Ciphertext SHA-256:
+`9fde4a2983b54f44e92f7e81efcf22a2c631decf6c37379d6cab7668ec01c93c`.
+No plaintext credential was uploaded or committed. Independent remote replica
+or loss-of-Keychain recovery is not claimed. A new recovery CLI stages the
+client trust bundle, checks all three original cluster IDs/leaders and requires
+a matching prepared bundle before restarting the explicitly owned member.
+Suite after this change: 15 tests / 118 assertions pass.
+
 Planned live sequence: generate new recovery CA/root client and fixed-command
 SSH operator credentials in the managed private application directory; encrypt,
 upload, fetch/decrypt and compare the backup; preserve the old CA and add the

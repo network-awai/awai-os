@@ -2,7 +2,15 @@
   (:require [clojure.test :refer [deftest is testing]] [meiji.policy :as p]
             [meiji.host :as host] [babashka.fs :as fs] [org.httpkit.server :as server]
             [cheshire.core :as json] [meiji.kapitsa :as kapitsa] [meiji.transport :as transport]
-            [meiji.fleet-audit :as audit] [meiji.recovery :as recovery]))
+            [meiji.fleet-audit :as audit] [meiji.recovery :as recovery] [meiji.trust-rotation :as rotation]))
+
+(deftest preserve-original-ca
+  (let [old "-----BEGIN CERTIFICATE-----\nold\n-----END CERTIFICATE-----\n"
+        new "-----BEGIN CERTIFICATE-----\nnew\n-----END CERTIFICATE-----\n"
+        bundle (rotation/ca-bundle old new)]
+    (is (clojure.string/starts-with? bundle old))
+    (is (= bundle (rotation/ca-bundle bundle new)))
+    (is (thrown? Exception (rotation/ca-bundle old "invalid")))))
 
 (deftest authenticated-recovery-boundaries
   (let [key (recovery/random-bytes 32) plaintext (.getBytes "private fixture only" "UTF-8")
