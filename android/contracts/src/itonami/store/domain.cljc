@@ -13,7 +13,7 @@
 (defn package-id? [x] (and (string? x) (boolean (re-matches #"[a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*)+" x))))
 (defn digest? [x] (and (string? x) (boolean (re-matches #"[0-9a-f]{64}" x))))
 (defn safe-artifact? [{:keys [platform runtime kind asset sha256 bytes signerSha256]}]
-  (and (digest? sha256) (integer? bytes) (pos? bytes) (<= bytes (* 20 1024 1024))
+  (and (digest? sha256) (integer? bytes) (pos? bytes) (<= bytes (* (if (= platform "android") 256 20) 1024 1024))
        (or (and (= platform "android") (= runtime "android") (= kind "apk")
                 (string? asset) (boolean (re-matches #"packages/[a-z0-9-]+\.apk" asset))
                 (digest? signerSha256))

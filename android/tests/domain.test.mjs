@@ -33,3 +33,8 @@ test('local event lifecycle is shared and bounded',()=>{
   const many=Array.from({length:200},(_,n)=>({...e,id:String(n)}));
   assert.equal(JSON.parse(d.saveEvent(JSON.stringify(many),JSON.stringify({...e,id:'new'}))).error,'event-limit');
 });
+
+test('dual-ABI APK bound is 256 MiB and preserves other platform limits',()=>{
+ const candidate={...app,artifacts:[{...apk,bytes:120*1024*1024}]};assert.equal(d.appState(JSON.stringify(candidate),'android','android',null),'available');
+ for(const bytes of [0,268435457,1.5])assert.equal(d.appState(JSON.stringify({...app,artifacts:[{...apk,bytes}]}),'android','android',null),'unavailable');
+});

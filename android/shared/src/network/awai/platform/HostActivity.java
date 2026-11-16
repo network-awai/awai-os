@@ -118,7 +118,8 @@ public abstract class HostActivity extends Activity {
     public final class Bridge {
         @JavascriptInterface public String snapshot(){try{
             JSONObject o=new JSONObject();o.put("mode",mode());o.put("platform","android");o.put("runtime","android");o.put("apps","home".equals(mode())?launchable():new JSONArray());
-            JSONObject installed=new JSONObject();try{installed.put("network.itonami.yotei",getPackageManager().getPackageInfo("network.itonami.yotei",0).getLongVersionCode());}catch(PackageManager.NameNotFoundException absent){}
+            JSONObject installed=new JSONObject();JSONArray known="store".equals(mode())?new JSONObject(trustedCatalog().json()).getJSONArray("apps"):new JSONArray("[{\"id\":\"network.itonami.yotei\"}]");
+            for(int i=0;i<known.length();i++){String id=known.getJSONObject(i).getString("id");try{installed.put(id,getPackageManager().getPackageInfo(id,0).getLongVersionCode());}catch(PackageManager.NameNotFoundException absent){}}
             o.put("motionReduced",Settings.Global.getFloat(getContentResolver(),Settings.Global.ANIMATOR_DURATION_SCALE,1f)==0f || getSystemService(PowerManager.class).isPowerSaveMode());
             o.put("installed",installed);RoleManager roles=getSystemService(RoleManager.class);o.put("isDefaultHome",roles!=null&&roles.isRoleHeld(RoleManager.ROLE_HOME));
             JSONArray agenda=new JSONArray();if("home".equals(mode())){try(Cursor c=getContentResolver().query(Uri.parse("content://network.itonami.yotei.agenda/events"),null,null,null,null)){if(c!=null&&c.moveToFirst())agenda=new JSONArray(c.getString(0));}catch(Exception absent){}}
@@ -139,6 +140,8 @@ public abstract class HostActivity extends Activity {
             try{
                 byte[] key=Integrity.read(getAssets().open("catalog-key.der"),4096);
                 JSONObject candidate=Catalog.verifyMetadata(raw.getBytes(StandardCharsets.UTF_8),android.util.Base64.decode(signature,android.util.Base64.DEFAULT),key,System.currentTimeMillis()/1000);
+                // Existing online transport is pinned to Yotei only. Bundled dapps do not widen it.
+                if(candidate.getJSONArray("apps").length()!=1||!"network.itonami.yotei".equals(candidate.getJSONArray("apps").getJSONObject(0).getString("id")))throw new SecurityException("online-app");
                 Catalog current=trustedCatalog();long revision=candidate.getLong("revision");
                 if(revision<current.valueRevision())throw new SecurityException("rollback");
                 JSONObject pins=new JSONObject(new String(Integrity.read(getAssets().open("online-pins.json"),16384),StandardCharsets.UTF_8));
@@ -150,7 +153,7 @@ public abstract class HostActivity extends Activity {
                 return getSharedPreferences("online",0).edit().putString("raw",raw).putString("signature",signature).putLong("highest",revision).commit()?"ok":"refused";
             }catch(Exception invalid){return "refused";}
         }
-        @JavascriptInterface public boolean hasOnlineApk(String id){if(!"store".equals(mode()))return false;try{Catalog c=trustedCatalog();if(!c.online)return false;c.verifiedApk(HostActivity.this,id);return true;}catch(Exception absent){return false;}}
+        @JavascriptInterface public boolean hasOnlineApk(String id){if(!"store".equals(mode()))return false;try{Catalog c=trustedCatalog();if(!c.online)return false;File verified=c.verifiedApkFile(HostActivity.this,id);if(!verified.delete())verified.deleteOnExit();return true;}catch(Exception absent){return false;}}
         @JavascriptInterface public String stageOnlineApk(String id,String encoded){
             if(!"store".equals(mode())||encoded==null||encoded.length()>28*1024*1024)return "refused";
             File temporary=null;
@@ -159,7 +162,7 @@ public abstract class HostActivity extends Activity {
                 if(bytes.length>20*1024*1024||bytes.length!=a.getLong("bytes")||!Integrity.sha256(bytes).equals(a.getString("sha256")))throw new SecurityException();
                 temporary=File.createTempFile("online-", ".apk",getFilesDir());try(FileOutputStream output=new FileOutputStream(temporary)){output.write(bytes);output.getFD().sync();}
                 if(!temporary.renameTo(new File(getFilesDir(),"online-yotei.apk")))throw new IOException();
-                c.verifiedApk(HostActivity.this,id);return "ok";
+                File verified=c.verifiedApkFile(HostActivity.this,id);if(!verified.delete())verified.deleteOnExit();return "ok";
             }catch(Exception invalid){if(temporary!=null)temporary.delete();return "refused";}
         }
         @JavascriptInterface public void prepareInstall(String id){if(!"store".equals(mode()))return;runOnUiThread(()->confirmInstall(id));}
@@ -181,17 +184,17 @@ public abstract class HostActivity extends Activity {
         }catch(Exception invalid){message("配布元またはカタログを確認できません。追加を停止しました。");}
     }
     private void install(String id){installing=true;new Thread(()->{
-        PackageInstaller installer=getPackageManager().getPackageInstaller();int sessionId=-1;
-        try{byte[] bytes=trustedCatalog().verifiedApk(this,id);PackageInstaller.SessionParams params=new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
-            params.setAppPackageName(id);params.setSize(bytes.length);params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_REQUIRED);sessionId=installer.createSession(params);
+        PackageInstaller installer=getPackageManager().getPackageInstaller();int sessionId=-1;File verified=null;
+        try{verified=trustedCatalog().verifiedApkFile(this,id);PackageInstaller.SessionParams params=new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+            params.setAppPackageName(id);params.setSize(verified.length());params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_REQUIRED);sessionId=installer.createSession(params);
             try(PackageInstaller.Session session=installer.openSession(sessionId)){
-                try(OutputStream out=session.openWrite("base.apk",0,bytes.length)){out.write(bytes);session.fsync(out);}
+                try(InputStream input=new FileInputStream(verified);OutputStream out=session.openWrite("base.apk",0,verified.length())){byte[] buffer=new byte[65536];int n;while((n=input.read(buffer))!=-1)out.write(buffer,0,n);session.fsync(out);}
                 getSharedPreferences("host",0).edit().putInt("install-session",sessionId).apply();
                 Intent callback=new Intent(this,InstallReceiver.class).setAction(getPackageName()+".INSTALL_RESULT");
                 PendingIntent status=PendingIntent.getBroadcast(this,sessionId,callback,PendingIntent.FLAG_MUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
                 session.commit(status.getIntentSender());
             }message("Android の追加確認をお待ちください。");
         }catch(Exception invalid){if(sessionId>=0)installer.abandonSession(sessionId);message("ファイルの署名または整合性を確認できません。追加を停止しました。");}
-        finally{installing=false;}
+        finally{if(verified!=null&&!verified.delete())verified.deleteOnExit();installing=false;}
     },"awai-install").start();}
 }
