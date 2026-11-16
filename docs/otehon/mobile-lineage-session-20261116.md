@@ -249,3 +249,22 @@ response_idで重複を除き、cacheはinputの内数、reasoningはoutputの�
 通常boot要求後に期限付き管理者helperは終了した。次はPowerでAndroidを起動し、
 通常権限のADB/fastbootでOEM許可とunlock_abilityを再測定する。
 現状態は純正bootchain＋解除用設定3領域のみ変更で、unlock/wipe/Lineage導入はまだ未実施。
+
+## 14:01 JST 再開: factory表示とFastboot接続
+
+Junのボタン操作ではFastbootへ入れず、Androidのfactory mode表示が続いた。
+HostでADBが短時間見えた後に消え、property読取りはtransport failureだったため、空値を観測値と扱わない。
+USB通知でFile transfer/debugを許可する操作を依頼。
+タスク専用LimaのQMP割当を確認するとUSB device/usb-host割当は空で、干渉の原因とは確認できなかった。
+未使用の専用VMだけを通常stopし、他3つのrunning VZ guestは保全した。
+
+`adb -s <explicit-target> wait-for-device reboot bootloader`を先に待機させてから再接続すると、
+コマンドexit0、hostのFastboot認識、product=lamulと元bootloader版の読取りが成功した。
+純正bootloaderはunlocked=no/secure=yesのまま、unlock_ability=0だった。
+この段階のbootloader unlock/初期化/OS flashは未実施。
+
+AOSPの[locking/unlocking手順](https://source.android.com/docs/core/architecture/bootloader/locking_unlocking)は、
+unlock_ability0ではDeveloper optionsのOEM unlockingを有効にする手順を案内している。
+Androidへ通常rebootし、ADB接続時にDeveloper optionsを開く処理を待機。
+JunにOEMロック解除のON/gray/項目なしの確認を依頼した。
+これは汎用Android仕様と実機の許可0の対応であり、このSKUで設定可能と認定していない。
