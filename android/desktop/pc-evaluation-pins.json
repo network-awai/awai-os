@@ -1,0 +1,24 @@
+{
+  "schema": "awai.android.pc-evaluation-candidate.v1",
+  "kind": "unofficial-third-party-live-image",
+  "upstreamRelease": "https://github.com/IzumiSenaSora/Generic_X86_64/releases/tag/lineage-24.0-20261020-UNOFFICIAL-0xCAFEBABE-Generic_x86_64-live",
+  "tag": "lineage-24.0-20261020-UNOFFICIAL-0xCAFEBABE-Generic_x86_64-live",
+  "declaredAndroid": "17",
+  "expectedMinimumApi": 35,
+  "productionQualified": false,
+  "sourceClosureVerified": false,
+  "parts": [
+    {
+      "name": "lineage-24.0_aa",
+      "size": 1420745728,
+      "digest": "sha256:b42ebd16f855cb1314194bb065557a738443ce8920955ae1d3aa146aa93cc901",
+      "browser_download_url": "https://github.com/IzumiSenaSora/Generic_X86_64/releases/download/lineage-24.0-20261020-UNOFFICIAL-0xCAFEBABE-Generic_x86_64-live/lineage-24.0_aa"
+    },
+    {
+      "name": "lineage-24.0_ab",
+      "size": 1420745728,
+      "digest": "sha256:7013b32d12390e7f985b5d66018644cfff9057ce3405257f8bad83dbc6464ff0",
+      "browser_download_url": "https://github.com/IzumiSenaSora/Generic_X86_64/releases/download/lineage-24.0-20261020-UNOFFICIAL-0xCAFEBABE-Generic_x86_64-live/lineage-24.0_ab"
+    }
+  ]
+}

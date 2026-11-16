@@ -84,3 +84,16 @@ UEFI kernel/initrd route, validate VM install/restart, then serve an exact pinne
 artifact for physical LAN boot. Refuse any installer plan touching the existing
 Nix disk. Real AMD display, input, networking and audio must pass before choosing
 an install target. Keep current Nix boot and data until Android is accepted.
+
+## AOSP core and PC Live qualification
+
+The owner selected an [AOSP-centered architecture](aosp-architecture.md).
+An independently pinned, unofficial PC Live ISO now boots through UEFI in an
+isolated 6600H-hosted VM and reports API37/boot-complete; the checked Awai Home
+also displays. This adds PC VM evidence, not physical LAN or product-ROM proof.
+Read the architecture note for source provenance, boundaries and remaining work.
+Verify a concatenated ISO without modifying it:
+
+```sh
+python3 android/desktop/verify-pc-image.py /absolute/path/candidate.iso
+```
