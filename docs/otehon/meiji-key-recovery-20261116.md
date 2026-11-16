@@ -63,3 +63,35 @@ image, which embeds the lost operator public key. The next Meiji image must
 read the replacement public key from its owner-controlled key disk, import
 existing guest Pack/results from a read-only history disk, then verify original
 result recovery before admitting further work. Old guest disks remain intact.
+
+## Production readback after migration
+
+The follow-up image 0.2.0 now boots on both existing physical owners. Its
+strict boot index selects the new system disk; old guest disks remain
+read-only and their hashes match the stopped originals. History import
+completed on both nodes. Runtime authorized-key files are numeric root-owned;
+OpenSSH StrictModes and pinned original guest host keys remain enabled.
+
+Both original completed results were exported from both new guests and matched
+the original CAR SHA and owning Linear records, without recomputation. After
+restoring all five unchanged enrollments, the next due original slots produced
+new results for AWAI-2421 (16/16 probes) and AWAI-2422 (15/15). Both results have
+two VM replicas, exact AwaiFS readback and confirmed owning Linear comments.
+They are bounded Otehon physics simulations, provider none/model deterministic;
+they do not prove Native tests, code growth, mail or GPU inference.
+
+`meiji.coordinator` wakes on the owner control machine; the existing ledger
+schedule determines the original daily JST phase and computation happens in
+the enrolled guests. The owner machine remains a scheduling dependency. A
+read-only recorder certificate can read the occurrence prefix but cannot write
+to etcd; guest identities own admissions and result writes. An OS file lock
+prevents overlapping owner processes. Public observation is persisted/read
+back at `/.itonami/runtime/meiji-current.json`, then shown in Tauri's 本番 view.
+Observations older than three minutes are explicitly stale. No fleet-wide
+899-Bot liveness claim follows from these two completed jobs.
+
+The scoped recorder's key, certificate and configuration were added to the
+encrypted v4 recovery envelope (16 files). Exact decrypt/readback matched.
+Loss of the wrapping Keychain and independent remote-tier recovery remain
+unqualified. Old CA trust has not been revoked; existing node clients still
+depend on it.

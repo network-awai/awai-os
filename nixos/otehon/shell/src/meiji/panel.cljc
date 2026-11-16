@@ -1,10 +1,10 @@
 (ns meiji.panel
-  #?(:cljs (:require ["react" :refer [useEffect useState]] [meiji.client :as client])))
+  #?(:cljs (:require ["react" :refer [useEffect useState]] [meiji.client :as client] [meiji.production :as production])))
 
 #?(:cljs
    (do
      (def copy
-       {:ja {:title "Meiji" :vms "VM" :agents "Bot・Circle" :navigation "Soshiki"
+       {:ja {:title "Meiji" :production "本番" :vms "VM" :agents "Bot・Circle" :navigation "Soshiki"
              :start "起動" :stop "停止" :force "強制停止" :save "上限を保存"
              :cpus "CPU（コア）" :memory "メモリ（MiB）" :check "推論を確認"
              :running "稼働中" :stopping "停止中" :stopped "停止済み" :failed "異常終了"
@@ -12,7 +12,7 @@
              :unknown-gpu "GPU使用：未確認" :close "VMを停止してから終了してください"
              :failed-action "操作できませんでした" :stop-first "停止してから変更してください"
              :invalid "上限の範囲内で入力してください" :vm-health "ゲストの状態：未確認"}
-        :en {:title "Meiji" :vms "VMs" :agents "Bots & Circles" :navigation "Soshiki"
+        :en {:title "Meiji" :production "Production" :vms "VMs" :agents "Bots & Circles" :navigation "Soshiki"
              :start "Start" :stop "Stop" :force "Force stop" :save "Save limits"
              :cpus "CPU cores" :memory "Memory (MiB)" :check "Check inference"
              :running "Running" :stopping "Stopping" :stopped "Stopped" :failed "Failed"
@@ -92,11 +92,11 @@
      (defn desktop-workspace [fleet-panel]
        ;; Mount only the selected workspace: the dense Circle view and its
        ;; polling must not run while the operator is controlling VM lifecycle.
-       (let [[view set-view] (useState :vms)]
+       (let [[view set-view] (useState :production)]
          [:section
           [:nav.meiji-navigation {:aria-label (t :navigation)}
-           (for [item [:vms :agents]]
+           (for [item [:production :vms :agents]]
              ^{:key item}
              [:button {:type "button" :aria-current (when (= view item) "page")
                        :on-click #(set-view item)} (t item)])]
-          (if (= view :vms) [:f> panel] [:f> fleet-panel])]))))
+          (case view :production [:f> production/panel] :vms [:f> panel] [:f> fleet-panel])]))))
