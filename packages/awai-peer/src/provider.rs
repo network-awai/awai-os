@@ -474,7 +474,23 @@ pub async fn push_snapshot(
     address: Multiaddr,
     snapshot: Cid,
 ) -> Result<Receipt> {
+    push_snapshot_bounded(key, store, address, snapshot, 256 * 1024 * 1024).await
+}
+pub async fn push_snapshot_bounded(
+    key: identity::Keypair,
+    store: &DiskStore,
+    address: Multiaddr,
+    snapshot: Cid,
+    budget: usize,
+) -> Result<Receipt> {
     let value = store.snapshot(&snapshot)?;
+    let mut total = store.get(&snapshot)?.len();
+    for cid in &value.blocks {
+        total = total
+            .checked_add(store.get(cid)?.len())
+            .context("transfer overflow")?;
+        ensure!(total <= budget, "transfer exceeds declared byte budget");
+    }
     let peer = address
         .iter()
         .last()
@@ -518,6 +534,15 @@ pub async fn pull_snapshot(
     address: Multiaddr,
     snapshot: Cid,
 ) -> Result<()> {
+    pull_snapshot_bounded(key, store, address, snapshot, 256 * 1024 * 1024).await
+}
+pub async fn pull_snapshot_bounded(
+    key: identity::Keypair,
+    store: &DiskStore,
+    address: Multiaddr,
+    snapshot: Cid,
+    budget: usize,
+) -> Result<()> {
     let response = exchange(
         key.clone(),
         address.clone(),
@@ -531,6 +556,7 @@ pub async fn pull_snapshot(
     store.put(&snapshot, &response.bytes)?;
     let value = store.snapshot(&snapshot)?;
     let mut total = response.bytes.len();
+    ensure!(total <= budget, "transfer exceeds declared byte budget");
     for cid in value.blocks {
         if store.get(&cid).is_ok() {
             continue;
@@ -546,7 +572,7 @@ pub async fn pull_snapshot(
         .await?;
         ensure!(response.ok, "provider refused block");
         total += response.bytes.len();
-        ensure!(total <= 256 * 1024 * 1024, "transfer exceeds limit");
+        ensure!(total <= budget, "transfer exceeds declared byte budget");
         store.put(&cid, &response.bytes)?;
     }
     Ok(())

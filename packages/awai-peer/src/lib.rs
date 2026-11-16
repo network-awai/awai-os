@@ -261,6 +261,11 @@ pub fn swarm(key: identity::Keypair, store: Arc<PublicStore>) -> Result<Swarm<Be
 pub fn load_identity(dir: &Path) -> Result<identity::Keypair> {
     fs::create_dir_all(dir)?;
     let path = dir.join("peer-identity-v1.key");
+    let marker = dir.join("peer-identity-v1.initialized");
+    ensure!(
+        !marker.exists() || path.exists(),
+        "peer identity recovery required; refusing implicit rotation"
+    );
     if path.exists() {
         ensure!(
             fs::symlink_metadata(&path)?.file_type().is_file(),
@@ -270,7 +275,9 @@ pub fn load_identity(dir: &Path) -> Result<identity::Keypair> {
             fs::metadata(&path)?.len() <= 8192,
             "invalid identity length"
         );
-        return identity::Keypair::from_protobuf_encoding(&fs::read(path)?).map_err(Into::into);
+        let key = identity::Keypair::from_protobuf_encoding(&fs::read(path)?)?;
+        write_identity_marker(&marker, &key)?;
+        return Ok(key);
     }
     let key = identity::Keypair::generate_ed25519();
     let mut options = fs::OpenOptions::new();
@@ -285,7 +292,35 @@ pub fn load_identity(dir: &Path) -> Result<identity::Keypair> {
     file.sync_all()?;
     #[cfg(unix)]
     fs::File::open(dir)?.sync_all()?;
+    write_identity_marker(&marker, &key)?;
     Ok(key)
+}
+fn write_identity_marker(path: &Path, key: &identity::Keypair) -> Result<()> {
+    let id = key.public().to_peer_id().to_string();
+    if path.exists() {
+        ensure!(
+            fs::symlink_metadata(path)?.is_file() && fs::metadata(path)?.len() <= 128,
+            "invalid identity marker"
+        );
+        ensure!(
+            fs::read_to_string(path)? == id,
+            "peer identity marker mismatch"
+        );
+        return Ok(());
+    }
+    let mut options = fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    let mut file = options.open(path)?;
+    file.write_all(id.as_bytes())?;
+    file.sync_all()?;
+    #[cfg(unix)]
+    fs::File::open(path.parent().context("identity directory")?)?.sync_all()?;
+    Ok(())
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -434,6 +469,22 @@ pub async fn serve_public(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn initialized_identity_never_silently_rotates() -> Result<()> {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../.agent-output")
+            .join(format!("identity-{}", PeerId::random()));
+        let key = load_identity(&root)?;
+        assert_eq!(
+            key.public().to_peer_id(),
+            load_identity(&root)?.public().to_peer_id()
+        );
+        fs::remove_file(root.join("peer-identity-v1.key"))?;
+        assert!(load_identity(&root).is_err());
+        assert!(!root.join("peer-identity-v1.key").exists());
+        fs::remove_dir_all(root)?;
+        Ok(())
+    }
     fn endpoint(peer: PeerId, port: u16) -> PeerEndpoint {
         PeerEndpoint {
             transport: "libp2p".into(),
@@ -542,3 +593,13 @@ pub mod provider;
 pub mod snapshot;
 
 pub mod nat;
+pub mod operation;
+
+/// Public carrier types; no private key material crosses the renderer boundary.
+pub type PeerIdentity = identity::Keypair;
+pub fn new_operation_id() -> String {
+    identity::Keypair::generate_ed25519()
+        .public()
+        .to_peer_id()
+        .to_string()
+}
