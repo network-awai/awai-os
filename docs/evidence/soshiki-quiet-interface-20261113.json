@@ -1,0 +1,98 @@
+{
+  "issue": "AWAI-2860",
+  "baseline": "7fbc32386a7a6d2160e863895f0e9bcc031c5596",
+  "recordedAt": "2026-11-13T08:58:55.531035+00:00",
+  "scope": "Soshiki primary fleet surfaces, header, shared interface rules; excludes parent Agent persistence and legacy editors",
+  "checks": {
+    "nodeTests": {
+      "passed": 82,
+      "failed": 0,
+      "command": "npm test"
+    },
+    "advancedSetup": [
+      "phone QR",
+      "Japanese Circle totals/catalog/status",
+      "English labels/named counts"
+    ],
+    "advancedBuild": {
+      "entries": [
+        "shell",
+        "link",
+        "soshiki-runtime"
+      ],
+      "compilerWarnings": 0,
+      "command": "OTEHON_HTTP=1 npm run build",
+      "jvmNotice": "sun.misc.Unsafe deprecation warning"
+    },
+    "browser": {
+      "origin": "http://127.0.0.1:8976/soshiki-runtime/",
+      "data": "copied read-only report snapshot; not live fleet qualification",
+      "locales": [
+        "ja",
+        "en"
+      ],
+      "viewports": [
+        {
+          "width": 390,
+          "height": 844,
+          "documentScrollWidth": 390
+        },
+        {
+          "width": 1024,
+          "height": 768,
+          "documentScrollWidth": 1024
+        }
+      ],
+      "verified": [
+        "Circle selection updates inspector",
+        "Bot selection shows App, issue, run history and Unknown execution",
+        "secondary disclosures closed by default",
+        "layout caveat clipped as accessible SVG description",
+        "phone totals use two-column grid"
+      ],
+      "temporaryViewport": "reset"
+    }
+  },
+  "sourceProxy": {
+    "mutedParagraphDeclarations": [
+      {
+        "file": "fleet_circles.cljs",
+        "mutedParagraphDeclarationsBefore": 3,
+        "mutedParagraphDeclarationsAfter": 0
+      },
+      {
+        "file": "fleet_activity.cljs",
+        "mutedParagraphDeclarationsBefore": 15,
+        "mutedParagraphDeclarationsAfter": 0
+      },
+      {
+        "file": "fleet_goals.cljs",
+        "mutedParagraphDeclarationsBefore": 2,
+        "mutedParagraphDeclarationsAfter": 0
+      },
+      {
+        "file": "fleet_overview.cljs",
+        "mutedParagraphDeclarationsBefore": 18,
+        "mutedParagraphDeclarationsAfter": 0
+      }
+    ],
+    "limitation": "source declaration counts, not visible paragraph counts or measured usability"
+  },
+  "measurement": {
+    "provider": "unknown",
+    "model": "unknown",
+    "reasoningEffort": "unknown",
+    "forecastTokens": "unknown",
+    "actualTokens": "unknown",
+    "elapsed": "unknown",
+    "active": "unknown",
+    "waiting": "unknown",
+    "coverage": "mixed session usage remains unallocated; no token or fleet velocity inferred"
+  },
+  "limitations": [
+    "not merged or deployed",
+    "human usability acceptance unknown",
+    "legacy editors/imported names not translated",
+    "parent conversation component supplied separately"
+  ]
+}

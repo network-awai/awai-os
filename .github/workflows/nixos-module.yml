@@ -145,5 +145,16 @@ jobs:
           bash -n nixos/otehon/update.sh
           nix-instantiate --eval --strict --json --expr 'import ./tests/otehon-update-eval.nix { nixpkgsPath = import ./ci/nixpkgs.nix; }'
           nix-instantiate --eval --strict --json --expr 'import ./tests/otehon-usb-eval.nix { nixpkgsPath = import ./ci/nixpkgs.nix; }'
+      - name: Test Otehon bot work bindings and deduplicated usage receipts
+        # Pure source checks only; no Muse, GitHub, Linear or live fleet calls.
+        run: |
+          fleet_check=$(nix-build nixos/otehon/bot-fleet/check.nix --no-out-link)
+          cat "$fleet_check/core-tests.txt" "$fleet_check/receipt-tests.txt"
+          observation_check=$(nix-build nixos/otehon/node-observation/check.nix --no-out-link)
+          cat "$observation_check/tests.txt"
+      - name: Test the Otehon Agent conversation database over AwaiFS
+        run: |
+          chat_check=$(nix-build nixos/otehon/bot-chat/check.nix --no-out-link)
+          cat "$chat_check"
       - name: Evaluate every Otehon profile, aarch64 and the x86_64 vm
         run: sh nixos/otehon/eval-profiles.sh .

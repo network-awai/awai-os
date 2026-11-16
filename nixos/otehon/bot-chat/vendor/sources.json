@@ -1,0 +1,213 @@
+{
+  "scope": "Historical .cljc Kotobase Otehon dependency capsule; not Native or current selfhost qualification",
+  "pins": {
+    "kotobase-peer": "0428c35817a82e6280ea0e3b80cbe61e1ec60d37",
+    "arrangement": "f4e3118f8431e60259f501ee539773af3b35b1d3",
+    "chain": "6da9ce3b69b5e591bdcf275519afa91b126a22a8",
+    "datom": "d27a5833d59d909367956705f2ec931399c891ee",
+    "prolly-tree": "b3d13b8175ce032622f7604615e914da9f292c59",
+    "io-ipld": "4591764514239c4777f227a7a56d46c901e2a4a0",
+    "io-multiformats": "eec3ee85c458ea830be94518b9a42f4a8f1aee40",
+    "org-ietf-cbor": "de18ad29102f9df150e214d756de4719c3c00d7a"
+  },
+  "files": [
+    {
+      "repo": "kotobase-peer",
+      "revision": "0428c35817a82e6280ea0e3b80cbe61e1ec60d37",
+      "path": "LICENSE",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "repo": "kotobase-peer",
+      "revision": "0428c35817a82e6280ea0e3b80cbe61e1ec60d37",
+      "path": "src/kotobase_peer/atomic_publication.cljc",
+      "sha256": "c67345a8c503c5d4563d8003ed1c48dd4faddede0b15e568957c6fdf3b7d2df9"
+    },
+    {
+      "repo": "kotobase-peer",
+      "revision": "0428c35817a82e6280ea0e3b80cbe61e1ec60d37",
+      "path": "src/kotobase_peer/availability.cljc",
+      "sha256": "5e1fdfdf595e94fee22a557408cac1ba3735140a3a111007d99a8dd0ff8b0ca6"
+    },
+    {
+      "repo": "kotobase-peer",
+      "revision": "0428c35817a82e6280ea0e3b80cbe61e1ec60d37",
+      "path": "src/kotobase_peer/block_sizing.cljc",
+      "sha256": "2433db461a9a7dd7ffc052af105dcf41fbe8986610f82512ae9fbf55b6abe725"
+    },
+    {
+      "repo": "kotobase-peer",
+      "revision": "0428c35817a82e6280ea0e3b80cbe61e1ec60d37",
+      "path": "src/kotobase_peer/compaction.cljc",
+      "sha256": "63f94d6e4164937a93ae0d1f8f10d0be85bf4a7bc39c2800dea651c83428f453"
+    },
+    {
+      "repo": "kotobase-peer",
+      "revision": "0428c35817a82e6280ea0e3b80cbe61e1ec60d37",
+      "path": "src/kotobase_peer/core.cljc",
+      "sha256": "2e876ad0cf2ff2045dcc24482739070f5b1251f66f7819cfa6eecb72c3a4c84c"
+    },
+    {
+      "repo": "kotobase-peer",
+      "revision": "0428c35817a82e6280ea0e3b80cbe61e1ec60d37",
+      "path": "src/kotobase_peer/database_restore.cljc",
+      "sha256": "ee1d350dd05e8c325004d6a91ce63e4528981c339863b0b737d3ccd59d05d585"
+    },
+    {
+      "repo": "kotobase-peer",
+      "revision": "0428c35817a82e6280ea0e3b80cbe61e1ec60d37",
+      "path": "src/kotobase_peer/datalog_materialization.cljc",
+      "sha256": "80ff7b6b04bda74bb76db9353a982fc56fc79c5b148ce466d4569afcdfd93f23"
+    },
+    {
+      "repo": "kotobase-peer",
+      "revision": "0428c35817a82e6280ea0e3b80cbe61e1ec60d37",
+      "path": "src/kotobase_peer/materialized_view.cljc",
+      "sha256": "e4daa3c4799d11bd16e0d89c373a13b1dc06bbdb01a16579694de34bfd977ff5"
+    },
+    {
+      "repo": "kotobase-peer",
+      "revision": "0428c35817a82e6280ea0e3b80cbe61e1ec60d37",
+      "path": "src/kotobase_peer/merkle_lsm.cljc",
+      "sha256": "815f51db2d42f06b07d33edc3ed9f0fcca9f1f7faca3dc4e795ff49df964a59b"
+    },
+    {
+      "repo": "kotobase-peer",
+      "revision": "0428c35817a82e6280ea0e3b80cbe61e1ec60d37",
+      "path": "src/kotobase_peer/object_store/s3_sigv4.cljs",
+      "sha256": "ca3f0a078ef0f02eab2f47a97ae86a71a2bb3381037bbdcd4c16b233a2365f68"
+    },
+    {
+      "repo": "kotobase-peer",
+      "revision": "0428c35817a82e6280ea0e3b80cbe61e1ec60d37",
+      "path": "src/kotobase_peer/object_store/worker.cljs",
+      "sha256": "aa4e5c7a13fa4ed62cf360822b6f628d37119f7af54daeed0268181e43021edb"
+    },
+    {
+      "repo": "kotobase-peer",
+      "revision": "0428c35817a82e6280ea0e3b80cbe61e1ec60d37",
+      "path": "src/kotobase_peer/performance_gate.cljc",
+      "sha256": "4f8e497850a9241cca36b6319f9efbcb2c946c8751baa4c20952d7889a5e5ea4"
+    },
+    {
+      "repo": "kotobase-peer",
+      "revision": "0428c35817a82e6280ea0e3b80cbe61e1ec60d37",
+      "path": "src/kotobase_peer/policy.cljc",
+      "sha256": "adab4bf8554637f1c5623640901e9ee9e1cd8f6c988da7377013735508d719e7"
+    },
+    {
+      "repo": "kotobase-peer",
+      "revision": "0428c35817a82e6280ea0e3b80cbe61e1ec60d37",
+      "path": "src/kotobase_peer/resumable_execution.cljc",
+      "sha256": "bcad4a43735d88d38149f2742b4cf3cf1adaa700edec37dd931b38e4b5b47d7c"
+    },
+    {
+      "repo": "kotobase-peer",
+      "revision": "0428c35817a82e6280ea0e3b80cbe61e1ec60d37",
+      "path": "src/kotobase_peer/retention.cljc",
+      "sha256": "3aa942ce5228e937e0274cb127a8f33d6a082f2d63d0d44f64186d0dc27e693b"
+    },
+    {
+      "repo": "kotobase-peer",
+      "revision": "0428c35817a82e6280ea0e3b80cbe61e1ec60d37",
+      "path": "src/kotobase_peer/statistics.cljc",
+      "sha256": "0114cc0f1df27b613f373a1625c673d5c06c9b0919230b2bba312b2106880d21"
+    },
+    {
+      "repo": "kotobase-peer",
+      "revision": "0428c35817a82e6280ea0e3b80cbe61e1ec60d37",
+      "path": "src/kotobase_peer/transactor.cljc",
+      "sha256": "382443fee631a57e2661ea88101426226c911f897a583faefc6c4a7c5b69e0f1"
+    },
+    {
+      "repo": "arrangement",
+      "revision": "f4e3118f8431e60259f501ee539773af3b35b1d3",
+      "path": "LICENSE",
+      "sha256": "3b43f34b12cd62a2ffd97c222f82143305e96de08659fcf050b9c61eeb8b8387"
+    },
+    {
+      "repo": "arrangement",
+      "revision": "f4e3118f8431e60259f501ee539773af3b35b1d3",
+      "path": "src/arrangement/core.cljc",
+      "sha256": "2d5da3ee7b62417e91148a56d9b6b0906401a93469a1be9c90a4a04e6f723b3f"
+    },
+    {
+      "repo": "arrangement",
+      "revision": "f4e3118f8431e60259f501ee539773af3b35b1d3",
+      "path": "src/arrangement/datalog.cljc",
+      "sha256": "7f6ce55cb9ca4bc0ee6de448282d245a165b33830278b7cb991888ffefbb9295"
+    },
+    {
+      "repo": "arrangement",
+      "revision": "f4e3118f8431e60259f501ee539773af3b35b1d3",
+      "path": "src/arrangement/query.cljc",
+      "sha256": "ae1976d9e8c990342ee7181a048372ae7389deb1fd0a5c27d578b9ee2c1b3dfd"
+    },
+    {
+      "repo": "chain",
+      "revision": "6da9ce3b69b5e591bdcf275519afa91b126a22a8",
+      "path": "LICENSE",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "repo": "chain",
+      "revision": "6da9ce3b69b5e591bdcf275519afa91b126a22a8",
+      "path": "src/chain/core.cljc",
+      "sha256": "77b431c4ae07f34d12982241c525bc4d89645daa24a44356827fe48cefc4bbd8"
+    },
+    {
+      "repo": "datom",
+      "revision": "d27a5833d59d909367956705f2ec931399c891ee",
+      "path": "src/datom/core.cljc",
+      "sha256": "560f1d117b0dd3c7b3ad9bda8f79784205843eafd6ad3b9652e2b350a4627480"
+    },
+    {
+      "repo": "prolly-tree",
+      "revision": "b3d13b8175ce032622f7604615e914da9f292c59",
+      "path": "LICENSE",
+      "sha256": "3b43f34b12cd62a2ffd97c222f82143305e96de08659fcf050b9c61eeb8b8387"
+    },
+    {
+      "repo": "prolly-tree",
+      "revision": "b3d13b8175ce032622f7604615e914da9f292c59",
+      "path": "src/prolly_tree/core.cljc",
+      "sha256": "d8ee57e2c4c5df5ac66854fafaa832650973268d27995aad66aca8ff01bcabb2"
+    },
+    {
+      "repo": "io-ipld",
+      "revision": "4591764514239c4777f227a7a56d46c901e2a4a0",
+      "path": "LICENSE",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "repo": "io-ipld",
+      "revision": "4591764514239c4777f227a7a56d46c901e2a4a0",
+      "path": "src/ipld/core.cljc",
+      "sha256": "08a43bebb22700206fb5d45856578ed2129724a8127a81753bd9ab5a01ec97aa"
+    },
+    {
+      "repo": "io-multiformats",
+      "revision": "eec3ee85c458ea830be94518b9a42f4a8f1aee40",
+      "path": "LICENSE",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "repo": "io-multiformats",
+      "revision": "eec3ee85c458ea830be94518b9a42f4a8f1aee40",
+      "path": "src/multiformats/core.cljc",
+      "sha256": "37b6f68aff1393709b6cceebf0e32e68e1231f23eeb08f54aff7235e084970bb"
+    },
+    {
+      "repo": "org-ietf-cbor",
+      "revision": "de18ad29102f9df150e214d756de4719c3c00d7a",
+      "path": "LICENSE",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "repo": "org-ietf-cbor",
+      "revision": "de18ad29102f9df150e214d756de4719c3c00d7a",
+      "path": "src/cbor/core.cljc",
+      "sha256": "04240b90951ee33ff90d3fef4c76a1e42409f0535b2297a32b915f804534570f"
+    }
+  ]
+}

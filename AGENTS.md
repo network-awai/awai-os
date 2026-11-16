@@ -55,3 +55,91 @@ shared `each-operation` consent. No `window.openai`, no server-held business
 state, no ChatGPT approval. The Hermes `mcp_servers` route (D14) is for
 agent-invoked tools, not for apps with a screen. Implementation is still open;
 this records only the intake choice.
+## UI design and writing
+
+Apply [the shared UI rules](docs/design/interface-principles.md) to Awai OS and
+its bundled apps. Prefer recognizable controls, hierarchy, selection feedback
+and concise status labels over explanatory paragraphs. Keep implementation
+notes, measurement caveats and design rationale in engineering documentation;
+show optional technical facts through named disclosure controls. If an action
+needs a paragraph to explain it, simplify the interaction first.
+
+Keep actionable errors, stale/unknown states, destructive consequences and the
+canonical operation-consent disclosures visible when relevant. Moving a note
+out of the main view never grants capabilities or changes what a metric means.
+
+Use stable translation keys, complete messages with named placeholders, and
+locale-aware formatting. Do not assemble sentences from translated fragments,
+hard-code layout widths to Japanese text, or use color/motion as the only
+status cue. Check Japanese and English at phone and tablet widths, keyboard
+focus and reduced-motion behavior. Imported profile names and user-authored
+content are not UI copy and must not be silently translated.
+
+## Shared Agent sessions and peer dialogue
+
+Keep Itonami and Soshiki on the same Agent conversation component and pinned
+canonical Itonami session contract. Authoritative messages belong to the Agent's
+Kotobase/AwaiFS store; browser navigation, drafts and rendered messages are
+transient. Participant views of a peer dialogue resolve the same canonical
+session; unrelated scopes stay isolated. Preserve legacy histories until an
+explicit migration is qualified.
+
+Show observed processing, residence, source-cron waiting and on-demand support
+as separate states. A loaded shared service or a registered profile does not
+prove an individual Bot is resident. Use current matched heartbeat evidence;
+unknown coverage stays unknown. Keep large catalogs searchable and paged.
+
+Peer output is proposal data, never tool authority. Bind each approved dialogue
+to its goal, named participants, source hashes, owning Issue, model and turn
+bound. Preserve original cron and the original distributed occurrence claim;
+uncertain results do not authorize replay or another cycle. Keep public presence
+and progress metadata free of transcripts, private identities and session IDs.
+
+## Current release codename — Meiji
+
+Owner decision 2026-11-15: the current Awai OS release codename is **Meiji**.
+Manage the product name, version number and release codename separately, following
+macOS Tahoe's naming concept. Use `Awai OS Meiji` when a release name is needed.
+The source of the current codename is `release.json`; tracking is
+[AWAI-2925](https://linear.app/kotobalabs/issue/AWAI-2925).
+Future names and any sequence rule require a separate owner decision; do not
+infer an era-based sequence or change package versions/runtime architecture IDs
+as a side effect of the codename. Record source metadata and deployed UI/image
+branding separately.
+
+## Private mail aliases (AWAI-328)
+
+Keep durable principal IDs, verified DID/key bindings, mailbox storage and public
+mail addresses separate. For awai.network, issue independent random aliases per
+purpose/counterparty, retain the same alias through replies and keep stopped
+aliases as permanent tombstones. Do not derive public addresses from profile
+names, DIDs or their hashes. Existing bot-* reservations are compatibility data,
+not live mailboxes or a grant. Keep the private mapping only in Agent-owned
+encrypted Kotobase/AwaiFS; never publish it in fleet artifacts, telemetry or
+Linear. Soshiki reads and mutations use fresh canonical broker consent to the
+independent owner-authenticated Agent service. Its digest-pinned owner config
+must enable identity enrollment for its verified catalog and owner namespace.
+CLJC owns principal/profile/DID/epoch binding, structured signature verification,
+macOS Keychain custody, recovery and alias policy. Existing MJS is an HTTP/process
+transport only; do not reintroduce the removed mail domain implementation there.
+Browser/profile/model text cannot create that authority.
+Key rotation preserves the principal; replacing a did:key is a new key binding,
+not an in-place update to that DID. Address reservation/stop, SMTP routing,
+decryption and send grants are separate states and acceptance claims.
+
+For AWAI-2933, the owner service enrolls its verified catalog at startup and
+resumes newly registered profiles on reconciliation. Pin the approved Bot ID
+allowlist in owner configuration from the digest-verified private manifest;
+unsigned reports and request fields cannot widen it. Reuse committed principal
+IDs and the existing D7 per-profile/epoch derivation. Scope registration CAS to
+`/itonami/identity/v1/`; never reuse occurrence grants or funding keys. Keep the
+root secret and recovery credential in owner Keychain items; encrypted seed,
+private registry and aliases belong to the owner store. A missing/invalid key
+or marker in an initialized namespace is recovery-required, never new identity.
+Fixture credential/ledger ports must be explicit and may not be a production
+fallback. Native recovery export requires an explicit owner command and a new
+target, excludes live credentials, and produces a separate private owner key;
+never expose that operation through the browser API. Preserve previous roots,
+histories, service configs and recovery evidence. Same-UID host compromise,
+independent hardware recovery, portable key import and distributed alias writes
+require their own qualification; a local/keychain test does not prove them.

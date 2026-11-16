@@ -1,0 +1,99 @@
+{
+  "issue": "AWAI-2795",
+  "observedAt": "2026-11-12T05:58:36.536492Z",
+  "scope": "original-bounded-jobs",
+  "sourceRevision": "f52899dbfc2176131c2b3992a3b222ef4bbb1948",
+  "initialRequestRevision": "b9108f11e7ff56042293a53185e688c7b6370d15",
+  "manifestSha256": "db63ae825f5fe0d7acb4219338fa3ca69a6efa1bab72d1929bda50db7b8bff38",
+  "serviceLoaded": true,
+  "invocation": "launchd",
+  "intervalMinutes": {
+    "public-bots-registrar": 1440,
+    "awai-arb": 360
+  },
+  "jobs": [
+    {
+      "catalog-bot-id": "profile:public-bots-registrar",
+      "job-id": "08c4f34d927f",
+      "last-result": {
+        "job-id": "08c4f34d927f",
+        "catalog-bot-id": "profile:public-bots-registrar",
+        "linear-result-confirmed": true,
+        "state": "already-completed",
+        "artifact": {
+          "cid": "bafkreibkasddlho3eh7rfuqnnfatu35iw5fvizere63mti4kn4woqmuf6m",
+          "sha256": "2a0486359ddb21ff12d20d69413a6fa8b74b54649127b6c9a38a6f2ce83285f3",
+          "readback": true
+        },
+        "provider": "none",
+        "run-id": "original-public-bots-registrar-1794462569000",
+        "domain-result": {
+          "kind": "public-bots-registrar",
+          "metrics-http": 200,
+          "catalog-http": 502,
+          "registry-entries": 9,
+          "registration-state": "unverified",
+          "mission-completed": false,
+          "registration-posted": false,
+          "email-sent": false
+        },
+        "model": "deterministic"
+      },
+      "state": "waiting",
+      "next-slot": 1794548969000
+    },
+    {
+      "catalog-bot-id": "profile:awai-arb",
+      "job-id": "887b2183be7c",
+      "last-result": {
+        "job-id": "887b2183be7c",
+        "catalog-bot-id": "profile:awai-arb",
+        "linear-result-confirmed": true,
+        "state": "already-completed",
+        "artifact": {
+          "cid": "bafkreigkyun7odjrmvwuhmhynkyoid26g5bk6q5ekpuon352ssuk3quuea",
+          "sha256": "cac51bf70d31656d43b0f86ab0e40f5e3742af43a453e8e6efba94a8adc29420",
+          "readback": true
+        },
+        "provider": "none",
+        "run-id": "original-awai-arb-1794462569000",
+        "domain-result": {
+          "status": "PENDING_POST",
+          "provider": "none",
+          "model": "deterministic",
+          "proposals": [
+            {
+              "id": "arb-1794462569000-catalog-availability",
+              "kind": "information",
+              "substance-id": "bafkreih3dhmtnpze7xc4hqqw6khnwonce7nggzlf4mnt5kuqe6nrkxbj34",
+              "evidence": {
+                "metrics-http": 200,
+                "registry-entries": 9,
+                "catalog-http": 502
+              },
+              "proposal": "公開metricsとcatalogの可用性の差を調査し、catalogの配信経路を確認する。登録完了とは判定しない。"
+            }
+          ],
+          "posted": false,
+          "invented-measurements": false,
+          "already-pending": false
+        },
+        "model": "deterministic"
+      },
+      "state": "waiting",
+      "next-slot": 1794484169000
+    }
+  ],
+  "qualification": {
+    "externalObservation": true,
+    "artifactReadback": true,
+    "linearResultReadback": true,
+    "arbRecoveryWithoutRefetch": true,
+    "inferenceUsed": false,
+    "allBotsActivated": false,
+    "registrationCompleted": false,
+    "mailConnected": false,
+    "guestCutover": false,
+    "coldBoot": "unverified"
+  }
+}

@@ -48,6 +48,22 @@ export function saveSession(request, response) {
   localStorage.setItem(SESSION_KEY, JSON.stringify({ request, response }));
 }
 
+// Retain this origin's browser storage, including the non-exportable device
+// key. This never exports a credential, renews a proof, or grants operations.
+// A browser may refuse eviction protection; do not report refusal as success.
+export async function sessionRetention(requestPersistence = false) {
+  const saved = read(SESSION_KEY);
+  let persistent = null;
+  try {
+    const storage = globalThis.navigator?.storage;
+    if (typeof storage?.persisted === "function") persistent = await storage.persisted();
+    if (requestPersistence && persistent !== true && typeof storage?.persist === "function") {
+      persistent = await storage.persist();
+    }
+  } catch { /* Browser policy or storage denial stays unknown. */ }
+  return { saved: Boolean(saved?.request && saved?.response), persistent };
+}
+
 export function clearSession() {
   localStorage.removeItem(SESSION_KEY);
   localStorage.removeItem(PROOFS_KEY);

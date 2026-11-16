@@ -1,0 +1,67 @@
+{
+  "issue": "AWAI-2808",
+  "date": "2026-11-13",
+  "visualizationBaseline": "4c95655",
+  "scope": "Local authenticated Soshiki static HTTP preview",
+  "ownerDecisions": [
+    "One-view nested circles with hierarchical shading",
+    "Cycle means each Bot's existing cron cadence",
+    "Show original cadence and Issue binding; do not change Linear period Cycles"
+  ],
+  "oneView": {
+    "bots": 899,
+    "canonicalRepositoryCircles": 761,
+    "defaultSourceOrgGroups": 4,
+    "localOrgGroupsAfterEditing": 6,
+    "svgCirclesAfterEditing": 1667,
+    "search": "Highlights matches without removing or repositioning the full hierarchy",
+    "status": "Waiting, queued, held, attention and unknown are distinct; stale configured observations become unknown"
+  },
+  "cronCycles": {
+    "source": "Existing sourceJobId-bound sourceJobs schedule plus configured job nextSlot",
+    "coverage": "Every registered Bot receives a cycle record; unrecognized calendars or missing schedules keep period unknown",
+    "sample": { "bot": "codinator", "schedule": "11 * * * *", "periodMinutes": 60, "nextObservedJst": "2026-11-13 16:11:00", "issue": "AWAI-752" },
+    "animation": "One cosmetic revolution per 12 seconds, initialized from actual source-period phase; not an executing-worker indicator",
+    "observedAnimatedBots": "585 then 586 across a scheduler-boundary observation window",
+    "renderedMotion": "A rendered orbit line changed bounds between observations; SMIL duration was 12s",
+    "stops": ["held", "unknown-period", "unknown-next-slot", "overdue", "stale observation", "prefers-reduced-motion"],
+    "workerScheduleChanges": 0
+  },
+  "organizations": {
+    "createdThroughUi": "cloud-itonami > Itonami運用 > Fleet監視 > repo:cloud-itonami/ao-bot-fleet",
+    "botsInMovedDisplayCircle": 9,
+    "stateBreakdown": { "waiting": 2, "held": 7 },
+    "linearLinks": { "Itonami運用": "AWAI-2795", "Fleet監視": "AWAI-752" },
+    "persistence": "Browser-local overlay, restored after reload using the same authenticated browser profile/origin",
+    "preservation": "Canonical Circle IDs, Bot source data, cron, grants and execution owners are unchanged",
+    "supportedEdits": ["create child organization", "move organization", "assign Bot or Circle", "restore display membership"],
+    "negativeControls": ["reject cycles in organization parents", "reject unknown parents/members", "retain corrupt stored data without overwriting"]
+  },
+  "linearReadback": {
+    "metadataFields": ["id", "cycleId", "projectId", "teamId"],
+    "teamIssuesRead": 2785,
+    "pages": 12,
+    "explicitlyBoundBotIssuesCovered": 742,
+    "boundBotIssuesTotal": 742,
+    "boundIssuesWithPeriodCycle": 0,
+    "periodCycleWrites": 0
+  },
+  "verification": {
+    "npmTest": "75 passed; includes all-leaf containment, nonoverlap, search geometry preservation, stale and immutable identity, cycle derivation and organization persistence/cycle rejection",
+    "advancedSsr": "Actual QR and nested Circle components render successfully after advanced compilation",
+    "advancedHttpBuild": "shell/link/soshiki-runtime all pass with zero compiler warnings",
+    "responsive": [
+      { "width": 390, "height": 844, "documentWidth": 390, "svgCircles": 1667 },
+      { "width": 1024, "height": 768, "documentWidth": 1024, "svgCircles": 1667 }
+    ],
+    "temporaryViewportReset": true,
+    "screenshots": "Local task output; full overview phone/tablet plus 9-Bot focused view"
+  },
+  "limits": [
+    "Organization edits are browser-local and not synchronized to the AwaiFS control-plane catalog",
+    "This does not activate the remaining 310 held Bots or change runtime permissions",
+    "Existing desktop.nix npmDepsHash placeholder and full NixOS image qualification remain release work",
+    "No merge, installed-guest UI cutover, uptime SLO or new business completion claim",
+    "No private identity proof, key, signature, transcript or raw browser storage is included"
+  ]
+}
