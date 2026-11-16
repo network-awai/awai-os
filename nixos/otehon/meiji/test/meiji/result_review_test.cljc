@@ -1,7 +1,7 @@
 (require '[clojure.test :refer [deftest is run-tests]] '[clojure.edn :as edn]
          '[meiji.result-review :as review] '[itonami.otehon.recurring-host :as durable]
          '[meiji.review-ledger :as ledger] '[itonami.otehon.occurrence :as occurrence]
-         '[meiji.host :as host])
+         '[meiji.host :as host] '[org.httpkit.client :as http] '[cheshire.core :as json])
 ;; Canonical encoding rather than pr-str is required in CAS comparisons.
 (defn canonical-ledger []
   (let [raw (atom {})]
@@ -51,4 +51,21 @@
     (is (thrown? Exception (review/once! cfg client input invoke)))
     (is (thrown? Exception (review/once! cfg client input invoke)))
     (is (= 1 @calls))))
+(deftest recovered-map-order-preserves-original-artifact-bytes
+  (let [digest (apply str (repeat 64 "a"))
+        value (array-map :text "original" :input-sha digest :model review/model)
+        bytes (json/generate-string (into (sorted-map) value))
+        methods (atom [])]
+    (with-redefs [http/request (fn [request]
+                                (swap! methods conj (:method request))
+                                (delay {:status 200 :body bytes}))]
+      (review/persist! value)
+      (is (= [:get :get] @methods))
+      (is (thrown? Exception (review/persist! (assoc value :text "changed"))))
+      (is (not-any? #{:put} @methods)))))
+(deftest unavailable-store-is-not-absence-or-artifact-conflict
+  (with-redefs [http/request (fn [_] (delay {:error :timeout}))]
+    (try (review/persist! {:input-sha (apply str (repeat 64 "a"))})
+         (is false "must hold without a write")
+         (catch Exception e (is (= "review-store-unavailable" (.getMessage e)))))))
 (let [r (run-tests)] (when (pos? (+ (:fail r) (:error r))) (System/exit 1)))

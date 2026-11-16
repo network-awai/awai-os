@@ -112,12 +112,16 @@
         request (fn [method] @(http/request {:url url :method method :as :text :timeout 30000
                                              :follow-redirects false :headers {"Content-Type" "application/json"}
                                              :body (when (= :put method) text)}))
-        old (request :get)]
+        old (request :get)
+        expected (if (= 200 (:status old)) (:body old) text)]
+    (p/require! (contains? #{200 404} (:status old)) "review-store-unavailable")
     (if (= 404 (:status old))
       (p/require! (contains? #{200 201 204} (:status (request :put))) "review-artifact-write-unconfirmed")
-      (p/require! (and (= 200 (:status old)) (= text (:body old))) "review-artifact-conflict-preserve"))
+      ;; etcd's canonical EDN reorders maps on recovery. Retain the original
+      ;; immutable JSON bytes when the complete value (including usage) matches.
+      (p/require! (and (= 200 (:status old)) (= result (json/parse-string (:body old) true))) "review-artifact-conflict-preserve"))
     (let [readback (request :get)]
-      (p/require! (and (= 200 (:status readback)) (= text (:body readback))) "review-artifact-readback-unconfirmed"))))
+      (p/require! (and (= 200 (:status readback)) (= expected (:body readback))) "review-artifact-readback-unconfirmed"))))
 
 (defn run! [cfg report]
   (let [_ (host/provider! (controller (:provider cfg)) "review")

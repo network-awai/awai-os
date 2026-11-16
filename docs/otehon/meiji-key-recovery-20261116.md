@@ -124,3 +124,19 @@ terminal, completed reuse and one-time pre-HTTP recovery.
 Encrypted recovery v6 additionally includes active coordinator/reviewer config,
 the recovery receipt and delegated jacob API credential (23 files total).
 No plaintext key or token is stored in WebDAV or Git.
+
+The post-migration live dedup check submitted each completed slot to both VM
+owners: all four responses were `already-completed`, `invoked false`; both
+cursors were unchanged. The separate reviewer wake reuses the same completed
+review, rather than adding the repeated log's counters to cumulative usage.
+
+During follow-up, localhost WebDAV and its stats endpoint timed out. Manifest
+and the empty durable journal were preserved privately before a controlled
+daemon SIGTERM/restart by launchd. New PID 54004 served again; encrypted v6 was
+fetched/decrypted again with all 23 files equal, and the old review was read
+back without inference. Background-tier sync was initially pending after boot;
+this is not a storage SLO or independent replica qualification. The reviewer
+now distinguishes unavailable storage from an artifact conflict. On recovery,
+semantic equality handles reordered maps while exact original JSON bytes stay
+immutable. Reviewer tests: 7 tests / 19 assertions, including no overwrite on
+changed contents or unavailable storage.
