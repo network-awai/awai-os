@@ -1,0 +1,17 @@
+# AWAI-2996 Lock and PIN design / supported device theming
+
+Chat01a1e187-0e12-7813-b500-73aa77f2a03e; repo network-awai/awai-os; base a419e50. This is Awai Otehon, separate from the native selfhost profile.
+
+Editable Figma: https://www.figma.com/design/umqCqP5KSjLWh9fhCI1HaN?node-id=231-1448
+
+The four411×917 screens use existing v2 original artwork, Android light/dark semantic variables, Noto Sans JP and existing lock/button instances: lock231:1452, PIN rest231:1473, error231:1524, waiting231:1574. The handoff has59 text,68 frame,5 rectangle,10 instance,7 vector and18 ellipse descendants; only the four original-wallpaper rectangles are raster artwork. It contains no flattened UI screenshot. Final composition was visually inspected after fixing board contrast. Six dots are a design sample; Android owns actual length, retry rules, biometric and emergency actions.
+
+Home8 /0.1.7 adds a non-exported native AppearanceActivity reached from the Home Settings shortcut. It previews bundled artwork, sets only WallpaperManager.FLAG_LOCK with SET_WALLPAPER, and links to real Android wallpaper/style/security/general settings. The narrow bridge is Home-only and accepts no arbitrary path/Intent. Android SystemUI/Gatekeeper owns all credentials. No input field, PIN storage, custom authentication or network permission was added. NixOS can share visual tokens and appearance semantics, while its authentication must remain the platform's PAM/credential UI; Android PIN state is not a shared app database.
+
+Observed g05: Home8 installed; native appearance opened through the real Home shortcut. WallpaperManagerService admitted lock wallpaper id4, mWhich2, SET_STATIC, source crop1254-square; system/home wallpaper remained id2. Theme settings preserve TONAL_SPOT and select lock_wallpaper as color source, with previous JSON retained privately. User physically confirmed Awai original artwork on the clock/lock screen. User also confirmed PIN is visible with a single-color background. Therefore native lock wallpaper is accepted; Figma PIN background/geometry is **not deployed**. PIN's native NotificationShade window has FLAG_SECURE and screenshots are black; the flag was preserved, no PIN was entered or requested, and no failed attempt was induced.
+
+The production build has ro.debuggable0, no su, and aapt2 reports no SystemUI overlayable groups. Standard APK/wallpaper theming cannot replace protected keypad layouts. Matching signed SystemUI/platform integration and its full credential/accessibility regression checks remain a separate platform follow-up. Design, app implementation, wallpaper/color configuration and actual platform layout deployment are distinct evidence.
+
+Validation: five shared JS tests passed; SDK build/signature verification passed; native UI and lock wallpaper admission/physical user readback verified. Store0.1.4 and Yotei versionCode4 remain installed; Home8 alone was updated. Actions owner-disabled, no exact-head CI claim. No ROM/partition, credential, root or wipe operation. Model/provider/settings, attributable tokens/cost, estimate/unit and velocity unknown. Unique APKs, UI XML, private settings readback and screenshots remain session evidence and are preserved during cleanup.
+
+References: Android WallpaperManager FLAG_LOCK; AOSP runtime resource overlays and ThemeOverlayController color-source handling. These APIs qualify the supported theming route, not arbitrary SystemUI replacement.

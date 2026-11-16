@@ -127,6 +127,7 @@ public abstract class HostActivity extends Activity {
         @JavascriptInterface public String catalog(){try{return "store".equals(mode())?trustedCatalog().json():"{\"apps\":[]}";}catch(Exception invalid){return "{}";}}
         @JavascriptInterface public void launch(String id){runOnUiThread(()->launchPackage(id));}
         @JavascriptInterface public void openStore(){runOnUiThread(()->launchPackage("network.awai.store"));}
+        @JavascriptInterface public void openAppearance(){if(!"home".equals(mode()))return;runOnUiThread(()->{Intent i=new Intent();i.setClassName(getPackageName(),"network.awai.home.AppearanceActivity");startActivity(i);});}
         @JavascriptInterface public void openSettings(){runOnUiThread(()->startActivity(new Intent(Settings.ACTION_SETTINGS)));}
         @JavascriptInterface public void launchCategory(String category){runOnUiThread(()->{
             Intent q="phone".equals(category)?new Intent(Intent.ACTION_DIAL):"browser".equals(category)?new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_BROWSER):"camera".equals(category)?new Intent("android.media.action.STILL_IMAGE_CAMERA"):null;
