@@ -49,6 +49,14 @@ in the native profile. The native profile rules above stay unchanged.
 
 ## Meiji desktop entry (AWAI-195, owner direction 2026-11-16)
 
+Owner direction 2026-11-16, AWAI-2820: if former execution keys cannot be
+restored, rotate them and persist recovery material encrypted in AwaiVol.
+Preserve the existing cluster/member identities, enrollment, cursors and guest
+disks. Stage authenticated encryption and restore verification before a
+quorum-preserving trust update. New credential issuance does not prove old
+credential revocation. Keep wrapping keys in the OS credential store; never
+put plaintext keys, prompts or transcripts in WebDAV/Git/telemetry.
+
 VM lifecycle controls and the dense Bot/Circle workspace must mount separately
 in the desktop entry. Qualify lifecycle UI on a disposable guest first; record
 production guest shutdown/drain and Bot work separately. A blank fixture's

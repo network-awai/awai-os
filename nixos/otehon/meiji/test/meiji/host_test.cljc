@@ -2,7 +2,18 @@
   (:require [clojure.test :refer [deftest is testing]] [meiji.policy :as p]
             [meiji.host :as host] [babashka.fs :as fs] [org.httpkit.server :as server]
             [cheshire.core :as json] [meiji.kapitsa :as kapitsa] [meiji.transport :as transport]
-            [meiji.fleet-audit :as audit]))
+            [meiji.fleet-audit :as audit] [meiji.recovery :as recovery]))
+
+(deftest authenticated-recovery-boundaries
+  (let [key (recovery/random-bytes 32) plaintext (.getBytes "private fixture only" "UTF-8")
+        envelope (recovery/seal key "cluster/job/identity" plaintext)]
+    (is (= (seq plaintext) (seq (recovery/open-envelope key "cluster/job/identity" envelope))))
+    (is (not= (:nonce envelope) (:nonce (recovery/seal key "cluster/job/identity" plaintext))))
+    (is (not (clojure.string/includes? (json/generate-string envelope) "private fixture")))
+    (is (thrown? Exception (recovery/open-envelope key "other-cluster" envelope)))
+    (is (thrown? Exception (recovery/open-envelope (recovery/random-bytes 32) "cluster/job/identity" envelope)))
+    (is (thrown? Exception (recovery/open-envelope key "cluster/job/identity"
+                            (assoc envelope :ciphertext (recovery/b64 (byte-array 32))))))))
 
 (deftest recovery-is-not-liveness
   (let [enrollment {:bot-id "bot" :job-id "original" :nodes ["vm-benjamin"]
