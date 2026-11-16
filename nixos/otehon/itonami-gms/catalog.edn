@@ -1,0 +1,4 @@
+{:schema "itonami.store.v1"
+ :revision "bootstrap-empty-20261116"
+ :expires-at 1
+ :apps []}
