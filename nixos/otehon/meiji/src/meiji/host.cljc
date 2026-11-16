@@ -1,0 +1,181 @@
+(ns meiji.host
+  "Otehon host controller. One locked, serialized stdio session. No HTTP listener.
+   Tauri carries JSON only; lifecycle, policy, persistence and GPU adapter live here."
+  (:require [meiji.policy :as policy] [babashka.fs :as fs]
+            [cheshire.core :as json] [clojure.edn :as edn]
+            [clojure.java.io :as io] [clojure.string :as str]
+            [org.httpkit.client :as http])
+  (:import [java.security MessageDigest] [java.nio.channels FileChannel]
+           [java.nio.file StandardOpenOption] [java.util.concurrent TimeUnit]))
+
+(defn host-platform []
+  {:os (let [os (str/lower-case (System/getProperty "os.name"))]
+         (cond (str/includes? os "mac") :macos (str/includes? os "win") :windows :else :linux))
+   :arch (if (contains? #{"aarch64" "arm64"} (System/getProperty "os.arch")) :aarch64 :x86_64)})
+
+(defn sha256 [path]
+  (let [digest (MessageDigest/getInstance "SHA-256") buffer (byte-array 65536)]
+    (with-open [in (io/input-stream (str path))]
+      (loop [] (let [n (.read in buffer)] (when (pos? n) (.update digest buffer 0 n) (recur)))))
+    (apply str (map #(format "%02x" (bit-and 255 %)) (.digest digest)))))
+
+(defn save! [path value]
+  (let [tmp (str path ".tmp")]
+    (spit tmp (pr-str value))
+    (fs/move tmp path {:replace-existing true :atomic-move true})))
+
+(defn configured-file! [path]
+  (policy/require! (and (string? path) (fs/absolute? path) (fs/regular-file? path)) "configured-file-missing")
+  ;; QEMU interprets commas in drive paths as option separators.
+  (policy/require! (not (re-find #"[,\r\n]" path)) "unsafe-configured-path")
+  path)
+
+(defn process! [args]
+  (.start (ProcessBuilder. ^java.util.List args)))
+
+(defn verify-image! [vm]
+  (doseq [k [:image :signature :minisign]] (configured-file! (k vm)))
+  (policy/require! (= (:sha256 vm) (sha256 (:image vm))) "image-digest-mismatch")
+  (policy/require! (and (string? (:public-key vm)) (re-matches #"[A-Za-z0-9+/=]{56}" (:public-key vm))) "image-key-required")
+  (let [p (process! [(:minisign vm) "-Vm" (:image vm) "-x" (:signature vm) "-P" (:public-key vm)])]
+    (future (slurp (.getInputStream p))) (future (slurp (.getErrorStream p)))
+    (when-not (.waitFor p 15 TimeUnit/SECONDS) (.destroyForcibly p) (policy/fail "signature-check-timeout"))
+    (policy/require! (zero? (.exitValue p)) "image-signature-invalid")))
+
+(defn create-controller [config-path state-dir]
+  (fs/create-dirs state-dir)
+  (when-not (fs/exists? config-path)
+    (fs/create-dirs (fs/parent config-path))
+    (save! config-path {:version 1 :vms [] :providers []}))
+  (let [config (edn/read-string (slurp config-path))
+        settings-path (str (fs/path state-dir "limits.edn"))
+        overrides (if (fs/exists? settings-path) (edn/read-string (slurp settings-path)) {})
+        vms (:vms config)]
+    (policy/require! (= 1 (:version config)) "unsupported-config")
+    (policy/require! (and (vector? vms) (<= (count vms) 32)
+                          (= (count vms) (count (set (map :id vms))))) "invalid-catalog")
+    {:host (host-platform) :config config :state-dir state-dir :settings-path settings-path
+     :overrides (atom overrides) :children (atom {})}))
+
+(defn vm-for [controller id]
+  (let [vm (first (filter #(= id (:id %)) (get-in controller [:config :vms])))]
+    (policy/require! vm "unknown-vm")
+    (if-let [limits (get @(:overrides controller) id)] (assoc vm :limits limits) vm)))
+
+(defn alive? [controller id]
+  (boolean (when-let [child (get @(:children controller) id)] (.isAlive (:process child)))))
+
+(defn snapshot [controller]
+  {:schema policy/version :host (:host controller)
+   :vms (mapv #(policy/public-vm (vm-for controller (:id %))
+                (let [child (get @(:children controller) (:id %))]
+                  (cond (alive? controller (:id %)) (if (:stopping child) "stopping" "running")
+                        (and child (not (zero? (.exitValue (:process child))))) "failed"
+                        :else "stopped")))
+              (get-in controller [:config :vms]))})
+
+(defn start! [controller id]
+  (let [vm (vm-for controller id) host (:host controller)]
+    (policy/vm! host vm)
+    (policy/require! (not (alive? controller id)) "already-running")
+    (configured-file! (:executable vm))
+    (when-let [firmware (:firmware vm)] (configured-file! firmware))
+    (verify-image! vm)
+    (let [work (str (fs/path (:state-dir controller) (str id "." (name (:format vm)))))
+          meta-path (str work ".edn")
+          binding {:image-sha256 (:sha256 vm) :id id}]
+      ;; Never replace a working disk or adopt a disk whose provenance is unknown.
+      (if (fs/exists? work)
+        (policy/require! (and (fs/exists? meta-path) (= binding (edn/read-string (slurp meta-path)))) "working-disk-unbound")
+        (do (fs/copy (:image vm) work) (save! meta-path binding)))
+      (let [p (process! (policy/argv host vm work))]
+        (future (with-open [in (.getInputStream p)] (io/copy in (java.io.OutputStream/nullOutputStream))))
+        (future (with-open [in (.getErrorStream p)] (io/copy in (java.io.OutputStream/nullOutputStream))))
+        (swap! (:children controller) assoc id {:process p})
+        (when (.waitFor p 150 TimeUnit/MILLISECONDS) (policy/fail "hypervisor-exited")))))
+  (snapshot controller))
+
+(defn stop! [controller id force?]
+  (let [vm (vm-for controller id) p (:process (get @(:children controller) id))]
+    (policy/require! (and p (.isAlive p)) "not-running")
+    (if force?
+      (do (.destroyForcibly p)
+          (policy/require! (.waitFor p 5 TimeUnit/SECONDS) "stop-timeout"))
+      (do
+        (policy/require! (= :qemu (:backend vm)) "graceful-stop-unavailable")
+        (let [out (.getOutputStream p)]
+          (doseq [command [{:execute "qmp_capabilities"} {:execute "system_powerdown"}]]
+            (.write out (.getBytes (str (json/generate-string command) "\n") "UTF-8")))
+          (.flush out))
+        (swap! (:children controller) update id assoc :stopping true))))
+  (snapshot controller))
+
+(defn set-limits! [controller id limits]
+  (let [vm (vm-for controller id)]
+    (policy/require! (not (alive? controller id)) "stop-before-limits")
+    (policy/limits! limits (:ceiling vm))
+    (let [next (assoc @(:overrides controller) id limits)]
+      (save! (:settings-path controller) next)
+      (reset! (:overrides controller) next)))
+  (snapshot controller))
+
+(defn provider! [controller id]
+  (let [vm (vm-for controller id)
+        p (first (filter #(= (:inference-provider vm) (:id %)) (get-in controller [:config :providers])))
+        uri (when (:origin p) (java.net.URI. (:origin p)))]
+    ;; Initial adapter is deliberately host-local only. No SSRF, redirect or remote fallback.
+    (policy/require! (and uri (= "http" (.getScheme uri))
+                         (contains? #{"127.0.0.1" "[::1]"} (.getHost uri))
+                         (nil? (.getUserInfo uri)) (nil? (.getQuery uri)) (nil? (.getFragment uri))
+                         (contains? #{"" "/"} (.getPath uri))
+                         (contains? #{:metal :cuda :rocm :vulkan :directml} (:backend p))
+                         (string? (:model p)) (seq (:model p))) "inference-not-configured")
+    p))
+
+(defn inference-check! [controller id]
+  (let [p (provider! controller id)
+        response @(http/post (str (str/replace (:origin p) #"/$" "") "/v1/chat/completions")
+                    {:timeout 15000 :follow-redirects false
+                     :headers (cond-> {"content-type" "application/json"}
+                                (:token-file p) (assoc "authorization" (str "Bearer " (str/trim (slurp (configured-file! (:token-file p)))))))
+                     :body (json/generate-string {:model (:model p) :stream false :max_tokens 4
+                                                  :messages [{:role "user" :content "Reply OK."}]})})]
+    (policy/require! (= 200 (:status response)) "inference-check-failed")
+    (let [body (json/parse-string (:body response) true)]
+      (policy/require! (seq (get-in body [:choices 0 :message :content])) "inference-empty-response")
+      {:schema policy/version :provider (:id p) :backend (:backend p) :model (:model p)
+       :state "responded" :gpu-use "unknown" :usage (:usage body)})))
+
+(defn dispatch! [controller request]
+  (policy/request! request)
+  (case (:op request)
+    "snapshot" (snapshot controller)
+    "start" (start! controller (:id request))
+    "stop" (stop! controller (:id request) false)
+    "force-stop" (stop! controller (:id request) true)
+    "limits" (set-limits! controller (:id request) (:limits request))
+    "inference-check" (inference-check! controller (:id request))))
+
+(defn shutdown! [controller]
+  ;; An abnormal controller exit must not leave unowned hypervisors behind.
+  (doseq [[_ {:keys [process]}] @(:children controller)]
+    (when (.isAlive process) (.destroy process)
+      (when-not (.waitFor process 2 TimeUnit/SECONDS) (.destroyForcibly process)))))
+
+(defn -main [config-path state-dir]
+  (fs/create-dirs state-dir)
+  (with-open [channel (FileChannel/open (fs/path state-dir "controller.lock")
+                       (into-array StandardOpenOption [StandardOpenOption/CREATE StandardOpenOption/WRITE]))]
+    (let [lock (.tryLock channel)]
+      (policy/require! lock "controller-already-running")
+      (try
+        (let [controller (create-controller config-path state-dir)]
+          (.addShutdownHook (Runtime/getRuntime) (Thread. #(shutdown! controller)))
+          (try
+            (doseq [line (line-seq (io/reader *in*))]
+              (let [reply (try (policy/require! (<= (count line) 4096) "request-too-large")
+                              {:ok (dispatch! controller (json/parse-string line true))}
+                              (catch Exception e {:error (or (:code (ex-data e)) "operation-failed")}))]
+                (println (json/generate-string reply)) (flush)))
+            (finally (shutdown! controller))))
+        (finally (.release lock))))))
