@@ -442,3 +442,13 @@ boot→dtbo→reboot bootloader→vendor_bootの順でslot_aへ書込み、全co
 init_boot/vbmeta/LK等の追加手動flashは行っていない。
 FastbootからRecoveryをメニュー選択する公式手順をJunへ案内し、実機表示を待機。
 これはRecovery起動の成功証明でも、Lineage ZIP導入済みの意味でもない。
+
+## Lineage Recovery実機起動とfactory reset
+
+JunがメニューからLineage Recoveryの表示を確認。続けてFactory Reset→
+Format data / factory resetの完了と、Apply update→Apply from ADB待機を報告した。
+全消去は既存の了承範囲であり追加の許可要求はしていない。
+これはuser-reported Recovery/reset成功で、ZIP導入・初回OS起動の証明とは分ける。
+同一の検証済み20261112署名ZIPを明示対象ADBへsideloadする段階へ進む。
+この単位はAWAI-2967/chat01a1e187-0e12-7813-b500-73aa77f2a03e、start revision c6d20f3へbinding。
+モデル設定の新測定、今回token/cost/active-wait/残forecastはunknown。
