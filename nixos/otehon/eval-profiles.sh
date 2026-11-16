@@ -13,7 +13,7 @@ command -v nix-instantiate >/dev/null || { echo "NOT_RUN no nix-instantiate"; ex
 # Every .nix file in nixos/otehon is a profile and is evaluated, except these modules, which other
 # profiles import and which are not built on their own. A new module left out of this list is
 # evaluated as a profile and fails, so it cannot be skipped silently.
-modules="default common base-module update gpu media backup hardware-6600h storage"
+modules="default common base-module update update-network gpu media backup hardware-6600h storage"
 # Extra evaluations of a profile: "profile@arch".
 extra="vm@x86_64"
 

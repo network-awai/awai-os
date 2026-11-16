@@ -9,3 +9,8 @@ export function scriptSrc(mode) {
 export function styleSrc(mode) {
   return mode === "http" ? "style-src 'self'" : "style-src file:";
 }
+
+// The selected logo is a bundled asset, never a remote image fetch.
+export function imageSrc(mode) {
+  return mode === "http" ? "img-src 'self'" : "img-src file:";
+}

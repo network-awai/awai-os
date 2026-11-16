@@ -1,0 +1,9 @@
+KSL1
+entry /src/corpus.kotoba
+root /src
+file c143d1efd820ecfa3d3a4ca62192cb0488462bf03ae4904f350935f4338da27a /src/awai/fs/logical_file.kotoba
+file 11f68528853aa8a65dbdc9372051c256fa3032b5404c9a3d16592cf4cacad200 /src/corpus.kotoba
+file 6e800ac0d6ca6ff85ced313cbbd6f927834e32f38b6e2b4b4a74135dad2f1c1c /src/ipld/dag_cbor_write.kotoba
+file bde9a18dbb6a94043449e663fa5bc5fb20d59cda66cca9e07a7ecc38c73615b9 /src/multiformats/byte_cid.kotoba
+file d64ea1b8275fad607d0928c8c1f49ee030b3b23d222b214fe94442a8f74c56d6 /src/multiformats/cid.kotoba
+file 40620f336ea53fe4432adbe65d302f999bc20cdafe93f9199ea8b86200738760 /src/multiformats/sha256.kotoba

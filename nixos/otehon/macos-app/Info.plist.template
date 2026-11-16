@@ -18,6 +18,8 @@
   <string>????</string>
   <key>CFBundleExecutable</key>
   <string>otehon-desktop</string>
+  <key>CFBundleIconFile</key>
+  <string>awai</string>
   <key>LSMinimumSystemVersion</key>
   <string>13.0</string>
   <key>NSHighResolutionCapable</key>

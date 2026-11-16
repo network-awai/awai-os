@@ -264,6 +264,8 @@
 ;; lengths). Decode accepts any key order but rejects indefinite lengths,
 ;; floats, and tags other than 42 (CID link).
 (defn- cbor-head [major n]
+  (when (> n 9007199254740991)
+    (fail! :awai.fs/cbor-integer-overflow "awai fs: CBOR integer exceeds cross-runtime exact range" {:value n}))
   (cond (< n 24) [ (bit-or (bit-shift-left major 5) n)]
         (< n 256) [(bit-or (bit-shift-left major 5) 24) n]
         (< n 65536) (vec (concat [(bit-or (bit-shift-left major 5) 25)]
@@ -271,9 +273,22 @@
         (< n 4294967296) (vec (concat [(bit-or (bit-shift-left major 5) 26)]
                                      (mapv #(bit-and (bit-shift-right n (* % 8)) 0xff)
                                            (reverse (range 4)))))
-        :else (vec (concat [(bit-or (bit-shift-left major 5) 27)]
-                           (mapv #(bit-and (bit-shift-right n (* % 8)) 0xff)
-                                 (reverse (range 8)))))))
+        :else (loop [v n i 0 out ()]
+                (if (= i 8)
+                  (into [(bit-or (bit-shift-left major 5) 27)] out)
+                  (recur (quot v 256) (inc i) (conj out (mod v 256)))))))
+
+(defn- decode-cbor-u64 [bytes offset]
+  (when (> (+ offset 8) (count bytes))
+    (fail! :awai.fs/truncated-cbor "awai fs: truncated CBOR integer" {:offset offset}))
+  (loop [i 0 value 0]
+    (if (= i 8) [value (+ offset 8)]
+      (let [digit (u8 (nth bytes (+ offset i)))
+            limit 9007199254740991]
+        (when (or (> value (quot limit 256))
+                  (and (= value (quot limit 256)) (> digit (mod limit 256))))
+          (fail! :awai.fs/cbor-integer-overflow "awai fs: CBOR integer exceeds cross-runtime exact range" {:offset offset}))
+        (recur (inc i) (+ (* value 256) digit))))))
 
 (defn cbor-encode
   "Encode `v` as DAG-CBOR bytes. Supports nil, bool, uint, string,
@@ -319,7 +334,7 @@
                                     (bit-shift-left (u8 (nth bytes (+ o 2))) 16)
                                     (bit-shift-left (u8 (nth bytes (+ o 3))) 8)
                                     (u8 (nth bytes (+ o 4)))) (+ o 5)]
-                    (= info 27) (let [[v no] (decode-u64-le bytes (inc o))] [v no])
+                    (= info 27) (decode-cbor-u64 bytes (inc o))
                     :else (fail! :awai.fs/bad-cbor "awai fs: indefinite cbor" {:offset offset})))]
     (case major
       0 (arg offset)
@@ -448,7 +463,7 @@
 (defn carv2-encode
   "Encode CARv2 bytes for `roots` + `blocks` (same shape as carv1-encode):
   pragma + 40-byte header + CARv1 payload + MultihashIndexSorted."
-  [{:keys [roots blocks]}]
+  [{:keys [roots blocks index?] :or {index? true}}]
   (let [payload (carv1-encode {:roots roots :blocks blocks})
         data-offset (+ 11 40)
         ;; Block offsets skip the header block (DAG-CBOR, no CID).
@@ -462,11 +477,11 @@
                            (recur end
                                   (conj out {:cid (vec (subvec (vec payload) so next-offset))
                                              :offset o})))))
-        index (build-index-section with-offsets)
+        index (if index? (build-index-section with-offsets) [])
         header (vec (concat (repeat 16 0)
                             (encode-u64-le data-offset)
                             (encode-u64-le (count payload))
-                            (encode-u64-le (+ data-offset (count payload)))))]
+                            (encode-u64-le (if index? (+ data-offset (count payload)) 0))))]
     (vec (concat carv2-pragma header payload index))))
 
 (defn carv2-decode
@@ -586,7 +601,8 @@
   Returns {:car :index :root-cid :leaf-cids}: :car is the CARv2
   byte-vec (header, leaves, root last), :index maps digest vecs to
   payload-relative block offsets, :root-cid is the pack identity."
-  [leaves hash-fn]
+  ([leaves hash-fn] (assemble-pack leaves hash-fn {}))
+  ([leaves hash-fn opts]
   (doseq [{:keys [digest bytes]} leaves]
     (when (not= 32 (count digest))
       (fail! :awai.fs/bad-digest "awai fs: leaf digest must be 32 bytes" {}))
@@ -596,11 +612,11 @@
                             {:cid (cid-bytes codec-raw digest) :bytes bytes})
                           leaves)
         {:keys [cid] :as root-block} (pack-root-block (mapv :cid leaf-blocks) hash-fn)
-        car (carv2-encode {:roots [cid] :blocks (conj leaf-blocks root-block)})
+        car (carv2-encode (merge opts {:roots [cid] :blocks (conj leaf-blocks root-block)}))
         index (into {} (map (fn [{:keys [digest offset]}] [digest offset])
                             (carv2-sections car)))]
     {:car car :index index :root-cid cid
-     :leaf-cids (mapv :cid leaf-blocks)}))
+     :leaf-cids (mapv :cid leaf-blocks)})))
 
 ;; Range mapping: leaf-stream offsets to pack-file segments.
 (defn car-range-segments

@@ -6,11 +6,12 @@ let
     OTEHON_UPDATE_BASE_VERSION = toString cfg.baseVersion;
     OTEHON_UPDATE_PUBLIC_KEY = "${cfg.publicKey}";
     OTEHON_UPDATE_CACHE_KEY = "${cfg.cacheKey}";
+    OTEHON_UPDATE_HEALTH_CHECK = if cfg.healthCheck == null then "" else lib.getExe cfg.healthCheck;
   };
   closure = pkgs.closureInfo { rootPaths = [ config.system.build.toplevel ]; };
   command = pkgs.writeShellApplication {
     name = "otehon-update";
-    runtimeInputs = with pkgs; [ config.nix.package config.systemd.package coreutils findutils gnused gnugrep jq minisign ];
+    runtimeInputs = with pkgs; [ config.nix.package config.systemd.package coreutils findutils gnused gnugrep jq minisign util-linux ];
     text = builtins.readFile ./update.sh;
     # The script defines its own strict mode, and shellcheck has no view of the Nix paths.
     bashOptions = [ ];
@@ -21,6 +22,8 @@ in
   # Signed updates with a trial boot and automatic fallback (update.sh). A trial uses systemd-boot
   # boot counting on the ESP, so it does not depend on writable EFI variables.
   options.otehon.update = {
+    enable = lib.mkEnableOption "signed Otehon OS generation trials";
+    healthCheck = lib.mkOption { type = lib.types.nullOr lib.types.package; default = null; description = "Additional local desktop readiness check before blessing a boot."; };
     baseVersion = lib.mkOption {
       type = lib.types.ints.positive;
       description = "The update version this image starts at. Older versions are refused.";
@@ -35,8 +38,9 @@ in
     };
   };
 
-  config = {
+  config = lib.mkIf cfg.enable {
     environment.systemPackages = [ command ];
+    system.build.otehonUpdate = command;
     environment.sessionVariables = updateEnv;
 
     boot.loader.systemd-boot.enable = true;
