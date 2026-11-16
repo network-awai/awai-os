@@ -493,3 +493,24 @@ host側900秒timeoutの記録は消さず、正常なhost終了に書き換え�
 追加パッケージは依頼されていないため、公式AB手順に沿ってRecovery再起動確認をNo、
 メイン画面からReboot system nowで初回OS起動する操作を案内した。
 ZIPの再送・追加flashは行っていない。OS初回起動とhardware受入は引き続き未確認。
+
+## 実機の基本受入完了
+
+JunがLineage初回起動、Wi-Fiでのブラウザ疎通、画面/touch/充電表示、
+電源メニューからの通常再起動後もLineageとWi-Fi/画面が正常であることを確認。
+USBデバッグ許可後にlegacy ADB shellでも起動情報を取得できた。
+Lineage24.0-20261112-NIGHTLY-lamu / Android17 / SDK37 / patch2026-11-01、
+boot_completed1、slot_b、verifiedbootstate orange、facmode0、vbmeta device_state unlocked。
+ro.boot.flash.lockedは空なので0とは読まない。電源はHAL上AC powered、full100%、29.0C。
+[受入記録](mobile/moto-g05-lineage-core-acceptance-20261116.json)に証拠と範囲を整理した。
+
+今回の解除・Lineage導入・基本受入は実機で完了。Awai Android shell/storeの実装、
+SIM/通話、追加peripheral、導入後full stock rollbackは別範囲で未検証。
+次のFigma設計はAWAI-2974として別binding。過去usage snapshot以降のmixed closeout/
+design discoveryを旧2967に追加配賦せず、未配賦として保持する。
+
+終了時inventory:現task .agent-output約3.4GiB（原本/新snapshot/復旧・構築証跡）、
+旧準備task .agent-output約1.9GiB（検証済み配布物/VM等）を保持。
+現taskはopen draft PR141と未統合commitsがあり、両taskともunique untracked evidenceがある。
+削除/branch整理/stash dropは実行しない。今回作成したstashはない。
+PR141は運用結果の報告/証跡PRであり、製品実装・CI・mergeの成功とは分ける。
