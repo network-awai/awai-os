@@ -121,3 +121,32 @@ upstream の serial port 初期timeoutとreset既定値は1000msだった。
 両patchを元sourceへ適用してbuilt sourceとのbyte一致を確認した。
 初回に成功したPreloader接続と同じverbose設定で、次の通常起動→電源OFF接続を待機する。
 これは待ち時間変更の試験であり、実機通信の安定性や書込み成功をまだ認定しない。
+
+## 10秒候補の実機成功と次の変更単位
+
+通常起動→電源OFF再接続により10秒候補がDA1/DA2/SLAまで成功し、
+`read-flash`で残り6領域（vendor_boot/dtbo/init_bootの両slot）を保存した。
+先の11領域と合わせ17領域328,728,576 bytesをホスト上で再hashし、記録値と一致。
+USER領域のraw readが成功した一方、EMMC-BOOT1のpreloaderを別方式`read-flash`で
+再読取りする試験はtimeoutした。preloader原本は先に成功したnamed uploadで保持している。
+この失敗をUSER領域すべての読取り非対応とは一般化しない。
+その後のnormal reboot候補もtimeout。次は新しいcold接続が必要。
+
+次の単位は、既にJunが承認した解除手順のうち、設定3領域の変更と読み戻しに限る。
+maintainerの指定通りoem_mfdの4096、proinfoの552、frpの最終byteを0→1にする
+privateな変更コピーを準備し、変更が各1byteだけであることを確認した。
+原本を改変せず、3領域を既知のnamed uploadで再読取りし元size/hashがすべて一致した場合だけ、
+1領域ずつSetRscInfoで書いて直後にnamed uploadでsize/hashを照合する。
+失敗時は次の領域へ進まない。preloader/LK書換え・unlock・wipeをこの単位に含めない。
+当該処理のcold接続待機を開始し、通常起動→電源OFF接続をJunに依頼した。
+DA_BR/preloader_raw/kaeruの既存bytesは再取得したmaintainer ZIPの対応entryと一致した。
+
+## 2.0候補の構築のみ
+
+公式2.0 tagのcommit `f72152076bb4c0a3fd0f2febefdde40935a2e4c5` を別に取得。
+Mac CLIは上流設定でlibusbを使用する。stableではacon依存のnightly featureでbuild失敗。
+`rustup toolchain install nightly-2026-11-15 --profile minimal`で固定nightlyをmanaged storeへ追加し、
+既存stable/defaultは変更せず、`cargo +nightly-2026-11-15 build --locked -p antumbra --no-default-features
+--manifest-path .agent-output/penumbra-v2/Cargo.toml`が35.15秒で成功。
+version2.0.0/help成功、SHA-256は `ce4acd1caa4394678c7065943f8d741c029f01cc30147f4f01253108183ffec5`。
+2.0は実機に接続していない。新機能の遠隔認証も設定・実行していない。
