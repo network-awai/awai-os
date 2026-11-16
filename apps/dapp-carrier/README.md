@@ -33,3 +33,9 @@ NAT support uses one explicit relay, AutoNAT and DCUtR. Loopback relay tests and
 `device-receive-test.mjs` drives only this disposable Yataverse preview through real canonical consent UI, checks foreground-service state, backgrounds the app, then sends/queries/returns a synthetic encrypted WNFS fixture over the LAN and confirms explicit Stop refuses traffic. Its local CDP/ADB channel controls UI and diagnostics; snapshot data uses literal-IP libp2p. It must be run against an explicitly selected fixture device and a task-owned debug endpoint, never a user's existing app/account.
 
 UI proposal: https://www.figma.com/design/umqCqP5KSjLWh9fhCI1HaN?node-id=236-2636 (baseline unmodified; runtime/physical-device comparison recorded separately).
+
+## Export and qualification
+
+`node scripts/export.mjs` verifies prepared static bytes, APK identity, signer and both ABIs, then creates a task-local `distribution.json`, five APKs and five static `.dapp.zip` bundles. It performs no upload or installation. Bundles use the explicit `awai.dapp.bundle.v1` carrier schema; they do not claim implementation of the separate native `itonami.dapp.v1` / `ui://` sandbox intake. Snapshot operations in these static previews require the Tauri host; Web transport parity remains open.
+
+`device-pair-test.mjs` exercises two explicitly selected disposable Yataverse APKs through canonical UI choices and an operator-started relay limited to those two peers. A successful local-segment relay test is distinct from WAN NAT hole-punch qualification. Fixture OS permissions and scripted trusted UI clicks are test setup, not evidence of a human consent study.
