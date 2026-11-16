@@ -8,6 +8,8 @@ import { LockScreen, useIdle } from "./lock.jsx";
 import { createBroker, osOperations, readPassport } from "./runtime.js";
 import { MEDIA_ORIGIN, describeMessage, requestImage, requestSpeech, settleSavedItem, useMediaCapabilities } from "./media.js";
 import { Setup } from "./setup.jsx";
+import { Settei, WebBrowser } from "./settei.jsx";
+import { LanguageContext, dappSummary, saveLanguage, savedLanguage, serviceName, useLanguage, useText } from "./i18n.js";
 import {
   POINTS,
   accountAddress,
@@ -120,17 +122,23 @@ function setupFinished() {
 const shortDid = (did) => (did.length > 26 ? `${did.slice(0, 14)}…${did.slice(-8)}` : did);
 
 function Service({ name, up }) {
+  const t = useText();
   return (
     <li className={up ? "service up" : "service down"}>
       <span>{name}</span>
-      <span>{up ? "Running" : "Not reachable"}</span>
+      <span>{up ? t("service.running") : t("service.down")}</span>
     </li>
   );
 }
 
+// These dapps have a screen of their own in the shell instead of a chat.
+const SCREENS = new Set(["settei", "browser"]);
+
 function Sidebar({ context, onSelect, threads, now, zenoh, matter, account, score, onLock }) {
+  const t = useText();
+  const { language } = useLanguage();
   return (
-    <nav className="sidebar" aria-label="Contexts">
+    <nav className="sidebar" aria-label={t("sidebar.label")}>
       <div className="brand">Itonami</div>
       <button
         type="button"
@@ -138,13 +146,13 @@ function Sidebar({ context, onSelect, threads, now, zenoh, matter, account, scor
         aria-current={context === HOME ? "page" : undefined}
         onClick={() => onSelect(HOME)}
       >
-        New chat
+        {t("sidebar.newChat")}
       </button>
       <ManimaniLink active={context === MANIMANI} onSelect={() => onSelect(MANIMANI)} />
       <div className="contexts">
         {SECTIONS.map((section) => (
           <section key={section}>
-            <h2>{section}</h2>
+            <h2>{t(`section.${section}`)}</h2>
             <ul>
               {catalog.dapps
                 .filter((dapp) => dapp.section === section)
@@ -162,7 +170,9 @@ function Sidebar({ context, onSelect, threads, now, zenoh, matter, account, scor
                       </span>
                       <span className="title">{dapp.title}</span>
                       {threads[dapp.id]?.length ? (
-                        <span className="count">{threads[dapp.id].length}</span>
+                        <span className="count" aria-label={t("sidebar.messages", { count: threads[dapp.id].length })}>
+                          {threads[dapp.id].length}
+                        </span>
                       ) : null}
                     </button>
                   </li>
@@ -175,21 +185,25 @@ function Sidebar({ context, onSelect, threads, now, zenoh, matter, account, scor
         type="button"
         className={context === ACCOUNT ? "account-button active" : "account-button"}
         data-account={account.accountDid}
+        aria-current={context === ACCOUNT ? "page" : undefined}
+        aria-label={t("account.open", { id: shortDid(account.accountDid), score })}
         onClick={() => onSelect(ACCOUNT)}
       >
         <span className="title">{shortDid(account.accountDid)}</span>
         <span className="count" data-score={score}>
-          Trust {score}
+          {t("account.trust", { score })}
         </span>
       </button>
       <footer>
-        <ul className="services">
+        <ul className="services" aria-label={t("sidebar.services")}>
           <Service name="Zenoh" up={zenoh} />
           <Service name="Matter" up={matter} />
         </ul>
-        <time>{now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>
+        <time dateTime={now.toISOString()} data-clock>
+          {now.toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" })}
+        </time>
         <button type="button" className="secondary lock-now" data-lock-now onClick={onLock}>
-          Lock
+          {t("lock.now")}
         </button>
       </footer>
     </nav>
@@ -197,6 +211,7 @@ function Sidebar({ context, onSelect, threads, now, zenoh, matter, account, scor
 }
 
 function Composer({ placeholder, onSend, onImage, onSpeech, capabilities, context }) {
+  const t = useText();
   const [text, setText] = useState("");
   const input = useRef(null);
   useEffect(() => {
@@ -215,6 +230,7 @@ function Composer({ placeholder, onSend, onImage, onSpeech, capabilities, contex
   return (
     <form
       className="composer"
+      aria-label={placeholder}
       onSubmit={(event) => {
         event.preventDefault();
         send();
@@ -241,26 +257,27 @@ function Composer({ placeholder, onSend, onImage, onSpeech, capabilities, contex
         disabled={!text.trim() || capabilities.speech.length === 0}
         onClick={() => submit(onSpeech)}
       >
-        Speak
+        {t("composer.speak")}
       </button>
       <button
         type="button"
         className="tool"
         data-generate="image"
-        title={capabilities.image ? undefined : "The image model is not available on this device"}
+        title={capabilities.image ? undefined : t("composer.imageMissing")}
         disabled={!text.trim() || !capabilities.image}
         onClick={() => submit(onImage)}
       >
-        Image
+        {t("composer.image")}
       </button>
       <button type="submit" disabled={!text.trim()}>
-        Send
+        {t("composer.send")}
       </button>
     </form>
   );
 }
 
 function Message({ item }) {
+  const t = useText();
   const message = describeMessage(item);
   if (message.kind === "text") return <li>{message.text}</li>;
   return (
@@ -274,18 +291,20 @@ function Message({ item }) {
       ) : null}
       {message.state === "working" ? (
         <span className="muted">
-          {message.kind === "image" ? "Generating on this device. This can take a long time." : "Generating…"}
+          {message.kind === "image" ? t("media.imageWorking") : t("media.working")}
         </span>
       ) : null}
-      {message.state === "failed" ? <span className="problem">Could not generate this: {message.reason}</span> : null}
+      {message.state === "failed" ? <span className="problem">{t("media.failed", { reason: message.reason })}</span> : null}
       {message.state === "done" && message.seconds != null ? (
-        <span className="muted">Generated on this device in {message.seconds} s</span>
+        <span className="muted">{t("media.seconds", { seconds: message.seconds })}</span>
       ) : null}
     </li>
   );
 }
 
 function Chat({ dapp, context, messages, onSend, onImage, onSpeech, capabilities }) {
+  const t = useText();
+  const { language } = useLanguage();
   const end = useRef(null);
   useEffect(() => {
     end.current?.scrollIntoView();
@@ -296,11 +315,11 @@ function Chat({ dapp, context, messages, onSend, onImage, onSpeech, capabilities
       <div className="thread">
         {messages.length === 0 ? (
           <div className="empty">
-            <h1>{dapp ? dapp.title : "What should we work on?"}</h1>
-            {dapp ? <p>{dapp.summary}</p> : <p>Pick an app in the sidebar to work in its context.</p>}
+            <h1>{dapp ? dapp.title : t("chat.homeTitle")}</h1>
+            {dapp ? <p>{dappSummary(language, dapp)}</p> : <p>{t("chat.homeBody")}</p>}
           </div>
         ) : (
-          <ol className="messages">
+          <ol className="messages" aria-label={t("chat.messages")} aria-live="polite">
             {messages.map((item, index) => (
               <Message key={item?.id ?? index} item={item} />
             ))}
@@ -315,26 +334,23 @@ function Chat({ dapp, context, messages, onSend, onImage, onSpeech, capabilities
           onImage={onImage}
           onSpeech={onSpeech}
           capabilities={capabilities}
-          placeholder={dapp ? `Message ${dapp.title}` : "Message Itonami"}
+          placeholder={dapp ? t("composer.message", { name: dapp.title }) : t("composer.messageHome")}
         />
-        <p className="notice">
-          No agent is connected in this image, so nothing answers yet. Messages stay on this device.
-        </p>
+        <p className="notice">{t("chat.notice")}</p>
       </div>
     </main>
   );
 }
 
 function Locked({ dapp, minimum, score, onRaise }) {
+  const t = useText();
   return (
     <main className="chat">
       <div className="empty" data-dapp-locked={dapp.id}>
         <h1>{dapp.title}</h1>
-        <p>
-          This app needs a trust score of {minimum}. Yours is {score}.
-        </p>
+        <p>{t("locked.body", { minimum, score })}</p>
         <button type="button" className="primary" onClick={onRaise}>
-          Raise Your Score
+          {t("locked.raise")}
         </button>
       </div>
     </main>
@@ -342,22 +358,24 @@ function Locked({ dapp, minimum, score, onRaise }) {
 }
 
 function DappPanel({ dapp, score, onRaise }) {
+  const t = useText();
+  const { language } = useLanguage();
   return (
-    <aside className="panel" aria-label={`${dapp.title} dapp`}>
+    <aside className="panel" aria-label={t("panel.label", { name: dapp.title })}>
       <div className="panel-head">
         <h2>{dapp.title}</h2>
-        <span className="tag">Not connected</span>
+        <span className="tag">{t("panel.notConnected")}</span>
       </div>
-      <p>{dapp.summary}</p>
+      <p>{dappSummary(language, dapp)}</p>
       <dl>
-        <dt>Install</dt>
-        <dd>{dapp.install === "os-image" ? "Included in the OS image" : dapp.install}</dd>
-        <dt>Offline</dt>
-        <dd>{dapp.offline === "local-core" ? "The local core works offline" : dapp.offline}</dd>
+        <dt>{t("panel.install")}</dt>
+        <dd>{dapp.install === "os-image" ? t("panel.osImage") : dapp.install}</dd>
+        <dt>{t("panel.offline")}</dt>
+        <dd>{dapp.offline === "local-core" ? t("panel.localCore") : dapp.offline}</dd>
       </dl>
-      <h3>Network operations</h3>
+      <h3>{t("panel.operations")}</h3>
       {dapp.remoteOperations.length === 0 ? (
-        <p>None. This app does not use the network.</p>
+        <p>{t("panel.none")}</p>
       ) : (
         <ul className="operations">
           {dapp.remoteOperations.map((operation) => {
@@ -366,11 +384,11 @@ function DappPanel({ dapp, score, onRaise }) {
             return (
               <li key={operation.operation} data-operation={operation.operation} data-locked={locked}>
                 <span className="title">{operation.operation}</span>
-                <span>{operation.service}</span>
-                <span>{operation.consent === "each-operation" ? "Asks each time" : operation.consent}</span>
+                <span>{serviceName(language, operation.service)}</span>
+                <span>{operation.consent === "each-operation" ? t("panel.asks") : operation.consent}</span>
                 {locked ? (
                   <button type="button" className="locked" onClick={onRaise}>
-                    Needs trust {minimum}. Yours is {score}.
+                    {t("panel.needs", { minimum, score })}
                   </button>
                 ) : null}
               </li>
@@ -383,48 +401,54 @@ function DappPanel({ dapp, score, onRaise }) {
 }
 
 function Account({ account, score, proofs, onCheckPassport, passportState, onSignOut }) {
+  const t = useText();
+  const { language } = useLanguage();
   const address = accountAddress(account.accountDid);
   return (
     <main className="chat account-view">
       <div className="account-body">
-        <h1>Account</h1>
+        <h1>{t("account.title")}</h1>
         <p className="account-id">{account.accountDid}</p>
         <p className="muted">
-          Signed in with {account.method === "wallet" ? "a Web3 wallet" : "a passkey"} until{" "}
-          {new Date(account.expiresAt).toLocaleDateString()}.
+          {t("account.signedIn", {
+            method: account.method === "wallet" ? t("account.wallet") : t("account.passkey"),
+            date: new Date(account.expiresAt).toLocaleDateString(language),
+          })}
         </p>
         <h2>
-          Trust score <span data-score={score}>{score}</span>
+          {t("account.score")} <span data-score={score}>{score}</span>
         </h2>
-        <p className="muted">
-          A condition for some apps and operations. It does not mean goodwill, truth or a verified identity.
-        </p>
-        <ul className="sources">
+        <p className="muted">{t("account.scoreNote")}</p>
+        <ul className="sources" aria-label={t("account.sources")}>
           <li>
-            <span>Signed in</span>
+            <span>{t("account.signedInSource")}</span>
             <span>+{POINTS.login}</span>
           </li>
           <li>
             <span>
               Human Passport
-              {proofs.passport?.account === account.accountDid ? ` (score ${proofs.passport.score})` : ""}
+              {proofs.passport?.account === account.accountDid ? t("account.passportScore", { score: proofs.passport.score }) : ""}
             </span>
             {address ? (
               <button type="button" onClick={onCheckPassport}>
-                Check for +{POINTS.passport}
+                {t("account.check", { points: POINTS.passport })}
               </button>
             ) : (
-              <span className="muted">Needs a wallet account</span>
+              <span className="muted">{t("account.needsWallet")}</span>
             )}
           </li>
           <li>
             <span>World ID</span>
-            <span className="muted">Not available yet (+{POINTS.worldId})</span>
+            <span className="muted">{t("account.worldId", { points: POINTS.worldId })}</span>
           </li>
         </ul>
-        {passportState ? <p className={passportState.problem ? "problem" : "muted"}>{passportState.text}</p> : null}
+        {passportState ? (
+          <p className={passportState.problem ? "problem" : "muted"} role="status">
+            {t(passportState.key, passportState.vars)}
+          </p>
+        ) : null}
         <button type="button" className="secondary" data-sign-out onClick={onSignOut}>
-          Sign Out of This Device
+          {t("account.signOut")}
         </button>
       </div>
     </main>
@@ -447,11 +471,11 @@ function Shell({ account, proofs, score, broker, zenoh, matter, onProof, onSignO
       const address = accountAddress(account.accountDid);
       const passportScore = parsePassportResponse(await readPassport(broker, passportCall(address)));
       onProof("passport", { account: account.accountDid, score: passportScore, checkedAt: Date.now() });
-      setPassportState({ text: `Human Passport score on Optimism: ${passportScore}.` });
+      setPassportState({ key: "account.passportResult", vars: { score: passportScore } });
     } catch (error) {
       setPassportState({
         problem: true,
-        text: /not approved/.test(error.message) ? "Nothing was sent." : "The chain could not be read. Try again later.",
+        key: /not approved/.test(error.message) ? "account.nothingSent" : "account.chainFailed",
       });
     }
   };
@@ -470,6 +494,10 @@ function Shell({ account, proofs, score, broker, zenoh, matter, onProof, onSignO
     );
   } else if (context === MANIMANI) {
     body = <Manimani />;
+  } else if (context === "settei") {
+    body = <Settei />;
+  } else if (context === "browser") {
+    body = <WebBrowser />;
   } else if (dapp && score < minimum) {
     body = <Locked dapp={dapp} minimum={minimum} score={score} onRaise={openAccount} />;
   } else {
@@ -486,8 +514,9 @@ function Shell({ account, proofs, score, broker, zenoh, matter, onProof, onSignO
     );
   }
 
+  const panel = dapp && !SCREENS.has(dapp.id);
   return (
-    <div className={dapp ? "shell with-panel" : "shell"}>
+    <div className={panel ? "shell with-panel" : "shell"}>
       <Sidebar
         context={context}
         onSelect={setContext}
@@ -500,7 +529,7 @@ function Shell({ account, proofs, score, broker, zenoh, matter, onProof, onSignO
         onLock={onLock}
       />
       {body}
-      {dapp ? <DappPanel dapp={dapp} score={score} onRaise={openAccount} /> : null}
+      {panel ? <DappPanel dapp={dapp} score={score} onRaise={openAccount} /> : null}
     </div>
   );
 }
@@ -514,6 +543,20 @@ function App() {
   const [finished, setFinished] = useState(setupFinished);
   const [proofs, setProofs] = useState(loadProofs);
   const [lock, setLock] = useState(loadLock);
+  const [language, setLanguageState] = useState(savedLanguage);
+  const languageValue = useMemo(
+    () => ({
+      language,
+      setLanguage: (next) => {
+        saveLanguage(next);
+        setLanguageState(next);
+      },
+    }),
+    [language],
+  );
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
   const score = trustScore({ accountDid: account?.accountDid, proofs });
   const open = Boolean(did && account && finished && !lock);
 
@@ -545,6 +588,9 @@ function App() {
   }, [zenoh, matter, open, did, lock]);
 
   if (!did) return null;
+  return <LanguageContext.Provider value={languageValue}>{screen()}</LanguageContext.Provider>;
+
+  function screen() {
   // A lock holds whatever the session does: an expired or edited session cannot skip it.
   if (lock) {
     return (
@@ -607,6 +653,7 @@ function App() {
       onLock={() => lockNow()}
     />
   );
+  }
 }
 
 createRoot(document.getElementById("root")).render(<App />);

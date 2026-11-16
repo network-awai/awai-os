@@ -15,6 +15,7 @@ import { signWithProvider } from "./identity/wallet.js";
 import { saveSession } from "./identity/device.js";
 import { awaitPhoneApproval } from "./runtime.js";
 import { POINTS } from "./trust.js";
+import { LANGUAGES, useLanguage } from "./i18n.js";
 
 const TEXT = {
   en: {
@@ -81,31 +82,17 @@ const TEXT = {
     failed: "中継に接続できません。ネットワークを確認して、もう一度お試しください。",
     expired: "コードの期限が切れました。もう一度「スマートフォンとリンク」を選んでください。",
     refused: "受け取った応答を拒否しました",
-    trustTitle: "Trust Score",
-    trustBody: "App や操作によっては、最低点が必要です。この点数はあなたへの評価ではありません。あとで「アカウント」から上げられます。",
+    trustTitle: "信頼スコア",
+    trustBody: "アプリや操作によっては、最低点が必要です。この点数はあなたへの評価ではありません。あとで「アカウント」から上げられます。",
     yourScore: "現在の点数",
     later: "あとで設定",
     doneTitle: "準備ができました",
-    doneBody: "App はサイドバーにあります。App ごとに専用の会話があります。",
+    doneBody: "アプリはサイドバーにあります。アプリごとに専用の会話があります。",
     enter: "Itonami を開く",
   },
 };
 
-const LANGUAGES = [
-  ["en", "English"],
-  ["ja", "日本語"],
-];
 const STEPS = ["hello", "language", "network", "signin", "trust", "done"];
-const LANGUAGE_KEY = "otehon.language.v1";
-
-function savedLanguage() {
-  try {
-    const saved = localStorage.getItem(LANGUAGE_KEY);
-    return saved === "ja" || saved === "en" ? saved : "en";
-  } catch {
-    return "en";
-  }
-}
 
 function QrCode({ url }) {
   const { size, path } = useMemo(() => {
@@ -329,24 +316,15 @@ function SignIn({ t, returning, broker, relayOrigin, did, onLinked }) {
 // A one-screen-per-step first run, modelled on the phone setup people know.
 // Signing in is required. There is no way past that step without a verified link.
 export function Setup({ broker, relayOrigin, did, account, returning, onLinked, score, onFinish }) {
-  const [language, setLanguage] = useState(savedLanguage);
+  const { language, setLanguage } = useLanguage();
   const [step, setStep] = useState(returning ? "signin" : account ? "trust" : "hello");
   const t = TEXT[language];
   const index = STEPS.indexOf(step);
   const next = () => setStep(STEPS[index + 1]);
 
-  useEffect(() => {
-    document.documentElement.lang = language;
-    try {
-      localStorage.setItem(LANGUAGE_KEY, language);
-    } catch {
-      // The choice still applies to this session.
-    }
-  }, [language]);
-
   return (
     <div className="setup" data-step={step}>
-      <div className="setup-card">
+      <main className="setup-card">
         {step === "hello" ? (
           <>
             <h1 className="hello">{t.hello}</h1>
@@ -429,7 +407,7 @@ export function Setup({ broker, relayOrigin, did, account, returning, onLinked, 
             {t.back}
           </button>
         ) : null}
-      </div>
+      </main>
       {returning ? null : (
         <ol className="progress" aria-label={`${index + 1} / ${STEPS.length}`}>
           {STEPS.map((name) => (
