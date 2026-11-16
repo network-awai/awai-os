@@ -2,8 +2,8 @@
   "schema": "awai.dapp.carrier.profiles.v1",
   "tauri": "3.0.0-alpha.6",
   "canonicalRuntime": {
-    "revision": "ee6a910b11302d9b7bdcbd12984ed2f203282fa6",
-    "sha256": "3283b99be69022ca564d799973abbb939e652fe10361ba1925ab17ae25f0b1fd"
+    "revision": "5a49411f586f094b6056724a36d56da2bac0ca4b",
+    "sha256": "739a24fa73f2d4d08436cdac4816abe940344b31a4363b8a879cea29cb547f0e"
   },
   "apps": [
     {
@@ -53,5 +53,5 @@
       "domainUi": "snapshot-pin-query"
     }
   ],
-  "version": "0.1.1"
+  "version": "0.1.2"
 }
