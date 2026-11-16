@@ -55,6 +55,66 @@ shared `each-operation` consent. No `window.openai`, no server-held business
 state, no ChatGPT approval. The Hermes `mcp_servers` route (D14) is for
 agent-invoked tools, not for apps with a screen. Implementation is still open;
 this records only the intake choice.
+## Meiji desktop entry (AWAI-195, owner direction 2026-11-16)
+
+Owner direction 2026-11-16, AWAI-2820: if former execution keys cannot be
+restored, rotate them and persist recovery material encrypted in AwaiVol.
+Preserve the existing cluster/member identities, enrollment, cursors and guest
+disks. Stage authenticated encryption and restore verification before a
+quorum-preserving trust update. New credential issuance does not prove old
+credential revocation. Keep wrapping keys in the OS credential store; never
+put plaintext keys, prompts or transcripts in WebDAV/Git/telemetry.
+
+VM lifecycle controls and the dense Bot/Circle workspace must mount separately
+in the desktop entry. Qualify lifecycle UI on a disposable guest first; record
+production guest shutdown/drain and Bot work separately. A blank fixture's
+QMP stop request is not evidence of a guest acknowledging clean shutdown.
+
+- Awai Otehon OS codename is **Meiji**. Use **Tauri v3** as the desktop entry
+  managing Meiji VMs; do not silently select v2. v3 is Alpha at implementation
+  time: pin exact published crate versions and keep release qualification open.
+- Implement lifecycle policy, resource validation, persistence, inference
+  adapters in `.cljc` under `nixos/otehon/meiji/src/`; desktop views and the
+  local IPC client live in `nixos/otehon/shell/src/meiji/` so the existing Nix
+  shell source closure remains self-contained.
+  Rust is the thin Tauri IPC/process adapter. The Babashka Otehon development
+  controller does not establish the ADR 0031 `cljrs` AOT target as completed.
+- Soshiki displays Bot observations and controls VM start/stop and vCPU/guest
+  RAM allocation. A running hypervisor is not guest health or Bot liveness.
+  Missing/stale reports and unmeasured GPU use remain unknown.
+- Permit only locally configured VM IDs, signed image digests, executable
+  paths, resource ceilings and selected inference providers. No shell or
+  arbitrary command/path/endpoint arguments from WebViews. Never adopt or stop
+  an unrelated existing VM. Require a stopped VM for resource changes.
+- Keep UI/operation approval, Bot executor grants, and VM administration
+  distinct. Tauri capabilities do not replace the shared Kotoba external
+  operation consent contract. Keep UI/workflows in the local WebView; no BFF.
+- Local GPU worker connections (Metal/CUDA/ROCm/Vulkan/DirectML) are explicit
+  host inference routes, not evidence of VM GPU passthrough. No remote/CPU
+  fallback. Test each actual OS/device/model separately before qualification.
+- Owner selected Kapitsa with Qwen3.6-35B-A3B for the Mac route. Pin the
+  engine release and model/drafter revisions and verify artifact digests.
+  Kapitsa is Apple-Silicon-only; never claim Linux/Windows support for it.
+  Force private/local execution, no discovery or model switching, and pass
+  API credentials over private files/stdin, never argv or environment.
+- Owner clarification (2026-11-16): **do not start Kapitsa on this local owner
+  workstation**. Do not run its serve, pull, probe or benchmark commands here.
+  The local worker configuration is disabled and its provider was removed.
+  A different Awai execution node must be explicitly identified before any
+  deployment there. Pure configuration/protocol tests do not launch Kapitsa.
+- Owner selected **jacob** as the execution node. Its verified account is
+  `node` and it has 16 GiB unified memory; deploy the explicitly pinned
+  Qwen3.6-35B-A3B `16gb` variant there, not the 22 GB 4-bit pack. Treat this
+  quantization as a separate measured configuration. Keep its worker private
+  to jacob and use a strict-host-key SSH forward for the desktop connection.
+  No public port, unknown-host-key acceptance, node failover or local engine
+  startup is implied by that forward.
+- Preserve working disks and AwaiFS/Kotobase state across launcher updates.
+  VM snapshots do not undo external operations or prove distributed backups.
+  Do not replace or disable live cron, fleet or authentication services when
+  testing the desktop entry. Record source/build/hypervisor/guest/GPU/installer
+  evidence separately in Linear. Packaging the app does not qualify its worker.
+
 ## UI design and writing
 
 Apply [the shared UI rules](docs/design/interface-principles.md) to Awai OS and
@@ -143,3 +203,21 @@ never expose that operation through the browser API. Preserve previous roots,
 histories, service configs and recovery evidence. Same-UID host compromise,
 independent hardware recovery, portable key import and distributed alias writes
 require their own qualification; a local/keychain test does not prove them.
+
+### Meiji recovered production execution (AWAI-2820)
+
+Keep the recovered ledger, original cron phase, node identities and read-only
+history disks intact. The recovered owner-side coordinator only wakes the
+original ledger schedule; computation runs on enrolled Meiji guests. Do not
+describe this as autonomous guest scheduling or fleet-wide liveness. Routine
+recording uses its read-only etcd identity; root credentials are maintenance only.
+The jacob Kapitsa public-result reviewer is a separate scoped service, not an
+expansion of deterministic physics Bot grants. Model text is an artifact, never
+a command or capability. Unknown HTTP outcomes stay held. A known pre-HTTP
+failure may resume only its original owner/input using explicit reviewed
+evidence and a one-time CAS recovery marker; never reset the claim to retry.
+Persist model counters with their exact run binding; missing counters remain
+unknown. Show output-limited or unqualified review text as a draft. Stale
+observations must not imply current execution. Keep private custody backups
+encrypted in AwaiVol; a Keychain-dependent decrypt check is not independent
+disaster recovery.

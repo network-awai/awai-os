@@ -1,0 +1,6 @@
+{
+  "identifier": "meiji-local",
+  "description": "Local Soshiki window: bounded Meiji operations only. No shell, filesystem or remote IPC.",
+  "windows": ["main"],
+  "permissions": ["allow-meiji-request", "core:event:allow-listen", "core:event:allow-unlisten"]
+}
