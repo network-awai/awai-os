@@ -54,7 +54,7 @@ def call(path, body=None, headers=None, method=None):
     request = urllib.request.Request(
         f"http://127.0.0.1:{PORT}{path}",
         data=None if body is None else json.dumps(body).encode(),
-        headers={"content-type": "application/json", "origin": "null", **(headers or {})},
+        headers={"content-type": "application/json", "origin": "http://127.0.0.1:8780", **(headers or {})},
         method=method,
     )
     try:
@@ -108,6 +108,7 @@ with tempfile.TemporaryDirectory() as folder:
     check("starts and sees the local model", up() is not None)
 
     # Who may call it.
+    check("legacy null origin is refused", call("/v1/state", headers={"origin": "null"})[0] == 403)
     check("a web page's origin is refused", call("/v1/state", headers={"origin": "https://evil.example"})[0] == 403)
     check("another Host is refused", call("/v1/state", headers={"host": "evil.example"})[0] == 403)
     check("empty text is refused", call("/v1/messages", {"text": "  "})[0] == 400)
