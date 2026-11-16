@@ -2,6 +2,7 @@
 let
   cfg = config.otehon;
   enabled = cfg.diagnosticPublicKey != "";
+  maintenance = enabled && cfg.diagnosticMaintenance && !cfg.installerNbd.enable;
   build = config.system.build;
   server = "http://10.77.0.1:8080";
   cmdline = "init=${build.toplevel}/init ${toString config.boot.kernelParams}";
@@ -19,6 +20,12 @@ let
     export OTEHON_INSTALLER_INFO=${build.otehonInstallerInfo}
     export PATH=${lib.makeBinPath [ pkgs.systemd ]}
     exec ${pkgs.python3}/bin/python3 ${./installer-diagnostics.py}
+  '';
+  maintenanceCommand = pkgs.writeShellScript "otehon-operator-maintenance" ''
+    if [ -n "''${SSH_ORIGINAL_COMMAND-}" ]; then
+      exec /run/wrappers/bin/sudo -n -- ${pkgs.bash}/bin/bash -c "$SSH_ORIGINAL_COMMAND"
+    fi
+    exec /run/wrappers/bin/sudo -n -- ${pkgs.bash}/bin/bash
   '';
   ipxe = pkgs.ipxe.override {
     embedScript = pkgs.writeText "otehon-diagnostic.ipxe" ''
@@ -43,10 +50,23 @@ in {
     default = "";
     description = "Explicit operator Ed25519 public key; empty disables remote diagnostics.";
   };
+  options.otehon.diagnosticMaintenance = lib.mkOption {
+    type = lib.types.bool;
+    default = false;
+    description = "Explicit temporary operator maintenance SSH in RAM; requires a key and cannot accompany the writable installer.";
+  };
   config = {
     assertions = [{
       assertion = !enabled || builtins.match "ssh-ed25519 [A-Za-z0-9+/=]+( [^\n\r]*)?" cfg.diagnosticPublicKey != null;
       message = "The LAN diagnostic public key must be one single Ed25519 public key.";
+    } {
+      assertion = !cfg.diagnosticMaintenance || (enabled && !cfg.installerNbd.enable);
+      message = "Maintenance requires an operator key and a diagnostic-only RAM boot.";
+    }];
+    security.sudo.enable = lib.mkIf maintenance true;
+    security.sudo.extraRules = lib.optionals maintenance [{
+      users = [ "otehon-installer" ];
+      commands = [{ command = "${pkgs.bash}/bin/bash"; options = [ "NOPASSWD" ]; }];
     }];
     system.image.id = lib.mkForce "awai-otehon-netboot-diagnostic";
     networking.hostName = lib.mkForce "otehon-diagnostic";
@@ -59,6 +79,7 @@ in {
     };
     systemd.services."otehon-install@".environment = {
       OTEHON_DIAGNOSTIC_MODE = "1";
+      OTEHON_MAINTENANCE_MODE = if maintenance then "1" else "0";
       DIGESTS = lib.mkIf (!config.otehon.installerNbd.enable) (lib.mkForce "${diagnosticDigests}");
     };
     netboot.squashfsCompression = "zstd -Xcompression-level 6";
@@ -74,8 +95,8 @@ in {
         PasswordAuthentication = false;
         KbdInteractiveAuthentication = false;
         AllowUsers = [ "otehon-installer" ];
-        ForceCommand = "${diagnostic}";
-        PermitTTY = false;
+        ForceCommand = if maintenance then "${maintenanceCommand}" else "${diagnostic}";
+        PermitTTY = maintenance;
         DisableForwarding = true;
         PermitUserEnvironment = false;
         PermitUserRC = false;

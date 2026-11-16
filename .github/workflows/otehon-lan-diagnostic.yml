@@ -20,6 +20,11 @@ on:
         required: false
         default: false
         type: boolean
+      maintenance:
+        description: 'Explicit temporary operator-key-only maintenance SSH (root commands, RAM boot)'
+        required: false
+        default: false
+        type: boolean
       diagnostic_base_artifact:
         description: 'Optional prior read-only candidate artifact ID for a small initrd delta'
         required: false
@@ -83,10 +88,11 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.operator_public_key != ''
         env:
           OPERATOR_PUBLIC_KEY: ${{ inputs.operator_public_key }}
+          DIAGNOSTIC_MAINTENANCE: ${{ inputs.maintenance || false }}
         shell: bash
         run: |
           set -euo pipefail
-          nix-build nixos/otehon/default.nix --argstr profile netboot-diagnostic-6600h --argstr diagnosticPublicKey "$OPERATOR_PUBLIC_KEY" --out-link result-otehon-lan-candidate --show-trace
+          nix-build nixos/otehon/default.nix --argstr profile netboot-diagnostic-6600h --argstr diagnosticPublicKey "$OPERATOR_PUBLIC_KEY" --arg diagnosticMaintenance "$DIAGNOSTIC_MAINTENANCE" --out-link result-otehon-lan-candidate --show-trace
           mkdir -p .agent-output/lan/candidate
           for file in ipxe.efi kernel initrd installer-info.json; do cp -L "result-otehon-lan-candidate/$file" ".agent-output/lan/candidate/$file"; done
           (cd .agent-output/lan/candidate; sha256sum ipxe.efi kernel initrd installer-info.json > SHA256SUMS)
@@ -94,7 +100,10 @@ jobs:
           python3 - <<'PYMETA'
           import json, os
           from pathlib import Path
-          Path('.agent-output/lan/candidate/DIAGNOSTIC_ONLY.json').write_text(json.dumps({'schema': 'awai.otehon.diagnostic-candidate.v1', 'sourceRevision': os.environ['GITHUB_SHA'], 'profile': 'netboot-diagnostic-6600h', 'readOnly': True}))
+          maintenance = os.environ.get('DIAGNOSTIC_MAINTENANCE') == 'true'
+          marker = {'schema': 'awai.otehon.maintenance-candidate.v1' if maintenance else 'awai.otehon.diagnostic-candidate.v1', 'sourceRevision': os.environ['GITHUB_SHA'], 'profile': 'netboot-diagnostic-6600h', 'readOnly': not maintenance}
+          if maintenance: marker['operatorAccess'] = 'key-only-root-shell'
+          Path('.agent-output/lan/candidate/' + ('MAINTENANCE.json' if maintenance else 'DIAGNOSTIC_ONLY.json')).write_text(json.dumps(marker))
           PYMETA
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: success() && github.event_name == 'workflow_dispatch' && inputs.operator_public_key != ''
@@ -132,7 +141,8 @@ jobs:
                   shutil.copyfileobj(source, out, 1024*1024)
           delta = root/'delta'; delta.mkdir()
           (delta/'BASE.json').write_text(json.dumps({'artifact': int(identifier), 'archiveSha256': digest, 'initrdSha256': hashlib.file_digest((base/'initrd').open('rb'), 'sha256').hexdigest()}))
-          for name in ('ipxe.efi', 'kernel', 'installer-info.json', 'SOURCE_REVISION', 'SHA256SUMS', 'DIAGNOSTIC_ONLY.json'):
+          marker_name = 'MAINTENANCE.json' if (root/'candidate/MAINTENANCE.json').exists() else 'DIAGNOSTIC_ONLY.json'
+          for name in ('ipxe.efi', 'kernel', 'installer-info.json', 'SOURCE_REVISION', 'SHA256SUMS', marker_name):
               shutil.copyfile(root/'candidate'/name, delta/name)
           PYDELTA
           nix-shell --expr 'let p = import (import ./ci/nixpkgs.nix) { system = "x86_64-linux"; }; in p.mkShell { packages = [ p.xdelta ]; }' --run 'xdelta3 -e -B 134217728 -W 8388608 -s .agent-output/lan/base/initrd .agent-output/lan/candidate/initrd .agent-output/lan/delta/initrd.xdelta3'
@@ -147,7 +157,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          nix-shell --expr 'let p = import (import ./ci/nixpkgs.nix) { system = "x86_64-linux"; }; in p.mkShell { packages = [ p.python3 p.qemu_test p.openssh ]; OVMF_CODE = "${p.OVMF.fd}/FV/OVMF_CODE.fd"; OVMF_VARS = "${p.OVMF.fd}/FV/OVMF_VARS.fd"; }' --run 'python3 scripts/check-otehon-lan-vm.py --image result-otehon-lan --memory-mib 16384 --source-revision "$GITHUB_SHA" --output .agent-output/lan/proof --key .agent-output/lan/operator --bad-key .agent-output/lan/unauthorized --ovmf-code "$OVMF_CODE" --ovmf-vars "$OVMF_VARS"'
+          nix-shell --expr 'let p = import (import ./ci/nixpkgs.nix) { system = "x86_64-linux"; }; in p.mkShell { packages = [ p.python3 p.qemu_test p.openssh ]; OVMF_CODE = "${p.OVMF.fd}/FV/OVMF_CODE.fd"; OVMF_VARS = "${p.OVMF.fd}/FV/OVMF_VARS.fd"; }' --run 'python3 scripts/check-otehon-lan-vm.py --image result-otehon-lan --memory-mib 8192 --source-revision "$GITHUB_SHA" --output .agent-output/lan/proof --key .agent-output/lan/operator --bad-key .agent-output/lan/unauthorized --ovmf-code "$OVMF_CODE" --ovmf-vars "$OVMF_VARS"'
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
