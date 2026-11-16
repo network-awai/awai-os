@@ -30,7 +30,11 @@ unavailable Nix services by globally enabling mixed content or remote IPC.
 
 Application ID `network.itonami.app` is independent of Home/Store/Yotei. Native
 capabilities expose read-only `awai_host_info` only: no filesystem, installer,
-shell command or arbitrary host invocation. Existing browser operation consent
+shell command or arbitrary host invocation. `withGlobalTauri` is false on
+purpose: the shared shell mounts the Meiji desktop whenever `__TAURI__` exists,
+but this app registers no `meiji_request` command, so advertising Tauri would
+mount a desktop whose every request fails. The shell degrades to the fleet view
+instead. Re-enable the global only together with a real Meiji capability probe. Existing browser operation consent
 uses the exact vendored canonical Kotoba runtime revision/digests, independently
 checked against its owning source. No product-local consent implementation or
 silent remote inference fallback is introduced.
@@ -48,13 +52,18 @@ starts the existing setup/sign-in flow.
 x86_64 APK0.1.0/versionCode1000, minSdk35/targetSdk37, Tauri3 alpha6 built;
 Android debug signer SHA256
 `2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29`.
-APK bytes32685869, SHA256
-`673fcaffafbf63dc6e6c927039a414a28dc6292e624cbb5a3bf399ca1f2c697f`.
-This development build is32685869bytes and does not meet the current20MiB Store
-artifact ceiling; it was installed directly by explicitly targeted ADB, not
-Store enrollment. No production publisher signing or release qualification is
-claimed. APK source base c7f1008 plus the recorded task source changes; dirty
-state at build time is explicit in local evidence.
+APK bytes32644749, SHA256
+`09e92086e6b5edde9c91804a4fc30b6c980299cd64d4924a2f1c65e74e9da5cb`
+(`withGlobalTauri` false; rebuilt 2026-11-16).
+This development build is32644749bytes: inside the shared 64MiB artifact
+ceiling and the host per-app budget, so bundled Store enrollment carries it
+as an offline asset; browser-pin online delivery stays capped at 20MiB and
+cannot carry it. It was installed directly by explicitly targeted ADB for UI
+evidence, and is enrolled in the rev101 Store catalog for host-verified
+installs. No production publisher signing or release qualification is
+claimed. APK source is the committed `apps/itonami` tree plus the recorded
+shell build; provenance guards (clean tree, fresh dist, empty-dest copy)
+run on every package.
 
 Actual Awai Android Live desktop(API37, Ryzen7 7735HS) accepted the single APK
 and launched `network.itonami.app/.MainActivity`. The existing Welcome/Hello UI

@@ -1,5 +1,6 @@
 // Package the owning NixOS shell build; no second UI or consent implementation.
-import {cp, mkdir, readFile, readdir, writeFile} from 'node:fs/promises';
+import {cp, mkdir, readFile, readdir, rm, writeFile} from 'node:fs/promises';
+import {statSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
@@ -14,6 +15,15 @@ for (const [name,digest] of Object.entries(pins.files)) {
 }
 const source = path.join(shell, 'dist');
 const dest = path.join(app, 'dist');
+// Provenance: refuse dirty or stale shell inputs before attributing the bundle.
+// dist/ is gitignored, so cleanliness covers tracked sources and the mtime
+// check below covers staleness against the prebuilt shell bundle.
+if (execFileSync('git', ['status', '--porcelain', '--', 'nixos/otehon/shell'], {cwd: repo, encoding: 'utf8'}).trim() !== '')
+  throw Error('uncommitted owning shell sources; commit or discard first');
+const shellMtime = Math.max(...execFileSync('git', ['ls-files', '-z', 'nixos/otehon/shell'], {cwd: repo, encoding: 'utf8'}).split('\0').filter(Boolean)
+  .map(f => statSync(path.join(repo, f)).mtimeMs));
+const distMtime = statSync(path.join(source, 'index.html')).mtimeMs;
+if (!(distMtime >= shellMtime)) throw Error('stale owning shell bundle; rebuild the Nix shell first');
 async function files(root, rel='') {
   let result=[];
   for (const e of await readdir(path.join(root,rel),{withFileTypes:true})) {
@@ -27,6 +37,9 @@ async function files(root, rel='') {
 }
 const input=await files(source);
 if(!input.includes('index.html') || !input.includes('assets/main.js'))throw Error('build owning Nix shell first');
+// Recreate dest from empty: an incremental copy would keep files the owning
+// shell has since removed, shipping obsolete assets at a stable WebView origin.
+await rm(dest,{recursive:true,force:true});
 await mkdir(dest,{recursive:true});
 await cp(source,dest,{recursive:true});
 const original=await readFile(path.join(dest,'index.html'),'utf8');

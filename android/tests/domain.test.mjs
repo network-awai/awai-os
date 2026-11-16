@@ -24,7 +24,7 @@ test('untrusted paths and signer fields are refused by actual browser core',()=>
   }
 });
 test('multi-app catalog admits a Tauri-sized artifact within the shared ceiling',()=>{
-  const big={...apk,asset:'packages/itonami.apk',bytes:32685869};
+  const big={...apk,asset:'packages/itonami.apk',bytes:32644749};
   const second={...app,id:'network.itonami.app',artifacts:[big]};
   assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,second]}),100),true);
   const over={...app,artifacts:[{...apk,bytes:64*1024*1024+1}]};
