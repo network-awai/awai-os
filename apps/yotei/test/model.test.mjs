@@ -1,0 +1,5 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import vm from 'node:vm';import {readFileSync} from 'node:fs';
+const context={window:{},console};vm.runInNewContext(readFileSync(new URL('../../../android/client/generated/domain.js',import.meta.url),'utf8'),context);globalThis.ItonamiDomain=context.window.ItonamiDomain;const {decode,saveEvent,importEvents}=await import('../src/model.js');
+const event={id:'one',title:'<script>日本語</script>',at:1900000000000};
+test('actual compiled cljc event model and legacy array migration preserve text and identity',()=>{const s=saveEvent(decode(null),event);assert.equal(s.events[0].title,event.title);assert.deepEqual(importEvents(JSON.stringify([event])),s.events);assert.equal(decode(s).events[0].id,'one');});
+test('invalid dates, duplicate ids, damaged backups and unknown schema cannot replace state',()=>{for(const raw of ['broken','{"schema":"future","events":[]}',JSON.stringify([event,event]),JSON.stringify([{...event,at:9e15}]),JSON.stringify([{...event,title:''}])])assert.throws(()=>importEvents(raw));});

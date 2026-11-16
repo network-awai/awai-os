@@ -206,6 +206,12 @@
    (at-media {:prefers-reduced-motion "reduce"}
              [".voice-bezel" {:transition "none" :opacity ".5 !important"}])
    [:.net-view {:overflow-y "auto"}]
+   [:.setup-network {:width "100%" :min-width "0"}]
+   [".setup-network" {:width "100%" :min-width "0"}]
+   [".setup-network .net-body" {:padding "0" :width "100%" :text-align "left"}]
+   [".setup-network .net-list" {:max-height "24vh" :overflow-y "auto"}]
+   [".setup-network .net-list button" {:min-height "32px"}]
+   [".setup-network .net-form input" {:min-width "0" :width "100%"}]
    [:.net-body {:width "min(620px, 100%)" :margin "0 auto" :padding "48px 24px"
                  :display "flex" :flex-direction "column" :gap "12px"}]
    [".net-body h1" {:margin 0 :font-size "28px"}]
@@ -266,7 +272,18 @@
    [:.meter {:height "6px" :overflow "hidden" :border-radius "3px"
               :background "var(--surface-raised)" :margin "10px 0 4px"}]
    [".meter span" {:display "block" :height "100%" :background "var(--focus)"}]
-   [:.theme-switcher {:position "fixed" :z-index 50 :top "12px" :right "14px" :display "flex"
+   [:.system-status {:position "fixed" :z-index 50 :top "12px" :right "14px" :display "flex"
+                     :align-items "center" :justify-content "flex-end" :gap "8px"
+                     :flex-wrap "wrap" :max-width "calc(100vw - 28px)"}]
+   [:.network-indicator {:display "flex" :align-items "center" :gap "8px" :min-height "36px"
+                         :max-width "min(65vw, 36rem)" :padding "6px 12px" :border-radius "12px"
+                         :border "1px solid var(--border-strong)" :background "var(--surface)"
+                         :color "var(--fg)" :font-size "12px"}]
+   [".network-indicator > span:last-child" {:overflow "hidden" :text-overflow "ellipsis" :white-space "nowrap"}]
+   [:.network-light {:width "8px" :height "8px" :border-radius "50%" :flex "none" :background "var(--muted)"}]
+   [".network-indicator[data-network-state=online] .network-light" {:background "var(--success-text)"}]
+   [".network-indicator[data-network-state=offline] .network-light" {:background "var(--error)"}]
+   [:.theme-switcher {:display "flex"
                        :gap "3px" :margin 0 :padding "4px" :border "1px solid var(--border-strong)"
                        :border-radius "12px" :background "var(--surface)"}]
    [".theme-switcher legend" {:position "absolute" :width "1px" :height "1px" :overflow "hidden"

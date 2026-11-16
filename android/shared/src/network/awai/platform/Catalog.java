@@ -1,0 +1,80 @@
+package network.awai.platform;
+
+import android.content.Context;
+import android.content.pm.*;
+import org.json.*;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+
+/** Android host boundary: authenticated bundled metadata and exact APK identity. No network. */
+public final class Catalog {
+    private final JSONObject value;
+    public final boolean online;
+    public Catalog(Context context) throws Exception {
+        byte[] bytes = Integrity.read(context.getAssets().open("catalog.json"), 131072);
+        byte[] sig = Integrity.read(context.getAssets().open("catalog.sig"), 4096);
+        byte[] key = Integrity.read(context.getAssets().open("catalog-key.der"), 4096);
+        JSONObject bundled=verifyMetadata(bytes,sig,key,System.currentTimeMillis()/1000);
+        android.content.SharedPreferences saved=context.getSharedPreferences("online",0);
+        online=saved.contains("raw");
+        if(online){
+            bytes=saved.getString("raw","").getBytes(StandardCharsets.UTF_8);
+            sig=android.util.Base64.decode(saved.getString("signature",""),android.util.Base64.DEFAULT);
+        }
+        value = verifyMetadata(bytes,sig,key,System.currentTimeMillis()/1000);
+        if(value.getLong("revision")<Math.max(bundled.getLong("revision"),saved.getLong("highest",0)))throw new SecurityException("catalog-rollback");
+    }
+    public static JSONObject verifyMetadata(byte[] bytes,byte[] sig,byte[] key,long now) throws Exception {
+        if (!Integrity.authentic(bytes, sig, key)) throw new SecurityException("catalog-signature");
+        JSONObject value = new JSONObject(new String(bytes, StandardCharsets.UTF_8));
+        if (!"itonami.store.bundled.v1".equals(value.getString("schema")) || value.getLong("revision") < 1
+                || value.getLong("expiresAt") <= now) throw new SecurityException("catalog-expired");
+        JSONArray apps = value.getJSONArray("apps");
+        if (apps.length() != 1 || !"network.itonami.yotei".equals(apps.getJSONObject(0).getString("id")))
+            throw new SecurityException("catalog-app");
+        JSONObject app=apps.getJSONObject(0);
+        if(app.getLong("versionCode")<1||app.getDouble("versionCode")!=app.getLong("versionCode"))throw new SecurityException("catalog-version");
+        return value;
+    }
+    public long valueRevision() throws Exception { return value.getLong("revision"); }
+    public String json() { return value.toString(); }
+    public JSONObject app(String id) throws Exception {
+        JSONObject app = value.getJSONArray("apps").getJSONObject(0);
+        if (!app.getString("id").equals(id)) throw new SecurityException("unknown-app");
+        return app;
+    }
+    public JSONObject artifact(String id) throws Exception {
+        JSONArray entries = app(id).getJSONArray("artifacts");
+        for (int i = 0; i < entries.length(); i++) {
+            JSONObject a = entries.getJSONObject(i);
+            if ("android".equals(a.getString("platform")) && "android".equals(a.getString("runtime"))
+                    && "apk".equals(a.getString("kind")) && "packages/yotei.apk".equals(a.getString("asset"))) return a;
+        }
+        throw new SecurityException("no-android-artifact");
+    }
+    public byte[] verifiedApk(Context context, String id) throws Exception {
+        JSONObject app = app(id), a = artifact(id);
+        byte[] bytes = Integrity.read((online ? new FileInputStream(new File(context.getFilesDir(),"online-yotei.apk")) : context.getAssets().open(a.getString("asset"))), 20 * 1024 * 1024);
+        if (bytes.length != a.getLong("bytes") || !Integrity.sha256(bytes).equals(a.getString("sha256")))
+            throw new SecurityException("artifact-integrity");
+        File file = File.createTempFile("awai-verify-", ".apk", context.getCacheDir());
+        try {
+            try (FileOutputStream out = new FileOutputStream(file)) { out.write(bytes); }
+            PackageInfo info = context.getPackageManager().getPackageArchiveInfo(file.getAbsolutePath(), PackageManager.GET_SIGNING_CERTIFICATES);
+            if (info == null || !id.equals(info.packageName) || info.getLongVersionCode() != app.getLong("versionCode"))
+                throw new SecurityException("package-version");
+            if (info.signingInfo == null || info.signingInfo.hasMultipleSigners()) throw new SecurityException("signer-count");
+            android.content.pm.Signature[] signers = info.signingInfo.getApkContentsSigners();
+            if (signers.length != 1 || !Integrity.sha256(signers[0].toByteArray()).equals(a.getString("signerSha256")))
+                throw new SecurityException("package-signer");
+            try {
+                PackageInfo installed = context.getPackageManager().getPackageInfo(id, PackageManager.GET_SIGNING_CERTIFICATES);
+                if (installed.getLongVersionCode() > app.getLong("versionCode")) throw new SecurityException("downgrade");
+                if (installed.signingInfo == null || installed.signingInfo.hasMultipleSigners()
+                        || !Integrity.sha256(installed.signingInfo.getApkContentsSigners()[0].toByteArray()).equals(a.getString("signerSha256")))
+                    throw new SecurityException("installed-signer");
+            } catch (PackageManager.NameNotFoundException absent) { /* fresh install */ }
+            return bytes;
+        } finally { if (!file.delete()) file.deleteOnExit(); }
+    }
+}

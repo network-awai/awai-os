@@ -1,0 +1,25 @@
+{
+  "schema": "awai.otehon.ui-baseline.v1",
+  "issue": "AWAI-538",
+  "date": "2026-11-16",
+  "figma": {
+    "fileKey": "umqCqP5KSjLWh9fhCI1HaN",
+    "pageId": "215:2",
+    "reviewNodeId": "216:476",
+    "componentNodeId": "216:475"
+  },
+  "source": {
+    "repository": "network-awai/awai-os",
+    "revision": "392792fb21d99befeb60c5d04df8757f8dfc1a68",
+    "entry": "nixos/otehon/shell/src/shell/main.cljs",
+    "styles": "nixos/otehon/shell/src/shell/styles/main.cljc"
+  },
+  "artifacts": {
+    "main.js": "e1336a94889b730e40d4b09a67226221502423ea93938a07827220d87c80957d",
+    "main.css": "244459a184dfa55cdfc0e00edb86d3341054c8e9914cf41d24b9151f630206f6"
+  },
+  "viewport": {"width": 1920, "height": 1113},
+  "data": "isolated generated fixture; no owner state",
+  "physicalAcceptance": "pending",
+  "automatedVisualGate": "not implemented"
+}

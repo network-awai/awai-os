@@ -1,0 +1,13 @@
+{
+  "revision": "2cbd32f31b3053fd148e04dda25cbfd8e2f0b726",
+  "catalog": {
+    "url": "https://raw.githubusercontent.com/network-awai/awai-os/2cbd32f31b3053fd148e04dda25cbfd8e2f0b726/store/distribution/dev-20261116/catalog-envelope.json",
+    "sha256": "8efab96bbba43de358d351c256cffac4f1104db7e15a06dc1666205b919eb93b",
+    "maxBytes": 1227
+  },
+  "apk": {
+    "url": "https://raw.githubusercontent.com/network-awai/awai-os/2cbd32f31b3053fd148e04dda25cbfd8e2f0b726/store/distribution/dev-20261116/yotei.apk",
+    "sha256": "0f5b2d0abac6b7b20689bc2cd5d446678bb1e9ef4ab81266f8dd375ec8f81eec",
+    "maxBytes": 1621048
+  }
+}

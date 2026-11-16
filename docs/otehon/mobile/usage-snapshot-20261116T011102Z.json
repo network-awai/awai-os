@@ -1,0 +1,131 @@
+{
+  "schema": "codex.local.issue-usage.v1",
+  "captured_at_utc": "2026-11-16T01:12:32.557690+00:00",
+  "thread_id": "01a1e187-0e12-7813-b500-73aa77f2a03e",
+  "source": "own thread rollout token_usage_record events; no prompts/transcripts copied",
+  "configured_model_contexts": [
+    {
+      "timestamp": "2026-11-15T23:24:49.988Z",
+      "model": "gpt-6.1-sol",
+      "effort": "medium"
+    },
+    {
+      "timestamp": "2026-11-15T23:26:26.429Z",
+      "model": "gpt-6.1-sol",
+      "effort": "medium"
+    },
+    {
+      "timestamp": "2026-11-15T23:28:34.445Z",
+      "model": "gpt-6.1-sol",
+      "effort": "medium"
+    },
+    {
+      "timestamp": "2026-11-15T23:29:52.868Z",
+      "model": "gpt-6.1-sol",
+      "effort": "medium"
+    },
+    {
+      "timestamp": "2026-11-15T23:40:25.661Z",
+      "model": "gpt-6.1-sol",
+      "effort": "medium"
+    },
+    {
+      "timestamp": "2026-11-16T00:07:58.149Z",
+      "model": "gpt-6.1-sol",
+      "effort": "medium"
+    }
+  ],
+  "provider": "OpenAI (session environment); billing/provider-side attribution unverified",
+  "binding_windows": {
+    "AWAI-681": {
+      "uuid": "32ca4ea0-e01a-4da9-bd7a-cc377b484b7d",
+      "start": "2026-11-15T23:29:06.000Z",
+      "end_exclusive": "2026-11-15T23:43:55.641Z"
+    },
+    "AWAI-2967": {
+      "uuid": "0dc3fa67-8d41-4ff1-b42d-d209f44e43b1",
+      "start": "2026-11-15T23:43:55.641Z",
+      "end_inclusive": "2026-11-16T01:11:02.650Z",
+      "revision_checkpoint": "d190309"
+    }
+  },
+  "allocation_rule": "deduplicate response_id; allocate only records whose previous checkpoint and own timestamp both lie inside an explicitly bound issue window; boundary/prebinding records shared/unallocated; child not counted again in parent",
+  "counter_semantics": {
+    "input": "cached_input_tokens is an input subset, not added again",
+    "output": "reasoning_output_tokens treated as output subset; paired token_count includes_reasoning values retained",
+    "cache_write": "raw separate field retained, not added to input or total",
+    "normalized_total": "input_tokens + output_tokens; raw total discrepancy preserved"
+  },
+  "includes_reasoning_flags": [
+    true
+  ],
+  "unique_response_records": 251,
+  "duplicate_response_records": 0,
+  "conflicting_replayed_counters": [],
+  "buckets": {
+    "AWAI-681": {
+      "response_count": 62,
+      "input_tokens": 9114005,
+      "cached_input_tokens": 9017856,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 21370,
+      "reasoning_output_tokens": 6505,
+      "total_tokens": 9135375,
+      "derived_uncached_input_tokens": 96149
+    },
+    "AWAI-2967": {
+      "response_count": 177,
+      "input_tokens": 49723590,
+      "cached_input_tokens": 49602816,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 123731,
+      "reasoning_output_tokens": 78656,
+      "total_tokens": 49847321,
+      "derived_uncached_input_tokens": 120774
+    },
+    "shared_unallocated": {
+      "response_count": 12,
+      "input_tokens": 866311,
+      "cached_input_tokens": 777216,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 3274,
+      "reasoning_output_tokens": 76,
+      "total_tokens": 869585,
+      "derived_uncached_input_tokens": 89095
+    }
+  },
+  "sum_deduplicated_response_usage": {
+    "input_tokens": 59703906,
+    "cached_input_tokens": 59397888,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 148375,
+    "reasoning_output_tokens": 85237,
+    "total_tokens": 59852281
+  },
+  "last_logged_thread_cumulative": {
+    "input_tokens": 59703906,
+    "cached_input_tokens": 59397888,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 148375,
+    "reasoning_output_tokens": 85237,
+    "total_tokens": 59852281
+  },
+  "sum_minus_logged_cumulative": {
+    "input_tokens": 0,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 0,
+    "reasoning_output_tokens": 0,
+    "total_tokens": 0
+  },
+  "limits": {
+    "coverage": "one local thread through last record only; external/review/provider-wide usage unknown",
+    "active_wait_split": "unknown",
+    "price_currency_cost": "unknown",
+    "initial_forecast": "unknown; not backfilled from actuals",
+    "remaining_forecast": "unknown pending stock boot qualification",
+    "linear_estimate": "null; configured unit unknown",
+    "verified_lineage_awai_phone_completions": 0,
+    "milestones": "17 originals preserved; 3 configuration writes + 2 preloader writes verified; boot failed; stock restoration readback completed; stock boot not yet qualified"
+  }
+}

@@ -757,3 +757,13 @@ Object.prototype.missionGoals;
 Object.prototype.circleCooperations;
 
 Object.prototype.today;
+
+// AWAI-2970 network device readback across the CLJS boundary.
+Object.prototype.managed;
+Object.prototype.route;
+
+Object.prototype.connectivity;
+
+Object.prototype.iphone;
+Object.prototype.attached;
+Object.prototype.trust;

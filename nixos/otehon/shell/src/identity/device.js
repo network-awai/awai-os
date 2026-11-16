@@ -76,7 +76,9 @@ export function loadSession(did, now = Date.now()) {
   try {
     return verifyLink({ request: saved.request, response: saved.response, deviceDid: did, now, atLink: false });
   } catch {
-    clearSession();
+    // Fail closed without destroying the saved linkage or other proofs. A
+    // candidate/runtime mismatch or an expired session is not an owner logout.
+    // Only explicit sign-out or a newly completed link replaces this state.
     return null;
   }
 }

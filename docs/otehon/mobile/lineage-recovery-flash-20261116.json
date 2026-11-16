@@ -1,0 +1,95 @@
+[
+  {
+    "args": [
+      "getvar",
+      "product"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "product: lamul\nFinished. Total time: 0.000s\n"
+  },
+  {
+    "args": [
+      "getvar",
+      "unlocked"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "unlocked: yes\nFinished. Total time: 0.002s\n"
+  },
+  {
+    "args": [
+      "getvar",
+      "is-spoofing"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "is-spoofing: 0\nFinished. Total time: 0.000s\n"
+  },
+  {
+    "args": [
+      "getvar",
+      "current-slot"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "current-slot: a\nFinished. Total time: 0.000s\n"
+  },
+  {
+    "args": [
+      "flash",
+      "boot",
+      "boot.img"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "Sending 'boot_a' (65536 KB)                        OKAY [  1.656s]\nWriting 'boot_a'                                   OKAY [  0.835s]\nFinished. Total time: 2.495s\n"
+  },
+  {
+    "args": [
+      "flash",
+      "dtbo",
+      "dtbo.img"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "Sending 'dtbo_a' (8192 KB)                         OKAY [  0.213s]\nWriting 'dtbo_a'                                   OKAY [  0.104s]\nFinished. Total time: 0.320s\n"
+  },
+  {
+    "args": [
+      "reboot",
+      "bootloader"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "Rebooting into bootloader                          OKAY [  0.000s]\nFinished. Total time: 0.000s\n"
+  },
+  {
+    "args": [
+      "getvar",
+      "product"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "< waiting for <explicit-target>>\nproduct: lamul\nFinished. Total time: 0.000s\n"
+  },
+  {
+    "args": [
+      "getvar",
+      "unlocked"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "unlocked: yes\nFinished. Total time: 0.000s\n"
+  },
+  {
+    "args": [
+      "flash",
+      "vendor_boot",
+      "vendor_boot.img"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "Sending 'vendor_boot_a' (65536 KB)                 OKAY [  1.553s]\nWriting 'vendor_boot_a'                            OKAY [  0.836s]\nFinished. Total time: 2.392s\n"
+  }
+]

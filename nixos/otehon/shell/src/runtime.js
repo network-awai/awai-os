@@ -108,6 +108,17 @@ export function createBroker(entry, operations) {
   });
 }
 
+// Bounded diagnostic codes only: no topic, payload, URL or exception text.
+export function relayFailureCode(error) {
+  if (typeof error?.code === "string" && /^relay-http-[1-5][0-9]{2}$/.test(error.code)) return error.code;
+  const message = typeof error?.message === "string" ? error.message : "";
+  if (message.includes("not approved")) return "operation-denied";
+  if (message.includes("cancelled")) return "operation-cancelled";
+  if (error?.name === "TypeError") return "browser-network-error";
+  if (message === "relay-unavailable") return "relay-protocol-error";
+  return "client-error";
+}
+
 // Waits on one stream, so one approval covers the whole wait.
 export async function awaitPhoneApproval(broker, relayOrigin, topic, signal) {
   const response = await broker.invoke(
@@ -115,7 +126,12 @@ export async function awaitPhoneApproval(broker, relayOrigin, topic, signal) {
     { input: `${relayOrigin}/${topic}/json`, init: { method: "GET" } },
     { signal },
   );
-  if (!response.ok || !response.body) throw new Error("relay-unavailable");
+  if (!response.ok) {
+    const error = new Error("relay-http-error");
+    error.code = `relay-http-${response.status}`;
+    throw error;
+  }
+  if (!response.body) throw new Error("relay-unavailable");
   return {
     async *messages() {
       const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();

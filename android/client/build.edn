@@ -1,0 +1,2 @@
+{:target :browser :output-to "generated/domain.js" :output-dir "../../.agent-output/cljs"
+ :infer-externs true :language-out :ecmascript-2020}

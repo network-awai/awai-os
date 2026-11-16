@@ -3,6 +3,7 @@
             ["react" :as react :refer [useEffect useMemo useRef useState]]
             [shell.manimani :refer [MANIMANI manimani manimani-link]]
             [shell.net :refer [bluetooth-panel wifi-panel]]
+            ["../net.js" :refer [networkSummary useNetStatus]]
             [shell.sound :refer [sound-panel]]
             [shell.display :refer [display-panel]]
             [shell.soshiki :refer [soshiki]]
@@ -132,7 +133,7 @@
   [:nav.sidebar {:aria-label "Contexts"}
    [:div.brand
     [:img.brand-logo {:src "assets/awai-logo.png" :alt "" :width 40 :height 40}]
-    [:span "Itonami"]]
+    [:span "Awai"]]
    [:f> manimani-link (= context MANIMANI) #(on-select MANIMANI)]
    [:div.contexts
     (map (fn [section]
@@ -465,6 +466,13 @@
            (set-proofs #js {})
            (set-account nil))]))))
 
+(defn network-indicator []
+  (let [status (useNetStatus)
+        summary (networkSummary status)]
+    [:div.network-indicator {:role "status" :data-network-state (.-state summary)}
+     [:span.network-light {:aria-hidden "true"}]
+     [:span (.-text summary)]]))
+
 (defn theme-app []
   (let [[theme set-theme] (useState readTheme)]
     (useEffect
@@ -474,14 +482,16 @@
      #js [theme])
     [:<>
      [:f> app]
-     [:fieldset.theme-switcher {:aria-label "テーマ"}
+     [:div.system-status
+      [:f> network-indicator]
+      [:fieldset.theme-switcher {:aria-label "テーマ"}
       [:legend "テーマ"]
       (map (fn [theme-name]
              [:button {:key theme-name :type "button"
                         :aria-pressed (= theme theme-name)
                         :on-click #(set-theme theme-name)}
               theme-name])
-           THEMES)]]))
+           THEMES)]]]))
 
 (defn init []
   (let [root (rdom/create-root (.getElementById js/document "root"))]
