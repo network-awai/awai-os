@@ -144,10 +144,12 @@
                      :headers (cond-> {"content-type" "application/json"}
                                 (:token-file p) (assoc "authorization" (str "Bearer " (str/trim (slurp (configured-file! (:token-file p)))))))
                      :body (json/generate-string {:model (:model p) :stream false :max_tokens 4
+                                                  :chat_template_kwargs {:enable_thinking false}
                                                   :messages [{:role "user" :content "Reply OK."}]})})]
     (policy/require! (= 200 (:status response)) "inference-check-failed")
     (let [body (json/parse-string (:body response) true)]
-      (policy/require! (seq (get-in body [:choices 0 :message :content])) "inference-empty-response")
+      (policy/require! (and (= (:model p) (:model body (:model p)))
+                           (seq (get-in body [:choices 0 :message :content]))) "inference-empty-response")
       {:schema policy/version :provider (:id p) :backend (:backend p) :model (:model p)
        :state "responded" :gpu-use "unknown" :usage (:usage body)})))
 
@@ -198,4 +200,6 @@
                               (catch Exception e {:error (or (:code (ex-data e)) "operation-failed")}))]
                 (println (json/generate-string reply)) (flush)))
             (finally (shutdown! controller))))
-        (finally (.release lock))))))
+        ;; Closing the channel releases the lock, including on exceptions.
+        ;; Avoid reflective calls on JDK-private FileLockImpl in Babashka.
+        (finally nil)))))

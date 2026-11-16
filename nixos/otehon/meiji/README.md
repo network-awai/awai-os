@@ -3,6 +3,8 @@
 Tauri **3.0 Alpha** opens the existing Soshiki UI and carries bounded JSON
 requests to a `.cljc` Otehon host controller. Rust contains IPC/process plumbing;
 policy, lifecycle, persistent limits, inference adapters and UI are `.cljc`.
+Views/client are in `../shell/src/meiji/`, inside the existing Nix shell
+source closure; they do not add an external source path to that build.
 This is the Otehon development implementation, not the `cljrs` AOT release target
 in ADR 0031 D11 and not a Kotoba/Amu native profile fallback.
 
@@ -102,7 +104,7 @@ shared consent broker. Existing browser deployments are unchanged.
 
 ## Validation boundary (2026-11-16)
 
-- Babashka 1.12.218: 7 tests, 63 assertions. Five GPU backend names were tested
+- Babashka 1.12.218: 9 tests, 82 assertions. Five GPU backend names were tested
   against a loopback protocol fixture, **not five physical GPUs**.
 - Existing shell: 97 tests pass. Shell/link/Soshiki ClojureScript release
   builds pass without compiler warnings.
@@ -115,7 +117,41 @@ shared consent broker. Existing browser deployments are unchanged.
   not modified by the validation. The existing unsigned Meiji image is not
   adopted and its working disk is not overwritten.
 
-Remaining: current-head UI/native IPC acceptance, signed release image
+Native app observation: Tauri's local Soshiki window rendered the 899-Bot
+catalog and owned VM controls; clicking Start changed the VM to running.
+The UI automation accessibility tree then became unavailable and its later
+request timed out. GUI Stop/limit editing acceptance is still open. Terminating
+only the development app closed its owned controller and QEMU process; all
+three process IDs were independently confirmed absent. No live fleet VM was
+stopped. The public fleet snapshot used here was stale and displayed as such.
+
+## Selected Mac engine: Kapitsa + Qwen3.6 A3B
+
+Owner selected `nace-ai/kapitsa` and Qwen3.6-35B-A3B. The first qualification
+uses Kapitsa **0.2.36**, source `fe6a17af95a58085dcea40f06764b893c2c58ec8`.
+Official darwin-arm64 release tarball SHA-256:
+`c88e9eecad73dab17aa300aa6dfab4a4a3370bc06b8f44e04a3e6928c482d1b3`.
+The engine is Apache-2.0 licensed; retain its bundled LICENSE/notices.
+
+Explicit model `qwen3.6-35b-a3b:4bit` uses
+`nace-ai/Qwen3.6-35B-A3B-MLX@37e804f90e368a4de866bc34650b9dde67a78c8e`
+and companion
+`incoai/Qwen3.6-35B-A3B-DFlash2@51ef7b6923ad6c14cb1bb41c37a9041446496ab6`.
+No automatic smaller-model/quantization substitution. The downloaded files
+stay in Kapitsa's existing application cache, outside Git and UI storage.
+
+`meiji.kapitsa` takes an owner configuration file with fixed engine executable
+SHA-256, model directory/revisions, per-file SHA-256 manifest, literal local
+port, context and private token-file path. It rechecks file digests, then
+launches `kapitsa serve --config -` with the API key on stdin. It forces
+`private=true`, `local=true`, empty peers, one slot and model switching off.
+The test context is 2048; idle unload after one minute limits retention.
+The native Metal worker is outside the Meiji VM, with separate lifecycle and
+permissions. It is not a Linux/Windows engine and does not expose a public
+inference service. GPU inference acceptance is recorded separately from the
+artifact verification and protocol fixture tests above.
+
+Remaining: GUI Stop/limit editing acceptance, signed release image
 provisioning, pinned runtime license/digest packaging, cljrs qualification,
 Linux/Windows device runs, actual GPU/model responses and GPU-use evidence,
 Krunkit graceful stop/lease drain, distributed state recovery, code signing,

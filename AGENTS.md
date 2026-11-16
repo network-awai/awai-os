@@ -53,7 +53,9 @@ in the native profile. The native profile rules above stay unchanged.
   managing Meiji VMs; do not silently select v2. v3 is Alpha at implementation
   time: pin exact published crate versions and keep release qualification open.
 - Implement lifecycle policy, resource validation, persistence, inference
-  adapters and desktop views in `.cljc` under `nixos/otehon/meiji/src/`.
+  adapters in `.cljc` under `nixos/otehon/meiji/src/`; desktop views and the
+  local IPC client live in `nixos/otehon/shell/src/meiji/` so the existing Nix
+  shell source closure remains self-contained.
   Rust is the thin Tauri IPC/process adapter. The Babashka Otehon development
   controller does not establish the ADR 0031 `cljrs` AOT target as completed.
 - Soshiki displays Bot observations and controls VM start/stop and vCPU/guest
@@ -69,6 +71,11 @@ in the native profile. The native profile rules above stay unchanged.
 - Local GPU worker connections (Metal/CUDA/ROCm/Vulkan/DirectML) are explicit
   host inference routes, not evidence of VM GPU passthrough. No remote/CPU
   fallback. Test each actual OS/device/model separately before qualification.
+- Owner selected Kapitsa with Qwen3.6-35B-A3B for the Mac route. Pin the
+  engine release and model/drafter revisions and verify artifact digests.
+  Kapitsa is Apple-Silicon-only; never claim Linux/Windows support for it.
+  Force private/local execution, no discovery or model switching, and pass
+  API credentials over private files/stdin, never argv or environment.
 - Preserve working disks and AwaiFS/Kotobase state across launcher updates.
   VM snapshots do not undo external operations or prove distributed backups.
   Do not replace or disable live cron, fleet or authentication services when

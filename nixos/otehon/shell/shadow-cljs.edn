@@ -1,4 +1,4 @@
-{:source-paths ["src" "link" "vendor" "styles" "../meiji/src"]
+{:source-paths ["src" "link" "vendor" "styles"]
  :builds {:setup-check {:target :node-script
                         :output-to ".shadow-cljs/setup-check.cjs"
                         :main shell.setup-check/main

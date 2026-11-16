@@ -1,7 +1,7 @@
 (ns meiji.host-test
   (:require [clojure.test :refer [deftest is testing]] [meiji.policy :as p]
             [meiji.host :as host] [babashka.fs :as fs] [org.httpkit.server :as server]
-            [cheshire.core :as json]))
+            [cheshire.core :as json] [meiji.kapitsa :as kapitsa]))
 
 (def fixture {:id "meiji-test" :name "Meiji" :backend :qemu :arch :aarch64
               :format :qcow2 :image "/owner/base.qcow2" :sha256 (apply str (repeat 64 "a"))
@@ -15,7 +15,7 @@
   (doseq [limits [{:cpus 0 :memory-mib 1024} {:cpus 8 :memory-mib 1024}
                   {:cpus 2 :memory-mib 8192} {:cpus 1.5 :memory-mib 1024}
                   {:cpus 2 :memory-mib "1024"} {:cpus 2 :memory-mib 1024 :extra true}]]
-    (is (thrown? Exception (p/limits! limits (:ceiling fixture)))))
+    (is (thrown? Exception (p/limits! limits (:ceiling fixture))))))
 
 (deftest host-argv
   (doseq [[platform accel] [[:macos "hvf"] [:linux "kvm"] [:windows "whpx"]]]
@@ -77,7 +77,7 @@
           (is (thrown? Exception (host/provider! c "meiji-test")))))
       (let [c (-> c (assoc-in [:config :vms 0 :inference-provider] "gpu")
                   (assoc-in [:config :providers] [{:id "gpu" :origin "http://127.0.0.1:8080" :model "pinned-model" :backend :metal}]))]
-        (is (= :metal (:backend (host/provider! c "meiji-test")))))))))
+        (is (= :metal (:backend (host/provider! c "meiji-test"))))))))
 
 (deftest public-report-integrity
   (with-controller
@@ -112,3 +112,36 @@
       (is (every? #(= "/v1/chat/completions" (:uri %)) @calls))
       (is (every? #(= "fixture-model" (get-in % [:body :model])) @calls))
       (finally (stop)))))
+
+(deftest kapitsa-private-fixed-model
+  (let [dir (fs/create-temp-dir {:prefix "meiji-kapitsa-test-"})
+        config {:port 18095 :context 2048 :model-dir (str dir) :model-revision kapitsa/model-revision}
+        token (apply str (repeat 43 "t"))]
+    (try
+      (with-redefs [host/host-platform (constantly {:os :macos :arch :aarch64})]
+        (let [request (kapitsa/serve-config config token)]
+          (is (= "127.0.0.1" (:host request))) (is (true? (:private request)))
+          (is (true? (:local request))) (is (false? (:allow_switch request)))
+          (is (= kapitsa/model-id (:model_id request)))
+          (is (= [] (:peer request)))
+          (is (thrown? Exception (kapitsa/serve-config (assoc config :model-revision "main") token)))
+          (is (thrown? Exception (kapitsa/serve-config (assoc config :context 262144) token)))))
+      (with-redefs [host/host-platform (constantly {:os :linux :arch :x86_64})]
+        (is (thrown? Exception (kapitsa/serve-config config token))))
+      (let [path (str (fs/path dir "token")) first-token (kapitsa/token! path)]
+        (is (<= 32 (count first-token))) (is (= first-token (kapitsa/token! path))))
+      (finally (fs/delete-tree dir)))))
+
+(deftest stdio-eof-and-lock-release
+  (with-controller
+    (fn [_ config dir]
+      (let [source (str (fs/parent (fs/parent (:file (meta #'host/-main)))))
+            run (fn []
+                  (let [p (host/process! [(str (fs/which "bb")) "-cp" source "-m" "meiji.host" config (str (fs/path dir "stdio"))])
+                        output (future (slurp (.getInputStream p)))
+                        error (future (slurp (.getErrorStream p)))]
+                    (with-open [in (.getOutputStream p)] (.write in (.getBytes "{\"op\":\"snapshot\"}\n" "UTF-8")))
+                    (is (.waitFor p 5 java.util.concurrent.TimeUnit/SECONDS))
+                    (is (zero? (.exitValue p))) (is (empty? @error))
+                    (is (= p/version (get-in (json/parse-string @output true) [:ok :schema])))))]
+        (run) (run)))))
