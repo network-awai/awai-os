@@ -2,9 +2,21 @@
 rustPlatform.buildRustPackage {
   pname = "itonami-yotei";
   version = "0.2.0";
-  src = lib.cleanSourceWith {
-    src = ../..;
-    filter = path: type: !(builtins.elem (baseNameOf path) [ ".git" ".agent-output" "node_modules" "target" "dist" ]);
+  # Explicit source set excludes Android/Gradle caches and all unrelated WIP.
+  src = lib.fileset.toSource {
+    root = ../..;
+    fileset = lib.fileset.unions [
+      ./src ./scripts ./test
+      ./src-tauri/Cargo.toml ./src-tauri/Cargo.lock ./src-tauri/build.rs
+      ./src-tauri/src ./src-tauri/capabilities ./src-tauri/icons ./src-tauri/tauri.conf.json
+      ../../packages/awai-shell/host.js ../../packages/awai-shell/test
+      ../../android/client/generated/domain.js
+      ../../android/contracts/src/itonami/store/domain.cljc
+      ../../android/client/assets/android-v2-icon-calendar.svg
+      ../../nixos/otehon/shell/vendor/PINS.json
+      ../../nixos/otehon/shell/vendor/kotoba-client-runtime.js
+      ../../nixos/otehon/shell/vendor/kotoba-client-consent.css
+    ];
   };
   cargoRoot = "apps/yotei/src-tauri";
   buildAndTestSubdir = "apps/yotei/src-tauri";
