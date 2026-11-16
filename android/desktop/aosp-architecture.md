@@ -82,3 +82,14 @@ bootcomplete1 were read back, and checked Awai Home displayed. System images
 are copied before Android reconfigures Ethernet. See [netboot notes](netboot/README.md)
 for the exact input hashes, observed failures and bootstrap boundary. Physical
 6600H boot and final Awai AOSP ROM qualification remain open.
+
+## Physical Live milestone,2026-11-16
+
+The verified direct-LAN target booted the diagnostic image, reported API37 and
+bootcomplete1, and displayed Awai Home at1920×1200. Pointer/keyboard operations
+saved a test event in Yotei and projected it on Home. NVMe was hidden and userdata
+was tmpfs. The CPU actually reports Ryzen7 7735HS, GPU Radeon680M; earlier6600H
+wording was the target label, not a measured CPU model. See the [physical record](netboot/physical-observation-20261116.json).
+This closes the bounded physical Live-boot/display/input milestone. Persistent
+installation, post-trial Nix boot, account/data durability and the final Awai
+AOSP source/build/signing qualification remain separate and incomplete.

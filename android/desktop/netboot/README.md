@@ -54,4 +54,37 @@ On2026-11-16, the full UEFI→DHCP/TFTP→iPXE→HTTP kernel/initrd→read-only
 NBD→RAM-copy chain also booted the isolated VM. API37 and bootcomplete1 were
 read back; all three checked APKs installed and Home displayed1280×800. The VM
 had no hard disk or host filesystem. `artifacts-20261116.json` records the exact
-served files and overlay input hashes. Physical LAN boot is still separate.
+served files and overlay input hashes. The physical observation below records the later bounded Live trial.
+
+## Physical Live trial,2026-11-16
+
+The target previously called6600H actually reports **Ryzen7 7735HS** and
+Radeon680M. Identity was kept tied to the previously verified direct-LAN target;
+use the observed hardware values for qualification rather than the old label.
+
+After an owner power-cycle/network-boot selection, the real device fetched
+kernel/initrd over HTTP, connected to the read-only NBD export and booted
+Android17/API37 with bootcomplete1. The exact firmware transfer of the EFI
+binary was not captured, so this proves UEFI LAN boot rather than HTTP-only EFI
+loading. NVMe was absent from `/sys/block`, and `/data` was tmpfs. No installer
+or partition modification was executed. Post-trial Nix boot is still unverified.
+
+Mac ADB pointer events navigated Home→Store→app detail→Yotei. Keyboard events
+entered the named test fixture; saving made it visible in Yotei and Home's next
+agenda. This is remote input evidence, not a complete physical peripheral test.
+The display was1920×1200; SurfaceFlinger reported the AMD renderer. Capture the
+explicit physical display ID with `screencap -d`: an unselected screenshot had
+a warning before its PNG bytes. Initial app installation used checked ADB APKs,
+not a newly qualified Store installation. The default HOME role was not changed.
+
+The original60-second display idle timeout caused a later black screen during
+testing. The temporary session was set to10minutes and Asia/Tokyo. A system
+notification explicitly warns that this is RAM-only and data disappears on
+reboot. These diagnostic settings are not product defaults. The existing Nix
+volumes/EFI BootOrder were not modified by this trial; full rollback/normal Nix
+boot and a persistent Android installation need their own acceptance run.
+
+[Observation record](physical-observation-20261116.json) separates observed and
+unverified outcomes. [Actual Home screen](evidence/20261116-physical-home.png)
+shows the test event. The unofficial base remains a diagnostic candidate, not
+the source-qualified/signed Awai AOSP ROM.
