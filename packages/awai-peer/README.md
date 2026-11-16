@@ -51,7 +51,7 @@ peer=packages/awai-peer/target/debug/awai-peer
 "$peer" identity .agent-output/sender
 "$peer" snapshot-import .agent-output/source snapshot.car '<trusted-WNFS-root>'
 # grants.json: [{"peer_id":"<sender-PeerID>","snapshot":"<snapshot-CID>",
-#               "max_bytes":1048576,"expires_at":<unix-time-within-six-hours>}]
+#               "max_bytes":1048576,"expires_at":<unix-time-within-six-hours>,"allow_read":true}]
 "$peer" provider .agent-output/provider .agent-output/grants.json /ip4/127.0.0.1/tcp/0
 "$peer" sync-push .agent-output/sender .agent-output/source '<provider-address>' '<snapshot-CID>'
 "$peer" pin-query .agent-output/sender .agent-output/source '<provider-address>' '<snapshot-CID>'
@@ -86,3 +86,8 @@ awai-peer relay <identity-dir> /ip4/127.0.0.1/tcp/0 <allowed-PeerIDs-json> 300
 Seven Rust tests include a real three-peer Circuit v2 session and snapshot
 push/pull. Loopback routing is not NAT simulation or independent-network hole
 punch qualification. Android's foreground-service lifecycle is a separate layer.
+
+Read-back is a separate provider choice: `allow_read` defaults to false. It
+permits put/pin/query only; get refuses without returning bytes. The canonical
+receive UI declares `allow-read-back` explicitly and leaves it unchecked. It
+never treats accepting storage as a blanket permission to serve that snapshot.

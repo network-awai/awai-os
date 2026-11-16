@@ -24,7 +24,7 @@ const sender=await cli('identity',output+'/sender');
 await adb('shell','mkdir',remote);await adb('push',android,remote+'/awai-peer');await adb('shell','chmod','700',remote+'/awai-peer');
 const receiver=JSON.parse((await adb('shell',remote+'/awai-peer','identity',remote+'/receiver')).stdout);
 const imported=await cli('snapshot-import',output+'/source',resolve(car),root);
-const grants=[{peer_id:sender.peerId,snapshot:imported.snapshot,max_bytes:1048576,expires_at:Math.floor(Date.now()/1000)+300}];
+const grants=[{allow_read:true,peer_id:sender.peerId,snapshot:imported.snapshot,max_bytes:1048576,expires_at:Math.floor(Date.now()/1000)+300}];
 await writeFile(output+'/grants.json',JSON.stringify(grants));await adb('push',output+'/grants.json',remote+'/grants.json');
 const service=spawn('adb',['-s',serial,'shell',`echo $$ > ${remote}/provider.pid; exec ${remote}/awai-peer provider ${remote}/receiver ${remote}/grants.json /ip4/${ip}/tcp/0`],{stdio:['ignore','pipe','pipe']});
 let error='';service.stderr.on('data',d=>{error+=d;});

@@ -10,6 +10,8 @@ pub struct Scope {
     pub snapshot_cid: String,
     pub max_transfer_bytes: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub allow_read_back: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub listen_address: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub receive_ms: Option<u64>,
@@ -84,6 +86,10 @@ impl Endpoint {
         }
         let bind = if receive {
             ensure!(
+                self.scope.allow_read_back.is_some(),
+                "read-back choice required"
+            );
+            ensure!(
                 self.scope
                     .receive_ms
                     .is_some_and(|ms| ms > 0 && ms <= 21600000),
@@ -102,7 +108,9 @@ impl Endpoint {
             Some(address)
         } else {
             ensure!(
-                self.scope.receive_ms.is_none() && self.scope.listen_address.is_none(),
+                self.scope.receive_ms.is_none()
+                    && self.scope.listen_address.is_none()
+                    && self.scope.allow_read_back.is_none(),
                 "unexpected receive scope"
             );
             None
@@ -136,6 +144,7 @@ mod tests {
             scope: Scope {
                 snapshot_cid: Cid::new_v1(0x71, Code::Sha2_256.digest(b"fixture")).to_string(),
                 max_transfer_bytes: 1048576,
+                allow_read_back: None,
                 listen_address: None,
                 receive_ms: None,
             },
@@ -153,6 +162,7 @@ mod tests {
         assert!(e.checked().is_err());
         e.scope.listen_address = Some("/ip4/127.0.0.1/tcp/40213".into());
         e.scope.receive_ms = Some(600000);
+        e.scope.allow_read_back = Some(false);
         assert!(e.checked().is_ok());
         e.scope.receive_ms = Some(21600001);
         assert!(e.checked().is_err());

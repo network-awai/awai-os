@@ -30,6 +30,8 @@ pub fn now() -> u64 {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Grant {
+    #[serde(default)]
+    pub allow_read: bool,
     pub peer_id: String,
     pub snapshot: String,
     pub max_bytes: usize,
@@ -282,6 +284,7 @@ impl Provider {
                 Ok(Response::empty())
             }
             Request::Get { cid, .. } => {
+                ensure!(grant.allow_read, "snapshot read-back was not granted");
                 ensure!(cid.len() <= 128, "CID length");
                 let cid: Cid = cid.parse()?;
                 ensure!(
@@ -586,6 +589,7 @@ mod tests {
     async fn real_pin_query_sync_refuses_other_peer_and_tampering() -> Result<()> {
         let sender = identity::Keypair::generate_ed25519();
         let server = identity::Keypair::generate_ed25519();
+        let metadata_reader = identity::Keypair::generate_ed25519();
         let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../.agent-output")
             .join(format!("provider-{}", server.public().to_peer_id()));
@@ -605,12 +609,22 @@ mod tests {
         let provider = Provider::new(
             root.join("provider"),
             server.clone(),
-            vec![Grant {
-                peer_id: sender.public().to_peer_id().to_string(),
-                snapshot: snapshot.to_string(),
-                max_bytes: 100000,
-                expires_at: now() + 60,
-            }],
+            vec![
+                Grant {
+                    allow_read: true,
+                    peer_id: sender.public().to_peer_id().to_string(),
+                    snapshot: snapshot.to_string(),
+                    max_bytes: 100000,
+                    expires_at: now() + 60,
+                },
+                Grant {
+                    allow_read: false,
+                    peer_id: metadata_reader.public().to_peer_id().to_string(),
+                    snapshot: snapshot.to_string(),
+                    max_bytes: 100000,
+                    expires_at: now() + 60,
+                },
+            ],
         )?;
         let (tx, rx) = oneshot::channel();
         let (stop, stopped) = oneshot::channel();
@@ -648,6 +662,17 @@ mod tests {
             .receipt
             .context("query receipt")?
             .verify(server.public().to_peer_id(), &snapshot.to_string())?;
+        let denied = exchange(
+            metadata_reader,
+            address.clone(),
+            Request::Get {
+                snapshot: snapshot.to_string(),
+                cid: block.to_string(),
+            },
+        )
+        .await?;
+        assert!(!denied.ok);
+        assert!(denied.bytes.is_empty());
         let destination = DiskStore::open(&root.join("destination"))?;
         pull_snapshot(sender.clone(), &destination, address.clone(), snapshot).await?;
         assert_eq!(destination.get(&block)?, data);
@@ -706,6 +731,7 @@ mod tests {
             root.join("receiver"),
             receiver,
             vec![Grant {
+                allow_read: true,
                 peer_id: sender.public().to_peer_id().to_string(),
                 snapshot: snapshot.to_string(),
                 max_bytes: 100000,
