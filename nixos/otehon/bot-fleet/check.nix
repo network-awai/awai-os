@@ -10,6 +10,7 @@ pkgs.runCommand "otehon-bot-fleet-check" {
   bb --classpath ${./.}/src:${./vm/vendor/itonami/otehon/src}:${../storage}/src:${../storage}/vendor/apex/src:${../storage}/vendor/apex-car/src ${./.}/test/bot_fleet/meiji_history_test.cljc > "$out/meiji-history-tests.txt"
   bb --classpath ${../meiji}/src:${./vm/vendor/itonami/otehon/src} ${./.}/test/bot_fleet/meiji_drain_test.cljc > "$out/meiji-drain-tests.txt"
   bb --classpath ${../meiji}/src:${./.}/src:${./vm/vendor/itonami/otehon/src}:${../storage}/src:${../storage}/vendor/apex/src:${../storage}/vendor/apex-car/src ${../meiji}/test/meiji/coordinator_test.cljc > "$out/meiji-coordinator-tests.txt"
+  bb --classpath ${../meiji}/src:${./.}/src:${./vm/vendor/itonami/otehon/src}:${../storage}/src:${../storage}/vendor/apex/src:${../storage}/vendor/apex-car/src ${../meiji}/test/meiji/result_review_test.cljc > "$out/meiji-review-tests.txt"
   node --test ${./.}/receipt.test.mjs ${./.}/observe-guest.test.mjs > "$out/receipt-tests.txt"
   node --test ${./.}/resolve-timezones.test.mjs > "$out/timezone-tests.txt"
   node --test ${../shell}/test/soshiki-runtime.test.js > "$out/runtime-view-tests.txt"
