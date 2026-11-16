@@ -73,3 +73,12 @@ Reviewed PC source references (not a full source manifest):
 
 The diagnostic ISO's complete source correspondence to these references is
 unverified; do not infer it from similar boot parameters.
+
+## Network VM milestone,2026-11-16
+
+The full UEFI→DHCP/TFTP→iPXE→HTTP kernel/initrd→read-only NBD→RAM-copy
+chain now boots the same diagnostic PC image in a diskless VM. API37 and
+bootcomplete1 were read back, and checked Awai Home displayed. System images
+are copied before Android reconfigures Ethernet. See [netboot notes](netboot/README.md)
+for the exact input hashes, observed failures and bootstrap boundary. Physical
+6600H boot and final Awai AOSP ROM qualification remain open.
