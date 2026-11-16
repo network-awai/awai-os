@@ -452,3 +452,18 @@ Format data / factory resetの完了と、Apply update→Apply from ADB待機を
 同一の検証済み20261112署名ZIPを明示対象ADBへsideloadする段階へ進む。
 この単位はAWAI-2967/chat01a1e187-0e12-7813-b500-73aa77f2a03e、start revision c6d20f3へbinding。
 モデル設定の新測定、今回token/cost/active-wait/残forecastはunknown。
+
+## 06:37:36Zまでの利用量snapshotとsideload待機
+
+[新snapshot](mobile/usage-snapshot-20261116T063737Z.json)を旧snapshotと別名で保持。
+485 unique response、duplicate/conflict0、各counterの総和はlogged cumulativeと全項目一致。
+全6counterは485件全てに存在。logged model/effortはgpt-6.1-sol/mediumで共通、
+請求identity/外部usage/費用/active-wait内訳はunknown。
+子AWAI-2967の411 responsesでinput108016719（cache107630208は内数、uncached386511）、
+output263672（reasoning149804は内数）、total108280391。
+親681とsharedは前snapshotの値から増えておらず、子を親へ再加算しない。
+初期forecastをactualで遡って作らず、残forecastもunknownを保持。
+
+このsnapshot時点はsigned ZIP sideload中であり、Lineage実機受入は0件。
+Mac側47%で処理継続し、JunもRecoveryのInstalling update/Step表示を確認。
+エラーや完了とは扱わず、端末書込み処理に介入せず監視を継続する。
