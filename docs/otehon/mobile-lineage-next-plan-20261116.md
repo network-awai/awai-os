@@ -1,13 +1,15 @@
 目的: moto g05 (XT2523-5 / retjp / lamul) を解除し、同一buildの公式LineageOSを導入・実機検証する。Awai Android基盤はその後に検証する。NixOSの実機起動とは区別する。Junは端末内データの全消去を了承済み。2026-11-16 JST更新。
 
-## 最新状態: 解除成功、LineageOSはこれから導入
+## 最新状態: 解除・ZIP導入成功、LineageOS初回起動待ち
 
 - 現行tanuki v2.0.3の指定pair（両preloader＋両kaeru）を書込み・読戻し検証し、Fastboot/kaeru起動成功。
 - 現在のOEM metadataを保持し、既知factory bytes4096/552だけ1→0。FRPはvalid snapshotから全byte不変。
 - kaeru v2.0.0-g65a7db9-dirty、product lamul、slot_a。seccfg-unlock成功後にFastbootを再起動し、unlocked=yes / is-spoofing=0を再確認。
-- 管理者trial/recovery controllerはfinish指定して終了。OS image flashやRecovery factory reset/sideloadはまだ未実施。
+- 管理者trial/recovery controllerは終了。検証済みboot/dtbo/vendor_bootのflash成功、JunがLineage Recovery起動とfactory resetを確認。
+- host sideloadは900秒監視期限で終了し、成功終了ログはない。その後Junが端末側Install completed/status0/追加パッケージ確認を報告。hostとdeviceの証拠を分けて保持する。
+- 追加パッケージ用Recovery再起動はNo、Reboot system nowでOS初回起動へ進む。ZIP再送や追加flashはしていない。
 - 同じ配布preloaderが完全pairで起動したため、「この個体で当該preloaderが単体として起動不能」という説明は成立しない。前回との差はLKの組合せ・factory flags・起動順であり、失敗した内部関数は未同定。
-- 次は検証済み同一Lineage buildのboot/dtbo/vendor_boot→Recovery factory reset→署名ZIP sideload→実機受入。
+- 次はLineageOS初回起動→画面/touch/Wi-Fi/充電/再起動の実機受入。
 
 ## 解除前の観測・復旧証跡（以下は過去の記録）
 
@@ -32,7 +34,7 @@
 - [x] 2. FRP差分の形式とchecksum、現在のconfig/preloader/LK/seccfgを再照合。動的に変わるFRPを旧hashへ盲目的に戻さず、新baselineと変更範囲を明示して固定helperを更新する。factory設定を通常へ戻す条件もここで決める。
 - [x] 3. 現行配布物の完全な組合せと当該firmwareの互換性を評価。黒画面仮説の根拠・未確認範囲を記録し、復旧allowlist/通信/電池を確認。root処理は固定操作・期限付き、汎用daemonやsudoers/NOPASSWDを追加しない。可能な範囲で1認証に試行と復旧をまとめる。
 - [x] 4. 採用した現行経路を1回staging。変更前の個体/領域照合、各書込みの読戻し、必要な組合せが揃うまでrebootしない。成功条件はFastboot/kaeru起動と実測unlocked=yes。lock spoofは使用しない。失敗したら保存済みstock bootchain/config/seccfgへ照合復旧し、Android起動を確認する。
-- [ ] 5. 真の解除確認後だけ、同一buildでhash確認済みLineageのboot/dtbo/vendor_bootを公式lamu手順で導入。Recoveryでfactory reset→署名ZIP sideload。利用者の消去了承は取得済みで再要求しない。新たな実機ボタン操作が必要な段階だけ案内する。
+- [x] 5. 真の解除確認後だけ、同一buildでhash確認済みLineageのboot/dtbo/vendor_bootを公式lamu手順で導入。Recoveryでfactory reset→署名ZIP sideload。利用者の消去了承は取得済みで再要求しない。新たな実機ボタン操作が必要な段階だけ案内する。
 - [ ] 6. Lineage起動、build/lock state、画面・touch、Wi-Fi、充電、通常rebootを確認する。SIM/通話等は未検証のまま区別。Awai Android integrationはOS受入後に独立検証し、NixOS成功と表現しない。
 
 ## 作業・計測binding

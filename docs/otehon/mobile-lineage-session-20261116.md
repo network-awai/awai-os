@@ -484,3 +484,12 @@ Total xfer完了出力はなく、host成功とは扱わない。
 公開payload manifestにはsystem/bin/otapreopt_scriptとvendor/bin/checkpoint_gcの
 optional postinstallが存在する。長いStep2との関係は仮説で、実機logによる確定ではない。
 再試行が必要な場合は新しいlogへ保存し、正常処理を一律時間でkillするwrapperを使わない。
+
+## 端末側インストール成功と初回起動へ移行
+
+JunがRecoveryのInstall completed/status0/追加パッケージ確認表示を報告し、
+さらにreboot確認が出ていると説明。端末側の導入成功として記録する。
+host側900秒timeoutの記録は消さず、正常なhost終了に書き換えない。
+追加パッケージは依頼されていないため、公式AB手順に沿ってRecovery再起動確認をNo、
+メイン画面からReboot system nowで初回OS起動する操作を案内した。
+ZIPの再送・追加flashは行っていない。OS初回起動とhardware受入は引き続き未確認。
