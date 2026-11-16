@@ -2,12 +2,12 @@
   (:require [shell.net :refer [wifi-panel]]
             ["../net.js" :refer [useNetStatus]]
             ["react" :refer [useEffect useMemo useRef useState]]
-            ["qrcode-generator" :default qrcode]
+            ["qrcode-generator" :as qrcode]
             ["../identity/link.js" :refer [REQUEST_MS SESSION_MS checksumAddress confirmationCode
                                            createLinkRequest linkUrl openResponse siweMessage verifyLink]]
             ["../identity/wallet.js" :refer [signWithProvider]]
             ["../identity/device.js" :refer [saveSession]]
-            ["../runtime.js" :refer [awaitPhoneApproval]]
+            ["../runtime.js" :refer [awaitPhoneApproval relayFailureCode]]
             ["../trust.js" :refer [POINTS]]))
 
 (def text
@@ -69,7 +69,7 @@
          :checkCode "スマートフォンに同じコードが出ていることを確認してください:"
          :waiting "スマートフォンの承認を待っています…"
          :denied "何も送信していません。もう一度試すには「スマートフォンとリンク」を選んでください。"
-         :failed "中継に接続できません。ネットワークを確認して、もう一度お試しください。"
+         :failed "サインイン用の中継に接続できませんでした。接続設定へ戻るか、もう一度お試しください。"
          :expired "コードの期限が切れました。もう一度「スマートフォンとリンク」を選んでください。"
          :refused "受け取った応答を拒否しました"
          :trustTitle "Trust Score"
@@ -184,6 +184,7 @@
 (defn sign-in [t returning broker relay-origin did on-linked]
   (let [[local set-local] (useState false)
         [state set-state] (useState "idle")
+        [error-code set-error-code] (useState nil)
         [pending set-pending] (useState nil)
         [refusal set-refusal] (useState nil)
         abort (useRef nil)]
@@ -208,6 +209,7 @@
                                            (pump iter request private-key)))))))))]
       (let [start (fn []
                     (set-refusal nil)
+                    (set-error-code nil)
                     (set-pending nil)
                     (set-state "asking")
                     (let [controller (js/AbortController.)]
@@ -225,6 +227,7 @@
                                                     (set-state "waiting")
                                                     (pump (.messages stream) request private-key)))))))
                             (.catch (fn [error]
+                                      (set-error-code (relayFailureCode error))
                                       (cond
                                         (.-aborted (.-signal controller)) (set-state "expired")
                                         (re-find #"not approved" (or (.-message error) "")) (set-state "denied")
@@ -243,7 +246,7 @@
               [:p (:checkCode t) " " [:strong.code (.-code pending)]]
               [:p.muted (:waiting t)]])
            (when (= state "denied") [:p {:data-link-state "denied"} (:denied t)])
-           (when (= state "failed") [:p.problem {:data-link-state "failed"} (:failed t)])
+           (when (= state "failed") [:p.problem {:role "status" :data-link-state "failed" :data-link-error-code error-code} (:failed t)])
            (when (= state "expired") [:p.problem {:data-link-state "expired"} (:expired t)])
            (when refusal
              [:p.problem {:data-link-error refusal} (str (:refused t) ": " refusal)])

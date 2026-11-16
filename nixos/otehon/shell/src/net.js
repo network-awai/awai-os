@@ -121,7 +121,7 @@ export function networkSummary(status) {
   const labels = links.map(d => ({
     wifi: d.ssid ? `Wi-Fi · ${d.ssid}` : "Wi-Fi",
     "iphone-usb": "iPhone USB", "usb-tether": "USB テザリング",
-    ethernet: "有線 LAN", "bluetooth-pan": "Bluetooth PAN",
+    "ethernet": "有線 LAN", "bluetooth-pan": "Bluetooth PAN",
   })[d.route] ?? "ネットワーク");
   const internet = { "full": "インターネット接続済み", "portal": "ログインが必要",
     "limited": "インターネット未確認", "none": "インターネット未確認", "unknown": "インターネット未確認" };
