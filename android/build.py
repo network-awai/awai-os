@@ -57,7 +57,8 @@ def main():
     (assets/'online-pins.json').write_text(json.dumps(pins_online,separators=(',',':')))
     (assets/'online-data.js').write_text('window.ItonamiOnlinePins='+json.dumps(pins_online,separators=(',',':'))+';\n')
     if pins_online:
-        html=(assets/'index.html').read_text().replace("connect-src 'none'","connect-src https://raw.githubusercontent.com")
+        connect=run(['node',ROOT/'android/online-csp.mjs'],input=json.dumps({'assets':str(assets),'pins':pins_online,'descriptor':common['descriptor']}),capture_output=True).stdout.strip()
+        html=(assets/'index.html').read_text().replace("connect-src 'none'",connect)
         (assets/'index.html').write_text(html)
     (assets/'catalog-data.js').write_text('window.ItonamiCatalog={apps:[]};\n')
     css='@layer tokens { :root { color-scheme: light dark; '+''.join(f'--{k}:{v};'for k,v in common['palette']['light'].items())+' } @media (prefers-color-scheme:dark) { :root {'+''.join(f'--{k}:{v};'for k,v in common['palette']['dark'].items())+' } } }\n'

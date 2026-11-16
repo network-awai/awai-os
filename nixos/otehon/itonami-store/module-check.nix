@@ -2,7 +2,7 @@
 let
   evaluate = enabled: (import "${pkgs.path}/nixos/lib/eval-config.nix" {
     system = pkgs.stdenv.hostPlatform.system;
-    modules = [ ./module.nix { services.awai-itonami-store = { enable = enabled; inherit bundle; }; system.stateVersion = "26.05"; } ];
+    modules = [ ./module.nix { services.awai-itonami-store = { enable = enabled; } // pkgs.lib.optionalAttrs enabled { inherit bundle; }; system.stateVersion = "26.05"; } ];
   }).config;
   off = evaluate false;
   on = evaluate true;
