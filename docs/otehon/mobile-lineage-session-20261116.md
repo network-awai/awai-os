@@ -391,3 +391,23 @@ oem_mfd/proinfoはfresh snapshotから4096/552の既知変更byteだけ0へ戻�
 全入力のhashはreview前にmemoryへ固定し、stage直前に再検証する。
 review結果に基づくcurrent pair試行、normal-reboot、finishと、試行後stock復旧だけを
 受け付ける期限付き固定controller。r3のPython/zsh構文チェック済み、まだ未実行。
+
+## r3全読取り・個体/bootchain/FRP照合成功
+
+Junのpowered-off reconnectで9領域を全て保存した。
+[preflight判定](mobile/tanuki-v203-preflight-20261116.json)で両preloader・両LK・seccfgは
+初回原本と全byte一致、proinfoも原本/既知patch一致で個体照合が通った。
+FRPは前回valid snapshotと全byte一致、checksum有効、OEM0。factory関連2byteは1。
+current metadataを保持したnormalized copyは既知の各1byteだけ0に戻す。
+root controllerはreview gateで保持中。この段階の端末書込みはまだない。
+
+[EMI比較](mobile/preloader-emi-comparison-20261116.json)では、haccのGFH/EMI位置計算に
+従って抽出した1712bytesが純正active/backup、tanuki、Lineage payloadで全て一致。
+設定表差というDRAM仮説は弱まるが、DRAM初期化code差まで除外しない。
+Lineage ZIPからlk/preloader_rawをoperation blob hashとpartition hashを照合してlocal抽出。
+Lineageのraw preloader本体は純正active原本とbyte-identicalだった。
+ROM内manifestはboot/dtbo/vendor_bootの既存手動導入用hashとも一致。
+ROMはLK/preloaderその他firmwareも更新するため手動導入範囲と区別する。
+
+次は検査済みv2.0.3指定の完全pairを1回stagingし、各読戻しが通ってから再起動する。
+これは組合せ/起動順の仮説検証であり、この段階で黒画面原因解決や解除成功と認定しない。

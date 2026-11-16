@@ -1,0 +1,34 @@
+{
+  "stock_active": {
+    "file_length": 330708,
+    "content_offset": 240,
+    "signature_bytes": 1644,
+    "emi_bytes": 1712
+  },
+  "stock_backup": {
+    "file_length": 331428,
+    "content_offset": 240,
+    "signature_bytes": 1644,
+    "emi_bytes": 1712
+  },
+  "tanuki_v203": {
+    "file_length": 329588,
+    "content_offset": 240,
+    "signature_bytes": 1644,
+    "emi_bytes": 1712
+  },
+  "lineage_payload": {
+    "file_length": 330708,
+    "content_offset": 240,
+    "signature_bytes": 1644,
+    "emi_bytes": 1712
+  },
+  "comparisons": {
+    "tanuki_emi_matches_stock_active": true,
+    "tanuki_emi_matches_stock_backup": true,
+    "lineage_raw_matches_stock_backup": false,
+    "lineage_raw_matches_tanuki": false,
+    "lineage_raw_matches_stock_active": true,
+    "lineage_vs_stock_active_differing_bytes": 0
+  }
+}
