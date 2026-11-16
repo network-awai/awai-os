@@ -58,7 +58,7 @@ provision:
       # A login context supplies the real root HOME required by Nix installer.
       sudo --login -- "$PWD/nix-2.31.2-aarch64-linux/install" --daemon --yes --no-channel-add
       fi
-      /nix/var/nix/profiles/default/bin/nix --version | grep -Fx 'nix (Nix) 2.31.2' 
+      /nix/var/nix/profiles/default/bin/nix --version | grep -Fx 'nix (Nix) 2.31.2'
       printf '\nexperimental-features = nix-command flakes\nsandbox = true\n' >> /etc/nix/nix.conf
       systemctl restart nix-daemon
       printf '%s\n' AWAI-2987/isolated-arm64 > /etc/awai-ci-executor-id
