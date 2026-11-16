@@ -1,6 +1,6 @@
 {
   "schema": "awai.apk.v012.interop.v1",
-  "checkedAt": "2026-11-16T23:54:23.896Z",
+  "checkedAt": "2026-11-16T23:58:20.244Z",
   "issue": "AWAI-3001",
   "thread": "01a1e34c-759f-7d81-966b-f033403032e9",
   "runtimeSourceRevision": "cfdacb7be5900c5082aecb443dd2fb063356eabc",
@@ -230,10 +230,17 @@
     "browserTests": 9,
     "actualInstalledWebViews": 10,
     "directRoundTrips": 2,
-    "localApkRelayRoundTrip": true
+    "localApkRelayRoundTrip": true,
+    "settledForcedDoze": {
+      "phases": 4,
+      "passed": 4,
+      "defaultNonExempt": true,
+      "temporaryDiagnosticExemption": true,
+      "nativeCancellation": true,
+      "postStopRefusal": true
+    }
   },
   "remaining": [
-    "Moto unlock and settled forced-Doze rerun with full cleanup",
     "Natural extended idle/Doze and power-consumption acceptance",
     "Independent-WAN NAT/DCUtR trial; owner requested no network switching",
     "Broker PR1345 review/merge",
@@ -248,6 +255,98 @@
     "activeTime": "unknown",
     "waitingTime": "unknown",
     "estimate": null,
-    "estimateUnit": "unknown"
+    "estimateUnit": "unknown",
+    "end": "2026-11-16T23:58:20.244Z",
+    "elapsedWallSeconds": 1693.074,
+    "coverage": "Continuation window only, includes build/debugging/user-wait; active/wait and token accounting unknown"
+  },
+  "dozeSettledTrial": {
+    "schema": "awai.apk.forced-doze.v1",
+    "checkedAt": "2026-11-16T23:56:04.936Z",
+    "sourceRevision": "f1d0e48c1fa325210c816d2cbab16d743622b3ad",
+    "package": "network.itonami.yataverse.preview",
+    "snapshot": "bafyreifxwjkaji62sdkwexji2cwtqqzqtim4yusgmc33zal2kbemqxdtja",
+    "forcedIdle": true,
+    "adbUsbAttached": true,
+    "naturalOvernightQualified": false,
+    "networkSettingsChanged": false,
+    "phases": [
+      {
+        "label": "background-before-idle",
+        "before": "ACTIVE",
+        "after": "ACTIVE",
+        "elapsedMs": 1795,
+        "success": true,
+        "blocks": 8,
+        "bytes": 5179,
+        "carSha256": "f5c2bfb227ce42cbbe4b6d85c244a661f9bccf12c60b11fa104cbaa9fd8704d2"
+      },
+      {
+        "label": "doze-default",
+        "before": "IDLE",
+        "after": "IDLE",
+        "elapsedMs": 2394,
+        "success": true,
+        "blocks": 8,
+        "bytes": 5179,
+        "carSha256": "f5c2bfb227ce42cbbe4b6d85c244a661f9bccf12c60b11fa104cbaa9fd8704d2"
+      },
+      {
+        "label": "doze-temporarily-exempt",
+        "before": "IDLE",
+        "after": "IDLE",
+        "elapsedMs": 2549,
+        "success": true,
+        "blocks": 8,
+        "bytes": 5179,
+        "carSha256": "f5c2bfb227ce42cbbe4b6d85c244a661f9bccf12c60b11fa104cbaa9fd8704d2"
+      },
+      {
+        "label": "after-idle-recovery",
+        "before": "ACTIVE",
+        "after": "ACTIVE",
+        "elapsedMs": 2129,
+        "success": true,
+        "blocks": 8,
+        "bytes": 5179,
+        "carSha256": "f5c2bfb227ce42cbbe4b6d85c244a661f9bccf12c60b11fa104cbaa9fd8704d2"
+      }
+    ],
+    "cleanup": {
+      "deep": "ACTIVE",
+      "force": "false",
+      "batteryRestored": true,
+      "persistentWhitelistUnchanged": true,
+      "foregroundReceiverStopped": true
+    },
+    "receiver": "12D3KooWGRBdm5PUSyPgZARk7uPSHCWuLuuNGYuQ7dBEDrjk6xgg",
+    "sender": "12D3KooWKqeczhhySNvQ6jqTpLzphQURzZPGZfj1Rbk1sgxpKz38",
+    "canonicalRuntime": {
+      "revision": "5a49411f586f094b6056724a36d56da2bac0ca4b",
+      "sha256": "739a24fa73f2d4d08436cdac4816abe940344b31a4363b8a879cea29cb547f0e"
+    },
+    "address": "/ip4/192.168.1.55/tcp/40217/p2p/12D3KooWGRBdm5PUSyPgZARk7uPSHCWuLuuNGYuQ7dBEDrjk6xgg",
+    "defaultIdleEvidence": {
+      "settledMs": 15000,
+      "power": "  mWakefulness=Asleep\n  mIsPowered=false\n  mDeviceIdleMode=true\n  mIsPowered=false\nmWakefulness=0\n",
+      "policy": "System ready: true\nRestrict background: false\nRestrict power: false\nDevice idle: true\nRestricted networking mode: true\nLow Power Standby mode: false\nMetered ifaces: {}\n\n"
+    },
+    "temporaryExemption": {
+      "scope": "network.itonami.yataverse.preview",
+      "requestedMs": 120000,
+      "source": "Explicit ADB diagnostic fixture; not product authority or human settings qualification"
+    },
+    "exemptIdleEvidence": {
+      "settledMs": 15000,
+      "power": "  mWakefulness=Asleep\n  mIsPowered=false\n  mDeviceIdleMode=true\n  mIsPowered=false\nmWakefulness=0\n",
+      "policy": "System ready: true\nRestrict background: false\nRestrict power: false\nDevice idle: true\nRestricted networking mode: true\nLow Power Standby mode: false\nMetered ifaces: {}\n\n"
+    },
+    "temporarilyExemptReceive": true,
+    "nativeCancellation": true,
+    "stoppedRefused": true,
+    "canonicalTrustedUiApproval": "Automated real trusted-UI fixture, exact peer/CID/bytes/duration/read-back; not human acceptance",
+    "scope": "Moto g05/API37; USB attached, short forced deep idle with visible bounded FGS; no natural overnight or battery-consumption qualification",
+    "harnessSha256": "926fd55125d6df2f26b1ba50c1bc0041d48747927ea810ba9507ea2e012346a5",
+    "harnessWasUncommittedAtRun": true
   }
 }

@@ -1,0 +1,33 @@
+{
+  "schema": "awai.android.build.environment.v1",
+  "checkedAt": "2026-11-16T23:38:29.353Z",
+  "sourceRevision": "cfdacb7",
+  "broker": "5a49411f586f094b6056724a36d56da2bac0ca4b",
+  "jdk": "Temurin 21",
+  "sdk": 37,
+  "ndk": "27.0.12077973",
+  "gradle": "9.6.1",
+  "workaround": {
+    "filesystemWatching": false,
+    "projectCaches": "task-owned .gradle-v012 per generated profile",
+    "userCache": "task-owned APFS-cloned Gradle cache; credentials/config not copied",
+    "reason": "Initial daemon blocked in native listFileSystems; second attempt waited on its cache lock",
+    "globalServicesStopped": false
+  },
+  "earlierAttempts": [
+    {
+      "log": "v012-build.log",
+      "outcome": "stopped; no APK qualification"
+    },
+    {
+      "log": "v012-build-no-watch.log",
+      "outcome": "stopped; cache lock blocked"
+    }
+  ],
+  "activeAttempt": "v012-build-isolated.log",
+  "testSettings": {
+    "independentNetworkChangeAllowed": false,
+    "doze": "forced IDLE, non-exempt then scoped 120-second diagnostic exemption, restored after test"
+  },
+  "qualification": "Five APKs rebuilt and ten actual WebView pins verified; short forced-Doze trial qualified separately in 20261117-v012-interop.json"
+}
