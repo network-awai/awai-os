@@ -1,5 +1,6 @@
 (require '[clojure.test :refer [deftest is run-tests]] '[clojure.edn :as edn]
-         '[meiji.result-review :as review] '[itonami.otehon.recurring-host :as durable])
+         '[meiji.result-review :as review] '[itonami.otehon.recurring-host :as durable]
+         '[meiji.review-ledger :as ledger])
 ;; Canonical encoding rather than pr-str is required in CAS comparisons.
 (defn canonical-ledger []
   (let [raw (atom {})]
@@ -11,6 +12,12 @@
 (defn config []
   (let [root (str ".agent-output/review-test-" (random-uuid))]
     (durable/private-dir! root) {:state-root root}))
+(deftest dedicated-ledger-cannot-write-occurrence-or-extra-keys
+  (let [key (str "/awai/meiji/review/v1/" (apply str (repeat 64 "a")))]
+    (is (string? (ledger/transaction-text {:compare {key nil} :put {key "{}"}})))
+    (is (thrown? Exception (ledger/transaction-text {:compare {"/itonami/occurrence/v1/run/other" nil}
+                                                    :put {"/itonami/occurrence/v1/run/other" "{}"}})))
+    (is (thrown? Exception (ledger/transaction-text {:compare {key nil} :put {key "{}" "extra" "value"}})))))
 (deftest uncertain-inference-never-replays
   (let [cfg (config) client (canonical-ledger) calls (atom 0)
         invoke (fn [_] (swap! calls inc) (throw (ex-info "lost terminal" {})))]

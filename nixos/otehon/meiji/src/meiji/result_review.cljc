@@ -2,7 +2,7 @@
   "A separate, owner-enrolled public-result review. Never expands the physics
    Bots' deterministic grants. Model output is an artifact, never a command."
   (:require [clojure.edn :as edn] [clojure.string :as str] [cheshire.core :as json]
-            [meiji.host :as host] [meiji.policy :as p]
+            [meiji.host :as host] [meiji.policy :as p] [meiji.review-ledger :as ledger]
             [itonami.otehon.etcd :as etcd] [itonami.otehon.occurrence :as occurrence]
             [itonami.otehon.recurring-host :as durable]
             [org.httpkit.client :as http]))
@@ -104,8 +104,8 @@
                        (str "Owner-authorized public Meiji physics-result review. Provider Kapitsa on jacob; " model
                             "; max output 512, temperature 0.2, thinking disabled. Input-token forecast unknown; output bound <=512, not an expected consumption estimate. Separate from deterministic Bot grants. No tool access. Acceptance: one saved report of the two confirmed public physics results; original cron-derived result set. Source " (:revision cfg) "."))
                       "review-forecast-publication-unconfirmed")
-        client (etcd/client (edn/read-string (slurp (:etcd-config cfg))))
-        result (once! cfg client input #(infer! cfg %))]
+        client (ledger/client (edn/read-string (slurp (:etcd-config cfg))))
+        result (once! cfg client input #(assoc (infer! cfg %) :source-revision (:revision cfg)))]
     (if (= "completed" (:state result))
       (let [body (str (:text result) "\n\n" (json/generate-string (dissoc result :text) {:pretty true}))]
         (persist! result)
