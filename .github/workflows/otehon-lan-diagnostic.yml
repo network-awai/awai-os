@@ -20,6 +20,10 @@ on:
         required: false
         default: false
         type: boolean
+      diagnostic_base_artifact:
+        description: 'Optional prior read-only candidate artifact ID for a small initrd delta'
+        required: false
+        type: string
       operator_public_key:
         description: 'Optional Ed25519 public key for a separate physical test candidate (never a private key)'
         required: false
@@ -97,6 +101,47 @@ jobs:
         with:
           name: awai-lan-physical-candidate-unqualified
           path: .agent-output/lan/candidate/
+          compression-level: 0
+      - name: Prepare incremental physical diagnostic delivery
+        if: github.event_name == 'workflow_dispatch' && inputs.operator_public_key != '' && inputs.diagnostic_base_artifact != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_ARTIFACT_ID: ${{ inputs.diagnostic_base_artifact }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYDELTA'
+          import hashlib, json, os, re, shutil, subprocess, zipfile
+          from pathlib import Path
+          identifier = os.environ['BASE_ARTIFACT_ID']
+          assert re.fullmatch(r'[0-9]+', identifier)
+          root = Path('.agent-output/lan')
+          endpoint = 'repos/network-awai/awai-os/actions/artifacts/' + identifier
+          metadata = json.loads(subprocess.check_output(['gh', 'api', endpoint]))
+          assert not metadata['expired'] and metadata['digest'].startswith('sha256:')
+          archive = root/'base.zip'
+          with archive.open('xb') as out:
+              subprocess.run(['gh', 'api', endpoint+'/zip'], stdout=out, check=True)
+          digest = hashlib.file_digest(archive.open('rb'), 'sha256').hexdigest()
+          assert 'sha256:'+digest == metadata['digest']
+          base = root/'base'; base.mkdir()
+          with zipfile.ZipFile(archive) as z:
+              marker = json.loads(z.read('DIAGNOSTIC_ONLY.json'))
+              assert marker['profile'] == 'netboot-diagnostic-6600h' and marker['readOnly'] is True
+              with z.open('initrd') as source, (base/'initrd').open('xb') as out:
+                  shutil.copyfileobj(source, out, 1024*1024)
+          delta = root/'delta'; delta.mkdir()
+          (delta/'BASE.json').write_text(json.dumps({'artifact': int(identifier), 'archiveSha256': digest, 'initrdSha256': hashlib.file_digest((base/'initrd').open('rb'), 'sha256').hexdigest()}))
+          for name in ('ipxe.efi', 'kernel', 'installer-info.json', 'SOURCE_REVISION', 'SHA256SUMS', 'DIAGNOSTIC_ONLY.json'):
+              shutil.copyfile(root/'candidate'/name, delta/name)
+          PYDELTA
+          nix-shell --expr 'let p = import (import ./ci/nixpkgs.nix) { system = "x86_64-linux"; }; in p.mkShell { packages = [ p.xdelta ]; }' --run 'xdelta3 -e -B 134217728 -W 8388608 -s .agent-output/lan/base/initrd .agent-output/lan/candidate/initrd .agent-output/lan/delta/initrd.xdelta3'
+          (cd .agent-output/lan/delta; sha256sum initrd.xdelta3 > DELTA_SHA256SUMS)
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: success() && github.event_name == 'workflow_dispatch' && inputs.diagnostic_base_artifact != ''
+        with:
+          name: awai-lan-physical-diagnostic-delta
+          path: .agent-output/lan/delta/
           compression-level: 0
       - name: Boot real image and verify authenticated diagnostics
         shell: bash

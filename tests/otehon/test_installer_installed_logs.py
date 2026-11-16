@@ -39,14 +39,20 @@ class InstalledLogs(unittest.TestCase):
     def test_fixed_unit_scope_and_redaction(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp); (root/'var/log/journal').mkdir(parents=True)
-            with patch.object(m, 'bounded', side_effect=[('0 '+'a'*32+' boot', False), ('greetd failed\nsecret=abc https://private.test /home/alice/file\x1b', False), ('amdgpu warning', False)]) as run:
+            with patch.object(m, 'bounded', side_effect=[('0 '+'a'*32+' boot', False), ('greetd failed\nsecret=abc https://private.test /home/alice/file\x1b', False), ('amdgpu warning', False), ('cosmic compositor error', False)]) as run:
                 result = m.read_journal(root)
             self.assertIn('greetd failed', result['text'])
+            self.assertIn('cosmic compositor error', result['userSession'])
+            self.assertIn('_UID=1000', run.call_args_list[3].args[0])
             self.assertNotIn('abc', result['text'])
             self.assertNotIn('alice', result['text'])
             self.assertNotIn('private.test', result['text'])
             self.assertIn('--boot='+'a'*32, run.call_args_list[1].args[0])
             self.assertIn('--unit=greetd.service', run.call_args_list[1].args[0])
+
+    def test_encoded_unicode_response_bound(self):
+        import json
+        self.assertLessEqual(len(json.dumps(m.clean_log('😀'*100000), ensure_ascii=True)), 16000)
 
     def test_output_and_time_bounds(self):
         value, truncated = m.bounded([sys.executable, '-c', 'print("a"*200000)'], limit=1024)

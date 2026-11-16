@@ -42,7 +42,7 @@ def bounded(args, limit=LIMIT, timeout=8):
                 break
         status = process.wait(timeout=max(.1, end-time.monotonic()))
         if status and not truncated:
-            raise ValueError('command-failed')
+            raise ValueError('command-failed:' + Path(args[0]).name + ':' + str(status))
         return bytes(data[:limit]).decode('utf-8', 'replace'), truncated
     finally:
         selector.close()
@@ -88,8 +88,11 @@ def clean_log(text):
     text = re.sub(r'https?://[^\s]+', '<url>', text)
     text = re.sub(r'/home/[^/\s]+', '/home/<user>', text)
     text = re.sub(r'(?i)(token|password|passphrase|authorization|secret)([=: ]+)[^\s]+', r'\1\2<redacted>', text)
-    return '\n'.join(''.join(c if c.isprintable() else '?' for c in line)[:600]
+    text = '\n'.join(''.join(c if c.isprintable() else '?' for c in line)[:600]
                      for line in text.splitlines()[:200])
+    while len(json.dumps(text, ensure_ascii=True)) > 16000:
+        text = '[earlier lines omitted]\n' + text[len(text)//4:]
+    return text
 
 
 def read_journal(root):
@@ -99,7 +102,7 @@ def read_journal(root):
     if not directory.resolve().is_relative_to(root.resolve()):
         raise ValueError('journal-path-escape')
     base = ['journalctl', '--directory=' + str(directory), '--no-pager']
-    listing, truncated = bounded(base + ['--list-boots', '--no-legend'], limit=8192)
+    listing, truncated = bounded(base + ['--list-boots'], limit=8192)
     if truncated:
         raise ValueError('boot-list-bound')
     boot = latest_boot(listing)
@@ -109,7 +112,11 @@ def read_journal(root):
     output, truncated = bounded(args, limit=32768)
     kernel, kernel_truncated = bounded(base + ['--boot=' + boot, '--dmesg', '--priority=warning',
                                                '--output=short-monotonic', '--lines=60'], limit=8192)
+    session, session_truncated = bounded(base + ['--boot=' + boot, '_UID=1000',
+                                                  '--output=short-monotonic', '--lines=80'], limit=8192)
     return {'available': True, 'bootId': boot, 'units': list(UNITS),
+            'userSession': clean_log(session), 'userSessionTruncated': session_truncated,
+            'maxEncodedTextBytesPerField': 16000,
             'text': clean_log(output), 'truncated': truncated,
             'kernelWarnings': clean_log(kernel), 'kernelTruncated': kernel_truncated}
 
