@@ -105,3 +105,19 @@ vendor_boot_a の `read` は I/O timeoutで終了し、0-byte出力を証跡と�
 その後の読取り候補はまだ接続待ち。残りのvendor_boot/dtbo/init_boot両slotを
 別のupstreamコマンド `read-flash` で保存する試験を準備し、電源OFF再接続を依頼した。
 実機の原本保存は一部成功したが、復旧一式・write/readback・解除・導入は未達。
+
+## 通常起動を経た再接続 (09:08 JST)
+
+Jun が通常のAndroid起動→画面から電源OFF→再接続を実施。
+新規セッションの `read-flash vendor_boot_a` は handshake/DA1転送/同期byte受信まで進んだが、
+DA1起動応答で I/O timeout。原本ファイルは作成されず、前の11領域は保持。
+
+upstream の serial port 初期timeoutとreset既定値は1000msだった。
+読取り専用の試験候補に限り、[2箇所を10000msへ延長](mobile/penumbra-serial-timeout-20261116.patch)。
+書込みやDA処理の成功条件は変更していない。前のlogging patchと順に適用する。
+`cargo build --locked -p antumbra --features penumbra/serial --manifest-path .agent-output/penumbra-source/Cargo.toml`
+は9.44秒で成功、`--version`は1.1.0。
+候補SHA-256は `523257d4211161261fc87f43d751b3a1a1bc4f2e4b20f07a53e6834b736615c1`。
+両patchを元sourceへ適用してbuilt sourceとのbyte一致を確認した。
+初回に成功したPreloader接続と同じverbose設定で、次の通常起動→電源OFF接続を待機する。
+これは待ち時間変更の試験であり、実機通信の安定性や書込み成功をまだ認定しない。
