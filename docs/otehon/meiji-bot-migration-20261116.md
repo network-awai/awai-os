@@ -27,3 +27,17 @@ plan encrypted before applying the hold. Preserve old launch configuration,
 key disk and working disk. Attach that old working disk read-only to Meiji,
 verify imported original results, and restore the exact original enrollments
 before resuming a due original slot. Unknown outcomes never transfer.
+
+At 09:09 UTC, vm-benjamin booted the signed Meiji image and completed the
+readonly Pack history import with `OTEHON_BOOT_REPORT ... failed=0`.
+The owned hypervisor is running with 2 vCPUs / 1024 MiB. Its original node
+keys stayed on benjamin, and the old working disk's digest remained
+`9ff55a9f7ab2df14a5463a24c9d903653cf8abcbce2c2a0a14179491d13cb17b`.
+Five VM enrollments remain maintenance-held; no new Bot work is claimed yet.
+
+Two fail-closed cases were observed and corrected: launchd removes a stopped
+job asynchronously (now polled, including resume after a confirmed stop);
+UEFI initially selected the readonly history disk's EFI, whose root mount was
+rejected. The main Meiji disk now has explicit bootindex 1 with strict boot
+ordering. Reconfiguration requires the same five CAS holds and unchanged
+history digest. Existing unrelated guests were not stopped.

@@ -27,7 +27,9 @@
   ["/opt/homebrew/bin/qemu-system-aarch64" "-name" "Awai Meiji Bot VM AWAI-2820"
    "-machine" "virt,accel=hvf" "-cpu" "host" "-smp" "2" "-m" "1024"
    "-bios" "/opt/homebrew/share/qemu/edk2-aarch64-code.fd"
-   "-drive" (str "if=virtio,format=qcow2,file=" root "/vm-disk.qcow2")
+   "-drive" (str "if=none,id=system,format=qcow2,file=" root "/vm-disk.qcow2")
+   "-device" "virtio-blk-pci,drive=system,serial=meiji-system,bootindex=1"
+   "-boot" "strict=on"
    "-drive" (str "if=none,id=keys,format=raw,readonly=on,file=" root "/key-disk.tar")
    "-device" "virtio-blk-pci,drive=keys,serial=itonami-vm-key"
    "-drive" (str "if=none,id=history,format=qcow2,readonly=on,file=" old "/vm-disk.qcow2")
@@ -37,7 +39,7 @@
    "-display" "none" "-monitor" "none" "-serial" (str "file:" root "/serial.log")])
 
 (defn -main [& [phase image-sha operator-sha signing-pub-sha drain-sha]]
-  (p/require! (contains? #{"prepare" "switch" "status"} phase) "fixed-migration-phase-required")
+  (p/require! (contains? #{"prepare" "switch" "reconfigure" "status"} phase) "fixed-migration-phase-required")
   (p/require! (= "node" (System/getProperty "user.name")) "owning-node-account-required")
   (let [home (System/getProperty "user.home")
         old (str home "/.itonami/vm-workers/awai-2820")
@@ -56,7 +58,8 @@
     (if (= phase "status")
       (let [serial (str root "/serial.log")
             service (sh/sh "/bin/launchctl" "print" target)
-            owned? (some #{(str "if=virtio,format=qcow2,file=" root "/vm-disk.qcow2")} (:ProgramArguments current))
+            owned? (some #{(str "if=virtio,format=qcow2,file=" root "/vm-disk.qcow2")
+                            (str "if=none,id=system,format=qcow2,file=" root "/vm-disk.qcow2")} (:ProgramArguments current))
             running? (and owned? (zero? (:exit service)) (boolean (re-find #"state = running" (:out service))))
             booted (and (fs/exists? serial)
                         (str/includes? (slurp serial) "OTEHON_BOOT_REPORT id=awai-meiji-bot-vm version=0.2.0-AWAI-2820")
@@ -90,10 +93,18 @@
             (println (json/generate-string {:node node :prepared true :oldDiskChanged false :nodeKeysStayedOnHost true})))
           (let [prepared (json/parse-string (slurp (str root "/prepared.json")) true)
                 _ (p/require! (= image-sha (:imageSha256 prepared)) "prepared-image-required")
-                _ (p/require! (some #{(str "if=virtio,format=qcow2,file=" old "/vm-disk.qcow2")} (:ProgramArguments current)) "original-guest-launch-required")
+                expected-root (if (= phase "reconfigure") root old)
+                _ (p/require! (some #{(str "if=virtio,format=qcow2,file=" expected-root "/vm-disk.qcow2")
+                                      (str "if=none,id=system,format=qcow2,file=" expected-root "/vm-disk.qcow2")} (:ProgramArguments current)) "owned-guest-launch-required")
                 _ (held! cfg drain-sha)
-                _ (run! "/bin/launchctl" "bootout" target)
-                _ (p/require! (not (zero? (:exit (sh/sh "/bin/launchctl" "print" target)))) "old-service-still-loaded")
+                ;; bootout returns before launchd finishes removing the job.
+                ;; Resume an already-stopped preparation without booting it again.
+                _ (when (zero? (:exit (sh/sh "/bin/launchctl" "print" target)))
+                    (run! "/bin/launchctl" "bootout" target))
+                _ (loop [attempt 0]
+                    (when (zero? (:exit (sh/sh "/bin/launchctl" "print" target)))
+                      (p/require! (< attempt 100) "old-service-still-loaded")
+                      (Thread/sleep 200) (recur (inc attempt))))
                 _ (with-open [_ (ServerSocket. 22280)] true)
                 history-sha (host/sha256 (str old "/vm-disk.qcow2"))
                 job {:Label label :ProgramArguments (qemu-argv root old image) :WorkingDirectory root
@@ -103,9 +114,13 @@
                 pending (str root "/launch.pending.plist")
                 xml (sh/sh "/usr/bin/plutil" "-convert" "xml1" "-o" pending "--" "-" :in (json/generate-string job))]
             (p/require! (zero? (:exit xml)) "launch-plan-unconfirmed")
-            (recovery/private-write! (str root "/switch-intent.json")
+            (when (fs/exists? (str root "/switch-intent.json"))
+              (p/require! (= history-sha (:historySha256 (json/parse-string (slurp (str root "/switch-intent.json")) true)))
+                          "preserved-history-digest-changed"))
+            (when-not (fs/exists? (str root "/switch-intent.json"))
+              (recovery/private-write! (str root "/switch-intent.json")
               (json/generate-string {:node node :historySha256 history-sha :imageSha256 image-sha
-                                     :drainPlanSha256 drain-sha :oldDiskReadOnly true}))
+                                     :drainPlanSha256 drain-sha :oldDiskReadOnly true})))
             (java.nio.file.Files/move (fs/path pending) (fs/path plist)
               (into-array java.nio.file.CopyOption [StandardCopyOption/ATOMIC_MOVE StandardCopyOption/REPLACE_EXISTING]))
             (run! "/bin/launchctl" "bootstrap" (str "user/" uid) plist)
