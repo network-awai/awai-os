@@ -538,4 +538,5 @@ mod tests {
     }
 }
 
+pub mod provider;
 pub mod snapshot;

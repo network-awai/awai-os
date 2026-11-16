@@ -29,3 +29,38 @@ Development status: extracted transport and opaque local snapshot adapter are
 checked. Continuous receive, NAT traversal, pin/query, app integration and actual
 separate-device acceptance are tracked in AWAI-3001; do not infer them from these
 local tests. Host capabilities never substitute for canonical fresh consent.
+
+## Explicit Yataverse pin/query provider
+
+`/awai/yataverse/1.0.0` is an Awai-specific libp2p CBOR protocol, not an HTTP
+Pinning Service API or an already-deployed Yataverse service. Request and response
+frames are capped at 260 KiB; fixed actions are put/get/pin/query. A provider grant
+binds authenticated sender PeerID, exact snapshot CID, total bytes and expiry
+(maximum six hours). Unknown peers, snapshots, extra fields, unsupported blocks,
+wrong bytes and quota/expiry violations are refused. No root capability/key is
+sent. Pin/query re-verify every listed stored block and sign a receipt with the
+provider transport key. Receipt verification binds signature, PeerID, snapshot
+and expiry. This is observed custody and a bounded retention promise; it is not
+independent multi-node durability or a post-quantum admission signature.
+
+CLI administration is explicit operator work, not a browser consent substitute:
+
+```sh
+cargo build --manifest-path packages/awai-peer/Cargo.toml
+peer=packages/awai-peer/target/debug/awai-peer
+"$peer" identity .agent-output/sender
+"$peer" snapshot-import .agent-output/source snapshot.car '<trusted-WNFS-root>'
+# grants.json: [{"peer_id":"<sender-PeerID>","snapshot":"<snapshot-CID>",
+#               "max_bytes":1048576,"expires_at":<unix-time-within-six-hours>}]
+"$peer" provider .agent-output/provider .agent-output/grants.json /ip4/127.0.0.1/tcp/0
+"$peer" sync-push .agent-output/sender .agent-output/source '<provider-address>' '<snapshot-CID>'
+"$peer" pin-query .agent-output/sender .agent-output/source '<provider-address>' '<snapshot-CID>'
+"$peer" sync-pull .agent-output/sender .agent-output/restored '<provider-address>' '<snapshot-CID>' .agent-output/new.car
+```
+
+Provider grants must originate from the selected provider's local approval;
+a sender's approval never grants provider storage. Storage remains immutable
+across provider restarts, with no automatic GC/root adoption. Grants must be
+supplied explicitly on restart. The CLI is separate from app operations, which
+must enter through the canonical broker. Existing HTTPS Yataverse tenant/grant
+APIs are not silently invoked or bypassed by this protocol.
