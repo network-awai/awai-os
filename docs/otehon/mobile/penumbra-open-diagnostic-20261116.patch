@@ -1,0 +1,13 @@
+--- a/core/src/connection/port.rs
++++ b/core/src/connection/port.rs
+@@ -91,4 +91,3 @@
+-            if port.open().is_ok() {
+-                Some(Box::new(port))
+-            } else {
+-                None
++            match port.open() {
++                Ok(()) => Some(Box::new(port)),
++                Err(e) => { eprintln!("MTK_OPEN_FAILED: {e:?}"); None }
+@@ -98 +97 @@
+-        Err(_) => None,
++        Err(e) => { eprintln!("MTK_DISCOVERY_FAILED: {e:?}"); None },
