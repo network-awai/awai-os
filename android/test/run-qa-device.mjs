@@ -5,7 +5,8 @@ import {assertQaDevice,assertQaPackages} from './qa-scope.mjs';import {connectCd
 import {randomWallet,walletResponse,passkeyResponse} from '../../nixos/otehon/shell/test/signers.js';import {p256} from '../../nixos/otehon/shell/node_modules/@noble/curves/nist.js';import {build} from '../../nixos/otehon/shell/node_modules/esbuild/lib/main.js';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..'),args=Object.fromEntries(process.argv.slice(2).map(a=>a.split('=')));
 const serial=args['--serial'],mode=args['--mode'];if(!serial||!mode||!args['--manifest']||!args['--model'])throw Error('explicit serial/mode/QA manifest/public model required');
-const manifest=JSON.parse(await readFile(args['--manifest']));assertQaPackages(manifest.packages);if(!manifest.distinctQaSigner)throw Error('distinct QA signer required');
+const manifest=JSON.parse(await readFile(args['--manifest']));assertQaPackages(manifest.packages);if(!/^[a-f0-9]{40}$/.test(manifest.revision))throw Error('source revision required');
+for(const tree of ['apps/itonami','apps/murakumo','packages/awai-inference','nixos/otehon/shell']){const rev=ref=>execFileSync('git',['rev-parse',ref+':'+tree],{cwd:root,encoding:'utf8'}).trim();if(rev('HEAD')!==rev(manifest.revision))throw Error('QA product-source-tree mismatch');}if(!manifest.distinctQaSigner)throw Error('distinct QA signer required');
 const sdk=process.env.ANDROID_HOME||path.join(os.homedir(),'Library/Android/sdk'),adbBin=path.join(sdk,'platform-tools/adb');
 const adb=(...a)=>execFileSync(adbBin,['-s',serial,...a],{encoding:'utf8',timeout:30000,maxBuffer:8*1024*1024,stdio:['ignore','pipe','pipe']}).trim();
 const wait=ms=>new Promise(r=>setTimeout(r,ms));async function until(fn,label,ms=90000){const end=Date.now()+ms;let error;while(Date.now()<end){try{const r=await fn();if(r)return r}catch(e){error=e;if(mode==='physical-6600h')try{execFileSync(adbBin,['connect',serial],{stdio:'ignore',timeout:5000})}catch{}}await wait(400)}throw Error('timeout '+label+': '+(error?.message||''))}
@@ -39,6 +40,7 @@ try{
  }
  assertQaDevice({serial,mode,qemu:adb('shell','getprop','ro.kernel.qemu')||adb('shell','getprop','ro.boot.qemu'),mac:mode==='physical-6600h'?adb('shell','cat','/sys/class/net/eth0/address'):null});
  assert(Number(adb('shell','getprop','ro.build.version.sdk'))>=35);
+ if(mode==='owned-emulator'){adb('shell','am','start','-a','android.intent.action.MAIN','-c','android.intent.category.HOME');await until(()=>adb('shell','settings','get','global','device_provisioned')==='1'&&adb('shell','settings','get','secure','user_setup_complete')==='1','AOSP system initial provisioning');r.emulatorBaseline='actual AOSP HOME/provisioner settled before QA; no shell flag writes';}
  // No Wi-Fi/provisioning/PIN/real-account changes. The QA APKs have no network permission.
  if(mode==='physical-6600h')adb('shell','am','force-stop','network.itonami.app');
  r.normalBefore=await witness();r.peersBefore=await peers();r.provisioningBefore={setup:adb('shell','settings','get','secure','user_setup_complete'),device:adb('shell','settings','get','global','device_provisioned')};
