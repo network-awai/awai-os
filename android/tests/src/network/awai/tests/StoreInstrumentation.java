@@ -22,6 +22,12 @@ public final class StoreInstrumentation extends Instrumentation {
         check(catalog.app("network.itonami.app").getLong("versionCode")==1000,"itonami version");
         byte[] second=catalog.verifiedApk(c,"network.itonami.app");check(second.length>20*1024*1024,"itonami APK bytes and package/signer/version");
         refuses(()->catalog.verifiedApk(c,"network.awai.notallowed"),"unknown APK refuses");
+        for(String name:new String[]{"shakai","kaisha","kaikei"}) {
+            String id="network.itonami."+name;
+            check(Catalog.assetFor(id).equals("packages/"+name+".apk"),name+" asset mapping");
+            check(Catalog.onlineFileFor(id).equals("online-"+name+".apk"),name+" online mapping");
+            check(Catalog.maxApkBytes(id)==64*1024*1024,name+" size bound");
+        }
         byte[] changed=raw.clone();changed[0]^=1;check(!Integrity.authentic(changed,sig,key),"changed metadata refuses");
         refuses(()->catalog.app("network.awai.notallowed"),"unknown app refuses");
         long expires=catalog.app("network.itonami.yotei").getLong("versionCode");

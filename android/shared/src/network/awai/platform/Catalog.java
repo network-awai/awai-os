@@ -44,16 +44,24 @@ public final class Catalog {
     public static String assetFor(String id) throws SecurityException {
         if ("network.itonami.yotei".equals(id)) return "packages/yotei.apk";
         if ("network.itonami.app".equals(id)) return "packages/itonami.apk";
+        if ("network.itonami.shakai".equals(id)) return "packages/shakai.apk";
+        if ("network.itonami.kaisha".equals(id)) return "packages/kaisha.apk";
+        if ("network.itonami.kaikei".equals(id)) return "packages/kaikei.apk";
         throw new SecurityException("unknown-app");
     }
     public static String onlineFileFor(String id) throws SecurityException {
         if ("network.itonami.yotei".equals(id)) return "online-yotei.apk";
         if ("network.itonami.app".equals(id)) return "online-itonami.apk";
+        if ("network.itonami.shakai".equals(id)) return "online-shakai.apk";
+        if ("network.itonami.kaisha".equals(id)) return "online-kaisha.apk";
+        if ("network.itonami.kaikei".equals(id)) return "online-kaikei.apk";
         throw new SecurityException("unknown-app");
     }
     public static int maxApkBytes(String id) throws SecurityException {
         if ("network.itonami.yotei".equals(id)) return 20 * 1024 * 1024;
         if ("network.itonami.app".equals(id)) return 64 * 1024 * 1024;
+        if ("network.itonami.shakai".equals(id) || "network.itonami.kaisha".equals(id)
+                || "network.itonami.kaikei".equals(id)) return 64 * 1024 * 1024;
         throw new SecurityException("unknown-app");
     }
     public long valueRevision() throws Exception { return value.getLong("revision"); }
