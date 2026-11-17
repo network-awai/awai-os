@@ -131,6 +131,9 @@ try{
   await until(()=>cdp.read('document.getElementById("model-state").innerText.includes("未読み込み")'),'model release');
   report.cases.push({name:'provider-UI-native-model-release',passed:true});
  }
+ // Return from the provider before checking the consumer's identity gate.
+ cdp.close();cdp=null;adb('shell','am','start','-n','network.itonami.app/.MainActivity');cdp=await connect();
+ await until(()=>cdp.read('Boolean(document.querySelector("button[data-dapp]"))'),'consumer before sign-out');
  // A completion marker alone must never bypass account authentication.
  await cdp.read(source+'; true');await cdp.read('AwaiTestFixture.clearSession()');await cdp.call('Page.reload');
  await until(()=>cdp.read('Boolean(document.querySelector("#local-start")) && !document.querySelector("button[data-dapp]")'),'identity gate with completed setup');

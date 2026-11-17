@@ -25,6 +25,7 @@ try{
  await step('rust-compile','rustc',['--edition=2021','--test','apps/itonami/src-tauri/src/setup_state.rs','-o',path.join(out,'setup-tests')]);
  await step('rust-regression',path.join(out,'setup-tests'),[],{AWAI_TEST_OUTPUT:out});
  await step('advanced-native-contract','npm',['run','test:inference','--prefix','nixos/otehon/shell']);
+ await step('setup-screen-regression','npm',['run','test:setup','--prefix','nixos/otehon/shell']);
  await step('owning-shell','npm',['run','build','--prefix','nixos/otehon/shell'],{OTEHON_HTTP:'1'});
  await step('consumer-dependencies','npm',['ci','--ignore-scripts','--no-audit','--prefix','apps/itonami']);
  await step('consumer-frontend','npm',['run','package:frontend','--prefix','apps/itonami']);
