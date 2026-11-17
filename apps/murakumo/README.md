@@ -30,3 +30,32 @@ The app has no INTERNET permission, no listening HTTP server, no remote inferenc
 Development signer is the existing Android debug identity. Production signer/allowlist rotation, independent permission-adversary APK tests, store delivery, model acquisition UX, full phone/desktop lifecycle, image/video engines and Awai FS output sync remain separate qualification work. The SDK's presence is not acceptance of every consumer app. Home enrollment, Itonami authentication and local inference are distinct; no owner identity is fabricated/copied to expose this view.
 
 6600H is reserved by the independent AWAI-2992 persistence chat. This task stops all physical ADB/install/settings/reboot operations until that work releases the device. VM tests use only `emulator-5570`.
+
+## Model manager domain (AWAI-3240)
+
+`contracts/src/awai/inference/manager.cljc` is the shared, integer-only domain for the model manager
+(stage 3 of [AWAI-3203](https://linear.app/kotobalabs/issue/AWAI-3203)). It follows
+`docs/otehon/murakumo-model-manager-20261118.md` and its Figma proposal. It covers:
+
+- the pinned catalog (`catalog.json`): repository, revision, file, bytes, SHA-256, layers, KV heads,
+  head dim and license for six official Qwen3 GGUF files, taken from the Hugging Face API on
+  2026-11-18;
+- the estimate (file + KV cache + 0.3 GiB) and budgets: Android 40 % of RAM; Mac two thirds of
+  unified memory, rounded down to a GiB;
+- fit: comfortable ≤ 80 % of the budget, tight ≤ the budget, no-fit above it, unknown without RAM;
+- the recommendation: the largest comfortable model, else the largest tight one;
+- `awai.murakumo.device-usage.v1` snapshots, their freshness, and the all-devices row. Unknown
+  values stay null, never 0.
+
+`browser.cljs` exports it as `window.AwaiInferenceManager` for the UI (stage 4). Nothing calls the
+network, downloads a model or reads device usage yet.
+
+```bash
+bb --classpath contracts/src test/manager_cases.clj
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=contracts/src basilisp run test/manager_cases.lpy
+npm run build && node --test test/manager.test.mjs   # the same cases on the compiled CLJS bundle
+```
+
+`test/manager-cases.json` holds 35 hand-written cases, including the recommendation table of the
+research document. A broken expectation fails each runner. A comfortable threshold changed from
+80 % to 100 % fails 6 cases.
