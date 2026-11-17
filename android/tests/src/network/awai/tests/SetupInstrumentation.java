@@ -27,7 +27,7 @@ public final class SetupInstrumentation extends Instrumentation {
         JSONObject s=(JSONObject)Class.forName("network.awai.home.SetupPlatform").getMethod("snapshot",Context.class).invoke(null,c);
         if(!s.getBoolean("secure"))check(!move(c,"next",6),"no fake PIN acceptance");
         check(!move(c,"finish",6),"no skip to Home");
-        check(!s.getBoolean("identityEnrollment")&&!s.getBoolean("osProvisioning"),"capability limits truthful");
+        check(s.getBoolean("identityEnrollment")&&!s.getBoolean("osProvisioning"),"link client is not privileged provisioning");
         result.putString("stream","Android setup boundary: "+assertions+" assertions passed\n");
     }catch(Throwable e){result.putString("stream","FAIL "+e.toString());resultCode=0;}
     finally{c.getSharedPreferences("android-setup-v1",0).edit().clear().commit();}

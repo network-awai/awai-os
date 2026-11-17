@@ -59,7 +59,7 @@ public abstract class HostActivity extends Activity {
                 onlineUrls.add(url);
             }
         }catch(Exception absent){onlineUrls.clear();}
-        WebSettings s = web.getSettings(); s.setBlockNetworkLoads(onlineUrls.isEmpty()); s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true);
+        WebSettings s = web.getSettings(); s.setBlockNetworkLoads(onlineUrls.isEmpty()&&!"home".equals(mode())); s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true);
         s.setAllowFileAccess(false); s.setAllowContentAccess(false); s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         s.setSupportMultipleWindows(false); s.setBuiltInZoomControls(true); s.setDisplayZoomControls(false);
         s.setUseWideViewPort(true); s.setLoadWithOverviewMode(true);
@@ -74,6 +74,10 @@ public abstract class HostActivity extends Activity {
             @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest req) {
                 Uri u = req.getUrl(); String path=u.getEncodedPath();
                 if("GET".equals(req.getMethod()) && onlineUrls.contains(u.toString()))return null;
+                if("home".equals(mode())&&"GET".equals(req.getMethod())&&"https".equals(u.getScheme())
+                    &&"relay.awai.network".equals(u.getHost())&&(u.getPort()==-1||u.getPort()==443)
+                    &&u.getUserInfo()==null&&u.getEncodedQuery()==null&&u.getEncodedFragment()==null
+                    &&path!=null&&path.matches("/[0-9a-f]{32}/json"))return null;
                 if (!"GET".equals(req.getMethod()) || !"https".equals(u.getScheme()) || !"appassets.androidplatform.net".equals(u.getHost())
                         || u.getPort()!=-1 || u.getEncodedQuery()!=null || u.getEncodedFragment()!=null || path==null || !path.startsWith("/awai/")) return denied();
                 String file = path.substring(6);

@@ -22,26 +22,32 @@ public final class SetupPlatform {
         o.put("connected",connected);o.put("validated",validated);
         o.put("captive",connected&&n.hasCapability(NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL));
         o.put("secure",secure);o.put("offline",p.getBoolean("offline",false));
-        o.put("account","deferred".equals(p.getString("account",""))?"deferred":"unlinked");
+        // Flow marker only. Browser must reverify the saved awai.link.v1 proof
+        // against its non-exportable device key before treating this as identity.
+        o.put("account",p.getString("account","unlinked"));
         o.put("locale",c.getResources().getConfiguration().getLocales().get(0).toLanguageTag());
         o.put("timeZone",java.util.TimeZone.getDefault().getID());
-        o.put("identityEnrollment",false);o.put("osProvisioning",false);
+        o.put("identityEnrollment",true);o.put("osProvisioning",false);
         return o;
     }
     public static synchronized boolean transition(Context c,String action,int expected) {
         try {
             JSONObject s=snapshot(c);int stage=s.getInt("stage");
-            if(expected!=stage||s.getBoolean("complete"))return false;
+            if(expected!=stage)return false;
             SharedPreferences.Editor e=c.getSharedPreferences("android-setup-v1",0).edit();
+            if("relink".equals(action)&&"linked".equals(s.getString("account")))
+                return e.putInt("stage",4).putBoolean("complete",false).putString("account","unlinked").commit();
+            if(s.getBoolean("complete"))return false;
             if("back".equals(action)&&stage>0)e.putInt("stage",stage-1);
             else if("offline".equals(action)&&stage==2)e.putBoolean("offline",true).putInt("stage",3);
             else if("defer".equals(action)&&stage==4)e.putString("account","deferred").putInt("stage",5);
+            else if("linked".equals(action)&&stage==4)e.putString("account","linked").putInt("stage",5);
             else if("next".equals(action)&&stage>=0&&stage<7) {
                 if(stage==2&&!s.getBoolean("validated")&&!s.getBoolean("offline"))return false;
                 if(stage==4)return false;
                 if(stage==6&&!s.getBoolean("secure"))return false;
                 e.putInt("stage",stage+1);
-            } else if("finish".equals(action)&&stage==7&&s.getBoolean("secure")&&"deferred".equals(s.getString("account")))
+            } else if("finish".equals(action)&&stage==7&&s.getBoolean("secure")&&("deferred".equals(s.getString("account"))||"linked".equals(s.getString("account"))))
                 e.putBoolean("complete",true);
             else return false;
             return e.commit();

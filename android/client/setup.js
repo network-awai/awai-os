@@ -1,8 +1,10 @@
 // Android first-run UI. Native settings own credentials, connectivity and locale.
+import {createIdentity} from './identity.js';
 export function createSetup({host,domain,root,button,el,icon,notify,render}) {
   let detail=false;
+  const identity=host&&JSON.parse(host.snapshot()).mode==='home'?createIdentity(render):null;
   const read=()=>{try{return host?.setupSnapshot?JSON.parse(host.setupSnapshot()):null;}catch{return null;}};
-  const move=action=>{const s=read();if(!s||!host.setupTransition(action,s.stage))notify('設定を完了できません。接続と画面ロックを確認してください。');detail=false;render();root.querySelector('h1')?.focus();};
+  const move=action=>{const s=read();if(action==='linked'&&!identity?.account)return;if(!s||!host.setupTransition(action,s.stage))notify('設定を完了できません。接続と画面ロックを確認してください。');identity?.cancel();detail=false;render();root.querySelector('h1')?.focus();};
   const settings=kind=>host.setupSettings(kind);
   const rows=(parent,items)=>items.forEach(([title,summary,action,name='settings'])=>{
     const b=button('',action||(()=>{}),'setup-row');b.disabled=!action;
@@ -11,7 +13,12 @@ export function createSetup({host,domain,root,button,el,icon,notify,render}) {
     b.append(copy);parent.append(b);
   });
   function show(){
-    const s=read();if(s?.complete)return false;
+    const s=read();
+    if(s?.account==='linked'&&!identity?.account){
+      if(identity?.state.status==='loading'){root.append(el('p','page','アカウントを確認しています…'));return true;}
+      if(!host.setupTransition('relink',s.stage)){root.append(el('p','page','アカウント状態を確認できません。保存領域を確認して再起動してください。'));return true;}return show();
+    }
+    if(s?.complete)return false;
     if(!s){root.append(el('p','page','Android の初期設定を読み取れません。ホームを開く前に再起動して確認してください。'));return true;}
     const english=s.locale.startsWith('en');
     const titles=english?['Your place,\nfrom here.','Choose your language','Connect to a network','Check date and time','Bring your Awai\nto this PC.','Your data,\nyour choice.','Protect this PC','You’re ready.']:['あなたの場所を、\nここから。','言語を選択','ネットワークに接続','日時を確認','いつもの Awai を、\nこの PC に。','あなたが決める、\nデータの使い方。','この PC を保護','準備ができました。'];
@@ -30,10 +37,21 @@ export function createSetup({host,domain,root,button,el,icon,notify,render}) {
     if(s.stage===1)rows(panel,[[tr('言語と地域','Language and region'),s.locale,()=>settings('language')]]);
     if(s.stage===2)rows(panel,[[tr('Wi-Fi','Wi-Fi'),network,()=>settings('wifi'),'wifi'],[tr('有線 LAN・端末の接続','Ethernet and connections'),tr('Android のネットワーク設定','Android network settings'),()=>settings('network'),'wifi'],[tr('スマートフォンの共有','Phone tethering'),tr('Wi-Fi ／ USB · 対応機器のみ','Wi-Fi / USB · supported hardware'),()=>settings('tether'),'phone']]);
     if(s.stage===3)rows(panel,[[new Date().toLocaleString(s.locale),s.timeZone,()=>settings('datetime')]]);
-    if(s.stage===4){rows(panel,[[tr('スマートフォンから','From your phone'),tr('iPhone ／ Android で承認','Approve on iPhone / Android'),()=>{detail=true;render();},'phone'],[tr('新しくはじめる','Create a profile'),tr('新しい Awai プロフィール','New Awai profile'),()=>{detail=true;render();},'phone']]);if(detail){const p=el('p','setup-error',tr('端末へのアカウント連携は準備中です。既存の登録は変更していません。接続を確認するか、あとで設定できます。','Device account enrollment is not available yet. Your existing registration is unchanged. Check connections or set up later.'));p.role='status';panel.append(p,button(tr('ネットワークを確認','Check network'),()=>settings('network'),'button text'));}}
-    if(s.stage===5)rows(panel,[[tr('位置情報','Location'),tr('必要なときに確認','Ask when needed')],[tr('診断データの送信','Diagnostics'),tr('送信しない','Not sent')],[tr('プロフィールの同期','Profile sync'),tr('未連携 · あとで設定','Not linked · set up later')]]);
+    if(s.stage===4){
+      rows(panel,[[tr('スマートフォンから','From your phone'),tr('iPhone ／ Android で承認','Approve on iPhone / Android'),()=>{detail=true;render();},'phone'],[tr('新しくはじめる','Create a profile'),tr('スマートフォンでアカウントを用意','Prepare an account on your phone'),()=>{detail=true;render();},'phone']]);
+      if(detail){
+        const state=identity.state;
+        const message=identity.account?tr('署名を確認しました。この端末にアカウントを連携できます。','Signature verified. Link this device to your account.'):state.status==='waiting'?tr('QR を読み取り、スマートフォンで承認してください。','Scan the QR code and approve on your phone.'):state.status==='asking'?tr('中継への接続を確認しています。','Waiting for connection approval.'):['expired','unavailable','denied-or-unavailable','storage-error'].includes(state.status)?tr('連携を完了できませんでした。接続を確認して、もう一度お試しください。','Linking did not complete. Check your connection and retry.'):tr('スマートフォンの署名で、この端末を連携します。','Link this device with your phone’s signature.');
+        const p=el('p','',message);p.role='status';panel.append(p);
+        if(state.status==='waiting'){const qr=el('img','setup-qr');qr.src=state.qr;qr.alt=tr('スマートフォン連携用 QR コード','QR code for phone approval');qr.width=256;qr.height=256;panel.append(qr,el('p','',tr('両画面の確認コード：','Compare on both screens: ')+state.code));}
+        if(identity.account)panel.append(button(tr('このアカウントで続ける','Continue with this account'),()=>move('linked'),'button'));
+        else if(!['asking','waiting','loading'].includes(state.status))panel.append(button(tr('連携を開始','Start linking'),()=>identity.begin(),'button'));
+        panel.append(button(tr('ネットワークを確認','Check network'),()=>settings('network'),'button text'));
+      }
+    }
+    if(s.stage===5)rows(panel,[[tr('位置情報','Location'),tr('必要なときに確認','Ask when needed')],[tr('診断データの送信','Diagnostics'),tr('送信しない','Not sent')],[tr('アカウント','Account'),identity.account?tr('署名を確認済み · データ同期は別に設定','Signature verified · configure sync separately'):tr('未連携 · あとで設定','Not linked · set up later')]]);
     if(s.stage===6)rows(panel,[[s.secure?tr('画面ロック設定済み','Screen lock is set'):tr('PIN を設定','Set a PIN'),tr('この PC のロック解除に使用','Unlock this PC'),()=>settings('lock'),'lock'],[tr('別のロック方法','Other lock methods'),tr('Android の画面ロック設定を開く','Open Android screen lock settings'),()=>settings('lock'),'lock']]);
-    if(s.stage===7)rows(panel,[[tr('言語・地域','Language and region'),s.locale+' · '+s.timeZone],[tr('ネットワーク','Network'),network],[tr('画面ロック','Screen lock'),s.secure?tr('設定済み','Set'):tr('未設定','Not set')],[tr('アカウント','Account'),tr('あとで設定','Set up later')]]);
+    if(s.stage===7)rows(panel,[[tr('言語・地域','Language and region'),s.locale+' · '+s.timeZone],[tr('ネットワーク','Network'),network],[tr('画面ロック','Screen lock'),s.secure?tr('設定済み','Set'):tr('未設定','Not set')],[tr('アカウント','Account'),identity.account?tr('署名を確認済み','Signature verified'):tr('あとで設定','Set up later')]]);
     const nav=el('div','setup-actions');panel.append(nav);
     nav.append(button(s.stage===0?tr('ユーザー補助','Accessibility'):tr('戻る','Back'),()=>s.stage===0?settings('accessibility'):move('back'),'button text'));
     let action=domain.setupNext(JSON.stringify(s));
@@ -48,5 +66,5 @@ export function createSetup({host,domain,root,button,el,icon,notify,render}) {
     page.dataset.motionReduced=String(JSON.parse(host.snapshot()).motionReduced);
     return true;
   }
-  return {render:show,back(){const s=read();if(!s||s.complete)return false;if(detail){detail=false;render();}else if(s.stage>0)move('back');return true;}};
+  return {render:show,back(){const s=read();if(!s||s.complete)return false;if(detail){detail=false;identity?.cancel();render();}else if(s.stage>0)move('back');return true;}};
 }

@@ -25,6 +25,18 @@ function run(db, mode, action) {
   });
 }
 
+export async function verifyDeviceKeyPair(pair) {
+  const key=pair?.privateKey,publicKey=pair?.publicKey;
+  if(key?.type!=="private"||key.extractable!==false||key.algorithm?.name!=="ECDSA"
+      ||key.algorithm.namedCurve!=="P-256"||!key.usages.includes("sign")||publicKey?.type!=="public")
+    throw new Error("device-key-unavailable");
+  const challenge=crypto.getRandomValues(new Uint8Array(32));
+  const signature=await crypto.subtle.sign({name:"ECDSA",hash:"SHA-256"},key,challenge);
+  const verifier=await crypto.subtle.importKey("raw",await crypto.subtle.exportKey("raw",publicKey),{name:"ECDSA",namedCurve:"P-256"},false,["verify"]);
+  if(!await crypto.subtle.verify({name:"ECDSA",hash:"SHA-256"},verifier,signature,challenge))
+    throw new Error("device-key-mismatch");
+}
+
 export async function deviceDid() {
   const db = await open();
   let pair = await run(db, "readonly", (store) => store.get(KEY_ID));
@@ -32,6 +44,8 @@ export async function deviceDid() {
     pair = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
     await run(db, "readwrite", (store) => store.put(pair, KEY_ID));
   }
+  // A copied public link proof is not evidence that this device holds its key.
+  await verifyDeviceKeyPair(pair);
   db.close();
   return p256Did(compressP256(new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey))));
 }

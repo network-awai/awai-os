@@ -17,6 +17,7 @@ test('account enrollment and PIN cannot be manufactured by pressing Next',()=>{
   assert.equal(next({stage:7,secure:false,account:'deferred'}), 'refused');
   assert.equal(next({stage:7,secure:true,account:'unlinked'}), 'refused');
   assert.equal(next({stage:7,secure:true,account:'deferred'}), 'finish');
+  assert.equal(next({stage:7,secure:true,account:'linked'}), 'finish');
 });
 test('stage projection has a bounded unknown fallback',()=>{
   assert.equal(domain.setupStage(0),'welcome');assert.equal(domain.setupStage(6),'lock');
