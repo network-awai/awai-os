@@ -18,8 +18,8 @@
 (def agents-file (System/getenv "MANIMANI_AGENTS"))
 (def tick-ms (parse-long (env "MANIMANI_TICK_MS" "30000")))
 (def llm-timeout-ms (parse-long (env "MANIMANI_LLM_TIMEOUT_MS" "600000")))
-;; A file:// page sends the origin "null". No other page may use this service.
-(def allowed-origins #{"null"})
+;; Only the stable local OS shell origin may operate this service.
+(def allowed-origins #{"http://127.0.0.1:8780"})
 (def max-body 65536)
 
 (defn- load-agents []

@@ -1,0 +1,613 @@
+{
+  "schema": "awai.itonami-vm-rollout-evidence.v1",
+  "issue": "AWAI-2820",
+  "related": [
+    "AWAI-2795",
+    "AWAI-2808",
+    "AWAI-2809"
+  ],
+  "observedAt": "2026-11-12T13:05:58.156Z",
+  "totals": {
+    "registered": 899,
+    "configured": 588,
+    "held": 311,
+    "attention": 1,
+    "queued": 84,
+    "jobsConfigured": 590,
+    "originalJobsConfigured": 2,
+    "adaptedJobsConfigured": 583,
+    "vmJobsConfigured": 2,
+    "vmReplicasHealthy": 2,
+    "confirmedRuns": 506,
+    "sourceJobs": 1637,
+    "linearBound": 890,
+    "circles": 762,
+    "repositoryCircles": 761
+  },
+  "sources": {
+    "readiness": {
+      "state": "fresh",
+      "observedAt": "2026-11-12T13:04:48.464329Z",
+      "ageSeconds": 69,
+      "fresh": true
+    },
+    "original": {
+      "state": "fresh",
+      "observedAt": "2026-11-12T13:04:45.845832Z",
+      "ageSeconds": 72,
+      "fresh": true
+    },
+    "adapted": {
+      "state": "fresh",
+      "observedAt": "2026-11-12T13:04:44.899423Z",
+      "ageSeconds": 73,
+      "fresh": true
+    },
+    "physics": {
+      "state": "fresh",
+      "observedAt": "2026-11-12T13:04:22.940405Z",
+      "ageSeconds": 95,
+      "fresh": true
+    },
+    "material": {
+      "state": "fresh",
+      "observedAt": "2026-11-12T13:05:22.131616Z",
+      "ageSeconds": 36,
+      "fresh": true
+    },
+    "vm": {
+      "state": "fresh",
+      "observedAt": "2026-11-12T13:05:14.031304Z",
+      "ageSeconds": 44,
+      "fresh": true
+    }
+  },
+  "snapshot": {
+    "url": "http://127.0.0.1:8586/itonami-fleet-state-AWAI-2795-v1/vm-material-wave4-20261112130558156.json",
+    "sha256": "f49a1bdadd44e03a5c7306004ee63eca7bc6cfe97b981c3e44744dce38fc9525",
+    "readback": true
+  },
+  "heldGates": {
+    "url": "http://127.0.0.1:8586/itonami-fleet-state-AWAI-2795-v1/held-gates-wave4-20261112130558156.json",
+    "sha256": "7b01668d1bd69dc36d0d28e91121a0022b715d5be2ef975adbd2ac2e2e65b3b9",
+    "readback": true
+  },
+  "proofs": {
+    "observedAt": "2026-11-12T12:46:23.292322Z",
+    "migrations": [
+      {
+        "nodePool": [
+          "vm-levi",
+          "vm-benjamin"
+        ],
+        "sourceProfile": {
+          "layout": "hermes-profile",
+          "repository": "cloud-itonami/cloud-itonami-unspsc-39",
+          "commit": "07fad01c25c466ecded1a0d75e4b1954b06b5a90",
+          "path": "hermes/profiles/physai-unspsc-39",
+          "checksum": "sha256-tree:dbe55d21d59fc2e53d1a3723f06d524ee6906fea8176cb4af26226b2d00f1e3d",
+          "files": [
+            {
+              "path": "SOUL.md",
+              "sha256": "a7ebc2bb3c491a2760e7838c3751a0b6445ca09baf31f1ce693a1f1d8889f807",
+              "bytes": 6598
+            },
+            {
+              "path": "config.yaml",
+              "sha256": "9989657a505622e4ff098ed87aeebdff3389e04b3ec9f7094a8b351b3024e6f0",
+              "bytes": 1183
+            },
+            {
+              "path": "cron/jobs.json",
+              "sha256": "b41a01e04f6df8a86c51f7c160802ccc53bb438955d31901fca6b9c84446276c",
+              "bytes": 2656
+            },
+            {
+              "path": "profile.yaml",
+              "sha256": "8a9b5997f2136ef3c08541790771d7abf658833713bdc083dce5a9e671584921",
+              "bytes": 226
+            },
+            {
+              "path": "scripts/physai_evidence.py",
+              "sha256": "8054149477b8962434d322775dad13443ebeffc40dc3d869e70d3771b99fb6b4",
+              "bytes": 1091
+            },
+            {
+              "path": "scripts/physai_measure.py",
+              "sha256": "abf4b59ccfc889da6a99cc8adb32da7bf6df6add6ecbc0766311a4bfbf83c823",
+              "bytes": 915
+            }
+          ]
+        },
+        "bot": "profile:physai-unspsc-39",
+        "sameInitialSlot": true,
+        "issue": "AWAI-2421",
+        "initiative": "a3ec046c-157a-45ec-bb0e-9c0c9aac4260",
+        "vmRuntimeRevision": "a9a1b2fc147cd7e9e5c640383fa6d72544c3449d",
+        "newCursor": "completed",
+        "sameDailyPhase": true,
+        "oldJob": "a838b5c01f26-otehon-physics-v1",
+        "project": "0a270922-d92d-4617-b621-df38b13f24fe",
+        "oldEnrollmentRetired": true,
+        "vmJob": "a838b5c01f26-otehon-vm-v1",
+        "preferred": "vm-levi",
+        "oldCursorAbsent": true,
+        "sourceRevision": "cbb13ae1299ce3eac7e826b8755e428ac46ea360",
+        "oldAdmitRefused": true
+      },
+      {
+        "nodePool": [
+          "vm-levi",
+          "vm-benjamin"
+        ],
+        "sourceProfile": {
+          "layout": "hermes-profile",
+          "repository": "cloud-itonami/cloud-itonami-unspsc-43",
+          "commit": "a5a7680f82513081166689a0a5f6f4af27e67bd8",
+          "path": "hermes/profiles/physai-unspsc-43",
+          "checksum": "sha256-tree:d19e1c781b6b779f22b1ae3b68b9cfdb06b60fbd7821868481c045e5488c0449",
+          "files": [
+            {
+              "path": "SOUL.md",
+              "sha256": "e089421058adf1b138b7525446ba67a97754446971b1df75e30b870329448152",
+              "bytes": 6675
+            },
+            {
+              "path": "config.yaml",
+              "sha256": "9989657a505622e4ff098ed87aeebdff3389e04b3ec9f7094a8b351b3024e6f0",
+              "bytes": 1183
+            },
+            {
+              "path": "cron/jobs.json",
+              "sha256": "79865697875ffef9e28f1358c70bcf885ab8f306941becf2702e088151789d98",
+              "bytes": 2658
+            },
+            {
+              "path": "profile.yaml",
+              "sha256": "e453a62e16d8946bcee9fdec3ac784bdc0f7d089f832136103ab93ee0f29218d",
+              "bytes": 226
+            },
+            {
+              "path": "scripts/physai_evidence.py",
+              "sha256": "8054149477b8962434d322775dad13443ebeffc40dc3d869e70d3771b99fb6b4",
+              "bytes": 1091
+            },
+            {
+              "path": "scripts/physai_measure.py",
+              "sha256": "abf4b59ccfc889da6a99cc8adb32da7bf6df6add6ecbc0766311a4bfbf83c823",
+              "bytes": 915
+            }
+          ]
+        },
+        "bot": "profile:physai-unspsc-43",
+        "sameInitialSlot": true,
+        "issue": "AWAI-2422",
+        "initiative": "a3ec046c-157a-45ec-bb0e-9c0c9aac4260",
+        "vmRuntimeRevision": "a9a1b2fc147cd7e9e5c640383fa6d72544c3449d",
+        "newCursor": "completed",
+        "sameDailyPhase": true,
+        "oldJob": "872686336f44-otehon-physics-v1",
+        "project": "11271b87-d8a6-4075-a506-ac03e49fa623",
+        "oldEnrollmentRetired": true,
+        "vmJob": "872686336f44-otehon-vm-v1",
+        "preferred": "vm-benjamin",
+        "oldCursorAbsent": true,
+        "sourceRevision": "cbb13ae1299ce3eac7e826b8755e428ac46ea360",
+        "oldAdmitRefused": true
+      }
+    ],
+    "platformResults": [
+      {
+        "run": "awai2820-race-20261112-v1",
+        "replica": "vm-levi",
+        "state": "completed",
+        "id": "race",
+        "cross-node-byte-readback": true,
+        "provider": "none",
+        "pack": {
+          "format": "awai.otehon-store/pack-v1",
+          "car-sha": "ec354ee427dbd68c53c5e979d854a3eadc08dda03925f0a72accb3679e39519c",
+          "root-cid": "bafyreifch5cgovo4i2hfdw3xy4rypveh5n5dslafvfqbnykkcir4pfmw5y",
+          "data-sha": "483d98cf49f240eedd79d05d2502c339e7365f223343d36ddf741ef4ed7f5da5",
+          "size": 2000,
+          "leaf-count": 1
+        },
+        "owner": "vm-benjamin",
+        "model": "deterministic"
+      },
+      {
+        "run": "awai2820-levi-20261112-v1",
+        "replica": "vm-benjamin",
+        "state": "completed",
+        "id": "levi",
+        "cross-node-byte-readback": true,
+        "provider": "none",
+        "pack": {
+          "format": "awai.otehon-store/pack-v1",
+          "car-sha": "2457e716d0fbc44572c77752baca8a69d3e8f4c52a5690b6d6eaa07409958c90",
+          "root-cid": "bafyreifvbrp7mcpip4k46wjkocouux2ctx5s3jhovzmbvl4ns3uxejdgne",
+          "data-sha": "f0b4e37d0f3463af3a8ac25107c9e817209064aa380c5b512d58f7828d4b101c",
+          "size": 1996,
+          "leaf-count": 1
+        },
+        "owner": "vm-levi",
+        "model": "deterministic"
+      },
+      {
+        "run": "awai2820-benjamin-20261112-v1",
+        "replica": "vm-levi",
+        "state": "completed",
+        "id": "benjamin",
+        "cross-node-byte-readback": true,
+        "provider": "none",
+        "pack": {
+          "format": "awai.otehon-store/pack-v1",
+          "car-sha": "05d43285ecdfd8d64b3d28804153fe6effce1cbffffed86b335c7ca9c28b6964",
+          "root-cid": "bafyreiemxgjbieuzle7jbhxscqqef4sef4kblm2cjniellrzdnounref2a",
+          "data-sha": "1c14f042033cefd17590ee8c4af9b2564fee85c9b5bf58c3d5c38528131ff000",
+          "size": 2008,
+          "leaf-count": 1
+        },
+        "owner": "vm-benjamin",
+        "model": "deterministic"
+      }
+    ],
+    "ownerStoppedReadback": {
+      "owner-vm-stopped": true,
+      "replica": "vm-levi",
+      "owner": "vm-benjamin",
+      "car-identical": true,
+      "ref": {
+        "format": "awai.otehon-store/pack-v1",
+        "car-sha": "ec354ee427dbd68c53c5e979d854a3eadc08dda03925f0a72accb3679e39519c",
+        "root-cid": "bafyreifch5cgovo4i2hfdw3xy4rypveh5n5dslafvfqbnykkcir4pfmw5y",
+        "data-sha": "483d98cf49f240eedd79d05d2502c339e7365f223343d36ddf741ef4ed7f5da5",
+        "size": 2000,
+        "leaf-count": 1
+      }
+    },
+    "processRestartReadback": {
+      "vm-process-restart": true,
+      "node": "vm-benjamin",
+      "car-identical": true,
+      "ref": {
+        "format": "awai.otehon-store/pack-v1",
+        "car-sha": "ec354ee427dbd68c53c5e979d854a3eadc08dda03925f0a72accb3679e39519c",
+        "root-cid": "bafyreifch5cgovo4i2hfdw3xy4rypveh5n5dslafvfqbnykkcir4pfmw5y",
+        "data-sha": "483d98cf49f240eedd79d05d2502c339e7365f223343d36ddf741ef4ed7f5da5",
+        "size": 2000,
+        "leaf-count": 1
+      }
+    }
+  },
+  "image": {
+    "sha256": "2821c85b82ac0dda89ce6b1f08394aea32cfb9228ececa62f3e839fe9ae5b51a",
+    "bytes": 1142751232,
+    "producerCompleted": true,
+    "rawCompare": "Images are identical.",
+    "source": "53fbde3",
+    "nixOutput": "/nix/store/40946zh98b3dmylqmdls99hclir6fbjd-awai-itonami-bot-vm-0.1.0-AWAI-2820",
+    "boot": "NixOS26.05pre-git aarch64, failed=0 on both additional VMs",
+    "scope": "additional task-owned VMs; existing guests preserved"
+  },
+  "hosts": [
+    {
+      "host": "levi",
+      "node": "vm-levi",
+      "physicalIdentitySha256": "acde390071fed9fc67cf4db3cc359848147693fc3cd1d60544a59b53cb6f6aba",
+      "privateKeyStayedOnHost": true,
+      "certificateNotAfter": "notAfter=Feb 10 11:45:19 2027 GMT"
+    },
+    {
+      "host": "benjamin",
+      "node": "vm-benjamin",
+      "physicalIdentitySha256": "c23028e31eeab3eb9b54995041eaea630f7888f993ae1061549bf7f4e78b81e5",
+      "privateKeyStayedOnHost": true,
+      "certificateNotAfter": "notAfter=Feb 10 11:45:20 2027 GMT"
+    }
+  ],
+  "guests": [
+    {
+      "host": "levi",
+      "qemu": [
+        {
+          "pid": 17245,
+          "role": "existing-guest"
+        },
+        {
+          "pid": 39720,
+          "role": "AWAI-2820-bot-vm"
+        }
+      ]
+    },
+    {
+      "host": "benjamin",
+      "qemu": [
+        {
+          "pid": 16997,
+          "role": "AWAI-2820-bot-vm"
+        },
+        {
+          "pid": 96445,
+          "role": "existing-guest"
+        }
+      ]
+    }
+  ],
+  "registeredVMJobs": {
+    "observedAt": "2026-11-12T13:06:22.395703Z",
+    "serviceLoaded": true,
+    "states": {
+      "waiting": 2
+    },
+    "jobs": [
+      {
+        "catalog-bot-id": "profile:physai-unspsc-39",
+        "job-id": "a838b5c01f26-otehon-vm-v1",
+        "state": "waiting",
+        "reason": null,
+        "next-slot": 1794495180000,
+        "last-result": {
+          "job-id": "a838b5c01f26-otehon-vm-v1",
+          "catalog-bot-id": "profile:physai-unspsc-39",
+          "linear-result-confirmed": true,
+          "state": "completed",
+          "artifact": {
+            "cid": "bafyreiftwplfo46qu3rbnovjootdcemaxao5dqg26gsmplko262h6lraae",
+            "format": "awai.otehon-store/pack-v1",
+            "sha256": "25002cccf1bc80623568ae68ac89ff6e32f70e4e5e57aaefff73b67e4fc685a9",
+            "readback": true,
+            "url": "http://127.0.0.1:8586/itonami-vm-results-AWAI-2820-v1/25002cccf1bc80623568ae68ac89ff6e32f70e4e5e57aaefff73b67e4fc685a9.car"
+          },
+          "provider": "none",
+          "run-id": "vm-physai-unspsc-39-1794408780000",
+          "domain-result": {
+            "schema": "itonami.otehon.physics-measurement.v1",
+            "probe-summary": {
+              "count": 16,
+              "expected": 16
+            },
+            "compute": "awai-network-vm",
+            "native-tests": "unmeasured",
+            "replica-node": "vm-benjamin",
+            "scope": "pinned-otehon-simulation-only",
+            "source-commit": "07fad01c25c466ecded1a0d75e4b1954b06b5a90",
+            "execution-node": "vm-levi",
+            "status": "measured",
+            "spec-sha": "315d00334c711f53ea1520aab3ae984293c54f182fbdab663ecd2585f75d35c7",
+            "replicas": 2,
+            "actuation": "disabled",
+            "growth": "held"
+          },
+          "model": "deterministic"
+        },
+        "vm-health": [
+          {
+            "node": "vm-levi",
+            "readback": true
+          },
+          {
+            "node": "vm-benjamin",
+            "readback": true
+          }
+        ]
+      },
+      {
+        "catalog-bot-id": "profile:physai-unspsc-43",
+        "job-id": "872686336f44-otehon-vm-v1",
+        "state": "waiting",
+        "reason": null,
+        "next-slot": 1794495300000,
+        "last-result": {
+          "job-id": "872686336f44-otehon-vm-v1",
+          "catalog-bot-id": "profile:physai-unspsc-43",
+          "linear-result-confirmed": true,
+          "state": "completed",
+          "artifact": {
+            "cid": "bafyreieaufdujlcvurzwbrzhylunxuzgvvrntoxpiey2n76qbbfctffega",
+            "format": "awai.otehon-store/pack-v1",
+            "sha256": "538cf2cc888073f8e1263cdf619af1001858e525038ab6740f0f9c2b0631b8ab",
+            "readback": true,
+            "url": "http://127.0.0.1:8586/itonami-vm-results-AWAI-2820-v1/538cf2cc888073f8e1263cdf619af1001858e525038ab6740f0f9c2b0631b8ab.car"
+          },
+          "provider": "none",
+          "run-id": "vm-physai-unspsc-43-1794408900000",
+          "domain-result": {
+            "schema": "itonami.otehon.physics-measurement.v1",
+            "probe-summary": {
+              "count": 15,
+              "expected": 15
+            },
+            "compute": "awai-network-vm",
+            "native-tests": "unmeasured",
+            "replica-node": "vm-levi",
+            "scope": "pinned-otehon-simulation-only",
+            "source-commit": "a5a7680f82513081166689a0a5f6f4af27e67bd8",
+            "execution-node": "vm-benjamin",
+            "status": "measured",
+            "spec-sha": "84f8e21c2f4f75acf88ab660bea5b91a8abeb423511650da0dbd8044067ca92e",
+            "replicas": 2,
+            "actuation": "disabled",
+            "growth": "held"
+          },
+          "model": "deterministic"
+        },
+        "vm-health": [
+          {
+            "node": "vm-levi",
+            "readback": true
+          },
+          {
+            "node": "vm-benjamin",
+            "readback": true
+          }
+        ]
+      }
+    ]
+  },
+  "materialWave": {
+    "sourceRevision": "c14f7d4683d9b17705ca93b96122e275f81e2649",
+    "observedAt": "2026-11-12T13:05:22.131616Z",
+    "serviceLoaded": true,
+    "enrolled": 63,
+    "states": {
+      "waiting": 41,
+      "queued": 22
+    },
+    "firstProofs": [
+      {
+        "catalog-bot-id": "profile:physai-cofog-04-5",
+        "job-id": "cc177efe9edc-otehon-physics-v1",
+        "state": "waiting",
+        "completed-slot": 1794412080000,
+        "last-result": {
+          "job-id": "cc177efe9edc-otehon-physics-v1",
+          "catalog-bot-id": "profile:physai-cofog-04-5",
+          "linear-result-confirmed": true,
+          "state": "completed",
+          "artifact": {
+            "cid": "bafkreig7xsasml7ujetmr4f5wjzxxmm5pjdsqkrktdte2rct5mqfegmata",
+            "sha256": "dfbc81262ff44926c8f0bdb2737bb19d7a47282a2a98e64d4453eb2052198098",
+            "readback": true
+          },
+          "provider": "none",
+          "run-id": "original-physai-cofog-04-5-1794412080000",
+          "domain-result": {
+            "schema": "itonami.otehon.physics-measurement.v1",
+            "probe-summary": {
+              "count": 11,
+              "expected": 11
+            },
+            "native-tests": "unmeasured",
+            "scope": "pinned-otehon-simulation-only",
+            "source-commit": "82f9fd08f0c66968c0e133e28f5b10afda044f9e",
+            "status": "measured",
+            "spec-sha": "b2cd410a00ca80efd9175fe6038bc9cdf34f49820444f34f9a38297f85c4162b",
+            "kind": "physical-simulation",
+            "actuation": "disabled",
+            "growth": "held"
+          },
+          "model": "deterministic"
+        },
+        "next-slot": 1794498480000,
+        "linear-workflow-confirmed": true,
+        "checked-at": 1794486000307
+      },
+      {
+        "catalog-bot-id": "profile:physai-isco-1222",
+        "job-id": "3ff591638701-otehon-physics-v1",
+        "state": "waiting",
+        "completed-slot": 1794413880000,
+        "last-result": {
+          "job-id": "3ff591638701-otehon-physics-v1",
+          "catalog-bot-id": "profile:physai-isco-1222",
+          "linear-result-confirmed": true,
+          "state": "completed",
+          "artifact": {
+            "cid": "bafkreigsfm2paw5usvktnoiklv35t2qlv4qzvjvl4vni45enem6g7xbmmi",
+            "sha256": "d22b34f05bb4955536b90a5d77d9ea0baf219aa6abe55a8e748d233c6fdc2c62",
+            "readback": true
+          },
+          "provider": "none",
+          "run-id": "original-physai-isco-1222-1794413880000",
+          "domain-result": {
+            "schema": "itonami.otehon.physics-measurement.v1",
+            "probe-summary": {
+              "count": 10,
+              "expected": 10
+            },
+            "native-tests": "unmeasured",
+            "scope": "pinned-otehon-simulation-only",
+            "source-commit": "322148bc070af034a9b65e40bea4fa730c5f53e9",
+            "status": "measured",
+            "spec-sha": "f9d0682b456ee7e91920b066e65e82233653abc9cd395cdee4c033e7dea66206",
+            "kind": "physical-simulation",
+            "actuation": "disabled",
+            "growth": "held"
+          },
+          "model": "deterministic"
+        },
+        "next-slot": 1794500280000,
+        "linear-workflow-confirmed": true,
+        "checked-at": 1794486022537
+      }
+    ],
+    "manifestSha256": "867965b0bfd27b41032648977d2f64420a0a31a9379fe6a5b2ae49253d1715a9",
+    "computePlacement": "jun-control; material runtime not yet moved to VM image"
+  },
+  "originalPhysics": {
+    "jobs": 517,
+    "states": {
+      "waiting": 459,
+      "queued": 58
+    },
+    "manifestSha256": "b2276298a53fac168eaf1dab38bcc85f94a9b59f3214562725cf2185c3dc3fb4"
+  },
+  "observer": {
+    "revision": "9f8bcd044870b0a0fd59c1064f70bf45ef717ac7",
+    "manifestSha256": "14a16247477fb6d3753b561ce226db70f99aace60d86d820e3c3bc41b2b65c9a",
+    "archiveSha256": "b8b0e45cf416b9e8f300e87b6859e96d880bb9f301171ca3144774b042dc70ac",
+    "bindings": 590,
+    "label": "network.awai.itonami.fleet-observer.awai2795"
+  },
+  "validation": {
+    "workerTests": "3/19",
+    "hostTests": "2/6",
+    "shellTests": 14,
+    "advancedBuildTargets": 3,
+    "advancedWarnings": 0,
+    "nixFleetGate": "/nix/store/6ddz09mbvc05sziimk7ivkr3p75pvil5-otehon-bot-fleet-check",
+    "opsCodeCI": {
+      "revision": "9f8bcd044870b0a0fd59c1064f70bf45ef717ac7",
+      "conclusion": "SUCCESS"
+    },
+    "itonamiCodeCI": {
+      "revision": "c14f7d4683d9b17705ca93b96122e275f81e2649",
+      "conclusion": "SUCCESS"
+    },
+    "browser": "588/590,2VM jobs/2 current replicated readbacks, actual execution/replica nodes and16/16 probe verified",
+    "screenshot": ".agent-output/soshiki-awai-vm-bot-20261112.jpg"
+  },
+  "boundaries": {
+    "computeVMs": 2,
+    "registeredBotsActuallyInVMs": 2,
+    "schedulingAndLinearRecorder": "jun-control",
+    "occurrenceAuthority": "existing authenticated3-host etcd",
+    "model": "none/deterministic for these scopes",
+    "modelTokens": "not-applicable; coding mixed-session telemetry unknown/unallocated",
+    "privateDistributedFS": "unqualified; public bounded canonical Pack/CAR results only",
+    "maximumPayloadBytes": 921600,
+    "maximumCarBytes": 1048576,
+    "coldBootAndPowerLoss": "unqualified; owned VM process restart tested",
+    "nativeTests": "unmeasured",
+    "growthAndMerge": "held",
+    "actuation": "disabled",
+    "allOtherBotVMMigration": "remaining work",
+    "productionGuestUICutover": "not performed"
+  },
+  "remaining": {
+    "unconfigured": 311,
+    "physicalSpecs": 61,
+    "otherBots": 250,
+    "mailAccount": "still missing",
+    "sourceSet1038": "unreconciled",
+    "tlsAutomaticRenewal": "unqualified; certificates expire2027-02-10"
+  },
+  "knownAttention": [
+    {
+      "id": "profile:cron-health",
+      "jobs": [
+        {
+          "id": "b777d8b13259-itonami-v1",
+          "state": "unobserved-result",
+          "run": "original-cron-health-1794487001000"
+        }
+      ]
+    }
+  ],
+  "operationalNotes": [
+    "Earlier image transfer began before compression finished; hash gate refused activation; completed conversion compared identical to raw, final copies matched; earlier copies retained.",
+    "Disabled launchd label rejected bootstrap; enable-before-bootstrap corrected; current batch drained, no running work interrupted.",
+    "Old selected-wave CLI reported held580 because unselected entries were included; corrected full eligibility582/held61 with selection63, no grant changes."
+  ]
+}

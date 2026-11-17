@@ -59,7 +59,7 @@ public abstract class HostActivity extends Activity {
                 onlineUrls.add(url);
             }
         }catch(Exception absent){onlineUrls.clear();}
-        WebSettings s = web.getSettings(); s.setBlockNetworkLoads(onlineUrls.isEmpty()); s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true);
+        WebSettings s = web.getSettings(); s.setBlockNetworkLoads(onlineUrls.isEmpty()&&!"home".equals(mode())); s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true);
         s.setAllowFileAccess(false); s.setAllowContentAccess(false); s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         s.setSupportMultipleWindows(false); s.setBuiltInZoomControls(true); s.setDisplayZoomControls(false);
         s.setUseWideViewPort(true); s.setLoadWithOverviewMode(true);
@@ -74,12 +74,16 @@ public abstract class HostActivity extends Activity {
             @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest req) {
                 Uri u = req.getUrl(); String path=u.getEncodedPath();
                 if("GET".equals(req.getMethod()) && onlineUrls.contains(u.toString()))return null;
+                if("home".equals(mode())&&"GET".equals(req.getMethod())&&"https".equals(u.getScheme())
+                    &&"relay.awai.network".equals(u.getHost())&&(u.getPort()==-1||u.getPort()==443)
+                    &&u.getUserInfo()==null&&u.getEncodedQuery()==null&&u.getEncodedFragment()==null
+                    &&path!=null&&path.matches("/[0-9a-f]{32}/json"))return null;
                 if (!"GET".equals(req.getMethod()) || !"https".equals(u.getScheme()) || !"appassets.androidplatform.net".equals(u.getHost())
                         || u.getPort()!=-1 || u.getEncodedQuery()!=null || u.getEncodedFragment()!=null || path==null || !path.startsWith("/awai/")) return denied();
                 String file = path.substring(6);
                 if (!assets.contains(file)) return denied();
                 try {
-                    String mime=file.endsWith(".html")?"text/html":file.endsWith(".js")?"text/javascript":file.endsWith(".css")?"text/css":file.endsWith(".svg")?"image/svg+xml":"image/png";
+                    String mime=file.endsWith(".html")?"text/html":file.endsWith(".js")?"text/javascript":file.endsWith(".css")?"text/css":file.endsWith(".svg")?"image/svg+xml":file.endsWith(".woff2")?"font/woff2":"image/png";
                     return new WebResourceResponse(mime,"UTF-8",200,"OK",Collections.singletonMap("Cache-Control","no-store"),getAssets().open(file));
                 } catch (IOException e) { return denied(); }
             }
@@ -90,7 +94,8 @@ public abstract class HostActivity extends Activity {
     }
     private static WebResourceResponse denied() { return new WebResourceResponse("text/plain","UTF-8",403,"Blocked",Collections.emptyMap(),new ByteArrayInputStream(new byte[0])); }
     private void fail(String message) { new AlertDialog.Builder(this).setTitle("Awai").setMessage(message).setPositiveButton("閉じる",(d,w)->finish()).show(); }
-    @Override protected void onResume() { super.onResume(); cachedApps=null; if (ready) web.evaluateJavascript("window.awaiRefresh && window.awaiRefresh()",null); }
+    @Override protected void onPause() { if(web!=null)web.evaluateJavascript("window.awaiVisibility && window.awaiVisibility(true)",null); super.onPause(); }
+    @Override protected void onResume() { super.onResume(); if(web!=null)web.evaluateJavascript("window.awaiVisibility && window.awaiVisibility(false)",null); cachedApps=null; if (ready) web.evaluateJavascript("window.awaiRefresh && window.awaiRefresh()",null); }
     @Override protected void onNewIntent(Intent intent) { super.onNewIntent(intent);setIntent(intent);if(ready&&"home".equals(mode()))web.evaluateJavascript("window.awaiGoHome && window.awaiGoHome()",null); }
     @Override public void onTrimMemory(int level) { super.onTrimMemory(level); if(level>=TRIM_MEMORY_UI_HIDDEN)cachedApps=null; }
     @Override protected void onDestroy() { if(web!=null){web.removeJavascriptInterface("AwaiHost");web.destroy();}super.onDestroy(); }
@@ -115,9 +120,34 @@ public abstract class HostActivity extends Activity {
         }catch(Exception e){message("このアプリは起動できません。");}
     }
     public final class Bridge {
+        @JavascriptInterface public String setupSnapshot(){
+            if(!"home".equals(mode()))return "null";
+            try{return Class.forName("network.awai.home.SetupPlatform").getMethod("snapshot",android.content.Context.class).invoke(null,HostActivity.this).toString();}
+            catch(Exception unavailable){return "null";}
+        }
+        @JavascriptInterface public boolean setupTransition(String action,int expected){
+            if(!"home".equals(mode()))return false;
+            try{return (Boolean)Class.forName("network.awai.home.SetupPlatform").getMethod("transition",android.content.Context.class,String.class,int.class).invoke(null,HostActivity.this,action,expected);}
+            catch(Exception unavailable){return false;}
+        }
+        @JavascriptInterface public void setupSettings(String kind){
+            if(!"home".equals(mode()))return;
+            runOnUiThread(()->{
+                String action="language".equals(kind)?Settings.ACTION_LOCALE_SETTINGS:
+                    "network".equals(kind)?Settings.ACTION_WIRELESS_SETTINGS:
+                    "wifi".equals(kind)?Settings.ACTION_WIFI_SETTINGS:
+                    "tether".equals(kind)?Settings.ACTION_WIRELESS_SETTINGS:
+                    "datetime".equals(kind)?Settings.ACTION_DATE_SETTINGS:
+                    "accessibility".equals(kind)?Settings.ACTION_ACCESSIBILITY_SETTINGS:
+                    "lock".equals(kind)?android.app.admin.DevicePolicyManager.ACTION_SET_NEW_PASSWORD:null;
+                if(action==null)return;
+                try{startActivity(new Intent(action));}catch(ActivityNotFoundException unavailable){message("対応する Android 設定が見つかりません。");}
+            });
+        }
         @JavascriptInterface public String snapshot(){try{
             JSONObject o=new JSONObject();o.put("mode",mode());o.put("platform","android");o.put("runtime","android");o.put("apps","home".equals(mode())?launchable():new JSONArray());
             JSONObject installed=new JSONObject();try{installed.put("network.itonami.yotei",getPackageManager().getPackageInfo("network.itonami.yotei",0).getLongVersionCode());}catch(PackageManager.NameNotFoundException absent){}
+            o.put("motionReduced",Settings.Global.getFloat(getContentResolver(),Settings.Global.ANIMATOR_DURATION_SCALE,1f)==0f || getSystemService(PowerManager.class).isPowerSaveMode());
             o.put("installed",installed);RoleManager roles=getSystemService(RoleManager.class);o.put("isDefaultHome",roles!=null&&roles.isRoleHeld(RoleManager.ROLE_HOME));
             JSONArray agenda=new JSONArray();if("home".equals(mode())){try(Cursor c=getContentResolver().query(Uri.parse("content://network.itonami.yotei.agenda/events"),null,null,null,null)){if(c!=null&&c.moveToFirst())agenda=new JSONArray(c.getString(0));}catch(Exception absent){}}
             o.put("agenda",agenda);o.put("catalogOnline","store".equals(mode())&&getSharedPreferences("online",0).contains("raw"));String msg=getSharedPreferences("host",0).getString("message","");o.put("message",msg);getSharedPreferences("host",0).edit().remove("message").apply();return o.toString();
@@ -125,6 +155,7 @@ public abstract class HostActivity extends Activity {
         @JavascriptInterface public String catalog(){try{return "store".equals(mode())?trustedCatalog().json():"{\"apps\":[]}";}catch(Exception invalid){return "{}";}}
         @JavascriptInterface public void launch(String id){runOnUiThread(()->launchPackage(id));}
         @JavascriptInterface public void openStore(){runOnUiThread(()->launchPackage("network.awai.store"));}
+        @JavascriptInterface public void openAppearance(){if(!"home".equals(mode()))return;runOnUiThread(()->{Intent i=new Intent();i.setClassName(getPackageName(),"network.awai.home.AppearanceActivity");startActivity(i);});}
         @JavascriptInterface public void openSettings(){runOnUiThread(()->startActivity(new Intent(Settings.ACTION_SETTINGS)));}
         @JavascriptInterface public void launchCategory(String category){runOnUiThread(()->{
             Intent q="phone".equals(category)?new Intent(Intent.ACTION_DIAL):"browser".equals(category)?new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_BROWSER):"camera".equals(category)?new Intent("android.media.action.STILL_IMAGE_CAMERA"):null;
@@ -141,21 +172,25 @@ public abstract class HostActivity extends Activity {
                 JSONObject pins=new JSONObject(new String(Integrity.read(getAssets().open("online-pins.json"),16384),StandardCharsets.UTF_8));
                 JSONObject envelope=new JSONObject();envelope.put("raw",raw);envelope.put("signature",signature);
                 // The exact release envelope is digest-pinned by the browser; host independently pins APK bytes and metadata signer.
-                JSONObject artifact=null;JSONArray entries=candidate.getJSONArray("apps").getJSONObject(0).getJSONArray("artifacts");
-                for(int i=0;i<entries.length();i++)if("android".equals(entries.getJSONObject(i).getString("platform")))artifact=entries.getJSONObject(i);
+                // Pin-driven lookup across admitted apps: catalog order never grants admission.
+                JSONObject artifact=null;JSONArray listed=candidate.getJSONArray("apps");
+                for(int j=0;j<listed.length()&&artifact==null;j++){try{Catalog.assetFor(listed.getJSONObject(j).getString("id"));}catch(SecurityException unadmitted){continue;}
+                    JSONArray entries=listed.getJSONObject(j).getJSONArray("artifacts");
+                    for(int i=0;i<entries.length();i++)if("android".equals(entries.getJSONObject(i).getString("platform")))artifact=entries.getJSONObject(i);}
                 if(artifact==null||!artifact.getString("sha256").equals(pins.getJSONObject("apk").getString("sha256")))throw new SecurityException("unpinned-artifact");
                 return getSharedPreferences("online",0).edit().putString("raw",raw).putString("signature",signature).putLong("highest",revision).commit()?"ok":"refused";
             }catch(Exception invalid){return "refused";}
         }
         @JavascriptInterface public boolean hasOnlineApk(String id){if(!"store".equals(mode()))return false;try{Catalog c=trustedCatalog();if(!c.online)return false;c.verifiedApk(HostActivity.this,id);return true;}catch(Exception absent){return false;}}
         @JavascriptInterface public String stageOnlineApk(String id,String encoded){
-            if(!"store".equals(mode())||encoded==null||encoded.length()>28*1024*1024)return "refused";
+            int budget;try{budget=Catalog.maxApkBytes(id);}catch(SecurityException unadmitted){return "refused";}
+            if(!"store".equals(mode())||encoded==null||encoded.length()>(long)budget*4/3+64)return "refused";
             File temporary=null;
             try{Catalog c=trustedCatalog();if(!c.online)throw new SecurityException();JSONObject a=c.artifact(id);
                 byte[] bytes=android.util.Base64.decode(encoded,android.util.Base64.DEFAULT);
-                if(bytes.length>20*1024*1024||bytes.length!=a.getLong("bytes")||!Integrity.sha256(bytes).equals(a.getString("sha256")))throw new SecurityException();
+                if(bytes.length>budget||bytes.length!=a.getLong("bytes")||!Integrity.sha256(bytes).equals(a.getString("sha256")))throw new SecurityException();
                 temporary=File.createTempFile("online-", ".apk",getFilesDir());try(FileOutputStream output=new FileOutputStream(temporary)){output.write(bytes);output.getFD().sync();}
-                if(!temporary.renameTo(new File(getFilesDir(),"online-yotei.apk")))throw new IOException();
+                if(!temporary.renameTo(new File(getFilesDir(),Catalog.onlineFileFor(id))))throw new IOException();
                 c.verifiedApk(HostActivity.this,id);return "ok";
             }catch(Exception invalid){if(temporary!=null)temporary.delete();return "refused";}
         }

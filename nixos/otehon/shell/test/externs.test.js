@@ -13,10 +13,12 @@ const externsPath = path.join(root, "externs/otehon-shell.js");
 // device binding) keep the original spelling. That mismatch boots in dev
 // and fails in release, so this test guards the release-only behavior.
 const CONTRACT_KEYS = [
+  "aliasOperations", "MAIL_ORIGIN", "aliasId", "aliases", "backend", "basis", "counterparty", "engine", "epoch", "headCid", "principalId", "routing",
   "schema", "target", "profile", "entry", "operations",
   "adapter", "version",
   "capability", "service", "operation", "consent", "endpoint",
   "origin", "routes", "method", "path",
+  "totalNodes", "totalBots", "pages", "circleCount", "counts", "radius", "x", "y",
 ];
 
 function cljsProps(src) {
@@ -69,6 +71,7 @@ test("externs cover every plain-JS boundary property", async () => {
   const jsFiles = [
     "src/runtime.js", "src/trust.js", "src/soshiki.js", "src/media.js",
     "src/net.js", "src/display.js", "src/sound.js", "src/status.js",
+    "src/soshiki-runtime.js", "src/soshiki-fleet.js", "src/fleet-projection.js", "src/fleet-circles.js", "src/bot-cycle.js", "src/fleet-organizations.js", "src/fleet-responsibilities.js", "src/ui-copy.js", "src/fleet-activity.js", "src/bot-chat.js", "src/agent-directory.js", "src/agent-ui-state.js",
     "src/saifu-host.js", "src/voice-input.js", "src/csp.js",
     "src/identity/link.js", "src/identity/device.js", "src/identity/wallet.js",
   ];

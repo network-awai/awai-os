@@ -1,0 +1,12 @@
+{
+  "identifier": "itonami-local",
+  "description": "Host discovery, bounded setup completion marker and explicit local inference handoff; no authentication grants or arbitrary file access.",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "allow-awai-host-info",
+    "allow-awai-local-inference",
+    "allow-awai-setup-state"
+  ]
+}

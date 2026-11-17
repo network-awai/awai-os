@@ -119,6 +119,12 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npm test
+      - name: Check Android setup and signed account-link source contracts
+        # Otehon source checks only. No account, relay request, emulator or physical device.
+        run: |
+          node android/build-identity.mjs
+          git diff --exit-code -- android/client/generated/identity.js
+          node --test android/tests/identity.test.mjs android/tests/setup.test.mjs android/tests/domain.test.mjs android/tests/online.test.mjs nixos/otehon/shell/test/link.test.js nixos/otehon/shell/test/device.test.js
       - name: Test read-only mobile inventory and report I/O refusal
         run: sh scripts/otehon-mobile/test-collect-p0.sh
       - name: Test the restricted Saifu guest bridge
@@ -145,5 +151,21 @@ jobs:
           bash -n nixos/otehon/update.sh
           nix-instantiate --eval --strict --json --expr 'import ./tests/otehon-update-eval.nix { nixpkgsPath = import ./ci/nixpkgs.nix; }'
           nix-instantiate --eval --strict --json --expr 'import ./tests/otehon-usb-eval.nix { nixpkgsPath = import ./ci/nixpkgs.nix; }'
+      - name: Test Otehon bot work bindings and deduplicated usage receipts
+        # Pure source checks only; no Muse, GitHub, Linear or live fleet calls.
+        run: |
+          fleet_check=$(nix-build nixos/otehon/bot-fleet/check.nix --no-out-link)
+          cat "$fleet_check/core-tests.txt" "$fleet_check/receipt-tests.txt"
+          observation_check=$(nix-build nixos/otehon/node-observation/check.nix --no-out-link)
+          cat "$observation_check/tests.txt"
+      - name: Test the Otehon Agent conversation database over AwaiFS
+        run: |
+          chat_check=$(nix-build nixos/otehon/bot-chat/check.nix --no-out-link)
+          cat "$chat_check"
       - name: Evaluate every Otehon profile, aarch64 and the x86_64 vm
         run: sh nixos/otehon/eval-profiles.sh .
+      - name: Test bounded Meiji controller and inference protocol (no VM or GPU)
+        # Otehon Babashka path; Native checks above do not depend on this job.
+        run: |
+          meiji_check=$(nix-build nixos/otehon/meiji/check.nix --no-out-link)
+          cat "$meiji_check"

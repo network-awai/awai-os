@@ -1,4 +1,5 @@
 import './domain.js';
+import {createSetup} from './setup.js';
 import './catalog-data.js';
 import './online-data.js';
 import {createOnline,authenticateCatalog} from './online.js';
@@ -24,7 +25,7 @@ let query = '';
 let filter = 'おすすめ';
 let statusTimer;
 const paths = { search:'android-v2-icon-search.svg', apps:'android-v2-icon-apps.svg', camera:'android-v2-icon-camera.svg',
-  phone:'android-v2-icon-phone.svg', settings:'android-v2-icon-settings.svg', store:'android-v2-icon-store.svg',
+  phone:'android-v2-icon-phone.svg', wifi:'android-v2-icon-wifi.svg', settings:'android-v2-icon-settings.svg', store:'android-v2-icon-store.svg',
   calendar:'android-v2-icon-calendar.svg', chat:'android-v2-icon-chat.svg', cloud:'store-android-v2-icon-cloud.svg', download:'store-android-v2-icon-download.svg' };
 
 function el(tag, cls, text) { const n=document.createElement(tag); if(cls)n.className=cls; if(text!==undefined)n.textContent=text; return n; }
@@ -42,12 +43,30 @@ function launch(id) { if(host){host.launch(id);return;} if(id==='network.itonami
 function launchCategory(category) { if(host)host.launchCategory(category);else notify('Android の端末操作です。'); }
 function openYotei(){if(native.platform==='nixos'&&readLocal('itonami.store.enabled.v1',{})['network.itonami.yotei'])navigate('yotei');else if(native.installed['network.itonami.yotei'])launch('network.itonami.yotei');else mode==='home'&&host?host.openStore():navigate('detail');}
 function nextEvent() { const events=mode==='yotei'?readLocal('itonami.yotei.events.v1',[]):(native.agenda||[]);return domain.nextEvent(JSON.stringify(events),Date.now()); }
+let firstHomeAppearance=true;
+let motionEnabled=readLocal('awai.home.motion.v1',true)!==false;
+let hostHidden=false;
+function syncMotion(){
+  document.documentElement.dataset.homeMotion=String(motionEnabled&&!native.motionReduced&&!hostHidden&&!document.hidden&&route==='home');
+}
+document.addEventListener('visibilitychange',syncMotion);
+window.awaiVisibility=hidden=>{hostHidden=hidden;syncMotion();};
 function home() {
   const p=el('section','page home');root.append(p);
+  if(firstHomeAppearance&&!native.motionReduced){p.classList.add('first-appearance');firstHomeAppearance=false;}
+  const atmosphere=el('div','home-atmosphere');atmosphere.setAttribute('aria-hidden','true');
+  const artwork=el('img');artwork.src='assets/awai-original-source-wallpaper.png';artwork.alt='';atmosphere.append(artwork);p.append(atmosphere);
   const date=el('p','date',new Intl.DateTimeFormat('ja-JP',{month:'long',day:'numeric',weekday:'long'}).format(new Date()));
-  const time=el('h1','clock',new Intl.DateTimeFormat('ja-JP',{hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date()));time.tabIndex=-1;p.append(date,time);
+  const time=el('h1','clock',new Intl.DateTimeFormat('ja-JP',{hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date()));time.tabIndex=-1;
+  const heading=el('div','home-heading');const motion=button('',()=>{
+    motionEnabled=!motionEnabled;
+    try{writeLocal('awai.home.motion.v1',motionEnabled);}catch{notify('この回の設定を反映しました。設定の保存はできませんでした。');}
+    labelMotion();syncMotion();
+  },'motion-control');
+  function labelMotion(){motion.textContent=native.motionReduced?'背景は静止':motionEnabled?'背景を停止':'背景を再生';motion.disabled=!!native.motionReduced;}
+  labelMotion();heading.append(date,motion);p.append(heading,time);
   const w=button('',openYotei,'card');const event=nextEvent();w.append(el('span','caption primary-text',event?'次の予定':'予定を、手元に。'),el('span','',event?`${new Intl.DateTimeFormat('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(event.at))}  ${event.title}`:native.installed['network.itonami.yotei']?'まだ予定はありません':'Yotei を Store から追加できます'),el('span','caption muted',event?'あとで、自分のペースで。':'この端末に保存。外部には送信しません。'));p.append(w,el('div','space'));
-  const apps=el('div','app-grid');apps.append(appButton('Store','store',()=>host?host.openStore():navigate('discover')),appButton(native.installed['network.itonami.yotei']?'Yotei':'Yotei を追加','calendar',openYotei),appButton('設定','settings',()=>host?host.openSettings():notify('Android の端末設定です。')),appButton('すべて','apps',()=>navigate('apps')));p.append(apps);
+  const apps=el('div','app-grid');apps.append(appButton('Store','store',()=>host?host.openStore():navigate('discover')),appButton(native.installed['network.itonami.yotei']?'Yotei':'Yotei を追加','calendar',openYotei),appButton('設定','settings',()=>host?host.openAppearance():notify('Android の端末設定です。')),appButton('すべて','apps',()=>navigate('apps')));p.append(apps);
   const bottom=el('div','home-bottom');const dock=el('nav','app-grid dock');dock.setAttribute('aria-label','よく使うアプリ');dock.append(appButton('電話','phone',()=>launchCategory('phone')),appButton('ブラウザ','search',()=>launchCategory('browser')),appButton('カメラ','camera',()=>launchCategory('camera')),appButton('すべて','apps',()=>navigate('apps')));bottom.append(dock);
   const sb=button('',()=>navigate('apps'),'search-box home-search');sb.append(icon('search'),el('span','muted','この端末を検索'));bottom.append(sb);p.append(bottom);
   if(host&&!native.isDefaultHome){p.append(button('Awai をホームに設定',()=>host.chooseHome(),'button tonal'));}
@@ -69,10 +88,11 @@ function library(updates=false){const p=page(updates?'アプリの更新':'ラ�
 function saveEvents(events){writeLocal('itonami.yotei.events.v1',events);if(host&&mode==='yotei')host.persistEvents(JSON.stringify(events));}
 function yotei(){const p=page('Yotei',mode==='yotei'?null:()=>navigate('library'));p.append(el('p','muted','予定を、手元に。'),button('予定を追加',()=>eventForm()));const events=readLocal('itonami.yotei.events.v1',[]);const list=el('ul','events');for(const event of events){const li=el('li','event');li.append(el('p','label primary-text',new Intl.DateTimeFormat('ja-JP',{dateStyle:'medium',timeStyle:'short'}).format(new Date(event.at))),el('h2','',event.title),button('予定を削除',()=>{const d=document.createElement('dialog');d.append(el('h2','','この予定を削除しますか？'),button('削除',()=>{saveEvents(events.filter(x=>x.id!==event.id));d.close();d.remove();render();},'button danger'),button('残す',()=>{d.close();d.remove();},'button tonal'));document.body.append(d);d.showModal();},'button text'));list.append(li);}if(!events.length)p.append(el('p','empty muted','まだ予定はありません。追加した予定はこの端末に保存されます。'));p.append(list,el('p','caption muted','通知の配信・外部同期は、この版では行いません。'));}
 function eventForm(){const d=document.createElement('dialog'),f=el('form');f.method='dialog';const heading=el('h2','','予定を追加');f.append(heading);const title=el('input');title.id='event-title';title.name='title';title.required=true;title.maxLength=160;const tf=el('div','field'),tl=el('label','','予定の名前');tl.htmlFor=title.id;tf.append(tl,title);const date=el('input');date.type='datetime-local';date.id='event-date';date.name='date';date.required=true;date.value=new Date(Date.now()+3600000-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);const df=el('div','field'),dl=el('label','','日時');dl.htmlFor=date.id;df.append(dl,date);const submit=el('button','button','保存');submit.type='submit';f.append(tf,df,submit,button('キャンセル',()=>{d.close();d.remove();},'button tonal'));f.addEventListener('submit',e=>{e.preventDefault();if(!f.reportValidity())return;const entry={id:crypto.randomUUID(),title:title.value.trim(),at:new Date(date.value).getTime()};const result=JSON.parse(domain.saveEvent(JSON.stringify(readLocal('itonami.yotei.events.v1',[])),JSON.stringify(entry)));if(result.error){notify('予定の名前と日時を確認してください。');return;}try{saveEvents(result.events);d.close();d.remove();render();notify('予定を保存しました。');}catch{notify('保存できませんでした。元の予定は保持しています。');}});d.append(f);d.addEventListener('close',()=>d.remove(),{once:true});document.body.append(d);d.showModal();title.focus();}
-function render(){refresh();root.replaceChildren();if(mode==='store'&&!domain.validCatalog(JSON.stringify(catalog),Math.floor(Date.now()/1000))){const p=page('追加を停止しました');p.append(el('p','','カタログの有効期限または内容を確認できません。署名済みの Store を更新してください。'));return;}({home,apps:drawer,discover,detail,review,library,updates:()=>library(true),yotei}[route]||discover)();}
+const setup = createSetup({host,domain,root,button,el,icon,notify,render:()=>render()});
+function render(){refresh();syncMotion();root.replaceChildren();if(mode==='home'&&setup.render())return;if(mode==='store'&&!domain.validCatalog(JSON.stringify(catalog),Math.floor(Date.now()/1000))){const p=page('追加を停止しました');p.append(el('p','','カタログの有効期限または内容を確認できません。署名済みの Store を更新してください。'));return;}({home,apps:drawer,discover,detail,review,library,updates:()=>library(true),yotei}[route]||discover)();}
 window.awaiRefresh=()=>{try{render();if(native.message)notify(native.message);}catch{notify('表示を更新できません。端末の戻る操作でやり直してください。');}};
 window.awaiGoHome=()=>navigate('home');
-window.awaiBack=()=>{const dialog=document.querySelector('dialog[open]');if(dialog){dialog.close();return true;}if(route==='home'||(mode==='store'&&route==='discover')||(mode==='yotei'&&route==='yotei'))return false;navigate(mode==='home'?'home':mode==='yotei'?'yotei':'discover');return true;};
+window.awaiBack=()=>{if(mode==='home'&&setup.back())return true;const dialog=document.querySelector('dialog[open]');if(dialog){dialog.close();return true;}if(route==='home'||(mode==='store'&&route==='discover')||(mode==='yotei'&&route==='yotei'))return false;navigate(mode==='home'?'home':mode==='yotei'?'yotei':'discover');return true;};
 async function bootstrap(){
   if(!host){
     try{

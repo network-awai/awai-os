@@ -9,3 +9,11 @@ await copyFile(
   new URL("../vendor/kotoba-client-runtime.js", import.meta.url),
   new URL("../src/vendor-runtime.gen.js", import.meta.url),
 );
+
+// Exact product adapter from packages/awai-inference, vendored for the isolated Nix shell closure.
+const {readFile}=await import('node:fs/promises');
+const {createHash}=await import('node:crypto');
+const inference=new URL('../vendor/awai-inference-client.js',import.meta.url);
+const pin=JSON.parse(await readFile(new URL('../vendor/INFERENCE-PINS.json',import.meta.url),'utf8'));
+if(createHash('sha256').update(await readFile(inference)).digest('hex')!==pin.sha256)throw Error('inference-client-pin-drift');
+await copyFile(inference,new URL('../src/inference-client.gen.js',import.meta.url));

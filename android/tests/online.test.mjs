@@ -27,3 +27,15 @@ test('catalog signature, expiry and highest accepted revision fail closed',async
  await assert.rejects(authenticateCatalog(envelope,key,domain,NaN));
  const old=JSON.stringify({...JSON.parse(raw),expiresAt:1});await assert.rejects(authenticateCatalog({raw:old,signature:sign('sha256',Buffer.from(old),privateKey).toString('base64')},key,domain));
 });
+test('two-app catalog authenticates and tampering with either entry fails closed',async()=>{
+ const {privateKey,publicKey}=generateKeyPairSync('rsa',{modulusLength:2048});const key=publicKey.export({type:'spki',format:'der'}).toString('base64');
+ const apk=(id,asset,bytes)=>({id,name:id,versionName:'0.1.0',versionCode:2,publisher:'Awai Otehon 開発版',artifacts:[{platform:'android',runtime:'android',kind:'apk',asset,bytes,sha256:'a'.repeat(64),signerSha256:'b'.repeat(64)}]});
+ const two=JSON.stringify({schema:'itonami.store.bundled.v1',revision:101,expiresAt:Math.floor(Date.now()/1000)+60,
+  apps:[apk('network.itonami.yotei','packages/yotei.apk',1621048),apk('network.itonami.app','packages/itonami.apk',32644749)]});
+ const envelope={raw:two,signature:sign('sha256',Buffer.from(two),privateKey).toString('base64')};
+ assert.deepEqual((await authenticateCatalog(envelope,key,domain,101)).apps.map(a=>a.id),['network.itonami.yotei','network.itonami.app']);
+ const cut=JSON.stringify({...JSON.parse(two),apps:JSON.parse(two).apps.slice(0,1)});
+ await assert.rejects(authenticateCatalog({...envelope,raw:cut},key,domain));
+ const swapped=two.replace('packages/itonami.apk','packages/evil.apk');
+ await assert.rejects(authenticateCatalog({...envelope,raw:swapped},key,domain));
+});

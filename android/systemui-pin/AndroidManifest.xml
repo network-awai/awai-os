@@ -1,0 +1,7 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="network.awai.systemui.pin" android:versionCode="1" android:versionName="0.1.0">
+  <uses-sdk android:minSdkVersion="37" android:targetSdkVersion="37"/>
+  <application android:hasCode="false" android:label="Awai PIN appearance"/>
+  <overlay android:targetPackage="com.android.systemui" android:resourcesMap="@xml/overlays"
+      android:isStatic="false" android:priority="100"/>
+</manifest>

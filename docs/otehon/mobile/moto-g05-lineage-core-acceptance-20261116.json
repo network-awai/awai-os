@@ -1,0 +1,49 @@
+{
+  "schema": "awai.mobile.core-acceptance.v1",
+  "device": "Motorola moto g05",
+  "sku": "XT2523-5",
+  "region": "retjp",
+  "lineage_version": "24.0-20261112-NIGHTLY-lamu",
+  "android_release": "17",
+  "android_sdk": 37,
+  "security_patch": "2026-11-01",
+  "boot_completed": true,
+  "active_slot": "b",
+  "vbmeta_device_state": "unlocked",
+  "verified_boot_state": "orange",
+  "factory_mode": 0,
+  "flash_locked_property": null,
+  "flash_locked_note": "empty, not interpreted as zero",
+  "display_physical_px": [
+    720,
+    1604
+  ],
+  "density_dpi": 280,
+  "battery": {
+    "external_power_reported_as": "AC",
+    "status": "full",
+    "level_percent": 100,
+    "temperature_c": 29.0
+  },
+  "user_confirmed": {
+    "lineage_first_boot": true,
+    "wifi_browser_access": true,
+    "display_and_touch": true,
+    "charging_display": true,
+    "normal_reboot_and_wifi_after_reboot": true,
+    "usb_debugging_allowed": true
+  },
+  "host_evidence": "explicit-target ADB legacy shell after user allowed debugging; persistent unlocked/no-spoof Fastboot verified before OS install",
+  "install_evidence": {
+    "recovery_factory_reset": "user-reported complete",
+    "zip_install_result": "user-reported Install completed/status0/add-on prompt",
+    "host_sideload_result": "watchdog timeout at900.037s; retained as failure/unknown transfer completion, not rewritten"
+  },
+  "unqualified": [
+    "SIM/telephony",
+    "Bluetooth/GPS/camera/fingerprint",
+    "full rollback after Lineage installation",
+    "Awai Android shell/apps implementation"
+  ],
+  "preserved_evidence": "17 initial original partitions plus fresh pretrial snapshots remain private; no cleanup/deletion"
+}

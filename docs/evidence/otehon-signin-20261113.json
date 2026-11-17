@@ -1,0 +1,37 @@
+{
+  "issue": "AWAI-2808",
+  "date": "2026-11-13",
+  "baseline": "9d63b4fb87cf742bb9411f9af56f31386e6c5cd1",
+  "scope": "Otehon local HTTP preview phone sign-in",
+  "reproduction": {
+    "observed": "Phone QR rendering crashed the React tree with TypeError: yq.default is not a function",
+    "cause": "qrcode-generator exports a callable CommonJS module; the CLJS :default import called a nonexistent .default property in the advanced browser bundle"
+  },
+  "changes": [
+    "Use the callable module import for QR generation",
+    "Explain manual signature steps when this browser has no wallet",
+    "Show phone sign-in preparation state",
+    "Keep the existing public Bot status view reachable from the sign-in step"
+  ],
+  "verification": {
+    "httpBuild": "shell/link/soshiki-runtime advanced builds: all pass, zero compiler warnings",
+    "qrRegression": "npm run test:setup: actual QR component renders SVG and encoded modules after advanced compilation; no relay or identity involved",
+    "nodeTests": "node --test test/link.test.js test/externs.test.js test/csp.test.js: 18 passed",
+    "browser": "Corrected local preview showed phone QR, confirmation code and waiting state; later observed Trust Score, setup step 5/6, after authentication. Agent did not approve the operation or supply identity credentials.",
+    "authentication": "Observed authenticated setup progression; desktop entry and subsequent app operations remain separate checks"
+  },
+  "boundaries": [
+    "No authentication bypass, new guest mode, relay endpoint change or persisted consent",
+    "No production OS guest image publication, merge or route cutover",
+    "Screenshot kept in local task evidence only; no wallet address, QR challenge, signature or session copied into this record"
+  ],
+  "diskRecovery": {
+    "removed": ["task-generated bot-vm-53fbde3.raw", "task-generated bot-vm-53fbde3.qcow2"],
+    "preserved": "bot-vm-53fbde3-compressed.qcow2",
+    "preservedSha256": "2821c85b82ac0dda89ce6b1f08394aea32cfb9228ececa62f3e839fe9ae5b51a",
+    "verification": "Both logical images matched the preserved compressed image with qemu-img compare; lsof showed no open use of the three named files immediately before removal",
+    "availableBefore": "116 MiB",
+    "availableAfter": "5.4 GiB",
+    "worktreesBranchesStashesRemoved": 0
+  }
+}

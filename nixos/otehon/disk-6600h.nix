@@ -66,6 +66,9 @@ in
   # Fresh installed homes expose the bounded local AwaiFS volume through the
   # standard Documents picker. Existing preferences/data are never migrated.
   otehon.drive.enable = lib.mkDefault true;
+  # The setup shell is one window: extended outputs otherwise show a blank
+  # desktop on the monitor the owner is using (AWAI-2965).
+  otehon.mirrorStartupOutputs = lib.mkDefault true;
 
   system.image.id = lib.mkForce "awai-otehon-6600h";
   system.image.version = lib.mkForce (lib.removeSuffix "\n" (builtins.readFile ./installer-version.txt));

@@ -10,7 +10,9 @@
   h1 { font-size:1.5rem; font-weight:500; }
   h2 { font-size:1.25rem; font-weight:500; }
   img { display:block; flex:none; }
-  .startup { padding:2rem; }
+  .startup { min-block-size:100dvh; padding:2rem; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:.75rem; }
+  .startup img { border-radius:32px; }
+  .startup h1 { font-size:2rem; letter-spacing:.06em; }
   #app { min-block-size:100dvh; }
   #status { position:fixed; inset-block-end:1.5rem; inset-inline:1.5rem; z-index:3; padding:.75rem 1rem; border-radius:1rem; background:var(--text); color:var(--background); pointer-events:none; }
   #status:empty { display:none; }
@@ -19,9 +21,19 @@
   .page { inline-size:min(100%,48rem); margin-inline:auto; padding:1.5rem; min-block-size:100dvh; display:flex; flex-direction:column; gap:1.25rem; container:page / inline-size; }
   .page.with-nav { padding-block-end:7rem; }
   .home { min-block-size:100dvh; position:relative; isolation:isolate; display:flex; flex-direction:column; gap:.75rem; }
-  .home::before { content:""; position:fixed; inset:0; background:url("assets/awai-original-source-wallpaper.png") center/cover no-repeat; opacity:.13; z-index:-1; pointer-events:none; }
+  .home-atmosphere { position:fixed; inset:0; overflow:hidden; z-index:-1; pointer-events:none; }
+  .home-atmosphere img { inline-size:100%; block-size:100%; object-fit:cover; opacity:.13; transform:scale(1.045); }
+  .home-heading { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.75rem; }
+  .motion-control { flex:none; border-radius:999px; padding:.5rem .75rem; font-size:.75rem; color:var(--muted); background:var(--surface); }
+  @keyframes awai-atmosphere { 0%,100% { transform:scale(1.045) translate(-.6%,.3%); } 50% { transform:scale(1.075) translate(.6%,-.3%); } }
+  @keyframes awai-arrive { from { opacity:.6; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+  @media (prefers-reduced-motion:no-preference) {
+    .home-atmosphere img { animation:awai-atmosphere 32s ease-in-out infinite; animation-play-state:paused; }
+    :root[data-home-motion=true] .home-atmosphere img { animation-play-state:running; }
+    :root[data-home-motion=true] .home.first-appearance > :not(.home-atmosphere) { animation:awai-arrive .36s ease-out both; }
+  }
   .date { font-size:.875rem; font-weight:500; }
-  .clock { font-size:4.5rem; font-weight:300; letter-spacing:-.02em; line-height:1.45; font-variant-numeric:tabular-nums; }
+  .clock { font-size:min(4.5rem,23cqi); white-space:nowrap; font-weight:300; letter-spacing:-.02em; line-height:1.45; font-variant-numeric:tabular-nums; }
   .card { padding:1.25rem; border-radius:28px; background:var(--surface); display:flex; flex-direction:column; gap:.5rem; }
   .card.primary { background:var(--container); padding:1.5rem; gap:1rem; }
   .muted { color:var(--muted); }

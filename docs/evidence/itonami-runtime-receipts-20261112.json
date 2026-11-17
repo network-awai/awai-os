@@ -1,0 +1,95 @@
+{
+  "schema" : "awai.bot-runtime-receipts.v1",
+  "sourceIssue" : "AWAI-2795",
+  "machineColdBoot" : "unverified",
+  "privateData" : "unqualified",
+  "scope" : "public-integration-and-control-plane",
+  "nodes" : [ {
+    "node" : "levi",
+    "status" : "healthy",
+    "version" : "3.6.14"
+  }, {
+    "node" : "benjamin",
+    "status" : "healthy",
+    "version" : "3.6.14"
+  }, {
+    "node" : "joseph",
+    "status" : "healthy",
+    "version" : "3.6.14"
+  } ],
+  "quorumLoss" : {
+    "state" : "unknown",
+    "modelCallbacks" : 0
+  },
+  "continuousMonitoring" : false,
+  "fleetCronActivated" : false,
+  "observedAt" : "2026-11-12T03:53:18.823567Z",
+  "runs" : [ {
+    "cacheReadTokens" : "unknown",
+    "reasoningTokens" : 14,
+    "revision" : "02828b67ae0219d37c265960ffc7a71e102e7e62",
+    "inputTokens" : 19374,
+    "cacheWriteTokens" : "unknown",
+    "forecast" : {
+      "timestamp" : "2026-11-12T03:29:57.223290Z",
+      "metric" : "provider input/output tokens",
+      "range" : {
+        "input" : [ 19300, 20000 ],
+        "output" : [ 20, 100 ]
+      },
+      "confidence" : "low",
+      "basis" : "two equivalent public SOUL/prompt runs; input19375/19378 output30/29"
+    },
+    "museRunId" : "01a1cdce-1ff8-7b11-87db-f20cc4324df8",
+    "childrenIncluded" : false,
+    "state" : "completed",
+    "issueId" : "AWAI-2795",
+    "node" : "jun-control",
+    "runId" : "AWAI-2795-physical-muse-live-1",
+    "catalogMember" : false,
+    "calls" : 1,
+    "rawCachedTokens" : 0,
+    "provider" : "meta",
+    "outputTokens" : 29,
+    "model" : "muse-spark-1.3"
+  }, {
+    "cacheReadTokens" : "unknown",
+    "reasoningTokens" : 57,
+    "revision" : "02828b67ae0219d37c265960ffc7a71e102e7e62",
+    "inputTokens" : 19380,
+    "cacheWriteTokens" : "unknown",
+    "forecast" : {
+      "timestamp" : "2026-11-12T03:43:20.216447Z",
+      "metric" : "provider input/output tokens",
+      "range" : {
+        "input" : [ 19300, 20000 ],
+        "output" : [ 20, 100 ]
+      },
+      "confidence" : "low",
+      "basis" : "equivalent public calls incl physical19374/29; final combined recovery test"
+    },
+    "museRunId" : "01a1cdda-5e56-7f42-b490-ca0e2fc65b16",
+    "childrenIncluded" : false,
+    "state" : "completed",
+    "issueId" : "AWAI-2795",
+    "node" : "jun-control",
+    "runId" : "AWAI-2795-physical-muse-recovery-1",
+    "catalogMember" : false,
+    "calls" : 1,
+    "rawCachedTokens" : 0,
+    "provider" : "meta",
+    "outputTokens" : 72,
+    "model" : "muse-spark-1.3"
+  } ],
+  "recovery" : {
+    "completed" : true,
+    "invoked" : false,
+    "independentVoterHosts" : 3
+  },
+  "sourceRevision" : "02828b67ae0219d37c265960ffc7a71e102e7e62",
+  "powerLoss" : "unverified",
+  "normalization" : {
+    "reasoning" : "output subset; do not add",
+    "cached" : "raw field; relationship unverified; do not add"
+  }
+}

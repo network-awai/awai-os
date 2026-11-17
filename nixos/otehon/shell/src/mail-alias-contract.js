@@ -1,0 +1,4 @@
+import {CHAT_ORIGIN} from './bot-chat-contract.js';
+export const MAIL_ORIGIN=CHAT_ORIGIN;
+export const identityOperations=['status','recover'].map(action=>({capability:'itonami-mail-aliases',service:'itonami-agent-identity',operation:action+'-identity',consent:'each-operation','data-categories':['agent-identity','identity-custody-metadata'],endpoint:{origin:MAIL_ORIGIN,routes:[{method:'POST',path:'/v1/mail/identity/'+action,'query-params':[]}]}}));
+export const aliasOperations=['list','issue','stop'].map(action=>({capability:'itonami-mail-aliases',service:'itonami-agent-mail',operation:action+'-alias',consent:'each-operation','data-categories':action==='issue'?['agent-identity','mail-purpose','mail-counterparty']:['agent-identity','private-mail-aliases'],endpoint:{origin:MAIL_ORIGIN,routes:[{method:'POST',path:'/v1/mail/aliases/'+action,'query-params':[]}]}}));

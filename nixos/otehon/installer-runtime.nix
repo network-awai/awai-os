@@ -7,7 +7,7 @@ let
   disk = installed.system.build.image;
   version = lib.removeSuffix "\n" (builtins.readFile ./installer-version.txt);
   buildId = builtins.hashString "sha256" (builtins.concatStringsSep "\n" (
-    (map builtins.readFile [ ./usb-install-6600h.nix ./installer-runtime.nix ./installer-storage-isolation.nix ./installer-console.py ./installer-nbd.nix ./netboot-nbd-install-6600h.nix ./installer-broker.py ./installer-kernel-claims.py ./installer-diagnostics.py ./installer-boot.py ./installer-ui/awai/installer.cljc ../../ci/nixpkgs.nix ]) ++ [ (builtins.unsafeDiscardStringContext (toString disk)) ]));
+    (map builtins.readFile [ ./usb-install-6600h.nix ./installer-runtime.nix ./installer-storage-isolation.nix ./netboot-diagnostic-6600h.nix ./installer-console.py ./installer-nbd.nix ./netboot-nbd-install-6600h.nix ./installer-broker.py ./installer-kernel-claims.py ./installer-installed-logs.py ./installer-diagnostics.py ./installer-boot.py ./installer-ui/awai/installer.cljc ../../ci/nixpkgs.nix ]) ++ [ (builtins.unsafeDiscardStringContext (toString disk)) ]));
   # This is an identity string, not a runtime reference: retaining its context
   # would include a second compressed payload in the ISO's store closure.
   info = { schema = "awai.otehon.installer.v1"; inherit version buildId; nixos = installed.system.nixos.version; nix = installed.nix.package.version; payload = builtins.unsafeDiscardStringContext (toString disk); };

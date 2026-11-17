@@ -9,10 +9,12 @@ import { build } from "esbuild";
 import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { clientRuntimeConnectSrc } from "./vendor/kotoba-client-runtime.js";
 
+await import('./scripts/sync-vendor.mjs');
+
 // The ClojureScript build reads the broker runtime from inside src/.
 await copyFile("vendor/kotoba-client-runtime.js", "src/vendor-runtime.gen.js");
 const { osOperations, phoneOperations, runtimeDescriptor } = await import("./src/runtime.js");
-import { scriptSrc, styleSrc, imageSrc } from "./src/csp.js";
+import { scriptSrc, styleSrc, imageSrc, staticReportConnectSrc } from "./src/csp.js";
 import { buildDougaka } from "./dougaka-bundle.mjs";
 
 const relayOrigin = process.env.RELAY_ORIGIN ?? "https://relay.awai.network";
@@ -40,13 +42,20 @@ clojure(["-m", "shadow.cljs.devtools.cli", "release", "link"]);
 clojure(["-m", "shadow.cljs.devtools.cli", "release", "reliability"]);
 await mkdir("dist/fs-reliability", { recursive: true });
 await copyFile("fs-reliability/index.html", "dist/fs-reliability/index.html");
+clojure(["-m", "shadow.cljs.devtools.cli", "release", "soshiki-runtime"]);
+await mkdir("dist/soshiki-runtime", { recursive: true });
+const chatConnect = clientRuntimeConnectSrc(runtimeDescriptor("soshiki-runtime/index.html", osOperations(relayOrigin)), [...new Set(osOperations(relayOrigin).map(o => o.capability))], [], []);
+await writeFile("dist/soshiki-runtime/index.html", (await readFile("soshiki-runtime/index.html", "utf8")).replace("__CONNECT_SRC__", `${chatConnect} 'self'`));
 
 async function page({ html, outdir, operations, appOrigins }) {
   await mkdir(`${outdir}/assets`, { recursive: true });
   await copyFile("vendor/kotoba-client-consent.css", `${outdir}/assets/consent.css`);
   await copyFile("assets/awai-logo.png", `${outdir}/assets/awai-logo.png`);
   const capabilities = [...new Set(operations.map((operation) => operation.capability))];
-  const connect = clientRuntimeConnectSrc(runtimeDescriptor("index.html", operations), capabilities, [], appOrigins);
+  const connect = staticReportConnectSrc(
+    clientRuntimeConnectSrc(runtimeDescriptor("index.html", operations), capabilities, [], appOrigins),
+    cspMode, outdir === "dist",
+  );
   const template = await readFile(html, "utf8");
   // The dapp catalog cannot be required by shadow-cljs, so it is embedded as
   // JSON for the shell to parse. dapps.json stays the source of truth (Nix

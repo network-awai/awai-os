@@ -1,0 +1,11 @@
+# AWAI-2995 Home motion acceptance — 2026-11-16
+
+v2 Home reference: Figma `umqCqP5KSjLWh9fhCI1HaN`, node `194:2439`. Existing controls, palette and original wallpaper remain shared HTML/CSS/JS for Android and browser NixOS. Existing selected shell mark is reused byte-for-byte for preparation; selected full-bleed desktop icon is the Android Home platform splash/app icon. No remote asset or new network permission.
+
+The startup screen is Home application preparation, not a ROM bootanimation replacement. It clears as soon as the shared client renders; no minimum timer or animation event blocks input. Recorded actual g05 startup frames show the centered Awai mark/title/tagline then Home. The 32-second background transform leaves controls stationary. Visible pause persists locally; media reduced-motion is static; OS animator disablement and power saver request static rendering. Native Activity onPause stops the animation even when WebView document visibility remains `visible`, a condition observed on this device. onResume restores the enabled preference.
+
+Actual g05 / Android17 WebView156 checks: sampled transforms changed while running and held while paused; pause survived reload; reduced-motion removed CSS animation. Settings foreground paused Home; returning resumed. Setting animator_duration_scale=0 yielded `背景は静止`, disabled motion control and paused background; original absent setting was restored. At text scale200 the date/control wrap and clock fits one line; Home remains scrollable. Font scale restored1.0. Screen timeout restored60000 after checks. No credential, account, ROM/partition or launcher removal operation.
+
+Five JS tests pass. SDK build and signature verification passed. Home versionCode7 /0.1.6 was installed; Store remains0.1.4 and Yotei versionCode4. Complete shared static export verifies34 assets. Final new shared assets have not rerun a NixOS VM; the earlier Store restart qualification is separate. No FPS, battery or TalkBack qualification claim. GitHub Actions owner-disabled, no exact-head CI claim.
+
+Raw screenshots, actual seven-second startup video, CDP measurements and APK reports are preserved in session evidence. Provider/model billing attribution, token counters, active/wait time and velocity unknown. Chat01a1e187-0e12-7813-b500-73aa77f2a03e.

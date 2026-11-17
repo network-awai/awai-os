@@ -1,0 +1,11 @@
+{
+  "name": "awai-meiji-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build:ui": "bb -cp src -m meiji.build",
+    "desktop": "tauri dev",
+    "bundle": "tauri build"
+  },
+  "devDependencies": { "@tauri-apps/cli": "3.0.0-alpha.6" }
+}
