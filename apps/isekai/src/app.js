@@ -136,8 +136,10 @@ function chrome() {
   $('footer').textContent = t('footer');
 }
 window.addEventListener('hashchange', () => route());
-// Android keeps the activity on a locale change (configChanges), so follow the
-// WebView's language here instead. Form values live in `form` and survive.
+// On Android a locale change recreates the activity (locale is not in the
+// manifest's configChanges) and the page reloads. Runtimes that change the
+// language without a reload (desktop WebView, browser) arrive here instead;
+// form values live in `form` and survive.
 window.addEventListener('languagechange', () => {
   const next = pickLocale(navigator.languages); if (next === locale) return;
   locale = next; t = translator(locale); document.documentElement.lang = locale;

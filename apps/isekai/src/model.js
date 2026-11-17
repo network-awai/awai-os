@@ -79,15 +79,37 @@ function weierstrass(p, a, b) {
 }
 const ED_P = 2n ** 255n - 19n;
 const ED_D = mod(-121665n * powMod(121666n, ED_P - 2n, ED_P), ED_P);
-// Ed25519 (RFC 8032 5.1.3): y little-endian with the sign of x in the top bit.
+const ED_L = 2n ** 252n + 27742317777372353535851937790883648493n;   // prime subgroup order
+const ED_SQRT_M1 = powMod(2n, (ED_P - 1n) / 4n, ED_P);
+// Extended twisted Edwards coordinates (a = -1), RFC 8032 5.1.4.
+function edAdd([X1, Y1, Z1, T1], [X2, Y2, Z2, T2]) {
+  const A = (Y1 - X1) * (Y2 - X2) % ED_P, B = (Y1 + X1) * (Y2 + X2) % ED_P;
+  const C = 2n * T1 * T2 * ED_D % ED_P, D = 2n * Z1 * Z2 % ED_P;
+  const E = B - A, F = D - C, G = D + C, H = B + A;
+  return [mod(E * F, ED_P), mod(G * H, ED_P), mod(F * G, ED_P), mod(E * H, ED_P)];
+}
+function edMul(n, P) {
+  let R = [0n, 1n, 1n, 0n];
+  for (let Q = P; n > 0n; n >>= 1n, Q = edAdd(Q, Q)) if (n & 1n) R = edAdd(R, Q);
+  return R;
+}
+const edIsIdentity = ([X, Y, Z]) => mod(X, ED_P) === 0n && mod(Y - Z, ED_P) === 0n;
+// Ed25519 public key (RFC 8032 5.1.3 decoding): the point must decompress, must
+// not be the identity, and must lie in the prime-order subgroup (L·P = identity),
+// which also rules out the small-order and mixed-order points.
 function ed25519(key) {
   if (key.length !== 32) return false;
   const le = Uint8Array.from(key).reverse(); const sign = le[0] >> 7; le[0] &= 0x7f;
   const y = bigBE(le); if (y >= ED_P) return false;
   const u = mod(y * y - 1n, ED_P), v = mod(ED_D * y * y + 1n, ED_P);
   const x2 = u * powMod(v, ED_P - 2n, ED_P) % ED_P;
-  if (x2 === 0n) return sign === 0;
-  return isSquare(x2, ED_P);
+  let x = powMod(x2, (ED_P + 3n) / 8n, ED_P);
+  if (mod(x * x - x2, ED_P) !== 0n) x = x * ED_SQRT_M1 % ED_P;
+  if (mod(x * x - x2, ED_P) !== 0n) return false;
+  if (x === 0n && sign === 1) return false;
+  if (Number(x & 1n) !== sign) x = ED_P - x;
+  const P = [x, y, 1n, x * y % ED_P];
+  return !edIsIdentity(P) && edIsIdentity(edMul(ED_L, P));
 }
 // did:key public-key multicodecs: ed25519, secp256k1 and P-256 (compressed).
 const DID_KEY_CODECS = new Map([
@@ -151,6 +173,8 @@ export function decodeState(data) {
   }
   // More than the limit is not truncated: a later write would drop the hidden drafts.
   if (data.drafts.length > MAX_DRAFTS) throw Error('unreadable-drafts');
+  // Deleting by id removes every entry with that id, so ids must be unique.
+  if (new Set(data.drafts.map(e => e.id)).size !== data.drafts.length) throw Error('unreadable-drafts');
   return {schema: STATE_SCHEMA, drafts: data.drafts.slice()};
 }
 export function addDraft(state, draft, {id, now}) {

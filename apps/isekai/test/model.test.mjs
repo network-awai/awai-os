@@ -26,6 +26,9 @@ test('CIDs and did:keys are decoded, not only matched against the alphabet',()=>
   assert.equal(isDidKey('did:key:zQ3sgkxA1r9UUKeDtF6gRP5t3pbNSemByHZ3XvvkoJLg8DUrj'),false,'secp256k1 codec with 33 zero bytes is not a point');
   const b58=bytes=>{let n=bytes.reduce((n,b)=>n*256n+BigInt(b),0n),o='';while(n>0n){o='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'[Number(n%58n)]+o;n/=58n;}for(const b of bytes){if(b)break;o='1'+o;}return o;};
   assert.equal(isDidKey('did:key:z'+b58([0xed,0x01,...Array(31).fill(0xff),0x7f])),false,'ed25519 y >= p');
+  assert.equal(isDidKey('did:key:z6MkeXATEjyXENzBXBxgC5EHk2JE5aqd7qMGGtDpLUH1e2Sj'),false,'ed25519 identity point (low order)');
+  const lowOrder=[[0xec,...Array(30).fill(0xff),0x7f],[0x26,0xe8,0x95,0x8f,0xc2,0xb2,0x27,0xb0,0x45,0xc3,0xf4,0x89,0xf2,0xef,0x98,0xf0,0xd5,0xdf,0xac,0x05,0xd3,0xc6,0x33,0x39,0xb1,0x38,0x02,0x88,0x6d,0x53,0xfc,0x05]];
+  for(const k of lowOrder)assert.equal(isDidKey('did:key:z'+b58([0xed,0x01,...k])),false,'ed25519 small-order point');
   assert.equal(isDidKey('did:key:z'+b58([0xed,0x01,...base58Decode(author.slice(9)).subarray(2)])),true,'re-encoded ed25519 vector');
   assert.equal(isDidKey('did:key:z'+'2'.repeat(100000)),false,'oversized input is refused before decoding');
   assert.equal(isCidV1('bahkqaerajtnuh2taj54zzx2b6qeexxffmz2bb4u2roks7vegf6jwfy4jsj5q'),false,'overlong codec varint');
@@ -53,6 +56,7 @@ test('drafts are bounded, validated on load and removable',()=>{
   assert.throws(()=>addDraft(s,{...q,author:'x'},{id:'c',now:'x'}));
   let full=emptyState();for(let i=0;i<MAX_DRAFTS;i++)full=addDraft(full,q,{id:String(i),now:'x'});assert.throws(()=>addDraft(full,q,{id:'z',now:'x'}));
   assert.throws(()=>decodeState({...full,drafts:[...full.drafts,full.drafts[0]]}),/unreadable/,'more than the limit is unreadable, not truncated');
+  assert.throws(()=>decodeState({...s,drafts:[s.drafts[0],{...s.drafts[1],id:s.drafts[0].id}]}),/unreadable/,'duplicate ids are unreadable');
 });
 test('planned external operations are display data only',()=>{assert.equal(PLANNED_OPERATIONS.length,3);assert.ok(Object.isFrozen(PLANNED_OPERATIONS[0]));});
 import {MESSAGES,pickLocale,translator} from '../src/messages.js';
