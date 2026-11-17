@@ -18,6 +18,7 @@
 ;;   nbb -cp src host/signer.cljs enroll DIR OWNER-SPKI-BASE64                         (V4: owner key)
 ;;   nbb -cp src host/signer.cljs reserve-approved DIR NODE-URL ORDER.json APPROVAL.json
 ;;   nbb -cp src host/signer.cljs settle-accepted DIR RECEIPT.json ACCEPTANCE.json TTL-MS
+;;   nbb -cp src host/signer.cljs release DIR ORDER-CID                                 (V5: unsigned only)
 (ns signer
   (:require ["node:crypto" :as crypto]
             ["node:fs" :as fs]
@@ -198,6 +199,17 @@
                          (:provider receipt) ttl-ms)
       (refuse :no-acceptance))))
 
+(defn release!
+  "Free a reservation that was never signed, for example when the provider is down. Nothing is
+  paid and nothing is sent to the node. A signed or ambiguous reservation is never released here:
+  only `reconcile` resolves it from the node's log."
+  [dir order]
+  (let [r (reservation dir order)]
+    (when-not r (refuse :no-reservation))
+    (when-not (= :reserved (:state r)) (refuse :not-releasable {:state (:state r)}))
+    (save-reservation! dir (assoc r :state :released :released-at (now-ms)))
+    {:released true :order order :paid 0}))
+
 (defn -main [[cmd & args]]
   (-> (p/do
         (case cmd
@@ -213,6 +225,7 @@
           "enroll" (apply enroll! args)
           "reserve-approved" (apply reserve-approved! args)
           "settle-accepted" (apply settle-accepted! args)
+          "release" (apply release! args)
           "submit" (p/let [tx (stdin-tx)] (submit! (first args) (second args) tx))
           "reconcile" (apply reconcile! args)
           (refuse :usage)))

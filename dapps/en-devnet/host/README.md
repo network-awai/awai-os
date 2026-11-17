@@ -39,6 +39,9 @@ here is money, revenue, a deposit or a reward, and it is not distributed finalit
     and never resubmits.
   - `reconcile` resolves ambiguous reservations from the node's log, then runs the core's three-way
     check (signer records, ledger log, journal).
+  - `release` frees a reservation that was never signed, for example when the provider is down.
+    It sends nothing to the node and pays nothing. A signed or ambiguous reservation is never
+    released this way (V5, AWAI-3141).
 - The provider operator counter-signs on its own host, for example
   `ssh provider 'nbb -cp src host/signer.cljs sign provider.pem' < tx.json`, so the key stays there.
 
