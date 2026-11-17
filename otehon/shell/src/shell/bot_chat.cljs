@@ -88,12 +88,18 @@
     (for [m messages] ^{:key (:id m)} [:li {:data-chat-role (:role m)}
       [:strong (or (:speakerName m) (if (= "user" (:role m)) (tr :chatYou) (:name bot)))]
       (if (and (= "user" (:role m)) (or (:peer m) (:work m))) [:details [:summary (tr :peerReceived)] [:p (:text m)]] [:p (:text m)])
+      (when (:localOnly m) [:p {:role "status"} "端末内のみ・Agent の会話には未記録です。履歴の再取得では表示されません。"] )
       (when (= "local-image" (:kind m)) [:f> image-card (:image m) {:botId (:id bot) :sessionId session-id}
        (or (:text (first (filter #(= (:id %) (:parentId m)) messages))) "会話で生成した画像") (:local-result m)])])]
    (when pending [:article {:data-image-record-pending true}
     [:p {:role "status"} "画像は端末内に生成済みです。会話への記録は未確認です。"]
     [:f> image-card (js->clj (.-image (:request pending)) :keywordize-keys true) {:botId (:id bot) :sessionId session-id} (:prompt pending) (:result pending)]
-    [:button.secondary {:type "button" :disabled busy :on-click #(do (set-busy true) (-> (record-image pending) (.catch failure) (.finally (fn [] (set-busy false)))))} "この画像を会話に記録"]])
+    [:button.secondary {:type "button" :disabled busy :on-click #(do (set-busy true) (-> (record-image pending) (.catch failure) (.finally (fn [] (set-busy false)))))} "この画像を会話に記録"]
+    [:button.secondary {:type "button" :disabled busy :on-click
+     #(do (set-messages (conj messages {:id (.-requestId (:request pending)) :role "user" :text (:prompt pending) :localOnly true}
+          {:id (str (.-requestId (:request pending)) ":local") :role "assistant" :text "" :kind "local-image" :localOnly true
+           :parentId (.-requestId (:request pending)) :image (js->clj (.-image (:request pending)) :keywordize-keys true) :local-result (:result pending)}))
+          (set-pending nil) (set-text ""))} "会話に記録せず続ける"]])
    (when message [:p.problem {:role "status"} (tr message)])
    (when-not (contains? #{"peer" "circle-work"} (:kind session-info)) [:form {:on-submit send}
     [:div.agent-session-toolbar
