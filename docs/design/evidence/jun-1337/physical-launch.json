@@ -1,0 +1,60 @@
+{
+  "issue": "JUN-1337",
+  "observedAt": "2026-11-17T08:32:43.091850+00:00",
+  "buildSourceRevision": "2480f77fb10ad80b2fe8bdd13d5c9f19812c703e",
+  "mainEquivalent": "2cfcf9074a131b9c45a92f2afa4d842d6dab984d",
+  "relevantSourceDiffEmpty": true,
+  "hardware": {
+    "type": "physical desktop",
+    "cpu": "AMD Ryzen 7 7735HS",
+    "dmi": "LXY MQ",
+    "androidApi": 37,
+    "primaryAbi": "x86_64",
+    "resolution": "1920x1200",
+    "density": 160
+  },
+  "installed": [
+    {
+      "app": "itonami",
+      "package": "network.itonami.app",
+      "installedSha256": "b958621aefcd665ffb1f3768e58c5f5690d7f490c4bb31a5ae4590ab093fe509",
+      "bytes": 32883639,
+      "apkReadbackMatches": true,
+      "sameApplicationUid": true,
+      "dataOperation": "install -r only; no uninstall/clear/private-content export"
+    },
+    {
+      "app": "murakumo",
+      "package": "network.awai.murakumo",
+      "installedSha256": "814f4aac6fc10b0ab6766168b60fef40a2e5d12d7291acb5fb879316498aca56",
+      "bytes": 40511920,
+      "apkReadbackMatches": true,
+      "sameApplicationUid": true,
+      "dataOperation": "install -r only; no uninstall/clear/private-content export"
+    }
+  ],
+  "sharedUI": "@awai/ui0.2.0; actual 999px button radius and52px height observed on device",
+  "interactions": {
+    "itonami": "Android input tap changes Asa/Hiru; final Asa restored. Japanese sign-in UI; owner authentication not attempted; service connection unavailable.",
+    "murakumo": "Existing model remains imported, not loaded. Android input tap opens system DocumentsUI model picker; Back returns. Cancellation shows a generic error; JUN-1338 open. No new model import, load or generation attempted."
+  },
+  "preservation": {
+    "sameUid": true,
+    "sameAppRootAndFilesDirectoryInodes": true,
+    "uninstallOrClear": false,
+    "privateKeysOrDataContentsExported": false,
+    "oldApkCopies": "retained privately for rollback; no downgrade performed",
+    "coverage": "directory metadata and model-status preservation, not a full content backup or proof of all stored records"
+  },
+  "remaining": [
+    "owner authentication/inside account views",
+    "model load and generation",
+    "picker cancellation error UX JUN-1338",
+    "persistent reboot, ROM/OTA and other physical hardware"
+  ],
+  "probeHistory": "Initial CDP connection raced app navigation; initial Android touch coordinates omitted28px WebView origin and one350ms poll was premature. Final offset-aware1.2sec touch probe passed. Historical failures retained privately, not counted as passes.",
+  "screenshots": {
+    "itonami.png": "59756b7c615844cfc6814b749a852cdad45d007855ac1e9088bd20ad07437992",
+    "murakumo.png": "60fe6a60060670d6ad7606bd85547ccaa4fbc3f19fbeb5b1dd2478f905d58930"
+  }
+}
