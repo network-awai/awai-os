@@ -93,7 +93,7 @@
   (when (> (.-length pack) pack-limit) (refuse))
   (let [{:keys [roots blocks]} (car/carv1-decode (vec pack)) objects (atom {})
         expected (car/cid-bytes car/codec-raw (unhex root))]
-    (when-not (and (= [expected] roots) (<= 1 (count blocks) 1200)) (refuse))
+    (when-not (and (= [expected] roots) (<= 1 (count blocks) 4096)) (refuse))
     (-> (sequence! blocks (fn [{:keys [cid bytes]}]
                             (let [data (u8 bytes) parsed (car/parse-cid cid) id (hex (:digest parsed))]
                               (when (or (not= car/codec-raw (:codec parsed)) (contains? @objects id)) (refuse))

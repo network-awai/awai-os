@@ -16,11 +16,11 @@ export async function sync(){const s=await session(true);try{
  for(const e of entries){if(e.directory)continue;const bytes=new Uint8Array(e.size);for(let at=0;at<e.size;at+=65531){const r=await invoke('vaultRead',{path:e.path,offset:at,length:Math.min(65531,e.size-at)});bytes.set(unb64(r.bytes),at);}if(await core.sha256(bytes)!==e.sha256)throw Error('source-size-changed');rows.push({path:e.path,bytes});}
  rows.directories=entries.filter(e=>e.directory).map(e=>e.path);const sealed=await core.sealSnapshot(s.record,s.secret,rows);const id=await core.sha256(sealed.bytes);const response=await request('upload',id,sealed.bytes);const receipt=await response.json();if(receipt.sha256!==id||receipt.bytes!==sealed.bytes.length)throw Error('receipt-mismatch');
  const verified=await readResponse(await request('download',id));if(verified.length!==sealed.bytes.length||await core.sha256(verified)!==id)throw Error('receipt-mismatch');
- await invoke('vaultCommit',{root:sealed.root,pack:id,entries});return {files:rows.length,root:sealed.root,pack:id};
+ await invoke('vaultCommit',{root:sealed.root,pack:id,origin:syncOrigin,entries});return {files:rows.length,root:sealed.root,pack:id};
  }finally{s.secret.fill(0);}}
-export async function evict(){return invoke('vaultEvict');}
-export async function restore(){const s=await session();try{if(!s.root||!s.pack)throw Error('recovery-required');const response=await request('download',s.pack);const bytes=await readResponse(response);if(await core.sha256(bytes)!==s.pack)throw Error('receipt-mismatch');const rows=await core.openSnapshot(s.record,s.secret,s.root,bytes);
+export async function evict(){return invoke('vaultEvict',{origin:syncOrigin});}
+export async function restore(){const s=await session();try{if(!s.root||!s.pack||s.origin!==syncOrigin)throw Error('recovery-required');const response=await request('download',s.pack);const bytes=await readResponse(response);if(await core.sha256(bytes)!==s.pack)throw Error('receipt-mismatch');const rows=await core.openSnapshot(s.record,s.secret,s.root,bytes);
  // Authenticate and validate all plaintext before staging or publishing output.
  await invoke('vaultRestoreBegin');for(const r of rows){if(r.bytes.length===0)await invoke('vaultRestoreWrite',{path:r.path,offset:0,bytes:''});for(let at=0;at<r.bytes.length;at+=65531)await invoke('vaultRestoreWrite',{path:r.path,offset:at,bytes:b64(r.bytes.subarray(at,at+65531))});r.bytes.fill(0);}await invoke('vaultRestorePublish');return {files:rows.length};
  }finally{s.secret.fill(0);}}
-export async function state(){return {...await invoke('vaultStatus'),configured};}
+export async function state(){const s=await invoke('vaultStatus');return {...s,synced:s.synced&&s.origin===syncOrigin,configured};}
