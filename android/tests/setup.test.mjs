@@ -21,3 +21,10 @@ test('stage projection has a bounded unknown fallback',()=>{
   assert.equal(domain.setupStage(0),'welcome');assert.equal(domain.setupStage(6),'lock');
   assert.equal(domain.setupStage(800),'welcome');
 });
+
+test('disabled Open Awai explains the screen-lock requirement',()=>{
+  const src=fs.readFileSync(new URL('../client/setup.js',import.meta.url),'utf8');
+  assert.match(src,/next\.disabled=true;const why=el\('p','setup-lock-note/);
+  assert.match(src,/next\.setAttribute\('aria-describedby',why\.id\)/);
+  assert.match(src,/PIN・パターン・パスワード/);
+});
