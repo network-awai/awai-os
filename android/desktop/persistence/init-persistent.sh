@@ -7,20 +7,31 @@ $B mount -t devtmpfs devtmpfs /dev
 exec </dev/console >/dev/console 2>&1
 status() { echo "AWAI_BOOT_STAGE $1"; if [ -d /awai-status ]; then echo "$1" > /awai-status/index.html; fi; }
 fail() { status "REFUSED $1"; exec "$B" sh; }
-for required in androidboot.android_dir=awai-android-2992 androidboot.mount_system=imgs_ram androidboot.mount_firmware=img_ram androidboot.mount_userdata=imgs; do
- case " $($B cat /proc/cmdline) " in *" $required "*) :;; *) fail invalid-mode;; esac
-done
 echo /awai/firmware > /sys/module/firmware_class/parameters/path || fail firmware-path
-for module in mii phy_package realtek e1000 r8169; do "$B" insmod "/awai/$module.ko" || fail nic-module; done
-[ "$("$B" cat /sys/class/net/eth0/address)" = 0c:47:a9:60:9d:34 ] || fail wrong-target
-"$B" ip link set eth0 up || fail link
-"$B" ip addr add 10.77.0.2/24 dev eth0 || fail address
+nic_failures=
+for module in mii phy_package realtek e1000 r8169; do
+ if [ ! -d "/sys/module/$module" ]; then
+  "$B" insmod "/awai/$module.ko" || nic_failures="$nic_failures $module"
+ fi
+done
+interface=eth0
+for candidate in /sys/class/net/*; do
+ if [ "$("$B" cat "$candidate/address")" = 0c:47:a9:60:9d:34 ]; then interface=${candidate##*/}; break; fi
+done
+"$B" ip link set "$interface" up || fail link
+"$B" ip addr add 10.77.0.2/24 dev "$interface" || fail address
 "$B" ip route add default via 10.77.0.1 || fail route
 # Volatile operator diagnostics only: fixed direct-LAN address and static stage labels.
 "$B" mkdir /awai-status || fail diagnostics-directory
-status target-verified
+status lan-diagnostics-ready
 "$B" httpd -f -p 10.77.0.2:18092 -h /awai-status &
 diagnostic_pid=$!
+status pre-disk-checks
+[ -z "$nic_failures" ] || fail "nic-module$nic_failures"
+[ "$("$B" cat "/sys/class/net/$interface/address")" = 0c:47:a9:60:9d:34 ] || fail wrong-target
+for required in androidboot.android_dir=awai-android-2992 androidboot.mount_system=imgs_ram androidboot.mount_firmware=img_ram androidboot.mount_userdata=imgs; do
+ case " $($B cat /proc/cmdline) " in *" $required "*) :;; *) fail invalid-mode;; esac
+done
 status nvme-protection
 "$B" sh /awai/readonly-nvme.sh 500118192 500118192 || fail nvme-protection
 status root-uuid
