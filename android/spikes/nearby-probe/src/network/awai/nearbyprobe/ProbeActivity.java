@@ -182,7 +182,8 @@ public final class ProbeActivity extends Activity {
         BluetoothLeAdvertiser l = a == null ? null : a.getBluetoothLeAdvertiser();
         if (l == null) { log("ble-adv", "unavailable", "adapter", a != null); return; }
         byte[] t = new byte[8]; new SecureRandom().nextBytes(t);
-        AdvertiseData data = new AdvertiseData.Builder().addServiceUuid(BLE_UUID).addServiceData(BLE_UUID, new byte[]{1, t[0], t[1], t[2], t[3], t[4], t[5], t[6], t[7]}).setIncludeDeviceName(false).build();
+        // Legacy advertising has 31 bytes: flags (3) + 128-bit service data (2+16+9) = 30. A separate UUID list would not fit.
+        AdvertiseData data = new AdvertiseData.Builder().addServiceData(BLE_UUID, new byte[]{1, t[0], t[1], t[2], t[3], t[4], t[5], t[6], t[7]}).setIncludeDeviceName(false).build();
         AdvertiseSettings set = new AdvertiseSettings.Builder().setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY).setConnectable(true).setTimeout(0).build();
         adv = new AdvertiseCallback() {
             public void onStartSuccess(AdvertiseSettings s) { log("ble-adv", "started"); }
@@ -201,7 +202,7 @@ public final class ProbeActivity extends Activity {
             public void onScanResult(int type, ScanResult r) { seen[0]++; log("ble-scan", "result", "rssi", r.getRssi(), "data", r.getScanRecord() != null && r.getScanRecord().getServiceData(BLE_UUID) != null); }
             public void onScanFailed(int e) { log("ble-scan", "scan-failed", "code", e); }
         };
-        List<ScanFilter> f = new ArrayList<>(); f.add(new ScanFilter.Builder().setServiceUuid(BLE_UUID).build());
+        List<ScanFilter> f = new ArrayList<>(); f.add(new ScanFilter.Builder().setServiceData(BLE_UUID, new byte[]{1}, new byte[]{(byte) 0xff}).build());
         s.startScan(f, new ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build(), scan);
         log("ble-scan", "started", "secs", secs);
         main.postDelayed(() -> { try { s.stopScan(scan); } catch (Exception e) {} log("ble-scan", "done", "results", seen[0]); scan = null; }, secs * 1000L);
