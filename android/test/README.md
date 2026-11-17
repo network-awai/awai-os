@@ -6,6 +6,7 @@ AOSP API 35 arm64 system image, Android SDK, Node, and the owning shell's locked
 
 ```sh
 node --test android/test/emulator-scope.test.mjs
+npm run test:inference --prefix nixos/otehon/shell
 node android/test/run-auth-emulator.mjs --apk=/absolute/path/to/itonami-arm64.apk
 ```
 
