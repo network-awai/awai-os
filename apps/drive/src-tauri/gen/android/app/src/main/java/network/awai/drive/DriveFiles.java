@@ -27,10 +27,11 @@ public final class DriveFiles {
   File[] files=directory(p).listFiles(f->!f.getName().startsWith(".pending-"));if(files==null)throw new IOException("storage-unavailable");if(files.length>MAX_ENTRIES)throw new IOException("entry-limit");
   for(File f:files){if(Files.isSymbolicLink(f.toPath()))throw new IOException("invalid-path");resolve(path(f));}Arrays.sort(files,Comparator.comparing(File::isFile).thenComparing(File::getName));return files;
  }
- public synchronized void mkdir(String parent,String n)throws IOException{if(list(parent).length>=MAX_ENTRIES)throw new IOException("entry-limit");Files.createDirectory(new File(directory(parent),name(n)).toPath());}
+ private File child(String parent,String n)throws IOException{directory(parent);String rel=parent.isEmpty()?name(n):parent+"/"+name(n);return resolve(rel);}
+ public synchronized void mkdir(String parent,String n)throws IOException{if(list(parent).length>=MAX_ENTRIES)throw new IOException("entry-limit");Files.createDirectory(child(parent,n).toPath());}
  public synchronized String copy(String parent,String n,InputStream in,long expected)throws IOException{
   if(expected>MAX_BYTES)throw new IOException("file-too-large");if(expected< -1)throw new IOException("invalid-size");
-  if(list(parent).length>=MAX_ENTRIES)throw new IOException("entry-limit");File dir=directory(parent),dest=new File(dir,name(n));if(Files.exists(dest.toPath(),LinkOption.NOFOLLOW_LINKS))throw new FileAlreadyExistsException("file-exists");
+  if(list(parent).length>=MAX_ENTRIES)throw new IOException("entry-limit");File dir=directory(parent),dest=child(parent,n);if(Files.exists(dest.toPath(),LinkOption.NOFOLLOW_LINKS))throw new FileAlreadyExistsException("file-exists");
   if(dir.getUsableSpace()<RESERVE+Math.max(0,expected))throw new IOException("storage-full");
   Path tmp=Files.createTempFile(dir.toPath(),".pending-", ".part");boolean published=false;
   try{

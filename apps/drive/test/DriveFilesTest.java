@@ -12,5 +12,7 @@ public class DriveFilesTest{
  reject(()->d.copy("","too-large",new ByteArrayInputStream(new byte[0]),DriveFiles.MAX_BYTES+1));yes(!d.resolve("too-large").exists());
  ExecutorService pool=Executors.newFixedThreadPool(2);CountDownLatch start=new CountDownLatch(1);List<Future<Boolean>> out=new ArrayList<>();for(byte value:new byte[]{21,42})out.add(pool.submit(()->{start.await();try{new DriveFiles(base.resolve("store").toFile()).copy("","race",new ByteArrayInputStream(new byte[]{value}),1);return true;}catch(IOException e){return false;}}));start.countDown();yes(out.get(0).get()!=out.get(1).get());pool.shutdown();yes(Files.size(d.resolve("race").toPath())==1);
  Files.createSymbolicLink(base.resolve("store/link"),base.resolve("store/race"));reject(()->d.resolve("link"));reject(()->d.list(""));Files.delete(base.resolve("store/link"));yes(Arrays.stream(base.resolve("store").toFile().list()).noneMatch(n->n.startsWith(".pending-")&&!n.equals(".pending-writer.lock")));
+ String deep="";for(int k=0;k<16;k++){d.mkdir(deep,"d");deep=deep.isEmpty()?"d":deep+"/d";}final String limit=deep;
+ reject(()->{d.mkdir(limit,"unreachable");return null;});reject(()->d.copy(limit,"unreachable",new ByteArrayInputStream(new byte[]{1}),1));yes(d.list(limit).length==0);
  System.out.println("DriveFiles: "+checks+" checks passed: byte/SHA/reopen, no-clobber concurrent writers, failed/short copy, traversal/control/symlink, size bound.");}
 }
