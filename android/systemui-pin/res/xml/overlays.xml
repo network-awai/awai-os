@@ -1,0 +1,4 @@
+<overlay>
+  <item target="layout/keyguard_pin_view" value="@layout/awai_pin_view"/>
+  <item target="layout/keyguard_pin_motion_layout" value="@layout/awai_pin_motion_layout"/>
+</overlay>
