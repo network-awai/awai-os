@@ -47,10 +47,7 @@ class InferenceClientPlugin(private val owner:Activity):Plugin(owner){
   if(data.getStringExtra("schema")!="awai.inference.result.v1"||data.getStringExtra("requestId")!=id||data.getStringExtra("modality")!="text"||data.getStringExtra("engine")!="llama.cpp"||text.toByteArray(Charsets.UTF_8).size>65536){invoke.reject("invalid-provider-result");return}
   val tokens=data.getIntExtra("outputTokens",-1)
   if(tokens !in 0..256){invoke.reject("invalid-provider-counter");return}
-  val scope=invoke.getArgs().optJSONObject("conversation");checkScope(scope)
-  val receipt=org.json.JSONObject().put("schema","awai.local-image-file.v1").put("imageId",id).put("sha256",meta.getString("sha256")).put("bytes",bytes.size).put("scope",scope?:org.json.JSONObject.NULL)
-  val record=java.io.File(f.parentFile,"$id.json");check(record.createNewFile());record.writeText(receipt.toString())
-  invoke.resolve(imageResponse(id,bytes,meta.getString("sha256")))
+  invoke.resolve(JSObject().put("schema","awai.inference.result.v1").put("requestId",id).put("modality","text").put("engine","llama.cpp").put("text",text).put("outputTokens",tokens))
  }
  private fun imageFile(id:String):java.io.File {require(id.matches(Regex("[a-f0-9-]{36}")));return java.io.File(owner.filesDir,"generated-images/$id.png")}
  private fun digest(bytes:ByteArray)=java.security.MessageDigest.getInstance("SHA-256").digest(bytes).joinToString(""){"%02x".format(it.toInt()and 255)}
@@ -62,7 +59,10 @@ class InferenceClientPlugin(private val owner:Activity):Plugin(owner){
   require(bytes.size.toLong()==meta.getLong("bytes")&&digest(bytes)==meta.getString("sha256"))
   val bounds=android.graphics.BitmapFactory.Options().apply{inJustDecodeBounds=true};android.graphics.BitmapFactory.decodeByteArray(bytes,0,bytes.size,bounds);require(bounds.outWidth==512&&bounds.outHeight==512&&bounds.outMimeType=="image/png")
   val f=imageFile(id);f.parentFile!!.mkdirs();check(f.createNewFile());f.outputStream().use{it.write(bytes)};require(digest(f.readBytes())==meta.getString("sha256"))
-  invoke.resolve(JSObject().put("schema","awai.inference.result.v1").put("requestId",id).put("modality","image").put("engine","stable-diffusion.cpp").put("modelSet",meta.getString("modelSet")).put("imageId",id).put("width",512).put("height",512).put("sha256",meta.getString("sha256")).put("bytes",bytes.size).put("dataUrl","data:image/png;base64,"+android.util.Base64.encodeToString(bytes,android.util.Base64.NO_WRAP)))
+  val scope=invoke.getArgs().optJSONObject("conversation");checkScope(scope)
+  val receipt=org.json.JSONObject().put("schema","awai.local-image-file.v1").put("imageId",id).put("sha256",meta.getString("sha256")).put("bytes",bytes.size).put("scope",scope?:org.json.JSONObject.NULL)
+  val record=java.io.File(f.parentFile,"$id.json");check(record.createNewFile());record.writeText(receipt.toString())
+  invoke.resolve(imageResponse(id,bytes,meta.getString("sha256")))
  }
  private fun checkScope(scope:org.json.JSONObject?){if(scope==null)return;require(scope.keys().asSequence().toSet()==setOf("botId","sessionId"));require(scope.getString("botId").matches(Regex("profile:[A-Za-z0-9_.-]+"))&&scope.getString("sessionId").matches(Regex("[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}")))}
  private fun imageResponse(id:String,bytes:ByteArray,hash:String)=JSObject().put("schema","awai.inference.result.v1").put("requestId",id).put("modality","image").put("engine","stable-diffusion.cpp").put("modelSet","qwen-image-2.1-turbo-uncensored-ad-q2-k").put("imageId",id).put("width",512).put("height",512).put("sha256",hash).put("bytes",bytes.size).put("dataUrl","data:image/png;base64,"+android.util.Base64.encodeToString(bytes,android.util.Base64.NO_WRAP))
