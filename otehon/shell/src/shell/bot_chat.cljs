@@ -19,7 +19,7 @@
 
 (defn voice-panel [bot session-id ensure-session set-busy set-messages set-store locale blocked]
  (let [tr #(ui/t locale %) [state set-state] (useState "ready")
-       [remaining-text set-remaining-text] (useState false) active (useRef nil)
+       [remaining-text set-remaining-text] (useState false) [heard-text set-heard-text] (useState "") active (useRef nil)
        stop (fn [next-state]
         (when-let [run (.-current active)]
          (set! (.-current active) nil) (.abort (.-controller run))
@@ -41,13 +41,13 @@
                   (cycle [local channel n]
                    (live!)
                    (if (>= n 12) (do (stop "ended") (js/Promise.resolve nil))
-                    (do (set-state "listening")
+                    (do (set-state "listening") (set-heard-text "")
                      (-> (listenSpeech local)
                       (.then (fn [heard]
                        (live!)
                        (if (empty? (.trim (.-text heard))) (cycle local channel (inc n))
                         (let [text (.-text heard)]
-                         (set-state "waiting")
+                         (set-heard-text text) (set-state "waiting")
                          (-> (.send channel text)
                           (.then (fn [r]
                            (live!)
@@ -75,6 +75,7 @@
    [:p (tr :voiceScopeInfo)] [:p (tr :voice-local-remote)]
    [:p {:role (when (contains? #{"ended" "error"} state) "status")} (tr (keyword (str "voice-" state)))]
    (when (contains? #{"ready" "ended" "error"} state) [:p (tr :voiceConsentInfo)])
+   (when (seq heard-text) [:p {:data-voice-transcript true :role "status"} heard-text])
    (when remaining-text [:p (tr :voiceRemainingText)])]))
 
 (defn panel [bot & [locale draft-id]]

@@ -84,11 +84,11 @@ class SpeechPlugin(private val owner:Activity):Plugin(owner){
   val rec=AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION,rate,AudioFormat.CHANNEL_IN_MONO,AudioFormat.ENCODING_PCM_16BIT,maxOf(minimum,rate*2));recorder=rec
   try{check(rec.state==AudioRecord.STATE_INITIALIZED);rec.startRecording();val chunks=ArrayList<FloatArray>();val frame=ShortArray(320);var heard=0;var silent=0;var total=0;var noise=0.002
    while(total<rate*20){active(t);val n=rec.read(frame,0,frame.size);check(n>0);val block=FloatArray(n){frame[it]/32768f};total+=n;val rms=sqrt(block.sumOf{it.toDouble()*it}/n)
-    if(total<=rate*0.3&&rms<0.008)noise=maxOf(noise,rms)
+    if(total<=rate*0.3){if(rms<0.008)noise=maxOf(noise,rms);chunks.add(block);continue}
     if(rms>maxOf(0.008,noise*3)){heard++;silent=0}else if(heard>0)silent++
-    chunks.add(block);if(heard>=3&&silent>=30)break;if(heard==0&&total>=rate*6)return Capture(FloatArray(0),total)
+    chunks.add(block);if(heard>=15&&silent>=30)break;if(heard<15&&silent>=30){heard=0;silent=0};if(heard==0&&total>=rate*6)return Capture(FloatArray(0),total)
    }
-   if(heard<3)return Capture(FloatArray(0),total)
+   if(heard<15)return Capture(FloatArray(0),total)
    val out=FloatArray(total);var at=0;for(b in chunks){b.copyInto(out,at);at+=b.size};return Capture(out,total)
   }finally{try{rec.stop()}catch(_:Exception){};rec.release();recorder=null}
  }
