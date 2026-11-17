@@ -206,6 +206,15 @@
    (at-media {:prefers-reduced-motion "reduce"}
              [".voice-bezel" {:transition "none" :opacity ".5 !important"}])
    [:.net-view {:overflow-y "auto"}]
+   [:.local-inference-grid {:display "grid" :grid-template-columns "minmax(240px, 30%) minmax(0, 1fr)" :gap "24px" :padding "32px"}]
+   [".local-inference-grid > section" {:padding "24px" :border-radius "24px" :background "var(--surface)"}]
+   [".local-inference-grid h2" {:font-size "22px" :font-weight 500 :margin "0 0 24px"}]
+   [:.local-inference-actions {:display "grid" :gap "16px" :margin "32px 0"}]
+   [".local-inference-grid button" {:min-height "52px" :padding "12px 24px" :border-radius "28px" :background "var(--surface-raised)"}]
+   [".local-inference-grid textarea" {:width "100%" :min-height "152px" :padding "20px" :background "var(--bg)" :border "1px solid var(--border-strong)" :border-radius "16px" :font "inherit" :resize "vertical"}]
+   [".local-inference-generation form button" {:margin "24px 0 48px"}]
+   [".local-inference-generation output" {:white-space "pre-wrap" :overflow-wrap "anywhere"}]
+   (at-media {:max-width "1000px"} [:.local-inference-grid {:grid-template-columns "1fr" :padding "20px"}])
    [:.setup-network {:width "100%" :min-width "0"}]
    [".setup-network" {:width "100%" :min-width "0"}]
    [".setup-network .net-body" {:padding "0" :width "100%" :text-align "left"}]

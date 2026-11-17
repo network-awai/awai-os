@@ -4,3 +4,5 @@ proof/
 .shadow-cljs/
 .cpcache/
 src/vendor-runtime.gen.js
+
+src/inference-client.gen.js

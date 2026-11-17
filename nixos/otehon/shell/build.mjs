@@ -9,6 +9,8 @@ import { build } from "esbuild";
 import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { clientRuntimeConnectSrc } from "./vendor/kotoba-client-runtime.js";
 
+await import('./scripts/sync-vendor.mjs');
+
 // The ClojureScript build reads the broker runtime from inside src/.
 await copyFile("vendor/kotoba-client-runtime.js", "src/vendor-runtime.gen.js");
 const { osOperations, phoneOperations, runtimeDescriptor } = await import("./src/runtime.js");

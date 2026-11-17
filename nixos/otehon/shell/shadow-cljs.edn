@@ -11,6 +11,10 @@
                         :compiler-options {:externs ["externs/otehon-shell.js"]}
                         :js-options {:resolve {"process" false}}
                         :modules {:fs-reliability {:init-fn shell.reliability/init}}}
+          :inference-check {:target :node-script
+                            :output-to ".shadow-cljs/inference-check.cjs"
+                            :main shell.inference-check/main
+                            :compiler-options {:externs ["externs/otehon-shell.js"]}}
           :setup-check {:target :node-script
                         :output-to ".shadow-cljs/setup-check.cjs"
                         :main shell.setup-check/main

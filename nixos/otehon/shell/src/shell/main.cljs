@@ -2,6 +2,8 @@
   (:require [reagent.dom.client :as rdom]
             ["react" :as react :refer [useEffect useMemo useRef useState]]
             [shell.manimani :refer [MANIMANI manimani manimani-link]]
+            [shell.android-inference :as android-inference]
+            ["../android-inference.js" :refer [androidInferenceAvailable]]
             [shell.net :refer [bluetooth-panel wifi-panel]]
             ["../net.js" :refer [networkSummary useNetStatus]]
             [shell.sound :refer [sound-panel]]
@@ -10,6 +12,7 @@
             [shell.fleet-overview :as fleet]
             [shell.docks :refer [device-dock node-dock]]
             [shell.setup :refer [setup]]
+            ["../setup-state.js" :refer [setupState]]
             ["../identity/device.js" :refer [clearSession deviceDid loadProofs loadSession saveProof sessionRetention]]
             ["../runtime.js" :refer [createBroker osOperations readPassport readWalletBalance]]
             ["../media.js" :refer [MEDIA_ORIGIN describeMessage requestImage requestSpeech
@@ -29,7 +32,6 @@
 (def HOME "home")
 (def ACCOUNT "account")
 (def threads-key "otehon.threads.v1")
-(def setup-key "otehon.setup.v1")
 
 (defn- zenoh-up []
   (-> (js/fetch "http://127.0.0.1:8000/@/*/router")
@@ -113,11 +115,6 @@
                                         item))))
                         out))))]
       [threads add update])))
-
-(defn- setup-finished []
-  (try
-    (= (.getItem js/localStorage setup-key) "done")
-    (catch :default _ false)))
 
 (defn- short-did [did]
   (if (> (.-length did) 26)
@@ -252,15 +249,15 @@
   [:aside.panel {:aria-label (str (.-title dapp) " dapp")}
    [:div.panel-head
     [:h2 (.-title dapp)]
-    [:span.tag "Not connected"]]
-   [:p (.-summary dapp)]
+    [:span.tag (if (and (= (.-id dapp) "murakumo") (androidInferenceAvailable)) "この端末" "Not connected")]]
+   [:p (if (and (= (.-id dapp) "murakumo") (androidInferenceAvailable)) "llama.cpp を使う端末内テキスト推論です。モデルは Murakumo アプリで管理します。" (.-summary dapp))]
    [:dl
     [:dt "Install"]
-    [:dd (if (= "os-image" (.-install dapp)) "Included in the OS image" (.-install dapp))]
+    [:dd (if (and (= (.-id dapp) "murakumo") (androidInferenceAvailable)) "Android の Murakumo アプリ" (if (= "os-image" (.-install dapp)) "Included in the OS image" (.-install dapp)))]
     [:dt "Offline"]
-    [:dd (if (= "local-core" (.-offline dapp)) "The local core works offline" (.-offline dapp))]]
+    [:dd (if (and (= (.-id dapp) "murakumo") (androidInferenceAvailable)) "モデルの取得後にオフラインで利用" (if (= "local-core" (.-offline dapp)) "The local core works offline" (.-offline dapp)))]]
    [:h3 "Network operations"]
-   (if (zero? (.-length (.-remoteOperations dapp)))
+   (if (zero? (.-length (if (and (= (.-id dapp) "murakumo") (androidInferenceAvailable)) #js [] (.-remoteOperations dapp))))
      [:p "None. This app does not use the network."]
      [:ul.operations
       (map (fn [operation]
@@ -275,7 +272,7 @@
                           "Asks each time" (.-consent operation))]
                  (when locked
                    [:button.locked {:type "button" :on-click on-raise}
-                    (str "Needs trust " minimum ". Yours is " score ".")])])) (.-remoteOperations dapp))])])
+                    (str "Needs trust " minimum ". Yours is " score ".")])])) (if (and (= (.-id dapp) "murakumo") (androidInferenceAvailable)) #js [] (.-remoteOperations dapp)))])])
 
 (defn session-retention []
   (let [[status set-status] (useState nil)
@@ -395,6 +392,7 @@
                  (= context "soshiki") [:f> soshiki account score open-account]
                  (and dapp (< score minimum))
                  [locked dapp minimum score open-account]
+                 (and (= context "murakumo") (androidInferenceAvailable)) [:f> android-inference/panel]
                  (= context "itonami") [:main.chat.net-view [:div.net-body [:h1 "Itonami Agent"] [:f> fleet/panel "agents"]]]
                  :else
                  [:f> chat dapp context (or (aget threads context) #js [])
@@ -428,7 +426,8 @@
         broker (useMemo (fn [] (createBroker "index.html" (osOperations relay-origin))) #js [])
         [did set-did] (useState nil)
         [account set-account] (useState nil)
-        [finished set-finished] (useState setup-finished)
+        [finished set-finished] (useState false)
+        [setup-error set-setup-error] (useState nil)
         [proofs set-proofs] (useState loadProofs)
         score (trustScore #js {:accountDid (some-> account (.-accountDid)) :proofs proofs})
         open (boolean (and did account finished))]
@@ -437,7 +436,9 @@
        (-> (deviceDid)
            (.then (fn [value]
                     (set-account (loadSession value))
-                    (set-did value)))) js/undefined)
+                    (-> (.read setupState)
+                        (.then (fn [done] (set-finished done) (set-did value)))
+                        (.catch (fn [_] (set-setup-error "設定の保存状態を確認できません。もう一度お試しください。") (set-did value))))))) js/undefined)
      #js [])
     (useEffect
      (fn []
@@ -451,12 +452,11 @@
     (if-not did
       nil
       (if-not open
-        [:f> setup broker relay-origin did account finished set-account score
+        [:<> (when setup-error [:p.problem {:role "alert"} setup-error])
+         [:f> setup broker relay-origin did account finished set-account score
          (fn []
-           (try
-             (.setItem js/localStorage setup-key "done")
-             (catch :default _ nil))
-           (set-finished true))]
+           (-> (.complete setupState)
+               (.then (fn [_] (set-setup-error nil) (set-finished true)))))]]
         [:f> shell did account proofs score broker zenoh matter
          (fn [proof-name proof]
            (saveProof proof-name proof)
