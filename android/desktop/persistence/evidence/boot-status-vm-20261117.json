@@ -1,0 +1,9 @@
+{
+  "schema": "awai.android.boot.status.vm.v1",
+  "checkedAt": "2026-11-17T01:56:49.317Z",
+  "actualKernel": true,
+  "ext4ModuleLoadPassed": true,
+  "staticLoopbackStatusGetPassed": true,
+  "fixture": "volatile fixed stage label only",
+  "physicalBootVerified": false
+}
