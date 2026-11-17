@@ -1,5 +1,5 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';
-import {gameProblem,parentProblem,authorProblem,messageProblem,buildDraft,draftProblems,decodeState,addDraft,removeDraft,emptyState,MAX_DRAFTS,PLANNED_OPERATIONS,DRAFT_SCHEMA} from '../src/model.js';
+import {isCidV1,isDidKey,base32Decode,base58Decode,gameProblem,parentProblem,authorProblem,messageProblem,buildDraft,draftProblems,decodeState,addDraft,removeDraft,emptyState,MAX_DRAFTS,PLANNED_OPERATIONS,DRAFT_SCHEMA} from '../src/model.js';
 const author='did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK';
 const cid='bafkreicm3nb6uycppgon6qpubbf5zjlgoqipfgulsux5jbrpsnrohcmspm';
 test('game, parent, author and message are validated',()=>{
@@ -10,6 +10,21 @@ test('game, parent, author and message are validated',()=>{
   assert.equal(authorProblem(author),null);
   for(const a of ['','did:key:abc','did:web:example.com','did:key:z0OIl'+'1'.repeat(40)])assert.equal(authorProblem(a),'author.format',a);
   assert.equal(messageProblem('  '),'message.empty');assert.equal(messageProblem('x'.repeat(201)),'message.long');assert.equal(messageProblem('x'.repeat(200)),null);
+});
+test('CIDs and did:keys are decoded, not only matched against the alphabet',()=>{
+  assert.equal(isCidV1(cid),true,'raw sha2-256 CIDv1');
+  assert.equal(isCidV1('bafyreigh2akiscaildcqabsyg3dfr6chu3fgpregiymsck7e7aqa4s52zy'),true,'dag-cbor CIDv1');
+  assert.equal(isCidV1('b'+'a'.repeat(50)),false,'alphabet-shaped but version 0 bytes');
+  assert.equal(isCidV1(cid.slice(0,-2)),false,'truncated digest');
+  assert.equal(isCidV1(cid+'aa'),false,'trailing bytes');
+  assert.equal(isCidV1('QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG'),false,'CIDv0 is not accepted');
+  assert.equal(isDidKey(author),true,'ed25519');
+  assert.equal(isDidKey('did:key:zQ3shokFTS3brHcDQrn82RUDfCZESWL1ZdCEJwekUDPQiYBme'),true,'secp256k1');
+  assert.equal(isDidKey('did:key:zDnaerDaTF5BXEavCrfRZEk316dpbLsfPDZ3WJ5hRTPFU2169'),true,'P-256');
+  assert.equal(isDidKey('did:key:z'+'1'.repeat(40)),false,'all zero bytes, no key codec');
+  assert.equal(isDidKey(author.slice(0,-3)),false,'short key');
+  assert.deepEqual([...base32Decode('mzxw6')],[0x66,0x6f,0x6f]);assert.equal(base32Decode('mzxw7'),null,'non-canonical tail');
+  assert.deepEqual([...base58Decode('1112')],[0,0,0,1]);assert.equal(base58Decode('0'),null);
 });
 test('a draft follows the fork_git commit shape and is never published',()=>{
   const {draft:root}=buildDraft({game:'neon-run',parent:'',author,message:'First level'});

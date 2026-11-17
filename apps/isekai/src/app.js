@@ -1,7 +1,7 @@
 import {bind_native} from './awai-ui/index.js';
 import {createHost} from './host.js';
 import {clientRuntimeProblems, createClientConsentHost, createClientOperationBroker} from './runtime.js';
-import {buildDraft, decodeState, emptyState, addDraft, removeDraft, PLANNED_OPERATIONS, STATE_SCHEMA} from './model.js';
+import {buildDraft, decodeState, emptyState, addDraft, removeDraft, PLANNED_OPERATIONS, STATE_SCHEMA, MAX_DRAFTS} from './model.js';
 import {pickLocale, translator} from './messages.js';
 
 bind_native(document.documentElement, {tonal: '.tonal', text: '.link'});
@@ -17,14 +17,35 @@ const host = createHost({appId: 'network.itonami.isekai'});
 const $ = id => document.getElementById(id);
 const say = text => { $('status').textContent = text; };
 function el(tag, text, cls) { const n = document.createElement(tag); if (text !== undefined && text !== null) n.textContent = text; if (cls) n.className = cls; return n; }
-let snapshot = {revision: 0, data: null}, state = emptyState(), busy = false;
+// readOnly: the stored drafts could not be read. Writing would replace them, so saving and
+// deleting stay off until the app is restarted with readable state.
+// notice: a startup problem that stays on screen across view changes.
+let snapshot = {revision: 0, data: null}, state = emptyState(), busy = false, readOnly = false, notice = '';
 const form = {game: '', parent: '', author: '', message: ''};
 
-async function persist(next) {
-  if (busy) return false; busy = true;
-  try { snapshot = await host.write({expectedRevision: snapshot.revision, data: next}); state = decodeState(snapshot.data); return true; }
-  catch (e) { say(t('save.failed', {code: e?.code ?? 'error'})); return false; }
-  finally { busy = false; }
+// Read the stored drafts. snapshot (the revision the next write expects) is only
+// taken over when its drafts decode, so unreadable drafts are never overwritten.
+async function load() {
+  const next = await host.read();
+  try { state = decodeState(next.data); snapshot = next; readOnly = false; }
+  catch (e) { readOnly = true; throw e; }
+}
+// change: state -> next state. Model errors (such as the draft limit) and host
+// errors are both reported; a revision conflict re-reads what is stored now.
+async function persist(change) {
+  if (busy) return false;
+  if (readOnly) { say(t('state.readOnly')); return false; }
+  busy = true;
+  try {
+    const next = change(state);
+    snapshot = await host.write({expectedRevision: snapshot.revision, data: next}); state = decodeState(snapshot.data); return true;
+  } catch (e) {
+    if (e?.code === 'state-conflict') {
+      try { await load(); say(t('save.conflict')); } catch { say(readOnly ? t('state.unreadable') : t('state.failed')); }
+      route({keepStatus: true});
+    } else say(e?.message === 'too-many-drafts' ? t('drafts.full', {max: MAX_DRAFTS}) : t('save.failed', {code: e?.code ?? e?.message ?? 'error'}));
+    return false;
+  } finally { busy = false; }
 }
 
 function field(id, key, value, attrs = {}) {
@@ -44,7 +65,7 @@ function renderDraft() {
     author: field('author', 'field.author', form.author, {autocapitalize: 'off', placeholder: 'did:key:z…'}),
     message: field('message', 'field.message', form.message, {maxLength: 200})};
   for (const x of Object.values(fields)) f.append(x.label, x.input, x.err);
-  const save = el('button', t('draft.save')); save.type = 'submit';
+  const save = el('button', t('draft.save')); save.type = 'submit'; save.disabled = readOnly;
   const pre = el('pre', null, 'mono preview'); pre.setAttribute('aria-label', t('draft.preview'));
   f.append(save);
   view.append(h, el('p', t('draft.note'), 'muted'), f, el('h3', t('draft.preview')), pre);
@@ -64,7 +85,7 @@ function renderDraft() {
     e.preventDefault();
     const result = update(true);
     if (!result.draft) { say(t('draft.invalid')); f.querySelector('[aria-invalid]')?.focus(); return; }
-    if (await persist(addDraft(state, result.draft, {id: crypto.randomUUID(), now: new Date().toISOString()}))) say(t('draft.saved'));
+    if (await persist(s => addDraft(s, result.draft, {id: crypto.randomUUID(), now: new Date().toISOString()}))) say(t('draft.saved'));
   });
   update(false); h.focus();
 }
@@ -84,8 +105,8 @@ function renderDrafts() {
     const actions = el('p', null, 'actions');
     const copy = el('button', t('drafts.copy'), 'tonal'); copy.type = 'button';
     copy.addEventListener('click', async () => { try { await navigator.clipboard.writeText(JSON.stringify({...q, createdAt: d.createdAt}, null, 2)); say(t('drafts.copied')); } catch { say(t('drafts.copyFailed')); } });
-    const del = el('button', t('drafts.delete'), 'tonal'); del.type = 'button';
-    del.addEventListener('click', async () => { if (await persist(removeDraft(state, d.id))) { say(t('drafts.deleted')); renderDrafts(); } });
+    const del = el('button', t('drafts.delete'), 'tonal'); del.type = 'button'; del.disabled = readOnly;
+    del.addEventListener('click', async () => { if (await persist(s => removeDraft(s, d.id))) { renderDrafts(); say(t('drafts.deleted')); } });
     actions.append(copy, del); li.append(actions); list.append(li);
   }
   view.append(list); h.focus();
@@ -97,12 +118,12 @@ function renderOperations() {
   for (const op of PLANNED_OPERATIONS) { const li = el('li'); li.append(el('p', t('op.' + op.id)), el('p', null, 'chips')); li.lastChild.append(el('span', t('ops.disabled'), 'chip')); list.append(li); }
   view.append(h, el('p', t('ops.note'), 'muted'), list); h.focus();
 }
-function route() {
+function route({keepStatus = false} = {}) {
   const hash = location.hash, name = hash.startsWith('#/drafts') ? 'drafts' : hash.startsWith('#/operations') ? 'operations' : 'draft';
   for (const [id, n] of [['nav-draft', 'draft'], ['nav-drafts', 'drafts'], ['nav-operations', 'operations']]) {
     if (n === name) $(id).setAttribute('aria-current', 'page'); else $(id).removeAttribute('aria-current');
   }
-  say('');
+  if (!keepStatus) say(notice);
   if (name === 'drafts') renderDrafts(); else if (name === 'operations') renderOperations(); else renderDraft();
 }
 function chrome() {
@@ -114,8 +135,8 @@ function chrome() {
 window.addEventListener('hashchange', route);
 async function start() {
   chrome();
-  try { await host.initialize(); } catch { say(t('host.failed')); }
-  try { snapshot = await host.read(); state = decodeState(snapshot.data); } catch { say(t('state.failed')); }
+  try { await host.initialize(); } catch { notice = t('host.failed'); }
+  try { await load(); } catch { notice = readOnly ? t('state.unreadable') : t('state.failed'); }
   const info = host.info();
   $('environment').textContent = t('env.line', {runtime: t(info.runtime === 'web' ? 'env.web' : 'env.tauri')});
   route();
