@@ -815,3 +815,10 @@ Object.prototype.dispatchEvent;
 Object.prototype.scrollTop;
 
 Object.prototype.scrollHeight;
+Object.prototype.EGOV_ORIGIN;
+Object.prototype.article;
+Object.prototype.egovOperation;
+Object.prototype.lawId;
+Object.prototype.go;
+Object.prototype.jp;
+Object.prototype.law_full_text_format;

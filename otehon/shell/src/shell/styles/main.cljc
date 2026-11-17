@@ -206,6 +206,8 @@
    (at-media {:prefers-reduced-motion "reduce"}
              [".voice-bezel" {:transition "none" :opacity ".5 !important"}])
    [:.net-view {:overflow-y "auto"}]
+   [:.gyosei-frame {:flex "1" :min-height 0 :display "flex"}]
+   [".gyosei-frame iframe" {:flex "1" :width "100%" :min-height "480px" :border 0 :background "var(--bg)"}]
    [:.local-inference-grid {:display "grid" :grid-template-columns "minmax(240px, 30%) minmax(0, 1fr)" :gap "24px" :padding "32px"}]
    [".local-inference-grid > section" {:padding "24px" :border-radius "24px" :background "var(--surface)"}]
    [".local-inference-grid h2" {:font-size "22px" :font-weight 500 :margin "0 0 24px"}]
