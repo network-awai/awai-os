@@ -41,12 +41,12 @@ export function base58Decode(text) {
   for (const ch of text) { if (ch !== '1') break; bytes.unshift(0); }
   return Uint8Array.from(bytes);
 }
-/** Unsigned varint at offset; [value, nextOffset] or null. */
+/** Unsigned varint at offset, shortest encoding only; [value, nextOffset] or null. */
 function varint(bytes, at) {
   let value = 0, shift = 0;
   for (let i = at; i < bytes.length && i < at + 4; i++) {
     value |= (bytes[i] & 0x7f) << shift;
-    if (!(bytes[i] & 0x80)) return [value, i + 1];
+    if (!(bytes[i] & 0x80)) return i > at && bytes[i] === 0 ? null : [value, i + 1];   // overlong
     shift += 7;
   }
   return null;
@@ -57,22 +57,51 @@ const CID_CODECS = new Set([0x55, 0x70, 0x71, 0x0129]);
 const SHA2_256 = 0x12;
 /** true for a CIDv1 in base32 ("b…") with a known codec and a sha2-256 digest. */
 export function isCidV1(text) {
-  if (!/^b[a-z2-7]+$/.test(text)) return false;
+  if (!/^b[a-z2-7]{50,80}$/.test(text)) return false;
   const bytes = base32Decode(text.slice(1)); if (!bytes || bytes[0] !== 1) return false;
   const codec = varint(bytes, 1); if (!codec || !CID_CODECS.has(codec[0])) return false;
   const hash = varint(bytes, codec[1]); if (!hash || hash[0] !== SHA2_256) return false;
   const len = varint(bytes, hash[1]);
   return !!len && len[0] === 32 && bytes.length === len[1] + 32;
 }
-// did:key public-key multicodecs and their key lengths: ed25519, secp256k1 and
-// P-256 (compressed).
-const DID_KEY_CODECS = new Map([[0xed, 32], [0xe7, 33], [0x1200, 33]]);
-/** true for did:key:z… whose base58btc payload is a known key multicodec of the right length. */
+// ---- public keys: the point must decode on its curve ----
+const mod = (a, m) => ((a % m) + m) % m;
+function powMod(b, e, m) { let r = 1n; b = mod(b, m); while (e > 0n) { if (e & 1n) r = r * b % m; b = b * b % m; e >>= 1n; } return r; }
+const isSquare = (v, p) => { v = mod(v, p); return v === 0n || powMod(v, (p - 1n) / 2n, p) === 1n; };
+const bigBE = bytes => bytes.reduce((n, b) => (n << 8n) | BigInt(b), 0n);
+// Short Weierstrass y^2 = x^3 + ax + b, SEC1 compressed point (0x02/0x03 || x).
+function weierstrass(p, a, b) {
+  return key => {
+    if (key.length !== 33 || (key[0] !== 2 && key[0] !== 3)) return false;
+    const x = bigBE(key.subarray(1)); if (x >= p) return false;
+    return isSquare(x ** 3n + a * x + b, p);
+  };
+}
+const ED_P = 2n ** 255n - 19n;
+const ED_D = mod(-121665n * powMod(121666n, ED_P - 2n, ED_P), ED_P);
+// Ed25519 (RFC 8032 5.1.3): y little-endian with the sign of x in the top bit.
+function ed25519(key) {
+  if (key.length !== 32) return false;
+  const le = Uint8Array.from(key).reverse(); const sign = le[0] >> 7; le[0] &= 0x7f;
+  const y = bigBE(le); if (y >= ED_P) return false;
+  const u = mod(y * y - 1n, ED_P), v = mod(ED_D * y * y + 1n, ED_P);
+  const x2 = u * powMod(v, ED_P - 2n, ED_P) % ED_P;
+  if (x2 === 0n) return sign === 0;
+  return isSquare(x2, ED_P);
+}
+// did:key public-key multicodecs: ed25519, secp256k1 and P-256 (compressed).
+const DID_KEY_CODECS = new Map([
+  [0xed, ed25519],
+  [0xe7, weierstrass(2n ** 256n - 2n ** 32n - 977n, 0n, 7n)],
+  [0x1200, weierstrass(2n ** 256n - 2n ** 224n + 2n ** 192n + 2n ** 96n - 1n, -3n, 0x5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604bn)]]);
+/** true for did:key:z… whose base58btc payload is a known key multicodec and a valid point. */
 export function isDidKey(text) {
-  const m = /^did:key:z([1-9A-HJ-NP-Za-km-z]+)$/.exec(text); if (!m) return false;
+  // Supported keys encode to 46–50 base58 characters; the bound keeps a large paste
+  // from reaching the BigInt decoder on every input event.
+  const m = /^did:key:z([1-9A-HJ-NP-Za-km-z]{40,60})$/.exec(text); if (!m) return false;
   const bytes = base58Decode(m[1]); if (!bytes) return false;
   const codec = varint(bytes, 0); if (!codec || !DID_KEY_CODECS.has(codec[0])) return false;
-  return bytes.length - codec[1] === DID_KEY_CODECS.get(codec[0]);
+  return DID_KEY_CODECS.get(codec[0])(bytes.subarray(codec[1]));
 }
 
 export function gameProblem(game) {
@@ -120,7 +149,9 @@ export function decodeState(data) {
   for (const e of data.drafts) {
     if (typeof e?.id !== 'string' || typeof e.createdAt !== 'string' || draftProblems(e.draft).length) throw Error('unreadable-drafts');
   }
-  return {schema: STATE_SCHEMA, drafts: data.drafts.slice(0, MAX_DRAFTS)};
+  // More than the limit is not truncated: a later write would drop the hidden drafts.
+  if (data.drafts.length > MAX_DRAFTS) throw Error('unreadable-drafts');
+  return {schema: STATE_SCHEMA, drafts: data.drafts.slice()};
 }
 export function addDraft(state, draft, {id, now}) {
   if (draftProblems(draft).length) throw Error('invalid-draft');

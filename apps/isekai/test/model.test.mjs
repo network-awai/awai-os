@@ -23,6 +23,12 @@ test('CIDs and did:keys are decoded, not only matched against the alphabet',()=>
   assert.equal(isDidKey('did:key:zDnaerDaTF5BXEavCrfRZEk316dpbLsfPDZ3WJ5hRTPFU2169'),true,'P-256');
   assert.equal(isDidKey('did:key:z'+'1'.repeat(40)),false,'all zero bytes, no key codec');
   assert.equal(isDidKey(author.slice(0,-3)),false,'short key');
+  assert.equal(isDidKey('did:key:zQ3sgkxA1r9UUKeDtF6gRP5t3pbNSemByHZ3XvvkoJLg8DUrj'),false,'secp256k1 codec with 33 zero bytes is not a point');
+  const b58=bytes=>{let n=bytes.reduce((n,b)=>n*256n+BigInt(b),0n),o='';while(n>0n){o='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'[Number(n%58n)]+o;n/=58n;}for(const b of bytes){if(b)break;o='1'+o;}return o;};
+  assert.equal(isDidKey('did:key:z'+b58([0xed,0x01,...Array(31).fill(0xff),0x7f])),false,'ed25519 y >= p');
+  assert.equal(isDidKey('did:key:z'+b58([0xed,0x01,...base58Decode(author.slice(9)).subarray(2)])),true,'re-encoded ed25519 vector');
+  assert.equal(isDidKey('did:key:z'+'2'.repeat(100000)),false,'oversized input is refused before decoding');
+  assert.equal(isCidV1('bahkqaerajtnuh2taj54zzx2b6qeexxffmz2bb4u2roks7vegf6jwfy4jsj5q'),false,'overlong codec varint');
   assert.deepEqual([...base32Decode('mzxw6')],[0x66,0x6f,0x6f]);assert.equal(base32Decode('mzxw7'),null,'non-canonical tail');
   assert.deepEqual([...base58Decode('1112')],[0,0,0,1]);assert.equal(base58Decode('0'),null);
 });
@@ -46,6 +52,7 @@ test('drafts are bounded, validated on load and removable',()=>{
   assert.throws(()=>decodeState({...s,drafts:[{...s.drafts[0],draft:{...q,published:true}}]}));
   assert.throws(()=>addDraft(s,{...q,author:'x'},{id:'c',now:'x'}));
   let full=emptyState();for(let i=0;i<MAX_DRAFTS;i++)full=addDraft(full,q,{id:String(i),now:'x'});assert.throws(()=>addDraft(full,q,{id:'z',now:'x'}));
+  assert.throws(()=>decodeState({...full,drafts:[...full.drafts,full.drafts[0]]}),/unreadable/,'more than the limit is unreadable, not truncated');
 });
 test('planned external operations are display data only',()=>{assert.equal(PLANNED_OPERATIONS.length,3);assert.ok(Object.isFrozen(PLANNED_OPERATIONS[0]));});
 import {MESSAGES,pickLocale,translator} from '../src/messages.js';

@@ -11,7 +11,7 @@ const descriptor = {schema: 'kotoba.app.client-runtime.v1', target: 'browser', p
 if (clientRuntimeProblems(descriptor, [], location.origin).length) throw Error('invalid-runtime');
 createClientOperationBroker({runtime: descriptor, requestedCapabilities: [], approvedOperations: [], hostSupportedOperations: [], consentHost: createClientConsentHost()});
 
-const locale = pickLocale(navigator.languages), t = translator(locale);
+let locale = pickLocale(navigator.languages), t = translator(locale);
 document.documentElement.lang = locale;
 const host = createHost({appId: 'network.itonami.isekai'});
 const $ = id => document.getElementById(id);
@@ -19,7 +19,7 @@ const say = text => { $('status').textContent = text; };
 function el(tag, text, cls) { const n = document.createElement(tag); if (text !== undefined && text !== null) n.textContent = text; if (cls) n.className = cls; return n; }
 // readOnly: the stored drafts could not be read. Writing would replace them, so saving and
 // deleting stay off until the app is restarted with readable state.
-// notice: a startup problem that stays on screen across view changes.
+// notice: the message key of a startup problem that stays on screen across view changes.
 let snapshot = {revision: 0, data: null}, state = emptyState(), busy = false, readOnly = false, notice = '';
 const form = {game: '', parent: '', author: '', message: ''};
 
@@ -123,8 +123,11 @@ function route({keepStatus = false} = {}) {
   for (const [id, n] of [['nav-draft', 'draft'], ['nav-drafts', 'drafts'], ['nav-operations', 'operations']]) {
     if (n === name) $(id).setAttribute('aria-current', 'page'); else $(id).removeAttribute('aria-current');
   }
-  if (!keepStatus) say(notice);
+  if (!keepStatus) say(notice ? t(notice) : '');
   if (name === 'drafts') renderDrafts(); else if (name === 'operations') renderOperations(); else renderDraft();
+}
+function showEnvironment() {
+  $('environment').textContent = t('env.line', {runtime: t(host.info().runtime === 'web' ? 'env.web' : 'env.tauri')});
 }
 function chrome() {
   document.title = t('app.title'); $('title').textContent = t('app.title');
@@ -132,13 +135,19 @@ function chrome() {
   $('nav-draft').textContent = t('nav.draft'); $('nav-drafts').textContent = t('nav.drafts'); $('nav-operations').textContent = t('nav.operations');
   $('footer').textContent = t('footer');
 }
-window.addEventListener('hashchange', route);
+window.addEventListener('hashchange', () => route());
+// Android keeps the activity on a locale change (configChanges), so follow the
+// WebView's language here instead. Form values live in `form` and survive.
+window.addEventListener('languagechange', () => {
+  const next = pickLocale(navigator.languages); if (next === locale) return;
+  locale = next; t = translator(locale); document.documentElement.lang = locale;
+  chrome(); showEnvironment(); route();
+});
 async function start() {
   chrome();
-  try { await host.initialize(); } catch { notice = t('host.failed'); }
-  try { await load(); } catch { notice = readOnly ? t('state.unreadable') : t('state.failed'); }
-  const info = host.info();
-  $('environment').textContent = t('env.line', {runtime: t(info.runtime === 'web' ? 'env.web' : 'env.tauri')});
+  try { await host.initialize(); } catch { notice = 'host.failed'; }
+  try { await load(); } catch { notice = readOnly ? 'state.unreadable' : 'state.failed'; }
+  showEnvironment();
   route();
 }
 start();
