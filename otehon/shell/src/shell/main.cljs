@@ -415,10 +415,11 @@
        [:f> sidebar context set-context threads now zenoh matter account score]
        body
        (when panel [:f> dapp-panel panel score open-account])
-       [:f> device-dock account score
-        (or (some-> balance-state (.-amount)) nil)
-        proofs capabilities zenoh matter open-account]
-       [:f> node-dock did zenoh matter]])))
+       [:div.awai-docks
+        [:f> device-dock account score
+         (or (some-> balance-state (.-amount)) nil)
+         proofs capabilities zenoh matter open-account]
+        [:f> node-dock did zenoh matter]]])))
 
 (defn app []
   (let [zenoh (use-service zenoh-up)

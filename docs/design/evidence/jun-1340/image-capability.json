@@ -1,0 +1,45 @@
+{
+  "issue": "AWAI-2927",
+  "observedAt": "2026-11-17T11:03:15.311Z",
+  "device": "physical Android API37 x86_64/7735HS",
+  "testPackage": "network.itonami.app.qa",
+  "info": {
+    "installed": true,
+    "modalities": [
+      "text"
+    ],
+    "provider": "network.awai.murakumo.qa",
+    "remote": false,
+    "schema": "awai.inference.client.v1",
+    "status": {
+      "busy": false,
+      "engine": "llama.cpp",
+      "imported": true,
+      "loaded": false,
+      "modalities": [
+        "text"
+      ],
+      "model": "Qwen3 · 0.6B · Q8_0",
+      "remote": false,
+      "schema": "awai.inference.local.v1"
+    }
+  },
+  "rejection": {
+    "accepted": false,
+    "error": "local-inference-denied-or-unavailable"
+  },
+  "imageControl": {
+    "present": true,
+    "disabled": true,
+    "title": "The image model is not available on this device",
+    "promptPresent": true
+  },
+  "generatedImages": 0,
+  "qualification": "unavailable, not successful image generation",
+  "cause": "current native provider text-only; loopback image capability service connection refused; only text Qwen model found in owning model directories",
+  "notTested": [
+    "image synthesis",
+    "generated image display",
+    "save/readback of generated image"
+  ]
+}

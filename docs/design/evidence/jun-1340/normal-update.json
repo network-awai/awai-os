@@ -1,0 +1,8 @@
+{
+  "package": "network.itonami.app",
+  "bytes": 32884535,
+  "sha256": "33db8f2f6eb72de6420f420879bfe21ca1b2df7f38a848ffad352d5db115b613",
+  "actualInstalledApkReadbackEqual": true,
+  "normal2AppsNoncacheFileHashesEqualBeforeFirstLaunch": true,
+  "operation": "adb install -r only; no clear/uninstall"
+}

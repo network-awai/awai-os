@@ -3,3 +3,31 @@
 .awai-ui .mobile-navigation label{max-inline-size:100%;display:flex;align-items:center;gap:8px;flex-wrap:wrap}.awai-ui .mobile-navigation select{max-inline-size:100%;min-inline-size:0}
 .awai-ui .composer textarea{font-size:1rem}.awai-ui .dapp.awai-button{justify-content:flex-start;text-align:start;white-space:normal}
 .awai-ui .new-chat.awai-button{justify-content:flex-start;text-align:start}
+
+/* Reserve an actual grid row: docks must not cover the account or composer. */
+.awai-ui .shell{block-size:100dvh;grid-template-rows:minmax(0,1fr) auto}
+.awai-ui .shell>.sidebar{grid-column:1;grid-row:1}
+.awai-ui .shell>main{grid-column:2;grid-row:1}
+.awai-ui .shell>.panel{grid-column:3;grid-row:1}
+.awai-ui .awai-docks{grid-column:1/-1;grid-row:2;display:flex;align-items:flex-end;justify-content:space-between;gap:16px;min-inline-size:0;padding:12px max(12px,env(safe-area-inset-right,0px)) max(12px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));border-block-start:1px solid var(--awai-border);background:var(--awai-background);z-index:20}
+.awai-ui .awai-docks .dock-cluster{position:relative;inset:auto;flex:1 1 0;inline-size:calc(50% - 8px);max-inline-size:calc(50% - 8px);min-inline-size:0;gap:8px}
+.awai-ui .awai-docks .dock-buttons{display:flex;flex-wrap:wrap;inline-size:100%;gap:8px}
+.awai-ui .awai-docks .dock-right .dock-buttons{justify-content:flex-end}
+.awai-ui .dock-button.awai-button{flex:0 0 auto;inline-size:auto;max-inline-size:100%;min-inline-size:48px;min-block-size:52px;padding:12px 16px;gap:8px;font-size:.875rem;white-space:nowrap;border:1px solid var(--awai-primary);align-items:center}
+.awai-ui .dock-button .dock-label,.awai-ui .dock-button .dock-value{color:inherit;white-space:nowrap;flex-shrink:0;overflow-wrap:normal}
+.awai-ui .dock-button[aria-expanded=true]{background:var(--awai-primary);color:var(--awai-onPrimary);box-shadow:none}
+.awai-ui .awai-docks .dock-panel{position:absolute;inset-block-end:calc(100% + 8px);inset-inline-start:0;inline-size:320px;max-inline-size:100%;max-block-size:min(52dvh,420px);background:var(--awai-surface);color:var(--awai-text);border:1px solid var(--awai-border);box-shadow:0 8px 24px #0002}
+.awai-ui .awai-docks .dock-right .dock-panel{inset-inline-start:auto;inset-inline-end:0}
+.awai-ui .dock-close.awai-button{flex:none;min-inline-size:48px;padding:8px}
+.awai-ui .account-button.awai-button{gap:8px;padding:12px 16px;min-inline-size:0;text-align:start}
+.awai-ui .account-button .title{min-inline-size:0}.awai-ui .account-button .count{color:inherit;flex:none;white-space:nowrap}
+@media(max-width:640px){
+ .awai-ui .shell,.awai-ui .shell.with-panel{grid-template-rows:auto minmax(0,1fr) auto}
+ .awai-ui .shell>main{grid-column:1;grid-row:2}
+ .awai-ui .shell>.mobile-navigation{grid-column:1;grid-row:1}
+ .awai-ui .awai-docks{grid-row:3;display:grid;gap:8px}
+ .awai-ui .awai-docks .dock-cluster{inline-size:100%;max-inline-size:100%}
+ .awai-ui .awai-docks .dock-right .dock-buttons{justify-content:flex-start}
+ .awai-ui .dock-button.awai-button{padding-inline:12px}
+}
+@media(forced-colors:active){.awai-ui .dock-button.awai-button{border-color:ButtonText}.awai-ui .dock-button[aria-expanded=true]{background:Highlight;color:HighlightText}}
