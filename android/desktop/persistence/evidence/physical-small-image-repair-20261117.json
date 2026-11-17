@@ -1,0 +1,19 @@
+{
+  "schema": "awai.android.physical.small.image.repair.v1",
+  "checkedAt": "2026-11-17T03:48:29.947335+00:00",
+  "artifactSourceRevision": "e112e1e",
+  "recoveryBootId": "4d642b22-f0bf-43ab-93c5-649c5b10b2de",
+  "androidRecoveryBootCompleted": true,
+  "metadataAndCache4KiBVerified": true,
+  "original1KiBImagesRetained": true,
+  "onDeviceContentAttributesComparisonPassed": true,
+  "protectedRegionsUnchanged": true,
+  "peerMarkersMatched": 5,
+  "encryptedFilesMatched": 9,
+  "userdataJournalReplayedAndCleanlyUnmounted": true,
+  "threeImageJournalRecoveryFlagsClear": true,
+  "actualRequire4KiBImageGuardPassed": true,
+  "authenticationOrPinSettingsChanged": false,
+  "persistentAndroidBootVerified": false,
+  "nativePeerDerivationVerified": false
+}

@@ -51,7 +51,7 @@ done
 status root-mount
 "$B" mount -t ext4 -o ro,noload /dev/nvme0n1p2 /awai-check || fail root-mount
 status image-validation
-"$B" sh /awai/verify-images.sh /awai-check/awai-android-2992 > /awai-status/image-check.txt 2>&1 || fail image-guard
+"$B" sh /awai/verify-images.sh /awai-check/awai-android-2992 require-4k > /awai-status/image-check.txt 2>&1 || fail image-guard
 "$B" umount /awai-check || fail root-unmount
 status enable-owned-root-write
 "$B" blockdev --setrw /dev/nvme0n1 || fail namespace-write

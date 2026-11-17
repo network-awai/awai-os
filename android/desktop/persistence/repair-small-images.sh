@@ -1,5 +1,5 @@
 #!/awai/busybox sh
-# Fixed operator OS-journal repair. Protected partitions stay readonly throughout.
+# Fixed Desktop small-image migration. Protected partitions stay readonly throughout.
 set -eu
 set -o pipefail
 B=/awai/busybox
