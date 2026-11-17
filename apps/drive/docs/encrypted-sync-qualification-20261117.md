@@ -2,12 +2,24 @@
 
 Tracking: https://linear.app/kotobalabs/issue/AWAI-3014
 PR: https://github.com/network-awai/awai-os/pull/166
-Source of final VM build: `177d093ad10a9c351b9f99f5d94cd94e9f5fcd29`.
+Source of the complete fault-matrix VM build: `e8808e5` (same runtime source as the pre-commit reviewed candidate).
 Build override: `AWAI_DRIVE_SYNC_ORIGIN=https://localhost:18463`, with an
 uncommitted debug-only localhost CA overlay. Development signer SHA256:
 `2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29`.
-Final ARM64 VM APK:36,572,309 bytes, SHA256
-`9bb2c5dc2359fdc63ededf9aecd8e6a538c2680be568f6d4156f744b24c37ca1`.
+Fault-matrix ARM64 VM APK:36,572,309 bytes, SHA256
+`54389d04e972795bce6e8e1cc248f654e39a4b958a7e91024b3aa775a860f10f`.
+
+Endpoint-bound receipt/staging follow-up source `177d093` repeated successful
+UI sync/eviction/restore and complete hash equality. Its APK SHA256 is
+`9bb2c5dc2359fdc63ededf9aecd8e6a538c2680be568f6d4156f744b24c37ca1`
+(36,572,309 bytes).
+Response-bound follow-up source `05017da` was then built/installed and repeated
+UI sync -> eviction -> complete restore with identical inventory/hash results.
+Its ARM64 VM APK is 21841365 bytes, SHA256
+`216e16352c35f3afea00c924813633a3cbc76e8838096dab0548aca57b09add3`. Seven local tests, including stalled/oversized/failing response
+streams, pass on the integrated main tree. The full fault matrix above remains
+bound to its original candidate; it is not relabeled as a later build.
+
 The endpoint-pinned configuration differs from the default/no-endpoint build;
 this is not a physical-device/Store/release APK.
 
