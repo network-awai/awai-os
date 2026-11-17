@@ -61,13 +61,16 @@
     "canonicalTrustedUiApproval": true,
     "storageKind": "app-private",
     "preexistingSnapshotVerified": true,
-    "backgroundLanRoundTrip": true,
+    "backgroundLanRoundTrip": null,
     "explicitStopRefusedTraffic": true,
     "independentDevices": true,
-    "independentNetworks": false
+    "independentNetworks": false,
+    "reportedBackgroundLanRoundTrip": true,
+    "backgroundActivityVerified": false,
+    "qualificationNote": "Legacy fixture sent HOME without lifecycle assertion; background state unqualified. Retention/CAR/Stop evidence remains valid."
   },
-  "rebootCountAfterRestoredDataActivation": 1,
   "secondCleanRebootVerified": false,
   "naturalLongDozeVerified": false,
-  "offlineKernelBootVerified": false
+  "offlineKernelBootVerified": false,
+  "successfulPersistentBootsVerified": 1
 }
