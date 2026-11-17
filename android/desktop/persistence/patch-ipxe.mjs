@@ -11,7 +11,7 @@ const needle=Buffer.from('kernel http://10.77.0.1:18090/kernel');const at=b.inde
 const start=b.lastIndexOf(Buffer.from('#!ipxe\n'),at),end=b.indexOf(0,at);assert(start>=0&&end>at);
 const original=b.toString('ascii',start,end);assert(original.includes('module_blacklist=nvme,nvme_core,ahci,sd_mod,usb_storage,uas'));
 let script=original.replaceAll('10.77.0.1:18090','10.77.0.1:18091').replace('module_blacklist=nvme,nvme_core,','module_blacklist=');
-if(mode==='persistent')script=script.replace('androidboot.android_dir=android-Generic_x86_64','androidboot.android_dir=awai-android-2992').replace('androidboot.mount_userdata=tmpfs','androidboot.mount_userdata=bind_mount_dir');
+if(mode==='persistent')script=script.replace('androidboot.android_dir=android-Generic_x86_64','androidboot.android_dir=awai-android-2992').replace('androidboot.mount_userdata=tmpfs','androidboot.mount_userdata=imgs');
 script=script.replace('echo Awai Android diagnostic LAN boot failed. Existing Nix disk was not selected.',`echo Awai Android ${mode} boot failed.`);
 assert(script.length<=original.length,'Embedded region cannot grow');
 b.write(script.padEnd(original.length,' '),start,'ascii');
