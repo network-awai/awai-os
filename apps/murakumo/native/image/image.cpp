@@ -9,7 +9,7 @@ std::mutex mutex,ctxMutex;
 std::atomic<bool>cancelled{false};
 sd_ctx_t *ctx=nullptr;
 std::atomic<int> progress{0};
-void fail(JNIEnv*e,const char*c){e->ThrowNew(e->FindClass("java/lang/IllegalStateException"),c);}
+void fail(JNIEnv*e,const char*c){__android_log_print(ANDROID_LOG_ERROR,"AwaiImage","%s",c);e->ThrowNew(e->FindClass("java/lang/IllegalStateException"),c);}
 struct Opt {sd_opt_t*p;~Opt(){sd_opt_free(p);}};
 struct Result {sd_result_t*p=nullptr;~Result(){sd_result_free(p);}};
 std::string str(JNIEnv*e,jstring s){const char*p=e->GetStringUTFChars(s,nullptr);std::string x(p);e->ReleaseStringUTFChars(s,p);return x;}
@@ -18,7 +18,6 @@ bool ok(sd_status_t s){return s==SD_STATUS_OK;}
 extern "C" JNIEXPORT jbyteArray JNICALL Java_network_awai_murakumo_ImageEngine_generate(JNIEnv*e,jclass,jstring root,jbyteArray raw){
  std::unique_lock<std::mutex> guard(mutex,std::try_to_lock);if(!guard.owns_lock()){fail(e,"busy");return nullptr;}
  const int n=e->GetArrayLength(raw);if(n<1||n>8192){fail(e,"prompt-limit");return nullptr;}
- cancelled=false;
  std::string prompt(n,'\0');e->GetByteArrayRegion(raw,0,n,reinterpret_cast<jbyte*>(prompt.data()));
  if(prompt.find('\0')!=std::string::npos){fail(e,"invalid-prompt");return nullptr;}
  auto path=str(e,root);Opt c{sd_ctx_opt_create()};progress=0;
@@ -36,10 +35,12 @@ extern "C" JNIEXPORT jbyteArray JNICALL Java_network_awai_murakumo_ImageEngine_g
  auto status=valid?sd_generate_image(ctx,g.p,&result.p):SD_STATUS_INVALID_ARGUMENT;
  {std::lock_guard<std::mutex>state(ctxMutex);sd_ctx_free(ctx);ctx=nullptr;}
  if(!ok(status)||!result.p||sd_result_get_kind(result.p)!=SD_RESULT_IMAGE||sd_result_get_image_count(result.p)!=1){fail(e,"image-generation-failed");return nullptr;}
- auto t=sd_result_get_image(result.p,0);
+ auto t=sd_result_get_image(result.p,0);if(t)__android_log_print(ANDROID_LOG_INFO,"AwaiImage","output type=%d rank=%zu C=%lld W=%lld H=%lld bytes=%zu",sd_tensor_type(t),sd_tensor_rank(t),(long long)sd_tensor_dim(t,0),(long long)sd_tensor_dim(t,1),(long long)sd_tensor_dim(t,2),sd_tensor_byte_size(t));
  if(!t||sd_tensor_type(t)!=SD_TENSOR_U8||sd_tensor_rank(t)!=3||sd_tensor_dim(t,0)!=3||sd_tensor_dim(t,1)!=512||sd_tensor_dim(t,2)!=512||sd_tensor_byte_size(t)!=512*512*3){fail(e,"invalid-image-output");return nullptr;}
  auto b=e->NewByteArray(512*512*3);if(b)e->SetByteArrayRegion(b,0,512*512*3,static_cast<const jbyte*>(sd_tensor_data(t)));progress=100;return b;
 }
 extern "C" JNIEXPORT jint JNICALL Java_network_awai_murakumo_ImageEngine_progress(JNIEnv*,jclass){return progress.load();}
 // Cancellation is cooperative; never free a running context from the UI thread.
 extern "C" JNIEXPORT void JNICALL Java_network_awai_murakumo_ImageEngine_cancel(JNIEnv*,jclass){cancelled=true;std::lock_guard<std::mutex>g(ctxMutex);if(ctx)sd_cancel_generation(ctx,SD_CANCEL_ALL);}
+
+extern "C" JNIEXPORT void JNICALL Java_network_awai_murakumo_ImageEngine_prepare(JNIEnv*,jclass){cancelled=false;progress=0;}

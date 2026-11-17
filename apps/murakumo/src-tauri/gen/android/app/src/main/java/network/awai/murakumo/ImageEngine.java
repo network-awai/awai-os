@@ -4,4 +4,5 @@ final class ImageEngine {
  static native byte[] generate(String directory,byte[] prompt);
  static native int progress();
  static native void cancel();
+ static native void prepare();
 }
