@@ -72,7 +72,7 @@ close()
 
 ### Bluetooth / BLE
 
-- **告知:** BLE で Awai 用の 128 ビット service UUID を告知する。service data には `v` と 8 バイトのランダムトークンだけを入れる。
+- **告知:** Awai 用の 128 ビット UUID の service data として、`v` と 8 バイトのランダムトークンだけを告知する。UUID の一覧を別に入れると 31 バイトを超えるため入れない（P0 で確認）。検索は service data の先頭バイトで絞り込む。
 - **接続:** GATT か L2CAP CoC。帯域を考えると L2CAP CoC を優先する案。
 - **権限:**
   - 検索に `BLUETOOTH_SCAN`。位置情報に使わないので `neverForLocation` を付ける。
@@ -162,6 +162,16 @@ owner 決定（2026-11-17）により、この型は正本の Kotoba client runt
 
 ## 未確認事項
 
-- API 37 の Generic x86_64 イメージで、NSD が Ethernet 上で動くか。ローカルネットワークの権限が必要か。
-- 6600H の Bluetooth が BLE の告知・検索に使えない理由。ドライバかイメージの設定か。
+P0 の実機調査の結果は [`android/spikes/nearby-probe/RESULTS-20261117.md`](../../android/spikes/nearby-probe/RESULTS-20261117.md)（AWAI-3058）にある。要点は次のとおり。
+- 6600H（Ethernet）と moto g05（Wi-Fi）の両方で NSD が使える。
+- BLE は両方向で使える。6600H の `bluetooth_le` 機能フラグの欠落は、イメージ設定の問題。
+- `ACCESS_LOCAL_NETWORK` は強制され、付近のデバイスの 1 つのダイアログで許可される。
+- マルチキャストロックは不要。
+- NSD は固定のホスト名を告知する。
+
+残っている事項：
+- NSD のホスト名が再起動や時間で変わるか。
+- Wi-Fi Direct の端末同士の検出と接続（対応端末が 1 台のみ）。
+- BLE の GATT／L2CAP での転送。
+- 画面オフやバックグラウンドでの挙動。
 - iOS 版を作る場合の Bonjour と CoreBluetooth の制約。バックグラウンドでの検出は制限される。
