@@ -1,0 +1,231 @@
+{
+  "schema": "awai.sanka.v5-evidence/1",
+  "issue": "AWAI-3141",
+  "chain-id": "awai-en-devnet/adr0027-v5",
+  "value-class": "devnet",
+  "demand": "owner-internal",
+  "demand-source": "owner chose this request on 2026-11-18",
+  "prompt-sha256": "566aea9535ca92893f48c99c54864b629b9107269502d0ced34d58ca1b58c8dd",
+  "answer-sha256": "29f822a9b57996a7e49b9f6291632713cbd8230a939787f4e9252bd08b626f4a",
+  "answer-chars": 94,
+  "order": "baguqeeraqggrxyhxubnwmc2z3sqnmvcvmetvqlk7gu554nzlegvjj5vxa4la",
+  "receipt": "baguqeera5jear3kwmoxab3tuybezrkwtmmxrgj36xuccfnke55pdmpx72fva",
+  "provider": "did:key:z6Mkg8dTGzMZMCRdV4b7J5E9zd5Zyt38BX8GcxvaZWh8rDri",
+  "desk-node": "did:key:z6MktRvYmZynEQdvqX3f5HW8WSPKgJKqaRUKqJxq5gWkujL5",
+  "bot": "did:key:z6MksUrsJdbVXf5Js5tRytQWgrMu4crxKnLyJPmYJjhEDxh1",
+  "engine": {
+    "digest": "sha256:1e8f702fb659aed68757a29678d97897740d9104e137437391f10c8b15d16f61",
+    "name": "llama.cpp",
+    "version": "9581154a2250cc9e6948e4c2a2fc4b4e19d1a57e"
+  },
+  "model": {
+    "digest": "sha256:9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031",
+    "revision": "23749fefcc72300e3a2ad315e1317431b06b590a"
+  },
+  "measured": {
+    "completion-tokens": 59,
+    "finished-at": 1794932330,
+    "prompt-tokens": 36,
+    "started-at": 1794932329
+  },
+  "wall-seconds-through-tunnel": 0.554,
+  "settlement": {
+    "entry-hash": "96bc421aeb930e65f31b09ef9aa53664260382822bb4e1836d7564fc00aa6751",
+    "finality": ":single-operator-devnet",
+    "finalized": true,
+    "height": 3,
+    "transfer-id": "settle-baguqeeraqggrxyhxubnwmc2-76fb5000e2308f06897a87c8"
+  },
+  "head": {
+    "chain-id": "awai-en-devnet/adr0027-v5",
+    "entries": 3,
+    "finality": ":single-operator-devnet",
+    "head": "96bc421aeb930e65f31b09ef9aa53664260382822bb4e1836d7564fc00aa6751",
+    "height": 3,
+    "net-zero": true,
+    "value-class": ":devnet"
+  },
+  "journal": {
+    "earned": {
+      "external-earned-en": 0,
+      "owner-internal-excluded": 1,
+      "value-class": ":devnet"
+    },
+    "journal": [
+      {
+        "acceptance": null,
+        "account": "did:key:z6MkkefXmhckku5q6ibuydJySyZ3YpuPba3wAZhk71odBtmh",
+        "amount": 1,
+        "demand": ":owner-internal",
+        "entry": ":credit-extended",
+        "height": 1,
+        "order": null,
+        "transfer-id": "fund-1",
+        "value-class": ":devnet"
+      },
+      {
+        "acceptance": null,
+        "account": "did:key:z6MksUrsJdbVXf5Js5tRytQWgrMu4crxKnLyJPmYJjhEDxh1",
+        "amount": 1,
+        "demand": ":owner-internal",
+        "entry": ":credit-received",
+        "height": 1,
+        "order": null,
+        "transfer-id": "fund-1",
+        "value-class": ":devnet"
+      },
+      {
+        "acceptance": null,
+        "account": "did:key:z6MkkefXmhckku5q6ibuydJySyZ3YpuPba3wAZhk71odBtmh",
+        "amount": 1,
+        "demand": ":owner-internal",
+        "entry": ":credit-extended",
+        "height": 2,
+        "order": null,
+        "transfer-id": "fund-2",
+        "value-class": ":devnet"
+      },
+      {
+        "acceptance": null,
+        "account": "did:key:z6MksUrsJdbVXf5Js5tRytQWgrMu4crxKnLyJPmYJjhEDxh1",
+        "amount": 1,
+        "demand": ":owner-internal",
+        "entry": ":credit-received",
+        "height": 2,
+        "order": null,
+        "transfer-id": "fund-2",
+        "value-class": ":devnet"
+      },
+      {
+        "acceptance": "baguqeera3fcrgl6rygnxytvvnq4gkvck5uloff2flcq2td4zzb3zbnrdlgja",
+        "account": "did:key:z6MksUrsJdbVXf5Js5tRytQWgrMu4crxKnLyJPmYJjhEDxh1",
+        "amount": 1,
+        "demand": ":owner-internal",
+        "entry": ":provider-expense",
+        "height": 3,
+        "order": "baguqeeraqggrxyhxubnwmc2z3sqnmvcvmetvqlk7gu554nzlegvjj5vxa4la",
+        "transfer-id": "settle-baguqeeraqggrxyhxubnwmc2-76fb5000e2308f06897a87c8",
+        "value-class": ":devnet"
+      },
+      {
+        "acceptance": "baguqeera3fcrgl6rygnxytvvnq4gkvck5uloff2flcq2td4zzb3zbnrdlgja",
+        "account": "did:key:z6Mkg8dTGzMZMCRdV4b7J5E9zd5Zyt38BX8GcxvaZWh8rDri",
+        "amount": 1,
+        "demand": ":owner-internal",
+        "entry": ":earned-en",
+        "height": 3,
+        "order": "baguqeeraqggrxyhxubnwmc2z3sqnmvcvmetvqlk7gu554nzlegvjj5vxa4la",
+        "transfer-id": "settle-baguqeeraqggrxyhxubnwmc2-76fb5000e2308f06897a87c8",
+        "value-class": ":devnet"
+      }
+    ]
+  },
+  "checks": [
+    {
+      "check": "the provider desk is initialised with the pinned model and the provider operator's key",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "the bot's signer enrolls the owner's device key",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "the order card shows this order's provider, amount, value class and CID",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "the owner taps Approve",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "the signer reserves one unit for the approved order",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "the provider operator registers the same order",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "the desk answers through the tunnel",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "the independent verifier accepts the real receipt",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "a changed answer gets no buttons on the acceptance card",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "the acceptance card shows the real answer and its receipt",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "the owner taps Accept",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "the signer proposes the settlement for the accepted receipt",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "the provider operator counter-signs on its host and the node finalizes",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "the same settlement is not paid twice",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "after a restart the node reads back the same head",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "signer, ledger and journal reconcile",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "with the desk stopped the order gets no answer",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "the reservation is released and nothing is paid",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "signer, ledger and journal still reconcile",
+      "passed": true,
+      "detail": null
+    }
+  ],
+  "passed": 19,
+  "total": 19,
+  "observed": "2026-11-18; buyer and EN node on an Apple M1 Max; owner cards on the disposable AOSP API 35 emulator (emulator-5620) kept from V4; provider desk, llama-server (llama.cpp 9581154a, Qwen3 0.6B Q8_0) and the provider operator key on benjamin (Darwin arm64)",
+  "acceptance-judgement": "The Accept tap was made by the harness (adb input), not by the owner judging the answer. The answer from the 0.6B model is weak; whether it would be accepted is the owner's call.",
+  "not-shown": [
+    "Hermes proposing the order from a conversation (the buyer was this harness)",
+    "the owner's own judgement of the answer, a Passkey, or a physical device",
+    "distributed finality: one operator's devnet node",
+    "a market, external demand or revenue: this is one owner-internal transaction",
+    "any real asset (V6)"
+  ]
+}

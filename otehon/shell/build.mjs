@@ -18,6 +18,7 @@ const { osOperations, phoneOperations, runtimeDescriptor } = await import("./src
 import { scriptSrc, styleSrc, imageSrc, staticReportConnectSrc } from "./src/csp.js";
 import {voiceConnectSrc} from './src/voice-channel-contract.js';
 import { buildDougaka } from "./dougaka-bundle.mjs";
+import { restrictedGuestHashes } from "./scripts/guest-csp.mjs";
 
 const relayOrigin = process.env.RELAY_ORIGIN ?? "https://relay.awai.network";
 // OTEHON_HTTP=1 builds for the stable loopback OS origin and HTTP preview.
@@ -49,7 +50,12 @@ await mkdir("dist/soshiki-runtime", { recursive: true });
 const chatConnect = clientRuntimeConnectSrc(runtimeDescriptor("soshiki-runtime/index.html", osOperations(relayOrigin)), [...new Set(osOperations(relayOrigin).map(o => o.capability))], [], []);
 await writeFile("dist/soshiki-runtime/index.html", (await readFile("soshiki-runtime/index.html", "utf8")).replace("__CONNECT_SRC__", `${chatConnect} 'self'`));
 
-async function page({ html, outdir, operations, appOrigins }) {
+const guestHashes = restrictedGuestHashes({
+  guestHtml: await readFile("vendor/egov/gyosei.html", "utf8"),
+  runtimeSource: await readFile("vendor/kotoba-client-runtime.js", "utf8"),
+});
+
+async function page({ html, outdir, operations, appOrigins, guests = null }) {
   await mkdir(`${outdir}/assets`, { recursive: true });
   await copyFile("vendor/kotoba-client-consent.css", `${outdir}/assets/consent.css`);
   await copyFile("assets/awai-logo.png", `${outdir}/assets/awai-logo.png`);
@@ -67,8 +73,8 @@ async function page({ html, outdir, operations, appOrigins }) {
     `${outdir}/index.html`,
     template
       .replace("__CONNECT_SRC__", connect)
-      .replace("__SCRIPT_SRC__", scriptSrc(cspMode))
-      .replace("__STYLE_SRC__", styleSrc(cspMode))
+      .replace("__SCRIPT_SRC__", [scriptSrc(cspMode), ...(guests?.script ?? [])].join(" "))
+      .replace("__STYLE_SRC__", [styleSrc(cspMode), ...(guests?.style ?? [])].join(" "))
       .replace("__IMAGE_SRC__", imageSrc(cspMode))
       .replace("__DAPPS_JSON__", catalog)
       .replace("__RELAY_ORIGIN__", relayOrigin),
@@ -80,6 +86,7 @@ await page({
   outdir: "dist",
   operations: osOperations(relayOrigin),
   appOrigins: [],
+  guests: guestHashes,
 });
 await page({
   html: "link/index.html",

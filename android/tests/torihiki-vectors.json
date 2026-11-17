@@ -1,0 +1,87 @@
+{
+ "about": "Produced 2026-11-18 by running torihiki.auth/signing-payload and torihiki.address/derive from kotoba-lang/torihiki at 6f3a28d (the engine pin of kotoba-lang/torihiki-node main), one-shot nbb v1.4.208 oracle on a developer machine, not CI. Shims: kotoba.lang.text/join -> clojure.string/join; kotoba.bytes.sha256/sha256-bytes -> node:crypto SHA-256. The derive values equal the earlier engine-produced vectors (kotoba-lang/kotoba lib/kotoba.aiueos/test/session/torihiki-vectors.json). Field count 50 (f0..f49).",
+ "engine": {
+  "repo": "kotoba-lang/torihiki",
+  "commit": "6f3a28d185dd19749329cac58bc865a582ef794f",
+  "auth_cljk_sha256": "ab45373b3165362cab105c2c766f40b3b43d717f540f9f09c2a00d6c048112c3",
+  "address_cljk_sha256": "4ebf70aaa42bfcad1fb0ded6d2c35eef7e4951a31993a9c3d0b44e8620cbebcf"
+ },
+ "derive": [
+  {
+   "pubkey": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+   "account": 19122246000151
+  },
+  {
+   "pubkey": "n4bQgYhMfWWaL+qgxVrQFaO/TxsrC4Is0V1sFbDwCgg=",
+   "account": 23260298739723
+  },
+  {
+   "pubkey": "11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIVjsGRdSw=",
+   "account": 25034228373619
+  }
+ ],
+ "payloads": [
+  {
+   "chain": "torihiki-devnet-1",
+   "account": 123456,
+   "nonce": 1,
+   "tx": {
+    "tx": "order",
+    "market": 1,
+    "side": 0,
+    "level": 6799,
+    "qty": 3,
+    "flags": 0
+   },
+   "payload": "torihiki/tx/v1\nchain=torihiki-devnet-1\naccount=123456\nnonce=1\nf0=order\nf1=1\nf2=0\nf3=6799\nf4=3\nf5=0\nf6=\nf7=\nf8=\nf9=\nf10=\nf11=\nf12=\nf13=\nf14=\nf15=\nf16=\nf17=\nf18=\nf19=\nf20=\nf21=\nf22=\nf23=\nf24=\nf25=\nf26=\nf27=\nf28=\nf29=\nf30=\nf31=\nf32=\nf33=\nf34=\nf35=\nf36=\nf37=\nf38=\nf39=\nf40=\nf41=\nf42=\nf43=\nf44=\nf45=\nf46=\nf47=\nf48=\nf49=\n"
+  },
+  {
+   "chain": "torihiki-devnet-1",
+   "account": 35184372088831,
+   "nonce": 17,
+   "tx": {
+    "tx": "order",
+    "market": 1,
+    "side": 1,
+    "level": 6801,
+    "qty": 1,
+    "flags": 2
+   },
+   "payload": "torihiki/tx/v1\nchain=torihiki-devnet-1\naccount=35184372088831\nnonce=17\nf0=order\nf1=1\nf2=1\nf3=6801\nf4=1\nf5=2\nf6=\nf7=\nf8=\nf9=\nf10=\nf11=\nf12=\nf13=\nf14=\nf15=\nf16=\nf17=\nf18=\nf19=\nf20=\nf21=\nf22=\nf23=\nf24=\nf25=\nf26=\nf27=\nf28=\nf29=\nf30=\nf31=\nf32=\nf33=\nf34=\nf35=\nf36=\nf37=\nf38=\nf39=\nf40=\nf41=\nf42=\nf43=\nf44=\nf45=\nf46=\nf47=\nf48=\nf49=\n"
+  },
+  {
+   "chain": "torihiki-devnet-1",
+   "account": 100001,
+   "nonce": 2,
+   "tx": {
+    "tx": "order",
+    "market": 1,
+    "side": 0,
+    "level": 6800,
+    "qty": 5,
+    "flags": 5
+   },
+   "payload": "torihiki/tx/v1\nchain=torihiki-devnet-1\naccount=100001\nnonce=2\nf0=order\nf1=1\nf2=0\nf3=6800\nf4=5\nf5=5\nf6=\nf7=\nf8=\nf9=\nf10=\nf11=\nf12=\nf13=\nf14=\nf15=\nf16=\nf17=\nf18=\nf19=\nf20=\nf21=\nf22=\nf23=\nf24=\nf25=\nf26=\nf27=\nf28=\nf29=\nf30=\nf31=\nf32=\nf33=\nf34=\nf35=\nf36=\nf37=\nf38=\nf39=\nf40=\nf41=\nf42=\nf43=\nf44=\nf45=\nf46=\nf47=\nf48=\nf49=\n"
+  },
+  {
+   "chain": "torihiki-devnet-1",
+   "account": 123456,
+   "nonce": 3,
+   "tx": {
+    "tx": "cancel-all",
+    "market": 1
+   },
+   "payload": "torihiki/tx/v1\nchain=torihiki-devnet-1\naccount=123456\nnonce=3\nf0=cancel-all\nf1=1\nf2=\nf3=\nf4=\nf5=\nf6=\nf7=\nf8=\nf9=\nf10=\nf11=\nf12=\nf13=\nf14=\nf15=\nf16=\nf17=\nf18=\nf19=\nf20=\nf21=\nf22=\nf23=\nf24=\nf25=\nf26=\nf27=\nf28=\nf29=\nf30=\nf31=\nf32=\nf33=\nf34=\nf35=\nf36=\nf37=\nf38=\nf39=\nf40=\nf41=\nf42=\nf43=\nf44=\nf45=\nf46=\nf47=\nf48=\nf49=\n"
+  },
+  {
+   "chain": "torihiki-devnet-1",
+   "account": 123456,
+   "nonce": 1,
+   "tx": {
+    "tx": "deposit",
+    "amount": 100000000
+   },
+   "payload": "torihiki/tx/v1\nchain=torihiki-devnet-1\naccount=123456\nnonce=1\nf0=deposit\nf1=\nf2=\nf3=\nf4=\nf5=\nf6=\nf7=100000000\nf8=\nf9=\nf10=\nf11=\nf12=\nf13=\nf14=\nf15=\nf16=\nf17=\nf18=\nf19=\nf20=\nf21=\nf22=\nf23=\nf24=\nf25=\nf26=\nf27=\nf28=\nf29=\nf30=\nf31=\nf32=\nf33=\nf34=\nf35=\nf36=\nf37=\nf38=\nf39=\nf40=\nf41=\nf42=\nf43=\nf44=\nf45=\nf46=\nf47=\nf48=\nf49=\n"
+  }
+ ]
+}

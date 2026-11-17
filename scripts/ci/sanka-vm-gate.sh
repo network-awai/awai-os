@@ -20,6 +20,9 @@ cases() {
   (cd dapps/reward-loop
    nix-shell nix/shell.nix --run 'bb --classpath src:test test/run_cases.clj'
    nix-shell nix/shell.nix --run 'PYTHONPATH=src basilisp run test/run_cases.lpy')
+  (cd dapps/en-devnet
+   nix-shell nix/shell.nix --run 'bb --classpath src:test test/run_cases.clj'
+   nix-shell nix/shell.nix --run 'PYTHONPATH=src basilisp run test/run_cases.lpy')
 }
 vm() {
   uname -srm; nproc; ls -l /dev/kvm || echo "no /dev/kvm: the VM gate will be slow or fail"

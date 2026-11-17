@@ -1,0 +1,167 @@
+{
+  "schema": "awai.support-devnet-evidence/1",
+  "issue": "AWAI-3169",
+  "parent": "AWAI-3112",
+  "recipient": "Awai Network LLC",
+  "wording": "support (寄付 wording undecided)",
+  "chain-id": "awai-en-devnet/awai-3169",
+  "value-class": "devnet",
+  "finality": "single-operator-devnet",
+  "approval": "scripted answer; on-device consent screen is AWAI-3170",
+  "roles": {
+    "sponsor": "did:key:z6MkhCsf4YJHzevq7YK4y4jZoYMgs72u2xdEezJFntDRj5bW",
+    "awai-support-bot": "did:key:z6Mkn3TM3S2XYCvvBLT7NPppxDTuGyuUBoiggWn5xY12CjZ5",
+    "node-operator": "did:key:z6Mkm5mZVwyZfyVg24JtbK7qn7oh4f7DGLcNAS1oi8WHxsAG"
+  },
+  "card": {
+    "amount": 1,
+    "bot": "did:key:z6Mkn3TM3S2XYCvvBLT7NPppxDTuGyuUBoiggWn5xY12CjZ5",
+    "chain-id": "awai-en-devnet/awai-3169",
+    "expires-ms": 1794934924851,
+    "kind": ":consent-card",
+    "notices": [
+      ":devnet-not-money",
+      ":not-tax-deductible",
+      ":wording-undecided"
+    ],
+    "purpose": [
+      "Awai Network node operation",
+      "Itonami dapps development",
+      "creative work",
+      "resource provision"
+    ],
+    "recipient": {
+      "kind": ":llc",
+      "legal-name": "Awai Network LLC"
+    },
+    "route": ":en-devnet",
+    "sponsor": "did:key:z6MkhCsf4YJHzevq7YK4y4jZoYMgs72u2xdEezJFntDRj5bW",
+    "target": "awai-support",
+    "transfer-id": "support-1",
+    "value-class": ":devnet",
+    "wording": ":support"
+  },
+  "decision": {
+    "entry-hash": "80e76b193d6238a49cb5e4cd324f6861b1a0a0d4d3a29b90fff0e7091c9a83b5",
+    "finality": ":single-operator-devnet",
+    "finalized": true,
+    "height": 1,
+    "transfer-id": "support-1"
+  },
+  "receipt": {
+    "amount": 1,
+    "finality": ":single-operator-devnet",
+    "height": 1,
+    "received": true,
+    "recipient": {
+      "kind": ":llc",
+      "legal-name": "Awai Network LLC"
+    },
+    "transfer-id": "support-1",
+    "value-class": ":devnet"
+  },
+  "journal": {
+    "earned": {
+      "external-earned-en": 0,
+      "owner-internal-excluded": 0,
+      "value-class": ":devnet"
+    },
+    "journal": [
+      {
+        "acceptance": null,
+        "account": "did:key:z6MkhCsf4YJHzevq7YK4y4jZoYMgs72u2xdEezJFntDRj5bW",
+        "amount": 1,
+        "demand": null,
+        "entry": ":credit-extended",
+        "height": 1,
+        "order": null,
+        "transfer-id": "support-1",
+        "value-class": ":devnet"
+      },
+      {
+        "acceptance": null,
+        "account": "did:key:z6Mkn3TM3S2XYCvvBLT7NPppxDTuGyuUBoiggWn5xY12CjZ5",
+        "amount": 1,
+        "demand": null,
+        "entry": ":credit-received",
+        "height": 1,
+        "order": null,
+        "transfer-id": "support-1",
+        "value-class": ":devnet"
+      }
+    ]
+  },
+  "head": {
+    "chain-id": "awai-en-devnet/awai-3169",
+    "entries": 1,
+    "finality": ":single-operator-devnet",
+    "head": "80e76b193d6238a49cb5e4cd324f6861b1a0a0d4d3a29b90fff0e7091c9a83b5",
+    "height": 1,
+    "net-zero": true,
+    "value-class": ":devnet"
+  },
+  "checks": [
+    {
+      "check": "the card names Awai Network LLC, devnet and support wording",
+      "passed": true,
+      "detail": "Awai Network LLC :devnet :support"
+    },
+    {
+      "check": "the card route is not offered yet",
+      "passed": true,
+      "detail": ":route-unavailable"
+    },
+    {
+      "check": "a denied card produces no transfer",
+      "passed": true,
+      "detail": "{\"cause\":\":denied\",\"refused\":true} rc=3"
+    },
+    {
+      "check": "approving a different amount produces no transfer",
+      "passed": true,
+      "detail": ":card-mismatch"
+    },
+    {
+      "check": "the node is unchanged after the refusals",
+      "passed": true,
+      "detail": "0"
+    },
+    {
+      "check": "a refusal piped onward is not signable",
+      "passed": true,
+      "detail": ":failed"
+    },
+    {
+      "check": "the sponsor's signature alone does not finalize",
+      "passed": true,
+      "detail": ":missing-receiver-signature"
+    },
+    {
+      "check": "the two-party support transfer finalizes",
+      "passed": true,
+      "detail": "{\"entry-hash\":\"80e76b193d6238a49cb5e4cd324f6861b1a0a0d4d3a29b90fff0e7091c9a83b5\",\"finality\":\":single-operator-devnet\",\"finalized\":true,\"height\":1,\"transfer-id\":\"support-1\"}"
+    },
+    {
+      "check": "the same support cannot finalize twice",
+      "passed": true,
+      "detail": ":duplicate-nonce"
+    },
+    {
+      "check": "the bot's balance and journal read back as received",
+      "passed": true,
+      "detail": "{\"amount\":1,\"finality\":\":single-operator-devnet\",\"height\":1,\"received\":true,\"recipient\":{\"kind\":\":llc\",\"legal-name\":\"Awai Network LLC\"},\"transfer-id\":\"support-1\",\"value-class\":\":devnet\"}"
+    },
+    {
+      "check": "balances still sum to zero",
+      "passed": true,
+      "detail": "True"
+    },
+    {
+      "check": "after a restart the node reads back the same head",
+      "passed": true,
+      "detail": "{\"chain-id\":\"awai-en-devnet/awai-3169\",\"entries\":1,\"finality\":\":single-operator-devnet\",\"head\":\"80e76b193d6238a49cb5e4cd324f6861b1a0a0d4d3a29b90fff0e7091c9a83b5\",\"height\":1,\"net-zero\":true,\"value-class\":\":devnet\"}"
+    }
+  ],
+  "passed": 12,
+  "total": 12
+}

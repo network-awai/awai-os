@@ -66,6 +66,12 @@ The endpoint must implement the bounded immutable CAR protocol described in
 [encrypted-sync.md](docs/encrypted-sync.md). This does not deploy that service.
 Do not silently substitute the loopback VM fixture as a production endpoint.
 
+`https://yataverse.com` implements this protocol (Backblaze B2 storage, no
+authentication, size/hash/CAR limits). Build with
+`AWAI_DRIVE_SYNC_ORIGIN=https://yataverse.com` to use it; see
+[the yataverse.com section](docs/encrypted-sync.md#yataversecom) and the
+[VM qualification](docs/encrypted-sync-yataverse-qualification-20261118.md).
+
 Pure Java adapter checks, from the repository root:
 
 ```sh
@@ -81,3 +87,22 @@ remain separate. GitHub Actions is disabled and was not enabled by this task.
 historical. [Encrypted VM qualification](docs/encrypted-sync-qualification-20261117.md)
 records the new evidence and handoff. Physical6600H installation is explicitly
 held by the owner; no physical disks, Nix/EFI, accounts or keys were modified.
+
+## macOS build (AWAI-3256)
+
+The same app builds for macOS with Tauri. File operations use a bounded Rust adapter
+(`src-tauri/src/desktop.rs`) with the Android `DriveFiles` rules: validated, NFC-normalised
+names; paths confined to one app-private root
+(`~/Library/Application Support/network.awai.drive/drive-local-v1`); symlinks refused; at most
+1000 entries per folder; notes up to 64 KiB; saves published by an atomic no-clobber link.
+`open` hands a file to the default viewer through `/usr/bin/open`. File import and encrypted
+sync are not available on macOS yet: `pick` returns `import-unavailable`, `vaultStatus` reports
+not configured, and the other vault operations return `android-adapter-required`. This app is
+separate from the existing Swift AwaiDrive.app (`com.kotoba.awaivol.drive`).
+
+```sh
+(cd ../../packages/awai-ui && npm ci && npm run build)
+npm ci && npm run build
+(cd src-tauri && cargo test --lib)
+npx tauri build --no-bundle   # binary: src-tauri/target/release/awai-drive
+```

@@ -10,6 +10,7 @@ on:
       - dapps/sanka/**
       - dapps/d1/**
       - dapps/reward-loop/**
+      - dapps/en-devnet/**
       - dapps/saifu/nix/basilisp.nix
       - dapps/sanka/nix/vm-v1.nix
   workflow_dispatch:

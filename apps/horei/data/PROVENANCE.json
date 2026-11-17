@@ -1,0 +1,49 @@
+{
+  "schema": "itonami.horei.data-provenance.v1",
+  "source": {
+    "repository": "kotoba-lang/app-itonami-global-legislation-datoms",
+    "commit": "f3fc1e3132b4ae4e0863576b42aed6e34afde562"
+  },
+  "inputs": [
+    {
+      "path": "data/corpus/jp.go.e-gov.elaws/laws-000.edn",
+      "sha256": "47987f2bf3be6ffea7726c06dedad2f320aec17dba3c71c9840f73c0646920f6",
+      "entities": 9536
+    },
+    {
+      "path": "data/corpus/jp.go.e-gov.elaws/relations-000.edn",
+      "sha256": "d31563ae9c5ce34c14ce9100c3ccbea31a5597b0f9d18c7e18af0c94955e3e51",
+      "entities": 7793
+    },
+    {
+      "path": "data/datascript-tx.edn",
+      "sha256": "7a5b94b3f752deb74b362b62a1a5a1765ea38ae592e5ca917cb3724e3d5bdd3e",
+      "entities": 568
+    }
+  ],
+  "coverage": {
+    "dataset": "jp.go.e-gov.elaws",
+    "jurisdiction": "JPN",
+    "laws": 9536,
+    "laws-with-text": 9523,
+    "present?": true,
+    "relation-kinds": {
+      "law.rel/amends": 7793
+    },
+    "relations": 7793,
+    "relations-resolved": 7793,
+    "source-id": "jp-egov",
+    "text-bytes": 1229999063
+  },
+  "fullTextBytesHeld": 0,
+  "outputs": {
+    "jp.go.e-gov.elaws.json": {
+      "sha256": "0d1ebbafc579213b7a9079a3c61ad7092c192c260b4a338b3e735950acedef19",
+      "bytes": 3489031
+    },
+    "catalog.json": {
+      "sha256": "c1222646bfef74c83b1c5ece0a59180addc91d8f8ebc5d7ced56f646dfd64e42",
+      "bytes": 137961
+    }
+  }
+}

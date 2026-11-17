@@ -354,6 +354,22 @@
           "consent": "each-operation"
         }
       ]
+    },
+    {
+      "id": "gyosei",
+      "dock": 23,
+      "title": "Gyosei",
+      "section": "Apps",
+      "summary": "Shakai, Kaisha and Matsuri: candidate public procedures with sources, and intake preparation that a person decides (fictional municipalities only)",
+      "install": "os-image",
+      "offline": "local-core",
+      "remoteOperations": [
+        {
+          "operation": "read-statute",
+          "service": "e-Gov law API (Digital Agency)",
+          "consent": "each-operation"
+        }
+      ]
     }
   ]
 }

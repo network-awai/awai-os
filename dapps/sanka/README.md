@@ -13,6 +13,9 @@ no screen, service, keys or ledger, and it is **not built into the OS image**.
 | Data generator | `test/gen_cases.lpy` | Basilisp, only to rewrite the JSON |
 | Receipt verifier | `tools/verify_receipt.lpy` | Basilisp with `cryptography` |
 | Real order and attacks | `test/live_v1.py` | Python, driving real processes |
+| Provider desk (V2) | `provider/desk.cljs` | nbb, on the provider host |
+| Order on another Mac (V2) | `test/live_v2.py` | Python, over SSH and an SSH tunnel |
+| One order end to end (V5) | `test/live_v5.py` | Python, driving the emulator, the provider host and the EN node |
 
 ## What the core decides
 
@@ -126,3 +129,64 @@ goes is not measured.
   environment, not `nix/shell.nix`.
 - nbb is not in CI, because the pinned nixpkgs has no `nbb`.
 - No screen, signer or ledger uses this core yet. Only the verifier does.
+
+## An order on another Mac (stage V2, AWAI-3103)
+
+The V1 gateway's repository (`network-awai/cloud-kotoba-desktop`) now returns 404 on GitHub, so
+`dapps/sanka/nix/vm-v1.nix` can no longer fetch it. V2 adds `provider/desk.cljs`, an nbb desk with
+the same receipt format, and runs it on a separate provider Mac (owner decision 2026-11-17: the
+provider is a Mac, the buyer later an AOSP VM). See [`provider/README.md`](provider/README.md).
+
+`test/live_v2.py` plays the buyer from another host. It registers each order through the
+operator's command over SSH, calls the loopback-only desk through an SSH tunnel, checks the receipt
+with `tools/verify_receipt.lpy`, and then tries to break it.
+
+Evidence: [`docs/evidence/sanka-v2-20261118.json`](../../docs/evidence/sanka-v2-20261118.json).
+Provider `benjamin` (Darwin arm64, 10 CPUs, 16 GiB). Engine: llama.cpp `9581154a` (the Android
+Murakumo pin), built from the verified archive without OpenSSL/curl. Model: Qwen3 0.6B Q8_0, SHA256
+`9465e63a…`. Both digests were re-checked on the provider.
+
+| Check | Result |
+| --- | --- |
+| Whole run | 28 of 28 checks |
+| A real answer (25 prompt and 12 completion tokens, measured by the desk) | Names Tokyo; only its hash is in the evidence |
+| The independent verifier accepts the receipt | Yes |
+| A used, missing, unknown or other order's key; another route | Each refused by the desk |
+| Another model, node or provider; a live or expired order; the node as payee; a reused key; a duplicate order | Each refused at registration |
+| A changed output or request, the wrong key, a forged signature, another order | Each refused by the verifier |
+| Files the provider keeps | No prompt, output or key |
+| Desk changed to lie about the output and never spend the key | 3 checks fail, exit 1 |
+
+The demand class is `owner-internal` and the value class `devnet`, but nothing is reserved, signed
+or settled yet: the buyer is this harness on a Mac, not Hermes on the AOSP VM, and there is no
+signer or ledger in the loop. The wall time (0.18 s for one request through the tunnel) is one
+sample, not a latency measurement.
+
+## One owner order end to end (stage V5, AWAI-3141)
+
+`test/live_v5.py` joins V2 (provider desk), V3b (EN node and signers) and V4 (owner cards) with one
+real order. The request is the owner's own, chosen on 2026-11-18; the evidence keeps only its hash.
+
+| Where | What runs |
+| --- | --- |
+| This Mac | EN devnet node, sponsor key, the bot's signer with the owner key enrolled |
+| AOSP emulator | Sanka order and acceptance cards (`android/sanka`) |
+| benjamin | llama-server, the provider desk, the provider operator's key |
+
+Evidence: [`docs/evidence/sanka-v5-20261118.json`](../../docs/evidence/sanka-v5-20261118.json).
+
+| Step | Result |
+| --- | --- |
+| Approve tap on the order card → reservation | Yes |
+| The provider operator registers the same order; the desk answers through an SSH tunnel | Yes (36 prompt, 59 completion tokens measured by the desk) |
+| The independent verifier accepts the real receipt | Yes |
+| Accept tap on the acceptance card (a changed answer gets no buttons) | Yes |
+| Settlement counter-signed on benjamin, finalized; a second submission refused | Yes |
+| Node restart reads back the same head; signer, ledger and journal reconcile | Yes |
+| Second order with the desk stopped: no answer, reservation released, nothing paid | Yes |
+| Whole run | 19 of 19 checks |
+
+This is one closed internal transaction on a devnet: not revenue, a market, autonomous operation or
+distributed finality. The Accept tap came from the harness, not from the owner judging the answer.
+Hermes did not propose the order.
+

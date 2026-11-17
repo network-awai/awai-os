@@ -58,6 +58,28 @@ not approved performance thresholds. Large streamed encrypted trees, WNFS,
 sharing/revocation, independent nodes, latest-head/fencing, repair/GC, owner/phone
 recovery and physical power loss retain their separate acceptance gates.
 
+## yataverse.com
+
+`https://yataverse.com` serves this protocol (Cloudflare Worker `yataverse-bytes`,
+source network-awai/app-itonami-yataverse `worker/src/drive-packs.mjs`, PR21).
+Packs are stored in Backblaze B2 and read back before the receipt is returned;
+downloads are hash-verified. CORS answers `http://tauri.localhost` only.
+
+The service has **no authentication** (owner decision 2026-11-18, AWAI-3126),
+because this app sends no credentials. Uploads are limited instead: the body
+must hash to the pack ID, be at most 12 MiB and be a well-formed CAR whose
+blocks hash to their CIDs. Anyone can therefore store or read opaque packs by
+ID; pack contents, names and metadata stay encrypted on the device. Quota and
+rate limits are open follow-ups. A receipt and readback prove that one service
+holds the bytes, not independent-node retention.
+
+Build with `AWAI_DRIVE_SYNC_ORIGIN=https://yataverse.com npm run build` (build
+`packages/awai-ui` first). The generated CSP is
+`connect-src https://yataverse.com ipc: http://ipc.localhost`. Do not commit the
+endpoint-specific `tauri.conf.json` or `generated/` output; default builds stay
+endpoint-free. No debug trust overlay is needed: system CAs apply.
+[VM qualification 2026-11-18](encrypted-sync-yataverse-qualification-20261118.md).
+
 ## Configured HTTPS storage protocol
 
 Build with `AWAI_DRIVE_SYNC_ORIGIN=https://storage.example npm run build`.
