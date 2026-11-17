@@ -767,3 +767,17 @@ Object.prototype.connectivity;
 Object.prototype.iphone;
 Object.prototype.attached;
 Object.prototype.trust;
+
+// AWAI-3011: Android native JSON is outside Closure's property-renaming graph.
+Object.prototype.modality;
+Object.prototype.maxTokens;
+Object.prototype.installed;
+Object.prototype.modalities;
+Object.prototype.remote;
+Object.prototype.busy;
+Object.prototype.loaded;
+Object.prototype.imported;
+Object.prototype.inferenceHandoff;
+
+// Bounded native setup-state JSON.
+Object.prototype.complete;

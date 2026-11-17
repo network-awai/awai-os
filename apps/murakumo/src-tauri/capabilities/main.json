@@ -1,0 +1,1 @@
+{"identifier": "murakumo-local", "description": "Bounded on-device model lifecycle and text generation; no remote/network/filesystem commands.", "windows": ["main"], "permissions": ["allow-inference-operation"]}

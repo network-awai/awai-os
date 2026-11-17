@@ -277,6 +277,8 @@
                                           (if (.startsWith (.-language js/navigator) "ja") "ja" "en")
                                           saved-language))
         [step set-step] (useState (initial-step android-shell? returning account))
+        [saving set-saving] (useState false)
+        [save-error set-save-error] (useState nil)
         network (useNetStatus)
         t (get text language)
         index (.indexOf steps step)
@@ -343,7 +345,15 @@
          [:h1 (:doneTitle t)]
          [:p (:doneBody t)]
          [:p.muted.account-id (some-> account (.-accountDid))]
-         [:button.primary {:type "button" :data-finish true :on-click on-finish} (:enter t)]])
+         [:button.primary {:type "button" :data-finish true :disabled saving
+                           :on-click (fn []
+                             (set-saving true) (set-save-error nil)
+                             (-> (js/Promise.resolve nil)
+                                 (.then (fn [_] (on-finish)))
+                                 (.catch (fn [_] (set-save-error (if (= language "ja") "設定を保存できませんでした。もう一度お試しください。" "Could not save setup. Please try again."))))
+                                 (.finally #(set-saving false))))}
+          (if saving (if (= language "ja") "保存しています…" "Saving…") (:enter t))]
+         (when save-error [:p.problem {:role "alert"} save-error])])
       (when (and (= step "signin") (not android-shell?))
         [:button.secondary {:type "button" :data-network-back true
                             :on-click #(set-step "network")}
