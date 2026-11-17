@@ -1,0 +1,20 @@
+{
+  "name": "@awai/drive",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "clojure -M:build && node scripts/bundle.mjs && node scripts/build.mjs",
+    "test": "node --test test/*.test.mjs",
+    "tauri": "tauri",
+    "build:android": "npm run build && tauri android build --apk --target aarch64"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "3.0.0-alpha.6",
+    "esbuild": "0.27.0"
+  },
+  "dependencies": {
+    "@noble/curves": "1.9.7",
+    "@noble/post-quantum": "0.5.4"
+  }
+}
