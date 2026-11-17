@@ -4,11 +4,13 @@ on:
     paths:
       - 'android/test/**'
       - '.github/workflows/android-qa-scope.yml'
+      - 'scripts/ci/android-qa-scope.sh'
   push:
     branches: [main]
     paths:
       - 'android/test/**'
       - '.github/workflows/android-qa-scope.yml'
+      - 'scripts/ci/android-qa-scope.sh'
 permissions:
   contents: read
 jobs:
@@ -20,6 +22,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: mkdir -p .agent-output
-      - run: node --test android/test/qa-scope.test.mjs android/test/qa-boot-route.test.mjs
-      - run: node --check android/test/run-qa-device.mjs
+      - name: Check (same script you can run locally)
+        run: bash scripts/ci/android-qa-scope.sh
