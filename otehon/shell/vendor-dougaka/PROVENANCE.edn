@@ -10,5 +10,8 @@
  ;; canonical broker source (it had drifted: no browser-action skip, so the
  ;; Studio host threw "CSP does not match declared services" on boot).
  :runtime-revendored {:canonical "kotoba-lang/kotoba/lib/kotoba.wasmWebcomponent/src/kotoba-client-runtime.js"
-                      :canonical-rev "d6fa95a8df09f1307b313dc1025602d54784eac3"
-                      :date "2026-11-13"}}
+                      :canonical-rev "ecbfc15b139280a0d2563a5375d69c9a11156dc2"
+                      :date "2026-11-17"
+                      ;; 2026-11-17 AWAI-3059: same file as vendor/ (PINS.json); adds the
+                      ;; libp2p and nearby peer operations. The Studio host declares neither.
+                      :previous-rev "d6fa95a8df09f1307b313dc1025602d54784eac3"}}
