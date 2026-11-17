@@ -5,7 +5,7 @@ $B mount -t proc proc /proc
 $B mount -t sysfs sysfs /sys
 $B mount -t devtmpfs devtmpfs /dev
 exec </dev/console >/dev/console 2>&1
-status() { echo "AWAI_BOOT_STAGE $1"; if [ -d /awai-status ]; then echo "$1" > /awai-status/index.html; fi; }
+status() { echo "AWAI_BOOT_STAGE $1"; echo "<6>AWAI_BOOT_STAGE $1" > /dev/kmsg; if [ -d /awai-status ]; then echo "$1" > /awai-status/index.html; fi; }
 fail() { status "REFUSED $1"; exec "$B" sh; }
 echo /awai/firmware > /sys/module/firmware_class/parameters/path || fail firmware-path
 nic_failures=
@@ -29,6 +29,7 @@ diagnostic_pid=$!
 status pre-disk-checks
 [ -z "$nic_failures" ] || fail "nic-module$nic_failures"
 [ "$("$B" cat "/sys/class/net/$interface/address")" = 0c:47:a9:60:9d:34 ] || fail wrong-target
+"$B" sh /awai/stream-boot-log.sh || fail boot-log-start
 for required in androidboot.android_dir=awai-android-2992 androidboot.mount_system=imgs_ram androidboot.mount_firmware=img_ram androidboot.mount_userdata=imgs; do
  case " $($B cat /proc/cmdline) " in *" $required "*) :;; *) fail invalid-mode;; esac
 done
