@@ -8,7 +8,9 @@ The app lives here, next to the other Awai OS apps, rather than in nexus-x402: i
 
 - Validates an amount (USD, at most 6 decimals, at most USD 1,000), a receiving address and a resource (`/path` or an `https` URL), and shows the `{"x402Version":1,"accepts":[…]}` body a seller would return.
 - **Base Sepolia only** (chain 84532, USDC `0x036CbD53842c5426634e7929541eC2318f3dCF7e`, the value in nexus-x402 `src/nexus/cctp.cljk`). Base mainnet is refused by the model.
-- Saves up to 50 drafts through the Awai Shell host (`localStorage`, app-scoped, revisioned). Drafts can be copied as JSON or deleted.
+- Saves up to 50 drafts through the Awai Shell host (`localStorage`, app-scoped, revisioned). Drafts can be copied as JSON or deleted; deletion is two-step (a second tap within 5 s), because a deleted draft cannot be restored.
+- Stored drafts that cannot be read (wrong schema, an invalid requirement, more than 50, duplicate ids) are never truncated or overwritten: the app goes read-only and says so on every view. A revision conflict, or the draft limit after another window changed the drafts, re-reads the stored drafts and asks the user to try again.
+- The Android system bars follow the light/dark theme, also on a live switch. A locale change recreates the activity; runtimes that change language without a reload re-render on `languagechange`.
 
 ## Build
 
@@ -31,4 +33,4 @@ Debug APK for an emulator: `npx tauri android build --debug --apk --target aarch
 
 ## Not yet qualified
 
-Source, unit tests and the static build are this unit's evidence. The debug APK build and the API35 Android VM launch were not run (host load); they, release signing, Itonami Store distribution, physical devices, Figma design review and TalkBack testing remain open. Icons in `src-tauri/icons` and the Android launcher mipmaps were generated from `icon.svg` with `npx tauri icon icon.svg`.
+AWAI-3252 built the debug APK and checked it on an API 35 VM (`docs/evidence/x402-awai3252-20261118`). The review fixes of [AWAI-3284](https://linear.app/kotobalabs/issue/AWAI-3284), ported from `apps/isekai`, were checked with unit tests and in a browser (`docs/evidence/x402-awai3284-20261118`); the system-bar and locale changes in the Android shell were not re-run on a VM (host load over 40). Release signing, Itonami Store distribution, physical devices, Figma design review and TalkBack testing remain open. Icons in `src-tauri/icons` and the Android launcher mipmaps were generated from `icon.svg` with `npx tauri icon icon.svg`.
