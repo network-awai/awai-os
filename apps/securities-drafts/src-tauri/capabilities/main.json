@@ -1,0 +1,1 @@
+{"identifier":"securities-drafts-local","description":"Local drafting and L1 checking of the account holder's own sese.023 settlement instructions and review of semt.002 custody statements; host version only. No external network, custodian, signing, filesystem, installer or shell permissions.","windows":["main"],"permissions":["allow-awai-host-info"]}
