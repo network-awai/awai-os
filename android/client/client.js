@@ -25,7 +25,7 @@ let query = '';
 let filter = 'おすすめ';
 let statusTimer;
 const paths = { search:'android-v2-icon-search.svg', apps:'android-v2-icon-apps.svg', camera:'android-v2-icon-camera.svg',
-  phone:'android-v2-icon-phone.svg', settings:'android-v2-icon-settings.svg', store:'android-v2-icon-store.svg',
+  phone:'android-v2-icon-phone.svg', wifi:'android-v2-icon-wifi.svg', settings:'android-v2-icon-settings.svg', store:'android-v2-icon-store.svg',
   calendar:'android-v2-icon-calendar.svg', chat:'android-v2-icon-chat.svg', cloud:'store-android-v2-icon-cloud.svg', download:'store-android-v2-icon-download.svg' };
 
 function el(tag, cls, text) { const n=document.createElement(tag); if(cls)n.className=cls; if(text!==undefined)n.textContent=text; return n; }

@@ -22,7 +22,7 @@ export function createSetup({host,domain,root,button,el,icon,notify,render}) {
     if(!s){root.append(el('p','page','Android の初期設定を読み取れません。ホームを開く前に再起動して確認してください。'));return true;}
     const english=s.locale.startsWith('en');
     const titles=english?['Your place,\nfrom here.','Choose your language','Connect to a network','Check date and time','Bring your Awai\nto this PC.','Your data,\nyour choice.','Protect this PC','You’re ready.']:['あなたの場所を、\nここから。','言語を選択','ネットワークに接続','日時を確認','いつもの Awai を、\nこの PC に。','あなたが決める、\nデータの使い方。','この PC を保護','準備ができました。'];
-    const subtitles=english?['Welcome to Awai OS Meiji.','Choose your system language and region.','Wi-Fi, Ethernet or phone tethering.','Use automatic time when connected.','Link your profile or set it up later.','Permissions are requested when needed.','Set an Android screen lock.','Start your Awai.']:['Awai OS Meiji へようこそ。','表示言語と地域を設定します。','Wi-Fi、有線 LAN、スマートフォンから。','接続できるときは自動で合わせます。','プロフィールを引き継ぐか、あとで設定できます。','必要な権限は、機能を使うときに確認します。','画面ロックを設定して、安全にはじめましょう。','あなたの Awai を、はじめましょう。'];
+    const subtitles=english?['Welcome to Awai OS Meiji.','Choose your system language and region.','Wi-Fi, Ethernet or phone tethering.','Use automatic time when connected.','Link your Awai account or set it up later.','Permissions are requested when needed.','Set an Android screen lock.','Start your Awai.']:['Awai OS Meiji へようこそ。','表示言語と地域を設定します。','Wi-Fi、有線 LAN、スマートフォンから。','接続できるときは自動で合わせます。','いつものアカウントを連携するか、あとで設定できます。','必要な権限は、機能を使うときに確認します。','画面ロックを設定して、安全にはじめましょう。','あなたの Awai を、はじめましょう。'];
     document.documentElement.lang=english?'en':'ja';
     const tr=(ja,en)=>english?en:ja;
     const page=el('section','setup-page');page.dataset.stage=domain.setupStage(s.stage);root.append(page);
