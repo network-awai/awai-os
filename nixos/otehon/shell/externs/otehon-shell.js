@@ -778,3 +778,6 @@ Object.prototype.busy;
 Object.prototype.loaded;
 Object.prototype.imported;
 Object.prototype.inferenceHandoff;
+
+// Bounded native setup-state JSON.
+Object.prototype.complete;

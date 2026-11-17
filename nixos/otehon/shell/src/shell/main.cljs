@@ -12,6 +12,7 @@
             [shell.fleet-overview :as fleet]
             [shell.docks :refer [device-dock node-dock]]
             [shell.setup :refer [setup]]
+            ["../setup-state.js" :refer [setupState]]
             ["../identity/device.js" :refer [clearSession deviceDid loadProofs loadSession saveProof sessionRetention]]
             ["../runtime.js" :refer [createBroker osOperations readPassport readWalletBalance]]
             ["../media.js" :refer [MEDIA_ORIGIN describeMessage requestImage requestSpeech
@@ -31,7 +32,6 @@
 (def HOME "home")
 (def ACCOUNT "account")
 (def threads-key "otehon.threads.v1")
-(def setup-key "otehon.setup.v1")
 
 (defn- zenoh-up []
   (-> (js/fetch "http://127.0.0.1:8000/@/*/router")
@@ -115,11 +115,6 @@
                                         item))))
                         out))))]
       [threads add update])))
-
-(defn- setup-finished []
-  (try
-    (= (.getItem js/localStorage setup-key) "done")
-    (catch :default _ false)))
 
 (defn- short-did [did]
   (if (> (.-length did) 26)
@@ -431,7 +426,8 @@
         broker (useMemo (fn [] (createBroker "index.html" (osOperations relay-origin))) #js [])
         [did set-did] (useState nil)
         [account set-account] (useState nil)
-        [finished set-finished] (useState setup-finished)
+        [finished set-finished] (useState false)
+        [setup-error set-setup-error] (useState nil)
         [proofs set-proofs] (useState loadProofs)
         score (trustScore #js {:accountDid (some-> account (.-accountDid)) :proofs proofs})
         open (boolean (and did account finished))]
@@ -440,7 +436,9 @@
        (-> (deviceDid)
            (.then (fn [value]
                     (set-account (loadSession value))
-                    (set-did value)))) js/undefined)
+                    (-> (.read setupState)
+                        (.then (fn [done] (set-finished done) (set-did value)))
+                        (.catch (fn [_] (set-setup-error "設定の保存状態を確認できません。もう一度お試しください。") (set-did value))))))) js/undefined)
      #js [])
     (useEffect
      (fn []
@@ -454,12 +452,11 @@
     (if-not did
       nil
       (if-not open
-        [:f> setup broker relay-origin did account finished set-account score
+        [:<> (when setup-error [:p.problem {:role "alert"} setup-error])
+         [:f> setup broker relay-origin did account finished set-account score
          (fn []
-           (try
-             (.setItem js/localStorage setup-key "done")
-             (catch :default _ nil))
-           (set-finished true))]
+           (-> (.complete setupState)
+               (.then (fn [_] (set-setup-error nil) (set-finished true)))))]]
         [:f> shell did account proofs score broker zenoh matter
          (fn [proof-name proof]
            (saveProof proof-name proof)

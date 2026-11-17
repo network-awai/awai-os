@@ -80,3 +80,21 @@ Actions remains owner-disabled; no CI, merge, physical deployment or owner
 acceptance is inferred from these local results.
 
 The corrected x86_64 consumer APK also builds: 32703807bytes, SHA256 `d440a47c8b08b0338117949b03ac4ea97c58fa2be71b3bf0a723fd902488f36f`. It is not installed or runtime-qualified on6600H; that hold remains.
+
+
+## Follow-up: durable setup and operator CI
+
+The earlier immediate-stop gap is the baseline for a new native completion
+protocol: fixed app-private non-secret marker, file sync → atomic rename → directory
+sync → acknowledgement → Home. Corrupt/unknown state and failed persistence are
+not treated as completion. Device keys and signed account proofs remain separate;
+a completion marker never authenticates an account.
+
+The unattended gate now requires immediate process-stop with no background delay,
+actual guest OS reboot and app relaunch, retained marker plus signed-account
+verification, and a completed-marker/absent-account refusal. `ci/android/run.mjs`
+binds these checks plus source, Rust, advanced-codec and both ARM64 builds to an
+explicit clean commit, and emits a hashed result receipt. The measured result for
+the final PR revision belongs in PR164's review/CI receipt. Historical source and
+artifact hashes above remain dated evidence, not the new candidate's qualification.
+Physical6600H and power interruption are separate and remain unmodified.

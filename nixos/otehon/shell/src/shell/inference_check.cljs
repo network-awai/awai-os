@@ -1,5 +1,6 @@
 (ns shell.inference-check
-  (:require ["../inference-client.gen.js" :refer [createInferenceClient]]))
+  (:require ["../setup-state.js" :refer [createSetupState]]
+            ["../inference-client.gen.js" :refer [createInferenceClient]]))
 
 ;; Exercise the same advanced compiler as the browser against literal native
 ;; JSON. Source-only SDK tests cannot detect property renaming on the wire.
@@ -29,4 +30,10 @@
                  (when-not (and (= "text" (aget result "modality")) (= 7 (aget result "outputTokens")))
                    (throw (js/Error. "advanced-native-response-keys-renamed")))
                  (js/console.log "PASS: advanced SDK preserves native readiness/request/result JSON keys")))
+        (.then (fn [_]
+                 (.complete (createSetupState
+                              #js {:invoke (fn [_ _] (js/Promise.resolve (.parse js/JSON "{\"schema\":\"awai.setup.state.v1\",\"complete\":true}")))
+                                   :storage #js {:getItem (fn [_] nil)}}))))
+        (.then (fn [done] (when-not done (throw (js/Error. "native-setup-not-committed")))
+                 (js/console.log "PASS: advanced setup persistence waits for literal native JSON ack")))
         (.catch (fn [error] (js/console.error error) (set! (.-exitCode js/process) 1))))))

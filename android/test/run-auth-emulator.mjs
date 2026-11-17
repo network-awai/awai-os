@@ -73,12 +73,25 @@ try{
  assert.deepEqual(await cdp.read(`AwaiTestFixture.accept(${JSON.stringify(request)},${JSON.stringify(passkey)})`),{method:'passkey',verified:true});console.log('case',report.cases.length+1);report.cases.push({name:'valid-passkey-signature-software-authenticator',passed:true});
  await cdp.call('Page.reload');await until(()=>cdp.read('Boolean(document.querySelector("button[data-next]"))'),'actual trust screen');
  await cdp.click('button[data-next]');await until(()=>cdp.read('Boolean(document.querySelector("button[data-finish]"))'),'actual completion screen');await cdp.click('button[data-finish]');
- await until(()=>cdp.read('localStorage.getItem("otehon.setup.v1")==="done" && Boolean(document.querySelector("button[data-dapp]"))'),'authenticated application home');
+ await until(()=>cdp.read('Boolean(document.querySelector("button[data-dapp]"))'),'authenticated application home');
  console.log('case',report.cases.length+1);report.cases.push({name:'actual-trust-completion-home-clicks',passed:true});
- await delay(500);await writeFile(path.join(run,'home.png'),execFileSync(path.join(sdk,'platform-tools/adb'),['-s',serial,'exec-out','screencap','-p'],{timeout:30000,maxBuffer:8*1024*1024}));
- if(options['--restart']==='abrupt'){report.durabilityBoundary='immediate force-stop after completion; known setup-marker durability reproducer';}else{adb('shell','input','keyevent','KEYCODE_HOME');await delay(6500);report.durabilityBoundary='backgrounded for 6.5 seconds before process force-stop; not abrupt power-loss qualification';}cdp.close();cdp=null;adb('shell','am','force-stop','network.itonami.app');adb('shell','am','start','-n','network.itonami.app/.MainActivity');cdp=await connect();
- await until(()=>cdp.read('localStorage.getItem("otehon.setup.v1")==="done" && document.body.innerText.includes("Core")'),'restarted home');
+ if(options['--restart']!=='abrupt')await delay(500);if(options['--restart']!=='abrupt')await writeFile(path.join(run,'home.png'),execFileSync(path.join(sdk,'platform-tools/adb'),['-s',serial,'exec-out','screencap','-p'],{timeout:30000,maxBuffer:8*1024*1024}));
+ if(options['--restart']==='abrupt'){report.durabilityBoundary='immediate force-stop after observed native-acknowledged Home; no background or flush delay';report.homeObservedAt=new Date().toISOString();}else{adb('shell','input','keyevent','KEYCODE_HOME');await delay(6500);report.durabilityBoundary='backgrounded for 6.5 seconds before process force-stop; not abrupt power-loss qualification';}cdp.close();cdp=null;report.forceStopIssuedAt=new Date().toISOString();adb('shell','am','force-stop','network.itonami.app');adb('shell','am','start','-n','network.itonami.app/.MainActivity');cdp=await connect();
+ await until(()=>cdp.read('Boolean(document.querySelector("button[data-dapp]"))'),'restarted home');
  assert.equal(await cdp.read('typeof AwaiTestFixture'),'undefined');await cdp.read(source+'; true');assert.deepEqual(await cdp.read('AwaiTestFixture.current()'),{method:'passkey',verified:true});console.log('case',report.cases.length+1);report.cases.push({name:'process-restart-reverifies-retained-link-and-home',passed:true});
+ assert.equal((await cdp.read(`window.__TAURI_INTERNALS__.invoke('awai_setup_state',{action:'read'})`)).complete,true);
+ // Actual guest OS reboot, preserving its newly owned userdata; never another AVD.
+ const oldBoot=adb('shell','cat','/proc/sys/kernel/random/boot_id');cdp.close();cdp=null;adb('reboot');
+ await until(()=>adb('shell','cat','/proc/sys/kernel/random/boot_id')!==oldBoot&&adb('shell','getprop','sys.boot_completed')==='1','OS reboot',180000);
+ adb('shell','input','keyevent','KEYCODE_WAKEUP');adb('shell','input','keyevent','KEYCODE_MENU');
+ adb('shell','am','start','-n','network.itonami.app/.MainActivity');cdp=await connect();
+ await until(()=>cdp.read('Boolean(document.querySelector("button[data-dapp]"))'),'OS reboot application Home');
+ assert.equal((await cdp.read(`window.__TAURI_INTERNALS__.invoke('awai_setup_state',{action:'read'})`)).complete,true);
+ assert.equal(await cdp.read('typeof AwaiTestFixture'),'undefined');await cdp.read(source+'; true');
+ assert.deepEqual(await cdp.read('AwaiTestFixture.current()'),{method:'passkey',verified:true});
+ report.cases.push({name:'OS-reboot-relaunch-retains-native-completion-and-verified-account',passed:true});
+ await delay(500);await writeFile(path.join(run,'reboot-home.png'),execFileSync(path.join(sdk,'platform-tools/adb'),['-s',serial,'exec-out','screencap','-p'],{timeout:30000,maxBuffer:8*1024*1024}));
+
 
  if(options['--provider']||options['--model']){
   if(!options['--provider']||!options['--model'])throw Error('provider and model must both be supplied');
@@ -118,6 +131,10 @@ try{
   await until(()=>cdp.read('document.getElementById("model-state").innerText.includes("未読み込み")'),'model release');
   report.cases.push({name:'provider-UI-native-model-release',passed:true});
  }
+ // A completion marker alone must never bypass account authentication.
+ await cdp.read(source+'; true');await cdp.read('AwaiTestFixture.clearSession()');await cdp.call('Page.reload');
+ await until(()=>cdp.read('Boolean(document.querySelector("#local-start")) && !document.querySelector("button[data-dapp]")'),'identity gate with completed setup');
+ report.cases.push({name:'completed-setup-never-authenticates-an-unlinked-account',passed:true});
  report.status='passed';
 }catch(e){report.status='failed';report.error=e.stack;if(cdp)try{report.failurePage=await cdp.read('({text:document.body.innerText,setup:localStorage.getItem("otehon.setup.v1"),title:document.title})')}catch{}process.exitCode=1;}finally{
  cdp?.close();for(const ownForward of forwards)try{adb('forward','--remove',`tcp:${ownForward}`)}catch{}

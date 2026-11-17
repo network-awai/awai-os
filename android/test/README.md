@@ -53,13 +53,42 @@ not included in reports. The newly started emulator is stopped at the end; its A
 and artifacts are preserved, never automatically deleted. Review these separately
 before cleanup. GitHub Actions remains owner-disabled; a local pass is not CI.
 
-## Durability boundary discovered by the test
+## Durable completion and restart acceptance
 
-Immediate `am force-stop` after the completion click reproduced loss of the recent
-`otehon.setup.v1` localStorage write while the earlier verified account proof
-survived. This is an observed abrupt-process-stop gap, not evidence that a new
-owner signature is needed. The normal-lifecycle case backgrounds the app for 6.5
-seconds before process restart and records that boundary explicitly. Use `--restart=abrupt` to run the failing immediate-stop reproducer instead of
-the normal background lifecycle. Neither
-case qualifies OS cache loss or physical power interruption. Follow up under the
-existing AWAI-3004 setup work; do not replace this evidence with a mocked result.
+The original immediate-stop marker loss is now a regression case. Tauri exposes
+only fixed `read`/`complete` operations for a non-secret app-private marker. The
+native writer syncs its file, atomically renames it and syncs the directory before
+acknowledging; the UI opens Home only after that acknowledgement. Unknown/corrupt
+records and I/O failures refuse completion. An existing browser marker migrates
+through the same native commit; account verification remains a separate gate.
+
+`--restart=abrupt` force-stops immediately after observing Home, with no background
+or flush delay and no pre-stop screenshot delay. The runner verifies the retained
+marker/account after relaunch, then actually reboots its guest OS and verifies them
+again after app relaunch. Finally it removes only the disposable test account and
+checks that completion cannot bypass sign-in. This is process-stop/guest-reboot
+evidence, not physical media power-loss qualification or OS default-Home launch.
+
+## Exact-revision operator CI
+
+Actions stays disabled. The bounded Android lane runs on a reviewed Mac using
+its already installed SDK35 image, NDK27, JDK21, Rust, Python, Clojure and Node:
+
+```sh
+JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home \
+ANDROID_HOME=/Users/junkawasaki/Library/Android/sdk \
+ANDROID_NDK_HOME=/Users/junkawasaki/Library/Android/sdk/ndk/27.0.12077973 \
+node ci/android/run.mjs --revision=FULL_EXPECTED_COMMIT --model=/absolute/Qwen3-0.6B-Q8_0.gguf
+```
+
+The controller refuses an incorrect revision or dirty source. It installs locked
+npm dependencies, executes source/Rust/advanced checks, builds the owning shell,
+both ARM64 apps and pinned native engine, then runs the full immediate-stop/OS
+reboot/inference VM acceptance. Each stage has a 20-minute upper bound. Missing
+public model/source/dependencies fail closed; dependencies may be fetched during
+bootstrap and this is not an offline/hermetic or distributed-quorum claim.
+Result receipts bind revision, artifact/report hashes, stage exits and timestamps.
+An operator may project the receipt to the same GitHub commit status only after
+verifying success and unchanged PR head. No Actions enablement, scheduler, release
+signing or production deployment follows from this lane. PR receipts record the
+actual result; a pipeline definition alone is not a pass.
