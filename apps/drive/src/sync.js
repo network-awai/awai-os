@@ -1,3 +1,4 @@
+import{readResponse}from'./bounded-response.js';
 import './core.js';
 import{createClientConsentHost,createClientOperationBroker}from'./runtime.js';
 import{runtimeFor,PACK_LIMIT}from'./sync-contract.js';import{syncOrigin}from'./sync-config.js';
@@ -9,12 +10,11 @@ const runtime=runtimeFor(syncOrigin),selectors=runtime.operations.map(o=>[o.capa
 const broker=createClientOperationBroker({runtime,requestedCapabilities:['awai.drive.sync'],approvedOperations:runtime.operations,hostSupportedOperations:selectors,consentHost:createClientConsentHost()});
 async function session(initialize=false){let s=await invoke('vaultSession',{initialize});if(!s.initialized)throw Error('recovery-required');const secret=unb64(s.secret);if(!s.record){const record=await core.newRecord(secret);await invoke('vaultRecord',{record});s={...s,record};}return {...s,secret};}
 async function request(operation,id,bytes){if(!syncOrigin)throw Error('sync-not-configured');if(!/^[a-f0-9]{64}$/.test(id))throw Error('invalid-root');const method=operation==='upload'?'PUT':'GET';const response=await broker.invoke({capability:'awai.drive.sync',service:'awai.fs',operation},{input:syncOrigin+'/awai-drive/v1/packs/'+id,init:{method,...(bytes?{headers:{'Content-Type':'application/vnd.ipld.car'},body:bytes}:{})}});if(!response.ok)throw Error('sync-unavailable');return response;}
-async function readResponse(response){const chunks=[];let size=0;const reader=response.body.getReader();try{for(;;){const {value,done}=await reader.read();if(done)break;size+=value.length;if(size>PACK_LIMIT)throw Error('pack-limit');chunks.push(value);}}finally{await reader.cancel();}const out=new Uint8Array(size);let at=0;for(const c of chunks){out.set(c,at);at+=c.length;}return out;}
 export const configured=Boolean(syncOrigin);
 export async function sync(){const s=await session(true);try{
  const {entries}=await invoke('vaultInventory');const rows=[];
  for(const e of entries){if(e.directory)continue;const bytes=new Uint8Array(e.size);for(let at=0;at<e.size;at+=65531){const r=await invoke('vaultRead',{path:e.path,offset:at,length:Math.min(65531,e.size-at)});bytes.set(unb64(r.bytes),at);}if(await core.sha256(bytes)!==e.sha256)throw Error('source-size-changed');rows.push({path:e.path,bytes});}
- rows.directories=entries.filter(e=>e.directory).map(e=>e.path);const sealed=await core.sealSnapshot(s.record,s.secret,rows);const id=await core.sha256(sealed.bytes);const response=await request('upload',id,sealed.bytes);const receipt=await response.json();if(receipt.sha256!==id||receipt.bytes!==sealed.bytes.length)throw Error('receipt-mismatch');
+ rows.directories=entries.filter(e=>e.directory).map(e=>e.path);const sealed=await core.sealSnapshot(s.record,s.secret,rows);const id=await core.sha256(sealed.bytes);const response=await request('upload',id,sealed.bytes);const receipt=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(await readResponse(response,2048)));if(receipt.sha256!==id||receipt.bytes!==sealed.bytes.length)throw Error('receipt-mismatch');
  const verified=await readResponse(await request('download',id));if(verified.length!==sealed.bytes.length||await core.sha256(verified)!==id)throw Error('receipt-mismatch');
  await invoke('vaultCommit',{root:sealed.root,pack:id,origin:syncOrigin,entries});return {files:rows.length,root:sealed.root,pack:id};
  }finally{s.secret.fill(0);}}

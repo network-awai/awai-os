@@ -71,7 +71,7 @@ Each operation requires fresh trusted input showing endpoint, method/path and
 data categories. Denial sends no request. Upload is PUT, download/readback GET,
 to `/awai-drive/v1/packs/<64-lowercase-hex-sha256>`, with no queries, credentials
 or redirects. PUT sends bounded CAR bytes and requires a JSON receipt
-`{sha256, bytes}`. GET sends only the opaque pack ID and returns the same bytes.
+`{sha256, bytes}` (bounded to2048 response bytes). Response streams have byte and30-second read deadlines. GET sends only the opaque pack ID and returns the same bytes.
 The immutable storage service must implement access control, durable publication,
 resource limits and CORS for the admitted app origin; this repo does not deploy a
 production service. A readback is not independent-node retention evidence.

@@ -15,7 +15,7 @@ this is not a physical-device/Store/release APK.
 
 | Check | Observed outcome |
 | --- | --- |
-| Compiled CLJC/browser tests | 6 Node tests pass: path, permissions/read-only provider, canonical descriptor, JP/EN, exact HTTPS scope, encrypted CAR bytes/negative inputs |
+| Compiled CLJC/browser tests | 7 Node tests pass: path, permissions/read-only provider, canonical descriptor, JP/EN, exact HTTPS scope, encrypted CAR bytes/negative inputs, oversized/stalled/failing response streams |
 | Java file adapter | 27 checks pass: bounded copy, bytes/SHA, reopen, no-clobber/concurrent writers, short/faulting source, name/path/symlink and size/depth admission |
 | Independent compatibility | Browser-generated262121-byte encrypted CAR restored by separately run owning owner-store CLI; exact original bytes; unlock passed by fd3 only |
 | HTTPS sync | UI -> canonical trusted consent -> PUT -> receipt -> separate fresh GET approval -> full SHA readback -> protected receipt commit |
