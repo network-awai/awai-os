@@ -1,0 +1,12 @@
+;; Fictional test values only. IBANs and BICs are the published example
+;; values used in ISO 13616 / bank documentation, not real accounts.
+{:request/id "pain001-eur-single"
+ :kind :pain001
+ :params {:msg-id "AWAI-PAIN-0001" :creation-date-time "2026-11-18T09:00:00Z"
+          :initiating-party-name "Example Holder" :payment-info-id "PMT-0001"
+          :requested-execution-date "2026-11-19" :charge-bearer "SLEV"
+          :debtor-name "Example Holder" :debtor-iban "DE89370400440532013000" :debtor-bic "COBADEFFXXX"
+          :transactions [{:end-to-end-id "E2E-0001" :uetr "eb6305c4-3e7a-4b29-9a1f-8d2ce5a71b30"
+                          :amount-minor 125000 :currency "EUR"
+                          :creditor-name "Example Supplier SARL" :creditor-iban "FR1420041010050500013M02606"
+                          :creditor-bic "BNPAFRPPXXX" :remittance-information "Invoice 2026-118"}]}}
