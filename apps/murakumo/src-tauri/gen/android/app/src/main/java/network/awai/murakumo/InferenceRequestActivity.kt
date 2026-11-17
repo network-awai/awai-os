@@ -7,11 +7,13 @@ import android.os.Bundle
 /** Explicit, signature-protected per-request handoff. No HTTP endpoint or background grant. */
 class InferenceRequestActivity:Activity(){
  private var ownsJob=false
+ private var imageJob=false
  override fun onCreate(saved:Bundle?){super.onCreate(saved)
   val caller=callingPackage
   if(!Models.trustedCaller(this,caller)){finishWith("caller-denied");return}
   val requestId=intent.getStringExtra("requestId")?:"";val prompt=intent.getStringExtra("prompt")?:"";val tokens=intent.getIntExtra("maxTokens",128);val modality=intent.getStringExtra("modality")
   if(!requestId.matches(Regex("[a-f0-9-]{36}"))||intent.getStringExtra("schema")!="awai.inference.request.v1"||modality !in setOf("text","image")||prompt.isBlank()||prompt.toByteArray(Charsets.UTF_8).size>8192||tokens !in 1..256){finishWith("invalid-request");return}
+  imageJob=modality=="image"
   val label=packageManager.getApplicationLabel(packageManager.getApplicationInfo(caller!!,0)).toString().take(60)
   AlertDialog.Builder(this).setTitle("${label} からの生成")
    .setMessage((if(modality=="image")"この端末の Qwen Image 2.1 Turbo (AD-Q2_K / Vulkan) で画像を生成します。"else "この端末の Qwen3 でテキストを生成します。")+"外部へ送信しません。\n\n"+prompt.take(240))
@@ -30,5 +32,5 @@ class InferenceRequestActivity:Activity(){
    }.show()
  }
  private fun finishWith(code:String){setResult(RESULT_CANCELED,Intent().putExtra("error",code));finish()}
- override fun onDestroy(){if(ownsJob){Engine.cancel();ImageEngine.cancel();}super.onDestroy()}
+ override fun onDestroy(){if(ownsJob){if(imageJob)ImageEngine.cancel()else Engine.cancel();}super.onDestroy()}
 }

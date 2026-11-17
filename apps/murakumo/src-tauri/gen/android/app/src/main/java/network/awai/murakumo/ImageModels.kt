@@ -13,7 +13,7 @@ internal object ImageModels {
  private fun pins(c:Context)=JSONObject(c.assets.open("image-pins.json").bufferedReader().use{it.readText()})
  private fun root(c:Context)=File(c.filesDir,"image-models")
  fun present(c:Context):Boolean=try {val a=pins(c).getJSONArray("models");(0 until a.length()).all{val p=a.getJSONObject(it);val f=File(root(c),p.getString("localFile"));f.isFile&&f.length()==p.getLong("bytes")}}catch(e:Exception){false}
- fun status(c:Context)=JSONObject().put("model",pins(c).getString("label")).put("imported",present(c)).put("loaded",false).put("backend","Vulkan0").put("progress",if(Models.busy.get())ImageEngine.progress()else 0)
+ fun status(c:Context)=JSONObject().put("model",pins(c).getString("label")).put("imported",present(c)).put("loaded",false).put("backend","Vulkan0").put("progress",if(present(c)&&Models.busy.get())try{ImageEngine.progress()}catch(e:LinkageError){0}else 0)
  fun sha(f:File):String {val d=MessageDigest.getInstance("SHA-256");f.inputStream().use{val b=ByteArray(1024*1024);while(true){val n=it.read(b);if(n<0)break;d.update(b,0,n)}};return d.digest().joinToString(""){"%02x".format(it.toInt()and 255)}}
  fun generate(c:Context,id:String,prompt:String):JSONObject{
   require(id.matches(Regex("[a-f0-9-]{36}"))&&prompt.isNotBlank()&&prompt.toByteArray().size<=8192&&!prompt.contains('\u0000')){"invalid-request"}
