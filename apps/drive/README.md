@@ -66,6 +66,12 @@ The endpoint must implement the bounded immutable CAR protocol described in
 [encrypted-sync.md](docs/encrypted-sync.md). This does not deploy that service.
 Do not silently substitute the loopback VM fixture as a production endpoint.
 
+`https://yataverse.com` implements this protocol (Backblaze B2 storage, no
+authentication, size/hash/CAR limits). Build with
+`AWAI_DRIVE_SYNC_ORIGIN=https://yataverse.com` to use it; see
+[the yataverse.com section](docs/encrypted-sync.md#yataversecom) and the
+[VM qualification](docs/encrypted-sync-yataverse-qualification-20261118.md).
+
 Pure Java adapter checks, from the repository root:
 
 ```sh
