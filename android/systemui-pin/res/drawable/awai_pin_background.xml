@@ -1,0 +1,7 @@
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- Square source scaled to portrait height, then center-cropped by the native View. -->
+  <item android:width="917dp" android:height="917dp" android:gravity="center">
+    <bitmap android:src="@drawable/awai_wallpaper" android:gravity="fill" android:filter="true"/>
+  </item>
+  <item><shape><solid android:color="@color/awai_pin_scrim"/></shape></item>
+</layer-list>
