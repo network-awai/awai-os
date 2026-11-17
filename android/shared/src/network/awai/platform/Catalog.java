@@ -44,16 +44,19 @@ public final class Catalog {
     public static String assetFor(String id) throws SecurityException {
         if ("network.itonami.yotei".equals(id)) return "packages/yotei.apk";
         if ("network.itonami.app".equals(id)) return "packages/itonami.apk";
+        if ("app.aozora".equals(id)) return "packages/aozora.apk";
         throw new SecurityException("unknown-app");
     }
     public static String onlineFileFor(String id) throws SecurityException {
         if ("network.itonami.yotei".equals(id)) return "online-yotei.apk";
         if ("network.itonami.app".equals(id)) return "online-itonami.apk";
+        if ("app.aozora".equals(id)) return "online-aozora.apk";
         throw new SecurityException("unknown-app");
     }
     public static int maxApkBytes(String id) throws SecurityException {
         if ("network.itonami.yotei".equals(id)) return 20 * 1024 * 1024;
         if ("network.itonami.app".equals(id)) return 64 * 1024 * 1024;
+        if ("app.aozora".equals(id)) return 64 * 1024 * 1024;
         throw new SecurityException("unknown-app");
     }
     public long valueRevision() throws Exception { return value.getLong("revision"); }

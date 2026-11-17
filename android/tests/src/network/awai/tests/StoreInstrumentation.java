@@ -21,6 +21,10 @@ public final class StoreInstrumentation extends Instrumentation {
         byte[] apk=catalog.verifiedApk(c,"network.itonami.yotei");check(apk.length>0,"APK bytes and package/signer/version");
         check(catalog.app("network.itonami.app").getLong("versionCode")==1000,"itonami version");
         byte[] second=catalog.verifiedApk(c,"network.itonami.app");check(second.length>20*1024*1024,"itonami APK bytes and package/signer/version");
+        check("packages/aozora.apk".equals(Catalog.assetFor("app.aozora")),"Aozora fixed bundled asset");
+        check("online-aozora.apk".equals(Catalog.onlineFileFor("app.aozora")),"Aozora fixed online file");
+        check(Catalog.maxApkBytes("app.aozora")==64*1024*1024,"Aozora size limit");
+        refuses(()->catalog.verifiedApk(c,"app.aozora"),"Aozora unavailable without signed catalog entry");
         refuses(()->catalog.verifiedApk(c,"network.awai.notallowed"),"unknown APK refuses");
         byte[] changed=raw.clone();changed[0]^=1;check(!Integrity.authentic(changed,sig,key),"changed metadata refuses");
         refuses(()->catalog.app("network.awai.notallowed"),"unknown app refuses");
