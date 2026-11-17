@@ -46,6 +46,17 @@ After exclusive physical handoff and preserving real app data:
 node android/test/run-qa-device.mjs --serial=10.77.0.2:5555 --mode=physical-6600h --manifest=/absolute/X86_64/manifest.json --model=/absolute/Qwen3-0.6B-Q8_0.gguf --boot-route=/absolute/active-route.json --boot-manifest=/absolute/artifacts.json
 ```
 
+Since 2026-11-17 (AWAI-3049) the live 6600H route serves an `ipxe.efi` that adds
+`video=HDMI-A-2:d`, so the DP-1 monitor is Android's primary display. Pass the
+matching pair, `display-route-active.json` and `display-route-artifacts.json`.
+They live in the AWAI-3030 task output's `display-route/` folder, which is private
+and not a fixed delivery location. They pin `ipxe.efi` to sha256
+`cbf209ec4c63617af2e5d5eb18ca72071b5c86419401091b5813bba439b4ea15` (311296
+bytes); kernel and initrd are unchanged from persistent-v6. The earlier
+`persistent-v6-route-active.json` / `persistent-v6-artifacts.json` pair (ipxe
+`34c26bfc…`) now correctly refuses admission, because the active TFTP link no
+longer resolves to its `newRoot`.
+
 Admission checks the explicit serial/MAC, actual APK manifest/testOnly/network
 permissions/digest/signer and product-source-tree equality. Software fixtures are
 injected only after PID/cmdline checks in QA apps. Only previously marked QA data
