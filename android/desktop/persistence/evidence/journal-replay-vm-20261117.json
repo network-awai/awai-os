@@ -1,0 +1,14 @@
+{
+  "schema": "awai.android.os.journal.replay.vm.v1",
+  "actualKernel": true,
+  "fixtureAbruptShutdownWhileMounted": true,
+  "readonlyDirtyMountRefused": true,
+  "sharedReplayHelperRecoveredJournal": true,
+  "readonlyMountAfterRecoveryPassed": true,
+  "sentinelContentPreserved": true,
+  "sentinelOwnerGroupModePreserved": "10159:10159:600",
+  "formatter": "Android platform-tools mke2fs 1.47.2, fixture regular file only",
+  "physicalRepairVerified": false,
+  "missingExplicitRepairModeRefused": true,
+  "finalSharedHelpersRetested": true
+}
