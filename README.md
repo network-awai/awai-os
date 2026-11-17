@@ -3,17 +3,18 @@
 **Product direction (2026-11-17): Android AOSP is the primary Awai OS basis for
 phones and desktop PCs.** See the [platform decision and migration boundaries](docs/otehon/aosp-platform-decision-20261117.md),
 [Android host implementation](android/README.md) and [shared Android setup design](https://www.figma.com/design/umqCqP5KSjLWh9fhCI1HaN?node-id=241-3).
-Existing NixOS installations and recovery artifacts remain preserved. Current
+The NixOS desktop boot/install route is **deprecated**; owner-authorized cleanup
+preserves authentication and active Android data. See the [migration and cleanup boundary](docs/otehon/nixos-route-deprecation-20261117.md). Current
 Android APK/VM/Live evidence does not qualify a production ROM or persistent
 6600H installation; the linked decision lists the remaining gates.
 
-**Retained NixOS Awai Otehon 0.7.3 installer (Ryzen 5 6600H / x86_64):**
+**Historical NixOS installer (deprecated; not the Awai OS install path):**
 [GUI・文字画面からの導入手順](docs/otehon/install-guide-ja.md) /
 [検証済み ISO の版と Build ID](docs/otehon/usb-installer-0.7.3.md)。
 GUI が表示されない場合は起動メニューの `Text-installer-0.7.3` を選びます。
 画面の版・Build ID を配布記録と照合できます。
 
-**Native Murakumo NixOS preview:** [profile, Itonami launcher and VM gates](docs/murakumo-nixos-native-preview.md).
+**Historical Native Murakumo NixOS preview:** [profile, Itonami launcher and VM gates](docs/murakumo-nixos-native-preview.md).
 It runs Kaikei and Dandori judgment cores in browser Workers and a native host
 observer under systemd. It is an independent VM/live candidate; full network
 Node/Cell integration and physical hardware remain separate acceptance work.

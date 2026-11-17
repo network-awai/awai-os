@@ -1,4 +1,4 @@
-# Awai OS — Android AOSP and retained NixOS profiles
+# Awai OS — Android AOSP; NixOS desktop route deprecated
 
 Follow the workspace-level AGENTS.md architecture and Linear tracking rules.
 
@@ -7,8 +7,10 @@ Follow the workspace-level AGENTS.md architecture and Linear tracking rules.
 Awai OS uses Android AOSP as its primary product OS for phones and desktop PCs.
 See [the accepted platform decision](docs/otehon/aosp-platform-decision-20261117.md)
 and [AWAI-3007](https://linear.app/kotobalabs/issue/AWAI-3007). This section
-supersedes older NixOS-primary product wording; it does not retire working NixOS
-installations or change Kotoba/Amu/AIUEOS Native qualification rules.
+supersedes older NixOS-primary product wording. Owner follow-up on 2026-11-17
+deprecates the NixOS desktop boot/install route and authorizes its cleanup while
+preserving authentication and current Android data. It does not change
+Kotoba/Amu/AIUEOS Native qualification rules.
 
 - AOSP owns the OS lifecycle, permissions, connectivity, locale, screen lock,
   Keystore/storage protection and update integration. LineageOS may provide
@@ -26,10 +28,14 @@ installations or change Kotoba/Amu/AIUEOS Native qualification rules.
   restore are distinct. Never infer signed enrollment from connectivity or a
   completed screen; never import private keys to reproduce a design fixture.
   AOSP alone does not establish PC hardware-backed key custody or FBE recovery.
-- Preserve NixOS images, installed disks, EFI entries, VM/fleet state, keys and
-  recovery paths. No automatic repartition, replacement, service shutdown or
-  credential migration follows from this decision. Nix remains available as an
-  existing host/build/node platform; node fleets need no blanket Android move.
+- The NixOS desktop boot/install route is deprecated; do not offer it for new
+  Awai OS installs. Cleanup of the old 6600H Nix files is authorized after an
+  inventory, encrypted preservation of relevant data and dependency verification.
+  Preserve credentials, keys, profiles and active Android images. The old Nix p2
+  filesystem currently also contains Android's live image directory; never infer
+  permission to wipe it from Nix deprecation. Follow the [deprecation runbook](docs/otehon/nixos-route-deprecation-20261117.md).
+  Existing host/build/node fleets remain separately operated; no blanket service
+  shutdown or repartition follows from desktop cleanup.
 - Test source/build, Android VM, each actual device and persistent reboot
   separately. Privileged SetupWizard/SystemUI, signed ROM/OTA, rollback and
   recovery require their own evidence. An APK or RAM Live boot is not a ROM,

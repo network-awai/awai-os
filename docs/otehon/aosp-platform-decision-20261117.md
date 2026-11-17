@@ -2,7 +2,7 @@
 
 - 状態: **Accepted direction**。owner 指示 2026-11-17。
 - 追跡: [AWAI-3007](https://linear.app/kotobalabs/issue/AWAI-3007)。[既存 OS Project](https://linear.app/kotobalabs/project/network-awaiawai-os-ebb92583c4cf) に集約する。
-- 決定: 「awai os を android aosp ベースで進める」。先行する「既存 Nix は残す」「Android phone と同じ setup」「Figma design first」の指示も維持する。
+- 決定: 「awai os を android aosp ベースで進める」。追記決定: 「既存 Nix は cleanup してよい」「Nix 経路は deprecated」。従来の Nix 保持必須をこの範囲で更新し、認証情報・現 Android データの保持、Android phone と同じ setup、Figma design first は維持する。
 - 範囲: Awai OS の phone/desktop 製品基盤。既存 Node/fleet の稼働基盤や Kotoba/Amu/AIUEOS Native の selfhost 契約を一括変更するものではない。
 
 ## 決定と責務
@@ -14,7 +14,7 @@
 | Awai OS UI | Figma 正本、Welcome/共通 setup、Home、SystemUI/Settings 統合。phone/desktop は共通状態と異なるレイアウト・入力 |
 | Itonami app | Manimani/Bots/Apps、ユーザー側 workflow・状態・モデル管理、Awai FS 接続。Android 版は既存 UX を保つ Tauri v3 app と薄い host adapter |
 | Awai identity / FS | 検証済みアカウント・端末 enrollment、選択したプロフィールの暗号化転送、保持・同期・復旧。OS PIN や画面遷移を本人認証の代わりにしない |
-| 既存 NixOS / Otehon | 稼働済み環境、Node/build/VM 基盤、比較・回復用の保存経路。既存システムを保全し、必要な保守を継続 |
+| 既存 NixOS / Otehon | Awai OS desktop の boot/install 経路は deprecated。旧ファイルは認証・Android データ保全と依存検証後に cleanup。Node/build/VM 基盤は個別運用 |
 | Kotoba / Amu / AIUEOS Native | 独立した selfhost 経路と認定。Android の成功を Native の成功へ読み替えない |
 
 AOSP を中心に設計し、機種対応に LineageOS の成果を利用できる。LineageOS ブランド、GMS/Google アカウント、Play Store、現行の第三者 Generic PC Live イメージを Awai の必須仕様にはしない。AOSP 採用だけで GMS 互換性や配布資格が得られるとは扱わない。
@@ -39,7 +39,7 @@ PIN は端末用。Passkey/ウォレットは対応する本人確認手段、�
 | 4 | Itonami Tauri app、Bot 作成、モデル取得・読込・解放、生成結果の Awai FS 保存 | AWAI-3001 と各機能 issue |
 | 5 | 永続 install、署名付き OS/OTA、更新中断・rollback・紛失復旧、機種別受入 | 未認定のまま具体的な実装/端末 gate に分ける |
 
-既存 Nix の partition・EFI・VM disk・鍵・プロファイル・cron/fleet を保存する。保存先未決定の 6600H に、方針決定を理由として書き込まない。OS 移行が必要な場面では、検証済み backup/restore と対象媒体を具体化する。稼働中サービスの停止や production cutover をこの記録の副作用にしない。
+2026-11-17 の追記指示で Nix desktop 経路を deprecated とし、旧 Nix の cleanup を承認した。認証・鍵・プロフィールと現 Android データは保持する。6600H では旧 Nix p2 の `/awai-android-2992` が現 Android の保存先でもあるため、旧 Nix ファイルの整理と partition 初期化を混同しない。暗号化退避・依存監査・隔離・Android 再起動受入後に、識別した旧 Nix ファイルだけを削除する。[具体的な境界](nixos-route-deprecation-20261117.md)に従う。Node/fleet の停止や production cutover はこの変更の副作用にしない。
 
 2026-11-17 時点: Generic PC Android の LAN/Live 起動、Android Home/Store/Itonami APK の実装・起動証跡はある。今回の AWAI-3004 では API35 VM の setup UI と native 拒否テストまで進行している。これは custom AOSP ROM の完成、実アカウント移行、永続インストール、signed OTA、6600H の全機能受入を意味しない。方針決定と製品完成を区別する。
 
