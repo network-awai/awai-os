@@ -2,6 +2,7 @@
 // age owns the archive cryptography. Identity bytes stay in Keychain/process pipes.
 import Foundation
 import Security
+import Darwin
 
 enum Failure: Error { case refused(String) }
 let age = "/opt/homebrew/bin/age"
@@ -71,7 +72,17 @@ do {
         let tar = process("/usr/bin/tar", ["-tf", "-"]); tar.standardOutput = FileHandle.nullDevice
         try decryptInto(args[1], consumer: tar)
         print("Authenticated encrypted archive and tar structure verified")
-    default: throw Failure.refused("Use recipient or verify; private identities are never exported")
+    case "rewrap":
+        guard args.count == 4, args[2].range(of: "^age1[a-z0-9]{50,100}$", options: .regularExpression) != nil else { throw Failure.refused("rewrap <archive.age> <one-time-target-recipient> <new-output.age>") }
+        let fd = open(args[3], O_WRONLY | O_CREAT | O_EXCL, 0o600)
+        guard fd >= 0 else { throw Failure.refused("Require a new output file") }
+        let destination = FileHandle(fileDescriptor: fd, closeOnDealloc: true)
+        let encrypt = process(age, ["--encrypt", "--recipient", args[2]])
+        encrypt.standardOutput = destination
+        try decryptInto(args[1], consumer: encrypt)
+        try destination.synchronize(); try destination.close()
+        print("Authenticated checkpoint re-encrypted to one-time target recipient")
+    default: throw Failure.refused("Use recipient, verify or rewrap; private identities are never exported")
     }
 } catch {
     // No child stderr, secret identity, filename listing or decrypted output is logged.
