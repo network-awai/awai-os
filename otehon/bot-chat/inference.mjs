@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';import path from 'node:path';import {spawn} from 'node:child_process';import {createHash} from 'node:crypto';import {bbJSON} from './database.mjs';
 const sha=b=>createHash('sha256').update(b).digest('hex');
-export async function infer(cfg,bot,request,messages,{onProcess=()=>{}}={}){
+export async function infer(cfg,bot,request,messages,{onProcess=()=>{},signal}={}){
+ if(signal?.aborted)throw Error('voice-session-ended-no-inference');
  const pin=bot.chatPersona;if(!pin?.available||!/^[a-f0-9]{64}$/.test(pin.sourceSha256))throw Error('verified persona unavailable');
  const soul=await fs.readFile(path.join(cfg.personaRoot,pin.sourceSha256+'.txt'),'utf8');if(sha(soul)!==pin.sourceSha256||soul.length>32768)throw Error('persona pin mismatch');
  if(sha(await fs.readFile(cfg.muse))!==cfg.museSha256)throw Error('Muse binary pin changed');
@@ -15,11 +16,15 @@ export async function infer(cfg,bot,request,messages,{onProcess=()=>{}}={}){
  await fs.writeFile(path.join(dir,'prompt.txt'),prompt,{mode:0o600});
  await fs.writeFile(path.join(dir,'binding.json'),JSON.stringify({issue:request.attributionIssue??null,attribution:request.attributionIssue?(goalWork?'explicit-circle-run-binding':'explicit-peer-run-binding'):'unallocated-interactive-conversation',sessionId:request.sessionId,peer:request.peer??null,revision:cfg.revision??'unknown',forecastAt:new Date().toISOString(),forecastMetric:'provider-input/output',reasoningEffort:'low',botId:bot.id,requestId:request.requestId,model:cfg.model,profileSha256:sha(soul),provider:'meta',forecast:'unknown',scope:goalWork?'tool-free-goal-contribution':'tool-free-conversation',tools:[],fallback:false}),{mode:0o600});
  const argv=['exec','--json','--provider','meta','--model',cfg.model,'--reasoning-effort','low','--preset','empty','--contributor-mode','off','--disable-shell','--disable-write','--disable-web-tools','--disable-reminders','--disable-request-user-input','--no-foreign-personal-context','--max-model-steps','1','--workspace',dir,'--prompt-file',path.join(dir,'prompt.txt')];
- const child=spawn(cfg.muse,argv,{env:{...process.env,MUSE_AUTH_PATH:cfg.museAuthPath,XDG_CONFIG_HOME:path.join(dir,'config'),MUSE_NO_AUTO_UPDATE:'1'},stdio:['ignore','pipe','pipe']});
+ if(signal?.aborted)throw Error('voice-session-ended-no-inference');
+ const child=spawn(cfg.muse,argv,{env:{...process.env,MUSE_AUTH_PATH:cfg.museAuthPath,XDG_CONFIG_HOME:path.join(dir,'config'),MUSE_NO_AUTO_UPDATE:'1'},stdio:['ignore','pipe','pipe'],detached:process.platform!=='win32'});
+ const kill=kind=>{try{if(process.platform!=='win32'&&child.pid)process.kill(-child.pid,kind);else child.kill(kind)}catch{}};
+ let abortKill;const abort=()=>{kill('SIGTERM');abortKill=setTimeout(()=>kill('SIGKILL'),2000);abortKill.unref()};
+ signal?.addEventListener('abort',abort,{once:true});if(signal?.aborted)abort();
  const startedAt=new Date().toISOString();child.once('spawn',()=>onProcess({phase:'running',botId:bot.id,invocationId:request.requestId,startedAt}));
- let stdout='',stderr='',oversized=false;const timer=setTimeout(()=>child.kill('SIGKILL'),120000);
- child.stdout.on('data',b=>{if(stdout.length+b.length>8388608){oversized=true;child.kill('SIGKILL');}else stdout+=b;});child.stderr.on('data',b=>{if(stderr.length<1048576)stderr+=b;});
- const exitCode=await new Promise((resolve,reject)=>{child.on('error',reject);child.on('close',code=>resolve(code??-1));}).finally(()=>{clearTimeout(timer);onProcess({phase:'stopped',botId:bot.id,invocationId:request.requestId});});
+ let stdout='',stderr='',oversized=false;const timer=setTimeout(()=>kill('SIGKILL'),120000);
+ child.stdout.on('data',b=>{if(stdout.length+b.length>8388608){oversized=true;kill('SIGKILL');}else stdout+=b;});child.stderr.on('data',b=>{if(stderr.length<1048576)stderr+=b;});
+ const exitCode=await new Promise((resolve,reject)=>{child.on('error',reject);child.on('close',code=>resolve(code??-1));}).finally(()=>{clearTimeout(timer);if(!signal?.aborted)clearTimeout(abortKill);signal?.removeEventListener('abort',abort);onProcess({phase:'stopped',botId:bot.id,invocationId:request.requestId});});
  await fs.writeFile(path.join(dir,'timing.json'),JSON.stringify({startedAt,processEndedAt:new Date().toISOString(),elapsedProcessMs:Date.now()-Date.parse(startedAt),activeInferenceMs:'unknown',waitingMs:'unknown'}),{mode:0o600});
  await fs.writeFile(path.join(dir,'events.jsonl'),stdout,{mode:0o600});await fs.writeFile(path.join(dir,'stderr.txt'),stderr,{mode:0o600});if(oversized)throw Error('Muse result exceeded limit; no automatic retry');
  const events=stdout.split('\n').filter(s=>s.trim()).map(s=>JSON.parse(s));

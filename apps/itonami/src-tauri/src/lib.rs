@@ -12,6 +12,21 @@ fn awai_setup_state(app:tauri::AppHandle, action:String)->Result<serde_json::Val
 }
 #[cfg(target_os="android")]
 struct AndroidInferenceClient(tauri::plugin::PluginHandle<tauri::DynRuntime>);
+#[cfg(target_os="android")]
+struct AndroidAgentTransport(tauri::plugin::PluginHandle<tauri::DynRuntime>);
+#[cfg(target_os="android")]
+struct AndroidSpeech(tauri::plugin::PluginHandle<tauri::DynRuntime>);
+#[tauri::command]
+async fn awai_local_speech(app:tauri::AppHandle,request:serde_json::Value)->Result<serde_json::Value,String>{
+ if serde_json::to_vec(&request).map_err(|_|"invalid-speech-request")?.len()>4096{return Err("speech-request-limit".into());}
+ #[cfg(target_os="android")]{use tauri::Manager;return app.state::<AndroidSpeech>().0.run_mobile_plugin_async("operation",request).await.map_err(|_|"local-speech-denied-or-unavailable".into());}
+ #[cfg(not(target_os="android"))]{let _=app;Err("android-only".into())}
+}
+#[tauri::command]
+async fn awai_agent_transport(app:tauri::AppHandle)->Result<serde_json::Value,String>{
+ #[cfg(target_os="android")]{use tauri::Manager;return app.state::<AndroidAgentTransport>().0.run_mobile_plugin_async("status",serde_json::json!({})).await.map_err(|_|"agent-transport-unavailable".into());}
+ #[cfg(not(target_os="android"))]{let _=app;Ok(serde_json::json!({"schema":"awai.agent-transport-status.v1","mode":"direct","ready":true}))}
+}
 #[tauri::command]
 async fn awai_local_inference(app:tauri::AppHandle,request:serde_json::Value)->Result<serde_json::Value,String>{
  if serde_json::to_vec(&request).map_err(|_|"invalid-request")?.len()>32768{return Err("request-limit".into());}
@@ -38,7 +53,11 @@ pub fn run() {
         .runtime(tauri_runtime_wry::Wry::default())
         .plugin(tauri::plugin::Builder::<tauri::DynRuntime,()>::new("awai-inference-client").setup(|_app,_api|{
  #[cfg(target_os="android")]{use tauri::Manager;let h=_api.register_android_plugin("network.awai.inference","InferenceClientPlugin")?;_app.manage(AndroidInferenceClient(h));}Ok(())}).build())
-        .invoke_handler(tauri::generate_handler![awai_host_info,awai_local_inference,awai_setup_state])
+        .plugin(tauri::plugin::Builder::<tauri::DynRuntime,()>::new("awai-agent-transport").setup(|_app,_api|{
+ #[cfg(target_os="android")]{use tauri::Manager;let h=_api.register_android_plugin("network.itonami.app","AgentTransportPlugin")?;_app.manage(AndroidAgentTransport(h));}Ok(())}).build())
+        .plugin(tauri::plugin::Builder::<tauri::DynRuntime,()>::new("awai-speech").setup(|_app,_api|{
+ #[cfg(target_os="android")]{use tauri::Manager;let h=_api.register_android_plugin("network.awai.speech","SpeechPlugin")?;_app.manage(AndroidSpeech(h));}Ok(())}).build())
+        .invoke_handler(tauri::generate_handler![awai_host_info,awai_local_inference,awai_setup_state,awai_agent_transport,awai_local_speech])
         .run(tauri::generate_context!())
         .expect("Itonami initialization failed");
 }
