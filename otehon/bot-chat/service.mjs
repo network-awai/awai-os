@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import{isDeepStrictEqual}from'node:util';
 import http from 'node:http';
 import {createHash} from 'node:crypto';
 import {pathToFileURL} from 'node:url';
@@ -19,9 +20,10 @@ export function handler(cfg,{db=database,execute=infer,loadBots,onProcess=()=>{}
   if(req.method==='OPTIONS'){res.writeHead(204);return res.end();}
   const owner=req.headers['tailscale-user-login'];
   if(typeof owner!=='string'||owner!==cfg.ownerLogin)return reply(403,{error:'owner-identity-required'});
-  if(req.method!=='POST'||!['/v1/bot-chat/history','/v1/bot-chat/turn','/v1/bot-chat/sessions','/v1/mail/aliases/list','/v1/mail/aliases/issue','/v1/mail/aliases/stop','/v1/mail/identity/status','/v1/mail/identity/recover'].includes(req.url)||req.headers['content-type']!=='application/json')return reply(404,{error:'unsupported-operation'});
+  if(req.method!=='POST'||!['/v1/bot-chat/history','/v1/bot-chat/turn','/v1/bot-chat/sessions','/v1/bot-chat/bots','/v1/bot-chat/media','/v1/mail/aliases/list','/v1/mail/aliases/issue','/v1/mail/aliases/stop','/v1/mail/identity/status','/v1/mail/identity/recover'].includes(req.url)||req.headers['content-type']!=='application/json')return reply(404,{error:'unsupported-operation'});
   let request;try{let body='';for await(const chunk of req){body+=chunk;if(body.length>40000)throw Error();}request=JSON.parse(body);}catch{return reply(400,{error:'invalid-request'});}
   if(!request||typeof request!=='object'||Array.isArray(request))return reply(400,{error:'invalid-request'});
+  if(req.url==='/v1/bot-chat/bots'){if(Object.keys(request).length)return reply(400,{error:'invalid-bot-directory'});try{const bots=await loadBots();return reply(200,{schema:'awai.agent-directory.v1',bots:bots.filter(b=>b.chatPersona?.available).map(b=>({id:b.id,name:b.name,repository:b.repository??null,chatPersona:{available:true,sourceSha256:b.chatPersona.sourceSha256}}))});}catch{return reply(503,{error:'catalog-unavailable'});}}
   if(!/^profile:[\w.-]+$/.test(request.botId??''))return reply(400,{error:'invalid-bot'});
   const sessionId=request.sessionId??'default';if(!validSession(sessionId))return reply(400,{error:'invalid-session'});
   let bot,bots;try{bots=await loadBots();bot=bots.find(b=>b.id===request.botId);}catch{return reply(503,{error:'catalog-unavailable'});}
@@ -57,6 +59,19 @@ export function handler(cfg,{db=database,execute=infer,loadBots,onProcess=()=>{}
     const v=await db(cfg,thread,'history'),end=request.before?v.messages.findIndex(m=>m.id===request.before):v.messages.length;
     if(end<0)return reply(400,{error:'unknown-history-cursor'});const begin=Math.max(0,end-100),messages=v.messages.slice(begin,end);
     return reply(200,{botId:bot.id,sessionId,session,messages,nextCursor:begin>0?messages[0].id:null,store:v.store});
+   }
+   if(req.url==='/v1/bot-chat/media'){
+    if(grant||sessionId==='default'||!bot.chatPersona?.available)return reply(409,{error:'named-owner-session-required'});
+    if(active.has(index))return reply(409,{error:'agent-conversation-busy-no-automatic-retry'});active.add(index);
+    try{const h=await db(cfg,thread,'history'),prior=h.messages.find(m=>m.id===request.requestId);
+     let admitted;try{admitted=await bbJSON(cfg.bb,['-m','itonami-chat.media-adapter'],{...request,at:prior?.at??new Date().toISOString()});}catch{return reply(400,{error:'invalid-local-image-record'});}
+     const previousImage=h.messages.find(m=>m.parentId===request.requestId&&m.kind==='local-image');if(prior&&(!previousImage||prior.text!==request.text||!isDeepStrictEqual(previousImage.image,request.image)))return reply(409,{error:'request-id-conflict'});
+     const stored=await db(cfg,thread,'append',admitted.events);
+     const answer=stored.messages.find(m=>m.id===request.requestId+':image');
+     if(!answer||answer.image?.sha256!==request.image.sha256)return reply(503,{error:'image-record-unconfirmed-no-automatic-retry'});
+     if(stored.messages.at(-1)?.id===answer.id)await recordSession(cfg,index,sessionId,sessionId+':'+request.requestId+':media',{title:session.title,createdAt:session.createdAt,updatedAt:answer.at,messageCount:stored.messages.length,state:'completed'},db);
+     return reply(200,{schema:'awai.agent-image-record.v1',botId:bot.id,sessionId,requestId:request.requestId,message:answer,store:stored.store});
+    }finally{active.delete(index);}
    }
    if(grant?.kind==='circle-work')return reply(409,{error:'scheduled-circle-history-is-read-only'});
    if(request.schema!=='awai.bot-chat-request.v1'||request.model!==cfg.model||!/^[a-f0-9-]{36}$/.test(request.requestId??'')||typeof request.text!=='string'||!request.text.trim()||request.text.length>8192||request.history!==undefined)return reply(400,{error:'invalid-turn'});

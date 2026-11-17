@@ -1,7 +1,7 @@
 (ns shell.main
   (:require [reagent.dom.client :as rdom]
             ["react" :as react :refer [useEffect useMemo useRef useState]]
-            [shell.manimani :refer [MANIMANI manimani manimani-link]]
+            [shell.manimani :refer [MANIMANI conversation-entry manimani-link]]
             [shell.android-inference :as android-inference]
             ["../android-inference.js" :refer [androidInferenceAvailable]]
             [shell.net :refer [bluetooth-panel wifi-panel]]
@@ -384,7 +384,7 @@
                  [:f> account-view account score proofs check-passport passport-state
                   check-balance balance-state on-sign-out]
                  (= context MANIMANI)
-                 [:f> manimani set-context open-account]
+                 [:f> conversation-entry]
                  (= context "wifi") [:f> wifi-panel]
                  (= context "bluetooth") [:f> bluetooth-panel]
                  (= context "sound") [:f> sound-panel]
