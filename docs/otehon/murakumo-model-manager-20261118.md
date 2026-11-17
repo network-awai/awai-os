@@ -153,3 +153,41 @@ Reasons:
   the GPU.
 - Whether Hugging Face's download redirects can be declared narrowly enough for the client-runtime
   contract. Stage 4 checks this before adding INTERNET.
+
+## 7. Figma proposal (stage 2, [AWAI-3214](https://linear.app/kotobalabs/issue/AWAI-3214))
+
+Made on 2026-11-18 in file `umqCqP5KSjLWh9fhCI1HaN`, page `252:2` (Murakumo · Android Otehon), next to
+the existing Murakumo frames 01–08. Those frames, the Otehon baseline (`216:476`) and the
+navigation/shell are unchanged. The proposal reuses the file's existing variables (Awai OS brand
+colors, Android v2 semantic colors), the `Android v2 / Button` component set and Noto Sans JP at the
+existing sizes. Sample data is labelled as a design example (an 8 GiB Android tablet). Other
+devices use the values measured in section 2.
+
+| Node | What it shows |
+| --- | --- |
+| [`293:178`](https://www.figma.com/design/umqCqP5KSjLWh9fhCI1HaN?node-id=293-178) components | `Murakumo / Fit badge` (`293:187`), `Murakumo / Usage meter` (`293:222`), `Murakumo / Model row` (`293:223`), `Murakumo / Device row` (`293:234`) |
+| [`295:200`](https://www.figma.com/design/umqCqP5KSjLWh9fhCI1HaN?node-id=295-200) 09 · モデル一覧 / この端末 | Catalog with fit badges and the recommendation; this device's loaded model, RAM / CPU / GPU (unknown) / disk; release |
+| [`296:376`](https://www.figma.com/design/umqCqP5KSjLWh9fhCI1HaN?node-id=296-376) 10 · 取得の確認 | Native consent: service, source, file and revision, size, SHA-256 to check, data sent (none), free space after |
+| [`296:433`](https://www.figma.com/design/umqCqP5KSjLWh9fhCI1HaN?node-id=296-433) 11 · 取得中 / 照合失敗 | Download progress with stop; a digest mismatch discarded with retry; what stopping does |
+| [`298:690`](https://www.figma.com/design/umqCqP5KSjLWh9fhCI1HaN?node-id=298-690) 13 · 読み込む / 読み込み中 | Downloaded and verified with a Load action; loading in progress; one model at a time |
+| [`295:295`](https://www.figma.com/design/umqCqP5KSjLWh9fhCI1HaN?node-id=295-295) 12 · 全端末 | Every device: last signed report, loaded model, RAM / CPU / GPU / disk; a device with no recent report shows its age and unknown values |
+| [`297:491`](https://www.figma.com/design/umqCqP5KSjLWh9fhCI1HaN?node-id=297-491) P09 phone (JA), [`297:586`](https://www.figma.com/design/umqCqP5KSjLWh9fhCI1HaN?node-id=297-586) P09 phone (EN), [`297:677`](https://www.figma.com/design/umqCqP5KSjLWh9fhCI1HaN?node-id=297-677) P12 phone | The same states at 411 dp. Model and device rows wrap; the tablet layout is unchanged |
+
+Rules in the design:
+
+- **Labels, not color alone:** each fit badge carries its word (快適 / 余裕少 / 入らない / 不明).
+- **Unknown is unknown, never 0:** an unknown value shows a dashed track and 不明.
+- **Exact values in text:** the value text holds the exact figure; the bar is approximate.
+- **Out-of-reach states are disabled:** a model that does not fit gets a disabled action, and release
+  is unavailable while loading.
+
+Not designed yet:
+
+- English versions of the tablet frames 10–13, and phone versions of 10, 11 and 13.
+- Light mode.
+- The Itonami handoff frame (08).
+- How the fleet list asks for consent before reading another device's report: the canonical broker
+  dialog is reused, not redesigned.
+
+The proposal stays inside the existing Murakumo app structure, so under the design-first contract
+it needs no separate owner design decision.
