@@ -1,0 +1,354 @@
+{
+  "issue": "JUN-1336",
+  "observedAt": "2026-11-17T08:15:40.827139+00:00",
+  "sourceBase": "4ef8d9b156e965a11da61a8f82135dce35fb3427",
+  "sourceDelta": [
+    "Murakumo phone actions full width",
+    "Yotei system/cutout/IME inset and light-bar icons"
+  ],
+  "device": {
+    "platform": "dedicated visible AOSP API35 arm64 emulator",
+    "resolution": "720x1604",
+    "density": 280,
+    "WebView": "124.0.6367.219"
+  },
+  "apps": [
+    {
+      "app": "itonami",
+      "apk": {
+        "sha256": "56cc689f31b6ecce5c25f1722267ac59b0b8ffefdd97f774004af1354b5743fa",
+        "bytes": 30938538,
+        "abis": [
+          "arm64-v8a"
+        ],
+        "build": "Tauri3.0.0-alpha.6 debug; local only"
+      },
+      "sharedUI": {
+        "version": "0.2.0",
+        "actualCopiedFiles": {
+          "index.js": "718c31124b13b420372c915a1b08accf28066a8f723b177a56c8d198e10b1bcb",
+          "awai-ui.css": "efa48b9416be304e41fd8c5986559a83ebac94eea93518b5bd70f69cbae953dd"
+        }
+      },
+      "runtime": {
+        "text": "Sign In\n\nUse a Web3 wallet on this device, or approve with a passkey or wallet on your phone. There is no password or guest option.\n\nSign In with a Wallet\nLink with Phone\n\nView Bot status\n\n接続状態を確認できません\nテーマ\nAsa\nHiru\nYoru",
+        "classes": "awai-ui awai-native-host",
+        "theme": "light",
+        "buttons": [
+          {
+            "text": "Sign In with a Wallet",
+            "id": "local-start",
+            "disabled": false,
+            "hidden": false,
+            "display": "flex",
+            "radius": "999px",
+            "height": 52.000003814697266
+          },
+          {
+            "text": "Link with Phone",
+            "id": "link-start",
+            "disabled": false,
+            "hidden": false,
+            "display": "flex",
+            "radius": "999px",
+            "height": 52.000003814697266
+          },
+          {
+            "text": "Asa",
+            "id": "",
+            "disabled": false,
+            "hidden": false,
+            "display": "flex",
+            "radius": "999px",
+            "height": 52.000003814697266
+          },
+          {
+            "text": "Hiru",
+            "id": "",
+            "disabled": false,
+            "hidden": false,
+            "display": "flex",
+            "radius": "999px",
+            "height": 52.000003814697266
+          },
+          {
+            "text": "Yoru",
+            "id": "",
+            "disabled": false,
+            "hidden": false,
+            "display": "flex",
+            "radius": "999px",
+            "height": 52.000003814697266
+          }
+        ],
+        "authentication": "waiting-for-owner; no account minted"
+      },
+      "screenshotSha256": "c4aa2d57cdde72dabc845b2252495305560c4f1de2be5d8fbc8eb824667ef613"
+    },
+    {
+      "app": "murakumo",
+      "apk": {
+        "sha256": "98c738513c34851701943938b957448a4dba8ae2096f7830bef3e1b0f14e378b",
+        "bytes": 52613601,
+        "abis": [
+          "arm64-v8a"
+        ],
+        "build": "Tauri3.0.0-alpha.6 debug; local only"
+      },
+      "sharedUI": {
+        "version": "0.2.0",
+        "actualCopiedFiles": {
+          "index.js": "718c31124b13b420372c915a1b08accf28066a8f723b177a56c8d198e10b1bcb",
+          "awai-ui.css": "efa48b9416be304e41fd8c5986559a83ebac94eea93518b5bd70f69cbae953dd"
+        }
+      },
+      "runtime": {
+        "text": "Murakumo\n\nこの端末で推論\n\nモデル\nQwen3 · 0.6B\n\nモデルを選んでください\n\nllama.cpp · この端末のみ\n\nモデルを選ぶ\n読み込む\nメモリから解放\n\n対応：テキスト\n画像・動画エンジンは未接続\n\n何を生成しますか？\n生成する\n\n準備しています\n\n結果\nここに生成結果が表示されます。",
+        "classes": "awai-ui awai-native-host",
+        "buttons": [
+          {
+            "text": "モデルを選ぶ",
+            "id": "import",
+            "disabled": false,
+            "hidden": false,
+            "display": "flex",
+            "radius": "999px",
+            "height": 52.000003814697266
+          },
+          {
+            "text": "読み込む",
+            "id": "load",
+            "disabled": false,
+            "hidden": false,
+            "display": "flex",
+            "radius": "999px",
+            "height": 52.000003814697266
+          },
+          {
+            "text": "メモリから解放",
+            "id": "release",
+            "disabled": false,
+            "hidden": false,
+            "display": "flex",
+            "radius": "999px",
+            "height": 52.000003814697266
+          },
+          {
+            "text": "生成する",
+            "id": "generate",
+            "disabled": false,
+            "hidden": false,
+            "display": "flex",
+            "radius": "999px",
+            "height": 52.000003814697266
+          },
+          {
+            "text": "停止する",
+            "id": "cancel",
+            "disabled": false,
+            "hidden": true,
+            "display": "none",
+            "radius": "999px",
+            "height": 0
+          }
+        ],
+        "inference": "no model imported or generation performed"
+      },
+      "screenshotSha256": "81d949843c739d082a4c9e1319e070b13557f7a745b1bf572d98efca29513dac"
+    },
+    {
+      "app": "drive",
+      "apk": {
+        "sha256": "84f9cdc6b04bea4e084ac133408d0e252ce88fae4a72faa95b992a9a4cddf498",
+        "bytes": 21860026,
+        "abis": [
+          "arm64-v8a"
+        ],
+        "build": "Tauri3.0.0-alpha.6 debug; local only"
+      },
+      "sharedUI": {
+        "version": "0.2.0",
+        "actualCopiedFiles": {
+          "index.js": "718c31124b13b420372c915a1b08accf28066a8f723b177a56c8d198e10b1bcb",
+          "awai-ui.css": "efa48b9416be304e41fd8c5986559a83ebac94eea93518b5bd70f69cbae953dd"
+        }
+      },
+      "runtime": {
+        "text": "Skip to files\nAwai Drive\n\nThis device · AwaiFS not connected\n\nNo files yet.\n\nThis device\nAdd file\nCreate folder\nSave text\nRefresh\nAbout storage",
+        "classes": "awai-ui awai-native-host",
+        "buttons": [
+          {
+            "text": "Parent folder",
+            "id": "back",
+            "disabled": false,
+            "hidden": true,
+            "display": "none",
+            "radius": "999px",
+            "height": 0
+          },
+          {
+            "text": "Add file",
+            "id": "import",
+            "disabled": false,
+            "hidden": false,
+            "display": "flex",
+            "radius": "999px",
+            "height": 52.000003814697266
+          },
+          {
+            "text": "Create folder",
+            "id": "folder",
+            "disabled": false,
+            "hidden": false,
+            "display": "flex",
+            "radius": "999px",
+            "height": 52.000003814697266
+          },
+          {
+            "text": "Save text",
+            "id": "note",
+            "disabled": false,
+            "hidden": false,
+            "display": "flex",
+            "radius": "999px",
+            "height": 52.000003814697266
+          },
+          {
+            "text": "Refresh",
+            "id": "refresh",
+            "disabled": false,
+            "hidden": false,
+            "display": "flex",
+            "radius": "999px",
+            "height": 52.000003814697266
+          },
+          {
+            "text": "Encrypt and sync",
+            "id": "sync",
+            "disabled": false,
+            "hidden": true,
+            "display": "none",
+            "radius": "999px",
+            "height": 0
+          },
+          {
+            "text": "Restore from storage",
+            "id": "restore",
+            "disabled": false,
+            "hidden": true,
+            "display": "none",
+            "radius": "999px",
+            "height": 0
+          },
+          {
+            "text": "Free up space",
+            "id": "evict",
+            "disabled": false,
+            "hidden": true,
+            "display": "none",
+            "radius": "999px",
+            "height": 0
+          },
+          {
+            "text": "Save",
+            "id": "save",
+            "disabled": false,
+            "hidden": false,
+            "display": "flex",
+            "radius": "999px",
+            "height": 0
+          },
+          {
+            "text": "Cancel",
+            "id": "cancel",
+            "disabled": false,
+            "hidden": false,
+            "display": "flex",
+            "radius": "999px",
+            "height": 0
+          },
+          {
+            "text": "Cancel",
+            "id": "evict-cancel",
+            "disabled": false,
+            "hidden": false,
+            "display": "inline-flex",
+            "radius": "999px",
+            "height": 0
+          },
+          {
+            "text": "Free up space",
+            "id": "evict-allow",
+            "disabled": false,
+            "hidden": false,
+            "display": "inline-flex",
+            "radius": "999px",
+            "height": 0
+          }
+        ],
+        "interaction": "new folder dialog opened/closed; no file imported or changed"
+      },
+      "screenshotSha256": "f867616769d01add15ce6c2d8eadea9a3ae2c4f4a849566bbdb22223b486430d"
+    },
+    {
+      "app": "yotei",
+      "apk": {
+        "sha256": "5f738465b3c8b66eebee071f935722f95cfb9840c5b32e5ee9f851ee26af34ba",
+        "bytes": 21823393,
+        "abis": [
+          "arm64-v8a"
+        ],
+        "build": "Tauri3.0.0-alpha.6 debug; local only"
+      },
+      "sharedUI": {
+        "version": "0.2.0",
+        "actualCopiedFiles": {
+          "index.js": "718c31124b13b420372c915a1b08accf28066a8f723b177a56c8d198e10b1bcb",
+          "awai-ui.css": "efa48b9416be304e41fd8c5986559a83ebac94eea93518b5bd70f69cbae953dd"
+        }
+      },
+      "runtime": {
+        "text": "Yotei\n\n予定を、手元に。\n\nAwai Shell / Tauri v3 · 端末内に保存\n\n予定を追加\n\nまだ予定はありません。\n\nデータの保全・移行\n\n通知配信・外部同期は未対応です。予定はこのアプリの保存領域に保存します。",
+        "classes": "awai-ui awai-native-host",
+        "buttons": [
+          {
+            "text": "予定を追加",
+            "id": "add",
+            "disabled": false,
+            "hidden": false,
+            "display": "inline-flex",
+            "radius": "999px",
+            "height": 52.000003814697266
+          },
+          {
+            "text": "バックアップを書き出す",
+            "id": "export",
+            "disabled": false,
+            "hidden": false,
+            "display": "inline-flex",
+            "radius": "999px",
+            "height": 52.000003814697266
+          },
+          {
+            "text": "旧 Android 版の予定を確認",
+            "id": "legacy",
+            "disabled": false,
+            "hidden": false,
+            "display": "inline-flex",
+            "radius": "999px",
+            "height": 52.000003814697266
+          }
+        ],
+        "interaction": "add dialog opened/closed; no event saved"
+      },
+      "screenshotSha256": "26639f059b204918481bb6c617bc63358f68fb4bdb7cbe841a310f28a1839af5"
+    }
+  ],
+  "remaining": [
+    "owner authentication",
+    "physical Awai OS/OTA/TalkBack",
+    "actual model import and generation",
+    "external storage sync"
+  ],
+  "history": "Earlier blank screenshots were captured before readiness; first combined CDP probe lost its target during activity switch. Final per-app bounded probes passed. Full historical logs are preserved privately."
+}
