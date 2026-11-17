@@ -2,6 +2,7 @@
 // Unattended real-device QA uses only isolated test packages. No owner authentication.
 import {spawn,execFileSync} from 'node:child_process';import {mkdir,readFile,writeFile} from 'node:fs/promises';import path from 'node:path';import os from 'node:os';import {fileURLToPath} from 'node:url';import {createHash} from 'node:crypto';import assert from 'node:assert/strict';
 import {assertQaDevice,assertQaPackages} from './qa-scope.mjs';import {connectCdp} from './qa-cdp.mjs';
+import {checkBootFiles} from './qa-boot-route.mjs';
 import {randomWallet,walletResponse,passkeyResponse} from '../../nixos/otehon/shell/test/signers.js';import {p256} from '../../nixos/otehon/shell/node_modules/@noble/curves/nist.js';import {build} from '../../nixos/otehon/shell/node_modules/esbuild/lib/main.js';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..'),args=Object.fromEntries(process.argv.slice(2).map(a=>a.split('=')));
 const serial=args['--serial'],mode=args['--mode'];if(!serial||!mode||!args['--manifest']||!args['--model'])throw Error('explicit serial/mode/QA manifest/public model required');
@@ -26,6 +27,11 @@ async function peers(){if(mode!=='physical-6600h')return null;const result={};fo
  const peer=adb('shell','run-as',p,'cat','p2p/peer-identity-v1.initialized');assert(/^12D3KooW/.test(peer));
  const files=adb('shell',`run-as ${p} sh -c 'if test -d p2p/store; then find p2p/store -type f -exec sha256sum {} \\;; fi'`);result[p]={peerDigest:createHash('sha256').update(peer).digest('hex'),storeDigest:createHash('sha256').update(files.split('\n').sort().join('\n')).digest('hex')};}return result;}
 try{
+ if(mode==='physical-6600h'){
+  r.bootRoute=await checkBootFiles(args['--boot-route'],args['--boot-manifest']);
+  const link=execFileSync('/sbin/ifconfig',['en15'],{encoding:'utf8',timeout:5000});assert(/status: active/.test(link)&&/inet 10\.77\.0\.1\b/.test(link),'physical LAN en15 must be active at 10.77.0.1');
+  for(const name of ['kernel','initrd','ipxe.efi']){const response=await fetch('http://10.77.0.1:18091/'+name,{method:'HEAD',redirect:'error',signal:AbortSignal.timeout(5000)});assert.equal(response.status,200);assert.equal(Number(response.headers.get('content-length')),r.bootRoute.files[name].bytes);}
+ }
  for(const p of Object.values(manifest.packages)){
   assert.equal(await hash(p.apk),p.sha256);const aapt=path.join(sdk,'build-tools/36.1.0/aapt');
   const xml=execFileSync(aapt,['dump','xmltree',p.apk,'AndroidManifest.xml'],{encoding:'utf8'});assert(xml.includes(`package="${p.id}"`));assert(/testOnly[^\n]*0xffffffff/.test(xml));
@@ -64,7 +70,8 @@ try{
  await cdp.call('Page.reload');await until(()=>cdp.read('Boolean(document.querySelector("button[data-next]"))'),'Trust step');await cdp.click('button[data-next]');await until(()=>cdp.read('Boolean(document.querySelector("button[data-finish]"))'),'Finish');await cdp.click('button[data-finish]');await until(()=>cdp.read('Boolean(document.querySelector("button[data-dapp]"))'),'native-committed Home');
  r.homeObservedAt=new Date().toISOString();cdp.close();cdp=null;r.forceStopIssuedAt=new Date().toISOString();adb('shell','am','force-stop',C);pass('actual-Finish-to-native-commit-then-immediate-force-stop');
  await start(C);await until(()=>cdp.read('Boolean(document.querySelector("button[data-dapp]"))'),'restored Home');assert.equal((await cdp.read(`window.__TAURI_INTERNALS__.invoke('awai_setup_state',{action:'read'})`)).complete,true);pass('setup-retained-after-force-stop');
- const oldBoot=adb('shell','cat','/proc/sys/kernel/random/boot_id');cdp.close();cdp=null;adb('reboot');await until(()=>adb('shell','cat','/proc/sys/kernel/random/boot_id')!==oldBoot&&adb('shell','getprop','sys.boot_completed')==='1','real OS reboot',240000);r.rebootId=adb('shell','cat','/proc/sys/kernel/random/boot_id');if(mode==='physical-6600h')assert.equal(adb('shell','cat','/sys/class/net/eth0/address'),'0c:47:a9:60:9d:34');
+ if(mode==='physical-6600h')await checkBootFiles(args['--boot-route'],args['--boot-manifest']);
+ const oldBoot=adb('shell','cat','/proc/sys/kernel/random/boot_id');r.oldBootId=oldBoot;r.rebootIssuedAt=new Date().toISOString();cdp.close();cdp=null;adb('reboot');await until(()=>adb('shell','cat','/proc/sys/kernel/random/boot_id')!==oldBoot&&adb('shell','getprop','sys.boot_completed')==='1','real OS reboot',240000);r.rebootId=adb('shell','cat','/proc/sys/kernel/random/boot_id');if(mode==='physical-6600h')assert.equal(adb('shell','cat','/sys/class/net/eth0/address'),'0c:47:a9:60:9d:34');
  adb('shell','input','keyevent','KEYCODE_WAKEUP');adb('shell','input','keyevent','KEYCODE_MENU');await start(C);await until(()=>cdp.read('Boolean(document.querySelector("button[data-dapp]"))'),'OS reboot QA Home');assert.equal((await cdp.read(`window.__TAURI_INTERNALS__.invoke('awai_setup_state',{action:'read'})`)).complete,true);await cdp.read(source+'; true');assert.deepEqual(await cdp.read('AwaiTestFixture.current()'),{method:'passkey',verified:true});pass('OS-reboot-retains-setup-and-software-account');
  const pins=JSON.parse(await readFile(path.join(root,'apps/murakumo/pins.json')));assert.equal(await hash(args['--model']),pins.model.sha256);let model='/sdcard/Download/Awai-Qwen3-0.6B-Q8_0.gguf';let present=false;try{present=adb('shell','sha256sum',model).split(/\s/)[0]===pins.model.sha256}catch{}
  if(!present){model='/data/local/tmp/awai-qa-public-model.gguf';adb('push',path.resolve(args['--model']),model)}adb('shell','run-as',P,'mkdir','-p','files/models');adb('shell',`cat ${model} | run-as ${P} sh -c 'cat > files/models/qwen3.gguf'`);

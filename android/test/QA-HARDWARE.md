@@ -43,7 +43,7 @@ state before baseline capture; no shell write to provisioning flags is used.
 After exclusive physical handoff and preserving real app data:
 
 ```sh
-node android/test/run-qa-device.mjs --serial=10.77.0.2:5555 --mode=physical-6600h --manifest=/absolute/X86_64/manifest.json --model=/absolute/Qwen3-0.6B-Q8_0.gguf
+node android/test/run-qa-device.mjs --serial=10.77.0.2:5555 --mode=physical-6600h --manifest=/absolute/X86_64/manifest.json --model=/absolute/Qwen3-0.6B-Q8_0.gguf --boot-route=/absolute/active-route.json --boot-manifest=/absolute/artifacts.json
 ```
 
 Admission checks the explicit serial/MAC, actual APK manifest/testOnly/network
@@ -53,6 +53,13 @@ can be reset; a pre-existing unowned QA package refuses execution. Never run
 fixture/reset commands on the normal app IDs. No Wi-Fi, PIN or provisioning flags
 are set. A physical reboot affects the real OS and requires a verified persistent
 boot route/server; the test does not qualify an offline EFI installation.
+Before app mutation, physical admission checks the recorded active TFTP path,
+all three pinned artifact hashes, direct LAN link/address and static HTTP HEAD
+responses. The file route is checked again immediately before reboot. Missing
+or collected boot directories refuse admission. Reboot timestamps and old/new
+boot IDs distinguish an app failure from a device that never returns. This
+preflight cannot guarantee firmware boot order, DHCP health or recovery from
+physical link/power loss; those remain separately observed infrastructure gates.
 
 The test drives signature rejection/acceptance, Trust/Finish, immediate force-stop
 without a flush delay, real OS reboot/relaunch, actual Core/native inference

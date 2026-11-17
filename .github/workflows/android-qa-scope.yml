@@ -1,0 +1,25 @@
+name: Android QA scope
+on:
+  pull_request:
+    paths:
+      - 'android/test/**'
+      - '.github/workflows/android-qa-scope.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'android/test/**'
+      - '.github/workflows/android-qa-scope.yml'
+permissions:
+  contents: read
+jobs:
+  isolated-qa-guards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: mkdir -p .agent-output
+      - run: node --test android/test/qa-scope.test.mjs android/test/qa-boot-route.test.mjs
+      - run: node --check android/test/run-qa-device.mjs
