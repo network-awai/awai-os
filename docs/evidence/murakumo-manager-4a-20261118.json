@@ -1,0 +1,111 @@
+{
+  "schema": "awai.murakumo.manager-4a-evidence/1",
+  "issue": "AWAI-3203",
+  "serial": "emulator-5620",
+  "apkSha256": "23d3f084ee089e2723981658ab18334aac5508674dc6d1bf52d8bbd145e0bf59",
+  "usage": {
+    "ramTotal": 3120193536,
+    "cpu": null,
+    "gpu": null,
+    "diskTotal": 6228115456
+  },
+  "recommendation": "Recommended here: Qwen3 · 0.6B (est. 1.1 GiB of 1.2 GiB budget)",
+  "card": {
+    "model": "Qwen3 · 0.6B",
+    "detail": "ctx 2048 · idle · since 08:28 AM",
+    "meters": [
+      "RAM854.1 MiB / 2.9 GiB",
+      "This app’s CPU4 % · Device-wide CPU is not readable",
+      "GPUUnknown · CPU engine",
+      "Disk4.2 GiB free of 5.8 GiB"
+    ],
+    "action": "Loaded",
+    "release": true
+  },
+  "generation": {
+    "len": 34,
+    "tokens": 9
+  },
+  "checks": [
+    {
+      "check": "the catalog shows six pinned models",
+      "passed": true
+    },
+    {
+      "check": "the usage report is a valid device-usage.v1 snapshot",
+      "passed": true
+    },
+    {
+      "check": "device-wide CPU and GPU are unknown, not 0",
+      "passed": true
+    },
+    {
+      "check": "a recommendation is shown for this RAM",
+      "passed": true
+    },
+    {
+      "check": "the badges follow the shared fit (0.6B fits, 8B does not)",
+      "passed": true
+    },
+    {
+      "check": "a model that does not fit cannot be loaded",
+      "passed": true
+    },
+    {
+      "check": "the wrong file is picked in the system picker",
+      "passed": true
+    },
+    {
+      "check": "a wrong file is refused for the model",
+      "passed": true
+    },
+    {
+      "check": "the real file is picked in the system picker",
+      "passed": true
+    },
+    {
+      "check": "the real file imports after SHA-256 admission",
+      "passed": true
+    },
+    {
+      "check": "the row now offers Load",
+      "passed": true
+    },
+    {
+      "check": "the Load button is tapped in the WebView",
+      "passed": true
+    },
+    {
+      "check": "the model loads",
+      "passed": true
+    },
+    {
+      "check": "the device panel shows the loaded model, context and meters",
+      "passed": true
+    },
+    {
+      "check": "the loaded model generates text",
+      "passed": true
+    },
+    {
+      "check": "release unloads it",
+      "passed": true
+    }
+  ],
+  "passed": 16,
+  "total": 16,
+  "observed": "2026-11-18; disposable AOSP API 35 arm64 emulator (emulator-5620, 3 GB RAM, owned by this task); Qwen3 0.6B Q8_0 pushed to Downloads and chosen in the real system picker",
+  "apk-note": "The 16/16 run used the APK before a CSS-only badge-contrast fix (sha256 above). The final APK (sha256 3e496c1d...6f76) was reinstalled and its screen captured in docs/evidence/murakumo-manager-4a-20261118-phone.png; the harness was not rerun on it.",
+  "harness-fixes-before-the-passing-run": [
+    "the system picker opens Recent; the 640 MB file needed a media scan and Downloads",
+    "UI Automator reported an off-screen Load button with empty bounds; the harness now scrolls it into view and refuses empty bounds",
+    "the Rust bridge replaced every plugin refusal with native-operation-rejected; it now passes plain lower-case refusal codes through"
+  ],
+  "not-shown": [
+    "download (stage 4b, needs the canonical broker extension the owner chose)",
+    "device-wide CPU: Android does not let apps read it, so it stays unknown and the app's own CPU is shown",
+    "GPU use: the engine is CPU-only",
+    "a physical phone, Japanese UI on device, tablet width",
+    "light theme vs. the dark Figma frames (the shared Awai UI renders this app light)"
+  ]
+}
