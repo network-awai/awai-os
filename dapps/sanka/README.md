@@ -15,6 +15,7 @@ no screen, service, keys or ledger, and it is **not built into the OS image**.
 | Real order and attacks | `test/live_v1.py` | Python, driving real processes |
 | Provider desk (V2) | `provider/desk.cljs` | nbb, on the provider host |
 | Order on another Mac (V2) | `test/live_v2.py` | Python, over SSH and an SSH tunnel |
+| One order end to end (V5) | `test/live_v5.py` | Python, driving the emulator, the provider host and the EN node |
 
 ## What the core decides
 
@@ -160,4 +161,32 @@ The demand class is `owner-internal` and the value class `devnet`, but nothing i
 or settled yet: the buyer is this harness on a Mac, not Hermes on the AOSP VM, and there is no
 signer or ledger in the loop. The wall time (0.18 s for one request through the tunnel) is one
 sample, not a latency measurement.
+
+## One owner order end to end (stage V5, AWAI-3141)
+
+`test/live_v5.py` joins V2 (provider desk), V3b (EN node and signers) and V4 (owner cards) with one
+real order. The request is the owner's own, chosen on 2026-11-18; the evidence keeps only its hash.
+
+| Where | What runs |
+| --- | --- |
+| This Mac | EN devnet node, sponsor key, the bot's signer with the owner key enrolled |
+| AOSP emulator | Sanka order and acceptance cards (`android/sanka`) |
+| benjamin | llama-server, the provider desk, the provider operator's key |
+
+Evidence: [`docs/evidence/sanka-v5-20261118.json`](../../docs/evidence/sanka-v5-20261118.json).
+
+| Step | Result |
+| --- | --- |
+| Approve tap on the order card → reservation | Yes |
+| The provider operator registers the same order; the desk answers through an SSH tunnel | Yes (36 prompt, 59 completion tokens measured by the desk) |
+| The independent verifier accepts the real receipt | Yes |
+| Accept tap on the acceptance card (a changed answer gets no buttons) | Yes |
+| Settlement counter-signed on benjamin, finalized; a second submission refused | Yes |
+| Node restart reads back the same head; signer, ledger and journal reconcile | Yes |
+| Second order with the desk stopped: no answer, reservation released, nothing paid | Yes |
+| Whole run | 19 of 19 checks |
+
+This is one closed internal transaction on a devnet: not revenue, a market, autonomous operation or
+distributed finality. The Accept tap came from the harness, not from the owner judging the answer.
+Hermes did not propose the order.
 
