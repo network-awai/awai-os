@@ -16,9 +16,13 @@ Store, Yotei, Itonami, Murakumo) and system overlays on top of a base system:
 The source-pinned, signed Awai AOSP build is tracked in
 [AWAI-2992](https://linear.app/kotobalabs/issue/AWAI-2992).
 
-The only GitHub release, "Awai OS 0.6.0 — x86_64 experimental preview", is the
-deprecated NixOS USB image ([archive](../archive/nixos/README.md)). It is not an
-Android image.
+The only GitHub release, now titled "[Deprecated] Awai OS 0.6.0 — NixOS x86_64
+preview (archived)", is the old NixOS USB image ([archive](../archive/nixos/README.md)).
+It is not an Android image.
+
+A [derived development image](desktop/derived-image/README.md) adds the Awai apps and
+the DP-1 setting to the pinned PC Live image and is signed with the Awai release key.
+It is for development and verification only, not an Awai OS release.
 
 ## Choose a route
 
