@@ -1,3 +1,4 @@
+import {distributeUi} from '../../packages/awai-ui/distribute.mjs';
 // Build the OS shell (dist/) and the phone page (dist/link/).
 // Views are ClojureScript (Reagent/Hiccup) compiled by shadow-cljs and
 // stylesheets are Garden data compiled on the JVM; both need `clojure` on
@@ -105,3 +106,7 @@ if (process.env.OTEHON_E2E === "1") {
     logLevel: "warning",
   });
 }
+
+await distributeUi("dist");
+await copyFile("awai-controls.js","dist/awai-controls.js");
+await copyFile("awai-controls.css","dist/awai-controls.css");

@@ -781,3 +781,16 @@ Object.prototype.inferenceHandoff;
 
 // Bounded native setup-state JSON.
 Object.prototype.complete;
+
+// Existing Android/WebCrypto boundaries must retain their names in advanced builds.
+Object.prototype.generate;
+Object.prototype.info;
+Object.prototype.isTrusted;
+Object.prototype.exitCode;
+Object.prototype.__TAURI_INTERNALS__;
+Object.prototype.language;
+Object.prototype.userAgent;
+Object.prototype.algorithm;
+Object.prototype.extractable;
+Object.prototype.sign;
+Object.prototype.usages;

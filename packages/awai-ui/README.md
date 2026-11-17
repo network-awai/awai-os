@@ -37,3 +37,11 @@ Source Figma definitions are unchanged. Only a new app proposal page was added. 
 ## Build and local verification
 
 `npm ci && npm test` builds pinned Squint0.16.214/esbuild0.28.2; `npm pack` includes self-contained ESM/CSS, CLJC source, local icons/font/license and byte integrity manifest. `examples/gallery.html` demonstrates reuse independently of World Observatory. No JVM/native gate or required CI is added.
+
+## Adopt existing Awai screens (0.2)
+
+`bind_native(root, {buttons, tonal, text, skip})` adds shared presentation classes to existing native buttons and observes added descendants. It never replaces a node, listeners, type, value, disabled/hidden state, labels, approval or storage. The default skip is `.kotoba-client-consent`: the canonical broker owns those controls. Dynamic app state stays with the owning React/DOM code. The returned function disconnects the observer. Call once for the application root; application theme adapters map existing choice to `data-awai-theme` (light/hiru/dark). Hiru's actual Figma tokens/IDs are in `tokens/figma-hiru.json`.
+
+Owning builds call `distributeUi(destination)` from `@awai/ui/distribute` after building this package. It recomputes the library source/artifact integrity, copies the same bundle/CSS/local assets into an `awai-ui/` subfolder and writes consumer provenance. Include `awai-ui/awai-ui.css` after product layout CSS, and import `bind_native` from `./awai-ui/index.js`. This is a build-time copier, not an app-origin API. Consumer release manifests must include copied files. Static origin/CSP/local font loading and the shared consent broker remain separately governed.
+
+0.2 migration consumers in awai-os: Itonami's existing owning shell, Murakumo, Drive and Yotei. The shell's Core/Apps/System, Manimani, identity and three theme selections are preserved; local UI binding does not sign in. `hidden` elements stay hidden, checkbox/radio labels provide touch targets without enlarging the native glyph, and disabled actions retain their original behavior. Other Awai repositories are not silently migrated.

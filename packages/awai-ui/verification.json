@@ -37,5 +37,18 @@
     "apps.svg": "91439675adc58dd01e25bb1f797da7528a1519fc346e3e918f85d6de4359314b",
     "noto-jp.woff2": "ed85d35a7db01e551510e0973745c17315c03ea01742d82b2bf8e5ac3bf76038",
     "font-OFL.txt": "babcfe66c8a098b2fa279bc724a3a342f8124f77ce18941fbcc1bbb39823cded"
+  },
+  "v02": {
+    "issue": "JUN-1335",
+    "consumers": [
+      "Itonami owning shell",
+      "Murakumo",
+      "Drive",
+      "Yotei"
+    ],
+    "browser": "Chrome, 412 and1280px",
+    "nativeAdapter": "existing DOM identity preserved; hidden/disabled unchanged",
+    "theme": "existing Asa/Hiru/Yoru choice; Figma Hiru export",
+    "runtime": "Android verification recorded separately"
   }
 }
