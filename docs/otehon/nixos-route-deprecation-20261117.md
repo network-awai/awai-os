@@ -10,7 +10,7 @@ app acceptance/cleanup), AWAI-2992 (Android persistence).
 
 Do not offer the historical NixOS installer as the current Awai OS installation
 path. Retain source and dated qualification records as history. The shared UI
-source currently lives under `nixos/otehon/shell`; Android still packages that
+source currently lives under `otehon/shell`; Android still packages that
 exact shared UI. The directory name does not make Android depend on a running
 NixOS. Existing build hosts, node fleets and Native qualification are separate.
 

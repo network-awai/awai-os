@@ -1,8 +1,8 @@
 # AOSP-centered Awai Android — AWAI-2992
 
-Owner decision, 2026-11-16: AOSP is the platform core. LineageOS is an optional
-source of PC hardware enablement, not the identity or required distribution of
-Awai OS. Preserve the installed Nix system while qualifying Android in a VM and
+Owner decision, 2026-11-16: AOSP is the platform core. Upstream community device
+trees are an optional source of PC hardware enablement, not the identity or
+required distribution of Awai OS. Preserve the installed Nix system while qualifying Android in a VM and
 then a diskless LAN trial. The physical install target remains undecided.
 
 ## Layer boundaries
@@ -23,8 +23,9 @@ Start with API35+; choose the release branch only after app/device compatibility
 and a complete reproducible source manifest are available. A recent branch name
 or a pinned device-tree commit is not a complete ROM source pin. Independent
 vendor/kernel dependencies, firmware provenance and required patches must be
-resolved before a product build is admitted. Do not silently rebrand an
-unofficial Lineage image or a commercial Bass image as an Awai ROM.
+resolved before a product build is admitted. Do not relabel a third-party
+prebuilt image (community nightly or commercial) as an Awai ROM: Awai OS
+branding ships only in Awai's own source-built, signed release.
 
 ## Current diagnostic candidate
 

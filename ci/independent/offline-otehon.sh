@@ -26,7 +26,7 @@ status=0
   # A fresh environment binding forces actual test execution, rather than
   # accepting the successful outputs created during dependency pre-seeding.
   export AWAI_CI_EXECUTION_ID="$(basename "$AWAI_CI_EVIDENCE")"
-  for file in scripts/otehon-c1/check.nix scripts/otehon-c1/replica-check.nix nixos/otehon/storage/check.nix nixos/otehon/storage/module-check.nix; do
+  for file in scripts/otehon-c1/check.nix scripts/otehon-c1/replica-check.nix otehon/storage/check.nix otehon/storage/module-check.nix; do
     export AWAI_CI_TEST_FILE="$PWD/$file"
     nix-build --no-out-link --expr 'let value=import (builtins.toPath (builtins.getEnv "AWAI_CI_TEST_FILE")); drv=if builtins.isFunction value then value {} else value; in drv.overrideAttrs (_: { AWAI_CI_EXECUTION_ID=builtins.getEnv "AWAI_CI_EXECUTION_ID"; })'
   done

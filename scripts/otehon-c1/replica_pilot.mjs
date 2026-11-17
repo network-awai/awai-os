@@ -11,7 +11,7 @@ if(!outputArg||a===b||![a,b].every(h=>/^[A-Za-z][A-Za-z0-9-]{0,62}$/.test(h)))
   throw Error('usage: node replica_pilot.mjs HOST_A HOST_B NEW_OUTPUT_DIRECTORY');
 const output=resolve(outputArg);await mkdir(output,{mode:0o700});
 const remote='/Users/node/github/workspaces/codex/awai-2776-replica-'+randomBytes(6).toString('hex');
-const cp='nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:nixos/otehon/storage/vendor/apex-car/src';
+const cp='otehon/storage/src:otehon/storage/vendor/apex/src:otehon/storage/vendor/apex-car/src';
 const helper='scripts/otehon-c1/replica_fixture.clj';
 const quote=s=>"'"+s.replaceAll("'","'\\''")+"'";
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
@@ -46,13 +46,13 @@ function equivalent(x,y){
 }
 try{
   for(const [pinPath,modulePath] of[
-    ['nixos/otehon/storage/vendor/source.json','nixos/otehon/storage/vendor/apex/src/awai/fs/wal.cljc'],
-    ['nixos/otehon/storage/vendor/car-source.json','nixos/otehon/storage/vendor/apex-car/src/awai/fs/car.cljc']]){
+    ['otehon/storage/vendor/source.json','otehon/storage/vendor/apex/src/awai/fs/wal.cljc'],
+    ['otehon/storage/vendor/car-source.json','otehon/storage/vendor/apex-car/src/awai/fs/car.cljc']]){
     const pin=JSON.parse(await readFile(resolve(repo,pinPath),'utf8'));
     if(hash(await readFile(resolve(repo,modulePath)))!==pin.sha256)throw Error('owning storage dependency pin mismatch');
   }
   const bundle=resolve(output,'code.tar');
-  await exec('tar',['-cf',bundle,helper,'nixos/otehon/storage/src','nixos/otehon/storage/vendor'],{cwd:repo});
+  await exec('tar',['-cf',bundle,helper,'otehon/storage/src','otehon/storage/vendor'],{cwd:repo});
   const code=await readFile(bundle),codeSha=hash(code);
   for(const host of[a,b]){
     const command='umask 077; mkdir -p /Users/node/github/workspaces/codex && mkdir '+quote(remote)

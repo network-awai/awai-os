@@ -1,7 +1,7 @@
 // Host-injected test module; never an application asset or an authentication bypass.
 // The runner checks a newly owned disposable emulator before evaluating this module.
-import {deviceDid,saveSession,loadSession,clearSession} from '../../nixos/otehon/shell/src/identity/device.js';
-import {createLinkRequest,verifyLink} from '../../nixos/otehon/shell/src/identity/link.js';
+import {deviceDid,saveSession,loadSession,clearSession} from '../../otehon/shell/src/identity/device.js';
+import {createLinkRequest,verifyLink} from '../../otehon/shell/src/identity/link.js';
 export async function begin(){const did=await deviceDid();const {request}=await createLinkRequest(did);return request;}
 export async function accept(request,response,now=Date.now()){
  const did=await deviceDid();

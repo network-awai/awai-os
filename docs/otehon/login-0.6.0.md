@@ -49,8 +49,8 @@ same wallet or passkey gives the same account. The link is verified again on eac
 
 The relay holds ciphertext, and the topic is random. The test VM runs ntfy. Production runs a
 small Worker with the same two routes (`deploy/awai-link/relay`), because no host runs ntfy yet.
-Both pages use the pinned shared broker in `nixos/otehon/shell/vendor` (see `PINS.json`),
-and a test checks its digests. The phone page is `nixos/otehon/shell/link`, built to
+Both pages use the pinned shared broker in `otehon/shell/vendor` (see `PINS.json`),
+and a test checks its digests. The phone page is `otehon/shell/link`, built to
 `dist/link`.
 
 ## Trust score
@@ -62,7 +62,7 @@ and a test checks its digests. The phone page is `nixos/otehon/shell/link`, buil
 | World ID | 50 | Not implemented |
 
 Proofs last 30 days and belong to one account. Minimums are in
-`nixos/otehon/shell/src/dapp-trust.json`: Torihiki `submit-order` and Saifu
+`otehon/shell/src/dapp-trust.json`: Torihiki `submit-order` and Saifu
 `read-chain-state` need 50. A whole dapp can also have a minimum, which opens a locked
 screen. No dapp has one yet.
 
@@ -78,7 +78,7 @@ Build the `desktop-login` profile. It adds a relay on loopback, a throwaway cert
 `--ignore-certificate-errors`, Node.js and a test driver, so it is never a release.
 
 ```bash
-nixos/otehon/desktop-login-check-qemu.sh desktop-login.qcow2 serial.log shot.ppm
+otehon/desktop-login-check-qemu.sh desktop-login.qcow2 serial.log shot.ppm
 ```
 
 Exit codes: `0` every step passed, `1` a step failed or no result, `3` the check could

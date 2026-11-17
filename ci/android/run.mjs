@@ -20,13 +20,13 @@ function step(name,command,args,extra={}){
  });
 }
 try{
- await step('shell-dependencies','npm',['ci','--ignore-scripts','--no-audit','--prefix','nixos/otehon/shell']);
- await step('source-regression','node',['--test','android/test/emulator-scope.test.mjs','nixos/otehon/shell/test/setup-state.test.js','nixos/otehon/shell/test/link.test.js','nixos/otehon/shell/test/device.test.js','nixos/otehon/shell/test/trust.test.js']);
+ await step('shell-dependencies','npm',['ci','--ignore-scripts','--no-audit','--prefix','otehon/shell']);
+ await step('source-regression','node',['--test','android/test/emulator-scope.test.mjs','otehon/shell/test/setup-state.test.js','otehon/shell/test/link.test.js','otehon/shell/test/device.test.js','otehon/shell/test/trust.test.js']);
  await step('rust-compile','rustc',['--edition=2021','--test','apps/itonami/src-tauri/src/setup_state.rs','-o',path.join(out,'setup-tests')]);
  await step('rust-regression',path.join(out,'setup-tests'),[],{AWAI_TEST_OUTPUT:out});
- await step('advanced-native-contract','npm',['run','test:inference','--prefix','nixos/otehon/shell']);
- await step('setup-screen-regression','npm',['run','test:setup','--prefix','nixos/otehon/shell']);
- await step('owning-shell','npm',['run','build','--prefix','nixos/otehon/shell'],{OTEHON_HTTP:'1'});
+ await step('advanced-native-contract','npm',['run','test:inference','--prefix','otehon/shell']);
+ await step('setup-screen-regression','npm',['run','test:setup','--prefix','otehon/shell']);
+ await step('owning-shell','npm',['run','build','--prefix','otehon/shell'],{OTEHON_HTTP:'1'});
  await step('consumer-dependencies','npm',['ci','--ignore-scripts','--no-audit','--prefix','apps/itonami']);
  await step('consumer-frontend','npm',['run','package:frontend','--prefix','apps/itonami']);
  await step('consumer-apk','npm',['run','tauri','--prefix','apps/itonami','--','android','build','--apk','--target','aarch64','--debug']);

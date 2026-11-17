@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {generateKeyPairSync,sign} from 'node:crypto';
 import vm from 'node:vm';
-const runtime=new URL('../../nixos/otehon/shell/vendor/kotoba-client-runtime.js',import.meta.url);
+const runtime=new URL('../../otehon/shell/vendor/kotoba-client-runtime.js',import.meta.url);
 const text=readFileSync(new URL('../client/online.js',import.meta.url),'utf8').replace("'./runtime.js'",JSON.stringify(runtime.href));
 const {validatePins,onlineRuntime,authenticateCatalog}=await import('data:text/javascript;base64,'+Buffer.from(text).toString('base64'));
 const {clientRuntimeProblems,clientEndpointAllowsRequest}=await import(runtime.href);

@@ -49,7 +49,7 @@ nbb --classpath src:test test/run_cases.cljs
 Basilisp writes bytecode beside its sources unless `PYTHONDONTWRITEBYTECODE=1` is set, and the Nix
 store is read-only, so it fails without it.
 
-The `Sanka VM gate` workflow runs the first two and then `nixos/tests/sanka-v1.nix`. It is an
+The `Sanka VM gate` workflow runs the first two and then `dapps/sanka/nix/vm-v1.nix`. It is an
 Otehon job, not a required check, and the native profile does not depend on it.
 
 The generated JSON is checked in. To change a case, edit `test/gen_cases.lpy` and run `basilisp run test/gen_cases.lpy`.
@@ -93,7 +93,7 @@ moves nothing. The model is a small test model, so its text is not a useful answ
 
 ### In a NixOS VM (2026-11-07, GitHub Actions)
 
-`nixos/tests/sanka-v1.nix` runs the same harness in a NixOS VM with no network, on an x86_64 GitHub
+`dapps/sanka/nix/vm-v1.nix` runs the same harness in a NixOS VM with no network, on an x86_64 GitHub
 Actions runner with KVM. The gateway is pinned to `cloud-kotoba-desktop` `1f8fe2b`, and the engine is
 nixpkgs llama.cpp 9190, not the 0.7.0 used on the host.
 

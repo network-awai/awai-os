@@ -53,10 +53,10 @@ def main():
     shutil.copytree(ROOT/'android/client/assets',assets/'assets',dirs_exist_ok=True)
     shutil.copyfile(ROOT/'android/client/generated/domain.js',assets/'domain.js')
     shutil.copyfile(ROOT/'android/client/generated/identity.js',assets/'identity.js')
-    pins=json.loads((ROOT/'nixos/otehon/shell/vendor/PINS.json').read_text());runtime=ROOT/'nixos/otehon/shell/vendor/kotoba-client-runtime.js'
+    pins=json.loads((ROOT/'otehon/shell/vendor/PINS.json').read_text());runtime=ROOT/'otehon/shell/vendor/kotoba-client-runtime.js'
     if digest(runtime)!=pins['files']['kotoba-client-runtime.js']:raise SystemExit('canonical runtime pin drift')
     shutil.copyfile(runtime,assets/'runtime.js')
-    consent=ROOT/'nixos/otehon/shell/vendor/kotoba-client-consent.css'
+    consent=ROOT/'otehon/shell/vendor/kotoba-client-consent.css'
     if digest(consent)!=pins['files']['kotoba-client-consent.css']:raise SystemExit('canonical consent CSS pin drift')
     shutil.copyfile(consent,assets/'runtime-consent.css')
     pins_online=json.loads(args.online_pins.read_text()) if args.online_pins else None
@@ -74,7 +74,7 @@ def main():
         folder=resources/('values'if mode=='light'else'values-night');folder.mkdir(parents=True,exist_ok=True)
         (folder/'styles.xml').write_text(f'<resources><style name="AwaiTheme" parent="{parent}"><item name="android:fontFamily">sans</item><item name="android:windowActionModeOverlay">true</item><item name="android:colorAccent">{common["palette"][mode]["primary"]}</item></style><color name="awai_background">{common["palette"][mode]["background"]}</color></resources>')
     drawable=resources/'drawable-nodpi';drawable.mkdir(parents=True,exist_ok=True)
-    shutil.copyfile(ROOT/'nixos/otehon/branding/awai-desktop-logo.png',drawable/'awai_mark.png')
+    shutil.copyfile(ROOT/'otehon/branding/awai-desktop-logo.png',drawable/'awai_mark.png')
     for folder in [resources/'values',resources/'values-night']:
         path=folder/'styles.xml'
         path.write_text(path.read_text().replace('</resources>','<style name="AwaiHomeTheme" parent="AwaiTheme"><item name="android:windowSplashScreenBackground">@color/awai_background</item><item name="android:windowSplashScreenAnimatedIcon">@drawable/awai_mark</item><item name="android:windowSplashScreenBehavior">icon_preferred</item></style></resources>'))
@@ -114,7 +114,7 @@ def main():
         return apk
     if args.home_only:
         home=build('home','network.awai.home','network.awai.home.HomeActivity')
-        report={'schema':'awai.android.home-build.v1','version':args.version,'publicSignerSha256':fp,'runtime':pins,'artifacts':{home.name:{'sha256':digest(home),'bytes':home.stat().st_size}},'identitySourceSha256':digest(ROOT/'android/client/identity-entry.js'),'identityVerifierSha256':digest(ROOT/'nixos/otehon/shell/src/identity/link.js'),'deviceSourceSha256':digest(ROOT/'nixos/otehon/shell/src/identity/device.js')}
+        report={'schema':'awai.android.home-build.v1','version':args.version,'publicSignerSha256':fp,'runtime':pins,'artifacts':{home.name:{'sha256':digest(home),'bytes':home.stat().st_size}},'identitySourceSha256':digest(ROOT/'android/client/identity-entry.js'),'identityVerifierSha256':digest(ROOT/'otehon/shell/src/identity/link.js'),'deviceSourceSha256':digest(ROOT/'otehon/shell/src/identity/device.js')}
         (out/f'home-build-v{args.version}.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2));return
     yotei=build('yotei','network.itonami.yotei','network.itonami.yotei.YoteiActivity')
     packages=assets/'packages';packages.mkdir(exist_ok=True);shutil.copyfile(yotei,packages/'yotei.apk')

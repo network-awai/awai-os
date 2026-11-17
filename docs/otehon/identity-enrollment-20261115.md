@@ -8,7 +8,7 @@ mail integration [AWAI-328](https://linear.app/kotobalabs/issue/AWAI-328),
 
 The owner-host service runs executable revision
 `fdb05ab1c24b44560484cbaf1ca4cfae767861c6`. Identity/custody/recovery/mail domain
-logic is CLJC under `nixos/otehon/bot-chat/src/itonami_identity/`. The previous
+logic is CLJC under `otehon/bot-chat/src/itonami_identity/`. The previous
 MJS mail domain implementation is removed; existing Node code carries HTTP and
 process transport. Browser controls are ClojureScript.
 

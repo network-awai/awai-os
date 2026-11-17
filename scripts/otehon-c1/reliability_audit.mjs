@@ -15,7 +15,7 @@ const quote=s=>"'"+s.replaceAll("'","'\\''")+"'";
 const observations=[];
 for(const [i,node]of pilot.hosts.entries()){
   const command='PATH=/opt/homebrew/bin:/usr/bin:/bin; export PATH; cd '+quote(pilot.remoteWorkspace)
-    +' && bb -cp nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:nixos/otehon/storage/vendor/apex-car/src'
+    +' && bb -cp otehon/storage/src:otehon/storage/vendor/apex/src:otehon/storage/vendor/apex-car/src'
     +' scripts/otehon-c1/replica_fixture.clj read '+(i===0?'source/store':'replica');
   try{
     const r=await exec('ssh',['-o','BatchMode=yes','-o','StrictHostKeyChecking=yes','-o','ConnectTimeout=8',

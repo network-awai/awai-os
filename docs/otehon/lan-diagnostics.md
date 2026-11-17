@@ -28,13 +28,13 @@ An empty key disables SSH. Keep the private key on the operator's machine.
 The workflow produces a separately keyed candidate with `SOURCE_REVISION`
 and `SHA256SUMS`. Early artifacts are unqualified.
 
-Run `scripts/check-otehon-lan-vm.py --help` for the VM arguments. Use the
+Run `archive/nixos/scripts/check-otehon-lan-vm.py --help` for the VM arguments. Use the
 actual candidate and its source revision. Preserve the output directory.
-Before physical serving, `scripts/otehon-lan-http.py` requires that successful
+Before physical serving, `archive/nixos/scripts/otehon-lan-http.py` requires that successful
 VM proof and verifies that its hashes match the candidate.
 
 The Mac's direct Ethernet interface has address `10.77.0.1/24`. Generate the
-dnsmasq configuration with `scripts/otehon-lan-dhcp.py`, specifying that
+dnsmasq configuration with `archive/nixos/scripts/otehon-lan-dhcp.py`, specifying that
 interface and the complete physical PC MAC. Test the configuration with
 `dnsmasq --test --conf-file=...`, then run the dedicated foreground process
 with local administrator authentication. It offers `10.77.0.2` only to that
@@ -43,7 +43,7 @@ provides neither DNS nor a default gateway. Do not use a shared LAN.
 
 Start the verified HTTP helper, retry network boot on the PC, and compare
 the SSH fingerprint shown on its screen. Use
-`scripts/otehon-lan-diagnostics.py --help` to collect a report with that
+`archive/nixos/scripts/otehon-lan-diagnostics.py --help` to collect a report with that
 fingerprint and the operator key. The client refuses mismatched keys and
 will not overwrite an existing report. No password or private key belongs
 in chat or evidence. Stop the foreground HTTP and DHCP processes after use.

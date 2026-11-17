@@ -1,6 +1,6 @@
 // Existing awai.link.v1 verifier and device-key custody, not a new identity protocol.
-import {deviceDid,loadSession,saveSession} from '../../nixos/otehon/shell/src/identity/device.js';
-import {createLinkRequest,linkUrl,confirmationCode,openResponse,verifyLink,REQUEST_MS} from '../../nixos/otehon/shell/src/identity/link.js';
+import {deviceDid,loadSession,saveSession} from '../../otehon/shell/src/identity/device.js';
+import {createLinkRequest,linkUrl,confirmationCode,openResponse,verifyLink,REQUEST_MS} from '../../otehon/shell/src/identity/link.js';
 import qrcode from 'qrcode-generator';
 import {createClientOperationBroker,createClientConsentHost} from './runtime.js';
 export const RELAY='https://relay.awai.network';

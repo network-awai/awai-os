@@ -10,7 +10,7 @@ on:
       - dapps/d1/**
       - dapps/reward-loop/**
       - dapps/saifu/nix/basilisp.nix
-      - nixos/tests/sanka-v1.nix
+      - dapps/sanka/nix/vm-v1.nix
   workflow_dispatch:
 
 permissions:
@@ -69,7 +69,7 @@ jobs:
       - name: One real order in a NixOS VM
         run: |
           started=$(date +%s)
-          nix-build nixos/tests/sanka-v1.nix --out-link result
+          nix-build dapps/sanka/nix/vm-v1.nix --out-link result
           echo "VM gate took $(( $(date +%s) - started )) seconds"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()

@@ -13,7 +13,7 @@ not an imported Bot's capability or browser-app permission.
 For an image candidate, import the profile with verified guest addresses:
 
 ```nix
-import ./nixos/otehon/k3s/desktop.nix {
+import ./otehon/k3s/desktop.nix {
   node = "jacob"; # dan / judah selects agent
   addresses = verifiedGuestAddresses;
   interface = privateGuestInterface;
@@ -21,13 +21,13 @@ import ./nixos/otehon/k3s/desktop.nix {
 }
 ```
 
-The corresponding build entry is `nixos/otehon/k3s/build.nix`, taking the same
+The corresponding build entry is `otehon/k3s/build.nix`, taking the same
 arguments plus `arch` (`aarch64`, default, or `x86_64`) and `output` (`image`,
 default, or `system`). For example, with an operator-owned non-secret guest
 address mapping:
 
 ```sh
-nix-build nixos/otehon/k3s/build.nix --argstr node jacob \
+nix-build otehon/k3s/build.nix --argstr node jacob \
   --arg addresses 'import ./verified-guest-addresses.nix' \
   --argstr interface eth1 --argstr tokenFile /run/secrets/otehon-k3s-token
 ```
@@ -85,7 +85,7 @@ does not reverse K3s database schema: qualify upgrades/restoration separately.
 ```sh
 nix-instantiate --eval --strict --json --expr \
   'import ./tests/otehon-k3s-eval.nix { nixpkgsPath = import ./ci/nixpkgs.nix; }'
-nix-build nixos/tests/otehon-k3s.nix --out-link result
+nix-build archive/nixos/tests/otehon-k3s.nix --out-link result
 ```
 
 Evaluation covers both desktop architectures and invalid configurations. The

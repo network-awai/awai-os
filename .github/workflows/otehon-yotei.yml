@@ -6,7 +6,7 @@ on:
       - packages/awai-shell/**
       - android/contracts/**
       - android/client/generated/domain.js
-      - nixos/otehon/shell/vendor/**
+      - otehon/shell/vendor/**
       - ci/nixpkgs.nix
       - .github/workflows/otehon-yotei.yml
   workflow_dispatch:

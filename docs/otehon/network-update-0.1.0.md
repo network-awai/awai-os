@@ -65,14 +65,14 @@ session overlay and Chromium profile intact; an owner-approved initial export/
 import and legacy-origin migration gate must precede enrollment/cutover. The
 new stable-origin VM test is not evidence that legacy user state has migrated.
 
-`scripts/publish-otehon-release.sh` creates a new local static cache + manifest
+`archive/nixos/scripts/publish-otehon-release.sh` creates a new local static cache + manifest
 using explicit signing-key paths. It never generates keys, uploads or remotely
 activates a fleet. Sign cohorts=[canary] first; after independent verification,
 explicitly sign a new manifest adding stable. Unsigned/self-reported canary
 success grants no promotion authority. Production publishing/keys/rotation and
 live jacob/levi acceptance remain distinct gates; fixtures never qualify them.
 
-`nix-build nixos/tests/otehon-network-update.nix --no-out-link` is the disposable
+`nix-build archive/nixos/tests/otehon-network-update.nix --no-out-link` is the disposable
 HTTPS publisher + real headless desktop/Chromium update gate. It changes actual
 UI-package versions and checks timer/cohort hold/promotion, good trial/confirm,
 extra reboot and failed-health rollback, localStorage/IndexedDB/user-file and

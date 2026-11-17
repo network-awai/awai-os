@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {readFile,writeFile} from 'node:fs/promises';
+import {modelClient,run} from '../voice-agent.mjs';
+import {VoiceControl} from '../voice-control.mjs';
+const actions=[];const control=new VoiceControl({model:modelClient(),dispatch:a=>actions.push(a)});
+control.update({revision:1,language:'ja',kind:'menu',message:'接続方法を選ぶ',choices:[{id:'wifi',label:'Wi-Fiに接続'},{id:'wired',label:'有線LAN'},{id:'offline',label:'オフライン'}]});
+const began=Date.now();await control.utterance('Wi-Fiにつなぎたいです');assert.equal(actions[0]?.value,'wifi');
+console.log('REAL_DIALOGUE_PASS',Date.now()-began);
+await run(process.env.MURAKUMO_TTS_PYTHON,[process.env.MURAKUMO_TTS_SCRIPT,'/run/voice-qa/tts-independent.wav'],{input:'こんにちは。セットアップを始めましょう。'}).promise;
+const bytes=(await readFile('/run/voice-qa/tts-independent.wav')).length;assert.ok(bytes>10000);
+await writeFile('/mnt/output/voice-dialogue-result.json',JSON.stringify({realModel:true,choice:'wifi',ttsBytes:bytes,offline:true,physicalMicrophone:false},null,2));
+console.log('REAL_JAPANESE_TTS_PASS',bytes);

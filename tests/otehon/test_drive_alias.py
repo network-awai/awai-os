@@ -3,7 +3,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-source = Path(__file__).parents[2] / 'nixos/otehon/drive/alias.py'
+source = Path(__file__).parents[2] / 'otehon/drive/alias.py'
 spec = importlib.util.spec_from_file_location('drive_alias', source)
 p = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(p)

@@ -13,9 +13,9 @@ const git=(...a)=>execFileSync('git',a,{cwd:root,encoding:'utf8'}).trim();
 const revision=git('rev-parse','HEAD');
 if(options['--resume']){const owner=JSON.parse(await readFile(path.join(out,'qa-stage-owner.json')));if(owner.root!==root||owner.revision!==revision)throw Error('unowned-stage');}
 await writeFile(path.join(out,'qa-stage-owner.json'),JSON.stringify({root,revision}));
-if(git('diff','HEAD','--name-only','apps','packages/awai-inference','nixos/otehon/shell'))throw Error('dirty-product-source');
+if(git('diff','HEAD','--name-only','apps','packages/awai-inference','otehon/shell'))throw Error('dirty-product-source');
 const bundle=JSON.parse(await readFile(path.join(root,'apps/itonami/dist/itonami-bundle.json')));
-if(bundle.shellTree!==git('rev-parse','HEAD:nixos/otehon/shell'))throw Error('stale-owning-shell');
+if(bundle.shellTree!==git('rev-parse','HEAD:otehon/shell'))throw Error('stale-owning-shell');
 for(const [rel,pin] of Object.entries(bundle.artifacts)){
  const hash=createHash('sha256').update(await readFile(path.join(root,'apps/itonami/dist',rel))).digest('hex');if(hash!==pin.sha256)throw Error('frontend-artifact-drift');
 }

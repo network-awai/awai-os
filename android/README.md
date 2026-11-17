@@ -1,6 +1,6 @@
 # Awai Home and Itonami Store — Otehon Android host
 
-Implementation of Figma native UX v2 for Android AOSP, with LineageOS usable for device bring-up and a shared browser UI/domain suitable for the retained NixOS host. This is a development build, separate from the Native selfhost profile.
+Implementation of Figma native UX v2 for Awai OS on Android AOSP, with a shared browser UI/domain. Device bring-up may reuse upstream community device trees; the product is presented only as Awai OS. This is a development build, separate from the Native selfhost profile.
 
 - `network.awai.home`: reversible Android HOME-role launcher, real installed-app drawer/launch, clock, local agenda projection and system-settings entry.
 - `network.awai.store`: signed bundled catalog, library/update state, independent native confirmation, bounded APK digest/package/version/signer checks and Android PackageInstaller user action.
@@ -24,7 +24,7 @@ python3 android/build.py --version 1 --skip-cljs
 python3 android/build-tests.py --version 1
 ```
 
-Account linking also requires the owning shell’s lockfile-pinned npm dependencies: run `npm ci` inside `nixos/otehon/shell` before building. `android/build-identity.mjs` bundles the existing awai.link.v1 verifier, device-key custody and QR renderer; the canonical runtime stays an external, digest-checked module. `--home-only` builds Home without rebuilding Store/Yotei.
+Account linking also requires the owning shell’s lockfile-pinned npm dependencies: run `npm ci` inside `otehon/shell` before building. `android/build-identity.mjs` bundles the existing awai.link.v1 verifier, device-key custody and QR renderer; the canonical runtime stays an external, digest-checked module. `--home-only` builds Home without rebuilding Store/Yotei.
 
 Build outputs, signed APKs, public fingerprint/digests and tool logs stay in `.agent-output/android`. The existing debug key stays in Android's credential directory and is never copied to source or reports. `build.py` never connects to or installs on a device.
 
@@ -42,9 +42,9 @@ Sources: [v2 home](https://www.figma.com/design/umqCqP5KSjLWh9fhCI1HaN?node-id=1
 
 Tracking: [AWAI-2977](https://linear.app/kotobalabs/issue/AWAI-2977), parent[AWAI-2975](https://linear.app/kotobalabs/issue/AWAI-2975). Issue/run binding: chat01a1e187-0e12-7813-b500-73aa77f2a03e, branch codex/awai-2977-android-store-device-20261116, base3a0e46a. Forecast/estimate units/attributed counters/cost/active-wait are unknown; current session-context model gpt-6.1-sol/medium is not complete billing telemetry.
 
-## Shared NixOS client
+## Shared browser client
 
-`export-web.py` copies the exact build's browser UI, compiled domain, signed catalog and pinned runtime without Android APK payloads. See [`nixos/otehon/itonami-store/README.md`](../nixos/otehon/itonami-store/README.md) for the opt-in static NixOS module and digest checks. This is a bundled browser-app path; native Nix/Waydroid installers remain separate work.
+`export-web.py` copies the exact build's browser UI, compiled domain, signed catalog and pinned runtime without Android APK payloads. [`otehon/itonami-store/README.md`](../otehon/itonami-store/README.md) describes its static Nix module for the existing Otehon hosts and its digest checks. The NixOS desktop install route is deprecated and archived; this export is not an Awai OS install path.
 
 ## Explicit online development build
 
