@@ -1,0 +1,133 @@
+{
+  "issue": "JUN-1339",
+  "startedAt": "2026-11-17T08:50:03.547Z",
+  "endedAt": "2026-11-17T08:50:25.126Z",
+  "sourceRevision": "391a5cda49be083d730df60af3d1993cc9166c5b",
+  "manifestSha256": "e7f4fcdce78b4388c65b9644e10485bc7d1a8fa9da9c474ec7d1e211f2ec4696",
+  "fixtureSha256": "8cc5e1f9eb03cafee7c5023856ebd03c1181dc65e467e7a557567002b8be9f14",
+  "qaRecipeSha256": "e5b8f73f2c3fa7632c6d99f9f6a94aca2e1514efb5ba50845c35c7248b0eaa00",
+  "packages": {
+    "murakumo": {
+      "id": "network.awai.murakumo.qa",
+      "sha256": "81d48aad85522eb1a495b6a4dfd1846aa04a23b1d1cb7622f1e98d4a045985a4",
+      "bytes": 40592799,
+      "testOnly": true,
+      "internet": false,
+      "signerSha256": "f440ffa483dc319059eecbd11efc9bb0d4601780fc0ef7aff440bbfd997c8320"
+    },
+    "itonami": {
+      "id": "network.itonami.app.qa",
+      "sha256": "06be0996b985b86f0be7bf590baeca004400e176062e3885c6ed4d634c15b27b",
+      "bytes": 32961522,
+      "testOnly": true,
+      "internet": false,
+      "signerSha256": "f440ffa483dc319059eecbd11efc9bb0d4601780fc0ef7aff440bbfd997c8320"
+    }
+  },
+  "sourceScope": "same current owning app/shell trees; only declared QA identity/label/authority/permission/caller changes; no production auth bypass",
+  "authentication": "fresh random software wallet/passkey signatures through unchanged production verifier in isolated QA PID; not a hardware authenticator or real owner enrollment",
+  "cases": [
+    {
+      "name": "current-source-derived-QA-pair-no-network-distinct-signer-existing-owner-no-clear",
+      "passed": true
+    },
+    {
+      "name": "QA-has-no-normal-inference-permission",
+      "passed": true
+    },
+    {
+      "name": "invalid-wallet-signature-refused",
+      "passed": true,
+      "error": "invalid-signature"
+    },
+    {
+      "name": "wrong-device-refused",
+      "passed": true,
+      "error": "wrong-device"
+    },
+    {
+      "name": "expired-proof-refused",
+      "passed": true,
+      "error": "session-expired"
+    },
+    {
+      "name": "fresh-software-wallet-signature-production-verifier-accepted",
+      "passed": true
+    },
+    {
+      "name": "wrong-passkey-origin-refused",
+      "passed": true,
+      "error": "wrong-origin"
+    },
+    {
+      "name": "missing-user-verification-refused",
+      "passed": true,
+      "error": "no-user-verification"
+    },
+    {
+      "name": "fresh-software-passkey-signature-production-verifier-accepted",
+      "passed": true
+    },
+    {
+      "name": "actual-shared-UI-verified-account-Core",
+      "passed": true,
+      "freshFinish": false
+    },
+    {
+      "name": "software-account-retained-through-app-force-stop",
+      "passed": true
+    },
+    {
+      "name": "existing-QA-public-model-actual-byte-digest-match",
+      "passed": true
+    },
+    {
+      "name": "actual-QA-native-model-loaded",
+      "passed": true
+    },
+    {
+      "name": "Itonami-native-denial-no-generated-output",
+      "passed": true
+    },
+    {
+      "name": "shared-Itonami-Core-to-Murakumo-native-real-output",
+      "passed": true,
+      "bytes": 34
+    },
+    {
+      "name": "QA-native-model-released",
+      "passed": true
+    },
+    {
+      "name": "completion-marker-cannot-bypass-missing-proof",
+      "passed": true
+    },
+    {
+      "name": "normal-app-file-hashes-provisioning-and-boot-unchanged",
+      "passed": true
+    }
+  ],
+  "generation": {
+    "prompt": "Say hello in one short sentence.",
+    "output": "Hello! How can I assist you today?",
+    "bytes": 34,
+    "status": true,
+    "outputTokens": "unknown in consumer UI; not inferred from direct-app token count"
+  },
+  "normalAppFileHashesUnchanged": true,
+  "normalAppFileCounts": {
+    "network.itonami.app": 48,
+    "network.awai.murakumo": 35
+  },
+  "provisioningUnchanged": true,
+  "noOsReboot": true,
+  "noClearData": true,
+  "actualTestResult": "passed",
+  "coverage": "18 checks in one final app-only physical run, not18 independent trials; initial run generated output but failed a wrong UI status selector in host oracle; all historical evidence retained",
+  "teardown": "QA model released and proof removal refused access; then new isolated software test proof used to leave clearly QA-labelled Core visible; production apps remain untouched",
+  "knownVisualIssue": "Core dock labels/contrast JUN-1340; functional success is not full visual acceptance",
+  "screenshots": {
+    "authenticated-core.png": "a8c4d8cd3eb8788fb2cf765ed7b8ed9f287b6ce60786ac34bd82eea35da2c6aa",
+    "app-to-app-generation.png": "c2b3a2fe0523c5edada02b3bcc9042f7fc50090745625cdaffcdf9d4bdfbb4a0"
+  }
+}
