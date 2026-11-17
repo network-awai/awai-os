@@ -28,7 +28,14 @@ A separate public speaker stimulus was not correctly recognized by the analogue
 microphone path. A read-only ALSA control query subsequently reported
 `Mic Jack present=0`; the ALC269VC codec identifies that input as an external
 right-side jack. Android's generic microphone advertisement and permission are
-not evidence of a connected microphone. No mixer/control setting was changed. Intended human speech, acoustic audibility, noise robustness,
+not evidence of a connected microphone. No mixer/control setting was changed.
+A later normal-UI test reproduced a false short transcript from that disconnected
+input. Duration filtering alone did not establish an input connection. The final
+deployment therefore uses the restrictive external-input policy documented in
+`packages/awai-speech/README.md`, checks an actual OS input/route before capture,
+and disables voice start with a connection recheck while none is available.
+That failed test and its one real Muse invocation are recorded as rework, not
+as intended-speech acceptance or zero-cost activity. Intended human speech, acoustic audibility, noise robustness,
 other hardware and general Murakumo CLI/gateway acceptance remain open under
 AWAI-258. A model's reassuring reply is not evidence of those properties.
 
@@ -64,7 +71,7 @@ active/wait split and issue estimate unit are unknown.
 
 ## Validation and preservation
 
-Owning shell116 tests, backend18 regression/protocol tests plus an owned
+Owning shell117 tests, backend18 regression/protocol tests plus an owned
 TERM-ignoring-descendant cancellation test, advanced CLJS release, actual Android
 Kotlin/native APK builds and the normal signer/installed-APK byte readbacks
 passed. The JVM1.12.6 pure-policy run is a separate local reference oracle;

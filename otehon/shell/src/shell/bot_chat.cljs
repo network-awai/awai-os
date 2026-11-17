@@ -3,7 +3,7 @@
   ["../agent-ui-state.js" :refer [readAgentSelection chooseAgent]]
   ["../bot-chat.js" :refer [CHAT_ORIGIN CHAT_MODEL chatRequest sendChat readChat agentSessions recordChatImage]]
   ["../voice-channel.js" :refer [openVoiceChannel]]
-  ["../local-speech.js" :refer [speechAvailable beginSpeech listenSpeech speakSpeech stopSpeech]]
+  ["../local-speech.js" :refer [speechAvailable speechStatus beginSpeech listenSpeech speakSpeech stopSpeech]]
   ["../android-inference.js" :refer [localInference androidInferenceAvailable]]))
 (defn image-card [image scope prompt initial]
  (let [[result set-result] (useState initial) [status set-status] (useState nil)]
@@ -19,6 +19,9 @@
 
 (defn voice-panel [bot session-id ensure-session set-busy set-messages set-store locale blocked]
  (let [tr #(ui/t locale %) [state set-state] (useState "ready")
+       [input set-input] (useState nil)
+       refresh-input (fn [] (-> (speechStatus) (.then #(set-input (.-microphoneAvailable %))) (.catch (fn [_] (set-input "unknown")))))
+       _ (useEffect (fn [] (refresh-input) js/undefined) #js [])
        [remaining-text set-remaining-text] (useState false) [heard-text set-heard-text] (useState "") active (useRef nil)
        stop (fn [next-state]
         (when-let [run (.-current active)]
@@ -58,7 +61,8 @@
                            (set-remaining-text (> (count (.-text r)) 512))
                            (speakSpeech local (.slice (.-text r) 0 512))))
                           (.then (fn [_] (live!) (cycle local channel (inc n)))))))))))))]
-           (-> (ensure-session)
+           (-> (speechStatus)
+            (.then (fn [r] (live!) (set-input (.-microphoneAvailable r)) (when-not (.-microphoneAvailable r) (throw (js/Error. "microphone-input-unavailable"))) (ensure-session)))
             (.then (fn [_] (live!) (beginSpeech #js {:botId (:id bot) :sessionId session-id})))
             (.then (fn [local]
              (live!) (set-state "connecting")
@@ -71,9 +75,12 @@
     [:strong (tr :voiceConversation)]
     (if (.-current active)
      [:button.secondary {:type "button" :on-click #(stop "ended")} (tr :voiceStop)]
-     [:button.primary {:type "button" :disabled (or blocked (not (speechAvailable)) (= session-id "default")) :on-click start} (tr :voiceStart)])]
+     [:button.primary {:type "button" :disabled (or blocked (not= true input) (not (speechAvailable)) (= session-id "default")) :on-click start} (tr :voiceStart)])]
+   (when (= false input) [:p {:role "status" :data-voice-input-missing true} (tr :voiceInputMissing)])
+   (when (= "unknown" input) [:p {:role "status"} (tr :voiceInputUnknown)])
+   (when-not (.-current active) [:button.secondary {:type "button" :disabled (or blocked (not (speechAvailable))) :on-click refresh-input} (tr :voiceInputRefresh)])
    [:p (tr :voiceScopeInfo)] [:p (tr :voice-local-remote)]
-   [:p {:role (when (contains? #{"ended" "error"} state) "status")} (tr (keyword (str "voice-" state)))]
+   (when (or (= true input) (not= state "ready")) [:p {:role (when (contains? #{"ended" "error"} state) "status")} (tr (keyword (str "voice-" state)))])
    (when (contains? #{"ready" "ended" "error"} state) [:p (tr :voiceConsentInfo)])
    (when (seq heard-text) [:p {:data-voice-transcript true :role "status"} heard-text])
    (when remaining-text [:p (tr :voiceRemainingText)])]))

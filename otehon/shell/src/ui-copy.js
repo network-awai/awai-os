@@ -1,6 +1,7 @@
 // Quoted dictionary keys survive advanced property renaming. UI copy excludes imported content.
 export const UI_COPY = {
   "ja": {
+    "voiceInputMissing": "利用できるマイクがありません。接続して再確認してください。", "voiceInputUnknown": "マイクの状態を確認できません。", "voiceInputRefresh": "マイクの接続を再確認",
     "voiceConversation": "音声会話",
     "voiceStart": "音声会話を始める",
     "voiceStop": "音声会話を終了",
@@ -194,6 +195,7 @@ export const UI_COPY = {
     "importedProfiles": "Bot登録を取り込む"
   },
   "en": {
+    "voiceInputMissing": "No usable microphone is connected. Connect one and check again.", "voiceInputUnknown": "Microphone availability could not be confirmed.", "voiceInputRefresh": "Check microphone connection",
     "voiceConversation": "Voice conversation",
     "voiceStart": "Start voice conversation",
     "voiceStop": "End voice conversation",

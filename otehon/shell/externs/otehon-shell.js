@@ -861,3 +861,7 @@ Object.prototype.username;
 Object.prototype.visibilityState;
 Object.prototype.voiceOperation;
 Object.prototype.voiceScope;
+
+Object.prototype.microphoneAvailable;
+
+Object.prototype.capturePolicy;

@@ -12,6 +12,8 @@ import app.tauri.plugin.Invoke
 import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
 import java.util.UUID
+import java.io.File
+import org.json.JSONObject
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.sqrt
@@ -32,6 +34,23 @@ class SpeechPlugin(private val owner:Activity):Plugin(owner){
  private var listens=0
  private var speaks=0
  private var engine:SpeechEngine?=null
+ // A deployment may restrict a prototype's advertised generic mic to real external inputs.
+ // This local policy can only narrow capture; it never grants an OS permission or remote operation.
+ private fun captureInput():Pair<AudioDeviceInfo?,String>{
+  return try{
+   val file=File(owner.filesDir,"speech-input-policy.json")
+   val externalOnly=if(!file.exists())false else{
+    require(file.isFile&&file.length() in 1..4096)
+    val policy=JSONObject(file.readText())
+    require(policy.keys().asSequence().toSet()==setOf("schema","capture")&&policy.getString("schema")=="awai.local-audio-policy.v1"&&policy.getString("capture")=="external-input-only")
+    true
+   }
+   val external=setOf(AudioDeviceInfo.TYPE_USB_DEVICE,AudioDeviceInfo.TYPE_USB_HEADSET,AudioDeviceInfo.TYPE_WIRED_HEADSET,AudioDeviceInfo.TYPE_BLUETOOTH_SCO,AudioDeviceInfo.TYPE_BLE_HEADSET)
+   val accepted=if(externalOnly)external else external+AudioDeviceInfo.TYPE_BUILTIN_MIC
+   val available=owner.getSystemService(AudioManager::class.java).getDevices(AudioManager.GET_DEVICES_INPUTS).firstOrNull{it.type in accepted}
+   Pair(available,if(externalOnly)"external-input-only"else"os-physical-input")
+  }catch(_:Exception){Pair(null,"invalid-local-policy")}
+ }
  private fun result()=JSObject().put("schema","awai.local-speech-result.v1").put("botId",boundBot).put("sessionId",boundSession)
  private fun active(t:String){check(t.isNotEmpty()&&t==token&&!cancelled.get()&&SystemClock.elapsedRealtime()<until){"speech-session-ended"}}
  private fun stop(){epoch.incrementAndGet();cancelled.set(true);token="";until=0;try{recorder?.stop()}catch(_:Exception){};try{player?.pause();player?.flush()}catch(_:Exception){}}
@@ -40,7 +59,7 @@ class SpeechPlugin(private val owner:Activity):Plugin(owner){
  @Command fun operation(invoke:Invoke){
   val a=invoke.getArgs();val action=a.optString("action")
   if(action=="stop"){stop();invoke.resolve(result().put("stopped",true));return}
-  if(action=="status"){invoke.resolve(result().put("supported",true).put("microphoneGranted",getPermissionState("microphone")==PermissionState.GRANTED).put("active",token.isNotEmpty()&&!cancelled.get()&&SystemClock.elapsedRealtime()<until).put("remoteAudio",false));return}
+  if(action=="status"){val input=captureInput();invoke.resolve(result().put("microphoneAvailable",input.first!=null).put("capturePolicy",input.second).put("supported",true).put("microphoneGranted",getPermissionState("microphone")==PermissionState.GRANTED).put("active",token.isNotEmpty()&&!cancelled.get()&&SystemClock.elapsedRealtime()<until).put("remoteAudio",false));return}
   if(action=="begin"){
    if(a.keys().asSequence().toSet()!=setOf("action","botId","sessionId")||!a.optString("botId").matches(Regex("profile:[A-Za-z0-9_.-]+"))||!a.optString("sessionId").matches(Regex("[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"))){invoke.reject("invalid-speech-scope");return}
    if(busy.get()||token.isNotEmpty()){invoke.reject("speech-busy");return}
@@ -57,7 +76,7 @@ class SpeechPlugin(private val owner:Activity):Plugin(owner){
    try{
     active(t);val e=engine?:throw IllegalStateException("speech-unavailable")
     val out=when(action){
-     "listen"->{check(++listens<=12);val captured=record(t);val samples=captured.samples;active(t);val asrAt=SystemClock.elapsedRealtime();val text=if(samples.isEmpty())"" else e.recognize(samples,16000);result().put("text",text).put("capturedSamples",captured.total).put("recognitionSamples",samples.size).put("sampleRate",16000).put("recognitionMs",SystemClock.elapsedRealtime()-asrAt)}
+     "listen"->{check(captureInput().first!=null){"microphone-input-unavailable"};check(++listens<=12);val captured=record(t);val samples=captured.samples;active(t);check(captureInput().first!=null){"microphone-input-unavailable"};val asrAt=SystemClock.elapsedRealtime();val text=if(samples.isEmpty())"" else e.recognize(samples,16000);check(captureInput().first!=null){"microphone-input-unavailable"};result().put("text",text).put("capturedSamples",captured.total).put("recognitionSamples",samples.size).put("sampleRate",16000).put("recognitionMs",SystemClock.elapsedRealtime()-asrAt)}
      "speak"->{check(++speaks<=24);val audio=e.synthesize(a.getString("text"));active(t);val synthesisMs=SystemClock.elapsedRealtime()-started;play(t,audio.samples,audio.sampleRate);result().put("samples",audio.samples.size).put("sampleRate",audio.sampleRate).put("synthesisMs",synthesisMs)}
      else->{check(++speaks<=24&&++listens<=12);val text="こんにちは。音声の確認です。";val audio=e.synthesize(text);val ttsMs=SystemClock.elapsedRealtime()-started;active(t);val asrAt=SystemClock.elapsedRealtime();val recognized=e.recognize(SpeechEngine.resample16k(audio.samples,audio.sampleRate),16000);result().put("syntheticAudio",true).put("microphoneTested",false).put("text",recognized).put("samples",audio.samples.size).put("sampleRate",audio.sampleRate).put("synthesisMs",ttsMs).put("recognitionMs",SystemClock.elapsedRealtime()-asrAt)}
     }
@@ -80,10 +99,11 @@ class SpeechPlugin(private val owner:Activity):Plugin(owner){
  }
  private data class Capture(val samples:FloatArray,val total:Int)
  private fun record(t:String):Capture{
+  val input=captureInput().first?:throw IllegalStateException("microphone-input-unavailable")
   val rate=16000;val minimum=AudioRecord.getMinBufferSize(rate,AudioFormat.CHANNEL_IN_MONO,AudioFormat.ENCODING_PCM_16BIT);check(minimum>0)
   val rec=AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION,rate,AudioFormat.CHANNEL_IN_MONO,AudioFormat.ENCODING_PCM_16BIT,maxOf(minimum,rate*2));recorder=rec
-  try{check(rec.state==AudioRecord.STATE_INITIALIZED);rec.startRecording();val chunks=ArrayList<FloatArray>();val frame=ShortArray(320);var heard=0;var silent=0;var total=0;var noise=0.002;val captureStarted=SystemClock.elapsedRealtime()
-   while(total<rate*20&&SystemClock.elapsedRealtime()-captureStarted<20000){active(t);val n=rec.read(frame,0,frame.size,AudioRecord.READ_NON_BLOCKING);check(n>=0);if(n==0){Thread.sleep(10);continue};val block=FloatArray(n){frame[it]/32768f};total+=n;val rms=sqrt(block.sumOf{it.toDouble()*it}/n)
+  try{check(rec.state==AudioRecord.STATE_INITIALIZED);check(rec.setPreferredDevice(input));rec.startRecording();val chunks=ArrayList<FloatArray>();val frame=ShortArray(320);var heard=0;var silent=0;var total=0;var noise=0.002;val captureStarted=SystemClock.elapsedRealtime()
+   while(total<rate*20&&SystemClock.elapsedRealtime()-captureStarted<20000){active(t);val n=rec.read(frame,0,frame.size,AudioRecord.READ_NON_BLOCKING);check(n>=0);if(n==0){Thread.sleep(10);continue};check(rec.routedDevice?.id==input.id){"microphone-route-unconfirmed"};val block=FloatArray(n){frame[it]/32768f};total+=n;val rms=sqrt(block.sumOf{it.toDouble()*it}/n)
     if(total<=rate*0.3){if(rms<0.008)noise=maxOf(noise,rms);chunks.add(block);continue}
     if(rms>maxOf(0.008,noise*3)){heard++;silent=0}else if(heard>0)silent++
     chunks.add(block);if(heard>=15&&silent>=30)break;if(heard<15&&silent>=30){heard=0;silent=0};if(heard==0&&total>=rate*6)return Capture(FloatArray(0),total)

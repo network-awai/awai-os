@@ -34,3 +34,25 @@ stops capture/playback on exit or backgrounding, and does not log transcripts.
 Missing models, digest mismatch, microphone denial and cancellation must remain
 visible failures. No Web Speech, cloud ASR, VOICEVOX or substitute provider is
 used as a fallback.
+
+## Input availability is separate from permission
+
+`status` reports both `microphoneGranted` and `microphoneAvailable`. Capture uses
+a concrete OS-enumerated physical input, sets it as the preferred AudioRecord
+device and checks the actual route. A virtual/submix input is not a microphone.
+Availability is checked again before and after recognition.
+
+For a prototype whose generic built-in advertisement does not represent a
+connected microphone, approved device provisioning can install app-private
+`speech-input-policy.json`:
+
+```json
+{"schema":"awai.local-audio-policy.v1","capture":"external-input-only"}
+```
+
+This policy only narrows capture to OS-enumerated external inputs. It grants no
+OS permission, identity, provider or remote operation. Malformed policy refuses
+capture. It contains no endpoint or credentials. The UI disables voice start
+and offers a local connection recheck when no input is available; text/image
+conversation remains usable. Do not remove the restriction to make a failed
+hardware test green. Synthetic model probes do not qualify a physical input.
