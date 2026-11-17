@@ -794,3 +794,11 @@ Object.prototype.algorithm;
 Object.prototype.extractable;
 Object.prototype.sign;
 Object.prototype.usages;
+
+// Native Android image result and verified local save wire fields.
+Object.prototype.saveImage;
+Object.prototype.imageId;
+Object.prototype.modelSet;
+Object.prototype.dataUrl;
+Object.prototype.readbackVerified;
+Object.prototype.uri;

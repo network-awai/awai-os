@@ -32,5 +32,5 @@ class InferenceRequestActivity:Activity(){
    }.show()
  }
  private fun finishWith(code:String){setResult(RESULT_CANCELED,Intent().putExtra("error",code));finish()}
- override fun onDestroy(){if(ownsJob){if(imageJob)ImageEngine.cancel()else Engine.cancel();}super.onDestroy()}
+ override fun onDestroy(){if(ownsJob){if(imageJob)ImageEngine.cancel()else Engine.cancel();};super.onDestroy()}
 }

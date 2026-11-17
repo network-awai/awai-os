@@ -23,11 +23,13 @@ extern "C" JNIEXPORT jbyteArray JNICALL Java_network_awai_murakumo_ImageEngine_g
  if(prompt.find('\0')!=std::string::npos){fail(e,"invalid-prompt");return nullptr;}
  auto path=str(e,root);Opt c{sd_ctx_opt_create()};progress=0;
  sd_set_log_callback([](sd_log_level_t level,const char*text,void*){if(level>=SD_LOG_INFO)__android_log_print(ANDROID_LOG_INFO,"AwaiImage","%s",text);},nullptr);
- sd_set_progress_callback([](int step,int total,float,void*){progress=total?step*100/total:0;},nullptr);
+ sd_set_progress_callback([](int step,int total,float,void*){progress=total?step*100/total:0;__android_log_print(ANDROID_LOG_INFO,"AwaiImage","step %d/%d",step,total);},nullptr);
  bool valid=c.p&&ok(sd_opt_set_string(c.p,"diffusion_model_path",(path+"/denoiser.gguf").c_str()))&&ok(sd_opt_set_string(c.p,"llm_path",(path+"/encoder.gguf").c_str()))&&ok(sd_opt_set_string(c.p,"vae_path",(path+"/vae.safetensors").c_str()))&&ok(sd_opt_set_string(c.p,"backend","Vulkan0"))&&ok(sd_opt_set_string(c.p,"params_backend","CPU"))&&ok(sd_opt_set_int(c.p,"n_threads",6))&&ok(sd_opt_set_bool(c.p,"diffusion_flash_attn",true))&&ok(sd_opt_set_bool(c.p,"enable_mmap",true));
  if(!valid){fail(e,"image-options-rejected");return nullptr;}
  sd_ctx_t*created=nullptr;if(!ok(sd_ctx_create(c.p,&created))){fail(e,"image-model-load-failed");return nullptr;}
  {std::lock_guard<std::mutex> state(ctxMutex);ctx=created;if(cancelled)sd_cancel_generation(ctx,SD_CANCEL_ALL);}
+ // Prompt-bearing generation logs must not enter Android logcat.
+ sd_set_log_callback([](sd_log_level_t,const char*,void*){},nullptr);
  Opt g{sd_img_gen_opt_create()};Result result;
  float sigmas[]={1.f,.978453f,.95418f,.926626f,.89508f,.845148f,.704534f,.414568f,0.f};
  valid=g.p&&ok(sd_opt_set_string(g.p,"prompt",prompt.c_str()))&&ok(sd_opt_set_int(g.p,"width",512))&&ok(sd_opt_set_int(g.p,"height",512))&&ok(sd_opt_set_int(g.p,"seed",42))&&ok(sd_opt_set_string(g.p,"sample.method","euler"))&&ok(sd_opt_set_int(g.p,"sample.steps",8))&&ok(sd_opt_set_float(g.p,"sample.guidance.txt_cfg",1.))&&ok(sd_opt_set_floats(g.p,"sample.sigmas",sigmas,9));
