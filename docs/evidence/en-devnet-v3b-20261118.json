@@ -1,0 +1,242 @@
+{
+  "schema": "awai.en-devnet.v3b-evidence/1",
+  "issue": "AWAI-3121",
+  "chain-id": "awai-en-devnet/adr0027-v3b",
+  "value-class": "devnet",
+  "finality": "single-operator-devnet",
+  "provider-host": "node@benjamin",
+  "roles": {
+    "sponsor": "did:key:z6Mkpcze26oTWV9DxYLGZ14wY5J1hNjLc8BfVdi6hF8qZmHQ",
+    "bot": "did:key:z6MkoRM9jdrEhuLVWLgaNY31vbtGiVKLA24pxuaJgzTuUR3u",
+    "provider-operator": "did:key:z6MkgPU2kKjvBn47CTdJWkELQnSNNRdhP8u6kLwqNN4mPo6K",
+    "node-operator": "did:key:z6MkkT8yAr5sSP4HrpMffvenyFFtAwS5WT7J3ZR8JCsNtJXj"
+  },
+  "head": {
+    "chain-id": "awai-en-devnet/adr0027-v3b",
+    "entries": 3,
+    "finality": ":single-operator-devnet",
+    "head": "3310e71dcb4947a57a24411a88f8fbc572c1580c0cd68b06973ef861eeb9a096",
+    "height": 3,
+    "net-zero": true,
+    "value-class": ":devnet"
+  },
+  "journal": {
+    "earned": {
+      "external-earned-en": 0,
+      "owner-internal-excluded": 1,
+      "value-class": ":devnet"
+    },
+    "journal": [
+      {
+        "acceptance": null,
+        "account": "did:key:z6Mkpcze26oTWV9DxYLGZ14wY5J1hNjLc8BfVdi6hF8qZmHQ",
+        "amount": 1,
+        "demand": ":owner-internal",
+        "entry": ":credit-extended",
+        "height": 1,
+        "order": null,
+        "transfer-id": "fund-1",
+        "value-class": ":devnet"
+      },
+      {
+        "acceptance": null,
+        "account": "did:key:z6MkoRM9jdrEhuLVWLgaNY31vbtGiVKLA24pxuaJgzTuUR3u",
+        "amount": 1,
+        "demand": ":owner-internal",
+        "entry": ":credit-received",
+        "height": 1,
+        "order": null,
+        "transfer-id": "fund-1",
+        "value-class": ":devnet"
+      },
+      {
+        "acceptance": "acceptance-a",
+        "account": "did:key:z6MkoRM9jdrEhuLVWLgaNY31vbtGiVKLA24pxuaJgzTuUR3u",
+        "amount": 1,
+        "demand": ":owner-internal",
+        "entry": ":provider-expense",
+        "height": 2,
+        "order": "order-a",
+        "transfer-id": "settle-order-a-d6614eaf13d295b4573591d3",
+        "value-class": ":devnet"
+      },
+      {
+        "acceptance": "acceptance-a",
+        "account": "did:key:z6MkgPU2kKjvBn47CTdJWkELQnSNNRdhP8u6kLwqNN4mPo6K",
+        "amount": 1,
+        "demand": ":owner-internal",
+        "entry": ":earned-en",
+        "height": 2,
+        "order": "order-a",
+        "transfer-id": "settle-order-a-d6614eaf13d295b4573591d3",
+        "value-class": ":devnet"
+      },
+      {
+        "acceptance": null,
+        "account": "did:key:z6Mkpcze26oTWV9DxYLGZ14wY5J1hNjLc8BfVdi6hF8qZmHQ",
+        "amount": 1,
+        "demand": ":owner-internal",
+        "entry": ":credit-extended",
+        "height": 3,
+        "order": null,
+        "transfer-id": "fund-2",
+        "value-class": ":devnet"
+      },
+      {
+        "acceptance": null,
+        "account": "did:key:z6MkoRM9jdrEhuLVWLgaNY31vbtGiVKLA24pxuaJgzTuUR3u",
+        "amount": 1,
+        "demand": ":owner-internal",
+        "entry": ":credit-received",
+        "height": 3,
+        "order": null,
+        "transfer-id": "fund-2",
+        "value-class": ":devnet"
+      }
+    ]
+  },
+  "node-check": {
+    "balances": [
+      [
+        "did:key:z6MkgPU2kKjvBn47CTdJWkELQnSNNRdhP8u6kLwqNN4mPo6K",
+        1
+      ],
+      [
+        "did:key:z6MkoRM9jdrEhuLVWLgaNY31vbtGiVKLA24pxuaJgzTuUR3u",
+        1
+      ],
+      [
+        "did:key:z6Mkpcze26oTWV9DxYLGZ14wY5J1hNjLc8BfVdi6hF8qZmHQ",
+        -2
+      ]
+    ],
+    "entries": 3,
+    "head": "3310e71dcb4947a57a24411a88f8fbc572c1580c0cd68b06973ef861eeb9a096",
+    "height": 3,
+    "net-zero": true,
+    "ok": true
+  },
+  "checks": [
+    {
+      "check": "the provider key is made on the provider host",
+      "passed": true,
+      "detail": "did:key:z6MkgPU2kKjvBn47CTdJWkELQnSNNRdhP8u6kLwqNN4mPo6K"
+    },
+    {
+      "check": "the provider key file stays on the provider host",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "no reservation while the balance is unknown",
+      "passed": true,
+      "detail": ":balance-unknown"
+    },
+    {
+      "check": "no reservation before the bot is funded",
+      "passed": true,
+      "detail": ":insufficient"
+    },
+    {
+      "check": "the sponsor funds the bot with one unit",
+      "passed": true,
+      "detail": "True"
+    },
+    {
+      "check": "the provider key refuses to sign a transfer it is not party to",
+      "passed": true,
+      "detail": ":not-a-party"
+    },
+    {
+      "check": "a reservation above the policy maximum is refused",
+      "passed": true,
+      "detail": ":over-policy"
+    },
+    {
+      "check": "the bot reserves one unit for order A, persisted before signing",
+      "passed": true,
+      "detail": ":reserved"
+    },
+    {
+      "check": "a second reservation cannot spend the held unit",
+      "passed": true,
+      "detail": ":insufficient"
+    },
+    {
+      "check": "the signer refuses a receiver outside its allowlist",
+      "passed": true,
+      "detail": ":receiver-not-allowlisted"
+    },
+    {
+      "check": "the node refuses the bot's signature alone (one-sided binding)",
+      "passed": true,
+      "detail": ":missing-receiver-signature"
+    },
+    {
+      "check": "the node refuses signatures over other content",
+      "passed": true,
+      "detail": ":unverified-signature"
+    },
+    {
+      "check": "the two-party settlement finalizes",
+      "passed": true,
+      "detail": "{\"entry-hash\":\"515983a29dd6fbe223afc1094ffbecc6de8aa69be758138054eb2f9ee6570a0f\",\"finality\":\":single-operator-devnet\",\"finalized\":true,\"height\":2,\"transfer-id\":\"settle-order-a-d6614eaf13d295b4573591d3\"}"
+    },
+    {
+      "check": "the same settlement cannot finalize twice",
+      "passed": true,
+      "detail": ":duplicate-nonce"
+    },
+    {
+      "check": "after a restart the node reads back the same head",
+      "passed": true,
+      "detail": "{\"chain-id\":\"awai-en-devnet/adr0027-v3b\",\"entries\":2,\"finality\":\":single-operator-devnet\",\"head\":\"515983a29dd6fbe223afc1094ffbecc6de8aa69be758138054eb2f9ee6570a0f\",\"height\":2,\"net-zero\":true,\"value-class\":\":devnet\"}"
+    },
+    {
+      "check": "signer, ledger and journal reconcile",
+      "passed": true,
+      "detail": "True"
+    },
+    {
+      "check": "an expired settlement is refused and its reservation released",
+      "passed": true,
+      "detail": ":expired"
+    },
+    {
+      "check": "a submission with no answer is held as ambiguous",
+      "passed": true,
+      "detail": "True"
+    },
+    {
+      "check": "reconcile resolves the ambiguous one from the log without resubmitting",
+      "passed": true,
+      "detail": "True :released"
+    },
+    {
+      "check": "a node with a tampered log refuses to start",
+      "passed": true,
+      "detail": "log chain broken"
+    }
+  ],
+  "passed": 20,
+  "total": 20,
+  "observed": "2026-11-18; node, sponsor and bot signer on an Apple M1 Max (macOS 26.4, nbb v1.5.211); provider operator key created and used on benjamin (Darwin arm64, macOS 26.7.2) over SSH",
+  "negative-control": {
+    "node-change": "host/verified-tx marks every signature verified",
+    "passed": 18,
+    "total": 20,
+    "failed": [
+      "the node refuses signatures over other content",
+      "the two-party settlement finalizes"
+    ],
+    "exit": 1
+  },
+  "labels": "order and acceptance CIDs are synthetic labels (order-a, acceptance-a); binding them to the V2 receipt and an AOSP acceptance is V4-V5",
+  "not-shown": [
+    "hardware or passkey key custody",
+    "an agent unable to read the key file",
+    "a trusted clock or replicated log",
+    "the AOSP buyer and confirmation card",
+    "the V5 end-to-end order"
+  ]
+}

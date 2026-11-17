@@ -19,6 +19,8 @@ never below a declared credit floor), not a dependency.
 | Case generator | `test/gen_cases.clj` | Babashka. Expectations are hand-written; the core only builds signed inputs |
 | Babashka runner | `test/run_cases.clj` | `bb --classpath` |
 | Basilisp runner | `test/run_cases.lpy` | `basilisp run` |
+| nbb runner | `test/run_cases.cljs` | `nbb --classpath src`, the same runtime as the host layer |
+| Node and signers (V3b) | `host/`, `src/en_devnet/host.cljs` | nbb. See [`host/README.md`](host/README.md) |
 
 ## What the core decides
 
@@ -66,6 +68,7 @@ never below a declared credit floor), not a dependency.
 cd dapps/en-devnet
 bb --classpath src:test test/run_cases.clj
 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src basilisp run test/run_cases.lpy
+nbb --classpath src test/run_cases.cljs
 # Regenerate the shared cases after changing an expectation in gen_cases.clj:
 bb --classpath src:test test/gen_cases.clj
 ```
@@ -87,15 +90,32 @@ Single machine run with locally installed tools, not through `nix-shell`
 (Nix is not installed on this host). Repository Actions is disabled, so no
 CI result is claimed.
 
+## Node and signers on two hosts (V3b, AWAI-3121)
+
+`host/` adds an nbb node and signers around this core; see [`host/README.md`](host/README.md).
+`test/live_v3b.sh` runs the node, the sponsor key and the bot's signer on one Mac, and the provider
+operator's key on `benjamin`, where it is created and signs over SSH.
+
+Evidence: [`docs/evidence/en-devnet-v3b-20261118.json`](../../docs/evidence/en-devnet-v3b-20261118.json).
+
+| Check | Result |
+| --- | --- |
+| Whole run | 20 of 20 checks |
+| Fund, reserve, propose, counter-sign on the provider host, finalize | Yes |
+| Node restart: same head; signer, ledger and journal reconcile | Yes |
+| Unknown balance, unfunded bot, over policy, held unit, receiver outside allowlist | Each refused by the signer |
+| Bot signature alone, signatures over other content, a second submission, an expired settlement | Each refused by the node |
+| Provider key asked to sign a transfer it is not party to | Refused |
+| Submission with no answer | Held as ambiguous, resolved from the log by reconcile, not resubmitted |
+| Tampered log | The node refuses to start |
+| Node changed to accept any signature | The harness fails, exit 1 (see evidence) |
+
 ## Not implemented
 
-- Signature creation and verification, key custody (ADR 0021 signer), and
-  the host encoding of `signing-payload`.
-- Durable persistence, the trusted clock, and a devnet node that serves
-  this ledger to the two nodes.
-- Wiring to the D1 reservation ledger (`dapps/d1/src/d1/reservation.cljc`),
-  the Mac provider gateway (V1/V2) and the Android buyer and confirmation
-  card (V4).
-- The two-node run (V5) and any real-asset settlement (V6, separate owner
-  approval).
+- Key custody beyond 0600 files (hardware keystore, passkey, ADR 0021 signer service).
+- A trusted clock, replication of the node's log, and more than one operator.
+- Wiring to the D1 reservation ledger (`dapps/d1/src/d1/reservation.cljc`).
+- Binding the settlement to the V2 receipt and an acceptance signed on the AOSP buyer, and the
+  confirmation card (V4).
+- The two-node run (V5) and any real-asset settlement (V6, separate owner approval).
 - A Native `.kotoba` implementation (ADR 0027 D12).
