@@ -97,7 +97,7 @@ identity, encryption, malicious rollback protection or key custody.
 
 ## Otehon integration
 
-`base-module.nix` imports `../storage.nix`. Set `otehon.storage.enable = true`
+`base-module.nix` imports `../../archive/nixos/otehon/storage.nix`. Set `otehon.storage.enable = true`
 to install `otehon-storage`; the default is disabled. The module neither starts
 a daemon nor creates/migrates data. On Otehon, place operational state on the
 unlocked encrypted state volume. For a new, disposable candidate store:
@@ -134,7 +134,7 @@ From the repository root:
 
 ```sh
 nix-build otehon/storage/check.nix --no-out-link
-nix-build otehon/storage/module-check.nix --no-out-link
+nix-build archive/nixos/otehon/storage/module-check.nix --no-out-link
 ```
 
 The first builds the actual CLI, checks metadata and Pack/CAR round trips

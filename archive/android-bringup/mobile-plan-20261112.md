@@ -7,13 +7,13 @@
 ## 確認したソース
 
 - awai-os: `3be3ddef3dffd6078a1d99f4f69a70626540934a`。
-- [default.nix](../../otehon/default.nix) は aarch64/x86_64 の CPU 選択。
-  [common.nix](../../otehon/common.nix) は QEMU guest、GPT の ESP/ext4、systemd-boot と UKI、
+- [default.nix](../nixos/otehon/default.nix) は aarch64/x86_64 の CPU 選択。
+  [common.nix](../nixos/otehon/common.nix) は QEMU guest、GPT の ESP/ext4、systemd-boot と UKI、
   仮想マシン用の serial console を組み立てる。aarch64 を選ぶだけでスマホの BSP にはならない。
-- [hardware-6600h.nix](../../otehon/hardware-6600h.nix) は x86_64 PC 専用。
-  [install-0.1.0.md](install-0.1.0.md) の Secure Boot 未署名、更新未統合、root 16GB 固定という制限は、
+- [hardware-6600h.nix](../nixos/otehon/hardware-6600h.nix) は x86_64 PC 専用。
+  [install-0.1.0.md](../nixos/docs/otehon/install-0.1.0.md) の Secure Boot 未署名、更新未統合、root 16GB 固定という制限は、
   PC installer の制限でありスマホの導入手順ではない。この installer をスマホに流用しない。
-- [eval-profiles.sh](../../otehon/eval-profiles.sh) は derivation の評価のみ。
+- [eval-profiles.sh](../nixos/otehon/eval-profiles.sh) は derivation の評価のみ。
   [CI](../nixos/workflows/nixos-module.yml) の Otehon job には shell/C1/storage の試験と
   storage derivation の build もあるが、OS image の build/VM boot はない。
   「CI が評価のみ」は image 検証の説明に限る。全 job が build しないという意味ではない。
@@ -60,7 +60,7 @@ A20 由来カーネル/DTB の適合、partition サイズ、AVB chain と純正
 | 段階 | 手順・受入条件 | 負の対照・停止条件 | 今回の状態 |
 | --- | --- | --- | --- |
 | P0 個体特定 | 明示選択した ADB target だけで機種、board、build、lock、SIM を読取り。空値/取得失敗を unknown とする。公開証跡から serial/IMEI/SSID/account を除く | 未接続・unauthorized・offline は collection を開始しない。複数端末でも自動選択しない | moto を再測定。Samsung の現在状態は未確認 |
-| P1 VM 再現 | 同じ revision/pin の image build、raw image digest、QEMU/firmware 版、serial boot report `failed=0` を記録。まず network/login のない `vm`、必要なら desktop を別に検証 | blank disk が report を出さず失敗、missing image が NOT_RUN になる。単なる Nix 評価を起動成功としない | 既存 [VM 手順・過去の正負結果](vm-0.1.0.md) を参照。今回 build/boot 未実施 |
+| P1 VM 再現 | 同じ revision/pin の image build、raw image digest、QEMU/firmware 版、serial boot report `failed=0` を記録。まず network/login のない `vm`、必要なら desktop を別に検証 | blank disk が report を出さず失敗、missing image が NOT_RUN になる。単なる Nix 評価を起動成功としない | 既存 [VM 手順・過去の正負結果](../nixos/docs/otehon/vm-0.1.0.md) を参照。今回 build/boot 未実施 |
 | P2 PC 手順比較 | 6600h の EFI/GPT/UKI/LUKS とスマホ固有 boot chain/partition/encryption を比較。実機 installer は実行しない | PC イメージを phone target に渡さない。容量・CPU 一致だけで適合としない | 机上整理済み。スマホに installer は流用不可 |
 | P3 companion | 既存 awai-mobile を immutable revision/digest で build。ローカル asset 起動、portrait/insets、offline 表示、QR cancel、鍵が JS に出ないことを端末で観察。外部接続は次段の同意試験に分ける | 外部操作拒否で request=0、同意は表示した service/endpoint/operation にのみ有効。別 endpoint/再利用/未宣言 route を拒否 | ソースと broker digest の確認まで。APK 未導入、端末・連携試験未実施 |
 | P4 全面置換設計 | 下記の機種別前提と復旧・鍵・更新設計が揃い、レビュー可能な image manifest と試験計画があること | 適合が不明、復旧が未確認、署名/AVB chain 不明、owner の別途実行許可なしでは書かない | 設計のみ。phone image/BSP・起動実証はない |

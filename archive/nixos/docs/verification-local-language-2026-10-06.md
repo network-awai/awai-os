@@ -26,7 +26,7 @@ Both public `/api/devices/link/start` and `/api/devices/link/status` returned 40
 phone authentication or account claim was created. Production routes were not
 published by this run.
 
-Evidence: [local/language evidence](evidence/local-language-setup-2026-10-06/).
+Evidence: [local/language evidence](../../../docs/evidence/local-language-setup-2026-10-06/).
 
 This change adds no OS auto-update agent or timer. Signed decentralized release
 transport, staged activation, health checks and rollback are a documented future

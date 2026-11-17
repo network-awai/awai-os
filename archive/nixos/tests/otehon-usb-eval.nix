@@ -2,12 +2,12 @@
 let
   system = import (nixpkgsPath + "/nixos/lib/eval-config.nix") {
     system = null;
-    modules = [ ../../../otehon/usb-install-6600h.nix ];
+    modules = [ ../otehon/usb-install-6600h.nix ];
   };
   c = system.config;
   installed = (import (nixpkgsPath + "/nixos/lib/eval-config.nix") {
     system = null;
-    modules = [ ../../../otehon/disk-6600h.nix ];
+    modules = [ ../otehon/disk-6600h.nix ];
   }).config;
 in
 assert c.nixpkgs.hostPlatform.system == "x86_64-linux";

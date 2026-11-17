@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 os.environ['OTEHON_NET_PORT'] = '8773'
-spec = importlib.util.spec_from_file_location('net_setup', Path(__file__).parents[2] / 'otehon/net-service.py')
+spec = importlib.util.spec_from_file_location('net_setup', Path(__file__).parents[2] / 'archive/nixos/otehon/net-service.py')
 net = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(net)
 

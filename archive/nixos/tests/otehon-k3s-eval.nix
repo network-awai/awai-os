@@ -5,7 +5,7 @@ let
   args = node: { inherit node addresses; interface = "eth1"; tokenFile = "/run/secrets/otehon-k3s-token"; };
   eval = modules: (import (nixpkgsPath + "/nixos/lib/eval-config.nix") {
     system = "x86_64-linux";
-    modules = [ ../../../otehon/k3s/default.nix {
+    modules = [ ../otehon/k3s/default.nix {
       system.stateVersion = "26.05";
       fileSystems."/" = { device = "/dev/disk/by-label/evaluation-only"; fsType = "ext4"; };
       boot.loader.grub.enable = false;
@@ -15,13 +15,13 @@ let
   requireValid = c: lib.assertMsg (valid c)
     (lib.concatMapStringsSep "\n" (a: a.message) (builtins.filter (a: !a.assertion) c.assertions));
   off = eval [ ];
-  nodes = lib.genAttrs [ "jacob" "dan" "judah" ] (n: eval [ (import ../../../otehon/k3s/fleet.nix (args n)) ]);
+  nodes = lib.genAttrs [ "jacob" "dan" "judah" ] (n: eval [ (import ../otehon/k3s/fleet.nix (args n)) ]);
   desktop = arch: (import (nixpkgsPath + "/nixos/lib/eval-config.nix") {
     system = null;
-    modules = [ (import ../../../otehon/k3s/desktop.nix (args "jacob"))
+    modules = [ (import ../otehon/k3s/desktop.nix (args "jacob"))
       { nixpkgs.hostPlatform = "${arch}-linux"; } ];
   }).config;
-  bad = settings: eval [ (import ../../../otehon/k3s/fleet.nix (args "dan"))
+  bad = settings: eval [ (import ../otehon/k3s/fleet.nix (args "dan"))
     { otehon.k3s = lib.mapAttrs (_: lib.mkForce) settings; } ];
 in
 assert !(off.systemd.services ? k3s);
@@ -45,7 +45,7 @@ assert !(valid (bad { podCIDR = "10.43.1.0/24"; }));
 assert !(valid (bad { podCIDR = "192.168.0.0/16"; }));
 assert !(valid (bad { nodeAddress = "999.1.1.1"; }));
 assert !(valid (bad { tokenFile = "/run/keys/../../nix/store/public-token"; }));
-assert !(valid (eval [ (import ../../../otehon/k3s/fleet.nix
+assert !(valid (eval [ (import ../otehon/k3s/fleet.nix
   ((args "dan") // { addresses = addresses // { judah = addresses.dan; }; })) ]));
 assert lib.all (arch: requireValid (desktop arch)) [ "aarch64" "x86_64" ];
 assert (desktop "aarch64").services.greetd.enable;

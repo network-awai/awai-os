@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-spec = importlib.util.spec_from_file_location('installed_logs', Path(__file__).parents[2] / 'otehon/installer-installed-logs.py')
+spec = importlib.util.spec_from_file_location('installed_logs', Path(__file__).parents[2] / 'archive/nixos/otehon/installer-installed-logs.py')
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 

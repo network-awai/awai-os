@@ -5,8 +5,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 [ "$#" = 2 ] || { echo 'usage: ci-otehon-vm-local.sh {storage-reboot|drive|desktop-update} NEW_EVIDENCE_DIR' >&2; exit 2; }
 case "$1" in
-  storage-reboot) test_file=otehon/storage/reboot-check.nix ;;
-  drive) test_file=otehon/drive/check.nix ;;
+  storage-reboot) test_file=archive/nixos/otehon/storage/reboot-check.nix ;;
+  drive) test_file=archive/nixos/otehon/drive/check.nix ;;
   desktop-update) test_file=archive/nixos/tests/otehon-network-update.nix ;;
   *) echo 'unknown VM gate' >&2; exit 2 ;;
 esac

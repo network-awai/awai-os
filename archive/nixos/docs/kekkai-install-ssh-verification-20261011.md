@@ -35,8 +35,8 @@ Immutable outputs:
 - Evaluated production target:
   `/nix/store/l78v6c2j5j3hxqd8bhygx7fmlqnq0574-nixos-system-murakumo-node-26.05pre-git`
 
-[Release gate proof](evidence/kekkai-setup-20261011/release-vm-gate.json) and
-[Kekkai assertions](evidence/kekkai-setup-20261011/kekkai-ssh.json) are preserved.
+[Release gate proof](../../../docs/evidence/kekkai-setup-20261011/release-vm-gate.json) and
+[Kekkai assertions](../../../docs/evidence/kekkai-setup-20261011/kekkai-ssh.json) are preserved.
 The proof was checked again against the final local source digest. The ISO
 configuration also evaluated successfully with live-installer remote access
 enabled; an ISO image was not built in this qualification.

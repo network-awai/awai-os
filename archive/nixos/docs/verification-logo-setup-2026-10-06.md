@@ -35,7 +35,7 @@ no network interface. Its packaged GTK frontend displayed the supplied logo
 at the correct size on the first network screen, without a diagnostic override.
 The packaged frontend SHA256 matches the frozen source. Original SVG and rendered
 PNG digests were checked in the live installer and both prebuilt installed systems.
-Evidence is in [the logo evidence directory](evidence/logo-setup-2026-10-06/).
+Evidence is in [the logo evidence directory](../../../docs/evidence/logo-setup-2026-10-06/).
 
 Final ISO: `murakumo-logo-setup-sized-20261006.iso`, 2,303,950,848 bytes, SHA256
 `879d7f6cb51471a6f9b57c2294d780469d325e9cdcf9ee73ed1b9747c9358f8c`.

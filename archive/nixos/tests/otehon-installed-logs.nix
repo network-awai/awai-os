@@ -10,12 +10,12 @@ let
     services.journald.storage = "persistent";
     environment.systemPackages = [ pkgs.python3 pkgs.util-linux pkgs.e2fsprogs ];
   };
-  reader = "unshare --mount --propagation private ${pkgs.python3}/bin/python3 ${../../../otehon/installer-installed-logs.py}";
+  reader = "unshare --mount --propagation private ${pkgs.python3}/bin/python3 ${../otehon/installer-installed-logs.py}";
 in pkgs.testers.runNixOSTest {
   name = "otehon-installed-boot-journal-read-only";
   nodes = {
     prepare = { ... }: { imports = [ common ]; };
-    inspect = { ... }: { imports = [ common ../../../otehon/installer-storage-isolation.nix ]; };
+    inspect = { ... }: { imports = [ common ../otehon/installer-storage-isolation.nix ]; };
   };
   testScript = ''
     import json

@@ -10,7 +10,7 @@ Puts the desktop and the base on an x86_64 PC's own disk, from another machine o
 | `netboot-6600h.nix` | The desktop in RAM, with no installer. It writes nothing |
 | `hardware-6600h.nix` | What those share for the Ryzen 5 6600H PC |
 
-`nix-build otehon/default.nix --argstr profile netboot-install-6600h` gives `ipxe.efi`, `kernel`,
+`nix-build archive/nixos/otehon/default.nix --argstr profile netboot-install-6600h` gives `ipxe.efi`, `kernel`,
 `initrd`, `image.raw.zst` and `image.sha256`.
 
 ## What the installer does
@@ -58,7 +58,7 @@ Status lines go to the screen, so the serial port shows only prompts. A person r
 screenshots in the work directory.
 
 ```bash
-python3 otehon/install-check-qemu.py <dir with the build output> <work dir>
+python3 archive/nixos/otehon/install-check-qemu.py <dir with the build output> <work dir>
 ```
 
 On 2026-11-07 it passed on the build with image digest `4197fbe960dc3d48`. A 60 GB disk's state partition

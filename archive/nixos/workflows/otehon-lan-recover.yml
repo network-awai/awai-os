@@ -40,7 +40,7 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$OPERATOR_PUBLIC_KEY"
-          nix-build otehon/default.nix --argstr profile netboot-nbd-install-6600h --argstr diagnosticPublicKey "$OPERATOR_PUBLIC_KEY" --out-link result-qualified-lan --show-trace
+          nix-build archive/nixos/otehon/default.nix --argstr profile netboot-nbd-install-6600h --argstr diagnosticPublicKey "$OPERATOR_PUBLIC_KEY" --out-link result-qualified-lan --show-trace
           for file in ipxe.efi kernel initrd installer-info.json; do cp -L "result-qualified-lan/$file" ".agent-output/recover/candidate/$file"; done
           git rev-parse HEAD > .agent-output/recover/candidate/SOURCE_REVISION
           (cd .agent-output/recover/candidate; sha256sum ipxe.efi kernel initrd installer-info.json > SHA256SUMS)

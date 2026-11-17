@@ -139,7 +139,7 @@ by refusal of new jobs/draining; high application risk still needs review. These
 deadlines never override signature, capacity or recovery checks. Fleet activation
 remains unavailable until real scheduler leases and drain integration qualify.
 
-The [production receipt](evidence/production-updates-20261008/delivery-status-20261008.json)
+The [production receipt](../../../docs/evidence/production-updates-20261008/delivery-status-20261008.json)
 records completed full public readback of both artifacts, stable sequence 4
 publication, two valid signatures and tamper refusal. The temporary upload Worker
 was deleted: its endpoint returns 404; the manifest returns 200 and transport

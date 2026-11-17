@@ -17,7 +17,7 @@ done
 export AWAI_NIXPKGS_ARCHIVE
 printf 'Otehon local gate source: %s\n' "$(git rev-parse HEAD)"
 printf 'This is not a VM, native, Forest writer, installer, or release qualification.\n'
-sh archive/nixos/tests/otehon-macos-image-test.sh
+printf 'Deprecated NixOS profile evaluation is archived under archive/nixos/otehon and not run here.\n'
 (cd otehon/shell && npm ci --offline --no-audit --no-fund && npm test)
 sh scripts/otehon-mobile/test-collect-p0.sh
 node --test dapps/saifu/test/host-bridge.test.mjs
@@ -27,11 +27,4 @@ replica=$(nix-build scripts/otehon-c1/replica-check.nix --no-out-link)
 cat "$replica/tests.txt"
 storage=$(nix-build otehon/storage/check.nix --no-out-link)
 cat "$storage/unit-tests.txt" "$storage/crash-tests.edn" "$storage/pack-crash-tests.edn"
-module=$(nix-build otehon/storage/module-check.nix --no-out-link)
-cat "$module"
-python3 archive/nixos/tests/otehon-network-update-test.py
-bash -n otehon/update.sh
-nix-instantiate --eval --strict --json --expr 'import ./tests/otehon-update-eval.nix { nixpkgsPath = import ./ci/nixpkgs.nix; }'
-nix-instantiate --eval --strict --json --expr 'import ./tests/otehon-usb-eval.nix { nixpkgsPath = import ./ci/nixpkgs.nix; }'
-sh otehon/eval-profiles.sh "$repo"
 echo 'Otehon local evaluation gate passed.'

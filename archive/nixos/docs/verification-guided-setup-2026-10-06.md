@@ -43,7 +43,7 @@ modules. Both complete offline systems are included. No physical disk was touche
 and no new disk installation was performed in this turn; the unchanged installation
 engine retains the prior qualified offline-install evidence.
 
-Evidence: [guided setup evidence](evidence/guided-setup-2026-10-06/).
+Evidence: [guided setup evidence](../../../docs/evidence/guided-setup-2026-10-06/).
 
 The physical PC and USB do not receive updates from a source change. The production
 registration routes were unavailable in the previous check; publishing Worker and

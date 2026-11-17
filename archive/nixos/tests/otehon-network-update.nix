@@ -1,11 +1,11 @@
 { pkgs ? import (import ../../../ci/nixpkgs.nix) { system = "x86_64-linux"; } }:
 let
-  fixtures = ../../../otehon/fixtures;
+  fixtures = ../otehon/fixtures;
 in pkgs.testers.runNixOSTest {
   name = "otehon-https-desktop-upgrade-state";
   node.pkgsReadOnly = false;
   nodes.machine = { config, lib, extendModules, nodes, ... }: {
-    imports = [ ../../../otehon/desktop.nix ];
+    imports = [ ../otehon/desktop.nix ];
     nixpkgs.hostPlatform = lib.mkForce "x86_64-linux";
     networking.hostName = lib.mkForce "otehon-update-client";
     networking.extraHosts = "${nodes.publisher.networking.primaryIPAddress} publisher.test";
@@ -35,7 +35,7 @@ in pkgs.testers.runNixOSTest {
     boot.loader.timeout = lib.mkForce 1;
     fileSystems."/boot".device = lib.mkForce "/dev/vda1";
     environment.systemPackages = [ pkgs.nodejs pkgs.curl pkgs.jq ];
-    environment.etc."ota-profile-check.mjs".source = ../../../otehon/update-profile-check.mjs;
+    environment.etc."ota-profile-check.mjs".source = ../otehon/update-profile-check.mjs;
     environment.etc."ota-generation".text = "a";
     system.build.otaGood = (extendModules { modules = [{ environment.etc."ota-generation".text = lib.mkForce "b"; system.image.version = lib.mkForce "0.7.1-update-check"; }]; }).config.system.build.toplevel;
     system.build.otaBad = (extendModules { modules = [{

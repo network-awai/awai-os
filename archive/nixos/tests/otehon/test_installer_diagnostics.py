@@ -10,7 +10,7 @@ import threading
 import unittest
 from unittest.mock import patch
 
-spec = importlib.util.spec_from_file_location('diagnostics', Path(__file__).parents[2] / 'otehon/installer-diagnostics.py')
+spec = importlib.util.spec_from_file_location('diagnostics', Path(__file__).parents[2] / 'archive/nixos/otehon/installer-diagnostics.py')
 d = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(d)
 

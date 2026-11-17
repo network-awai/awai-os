@@ -20,4 +20,4 @@ This validates the source fix and service behavior, not a newly built ISO or clo
 
 Automatic activation remains gated on real hardware recovery qualification. No watchdog qualification, owner policy, identity receipt, or anti-replay history was relaxed by this repair.
 
-Evidence: [original failure](evidence/setup-service-recovery-20261010/setup-original-sandbox.log), [fixed service](evidence/setup-service-recovery-20261010/setup-fixed-sandbox.log), [pairing](evidence/setup-service-recovery-20261010/setup-pairing-qa-proof.json), [tests](evidence/setup-service-recovery-20261010/setup-fix-tests.log).
+Evidence: [original failure](../../../docs/evidence/setup-service-recovery-20261010/setup-original-sandbox.log), [fixed service](../../../docs/evidence/setup-service-recovery-20261010/setup-fixed-sandbox.log), [pairing](../../../docs/evidence/setup-service-recovery-20261010/setup-pairing-qa-proof.json), [tests](../../../docs/evidence/setup-service-recovery-20261010/setup-fix-tests.log).

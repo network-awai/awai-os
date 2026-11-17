@@ -10,7 +10,7 @@ from the USB or silently install an internal disk.
 Build the immutable ISO with the repository's pinned nixpkgs:
 
 ```sh
-nix-build otehon/default.nix --argstr profile usb-install-6600h
+nix-build archive/nixos/otehon/default.nix --argstr profile usb-install-6600h
 nix-build archive/nixos/tests/otehon-usb.nix --out-link result-otehon-usb-check
 ```
 

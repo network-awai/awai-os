@@ -9,7 +9,7 @@ let
     config.Cmd = [ "/bin/sleep" "3600" ];
   };
   machine = node: { config, ... }: {
-    imports = [ (import ../../../otehon/k3s/fleet.nix {
+    imports = [ (import ../otehon/k3s/fleet.nix {
       inherit node addresses; interface = "eth1"; tokenFile = "/run/secrets/otehon-k3s-token";
     }) ];
     virtualisation = {
@@ -63,7 +63,7 @@ in pkgs.testers.runNixOSTest {
     dan = machine "dan";
     judah = machine "judah";
     disabled = { ... }: {
-      imports = [ ../../../otehon/k3s/default.nix ];
+      imports = [ ../otehon/k3s/default.nix ];
       virtualisation.memorySize = 512;
       environment.systemPackages = [ pkgs.curl ];
       networking.interfaces.eth1.ipv4.addresses = lib.mkForce [{ address = "192.168.1.4"; prefixLength = 24; }];

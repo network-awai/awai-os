@@ -131,7 +131,7 @@ QA boot entries add serial output and mask the account GUI service solely for
 this headless test. GUI rendering, fresh installation from a blank disk, physical
 boot/recovery and real-phone approval are not established by these VM results.
 
-Receipts are in [user-root-production-20261009](evidence/user-root-production-20261009).
+Receipts are in [user-root-production-20261009](../../../docs/evidence/user-root-production-20261009).
 The USB source is newer than remote production sequence 4; the preserving updater
 retains the sequence floor so that older release cannot replace this manual update.
 No new automatic fleet release is promoted by this qualification.

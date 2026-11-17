@@ -2,15 +2,15 @@
 let
   evaluate = modules: (import (nixpkgsPath + "/nixos/lib/eval-config.nix") {
     system = "x86_64-linux";
-    modules = [ ../../../otehon/desktop.nix { nixpkgs.hostPlatform = "x86_64-linux"; } ] ++ modules;
+    modules = [ ../otehon/desktop.nix { nixpkgs.hostPlatform = "x86_64-linux"; } ] ++ modules;
   }).config;
   off = evaluate [];
   on = evaluate [{
     otehon.update = {
       enable = true;
       baseVersion = 1;
-      publicKey = ../../../otehon/fixtures/update/test-manifest.pub;
-      cacheKey = ../../../otehon/fixtures/update/test-cache.pub;
+      publicKey = ../otehon/fixtures/update/test-manifest.pub;
+      cacheKey = ../otehon/fixtures/update/test-cache.pub;
       network = { enable = true; feedUrl = "https://updates.invalid/canary"; };
     };
   }];

@@ -7,9 +7,9 @@ Follow the workspace-level AGENTS.md architecture and Linear tracking rules.
 | Path | Contents |
 | --- | --- |
 | `android/` | Awai OS on Android AOSP: Home, Store, setup, SystemUI overlays, desktop PC work |
-| `apps/` | Bundled apps (Itonami, Murakumo inference, Drive, Yotei, macOS preview) |
+| `apps/` | Bundled apps (Itonami, Murakumo inference, Drive, Yotei) |
 | `dapps/` | Otehon dapps (D1, reward loop, Saifu, Sanka, Wellbecoming) |
-| `otehon/` | Itonami shell UI shared with Android, and the Otehon fleet: Meiji, Bot fleet, Soshiki, storage, k3s |
+| `otehon/` | Itonami shell UI shared with Android, and Otehon fleet sources: Meiji, Bot fleet, Soshiki, storage |
 | `packages/`, `store/`, `distribution/`, `deploy/` | Shared packages, signed catalog, distribution Worker, awai.link relay |
 | `ci/`, `scripts/`, `tests/` | Active checks and operator tools |
 | `docs/` | Decisions, design and dated evidence (`docs/evidence/` is a record; never rewrite it) |
@@ -60,11 +60,15 @@ installs, wire active code to `archive/`, or re-add their workflows.
   encrypted preservation and dependency checks first. Preserve credentials,
   keys, profiles and active Android images. The old Nix p2 filesystem also holds
   Android's live image directory; never infer permission to wipe it.
-- `otehon/` still contains NixOS profiles (desktop, installer, netboot) because
-  the running fleet profiles import them. They are deprecated as an install
-  route; split them into `archive/` only with a Nix evaluation of every
-  remaining fleet profile. Existing host/build/node fleets stay separately
-  operated; no service shutdown or repartition follows from this archive.
+- The Otehon NixOS profiles and modules (desktop, installer, netboot, media,
+  update, backup, Bot/Meiji guest VMs, k3s, component NixOS modules and their
+  VM checks) are archived in [`archive/nixos/otehon/`](archive/nixos/otehon).
+  Their path references were rewritten and resolve, but they are not evaluated
+  or built here. Any redeploy of an existing Nix host or guest from them is a
+  deliberate maintenance action on archived code; running hosts, guests and
+  fleets are unaffected by the move, and no service shutdown or repartition
+  follows from it. `otehon/` keeps the shell, fleet and component sources and
+  their non-NixOS Nix package checks.
 - Use Android SDK/build and emulator/device checks for Android; a NixOS VM gate
   does not qualify Android. The Otehon fleet may use `.cljc`, clj/JVM, cljs,
   nbb and Babashka pinned with Nix (ADR 0026 D18); keep them out of Native.

@@ -30,7 +30,7 @@ attempt was written to USB.
 Final ISO: 2,303,950,848 bytes, SHA256
 `9e68645d5d75071c3e65d6995181d4dff8051ccca8053f14fa5ef8cf67d1d6ef`.
 Pinned nixpkgs: `f5c082a40f7571c266e74e80ae2e68aadd8a9fc7`.
-See [artifact metadata](evidence/graphical-setup-2026-10-06/artifact.json).
+See [artifact metadata](../../../docs/evidence/graphical-setup-2026-10-06/artifact.json).
 
 Qualification uses QEMU UEFI with no network interface and two 24 GiB NVMe
 disks. `GRAPHICAL-SELECTED` is `/dev/nvme1n1`; `GRAPHICAL-PRESERVE` is
@@ -63,4 +63,4 @@ wrote and read back exactly 2,303,950,848 bytes. Both SHA256 values equal the
 final ISO hash above. It exited successfully with `verified-and-ejected`;
 subsequent external physical disk inventory was empty. No password prompt
 was needed. The request was reset to check mode after completion. See
-[USB result](evidence/graphical-setup-2026-10-06/usb-result.json).
+[USB result](../../../docs/evidence/graphical-setup-2026-10-06/usb-result.json).
