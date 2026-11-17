@@ -2,7 +2,7 @@
 import {readFile,writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
-const [input,mode,output]=process.argv.slice(2);assert(['audit','persistent','recovery','repair'].includes(mode)&&output);
+const [input,mode,output]=process.argv.slice(2);assert(['audit','persistent','recovery','repair','reblock'].includes(mode)&&output);
 const b=await readFile(input),sha=x=>createHash('sha256').update(x).digest('hex');
 assert.equal(sha(b),'e7fb0e08d957f4e8014348f95717ececbf81513d52a5b6f275b782fed426d5eb','Unreviewed iPXE input');
 const pe=b.readUInt32LE(0x3c),optional=pe+24;assert.equal(b.readUInt32LE(pe),0x4550);assert.equal(b.readUInt16LE(optional),0x20b);
@@ -13,7 +13,8 @@ const original=b.toString('ascii',start,end);assert(original.includes('module_bl
 let script=original.replaceAll('10.77.0.1:18090','10.77.0.1:18091').replace('module_blacklist=nvme,nvme_core,','module_blacklist=');
 if(mode!=='audit')script=script.replace('androidboot.android_dir=android-Generic_x86_64','androidboot.android_dir=awai-android-2992');
 if(mode==='persistent')script=script.replace('androidboot.mount_userdata=tmpfs','androidboot.mount_userdata=imgs');
-if(mode==='repair')script=script.replace('module_blacklist=','awai.os_journal_repair=1 module_blacklist=');
+if(['repair','reblock'].includes(mode))script=script.replace('module_blacklist=','awai.os_journal_repair=1 module_blacklist=');
+if(mode==='reblock')script=script.replace('module_blacklist=','awai.reblock_small_images=1 module_blacklist=');
 script=script.replace('echo Awai Android diagnostic LAN boot failed. Existing Nix disk was not selected.',`echo Awai Android ${mode} boot failed.`);
 assert(script.length<=original.length,'Embedded region cannot grow');
 b.write(script.padEnd(original.length,' '),start,'ascii');

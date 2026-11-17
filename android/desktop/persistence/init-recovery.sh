@@ -61,6 +61,11 @@ case " $($B cat /proc/cmdline) " in *' awai.os_journal_repair=1 '*)
  "$B" sh /awai/verify-images.sh /awai-check/awai-android-2992 > /awai-status/image-check.txt 2>&1 || fail repaired-image-guard
  "$B" umount /awai-check || fail clean-root-unmount
  ;; esac
+case " $($B cat /proc/cmdline) " in *' awai.reblock_small_images=1 '*)
+ status small-image-migration
+ "$B" sh /awai/repair-small-images.sh > /awai-status/small-image-check.txt 2>&1 || fail small-image-repair
+ status small-image-migration-complete
+ ;; esac
 [ "$("$B" blockdev --getro /dev/nvme0n1)" = 1 ] || fail namespace-not-readonly
 for part in /dev/nvme0n1p1 /dev/nvme0n1p2 /dev/nvme0n1p3; do
  [ "$("$B" blockdev --getro "$part")" = 1 ] || fail partition-not-readonly

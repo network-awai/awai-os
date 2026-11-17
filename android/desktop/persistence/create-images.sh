@@ -38,7 +38,7 @@ for spec in userdata:6442450944 metadata:67108864 cache:134217728; do
  chmod 600 "$image"
  fallocate -l "$size" "$image"
  [ -f "$image" ] && [ ! -b "$image" ] && [ ! -L "$image" ]
- mke2fs -t ext4 -F -E nodiscard,lazy_itable_init=0,lazy_journal_init=0 -L "awai-$name" "$image"
+ mke2fs -t ext4 -F -b 4096 -I 256 -E nodiscard,lazy_itable_init=0,lazy_journal_init=0 -L "awai-$name" "$image"
  [ "$(stat -c %s "$image")" = "$size" ]
  blkid "$image"
 done

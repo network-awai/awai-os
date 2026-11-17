@@ -1,0 +1,14 @@
+{
+  "metadata": {
+    "bytes": 67108864,
+    "uuid": "9da2d63b-0833-4962-9bd7-221b7a7de2d2",
+    "sha256": "0188528ec0dd79bfb453c4ddb1360860dd99c459e471f01f418130780d2b4502",
+    "blockSize": 4096
+  },
+  "cache": {
+    "bytes": 134217728,
+    "uuid": "0cd459f0-63d4-4a98-a1d4-a4b6c9443856",
+    "sha256": "fbdfdf23d6d86d18710b1a6294f7ab79dfc839d0c4e8fdaccb86f60f711f1a38",
+    "blockSize": 4096
+  }
+}
