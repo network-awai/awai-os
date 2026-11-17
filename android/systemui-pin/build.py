@@ -36,7 +36,7 @@ def layout(source,portrait,settings):
  return E.tostring(doc,encoding='unicode')
 def main():
  p=argparse.ArgumentParser();p.add_argument('--systemui',type=pathlib.Path,required=True);p.add_argument('--framework',type=pathlib.Path,required=True);p.add_argument('--out',type=pathlib.Path,default=ROOT/'.agent-output/pin-overlay');a=p.parse_args();pins=json.loads((HERE/'target.json').read_text());assert sha(a.systemui)==pins['systemUiSha256'],'unknown SystemUI build'
- 
+
  for name,expected in pins['upstreamSha256'].items():assert sha(HERE/'upstream'/name)==expected,'upstream layout drift'
  sdk=pathlib.Path.home()/'Library/Android/sdk';tools=sdk/'build-tools/36.1.0';out=a.out.resolve();out.mkdir(parents=True,exist_ok=True);res=out/'res';shutil.copytree(HERE/'res',res,dirs_exist_ok=True)
  for portrait in [False,True]:
