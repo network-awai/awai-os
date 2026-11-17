@@ -120,6 +120,50 @@
   (let [sig (str/replace (.toString (crypto/sign nil (payload-bytes tx) private) "base64url") #"=+$" "")]
     (update tx :signatures (fn [s] (conj (vec (remove #(= did (:signer %)) s)) {:signer did :sig sig})))))
 
+;; ---------------------------------------------------------------------------
+;; CIDs and the owner's P-256 device key (ADR 0027 V4)
+
+(def base32-alphabet "abcdefghijklmnopqrstuvwxyz234567")
+
+(defn cid-of
+  "CIDv1, dag-json, sha2-256, lower-case base32: the same CID the provider desk, the verifier and
+  the Android card compute over canonical bytes."
+  [data]
+  (let [raw (js/Buffer.concat #js [(js/Buffer.from #js [0x01 0xa9 0x02 0x12 0x20])
+                                   (-> (crypto/createHash "sha256") (.update data) (.digest))])]
+    (loop [i 0 acc 0 bits 0 out []]
+      (if (< i (.-length raw))
+        (let [acc (bit-or (bit-shift-left (bit-and acc 0xff) 8) (aget raw i))
+              [out bits] (loop [out out bits (+ bits 8)]
+                           (if (>= bits 5)
+                             (recur (conj out (nth base32-alphabet (bit-and (unsigned-bit-shift-right acc (- bits 5)) 31)))
+                                    (- bits 5))
+                             [out bits]))]
+          (recur (inc i) acc bits out))
+        (str "b" (apply str (if (pos? bits)
+                              (conj out (nth base32-alphabet (bit-and (bit-shift-left acc (- 5 bits)) 31)))
+                              out)))))))
+
+(defn verify-p256
+  "True when sig (base64 DER ECDSA) over the UTF-8 payload verifies with the SPKI (base64 DER)."
+  [spki payload sig]
+  (try
+    (let [k (crypto/createPublicKey #js {:key (js/Buffer.from spki "base64") :format "der" :type "spki"})]
+      (and (= "ec" (.-asymmetricKeyType k))
+           (= "prime256v1" (.-namedCurve (.-asymmetricKeyDetails k)))
+           (crypto/verify "sha256" (js/Buffer.from payload "utf8") k (js/Buffer.from sig "base64"))))
+    (catch :default _ false)))
+
+(defn owner-statement
+  "The fields of a signed owner statement {payload sig spki}, when its signature verifies with the
+  enrolled SPKI. nil otherwise. The payload is `kind` then key=value lines."
+  [enrolled-spki {:keys [payload sig spki]}]
+  (when (and (string? payload) (string? sig) (= enrolled-spki spki) (verify-p256 spki payload sig))
+    (let [[kind & lines] (str/split-lines payload)]
+      (into {:kind kind}
+            (map (fn [l] (let [i (str/index-of l "=")] [(keyword (subs l 0 i)) (subs l (inc i))])))
+            lines))))
+
 (defn verify-sig [did bytes sig]
   (let [pk (public-of-did did)]
     (boolean (and pk (string? sig)

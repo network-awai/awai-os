@@ -15,6 +15,9 @@
 ;;   nbb -cp src host/signer.cljs propose DIR ORDER-CID ACCEPTANCE-CID RECEIVER TTL-MS
 ;;   nbb -cp src host/signer.cljs submit DIR-OR-- NODE-URL < tx.json
 ;;   nbb -cp src host/signer.cljs reconcile DIR NODE-URL
+;;   nbb -cp src host/signer.cljs enroll DIR OWNER-SPKI-BASE64                         (V4: owner key)
+;;   nbb -cp src host/signer.cljs reserve-approved DIR NODE-URL ORDER.json APPROVAL.json
+;;   nbb -cp src host/signer.cljs settle-accepted DIR RECEIPT.json ACCEPTANCE.json TTL-MS
 (ns signer
   (:require ["node:crypto" :as crypto]
             ["node:fs" :as fs]
@@ -135,6 +138,66 @@
       (core/reconcile signer-records {:log (get-in log [:body :log]) :height (get-in log [:body :height])}
                       (get-in journal [:body :journal])))))
 
+;; ---------------------------------------------------------------------------
+;; Owner approval and acceptance (ADR 0027 V4, AWAI-3123). Once an owner key is enrolled, the
+;; signer reserves only for an order the owner approved on the native card, and proposes a
+;; settlement only for a receipt the owner accepted. A rejection releases the reservation and pays
+;; nothing. The statements are signed by the owner's P-256 key on the Android device.
+
+(def approval-max-age-ms (* 15 60 1000))
+
+(defn owner-spki [dir] (:owner-spki (config dir)))
+
+(defn enroll! [dir spki]
+  (let [c (config dir)]
+    (when (:owner-spki c) (refuse :owner-already-enrolled))
+    (when-not (try (let [k (crypto/createPublicKey #js {:key (js/Buffer.from spki "base64") :format "der" :type "spki"})]
+                     (= "prime256v1" (.-namedCurve (.-asymmetricKeyDetails k))))
+                   (catch :default _ false))
+      (refuse :owner-key-not-p256))
+    (write-file! (path/join dir "signer.json.tmp") (assoc c :owner-spki spki) "w")
+    (fs/renameSync (path/join dir "signer.json.tmp") (path/join dir "signer.json"))
+    {:enrolled true :owner-spki-sha256 (host/sha256-hex (js/Buffer.from spki "base64"))}))
+
+(defn statement [dir file kind]
+  (let [s (host/owner-statement (owner-spki dir) (read-file file))]
+    (when-not s (refuse :owner-signature-invalid))
+    (when-not (= kind (:kind s)) (refuse :wrong-statement-kind {:kind (:kind s)}))
+    s))
+
+(defn reserve-approved! [dir node order-file approval-file]
+  (when-not (owner-spki dir) (refuse :no-owner-enrolled))
+  (let [order (read-file order-file)
+        cid (host/cid-of (host/canonical order))
+        s (statement dir approval-file "awai.sanka.approval/1")
+        at (js/parseInt (:at s) 10)
+        now (now-ms)]
+    (when-not (= cid (:order s)) (refuse :approval-for-another-order))
+    (when (= "deny" (:verdict s)) (refuse :owner-denied))
+    (when-not (= "approve" (:verdict s)) (refuse :no-approval))
+    (when-not (< (- now approval-max-age-ms) at (+ now 60000)) (refuse :approval-stale))
+    (when-not (= "devnet" (:value-class order)) (refuse :not-devnet))
+    (when-not (> (* 1000 (:expires-at order)) now) (refuse :order-expired))
+    (when-not (some #(= (:provider order) %) (:allowlist (config dir))) (refuse :receiver-not-allowlisted))
+    (reserve! dir node cid (:amount order))))
+
+(defn settle-accepted! [dir receipt-file acceptance-file ttl-ms]
+  (when-not (owner-spki dir) (refuse :no-owner-enrolled))
+  (let [receipt (read-file receipt-file)
+        receipt-cid (host/cid-of (host/canonical receipt))
+        s (statement dir acceptance-file "awai.sanka.acceptance/1")
+        r (reservation dir (:order s))]
+    (when-not r (refuse :no-reservation))
+    (when-not (= receipt-cid (:receipt s)) (refuse :acceptance-for-another-receipt))
+    (when-not (= (:order s) (:order receipt)) (refuse :receipt-for-another-order))
+    (case (:verdict s)
+      "reject" (do (when-not (= :reserved (:state r)) (refuse :not-reserved {:state (:state r)}))
+                   (save-reservation! dir (assoc r :state :released :rejected-receipt receipt-cid))
+                   {:released true :cause :rejected-by-owner :order (:order s) :paid 0})
+      "accept" (propose! dir (:order s) (host/cid-of (host/canonical (read-file acceptance-file)))
+                         (:provider receipt) ttl-ms)
+      (refuse :no-acceptance))))
+
 (defn -main [[cmd & args]]
   (-> (p/do
         (case cmd
@@ -145,8 +208,11 @@
                        :demand :owner-internal :expires-ms (+ (now-ms) (js/parseInt ttl 10)) :signatures []})
           "sign" (p/let [tx (stdin-tx)] (host/sign-tx (host/load-key (first args)) tx))
           "init" (apply init! args)
-          "reserve" (apply reserve! args)
-          "propose" (apply propose! args)
+          "reserve" (if (owner-spki (first args)) (refuse :owner-approval-required) (apply reserve! args))
+          "propose" (if (owner-spki (first args)) (refuse :owner-acceptance-required) (apply propose! args))
+          "enroll" (apply enroll! args)
+          "reserve-approved" (apply reserve-approved! args)
+          "settle-accepted" (apply settle-accepted! args)
           "submit" (p/let [tx (stdin-tx)] (submit! (first args) (second args) tx))
           "reconcile" (apply reconcile! args)
           (refuse :usage)))
