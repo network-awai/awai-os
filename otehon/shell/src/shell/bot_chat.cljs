@@ -1,5 +1,5 @@
 (ns shell.bot-chat
- (:require ["react" :refer [useState useEffect]] [shell.ui-copy :as ui]
+ (:require ["react" :refer [useState useEffect useRef]] [shell.ui-copy :as ui]
   ["../agent-ui-state.js" :refer [readAgentSelection chooseAgent]]
   ["../bot-chat.js" :refer [CHAT_ORIGIN CHAT_MODEL chatRequest sendChat readChat agentSessions recordChatImage]]
   ["../android-inference.js" :refer [localInference androidInferenceAvailable]]))
@@ -17,6 +17,8 @@
 (defn panel [bot & [locale draft-id]]
  (let [tr (fn [key & [parameters]] (ui/t locale key parameters))
        [messages set-messages] (useState []) [text set-text] (useState "") [busy set-busy] (useState false)
+       history-node (useRef nil)
+       _ (useEffect (fn [] (when (.-current history-node) (set! (.-scrollTop (.-current history-node)) (.-scrollHeight (.-current history-node)))) js/undefined) #js [(:id (last messages))])
        [mode set-mode] (useState "text") [pending set-pending] (useState nil)
        [created set-created] (useState (not draft-id))
        _ (useEffect (fn [] (let [guard (fn [event] (when (or busy pending) (.preventDefault event)))]
@@ -51,7 +53,7 @@
         (-> (recordChatImage (:request item))
          (.then (fn [r] (set-messages (conj messages {:id (.-requestId r) :role "user" :text (:prompt item)}
           (assoc (js->clj (.-message r) :keywordize-keys true) :local-result (:result item))))
-          (set-pending nil) (set-store (.-store r)) (set-text "")))))
+          (set-pending nil) (set-message nil) (set-store (.-store r)) (set-text "")))))
        send (fn [event] (.preventDefault event)
         (when-not (or busy pending (empty? (.trim text)))
          (set-busy true) (set-message nil)
@@ -84,7 +86,7 @@
    (when store [:span.bot-chat-saved {:title "Itonami Agent · AwaiFS · Kotobase"} (tr :chatSaved)])
    [:details [:summary (tr :chatDetails)] [:p (tr :chatModelInfo {:model CHAT_MODEL})] [:p CHAT_ORIGIN]
     [:p (tr :chatDataInfo)] [:p (tr :chatStoreInfo)] [:dl [:dt (tr :conversationSessions)] [:dd session-id]]]
-   [:ol.bot-conversation-history {:aria-label (tr :chatLoadHistory)}
+   [:ol.bot-conversation-history {:aria-label (tr :chatLoadHistory) :ref history-node :style (when (some #(= "local-image" (:kind %)) messages) {:max-height "56dvh"})}
     (for [m messages] ^{:key (:id m)} [:li {:data-chat-role (:role m)}
       [:strong (or (:speakerName m) (if (= "user" (:role m)) (tr :chatYou) (:name bot)))]
       (if (and (= "user" (:role m)) (or (:peer m) (:work m))) [:details [:summary (tr :peerReceived)] [:p (:text m)]] [:p (:text m)])

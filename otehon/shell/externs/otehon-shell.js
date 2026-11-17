@@ -811,3 +811,7 @@ Object.prototype.chatPersona;
 Object.prototype.sourceSha256;
 
 Object.prototype.dispatchEvent;
+
+Object.prototype.scrollTop;
+
+Object.prototype.scrollHeight;
