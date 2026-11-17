@@ -2,6 +2,8 @@
  (:require ["react" :refer [useState useEffect useRef]] [shell.ui-copy :as ui]
   ["../agent-ui-state.js" :refer [readAgentSelection chooseAgent]]
   ["../bot-chat.js" :refer [CHAT_ORIGIN CHAT_MODEL chatRequest sendChat readChat agentSessions recordChatImage]]
+  ["../voice-channel.js" :refer [openVoiceChannel]]
+  ["../local-speech.js" :refer [speechAvailable beginSpeech listenSpeech speakSpeech stopSpeech]]
   ["../android-inference.js" :refer [localInference androidInferenceAvailable]]))
 (defn image-card [image scope prompt initial]
  (let [[result set-result] (useState initial) [status set-status] (useState nil)]
@@ -13,6 +15,67 @@
     (.then (fn [_] (set-status "画像の保存と読み戻しを確認しました。")))
     (.catch (fn [_] (set-status "保存は未確認です。キャンセルした場合は保存されません。"))))} "画像を保存"])
    (when status [:figcaption {:role "status"} status])]))
+
+
+(defn voice-panel [bot session-id ensure-session set-busy set-messages set-store locale blocked]
+ (let [tr #(ui/t locale %) [state set-state] (useState "ready")
+       [remaining-text set-remaining-text] (useState false) active (useRef nil)
+       stop (fn [next-state]
+        (when-let [run (.-current active)]
+         (set! (.-current active) nil) (.abort (.-controller run))
+         (when (.-timer run) (js/clearTimeout (.-timer run)))
+         (when (.-channel run) (.close (.-channel run)))
+        (-> (stopSpeech) (.catch (fn [_] nil)))
+         (set-busy false))
+        (set-state next-state))
+       _ (useEffect (fn []
+        (let [hide #(when (= "hidden" (.-visibilityState js/document)) (stop "ended"))]
+         (.addEventListener js/document "visibilitychange" hide)
+         (fn [] (.removeEventListener js/document "visibilitychange" hide) (stop "ended")))) #js [(:id bot) session-id])
+       start (fn []
+        (when-not (.-current active)
+         (let [run #js {:controller (js/AbortController.) :channel nil :timer nil}]
+          (set! (.-current active) run) (set-busy true) (set-state "preparing") (set-remaining-text false)
+          (letfn [(current? [] (identical? run (.-current active)))
+                  (live! [] (when-not (current?) (throw (js/Error. "speech-session-ended"))))
+                  (cycle [local channel n]
+                   (live!)
+                   (if (>= n 12) (do (stop "ended") (js/Promise.resolve nil))
+                    (do (set-state "listening")
+                     (-> (listenSpeech local)
+                      (.then (fn [heard]
+                       (live!)
+                       (if (empty? (.trim (.-text heard))) (cycle local channel (inc n))
+                        (let [text (.-text heard)]
+                         (set-state "waiting")
+                         (-> (.send channel text)
+                          (.then (fn [r]
+                           (live!)
+                           (set-messages (fn [rows] (conj rows
+                            {:id (.-requestId r) :role "user" :text text}
+                            {:id (str (.-requestId r) ":reply") :role "assistant" :text (.-text r) :runId (.-runId r) :model (.-model r)})))
+                           (set-store (.-store r)) (set-state "speaking")
+                           (set-remaining-text (> (count (.-text r)) 512))
+                           (speakSpeech local (.slice (.-text r) 0 512))))
+                          (.then (fn [_] (live!) (cycle local channel (inc n)))))))))))))]
+           (-> (ensure-session)
+            (.then (fn [_] (live!) (beginSpeech #js {:botId (:id bot) :sessionId session-id})))
+            (.then (fn [local]
+             (live!) (set-state "connecting")
+             (set! (.-timer run) (js/setTimeout #(when (current?) (stop "ended")) (.-durationMs local)))
+             (-> (openVoiceChannel #js {:botId (:id bot) :sessionId session-id} #js {:signal (.-signal (.-controller run))})
+              (.then (fn [channel] (live!) (set! (.-channel run) channel) (cycle local channel 0))))))
+            (.catch (fn [_] (when (current?) (stop "error")))))))))]
+  [:article.manimani-voice {:data-voice-state state :aria-label (tr :voiceConversation)}
+   [:div.agent-session-toolbar
+    [:strong (tr :voiceConversation)]
+    (if (.-current active)
+     [:button.secondary {:type "button" :on-click #(stop "ended")} (tr :voiceStop)]
+     [:button.secondary {:type "button" :disabled (or blocked (not (speechAvailable)) (= session-id "default")) :on-click start} (tr :voiceStart)])]
+   [:p (tr :voiceScopeInfo)] [:p (tr :voice-local-remote)]
+   [:p {:role (when (contains? #{"ended" "error"} state) "status")} (tr (keyword (str "voice-" state)))]
+   (when (contains? #{"ready" "ended" "error"} state) [:p (tr :voiceConsentInfo)])
+   (when remaining-text [:p (tr :voiceRemainingText)])]))
 
 (defn panel [bot & [locale draft-id]]
  (let [tr (fn [key & [parameters]] (ui/t locale key parameters))
@@ -102,6 +165,8 @@
           {:id (str (.-requestId (:request pending)) ":local") :role "assistant" :text "" :kind "local-image" :localOnly true
            :parentId (.-requestId (:request pending)) :image (js->clj (.-image (:request pending)) :keywordize-keys true) :local-result (:result pending)}))
           (set-pending nil) (set-text ""))} "会話に記録せず続ける"]])
+   (when-not (contains? #{"peer" "circle-work"} (:kind session-info))
+    [:f> voice-panel bot session-id ensure-session set-busy set-messages set-store locale (or busy (some? pending))])
    (when message [:p.problem {:role "status"} (tr message)])
    (when-not (contains? #{"peer" "circle-work"} (:kind session-info)) [:form {:on-submit send}
     [:div.agent-session-toolbar

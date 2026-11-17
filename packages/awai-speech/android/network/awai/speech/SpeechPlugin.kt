@@ -40,7 +40,7 @@ class SpeechPlugin(private val owner:Activity):Plugin(owner){
  @Command fun operation(invoke:Invoke){
   val a=invoke.getArgs();val action=a.optString("action")
   if(action=="stop"){stop();invoke.resolve(result().put("stopped",true));return}
-  if(action=="status"){invoke.resolve(result().put("available",true).put("active",token.isNotEmpty()&&!cancelled.get()&&SystemClock.elapsedRealtime()<until).put("remoteAudio",false));return}
+  if(action=="status"){invoke.resolve(result().put("supported",true).put("microphoneGranted",getPermissionState("microphone")==PermissionState.GRANTED).put("active",token.isNotEmpty()&&!cancelled.get()&&SystemClock.elapsedRealtime()<until).put("remoteAudio",false));return}
   if(action=="begin"){
    if(a.keys().asSequence().toSet()!=setOf("action","botId","sessionId")||!a.optString("botId").matches(Regex("profile:[A-Za-z0-9_.-]+"))||!a.optString("sessionId").matches(Regex("[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"))){invoke.reject("invalid-speech-scope");return}
    if(busy.get()||token.isNotEmpty()){invoke.reject("speech-busy");return}
@@ -57,7 +57,7 @@ class SpeechPlugin(private val owner:Activity):Plugin(owner){
    try{
     active(t);val e=engine?:throw IllegalStateException("speech-unavailable")
     val out=when(action){
-     "listen"->{check(++listens<=12);val samples=record(t);active(t);val asrAt=SystemClock.elapsedRealtime();val text=if(samples.isEmpty())"" else e.recognize(samples,16000);result().put("text",text).put("audioSamples",samples.size).put("sampleRate",16000).put("recognitionMs",SystemClock.elapsedRealtime()-asrAt)}
+     "listen"->{check(++listens<=12);val captured=record(t);val samples=captured.samples;active(t);val asrAt=SystemClock.elapsedRealtime();val text=if(samples.isEmpty())"" else e.recognize(samples,16000);result().put("text",text).put("capturedSamples",captured.total).put("recognitionSamples",samples.size).put("sampleRate",16000).put("recognitionMs",SystemClock.elapsedRealtime()-asrAt)}
      "speak"->{check(++speaks<=24);val audio=e.synthesize(a.getString("text"));active(t);val synthesisMs=SystemClock.elapsedRealtime()-started;play(t,audio.samples,audio.sampleRate);result().put("samples",audio.samples.size).put("sampleRate",audio.sampleRate).put("synthesisMs",synthesisMs)}
      else->{check(++speaks<=24&&++listens<=12);val text="こんにちは。音声の確認です。";val audio=e.synthesize(text);val ttsMs=SystemClock.elapsedRealtime()-started;active(t);val asrAt=SystemClock.elapsedRealtime();val recognized=e.recognize(SpeechEngine.resample16k(audio.samples,audio.sampleRate),16000);result().put("syntheticAudio",true).put("microphoneTested",false).put("text",recognized).put("samples",audio.samples.size).put("sampleRate",audio.sampleRate).put("synthesisMs",ttsMs).put("recognitionMs",SystemClock.elapsedRealtime()-asrAt)}
     }
@@ -70,7 +70,7 @@ class SpeechPlugin(private val owner:Activity):Plugin(owner){
  @PermissionCallback fun microphoneResult(invoke:Invoke){if(getPermissionState("microphone")==PermissionState.GRANTED)begin(invoke)else invoke.reject("microphone-denied")}
  private fun begin(invoke:Invoke){
   AlertDialog.Builder(owner).setTitle("音声会話を始める")
-   .setMessage("マイクと読み上げを最大3分間、この端末で使います。音声は保存・送信しません。文字をBotに送る操作は、そのつど画面で確認します。")
+   .setMessage("Bot: "+invoke.getArgs().getString("botId").removePrefix("profile:")+"\nマイクと読み上げを最大3分間、この端末で使います。音声は保存・送信しません。文字だけを送る音声会話の接続先と上限は、別の画面で確認します。")
    .setNegativeButton("キャンセル"){_,_->invoke.reject("speech-denied")}.setOnCancelListener{invoke.reject("speech-denied")}
    .setPositiveButton("始める"){_,_->
     if(!busy.compareAndSet(false,true)){invoke.reject("speech-busy");return@setPositiveButton}
@@ -78,17 +78,18 @@ class SpeechPlugin(private val owner:Activity):Plugin(owner){
     worker.execute{try{engine?.close();engine=SpeechEngine(owner);engine!!.verify();check(epoch.get()==expectedEpoch&&owner.hasWindowFocus());listens=0;speaks=0;boundBot=invoke.getArgs().getString("botId");boundSession=invoke.getArgs().getString("sessionId");token=UUID.randomUUID().toString();until=SystemClock.elapsedRealtime()+180000;cancelled.set(false);val out=result().put("token",token).put("durationMs",180000).put("remoteAudio",false).put("modelSet","sensevoice-20240717-supertonic3-20260511-ja");owner.runOnUiThread{invoke.resolve(out)}}catch(_:Exception){stop();owner.runOnUiThread{invoke.reject("speech-models-unavailable")}}finally{busy.set(false)}}
    }.show()
  }
- private fun record(t:String):FloatArray{
+ private data class Capture(val samples:FloatArray,val total:Int)
+ private fun record(t:String):Capture{
   val rate=16000;val minimum=AudioRecord.getMinBufferSize(rate,AudioFormat.CHANNEL_IN_MONO,AudioFormat.ENCODING_PCM_16BIT);check(minimum>0)
   val rec=AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION,rate,AudioFormat.CHANNEL_IN_MONO,AudioFormat.ENCODING_PCM_16BIT,maxOf(minimum,rate*2));recorder=rec
   try{check(rec.state==AudioRecord.STATE_INITIALIZED);rec.startRecording();val chunks=ArrayList<FloatArray>();val frame=ShortArray(320);var heard=0;var silent=0;var total=0;var noise=0.002
    while(total<rate*20){active(t);val n=rec.read(frame,0,frame.size);check(n>0);val block=FloatArray(n){frame[it]/32768f};total+=n;val rms=sqrt(block.sumOf{it.toDouble()*it}/n)
-    if(total<=rate*0.3)noise=maxOf(noise,rms)
+    if(total<=rate*0.3&&rms<0.008)noise=maxOf(noise,rms)
     if(rms>maxOf(0.008,noise*3)){heard++;silent=0}else if(heard>0)silent++
-    chunks.add(block);if(heard>=3&&silent>=30)break;if(heard==0&&total>=rate*6)return FloatArray(0)
+    chunks.add(block);if(heard>=3&&silent>=30)break;if(heard==0&&total>=rate*6)return Capture(FloatArray(0),total)
    }
-   if(heard<3)return FloatArray(0)
-   val out=FloatArray(total);var at=0;for(b in chunks){b.copyInto(out,at);at+=b.size};return out
+   if(heard<3)return Capture(FloatArray(0),total)
+   val out=FloatArray(total);var at=0;for(b in chunks){b.copyInto(out,at);at+=b.size};return Capture(out,total)
   }finally{try{rec.stop()}catch(_:Exception){};rec.release();recorder=null}
  }
  private fun play(t:String,samples:FloatArray,rate:Int){

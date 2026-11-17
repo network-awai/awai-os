@@ -65,10 +65,10 @@ test("the shared broker accepts both descriptors", () => {
   const relay = "https://relay.awai.network";
   const os = runtimeDescriptor("index.html", osOperations(relay));
   const phone = runtimeDescriptor("index.html", phoneOperations(relay));
-  assert.deepEqual(clientRuntimeProblems(os, ["awai-link", "awai-trust", "awai-wallet", "itonami-bot-chat", "itonami-mail-aliases"], []), []);
+  assert.deepEqual(clientRuntimeProblems(os, ["awai-link", "awai-trust", "awai-wallet", "itonami-bot-chat", "itonami-bot-voice", "itonami-mail-aliases"], []), []);
   assert.deepEqual(clientRuntimeProblems(phone, ["awai-link"], ["https://awai.network"]), []);
   assert.equal(
-    clientRuntimeConnectSrc(os, ["awai-link", "awai-trust", "awai-wallet", "itonami-bot-chat", "itonami-mail-aliases"], [], []),
+    clientRuntimeConnectSrc(os, ["awai-link", "awai-trust", "awai-wallet", "itonami-bot-chat", "itonami-bot-voice", "itonami-mail-aliases"], [], []),
     "connect-src " + [CHAT_ORIGIN,"https://mainnet.optimism.io","https://relay.awai.network"].sort().join(" "),
   );
 });

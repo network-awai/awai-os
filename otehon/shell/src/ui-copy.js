@@ -1,6 +1,23 @@
 // Quoted dictionary keys survive advanced property renaming. UI copy excludes imported content.
 export const UI_COPY = {
   "ja": {
+    "voiceConversation": "音声会話",
+    "voiceStart": "音声会話を始める",
+    "voiceStop": "音声会話を終了",
+    "voiceScopeInfo": "音声は端末内 · 最大3分 / 12ターン",
+    "voiceConsentInfo": "開始時に送信先・3分・12ターンを確認します。",
+    "voice-ready": "話しかけて会話できます。認識した文字と応答は、この会話に表示します。",
+    "voice-preparing": "マイクと端末内の音声エンジンを確認しています",
+    "voice-connecting": "選択したBotへの接続を確認しています",
+    "voice-listening": "聞いています…",
+    "voice-waiting": "選択したBotの応答を待っています",
+    "voice-speaking": "読み上げています…",
+    "voice-ended": "音声会話を終了しました",
+    "voice-error": "音声会話を確認できません。接続・マイク・端末内モデルを確認してください。送信済みの応答は、履歴で確認できます。",
+    "voice-local-remote": "音声：端末内 / 応答：Bot",
+    "voiceRemainingText": "続きは会話に表示しています。",
+    "voice-unsupported": "この端末では音声エンジンに接続できません。",
+
     "identityStoreStale": "最新の保存状態から復元してください。",
     "identityRecoveryRequired": "鍵の復旧が必要です。", "identityRecover": "保管済みの鍵から復旧", "identityRecovered": "同じ主体ID・DIDで復旧しました。",
     "mailLegacyAddress": "旧固定アドレスの予約",
@@ -177,6 +194,23 @@ export const UI_COPY = {
     "importedProfiles": "Bot登録を取り込む"
   },
   "en": {
+    "voiceConversation": "Voice conversation",
+    "voiceStart": "Start voice conversation",
+    "voiceStop": "End voice conversation",
+    "voiceScopeInfo": "Audio stays on device · up to 3 minutes / 12 turns",
+    "voiceConsentInfo": "Confirm the destination and 3-minute, 12-turn limit when starting.",
+    "voice-ready": "Speak to converse. Recognized text and replies appear in this conversation.",
+    "voice-preparing": "Checking the microphone and on-device speech engine",
+    "voice-connecting": "Confirming the connection to the selected Bot",
+    "voice-listening": "Listening…",
+    "voice-waiting": "Waiting for the selected Bot",
+    "voice-speaking": "Speaking…",
+    "voice-ended": "Voice conversation ended",
+    "voice-error": "Voice conversation could not be confirmed. Check the connection, microphone and local models. Check history for any submitted response.",
+    "voice-local-remote": "Speech: on device / Reply: Bot",
+    "voiceRemainingText": "The rest is displayed in the conversation.",
+    "voice-unsupported": "The speech engine is unavailable on this device.",
+
     "identityStoreStale": "Restore the latest saved state.",
     "identityRecoveryRequired": "Key recovery is required.", "identityRecover": "Recover using the stored key", "identityRecovered": "Recovered the same principal ID and DID.",
     "mailLegacyAddress": "Legacy fixed-address reservation",

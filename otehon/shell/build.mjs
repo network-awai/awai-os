@@ -16,6 +16,7 @@ await import('./scripts/sync-vendor.mjs');
 await copyFile("vendor/kotoba-client-runtime.js", "src/vendor-runtime.gen.js");
 const { osOperations, phoneOperations, runtimeDescriptor } = await import("./src/runtime.js");
 import { scriptSrc, styleSrc, imageSrc, staticReportConnectSrc } from "./src/csp.js";
+import {voiceConnectSrc} from './src/voice-channel-contract.js';
 import { buildDougaka } from "./dougaka-bundle.mjs";
 
 const relayOrigin = process.env.RELAY_ORIGIN ?? "https://relay.awai.network";
@@ -54,7 +55,7 @@ async function page({ html, outdir, operations, appOrigins }) {
   await copyFile("assets/awai-logo.png", `${outdir}/assets/awai-logo.png`);
   const capabilities = [...new Set(operations.map((operation) => operation.capability))];
   const connect = staticReportConnectSrc(
-    clientRuntimeConnectSrc(runtimeDescriptor("index.html", operations), capabilities, [], appOrigins),
+    voiceConnectSrc(clientRuntimeConnectSrc(runtimeDescriptor("index.html", operations), capabilities, [], appOrigins),operations),
     cspMode, outdir === "dist",
   );
   const template = await readFile(html, "utf8");
