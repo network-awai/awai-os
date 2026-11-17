@@ -24,7 +24,7 @@ internal object Models {
  fun generate(prompt:String,tokens:Int):String{require(prompt.isNotBlank()&&prompt.toByteArray(Charsets.UTF_8).size<=8192&&tokens in 1..256){"invalid-request"};check(loaded){"model-not-loaded"};val result=String(Engine.generate(prompt.toByteArray(Charsets.UTF_8),tokens),Charsets.UTF_8);check(result.isNotBlank()){"empty-result"};return result}
  fun release(){Engine.release();loaded=false}
  fun trustedCaller(c:Context,caller:String?):Boolean {
-  val allowed=setOf("network.itonami.app","network.itonami.gaka","network.awai.gaka","network.itonami.dougaka","network.itonami.dougaka.preview","network.itonami.mangaka","network.itonami.animeka","network.itonami.ongakuka")
+  val allowed=setOf("network.itonami.app","network.itonami.gaka","network.awai.gaka","network.itonami.dougaka","network.itonami.dougaka.preview","network.itonami.mangaka","network.itonami.animeka","network.itonami.ongakuka","network.itonami.rodo")
   return caller in allowed && c.packageManager.checkSignatures(c.packageName,caller!!)==android.content.pm.PackageManager.SIGNATURE_MATCH
  }
 }
