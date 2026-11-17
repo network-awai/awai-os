@@ -48,13 +48,18 @@ node android/test/run-qa-device.mjs --serial=10.77.0.2:5555 --mode=physical-6600
 
 Since 2026-11-17 (AWAI-3049) the live 6600H route serves an `ipxe.efi` that adds
 `video=HDMI-A-2:d`, so the DP-1 monitor is Android's primary display. Pass the
-matching pair, `display-route-active.json` and `display-route-artifacts.json`.
-They live in the AWAI-3030 task output's `display-route/` folder, which is private
-and not a fixed delivery location. They pin `ipxe.efi` to sha256
+matching pair, `route-active.json` and `artifacts.json`, from the fixed operator
+folder `github/workspaces/codex/awai-6600h-lan-boot/` on the Mac (not in Git; its
+README lists the layout, the 18091 start script and rollback). The served files
+are real, read-only copies in `generations/20261117-dp1-primary/`; the legacy
+`wt/codex/awai-2912-lan-install` and `wt/codex/awai-android-desktop-6600h` paths
+that dnsmasq and `http.server 8080` read are symlinks into that folder's
+`compat/`, so no task worktree holds a live boot dependency any more. The pair
+pins `ipxe.efi` to sha256
 `cbf209ec4c63617af2e5d5eb18ca72071b5c86419401091b5813bba439b4ea15` (311296
 bytes); kernel and initrd are unchanged from persistent-v6. The earlier
 `persistent-v6-route-active.json` / `persistent-v6-artifacts.json` pair (ipxe
-`34c26bfc…`) now correctly refuses admission, because the active TFTP link no
+`34c26bfc…`) correctly refuses admission, because the active TFTP link no
 longer resolves to its `newRoot`.
 
 Admission checks the explicit serial/MAC, actual APK manifest/testOnly/network
