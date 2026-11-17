@@ -9,9 +9,13 @@ const app = fileURLToPath(new URL('../', import.meta.url)), repo = resolve(app, 
 const sha = b => createHash('sha256').update(b).digest('hex');
 await rm(out, {recursive: true, force: true});
 await mkdir(out, {recursive: true});
-for (const name of ['index.html', 'style.css', 'app.js', 'model.js', 'messages.js']) await copyFile(resolve(app, 'src', name), resolve(out, name));
+for (const name of ['style.css', 'app.js', 'model.js', 'messages.js']) await copyFile(resolve(app, 'src', name), resolve(out, name));
 await copyFile(resolve(repo, 'packages/awai-shell/host.js'), resolve(out, 'host.js'));
-await copyFile(resolve(app, 'src-tauri/icons/32x32.png'), resolve(out, 'icon.png'));
+// The page icon is inlined: Android WebView re-requests a linked icon on every URL change, including each search keystroke.
+const icon = 'data:image/png;base64,' + (await readFile(resolve(app, 'src-tauri/icons/32x32.png'))).toString('base64');
+const html = await readFile(resolve(app, 'src/index.html'), 'utf8');
+if (!html.includes('href="icon.png"')) throw Error('index.html icon link missing');
+await writeFile(resolve(out, 'index.html'), html.replace('href="icon.png"', `href="${icon}"`));
 const pins = JSON.parse(await readFile(resolve(repo, 'otehon/shell/vendor/PINS.json'), 'utf8'));
 for (const [input, output] of [['kotoba-client-runtime.js', 'runtime.js'], ['kotoba-client-consent.css', 'runtime-consent.css']]) {
   const bytes = await readFile(resolve(repo, 'otehon/shell/vendor', input));
