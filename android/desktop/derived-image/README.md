@@ -75,7 +75,13 @@ and its signature is [evidence/awai-manifest.json.sig](evidence/awai-manifest.js
 
 ## Not done
 
-- **Boot test.** These images have not been booted. To try them on the Desktop:
+- **Desktop boot test.** On 2026-11-17 the images booted in an x86_64 VM on the operator Mac
+  (QEMU, no hardware acceleration): `sys.boot_completed=1` after about 4 minutes, the three apps
+  are system apps under `/system/product/app` and render, and the DP-1 property is set. Without a
+  DP-1 connector the VM still used its virtual display. See
+  [vm-boot-20261117.json](evidence/vm-boot-20261117.json) and the
+  [Home](evidence/vm-home-20261117.png), [Store](evidence/vm-store-20261117.png) and
+  [Yotei](evidence/vm-yotei-20261117.png) screens. They have not been booted on the Desktop. To do that:
   - Use them in place of the base images in the [LAN Live route](../netboot/README.md),
     or as the NVMe copies in the [persistence route](../persistence/README.md).
   - The persistence route's `verify-images.sh` pins the base digests, so it needs
