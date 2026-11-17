@@ -1,5 +1,7 @@
 package network.itonami.app
 import android.app.Activity
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import androidx.webkit.ProxyConfig
 import androidx.webkit.ProxyController
 import androidx.webkit.WebViewFeature
@@ -23,6 +25,14 @@ object AgentTransport {
    require(c.keys().asSequence().toSet()==setOf("schema","origin","proxy"))
    require(c.getString("schema")=="awai.agent-transport.v1"&&c.getString("origin")==origin&&c.getString("proxy")=="10.77.0.1:10844")
    require(WebViewFeature.isFeatureSupported(WebViewFeature.PROXY_OVERRIDE)&&WebViewFeature.isFeatureSupported(WebViewFeature.PROXY_OVERRIDE_REVERSE_BYPASS))
+   // The wired maintenance LAN has no Internet/default route. Select only this
+   // process's existing, exact Ethernet network; never change OS routing/DNS.
+   val cm=owner.getSystemService(ConnectivityManager::class.java)
+   val networks=cm.allNetworks.filter { n ->
+    cm.getNetworkCapabilities(n)?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)==true &&
+    cm.getLinkProperties(n)?.let { p -> p.interfaceName=="eth0" && p.linkAddresses.any { a -> a.address.hostAddress=="10.77.0.2" && a.prefixLength==24 } }==true
+   }
+   require(networks.size==1 && cm.bindProcessToNetwork(networks.single()))
    val config=ProxyConfig.Builder().addProxyRule(c.getString("proxy")).addBypassRule("21mbp.tail110d8b.ts.net").setReverseBypassEnabled(true).build()
    ProxyController.getInstance().setProxyOverride(config,owner.mainExecutor){ready=true}
   }catch(_:Exception){ready=false}
