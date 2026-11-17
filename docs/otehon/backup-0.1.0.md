@@ -6,19 +6,19 @@ the node before it reaches the backup target, and a new disk restores it with th
 
 | Part | Component | File |
 | --- | --- | --- |
-| Backup | The NixOS restic module, service `restic-backups-otehon`, wrapper `restic-otehon` | `nixos/otehon/backup.nix` |
-| Repository key | `/var/lib/otehon/backup/restic.key` on the encrypted state volume | `nixos/otehon/backup.nix` |
-| Key on a new disk | `otehon-backup-key` copies `restic.key` from the key disk once, if the volume has none | `nixos/otehon/backup.nix` |
-| restic cache | Moved to `/var/lib/otehon/backup/cache`. The module's default is `/var/cache`, on the root partition, which is not encrypted | `nixos/otehon/backup.nix` |
-| Check image | Headless, imports `base-module.nix` and `backup.nix`. The target is a 9p share. QEMU passes the mode through fw_cfg | `nixos/otehon/backup-check.nix` |
-| Check | Four boots on qcow2 overlays of one image | `nixos/otehon/backup-check-qemu.sh` |
+| Backup | The NixOS restic module, service `restic-backups-otehon`, wrapper `restic-otehon` | `otehon/backup.nix` |
+| Repository key | `/var/lib/otehon/backup/restic.key` on the encrypted state volume | `otehon/backup.nix` |
+| Key on a new disk | `otehon-backup-key` copies `restic.key` from the key disk once, if the volume has none | `otehon/backup.nix` |
+| restic cache | Moved to `/var/lib/otehon/backup/cache`. The module's default is `/var/cache`, on the root partition, which is not encrypted | `otehon/backup.nix` |
+| Check image | Headless, imports `base-module.nix` and `backup.nix`. The target is a 9p share. QEMU passes the mode through fw_cfg | `otehon/backup-check.nix` |
+| Check | Four boots on qcow2 overlays of one image | `otehon/backup-check-qemu.sh` |
 
 The backup covers `/var/lib/otehon` and leaves out `age.key`, `backup/` (the restic key and the
 cache) and `lost+found`. The keys come from the key disk on a new disk, not from the backup.
 There is no schedule: `otehon.backup.timerConfig` is `null`, and the backup runs with
 `systemctl start restic-backups-otehon`. Restore is `restic-otehon restore latest --target /`.
 
-`nixos/otehon/fixtures/backup/` holds two test repository keys, `test-restic.key` and
+`otehon/fixtures/backup/` holds two test repository keys, `test-restic.key` and
 `test-wrong-restic.key`. They protect only check repositories made on the Mac.
 `base-make-key-disk.sh` takes an optional third argument that adds `restic.key` to the key disk.
 `backup-check.nix` is not a release: it has no login, network, SSH or Hermes Agent.
@@ -30,7 +30,7 @@ Follow [vm-0.1.0.md](vm-0.1.0.md) and add `--argstr profile backup-check` to `ni
 ## Check
 
 ```bash
-nixos/otehon/backup-check-qemu.sh backup-check.qcow2 work
+otehon/backup-check-qemu.sh backup-check.qcow2 work
 ```
 
 `work` must not hold a `share` directory yet. The image is not changed. Exit codes: `0` every

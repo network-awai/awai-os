@@ -73,7 +73,7 @@ approved Otehon tool (ADR 0026 D3); Java was not used for this check.
 
 ## Not verified or not implemented
 
-- The NixOS VM evidence run (harness exists in `nixos/`, unexecuted).
+- The NixOS VM evidence run (harness exists in `archive/nixos/`, unexecuted).
 - Real node pull/start/receipt (JUN-288/292/296): grant class policy,
   L5 items, digest/CID binding, framed stdio, writer fencing.
 - `orders.hy` (ADR 0027 says added; absent from the repo).

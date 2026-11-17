@@ -7,7 +7,7 @@ QEMU/HVF 上で NixOS image を動かす interim 経路 (AWAI-2784)。
 ## Build (効率化つき)
 
 ```
-./nixos/otehon/macos-build.sh <out-dir>   # <out-dir> は絶対パス・repo 外
+./otehon/macos-build.sh <out-dir>   # <out-dir> は絶対パス・repo 外
 ```
 
 - `awai-otehon-nix` podman volume を build cache として永続化する。volume が
@@ -39,8 +39,8 @@ QEMU/HVF 上で NixOS image を動かす interim 経路 (AWAI-2784)。
 ## Install / launch (.app)
 
 ```
-./nixos/otehon/macos-app/install-image.sh <out-dir>/otehon-desktop.qcow2 0.7.0
-./nixos/otehon/macos-app/assemble-app.sh <dest-dir> 0.7.0
+./otehon/macos-app/install-image.sh <out-dir>/otehon-desktop.qcow2 0.7.0
+./otehon/macos-app/assemble-app.sh <dest-dir> 0.7.0
 open "<dest-dir>/Awai Desktop.app"
 ```
 
@@ -57,7 +57,7 @@ open "<dest-dir>/Awai Desktop.app"
 ## Check (VM gate)
 
 ```
-./nixos/otehon/desktop-check-qemu.sh <image.qcow2> <serial.log> <shot.ppm> [timeout]
+./otehon/desktop-check-qemu.sh <image.qcow2> <serial.log> <shot.ppm> [timeout]
 ```
 
 `OTEHON_BOOT_REPORT ... compositor=1 chromium=1 react=1 zenoh=1 matter=1

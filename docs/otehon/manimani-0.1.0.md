@@ -56,7 +56,7 @@ The plan is microphone, then Qwen3-ASR, then the Manimani turn, then Qwen3-TTS, 
 ## Check
 
 ```bash
-cd nixos/otehon/manimani
+cd otehon/manimani
 bb -cp src:test test/manimani/core_test.clj
 python3 -I test/check_service.py http://127.0.0.1:18772
 ```

@@ -1,6 +1,6 @@
 # Itonami — single Tauri v3 Otehon app (AWAI-3001)
 
-Packages the owning `nixos/otehon/shell` UI in one Android APK, using the existing
+Packages the owning `otehon/shell` UI in one Android APK, using the existing
 Tauri3.0.0-alpha.6 / Wry foundation (tauri-build alpha4). Core/Apps/System,
 Manimani, account/node docks and the approved composition are retained. No
 second workspace UI, test identity or authenticated-session fixture is shipped.

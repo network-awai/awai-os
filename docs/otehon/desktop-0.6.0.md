@@ -9,7 +9,7 @@ Matter run as system services, and the shell shows whether it can reach them.
 | Layer | Component |
 | --- | --- |
 | Shell | React 19, bundled by esbuild, loaded from a local file |
-| Dapp list | `nixos/otehon/shell/src/dapps.json`, a snapshot of `kotoba-lang/kotoba` `lib/kotoba.aiueos/distributions/awai/dapps` at `f1096f0e` |
+| Dapp list | `otehon/shell/src/dapps.json`, a snapshot of `kotoba-lang/kotoba` `lib/kotoba.aiueos/distributions/awai/dapps` at `f1096f0e` |
 | Browser | Chromium in kiosk mode |
 | Compositor | cosmic-comp 1.2.0, built on Smithay |
 | Display protocol | Wayland |
@@ -32,12 +32,12 @@ VM. It is not an Itonami OS release or a complete Awai Node.
 
 Follow [vm-0.1.0.md](vm-0.1.0.md) and add `--argstr profile desktop` to
 `nix-build`. Node.js and npm are used only to build the shell, from
-`nixos/otehon/shell/package-lock.json`.
+`otehon/shell/package-lock.json`.
 
 ## Use
 
 ```bash
-nixos/otehon/run-desktop-qemu.sh otehon-desktop.qcow2
+otehon/run-desktop-qemu.sh otehon-desktop.qcow2
 ```
 
 The window writes changes to the image. Use a copy to keep the original.
@@ -49,7 +49,7 @@ its model is unavailable.
 ## Check
 
 ```bash
-nixos/otehon/desktop-check-qemu.sh otehon-desktop.qcow2 serial.log shot.ppm
+otehon/desktop-check-qemu.sh otehon-desktop.qcow2 serial.log shot.ppm
 ```
 
 Exit codes: `0` report with `compositor=1 chromium=1 react=1 zenoh=1 matter=1

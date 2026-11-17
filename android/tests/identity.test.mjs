@@ -7,7 +7,7 @@ const root=fileURLToPath(new URL('../../',import.meta.url));
 await mkdir(path.join(root,'.agent-output'),{recursive:true});
 const temp=await mkdtemp(path.join(root,'.agent-output/identity-route-test-'));
 await copyFile(path.join(root,'android/client/generated/identity.js'),path.join(temp,'identity.mjs'));
-await copyFile(path.join(root,'nixos/otehon/shell/vendor/kotoba-client-runtime.js'),path.join(temp,'runtime.js'));
+await copyFile(path.join(root,'otehon/shell/vendor/kotoba-client-runtime.js'),path.join(temp,'runtime.js'));
 const {relayRequestAllowed:allowed}=await import(pathToFileURL(path.join(temp,'identity.mjs')));
 test('account relay requests use a normalized, fixed HTTPS route with no caller parameters',()=>{
   const good=`https://relay.awai.network/${'a'.repeat(32)}/json`;

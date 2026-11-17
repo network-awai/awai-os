@@ -7,13 +7,13 @@ rolled back.
 
 | Part | Component | File |
 | --- | --- | --- |
-| Encrypted state | LUKS volume at `/var/lib/otehon`, formatted on first boot | `nixos/otehon/base-module.nix` |
-| Secrets | sops-nix with an age key kept on the encrypted volume | `nixos/otehon/base-module.nix` |
-| Firewall | nftables, inbound closed by default | `nixos/otehon/base-module.nix` |
-| Generations | systemd-boot entries, Nix database registered on first boot | `nixos/otehon/base-module.nix` |
-| Check image | Fixture secret, test listeners, update and rollback sequence | `nixos/otehon/base.nix` |
+| Encrypted state | LUKS volume at `/var/lib/otehon`, formatted on first boot | `otehon/base-module.nix` |
+| Secrets | sops-nix with an age key kept on the encrypted volume | `otehon/base-module.nix` |
+| Firewall | nftables, inbound closed by default | `otehon/base-module.nix` |
+| Generations | systemd-boot entries, Nix database registered on first boot | `otehon/base-module.nix` |
+| Check image | Fixture secret, test listeners, update and rollback sequence | `otehon/base.nix` |
 
-The keys in `nixos/otehon/fixtures/` are for local check VMs only. They open only
+The keys in `otehon/fixtures/` are for local check VMs only. They open only
 the fixture secret. `base.nix` is a check image, not a release: it has no login
 credentials, SSH or Hermes Agent, and it is not an Itonami OS release or a complete
 Awai Node.
@@ -30,7 +30,7 @@ Follow [vm-0.1.0.md](vm-0.1.0.md) and add `--argstr profile base` to `nix-build`
 The check changes the image, so run it on a copy.
 
 ```bash
-nixos/otehon/base-make-key-disk.sh nixos/otehon/fixtures/test-age.key keys.tar
+otehon/base-make-key-disk.sh otehon/fixtures/test-age.key keys.tar
 ```
 
 ```bash
@@ -38,7 +38,7 @@ cp otehon-base.qcow2 check.qcow2
 ```
 
 ```bash
-nixos/otehon/base-check-qemu.sh check.qcow2 keys.tar serial.log
+otehon/base-check-qemu.sh check.qcow2 keys.tar serial.log
 ```
 
 Exit codes: `0` every check passed, `1` a check failed, `3` the check could not run.
@@ -81,7 +81,7 @@ The report lines are in
 
 - The key disk is a test stand-in. TPM2, a passphrase, key rotation and key recovery
   are not implemented.
-- `nixos/network-update.nix` is not used. It asserts `services.murakumoNative.enable`,
+- `archive/nixos/network-update.nix` is not used. It asserts `services.murakumoNative.enable`,
   so it needs work before it can serve Otehon. Network delivery of an update, a
   one-shot trial, and automatic rollback after a failed boot are not implemented.
 - The refusal to format a partition that already holds data was not exercised.

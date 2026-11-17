@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-source = Path(__file__).parents[2] / 'nixos/otehon/drive/prepare.py'
+source = Path(__file__).parents[2] / 'otehon/drive/prepare.py'
 spec = importlib.util.spec_from_file_location('drive_prepare', source)
 p = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(p)

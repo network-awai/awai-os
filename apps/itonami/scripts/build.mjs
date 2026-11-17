@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 const app = fileURLToPath(new URL('../', import.meta.url));
 const repo = path.resolve(app, '../..');
-const shell = path.join(repo, 'nixos/otehon/shell');
+const shell = path.join(repo, 'otehon/shell');
 const sha = b => createHash('sha256').update(b).digest('hex');
 const pins = JSON.parse(await readFile(path.join(shell, 'vendor/PINS.json'), 'utf8'));
 for (const [name,digest] of Object.entries(pins.files)) {
@@ -18,9 +18,9 @@ const dest = path.join(app, 'dist');
 // Provenance: refuse dirty or stale shell inputs before attributing the bundle.
 // dist/ is gitignored, so cleanliness covers tracked sources and the mtime
 // check below covers staleness against the prebuilt shell bundle.
-if (execFileSync('git', ['status', '--porcelain', '--', 'nixos/otehon/shell'], {cwd: repo, encoding: 'utf8'}).trim() !== '')
+if (execFileSync('git', ['status', '--porcelain', '--', 'otehon/shell'], {cwd: repo, encoding: 'utf8'}).trim() !== '')
   throw Error('uncommitted owning shell sources; commit or discard first');
-const shellMtime = Math.max(...execFileSync('git', ['ls-files', '-z', 'nixos/otehon/shell'], {cwd: repo, encoding: 'utf8'}).split('\0').filter(Boolean)
+const shellMtime = Math.max(...execFileSync('git', ['ls-files', '-z', 'otehon/shell'], {cwd: repo, encoding: 'utf8'}).split('\0').filter(Boolean)
   .map(f => statSync(path.join(repo, f)).mtimeMs));
 const distMtime = statSync(path.join(source, 'index.html')).mtimeMs;
 if (!(distMtime >= shellMtime)) throw Error('stale owning shell bundle; rebuild the Nix shell first');
@@ -54,6 +54,6 @@ for (const name of await files(dest)) if(name!=='itonami-bundle.json') {
   const b=await readFile(path.join(dest,name));artifacts[name]={bytes:b.length,sha256:sha(b)};
 }
 const revision=execFileSync('git',['rev-parse','HEAD'],{cwd:repo,encoding:'utf8'}).trim();
-const shellTree=execFileSync('git',['rev-parse','HEAD:nixos/otehon/shell'],{cwd:repo,encoding:'utf8'}).trim();
-await writeFile(path.join(dest,'itonami-bundle.json'),JSON.stringify({schema:'awai.itonami.tauri-bundle.v1',revision,shellTree,broker:pins,ui:'nixos/otehon/shell/dist; unchanged composition',htmlChange:'local Tauri IPC CSP transport only',artifacts},null,2)+'\n');
+const shellTree=execFileSync('git',['rev-parse','HEAD:otehon/shell'],{cwd:repo,encoding:'utf8'}).trim();
+await writeFile(path.join(dest,'itonami-bundle.json'),JSON.stringify({schema:'awai.itonami.tauri-bundle.v1',revision,shellTree,broker:pins,ui:'otehon/shell/dist; unchanged composition',htmlChange:'local Tauri IPC CSP transport only',artifacts},null,2)+'\n');
 console.log('Packaged owning NixOS shell:',Object.keys(artifacts).length,'files');

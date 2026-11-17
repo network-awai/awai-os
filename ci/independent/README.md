@@ -2,7 +2,7 @@
 
 This is an operator-owned executor for Otehon evaluation/core tests. It is not
 an x86/KVM installer, Native, release signer, production scheduler or full CI
-replacement. Never weaken `scripts/ci-otehon-vm-local.sh` to admit this host.
+replacement. Never weaken `archive/nixos/scripts/ci-otehon-vm-local.sh` to admit this host.
 
 Create a **new** Lima instance from `lima-arm64.yaml` on the reviewed Mac.
 The profile has no host mounts, agent/X11 forwarding or published guest ports.

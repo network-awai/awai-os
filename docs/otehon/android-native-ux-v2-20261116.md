@@ -106,9 +106,9 @@ Calculated semantic text contrast:
 
 These calculations cover the selected semantic color pairs, not every image pixel, disabled control, icon overlay or accessibility use case. Real Android TalkBack, focus order, IME, notch/insets, predictive back,3-button navigation, rotations, long/localized app names, tablet/foldable sizes and hardware gesture behavior remain unverified. The clock/daylight/wallpaper design is not an Android boot animation asset bundle.
 
-![Screen overview](mobile/android-native-ux-v2-20261116.png)
+![Screen overview](android-figma/android-native-ux-v2-20261116.png)
 
-![Parts and state review](mobile/android-native-parts-v2-20261116.png)
+![Parts and state review](android-figma/android-native-parts-v2-20261116.png)
 
 ## Tracking and source state
 

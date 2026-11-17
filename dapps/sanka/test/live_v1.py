@@ -2,7 +2,7 @@
 """Runs one real order through llama.cpp and the Hy gateway, then tries to break it (ADR 0027 V1).
 
 It starts real processes on this machine, and writes the measured results to --evidence. The order
-has no value and moves nothing. Only a run inside nixos/tests/sanka-v1.nix counts for the VM gate.
+has no value and moves nothing. Only a run inside dapps/sanka/nix/vm-v1.nix counts for the VM gate.
 
 usage: python3 test/live_v1.py --gateway DIR --python PY --basilisp BIN --llama-server BIN
          --model GGUF --revision REV --model-sha256 HEX --source URL --environment TEXT

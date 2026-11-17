@@ -5,10 +5,10 @@ on:
     paths:
       - .github/workflows/otehon-k3s.yml
       - ci/nixpkgs.nix
-      - nixos/otehon/k3s/**
-      - nixos/otehon/desktop.nix
-      - nixos/tests/otehon-k3s.nix
-      - tests/otehon-k3s-eval.nix
+      - otehon/k3s/**
+      - otehon/desktop.nix
+      - archive/nixos/tests/otehon-k3s.nix
+      - archive/nixos/tests/otehon-k3s-eval.nix
   workflow_dispatch:
 
 permissions:
@@ -36,7 +36,7 @@ jobs:
       - name: Boot actual server and two agents; exercise refusal and recovery
         run: |
           set -o pipefail
-          nix-build nixos/tests/otehon-k3s.nix --out-link result --option cores 2 --option max-jobs 1 2>&1 | tee k3s-vm.log
+          nix-build archive/nixos/tests/otehon-k3s.nix --out-link result --option cores 2 --option max-jobs 1 2>&1 | tee k3s-vm.log
           cat result/k3s-evidence.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()

@@ -6,11 +6,11 @@ a command-line tool for each request.
 
 | Part | What it is |
 | --- | --- |
-| Service | `nixos/otehon/media-service.py`, on `127.0.0.1:8770`. It runs as a dynamic user, and systemd denies it every address except localhost |
+| Service | `otehon/media-service.py`, on `127.0.0.1:8770`. It runs as a dynamic user, and systemd denies it every address except localhost |
 | Speech | Piper 1.4.2 with the `en_US-lessac-medium` voice, which is in the image |
 | Images | `stable-diffusion.cpp` on Vulkan with the Qwen-Image `Q2_K` weights, which are not in the image |
 | Weights | Arrive on a read-only virtiofs share tagged `otehon-models`. Without it, images are refused with `image-model-missing` and the Image button is off |
-| GPU in a VM | krunkit with Venus over MoltenVK, using `nixos/otehon/gpu.nix` and the Mesa patch in `nixos/otehon/mesa-venus-macos` |
+| GPU in a VM | krunkit with Venus over MoltenVK, using `otehon/gpu.nix` and the Mesa patch in `otehon/mesa-venus-macos` |
 
 The service accepts the origin `null`, which is what the shell's `file://` page sends, and requests
 with no origin. It checks the `Host` header, so a web page cannot reach it through DNS rebinding.
@@ -38,13 +38,13 @@ Build the profile as in [vm-0.1.0.md](vm-0.1.0.md), then:
 
 ```bash
 # GPU images and speech. The image changes, so use a copy. The results directory must exist.
-nixos/otehon/desktop-media-krunkit.sh desktop-media.raw <models-dir> <results-dir> serial.log
+otehon/desktop-media-krunkit.sh desktop-media.raw <models-dir> <results-dir> serial.log
 
 # Speech with a display, and the refusal when there are no weights.
-nixos/otehon/desktop-login-check-qemu.sh desktop-media-gui.qcow2 serial.log shot.ppm 600
+otehon/desktop-login-check-qemu.sh desktop-media-gui.qcow2 serial.log shot.ppm 600
 
 # Negative control: the same check, with a voice that writes silence. It must exit 1.
-nixos/otehon/desktop-login-check-qemu.sh desktop-media-silent.qcow2 serial.log shot.ppm 600
+otehon/desktop-login-check-qemu.sh desktop-media-silent.qcow2 serial.log shot.ppm 600
 ```
 
 Exit codes: `0` every step passed, `1` a step failed or no result before the timeout, `3` the check

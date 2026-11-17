@@ -3,7 +3,7 @@
 The public immutable persistence pilot is separate from the read-only preflight:
 
 ```sh
-bb --classpath nixos/otehon/storage/src:nixos/otehon/storage/vendor/apex/src:nixos/otehon/storage/vendor/apex-car/src scripts/otehon-c1/replica_fixture_test.clj
+bb --classpath otehon/storage/src:otehon/storage/vendor/apex/src:otehon/storage/vendor/apex-car/src scripts/otehon-c1/replica_fixture_test.clj
 node scripts/otehon-c1/replica_pilot.mjs HOST_A HOST_B .agent-output/NEW_PUBLIC_PILOT
 ```
 
@@ -153,7 +153,7 @@ Refresh the two existing PUBLIC fixture stores with a read-only audit:
 node scripts/otehon-c1/reliability_audit.mjs \
   .agent-output/two-host-public-pilot-v3/report.json \
   .agent-output/reliability-evidence-now.json
-bb -cp nixos/otehon/shell/src scripts/otehon-c1/reliability_test.clj
+bb -cp otehon/shell/src scripts/otehon-c1/reliability_test.clj
 ```
 
 The pilot report supplies the existing remote workspace; only the pinned

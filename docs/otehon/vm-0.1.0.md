@@ -17,7 +17,7 @@ podman volume create awai-otehon-nix
 ```
 
 ```bash
-podman run --rm --security-opt label=disable -v awai-otehon-nix:/nix -v "$PWD":/w -w /w --env NIX_CONFIG=$'sandbox = false\nfilter-syscalls = false' docker.io/nixos/nix@sha256:7a70027ba790d3a79fa82faeac5f3dddc048f89e83b3901ca69542c340c9fb5c nix-build nixos/otehon/default.nix
+podman run --rm --security-opt label=disable -v awai-otehon-nix:/nix -v "$PWD":/w -w /w --env NIX_CONFIG=$'sandbox = false\nfilter-syscalls = false' docker.io/nixos/nix@sha256:7a70027ba790d3a79fa82faeac5f3dddc048f89e83b3901ca69542c340c9fb5c nix-build otehon/default.nix
 ```
 
 `label=disable` is needed because a later container cannot read store files
@@ -30,7 +30,7 @@ copy is not sparse across the Podman mount. Then convert it on the Mac with
 ## Check
 
 ```bash
-nixos/otehon/boot-check-qemu.sh otehon.qcow2 serial.log 180
+otehon/boot-check-qemu.sh otehon.qcow2 serial.log 180
 ```
 
 Exit codes: `0` report with `failed=0`, `1` failed units or no report, `3` the

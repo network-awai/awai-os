@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { installSaifuGuestBridge } from "../app/src/saifu/host-bridge.mjs";
-import { createSaifuHostBroker } from "../../../nixos/otehon/shell/src/saifu-host.js";
+import { createSaifuHostBroker } from "../../../otehon/shell/src/saifu-host.js";
 
 const address = "0x00000000000000000000000000000000000000AB";
 const request = { jsonrpc: "2.0", id: 1, method: "eth_getBalance", params: [address, "latest"] };

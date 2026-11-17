@@ -7,9 +7,9 @@ import {mkdir,readFile,writeFile,access} from 'node:fs/promises';
 import path from 'node:path';import os from 'node:os';import {fileURLToPath} from 'node:url';
 import assert from 'node:assert/strict';import {createHash} from 'node:crypto';
 import {assertDisposableScope} from './emulator-scope.mjs';
-import {randomWallet,walletResponse,passkeyResponse} from '../../nixos/otehon/shell/test/signers.js';
-import {p256} from '../../nixos/otehon/shell/node_modules/@noble/curves/nist.js';
-import {build} from '../../nixos/otehon/shell/node_modules/esbuild/lib/main.js';
+import {randomWallet,walletResponse,passkeyResponse} from '../../otehon/shell/test/signers.js';
+import {p256} from '../otehon/shell/node_modules/@noble/curves/nist.js';
+import {build} from '../otehon/shell/node_modules/esbuild/lib/main.js';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const options=Object.fromEntries(process.argv.slice(2).map(x=>x.split('=')));
 if(Boolean(options['--provider'])!==Boolean(options['--model']))throw Error('provider and model must both be supplied');
@@ -31,7 +31,7 @@ await writeFile(path.join(avd,'config.ini'),`avd.ini.encoding=UTF-8\nabi.type=ar
 const marker={schema:'awai.disposable-emulator.v1',serial,name,root:run};await writeFile(path.join(run,'scope.json'),JSON.stringify(marker));
 const emulator=spawn(path.join(sdk,'emulator/emulator'),['-avd',name,'-port',String(port),'-no-window','-no-audio','-no-snapshot','-gpu','swiftshader_indirect'],{stdio:['ignore','pipe','pipe']});
 let log='';emulator.stdout.on('data',d=>log+=d);emulator.stderr.on('data',d=>log+=d);
-const sourceHashes={};for(const file of ['android/test/auth-fixture-entry.js','nixos/otehon/shell/src/identity/device.js','nixos/otehon/shell/src/identity/link.js'])sourceHashes[file]=createHash('sha256').update(await readFile(path.join(root,file))).digest('hex');
+const sourceHashes={};for(const file of ['android/test/auth-fixture-entry.js','otehon/shell/src/identity/device.js','otehon/shell/src/identity/link.js'])sourceHashes[file]=createHash('sha256').update(await readFile(path.join(root,file))).digest('hex');
 const report={sourceHashes,schema:'awai.android.auth-regression.v1',startedAt:new Date().toISOString(),serial,avd:name,apkSha256:createHash('sha256').update(await readFile(apk)).digest('hex'),sourceRevision:execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim(),cases:[],boundaries:['software wallet/passkey fixture, not owner authentication','production APK and verifier; test module injected only over scoped emulator CDP','no physical device access','no relay consent or request required']};
 let cdp,forward;const forwards=[];
 try{

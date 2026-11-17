@@ -2,9 +2,9 @@ name: Otehon Drive save and recovery
 on:
   pull_request:
     paths:
-      - nixos/otehon/drive.nix
-      - nixos/otehon/drive/**
-      - nixos/otehon/disk-6600h.nix
+      - otehon/drive.nix
+      - otehon/drive/**
+      - otehon/disk-6600h.nix
       - .github/workflows/otehon-drive.yml
   workflow_dispatch:
 permissions:
@@ -25,7 +25,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p .agent-output
-          nix-build nixos/otehon/drive/check.nix --out-link result-drive-vm --keep-failed --show-trace 2>&1 | tee .agent-output/drive-vm.log
+          nix-build otehon/drive/check.nix --out-link result-drive-vm --keep-failed --show-trace 2>&1 | tee .agent-output/drive-vm.log
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:

@@ -2,11 +2,11 @@ import {mkdir,copyFile,readFile,writeFile} from 'node:fs/promises';import {fileU
 const app=fileURLToPath(new URL('../',import.meta.url)),repo=resolve(app,'../..'),out=resolve(app,'dist'),hash=b=>createHash('sha256').update(b).digest('hex');await mkdir(out,{recursive:true});
 for(const n of ['index.html','style.css','app.js','i18n.js','sync.js','sync-contract.js','bounded-response.js'])await copyFile(resolve(app,'src',n),resolve(out,n));
 await copyFile(resolve(app,'generated/core.js'),resolve(out,'core.js'));await copyFile(resolve(repo,'packages/awai-shell/host.js'),resolve(out,'host.js'));await copyFile(resolve(repo,'android/client/assets/setup-noto-jp.woff2'),resolve(out,'noto-jp.woff2'));
-const vendor=resolve(repo,'nixos/otehon/shell/vendor'),pins=JSON.parse(await readFile(resolve(vendor,'PINS.json'),'utf8'));
+const vendor=resolve(repo,'otehon/shell/vendor'),pins=JSON.parse(await readFile(resolve(vendor,'PINS.json'),'utf8'));
 for(const [src,dest]of [['kotoba-client-runtime.js','runtime.js']]){const b=await readFile(resolve(vendor,src));if(hash(b)!==pins.files[src])throw Error('canonical runtime pin drift');await writeFile(resolve(out,dest),b);}
 const {runtimeFor}=await import('../src/sync-contract.js');const origin=process.env.AWAI_DRIVE_SYNC_ORIGIN||'';
 const descriptor=runtimeFor(origin);await writeFile(resolve(out,'sync-config.js'),`export const syncOrigin=${JSON.stringify(origin)};`);
-const {clientRuntimeProblems,clientRuntimeConnectSrc}=await import('../../../nixos/otehon/shell/vendor/kotoba-client-runtime.js');
+const {clientRuntimeProblems,clientRuntimeConnectSrc}=await import('../../../otehon/shell/vendor/kotoba-client-runtime.js');
 if(clientRuntimeProblems(descriptor,['awai.drive.sync'],'http://tauri.localhost').length)throw Error('invalid sync descriptor');
 const tauriFile=resolve(app,'src-tauri/tauri.conf.json'),config=JSON.parse(await readFile(tauriFile));
 config.app.security.csp="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; "+clientRuntimeConnectSrc(descriptor,['awai.drive.sync'],[],'http://tauri.localhost').replace("'none'",'')+" ipc: http://ipc.localhost; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'";

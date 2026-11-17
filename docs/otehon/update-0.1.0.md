@@ -12,21 +12,21 @@ for AIUEOS Otehon. It is modelled on A/B updates, but uses NixOS generations.
 | Confirm | The installed version rises, and older versions are refused from then on. |
 | Fall back | With no tries left, systemd-boot chooses the previous generation. That boot removes the failed generation and blocks its version. |
 
-The module is `nixos/otehon/update.nix`, and the command is `nixos/otehon/update.sh`. An image that
+The module is `otehon/update.nix`, and the command is `otehon/update.sh`. An image that
 imports the module must set `otehon.update.baseVersion`, `publicKey` and `cacheKey`.
 
-`nixos/otehon/fixtures/update` holds test keys for local check VMs. They sign nothing else.
+`otehon/fixtures/update` holds test keys for local check VMs. They sign nothing else.
 
 ## Check
 
 Build the `update-check` image, then build the feeds in the Nix container from the repository root:
 
 ```bash
-sh nixos/otehon/update-make-feed.sh .agent-output/update/feed
+sh otehon/update-make-feed.sh .agent-output/update/feed
 ```
 
 ```bash
-nixos/otehon/update-check-qemu.sh image.qcow2 feed serial.log
+otehon/update-check-qemu.sh image.qcow2 feed serial.log
 ```
 
 Exit codes: `0` every check passed, `1` a check failed, `3` the check could not run. The image

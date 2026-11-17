@@ -22,14 +22,14 @@ physical disk, publishes an update, or uses a real key.
 
 ## CI
 
-`.github/workflows/nixos-module.yml` has an `otehon` job. It does not build an image or boot a VM.
+`archive/nixos/workflows/nixos-module.yml` has an `otehon` job. It does not build an image or boot a VM.
 
-1. `npm ci` and `npm test` in `nixos/otehon/shell` (the link and trust tests). The `desktop`
+1. `npm ci` and `npm test` in `otehon/shell` (the link and trust tests). The `desktop`
    image runs the same tests in its Nix build, but CI does not build that image.
-2. `sh nixos/otehon/eval-profiles.sh .` instantiates the image derivation of every profile with
+2. `sh otehon/eval-profiles.sh .` instantiates the image derivation of every profile with
    `nix-instantiate`: the 17 aarch64 profiles, `vm` for x86_64, and the three x86_64 profiles of the
    6600h PC (`disk-6600h`, `netboot-6600h`, `netboot-install-6600h`). Option types, assertions,
-   missing files and module errors fail it. Every `.nix` file in `nixos/otehon` is evaluated as a
+   missing files and module errors fail it. Every `.nix` file in `otehon` is evaluated as a
    profile unless it is in the script's `modules` list, so a new profile needs no listing and cannot
    be left out. A new module that is not added to `modules` is evaluated as a profile and fails. A
    name in `modules` or `extra` (`vm@x86_64`) with no file fails as `OTEHON_EVAL_STALE`.
@@ -48,7 +48,7 @@ The original description of a job without Babashka predates these checks.
 Run it locally in the Nix container from the repository root:
 
 ```bash
-podman run --rm --security-opt label=disable -v otehon-shell-nix:/nix -v "$PWD":/w -w /w --env NIX_CONFIG=$'sandbox = false\nfilter-syscalls = false' docker.io/nixos/nix@sha256:7a70027ba790d3a79fa82faeac5f3dddc048f89e83b3901ca69542c340c9fb5c sh nixos/otehon/eval-profiles.sh .
+podman run --rm --security-opt label=disable -v otehon-shell-nix:/nix -v "$PWD":/w -w /w --env NIX_CONFIG=$'sandbox = false\nfilter-syscalls = false' docker.io/nixos/nix@sha256:7a70027ba790d3a79fa82faeac5f3dddc048f89e83b3901ca69542c340c9fb5c sh otehon/eval-profiles.sh .
 ```
 
 ## x86_64
@@ -67,7 +67,7 @@ is required to build". Most of the closure comes from `cache.nixos.org`. What is
 runs emulated and is slow.
 
 ```bash
-podman run --rm --security-opt label=disable -v otehon-shell-nix:/nix -v "$PWD":/w -w /w --env NIX_CONFIG=$'sandbox = false\nfilter-syscalls = false\nextra-platforms = x86_64-linux' docker.io/nixos/nix@sha256:7a70027ba790d3a79fa82faeac5f3dddc048f89e83b3901ca69542c340c9fb5c nix-build nixos/otehon/default.nix --argstr arch x86_64
+podman run --rm --security-opt label=disable -v otehon-shell-nix:/nix -v "$PWD":/w -w /w --env NIX_CONFIG=$'sandbox = false\nfilter-syscalls = false\nextra-platforms = x86_64-linux' docker.io/nixos/nix@sha256:7a70027ba790d3a79fa82faeac5f3dddc048f89e83b3901ca69542c340c9fb5c nix-build otehon/default.nix --argstr arch x86_64
 ```
 
 This builds the x86_64 system and its UKI, then stops at the disk image: `systemd-repart` runs
@@ -79,7 +79,7 @@ change.
 Boot check, once an x86_64 image exists, on the Mac under QEMU TCG (no HVF for x86_64):
 
 ```bash
-OTEHON_ARCH=x86_64 nixos/otehon/boot-check-qemu.sh otehon-x86_64.qcow2 serial.log 1500
+OTEHON_ARCH=x86_64 otehon/boot-check-qemu.sh otehon-x86_64.qcow2 serial.log 1500
 ```
 
 ## Security update flow
@@ -126,9 +126,9 @@ Planned procedure (none of it has been run or automated):
    misses, especially for patched packages.
 3. Read the NixOS security tracker and the nixpkgs issues and pull requests labelled
    `1.severity: security` for packages in the closure, and the `release-26.05` backports.
-4. Things the closure scan does not cover: the npm packages in `nixos/otehon/shell/package-lock.json`
+4. Things the closure scan does not cover: the npm packages in `otehon/shell/package-lock.json`
    (check them with `npm audit` against the lock file), the pinned Kotoba broker in
-   `nixos/otehon/shell/vendor/PINS.json`, the model and voice files fetched by hash in `media.nix`
+   `otehon/shell/vendor/PINS.json`, the model and voice files fetched by hash in `media.nix`
    and `manimani/manimani.nix`, and sops-nix pinned in `base-module.nix`.
 5. Record each finding and the decision (move the pin, patch, or accept with a reason) in Linear,
    and link the release that carries the fix.
