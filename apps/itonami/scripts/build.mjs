@@ -8,6 +8,7 @@ import path from 'node:path';
 const app = fileURLToPath(new URL('../', import.meta.url));
 const repo = path.resolve(app, '../..');
 const shell = path.join(repo, 'otehon/shell');
+await import(new URL('../../../packages/awai-speech/prepare.mjs',import.meta.url));
 const sha = b => createHash('sha256').update(b).digest('hex');
 const pins = JSON.parse(await readFile(path.join(shell, 'vendor/PINS.json'), 'utf8'));
 for (const [name,digest] of Object.entries(pins.files)) {

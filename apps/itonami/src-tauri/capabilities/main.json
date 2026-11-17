@@ -8,6 +8,7 @@
     "allow-awai-host-info",
     "allow-awai-local-inference",
     "allow-awai-setup-state",
-    "allow-awai-agent-transport"
+    "allow-awai-agent-transport",
+    "allow-awai-local-speech"
   ]
 }
