@@ -1,0 +1,9 @@
+;; Fictional account and references. ISINs and BICs are published identifiers.
+{:request/id "sese023-receive-apmt"
+ :kind :sese023
+ :params {:tx-id "AWAI-SEC-0001" :direction :receive :payment-type :against-payment :settlement-date "2026-11-20"
+            :isin "US0378331005" :description "Example equity" :quantity "100" :safekeeping-account "SAFE-0001"
+            :transaction-type "TRAD" :place-of-settlement "DTCYUS33XXX" :agent "CHASUS33XXX"
+            :amount {:currency "USD" :value "18950.00"}}
+ ;; Also render the MT541 equivalent for comparison (not to be sent; ADR 0042 D1).
+ :mt {:sender-bic "COBADEFFXXX" :receiver-bic "CHASUS33XXX"}}
