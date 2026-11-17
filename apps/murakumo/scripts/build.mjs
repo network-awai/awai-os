@@ -10,3 +10,5 @@ await writeFile(path.join(dist,'contract.js'),"import './domain.js';export const
 console.log('Built Murakumo static UI and pinned model contract');
 
 await distributeUi(dist);
+
+await copyFile(path.join(app,'image-pins.json'),path.join(app,'src-tauri/gen/android/app/src/main/assets/image-pins.json'));
