@@ -1,0 +1,1739 @@
+{
+  "issue": "JUN-1340",
+  "start": "2026-11-17T11:21:12.065Z",
+  "end": "2026-11-17T11:21:18.166Z",
+  "status": "passed",
+  "device": "Physical Awai Android API37 x86_64 Ryzen 7735HS; 1920x1200 display, 1920x1140 WebView",
+  "account": "isolated test-only QA identity; unchanged production signature verifier; no owner interaction",
+  "cases": [
+    {
+      "name": "desktop-Asa",
+      "minTextContrast": 6.392111553822812,
+      "measure": {
+        "width": 1920,
+        "height": 1140,
+        "docWidth": 1920,
+        "theme": "light",
+        "footer": {
+          "x": 0,
+          "y": 1043,
+          "width": 1920,
+          "height": 97,
+          "right": 1920,
+          "bottom": 1140
+        },
+        "main": {
+          "x": 248,
+          "y": 0,
+          "width": 1352,
+          "height": 1043,
+          "right": 1600,
+          "bottom": 1043
+        },
+        "buttons": [
+          {
+            "id": "wallet",
+            "box": {
+              "x": 12,
+              "y": 1056,
+              "width": 125.875,
+              "height": 52,
+              "right": 137.875,
+              "bottom": 1108
+            },
+            "scroll": 124,
+            "client": 124,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Wallet",
+                "box": {
+                  "x": 29,
+                  "y": 1071.5,
+                  "width": 42.609375,
+                  "height": 21,
+                  "right": 71.609375,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              },
+              {
+                "label": "ETH \u2014",
+                "box": {
+                  "x": 79.609375,
+                  "y": 1071.5,
+                  "width": 41.265625,
+                  "height": 21,
+                  "right": 120.875,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "providing",
+            "box": {
+              "x": 145.875,
+              "y": 1056,
+              "width": 128.96875,
+              "height": 52,
+              "right": 274.84375,
+              "bottom": 1108
+            },
+            "scroll": 127,
+            "client": 127,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Providing",
+                "box": {
+                  "x": 162.875,
+                  "y": 1071.5,
+                  "width": 65.546875,
+                  "height": 21,
+                  "right": 228.421875,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              },
+              {
+                "label": "0/5",
+                "box": {
+                  "x": 236.421875,
+                  "y": 1071.5,
+                  "width": 21.421875,
+                  "height": 21,
+                  "right": 257.84375,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "activity",
+            "box": {
+              "x": 282.84375,
+              "y": 1056,
+              "width": 85.3125,
+              "height": 52,
+              "right": 368.15625,
+              "bottom": 1108
+            },
+            "scroll": 83,
+            "client": 83,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Activity",
+                "box": {
+                  "x": 299.84375,
+                  "y": 1071.5,
+                  "width": 51.3125,
+                  "height": 21,
+                  "right": 351.15625,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "fs-reliability",
+            "box": {
+              "x": 1537.671875,
+              "y": 1056,
+              "width": 86.015625,
+              "height": 52,
+              "right": 1623.6875,
+              "bottom": 1108
+            },
+            "scroll": 84,
+            "client": 84,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Awai FS",
+                "box": {
+                  "x": 1554.671875,
+                  "y": 1071.5,
+                  "width": 52.015625,
+                  "height": 21,
+                  "right": 1606.6875,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "hosts",
+            "box": {
+              "x": 1631.6875,
+              "y": 1056,
+              "width": 87.765625,
+              "height": 52,
+              "right": 1719.453125,
+              "bottom": 1108
+            },
+            "scroll": 86,
+            "client": 86,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Hosts",
+                "box": {
+                  "x": 1648.6875,
+                  "y": 1071.5,
+                  "width": 37.78125,
+                  "height": 21,
+                  "right": 1686.46875,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              },
+              {
+                "label": "1",
+                "box": {
+                  "x": 1694.46875,
+                  "y": 1071.5,
+                  "width": 7.984375,
+                  "height": 21,
+                  "right": 1702.453125,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "resources",
+            "box": {
+              "x": 1727.453125,
+              "y": 1056,
+              "width": 102.859375,
+              "height": 52,
+              "right": 1830.3125,
+              "bottom": 1108
+            },
+            "scroll": 101,
+            "client": 101,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Resources",
+                "box": {
+                  "x": 1744.453125,
+                  "y": 1071.5,
+                  "width": 68.859375,
+                  "height": 21,
+                  "right": 1813.3125,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "ports",
+            "box": {
+              "x": 1838.3125,
+              "y": 1056,
+              "width": 69.6875,
+              "height": 52,
+              "right": 1908,
+              "bottom": 1108
+            },
+            "scroll": 68,
+            "client": 68,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Ports",
+                "box": {
+                  "x": 1855.3125,
+                  "y": 1071.5,
+                  "width": 35.6875,
+                  "height": 21,
+                  "right": 1891,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "desktop-Hiru",
+      "minTextContrast": 6.392111553822812,
+      "measure": {
+        "width": 1920,
+        "height": 1140,
+        "docWidth": 1920,
+        "theme": "hiru",
+        "footer": {
+          "x": 0,
+          "y": 1043,
+          "width": 1920,
+          "height": 97,
+          "right": 1920,
+          "bottom": 1140
+        },
+        "main": {
+          "x": 248,
+          "y": 0,
+          "width": 1352,
+          "height": 1043,
+          "right": 1600,
+          "bottom": 1043
+        },
+        "buttons": [
+          {
+            "id": "wallet",
+            "box": {
+              "x": 12,
+              "y": 1056,
+              "width": 125.875,
+              "height": 52,
+              "right": 137.875,
+              "bottom": 1108
+            },
+            "scroll": 124,
+            "client": 124,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Wallet",
+                "box": {
+                  "x": 29,
+                  "y": 1071.5,
+                  "width": 42.609375,
+                  "height": 21,
+                  "right": 71.609375,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              },
+              {
+                "label": "ETH \u2014",
+                "box": {
+                  "x": 79.609375,
+                  "y": 1071.5,
+                  "width": 41.265625,
+                  "height": 21,
+                  "right": 120.875,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "providing",
+            "box": {
+              "x": 145.875,
+              "y": 1056,
+              "width": 128.96875,
+              "height": 52,
+              "right": 274.84375,
+              "bottom": 1108
+            },
+            "scroll": 127,
+            "client": 127,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Providing",
+                "box": {
+                  "x": 162.875,
+                  "y": 1071.5,
+                  "width": 65.546875,
+                  "height": 21,
+                  "right": 228.421875,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              },
+              {
+                "label": "0/5",
+                "box": {
+                  "x": 236.421875,
+                  "y": 1071.5,
+                  "width": 21.421875,
+                  "height": 21,
+                  "right": 257.84375,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "activity",
+            "box": {
+              "x": 282.84375,
+              "y": 1056,
+              "width": 85.3125,
+              "height": 52,
+              "right": 368.15625,
+              "bottom": 1108
+            },
+            "scroll": 83,
+            "client": 83,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Activity",
+                "box": {
+                  "x": 299.84375,
+                  "y": 1071.5,
+                  "width": 51.3125,
+                  "height": 21,
+                  "right": 351.15625,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "fs-reliability",
+            "box": {
+              "x": 1537.671875,
+              "y": 1056,
+              "width": 86.015625,
+              "height": 52,
+              "right": 1623.6875,
+              "bottom": 1108
+            },
+            "scroll": 84,
+            "client": 84,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Awai FS",
+                "box": {
+                  "x": 1554.671875,
+                  "y": 1071.5,
+                  "width": 52.015625,
+                  "height": 21,
+                  "right": 1606.6875,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "hosts",
+            "box": {
+              "x": 1631.6875,
+              "y": 1056,
+              "width": 87.765625,
+              "height": 52,
+              "right": 1719.453125,
+              "bottom": 1108
+            },
+            "scroll": 86,
+            "client": 86,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Hosts",
+                "box": {
+                  "x": 1648.6875,
+                  "y": 1071.5,
+                  "width": 37.78125,
+                  "height": 21,
+                  "right": 1686.46875,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              },
+              {
+                "label": "1",
+                "box": {
+                  "x": 1694.46875,
+                  "y": 1071.5,
+                  "width": 7.984375,
+                  "height": 21,
+                  "right": 1702.453125,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "resources",
+            "box": {
+              "x": 1727.453125,
+              "y": 1056,
+              "width": 102.859375,
+              "height": 52,
+              "right": 1830.3125,
+              "bottom": 1108
+            },
+            "scroll": 101,
+            "client": 101,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Resources",
+                "box": {
+                  "x": 1744.453125,
+                  "y": 1071.5,
+                  "width": 68.859375,
+                  "height": 21,
+                  "right": 1813.3125,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "ports",
+            "box": {
+              "x": 1838.3125,
+              "y": 1056,
+              "width": 69.6875,
+              "height": 52,
+              "right": 1908,
+              "bottom": 1108
+            },
+            "scroll": 68,
+            "client": 68,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Ports",
+                "box": {
+                  "x": 1855.3125,
+                  "y": 1071.5,
+                  "width": 35.6875,
+                  "height": 21,
+                  "right": 1891,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "desktop-Yoru",
+      "minTextContrast": 7.835777043588198,
+      "measure": {
+        "width": 1920,
+        "height": 1140,
+        "docWidth": 1920,
+        "theme": "dark",
+        "footer": {
+          "x": 0,
+          "y": 1043,
+          "width": 1920,
+          "height": 97,
+          "right": 1920,
+          "bottom": 1140
+        },
+        "main": {
+          "x": 248,
+          "y": 0,
+          "width": 1352,
+          "height": 1043,
+          "right": 1600,
+          "bottom": 1043
+        },
+        "buttons": [
+          {
+            "id": "wallet",
+            "box": {
+              "x": 12,
+              "y": 1056,
+              "width": 125.875,
+              "height": 52,
+              "right": 137.875,
+              "bottom": 1108
+            },
+            "scroll": 124,
+            "client": 124,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Wallet",
+                "box": {
+                  "x": 29,
+                  "y": 1071.5,
+                  "width": 42.609375,
+                  "height": 21,
+                  "right": 71.609375,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(181, 207, 255)",
+                "bg": "rgb(38, 53, 78)"
+              },
+              {
+                "label": "ETH \u2014",
+                "box": {
+                  "x": 79.609375,
+                  "y": 1071.5,
+                  "width": 41.265625,
+                  "height": 21,
+                  "right": 120.875,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(181, 207, 255)",
+                "bg": "rgb(38, 53, 78)"
+              }
+            ]
+          },
+          {
+            "id": "providing",
+            "box": {
+              "x": 145.875,
+              "y": 1056,
+              "width": 128.96875,
+              "height": 52,
+              "right": 274.84375,
+              "bottom": 1108
+            },
+            "scroll": 127,
+            "client": 127,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Providing",
+                "box": {
+                  "x": 162.875,
+                  "y": 1071.5,
+                  "width": 65.546875,
+                  "height": 21,
+                  "right": 228.421875,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(181, 207, 255)",
+                "bg": "rgb(38, 53, 78)"
+              },
+              {
+                "label": "0/5",
+                "box": {
+                  "x": 236.421875,
+                  "y": 1071.5,
+                  "width": 21.421875,
+                  "height": 21,
+                  "right": 257.84375,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(181, 207, 255)",
+                "bg": "rgb(38, 53, 78)"
+              }
+            ]
+          },
+          {
+            "id": "activity",
+            "box": {
+              "x": 282.84375,
+              "y": 1056,
+              "width": 85.3125,
+              "height": 52,
+              "right": 368.15625,
+              "bottom": 1108
+            },
+            "scroll": 83,
+            "client": 83,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Activity",
+                "box": {
+                  "x": 299.84375,
+                  "y": 1071.5,
+                  "width": 51.3125,
+                  "height": 21,
+                  "right": 351.15625,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(181, 207, 255)",
+                "bg": "rgb(38, 53, 78)"
+              }
+            ]
+          },
+          {
+            "id": "fs-reliability",
+            "box": {
+              "x": 1537.671875,
+              "y": 1056,
+              "width": 86.015625,
+              "height": 52,
+              "right": 1623.6875,
+              "bottom": 1108
+            },
+            "scroll": 84,
+            "client": 84,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Awai FS",
+                "box": {
+                  "x": 1554.671875,
+                  "y": 1071.5,
+                  "width": 52.015625,
+                  "height": 21,
+                  "right": 1606.6875,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(181, 207, 255)",
+                "bg": "rgb(38, 53, 78)"
+              }
+            ]
+          },
+          {
+            "id": "hosts",
+            "box": {
+              "x": 1631.6875,
+              "y": 1056,
+              "width": 87.765625,
+              "height": 52,
+              "right": 1719.453125,
+              "bottom": 1108
+            },
+            "scroll": 86,
+            "client": 86,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Hosts",
+                "box": {
+                  "x": 1648.6875,
+                  "y": 1071.5,
+                  "width": 37.78125,
+                  "height": 21,
+                  "right": 1686.46875,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(181, 207, 255)",
+                "bg": "rgb(38, 53, 78)"
+              },
+              {
+                "label": "1",
+                "box": {
+                  "x": 1694.46875,
+                  "y": 1071.5,
+                  "width": 7.984375,
+                  "height": 21,
+                  "right": 1702.453125,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(181, 207, 255)",
+                "bg": "rgb(38, 53, 78)"
+              }
+            ]
+          },
+          {
+            "id": "resources",
+            "box": {
+              "x": 1727.453125,
+              "y": 1056,
+              "width": 102.859375,
+              "height": 52,
+              "right": 1830.3125,
+              "bottom": 1108
+            },
+            "scroll": 101,
+            "client": 101,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Resources",
+                "box": {
+                  "x": 1744.453125,
+                  "y": 1071.5,
+                  "width": 68.859375,
+                  "height": 21,
+                  "right": 1813.3125,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(181, 207, 255)",
+                "bg": "rgb(38, 53, 78)"
+              }
+            ]
+          },
+          {
+            "id": "ports",
+            "box": {
+              "x": 1838.3125,
+              "y": 1056,
+              "width": 69.6875,
+              "height": 52,
+              "right": 1908,
+              "bottom": 1108
+            },
+            "scroll": 68,
+            "client": 68,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Ports",
+                "box": {
+                  "x": 1855.3125,
+                  "y": 1071.5,
+                  "width": 35.6875,
+                  "height": 21,
+                  "right": 1891,
+                  "bottom": 1092.5
+                },
+                "fg": "rgb(181, 207, 255)",
+                "bg": "rgb(38, 53, 78)"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "panel-wallet",
+      "box": {
+        "top": 712.765625,
+        "bottom": 1048,
+        "left": 12,
+        "right": 332
+      }
+    },
+    {
+      "name": "panel-providing",
+      "box": {
+        "top": 770.9375,
+        "bottom": 1048,
+        "left": 12,
+        "right": 332
+      }
+    },
+    {
+      "name": "panel-activity",
+      "box": {
+        "top": 939.15625,
+        "bottom": 1048,
+        "left": 12,
+        "right": 332
+      }
+    },
+    {
+      "name": "panel-fs-reliability",
+      "box": {
+        "top": 628,
+        "bottom": 1048,
+        "left": 1588,
+        "right": 1908
+      }
+    },
+    {
+      "name": "panel-hosts",
+      "box": {
+        "top": 887.46875,
+        "bottom": 1048,
+        "left": 1588,
+        "right": 1908
+      }
+    },
+    {
+      "name": "panel-resources",
+      "box": {
+        "top": 881.46875,
+        "bottom": 1048,
+        "left": 1588,
+        "right": 1908
+      }
+    },
+    {
+      "name": "panel-ports",
+      "box": {
+        "top": 628,
+        "bottom": 1048,
+        "left": 1588,
+        "right": 1908
+      }
+    },
+    {
+      "name": "native-button-keyboard-Enter"
+    },
+    {
+      "name": "phone-390",
+      "minTextContrast": 6.392111553822812,
+      "measure": {
+        "width": 390,
+        "height": 844,
+        "docWidth": 390,
+        "theme": "light",
+        "footer": {
+          "x": 0,
+          "y": 687,
+          "width": 390,
+          "height": 157,
+          "right": 390,
+          "bottom": 844
+        },
+        "main": {
+          "x": 0,
+          "y": 112,
+          "width": 390,
+          "height": 575,
+          "right": 390,
+          "bottom": 687
+        },
+        "buttons": [
+          {
+            "id": "wallet",
+            "box": {
+              "x": 12,
+              "y": 700,
+              "width": 117.875,
+              "height": 52,
+              "right": 129.875,
+              "bottom": 752
+            },
+            "scroll": 116,
+            "client": 116,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Wallet",
+                "box": {
+                  "x": 25,
+                  "y": 715.5,
+                  "width": 42.609375,
+                  "height": 21,
+                  "right": 67.609375,
+                  "bottom": 736.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              },
+              {
+                "label": "ETH \u2014",
+                "box": {
+                  "x": 75.609375,
+                  "y": 715.5,
+                  "width": 41.265625,
+                  "height": 21,
+                  "right": 116.875,
+                  "bottom": 736.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "providing",
+            "box": {
+              "x": 137.875,
+              "y": 700,
+              "width": 120.96875,
+              "height": 52,
+              "right": 258.84375,
+              "bottom": 752
+            },
+            "scroll": 119,
+            "client": 119,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Providing",
+                "box": {
+                  "x": 150.875,
+                  "y": 715.5,
+                  "width": 65.546875,
+                  "height": 21,
+                  "right": 216.421875,
+                  "bottom": 736.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              },
+              {
+                "label": "0/5",
+                "box": {
+                  "x": 224.421875,
+                  "y": 715.5,
+                  "width": 21.421875,
+                  "height": 21,
+                  "right": 245.84375,
+                  "bottom": 736.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "activity",
+            "box": {
+              "x": 266.84375,
+              "y": 700,
+              "width": 77.3125,
+              "height": 52,
+              "right": 344.15625,
+              "bottom": 752
+            },
+            "scroll": 75,
+            "client": 75,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Activity",
+                "box": {
+                  "x": 279.84375,
+                  "y": 715.5,
+                  "width": 51.3125,
+                  "height": 21,
+                  "right": 331.15625,
+                  "bottom": 736.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "fs-reliability",
+            "box": {
+              "x": 12,
+              "y": 760,
+              "width": 78.015625,
+              "height": 52,
+              "right": 90.015625,
+              "bottom": 812
+            },
+            "scroll": 76,
+            "client": 76,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Awai FS",
+                "box": {
+                  "x": 25,
+                  "y": 775.5,
+                  "width": 52.015625,
+                  "height": 21,
+                  "right": 77.015625,
+                  "bottom": 796.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "hosts",
+            "box": {
+              "x": 98.015625,
+              "y": 760,
+              "width": 79.765625,
+              "height": 52,
+              "right": 177.78125,
+              "bottom": 812
+            },
+            "scroll": 78,
+            "client": 78,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Hosts",
+                "box": {
+                  "x": 111.015625,
+                  "y": 775.5,
+                  "width": 37.78125,
+                  "height": 21,
+                  "right": 148.796875,
+                  "bottom": 796.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              },
+              {
+                "label": "1",
+                "box": {
+                  "x": 156.796875,
+                  "y": 775.5,
+                  "width": 7.984375,
+                  "height": 21,
+                  "right": 164.78125,
+                  "bottom": 796.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "resources",
+            "box": {
+              "x": 185.78125,
+              "y": 760,
+              "width": 94.859375,
+              "height": 52,
+              "right": 280.640625,
+              "bottom": 812
+            },
+            "scroll": 93,
+            "client": 93,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Resources",
+                "box": {
+                  "x": 198.78125,
+                  "y": 775.5,
+                  "width": 68.859375,
+                  "height": 21,
+                  "right": 267.640625,
+                  "bottom": 796.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "ports",
+            "box": {
+              "x": 288.640625,
+              "y": 760,
+              "width": 61.6875,
+              "height": 52,
+              "right": 350.328125,
+              "bottom": 812
+            },
+            "scroll": 60,
+            "client": 60,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Ports",
+                "box": {
+                  "x": 301.640625,
+                  "y": 775.5,
+                  "width": 35.6875,
+                  "height": 21,
+                  "right": 337.328125,
+                  "bottom": 796.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "phone-320",
+      "minTextContrast": 6.392111553822812,
+      "measure": {
+        "width": 320,
+        "height": 844,
+        "docWidth": 320,
+        "theme": "light",
+        "footer": {
+          "x": 0,
+          "y": 567,
+          "width": 320,
+          "height": 277,
+          "right": 320,
+          "bottom": 844
+        },
+        "main": {
+          "x": 0,
+          "y": 112,
+          "width": 320,
+          "height": 455,
+          "right": 320,
+          "bottom": 567
+        },
+        "buttons": [
+          {
+            "id": "wallet",
+            "box": {
+              "x": 12,
+              "y": 580,
+              "width": 117.875,
+              "height": 52,
+              "right": 129.875,
+              "bottom": 632
+            },
+            "scroll": 116,
+            "client": 116,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Wallet",
+                "box": {
+                  "x": 25,
+                  "y": 595.5,
+                  "width": 42.609375,
+                  "height": 21,
+                  "right": 67.609375,
+                  "bottom": 616.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              },
+              {
+                "label": "ETH \u2014",
+                "box": {
+                  "x": 75.609375,
+                  "y": 595.5,
+                  "width": 41.265625,
+                  "height": 21,
+                  "right": 116.875,
+                  "bottom": 616.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "providing",
+            "box": {
+              "x": 137.875,
+              "y": 580,
+              "width": 120.96875,
+              "height": 52,
+              "right": 258.84375,
+              "bottom": 632
+            },
+            "scroll": 119,
+            "client": 119,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Providing",
+                "box": {
+                  "x": 150.875,
+                  "y": 595.5,
+                  "width": 65.546875,
+                  "height": 21,
+                  "right": 216.421875,
+                  "bottom": 616.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              },
+              {
+                "label": "0/5",
+                "box": {
+                  "x": 224.421875,
+                  "y": 595.5,
+                  "width": 21.421875,
+                  "height": 21,
+                  "right": 245.84375,
+                  "bottom": 616.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "activity",
+            "box": {
+              "x": 12,
+              "y": 640,
+              "width": 77.3125,
+              "height": 52,
+              "right": 89.3125,
+              "bottom": 692
+            },
+            "scroll": 75,
+            "client": 75,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Activity",
+                "box": {
+                  "x": 25,
+                  "y": 655.5,
+                  "width": 51.3125,
+                  "height": 21,
+                  "right": 76.3125,
+                  "bottom": 676.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "fs-reliability",
+            "box": {
+              "x": 12,
+              "y": 700,
+              "width": 78.015625,
+              "height": 52,
+              "right": 90.015625,
+              "bottom": 752
+            },
+            "scroll": 76,
+            "client": 76,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Awai FS",
+                "box": {
+                  "x": 25,
+                  "y": 715.5,
+                  "width": 52.015625,
+                  "height": 21,
+                  "right": 77.015625,
+                  "bottom": 736.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "hosts",
+            "box": {
+              "x": 98.015625,
+              "y": 700,
+              "width": 79.765625,
+              "height": 52,
+              "right": 177.78125,
+              "bottom": 752
+            },
+            "scroll": 78,
+            "client": 78,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Hosts",
+                "box": {
+                  "x": 111.015625,
+                  "y": 715.5,
+                  "width": 37.78125,
+                  "height": 21,
+                  "right": 148.796875,
+                  "bottom": 736.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              },
+              {
+                "label": "1",
+                "box": {
+                  "x": 156.796875,
+                  "y": 715.5,
+                  "width": 7.984375,
+                  "height": 21,
+                  "right": 164.78125,
+                  "bottom": 736.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "resources",
+            "box": {
+              "x": 185.78125,
+              "y": 700,
+              "width": 94.859375,
+              "height": 52,
+              "right": 280.640625,
+              "bottom": 752
+            },
+            "scroll": 93,
+            "client": 93,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Resources",
+                "box": {
+                  "x": 198.78125,
+                  "y": 715.5,
+                  "width": 68.859375,
+                  "height": 21,
+                  "right": 267.640625,
+                  "bottom": 736.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "ports",
+            "box": {
+              "x": 12,
+              "y": 760,
+              "width": 61.6875,
+              "height": 52,
+              "right": 73.6875,
+              "bottom": 812
+            },
+            "scroll": 60,
+            "client": 60,
+            "tonal": true,
+            "font": "14px",
+            "texts": [
+              {
+                "label": "Ports",
+                "box": {
+                  "x": 25,
+                  "y": 775.5,
+                  "width": 35.6875,
+                  "height": 21,
+                  "right": 60.6875,
+                  "bottom": 796.5
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "phone-320-text200",
+      "minTextContrast": 6.392111553822812,
+      "measure": {
+        "width": 320,
+        "height": 844,
+        "docWidth": 320,
+        "theme": "light",
+        "footer": {
+          "x": 0,
+          "y": 427,
+          "width": 320,
+          "height": 417,
+          "right": 320,
+          "bottom": 844
+        },
+        "main": {
+          "x": 0,
+          "y": 186,
+          "width": 320,
+          "height": 241,
+          "right": 320,
+          "bottom": 427
+        },
+        "buttons": [
+          {
+            "id": "wallet",
+            "box": {
+              "x": 12,
+              "y": 440,
+              "width": 201.75,
+              "height": 68,
+              "right": 213.75,
+              "bottom": 508
+            },
+            "scroll": 200,
+            "client": 200,
+            "tonal": true,
+            "font": "28px",
+            "texts": [
+              {
+                "label": "Wallet",
+                "box": {
+                  "x": 25,
+                  "y": 453,
+                  "width": 85.21875,
+                  "height": 42,
+                  "right": 110.21875,
+                  "bottom": 495
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              },
+              {
+                "label": "ETH \u2014",
+                "box": {
+                  "x": 118.21875,
+                  "y": 453,
+                  "width": 82.53125,
+                  "height": 42,
+                  "right": 200.75,
+                  "bottom": 495
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "providing",
+            "box": {
+              "x": 12,
+              "y": 516,
+              "width": 207.9375,
+              "height": 68,
+              "right": 219.9375,
+              "bottom": 584
+            },
+            "scroll": 206,
+            "client": 206,
+            "tonal": true,
+            "font": "28px",
+            "texts": [
+              {
+                "label": "Providing",
+                "box": {
+                  "x": 25,
+                  "y": 529,
+                  "width": 131.09375,
+                  "height": 42,
+                  "right": 156.09375,
+                  "bottom": 571
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              },
+              {
+                "label": "0/5",
+                "box": {
+                  "x": 164.09375,
+                  "y": 529,
+                  "width": 42.84375,
+                  "height": 42,
+                  "right": 206.9375,
+                  "bottom": 571
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "activity",
+            "box": {
+              "x": 12,
+              "y": 592,
+              "width": 128.625,
+              "height": 68,
+              "right": 140.625,
+              "bottom": 660
+            },
+            "scroll": 127,
+            "client": 127,
+            "tonal": true,
+            "font": "28px",
+            "texts": [
+              {
+                "label": "Activity",
+                "box": {
+                  "x": 25,
+                  "y": 605,
+                  "width": 102.625,
+                  "height": 42,
+                  "right": 127.625,
+                  "bottom": 647
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "fs-reliability",
+            "box": {
+              "x": 12,
+              "y": 668,
+              "width": 130.03125,
+              "height": 68,
+              "right": 142.03125,
+              "bottom": 736
+            },
+            "scroll": 128,
+            "client": 128,
+            "tonal": true,
+            "font": "28px",
+            "texts": [
+              {
+                "label": "Awai FS",
+                "box": {
+                  "x": 25,
+                  "y": 681,
+                  "width": 104.03125,
+                  "height": 42,
+                  "right": 129.03125,
+                  "bottom": 723
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "hosts",
+            "box": {
+              "x": 150.03125,
+              "y": 668,
+              "width": 125.53125,
+              "height": 68,
+              "right": 275.5625,
+              "bottom": 736
+            },
+            "scroll": 124,
+            "client": 124,
+            "tonal": true,
+            "font": "28px",
+            "texts": [
+              {
+                "label": "Hosts",
+                "box": {
+                  "x": 163.03125,
+                  "y": 681,
+                  "width": 75.5625,
+                  "height": 42,
+                  "right": 238.59375,
+                  "bottom": 723
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              },
+              {
+                "label": "1",
+                "box": {
+                  "x": 246.59375,
+                  "y": 681,
+                  "width": 15.96875,
+                  "height": 42,
+                  "right": 262.5625,
+                  "bottom": 723
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "resources",
+            "box": {
+              "x": 12,
+              "y": 744,
+              "width": 163.703125,
+              "height": 68,
+              "right": 175.703125,
+              "bottom": 812
+            },
+            "scroll": 162,
+            "client": 162,
+            "tonal": true,
+            "font": "28px",
+            "texts": [
+              {
+                "label": "Resources",
+                "box": {
+                  "x": 25,
+                  "y": 757,
+                  "width": 137.703125,
+                  "height": 42,
+                  "right": 162.703125,
+                  "bottom": 799
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          },
+          {
+            "id": "ports",
+            "box": {
+              "x": 183.703125,
+              "y": 744,
+              "width": 97.375,
+              "height": 68,
+              "right": 281.078125,
+              "bottom": 812
+            },
+            "scroll": 95,
+            "client": 95,
+            "tonal": true,
+            "font": "28px",
+            "texts": [
+              {
+                "label": "Ports",
+                "box": {
+                  "x": 196.703125,
+                  "y": 757,
+                  "width": 71.375,
+                  "height": 42,
+                  "right": 268.078125,
+                  "bottom": 799
+                },
+                "fg": "rgb(30, 80, 162)",
+                "bg": "rgb(225, 234, 255)"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "coverage": "Phone widths are WebView metric emulation on physical hardware, not a separate phone. Native Enter via adb input keyevent 66. No TalkBack qualification."
+}
