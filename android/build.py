@@ -97,7 +97,7 @@ def main():
             (staged_assets/'online-pins.json').write_text('null')
             (staged_assets/'index.html').write_text((ROOT/'android/client/index.html').read_text())
         if kind=='torihiki':
-            # Exactly the origin declared by torihiki.js; HostActivity.torihikiRead narrows it to three GET routes.
+            # Exactly the origin declared by torihiki.js; HostActivity.torihikiRead/torihikiTx narrow it to the declared routes.
             html=(staged_assets/'index.html').read_text().replace("connect-src 'none'","connect-src https://torihiki-node.04-feasts-minded.workers.dev")
             (staged_assets/'index.html').write_text(html)
         if kind=='home':
@@ -127,7 +127,7 @@ def main():
     packages=assets/'packages';packages.mkdir(exist_ok=True);shutil.copyfile(yotei,packages/'yotei.apk');shutil.copyfile(torihiki,packages/'torihiki.apk')
     revision=args.catalog_revision if args.catalog_revision is not None else args.version
     listed=[{'id':'network.itonami.yotei','name':'Yotei','description':'予定をこの端末に保存します。外部への送信や同期、通知配信は行いません。','publisher':'Awai Otehon 開発版','versionCode':args.version,'versionName':f'0.1.{args.version-1}','artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/yotei.apk','bytes':yotei.stat().st_size,'sha256':digest(yotei),'signerSha256':fp},{'platform':'nixos','runtime':'browser','kind':'bundled-web','asset':'bundled:yotei','bytes':(assets/'client.js').stat().st_size,'sha256':digest(assets/'client.js')}]},
-            {'id':'network.itonami.torihiki','name':'Torihiki','description':'取引所 devnet の価格・板・ノード状態を読み取り専用で表示します。devnet・デモ専用で、実際の資産・発注・鍵は扱いません。通信は取得ごとに確認します。','publisher':'Awai Otehon 開発版','versionCode':args.version,'versionName':f'0.1.{args.version-1}','artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/torihiki.apk','bytes':torihiki.stat().st_size,'sha256':digest(torihiki),'signerSha256':fp}]}]
+            {'id':'network.itonami.torihiki','name':'Torihiki','description':'取引所 devnet の価格・板・ノード状態を表示し、端末の鍵で署名して devnet に発注できます。devnet・デモ専用で、実際の資産は扱いません。通信は毎回確認します。','publisher':'Awai Otehon 開発版','versionCode':args.version,'versionName':f'0.1.{args.version-1}','artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/torihiki.apk','bytes':torihiki.stat().st_size,'sha256':digest(torihiki),'signerSha256':fp}]}]
     if args.itonami_apk is not None:
         staged=packages/'itonami.apk';shutil.copyfile(args.itonami_apk,staged)
         signer=run([tools/'apksigner','verify','--print-certs',staged],capture_output=True).stdout
