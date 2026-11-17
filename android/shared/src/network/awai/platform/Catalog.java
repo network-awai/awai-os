@@ -45,18 +45,22 @@ public final class Catalog {
         if ("network.itonami.yotei".equals(id)) return "packages/yotei.apk";
         if ("network.itonami.app".equals(id)) return "packages/itonami.apk";
         if ("network.itonami.torihiki".equals(id)) return "packages/torihiki.apk";
+        if ("network.itonami.torihiki.bot".equals(id)) return "packages/torihiki-bot.apk";
         throw new SecurityException("unknown-app");
     }
     public static String onlineFileFor(String id) throws SecurityException {
         if ("network.itonami.yotei".equals(id)) return "online-yotei.apk";
         if ("network.itonami.app".equals(id)) return "online-itonami.apk";
         if ("network.itonami.torihiki".equals(id)) return "online-torihiki.apk";
+        if ("network.itonami.torihiki.bot".equals(id)) return "online-torihiki-bot.apk";
         throw new SecurityException("unknown-app");
     }
     public static int maxApkBytes(String id) throws SecurityException {
         if ("network.itonami.yotei".equals(id)) return 20 * 1024 * 1024;
         if ("network.itonami.app".equals(id)) return 64 * 1024 * 1024;
         if ("network.itonami.torihiki".equals(id)) return 20 * 1024 * 1024;
+        // Tauri v3 APK (network-awai/app-itonami-torihiki app/), about 29.5 MB at 0.1.0.
+        if ("network.itonami.torihiki.bot".equals(id)) return 40 * 1024 * 1024;
         throw new SecurityException("unknown-app");
     }
     public long valueRevision() throws Exception { return value.getLong("revision"); }
