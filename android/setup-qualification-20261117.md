@@ -55,3 +55,24 @@ Current source unit reuses the owning shell’s `awai.link.v1` implementation an
 - No candidate APK or boot/storage change has been applied to6600H. Physical apply remains conditional on the requested complete VM gate. The attached Moto is excluded.
 
 The earlier 12-assertion native instrumentation result was on v9; it is not relabeled as v11 acceptance. Full VM real-account restoration, native boundary rerun, Itonami packaging, physical acceptance, privileged SetupWizard/ROM integration, FBE/hardware-backed custody and profile sync remain distinct gates. Provider/model/settings, issue estimate/unit, attributable token/cost and active/wait telemetry remain unknown.
+
+## Verified VM acceptance and conditional physical application
+
+The owner directly approved the canonical relay operation and completed an actual phone **Passkey** signature. The browser verifier accepted it, setup reached `stage=7`, `complete=true`, `account=linked`, and rendered Home. The test exports neither the signed proof nor an account identifier; local before/after digest comparison confirms the same saved proof.
+
+| Requested VM acceptance | Verified observation |
+| --- | --- |
+| Actual account linking | Existing phone Passkey signature verified by the owning awai.link.v1 verifier; no fixture identity |
+| Japanese system language | `ja-JP` in actual Android/native readback after OS reboot |
+| Native PIN | Actual Android PIN enrollment and keyguard unlock; `secure=true`, `deviceLocked=0` |
+| Restart retention | Real OS boot ID changed; proof digest matched; non-exportable device-key possession and signature reverified |
+| Default Home startup | Android RoleManager dialog selected Awai Home; role/package resolver confirms `network.awai.home`; another OS reboot/unlock automatically started Home, without `am start` or a HOME key after unlock |
+| Native adapter | v11 target with current instrumentation:12 conditional assertions pass. Setup preferences reset only on the disposable emulator, then the already verified account was reused through the actual UI; key/session storage retained |
+
+The keyguard UI must be observed focused before credential input; an immediate post-boot command can arrive before the PIN screen is ready. Emulator screen wake was required while testing. Intermediate asynchronous `deviceLocked=1` readbacks are not treated as failures after the later observed unlock, and no credential bypass/reset was used.
+
+After this VM gate passed, the exact v11 APK above was installed on the verified physical target (`0c:47:a9:60:9d:34`) and Home’s setup screen visibly rendered. The existing physical installation had no `network.awai.home` package; its package/role/build inventory was preserved first. No app data, old Itonami state, keys, partitions or EFI entries were overwritten. The default Home role is still the existing OS wizard until actual physical setup is complete.
+
+Physical readback remains **en-US**, account unlinked, `secure=false`, and LAN associated with **no validated Internet/default route**. Physical phone enrollment/PIN/Home completion is not claimed. This is the existing unofficial Generic x86_64 Android17/API37 diagnostic Live image, with `/data` on tmpfs; a reboot loses RAM state. It is not a persistent Android install and Nix/NVMe are retained. No physical reboot is performed as a persistence test on this RAM image.
+
+CI now includes a separate Otehon source-check step for the deterministic identity bundle and the28 source tests. These checks do not use accounts, relay access, an emulator or physical hardware; they cannot replace the runtime evidence above. CI status is reported from GitHub separately.
