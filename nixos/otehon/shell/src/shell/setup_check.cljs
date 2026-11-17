@@ -1,7 +1,7 @@
 (ns shell.setup-check
   (:require [reagent.core :as r]
             ["react-dom/server" :refer [renderToStaticMarkup]]
-            [shell.setup :refer [qr-code]]
+            [shell.setup :refer [qr-code initial-step]]
             [shell.bot-chat :as bot-chat]
             [shell.agent-workspace :as workspace]
             [shell.mail-progress :as mail]
@@ -11,6 +11,10 @@
 ;; Exercise the actual component and npm import after advanced compilation.
 ;; No relay, account, signature or network operation is needed to render a QR.
 (defn main []
+  (doseq [[android returning account expected] [[true false nil "signin"] [true true nil "signin"] [false false nil "hello"] [false true nil "signin"] [true false #js {} "trust"]]]
+    (when-not (= expected (initial-step android returning account))
+      (throw (js/Error. "android-setup-entry-must-preserve-identity-gate"))))
+  (js/console.log "PASS: Android skips OS onboarding and preserves account authentication")
   (doseq [[locale expected] [["ja" "メールを管理"] ["en" "Manage mail"]]]
    (let [html (renderToStaticMarkup (r/as-element [:f> mail/manager "profile:fixture" locale]))]
     (when-not (.includes html expected) (throw (js/Error. "mail-manager-render-failed")))))

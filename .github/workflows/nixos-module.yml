@@ -119,6 +119,12 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npm test
+      - name: Check Android setup and signed account-link source contracts
+        # Otehon source checks only. No account, relay request, emulator or physical device.
+        run: |
+          node android/build-identity.mjs
+          git diff --exit-code -- android/client/generated/identity.js
+          node --test android/tests/identity.test.mjs android/tests/setup.test.mjs android/tests/domain.test.mjs android/tests/online.test.mjs nixos/otehon/shell/test/link.test.js nixos/otehon/shell/test/device.test.js
       - name: Test read-only mobile inventory and report I/O refusal
         run: sh scripts/otehon-mobile/test-collect-p0.sh
       - name: Test the restricted Saifu guest bridge

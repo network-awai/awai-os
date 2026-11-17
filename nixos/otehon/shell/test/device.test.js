@@ -2,8 +2,18 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { p256 } from "@noble/curves/nist.js";
 import { createLinkRequest, p256Did, SESSION_MS } from "../src/identity/link.js";
-import { clearSession, saveSession, loadSession, sessionRetention } from "../src/identity/device.js";
+import { clearSession, saveSession, loadSession, sessionRetention,verifyDeviceKeyPair } from "../src/identity/device.js";
 import { passkeyResponse, randomWallet, walletResponse } from "./signers.js";
+
+test("restored identity requires possession of the matching non-exportable device key", async()=>{
+  const generate=()=>crypto.subtle.generateKey({name:"ECDSA",namedCurve:"P-256"},false,["sign"]);
+  const pair=await generate(),other=await generate();
+  await verifyDeviceKeyPair(pair);
+  await assert.rejects(verifyDeviceKeyPair({publicKey:pair.publicKey}),/device-key-unavailable/);
+  await assert.rejects(verifyDeviceKeyPair({privateKey:other.privateKey,publicKey:pair.publicKey}),/device-key-mismatch/);
+  const exportable=await crypto.subtle.generateKey({name:"ECDSA",namedCurve:"P-256"},true,["sign"]);
+  await assert.rejects(verifyDeviceKeyPair(exportable),/device-key-unavailable/);
+});
 
 function storage(t, protection) {
   const previousStorage = Object.getOwnPropertyDescriptor(globalThis, "localStorage");

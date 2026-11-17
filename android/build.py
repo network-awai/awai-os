@@ -14,7 +14,7 @@ def manifest(pkg, activity, version, kind, online=False):
     extra = ''
     home = ''
     if kind == 'home':
-        perms = '<uses-permission android:name="network.awai.permission.READ_AGENDA"/><uses-permission android:name="android.permission.SET_WALLPAPER"/>'
+        perms = '<uses-permission android:name="network.awai.permission.READ_AGENDA"/><uses-permission android:name="android.permission.SET_WALLPAPER"/><uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/><uses-permission android:name="android.permission.INTERNET"/>'
         extra = '<activity android:name="network.awai.home.AppearanceActivity" android:exported="false" android:label="Awai の外観"/>'
         home = '<intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.HOME"/><category android:name="android.intent.category.DEFAULT"/></intent-filter>'
     if kind == 'store':
@@ -37,7 +37,7 @@ def manifest(pkg, activity, version, kind, online=False):
       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>{home}</activity>{extra}</application></manifest>'''
 
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument('--version',type=int,default=1);ap.add_argument('--sdk',type=pathlib.Path,default=pathlib.Path.home()/'Library/Android/sdk');ap.add_argument('--java',type=pathlib.Path,default=pathlib.Path('/opt/homebrew/opt/openjdk/bin'));ap.add_argument('--out',type=pathlib.Path,default=ROOT/'.agent-output/android');ap.add_argument('--skip-cljs',action='store_true');ap.add_argument('--online-pins',type=pathlib.Path);ap.add_argument('--catalog-revision',type=int,default=None);ap.add_argument('--itonami-apk',type=pathlib.Path,default=None);args=ap.parse_args()
+    ap=argparse.ArgumentParser();ap.add_argument('--version',type=int,default=1);ap.add_argument('--sdk',type=pathlib.Path,default=pathlib.Path.home()/'Library/Android/sdk');ap.add_argument('--java',type=pathlib.Path,default=pathlib.Path('/opt/homebrew/opt/openjdk/bin'));ap.add_argument('--out',type=pathlib.Path,default=ROOT/'.agent-output/android');ap.add_argument('--skip-cljs',action='store_true');ap.add_argument('--online-pins',type=pathlib.Path);ap.add_argument('--catalog-revision',type=int,default=None);ap.add_argument('--itonami-apk',type=pathlib.Path,default=None);ap.add_argument('--home-only',action='store_true');args=ap.parse_args()
     if args.catalog_revision is not None and args.catalog_revision<1:raise SystemExit('positive catalog revision required')
     if args.version<1:raise SystemExit('positive version required')
     out=args.out.resolve();out.mkdir(parents=True,exist_ok=True);tools=args.sdk/'build-tools/36.1.0';jar=args.sdk/'platforms/android-37.0/android.jar'
@@ -45,12 +45,14 @@ def main():
     for f in [jar,tools/'aapt2',tools/'d8',tools/'apksigner',key,args.java/'javac']:
         if not f.is_file():raise SystemExit(f'missing build prerequisite: {f}')
     if not args.skip_cljs:run(['clojure','-M:build'],cwd=ROOT/'android/client')
+    run(['node',ROOT/'android/build-identity.mjs'],cwd=ROOT)
     if not (ROOT/'android/client/generated/domain.js').is_file():raise SystemExit('shared CLJS domain is not built')
     run(['bb','-cp','android/contracts/src','android/contracts/export.clj',out/'shared.json'],cwd=ROOT)
     common=json.loads((out/'shared.json').read_text());assets=out/'web';assets.mkdir(exist_ok=True)
-    for name in ['index.html','client.css','client.js','online.js']:shutil.copyfile(ROOT/'android/client'/name,assets/name)
+    for name in ['index.html','client.css','client.js','online.js','setup.js','setup.css']:shutil.copyfile(ROOT/'android/client'/name,assets/name)
     shutil.copytree(ROOT/'android/client/assets',assets/'assets',dirs_exist_ok=True)
     shutil.copyfile(ROOT/'android/client/generated/domain.js',assets/'domain.js')
+    shutil.copyfile(ROOT/'android/client/generated/identity.js',assets/'identity.js')
     pins=json.loads((ROOT/'nixos/otehon/shell/vendor/PINS.json').read_text());runtime=ROOT/'nixos/otehon/shell/vendor/kotoba-client-runtime.js'
     if digest(runtime)!=pins['files']['kotoba-client-runtime.js']:raise SystemExit('canonical runtime pin drift')
     shutil.copyfile(runtime,assets/'runtime.js')
@@ -92,6 +94,9 @@ def main():
             (staged_assets/'online-data.js').write_text('window.ItonamiOnlinePins=null;\n')
             (staged_assets/'online-pins.json').write_text('null')
             (staged_assets/'index.html').write_text((ROOT/'android/client/index.html').read_text())
+        if kind=='home':
+            html=(staged_assets/'index.html').read_text().replace("connect-src 'none'","connect-src https://relay.awai.network")
+            (staged_assets/'index.html').write_text(html)
         files=sorted(str(p.relative_to(staged_assets)).replace(os.sep,'/')for p in staged_assets.rglob('*')if p.is_file()and p.name not in ['assets.list','catalog.json','catalog.sig','catalog-key.der']and not str(p.relative_to(staged_assets)).startswith('packages/'))
         (staged_assets/'assets.list').write_text('\n'.join(files)+'\n')
         run([tools/'aapt2','compile','--dir',resources,'-o',stage/'resources.zip'])
@@ -107,6 +112,10 @@ def main():
         run([tools/'apksigner','sign','--ks',key,'--ks-key-alias','androiddebugkey','--ks-pass','pass:android','--key-pass','pass:android','--out',apk,stage/'aligned.apk'])
         run([tools/'apksigner','verify','--verbose',apk],stdout=subprocess.DEVNULL)
         return apk
+    if args.home_only:
+        home=build('home','network.awai.home','network.awai.home.HomeActivity')
+        report={'schema':'awai.android.home-build.v1','version':args.version,'publicSignerSha256':fp,'runtime':pins,'artifacts':{home.name:{'sha256':digest(home),'bytes':home.stat().st_size}},'identitySourceSha256':digest(ROOT/'android/client/identity-entry.js'),'identityVerifierSha256':digest(ROOT/'nixos/otehon/shell/src/identity/link.js'),'deviceSourceSha256':digest(ROOT/'nixos/otehon/shell/src/identity/device.js')}
+        (out/f'home-build-v{args.version}.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2));return
     yotei=build('yotei','network.itonami.yotei','network.itonami.yotei.YoteiActivity')
     packages=assets/'packages';packages.mkdir(exist_ok=True);shutil.copyfile(yotei,packages/'yotei.apk')
     revision=args.catalog_revision if args.catalog_revision is not None else args.version

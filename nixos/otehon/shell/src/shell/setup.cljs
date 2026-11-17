@@ -267,9 +267,16 @@
               [:button.secondary {:type "button" :id "link-start" :on-click start}
                (:linkStart t)]])])))))
 
+(defn initial-step [android-shell? returning account]
+  (if returning "signin" (if account "trust" (if android-shell? "signin" "hello"))))
+
 (defn setup [broker relay-origin did account returning on-linked score on-finish]
-  (let [[language set-language] (useState saved-language)
-        [step set-step] (useState (if returning "signin" (if account "trust" "hello")))
+  (let [android-shell? (and (some? (.-__TAURI_INTERNALS__ js/window))
+                            (.includes (.-userAgent js/navigator) "Android"))
+        [language set-language] (useState (if android-shell?
+                                          (if (.startsWith (.-language js/navigator) "ja") "ja" "en")
+                                          saved-language))
+        [step set-step] (useState (initial-step android-shell? returning account))
         network (useNetStatus)
         t (get text language)
         index (.indexOf steps step)
@@ -337,7 +344,7 @@
          [:p (:doneBody t)]
          [:p.muted.account-id (some-> account (.-accountDid))]
          [:button.primary {:type "button" :data-finish true :on-click on-finish} (:enter t)]])
-      (when (= step "signin")
+      (when (and (= step "signin") (not android-shell?))
         [:button.secondary {:type "button" :data-network-back true
                             :on-click #(set-step "network")}
          (if (= language "ja") "ネットワーク設定へ戻る" "Back to network settings")])
@@ -345,7 +352,7 @@
         [:button.secondary {:type "button"
                              :on-click #(set-step (aget steps (dec index)))}
          (:back t)])]
-     (when-not returning
+     (when (and (not returning) (not android-shell?))
        [:ol.progress {:aria-label (str (inc index) " / " (.-length steps))}
         (map (fn [step-name]
                [:li {:key step-name :class (when (= step-name step) "current")}])

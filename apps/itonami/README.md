@@ -71,3 +71,9 @@ rendered at1920×1200. Native IPC/read-only capability and restart evidence are
 recorded separately as they become verified. Owner authentication and complete
 Nix service parity are not inferred from a rendered welcome screen. The OS is
 RAM-only; its system notification/user handoff covers loss on OS reboot.
+
+## AOSP setup continuation — 2026-11-17
+
+AWAI-3004 packages Android entry at sign-in, without replaying Hello, locale or NixOS network steps. Home owns the ordinary-app setup flow and delegates actual locale/PIN to Android Settings; this is not privileged SetupWizard/ROM integration. Home and Itonami retain separate WebView identity stores, so a verified Home link is not silently copied into Itonami.
+
+The rebuilt ARM64 API35 VM and x86_64 Live physical app both visibly start at サインイン and report the same embedded source manifest. Physical update preserves the previous package identity, `https://tauri.localhost` origin and app data. Development version remains0.1.0/code1000; exact APK hashes and the source revision are recorded in [the setup qualification record](../../android/setup-qualification-20261117.md). Authenticated Itonami desktop acceptance, profile sync and persistent physical Android storage remain separate.

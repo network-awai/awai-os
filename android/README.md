@@ -1,13 +1,13 @@
 # Awai Home and Itonami Store — Otehon Android host
 
-Implementation of Figma native UX v2 for LineageOS, with a shared browser UI/domain suitable for NixOS. This is a development build, separate from the Native selfhost profile.
+Implementation of Figma native UX v2 for Android AOSP, with LineageOS usable for device bring-up and a shared browser UI/domain suitable for the retained NixOS host. This is a development build, separate from the Native selfhost profile.
 
 - `network.awai.home`: reversible Android HOME-role launcher, real installed-app drawer/launch, clock, local agenda projection and system-settings entry.
 - `network.awai.store`: signed bundled catalog, library/update state, independent native confirmation, bounded APK digest/package/version/signer checks and Android PackageInstaller user action.
 - `network.itonami.yotei`: actual bundled calendar application; shared browser UI and local event model, persistent local storage, signature-permission protected read-only agenda projection. No sync, remote inference or notification scheduling is claimed.
-- All three hosts have no INTERNET permission. No ROM, SystemUI, Keyguard or existing launcher is replaced/uninstalled.
+- Home has INTERNET permission for the fixed Awai account-link relay route. Store has INTERNET only in its explicit online build; Yotei remains offline. No ROM, SystemUI, Keyguard or existing launcher is replaced/uninstalled.
 - Browser UI/state/domain use local JavaScript and compiled shared `.cljc`; Java contains platform operations and an independent installer trust boundary. Browser consent never grants host install authority.
-- Canonical Kotoba runtime is copied unchanged from the existing revision/digest-pinned source bundle. Empty external operations, strict CSP, fixed local asset origin, no arbitrary file/content URLs or remote navigation.
+- Canonical Kotoba runtime is copied unchanged from the existing revision/digest-pinned source bundle. Home declares one bounded relay GET with fresh operation consent; offline Store/Yotei declare no external operations. Strict CSP and the native request filter retain the fixed local asset origin and reject arbitrary file/content URLs or remote navigation.
 - Catalog signatures use the local Android debug identity for this development build. This is not a production publisher/key-rotation release.
 
 ## Build
@@ -23,6 +23,8 @@ node --test android/tests/domain.test.mjs
 python3 android/build.py --version 1 --skip-cljs
 python3 android/build-tests.py --version 1
 ```
+
+Account linking also requires the owning shell’s lockfile-pinned npm dependencies: run `npm ci` inside `nixos/otehon/shell` before building. `android/build-identity.mjs` bundles the existing awai.link.v1 verifier, device-key custody and QR renderer; the canonical runtime stays an external, digest-checked module. `--home-only` builds Home without rebuilding Store/Yotei.
 
 Build outputs, signed APKs, public fingerprint/digests and tool logs stay in `.agent-output/android`. The existing debug key stays in Android's credential directory and is never copied to source or reports. `build.py` never connects to or installs on a device.
 
@@ -46,8 +48,16 @@ Tracking: [AWAI-2977](https://linear.app/kotobalabs/issue/AWAI-2977), parent[AWA
 
 ## Explicit online development build
 
-The offline build remains the default. `python3 android/build.py --version 5 --skip-cljs --online-pins android/online-pins.dev.json` includes a fixed immutable catalog/APK source and grants INTERNET only to Store. The canonical runtime broker handles each real browser download, with exact paths, no credentials/referrer, no redirects, byte bounds and expected digest. Browser signature/expiry/revision verification is followed by independent Android catalog/identity verification and OS install confirmation. Denial sends no request; an app/bot must not synthesize the trusted user's approval.
+Store is offline by default. Home’s separately declared account-link relay is available in either build. `python3 android/build.py --version 5 --skip-cljs --online-pins android/online-pins.dev.json` includes a fixed immutable catalog/APK source and additionally grants INTERNET to Store. The canonical runtime broker handles each real browser download, with exact paths, no credentials/referrer, no redirects, byte bounds and expected digest. Browser signature/expiry/revision verification is followed by independent Android catalog/identity verification and OS install confirmation. Denial sends no request; an app/bot must not synthesize the trusted user's approval.
 
 The public development payload is under `store/distribution/dev-20261116` at commit `2cbd32f31b3053fd148e04dda25cbfd8e2f0b726`. Pins are immutable and must not be changed to `main` or an arbitrary URL. The signed catalog is revision100 and expires30 days after packaging. No production key rotation/revocation or automatic mutable latest channel is claimed. Browser-state and host-state failures remain visible; cached signed APKs can be installed offline with fresh native/OS confirmation.
 
 `node --test android/tests/domain.test.mjs android/tests/online.test.mjs` checks compiled domain behavior, exact URL scope, signature alteration, metadata expiry and revision floor. Build/runtime/online/NixOS evidence remain separate. See `docs/otehon/itonami-store-shared-install-sync-20261116.md` for the common auth/permission/sync recommendation and current native-Nix/sync boundaries.
+
+## Android setup and account linking
+
+Home follows the existing Figma Android setup composition. Android Settings owns the actual language, networking and screen lock; Awai never receives the PIN. The account step uses the existing `awai.link.v1` phone/wallet/Passkey protocol through `https://relay.awai.network/<32-hex-topic>/json`. Each attempt requires the canonical broker’s direct user consent before its GET; native filtering and CSP independently restrict the route. No approval or private key is imported from a fixture.
+
+A saved signed link is reverified for expiry, device binding and the non-exportable device key’s possession before it can restore an authenticated account. The native setup preference is only a flow marker, not an identity credential. Invalid or missing proof returns to account linking while retaining saved evidence. Explicit account deferral remains available. Home’s WebView and Itonami’s WebView have separate stores: shared sign-in, encrypted profile transfer and sync are not implemented by this change.
+
+See [the qualification record](setup-qualification-20261117.md) for current VM, real-account and physical-device gates. An ordinary Home APK is not privileged SetupWizard integration or a qualified persistent PC ROM.

@@ -1,4 +1,5 @@
 import './domain.js';
+import {createSetup} from './setup.js';
 import './catalog-data.js';
 import './online-data.js';
 import {createOnline,authenticateCatalog} from './online.js';
@@ -24,7 +25,7 @@ let query = '';
 let filter = 'おすすめ';
 let statusTimer;
 const paths = { search:'android-v2-icon-search.svg', apps:'android-v2-icon-apps.svg', camera:'android-v2-icon-camera.svg',
-  phone:'android-v2-icon-phone.svg', settings:'android-v2-icon-settings.svg', store:'android-v2-icon-store.svg',
+  phone:'android-v2-icon-phone.svg', wifi:'android-v2-icon-wifi.svg', settings:'android-v2-icon-settings.svg', store:'android-v2-icon-store.svg',
   calendar:'android-v2-icon-calendar.svg', chat:'android-v2-icon-chat.svg', cloud:'store-android-v2-icon-cloud.svg', download:'store-android-v2-icon-download.svg' };
 
 function el(tag, cls, text) { const n=document.createElement(tag); if(cls)n.className=cls; if(text!==undefined)n.textContent=text; return n; }
@@ -87,10 +88,11 @@ function library(updates=false){const p=page(updates?'アプリの更新':'ラ�
 function saveEvents(events){writeLocal('itonami.yotei.events.v1',events);if(host&&mode==='yotei')host.persistEvents(JSON.stringify(events));}
 function yotei(){const p=page('Yotei',mode==='yotei'?null:()=>navigate('library'));p.append(el('p','muted','予定を、手元に。'),button('予定を追加',()=>eventForm()));const events=readLocal('itonami.yotei.events.v1',[]);const list=el('ul','events');for(const event of events){const li=el('li','event');li.append(el('p','label primary-text',new Intl.DateTimeFormat('ja-JP',{dateStyle:'medium',timeStyle:'short'}).format(new Date(event.at))),el('h2','',event.title),button('予定を削除',()=>{const d=document.createElement('dialog');d.append(el('h2','','この予定を削除しますか？'),button('削除',()=>{saveEvents(events.filter(x=>x.id!==event.id));d.close();d.remove();render();},'button danger'),button('残す',()=>{d.close();d.remove();},'button tonal'));document.body.append(d);d.showModal();},'button text'));list.append(li);}if(!events.length)p.append(el('p','empty muted','まだ予定はありません。追加した予定はこの端末に保存されます。'));p.append(list,el('p','caption muted','通知の配信・外部同期は、この版では行いません。'));}
 function eventForm(){const d=document.createElement('dialog'),f=el('form');f.method='dialog';const heading=el('h2','','予定を追加');f.append(heading);const title=el('input');title.id='event-title';title.name='title';title.required=true;title.maxLength=160;const tf=el('div','field'),tl=el('label','','予定の名前');tl.htmlFor=title.id;tf.append(tl,title);const date=el('input');date.type='datetime-local';date.id='event-date';date.name='date';date.required=true;date.value=new Date(Date.now()+3600000-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);const df=el('div','field'),dl=el('label','','日時');dl.htmlFor=date.id;df.append(dl,date);const submit=el('button','button','保存');submit.type='submit';f.append(tf,df,submit,button('キャンセル',()=>{d.close();d.remove();},'button tonal'));f.addEventListener('submit',e=>{e.preventDefault();if(!f.reportValidity())return;const entry={id:crypto.randomUUID(),title:title.value.trim(),at:new Date(date.value).getTime()};const result=JSON.parse(domain.saveEvent(JSON.stringify(readLocal('itonami.yotei.events.v1',[])),JSON.stringify(entry)));if(result.error){notify('予定の名前と日時を確認してください。');return;}try{saveEvents(result.events);d.close();d.remove();render();notify('予定を保存しました。');}catch{notify('保存できませんでした。元の予定は保持しています。');}});d.append(f);d.addEventListener('close',()=>d.remove(),{once:true});document.body.append(d);d.showModal();title.focus();}
-function render(){refresh();syncMotion();root.replaceChildren();if(mode==='store'&&!domain.validCatalog(JSON.stringify(catalog),Math.floor(Date.now()/1000))){const p=page('追加を停止しました');p.append(el('p','','カタログの有効期限または内容を確認できません。署名済みの Store を更新してください。'));return;}({home,apps:drawer,discover,detail,review,library,updates:()=>library(true),yotei}[route]||discover)();}
+const setup = createSetup({host,domain,root,button,el,icon,notify,render:()=>render()});
+function render(){refresh();syncMotion();root.replaceChildren();if(mode==='home'&&setup.render())return;if(mode==='store'&&!domain.validCatalog(JSON.stringify(catalog),Math.floor(Date.now()/1000))){const p=page('追加を停止しました');p.append(el('p','','カタログの有効期限または内容を確認できません。署名済みの Store を更新してください。'));return;}({home,apps:drawer,discover,detail,review,library,updates:()=>library(true),yotei}[route]||discover)();}
 window.awaiRefresh=()=>{try{render();if(native.message)notify(native.message);}catch{notify('表示を更新できません。端末の戻る操作でやり直してください。');}};
 window.awaiGoHome=()=>navigate('home');
-window.awaiBack=()=>{const dialog=document.querySelector('dialog[open]');if(dialog){dialog.close();return true;}if(route==='home'||(mode==='store'&&route==='discover')||(mode==='yotei'&&route==='yotei'))return false;navigate(mode==='home'?'home':mode==='yotei'?'yotei':'discover');return true;};
+window.awaiBack=()=>{if(mode==='home'&&setup.back())return true;const dialog=document.querySelector('dialog[open]');if(dialog){dialog.close();return true;}if(route==='home'||(mode==='store'&&route==='discover')||(mode==='yotei'&&route==='yotei'))return false;navigate(mode==='home'?'home':mode==='yotei'?'yotei':'discover');return true;};
 async function bootstrap(){
   if(!host){
     try{
