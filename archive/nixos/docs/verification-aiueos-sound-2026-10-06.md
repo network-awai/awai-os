@@ -56,7 +56,7 @@ code-playback silent lead-in (plus its source test). Final media asset and nativ
 playback checks are recorded separately. The earlier full offline installation
 and account persistence evidence is retained with its exact source/hash boundary.
 
-Evidence: [directory](evidence/aiueos-sound-2026-10-06/).
+Evidence: [directory](../../../docs/evidence/aiueos-sound-2026-10-06/).
 
 ## Final artifact
 

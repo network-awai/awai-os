@@ -19,15 +19,15 @@ NixOS `26.05pre-git` / Nix `2.34.8`。
 
 番号を選ぶ画面（実 ISO の VM）:
 
-![文字版の起動画面](assets/installer-0.7.3-text-ready.png)
+![文字版の起動画面](../../../../docs/otehon/assets/installer-0.7.3-text-ready.png)
 
 選んだディスクを確認して消去を承認する画面（VM）:
 
-![上書きの確認](assets/installer-0.7.3-text-review.png)
+![上書きの確認](../../../../docs/otehon/assets/installer-0.7.3-text-review.png)
 
 全長照合・起動登録後の完了画面（VM）:
 
-![文字版の導入完了](assets/installer-0.7.3-text-complete.png)
+![文字版の導入完了](../../../../docs/otehon/assets/installer-0.7.3-text-complete.png)
 
 ## GUI で導入するとき
 

@@ -4,7 +4,7 @@ let
   pkgs = import nixpkgsPath { system = "x86_64-linux"; };
   os = import (nixpkgsPath + "/nixos/lib/eval-config.nix") {
     system = null;
-    modules = [ ../../../otehon/desktop.nix ({ lib, ... }: {
+    modules = [ ../otehon/desktop.nix ({ lib, ... }: {
       nixpkgs.hostPlatform = lib.mkForce "x86_64-linux";
     }) ];
   };

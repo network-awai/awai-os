@@ -23,9 +23,9 @@ platform decision lists the remaining gates.
 | Path | Contents |
 | --- | --- |
 | [`android/`](android) | Awai OS on Android: Home, Store, setup, SystemUI overlays, desktop PC work |
-| [`apps/`](apps) | Bundled apps: Itonami, Murakumo (local inference), Drive, Yotei, macOS preview |
+| [`apps/`](apps) | Bundled apps: Itonami, Murakumo (local inference), Drive, Yotei |
 | [`dapps/`](dapps) | Otehon dapps: D1, reward loop, Saifu, Sanka, Wellbecoming |
-| [`otehon/`](otehon) | Itonami shell UI shared with Android, and the Otehon fleet (Meiji, Bot fleet, Soshiki, storage) |
+| [`otehon/`](otehon) | Itonami shell UI shared with Android, and Otehon fleet sources (Meiji, Bot fleet, Soshiki, storage) |
 | [`packages/`](packages) | Shared Awai inference and shell packages |
 | [`store/`](store), [`distribution/`](distribution) | Signed app catalog and its distribution Worker |
 | [`deploy/awai-link`](deploy/awai-link) | awai.link account-link relay |
@@ -43,8 +43,8 @@ device image.
 
 ## Deprecated
 
-The NixOS desktop install route, the Murakumo NixOS installer, the native
-NixOS preview and the old Awai Node setup are deprecated. They are kept in
+The NixOS desktop install route and Otehon NixOS profiles, the Murakumo NixOS
+installer, the native NixOS preview and the old Awai Node setup are deprecated. They are kept in
 [`archive/nixos/`](archive/nixos/README.md) for history and are not an Awai OS
 install path. Device cleanup of the old NixOS installation follows the
 [deprecation runbook](docs/otehon/nixos-route-deprecation-20261117.md).

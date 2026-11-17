@@ -45,7 +45,7 @@ Build/check with the repository-pinned nixpkgs (no mutable channel):
 
 ```sh
 nix-build otehon/itonami-gms/check.nix
-nix-build otehon/itonami-gms/module-check.nix
+nix-build archive/nixos/otehon/itonami-gms/module-check.nix
 nix-build otehon/itonami-gms/package.nix
 ```
 

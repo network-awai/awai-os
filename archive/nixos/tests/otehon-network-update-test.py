@@ -1,6 +1,6 @@
 import fcntl, importlib.util, unittest, tempfile, subprocess, ssl, http.server, threading, json, time, urllib.request, signal, sys
 from pathlib import Path
-spec=importlib.util.spec_from_file_location('update_network',Path(__file__).parents[1]/'otehon/update-network.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+spec=importlib.util.spec_from_file_location('update_network',Path(__file__).parents[1]/'archive/nixos/otehon/update-network.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 class Admission(unittest.TestCase):
     def setUp(self):
         self.c={'architecture':'x86_64','stateContract':'chromium-1-profile-v1','channel':'stable','cohort':'stable','maintenanceHours':list(range(24)),'maxValiditySeconds':86400}

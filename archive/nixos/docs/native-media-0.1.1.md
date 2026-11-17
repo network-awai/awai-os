@@ -24,7 +24,7 @@ This ISO does not perform those operations for the user.
 
 ## Exact ISO and VM verification
 
-[Machine-readable qualification receipt](evidence/native-media-20261024.json).
+[Machine-readable qualification receipt](../../../docs/evidence/native-media-20261024.json).
 
 - Filename: `murakumo-nixos-0.1.1-x86_64-linux.iso`
 - Length: `2220474368` bytes
@@ -40,7 +40,7 @@ share, incoming port forwarding or external network access. The gate verified:
 - Native monitor, static loopback server and Cage/Chromium are running.
 - Browser/Worker initialization reaches `Local runtime ready` (screen OCR).
 - All 24 bundle hashes match; the 17 source hashes from the previous full
-  [network-update qualification](evidence/native-network-update-20261024.json)
+  [network-update qualification](../../../docs/evidence/native-network-update-20261024.json)
   also match the ISO's files.
 - No live update contract, recovery timer, automatic install service or app-origin
   update/status API exists. The helper refuses live updates without state writes.

@@ -2,7 +2,7 @@
 let
   eval = extra: (import (nixpkgsPath + "/nixos/lib/eval-config.nix") {
     system = null;
-    modules = [ ../../../otehon/netboot-diagnostic-6600h.nix extra ];
+    modules = [ ../otehon/netboot-diagnostic-6600h.nix extra ];
   }).config;
   key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA fixture";
   maintenance = eval { otehon.diagnosticPublicKey = key; otehon.diagnosticMaintenance = true; };

@@ -1,6 +1,6 @@
 # Awai link services
 
-What a phone needs to link a device (`docs/otehon/login-0.6.0.md`), in the Cloudflare account that holds
+What a phone needs to link a device (`archive/nixos/docs/otehon/login-0.6.0.md`), in the Cloudflare account that holds
 the `awai.network` zone.
 
 | Part | URL | What it is |

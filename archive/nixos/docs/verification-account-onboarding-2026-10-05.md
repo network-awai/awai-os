@@ -50,7 +50,7 @@ The normal guide's shutdown action is used to stop the final installed QA VM.
 - Production read-only route check: GET status and empty POST start each return
   HTTP 404, unknown devices route. This cannot create a device registration.
 
-Evidence: [account onboarding evidence](evidence/account-onboarding-2026-10-05/).
+Evidence: [account onboarding evidence](../../../docs/evidence/account-onboarding-2026-10-05/).
 The phone screenshot prominently identifies LOCAL TEST authentication.
 
 ## Remaining acceptance

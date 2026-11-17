@@ -115,7 +115,7 @@ jobs:
           ssh-keygen -q -t ed25519 -N '' -f .agent-output/lan/operator
           ssh-keygen -q -t ed25519 -N '' -f .agent-output/lan/unauthorized
           nix-instantiate --eval --strict --json --expr 'import ./tests/otehon-netboot-eval.nix { nixpkgsPath = import ./ci/nixpkgs.nix; }'
-          nix-build otehon/default.nix --argstr profile netboot-diagnostic-6600h --argstr diagnosticPublicKey "$(cat .agent-output/lan/operator.pub)" --out-link result-otehon-lan --show-trace
+          nix-build archive/nixos/otehon/default.nix --argstr profile netboot-diagnostic-6600h --argstr diagnosticPublicKey "$(cat .agent-output/lan/operator.pub)" --out-link result-otehon-lan --show-trace
       - name: Build separately keyed physical candidate
         if: github.event_name == 'workflow_dispatch' && inputs.operator_public_key != ''
         env:
@@ -124,7 +124,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          nix-build otehon/default.nix --argstr profile netboot-diagnostic-6600h --argstr diagnosticPublicKey "$OPERATOR_PUBLIC_KEY" --arg diagnosticMaintenance "$DIAGNOSTIC_MAINTENANCE" --out-link result-otehon-lan-candidate --show-trace
+          nix-build archive/nixos/otehon/default.nix --argstr profile netboot-diagnostic-6600h --argstr diagnosticPublicKey "$OPERATOR_PUBLIC_KEY" --arg diagnosticMaintenance "$DIAGNOSTIC_MAINTENANCE" --out-link result-otehon-lan-candidate --show-trace
           mkdir -p .agent-output/lan/candidate
           for file in ipxe.efi kernel initrd installer-info.json; do cp -L "result-otehon-lan-candidate/$file" ".agent-output/lan/candidate/$file"; done
           (cd .agent-output/lan/candidate; sha256sum ipxe.efi kernel initrd installer-info.json > SHA256SUMS)

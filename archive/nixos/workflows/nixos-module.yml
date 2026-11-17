@@ -20,7 +20,7 @@ jobs:
       - name: Check common Store core and disabled/enabled module
         run: |
           nix-build otehon/itonami-gms/check.nix --no-out-link
-          nix-build otehon/itonami-gms/module-check.nix --no-out-link
+          nix-build archive/nixos/otehon/itonami-gms/module-check.nix --no-out-link
           package=$(nix-build otehon/itonami-gms/package.nix --no-out-link)
           "$package/bin/itonami-gms" contract
   forest-writer-linux:
@@ -103,7 +103,7 @@ jobs:
 
   otehon:
     # Awai Otehon (AWAI-169): a profile that no longer evaluates, or a failing shell test, fails here.
-    # It evaluates and tests only. It does not build an image or boot a VM (docs/otehon/operations-0.1.0.md).
+    # It evaluates and tests only. It does not build an image or boot a VM (archive/nixos/docs/otehon/operations-0.1.0.md).
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -143,12 +143,12 @@ jobs:
         run: |
           storage_check=$(nix-build otehon/storage/check.nix --no-out-link)
           cat "$storage_check/unit-tests.txt" "$storage_check/crash-tests.edn" "$storage_check/pack-crash-tests.edn"
-          module_check=$(nix-build otehon/storage/module-check.nix --no-out-link)
+          module_check=$(nix-build archive/nixos/otehon/storage/module-check.nix --no-out-link)
           cat "$module_check"
       - name: Test HTTPS updater admission and evaluate desktop integration
         run: |
           python3 archive/nixos/tests/otehon-network-update-test.py
-          bash -n otehon/update.sh
+          bash -n archive/nixos/otehon/update.sh
           nix-instantiate --eval --strict --json --expr 'import ./tests/otehon-update-eval.nix { nixpkgsPath = import ./ci/nixpkgs.nix; }'
           nix-instantiate --eval --strict --json --expr 'import ./tests/otehon-usb-eval.nix { nixpkgsPath = import ./ci/nixpkgs.nix; }'
       - name: Test Otehon bot work bindings and deduplicated usage receipts
@@ -156,14 +156,14 @@ jobs:
         run: |
           fleet_check=$(nix-build otehon/bot-fleet/check.nix --no-out-link)
           cat "$fleet_check/core-tests.txt" "$fleet_check/receipt-tests.txt"
-          observation_check=$(nix-build otehon/node-observation/check.nix --no-out-link)
+          observation_check=$(nix-build archive/nixos/otehon/node-observation/check.nix --no-out-link)
           cat "$observation_check/tests.txt"
       - name: Test the Otehon Agent conversation database over AwaiFS
         run: |
           chat_check=$(nix-build otehon/bot-chat/check.nix --no-out-link)
           cat "$chat_check"
       - name: Evaluate every Otehon profile, aarch64 and the x86_64 vm
-        run: sh otehon/eval-profiles.sh .
+        run: sh archive/nixos/otehon/eval-profiles.sh .
       - name: Test bounded Meiji controller and inference protocol (no VM or GPU)
         # Otehon Babashka path; Native checks above do not depend on this job.
         run: |

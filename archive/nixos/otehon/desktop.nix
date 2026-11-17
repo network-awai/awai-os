@@ -1,0 +1,431 @@
+{ config, lib, pkgs, ... }:
+let
+  user = "otehon";
+  cfg = config.otehon;
+
+  # AWAI-2791: the shell is ClojureScript (shadow-cljs) with Garden
+  # stylesheets, so its build runs Nix-pinned JVM Clojure (owner decision
+  # 2026-11-11; the repo-wide JVM ban in CI/CD scripts (JUN-290) does not
+  # cover this Nix-pinned Otehon build input). The build sandbox has no
+  # network, so Maven artifacts come from the cljDeps fixed-output
+  # derivation below instead of ~/.m2; build.mjs points Clojure at it
+  # through MVN_REPO.
+  #
+  # Dependency hashes were measured in Nix CI on 2026-11-13. This only pins
+  # build inputs; image boot and desktop update qualification are separate.
+  cljDeps = pkgs.stdenv.mkDerivation {
+    name = "awai-otehon-shell-clj-deps";
+    src = builtins.path { path = ../../../otehon/shell/deps.edn; };
+    # Single-file src with a recursive fixed output: skip the archive
+    # unpack or the build dies before the hash check (JUN-1180 V2).
+    dontUnpack = true;
+    nativeBuildInputs = [ pkgs.clojure ];
+    outputHashAlgo = "sha256";
+    outputHashMode = "recursive";
+    outputHash = "sha256-hOWfIhjkuhE5E3q+ZxelbQICQmFWi9uYg21ljRQeLbE=";
+    buildPhase = ''
+      runHook preBuild
+      export HOME="$TMPDIR/home"
+      mkdir -p "$HOME" src vendor "$out"
+      cp "$src" ./deps.edn
+      clojure -Sdeps "{:mvn/local-repo \"$out\"}" -P
+      # Resolver bookkeeping embeds fetch timestamps; keep only immutable artifacts.
+      find "$out" -type f \( -name _remote.repositories -o -name '*.lastUpdated' -o -name resolver-status.properties \) -delete
+      runHook postBuild
+    '';
+    installPhase = "runHook preInstall; runHook postInstall;";
+  };
+
+  shell = cfg.shellPkgs.buildNpmPackage {
+    pname = "awai-otehon-shell";
+    version = config.system.image.version;
+    src = lib.cleanSourceWith {
+      src = ../../../otehon/shell;
+      filter = path: _: !(lib.elem (baseNameOf path) [ "node_modules" "dist" ]);
+    };
+    nativeBuildInputs = [ pkgs.clojure ];
+    env = {
+      RELAY_ORIGIN = cfg.relayOrigin;
+      OTEHON_HTTP = "1";
+      OTEHON_E2E = if cfg.e2e then "1" else "0";
+      MVN_REPO = "${cljDeps}";
+    };
+    doCheck = true;
+    checkPhase = ''
+      runHook preCheck
+      npm test
+      runHook postCheck
+    '';
+    # Refreshed 2026-11-13 where Nix runs (JUN-1180) for the current
+    # package-lock.json.
+    npmDepsHash = "sha256-gEHDRiPWlGGh0mjcJB54WSThDCzn7uMsmMHX6sjni7Q=";
+    installPhase = ''
+      runHook preInstall
+      cp -r dist $out
+      runHook postInstall
+    '';
+  };
+
+  # The profile stays in the image. The DevTools port is on loopback and is how
+  # the boot report reads the page title.
+  browser = pkgs.writeShellScript "otehon-browser" ''
+    ${lib.optionalString (cfg.mirrorStartupOutputs && !cfg.headless) ''
+      ${pkgs.python3}/bin/python3 ${./desktop-layout.py} --randr ${lib.getExe pkgs.cosmic-randr}
+    ''}
+    exec ${lib.getExe pkgs.chromium} \
+      ${if cfg.headless then "--headless=new --disable-gpu --window-size=1280,800" else "--ozone-platform=wayland --kiosk"} \
+      --no-first-run \
+      --disable-features=Translate \
+      --no-default-browser-check \
+      --password-store=basic \
+      --user-data-dir="$HOME/.local/state/otehon-chromium" \
+      --remote-debugging-address=127.0.0.1 \
+      --remote-debugging-port=9222 \
+      ${lib.escapeShellArgs cfg.browserArgs} \
+      "http://127.0.0.1:8780/"
+  '';
+in
+{
+  # Awai Otehon local desktop (ADR 0026): a React shell in Chromium on Wayland,
+  # with cosmic-comp as the Smithay compositor. niri rejects software EGL, which
+  # is all this VM has. Zenoh and Matter listen on loopback only.
+  # The user has no password and logs in automatically, so this image is for a
+  # local VM only. It has no SSH or keys.
+  imports = [ ./common.nix ./media.nix ./manimani/manimani.nix ./update.nix ./update-network.nix ./k3s/default.nix ./node-observation.nix ];
+
+  options.otehon = {
+    mirrorStartupOutputs = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "Mirror enabled outputs before launching the single-window kiosk shell.";
+    };
+    relayOrigin = lib.mkOption {
+      type = lib.types.str;
+      default = "https://relay.awai.network";
+      description = "The ciphertext relay for phone approval (ADR 0026 D13).";
+    };
+    browserArgs = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+    };
+    headless = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "Run the shell in headless Chromium with no compositor, for a VM with no display. Check images only.";
+    };
+    e2e = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "Build the sign-in test driver into the shell. Check images only.";
+    };
+    # The shell is static files, so it can come from another architecture's build.
+    shellPkgs = lib.mkOption {
+      type = lib.types.pkgs;
+      default = pkgs;
+    };
+    shell = lib.mkOption {
+      type = lib.types.package;
+      readOnly = true;
+      default = shell;
+    };
+  };
+
+  config = {
+  # A stable origin is required for IndexedDB/localStorage across Nix store generations.
+  # Only immutable static artifacts are served; no API/state/inference on this origin.
+  services.nginx.enable = true;
+  services.nginx.virtualHosts."otehon-desktop" = {
+    listen = [ { addr = "127.0.0.1"; port = 8780; } ];
+    root = toString shell;
+    locations."/".tryFiles = "$uri $uri/ =404";
+  };
+  otehon.update.healthCheck = pkgs.writeShellApplication {
+    name = "otehon-desktop-update-health";
+    runtimeInputs = [ pkgs.curl pkgs.jq pkgs.coreutils ];
+    text = ''
+      for _ in $(seq 1 60); do
+        if curl --fail --silent --max-time 2 http://127.0.0.1:9222/json/list | jq -e 'any(.[]; .type == "page" and .url == "http://127.0.0.1:8780/" and (.title | test("^Awai Otehon zenoh=[01] matter=[01] gate=[01] dapps=[0-9]+$")))' >/dev/null; then exit 0; fi
+        sleep 1
+      done
+      echo "desktop-readiness failed" >&2
+      exit 1
+    '';
+  };
+  system.image.id = "awai-otehon-desktop";
+  system.image.version = "0.7.0";
+
+  hardware.graphics.enable = true;
+  fonts.packages = [ pkgs.noto-fonts-cjk-sans ];
+  documentation.nixos.enable = false;
+
+  users.users.${user} = {
+    isNormalUser = true;
+    hashedPassword = "!";
+  };
+  # krunkit's virtio-gpu has no display (the kernel logs "KMS disabled"), so a compositor cannot start there.
+  # greetd is what normally makes graphical.target the default.
+  systemd.defaultUnit = lib.mkIf cfg.headless "graphical.target";
+  systemd.services.otehon-headless-shell = lib.mkIf cfg.headless {
+    description = "The shell in headless Chromium";
+    wantedBy = [ "graphical.target" ];
+    after = [ "nginx.service" ];
+    requires = [ "nginx.service" ];
+    serviceConfig = {
+      User = user;
+      ExecStart = browser;
+      Restart = "on-failure";
+    };
+  };
+  services.greetd = {
+    enable = !cfg.headless;
+    settings = rec {
+      initial_session = {
+        command = "${lib.getExe pkgs.cosmic-comp} ${browser}";
+        inherit user;
+      };
+      default_session = initial_session;
+    };
+  };
+  systemd.services.greetd = lib.mkIf (!cfg.headless) {
+    after = [ "nginx.service" ];
+    requires = [ "nginx.service" ];
+  };
+
+  services.zenohd = {
+    enable = true;
+    settings = {
+      listen.endpoints = [ "tcp/127.0.0.1:7447" ];
+      scouting.multicast.enabled = false;
+      plugins.rest.http_port = "127.0.0.1:8000";
+    };
+  };
+
+  # Loopback system metrics for the shell's node dock (AWAI-231). The shell shows
+  # the services without it; live CPU and memory need this endpoint.
+  systemd.services.otehon-status = {
+    description = "Loopback system metrics for the shell status UI";
+    wantedBy = [ "graphical.target" ];
+    after = [ "local-fs.target" ];
+    environment = {
+      # 8772 already serves the Manimani LLM in this image.
+      OTEHON_STATUS_PORT = "8774";
+    };
+    serviceConfig = {
+      ExecStart = "${lib.getExe pkgs.python3} ${./status-service.py}";
+      DynamicUser = true;
+      IPAddressDeny = "any";
+      IPAddressAllow = "localhost";
+      ProtectSystem = "strict";
+      ProtectHome = true;
+      PrivateTmp = true;
+      NoNewPrivileges = true;
+      RestrictAddressFamilies = [ "AF_INET" "AF_UNIX" ];
+      Restart = "on-failure";
+    };
+  };
+
+  services.matter-server = {
+    enable = true;
+    extraArgs.listen-address = "127.0.0.1";
+  };
+
+  # Network setup (AWAI-168): NetworkManager owns wired and Wi-Fi, BlueZ owns
+  # Bluetooth. The shell drives both through the loopback otehon-net service
+  # below, never the raw tools. Profiles persist in root-owned NM keyfiles,
+  # so a joined network survives reboots. Radio silence by default.
+  networking.networkmanager.enable = true;
+  services.usbmuxd.enable = true;
+  boot.kernelModules = [ "ipheth" "rndis_host" "cdc_ether" "cdc_ncm" "bnep" ];
+  hardware.bluetooth = {
+    enable = true;
+    powerOnBoot = false;
+  };
+
+  # NetworkManager authorizes operations through polkit, but this image has no
+  # PolicyKit1 D-Bus activator, so on-demand start never happens and every
+  # authorized call hangs. Start polkit at boot instead of relying on activation.
+  systemd.services.polkit.wantedBy = [ "multi-user.target" ];
+
+  systemd.services.otehon-net = {
+    description = "Loopback network setup for the shell (Wi-Fi and Bluetooth)";
+    wantedBy = [ "graphical.target" ];
+    after = [ "local-fs.target" "NetworkManager.service" "bluetooth.service" ];
+    environment = {
+      OTEHON_NET_PORT = "8773";
+    };
+    path = [ pkgs.networkmanager pkgs.bluez pkgs.libimobiledevice ];
+    serviceConfig = {
+      ExecStart = "${lib.getExe (pkgs.python3.withPackages (ps: [ ps.dbus-next ]))} ${./net-service.py}";
+      User = "root";
+      IPAddressDeny = "any";
+      IPAddressAllow = "localhost";
+      ProtectSystem = "strict";
+      ProtectHome = true;
+      PrivateTmp = true;
+      NoNewPrivileges = true;
+      RestrictAddressFamilies = [ "AF_INET" "AF_UNIX" "AF_NETLINK" ];
+      Restart = "on-failure";
+    };
+  };
+
+  # Sound setup (AWAI-168): PipeWire runs the audio graph in the desktop
+  # user's session, and the shell drives volume and mute through the loopback
+  # otehon-sound service below. The last setting is kept in a root-owned
+  # state file and restored at boot, so it survives reboots.
+  services.pipewire = {
+    enable = true;
+    alsa.enable = true;
+    pulse.enable = false;
+  };
+
+  # Japanese input (AWAI-168): fcitx5 with the mozc engine, started with the
+  # desktop user's graphical session. Keyboard stays the default group, so
+  # ordinary typing is unchanged; the standard trigger switches to mozc.
+  # The check VM has no user session, so this is installation-level here:
+  # conversion itself needs real key input (hardware or AWAI-199 Appium).
+  i18n.inputMethod = {
+    enable = true;
+    type = "fcitx5";
+    fcitx5.addons = with pkgs; [ fcitx5-mozc ];
+    fcitx5.settings.inputMethod = {
+      "Groups/0" = {
+        Name = "Default";
+        "Default Layout" = "us";
+        DefaultIM = "keyboard-us";
+      };
+      "Groups/0/Items/0" = {
+        Name = "keyboard-us";
+        Layout = "";
+      };
+      "Groups/0/Items/1" = {
+        Name = "mozc";
+        Layout = "";
+      };
+    };
+  };
+  # Screen reader (AWAI-168): Orca with the AT-SPI bus and speechd behind it.
+  # The reader starts only when the flag file exists, so boot stays silent;
+  # a future Settei toggle will manage the user-writable flag. The check VM
+  # has no session, so the e2e step asserts installation and wiring only:
+  # actual narration needs a real session and audio output.
+  services.orca.enable = true;
+
+  systemd.user.services.orca-reader = {
+    description = "Orca screen reader for the desktop session";
+    wantedBy = [ "graphical-session.target" ];
+    after = [ "graphical-session.target" ];
+    unitConfig.ConditionPathExists = "%h/.config/otehon-screen-reader/enabled";
+    serviceConfig = {
+      ExecStart = "${lib.getExe pkgs.orca} --replace";
+      Restart = "on-failure";
+    };
+  };
+
+  # Display setup (AWAI-168): screen brightness through brightnessctl, with
+  # the last setting kept in a root-owned state file and restored at boot,
+  # so it survives reboots. The shell shows an honest empty state when no
+  # backlight device exists.
+  systemd.services.otehon-display = {
+    description = "Loopback display setup for the shell (screen brightness)";
+    wantedBy = [ "graphical.target" ];
+    after = [ "local-fs.target" ];
+    environment = {
+      OTEHON_DISPLAY_PORT = "8776";
+    };
+    path = [ pkgs.brightnessctl pkgs.coreutils ];
+    serviceConfig = {
+      ExecStart = "${lib.getExe pkgs.python3} ${./display-service.py}";
+      User = "root";
+      StateDirectory = "otehon-display";
+      IPAddressDeny = "any";
+      IPAddressAllow = "localhost";
+      ProtectSystem = "strict";
+      ProtectHome = true;
+      PrivateTmp = true;
+      NoNewPrivileges = true;
+      RestrictAddressFamilies = [ "AF_INET" "AF_UNIX" "AF_NETLINK" ];
+      Restart = "on-failure";
+    };
+  };
+
+  systemd.user.services.fcitx5-daemon = {
+    description = "Japanese input through fcitx5 and mozc";
+    wantedBy = [ "graphical-session.target" ];
+    after = [ "graphical-session.target" ];
+    serviceConfig = {
+      ExecStart = "${lib.getExe pkgs.fcitx5} --disable=x11";
+      Restart = "on-failure";
+    };
+  };
+
+  systemd.services.otehon-sound = {
+    description = "Loopback sound setup for the shell (volume and mute)";
+    wantedBy = [ "graphical.target" ];
+    after = [ "local-fs.target" ];
+    environment = {
+      OTEHON_SOUND_PORT = "8775";
+      OTEHON_SOUND_USER = user;
+    };
+    path = [ pkgs.wireplumber pkgs.coreutils ];
+    serviceConfig = {
+      ExecStart = "${lib.getExe pkgs.python3} ${./sound-service.py}";
+      User = "root";
+      StateDirectory = "otehon-sound";
+      IPAddressDeny = "any";
+      IPAddressAllow = "localhost";
+      ProtectSystem = "strict";
+      ProtectHome = true;
+      PrivateTmp = true;
+      NoNewPrivileges = true;
+      RestrictAddressFamilies = [ "AF_INET" "AF_UNIX" "AF_NETLINK" ];
+      Restart = "on-failure";
+    };
+  };
+
+  systemd.services.otehon-boot-report = {
+    wantedBy = lib.mkForce [ "graphical.target" ];
+    after = lib.mkForce [ "graphical.target" ];
+    path = [ pkgs.curl pkgs.gnugrep pkgs.procps ];
+    script = ''
+      title=""
+      for _ in $(seq 1 120); do
+        title=$(curl -s --max-time 2 http://127.0.0.1:9222/json | grep -o '"title": "Awai Otehon [^"]*"' || true)
+        case "$title" in *"zenoh=1 matter=1"*) break ;; esac
+        sleep 2
+      done
+      sleep 5
+      compositor=0; pgrep -u ${user} -x cosmic-comp >/dev/null && compositor=1
+      chromium=0; pgrep -u ${user} -f chromium >/dev/null && chromium=1
+      react=0; zenoh=0; matter=0
+      [ -n "$title" ] && react=1
+      case "$title" in *zenoh=1*) zenoh=1 ;; esac
+      case "$title" in *matter=1*) matter=1 ;; esac
+      # The apps stay hidden until sign-in, so a fresh boot must show the gate.
+      gate=0
+      case "$title" in *"gate=1 dapps=0\""*) gate=1 ;; esac
+      failed=$(systemctl list-units --state=failed --no-legend | wc -l)
+      case "$title" in
+        *"zenoh=1 matter=1"*) ;;
+        *)
+          ls -la /dev/dri || true
+          journalctl -b --no-pager -o cat -n 80 _UID=$(id -u ${user}) || true
+          journalctl -b --no-pager -o cat -n 20 -u matter-server -u zenohd || true
+          ;;
+      esac
+      echo "OTEHON_BOOT_REPORT id=${config.system.image.id} version=${config.system.image.version} nixos=${config.system.nixos.version} compositor=$compositor chromium=$chromium react=$react zenoh=$zenoh matter=$matter gate=$gate failed=$failed"
+    '';
+  };
+
+  image.repart.partitions = {
+    esp.repartConfig.SizeMinBytes = "256M";
+    root.repartConfig = {
+      # 12G no longer fits the desktop closures (LLVM/mesa). The login
+      # profile measures 16.2G minimum; keep headroom for shell growth.
+      # Measured 2026-11-13 (JUN-1180).
+      SizeMinBytes = "20G";
+      SizeMaxBytes = "20G";
+    };
+  };
+  };
+}
+# JUN-1180 V3 rebuild 20261113-200047

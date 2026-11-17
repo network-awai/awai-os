@@ -2,7 +2,7 @@ let
   pkgs = import (import ../../../ci/nixpkgs.nix) { system = "x86_64-linux"; };
   system = (import (pkgs.path + "/nixos/lib/eval-config.nix") {
     system = null;
-    modules = [ ../../../otehon/usb-install-6600h.nix ];
+    modules = [ ../otehon/usb-install-6600h.nix ];
   }).config;
 in pkgs.runCommand "otehon-offline-usb-vm-check" {
   nativeBuildInputs = [ pkgs.python3 pkgs.jdk pkgs.qemu_test pkgs.netpbm (pkgs.tesseract.override { enableLanguages = [ "eng" "jpn" ]; }) ];
@@ -16,7 +16,7 @@ in pkgs.runCommand "otehon-offline-usb-vm-check" {
     OTEHON_CONSOLE_FIXTURE=${../../../tests/otehon/fixtures/console-erase-refused.png} \
     python3 ${otehon/test_installer_ocr.py}
   ${pkgs.jdk}/bin/java -Djava.awt.headless=true -cp "${pkgs.clojure}/libexec/clojure-tools-${pkgs.clojure.version}.jar" \
-    clojure.main ${otehon/installer-client.clj} ${../../../otehon/installer-ui/awai/installer.cljc}
+    clojure.main ${otehon/installer-client.clj} ${../otehon/installer-ui/awai/installer.cljc}
   iso=$(echo ${system.system.build.isoImage}/iso/*.iso)
   status=0
   python3 ${../scripts/check-otehon-usb-vm.py} --iso "$iso" --output "$PWD/proof" \

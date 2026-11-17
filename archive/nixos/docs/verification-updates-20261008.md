@@ -57,7 +57,7 @@ interval remains 15 minutes plus jitter; high/critical grace remains 72/24 hours
 The baseline and published good/bad closures precede the final extra `.drv`
 refusal and unreadable-config recovery guard. Final source tests cover the guard;
 the unreadable-config VM test explicitly executes that final source. Exact
-published paths/hashes and resulting journals are in [evidence](evidence/updates-20261008/releases.json).
+published paths/hashes and resulting journals are in [evidence](../../../docs/evidence/updates-20261008/releases.json).
 
 ## Remaining production gates
 

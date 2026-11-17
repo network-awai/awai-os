@@ -59,7 +59,7 @@ jobs:
             public_key="$OPERATOR_PUBLIC_KEY"
             echo 'VM_SSH_ARGUMENTS=' >> "$GITHUB_ENV"
           fi
-          nix-build otehon/default.nix --argstr profile netboot-nbd-install-6600h --argstr diagnosticPublicKey "$public_key" --out-link result-otehon-lan-install --show-trace
+          nix-build archive/nixos/otehon/default.nix --argstr profile netboot-nbd-install-6600h --argstr diagnosticPublicKey "$public_key" --out-link result-otehon-lan-install --show-trace
       - name: Retrieve digest-pinned qualified ISO
         env:
           GH_TOKEN: ${{ github.token }}

@@ -49,7 +49,7 @@ Nix で固定します。Native gate/build/runtime の依存ではありませ�
 Linux Nix/KVM builder の repository root で:
 
 ```sh
-nix-build otehon/drive/check.nix --out-link result-drive-vm
+nix-build archive/nixos/otehon/drive/check.nix --out-link result-drive-vm
 ```
 
 この VM だけの公開 fixture key で追加ディスクを LUKS 化し、実際の FUSE 保存・

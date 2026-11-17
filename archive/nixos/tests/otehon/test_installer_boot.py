@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 import uuid
 
-spec=importlib.util.spec_from_file_location('installer_boot',Path(__file__).parents[2]/'otehon/installer-boot.py')
+spec=importlib.util.spec_from_file_location('installer_boot',Path(__file__).parents[2]/'archive/nixos/otehon/installer-boot.py')
 b=importlib.util.module_from_spec(spec);spec.loader.exec_module(b)
 GUID='12345678-1234-5678-9abc-0123456789ab'
 

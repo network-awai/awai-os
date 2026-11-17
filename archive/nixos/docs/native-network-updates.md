@@ -6,7 +6,7 @@ temporary live workspace, so it cannot become a persistent installed OS merely
 by receiving this update. Its existing contents are not changed by this work.
 
 The pinned two-VM KVM/OVMF gate passed on 2026-10-24 (750.46 seconds), including
-both forced-power-loss cases. [Qualification receipt](evidence/native-network-update-20261024.json)
+both forced-power-loss cases. [Qualification receipt](../../../docs/evidence/native-network-update-20261024.json)
 records the exact implementation revision, 17 source hashes and outcomes.
 Physical rollout remains unqualified and disabled by default.
 

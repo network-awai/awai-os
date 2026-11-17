@@ -71,7 +71,7 @@ Final artifact:
   in this final run.
 
 Small checks and screenshots are committed in
-[`evidence/network-ui-2026-10-05/`](evidence/network-ui-2026-10-05/).
+[`evidence/network-ui-2026-10-05/`](../../../docs/evidence/network-ui-2026-10-05/).
 The ISO and owned VM disks remain local outside source control. The final run
 qualifies UEFI/NVMe; BIOS configurations evaluated, but the new network UI's BIOS
 boot was not repeated. The prior offline installer record retains its separate

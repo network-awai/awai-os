@@ -4,7 +4,8 @@ These rules governed the deprecated NixOS routes when they were active. They are
 kept for history and still apply if anyone works on these archived files (for
 example to read an old gate). Do not use them to revive the NixOS install route;
 Awai OS is built on Android AOSP (see [the repository AGENTS.md](../../AGENTS.md)).
-Paths below are relative to this directory. The Otehon profiles moved to
+Paths below are relative to this directory. The Otehon NixOS profiles are in
+[`otehon/`](otehon); the shell and fleet sources they build stay in
 [`otehon/`](../../otehon) at the repository root.
 
 The retained native NixOS preview entry is `murakumo-nixos.nix`. Keep it separate from

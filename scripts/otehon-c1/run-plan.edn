@@ -6,16 +6,16 @@
  :inventory-max-age-ms nil
  :source-pins [{:repository "network-awai/awai-os"
                 :revision "4b692cc10735896da63935d02880001e6a12dcf5"
-                :path "otehon/default.nix" :qualification :profile-source-only}
+                :path "nixos/otehon/default.nix" :qualification :profile-source-only}
                {:repository "network-awai/awai-os"
                 :revision "4b692cc10735896da63935d02880001e6a12dcf5"
-                :path "otehon/storage/src/otehon/pack_store.clj" :qualification :local-single-node-only}
+                :path "nixos/otehon/storage/src/otehon/pack_store.clj" :qualification :local-single-node-only}
                {:repository "network-awai/awai-os"
                 :revision "dbde1d5fbcffdd81206420795148e699cecbf870"
                 :path "dapps/d1/src/d1/dispatch.cljc" :qualification :draft-pr-69-model-only}
                {:repository "network-awai/awai-os"
                 :revision "b2d75edca7801551d906b188a628d2fff9bbb281"
-                :path "otehon/hermes.nix" :qualification :open-pr-53-no-live-model-proof}]
+                :path "nixos/otehon/hermes.nix" :qualification :open-pr-53-no-live-model-proof}]
  :nodes [{:alias "levi" :verified-identity nil :failure-domain nil :guest-digest nil :guest-readback-digest nil}
          {:alias "benjamin" :verified-identity nil :failure-domain nil :guest-digest nil :guest-readback-digest nil}]
  :public-fixture {:input-digest nil :expected-output-or-quality-contract nil}

@@ -11,7 +11,7 @@ let
   };
   check = pkgs.writeText "existing-lvm-check.py" ''
     import errno, importlib.util, json, os, sys
-    spec = importlib.util.spec_from_file_location('broker', '${../../../otehon/installer-broker.py}')
+    spec = importlib.util.spec_from_file_location('broker', '${../otehon/installer-broker.py}')
     b = importlib.util.module_from_spec(spec); spec.loader.exec_module(b)
     rows = b.inventory()
     row = next(r for r in rows if r['serial']=='PREVIOUS-OS')
@@ -39,11 +39,11 @@ in pkgs.testers.runNixOSTest {
     prepare = { ... }: { imports = [ common ]; };
     control = { ... }: { imports = [ common ]; boot.initrd.systemd.enable = false; };
     isolatedlegacy = { ... }: {
-      imports = [ common ../../../otehon/installer-storage-isolation.nix ];
+      imports = [ common ../otehon/installer-storage-isolation.nix ];
       boot.initrd.systemd.enable = false;
     };
     isolatedsystemd = { ... }: {
-      imports = [ common ../../../otehon/installer-storage-isolation.nix ];
+      imports = [ common ../otehon/installer-storage-isolation.nix ];
       boot.initrd.systemd.enable = true;
     };
   };

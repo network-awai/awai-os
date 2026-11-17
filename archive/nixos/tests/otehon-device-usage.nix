@@ -2,9 +2,9 @@
 let
   check = pkgs.writeText "check-device-usage.py" ''
     import errno, importlib.util, json, os, sys
-    spec = importlib.util.spec_from_file_location('broker', '${../../../otehon/installer-broker.py}')
+    spec = importlib.util.spec_from_file_location('broker', '${../otehon/installer-broker.py}')
     b = importlib.util.module_from_spec(spec); spec.loader.exec_module(b)
-    trace_spec = importlib.util.spec_from_file_location('claims', '${../../../otehon/installer-kernel-claims.py}')
+    trace_spec = importlib.util.spec_from_file_location('claims', '${../otehon/installer-kernel-claims.py}')
     claims = importlib.util.module_from_spec(trace_spec); trace_spec.loader.exec_module(claims)
     rows = [r for r in b.inventory() if r['path'] in ('/dev/vdb', '/dev/vdc')]
     assert len(rows) == 2

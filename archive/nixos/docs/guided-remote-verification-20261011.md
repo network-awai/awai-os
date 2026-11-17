@@ -37,11 +37,11 @@ Immutable successful VM outputs:
 - `/nix/store/fa8flg4qfjz1jvqlx9y9g6zav6mdsvf7-vm-test-run-murakumo-kekkai-setup`
 - Evaluated target `/nix/store/vl0ls36rlcfawaqv66439snp8njrn5bv-nixos-system-murakumo-node-26.05pre-git`
 
-Evidence: [release gate](evidence/guided-remote-20261011/release-vm-gate.json),
-[GTK journey](evidence/guided-remote-20261011/journey-gui.json),
-[Kekkai](evidence/guided-remote-20261011/kekkai-ssh.json),
-[approval screenshot](evidence/guided-remote-20261011/remote-one-approval.png),
-[ready screenshot](evidence/guided-remote-20261011/remote-ready.png).
+Evidence: [release gate](../../../docs/evidence/guided-remote-20261011/release-vm-gate.json),
+[GTK journey](../../../docs/evidence/guided-remote-20261011/journey-gui.json),
+[Kekkai](../../../docs/evidence/guided-remote-20261011/kekkai-ssh.json),
+[approval screenshot](../../../docs/evidence/guided-remote-20261011/remote-one-approval.png),
+[ready screenshot](../../../docs/evidence/guided-remote-20261011/remote-ready.png).
 
 ## Physical device and rollout boundary
 
