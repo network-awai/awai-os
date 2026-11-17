@@ -16,7 +16,7 @@ const C='network.itonami.app.qa',P='network.awai.murakumo.qa';const component=p=
 const hash=async p=>createHash('sha256').update(await readFile(p)).digest('hex');
 let vm,cdp;const r={schema:'awai.qa.device.v1',startedAt:new Date().toISOString(),serial,mode,sourceRevision:execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim(),manifestSha256:await hash(args['--manifest']),cases:[],scope:'isolated test-only package and signer, software signatures, no real enrollment'};
 const pass=(name,extra={})=>{r.cases.push({name,passed:true,...extra});console.log('PASS',name)};
-async function start(p){if(cdp){cdp.close();cdp=null;}adb('shell','am','start','-W','--display','0','--windowingMode','1','-n',component(p));cdp=await connectCdp(adb,p,until);return cdp;}
+async function start(p){if(cdp){cdp.close();cdp=null;}await until(()=>{const result=adb('shell','am','start','-W','--display','0','--windowingMode','1','-n',component(p));assert(!/^Error:/m.test(result));return true},'QA activity launch after framework/transport readiness');cdp=await connectCdp(adb,p,until);return cdp;}
 async function witness(){
  const result={};for(const p of ['network.itonami.app','network.awai.murakumo']){const exists=adb('shell','pm','list','packages',p).split('\n').includes('package:'+p);if(!exists)continue;
   // Quiesce only the normal consumer once; no credentials/state are cleared or copied.
