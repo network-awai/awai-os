@@ -1,0 +1,1 @@
+{:target :browser :output-to "generated/core.js" :output-dir "../../.agent-output/drive-cljs" :infer-externs true :language-out :ecmascript-2020}

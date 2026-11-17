@@ -1,0 +1,11 @@
+{
+  "identifier": "drive-local",
+  "description": "Bounded app-private file operations and Android document picker; no arbitrary paths, shell, network or installer authority.",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "allow-awai-host-info",
+    "allow-drive-call"
+  ]
+}
