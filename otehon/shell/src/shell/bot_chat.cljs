@@ -71,7 +71,7 @@
     [:strong (tr :voiceConversation)]
     (if (.-current active)
      [:button.secondary {:type "button" :on-click #(stop "ended")} (tr :voiceStop)]
-     [:button.secondary {:type "button" :disabled (or blocked (not (speechAvailable)) (= session-id "default")) :on-click start} (tr :voiceStart)])]
+     [:button.primary {:type "button" :disabled (or blocked (not (speechAvailable)) (= session-id "default")) :on-click start} (tr :voiceStart)])]
    [:p (tr :voiceScopeInfo)] [:p (tr :voice-local-remote)]
    [:p {:role (when (contains? #{"ended" "error"} state) "status")} (tr (keyword (str "voice-" state)))]
    (when (contains? #{"ready" "ended" "error"} state) [:p (tr :voiceConsentInfo)])
