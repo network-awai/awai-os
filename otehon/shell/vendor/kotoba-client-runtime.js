@@ -79,8 +79,89 @@ function validEndpointPath(value) {
     && (ENDPOINT_PARAMETER.test(segment) || ENDPOINT_SEGMENT.test(segment)));
 }
 
+// A peer is a cryptographic identity, never a fabricated HTTPS origin.
+function literalPeerAddress(address, peer, listener = false) {
+  if (typeof address !== 'string' || address.length > 512) return false;
+  const match = address.match(/^\/ip4\/(\d{1,3}(?:\.\d{1,3}){3})\/(?:udp\/(\d{1,5})\/(quic-v1|webrtc-direct\/certhash\/u[A-Za-z0-9_-]{46})|tcp\/(\d{1,5}))(.*)$/);
+  if (!match || !match[1].split('.').every(n => String(Number(n)) === n && Number(n) <= 255)
+      || match[1] === '0.0.0.0' || Number(match[1].split('.')[0]) >= 224
+      || Number(match[2] ?? match[4]) < 1 || Number(match[2] ?? match[4]) > 65535) return false;
+  const suffix = match[5];
+  const id = '[1-9A-HJ-NP-Za-km-z]{32,128}';
+  if (listener) return !match[3]?.startsWith('webrtc')
+    && (suffix === '' || new RegExp(`^/p2p/(${id})/p2p-circuit$`).test(suffix));
+  if (suffix === `/p2p/${peer}`) return true;
+  const circuit = suffix.match(new RegExp(`^/p2p/(${id})/p2p-circuit/p2p/(${id})$`));
+  return !match[3]?.startsWith('webrtc') && !!circuit && circuit[1] !== peer && circuit[2] === peer;
+}
+function peerScopeValid(value, receive) {
+  const keys = receive ? ['snapshot-cid','max-transfer-bytes','listen-address','receive-ms','allow-read-back'] : ['snapshot-cid','max-transfer-bytes'];
+  return exactKeys(value, keys)
+    && typeof value['snapshot-cid'] === 'string' && /^b[a-z2-7]{30,127}$/.test(value['snapshot-cid'])
+    && Number.isSafeInteger(value['max-transfer-bytes']) && value['max-transfer-bytes'] > 0 && value['max-transfer-bytes'] <= 268435456
+    && (!receive || (typeof value['allow-read-back'] === 'boolean' && literalPeerAddress(value['listen-address'], null, true)
+      && Number.isSafeInteger(value['receive-ms']) && value['receive-ms'] > 0 && value['receive-ms'] <= 21600000));
+}
+export function clientPeerEndpointProblems(value) {
+  const keys = ['transport','peer-id','addresses','protocol','action','max-request-bytes','max-response-bytes','timeout-ms'];
+  const scoped = record(value) && Object.hasOwn(value, 'scope');
+  const receive = value?.action === 'receive-snapshot';
+  if (!exactKeys(value, scoped ? [...keys, 'scope'] : keys)
+      || value.transport !== 'libp2p'
+      || typeof value['peer-id'] !== 'string' || !/^[1-9A-HJ-NP-Za-km-z]{32,128}$/.test(value['peer-id'])
+      || !Array.isArray(value.addresses) || value.addresses.length < (receive ? 0 : 1) || value.addresses.length > 4
+      || new Set(value.addresses).size !== value.addresses.length
+      || !value.addresses.every(address => literalPeerAddress(address, value['peer-id']))
+      || typeof value.protocol !== 'string' || !/^\/[A-Za-z0-9._/-]{1,110}\/\d+\.\d+\.\d+$/.test(value.protocol)
+      || !validName(value.action)
+      || (scoped && (!['sync-push','sync-pull','pin-query','receive-snapshot'].includes(value.action)
+        || value.protocol !== '/awai/yataverse/1.0.0' || !peerScopeValid(value.scope, receive)))
+      || (receive && !scoped)
+      || !Number.isSafeInteger(value['max-request-bytes']) || value['max-request-bytes'] < 1 || value['max-request-bytes'] > 1048576
+      || !Number.isSafeInteger(value['max-response-bytes']) || value['max-response-bytes'] < 1 || value['max-response-bytes'] > 1048576
+      || !Number.isSafeInteger(value['timeout-ms']) || value['timeout-ms'] < 1 || value['timeout-ms'] > 60000) {
+    return ['invalid-peer-endpoint'];
+  }
+  return [];
+}
+
+// Nearby-device operations (AWAI-3059) reach a device before its identity is known, so they
+// declare an action and the allowed bearers, never a peer-id, address or origin. The host
+// adapter owns discovery and sockets. It must map a peer token only to a device it discovered
+// for this session, keep connections on link-local, private (RFC 1918 / ULA) or P2P/BLE group
+// addresses, and stop when the operation's signal aborts. Trust comes from the app's own
+// pairing (a confirmation code and a signed link), never from discovery or consent.
+const NEARBY_ACTIONS = new Set(['advertise', 'browse', 'connect', 'send']);
+const NEARBY_BEARERS = new Set(['nsd', 'ble', 'wifi-direct', 'wifi-aware']);
+const NEARBY_PEER_TOKEN = /^[a-z0-9]{8,64}$/;
+export function clientNearbyEndpointProblems(value) {
+  if (!exactKeys(value, ['transport', 'action', 'bearers', 'max-request-bytes', 'max-response-bytes', 'timeout-ms'])
+      || value.transport !== 'nearby'
+      || !NEARBY_ACTIONS.has(value.action)
+      || !Array.isArray(value.bearers) || value.bearers.length < 1
+      || !value.bearers.every((bearer) => NEARBY_BEARERS.has(bearer))
+      || new Set(value.bearers).size !== value.bearers.length
+      || !Number.isSafeInteger(value['max-request-bytes']) || value['max-request-bytes'] < 1 || value['max-request-bytes'] > 1048576
+      || !Number.isSafeInteger(value['max-response-bytes']) || value['max-response-bytes'] < 1 || value['max-response-bytes'] > 1048576
+      || !Number.isSafeInteger(value['timeout-ms']) || value['timeout-ms'] < 1 || value['timeout-ms'] > 120000) {
+    return ['invalid-nearby-endpoint'];
+  }
+  return [];
+}
+/** A nearby payload names one declared bearer; connect and send name a discovered peer token; only send carries data. */
+function nearbyPayloadProblem(endpoint, payload) {
+  const targeted = endpoint.action === 'connect' || endpoint.action === 'send';
+  const allowed = ['bearer', ...(targeted ? ['peer'] : []), ...(endpoint.action === 'send' ? ['data'] : [])];
+  if (!record(payload) || Object.keys(payload).some((key) => !allowed.includes(key))) return 'nearby payload has undeclared fields';
+  if (typeof payload.bearer !== 'string' || !endpoint.bearers.includes(payload.bearer)) return 'nearby bearer is not declared';
+  if (targeted && !(typeof payload.peer === 'string' && NEARBY_PEER_TOKEN.test(payload.peer))) return 'nearby action requires a discovered peer token';
+  return null;
+}
+
 function validEndpoint(value) {
-  return (exactKeys(value, ['origin', 'browser-action'])
+  return (record(value) && value.transport === 'libp2p' && clientPeerEndpointProblems(value).length === 0)
+    || (record(value) && value.transport === 'nearby' && clientNearbyEndpointProblems(value).length === 0)
+    || (exactKeys(value, ['origin', 'browser-action'])
       && validOrigin(value.origin) && validName(value['browser-action']))
     || (exactKeys(value, ['origin', 'method', 'path'])
       && validOrigin(value.origin)
@@ -268,6 +349,9 @@ async function snapshotOperationPayload(payload, operation, endpointOrigin, requ
     redirect,
     mode: 'cors',
     cache: 'no-store',
+    // The signal belongs to the Request. Passing it to fetch() as an init would
+    // build a new Request and reset its referrer policy (KOTOBA-159 R1).
+    ...(signal === undefined ? {} : { signal }),
   });
   const requestUrl = new URL(requestSnapshot.url);
   if (requestUrl.origin !== endpointOrigin) {
@@ -290,7 +374,7 @@ async function snapshotOperationPayload(payload, operation, endpointOrigin, requ
 export async function prepareClientOperationRequest(operation, payload, signal) {
   if (signal !== undefined && !(signal instanceof AbortSignal)) throw new TypeError('invalid operation signal');
   if (signal?.aborted) throw new Error('client operation cancelled');
-  if (!validEndpoint(operation?.endpoint) || Object.hasOwn(operation.endpoint, 'browser-action')) throw new TypeError('HTTP endpoint declaration required');
+  if (!validEndpoint(operation?.endpoint) || Object.hasOwn(operation.endpoint, 'browser-action') || Object.hasOwn(operation.endpoint, 'transport')) throw new TypeError('HTTP endpoint declaration required');
   const pinned = freezeClone(operation), origin = pinned.endpoint.origin;
   if (origin === globalThis.location?.origin) throw new Error('app-origin API refused');
   const request = endpointRequest(payload, origin);
@@ -303,7 +387,7 @@ export async function prepareClientOperationRequest(operation, payload, signal) 
 
 /** Match an app request against one declared endpoint. */
 export function clientEndpointAllowsRequest(endpoint, input, method = 'GET') {
-  if (!record(endpoint) || !validEndpoint(endpoint) || Object.hasOwn(endpoint, 'browser-action')) return false;
+  if (!record(endpoint) || !validEndpoint(endpoint) || Object.hasOwn(endpoint, 'browser-action') || Object.hasOwn(endpoint, 'transport')) return false;
   const payload = { input, init: { method } };
   const request = endpointRequest(payload, endpoint.origin);
   return request !== null
@@ -440,7 +524,7 @@ export function clientRuntimeProblems(runtime, requestedCapabilities = [], appOr
           && !endpointSupportsDeclaredRedirects(operation.endpoint)) {
         problems.push({ field: 'operations', error: 'redirects-require-read-only-fixed-query', selector });
       }
-      if (Object.hasOwn(operation.endpoint, 'browser-action')
+      if ((Object.hasOwn(operation.endpoint, 'browser-action') || operation.endpoint.transport === 'libp2p' || operation.endpoint.transport === 'nearby')
           && (Object.hasOwn(operation, 'artifact') || Object.hasOwn(operation, 'redirect-origins'))) {
         problems.push({ field: 'operations', error: 'browser-operation-has-http-options', selector });
       }
@@ -621,7 +705,7 @@ export function clientRuntimeConnectSrc(runtime, requestedCapabilities = [], add
   const origins = new Set();
   for (const operation of pinned.operations) {
     // A browser-action operation causes no fetch from the page.
-    if (Object.hasOwn(operation.endpoint, 'browser-action')) continue;
+    if (Object.hasOwn(operation.endpoint, 'browser-action') || operation.endpoint.transport === 'libp2p' || operation.endpoint.transport === 'nearby') continue;
     origins.add(operation.endpoint.origin);
     for (const redirectOrigin of operation['redirect-origins'] ?? []) origins.add(redirectOrigin);
   }
@@ -741,7 +825,23 @@ export function createClientConsentHost({ document: doc = globalThis.document } 
     scope.textContent = [
       `Service: ${details.service}`, `Operation: ${details.operation}`,
       `Capability: ${details.capability}`, `Endpoint: ${details.endpointOrigin}`,
-      `Action: ${details.browserAction ?? `${details.endpointMethod} ${details.endpointPath}${details.endpointSearch}`}`,
+      ...(details.nearbyEndpoint ? [
+        `Nearby device: ${details.nearbyEndpoint.action} over ${details.nearbyBearer}`,
+        `Peer: ${details.nearbyPeer ?? '(none: not a specific device)'}`,
+        `Request budget: ${details.nearbyEndpoint['max-request-bytes']} bytes`,
+        `Response budget: ${details.nearbyEndpoint['max-response-bytes']} bytes`,
+        `Deadline: ${details.nearbyEndpoint['timeout-ms']} ms`,
+      ] : []),
+      `Action: ${details.nearbyEndpoint?.action ?? details.peerEndpoint?.action ?? details.browserAction ?? `${details.endpointMethod} ${details.endpointPath}${details.endpointSearch}`}`,
+      ...(details.peerEndpoint ? [
+        `PeerID: ${details.peerEndpoint['peer-id']}`,
+        `Addresses: ${details.peerEndpoint.addresses.join(', ')}`,
+        `Protocol: ${details.peerEndpoint.protocol}`,
+        `Request budget: ${details.peerEndpoint['max-request-bytes']} bytes`,
+        `Response budget: ${details.peerEndpoint['max-response-bytes']} bytes`,
+        `Deadline: ${details.peerEndpoint['timeout-ms']} ms`,
+        ...(details.peerEndpoint.scope ? [`Transfer scope: ${canonical(details.peerEndpoint.scope)}`] : []),
+      ] : []),
       `Data categories: ${details.dataCategories.join(', ') || '(none)'}`,
       `Delivery redirects: ${details.redirectOrigins.join(', ') || '(none)'}`,
     ].join('\n');
@@ -790,6 +890,13 @@ export async function verifyClientArtifact(bytes, declaration) {
   return result;
 }
 
+// CSP has no directive for WebRTC, so `connect-src 'none'` does not stop a guest from sending bytes to any host
+// through ICE servers (a TURN username reaches the server, KOTOBA-159 R6). This runs before any guest script and
+// removes the constructors from the guest realm. A nested about:blank frame of an opaque-origin sandbox is
+// cross-origin and workers do not expose them (Chromium 156), so the guest cannot recover a fresh copy. Host-realm
+// peer handlers are not affected. This is defense in depth for one browser, not a CSP guarantee.
+const GUEST_PREAMBLE = '<script>for(const n of["RTCPeerConnection","webkitRTCPeerConnection"])try{Object.defineProperty(window,n,{value:undefined,writable:false,configurable:false})}catch{}</script>';
+
 /** Isolated, self-contained HTML app only. The trusted host must first admit
  * its publisher and descriptor. Host-issued eligibility and adapters never
  * cross the port. CSP prevents the guest from issuing service requests itself.
@@ -805,7 +912,7 @@ export async function mountRestrictedClientApp({ artifact, container, broker }) 
   frame.title = 'Restricted Kotoba application';
   frame.sandbox = 'allow-scripts';
   frame.referrerPolicy = 'no-referrer';
-  frame.srcdoc = '<!doctype html><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; connect-src \'none\'; script-src \'unsafe-inline\' blob: \'wasm-unsafe-eval\'; style-src \'unsafe-inline\'; img-src data: blob:; media-src blob:; worker-src blob:; frame-src \'none\'; object-src \'none\'; form-action \'none\'; base-uri \'none\'">' + html;
+  frame.srcdoc = '<!doctype html><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; connect-src \'none\'; script-src \'unsafe-inline\' blob: \'wasm-unsafe-eval\'; style-src \'unsafe-inline\'; img-src data: blob:; media-src blob:; worker-src blob:; frame-src \'none\'; object-src \'none\'; form-action \'none\'; base-uri \'none\'">' + GUEST_PREAMBLE + html;
   let closed = false;
   let loaded = false;
   const lifetime = new AbortController();
@@ -863,6 +970,11 @@ export async function verifySignedClientDescriptor({ bytes, signature, publicKey
   return Object.freeze({ runtime: freezeClone(runtime), revision, digest, publicKey });
 }
 
+// A response that will not be read is cancelled, so its connection and buffered data are released (KOTOBA-159 R2).
+function discardBody(response) {
+  try { response?.body?.cancel().catch(() => {}); } catch { /* locked or already consumed */ }
+}
+
 async function boundedArtifact(response, declaration) {
   if (!response.body) throw new Error('artifact response has no readable body');
   return verifyClientArtifact(await boundedBytes(response.body, declaration['max-bytes'], 120000), declaration);
@@ -900,7 +1012,7 @@ async function boundedBytes(stream, maxBytes, deadlineMs, signal) {
  * The older approvedOperations name is an eligibility ceiling, never consent.
  */
 export function createClientOperationBroker(options) {
-  const { runtime, requestedCapabilities = [], approvedOperations = [], hostSupportedOperations = [], browserAdapters = {}, consentHost } = options;
+  const { runtime, requestedCapabilities = [], approvedOperations = [], hostSupportedOperations = [], browserAdapters = {}, peerAdapters = {}, consentHost } = options;
   if (Object.hasOwn(options, 'confirmOperation') || Object.hasOwn(options, 'serviceAdapters')) throw new TypeError('caller-supplied confirmation and HTTP adapters are not authority');
   const confirm = consentHosts.get(consentHost);
   if (!confirm) throw new TypeError('a canonical trusted consent host is required');
@@ -913,6 +1025,8 @@ export function createClientOperationBroker(options) {
   // caller's map during consent cannot change the operation that will execute.
   const handlers = new Map(operations.filter((op) => Object.hasOwn(op.endpoint, 'browser-action'))
     .map((op) => [operationSelector(op), serviceAdapter(browserAdapters, op.service, op.operation)]));
+  const peerHandlers = new Map(operations.filter((op) => op.endpoint.transport === 'libp2p' || op.endpoint.transport === 'nearby')
+    .map((op) => [operationSelector(op), serviceAdapter(peerAdapters, op.service, op.operation)]));
   const fetchRequest = globalThis.fetch.bind(globalThis);
   return Object.freeze({
     operations: Object.freeze(operations),
@@ -921,11 +1035,24 @@ export function createClientOperationBroker(options) {
       if (signal?.aborted) throw new Error('client operation cancelled');
       const operation = bySelector.get(JSON.stringify([selector?.capability, selector?.service, selector?.operation]));
       if (!operation) throw new Error('client operation is not eligible and supported');
-      const endpointOrigin = operation.endpoint.origin;
+      const nearbyEndpoint = operation.endpoint.transport === 'nearby' ? operation.endpoint : null;
+      // Both peer kinds run through the host adapter with the same budgets, deadline and abort signal.
+      const peerEndpoint = operation.endpoint.transport === 'libp2p' || nearbyEndpoint ? operation.endpoint : null;
+      const endpointOrigin = nearbyEndpoint ? 'nearby device (discovered locally)' : peerEndpoint ? `libp2p:${peerEndpoint['peer-id']}` : operation.endpoint.origin;
       if (endpointOrigin === globalThis.location?.origin) throw new Error('service endpoint must be distinct from the app origin');
       const browserAction = operation.endpoint['browser-action'];
       let approvedPayload; let request = null;
-      if (browserAction) {
+      if (peerEndpoint) {
+        if (typeof peerHandlers.get(operationSelector(operation)) !== 'function') throw new Error('peer operation is not host-supported');
+        if (!plainData(payload)) throw new TypeError('peer operation requires bounded plain data');
+        const json = canonical(payload);
+        if (typeof json !== 'string' || new TextEncoder().encode(json).length > peerEndpoint['max-request-bytes']) throw new Error('peer operation payload exceeds budget');
+        approvedPayload = freezeClone(JSON.parse(json));
+        if (nearbyEndpoint) {
+          const problem = nearbyPayloadProblem(nearbyEndpoint, approvedPayload);
+          if (problem) throw new TypeError(problem);
+        }
+      } else if (browserAction) {
         const handler = handlers.get(operationSelector(operation));
         if (typeof handler !== 'function') throw new Error('browser operation is not host-supported');
         // Browser API parameters must be bounded, plain JSON data. Functions,
@@ -944,20 +1071,45 @@ export function createClientOperationBroker(options) {
       if (signal?.aborted) throw new Error('client operation cancelled');
       const allowed = await confirm(Object.freeze({
         capability: operation.capability, service: operation.service, operation: operation.operation,
-        endpointOrigin, browserAction, endpointMethod: request?.method ?? null,
+        endpointOrigin, peerEndpoint: nearbyEndpoint ? null : peerEndpoint, browserAction, endpointMethod: request?.method ?? null,
+        nearbyEndpoint, nearbyBearer: nearbyEndpoint ? approvedPayload.bearer : null, nearbyPeer: nearbyEndpoint ? (approvedPayload.peer ?? null) : null,
         endpointPath: request?.path ?? null, endpointSearch: request?.search ?? '',
         dataCategories: operation['data-categories'], redirectOrigins: Object.freeze([...(operation['redirect-origins'] ?? [])]),
       }), signal);
       if (signal?.aborted) throw new Error('client operation cancelled');
       if (allowed !== true) throw new Error('client operation was not approved');
+      if (peerEndpoint) {
+        const controller = new AbortController();
+        let rejectCancelled;
+        const cancelled = new Promise((_, reject) => { rejectCancelled = reject; });
+        const abort = () => { controller.abort(); rejectCancelled(new Error('peer operation cancelled or timed out')); };
+        signal?.addEventListener('abort', abort, { once: true });
+        const timeout = setTimeout(abort, peerEndpoint['timeout-ms']);
+        try {
+          if (signal?.aborted) abort();
+          const result = await Promise.race([
+            Promise.resolve().then(() => {
+              if (controller.signal.aborted) throw new Error('peer operation cancelled');
+              return peerHandlers.get(operationSelector(operation))({ operation, payload: approvedPayload, signal: controller.signal });
+            }), cancelled,
+          ]);
+          if (!plainData(result)) throw new Error('peer response must be bounded plain data');
+          const json = canonical(result);
+          if (typeof json !== 'string' || new TextEncoder().encode(json).length > peerEndpoint['max-response-bytes']) throw new Error('peer response exceeds budget');
+          return freezeClone(JSON.parse(json));
+        } finally {
+          clearTimeout(timeout); signal?.removeEventListener('abort', abort);
+        }
+      }
       if (browserAction) return handlers.get(operationSelector(operation))({ operation, payload: approvedPayload });
-      const result = await fetchRequest(approvedPayload.input, signal ? { signal } : undefined);
-      if (signal?.aborted) throw new Error('client operation cancelled');
-      if (result.type === 'opaqueredirect' || (result.status >= 300 && result.status < 400) || !result.url) throw new Error('service response redirect could not be verified');
+      // No init: the approved Request already carries its signal, referrer policy and options.
+      const result = await fetchRequest(approvedPayload.input);
+      if (signal?.aborted) { discardBody(result); throw new Error('client operation cancelled'); }
+      if (result.type === 'opaqueredirect' || (result.status >= 300 && result.status < 400) || !result.url) { discardBody(result); throw new Error('service response redirect could not be verified'); }
       const responseOrigin = new URL(result.url).origin;
-      if (![endpointOrigin, ...(operation['redirect-origins'] ?? [])].some((origin) => redirectOriginAllows(origin, responseOrigin))) throw new Error('service response redirect origin is not declared');
+      if (![endpointOrigin, ...(operation['redirect-origins'] ?? [])].some((origin) => redirectOriginAllows(origin, responseOrigin))) { discardBody(result); throw new Error('service response redirect origin is not declared'); }
       if (operation.artifact) {
-        if (!result.ok) throw new Error('artifact download failed');
+        if (!result.ok) { discardBody(result); throw new Error('artifact download failed'); }
         return boundedArtifact(result, operation.artifact);
       }
       return result;
