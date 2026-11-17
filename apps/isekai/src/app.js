@@ -92,7 +92,9 @@ function renderDraft() {
 function renderDrafts() {
   const view = $('view'); view.replaceChildren();
   const h = el('h2', t('drafts.heading')); h.tabIndex = -1; view.append(h);
-  if (!state.drafts.length) { view.append(el('p', t('drafts.empty'), 'muted')); h.focus(); return; }
+  // With unreadable stored drafts the list is empty only because nothing could be
+  // read; the status line already says so, so do not also claim there are no drafts.
+  if (!state.drafts.length) { if (!readOnly) view.append(el('p', t('drafts.empty'), 'muted')); h.focus(); return; }
   view.append(el('p', t('drafts.count', {count: state.drafts.length}), 'muted'));
   const list = el('ul', null, 'results');
   for (const d of state.drafts) {
