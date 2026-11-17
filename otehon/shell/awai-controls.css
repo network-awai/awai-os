@@ -1,0 +1,5 @@
+.awai-ui .awai-button.active{background:var(--awai-container);color:var(--awai-primary);box-shadow:inset 3px 0 var(--awai-primary)}
+.awai-ui .theme-switcher{flex-wrap:wrap}.awai-ui .theme-switcher .awai-button{min-inline-size:48px;padding-inline:12px}
+.awai-ui .mobile-navigation label{max-inline-size:100%;display:flex;align-items:center;gap:8px;flex-wrap:wrap}.awai-ui .mobile-navigation select{max-inline-size:100%;min-inline-size:0}
+.awai-ui .composer textarea{font-size:1rem}.awai-ui .dapp.awai-button{justify-content:flex-start;text-align:start;white-space:normal}
+.awai-ui .new-chat.awai-button{justify-content:flex-start;text-align:start}

@@ -1,3 +1,5 @@
+import {bind_native} from './awai-ui/index.js';
+bind_native(document.documentElement,{tonal:'.tonal,.secondary',text:'#files button'});
 import*as encryptedSync from'./sync.js';
 import './core.js';
 import {translator,messages} from './i18n.js';

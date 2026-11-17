@@ -1,3 +1,4 @@
+import {distributeUi} from '../../../packages/awai-ui/distribute.mjs';
 import{mkdir,copyFile,readFile,writeFile}from'node:fs/promises';import{execFileSync}from'node:child_process';import path from'node:path';import{fileURLToPath}from'node:url';
 const app=fileURLToPath(new URL('..',import.meta.url)),root=path.resolve(app,'../..'),dist=path.join(app,'dist');await mkdir(dist,{recursive:true});
 for(const file of ['index.html','app.css','app.js'])await copyFile(path.join(app,'client',file),path.join(dist,file));
@@ -7,3 +8,5 @@ const raw=execFileSync('bb',['--classpath',path.join(app,'contracts/src'),'-e',"
 execFileSync('clojure',['-Sdeps',`{:paths ["${path.join(app,'contracts/src')}"] :deps {org.clojure/clojure {:mvn/version "1.12.1"} org.clojure/clojurescript {:mvn/version "1.12.145"}}}`,'-M','-m','cljs.main','-co',`{:output-to "${path.join(dist,'domain.js')}" :output-dir "${path.join(root,'.agent-output/murakumo-cljs')}" :optimizations :advanced}`,'-c','awai.inference.browser'],{cwd:root,stdio:'inherit'});
 await writeFile(path.join(dist,'contract.js'),"import './domain.js';export const requestAdmission=window.AwaiInference.admit;\n");
 console.log('Built Murakumo static UI and pinned model contract');
+
+await distributeUi(dist);

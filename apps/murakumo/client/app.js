@@ -1,3 +1,5 @@
+import {bind_native} from './awai-ui/index.js';
+bind_native(document.documentElement,{tonal:'.tonal,.secondary',text:'#files button'});
 import {requestAdmission} from './contract.js';
 const $=id=>document.getElementById(id);let busy=false;
 const invoke=request=>window.__TAURI_INTERNALS__.invoke('inference_operation',{request});

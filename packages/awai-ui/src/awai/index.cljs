@@ -1,4 +1,4 @@
-(ns awai.index (:require [awai.ui :as ui] [awai.dom :as dom]))
+(ns awai.index (:require [awai.ui :as ui] [awai.dom :as dom] [awai.native :as native]))
 (def button ui/button)
 (def heading ui/heading)
 (def card ui/card)
@@ -11,3 +11,5 @@
 (def status ui/status)
 (def node dom/node)
 (def mount dom/mount)
+
+(def bind-native native/bind-native)

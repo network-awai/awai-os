@@ -1,3 +1,5 @@
+import {bind_native} from './awai-ui/index.js';
+bind_native(document.documentElement,{tonal:'.tonal,.secondary',text:'#files button'});
 import './domain.js';
 import {createHost} from './host.js';
 import {decode,saveEvent,importEvents,SCHEMA} from './model.js';
