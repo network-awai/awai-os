@@ -2,6 +2,8 @@
   (:require [reagent.dom.client :as rdom]
             ["react" :as react :refer [useEffect useMemo useRef useState]]
             [shell.manimani :refer [MANIMANI manimani manimani-link]]
+            [shell.android-inference :as android-inference]
+            ["../android-inference.js" :refer [androidInferenceAvailable]]
             [shell.net :refer [bluetooth-panel wifi-panel]]
             ["../net.js" :refer [networkSummary useNetStatus]]
             [shell.sound :refer [sound-panel]]
@@ -395,6 +397,7 @@
                  (= context "soshiki") [:f> soshiki account score open-account]
                  (and dapp (< score minimum))
                  [locked dapp minimum score open-account]
+                 (and (= context "murakumo") (androidInferenceAvailable)) [:f> android-inference/panel]
                  (= context "itonami") [:main.chat.net-view [:div.net-body [:h1 "Itonami Agent"] [:f> fleet/panel "agents"]]]
                  :else
                  [:f> chat dapp context (or (aget threads context) #js [])

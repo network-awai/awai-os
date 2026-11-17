@@ -1,1 +1,1 @@
-{"identifier":"itonami-local","description":"Read-only host capability discovery. No shell, filesystem, installer or remote IPC permissions.","windows":["main"],"permissions":["allow-awai-host-info"]}
+{"identifier": "itonami-local", "description": "Read-only host discovery and explicit device-local inference handoff; no remote inference or arbitrary host access.", "windows": ["main"], "permissions": ["allow-awai-host-info", "allow-awai-local-inference"]}

@@ -1,0 +1,14 @@
+{
+  "name": "@awai/murakumo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "tauri": "tauri",
+    "test": "node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "3.0.0-alpha.6"
+  }
+}
