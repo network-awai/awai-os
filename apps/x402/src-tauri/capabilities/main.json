@@ -1,0 +1,1 @@
+{"identifier":"x402-local","description":"Local drafting of x402 payment requirements; host version only. No external network, wallet, signing, filesystem, installer or shell permissions.","windows":["main"],"permissions":["allow-awai-host-info"]}
