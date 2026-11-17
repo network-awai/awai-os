@@ -18,16 +18,16 @@ public final class SetupInstrumentation extends Instrumentation {
         check(!move(c,"finish",0),"no premature completion");
         check(!move(c,"next",4),"stale step refuses");
         check(!move(c,"enroll",0),"unknown operation refuses");
-        check(move(c,"next",0)&&move(c,"next",1),"welcome-language progression skips retired network step");
-        check(!move(c,"next",2)&&!move(c,"offline",3),"no network step or offline action");
-        check(move(c,"back",3)&&move(c,"next",1),"back from date returns to language");
+        check(move(c,"next",0),"welcome goes straight to account");
+        check(!move(c,"next",1)&&!move(c,"next",3)&&!move(c,"offline",4),"no language, network or date/time step");
+        check(move(c,"back",4)&&move(c,"next",0),"back from account returns to welcome");
         c.getSharedPreferences("android-setup-v1",0).edit().putInt("stage",2).commit();
-        check(move(c,"next",3),"saved network stage resumes at date/time");
+        check(!move(c,"next",2),"saved retired stage is not addressable");
         check(!move(c,"next",4),"no fabricated account");
         check(move(c,"defer",4)&&move(c,"next",5),"explicit defer then privacy");
         JSONObject s=(JSONObject)Class.forName("network.awai.home.SetupPlatform").getMethod("snapshot",Context.class).invoke(null,c);
-        if(!s.getBoolean("secure"))check(!move(c,"next",6),"no fake PIN acceptance");
-        check(!move(c,"finish",6),"no skip to Home");
+        check(!move(c,"next",6),"no lock step");
+        if(!s.getBoolean("secure"))check(!move(c,"finish",7),"no completion without an Android screen lock");
         check(s.getBoolean("identityEnrollment")&&!s.getBoolean("osProvisioning"),"link client is not privileged provisioning");
         result.putString("stream","Android setup boundary: "+assertions+" assertions passed\n");
     }catch(Throwable e){result.putString("stream","FAIL "+e.toString());resultCode=0;}
