@@ -1,0 +1,71 @@
+{
+  "schema": "awai.image.model-set.v1",
+  "id": "qwen-image-2.1-turbo-uncensored-ad-q2-k",
+  "label": "Qwen Image 2.1 Turbo \u00b7 AD-Q2_K",
+  "engine": {
+    "repo": "leejet/stable-diffusion.cpp",
+    "revision": "532d2c15c430a785a712b2d94281f04e733008a4",
+    "archiveSha256": "0278dc8e6e180adc4b43b3ace515eeef870dd76533a34fa1edcfa071ce7d7812",
+    "ggmlRevision": "eeda9ec48fc84a3df0bb9dcc19ae9053075a2539",
+    "ggmlArchiveSha256": "8bd7adc7eb1366d31670467951d21eb1a5f55e8f6d89b9b91909ffb0246ac5d2",
+    "vulkanHeaders": {
+      "repo": "KhronosGroup/Vulkan-Headers",
+      "revision": "v1.4.357",
+      "archiveSha256": "7dc0dbcf1d49dd3d7da3761c251c6097dfbaac475321a4a8a99269d3d5abecdc"
+    },
+    "spirvHeaders": {
+      "repo": "KhronosGroup/SPIRV-Headers",
+      "revision": "5c6004e758e0c80185ef2cee93ae5c10fa342a5b",
+      "archiveSha256": "cc1bdb9d3ecee75c00eab4e60387909d27152ec5f13ac928ee984ae952b6f70c"
+    }
+  },
+  "models": [
+    {
+      "role": "encoder",
+      "repo": "AtomicChat/Qwen-Image-2.1-Turbo-Uncensored-GGUF",
+      "revision": "881a778e306c44920e42536def3e52c3a3ecc7cd",
+      "file": "Qwen-Image-2.1-Turbo-Uncensored-AD-Q2_K.gguf",
+      "bytes": 3336289216,
+      "sha256": "e42dac4f385fc49e5812721ff930e2417fbcc9fd148c01a78c8492ebbe54dd2a",
+      "localFile": "encoder.gguf"
+    },
+    {
+      "role": "denoiser",
+      "repo": "AtomicChat/Qwen-Image-2.1-Turbo-GGUF",
+      "revision": "cbcb9ff83b17e1eeef693479a8d34cea355a0ee4",
+      "file": "Qwen-Image-2.1-Turbo-AD-Q2_K.gguf",
+      "bytes": 2553333472,
+      "sha256": "8ab2888f605030a894c6238d978f51427bfde6732f4a112c71cff0439e265d04",
+      "localFile": "denoiser.gguf"
+    },
+    {
+      "role": "vae",
+      "repo": "Comfy-Org/Qwen-Image-2.1",
+      "revision": "aacf31a6d48e707f352ecba714cee0680da3479b",
+      "file": "vae/qwen_image_2.1_vae_bf16.safetensors",
+      "bytes": 675509688,
+      "sha256": "bb21f7473051e1ac368515dd3f2e15cd44d7a11748ee8823e1ddca3e4876b7c9",
+      "localFile": "vae.safetensors"
+    }
+  ],
+  "generation": {
+    "width": 512,
+    "height": 512,
+    "steps": 8,
+    "cfg": 1.0,
+    "seed": 42,
+    "sigmas": [
+      1.0,
+      0.978453,
+      0.95418,
+      0.926626,
+      0.89508,
+      0.845148,
+      0.704534,
+      0.414568,
+      0.0
+    ]
+  },
+  "backend": "Vulkan0",
+  "maxOutputBytes": 4194304
+}

@@ -1,0 +1,41 @@
+{
+  "packages": [
+    {
+      "package": "network.itonami.app",
+      "sha256": "9b9c41ef228c86f774e3243f791ba4ed7f917a94bf419eef13b835e795730e2a",
+      "bytes": 32910301,
+      "installedReadbackExact": true
+    },
+    {
+      "package": "network.awai.murakumo",
+      "sha256": "4908f09ee519427a329567ad1e2c841873393fd771a3c5a66199eeff5898603c",
+      "bytes": 160985829,
+      "installedReadbackExact": true
+    }
+  ],
+  "noncacheBefore": {
+    "network.itonami.app": {
+      "hash": "00601560ed3501675eb3d9edf5af6eed0e5e09e727c2b9c030e0125def933e50",
+      "files": 48
+    },
+    "network.awai.murakumo": {
+      "hash": "eea6274b374ab97a79e2bf9c994d4f8064c8e688bdb4dc2acd5014c785fd5764",
+      "files": 35
+    }
+  },
+  "noncacheAfter": {
+    "network.itonami.app": {
+      "hash": "00601560ed3501675eb3d9edf5af6eed0e5e09e727c2b9c030e0125def933e50",
+      "files": 48
+    },
+    "network.awai.murakumo": {
+      "hash": "eea6274b374ab97a79e2bf9c994d4f8064c8e688bdb4dc2acd5014c785fd5764",
+      "files": 35
+    }
+  },
+  "equal": true,
+  "currentBootId": "b55f5b4a-a119-4a01-99be-b16af644ac6b",
+  "bootBoundary": "old JUN1340 boot witness is stale; no current-task start boot sample. Uptime indicates this boot began before this task. No reboot command in this task.",
+  "operation": "install-r only, no clear/uninstall/owner auth/storage configuration change",
+  "nativeImageElfMatchesActualApk": true
+}

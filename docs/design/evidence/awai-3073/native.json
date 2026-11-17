@@ -1,0 +1,25 @@
+{
+  "schema": "awai.image.native.acceptance.v1",
+  "engine": {
+    "repo": "leejet/stable-diffusion.cpp",
+    "revision": "532d2c15c430a785a712b2d94281f04e733008a4",
+    "archiveSha256": "0278dc8e6e180adc4b43b3ace515eeef870dd76533a34fa1edcfa071ce7d7812",
+    "ggmlRevision": "eeda9ec48fc84a3df0bb9dcc19ae9053075a2539",
+    "ggmlArchiveSha256": "8bd7adc7eb1366d31670467951d21eb1a5f55e8f6d89b9b91909ffb0246ac5d2",
+    "vulkanHeaders": {
+      "repo": "KhronosGroup/Vulkan-Headers",
+      "revision": "v1.4.357",
+      "archiveSha256": "7dc0dbcf1d49dd3d7da3761c251c6097dfbaac475321a4a8a99269d3d5abecdc"
+    },
+    "spirvHeaders": {
+      "repo": "KhronosGroup/SPIRV-Headers",
+      "revision": "5c6004e758e0c80185ef2cee93ae5c10fa342a5b",
+      "archiveSha256": "cc1bdb9d3ecee75c00eab4e60387909d27152ec5f13ac928ee984ae952b6f70c"
+    }
+  },
+  "librarySha256": "b3d8d1edf165a8302652ee6781ff757478ebe1a350aba0c4fd96dd2138adcad7",
+  "libraryBytes": 60214648,
+  "backend": "Vulkan0 compute / CPU parameter storage",
+  "deviceVulkanProperty": "radeon",
+  "qualification": "physical Android API37 x86_64 Ryzen7735HS only; not phone/other backend/native selfhost"
+}

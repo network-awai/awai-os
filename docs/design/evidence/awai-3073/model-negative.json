@@ -1,0 +1,12 @@
+{
+  "issue": "AWAI-3073",
+  "start": "2026-11-17T12:14:15.195Z",
+  "file": "encoder.gguf",
+  "byteOffset": 4096,
+  "scope": "one byte of operator-staged public RAM model; host original and owner private data untouched",
+  "namedRefusal": "image-model-digest-mismatch",
+  "generatedImage": false,
+  "status": "passed",
+  "restoredSha256": "e42dac4f385fc49e5812721ff930e2417fbcc9fd148c01a78c8492ebbe54dd2a",
+  "end": "2026-11-17T12:14:23.356Z"
+}

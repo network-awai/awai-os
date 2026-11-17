@@ -44,7 +44,7 @@ await mkdir(dest,{recursive:true});
 await cp(source,dest,{recursive:true});
 const original=await readFile(path.join(dest,'index.html'),'utf8');
 if(/__(CONNECT_SRC|SCRIPT_SRC|STYLE_SRC|IMAGE_SRC|DAPPS_JSON|RELAY_ORIGIN)__/.test(original))throw Error('unresolved shell template');
-const html=original.replace(/(connect-src[^;"\n]*)/, '$1 ipc: http://ipc.localhost');
+const html=original.replace(/(connect-src[^;"\n]*)/, '$1 ipc: http://ipc.localhost').replace(/(img-src[^;"\n]*)/, '$1 data:');
 const csp=html.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/)?.[1];
 if(!csp || !csp.includes("default-src 'none'") || !csp.includes("script-src 'self'"))throw Error('HTTP/self shell CSP required');
 await writeFile(path.join(dest,'index.html'),html);

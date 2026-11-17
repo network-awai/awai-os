@@ -13,7 +13,7 @@ internal object Models {
  @Volatile var loaded=false
  private fun pins(c:Context)=JSONObject(c.assets.open("pins.json").bufferedReader().use{it.readText()}).getJSONObject("model")
  private fun file(c:Context)=File(c.filesDir,"models/qwen3.gguf")
- fun status(c:Context)=JSONObject().put("schema","awai.inference.local.v1").put("engine","llama.cpp").put("model",pins(c).getString("label")).put("imported",file(c).isFile).put("loaded",loaded).put("busy",busy.get()).put("modalities",org.json.JSONArray().put("text")).put("remote",false)
+ fun status(c:Context)=JSONObject().put("schema","awai.inference.local.v1").put("engine","llama.cpp").put("model",pins(c).getString("label")).put("imported",file(c).isFile).put("loaded",loaded).put("busy",busy.get()).put("modalities",org.json.JSONArray().put("text")).put("remote",false).put("image",ImageModels.status(c))
  private fun digest(f:File):String{val d=MessageDigest.getInstance("SHA-256");f.inputStream().use{val b=ByteArray(65536);while(true){val n=it.read(b);if(n<0)break;d.update(b,0,n)}};return d.digest().joinToString(""){"%02x".format(it.toInt() and 255)}}
  private fun admit(c:Context,f:File){val p=pins(c);require(f.length()==p.getLong("bytes")&&digest(f)==p.getString("sha256")){"model-digest-mismatch"}}
  fun import(c:Context,uri:Uri){check(!loaded){"release-required"};val dest=file(c);dest.parentFile!!.mkdirs();val temp=File(dest.parentFile,"import.part");try{
