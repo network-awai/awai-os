@@ -85,7 +85,11 @@ export function decodeState(data) {
   for (const d of data.drafts) {
     if (typeof d?.id !== 'string' || typeof d.createdAt !== 'string' || requirementProblems(d.requirement).length) throw Error('unreadable-drafts');
   }
-  return {schema: STATE_SCHEMA, drafts: data.drafts.slice(0, MAX_DRAFTS)};
+  // More than the limit is not truncated: a later write would drop the hidden drafts.
+  if (data.drafts.length > MAX_DRAFTS) throw Error('unreadable-drafts');
+  // Deleting by id removes every entry with that id, so ids must be unique.
+  if (new Set(data.drafts.map(d => d.id)).size !== data.drafts.length) throw Error('unreadable-drafts');
+  return {schema: STATE_SCHEMA, drafts: data.drafts.slice()};
 }
 export function addDraft(state, requirement, {id, now}) {
   if (requirementProblems(requirement).length) throw Error('invalid-requirement');

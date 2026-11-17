@@ -31,6 +31,10 @@ test('drafts are bounded, validated on load and removable',()=>{
   assert.throws(()=>decodeState({...s,drafts:[{...s.drafts[0],requirement:{...q,network:'base'}}]}));
   assert.throws(()=>addDraft(s,{...q,asset:'0x0'},{id:'c',now:'x'}));
   let full=emptyState();for(let i=0;i<MAX_DRAFTS;i++)full=addDraft(full,q,{id:String(i),now:'x'});assert.throws(()=>addDraft(full,q,{id:'z',now:'x'}));
+  // Over the limit or duplicate ids: unreadable (the app goes read-only), never truncated.
+  assert.equal(decodeState(full).drafts.length,MAX_DRAFTS);
+  assert.throws(()=>decodeState({...full,drafts:[...full.drafts,{...full.drafts[0],id:'extra'}]}),/unreadable-drafts/);
+  assert.throws(()=>decodeState({...s,drafts:[s.drafts[0],s.drafts[0]]}),/unreadable-drafts/);
 });
 test('planned external operations are display data only',()=>{assert.equal(PLANNED_OPERATIONS.length,3);assert.ok(Object.isFrozen(PLANNED_OPERATIONS[0]));});
 import {MESSAGES,pickLocale,translator} from '../src/messages.js';
@@ -38,5 +42,5 @@ test('ja and en have the same message keys and every problem code has a label',(
   assert.deepEqual(Object.keys(MESSAGES.en).sort(),Object.keys(MESSAGES.ja).sort());
   const codes=['amount.empty','amount.format','amount.zero','amount.max','payTo.format','payTo.zero','resource.empty','resource.format','description.long'];
   for(const locale of ['ja','en']){const t=translator(locale);for(const c of codes)t('problem.'+c);for(const o of PLANNED_OPERATIONS)t('op.'+o.id);assert.throws(()=>t('drafts.count'));}
-  assert.equal(pickLocale(['en-US']),'en');assert.equal(pickLocale(['fr']),'ja');
+  assert.equal(pickLocale(['en-US']),'en');assert.equal(translator('en')('drafts.count',{count:1}),'1 saved');for(const l of ['ja','en'])translator(l)('drafts.full',{max:MAX_DRAFTS});assert.equal(pickLocale(['fr']),'ja');
 });
