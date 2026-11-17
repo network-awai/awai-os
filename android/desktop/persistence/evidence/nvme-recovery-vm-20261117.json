@@ -1,0 +1,10 @@
+{
+  "schema": "awai.android.readonly.recovery.vm.v1",
+  "actualKernelAndFullInitrd": true,
+  "embeddedModeValidated": true,
+  "userdataMode": "tmpfs",
+  "nbdRequired": false,
+  "namespaceCapacityFixture": 500118192,
+  "wrongRootRefusedViaRemoteStaticStatus": true,
+  "physicalRecoveryVerified": false
+}

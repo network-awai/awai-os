@@ -1,0 +1,14 @@
+{
+  "schema": "awai.android.small.image.migration.vm.v1",
+  "actualKernel": true,
+  "metadataAndCacheMigrated1KiBTo4KiB": true,
+  "contentOwnerModeSymlinksMatched": true,
+  "original1KiBImagesRetained": true,
+  "secondRunIdempotent": true,
+  "digestPinnedEmptyTemplatesVerified": true,
+  "badTemplateDigestRefusedBeforeOutputCreation": true,
+  "initialFixtureRunTimedOutSeconds": 55,
+  "qualificationRunTimeoutSeconds": 180,
+  "qualificationRunPassed": true,
+  "physicalMigrationVerified": false
+}

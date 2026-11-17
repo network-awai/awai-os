@@ -1,0 +1,18 @@
+{
+  "schema": "awai.android.physical.recovery.v1",
+  "checkedAt": "2026-11-17T03:16:07.580141+00:00",
+  "artifactSourceRevision": "bff3004",
+  "bootId": "5aab1e85-f17c-4fbe-accf-681c57367fd5",
+  "osJournalRecoveryComplete": true,
+  "androidDirectoryFoundOnSelectedNvme": true,
+  "androidBootCompleted": true,
+  "adbRecovered": true,
+  "namespaceAndOsPartitionReadonly": true,
+  "protectedRegionsUnchanged": true,
+  "dataFs": "tmpfs",
+  "metadataFs": "tmpfs",
+  "persistentDataVerified": false,
+  "nativePeerRestorationVerified": false,
+  "nbdRequired": false,
+  "rawLogPublished": false
+}

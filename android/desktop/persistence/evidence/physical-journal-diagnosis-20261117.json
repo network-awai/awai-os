@@ -1,0 +1,14 @@
+{
+  "schema": "awai.android.physical.boot.diagnosis.v1",
+  "artifactSourceRevision": "e200ba2",
+  "bootArtifactsFetchedAt": "2026-11-17T02:57:25Z",
+  "imageValidationReached": true,
+  "genericInitHandoffReached": true,
+  "observedErrors": [
+    "EXT4-fs (nvme0n1p2): INFO: recovery required on readonly filesystem",
+    "EXT4-fs (nvme0n1p2): write access unavailable, cannot proceed (try mounting with noload)",
+    "generic_init: CanQuitUeventd: Missing block device for android dir"
+  ],
+  "androidBootVerified": false,
+  "rawLogPublished": false
+}

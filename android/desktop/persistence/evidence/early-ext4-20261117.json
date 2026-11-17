@@ -1,0 +1,14 @@
+{
+  "schema": "awai.android.early-ext4.vm.v1",
+  "checkedAt": "2026-11-17T01:45:14.644Z",
+  "kernelSha256": "921907ef5703f4b762a0c0f457ecf1734eae8384fece79ca953d13c474d56c3a",
+  "ext4UnavailableBeforeLoad": true,
+  "ext4AvailableAfterLoad": true,
+  "modules": [
+    "crc16",
+    "jbd2",
+    "mbcache",
+    "ext4"
+  ],
+  "physicalBootVerified": false
+}

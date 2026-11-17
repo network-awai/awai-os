@@ -1,0 +1,8 @@
+{
+  "schema": "awai.android.full-boot.guard.vm.v1",
+  "actualKernelAndFullInitrd": true,
+  "fixedMacNetworkFixture": true,
+  "remoteStaticStatus": "REFUSED invalid-mode",
+  "noDiskAttached": true,
+  "physicalBootVerified": false
+}
