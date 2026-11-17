@@ -1,0 +1,220 @@
+{
+  "schema": "awai.android.lan-trial.v1",
+  "productionQualified": false,
+  "physicalBootQualified": false,
+  "sourceClosureVerified": false,
+  "nixpkgs": "f5c082a40f7571c266e74e80ae2e68aadd8a9fc7",
+  "isoSha256": "63c15c052ff4a9841c680f550c77f1dedaadc6455eca828edd6143f9d5e547e3",
+  "artifacts": {
+    "ipxe.efi": {
+      "bytes": 311296,
+      "sha256": "e7fb0e08d957f4e8014348f95717ececbf81513d52a5b6f275b782fed426d5eb"
+    },
+    "initrd": {
+      "bytes": 104489934,
+      "sha256": "1161c1ab78937faa358af0d1bfee297ea9456349cd30e6bc3c9d6ec29ed43974"
+    },
+    "kernel": {
+      "bytes": 14307328,
+      "sha256": "921907ef5703f4b762a0c0f457ecf1734eae8384fece79ca953d13c474d56c3a"
+    }
+  },
+  "inputs": {
+    "awai-netboot": {
+      "bytes": 1508,
+      "sha256": "3570db7002f3ed40665793be98a0ee02a1387bb74b9acdd85e8dd1efa6f0e71d"
+    },
+    "awai/realtek.ko": {
+      "bytes": 116776,
+      "sha256": "fc525bed4cdf936adcd8ad0349a2a3dd7e66d52e5d2afbf06db801fe58964af7"
+    },
+    "awai/r8169.ko": {
+      "bytes": 372136,
+      "sha256": "05b0a99d1f51c084126c64efd1e5b76da9337e94b72d4a01cb213c72176ab5e3"
+    },
+    "awai/phy_package.ko": {
+      "bytes": 27336,
+      "sha256": "1c79df5bd6222ae00cc3c3229ebdf55f16e3e8571daaf78d89209d8c95c59514"
+    },
+    "awai/e1000.ko": {
+      "bytes": 400408,
+      "sha256": "8ced6b5bed436431e323604cbe19387c6a79200d0d1255bccf003f1492c020a4"
+    },
+    "awai/mii.ko": {
+      "bytes": 25344,
+      "sha256": "ff34737c40437c17b34daae44ccd7b7444c871d04bb2e09d4b267d6923839b31"
+    },
+    "awai/busybox": {
+      "bytes": 1414352,
+      "sha256": "ee558fc041571a95fdeee5ed91cf2cc5647a7873a07c52af99227aca8451b711"
+    },
+    "awai/firmware/rtl_nic/rtl8153b-2.fw": {
+      "bytes": 1880,
+      "sha256": "137c9c752e8648ecfcf3b74ffc7d675c098145c222e2969721e6257af31716bc"
+    },
+    "awai/firmware/rtl_nic/rtl8402-1.fw": {
+      "bytes": 1824,
+      "sha256": "a14adee93b7c7ecc738137d910334761ecf9c64d3addeccbd024a2f902f7f808"
+    },
+    "awai/firmware/rtl_nic/rtl8168e-2.fw": {
+      "bytes": 3920,
+      "sha256": "0a489929b270df1533645a75d55ff357fd66e42057aa4e198ab738930de39386"
+    },
+    "awai/firmware/rtl_nic/rtl8125a-3.fw": {
+      "bytes": 3456,
+      "sha256": "3f6c328af0ceff5969c729edf0f535e8bb2a9b9e05d15b6be3199a3e6d421b99"
+    },
+    "awai/firmware/rtl_nic/rtl8125cp-1.fw": {
+      "bytes": 1728,
+      "sha256": "22d01a77f530d0bb95818b2aac138a55e656eab303380b6c75c8b7e46275c412"
+    },
+    "awai/firmware/rtl_nic/rtl8153a-2.fw": {
+      "bytes": 1768,
+      "sha256": "7d4f422ec0e8141576c1b486fe6b7c6ce8ec9ea1f650815fd4058878c038366d"
+    },
+    "awai/firmware/rtl_nic/rtl8168g-2.fw": {
+      "bytes": 4896,
+      "sha256": "f878ec719f78e0b104bc73362a9862611858bec893f58a1b3b289a0a57d71d25"
+    },
+    "awai/firmware/rtl_nic/rtl8168fp-3.fw": {
+      "bytes": 336,
+      "sha256": "c526c06aa0ab8d9b57ba2b730bb1e40a1c3513f8591e238dceb2e0f45210ed27"
+    },
+    "awai/firmware/rtl_nic/rtl8156b-2.fw": {
+      "bytes": 5776,
+      "sha256": "5a3b21e27305876af8eac4b9bd11a821487b338e4ac1b58b8be8d23467d3f91f"
+    },
+    "awai/firmware/rtl_nic/rtl8153a-4.fw": {
+      "bytes": 1184,
+      "sha256": "99a05414fc0ae3b99a453d73b5cae90bfa6d371320f78011fc58cb03a33e2a09"
+    },
+    "awai/firmware/rtl_nic/rtl8168d-1.fw": {
+      "bytes": 1492,
+      "sha256": "ded779f55b3fc5bb8576b2d2b6c724581c72160b3c2f88e33b42dc6c2c4e70b0"
+    },
+    "awai/firmware/rtl_nic/rtl8125bp-2.fw": {
+      "bytes": 752,
+      "sha256": "70010caccdb0d87461f26d77a15f86615dc970549126cf17db01a7f43baf5287"
+    },
+    "awai/firmware/rtl_nic/rtl8168g-1.fw": {
+      "bytes": 4304,
+      "sha256": "64a0c74632909d7cb24222054af4bc37fa867046f295fb69e230386d844ca90a"
+    },
+    "awai/firmware/rtl_nic/rtl8261c.bin": {
+      "bytes": 56588,
+      "sha256": "2d93b7cd7ce7aae460ebca41dc5cca0ad80770d2129806ce46cc4e4064000bdc"
+    },
+    "awai/firmware/rtl_nic/rtl8107e-2.fw": {
+      "bytes": 976,
+      "sha256": "edc3a14a76852c411c4af5514dae5d55be37873f56a7563f80db7a76f2dc1ba7"
+    },
+    "awai/firmware/rtl_nic/rtl8126a-3.fw": {
+      "bytes": 13232,
+      "sha256": "18ffaf3b873d217bf780503a80f04fe2b03c088ba2d0c2a3d626145cb8e53b26"
+    },
+    "awai/firmware/rtl_nic/rtl8106e-1.fw": {
+      "bytes": 1856,
+      "sha256": "b249074519d87ff8bde17185894333c993f25f747f221305cf69a5d7b4519674"
+    },
+    "awai/firmware/rtl_nic/rtl8411-1.fw": {
+      "bytes": 2112,
+      "sha256": "e66a3183787c80987e1e36c9f7d4b2c3cd5d976640b83f462702f914febc4b38"
+    },
+    "awai/firmware/rtl_nic/rtl8125d-2.fw": {
+      "bytes": 6800,
+      "sha256": "c1cb0d358ca985b0d45584612143fd93613d567064702e265bfb370e99c90e35"
+    },
+    "awai/firmware/rtl_nic/rtl8127a-1.fw": {
+      "bytes": 9632,
+      "sha256": "6cddd9249565e7c7b900391fdadd356ac06de9b509cd68c5de0842ba90db30e0"
+    },
+    "awai/firmware/rtl_nic/rtl8168f-1.fw": {
+      "bytes": 3424,
+      "sha256": "ed3794c651d38b807168c7c49431bb8036922b16766588c520a20287f277615d"
+    },
+    "awai/firmware/rtl_nic/rtl8168g-3.fw": {
+      "bytes": 832,
+      "sha256": "e4d5e62b0a5a097af34c7aa3c55f634fd5be2c232e02c6b983ebd7e699cb27e9"
+    },
+    "awai/firmware/rtl_nic/rtl8125b-1.fw": {
+      "bytes": 10128,
+      "sha256": "226b8bf6e8fda72853336bde066cb0afa9053e9e18a879b8e73682a0c5ad1954"
+    },
+    "awai/firmware/rtl_nic/rtl8168d-2.fw": {
+      "bytes": 1324,
+      "sha256": "35dd68c01a7b24f6e554bd2c0b9cf57cf962a826651f66e75ffcea37cf2c3bb9"
+    },
+    "awai/firmware/rtl_nic/rtl8125d-1.fw": {
+      "bytes": 17168,
+      "sha256": "bc3c82939f02df2f58a17e7354096375001a80a5c1ca3f459c555d5a7d42bf1b"
+    },
+    "awai/firmware/rtl_nic/rtl8168h-2.fw": {
+      "bytes": 976,
+      "sha256": "0b4beab008e308f28296c13188ee23edfeff7d865e398a7ade170495c8cec7e6"
+    },
+    "awai/firmware/rtl_nic/rtl8105e-1.fw": {
+      "bytes": 2076,
+      "sha256": "03f7ee92f1a7c1723ac7a7447ae006930c9bb07e1d77c3d12bc70cc0d855bb00"
+    },
+    "awai/firmware/rtl_nic/rtl8168e-3.fw": {
+      "bytes": 3872,
+      "sha256": "1287fdd82ff2f60d75c9970c108b49cfd11456ad3fe29c9666b8539a35777dbf"
+    },
+    "awai/firmware/rtl_nic/rtl8156a-2.fw": {
+      "bytes": 4024,
+      "sha256": "7b50f4a307bde7b3f384935537c4d9705457fa42613eb0003ffbc4e19461a1e0"
+    },
+    "awai/firmware/rtl_nic/rtl8168f-2.fw": {
+      "bytes": 1232,
+      "sha256": "5586b2093502f7dec762f23091fa90d6d8731e7d873509072ce2eae23ab8ee99"
+    },
+    "awai/firmware/rtl_nic/rtl8153a-3.fw": {
+      "bytes": 1440,
+      "sha256": "c7099a1b0fc80e02ff7276aacbb08b5771e2f5c763fb76a7a8df3a89d58d8208"
+    },
+    "awai/firmware/rtl_nic/rtl8107e-1.fw": {
+      "bytes": 992,
+      "sha256": "da3b9939538376c0dd1a97cdfead9fedba1213146bbdda31ef12b87fd616b831"
+    },
+    "awai/firmware/rtl_nic/rtl8168h-1.fw": {
+      "bytes": 992,
+      "sha256": "4ef963690f3a7b25a9bc97fb12c58922c02886699933ed6297636cc15aad9d8d"
+    },
+    "awai/firmware/rtl_nic/rtl8125k-1.fw": {
+      "bytes": 8096,
+      "sha256": "3764d236c0e0dce55ac0570923c66d86e984509487b5740a75ec62f9242fd234"
+    },
+    "awai/firmware/rtl_nic/rtl8125b-2.fw": {
+      "bytes": 3328,
+      "sha256": "529bf1c25c97ff52b401090d00ff89cc22351012336e5a0c9662728a3ee909ef"
+    },
+    "awai/firmware/rtl_nic/rtl8261d.bin": {
+      "bytes": 212,
+      "sha256": "41f3d3fbbf9f16cc0b3f60ff9c429ce51cedb7a8e0412370eb22d3afc1ce30c2"
+    },
+    "awai/firmware/rtl_nic/rtl9151a-1.fw": {
+      "bytes": 640,
+      "sha256": "b18901d05fd533567163151420828f59bf3d23574a4db8a0e889e22b878225e0"
+    },
+    "awai/firmware/rtl_nic/rtl8168e-1.fw": {
+      "bytes": 5500,
+      "sha256": "c38d6818a99336c8e43883bbc136f9fab3b1b470ec0e86c61bf5dac617fe94bd"
+    },
+    "awai/firmware/rtl_nic/rtl8106e-2.fw": {
+      "bytes": 832,
+      "sha256": "ba4f7ed4bac4768810ba8a6c118457f5912f61a0380aa4fb322093caf52de0ef"
+    },
+    "awai/firmware/rtl_nic/rtl8126a-2.fw": {
+      "bytes": 29248,
+      "sha256": "2ffa201aa7dec5e3726e268a10342b175ae8de4fa9f39f535bbbbf5cb8245879"
+    },
+    "awai/firmware/rtl_nic/rtl8153c-1.fw": {
+      "bytes": 832,
+      "sha256": "bbe5f74bd2625b71c9a70e0588472ef670b5eeb65f83b1202cd25b3381720a3f"
+    },
+    "awai/firmware/rtl_nic/rtl8411-2.fw": {
+      "bytes": 1040,
+      "sha256": "80dbdacba4d5dfee46b6c2b4e433f6f2eeb756d29ad46bf2362ba20c8ec594b1"
+    }
+  }
+}
