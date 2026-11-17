@@ -29,3 +29,10 @@ test('icons cannot silently become remote operations',()=>{
  assert.throws(()=>search_field({id:'q',label:'Find','icon-src':'https://example.com/pixel.svg'}));
  assert.throws(()=>Array.from(navigation('Main',[{id:'a',label:'A',href:'#a','icon-src':'//example.com/x.svg'}],'a')[2][1]));
 });
+
+test('npm pack dry run produces a reusable archive including JS, CSS, font and source',async()=>{
+ const {execFileSync}=await import('node:child_process');
+ const rows=JSON.parse(execFileSync(process.env.npm_execpath?process.execPath:'npm',process.env.npm_execpath?[process.env.npm_execpath,'pack','--dry-run','--json']:['pack','--dry-run','--json'],{encoding:'utf8'}));
+ const names=new Set(rows[0].files.map(f=>f.path));
+ for(const path of ['dist/index.js','dist/awai-ui.css','dist/ui-assets/noto-jp.woff2','src/awai/ui.cljc','verification.json','LICENSE'])assert.ok(names.has(path),path);
+});
