@@ -33,10 +33,12 @@ platform decision lists the remaining gates.
 | [`docs/`](docs) | Decisions, design and dated evidence |
 | [`archive/`](archive) | Deprecated material kept for history |
 
-## Build and test
+## Boot, build and test
 
-Android builds, emulator and device checks are described in
-[android/README.md](android/README.md) and [android/test/README.md](android/test/README.md).
+**[Booting Awai OS on Android](android/BOOT.md)** lists every way to run Awai OS
+today (emulator, PC LAN Live, PC NVMe persistence, phone) and what is still
+missing for a real Awai OS image. Android builds, emulator and device checks are
+described in [android/README.md](android/README.md) and [android/test/README.md](android/test/README.md).
 Each app documents its own build in its directory. Source, VM, device and
 release evidence are recorded separately; a passing build is not a released
 device image.

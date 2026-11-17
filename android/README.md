@@ -2,6 +2,8 @@
 
 Implementation of Figma native UX v2 for Awai OS on Android AOSP, with a shared browser UI/domain. Device bring-up may reuse upstream community device trees; the product is presented only as Awai OS. This is a development build, separate from the Native selfhost profile.
 
+To run Awai OS on an emulator, a PC or a phone, start with [BOOT.md](BOOT.md).
+
 - `network.awai.home`: reversible Android HOME-role launcher, real installed-app drawer/launch, clock, local agenda projection and system-settings entry.
 - `network.awai.store`: signed bundled catalog, library/update state, independent native confirmation, bounded APK digest/package/version/signer checks and Android PackageInstaller user action.
 - `network.itonami.yotei`: actual bundled calendar application; shared browser UI and local event model, persistent local storage, signature-permission protected read-only agenda projection. No sync, remote inference or notification scheduling is claimed.
