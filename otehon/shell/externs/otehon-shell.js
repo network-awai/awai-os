@@ -802,3 +802,10 @@ Object.prototype.modelSet;
 Object.prototype.dataUrl;
 Object.prototype.readbackVerified;
 Object.prototype.uri;
+
+Object.prototype.readImage;
+Object.prototype.conversation;
+Object.prototype.chatBotsOperation;
+Object.prototype.chatMediaOperation;
+Object.prototype.chatPersona;
+Object.prototype.sourceSha256;

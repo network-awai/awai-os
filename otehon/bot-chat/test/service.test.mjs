@@ -36,3 +36,17 @@ test('named sessions share the Agent contract and isolate history without starti
   assert.equal((await post(s,'/v1/bot-chat/history',{botId:bot.id,sessionId:randomUUID()})).status,404);
  }finally{await s.close();}
 });
+
+test('local image metadata stays in named Agent session with real DB readback and no inference',async()=>{
+ let calls=0;const s=await serve(async()=>{calls++;throw Error('image record must not invoke text model')});
+ const sessionId=randomUUID(),id=randomUUID(),image={imageId:id,sha256:'a'.repeat(64),bytes:341012,width:512,height:512,modelSet:'qwen-image-2.1-turbo-uncensored-ad-q2-k',engine:'stable-diffusion.cpp'};
+ const body={botId:bot.id,sessionId,requestId:id,text:'A public synthetic blue cup',image};try{
+  assert.equal((await post(s,'/v1/bot-chat/sessions',{botId:bot.id,sessionId,action:'create',title:'Synthetic media session'})).status,201);
+  assert.equal((await post(s,'/v1/bot-chat/media',{...body,sessionId:'default'})).status,409);
+  for(const patch of [{bytes:0},{width:1024},{sha256:'x'},{imageId:randomUUID()},{url:'https://private.invalid/image'}])assert.equal((await post(s,'/v1/bot-chat/media',{...body,image:{...image,...patch}})).status,400);
+  const accepted=await post(s,'/v1/bot-chat/media',body);assert.equal(accepted.status,200);let ack=await accepted.json();assert.equal(ack.store.readback,true);assert.equal(ack.message.image.sha256,image.sha256);
+  assert.equal((await post(s,'/v1/bot-chat/media',body)).status,200);assert.equal((await post(s,'/v1/bot-chat/media',{...body,image:{...image,sha256:'b'.repeat(64)}})).status,409);
+  const history=await(await post(s,'/v1/bot-chat/history',{botId:bot.id,sessionId})).json();assert.equal(history.messages.length,2);assert.deepEqual(history.messages[1].artifactScope,{botId:bot.id,sessionId});assert.equal(history.messages[1].verification,'metadata-only-pixels-remain-on-generating-device');assert.equal(history.messages[1].image.dataUrl,undefined);assert.equal(calls,0);
+ }finally{await s.close()}
+ const restarted=await serve(async()=>{throw Error('no inference')});try{const h=await(await post(restarted,'/v1/bot-chat/history',{botId:bot.id,sessionId})).json();assert.equal(h.messages[1].image.imageId,id)}finally{await restarted.close()}
+});
