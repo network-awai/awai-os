@@ -8,6 +8,7 @@ import kotlin.math.max
 class MainActivity : TauriActivity() {
  override fun onCreate(savedInstanceState:Bundle?) {
   enableEdgeToEdge();super.onCreate(savedInstanceState)
+  AgentTransport.configure(this)
   val content=findViewById<View>(android.R.id.content)
   ViewCompat.setOnApplyWindowInsetsListener(content){view,insets->
    val bars=insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())

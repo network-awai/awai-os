@@ -815,3 +815,5 @@ Object.prototype.dispatchEvent;
 Object.prototype.scrollTop;
 
 Object.prototype.scrollHeight;
+Object.prototype.ready;
+Object.prototype.ensureAgentTransport;
