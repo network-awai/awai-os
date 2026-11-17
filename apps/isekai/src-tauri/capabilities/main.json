@@ -1,0 +1,1 @@
+{"identifier":"isekai-local","description":"Local drafting of Isekai game-fork commits; host version only. No external network, publishing, payment, filesystem, installer or shell permissions.","windows":["main"],"permissions":["allow-awai-host-info"]}

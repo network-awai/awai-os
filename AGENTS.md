@@ -7,7 +7,7 @@ Follow the workspace-level AGENTS.md architecture and Linear tracking rules.
 | Path | Contents |
 | --- | --- |
 | `android/` | Awai OS on Android AOSP: Home, Store, setup, SystemUI overlays, desktop PC work |
-| `apps/` | Bundled apps (Itonami, Murakumo inference, Drive, Yotei, Horei, x402 Pay) |
+| `apps/` | Bundled apps (Itonami, Murakumo inference, Drive, Yotei, Horei, x402 Pay, Isekai Fork) |
 | `dapps/` | Otehon dapps (D1, reward loop, Saifu, Sanka, Wellbecoming) |
 | `otehon/` | Itonami shell UI shared with Android, and Otehon fleet sources: Meiji, Bot fleet, Soshiki, storage |
 | `packages/`, `store/`, `distribution/`, `deploy/` | Shared packages, signed catalog, distribution Worker, awai.link relay |
