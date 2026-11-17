@@ -1,6 +1,6 @@
 # AWAI-3014 Android qualification — 2026-11-17
 
-Source under test: `dc321b123bbabf0e8fff7370dfa45dbb3896e8f2`.
+Source under test: `1f5cd9c` (focused path-depth fix after initial `dc321b1` qualification).
 PR: https://github.com/network-awai/awai-os/pull/166
 Tracking: https://linear.app/kotobalabs/issue/AWAI-3014
 
@@ -9,7 +9,7 @@ Tracking: https://linear.app/kotobalabs/issue/AWAI-3014
 | Check | Result and coverage |
 | --- | --- |
 | Shared CLJC/CLJS and descriptor | 4 Node tests pass; canonical broker accepts memory-only descriptor, zero remote operations; JP/EN key and interpolation parity |
-| Java file adapter | 24 local checks pass: bytes, reopen, duplicate/concurrent no-clobber, short/faulting source, traversal/control/symlink and size admission |
+| Java file adapter | 27 local checks pass: bytes, reopen, duplicate/concurrent no-clobber, short/faulting source, traversal/control/symlink size admission, and maximum-depth child rejection before publication |
 | ARM64 APK | Build and development-signature verification pass; installed and cold-started on dedicated AOSP API35 ARM64 VM |
 | x86_64 APK | Cross-build and development-signature verification pass; runtime untested |
 | Native document picker | Drive read-only provider appears in Android Files; actual document selection imports through native activity callback |
@@ -30,11 +30,12 @@ private keys, unrelated emulator state or physical disks were changed.
 
 | File | Bytes | SHA256 |
 | --- | ---: | --- |
-| awai-drive-0.1.0-dc321b1-arm64-debug.apk | 36593986 | c825855ccd849375f4c3224b01b41ba1f2fffc3ae17e1c240a4a5178e91b8be8 |
-| awai-drive-0.1.0-dc321b1-x86_64-debug.apk | 23699539 | 2d5f77b276e117c6824a09153a5013fefadd24305089ad1d081008c748d2bebb |
+| awai-drive-0.1.0-1f5cd9c-arm64-debug.apk | 21762302 | 0f9124a9e796f52692abb065b821c00547acf9d74e2edcc01205937d95399a4b |
+| awai-drive-0.1.0-1f5cd9c-x86_64-debug.apk | 23699539 | 84704152bfb032502f72521ef1e2b7c961ba386de449fd3a34587c5f8b0c39e7 |
 
 Both use development signer SHA256:
 `2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29`.
+Prior dc321b1 artifacts remain separately preserved with their original names.
 APK files, raw VM screenshots, readbacks and build logs remain in the task
 worktree `.agent-output/`; APKs are not committed or uploaded as Actions artifacts.
 Both artifacts exceed the existing Store 20 MiB ceiling. Direct authorized ADB
