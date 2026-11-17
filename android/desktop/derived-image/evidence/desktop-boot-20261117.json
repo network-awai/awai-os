@@ -1,0 +1,33 @@
+{
+  "schema": "awai.android.derived-image-desktop-boot.v1",
+  "issue": "AWAI-3067",
+  "date": "2026-11-17",
+  "device": "engineering Desktop, Ryzen 7 7735HS / Radeon 680M (formerly labelled 6600H), direct LAN 10.77.0.2",
+  "route": {
+    "kind": "RAM Live, temporary",
+    "generation": "workspaces/codex/awai-6600h-lan-boot/generations/20261117-awai3067-derived-live",
+    "kernel": "921907ef5703f4b762a0c0f457ecf1734eae8384fece79ca953d13c474d56c3a",
+    "initrd": "aec7c75071e3642f5839da82b169cb9a5655895e5375c0636c5405ae7d635a9d (active persistent-v6 initrd with android/desktop/netboot/init.sh appended as /awai-netboot)",
+    "ipxe.efi": "bfa3084d964bceae16299f36874db15530d3b100c6066614f39aa4a8340a5d54 (active iPXE with the netboot command line: android-Generic_x86_64, tmpfs userdata, nvme/nvme_core/ahci blacklisted, no video= override)",
+    "systemImages": "read-only NBD export awai2992 on 10.77.0.1:10829 of a data-only ISO (sha256 46ec2cc10cac5f4c4b4892512dcacfda775375b91eb26fe14accd6e200b6f0da) holding the signed derived images",
+    "preflight": "same initrd and command line booted to sys.boot_completed=1 in a QEMU x86_64 VM against a local NBD export first",
+    "restored": "generation 20261117-dp1-primary, artifacts.json restored byte-identical, route-active.json unchanged, iPXE served again as cbf209ec…"
+  },
+  "observed": {
+    "bootIdChanged": "b55f5b4a-a119-4a01-99be-b16af644ac6b -> bb15addf-2878-4cc4-bd63-3fd6768f31ba",
+    "bootCompleted": true,
+    "data": "tmpfs",
+    "localDisksVisible": "none (no nvme or sd block devices)",
+    "vendorProperty": {"vendor.hwc.drm.primary_display": "DP-1"},
+    "connectors": "DP-1 connected; DP-2..7, HDMI-A-1, HDMI-A-2 disconnected",
+    "primaryDisplay": "HWC display 0 on port 2 (DP-1), RTK monitor, 1920x1200 at 59.95 Hz, without a video= kernel argument",
+    "systemApps": ["network.awai.home", "network.awai.store", "network.itonami.yotei"],
+    "rendered": ["desktop-home-20261117.png", "desktop-store-20261117.png"],
+    "fingerprint": "Generic/lineage_Generic_x86_64/Generic_x86_64:17/CP2A.260605.016/eng.root:userdebug/release-keys"
+  },
+  "limits": [
+    "Only DP-1 had a monitor attached, so this does not show DP-1 winning over a connected HDMI display.",
+    "RAM Live only: persistent /data was not used and was not touched.",
+    "The base platform is still the unofficial prebuilt; this is not an Awai OS release."
+  ]
+}
