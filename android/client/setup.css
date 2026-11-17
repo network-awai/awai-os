@@ -15,6 +15,7 @@
   .setup-labels small { font-size:12px; }
   .setup-actions { display:flex; justify-content:space-between; gap:24px; }
   .setup-actions .button { inline-size:176px; min-inline-size:0; }
+  .setup-lock-note { margin:0; font-size:14px; line-height:1.5; }
   .setup-status { position:absolute; inset-inline-start:max(32px,calc((100vw - 1216px)/2)); inset-block-end:40px; font-size:14px; }
   .setup-error { color:var(--error); }
   .setup-qr { inline-size:256px; max-inline-size:100%; block-size:auto; margin-inline:auto; background:white; }

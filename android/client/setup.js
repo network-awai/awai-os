@@ -56,7 +56,7 @@ export function createSetup({host,domain,root,button,el,icon,notify,render}) {
     const next=button(s.stage===0?tr('はじめる','Get started'):s.stage===4?tr('あとで設定','Set up later'):s.stage===7?tr('Awai をひらく','Open Awai'):tr('次へ','Next'),()=>{
       move(s.stage===4?'defer':action);
     });nav.append(next);
-    if(s.stage===7&&!s.secure){next.disabled=true;panel.append(button(tr('画面ロックを設定','Set screen lock'),()=>settings('lock'),'button'));}
+    if(s.stage===7&&!s.secure){next.disabled=true;const why=el('p','setup-lock-note muted',tr('Awai をひらくには、PIN・パターン・パスワードのいずれかの画面ロックが必要です。','To open Awai, set a PIN, pattern or password screen lock.'));why.id='setup-lock-note';next.setAttribute('aria-describedby',why.id);panel.append(why,button(tr('画面ロックを設定','Set screen lock'),()=>settings('lock'),'button'));}
     const foot=el('p','setup-status muted',network+' · Awai OS Meiji');foot.role='status';page.append(foot);
     page.dataset.motionReduced=String(JSON.parse(host.snapshot()).motionReduced);
     return true;
