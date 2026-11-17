@@ -254,15 +254,15 @@
   [:aside.panel {:aria-label (str (.-title dapp) " dapp")}
    [:div.panel-head
     [:h2 (.-title dapp)]
-    [:span.tag "Not connected"]]
-   [:p (.-summary dapp)]
+    [:span.tag (if (and (= (.-id dapp) "murakumo") (androidInferenceAvailable)) "この端末" "Not connected")]]
+   [:p (if (and (= (.-id dapp) "murakumo") (androidInferenceAvailable)) "llama.cpp を使う端末内テキスト推論です。モデルは Murakumo アプリで管理します。" (.-summary dapp))]
    [:dl
     [:dt "Install"]
-    [:dd (if (= "os-image" (.-install dapp)) "Included in the OS image" (.-install dapp))]
+    [:dd (if (and (= (.-id dapp) "murakumo") (androidInferenceAvailable)) "Android の Murakumo アプリ" (if (= "os-image" (.-install dapp)) "Included in the OS image" (.-install dapp)))]
     [:dt "Offline"]
-    [:dd (if (= "local-core" (.-offline dapp)) "The local core works offline" (.-offline dapp))]]
+    [:dd (if (and (= (.-id dapp) "murakumo") (androidInferenceAvailable)) "モデルの取得後にオフラインで利用" (if (= "local-core" (.-offline dapp)) "The local core works offline" (.-offline dapp)))]]
    [:h3 "Network operations"]
-   (if (zero? (.-length (.-remoteOperations dapp)))
+   (if (zero? (.-length (if (and (= (.-id dapp) "murakumo") (androidInferenceAvailable)) #js [] (.-remoteOperations dapp))))
      [:p "None. This app does not use the network."]
      [:ul.operations
       (map (fn [operation]
@@ -277,7 +277,7 @@
                           "Asks each time" (.-consent operation))]
                  (when locked
                    [:button.locked {:type "button" :on-click on-raise}
-                    (str "Needs trust " minimum ". Yours is " score ".")])])) (.-remoteOperations dapp))])])
+                    (str "Needs trust " minimum ". Yours is " score ".")])])) (if (and (= (.-id dapp) "murakumo") (androidInferenceAvailable)) #js [] (.-remoteOperations dapp)))])])
 
 (defn session-retention []
   (let [[status set-status] (useState nil)

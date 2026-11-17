@@ -10,6 +10,19 @@ if not source.exists():
   prefix=t.getmembers()[0].name+'/'
   for member in t.getmembers():
    if member.name.startswith(prefix):member.name=member.name[len(prefix):];t.extract(member,source,filter='data')
+# Reuse the extraction only after checking every file against the admitted archive.
+expected=set()
+with tarfile.open(archive) as t:
+ prefix=t.getmembers()[0].name+'/'
+ for member in t.getmembers():
+  if not member.name.startswith(prefix) or not member.isfile():continue
+  rel=member.name[len(prefix):];expected.add(rel);target=source/rel
+  if not target.is_file() or not target.resolve().is_relative_to(source.resolve()):raise SystemExit('source-tree-missing')
+  if hashlib.sha256(t.extractfile(member).read()).digest()!=hashlib.sha256(target.read_bytes()).digest():raise SystemExit('source-tree-drift')
+actual={str(p.relative_to(source)) for p in source.rglob('*') if p.is_file()}
+if actual!=expected:raise SystemExit('source-tree-extra-or-missing')
+if sys.argv[1:]==['--verify-only']:
+ print('Verified immutable engine archive and extracted tree');raise SystemExit(0)
 ndk=pathlib.Path(os.environ.get('ANDROID_NDK_HOME',str(pathlib.Path.home()/'Library/Android/sdk/ndk/27.0.12077973')))
 for abi in sys.argv[1:] or ['arm64-v8a','x86_64']:
  if abi not in ['arm64-v8a','x86_64']:raise SystemExit('unsupported-abi')
