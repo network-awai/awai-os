@@ -18,6 +18,9 @@ for module in mii phy_package realtek e1000 r8169; do "$B" insmod "/awai/$module
 for disk in /sys/block/*; do
  case "${disk##*/}" in sd*|mmcblk*|vd*|nbd*) fail other-local-disk;; esac
 done
+for module in crc16 jbd2 mbcache ext4; do
+ if [ ! -d "/sys/module/$module" ]; then "$B" insmod "/lib/modules/$module.ko" || fail ext4-module; fi
+done
 "$B" mkdir -p /awai-check
 "$B" mount -t ext4 -o ro,noload /dev/nvme0n1p2 /awai-check || fail root-mount
 "$B" sh /awai/verify-images.sh /awai-check/awai-android-2992 || fail image-guard
