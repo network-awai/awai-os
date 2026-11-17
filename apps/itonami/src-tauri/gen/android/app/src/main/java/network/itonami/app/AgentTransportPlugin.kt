@@ -24,6 +24,10 @@ object AgentTransport {
    require(file.isFile&&file.length() in 1..4096);val c=JSONObject(file.readText())
    require(c.keys().asSequence().toSet()==setOf("schema","origin","proxy"))
    require(c.getString("schema")=="awai.agent-transport.v1"&&c.getString("origin")==origin&&c.getString("proxy")=="10.77.0.1:10844")
+   if(android.os.Build.VERSION.SDK_INT>=37 && owner.checkSelfPermission("android.permission.ACCESS_LOCAL_NETWORK")!=android.content.pm.PackageManager.PERMISSION_GRANTED){
+    owner.requestPermissions(arrayOf("android.permission.ACCESS_LOCAL_NETWORK"),3104)
+    return
+   }
    require(WebViewFeature.isFeatureSupported(WebViewFeature.PROXY_OVERRIDE)&&WebViewFeature.isFeatureSupported(WebViewFeature.PROXY_OVERRIDE_REVERSE_BYPASS))
    // The wired maintenance LAN has no Internet/default route. Select only this
    // process's existing, exact Ethernet network; never change OS routing/DNS.
