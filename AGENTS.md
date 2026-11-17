@@ -1,6 +1,44 @@
-# Murakumo NixOS
+# Awai OS — Android AOSP and retained NixOS profiles
 
 Follow the workspace-level AGENTS.md architecture and Linear tracking rules.
+
+## Product OS direction — Android AOSP (owner decision 2026-11-17)
+
+Awai OS uses Android AOSP as its primary product OS for phones and desktop PCs.
+See [the accepted platform decision](docs/otehon/aosp-platform-decision-20261117.md)
+and [AWAI-3007](https://linear.app/kotobalabs/issue/AWAI-3007). This section
+supersedes older NixOS-primary product wording; it does not retire working NixOS
+installations or change Kotoba/Amu/AIUEOS Native qualification rules.
+
+- AOSP owns the OS lifecycle, permissions, connectivity, locale, screen lock,
+  Keystore/storage protection and update integration. LineageOS may provide
+  device bring-up and reusable patches; do not make Lineage branding, Google
+  Play services or a third-party PC image a required product architecture.
+- Phone and desktop share the Android setup state model and Figma-first UX.
+  Adapt layout, keyboard/mouse/touch and hardware capabilities. Do not reuse
+  NixOS's Hello/network/passphrase wizard as Android OS setup. Itonami remains
+  an app: retain account authentication but omit repeated OS setup steps.
+- Preserve the approved Itonami Core / Apps / System and Manimani composition.
+  Keep shared domain/policy in `.cljc`/CLJS Otehon code; native Android and pinned
+  Tauri v3 adapters expose bounded platform operations. A Rust/Java adapter is
+  not a new authority, consent broker or second application shell.
+- Device PIN, Awai account, wallet, phone enrollment and encrypted profile
+  restore are distinct. Never infer signed enrollment from connectivity or a
+  completed screen; never import private keys to reproduce a design fixture.
+  AOSP alone does not establish PC hardware-backed key custody or FBE recovery.
+- Preserve NixOS images, installed disks, EFI entries, VM/fleet state, keys and
+  recovery paths. No automatic repartition, replacement, service shutdown or
+  credential migration follows from this decision. Nix remains available as an
+  existing host/build/node platform; node fleets need no blanket Android move.
+- Test source/build, Android VM, each actual device and persistent reboot
+  separately. Privileged SetupWizard/SystemUI, signed ROM/OTA, rollback and
+  recovery require their own evidence. An APK or RAM Live boot is not a ROM,
+  persistent install, encryption qualification or accepted device release.
+
+The remaining NixOS/native sections apply to their named existing profiles.
+Use Android SDK/build and emulator/device checks for Android; a NixOS VM gate
+does not qualify Android. Preserve the shared local-execution/each-operation
+consent contract and the separation between Otehon and Native.
 
 ## Awai Otehon UI: Figma design first (AWAI-538)
 
@@ -13,7 +51,7 @@ standalone `/workspace/` candidate or treat a fixture as physical acceptance.
 This owner-selected Figma contract controls visual composition; source code and
 tests remain evidence of actual behavior, not proof that the design is accepted.
 
-The native product entry is `nixos/murakumo-nixos.nix`. Keep it separate from
+The retained native NixOS preview entry is `nixos/murakumo-nixos.nix`. Keep it separate from
 the historical `node-base.nix` setup/provider/update closure. Never add those
 Node.js tools as a native profile fallback, and do not stop existing services.
 
@@ -53,7 +91,7 @@ old persistent boot default until an actual one-shot trial has booted and the
 authorized operator confirms its exact ID after local health. Never make a
 production update or USB refresh a side effect of building/testing this module.
 
-Awai Otehon (`network-awai/network-awai-apex` ADR 0026) is added as a profile
+The retained NixOS Otehon implementation (`network-awai/network-awai-apex` ADR 0026) is a profile
 separate from the native profile. It is the Otehon edition of Itonami OS and may
 use `.cljc`, clj / JVM, cljs builds, nbb, babashka and the rest of ADR 0026 D3,
 pinned with Nix (owner decision 2026-11-07, D18). Do not put Otehon dependencies

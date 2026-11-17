@@ -1,6 +1,13 @@
 # awai-os
 
-**Awai Otehon 0.7.3 installer (Ryzen 5 6600H / x86_64):**
+**Product direction (2026-11-17): Android AOSP is the primary Awai OS basis for
+phones and desktop PCs.** See the [platform decision and migration boundaries](docs/otehon/aosp-platform-decision-20261117.md),
+[Android host implementation](android/README.md) and [shared Android setup design](https://www.figma.com/design/umqCqP5KSjLWh9fhCI1HaN?node-id=241-3).
+Existing NixOS installations and recovery artifacts remain preserved. Current
+Android APK/VM/Live evidence does not qualify a production ROM or persistent
+6600H installation; the linked decision lists the remaining gates.
+
+**Retained NixOS Awai Otehon 0.7.3 installer (Ryzen 5 6600H / x86_64):**
 [GUI・文字画面からの導入手順](docs/otehon/install-guide-ja.md) /
 [検証済み ISO の版と Build ID](docs/otehon/usb-installer-0.7.3.md)。
 GUI が表示されない場合は起動メニューの `Text-installer-0.7.3` を選びます。
@@ -25,8 +32,10 @@ The [0.1.1 live media candidate](docs/native-media-0.1.1.md) includes those
 update tools, the installed-profile source bundle and its guide. The actual
 ISO has a separate UEFI boot, browser-readiness and no-disk-write VM gate.
 
-NixOS installation media and Murakumo Client setup for Awai Nodes.
-NixOS is the current operating system. Murakumo Client names the software suite;
+The following historical installer documentation describes NixOS installation
+media and Murakumo Client setup for Awai Nodes.
+NixOS is the operating system delivered by those existing artifacts, rather than
+the new Android AOSP product target. Murakumo Client names the software suite;
 Awai Node names a participating instance or host. AiueOS is an unfinished
 future OS intended to replace NixOS, not the OS delivered by this installer. This repository owns the OS installation boundary: boot media, disk
 selection, target configuration, recovery and rollback. The ISO opens a guided

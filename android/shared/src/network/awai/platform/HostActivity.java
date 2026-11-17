@@ -168,21 +168,25 @@ public abstract class HostActivity extends Activity {
                 JSONObject pins=new JSONObject(new String(Integrity.read(getAssets().open("online-pins.json"),16384),StandardCharsets.UTF_8));
                 JSONObject envelope=new JSONObject();envelope.put("raw",raw);envelope.put("signature",signature);
                 // The exact release envelope is digest-pinned by the browser; host independently pins APK bytes and metadata signer.
-                JSONObject artifact=null;JSONArray entries=candidate.getJSONArray("apps").getJSONObject(0).getJSONArray("artifacts");
-                for(int i=0;i<entries.length();i++)if("android".equals(entries.getJSONObject(i).getString("platform")))artifact=entries.getJSONObject(i);
+                // Pin-driven lookup across admitted apps: catalog order never grants admission.
+                JSONObject artifact=null;JSONArray listed=candidate.getJSONArray("apps");
+                for(int j=0;j<listed.length()&&artifact==null;j++){try{Catalog.assetFor(listed.getJSONObject(j).getString("id"));}catch(SecurityException unadmitted){continue;}
+                    JSONArray entries=listed.getJSONObject(j).getJSONArray("artifacts");
+                    for(int i=0;i<entries.length();i++)if("android".equals(entries.getJSONObject(i).getString("platform")))artifact=entries.getJSONObject(i);}
                 if(artifact==null||!artifact.getString("sha256").equals(pins.getJSONObject("apk").getString("sha256")))throw new SecurityException("unpinned-artifact");
                 return getSharedPreferences("online",0).edit().putString("raw",raw).putString("signature",signature).putLong("highest",revision).commit()?"ok":"refused";
             }catch(Exception invalid){return "refused";}
         }
         @JavascriptInterface public boolean hasOnlineApk(String id){if(!"store".equals(mode()))return false;try{Catalog c=trustedCatalog();if(!c.online)return false;c.verifiedApk(HostActivity.this,id);return true;}catch(Exception absent){return false;}}
         @JavascriptInterface public String stageOnlineApk(String id,String encoded){
-            if(!"store".equals(mode())||encoded==null||encoded.length()>28*1024*1024)return "refused";
+            int budget;try{budget=Catalog.maxApkBytes(id);}catch(SecurityException unadmitted){return "refused";}
+            if(!"store".equals(mode())||encoded==null||encoded.length()>(long)budget*4/3+64)return "refused";
             File temporary=null;
             try{Catalog c=trustedCatalog();if(!c.online)throw new SecurityException();JSONObject a=c.artifact(id);
                 byte[] bytes=android.util.Base64.decode(encoded,android.util.Base64.DEFAULT);
-                if(bytes.length>20*1024*1024||bytes.length!=a.getLong("bytes")||!Integrity.sha256(bytes).equals(a.getString("sha256")))throw new SecurityException();
+                if(bytes.length>budget||bytes.length!=a.getLong("bytes")||!Integrity.sha256(bytes).equals(a.getString("sha256")))throw new SecurityException();
                 temporary=File.createTempFile("online-", ".apk",getFilesDir());try(FileOutputStream output=new FileOutputStream(temporary)){output.write(bytes);output.getFD().sync();}
-                if(!temporary.renameTo(new File(getFilesDir(),"online-yotei.apk")))throw new IOException();
+                if(!temporary.renameTo(new File(getFilesDir(),Catalog.onlineFileFor(id))))throw new IOException();
                 c.verifiedApk(HostActivity.this,id);return "ok";
             }catch(Exception invalid){if(temporary!=null)temporary.delete();return "refused";}
         }

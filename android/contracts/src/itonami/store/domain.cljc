@@ -12,8 +12,13 @@
 (defn good-text? [x limit] (and (string? x) (not (str/blank? x)) (<= (count x) limit)))
 (defn package-id? [x] (and (string? x) (boolean (re-matches #"[a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*)+" x))))
 (defn digest? [x] (and (string? x) (boolean (re-matches #"[0-9a-f]{64}" x))))
+;; Single hard ceiling for one catalog artifact. Raised from 20MiB so a Tauri
+;; v3 WebView runtime (~30MiB floor) fits; the host boundary (Catalog.java)
+;; still enforces the tighter per-app budget. Browser pin validation keeps
+;; its own lower ceiling for remote downloads.
+(def max-artifact-bytes (* 64 1024 1024))
 (defn safe-artifact? [{:keys [platform runtime kind asset sha256 bytes signerSha256]}]
-  (and (digest? sha256) (integer? bytes) (pos? bytes) (<= bytes (* 20 1024 1024))
+  (and (digest? sha256) (integer? bytes) (pos? bytes) (<= bytes max-artifact-bytes)
        (or (and (= platform "android") (= runtime "android") (= kind "apk")
                 (string? asset) (boolean (re-matches #"packages/[a-z0-9-]+\.apk" asset))
                 (digest? signerSha256))
