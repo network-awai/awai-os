@@ -1,0 +1,25 @@
+{
+  "schema": "awai.android.readonly-audit.vm.v1",
+  "checkedAt": "2026-11-17T00:58:40.411Z",
+  "issue": "AWAI-2992",
+  "kernelSha256": "921907ef5703f4b762a0c0f457ecf1734eae8384fece79ca953d13c474d56c3a",
+  "vmOnlyTaskOwnedDiskImages": true,
+  "positive": {
+    "namespaceWriteRefused": true,
+    "partitionWriteRefused": true,
+    "diskSha256": "1f21602ec501c96d9daa8f991215f22ed81368e7664e42cc3275098c569010f3",
+    "diskUnchanged": true
+  },
+  "negative": {
+    "wrongCapacityRefused": true,
+    "diskUnchanged": true,
+    "diskSha256": "ab4174c85ae43c4ce1d0bf921cff5dd0cdf2092a60021a1321ab067c4566ed4a"
+  },
+  "inputIntegrity": {
+    "ipxeWrongDigestRefused": true,
+    "newcWrongDigestRefused": true,
+    "pinnedUnsignedPePatched": true
+  },
+  "physicalAuditBooted": false,
+  "physicalFormatting": false
+}
