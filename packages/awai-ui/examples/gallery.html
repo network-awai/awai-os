@@ -1,0 +1,10 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Awai UI consumer</title><link rel="stylesheet" href="../dist/awai-ui.css"><body><p id="outside">Outside the library</p><div id="demo"></div><script type="module">
+import {button,search_field,navigation,field,card,mount} from '../dist/index.js';
+let clicks=0;window.clicks=0;
+mount(document.querySelector('#demo'), ['div',{class:'awai-ui awai-container'},
+['h1',{},'My other Awai app'],
+search_field({id:'find',label:'Find a document',value:'',error:'Please enter a title','icon-src':'../dist/ui-assets/search.svg'}),
+card(button('Continue',{attrs:{id:'go','on-click':()=>{window.clicks=++clicks}}}),button('Working…',{busy:true,attrs:{id:'busy'}}),button('Unavailable',{disabled:true,attrs:{id:'disabled'}})),
+field({id:'language',label:'Language'},['select',{value:'en'},['option',{value:'ja'},'日本語'],['option',{value:'en'},'English']]),
+navigation('Other app',[{id:'find',label:'Find',href:'#find','icon-src':'../dist/ui-assets/search.svg'},{id:'files',label:'Files',href:'#files','icon-src':'../dist/ui-assets/apps.svg'}],'find')]);
+</script></body></html>

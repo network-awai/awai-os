@@ -1,0 +1,332 @@
+{
+  "schema": "awai.ui.tokens.v1",
+  "figmaFile": "umqCqP5KSjLWh9fhCI1HaN",
+  "collection": "VariableCollectionId:192:4",
+  "modes": {
+    "light": "192:1",
+    "dark": "192:2"
+  },
+  "colors": {
+    "background": {
+      "light": {
+        "hex": "#ffffff",
+        "rgba": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "aliasChain": [
+          "VariableID:192:12",
+          "VariableID:15:8"
+        ]
+      },
+      "dark": {
+        "hex": "#14110f",
+        "rgba": {
+          "r": 0.0784313753247261,
+          "g": 0.06666667014360428,
+          "b": 0.05882352963089943,
+          "a": 1
+        },
+        "aliasChain": [
+          "VariableID:192:12",
+          "VariableID:15:9"
+        ]
+      }
+    },
+    "surface": {
+      "light": {
+        "hex": "#f5f6f8",
+        "rgba": {
+          "r": 0.9607843160629272,
+          "g": 0.9647058844566345,
+          "b": 0.9725490212440491,
+          "a": 1
+        },
+        "aliasChain": [
+          "VariableID:192:13",
+          "VariableID:168:5"
+        ]
+      },
+      "dark": {
+        "hex": "#272422",
+        "rgba": {
+          "r": 0.15215685963630676,
+          "g": 0.14133332669734955,
+          "b": 0.13411764800548553,
+          "a": 1
+        },
+        "aliasChain": [
+          "VariableID:192:13",
+          "VariableID:168:8"
+        ]
+      }
+    },
+    "text": {
+      "light": {
+        "hex": "#182332",
+        "rgba": {
+          "r": 0.0941176488995552,
+          "g": 0.13725490868091583,
+          "b": 0.19607843458652496,
+          "a": 1
+        },
+        "aliasChain": [
+          "VariableID:192:14",
+          "VariableID:168:9"
+        ]
+      },
+      "dark": {
+        "hex": "#ffffff",
+        "rgba": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "aliasChain": [
+          "VariableID:192:14",
+          "VariableID:15:8"
+        ]
+      }
+    },
+    "muted": {
+      "light": {
+        "hex": "#485c74",
+        "rgba": {
+          "r": 0.2823529541492462,
+          "g": 0.3607843220233917,
+          "b": 0.45490196347236633,
+          "a": 1
+        },
+        "aliasChain": [
+          "VariableID:192:15",
+          "VariableID:168:12"
+        ]
+      },
+      "dark": {
+        "hex": "#b8b8b7",
+        "rgba": {
+          "r": 0.7235293984413147,
+          "g": 0.7200000286102295,
+          "b": 0.7176470756530762,
+          "a": 1
+        },
+        "aliasChain": [
+          "VariableID:192:15",
+          "VariableID:168:15"
+        ]
+      }
+    },
+    "primary": {
+      "light": {
+        "hex": "#1e50a2",
+        "rgba": {
+          "r": 0.11764705926179886,
+          "g": 0.3137255012989044,
+          "b": 0.6352941393852234,
+          "a": 1
+        },
+        "aliasChain": [
+          "VariableID:192:16",
+          "VariableID:15:7"
+        ]
+      },
+      "dark": {
+        "hex": "#b5cfff",
+        "rgba": {
+          "r": 0.7098039388656616,
+          "g": 0.8117647171020508,
+          "b": 1,
+          "a": 1
+        },
+        "aliasChain": [
+          "VariableID:192:16",
+          "VariableID:192:5"
+        ]
+      }
+    },
+    "onPrimary": {
+      "light": {
+        "hex": "#ffffff",
+        "rgba": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "aliasChain": [
+          "VariableID:192:17",
+          "VariableID:15:8"
+        ]
+      },
+      "dark": {
+        "hex": "#182332",
+        "rgba": {
+          "r": 0.0941176488995552,
+          "g": 0.13725490868091583,
+          "b": 0.19607843458652496,
+          "a": 1
+        },
+        "aliasChain": [
+          "VariableID:192:17",
+          "VariableID:168:9"
+        ]
+      }
+    },
+    "container": {
+      "light": {
+        "hex": "#e1eaff",
+        "rgba": {
+          "r": 0.8823529481887817,
+          "g": 0.9176470637321472,
+          "b": 1,
+          "a": 1
+        },
+        "aliasChain": [
+          "VariableID:192:18",
+          "VariableID:192:6"
+        ]
+      },
+      "dark": {
+        "hex": "#26354e",
+        "rgba": {
+          "r": 0.14901961386203766,
+          "g": 0.2078431397676468,
+          "b": 0.30588236451148987,
+          "a": 1
+        },
+        "aliasChain": [
+          "VariableID:192:18",
+          "VariableID:192:7"
+        ]
+      }
+    },
+    "onContainer": {
+      "light": {
+        "hex": "#182332",
+        "rgba": {
+          "r": 0.0941176488995552,
+          "g": 0.13725490868091583,
+          "b": 0.19607843458652496,
+          "a": 1
+        },
+        "aliasChain": [
+          "VariableID:192:19",
+          "VariableID:168:9"
+        ]
+      },
+      "dark": {
+        "hex": "#ffffff",
+        "rgba": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "aliasChain": [
+          "VariableID:192:19",
+          "VariableID:15:8"
+        ]
+      }
+    },
+    "border": {
+      "light": {
+        "hex": "#d9dee7",
+        "rgba": {
+          "r": 0.8509804010391235,
+          "g": 0.8705882430076599,
+          "b": 0.9058823585510254,
+          "a": 1
+        },
+        "aliasChain": [
+          "VariableID:192:20",
+          "VariableID:192:8"
+        ]
+      },
+      "dark": {
+        "hex": "#4f4d4b",
+        "rgba": {
+          "r": 0.30882352590560913,
+          "g": 0.30000001192092896,
+          "b": 0.29411765933036804,
+          "a": 1
+        },
+        "aliasChain": [
+          "VariableID:192:20",
+          "VariableID:168:21"
+        ]
+      }
+    },
+    "error": {
+      "light": {
+        "hex": "#bc002d",
+        "rgba": {
+          "r": 0.7372549176216125,
+          "g": 0,
+          "b": 0.1764705926179886,
+          "a": 1
+        },
+        "aliasChain": [
+          "VariableID:192:21",
+          "VariableID:15:6"
+        ]
+      },
+      "dark": {
+        "hex": "#ffd1cb",
+        "rgba": {
+          "r": 1,
+          "g": 0.8196078538894653,
+          "b": 0.7960784435272217,
+          "a": 1
+        },
+        "aliasChain": [
+          "VariableID:192:21",
+          "VariableID:192:10"
+        ]
+      }
+    },
+    "errorContainer": {
+      "light": {
+        "hex": "#ffe3e1",
+        "rgba": {
+          "r": 1,
+          "g": 0.8901960849761963,
+          "b": 0.8823529481887817,
+          "a": 1
+        },
+        "aliasChain": [
+          "VariableID:192:22",
+          "VariableID:192:9"
+        ]
+      },
+      "dark": {
+        "hex": "#502a2c",
+        "rgba": {
+          "r": 0.3137255012989044,
+          "g": 0.16470588743686676,
+          "b": 0.1725490242242813,
+          "a": 1
+        },
+        "aliasChain": [
+          "VariableID:192:22",
+          "VariableID:192:11"
+        ]
+      }
+    }
+  },
+  "dimensions": {
+    "shape-large": 28,
+    "shape-medium": 20,
+    "space-compact": 12,
+    "target-min": 48
+  },
+  "dimensionSources": {
+    "shape-large": "VariableID:192:23",
+    "shape-medium": "VariableID:192:24",
+    "space-compact": "VariableID:192:25",
+    "target-min": "VariableID:192:26"
+  },
+  "quantization": "sRGB round(channel*255); rgba preserves Figma raw floats"
+}
