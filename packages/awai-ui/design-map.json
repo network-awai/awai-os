@@ -1,0 +1,37 @@
+{
+  "schema": "awai.ui.design-map.v1",
+  "capturedAt": "2026-11-17T07:12:34.439682+00:00",
+  "figmaFile": "umqCqP5KSjLWh9fhCI1HaN",
+  "figmaPage": "192:2",
+  "applicationProposal": "268:3",
+  "components": {
+    "button": "193:263",
+    "search_field": "193:325",
+    "navigation": "193:354"
+  },
+  "codeConnect": "Existing Compose mappings are not CLJS implementations; no CLJS mapping found. This package is the explicit CLJC/DOM adapter. No Figma library publication claimed.",
+  "extensions": {
+    "card": "Native UX v2 surface/shape + proposal268:15; fluid height for real content",
+    "field": "native labelled input; app-specific control passed as child",
+    "disclosure": "native details for source inspector, not nested site navigation",
+    "status": "polite status only, not toast/OS notification",
+    "dom": "safe text-node hiccup renderer; app owns state/routing"
+  },
+  "font": {
+    "sourceRepository": "network-awai/awai-os",
+    "revision": "c70659f4e4ca8dab2407104c947d1474cf295491",
+    "path": "android/client/assets/setup-noto-jp.woff2",
+    "license": "assets/font-OFL.txt",
+    "sha256": "ed85d35a7db01e551510e0973745c17315c03ea01742d82b2bf8e5ac3bf76038",
+    "coverage": "existing setup JP subset; missing glyphs use system fallback; not a complete CJK font",
+    "licenseNormalization": "Trailing whitespace removed; license text unchanged."
+  },
+  "assets": {
+    "search.svg": "10a8cceeffe565174c23d83d671eb7acd5ca989038fb476d2281e2b432c01259",
+    "store.svg": "5719e425c3870756336ea641dfe4fdeb6dabf52c4abe9d2d83528627c50ab37e",
+    "download.svg": "f3921e1c96d85c24ff36a330acbfe1c3bd46699abb56fc86db10dfc419f4273f",
+    "apps.svg": "91439675adc58dd01e25bb1f797da7528a1519fc346e3e918f85d6de4359314b",
+    "noto-jp.woff2": "ed85d35a7db01e551510e0973745c17315c03ea01742d82b2bf8e5ac3bf76038",
+    "font-OFL.txt": "babcfe66c8a098b2fa279bc724a3a342f8124f77ce18941fbcc1bbb39823cded"
+  }
+}

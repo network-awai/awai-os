@@ -1,0 +1,32 @@
+{
+  "name": "@awai/ui",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Awai Android Native UX v2: framework-neutral components and CLJC source",
+  "license": "MIT",
+  "exports": {
+    ".": "./dist/index.js",
+    "./style.css": "./dist/awai-ui.css",
+    "./tokens": "./tokens/figma-android-v2.json",
+    "./source": "./src/awai/ui.cljc"
+  },
+  "files": [
+    "dist",
+    "src",
+    "tokens",
+    "assets",
+    "README.md",
+    "LICENSE",
+    "design-map.json",
+    null,
+    "verification.json"
+  ],
+  "scripts": {
+    "build": "squint compile && node .build/awai/build.mjs",
+    "test": "npm run build && node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "squint-cljs": "0.16.214"
+  }
+}
