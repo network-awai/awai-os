@@ -1,5 +1,6 @@
 // Android first-run UI. Native settings own credentials, connectivity and locale.
-// AOSP setup already connects the device, so there is no network step (index 2 is retired).
+// AOSP setup owns language, network, date/time and screen lock (indices 1, 2, 3, 6 are retired).
+// Completion still requires an Android screen lock, set through native Settings.
 import {createIdentity} from './identity.js';
 export function createSetup({host,domain,root,button,el,icon,notify,render}) {
   let detail=false;
@@ -32,11 +33,9 @@ export function createSetup({host,domain,root,button,el,icon,notify,render}) {
     const mark=el('img','setup-mark');mark.src='assets/setup-logo.png';mark.width=s.stage===0?200:104;mark.height=mark.width;mark.alt='';
     const heading=el('h1','',titles[s.stage]);heading.tabIndex=-1;
     hero.append(mark,el('p','muted','Awai OS Meiji'),heading,el('p','setup-subtitle muted',subtitles[s.stage]));
-    const panel=el('div','setup-panel');page.append(panel);panel.append(el('h2','',s.stage===0?tr('ようこそ','Welcome'):s.stage===6?tr('Android の画面ロック','Android screen lock'):tr('設定','Setup')));
+    const panel=el('div','setup-panel');page.append(panel);panel.append(el('h2','',s.stage===0?tr('ようこそ','Welcome'):tr('設定','Setup')));
     const network=s.validated?tr('接続済み · インターネット利用可能','Connected · Internet available'):s.captive?tr('ネットワークのログインが必要','Network sign-in required'):s.connected?tr('接続済み · インターネット未確認','Connected · Internet not verified'):tr('未接続','Not connected');
     if(s.stage===0)rows(panel,[[tr('言語','Language'),s.locale,()=>settings('language')],[tr('ユーザー補助','Accessibility'),tr('文字・読み上げ・操作をサポート','Display, reading and input'),()=>settings('accessibility')]]);
-    if(s.stage===1)rows(panel,[[tr('言語と地域','Language and region'),s.locale,()=>settings('language')]]);
-    if(s.stage===3)rows(panel,[[new Date().toLocaleString(s.locale),s.timeZone,()=>settings('datetime')]]);
     if(s.stage===4){
       rows(panel,[[tr('スマートフォンから','From your phone'),tr('iPhone ／ Android で承認','Approve on iPhone / Android'),()=>{detail=true;render();},'phone'],[tr('新しくはじめる','Create a profile'),tr('スマートフォンでアカウントを用意','Prepare an account on your phone'),()=>{detail=true;render();},'phone']]);
       if(detail){
@@ -50,13 +49,11 @@ export function createSetup({host,domain,root,button,el,icon,notify,render}) {
       }
     }
     if(s.stage===5)rows(panel,[[tr('位置情報','Location'),tr('必要なときに確認','Ask when needed')],[tr('診断データの送信','Diagnostics'),tr('送信しない','Not sent')],[tr('アカウント','Account'),identity.account?tr('署名を確認済み · データ同期は別に設定','Signature verified · configure sync separately'):tr('未連携 · あとで設定','Not linked · set up later')]]);
-    if(s.stage===6)rows(panel,[[s.secure?tr('画面ロック設定済み','Screen lock is set'):tr('PIN を設定','Set a PIN'),tr('この PC のロック解除に使用','Unlock this PC'),()=>settings('lock'),'lock'],[tr('別のロック方法','Other lock methods'),tr('Android の画面ロック設定を開く','Open Android screen lock settings'),()=>settings('lock'),'lock']]);
     if(s.stage===7)rows(panel,[[tr('言語・地域','Language and region'),s.locale+' · '+s.timeZone],[tr('ネットワーク','Network'),network],[tr('画面ロック','Screen lock'),s.secure?tr('設定済み','Set'):tr('未設定','Not set')],[tr('アカウント','Account'),identity.account?tr('署名を確認済み','Signature verified'):tr('あとで設定','Set up later')]]);
     const nav=el('div','setup-actions');panel.append(nav);
     nav.append(button(s.stage===0?tr('ユーザー補助','Accessibility'):tr('戻る','Back'),()=>s.stage===0?settings('accessibility'):move('back'),'button text'));
     let action=domain.setupNext(JSON.stringify(s));
-    const next=button(s.stage===0?tr('はじめる','Get started'):s.stage===4?tr('あとで設定','Set up later'):s.stage===6&&!s.secure?tr('ロックを設定','Set screen lock'):s.stage===7?tr('Awai をひらく','Open Awai'):tr('次へ','Next'),()=>{
-      if(action==='lock-required'){settings('lock');return;}
+    const next=button(s.stage===0?tr('はじめる','Get started'):s.stage===4?tr('あとで設定','Set up later'):s.stage===7?tr('Awai をひらく','Open Awai'):tr('次へ','Next'),()=>{
       move(s.stage===4?'defer':action);
     });nav.append(next);
     if(s.stage===7&&!s.secure){next.disabled=true;panel.append(button(tr('画面ロックを設定','Set screen lock'),()=>settings('lock'),'button'));}
