@@ -1,4 +1,5 @@
 // Android first-run UI. Native settings own credentials, connectivity and locale.
+// AOSP setup already connects the device, so there is no network step (index 2 is retired).
 import {createIdentity} from './identity.js';
 export function createSetup({host,domain,root,button,el,icon,notify,render}) {
   let detail=false;
@@ -35,7 +36,6 @@ export function createSetup({host,domain,root,button,el,icon,notify,render}) {
     const network=s.validated?tr('接続済み · インターネット利用可能','Connected · Internet available'):s.captive?tr('ネットワークのログインが必要','Network sign-in required'):s.connected?tr('接続済み · インターネット未確認','Connected · Internet not verified'):tr('未接続','Not connected');
     if(s.stage===0)rows(panel,[[tr('言語','Language'),s.locale,()=>settings('language')],[tr('ユーザー補助','Accessibility'),tr('文字・読み上げ・操作をサポート','Display, reading and input'),()=>settings('accessibility')]]);
     if(s.stage===1)rows(panel,[[tr('言語と地域','Language and region'),s.locale,()=>settings('language')]]);
-    if(s.stage===2)rows(panel,[[tr('Wi-Fi','Wi-Fi'),network,()=>settings('wifi'),'wifi'],[tr('有線 LAN・端末の接続','Ethernet and connections'),tr('Android のネットワーク設定','Android network settings'),()=>settings('network'),'wifi'],[tr('スマートフォンの共有','Phone tethering'),tr('Wi-Fi ／ USB · 対応機器のみ','Wi-Fi / USB · supported hardware'),()=>settings('tether'),'phone']]);
     if(s.stage===3)rows(panel,[[new Date().toLocaleString(s.locale),s.timeZone,()=>settings('datetime')]]);
     if(s.stage===4){
       rows(panel,[[tr('スマートフォンから','From your phone'),tr('iPhone ／ Android で承認','Approve on iPhone / Android'),()=>{detail=true;render();},'phone'],[tr('新しくはじめる','Create a profile'),tr('スマートフォンでアカウントを用意','Prepare an account on your phone'),()=>{detail=true;render();},'phone']]);
@@ -56,11 +56,9 @@ export function createSetup({host,domain,root,button,el,icon,notify,render}) {
     nav.append(button(s.stage===0?tr('ユーザー補助','Accessibility'):tr('戻る','Back'),()=>s.stage===0?settings('accessibility'):move('back'),'button text'));
     let action=domain.setupNext(JSON.stringify(s));
     const next=button(s.stage===0?tr('はじめる','Get started'):s.stage===4?tr('あとで設定','Set up later'):s.stage===6&&!s.secure?tr('ロックを設定','Set screen lock'):s.stage===7?tr('Awai をひらく','Open Awai'):tr('次へ','Next'),()=>{
-      if(action==='network-required'){notify(tr('インターネット接続を確認するか、オフラインで続けてください。','Check your Internet connection or continue offline.'));return;}
       if(action==='lock-required'){settings('lock');return;}
       move(s.stage===4?'defer':action);
     });nav.append(next);
-    if(s.stage===2&&!s.validated)panel.append(button(tr('オフラインで続ける','Continue offline'),()=>move('offline'),'button text'));
     if(s.stage===7&&!s.secure){next.disabled=true;panel.append(button(tr('画面ロックを設定','Set screen lock'),()=>settings('lock'),'button'));}
     const foot=el('p','setup-status muted',network+' · Awai OS Meiji');foot.role='status';page.append(foot);
     page.dataset.motionReduced=String(JSON.parse(host.snapshot()).motionReduced);

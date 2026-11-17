@@ -9,6 +9,7 @@ import org.json.JSONObject;
 
 /** Platform observations and bounded persistence. Never stores a PIN or identity credential. */
 public final class SetupPlatform {
+    static final int RETIRED_NETWORK=2;
     private SetupPlatform() {}
     public static JSONObject snapshot(Context c) throws Exception {
         SharedPreferences p=c.getSharedPreferences("android-setup-v1",0);
@@ -18,10 +19,12 @@ public final class SetupPlatform {
         boolean validated=connected&&n.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED);
         boolean secure=c.getSystemService(KeyguardManager.class).isDeviceSecure();
         JSONObject o=new JSONObject();
-        o.put("stage",p.getInt("stage",0));o.put("complete",p.getBoolean("complete",false)&&secure);
+        // Stage2 (network) is retired: AOSP setup owns connectivity. A saved 2 resumes at date/time.
+        int stage=p.getInt("stage",0);if(stage==RETIRED_NETWORK)stage=RETIRED_NETWORK+1;
+        o.put("stage",stage);o.put("complete",p.getBoolean("complete",false)&&secure);
         o.put("connected",connected);o.put("validated",validated);
         o.put("captive",connected&&n.hasCapability(NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL));
-        o.put("secure",secure);o.put("offline",p.getBoolean("offline",false));
+        o.put("secure",secure);
         // Flow marker only. Browser must reverify the saved awai.link.v1 proof
         // against its non-exportable device key before treating this as identity.
         o.put("account",p.getString("account","unlinked"));
@@ -38,15 +41,13 @@ public final class SetupPlatform {
             if("relink".equals(action)&&"linked".equals(s.getString("account")))
                 return e.putInt("stage",4).putBoolean("complete",false).putString("account","unlinked").commit();
             if(s.getBoolean("complete"))return false;
-            if("back".equals(action)&&stage>0)e.putInt("stage",stage-1);
-            else if("offline".equals(action)&&stage==2)e.putBoolean("offline",true).putInt("stage",3);
+            if("back".equals(action)&&stage>0)e.putInt("stage",stage-1==RETIRED_NETWORK?stage-2:stage-1);
             else if("defer".equals(action)&&stage==4)e.putString("account","deferred").putInt("stage",5);
             else if("linked".equals(action)&&stage==4)e.putString("account","linked").putInt("stage",5);
             else if("next".equals(action)&&stage>=0&&stage<7) {
-                if(stage==2&&!s.getBoolean("validated")&&!s.getBoolean("offline"))return false;
                 if(stage==4)return false;
                 if(stage==6&&!s.getBoolean("secure"))return false;
-                e.putInt("stage",stage+1);
+                e.putInt("stage",stage+1==RETIRED_NETWORK?stage+2:stage+1);
             } else if("finish".equals(action)&&stage==7&&s.getBoolean("secure")&&("deferred".equals(s.getString("account"))||"linked".equals(s.getString("account"))))
                 e.putBoolean("complete",true);
             else return false;
