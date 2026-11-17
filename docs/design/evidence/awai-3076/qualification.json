@@ -1,0 +1,133 @@
+{
+  "schema": "awai.manimani-device-qualification.v1",
+  "issue": "AWAI-3076",
+  "behaviorRevision": "324fdc22f4e300acbb7f82538553d2f78c3882f6",
+  "generatedAt": "2026-11-17T13:19:57.424418+00:00",
+  "scope": "physical Awai x86_64 API37; synthetic QA account and isolated protocol transport; real Muse and real canonical DB/native image engine",
+  "productionEndpointQualified": false,
+  "coreCases": [
+    "prior real Muse text restored from canonical named session",
+    "record denial keeps same local image and blocks accidental session switch",
+    "explicit retry records same generated image without re-generation",
+    "same session real native image generated and rendered",
+    "native Gallery save readback verified",
+    "top-left click starts independent empty draft",
+    "canonical mixed history restored and scoped local image SHA matches"
+  ],
+  "boundaryCases": [
+    {
+      "scope": {
+        "botId": "profile:manimani-qa",
+        "sessionId": "ec24febc-ed5c-497f-873f-8a47bb8adcf8"
+      },
+      "result": {
+        "accepted": true,
+        "sha256": "f6c9090fb7344fd4503fc193e0dc09e31d5d5d6d5d5436a26cd2f35ddb3a574f"
+      }
+    },
+    {
+      "scope": {
+        "botId": "profile:wrong-bot",
+        "sessionId": "ec24febc-ed5c-497f-873f-8a47bb8adcf8"
+      },
+      "result": {
+        "accepted": false,
+        "error": "local-inference-denied-or-unavailable"
+      }
+    },
+    {
+      "scope": {
+        "botId": "profile:manimani-qa",
+        "sessionId": "10000000-0000-4000-8000-000000000000"
+      },
+      "result": {
+        "accepted": false,
+        "error": "local-inference-denied-or-unavailable"
+      }
+    }
+  ],
+  "image": {
+    "imageId": "c23b68cd-43fd-4b98-8000-c67c2e673dba",
+    "bytes": 341012,
+    "sha256": "f6c9090fb7344fd4503fc193e0dc09e31d5d5d6d5d5436a26cd2f35ddb3a574f",
+    "galleryReadbackVerified": true,
+    "pixelsUploadedToAgent": false
+  },
+  "narrowViewport": {
+    "x": 66,
+    "width": 258,
+    "viewport": 390
+  },
+  "finalHistoryBox": {
+    "height": 638.390625,
+    "max": "638.4px",
+    "problems": null
+  },
+  "nativeEnter": {
+    "newline": true,
+    "messagesUnchanged": true,
+    "visibleConsent": false,
+    "transport": "Android input keyevent66, not CDP text simulation"
+  },
+  "servedJsSha256": "343f2b7993e7a2c06e03faf0aa4357bfdccdc54fdf846967486e69dbadc8ac32",
+  "normalInstall": {
+    "issue": "AWAI-3076",
+    "signer": "2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29",
+    "apkSha256": "6be5b8c9ca8a3131f8fc2650e48deae5f509ab0050a3caa7938026cb70d7d6ea",
+    "installedExactBytes": true,
+    "preexistingFiles": 48,
+    "missingOrChanged": 0,
+    "added": 0,
+    "newAppSource": "324fdc22f4e300acbb7f82538553d2f78c3882f6",
+    "noClearOrUninstall": true,
+    "sourceLabelCorrection": "earlier helper label ce56e30 was stale; observed final bundle revision used here; original receipt retained",
+    "servedJsSha256": "343f2b7993e7a2c06e03faf0aa4357bfdccdc54fdf846967486e69dbadc8ac32",
+    "normalWebViewStarted": true,
+    "ownerAuthenticationPerformed": false
+  },
+  "externalModel": {
+    "provider": "meta",
+    "model": "muse-spark-1.3",
+    "effort": "low",
+    "runId": "01a1e998-604f-7ca1-80a8-af409109916b",
+    "usage": [
+      {
+        "model": "muse-spark-1.3",
+        "input_tokens": 20551,
+        "cached_tokens": 0,
+        "output_tokens": 379,
+        "reasoning_tokens": 340,
+        "calls": 1
+      }
+    ],
+    "processTiming": {
+      "startedAt": "2026-11-17T13:00:36.812Z",
+      "processEndedAt": "2026-11-17T13:00:47.248Z",
+      "elapsedProcessMs": 10436,
+      "activeInferenceMs": "unknown",
+      "waitingMs": "unknown"
+    },
+    "cacheWrite": "unknown",
+    "cost": "unknown",
+    "attribution": "explicit QA parent binding; adapter internal unallocated-interactive label preserved",
+    "normalization": {
+      "cachedTokens": "provider subset of input",
+      "reasoningTokens": "subset of output; do not add again",
+      "cumulativeRuns": "one run ID, no snapshot addition"
+    }
+  },
+  "temporaryModels": {
+    "RAMOnly": true,
+    "bytes": 6565132376,
+    "postRebootProvisioned": true,
+    "taskReboots": 0
+  },
+  "limitations": [
+    "Production HTTPS Agent service unavailable; no owner authentication acceptance.",
+    "Image pixels remain on generating device; canonical Agent history holds metadata only.",
+    "Models use temporary RAM, not durable post-reboot installation.",
+    "Earlier failed Kotlin build, missing RAM model, stale receipt label and malformed harness expectations are historical, not passing runs.",
+    "Rust bridge returns generic refusal; native internal error label is not exposed.",
+    "No claim of phone hardware, signed OTA, autonomous image tool planning or image understanding."
+  ]
+}
