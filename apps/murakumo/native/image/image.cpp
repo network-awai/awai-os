@@ -4,6 +4,7 @@
 #include <mutex>
 #include <atomic>
 #include <string>
+#include <vector>
 namespace {
 std::mutex mutex,ctxMutex;
 std::atomic<bool>cancelled{false};
@@ -36,8 +37,11 @@ extern "C" JNIEXPORT jbyteArray JNICALL Java_network_awai_murakumo_ImageEngine_g
  {std::lock_guard<std::mutex>state(ctxMutex);sd_ctx_free(ctx);ctx=nullptr;}
  if(!ok(status)||!result.p||sd_result_get_kind(result.p)!=SD_RESULT_IMAGE||sd_result_get_image_count(result.p)!=1){fail(e,"image-generation-failed");return nullptr;}
  auto t=sd_result_get_image(result.p,0);if(t)__android_log_print(ANDROID_LOG_INFO,"AwaiImage","output type=%d rank=%zu C=%lld W=%lld H=%lld bytes=%zu",sd_tensor_type(t),sd_tensor_rank(t),(long long)sd_tensor_dim(t,0),(long long)sd_tensor_dim(t,1),(long long)sd_tensor_dim(t,2),sd_tensor_byte_size(t));
- if(!t||sd_tensor_type(t)!=SD_TENSOR_U8||sd_tensor_rank(t)!=3||sd_tensor_dim(t,0)!=3||sd_tensor_dim(t,1)!=512||sd_tensor_dim(t,2)!=512||sd_tensor_byte_size(t)!=512*512*3){fail(e,"invalid-image-output");return nullptr;}
- auto b=e->NewByteArray(512*512*3);if(b)e->SetByteArrayRegion(b,0,512*512*3,static_cast<const jbyte*>(sd_tensor_data(t)));progress=100;return b;
+ if(!t||sd_tensor_type(t)!=SD_TENSOR_U8||sd_tensor_rank(t)!=3||(sd_tensor_dim(t,0)!=3&&sd_tensor_dim(t,0)!=4)||sd_tensor_dim(t,1)!=512||sd_tensor_dim(t,2)!=512||sd_tensor_byte_size(t)!=512*512*sd_tensor_dim(t,0)){fail(e,"invalid-image-output");return nullptr;}
+ // The pinned engine emits RGBA for this model; preserve alpha. RGB is promoted explicitly.
+ const auto channels=sd_tensor_dim(t,0);const auto*data=static_cast<const unsigned char*>(sd_tensor_data(t));
+ std::vector<unsigned char> rgba(512*512*4);for(int i=0;i<512*512;i++){for(int j=0;j<3;j++)rgba[i*4+j]=data[i*channels+j];rgba[i*4+3]=channels==4?data[i*4+3]:255;}
+ auto b=e->NewByteArray(rgba.size());if(b)e->SetByteArrayRegion(b,0,rgba.size(),reinterpret_cast<const jbyte*>(rgba.data()));progress=100;return b;
 }
 extern "C" JNIEXPORT jint JNICALL Java_network_awai_murakumo_ImageEngine_progress(JNIEnv*,jclass){return progress.load();}
 // Cancellation is cooperative; never free a running context from the UI thread.

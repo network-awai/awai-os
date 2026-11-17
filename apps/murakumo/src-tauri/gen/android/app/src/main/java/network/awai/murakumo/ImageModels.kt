@@ -22,8 +22,8 @@ internal object ImageModels {
   require(id.matches(Regex("[a-f0-9-]{36}"))&&prompt.isNotBlank()&&prompt.toByteArray().size<=8192&&!prompt.contains('\u0000')){"invalid-request"}
   check(!Models.loaded){"release-text-model-required"};check(present(c)){"image-model-missing"};try{ImageEngine.prepare()}catch(e:LinkageError){throw IllegalStateException("image-engine-unavailable")}
   val a=pins(c).getJSONArray("models");for(i in 0 until a.length()){check(!cancelled.get()){"cancelled"};val p=a.getJSONObject(i);val f=File(root(c),p.getString("localFile"));require(f.isFile&&f.length()==p.getLong("bytes")&&sha(f)==p.getString("sha256")){"image-model-digest-mismatch"}}
-  check(!cancelled.get()){"cancelled"};val rgb=ImageEngine.generate(root(c).absolutePath,prompt.toByteArray(Charsets.UTF_8));check(rgb.size==512*512*3){"invalid-image-output"}
-  val pixels=IntArray(512*512){val k=it*3;0xff000000.toInt()or((rgb[k].toInt()and 255)shl 16)or((rgb[k+1].toInt()and 255)shl 8)or(rgb[k+2].toInt()and 255)}
+  check(!cancelled.get()){"cancelled"};val rgb=ImageEngine.generate(root(c).absolutePath,prompt.toByteArray(Charsets.UTF_8));check(rgb.size==512*512*4){"invalid-image-output"}
+  val pixels=IntArray(512*512){val k=it*4;((rgb[k+3].toInt()and 255)shl 24)or((rgb[k].toInt()and 255)shl 16)or((rgb[k+1].toInt()and 255)shl 8)or(rgb[k+2].toInt()and 255)}
   val bitmap=Bitmap.createBitmap(pixels,512,512,Bitmap.Config.ARGB_8888);val bytes=ByteArrayOutputStream();try{check(bitmap.compress(Bitmap.CompressFormat.PNG,100,bytes)){"image-encode-failed"}}finally{bitmap.recycle()}
   val png=bytes.toByteArray();require(png.size in 1..4194304){"image-size-limit"}
   val file=File(c.cacheDir,"generated/$id.png");file.parentFile!!.mkdirs();check(file.createNewFile()){"duplicate-image-id"};file.outputStream().use{it.write(png)}
