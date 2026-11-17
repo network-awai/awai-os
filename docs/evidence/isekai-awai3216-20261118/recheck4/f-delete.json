@@ -1,0 +1,16 @@
+{
+  "saved": 1,
+  "afterFirstTap": {
+    "label": "Tap again to delete",
+    "status": "A deleted draft cannot be restored. Tap again to delete it.",
+    "stored": 1
+  },
+  "after5s": {
+    "label": "Delete",
+    "stored": 1
+  },
+  "afterTwoTaps": {
+    "status": "Draft deleted.",
+    "stored": 0
+  }
+}

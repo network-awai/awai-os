@@ -22,3 +22,4 @@ form button{margin-block-start:1.25rem}
 .results p{margin:.25rem 0}.amount{font-weight:600;font-size:1.1rem}
 .actions{display:flex;gap:.5rem;flex-wrap:wrap}
 .chips{display:flex;flex-wrap:wrap;gap:.4rem}.chip{font-size:.85rem;padding:.1rem .6rem;border-radius:1rem;border:1px solid var(--line)}
+button.tonal.armed{background:#b3261e;color:#fff}@media(prefers-color-scheme:dark){button.tonal.armed{background:#f2b8b5;color:#14110f}}

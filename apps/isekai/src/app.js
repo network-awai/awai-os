@@ -106,7 +106,18 @@ function renderDrafts() {
     const copy = el('button', t('drafts.copy'), 'tonal'); copy.type = 'button';
     copy.addEventListener('click', async () => { try { await navigator.clipboard.writeText(JSON.stringify({...q, createdAt: d.createdAt}, null, 2)); say(t('drafts.copied')); } catch { say(t('drafts.copyFailed')); } });
     const del = el('button', t('drafts.delete'), 'tonal'); del.type = 'button'; del.disabled = readOnly;
-    del.addEventListener('click', async () => { if (await persist(s => removeDraft(s, d.id))) { renderDrafts(); say(t('drafts.deleted')); } });
+    // Drafts exist only on this device and deletion cannot be undone, so the first
+    // tap arms the button and only a second tap within 5 s deletes.
+    let armed = null;
+    del.addEventListener('click', async () => {
+      if (!armed) {
+        del.textContent = t('drafts.deleteConfirm'); del.classList.add('armed'); say(t('drafts.deleteArmed'));
+        armed = setTimeout(() => { armed = null; del.textContent = t('drafts.delete'); del.classList.remove('armed'); }, 5000);
+        return;
+      }
+      clearTimeout(armed); armed = null;
+      if (await persist(s => removeDraft(s, d.id))) { renderDrafts(); say(t('drafts.deleted')); }
+    });
     actions.append(copy, del); li.append(actions); list.append(li);
   }
   view.append(list); h.focus();
