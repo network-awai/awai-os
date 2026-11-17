@@ -809,3 +809,5 @@ Object.prototype.chatBotsOperation;
 Object.prototype.chatMediaOperation;
 Object.prototype.chatPersona;
 Object.prototype.sourceSha256;
+
+Object.prototype.dispatchEvent;
