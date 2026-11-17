@@ -75,15 +75,15 @@ class SpeechPlugin(private val owner:Activity):Plugin(owner){
    .setPositiveButton("始める"){_,_->
     if(!busy.compareAndSet(false,true)){invoke.reject("speech-busy");return@setPositiveButton}
     val expectedEpoch=epoch.get()
-    worker.execute{try{engine?.close();engine=SpeechEngine(owner);engine!!.verify();check(epoch.get()==expectedEpoch&&owner.hasWindowFocus());listens=0;speaks=0;boundBot=invoke.getArgs().getString("botId");boundSession=invoke.getArgs().getString("sessionId");token=UUID.randomUUID().toString();until=SystemClock.elapsedRealtime()+180000;cancelled.set(false);val out=result().put("token",token).put("durationMs",180000).put("remoteAudio",false).put("modelSet","sensevoice-20240717-supertonic3-20260511-ja");owner.runOnUiThread{invoke.resolve(out)}}catch(_:Exception){stop();owner.runOnUiThread{invoke.reject("speech-models-unavailable")}}finally{busy.set(false)}}
+    worker.execute{try{engine?.close();engine=SpeechEngine(owner);engine!!.verify();check(epoch.get()==expectedEpoch&&owner.hasWindowFocus());listens=0;speaks=0;boundBot=invoke.getArgs().getString("botId");boundSession=invoke.getArgs().getString("sessionId");token=UUID.randomUUID().toString();until=SystemClock.elapsedRealtime()+180000;cancelled.set(false);val expectedToken=token;owner.runOnUiThread{owner.window.decorView.postDelayed({if(token==expectedToken)stop()},180000)};val out=result().put("token",token).put("durationMs",180000).put("remoteAudio",false).put("modelSet","sensevoice-20240717-supertonic3-20260511-ja");owner.runOnUiThread{invoke.resolve(out)}}catch(_:Exception){stop();owner.runOnUiThread{invoke.reject("speech-models-unavailable")}}finally{busy.set(false)}}
    }.show()
  }
  private data class Capture(val samples:FloatArray,val total:Int)
  private fun record(t:String):Capture{
   val rate=16000;val minimum=AudioRecord.getMinBufferSize(rate,AudioFormat.CHANNEL_IN_MONO,AudioFormat.ENCODING_PCM_16BIT);check(minimum>0)
   val rec=AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION,rate,AudioFormat.CHANNEL_IN_MONO,AudioFormat.ENCODING_PCM_16BIT,maxOf(minimum,rate*2));recorder=rec
-  try{check(rec.state==AudioRecord.STATE_INITIALIZED);rec.startRecording();val chunks=ArrayList<FloatArray>();val frame=ShortArray(320);var heard=0;var silent=0;var total=0;var noise=0.002
-   while(total<rate*20){active(t);val n=rec.read(frame,0,frame.size);check(n>0);val block=FloatArray(n){frame[it]/32768f};total+=n;val rms=sqrt(block.sumOf{it.toDouble()*it}/n)
+  try{check(rec.state==AudioRecord.STATE_INITIALIZED);rec.startRecording();val chunks=ArrayList<FloatArray>();val frame=ShortArray(320);var heard=0;var silent=0;var total=0;var noise=0.002;val captureStarted=SystemClock.elapsedRealtime()
+   while(total<rate*20&&SystemClock.elapsedRealtime()-captureStarted<20000){active(t);val n=rec.read(frame,0,frame.size,AudioRecord.READ_NON_BLOCKING);check(n>=0);if(n==0){Thread.sleep(10);continue};val block=FloatArray(n){frame[it]/32768f};total+=n;val rms=sqrt(block.sumOf{it.toDouble()*it}/n)
     if(total<=rate*0.3){if(rms<0.008)noise=maxOf(noise,rms);chunks.add(block);continue}
     if(rms>maxOf(0.008,noise*3)){heard++;silent=0}else if(heard>0)silent++
     chunks.add(block);if(heard>=15&&silent>=30)break;if(heard<15&&silent>=30){heard=0;silent=0};if(heard==0&&total>=rate*6)return Capture(FloatArray(0),total)
@@ -97,6 +97,6 @@ class SpeechPlugin(private val owner:Activity):Plugin(owner){
   val track=AudioTrack.Builder().setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANT).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
    .setAudioFormat(AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_FLOAT).setSampleRate(rate).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
    .setBufferSizeInBytes(maxOf(minimum,rate/5*4)).setTransferMode(AudioTrack.MODE_STREAM).build();player=track
-  try{check(track.state==AudioTrack.STATE_INITIALIZED);track.play();var at=0;while(at<samples.size){active(t);val n=minOf(2048,samples.size-at);val b=FloatArray(n){samples[at+it].coerceIn(-1f,1f)};val written=track.write(b,0,n,AudioTrack.WRITE_BLOCKING);check(written>0);at+=written};while(track.playbackHeadPosition.toLong()<samples.size){active(t);Thread.sleep(10)}}finally{try{track.stop()}catch(_:Exception){};track.release();player=null}
+  try{check(track.state==AudioTrack.STATE_INITIALIZED);track.play();var at=0;while(at<samples.size){active(t);val n=minOf(2048,samples.size-at);val b=FloatArray(n){samples[at+it].coerceIn(-1f,1f)};val written=track.write(b,0,n,AudioTrack.WRITE_NON_BLOCKING);check(written>=0);if(written==0){Thread.sleep(5);continue};at+=written};while(track.playbackHeadPosition.toLong()<samples.size){active(t);Thread.sleep(10)}}finally{try{track.stop()}catch(_:Exception){};track.release();player=null}
  }
 }
