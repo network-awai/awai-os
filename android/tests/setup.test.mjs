@@ -6,10 +6,9 @@ const context={window:{},console};vm.createContext(context);
 vm.runInContext(fs.readFileSync(new URL('../client/generated/domain.js',import.meta.url),'utf8'),context);
 const domain=context.window.ItonamiDomain;
 const next=s=>domain.setupNext(JSON.stringify(s));
-test('no association-only Internet claim or implicit offline continuation',()=>{
-  assert.equal(next({stage:2,connected:true,validated:false}), 'network-required');
-  assert.equal(next({stage:2,validated:false,offline:true}), 'next');
-  assert.equal(next({stage:2,validated:true}), 'next');
+test('no network gate: AOSP setup owns connectivity',()=>{
+  assert.equal(next({stage:1,connected:false,validated:false}), 'next');
+  assert.equal(next({stage:3,connected:false,validated:false}), 'next');
 });
 test('account enrollment and PIN cannot be manufactured by pressing Next',()=>{
   assert.equal(next({stage:4}), 'account-required');
