@@ -9,6 +9,9 @@ def main():
  def adb(*args):return subprocess.check_output([str(ADB),'-s',a.serial,*args],text=True).strip()
  assert adb('get-state')=='recovery','Recovery ADB required'
  assert adb('shell','id','-u')=='0','Recovery root shell required'
+ assert adb('shell','getprop','ro.boot.veritymode')=='disabled','verity state changed; do not downgrade it'
+ report=json.loads((a.apk.parent/'build.json').read_text())
+ assert report['apkSha256']==digest and report['target']==pins and report['noDex'],'unreviewed artifact or metadata mismatch'
  assert adb('shell','getprop','ro.boot.slot_suffix')=='_b','different slot; requalify first'
  assert adb('shell','test','-b','/dev/block/mapper/system_ext_b')=='','exact logical partition absent'
  adb('push',str(a.apk),'/tmp/awai-pin-2997.apk')
@@ -26,17 +29,20 @@ F="$M/overlay/AwaiPin/AwaiPinOverlay.apk"
 '''.replace('TARGET_SHA',pins['systemUiSha256']).replace('OVERLAY_SHA',digest)
  if a.action=='install':
   script+='''[ ! -e "$M/overlay/AwaiPin" ]
-FREE=$(df -k "$M" | tail -1 | awk '{print $4}')
+set -- $(df -k "$M" | tail -1)
+FREE=$4
 [ "$FREE" -ge 8192 ]
 mount -o remount,rw "$M"
 mkdir "$M/overlay/AwaiPin"
 chown 0:0 "$M/overlay/AwaiPin"
 chmod 755 "$M/overlay/AwaiPin"
 chcon u:object_r:vendor_overlay_file:s0 "$M/overlay/AwaiPin"
-cp /tmp/awai-pin-2997.apk "$F"
-chown 0:0 "$F"
-chmod 644 "$F"
-chcon u:object_r:vendor_overlay_file:s0 "$F"
+cp /tmp/awai-pin-2997.apk "$F.part"
+chown 0:0 "$F.part"
+chmod 644 "$F.part"
+chcon u:object_r:vendor_overlay_file:s0 "$F.part"
+[ "$(sha256sum "$F.part" | cut -d ' ' -f1)" = "OVERLAY_SHA" ]
+mv "$F.part" "$F"
 '''
  else:
   script+='''[ "$(sha256sum "$F" | cut -d ' ' -f1)" = "OVERLAY_SHA" ]
@@ -51,5 +57,6 @@ umount "$M"
 trap - EXIT
 printf 'AWAI_PIN_RECOVERY_OK\\n'
 '''.replace('TARGET_SHA',pins['systemUiSha256'])
- result=subprocess.run([str(ADB),'-s',a.serial,'shell','sh'],input=script,text=True,check=True,capture_output=True);print(result.stdout);print(result.stderr)
+ script=script.replace('OVERLAY_SHA',digest)
+ result=subprocess.run([str(ADB),'-s',a.serial,'shell','sh'],input=script,text=True,capture_output=True);print(result.stdout);print(result.stderr);result.check_returncode()
 if __name__=='__main__':main()

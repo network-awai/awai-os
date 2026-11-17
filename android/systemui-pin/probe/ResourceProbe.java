@@ -17,9 +17,10 @@ public class ResourceProbe extends Instrumentation {
  private Bundle arguments;
  @Override public void onCreate(Bundle b){super.onCreate(b);arguments=b;start();}
  @Override public void onStart(){Bundle result=new Bundle();try{
-  Context own=getTargetContext();JSONObject report=new JSONObject();
+  Context own=getTargetContext().createDeviceProtectedStorageContext();JSONObject report=new JSONObject();
   if("bounds".equals(arguments.getString("mode"))){
-   ArrayDeque<AccessibilityNodeInfo> queue=new ArrayDeque<>();AccessibilityNodeInfo root=getUiAutomation(1).getRootInActiveWindow();if(root!=null)queue.add(root);
+   android.app.UiAutomation automation=getUiAutomation(1);android.accessibilityservice.AccessibilityServiceInfo info=automation.getServiceInfo();info.flags|=android.accessibilityservice.AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS|android.accessibilityservice.AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS;automation.setServiceInfo(info);
+   ArrayDeque<AccessibilityNodeInfo> queue=new ArrayDeque<>();AccessibilityNodeInfo root=automation.getRootInActiveWindow();if(root!=null)queue.add(root);
    JSONArray keys=new JSONArray();
    while(!queue.isEmpty()){
     AccessibilityNodeInfo n=queue.remove();String id=n.getViewIdResourceName();
