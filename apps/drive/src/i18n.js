@@ -1,11 +1,13 @@
 export const messages={
   "ja": {
+    "sync.dirty":"この端末 · 未同期","sync.action":"暗号化して同期","sync.restore":"クラウドから復旧","sync.evict":"空き容量を増やす","sync.busy":"暗号化・同期中…","sync.restoring":"暗号文を取得・検証しています…","sync.ready":"暗号化同期済み · オフライン利用可","sync.success":"暗号化して同期しました。","sync.restored":"復旧しました。","sync.evicted":"端末内コピーなし · 再取得には接続が必要","sync.confirm":"同期済みの端末内コピーを削除しますか？","sync.confirm-body":"未同期の変更がある場合は削除しません。再取得には接続が必要です。","error.unsynced-data":"未同期の変更があります。端末のデータを保持しました。","error.sync-size-limit":"この版の暗号化同期は合計8 MiBまでです。元のファイルを保持しています。","error.recovery-required":"暗号鍵または復旧情報が必要です。既存データを保持しています。",
+
     "app.title": "Awai Drive",
     "app.skip": "ファイル一覧へ",
     "storage.state": "この端末 · AwaiFS 未接続",
     "storage.root": "この端末",
     "storage.about": "保存先について",
-    "storage.warning": "ファイルはこのアプリ内に保存します。AwaiFS・ほかの端末への同期は未接続です。アプリの削除・Live OS の再起動では失われる場合があります。",
+    "storage.warning": "ファイルはこのアプリ内に保存します。暗号化同期は設定された保存先へ、操作ごとの同意後に行います。アプリの削除・Live OS の再起動では失われる場合があります。",
     "status.loading": "読み込んでいます…",
     "status.empty": "ファイルはまだありません。",
     "status.importing": "ファイルを選んで保存します…",
@@ -34,12 +36,14 @@ export const messages={
     "error.unknown": "操作を完了できませんでした。元のファイルは変更していません。"
   },
   "en": {
+    "sync.dirty":"This device · Unsynced","sync.action":"Encrypt and sync","sync.restore":"Restore from storage","sync.evict":"Free up space","sync.busy":"Encrypting and syncing…","sync.restoring":"Fetching and verifying encrypted files…","sync.ready":"Encrypted sync complete · Available offline","sync.success":"Encrypted files synced.","sync.restored":"Files restored.","sync.evicted":"No device copy · Connect to retrieve files","sync.confirm":"Remove synced device copies?","sync.confirm-body":"Unsynced changes will be kept. A connection is required to retrieve files again.","error.unsynced-data":"Unsynced changes exist. Device data has been kept.","error.sync-size-limit":"Encrypted sync currently supports 8 MiB in total. Original files have been kept.","error.recovery-required":"Key or recovery information is required. Existing data has been kept.",
+
     "app.title": "Awai Drive",
     "app.skip": "Skip to files",
     "storage.state": "This device · AwaiFS not connected",
     "storage.root": "This device",
     "storage.about": "About storage",
-    "storage.warning": "Files are stored inside this app. AwaiFS and other-device sync are not connected. Uninstalling the app or restarting a Live OS may lose these files.",
+    "storage.warning": "Files are stored inside this app. Encrypted sync uses the configured storage endpoint after approval for each operation. Uninstalling the app or restarting a Live OS may lose these files.",
     "status.loading": "Loading files…",
     "status.empty": "No files yet.",
     "status.importing": "Choose a file to save…",

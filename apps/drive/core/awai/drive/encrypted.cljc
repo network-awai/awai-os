@@ -48,6 +48,7 @@
                      (= [(:recipient-key identity)] (model/recipient-ids envelope))
                      (vector? chunks) (<= 1 (count chunks) 129) (= (count chunks) (:envelope/chunks envelope))) (refuse))
       (let [entry (seal/entry-for envelope (:recipient-key identity))]
+        (when-not (= model/hybrid-kem (:recipient/kem entry)) (refuse))
         (-> (seal/unwrap-with envelope entry (:priv identity) (:pq-priv identity))
             (.then (fn [key]
                      (let [parts (atom []) total (atom 0)]
@@ -80,7 +81,7 @@
                                                          (.then #(swap! files conj {:name path :size (.-length bytes) :sha h :object %})))))))))
                        (.then (fn [_] (object! objects owner
                                               (utf8 (pr-str {:schema :awai.owner/private-manifest-v1 :owner (:recipient-key owner)
-                                                             :files @files :source-manifest "{\"schema\":\"awai.drive.snapshot.v1\"}"})))))
+                                                             :files @files :drive/directories (vec (or (.-directories rows) #js [])) :source-manifest "{\"schema\":\"awai.drive.snapshot.v1\"}"})))))
                        (.then (fn [root]
                                 (let [cid #(car/cid-bytes car/codec-raw (unhex %))
                                       bytes (u8 (car/carv1-encode {:roots [(cid root)]
@@ -112,5 +113,5 @@
                                             (.then (fn [b] (when-not (= (:size r) (.-length b)) (refuse))
                                                      (-> (sha b) (.then (fn [h] (when-not (= h (:sha r)) (refuse))
                                                                          (.push out #js {:path (:name r) :bytes b :sha256 h})))))))))
-                                    (.then (fn [_] out))))))
+                                    (.then (fn [_] (let [dirs (or (:drive/directories m) [])] (when-not (and (vector? dirs) (<= (count dirs) 1000) (every? #(and (d/valid-path? %) (seq %)) dirs)) (refuse)) (aset out "directories" (clj->js dirs)) out)))))))
                      (.finally #(wipe! identity))))))))

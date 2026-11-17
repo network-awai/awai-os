@@ -6,8 +6,8 @@ fn awai_host_info()->serde_json::Value { serde_json::json!({"schema":"awai.shell
 async fn drive_call(_app:tauri::AppHandle, request:serde_json::Value)->Result<serde_json::Value,String>{
  if serde_json::to_vec(&request).map_err(|_|"invalid-request")?.len()>131072{return Err("request-limit".into())}
  let op=request.get("op").and_then(|v|v.as_str()).ok_or("invalid-operation")?;
- if !["list","mkdir","createText","pick","open"].contains(&op){return Err("unsupported-operation".into())}
- #[cfg(target_os="android")]{use tauri::Manager;return _app.state::<AndroidDrive>().0.run_mobile_plugin_async("execute",serde_json::json!({"payload":request.to_string()})).await.map_err(|e| { let message=e.to_string(); ["file-busy","file-exists","invalid-name","invalid-path","storage-full","file-too-large","import-cancelled","source-size-changed","local-provider-required"].iter().find(|code|message.contains(**code)).unwrap_or(&"drive-operation-failed").to_string() });}
+ if !["list","mkdir","createText","pick","open","vaultStatus","vaultSession","vaultRecord","vaultInventory","vaultRead","vaultCommit","vaultEvict","vaultRestoreBegin","vaultRestoreWrite","vaultRestorePublish"].contains(&op){return Err("unsupported-operation".into())}
+ #[cfg(target_os="android")]{use tauri::Manager;return _app.state::<AndroidDrive>().0.run_mobile_plugin_async("execute",serde_json::json!({"payload":request.to_string()})).await.map_err(|e| { let message=e.to_string(); ["unsynced-data","recovery-required","restore-mismatch","sync-size-limit","file-busy","file-exists","invalid-name","invalid-path","storage-full","file-too-large","import-cancelled","source-size-changed","local-provider-required"].iter().find(|code|message.contains(**code)).unwrap_or(&"drive-operation-failed").to_string() });}
  #[cfg(not(target_os="android"))] Err("android-adapter-required".into())
 }
 #[cfg_attr(mobile,tauri::mobile_entry_point)]

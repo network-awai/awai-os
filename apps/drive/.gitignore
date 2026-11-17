@@ -3,3 +3,4 @@ dist/
 .cpcache/
 
 src-tauri/gen/schemas/
+src-tauri/gen/android/app/src/debug/

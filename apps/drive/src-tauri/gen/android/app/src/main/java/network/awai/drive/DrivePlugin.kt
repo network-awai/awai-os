@@ -20,11 +20,12 @@ import java.util.concurrent.Executors
 @TauriPlugin
 class DrivePlugin(private val owner:Activity):Plugin(owner){
  private val worker=Executors.newSingleThreadExecutor()
+ private val vault by lazy{DriveVault(owner)}
  private val local by lazy{DriveFiles(File(owner.filesDir,"drive-local-v1"))}
  private fun sync(parent:String){val dir=local.resolve(parent);require(dir.isDirectory);val fd=android.system.Os.open(dir.path,android.system.OsConstants.O_RDONLY,0);try{android.system.Os.fsync(fd)}finally{android.system.Os.close(fd)}}
  private fun args(i:Invoke):JSONObject{val raw=i.getArgs().getString("payload");require(raw.toByteArray().size<=131072);return JSONObject(raw)}
- private fun code(e:Exception):String{android.util.Log.w("AwaiDrive",e.javaClass.simpleName+":"+e.stackTrace.take(10).joinToString(";"){it.className+"."+it.methodName+":"+it.lineNumber});if(e is FileAlreadyExistsException)return "file-exists";return e.message?.takeIf{it in setOf("invalid-name","invalid-path","storage-full","file-too-large","entry-limit","file-busy","source-size-changed","local-provider-required")}?:"drive-operation-failed"}
- @Command fun execute(i:Invoke){try{val q=args(i);when(q.getString("op")){
+ private fun code(e:Exception):String{android.util.Log.w("AwaiDrive",e.javaClass.simpleName+":"+e.stackTrace.take(10).joinToString(";"){it.className+"."+it.methodName+":"+it.lineNumber});if(e is FileAlreadyExistsException)return "file-exists";return e.message?.takeIf{it in setOf("invalid-name","invalid-path","storage-full","file-too-large","entry-limit","file-busy","source-size-changed","local-provider-required","unsynced-data","recovery-required","restore-mismatch","sync-size-limit")}?:"drive-operation-failed"}
+ @Command fun execute(i:Invoke){try{val q=args(i);if(q.getString("op").startsWith("vault")){worker.execute{try{i.resolve(JSObject(vault.execute(q).toString()))}catch(e:Exception){i.reject(code(e))}};return};when(q.getString("op")){
   "pick"->{local.resolve(q.getString("parent"));val intent=Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*");startActivityForResult(i,intent,"picked")}
   "open"->{val f=local.resolve(q.getString("path"));require(f.isFile);val uri=FileProvider.getUriForFile(owner,"network.awai.drive.fileprovider",f);val intent=Intent(Intent.ACTION_VIEW).setDataAndType(uri,DriveDocuments.mime(f)).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);owner.startActivity(Intent.createChooser(intent,"ファイルを開く"));i.resolve()}
   "list","mkdir","createText"->worker.execute{try{val parent=q.getString("parent");when(q.getString("op")){
