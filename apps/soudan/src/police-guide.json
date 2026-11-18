@@ -1028,7 +1028,52 @@
       "m49": "070",
       "name": "Bosnia and Herzegovina",
       "region": "Europe",
-      "iso2": "BA"
+      "iso2": "BA",
+      "status": "official-route",
+      "sources": {
+        "state": {
+          "title": "Bosnia and Herzegovina Judiciary — Criminal Procedure Code",
+          "url": "https://portalfo2.pravosudje.ba/vstvfo-api/vijest/download/121587",
+          "checkedOn": "2026-11-19"
+        },
+        "prijedor": {
+          "title": "District Public Prosecutor in Prijedor — Kako prijaviti krivično djelo?",
+          "url": "https://www.pravosudje.ba/vstvfo/H/150/article/70501",
+          "checkedOn": "2026-11-19"
+        },
+        "kanton": {
+          "title": "Cantonal Prosecutor FAQ — Decision not to investigate",
+          "url": "https://pravosudje.ba/vstvfo/B/103/article/13131",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ボスニア・ヘルツェゴビナでは管轄の検察や警察が犯罪申告を受け付ける。所管の法令や担当は事件と地域で確認する。",
+          "refs": [
+            "state",
+            "prijedor"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "管轄窓口に口頭または書面で申告する。",
+          "refs": [
+            "state",
+            "prijedor"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "州検察の公式案内には、捜査を行わない決定に対する申告者・被害者からの異議を当該検察が扱う例がある。期限は担当検察の通知に従って確認する。",
+          "refs": [
+            "kanton"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "BLM": {
       "m49": "652",
@@ -1131,7 +1176,46 @@
       "m49": "084",
       "name": "Belize",
       "region": "Americas",
-      "iso2": "BZ"
+      "iso2": "BZ",
+      "status": "partial",
+      "sources": {
+        "fsc": {
+          "title": "Belize Financial Services Commission — Complaints",
+          "url": "https://ifsc.gov.bz/complaints/",
+          "checkedOn": "2026-11-19"
+        },
+        "ombudsman": {
+          "title": "Belize Office of the Ombudsman — Complaints Process",
+          "url": "https://ombudsman.gov.bz/complaints-process/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ベリーズの警察と金融サービス委員会FSCで取扱いが異なる。FSCは規制対象の金融サービスに関する申立て等を扱う。",
+          "refs": [
+            "fsc",
+            "ombudsman"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "FSCの案内にメール詐欺等の連絡経路がある。被害者が警察に行う正式な刑事申告手順は要確認。",
+          "refs": [
+            "fsc"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "警察の対応に関する苦情はまず警察の職務基準部門に申し立て、オンブズマンの申立て要件を確認する。",
+          "refs": [
+            "ombudsman"
+          ],
+          "kind": "service-complaint"
+        }
+      ]
     },
     "BMU": {
       "m49": "060",
@@ -3570,7 +3654,31 @@
       "m49": "308",
       "name": "Grenada",
       "region": "Americas",
-      "iso2": "GD"
+      "iso2": "GD",
+      "status": "partial",
+      "sources": {
+        "contacts": {
+          "title": "Government of Grenada — Police and emergency services",
+          "url": "https://www.gov.gd/emergency-services",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "グレナダの警察が犯罪を取り扱う。",
+          "refs": [
+            "contacts"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "政府の窓口案内から警察本部等へ連絡する。正式な詐欺被害の受付手順は要確認。",
+          "refs": [
+            "contacts"
+          ]
+        }
+      ]
     },
     "GRL": {
       "m49": "304",
@@ -4730,7 +4838,38 @@
       "m49": "400",
       "name": "Jordan",
       "region": "Asia",
-      "iso2": "JO"
+      "iso2": "JO",
+      "status": "partial",
+      "sources": {
+        "directory": {
+          "title": "Jordan Public Security Directorate — Important telephone numbers",
+          "url": "https://psd.gov.jo/ar-jo/%D9%87%D9%88%D8%A7%D8%AA%D9%81-%D8%B6%D8%B1%D9%88%D8%B1%D9%8A%D8%A9/",
+          "checkedOn": "2026-11-19"
+        },
+        "platform": {
+          "title": "Jordan Public Security Directorate — Government contact and report platform",
+          "url": "https://www.psd.gov.jo/ar-jo/%D8%A7%D9%84%D9%85%D8%B9%D9%84%D9%88%D9%85%D8%A7%D8%AA-%D8%A7%D9%84%D8%AD%D9%83%D9%88%D9%85%D9%8A%D8%A9/%D8%A8%D8%AE%D8%AF%D9%85%D8%AA%D9%83%D9%85/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ヨルダン公安局が警察業務と地域別の連絡先を案内している。",
+          "refs": [
+            "directory",
+            "platform"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "公安局の電話一覧と政府への報告・相談窓口がある。サイバー詐欺の正式な刑事受付手順は要確認。",
+          "refs": [
+            "directory",
+            "platform"
+          ]
+        }
+      ]
     },
     "JPN": {
       "m49": "392",
@@ -5674,7 +5813,46 @@
       "m49": "492",
       "name": "Monaco",
       "region": "Europe",
-      "iso2": "MC"
+      "iso2": "MC",
+      "status": "official-route",
+      "sources": {
+        "code": {
+          "title": "LégiMonaco — Code de procédure pénale",
+          "url": "https://legimonaco.mc/code/code-procedure-penale",
+          "checkedOn": "2026-11-19"
+        },
+        "parquet": {
+          "title": "Direction des Services Judiciaires — Le Parquet Général de Monaco",
+          "url": "https://www.justice.mc/juridictions/parquet-general",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "モナコの治安当局の司法警察または検察総長が犯罪の申告を取り扱う。",
+          "refs": [
+            "code",
+            "parquet"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "司法警察または検察総長に正式な申告を行う経路がある。",
+          "refs": [
+            "code",
+            "parquet"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "検察総長が申告を受けた後の扱いを判断する。",
+          "refs": [
+            "parquet"
+          ]
+        }
+      ]
     },
     "MDA": {
       "m49": "498",
@@ -8443,7 +8621,36 @@
       "m49": "744",
       "name": "Svalbard and Jan Mayen Islands",
       "region": "Europe",
-      "iso2": "SJ"
+      "iso2": "SJ",
+      "status": "partial",
+      "sources": {
+        "svalbard": {
+          "title": "Governor of Svalbard — Police",
+          "url": "https://prod.sysselmesteren.no/nb/om-sysselmesteren/politi/",
+          "checkedOn": "2026-11-19"
+        },
+        "contact": {
+          "title": "Governor of Svalbard — Contact",
+          "url": "https://www.sysselmesteren.no/en/contact/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "スヴァールバルでは知事機関内の警察が警察業務を担当する。ヤンマイエンの一般向け届出案内は要確認。",
+          "refs": [
+            "svalbard"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "スヴァールバルの当直警察官への連絡先は知事機関が掲載している。詐欺に関する正式手順は要確認。",
+          "refs": [
+            "contact"
+          ]
+        }
+      ]
     },
     "SLB": {
       "m49": "090",
@@ -9193,7 +9400,46 @@
       "m49": "626",
       "name": "Timor-Leste",
       "region": "Asia",
-      "iso2": "TL"
+      "iso2": "TL",
+      "status": "official-route",
+      "sources": {
+        "police": {
+          "title": "Timor-Leste PCIC — Polícia Científica de Investigação Criminal",
+          "url": "https://pcic.gov.tl/pt",
+          "checkedOn": "2026-11-19"
+        },
+        "prep": {
+          "title": "Timor-Leste PCIC — Prevensaun Krime",
+          "url": "https://pcic.gov.tl/tet/prevention",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "東ティモールの科学刑事捜査警察PCICに、オンライン詐欺等の捜査を担当する専門部門がある。",
+          "refs": [
+            "police",
+            "prep"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "詐欺を認識したら経緯を記録してPCICに報告するよう案内されている。",
+          "refs": [
+            "prep"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "日付、相手の特徴、何が起きたかをできる限り具体的に記録する。",
+          "refs": [
+            "prep"
+          ],
+          "kind": "recommended"
+        }
+      ]
     },
     "TON": {
       "m49": "776",
@@ -9708,7 +9954,38 @@
       "m49": "670",
       "name": "Saint Vincent and the Grenadines",
       "region": "Americas",
-      "iso2": "VC"
+      "iso2": "VC",
+      "status": "official-route",
+      "sources": {
+        "police": {
+          "title": "Saint Vincent and the Grenadines Ministry of National Security — Police Service",
+          "url": "https://security.gov.vc/security/index.php?Itemid=129&id=74&option=com_content&view=category",
+          "checkedOn": "2026-11-19"
+        },
+        "scam": {
+          "title": "Royal Saint Vincent and the Grenadines Police Force — Beware of scams",
+          "url": "https://security.gov.vc/security/images/stories/Press_Release_3122024_beware_of_scams_docx.pdf",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "セントビンセント・グレナディーン警察が詐欺の申告先と案内されている。",
+          "refs": [
+            "police",
+            "scam"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "詐欺の疑いがある場合は警察に届け出る。警察の連絡先は国家安全保障省の案内で確認する。",
+          "refs": [
+            "police",
+            "scam"
+          ]
+        }
+      ]
     },
     "VEN": {
       "m49": "862",
