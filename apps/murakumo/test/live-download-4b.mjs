@@ -21,7 +21,7 @@ async function cdp(){const pid=adb('shell','pidof',PKG).trim();adb('forward','tc
  const ev=expr=>new Promise(r=>{const n=++id;pend.set(n,m=>r(m.result?.result?.value));ws.send(JSON.stringify({id:n,method:'Runtime.evaluate',params:{expression:expr,awaitPromise:true,returnByValue:true}}))});return {ev,close:()=>ws.close()};}
 const files=()=>adb('shell',`run-as ${PKG} ls -l files/models 2>/dev/null; true`).split('\n').filter(l=>l.includes('.gguf')||l.includes('.download')).map(l=>l.trim().split(/\s+/)).map(p=>({name:p.at(-1),size:Number(p[4])}));
 async function startDownload(c){await c.ev(`document.querySelector('.model-row[data-model="${ID}"] button').scrollIntoView({block:'center'})`);await sleep(1200);
- const label=await c.ev(`document.querySelector('.model-row[data-model="${ID}"] button').textContent`);return tapText(label);}
+ const label=await c.ev(`document.querySelector('.model-row[data-model="${ID}"] button').textContent`);return tapText(label,60000);}
 (async()=>{
  const ev={schema:'awai.murakumo.download-4b-evidence/1',issue:'AWAI-3307',serial:opt.serial,apkSha256:crypto.createHash('sha256').update(fs.readFileSync(opt.apk)).digest('hex')};
  adb('install','-r',opt.apk);adb('shell','am','force-stop',PKG);adb('shell','pm','clear',PKG);
@@ -49,7 +49,7 @@ async function startDownload(c){await c.ev(`document.querySelector('.model-row[d
  await startDownload(c);await sleep(900);check('the owner taps Allow once',await tapText('Allow once'));
  const t0=Date.now();let st=null;for(let i=0;i<900;i++){await sleep(2000);st=await c.ev(`window.__TAURI_INTERNALS__.invoke('inference_operation',{request:{action:'status'}}).then(s=>JSON.stringify({imported:s.models.find(m=>m.id==='${ID}').imported,downloading:s.downloading}))`);if(st&&JSON.parse(st).imported)break;}
  ev.downloadSeconds=Math.round((Date.now()-t0)/1000);
- const done=await c.ev(`document.getElementById('generation-status').textContent`);
+ const done=await c.ev(`document.getElementById('generation-status').textContent`);ev.downloadError=await c.ev(`document.getElementById('generation-status').dataset.error??null`);
  check('the model downloads, its SHA-256 matches and it is admitted',JSON.parse(st??'{}').imported===true&&/matched|一致したため取り込み/.test(done),{st,done});
  check('exactly the model file remains, at its catalog size',JSON.stringify(files())===JSON.stringify([{name:`${ID}.gguf`,size:BYTES}]),files());
  // 4. The downloaded model loads and generates.

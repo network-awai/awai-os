@@ -38,14 +38,17 @@ async fn model_download_begin(app:tauri::AppHandle,model:String)->Result<serde_j
  #[cfg(not(target_os="android"))]{let _=(app,model);Err("android-only".into())}
 }
 #[tauri::command]
-fn model_download_write(app:tauri::AppHandle,request:tauri::ipc::Request<'_>)->Result<u64,String>{
- #[cfg(target_os="android")]{use tauri::Manager;use std::io::Write;
-  let tauri::ipc::InvokeBody::Raw(bytes)=request.body() else {return Err("raw-bytes-required".into())};
+// Android's WebView cannot read IPC request bodies, so Tauri sends every call as JSON through postMessage
+// (a Uint8Array would become a number array). Chunks therefore arrive as base64, at most 8 MiB decoded.
+fn model_download_write(app:tauri::AppHandle,chunk:String)->Result<u64,String>{
+ #[cfg(target_os="android")]{use tauri::Manager;use std::io::Write;use base64::Engine;
+  if chunk.len()>8*1024*1024/3*4+4{return Err("chunk-too-large".into());}
+  let bytes=base64::engine::general_purpose::STANDARD.decode(chunk.as_bytes()).map_err(|_|"invalid-chunk")?;let bytes=&bytes[..];
   let state=app.state::<DownloadState>();let mut slot=state.0.lock().map_err(|_|"busy")?;
   let d=slot.as_mut().ok_or("no-download")?;
   if d.written+bytes.len() as u64>d.limit{return Err("byte-budget".into());}
   d.file.write_all(bytes).map_err(|_|"model-store-failed")?;d.written+=bytes.len() as u64;return Ok(d.written);}
- #[cfg(not(target_os="android"))]{let _=(app,request);Err("android-only".into())}
+ #[cfg(not(target_os="android"))]{let _=(app,chunk);Err("android-only".into())}
 }
 #[tauri::command]
 async fn model_download_finish(app:tauri::AppHandle)->Result<serde_json::Value,String>{

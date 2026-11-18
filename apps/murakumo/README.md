@@ -100,3 +100,6 @@ Each catalog model can be downloaded from Hugging Face. The canonical client-run
   - Kotlin admits the file again by size and SHA-256 before renaming it to `<id>.gguf`;
   - a mismatch, Stop or any error deletes the part file.
 - **INTERNET permission:** Android's INTERNET permission covers all hosts; it cannot be narrowed by origin. The narrowing is done by the CSP and the broker's declared endpoints. The WebView page cannot reach any other origin.
+- **IPC on Android:** Android's WebView cannot read request bodies, so Tauri sends every call as JSON through `postMessage`. Chunks therefore travel as base64 strings (4 MiB decoded each), not raw bytes.
+
+`test/live-download-4b.mjs` runs the real APK on an emulator this run owns. It taps the canonical consent dialog with UI Automator and walks through four steps: Deny, Stop partway, a full download, then load and generate. It relaunches after the upstream wry startup timeout and presses "Wait" on system ANR dialogs, and it records each case. Evidence: [`docs/evidence/murakumo-download-4b-20261118.json`](../../docs/evidence/murakumo-download-4b-20261118.json), 15/15, with [the phone screen](../../docs/evidence/murakumo-download-4b-20261118-phone.png). Qwen3 0.6B (609.8 MiB) took 168 s on a loaded host.

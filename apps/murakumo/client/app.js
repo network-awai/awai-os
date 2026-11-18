@@ -42,8 +42,10 @@ let busy=false,catalog=[],status=null,usage=null;
 // CDN redirects, hashes the stream and closes the host sink only on an exact SHA-256 match.
 let broker=null,download=null; // download: {id,written,total,controller}
 const CHUNK=4*1024*1024;
+// Tauri on Android sends IPC as JSON (no request bodies), so chunks travel as base64 strings.
+function base64(bytes){let s='';for(let i=0;i<bytes.length;i+=0x8000)s+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000));return btoa(s);}
 function sinkFor(id){return async()=>{await window.__TAURI_INTERNALS__.invoke('model_download_begin',{model:id});
- let parts=[],held=0;const flush=async()=>{if(!held)return;const buf=new Uint8Array(held);let o=0;for(const p of parts){buf.set(p,o);o+=p.byteLength;}parts=[];held=0;await window.__TAURI_INTERNALS__.invoke('model_download_write',buf);};
+ let parts=[],held=0;const flush=async()=>{if(!held)return;const buf=new Uint8Array(held);let o=0;for(const p of parts){buf.set(p,o);o+=p.byteLength;}parts=[];held=0;await window.__TAURI_INTERNALS__.invoke('model_download_write',{chunk:base64(buf)});};
  return {write:async(chunk)=>{parts.push(chunk);held+=chunk.byteLength;download.written+=chunk.byteLength;if(held>=CHUNK){await flush();renderModels();}},
   close:async()=>{await flush();await window.__TAURI_INTERNALS__.invoke('model_download_finish');return {imported:true,model:id};},
   abort:async()=>{parts=[];held=0;await window.__TAURI_INTERNALS__.invoke('model_download_abort');}};};}
@@ -54,7 +56,7 @@ const dlMessage=e=>/not approved/.test(e)?L.dl.denied:/digest mismatch/.test(e)?
 async function startDownload(m){if(!broker||download)return;const controller=new AbortController();download={id:m.id,written:0,total:m.bytes,controller};renderModels();
  $('generation-status').textContent=t(L.dl.progress,{model:m.label});
  try{const op=runtimeFor({models:[m]}).operations[0];await broker.invoke({capability:op.capability,service:op.service,operation:op.operation},{input:`${op.endpoint.origin}${op.endpoint.path}`},{signal:controller.signal});$('generation-status').textContent=L.dl.done;}
- catch(e){$('generation-status').textContent=dlMessage(String(e?.message??e));}
+ catch(e){const raw=String(e?.message??e);$('generation-status').textContent=dlMessage(raw);$('generation-status').dataset.error=raw;}
  finally{download=null;await refresh();}}
 
 function button(label,{primary=false,disabled=false,onClick}={}){const b=document.createElement('button');b.type='button';b.textContent=label;if(!primary)b.className='tonal';b.disabled=disabled||busy;if(onClick)b.addEventListener('click',e=>{if(e.isTrusted&&!busy)onClick();});return b;}
