@@ -3,4 +3,5 @@
 /src/main/assets/tauri.conf.json
 /tauri.build.gradle.kts
 /proguard-tauri.pro
-/tauri.properties
+/tauri.properties# Per-run EN devnet trust overlay (AWAI-3170, scripts/devnet-trust.mjs); never committed.
+/src/debug/

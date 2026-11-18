@@ -72,7 +72,7 @@ test("externs cover every plain-JS boundary property", async () => {
     "src/runtime.js", "src/trust.js", "src/soshiki.js", "src/media.js",
     "src/net.js", "src/display.js", "src/sound.js", "src/status.js",
     "src/soshiki-runtime.js", "src/soshiki-fleet.js", "src/fleet-projection.js", "src/fleet-circles.js", "src/bot-cycle.js", "src/fleet-organizations.js", "src/fleet-responsibilities.js", "src/ui-copy.js", "src/fleet-activity.js", "src/bot-chat.js", "src/agent-directory.js", "src/agent-ui-state.js",
-    "src/saifu-host.js", "src/voice-input.js", "src/csp.js",
+    "src/saifu-host.js", "src/voice-input.js", "src/csp.js", "src/awai-support.js",
     "src/identity/link.js", "src/identity/device.js", "src/identity/wallet.js",
   ];
   for (const rel of jsFiles) {
