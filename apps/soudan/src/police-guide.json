@@ -407,7 +407,59 @@
       "m49": "031",
       "name": "Azerbaijan",
       "region": "Asia",
-      "iso2": "AZ"
+      "iso2": "AZ",
+      "status": "official-route",
+      "sources": {
+        "fraud": {
+          "title": "Azerbaijan Ministry of Internal Affairs — Cyber fraud warning",
+          "url": "https://mia.gov.az/az/news/1581//",
+          "checkedOn": "2026-11-19"
+        },
+        "case": {
+          "title": "Azerbaijan Ministry of Internal Affairs — Online marketplace fraud investigation",
+          "url": "https://mia.gov.az/az/pressreliz/76984/76984/",
+          "checkedOn": "2026-11-19"
+        },
+        "review": {
+          "title": "Azerbaijan Prosecutor General — Judicial review of procedural decisions",
+          "url": "https://genprosecutor.gov.az/az/post/7138",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "アゼルバイジャン内務省の警察がネット・電話等を利用した詐欺を取り扱う。",
+          "refs": [
+            "fraud"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "公式の詐欺警告が案内する警察の連絡先を利用する。",
+          "refs": [
+            "fraud"
+          ]
+        }
+      ],
+      "cases": [
+        {
+          "text": "広告サイトを利用した詐欺について、被害情報の受領を受けてバクー市警が捜査し、容疑者を拘束したと内務省が公表した。",
+          "refs": [
+            "case"
+          ],
+          "stage": "investigation-confirmed"
+        }
+      ],
+      "followUp": [
+        {
+          "text": "刑事事件の立件を拒む決定などについて、検察総庁の案内に掲載された裁判所への申立てを確認できる。",
+          "refs": [
+            "review"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "BDI": {
       "m49": "108",
@@ -690,6 +742,16 @@
           "title": "France Ministry of Justice — Le procureur doit-il engager des poursuites ?",
           "url": "https://www.justice.fr/fiche/procureur-engager-poursuites-suite-plainte",
           "checkedOn": "2026-11-19"
+        },
+        "intake-law": {
+          "title": "Légifrance — Code de procédure pénale, Article 15-3",
+          "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054725475/2026-10-22",
+          "checkedOn": "2026-11-19"
+        },
+        "prep": {
+          "title": "Service Public — Porter plainte",
+          "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F1435",
+          "checkedOn": "2026-11-19"
         }
       },
       "jurisdiction": [
@@ -726,6 +788,22 @@
             "juris"
           ],
           "kind": "review"
+        },
+        {
+          "text": "窓口で管轄外とされたときは、刑事手続法第15-3条の受付・転送の扱いを確認する。警察司法部門が受領し、必要に応じ管轄の部門に送る。",
+          "refs": [
+            "intake-law"
+          ],
+          "kind": "channel-unavailable"
+        }
+      ],
+      "evidence": [
+        {
+          "text": "対面や書面での申告には、被害に関係する画面の記録、写真、請求書などの資料を用意する。書面には経緯、日時、場所などを記載する。",
+          "refs": [
+            "prep"
+          ],
+          "kind": "recommended"
         }
       ]
     },
@@ -1011,7 +1089,54 @@
       "m49": "072",
       "name": "Botswana",
       "region": "Africa",
-      "iso2": "BW"
+      "iso2": "BW",
+      "status": "official-route",
+      "sources": {
+        "report": {
+          "title": "Government of Botswana — Reporting Crime to the Police",
+          "url": "https://gov.bw/policing/reporting-crime-police",
+          "checkedOn": "2026-11-19"
+        },
+        "copy": {
+          "title": "Government of Botswana — Police Incident Report",
+          "url": "https://gov.bw/policing/police-incident-report",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ボツワナ警察が被害者・目撃者からの犯罪申告を受け付ける。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察署への来訪や警察への電話で届け出る。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "被害内容、日時、場所、関係者や目撃者について分かることを説明できるようにする。",
+          "refs": [
+            "report"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "followUp": [
+        {
+          "text": "被害者または法定代理人は、警察署で事案報告書の取得手続を確認できる。",
+          "refs": [
+            "copy"
+          ],
+          "kind": "status-check"
+        }
+      ]
     },
     "CAF": {
       "m49": "140",
@@ -1845,7 +1970,49 @@
       "m49": "214",
       "name": "Dominican Republic",
       "region": "Americas",
-      "iso2": "DO"
+      "iso2": "DO",
+      "status": "official-route",
+      "sources": {
+        "cpp": {
+          "title": "Dominican Republic — Ley 97-25, Código Procesal Penal",
+          "url": "https://www.consultoria.gov.do/Consulta/Home/FileManagement?documentId=3404020&managementType=1",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ドミニカ共和国では公訴対象の犯罪を検察、警察等に届け出られる（刑事手続法第266条）。",
+          "refs": [
+            "cpp"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "第267条の案内では口頭または書面で申告でき、口頭の場合は受領担当者が調書を作成する。",
+          "refs": [
+            "cpp"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "申告では事件の経緯と、分かる範囲で関係者・目撃者・判断に役立つ資料を示す。",
+          "refs": [
+            "cpp"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "followUp": [
+        {
+          "text": "検察の事件終結通知を受けた申告者については、第286・287条の異議申立てを確認する。裁判官への異議には短い期限がある。",
+          "refs": [
+            "cpp"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "DZA": {
       "m49": "012",
@@ -2222,6 +2389,11 @@
           "title": "Service Public — Classement sans suite et contestation",
           "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F1154",
           "checkedOn": "2026-11-18"
+        },
+        "intake-law": {
+          "title": "Légifrance — Code de procédure pénale, Article 15-3",
+          "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054725475/2026-10-22",
+          "checkedOn": "2026-11-19"
         }
       },
       "jurisdiction": [
@@ -2274,6 +2446,13 @@
             "closure"
           ],
           "kind": "review"
+        },
+        {
+          "text": "窓口で管轄外とされたときは、刑事手続法第15-3条の受付・転送の扱いを確認する。警察司法部門が受領し、必要に応じ管轄の部門に送る。",
+          "refs": [
+            "intake-law"
+          ],
+          "kind": "channel-unavailable"
         }
       ]
     },
@@ -2346,6 +2525,11 @@
           "title": "Police Scotland — Ask for an update",
           "url": "https://www.scotland.police.uk/secureforms/askupdate/Default.aspx",
           "checkedOn": "2026-11-18"
+        },
+        "avon-case": {
+          "title": "Avon and Somerset Police — Man sentenced in investment fraud case",
+          "url": "https://www.avonandsomerset.police.uk/news/2026/08/man-who-lied-about-cancer-diagnosis-and-defrauded-victims-of-68k-jailed/",
+          "checkedOn": "2026-11-19"
         }
       },
       "jurisdiction": [
@@ -2403,6 +2587,15 @@
             "scot"
           ],
           "kind": "status-check"
+        }
+      ],
+      "cases": [
+        {
+          "text": "イングランドで投資を持ちかけられた被害者が警察に連絡し、これを端緒に捜査が進んだ。管轄警察は詐欺事件の有罪判決と実刑を公表した。",
+          "refs": [
+            "avon-case"
+          ],
+          "stage": "investigation-confirmed"
         }
       ]
     },
@@ -2606,6 +2799,16 @@
           "title": "France Ministry of Justice — Le procureur doit-il engager des poursuites ?",
           "url": "https://www.justice.fr/fiche/procureur-engager-poursuites-suite-plainte",
           "checkedOn": "2026-11-19"
+        },
+        "intake-law": {
+          "title": "Légifrance — Code de procédure pénale, Article 15-3",
+          "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054725475/2026-10-22",
+          "checkedOn": "2026-11-19"
+        },
+        "prep": {
+          "title": "Service Public — Porter plainte",
+          "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F1435",
+          "checkedOn": "2026-11-19"
         }
       },
       "jurisdiction": [
@@ -2642,6 +2845,22 @@
             "juris"
           ],
           "kind": "review"
+        },
+        {
+          "text": "窓口で管轄外とされたときは、刑事手続法第15-3条の受付・転送の扱いを確認する。警察司法部門が受領し、必要に応じ管轄の部門に送る。",
+          "refs": [
+            "intake-law"
+          ],
+          "kind": "channel-unavailable"
+        }
+      ],
+      "evidence": [
+        {
+          "text": "対面や書面での申告には、被害に関係する画面の記録、写真、請求書などの資料を用意する。書面には経緯、日時、場所などを記載する。",
+          "refs": [
+            "prep"
+          ],
+          "kind": "recommended"
         }
       ]
     },
@@ -2748,7 +2967,47 @@
       "m49": "320",
       "name": "Guatemala",
       "region": "Americas",
-      "iso2": "GT"
+      "iso2": "GT",
+      "status": "official-route",
+      "sources": {
+        "mp": {
+          "title": "Guatemala Ministerio Público — Servicios y canales de atención",
+          "url": "https://www.mp.gob.gt/",
+          "checkedOn": "2026-11-19"
+        },
+        "contact": {
+          "title": "Guatemala Ministerio Público — Contáctanos",
+          "url": "https://www.mp.gob.gt/contactanos/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "グアテマラ検察が犯罪の申告と状況照会の窓口を案内している。",
+          "refs": [
+            "mp",
+            "contact"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "検察サイトの申告案内で事案に該当する窓口を確認する。個別の受付について検察に問い合わせられる。",
+          "refs": [
+            "mp",
+            "contact"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "検察サイトに案内された申告照会から進捗を確認する。",
+          "refs": [
+            "mp"
+          ],
+          "kind": "status-check"
+        }
+      ]
     },
     "GUF": {
       "m49": "254",
@@ -2775,6 +3034,16 @@
         "review": {
           "title": "France Ministry of Justice — Le procureur doit-il engager des poursuites ?",
           "url": "https://www.justice.fr/fiche/procureur-engager-poursuites-suite-plainte",
+          "checkedOn": "2026-11-19"
+        },
+        "intake-law": {
+          "title": "Légifrance — Code de procédure pénale, Article 15-3",
+          "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054725475/2026-10-22",
+          "checkedOn": "2026-11-19"
+        },
+        "prep": {
+          "title": "Service Public — Porter plainte",
+          "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F1435",
           "checkedOn": "2026-11-19"
         }
       },
@@ -2812,6 +3081,22 @@
             "juris"
           ],
           "kind": "review"
+        },
+        {
+          "text": "窓口で管轄外とされたときは、刑事手続法第15-3条の受付・転送の扱いを確認する。警察司法部門が受領し、必要に応じ管轄の部門に送る。",
+          "refs": [
+            "intake-law"
+          ],
+          "kind": "channel-unavailable"
+        }
+      ],
+      "evidence": [
+        {
+          "text": "対面や書面での申告には、被害に関係する画面の記録、写真、請求書などの資料を用意する。書面には経緯、日時、場所などを記載する。",
+          "refs": [
+            "prep"
+          ],
+          "kind": "recommended"
         }
       ]
     },
@@ -2999,7 +3284,46 @@
       "m49": "340",
       "name": "Honduras",
       "region": "Americas",
-      "iso2": "HN"
+      "iso2": "HN",
+      "status": "official-route",
+      "sources": {
+        "mrd": {
+          "title": "Honduras Ministerio Público — Módulo de Recepción de Denuncias",
+          "url": "https://www.mp.hn/publicaciones/area/mrd-modulo-de-recepcion-de-denuncias/",
+          "checkedOn": "2026-11-19"
+        },
+        "fraud": {
+          "title": "Honduras Ministerio Público — MRD alert on online fraud",
+          "url": "https://www.mp.hn/publicaciones/fiscales-del-modulo-de-recepcion-de-denuncias-alertan-a-la-poblacion-acerca-de-estafas-y-accesos-no-autorizados-a-sistemas-informaticos/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ホンジュラス検察の申告受付窓口MRDは被害者からの初期申告を扱う。",
+          "refs": [
+            "mrd",
+            "fraud"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "オンライン詐欺などを含む刑事被害は、検察のMRDを利用して届け出る。",
+          "refs": [
+            "mrd",
+            "fraud"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "MRDは被害者からの初期受付・案内を行い、事案の内容や緊急性を踏まえて処理する。",
+          "refs": [
+            "mrd"
+          ]
+        }
+      ]
     },
     "HRV": {
       "m49": "191",
@@ -3906,7 +4230,55 @@
       "m49": "116",
       "name": "Cambodia",
       "region": "Asia",
-      "iso2": "KH"
+      "iso2": "KH",
+      "status": "official-route",
+      "sources": {
+        "police": {
+          "title": "Cambodia National Police — Hotline for foreign complainants",
+          "url": "https://hotline.police.gov.kh/?type=foreigner",
+          "checkedOn": "2026-11-19"
+        },
+        "moi": {
+          "title": "Cambodia Ministry of Interior — Apps",
+          "url": "https://www.interior.gov.kh/en/tech_application_suite",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "カンボジア国家警察が詐欺のオンライン申告を受け付け、外国人向けフォームも案内している。",
+          "refs": [
+            "police",
+            "moi"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "オンライン詐欺は警察公式フォームで申告する。担当当局から求められた場合は出頭する。",
+          "refs": [
+            "police",
+            "moi"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "外国人向けフォームでは事件概要、連絡先、本人情報、証拠または参照資料などの入力・添付欄を確認する。",
+          "refs": [
+            "police"
+          ],
+          "kind": "required"
+        }
+      ],
+      "progress": [
+        {
+          "text": "受信後、担当当局が申告者に連絡するとフォームに記載されている。",
+          "refs": [
+            "police"
+          ]
+        }
+      ]
     },
     "KIR": {
       "m49": "296",
@@ -4359,6 +4731,16 @@
           "title": "France Ministry of Justice — Le procureur doit-il engager des poursuites ?",
           "url": "https://www.justice.fr/fiche/procureur-engager-poursuites-suite-plainte",
           "checkedOn": "2026-11-19"
+        },
+        "intake-law": {
+          "title": "Légifrance — Code de procédure pénale, Article 15-3",
+          "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054725475/2026-10-22",
+          "checkedOn": "2026-11-19"
+        },
+        "prep": {
+          "title": "Service Public — Porter plainte",
+          "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F1435",
+          "checkedOn": "2026-11-19"
         }
       },
       "jurisdiction": [
@@ -4395,6 +4777,22 @@
             "juris"
           ],
           "kind": "review"
+        },
+        {
+          "text": "窓口で管轄外とされたときは、刑事手続法第15-3条の受付・転送の扱いを確認する。警察司法部門が受領し、必要に応じ管轄の部門に送る。",
+          "refs": [
+            "intake-law"
+          ],
+          "kind": "channel-unavailable"
+        }
+      ],
+      "evidence": [
+        {
+          "text": "対面や書面での申告には、被害に関係する画面の記録、写真、請求書などの資料を用意する。書面には経緯、日時、場所などを記載する。",
+          "refs": [
+            "prep"
+          ],
+          "kind": "recommended"
         }
       ]
     },
@@ -4645,7 +5043,36 @@
       "m49": "496",
       "name": "Mongolia",
       "region": "Asia",
-      "iso2": "MN"
+      "iso2": "MN",
+      "status": "official-route",
+      "sources": {
+        "contact": {
+          "title": "Mongolian Police — Online fraud contacts",
+          "url": "https://police.gov.mn/a/7955",
+          "checkedOn": "2026-11-19"
+        },
+        "faq": {
+          "title": "Mongolian Police — Crime reporting jurisdiction FAQ",
+          "url": "https://police.gov.mn/a/4758",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "モンゴル警察の案内では地域管轄の警察署が受け付け、緊急時は管轄を問わず一次対応し検察が管轄を決める場合がある。",
+          "refs": [
+            "faq"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "オンライン詐欺は警察の102または公式ページの専門窓口に連絡するよう案内されている。",
+          "refs": [
+            "contact"
+          ]
+        }
+      ]
     },
     "MNP": {
       "m49": "580",
@@ -4765,6 +5192,16 @@
           "title": "France Ministry of Justice — Le procureur doit-il engager des poursuites ?",
           "url": "https://www.justice.fr/fiche/procureur-engager-poursuites-suite-plainte",
           "checkedOn": "2026-11-19"
+        },
+        "intake-law": {
+          "title": "Légifrance — Code de procédure pénale, Article 15-3",
+          "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054725475/2026-10-22",
+          "checkedOn": "2026-11-19"
+        },
+        "prep": {
+          "title": "Service Public — Porter plainte",
+          "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F1435",
+          "checkedOn": "2026-11-19"
         }
       },
       "jurisdiction": [
@@ -4801,6 +5238,22 @@
             "juris"
           ],
           "kind": "review"
+        },
+        {
+          "text": "窓口で管轄外とされたときは、刑事手続法第15-3条の受付・転送の扱いを確認する。警察司法部門が受領し、必要に応じ管轄の部門に送る。",
+          "refs": [
+            "intake-law"
+          ],
+          "kind": "channel-unavailable"
+        }
+      ],
+      "evidence": [
+        {
+          "text": "対面や書面での申告には、被害に関係する画面の記録、写真、請求書などの資料を用意する。書面には経緯、日時、場所などを記載する。",
+          "refs": [
+            "prep"
+          ],
+          "kind": "recommended"
         }
       ]
     },
@@ -4808,7 +5261,64 @@
       "m49": "480",
       "name": "Mauritius",
       "region": "Africa",
-      "iso2": "MU"
+      "iso2": "MU",
+      "status": "official-route",
+      "sources": {
+        "report": {
+          "title": "CERT-MU — MAUCORS+ Reporting Guidelines",
+          "url": "https://maucors.govmu.org/maucors/?page_id=9",
+          "checkedOn": "2026-11-19"
+        },
+        "faq": {
+          "title": "CERT-MU — MAUCORS+ FAQ",
+          "url": "https://maucors.govmu.org/maucors/?page_id=1600",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "モーリシャスのサイバー犯罪は政府のMAUCORS+がオンライン報告を受け付け、内容に応じて関係当局が扱う。",
+          "refs": [
+            "report",
+            "faq"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "MAUCORS+の案内で対象犯罪と申告方法を確認して送信する。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "メール、スクリーンショット、やり取りなどの根拠資料を、警察から連絡があった場合に備えて保全する。",
+          "refs": [
+            "report",
+            "faq"
+          ],
+          "kind": "retain"
+        }
+      ],
+      "progress": [
+        {
+          "text": "MAUCORS+が申告を処理し、必要に応じて警察が連絡する。",
+          "refs": [
+            "faq"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "受領画面または確認メールのチケット番号を控え、メール内のリンクで報告の処理状況を確認できる。",
+          "refs": [
+            "report"
+          ],
+          "kind": "status-check"
+        }
+      ]
     },
     "MWI": {
       "m49": "454",
@@ -4904,6 +5414,16 @@
           "title": "France Ministry of Justice — Le procureur doit-il engager des poursuites ?",
           "url": "https://www.justice.fr/fiche/procureur-engager-poursuites-suite-plainte",
           "checkedOn": "2026-11-19"
+        },
+        "intake-law": {
+          "title": "Légifrance — Code de procédure pénale, Article 15-3",
+          "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054725475/2026-10-22",
+          "checkedOn": "2026-11-19"
+        },
+        "prep": {
+          "title": "Service Public — Porter plainte",
+          "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F1435",
+          "checkedOn": "2026-11-19"
         }
       },
       "jurisdiction": [
@@ -4940,6 +5460,22 @@
             "juris"
           ],
           "kind": "review"
+        },
+        {
+          "text": "窓口で管轄外とされたときは、刑事手続法第15-3条の受付・転送の扱いを確認する。警察司法部門が受領し、必要に応じ管轄の部門に送る。",
+          "refs": [
+            "intake-law"
+          ],
+          "kind": "channel-unavailable"
+        }
+      ],
+      "evidence": [
+        {
+          "text": "対面や書面での申告には、被害に関係する画面の記録、写真、請求書などの資料を用意する。書面には経緯、日時、場所などを記載する。",
+          "refs": [
+            "prep"
+          ],
+          "kind": "recommended"
         }
       ]
     },
@@ -4947,7 +5483,46 @@
       "m49": "516",
       "name": "Namibia",
       "region": "Africa",
-      "iso2": "NA"
+      "iso2": "NA",
+      "status": "official-route",
+      "sources": {
+        "stations": {
+          "title": "Namibian Police Force — Station Customer Service Charter",
+          "url": "https://www.nampol.gov.na/documents/3978963/6322183/STATIONS%2BCSC.pdf/0bee6ea9-477f-1239-c69c-908d6a38f679",
+          "checkedOn": "2026-11-19"
+        },
+        "cid": {
+          "title": "Namibian Police Force — Criminal Investigations Directorate",
+          "url": "https://nampol.gov.na/documents/3978963/6859231/Criminal%2BInvestigations%2BDirectorate.pdf",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ナミビア警察が刑事申告を受け付け、刑事捜査部門が事件を取り扱う。",
+          "refs": [
+            "stations",
+            "cid"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "地域の警察署に届け出る。警察の案内に地域別の連絡先が掲載されている。",
+          "refs": [
+            "stations"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "署の対応に関する苦情や照会は担当署長に申し出る。",
+          "refs": [
+            "stations"
+          ],
+          "kind": "service-complaint"
+        }
+      ]
     },
     "NCL": {
       "m49": "540",
@@ -4979,6 +5554,16 @@
         "review": {
           "title": "France Ministry of Justice — Le procureur doit-il engager des poursuites ?",
           "url": "https://www.justice.fr/fiche/procureur-engager-poursuites-suite-plainte",
+          "checkedOn": "2026-11-19"
+        },
+        "intake-law": {
+          "title": "Légifrance — Code de procédure pénale, Article 15-3",
+          "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054725475/2026-10-22",
+          "checkedOn": "2026-11-19"
+        },
+        "prep": {
+          "title": "Service Public — Porter plainte",
+          "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F1435",
           "checkedOn": "2026-11-19"
         }
       },
@@ -5019,6 +5604,24 @@
             "law"
           ],
           "kind": "review"
+        },
+        {
+          "text": "窓口で管轄外とされたときは、刑事手続法第15-3条の受付・転送の扱いを確認する。警察司法部門が受領し、必要に応じ管轄の部門に送る。",
+          "refs": [
+            "intake-law",
+            "law"
+          ],
+          "kind": "channel-unavailable"
+        }
+      ],
+      "evidence": [
+        {
+          "text": "対面や書面での申告には、被害に関係する画面の記録、写真、請求書などの資料を用意する。書面には経緯、日時、場所などを記載する。",
+          "refs": [
+            "prep",
+            "law"
+          ],
+          "kind": "recommended"
         }
       ]
     },
@@ -5712,7 +6315,68 @@
       "m49": "598",
       "name": "Papua New Guinea",
       "region": "Oceania",
-      "iso2": "PG"
+      "iso2": "PG",
+      "status": "official-route",
+      "sources": {
+        "report": {
+          "title": "Royal Papua New Guinea Constabulary — How to report a crime or incident",
+          "url": "https://rpngc.gov.pg/advice-services/how-to-report-a-crime-or-incident/",
+          "checkedOn": "2026-11-19"
+        },
+        "cyber": {
+          "title": "Royal Papua New Guinea Constabulary — Cybercrime reporting resources",
+          "url": "https://rpngc.gov.pg/advice-services/cybercrime-awareness/3598-2/",
+          "checkedOn": "2026-11-19"
+        },
+        "internal": {
+          "title": "Royal Papua New Guinea Constabulary — Internal Affairs",
+          "url": "https://rpngc.gov.pg/advice-services/internal-affairs/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "パプアニューギニア警察がサイバー犯罪を扱う。首都地区の申告者には7 Mile警察署の専門部門も案内されている。",
+          "refs": [
+            "cyber"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "サイバー犯罪は最寄りの警察署で申告する。首都地区では案内対象の専門窓口も利用できる。",
+          "refs": [
+            "report",
+            "cyber"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "写真・映像などの資料があれば持参し、目撃者がいれば伝える。",
+          "refs": [
+            "report"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "警察官は犯罪報告を記録し、事件の内容を確認する。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "警察官の不正行為に関する申立ては内部監察部門に連絡する。",
+          "refs": [
+            "internal"
+          ],
+          "kind": "service-complaint"
+        }
+      ]
     },
     "POL": {
       "m49": "616",
@@ -5968,6 +6632,16 @@
           "title": "France Ministry of Justice — Le procureur doit-il engager des poursuites ?",
           "url": "https://www.justice.fr/fiche/procureur-engager-poursuites-suite-plainte",
           "checkedOn": "2026-11-19"
+        },
+        "intake-law": {
+          "title": "Légifrance — Code de procédure pénale, Article 15-3",
+          "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054725475/2026-10-22",
+          "checkedOn": "2026-11-19"
+        },
+        "prep": {
+          "title": "Service Public — Porter plainte",
+          "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F1435",
+          "checkedOn": "2026-11-19"
         }
       },
       "jurisdiction": [
@@ -6007,6 +6681,24 @@
             "law"
           ],
           "kind": "review"
+        },
+        {
+          "text": "窓口で管轄外とされたときは、刑事手続法第15-3条の受付・転送の扱いを確認する。警察司法部門が受領し、必要に応じ管轄の部門に送る。",
+          "refs": [
+            "intake-law",
+            "law"
+          ],
+          "kind": "channel-unavailable"
+        }
+      ],
+      "evidence": [
+        {
+          "text": "対面や書面での申告には、被害に関係する画面の記録、写真、請求書などの資料を用意する。書面には経緯、日時、場所などを記載する。",
+          "refs": [
+            "prep",
+            "law"
+          ],
+          "kind": "recommended"
         }
       ]
     },
@@ -6072,6 +6764,16 @@
           "title": "France Ministry of Justice — Le procureur doit-il engager des poursuites ?",
           "url": "https://www.justice.fr/fiche/procureur-engager-poursuites-suite-plainte",
           "checkedOn": "2026-11-19"
+        },
+        "intake-law": {
+          "title": "Légifrance — Code de procédure pénale, Article 15-3",
+          "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054725475/2026-10-22",
+          "checkedOn": "2026-11-19"
+        },
+        "prep": {
+          "title": "Service Public — Porter plainte",
+          "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F1435",
+          "checkedOn": "2026-11-19"
         }
       },
       "jurisdiction": [
@@ -6108,6 +6810,22 @@
             "juris"
           ],
           "kind": "review"
+        },
+        {
+          "text": "窓口で管轄外とされたときは、刑事手続法第15-3条の受付・転送の扱いを確認する。警察司法部門が受領し、必要に応じ管轄の部門に送る。",
+          "refs": [
+            "intake-law"
+          ],
+          "kind": "channel-unavailable"
+        }
+      ],
+      "evidence": [
+        {
+          "text": "対面や書面での申告には、被害に関係する画面の記録、写真、請求書などの資料を用意する。書面には経緯、日時、場所などを記載する。",
+          "refs": [
+            "prep"
+          ],
+          "kind": "recommended"
         }
       ]
     },
@@ -6504,7 +7222,46 @@
       "m49": "090",
       "name": "Solomon Islands",
       "region": "Oceania",
-      "iso2": "SB"
+      "iso2": "SB",
+      "status": "official-route",
+      "sources": {
+        "report": {
+          "title": "Royal Solomon Islands Police Force — Report crimes",
+          "url": "https://www.rsipf.gov.sb/?q=node%2F3163",
+          "checkedOn": "2026-11-19"
+        },
+        "case": {
+          "title": "Royal Solomon Islands Police Force — Police investigate an alleged scholarship scam",
+          "url": "https://www.rsipf.gov.sb/?q=node%2F1162",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "王立ソロモン諸島警察が犯罪申告と詐欺捜査を担当する。",
+          "refs": [
+            "report",
+            "case"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "最寄りの警察署に出向くか、連絡して申告する。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "cases": [
+        {
+          "text": "奨学金を名目に前払いを求められた学生らがホニアラ中央警察署に届け出て、警察が詐欺の疑いで捜査したと公表した。",
+          "refs": [
+            "case"
+          ],
+          "stage": "investigation-confirmed"
+        }
+      ]
     },
     "SLE": {
       "m49": "694",
@@ -6516,7 +7273,52 @@
       "m49": "222",
       "name": "El Salvador",
       "region": "Americas",
-      "iso2": "SV"
+      "iso2": "SV",
+      "status": "official-route",
+      "sources": {
+        "fgr": {
+          "title": "El Salvador Fiscalía General de la República — Servicios",
+          "url": "https://www.fiscalia.gob.sv/servicios/",
+          "checkedOn": "2026-11-19"
+        },
+        "fraud": {
+          "title": "El Salvador Fiscalía General de la República — Capturan a sujetos acusados de alquilar apartamentos que no existían",
+          "url": "https://www.fiscalia.gob.sv/capturan-a-sujetos-acusados-de-alquilar-apartamentos-que-no-existian/",
+          "checkedOn": "2026-11-19"
+        },
+        "rights": {
+          "title": "El Salvador Fiscalía General de la República — Conoce tus Derechos",
+          "url": "https://www.fiscalia.gob.sv/conoce-tus-derechos/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "エルサルバドルではサイバー詐欺の申告先として検察と国家文民警察が案内されている。",
+          "refs": [
+            "fgr",
+            "fraud"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "検察の各事務所の受付窓口または警察で申告する。",
+          "refs": [
+            "fgr",
+            "fraud"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "被害者は警察や検察の手続と結果に関する情報を求められる。",
+          "refs": [
+            "rights"
+          ],
+          "kind": "status-check"
+        }
+      ]
     },
     "SMR": {
       "m49": "674",
@@ -6556,6 +7358,16 @@
           "title": "France Ministry of Justice — Le procureur doit-il engager des poursuites ?",
           "url": "https://www.justice.fr/fiche/procureur-engager-poursuites-suite-plainte",
           "checkedOn": "2026-11-19"
+        },
+        "intake-law": {
+          "title": "Légifrance — Code de procédure pénale, Article 15-3",
+          "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054725475/2026-10-22",
+          "checkedOn": "2026-11-19"
+        },
+        "prep": {
+          "title": "Service Public — Porter plainte",
+          "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F1435",
+          "checkedOn": "2026-11-19"
         }
       },
       "jurisdiction": [
@@ -6592,6 +7404,22 @@
             "juris"
           ],
           "kind": "review"
+        },
+        {
+          "text": "窓口で管轄外とされたときは、刑事手続法第15-3条の受付・転送の扱いを確認する。警察司法部門が受領し、必要に応じ管轄の部門に送る。",
+          "refs": [
+            "intake-law"
+          ],
+          "kind": "channel-unavailable"
+        }
+      ],
+      "evidence": [
+        {
+          "text": "対面や書面での申告には、被害に関係する画面の記録、写真、請求書などの資料を用意する。書面には経緯、日時、場所などを記載する。",
+          "refs": [
+            "prep"
+          ],
+          "kind": "recommended"
         }
       ]
     },
@@ -6967,7 +7795,60 @@
       "m49": "800",
       "name": "Uganda",
       "region": "Africa",
-      "iso2": "UG"
+      "iso2": "UG",
+      "status": "official-route",
+      "sources": {
+        "faq": {
+          "title": "Uganda Police Force — FAQ",
+          "url": "https://upf.go.ug/faq/",
+          "checkedOn": "2026-11-19"
+        },
+        "fraud": {
+          "title": "Uganda Police Force — Obtaining money by false pretence and theft are reportable",
+          "url": "https://upf.go.ug/obtaining-money-by-false-pretence-theft-and-other-money-related-offences-are-still-reportable-cases-to-police/",
+          "checkedOn": "2026-11-19"
+        },
+        "case": {
+          "title": "Uganda Police Force — Police arrest suspect in online fraud targeting foreign tourists",
+          "url": "https://upf.go.ug/police-arrest-suspect-in-online-fraud-targeting-foreign-tourists/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ウガンダ警察が詐欺や窃盗の申告を受け付ける。",
+          "refs": [
+            "faq",
+            "fraud"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "地域の警察署へ電話または対面で申告する。",
+          "refs": [
+            "faq"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "ウェブサイトで申告できない場合は地域の警察署に直接連絡する。",
+          "refs": [
+            "faq"
+          ],
+          "kind": "channel-unavailable"
+        }
+      ],
+      "cases": [
+        {
+          "text": "オンラインで前払いした観光客に車両等が提供されず、観光局への届出や他の被害申告を受けて観光警察が捜査を開始したと公表した。",
+          "refs": [
+            "case"
+          ],
+          "stage": "investigation-confirmed"
+        }
+      ]
     },
     "UKR": {
       "m49": "804",
@@ -7273,13 +8154,110 @@
       "m49": "704",
       "name": "Viet Nam",
       "region": "Asia",
-      "iso2": "VN"
+      "iso2": "VN",
+      "status": "official-route",
+      "sources": {
+        "report": {
+          "title": "Viet Nam Government — Ministry of Public Security crime reporting guidance",
+          "url": "https://xaydungchinhsach.chinhphu.vn/bo-cong-an-huong-dan-to-giac-bao-tin-ve-toi-pham-kien-nghi-khoi-to-tu-ngay-01-3-2025-119250228055533128.htm",
+          "checkedOn": "2026-11-19"
+        },
+        "cpp": {
+          "title": "Viet Nam Government — Criminal Procedure Code, consolidated text 104/VBHN-VPQH",
+          "url": "https://datafiles.chinhphu.vn/cpp/files/vbpq/2025/9/104-vbhn-vpqh.pdf",
+          "checkedOn": "2026-11-19"
+        },
+        "case": {
+          "title": "Viet Nam Ministry of Public Security — Online kidnapping scam cases",
+          "url": "https://www.mps.gov.vn/bai-viet/canh-bao-thu-doan-lua-dao-bat-coc-online-nham-vao-nguoi-tre-1793524412",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ベトナムでは現地の公安機関が犯罪申告を受け付け、管轄する捜査機関に引き継ぐ場合がある。",
+          "refs": [
+            "report",
+            "cpp"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "公安省の案内から地域の公安窓口を確認して届け出る。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "刑事事件の立件をしない決定を通知された場合、第158条に基づく不服申立ての手順を確認する。",
+          "refs": [
+            "cpp"
+          ],
+          "kind": "review"
+        }
+      ],
+      "cases": [
+        {
+          "text": "未成年者を標的とするオンライン詐欺について、公安が報告を受けて対応し、被害者の所在を確認したと公安省が公表した。",
+          "refs": [
+            "case"
+          ],
+          "stage": "action-confirmed"
+        }
+      ]
     },
     "VUT": {
       "m49": "548",
       "name": "Vanuatu",
       "region": "Oceania",
-      "iso2": "VU"
+      "iso2": "VU",
+      "status": "official-route",
+      "sources": {
+        "fraud": {
+          "title": "Vanuatu Police Force — Fraud Unit",
+          "url": "https://police.gov.vu/what-we-do/criminal-investigation/fraud/59-fraud",
+          "checkedOn": "2026-11-19"
+        },
+        "contact": {
+          "title": "Vanuatu Police Force — Contact us",
+          "url": "https://police.gov.vu/contact-us",
+          "checkedOn": "2026-11-19"
+        },
+        "complaint": {
+          "title": "Vanuatu Police Force — Complaining about police behaviour",
+          "url": "https://police.gov.vu/contact-us/complaint",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "バヌアツ警察の詐欺部門が詐欺事案を担当する。",
+          "refs": [
+            "fraud"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "地域の警察窓口に電話し、詐欺に対応する担当部門への取次ぎを求められる。",
+          "refs": [
+            "fraud",
+            "contact"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "警察官の対応や不正行為については専用の苦情窓口を利用できる。",
+          "refs": [
+            "complaint"
+          ],
+          "kind": "service-complaint"
+        }
+      ]
     },
     "WLF": {
       "m49": "876",
@@ -7311,6 +8289,16 @@
         "review": {
           "title": "France Ministry of Justice — Le procureur doit-il engager des poursuites ?",
           "url": "https://www.justice.fr/fiche/procureur-engager-poursuites-suite-plainte",
+          "checkedOn": "2026-11-19"
+        },
+        "intake-law": {
+          "title": "Légifrance — Code de procédure pénale, Article 15-3",
+          "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054725475/2026-10-22",
+          "checkedOn": "2026-11-19"
+        },
+        "prep": {
+          "title": "Service Public — Porter plainte",
+          "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F1435",
           "checkedOn": "2026-11-19"
         }
       },
@@ -7351,6 +8339,24 @@
             "law"
           ],
           "kind": "review"
+        },
+        {
+          "text": "窓口で管轄外とされたときは、刑事手続法第15-3条の受付・転送の扱いを確認する。警察司法部門が受領し、必要に応じ管轄の部門に送る。",
+          "refs": [
+            "intake-law",
+            "law"
+          ],
+          "kind": "channel-unavailable"
+        }
+      ],
+      "evidence": [
+        {
+          "text": "対面や書面での申告には、被害に関係する画面の記録、写真、請求書などの資料を用意する。書面には経緯、日時、場所などを記載する。",
+          "refs": [
+            "prep",
+            "law"
+          ],
+          "kind": "recommended"
         }
       ]
     },
@@ -7432,13 +8438,78 @@
       "m49": "894",
       "name": "Zambia",
       "region": "Africa",
-      "iso2": "ZM"
+      "iso2": "ZM",
+      "status": "official-route",
+      "sources": {
+        "police": {
+          "title": "Zambia Police Service — Fraud Investigations and INTERPOL Section",
+          "url": "https://zambiapolice.gov.zm/the-fraud-investigations-and-interpol-section/",
+          "checkedOn": "2026-11-19"
+        },
+        "stations": {
+          "title": "Zambia Police Service — Police stations and posts",
+          "url": "https://zambiapolice.gov.zm/complaint-submission-form/",
+          "checkedOn": "2026-11-19"
+        },
+        "zicta": {
+          "title": "ZICTA — Report cybercrimes and complaints",
+          "url": "https://www.zicta.zm/apply",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ザンビア警察の詐欺捜査部門が専門捜査を担当する。",
+          "refs": [
+            "police"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "地域の警察署・派出所は警察の一覧で確認できる。通信規制当局ZICTAにはサイバー事案の報告窓口もある。",
+          "refs": [
+            "stations",
+            "zicta"
+          ]
+        }
+      ]
     },
     "ZWE": {
       "m49": "716",
       "name": "Zimbabwe",
       "region": "Africa",
-      "iso2": "ZW"
+      "iso2": "ZW",
+      "status": "official-route",
+      "sources": {
+        "charter": {
+          "title": "Zimbabwe Republic Police — Police Client Service Charter",
+          "url": "https://zrp.gov.zw/?p=7178",
+          "checkedOn": "2026-11-19"
+        },
+        "fraud": {
+          "title": "Zimbabwe Republic Police — Wanted person sought for fraud",
+          "url": "https://zrp.gov.zw/?p=8457",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ジンバブエ共和国警察が犯罪申告を受け付ける。SIMの不正再発行に関連する詐欺も警察が取り扱っている。",
+          "refs": [
+            "charter",
+            "fraud"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察のサービス憲章を参照し、地域の警察署に申告する。",
+          "refs": [
+            "charter"
+          ]
+        }
+      ]
     }
   }
 }
