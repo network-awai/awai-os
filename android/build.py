@@ -15,7 +15,8 @@ def manifest(pkg, activity, version, kind, online=False):
     home = ''
     if kind == 'home':
         perms = '<uses-permission android:name="network.awai.permission.READ_AGENDA"/><uses-permission android:name="android.permission.SET_WALLPAPER"/><uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/><uses-permission android:name="android.permission.INTERNET"/>'
-        extra = '<activity android:name="network.awai.home.AppearanceActivity" android:exported="false" android:label="Awai の外観"/>'
+        extra = ('<activity android:name="network.awai.home.AppearanceActivity" android:exported="false" android:label="Awai の外観"/>'
+                 '<activity android:name="network.awai.home.AccountBrokerActivity" android:exported="true" android:excludeFromRecents="true" android:label="Awai アカウント"/>')
         home = '<intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.HOME"/><category android:name="android.intent.category.DEFAULT"/></intent-filter>'
     if kind == 'store':
         perms = '<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>' + ('<uses-permission android:name="android.permission.INTERNET"/><uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>' if online else '')
@@ -33,7 +34,7 @@ def manifest(pkg, activity, version, kind, online=False):
       <queries><intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent>
       <intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.APP_BROWSER"/></intent>
       <intent><action android:name="android.intent.action.DIAL"/></intent><intent><action android:name="android.media.action.STILL_IMAGE_CAMERA"/></intent>
-      <package android:name="network.itonami.yotei"/><package android:name="network.itonami.torihiki"/><package android:name="network.awai.store"/><provider android:authorities="network.itonami.yotei.agenda"/></queries>
+      <package android:name="network.awai.drive"/><package android:name="network.awai.yataverse"/><package android:name="network.itonami.yotei"/><package android:name="network.itonami.torihiki"/><package android:name="network.awai.store"/><provider android:authorities="network.itonami.yotei.agenda"/></queries>
       <application android:theme="@style/{theme}" android:label="{title}" android:icon="{appicon}" android:allowBackup="false" android:usesCleartextTraffic="false" android:debuggable="true" android:enableOnBackInvokedCallback="true">
       <activity android:name="{activity}" android:exported="true" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize">
       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>{home}</activity>{extra}</application></manifest>'''
@@ -55,6 +56,8 @@ def main():
     shutil.copytree(ROOT/'android/client/assets',assets/'assets',dirs_exist_ok=True)
     shutil.copyfile(ROOT/'android/client/generated/domain.js',assets/'domain.js')
     shutil.copyfile(ROOT/'android/client/generated/identity.js',assets/'identity.js')
+    shutil.copyfile(ROOT/'android/client/account-broker.html',assets/'account-broker.html')
+    shutil.copyfile(ROOT/'android/client/generated/account-broker.js',assets/'account-broker.js')
     pins=json.loads((ROOT/'otehon/shell/vendor/PINS.json').read_text());runtime=ROOT/'otehon/shell/vendor/kotoba-client-runtime.js'
     if digest(runtime)!=pins['files']['kotoba-client-runtime.js']:raise SystemExit('canonical runtime pin drift')
     shutil.copyfile(runtime,assets/'runtime.js')
