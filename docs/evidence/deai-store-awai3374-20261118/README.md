@@ -33,7 +33,7 @@ Source, build and disposable-emulator evidence only. Nothing here proves a physi
 | Profile → ranking | Through WebView DevTools `Input.insertText` and clicks: interests 映画、散歩、珈琲 and candidates A (登山, 珈琲), B (散歩, 映画, 読書), C (ゲーム) gave B 50% > A 25% > C 0% with explanations. Only `http://tauri.localhost` files were loaded. | `app-ranking.jpg` |
 | No traffic, 30 s after input | No socket for uid 10150 in `/proc/net/{tcp,tcp6,udp,udp6}` and no entry in the BPF `mAppUidStatsMap` (nine other uids had one); `dumpsys netstats` lists it only as `set=1`. No FATAL or ANR from the app process in logcat. | — |
 
-The first attempt (11:37–11:44) reached the integrity dialog, then the host load rose to 92–112 and adb stopped responding, so that emulator was stopped. The table above is from the second run (12:00–12:04, load average about 28) on the same AVD started again with `-wipe-data`; the list, detail, disclosure and integrity screenshots are from the first run and matched in the second. The emulator was stopped after the checks.
+The first attempt (11:37–11:44) reached the integrity dialog, then the host load rose to 92–112 and adb stopped responding, so that emulator was stopped. The table above is from the second run (12:00–12:04, load average about 28) on the same AVD started again with `-wipe-data`; the list, detail, disclosure and integrity screenshots are from the first run; the second run went through the same buttons to the installer without new screenshots. The emulator was stopped after the checks.
 
 ## Known gaps
 
