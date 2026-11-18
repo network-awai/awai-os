@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { cp, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { distributeUi } from '../../packages/awai-ui/distribute.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const [app, browserPath, kotobaPath, outputPath] = process.argv.slice(2);
@@ -54,10 +55,23 @@ const dist = resolve(output, 'dist');
 const tauri = resolve(output, 'src-tauri');
 await mkdir(dist);
 await mkdir(resolve(tauri, 'src'), { recursive: true });
-for (const file of ['index.html', 'style.css', 'app.js', 'bundle.js', 'worker.js',
+for (const file of ['style.css', 'app.js', 'bundle.js', 'worker.js',
   'transactional-storage.js', 'managed-storage.js', 'client-runtime.json']) {
   await cp(resolve(browser, file), resolve(dist, file));
 }
+const uiCss = await distributeUi(dist);
+await cp(resolve(here, 'workspace.css'), resolve(dist, 'workspace.css'));
+const sourceHtml = await readFile(resolve(browser, 'index.html'), 'utf8');
+let html = sourceHtml
+  .replace('</head>', `  <link rel="stylesheet" href="./${uiCss}">\n  <link rel="stylesheet" href="./workspace.css">\n</head>`)
+  .replace('<body>', `<body class="awai-ui office-workspace" data-editor="${app}">\n  <header class="office-heading"><h1>${title}</h1>`)
+  .replace(/(<p id="status"[^>]*>[^<]*<\/p>)/, '$1</header>');
+if (app === 'hyokeisan') {
+  html = html.replace('<section aria-labelledby="legacy-heading">', '<details class="legacy-options">\n    <summary id="legacy-heading">旧表計算データの読み込み</summary>')
+    .replace('    <h2 id="legacy-heading">旧表計算データの読み込み</h2>\n', '')
+    .replace(/(<button id="legacy-pull-preview"[^>]*>[^<]*<\/button>\s*)<\/section>/, '$1</details>');
+}
+await writeFile(resolve(dist, 'index.html'), html);
 await writeFile(resolve(dist, 'kotoba-client-runtime.js'), runtime);
 const template = resolve(here, '../horei');
 for (const file of ['package.json', 'package-lock.json']) {

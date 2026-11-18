@@ -1,0 +1,115 @@
+.office-workspace {
+  --workspace-gutter: clamp(1rem, 3vw, 2rem);
+  min-block-size: 100vh;
+  padding: max(1rem, env(safe-area-inset-top)) var(--workspace-gutter)
+    max(2rem, env(safe-area-inset-bottom));
+}
+
+.office-workspace :is(.office-heading, #app, .legacy-options, #draft-notice, #draft-recovery, #storage-conflict) {
+  max-inline-size: 70rem;
+  margin-inline: auto;
+}
+
+.office-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: .35rem 1rem;
+  padding-block: .65rem 1rem;
+}
+
+.office-workspace .office-heading h1 { font-size: clamp(1.55rem, 3vw, 2rem); font-weight: 700; }
+.office-heading #status { font-size: .875rem; padding: 0; background: none; color: var(--awai-muted); }
+.office-workspace :is(.moji, .sheet, .deck) { max-inline-size: none; padding: 0; min-inline-size: 0; }
+.office-workspace :is(.bar, .tools) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+  background: none;
+  padding: 0;
+  margin-block-end: .65rem;
+}
+
+.office-workspace button {
+  min-block-size: 44px;
+  padding: .55rem .9rem;
+  border: 1px solid transparent;
+  border-radius: 99rem;
+  background: var(--awai-container);
+  color: var(--awai-primary);
+  font-size: .875rem;
+  font-weight: 500;
+}
+
+.office-workspace :is(button[data-k="add-p"], .deck button[data-k="mode"], #backup-confirm) {
+  background: var(--awai-primary);
+  color: var(--awai-onPrimary);
+}
+
+.office-workspace button:is(.kind, .move, .remove, [data-k^="add-h"], [data-k="backup-restore"]) {
+  background: transparent;
+  color: var(--awai-muted);
+}
+
+.office-workspace .kind.on { background: var(--awai-container); color: var(--awai-primary); }
+.office-workspace button:disabled { border-color: var(--awai-border); background: var(--awai-surface); color: var(--awai-muted); cursor: default; }
+.office-workspace :is(input, textarea) { min-inline-size: 0; }
+.office-workspace input[type=file] { display: block; white-space: normal; margin-block: .3rem .6rem; }
+
+.office-workspace :is(.page, .edit, .present, .legacy-options, dialog) {
+  margin-inline: 0;
+  border: 1px solid var(--awai-border);
+  border-radius: 1.25rem;
+  background: var(--awai-surface);
+  color: var(--awai-text);
+  padding: clamp(1rem, 4vw, 2.5rem);
+}
+
+.office-workspace :is(.title, .deck .bar input) { min-inline-size: min(14rem, 100%); flex: 1; font-size: 1.3rem; font-weight: 700; }
+.office-workspace .block { border-block-end: 1px solid var(--awai-border); padding: .5rem 0 1rem; }
+.office-workspace .block:last-child { border-block-end: 0; }
+.office-workspace .block textarea { flex: 1 0 100%; min-block-size: 5rem; }
+.office-workspace .block :is(.kind, .move, .remove) { padding-inline: .65rem; }
+.office-workspace .block .index { align-self: center; color: var(--awai-muted); font-size: .75rem; }
+.office-workspace .stats { padding: .5rem 0; color: var(--awai-muted); font-size: .875rem; }
+
+.office-workspace .grid {
+  grid-template-columns: repeat(4, minmax(7rem, 1fr));
+  gap: .35rem;
+  border-radius: 1rem;
+  padding: .5rem;
+  background: var(--awai-container);
+}
+.office-workspace .cell { min-inline-size: 0; background: var(--awai-surface); border-radius: .65rem; }
+.office-workspace .cell:focus-within { box-shadow: inset 0 0 0 2px var(--awai-primary); }
+.office-workspace .cell .label { color: var(--awai-muted); font-size: .75rem; }
+.office-workspace .cell .value { color: var(--awai-muted); font-size: .875rem; }
+.office-workspace .deck .edit {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .75rem;
+}
+.office-workspace .deck .edit > :not([data-k^="shape-"]) { grid-column: 1 / -1; }
+.office-workspace .deck button[data-k^="shape-"] { min-inline-size: 0; padding-inline: .35rem; }
+.office-workspace .deck button:is([data-k="remove"], [data-k="up"], [data-k="down"]) {
+  background: transparent;
+  color: var(--awai-muted);
+}
+.office-workspace .edit > span { font-size: .875rem; color: var(--awai-muted); font-weight: 500; }
+.office-workspace .edit [data-k="body"] { min-block-size: 10rem; }
+
+.office-workspace .legacy-options { margin: 1rem auto 0; padding: 1rem; }
+.office-workspace .legacy-options summary { min-block-size: 44px; align-content: center; cursor: pointer; color: var(--awai-primary); }
+.office-workspace .legacy-options :is(p, label) { display: block; margin-block: .55rem; }
+.office-workspace dialog { margin: auto; overflow: auto; max-inline-size: calc(100% - 1.5rem); }
+.office-workspace #backup-preview { border-color: var(--awai-border); border-radius: .8rem; padding: .65rem; }
+
+@media (max-width: 42rem) {
+  .office-workspace .grid { grid-template-columns: repeat(4, minmax(4.4rem, 1fr)); }
+  .office-workspace .cell textarea { padding-inline: .45rem; }
+  .office-workspace .block textarea { min-block-size: 6rem; }
+}
+
+/* The Android app header supplies the same name on sheet and workbook views. */
+.office-workspace #app .sheet > h1 { display: none; }

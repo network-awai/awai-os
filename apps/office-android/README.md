@@ -4,6 +4,7 @@ Build each browser candidate from its owning repository using its pinned Amu
 compiler and browser build instructions. Then run from the Awai OS root:
 
 ```sh
+(cd packages/awai-ui && npm ci && npm run build)
 node apps/office-android/prepare.mjs bunsho BROWSER_BUILD KOTOBA_REPO .agent-output/bunsho
 cd .agent-output/bunsho
 npm ci
