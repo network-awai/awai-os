@@ -1,0 +1,3 @@
+   Compiling soudan v0.1.0 (/Users/junkawasaki/github/wt/claude/awai-3236-soudan-app/apps/soudan/src-tauri)
+   Compiling tauri-macros v3.0.0-alpha.4
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4m 48s

@@ -1,0 +1,4 @@
+captured 2026-11-18T01:13:20Z uid=10148
+tcp/tcp6/udp/udp6 rows owned by uid 10148:
+(end)
+no INTERNET permission requested or granted
