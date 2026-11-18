@@ -1,17 +1,26 @@
 import { clientRuntimeProblems, createClientConsentHost, createClientOperationBroker, clientRuntimeConnectSrc } from './runtime.js';
 
+// Pins: one catalog envelope plus one APK pin per app id. Each pin is an exact immutable URL under
+// this repository's pinned revision; per-app byte budgets are enforced again by the host Catalog.
+const APP_ID=/^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*){1,5}$/;
+function validPin(entry,revision,ceiling){
+  const u=new URL(entry.url);
+  if(u.origin!=='https://raw.githubusercontent.com'||u.search||u.hash||u.username||u.password||!u.pathname.startsWith(`/network-awai/awai-os/${revision}/store/distribution/`)||!entry.sha256?.match(/^[0-9a-f]{64}$/)||!Number.isSafeInteger(entry.maxBytes)||entry.maxBytes<1||entry.maxBytes>ceiling)throw Error('配信先の固定情報を確認できません。');
+}
 export function validatePins(pins) {
-  if (!pins || !/^[0-9a-f]{40}$/.test(pins.revision) || !pins.catalog || !pins.apk) throw Error('配信情報が未設定です。');
-  for (const entry of [pins.catalog,pins.apk]) {
-    const u=new URL(entry.url);
-    if(u.origin!=='https://raw.githubusercontent.com'||u.search||u.hash||u.username||u.password||!u.pathname.startsWith(`/network-awai/awai-os/${pins.revision}/store/distribution/`)||!entry.sha256?.match(/^[0-9a-f]{64}$/)||!Number.isSafeInteger(entry.maxBytes)||entry.maxBytes<1||entry.maxBytes>20*1024*1024)throw Error('配信先の固定情報を確認できません。');
-  }
+  if (!pins || !/^[0-9a-f]{40}$/.test(pins.revision) || !pins.catalog || !pins.apks || typeof pins.apks!=='object' || Array.isArray(pins.apks)) throw Error('配信情報が未設定です。');
+  const ids=Object.keys(pins.apks);
+  if(ids.length<1||ids.length>16||!ids.every(id=>APP_ID.test(id)))throw Error('配信先の固定情報を確認できません。');
+  validPin(pins.catalog,pins.revision,131072);
+  for(const id of ids)validPin(pins.apks[id],pins.revision,64*1024*1024);
   return pins;
 }
+const pinFor=(pins,kind)=>kind==='catalog'?pins.catalog:Object.hasOwn(pins.apks,kind)?pins.apks[kind]:null;
+const operationFor=kind=>kind==='catalog'?'download-catalog':`download-apk-${kind}`;
 export function onlineRuntime(base,pins) {
   validatePins(pins);
-  return {...base,operations:[['catalog',pins.catalog],['apk',pins.apk]].map(([kind,pin])=>({
-    capability:'store-download',service:'itonami-distribution',operation:`download-${kind}`,
+  return {...base,operations:[['catalog',pins.catalog],...Object.entries(pins.apks)].map(([kind,pin])=>({
+    capability:'store-download',service:'itonami-distribution',operation:operationFor(kind),
     consent:'each-operation','data-categories':['request-ip','app-version'],
     endpoint:{origin:new URL(pin.url).origin,routes:[{method:'GET',path:new URL(pin.url).pathname,'query-params':[]}]},
     artifact:{revision:pins.revision,sha256:pin.sha256,'max-bytes':pin.maxBytes},
@@ -24,8 +33,8 @@ export function createOnline(base,pins) {
     hostSupportedOperations:runtime.operations.map(o=>[o.capability,o.service,o.operation]),consentHost:createClientConsentHost()});
   // Eligibility is a ceiling. Every invoke still requires the canonical trusted user choice.
   return {runtime,connectSrc:clientRuntimeConnectSrc(runtime,['store-download'],[],location.origin),async download(kind){
-    const pin=pins[kind];if(!pin)throw Error('未宣言の取得です。');
-    const result=await broker.invoke({capability:'store-download',service:'itonami-distribution',operation:`download-${kind}`},{input:pin.url,init:{method:'GET'}});
+    const pin=pinFor(pins,kind);if(!pin)throw Error('未宣言の取得です。');
+    const result=await broker.invoke({capability:'store-download',service:'itonami-distribution',operation:operationFor(kind)},{input:pin.url,init:{method:'GET'}});
     return new Uint8Array(await result.blob.arrayBuffer());
   }};
 }

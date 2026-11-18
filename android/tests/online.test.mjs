@@ -10,12 +10,13 @@ const {clientRuntimeProblems,clientEndpointAllowsRequest}=await import(runtime.h
 const ctx=vm.createContext({window:{}});vm.runInContext(readFileSync(new URL('../client/generated/domain.js',import.meta.url),'utf8'),ctx);
 const domain=ctx.window.ItonamiDomain, rev='a'.repeat(40);
 const base=`https://raw.githubusercontent.com/network-awai/awai-os/${rev}/store/distribution/dev/`;
-const pins={revision:rev,catalog:{url:base+'catalog-envelope.json',sha256:'b'.repeat(64),maxBytes:131072},apk:{url:base+'yotei.apk',sha256:'c'.repeat(64),maxBytes:2097152}};
+const pins={revision:rev,catalog:{url:base+'catalog-envelope.json',sha256:'b'.repeat(64),maxBytes:131072},apks:{'network.itonami.yotei':{url:base+'yotei.apk',sha256:'c'.repeat(64),maxBytes:2097152}}};
+const yotei=pins.apks['network.itonami.yotei'];
 test('online operations pin exact immutable HTTPS paths, digests and no query',()=>{
  const r=onlineRuntime(domain.descriptor,pins);assert.deepEqual(clientRuntimeProblems(r,['store-download'],'http://127.0.0.1:8791'),[]);
  const e=r.operations[0].endpoint;assert(clientEndpointAllowsRequest(e,pins.catalog.url));
  for(const u of [pins.catalog.url+'?token=x',base+'other.json',pins.catalog.url.replace(rev,'main')])assert(!clientEndpointAllowsRequest(e,u));
- for(const u of ['http://raw.githubusercontent.com/x','https://evil.test/a',pins.apk.url+'?x=1',pins.apk.url.replace(rev,'main')])assert.throws(()=>validatePins({...pins,apk:{...pins.apk,url:u}}));
+ for(const u of ['http://raw.githubusercontent.com/x','https://evil.test/a',yotei.url+'?x=1',yotei.url.replace(rev,'main')])assert.throws(()=>validatePins({...pins,apks:{'network.itonami.yotei':{...yotei,url:u}}}));
 });
 test('catalog signature, expiry and highest accepted revision fail closed',async()=>{
  const {privateKey,publicKey}=generateKeyPairSync('rsa',{modulusLength:2048});const key=publicKey.export({type:'spki',format:'der'}).toString('base64');
@@ -38,4 +39,21 @@ test('two-app catalog authenticates and tampering with either entry fails closed
  await assert.rejects(authenticateCatalog({...envelope,raw:cut},key,domain));
  const swapped=two.replace('packages/itonami.apk','packages/evil.apk');
  await assert.rejects(authenticateCatalog({...envelope,raw:swapped},key,domain));
+});
+test('one pinned download operation per app; ids, budgets and the legacy single pin are checked',()=>{
+ const bot={url:base+'torihiki-bot.apk',sha256:'d'.repeat(64),maxBytes:29506324};
+ const two={...pins,apks:{...pins.apks,'network.itonami.torihiki.bot':bot}};
+ const r=onlineRuntime(domain.descriptor,two);assert.deepEqual(clientRuntimeProblems(r,['store-download'],'http://127.0.0.1:8791'),[]);
+ assert.deepEqual(r.operations.map(o=>o.operation),['download-catalog','download-apk-network.itonami.yotei','download-apk-network.itonami.torihiki.bot']);
+ const ops=Object.fromEntries(r.operations.map(o=>[o.operation,o]));
+ assert(clientEndpointAllowsRequest(ops['download-apk-network.itonami.torihiki.bot'].endpoint,bot.url));
+ assert(!clientEndpointAllowsRequest(ops['download-apk-network.itonami.torihiki.bot'].endpoint,yotei.url));
+ assert.equal(ops['download-apk-network.itonami.torihiki.bot'].artifact['max-bytes'],29506324);
+ for(const bad of [{...pins,apks:{}},{...pins,apks:[yotei]},{...pins,apks:{'../x':yotei}},{...pins,apks:{'__proto__':yotei}},
+   {...pins,apks:{'network.itonami.torihiki.bot':{...bot,maxBytes:64*1024*1024+1}}},{...pins,catalog:{...pins.catalog,maxBytes:131073}},
+   {revision:rev,catalog:pins.catalog,apk:yotei}])assert.throws(()=>validatePins(bad),JSON.stringify(Object.keys(bad.apks||{})));
+});
+test('the checked-in development pins use the per-app shape',()=>{
+ const dev=JSON.parse(readFileSync(new URL('../online-pins.dev.json',import.meta.url),'utf8'));
+ validatePins(dev);assert(Object.keys(dev.apks).length>=1);
 });
