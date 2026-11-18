@@ -49,7 +49,7 @@ records cited.
 | levi | Apple M4, 10 cores (2026-11-12 record) | 16 GiB | 156 GiB (2026-11-12) | — | **Did not answer on 2026-11-18**; values from the C1 preflight record |
 | Owner workstation | Apple M1 Max, 10 CPU / 32 GPU cores | 32 GiB unified | — | Not a serving node (see section 5) | Local probe |
 | AOSP emulator | arm64, 4 vCPU, CPU only | 3 GiB (AVD config) | 6 GiB data partition | Android Murakumo, llama.cpp CPU | AVD config; AWAI-3011 measured 745,823 KiB PSS with the model loaded |
-| moto g05 | Arm SoC, CPU path | **unknown** (not recorded) | unknown | Android Murakumo | `android/device-qualification-20261116.md`; RAM not recorded |
+| moto g05 | MediaTek MT6768, CPU path | 7.5 GiB (7,911,268 kB, `/proc/meminfo`) | unknown | Android Murakumo | `android/device-qualification-20261116.md`; RAM read read-only over adb on 2026-11-18 (AWAI-3391) |
 | 6600H PC | AMD Ryzen 5 6600H, Radeon iGPU | **unknown** | unknown | Android (held by another task) | No RAM record; the device is reserved by AWAI-2992 |
 
 ## 3. How fit is estimated
@@ -91,30 +91,52 @@ memory-maps the weights and touches only part of the file.
 - **tight:** the estimate is at most the whole budget.
 - **does not fit:** anything above that.
 
-## 4. Recommendations (estimates, not yet measured)
+## 4. Recommendations (M4 rows measured on 2026-11-18; the others are estimates)
+
+### Measured on the M4 nodes (stage 6, AWAI-3391)
+
+benjamin and levi (M4, 16 GiB, macOS 26.7.2) ran the pinned llama-server with Metal: ctx 4096, one
+request at a time, temperature 0, 128 generated tokens. Each figure is the median of 3 runs after a
+warm-up. GPU utilization was 96–99 % in every run, and no run swapped. The two nodes agree within
+2 %, except the 4B load time (2.8 s and 7.2 s, a first-read cache effect). Evidence:
+[`docs/evidence/murakumo-measure-6-20261118/`](../evidence/murakumo-measure-6-20261118/summary.json).
+
+| Model | Load | Prompt, 1211 tokens | Generation | Memory (lower bound) | Estimate (§3) |
+| --- | --- | --- | --- | --- | --- |
+| Qwen3 0.6B Q8_0 (benjamin only) | 0.8 s | 2,700 t/s | 109–130 t/s | 1.2 GiB | 1.1 GiB |
+| Qwen3 4B Q4_K_M | 2.8–7.2 s | 397 t/s (3.0 s) | 34–37 t/s | 3.1–3.7 GiB | 3.2 GiB |
+| Qwen3 8B Q4_K_M | 5.0 s | 218 t/s (5.6 s) | 20.0–20.7 t/s | 5.2 GiB | 5.5 GiB |
+| Qwen3 14B Q4_K_M | 11.2 s | 110 t/s (11.0 s) | 11.4–11.7 t/s | 7.2–7.6 GiB | 9.3 GiB |
+
+- **Generation** is tokens per second while decoding; the range covers the 12-, 251- and 1211-token prompts.
+- **Memory** is the larger of the server's maximum resident set and the rise in system memory in use.
+  Both undercount memory-mapped weights, whose pages are file-backed. So the 14B figure is below its
+  9.0 GB file, and the estimate (file + KV + 0.3 GiB) stays the planning number.
+
+### What changes
 
 | Device | Default | Faster / lighter | Higher quality | Does not fit |
 | --- | --- | --- | --- | --- |
-| benjamin, jacob, levi (M4, 16 GiB) | **Qwen3 8B Q4_K_M**, ctx 4096 (5.5 GiB, comfortable) | Qwen3 4B Q4_K_M (3.2 GiB): short agent turns and tool calls | Qwen3 14B Q4_K_M (9.3 GiB, **tight**): only when the node is otherwise idle | Qwen3 30B-A3B |
-| Owner workstation (M1 Max, 32 GiB) | Qwen3 14B Q4_K_M (comfortable) | Qwen3 8B Q4_K_M | Qwen3 30B-A3B Q4_K_M (18.0 GiB, **tight**; MoE with 3B active, so decoding is fast for its quality) | — |
-| AOSP emulator (3 GiB) | **Qwen3 0.6B Q8_0**, ctx 2048 (tight on estimate; 0.71 GiB measured) | — | — | Qwen3 1.7B and above |
-| moto g05 (RAM unknown) | Qwen3 0.6B Q8_0, the only catalog model under 1.5 GiB | — | — | Qwen3 1.7B and above unless it has at least about 5.6 GiB RAM (2.23 GiB ÷ 40 %) |
+| benjamin, jacob, levi (M4, 16 GiB) | **Qwen3 8B Q4_K_M**, ctx 4096: 20 t/s, a 1200-token prompt in 5.6 s | Qwen3 4B Q4_K_M: 36 t/s, the same prompt in 3.0 s. For agent turns and tool calls, where prompt time dominates | Qwen3 14B Q4_K_M: 11.6 t/s, the prompt in 11 s, loads in 11 s. Only when the node is otherwise idle | Qwen3 30B-A3B |
+| Owner workstation (M1 Max, 32 GiB) | Qwen3 14B Q4_K_M (comfortable, estimate) | Qwen3 8B Q4_K_M | Qwen3 30B-A3B Q4_K_M (18.0 GiB, **tight**) | — |
+| AOSP emulator (3 GiB) | **Qwen3 0.6B Q8_0**, ctx 2048 (0.71 GiB measured, AWAI-3011) | — | — | Qwen3 1.7B and above |
+| moto g05 (7.5 GiB) | **Qwen3 1.7B Q8_0**, ctx 2048 (estimate 2.2 GiB, comfortable in a 3.0 GiB budget; not measured) | Qwen3 0.6B Q8_0 | Qwen3 4B Q4_K_M (estimate 2.9 GiB, **tight**) | Qwen3 8B and above |
 | 6600H PC | **unknown** until its RAM is recorded | | | |
 
 Reasons:
 
-- **8B on the M4 nodes:** it leaves about 4.5 GiB of the budget for a longer context or a second,
-  small model, and it is the largest dense Qwen3 that stays comfortable. 14B fits only with little
-  headroom, so a fleet view should warn before it is loaded.
-- **0.6B on Android:** 1.7B Q8_0 needs about 2.2 GiB, more than 40 % of a 3 GiB device. The official
-  repository publishes no smaller quantization for 1.7B; a third-party Q4 would need its own
-  provenance review before it enters the catalog.
-- **The owner workstation:** listed for completeness. The owner said not to start Kapitsa there, and
-  this document does not propose serving from it. Running llama.cpp there needs the owner's
-  decision.
-- **Speed is unknown.** No tokens-per-second figure was measured for any of these on any device.
-  Stage 6 measures it, and the recommendation may change. For example, 4B may be preferred over 8B
-  on the M4 nodes if its quality is enough for most requests.
+- **8B stays the M4 default.** It generates at 20 t/s, faster than reading speed. Its measured memory
+  matches the estimate, and nothing swapped. jacob is assumed to behave like benjamin and levi (same
+  model and memory); it was not measured, because it runs the Kapitsa worker.
+- **4B for tool loops.** Agent turns resend long prompts. 4B reads them about 1.8× faster than 8B, and
+  generates 1.8× faster.
+- **14B is usable but slow to start.** Its load (11 s) and 1200-token prompt (11 s) make it a poor
+  default. It ran without swap on an otherwise idle node; with another model or a longer context
+  loaded, that is not shown.
+- **moto g05:** reading its RAM (7.5 GiB) moves its default from 0.6B to 1.7B on the estimate. The shared domain (`recommend`, Android, ctx 2048) gives 1.7B comfortable and 4B tight.
+  Android speed and memory were not measured in this stage (owner decision 2026-11-18).
+- **Not measured:** concurrent requests, contexts above 4096, the owner workstation and any Android
+  device.
 
 ## 5. Proposed stages (one PR each)
 
@@ -149,8 +171,8 @@ Reasons:
 ## 6. Unknown or not checked
 
 - levi did not answer on 2026-11-18.
-- RAM of moto g05 and the 6600H PC.
-- Any speed figure.
+- RAM of the 6600H PC (the moto g05 has 7.5 GiB, read on 2026-11-18).
+- Speed on Android and on the owner workstation (the M4 nodes were measured in stage 6).
 - GPU utilization: macOS exposes it without root only partly, and the Android engine does not use
   the GPU.
 - ~~Whether Hugging Face's download redirects can be declared narrowly enough for the client-runtime

@@ -1,0 +1,342 @@
+{
+  "schema": "awai.murakumo.measure-6-summary/1",
+  "issue": "AWAI-3391",
+  "rows": [
+    {
+      "host": "node@benjamin",
+      "model_file": "Qwen3-0.6B-Q8_0.gguf",
+      "load_seconds": 0.83,
+      "max_rss_bytes": 1266401280,
+      "peak_footprint_bytes": 614008296,
+      "system_used_delta_bytes": 1323843584,
+      "swapouts_delta": 0,
+      "gpu_percent_median": 96,
+      "loadavg_before": [
+        2.41015625,
+        1.75390625,
+        1.71484375
+      ],
+      "prompts": {
+        "short": {
+          "prompt_n": 12,
+          "prompt_tps_median": 948.2,
+          "gen_tps_median": 129.8,
+          "gen_tps_range": [
+            129.02,
+            130.0
+          ]
+        },
+        "medium": {
+          "prompt_n": 251,
+          "prompt_tps_median": 2923.5,
+          "gen_tps_median": 125.3,
+          "gen_tps_range": [
+            125.24,
+            125.53
+          ]
+        },
+        "long": {
+          "prompt_n": 1211,
+          "prompt_tps_median": 2695.7,
+          "gen_tps_median": 109.0,
+          "gen_tps_range": [
+            108.97,
+            109.19
+          ]
+        }
+      }
+    },
+    {
+      "host": "node@benjamin",
+      "model_file": "Qwen3-14B-Q4_K_M.gguf",
+      "load_seconds": 11.25,
+      "max_rss_bytes": 6940950528,
+      "peak_footprint_bytes": 875748888,
+      "system_used_delta_bytes": 8142241792,
+      "swapouts_delta": 0,
+      "gpu_percent_median": 99,
+      "loadavg_before": [
+        1.74658203125,
+        1.84326171875,
+        1.7626953125
+      ],
+      "prompts": {
+        "short": {
+          "prompt_n": 12,
+          "prompt_tps_median": 65.7,
+          "gen_tps_median": 11.7,
+          "gen_tps_range": [
+            11.68,
+            11.73
+          ]
+        },
+        "medium": {
+          "prompt_n": 251,
+          "prompt_tps_median": 115.6,
+          "gen_tps_median": 11.7,
+          "gen_tps_range": [
+            11.66,
+            11.66
+          ]
+        },
+        "long": {
+          "prompt_n": 1211,
+          "prompt_tps_median": 109.8,
+          "gen_tps_median": 11.4,
+          "gen_tps_range": [
+            11.4,
+            11.44
+          ]
+        }
+      }
+    },
+    {
+      "host": "node@benjamin",
+      "model_file": "Qwen3-4B-Q4_K_M.gguf",
+      "load_seconds": 2.82,
+      "max_rss_bytes": 3241033728,
+      "peak_footprint_bytes": 760613816,
+      "system_used_delta_bytes": 3309502464,
+      "swapouts_delta": 0,
+      "gpu_percent_median": 98,
+      "loadavg_before": [
+        3.0478515625,
+        1.91015625,
+        1.7705078125
+      ],
+      "prompts": {
+        "short": {
+          "prompt_n": 12,
+          "prompt_tps_median": 192.9,
+          "gen_tps_median": 36.7,
+          "gen_tps_range": [
+            36.11,
+            36.71
+          ]
+        },
+        "medium": {
+          "prompt_n": 251,
+          "prompt_tps_median": 403.0,
+          "gen_tps_median": 36.1,
+          "gen_tps_range": [
+            36.08,
+            36.18
+          ]
+        },
+        "long": {
+          "prompt_n": 1211,
+          "prompt_tps_median": 397.2,
+          "gen_tps_median": 34.5,
+          "gen_tps_range": [
+            34.36,
+            34.54
+          ]
+        }
+      }
+    },
+    {
+      "host": "node@benjamin",
+      "model_file": "Qwen3-8B-Q4_K_M.gguf",
+      "load_seconds": 5.06,
+      "max_rss_bytes": 5496602624,
+      "peak_footprint_bytes": 772903616,
+      "system_used_delta_bytes": 5631098880,
+      "swapouts_delta": 0,
+      "gpu_percent_median": 99,
+      "loadavg_before": [
+        2.46484375,
+        1.93603515625,
+        1.7861328125
+      ],
+      "prompts": {
+        "short": {
+          "prompt_n": 12,
+          "prompt_tps_median": 116.8,
+          "gen_tps_median": 20.7,
+          "gen_tps_range": [
+            20.52,
+            20.75
+          ]
+        },
+        "medium": {
+          "prompt_n": 251,
+          "prompt_tps_median": 218.2,
+          "gen_tps_median": 20.6,
+          "gen_tps_range": [
+            20.58,
+            20.59
+          ]
+        },
+        "long": {
+          "prompt_n": 1211,
+          "prompt_tps_median": 217.9,
+          "gen_tps_median": 20.0,
+          "gen_tps_range": [
+            19.82,
+            20.02
+          ]
+        }
+      }
+    },
+    {
+      "host": "node@levi",
+      "model_file": "Qwen3-14B-Q4_K_M.gguf",
+      "load_seconds": 11.24,
+      "max_rss_bytes": 7332249600,
+      "peak_footprint_bytes": 877010456,
+      "system_used_delta_bytes": 7744946176,
+      "swapouts_delta": 0,
+      "gpu_percent_median": 99,
+      "loadavg_before": [
+        1.775390625,
+        1.6533203125,
+        1.65234375
+      ],
+      "prompts": {
+        "short": {
+          "prompt_n": 12,
+          "prompt_tps_median": 65.9,
+          "gen_tps_median": 11.7,
+          "gen_tps_range": [
+            11.73,
+            11.74
+          ]
+        },
+        "medium": {
+          "prompt_n": 251,
+          "prompt_tps_median": 115.7,
+          "gen_tps_median": 11.7,
+          "gen_tps_range": [
+            11.62,
+            11.67
+          ]
+        },
+        "long": {
+          "prompt_n": 1211,
+          "prompt_tps_median": 111.6,
+          "gen_tps_median": 11.5,
+          "gen_tps_range": [
+            11.46,
+            11.47
+          ]
+        }
+      }
+    },
+    {
+      "host": "node@levi",
+      "model_file": "Qwen3-4B-Q4_K_M.gguf",
+      "load_seconds": 7.19,
+      "max_rss_bytes": 3246702592,
+      "peak_footprint_bytes": 762907552,
+      "system_used_delta_bytes": 3975544832,
+      "swapouts_delta": 0,
+      "gpu_percent_median": 98,
+      "loadavg_before": [
+        1.4365234375,
+        1.4072265625,
+        1.5732421875
+      ],
+      "prompts": {
+        "short": {
+          "prompt_n": 12,
+          "prompt_tps_median": 191.1,
+          "gen_tps_median": 36.7,
+          "gen_tps_range": [
+            36.71,
+            36.79
+          ]
+        },
+        "medium": {
+          "prompt_n": 251,
+          "prompt_tps_median": 402.9,
+          "gen_tps_median": 36.2,
+          "gen_tps_range": [
+            35.73,
+            36.2
+          ]
+        },
+        "long": {
+          "prompt_n": 1211,
+          "prompt_tps_median": 397.6,
+          "gen_tps_median": 34.4,
+          "gen_tps_range": [
+            34.37,
+            34.56
+          ]
+        }
+      }
+    },
+    {
+      "host": "node@levi",
+      "model_file": "Qwen3-8B-Q4_K_M.gguf",
+      "load_seconds": 5.03,
+      "max_rss_bytes": 5545312256,
+      "peak_footprint_bytes": 771953368,
+      "system_used_delta_bytes": 5601329152,
+      "swapouts_delta": 0,
+      "gpu_percent_median": 99,
+      "loadavg_before": [
+        2.29248046875,
+        1.6572265625,
+        1.65478515625
+      ],
+      "prompts": {
+        "short": {
+          "prompt_n": 12,
+          "prompt_tps_median": 111.9,
+          "gen_tps_median": 20.3,
+          "gen_tps_range": [
+            20.29,
+            20.39
+          ]
+        },
+        "medium": {
+          "prompt_n": 251,
+          "prompt_tps_median": 218.8,
+          "gen_tps_median": 20.6,
+          "gen_tps_range": [
+            20.59,
+            20.61
+          ]
+        },
+        "long": {
+          "prompt_n": 1211,
+          "prompt_tps_median": 218.5,
+          "gen_tps_median": 20.0,
+          "gen_tps_range": [
+            19.97,
+            20.03
+          ]
+        }
+      }
+    }
+  ],
+  "fetch": {
+    "node@benjamin": [
+      "OK qwen3-4b-q4_k_m 2497280256",
+      "OK qwen3-8b-q4_k_m 5027783488",
+      "OK qwen3-14b-q4_k_m 9001752960",
+      "DONE"
+    ],
+    "node@levi": [
+      "OK qwen3-4b-q4_k_m 2497280256",
+      "OK qwen3-8b-q4_k_m 5027783488",
+      "OK qwen3-14b-q4_k_m 9001752960",
+      "DONE"
+    ]
+  },
+  "recordedAt": "2026-11-18",
+  "setup": {
+    "engine": "pinned llama-server (reports build 601, 3c13aef), sha256 1e8f702fb659aed68757a29678d97897740d9104e137437391f10c8b15d16f61, copied byte-identical from benjamin to levi",
+    "nodes": "benjamin and levi: Mac16,10 (M4, 10 cores), 16 GiB, macOS 26.7.2",
+    "flags": "-c 4096 -ngl 99 -np 1; temperature 0, ignore_eos, cache_prompt false, 128 generated tokens; prompts of 12, 251 and 1211 tokens, 3 repeats each after one warm-up",
+    "models": "pinned catalog files, size and SHA-256 checked on each node (see fetch); 0.6B on benjamin only (owner approval covered 4B, 8B, 14B)",
+    "harness": "apps/murakumo/node/measure_model.py via apps/murakumo/test/measure_nodes.py"
+  },
+  "caveats": [
+    "max_rss_bytes and system_used_delta_bytes are lower bounds on memory use: the weights are memory-mapped, and file-backed pages are not fully counted in either. peak_footprint_bytes excludes them almost entirely.",
+    "system_used_delta_bytes is sampled after the last request, not at the peak.",
+    "One run per node per model on one day, with background load averages of 1.4 to 3.0. The nodes ran the AWAI-3377 usage reporter (benjamin) and their usual services; no other inference was running on them.",
+    "Speed is for one request at a time (-np 1). Concurrent requests and longer contexts were not measured."
+  ]
+}
