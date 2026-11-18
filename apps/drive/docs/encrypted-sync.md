@@ -49,6 +49,8 @@ no old-root fallback. Staging writes have aggregate/entry/reserve admission.
 
 ## Supported bounds
 
+The plan to lift these bounds is proposed in [scalable-sync-design.md](scalable-sync-design.md).
+
 This first browser snapshot adapter admits **8 MiB total**, at most 1000 native
 entries, depth16, 65531-byte raw frames, CAR<=12 MiB/4096 blocks. It restores only
 raw frame codec0; compressed legacy snapshots refuse rather than guessing.
