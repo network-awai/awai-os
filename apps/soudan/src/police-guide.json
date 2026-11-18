@@ -57,7 +57,76 @@
       "m49": "024",
       "name": "Angola",
       "region": "Africa",
-      "iso2": "AO"
+      "iso2": "AO",
+      "status": "official-route",
+      "sources": {
+        "sic": {
+          "title": "Angola Serviço de Investigação Criminal — Queixa Electrónica",
+          "url": "https://sic.gov.ao/services/queixa-electronica/",
+          "checkedOn": "2026-11-19"
+        },
+        "den": {
+          "title": "Angola Serviço de Investigação Criminal — Denúncias",
+          "url": "https://sic.gov.ao/services/denuncias/",
+          "checkedOn": "2026-11-19"
+        },
+        "help": {
+          "title": "Angola Serviço de Investigação Criminal — Apoio ao Cidadão",
+          "url": "https://sic.gov.ao/services/apoiocidadao/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "アンゴラの刑事捜査局SICが対象事件の電子申告と被害の報告を受け付ける。",
+          "refs": [
+            "sic",
+            "den"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "電子申告は対象犯罪について利用できる。SICの報告フォームも案内されており、電子申告の対象外は最寄りの警察機関に連絡する。",
+          "refs": [
+            "sic",
+            "den"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "電子申告では在住の申告者の本人確認が必要。",
+          "refs": [
+            "sic"
+          ],
+          "kind": "required"
+        }
+      ],
+      "progress": [
+        {
+          "text": "本人確認を経て管轄機関へ振り分ける。",
+          "refs": [
+            "sic"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "SICの市民向け案内から、対象となる手続の状況を照会できる。",
+          "refs": [
+            "help"
+          ],
+          "kind": "status-check"
+        },
+        {
+          "text": "電子申告の対象外は最寄りの警察機関に連絡する。",
+          "refs": [
+            "sic"
+          ],
+          "kind": "channel-unavailable"
+        }
+      ]
     },
     "AIA": {
       "m49": "660",
@@ -851,7 +920,39 @@
       "m49": "854",
       "name": "Burkina Faso",
       "region": "Africa",
-      "iso2": "BF"
+      "iso2": "BF",
+      "status": "official-route",
+      "sources": {
+        "report": {
+          "title": "Police Nationale du Burkina Faso — Plainte et dénonciation",
+          "url": "https://www.police.gov.bf/index.php/a-votre-service/plainte-et-denonciation",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ブルキナファソ国家警察の警察署が犯罪申告を扱う。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察署に出向く。匿名の情報提供の経路も別に掲載されている。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "警察の案内は、申告受領後に手続を開始するとしている。",
+          "refs": [
+            "report"
+          ]
+        }
+      ]
     },
     "BGD": {
       "m49": "050",
@@ -2064,7 +2165,37 @@
       "m49": "132",
       "name": "Cabo Verde",
       "region": "Africa",
-      "iso2": "CV"
+      "iso2": "CV",
+      "status": "partial",
+      "sources": {
+        "contact": {
+          "title": "Cabo Verde Polícia Judiciária — Contacto",
+          "url": "https://pj.gov.cv/contacto/",
+          "checkedOn": "2026-11-19"
+        },
+        "fraud": {
+          "title": "Cabo Verde Polícia Judiciária — Prevenção de Burla de sementes",
+          "url": "https://pj.gov.cv/2022/02/09/burla-de-sementes/amp/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "カーボベルデ司法警察が詐欺を取り扱い、地域別の窓口を公表している。",
+          "refs": [
+            "contact",
+            "fraud"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "司法警察の公式一覧で島ごとの窓口を確認できる。詐欺被害の正式申告に関する具体的な手順は要確認。",
+          "refs": [
+            "contact"
+          ]
+        }
+      ]
     },
     "CRI": {
       "m49": "188",
@@ -3597,7 +3728,31 @@
       "m49": "270",
       "name": "Gambia",
       "region": "Africa",
-      "iso2": "GM"
+      "iso2": "GM",
+      "status": "partial",
+      "sources": {
+        "police": {
+          "title": "Government of The Gambia — Gambia Police Force",
+          "url": "https://gambia.gov.gm/gambia-app/gambia-police-force-gpf/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ガンビア警察が犯罪の捜査を担当する。",
+          "refs": [
+            "police"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "政府ポータルの警察ページに連絡先が掲載されている。詐欺被害の正式な刑事受付手順は要確認。",
+          "refs": [
+            "police"
+          ]
+        }
+      ]
     },
     "GNB": {
       "m49": "624",
@@ -6088,7 +6243,39 @@
       "m49": "104",
       "name": "Myanmar",
       "region": "Asia",
-      "iso2": "MM"
+      "iso2": "MM",
+      "status": "official-route",
+      "sources": {
+        "brief": {
+          "title": "Myanmar Ministry of Information — Police guidance on online fraud complaints",
+          "url": "https://moi.gov.mm/moi%3Aeng/index.php/news/19797",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "オンライン詐欺に関する内務当局の公式会見では、居住地の警察署が初期申告を受け、複雑な事案や多額の被害は刑事捜査部門も扱うとしている。",
+          "refs": [
+            "brief"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "公式会見では、まず居住地域の警察署に申告するよう案内している。",
+          "refs": [
+            "brief"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "会見の説明では、地域の警察署で事件を登録した後、警察が捜査を進める。",
+          "refs": [
+            "brief"
+          ]
+        }
+      ]
     },
     "MNE": {
       "m49": "499",
@@ -7941,7 +8128,38 @@
       "m49": "275",
       "name": "State of Palestine",
       "region": "Asia",
-      "iso2": "PS"
+      "iso2": "PS",
+      "status": "partial",
+      "sources": {
+        "form": {
+          "title": "Palestinian Anti-Corruption Commission — Reporting portal",
+          "url": "https://marsad.pacc.ps/complaints/report",
+          "checkedOn": "2026-11-19"
+        },
+        "guide": {
+          "title": "Palestinian Anti-Corruption Commission — Guide to complaints and reports",
+          "url": "https://www.pacc.ps/uploads/books/8/book-30412-cat-8-d-22-12-21.pdf",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "パレスチナ汚職防止委員会は所管の汚職に関する申告・情報提供を扱う。",
+          "refs": [
+            "guide",
+            "form"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "所管の汚職には委員会の公式ポータルがある。一般の詐欺に関する刑事受付窓口は地域ごとに要確認。",
+          "refs": [
+            "guide",
+            "form"
+          ]
+        }
+      ]
     },
     "PYF": {
       "m49": "258",
@@ -8701,7 +8919,47 @@
       "m49": "694",
       "name": "Sierra Leone",
       "region": "Africa",
-      "iso2": "SL"
+      "iso2": "SL",
+      "status": "partial",
+      "sources": {
+        "police": {
+          "title": "Sierra Leone Police — Official portal",
+          "url": "https://police.gov.sl/home",
+          "checkedOn": "2026-11-19"
+        },
+        "advice": {
+          "title": "Sierra Leone Ministry of Information — Cybercrime reporting advice",
+          "url": "https://moice.gov.sl/sierra-leone-steps-up-fight-against-cybercrime-as-cybersecurity-coordinator-urges-citizens-to-stop-think-and-verify/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "シエラレオネ警察は金融犯罪にも対応しており、政府はサイバー被害の報告を呼びかけている。",
+          "refs": [
+            "police",
+            "advice"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察の公式ポータルで連絡先を確認できる。政府の案内ではサイバー事案を関係当局へ速やかに報告する。正式な受付方法は要確認。",
+          "refs": [
+            "police",
+            "advice"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "不審なメッセージの画面、電話番号、モバイル送金口座などを報告前に保全する。",
+          "refs": [
+            "advice"
+          ],
+          "kind": "retain"
+        }
+      ]
     },
     "SLV": {
       "m49": "222",
@@ -9150,7 +9408,36 @@
       "m49": "748",
       "name": "Eswatini",
       "region": "Africa",
-      "iso2": "SZ"
+      "iso2": "SZ",
+      "status": "partial",
+      "sources": {
+        "justice": {
+          "title": "Eswatini Parliament — Ministry of Justice annual report",
+          "url": "https://parliament.gov.sz/publications/parliament_reports/docs/ANNUAL%20REPORT%20JUSTICE%202025.pdf",
+          "checkedOn": "2026-11-19"
+        },
+        "helpline": {
+          "title": "Eswatini Government In Your Hand — Emergency helpline",
+          "url": "https://giyh.gov.sz/helpline",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "エスワティニでは警察と検察が詐欺事案を取り扱う。",
+          "refs": [
+            "justice"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "政府の一覧に緊急時の警察窓口が掲載されている。平時の正式な詐欺被害申告手順は要確認。",
+          "refs": [
+            "helpline"
+          ]
+        }
+      ]
     },
     "SXM": {
       "m49": "534",
@@ -9294,7 +9581,37 @@
       "m49": "768",
       "name": "Togo",
       "region": "Africa",
-      "iso2": "TG"
+      "iso2": "TG",
+      "status": "partial",
+      "sources": {
+        "report": {
+          "title": "CERT.TG — Menaces et Incidents",
+          "url": "https://cert.tg/fr/menaces-et-incidents/",
+          "checkedOn": "2026-11-19"
+        },
+        "alert": {
+          "title": "CERT.TG — Alerte phishing FSB-ANADEB",
+          "url": "https://cert.tg/wp-content/uploads/2025/10/20251021-CERT-TG_Alerte-securite-Phishing-FSB_ANADEB.pdf",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "トーゴのCERTはサイバー事案や偽サイトの情報を受ける技術窓口。",
+          "refs": [
+            "report",
+            "alert"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "個人向けのサイバー事案フォーム、電話、メールの案内がある。警察の正式な刑事申告手順は要確認。",
+          "refs": [
+            "report"
+          ]
+        }
+      ]
     },
     "THA": {
       "m49": "764",
@@ -9358,7 +9675,38 @@
       "m49": "762",
       "name": "Tajikistan",
       "region": "Asia",
-      "iso2": "TJ"
+      "iso2": "TJ",
+      "status": "partial",
+      "sources": {
+        "mia": {
+          "title": "Tajikistan Ministry of Internal Affairs — Official portal",
+          "url": "https://www.mvd.tj/ru/",
+          "checkedOn": "2026-11-19"
+        },
+        "case": {
+          "title": "Tajikistan Ministry of Internal Affairs — Fraud report to the Dushanbe district office",
+          "url": "https://www.mvd.tj/6897-moshennichestvo.html",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "タジキスタン内務省の地区部門が詐欺事案を扱う。",
+          "refs": [
+            "mia",
+            "case"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "内務省の連絡先を公式サイトで確認できる。地区部門に申告した公表例がある一方、ネット詐欺全般の正式手順は要確認。",
+          "refs": [
+            "mia",
+            "case"
+          ]
+        }
+      ]
     },
     "TKL": {
       "m49": "772",
