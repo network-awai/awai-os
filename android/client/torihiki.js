@@ -19,6 +19,20 @@ const MARKET_ID = Number(TORIHIKI_MARKET);
 // on another engine computes a different payload and answers 401
 // bad-signature, which changes nothing on the node.
 export const FIELD_COUNT = 50;
+// What the node actually running at TORIHIKI_NODE signs over, keyed by /head
+// "code-version". Measured against the live devnet on 2026-11-18 (AWAI-3442):
+// code-version 12 accepts f0..f15 only (the engine before the appended :credit
+// and later fields) and has no cancel-all (400 unknown-tx). The engine pin
+// above (50 fields) is what the node's repository names, not what is deployed.
+// An unknown version is refused rather than guessed: a wrong guess is a
+// bad-signature, a right guess made silently is a format nobody checked.
+export const NODE_PROTOCOLS = Object.freeze({ '12': Object.freeze({ fields: 16, txs: Object.freeze(['deposit', 'order']) }) });
+export function protocolFor(head) {
+  const p = head && Object.hasOwn(NODE_PROTOCOLS, head.codeVersion ?? '') ? NODE_PROTOCOLS[head.codeVersion] : null;
+  if (!p) throw Error(`このノードの版（${head?.codeVersion ?? '不明'}）の署名形式を確認できていないため、署名しません。`);
+  return p;
+}
+export const supports = (head, kind) => { try { return protocolFor(head).txs.includes(kind); } catch { return false; } };
 // torihiki.address: ids below FLOOR are genesis roles; ids live in 2^45.
 const FLOOR = 100000, SPACE = 35184372088832;
 
@@ -94,19 +108,20 @@ export function buildTx(kind, fields = {}) {
 }
 
 /** torihiki.auth/signing-payload for the transactions buildTx makes. */
-export function signingPayload(chainId, account, nonce, t) {
+export function signingPayload(chainId, account, nonce, t, fieldCount = FIELD_COUNT) {
+  if (!inRange(fieldCount, 16, FIELD_COUNT)) throw Error('署名の形式を確認できません。');
   if (typeof chainId !== 'string' || !/^[\x21-\x7e]{1,80}$/.test(chainId) || !int(account) || !inRange(nonce, 1, 9007199254740991)) throw Error('署名の前提を確認できません。');
   const allowed = { order: ['tx', 'market', 'side', 'level', 'qty', 'flags'], 'cancel-all': ['tx', 'market'], deposit: ['tx', 'amount'] }[t?.tx];
   if (!allowed || Object.keys(t).some((k) => !allowed.includes(k))) throw Error('この版で扱わない取引です。');
-  const f = Array(FIELD_COUNT).fill('');
+  const f = Array(fieldCount).fill('');
   const put = (i, v) => { if (v !== undefined) f[i] = String(v); };
   // f0 tx, f1 market, f2 side, f3 level, f4 qty, f5 flags, f6 oid, f7 amount
   put(0, t.tx); put(1, t.market); put(2, t.side); put(3, t.level); put(4, t.qty); put(5, t.flags); put(7, t.amount);
   return `torihiki/tx/v1\nchain=${chainId}\naccount=${account}\nnonce=${nonce}\n${f.map((v, i) => `f${i}=${v}`).join('\n')}\n`;
 }
 
-export async function signEnvelope(key, chainId, nonce, t) {
-  const sig = await crypto.subtle.sign({ name: 'Ed25519' }, key.privateKey, enc.encode(signingPayload(chainId, key.account, nonce, t)));
+export async function signEnvelope(key, chainId, nonce, t, fieldCount = FIELD_COUNT) {
+  const sig = await crypto.subtle.sign({ name: 'Ed25519' }, key.privateKey, enc.encode(signingPayload(chainId, key.account, nonce, t, fieldCount)));
   return { tx: t, account: key.account, nonce, pubkey: key.pubkey, sig: b64(sig) };
 }
 
@@ -148,6 +163,7 @@ export function headView(v) {
   if (!v || typeof v !== 'object' || !int(v.height) || v.height < 0 || typeof v['chain-id'] !== 'string' || v['chain-id'].length > 80
       || typeof v['state-root'] !== 'string' || !/^[0-9a-f]{64}$/.test(v['state-root'])) throw Error('ノードの応答を確認できません。');
   return { height: v.height, chainId: v['chain-id'], stateRoot: v['state-root'],
+    codeVersion: typeof v['code-version'] === 'string' && /^[0-9]{1,6}$/.test(v['code-version']) ? v['code-version'] : null,
     consensus: typeof v.consensus === 'string' ? v.consensus.slice(0, 120) : '不明' };
 }
 export function marketView(v) {
@@ -243,7 +259,9 @@ export function createTorihiki(base, appOrigin = location.origin, consentHost = 
     const kind = { 'request-devnet-funds': 'deposit', 'submit-order': 'order', 'cancel-all': 'cancel-all' }[operation];
     if (!kind || capability(operation) !== TRADE || t?.tx !== kind) throw Error('未宣言の操作です。');
     if (!head || !isDevnet(head.chainId)) throw Error('devnet と確認できないノードには署名しません。');
-    const envelope = await signEnvelope(key, head.chainId, nonce, t);
+    const protocol = protocolFor(head);
+    if (!protocol.txs.includes(kind)) throw Error('このノードはこの取引に対応していません。何も送信していません。');
+    const envelope = await signEnvelope(key, head.chainId, nonce, t, protocol.fields);
     const response = await broker.invoke({ capability: TRADE, service: SERVICE, operation },
       { input: TX_URL, init: { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(envelope) } });
     return txView(response.status, JSON.parse(await boundedText(response)));
@@ -448,10 +466,12 @@ export function renderTorihiki({ root, page, el, button, notify, client, state, 
     }
     main.append(fetchButton(a ? '口座を更新' : '口座を取得', [['read-account', 'account', k.account]], a ? 'button tonal' : 'button'));
     const key = el('section', 'card tk-key'); key.append(el('h2', '', 'この端末の鍵'), el('p', 'caption', `口座 ${k.account} · 公開鍵 ${k.pubkey.slice(0, 12)}… · 秘密鍵は端末の外へ出しません。`)); main.append(key);
+    const cancelButton = (go) => { const b = button('全注文を取消', go, 'button danger-fill'); if (state.head && !supports(state.head, 'cancel-all')) { b.disabled = true; b.title = 'このノードは未対応'; } return b; };
     const acts = el('div', 'tk-pair');
     acts.append(button('devnet 資金を受け取る', () => withPrereq(() => { const t = buildTx('deposit', { amount: 1000000 }); confirmSign('devnet 資金を受け取る', [['口座', String(k.account)], ['量', fmt(t.amount)], ['チェーン', state.head.chainId]], () => send('request-devnet-funds', t, 'devnet 資金 1,000,000 を受け取り')); }), 'button tonal'),
-      button('全注文を取消', () => withPrereq(() => { const t = buildTx('cancel-all'); confirmSign('市場 #1 の注文をすべて取り消しますか？', [['口座', String(k.account)], ['チェーン', state.head.chainId]], () => send('cancel-all', t, '全注文の取消')); }), 'button danger-fill'));
+      cancelButton(() => withPrereq(() => { if (!supports(state.head, 'cancel-all')) throw Error(`このノード（版 ${state.head.codeVersion ?? '不明'}）は全注文の取消に対応していません。何も送信していません。`); const t = buildTx('cancel-all'); confirmSign('市場 #1 の注文をすべて取り消しますか？', [['口座', String(k.account)], ['チェーン', state.head.chainId]], () => send('cancel-all', t, '全注文の取消')); })));
     main.append(acts);
+    if (state.head && !supports(state.head, 'cancel-all')) main.append(el('p', 'caption muted', `接続中のノード（版 ${state.head.codeVersion ?? '不明'}）は全注文の取消に対応していません。`));
     const node = el('section', 'card tk-node'); node.append(el('h2', '', 'ノード'));
     if (state.head) { const s = el('div', 'tk-stats'); s.append(stat('チェーン', state.head.chainId), stat('高さ', fmt(state.head.height)), stat('合意', state.head.consensus.startsWith('none') ? '単一シーケンサー' : state.head.consensus)); node.append(s); }
     node.append(fetchButton(state.head ? 'ノードを更新' : 'ノードの状態を取得', [['read-head', 'head']], 'button text')); main.append(node);
@@ -502,8 +522,9 @@ export function renderTorihiki({ root, page, el, button, notify, client, state, 
       const ops = []; if (!state.head) ops.push(['read-head', 'head']); if (!state.account || state.account.account !== k.account) ops.push(['read-account', 'account', k.account]);
       for (const [op, key, arg] of ops) { state[key] = await client.read(op, arg); state.at = new Date(); }
       if (!isDevnet(state.head.chainId)) throw Error(`接続先のチェーン（${state.head.chainId}）は devnet ではないため署名しません。`);
+      protocolFor(state.head);
       go();
-    } catch (e) { state.notice = noticeFor(e); draw(); }
+    } catch (e) { state.notice = denied(e) ? noticeFor(e) : { tone: 'error', title: '送信できません', body: e.message }; draw(); }
   }
   // The person checks what will be signed here; the broker's trusted consent then decides whether it is sent.
   function confirmSign(title, lines, go) {
