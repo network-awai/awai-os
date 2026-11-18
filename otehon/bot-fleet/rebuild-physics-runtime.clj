@@ -80,7 +80,7 @@
                :problems (frequencies (mapcat :problems bad))
                :problem-bots (mapv #(get-in % [:row :catalog-bot-id]) (take 20 bad))
                :enrolled-not-observed (count (remove (set (map #(get-in % [:row :job-id]) checked))
-                                                     (filter #(and (str/ends-with? % "-otehon-physics-v1")
+                                                     (filter #(and (string? %) (str/ends-with? % "-otehon-physics-v1")
                                                                    (= ["jun-control"] (:nodes (get enrollments %))))
                                                              (keys enrollments))))}]
   (println (json/generate-string summary))
