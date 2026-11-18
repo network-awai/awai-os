@@ -1,0 +1,45 @@
+{
+  "schema": "awai.bm-boot-check.evidence.v1",
+  "issue": "AWAI-3540",
+  "parent": "AWAI-3061",
+  "date": "2026-11-18",
+  "host": {
+    "provider": "Vultr bare metal",
+    "plan": "vbm-6c-32gb",
+    "cpu": "Intel Xeon E-2286G (VT-x)",
+    "region": "icn",
+    "os": "Ubuntu 24.04",
+    "qemu": "8.2.2 (Ubuntu 1:8.2.2+ds-0ubuntu1.18)",
+    "accel": "kvm",
+    "gpuPassthrough": "none (only the ASPEED BMC display is visible; no render node)"
+  },
+  "inputs": {
+    "kernel": "b8914d638d3b2e4d…",
+    "initrd": "2317c5160d90143d… (built ramdisk + netboot overlay)",
+    "iso": "3e86ba014d8cfb95f2e9746f94edb6d8a77e33fae5908e814272b46d5bdf9813 (source-built Live ISO with linux-firmware 20261019)",
+    "route": "same as the Desktop netboot route: kernel + initrd, ISO over read-only NBD awai2992 at 10.77.0.1:10829"
+  },
+  "result": {
+    "display": "std",
+    "bootCompletedWithinSeconds": 37,
+    "adbShellUid": "uid=2000(shell)",
+    "boot_completed": "1",
+    "fingerprint": "Generic/lineage_Generic_x86_64/Generic_x86_64:17/CP2A.260605.016/eng.root:userdebug/test-keys",
+    "kernel": "7.3.0+",
+    "selinux": "Permissive",
+    "surfaceflinger": "running",
+    "egl": "angle",
+    "focus": "org.lineageos.setupwizard/.WelcomeActivity",
+    "screenshot": "bm-boot-20261118-setupwizard.png",
+    "screenHasContent": true
+  },
+  "vmOnlySteps": [
+    "device_provisioned=1 and user_setup_complete=1 set over the serial console to leave Android trade-in mode",
+    "host adb public key written to /data/misc/adb/adb_keys"
+  ],
+  "notShown": [
+    "the Desktop's real hardware (Radeon 680M, DP-1, RTL8168h): see AWAI-3061",
+    "Awai branding or apps: this is the unmodified LineageOS build",
+    "release signing, A/B or OTA"
+  ]
+}
