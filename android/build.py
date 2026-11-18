@@ -3,7 +3,7 @@
 Shared UI/domain and a development-signed, bundled catalog are also staged for NixOS.
 Never installs on a device. Outputs stay in the task's .agent-output directory by default.
 """
-import argparse, base64, hashlib, json, os, pathlib, shutil, subprocess, time, zipfile
+import argparse, base64, hashlib, json, os, pathlib, shutil, subprocess, time, zipfile, re
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 def run(args, **kw):
@@ -39,7 +39,7 @@ def manifest(pkg, activity, version, kind, online=False):
       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>{home}</activity>{extra}</application></manifest>'''
 
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument('--version',type=int,default=1);ap.add_argument('--sdk',type=pathlib.Path,default=pathlib.Path.home()/'Library/Android/sdk');ap.add_argument('--java',type=pathlib.Path,default=pathlib.Path('/opt/homebrew/opt/openjdk/bin'));ap.add_argument('--out',type=pathlib.Path,default=ROOT/'.agent-output/android');ap.add_argument('--skip-cljs',action='store_true');ap.add_argument('--online-pins',type=pathlib.Path);ap.add_argument('--catalog-revision',type=int,default=None);ap.add_argument('--itonami-apk',type=pathlib.Path,default=None);ap.add_argument('--home-only',action='store_true');args=ap.parse_args()
+    ap=argparse.ArgumentParser();ap.add_argument('--version',type=int,default=1);ap.add_argument('--sdk',type=pathlib.Path,default=pathlib.Path.home()/'Library/Android/sdk');ap.add_argument('--java',type=pathlib.Path,default=pathlib.Path('/opt/homebrew/opt/openjdk/bin'));ap.add_argument('--out',type=pathlib.Path,default=ROOT/'.agent-output/android');ap.add_argument('--skip-cljs',action='store_true');ap.add_argument('--online-pins',type=pathlib.Path);ap.add_argument('--catalog-revision',type=int,default=None);ap.add_argument('--itonami-apk',type=pathlib.Path,default=None);ap.add_argument('--torihiki-bot-apk',type=pathlib.Path,default=None);ap.add_argument('--home-only',action='store_true');args=ap.parse_args()
     if args.catalog_revision is not None and args.catalog_revision<1:raise SystemExit('positive catalog revision required')
     if args.version<1:raise SystemExit('positive version required')
     out=args.out.resolve();out.mkdir(parents=True,exist_ok=True);tools=args.sdk/'build-tools/36.1.0';jar=args.sdk/'platforms/android-37.0/android.jar'
@@ -97,7 +97,7 @@ def main():
             (staged_assets/'online-pins.json').write_text('null')
             (staged_assets/'index.html').write_text((ROOT/'android/client/index.html').read_text())
         if kind=='torihiki':
-            # Exactly the origin declared by torihiki.js; HostActivity.torihikiRead narrows it to three GET routes.
+            # Exactly the origin declared by torihiki.js; HostActivity.torihikiRead/torihikiTx narrow it to the declared routes.
             html=(staged_assets/'index.html').read_text().replace("connect-src 'none'","connect-src https://torihiki-node.04-feasts-minded.workers.dev")
             (staged_assets/'index.html').write_text(html)
         if kind=='home':
@@ -127,12 +127,22 @@ def main():
     packages=assets/'packages';packages.mkdir(exist_ok=True);shutil.copyfile(yotei,packages/'yotei.apk');shutil.copyfile(torihiki,packages/'torihiki.apk')
     revision=args.catalog_revision if args.catalog_revision is not None else args.version
     listed=[{'id':'network.itonami.yotei','name':'Yotei','description':'予定をこの端末に保存します。外部への送信や同期、通知配信は行いません。','publisher':'Awai Otehon 開発版','versionCode':args.version,'versionName':f'0.1.{args.version-1}','artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/yotei.apk','bytes':yotei.stat().st_size,'sha256':digest(yotei),'signerSha256':fp},{'platform':'nixos','runtime':'browser','kind':'bundled-web','asset':'bundled:yotei','bytes':(assets/'client.js').stat().st_size,'sha256':digest(assets/'client.js')}]},
-            {'id':'network.itonami.torihiki','name':'Torihiki','description':'取引所 devnet の価格・板・ノード状態を読み取り専用で表示します。devnet・デモ専用で、実際の資産・発注・鍵は扱いません。通信は取得ごとに確認します。','publisher':'Awai Otehon 開発版','versionCode':args.version,'versionName':f'0.1.{args.version-1}','artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/torihiki.apk','bytes':torihiki.stat().st_size,'sha256':digest(torihiki),'signerSha256':fp}]}]
+            {'id':'network.itonami.torihiki','name':'Torihiki','description':'取引所 devnet の価格・板・ノード状態を表示し、端末の鍵で署名して devnet に発注できます。devnet・デモ専用で、実際の資産は扱いません。通信は毎回確認します。','publisher':'Awai Otehon 開発版','versionCode':args.version,'versionName':f'0.1.{args.version-1}','artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/torihiki.apk','bytes':torihiki.stat().st_size,'sha256':digest(torihiki),'signerSha256':fp}]}]
     if args.itonami_apk is not None:
         staged=packages/'itonami.apk';shutil.copyfile(args.itonami_apk,staged)
         signer=run([tools/'apksigner','verify','--print-certs',staged],capture_output=True).stdout
         if fp not in signer:raise SystemExit('itonami APK signer does not match the development identity')
         listed.append({'id':'network.itonami.app','name':'Itonami','description':'NixOS 版 Itonami UI を一つの Tauri v3 アプリにまとめた開発版。既存 Home・Store・Yotei は保持し別アプリ ID で追加。Nix 専用サービスは未移植で機能表示しない。Android development debug 署名（本番鍵ではない）。','publisher':'Awai Otehon 開発版','versionCode':1000,'versionName':'0.1.0','artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/itonami.apk','bytes':staged.stat().st_size,'sha256':digest(staged),'signerSha256':fp}]})
+    if args.torihiki_bot_apk is not None:
+        # Tauri v3 APK built from network-awai/app-itonami-torihiki app/. The listed id, version and signer are read from
+        # the APK itself and refused unless they are exactly the admitted package and the development identity.
+        staged=packages/'torihiki-bot.apk';shutil.copyfile(args.torihiki_bot_apk,staged)
+        signer=run([tools/'apksigner','verify','--print-certs',staged],capture_output=True).stdout
+        if [l.rsplit(' ',1)[-1] for l in signer.splitlines() if 'certificate SHA-256 digest:' in l]!=[fp]:raise SystemExit('torihiki bot APK signer does not match the development identity')
+        badging=run([tools/'aapt2','dump','badging',staged],capture_output=True).stdout.splitlines()[0]
+        m=re.fullmatch(r"package: name='([^']+)' versionCode='([0-9]+)' versionName='([^']+)'.*",badging)
+        if not m or m.group(1)!='network.itonami.torihiki.bot':raise SystemExit('torihiki bot APK package is not network.itonami.torihiki.bot')
+        listed.append({'id':'network.itonami.torihiki.bot','name':'Torihiki Bot','description':'市場運営 bot（ISIC 6611）の profile と稼働状況、取引所 devnet の価格・板を読み取り専用で表示します。発注・鍵・入出金はありません。devnet・デモ専用で、通信は毎回確認します。Android development debug 署名（本番鍵ではない）。','publisher':'Awai Otehon 開発版','versionCode':int(m.group(2)),'versionName':m.group(3),'artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/torihiki-bot.apk','bytes':staged.stat().st_size,'sha256':digest(staged),'signerSha256':fp}]})
     catalog={'schema':'itonami.store.bundled.v1','revision':revision,'expiresAt':int(time.time())+30*86400,'apps':listed}
     raw=json.dumps(catalog,ensure_ascii=False,separators=(',',':'));(assets/'catalog.json').write_text(raw)
     run([args.java/'java','-cp',out,'SignCatalog',key,assets/'catalog.json',assets/'catalog-key.der',assets/'catalog.sig'],stdout=subprocess.DEVNULL)

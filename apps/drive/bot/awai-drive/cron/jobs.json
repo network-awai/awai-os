@@ -1,0 +1,4 @@
+{"jobs": [{"id": "readback-check", "name": "readback-check", "enabled": true, "state": "scheduled",
+  "no_agent": true, "script": "readback-check.mjs", "deliver": "local",
+  "prompt": "AwaiVol readback check in the awai-drive-bot-readback namespace",
+  "schedule": {"kind": "interval", "minutes": 360, "display": "every 360m"}}]}

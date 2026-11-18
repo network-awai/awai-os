@@ -22,13 +22,19 @@ import java.util.*;
 /** Narrow native adapter for a bundled, shared browser client. No remote UI or arbitrary commands. */
 public abstract class HostActivity extends Activity {
     public static final String ORIGIN = "https://appassets.androidplatform.net";
-    /** Torihiki devnet reads: one fixed host, three exact GET routes with fixed query values (mirrors torihiki.js). */
+    /** Torihiki devnet: one fixed host. Reads are exact GET routes (the account id is the only variable value);
+     *  the only write is POST /tx with no query (mirrors torihiki.js, AWAI-491). */
     static final String TORIHIKI_HOST = "torihiki-node.04-feasts-minded.workers.dev";
-    static boolean torihikiRead(Uri u){
-        if(!"https".equals(u.getScheme())||!TORIHIKI_HOST.equals(u.getHost())||!(u.getPort()==-1||u.getPort()==443)||u.getUserInfo()!=null||u.getEncodedFragment()!=null)return false;
-        String path=u.getEncodedPath(),query=u.getEncodedQuery();
-        return ("/head".equals(path)&&query==null)||("/market".equals(path)&&"id=1".equals(query))||("/book".equals(path)&&"market=1&depth=15".equals(query));
+    static boolean torihikiHost(Uri u){
+        return "https".equals(u.getScheme())&&TORIHIKI_HOST.equals(u.getHost())&&(u.getPort()==-1||u.getPort()==443)&&u.getUserInfo()==null&&u.getEncodedFragment()==null;
     }
+    static boolean torihikiRead(Uri u){
+        if(!torihikiHost(u))return false;
+        String path=u.getEncodedPath(),query=u.getEncodedQuery();
+        return ("/head".equals(path)&&query==null)||("/market".equals(path)&&"id=1".equals(query))||("/book".equals(path)&&"market=1&depth=15".equals(query))
+            ||("/account".equals(path)&&query!=null&&query.matches("id=[1-9][0-9]{5,13}"));
+    }
+    static boolean torihikiTx(Uri u){ return torihikiHost(u)&&"/tx".equals(u.getEncodedPath())&&u.getEncodedQuery()==null; }
     protected WebView web;
     private Set<String> assets;
     private final Set<String> onlineUrls=new HashSet<>();
@@ -60,8 +66,12 @@ public abstract class HostActivity extends Activity {
         if("store".equals(mode()))try{
             JSONObject pins=new JSONObject(new String(Integrity.read(getAssets().open("online-pins.json"),16384),StandardCharsets.UTF_8));
             String rev=pins.getString("revision");if(!rev.matches("[0-9a-f]{40}"))throw new SecurityException();
-            for(String kind:new String[]{"catalog","apk"}){
-                String url=pins.getJSONObject(kind).getString("url");Uri parsed=Uri.parse(url);
+            // One catalog pin plus one APK pin per admitted app id; an unknown id refuses every online URL.
+            JSONObject apks=pins.getJSONObject("apks");if(apks.length()<1||apks.length()>16)throw new SecurityException();
+            java.util.List<String> urls=new java.util.ArrayList<>();urls.add(pins.getJSONObject("catalog").getString("url"));
+            for(java.util.Iterator<String> ids=apks.keys();ids.hasNext();){String id=ids.next();Catalog.assetFor(id);urls.add(apks.getJSONObject(id).getString("url"));}
+            for(String url:urls){
+                Uri parsed=Uri.parse(url);
                 if(!url.startsWith("https://raw.githubusercontent.com/network-awai/awai-os/"+rev+"/store/distribution/")||parsed.getEncodedQuery()!=null||parsed.getEncodedFragment()!=null)throw new SecurityException();
                 onlineUrls.add(url);
             }
@@ -81,7 +91,7 @@ public abstract class HostActivity extends Activity {
             @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest req) {
                 Uri u = req.getUrl(); String path=u.getEncodedPath();
                 if("GET".equals(req.getMethod()) && onlineUrls.contains(u.toString()))return null;
-                if("torihiki".equals(mode())&&"GET".equals(req.getMethod())&&torihikiRead(u))return null;
+                if("torihiki".equals(mode())&&(("GET".equals(req.getMethod())&&torihikiRead(u))||("POST".equals(req.getMethod())&&torihikiTx(u))))return null;
                 if("home".equals(mode())&&"GET".equals(req.getMethod())&&"https".equals(u.getScheme())
                     &&"relay.awai.network".equals(u.getHost())&&(u.getPort()==-1||u.getPort()==443)
                     &&u.getUserInfo()==null&&u.getEncodedQuery()==null&&u.getEncodedFragment()==null
@@ -181,11 +191,12 @@ public abstract class HostActivity extends Activity {
                 JSONObject envelope=new JSONObject();envelope.put("raw",raw);envelope.put("signature",signature);
                 // The exact release envelope is digest-pinned by the browser; host independently pins APK bytes and metadata signer.
                 // Pin-driven lookup across admitted apps: catalog order never grants admission.
-                JSONObject artifact=null;JSONArray listed=candidate.getJSONArray("apps");
-                for(int j=0;j<listed.length()&&artifact==null;j++){try{Catalog.assetFor(listed.getJSONObject(j).getString("id"));}catch(SecurityException unadmitted){continue;}
-                    JSONArray entries=listed.getJSONObject(j).getJSONArray("artifacts");
-                    for(int i=0;i<entries.length();i++)if("android".equals(entries.getJSONObject(i).getString("platform")))artifact=entries.getJSONObject(i);}
-                if(artifact==null||!artifact.getString("sha256").equals(pins.getJSONObject("apk").getString("sha256")))throw new SecurityException("unpinned-artifact");
+                // Every pinned app must be listed with exactly the pinned android artifact digest.
+                JSONObject apks=pins.getJSONObject("apks");JSONArray listed=candidate.getJSONArray("apps");
+                for(java.util.Iterator<String> ids=apks.keys();ids.hasNext();){String id=ids.next();Catalog.assetFor(id);String digest=null;
+                    for(int j=0;j<listed.length();j++)if(id.equals(listed.getJSONObject(j).getString("id"))){JSONArray entries=listed.getJSONObject(j).getJSONArray("artifacts");
+                        for(int i=0;i<entries.length();i++)if("android".equals(entries.getJSONObject(i).getString("platform")))digest=entries.getJSONObject(i).getString("sha256");}
+                    if(digest==null||!digest.equals(apks.getJSONObject(id).getString("sha256")))throw new SecurityException("unpinned-artifact");}
                 return getSharedPreferences("online",0).edit().putString("raw",raw).putString("signature",signature).putLong("highest",revision).commit()?"ok":"refused";
             }catch(Exception invalid){return "refused";}
         }
@@ -216,7 +227,7 @@ public abstract class HostActivity extends Activity {
                     .setPositiveButton("Android 設定を開く",(d,w)->startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,Uri.parse("package:"+getPackageName())))).setNegativeButton("今は追加しない",null).show();return;
             }
             new AlertDialog.Builder(this).setTitle(app.getString("name")+" の追加を確認")
-                .setMessage("配布元: "+app.getString("publisher")+"\n版: "+app.getString("versionName")+"\n取得先: "+(trustedCatalog().online?"オンライン配信・検証済みキャッシュ":"この Store に同梱")+"\n外部への送信: なし（取得時に配信先へ IP 等が伝わります）"+("network.itonami.torihiki".equals(id)?"\nアプリ使用時: devnet ノードへ読み取り要求（取得ごとに確認）":"")+"\n\n署名と SHA-256 を確認した後、Android のインストール画面に進みます。\n\nSHA-256\n"+a.getString("sha256"))
+                .setMessage("配布元: "+app.getString("publisher")+"\n版: "+app.getString("versionName")+"\n取得先: "+(trustedCatalog().online?"オンライン配信・検証済みキャッシュ":"この Store に同梱")+"\n外部への送信: なし（取得時に配信先へ IP 等が伝わります）"+("network.itonami.torihiki".equals(id)?"\nアプリ使用時: devnet ノードへ読み取り・署名した devnet 取引（送信ごとに確認）":"")+"\n\n署名と SHA-256 を確認した後、Android のインストール画面に進みます。\n\nSHA-256\n"+a.getString("sha256"))
                 .setPositiveButton("今回の追加に進む",(d,w)->install(id)).setNegativeButton("今は追加しない",null).show();
         }catch(Exception invalid){message("配布元またはカタログを確認できません。追加を停止しました。");}
     }

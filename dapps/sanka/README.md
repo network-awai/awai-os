@@ -71,6 +71,42 @@ Versions: nbb 1.4.208 on Node 26.0.0, Babashka 1.12.218, Basilisp 0.5.1 on Pytho
 Each order, receipt and acceptance case changes one field of a good document. Each scenario pairs a
 correct walk with the walk that has to be refused in the same situation.
 
+## Device provider core (AWAI-3115, stage C1a)
+
+`src/sanka/device.cljc` is what an Android phone or PC enforces before it serves one compute order
+as a provider ([AWAI-3190](https://linear.app/kotobalabs/issue/AWAI-3190)). It is pure like the core: the host
+reads the battery, thermal and network state from Android and passes them in as facts.
+
+| Function | What it decides |
+| --- | --- |
+| `check-offer` | An `awai.compute-offer/1`: pinned model and engine, amount per order, `simulation` or `devnet` only (`live` is refused), provider and node kept apart, and the device limits (lowest battery, charging required, highest Android thermal status 0–6, metered network allowed, orders per day) |
+| `offer-transition` | `draft → offered ⇄ paused`, `withdrawn` and `expired` are final. Publishing and resuming need the fact that the person chose to offer the device |
+| `admit-order` | Whether to take an order now, or the first refusal in a fixed order: offer, order, offer state, order against offer, missing device facts, expiry, charging, battery, heat, metered network, busy (one order at a time), daily cap. A missing or mistyped fact refuses |
+| `receipt-body` | The `awai.work-receipt/1` body the host signs. It refuses an engine other than the offer's and more completion tokens than the order allowed |
+
+```bash
+bb --classpath src:test test/run_device_cases.clj
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src:test basilisp run test/run_device_cases.lpy
+nbb --classpath src:test test/run_device_cases.cljs
+```
+
+`test/device_cases.json` is written by `bb test/gen_device_cases.clj`; its expectations are written by
+hand. The receipt round-trip cases add the signer and signature a host would add and run
+`sanka.core/check-receipt` on the result.
+
+Evidence (2026-11-18, Apple M1 Max, macOS host; Babashka, Basilisp and nbb from the user's bin and
+Homebrew, not `nix/shell.nix`):
+
+| Check | Result |
+| --- | --- |
+| 93 cases on Babashka, Basilisp and nbb | 93 of 93 on each |
+| One changed expectation | 1 failure, exit 1 |
+| Core changed to ignore the battery limit and to allow a `live` offer | 4 failures on each, exit 1 |
+| Generator run twice | Same file |
+
+Not done here: no device, network, key, signature or ledger is involved. The Android host, the
+order transport and on-device evidence are the next units of AWAI-3115.
+
 ## A real order (stage V1)
 
 `test/live_v1.py` starts `llama-server` and the Hy gateway from

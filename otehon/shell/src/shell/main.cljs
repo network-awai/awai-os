@@ -9,6 +9,7 @@
             [shell.sound :refer [sound-panel]]
             [shell.display :refer [display-panel]]
             [shell.soshiki :refer [soshiki]]
+            [shell.gyosei :as gyosei]
             [shell.fleet-overview :as fleet]
             [shell.awai-support :as awai-support]
             [shell.docks :refer [device-dock node-dock]]
@@ -395,6 +396,7 @@
                  (= context "sound") [:f> sound-panel]
                  (= context "display") [:f> display-panel]
                  (= context "soshiki") [:f> soshiki account score open-account]
+                 (and (= context "gyosei") (>= score minimum)) [:f> gyosei/panel broker]
                  (and dapp (< score minimum))
                  [locked dapp minimum score open-account]
                  (and (= context "murakumo") (androidInferenceAvailable)) [:f> android-inference/panel]

@@ -1,0 +1,7 @@
+app uid=10148
+tcp sockets owned by app: 0
+tcp6 sockets owned by app: 0
+udp sockets owned by app: 0
+udp6 sockets owned by app: 0
+netstats entries for uid: 1
+netstats mAppUidStatsMap rows for uid 10148: 0

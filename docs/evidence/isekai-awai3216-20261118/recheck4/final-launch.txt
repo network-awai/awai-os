@@ -1,0 +1,7 @@
+Starting: Intent { cmp=network.itonami.isekai/.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: network.itonami.isekai/.MainActivity
+TotalTime: 875
+WaitTime: 878
+Complete

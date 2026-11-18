@@ -30,6 +30,14 @@ test('multi-app catalog admits a Tauri-sized artifact within the shared ceiling'
   const over={...app,artifacts:[{...apk,bytes:64*1024*1024+1}]};
   assert.equal(d.validCatalog(JSON.stringify({...c,apps:[over]}),100),false);
 });
+test('the Torihiki Bot Tauri artifact fits the shared ceiling and keeps its own asset name',()=>{
+  const bot={...app,id:'network.itonami.torihiki.bot',versionCode:1000,artifacts:[{...apk,asset:'packages/torihiki-bot.apk',bytes:29506324}]};
+  assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,bot]}),100),true);
+  for(const asset of ['packages/torihiki.bot.apk','packages/Torihiki-Bot.apk','packages/torihiki-bot.apk/../x.apk']){
+    const bad={...bot,artifacts:[{...apk,asset,bytes:29506324}]};
+    assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,bad]}),100),false,asset);
+  }
+});
 test('local event lifecycle is shared and bounded',()=>{
   const e={id:'1',title:'散歩 <img src=x onerror=alert(1)>',at:200};
   const saved=JSON.parse(d.saveEvent('[]',JSON.stringify(e)));

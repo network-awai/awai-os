@@ -33,6 +33,7 @@ export const messages={
     "error.file-too-large": "この版は1 GiBまで取り込めます。",
     "error.import-cancelled": "取り込みをキャンセルしました。",
     "error.local-provider-required": "この端末のファイルを選んでください。",
+    "error.import-unavailable": "この版の macOS では取り込みに対応していません。",
     "error.unknown": "操作を完了できませんでした。元のファイルは変更していません。"
   },
   "en": {
@@ -69,6 +70,7 @@ export const messages={
     "error.file-too-large": "This version imports files up to 1 GiB.",
     "error.import-cancelled": "Import cancelled.",
     "error.local-provider-required": "Choose a file stored on this device.",
+    "error.import-unavailable": "Import is not available in this macOS version.",
     "error.unknown": "The operation could not be completed. The original file has not been changed."
   }
 };

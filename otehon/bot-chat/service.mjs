@@ -8,10 +8,11 @@ import {infer} from './inference.mjs';
 import {presenceReporter} from './presence.mjs';
 import {peerGrant,historyGrant,peerMetadata,authorizePeer,checkPeerAdmission} from './peer.mjs';
 import {scopes,sessionRows,recordSession,validSession} from './sessions.mjs';
+import {attachVoiceTransport} from './voice-transport.mjs';
 // Thin HTTP/process bridge. Identity, custody, recovery and alias policy live in CLJC.
 export async function identityCall(cfg,request){return bbJSON(cfg.bb,['-m','itonami-identity.core'],{config:{identityRoot:cfg.identityRoot,identityNamespace:cfg.identityNamespace,identityCustody:cfg.identityCustody,identityEtcdConfig:cfg.identityEtcdConfig,identityAutoEnroll:cfg.identityAutoEnroll,identityAllowedBots:cfg.identityAllowedBots,identityFixture:cfg.identityFixture,fixtureLedgerRoot:cfg.fixtureLedgerRoot},request});}
-export function handler(cfg,{db=database,execute=infer,loadBots,onProcess=()=>{},checkAdmission=checkPeerAdmission,identity=identityCall}={}){
- const active=new Set();
+export function handler(cfg,{db=database,execute=infer,loadBots,onProcess=()=>{},checkAdmission=checkPeerAdmission,identity=identityCall,activeScopes=new Set()}={}){
+ const active=activeScopes;
  return async(req,res)=>{
   const origin=req.headers.origin,allowedOrigin=cfg.origins.includes(origin);
   if(allowedOrigin){res.setHeader('access-control-allow-origin',origin);res.setHeader('vary','Origin');res.setHeader('access-control-allow-methods','POST, OPTIONS');res.setHeader('access-control-allow-headers','content-type');res.setHeader('access-control-allow-private-network','true');}
@@ -109,7 +110,10 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
  await verifySources();await fs.mkdir(cfg.runRoot,{recursive:true,mode:0o700});
  const loadBots=async()=>{const e=JSON.parse(await fs.readFile(cfg.fleetArtifact));if(createHash('sha256').update(JSON.stringify(e.payload)).digest('hex')!==e.sha256)throw Error('catalog-digest-mismatch');if(e.payload.catalogSha256!==personas.catalogSha256)throw Error('persona-catalog-mismatch');return e.payload.bots.map(b=>({...b,chatPersona:personas.rows.find(p=>p.botId===b.id)}));};
  const presence=presenceReporter(cfg,personas);
- http.createServer(handler(cfg,{loadBots,onProcess:presence.onProcess})).listen(cfg.port,'127.0.0.1',()=>console.log('Itonami Agent conversation service ready on private loopback'));
+ const activeScopes=new Set(),common={loadBots,onProcess:presence.onProcess,activeScopes};
+ const server=http.createServer(handler(cfg,common));
+ await attachVoiceTransport(server,cfg,{handleFactory:signal=>handler(cfg,{...common,execute:(config,bot,request,messages,hooks)=>infer(config,bot,request,messages,{...hooks,signal})})});
+ server.listen(cfg.port,'127.0.0.1',()=>console.log('Itonami Agent conversation service ready on private loopback'));
  // Startup enrolls the verified catalog under the owner policy. Small batches bound
  // process time; ordinary bot selection also resumes an interrupted enrollment.
  if(cfg.identityAutoEnroll===true){const seen=new Set();let reconciling=false;const reconcile=async()=>{if(reconciling)return;reconciling=true;try{const pending=(await loadBots()).filter(b=>!seen.has(b.id));for(let i=0;i<pending.length;i+=5){const ids=pending.slice(i,i+5).map(b=>b.id),v=await identityCall(cfg,{action:'boot',bots:ids});if(v.error||v.schema!=='itonami.identity-boot.v1'||v.verified!==ids.length)throw Error('identity-enrollment-unconfirmed');for(const id of ids)seen.add(id);}console.log('Identity catalog enrollment readback complete: '+seen.size);}catch{console.error('Identity enrollment requires recovery or operator attention');}finally{reconciling=false;}};setInterval(reconcile,60000);void reconcile();}

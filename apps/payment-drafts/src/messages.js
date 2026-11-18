@@ -1,0 +1,96 @@
+// UI messages by stable key.
+const ja = {
+  'app.title': '送金の下書き', 'nav.label': '表示の切り替え', 'nav.draft': '下書きを作る', 'nav.import': '取り込む', 'nav.drafts': '下書き一覧', 'nav.operations': '外部操作',
+  'env.web': 'Web', 'env.tauri': 'Awai Shell / Tauri v3', 'env.line': '{runtime} · ISO 20022 pain.001 · 端末内だけで作成・検査・保存',
+  'host.failed': 'ホストを確認できませんでした。', 'state.failed': '保存した下書きを読めませんでした。',
+  'state.unreadable': '保存した下書きの形式を読めません。上書きしないよう、保存・承認・削除を止めています。', 'state.readOnly': '保存した下書きを読めないため、保存・承認・削除はできません。',
+  'save.conflict': '別の画面で下書きが変わっていたので、読み直しました。もう一度操作してください。', 'drafts.full': '下書きは {max} 件までです。不要な下書きを削除してから保存してください。',
+  'draft.heading': '自分の口座からの送金指図（pain.001）', 'draft.note': '自分の取引の送金指図を、この端末の中で下書きし検査します。銀行への送信・署名・資金の移動はしません。下書きは、見直したうえで自分の銀行から送ってください。',
+  'field.debtorName': '依頼人の名前', 'field.debtorIban': '依頼人の口座（IBAN）', 'field.debtorBic': '依頼人の銀行（BIC）',
+  'field.creditorName': '受取人の名前', 'field.creditorIban': '受取人の口座（IBAN）', 'field.creditorBic': '受取人の銀行（BIC）',
+  'field.amount': '金額', 'field.currency': '通貨（ISO 4217、例 EUR）', 'field.executionDate': '実行希望日', 'field.chargeBearer': '手数料の負担',
+  'field.endToEndId': '取引の参照（End-to-End ID）', 'field.instructionId': '指図の参照（任意）', 'field.uetr': 'UETR（任意）', 'field.remittance': '送金の目的・請求書番号（任意）',
+  'charge.SLEV': 'SLEV（取り決めどおり）', 'charge.SHAR': 'SHAR（双方で負担）', 'charge.DEBT': 'DEBT（依頼人が負担）', 'charge.CRED': 'CRED（受取人が負担）',
+  'draft.uetr': 'UETR を作る', 'draft.preview': 'pain.001 のプレビュー', 'draft.save': '下書きを保存', 'draft.saved': '下書きを保存しました。', 'draft.invalid': '入力を確認してください。',
+  'import.heading': '下書きを取り込む', 'import.note': 'awai-banking-ops の bot などが作った pain.001.001.09 の XML を貼り付けます。この app が同じ項目から作る電文と完全に一致し、L1 の検査を通るものだけを取り込みます。',
+  'import.label': 'pain.001 の XML', 'import.check': '検査する', 'import.save': '検査して取り込む', 'import.ok': '取り込める電文です。', 'import.saved': '取り込みました。',
+  'problem.debtorName.empty': '依頼人の名前を入力してください。', 'problem.debtorName.long': '依頼人の名前は 140 文字以内です。',
+  'problem.creditorName.empty': '受取人の名前を入力してください。', 'problem.creditorName.long': '受取人の名前は 140 文字以内です。',
+  'problem.debtorIban.format': '依頼人の IBAN の形が正しくありません（国コード 2 文字＋数字 2 桁＋英数字）。', 'problem.debtorIban.checksum': '依頼人の IBAN の検査数字が合いません。',
+  'problem.creditorIban.format': '受取人の IBAN の形が正しくありません（国コード 2 文字＋数字 2 桁＋英数字）。', 'problem.creditorIban.checksum': '受取人の IBAN の検査数字が合いません。',
+  'problem.debtorBic.format': '依頼人の BIC は 8 文字か 11 文字です。', 'problem.creditorBic.format': '受取人の BIC は 8 文字か 11 文字です。',
+  'problem.currency.format': '通貨は英大文字 3 文字で入力してください。', 'problem.amount.empty': '金額を入力してください。', 'problem.amount.format': '金額は 1250.00 のような数で入力してください。',
+  'problem.amount.decimals': 'この通貨の金額は小数 2 桁までです。', 'problem.amount.whole': 'この通貨の金額は整数で入力してください。', 'problem.amount.zero': '金額は 0 より大きくしてください。',
+  'problem.executionDate.format': '実行希望日は、実在する日付を YYYY-MM-DD で入力してください。', 'problem.chargeBearer.code': '手数料の負担を選んでください。',
+  'problem.endToEndId.empty': '取引の参照を入力してください。', 'problem.endToEndId.long': '取引の参照は 35 文字以内です。', 'problem.instructionId.long': '指図の参照は 35 文字以内です。',
+  'problem.uetr.format': 'UETR は小文字の UUID（バージョン 4）です。', 'problem.remittance.long': '送金の目的は 140 文字以内です。', 'problem.meta.invalid': '電文の識別子か作成日時が正しくありません。',
+  'problem.import.malformed': 'XML として読めません。', 'problem.import.unsupported': 'DOCTYPE・コメント・処理命令を含む XML は取り込みません。', 'problem.import.entity': '使えない文字参照があります。',
+  'problem.import.size': 'XML が大きすぎます（20,000 文字まで）。', 'problem.import.message': 'pain.001.001.09 の電文ではありません。',
+  'problem.import.normalized': '値の前後の空白や大文字・小文字が、この app の作る形と違います。', 'problem.import.subset': 'この app が扱わない要素や値（合計の不一致など）が含まれています。',
+  'problem.instruction.shape': '下書きの形が正しくありません。', 'problem.instruction.normalized': '下書きの値が正規の形ではありません。',
+  'check.heading': 'L1 の検査（構文）', 'check.xsd-facets': 'XSD の値の制約（日付、BIC、IBAN、UETR、桁数など）', 'check.round-trip': '電文を読み戻すと同じ内容になる',
+  'check.pass': '合格', 'check.fail': '不合格', 'check.levels': 'L2（CBPR+ などの利用規則）と L3（銀行での受付）は検査していません。owner の決定（ADR 0042 の O3・O5）を待っています。',
+  'drafts.heading': '保存した下書き', 'drafts.empty': '下書きはまだありません。', 'drafts.count': '{count}件',
+  'drafts.copy': 'XML をコピー', 'drafts.copied': 'コピーしました。', 'drafts.copyFailed': 'コピーできませんでした。',
+  'drafts.approve': '見直した（承認）', 'drafts.unapprove': '承認を取り消す', 'drafts.approved': '承認しました。まだ送信していません。', 'drafts.unapproved': '承認を取り消しました。',
+  'drafts.status.draft': '下書き', 'drafts.status.approved': '承認済み・未送信', 'drafts.source.form': 'この端末で作成', 'drafts.source.import': '取り込み',
+  'drafts.delete': '削除', 'drafts.deleteConfirm': 'もう一度押すと削除', 'drafts.deleteArmed': '下書きは元に戻せません。削除するにはもう一度押してください。', 'drafts.deleted': '下書きを削除しました。',
+  'drafts.amount': '{amount} {currency}', 'save.failed': '保存できませんでした（{code}）。',
+  'ops.heading': '外部操作（すべて無効）', 'ops.note': 'この版の実行設定には外部操作が一つもなく、インターネットにも接続しません。下の操作は後の版で、owner の決定のあと、操作ごとに同意を取ってから行います。', 'ops.disabled': '無効', 'ops.waits': '待っているもの: {what}',
+  'op.bank.submit': '自分の銀行に送金指図を送る', 'op.bank.statement': '自分の銀行から入出金明細を受け取る', 'op.itonami.receive': '自分の awai-banking-ops bot から下書きを受け取る',
+  'waits.bank.submit': 'owner の決定（ADR 0042 の O1・O2）', 'waits.bank.statement': 'owner の決定（ADR 0042 の O2）', 'waits.itonami.receive': '端末内で受け渡す経路の宣言',
+  'footer': '自分の取引の下書きだけを作ります。金融や法律の助言ではありません。「SWIFT」は S.W.I.F.T. SC の商標です。'};
+const en = {
+  'app.title': 'Payment Drafts', 'nav.label': 'Views', 'nav.draft': 'New draft', 'nav.import': 'Import', 'nav.drafts': 'Drafts', 'nav.operations': 'External operations',
+  'env.web': 'Web', 'env.tauri': 'Awai Shell / Tauri v3', 'env.line': '{runtime} · ISO 20022 pain.001 · drafted, checked and saved on this device only',
+  'host.failed': 'Could not check the host.', 'state.failed': 'Could not read the saved drafts.',
+  'state.unreadable': 'The saved drafts are in a format this app cannot read. Saving, approving and deleting are off so they are not overwritten.', 'state.readOnly': 'The saved drafts cannot be read, so saving, approving and deleting are off.',
+  'save.conflict': 'The drafts changed in another window and were read again. Try once more.', 'drafts.full': 'You can keep up to {max} drafts. Delete one before saving.',
+  'draft.heading': 'Payment instruction from your own account (pain.001)', 'draft.note': 'Draft and check, on this device, a payment instruction for your own transaction. Nothing is sent to a bank, signed or moved. Review the draft, then send it through your own bank.',
+  'field.debtorName': 'Your name', 'field.debtorIban': 'Your account (IBAN)', 'field.debtorBic': 'Your bank (BIC)',
+  'field.creditorName': 'Payee name', 'field.creditorIban': 'Payee account (IBAN)', 'field.creditorBic': 'Payee bank (BIC)',
+  'field.amount': 'Amount', 'field.currency': 'Currency (ISO 4217, e.g. EUR)', 'field.executionDate': 'Requested execution date', 'field.chargeBearer': 'Charges',
+  'field.endToEndId': 'Transaction reference (End-to-End ID)', 'field.instructionId': 'Instruction reference (optional)', 'field.uetr': 'UETR (optional)', 'field.remittance': 'Purpose or invoice number (optional)',
+  'charge.SLEV': 'SLEV (as agreed)', 'charge.SHAR': 'SHAR (shared)', 'charge.DEBT': 'DEBT (paid by you)', 'charge.CRED': 'CRED (paid by the payee)',
+  'draft.uetr': 'Generate UETR', 'draft.preview': 'pain.001 preview', 'draft.save': 'Save draft', 'draft.saved': 'Draft saved.', 'draft.invalid': 'Check the fields.',
+  'import.heading': 'Import a draft', 'import.note': 'Paste pain.001.001.09 XML, for example one the awai-banking-ops bot drafted. Only a message that is exactly what this app builds from the same fields, and that passes the L1 checks, is imported.',
+  'import.label': 'pain.001 XML', 'import.check': 'Check', 'import.save': 'Check and import', 'import.ok': 'This message can be imported.', 'import.saved': 'Imported.',
+  'problem.debtorName.empty': 'Enter your name.', 'problem.debtorName.long': 'Your name can be at most 140 characters.',
+  'problem.creditorName.empty': "Enter the payee's name.", 'problem.creditorName.long': "The payee's name can be at most 140 characters.",
+  'problem.debtorIban.format': 'Your IBAN is not in the right form (2-letter country, 2 digits, letters and digits).', 'problem.debtorIban.checksum': 'The check digits of your IBAN do not match.',
+  'problem.creditorIban.format': "The payee's IBAN is not in the right form (2-letter country, 2 digits, letters and digits).", 'problem.creditorIban.checksum': "The check digits of the payee's IBAN do not match.",
+  'problem.debtorBic.format': 'Your BIC has 8 or 11 characters.', 'problem.creditorBic.format': "The payee's BIC has 8 or 11 characters.",
+  'problem.currency.format': 'Enter the currency as 3 capital letters.', 'problem.amount.empty': 'Enter an amount.', 'problem.amount.format': 'Enter a number such as 1250.00.',
+  'problem.amount.decimals': 'Amounts in this currency have at most 2 decimal places.', 'problem.amount.whole': 'Amounts in this currency are whole numbers.', 'problem.amount.zero': 'The amount must be more than 0.',
+  'problem.executionDate.format': 'Enter a real date as YYYY-MM-DD.', 'problem.chargeBearer.code': 'Choose who pays the charges.',
+  'problem.endToEndId.empty': 'Enter a transaction reference.', 'problem.endToEndId.long': 'The transaction reference can be at most 35 characters.', 'problem.instructionId.long': 'The instruction reference can be at most 35 characters.',
+  'problem.uetr.format': 'A UETR is a lowercase version 4 UUID.', 'problem.remittance.long': 'The purpose can be at most 140 characters.', 'problem.meta.invalid': 'The message identifiers or creation time are not valid.',
+  'problem.import.malformed': 'This cannot be read as XML.', 'problem.import.unsupported': 'XML with a DOCTYPE, comments or processing instructions is not imported.', 'problem.import.entity': 'It contains a character reference this app does not accept.',
+  'problem.import.size': 'The XML is too large (20,000 characters at most).', 'problem.import.message': 'This is not a pain.001.001.09 message.',
+  'problem.import.normalized': 'Spaces or letter case in a value differ from what this app builds.', 'problem.import.subset': 'It contains elements or values this app does not handle (such as a total that does not match).',
+  'problem.instruction.shape': 'The draft is not in the right shape.', 'problem.instruction.normalized': 'A value in the draft is not in its normal form.',
+  'check.heading': 'L1 checks (syntax)', 'check.xsd-facets': 'XSD value constraints (dates, BIC, IBAN, UETR, lengths and digits)', 'check.round-trip': 'Reading the message back gives the same content',
+  'check.pass': 'Pass', 'check.fail': 'Fail', 'check.levels': 'L2 (usage guidelines such as CBPR+) and L3 (acceptance by a bank) are not checked; they wait on the owner decisions O3 and O5 of ADR 0042.',
+  'drafts.heading': 'Saved drafts', 'drafts.empty': 'No drafts yet.', 'drafts.count': '{count} saved',
+  'drafts.copy': 'Copy XML', 'drafts.copied': 'Copied.', 'drafts.copyFailed': 'Could not copy.',
+  'drafts.approve': 'Reviewed (approve)', 'drafts.unapprove': 'Withdraw approval', 'drafts.approved': 'Approved. Nothing has been sent.', 'drafts.unapproved': 'Approval withdrawn.',
+  'drafts.status.draft': 'Draft', 'drafts.status.approved': 'Approved, not sent', 'drafts.source.form': 'Made on this device', 'drafts.source.import': 'Imported',
+  'drafts.delete': 'Delete', 'drafts.deleteConfirm': 'Tap again to delete', 'drafts.deleteArmed': 'A deleted draft cannot be restored. Tap again to delete it.', 'drafts.deleted': 'Draft deleted.',
+  'drafts.amount': '{currency} {amount}', 'save.failed': 'Could not save ({code}).',
+  'ops.heading': 'External operations (all disabled)', 'ops.note': 'This version declares no external operations at runtime and does not connect to the internet. A later version will run each of these only after the owner decides, and only after asking you for that operation.', 'ops.disabled': 'Disabled', 'ops.waits': 'Waiting on: {what}',
+  'op.bank.submit': 'Send the payment instruction to your own bank', 'op.bank.statement': 'Receive account statements from your own bank', 'op.itonami.receive': 'Receive drafts from your own awai-banking-ops bot',
+  'waits.bank.submit': 'owner decisions O1 and O2 of ADR 0042', 'waits.bank.statement': 'owner decision O2 of ADR 0042', 'waits.itonami.receive': 'a declared on-device transport',
+  'footer': 'Drafts for your own transactions only. Not financial or legal advice. "SWIFT" is a trademark of S.W.I.F.T. SC.'};
+export const MESSAGES = Object.freeze({ja, en});
+export function pickLocale(languages) {
+  for (const l of languages ?? []) { const base = String(l).toLowerCase().split('-')[0]; if (base in MESSAGES) return base; }
+  return 'ja';
+}
+export function translator(locale) {
+  const table = MESSAGES[locale] ?? ja;
+  return (key, params = {}) => {
+    const text = table[key] ?? ja[key];
+    if (text === undefined) throw Error('missing message ' + key);
+    return text.replace(/\{(\w+)\}/g, (_, name) => { if (!(name in params)) throw Error(`missing ${name} for ${key}`); return String(params[name]); });
+  };
+}

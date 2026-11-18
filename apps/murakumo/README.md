@@ -59,3 +59,23 @@ npm run build && node --test test/manager.test.mjs   # the same cases on the com
 `test/manager-cases.json` holds 35 hand-written cases, including the recommendation table of the
 research document. A broken expectation fails each runner. A comfortable threshold changed from
 80 % to 100 % fails 6 cases.
+
+## Model manager on Android (stage 4a, AWAI-3203)
+
+The app now lists the pinned catalog with each model's fit on this device, from `window.AwaiInferenceManager`. It also shows the recommendation, a per-model import through the Android document picker, loading any admitted model, the loaded model, and this device's usage.
+
+- **Admission:** files are stored as `files/models/<catalog id>.gguf`. They are admitted only when size and SHA-256 equal the catalog entry, at import and again at load. The earlier `models/qwen3.gguf` is kept as the 0.6B entry.
+- **One model at a time:** loading another model releases the current one. A model that does not fit cannot be loaded.
+- **Usage:** `awai.murakumo.device-usage.v1` comes from ActivityManager and StatFs.
+  - Device-wide CPU is `null` (unknown): Android does not let apps read it. The app's own CPU share is shown instead.
+  - GPU is `null`, because the engine runs on the CPU.
+- **Errors:** the Rust bridge passes the plugin's plain refusal codes (for example `model-import-rejected`) to the page, so the UI can say why.
+- **No download yet.** There is still no INTERNET permission. Downloading waits for the canonical broker extension (owner decision 2026-11-18, stage 4b).
+
+`test/live-manager-4a.mjs` runs the real APK on an emulator this run owns. It drives the WebView through DevTools and the system picker through UI Automator. Evidence: [`docs/evidence/murakumo-manager-4a-20261118.json`](../../docs/evidence/murakumo-manager-4a-20261118.json), 16/16, with [the phone screen](../../docs/evidence/murakumo-manager-4a-20261118-phone.png).
+
+**Differences from the Figma proposal:**
+
+- The app renders in the shared Awai UI light theme, not the dark frames.
+- The model action reads "Import from file" instead of "Download" until stage 4b.
+- CPU shows this app's share, because device-wide CPU is unreadable.

@@ -1,0 +1,3 @@
+(() => { const k = Object.keys(localStorage).find(k => k.endsWith(':network.itonami.isekai')); const env = JSON.parse(localStorage.getItem(k));
+  const one = {id: 'x', createdAt: '2026-11-18T00:00:00Z', draft: {schema: 'isekai.fork.commit-draft.v1', game: 'g', parents: [], author: 'did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK', message: 'm', moderation: 'pending', published: false}};
+  env.data = {schema: 'itonami.isekai.drafts.v1', drafts: [{...one, id: "dup"}, {...one, id: "dup", createdAt: "2026-11-18T00:01:00Z"}]}; localStorage.setItem(k, JSON.stringify(env)); location.hash = '#/drafts'; location.reload(); return 2; })()

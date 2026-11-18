@@ -1,0 +1,59 @@
+--------- beginning of system
+11-18 08:50:19.454   554   571 W PackageConfigPersister: App-specific configuration not found for packageName: network.itonami.x402 and userId: 0
+--------- beginning of main
+11-18 08:50:19.456   554   571 V GrammaticalInflectionUtils: AttributionSource: AttributionSource { uid = 10148, packageName = null, attributionTag = null, token = android.os.Binder@29acc55, deviceId = 0, next = null } does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+11-18 08:50:19.457   554   571 V GrammaticalInflectionUtils: AttributionSource: AttributionSource { uid = 10148, packageName = null, attributionTag = null, token = android.os.Binder@29acc55, deviceId = 0, next = null } does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+11-18 08:50:19.589  2466  2472 I rk.itonami.x402: Background concurrent mark compact GC freed 3693KB AllocSpace bytes, 9(356KB) LOS objects, 49% free, 3851KB/7702KB, paused 91us,2.036ms total 100.910ms
+11-18 08:50:19.593  2466  2466 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=false callback=android.view.ViewRootImpl$$ExternalSyntheticLambda11@58af2a5
+11-18 08:50:19.594   554   571 D CoreBackPreview: Window{47c38a0 u0 network.itonami.x402/network.itonami.x402.MainActivity}: Setting back callback null
+11-18 08:50:19.599  2466  2474 W rk.itonami.x402: ApkAssets: Deleting an ApkAssets object '<empty> and /product/app/webview/webview.apk' with 2 weak references
+11-18 08:50:19.614   554   571 W InputManager-JNI: Input channel object '47c38a0 network.itonami.x402/network.itonami.x402.MainActivity (client)' was disposed without first being removed with the input manager!
+11-18 08:50:19.662   554   578 V WindowManager: Unknown focus tokens, dropping reportFocusChanged
+11-18 08:50:19.723  2466  2466 D AutofillManager: Fill dialog is enabled:false, hints=[]
+11-18 08:50:19.746   554   572 D CoreBackPreview: Window{b1dbad8 u0 network.itonami.x402/network.itonami.x402.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@3b7e297, mPriority=0, mIsAnimationCallback=false}
+11-18 08:50:19.775   554  1526 I WindowManager: finishDrawing of relaunch: Window{b1dbad8 u0 network.itonami.x402/network.itonami.x402.MainActivity} 303ms
+11-18 08:50:19.794   554   578 D OomAdjuster: Not killing cached processes
+11-18 08:50:19.825   554   667 I ImeTracker: network.itonami.x402:9eca335d: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+11-18 08:50:19.825   554   667 I ImeTracker: network.itonami.x402:9eca335d: onCancelled at PHASE_SERVER_SHOULD_HIDE
+11-18 08:50:19.839  2501  2518 I chromium: [INFO:viewport_data.cc(133)] E2E_Used ViewportFitCover
+11-18 08:50:19.842  2466  2531 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
+11-18 08:50:19.843  2466  2484 I RustStdoutStderr: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
+11-18 08:50:19.963  2501  2518 I chromium: [INFO:document_style_environment_variables.cc(104)] E2E_Used SafeAreaInsetBottom
+11-18 08:50:20.091  2466  2484 I RustStdoutStderr: s_glBindAttribLocation: bind attrib 0 name _uposition
+11-18 08:50:20.091  2466  2484 I RustStdoutStderr: s_glBindAttribLocation: bind attrib 1 name _ucolor
+11-18 08:50:20.130  2466  2481 W chromium: [WARNING:angle_platform_impl.cc(49)] ProgramGL.cpp:666 (checkLinkStatus): Program link or binary loading failed with no info log.
+11-18 08:50:20.130  2466  2484 I RustStdoutStderr: [WARNING:angle_platform_impl.cc(49)] ProgramGL.cpp:666 (checkLinkStatus): Program link or binary loading failed with no info log.
+11-18 08:50:20.132  2466  2484 I RustStdoutStderr: s_glBindAttribLocation: bind attrib 0 name _uposition
+11-18 08:50:20.132  2466  2484 I RustStdoutStderr: s_glBindAttribLocation: bind attrib 1 name _ulocalCoord
+11-18 08:50:21.371  2466  2481 D EGL_emulation: app_time_stats: avg=266.37ms min=41.30ms max=1181.44ms count=6
+11-18 08:50:22.487   554  1834 E TaskPersister: File error accessing recents directory (directory doesn't exist?).
+--------- beginning of kernel
+11-18 08:50:25.656   169   169 I logd    : logdr: UID=2000 GID=2000 PID=2583 n tail=0 logMask=99 pid=0 start=0ns deadline=0ns
+11-18 08:50:25.755  2588  2588 W BpBinder: Linking to death on android.gui.ISurfaceComposer but there are no threads (yet?) listening to incoming transactions. See ProcessState::startThreadPool and ProcessState::setThreadPoolMaxThreadCount. Generally you should setup the binder threadpool before other initialization steps.
+11-18 08:50:25.756  2588  2588 W ProcessState: Extra binder thread started, but 0 threads requested. Do not use *startThreadPool when zero threads are requested.
+11-18 08:50:25.787   159   159 I servicemanager: Caller(pid=2588,uid=2000,sid=u:r:shell:s0) Could not find android.hardware.graphics.allocator.IAllocator/default in the VINTF manifest. No alternative instances declared in VINTF.
+11-18 08:50:25.783   160   160 I hwservicemanager: getTransport: Cannot find entry android.hardware.graphics.mapper@4.0::IMapper/default in either framework or device VINTF manifest.
+11-18 08:50:25.784  2588  2589 I Gralloc4: mapper 4.x is not supported
+11-18 08:50:32.063   554   572 V GrammaticalInflectionUtils: AttributionSource: AttributionSource { uid = 10148, packageName = null, attributionTag = null, token = android.os.Binder@29acc55, deviceId = 0, next = null } does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+11-18 08:50:32.065   554   572 V GrammaticalInflectionUtils: AttributionSource: AttributionSource { uid = 10148, packageName = null, attributionTag = null, token = android.os.Binder@29acc55, deviceId = 0, next = null } does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+11-18 08:50:32.119  2466  2466 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=false callback=android.view.ViewRootImpl$$ExternalSyntheticLambda11@14e0d0b
+11-18 08:50:32.119   554   572 D CoreBackPreview: Window{b1dbad8 u0 network.itonami.x402/network.itonami.x402.MainActivity}: Setting back callback null
+11-18 08:50:32.148   554   572 W InputManager-JNI: Input channel object 'b1dbad8 network.itonami.x402/network.itonami.x402.MainActivity (client)' was disposed without first being removed with the input manager!
+11-18 08:50:32.215   554   578 V WindowManager: Unknown focus tokens, dropping reportFocusChanged
+11-18 08:50:32.292  2466  2466 D AutofillManager: Fill dialog is enabled:false, hints=[]
+11-18 08:50:32.314   554  1640 D CoreBackPreview: Window{fc71652 u0 network.itonami.x402/network.itonami.x402.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@93527d9, mPriority=0, mIsAnimationCallback=false}
+11-18 08:50:32.355   554  1640 I WindowManager: finishDrawing of relaunch: Window{fc71652 u0 network.itonami.x402/network.itonami.x402.MainActivity} 282ms
+11-18 08:50:32.397   554   578 D OomAdjuster: Not killing cached processes
+11-18 08:50:32.409   554   667 I ImeTracker: network.itonami.x402:e971b274: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+11-18 08:50:32.409   554   667 I ImeTracker: network.itonami.x402:e971b274: onCancelled at PHASE_SERVER_SHOULD_HIDE
+11-18 08:50:32.420  2501  2518 I chromium: [INFO:viewport_data.cc(133)] E2E_Used ViewportFitCover
+11-18 08:50:32.437  2466  2531 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
+11-18 08:50:32.437  2466  2484 I RustStdoutStderr: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
+11-18 08:50:32.595  2501  2518 I chromium: [INFO:document_style_environment_variables.cc(104)] E2E_Used SafeAreaInsetBottom
+11-18 08:50:32.622  2501  2518 I chromium: [INFO:document_style_environment_variables.cc(104)] E2E_Used SafeAreaInsetBottom
+11-18 08:50:32.773  2466  2481 W chromium: [WARNING:angle_platform_impl.cc(49)] ProgramGL.cpp:666 (checkLinkStatus): Program link or binary loading failed with no info log.
+11-18 08:50:32.773  2466  2484 I RustStdoutStderr: [WARNING:angle_platform_impl.cc(49)] ProgramGL.cpp:666 (checkLinkStatus): Program link or binary loading failed with no info log.
+11-18 08:50:32.773  2466  2484 I RustStdoutStderr: s_glBindAttribLocation: bind attrib 0 name _uposition
+11-18 08:50:32.773  2466  2484 I RustStdoutStderr: s_glBindAttribLocation: bind attrib 1 name _ulocalCoord
+11-18 08:50:33.931  2466  2481 D EGL_emulation: app_time_stats: avg=198.00ms min=68.81ms max=797.11ms count=8
+11-18 08:50:35.090   554  1834 E TaskPersister: File error accessing recents directory (directory doesn't exist?).
