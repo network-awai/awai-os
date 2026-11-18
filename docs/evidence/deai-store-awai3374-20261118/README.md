@@ -28,10 +28,15 @@ Source, build and disposable-emulator evidence only. Nothing here proves a physi
 | Detail | 「出会いの準備を、手元で。」, 端末内で使える, and the catalog description (on the device only, no sending, no remote inference, no contact between users). | `store-04-detail.jpg` |
 | Pre-add disclosure | 送る情報: 外部への送信なし; 許可の範囲: 今回の端末への追加1回. | `store-05-disclosure.jpg` |
 | Store integrity dialog | Shows the sha256 above before Android's installer opens. | `store-07-integrity.jpg` |
-| Android install and launch | **Not verified.** After 今回の追加に進む the host load rose to 92–112 and adb stopped responding; the emulator was stopped. | — |
+| Android install | Android's installer asked "Do you want to install this app?" and installed it. `installerPackageName=network.awai.store`, versionCode 1000, uid 10150, no INTERNET permission. | `store-08-installer.jpg` |
+| Launch | `network.itonami.deai/.MainActivity` resumed (`am start -W` TotalTime 1,880 ms); the assistant status panel shows 「この端末だけ」 and 「なし（宣言された外部操作 0 件）」. | `store-10-launched.jpg` |
+| Profile → ranking | Through WebView DevTools `Input.insertText` and clicks: interests 映画、散歩、珈琲 and candidates A (登山, 珈琲), B (散歩, 映画, 読書), C (ゲーム) gave B 50% > A 25% > C 0% with explanations. Only `http://tauri.localhost` files were loaded. | `app-ranking.jpg` |
+| No traffic, 30 s after input | No socket for uid 10150 in `/proc/net/{tcp,tcp6,udp,udp6}` and no entry in the BPF `mAppUidStatsMap` (nine other uids had one); `dumpsys netstats` lists it only as `set=1`. No FATAL or ANR from the app process in logcat. | — |
+
+The first attempt (11:37–11:44) reached the integrity dialog, then the host load rose to 92–112 and adb stopped responding, so that emulator was stopped. The table above is from the second run (12:00–12:04, load average about 28) on the same AVD started again with `-wipe-data`; the list, detail, disclosure and integrity screenshots are from the first run and matched in the second. The emulator was stopped after the checks.
 
 ## Known gaps
 
-- Android's installer step and the first launch of `network.itonami.deai` have not been observed on any device. The app itself was checked on a moto g05 and an emulator under its previous id `network.awai.deai.dev.debug` (network-awai/app-deai `awai/docs/acceptance-20261118.md`).
+- No physical-device Store install. The app itself was checked on a moto g05 under its previous id `network.awai.deai.dev.debug` (network-awai/app-deai `awai/docs/acceptance-20261118.md`).
 - The Store on the owner's moto g05 was not replaced: it is a newer Store build (versionCode 5) whose catalog includes apps this build was not given.
 - The app uses Tauri's default launcher icon and the Store shows the generic apps icon.
