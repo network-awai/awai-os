@@ -32,4 +32,4 @@ npm run build:android          # arm64 APK; JDK21, SDK 37, NDK 27.0.12077973
 
 ## Qualification
 
-Source, unit tests, the static build and a browser walk-through: [`docs/evidence/public-funds-awai3296-20261118/`](../../docs/evidence/public-funds-awai3296-20261118/README.md). The Android APK on the API 35 VM and on a device running Awai OS is [AWAI-3297](https://linear.app/kotobalabs/issue/AWAI-3297). There is no CI job that builds the Tauri apps in this repository.
+Source, unit tests, the static build and a browser walk-through: [`docs/evidence/public-funds-awai3296-20261118/`](../../docs/evidence/public-funds-awai3296-20261118/README.md). The debug APK on the API 35 VM with the bot's actual output, and what is still open (device, ANR cause, release): [`apk-vm/`](../../docs/evidence/public-funds-awai3296-20261118/apk-vm/README.md) ([AWAI-3297](https://linear.app/kotobalabs/issue/AWAI-3297)). There is no CI job that builds the Tauri apps in this repository.
