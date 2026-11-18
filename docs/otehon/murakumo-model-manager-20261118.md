@@ -137,7 +137,9 @@ Reasons:
    - INTERNET added only for the declared Hugging Face origin and its redirect set. The CDN
      redirect must be declared narrowly, per the client-runtime contract.
 5. **Mac node usage reports and the all-devices list:**
-   - each node publishes a signed snapshot over the existing SSH/tailnet path;
+   - each node publishes a signed snapshot over the existing SSH/tailnet path. As built (AWAI-3377):
+     the phone pulls it over Tailscale Serve HTTPS, because the canonical broker accepts only
+     `https://` endpoints. See `apps/murakumo/node/README.md`;
    - the view shows stale or missing reports as stale or unknown;
    - reading another device is a consented operation;
    - no remote inference is started from the list.

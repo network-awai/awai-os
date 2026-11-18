@@ -7,6 +7,7 @@
 <div id="meters" class="meters"></div>
 <button type="button" id="release" class="tonal" data-i18n="release">メモリから解放</button>
 </section>
+<section aria-labelledby="devices-title" class="devices"><h2 id="devices-title" data-i18n="allDevices">全端末</h2><p class="label" data-i18n="allDevicesLead">各端末が署名して送った報告</p><button type="button" id="read-reports" class="tonal" data-i18n="readReports">報告を読む</button><p id="devices-status" class="label" role="status" aria-live="polite"></p><ul id="device-list" class="device-list"></ul></section>
 <section class="generate"><form id="generate-form" aria-labelledby="prompt-label" method="post" action="#"><h2><label id="prompt-label" for="prompt" data-i18n="prompt">何を生成しますか？</label></h2><textarea id="prompt" name="prompt" required maxlength="8192" rows="5" aria-describedby="generation-status" data-i18n-placeholder="placeholder" placeholder="短い自己紹介を日本語で書いて。"></textarea><div class="generate-actions"><button type="submit" id="generate" data-i18n="generate">生成する</button><button type="button" id="cancel" class="tonal" hidden data-i18n="stop">停止する</button><p id="generation-status" role="status" aria-live="polite"></p></div></form><h2 data-i18n="result">結果</h2><output id="result" for="prompt"></output><p class="capability" data-i18n="capability">対応：テキスト · 画像・動画エンジンは未接続</p></section>
 </main>
 </body></html>

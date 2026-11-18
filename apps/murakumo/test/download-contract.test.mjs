@@ -3,7 +3,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import fs f
 import {clientRuntimeProblems,clientRuntimeConnectSrc} from '../../../otehon/shell/vendor/kotoba-client-runtime.js';
 import {runtimeFor,DOWNLOAD_CAPABILITY} from '../client/download-contract.js';
 const catalog=JSON.parse(fs.readFileSync(new URL('../catalog.json',import.meta.url)));
-const runtime=runtimeFor(catalog);const APP='http://tauri.localhost';
+const runtime=runtimeFor(catalog);const APP='https://tauri.localhost';
 test('the download descriptor passes the canonical validator',()=>{assert.deepEqual(clientRuntimeProblems(runtime,[DOWNLOAD_CAPABILITY],APP),[]);});
 test('each operation pins its catalog revision, digest and exact size',()=>{
  assert.equal(runtime.operations.length,catalog.models.length);

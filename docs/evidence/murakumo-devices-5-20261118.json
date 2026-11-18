@@ -1,0 +1,81 @@
+{
+  "schema": "awai.murakumo.devices-5-evidence/1",
+  "issue": "AWAI-3377",
+  "serial": "emulator-5620",
+  "apkSha256": "127193c45ae4c4a792d1a455fae05126a99fb22af65ee06a8caba5a948ff4019",
+  "device": "benjamin",
+  "origin": "https://benjamin.tail110d8b.ts.net:8443",
+  "startupCrashes": [],
+  "cspMeta": null,
+  "ed25519": "NotSupportedError: Failed to execute 'importKey' on 'SubtleCrypto': Algorithm: Unrecognized name",
+  "allowedCard": "benjamin\n\nMac \u00b7 16 GiB \u00b7 Recommended Qwen3 \u00b7 8B\n\nReported 3 seconds ago\n\nLoaded\n\nQwen3 \u00b7 0.6B \u00b7 idle\n\nRAM\n6.7 GiB / 16 GiB\nCPU\n5 %\nGPU\n14 %\nDisk\n150.8 GiB free of 228.3 GiB",
+  "directLoaded": "qwen3-0.6b-q8_0",
+  "directRamTotal": 17179869184,
+  "staleCard": "benjamin\n\nMac\n\nNo newer report since 2 minutes ago\n\nThe report did not arrive\n\nLoaded\n\nUnknown\n\nRAM\nUnknown\nCPU\nUnknown\nGPU\nUnknown\nDisk\nUnknown",
+  "anrWaits": [],
+  "checks": [
+    {
+      "check": "the list shows benjamin with no report read yet",
+      "passed": true
+    },
+    {
+      "check": "Read reports opens the canonical consent dialog for benjamin\u2019s usage endpoint",
+      "passed": true
+    },
+    {
+      "check": "the owner taps Deny",
+      "passed": true
+    },
+    {
+      "check": "denied: no request reached the reporter and the card says nothing was sent",
+      "passed": true
+    },
+    {
+      "check": "the owner taps Allow once",
+      "passed": true
+    },
+    {
+      "check": "allowed: exactly one request reached the reporter",
+      "passed": true
+    },
+    {
+      "check": "the card is fresh, from a report that verified against the pinned key",
+      "passed": true
+    },
+    {
+      "check": "it names the model benjamin serves and its state",
+      "passed": true
+    },
+    {
+      "check": "it shows benjamin\u2019s RAM total, CPU, GPU and disk",
+      "passed": true
+    },
+    {
+      "check": "reporter stopped: the card says the report did not arrive and keeps the last report\u2019s age",
+      "passed": true
+    },
+    {
+      "check": "after 2 minutes the last report is stale and its values show as unknown",
+      "passed": true
+    }
+  ],
+  "passed": 11,
+  "total": 11,
+  "recordedAt": "2026-11-18",
+  "route": {
+    "transport": "Tailscale Serve, tailnet only (not Funnel), https://benjamin.tail110d8b.ts.net:8443 -> 127.0.0.1:18790",
+    "owner-decision": "2026-11-18, AWAI-3377",
+    "emulator-dns": "-dns-server 100.100.100.100"
+  },
+  "reporter": {
+    "host": "benjamin (Mac16,10, 16 GiB)",
+    "runtime": "nbb 1.5.211",
+    "sha256": "3bbfa9599cfea7fe0cba8f37bbbe1d82055d86ae248e2e86059564d19c48b96f",
+    "publicKey": "uSnGg-vtco9gnDa7AozETZn-FWH1ylkpDqDUVIJgn1A"
+  },
+  "notes": [
+    "The emulator WebView is Chrome 124, which has no WebCrypto Ed25519 (see the ed25519 field), so every signature here was checked by the RFC 8032 BigInt fallback in client/ed25519.js.",
+    "Run 1 on the same day failed on two defects, both fixed before this run. The app origin is https://tauri.localhost (useHttpsScheme), not http://, so the reporter's CORS refused it. And the WebView lacks WebCrypto Ed25519.",
+    "The model benjamin served (Qwen3 0.6B) was started for this test from the AWAI-3103 task folder and stopped afterwards. The reporter and the Serve route were left running."
+  ]
+}
