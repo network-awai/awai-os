@@ -49,3 +49,5 @@ dl{display:grid;gap:.25rem}dt{font-weight:600;font-size:.9rem}dd{margin:0 0 .5re
 a.button{display:inline-flex;align-items:center;min-block-size:3rem;padding-inline:1.25rem;border-radius:1.5rem;background:var(--primary);color:var(--on-primary);text-decoration:none}
 .points li{margin-block:.4rem}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+/* Keep the bottom navigation at the bottom of the screen when the content is short (Figma 307:298). */
+main{display:flex;flex-direction:column;min-block-size:100dvh}nav{margin-block-start:auto}

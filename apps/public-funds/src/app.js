@@ -85,7 +85,7 @@ function renderFlow() {
   view.append(seg);
   const links = flows(a, measure);
   const ord = orders(links);
-  const W = 360, H = 420, x0 = 112, x1 = W - 112;
+  const W = 360, H = 420, x0 = 96, x1 = W - 128;
   const g = sankeyLayout(links, {height: H, ...ord});
   const chart = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': t('flow.chartLabel', {measure: t('measure.' + measure)}), class: 'sankey'});
   const c = (x0 + x1) / 2;
@@ -102,7 +102,7 @@ function renderFlow() {
   const small = [];
   for (const n of g.right) {
     chart.append(svg('rect', {x: x1, y: n.y, width: 6, height: Math.max(n.h, 1), class: n.key === null ? 'node faint' : 'node'}));
-    if (n.h >= 12) chart.append(label(x1 + 10, n.y + n.h / 2, divisionName(n.key), 'start', n.key === null ? 'label muted' : 'label'));
+    if (n.h >= 12) chart.append(label(x1 + 10, n.y + n.h / 2, (n.key === null ? '' : n.key + ' ') + t('short.' + n.key), 'start', n.key === null ? 'label muted' : 'label'));
     else small.push(`${divisionName(n.key)} ${t('unit.trillion', {value: tn(n.value)})}`);
   }
   view.append(chart);
