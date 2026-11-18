@@ -130,3 +130,29 @@ The 1000ms spacing in the pilot occurrence ledger orders its four talk turns;
 it is not a Bot cron frequency or a Linear Cycle. Product Bot cycles remain the
 original source cron, whose expressions/timezones/next slots are retained as
 context. The one-off dialogue grant does not authorize recurring new cycles.
+
+## OpenTelemetry for conversation turns
+
+On the owner-operated Otehon conversation service, add a `telemetry` object to
+the pinned service config with an absolute `database` path in a private
+directory. Set `endpoint` to the exact OTLP/HTTP traces URL. TLS is required
+outside loopback. For an authenticated collector or Langfuse, set
+`authorizationFile` to a mode-0600 file containing the full Authorization
+header value. Langfuse v4 uses `/api/public/otel/v1/traces` and the exporter
+sets its version header. A collector can fan out to multiple destinations.
+Without an endpoint, only the local feed is recorded.
+
+An executed turn records a deterministic trace ID and a session pseudonym,
+inference timing, status, verified model/provider, and observed per-model
+input/output tokens when the selected run reports them. Prompt, response,
+profile, run ID, tool payloads, credentials and errors stay out of spans.
+The recent 100 spans are readable via the owner-only
+`GET /v1/bot-chat/traces`, with the same trusted identity boundary and exact
+origin allowlist. Add `https://trace.awai.invalid` to the allowlist for the
+Android app. The browser asks for a fresh approval for each read.
+
+Delivery is asynchronous and retries persisted pending spans with their IDs
+intact. The latest 500 spans are retained locally, including during an outage.
+A process stopped between committing the conversation and recording telemetry
+can leave a gap. No historical backfill, native-CLI coverage or production
+enablement is implied.
