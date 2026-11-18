@@ -54,13 +54,106 @@
       "m49": "784",
       "name": "United Arab Emirates",
       "region": "Asia",
-      "iso2": "AE"
+      "iso2": "AE",
+      "status": "official-route",
+      "sources": {
+        "route": {
+          "title": "UAE Government — Reporting economic crimes",
+          "url": "https://u.ae/en/information-and-services/business/important-digital-services/reporting-economic-crimes",
+          "checkedOn": "2026-11-18"
+        },
+        "process": {
+          "title": "UAE Government — Criminal cases",
+          "url": "https://u.ae/en/information-and-services/justice-safety-and-the-law/litigation-procedures/criminal-cases-",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "刑事申告は原則として発生地を管轄する首長国の地元警察が担当する。",
+          "refs": [
+            "route",
+            "process"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "詐欺やサイバー犯罪は地元警察。ドバイでは対象となるオンライン金融犯罪や詐欺に Dubai Police の eCrime 窓口がある。",
+          "refs": [
+            "route"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "警察へ申告する段階と、検察による手続・起訴判断を区別する。",
+          "refs": [
+            "process"
+          ]
+        }
+      ]
     },
     "ARG": {
       "m49": "032",
       "name": "Argentina",
       "region": "Americas",
-      "iso2": "AR"
+      "iso2": "AR",
+      "status": "official-route",
+      "sources": {
+        "route": {
+          "title": "Argentina — Denunciar un delito informático",
+          "url": "https://www.argentina.gob.ar/node/41625",
+          "checkedOn": "2026-11-18"
+        },
+        "routes": {
+          "title": "Argentina — Si fuiste víctima de un ciberdelito, denuncialo",
+          "url": "https://www.argentina.gob.ar/node/90919",
+          "checkedOn": "2026-11-18"
+        },
+        "evidence": {
+          "title": "Argentina — Consejos para presentar denuncias",
+          "url": "https://www.argentina.gob.ar/justicia/convosenlaweb/denuncia/consejos",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "居住地を担当する警察・届出窓口または最寄りの検察へ。サイバー犯罪専門の UFECI も案内されている。",
+          "refs": [
+            "route",
+            "routes"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "地元の警察署や届出窓口で申告する。電話・オンラインの提供範囲は自治体の案内を確認する。",
+          "refs": [
+            "route",
+            "routes"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "事件に関するデジタル情報を削除・改変せず、手元の資料を捜査担当者と共有できるように保全する。",
+          "refs": [
+            "route",
+            "evidence"
+          ],
+          "kind": "retain"
+        }
+      ],
+      "followUp": [
+        {
+          "text": "届け出た後の資料の保全・追加共有は担当捜査官の指示を確認する。",
+          "refs": [
+            "route"
+          ],
+          "kind": "supplement"
+        }
+      ]
     },
     "ARM": {
       "m49": "051",
@@ -155,7 +248,59 @@
       "m49": "040",
       "name": "Austria",
       "region": "Europe",
-      "iso2": "AT"
+      "iso2": "AT",
+      "status": "official-route",
+      "sources": {
+        "route": {
+          "title": "Austria — Melde- und Beratungsstellen, Internetkriminalität",
+          "url": "https://www.oesterreich.gv.at/de/themen/hilfe_und_finanzielle_unterstuetzung_erhalten/melde-und-beratungsstellen-in-oesterreich/melde__und_beratungsstellen",
+          "checkedOn": "2026-11-18"
+        },
+        "review": {
+          "title": "Austria Ministry of Justice — Rechte und Pflichten im Strafverfahren",
+          "url": "https://www.oesterreich.gv.at/de/themen/hilfe_und_finanzielle_unterstuetzung_erhalten/unterstuetzungen_fuer_verbrechensopfer/3/Seite.2910420",
+          "checkedOn": "2026-11-18"
+        },
+        "notify": {
+          "title": "Austria Ministry of Justice — Staatsanwaltschaft",
+          "url": "https://www.oesterreich.gv.at/de/themen/gesetze_und_recht/strafrecht/3/Seite.2460203",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "犯罪の申告は警察署で取り扱う。内務省のインターネット犯罪窓口は、疑い・手がかりについての連絡先。",
+          "refs": [
+            "route"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "被害の内容を警察署で刑事申告する。",
+          "refs": [
+            "route"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "検察が手続を終了する場合、被害者には決定と、条件を満たす場合の再開申請や理由請求の案内が届く。",
+          "refs": [
+            "notify"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "検察の手続終了に対し、要件を満たす被害者は検察へ再開申請（Fortführungsantrag）を出せる。通知の期限・理由請求の扱いを確認する。",
+          "refs": [
+            "review",
+            "notify"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "AZE": {
       "m49": "031",
@@ -173,7 +318,55 @@
       "m49": "056",
       "name": "Belgium",
       "region": "Europe",
-      "iso2": "BE"
+      "iso2": "BE",
+      "status": "official-route",
+      "sources": {
+        "report": {
+          "title": "Belgian Federal Police — Porter plainte pour une arnaque en ligne",
+          "url": "https://www.police.be/5998/fr/a-propos/campagnes-de-communication/campagne-scam/porter-plainte-pour-une-arnaque-en-ligne",
+          "checkedOn": "2026-11-18"
+        },
+        "local": {
+          "title": "Belgian Federal Police — Fraude Internet",
+          "url": "https://www.police.be/5998/fr/actualites/fraude-internet",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "地元警察が正式な申告を取り、管轄の検察へ送る。",
+          "refs": [
+            "report",
+            "local"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "対象となる非緊急の事案は Police on Web にベルギーの身分証で申告するか、地元署に来署する。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "短い時系列、送受信したメッセージ、画面画像、メールアドレス、電話番号や口座番号を整理する。対面では身分証を持参する。",
+          "refs": [
+            "report"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "followUp": [
+        {
+          "text": "オンラインの対象外または対応を急ぐ場合は、地元警察署で正式な申告を相談する。",
+          "refs": [
+            "report"
+          ],
+          "kind": "channel-unavailable"
+        }
+      ]
     },
     "BEN": {
       "m49": "204",
@@ -257,7 +450,90 @@
       "m49": "076",
       "name": "Brazil",
       "region": "Americas",
-      "iso2": "BR"
+      "iso2": "BR",
+      "status": "official-route",
+      "sources": {
+        "devir": {
+          "title": "Ministério da Justiça — Registrar Ocorrência Policial Online (DEVIR)",
+          "url": "https://www.gov.br/pt-br/servicos/registrar-ocorrencia-policial-online",
+          "checkedOn": "2026-11-18"
+        },
+        "mg": {
+          "title": "Minas Gerais — Registrar ocorrência de estelionato",
+          "url": "https://www.mg.gov.br/servico/solicitar-registro-de-ocorrencia-de-estelionato",
+          "checkedOn": "2026-11-18"
+        },
+        "pr": {
+          "title": "Polícia Civil do Paraná — Registrar ocorrência de um cibercrime",
+          "url": "https://www.policiacivil.pr.gov.br/drcc/registrarOcorrencia",
+          "checkedOn": "2026-11-18"
+        },
+        "se": {
+          "title": "Polícia Civil de Sergipe — Portaria DEVIR",
+          "url": "https://www.policiacivil.se.gov.br/wp-content/uploads/2021/09/Portaria-no-010_2021-Cria-a-Delegacia-Virtual-do-Sinesp-DEVIR.pdf",
+          "checkedOn": "2026-11-18"
+        },
+        "case": {
+          "title": "Polícia Civil do Paraná — Inquéritos por estelionato em Ponta Grossa",
+          "url": "https://www.policiacivil.pr.gov.br/Noticia/PCPR-indicia-homem-por-estelionato-contra-vulneraveis-em-Ponta-Grossa",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "窓口は州の文民警察。連邦の DEVIR は参加州で使え、一部の州は独自のオンライン窓口を案内している。",
+          "refs": [
+            "devir",
+            "mg",
+            "pr"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "ミナスジェライス州とパラナ州の公式窓口は対象となる詐欺をオンラインで扱う。ミナスジェライス州では犯人に関する情報がある場合は対面で届出を求める。",
+          "refs": [
+            "mg",
+            "pr"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "パラナ州は、日時、利用したサイトの完全なURL、支払額などを事案の説明に盛り込む例を示している。",
+          "refs": [
+            "pr"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "ミナスジェライス州では送信後の審査を経て正式の事件記録（REDS）となる。パラナ州は届出番号とプロトコル番号を使う照会手順を案内。",
+          "refs": [
+            "mg",
+            "pr"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "セルジッペ州では登録の承認・拒否に関する問合せ先として、州の Portal do Cidadão が定められている。",
+          "refs": [
+            "se"
+          ],
+          "kind": "status-check"
+        }
+      ],
+      "cases": [
+        {
+          "text": "パラナ州で被害者が警察届出（BO）を登録し、2024年8月に文民警察が捜査を開始した。2025年1月に警察は捜査完了と手続の司法機関への送付を公表した。",
+          "refs": [
+            "case"
+          ],
+          "stage": "investigation-confirmed"
+        }
+      ]
     },
     "BRB": {
       "m49": "052",
@@ -269,7 +545,51 @@
       "m49": "096",
       "name": "Brunei Darussalam",
       "region": "Asia",
-      "iso2": "BN"
+      "iso2": "BN",
+      "status": "official-route",
+      "sources": {
+        "mof": {
+          "title": "Brunei Ministry of Finance and Economy — Investment scam advisory",
+          "url": "https://www.mof.gov.bn/2025/10/11/pr_11102025_falseinformation/",
+          "checkedOn": "2026-11-18"
+        },
+        "aiti": {
+          "title": "AITI — Guide to Staying Safe Online",
+          "url": "https://www.aiti.gov.bn/guide-books/guide-to-staying-safe-online/",
+          "checkedOn": "2026-11-18"
+        },
+        "watch": {
+          "title": "Cyber Security Brunei — ScamWatch reporting form",
+          "url": "https://scamwatch.csb.gov.bn/report-a-scam",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "詐欺の刑事届出は Royal Brunei Police Force が担当する。",
+          "refs": [
+            "mof"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "金融詐欺被害は最寄りの警察署に届け出る。Anti-Scam Helpline は疑わしい金融活動についての連絡先として案内される。",
+          "refs": [
+            "mof"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "会話やアカウント情報を保全する。ScamWatch では画面画像、メール、文書等の添付は任意で、警察の届出時の条件とは区別する。",
+          "refs": [
+            "aiti",
+            "watch"
+          ],
+          "kind": "retain"
+        }
+      ]
     },
     "BTN": {
       "m49": "064",
@@ -380,13 +700,106 @@
       "m49": "756",
       "name": "Switzerland",
       "region": "Europe",
-      "iso2": "CH"
+      "iso2": "CH",
+      "status": "official-route",
+      "sources": {
+        "route": {
+          "title": "Swiss Federal Office of Police — Praktische Informationen",
+          "url": "https://www.fedpol.admin.ch/de/praktische-informationen",
+          "checkedOn": "2026-11-18"
+        },
+        "law": {
+          "title": "Fedlex — Swiss Criminal Procedure Code, arts. 310, 322",
+          "url": "https://www.fedlex.admin.ch/eli/cc/2010/267/de?version=20250401",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "詐欺被害の届出先は地元警察。連邦警察 fedpol の案内から各警察署を探せる。",
+          "refs": [
+            "route"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "管轄警察へ届け出る。デジタルの情報提供経路と刑事届出は案内で区別する。",
+          "refs": [
+            "route"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "開始しない決定や捜査終了について刑事訴訟法310条・322条を確認し、申立てのできる当事者に該当する場合は通知に示された申立先と期限に従う。",
+          "refs": [
+            "law"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "CHL": {
       "m49": "152",
       "name": "Chile",
       "region": "Americas",
-      "iso2": "CL"
+      "iso2": "CL",
+      "status": "official-route",
+      "sources": {
+        "route": {
+          "title": "Fiscalía de Chile — La denuncia",
+          "url": "https://www.fiscaliadechile.cl/victimas-y-testigos/adultos/que-pasa-si-denuncio",
+          "checkedOn": "2026-11-18"
+        },
+        "review": {
+          "title": "Fiscalía de Chile — Archivo provisional",
+          "url": "https://www.fiscaliadechile.cl/glosario?page=0",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "Carabineros、捜査警察 PDI、または地域の検察が刑事届出を受け付ける。",
+          "refs": [
+            "route"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察署、PDI の窓口、または事件の場所などに応じた検察窓口で申告できる。",
+          "refs": [
+            "route"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "身分証または本人確認書類を提示し、連絡先と発生した事実を伝える。",
+          "refs": [
+            "route"
+          ],
+          "kind": "required"
+        }
+      ],
+      "progress": [
+        {
+          "text": "申告後は検察が内容を分析し、必要な捜査を判断する。",
+          "refs": [
+            "route"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "暫定保管（archivo provisional）後に新資料があれば、被害者は手続の再開と捜査を求められる。検察当局に決定の見直しを求める案内もある。",
+          "refs": [
+            "review"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "CHN": {
       "m49": "156",
@@ -452,7 +865,63 @@
       "m49": "170",
       "name": "Colombia",
       "region": "Americas",
-      "iso2": "CO"
+      "iso2": "CO",
+      "status": "official-route",
+      "sources": {
+        "faq": {
+          "title": "Fiscalía General de la Nación — Preguntas frecuentes, Denuncia",
+          "url": "https://www.fiscalia.gov.co/colombia/servicios-de-informacion-al-ciudadano/preguntas-frecuentes/",
+          "checkedOn": "2026-11-18"
+        },
+        "services": {
+          "title": "Fiscalía General de la Nación — Portafolio de Servicios",
+          "url": "https://www.fiscalia.gov.co/colombia/wp-content/uploads/Portafolio-de-Servicios.pdf",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "コロンビアの検察と関係受付機関が届出を受ける。検察の案内はサイバー犯罪や詐欺のオンライン受付を掲げる。",
+          "refs": [
+            "faq",
+            "services"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "検察サイトの Denuncia Fácil、電話、または対面受付から届け出る。事案によって被害者本人の申立て（querella）が必要な場合がある。",
+          "refs": [
+            "faq"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "申告では分かっている事実を詳細に説明し、提出日時を記録できる方法を用いる。",
+          "refs": [
+            "faq"
+          ],
+          "kind": "required"
+        }
+      ],
+      "progress": [
+        {
+          "text": "21桁の NUNC（事件受付番号）で届出状況と担当検察官を照会できる。",
+          "refs": [
+            "faq"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "検察の案内では、捜査に重要な点の追加申告は1回。NUNC を用意して担当と手順を確認する。",
+          "refs": [
+            "faq"
+          ],
+          "kind": "supplement"
+        }
+      ]
     },
     "COM": {
       "m49": "174",
@@ -500,19 +969,198 @@
       "m49": "196",
       "name": "Cyprus",
       "region": "Asia",
-      "iso2": "CY"
+      "iso2": "CY",
+      "status": "official-route",
+      "sources": {
+        "route": {
+          "title": "Gov.cy — Submit a complaint or information about Cybercrime",
+          "url": "https://www.gov.cy/en/service/submit-a-complaint-or-information-about-cybercrime/",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "キプロス警察の Cybercrime Unit がサイバー犯罪を扱う。",
+          "refs": [
+            "route"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "政府ポータルから電子申告できる。記名で利用する場合は認証済み CY Login が必要。匿名でも情報を送れる。",
+          "refs": [
+            "route"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "元のデータを削除・改変せず、必要に応じ取引控え、請求書、通信や事案に関する記録を保全する。",
+          "refs": [
+            "route"
+          ],
+          "kind": "retain"
+        }
+      ],
+      "progress": [
+        {
+          "text": "記名申告は DIGIPOL の Pending Requests で追跡でき、処理完了時に通知される。",
+          "refs": [
+            "route"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "DIGIPOL で記名申告の進捗を確認する。ポータルの問題については政府ページの窓口へ連絡する。",
+          "refs": [
+            "route"
+          ],
+          "kind": "status-check"
+        }
+      ]
     },
     "CZE": {
       "m49": "203",
       "name": "Czechia",
       "region": "Europe",
-      "iso2": "CZ"
+      "iso2": "CZ",
+      "status": "official-route",
+      "sources": {
+        "cyber": {
+          "title": "Policie České republiky — Než půjdete na policii",
+          "url": "https://policie.gov.cz/kyberkriminalita/nez-pujdete-na-policii",
+          "checkedOn": "2026-11-18"
+        },
+        "report": {
+          "title": "Policie České republiky — Postup při podání trestního oznámení",
+          "url": "https://policie.gov.cz/postup-pri-podani-trestniho-oznameni",
+          "checkedOn": "2026-11-18"
+        },
+        "guide": {
+          "title": "Policie České republiky — Trestní oznámení",
+          "url": "https://policie.gov.cz/trestni-oznameni",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "チェコ警察のどの部署でも申告でき、検察も受け付ける。",
+          "refs": [
+            "cyber",
+            "report"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "対面のほか、条件を満たす電子署名付きメールやデータボックスでも正式な申告が可能。",
+          "refs": [
+            "report",
+            "guide"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "証拠として提出できる資料を挙げる。警察の説明は、オンライン詐欺で銀行振込の控えやメールを添える例を示している。",
+          "refs": [
+            "guide"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "followUp": [
+        {
+          "text": "警察の対応結果の通知を希望する場合は、申告時に書面または調書に明記して求める。",
+          "refs": [
+            "report"
+          ],
+          "kind": "status-check"
+        }
+      ]
     },
     "DEU": {
       "m49": "276",
       "name": "Germany",
       "region": "Europe",
-      "iso2": "DE"
+      "iso2": "DE",
+      "status": "official-route",
+      "sources": {
+        "portal": {
+          "title": "Onlinewachen der Polizeien der Länder",
+          "url": "https://portal.onlinewache.polizei.de/de/he/betrug/",
+          "checkedOn": "2026-11-18"
+        },
+        "filing": {
+          "title": "StPO §158 — Strafanzeige and Strafantrag",
+          "url": "https://www.gesetze-im-internet.de/stpo/__158.html",
+          "checkedOn": "2026-11-18"
+        },
+        "review": {
+          "title": "StPO §172 — Beschwerde des Verletzten",
+          "url": "https://www.gesetze-im-internet.de/stpo/__172.html",
+          "checkedOn": "2026-11-18"
+        },
+        "case": {
+          "title": "Bayerische Polizei — Cybertrading-Betrug in Coburg",
+          "url": "https://www.polizei.bayern.de/aktuelles/pressemitteilungen/090418/index.html",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "犯罪申告は警察・検察・区裁判所でできる。オンライン警察窓口の取扱類型は連邦州ごとに異なる。",
+          "refs": [
+            "portal",
+            "filing"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "州の Onlinewache の犯罪類型からネット詐欺等を選ぶ。複雑な事案など、オンライン窓口の対象外の場合は警察署に相談する。",
+          "refs": [
+            "portal"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "取引資料、画像や画面の記録、書類など、届出の内容を裏付ける資料を準備する。",
+          "refs": [
+            "portal"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "受け付けた機関は申告を記録する。被害者の請求により書面の受領確認を得られるが、捜査に支障がある場合などに例外がある。",
+          "refs": [
+            "filing"
+          ]
+        }
+      ],
+      "cases": [
+        {
+          "text": "2025年のオンライン投資詐欺では、被害者が警察に申告した後、コーブルク刑事警察とバイエルンのサイバー犯罪専門部門が捜査し、現金の受け取り役が逮捕されたと警察が公表した。",
+          "refs": [
+            "case"
+          ],
+          "stage": "investigation-confirmed"
+        }
+      ],
+      "followUp": [
+        {
+          "text": "刑事訴訟法§171に基づく通知を受けた被害者本人には、§172の条件の下で上級の検察官に不服を申し立てる手続がある。通知記載の期限・例外を確認する。",
+          "refs": [
+            "review"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "DJI": {
       "m49": "262",
@@ -530,7 +1178,68 @@
       "m49": "208",
       "name": "Denmark",
       "region": "Europe",
-      "iso2": "DK"
+      "iso2": "DK",
+      "status": "official-route",
+      "sources": {
+        "report": {
+          "title": "Politi — Anmeld økonomisk svindel og digital kriminalitet",
+          "url": "https://politi.dk/digital-kriminalitet/anmeld-oekonomisk-svindel-paa-nettet-og-digital-kriminalitet",
+          "checkedOn": "2026-11-18"
+        },
+        "review": {
+          "title": "Danish Prosecution Service — Sagen opgives",
+          "url": "https://anklagemyndigheden.dk/da/sagen-opgives",
+          "checkedOn": "2026-11-18"
+        },
+        "appeal": {
+          "title": "Politi — Politiets dispositioner",
+          "url": "https://politi.dk/virksomheden/saadan-klager-du-over-politiet/politiets-dispositioner",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "デンマーク警察がネット金融詐欺および対象デジタル犯罪の届出窓口を設けている。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "オンライン申告は MitID を使用する。114への電話や来署という経路もある。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "オンライン申告では、関連の銀行明細・支払い控え・相手との通信などの資料のアップロードを求められる。提出後も保存する。",
+          "refs": [
+            "report"
+          ],
+          "kind": "required"
+        }
+      ],
+      "progress": [
+        {
+          "text": "Digital Post の領収通知に含まれる届出番号を控える。追加資料が必要な場合は警察から連絡がある。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "警察が届出を退ける、または捜査を打ち切る場合は通知の不服申立て案内を確認する。警察地区の刑事手続上の決定には、地域の検察当局に申し立てる経路がある。",
+          "refs": [
+            "review",
+            "appeal"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "DOM": {
       "m49": "214",
@@ -572,13 +1281,115 @@
       "m49": "724",
       "name": "Spain",
       "region": "Europe",
-      "iso2": "ES"
+      "iso2": "ES",
+      "status": "official-route",
+      "sources": {
+        "evidence": {
+          "title": "Policía Nacional — Denunciar, documentación para fraude telemático",
+          "url": "https://www.policia.es/_es/denuncias/miscelanea/participacion_ciudadana/politicaCookies.php",
+          "checkedOn": "2026-11-18"
+        },
+        "gc": {
+          "title": "Guardia Civil — e-denuncia の対象外となる技術関連犯罪",
+          "url": "https://web.guardiacivil.es/pdflink/es/fb46b663-4062-11eb-8bde-6d0b3e4c7555/bd67a96e-df11-11ef-81c0-00505699917f.pdf?themeconfigpath=%2Fsites%2FguardiaCivil%2F.themeconfig",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "Policía Nacional の届出窓口または Guardia Civil の署へ相談する。電子手続の対象は機関ごとに異なる。",
+          "refs": [
+            "evidence",
+            "gc"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "Guardia Civil はインターネットやメッセージ関連犯罪を同機関の e-denuncia で提出せず、身分証を持って署に来るよう案内している。",
+          "refs": [
+            "evidence",
+            "gc"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "オンライン詐欺の不正引落しを報告する際、Policía Nacional は金融機関発行の証明か、引落しを示す代替書類を求める。",
+          "refs": [
+            "evidence"
+          ],
+          "kind": "required"
+        }
+      ],
+      "followUp": [
+        {
+          "text": "不正引落しの証明をまだ得ていない段階で申告した場合、その資料を後日持参するために再来署を求められることがある。",
+          "refs": [
+            "evidence"
+          ],
+          "kind": "supplement"
+        }
+      ]
     },
     "EST": {
       "m49": "233",
       "name": "Estonia",
       "region": "Europe",
-      "iso2": "EE"
+      "iso2": "EE",
+      "status": "official-route",
+      "sources": {
+        "gov": {
+          "title": "Estonian Ministry of Justice and Digital Affairs — Tools for Victims of Crime",
+          "url": "https://www.justdigi.ee/en/news/arev-project-launches-new-support-tools-victims-crime",
+          "checkedOn": "2026-11-18"
+        },
+        "support": {
+          "title": "Social Insurance Board — Police report link",
+          "url": "https://www.palunabi.ee/en/sexual-violence-crisis-support",
+          "checkedOn": "2026-11-18"
+        },
+        "law": {
+          "title": "Riigi Teataja — Kriminaalmenetluse seadustik §§195, 198, 207–208",
+          "url": "https://www.riigiteataja.ee/akt/121062024036?leiaKehtiv",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "犯罪の申告は捜査機関または検察に提出できる。",
+          "refs": [
+            "gov",
+            "law"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "司法省は警察へのオンライン申告を案内している。被害者支援機関の案内から警察の公式窓口を参照できる。",
+          "refs": [
+            "gov",
+            "support"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "刑事手続を始めない場合は刑事訴訟法§198の通知とその理由を確認する。",
+          "refs": [
+            "law"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "§207は被害者が刑事手続の開始を拒否する決定を検察へ争う手続を定め、棄却後の検事総長への手続や、§208で条件付きの裁判所への申立てを定める。現行条文と通知の期限・申立要件を確認する。",
+          "refs": [
+            "law"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "ETH": {
       "m49": "231",
@@ -590,13 +1401,88 @@
       "m49": "246",
       "name": "Finland",
       "region": "Europe",
-      "iso2": "FI"
+      "iso2": "FI",
+      "status": "official-route",
+      "sources": {
+        "report": {
+          "title": "Police of Finland — File a police report",
+          "url": "https://poliisi.fi/en/report-a-crime",
+          "checkedOn": "2026-11-18"
+        },
+        "evidence": {
+          "title": "Poliisi — Tee rikosilmoitus",
+          "url": "https://poliisi.fi/tee-rikosilmoitus",
+          "checkedOn": "2026-11-18"
+        },
+        "invest": {
+          "title": "Police of Finland — Crime investigation",
+          "url": "https://poliisi.fi/en/crime-investigation",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "国内のどの警察署でも届出ができ、オンラインの届出は管轄部署に転送される。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "緊急を要しない犯罪は警察の電子サービスか警察署で届け出る。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "オンラインで生じた事案の相手のプロフィールや画面の記録を保全し、関係者と経緯を具体的に記す。",
+          "refs": [
+            "evidence"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "届出後は犯罪の疑いを判断し、根拠があれば予備捜査を始める。",
+          "refs": [
+            "invest"
+          ]
+        }
+      ]
     },
     "FJI": {
       "m49": "242",
       "name": "Fiji",
       "region": "Oceania",
-      "iso2": "FJ"
+      "iso2": "FJ",
+      "status": "official-route",
+      "sources": {
+        "route": {
+          "title": "Fiji CERT — Report, victim of cybercrime",
+          "url": "https://cyber.gov.fj/Report",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "被害者のサイバー犯罪を Fiji Police Force の Cybercrime Unit が扱う。Fiji CERT の技術対応とは窓口が分かれる。",
+          "refs": [
+            "route"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "政府の Fiji CERT は、詐欺などの被害者に警察の Cybercrime Unit への連絡または無料電話1681を案内している。",
+          "refs": [
+            "route"
+          ]
+        }
+      ]
     },
     "FLK": {
       "m49": "238",
@@ -608,7 +1494,82 @@
       "m49": "250",
       "name": "France",
       "region": "Europe",
-      "iso2": "FR"
+      "iso2": "FR",
+      "status": "official-route",
+      "sources": {
+        "thesee": {
+          "title": "Service Public — Arnaque sur internet (THESEE)",
+          "url": "https://www.service-public.gouv.fr/P10100",
+          "checkedOn": "2026-11-18"
+        },
+        "fake": {
+          "title": "Service Public — Faux site commercial (THESEE)",
+          "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F47157/0_0_0_1_2_0_0_0_2",
+          "checkedOn": "2026-11-18"
+        },
+        "filing": {
+          "title": "Service Public — Porter plainte",
+          "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F35460/1?idFicheParent=F31324",
+          "checkedOn": "2026-11-18"
+        },
+        "closure": {
+          "title": "Service Public — Classement sans suite et contestation",
+          "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F1154",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "THESEE は対象となるネット詐欺の窓口。警察・憲兵隊への申告は、発生地がその署の担当外でも受け付ける。",
+          "refs": [
+            "thesee",
+            "filing"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "THESEE の適用条件を満たさない場合は警察署・憲兵隊、または発生地や被疑者の住所地を管轄する共和国検事への書面を利用する。",
+          "refs": [
+            "fake",
+            "filing"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "書面には事実の経緯、日時・場所、分かる場合は相手と目撃者の情報を整理し、損害を裏付ける入手済みの資料を添える。",
+          "refs": [
+            "filing"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "署での申告では提出の証明となる récépissé が発行される。調書の写しも求められる。",
+          "refs": [
+            "filing"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "THESEE の対象外の場合は対面または検事への書面に切り替える。",
+          "refs": [
+            "fake",
+            "filing"
+          ],
+          "kind": "channel-unavailable"
+        },
+        {
+          "text": "検事が手続を進めない決定（classement sans suite）をした場合は理由の通知を確認する。通知がなければ決定した検事に求め、争う場合は時効の範囲内で控訴院の検事総長に書面を送る経路がある。",
+          "refs": [
+            "closure"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "FRO": {
       "m49": "234",
@@ -632,7 +1593,82 @@
       "m49": "826",
       "name": "United Kingdom of Great Britain and Northern Ireland",
       "region": "Europe",
-      "iso2": "GB"
+      "iso2": "GB",
+      "status": "official-route",
+      "sources": {
+        "report": {
+          "title": "Report Fraud — Reporting cyber crime and fraud",
+          "url": "https://www.reportfraud.police.uk/reporting-a-fraud/",
+          "checkedOn": "2026-11-18"
+        },
+        "faq": {
+          "title": "Report Fraud — FAQs",
+          "url": "https://www.reportfraud.police.uk/faqs",
+          "checkedOn": "2026-11-18"
+        },
+        "scot": {
+          "title": "Police Scotland — Ask for an update",
+          "url": "https://www.scotland.police.uk/secureforms/askupdate/Default.aspx",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "イングランド、ウェールズ、北アイルランドは Report Fraud。スコットランドに住む、またはそこで被害に遭った場合は Police Scotland が担当する。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "サイバー犯罪・詐欺は Report Fraud の警察届出を選ぶ。スコットランドでは Police Scotland に101で連絡する。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "メール、通話・映像記録、画面画像、法律文書などの存在を届出に記載し、警察から提出を求められる場合に備えて元の資料を保全する。",
+          "refs": [
+            "faq"
+          ],
+          "kind": "retain"
+        }
+      ],
+      "progress": [
+        {
+          "text": "提出後に犯罪参照番号が発行される。受領、審査、担当警察への回付を区別する。",
+          "refs": [
+            "report",
+            "faq"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "オンラインでアカウントを作成していた場合は My Reports の View or Update から追加情報を送る。",
+          "refs": [
+            "faq"
+          ],
+          "kind": "supplement"
+        },
+        {
+          "text": "Victims’ Right to Review の対象は特定の処分に限られる。回付された事件で対象となる場合は、捜査と決定を担当する警察本部へ申し出る。",
+          "refs": [
+            "faq"
+          ],
+          "kind": "review"
+        },
+        {
+          "text": "Police Scotland に出した事件の進捗は、同機関の既存事件用照会フォームで確認できる。",
+          "refs": [
+            "scot"
+          ],
+          "kind": "status-check"
+        }
+      ]
     },
     "GEO": {
       "m49": "268",
@@ -692,7 +1728,40 @@
       "m49": "300",
       "name": "Greece",
       "region": "Europe",
-      "iso2": "GR"
+      "iso2": "GR",
+      "status": "official-route",
+      "sources": {
+        "route": {
+          "title": "Gov.gr — Complaints to the Hellenic Police Cyber Crime Division",
+          "url": "https://www.gov.gr/en/updates/services/meso-gov-gr-oi-kataggelies-ste-dioxe-elektronikou-egklematos",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ギリシャ警察の Cyber Crime Division がコンピューター詐欺や電子通貨に関する金融サイバー犯罪の窓口を設けている。",
+          "refs": [
+            "route"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "gov.gr の所定分野の電子サービスで署名付き申告を行える。",
+          "refs": [
+            "route"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "事案や適用法に応じ、同部門との追加連絡や刑事手続上の別の手順が必要になる場合がある。",
+          "refs": [
+            "route"
+          ],
+          "kind": "supplement"
+        }
+      ]
     },
     "GRD": {
       "m49": "308",
@@ -846,13 +1915,116 @@
       "m49": "348",
       "name": "Hungary",
       "region": "Europe",
-      "iso2": "HU"
+      "iso2": "HU",
+      "status": "official-route",
+      "sources": {
+        "route": {
+          "title": "Hungarian Police — Mit tegyek",
+          "url": "https://www.police.hu/hu/ugyintezes/mit-tegyek",
+          "checkedOn": "2026-11-18"
+        },
+        "procedure": {
+          "title": "Hungarian Police — Electronic guide for criminal submissions",
+          "url": "https://ugyintezes.police.hu/o/orfk-wfs-electronic-guide-portlet/fajlletolt?fajl=c5825594-1abd-45b9-b054-337ef3ccf496",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "非緊急の場合は警察署、検察、裁判所に刑事申告を出せる。口頭申告は調書にされ、管轄機関へ回付される。",
+          "refs": [
+            "route"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "口頭・書面、または公的な電子窓口で申告する。",
+          "refs": [
+            "route"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "日時、場所、経緯、分かる範囲の相手と目撃者の情報、裏付け資料を用意する。",
+          "refs": [
+            "route"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "警察は到達後に捜査開始、補足、拒否、管轄機関への回付のいずれが必要かを審査する。",
+          "refs": [
+            "route"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "判断に足りない場合は補足手続となり、申告者に聞き取りや追加情報を求められることがある。",
+          "refs": [
+            "procedure"
+          ],
+          "kind": "supplement"
+        }
+      ]
     },
     "IDN": {
       "m49": "360",
       "name": "Indonesia",
       "region": "Asia",
-      "iso2": "ID"
+      "iso2": "ID",
+      "status": "official-route",
+      "sources": {
+        "p": {
+          "title": "Polri — Laporan Pengaduan",
+          "url": "https://restangerangkota.metro.polri.go.id/lap-pengaduan",
+          "checkedOn": "2026-11-18"
+        },
+        "bank": {
+          "title": "OJK — Indonesia Anti-Scam Centre",
+          "url": "https://iasc.ojk.go.id/",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "警察の統合窓口 SPKT などが管轄・事案に応じて警察届出を扱う。金融対応は Indonesia Anti-Scam Centre（IASC）で別に行う。",
+          "refs": [
+            "p",
+            "bank"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "最寄りの警察で Laporan Polisi を作成する。金融詐欺は IASC でも対応を求められる。",
+          "refs": [
+            "p",
+            "bank"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "金融詐欺では送金控え、送金元・送金先の情報や会話の記録を揃える。IASC の必須添付は警察側の必須書類と区別する。",
+          "refs": [
+            "bank"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "警察の届出作成後に STTLP（警察届出受領証明）が発行される。",
+          "refs": [
+            "p"
+          ]
+        }
+      ]
     },
     "IMN": {
       "m49": "833",
@@ -915,7 +2087,68 @@
       "m49": "372",
       "name": "Ireland",
       "region": "Europe",
-      "iso2": "IE"
+      "iso2": "IE",
+      "status": "official-route",
+      "sources": {
+        "fraud": {
+          "title": "An Garda Síochána — Reporting and investigating fraud",
+          "url": "https://www.garda.ie/en/crime/fraud/which-unit-within-an-garda-siochana-investigates-fraud-.html",
+          "checkedOn": "2026-11-18"
+        },
+        "report": {
+          "title": "An Garda Síochána — Victim Information Booklet",
+          "url": "https://www.garda.ie/en/victim-services/garda-victim-service/victim-information-booklet-september-2022.pdf",
+          "checkedOn": "2026-11-18"
+        },
+        "prosecution": {
+          "title": "An Garda Síochána — Information on Prosecution",
+          "url": "https://www.garda.ie/en/victim-services/garda-victim-service/information-on-prosecution/",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "まず地元の Garda Station。複雑または重大な経済犯罪は専門の Garda National Economic Crime Bureau に回付され得る。",
+          "refs": [
+            "fraud"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "地元署に電話または来署して申告する。",
+          "refs": [
+            "report",
+            "fraud"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "事案について分かる限りの情報と連絡先を準備する。追加の損失や情報が見つかった場合は担当警察官へ伝える。",
+          "refs": [
+            "report"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "登録を示す PULSE 事件番号と担当警察官の連絡先が案内される。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "不訴追を決めたのが Garda の場合と検察局（DPP）の場合で、理由・再検討の窓口が異なる。Garda の該当決定については、捜査した署の Chief Superintendent 宛ての書面手続を案内している。",
+          "refs": [
+            "prosecution"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "IRN": {
       "m49": "364",
@@ -971,7 +2204,52 @@
       "m49": "380",
       "name": "Italy",
       "region": "Europe",
-      "iso2": "IT"
+      "iso2": "IT",
+      "status": "official-route",
+      "sources": {
+        "filing": {
+          "title": "Procura di Bologna — Presentare denuncia o querela",
+          "url": "https://procura-bologna.giustizia.it/it/presentare_denuncia_o_querela.page",
+          "checkedOn": "2026-11-18"
+        },
+        "justice": {
+          "title": "Procura di Ancona — Carta dei Servizi",
+          "url": "https://procura-ancona.giustizia.it/resources/cms/documents/Carta_Servizi_Procura_Ancona_2025.pdf",
+          "checkedOn": "2026-11-18"
+        },
+        "review": {
+          "title": "Tribunale di Pisa — Opposizione alla richiesta di archiviazione",
+          "url": "https://www.tribunale.pisa.giustizia.it/carta_servizi.aspx?cfp_id_scheda=3803",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "犯罪申告は警察や検察に行える。事件の類型により被害者の処罰意思を示す querela が関係する。",
+          "refs": [
+            "filing",
+            "justice"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察署、Carabinieri などの窓口で、申告や申立ての記録を求める。",
+          "refs": [
+            "filing",
+            "justice"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "検察による事件終了の申請について事前に通知を希望する旨を申告に記載できる。通知後に異議を出す場合は、求める追加捜査と関係する証拠を具体的に示す。",
+          "refs": [
+            "review"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "JAM": {
       "m49": "388",
@@ -1080,7 +2358,51 @@
       "m49": "404",
       "name": "Kenya",
       "region": "Africa",
-      "iso2": "KE"
+      "iso2": "KE",
+      "status": "partial",
+      "sources": {
+        "mandate": {
+          "title": "Kenya DCI — Mandate & Functions",
+          "url": "https://www.dci.go.ke/mandate-functions",
+          "checkedOn": "2026-11-18"
+        },
+        "hotline": {
+          "title": "Kenya DCI — See crime, report crime",
+          "url": "https://www.dci.go.ke/node/517",
+          "checkedOn": "2026-11-18"
+        },
+        "office": {
+          "title": "Kenya DCI — FAQs",
+          "url": "https://www.dci.go.ke/faqs",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "重大なサイバー犯罪の捜査は国家警察の Directorate of Criminal Investigations の所管に含まれる。",
+          "refs": [
+            "mandate"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "最寄りの DCI 事務所へ相談できる。Fichua の電話は匿名の情報提供・相談の窓口。正式登録の書類・条件は未確認。",
+          "refs": [
+            "hotline",
+            "office"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "警察対応に関する苦情は DCI の Public Complaints Directorate に相談できる。",
+          "refs": [
+            "office"
+          ],
+          "kind": "service-complaint"
+        }
+      ]
     },
     "KGZ": {
       "m49": "417",
@@ -1110,7 +2432,62 @@
       "m49": "410",
       "name": "Republic of Korea",
       "region": "Asia",
-      "iso2": "KR"
+      "iso2": "KR",
+      "status": "official-route",
+      "sources": {
+        "ecrm": {
+          "title": "Korean National Police — Electronic Cybercrime Report and Management",
+          "url": "https://ecrm.police.go.kr/minwon/main",
+          "checkedOn": "2026-11-18"
+        },
+        "support": {
+          "title": "Korean National Police — ECRM victim guidance",
+          "url": "https://ecrm.police.go.kr/minwon/crs/quick/vichelp",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "韓国警察の管轄署が正式受付を行い、ECRM はオンラインの事前受付を提供する。",
+          "refs": [
+            "ecrm"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "本人は ECRM を利用し、原則として仮受付番号を持参して警察署で本人の供述を行う。代理人・第三者は署や182など指定経路を確認する。",
+          "refs": [
+            "ecrm"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "ECRM では身分証明、送金記録、メッセンジャーの履歴など該当する資料の添付を案内している。",
+          "refs": [
+            "ecrm"
+          ],
+          "kind": "required"
+        }
+      ],
+      "progress": [
+        {
+          "text": "オンラインの仮受付番号と署での正式受付を区別する。多人数の同種被害で既に一部が供述した場合など、来署を省略できることがある。",
+          "refs": [
+            "ecrm"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "被害者向け案内では、手続の進捗や検察への送致、不起訴など、判断に応じた通知制度が説明されている。",
+          "refs": [
+            "support"
+          ],
+          "kind": "status-check"
+        }
+      ]
     },
     "KWT": {
       "m49": "414",
@@ -1158,7 +2535,70 @@
       "m49": "144",
       "name": "Sri Lanka",
       "region": "Asia",
-      "iso2": "LK"
+      "iso2": "LK",
+      "status": "official-route",
+      "sources": {
+        "scam": {
+          "title": "Sri Lanka Police — Financial scams using fake police identities",
+          "url": "https://www.police.lk/?p=25259",
+          "checkedOn": "2026-11-18"
+        },
+        "igp": {
+          "title": "Sri Lanka Police — Tell IGP instructions",
+          "url": "https://telligp.police.lk/Info/Info-English-TellIGP.pdf",
+          "checkedOn": "2026-11-18"
+        },
+        "notice": {
+          "title": "Sri Lanka Police — Public Awareness on Tell IGP",
+          "url": "https://www.police.lk/wp-content/uploads/2026/03/Media-on-2026.02.27-at-1225_compressed.pdf",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "金融サイバー詐欺は警察の Computer Crime Investigation Division が扱う。Tell IGP に送った申告は関係警察署へ回付される。",
+          "refs": [
+            "scam",
+            "igp"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "専門部門へ連絡するか CID に出向き書面で申告できる。電子申告の Tell IGP もある。",
+          "refs": [
+            "scam",
+            "igp"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "Tell IGP の書式では発生場所・日時と経緯を記し、添付可能な資料があれば付ける。本人確認書類の番号と連絡可能な携帯番号が必要。",
+          "refs": [
+            "igp"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "Tell IGP は携帯を使った認証で申告の現在状況を確認できると案内する。",
+          "refs": [
+            "igp"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "署での不受理、遅延、不捜査などは、Tell IGP を通じて警察長官側に取り上げてもらう経路が案内されている。",
+          "refs": [
+            "igp",
+            "notice"
+          ],
+          "kind": "service-complaint"
+        }
+      ]
     },
     "LSO": {
       "m49": "426",
@@ -1176,7 +2616,62 @@
       "m49": "442",
       "name": "Luxembourg",
       "region": "Europe",
-      "iso2": "LU"
+      "iso2": "LU",
+      "status": "official-route",
+      "sources": {
+        "report": {
+          "title": "Police Grand-Ducale — Porter plainte",
+          "url": "https://police.public.lu/fr/aide-aux-victimes/comment-porter-plainte.html",
+          "checkedOn": "2026-11-18"
+        },
+        "options": {
+          "title": "Police Grand-Ducale — Note d’information pour les victimes",
+          "url": "https://police.public.lu/dam-assets/fr/aide-victimes/note-victime.pdf",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ルクセンブルク警察署に申告でき、検察がその後の処理を判断する。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "最寄りの警察署に届け出る。オンラインは所定の類型のみ。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "被害額と、事件の経緯および提出可能な証拠を整理する。資料と申告の写しを求められる。",
+          "refs": [
+            "report"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "警察の受領確認を入手できる。処理を終了する場合は決定と理由が通知される。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "検察の終了決定後に取り得る手続として、司法警察の案内は要件付きの直接召喚や、予審判事への民事当事者参加を伴う申告等を挙げる。",
+          "refs": [
+            "options"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "LVA": {
       "m49": "428",
@@ -1188,7 +2683,69 @@
       "m49": "446",
       "name": "China, Macao Special Administrative Region",
       "region": "Asia",
-      "iso2": "MO"
+      "iso2": "MO",
+      "status": "official-route",
+      "sources": {
+        "report": {
+          "title": "Macao SAR — PS-1520 Crime Reporting",
+          "url": "https://www.gov.mo/en/services/ps-1520/",
+          "checkedOn": "2026-11-18"
+        },
+        "case": {
+          "title": "Macao Judiciary Police — 2026 online loan scam investigation",
+          "url": "https://www.pj.gov.mo/Web/Policia/202602/20260210/19903.html",
+          "checkedOn": "2026-11-18"
+        },
+        "advisory": {
+          "title": "Macao SAR — Fake government department scam",
+          "url": "https://www.gov.mo/en/news/309530/",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "マカオの詐欺被害は司法警察局（PJ）が扱う。",
+          "refs": [
+            "report",
+            "advisory"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "司法警察局で供述を記録する。政府案内は犯罪届出の993と詐欺相談の公式窓口を掲げている。",
+          "refs": [
+            "report",
+            "advisory"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "対面申告では受付通知が交付される。供述を記録した後は、事件届出記録証明書を別途申請できる。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "cases": [
+        {
+          "text": "2026年2月、SNSの融資広告をきっかけとする詐欺の申告を司法警察局が受け、送金先の口座取引を調べ、資金を受け取った口座の名義人を特定した。",
+          "refs": [
+            "case"
+          ],
+          "stage": "investigation-confirmed"
+        }
+      ],
+      "followUp": [
+        {
+          "text": "供述後に届出を証明する書面が必要な場合は、局の窓口または個人向けのオンライン申請を利用する。",
+          "refs": [
+            "report"
+          ],
+          "kind": "status-check"
+        }
+      ]
     },
     "MAF": {
       "m49": "663",
@@ -1224,13 +2781,107 @@
       "m49": "462",
       "name": "Maldives",
       "region": "Asia",
-      "iso2": "MV"
+      "iso2": "MV",
+      "status": "official-route",
+      "sources": {
+        "report": {
+          "title": "Maldives Police Service — Crime Report",
+          "url": "https://www.police.gov.mv/crimereport",
+          "checkedOn": "2026-11-18"
+        },
+        "advisory": {
+          "title": "Maldives Police Service — Fraud advisory and reporting",
+          "url": "https://www.police.gov.mv/uploads/Press_Statement_13_2025_English_038349160a.pdf",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "モルディブの警察（Maldives Police Service）が詐欺被害を扱う。",
+          "refs": [
+            "report",
+            "advisory"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "公式の Crime Report の案内を確認するか最寄りの警察署に届け出る。",
+          "refs": [
+            "report",
+            "advisory"
+          ]
+        }
+      ]
     },
     "MEX": {
       "m49": "484",
       "name": "Mexico",
       "region": "Americas",
-      "iso2": "MX"
+      "iso2": "MX",
+      "status": "official-route",
+      "sources": {
+        "fgr": {
+          "title": "Fiscalía General de la República — Denuncias FGR",
+          "url": "https://www.gob.mx/tramites/ficha/denuncias-fgr/FGR1201",
+          "checkedOn": "2026-11-18"
+        },
+        "jal": {
+          "title": "Fiscalía del Estado de Jalisco — Denuncia de delitos en internet",
+          "url": "https://fge.jalisco.gob.mx/policia-cibernetica/reportes/denuncia/",
+          "checkedOn": "2026-11-18"
+        },
+        "law": {
+          "title": "Cámara de Diputados — Código Nacional de Procedimientos Penales",
+          "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/CNPP.pdf",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "連邦犯罪は連邦検察（Ministerio Público de la Federación）。州の管轄に属する犯罪は州検察に届け出る。",
+          "refs": [
+            "fgr",
+            "jal"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "連邦検察では口頭または書面で申告できる。ハリスコ州はインターネット詐欺被害を州検察または管轄する Ministerio Público に届け出るよう案内する。",
+          "refs": [
+            "fgr",
+            "jal"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "ハリスコ州検察の対面案内では公的身分証と、取引資料、メール・ウェブページなどの関連資料と写しを求める。",
+          "refs": [
+            "jal"
+          ],
+          "kind": "required"
+        }
+      ],
+      "progress": [
+        {
+          "text": "担当検察機関の届出番号を確認する。警察が申告を受けた場合は、刑事訴訟法に従い検察に連絡する。",
+          "refs": [
+            "jal",
+            "law"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "刑事訴訟法第258条は、不捜査、暫定保管、不訴追など一定の処分について、被害者が通知を受けた後に管轄裁判官へ争う手続を定める。",
+          "refs": [
+            "law"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "MHL": {
       "m49": "584",
@@ -1254,7 +2905,60 @@
       "m49": "470",
       "name": "Malta",
       "region": "Europe",
-      "iso2": "MT"
+      "iso2": "MT",
+      "status": "official-route",
+      "sources": {
+        "police": {
+          "title": "Malta Police Force — File a Police Report",
+          "url": "https://pulizija.gov.mt/en/",
+          "checkedOn": "2026-11-18"
+        },
+        "reports": {
+          "title": "Malta Police Force — Collection of Police Reports",
+          "url": "https://pulizija.gov.mt/en/collection-of-police-reports/",
+          "checkedOn": "2026-11-18"
+        },
+        "scam": {
+          "title": "Department of Social Security — Phone and email scams",
+          "url": "https://socialsecurity.gov.mt/en/how-to-protect-yourself-from-phone-and-email-scams/",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "Malta Police Force が担当。被害は発生地に関係なく警察署で申告でき、サイバー犯罪部門の連絡先も案内されている。",
+          "refs": [
+            "police",
+            "scam"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "支払い詐欺は地元警察署へ。警察の公式サイトから電子届出にも進める。",
+          "refs": [
+            "police",
+            "scam"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "警察の NPS に記録されると、参照番号、事件の概要、受付担当の情報を記載した控えを受け取る。",
+          "refs": [
+            "reports"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "届出の証明が必要な場合は控えを請求できる。提供できる範囲は捜査や個人情報の扱いにより異なる。",
+          "refs": [
+            "reports"
+          ],
+          "kind": "status-check"
+        }
+      ]
     },
     "MMR": {
       "m49": "104",
@@ -1320,7 +3024,63 @@
       "m49": "458",
       "name": "Malaysia",
       "region": "Asia",
-      "iso2": "MY"
+      "iso2": "MY",
+      "status": "official-route",
+      "sources": {
+        "faq": {
+          "title": "Royal Malaysia Police — CCID and scam FAQ",
+          "url": "https://www.rmp.gov.my/faq?lang=en",
+          "checkedOn": "2026-11-18"
+        },
+        "bank": {
+          "title": "Bank Negara Malaysia — Financial Scams",
+          "url": "https://www.bnm.gov.my/faqs/scams",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "詐欺の届出はどの警察署でも可能。警察の商業犯罪捜査部門（CCID）の担当は発生地、事案の複雑さ、管轄などで決まる。",
+          "refs": [
+            "faq"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察署で届け出る。金融詐欺では、銀行または National Scam Response Centre（997）にも連絡するよう案内されている。",
+          "refs": [
+            "faq",
+            "bank"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "取引の領収書、銀行明細、相手の口座や連絡先、会話画面、URLなどを持参し、日時、送金額、支払理由を時系列で整理する。",
+          "refs": [
+            "faq"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "警察届出の後、犯罪構成要件や管轄に応じて照会先や捜査が判断される。",
+          "refs": [
+            "faq"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "金銭損失の申告でも、民事紛争や別の機関の管轄であれば、警察が該当する別経路に案内する場合がある。正式な不服申立手順はこの資料では確認できない。",
+          "refs": [
+            "faq"
+          ],
+          "kind": "status-check"
+        }
+      ]
     },
     "MYT": {
       "m49": "175",
@@ -1356,7 +3116,57 @@
       "m49": "566",
       "name": "Nigeria",
       "region": "Africa",
-      "iso2": "NG"
+      "iso2": "NG",
+      "status": "official-route",
+      "sources": {
+        "portal": {
+          "title": "Nigeria Police Force National Cybercrime Centre — e-Reporting",
+          "url": "https://nccc.npf.gov.ng/ereport/",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "Nigeria Police Force の National Cybercrime Centre がサイバー犯罪の届出窓口を公開する。",
+          "refs": [
+            "portal"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "NCCC の e-Reporting で本人確認のうえ提出する。申告を実際に送信する動作は未確認。",
+          "refs": [
+            "portal"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "関連する銀行記録、暗号資産の取引記録、画面画像などを申告に含める。",
+          "refs": [
+            "portal"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "ポータルはマイページで状況と通知を確認できると案内する。",
+          "refs": [
+            "portal"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "提出後の通知や他の機関への回付状況を e-Reporting で確認する。",
+          "refs": [
+            "portal"
+          ],
+          "kind": "status-check"
+        }
+      ]
     },
     "NIC": {
       "m49": "558",
@@ -1374,19 +3184,212 @@
       "m49": "528",
       "name": "Netherlands (Kingdom of the)",
       "region": "Europe",
-      "iso2": "NL"
+      "iso2": "NL",
+      "status": "official-route",
+      "sources": {
+        "faq": {
+          "title": "Politie — Internetaangifte FAQ",
+          "url": "https://www.politie.nl/algemeen/internetaangifte/veelgestelde-vragen.html",
+          "checkedOn": "2026-11-18"
+        },
+        "evidence": {
+          "title": "Politie — Wat moet ik meenemen bij een aangifte?",
+          "url": "https://www.politie.nl/informatie/wat-moet-ik-meenemen-bij-een-aangifte-en-wat-gebeurt-daarmee.html",
+          "checkedOn": "2026-11-18"
+        },
+        "messages": {
+          "title": "Politie — Welke berichten kunt u krijgen over uw aangifte?",
+          "url": "https://www.politie.nl/informatie/welke-berichten-kunt-u-krijgen-over-uw-aangifte.html",
+          "checkedOn": "2026-11-18"
+        },
+        "case": {
+          "title": "Politie — verdachte aangehouden in oplichtingszaak",
+          "url": "https://www.politie.nl/headless-api/nieuws/2026/maart/31/10-verdachte-aangehouden-in-oplichtingszaak.html",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "対象となるネット詐欺について Politie が対応し、オンラインで扱えない場合は署で聞き取りを行うことがある。",
+          "refs": [
+            "faq"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "公式のオンライン届出、または警察署の窓口を利用する。",
+          "refs": [
+            "faq"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "署で正式な届出を取る際は有効な身分証を持参する。",
+          "refs": [
+            "evidence"
+          ],
+          "kind": "required"
+        }
+      ],
+      "progress": [
+        {
+          "text": "オンライン提出後に警察が完全性と捜査の手がかりを確認する。控えは Mijn Politie で確認できる。",
+          "refs": [
+            "faq",
+            "messages"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "処理中の届出であれば Mijn Politie の補足機能で追記するか、届出情報を用意して警察に電話する。",
+          "refs": [
+            "faq"
+          ],
+          "kind": "supplement"
+        },
+        {
+          "text": "オンラインで扱えない旨の連絡があり、対面での聞き取りに案内された場合は、その窓口で補足する。",
+          "refs": [
+            "faq"
+          ],
+          "kind": "channel-unavailable"
+        }
+      ],
+      "cases": [
+        {
+          "text": "2026年3月、詐欺の複数の申告を踏まえて警察が捜査を開始し、被疑者を逮捕した。利用された届出窓口は公表資料に記載がない。",
+          "refs": [
+            "case"
+          ],
+          "stage": "investigation-confirmed"
+        }
+      ]
     },
     "NOR": {
       "m49": "578",
       "name": "Norway",
       "region": "Europe",
-      "iso2": "NO"
+      "iso2": "NO",
+      "status": "official-route",
+      "sources": {
+        "report": {
+          "title": "Politiet — Anmelde bedrageri og ID-tyveri",
+          "url": "https://www.politiet.no/tjenester/anmelde/anmelde-svindel-og-id-tyveri",
+          "checkedOn": "2026-11-18"
+        },
+        "evidence": {
+          "title": "Politiet — Veileder for digital anmeldelse",
+          "url": "https://www.politiet.no/tjenester/anmelde/veileder-for-digital-anmeldelse",
+          "checkedOn": "2026-11-18"
+        },
+        "progress": {
+          "title": "Politiet — Hva skjer når du har anmeldt?",
+          "url": "https://www.politiet.no/tjenester/anmelde/hva-skjer-nar-du-har-anmeldt",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "詐欺やサイバー犯罪はノルウェー警察へ届け出る。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察の電子窓口では該当する詐欺やサイバー犯罪を申告できる。ID-porten での認証にはノルウェーの個人番号または D 番号が必要。利用できない場合は地元警察に相談する。",
+          "refs": [
+            "report",
+            "evidence"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "領収書、銀行明細、相手との通信記録や画像など、事件に関係する資料を添付できる。",
+          "refs": [
+            "evidence"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "提出済みの一覧で事件番号を確認できる。警察の審査後、証拠不足などで終了となる場合がある。",
+          "refs": [
+            "evidence",
+            "progress"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "追加情報が出たら、先の事件番号を示して警察に連絡する。",
+          "refs": [
+            "evidence"
+          ],
+          "kind": "supplement"
+        }
+      ]
     },
     "NPL": {
       "m49": "524",
       "name": "Nepal",
       "region": "Asia",
-      "iso2": "NP"
+      "iso2": "NP",
+      "status": "official-route",
+      "sources": {
+        "bureau": {
+          "title": "Nepal Police Cyber Bureau — Report cyber crime",
+          "url": "https://cyberbureau.nepalpolice.gov.np/report-cyber-crime/",
+          "checkedOn": "2026-11-18"
+        },
+        "faq": {
+          "title": "Nepal Police — Cybercrime FAQ",
+          "url": "https://nepalpolice.gov.np/ne/faq/7/",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "カトマンズ盆地は Cyber Bureau、その他の地域は最寄りの警察署や地区警察でも申告を受ける。",
+          "refs": [
+            "bureau",
+            "faq"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "金融オンライン詐欺の書式を使う。本人が出向けない場合は、同局の案内に沿って資料をメールで送る経路もある。",
+          "refs": [
+            "bureau"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "身分証明の写し、該当するURLと判読できる画面画像を添える。送金控え、チャット、音声・映像など既存資料を保全する。",
+          "refs": [
+            "bureau",
+            "faq"
+          ],
+          "kind": "required"
+        }
+      ],
+      "followUp": [
+        {
+          "text": "Cyber Bureau の申告ページから担当事務所の連絡先・進捗照会の案内に進める。",
+          "refs": [
+            "bureau"
+          ],
+          "kind": "status-check"
+        }
+      ]
     },
     "NRU": {
       "m49": "520",
@@ -1398,7 +3401,76 @@
       "m49": "554",
       "name": "New Zealand",
       "region": "Oceania",
-      "iso2": "NZ"
+      "iso2": "NZ",
+      "status": "official-route",
+      "sources": {
+        "route": {
+          "title": "New Zealand Police — Fraud, Scam, Cyber",
+          "url": "https://www.police.govt.nz/use-105/fraud-scam-cyber",
+          "checkedOn": "2026-11-18"
+        },
+        "follow": {
+          "title": "New Zealand Police — After making a Police report",
+          "url": "https://www.police.govt.nz/faq/what-happens-after-i-make-police-report",
+          "checkedOn": "2026-11-18"
+        },
+        "case": {
+          "title": "New Zealand Police — Text scammers delivered consequences in court",
+          "url": "https://www.police.govt.nz/news/release/text-scammers-delivered-consequences-court",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "オンライン詐欺などの被害は New Zealand Police の管轄。",
+          "refs": [
+            "route"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察の 105 オンライン窓口を利用する。",
+          "refs": [
+            "route"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "銀行明細、電子メール、SMS、SNSアカウントややり取りなどを報告に含める。",
+          "refs": [
+            "route"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "提出を示す資料としてオンライン参照番号または警察事件番号を使用できる。",
+          "refs": [
+            "follow"
+          ]
+        }
+      ],
+      "cases": [
+        {
+          "text": "SMSフィッシングで被害が報告された事案で、警察と内務省が共同で捜査した。警察公表で起訴・判決まで確認できるが、個々の届出の処理は示されていない。",
+          "refs": [
+            "case"
+          ],
+          "stage": "investigation-confirmed"
+        }
+      ],
+      "followUp": [
+        {
+          "text": "提出後は 105 の更新フォームまたは電話で追加情報や証拠の所在を伝える。CCTV・動画をそのフォームに直接上げられない場合は所持者と入手方法を伝える。",
+          "refs": [
+            "follow"
+          ],
+          "kind": "supplement"
+        }
+      ]
     },
     "OMN": {
       "m49": "512",
@@ -1478,7 +3550,40 @@
       "m49": "591",
       "name": "Panama",
       "region": "Americas",
-      "iso2": "PA"
+      "iso2": "PA",
+      "status": "official-route",
+      "sources": {
+        "route": {
+          "title": "Panama Ministerio Público — Denuncia del delito informático",
+          "url": "https://ministeriopublico.gob.pa/denuncias/denuncia-del-delito-informatico/",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "インターネットを使う詐欺・なりすまし等は Ministerio Público が捜査を担当する。",
+          "refs": [
+            "route"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "居住地に近い検察施設の Sección de Atención Primaria で当番検事に申告する。",
+          "refs": [
+            "route"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "申告者の情報、発生日時・場所を説明し、入手済みの写真、会話、目撃者情報があれば提示する。",
+          "refs": [
+            "route"
+          ],
+          "kind": "recommended"
+        }
+      ]
     },
     "PCN": {
       "m49": "612",
@@ -1490,13 +3595,113 @@
       "m49": "604",
       "name": "Peru",
       "region": "Americas",
-      "iso2": "PE"
+      "iso2": "PE",
+      "status": "official-route",
+      "sources": {
+        "cud": {
+          "title": "Peru Ministry of the Interior — CUD, Denunciar delitos informáticos",
+          "url": "https://www.gob.pe/114031-central-unica-de-denuncias-cud-denunciar-delitos-informaticos",
+          "checkedOn": "2026-11-18"
+        },
+        "mp": {
+          "title": "Peru Fiscalía de la Nación — Presentar denuncia",
+          "url": "https://www.gob.pe/es/11324-presentar-denuncia-ante-el-ministerio-publico",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "内務省の CUD は対象のサイバー犯罪の報告を扱い、検察（Ministerio Público）は刑事申告を受け付ける。",
+          "refs": [
+            "cud",
+            "mp"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "CUD の対象犯罪用フォームを使える。検察へのオンライン申告には本人確認がある。",
+          "refs": [
+            "cud",
+            "mp"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "検察のフォームは具体的な経緯と裏付け資料を求める。審査後、担当検察官から求められた資料を提出する。",
+          "refs": [
+            "mp"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "CUD は状況照会用の登録コードを発行する。検察のオンライン申告は登録の控えを印刷できる。",
+          "refs": [
+            "cud",
+            "mp"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "申告に使った機関の確認ページで登録コードまたは届出の状況を照会する。",
+          "refs": [
+            "cud",
+            "mp"
+          ],
+          "kind": "status-check"
+        }
+      ]
     },
     "PHL": {
       "m49": "608",
       "name": "Philippines",
       "region": "Asia",
-      "iso2": "PH"
+      "iso2": "PH",
+      "status": "partial",
+      "sources": {
+        "local": {
+          "title": "PNP Southern Police District — Citizen’s Charter, Cybercrime Walk-in Complaints",
+          "url": "https://spd.ncrpo.pnp.gov.ph/wp-content/uploads/2024/04/SPD-CITIZENs-CHARTER-HANDBOOK.pdf",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "確認した窓口はフィリピン国家警察の首都圏 Southern District Anti-Cybercrime Team（SDACT）。全国に同じ書類要件が適用されるかは未確認。",
+          "refs": [
+            "local"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "対象地区では対面で Anti-Cybercrime Group の受付担当者へ申告する。",
+          "refs": [
+            "local"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "地区の要件には有効な身分証、所定の Incident Record Form と、該当する取引明細・領収記録・会話画面などが挙がる。",
+          "refs": [
+            "local"
+          ],
+          "kind": "required"
+        }
+      ],
+      "progress": [
+        {
+          "text": "担当者が申告を評価し、サイバー犯罪に該当するかを確認する。",
+          "refs": [
+            "local"
+          ]
+        }
+      ]
     },
     "PLW": {
       "m49": "585",
@@ -1514,7 +3719,70 @@
       "m49": "616",
       "name": "Poland",
       "region": "Europe",
-      "iso2": "PL"
+      "iso2": "PL",
+      "status": "official-route",
+      "sources": {
+        "cbzc": {
+          "title": "Central Bureau for Combating Cybercrime — Zgłoś cyberoszustwo",
+          "url": "https://cbzc.policja.gov.pl/bzc/zglos-cyberprzestepstwo/464%2CZglos-cyberoszustwo.html",
+          "checkedOn": "2026-11-18"
+        },
+        "gov": {
+          "title": "Polish Government — Zgłaszanie incydentów",
+          "url": "https://bezpiecznedane.gov.pl/baza-wiedzy/zglaszanie-incydentow",
+          "checkedOn": "2026-11-18"
+        },
+        "prosecutor": {
+          "title": "Warsaw District Prosecutor — Chcę złożyć zawiadomienie",
+          "url": "https://www.gov.pl/web/po-warszawa/chce-zlozyc-zawiadomienie",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "犯罪申告はどの警察部署でも受け付ける。検察も申告先として案内されている。",
+          "refs": [
+            "cbzc",
+            "gov"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察の窓口、または管轄の警察・検察への書面で、疑われる犯罪と被害を申告する。",
+          "refs": [
+            "cbzc",
+            "prosecutor"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "被害の種類・金額、メールの写し、画面画像、録音やログなどの入手済み資料を添える。",
+          "refs": [
+            "cbzc",
+            "gov"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "申告から手続開始または開始拒否の判断が行われる。",
+          "refs": [
+            "prosecutor"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "手続開始の拒否等では、法定の要件に該当する被害者は不服申立てができる。当局が示す手続を確認する。",
+          "refs": [
+            "prosecutor"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "PRI": {
       "m49": "630",
@@ -1534,7 +3802,55 @@
       "m49": "620",
       "name": "Portugal",
       "region": "Europe",
-      "iso2": "PT"
+      "iso2": "PT",
+      "status": "official-route",
+      "sources": {
+        "pj": {
+          "title": "Portuguese Ministry of Justice — Apresentar queixa",
+          "url": "https://justica.gov.pt/Servicos/Apresentar-queixa",
+          "checkedOn": "2026-11-18"
+        },
+        "online": {
+          "title": "gov.pt — Apresentar uma queixa-crime à Polícia Judiciária",
+          "url": "https://www.gov.pt/servicos/apresentar-uma-queixa-crime-a-policia-judiciaria?_com_liferay_asset_publisher_web_portlet_AssetPublisherPortlet_INSTANCE_8pZjdABbZKIM_mvcPath=%2Fview.jsp",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "司法警察 PJ が申告を受け付ける。事案によって検察または他の警察機関が捜査を担当する。",
+          "refs": [
+            "pj"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "PJ への対面または電子申告を利用する。電子窓口は市民カードまたは Chave Móvel Digital などの公的認証が必要。",
+          "refs": [
+            "pj",
+            "online"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "正式な queixa には本人確認が必要。対面では身分証を持参し、電子申告では経緯を記入して入手済みの文書や画像を添付できる。",
+          "refs": [
+            "pj",
+            "online"
+          ],
+          "kind": "required"
+        }
+      ],
+      "progress": [
+        {
+          "text": "PJ は受け付けた内容を分析し、必要に応じて関係者に聴取等を求める。",
+          "refs": [
+            "pj"
+          ]
+        }
+      ]
     },
     "PRY": {
       "m49": "600",
@@ -1558,7 +3874,37 @@
       "m49": "634",
       "name": "Qatar",
       "region": "Asia",
-      "iso2": "QA"
+      "iso2": "QA",
+      "status": "official-route",
+      "sources": {
+        "qcb": {
+          "title": "Qatar Central Bank — National Awareness Campaign for Information Security",
+          "url": "https://www.qcb.gov.qa/en/pages/the-national-awareness-campaign-for-information-security.aspx",
+          "checkedOn": "2026-11-18"
+        },
+        "moi": {
+          "title": "Qatar Ministry of Interior — Cybercrimes awareness and reporting",
+          "url": "https://portal.moi.gov.qa/wps/portal/en/MOIInternet/awarenesstips/electronicawareness/awarenessinstruction/%21ut/p/z0/fY6xTgMxEER_5ZqU1jp35jiXThMB0qVIQXCDNpsFbTj2EttJ-HwMBSXlezMaDUTYQVS8yjsWmRWnyi-xfx29DUu_sU_D-LCywQe_CndjZ7cWtqzwCPH_Ul2R4_kcA0SatfBXgd2NPifZG6mYlIthXdiMBm-YWDnnIqf8a3hiKmlWob-seincVMLmbU6NaC7pQj-fa3boOmQ63Ju-H1rjOnIG29YZT_uBBte7pbNw-lg_fwNoauqF/",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "サイバー犯罪の被害相談を内務省の Cybercrime Combating Centre が扱う。",
+          "refs": [
+            "moi"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "金融サイバー犯罪の公的な連絡先として、内務省と中央銀行の案内はホットライン 66815757 を挙げる。電子窓口の現行の名称と利用条件は機関に確認する。",
+          "refs": [
+            "qcb",
+            "moi"
+          ]
+        }
+      ]
     },
     "REU": {
       "m49": "638",
@@ -1629,7 +3975,59 @@
       "m49": "682",
       "name": "Saudi Arabia",
       "region": "Asia",
-      "iso2": "SA"
+      "iso2": "SA",
+      "status": "official-route",
+      "sources": {
+        "portal": {
+          "title": "Saudi National Platform — Cybercrime Reports",
+          "url": "https://my.gov.sa/.well-known/services/398352",
+          "checkedOn": "2026-11-18"
+        },
+        "guide": {
+          "title": "Digital Government Authority — Kolona Amn reporting guide",
+          "url": "https://raqmi.dga.gov.sa/platformsAPI/api/attachments/bc1126a1-a1c2-4839-b265-b30f00177b05",
+          "checkedOn": "2026-11-18"
+        },
+        "ex": {
+          "title": "Saudi HRSD — Guide to Services Provided for Expatriates",
+          "url": "https://www.hrsd.gov.sa/sites/default/files/2024-08/Guide%20to%20Services%20Provided%20for%20Expatriates.pdf",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "内務省のサービスは、国民・居住者によるオンライン金融詐欺や乗っ取りなどの届出を扱う。",
+          "refs": [
+            "portal"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "Kolona Amn アプリにログインし、犯罪分類、関係するサービスとアカウントを選んで届け出る。",
+          "refs": [
+            "portal",
+            "guide"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "届け出るアカウントの情報、事件の経緯、裏付け資料をまとめて添付する。",
+          "refs": [
+            "guide"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "政府の手引きでは、提出後に報告の参照番号が提供される。",
+          "refs": [
+            "ex"
+          ]
+        }
+      ]
     },
     "SDN": {
       "m49": "729",
@@ -1647,7 +4045,104 @@
       "m49": "702",
       "name": "Singapore",
       "region": "Asia",
-      "iso2": "SG"
+      "iso2": "SG",
+      "status": "official-route",
+      "sources": {
+        "report": {
+          "title": "Singapore Police Force — Lodge Police Report",
+          "url": "https://www.police.gov.sg/e-services/lodge-police-report/",
+          "checkedOn": "2026-11-18"
+        },
+        "process": {
+          "title": "Singapore Police Force — Information Booklet on Police Procedures",
+          "url": "https://www.police.gov.sg/docs/spf/SPF/Files/Publications/PDF/Information-Booklet-on-Police-Procedures.pdf",
+          "checkedOn": "2026-11-18"
+        },
+        "io": {
+          "title": "Singapore Police Force — Crime Cases Reports",
+          "url": "https://www.police.gov.sg/-/media/F67FFF37D5104DD0B38F03E9CD46DF1E.ashx",
+          "checkedOn": "2026-11-18"
+        },
+        "case": {
+          "title": "Singapore Police Force — June 2026 impersonation scam case",
+          "url": "https://www.police.gov.sg/Media-Hub/News/2026/06/20260611_malaysian_man_to_be_charged_for_his_suspected_involvement_in_scam",
+          "checkedOn": "2026-11-18"
+        },
+        "scamshield": {
+          "title": "ScamShield — What to include when you file a police report",
+          "url": "https://www.scamshield.gov.sg/important-information-for-police-report/",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "緊急の対応を要しない詐欺被害は Singapore Police Force が担当する。",
+          "refs": [
+            "report",
+            "process"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "Lodge Police Report の電子サービスか、Neighbourhood Police Centre / Post で警察届出を行う。",
+          "refs": [
+            "report",
+            "process"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "発生日時・場所、分かる範囲の相手の情報、関係書類を準備する。電子サービスでは使用可能な添付形式・サイズが案内されている。",
+          "refs": [
+            "report",
+            "io"
+          ],
+          "kind": "recommended"
+        },
+        {
+          "text": "詐欺の届出では、メッセージ・メール・サイトの画面、領収書、請求書、契約、金融取引記録を揃える。他機関に届け出ていれば参照番号も記す。",
+          "refs": [
+            "scamshield"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "報告書の写しと番号が発行される。捜査開始には犯罪の類型と捜査に足りる根拠の審査がある。",
+          "refs": [
+            "process",
+            "io"
+          ]
+        }
+      ],
+      "cases": [
+        {
+          "text": "2026年6月、警察官を名乗る詐欺の被害者から警察が届出を受領し、地区警察と Anti-Scam Command が捜査して被疑者を逮捕した。",
+          "refs": [
+            "case"
+          ],
+          "stage": "investigation-confirmed"
+        }
+      ],
+      "followUp": [
+        {
+          "text": "捜査中の新たな情報や証拠は担当捜査官へ伝える。担当部署の照会窓口は通知で確認できる。",
+          "refs": [
+            "io"
+          ],
+          "kind": "supplement"
+        },
+        {
+          "text": "逮捕権のない類型（non-arrestable offence）で警察が通常捜査しない場合、事案により調停や Magistrate’s Complaint の案内を受ける。",
+          "refs": [
+            "io"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "SGS": {
       "m49": "239",
@@ -1743,7 +4238,83 @@
       "m49": "752",
       "name": "Sweden",
       "region": "Europe",
-      "iso2": "SE"
+      "iso2": "SE",
+      "status": "official-route",
+      "sources": {
+        "report": {
+          "title": "Swedish Police — Report a crime",
+          "url": "https://polisen.se/en/victims-of-crime/making-a-report/",
+          "checkedOn": "2026-11-18"
+        },
+        "evidence": {
+          "title": "Polisen — Kortbedrägeri",
+          "url": "https://polisen.se/utsatt-for-brott/polisanmalan/bedragerier/bedragerier/kortbedragerier/",
+          "checkedOn": "2026-11-18"
+        },
+        "review": {
+          "title": "Polisen — Från anmälan till dom",
+          "url": "https://polisen.se/utsatt-for-brott/rattskedjan/",
+          "checkedOn": "2026-11-18"
+        },
+        "case": {
+          "title": "Polismyndigheten — coordinated vishing investigation",
+          "url": "https://polisen.se/aktuellt/nyheter/stockholm/2025/oktober/gemensamt-arbete-mot-vishing-stoppade-bedragerivag--8-personer-doms/",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "スウェーデン警察が届出を受け付け、警察や検察が予備捜査を判断する。",
+          "refs": [
+            "report",
+            "review"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "緊急を要しない犯罪は114 14または警察署へ申告する。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "送金記録、メール、SMSやチャットなどを保存する。後日の提出を求められる場合に備える。",
+          "refs": [
+            "report",
+            "evidence"
+          ],
+          "kind": "retain"
+        }
+      ],
+      "progress": [
+        {
+          "text": "届出番号を記録する。届出を受けた後に警察・検察が予備捜査を判断する。",
+          "refs": [
+            "review"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "捜査終了の決定を見直してほしい場合は、届出番号を示して警察に検察への回付を求める。新証拠があるときは再開の可能性もある。",
+          "refs": [
+            "review"
+          ],
+          "kind": "review"
+        }
+      ],
+      "cases": [
+        {
+          "text": "2024年秋、医療機関を装う電話詐欺の複数の届出が警察に届き、地域横断の捜査の結果、8人が起訴・有罪となったと警察が公表した。",
+          "refs": [
+            "case"
+          ],
+          "stage": "investigation-confirmed"
+        }
+      ]
     },
     "SWZ": {
       "m49": "748",
@@ -1791,7 +4362,59 @@
       "m49": "764",
       "name": "Thailand",
       "region": "Asia",
-      "iso2": "TH"
+      "iso2": "TH",
+      "status": "official-route",
+      "sources": {
+        "police": {
+          "title": "Royal Thai Police — Online technology crime reporting",
+          "url": "https://thaipoliceonline.go.th/?form=2%2F1000",
+          "checkedOn": "2026-11-18"
+        },
+        "update": {
+          "title": "Royal Thai Police local station — E-Service and case tracking",
+          "url": "https://maelay.nakhonsawan.police.go.th/ita-standards/administration/administration-4/o6",
+          "checkedOn": "2026-11-18"
+        },
+        "rule": {
+          "title": "Royal Thai Police — online technology crime reporting order",
+          "url": "https://pai.police.go.th/download/Datalaw/8.pdf",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "タイ国家警察のサイバー犯罪捜査部門が技術犯罪の専用オンライン窓口を運営する。",
+          "refs": [
+            "police"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "ネット詐欺・不正送金やアカウント侵害など、該当する技術犯罪は警察公式のオンライン窓口から届け出る。",
+          "refs": [
+            "police",
+            "update"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "警察の運用文書ではオンライン申告の Case ID を発番する。",
+          "refs": [
+            "rule"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "警察の事件状況照会を利用する。警察署の案内は政府アプリからも照会に進めるとしている。",
+          "refs": [
+            "update"
+          ],
+          "kind": "status-check"
+        }
+      ]
     },
     "TJK": {
       "m49": "762",
@@ -1875,7 +4498,49 @@
       "m49": "858",
       "name": "Uruguay",
       "region": "Americas",
-      "iso2": "UY"
+      "iso2": "UY",
+      "status": "official-route",
+      "sources": {
+        "route": {
+          "title": "Uruguay Ministry of the Interior — Cómo denunciar los Ciberdelitos",
+          "url": "https://www.gub.uy/ministerio-interior/comunicacion/publicaciones/denunciar-ciberdelitos",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "モンテビデオは Dirección General de Cibercrimen、国内のその他の地域は警察署または検察が窓口。",
+          "refs": [
+            "route"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "対象地域の窓口にサイバー犯罪を届け出る。手元の情報が揃う前にも初回申告できる。",
+          "refs": [
+            "route"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "SNSのプロフィールURL、投稿やメッセージ、電話番号、口座情報、会話・メール・画面の記録を保全する。",
+          "refs": [
+            "route"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "followUp": [
+        {
+          "text": "初回申告に情報や資料が揃っていなかった場合は後から補足できる。",
+          "refs": [
+            "route"
+          ],
+          "kind": "supplement"
+        }
+      ]
     },
     "USA": {
       "m49": "840",
@@ -2030,7 +4695,63 @@
       "m49": "710",
       "name": "South Africa",
       "region": "Africa",
-      "iso2": "ZA"
+      "iso2": "ZA",
+      "status": "official-route",
+      "sources": {
+        "report": {
+          "title": "South African Police Service — Report a crime",
+          "url": "https://www.saps.gov.za/services/report_crime.php",
+          "checkedOn": "2026-11-18"
+        },
+        "sop": {
+          "title": "SAPS — Cybercrimes Act section 26 procedures",
+          "url": "https://www.saps.gov.za/resource_centre/notices/downloads/SAPS-CCA-SOP-FINAL-12-09-2023.pdf",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "SAPS が担当し、サイバー犯罪の事件登録に関する管轄の扱いは同機関の手続書に示されている。",
+          "refs": [
+            "report",
+            "sop"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "最寄りの署の Community Service Centre で警察官の聴取を受け、供述を記録してもらう。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "担当警察官に経緯を説明する。可能であれば目撃者の供述も警察が取る。",
+          "refs": [
+            "report"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "SAPS の犯罪管理システムに記録されると CAS 番号が発行される。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "CAS 番号を控え、案件を割り当てられた担当捜査官に照会する。",
+          "refs": [
+            "report"
+          ],
+          "kind": "status-check"
+        }
+      ]
     },
     "ZMB": {
       "m49": "894",
