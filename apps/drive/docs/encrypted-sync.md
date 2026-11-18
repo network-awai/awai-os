@@ -88,6 +88,7 @@ no extra operation, consent or CSP entry; rotating the service key needs a Drive
 rebuild with the new key set, and until then sync fails closed. The receipt is
 not kept in the device control record. Origins not in `receipt-trust.json`
 (including the loopback fixture) keep the plain `{sha256, bytes}` check.
+[VM qualification 2026-11-18](encrypted-sync-receipt-qualification-20261118.md).
 
 Build with `AWAI_DRIVE_SYNC_ORIGIN=https://yataverse.com npm run build` (build
 `packages/awai-ui` first). The generated CSP is
