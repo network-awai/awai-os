@@ -43,6 +43,7 @@ def manifest(pkg, activity, version, kind, online=False, debuggable=True):
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('--version',type=int,default=1);ap.add_argument('--sdk',type=pathlib.Path,default=pathlib.Path.home()/'Library/Android/sdk');ap.add_argument('--java',type=pathlib.Path,default=pathlib.Path('/opt/homebrew/opt/openjdk/bin'));ap.add_argument('--out',type=pathlib.Path,default=ROOT/'.agent-output/android');ap.add_argument('--skip-cljs',action='store_true');ap.add_argument('--online-pins',type=pathlib.Path);ap.add_argument('--catalog-revision',type=int,default=None);ap.add_argument('--itonami-apk',type=pathlib.Path,default=None);ap.add_argument('--torihiki-bot-apk',type=pathlib.Path,default=None);ap.add_argument('--tabi-mikake-apk',type=pathlib.Path,default=None);ap.add_argument('--deai-apk',type=pathlib.Path,default=None);ap.add_argument('--hiring-apk',type=pathlib.Path,default=None);ap.add_argument('--kumade-apk',type=pathlib.Path,default=None);ap.add_argument('--home-only',action='store_true')
     ap.add_argument('--agent-trace-apk', type=pathlib.Path, help='Development-signed APK from app-itonami-agent-trace')
+    ap.add_argument('--agent-trace-online', action='store_true', help='Admit the feed-enabled agent trace APK with INTERNET')
     ap.add_argument('--agent-trace-sha256', help='Expected SHA-256 from the source app build receipt')
     ap.add_argument('--unsigned-home', action='store_true', help='Build a non-debuggable Home APK for a separate APK signing service')
     args=ap.parse_args()
@@ -52,6 +53,8 @@ def main():
             ap.error('--unsigned-home requires an empty output directory')
     if bool(args.agent_trace_apk) != bool(args.agent_trace_sha256):
         ap.error('--agent-trace-apk and --agent-trace-sha256 must be supplied together')
+    if args.agent_trace_online and not args.agent_trace_apk:
+        ap.error('--agent-trace-online requires an agent trace APK')
     if args.agent_trace_sha256 and not re.fullmatch(r'[a-f0-9]{64}', args.agent_trace_sha256):
         ap.error('--agent-trace-sha256 requires a lowercase SHA-256 digest')
     if args.catalog_revision is not None and args.catalog_revision<1:raise SystemExit('positive catalog revision required')
@@ -233,9 +236,11 @@ def main():
         badging = run([tools/'aapt2', 'dump', 'badging', staged], capture_output=True).stdout
         package = re.fullmatch(r"package: name='network\.itonami\.agenttrace' versionCode='([0-9]+)' versionName='([^']+)'.*",
                                badging.splitlines()[0])
-        if not package or run([tools/'aapt2', 'dump', 'permissions', staged],
-                              capture_output=True).stdout.count('uses-permission'):
-            raise SystemExit('agent trace APK must have its assigned package and request no permissions')
+        permissions = run([tools/'aapt2', 'dump', 'permissions', staged], capture_output=True).stdout.splitlines()
+        requested = [line.split('name=', 1)[-1].strip("'") for line in permissions if line.startswith('uses-permission')]
+        expected = ['android.permission.INTERNET'] if args.agent_trace_online else []
+        if not package or requested != expected:
+            raise SystemExit('agent trace APK package or permissions do not match the selected Store profile')
         listed.append({
             'id': 'network.itonami.agenttrace', 'name': '営トレース',
             'description': 'OTLP のエージェント実行履歴を端末内で確認し、OpenTelemetry または Langfuse 用に書き出します。',

@@ -78,3 +78,7 @@ with `--agent-trace-apk <apk> --agent-trace-sha256 <digest>`.
 Store admits only the `network.itonami.agenttrace` package with the development signer,
 the pinned digest, zero requested permissions, and an APK of at most 2 MiB.
 OpenTelemetry and Langfuse trace files are reviewed and exported on the device.
+
+For an APK built with a pinned trace feed origin, include `--agent-trace-online`.
+The Store then requires exactly INTERNET in addition to the APK identity and
+digest checks. This flag only configures the signed bundled catalog.
