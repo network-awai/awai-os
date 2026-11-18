@@ -24,12 +24,14 @@
                                                        :container (.-current container)
                                                        :broker (createEgovHostBroker broker)}))))
              (.then (fn [h] (if @live (vreset! handle h) (some-> h .close))))
-             (.catch (fn [_] (when @live (set-problem true)))))
+             (.catch (fn [error]
+                       (js/console.error "gyosei: guest refused" error)
+                       (when @live (set-problem (or (some-> error .-message) "unknown"))))))
          (fn [] (vreset! live false) (some-> @handle .close))))
      #js [attempt])
     [:main.chat.gyosei {:data-gyosei true}
      (when problem
        [:div.empty
-        [:p.notice {:role "alert"} "この画面の検証に失敗したため、実行しませんでした。"]
+        [:p.notice {:role "alert" :data-gyosei-error problem} "この画面の検証に失敗したため、実行しませんでした。"]
         [:button {:type "button" :on-click #(set-attempt (inc attempt))} "再読み込み"]])
      [:div.gyosei-frame {:ref container}]]))
