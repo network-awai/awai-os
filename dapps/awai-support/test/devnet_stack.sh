@@ -3,7 +3,7 @@
 # run only. The CA key never leaves OUT_DIR. Prints the paths the caller needs, then waits.
 #
 # usage (from dapps/awai-support): test/devnet_stack.sh OUT_DIR [ALLOW_ORIGIN]
-#   NODE_PORT (default 18796) and DESK_PORT (default 18795) can be overridden; REUSE_CA_DIR reuses a CA.
+#   NODE_PORT (default 18796) and DESK_PORT (default 18795) can be overridden; REUSE_CA_DIR reuses a CA; DESK_SCRIPT swaps the desk (mutation checks).
 set -euo pipefail
 O=$1; ALLOW=${2:-https://tauri.localhost}
 NODE_PORT=${NODE_PORT:-18796}; DESK_PORT=${DESK_PORT:-18795}; C=awai-en-devnet/awai-3170
@@ -27,8 +27,8 @@ OP=$(sig keygen "$O/operator.pem" | field did)
 P=$(sig keygen "$O/provider.pem" | field did)
 (cd $EN && nbb -cp src host/node.cljs init "$O/node" $C "$OP" "$S" "$B" "$P" > /dev/null)
 (cd $EN && exec nbb -cp src host/node.cljs serve "$O/node" $NODE_PORT >> "$O/node.log" 2>&1) &
-nbb -cp src:$EN/src host/desk.cljs init "$O/desk" $C "$O/sponsor.pem" "$O/awai-support-bot.pem" "http://127.0.0.1:$NODE_PORT" "$ALLOW" > /dev/null
-(exec nbb -cp src:$EN/src host/desk.cljs serve "$O/desk" $DESK_PORT "$O/desk.pem" "$O/desk.key" >> "$O/desk.log" 2>&1) &
+nbb -cp src:$EN/src ${DESK_SCRIPT:-host/desk.cljs} init "$O/desk" $C "$O/sponsor.pem" "$O/awai-support-bot.pem" "http://127.0.0.1:$NODE_PORT" "$ALLOW" > /dev/null
+(exec nbb -cp src:$EN/src ${DESK_SCRIPT:-host/desk.cljs} serve "$O/desk" $DESK_PORT "$O/desk.pem" "$O/desk.key" >> "$O/desk.log" 2>&1) &
 for i in $(seq 1 60); do
   curl -fs http://127.0.0.1:$NODE_PORT/v1/head >/dev/null && curl -s --cacert "$O/ca.pem" -o /dev/null https://localhost:$DESK_PORT/ && break
   sleep 0.5

@@ -17,6 +17,10 @@ donation.
 | Host commands | `host/support.cljs` | nbb, with `../en-devnet/src` |
 | One support on the EN devnet | `test/live_devnet.sh` | nbb node and signers from `../en-devnet` |
 | Bot profile | `hermes/profiles/awai-support/` | Itonami profile source (`SOUL.md`, `profile.yaml`) |
+| HTTPS support desk (AWAI-3170) | `host/desk.cljs` | nbb, loopback, with `../en-devnet/src` |
+| Node and desk for a run | `test/devnet_stack.sh` | bash, openssl, nbb |
+| Desk client checks | `test/desk_client.mjs` | Node, using `otehon/shell/src/awai-support.js` |
+| One support from the Itonami app | `test/live_android.mjs` | Node, adb, an emulator this run owns |
 
 ## What the core decides
 
@@ -67,10 +71,65 @@ Itonami rail (murakumo); do not install this profile into a Hermes home with mur
 Registration in `cloud-itonami/itonami-registry` pins this directory at a merged commit and is a
 separate step.
 
+## From the Itonami app on Android (AWAI-3170)
+
+The support panel sits in the Itonami context of the shell, below the agent list
+([Figma 304:939](https://www.figma.com/design/umqCqP5KSjLWh9fhCI1HaN?node-id=304-939)). It goes
+through the shared consent broker for each of three operations: `prepare-support`, `send-support`
+and `read-support-receipt`. They exist only in a shell built with `AWAI_SUPPORT_DESK_ORIGIN`.
+
+- The card is the desk's exact canonical text. The panel parses it, refuses anything that is not
+  devnet support for Awai Network LLC, and signs `awai.support.approval/1` with the card's SHA-256 using
+  a separate, non-exportable P-256 key kept in the app's IndexedDB. It is not the device identity key.
+- `host/desk.cljs` serves HTTPS on loopback, answers only the allowed web origin, and accepts a support
+  only when that approval matches the card it issued. The first approval key is enrolled (trust on
+  first use, devnet only), and later keys are refused. It then signs as the sponsor, has the bot
+  counter-sign with its own key file, submits once, and records `ambiguous` without resending when
+  the node does not answer.
+- The sponsor's EN key is a devnet key file on the desk host. It stands in for a sponsor wallet and is
+  used only after the device's approval. It is not key custody.
+- Transport (owner decision 2026-11-18): the emulator reaches `https://localhost:18795` through
+  `adb reverse`. A **debug** build trusts that run's CA through
+  `apps/itonami/scripts/devnet-trust.mjs` (network_security_config debug-overrides, git-ignored,
+  removed after the run). Release builds, the main manifest and `cleartext=false` are unchanged.
+
+```bash
+cd dapps/awai-support
+test/devnet_stack.sh ../../.agent-output/stack &       # node, desk and a CA for this run
+NODE_EXTRA_CA_CERTS=../../.agent-output/stack/ca.pem \
+  node test/desk_client.mjs https://localhost:18795 http://127.0.0.1:18796 https://tauri.localhost OUT.json
+# Android: build the shell with AWAI_SUPPORT_DESK_ORIGIN=https://localhost:18795 OTEHON_HTTP=1,
+# run `node scripts/devnet-trust.mjs install CA.pem` in apps/itonami, build the debug APK, then:
+node test/live_android.mjs SERIAL APK ../../.agent-output/stack OUT_DIR
+```
+
+### Evidence (2026-11-18, Apple M1 Max, task worktree)
+
+| Check | Result |
+| --- | --- |
+| `otehon/shell` `npm test` | 113 of 113 |
+| Desk client against a live node and desk | 16 of 16 |
+| Desk with the approval check removed (negative control) | 5 checks fail, then the client stops on an unexpected send |
+| Android emulator (API 35, arm64, 1920×1080 at density 160), debug APK from `4dd8cec` | 11 of 11 |
+
+Android evidence: [`docs/evidence/awai-support-android-20261118.json`](../../docs/evidence/awai-support-android-20261118.json),
+[the card](../../docs/evidence/awai-support-android-20261118-card.png) and
+[the receipt](../../docs/evidence/awai-support-android-20261118-received.png). On the emulator:
+
+- A test wallet made for the run signs the app's own first-run sign-in message.
+- "Cancel" on the card sends nothing. "Deny" in the broker's send-support dialog sends nothing, not even a
+  preflight.
+- An approved support asks the broker twice more (send, read back) and finalizes exactly one transfer.
+  The panel and an independent read of the desk show the same receipt.
+
+Every decision was a real `adb shell input tap`. DevTools only read the page and filled the wallet
+fields. The emulator display was set to 1920×1080 for the run, because the shell hides the context
+sidebar below 800 CSS px, so the Itonami context cannot be opened at phone width.
+
 ## Not implemented
 
-- The approval in the live run is a scripted answer. The consent screen on Awai Android OS is
-  [AWAI-3170](https://linear.app/kotobalabs/issue/AWAI-3170).
+- The Android run used an emulator, taps from a harness and a test wallet, not a person on the
+  physical Awai Android OS device (6600H). The Itonami context is not reachable at phone width.
 - Recording and publishing where received support is allocated (initiative I-15).
 - Key custody beyond 0600 files, a second node or operator, and any real-asset route. Real assets
   need the owner's separate approval and the donation-or-support decision.
