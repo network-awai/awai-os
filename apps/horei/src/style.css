@@ -28,3 +28,4 @@ a.link{color:var(--primary)}
 details ul li{border:0;padding-block:.15rem}
 #status{min-block-size:1.6rem}footer{margin-block-start:2rem;font-size:.9rem}
 .mono{font-family:ui-monospace,monospace;font-size:.85rem;overflow-wrap:anywhere}
+.awai-ui .law-text{white-space:pre-line;line-height:1.8;margin-block:1rem;overflow-wrap:anywhere}

@@ -9,7 +9,7 @@ const app = fileURLToPath(new URL('../', import.meta.url)), repo = resolve(app, 
 const sha = b => createHash('sha256').update(b).digest('hex');
 await rm(out, {recursive: true, force: true});
 await mkdir(out, {recursive: true});
-for (const name of ['style.css', 'app.js', 'model.js', 'messages.js']) await copyFile(resolve(app, 'src', name), resolve(out, name));
+for (const name of ['style.css', 'app.js', 'model.js', 'messages.js', 'fulltext.js']) await copyFile(resolve(app, 'src', name), resolve(out, name));
 await copyFile(resolve(repo, 'packages/awai-shell/host.js'), resolve(out, 'host.js'));
 // The page icon is inlined: Android WebView re-requests a linked icon on every URL change, including each search keystroke.
 const icon = 'data:image/png;base64,' + (await readFile(resolve(app, 'src-tauri/icons/32x32.png'))).toString('base64');
@@ -33,8 +33,14 @@ for (const [input, output] of Object.entries(dataFiles)) {
   await writeFile(resolve(out, output), 'export default ' + bytes.toString('utf8').trimEnd() + ';\n');
 }
 await copyFile(resolve(app, 'data/PROVENANCE.json'), resolve(out, 'data-provenance.json'));
-const descriptor = {schema: 'kotoba.app.client-runtime.v1', target: 'browser', profile: 'trusted-page-v1', entry: 'index.html',
-  'local-state': {adapter: 'memory', schema: 'itonami.horei.state.v1', version: 1}, workers: [], operations: []};
+// The one external operation (full text from Yataverse) and the CSP connect-src are derived from the same declaration.
+const {runtimeDescriptor, SELECTOR} = await import('../src/fulltext.js');
+const {clientRuntimeProblems, clientRuntimeConnectSrc} = await import('../../../otehon/shell/vendor/kotoba-client-runtime.js');
+const descriptor = runtimeDescriptor();
+if (clientRuntimeProblems(descriptor, [SELECTOR.capability], 'http://tauri.localhost').length) throw Error('invalid runtime descriptor');
+const connect = 'connect-src ipc: http://ipc.localhost ' + clientRuntimeConnectSrc(descriptor, [SELECTOR.capability], [], 'http://tauri.localhost').slice('connect-src '.length) + ';';
+const tauriCsp = JSON.parse(await readFile(resolve(app, 'src-tauri/tauri.conf.json'), 'utf8')).app.security.csp;
+for (const [name, csp] of [['index.html', html], ['tauri.conf.json', tauriCsp]]) if (!csp.includes(connect)) throw Error('CSP connect-src differs from the descriptor: ' + name);
 await writeFile(resolve(out, 'descriptor.json'), JSON.stringify(descriptor, null, 2) + '\n');
 await distributeUi(out);
 async function list(dir, rel = '') {
