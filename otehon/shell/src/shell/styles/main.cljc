@@ -226,6 +226,18 @@
    [".net-body h1" {:margin 0 :font-size "28px"}]
    [".net-body h2" {:margin "16px 0 0" :font-size "15px"}]
    [".net-body p" {:margin 0}]
+   ;; Awai support panel (AWAI-3170, Figma 304:939)
+   [:.awai-support {:display "flex" :flex-direction "column" :gap "12px" :margin-top "24px"
+                    :padding "16px" :border-radius "12px" :background "var(--surface)"}]
+   [".awai-support h2" {:margin 0 :font-size "20px"}]
+   [".awai-support h3" {:margin "4px 0 0" :font-size "14px"}]
+   [:.support-notice {:padding "12px 16px" :border-radius "12px" :background "var(--surface-selected)"}]
+   [".support-notice p" {:margin "4px 0 0" :font-size "12px"}]
+   [:.support-details {:display "grid" :grid-template-columns "96px minmax(0, 1fr)" :gap "8px 12px"
+                       :margin 0 :font-size "13px"}]
+   [:.support-row {:display "contents"}]
+   [".support-row dt" {:color "var(--muted)"}]
+   [".support-row dd" {:margin 0 :overflow-wrap "anywhere"}]
    [:.net-list {:display "flex" :flex-direction "column"}]
    [".net-list li" {:display "flex" :align-items "center" :gap "10px" :padding "9px 0"
                      :border-top "1px solid var(--surface-hover)" :font-size "14px"}]

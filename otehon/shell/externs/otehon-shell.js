@@ -815,3 +815,23 @@ Object.prototype.dispatchEvent;
 Object.prototype.scrollTop;
 
 Object.prototype.scrollHeight;
+
+// Awai support panel (AWAI-3170): desk origin, card, approval and receipt fields.
+Object.prototype.supportOperations;
+Object.prototype.supportDeskOrigin;
+Object.prototype.cardText;
+Object.prototype.card;
+Object.prototype.transferId;
+Object.prototype.recipient;
+Object.prototype.bot;
+Object.prototype.sponsor;
+Object.prototype.amount;
+Object.prototype.chainId;
+Object.prototype.expiresMs;
+Object.prototype.purpose;
+Object.prototype.received;
+Object.prototype.height;
+Object.prototype.finality;
+Object.prototype.finalized;
+Object.prototype.unknown;
+Object.prototype.cause;
