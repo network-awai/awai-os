@@ -1,0 +1,14 @@
+2026-11-18T05:24:38.173Z head 63 torihiki-devnet-1
+2026-11-18T05:24:38.178Z account 9372651058480
+2026-11-18T05:24:38.241Z account before 200 {"equity":0,"maintenance-margin":0,"liquidatable":false,"triggers":[],"next-nonce":1,"account":9372651058480,"bound-key":null,"collateral":0,"free-collateral":0,"initial-margin":0,"positions":{}}
+2026-11-18T05:24:38.387Z deposit nonce 1 status 200 {"ok":true,"height":64,"state-root":"cf745e4085d675bc7d6d18b3c843d82bd642697924a8352629840bc0ef9a48c5"}
+2026-11-18T05:24:38.476Z head after deposit 64
+2026-11-18T05:24:38.541Z account after deposit 200 {"equity":1000000,"maintenance-margin":0,"liquidatable":false,"triggers":[],"next-nonce":2,"account":9372651058480,"bound-key":"WDAnlJQOfLv5VHoHuPEkWq8aBcjeIEh3lbQVsc0l4KI=","collateral":1000000,"free-collateral":1000000,"initial-margin":0,"positions":{}}
+2026-11-18T05:24:38.836Z buy IOC 1 @ 68010 nonce 2 status 200 {"ok":true,"height":65,"state-root":"188e1c6f1598577e8b6dd2163b0dcc0873d9b31898705b0b2519f59d214c7c0a"}
+2026-11-18T05:24:38.866Z account after buy {"equity":999967,"maintenance-margin":850,"liquidatable":false,"triggers":[],"next-nonce":3,"account":9372651058480,"bound-key":"WDAnlJQOfLv5VHoHuPEkWq8aBcjeIEh3lbQVsc0l4KI=","collateral":999977,"free-collateral":998267,"initial-margin":1700,"positions":{"1":{"size":1,"entry":68010,"unrealized":-10,
+2026-11-18T05:24:38.970Z sell IOC 1 @ 67990 nonce 3 status 200 {"ok":true,"height":66,"state-root":"b21ded35bf5bd5e77c26e8c76950c071d8a66be83bdd345547a7b97f83199c4d"}
+2026-11-18T05:24:39.216Z rest buy 1 @ 900 nonce 4 status 200 {"ok":true,"height":67,"state-root":"9641e3905f3f450be6e0ebe09c49cecd0c7b752ca15dad562aaa768d23499dca"}
+2026-11-18T05:24:39.283Z book [{"level":67990,"qty":1491,"cum":1491},{"level":67980,"qty":2,"cum":1493},{"level":6795,"qty":3,"cum":1496},{"level":950,"qty":2,"cum":1498},{"level":900,"qty":4,"cum":1502}]
+2026-11-18T05:24:39.403Z cancel-all nonce 5 status 400 {"ok":false,"height":68,"state-root":"815cb990bb6caae1ffa55959e1642bc3b5ff52afe0a366e230715efc4e42989e","reason":"unknown-tx"}
+2026-11-18T05:24:39.427Z account final {"equity":999934,"maintenance-margin":0,"liquidatable":false,"triggers":[],"next-nonce":6,"account":9372651058480,"bound-key":"WDAnlJQOfLv5VHoHuPEkWq8aBcjeIEh3lbQVsc0l4KI=","collateral":999934,"free-collateral":999934,"initial-margin":0,"positions":{}}
+2026-11-18T05:24:39.568Z head final 68 trades [{"level":67990,"qty":1,"side":1,"h":66},{"level":68010,"qty":1,"side":0,"h":65},{"level":67990,"qty":3,"side":1,"h":61}]

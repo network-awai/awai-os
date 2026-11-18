@@ -142,3 +142,19 @@ test('trades and candles views accept live shapes, reject malformed data, and on
 test('chart axis steps are 1, 2 or 5 times a power of ten',()=>{
   assert.equal(t.niceStep(3),5);assert.equal(t.niceStep(34),50);assert.equal(t.niceStep(136/4),50);assert.equal(t.niceStep(20),20);assert.equal(t.niceStep(1200),2000);
 });
+
+test('signing follows the deployed node version: code-version 12 signs f0..f15 and has no cancel-all (AWAI-3442)',()=>{
+  const p0=vec.payloads[0];
+  const lines=p0.payload.split('\n');
+  const f16=t.signingPayload(p0.chain,p0.account,p0.nonce,p0.tx,16);
+  assert.equal(f16,[...lines.slice(0,4+16),''].join('\n'));
+  assert.notEqual(f16,p0.payload);
+  assert.throws(()=>t.signingPayload(p0.chain,p0.account,p0.nonce,p0.tx,15));assert.throws(()=>t.signingPayload(p0.chain,p0.account,p0.nonce,p0.tx,51));
+  const head={'state-root':'7f'.repeat(32),'chain-id':'torihiki-devnet-1',consensus:'none',height:68,'code-version':'12'};
+  const h=t.headView(head);assert.equal(h.codeVersion,'12');
+  assert.deepEqual({...t.protocolFor(h)},{fields:16,txs:t.NODE_PROTOCOLS['12'].txs});
+  assert(t.supports(h,'order'));assert(t.supports(h,'deposit'));assert(!t.supports(h,'cancel-all'));
+  for(const v of ['13',undefined,'12; x','__proto__'])assert.throws(()=>t.protocolFor(t.headView({...head,'code-version':v})),String(v));
+  assert.throws(()=>t.protocolFor(null));
+  assert.equal(t.headView({...head,'code-version':'<b>'}).codeVersion,null);
+});
