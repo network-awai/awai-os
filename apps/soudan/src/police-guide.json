@@ -42,7 +42,45 @@
       "m49": "008",
       "name": "Albania",
       "region": "Europe",
-      "iso2": "AL"
+      "iso2": "AL",
+      "status": "official-route",
+      "sources": {
+        "fraud": {
+          "title": "Albanian State Police — Online fraud warning",
+          "url": "https://asp.gov.al/policia-e-shtetit-njoftim-per-qytetaret-mbi-nje-skeme-mashtrimi-online/",
+          "checkedOn": "2026-11-19"
+        },
+        "case": {
+          "title": "Albanian State Police — Operation Seen",
+          "url": "https://asp.gov.al/tirane-finalizohet-operacioni-i-koduar-seen/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "アルバニア国家警察がオンライン詐欺被害の申告を受ける。",
+          "refs": [
+            "fraud"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "銀行口座に関わるオンライン詐欺の被害は国家警察に届け出るよう案内されている。",
+          "refs": [
+            "fraud"
+          ]
+        }
+      ],
+      "cases": [
+        {
+          "text": "オンライン通信サービスを介した詐欺の疑いについて、被害申告を受けたティラナの警察の経済金融犯罪部門が捜査に入り、現金受け渡しの場で容疑者2人を拘束したと公表した。",
+          "refs": [
+            "case"
+          ],
+          "stage": "investigation-confirmed"
+        }
+      ]
     },
     "AND": {
       "m49": "020",
@@ -165,7 +203,70 @@
       "m49": "016",
       "name": "American Samoa",
       "region": "Oceania",
-      "iso2": "AS"
+      "iso2": "AS",
+      "status": "official-route",
+      "sources": {
+        "field": {
+          "title": "FBI — Honolulu Field Office",
+          "url": "https://www.fbi.gov/contact-us/field-offices/honolulu",
+          "checkedOn": "2026-11-19"
+        },
+        "faq": {
+          "title": "FBI Internet Crime Complaint Center — FAQ",
+          "url": "https://www.ic3.gov/Home/FAQ",
+          "checkedOn": "2026-11-19"
+        },
+        "form": {
+          "title": "FBI Internet Crime Complaint Center — Complaint Form",
+          "url": "https://complaint.ic3.gov/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "米領サモアはFBIのホノルル担当区域。",
+          "refs": [
+            "field"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "米連邦のサイバー犯罪・ネット詐欺はIC3のフォームで申告できる。",
+          "refs": [
+            "field",
+            "form"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "申告者情報、取引内容、相手について分かることを入力し、送金記録やメール等は保全する。",
+          "refs": [
+            "faq",
+            "form"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "送信直後の控えを保存する。IC3は照会内容を審査し担当機関に回付することがある。",
+          "refs": [
+            "faq"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "追加情報はIC3フォームの既存申告の更新に関する欄を使う。IC3自体は捜査状況を回答しない。",
+          "refs": [
+            "faq",
+            "form"
+          ],
+          "kind": "supplement"
+        }
+      ]
     },
     "ATA": {
       "m49": "010",
@@ -567,7 +668,66 @@
       "m49": "652",
       "name": "Saint Barthélemy",
       "region": "Americas",
-      "iso2": "BL"
+      "iso2": "BL",
+      "status": "official-route",
+      "sources": {
+        "justice": {
+          "title": "France Ministry of Justice — Déposer plainte",
+          "url": "https://www.justice.fr/je-suis-victime/plainte",
+          "checkedOn": "2026-11-19"
+        },
+        "local": {
+          "title": "Service Public — Annuaire des brigades de gendarmerie en outre-mer",
+          "url": "https://lannuaire.service-public.gouv.fr/navigation/collectivites-d-outre-mer/gendarmerie?page=3",
+          "checkedOn": "2026-11-19"
+        },
+        "juris": {
+          "title": "Cour d’appel de Basse-Terre — Présentation du ressort",
+          "url": "https://www.cours-appel.justice.fr/basse-terre/presentation-du-ressort-de-la-cour-dappel-de-basse-terre",
+          "checkedOn": "2026-11-19"
+        },
+        "review": {
+          "title": "France Ministry of Justice — Le procureur doit-il engager des poursuites ?",
+          "url": "https://www.justice.fr/fiche/procureur-engager-poursuites-suite-plainte",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "サン・バルテルミーの現地憲兵隊。司法管区はバステール控訴院管内。",
+          "refs": [
+            "local",
+            "juris"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察署・憲兵隊での対面申告、または管轄検察への書面提出が案内されている。",
+          "refs": [
+            "justice",
+            "local"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "対面で供述した後に受領書が渡され、希望すれば申告の写しを求められる。",
+          "refs": [
+            "justice"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "検察から打切り通知を受けた場合、担当の控訴管区の上級検察官への書面申立てを確認する。",
+          "refs": [
+            "review",
+            "juris"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "BLR": {
       "m49": "112",
@@ -938,7 +1098,43 @@
       "m49": "166",
       "name": "Cocos (Keeling) Islands",
       "region": "Oceania",
-      "iso2": "CC"
+      "iso2": "CC",
+      "status": "official-route",
+      "sources": {
+        "afp": {
+          "title": "Australian Federal Police — Annual Report 2024–25",
+          "url": "https://www.afp.gov.au/sites/default/files/2025-11/AFPAnnualReport2024-25_0.pdf",
+          "checkedOn": "2026-11-19"
+        },
+        "reportcyber": {
+          "title": "Australian Signals Directorate — Report a cyber security incident",
+          "url": "https://www.cyber.gov.au/report-a-cyber-security-incident",
+          "checkedOn": "2026-11-19"
+        },
+        "locate": {
+          "title": "ACT Policing — National Firearms Amnesty (external territory police contacts)",
+          "url": "https://police.act.gov.au/community-safety/firearms/national-firearms-amnesty",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ココス（キーリング）諸島の地域警察業務はオーストラリア連邦警察AFPが担当する。",
+          "refs": [
+            "afp"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "島内のAFP警察署が対面の窓口。サイバー犯罪には豪州政府のReportCyberも案内されている。",
+          "refs": [
+            "afp",
+            "locate",
+            "reportcyber"
+          ]
+        }
+      ]
     },
     "CHE": {
       "m49": "756",
@@ -1250,7 +1446,43 @@
       "m49": "162",
       "name": "Christmas Island",
       "region": "Oceania",
-      "iso2": "CX"
+      "iso2": "CX",
+      "status": "official-route",
+      "sources": {
+        "afp": {
+          "title": "Australian Federal Police — Annual Report 2024–25",
+          "url": "https://www.afp.gov.au/sites/default/files/2025-11/AFPAnnualReport2024-25_0.pdf",
+          "checkedOn": "2026-11-19"
+        },
+        "reportcyber": {
+          "title": "Australian Signals Directorate — Report a cyber security incident",
+          "url": "https://www.cyber.gov.au/report-a-cyber-security-incident",
+          "checkedOn": "2026-11-19"
+        },
+        "locate": {
+          "title": "ACT Policing — National Firearms Amnesty (external territory police contacts)",
+          "url": "https://police.act.gov.au/community-safety/firearms/national-firearms-amnesty",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "クリスマス島の地域警察業務はオーストラリア連邦警察AFPが担当する。",
+          "refs": [
+            "afp"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "島内のAFP警察署が対面の窓口。サイバー犯罪には豪州政府のReportCyberも案内されている。",
+          "refs": [
+            "afp",
+            "locate",
+            "reportcyber"
+          ]
+        }
+      ]
     },
     "CYM": {
       "m49": "136",
@@ -1273,6 +1505,11 @@
           "title": "Royal Cayman Islands Police Service — Police Investigate Suspected Banking Scam",
           "url": "https://www.rcips.ky/police-investigate-suspected-banking-scam-11-june",
           "checkedOn": "2026-11-18"
+        },
+        "ombudsman": {
+          "title": "Cayman Islands Ombudsman — Make a Complaint",
+          "url": "https://www.ombudsman.ky/make-a-complaint",
+          "checkedOn": "2026-11-19"
         }
       },
       "jurisdiction": [
@@ -1318,6 +1555,13 @@
             "formal"
           ],
           "kind": "channel-unavailable"
+        },
+        {
+          "text": "警察官の職務上の対応に関する苦情は、オンブズマンの警察苦情フォーム、電話、または対面窓口で申し立てられる。",
+          "refs": [
+            "ombudsman"
+          ],
+          "kind": "service-complaint"
         }
       ]
     },
@@ -1919,7 +2163,38 @@
       "m49": "238",
       "name": "Falkland Islands (Malvinas)",
       "region": "Americas",
-      "iso2": "FK"
+      "iso2": "FK",
+      "status": "official-route",
+      "sources": {
+        "fraud": {
+          "title": "Falkland Islands Government — Fraud Prevention Information",
+          "url": "https://www.falklands.gov.fk/socialservices/component/jdownloads/?Itemid=389&catid=5&id=22%3A2024-fraud-prevention-information&task=download.send",
+          "checkedOn": "2026-11-19"
+        },
+        "victims": {
+          "title": "Falkland Islands Attorney General — Guidance on Victims and Witnesses",
+          "url": "https://www.falklands.gov.fk/legalservices/images/AGGuidance2019/AGG10_-_The_Attorney_Generals_Guidance_on_Victims_and_Witnesses.pdf",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "王立フォークランド諸島警察が詐欺被害の窓口。",
+          "refs": [
+            "fraud",
+            "victims"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "詐欺の申告は政府の案内に従い警察に電話またはメールで行う。",
+          "refs": [
+            "fraud",
+            "victims"
+          ]
+        }
+      ]
     },
     "FRA": {
       "m49": "250",
@@ -2006,7 +2281,37 @@
       "m49": "234",
       "name": "Faroe Islands",
       "region": "Europe",
-      "iso2": "FO"
+      "iso2": "FO",
+      "status": "official-route",
+      "sources": {
+        "district": {
+          "title": "Danish Police — Kontakt politikreds",
+          "url": "https://politi.dk/om-politiet/kontakt-politiet/kontakt-politikreds",
+          "checkedOn": "2026-11-19"
+        },
+        "report": {
+          "title": "Danish Police — Sådan anmelder du",
+          "url": "https://politi.dk/anmeld-kriminalitet/ofre-vidner-og-paaroerende/saadan-anmelder-du",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "フェロー諸島警察が地域全体を管轄する。",
+          "refs": [
+            "district"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "トースハウンの管区警察または最寄りの署に連絡して、事案に合った届出方法を確認する。",
+          "refs": [
+            "district",
+            "report"
+          ]
+        }
+      ]
     },
     "FSM": {
       "m49": "583",
@@ -2105,13 +2410,61 @@
       "m49": "268",
       "name": "Georgia",
       "region": "Asia",
-      "iso2": "GE"
+      "iso2": "GE",
+      "status": "official-route",
+      "sources": {
+        "mia": {
+          "title": "Georgia Ministry of Internal Affairs — Cybercrime",
+          "url": "https://mia.police.ge/en/projects/kiberdanashauli",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ジョージア内務省がサイバー詐欺をサイバー犯罪として案内している。",
+          "refs": [
+            "mia"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "被害の申告は内務省のサイバー犯罪ページに掲載された連絡窓口を利用する。",
+          "refs": [
+            "mia"
+          ]
+        }
+      ]
     },
     "GGY": {
       "m49": "831",
       "name": "Guernsey",
       "region": "Europe",
-      "iso2": "GG"
+      "iso2": "GG",
+      "status": "official-route",
+      "sources": {
+        "gfsc": {
+          "title": "Guernsey Financial Services Commission — How to Report a Scam",
+          "url": "https://www.gfsc.gg/index.php/consumers/scams/how-report-scam",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ガーンジー警察が犯罪の申告窓口。金融サービスの規制に関わる情報は金融サービス委員会も案内する。",
+          "refs": [
+            "gfsc"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "決済詐欺は金融機関に連絡したうえで、公式案内に掲載されたガーンジー警察の窓口に届け出る。",
+          "refs": [
+            "gfsc"
+          ]
+        }
+      ]
     },
     "GHA": {
       "m49": "288",
@@ -2231,7 +2584,66 @@
       "m49": "312",
       "name": "Guadeloupe",
       "region": "Americas",
-      "iso2": "GP"
+      "iso2": "GP",
+      "status": "official-route",
+      "sources": {
+        "justice": {
+          "title": "France Ministry of Justice — Déposer plainte",
+          "url": "https://www.justice.fr/je-suis-victime/plainte",
+          "checkedOn": "2026-11-19"
+        },
+        "local": {
+          "title": "Préfecture de la Guadeloupe — Déposez plainte en ligne",
+          "url": "https://www.guadeloupe.gouv.fr/Actualites/Communiques-et-dossiers-de-presse/Victime-de-vol-D-escroquerie-De-vandalisme-Deposez-plainte-en-ligne-sur-Ma-Securite",
+          "checkedOn": "2026-11-19"
+        },
+        "juris": {
+          "title": "Cour d’appel de Basse-Terre — Présentation du ressort",
+          "url": "https://www.cours-appel.justice.fr/basse-terre/presentation-du-ressort-de-la-cour-dappel-de-basse-terre",
+          "checkedOn": "2026-11-19"
+        },
+        "review": {
+          "title": "France Ministry of Justice — Le procureur doit-il engager des poursuites ?",
+          "url": "https://www.justice.fr/fiche/procureur-engager-poursuites-suite-plainte",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "グアドループの警察・憲兵隊。バステール控訴院管内で、担当の検察は地域ごとに確認する。",
+          "refs": [
+            "local",
+            "juris"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察署または憲兵隊に出向くか、管轄検察に書面で送る。現地県庁が対象事件について Ma Sécurité のオンライン申告も案内している。",
+          "refs": [
+            "justice",
+            "local"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "対面で供述した後に受領書が渡され、希望すれば申告の写しを求められる。",
+          "refs": [
+            "justice"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "検察から打切り通知を受けた場合、担当の控訴管区の上級検察官への書面申立てを確認する。",
+          "refs": [
+            "review",
+            "juris"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "GMB": {
       "m49": "270",
@@ -2300,7 +2712,37 @@
       "m49": "304",
       "name": "Greenland",
       "region": "Americas",
-      "iso2": "GL"
+      "iso2": "GL",
+      "status": "official-route",
+      "sources": {
+        "district": {
+          "title": "Danish Police — Kontakt politikreds",
+          "url": "https://politi.dk/om-politiet/kontakt-politiet/kontakt-politikreds",
+          "checkedOn": "2026-11-19"
+        },
+        "report": {
+          "title": "Danish Police — Sådan anmelder du",
+          "url": "https://politi.dk/anmeld-kriminalitet/ofre-vidner-og-paaroerende/saadan-anmelder-du",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "グリーンランド警察が地域全体を管轄する。",
+          "refs": [
+            "district"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "ヌークの管区警察または最寄りの署に連絡して、事案に合った届出方法を確認する。",
+          "refs": [
+            "district",
+            "report"
+          ]
+        }
+      ]
     },
     "GTM": {
       "m49": "320",
@@ -2312,13 +2754,146 @@
       "m49": "254",
       "name": "French Guiana",
       "region": "Americas",
-      "iso2": "GF"
+      "iso2": "GF",
+      "status": "official-route",
+      "sources": {
+        "justice": {
+          "title": "France Ministry of Justice — Déposer plainte",
+          "url": "https://www.justice.fr/je-suis-victime/plainte",
+          "checkedOn": "2026-11-19"
+        },
+        "local": {
+          "title": "Gendarmerie nationale — Le bras armé de l’outre-mer",
+          "url": "https://www.gendarmerie.interieur.gouv.fr/gendinfo/dossiers/la-g.m.-d-hier-et-de-demain/le-bras-arme-de-l-outre-mer",
+          "checkedOn": "2026-11-19"
+        },
+        "juris": {
+          "title": "France Ministry of Justice — Les juridictions d’outre-mer",
+          "url": "https://www.justice.gouv.fr/justice-france/lorganisation-cours-tribunaux/lordre-judiciaire/juridictions-doutre-mer",
+          "checkedOn": "2026-11-19"
+        },
+        "review": {
+          "title": "France Ministry of Justice — Le procureur doit-il engager des poursuites ?",
+          "url": "https://www.justice.fr/fiche/procureur-engager-poursuites-suite-plainte",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "フランス領ギアナの警察・憲兵隊。司法管区はカイエンヌ控訴院の案内を参照する。",
+          "refs": [
+            "local",
+            "juris"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察署・憲兵隊での対面申告、または管轄検察への書面提出が案内されている。",
+          "refs": [
+            "justice",
+            "local"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "対面で供述した後に受領書が渡され、希望すれば申告の写しを求められる。",
+          "refs": [
+            "justice"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "検察から打切り通知を受けた場合、担当の控訴管区の上級検察官への書面申立てを確認する。",
+          "refs": [
+            "review",
+            "juris"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "GUM": {
       "m49": "316",
       "name": "Guam",
       "region": "Oceania",
-      "iso2": "GU"
+      "iso2": "GU",
+      "status": "official-route",
+      "sources": {
+        "field": {
+          "title": "FBI — Honolulu Field Office",
+          "url": "https://www.fbi.gov/contact-us/field-offices/honolulu",
+          "checkedOn": "2026-11-19"
+        },
+        "faq": {
+          "title": "FBI Internet Crime Complaint Center — FAQ",
+          "url": "https://www.ic3.gov/Home/FAQ",
+          "checkedOn": "2026-11-19"
+        },
+        "form": {
+          "title": "FBI Internet Crime Complaint Center — Complaint Form",
+          "url": "https://complaint.ic3.gov/",
+          "checkedOn": "2026-11-19"
+        },
+        "local": {
+          "title": "Guam Police Department — Report a Crime",
+          "url": "https://gpd.guam.gov/report-a-crime/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "グアムはFBIのホノルル担当区域。",
+          "refs": [
+            "field"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "米連邦のサイバー犯罪・ネット詐欺はIC3のフォームで申告できる。",
+          "refs": [
+            "field",
+            "form"
+          ]
+        },
+        {
+          "text": "地域の非緊急事案はグアム警察の案内に従い電話で届け出られる。",
+          "refs": [
+            "local"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "申告者情報、取引内容、相手について分かることを入力し、送金記録やメール等は保全する。",
+          "refs": [
+            "faq",
+            "form"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "送信直後の控えを保存する。IC3は照会内容を審査し担当機関に回付することがある。",
+          "refs": [
+            "faq"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "追加情報はIC3フォームの既存申告の更新に関する欄を使う。IC3自体は捜査状況を回答しない。",
+          "refs": [
+            "faq",
+            "form"
+          ],
+          "kind": "supplement"
+        }
+      ]
     },
     "GUY": {
       "m49": "328",
@@ -3229,7 +3804,47 @@
       "m49": "398",
       "name": "Kazakhstan",
       "region": "Asia",
-      "iso2": "KZ"
+      "iso2": "KZ",
+      "status": "official-route",
+      "sources": {
+        "gov": {
+          "title": "Kazakhstan e-government — How to protect yourself from scammers",
+          "url": "https://www.gov.kz/situations/733/intro?lang=en",
+          "checkedOn": "2026-11-19"
+        },
+        "notice": {
+          "title": "Kazakhstan government — Online fraud guidance",
+          "url": "https://www.gov.kz/org/sko-tayiynsha-alabota/press/news/details/1157294",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "カザフスタン警察が詐欺申告を受け付ける。",
+          "refs": [
+            "gov",
+            "notice"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "Qamqorの警察への申告機能または警察の電話102を利用できる。",
+          "refs": [
+            "gov",
+            "notice"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "スクリーンショットややり取りの記録を保存するよう公式案内に記載されている。",
+          "refs": [
+            "notice"
+          ],
+          "kind": "retain"
+        }
+      ]
     },
     "KEN": {
       "m49": "404",
@@ -3722,7 +4337,66 @@
       "m49": "663",
       "name": "Saint Martin (French Part)",
       "region": "Americas",
-      "iso2": "MF"
+      "iso2": "MF",
+      "status": "official-route",
+      "sources": {
+        "justice": {
+          "title": "France Ministry of Justice — Déposer plainte",
+          "url": "https://www.justice.fr/je-suis-victime/plainte",
+          "checkedOn": "2026-11-19"
+        },
+        "local": {
+          "title": "Service Public — Annuaire des brigades de gendarmerie en outre-mer",
+          "url": "https://lannuaire.service-public.gouv.fr/navigation/collectivites-d-outre-mer/gendarmerie?page=3",
+          "checkedOn": "2026-11-19"
+        },
+        "juris": {
+          "title": "Cour d’appel de Basse-Terre — Présentation du ressort",
+          "url": "https://www.cours-appel.justice.fr/basse-terre/presentation-du-ressort-de-la-cour-dappel-de-basse-terre",
+          "checkedOn": "2026-11-19"
+        },
+        "review": {
+          "title": "France Ministry of Justice — Le procureur doit-il engager des poursuites ?",
+          "url": "https://www.justice.fr/fiche/procureur-engager-poursuites-suite-plainte",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "フランス領サン・マルタンの現地憲兵隊。司法管区はバステール控訴院管内。",
+          "refs": [
+            "local",
+            "juris"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察署・憲兵隊での対面申告、または管轄検察への書面提出が案内されている。",
+          "refs": [
+            "justice",
+            "local"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "対面で供述した後に受領書が渡され、希望すれば申告の写しを求められる。",
+          "refs": [
+            "justice"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "検察から打切り通知を受けた場合、担当の控訴管区の上級検察官への書面申立てを確認する。",
+          "refs": [
+            "review",
+            "juris"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "MAR": {
       "m49": "504",
@@ -3864,7 +4538,31 @@
       "m49": "807",
       "name": "North Macedonia",
       "region": "Europe",
-      "iso2": "MK"
+      "iso2": "MK",
+      "status": "official-route",
+      "sources": {
+        "mvr": {
+          "title": "North Macedonia Ministry of Interior — Cyber Security Unit",
+          "url": "https://mvr.gov.mk/en-GB/ministerstvo/cybersecurity",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "北マケドニアのコンピューター犯罪はスコピエ警察または最寄りの警察の経済・コンピューター犯罪部門が担当する。",
+          "refs": [
+            "mvr"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "内務省が掲載するスコピエ警察の担当窓口または最寄りの該当部門に申告する。",
+          "refs": [
+            "mvr"
+          ]
+        }
+      ]
     },
     "MLI": {
       "m49": "466",
@@ -3953,7 +4651,75 @@
       "m49": "580",
       "name": "Northern Mariana Islands",
       "region": "Oceania",
-      "iso2": "MP"
+      "iso2": "MP",
+      "status": "official-route",
+      "sources": {
+        "field": {
+          "title": "FBI — Honolulu Field Office",
+          "url": "https://www.fbi.gov/contact-us/field-offices/honolulu",
+          "checkedOn": "2026-11-19"
+        },
+        "faq": {
+          "title": "FBI Internet Crime Complaint Center — FAQ",
+          "url": "https://www.ic3.gov/Home/FAQ",
+          "checkedOn": "2026-11-19"
+        },
+        "form": {
+          "title": "FBI Internet Crime Complaint Center — Complaint Form",
+          "url": "https://complaint.ic3.gov/",
+          "checkedOn": "2026-11-19"
+        },
+        "local": {
+          "title": "U.S. Department of Justice — Districts of Guam & the Northern Mariana Islands, Criminal Division",
+          "url": "https://www.justice.gov/usao-gu/divisions",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "北マリアナ諸島（サイパン）はFBIのホノルル担当区域。",
+          "refs": [
+            "field"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "米連邦のサイバー犯罪・ネット詐欺はIC3のフォームで申告できる。",
+          "refs": [
+            "field",
+            "form"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "申告者情報、取引内容、相手について分かることを入力し、送金記録やメール等は保全する。",
+          "refs": [
+            "faq",
+            "form"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "送信直後の控えを保存する。IC3は照会内容を審査し担当機関に回付することがある。",
+          "refs": [
+            "faq"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "追加情報はIC3フォームの既存申告の更新に関する欄を使う。IC3自体は捜査状況を回答しない。",
+          "refs": [
+            "faq",
+            "form"
+          ],
+          "kind": "supplement"
+        }
+      ]
     },
     "MOZ": {
       "m49": "508",
@@ -3977,7 +4743,66 @@
       "m49": "474",
       "name": "Martinique",
       "region": "Americas",
-      "iso2": "MQ"
+      "iso2": "MQ",
+      "status": "official-route",
+      "sources": {
+        "justice": {
+          "title": "France Ministry of Justice — Déposer plainte",
+          "url": "https://www.justice.fr/je-suis-victime/plainte",
+          "checkedOn": "2026-11-19"
+        },
+        "local": {
+          "title": "Gendarmerie nationale — Le bras armé de l’outre-mer",
+          "url": "https://www.gendarmerie.interieur.gouv.fr/gendinfo/dossiers/la-g.m.-d-hier-et-de-demain/le-bras-arme-de-l-outre-mer",
+          "checkedOn": "2026-11-19"
+        },
+        "juris": {
+          "title": "France Ministry of Justice — Les juridictions d’outre-mer",
+          "url": "https://www.justice.gouv.fr/justice-france/lorganisation-cours-tribunaux/lordre-judiciaire/juridictions-doutre-mer",
+          "checkedOn": "2026-11-19"
+        },
+        "review": {
+          "title": "France Ministry of Justice — Le procureur doit-il engager des poursuites ?",
+          "url": "https://www.justice.fr/fiche/procureur-engager-poursuites-suite-plainte",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "マルティニークの警察・憲兵隊。司法管区はフォール・ド・フランス控訴院の案内を参照する。",
+          "refs": [
+            "local",
+            "juris"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察署・憲兵隊での対面申告、または管轄検察への書面提出が案内されている。",
+          "refs": [
+            "justice",
+            "local"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "対面で供述した後に受領書が渡され、希望すれば申告の写しを求められる。",
+          "refs": [
+            "justice"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "検察から打切り通知を受けた場合、担当の控訴管区の上級検察官への書面申立てを確認する。",
+          "refs": [
+            "review",
+            "juris"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "MUS": {
       "m49": "480",
@@ -4057,7 +4882,66 @@
       "m49": "175",
       "name": "Mayotte",
       "region": "Africa",
-      "iso2": "YT"
+      "iso2": "YT",
+      "status": "official-route",
+      "sources": {
+        "justice": {
+          "title": "France Ministry of Justice — Déposer plainte",
+          "url": "https://www.justice.fr/je-suis-victime/plainte",
+          "checkedOn": "2026-11-19"
+        },
+        "local": {
+          "title": "Cour d’appel de Saint-Denis — Tribunal judiciaire de Mamoudzou",
+          "url": "https://www.cours-appel.justice.fr/saint-denis/tribunal-judiciaire-de-mamoudzou",
+          "checkedOn": "2026-11-19"
+        },
+        "juris": {
+          "title": "France Ministry of Justice — Les juridictions d’outre-mer",
+          "url": "https://www.justice.gouv.fr/justice-france/lorganisation-cours-tribunaux/lordre-judiciaire/juridictions-doutre-mer",
+          "checkedOn": "2026-11-19"
+        },
+        "review": {
+          "title": "France Ministry of Justice — Le procureur doit-il engager des poursuites ?",
+          "url": "https://www.justice.fr/fiche/procureur-engager-poursuites-suite-plainte",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "マヨットの警察・憲兵隊。マムズ司法裁判所の案内で検察の所在地を確認する。",
+          "refs": [
+            "local",
+            "juris"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察署・憲兵隊での対面申告、または管轄検察への書面提出が案内されている。",
+          "refs": [
+            "justice",
+            "local"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "対面で供述した後に受領書が渡され、希望すれば申告の写しを求められる。",
+          "refs": [
+            "justice"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "検察から打切り通知を受けた場合、担当の控訴管区の上級検察官への書面申立てを確認する。",
+          "refs": [
+            "review",
+            "juris"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "NAM": {
       "m49": "516",
@@ -4069,7 +4953,74 @@
       "m49": "540",
       "name": "New Caledonia",
       "region": "Oceania",
-      "iso2": "NC"
+      "iso2": "NC",
+      "status": "official-route",
+      "sources": {
+        "justice": {
+          "title": "France Ministry of Justice — Déposer plainte",
+          "url": "https://www.justice.fr/je-suis-victime/plainte",
+          "checkedOn": "2026-11-19"
+        },
+        "local": {
+          "title": "Haut-Commissariat de la Nouvelle-Calédonie — Usurpation d’identité",
+          "url": "https://www.nouvelle-caledonie.gouv.fr/Demarches/Usurpation-d-identite",
+          "checkedOn": "2026-11-19"
+        },
+        "juris": {
+          "title": "France Ministry of Justice — Les juridictions d’outre-mer",
+          "url": "https://www.justice.gouv.fr/justice-france/lorganisation-cours-tribunaux/lordre-judiciaire/juridictions-doutre-mer",
+          "checkedOn": "2026-11-19"
+        },
+        "law": {
+          "title": "Légifrance — Code de procédure pénale, art. 804 et suivants",
+          "url": "https://www.legifrance.gouv.fr/codes/id/LEGISCTA000020634240",
+          "checkedOn": "2026-11-19"
+        },
+        "review": {
+          "title": "France Ministry of Justice — Le procureur doit-il engager des poursuites ?",
+          "url": "https://www.justice.fr/fiche/procureur-engager-poursuites-suite-plainte",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ニューカレドニアの警察・憲兵隊。ヌメアの第一審裁判所を管轄案内から確認する。",
+          "refs": [
+            "local",
+            "juris"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "なりすまし被害は警察署・憲兵隊または管轄検察への書面で申告するよう現地高等弁務官府が案内している。",
+          "refs": [
+            "justice",
+            "local",
+            "law"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "対面で供述した後に受領書が渡され、希望すれば申告の写しを求められる。",
+          "refs": [
+            "justice",
+            "law"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "検察から打切り通知を受けた場合、担当の控訴管区の上級検察官への書面申立てを確認する。",
+          "refs": [
+            "review",
+            "juris",
+            "law"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "NER": {
       "m49": "562",
@@ -4081,7 +5032,43 @@
       "m49": "574",
       "name": "Norfolk Island",
       "region": "Oceania",
-      "iso2": "NF"
+      "iso2": "NF",
+      "status": "official-route",
+      "sources": {
+        "afp": {
+          "title": "Australian Federal Police — Annual Report 2024–25",
+          "url": "https://www.afp.gov.au/sites/default/files/2025-11/AFPAnnualReport2024-25_0.pdf",
+          "checkedOn": "2026-11-19"
+        },
+        "reportcyber": {
+          "title": "Australian Signals Directorate — Report a cyber security incident",
+          "url": "https://www.cyber.gov.au/report-a-cyber-security-incident",
+          "checkedOn": "2026-11-19"
+        },
+        "locate": {
+          "title": "ACT Policing — National Firearms Amnesty (external territory police contacts)",
+          "url": "https://police.act.gov.au/community-safety/firearms/national-firearms-amnesty",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ノーフォーク島の地域警察業務はオーストラリア連邦警察AFPが担当する。",
+          "refs": [
+            "afp"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "島内のAFP警察署が対面の窓口。サイバー犯罪には豪州政府のReportCyberも案内されている。",
+          "refs": [
+            "afp",
+            "locate",
+            "reportcyber"
+          ]
+        }
+      ]
     },
     "NGA": {
       "m49": "566",
@@ -4800,7 +5787,81 @@
       "m49": "630",
       "name": "Puerto Rico",
       "region": "Americas",
-      "iso2": "PR"
+      "iso2": "PR",
+      "status": "official-route",
+      "sources": {
+        "field": {
+          "title": "FBI — San Juan Field Office territory",
+          "url": "https://www.fbi.gov/contact-us/field-offices/sanjuan/about",
+          "checkedOn": "2026-11-19"
+        },
+        "faq": {
+          "title": "FBI Internet Crime Complaint Center — FAQ",
+          "url": "https://www.ic3.gov/Home/FAQ",
+          "checkedOn": "2026-11-19"
+        },
+        "form": {
+          "title": "FBI Internet Crime Complaint Center — Complaint Form",
+          "url": "https://complaint.ic3.gov/",
+          "checkedOn": "2026-11-19"
+        },
+        "local": {
+          "title": "Policía de Puerto Rico — Comunidades Extranjeras",
+          "url": "https://www.policia.pr.gov/comunidades-extranjeras",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "プエルトリコはFBIのサンフアン担当区域。",
+          "refs": [
+            "field"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "米連邦のサイバー犯罪・ネット詐欺はIC3のフォームで申告できる。",
+          "refs": [
+            "field",
+            "form"
+          ]
+        },
+        {
+          "text": "地域の犯罪の申告はプエルトリコ警察も受け付ける。",
+          "refs": [
+            "local"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "申告者情報、取引内容、相手について分かることを入力し、送金記録やメール等は保全する。",
+          "refs": [
+            "faq",
+            "form"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "送信直後の控えを保存する。IC3は照会内容を審査し担当機関に回付することがある。",
+          "refs": [
+            "faq"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "追加情報はIC3フォームの既存申告の更新に関する欄を使う。IC3自体は捜査状況を回答しない。",
+          "refs": [
+            "faq",
+            "form"
+          ],
+          "kind": "supplement"
+        }
+      ]
     },
     "PRK": {
       "m49": "408",
@@ -4880,7 +5941,74 @@
       "m49": "258",
       "name": "French Polynesia",
       "region": "Oceania",
-      "iso2": "PF"
+      "iso2": "PF",
+      "status": "official-route",
+      "sources": {
+        "justice": {
+          "title": "France Ministry of Justice — Déposer plainte",
+          "url": "https://www.justice.fr/je-suis-victime/plainte",
+          "checkedOn": "2026-11-19"
+        },
+        "local": {
+          "title": "Cour d’appel de Nouméa — Tribunal de première instance de Papeete",
+          "url": "https://www.cours-appel.justice.fr/noumea/casier-judiciaire",
+          "checkedOn": "2026-11-19"
+        },
+        "juris": {
+          "title": "France Ministry of Justice — Les juridictions d’outre-mer",
+          "url": "https://www.justice.gouv.fr/justice-france/lorganisation-cours-tribunaux/lordre-judiciaire/juridictions-doutre-mer",
+          "checkedOn": "2026-11-19"
+        },
+        "law": {
+          "title": "Légifrance — Code de procédure pénale, art. 804 et suivants",
+          "url": "https://www.legifrance.gouv.fr/codes/id/LEGISCTA000020634240",
+          "checkedOn": "2026-11-19"
+        },
+        "review": {
+          "title": "France Ministry of Justice — Le procureur doit-il engager des poursuites ?",
+          "url": "https://www.justice.fr/fiche/procureur-engager-poursuites-suite-plainte",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "フランス領ポリネシアの警察・憲兵隊。司法窓口はパペーテの第一審裁判所の案内を参照する。",
+          "refs": [
+            "local",
+            "juris"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察署・憲兵隊での対面申告、または管轄検察への書面提出が案内されている。",
+          "refs": [
+            "justice",
+            "local",
+            "law"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "対面で供述した後に受領書が渡され、希望すれば申告の写しを求められる。",
+          "refs": [
+            "justice",
+            "law"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "検察から打切り通知を受けた場合、担当の控訴管区の上級検察官への書面申立てを確認する。",
+          "refs": [
+            "review",
+            "juris",
+            "law"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "QAT": {
       "m49": "634",
@@ -4922,7 +6050,66 @@
       "m49": "638",
       "name": "Réunion",
       "region": "Africa",
-      "iso2": "RE"
+      "iso2": "RE",
+      "status": "official-route",
+      "sources": {
+        "justice": {
+          "title": "France Ministry of Justice — Déposer plainte",
+          "url": "https://www.justice.fr/je-suis-victime/plainte",
+          "checkedOn": "2026-11-19"
+        },
+        "local": {
+          "title": "Gendarmerie nationale — Le bras armé de l’outre-mer",
+          "url": "https://www.gendarmerie.interieur.gouv.fr/gendinfo/dossiers/la-g.m.-d-hier-et-de-demain/le-bras-arme-de-l-outre-mer",
+          "checkedOn": "2026-11-19"
+        },
+        "juris": {
+          "title": "France Ministry of Justice — Les juridictions d’outre-mer",
+          "url": "https://www.justice.gouv.fr/justice-france/lorganisation-cours-tribunaux/lordre-judiciaire/juridictions-doutre-mer",
+          "checkedOn": "2026-11-19"
+        },
+        "review": {
+          "title": "France Ministry of Justice — Le procureur doit-il engager des poursuites ?",
+          "url": "https://www.justice.fr/fiche/procureur-engager-poursuites-suite-plainte",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "レユニオンの警察・憲兵隊。司法管区はサン・ドニ控訴院の案内を参照する。",
+          "refs": [
+            "local",
+            "juris"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察署・憲兵隊での対面申告、または管轄検察への書面提出が案内されている。",
+          "refs": [
+            "justice",
+            "local"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "対面で供述した後に受領書が渡され、希望すれば申告の写しを求められる。",
+          "refs": [
+            "justice"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "検察から打切り通知を受けた場合、担当の控訴管区の上級検察官への書面申立てを確認する。",
+          "refs": [
+            "review",
+            "juris"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "ROU": {
       "m49": "642",
@@ -5035,7 +6222,45 @@
       "m49": "646",
       "name": "Rwanda",
       "region": "Africa",
-      "iso2": "RW"
+      "iso2": "RW",
+      "status": "partial",
+      "sources": {
+        "rnp": {
+          "title": "Rwanda National Police — Crime Reporting",
+          "url": "https://police.gov.rw/services/e-policing/crime-reporting/",
+          "checkedOn": "2026-11-19"
+        },
+        "complaints": {
+          "title": "Rwanda National Police — Complaints",
+          "url": "https://police.gov.rw/services/feedback/complaints/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ルワンダ国家警察が犯罪情報を受け付ける。",
+          "refs": [
+            "rnp"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "国家警察の犯罪報告フォームで氏名・発生場所・連絡先を入力できる。正式な刑事登録の手順は要確認。",
+          "refs": [
+            "rnp"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "警察の対応に関する苦情は専用の苦情フォームまたは最寄りの署を利用する。",
+          "refs": [
+            "complaints"
+          ],
+          "kind": "service-complaint"
+        }
+      ]
     },
     "SAU": {
       "m49": "682",
@@ -5220,7 +6445,54 @@
       "m49": "654",
       "name": "Saint Helena",
       "region": "Africa",
-      "iso2": "SH"
+      "iso2": "SH",
+      "status": "official-route",
+      "sources": {
+        "cid": {
+          "title": "St Helena Government — Criminal Investigations Department",
+          "url": "https://www.sainthelena.gov.sh/st-helena/government/portfolios/safety-security-and-home-affairs/criminal-investigations-department/",
+          "checkedOn": "2026-11-19"
+        },
+        "scam": {
+          "title": "Royal St Helena Police — Protecting Yourself Against Online Scams and Phone Mirroring",
+          "url": "https://www.sainthelena.gov.sh/protecting-yourself-against-online-scams-and-phone-mirroring/",
+          "checkedOn": "2026-11-19"
+        },
+        "contact": {
+          "title": "St Helena Police — Making a Police Report",
+          "url": "https://www.sainthelena.gov.sh/st-helena-police-education-awareness-programme-making-a-police-report/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "王立セントヘレナ警察の刑事捜査部門はセントヘレナ、アセンション、トリスタンダクーニャの重大犯罪等を担当する。",
+          "refs": [
+            "cid",
+            "scam",
+            "contact"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "オンライン詐欺に関するセントヘレナの公式案内では警察署に直接電話して届け出る。別の島では各島の警察連絡先を確認する。",
+          "refs": [
+            "cid",
+            "scam",
+            "contact"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "電話時は発生内容、日時、関係者や財物の情報を説明できるようにする。",
+          "refs": [
+            "contact"
+          ],
+          "kind": "recommended"
+        }
+      ]
     },
     "SJM": {
       "m49": "744",
@@ -5262,7 +6534,66 @@
       "m49": "666",
       "name": "Saint Pierre and Miquelon",
       "region": "Americas",
-      "iso2": "PM"
+      "iso2": "PM",
+      "status": "official-route",
+      "sources": {
+        "justice": {
+          "title": "France Ministry of Justice — Déposer plainte",
+          "url": "https://www.justice.fr/je-suis-victime/plainte",
+          "checkedOn": "2026-11-19"
+        },
+        "local": {
+          "title": "Service Public — Brigade de gendarmerie de Saint-Pierre",
+          "url": "https://lannuaire.service-public.gouv.fr/collectivites-d-outre-mer/saint-pierre-et-miquelon/741c18d9-6181-46e3-9f15-b89a01c51970",
+          "checkedOn": "2026-11-19"
+        },
+        "juris": {
+          "title": "France Ministry of Justice — Les juridictions d’outre-mer",
+          "url": "https://www.justice.gouv.fr/justice-france/lorganisation-cours-tribunaux/lordre-judiciaire/juridictions-doutre-mer",
+          "checkedOn": "2026-11-19"
+        },
+        "review": {
+          "title": "France Ministry of Justice — Le procureur doit-il engager des poursuites ?",
+          "url": "https://www.justice.fr/fiche/procureur-engager-poursuites-suite-plainte",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "サンピエール・ミクロンの憲兵隊。地元の第一審裁判所が本土の司法裁判所に相当する。",
+          "refs": [
+            "local",
+            "juris"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察署・憲兵隊での対面申告、または管轄検察への書面提出が案内されている。",
+          "refs": [
+            "justice",
+            "local"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "対面で供述した後に受領書が渡され、希望すれば申告の写しを求められる。",
+          "refs": [
+            "justice"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "検察から打切り通知を受けた場合、担当の控訴管区の上級検察官への書面申立てを確認する。",
+          "refs": [
+            "review",
+            "juris"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "SRB": {
       "m49": "688",
@@ -5862,7 +7193,81 @@
       "m49": "850",
       "name": "United States Virgin Islands",
       "region": "Americas",
-      "iso2": "VI"
+      "iso2": "VI",
+      "status": "official-route",
+      "sources": {
+        "field": {
+          "title": "FBI — San Juan Field Office territory",
+          "url": "https://www.fbi.gov/contact-us/field-offices/sanjuan/about",
+          "checkedOn": "2026-11-19"
+        },
+        "faq": {
+          "title": "FBI Internet Crime Complaint Center — FAQ",
+          "url": "https://www.ic3.gov/Home/FAQ",
+          "checkedOn": "2026-11-19"
+        },
+        "form": {
+          "title": "FBI Internet Crime Complaint Center — Complaint Form",
+          "url": "https://complaint.ic3.gov/",
+          "checkedOn": "2026-11-19"
+        },
+        "local": {
+          "title": "U.S. Attorney’s Office — District of Virgin Islands, Citizen Complaints",
+          "url": "https://www.justice.gov/usao-vi/citizen-complaints",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "米領ヴァージン諸島はFBIのサンフアン担当区域。",
+          "refs": [
+            "field"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "米連邦のサイバー犯罪・ネット詐欺はIC3のフォームで申告できる。",
+          "refs": [
+            "field",
+            "form"
+          ]
+        },
+        {
+          "text": "米連邦検察の窓口一覧で、法令違反の種類に応じた担当機関を確認できる。",
+          "refs": [
+            "local"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "申告者情報、取引内容、相手について分かることを入力し、送金記録やメール等は保全する。",
+          "refs": [
+            "faq",
+            "form"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "送信直後の控えを保存する。IC3は照会内容を審査し担当機関に回付することがある。",
+          "refs": [
+            "faq"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "追加情報はIC3フォームの既存申告の更新に関する欄を使う。IC3自体は捜査状況を回答しない。",
+          "refs": [
+            "faq",
+            "form"
+          ],
+          "kind": "supplement"
+        }
+      ]
     },
     "VNM": {
       "m49": "704",
@@ -5880,7 +7285,74 @@
       "m49": "876",
       "name": "Wallis and Futuna Islands",
       "region": "Oceania",
-      "iso2": "WF"
+      "iso2": "WF",
+      "status": "official-route",
+      "sources": {
+        "justice": {
+          "title": "France Ministry of Justice — Déposer plainte",
+          "url": "https://www.justice.fr/je-suis-victime/plainte",
+          "checkedOn": "2026-11-19"
+        },
+        "local": {
+          "title": "Cour d’appel de Nouméa — Tribunal de première instance de Mata’Utu",
+          "url": "https://www.cours-appel.justice.fr/noumea/tribunal-de-premiere-instance-de-matautu",
+          "checkedOn": "2026-11-19"
+        },
+        "juris": {
+          "title": "France Ministry of Justice — Les juridictions d’outre-mer",
+          "url": "https://www.justice.gouv.fr/justice-france/lorganisation-cours-tribunaux/lordre-judiciaire/juridictions-doutre-mer",
+          "checkedOn": "2026-11-19"
+        },
+        "law": {
+          "title": "Légifrance — Code de procédure pénale, art. 804 et suivants",
+          "url": "https://www.legifrance.gouv.fr/codes/id/LEGISCTA000020634240",
+          "checkedOn": "2026-11-19"
+        },
+        "review": {
+          "title": "France Ministry of Justice — Le procureur doit-il engager des poursuites ?",
+          "url": "https://www.justice.fr/fiche/procureur-engager-poursuites-suite-plainte",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ウォリス・フツナの憲兵隊。第一審裁判所はマタウトゥで、ヌメア控訴院管内。",
+          "refs": [
+            "local",
+            "juris"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察署・憲兵隊での対面申告、または管轄検察への書面提出が案内されている。",
+          "refs": [
+            "justice",
+            "local",
+            "law"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "対面で供述した後に受領書が渡され、希望すれば申告の写しを求められる。",
+          "refs": [
+            "justice",
+            "law"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "検察から打切り通知を受けた場合、担当の控訴管区の上級検察官への書面申立てを確認する。",
+          "refs": [
+            "review",
+            "juris",
+            "law"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "WSM": {
       "m49": "882",
