@@ -21,6 +21,8 @@ import { buildDougaka } from "./dougaka-bundle.mjs";
 import { restrictedGuestHashes } from "./scripts/guest-csp.mjs";
 
 const relayOrigin = process.env.RELAY_ORIGIN ?? "https://relay.awai.network";
+// EN devnet support desk (AWAI-3170). Unset in normal builds: no support operations, no CSP origin.
+const supportDeskOrigin = process.env.AWAI_SUPPORT_DESK_ORIGIN || "";
 // OTEHON_HTTP=1 builds for the stable loopback OS origin and HTTP preview.
 // File-mode remains only for legacy images; profile migration is a separate gate.
 const cspMode = process.env.OTEHON_HTTP === "1" ? "http" : "file";
@@ -47,7 +49,7 @@ await mkdir("dist/fs-reliability", { recursive: true });
 await copyFile("fs-reliability/index.html", "dist/fs-reliability/index.html");
 clojure(["-m", "shadow.cljs.devtools.cli", "release", "soshiki-runtime"]);
 await mkdir("dist/soshiki-runtime", { recursive: true });
-const chatConnect = clientRuntimeConnectSrc(runtimeDescriptor("soshiki-runtime/index.html", osOperations(relayOrigin)), [...new Set(osOperations(relayOrigin).map(o => o.capability))], [], []);
+const chatConnect = clientRuntimeConnectSrc(runtimeDescriptor("soshiki-runtime/index.html", osOperations(relayOrigin, supportDeskOrigin)), [...new Set(osOperations(relayOrigin, supportDeskOrigin).map(o => o.capability))], [], []);
 await writeFile("dist/soshiki-runtime/index.html", (await readFile("soshiki-runtime/index.html", "utf8")).replace("__CONNECT_SRC__", `${chatConnect} 'self'`));
 
 const guestHashes = restrictedGuestHashes({
@@ -77,14 +79,15 @@ async function page({ html, outdir, operations, appOrigins, guests = null }) {
       .replace("__STYLE_SRC__", [styleSrc(cspMode), ...(guests?.style ?? [])].join(" "))
       .replace("__IMAGE_SRC__", imageSrc(cspMode))
       .replace("__DAPPS_JSON__", catalog)
-      .replace("__RELAY_ORIGIN__", relayOrigin),
+      .replace("__RELAY_ORIGIN__", relayOrigin)
+      .replace("__SUPPORT_DESK_ORIGIN__", supportDeskOrigin),
   );
 }
 
 await page({
   html: "index.html",
   outdir: "dist",
-  operations: osOperations(relayOrigin),
+  operations: osOperations(relayOrigin, supportDeskOrigin),
   appOrigins: [],
   guests: guestHashes,
 });

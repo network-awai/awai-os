@@ -11,6 +11,7 @@
             [shell.soshiki :refer [soshiki]]
             [shell.gyosei :as gyosei]
             [shell.fleet-overview :as fleet]
+            [shell.awai-support :as awai-support]
             [shell.docks :refer [device-dock node-dock]]
             [shell.setup :refer [setup]]
             ["../setup-state.js" :refer [setupState]]
@@ -27,6 +28,10 @@
 
 (def relay-origin
   (some-> (.getElementById js/document "root") (.-dataset) (.-relayOrigin)))
+
+;; EN devnet support desk (AWAI-3170); empty unless the build set AWAI_SUPPORT_DESK_ORIGIN.
+(def support-desk-origin
+  (or (some-> (.getElementById js/document "root") (.-dataset) (.-supportDeskOrigin)) ""))
 
 (def poll-ms 3000)
 (def sections #js ["Core" "Apps" "System"])
@@ -395,7 +400,7 @@
                  (and dapp (< score minimum))
                  [locked dapp minimum score open-account]
                  (and (= context "murakumo") (androidInferenceAvailable)) [:f> android-inference/panel]
-                 (= context "itonami") [:main.chat.net-view [:div.net-body [:h1 "Itonami Agent"] [:f> fleet/panel "agents"]]]
+                 (= context "itonami") [:main.chat.net-view [:div.net-body [:h1 "Itonami Agent"] [:f> fleet/panel "agents"] [:f> awai-support/panel broker support-desk-origin]]]
                  :else
                  [:f> chat dapp context (or (aget threads context) #js [])
                   (fn [text] (add-message context text))
@@ -426,7 +431,7 @@
 (defn app []
   (let [zenoh (use-service zenoh-up)
         matter (use-service matter-up)
-        broker (useMemo (fn [] (createBroker "index.html" (osOperations relay-origin))) #js [])
+        broker (useMemo (fn [] (createBroker "index.html" (osOperations relay-origin support-desk-origin))) #js [])
         [did set-did] (useState nil)
         [account set-account] (useState nil)
         [finished set-finished] (useState false)

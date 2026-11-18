@@ -1,5 +1,6 @@
 import {chatOperation,chatHistoryOperation,chatSessionsOperation,chatCreateOperation,chatBotsOperation,chatMediaOperation} from './bot-chat-contract.js';
 import {aliasOperations,identityOperations} from './mail-alias-contract.js';
+import {supportOperations} from './awai-support.js';
 import {voiceOperation} from './voice-channel-contract.js';
 import {egovOperation} from './egov-host.js';
 // External operations of the OS shell and the phone page, through the shared
@@ -8,8 +9,9 @@ import { createClientConsentHost, createClientOperationBroker } from "./vendor-r
 
 const PASSPORT_ORIGIN = "https://mainnet.optimism.io";
 
-export function osOperations(relayOrigin) {
+export function osOperations(relayOrigin, supportDeskOrigin) {
   return [
+    ...supportOperations(supportDeskOrigin),
     chatOperation,chatHistoryOperation,chatSessionsOperation,chatCreateOperation,chatBotsOperation,chatMediaOperation,voiceOperation,...aliasOperations,...identityOperations,
     egovOperation,
     {
