@@ -1,0 +1,18 @@
+{
+ "result": {
+  "paid": "Results marked as paid are not loaded (:payout? false is required).",
+  "loaded": "Loaded.",
+  "rows": [
+   "Round test-epoch-1 · contribution contrib-image-own-work",
+   "test-human-1 · 7500 bps · 750000 YATA units",
+   "test-human-2 · 2500 bps · 250000 YATA units",
+   "Unallocated 0 of 1000000"
+  ]
+ },
+ "requests": [
+  {
+   "method": "GET",
+   "url": "https://tauri.localhost/icon.png"
+  }
+ ]
+}
