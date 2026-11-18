@@ -41,7 +41,7 @@ def manifest(pkg, activity, version, kind, online=False, debuggable=True):
       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>{home}</activity>{extra}</application></manifest>'''
 
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument('--version',type=int,default=1);ap.add_argument('--sdk',type=pathlib.Path,default=pathlib.Path.home()/'Library/Android/sdk');ap.add_argument('--java',type=pathlib.Path,default=pathlib.Path('/opt/homebrew/opt/openjdk/bin'));ap.add_argument('--out',type=pathlib.Path,default=ROOT/'.agent-output/android');ap.add_argument('--skip-cljs',action='store_true');ap.add_argument('--online-pins',type=pathlib.Path);ap.add_argument('--catalog-revision',type=int,default=None);ap.add_argument('--itonami-apk',type=pathlib.Path,default=None);ap.add_argument('--torihiki-bot-apk',type=pathlib.Path,default=None);ap.add_argument('--tabi-mikake-apk',type=pathlib.Path,default=None);ap.add_argument('--deai-apk',type=pathlib.Path,default=None);ap.add_argument('--hiring-apk',type=pathlib.Path,default=None);ap.add_argument('--kumade-apk',type=pathlib.Path,default=None);ap.add_argument('--home-only',action='store_true')
+    ap=argparse.ArgumentParser();ap.add_argument('--version',type=int,default=1);ap.add_argument('--sdk',type=pathlib.Path,default=pathlib.Path.home()/'Library/Android/sdk');ap.add_argument('--java',type=pathlib.Path,default=pathlib.Path('/opt/homebrew/opt/openjdk/bin'));ap.add_argument('--out',type=pathlib.Path,default=ROOT/'.agent-output/android');ap.add_argument('--skip-cljs',action='store_true');ap.add_argument('--online-pins',type=pathlib.Path);ap.add_argument('--catalog-revision',type=int,default=None);ap.add_argument('--itonami-apk',type=pathlib.Path,default=None);ap.add_argument('--torihiki-bot-apk',type=pathlib.Path,default=None);ap.add_argument('--tabi-mikake-apk',type=pathlib.Path,default=None);ap.add_argument('--deai-apk',type=pathlib.Path,default=None);ap.add_argument('--hiring-apk',type=pathlib.Path,default=None);ap.add_argument('--kumade-apk',type=pathlib.Path,default=None);ap.add_argument('--local-apps-dir',type=pathlib.Path,default=None);ap.add_argument('--home-only',action='store_true')
     ap.add_argument('--agent-trace-apk', type=pathlib.Path, help='Development-signed APK from app-itonami-agent-trace')
     ap.add_argument('--agent-trace-online', action='store_true', help='Admit the feed-enabled agent trace APK with INTERNET')
     ap.add_argument('--agent-trace-sha256', help='Expected SHA-256 from the source app build receipt')
@@ -250,6 +250,28 @@ def main():
                            'asset': 'packages/agent-trace.apk', 'bytes': staged.stat().st_size,
                            'sha256': actual_digest, 'signerSha256': fp}],
         })
+    if args.local_apps_dir is not None:
+        # AWAI-3502: Tauri v3 itonami apps that keep everything on the device. android/local-apps.json fixes the admitted
+        # suffixes and their Store text; the directory holds <suffix>.apk files. Each APK is refused unless its package is
+        # exactly network.itonami.<suffix>, its single signer is the development identity, it requests no permission other
+        # than AndroidX's own non-exported receiver permission (so no INTERNET), and it fits the 40 MiB budget. Version,
+        # size and digest come from the APK itself. An APK in the directory that the table does not list is refused.
+        table=json.loads((ROOT/'android/local-apps.json').read_text())
+        known={a['suffix']:a for a in table['apps']}
+        for apk_path in sorted(args.local_apps_dir.glob('*.apk')):
+            suffix=apk_path.stem
+            if suffix not in known:raise SystemExit(f'local app APK {apk_path.name} is not listed in android/local-apps.json')
+            meta=known[suffix];pkg='network.itonami.'+suffix
+            if apk_path.stat().st_size>40*1024*1024:raise SystemExit(f'{pkg} APK exceeds its 40 MiB Store budget')
+            staged=packages/f'{suffix}.apk';shutil.copyfile(apk_path,staged)
+            signer=run([tools/'apksigner','verify','--print-certs',staged],capture_output=True).stdout
+            if [l.rsplit(' ',1)[-1] for l in signer.splitlines() if 'certificate SHA-256 digest:' in l]!=[fp]:raise SystemExit(f'{pkg} APK signer does not match the development identity')
+            badging=run([tools/'aapt2','dump','badging',staged],capture_output=True).stdout
+            m=re.fullmatch(r"package: name='([^']+)' versionCode='([0-9]+)' versionName='([^']+)'.*",badging.splitlines()[0])
+            if not m or m.group(1)!=pkg:raise SystemExit(f'{apk_path.name} package is not {pkg}')
+            perms=sorted(set(re.findall(r"uses-permission: name='([^']+)'",badging)))
+            if perms not in ([],[pkg+'.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION']):raise SystemExit(f'{pkg} APK requests permissions: {perms}')
+            listed.append({'id':pkg,'name':meta['name'],'description':meta['description']+'Android development debug 署名（本番鍵ではない）。','publisher':'Awai Otehon 開発版','versionCode':int(m.group(2)),'versionName':m.group(3),'artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':f'packages/{suffix}.apk','bytes':staged.stat().st_size,'sha256':digest(staged),'signerSha256':fp}]})
     catalog={'schema':'itonami.store.bundled.v1','revision':revision,'expiresAt':int(time.time())+30*86400,'apps':listed}
     raw=json.dumps(catalog,ensure_ascii=False,separators=(',',':'));(assets/'catalog.json').write_text(raw)
     run([args.java/'java','-cp',out,'SignCatalog',key,assets/'catalog.json',assets/'catalog-key.der',assets/'catalog.sig'],stdout=subprocess.DEVNULL)

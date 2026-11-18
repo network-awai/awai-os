@@ -39,6 +39,16 @@ public final class Catalog {
         }
         return value;
     }
+    // AWAI-3502: Tauri v3 itonami apps that keep all data on the device and request no INTERNET
+    // permission (android/local-apps.json lists the same suffixes; tests/local-apps.test.mjs checks
+    // that). Each is network.itonami.<suffix>, asset packages/<suffix>.apk, 40 MiB budget.
+    public static final java.util.List<String> LOCAL_APPS = java.util.Collections.unmodifiableList(java.util.Arrays.asList(
+            "ki", "hakkou", "koke", "openossekai", "otakiage", "seibutsu", "shinka", "kabi", "kinoko", "kobo", "saikin", "kiyome", "omikuji", "moldallergy", "explorer", "organismviz", "icc", "abaki", "hibiki", "wakai", "tawami", "yudane", "minori", "torifune", "hiramekietz", "umisachi", "tomoshibi", "tsumugi"));
+    static String localSuffix(String id) {
+        if (id == null || !id.startsWith("network.itonami.")) return null;
+        String suffix = id.substring("network.itonami.".length());
+        return LOCAL_APPS.contains(suffix) ? suffix : null;
+    }
     // Admitted store apps. Unknown ids are refused; per-app asset name, staged
     // download filename and byte budget are fixed here, never taken from callers.
     public static String assetFor(String id) throws SecurityException {
@@ -52,6 +62,8 @@ public final class Catalog {
         if ("network.itonami.kumade".equals(id)) return "packages/kumade.apk";
         if ("app.aozora".equals(id)) return "packages/aozora.apk";
         if ("network.itonami.agenttrace".equals(id)) return "packages/agent-trace.apk";
+        String local = localSuffix(id);
+        if (local != null) return "packages/" + local + ".apk";
         throw new SecurityException("unknown-app");
     }
     public static String onlineFileFor(String id) throws SecurityException {
@@ -65,6 +77,8 @@ public final class Catalog {
         if ("network.itonami.kumade".equals(id)) return "online-kumade.apk";
         if ("app.aozora".equals(id)) return "online-aozora.apk";
         if ("network.itonami.agenttrace".equals(id)) return "online-agent-trace.apk";
+        String local = localSuffix(id);
+        if (local != null) return "online-" + local + ".apk";
         throw new SecurityException("unknown-app");
     }
     public static int maxApkBytes(String id) throws SecurityException {
@@ -83,6 +97,8 @@ public final class Catalog {
         if ("network.itonami.kumade".equals(id)) return 40 * 1024 * 1024;
         if ("app.aozora".equals(id)) return 64 * 1024 * 1024;
         if ("network.itonami.agenttrace".equals(id)) return 2 * 1024 * 1024;
+        // AWAI-3502 local apps: Tauri v3 debug builds without native debug symbols, about 19.6 MB at 0.1.0.
+        if (localSuffix(id) != null) return 40 * 1024 * 1024;
         throw new SecurityException("unknown-app");
     }
     public long valueRevision() throws Exception { return value.getLong("revision"); }
