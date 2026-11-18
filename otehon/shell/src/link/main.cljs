@@ -1,7 +1,7 @@
 (ns link.main
   (:require [reagent.dom.client :as rdom]
             ["react" :refer [useMemo useState]]
-            ["../identity/link.js" :refer [RP_ID SESSION_MS DRIVE_PASSKEY_PURPOSE compressP256 confirmationCode
+            ["../identity/link.js" :refer [RP_ID SESSION_MS DRIVE_PASSKEY_PURPOSE BOT_LAUNCH_PURPOSE compressP256 confirmationCode
                                                passkeyForLink
                                                fromBase64Url parseLinkFragment passkeyChallenge
                                                sealResponse toBase64Url]]
@@ -39,7 +39,10 @@
   (-> (js/Promise.resolve (read-json passkey-key nil))
       (.then (fn [saved] (passkeyForLink request saved register-passkey)))
       (.then (fn [saved]
-               (let [expires-at (.toISOString (js/Date. (+ (.now js/Date) SESSION_MS)))]
+               ;; A launch approval lasts only as long as its request; a link lasts SESSION_MS.
+               (let [expires-at (if (= BOT_LAUNCH_PURPOSE (.-purpose request))
+                                  (.-exp request)
+                                  (.toISOString (js/Date. (+ (.now js/Date) SESSION_MS))))]
                  (-> (.get (.-credentials js/navigator)
                            #js {:publicKey #js {:rpId RP_ID
                                                 :challenge (passkeyChallenge
@@ -49,6 +52,7 @@
                                                                  :topic (.-topic request)
                                                                  :ek (.-ek request)
                                                                  :exp (.-exp request)
+                                                                 :launch (.-launch request)
                                                                  :expiresAt expires-at})
                                                 :allowCredentials #js [#js {:type "public-key"
                                                                             :id (fromBase64Url (.-id saved))}]
@@ -81,6 +85,8 @@
         request (.-request memo)
         problem (.-problem memo)
         drive? (= DRIVE_PASSKEY_PURPOSE (some-> request .-purpose))
+        launch (when (= BOT_LAUNCH_PURPOSE (some-> request .-purpose)) (.-launch request))
+        passkey-only? (or drive? (some? launch))
         [confirmed set-confirmed] (useState false)
         [state set-state] (useState "ready")
         [error set-error] (useState nil)
@@ -93,13 +99,14 @@
                       (.then (fn [response] (sealResponse request response)))
                       (.then (fn [sealed] (deliverApproval broker relay-origin (.-topic request) sealed)))
                       (.then (fn []
-                               (let [devices (read-json devices-key #js [])
-                                     kept (.filter devices
-                                                   (fn [device] (not= (.-did device) (.-device request))))
-                                     next (.stringify js/JSON
-                                                       (.concat kept #js [#js {:did (.-device request)
-                                                                               :linkedAt (.toISOString (js/Date.))}]))]
-                                 (.setItem js/localStorage devices-key next))
+                               (when-not launch
+                                 (let [devices (read-json devices-key #js [])
+                                       kept (.filter devices
+                                                     (fn [device] (not= (.-did device) (.-device request))))
+                                       next (.stringify js/JSON
+                                                         (.concat kept #js [#js {:did (.-device request)
+                                                                                 :linkedAt (.toISOString (js/Date.))}]))]
+                                   (.setItem js/localStorage devices-key next)))
                                (set-state "done")))
                       (.catch (fn [caught]
                                 (let [reason (or (.-message caught) "")]
@@ -117,6 +124,11 @@
         (when (= problem "request-expired") "The code expired. ")
         "Show a new code on your device and scan it again."]]
 
+      (and (= state "done") launch)
+      [:main {:data-link-done true}
+       [:h1 "Launch approved"]
+       [:p "Return to the app that showed the code. It sends the launch; nothing else was approved."]]
+
       (= state "done")
       [:main {:data-link-done true}
        [:h1 "Device linked"]
@@ -127,10 +139,24 @@
 
       :else
       [:main
-       [:h1 (if drive? "Authorize Awai Drive on this device?" "Link this device?")]
-       [:p "Approve only if you are setting up this device yourself."]
+       [:h1 (cond launch "Launch this Itonami Bot?"
+                  drive? "Authorize Awai Drive on this device?"
+                  :else "Link this device?")]
+       [:p (if launch
+             "Approve only if you started this launch yourself. This approves this one launch only."
+             "Approve only if you are setting up this device yourself.")]
+       (when launch
+         [:dl {:data-launch true}
+          [:dt "Business"]
+          [:dd (.-business_name launch) " (" (.-business_id launch) ")"]
+          [:dt "Assignment"]
+          [:dd.did (.-assignment_id launch)]
+          [:dt "Bot wallet (Base)"]
+          [:dd.did (.-wallet_address launch)]
+          [:dt "Credit limit"]
+          [:dd (str (/ (.-credit_limit_micros launch) 1000000) " USDC (simulation only)")]])
        [:dl
-        [:dt "Device"]
+        [:dt (if launch "Requesting app" "Device")]
         [:dd.did (.-device request)]
         [:dt "Code"]
         [:dd.code {:data-link-code true} (confirmationCode request)]]
@@ -143,11 +169,11 @@
                           :on-click #(approve approve-with-passkey)}
         "Approve with Passkey"]
        [:button.secondary {:type "button" :data-approve "wallet"
-                            :disabled (or drive? (not confirmed) (= state "working")
+                            :disabled (or passkey-only? (not confirmed) (= state "working")
                                           (not (.-ethereum js/window)))
                             :on-click #(approve approve-with-wallet)}
         "Approve with Wallet"]
-       (when (and (not drive?) (not (.-ethereum js/window)))
+       (when (and (not passkey-only?) (not (.-ethereum js/window)))
          [:p.muted "To use a wallet, open this page in your wallet's browser."])
        (when error [:p.problem error])])))
 

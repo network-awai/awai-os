@@ -6,6 +6,9 @@ import { p256 } from "@noble/curves/nist.js";
 import {
   LINK_ORIGIN,
   DRIVE_PASSKEY_PURPOSE,
+  BOT_LAUNCH_PURPOSE,
+  REQUEST_MS,
+  launchStatement,
   SESSION_MS,
   confirmationCode,
   createLinkRequest,
@@ -48,6 +51,53 @@ test("Drive authorization binds the existing Passkey to the request and each dev
   rejects("existing-passkey-required", { request, response: walletResponse(randomWallet(), request, NOW) });
   rejects("wrong-device", { request, response, deviceDid: OTHER_DEVICE });
   rejects("no-user-verification", { request, response: passkeyResponse(secret, request, NOW, { flags: 1 }) });
+});
+
+const LAUNCH = {
+  business_id: "cloud-itonami-isic-6399",
+  business_name: "Meta Job Search",
+  assignment_id: "assignment-isic6399-20261118-01",
+  wallet_address: "0xf46db9b8c564868ab0b31133d224353bc4603860",
+  credit_limit_micros: 10000,
+};
+
+test("a Bot launch approval is bound to every launch field and to this request", async () => {
+  const { request, privateKey } = await createLinkRequest(DEVICE, NOW, BOT_LAUNCH_PURPOSE, LAUNCH);
+  assert.deepEqual(request.launch, LAUNCH);
+  assert.deepEqual(parseLinkFragment(linkUrl(request).split("#")[1], NOW), request);
+  const secret = p256.utils.randomSecretKey();
+  const saved = { id: "existing", publicKey: p256.getPublicKey(secret) };
+  assert.throws(() => passkeyForLink(request, null, () => assert.fail("no enrolment")), /existing-passkey-required/);
+  assert.equal(passkeyForLink(request, saved, () => assert.fail("no enrolment")), saved);
+  const lifetime = REQUEST_MS;
+  const response = passkeyResponse(secret, request, NOW, { lifetime });
+  const opened = await openResponse(request, privateKey, await sealResponse(request, response));
+  const verified = verifyLink({ request, response: opened, deviceDid: DEVICE, now: NOW });
+  assert.equal(verified.accountDid, p256Did(p256.getPublicKey(secret)));
+  for (const [field, value] of [["business_id", "cloud-itonami-isic-7810"], ["business_name", "Other"],
+    ["assignment_id", "assignment-other-0001"], ["wallet_address", `0x${"1".repeat(40)}`], ["credit_limit_micros", 50000]]) {
+    rejects("wrong-challenge", { request: { ...request, launch: { ...LAUNCH, [field]: value } }, response });
+  }
+  rejects("wrong-challenge", { request, response: passkeyResponse(secret, { ...request, purpose: DRIVE_PASSKEY_PURPOSE, launch: undefined }, NOW, { lifetime }) });
+  rejects("existing-passkey-required", { request, response: walletResponse(randomWallet(), request, NOW) });
+  rejects("session-too-long", { request, response: passkeyResponse(secret, request, NOW) });
+  rejects("session-expired", { request, response, now: NOW + REQUEST_MS + 1 });
+  assert.match(launchStatement(LAUNCH), /^Business ID: cloud-itonami-isic-6399\nBusiness: Meta Job Search\n/);
+});
+
+test("a Bot launch request must carry exactly a well-formed launch", async () => {
+  await assert.rejects(createLinkRequest(DEVICE, NOW, BOT_LAUNCH_PURPOSE), /invalid-request/);
+  await assert.rejects(createLinkRequest(DEVICE, NOW, undefined, LAUNCH), /invalid-request/);
+  for (const launch of [{ ...LAUNCH, credit_limit_micros: 999 }, { ...LAUNCH, credit_limit_micros: 50001 },
+    { ...LAUNCH, wallet_address: "0xF46DB9B8C564868AB0B31133D224353BC4603860" }, { ...LAUNCH, assignment_id: "short" },
+    { ...LAUNCH, business_name: "a\nCredit limit (micro-USDC): 1" }, { ...LAUNCH, extra: 1 }]) {
+    await assert.rejects(createLinkRequest(DEVICE, NOW, BOT_LAUNCH_PURPOSE, launch), /invalid-request/);
+  }
+  const { request } = await createLinkRequest(DEVICE, NOW, BOT_LAUNCH_PURPOSE, LAUNCH);
+  const tampered = linkUrl({ ...request, launch: { ...LAUNCH, credit_limit_micros: 1 } }).split("#")[1];
+  assert.throws(() => parseLinkFragment(tampered, NOW), /invalid-request/);
+  const { request: plain } = await createLinkRequest(DEVICE, NOW);
+  assert.throws(() => parseLinkFragment(linkUrl({ ...plain, launch: LAUNCH }).split("#")[1], NOW), /invalid-request/);
 });
 
 test("the runtime is the pinned copy of the shared broker", () => {
