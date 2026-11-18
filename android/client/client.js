@@ -109,7 +109,7 @@ const setup = createSetup({host,domain,root,button,el,icon,notify,render:()=>ren
 function render(){refresh();syncMotion();root.replaceChildren();if(mode==='home'&&setup.render())return;if(mode==='store'&&!domain.validCatalog(JSON.stringify(catalog),Math.floor(Date.now()/1000))){const p=page('追加を停止しました');p.append(el('p','','カタログの有効期限または内容を確認できません。署名済みの Store を更新してください。'));return;}({home,apps:drawer,discover,detail,review,library,updates:()=>library(true),yotei,torihiki:()=>renderTorihiki({root,page,el,button,notify,client:torihikiClient,state:torihikiState})}[route]||discover)();}
 window.awaiRefresh=()=>{try{render();if(native.message)notify(native.message);}catch{notify('表示を更新できません。端末の戻る操作でやり直してください。');}};
 window.awaiGoHome=()=>navigate('home');
-window.awaiBack=()=>{if(mode==='home'&&setup.back())return true;const dialog=document.querySelector('dialog[open]');if(dialog){dialog.close();return true;}if(route==='home'||(mode==='store'&&route==='discover')||(mode==='yotei'&&route==='yotei')||(mode==='torihiki'&&route==='torihiki'))return false;navigate(mode==='home'?'home':mode==='yotei'?'yotei':mode==='torihiki'?'torihiki':'discover');return true;};
+window.awaiBack=()=>{if(mode==='home'&&setup.back())return true;const dialog=document.querySelector('dialog[open]');if(dialog){dialog.close();return true;}if(mode==='torihiki'&&torihikiState.view){torihikiState.view=null;render();return true;}if(route==='home'||(mode==='store'&&route==='discover')||(mode==='yotei'&&route==='yotei')||(mode==='torihiki'&&route==='torihiki'))return false;navigate(mode==='home'?'home':mode==='yotei'?'yotei':mode==='torihiki'?'torihiki':'discover');return true;};
 async function bootstrap(){
   if(!host){
     try{

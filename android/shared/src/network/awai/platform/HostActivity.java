@@ -32,7 +32,9 @@ public abstract class HostActivity extends Activity {
         if(!torihikiHost(u))return false;
         String path=u.getEncodedPath(),query=u.getEncodedQuery();
         return ("/head".equals(path)&&query==null)||("/market".equals(path)&&"id=1".equals(query))||("/book".equals(path)&&"market=1&depth=15".equals(query))
-            ||("/account".equals(path)&&query!=null&&query.matches("id=[1-9][0-9]{5,13}"));
+            ||("/account".equals(path)&&query!=null&&query.matches("id=[1-9][0-9]{5,13}"))
+            ||("/trades".equals(path)&&"market=1".equals(query))
+            ||("/candles".equals(path)&&("market=1&span=1".equals(query)||"market=1&span=10".equals(query)||"market=1&span=50".equals(query)));
     }
     static boolean torihikiTx(Uri u){ return torihikiHost(u)&&"/tx".equals(u.getEncodedPath())&&u.getEncodedQuery()==null; }
     protected WebView web;

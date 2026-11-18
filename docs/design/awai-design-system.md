@@ -117,7 +117,7 @@ The proposal does not change the Otehon shell or OS navigation. Inside the app i
 
 ## Not done
 
-- No implementation: the Android Torihiki client still renders the current UI.
+- Implementation landed in AWAI-3415 (`docs/evidence/torihiki-trade-ui-awai3415-20261118/`); the differences from this proposal are listed there.
 - The design is not compared on a physical device.
 - English copy is not written.
 - No owner design decision has been recorded.
