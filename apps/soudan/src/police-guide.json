@@ -242,7 +242,38 @@
       "m49": "051",
       "name": "Armenia",
       "region": "Asia",
-      "iso2": "AM"
+      "iso2": "AM",
+      "status": "official-route",
+      "sources": {
+        "fraud": {
+          "title": "Armenian Ministry of Interior Police — How to avoid scammers and fraud",
+          "url": "https://police.mia.gov.am/how-to-avoid-scammers-and-fraud",
+          "checkedOn": "2026-11-19"
+        },
+        "contacts": {
+          "title": "Armenian Ministry of Interior Police — Contact information",
+          "url": "https://police.mia.gov.am/en/contact-information",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "アルメニア内務省の警察が詐欺被害を受け付ける。",
+          "refs": [
+            "fraud",
+            "contacts"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察に直接連絡するか、公式の詐欺案内に掲載された内務省の緊急対応窓口を確認する。",
+          "refs": [
+            "fraud",
+            "contacts"
+          ]
+        }
+      ]
     },
     "ASM": {
       "m49": "016",
@@ -972,7 +1003,60 @@
       "m49": "068",
       "name": "Bolivia (Plurinational State of)",
       "region": "Americas",
-      "iso2": "BO"
+      "iso2": "BO",
+      "status": "official-route",
+      "sources": {
+        "lapaz": {
+          "title": "Bolivia Fiscalía General del Estado — Formulario Único de Denuncias en La Paz",
+          "url": "https://www.fiscalia.gob.bo/comunicacion/noticias/fiscalia-implementa-el-formulario-unico-de-denuncias-en-la-paz",
+          "checkedOn": "2026-11-19"
+        },
+        "beni": {
+          "title": "Bolivia Fiscalía General del Estado — Formulario Único de Denuncias en Beni",
+          "url": "https://www.fiscalia.gob.bo/comunicacion/noticias/formulario-unico-de-denuncias-ingreso-en-pleno-funcionamiento-en-la-fiscalia-del-beni",
+          "checkedOn": "2026-11-19"
+        },
+        "conduct": {
+          "title": "Bolivia Fiscalía General del Estado — Dirección de Régimen Disciplinario",
+          "url": "https://www.fiscalia.gob.bo/quienes-somos/direccion-de-regimen-disciplinario-y-transparencia-institucional",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ボリビアの刑事申告では警察と検察が連携する。ラパスやベニなどで統一申告フォームFUDの案内がある。",
+          "refs": [
+            "lapaz",
+            "beni"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "ラパスでは警察窓口での口頭申告をFUDに記録し、検察へ送る運用が案内されている。他の地域は管轄窓口の案内を確認する。",
+          "refs": [
+            "lapaz",
+            "beni"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "ラパスの案内では、警察から送られた申告の内容を検察が初期評価する。",
+          "refs": [
+            "lapaz"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "検察官個人の職務上の違反については、検察の規律・透明性部門に申し立てる専用の手続がある。",
+          "refs": [
+            "conduct"
+          ],
+          "kind": "service-complaint"
+        }
+      ]
     },
     "BRA": {
       "m49": "076",
@@ -1167,7 +1251,53 @@
       "m49": "064",
       "name": "Bhutan",
       "region": "Asia",
-      "iso2": "BT"
+      "iso2": "BT",
+      "status": "official-route",
+      "sources": {
+        "report": {
+          "title": "Royal Bhutan Police — Reporting and Witnessing Crimes",
+          "url": "https://rbp.gov.bt/reporting-and-witnessing-crimes/",
+          "checkedOn": "2026-11-19"
+        },
+        "cyber": {
+          "title": "Royal Bhutan Police — Cybersecurity Awareness and Online Safety",
+          "url": "https://rbp.gov.bt/cybersecurity-awareness-online-safety/",
+          "checkedOn": "2026-11-19"
+        },
+        "online": {
+          "title": "Royal Bhutan Police — Online Services & E-Governance",
+          "url": "https://rbp.gov.bt/online-services-e-governance-platforms/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "王立ブータン警察が犯罪申告を扱い、サイバー被害に関する専門部門がある。",
+          "refs": [
+            "report",
+            "cyber"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "最寄りの署または警察のサイバー部門へ連絡する。警察のウェブサイトはオンラインの申告登録も案内している。",
+          "refs": [
+            "report",
+            "cyber",
+            "online"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "警察のオンラインサービスは、すでに提出した事案の状況確認も案内している。",
+          "refs": [
+            "online"
+          ],
+          "kind": "status-check"
+        }
+      ]
     },
     "BVT": {
       "m49": "074",
@@ -3094,6 +3224,11 @@
           "title": "Danish Police — Sådan anmelder du",
           "url": "https://politi.dk/anmeld-kriminalitet/ofre-vidner-og-paaroerende/saadan-anmelder-du",
           "checkedOn": "2026-11-19"
+        },
+        "local-report": {
+          "title": "Grønlands Politi — Sådan anmelder du en forbrydelse",
+          "url": "https://politi.gl/da/anmeld-kriminalitet/saadan-anmelder-du-en-forbrydelse",
+          "checkedOn": "2026-11-19"
         }
       },
       "jurisdiction": [
@@ -3110,6 +3245,12 @@
           "refs": [
             "district",
             "report"
+          ]
+        },
+        {
+          "text": "グリーンランドの犯罪申告は、現地警察が地域の署または警察の当直センターへの連絡を案内している。",
+          "refs": [
+            "local-report"
           ]
         }
       ]
@@ -4577,7 +4718,39 @@
       "m49": "414",
       "name": "Kuwait",
       "region": "Asia",
-      "iso2": "KW"
+      "iso2": "KW",
+      "status": "official-route",
+      "sources": {
+        "moi": {
+          "title": "Kuwait Ministry of Interior — Electronic and Cyber Crime Combating Department",
+          "url": "https://www.moi.gov.kw/main/sections/cyber-crime?culture=en",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "クウェート内務省の電子・サイバー犯罪対策部門が申告を取り扱う。",
+          "refs": [
+            "moi"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "内務省のサイバー犯罪ページに掲載された専用の電話窓口を利用する。",
+          "refs": [
+            "moi"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "担当部門が内容の事実関係を確認し、必要な法的対応を判断する。",
+          "refs": [
+            "moi"
+          ]
+        }
+      ]
     },
     "LAO": {
       "m49": "418",
@@ -4589,7 +4762,47 @@
       "m49": "422",
       "name": "Lebanon",
       "region": "Asia",
-      "iso2": "LB"
+      "iso2": "LB",
+      "status": "official-route",
+      "sources": {
+        "awareness": {
+          "title": "Lebanon Internal Security Forces — Internet Security Awareness",
+          "url": "https://isf.gov.lb/internet-security-awareness/",
+          "checkedOn": "2026-11-19"
+        },
+        "faq": {
+          "title": "Lebanon Internal Security Forces — FAQ",
+          "url": "https://isf.gov.lb/faq/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "レバノン治安部隊ISFの司法警察に、サイバー犯罪・知的財産を扱う専門部門がある。",
+          "refs": [
+            "awareness",
+            "faq"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "サイバー事案はISFの公式案内にある窓口で報告する。正式な申告に関しては、管轄検察に行き専門部門へ回付を受ける案内もある。",
+          "refs": [
+            "awareness",
+            "faq"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "オンラインで脅迫を受けた場合、画像・映像、メールやメッセージなどを証拠として保全する。",
+          "refs": [
+            "awareness"
+          ],
+          "kind": "retain"
+        }
+      ]
     },
     "LBR": {
       "m49": "430",
@@ -6035,7 +6248,47 @@
       "m49": "558",
       "name": "Nicaragua",
       "region": "Americas",
-      "iso2": "NI"
+      "iso2": "NI",
+      "status": "official-route",
+      "sources": {
+        "form": {
+          "title": "Policía Nacional de Nicaragua — Registre su Denuncia",
+          "url": "https://tramitesenlinea.policia.gob.ni/DenunciaL.aspx",
+          "checkedOn": "2026-11-19"
+        },
+        "case": {
+          "title": "Policía Nacional de Nicaragua — Captura por estafa en Managua",
+          "url": "https://www.policia.gob.ni/wp-content/uploads/2022/06/Polic%C3%ADa-Nacional-captura-autores-delito-de-Estafa-Distrito-6-Managua.-14-6-22-.pdf",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ニカラグア国家警察が犯罪の申告を受け付ける。",
+          "refs": [
+            "form",
+            "case"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "公式オンラインフォームまたは最寄りの警察署で申告できる。",
+          "refs": [
+            "form",
+            "case"
+          ]
+        }
+      ],
+      "cases": [
+        {
+          "text": "行政手続の代行を持ちかける詐欺について、被害者の申告を受けた警察が捜査し、マナグアで容疑者を拘束したと公表した。",
+          "refs": [
+            "case"
+          ],
+          "stage": "investigation-confirmed"
+        }
+      ]
     },
     "NIU": {
       "m49": "570",
@@ -6943,7 +7196,53 @@
       "m49": "600",
       "name": "Paraguay",
       "region": "Americas",
-      "iso2": "PY"
+      "iso2": "PY",
+      "status": "official-route",
+      "sources": {
+        "intake": {
+          "title": "Paraguay Ministerio Público — Cómo y dónde realizar una denuncia",
+          "url": "https://ministeriopublico.gov.py/como-y-donde-realizar-una-denuncia-",
+          "checkedOn": "2026-11-19"
+        },
+        "cyber": {
+          "title": "Paraguay Ministerio Público — Unidad de Delitos Informáticos",
+          "url": "https://www.ministeriopublico.gov.py/archivos/Archivos_pdf/Publicaciones/Materiales_Informativos/Ciberdelitos.pdf?time=1503068929183",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "パラグアイの検察が刑事申告を受け付け、コンピューター犯罪には検察の専門部門がある。",
+          "refs": [
+            "intake",
+            "cyber"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "本人または特別の委任を受けた代理人が届け出られる。本人が直接申告した場合は調書が作成される。",
+          "refs": [
+            "intake"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "分かる範囲で経緯、関係者、被害者や目撃者、事実確認につながる証拠を示す。",
+          "refs": [
+            "intake"
+          ],
+          "kind": "recommended"
+        },
+        {
+          "text": "代理人が届け出る場合は特別の委任状が必要と案内されている。",
+          "refs": [
+            "intake"
+          ],
+          "kind": "required"
+        }
+      ]
     },
     "PSE": {
       "m49": "275",
@@ -8230,7 +8529,67 @@
       "m49": "792",
       "name": "Türkiye",
       "region": "Asia",
-      "iso2": "TR"
+      "iso2": "TR",
+      "status": "official-route",
+      "sources": {
+        "cpp": {
+          "title": "Türkiye Ministry of Justice — Code of Criminal Procedure",
+          "url": "https://mevzuat.adalet.gov.tr/mevzuat/102946?query=Madde+1",
+          "checkedOn": "2026-11-19"
+        },
+        "receiving": {
+          "title": "Türkiye Ministry of Justice — Procedures for law enforcement in judicial investigations",
+          "url": "https://oltu.adalet.gov.tr/kolluk-gorevlilerince-adli-sorusturmalarin-yurutulmesinde-dikkat-edilmesi-gereken-hususlar",
+          "checkedOn": "2026-11-19"
+        },
+        "case": {
+          "title": "Türkiye Ministry of Justice UYAP — Decision in an online investment fraud complaint",
+          "url": "https://mevzuat.adalet.gov.tr/ictihat/1046049100",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "トルコの刑事手続法第158条では、検察または警察等の法執行機関が犯罪の申告を受け付ける。",
+          "refs": [
+            "cpp"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "申告は書面か、口頭の内容を記録する方法で行う。",
+          "refs": [
+            "cpp"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "警察や憲兵隊の窓口で申告を記録してもらえない場合は、管轄の検察へ直接申告する経路を確認する。",
+          "refs": [
+            "cpp",
+            "receiving"
+          ],
+          "kind": "channel-unavailable"
+        },
+        {
+          "text": "不訴追の通知を受けた被害者は、第173条の異議申立て先と適用期限を確認する。",
+          "refs": [
+            "cpp"
+          ],
+          "kind": "review"
+        }
+      ],
+      "cases": [
+        {
+          "text": "投資を装ったオンラインサービスへ入金した人の申告を受け、捜査が開始された。公表裁判例は、その後の不訴追判断と審査手続も扱っている。",
+          "refs": [
+            "case"
+          ],
+          "stage": "investigation-confirmed"
+        }
+      ]
     },
     "TUV": {
       "m49": "798",
@@ -8497,7 +8856,37 @@
       "m49": "860",
       "name": "Uzbekistan",
       "region": "Asia",
-      "iso2": "UZ"
+      "iso2": "UZ",
+      "status": "official-route",
+      "sources": {
+        "law": {
+          "title": "Uzbekistan Government — Firibgarlik",
+          "url": "https://gov.uz/oz/advice/NaN/document/2184",
+          "checkedOn": "2026-11-19"
+        },
+        "qarshi": {
+          "title": "Uzbekistan Government — Cyberfraud guidance from Qarshi city prosecutor",
+          "url": "https://gov.uz/oz/qarshish/news/view/83892",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ウズベキスタンの内務機関が詐欺被害を受け付ける。",
+          "refs": [
+            "law",
+            "qarshi"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "ネット詐欺について検察の案内は、102への電話または内務部門への申告を勧めている。",
+          "refs": [
+            "qarshi"
+          ]
+        }
+      ]
     },
     "VAT": {
       "m49": "336",
