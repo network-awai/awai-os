@@ -70,12 +70,33 @@ The app now lists the pinned catalog with each model's fit on this device, from 
   - Device-wide CPU is `null` (unknown): Android does not let apps read it. The app's own CPU share is shown instead.
   - GPU is `null`, because the engine runs on the CPU.
 - **Errors:** the Rust bridge passes the plugin's plain refusal codes (for example `model-import-rejected`) to the page, so the UI can say why.
-- **No download yet.** There is still no INTERNET permission. Downloading waits for the canonical broker extension (owner decision 2026-11-18, stage 4b).
+- **Download:** stage 4b, below.
 
 `test/live-manager-4a.mjs` runs the real APK on an emulator this run owns. It drives the WebView through DevTools and the system picker through UI Automator. Evidence: [`docs/evidence/murakumo-manager-4a-20261118.json`](../../docs/evidence/murakumo-manager-4a-20261118.json), 16/16, with [the phone screen](../../docs/evidence/murakumo-manager-4a-20261118-phone.png).
 
 **Differences from the Figma proposal:**
 
 - The app renders in the shared Awai UI light theme, not the dark frames.
-- The model action reads "Import from file" instead of "Download" until stage 4b.
+- Stage 4b adds "Download"; "Import from file" stays as the second action.
 - CPU shows this app's share, because device-wide CPU is unreadable.
+
+## Model download (stage 4b, AWAI-3307)
+
+Each catalog model can be downloaded from Hugging Face. The canonical client-runtime broker carries the download, with its `host-stream` artifact delivery ([kotoba-lang/kotoba#1356](https://github.com/kotoba-lang/kotoba/pull/1356)).
+
+- **Declaration:** `client/download-contract.js` declares one operation per catalog model:
+  - `GET https://huggingface.co/<repo>/resolve/<revision>/<file>`, with the pinned revision;
+  - the redirect set `https://*.cdn.hf.co`;
+  - the artifact SHA-256, byte budget and `delivery: host-stream`.
+  The build validates the descriptor and derives the CSP `connect-src` from it.
+- **Consent:** every download opens the canonical consent dialog, which shows the endpoint, data category, revision, SHA-256 and byte budget. Deny sends nothing. Allow covers that one download.
+- **Streaming:**
+  - the broker follows only the declared redirect origins;
+  - it hashes the body incrementally and enforces the byte budget and an idle deadline;
+  - it hands 4 MiB chunks to the host sink, the `model_download_write` raw IPC body.
+- **Where bytes land:** Rust appends them to `files/models/<id>.download`. Kotlin names that file; the WebView never chooses a path.
+- **Admission:**
+  - the broker's digest must match;
+  - Kotlin admits the file again by size and SHA-256 before renaming it to `<id>.gguf`;
+  - a mismatch, Stop or any error deletes the part file.
+- **INTERNET permission:** Android's INTERNET permission covers all hosts; it cannot be narrowed by origin. The narrowing is done by the CSP and the broker's declared endpoints. The WebView page cannot reach any other origin.

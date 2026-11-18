@@ -28,3 +28,4 @@ main.manager .generate{grid-column:1/-1}
 .fill{block-size:100%;background:var(--blue);border-radius:999px}
 @media (max-width:760px){body{padding:1.5rem}main.manager{grid-template-columns:minmax(0,1fr)}main.manager .device{grid-row:1}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.model-row .meter{flex:1 1 100%}
