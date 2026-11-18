@@ -16,9 +16,13 @@ await import('./scripts/sync-vendor.mjs');
 await copyFile("vendor/kotoba-client-runtime.js", "src/vendor-runtime.gen.js");
 const { osOperations, phoneOperations, runtimeDescriptor } = await import("./src/runtime.js");
 import { scriptSrc, styleSrc, imageSrc, staticReportConnectSrc } from "./src/csp.js";
+import {voiceConnectSrc} from './src/voice-channel-contract.js';
 import { buildDougaka } from "./dougaka-bundle.mjs";
+import { restrictedGuestHashes } from "./scripts/guest-csp.mjs";
 
 const relayOrigin = process.env.RELAY_ORIGIN ?? "https://relay.awai.network";
+// EN devnet support desk (AWAI-3170). Unset in normal builds: no support operations, no CSP origin.
+const supportDeskOrigin = process.env.AWAI_SUPPORT_DESK_ORIGIN || "";
 // OTEHON_HTTP=1 builds for the stable loopback OS origin and HTTP preview.
 // File-mode remains only for legacy images; profile migration is a separate gate.
 const cspMode = process.env.OTEHON_HTTP === "1" ? "http" : "file";
@@ -45,16 +49,21 @@ await mkdir("dist/fs-reliability", { recursive: true });
 await copyFile("fs-reliability/index.html", "dist/fs-reliability/index.html");
 clojure(["-m", "shadow.cljs.devtools.cli", "release", "soshiki-runtime"]);
 await mkdir("dist/soshiki-runtime", { recursive: true });
-const chatConnect = clientRuntimeConnectSrc(runtimeDescriptor("soshiki-runtime/index.html", osOperations(relayOrigin)), [...new Set(osOperations(relayOrigin).map(o => o.capability))], [], []);
+const chatConnect = clientRuntimeConnectSrc(runtimeDescriptor("soshiki-runtime/index.html", osOperations(relayOrigin, supportDeskOrigin)), [...new Set(osOperations(relayOrigin, supportDeskOrigin).map(o => o.capability))], [], []);
 await writeFile("dist/soshiki-runtime/index.html", (await readFile("soshiki-runtime/index.html", "utf8")).replace("__CONNECT_SRC__", `${chatConnect} 'self'`));
 
-async function page({ html, outdir, operations, appOrigins }) {
+const guestHashes = restrictedGuestHashes({
+  guestHtml: await readFile("vendor/egov/gyosei.html", "utf8"),
+  runtimeSource: await readFile("vendor/kotoba-client-runtime.js", "utf8"),
+});
+
+async function page({ html, outdir, operations, appOrigins, guests = null }) {
   await mkdir(`${outdir}/assets`, { recursive: true });
   await copyFile("vendor/kotoba-client-consent.css", `${outdir}/assets/consent.css`);
   await copyFile("assets/awai-logo.png", `${outdir}/assets/awai-logo.png`);
   const capabilities = [...new Set(operations.map((operation) => operation.capability))];
   const connect = staticReportConnectSrc(
-    clientRuntimeConnectSrc(runtimeDescriptor("index.html", operations), capabilities, [], appOrigins),
+    voiceConnectSrc(clientRuntimeConnectSrc(runtimeDescriptor("index.html", operations), capabilities, [], appOrigins),operations),
     cspMode, outdir === "dist",
   );
   const template = await readFile(html, "utf8");
@@ -66,19 +75,21 @@ async function page({ html, outdir, operations, appOrigins }) {
     `${outdir}/index.html`,
     template
       .replace("__CONNECT_SRC__", connect)
-      .replace("__SCRIPT_SRC__", scriptSrc(cspMode))
-      .replace("__STYLE_SRC__", styleSrc(cspMode))
+      .replace("__SCRIPT_SRC__", [scriptSrc(cspMode), ...(guests?.script ?? [])].join(" "))
+      .replace("__STYLE_SRC__", [styleSrc(cspMode), ...(guests?.style ?? [])].join(" "))
       .replace("__IMAGE_SRC__", imageSrc(cspMode))
       .replace("__DAPPS_JSON__", catalog)
-      .replace("__RELAY_ORIGIN__", relayOrigin),
+      .replace("__RELAY_ORIGIN__", relayOrigin)
+      .replace("__SUPPORT_DESK_ORIGIN__", supportDeskOrigin),
   );
 }
 
 await page({
   html: "index.html",
   outdir: "dist",
-  operations: osOperations(relayOrigin),
+  operations: osOperations(relayOrigin, supportDeskOrigin),
   appOrigins: [],
+  guests: guestHashes,
 });
 await page({
   html: "link/index.html",

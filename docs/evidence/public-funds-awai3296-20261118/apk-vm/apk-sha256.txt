@@ -1,0 +1,2 @@
+4ba47e5f69db5037c0dcaf4701dc86563f3d0275529c857ace6be9a9fb3950f5  app-universal-debug.apk
+36407131

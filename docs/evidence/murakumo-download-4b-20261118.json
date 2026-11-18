@@ -1,0 +1,85 @@
+{
+  "schema": "awai.murakumo.download-4b-evidence/1",
+  "issue": "AWAI-3307",
+  "serial": "emulator-5620",
+  "apkSha256": "82ed63e55fe65c6ed1517addd94eba165a85da326f1ed6281afcf36b3dcb9d6f",
+  "startupCrashes": [],
+  "cspMeta": null,
+  "downloadSeconds": 168,
+  "downloadError": "client operation cancelled",
+  "generation": {
+    "len": 34,
+    "tokens": 9
+  },
+  "anrWaits": [],
+  "checks": [
+    {
+      "check": "the app holds no model yet",
+      "passed": true
+    },
+    {
+      "check": "Download is offered for the model that fits",
+      "passed": true
+    },
+    {
+      "check": "the canonical consent dialog shows the artifact SHA-256 and budget",
+      "passed": true
+    },
+    {
+      "check": "the owner taps Deny",
+      "passed": true
+    },
+    {
+      "check": "denied: nothing is written and the status says nothing was sent",
+      "passed": true
+    },
+    {
+      "check": "the owner taps Allow once (download to be stopped)",
+      "passed": true
+    },
+    {
+      "check": "bytes stream into the host-named .download file",
+      "passed": true
+    },
+    {
+      "check": "the owner taps Stop",
+      "passed": true
+    },
+    {
+      "check": "stopped: the partial file is deleted and nothing is imported",
+      "passed": true
+    },
+    {
+      "check": "the owner taps Allow once",
+      "passed": true
+    },
+    {
+      "check": "the model downloads, its SHA-256 matches and it is admitted",
+      "passed": true
+    },
+    {
+      "check": "exactly the model file remains, at its catalog size",
+      "passed": true
+    },
+    {
+      "check": "Load is tapped",
+      "passed": true
+    },
+    {
+      "check": "the downloaded model loads",
+      "passed": true
+    },
+    {
+      "check": "it generates text",
+      "passed": true
+    }
+  ],
+  "passed": 15,
+  "total": 15,
+  "recordedAt": "2026-11-18",
+  "notes": [
+    "downloadError is stale: it is the message from the earlier Stop step ('client operation cancelled'). The page sets data-error on failure and does not clear it on a later success. The final download succeeded, as the status text, the imported flag and the file listing show.",
+    "Runs 1-5 on the same day did not reach these checks. The host load average was 165-334 from other sessions' emulators and builds. They show a wry 0.57.2 startup panic (main_pipe.rs:389 SendError after the 10 s main-pipe timeout), system 'isn't responding' dialogs, and one real defect, fixed before this run: on Android, Tauri sends IPC as JSON through postMessage, so raw Uint8Array chunks were refused ('raw-bytes-required'). Chunks now travel as base64.",
+    "The download came from huggingface.co through its CDN redirect over the emulator's network. downloadSeconds is wall time on a loaded host, not a throughput measurement."
+  ]
+}

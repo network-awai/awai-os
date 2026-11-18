@@ -2,3 +2,34 @@
 
 .awai-ui body{padding:24px 20px}.awai-ui header{max-inline-size:1200px;margin-inline:auto}.awai-ui main>section{border-radius:20px}.awai-ui .model-actions{gap:12px}.awai-ui h1{font-weight:500}@media(max-width:700px){.awai-ui main{grid-template-columns:minmax(0,1fr)}.awai-ui section{padding:20px;min-inline-size:0}.awai-ui .model-actions{display:flex;flex-wrap:wrap;gap:12px;margin-block:20px}.awai-ui .model-actions .awai-button{min-inline-size:48px;flex:1}.awai-ui textarea{min-inline-size:0}.awai-ui h3{font-size:1.125rem}}
 @media(max-width:700px){.awai-ui .model-actions{display:grid;grid-template-columns:minmax(0,1fr);justify-items:stretch}.awai-ui .model-actions .awai-button{inline-size:100%;flex:initial}}
+
+/* Model manager (AWAI-3203 stage 4a; Figma 293:178, 295:200, 298:690) */
+main.manager{grid-template-columns:minmax(0,1fr) 372px;align-items:start}
+main.manager .generate{grid-column:1/-1}
+.lead{color:var(--text);margin:0 0 1rem}
+.model-list{list-style:none;margin:0;padding:0;display:grid;gap:1rem}
+.model-row{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem 1rem;background:var(--base);border-radius:16px;padding:1rem 1.25rem}
+.model-row .info{flex:1 1 200px;min-width:200px}
+.model-row .name{color:var(--text);font-size:1.125rem;font-weight:500;margin:0}
+.model-row .detail{margin:0;font-size:.875rem}
+.badge{border-radius:999px;padding:.25rem .75rem;font-size:.8125rem;font-weight:500;white-space:nowrap}
+.badge.comfortable{background:var(--tonal);color:#1b2f57}
+.badge.tight{background:transparent;color:inherit;border:1.5px solid #85817d}
+.badge.no-fit{background:#5a1c1f;color:#fff}
+.badge.unknown{border:1.5px dashed #85817d;color:inherit}
+.note{font-size:.8125rem;margin:1rem 0 0}
+.loaded-card{background:var(--base);border-radius:16px;padding:1rem;margin-block-end:1.25rem}
+.loaded-card p{margin:0}.label{font-size:.875rem;color:var(--muted)}.loaded-name{font-size:1.125rem;font-weight:500;color:var(--text)!important}
+.meters{display:grid;gap:1rem;margin-block-end:1.5rem}
+.meter-row{display:flex;justify-content:space-between;gap:1rem;font-size:.8125rem;color:var(--muted)}
+.meter-row span:last-child{color:var(--text);text-align:end}
+.track{block-size:8px;border-radius:999px;background:var(--base);margin-block-start:.375rem;overflow:hidden}
+.track.unknown{background:transparent;border:1.5px dashed #85817d}
+.fill{block-size:100%;background:var(--blue);border-radius:999px}
+@media (max-width:760px){body{padding:1.5rem}main.manager{grid-template-columns:minmax(0,1fr)}main.manager .device{grid-row:1}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.model-row .meter{flex:1 1 100%}
+.devices{grid-column:1/-1}.devices>.label{margin:0 0 1rem}#devices-status:empty{display:none}
+.device-list{list-style:none;padding:0;margin:1.25rem 0 0;display:grid;gap:1rem;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))}
+.device-card{background:var(--base);border-radius:16px;padding:1.25rem;display:grid;gap:.75rem;align-content:start}.device-card h3{margin:0;font-size:1.125rem}.device-card p{margin:0}
+.device-card .loaded-name{font-size:1rem}.device-card .warn{color:#ffb4a9}

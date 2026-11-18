@@ -1,0 +1,1 @@
+{"identifier":"soudan-local","description":"Consultation memo on the device; host version only. No external network, filesystem, installer, share or shell permissions.","windows":["main"],"permissions":["allow-awai-host-info"]}

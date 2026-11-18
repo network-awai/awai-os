@@ -1,0 +1,32 @@
+;; Shared model manager cases on Basilisp. usage (from apps/murakumo):
+;;   PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=contracts/src basilisp run test/manager_cases.lpy
+(ns manager-cases
+  (:require [awai.inference.manager :as m])
+  (:import json sys))
+
+(def functions
+  {"catalog-problems" m/catalog-problems "estimate-bytes" m/estimate-bytes "budget-bytes" m/budget-bytes
+   "fit" m/fit "recommend" m/recommend "usage-problems" m/usage-problems "freshness" m/freshness
+   "device-view" m/device-view})
+
+(defn from-json [v kw?]
+  (cond (instance? python/dict v) (into {} (map (fn [[k x]] [(if kw? (keyword k) k) (from-json x kw?)]) (.items v)))
+        (instance? python/list v) (mapv #(from-json % kw?) v)
+        :else v))
+
+(defn plain [v]
+  (cond (map? v) (into {} (map (fn [[k x]] [(if (keyword? k) (name k) k) (plain x)]) v))
+        (vector? v) (mapv plain v)
+        (seq? v) (mapv plain v)
+        :else v))
+
+(let [raw (json/loads (.read (python/open "test/manager-cases.json")))
+      cases (vec raw)
+      failures (keep (fn [c]
+                       (let [got (plain (apply (get functions (.get c "fn")) (from-json (.get c "args") true)))
+                             want (from-json (.get c "expect") false)]
+                         (when (not= got want) (str (.get c "name") ": got " got " want " want))))
+                     cases)]
+  (doseq [f failures] (println "FAIL" f))
+  (println "basilisp manager cases" (count cases) "failures" (count failures))
+  (sys/exit (if (seq failures) 1 0)))

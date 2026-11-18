@@ -1,0 +1,39 @@
+  mAppUidStatsMap: OK
+  mStatsMapA: OK
+  mStatsMapB: OK
+  mIfaceStatsMap: OK
+
+BPF map content:
+  mCookieTagMap:
+    cookie=412 tag=0x1 uid=10143
+    cookie=296 tag=0xfffffe01 uid=1073
+  mUidCounterSetMap:
+    uid=1001 set=1
+    uid=10127 set=1
+    uid=1068 set=1
+    uid=10145 set=1
+    uid=1002 set=1
+    uid=10121 set=1
+    uid=1000 set=1
+    uid=1073 set=1
+    uid=10122 set=1
+  mAppUidStatsMap:
+    uid rxBytes rxPackets txBytes txPackets
+    1020 101215 277 43909 129
+    1000 21535 74 138 2
+    0 0 0 3568 48
+    10143 5209 9 1436 10
+    1051 18523 40 3280 39
+    1073 7147 33 3608 31
+  mStatsMapA:
+    ifaceIndex ifaceName tag_hex uid_int cnt_set rxBytes rxPackets txBytes txPackets
+  mStatsMapB:
+    ifaceIndex ifaceName tag_hex uid_int cnt_set rxBytes rxPackets txBytes txPackets
+  mIfaceStatsMap:
+    ifaceIndex ifaceName rxBytes rxPackets txBytes txPackets
+    2 dummy0 9894 45 20220 97
+    1 lo 2305 19 2305 19
+    16 wlan0 45635 119 37169 150
+    15 eth0 40041 114 41025 153
+
+SkDestroyListener logs:

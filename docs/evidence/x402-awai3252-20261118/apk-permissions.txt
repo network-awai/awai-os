@@ -1,0 +1,7 @@
+package: network.itonami.x402
+permission: network.itonami.x402.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+uses-permission: name='network.itonami.x402.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'
+package: name='network.itonami.x402' versionCode='1000' versionName='0.1.0' platformBuildVersionName='17' platformBuildVersionCode='37' compileSdkVersion='37' compileSdkVersionCodename='17'
+sdkVersion:'24'
+targetSdkVersion:'37'
+native-code: 'arm64-v8a'

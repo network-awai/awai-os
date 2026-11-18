@@ -7,13 +7,21 @@ Follow the workspace-level AGENTS.md architecture and Linear tracking rules.
 | Path | Contents |
 | --- | --- |
 | `android/` | Awai OS on Android AOSP: Home, Store, setup, SystemUI overlays, desktop PC work |
-| `apps/` | Bundled apps (Itonami, Murakumo inference, Drive, Yotei) |
+| `apps/` | Existing in-tree integrations and pointers to independent app repositories |
 | `dapps/` | Otehon dapps (D1, reward loop, Saifu, Sanka, Wellbecoming) |
 | `otehon/` | Itonami shell UI shared with Android, and Otehon fleet sources: Meiji, Bot fleet, Soshiki, storage |
 | `packages/`, `store/`, `distribution/`, `deploy/` | Shared packages, signed catalog, distribution Worker, awai.link relay |
 | `ci/`, `scripts/`, `tests/` | Active checks and operator tools |
 | `docs/` | Decisions, design and dated evidence (`docs/evidence/` is a record; never rewrite it) |
 | `archive/` | Deprecated material kept for history; not built, not an install path |
+
+## Product app ownership
+
+Keep each product app in its owning repository. Its source, native host, tests,
+package identity and releases are owned there. Awai OS owns AOSP integration,
+Home, package discovery, Store catalog and distribution verification. Use
+pinned, signed artifacts for OS integrations that need an app binary. See
+[app ownership](docs/app-ownership.md) for the migration and consumer contract.
 
 ## Product OS direction — Android AOSP (owner decision 2026-11-17)
 
@@ -95,6 +103,17 @@ state, no ChatGPT approval. The Hermes `mcp_servers` route (D14) is for
 agent-invoked tools, not for apps with a screen. Implementation is still open;
 this records only the intake choice.
 
+## In-app storage on Awai Android and Itonami dapps (AWAI-3386)
+
+Follow [the shared app storage contract](docs/otehon/app-storage.md). Use
+AwaiFS/WNFS for private snapshots, Kotobase for basis-bound graph queries,
+and Yataverse for verified ciphertext blocks over the applicable Awai
+Network transport. Reuse the owning SDKs and app-scoped host capabilities.
+Keep private indexing and key custody within the authorized client. Route
+external browser operations through the canonical Kotoba broker and fresh
+per-operation consent. The current bounded Drive owner-store profile and the
+WNFS migration have separate readback and release evidence.
+
 ## Meiji desktop entry (AWAI-195, owner direction 2026-11-16)
 
 Owner direction 2026-11-16, AWAI-2820: if former execution keys cannot be
@@ -157,8 +176,9 @@ QMP stop request is not evidence of a guest acknowledging clean shutdown.
 
 ## UI design and writing
 
-Apply [the shared UI rules](docs/design/interface-principles.md) to Awai OS and
-its bundled apps. Prefer recognizable controls, hierarchy, selection feedback
+Apply [the shared UI rules](docs/design/interface-principles.md) and the
+[Awai design system](docs/design/awai-design-system.md) (tokens, components and
+shared rules, AWAI-3402) to Awai OS and its bundled apps. Prefer recognizable controls, hierarchy, selection feedback
 and concise status labels over explanatory paragraphs. Keep implementation
 notes, measurement caveats and design rationale in engineering documentation;
 show optional technical facts through named disclosure controls. If an action

@@ -1,14 +1,19 @@
-import {chatOperation,chatHistoryOperation,chatSessionsOperation,chatCreateOperation} from './bot-chat-contract.js';
+import {chatOperation,chatHistoryOperation,chatSessionsOperation,chatCreateOperation,chatBotsOperation,chatMediaOperation} from './bot-chat-contract.js';
 import {aliasOperations,identityOperations} from './mail-alias-contract.js';
+import {supportOperations} from './awai-support.js';
+import {voiceOperation} from './voice-channel-contract.js';
+import {egovOperation} from './egov-host.js';
 // External operations of the OS shell and the phone page, through the shared
 // kotoba.app.client-runtime.v1 broker. Each one asks the person first.
 import { createClientConsentHost, createClientOperationBroker } from "./vendor-runtime.gen.js";
 
 const PASSPORT_ORIGIN = "https://mainnet.optimism.io";
 
-export function osOperations(relayOrigin) {
+export function osOperations(relayOrigin, supportDeskOrigin) {
   return [
-    chatOperation,chatHistoryOperation,...aliasOperations,...identityOperations,
+    ...supportOperations(supportDeskOrigin),
+    chatOperation,chatHistoryOperation,chatSessionsOperation,chatCreateOperation,chatBotsOperation,chatMediaOperation,voiceOperation,...aliasOperations,...identityOperations,
+    egovOperation,
     {
       capability: "awai-link",
       service: "awai-relay",

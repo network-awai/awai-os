@@ -1,0 +1,1 @@
+11-18 10:42:13.832   557  3279 I am_anr  : [0,3203,network.itonami.datacontribution,680017478,Input dispatching timed out (f063dba network.itonami.datacontribution/network.itonami.datacontribution.MainActivity (server) is not responding. Waited 5001ms for FocusEvent(hasFocus=true)).]

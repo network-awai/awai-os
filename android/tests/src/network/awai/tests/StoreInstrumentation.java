@@ -21,10 +21,19 @@ public final class StoreInstrumentation extends Instrumentation {
         byte[] apk=catalog.verifiedApk(c,"network.itonami.yotei");check(apk.length>0,"APK bytes and package/signer/version");
         check(catalog.app("network.itonami.app").getLong("versionCode")==1000,"itonami version");
         byte[] second=catalog.verifiedApk(c,"network.itonami.app");check(second.length>20*1024*1024,"itonami APK bytes and package/signer/version");
+        if(catalog.json().contains("\"network.itonami.torihiki.bot\"")){byte[] bot=catalog.verifiedApk(c,"network.itonami.torihiki.bot");check(bot.length>20*1024*1024,"torihiki bot APK bytes and package/signer/version");}
+        if(catalog.json().contains("\"network.itonami.tabimikake\"")){byte[] tabi=catalog.verifiedApk(c,"network.itonami.tabimikake");check(tabi.length>20*1024*1024,"tabi mikake APK bytes and package/signer/version");}
+        if(catalog.json().contains("\"network.itonami.deai\"")){byte[] deai=catalog.verifiedApk(c,"network.itonami.deai");check(deai.length>10*1024*1024,"deai APK bytes and package/signer/version");}
+        if(catalog.json().contains("\"network.itonami.hiring\"")){byte[] hiring=catalog.verifiedApk(c,"network.itonami.hiring");check(hiring.length>10*1024*1024,"hiring APK bytes and package/signer/version");}
+        if(catalog.json().contains("\"network.itonami.kumade\"")){byte[] kumade=catalog.verifiedApk(c,"network.itonami.kumade");check(kumade.length>10*1024*1024,"kumade APK bytes and package/signer/version");}
         check("packages/aozora.apk".equals(Catalog.assetFor("app.aozora")),"Aozora fixed bundled asset");
         check("online-aozora.apk".equals(Catalog.onlineFileFor("app.aozora")),"Aozora fixed online file");
         check(Catalog.maxApkBytes("app.aozora")==64*1024*1024,"Aozora size limit");
-        refuses(()->catalog.verifiedApk(c,"app.aozora"),"Aozora unavailable without signed catalog entry");
+        if (catalog.json().contains("\"app.aozora\"")) {
+            check(catalog.verifiedApk(c,"app.aozora").length > 0,"Aozora APK bytes and package/signer/version");
+        } else {
+            refuses(()->catalog.verifiedApk(c,"app.aozora"),"Aozora unavailable without signed catalog entry");
+        }
         refuses(()->catalog.verifiedApk(c,"network.awai.notallowed"),"unknown APK refuses");
         byte[] changed=raw.clone();changed[0]^=1;check(!Integrity.authentic(changed,sig,key),"changed metadata refuses");
         refuses(()->catalog.app("network.awai.notallowed"),"unknown app refuses");

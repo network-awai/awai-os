@@ -1,0 +1,2 @@
+import test from'node:test';import assert from'node:assert/strict';import{admitted,authority}from'../agent-tunnel.mjs';
+test('wired tunnel accepts only selected peer and exact TLS CONNECT authority',()=>{assert.equal(admitted('CONNECT',authority,'10.77.0.2'),true);for(const args of [['GET',authority,'10.77.0.2'],['CONNECT','example.org:443','10.77.0.2'],['CONNECT',authority,'10.77.0.3'],['CONNECT',authority+'.evil','10.77.0.2'],['CONNECT','21mbp.tail110d8b.ts.net:443','10.77.0.2']])assert.equal(admitted(...args),false)});

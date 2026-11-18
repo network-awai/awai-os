@@ -1,6 +1,7 @@
 // This device's key and its link to an account. The private key cannot be exported.
 // Local state is a convenience: the link is verified again each time it is loaded.
 import { compressP256, p256Did, verifyLink } from "./link.js";
+import { issueWnfsAccountProof } from "./wnfs-account.js";
 
 const DB = "otehon-device";
 const STORE = "keys";
@@ -76,6 +77,21 @@ export async function sessionRetention(requestPersistence = false) {
     }
   } catch { /* Browser policy or storage denial stays unknown. */ }
   return { saved: Boolean(saved?.request && saved?.response), persistent };
+}
+
+export async function signWnfsAccountAction(app, action) {
+  const db = await open();
+  try {
+    // A broker request cannot create a key or repair a missing link.
+    const pair = await run(db, "readonly", (store) => store.get(KEY_ID));
+    await verifyDeviceKeyPair(pair);
+    const saved = read(SESSION_KEY);
+    const proof = await issueWnfsAccountProof(pair, saved, app, action);
+    if (JSON.stringify(read(SESSION_KEY)) !== JSON.stringify(saved)) throw Error("account-link-changed");
+    return proof;
+  } finally {
+    db.close();
+  }
 }
 
 export function clearSession() {

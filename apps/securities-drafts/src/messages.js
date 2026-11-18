@@ -1,0 +1,98 @@
+// UI messages by stable key.
+const ja = {
+  'app.title': '証券の下書き', 'nav.label': '表示の切り替え', 'nav.draft': '決済指図を作る', 'nav.import': '取り込む', 'nav.holdings': '保有残高', 'nav.drafts': '一覧', 'nav.operations': '外部操作',
+  'env.web': 'Web', 'env.tauri': 'Awai Shell / Tauri v3', 'env.line': '{runtime} · ISO 20022 sese.023 / semt.002 · 端末内だけで作成・検査・保存',
+  'host.failed': 'ホストを確認できませんでした。', 'state.failed': '保存した下書きを読めませんでした。',
+  'state.unreadable': '保存した下書きの形式を読めません。上書きしないよう、保存・承認・削除を止めています。', 'state.readOnly': '保存した下書きを読めないため、保存・承認・削除はできません。',
+  'save.conflict': '別の画面で下書きが変わっていたので、読み直しました。もう一度操作してください。', 'drafts.full': '保存は {max} 件までです。不要なものを削除してから保存してください。',
+  'draft.heading': '自分の口座の決済指図（sese.023）', 'draft.note': '自分の証券口座の受け渡しの指図を、この端末の中で下書きし検査します。発注・送信・署名・証券や代金の移動はしません。下書きは見直したうえで、自分のカストディアンから送ってください。',
+  'field.txId': '指図の参照（TxId）', 'field.direction': '受け・渡し', 'field.paymentType': '代金', 'field.settlementDate': '決済日', 'field.isin': '銘柄（ISIN）', 'field.description': '銘柄の説明（任意）',
+  'field.quantity': '数量（単位数）', 'field.safekeepingAccount': '保管口座', 'field.transactionType': '取引の種類', 'field.placeOfSettlement': '決済場所（BIC）', 'field.agent': '相手方の代理人（BIC）',
+  'field.currency': '通貨（ISO 4217）', 'field.amount': '決済金額',
+  'direction.receive': '受け（RECE）', 'direction.deliver': '渡し（DELI）', 'paymentType.free': '代金なし（FREE）', 'paymentType.against-payment': '代金あり（APMT）',
+  'draft.preview': 'sese.023 のプレビュー', 'draft.save': '下書きを保存', 'draft.saved': '下書きを保存しました。', 'draft.invalid': '入力を確認してください。',
+  'import.heading': '電文を取り込む', 'import.note': 'awai-securities-ops の bot などが作った sese.023.001.09（決済指図）か、カストディアンから受け取った semt.002.001.10（保有残高の報告）の XML を貼り付けます。この app が同じ項目から作る電文と完全に一致し、L1 の検査を通るものだけを取り込みます。',
+  'import.label': 'XML', 'import.check': '検査する', 'import.save': '検査して取り込む', 'import.ok': '取り込める電文です（{message}）。', 'import.saved': '取り込みました。',
+  'holdings.heading': '保有残高とポジションの照合', 'holdings.note': '取り込んだ保有残高の報告（semt.002）と、自分で記録しているポジションを銘柄ごとに比べます。比べるだけで、何も送りません。',
+  'holdings.statement': '保有残高の報告', 'holdings.none': '先に「取り込む」で semt.002 を取り込んでください。', 'holdings.positions': '自分のポジション（1 行に「ISIN 数量」。売り持ちは数量に - を付ける）',
+  'holdings.compare': '比べる', 'holdings.isin': '銘柄', 'holdings.statementQty': '報告', 'holdings.holderQty': '自分の記録', 'holdings.result': '結果', 'holdings.summary': '{match} 件一致・{other} 件要確認',
+  'result.match': '一致', 'result.quantity-differs': '数量が違う', 'result.missing-in-statement': '報告にない', 'result.missing-in-positions': '自分の記録にない',
+  'problem.txId.empty': '指図の参照を入力してください。', 'problem.txId.long': '指図の参照は 35 文字以内です。', 'problem.direction.code': '受けか渡しを選んでください。', 'problem.paymentType.code': '代金の有無を選んでください。',
+  'problem.settlementDate.format': '決済日は、実在する日付を YYYY-MM-DD で入力してください。', 'problem.isin.format': 'ISIN は英大文字 2 文字＋英数字 9 文字＋数字 1 文字の 12 文字です。', 'problem.isin.checksum': 'ISIN の検査数字が合いません。',
+  'problem.description.long': '説明は 140 文字以内です。', 'problem.quantity.format': '数量は 100 や 2.5 のような 0 より大きい数で入力してください（18 桁、小数 17 桁まで）。',
+  'problem.safekeepingAccount.empty': '保管口座を入力してください。', 'problem.safekeepingAccount.long': '保管口座は 35 文字以内です。', 'problem.transactionType.code': '取引の種類を選んでください。',
+  'problem.placeOfSettlement.format': '決済場所の BIC は 8 文字か 11 文字です。', 'problem.agent.format': '代理人の BIC は 8 文字か 11 文字です。',
+  'problem.currency.format': '通貨は英大文字 3 文字で入力してください。', 'problem.amount.format': '金額は 18950.00 のような 0 より大きい数で入力してください（小数 5 桁まで）。',
+  'problem.import.malformed': 'XML として読めません。', 'problem.import.unsupported': 'DOCTYPE・コメント・処理命令を含む XML は取り込みません。', 'problem.import.entity': '使えない文字参照があります。',
+  'problem.import.size': 'XML が大きすぎます（20,000 文字まで）。', 'problem.import.message': 'sese.023.001.09 か semt.002.001.10 の電文ではありません。',
+  'problem.import.normalized': '値の前後の空白や大文字・小文字が、この app の作る形と違います。', 'problem.import.subset': 'この app が扱わない要素や値が含まれています。',
+  'problem.statement.shape': '保有残高の報告の形が正しくありません。', 'problem.statement.date': '報告日が正しくありません。', 'problem.statement.code': '報告の頻度・更新の種類・基準のコードが正しくありません。',
+  'problem.statement.account': '保管口座が正しくありません。', 'problem.statement.size': '残高の行が多すぎます（200 行まで）。', 'problem.statement.balance': '銘柄（ISIN）か数量が正しくない行があります。',
+  'problem.positions.line': '{line} 行目を読めません（「ISIN 数量」の形で、ISIN の検査数字も確認してください）。', 'problem.positions.duplicate': '同じ銘柄が 2 回以上あります。',
+  'check.heading': 'L1 の検査（構文）', 'check.xsd-facets': 'XSD の値の制約（日付、ISIN、BIC、数量・金額の桁数、コード）', 'check.round-trip': '電文を読み戻すと同じ内容になる',
+  'check.pass': '合格', 'check.fail': '不合格', 'check.levels': 'L2（市場の慣行）と L3（カストディアンや決済機関での受付）は検査していません。owner の決定（ADR 0042 の O3・O5）を待っています。',
+  'drafts.heading': '保存したもの', 'drafts.empty': 'まだありません。', 'drafts.count': '{count}件',
+  'drafts.kind.instruction': '決済指図', 'drafts.kind.statement': '保有残高の報告', 'drafts.copy': 'XML をコピー', 'drafts.copied': 'コピーしました。', 'drafts.copyFailed': 'コピーできませんでした。',
+  'drafts.approve': '見直した（承認）', 'drafts.unapprove': '承認を取り消す', 'drafts.approved': '承認しました。何も送っていません。', 'drafts.unapproved': '承認を取り消しました。',
+  'drafts.status.draft': '下書き', 'drafts.status.approved': '承認済み・未送信', 'drafts.source.form': 'この端末で作成', 'drafts.source.import': '取り込み',
+  'drafts.delete': '削除', 'drafts.deleteConfirm': 'もう一度押すと削除', 'drafts.deleteArmed': '元に戻せません。削除するにはもう一度押してください。', 'drafts.deleted': '削除しました。',
+  'drafts.instruction': '{dir} {quantity} · {isin}', 'drafts.statement': '{date} · {account} · {count} 銘柄', 'save.failed': '保存できませんでした（{code}）。',
+  'ops.heading': '外部操作（すべて無効）', 'ops.note': 'この版の実行設定には外部操作が一つもなく、インターネットにも接続しません。発注はこの app の機能にありません。下の操作は後の版で、owner の決定のあと、操作ごとに同意を取ってから行います。', 'ops.disabled': '無効', 'ops.waits': '待っているもの: {what}',
+  'op.custodian.submit': '自分のカストディアンに決済指図を送る', 'op.custodian.statement': '自分のカストディアンから保有残高の報告と決済確認を受け取る', 'op.itonami.receive': '自分の awai-securities-ops bot から下書きと報告を受け取る',
+  'waits.custodian.submit': 'owner の決定（ADR 0042 の O1・O2）', 'waits.custodian.statement': 'owner の決定（ADR 0042 の O2）', 'waits.itonami.receive': '端末内で受け渡す経路の宣言',
+  'footer': '自分の口座の下書きと確認だけを行います。投資・金融・法律の助言ではありません。'};
+const en = {
+  'app.title': 'Securities Drafts', 'nav.label': 'Views', 'nav.draft': 'New instruction', 'nav.import': 'Import', 'nav.holdings': 'Holdings', 'nav.drafts': 'Saved', 'nav.operations': 'External operations',
+  'env.web': 'Web', 'env.tauri': 'Awai Shell / Tauri v3', 'env.line': '{runtime} · ISO 20022 sese.023 / semt.002 · drafted, checked and saved on this device only',
+  'host.failed': 'Could not check the host.', 'state.failed': 'Could not read the saved drafts.',
+  'state.unreadable': 'The saved drafts are in a format this app cannot read. Saving, approving and deleting are off so they are not overwritten.', 'state.readOnly': 'The saved drafts cannot be read, so saving, approving and deleting are off.',
+  'save.conflict': 'The drafts changed in another window and were read again. Try once more.', 'drafts.full': 'You can keep up to {max} items. Delete one before saving.',
+  'draft.heading': 'Settlement instruction for your own account (sese.023)', 'draft.note': 'Draft and check, on this device, a delivery or receipt instruction for your own securities account. Nothing is ordered, sent, signed or moved. Review the draft, then send it through your own custodian.',
+  'field.txId': 'Instruction reference (TxId)', 'field.direction': 'Receive or deliver', 'field.paymentType': 'Payment', 'field.settlementDate': 'Settlement date', 'field.isin': 'Security (ISIN)', 'field.description': 'Security description (optional)',
+  'field.quantity': 'Quantity (units)', 'field.safekeepingAccount': 'Safekeeping account', 'field.transactionType': 'Transaction type', 'field.placeOfSettlement': 'Place of settlement (BIC)', 'field.agent': "Counterparty's agent (BIC)",
+  'field.currency': 'Currency (ISO 4217)', 'field.amount': 'Settlement amount',
+  'direction.receive': 'Receive (RECE)', 'direction.deliver': 'Deliver (DELI)', 'paymentType.free': 'Free of payment (FREE)', 'paymentType.against-payment': 'Against payment (APMT)',
+  'draft.preview': 'sese.023 preview', 'draft.save': 'Save draft', 'draft.saved': 'Draft saved.', 'draft.invalid': 'Check the fields.',
+  'import.heading': 'Import a message', 'import.note': 'Paste sese.023.001.09 (a settlement instruction, for example one the awai-securities-ops bot drafted) or semt.002.001.10 (a custody statement from your custodian). Only a message that is exactly what this app builds from the same fields, and that passes the L1 checks, is imported.',
+  'import.label': 'XML', 'import.check': 'Check', 'import.save': 'Check and import', 'import.ok': 'This message can be imported ({message}).', 'import.saved': 'Imported.',
+  'holdings.heading': 'Holdings against your positions', 'holdings.note': 'Compare an imported custody statement (semt.002) with the positions you keep yourself, security by security. Nothing is sent.',
+  'holdings.statement': 'Custody statement', 'holdings.none': 'Import a semt.002 statement first.', 'holdings.positions': 'Your positions (one "ISIN quantity" per line; a short position has a minus sign)',
+  'holdings.compare': 'Compare', 'holdings.isin': 'Security', 'holdings.statementQty': 'Statement', 'holdings.holderQty': 'Your record', 'holdings.result': 'Result', 'holdings.summary': '{match} match, {other} to check',
+  'result.match': 'Match', 'result.quantity-differs': 'Quantity differs', 'result.missing-in-statement': 'Not in the statement', 'result.missing-in-positions': 'Not in your record',
+  'problem.txId.empty': 'Enter an instruction reference.', 'problem.txId.long': 'The instruction reference can be at most 35 characters.', 'problem.direction.code': 'Choose receive or deliver.', 'problem.paymentType.code': 'Choose free or against payment.',
+  'problem.settlementDate.format': 'Enter a real date as YYYY-MM-DD.', 'problem.isin.format': 'An ISIN has 12 characters: 2 capital letters, 9 letters or digits, 1 digit.', 'problem.isin.checksum': 'The ISIN check digit does not match.',
+  'problem.description.long': 'The description can be at most 140 characters.', 'problem.quantity.format': 'Enter a quantity above 0 such as 100 or 2.5 (18 digits, 17 after the point).',
+  'problem.safekeepingAccount.empty': 'Enter the safekeeping account.', 'problem.safekeepingAccount.long': 'The safekeeping account can be at most 35 characters.', 'problem.transactionType.code': 'Choose a transaction type.',
+  'problem.placeOfSettlement.format': 'The place of settlement BIC has 8 or 11 characters.', 'problem.agent.format': "The agent's BIC has 8 or 11 characters.",
+  'problem.currency.format': 'Enter the currency as 3 capital letters.', 'problem.amount.format': 'Enter an amount above 0 such as 18950.00 (at most 5 decimal places).',
+  'problem.import.malformed': 'This cannot be read as XML.', 'problem.import.unsupported': 'XML with a DOCTYPE, comments or processing instructions is not imported.', 'problem.import.entity': 'It contains a character reference this app does not accept.',
+  'problem.import.size': 'The XML is too large (20,000 characters at most).', 'problem.import.message': 'This is not a sese.023.001.09 or semt.002.001.10 message.',
+  'problem.import.normalized': 'Spaces or letter case in a value differ from what this app builds.', 'problem.import.subset': 'It contains elements or values this app does not handle.',
+  'problem.statement.shape': 'The custody statement is not in the right shape.', 'problem.statement.date': 'The statement date is not valid.', 'problem.statement.code': 'The frequency, update type or basis code is not valid.',
+  'problem.statement.account': 'The safekeeping account is not valid.', 'problem.statement.size': 'Too many balance lines (200 at most).', 'problem.statement.balance': 'A line has an invalid ISIN or quantity.',
+  'problem.positions.line': 'Line {line} cannot be read (use "ISIN quantity" and check the ISIN check digit).', 'problem.positions.duplicate': 'A security appears more than once.',
+  'check.heading': 'L1 checks (syntax)', 'check.xsd-facets': 'XSD value constraints (dates, ISIN, BIC, quantity and amount digits, codes)', 'check.round-trip': 'Reading the message back gives the same content',
+  'check.pass': 'Pass', 'check.fail': 'Fail', 'check.levels': 'L2 (market practice) and L3 (acceptance by a custodian or settlement system) are not checked; they wait on the owner decisions O3 and O5 of ADR 0042.',
+  'drafts.heading': 'Saved', 'drafts.empty': 'Nothing saved yet.', 'drafts.count': '{count} saved',
+  'drafts.kind.instruction': 'Settlement instruction', 'drafts.kind.statement': 'Custody statement', 'drafts.copy': 'Copy XML', 'drafts.copied': 'Copied.', 'drafts.copyFailed': 'Could not copy.',
+  'drafts.approve': 'Reviewed (approve)', 'drafts.unapprove': 'Withdraw approval', 'drafts.approved': 'Approved. Nothing has been sent.', 'drafts.unapproved': 'Approval withdrawn.',
+  'drafts.status.draft': 'Draft', 'drafts.status.approved': 'Approved, not sent', 'drafts.source.form': 'Made on this device', 'drafts.source.import': 'Imported',
+  'drafts.delete': 'Delete', 'drafts.deleteConfirm': 'Tap again to delete', 'drafts.deleteArmed': 'This cannot be restored. Tap again to delete it.', 'drafts.deleted': 'Deleted.',
+  'drafts.instruction': '{dir} {quantity} · {isin}', 'drafts.statement': '{date} · {account} · {count} securities', 'save.failed': 'Could not save ({code}).',
+  'ops.heading': 'External operations (all disabled)', 'ops.note': 'This version declares no external operations at runtime and does not connect to the internet. Ordering is not a feature of this app. A later version will run each of these only after the owner decides, and only after asking you for that operation.', 'ops.disabled': 'Disabled', 'ops.waits': 'Waiting on: {what}',
+  'op.custodian.submit': 'Send the settlement instruction to your own custodian', 'op.custodian.statement': 'Receive custody statements and settlement confirmations from your own custodian', 'op.itonami.receive': 'Receive drafts and statements from your own awai-securities-ops bot',
+  'waits.custodian.submit': 'owner decisions O1 and O2 of ADR 0042', 'waits.custodian.statement': 'owner decision O2 of ADR 0042', 'waits.itonami.receive': 'a declared on-device transport',
+  'footer': 'Drafts and reviews for your own account only. Not investment, financial or legal advice.'};
+export const MESSAGES = Object.freeze({ja, en});
+export function pickLocale(languages) {
+  for (const l of languages ?? []) { const base = String(l).toLowerCase().split('-')[0]; if (base in MESSAGES) return base; }
+  return 'ja';
+}
+export function translator(locale) {
+  const table = MESSAGES[locale] ?? ja;
+  return (key, params = {}) => {
+    const text = table[key] ?? ja[key];
+    if (text === undefined) throw Error('missing message ' + key);
+    return text.replace(/\{(\w+)\}/g, (_, name) => { if (!(name in params)) throw Error(`missing ${name} for ${key}`); return String(params[name]); });
+  };
+}

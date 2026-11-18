@@ -30,6 +30,46 @@ test('multi-app catalog admits a Tauri-sized artifact within the shared ceiling'
   const over={...app,artifacts:[{...apk,bytes:64*1024*1024+1}]};
   assert.equal(d.validCatalog(JSON.stringify({...c,apps:[over]}),100),false);
 });
+test('the Torihiki Bot Tauri artifact fits the shared ceiling and keeps its own asset name',()=>{
+  const bot={...app,id:'network.itonami.torihiki.bot',versionCode:1000,artifacts:[{...apk,asset:'packages/torihiki-bot.apk',bytes:29506324}]};
+  assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,bot]}),100),true);
+  for(const asset of ['packages/torihiki.bot.apk','packages/Torihiki-Bot.apk','packages/torihiki-bot.apk/../x.apk']){
+    const bad={...bot,artifacts:[{...apk,asset,bytes:29506324}]};
+    assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,bad]}),100),false,asset);
+  }
+});
+test('the Tabi Mikake Tauri artifact fits the shared ceiling and keeps its own asset name',()=>{
+  const tabi={...app,id:'network.itonami.tabimikake',versionCode:1000,artifacts:[{...apk,asset:'packages/tabi-mikake.apk',bytes:29621276}]};
+  assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,tabi]}),100),true);
+  for(const asset of ['packages/tabi_mikake.apk','packages/Tabi-Mikake.apk','packages/tabi-mikake.apk/../x.apk']){
+    const bad={...tabi,artifacts:[{...apk,asset,bytes:29621276}]};
+    assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,bad]}),100),false,asset);
+  }
+});
+test('the Deai Tauri artifact fits the shared ceiling and keeps its own asset name',()=>{
+  const deai={...app,id:'network.itonami.deai',versionCode:1000,artifacts:[{...apk,asset:'packages/deai.apk',bytes:30*1024*1024}]};
+  assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,deai]}),100),true);
+  for(const asset of ['packages/Deai.apk','packages/deai.apk/../x.apk','packages/deai.APK']){
+    const bad={...deai,artifacts:[{...apk,asset,bytes:30*1024*1024}]};
+    assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,bad]}),100),false,asset);
+  }
+});
+test('the Hiring Tauri artifact fits the shared ceiling and keeps its own asset name',()=>{
+  const hiring={...app,id:'network.itonami.hiring',versionCode:1000,artifacts:[{...apk,asset:'packages/hiring.apk',bytes:20583441}]};
+  assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,hiring]}),100),true);
+  for(const asset of ['packages/Hiring.apk','packages/hiring_.apk','packages/hiring.apk/../x.apk']){
+    const bad={...hiring,artifacts:[{...apk,asset,bytes:20583441}]};
+    assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,bad]}),100),false,asset);
+  }
+});
+test('the Kumade Tauri artifact fits the shared ceiling and keeps its own asset name',()=>{
+  const kumade={...app,id:'network.itonami.kumade',versionCode:1000,artifacts:[{...apk,asset:'packages/kumade.apk',bytes:21000000}]};
+  assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,kumade]}),100),true);
+  for(const asset of ['packages/Kumade.apk','packages/kumade_.apk','packages/kumade.apk/../x.apk']){
+    const bad={...kumade,artifacts:[{...apk,asset,bytes:21000000}]};
+    assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,bad]}),100),false,asset);
+  }
+});
 test('local event lifecycle is shared and bounded',()=>{
   const e={id:'1',title:'散歩 <img src=x onerror=alert(1)>',at:200};
   const saved=JSON.parse(d.saveEvent('[]',JSON.stringify(e)));

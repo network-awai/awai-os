@@ -24,6 +24,8 @@ class InferenceClientPlugin(private val owner:Activity):Plugin(owner){
   p.packageName==provider && (p.protectionLevel and PermissionInfo.PROTECTION_MASK_BASE)==PermissionInfo.PROTECTION_SIGNATURE && pm.checkSignatures(owner.packageName,provider)==PackageManager.SIGNATURE_MATCH
  }catch(e:Exception){false}
  @Command fun operation(invoke:Invoke){val a=invoke.getArgs();val action=a.optString("action")
+  if(a.has("conversation")){try{require(a.optJSONObject("conversation")!=null);checkScope(a.getJSONObject("conversation"))}catch(e:Exception){invoke.reject("invalid-conversation-scope");return}}
+  if(action=="readImage"){try{invoke.resolve(readImage(a.optString("imageId"),a.optJSONObject("conversation")))}catch(e:Exception){invoke.reject("image-unavailable-or-scope-mismatch")};return}
   if(action=="saveImage"){saveImage(invoke,a.optString("imageId"));return}
   if(action=="info"){
    val info=JSObject().put("schema","awai.inference.client.v1").put("installed",available()).put("provider",provider).put("modalities",org.json.JSONArray().put("text")).put("remote",false)
@@ -57,7 +59,17 @@ class InferenceClientPlugin(private val owner:Activity):Plugin(owner){
   require(bytes.size.toLong()==meta.getLong("bytes")&&digest(bytes)==meta.getString("sha256"))
   val bounds=android.graphics.BitmapFactory.Options().apply{inJustDecodeBounds=true};android.graphics.BitmapFactory.decodeByteArray(bytes,0,bytes.size,bounds);require(bounds.outWidth==512&&bounds.outHeight==512&&bounds.outMimeType=="image/png")
   val f=imageFile(id);f.parentFile!!.mkdirs();check(f.createNewFile());f.outputStream().use{it.write(bytes)};require(digest(f.readBytes())==meta.getString("sha256"))
-  invoke.resolve(JSObject().put("schema","awai.inference.result.v1").put("requestId",id).put("modality","image").put("engine","stable-diffusion.cpp").put("modelSet",meta.getString("modelSet")).put("imageId",id).put("width",512).put("height",512).put("sha256",meta.getString("sha256")).put("bytes",bytes.size).put("dataUrl","data:image/png;base64,"+android.util.Base64.encodeToString(bytes,android.util.Base64.NO_WRAP)))
+  val scope=invoke.getArgs().optJSONObject("conversation");checkScope(scope)
+  val receipt=org.json.JSONObject().put("schema","awai.local-image-file.v1").put("imageId",id).put("sha256",meta.getString("sha256")).put("bytes",bytes.size).put("scope",scope?:org.json.JSONObject.NULL)
+  val record=java.io.File(f.parentFile,"$id.json");check(record.createNewFile());record.writeText(receipt.toString())
+  invoke.resolve(imageResponse(id,bytes,meta.getString("sha256")))
+ }
+ private fun checkScope(scope:org.json.JSONObject?){if(scope==null)return;require(scope.keys().asSequence().toSet()==setOf("botId","sessionId"));require(scope.getString("botId").matches(Regex("profile:[A-Za-z0-9_.-]+"))&&scope.getString("sessionId").matches(Regex("[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}")))}
+ private fun imageResponse(id:String,bytes:ByteArray,hash:String)=JSObject().put("schema","awai.inference.result.v1").put("requestId",id).put("modality","image").put("engine","stable-diffusion.cpp").put("modelSet","qwen-image-2.1-turbo-uncensored-ad-q2-k").put("imageId",id).put("width",512).put("height",512).put("sha256",hash).put("bytes",bytes.size).put("dataUrl","data:image/png;base64,"+android.util.Base64.encodeToString(bytes,android.util.Base64.NO_WRAP))
+ private fun readImage(id:String,wanted:org.json.JSONObject?):JSObject{
+  checkScope(wanted);val f=imageFile(id);require(f.isFile&&f.length() in 1..4194304);val record=java.io.File(f.parentFile,"$id.json");require(record.isFile&&record.length() in 1..4096);val m=org.json.JSONObject(record.readText());require(m.getString("schema")=="awai.local-image-file.v1"&&m.getString("imageId")==id)
+  val actual=m.optJSONObject("scope");require((wanted==null&&actual==null)||(wanted!=null&&actual!=null&&wanted.getString("botId")==actual.getString("botId")&&wanted.getString("sessionId")==actual.getString("sessionId")))
+  val b=f.readBytes();val hash=digest(b);require(hash==m.getString("sha256")&&b.size==m.getInt("bytes"));return imageResponse(id,b,hash)
  }
  private fun saveImage(invoke:Invoke,id:String){
   val f=try{imageFile(id).also{require(it.isFile&&it.length() in 1..4194304)}}catch(e:Exception){invoke.reject("unknown-image");return}

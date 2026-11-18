@@ -1,7 +1,9 @@
 // Download public pinned data only; never execute profile scripts or prompts.
 import fs from 'node:fs/promises';import {createHash} from 'node:crypto';import {execFile} from 'node:child_process';import {promisify} from 'node:util';
 const exec=promisify(execFile),sha=b=>createHash('sha256').update(b).digest('hex');
-const [catalogPath,output,connectorConfig]=process.argv.slice(2);if(!connectorConfig)throw Error('catalog/new-output/pinned-connector-config required');
+const [catalogPath,output,connectorConfig,archivedOption]=process.argv.slice(2);if(!connectorConfig)throw Error('catalog/new-output/pinned-connector-config required');
+// Archived public repositories stay held unless the operator names this option (owner decision AWAI-3477, 2026-11-18: rebuild after the repositories were archived). The commit is still pinned and the blob OID still checked.
+if(archivedOption!==undefined&&archivedOption!=='--allow-archived-public')throw Error('unknown option');const allowArchived=archivedOption==='--allow-archived-public';
 const cfg=JSON.parse(await fs.readFile(connectorConfig,'utf8'));if(sha(await fs.readFile(cfg.github))!==cfg.githubSha256)throw Error('GitHub binary pin mismatch');
 const raw=await fs.readFile(catalogPath),catalog=JSON.parse(raw);await fs.mkdir(output);
 const targets=catalog.organization.bots.filter(b=>b.profile.files.some(f=>f.path==='scripts/physai_measure.py'&&f.sha256==='abf4b59ccfc889da6a99cc8adb32da7bf6df6add6ecbc0766311a4bfbf83c823'));
@@ -12,9 +14,9 @@ async function worker(){while(next<chunks.length){const group=chunks[next++];
  let stdout='';try{stdout=(await exec(cfg.github,['api','graphql','-f',`query=${query}`],{timeout:30000,maxBuffer:4194304})).stdout;}catch(e){stdout=typeof e.stdout==='string'?e.stdout:'';}
  let data;try{data=JSON.parse(stdout).data;}catch{}
  for(let i=0;i<group.length;i++){const b=group[i],r=data?.[`r${i}`],v=r?.object;let row={botId:b.id,repository:b.profile.repository,commit:b.profile.commit,state:'source-unavailable'};
-  if(r?.isPrivate===false&&r.isArchived===false&&v&&typeof v.text==='string'&&v.byteSize<=65536){
+  if(r?.isPrivate===false&&(r.isArchived===false||allowArchived)&&v&&typeof v.text==='string'&&v.byteSize<=65536){
    const bytes=Buffer.from(v.text);const oid=createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
-   if(bytes.length===v.byteSize&&oid===v.oid){const digest=sha(bytes),file=`${b.name}-${digest}.edn`;await fs.writeFile(`${output}/${file}`,bytes,{flag:'wx',mode:0o600});row={...row,state:'verified-public',sha256:digest,gitBlobOid:oid,bytes:bytes.length,file};}
+   if(bytes.length===v.byteSize&&oid===v.oid){const digest=sha(bytes),file=`${b.name}-${digest}.edn`;await fs.writeFile(`${output}/${file}`,bytes,{flag:'wx',mode:0o600});row={...row,state:'verified-public',archived:r.isArchived===true,sha256:digest,gitBlobOid:oid,bytes:bytes.length,file};}
   }else if(r?.isPrivate===true||r?.isArchived===true)row.state='private-or-archived-held';rows.push(row);
  }
 }}

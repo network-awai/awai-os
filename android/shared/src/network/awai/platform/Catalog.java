@@ -44,18 +44,41 @@ public final class Catalog {
     public static String assetFor(String id) throws SecurityException {
         if ("network.itonami.yotei".equals(id)) return "packages/yotei.apk";
         if ("network.itonami.app".equals(id)) return "packages/itonami.apk";
+        if ("network.itonami.torihiki".equals(id)) return "packages/torihiki.apk";
+        if ("network.itonami.torihiki.bot".equals(id)) return "packages/torihiki-bot.apk";
+        if ("network.itonami.tabimikake".equals(id)) return "packages/tabi-mikake.apk";
+        if ("network.itonami.deai".equals(id)) return "packages/deai.apk";
+        if ("network.itonami.hiring".equals(id)) return "packages/hiring.apk";
+        if ("network.itonami.kumade".equals(id)) return "packages/kumade.apk";
         if ("app.aozora".equals(id)) return "packages/aozora.apk";
         throw new SecurityException("unknown-app");
     }
     public static String onlineFileFor(String id) throws SecurityException {
         if ("network.itonami.yotei".equals(id)) return "online-yotei.apk";
         if ("network.itonami.app".equals(id)) return "online-itonami.apk";
+        if ("network.itonami.torihiki".equals(id)) return "online-torihiki.apk";
+        if ("network.itonami.torihiki.bot".equals(id)) return "online-torihiki-bot.apk";
+        if ("network.itonami.tabimikake".equals(id)) return "online-tabi-mikake.apk";
+        if ("network.itonami.deai".equals(id)) return "online-deai.apk";
+        if ("network.itonami.hiring".equals(id)) return "online-hiring.apk";
+        if ("network.itonami.kumade".equals(id)) return "online-kumade.apk";
         if ("app.aozora".equals(id)) return "online-aozora.apk";
         throw new SecurityException("unknown-app");
     }
     public static int maxApkBytes(String id) throws SecurityException {
         if ("network.itonami.yotei".equals(id)) return 20 * 1024 * 1024;
         if ("network.itonami.app".equals(id)) return 64 * 1024 * 1024;
+        if ("network.itonami.torihiki".equals(id)) return 20 * 1024 * 1024;
+        // Tauri v3 APK (network-awai/app-itonami-torihiki app/), about 29.5 MB at 0.1.0.
+        if ("network.itonami.torihiki.bot".equals(id)) return 40 * 1024 * 1024;
+        // Tauri v3 APK (network-awai/app-tabi-mikake), about 29.6 MB at 0.1.0.
+        if ("network.itonami.tabimikake".equals(id)) return 40 * 1024 * 1024;
+        // Tauri v3 APK (network-awai/app-deai), stripped debug build.
+        if ("network.itonami.deai".equals(id)) return 40 * 1024 * 1024;
+        // Tauri v3 APK (network-awai/app-itonami-hiring), about 20.6 MB at 0.1.0 (debug, no debug symbols).
+        if ("network.itonami.hiring".equals(id)) return 40 * 1024 * 1024;
+        // Tauri v3 APK (network-awai/app-itonami-kumade), debug build without native debug symbols.
+        if ("network.itonami.kumade".equals(id)) return 40 * 1024 * 1024;
         if ("app.aozora".equals(id)) return 64 * 1024 * 1024;
         throw new SecurityException("unknown-app");
     }

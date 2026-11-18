@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ADR 0027 V4 (AWAI-3123): the owner's native confirmation and acceptance cards. No INTERNET
+     permission: requests arrive in the app's private files and signed results leave the same way. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="network.awai.sanka"
+    android:versionCode="1"
+    android:versionName="0.1.0">
+    <uses-sdk android:minSdkVersion="35" android:targetSdkVersion="37" />
+    <application
+        android:label="Sanka"
+        android:allowBackup="false">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

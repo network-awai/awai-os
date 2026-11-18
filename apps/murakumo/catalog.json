@@ -1,0 +1,90 @@
+{
+  "schema": "awai.murakumo.catalog.v1",
+  "observed": "2026-11-18 from the Hugging Face API (model sha, tree, config.json)",
+  "models": [
+    {
+      "id": "qwen3-0.6b-q8_0",
+      "label": "Qwen3 · 0.6B",
+      "repo": "Qwen/Qwen3-0.6B-GGUF",
+      "revision": "23749fefcc72300e3a2ad315e1317431b06b590a",
+      "file": "Qwen3-0.6B-Q8_0.gguf",
+      "quant": "Q8_0",
+      "bytes": 639446688,
+      "sha256": "9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031",
+      "layers": 28,
+      "kv-heads": 8,
+      "head-dim": 128,
+      "license": "apache-2.0"
+    },
+    {
+      "id": "qwen3-1.7b-q8_0",
+      "label": "Qwen3 · 1.7B",
+      "repo": "Qwen/Qwen3-1.7B-GGUF",
+      "revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+      "file": "Qwen3-1.7B-Q8_0.gguf",
+      "quant": "Q8_0",
+      "bytes": 1834426016,
+      "sha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+      "layers": 28,
+      "kv-heads": 8,
+      "head-dim": 128,
+      "license": "apache-2.0"
+    },
+    {
+      "id": "qwen3-4b-q4_k_m",
+      "label": "Qwen3 · 4B",
+      "repo": "Qwen/Qwen3-4B-GGUF",
+      "revision": "bc640142c66e1fdd12af0bd68f40445458f3869b",
+      "file": "Qwen3-4B-Q4_K_M.gguf",
+      "quant": "Q4_K_M",
+      "bytes": 2497280256,
+      "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+      "layers": 36,
+      "kv-heads": 8,
+      "head-dim": 128,
+      "license": "apache-2.0"
+    },
+    {
+      "id": "qwen3-8b-q4_k_m",
+      "label": "Qwen3 · 8B",
+      "repo": "Qwen/Qwen3-8B-GGUF",
+      "revision": "7c41481f57cb95916b40956ab2f0b139b296d974",
+      "file": "Qwen3-8B-Q4_K_M.gguf",
+      "quant": "Q4_K_M",
+      "bytes": 5027783488,
+      "sha256": "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785",
+      "layers": 36,
+      "kv-heads": 8,
+      "head-dim": 128,
+      "license": "apache-2.0"
+    },
+    {
+      "id": "qwen3-14b-q4_k_m",
+      "label": "Qwen3 · 14B",
+      "repo": "Qwen/Qwen3-14B-GGUF",
+      "revision": "530227a7d994db8eca5ab5ced2fb692b614357fd",
+      "file": "Qwen3-14B-Q4_K_M.gguf",
+      "quant": "Q4_K_M",
+      "bytes": 9001752960,
+      "sha256": "500a8806e85ee9c83f3ae08420295592451379b4f8cf2d0f41c15dffeb6b81f0",
+      "layers": 40,
+      "kv-heads": 8,
+      "head-dim": 128,
+      "license": "apache-2.0"
+    },
+    {
+      "id": "qwen3-30b-a3b-q4_k_m",
+      "label": "Qwen3 · 30B-A3B",
+      "repo": "Qwen/Qwen3-30B-A3B-GGUF",
+      "revision": "e4d4bafdfb96a411a163846265362aceb0b9c63a",
+      "file": "Qwen3-30B-A3B-Q4_K_M.gguf",
+      "quant": "Q4_K_M",
+      "bytes": 18556685824,
+      "sha256": "0d003f6662faee786ed5da3e31b29c978de5ae5d275c8794c606a7f3c01aa8f5",
+      "layers": 48,
+      "kv-heads": 4,
+      "head-dim": 128,
+      "license": "apache-2.0"
+    }
+  ]
+}

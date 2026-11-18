@@ -27,6 +27,8 @@ android {
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
     }
     sourceSets.getByName("main").java.srcDir("../../../../../../packages/awai-inference/android")
+    sourceSets.getByName("main").java.srcDir("../../../../../../packages/awai-speech/android")
+    sourceSets.getByName("main").assets.srcDir("../../../../../../packages/awai-speech/android-assets")
     buildTypes {
         getByName("debug") {
             manifestPlaceholders["usesCleartextTraffic"] = "false"
@@ -67,6 +69,7 @@ rust {
 }
 
 dependencies {
+    implementation(files("../../../../../../packages/awai-speech/vendor/sherpa-onnx-2.0.1.aar"))
     implementation("androidx.webkit:webkit:1.14.0")
     implementation("androidx.appcompat:appcompat:1.7.1")
     implementation("androidx.activity:activity-ktx:1.10.1")

@@ -1,0 +1,9 @@
+2026-11-18T05:27:30.423Z head 68 torihiki-devnet-1 code-version 12
+2026-11-18T05:27:30.427Z protocol {"fields":16,"txs":["deposit","order"]} cancel-all supported: false
+2026-11-18T05:27:30.522Z account 31490690550103 nonce 1
+2026-11-18T05:27:30.804Z deposit 1,000,000 {"ok":true,"nonceSpent":true,"height":69,"reason":null}
+2026-11-18T05:27:30.964Z buy IOC 2 @ 68010 {"ok":true,"nonceSpent":true,"height":70,"reason":null}
+2026-11-18T05:27:31.187Z after buy [{"market":"1","size":2,"entry":68010,"unrealized":-20}] equity 999933
+2026-11-18T05:27:31.328Z sell IOC 2 @ 67990 {"ok":true,"nonceSpent":true,"height":71,"reason":null}
+2026-11-18T05:27:31.397Z final [] equity 999866 nextNonce 4
+2026-11-18T05:27:31.423Z trades [{"level":67990,"qty":2,"side":1,"h":71},{"level":68010,"qty":2,"side":0,"h":70}]

@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">"WebGPU Probe"</string>
+    <string name="main_activity_title">"WebGPU Probe"</string>
+</resources>

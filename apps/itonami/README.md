@@ -26,6 +26,14 @@ The WebView origin is **https://tauri.localhost**; keep that stable across app
 updates or app-private IndexedDB/localStorage will change origins. Never fix
 unavailable Nix services by globally enabling mixed content or remote IPC.
 
+## EN devnet support desk (AWAI-3170, debug only)
+
+A shell built with `AWAI_SUPPORT_DESK_ORIGIN=https://localhost:18795` declares the Awai support
+operations. To let a **debug** APK reach that desk over `adb reverse`, trust the run's CA with
+`node scripts/devnet-trust.mjs install CA.pem`. This writes a git-ignored `app/src/debug` overlay
+(network_security_config debug-overrides). Run `node scripts/devnet-trust.mjs remove` afterwards.
+Release builds and `cleartext=false` are unchanged. See `dapps/awai-support/README.md`.
+
 ## Runtime boundary
 
 Application ID `network.itonami.app` is independent of Home/Store/Yotei. Native

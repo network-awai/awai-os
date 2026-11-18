@@ -1,0 +1,53 @@
+:root{color-scheme:light dark;font-family:system-ui,sans-serif;line-height:1.6;--bg:#fff;--surface:#f5f6f8;--text:#182332;--muted:#485c74;--primary:#1e50a2;--on-primary:#fff;--container:#e1eaff;--line:#c9d1dc}
+@media(prefers-color-scheme:dark){:root{--bg:#14110f;--surface:#272422;--text:#fff;--muted:#b8b8b7;--primary:#b5cfff;--on-primary:#182332;--container:#26354e;--line:#3c3936}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text)}
+main{max-inline-size:48rem;margin-inline:auto;padding:max(1rem,env(safe-area-inset-top)) max(1rem,env(safe-area-inset-right)) max(1.5rem,env(safe-area-inset-bottom)) max(1rem,env(safe-area-inset-left))}
+h1,h2,h3{line-height:1.3;overflow-wrap:anywhere}h1{margin-block:.5rem 0}h2{font-size:1.4rem}h3{font-size:1.1rem;margin-block-start:1.5rem}
+p,dd,li{overflow-wrap:anywhere}.muted{color:var(--muted)}
+nav{display:flex;gap:.5rem;margin-block:1rem;flex-wrap:wrap}
+nav a{min-block-size:3rem;display:inline-flex;align-items:center;padding-inline:1.25rem;border-radius:1.5rem;background:var(--surface);color:var(--text);text-decoration:none}
+nav a[aria-current]{background:var(--container);font-weight:600}
+label{display:block;margin-block:1rem .25rem}
+input,select,button,textarea{font:inherit;font-size:max(1rem,1em);min-block-size:3rem;border-radius:1.25rem;padding:.6rem 1rem}
+input,select,textarea{inline-size:100%;border:1px solid #767676;background:var(--surface);color:var(--text)}
+button{border:0;background:var(--primary);color:var(--on-primary);cursor:pointer}button.tonal{background:var(--container);color:var(--text)}
+:focus-visible{outline:3px solid var(--primary);outline-offset:3px}
+ul{padding:0;list-style:none}
+.results{display:grid;gap:.75rem}.results li{background:var(--surface);border-radius:1.25rem;padding:1rem}
+#status{min-block-size:1.6rem}footer{margin-block-start:2rem;font-size:.9rem}
+.mono{font-family:ui-monospace,monospace;font-size:.85rem;overflow-wrap:anywhere}
+.error{color:#b3261e;margin:.25rem 0 0;min-block-size:1.2rem;font-size:.9rem}@media(prefers-color-scheme:dark){.error{color:#f2b8b5}}
+form button{margin-block-start:1.25rem}
+.preview{background:var(--surface);border-radius:1rem;padding:1rem;white-space:pre-wrap;min-block-size:3rem}
+.results p{margin:.25rem 0}.amount{font-weight:600;font-size:1.1rem}
+.actions{display:flex;gap:.5rem;flex-wrap:wrap}
+.chips{display:flex;flex-wrap:wrap;gap:.4rem}.chip{font-size:.85rem;padding:.1rem .6rem;border-radius:1rem;border:1px solid var(--line)}
+button.tonal.armed{background:#b3261e;color:#fff}@media(prefers-color-scheme:dark){button.tonal.armed{background:#f2b8b5;color:#14110f}}
+textarea{border-radius:1rem;padding:.75rem 1rem;resize:vertical;min-block-size:10rem}
+.checks{margin-block-start:1rem}.chip.ok{border-color:#2e7d32}.chip.fail{border-color:#b3261e;color:#b3261e}
+@media(prefers-color-scheme:dark){.chip.ok{border-color:#81c995}.chip.fail{border-color:#f2b8b5;color:#f2b8b5}}
+form .tonal{margin-block-start:.5rem}
+.lines{inline-size:100%;border-collapse:collapse;margin-block-start:.5rem;font-size:.9rem}.lines th,.lines td{text-align:start;padding:.4rem .5rem;border-block-end:1px solid var(--line)}
+.lines td.ok{color:#2e7d32}.lines td.warn{color:#b3261e;font-weight:600}@media(prefers-color-scheme:dark){.lines td.ok{color:#81c995}.lines td.warn{color:#f2b8b5}}
+[hidden]{display:none!important}
+/* Public Funds (AWAI-3296): bottom navigation as in the Figma proposal, cards, metrics, flow chart. */
+nav{position:sticky;inset-block-end:0;background:var(--bg);padding-block:.5rem max(.5rem,env(safe-area-inset-bottom));justify-content:space-around;margin-block-end:0;border-block-start:1px solid var(--line)}
+nav a{flex:1;justify-content:center;padding-inline:.25rem;text-align:center;font-size:.85rem;white-space:nowrap}
+.card{background:var(--surface);border-radius:1.25rem;padding:1rem;margin-block:1rem}.card h3{margin-block:0 .5rem}.card.notice{background:var(--container)}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(10rem,1fr));gap:.5rem;margin-block:1rem}
+.metric{background:var(--surface);border-radius:1rem;padding:.75rem .9rem}.metric p{margin:0}.metric .value{font-weight:700;font-size:1.25rem}
+.small{font-size:.85rem}.strong{font-weight:600}
+.sankey{inline-size:100%;block-size:auto;max-inline-size:32rem;display:block;margin-block:1rem}
+.sankey .link{fill:var(--primary);fill-opacity:.28}.sankey .link.faint{fill-opacity:.12}.sankey .node{fill:var(--primary)}.sankey .node.faint{fill:var(--muted)}
+.sankey .label{font-size:11px;fill:var(--text)}.sankey .label.muted{fill:var(--muted)}
+.bars{display:grid;gap:4px;margin-block:.4rem}.bar{display:block;block-size:8px;border-radius:4px;min-inline-size:2px}.bar.initial{background:var(--line)}.bar.spent{background:var(--primary)}
+.lines td.num{text-align:end;white-space:nowrap}
+details{margin-block:1rem}summary{cursor:pointer;min-block-size:3rem;display:flex;align-items:center;color:var(--primary)}
+dl{display:grid;gap:.25rem}dt{font-weight:600;font-size:.9rem}dd{margin:0 0 .5rem}
+.error-box{background:#fde7e9;color:#410e0b;border-radius:1rem;padding:.75rem 1rem;margin-block:.5rem}.error-box p{margin:.2rem 0}
+@media(prefers-color-scheme:dark){.error-box{background:#601410;color:#f9dedc}}
+a.button{display:inline-flex;align-items:center;min-block-size:3rem;padding-inline:1.25rem;border-radius:1.5rem;background:var(--primary);color:var(--on-primary);text-decoration:none}
+.points li{margin-block:.4rem}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+/* Keep the bottom navigation at the bottom of the screen when the content is short (Figma 307:298). */
+main{display:flex;flex-direction:column;min-block-size:100dvh}nav{margin-block-start:auto}
