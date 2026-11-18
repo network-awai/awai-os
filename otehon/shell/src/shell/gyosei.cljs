@@ -8,6 +8,15 @@
             ["../egov-host.js" :refer [createEgovHostBroker]]
             ["../egov-guest.gen.js" :refer [GYOSEI_GUEST_DECLARATION GYOSEI_GUEST_HTML]]))
 
+(defn- refusal-label
+  "Short visible reason for a refused guest (Figma S10). The raw message stays
+  in data-gyosei-error and the console."
+  [message]
+  (cond
+    (re-find #"digest mismatch" (str message)) "digest 不一致"
+    (re-find #"byte budget" (str message)) "サイズ超過"
+    :else "検証エラー"))
+
 (defn panel [broker]
   (let [container (useRef nil)
         [problem set-problem] (useState nil)
@@ -32,6 +41,7 @@
     [:main.chat.gyosei {:data-gyosei true}
      (when problem
        [:div.empty
-        [:p.notice {:role "alert" :data-gyosei-error problem} "この画面の検証に失敗したため、実行しませんでした。"]
+        [:p.notice {:role "alert" :data-gyosei-error problem}
+         (str "この画面の検証に失敗したため、実行しませんでした（" (refusal-label problem) "）。")]
         [:button {:type "button" :on-click #(set-attempt (inc attempt))} "再読み込み"]])
      [:div.gyosei-frame {:ref container}]]))
