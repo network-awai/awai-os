@@ -1,0 +1,2048 @@
+{
+  "schemaVersion": "itonami.police-intake-guide.v1",
+  "language": "ja",
+  "scope": "victim-cybercrime-and-fraud",
+  "jurisdictionSource": {
+    "title": "United Nations Statistics Division — M49 Overview",
+    "url": "https://unstats.un.org/unsd/methodology/m49/overview/",
+    "checkedOn": "2026-11-18"
+  },
+  "jurisdictions": {
+    "ABW": {
+      "m49": "533",
+      "name": "Aruba",
+      "region": "Americas",
+      "iso2": "AW"
+    },
+    "AFG": {
+      "m49": "004",
+      "name": "Afghanistan",
+      "region": "Asia",
+      "iso2": "AF"
+    },
+    "AGO": {
+      "m49": "024",
+      "name": "Angola",
+      "region": "Africa",
+      "iso2": "AO"
+    },
+    "AIA": {
+      "m49": "660",
+      "name": "Anguilla",
+      "region": "Americas",
+      "iso2": "AI"
+    },
+    "ALA": {
+      "m49": "248",
+      "name": "Åland Islands",
+      "region": "Europe",
+      "iso2": "AX"
+    },
+    "ALB": {
+      "m49": "008",
+      "name": "Albania",
+      "region": "Europe",
+      "iso2": "AL"
+    },
+    "AND": {
+      "m49": "020",
+      "name": "Andorra",
+      "region": "Europe",
+      "iso2": "AD"
+    },
+    "ARE": {
+      "m49": "784",
+      "name": "United Arab Emirates",
+      "region": "Asia",
+      "iso2": "AE"
+    },
+    "ARG": {
+      "m49": "032",
+      "name": "Argentina",
+      "region": "Americas",
+      "iso2": "AR"
+    },
+    "ARM": {
+      "m49": "051",
+      "name": "Armenia",
+      "region": "Asia",
+      "iso2": "AM"
+    },
+    "ASM": {
+      "m49": "016",
+      "name": "American Samoa",
+      "region": "Oceania",
+      "iso2": "AS"
+    },
+    "ATA": {
+      "m49": "010",
+      "name": "Antarctica",
+      "region": "Antarctica",
+      "iso2": "AQ"
+    },
+    "ATF": {
+      "m49": "260",
+      "name": "French Southern Territories",
+      "region": "Africa",
+      "iso2": "TF"
+    },
+    "ATG": {
+      "m49": "028",
+      "name": "Antigua and Barbuda",
+      "region": "Americas",
+      "iso2": "AG"
+    },
+    "AUS": {
+      "m49": "036",
+      "name": "Australia",
+      "region": "Oceania",
+      "status": "official-route",
+      "sources": {
+        "contact": {
+          "title": "ASD / ACSC — Contact us and check a ReportCyber report",
+          "url": "https://www.cyber.gov.au/contact-us",
+          "checkedOn": "2026-11-18"
+        },
+        "guide": {
+          "title": "ASD / ACSC — Help during a cybercrime",
+          "url": "https://www.cyber.gov.au/guidance/help-during-a-cybercrime",
+          "checkedOn": "2026-11-18"
+        },
+        "routing": {
+          "title": "Australian Parliament — ReportCyber jurisdiction routing",
+          "url": "https://www.aph.gov.au/DocumentStore.ashx?id=2cf9b849-827f-454f-ba82-3a52855a0d85",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ReportCyber が警察向けのサイバー犯罪届出を取り次ぐ。議会提出資料によると、届出は警察側が定義した管轄ルールで振り分けられる。",
+          "refs": [
+            "contact",
+            "routing"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "公式ページから警察へのサイバー犯罪届出を選ぶ。技術的なインシデント報告とは入口の選択肢が異なる。",
+          "refs": [
+            "contact",
+            "guide"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "届出後の状況照会には CIRS 番号と提出時のメールアドレスが必要。匿名の届出は照会できない。",
+          "refs": [
+            "contact"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "届出の扱いが不明な場合は、公式の状況照会を使う。",
+          "refs": [
+            "contact"
+          ],
+          "kind": "status-check"
+        }
+      ],
+      "iso2": "AU"
+    },
+    "AUT": {
+      "m49": "040",
+      "name": "Austria",
+      "region": "Europe",
+      "iso2": "AT"
+    },
+    "AZE": {
+      "m49": "031",
+      "name": "Azerbaijan",
+      "region": "Asia",
+      "iso2": "AZ"
+    },
+    "BDI": {
+      "m49": "108",
+      "name": "Burundi",
+      "region": "Africa",
+      "iso2": "BI"
+    },
+    "BEL": {
+      "m49": "056",
+      "name": "Belgium",
+      "region": "Europe",
+      "iso2": "BE"
+    },
+    "BEN": {
+      "m49": "204",
+      "name": "Benin",
+      "region": "Africa",
+      "iso2": "BJ"
+    },
+    "BES": {
+      "m49": "535",
+      "name": "Bonaire, Sint Eustatius and Saba",
+      "region": "Americas",
+      "iso2": "BQ"
+    },
+    "BFA": {
+      "m49": "854",
+      "name": "Burkina Faso",
+      "region": "Africa",
+      "iso2": "BF"
+    },
+    "BGD": {
+      "m49": "050",
+      "name": "Bangladesh",
+      "region": "Asia",
+      "iso2": "BD"
+    },
+    "BGR": {
+      "m49": "100",
+      "name": "Bulgaria",
+      "region": "Europe",
+      "iso2": "BG"
+    },
+    "BHR": {
+      "m49": "048",
+      "name": "Bahrain",
+      "region": "Asia",
+      "iso2": "BH"
+    },
+    "BHS": {
+      "m49": "044",
+      "name": "Bahamas",
+      "region": "Americas",
+      "iso2": "BS"
+    },
+    "BIH": {
+      "m49": "070",
+      "name": "Bosnia and Herzegovina",
+      "region": "Europe",
+      "iso2": "BA"
+    },
+    "BLM": {
+      "m49": "652",
+      "name": "Saint Barthélemy",
+      "region": "Americas",
+      "iso2": "BL"
+    },
+    "BLR": {
+      "m49": "112",
+      "name": "Belarus",
+      "region": "Europe",
+      "iso2": "BY"
+    },
+    "BLZ": {
+      "m49": "084",
+      "name": "Belize",
+      "region": "Americas",
+      "iso2": "BZ"
+    },
+    "BMU": {
+      "m49": "060",
+      "name": "Bermuda",
+      "region": "Americas",
+      "iso2": "BM"
+    },
+    "BOL": {
+      "m49": "068",
+      "name": "Bolivia (Plurinational State of)",
+      "region": "Americas",
+      "iso2": "BO"
+    },
+    "BRA": {
+      "m49": "076",
+      "name": "Brazil",
+      "region": "Americas",
+      "iso2": "BR"
+    },
+    "BRB": {
+      "m49": "052",
+      "name": "Barbados",
+      "region": "Americas",
+      "iso2": "BB"
+    },
+    "BRN": {
+      "m49": "096",
+      "name": "Brunei Darussalam",
+      "region": "Asia",
+      "iso2": "BN"
+    },
+    "BTN": {
+      "m49": "064",
+      "name": "Bhutan",
+      "region": "Asia",
+      "iso2": "BT"
+    },
+    "BVT": {
+      "m49": "074",
+      "name": "Bouvet Island",
+      "region": "Americas",
+      "iso2": "BV"
+    },
+    "BWA": {
+      "m49": "072",
+      "name": "Botswana",
+      "region": "Africa",
+      "iso2": "BW"
+    },
+    "CAF": {
+      "m49": "140",
+      "name": "Central African Republic",
+      "region": "Africa",
+      "iso2": "CF"
+    },
+    "CAN": {
+      "m49": "124",
+      "name": "Canada",
+      "region": "Americas",
+      "status": "official-route",
+      "sources": {
+        "cafc": {
+          "title": "Canadian Anti-Fraud Centre — Report fraud and cybercrime",
+          "url": "https://antifraudcentre-centreantifraude.ca/report-signalez-eng.htm",
+          "checkedOn": "2026-11-18"
+        },
+        "victim": {
+          "title": "CAFC — What to do if you are a victim of fraud",
+          "url": "https://antifraudcentre-centreantifraude.ca/scams-fraudes/victim-victime-eng.htm?priority=1",
+          "checkedOn": "2026-11-18"
+        },
+        "case": {
+          "title": "CAFC — Ontario Provincial Police grandparent fraud investigation",
+          "url": "https://antifraudcentre-centreantifraude.ca/news-nouvelles/2024/2024-04-18-eng.htm?wbdisable=true",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "被害者本人は地元警察への届出と CAFC への報告を行うよう案内されている。",
+          "refs": [
+            "cafc"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "CAFC の公式案内からオンラインまたは電話報告を利用できる。",
+          "refs": [
+            "cafc"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "地元警察に出した届出のファイル番号を控えるよう CAFC は案内。",
+          "refs": [
+            "victim"
+          ]
+        }
+      ],
+      "iso2": "CA",
+      "evidence": [
+        {
+          "text": "詐欺に関する書類、領収書、メール・テキストメッセージの写しを集める。",
+          "refs": [
+            "victim"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "cases": [
+        {
+          "text": "2024年の家族を装う詐欺の捜査で、CAFC は複数の被害届出を関連づけてオンタリオ州警察に提供。州警察は捜査し、検挙に至った。個々の届出の受理通知や提出資料は公表されていない。",
+          "refs": [
+            "case"
+          ],
+          "stage": "action-confirmed"
+        }
+      ],
+      "followUp": [
+        {
+          "text": "信用情報に新たな不審な活動が見つかった場合は、地元警察の届出記録を更新する。",
+          "refs": [
+            "victim"
+          ],
+          "kind": "supplement"
+        }
+      ]
+    },
+    "CCK": {
+      "m49": "166",
+      "name": "Cocos (Keeling) Islands",
+      "region": "Oceania",
+      "iso2": "CC"
+    },
+    "CHE": {
+      "m49": "756",
+      "name": "Switzerland",
+      "region": "Europe",
+      "iso2": "CH"
+    },
+    "CHL": {
+      "m49": "152",
+      "name": "Chile",
+      "region": "Americas",
+      "iso2": "CL"
+    },
+    "CHN": {
+      "m49": "156",
+      "name": "China",
+      "region": "Asia",
+      "status": "partial",
+      "sources": {
+        "beijing": {
+          "title": "北京市公安局交通管理局 — 96110",
+          "url": "https://jtgl.beijing.gov.cn/jgj/lszt/659722/10897626/10897698/index.html",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "確認範囲は北京市の通信・ネット詐欺に関する情報提供。",
+          "refs": [
+            "beijing"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "北京市は犯罪の手がかりの提供先として 96110 などを案内。正式な被害届の窓口と手順は別途確認が必要。",
+          "refs": [
+            "beijing"
+          ]
+        }
+      ],
+      "iso2": "CN"
+    },
+    "CIV": {
+      "m49": "384",
+      "name": "Côte d’Ivoire",
+      "region": "Africa",
+      "iso2": "CI"
+    },
+    "CMR": {
+      "m49": "120",
+      "name": "Cameroon",
+      "region": "Africa",
+      "iso2": "CM"
+    },
+    "COD": {
+      "m49": "180",
+      "name": "Democratic Republic of the Congo",
+      "region": "Africa",
+      "iso2": "CD"
+    },
+    "COG": {
+      "m49": "178",
+      "name": "Congo",
+      "region": "Africa",
+      "iso2": "CG"
+    },
+    "COK": {
+      "m49": "184",
+      "name": "Cook Islands",
+      "region": "Oceania",
+      "iso2": "CK"
+    },
+    "COL": {
+      "m49": "170",
+      "name": "Colombia",
+      "region": "Americas",
+      "iso2": "CO"
+    },
+    "COM": {
+      "m49": "174",
+      "name": "Comoros",
+      "region": "Africa",
+      "iso2": "KM"
+    },
+    "CPV": {
+      "m49": "132",
+      "name": "Cabo Verde",
+      "region": "Africa",
+      "iso2": "CV"
+    },
+    "CRI": {
+      "m49": "188",
+      "name": "Costa Rica",
+      "region": "Americas",
+      "iso2": "CR"
+    },
+    "CUB": {
+      "m49": "192",
+      "name": "Cuba",
+      "region": "Americas",
+      "iso2": "CU"
+    },
+    "CUW": {
+      "m49": "531",
+      "name": "Curaçao",
+      "region": "Americas",
+      "iso2": "CW"
+    },
+    "CXR": {
+      "m49": "162",
+      "name": "Christmas Island",
+      "region": "Oceania",
+      "iso2": "CX"
+    },
+    "CYM": {
+      "m49": "136",
+      "name": "Cayman Islands",
+      "region": "Americas",
+      "iso2": "KY"
+    },
+    "CYP": {
+      "m49": "196",
+      "name": "Cyprus",
+      "region": "Asia",
+      "iso2": "CY"
+    },
+    "CZE": {
+      "m49": "203",
+      "name": "Czechia",
+      "region": "Europe",
+      "iso2": "CZ"
+    },
+    "DEU": {
+      "m49": "276",
+      "name": "Germany",
+      "region": "Europe",
+      "iso2": "DE"
+    },
+    "DJI": {
+      "m49": "262",
+      "name": "Djibouti",
+      "region": "Africa",
+      "iso2": "DJ"
+    },
+    "DMA": {
+      "m49": "212",
+      "name": "Dominica",
+      "region": "Americas",
+      "iso2": "DM"
+    },
+    "DNK": {
+      "m49": "208",
+      "name": "Denmark",
+      "region": "Europe",
+      "iso2": "DK"
+    },
+    "DOM": {
+      "m49": "214",
+      "name": "Dominican Republic",
+      "region": "Americas",
+      "iso2": "DO"
+    },
+    "DZA": {
+      "m49": "012",
+      "name": "Algeria",
+      "region": "Africa",
+      "iso2": "DZ"
+    },
+    "ECU": {
+      "m49": "218",
+      "name": "Ecuador",
+      "region": "Americas",
+      "iso2": "EC"
+    },
+    "EGY": {
+      "m49": "818",
+      "name": "Egypt",
+      "region": "Africa",
+      "iso2": "EG"
+    },
+    "ERI": {
+      "m49": "232",
+      "name": "Eritrea",
+      "region": "Africa",
+      "iso2": "ER"
+    },
+    "ESH": {
+      "m49": "732",
+      "name": "Western Sahara",
+      "region": "Africa",
+      "iso2": "EH"
+    },
+    "ESP": {
+      "m49": "724",
+      "name": "Spain",
+      "region": "Europe",
+      "iso2": "ES"
+    },
+    "EST": {
+      "m49": "233",
+      "name": "Estonia",
+      "region": "Europe",
+      "iso2": "EE"
+    },
+    "ETH": {
+      "m49": "231",
+      "name": "Ethiopia",
+      "region": "Africa",
+      "iso2": "ET"
+    },
+    "FIN": {
+      "m49": "246",
+      "name": "Finland",
+      "region": "Europe",
+      "iso2": "FI"
+    },
+    "FJI": {
+      "m49": "242",
+      "name": "Fiji",
+      "region": "Oceania",
+      "iso2": "FJ"
+    },
+    "FLK": {
+      "m49": "238",
+      "name": "Falkland Islands (Malvinas)",
+      "region": "Americas",
+      "iso2": "FK"
+    },
+    "FRA": {
+      "m49": "250",
+      "name": "France",
+      "region": "Europe",
+      "iso2": "FR"
+    },
+    "FRO": {
+      "m49": "234",
+      "name": "Faroe Islands",
+      "region": "Europe",
+      "iso2": "FO"
+    },
+    "FSM": {
+      "m49": "583",
+      "name": "Micronesia (Federated States of)",
+      "region": "Oceania",
+      "iso2": "FM"
+    },
+    "GAB": {
+      "m49": "266",
+      "name": "Gabon",
+      "region": "Africa",
+      "iso2": "GA"
+    },
+    "GBR": {
+      "m49": "826",
+      "name": "United Kingdom of Great Britain and Northern Ireland",
+      "region": "Europe",
+      "iso2": "GB"
+    },
+    "GEO": {
+      "m49": "268",
+      "name": "Georgia",
+      "region": "Asia",
+      "iso2": "GE"
+    },
+    "GGY": {
+      "m49": "831",
+      "name": "Guernsey",
+      "region": "Europe",
+      "iso2": "GG"
+    },
+    "GHA": {
+      "m49": "288",
+      "name": "Ghana",
+      "region": "Africa",
+      "iso2": "GH"
+    },
+    "GIB": {
+      "m49": "292",
+      "name": "Gibraltar",
+      "region": "Europe",
+      "iso2": "GI"
+    },
+    "GIN": {
+      "m49": "324",
+      "name": "Guinea",
+      "region": "Africa",
+      "iso2": "GN"
+    },
+    "GLP": {
+      "m49": "312",
+      "name": "Guadeloupe",
+      "region": "Americas",
+      "iso2": "GP"
+    },
+    "GMB": {
+      "m49": "270",
+      "name": "Gambia",
+      "region": "Africa",
+      "iso2": "GM"
+    },
+    "GNB": {
+      "m49": "624",
+      "name": "Guinea-Bissau",
+      "region": "Africa",
+      "iso2": "GW"
+    },
+    "GNQ": {
+      "m49": "226",
+      "name": "Equatorial Guinea",
+      "region": "Africa",
+      "iso2": "GQ"
+    },
+    "GRC": {
+      "m49": "300",
+      "name": "Greece",
+      "region": "Europe",
+      "iso2": "GR"
+    },
+    "GRD": {
+      "m49": "308",
+      "name": "Grenada",
+      "region": "Americas",
+      "iso2": "GD"
+    },
+    "GRL": {
+      "m49": "304",
+      "name": "Greenland",
+      "region": "Americas",
+      "iso2": "GL"
+    },
+    "GTM": {
+      "m49": "320",
+      "name": "Guatemala",
+      "region": "Americas",
+      "iso2": "GT"
+    },
+    "GUF": {
+      "m49": "254",
+      "name": "French Guiana",
+      "region": "Americas",
+      "iso2": "GF"
+    },
+    "GUM": {
+      "m49": "316",
+      "name": "Guam",
+      "region": "Oceania",
+      "iso2": "GU"
+    },
+    "GUY": {
+      "m49": "328",
+      "name": "Guyana",
+      "region": "Americas",
+      "iso2": "GY"
+    },
+    "HKG": {
+      "m49": "344",
+      "name": "China, Hong Kong Special Administrative Region",
+      "region": "Asia",
+      "status": "official-route",
+      "sources": {
+        "faq": {
+          "title": "Hong Kong Police Force — e-Report Centre FAQ",
+          "url": "https://www.police.gov.hk/ppp_en/13_faqs/faq_erc.html",
+          "checkedOn": "2026-11-18"
+        },
+        "hub": {
+          "title": "Hong Kong Police Force — Establishment of e-Hub",
+          "url": "https://www.police.gov.hk/offbeat/1219/eng/9001.html",
+          "checkedOn": "2026-11-18"
+        },
+        "myReport": {
+          "title": "Hong Kong Police Force — About My Report",
+          "url": "https://www.police.gov.hk/ppp_en/13_faqs/faq_cep.html",
+          "checkedOn": "2026-11-18"
+        },
+        "case": {
+          "title": "Hong Kong Police Force — MKDIST recovers scam victim’s money",
+          "url": "https://www.police.gov.hk/offbeat/1177/eng/9007.html",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "香港警務処の e-Hub がテクノロジー犯罪・詐欺の電子届出を処理。通常は届出人の住所に対応する地区の捜査部門へ回付される。",
+          "refs": [
+            "hub"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "e-Report Centre の「Report Technology Crime and Deception」を使う。",
+          "refs": [
+            "faq"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "申告内容に関連する画像・文書などを準備する。添付可能なファイル種別はフォームの種類による。",
+          "refs": [
+            "faq"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "提出完了で電子照会番号が発行され、受付メールが届く。My Report で閲覧できるのは条件を満たす捜査中の案件。",
+          "refs": [
+            "faq",
+            "myReport"
+          ]
+        }
+      ],
+      "cases": [
+        {
+          "text": "2020年11月の電話詐欺。被害者が旺角地区に届け出て、地区捜査班が引き継ぎ、銀行と詐欺対策機関との連携で被害金が回収された。",
+          "refs": [
+            "case"
+          ],
+          "stage": "investigation-confirmed"
+        }
+      ],
+      "followUp": [
+        {
+          "text": "最初の受付メールが届かない場合、電子報案センターに問い合わせる。",
+          "refs": [
+            "faq"
+          ],
+          "kind": "no-acknowledgment"
+        },
+        {
+          "text": "提出済みの内容は直接編集できない。第2の受付メールで案内される担当部署に連絡し、補足資料を出す。",
+          "refs": [
+            "faq"
+          ],
+          "kind": "supplement"
+        }
+      ],
+      "iso2": "HK"
+    },
+    "HMD": {
+      "m49": "334",
+      "name": "Heard Island and McDonald Islands",
+      "region": "Oceania",
+      "iso2": "HM"
+    },
+    "HND": {
+      "m49": "340",
+      "name": "Honduras",
+      "region": "Americas",
+      "iso2": "HN"
+    },
+    "HRV": {
+      "m49": "191",
+      "name": "Croatia",
+      "region": "Europe",
+      "iso2": "HR"
+    },
+    "HTI": {
+      "m49": "332",
+      "name": "Haiti",
+      "region": "Americas",
+      "iso2": "HT"
+    },
+    "HUN": {
+      "m49": "348",
+      "name": "Hungary",
+      "region": "Europe",
+      "iso2": "HU"
+    },
+    "IDN": {
+      "m49": "360",
+      "name": "Indonesia",
+      "region": "Asia",
+      "iso2": "ID"
+    },
+    "IMN": {
+      "m49": "833",
+      "name": "Isle of Man",
+      "region": "Europe",
+      "iso2": "IM"
+    },
+    "IND": {
+      "m49": "356",
+      "name": "India",
+      "region": "Asia",
+      "status": "official-route",
+      "sources": {
+        "mha": {
+          "title": "Ministry of Home Affairs — AI-enabled cyber crime prevention",
+          "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2298336&lang=1&reg=3",
+          "checkedOn": "2026-11-18"
+        },
+        "routing": {
+          "title": "Government of India — Reporting of Cybercrimes",
+          "url": "https://static.pib.gov.in/WriteReadData/specificdocs/documents/2025/aug/doc2025821618101.pdf",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "州・連邦直轄領の法執行機関が捜査などを担当し、国のポータルから届出が回付される。",
+          "refs": [
+            "mha",
+            "routing"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "National Cyber Crime Reporting Portal（cybercrime.gov.in）が公的入口。フォームのライブ操作は未確認。",
+          "refs": [
+            "mha"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "オンライン届出の支援を受けるには、内務省が案内する 1930 を利用できる。",
+          "refs": [
+            "mha"
+          ],
+          "kind": "channel-unavailable"
+        }
+      ],
+      "iso2": "IN"
+    },
+    "IOT": {
+      "m49": "086",
+      "name": "British Indian Ocean Territory",
+      "region": "Africa",
+      "iso2": "IO"
+    },
+    "IRL": {
+      "m49": "372",
+      "name": "Ireland",
+      "region": "Europe",
+      "iso2": "IE"
+    },
+    "IRN": {
+      "m49": "364",
+      "name": "Iran (Islamic Republic of)",
+      "region": "Asia",
+      "status": "unverified",
+      "note": "既存の Mithril 台帳に調査記録がある。現行の公式届出経路を再確認できていない。",
+      "iso2": "IR"
+    },
+    "IRQ": {
+      "m49": "368",
+      "name": "Iraq",
+      "region": "Asia",
+      "status": "partial",
+      "sources": {
+        "ameen": {
+          "title": "Iraqi National Security Service — Ameen",
+          "url": "https://ameen.gov.iq/en",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "国家安全保障局の Ameen はサイバー恐喝に対応する。",
+          "refs": [
+            "ameen"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "政府ページで公式アプリの案内を確認。アプリ内での届出、必要資料、正式受理の条件は未確認。",
+          "refs": [
+            "ameen"
+          ]
+        }
+      ],
+      "iso2": "IQ"
+    },
+    "ISL": {
+      "m49": "352",
+      "name": "Iceland",
+      "region": "Europe",
+      "iso2": "IS"
+    },
+    "ISR": {
+      "m49": "376",
+      "name": "Israel",
+      "region": "Asia",
+      "iso2": "IL"
+    },
+    "ITA": {
+      "m49": "380",
+      "name": "Italy",
+      "region": "Europe",
+      "iso2": "IT"
+    },
+    "JAM": {
+      "m49": "388",
+      "name": "Jamaica",
+      "region": "Americas",
+      "iso2": "JM"
+    },
+    "JEY": {
+      "m49": "832",
+      "name": "Jersey",
+      "region": "Europe",
+      "iso2": "JE"
+    },
+    "JOR": {
+      "m49": "400",
+      "name": "Jordan",
+      "region": "Asia",
+      "iso2": "JO"
+    },
+    "JPN": {
+      "m49": "392",
+      "name": "Japan",
+      "region": "Asia",
+      "status": "official-route",
+      "sources": {
+        "npa": {
+          "title": "警察庁 — サイバー事案に関する相談窓口",
+          "url": "https://www.npa.go.jp/bureau/cyber/soudan.html",
+          "checkedOn": "2026-11-18"
+        },
+        "mpd": {
+          "title": "警視庁 — インターネット利用詐欺",
+          "url": "https://www.keishicho.metro.tokyo.lg.jp/sodan/nettrouble/jirei_other/internet_scam.html",
+          "checkedOn": "2026-11-18"
+        },
+        "complaint": {
+          "title": "警察庁 — ご意見、各種相談・情報提供等",
+          "url": "https://www.npa.go.jp/goiken_index.html",
+          "checkedOn": "2026-11-18"
+        },
+        "fallback": {
+          "title": "警視庁 — サイバー事案に関する通報・相談・情報提供窓口",
+          "url": "https://www.keishicho.metro.tokyo.lg.jp/kurashi/cyber/sodan_tsuho/cyber_madoguchi.html",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "警察庁は被害届を出す場合、最寄りの警察署等への連絡を案内。警視庁はネット取引詐欺の相談先として居住地を管轄する地元警察署を案内。",
+          "refs": [
+            "npa",
+            "mpd"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "被害届は警察署等に相談。e-Gov にはサイバー事案の通報・相談・情報提供の別がある。",
+          "refs": [
+            "npa"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "ネット取引詐欺の場合は取引画面、メール、相手の口座情報、振込記録などを手元に用意する。",
+          "refs": [
+            "mpd"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "オンラインの通報・相談・情報提供と、警察署等に出す被害届は別の経路。",
+          "refs": [
+            "npa"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "オンライン窓口が利用できない場合、警視庁は居住地・法人所在地を管轄する警察署または電話相談窓口を案内。",
+          "refs": [
+            "fallback"
+          ],
+          "kind": "channel-unavailable"
+        },
+        {
+          "text": "警察職員の職務執行に関する苦情は、該当する都道府県公安委員会への文書申出の経路がある。被害届そのものの手続きとは別。",
+          "refs": [
+            "complaint"
+          ],
+          "kind": "service-complaint"
+        }
+      ],
+      "iso2": "JP"
+    },
+    "KAZ": {
+      "m49": "398",
+      "name": "Kazakhstan",
+      "region": "Asia",
+      "iso2": "KZ"
+    },
+    "KEN": {
+      "m49": "404",
+      "name": "Kenya",
+      "region": "Africa",
+      "iso2": "KE"
+    },
+    "KGZ": {
+      "m49": "417",
+      "name": "Kyrgyzstan",
+      "region": "Asia",
+      "iso2": "KG"
+    },
+    "KHM": {
+      "m49": "116",
+      "name": "Cambodia",
+      "region": "Asia",
+      "iso2": "KH"
+    },
+    "KIR": {
+      "m49": "296",
+      "name": "Kiribati",
+      "region": "Oceania",
+      "iso2": "KI"
+    },
+    "KNA": {
+      "m49": "659",
+      "name": "Saint Kitts and Nevis",
+      "region": "Americas",
+      "iso2": "KN"
+    },
+    "KOR": {
+      "m49": "410",
+      "name": "Republic of Korea",
+      "region": "Asia",
+      "iso2": "KR"
+    },
+    "KWT": {
+      "m49": "414",
+      "name": "Kuwait",
+      "region": "Asia",
+      "iso2": "KW"
+    },
+    "LAO": {
+      "m49": "418",
+      "name": "Lao People's Democratic Republic",
+      "region": "Asia",
+      "iso2": "LA"
+    },
+    "LBN": {
+      "m49": "422",
+      "name": "Lebanon",
+      "region": "Asia",
+      "iso2": "LB"
+    },
+    "LBR": {
+      "m49": "430",
+      "name": "Liberia",
+      "region": "Africa",
+      "iso2": "LR"
+    },
+    "LBY": {
+      "m49": "434",
+      "name": "Libya",
+      "region": "Africa",
+      "iso2": "LY"
+    },
+    "LCA": {
+      "m49": "662",
+      "name": "Saint Lucia",
+      "region": "Americas",
+      "iso2": "LC"
+    },
+    "LIE": {
+      "m49": "438",
+      "name": "Liechtenstein",
+      "region": "Europe",
+      "iso2": "LI"
+    },
+    "LKA": {
+      "m49": "144",
+      "name": "Sri Lanka",
+      "region": "Asia",
+      "iso2": "LK"
+    },
+    "LSO": {
+      "m49": "426",
+      "name": "Lesotho",
+      "region": "Africa",
+      "iso2": "LS"
+    },
+    "LTU": {
+      "m49": "440",
+      "name": "Lithuania",
+      "region": "Europe",
+      "iso2": "LT"
+    },
+    "LUX": {
+      "m49": "442",
+      "name": "Luxembourg",
+      "region": "Europe",
+      "iso2": "LU"
+    },
+    "LVA": {
+      "m49": "428",
+      "name": "Latvia",
+      "region": "Europe",
+      "iso2": "LV"
+    },
+    "MAC": {
+      "m49": "446",
+      "name": "China, Macao Special Administrative Region",
+      "region": "Asia",
+      "iso2": "MO"
+    },
+    "MAF": {
+      "m49": "663",
+      "name": "Saint Martin (French Part)",
+      "region": "Americas",
+      "iso2": "MF"
+    },
+    "MAR": {
+      "m49": "504",
+      "name": "Morocco",
+      "region": "Africa",
+      "iso2": "MA"
+    },
+    "MCO": {
+      "m49": "492",
+      "name": "Monaco",
+      "region": "Europe",
+      "iso2": "MC"
+    },
+    "MDA": {
+      "m49": "498",
+      "name": "Republic of Moldova",
+      "region": "Europe",
+      "iso2": "MD"
+    },
+    "MDG": {
+      "m49": "450",
+      "name": "Madagascar",
+      "region": "Africa",
+      "iso2": "MG"
+    },
+    "MDV": {
+      "m49": "462",
+      "name": "Maldives",
+      "region": "Asia",
+      "iso2": "MV"
+    },
+    "MEX": {
+      "m49": "484",
+      "name": "Mexico",
+      "region": "Americas",
+      "iso2": "MX"
+    },
+    "MHL": {
+      "m49": "584",
+      "name": "Marshall Islands",
+      "region": "Oceania",
+      "iso2": "MH"
+    },
+    "MKD": {
+      "m49": "807",
+      "name": "North Macedonia",
+      "region": "Europe",
+      "iso2": "MK"
+    },
+    "MLI": {
+      "m49": "466",
+      "name": "Mali",
+      "region": "Africa",
+      "iso2": "ML"
+    },
+    "MLT": {
+      "m49": "470",
+      "name": "Malta",
+      "region": "Europe",
+      "iso2": "MT"
+    },
+    "MMR": {
+      "m49": "104",
+      "name": "Myanmar",
+      "region": "Asia",
+      "iso2": "MM"
+    },
+    "MNE": {
+      "m49": "499",
+      "name": "Montenegro",
+      "region": "Europe",
+      "iso2": "ME"
+    },
+    "MNG": {
+      "m49": "496",
+      "name": "Mongolia",
+      "region": "Asia",
+      "iso2": "MN"
+    },
+    "MNP": {
+      "m49": "580",
+      "name": "Northern Mariana Islands",
+      "region": "Oceania",
+      "iso2": "MP"
+    },
+    "MOZ": {
+      "m49": "508",
+      "name": "Mozambique",
+      "region": "Africa",
+      "iso2": "MZ"
+    },
+    "MRT": {
+      "m49": "478",
+      "name": "Mauritania",
+      "region": "Africa",
+      "iso2": "MR"
+    },
+    "MSR": {
+      "m49": "500",
+      "name": "Montserrat",
+      "region": "Americas",
+      "iso2": "MS"
+    },
+    "MTQ": {
+      "m49": "474",
+      "name": "Martinique",
+      "region": "Americas",
+      "iso2": "MQ"
+    },
+    "MUS": {
+      "m49": "480",
+      "name": "Mauritius",
+      "region": "Africa",
+      "iso2": "MU"
+    },
+    "MWI": {
+      "m49": "454",
+      "name": "Malawi",
+      "region": "Africa",
+      "iso2": "MW"
+    },
+    "MYS": {
+      "m49": "458",
+      "name": "Malaysia",
+      "region": "Asia",
+      "iso2": "MY"
+    },
+    "MYT": {
+      "m49": "175",
+      "name": "Mayotte",
+      "region": "Africa",
+      "iso2": "YT"
+    },
+    "NAM": {
+      "m49": "516",
+      "name": "Namibia",
+      "region": "Africa",
+      "iso2": "NA"
+    },
+    "NCL": {
+      "m49": "540",
+      "name": "New Caledonia",
+      "region": "Oceania",
+      "iso2": "NC"
+    },
+    "NER": {
+      "m49": "562",
+      "name": "Niger",
+      "region": "Africa",
+      "iso2": "NE"
+    },
+    "NFK": {
+      "m49": "574",
+      "name": "Norfolk Island",
+      "region": "Oceania",
+      "iso2": "NF"
+    },
+    "NGA": {
+      "m49": "566",
+      "name": "Nigeria",
+      "region": "Africa",
+      "iso2": "NG"
+    },
+    "NIC": {
+      "m49": "558",
+      "name": "Nicaragua",
+      "region": "Americas",
+      "iso2": "NI"
+    },
+    "NIU": {
+      "m49": "570",
+      "name": "Niue",
+      "region": "Oceania",
+      "iso2": "NU"
+    },
+    "NLD": {
+      "m49": "528",
+      "name": "Netherlands (Kingdom of the)",
+      "region": "Europe",
+      "iso2": "NL"
+    },
+    "NOR": {
+      "m49": "578",
+      "name": "Norway",
+      "region": "Europe",
+      "iso2": "NO"
+    },
+    "NPL": {
+      "m49": "524",
+      "name": "Nepal",
+      "region": "Asia",
+      "iso2": "NP"
+    },
+    "NRU": {
+      "m49": "520",
+      "name": "Naoero",
+      "region": "Oceania",
+      "iso2": "NR"
+    },
+    "NZL": {
+      "m49": "554",
+      "name": "New Zealand",
+      "region": "Oceania",
+      "iso2": "NZ"
+    },
+    "OMN": {
+      "m49": "512",
+      "name": "Oman",
+      "region": "Asia",
+      "iso2": "OM"
+    },
+    "PAK": {
+      "m49": "586",
+      "name": "Pakistan",
+      "region": "Asia",
+      "status": "official-route",
+      "sources": {
+        "faq": {
+          "title": "NCCIA — FAQ",
+          "url": "https://nccia.gov.pk/faqs.php",
+          "checkedOn": "2026-11-18"
+        },
+        "docs": {
+          "title": "NCCIA — Complaint Proforma",
+          "url": "https://www.nccia.gov.pk/download.php",
+          "checkedOn": "2026-11-18"
+        },
+        "portal": {
+          "title": "NCCIA — Complaint Registration Form",
+          "url": "https://complaint.nccia.gov.pk/",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "NCCIA の FAQ は正式な捜査申立てについて最寄りの Cybercrime Reporting Centre (CCRC) を案内。国外からの手続きには現地の連絡担当者に関する案内がある。",
+          "refs": [
+            "faq"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "NCCIA の電子フォームで申告できる。正式な確認については CCRC の来所要件を公式 FAQ で確認する。",
+          "refs": [
+            "portal",
+            "faq"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "CCRC 向け書面、身分証 CNIC の写し、証拠の写しが必要と FAQ に記載。公式の書式は英語とウルドゥー語がある。",
+          "refs": [
+            "faq",
+            "docs"
+          ],
+          "kind": "required"
+        }
+      ],
+      "progress": [
+        {
+          "text": "ポータルは届出の参照番号と控えの表示を案内し、登録後は NCCIA が審査する。",
+          "refs": [
+            "portal"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "照会はポータル記載の 1799 に参照番号を伝える。",
+          "refs": [
+            "portal"
+          ],
+          "kind": "status-check"
+        }
+      ],
+      "iso2": "PK"
+    },
+    "PAN": {
+      "m49": "591",
+      "name": "Panama",
+      "region": "Americas",
+      "iso2": "PA"
+    },
+    "PCN": {
+      "m49": "612",
+      "name": "Pitcairn",
+      "region": "Oceania",
+      "iso2": "PN"
+    },
+    "PER": {
+      "m49": "604",
+      "name": "Peru",
+      "region": "Americas",
+      "iso2": "PE"
+    },
+    "PHL": {
+      "m49": "608",
+      "name": "Philippines",
+      "region": "Asia",
+      "iso2": "PH"
+    },
+    "PLW": {
+      "m49": "585",
+      "name": "Palau",
+      "region": "Oceania",
+      "iso2": "PW"
+    },
+    "PNG": {
+      "m49": "598",
+      "name": "Papua New Guinea",
+      "region": "Oceania",
+      "iso2": "PG"
+    },
+    "POL": {
+      "m49": "616",
+      "name": "Poland",
+      "region": "Europe",
+      "iso2": "PL"
+    },
+    "PRI": {
+      "m49": "630",
+      "name": "Puerto Rico",
+      "region": "Americas",
+      "iso2": "PR"
+    },
+    "PRK": {
+      "m49": "408",
+      "name": "Democratic People's Republic of Korea",
+      "region": "Asia",
+      "status": "unverified",
+      "note": "既存の Mithril 台帳に調査記録がある。利用できる公式窓口の有無は未確認。",
+      "iso2": "KP"
+    },
+    "PRT": {
+      "m49": "620",
+      "name": "Portugal",
+      "region": "Europe",
+      "iso2": "PT"
+    },
+    "PRY": {
+      "m49": "600",
+      "name": "Paraguay",
+      "region": "Americas",
+      "iso2": "PY"
+    },
+    "PSE": {
+      "m49": "275",
+      "name": "State of Palestine",
+      "region": "Asia",
+      "iso2": "PS"
+    },
+    "PYF": {
+      "m49": "258",
+      "name": "French Polynesia",
+      "region": "Oceania",
+      "iso2": "PF"
+    },
+    "QAT": {
+      "m49": "634",
+      "name": "Qatar",
+      "region": "Asia",
+      "iso2": "QA"
+    },
+    "REU": {
+      "m49": "638",
+      "name": "Réunion",
+      "region": "Africa",
+      "iso2": "RE"
+    },
+    "ROU": {
+      "m49": "642",
+      "name": "Romania",
+      "region": "Europe",
+      "iso2": "RO"
+    },
+    "RUS": {
+      "m49": "643",
+      "name": "Russian Federation",
+      "region": "Europe",
+      "status": "official-route",
+      "sources": {
+        "moj": {
+          "title": "ロシア司法省 — 犯罪の申告先と処理",
+          "url": "https://www.minjust.gov.ru/ru/appeals/faq/589/",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "司法省の案内では、犯罪の被害を受けたと考える人は任意の警察署に届け出られる。予備捜査は原則として行為の場所が基準となる。",
+          "refs": [
+            "moj"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "司法省の案内は警察署への申告を示している。司法省自体はその申告の受付・登録機関ではない。",
+          "refs": [
+            "moj"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "申告の受付後、刑事手続の開始、開始の拒否または管轄先への移送等を判断し、申告者に通知する。",
+          "refs": [
+            "moj"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "当局が決定を通知する際に、不服申立ての権利と手順を説明する。実際の通知に記された経路を確認する。",
+          "refs": [
+            "moj"
+          ],
+          "kind": "review"
+        }
+      ],
+      "iso2": "RU"
+    },
+    "RWA": {
+      "m49": "646",
+      "name": "Rwanda",
+      "region": "Africa",
+      "iso2": "RW"
+    },
+    "SAU": {
+      "m49": "682",
+      "name": "Saudi Arabia",
+      "region": "Asia",
+      "iso2": "SA"
+    },
+    "SDN": {
+      "m49": "729",
+      "name": "Sudan",
+      "region": "Africa",
+      "iso2": "SD"
+    },
+    "SEN": {
+      "m49": "686",
+      "name": "Senegal",
+      "region": "Africa",
+      "iso2": "SN"
+    },
+    "SGP": {
+      "m49": "702",
+      "name": "Singapore",
+      "region": "Asia",
+      "iso2": "SG"
+    },
+    "SGS": {
+      "m49": "239",
+      "name": "South Georgia and the South Sandwich Islands",
+      "region": "Americas",
+      "iso2": "GS"
+    },
+    "SHN": {
+      "m49": "654",
+      "name": "Saint Helena",
+      "region": "Africa",
+      "iso2": "SH"
+    },
+    "SJM": {
+      "m49": "744",
+      "name": "Svalbard and Jan Mayen Islands",
+      "region": "Europe",
+      "iso2": "SJ"
+    },
+    "SLB": {
+      "m49": "090",
+      "name": "Solomon Islands",
+      "region": "Oceania",
+      "iso2": "SB"
+    },
+    "SLE": {
+      "m49": "694",
+      "name": "Sierra Leone",
+      "region": "Africa",
+      "iso2": "SL"
+    },
+    "SLV": {
+      "m49": "222",
+      "name": "El Salvador",
+      "region": "Americas",
+      "iso2": "SV"
+    },
+    "SMR": {
+      "m49": "674",
+      "name": "San Marino",
+      "region": "Europe",
+      "iso2": "SM"
+    },
+    "SOM": {
+      "m49": "706",
+      "name": "Somalia",
+      "region": "Africa",
+      "iso2": "SO"
+    },
+    "SPM": {
+      "m49": "666",
+      "name": "Saint Pierre and Miquelon",
+      "region": "Americas",
+      "iso2": "PM"
+    },
+    "SRB": {
+      "m49": "688",
+      "name": "Serbia",
+      "region": "Europe",
+      "iso2": "RS"
+    },
+    "SSD": {
+      "m49": "728",
+      "name": "South Sudan",
+      "region": "Africa",
+      "iso2": "SS"
+    },
+    "STP": {
+      "m49": "678",
+      "name": "Sao Tome and Principe",
+      "region": "Africa",
+      "iso2": "ST"
+    },
+    "SUR": {
+      "m49": "740",
+      "name": "Suriname",
+      "region": "Americas",
+      "iso2": "SR"
+    },
+    "SVK": {
+      "m49": "703",
+      "name": "Slovakia",
+      "region": "Europe",
+      "iso2": "SK"
+    },
+    "SVN": {
+      "m49": "705",
+      "name": "Slovenia",
+      "region": "Europe",
+      "iso2": "SI"
+    },
+    "SWE": {
+      "m49": "752",
+      "name": "Sweden",
+      "region": "Europe",
+      "iso2": "SE"
+    },
+    "SWZ": {
+      "m49": "748",
+      "name": "Eswatini",
+      "region": "Africa",
+      "iso2": "SZ"
+    },
+    "SXM": {
+      "m49": "534",
+      "name": "Sint Maarten (Dutch part)",
+      "region": "Americas",
+      "iso2": "SX"
+    },
+    "SYC": {
+      "m49": "690",
+      "name": "Seychelles",
+      "region": "Africa",
+      "iso2": "SC"
+    },
+    "SYR": {
+      "m49": "760",
+      "name": "Syrian Arab Republic",
+      "region": "Asia",
+      "iso2": "SY"
+    },
+    "TCA": {
+      "m49": "796",
+      "name": "Turks and Caicos Islands",
+      "region": "Americas",
+      "iso2": "TC"
+    },
+    "TCD": {
+      "m49": "148",
+      "name": "Chad",
+      "region": "Africa",
+      "iso2": "TD"
+    },
+    "TGO": {
+      "m49": "768",
+      "name": "Togo",
+      "region": "Africa",
+      "iso2": "TG"
+    },
+    "THA": {
+      "m49": "764",
+      "name": "Thailand",
+      "region": "Asia",
+      "iso2": "TH"
+    },
+    "TJK": {
+      "m49": "762",
+      "name": "Tajikistan",
+      "region": "Asia",
+      "iso2": "TJ"
+    },
+    "TKL": {
+      "m49": "772",
+      "name": "Tokelau",
+      "region": "Oceania",
+      "iso2": "TK"
+    },
+    "TKM": {
+      "m49": "795",
+      "name": "Turkmenistan",
+      "region": "Asia",
+      "iso2": "TM"
+    },
+    "TLS": {
+      "m49": "626",
+      "name": "Timor-Leste",
+      "region": "Asia",
+      "iso2": "TL"
+    },
+    "TON": {
+      "m49": "776",
+      "name": "Tonga",
+      "region": "Oceania",
+      "iso2": "TO"
+    },
+    "TTO": {
+      "m49": "780",
+      "name": "Trinidad and Tobago",
+      "region": "Americas",
+      "iso2": "TT"
+    },
+    "TUN": {
+      "m49": "788",
+      "name": "Tunisia",
+      "region": "Africa",
+      "iso2": "TN"
+    },
+    "TUR": {
+      "m49": "792",
+      "name": "Türkiye",
+      "region": "Asia",
+      "iso2": "TR"
+    },
+    "TUV": {
+      "m49": "798",
+      "name": "Tuvalu",
+      "region": "Oceania",
+      "iso2": "TV"
+    },
+    "TZA": {
+      "m49": "834",
+      "name": "United Republic of Tanzania",
+      "region": "Africa",
+      "iso2": "TZ"
+    },
+    "UGA": {
+      "m49": "800",
+      "name": "Uganda",
+      "region": "Africa",
+      "iso2": "UG"
+    },
+    "UKR": {
+      "m49": "804",
+      "name": "Ukraine",
+      "region": "Europe",
+      "iso2": "UA"
+    },
+    "UMI": {
+      "m49": "581",
+      "name": "United States Minor Outlying Islands",
+      "region": "Oceania",
+      "iso2": "UM"
+    },
+    "URY": {
+      "m49": "858",
+      "name": "Uruguay",
+      "region": "Americas",
+      "iso2": "UY"
+    },
+    "USA": {
+      "m49": "840",
+      "name": "United States of America",
+      "region": "Americas",
+      "status": "official-route",
+      "sources": {
+        "faq": {
+          "title": "FBI IC3 — FAQ",
+          "url": "https://www.ic3.gov/Home/FAQ",
+          "checkedOn": "2026-11-18"
+        },
+        "form": {
+          "title": "FBI IC3 — Complaint Form",
+          "url": "https://complaint.ic3.gov/",
+          "checkedOn": "2026-11-18"
+        },
+        "cases": {
+          "title": "FBI — 2021 Internet Crime Report, p. 10",
+          "url": "https://www.ic3.gov/AnnualReport/Reports/2021_IC3Report.pdf#page=11",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "オンラインで行われる犯罪の苦情は FBI IC3 で受け付け、必要に応じて担当機関に回付する。急を要する案件は地元の法執行機関へ連絡するよう IC3 が案内。",
+          "refs": [
+            "faq"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "FBI IC3 の苦情フォームから提出する。",
+          "refs": [
+            "form",
+            "faq"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "送金・暗号資産の取引記録、通信やチャットの記録、ヘッダー付きメールなどの原本を保全する。IC3 は添付を受け付けない。",
+          "refs": [
+            "faq"
+          ],
+          "kind": "retain"
+        }
+      ],
+      "progress": [
+        {
+          "text": "提出完了画面で控えを保存する。捜査・起訴は回付先が判断し、IC3 では捜査の進捗を照会できない。",
+          "refs": [
+            "faq"
+          ]
+        }
+      ],
+      "cases": [
+        {
+          "text": "2021年10月の技術サポート詐欺。IC3 が届出を受領し、金融機関・暗号資産交換業者との連携で不正送金された資金の凍結を確認した。",
+          "refs": [
+            "cases"
+          ],
+          "stage": "action-confirmed"
+        },
+        {
+          "text": "2021年6月の送金詐欺。IC3 が届出を受領。米国内の経由口座を通じたナイジェリア向け送金について関係機関が連携し、送金額の凍結に至った。",
+          "refs": [
+            "cases"
+          ],
+          "stage": "action-confirmed"
+        }
+      ],
+      "followUp": [
+        {
+          "text": "新しい情報があるときは、先の届出への追加情報である旨を書いて、新規の苦情として送る。",
+          "refs": [
+            "faq"
+          ],
+          "kind": "supplement"
+        }
+      ],
+      "iso2": "US"
+    },
+    "UZB": {
+      "m49": "860",
+      "name": "Uzbekistan",
+      "region": "Asia",
+      "iso2": "UZ"
+    },
+    "VAT": {
+      "m49": "336",
+      "name": "Holy See",
+      "region": "Europe",
+      "iso2": "VA"
+    },
+    "VCT": {
+      "m49": "670",
+      "name": "Saint Vincent and the Grenadines",
+      "region": "Americas",
+      "iso2": "VC"
+    },
+    "VEN": {
+      "m49": "862",
+      "name": "Venezuela (Bolivarian Republic of)",
+      "region": "Americas",
+      "iso2": "VE"
+    },
+    "VGB": {
+      "m49": "092",
+      "name": "British Virgin Islands",
+      "region": "Americas",
+      "iso2": "VG"
+    },
+    "VIR": {
+      "m49": "850",
+      "name": "United States Virgin Islands",
+      "region": "Americas",
+      "iso2": "VI"
+    },
+    "VNM": {
+      "m49": "704",
+      "name": "Viet Nam",
+      "region": "Asia",
+      "iso2": "VN"
+    },
+    "VUT": {
+      "m49": "548",
+      "name": "Vanuatu",
+      "region": "Oceania",
+      "iso2": "VU"
+    },
+    "WLF": {
+      "m49": "876",
+      "name": "Wallis and Futuna Islands",
+      "region": "Oceania",
+      "iso2": "WF"
+    },
+    "WSM": {
+      "m49": "882",
+      "name": "Samoa",
+      "region": "Oceania",
+      "iso2": "WS"
+    },
+    "YEM": {
+      "m49": "887",
+      "name": "Yemen",
+      "region": "Asia",
+      "iso2": "YE"
+    },
+    "ZAF": {
+      "m49": "710",
+      "name": "South Africa",
+      "region": "Africa",
+      "iso2": "ZA"
+    },
+    "ZMB": {
+      "m49": "894",
+      "name": "Zambia",
+      "region": "Africa",
+      "iso2": "ZM"
+    },
+    "ZWE": {
+      "m49": "716",
+      "name": "Zimbabwe",
+      "region": "Africa",
+      "iso2": "ZW"
+    }
+  }
+}
