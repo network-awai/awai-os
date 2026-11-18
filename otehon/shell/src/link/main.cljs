@@ -1,7 +1,8 @@
 (ns link.main
   (:require [reagent.dom.client :as rdom]
             ["react" :refer [useMemo useState]]
-            ["../identity/link.js" :refer [RP_ID SESSION_MS compressP256 confirmationCode
+            ["../identity/link.js" :refer [RP_ID SESSION_MS DRIVE_PASSKEY_PURPOSE compressP256 confirmationCode
+                                               passkeyForLink
                                                fromBase64Url parseLinkFragment passkeyChallenge
                                                sealResponse toBase64Url]]
             ["../identity/wallet.js" :refer [signWithProvider]]
@@ -36,7 +37,7 @@
 
 (defn- approve-with-passkey [request]
   (-> (js/Promise.resolve (read-json passkey-key nil))
-      (.then (fn [saved] (or saved (register-passkey))))
+      (.then (fn [saved] (passkeyForLink request saved register-passkey)))
       (.then (fn [saved]
                (let [expires-at (.toISOString (js/Date. (+ (.now js/Date) SESSION_MS)))]
                  (-> (.get (.-credentials js/navigator)
@@ -44,6 +45,10 @@
                                                 :challenge (passkeyChallenge
                                                             #js {:device (.-device request)
                                                                  :nonce (.-nonce request)
+                                                                 :purpose (.-purpose request)
+                                                                 :topic (.-topic request)
+                                                                 :ek (.-ek request)
+                                                                 :exp (.-exp request)
                                                                  :expiresAt expires-at})
                                                 :allowCredentials #js [#js {:type "public-key"
                                                                             :id (fromBase64Url (.-id saved))}]
@@ -75,6 +80,7 @@
   (let [memo (useMemo read-request #js [])
         request (.-request memo)
         problem (.-problem memo)
+        drive? (= DRIVE_PASSKEY_PURPOSE (some-> request .-purpose))
         [confirmed set-confirmed] (useState false)
         [state set-state] (useState "ready")
         [error set-error] (useState nil)
@@ -96,9 +102,12 @@
                                  (.setItem js/localStorage devices-key next))
                                (set-state "done")))
                       (.catch (fn [caught]
-                                (set-error (if (re-find #"not approved" (or (.-message caught) ""))
-                                             "Nothing was sent."
-                                             "This could not be completed. Try again."))
+                                (let [reason (or (.-message caught) "")]
+                                  (set-error (cond
+                                               (= reason "existing-passkey-required")
+                                               "Open this link in the browser where you set up your existing Awai Passkey."
+                                               (re-find #"not approved" reason) "Nothing was sent."
+                                               :else "This could not be completed. Try again.")))
                                 (set-state "ready")))))]
     (cond
       (not request)
@@ -118,7 +127,7 @@
 
       :else
       [:main
-       [:h1 "Link this device?"]
+       [:h1 (if drive? "Authorize Awai Drive on this device?" "Link this device?")]
        [:p "Approve only if you are setting up this device yourself."]
        [:dl
         [:dt "Device"]
@@ -134,11 +143,11 @@
                           :on-click #(approve approve-with-passkey)}
         "Approve with Passkey"]
        [:button.secondary {:type "button" :data-approve "wallet"
-                            :disabled (or (not confirmed) (= state "working")
+                            :disabled (or drive? (not confirmed) (= state "working")
                                           (not (.-ethereum js/window)))
                             :on-click #(approve approve-with-wallet)}
         "Approve with Wallet"]
-       (when-not (.-ethereum js/window)
+       (when (and (not drive?) (not (.-ethereum js/window)))
          [:p.muted "To use a wallet, open this page in your wallet's browser."])
        (when error [:p.problem error])])))
 

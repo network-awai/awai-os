@@ -5,12 +5,14 @@ import { test } from "node:test";
 import { p256 } from "@noble/curves/nist.js";
 import {
   LINK_ORIGIN,
+  DRIVE_PASSKEY_PURPOSE,
   SESSION_MS,
   confirmationCode,
   createLinkRequest,
   linkUrl,
   openResponse,
   p256Did,
+  passkeyForLink,
   parseLinkFragment,
   sealResponse,
   verifyLink,
@@ -24,6 +26,29 @@ const OTHER_DEVICE = p256Did(p256.getPublicKey(p256.utils.randomSecretKey()));
 
 const rejects = (reason, input) =>
   assert.throws(() => verifyLink({ deviceDid: DEVICE, now: NOW, ...input }), new RegExp(`^Error: ${reason}$`));
+
+test("Drive authorization binds the existing Passkey to the request and each device", async () => {
+  const { request, privateKey } = await createLinkRequest(DEVICE, NOW, DRIVE_PASSKEY_PURPOSE);
+  const { request: other } = await createLinkRequest(OTHER_DEVICE, NOW, DRIVE_PASSKEY_PURPOSE);
+  const secret = p256.utils.randomSecretKey();
+  const saved = { id: "existing", publicKey: p256.getPublicKey(secret) };
+  const doNotEnroll = () => assert.fail("Drive must not create an account");
+  assert.equal(passkeyForLink(request, saved, doNotEnroll), saved);
+  assert.throws(() => passkeyForLink(request, null, doNotEnroll), /existing-passkey-required/);
+  assert.deepEqual(parseLinkFragment(linkUrl(request).split("#")[1], NOW), request);
+  const response = passkeyResponse(secret, request, NOW);
+  const opened = await openResponse(request, privateKey, await sealResponse(request, response));
+  const first = verifyLink({ request, response: opened, deviceDid: DEVICE, now: NOW });
+  const second = verifyLink({ request: other, response: passkeyResponse(secret, other, NOW),
+    deviceDid: OTHER_DEVICE, now: NOW });
+  assert.equal(first.accountDid, second.accountDid);
+  rejects("wrong-challenge", { request, response: passkeyResponse(secret, { ...request, purpose: undefined }, NOW) });
+  rejects("wrong-challenge", { request: { ...request, topic: "d".repeat(32) }, response });
+  rejects("wrong-challenge", { request: { ...request, ek: other.ek }, response });
+  rejects("existing-passkey-required", { request, response: walletResponse(randomWallet(), request, NOW) });
+  rejects("wrong-device", { request, response, deviceDid: OTHER_DEVICE });
+  rejects("no-user-verification", { request, response: passkeyResponse(secret, request, NOW, { flags: 1 }) });
+});
 
 test("the runtime is the pinned copy of the shared broker", () => {
   const pins = JSON.parse(readFileSync(new URL("../vendor/PINS.json", import.meta.url)));
