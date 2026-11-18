@@ -9,6 +9,7 @@
     "allow-awai-local-inference",
     "allow-awai-setup-state",
     "allow-awai-agent-transport",
-    "allow-awai-local-speech"
+    "allow-awai-local-speech",
+    "allow-awai-screen-tools"
   ]
 }

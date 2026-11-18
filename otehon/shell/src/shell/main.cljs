@@ -3,6 +3,7 @@
             ["react" :as react :refer [useEffect useMemo useRef useState]]
             [shell.manimani :refer [MANIMANI conversation-entry manimani-link]]
             [shell.android-inference :as android-inference]
+            [shell.screen-tools :as screen]
             ["../android-inference.js" :refer [androidInferenceAvailable]]
             [shell.net :refer [bluetooth-panel wifi-panel]]
             ["../net.js" :refer [networkSummary useNetStatus]]
@@ -400,7 +401,7 @@
                  (and dapp (< score minimum))
                  [locked dapp minimum score open-account]
                  (and (= context "murakumo") (androidInferenceAvailable)) [:f> android-inference/panel]
-                 (= context "itonami") [:main.chat.net-view [:div.net-body [:h1 "Itonami Agent"] [:f> fleet/panel "agents"] [:f> awai-support/panel broker support-desk-origin]]]
+                 (= context "itonami") [:main.chat.net-view [:div.net-body [:h1 "Itonami Agent"] [:f> screen/panel "ja"] [:f> fleet/panel "agents"] [:f> awai-support/panel broker support-desk-origin]]]
                  :else
                  [:f> chat dapp context (or (aget threads context) #js [])
                   (fn [text] (add-message context text))

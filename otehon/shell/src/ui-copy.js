@@ -1,6 +1,23 @@
 // Quoted dictionary keys survive advanced property renaming. UI copy excludes imported content.
 export const UI_COPY = {
   "ja": {
+    "screenTitle": "画面操作",
+    "screenBotProposal": "Bot の提案 · {action}",
+    "screenRecord": "録画を開始",
+    "screenStop": "録画を停止",
+    "screenHome": "ホームを開く",
+    "screenRecents": "最近使ったアプリ",
+    "screenSettings": "Android 設定",
+    "screenAccessibility": "画面操作の権限設定",
+    "screenUnavailable": "操作は完了しませんでした。確認画面や権限設定を確認してください。",
+    "screenChecking": "画面操作の状態を確認中…",
+    "screenAccepted": "端末で操作を受け付けました。録画の状態は「画面操作」で確認できます。",
+    "screen-idle": "録画できます · 映像のみ · 最大5分",
+    "screen-starting": "録画を準備中…",
+    "screen-recording": "録画中 · 最大5分",
+    "screen-saving": "録画を保存中…",
+    "screen-saved": "録画を Movies/Awai に保存しました。",
+    "screen-failed": "録画を保存できませんでした。",
     // Awai support panel (AWAI-3170, AWAI-3354)
     "supportTitle": "Awai を支援する",
     "supportNoticeTitle": "devnet：実際のお金・寄付ではありません",
@@ -242,6 +259,23 @@ export const UI_COPY = {
     "importedProfiles": "Bot登録を取り込む"
   },
   "en": {
+    "screenTitle": "Screen controls",
+    "screenBotProposal": "Bot suggestion · {action}",
+    "screenRecord": "Start recording",
+    "screenStop": "Stop recording",
+    "screenHome": "Open Home",
+    "screenRecents": "Recent apps",
+    "screenSettings": "Android Settings",
+    "screenAccessibility": "Screen navigation permissions",
+    "screenUnavailable": "The action did not complete. Check the confirmation or Android permissions.",
+    "screenChecking": "Checking screen controls…",
+    "screenAccepted": "The device accepted the action. Check Screen controls for recording status.",
+    "screen-idle": "Ready to record · video only · up to 5 minutes",
+    "screen-starting": "Preparing recording…",
+    "screen-recording": "Recording · up to 5 minutes",
+    "screen-saving": "Saving recording…",
+    "screen-saved": "Recording saved in Movies/Awai.",
+    "screen-failed": "The recording could not be saved.",
     // Awai support panel (AWAI-3170, AWAI-3354)
     "supportTitle": "Support Awai",
     "supportNoticeTitle": "devnet: not real money and not a donation",

@@ -6,6 +6,6 @@ fn main() {
         println!("cargo:rustc-link-arg=-Wl,-z,max-page-size=16384");
     }
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(
-        tauri_build::AppManifest::new().commands(&["awai_host_info","awai_local_inference","awai_setup_state","awai_agent_transport","awai_local_speech"]),
+        tauri_build::AppManifest::new().commands(&["awai_host_info","awai_local_inference","awai_setup_state","awai_agent_transport","awai_local_speech","awai_screen_tools"]),
     )).expect("Itonami build");
 }

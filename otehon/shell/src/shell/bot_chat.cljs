@@ -1,5 +1,6 @@
 (ns shell.bot-chat
- (:require ["react" :refer [useState useEffect useRef]] [shell.ui-copy :as ui]
+ (:require ["react" :refer [useState useEffect useRef]] [shell.ui-copy :as ui] [shell.screen-tools :as screen]
+  ["../screen-tools.js" :refer [screenTool]]
   ["../agent-ui-state.js" :refer [readAgentSelection chooseAgent]]
   ["../bot-chat.js" :refer [CHAT_ORIGIN CHAT_MODEL chatRequest sendChat readChat agentSessions recordChatImage]]
   ["../voice-channel.js" :refer [openVoiceChannel]]
@@ -98,7 +99,7 @@
        [sessions set-sessions] (useState []) [session-info set-session-info] (useState nil)
        [session-id set-session-id] (useState (fn [] (let [s (readAgentSelection)] (or draft-id (if (= (:id bot) (.-botId s)) (.-sessionId s) "default")))))
        _ (useEffect (fn [] (chooseAgent (:id bot) session-id) js/undefined) #js [(:id bot)])
-       [message set-message] (useState nil) [store set-store] (useState nil) [cursor set-cursor] (useState nil)
+       [message set-message] (useState nil) [screen-state set-screen-state] (useState nil) [store set-store] (useState nil) [cursor set-cursor] (useState nil)
        failure (fn [e] (set-message (if (= "client operation was not approved" (.-message e)) :chatDenied :chatUnavailable)))
        history (fn [id before]
         (set-busy true) (set-message nil)
@@ -125,10 +126,20 @@
          (.then (fn [r] (set-messages (conj messages {:id (.-requestId r) :role "user" :text (:prompt item)}
           (assoc (js->clj (.-message r) :keywordize-keys true) :local-result (:result item))))
           (set-pending nil) (set-message nil) (set-store (.-store r)) (set-text "")))))
+       device-action (fn [action clear-draft?]
+        (set-busy true)
+        (set-screen-state nil)
+        (-> (screenTool action)
+         (.then (fn [_] (set-screen-state :screenAccepted) (when clear-draft? (set-text ""))))
+         (.catch (fn [_] (set-screen-state :screenUnavailable)))
+         (.finally #(set-busy false))))
        send (fn [event] (.preventDefault event)
         (when-not (or busy pending (empty? (.trim text)))
-         (set-busy true) (set-message nil)
-         (-> (ensure-session)
+         (if-let [[action _] (when (= mode "text") (screen/command text))]
+          (device-action action true)
+          (do
+           (set-busy true) (set-message nil)
+           (-> (ensure-session)
           (.then (fn [_]
            (if (= mode "image")
             (-> (.generate localInference #js {:prompt text :modality "image" :conversation #js {:botId (:id bot) :sessionId session-id}})
@@ -141,7 +152,7 @@
               (.then (fn [r] (set-messages (conj messages {:id (.-requestId r) :role "user" :text value}
                {:id (str (.-requestId r) ":reply") :role "assistant" :text (.-text r) :runId (.-runId r) :model (.-model r)}))
                (set-store (.-store r)) (set-text ""))))))))
-          (.catch failure) (.finally #(set-busy false)))))]
+          (.catch failure) (.finally #(set-busy false)))))))]
   [:section.bot-conversation {:aria-label (tr :conversation) :data-agent-session session-id}
    [:div.agent-session-toolbar
     [:button.secondary {:type "button" :disabled (or busy (some? pending)) :on-click list-sessions} (tr :conversationSessions)]
@@ -175,6 +186,13 @@
           (set-pending nil) (set-text ""))} "会話に記録せず続ける"]])
    (when-not (contains? #{"peer" "circle-work"} (:kind session-info))
     [:f> voice-panel bot session-id ensure-session set-busy set-messages set-store locale (or busy (some? pending))])
+   (when-let [[action label] (when (and (not busy) (nil? pending)
+                                       (= "assistant" (:role (last messages)))
+                                       (not (contains? #{"peer" "circle-work"} (:kind session-info))))
+                              (screen/command (:text (last messages))))]
+    [:button.secondary {:type "button" :on-click #(device-action action false)}
+     (tr :screenBotProposal {:action (tr label)})])
+   (when screen-state [:p {:role "status"} (tr screen-state)])
    (when message [:p.problem {:role "status"} (tr message)])
    (when-not (contains? #{"peer" "circle-work"} (:kind session-info)) [:form {:on-submit send}
     [:div.agent-session-toolbar
