@@ -1,6 +1,6 @@
 export const messages={
   "ja": {
-    "sync.dirty":"この端末 · 未同期","sync.action":"暗号化して同期","sync.restore":"クラウドから復旧","sync.evict":"空き容量を増やす","sync.busy":"暗号化・同期中…","sync.restoring":"暗号文を取得・検証しています…","sync.ready":"暗号化同期済み · オフライン利用可","sync.success":"暗号化して同期しました。","sync.restored":"復旧しました。","sync.evicted":"端末内コピーなし · 再取得には接続が必要","sync.confirm":"同期済みの端末内コピーを削除しますか？","sync.confirm-body":"未同期の変更がある場合は削除しません。再取得には接続が必要です。","error.unsynced-data":"未同期の変更があります。端末のデータを保持しました。","error.sync-size-limit":"この版の暗号化同期は合計8 MiBまでです。元のファイルを保持しています。","error.recovery-required":"暗号鍵または復旧情報が必要です。既存データを保持しています。",
+    "sync.dirty":"この端末 · 未同期","sync.action":"暗号化して同期","sync.restore":"クラウドから復旧","sync.evict":"空き容量を増やす","sync.busy":"暗号化・同期中…","sync.restoring":"暗号文を取得・検証しています…","sync.ready":"暗号化同期済み · オフライン利用可","sync.success":"暗号化して同期しました。","sync.restored":"復旧しました。","sync.evicted":"端末内コピーなし · 再取得には接続が必要","sync.confirm":"同期済みの端末内コピーを削除しますか？","sync.confirm-body":"未同期の変更がある場合は削除しません。再取得には接続が必要です。","error.unsynced-data":"未同期の変更があります。端末のデータを保持しました。","error.sync-size-limit":"この版の暗号化同期は合計8 MiBまでです。元のファイルを保持しています。","error.recovery-required":"暗号鍵または復旧情報が必要です。既存データを保持しています。","error.storage-receipt-invalid":"保存先の受領証を確認できませんでした。同期済みにしていません。元のファイルを保持しています。",
 
     "app.title": "Awai Drive",
     "app.skip": "ファイル一覧へ",
@@ -37,7 +37,7 @@ export const messages={
     "error.unknown": "操作を完了できませんでした。元のファイルは変更していません。"
   },
   "en": {
-    "sync.dirty":"This device · Unsynced","sync.action":"Encrypt and sync","sync.restore":"Restore from storage","sync.evict":"Free up space","sync.busy":"Encrypting and syncing…","sync.restoring":"Fetching and verifying encrypted files…","sync.ready":"Encrypted sync complete · Available offline","sync.success":"Encrypted files synced.","sync.restored":"Files restored.","sync.evicted":"No device copy · Connect to retrieve files","sync.confirm":"Remove synced device copies?","sync.confirm-body":"Unsynced changes will be kept. A connection is required to retrieve files again.","error.unsynced-data":"Unsynced changes exist. Device data has been kept.","error.sync-size-limit":"Encrypted sync currently supports 8 MiB in total. Original files have been kept.","error.recovery-required":"Key or recovery information is required. Existing data has been kept.",
+    "sync.dirty":"This device · Unsynced","sync.action":"Encrypt and sync","sync.restore":"Restore from storage","sync.evict":"Free up space","sync.busy":"Encrypting and syncing…","sync.restoring":"Fetching and verifying encrypted files…","sync.ready":"Encrypted sync complete · Available offline","sync.success":"Encrypted files synced.","sync.restored":"Files restored.","sync.evicted":"No device copy · Connect to retrieve files","sync.confirm":"Remove synced device copies?","sync.confirm-body":"Unsynced changes will be kept. A connection is required to retrieve files again.","error.unsynced-data":"Unsynced changes exist. Device data has been kept.","error.sync-size-limit":"Encrypted sync currently supports 8 MiB in total. Original files have been kept.","error.recovery-required":"Key or recovery information is required. Existing data has been kept.","error.storage-receipt-invalid":"The storage receipt could not be verified. Nothing was marked as synced; original files have been kept.",
 
     "app.title": "Awai Drive",
     "app.skip": "Skip to files",
