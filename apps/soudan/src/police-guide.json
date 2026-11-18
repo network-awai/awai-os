@@ -86,7 +86,52 @@
       "m49": "020",
       "name": "Andorra",
       "region": "Europe",
-      "iso2": "AD"
+      "iso2": "AD",
+      "status": "official-route",
+      "sources": {
+        "cpp": {
+          "title": "Portal Jurídic d’Andorra — Codi de procediment penal, text refós",
+          "url": "https://portaljuridicandorra.ad/L19981210H_15",
+          "checkedOn": "2026-11-19"
+        },
+        "police": {
+          "title": "Policia d’Andorra — Contacte directe",
+          "url": "https://ds.policia.ad/ca/",
+          "checkedOn": "2026-11-19"
+        },
+        "case": {
+          "title": "Policia d’Andorra — Detenció d’una persona per estafa (2004)",
+          "url": "https://www.policia.ad/ca/noticies/noticies/2004/03/19/4938/19-03-2004-11-00-hores-detencio-d-una-persona-per-estafa/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "アンドラの警察または司法当局が職権で訴追される犯罪の申告を扱う。",
+          "refs": [
+            "cpp",
+            "police"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "刑事手続法の政府公表の統合参考版では、警察または司法当局に口頭または書面で申告できる。",
+          "refs": [
+            "cpp",
+            "police"
+          ]
+        }
+      ],
+      "cases": [
+        {
+          "text": "2004年、携帯電話の盗難と無断利用による被害がアンドラ警察に届け出られ、その後の捜査で容疑者を拘束したと警察が公表した。",
+          "refs": [
+            "case"
+          ],
+          "stage": "investigation-confirmed"
+        }
+      ]
     },
     "ARE": {
       "m49": "784",
@@ -284,7 +329,52 @@
       "m49": "028",
       "name": "Antigua and Barbuda",
       "region": "Americas",
-      "iso2": "AG"
+      "iso2": "AG",
+      "status": "official-route",
+      "sources": {
+        "faq": {
+          "title": "Royal Police Force of Antigua and Barbuda — FAQ",
+          "url": "https://police.gov.ag/faq/",
+          "checkedOn": "2026-11-19"
+        },
+        "record": {
+          "title": "Royal Police Force of Antigua and Barbuda — Police Report",
+          "url": "https://police.gov.ag/police-report/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "アンティグア・バーブーダの警察が犯罪申告を受け付ける。",
+          "refs": [
+            "faq"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "居住地にかかわらず、国内のどの警察署にも届け出られる。",
+          "refs": [
+            "faq"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "警察官に対する正式な苦情は本部の職務基準部門または警察公式ページの専用経路を利用する。",
+          "refs": [
+            "faq"
+          ],
+          "kind": "service-complaint"
+        },
+        {
+          "text": "必要に応じて警察報告書の写しの取得要件を確認する。",
+          "refs": [
+            "record"
+          ],
+          "kind": "status-check"
+        }
+      ]
     },
     "AUS": {
       "m49": "036",
@@ -1424,7 +1514,45 @@
       "m49": "184",
       "name": "Cook Islands",
       "region": "Oceania",
-      "iso2": "CK"
+      "iso2": "CK",
+      "status": "official-route",
+      "sources": {
+        "fraud": {
+          "title": "Cook Islands Financial Supervisory Commission — Scams",
+          "url": "https://www.fsc.gov.ck/public/content.aspx?cn=Scams",
+          "checkedOn": "2026-11-19"
+        },
+        "ombudsman": {
+          "title": "Cook Islands Ombudsman — Police Act 2012",
+          "url": "https://ombudsman.gov.ck/complaints/police-act-2012/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "クック諸島の詐欺被害は警察への連絡が案内されている。",
+          "refs": [
+            "fraud"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "詐欺の被害を認識したらクック諸島警察に連絡する。",
+          "refs": [
+            "fraud"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "警察の対応への苦情はまず警察へ。苦情が調査されない場合や調査の方法に不服がある場合はオンブズマンに申し出る。",
+          "refs": [
+            "ombudsman"
+          ],
+          "kind": "service-complaint"
+        }
+      ]
     },
     "COL": {
       "m49": "170",
@@ -2472,6 +2600,11 @@
           "title": "Danish Police — Sådan anmelder du",
           "url": "https://politi.dk/anmeld-kriminalitet/ofre-vidner-og-paaroerende/saadan-anmelder-du",
           "checkedOn": "2026-11-19"
+        },
+        "local-report": {
+          "title": "Føroya Politi — Melda",
+          "url": "https://politi.fo/taenasta/melda",
+          "checkedOn": "2026-11-19"
         }
       },
       "jurisdiction": [
@@ -2488,6 +2621,12 @@
           "refs": [
             "district",
             "report"
+          ]
+        },
+        {
+          "text": "フェロー諸島警察の公式サイトに、被害者自身の申告と情報提供それぞれの案内がある。",
+          "refs": [
+            "local-report"
           ]
         }
       ]
@@ -2529,6 +2668,11 @@
         "avon-case": {
           "title": "Avon and Somerset Police — Man sentenced in investment fraud case",
           "url": "https://www.avonandsomerset.police.uk/news/2026/08/man-who-lied-about-cancer-diagnosis-and-defrauded-victims-of-68k-jailed/",
+          "checkedOn": "2026-11-19"
+        },
+        "report-review": {
+          "title": "Report Fraud — Frequently asked questions",
+          "url": "https://www.reportfraud.police.uk/faqs/",
           "checkedOn": "2026-11-19"
         }
       },
@@ -2587,6 +2731,13 @@
             "scot"
           ],
           "kind": "status-check"
+        },
+        {
+          "text": "Victims’ Right to Reviewの対象かは決定を出した機関に確認する。Report Fraudの案内では、容疑者が特定されていない届出などは通常この制度の対象にならない。",
+          "refs": [
+            "report-review"
+          ],
+          "kind": "review"
         }
       ],
       "cases": [
@@ -3184,7 +3335,38 @@
       "m49": "328",
       "name": "Guyana",
       "region": "Americas",
-      "iso2": "GY"
+      "iso2": "GY",
+      "status": "official-route",
+      "sources": {
+        "route": {
+          "title": "Government of Guyana — Cyber Crime Report",
+          "url": "https://portal.gov.gy/services/cyber-crime-report",
+          "checkedOn": "2026-11-19"
+        },
+        "police": {
+          "title": "Guyana Police Force — Cyber Crime Report",
+          "url": "https://guyanapoliceforce.gy/?page_id=2179",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ガイアナ警察が、なりすまし、フィッシング、オンライン詐欺の報告を扱う。",
+          "refs": [
+            "route",
+            "police"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "政府サービスポータルからガイアナ警察のサイバー犯罪報告の案内に進む。",
+          "refs": [
+            "route",
+            "police"
+          ]
+        }
+      ]
     },
     "HKG": {
       "m49": "344",
@@ -4140,6 +4322,11 @@
           "title": "Kazakhstan government — Online fraud guidance",
           "url": "https://www.gov.kz/org/sko-tayiynsha-alabota/press/news/details/1157294",
           "checkedOn": "2026-11-19"
+        },
+        "tracking": {
+          "title": "Kazakhstan government — Qamqor law enforcement services",
+          "url": "https://www.gov.kz/org/kostanai-zhitikarin-yrsai/press/news/details/1279218?lang=ru",
+          "checkedOn": "2026-11-19"
         }
       },
       "jurisdiction": [
@@ -4167,6 +4354,15 @@
             "notice"
           ],
           "kind": "retain"
+        }
+      ],
+      "followUp": [
+        {
+          "text": "刑事捜査機関に対面で申告した際に受け取る通知票の番号を使い、Qamqorの警察申告照会サービスで状況を確認できる。",
+          "refs": [
+            "tracking"
+          ],
+          "kind": "status-check"
         }
       ]
     },
@@ -4290,7 +4486,31 @@
       "m49": "659",
       "name": "Saint Kitts and Nevis",
       "region": "Americas",
-      "iso2": "KN"
+      "iso2": "KN",
+      "status": "partial",
+      "sources": {
+        "hotline": {
+          "title": "Royal St. Christopher and Nevis Police Force — Crime hotline",
+          "url": "https://www.sknis.gov.kn/2018/12/10/crime-hotline-707-reactivated/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "王立セントクリストファー・ネービス警察が犯罪情報を取り扱う。",
+          "refs": [
+            "hotline"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察の公表資料は犯罪情報用のホットラインを示す。現行の詐欺の正式受付手続は要確認。",
+          "refs": [
+            "hotline"
+          ]
+        }
+      ]
     },
     "KOR": {
       "m49": "410",
@@ -4387,13 +4607,84 @@
       "m49": "662",
       "name": "Saint Lucia",
       "region": "Americas",
-      "iso2": "LC"
+      "iso2": "LC",
+      "status": "partial",
+      "sources": {
+        "report": {
+          "title": "Royal Saint Lucia Police Force — Official reporting channels",
+          "url": "https://legalaffairs.govt.lc/news/misinformation-and-reports-of-missing-persons",
+          "checkedOn": "2026-11-19"
+        },
+        "pcc": {
+          "title": "Saint Lucia Government — Police Complaints Commission",
+          "url": "https://pmd.govt.lc/statutory-body/police-complaints-commission/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "王立セントルシア警察が地域の事案を取り扱う。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察は犯罪ホットラインやアプリで事案を報告するよう案内している。被害者が正式な詐欺申告をする手順は要確認。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "警察の対応の苦情は独立の警察苦情委員会に申し立てられる。",
+          "refs": [
+            "pcc"
+          ],
+          "kind": "service-complaint"
+        }
+      ]
     },
     "LIE": {
       "m49": "438",
       "name": "Liechtenstein",
       "region": "Europe",
-      "iso2": "LI"
+      "iso2": "LI",
+      "status": "official-route",
+      "sources": {
+        "report": {
+          "title": "Liechtenstein Landespolizei — Kontaktformular",
+          "url": "https://www.landespolizei.li/kontaktformular",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "リヒテンシュタイン国家警察が犯罪申告を取り扱う。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "ファドゥーツの国家警察へ直接連絡するか、公式ページからデジタル警察窓口を利用する。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "一般問い合わせフォームで手続を進められない場合は、案内された届出専用窓口または国家警察を利用する。",
+          "refs": [
+            "report"
+          ],
+          "kind": "channel-unavailable"
+        }
+      ]
     },
     "LKA": {
       "m49": "144",
@@ -4836,6 +5127,11 @@
           "title": "Maldives Police Service — Fraud advisory and reporting",
           "url": "https://www.police.gov.mv/uploads/Press_Statement_13_2025_English_038349160a.pdf",
           "checkedOn": "2026-11-18"
+        },
+        "official-report": {
+          "title": "Maldives Police Service — Official Report and Follow-up",
+          "url": "https://www.police.gov.mv/?lang=en&n=1561",
+          "checkedOn": "2026-11-19"
         }
       },
       "jurisdiction": [
@@ -4853,6 +5149,12 @@
           "refs": [
             "report",
             "advisory"
+          ]
+        },
+        {
+          "text": "警察サイトは正式な犯罪届出・フォローアップの入口と、匿名情報提供の入口を別に案内している。",
+          "refs": [
+            "official-report"
           ]
         }
       ]
@@ -5739,7 +6041,31 @@
       "m49": "570",
       "name": "Niue",
       "region": "Oceania",
-      "iso2": "NU"
+      "iso2": "NU",
+      "status": "partial",
+      "sources": {
+        "police": {
+          "title": "Government of Niue — Niue Police Department",
+          "url": "https://gov.nu/notice-board/niue-police-department",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ニウエでは政府の警察部門が法執行を担当する。",
+          "refs": [
+            "police"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "政府の警察ページで警察への連絡先を確認する。詐欺被害の正式な受付方法は要確認。",
+          "refs": [
+            "police"
+          ]
+        }
+      ]
     },
     "NLD": {
       "m49": "528",
@@ -5956,7 +6282,31 @@
       "m49": "520",
       "name": "Naoero",
       "region": "Oceania",
-      "iso2": "NR"
+      "iso2": "NR",
+      "status": "partial",
+      "sources": {
+        "crimes": {
+          "title": "Government of Nauru — Police Force Crimes Unit",
+          "url": "https://www.nauru.gov.nr/government/departments/nauru-police-force/crimes-unit.aspx",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ナウル警察の犯罪部門には刑事捜査とサイバー犯罪の担当がある。",
+          "refs": [
+            "crimes"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察の犯罪部門の連絡先を政府サイトで確認できる。詐欺被害に特化した正式な受付手順は要確認。",
+          "refs": [
+            "crimes"
+          ]
+        }
+      ]
     },
     "NZL": {
       "m49": "554",
@@ -7324,7 +7674,43 @@
       "m49": "674",
       "name": "San Marino",
       "region": "Europe",
-      "iso2": "SM"
+      "iso2": "SM",
+      "status": "official-route",
+      "sources": {
+        "gendarmerie": {
+          "title": "San Marino Gendarmeria — Sporgere denuncia",
+          "url": "https://www.gendarmeria.sm/on-line/home.html",
+          "checkedOn": "2026-11-19"
+        },
+        "brigate": {
+          "title": "San Marino Gendarmeria — Le Brigate",
+          "url": "https://www.gendarmeria.sm/on-line/home/in-evidenza/brigate.html",
+          "checkedOn": "2026-11-19"
+        },
+        "antifraud": {
+          "title": "San Marino Polizia Civile — Carta dei Servizi",
+          "url": "https://www.gov.sm/pub1/GovSM/dam/jcr%3A400e13d4-5bb2-4f23-8776-826b5d5f1096/20251209%20CARTA%20SERVIZI%20POLIZIA%20CIVILE.pdf",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "サンマリノ憲兵隊が刑事申告を扱う。民事警察はオンライン購入に関する詐欺情報の連絡窓口も案内している。",
+          "refs": [
+            "gendarmerie",
+            "antifraud"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "憲兵隊の届出案内から管内の窓口に連絡する。",
+          "refs": [
+            "gendarmerie",
+            "brigate"
+          ]
+        }
+      ]
     },
     "SOM": {
       "m49": "706",
@@ -7759,13 +8145,80 @@
       "m49": "776",
       "name": "Tonga",
       "region": "Oceania",
-      "iso2": "TO"
+      "iso2": "TO",
+      "status": "partial",
+      "sources": {
+        "cert": {
+          "title": "CERT Tonga — Contact Us",
+          "url": "https://cert.gov.to/contact-us/",
+          "checkedOn": "2026-11-19"
+        },
+        "police": {
+          "title": "Tonga Ministry of Public Enterprises — Government links",
+          "url": "https://mpe.gov.to/?page_id=1188",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "トンガ警察と、技術的なサイバー事案に対応するCERT Tongaの窓口がある。",
+          "refs": [
+            "police",
+            "cert"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "技術的なサイバー事案の報告にはCERTの公開窓口を利用できる。詐欺を警察に正式に届け出る手順は要確認。",
+          "refs": [
+            "cert",
+            "police"
+          ]
+        }
+      ]
     },
     "TTO": {
       "m49": "780",
       "name": "Trinidad and Tobago",
       "region": "Americas",
-      "iso2": "TT"
+      "iso2": "TT",
+      "status": "official-route",
+      "sources": {
+        "faq": {
+          "title": "Trinidad and Tobago Police Service — FAQ",
+          "url": "https://www.ttps.gov.tt/about/faqs/",
+          "checkedOn": "2026-11-19"
+        },
+        "online": {
+          "title": "Trinidad and Tobago Police Service — Report an Incident",
+          "url": "https://www.ttps.gov.tt/report/",
+          "checkedOn": "2026-11-19"
+        },
+        "fraud": {
+          "title": "Trinidad and Tobago Police Service — Tobago Fraud Squad office",
+          "url": "https://www.ttps.gov.tt/Portals/0/Documents/Media%20Releases/April%202023/MEDIA%20RELEASE%20-%20TTPS%20Inaugurates%20Fraud%20Squad%20Office%20in%20Tobago.pdf",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "トリニダード・トバゴ警察が犯罪申告を受け付け、トバゴにも専門の詐欺捜査窓口がある。",
+          "refs": [
+            "faq",
+            "fraud"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "国内のどの警察署にも届け出られる。警察はオンラインの事案報告フォームも案内している。",
+          "refs": [
+            "faq",
+            "online"
+          ]
+        }
+      ]
     },
     "TUN": {
       "m49": "788",
@@ -8050,7 +8503,31 @@
       "m49": "336",
       "name": "Holy See",
       "region": "Europe",
-      "iso2": "VA"
+      "iso2": "VA",
+      "status": "partial",
+      "sources": {
+        "gend": {
+          "title": "Vatican City State — Gendarmerie Corps",
+          "url": "https://www.vaticanstate.va/en/directorates/directorate-of-security-and-civil-protection-services/gendarmerie-corps.html",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "バチカン市国内の司法警察機能は憲兵隊が担当する。",
+          "refs": [
+            "gend"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "憲兵隊の公式案内から連絡先を確認できる。一般の詐欺の正式な申告方法は要確認。",
+          "refs": [
+            "gend"
+          ]
+        }
+      ]
     },
     "VCT": {
       "m49": "670",
@@ -8364,7 +8841,54 @@
       "m49": "882",
       "name": "Samoa",
       "region": "Oceania",
-      "iso2": "WS"
+      "iso2": "WS",
+      "status": "official-route",
+      "sources": {
+        "report": {
+          "title": "Samoa Police, Prisons & Corrections — How to lodge a complaint",
+          "url": "https://www.samoapolice.ws/faqs/how-to-lodge-a-complaint/",
+          "checkedOn": "2026-11-19"
+        },
+        "scams": {
+          "title": "SamCERT — Protecting Against Online Scams",
+          "url": "https://www.samcert.gov.ws/protecting-against-online-scams",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "サモア警察が犯罪申告を扱い、サイバー詐欺には警察のサイバー犯罪部門も案内されている。",
+          "refs": [
+            "report",
+            "scams"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "最寄りの警察署で警察官に相談し、刑事事案の場合は犯罪報告を作成する。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "刑事申告の場合、公式案内は黄色の控えを受け取るよう案内している。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "黄色の控えを使って申告の取扱いを照会する。",
+          "refs": [
+            "report"
+          ],
+          "kind": "status-check"
+        }
+      ]
     },
     "YEM": {
       "m49": "887",
