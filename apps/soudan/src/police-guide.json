@@ -5279,7 +5279,31 @@
       "m49": "296",
       "name": "Kiribati",
       "region": "Oceania",
-      "iso2": "KI"
+      "iso2": "KI",
+      "status": "partial",
+      "sources": {
+        "kps": {
+          "title": "Kiribati Police Service — Directory and Report a Crime",
+          "url": "https://police.gov.ki/kps_link.html",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "キリバス警察に刑事捜査部門がある。",
+          "refs": [
+            "kps"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "公式の警察案内に犯罪申告の項目がある。詐欺被害の具体的な提出方法、受付後の手順は要確認。",
+          "refs": [
+            "kps"
+          ]
+        }
+      ]
     },
     "KNA": {
       "m49": "659",
@@ -6013,7 +6037,42 @@
       "m49": "498",
       "name": "Republic of Moldova",
       "region": "Europe",
-      "iso2": "MD"
+      "iso2": "MD",
+      "status": "partial",
+      "sources": {
+        "police": {
+          "title": "Moldova Police — Depune petiție",
+          "url": "https://politia.md/ro/contacte/depune-petitie",
+          "checkedOn": "2026-11-19"
+        },
+        "pccocs": {
+          "title": "Moldova Prosecutor’s Office for Combating Organised Crime and Special Cases — FAQ",
+          "url": "https://procuratura.md/pccocs/intrebari-frecvente",
+          "checkedOn": "2026-11-19"
+        },
+        "case": {
+          "title": "Moldova Police — Recorded fraud case in Chișinău",
+          "url": "https://politia.md/index.php/ro/content/politia-atentioneaza-caz-de-escrocherie-proportie-de-100-mii-de-lei-inregistrat-capitala",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "モルドバ警察と検察が犯罪対応を担う。組織犯罪・特別事件対策の専門検察はサイバー犯罪も取り扱う。",
+          "refs": [
+            "police",
+            "pccocs"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察には一般の申立ての受付案内がある。ネット詐欺の正式な刑事受付手順は要確認。",
+          "refs": [
+            "police"
+          ]
+        }
+      ]
     },
     "MDG": {
       "m49": "450",
@@ -6281,7 +6340,43 @@
       "m49": "499",
       "name": "Montenegro",
       "region": "Europe",
-      "iso2": "ME"
+      "iso2": "ME",
+      "status": "official-route",
+      "sources": {
+        "code": {
+          "title": "Government of Montenegro — Zakonik o krivičnom postupku",
+          "url": "https://wapi.gov.me/download/64f692bc-64be-4824-b956-722eac2e243a?version=1.0",
+          "checkedOn": "2026-11-19"
+        },
+        "police": {
+          "title": "Montenegro Police — Kada pozvati 122?",
+          "url": "https://www.gov.me/clanak/kada-pozvati-122",
+          "checkedOn": "2026-11-19"
+        },
+        "justice": {
+          "title": "Montenegro Ministry of Justice — Analysis of criminal procedure provisions",
+          "url": "https://wapi.gov.me/download/aeb8b93b-c59a-4327-8b9e-18c0e2c3d1cf?version=1.0",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "モンテネグロでは管轄の検察官が刑事申告を受け、警察も犯罪の通報・申告窓口となる。",
+          "refs": [
+            "code",
+            "justice"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "管轄検察に書面か口頭で申告する方法がある。警察への連絡は事件に合った公式窓口を確認する。",
+          "refs": [
+            "code",
+            "police"
+          ]
+        }
+      ]
     },
     "MNG": {
       "m49": "496",
@@ -7792,7 +7887,37 @@
       "m49": "585",
       "name": "Palau",
       "region": "Oceania",
-      "iso2": "PW"
+      "iso2": "PW",
+      "status": "partial",
+      "sources": {
+        "bops": {
+          "title": "Government of Palau — Bureau of Public Safety",
+          "url": "https://www.palaugov.pw/executive-branch/ministries/justice/bureau-of-public-safety/",
+          "checkedOn": "2026-11-19"
+        },
+        "justice": {
+          "title": "Government of Palau — Ministry of Justice",
+          "url": "https://www.palaugov.pw/executive-branch/ministries/justice/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "パラオ司法省の公安部門が警察業務を担当する。",
+          "refs": [
+            "bops",
+            "justice"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "政府の公開一覧で公安部門の連絡先を確認できる。詐欺被害の正式な刑事申告手順は要確認。",
+          "refs": [
+            "bops"
+          ]
+        }
+      ]
     },
     "PNG": {
       "m49": "598",
@@ -9155,7 +9280,55 @@
       "m49": "688",
       "name": "Serbia",
       "region": "Europe",
-      "iso2": "RS"
+      "iso2": "RS",
+      "status": "official-route",
+      "sources": {
+        "law": {
+          "title": "Serbian Ministry of Interior — Zakonik o krivičnom postupku",
+          "url": "https://prezentacije.mup.gov.rs/sukp/propisi/pdf/ZKP.pdf",
+          "checkedOn": "2026-11-19"
+        },
+        "tech": {
+          "title": "Government of Serbia — Criminal reports in an online fraud investigation",
+          "url": "https://www.srbija.gov.rs/vest/959456/krivicne-prijave-protiv-tri-osobe-zbog-internet-prevare.php",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "セルビアでは管轄検察が刑事申告を受け付け、高度技術犯罪対策部門がオンライン詐欺を捜査する。",
+          "refs": [
+            "law",
+            "tech"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "刑事申告は管轄検察へ書面または口頭などで提出できる。警察等に出した場合も受領の上、管轄検察へ回される。",
+          "refs": [
+            "law"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "申告時に知っている証拠を示し、事案に関する資料を保全する。",
+          "refs": [
+            "law"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "followUp": [
+        {
+          "text": "警察で管轄について案内された場合は、刑事手続法第281条の受付・転送の手順や管轄検察への直接申告を確認する。",
+          "refs": [
+            "law"
+          ],
+          "kind": "channel-unavailable"
+        }
+      ]
     },
     "SSD": {
       "m49": "728",
