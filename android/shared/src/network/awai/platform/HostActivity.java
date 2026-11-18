@@ -66,8 +66,12 @@ public abstract class HostActivity extends Activity {
         if("store".equals(mode()))try{
             JSONObject pins=new JSONObject(new String(Integrity.read(getAssets().open("online-pins.json"),16384),StandardCharsets.UTF_8));
             String rev=pins.getString("revision");if(!rev.matches("[0-9a-f]{40}"))throw new SecurityException();
-            for(String kind:new String[]{"catalog","apk"}){
-                String url=pins.getJSONObject(kind).getString("url");Uri parsed=Uri.parse(url);
+            // One catalog pin plus one APK pin per admitted app id; an unknown id refuses every online URL.
+            JSONObject apks=pins.getJSONObject("apks");if(apks.length()<1||apks.length()>16)throw new SecurityException();
+            java.util.List<String> urls=new java.util.ArrayList<>();urls.add(pins.getJSONObject("catalog").getString("url"));
+            for(java.util.Iterator<String> ids=apks.keys();ids.hasNext();){String id=ids.next();Catalog.assetFor(id);urls.add(apks.getJSONObject(id).getString("url"));}
+            for(String url:urls){
+                Uri parsed=Uri.parse(url);
                 if(!url.startsWith("https://raw.githubusercontent.com/network-awai/awai-os/"+rev+"/store/distribution/")||parsed.getEncodedQuery()!=null||parsed.getEncodedFragment()!=null)throw new SecurityException();
                 onlineUrls.add(url);
             }
@@ -187,11 +191,12 @@ public abstract class HostActivity extends Activity {
                 JSONObject envelope=new JSONObject();envelope.put("raw",raw);envelope.put("signature",signature);
                 // The exact release envelope is digest-pinned by the browser; host independently pins APK bytes and metadata signer.
                 // Pin-driven lookup across admitted apps: catalog order never grants admission.
-                JSONObject artifact=null;JSONArray listed=candidate.getJSONArray("apps");
-                for(int j=0;j<listed.length()&&artifact==null;j++){try{Catalog.assetFor(listed.getJSONObject(j).getString("id"));}catch(SecurityException unadmitted){continue;}
-                    JSONArray entries=listed.getJSONObject(j).getJSONArray("artifacts");
-                    for(int i=0;i<entries.length();i++)if("android".equals(entries.getJSONObject(i).getString("platform")))artifact=entries.getJSONObject(i);}
-                if(artifact==null||!artifact.getString("sha256").equals(pins.getJSONObject("apk").getString("sha256")))throw new SecurityException("unpinned-artifact");
+                // Every pinned app must be listed with exactly the pinned android artifact digest.
+                JSONObject apks=pins.getJSONObject("apks");JSONArray listed=candidate.getJSONArray("apps");
+                for(java.util.Iterator<String> ids=apks.keys();ids.hasNext();){String id=ids.next();Catalog.assetFor(id);String digest=null;
+                    for(int j=0;j<listed.length();j++)if(id.equals(listed.getJSONObject(j).getString("id"))){JSONArray entries=listed.getJSONObject(j).getJSONArray("artifacts");
+                        for(int i=0;i<entries.length();i++)if("android".equals(entries.getJSONObject(i).getString("platform")))digest=entries.getJSONObject(i).getString("sha256");}
+                    if(digest==null||!digest.equals(apks.getJSONObject(id).getString("sha256")))throw new SecurityException("unpinned-artifact");}
                 return getSharedPreferences("online",0).edit().putString("raw",raw).putString("signature",signature).putLong("highest",revision).commit()?"ok":"refused";
             }catch(Exception invalid){return "refused";}
         }
