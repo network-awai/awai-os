@@ -1,12 +1,13 @@
-# Awai Drive — 大容量・多数ファイルでスケールする同期の設計（v2）
+# Awai Drive — 大容量・多数ファイルでスケールする同期の設計（WNFS 準拠版）
 
-- 状態: **提案（設計のみ）**。実装も、性能・容量・durability の主張も含まない。
-- 追跡: [AWAI-3357](https://linear.app/kotobalabs/issue/AWAI-3357)（親 AWAI-3253）。
+- 状態: **提案（設計のみ）**。実装も、WNFS 準拠・性能・容量・durability の主張も含まない。
+- 追跡: [AWAI-3357](https://linear.app/kotobalabs/issue/AWAI-3357)（初版、PR #248）、[AWAI-3372](https://linear.app/kotobalabs/issue/AWAI-3372)（この改訂）。
 - 対象: `apps/drive`（Tauri 3.0.0-alpha.6）。Android と macOS で共通の domain/policy（CLJC/CLJS）を使い、
   platform ごとの Rust/Kotlin/Swift は bounded な adapter だけに限る。
-- 範囲外（別 issue）: 共有・失効、独立 node による耐久性、latest-head/fencing、owner 復旧、
-  WNFS private tree、Native selfhost。ここで決めるのは「8 MiB / 1000 entry の snapshot 形式を、
-  GB 級のファイルと多数のファイルに耐える形に置き換える設計」だけ。
+- 初版からの変更: 初版は独自の chunk / pack / paged manifest 形式を提案していた。owner 判断
+  （2026-11-16、[AWAI-2961](https://linear.app/kotobalabs/issue/AWAI-2961)）は「WNFS に準拠し、`.cljc` で実装する」であり、
+  apex に実装 `otehon/wnfs-cljc` がある。この版は、**独自形式を作らず、WNFS の仕様と `wnfs-cljc` の上に組み直した**。
+- 範囲外（別 issue）: 共有・失効、独立 node による耐久性、owner 復旧、Native selfhost、WNFS の全体認定。
 
 ## 0. 動機
 
@@ -14,257 +15,241 @@
 成果物を Drive に長期保管し、同期を確認できたものだけを端末から退避できれば、増加を構造的に抑えられる。
 しかし現在の Drive は 8 MiB を超えるものを同期も退避もできない（`docs/encrypted-sync.md`）。
 
-この文書は、既存の取り組みと**重複させず**に、その差を埋める順序を決める。
+## 1. 現状の位置づけ（コードを正とした確認）
 
-| 既存の課題 | この設計との関係 |
-|---|---|
-| AWAI-2855 AwaiVol bounded streaming 取り込み | 「bounded read → chunk → pack → atomic root」の考え方を、Drive の client 側にも使う。AwaiVol の実装は置き換えない |
-| AWAI-2856 検証付き自動退避と容量上限 | 退避の状態（§6）と water mark の考え方を、Drive の per-file 退避に採用する。同じ受入語彙を使う |
-| AWAI-2857 macOS File Provider | macOS の local tier の最終形。Apple が管理する materialized cache と二重にキャッシュしない（§8） |
-| AWAI-3256 macOS adapter（Done） | app 専用 directory の adapter。この設計の P5 の土台 |
-| AWAI-3268 / 3314 保存受領証 | pack ごとの署名付き受領証の検証（§5）。receipt の意味は広げない |
-| AWAI-3126 Yataverse の pack protocol | 受け側。pack の上限と認可の変更が必要（§9） |
+「Drive / Vol は WNFS と IPLD がベース」は、部分的にしか当てはまらない。
 
-## 1. 現状の上限と、それが守っているもの
+| 部品 | 現状 | 根拠 |
+|---|---|---|
+| IPLD（CIDv1、DAG-CBOR、CARv1） | **使っている**。Drive の pack は CARv1、各 block は CIDv1（raw, sha2-256） | `apps/drive/docs/encrypted-sync.md` |
+| Drive の live 経路 | owner-store（`object-v2` の raw frame、Kotoba hybrid envelope、暗号化 `private-manifest-v1`）。**WNFS ではない** | 同上、`AWAI-173-private-sharing-design.md`（「WNFS wire 互換は主張しない」） |
+| AwaiVol（legacy） | 独自の forest / pack codec（part ≤ 896 KiB、container ≤ 1 MiB など）。**WNFS PrivateForest とは別の仕組み** | `otehon/legacy-awaivol/README.md`、`docs/otehon/drive-storage.md` |
+| WNFS | apex の `otehon/wnfs-cljc` に CLJC 実装がある（rs-wnfs 0.3.0、node 1.0.0 の profile）。**まだ owner-store / AwaiVol の既定の読み書き経路ではない**。live 切替は copy-only 移行として別 issue（AWAI-2798/2799） | `otehon/wnfs-cljc/README.md`、AWAI-2961 |
 
-数値はすべて `apps/drive` の現行コードと文書から読んだもの。**資源上限であり、性能・容量の保証ではない。**
+したがって、この設計は「**Drive の同期形式を、WNFS（wnfs-cljc）に載せ替えるときに、規模の上限をどう外すか**」を扱う。
+
+## 2. 仕様・実装・未実装の対応
+
+仕様は `wnfs-wg/spec` の revision 5229f36。実装 profile は rs-wnfs 0.3.0（revision 80d5428）で、node `1.0.0`。
+仕様の node は `0.2.0` で、nonce の長さ、header の鍵、temporal key の文脈、hash-to-prime の counter、skip-ratchet の carry に
+差がある（記録と修正案: [wnfs-wg/spec#81](https://github.com/wnfs-wg/spec/pull/81)）。**この設計は実装 profile に従い、
+仕様の版へ黙って切り替えない。**
+
+| 仕様が要求すること | wnfs-cljc の実装 | 未実装・要確認 |
+|---|---|---|
+| PrivateForest ＝ degree 16 の HAMT。label は 2048-bit の `NameAccumulator`、値は raw CID の sorted 集合 | あり（79 label の上流 corpus と全 node の bytes/CID が一致） | 全体を読み込まない **lazy な HAMT 走査**（現行 loader は node 数を 10000 で拘束） |
+| 暗号文 block ≤ 256 KiB（平文 ≤ 262,104、IV 24 + tag 16） | あり（XChaCha20-Poly1305、AES-256-KWP） | — |
+| file ＝ header + 外部 block（`blockCount`: Uint64、`blockSize` ≤ 262,104）。各 block の label は `baseName` に index から導いた素数を accumulate | あり。ただし **1 file ≤ 4096 block** | 上限の引き上げ、streaming の利用の徹底 |
+| 版管理 ＝ skip ratchet、`previous` の暗号化 backlink、revision ごとの label | ratchet、key 導出は実装済み | **latest-revision の探索、履歴の検証、in-place 更新** |
+| merge ＝ 可換・冪等な join-semilattice（第三者が平文なしで blind merge できる） | HAMT 側の考え方はある | forest の merge の実装・資格 |
+| 書き込み権限 ＝ RSA accumulator の membership / batch proof を、平文を読めない第三者が検証 | accumulator の演算はある | **membership / multi-batch proof、writer 認可、fencing** |
+| 転送は CAR（bitswap ではなく 1 往復で新しい block 群を送る） | CARv1 の pack（≤ 10000 block / 256 MiB、BLAKE3/SHA-256 の CID を保持） | **BLAKE3 対応の CAR index**（既存の CARv2 index は SHA-256 のみで流用しない） |
+| 公開側は UnixFS | — | 公開 import/export は別の認可境界 |
+
+root の権限（capability）は WNFS の bytes の**外側**で、既存の Kotoba hybrid owner envelope と sealed identity custody が包む
+（`custody.cljc`）。新しい identity、unlock の保管、consent broker は作らない。
+
+## 3. 上限の出どころ
+
+仕様自体には file サイズや entry 数の上限はない（`blockCount` は Uint64、HAMT に上限はない）。
+**上限は実装の admission bound と、Drive の現行経路にある。** 数値はコードと文書から読んだもので、
+資源上限であり性能・容量の保証ではない。
 
 | 上限 | 値 | 場所 | 守っているもの |
 |---|---|---|---|
-| snapshot 全体 | 8 MiB | `core/awai/drive/encrypted.cljc` | WebView の JS heap。snapshot 全体を 1 つの `Uint8Array` に載せる |
-| snapshot の entry 数 | 1000 | 同上、`desktop.rs` `MAX_ENTRIES` | manifest を 1 つの block に載せる、1 directory の列挙 |
-| raw frame | 65531 byte | owner-store `object-v2` | 既存の AwaiFS codec との互換 |
-| CAR | ≤ 12 MiB / 4096 block | `PACK_LIMIT` | 1 回の PUT/GET の大きさ。サーバ側も 12 MiB |
-| IPC の 1 回の読み | 65531 byte（base64 の JSON） | `sync.js` `vaultRead` | Tauri IPC の JSON 往復 |
-| local の取り込み | 1 GiB / file | `domain.cljc` `fileBytes` | 現行の local tier |
-| depth | 16 | 同上 | path の検査 |
-| 応答 | 2048 byte（receipt） | `bounded-response.js` | 受領証の読み |
+| Drive の snapshot 全体 | 8 MiB / 1000 entry | owner-store 経路（`encrypted.cljc`） | JS heap（snapshot 全体を 1 つの `Uint8Array` に載せる） |
+| Drive の pack（サーバ側も） | 12 MiB | `PACK_LIMIT`、Yataverse `DRIVE_MAX_PACK_BYTES` | 1 回の PUT/GET の大きさ |
+| 1 file | **4096 外部 block ≈ 1 GiB − 160 KiB**（4096 × 262,104 = 1,073,577,984 byte） | wnfs-cljc `private_node` / `private_tree` | forest の件数、メモリ |
+| 取り込む path 数 | 1000 | wnfs-cljc `private_tree` | tree ingestion の入力 |
+| directory の entry 数 | 1000 | wnfs-cljc `private_node`、Drive `desktop.rs` | directory node は 1 block に収まる |
+| forest | node / record 各 10000 | wnfs-cljc `wire` | 全体をメモリへ読む loader |
+| CAR | 10000 block / **256 MiB** | wnfs-cljc `pack` | 実際は byte 上限が先に効く（256 MiB ≈ 約 1000 block） |
+| `read-file`（便利 API） | 64 MiB | wnfs-cljc | 全体をメモリへ載せる API。大きな入力には使わない |
+| 深さ | ingest 64 / 走査 128 | wnfs-cljc | 再帰 |
 
-問題は、上の「snapshot 全体 8 MiB」「1 pack ＝ 1 snapshot」「1 manifest block」に集中している。
-**file 単位**でも **chunk 単位**でも同期・退避・再開できないので、1 byte でも超えると全体が同期できない。
+問題の核は 3 つ。(1) Drive の live 経路が WNFS ではなく 8 MiB の単一 pack であること、
+(2) wnfs-cljc が全体を読み込む前提の bound を持つこと、(3) 仕様自体の制約（§4.3、§4.4）。
 
-## 2. 目標と、目標にしないこと
+## 4. 設計
 
-目標:
+### 4.1 形式
 
-1. 1 file が GB 級（まず 1 GiB 超、設計上は 64 GiB 級まで）でも、同期・復元・退避ができる。
-2. 1 snapshot が数十万 entry でも、manifest を読み書きするコストが entry 数に比例しない（変更分だけ書く）。
-3. 途中で止まっても（電源断、通信断、app 終了）、未完了の root を公開せず、続きから再開できる。
-4. client のメモリは `chunk サイズ × パイプライン深さ` で上から抑える。file の大きさに比例させない。
-5. 同期済みで検証済みの file / chunk だけを、file 単位で退避し、必要になったら chunk 単位で取り戻せる。
-6. Android と macOS で、同じ manifest 形式・同じ状態機械・同じ policy を使う。
+- 同期の単位の形式は **WNFS の private forest そのもの**（実装 profile）。独自の chunk、manifest、暗号の形式は作らない。
+- 既存の Kotoba hybrid envelope は、(a) root capability の包み（`custody.cljc`）と、(b) 既存の v1 snapshot の読み取りにだけ使う。
+- v1 の snapshot（owner-store、単一 pack ≤ 12 MiB）は**そのまま復元できる**。v1 を v2 として、v2 を v1 として読まない。
+  古い root への黙った fallback はしない。移行は copy-only（既存のデータと鍵は変えない）。
 
-目標にしないこと:
+### 4.2 file（大きなファイル）
 
-- 新しい暗号方式、新しい canonical file schema。既存の Kotoba hybrid envelope、`seal-chunk` / `wrap-for-hybrid`、
-  owner-store の raw frame と CARv1 / CIDv1（raw + sha2-256）を再利用する。
-- 複数端末の同時書き込みの調停（latest-head / fencing）。この設計の head は「端末が持つ信頼済み root」のまま（§7）。
-- 独立 node 間の複製や retention の証明。受領証は「この gateway が受けて読み戻した」ことしか示さない。
+- file は header + **外部 block の列**。block は平文 ≤ 262,104 byte、暗号文 262,144 byte、label は block ごとの `NameAccumulator`。
+  block の label は index から決まるので、**任意の block を単独で取得・検証・再送できる**（range 読み、再開、部分 hydration）。
+- 4096 block の上限は仕様由来ではなく実装の admission bound。上げるには、blockCount、forest の件数、CAR の分割に対する
+  bound を、streaming の前提で見直す（§8 の W1）。**GB 級でも全体を載せない**: `stream-file` と block source を使い、
+  `read-file` は使わない。
+- 64 GiB 級を目標にすると、block は約 26 万個、forest の record も約 26 万になる。**per-block の `NameAccumulator`
+  （2048-bit の RSA 演算と hash-to-prime）のコストが律速になり得る**ので、測定が先（§7）。
 
-## 3. データの形（v2）
+### 4.3 directory（多数のファイル）
 
-### 3.1 chunk
+- 仕様の private directory は、`entries` の全体を **1 つの node（1 block）** に持つ。**sharded directory は仕様にない。**
+  実装の 1000 entry は、この構造の現れでもある。
+- したがって「1 directory に数十万 file」（例: 1 つの `.agent-output` に 30 万 file）は、**そのままでは WNFS で表せない**。
+- 扱い（推奨）: 退避の単位を「file 単位」ではなく「**directory subtree を 1 つの archive（tar 型の stream）にした 1 file**」にする。
+  大量の小さな file は 1 つの大きな外部 block 列になり、仕様の範囲で表せる。利用者が個別に開く必要のある file は、通常の file として別に置く。
+- 別案（owner 決定が必要）: directory の sharding（UnixFS の HAMT-sharded directory 型）を Awai の拡張として仕様に足す。
+  相互運用性を失うので、既定にはしない。
 
-- file は固定長の **平文 chunk**（既定 4 MiB。`envelope` の既定と同じ。最後の chunk だけ短い）に分ける。
-- chunk ごとに既存の `seal-chunk` で封をする。nonce は envelope の `epoch BE4 ‖ index BE8` の規則に従い、
-  AAD に `file-id`、`chunk-index`、`chunk-count`、manifest の版を含める。**chunk の入れ替え・欠落・切り詰めを AEAD で検出する**
-  ため。具体的な AAD の構成は P1 で既存の owner-store の規則に合わせて確定する（ここでは新しい規則を作らない）。
-- 封をした chunk を、既存と同じ ≤ 65531 byte の raw frame の列にし、各 frame は CIDv1（raw, sha2-256）を持つ。
-  chunk の CID は frame の CID の列から導く（frame 数は 4 MiB / 65531 ≈ 65 個）。
+### 4.4 更新（版）
 
-### 3.2 pack
+- 仕様は「内容が変わるたびに外部 content の `key` を**ランダムに作り直す**」と定めている（§3.1.4.1）。
+  よって、**大きな file を一部だけ変えると、その file の全 block が新しい key で再暗号化・再送になる**。block 単位の差分更新はできない。
+- 影響: 不変の成果物（ログ、ビルド出力、録画）には問題ない。**追記・部分更新される大きな file（VM image など）には向かない。**
+  扱い（推奨）: 変更される大きな file は、アプリ側で**固定長の segment に分けて、別々の WNFS file**（それぞれ独立の版）にする。
+  これは WNFS の外側の規約であり、P5 以降で扱う。
+- 版は skip ratchet と暗号化 `previous` で表す。**latest-revision の探索と in-place 更新は wnfs-cljc で未実装**（§2）。
+  それまでの Drive は、「新しい forest root を作って、新しい block だけを送る」full-snapshot 型で動かす。
+  同じ内容の block は CID が同じなので、再送は冪等（サーバが既に持っていれば省略できる）。
+- forest の merge は可換・冪等なので、**中断した upload の再開は「足りない block をもう一度送る」だけで済む**。
 
-- **pack ＝ 複数 chunk を束ねた CARv1**。サーバに送る単位であり、同時に再開・検証の単位。
-- 目標サイズ: 既定 **32 MiB**（`PACK_TARGET`）、ハード上限 **128 MiB**（`PACK_HARD`）。
-  これは「1 回の PUT で WebView のメモリを圧迫しない大きさ」と「pack 数・往復数を減らす大きさ」の折衷の**提案値**。
-  実機での測定（§10）の前に確定させない。
-- pack の ID は従来どおり pack 全体の SHA-256（`/awai-drive/v1/packs/<64hex>`）。**既存の路線と受領証をそのまま使う**。
-- 1 つの pack には、1 file の連続する chunk、または小さな file 複数を入れてよい。chunk は pack をまたがない。
-- pack の末尾に CARv2 の index を付け、`chunk CID → pack 内の byte 範囲` を引けるようにする（§6.3 の range 取得）。
+### 4.5 転送（pack）
 
-### 3.3 manifest（paged）
+- 送る単位は **CARv1 の pack**（`pack/write-pack!`、`open-pack`）。pack は暗号文 block の束。block は pack をまたがない。
+- 大きさ: 目標 **32 MiB**（約 128 block、提案値）、上限は wnfs-cljc の **256 MiB**。サーバの現状は 12 MiB で、引き上げは別（§4.9）。
+- pack の ID は従来どおり pack 全体の SHA-256（`/awai-drive/v1/packs/<64hex>`）。既存の路線と受領証をそのまま使う。
+- pack 内の block を後から単独で取得するには index が要る。既存の CARv2 index は SHA-256 のみで、wnfs-cljc は BLAKE3 の ID を保持する。
+  **BLAKE3 を扱える index は未実装**で、「既存の index を改変して BLAKE3 を読み替える」ことはしない（W3）。
 
-現行の `private-manifest-v1` は 1 つの暗号化 block で、全 entry を持つ。これを **ページ分割した木**にする。
-
-```
-root ─▶ manifest page (encrypted, ≤ 1 MiB) ─▶ child page … ─▶ leaf page
-                                            leaf: entry = {name, kind, size, mtime?, mode?,
-                                                          chunks: [ {cid, pack, range, len} … ] }
-```
-
-- ページは暗号化する（名前、path、hash、metadata、chunk 一覧は秘匿。現行と同じ秘匿の範囲）。
-- 木は **sorted-key の木**（prolly tree 型を推奨。既存の `kotobase-index-prolly` の考え方と揃える。実装は新しく作らず、既存の
-  canonical な実装を使えるか P2 で確認する）。entry の追加・変更は、影響を受けたページと root だけを書き換える。
-- 1 ページの entry 数・byte 数に上限を持つ（提案: ≤ 1 MiB / ≤ 4096 entry）。**snapshot 全体の entry 数の上限は持たない**
-  代わりに、**manifest page の読み出しを 1 ページずつ・bounded に**行い、全 entry を同時にメモリに載せない。
-- root は manifest 版（`awai.drive.manifest.v2`）を持つ。**v1 の snapshot（単一 pack、≤ 12 MiB）はそのまま復元できる**。
-  v1 の root を v2 として読まない、v2 の root を v1 として読まない（古い root への黙った fallback はしない）。
-
-### 3.4 重複排除
-
-chunk の暗号化は鍵と nonce で乱数的なので、**別 file・別 snapshot 間の chunk の重複排除はしない**（秘匿を優先）。
-同じ file の**変更のない chunk**だけは、前の版の chunk（CID・pack・range）をそのまま manifest に引き継ぐ（再アップロードしない）。
-chunk が変わったかの判定は、平文 chunk の鍵つき MAC（manifest 内に暗号化して保持）で行い、平文の hash を外に出さない。
-
-## 4. client のパイプライン
+### 4.6 client のパイプライン
 
 ```
-source file ─(bounded read)→ chunker ─→ sealer ─→ packer ─→ uploader ─→ verifier ─→ manifest writer
- (64 KiB→1 MiB IPC)       4 MiB      AEAD     32 MiB CAR     PUT        GET+SHA       paged tree
+source file ─(bounded read)→ block source ─→ seal(XChaCha20-Poly1305) ─→ label(accumulate) ─→ CAR writer ─→ PUT ─→ readback
 ```
 
-- すべて **backpressure 付き**。上流は下流が空くまで読まない。段ごとの最大 buffer の総和が、メモリの上限（§10 で測る）。
-- **IPC を大きくする**: 現在は 65531 byte ずつ base64 の JSON で往復している。GB 級では律速になる。Tauri の raw byte IPC
-  （`awai_fs_put` が Android の IPC byte body を受け付けるようになった #247 と同種の経路）に、1 MiB 単位の読み書きを載せる。
-  上限は platform adapter の bounded な操作として宣言する。
-- **source の変化の検出**: chunk を読む前後で size / mtime / （必要なら）平文 MAC を確認し、変わったら chunk を破棄して
-  その file を「変更あり」として扱う。**未完了の root は公開しない**（AWAI-2855 の受入と同じ）。
-- **重い処理（sealing、hash）は Worker** で行い、UI のスレッドを塞がない。
-- 暗号の秘密（unlock secret）は従来どおりメモリ内のみ。chunk ごとに使い、終わったら 0 で埋める。
+- すべて backpressure 付き。上流は下流が空くまで読まない。最大 buffer の総和がメモリの上限（§7 で測る）。
+- 現在の IPC は 65531 byte ずつ base64 の JSON で往復する。GB 級では律速になるので、Tauri の raw byte IPC（Android の IPC byte body を
+  受け付ける変更 #247 と同種）に 1 MiB 単位の読み書きを載せる。上限は platform adapter の bounded な操作として宣言する。
+- source の変化は block の前後の size / mtime / 内容で検出し、変わったら**その版を破棄**する。未完了の root は公開しない。
+- 重い処理（seal、hash、accumulate）は Worker で行う。unlock の秘密はメモリ内のみで、使ったら 0 で埋める。
 
-## 5. 転送と同意（外部通信）
-
-### 5.1 保つこと
-
-- 外部通信は **既存の canonical broker**（`kotoba.app.client-runtime.v1`）だけを通す。native の HTTP 抜け道、
-  app origin の API、redirect、silent fallback は作らない。
-- 操作ごとの同意で、endpoint・method/path・data category を示す。拒否すれば request は出さない。
-- 受領証は pack ごとに検証する（ビルドが公開鍵集合を固定しているとき必須、AWAI-3314 の判断に従う）。
-  **受領証は retention や独立複製の証拠ではない**（意味を広げない）。
-
-### 5.2 問題: pack 数が多いと「操作ごとの同意」が成り立たない
-
-1 GiB を 32 MiB の pack にすると 32 回の PUT と、readback の 32 回の GET。64 回の同意の提示は使えない。
-一方、「1 回の承認が他の操作を許可しない」という契約は変えられない。次の 2 案を比較する。
-
-| 案 | 内容 | 利点 | 欠点・条件 |
-|---|---|---|---|
-| **A. 大きな pack で回数を減らす** | pack を 128 MiB 級に上げて、操作数を 1/4 にする | 契約を変えない | 1 GiB でも 16 回。64 GiB は無理。メモリ・再送のコストが増える |
-| **B. bounded batch の操作を broker に足す** | 「この endpoint に、最大 N 個の pack、合計最大 B byte、この id 集合だけ PUT/GET する」を**1 つの操作**として宣言し、1 回の同意で承認する | 回数に依存せずスケールする | **shared runtime（`kotoba-client-runtime.js`）の変更**。契約の拡張なので owner 決定が必要 |
-
-**推奨: P1〜P4 は A（契約を変えずに進められる）。B は P6 として別 issue に切り出し、owner 決定を待つ。**
-製品側で broker の同意ロジックを複製・拡張しない（共有契約の禁止事項）。B が実現するまで、**無人で大量に退避する運用は主張しない**。
-同意の画面に出す量（pack 数、合計 byte、endpoint）を、承認の前に計画として確定させて表示する設計だけ、P3 で用意する。
-
-### 5.3 streaming upload の可否は未検証
-
-- WebView の `fetch` で request body に `ReadableStream` を使うには HTTP/2 以上と `duplex: 'half'` が要る。
-  Android の WebView（Chromium）は可能性があるが、macOS の WKWebView は request body の streaming を**期待しない**。
-- よって既定は **pack を `Blob` / `Uint8Array` にして PUT する**（pack ≤ 128 MiB が上限の理由の一つ）。
-  streaming はあとから最適化として足せる。**どの WebView で何ができるかは P0 で測る**（推測で設計を固定しない）。
-
-## 6. 状態機械
-
-### 6.1 upload（snapshot 単位）
+### 4.7 同期の状態機械（snapshot 単位）
 
 ```
-planned → chunking → packing → uploading ─┬→ receipt-verified → readback-verified → committed
-                                          └→ failed-retryable / failed-refused
+planned → sealing → uploading ─┬→ receipt-verified → readback-verified → committed
+                               └→ failed-retryable / failed-refused
 ```
 
-- 状態は **device-protected な control record**（現行の root / pack / origin と同じ置き場所）に、pack ごとに永続化する。
-  再開は「`uploading` の pack のうち receipt-verified でないものだけをもう一度 PUT」。pack は ID（SHA-256）で冪等。
-- `committed`（新しい root を control record に書く）は、**全 pack が readback-verified** になったときだけ。
-  部分的な root は絶対に公開しない（AWAI-2855 の受入、既存の「欠けた・壊れた・部分のデータは拒否」と同じ）。
-- readback は **pack 全体の GET と SHA-256 の一致**。「HTTP 2xx」や「受領証」だけでは readback-verified にしない。
-  readback の量が問題になる場合は、段階（`receipt-verified` と `readback-verified`）を分けて表示し、退避の条件は
-  `readback-verified` のままにする。**sampled readback で退避を許す案は採らない**。
+- 状態は device-protected な control record に、**pack ごと**に永続化する（既存の root / pack / origin と同じ置き場所）。
+- `committed`（新しい forest root を control record に書く）は、**全 pack が readback-verified** のときだけ。部分的な root は公開しない。
+- readback は pack 全体の GET と SHA-256 の一致。受領証（AWAI-3314、ビルドが公開鍵集合を固定しているとき必須）は検証するが、
+  **retention や独立複製の証拠ではない**。sampled readback で退避を許す案は採らない。
 
-### 6.2 file の local tier（AWAI-2856 の語彙に揃える）
+### 4.8 退避と hydration（file 単位）
 
 | 状態 | 意味 | 退避 |
 |---|---|---|
-| `local-only` | まだ同期していない | 不可 |
-| `dirty` | 同期後に変更された | 不可 |
-| `syncing` | upload 中 | 不可 |
-| `clean` | 全 chunk が readback-verified で、local の内容も一致 | **可** |
-| `pinned` | 利用者が退避を禁じた | 不可 |
-| `open` | 開いている / 書き込み中 | 不可 |
-| `remote-only` | local に平文がない（退避済み） | — |
-| `fetching` | 取得中 | — |
+| `local-only` / `dirty` / `syncing` | 未同期・変更あり・同期中 | 不可 |
+| `clean` | 全 block が readback-verified で、local の内容も一致 | **可** |
+| `pinned` / `open` | 利用者が禁止 / 開いている | 不可 |
+| `remote-only` / `fetching` | 平文が local にない / 取得中 | — |
 | `error` | 検証失敗・欠損 | 不可（人が見る） |
 
-- 退避は **file 単位**。退避の前に、現在の local の size / mtime / 内容 MAC を再確認し、新規・変更・中断中の `.pending-*` があれば拒否する
-  （現行の native adapter の検査を file 単位に細かくする）。**同期していないデータは決して消さない。削除と退避を区別する。**
-- 退避の開始・停止は **high / low water mark と空き reserve の設定値**で決める。値は設定であり、未承認の SLO を作らない（AWAI-2856）。
+- 退避するのは**平文の file**。forest の root と block の label は残るので、読むときは path を解決して（snapshot key）、
+  必要な block の label を導き、その block だけを取得する。取った block は CID と AEAD で検証する。
+- 退避の前に、local の size / mtime / 内容を再確認し、新規・変更・中断中のものがあれば拒否する。
+  **同期していないデータは決して消さない。削除と退避を区別する。** water mark と空き reserve は設定値で、SLO にしない（AWAI-2856）。
+- 全体の復元は、各 block を検証してから staging に書き、**すべて検証できてから**公開する。既存のファイルは上書きしない。
 
-### 6.3 hydration（取り戻し）
+### 4.9 外部通信、同意、サーバの認可
 
-- 開く・読むときは、必要な **chunk だけ**を取得する。pack の index で byte 範囲を引き、HTTP `Range` で取る
-  （route は query なし。`Range` header の許可はサーバ側 CORS と合わせて P4 で確認する）。取った chunk は CID（frame ごとの hash）と AEAD で検証する。
-- 全体の復元（今の `restore`）は、manifest を 1 ページずつ検証してから、file ごとに staging へ書き、
-  **すべて検証できてから**公開する。既存ファイルは上書きしない。staging の書き込みには、合計・entry・reserve の admission を設ける。
+- 外部通信は既存の canonical broker だけを通す。native の HTTP 抜け道、app origin の API、redirect、silent fallback は作らない。
+  操作ごとの同意で、endpoint・method/path・data category を示す。拒否すれば request は出さない。
+- **pack が多いと、操作ごとの同意が成り立たない**: 1 GiB を 32 MiB で送ると PUT と readback の GET で約 64 回。
+  案 A（pack を 256 MiB 級に上げて回数を減らす。契約は変えない。64 GiB には足りない）と、
+  案 B（broker に **bounded batch** の操作を足し、「この endpoint へ最大 N 個・合計最大 B byte」を 1 回で承認する。
+  shared runtime の変更で、owner 決定が必要）。**P1〜P4 は A で進め、B は別 issue（P6）に切り出す。**
+  製品側で同意のロジックを複製・拡張しない。B が実現するまで、無人の大量退避は主張しない。
+- 現状の Yataverse の pack protocol は**認証なし**（上限内の opaque な pack を誰でも保存できる）。pack の上限を上げる前に、
+  書き込みの認可と quota が要る。**WNFS はこの課題の答えを持っている**: 書き込み権限を RSA accumulator の batch proof で示し、
+  サーバは平文を読まずに検証する（仕様 §4.2〜4.4）。ただし wnfs-cljc は proof を**未実装**。
+  実装までの暫定は、受領証設計 §8 の予約（`reserve`）と quota。**認可なしで上限だけを上げない。**
 
-## 7. head・復旧・鍵（変えないこと）
+## 5. macOS
 
-- **信頼済み root は引き続き、端末の control record**にある。サーバ側の latest-head と fencing は別の gate（ここで主張しない）。
-- 鍵の管理は現行のまま（端末ローカルの hybrid recipient。Passkey や Awai account の enrollment ではない）。
-  **uninstall / clear-data / 鍵の喪失で remote の snapshot が読めなくなり得る**。独立した recovery-key の export は未実装で、
-  GB 級のデータを退避する前に、この未解決のリスクを**利用者に明示**する（§9 の前提）。
-- 初期化済みの namespace で control record がなく鍵の alias だけがあるときは、新しい identity を作らず拒否する（現行と同じ）。
+- macOS の Tauri build は AWAI-3256 で app 専用 directory の adapter ができている。次の 2 段に分ける。
+  1. **選んだ folder の取り込み**: file picker と security-scoped bookmark で、利用者が選んだ folder を **read-only** に同期する。
+     元のデータは変更せず、退避は取り込んだ複製の方にだけ行う。§4.3 により、大きな tree は archive 化した file として扱う。
+  2. **File Provider**（AWAI-2857）: Finder に統合する最終形。Apple の materialized cache と二重にキャッシュしない。
+     署名・entitlement が未確定なら blocked として記録する。
+- 「Mac の `~/github/wt` を Drive に退避して空き容量を確保する」運用は、上の 1 と §4.9 の案 B（または運用上の許容）が揃った後に成立する。
+  それまでのディスク枯渇の再発防止は、quota 付き APFS volume など、Drive に依存しない手段で別に行う。
 
-## 8. macOS
+## 6. head・鍵・復旧（変えないこと）
 
-- macOS の Tauri build は、AWAI-3256 で app 専用 directory の adapter ができている。この設計の P5 は次の 2 段に分ける。
-  1. **選んだ folder の取り込み**: file picker + security-scoped bookmark で、利用者が選んだ folder を **read-only** に同期する
-     （元のデータは変更しない。退避は取り込んだ**複製**の方にだけ行い、元の folder は消さない）。
-  2. **File Provider**（AWAI-2857）: Finder に統合する最終形。Apple が管理する materialized cache と二重にキャッシュしない。
-     署名・entitlement が未確定ならこの段は blocked として記録する。
-- 「Mac の `~/github/wt` を Drive に退避して空き容量を確保する」運用は、**P5(1) + P6 の後**に成立する。
-  それまでの間のディスク枯渇の再発防止は、quota 付き APFS volume など、Drive に依存しない手段で別に行う。
+- 信頼済み root は引き続き、端末の control record にある。サーバ側の latest-head と fencing は別の gate（主張しない）。
+- 鍵は現行のまま（端末ローカルの hybrid recipient。Passkey や Awai account の enrollment ではない）。
+  **uninstall / clear-data / 鍵の喪失で remote の snapshot が読めなくなり得る。** GB 級を退避する前に、
+  recovery の導線か、明示的な警告と承諾を必須にする。
+- 初期化済みの namespace で control record がなく鍵の alias だけがあるときは、新しい identity を作らず拒否する。
 
-## 9. サーバ（Yataverse）と運用上の前提
+## 7. 測定が必要なもの（推測で決めない。AWAI-3369）
 
-- 現状の pack protocol は **認証なし**で、pack ≤ 12 MiB、CAR の blocks がその CID と一致することを検査する。
-  「誰でも上限内の opaque な pack を保存できる」。**上限を 128 MiB に上げる前に、書き込みの認可と quota（予約）を設計する必要がある**
-  （受領証設計 §8 の `reserve(pool, request-id, quota, expiry)` と `YataverseReservation`）。認可なしで上限だけを上げない。
-- 上限の変更（`DRIVE_MAX_PACK_BYTES`）、`Range` の許可、CORS（`DRIVE_ALLOWED_ORIGINS`）は Yataverse repo の別 PR。
-- 受領証の `retentionUntil` は 0（保持の保証なし）。**この状態で「退避して消す」ことは、保存先の gateway を信頼する判断**であり、
-  独立複製が実現するまでの残余リスクとして、退避の確認画面に明示する。
-- 鍵を失うと読めなくなる（§7）。GB 級の退避を許す前に、recovery の導線（または明示的な警告と承諾）を必須にする。
-
-## 10. 測定が必要なもの（推測で決めない）
-
-| 測るもの | 理由 | 方法 |
-|---|---|---|
-| WebView ごとの `fetch` の request streaming 可否 | §5.3 | Android（API 35）の VM と、macOS（WKWebView）で最小の PUT |
-| 1 MiB の raw IPC の往復の throughput | §4 | 現行の 65531 byte × base64 との比較 |
-| seal / hash の throughput と peak RSS | メモリの上限の見積り | 4 MiB chunk、pack 32 / 128 MiB、パイプライン深さの比較 |
-| 1 GiB / 10 GiB の同期・復元の所要時間と readback の費用 | 段階の目安 | 隔離した store。**製品の SLO にしない** |
-| pack サイズと失敗時の再送コスト | `PACK_TARGET` / `PACK_HARD` の選定 | 通信断の注入 |
-| manifest のページサイズと木の高さ | 1 ページ ≤ 1 MiB の妥当性 | 10 万 / 100 万 entry の合成データ |
+| 測るもの | 理由 |
+|---|---|
+| **block あたりの `NameAccumulator`（accumulate + hash-to-prime）のコスト**（browser の BigInt / pinned provider、Android と macOS） | §4.2。64 GiB 級（約 26 万 block）の可否を決める |
+| forest（HAMT）の件数に対する構築・走査・lazy load の時間とメモリ | §3 の bound の引き上げの根拠 |
+| WebView ごとの `fetch` の request streaming の可否（Android API 35、macOS の WKWebView） | §4.5。既定は Blob / `Uint8Array` の PUT |
+| 1 MiB 単位の raw IPC と、現行の 65531 byte × base64 の往復 throughput | §4.6 |
+| seal / hash の throughput と peak RSS（pack 32 / 256 MiB、パイプライン深さ） | メモリの上限の見積り |
+| 1 GiB / 10 GiB の同期・復元の所要時間と readback の費用（隔離した store） | 製品の SLO にしない |
+| pack サイズと、通信断を入れたときの再送コスト | pack サイズの選定 |
+| archive 化した tree（§4.3）の作成・展開の費用 | 大量の小さな file の扱い |
 
 測定値は、設定・単位・source・coverage と一緒に Linear に記録する。測れなかった値は `unknown`。
 
-## 11. 段階（実装 issue の切り分け）
+## 8. 段階
 
-各段階は別の issue と PR。前の段階の検証が終わる前に次へ進まない。
+各段階は別の issue と PR。**W は apex（`otehon/wnfs-cljc`）側、D は awai-os（`apps/drive`）側。**
 
-| 段階 | 内容 | 検証（受入の形） | 備考 |
+| 段階 | 場所 | 内容 | 検証（受入の形） |
 |---|---|---|---|
-| **P0** | 測定の基盤（§10）。実装は変えない | 測定値と、できなかった測定の一覧 | AWAI-2855 と測定方法を揃える |
-| **P1** | chunk + pack v2（client のパイプライン、1 MiB raw IPC、Worker、backpressure）。manifest はまだ v1 の 1 block | 8 MiB 超・1 GiB 級の file の往復一致、RSS の上限、source 変化・短読・書込失敗で root が公開されない | 小さい snapshot は v1 のまま復元できる |
-| **P2** | paged manifest（木）。entry 数の上限を外す | 10 万 entry の同期・差分更新・復元。変更分だけが書き換わる | 既存の prolly の実装を使えるか確認 |
-| **P3** | 再開可能な upload と commit。pack ごとの状態・受領証・readback、計画の表示 | 通信断・電源断・app 終了からの再開、二重 PUT の冪等、部分 root が公開されない | 同意 UI は §5.2 案 A の範囲 |
-| **P4** | per-file の退避と chunk 単位の hydration | 空 cache からの復元の bytes/ID 一致、dirty/pinned/open の保護、remote 欠損・破損・容量不足・再起動 | AWAI-2856 と受入を共有 |
-| **P5** | macOS: 選択 folder の取り込み → File Provider | Mac で実機の確認（元データを変更しない）。entitlement 未確定なら blocked | AWAI-2857 と調整 |
-| **P6** | broker の bounded batch の同意（§5.2 案 B） | shared runtime の変更。契約と拒否の負の対照 | **owner 決定が必要** |
-| **P7** | head / fencing、独立 node での複製、recovery、共有 | 別の gate | この設計の範囲外 |
+| **P0** | 両方 | 測定（§7） | 測定値と、できなかった測定の一覧 |
+| **W1** | apex | 1 file / forest / 取り込みの bound を、streaming・lazy な前提で引き上げる（blockCount、HAMT の lazy 走査、loader） | 1 GiB 超の file の往復一致、RSS の上限、欠損・改変・短読の拒否。上流 corpus が引き続き一致 |
+| **W2** | apex | in-place 更新と latest-revision の探索、履歴の検証 | 上流の Rust との相互読み出し、拒否 corpus |
+| **W3** | apex | BLAKE3 対応の CAR index（range 取得） | block 単独の取得、不正な range の拒否 |
+| **D1** | awai-os | Drive の同期形式を wnfs-cljc に載せ替え（v1 は読み取り専用で残す。copy-only 移行） | v1 の復元が変わらない、v2 の往復一致、負の対照 |
+| **D2** | awai-os | 再開できる upload と commit（§4.7）、計画の表示 | 通信断・電源断・app 終了からの再開、部分 root が公開されない |
+| **D3** | awai-os | file 単位の退避と block 単位の hydration（§4.8） | 空 cache からの復元の一致、dirty/pinned/open の保護 |
+| **D4** | awai-os | macOS: 選択 folder の取り込み → File Provider | Mac の実機。元データを変更しない |
+| **P6** | shared | broker の bounded batch の同意（§4.9 案 B） | shared runtime の変更。**owner 決定が必要** |
+| **W4** | apex | 書き込み認可（membership / batch proof、writer 認可、fencing） | サーバが平文なしで検証、拒否 corpus |
+| **P7** | — | 共有・失効、独立 node の複製、recovery | 別の gate（この設計の範囲外） |
 
-## 12. 失敗と攻撃の見方（要点）
+## 9. 失敗と攻撃の見方（要点）
 
-- **chunk の入れ替え・欠落・切り詰め**: AAD に file-id / index / count を入れ、manifest の木の root で束ねる。
-- **サーバが pack を返さない・壊す**: pack の SHA-256 と frame の CID で検出。`error` にして退避しない。
-- **pack を途中まで上げた状態で止まる**: root を公開しない。残った pack は未参照の opaque data（サーバ側の GC は別の gate）。
-- **source が同期中に変わる**: chunk の前後確認で検出して破棄。
-- **メモリ・disk の枯渇**: backpressure と staging の admission で抑える。退避は reserve を割らない。
-- **誤削除**: 退避は `clean` の file だけ。元の folder の削除は P5 では行わない。
-- **サーバの乱用（認証なし）**: §9。認可と quota の前に上限を上げない。
+- **block の入れ替え・欠落**: label と CID と AEAD で検出する。**サーバが壊す・返さない**: CID / SHA-256 で検出し、`error` にして退避しない。
+- **pack を途中まで上げて止まる**: root を公開しない。残った pack は未参照の opaque data（サーバ側の GC は別の gate）。
+- **source が同期中に変わる**: 検出して版を破棄する。**メモリ・disk の枯渇**: backpressure と staging の admission、reserve を割らない。
+- **誤削除**: 退避は `clean` の file だけ。元の folder の削除は行わない。
+- **サーバの乱用（認証なし）**: §4.9。認可と quota の前に上限を上げない。
+- **仕様との差**: 実装 profile（node 1.0.0）と仕様（0.2.0）の差は記録した上で、profile に従う。版の切り替えは owner 決定。
 
-## 13. 未決定（owner 決定・調査が必要）
+## 10. 未決定（owner 決定・調査が必要）
 
-1. **bounded batch の同意**（§5.2 案 B）を shared runtime に足すか。足さないなら、無人の大量退避は成立しない。
-2. **書き込みの認可と quota**（§9）。認証なしの現状のまま pack の上限を上げない。
-3. **recovery key** の扱い。GB 級を退避する前提として、導線か明示的な承諾を必須にするか。
-4. manifest の木の実装（既存の prolly を再利用できるか）。
-5. `PACK_TARGET` / `PACK_HARD` / chunk サイズ / ページサイズの確定（P0 の測定後）。
+1. **bounded batch の同意**（§4.9 案 B）を shared runtime に足すか。足さないなら、無人の大量退避は成立しない。
+2. **書き込みの認可**: wnfs-cljc の proof の実装（W4）まで、認証なしの現状のまま pack の上限を上げない。暫定の予約・quota をどうするか。
+3. **recovery key**: GB 級を退避する前提として、導線か明示的な承諾を必須にするか。
+4. **大きな directory**（§4.3）: archive 化を既定にするか、Awai 拡張の sharding を認めるか。
+5. **変更される大きな file**（§4.4）: アプリ側の segment 規約を採るか、対象外にするか。
+6. **block の大きさ**: Awai の既存 raw frame（65531 byte）と WNFS の 262,104 byte の関係。WNFS 準拠のため後者を採るが、移行時の整合を確認する。
+7. pack / ページ / bound の具体的な値は、P0 の測定後に確定する。
+
+## 11. 初版（PR #248）からの変更
+
+| 初版 | 改訂 |
+|---|---|
+| 4 MiB の chunk、独自の封、AAD の規則 | WNFS の外部 block（≤ 262,104）。独自の暗号規則を作らない |
+| 暗号化 paged manifest（独自の木） | WNFS の private forest（HAMT）と private node |
+| 内容の MAC による chunk 単位の差分 | **不可**（仕様は内容が変わると key を作り直す）。§4.4 の扱いに変更 |
+| pack 上限 128 MiB | wnfs-cljc の 256 MiB に合わせる（サーバの引き上げは認可が先） |
+| サーバの認可は受領証設計の予約と quota | 長期は WNFS の書き込み proof（W4）。暫定は予約と quota |
+| 段階 P0〜P7 | W（apex）と D（awai-os）に分けて切り直し |
