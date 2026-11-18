@@ -121,9 +121,9 @@
       [:main {:data-link-done true}
        [:h1 "Device linked"]
        [:p "You can return to your device. Your linked devices on this phone:"]
-       [:ul.devices
-        (.map (read-json devices-key #js [])
-              (fn [device] [:li {:key (.-did device)} (.-did device)]))]]
+       (into [:ul.devices]
+             (map (fn [device] [:li {:key (.-did device)} (.-did device)]))
+             (array-seq (read-json devices-key #js [])))]
 
       :else
       [:main
