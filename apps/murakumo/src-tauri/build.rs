@@ -1,1 +1,1 @@
-fn main(){tauri_build::try_build(tauri_build::Attributes::new().app_manifest(tauri_build::AppManifest::new().commands(&["inference_operation"]))).expect("Murakumo build");}
+fn main(){tauri_build::try_build(tauri_build::Attributes::new().app_manifest(tauri_build::AppManifest::new().commands(&["inference_operation","model_download_begin","model_download_write","model_download_finish","model_download_abort"]))).expect("Murakumo build");}

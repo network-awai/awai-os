@@ -19,6 +19,10 @@ class InferencePlugin(private val owner:Activity):Plugin(owner){
   // Read-only: the pinned catalog and this device's usage (AWAI-3203 stage 4a).
   if(action=="catalog"){invoke.resolve(JSObject(org.json.JSONObject(owner.assets.open("catalog.json").bufferedReader().use{it.readText()}).toString()));return}
   if(action=="usage"){invoke.resolve(JSObject(Models.usage(owner).toString()));return}
+  // Host-stream downloads (AWAI-3307): called only by the Rust bridge's model_download_* commands.
+  if(action in setOf("download-begin","download-finish","download-abort")){val id=args.optString("model")
+   Models.worker.execute{try{val r=when(action){"download-begin"->Models.downloadBegin(owner,id);"download-finish"->{Models.downloadFinish(owner,id);Models.status(owner)};else->{Models.downloadAbort(owner,id);org.json.JSONObject().put("aborted",true)}}
+    invoke.resolve(JSObject(r.toString()))}catch(e:Exception){invoke.reject(e.message?.takeIf{it.matches(Regex("[a-z-]{1,60}"))}?:"model-download-rejected")}};return}
   if(action=="cancel"){Engine.cancel();invoke.resolve(JSObject().put("cancelRequested",true));return}
   if(action !in setOf("import","load","generate","release")){invoke.reject("unknown-operation");return}
   if(!Models.busy.compareAndSet(false,true)){invoke.reject("busy");return}

@@ -17,7 +17,9 @@ import java.util.concurrent.atomic.AtomicBoolean
  * Text models from the pinned catalog (assets/catalog.json, AWAI-3203). Each file is admitted only
  * when its size and SHA-256 equal the catalog entry, at import and again at load. One text model is
  * loaded at a time; loading another releases the current one. No network: files arrive through the
- * Android document picker.
+ * Android document picker, or (AWAI-3307) from the canonical broker's host-stream download: the broker
+ * streams a consented, digest-checked body; Rust appends it to the .download file this object names;
+ * this object admits it again by size and SHA-256 before it becomes the model file.
  */
 internal object Models {
  const val CONTEXT=2048
@@ -26,6 +28,7 @@ internal object Models {
  @Volatile var loadedId:String?=null
  @Volatile var loadedSinceMs=0L
  @Volatile var loading:String?=null
+ @Volatile var downloading:String?=null
  val loaded get()=loadedId!=null
  private var cpuSample=Pair(0L,0L)
 
@@ -46,7 +49,7 @@ internal object Models {
   return JSONObject().put("schema","awai.inference.local.v1").put("engine","llama.cpp").put("model",label)
    .put("imported",models.let{m->(0 until m.length()).any{m.getJSONObject(it).getBoolean("imported")}})
    .put("loaded",loaded).put("loadedModel",loadedId?:JSONObject.NULL).put("loading",loading?:JSONObject.NULL)
-   .put("context",CONTEXT).put("busy",busy.get()).put("models",models)
+   .put("context",CONTEXT).put("busy",busy.get()).put("models",models).put("downloading",downloading?:JSONObject.NULL)
    .put("modalities",JSONArray().put("text")).put("remote",false).put("image",ImageModels.status(c))}
 
  private fun digest(f:File):String{val d=MessageDigest.getInstance("SHA-256");f.inputStream().use{val b=ByteArray(1 shl 20);while(true){val n=it.read(b);if(n<0)break;d.update(b,0,n)}};return d.digest().joinToString(""){"%02x".format(it.toInt() and 255)}}
@@ -56,6 +59,14 @@ internal object Models {
   c.contentResolver.openInputStream(uri)!!.use{input->temp.outputStream().use{output->val b=ByteArray(1 shl 20);var bytes=0L;while(true){val n=input.read(b);if(n<0)break;bytes+=n;require(bytes<=e.getLong("bytes")){"model-size-limit"};output.write(b,0,n)}}}
   admit(temp,e);check(temp.renameTo(dest)){"model-store-failed"}
  }finally{if(temp.exists())temp.delete()}}
+
+ /** A download target the WebView never chooses: a fixed name under the app's models directory. */
+ @Synchronized fun downloadBegin(c:Context,id:String):JSONObject{val e=entry(c,id);check(loadedId!=id){"release-required"};check(downloading==null){"busy"}
+  downloading=id;val part=File(dir(c),"$id.download");part.delete()
+  return JSONObject().put("path",part.absolutePath).put("bytes",e.getLong("bytes"))}
+ @Synchronized fun downloadFinish(c:Context,id:String){check(downloading==id){"no-download"};val part=File(dir(c),"$id.download");try{
+  admit(part,entry(c,id));check(part.renameTo(file(c,id))){"model-store-failed"}}finally{if(part.exists())part.delete();downloading=null}}
+ @Synchronized fun downloadAbort(c:Context,id:String){if(downloading==id){File(dir(c),"$id.download").delete();downloading=null}}
 
  fun load(c:Context,id:String){val e=entry(c,id);val f=file(c,id);loading=id;try{
   if(loadedId!=null){Engine.release();loadedId=null}

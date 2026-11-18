@@ -151,8 +151,12 @@ Reasons:
 - Any speed figure.
 - GPU utilization: macOS exposes it without root only partly, and the Android engine does not use
   the GPU.
-- Whether Hugging Face's download redirects can be declared narrowly enough for the client-runtime
-  contract. Stage 4 checks this before adding INTERNET.
+- ~~Whether Hugging Face's download redirects can be declared narrowly enough for the client-runtime
+  contract.~~ Checked on 2026-11-18 (stage 4b, AWAI-3307):
+  - a pinned `resolve/<revision>` answers 302 to `us.aws.cdn.hf.co`;
+  - both hops allow CORS and Range;
+  - the declaration is the single redirect set `https://*.cdn.hf.co`.
+  Android's INTERNET permission is not per-origin, so the narrowing lives in the CSP and the broker.
 
 ## 7. Figma proposal (stage 2, [AWAI-3214](https://linear.app/kotobalabs/issue/AWAI-3214))
 
