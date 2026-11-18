@@ -103,3 +103,19 @@ Each catalog model can be downloaded from Hugging Face. The canonical client-run
 - **IPC on Android:** Android's WebView cannot read request bodies, so Tauri sends every call as JSON through `postMessage`. Chunks therefore travel as base64 strings (4 MiB decoded each), not raw bytes.
 
 `test/live-download-4b.mjs` runs the real APK on an emulator this run owns. It taps the canonical consent dialog with UI Automator and walks through four steps: Deny, Stop partway, a full download, then load and generate. It relaunches after the upstream wry startup timeout and presses "Wait" on system ANR dialogs, and it records each case. Evidence: [`docs/evidence/murakumo-download-4b-20261118.json`](../../docs/evidence/murakumo-download-4b-20261118.json), 15/15, with [the phone screen](../../docs/evidence/murakumo-download-4b-20261118-phone.png). Qwen3 0.6B (609.8 MiB) took 168 s on a loaded host.
+
+## All devices (stage 5, AWAI-3377)
+
+The All devices section lists this device and every owner-pinned device in `devices.json` (id, kind, HTTPS origin, raw Ed25519 public key). The build validates the file and ships it as a module. Each pinned device adds one usage read to the client descriptor, and its origin to the CSP.
+
+- **Reading:** "Read reports" asks for the canonical consent once per device. Deny sends nothing. The phone then reads `GET /v1/murakumo/usage` over the device's tailnet HTTPS route (Tailscale Serve to the node's loopback reporter). The response is capped at 16 KiB.
+- **Trust:** a report is shown only when its signature verifies against the pinned key and it names the pinned device and kind (`client/usage-report.js`). Otherwise the card says why and shows nothing from it. WebCrypto Ed25519 is used where the WebView has it. Chrome 124, in the Android 15 image, does not, so `client/ed25519.js` checks RFC 8032 in BigInt instead. It is tested against the RFC vectors and against node.
+- **Age:** the shared domain's `deviceView` shows a report as fresh for 2 minutes. After that the card keeps only its age and shows values as unknown. A device whose read fails keeps its last report and says the report did not arrive.
+- **Mac nodes:** the reporter and its operator steps are in [`node/README.md`](node/README.md).
+- No read starts inference anywhere, and nothing but the request leaves the phone.
+
+`test/live-devices-5.mjs` runs the APK on an emulator this run owns and reads benjamin over the tailnet. Evidence: [`docs/evidence/murakumo-devices-5-20261118.json`](../../docs/evidence/murakumo-devices-5-20261118.json), 11/11, with [the phone screen](../../docs/evidence/murakumo-devices-5-20261118-phone.png).
+
+- Deny sends no request to the reporter.
+- Allow shows the signed report: model, RAM, CPU, GPU and disk.
+- With the reporter stopped, the card says the report did not arrive. Two minutes later only its age remains.

@@ -29,3 +29,7 @@ main.manager .generate{grid-column:1/-1}
 @media (max-width:760px){body{padding:1.5rem}main.manager{grid-template-columns:minmax(0,1fr)}main.manager .device{grid-row:1}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 .model-row .meter{flex:1 1 100%}
+.devices{grid-column:1/-1}.devices>.label{margin:0 0 1rem}#devices-status:empty{display:none}
+.device-list{list-style:none;padding:0;margin:1.25rem 0 0;display:grid;gap:1rem;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))}
+.device-card{background:var(--base);border-radius:16px;padding:1.25rem;display:grid;gap:.75rem;align-content:start}.device-card h3{margin:0;font-size:1.125rem}.device-card p{margin:0}
+.device-card .loaded-name{font-size:1rem}.device-card .warn{color:#ffb4a9}
