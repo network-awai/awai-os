@@ -1,0 +1,1 @@
+{"identifier":"public-funds-local","description":"On-device view of public-funds analysis records imported by the user; host version only. No external network, publisher, publication, signing, filesystem, installer or shell permissions.","windows":["main"],"permissions":["allow-awai-host-info"]}
