@@ -1,0 +1,7 @@
+Starting: Intent { cmp=network.itonami.datacontribution/.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: network.itonami.datacontribution/.MainActivity
+TotalTime: 970
+WaitTime: 973
+Complete

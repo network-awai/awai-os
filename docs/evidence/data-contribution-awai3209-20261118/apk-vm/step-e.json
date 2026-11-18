@@ -1,0 +1,18 @@
+{
+ "result": {
+  "armed": "Press again to withdraw",
+  "status": "Withdrawn. Training rounds that start later will not use it. Telling the server is not possible yet.",
+  "contributions": [
+   [
+    "withdrawn",
+    "2026-11-18T01:48:46.553Z"
+   ]
+  ]
+ },
+ "requests": [
+  {
+   "method": "GET",
+   "url": "https://tauri.localhost/icon.png"
+  }
+ ]
+}
