@@ -41,7 +41,7 @@ def manifest(pkg, activity, version, kind, online=False, debuggable=True):
       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>{home}</activity>{extra}</application></manifest>'''
 
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument('--version',type=int,default=1);ap.add_argument('--sdk',type=pathlib.Path,default=pathlib.Path.home()/'Library/Android/sdk');ap.add_argument('--java',type=pathlib.Path,default=pathlib.Path('/opt/homebrew/opt/openjdk/bin'));ap.add_argument('--out',type=pathlib.Path,default=ROOT/'.agent-output/android');ap.add_argument('--skip-cljs',action='store_true');ap.add_argument('--online-pins',type=pathlib.Path);ap.add_argument('--catalog-revision',type=int,default=None);ap.add_argument('--itonami-apk',type=pathlib.Path,default=None);ap.add_argument('--torihiki-bot-apk',type=pathlib.Path,default=None);ap.add_argument('--tabi-mikake-apk',type=pathlib.Path,default=None);ap.add_argument('--deai-apk',type=pathlib.Path,default=None);ap.add_argument('--hiring-apk',type=pathlib.Path,default=None);ap.add_argument('--home-only',action='store_true')
+    ap=argparse.ArgumentParser();ap.add_argument('--version',type=int,default=1);ap.add_argument('--sdk',type=pathlib.Path,default=pathlib.Path.home()/'Library/Android/sdk');ap.add_argument('--java',type=pathlib.Path,default=pathlib.Path('/opt/homebrew/opt/openjdk/bin'));ap.add_argument('--out',type=pathlib.Path,default=ROOT/'.agent-output/android');ap.add_argument('--skip-cljs',action='store_true');ap.add_argument('--online-pins',type=pathlib.Path);ap.add_argument('--catalog-revision',type=int,default=None);ap.add_argument('--itonami-apk',type=pathlib.Path,default=None);ap.add_argument('--torihiki-bot-apk',type=pathlib.Path,default=None);ap.add_argument('--tabi-mikake-apk',type=pathlib.Path,default=None);ap.add_argument('--deai-apk',type=pathlib.Path,default=None);ap.add_argument('--hiring-apk',type=pathlib.Path,default=None);ap.add_argument('--kumade-apk',type=pathlib.Path,default=None);ap.add_argument('--home-only',action='store_true')
     ap.add_argument('--unsigned-home', action='store_true', help='Build a non-debuggable Home APK for a separate APK signing service')
     args=ap.parse_args()
     if args.unsigned_home:
@@ -198,6 +198,20 @@ def main():
         # The app declares no external operation (AWAI-3175), so its APK must not ask for network access.
         if "uses-permission: name='android.permission.INTERNET'" in badging:raise SystemExit('hiring APK requests INTERNET')
         listed.append({'id':'network.itonami.hiring','name':'Hiring','description':'求職・求人の bot が作った下書き（応募文・求人告知）を、この端末で確かめて承認・差し戻しします。応募・投稿・送信はしません。記録は端末の中だけに残します。Android development debug 署名（本番鍵ではない）。','publisher':'Awai Otehon 開発版','versionCode':int(m.group(2)),'versionName':m.group(3),'artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/hiring.apk','bytes':staged.stat().st_size,'sha256':digest(staged),'signerSha256':fp}]})
+    if args.kumade_apk is not None:
+        # Tauri v3 APK built from network-awai/app-itonami-kumade (AWAI-3165/3166/3167, network-awai-apex ADR 0043). The listed
+        # id, version and signer are read from the APK itself and refused unless they are exactly the admitted package and the
+        # development identity. Kumade needs INTERNET for its declared Common Crawl reads (each with each-operation consent),
+        # so INTERNET is allowed; any other permission (besides AndroidX's own non-exported receiver permission) is refused.
+        staged=packages/'kumade.apk';shutil.copyfile(args.kumade_apk,staged)
+        signer=run([tools/'apksigner','verify','--print-certs',staged],capture_output=True).stdout
+        if [l.rsplit(' ',1)[-1] for l in signer.splitlines() if 'certificate SHA-256 digest:' in l]!=[fp]:raise SystemExit('kumade APK signer does not match the development identity')
+        badging=run([tools/'aapt2','dump','badging',staged],capture_output=True).stdout
+        m=re.fullmatch(r"package: name='([^']+)' versionCode='([0-9]+)' versionName='([^']+)'.*",badging.splitlines()[0])
+        if not m or m.group(1)!='network.itonami.kumade':raise SystemExit('kumade APK package is not network.itonami.kumade')
+        perms=sorted(set(re.findall(r"uses-permission: name='([^']+)'",badging)))
+        if perms!=sorted({'android.permission.INTERNET','network.itonami.kumade.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'}):raise SystemExit(f'kumade APK permissions are not exactly INTERNET: {perms}')
+        listed.append({'id':'network.itonami.kumade','name':'Kumade','description':'公開 Web のページを、この端末で読み解きます。貼り付けた HTML の抽出、Common Crawl の過去のアーカイブの検索と取得（通信は毎回確認）、端末内の索引での検索ができます。任意の URL の取得とクロールは、取得用サービスが止まっているため使えません。Android development debug 署名（本番鍵ではない）。','publisher':'Awai Otehon 開発版','versionCode':int(m.group(2)),'versionName':m.group(3),'artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/kumade.apk','bytes':staged.stat().st_size,'sha256':digest(staged),'signerSha256':fp}]})
     catalog={'schema':'itonami.store.bundled.v1','revision':revision,'expiresAt':int(time.time())+30*86400,'apps':listed}
     raw=json.dumps(catalog,ensure_ascii=False,separators=(',',':'));(assets/'catalog.json').write_text(raw)
     run([args.java/'java','-cp',out,'SignCatalog',key,assets/'catalog.json',assets/'catalog-key.der',assets/'catalog.sig'],stdout=subprocess.DEVNULL)

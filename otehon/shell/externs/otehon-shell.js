@@ -905,3 +905,18 @@ Object.prototype.spki;
 Object.prototype.support;
 Object.prototype.wording;
 Object.prototype.RECIPIENT;
+
+// awai.link.v1 purposes (AWAI-2898 Drive, AWAI-3478 Itonami Bot launch): the
+// WebAuthn clientData flag and the launch fields are read by name from parsed JSON.
+Object.prototype.crossOrigin;
+Object.prototype.drive;
+Object.prototype.launch;
+Object.prototype.business_id;
+Object.prototype.business_name;
+Object.prototype.assignment_id;
+Object.prototype.wallet_address;
+Object.prototype.credit_limit_micros;
+
+// AWAI-3401: device.js imports the WNFS account proof issuer; the boundary guard
+// counts imported names as properties, so declare it to keep release names stable.
+Object.prototype.issueWnfsAccountProof;
