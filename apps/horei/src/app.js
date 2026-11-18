@@ -5,13 +5,15 @@ import corpusJson from './corpus.js';
 import catalogJson from './catalog.js';
 import {loadCorpus, loadCatalog, search, trace, lawByLocalId, endpoint} from './model.js';
 import {pickLocale, translator} from './messages.js';
+import {runtimeDescriptor, SELECTOR, createFullText, indexedDbCache, lawText} from './fulltext.js';
 
 bind_native(document.documentElement, {tonal: '.tonal', text: '.link'});
-// No external operations: the corpus ships inside the app; full-text retrieval is a later unit (AWAI-3137).
-const descriptor = {schema: 'kotoba.app.client-runtime.v1', target: 'browser', profile: 'trusted-page-v1', entry: 'index.html',
-  'local-state': {adapter: 'memory', schema: 'itonami.horei.state.v1', version: 1}, workers: [], operations: []};
-if (clientRuntimeProblems(descriptor, [], location.origin).length) throw Error('invalid-runtime');
-createClientOperationBroker({runtime: descriptor, requestedCapabilities: [], approvedOperations: [], hostSupportedOperations: [], consentHost: createClientConsentHost()});
+// One external operation: a law's full text from Yataverse, asked for each time (AWAI-3316). The corpus itself ships inside the app.
+const descriptor = runtimeDescriptor();
+if (clientRuntimeProblems(descriptor, [SELECTOR.capability], location.origin).length) throw Error('invalid-runtime');
+const broker = createClientOperationBroker({runtime: descriptor, requestedCapabilities: [SELECTOR.capability], approvedOperations: descriptor.operations,
+  hostSupportedOperations: [[SELECTOR.capability, SELECTOR.service, SELECTOR.operation]], consentHost: createClientConsentHost()});
+const fullText = createFullText({invoke: (selector, payload, options) => broker.invoke(selector, payload, options), cache: indexedDbCache()});
 
 const locale = pickLocale(navigator.languages), t = translator(locale);
 document.documentElement.lang = locale;
@@ -108,10 +110,29 @@ function renderLaw(localId) {
   for (const [k, v] of rows) if (v) dl.append(el('dt', t(k)), el('dd', v));
   const text = el('section'); text.setAttribute('aria-labelledby', 'text-h');
   const th = el('h3', t('text.heading')); th.id = 'text-h';
-  text.append(th, el('p', law.textSha256 ? t('text.absent') : t('text.none'), 'muted'));
+  const note = el('p', law.textSha256 ? t('text.absent') : t('text.none'), 'muted');
+  text.append(th, note);
   if (law.textSha256) {
+    const body = el('div', null, 'law-text'); body.hidden = true;
+    const button = el('button', t('text.fetch'), 'tonal'); button.type = 'button'; button.hidden = true;
+    const hint = el('p', t('text.fetchNote'), 'muted'); hint.hidden = true;
+    const show = (r, key) => { body.textContent = lawText(r.bytes); body.hidden = false; button.hidden = hint.hidden = true; note.textContent = t(key); };
+    const fail = e => {
+      const m = String(e?.message ?? '');
+      const key = /not approved|cancelled/.test(m) ? 'text.denied' : m === 'mismatch' ? 'text.mismatch' : m === 'absent' ? 'text.remoteAbsent' : m === 'format' ? 'text.format' : 'text.unavailable';
+      note.textContent = t(key); say(t(key));
+    };
+    button.addEventListener('click', async e => {
+      if (!e.isTrusted) return;
+      button.disabled = true; say(t('text.fetching'));
+      try { const r = await fullText.fetch(law); show(r, r.source === 'cache' ? 'text.cached' : 'text.fetched'); say(note.textContent); body.focus(); }
+      catch (err) { fail(err); } finally { button.disabled = false; }
+    });
+    body.tabIndex = -1;
     const d = el('details'); d.append(el('summary', t('text.details')), el('p', t('text.hash', {hash: law.textSha256}), 'mono'), el('p', t('text.bytes', {bytes: num.format(law.textBytes)})));
-    text.append(d);
+    text.append(button, hint, body, d);
+    fullText.cached(law).then(r => { if (!view.contains(text)) return; if (r) show(r, 'text.cached'); else button.hidden = hint.hidden = false; })
+      .catch(() => { button.hidden = hint.hidden = false; });
   }
   view.append(back, h, chips(law), dl, text);
 
