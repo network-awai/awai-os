@@ -5,17 +5,20 @@ import android.app.AlertDialog
 import android.content.Intent
 import android.media.projection.MediaProjectionManager
 import android.provider.Settings
-import androidx.activity.ComponentActivity
+import android.os.Handler
+import android.os.Looper
 import androidx.activity.result.ActivityResult
 import androidx.lifecycle.Lifecycle
 import app.tauri.annotation.Command
 import app.tauri.annotation.TauriPlugin
 import app.tauri.plugin.Invoke
 import app.tauri.plugin.Plugin
+import app.tauri.plugin.PluginManager
 
 @TauriPlugin
-class ScreenToolsPlugin(private val owner: Activity) : Plugin(owner) {
-    private var approvalPending = false
+class ScreenToolsPlugin(activity: Activity) : Plugin(activity) {
+    private val main = Handler(Looper.getMainLooper())
+    private var approvalOwner: MainActivity? = null
 
     @Command
     fun operation(invoke: Invoke) {
@@ -25,7 +28,7 @@ class ScreenToolsPlugin(private val owner: Activity) : Plugin(owner) {
             invoke.reject("invalid-screen-operation")
             return
         }
-        owner.runOnUiThread { execute(action, invoke) }
+        main.post { execute(action, invoke) }
     }
 
     private fun execute(action: String, invoke: Invoke) {
@@ -33,7 +36,8 @@ class ScreenToolsPlugin(private val owner: Activity) : Plugin(owner) {
             invoke.resolve(ScreenRecordingService.result())
             return
         }
-        if (!foreground() || approvalPending) {
+        val owner = PluginManager.activity as? MainActivity
+        if (owner == null || !foreground(owner) || approvalOwner?.isDestroyed == false) {
             invoke.reject("screen-operation-unavailable")
             return
         }
@@ -47,14 +51,14 @@ class ScreenToolsPlugin(private val owner: Activity) : Plugin(owner) {
                 invoke.reject("screen-recording-busy")
                 return
             }
-            approvalPending = true
+            approvalOwner = owner
             try {
                 val manager = owner.getSystemService(MediaProjectionManager::class.java)
-                (owner as MainActivity).requestScreenCapture(manager.createScreenCaptureIntent()) { result ->
-                    projectionApproved(invoke, result)
+                owner.requestScreenCapture(manager.createScreenCaptureIntent()) { result ->
+                    projectionApproved(owner, invoke, result)
                 }
             } catch (_: Exception) {
-                approvalPending = false
+                clearApproval(owner)
                 invoke.reject("screen-capture-unavailable")
             }
             return
@@ -69,7 +73,7 @@ class ScreenToolsPlugin(private val owner: Activity) : Plugin(owner) {
                 return
             }
         }
-        approvalPending = true
+        approvalOwner = owner
         AlertDialog.Builder(owner)
             .setTitle(R.string.screen_confirm)
             .setMessage(message)
@@ -78,7 +82,7 @@ class ScreenToolsPlugin(private val owner: Activity) : Plugin(owner) {
             }
             .setOnCancelListener { invoke.reject("screen-operation-denied") }
             .setPositiveButton(R.string.screen_allow) { _, _ ->
-                if (!foreground()) {
+                if (!foreground(owner)) {
                     invoke.reject("screen-operation-unavailable")
                 } else {
                     try {
@@ -99,14 +103,15 @@ class ScreenToolsPlugin(private val owner: Activity) : Plugin(owner) {
                     }
                 }
             }
-            .setOnDismissListener { approvalPending = false }
+            .setOnDismissListener { clearApproval(owner) }
             .show()
     }
 
-    private fun projectionApproved(invoke: Invoke, result: ActivityResult) {
-        approvalPending = false
+    private fun projectionApproved(owner: MainActivity, invoke: Invoke, result: ActivityResult) {
+        clearApproval(owner)
         val data = result.data
-        if (result.resultCode != Activity.RESULT_OK || data == null) {
+        if (result.resultCode != Activity.RESULT_OK || data == null || owner.isDestroyed ||
+            PluginManager.activity !== owner) {
             invoke.reject("screen-operation-denied")
             return
         }
@@ -123,6 +128,11 @@ class ScreenToolsPlugin(private val owner: Activity) : Plugin(owner) {
         }
     }
 
-    private fun foreground() =
-        !owner.isFinishing && (owner as? ComponentActivity)?.lifecycle?.currentState == Lifecycle.State.RESUMED
+    private fun clearApproval(owner: MainActivity) {
+        if (approvalOwner === owner) approvalOwner = null
+    }
+
+    private fun foreground(owner: MainActivity) =
+        PluginManager.activity === owner && !owner.isFinishing &&
+            owner.lifecycle.currentState == Lifecycle.State.RESUMED
 }
