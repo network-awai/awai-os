@@ -49,6 +49,7 @@ public final class Catalog {
         if ("network.itonami.tabimikake".equals(id)) return "packages/tabi-mikake.apk";
         if ("network.itonami.deai".equals(id)) return "packages/deai.apk";
         if ("network.itonami.hiring".equals(id)) return "packages/hiring.apk";
+        if ("network.itonami.kumade".equals(id)) return "packages/kumade.apk";
         throw new SecurityException("unknown-app");
     }
     public static String onlineFileFor(String id) throws SecurityException {
@@ -59,6 +60,7 @@ public final class Catalog {
         if ("network.itonami.tabimikake".equals(id)) return "online-tabi-mikake.apk";
         if ("network.itonami.deai".equals(id)) return "online-deai.apk";
         if ("network.itonami.hiring".equals(id)) return "online-hiring.apk";
+        if ("network.itonami.kumade".equals(id)) return "online-kumade.apk";
         throw new SecurityException("unknown-app");
     }
     public static int maxApkBytes(String id) throws SecurityException {
@@ -73,6 +75,8 @@ public final class Catalog {
         if ("network.itonami.deai".equals(id)) return 40 * 1024 * 1024;
         // Tauri v3 APK (network-awai/app-itonami-hiring), about 20.6 MB at 0.1.0 (debug, no debug symbols).
         if ("network.itonami.hiring".equals(id)) return 40 * 1024 * 1024;
+        // Tauri v3 APK (network-awai/app-itonami-kumade), debug build without native debug symbols.
+        if ("network.itonami.kumade".equals(id)) return 40 * 1024 * 1024;
         throw new SecurityException("unknown-app");
     }
     public long valueRevision() throws Exception { return value.getLong("revision"); }

@@ -62,6 +62,14 @@ test('the Hiring Tauri artifact fits the shared ceiling and keeps its own asset 
     assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,bad]}),100),false,asset);
   }
 });
+test('the Kumade Tauri artifact fits the shared ceiling and keeps its own asset name',()=>{
+  const kumade={...app,id:'network.itonami.kumade',versionCode:1000,artifacts:[{...apk,asset:'packages/kumade.apk',bytes:21000000}]};
+  assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,kumade]}),100),true);
+  for(const asset of ['packages/Kumade.apk','packages/kumade_.apk','packages/kumade.apk/../x.apk']){
+    const bad={...kumade,artifacts:[{...apk,asset,bytes:21000000}]};
+    assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,bad]}),100),false,asset);
+  }
+});
 test('local event lifecycle is shared and bounded',()=>{
   const e={id:'1',title:'散歩 <img src=x onerror=alert(1)>',at:200};
   const saved=JSON.parse(d.saveEvent('[]',JSON.stringify(e)));
