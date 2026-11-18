@@ -904,3 +904,4 @@ Object.prototype.sig;
 Object.prototype.spki;
 Object.prototype.support;
 Object.prototype.wording;
+Object.prototype.RECIPIENT;

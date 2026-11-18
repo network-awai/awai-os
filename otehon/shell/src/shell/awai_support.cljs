@@ -6,7 +6,9 @@
   consent broker; the card is approved on screen first, then signed with the support approval key.
   devnet only: nothing here is money, revenue or a donation."
   (:require ["react" :refer [useState]]
-            ["../awai-support.js" :refer [approvalKey prepareSupport readReceipt sendSupport signApproval]]))
+            ["../awai-support.js" :refer [RECIPIENT approvalKey prepareSupport readReceipt sendSupport signApproval]]
+            ["../ui-copy.js" :refer [initialLocale]]
+            [shell.ui-copy :as ui]))
 
 (def amount 1)
 
@@ -15,35 +17,35 @@
 (defn- row [label value]
   [:div.support-row [:dt label] [:dd value]])
 
-(defn- notice []
+(defn- notice [locale]
   [:div.support-notice {:role "note" :data-value-class "devnet"}
-   [:strong "devnet：実際のお金・寄付ではありません"]
-   [:p "EN devnet の記録だけが動きます。寄付金控除の対象ではありません。"]])
+   [:strong (ui/t locale :supportNoticeTitle)]
+   [:p (ui/t locale :supportNoticeBody)]])
 
-(defn- expires [ms]
-  (let [minutes (max 0 (js/Math.round (/ (- ms (.now js/Date)) 60000)))]
-    (str minutes " 分後")))
+(defn- expires [locale ms]
+  (ui/t locale :supportExpiresValue {:minutes (max 0 (js/Math.round (/ (- ms (.now js/Date)) 60000)))}))
 
 (defn panel [broker desk-origin]
-  (let [[state set-state] (useState "ready")
+  (let [[locale] (useState initialLocale)
+        [state set-state] (useState "ready")
         [prepared set-prepared] (useState nil)
         [result set-result] (useState nil)
         [message set-message] (useState nil)
         trusted? (fn [e] (.-isTrusted (.-nativeEvent e)))
         fail (fn [error]
-               (cond (denied? error) (do (set-state "denied") (set-message "承認されなかったため、何も送っていません。"))
+               (cond (denied? error) (do (set-state "denied") (set-message (ui/t locale :supportNothingSent)))
                      (.-unknown error) (set-state "unknown")
                      :else (do (set-state "error")
-                               (set-message (str "送れませんでした（" (or (.-cause error) (.-message error)) "）。")))))
+                               (set-message (ui/t locale :supportFailed {:reason (or (.-cause error) (.-message error))})))))
         review (fn [e]
                  (when (trusted? e)
-                   (set-state "busy") (set-message "支援の内容を受け取っています…")
+                   (set-state "busy") (set-message (ui/t locale :supportBusyPreparing))
                    (-> (prepareSupport broker desk-origin amount)
                        (.then (fn [p] (set-prepared p) (set-message nil) (set-state "card")))
                        (.catch fail))))
         approve (fn [e]
                   (when (and (trusted? e) prepared)
-                    (set-state "busy") (set-message "送っています。")
+                    (set-state "busy") (set-message (ui/t locale :supportBusySending))
                     (-> (approvalKey)
                         (.then (fn [pair] (signApproval pair (.-cardText prepared))))
                         (.then (fn [approval] (sendSupport broker desk-origin (.-cardText prepared) approval)))
@@ -51,74 +53,76 @@
                         (.then (fn [r] (set-result r) (set-state (if (.-received r) "received" "unknown"))))
                         (.catch fail))))
         cancel (fn [e] (when (trusted? e) (set-prepared nil) (set-state "denied")
-                         (set-message "承認されなかったため、何も送っていません。")))
+                         (set-message (ui/t locale :supportNothingSent))))
         check (fn [e]
                 (when (and (trusted? e) prepared)
-                  (set-state "busy") (set-message "受け取りを確認しています…")
+                  (set-state "busy") (set-message (ui/t locale :supportBusyChecking))
                   (-> (readReceipt broker desk-origin (.. prepared -card -transferId))
                       (.then (fn [r] (set-result r) (set-state (if (.-received r) "received" "unknown"))))
                       (.catch fail))))
         card (some-> prepared .-card)]
-    [:section.awai-support {:aria-labelledby "awai-support-title" :data-support-state state}
-     [:h2#awai-support-title "Awai を支援する"]
-     [notice]
+    [:section.awai-support {:aria-labelledby "awai-support-title" :data-support-state state :lang locale}
+     [:h2#awai-support-title (ui/t locale :supportTitle)]
+     [notice locale]
      (cond
        (empty? desk-origin)
-       [:p.muted {:data-support-unavailable true} "この build には devnet の支援 desk が設定されていません。"]
+       [:p.muted {:data-support-unavailable true} (ui/t locale :supportUnavailable)]
 
        (= state "ready")
        [:<>
         [:dl.support-details
-         [row "受け取り" "Awai Network LLC"]
-         [row "使い道" "node 運用・Itonami dapps 開発・創作・資源提供"]
-         [row "受け取る bot" "awai-support"]
-         [row "金額" (str amount " EN（devnet）")]]
-        [:h3 "支援の方法"]
+         [row (ui/t locale :supportRecipient) RECIPIENT]
+         [row (ui/t locale :supportUse) (ui/t locale :supportUseValue)]
+         [row (ui/t locale :supportBot) "awai-support"]
+         [row (ui/t locale :supportAmount) (ui/t locale :supportAmountDevnet {:amount amount})]]
+        [:h3 (ui/t locale :supportRoutes)]
         [:dl.support-details
-         [row "EN devnet" "使えます"] [row "暗号資産" "準備中"] [row "カード" "準備中"] [row "計算資源" "準備中"]]
-        [:button.primary {:type "button" :data-support-action "review" :on-click review} "内容を確認する"]]
+         [row (ui/t locale :supportRouteDevnet) (ui/t locale :supportAvailable)]
+         [row (ui/t locale :supportRouteCrypto) (ui/t locale :supportNotYet)]
+         [row (ui/t locale :supportRouteCard) (ui/t locale :supportNotYet)]
+         [row (ui/t locale :supportRouteCompute) (ui/t locale :supportNotYet)]]
+        [:button.primary {:type "button" :data-support-action "review" :on-click review} (ui/t locale :supportReview)]]
 
        (and (= state "card") card)
        [:<>
-        [:p "この内容に承認すると、この端末の承認鍵で署名します。"]
+        [:p (ui/t locale :supportCardIntro)]
         [:dl.support-details {:data-support-card (.-transferId card)}
-         [row "受け取り" (.-recipient card)]
-         [row "bot" (.-bot card)]
-         [row "金額" (str (.-amount card) " EN")]
-         [row "種類" "devnet（実際のお金ではありません）"]
-         [row "chain" (.-chainId card)]
-         [row "期限" (expires (.-expiresMs card))]
-         [row "送信先" (str desk-origin "（devnet desk）")]]
-        [:p.muted "承認の後に、送信先の確認がもう一度表示されます。"]
-        [:button.primary {:type "button" :data-support-action "approve" :on-click approve} "承認して送る"]
-        [:button.secondary {:type "button" :data-support-action "cancel" :on-click cancel} "やめる"]]
+         [row (ui/t locale :supportRecipient) (.-recipient card)]
+         [row (ui/t locale :supportCardBot) (.-bot card)]
+         [row (ui/t locale :supportAmount) (ui/t locale :supportAmountValue {:amount (.-amount card)})]
+         [row (ui/t locale :supportKind) (ui/t locale :supportKindValue)]
+         [row (ui/t locale :supportChain) (.-chainId card)]
+         [row (ui/t locale :supportExpires) (expires locale (.-expiresMs card))]
+         [row (ui/t locale :supportDestination) (ui/t locale :supportDestinationValue {:origin desk-origin})]]
+        [:p.muted (ui/t locale :supportConfirmNext)]
+        [:button.primary {:type "button" :data-support-action "approve" :on-click approve} (ui/t locale :supportApprove)]
+        [:button.secondary {:type "button" :data-support-action "cancel" :on-click cancel} (ui/t locale :supportCancel)]]
 
        (= state "busy")
        [:<> [:p {:role "status"} message]
-        [:button.primary {:type "button" :disabled true} "送っています…"]]
+        [:button.primary {:type "button" :disabled true} (ui/t locale :supportBusyButton)]]
 
        (= state "denied")
        [:<> [:p {:role "status" :data-support-outcome "nothing-sent"} message]
-        [:button.primary {:type "button" :data-support-action "review" :on-click review} "内容をもう一度確認する"]]
+        [:button.primary {:type "button" :data-support-action "review" :on-click review} (ui/t locale :supportReviewAgain)]]
 
        (= state "received")
        [:<>
-        [:p {:role "status" :data-support-outcome "received"} "Awai Network LLC の bot が受け取りました。"]
+        [:p {:role "status" :data-support-outcome "received"} (ui/t locale :supportReceived {:recipient RECIPIENT})]
         [:dl.support-details
-         [row "transfer" (.-transferId result)]
-         [row "height" (str (.-height result))]
-         [row "金額" (str (.-amount result) " EN（devnet）")]
-         [row "確定" "単一 operator の devnet"]]
+         [row (ui/t locale :supportTransfer) (.-transferId result)]
+         [row (ui/t locale :supportHeight) (str (.-height result))]
+         [row (ui/t locale :supportAmount) (ui/t locale :supportAmountDevnet {:amount (.-amount result)})]
+         [row (ui/t locale :supportFinality) (ui/t locale :supportFinalityValue)]]
         [:button.secondary {:type "button" :data-support-action "close"
-                            :on-click #(do (set-prepared nil) (set-result nil) (set-state "ready"))} "閉じる"]]
+                            :on-click #(do (set-prepared nil) (set-result nil) (set-state "ready"))} (ui/t locale :close)]]
 
        (= state "unknown")
        [:<>
-        [:p {:role "status" :data-support-outcome "unknown"}
-         "desk から返事がありません。送られたかどうか分からないため、もう一度は送りません。"]
-        [:button.primary {:type "button" :data-support-action "check" :on-click check} "受け取りを確認する"]
-        [:p.muted "確認でも分からないときは、時間をおいてもう一度確認してください。"]]
+        [:p {:role "status" :data-support-outcome "unknown"} (ui/t locale :supportUnknown)]
+        [:button.primary {:type "button" :data-support-action "check" :on-click check} (ui/t locale :supportCheck)]
+        [:p.muted (ui/t locale :supportCheckLater)]]
 
        :else
        [:<> [:p.problem {:role "alert" :data-support-outcome "error"} message]
-        [:button.primary {:type "button" :data-support-action "review" :on-click review} "内容をもう一度確認する"]])]))
+        [:button.primary {:type "button" :data-support-action "review" :on-click review} (ui/t locale :supportReviewAgain)]])]))
