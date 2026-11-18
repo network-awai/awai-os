@@ -50,7 +50,7 @@ export function openTelemetry(config, {fetchTrace = fetch, warn = () => console.
       const rows = pending.all();
       if (!rows.length) return;
       const response = await fetchTrace(endpoint, {method: 'POST', headers, redirect: 'error',
-        signal: AbortSignal.timeout(5000), body: JSON.stringify(batch(rows.map(row => JSON.parse(row.span))))});
+        signal: AbortSignal.timeout(30000), body: JSON.stringify(batch(rows.map(row => JSON.parse(row.span))))});
       if (!response.ok || Number((await response.json()).partialSuccess?.rejectedSpans ?? 0) !== 0) throw Error('OTLP delivery refused');
       for (const {id} of rows) deliver.run(id);
     } catch {
