@@ -55,13 +55,15 @@ public final class AccountBrokerActivity extends Activity {
             return;
         }
         final String label = "network.awai.drive".equals(app) ? "Drive" : "Itonami";
-        new AlertDialog.Builder(this).setTitle("Awai アカウント")
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Awai アカウント")
                 .setMessage(binding ? label + " の端末鍵をこのアカウントに登録しますか？\n\n" + value
                         : label + " のスナップショット共有票に署名しますか？\n\n宛先 " + recipient)
-                .setNegativeButton("キャンセル", (dialog, button) -> finish())
-                .setOnCancelListener(dialog -> finish())
-                .setPositiveButton("承認", (dialog, button) -> startSigning())
-                .show();
+                .setNegativeButton("キャンセル", (ignored, button) -> finish())
+                .setOnCancelListener(ignored -> finish())
+                .setPositiveButton("承認", (ignored, button) -> startSigning())
+                .create();
+        dialog.getWindow().setHideOverlayWindows(true);
+        dialog.show();
     }
 
     private boolean deviceAvailable() {
