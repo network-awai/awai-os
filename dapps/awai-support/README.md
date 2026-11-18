@@ -111,6 +111,7 @@ node test/live_android.mjs SERIAL APK ../../.agent-output/stack OUT_DIR
 | Desk client against a live node and desk | 16 of 16 |
 | Desk with the approval check removed (negative control) | 5 checks fail, then the client stops on an unexpected send |
 | Android emulator (API 35, arm64, 1920×1080 at density 160), debug APK from `4dd8cec` | 11 of 11 |
+| Physical Awai Android OS device (MQ, x86_64, Android 17, 1920×1200), debug APK from `44a13fd` (AWAI-3340) | 11 of 11 |
 
 Android evidence: [`docs/evidence/awai-support-android-20261118.json`](../../docs/evidence/awai-support-android-20261118.json),
 [the card](../../docs/evidence/awai-support-android-20261118-card.png) and
@@ -122,14 +123,25 @@ Android evidence: [`docs/evidence/awai-support-android-20261118.json`](../../doc
 - An approved support asks the broker twice more (send, read back) and finalizes exactly one transfer.
   The panel and an independent read of the desk show the same receipt.
 
+Physical device run (`AWAI_PHYSICAL=1`, 2026-11-18):
+[`docs/evidence/awai-support-device-20261118.json`](../../docs/evidence/awai-support-device-20261118.json),
+[the card](../../docs/evidence/awai-support-device-20261118-card.png) and
+[the receipt](../../docs/evidence/awai-support-device-20261118-received.png), cropped to the panel.
+
+- The app was already signed in with the owner's account, and that account was left as it was.
+- In this mode the harness neither clears app data nor changes the display or system settings. It
+  stops instead of signing in a test wallet.
+- The previously installed Itonami APK (same signer) was reinstalled afterwards, and its sha256 was
+  checked against the copy taken before the run.
+
 Every decision was a real `adb shell input tap`. DevTools only read the page and filled the wallet
 fields. The emulator display was set to 1920×1080 for the run, because the shell hides the context
 sidebar below 800 CSS px, so the Itonami context cannot be opened at phone width.
 
 ## Not implemented
 
-- The Android run used an emulator, taps from a harness and a test wallet, not a person on the
-  physical Awai Android OS device (6600H). The Itonami context is not reachable at phone width.
+- Taps came from a harness, not a person. The Itonami context is not reachable at phone width.
+- The panel's labels are hard-coded Japanese, not translation keys.
 - Recording and publishing where received support is allocated (initiative I-15).
 - Key custody beyond 0600 files, a second node or operator, and any real-asset route. Real assets
   need the owner's separate approval and the donation-or-support decision.

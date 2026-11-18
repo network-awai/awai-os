@@ -1,0 +1,164 @@
+{
+  "schema": "awai.support-android-evidence/1",
+  "issue": "AWAI-3170",
+  "parent": "AWAI-3112",
+  "device": {
+    "serial": "10.77.0.2:5555",
+    "display": "Physical size: 1920x1200",
+    "model": "MQ",
+    "sdk": "37",
+    "abi": "x86_64",
+    "kind": "physical Awai Android OS device; app data kept"
+  },
+  "apk": {
+    "sha256": "bb5a92b26d086bd62a70e5bd95a0cdbb9131f91783221e18ed90935b4e191dd2",
+    "build": "debug, x86_64, debug-only trust of this run's devnet CA"
+  },
+  "stack": {
+    "desk": "https://localhost:18795",
+    "node": "http://127.0.0.1:18796",
+    "chain": "awai-en-devnet/awai-3170",
+    "valueClass": "devnet",
+    "finality": "single-operator-devnet"
+  },
+  "recipient": "Awai Network LLC",
+  "wording": "support (donation wording undecided)",
+  "anrWaits": [],
+  "signIn": "existing account on the device, untouched",
+  "testWallet": null,
+  "transfer": "support-4dd25a8c367bee110e4c7756",
+  "deskReceipt": {
+    "amount": 1,
+    "finality": ":single-operator-devnet",
+    "height": 1,
+    "received": true,
+    "recipient": {
+      "kind": ":llc",
+      "legal-name": "Awai Network LLC"
+    },
+    "transfer-id": "support-4dd25a8c367bee110e4c7756",
+    "value-class": ":devnet"
+  },
+  "consentScopes": [
+    "Service: awai-support-devnet-desk\nOperation: prepare-support\nCapability: awai-support\nEndpoint: https://localhost:18795\nAction: POST /v1/support/cards\nData categories: support-amount\nDelivery redirects: (none)",
+    "Service: awai-support-devnet-desk\nOperation: send-support\nCapability: awai-support\nEndpoint: https://localhost:18795\nAction: POST /v1/support/funds\nData categories: support-card, support-approval-signature, approval-public-key\nDelivery redirects: (none)",
+    "Service: awai-support-devnet-desk\nOperation: send-support\nCapability: awai-support\nEndpoint: https://localhost:18795\nAction: POST /v1/support/funds\nData categories: support-card, support-approval-signature, approval-public-key\nDelivery redirects: (none)",
+    "Service: awai-support-devnet-desk\nOperation: read-support-receipt\nCapability: awai-support\nEndpoint: https://localhost:18795\nAction: GET /v1/support/receipts/support-4dd25a8c367bee110e4c7756\nData categories: support-transfer-id\nDelivery redirects: (none)"
+  ],
+  "deskRequests": [
+    {
+      "at": 1794965223402,
+      "method": "GET",
+      "path": "/"
+    },
+    {
+      "at": 1794966097971,
+      "method": "OPTIONS",
+      "path": "/v1/support/cards"
+    },
+    {
+      "at": 1794966097992,
+      "method": "POST",
+      "path": "/v1/support/cards"
+    },
+    {
+      "at": 1794966103105,
+      "method": "OPTIONS",
+      "path": "/v1/support/cards"
+    },
+    {
+      "at": 1794966103118,
+      "method": "POST",
+      "path": "/v1/support/cards"
+    },
+    {
+      "at": 1794966110805,
+      "method": "OPTIONS",
+      "path": "/v1/support/cards"
+    },
+    {
+      "at": 1794966110815,
+      "method": "POST",
+      "path": "/v1/support/cards"
+    },
+    {
+      "at": 1794966114928,
+      "method": "OPTIONS",
+      "path": "/v1/support/funds"
+    },
+    {
+      "at": 1794966114941,
+      "method": "POST",
+      "path": "/v1/support/funds"
+    },
+    {
+      "at": 1794966117676,
+      "method": "GET",
+      "path": "/v1/support/receipts/support-4dd25a8c367bee110e4c7756"
+    },
+    {
+      "at": 1794966118886,
+      "method": "GET",
+      "path": "/v1/support/receipts/support-4dd25a8c367bee110e4c7756"
+    }
+  ],
+  "checks": [
+    {
+      "check": "the app was already signed in; its account was left as it was",
+      "passed": true,
+      "detail": "(page text omitted: it shows the device owner's account)"
+    },
+    {
+      "check": "the support panel shows Awai Network LLC and the devnet notice",
+      "passed": true,
+      "detail": "Awai を支援する\ndevnet：実際のお金・寄付ではありません\n\nEN devnet の記録だけが動きます。寄付金控除の対象ではありません。\n\n受け取り\nAwai Network LLC\n使い道\nnode 運用・Itonami dapps 開発・創作・資源提供\n受け取る bot\nawai-support\n金額\n1 EN（devnet）\n支援の方法\nEN devnet\n使えます\n暗号資産\n準備中\nカード\n準備中\n計算資源\n準備中\n内容を確認する"
+    },
+    {
+      "check": "preparing the card asks the broker first (prepare-support)",
+      "passed": true,
+      "detail": "Service: awai-support-devnet-desk\nOperation: prepare-support\nCapability: awai-support\nEndpoint: https://localhost:18795\nAction: POST /v1/support/cards\nData categories: support-amount\nDelivery redirects: (none)"
+    },
+    {
+      "check": "the card appears with the amount and devnet",
+      "passed": true,
+      "detail": "card"
+    },
+    {
+      "check": "cancel on the card sends nothing",
+      "passed": true,
+      "detail": "denied funds=0"
+    },
+    {
+      "check": "denying send-support in the broker sends nothing, not even a preflight",
+      "passed": true,
+      "detail": "Service: awai-support-devnet-desk\nOperation: send-support\nCapability: awai-support\nEndpoint: https://localhost:18795\nAction: POST /v1/support/funds\nData categories: support-card, support-approval-signature, approval-public-key\nDelivery redirects: (none) funds=0"
+    },
+    {
+      "check": "sending and reading back each ask the broker",
+      "passed": true,
+      "detail": "Service: awai-support-devnet-desk\nOperation: send-support\nCapability: awai-support\nEndpoint: https://localhost:18795\nAction: POST /v1/support/funds\nData categories: support-card, support-approval-signature, approval-public-key\nDelivery redirects: (none) | Service: awai-support-devnet-desk\nOperation: read-support-receipt\nCapability: awai-support\nEndpoint: https://localhost:18795\nAction: GET /v1/sup"
+    },
+    {
+      "check": "the panel shows the receipt",
+      "passed": true,
+      "detail": "Awai を支援する\ndevnet：実際のお金・寄付ではありません\n\nEN devnet の記録だけが動きます。寄付金控除の対象ではありません。\n\nAwai Network LLC の bot が受け取りました。\n\ntransfer\nsupport-4dd25a8c367bee110e4c7756\nheight\n1\n金額\n1 EN（devnet）\n確定\n単一 operator の devnet\n閉じる"
+    },
+    {
+      "check": "an independent read of the desk shows the same receipt",
+      "passed": true,
+      "detail": "{\"amount\":1,\"finality\":\":single-operator-devnet\",\"height\":1,\"received\":true,\"recipient\":{\"kind\":\":llc\",\"legal-name\":\"Awai Network LLC\"},\"transfer-id\":\"support-4dd25a8c367bee110e4c7756\",\"value-class\":\":devnet\"}"
+    },
+    {
+      "check": "exactly one support reached the node",
+      "passed": true,
+      "detail": "height=1 funds=1"
+    },
+    {
+      "check": "the receipt on screen names the same transfer",
+      "passed": true,
+      "detail": "support-4dd25a8c367bee110e4c7756"
+    }
+  ],
+  "passed": 11,
+  "total": 11
+}
