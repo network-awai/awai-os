@@ -8,6 +8,9 @@ import java.nio.charset.StandardCharsets;
 
 /** Android host boundary: authenticated bundled metadata and exact APK identity. No network. */
 public final class Catalog {
+    public static final String REGISTRY_ASSOC = "network.itonami.registry.assoc";
+    private static final String REGISTRY_ASSOC_SIGNER =
+            "2dfd2669315058eab39d98e4aa2424721e2dfd752995a0597d226bd4e1e7159f";
     private final JSONObject value;
     public final boolean online;
     public Catalog(Context context) throws Exception {
@@ -52,6 +55,7 @@ public final class Catalog {
     // Admitted store apps. Unknown ids are refused; per-app asset name, staged
     // download filename and byte budget are fixed here, never taken from callers.
     public static String assetFor(String id) throws SecurityException {
+        if (REGISTRY_ASSOC.equals(id)) return "packages/registry-assoc.apk";
         if ("network.itonami.yotei".equals(id)) return "packages/yotei.apk";
         if ("network.itonami.app".equals(id)) return "packages/itonami.apk";
         if ("network.itonami.torihiki".equals(id)) return "packages/torihiki.apk";
@@ -67,6 +71,7 @@ public final class Catalog {
         throw new SecurityException("unknown-app");
     }
     public static String onlineFileFor(String id) throws SecurityException {
+        if (REGISTRY_ASSOC.equals(id)) return "online-registry-assoc.apk";
         if ("network.itonami.yotei".equals(id)) return "online-yotei.apk";
         if ("network.itonami.app".equals(id)) return "online-itonami.apk";
         if ("network.itonami.torihiki".equals(id)) return "online-torihiki.apk";
@@ -82,6 +87,7 @@ public final class Catalog {
         throw new SecurityException("unknown-app");
     }
     public static int maxApkBytes(String id) throws SecurityException {
+        if (REGISTRY_ASSOC.equals(id)) return 40 * 1024 * 1024;
         if ("network.itonami.yotei".equals(id)) return 20 * 1024 * 1024;
         if ("network.itonami.app".equals(id)) return 64 * 1024 * 1024;
         if ("network.itonami.torihiki".equals(id)) return 20 * 1024 * 1024;
@@ -126,6 +132,8 @@ public final class Catalog {
         String onlineFile = onlineFileFor(id);
         int budget = maxApkBytes(id);
         JSONObject app = app(id), a = artifact(id);
+        if (REGISTRY_ASSOC.equals(id) && !REGISTRY_ASSOC_SIGNER.equals(a.getString("signerSha256")))
+            throw new SecurityException("package-signer");
         byte[] bytes = Integrity.read((online ? new FileInputStream(new File(context.getFilesDir(),onlineFile)) : context.getAssets().open(a.getString("asset"))), budget);
         if (bytes.length != a.getLong("bytes") || !Integrity.sha256(bytes).equals(a.getString("sha256")))
             throw new SecurityException("artifact-integrity");
