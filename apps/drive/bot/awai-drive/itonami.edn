@@ -1,0 +1,22 @@
+;; awai-drive itonami profile (AWAI-3255). Bot side of the Awai Drive Tauri app (apps/drive).
+;; It checks storage and reports; it moves, evicts, fetches or deletes nothing on its own.
+;; Inference: the Murakumo rail on this device only. :authorities admits loopback hosts and
+;; :deny-hosts refuses the remote Murakumo and OpenRouter hosts, so no prompt leaves the device.
+;; The one job is no_agent: it runs its script and never calls a model.
+{:itonami/schema "cloud.itonami.profile.v1"
+ :profile/id "awai-drive"
+ :profile/description "Awai Drive / AwaiVol storage bot: readback checks and storage reports; proposals only"
+ :profile/hermes-compatible true
+ :runtime {:engine :itonami-agent :scheduler :itonami}
+ :placement {:mode :local :order [:local] :inference-rail :murakumo}
+ :inference {:rails [:murakumo]
+             :authorities ["127.0.0.1" "localhost"]
+             :deny-hosts ["openrouter.ai" "api.murakumo.cloud"]}
+ :state {:workspace :host-local :results :cid-receipts :secrets :never-leave-host}
+ :bundle {:cid "bafkreiajhpvrxokw2uazdkg3dcldjpouaaacaui27ptlgapkr7w2azjsem" :files 5 :skills []}
+ :capabilities [{:capability :drive/readback-check :decision :autonomous}
+                {:capability :drive/evict :decision :approval-required}
+                {:capability :drive/prefetch :decision :approval-required}
+                {:capability :drive/delete :decision :blocked}]
+ :cron? true
+ :authority {:default-decision :blocked :source :yakuwari :ref "yakuwari.edn"}}

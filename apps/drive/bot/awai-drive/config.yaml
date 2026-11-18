@@ -1,0 +1,7 @@
+# awai-drive (AWAI-3255). The model entry names the Murakumo rail on this device so the
+# itonami rail gate can resolve it; nothing here starts a model server. The readback job is
+# no_agent and never calls it. A chat turn would go only to this loopback address.
+model:
+  default: murakumo-local
+  provider: murakumo
+  base_url: http://127.0.0.1:8080/v1
