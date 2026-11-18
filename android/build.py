@@ -42,12 +42,18 @@ def manifest(pkg, activity, version, kind, online=False, debuggable=True):
 
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('--version',type=int,default=1);ap.add_argument('--sdk',type=pathlib.Path,default=pathlib.Path.home()/'Library/Android/sdk');ap.add_argument('--java',type=pathlib.Path,default=pathlib.Path('/opt/homebrew/opt/openjdk/bin'));ap.add_argument('--out',type=pathlib.Path,default=ROOT/'.agent-output/android');ap.add_argument('--skip-cljs',action='store_true');ap.add_argument('--online-pins',type=pathlib.Path);ap.add_argument('--catalog-revision',type=int,default=None);ap.add_argument('--itonami-apk',type=pathlib.Path,default=None);ap.add_argument('--torihiki-bot-apk',type=pathlib.Path,default=None);ap.add_argument('--tabi-mikake-apk',type=pathlib.Path,default=None);ap.add_argument('--deai-apk',type=pathlib.Path,default=None);ap.add_argument('--hiring-apk',type=pathlib.Path,default=None);ap.add_argument('--kumade-apk',type=pathlib.Path,default=None);ap.add_argument('--home-only',action='store_true')
+    ap.add_argument('--agent-trace-apk', type=pathlib.Path, help='Development-signed APK from app-itonami-agent-trace')
+    ap.add_argument('--agent-trace-sha256', help='Expected SHA-256 from the source app build receipt')
     ap.add_argument('--unsigned-home', action='store_true', help='Build a non-debuggable Home APK for a separate APK signing service')
     args=ap.parse_args()
     if args.unsigned_home:
         args.home_only = True
         if args.out.exists() and any(args.out.iterdir()):
             ap.error('--unsigned-home requires an empty output directory')
+    if bool(args.agent_trace_apk) != bool(args.agent_trace_sha256):
+        ap.error('--agent-trace-apk and --agent-trace-sha256 must be supplied together')
+    if args.agent_trace_sha256 and not re.fullmatch(r'[a-f0-9]{64}', args.agent_trace_sha256):
+        ap.error('--agent-trace-sha256 requires a lowercase SHA-256 digest')
     if args.catalog_revision is not None and args.catalog_revision<1:raise SystemExit('positive catalog revision required')
     if args.version<1:raise SystemExit('positive version required')
     out=args.out.resolve();out.mkdir(parents=True,exist_ok=True);tools=args.sdk/'build-tools/36.1.0';jar=args.sdk/'platforms/android-37.0/android.jar'
@@ -212,6 +218,33 @@ def main():
         perms=sorted(set(re.findall(r"uses-permission: name='([^']+)'",badging)))
         if perms!=sorted({'android.permission.INTERNET','network.itonami.kumade.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'}):raise SystemExit(f'kumade APK permissions are not exactly INTERNET: {perms}')
         listed.append({'id':'network.itonami.kumade','name':'Kumade','description':'公開 Web のページを、この端末で読み解きます。貼り付けた HTML の抽出、Common Crawl の過去のアーカイブの検索と取得（通信は毎回確認）、端末内の索引での検索ができます。任意の URL の取得とクロールは、取得用サービスが止まっているため使えません。Android development debug 署名（本番鍵ではない）。','publisher':'Awai Otehon 開発版','versionCode':int(m.group(2)),'versionName':m.group(3),'artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/kumade.apk','bytes':staged.stat().st_size,'sha256':digest(staged),'signerSha256':fp}]})
+    if args.agent_trace_apk is not None:
+        staged = packages / 'agent-trace.apk'
+        if args.agent_trace_apk.stat().st_size > 2 * 1024 * 1024:
+            raise SystemExit('agent trace APK exceeds its Store byte budget')
+        shutil.copyfile(args.agent_trace_apk, staged)
+        actual_digest = digest(staged)
+        if actual_digest != args.agent_trace_sha256:
+            raise SystemExit('agent trace APK digest does not match the supplied build receipt')
+        signer = run([tools/'apksigner', 'verify', '--print-certs', staged], capture_output=True).stdout
+        if [line.rsplit(' ', 1)[-1] for line in signer.splitlines()
+                if 'certificate SHA-256 digest:' in line] != [fp]:
+            raise SystemExit('agent trace APK signer does not match the development identity')
+        badging = run([tools/'aapt2', 'dump', 'badging', staged], capture_output=True).stdout
+        package = re.fullmatch(r"package: name='network\.itonami\.agenttrace' versionCode='([0-9]+)' versionName='([^']+)'.*",
+                               badging.splitlines()[0])
+        if not package or run([tools/'aapt2', 'dump', 'permissions', staged],
+                              capture_output=True).stdout.count('uses-permission'):
+            raise SystemExit('agent trace APK must have its assigned package and request no permissions')
+        listed.append({
+            'id': 'network.itonami.agenttrace', 'name': '営トレース',
+            'description': 'OTLP のエージェント実行履歴を端末内で確認し、OpenTelemetry または Langfuse 用に書き出します。',
+            'publisher': 'Awai Otehon 開発版',
+            'versionCode': int(package.group(1)), 'versionName': package.group(2),
+            'artifacts': [{'platform': 'android', 'runtime': 'android', 'kind': 'apk',
+                           'asset': 'packages/agent-trace.apk', 'bytes': staged.stat().st_size,
+                           'sha256': actual_digest, 'signerSha256': fp}],
+        })
     catalog={'schema':'itonami.store.bundled.v1','revision':revision,'expiresAt':int(time.time())+30*86400,'apps':listed}
     raw=json.dumps(catalog,ensure_ascii=False,separators=(',',':'));(assets/'catalog.json').write_text(raw)
     run([args.java/'java','-cp',out,'SignCatalog',key,assets/'catalog.json',assets/'catalog-key.der',assets/'catalog.sig'],stdout=subprocess.DEVNULL)

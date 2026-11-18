@@ -69,3 +69,12 @@ Home follows the existing Figma Android setup composition. Android Settings owns
 A saved signed link is reverified for expiry, device binding and the non-exportable device key’s possession before it can restore an authenticated account. The native setup preference is only a flow marker, not an identity credential. Invalid or missing proof returns to account linking while retaining saved evidence. Explicit account deferral remains available. Home’s WebView and Itonami’s WebView have separate stores: shared sign-in, encrypted profile transfer and sync are not implemented by this change.
 
 See [the qualification record](setup-qualification-20261117.md) for current VM, real-account and physical-device gates. An ordinary Home APK is not privileged SetupWizard integration or a qualified persistent PC ROM.
+
+## 営トレース development APK
+
+Build the standalone [営トレース](https://github.com/network-awai/app-itonami-agent-trace)
+app and read the SHA-256 printed by its build. Add it to the signed bundled catalog
+with `--agent-trace-apk <apk> --agent-trace-sha256 <digest>`.
+Store admits only the `network.itonami.agenttrace` package with the development signer,
+the pinned digest, zero requested permissions, and an APK of at most 2 MiB.
+OpenTelemetry and Langfuse trace files are reviewed and exported on the device.
