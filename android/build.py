@@ -45,6 +45,7 @@ def main():
     ap.add_argument('--agent-trace-apk', type=pathlib.Path, help='Development-signed APK from app-itonami-agent-trace')
     ap.add_argument('--agent-trace-online', action='store_true', help='Admit the feed-enabled agent trace APK with INTERNET')
     ap.add_argument('--agent-trace-sha256', help='Expected SHA-256 from the source app build receipt')
+    ap.add_argument('--bundle-registry-assoc', action='store_true', help='Bundle the pinned release-signed Registry Assoc APK')
     ap.add_argument('--unsigned-home', action='store_true', help='Build a non-debuggable Home APK for a separate APK signing service')
     args=ap.parse_args()
     if args.unsigned_home:
@@ -272,6 +273,20 @@ def main():
             perms=sorted(set(re.findall(r"uses-permission: name='([^']+)'",badging)))
             if perms not in ([],[pkg+'.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION']):raise SystemExit(f'{pkg} APK requests permissions: {perms}')
             listed.append({'id':pkg,'name':meta['name'],'description':meta['description']+'Android development debug 署名（本番鍵ではない）。','publisher':'Awai Otehon 開発版','versionCode':int(m.group(2)),'versionName':m.group(3),'artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':f'packages/{suffix}.apk','bytes':staged.stat().st_size,'sha256':digest(staged),'signerSha256':fp}]})
+    if args.bundle_registry_assoc:
+        distribution = ROOT / 'store/distribution/dev-20261119-r105'
+        published = json.loads((distribution / 'catalog-rev105-raw.json').read_bytes())
+        entry = next(app for app in published['apps'] if app['id'] == 'network.itonami.registry.assoc')
+        artifact, = entry['artifacts']
+        apk = distribution / 'registry-assoc.apk'
+        if apk.stat().st_size != artifact['bytes'] or digest(apk) != artifact['sha256']:
+            raise SystemExit('Registry Assoc APK does not match the published catalog')
+        signer = run([tools/'apksigner', 'verify', '--print-certs', apk], capture_output=True).stdout
+        digests = re.findall(r'certificate SHA-256 digest: ([a-f0-9]{64})', signer)
+        if digests != [artifact['signerSha256']] or digests == [fp]:
+            raise SystemExit('Registry Assoc APK does not have its dedicated release signer')
+        shutil.copyfile(apk, packages / 'registry-assoc.apk')
+        listed.append(entry)
     catalog={'schema':'itonami.store.bundled.v1','revision':revision,'expiresAt':int(time.time())+30*86400,'apps':listed}
     raw=json.dumps(catalog,ensure_ascii=False,separators=(',',':'));(assets/'catalog.json').write_text(raw)
     run([args.java/'java','-cp',out,'SignCatalog',key,assets/'catalog.json',assets/'catalog-key.der',assets/'catalog.sig'],stdout=subprocess.DEVNULL)
