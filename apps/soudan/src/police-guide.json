@@ -390,7 +390,40 @@
       "m49": "050",
       "name": "Bangladesh",
       "region": "Asia",
-      "iso2": "BD"
+      "iso2": "BD",
+      "status": "partial",
+      "sources": {
+        "pcsw": {
+          "title": "Bangladesh Police — Police Cyber Support for Women",
+          "url": "https://www.police.gov.bd/en/police_cyber_support_for_women",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "バングラデシュ警察本部のPCSWはサイバー犯罪の女性被害者を対象に、警察署や担当部署、被害者支援センターへの連絡を支援する。",
+          "refs": [
+            "pcsw"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "該当する被害者はPCSWが掲載している電話・メールの窓口を利用できる。一般の被害者向けの正式な申告手続は要確認。",
+          "refs": [
+            "pcsw"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "PCSWの対象となる場合は、対応する警察署や警察部門への取次ぎを相談できる。",
+          "refs": [
+            "pcsw"
+          ],
+          "kind": "channel-unavailable"
+        }
+      ]
     },
     "BGR": {
       "m49": "100",
@@ -1380,6 +1413,11 @@
           "title": "Fiscalía General del Estado — Servicios FGE",
           "url": "https://www.fiscalia.gob.ec/accesibilidad/servicios-fge/",
           "checkedOn": "2026-11-18"
+        },
+        "internet-conviction": {
+          "title": "Fiscalía General del Estado — Sala Penal ratifica sentencia por estafa a través de internet",
+          "url": "https://www.fiscalia.gob.ec/accesibilidad/sala-penal-ratifica-sentencia-de-5-anos-para-responsable-de-estafa-a-traves-de-internet/",
+          "checkedOn": "2026-11-18"
         }
       },
       "jurisdiction": [
@@ -1423,6 +1461,15 @@
             "lookup"
           ],
           "kind": "status-check"
+        }
+      ],
+      "cases": [
+        {
+          "text": "SNSで親族になりすました詐欺について、被害者の申告を受けて捜査を開始したと検察が公表。州裁判所は詐欺罪の有罪判決を維持した。",
+          "refs": [
+            "internet-conviction"
+          ],
+          "stage": "investigation-confirmed"
         }
       ]
     },
@@ -1853,7 +1900,51 @@
       "m49": "288",
       "name": "Ghana",
       "region": "Africa",
-      "iso2": "GH"
+      "iso2": "GH",
+      "status": "partial",
+      "sources": {
+        "cid": {
+          "title": "Ghana Police Service — Cyber Crime Unit",
+          "url": "https://police.gov.gh/en/index.php/cyber-crime/",
+          "checkedOn": "2026-11-18"
+        },
+        "form": {
+          "title": "Cyber Security Authority — Incident Reporting Form",
+          "url": "https://csa.gov.gh/report",
+          "checkedOn": "2026-11-18"
+        },
+        "evidence": {
+          "title": "Cyber Security Authority — CERT-GH advisory CSA/CERT/MPA/2025-05/01",
+          "url": "https://www.csa.gov.gh/cert-gh-alert38.php",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ガーナ警察刑事捜査局のサイバー犯罪部門が専門捜査を担当し、CSAはサイバー事案の通報を受ける。",
+          "refs": [
+            "cid",
+            "form"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "CSAの公式フォームから通報するとCERT-GHに送られる。警察での正式な申告手続は要確認。",
+          "refs": [
+            "form"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "オンライン上の脅迫に関し、CSAはユーザー名、URL、メッセージ、金銭の要求、画面の記録の保全を案内している。",
+          "refs": [
+            "evidence"
+          ],
+          "kind": "retain"
+        }
+      ]
     },
     "GIB": {
       "m49": "292",
@@ -2122,7 +2213,85 @@
       "m49": "191",
       "name": "Croatia",
       "region": "Europe",
-      "iso2": "HR"
+      "iso2": "HR",
+      "status": "official-route",
+      "sources": {
+        "mup": {
+          "title": "Croatian Ministry of Interior — Kako prijaviti kazneno djelo?",
+          "url": "https://mup.gov.hr/pristup-informacijama-16/najcesca-pitanja-219/ostala-pitanja/kako-prijaviti-kazneno-djelo/281924",
+          "checkedOn": "2026-11-18"
+        },
+        "rights": {
+          "title": "Croatia — Reporting a crime and my rights during investigation or trial",
+          "url": "https://e-justice.europa.eu/topics/your-rights/victims-crime/victims-rights-country/2-reporting-crime-and-my-rights-during-investigation-or-trial/hr_en",
+          "checkedOn": "2026-11-18"
+        },
+        "scam": {
+          "title": "Croatian Ministry of Interior — Prijevara prilikom kupnje preko interneta",
+          "url": "https://mup.gov.hr/vijesti-8/prijevara-prilikom-kupnje-preko-interneta-209606/206166",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "警察または管轄の検察に申告できる。管轄外の検察、警察、裁判所が受け取った場合は管轄検察に転送する。",
+          "refs": [
+            "mup",
+            "rights"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察への対面・書面提出、管轄検察への口頭・書面等の申告が案内されている。",
+          "refs": [
+            "mup",
+            "rights"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "検察がどの犯罪の申告か特定できるように、被害の内容を記載する。",
+          "refs": [
+            "rights"
+          ],
+          "kind": "required"
+        }
+      ],
+      "progress": [
+        {
+          "text": "被害者には申告の基本事項を記載した受領書が交付される。通訳や受領書の翻訳を求められる場合がある。",
+          "refs": [
+            "rights"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "被害の記述不足で検察から補足を求められた場合は、案内に従って15日以内に追加情報を提出する。",
+          "refs": [
+            "rights"
+          ],
+          "kind": "supplement"
+        },
+        {
+          "text": "申告から2か月後、被害者等は検察に対応状況を照会できる。",
+          "refs": [
+            "rights"
+          ],
+          "kind": "status-check"
+        }
+      ],
+      "cases": [
+        {
+          "text": "オンラインで代金を支払った携帯電話が届かず、被害者がドゥブロヴニク警察に申告した。警察は捜査後に容疑者について管轄検察に刑事申告したと内務省が公表している。",
+          "refs": [
+            "scam"
+          ],
+          "stage": "investigation-confirmed"
+        }
+      ]
     },
     "HTI": {
       "m49": "332",
@@ -2249,7 +2418,52 @@
       "m49": "833",
       "name": "Isle of Man",
       "region": "Europe",
-      "iso2": "IM"
+      "iso2": "IM",
+      "status": "partial",
+      "sources": {
+        "csc": {
+          "title": "Isle of Man Cyber Security Centre — Cyber Concerns Online Reporting Form",
+          "url": "https://csc.gov.im/cyber-concerns-online-reporting-form/",
+          "checkedOn": "2026-11-18"
+        },
+        "strategy": {
+          "title": "Isle of Man Government — National Cyber Security Strategy",
+          "url": "https://csc.gov.im/media/qd2p4o2z/approved-national-cyber-security-strategy-1.pdf",
+          "checkedOn": "2026-11-18"
+        },
+        "advice": {
+          "title": "Isle of Man Cyber Security Centre — Vishing & Smishing",
+          "url": "https://csc.gov.im/advice-guidance/vishing-smishing/",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "マン島政府のサイバーセキュリティセンターが相談を受け、必要に応じて警察と連携する。",
+          "refs": [
+            "strategy",
+            "csc"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "オンラインのCyber Concernsフォームで被害を報告できる。現行の警察の正式受付手続は要確認。",
+          "refs": [
+            "csc",
+            "advice"
+          ]
+        }
+      ],
+      "cases": [
+        {
+          "text": "被害者が送付物の追跡情報を保存し、サイバーセキュリティ担当部署に相談した。政府の公表資料によると、マン島警察を通じて英国警察が資金の差し止めに対応した。",
+          "refs": [
+            "strategy"
+          ],
+          "stage": "action-confirmed"
+        }
+      ]
     },
     "IND": {
       "m49": "356",
@@ -2411,13 +2625,133 @@
       "m49": "352",
       "name": "Iceland",
       "region": "Europe",
-      "iso2": "IS"
+      "iso2": "IS",
+      "status": "official-route",
+      "sources": {
+        "fraud": {
+          "title": "Icelandic Police — Report online financial fraud",
+          "url": "https://island.is/en/report-financial-fraud",
+          "checkedOn": "2026-11-18"
+        },
+        "complaint": {
+          "title": "Icelandic Police — Pressing charges",
+          "url": "https://island.is/en/filing-an-infringement-complaint",
+          "checkedOn": "2026-11-18"
+        },
+        "review": {
+          "title": "Icelandic Police — When the police investigates cases",
+          "url": "https://island.is/en/when-the-police-investigate-cases",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "警察が金融詐欺の申告を受け付ける。行為者が分かるか心当たりがあり正式な申告を行う場合は管轄地区の警察署を確認する。",
+          "refs": [
+            "fraud",
+            "complaint"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "投資詐欺や口座の不正利用などはオンラインまたは最寄りの警察署に申告できる。正式な申告の手続では管轄地区の警察署に出向いて供述する。",
+          "refs": [
+            "fraud",
+            "complaint"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "警察が情報を審査し、必要と判断した場合に捜査を開始する。",
+          "refs": [
+            "review"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "警察による捜査打切り決定は国家検察官に不服申立てができる。公式案内の期限は1か月。",
+          "refs": [
+            "review"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "ISR": {
       "m49": "376",
       "name": "Israel",
       "region": "Asia",
-      "iso2": "IL"
+      "iso2": "IL",
+      "status": "official-route",
+      "sources": {
+        "filing": {
+          "title": "Israel Police — Filing a complaint",
+          "url": "https://www.gov.il/he/service/request-file-complaint-online-during-emergency",
+          "checkedOn": "2026-11-18"
+        },
+        "mena": {
+          "title": "Israel Police — Information for victims of crime",
+          "url": "https://www.gov.il/en/service/information_system_for_victims_of_crime",
+          "checkedOn": "2026-11-18"
+        },
+        "appeal": {
+          "title": "Israel State Attorney — Appeals Department FAQ",
+          "url": "https://www.gov.il/ar/pages/appeals-dep-faq",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "財産犯罪・詐欺はイスラエル警察の窓口が受け付ける。",
+          "refs": [
+            "filing"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "政府の本人確認を利用してオンラインで申請するか、警察署で申告する。",
+          "refs": [
+            "filing"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "オンライン申請では申告内容を裏付ける資料を添付する。",
+          "refs": [
+            "filing"
+          ],
+          "kind": "required"
+        }
+      ],
+      "progress": [
+        {
+          "text": "オンライン申請は担当捜査官が手続を完了して正式な申告となる。警察から来署や補足を求められる場合がある。",
+          "refs": [
+            "filing"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "正式な申告後は付与された認証情報で被害者情報システムMENAを確認する。",
+          "refs": [
+            "mena"
+          ],
+          "kind": "status-check"
+        },
+        {
+          "text": "捜査不開始や事件終結の決定について不服申立てを確認する。公式案内では書面通知から60日以内。",
+          "refs": [
+            "appeal"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "ITA": {
       "m49": "380",
@@ -2948,6 +3282,11 @@
           "title": "Lithuanian Police — Kaip atpažinti sukčius",
           "url": "https://policija.lrv.lt/public/canonical/1750332401/10693/SPAUDAI%20PARUO%C5%A0TAS%28Lietuvi%C5%B3%20k.%29.pdf",
           "checkedOn": "2026-11-18"
+        },
+        "investment-investigation": {
+          "title": "Lithuanian Police — 2025-07-11 suvestinė",
+          "url": "https://policija.lrv.lt/lt/ivykiu-suvestines/2025-07-11-suvestine/",
+          "checkedOn": "2026-11-18"
         }
       },
       "jurisdiction": [
@@ -2973,6 +3312,15 @@
             "evidence"
           ],
           "kind": "retain"
+        }
+      ],
+      "cases": [
+        {
+          "text": "偽の投資サービスによる被害をヴィリニュスの警察署に届け出た。国家警察の2025年7月11日付の記録には、詐欺容疑で捜査を始めたことが明記されている。",
+          "refs": [
+            "investment-investigation"
+          ],
+          "stage": "investigation-confirmed"
         }
       ]
     },
