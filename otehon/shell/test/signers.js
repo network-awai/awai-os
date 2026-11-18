@@ -49,9 +49,9 @@ export function passkeyResponse(
   secret,
   request,
   now,
-  { origin = LINK_ORIGIN, type = "webauthn.get", rpId = RP_ID, flags = 0x05 } = {},
+  { origin = LINK_ORIGIN, type = "webauthn.get", rpId = RP_ID, flags = 0x05, lifetime = SESSION_MS } = {},
 ) {
-  const expiresAt = new Date(now + SESSION_MS).toISOString();
+  const expiresAt = new Date(now + lifetime).toISOString();
   const challenge = toBase64Url(passkeyChallenge({ ...request, expiresAt }));
   const clientData = encoder.encode(JSON.stringify({ type, challenge, origin, crossOrigin: false }));
   const authData = Uint8Array.from([...sha256(encoder.encode(rpId)), flags, 0, 0, 0, 1]);

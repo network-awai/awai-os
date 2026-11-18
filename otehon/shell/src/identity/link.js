@@ -8,6 +8,12 @@ import { keccak_256 } from "@noble/hashes/sha3.js";
 export const LINK_ORIGIN = "https://awai.network";
 export const RP_ID = "awai.network";
 export const DRIVE_PASSKEY_PURPOSE = "awai.drive.device-authorize.v1";
+// One Itonami business Bot launch, approved with the existing Passkey. The
+// approval is bound to the launch fields below and lasts no longer than the request.
+export const BOT_LAUNCH_PURPOSE = "itonami.bot-launch.v1";
+const PURPOSES = [DRIVE_PASSKEY_PURPOSE, BOT_LAUNCH_PURPOSE];
+// Purposes that only an existing Passkey can approve: no enrolment, no wallet, no cross-origin frame.
+const existingPasskeyOnly = (purpose) => PURPOSES.includes(purpose);
 export const SESSION_MS = 30 * 24 * 60 * 60 * 1000;
 export const REQUEST_MS = 10 * 60 * 1000;
 const SKEW_MS = 5 * 60 * 1000;
@@ -71,6 +77,34 @@ export function checksumAddress(address) {
   return out;
 }
 
+// The fields one launch approval covers; they match the Bot worker's launch plan.
+export function validLaunch(launch) {
+  return (
+    launch !== null &&
+    typeof launch === "object" &&
+    Object.keys(launch).sort().join(",") ===
+      "assignment_id,business_id,business_name,credit_limit_micros,wallet_address" &&
+    typeof launch.business_id === "string" && /^[A-Za-z0-9._:-]{1,120}$/.test(launch.business_id) &&
+    typeof launch.business_name === "string" && launch.business_name.length >= 1 &&
+    launch.business_name.length <= 180 && !/[\n\r]/.test(launch.business_name) &&
+    typeof launch.assignment_id === "string" && /^[A-Za-z0-9._:-]{8,120}$/.test(launch.assignment_id) &&
+    typeof launch.wallet_address === "string" && /^0x[0-9a-f]{40}$/.test(launch.wallet_address) &&
+    Number.isSafeInteger(launch.credit_limit_micros) &&
+    launch.credit_limit_micros >= 1000 && launch.credit_limit_micros <= 50000
+  );
+}
+
+// The text the Passkey signs over for a launch, one field per line.
+export function launchStatement(launch) {
+  return [
+    `Business ID: ${launch.business_id}`,
+    `Business: ${launch.business_name}`,
+    `Assignment ID: ${launch.assignment_id}`,
+    `Wallet: ${launch.wallet_address}`,
+    `Credit limit (micro-USDC): ${launch.credit_limit_micros}`,
+  ].join("\n");
+}
+
 const randomHex = (size) => toHex(crypto.getRandomValues(new Uint8Array(size)));
 
 function validRequest(request) {
@@ -78,7 +112,8 @@ function validRequest(request) {
     request !== null &&
     typeof request === "object" &&
     request.v === 1 &&
-    (request.purpose === undefined || request.purpose === DRIVE_PASSKEY_PURPOSE) &&
+    (request.purpose === undefined || PURPOSES.includes(request.purpose)) &&
+    (request.purpose === BOT_LAUNCH_PURPOSE ? validLaunch(request.launch) : request.launch === undefined) &&
     /^did:key:z[1-9A-HJ-NP-Za-km-z]+$/.test(request.device) &&
     /^[0-9a-f]{32}$/.test(request.topic) &&
     /^[0-9a-f]{24}$/.test(request.nonce) &&
@@ -88,8 +123,9 @@ function validRequest(request) {
 }
 
 // The device calls this. The private half stays in this browser's memory.
-export async function createLinkRequest(deviceDid, now = Date.now(), purpose) {
-  if (purpose !== undefined && purpose !== DRIVE_PASSKEY_PURPOSE) throw new Error("invalid-request");
+export async function createLinkRequest(deviceDid, now = Date.now(), purpose, launch) {
+  if (purpose !== undefined && !PURPOSES.includes(purpose)) throw new Error("invalid-request");
+  if (purpose === BOT_LAUNCH_PURPOSE ? !validLaunch(launch) : launch !== undefined) throw new Error("invalid-request");
   const pair = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, false, ["deriveBits"]);
   const request = {
     v: 1,
@@ -100,6 +136,7 @@ export async function createLinkRequest(deviceDid, now = Date.now(), purpose) {
     exp: new Date(now + REQUEST_MS).toISOString(),
   };
   if (purpose) request.purpose = purpose;
+  if (launch) request.launch = { ...launch };
   return { request, privateKey: pair.privateKey };
 }
 
@@ -203,16 +240,19 @@ export function personalMessageHash(message) {
   return keccak_256(Uint8Array.from([...prefix, ...body]));
 }
 
-export function passkeyChallenge({ device, nonce, expiresAt, purpose, topic, ek, exp }) {
+export function passkeyChallenge({ device, nonce, expiresAt, purpose, topic, ek, exp, launch }) {
   const original = `awai.link.v1\n${device}\n${nonce}\n${expiresAt}`;
-  const binding = purpose === DRIVE_PASSKEY_PURPOSE
-    ? `\n${purpose}\n${topic}\n${ek}\n${exp}` : "";
+  let binding = "";
+  if (purpose === DRIVE_PASSKEY_PURPOSE) binding = `\n${purpose}\n${topic}\n${ek}\n${exp}`;
+  if (purpose === BOT_LAUNCH_PURPOSE) {
+    binding = `\n${purpose}\n${topic}\n${ek}\n${exp}\n${launchStatement(launch)}`;
+  }
   return sha256(encoder.encode(original + binding));
 }
 
 export function passkeyForLink(request, saved, register) {
   if (saved) return saved;
-  if (request.purpose === DRIVE_PASSKEY_PURPOSE) throw new Error("existing-passkey-required");
+  if (existingPasskeyOnly(request.purpose)) throw new Error("existing-passkey-required");
   return register();
 }
 
@@ -220,6 +260,9 @@ function checkWindow(response, request, now, atLink) {
   const expiresAt = Date.parse(response.expiresAt);
   if (!Number.isFinite(expiresAt)) throw new Error("invalid-response");
   if (expiresAt <= now) throw new Error("session-expired");
+  if (request.purpose === BOT_LAUNCH_PURPOSE && expiresAt > Date.parse(request.exp)) {
+    throw new Error("session-too-long");
+  }
   if (atLink) {
     if (Date.parse(request.exp) <= now) throw new Error("request-expired");
     if (expiresAt > now + SESSION_MS + SKEW_MS) throw new Error("session-too-long");
@@ -269,7 +312,7 @@ function verifyPasskey(response, request) {
   }
   if (client.type !== "webauthn.get") throw new Error("wrong-ceremony");
   if (client.origin !== LINK_ORIGIN) throw new Error("wrong-origin");
-  if (request.purpose === DRIVE_PASSKEY_PURPOSE && client.crossOrigin === true) throw new Error("wrong-origin");
+  if (existingPasskeyOnly(request.purpose) && client.crossOrigin === true) throw new Error("wrong-origin");
   const expected = toBase64Url(passkeyChallenge({ ...request, expiresAt }));
   if (client.challenge !== expected) throw new Error("wrong-challenge");
   if (authBytes.length < 37) throw new Error("invalid-response");
@@ -294,7 +337,7 @@ export function verifyLink({ request, response, deviceDid, now = Date.now(), atL
     throw new Error("invalid-response");
   }
   if (request.device !== deviceDid) throw new Error("wrong-device");
-  if (request.purpose === DRIVE_PASSKEY_PURPOSE && response.method !== "passkey") {
+  if (existingPasskeyOnly(request.purpose) && response.method !== "passkey") {
     throw new Error("existing-passkey-required");
   }
   checkWindow(response, request, now, atLink);
