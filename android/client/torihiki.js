@@ -22,12 +22,16 @@ export const FIELD_COUNT = 50;
 // torihiki.address: ids below FLOOR are genesis roles; ids live in 2^45.
 const FLOOR = 100000, SPACE = 35184372088832;
 
+// Candle spans the node accepts (blocks per candle). Each span is its own declared read.
+export const CANDLE_SPANS = ['1', '10', '50'];
 const tx = { method: 'POST', path: '/tx', 'query-params': [] };
 const operations = [
   [READ, 'read-head', { method: 'GET', path: '/head', 'query-params': [] }, ['request-ip']],
   [READ, 'read-market', { method: 'GET', path: '/market', 'query-params': ['id'], 'query-values': { id: TORIHIKI_MARKET } }, ['request-ip', 'market-id']],
   [READ, 'read-book', { method: 'GET', path: '/book', 'query-params': ['market', 'depth'], 'query-values': { market: TORIHIKI_MARKET, depth: '15' } }, ['request-ip', 'market-id']],
   [READ, 'read-account', { method: 'GET', path: '/account', 'query-params': ['id'] }, ['request-ip', 'account-id']],
+  [READ, 'read-trades', { method: 'GET', path: '/trades', 'query-params': ['market'], 'query-values': { market: TORIHIKI_MARKET } }, ['request-ip', 'market-id']],
+  ...CANDLE_SPANS.map((span) => [READ, `read-candles-${span}`, { method: 'GET', path: '/candles', 'query-params': ['market', 'span'], 'query-values': { market: TORIHIKI_MARKET, span } }, ['request-ip', 'market-id']]),
   [TRADE, 'request-devnet-funds', tx, ['request-ip', 'account-id', 'public-key', 'signed-transaction']],
   [TRADE, 'submit-order', tx, ['request-ip', 'account-id', 'public-key', 'signed-transaction', 'order']],
   [TRADE, 'cancel-all', tx, ['request-ip', 'account-id', 'public-key', 'signed-transaction', 'market-id']],
@@ -36,6 +40,8 @@ export const torihikiUrls = {
   'read-head': `${TORIHIKI_NODE}/head`,
   'read-market': `${TORIHIKI_NODE}/market?id=${TORIHIKI_MARKET}`,
   'read-book': `${TORIHIKI_NODE}/book?market=${TORIHIKI_MARKET}&depth=15`,
+  'read-trades': `${TORIHIKI_NODE}/trades?market=${TORIHIKI_MARKET}`,
+  ...Object.fromEntries(CANDLE_SPANS.map((span) => [`read-candles-${span}`, `${TORIHIKI_NODE}/candles?market=${TORIHIKI_MARKET}&span=${span}`])),
 };
 export const accountUrl = (id) => `${TORIHIKI_NODE}/account?id=${accountId(id)}`;
 export const TX_URL = `${TORIHIKI_NODE}/tx`;
@@ -149,7 +155,29 @@ export function marketView(v) {
       || ![v.mark, v.oracle, v.last, v['open-interest'], v['funding-rate']].every(int)
       || !optionalInt(v['max-leverage']) || typeof v['oracle-stale'] !== 'boolean') throw Error('市場の応答を確認できません。');
   return { id: v.id, mark: v.mark, oracle: v.oracle, last: v.last, openInterest: v['open-interest'],
-    fundingRate: v['funding-rate'], maxLeverage: v['max-leverage'] ?? null, oracleStale: v['oracle-stale'] };
+    fundingRate: v['funding-rate'], maxLeverage: v['max-leverage'] ?? null, oracleStale: v['oracle-stale'],
+    // Rates are integers scaled by RATE_SCALE (initial margin 25000000 = 2.5% = 40x); absent rates stay null.
+    initialMarginRate: rate(v['initial-margin-rate']), takerFeeRate: rate(v['taker-fee-rate']), makerFeeRate: rate(v['maker-fee-rate']) };
+}
+export const RATE_SCALE = 1e9;
+function rate(x) { if (x === undefined || x === null) return null; if (!inRange(x, 0, RATE_SCALE)) throw Error('市場の応答を確認できません。'); return x; }
+/** /trades: newest first, side 0 = buy (lifted the ask), 1 = sell (hit the bid). */
+export function tradesView(v) {
+  if (!v || typeof v !== 'object' || String(v.market) !== TORIHIKI_MARKET || !Array.isArray(v.trades) || v.trades.length > 200) throw Error('約定の応答を確認できません。');
+  return v.trades.map((r) => {
+    if (!r || !inRange(r.level, 1, 1048575) || !inRange(r.qty, 1, 9007199254740991) || ![0, 1].includes(r.side) || !inRange(r.h, 0, 9007199254740991)) throw Error('約定の応答を確認できません。');
+    return { level: r.level, qty: r.qty, side: r.side, height: r.h };
+  });
+}
+/** /candles: block-span candles, oldest first. */
+export function candlesView(v) {
+  if (!v || typeof v !== 'object' || v.unit !== 'blocks' || !Array.isArray(v.candles) || v.candles.length > 500) throw Error('チャートの応答を確認できません。');
+  const candles = v.candles.map((c) => {
+    const nums = [c?.open, c?.high, c?.low, c?.close, c?.volume, c?.['buy-volume'], c?.['sell-volume'], c?.h];
+    if (!c || !nums.every((x) => inRange(x, 0, 9007199254740991)) || c.low > Math.min(c.open, c.close) || c.high < Math.max(c.open, c.close)) throw Error('チャートの応答を確認できません。');
+    return { height: c.h, open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume, buy: c['buy-volume'], sell: c['sell-volume'] };
+  });
+  return { candles, truncated: typeof v['truncated-because'] === 'string' };
 }
 export function bookView(v) {
   const side = (rows) => {
@@ -207,7 +235,8 @@ export function createTorihiki(base, appOrigin = location.origin, consentHost = 
     if (!url) throw Error('未宣言の操作です。');
     const body = await boundedJson(await broker.invoke({ capability: READ, service: SERVICE, operation }, { input: url, init: { method: 'GET' } }));
     return operation === 'read-head' ? headView(body) : operation === 'read-market' ? marketView(body)
-      : operation === 'read-book' ? bookView(body) : accountView(body, account);
+      : operation === 'read-book' ? bookView(body) : operation === 'read-trades' ? tradesView(body)
+      : operation.startsWith('read-candles-') ? candlesView(body) : accountView(body, account);
   }
   /** Sign and send one transaction. `head` must be this session's /head read and name a devnet. */
   async function submit(operation, key, head, nonce, t) {
@@ -222,156 +251,276 @@ export function createTorihiki(base, appOrigin = location.origin, consentHost = 
   return { runtime, read, submit };
 }
 
-// ── page ─────────────────────────────────────────────────────────────────────
+// ── page (AWAI-3415: Figma 315:2, docs/design/awai-design-system.md) ─────────
+// Tabs 取引 / チャート / 口座 and an order ticket. Every read and transaction is
+// still its own canonical-broker operation; denial sends nothing and keeps the
+// last values with their fetch time. Nothing refreshes automatically.
 
 const REASON_TEXT = {
   'bad-nonce': '順番番号が古くなっています。口座を取得し直してください。', 'bad-signature': '署名をノードが受け付けませんでした（ノードの版が違う可能性）。',
   'wrong-key': 'この口座は別の鍵に結び付いています。', 'not-your-account': 'この鍵の口座ではありません。',
-  'insufficient-margin': '証拠金が足りません。devnet 資金を受け取ってください。', 'bad-price-level': '価格（レベル）を確認してください。',
+  'insufficient-margin': '証拠金が足りません。数量を減らすか、口座で devnet 資金を受け取ってください。', 'bad-price-level': '価格（レベル）を確認してください。',
   'bad-quantity': '数量を確認してください。', 'bad-amount': '量を確認してください。', 'not-the-bridge': 'このノードでは資金を受け取れません。',
 };
+const SVG = 'http://www.w3.org/2000/svg';
+const ICONS = {
+  trade: [['path', { d: 'M7 4v13l-3-3M17 20V7l3 3' }]],
+  chart: [['path', { d: 'M6 3v4M6 14v7M12 6v3M12 17v4M18 3v3M18 13v8' }], ['rect', { x: 4, y: 7, width: 4, height: 7, rx: 1 }], ['rect', { x: 10, y: 9, width: 4, height: 8, rx: 1 }], ['rect', { x: 16, y: 6, width: 4, height: 7, rx: 1 }]],
+  account: [['circle', { cx: 12, cy: 8, r: 4 }], ['path', { d: 'M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6' }]],
+};
+function svg(tag, attrs = {}, cls) { const n = document.createElementNS(SVG, tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, String(v)); if (cls) n.setAttribute('class', cls); return n; }
+function icon(name) { const s = svg('svg', { viewBox: '0 0 24 24', width: 24, height: 24, 'aria-hidden': 'true' }, 'tk-icon'); for (const [t, a] of ICONS[name]) s.append(svg(t, a)); return s; }
+
+/** 1, 2 or 5 × 10^n at or above x: readable axis steps. */
+export function niceStep(x) { const e = 10 ** Math.floor(Math.log10(Math.max(x, 1e-9))); return [1, 2, 5, 10].map((m) => m * e).find((v) => v >= x); }
+/** Candles as SVG: wick + body per candle, optional volume, right price axis, last-price line. */
+export function candleChart(candles, { width = 360, height = 160, volume = false } = {}) {
+  const s = svg('svg', { viewBox: `0 0 ${width} ${height}`, role: 'img', 'aria-label': `ローソク足 ${candles.length} 本` }, 'tk-chart');
+  if (!candles.length) return s;
+  const axis = 52, plotW = width - axis, volH = volume ? Math.round(height * 0.22) : 0, plotH = height - volH - 8;
+  let max = Math.max(...candles.map((c) => c.high)), min = Math.min(...candles.map((c) => c.low));
+  // A flat devnet series must not look like a crash: show at least 0.2% of the price.
+  const minSpan = Math.max(20, candles[candles.length - 1].close * 0.002);
+  if (max - min < minSpan) { const mid = (max + min) / 2; max = mid + minSpan / 2; min = mid - minSpan / 2; }
+  const step = niceStep((max - min) / 4); max = Math.ceil(max / step) * step; min = Math.floor(min / step) * step;
+  const y = (v) => ((max - v) / (max - min)) * plotH;
+  const fmt = (n) => new Intl.NumberFormat('ja-JP').format(Math.round(n));
+  const lastY = y(candles[candles.length - 1].close);
+  for (let v = min; v <= max + step / 2; v += step) { s.append(svg('line', { x1: 0, x2: plotW, y1: y(v), y2: y(v) }, 'tk-grid')); if (Math.abs(y(v) - lastY) < 14) continue; const t = svg('text', { x: plotW + 6, y: Math.min(plotH, Math.max(10, y(v) + 4)) }, 'tk-axis'); t.textContent = fmt(v); s.append(t); }
+  const slot = plotW / Math.max(candles.length, 12), bw = Math.max(3, slot * 0.6), vmax = Math.max(1, ...candles.map((c) => c.volume));
+  candles.forEach((c, i) => {
+    const up = c.close >= c.open, cls = up ? 'up' : 'down', cx = i * slot + slot / 2;
+    s.append(svg('line', { x1: cx, x2: cx, y1: y(c.high), y2: y(c.low) }, `tk-wick ${cls}`));
+    s.append(svg('rect', { x: cx - bw / 2, y: Math.min(y(c.open), y(c.close)), width: bw, height: Math.max(2, Math.abs(y(c.open) - y(c.close))), rx: 1 }, `tk-body ${cls}`));
+    if (volume) { const vh = Math.max(2, (c.volume / vmax) * (volH - 4)); s.append(svg('rect', { x: cx - bw / 2, y: height - vh, width: bw, height: vh }, `tk-vol ${cls}`)); }
+  });
+  const last = candles[candles.length - 1];
+  s.append(svg('line', { x1: 0, x2: plotW, y1: y(last.close), y2: y(last.close) }, 'tk-last'));
+  const tag = svg('text', { x: plotW + 6, y: Math.max(10, y(last.close) + 4) }, 'tk-axis tk-last-label'); tag.textContent = fmt(last.close); s.append(tag);
+  return s;
+}
 
 export function renderTorihiki({ root, page, el, button, notify, client, state, keyStore }) {
-  const p = page('Torihiki');
-  p.append(el('span', 'badge', 'devnet・デモ専用'),
-    el('p', 'muted', '取引所 devnet の状態を読み取り、devnet で発注できます。実際の資産は扱いません。'),
-    el('p', 'caption muted', `接続先: ${TORIHIKI_NODE}（単一シーケンサー・担保は裏付けなし）。通信のたびに確認画面が開き、拒否すると何も送信しません。`));
-  if (!client) { p.append(el('p', 'empty muted', 'この端末では通信の宣言を確認できないため、取得できません。')); return; }
-  const fail = (error) => notify(/not approved/.test(error.message) ? '中止しました。何も送信していません。' : '実行できません。' + error.message, true);
-  const run = (fn) => async () => { try { await fn(); } catch (error) { fail(error); } render(); };
-  const load = (operation, key, label) => button(label, run(async () => {
-    state[key] = await client.read(operation); state.at = new Date(); notify('devnet から取得しました。');
-  }), 'button tonal');
-  const actions = el('div', 'actions');
-  actions.append(load('read-market', 'market', '価格を取得'), load('read-book', 'book', '板を取得'), load('read-head', 'head', 'ノードの状態を取得'));
-  p.append(actions);
-  const trade = el('section', 'card torihiki-trade');
-  const body = el('div', 'torihiki-body');
-  p.append(trade, body);
-  if (state.key === undefined) {
-    state.key = null;
-    loadKey(keyStore).then((k) => { state.key = k; render(); }).catch(() => { state.key = null; });
+  const p = page(state.view === 'ticket' ? '注文' : 'BTC-PERP', state.view === 'ticket' ? () => { state.view = null; draw(); } : undefined);
+  p.classList.add('tk-page');
+  const titleBar = p.querySelector('.app-bar'); titleBar.append(el('span', 'caption muted tk-sub', state.view === 'ticket' ? 'BTC-PERP · devnet' : 'Torihiki · 市場 #1'));
+  const main = el('div', 'tk-main'); p.append(main);
+  // A new tab or view starts at the top; re-renders inside the same view keep the scroll position.
+  const viewKey = `${state.tab}/${state.view}`; if (state.viewKey !== undefined && state.viewKey !== viewKey) queueMicrotask(() => window.scrollTo(0, 0)); state.viewKey = viewKey;
+  state.tab ??= 'trade'; state.list ??= 'book'; state.span ??= '10'; state.side ??= 0; state.flags ??= 0; state.qty ??= 1; state.candles ??= {};
+  const fmt = (n) => new Intl.NumberFormat('ja-JP').format(n);
+  const time = (d) => new Intl.DateTimeFormat('ja-JP', { timeStyle: 'medium' }).format(d);
+  const chip = (text, tone = 'neutral') => el('span', `tk-chip ${tone}`, text);
+  const stat = (label, value) => { const d = el('div', 'tk-stat'); d.append(el('span', 'caption muted', label), el('strong', '', value)); return d; };
+  const banner = (n) => { const b = el('section', `tk-banner ${n.tone}`); b.setAttribute('role', n.tone === 'error' ? 'alert' : 'status'); b.append(el('strong', '', n.title), el('p', '', n.body)); if (n.retry) b.append(button('再試行', n.retry, 'button tonal tk-retry')); return b; };
+  const segs = (items, current, pick, label) => { const g = el('div', 'tk-segs'); g.setAttribute('role', 'group'); g.setAttribute('aria-label', label); for (const [v, t] of items) { const b = button(t, () => { pick(v); draw(); }, 'tk-seg'); b.setAttribute('aria-pressed', String(v === current)); g.append(b); } return g; };
+  const denied = (e) => /not approved/.test(e?.message || '');
+  if (!client) { main.append(banner({ tone: 'error', title: '通信の宣言を確認できません', body: 'この端末では取得も発注もできません。何も送信していません。' })); return; }
+  if (state.key === undefined) { state.key = null; loadKey(keyStore).then((k) => { state.key = k; draw(); }).catch(() => { state.key = null; }); }
+
+  function draw() { root.replaceChildren(); renderTorihiki({ root, page, el, button, notify, client, state, keyStore }); }
+  function noticeFor(e, retry) {
+    return denied(e) ? { tone: 'info', title: '拒否しました', body: state.at ? `何も送信していません。表示中の値は ${time(state.at)} の取得のままです。` : '何も送信していません。必要なときにもう一度取得できます。' }
+      : { tone: 'error', title: '取得できませんでした', body: `${e.message} 値は推測しません。`, retry };
+  }
+  /** Run reads one after another; each is its own consent. Stops at the first denial or error. */
+  async function fetchAll(ops) {
+    state.busy = true; state.notice = null; draw();
+    try {
+      for (const [op, keyName, arg] of ops) {
+        const v = await client.read(op, arg);
+        if (keyName === 'head') { const prev = state.head; if (prev && prev.height === v.height && state.headAt && Date.now() - state.headAt > 60000) state.stale = { height: v.height, since: state.headAt }; else if (!prev || prev.height !== v.height) state.stale = null; state.headAt = state.headAt && prev?.height === v.height ? state.headAt : Date.now(); }
+        if (keyName.startsWith('candles:')) state.candles[keyName.slice(8)] = v; else state[keyName] = v;
+        state.at = new Date();
+      }
+    } catch (e) { state.notice = noticeFor(e, () => fetchAll(ops)); }
+    finally { state.busy = false; draw(); }
+  }
+  const fetchButton = (label, ops, cls = 'button') => { const b = button(state.busy ? '取得しています…' : label, () => fetchAll(ops), cls); b.disabled = !!state.busy; return b; };
+
+  // ── shared header ──
+  const chips = el('div', 'tk-chips'); chips.append(chip('devnet・デモ専用', 'warning'), chip('単一シーケンサー'), chip('担保の裏付けなし'));
+  if (state.view !== 'ticket') main.append(chips);
+  if (state.notice) main.append(banner(state.notice));
+  if (state.stale && state.view !== 'ticket') main.append(banner({ tone: 'warning', title: 'チェーンが進んでいない可能性', body: `ブロック高は ${fmt(state.stale.height)} のまま（${time(new Date(state.stale.since))} から）。表示中の価格は最新とは限りません。` }));
+  if (state.lastTx && state.view !== 'ticket' && state.tab === 'trade') {
+    const t = state.lastTx;
+    main.append(banner(t.ok ? { tone: 'info', title: 'devnet に送信しました', body: `${t.summary}。ノードが受け付けた高さ ${fmt(t.height)}。約定は「口座」で確認できます。` }
+      : { tone: 'error', title: '受け付けられませんでした', body: `${REASON_TEXT[t.reason] || t.reason || '理由不明'}${t.nonceSpent ? '' : ' ノードでは何も変わっていません。'}` }));
   }
 
-  // Ask the person to check what will be signed, then hand over to the broker's trusted consent.
+  const marketOps = [['read-market', 'market'], ['read-book', 'book']];
+  function priceHeader() {
+    const m = state.market, h = el('div', 'tk-price');
+    h.append(el('span', 'caption muted', 'マーク価格'));
+    const row = el('div', 'tk-price-row'); row.append(el('strong', 'tk-mark', m ? fmt(m.mark) : '—'));
+    if (m) row.append(chip(`${m.last >= m.mark ? '▲' : '▼'} 直近 ${fmt(m.last)}`, m.last >= m.mark ? 'up' : 'down'));
+    else row.append(chip('未取得'));
+    h.append(row); return h;
+  }
+  function chartCard(span, big) {
+    const c = state.candles[span];
+    const wrap = el('div', big ? 'tk-chart-wrap big' : 'tk-chart-wrap');
+    if (c) {
+      wrap.append(candleChart(c.candles, big ? { height: 300, volume: true } : { height: 150 }));
+      if (c.truncated) wrap.append(el('p', 'caption muted', `ノードに古いブロックがないため ${c.candles.length} 本です。`));
+    } else wrap.append(el('p', 'caption muted', 'チャートはまだ取得していません。'), fetchButton('チャートを取得', [[`read-candles-${span}`, `candles:${span}`]], 'button tonal'));
+    return wrap;
+  }
+
+  if (state.view === 'ticket') return ticket();
+  ({ trade, chart, account }[state.tab] || trade)();
+  tabs();
+
+  function trade() {
+    if (!state.market) {
+      main.append(priceHeader());
+      const card = el('section', 'card tk-empty'); card.append(el('h2', '', 'まだ何も取得していません'), el('p', 'muted', '取得するときに、接続先と送る情報を確認する画面が開きます。自動では通信しません。'), fetchButton('価格と板を取得', marketOps));
+      main.append(card);
+    } else {
+      const m = state.market; main.append(priceHeader());
+      const stats = el('div', 'tk-stats'); stats.append(stat('オラクル', fmt(m.oracle) + (m.oracleStale ? '（古い）' : '')), stat('建玉', fmt(m.openInterest)), stat('資金調達率（生値）', String(m.fundingRate)), stat('最大', m.maxLeverage === null ? '—' : `${m.maxLeverage}×`));
+      main.append(stats);
+      main.append(segs([['1', '1 ブロック'], ['10', '10 ブロック'], ['50', '50 ブロック']], state.span, (v) => { state.span = v; }, 'ローソク足の幅'), chartCard(state.span, false));
+      main.append(segs([['book', '板'], ['trades', '約定']], state.list, (v) => { state.list = v; }, '表示'));
+      main.append(state.list === 'book' ? bookList() : tradeList());
+      main.append(el('p', 'caption muted', `最終取得 ${time(state.at)} · 自動更新しません`), fetchButton('価格と板を更新', marketOps, 'button tonal'));
+    }
+    const act = el('div', 'tk-actions');
+    const best = (s) => state.book?.[s]?.[0]?.level;
+    for (const [label, side, cls, lvl] of [['買う', 0, 'up', best('asks')], ['売る', 1, 'down', best('bids')]]) {
+      const b = button('', () => { state.view = 'ticket'; state.side = side; state.level = lvl ?? state.market?.mark ?? state.level; draw(); }, `tk-big ${cls}`);
+      b.append(el('strong', '', label), el('span', 'caption', lvl ? `${fmt(lvl)} で` : '価格を選ぶ')); act.append(b);
+    }
+    root.append(act);
+  }
+  function bookList() {
+    const b = state.book; const box = el('div', 'tk-book');
+    if (!b) { box.append(el('p', 'caption muted', '板はまだ取得していません。')); return box; }
+    const head = el('div', 'tk-row tk-head'); head.append(el('span', '', '価格'), el('span', '', '数量')); box.append(head);
+    const asks = [...b.asks].reverse(), all = [...b.asks, ...b.bids];
+    const cum = (rows) => { let t = 0; return rows.map((r) => (t += r.qty)); };
+    const maxCum = Math.max(1, ...cum(b.asks), ...cum(b.bids));
+    const row = (r, c, side) => { const d = el('div', `tk-row tk-level ${side}`); d.style.setProperty('--depth', `${Math.round((c / maxCum) * 100)}%`); d.append(el('span', 'tk-px', fmt(r.level)), el('span', '', fmt(r.qty))); return d; };
+    const askCum = cum(b.asks).reverse();
+    asks.forEach((r, i) => box.append(row(r, askCum[i], 'ask')));
+    const spread = b.asks[0] && b.bids[0] ? b.asks[0].level - b.bids[0].level : null;
+    const mid = el('div', 'tk-row tk-spread'); mid.append(el('span', '', spread === null ? 'スプレッド —' : `スプレッド ${fmt(spread)}`), el('span', '', `売り ${b.asks.length} 段 · 買い ${b.bids.length} 段`)); box.append(mid);
+    const bidCum = cum(b.bids); b.bids.forEach((r, i) => box.append(row(r, bidCum[i], 'bid')));
+    if (!all.length) box.append(el('p', 'caption muted', '注文はありません。'));
+    return box;
+  }
+  function tradeList() {
+    const box = el('div', 'tk-book');
+    if (!state.trades) { box.append(el('p', 'caption muted', '約定はまだ取得していません。'), fetchButton('約定を取得', [['read-trades', 'trades']], 'button tonal')); return box; }
+    const head = el('div', 'tk-row tk-head tk-trade'); head.append(el('span', '', '売買'), el('span', '', '価格'), el('span', '', '数量'), el('span', '', '高さ')); box.append(head);
+    for (const t of state.trades.slice(0, 20)) { const r = el('div', 'tk-row tk-trade'); r.append(el('span', t.side === 0 ? 'up' : 'down', t.side === 0 ? '▲ 買い' : '▼ 売り'), el('span', '', fmt(t.level)), el('span', '', fmt(t.qty)), el('span', 'muted', `#${t.height}`)); box.append(r); }
+    if (!state.trades.length) box.append(el('p', 'caption muted', '約定はありません。'));
+    box.append(fetchButton('約定を更新', [['read-trades', 'trades']], 'button text'));
+    return box;
+  }
+  function chart() {
+    const c = state.candles[state.span], last = c?.candles.at(-1);
+    const stats = el('div', 'tk-stats'); for (const [l, k] of [['始値', 'open'], ['高値', 'high'], ['安値', 'low'], ['終値', 'close']]) stats.append(stat(l, last ? fmt(last[k]) : '—'));
+    main.append(stats, segs([['1', '1 ブロック'], ['10', '10 ブロック'], ['50', '50 ブロック']], state.span, (v) => { state.span = v; }, 'ローソク足の幅'), chartCard(state.span, true));
+    const legend = el('div', 'tk-chips'); legend.append(chip('▲ 上昇の足', 'up'), chip('▼ 下落の足', 'down'), chip('下段: 出来高')); main.append(legend);
+    if (c) main.append(el('p', 'caption muted', `1 本 = ${state.span} ブロック · 最終取得 ${time(state.at)} · 自動更新しません`), fetchButton('チャートを更新', [[`read-candles-${state.span}`, `candles:${state.span}`]], 'button tonal'));
+  }
+  function account() {
+    const k = state.key, a = k && state.account?.account === k.account ? state.account : null;
+    if (!k) {
+      const card = el('section', 'card tk-key'); card.append(el('h2', '', 'この端末の鍵'), el('p', '', '発注にはこの端末の鍵が必要です。秘密鍵は端末の外へ出せない形で保存し、送るのは公開鍵と署名だけです。'),
+        button('鍵を作成', async () => { try { state.key = await createKey(keyStore); state.account = null; notify('鍵を作成しました。通信はしていません。'); } catch (e) { state.notice = { tone: 'error', title: '鍵を作れませんでした', body: e.message }; } draw(); }));
+      main.append(card); return;
+    }
+    const eq = el('div', 'tk-price'); eq.append(el('span', 'caption muted', '評価額（生値）'), el('strong', 'tk-mark', a ? fmt(a.equity) : '—')); main.append(eq);
+    if (a) {
+      const stats = el('div', 'tk-stats'); stats.append(stat('担保', fmt(a.collateral)), stat('使える担保', fmt(a.freeCollateral)), stat('清算対象', a.liquidatable ? 'はい' : 'いいえ')); main.append(stats);
+      main.append(el('h2', 'tk-h', 'ポジション'));
+      if (!a.positions.length) main.append(el('p', 'caption muted', 'ポジションはありません。'));
+      for (const x of a.positions) {
+        const card = el('section', 'card tk-pos'); const top = el('div', 'tk-pos-top');
+        top.append(el('strong', '', `市場 #${x.market}`), chip(`${x.size > 0 ? '▲ 買い' : '▼ 売り'} ${fmt(Math.abs(x.size))}`, x.size > 0 ? 'up' : 'down'), el('strong', x.unrealized >= 0 ? 'up' : 'down', `${x.unrealized >= 0 ? '+' : '−'}${fmt(Math.abs(x.unrealized))}`));
+        const s = el('div', 'tk-stats'); s.append(stat('建値', fmt(x.entry)), stat('未実現損益', `${x.unrealized >= 0 ? '+' : '−'}${fmt(Math.abs(x.unrealized))}`));
+        card.append(top, s); main.append(card);
+      }
+      main.append(el('p', 'caption muted', `最終取得 ${time(state.at)} · 注文の一覧はノードが返さないため、取消は「全注文を取消」だけです。`));
+    }
+    main.append(fetchButton(a ? '口座を更新' : '口座を取得', [['read-account', 'account', k.account]], a ? 'button tonal' : 'button'));
+    const key = el('section', 'card tk-key'); key.append(el('h2', '', 'この端末の鍵'), el('p', 'caption', `口座 ${k.account} · 公開鍵 ${k.pubkey.slice(0, 12)}… · 秘密鍵は端末の外へ出しません。`)); main.append(key);
+    const acts = el('div', 'tk-pair');
+    acts.append(button('devnet 資金を受け取る', () => withPrereq(() => { const t = buildTx('deposit', { amount: 1000000 }); confirmSign('devnet 資金を受け取る', [['口座', String(k.account)], ['量', fmt(t.amount)], ['チェーン', state.head.chainId]], () => send('request-devnet-funds', t, 'devnet 資金 1,000,000 を受け取り')); }), 'button tonal'),
+      button('全注文を取消', () => withPrereq(() => { const t = buildTx('cancel-all'); confirmSign('市場 #1 の注文をすべて取り消しますか？', [['口座', String(k.account)], ['チェーン', state.head.chainId]], () => send('cancel-all', t, '全注文の取消')); }), 'button danger-fill'));
+    main.append(acts);
+    const node = el('section', 'card tk-node'); node.append(el('h2', '', 'ノード'));
+    if (state.head) { const s = el('div', 'tk-stats'); s.append(stat('チェーン', state.head.chainId), stat('高さ', fmt(state.head.height)), stat('合意', state.head.consensus.startsWith('none') ? '単一シーケンサー' : state.head.consensus)); node.append(s); }
+    node.append(fetchButton(state.head ? 'ノードを更新' : 'ノードの状態を取得', [['read-head', 'head']], 'button text')); main.append(node);
+    main.append(button('この端末の鍵を削除', () => {
+      const d = document.createElement('dialog');
+      d.append(el('h2', '', 'この端末の鍵を削除しますか？'), el('p', 'muted', `口座 ${k.account} には、この鍵なしでは二度と署名できません（devnet のみ）。取り消せません。`),
+        button('削除', async () => { d.close(); await deleteKey(keyStore); state.key = null; state.account = null; notify('鍵を削除しました。'); draw(); }, 'button danger'), button('残す', () => d.close(), 'button tonal'));
+      d.addEventListener('close', () => d.remove(), { once: true }); document.body.append(d); d.showModal();
+    }, 'button text'));
+  }
+  function ticket() {
+    const m = state.market, b = state.book;
+    main.append(segs([[0, '買い'], [1, '売り']], state.side, (v) => { state.side = v; }, '売買'));
+    main.lastChild.classList.add('tk-side', state.side === 0 ? 'buy' : 'sell');
+    main.append(segs([[0, '指値'], [1, '成行（すぐ約定・IOC）']], state.flags, (v) => { state.flags = v; }, '注文の種類'));
+    const field = (label, id, value, unit, min, max, set) => { const f = el('div', 'field tk-field'), l = el('label', '', label), box = el('div', 'tk-input'), i = el('input'); i.id = id; i.type = 'number'; i.inputMode = 'numeric'; i.step = '1'; i.min = String(min); i.max = String(max); i.value = value === undefined ? '' : String(value); i.addEventListener('change', () => { set(i.valueAsNumber); draw(); }); l.htmlFor = id; box.append(i, el('span', 'muted', unit)); f.append(l, box); return f; };
+    state.level ??= m?.mark;
+    main.append(field('価格（レベル）', 'tk-level', state.level, '生値', 1, 1048575, (v) => { state.level = v; }));
+    const quick = el('div', 'tk-chips'); for (const [l, v] of [['最良売り', b?.asks[0]?.level], ['マーク', m?.mark], ['最良買い', b?.bids[0]?.level]]) if (v) quick.append(button(`${l} ${fmt(v)}`, () => { state.level = v; draw(); }, 'tk-chip neutral tk-pick')); main.append(quick);
+    main.append(field('数量', 'tk-qty', state.qty, 'ロット', 1, 1e9, (v) => { state.qty = v; }));
+    const qq = el('div', 'tk-chips'); for (const v of [1, 2, 5, 10]) qq.append(button(String(v), () => { state.qty = v; draw(); }, 'tk-chip neutral tk-pick')); main.append(qq);
+    const notional = Number.isSafeInteger(state.level) && Number.isSafeInteger(state.qty) ? state.level * state.qty : null;
+    const sum = el('section', 'card tk-summary');
+    const line = (k, v) => { const r = el('div', 'tk-line'); r.append(el('span', 'muted', k), el('strong', '', v)); sum.append(r); };
+    line('注文額（生値）', notional === null ? '—' : fmt(notional));
+    line(`必要証拠金（${m?.initialMarginRate ? (m.initialMarginRate / RATE_SCALE * 100).toFixed(2) + '%' : '—'}）`, notional !== null && m?.initialMarginRate ? fmt(Math.ceil(notional * m.initialMarginRate / RATE_SCALE)) : '—');
+    line(`手数料（テイカー ${m?.takerFeeRate ? (m.takerFeeRate / RATE_SCALE * 100).toFixed(3) + '%' : '—'}）`, notional !== null && m?.takerFeeRate ? fmt(Math.ceil(notional * m.takerFeeRate / RATE_SCALE)) : '—');
+    line('清算価格', '送信前は計算しません'); main.append(sum);
+    if (!state.key) { main.append(banner({ tone: 'warning', title: 'この端末の鍵がありません', body: '「口座」で鍵を作成すると発注できます。' })); return; }
+    const side = state.side === 0 ? '買い' : '売り';
+    const go = button('', () => withPrereq(() => {
+      const t = buildTx('order', { side: state.side, level: state.level, qty: state.qty, flags: state.flags });
+      confirmSign('この注文を送信しますか？', [['市場', '#1 BTC-PERP'], ['売買', side], ['価格（レベル）', fmt(t.level)], ['数量', fmt(t.qty)], ['種類', t.flags === 1 ? '成行（IOC）' : '指値'], ['口座', String(state.key.account)], ['チェーン', state.head.chainId]],
+        () => send('submit-order', t, `${side} ${fmt(t.qty)} @ ${fmt(t.level)}`, true));
+    }), `tk-big ${state.side === 0 ? 'up' : 'down'} tk-submit`);
+    go.append(el('strong', '', `${side} ${state.qty ?? '—'} を署名して送る`), el('span', 'caption', '送信先と内容を確認する画面が続きます'));
+    main.append(go, el('p', 'caption muted', 'devnet・デモ専用。実際の資産は動きません。署名にはこの端末の鍵を使い、秘密鍵は端末の外へ出ません。'));
+  }
+  function tabs() {
+    const nav = el('nav', 'tk-tabs'); nav.setAttribute('aria-label', 'Torihiki');
+    for (const [k, l] of [['trade', '取引'], ['chart', 'チャート'], ['account', '口座']]) { const b = button('', () => { state.tab = k; state.view = null; draw(); }, 'tk-tab'); b.setAttribute('aria-pressed', String(state.tab === k)); const pill = el('span', 'tk-pill'); pill.append(icon(k)); b.append(pill, el('span', '', l)); nav.append(b); }
+    root.append(nav);
+  }
+  /** Signing needs this session's devnet /head and the account's next nonce; each read is its own consent. */
+  async function withPrereq(go) {
+    try {
+      const k = state.key; if (!k) throw Error('先に「口座」で鍵を作成してください。');
+      const ops = []; if (!state.head) ops.push(['read-head', 'head']); if (!state.account || state.account.account !== k.account) ops.push(['read-account', 'account', k.account]);
+      for (const [op, key, arg] of ops) { state[key] = await client.read(op, arg); state.at = new Date(); }
+      if (!isDevnet(state.head.chainId)) throw Error(`接続先のチェーン（${state.head.chainId}）は devnet ではないため署名しません。`);
+      go();
+    } catch (e) { state.notice = noticeFor(e); draw(); }
+  }
+  // The person checks what will be signed here; the broker's trusted consent then decides whether it is sent.
   function confirmSign(title, lines, go) {
     const d = document.createElement('dialog');
     const dl = el('dl'); for (const [k, v] of lines) dl.append(el('dt', '', k), el('dd', '', v));
-    d.append(el('h2', '', title), dl,
-      el('p', 'caption muted', '次の確認画面で送信を許可すると、この内容を端末の鍵で署名して devnet ノードへ送ります。'),
-      button('署名して送信へ', () => { d.close(); run(go)(); }), button('やめる', () => d.close(), 'button tonal'));
-    d.addEventListener('close', () => d.remove(), { once: true });
-    document.body.append(d); d.showModal();
+    d.append(el('h2', '', title), dl, el('p', 'caption muted', '次の確認画面で送信を許可すると、この内容を端末の鍵で署名して devnet ノードへ送ります。'),
+      button('署名して送信へ', () => { d.close(); go(); }), button('やめる', () => d.close(), 'button tonal'));
+    d.addEventListener('close', () => d.remove(), { once: true }); document.body.append(d); d.showModal();
   }
-  async function send(operation, t, done) {
-    if (!state.head) throw Error('先に「ノードの状態を取得」で devnet であることを確認してください。');
-    if (!isDevnet(state.head.chainId)) throw Error(`接続先のチェーン（${state.head.chainId}）は devnet ではないため署名しません。`);
-    if (!state.account || state.account.account !== state.key.account) throw Error('先に「口座を取得」で順番番号を確認してください。');
-    const r = await client.submit(operation, state.key, state.head, state.account.nextNonce, t);
-    if (r.nonceSpent) state.account = { ...state.account, nextNonce: state.account.nextNonce + 1 };
-    state.lastTx = { operation, ...r, at: new Date() };
-    notify(r.ok ? `${done}（ブロック ${r.height}）` : `受け付けられませんでした: ${REASON_TEXT[r.reason] || r.reason || '理由不明'}`, !r.ok);
+  async function send(operation, t, summary, toTrade) {
+    try {
+      const r = await client.submit(operation, state.key, state.head, state.account.nextNonce, t);
+      if (r.nonceSpent) state.account = { ...state.account, nextNonce: state.account.nextNonce + 1 };
+      state.lastTx = { operation, summary, ...r, at: new Date() }; state.notice = null;
+      if (toTrade) { state.view = null; state.tab = 'trade'; }
+      notify(r.ok ? `${summary}を送信しました（ブロック ${r.height}）` : `受け付けられませんでした: ${REASON_TEXT[r.reason] || r.reason || '理由不明'}`, !r.ok);
+    } catch (e) { state.notice = denied(e) ? { tone: 'info', title: '送信をやめました', body: '何も送信していません。署名は破棄しました。' } : { tone: 'error', title: '送信できませんでした', body: e.message }; }
+    draw();
   }
-  const intField = (label, id, value, min, max) => {
-    const f = el('div', 'field'), l = el('label', '', label), i = el('input');
-    i.id = id; i.type = 'number'; i.inputMode = 'numeric'; i.step = '1'; i.min = String(min); i.max = String(max); i.value = String(value); i.required = true;
-    l.htmlFor = id; f.append(l, i); return [f, i];
-  };
-  const fmt = (n) => new Intl.NumberFormat('ja-JP').format(n);
-
-  function renderTrade() {
-    trade.replaceChildren(el('h2', '', '発注（devnet）'));
-    if (!state.key) {
-      trade.append(el('p', 'muted', '発注にはこの端末の鍵が必要です。鍵の秘密部分は端末の外へ出せない形で保存され、送信されるのは公開鍵と署名だけです。'),
-        button('鍵を作成', run(async () => { state.key = await createKey(keyStore); state.account = null; notify('鍵を作成しました。通信はしていません。'); })));
-      return;
-    }
-    const k = state.key, a = state.account?.account === k.account ? state.account : null;
-    const dl = el('dl');
-    const rows = [['口座番号', String(k.account)], ['公開鍵', k.pubkey.slice(0, 16) + '…']];
-    if (a) rows.push(['担保', fmt(a.collateral)], ['純資産', fmt(a.equity)], ['使える証拠金', fmt(a.freeCollateral)], ['次の順番番号', String(a.nextNonce)],
-      ['ポジション', a.positions.length ? a.positions.map((x) => `#${x.market} ${x.size > 0 ? '買' : '売'} ${fmt(Math.abs(x.size))} @ ${fmt(x.entry)}`).join(' / ') : 'なし']);
-    for (const [kk, v] of rows) dl.append(el('dt', '', kk), el('dd', '', v));
-    trade.append(dl, button('口座を取得', run(async () => { state.account = await client.read('read-account', k.account); notify('口座を取得しました。'); }), 'button tonal'));
-    if (!state.head || !isDevnet(state.head.chainId)) trade.append(el('p', 'caption muted', '署名の前に「ノードの状態を取得」で、接続先が devnet であることを確認します。'));
-    if (!a) { trade.append(el('p', 'caption muted', '発注の前に「口座を取得」で順番番号を確認します。')); }
-
-    const [af, amount] = intField('受け取る devnet 資金', 'tk-amount', 1000000, 1, 1e12);
-    trade.append(af, button('devnet 資金を受け取る', () => {
-      try {
-        const t = buildTx('deposit', { amount: amount.valueAsNumber });
-        confirmSign('devnet 資金を受け取る', [['口座', String(k.account)], ['量', fmt(t.amount)], ['チェーン', state.head?.chainId ?? '未確認']],
-          () => send('request-devnet-funds', t, 'devnet 資金を受け取りました'));
-      } catch (error) { fail(error); }
-    }, 'button tonal'));
-
-    const sideField = el('div', 'field'), sideLabel = el('label', '', '売買'), side = el('select');
-    side.id = 'tk-side'; sideLabel.htmlFor = side.id;
-    for (const [v, t] of [['0', '買い'], ['1', '売り']]) { const o = el('option', '', t); o.value = v; side.append(o); }
-    sideField.append(sideLabel, side);
-    const mark = state.market?.mark ?? 68000;
-    const [lf, level] = intField('価格（レベル）', 'tk-level', mark, 1, 1048575);
-    const [qf, qty] = intField('数量', 'tk-qty', 1, 1, 1e9);
-    const flagField = el('div', 'field'), flagLabel = el('label', '', '注文条件'), flags = el('select');
-    flags.id = 'tk-flags'; flagLabel.htmlFor = flags.id;
-    for (const [v, t] of [['0', '指値（残りは板に残す）'], ['1', 'IOC（約定しない分は取り消し）'], ['2', 'メイカーのみ'], ['4', '決済のみ']]) { const o = el('option', '', t); o.value = v; flags.append(o); }
-    flagField.append(flagLabel, flags);
-    trade.append(sideField, lf, qf, flagField, button('注文を送信', () => {
-      try {
-        const t = buildTx('order', { side: Number(side.value), level: level.valueAsNumber, qty: qty.valueAsNumber, flags: Number(flags.value) });
-        confirmSign('この注文を送信しますか？', [['市場', `#${t.market}`], ['売買', t.side === 0 ? '買い' : '売り'], ['価格（レベル）', fmt(t.level)],
-          ['数量', fmt(t.qty)], ['注文条件', flags.selectedOptions[0].textContent], ['口座', String(k.account)], ['チェーン', state.head?.chainId ?? '未確認']],
-          () => send('submit-order', t, '注文を送信しました'));
-      } catch (error) { fail(error); }
-    }), button('すべて取り消す', () => {
-      const t = buildTx('cancel-all');
-      confirmSign('市場 #1 の注文をすべて取り消しますか？', [['口座', String(k.account)], ['チェーン', state.head?.chainId ?? '未確認']],
-        () => send('cancel-all', t, '取り消しを送信しました'));
-    }, 'button tonal'));
-    if (state.lastTx) trade.append(el('p', 'caption muted', `直近の送信: ${state.lastTx.ok ? '受付' : '不受理'}${state.lastTx.reason ? `（${state.lastTx.reason}）` : ''}`));
-    trade.append(button('鍵を削除', () => {
-      const d = document.createElement('dialog');
-      d.append(el('h2', '', 'この端末の鍵を削除しますか？'), el('p', 'muted', `口座 ${k.account} には、この鍵なしでは二度と署名できません（devnet のみ）。`),
-        button('削除', run(async () => { d.close(); await deleteKey(keyStore); state.key = null; state.account = null; notify('鍵を削除しました。'); }), 'button danger'),
-        button('残す', () => d.close(), 'button tonal'));
-      d.addEventListener('close', () => d.remove(), { once: true });
-      document.body.append(d); d.showModal();
-    }, 'button text'));
-  }
-
-  function render() {
-    renderTrade();
-    body.replaceChildren();
-    if (state.market) {
-      const m = state.market, card = el('section', 'card'), dl = el('dl');
-      for (const [k, v] of [['市場', `#${m.id}`], ['マーク価格', fmt(m.mark)], ['オラクル価格', fmt(m.oracle) + (m.oracleStale ? '（古い値）' : '')],
-        ['直近約定', fmt(m.last)], ['建玉', fmt(m.openInterest)], ['資金調達率（生値）', String(m.fundingRate)], ['最大レバレッジ', m.maxLeverage === null ? '未設定' : `${m.maxLeverage} 倍`]])
-        dl.append(el('dt', '', k), el('dd', '', v));
-      card.append(el('h2', '', '価格'), dl, el('p', 'caption muted', '値はノードが返す整数のままです。通貨単位への換算はしていません。'));
-      body.append(card);
-    }
-    if (state.book) {
-      const card = el('section', 'card');
-      card.append(el('h2', '', '板（上位 15 段）'));
-      for (const [title, rows] of [['売り', [...state.book.asks].reverse()], ['買い', state.book.bids]]) {
-        const table = el('table', 'book'), cap = el('caption', '', title), head = el('tr');
-        head.append(el('th', '', '価格'), el('th', '', '数量'));
-        table.append(cap, head);
-        for (const r of rows) { const tr = el('tr'); tr.append(el('td', '', fmt(r.level)), el('td', '', fmt(r.qty))); table.append(tr); }
-        if (!rows.length) { const tr = el('tr'); const td = el('td', 'muted', '注文なし'); td.colSpan = 2; tr.append(td); table.append(tr); }
-        card.append(table);
-      }
-      body.append(card);
-    }
-    if (state.head) {
-      const h = state.head, card = el('section', 'card'), dl = el('dl');
-      for (const [k, v] of [['チェーン', h.chainId + (isDevnet(h.chainId) ? '' : '（devnet ではないため署名しません）')], ['ブロック高', fmt(h.height)], ['合意', h.consensus], ['状態ルート', h.stateRoot.slice(0, 16) + '…']])
-        dl.append(el('dt', '', k), el('dd', '', v));
-      card.append(el('h2', '', 'ノードの状態'), dl);
-      body.append(card);
-    }
-    if (state.at) body.append(el('p', 'caption muted', `最終取得: ${new Intl.DateTimeFormat('ja-JP', { timeStyle: 'medium' }).format(state.at)}（自動更新はしません）`));
-    else body.append(el('p', 'empty muted', 'まだ取得していません。'));
-  }
-  render();
 }

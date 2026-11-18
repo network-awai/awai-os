@@ -15,7 +15,7 @@ const caps=['torihiki-read','torihiki-devnet-trade'];
 test('declares the devnet reads and the three signed writes, each with each-operation consent and one origin',()=>{
   const r=t.torihikiRuntime(domain.descriptor);
   assert.deepEqual(clientRuntimeProblems(r,caps,app),[]);
-  assert.deepEqual(r.operations.map(o=>o.operation),['read-head','read-market','read-book','read-account','request-devnet-funds','submit-order','cancel-all']);
+  assert.deepEqual(r.operations.map(o=>o.operation),['read-head','read-market','read-book','read-account','read-trades','read-candles-1','read-candles-10','read-candles-50','request-devnet-funds','submit-order','cancel-all']);
   for(const o of r.operations){assert.equal(o.consent,'each-operation');assert.equal(o.endpoint.origin,t.TORIHIKI_NODE);assert.equal(o.endpoint.routes.length,1);
     const route=o.endpoint.routes[0];assert.equal(route.method,o.capability==='torihiki-read'?'GET':'POST');if(route.method==='POST')assert.equal(route.path,'/tx');}
   assert.match(clientRuntimeConnectSrc(r,caps,[],app),/torihiki-node\.04-feasts-minded\.workers\.dev/);
@@ -121,4 +121,24 @@ test('Android host allowlist and build CSP use the same host and routes as the d
   assert(java.includes('("POST".equals(req.getMethod())&&torihikiTx(u))'));
   const build=readFileSync(new URL('../build.py',import.meta.url),'utf8');
   assert(build.includes(`connect-src ${t.TORIHIKI_NODE}`));
+});
+
+test('trades and candles views accept live shapes, reject malformed data, and only the declared spans match (AWAI-3415)',()=>{
+  const trades={market:1,trades:[{level:67990,qty:3,side:1,h:61},{level:68010,qty:2,side:0,h:57}]};
+  assert.deepEqual(t.tradesView(trades)[0],{level:67990,qty:3,side:1,height:61});
+  for(const bad of [{...trades,market:2},{...trades,trades:[{level:1,qty:1,side:2,h:1}]},{...trades,trades:[{level:1,qty:0,side:0,h:1}]},{...trades,trades:Array(201).fill({level:1,qty:1,side:0,h:1})}])assert.throws(()=>t.tradesView(bad));
+  const c={open:67990,high:68010,low:67990,close:68010,volume:5,'buy-volume':2,'sell-volume':3,h:50,fills:2};
+  const candles={unit:'blocks','truncated-because':'no-older-blocks',candles:[c]};
+  assert.deepEqual(t.candlesView(candles),{candles:[{height:50,open:67990,high:68010,low:67990,close:68010,volume:5,buy:2,sell:3}],truncated:true});
+  for(const bad of [{...candles,unit:'seconds'},{...candles,candles:[{...c,low:68000}]},{...candles,candles:[{...c,high:68000}]},{...candles,candles:[{...c,volume:-1}]},{...candles,candles:[{...c,open:'1'}]}])assert.throws(()=>t.candlesView(bad));
+  const ops=Object.fromEntries(t.torihikiRuntime(domain.descriptor).operations.map(o=>[o.operation,o.endpoint]));
+  const n=t.TORIHIKI_NODE;
+  for(const span of t.CANDLE_SPANS)assert(clientEndpointAllowsRequest(ops[`read-candles-${span}`],`${n}/candles?market=1&span=${span}`));
+  for(const [op,url] of [['read-candles-1',n+'/candles?market=1&span=10'],['read-candles-10',n+'/candles?market=2&span=10'],['read-candles-50',n+'/candles?market=1&span=500'],['read-trades',n+'/trades?market=2'],['read-trades',n+'/trades']])assert(!clientEndpointAllowsRequest(ops[op],url),url);
+  const m={id:1,mark:68000,oracle:68000,last:67990,'open-interest':366,'funding-rate':0,'max-leverage':40,'oracle-stale':false,'initial-margin-rate':25000000,'taker-fee-rate':350000,'maker-fee-rate':100000};
+  const v=t.marketView(m);assert.equal(v.initialMarginRate/t.RATE_SCALE,0.025);assert.equal(v.takerFeeRate,350000);
+  assert.equal(t.marketView({...m,'taker-fee-rate':undefined}).takerFeeRate,null);assert.throws(()=>t.marketView({...m,'taker-fee-rate':-1}));
+});
+test('chart axis steps are 1, 2 or 5 times a power of ten',()=>{
+  assert.equal(t.niceStep(3),5);assert.equal(t.niceStep(34),50);assert.equal(t.niceStep(136/4),50);assert.equal(t.niceStep(20),20);assert.equal(t.niceStep(1200),2000);
 });
