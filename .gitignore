@@ -2,3 +2,7 @@ result
 result-*
 hardware-configuration.nix
 .DS_Store
+
+# Python bytecode written by android/build.py and other scripts (AWAI-3403)
+__pycache__/
+*.pyc
