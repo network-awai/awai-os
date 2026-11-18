@@ -26,6 +26,8 @@ public final class StoreInstrumentation extends Instrumentation {
         if(catalog.json().contains("\"network.itonami.deai\"")){byte[] deai=catalog.verifiedApk(c,"network.itonami.deai");check(deai.length>10*1024*1024,"deai APK bytes and package/signer/version");}
         if(catalog.json().contains("\"network.itonami.hiring\"")){byte[] hiring=catalog.verifiedApk(c,"network.itonami.hiring");check(hiring.length>10*1024*1024,"hiring APK bytes and package/signer/version");}
         if(catalog.json().contains("\"network.itonami.kumade\"")){byte[] kumade=catalog.verifiedApk(c,"network.itonami.kumade");check(kumade.length>10*1024*1024,"kumade APK bytes and package/signer/version");}
+        for(String local:Catalog.LOCAL_APPS){String id="network.itonami."+local;check(("packages/"+local+".apk").equals(Catalog.assetFor(id))&&Catalog.maxApkBytes(id)==40*1024*1024,local+" fixed asset and budget");if(catalog.json().contains("\""+id+"\"")){byte[] b=catalog.verifiedApk(c,id);check(b.length>10*1024*1024,local+" APK bytes and package/signer/version");}}
+        refuses(()->Catalog.assetFor("network.itonami.notlisted"),"unlisted network.itonami id refuses");
         check("packages/aozora.apk".equals(Catalog.assetFor("app.aozora")),"Aozora fixed bundled asset");
         check("online-aozora.apk".equals(Catalog.onlineFileFor("app.aozora")),"Aozora fixed online file");
         check(Catalog.maxApkBytes("app.aozora")==64*1024*1024,"Aozora size limit");

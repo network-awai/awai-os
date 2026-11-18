@@ -70,6 +70,14 @@ test('the Kumade Tauri artifact fits the shared ceiling and keeps its own asset 
     assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,bad]}),100),false,asset);
   }
 });
+test('an AWAI-3502 local Tauri app fits the shared ceiling under its own asset name',()=>{
+  const local={...app,id:'network.itonami.icc',versionCode:1000,artifacts:[{...apk,asset:'packages/icc.apk',bytes:20*1024*1024}]};
+  assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,local]}),100),true);
+  for(const asset of ['packages/ICC.apk','packages/icc.apk/../x.apk','packages/icc.APK']){
+    const bad={...local,artifacts:[{...apk,asset,bytes:20*1024*1024}]};
+    assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,bad]}),100),false,asset);
+  }
+});
 test('local event lifecycle is shared and bounded',()=>{
   const e={id:'1',title:'散歩 <img src=x onerror=alert(1)>',at:200};
   const saved=JSON.parse(d.saveEvent('[]',JSON.stringify(e)));
