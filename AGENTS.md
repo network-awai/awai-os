@@ -103,6 +103,17 @@ state, no ChatGPT approval. The Hermes `mcp_servers` route (D14) is for
 agent-invoked tools, not for apps with a screen. Implementation is still open;
 this records only the intake choice.
 
+## In-app storage on Awai Android and Itonami dapps (AWAI-3386)
+
+Follow [the shared app storage contract](docs/otehon/app-storage.md). Use
+AwaiFS/WNFS for private snapshots, Kotobase for basis-bound graph queries,
+and Yataverse for verified ciphertext blocks over the applicable Awai
+Network transport. Reuse the owning SDKs and app-scoped host capabilities.
+Keep private indexing and key custody within the authorized client. Route
+external browser operations through the canonical Kotoba broker and fresh
+per-operation consent. The current bounded Drive owner-store profile and the
+WNFS migration have separate readback and release evidence.
+
 ## Meiji desktop entry (AWAI-195, owner direction 2026-11-16)
 
 Owner direction 2026-11-16, AWAI-2820: if former execution keys cannot be
