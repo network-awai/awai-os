@@ -97,7 +97,7 @@ internal object Models {
    .put("loaded",loadedJson?:JSONObject.NULL)}
 
  fun trustedCaller(c:Context,caller:String?):Boolean {
-  val allowed=setOf("network.itonami.app","network.itonami.gaka","network.awai.gaka","network.itonami.dougaka","network.itonami.dougaka.preview","network.itonami.mangaka","network.itonami.animeka","network.itonami.ongakuka","network.itonami.rodo")
+  val allowed=setOf("network.itonami.app","network.itonami.gaka","network.awai.gaka","network.itonami.dougaka","network.itonami.dougaka.preview","network.itonami.mangaka","network.itonami.animeka","network.itonami.ongakuka","network.itonami.rodo","network.itonami.karute")
   return caller in allowed && c.packageManager.checkSignatures(c.packageName,caller!!)==android.content.pm.PackageManager.SIGNATURE_MATCH
  }
 }
