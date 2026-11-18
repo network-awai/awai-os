@@ -1,7 +1,7 @@
 {
   "source": "network-awai/app-itonami-egov dist/gyosei.html",
-  "revision": "f0051f3173b5dcb3c6338e77edeb6a8ba9c8790f",
+  "revision": "bf8253f1c2fb3a8d20721e4682f8c8e08fea2dec",
   "file": "gyosei.html",
-  "bytes": 164317,
-  "sha256": "7028e634060955b6c4fe8ba9b310ca68b40952ccda5eab636e9b56228157c9a6"
+  "bytes": 171071,
+  "sha256": "c353b8547bc3f9d37b6d2c04d54eceeb6ee2973207d7b3b0134b1b6eaf9dfd91"
 }
