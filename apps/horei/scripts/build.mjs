@@ -37,8 +37,8 @@ await copyFile(resolve(app, 'data/PROVENANCE.json'), resolve(out, 'data-provenan
 const {runtimeDescriptor, SELECTOR} = await import('../src/fulltext.js');
 const {clientRuntimeProblems, clientRuntimeConnectSrc} = await import('../../../otehon/shell/vendor/kotoba-client-runtime.js');
 const descriptor = runtimeDescriptor();
-if (clientRuntimeProblems(descriptor, [SELECTOR.capability], 'http://tauri.localhost').length) throw Error('invalid runtime descriptor');
-const connect = 'connect-src ipc: http://ipc.localhost ' + clientRuntimeConnectSrc(descriptor, [SELECTOR.capability], [], 'http://tauri.localhost').slice('connect-src '.length) + ';';
+if (clientRuntimeProblems(descriptor, [SELECTOR.capability], 'https://tauri.localhost').length) throw Error('invalid runtime descriptor');
+const connect = 'connect-src ipc: http://ipc.localhost ' + clientRuntimeConnectSrc(descriptor, [SELECTOR.capability], [], 'https://tauri.localhost').slice('connect-src '.length) + ';';
 const tauriCsp = JSON.parse(await readFile(resolve(app, 'src-tauri/tauri.conf.json'), 'utf8')).app.security.csp;
 for (const [name, csp] of [['index.html', html], ['tauri.conf.json', tauriCsp]]) if (!csp.includes(connect)) throw Error('CSP connect-src differs from the descriptor: ' + name);
 await writeFile(resolve(out, 'descriptor.json'), JSON.stringify(descriptor, null, 2) + '\n');

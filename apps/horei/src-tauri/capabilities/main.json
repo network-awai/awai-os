@@ -1,1 +1,1 @@
-{"identifier":"horei-local","description":"Read-only offline law browsing; host version only. No external network, filesystem, installer or shell permissions.","windows":["main"],"permissions":["allow-awai-host-info"]}
+{"identifier":"horei-local","description":"Offline law browsing; host version and the app-private Awai FS block store for verified full texts. No network, installer or shell permissions in the host.","windows":["main"],"permissions":["allow-awai-host-info","allow-awai-fs-get","allow-awai-fs-put","allow-awai-fs-delete"]}
