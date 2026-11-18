@@ -920,3 +920,7 @@ Object.prototype.credit_limit_micros;
 // AWAI-3401: device.js imports the WNFS account proof issuer; the boundary guard
 // counts imported names as properties, so declare it to keep release names stable.
 Object.prototype.issueWnfsAccountProof;
+
+Object.prototype.screenToolsAvailable;
+
+Object.prototype.screenTool;

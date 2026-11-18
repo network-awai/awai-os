@@ -1,0 +1,13 @@
+<resources>
+    <string name="screen_navigation_name">Itonami · 画面操作</string>
+    <string name="screen_navigation_description">Itonami で確認したときに、Android の最近使ったアプリを開きます。</string>
+    <string name="screen_confirm">この操作を実行しますか？</string>
+    <string name="screen_allow">実行</string>
+    <string name="screen_home">Android のホームを開く</string>
+    <string name="screen_recents">最近使ったアプリを表示</string>
+    <string name="screen_settings">Android の設定を開く</string>
+    <string name="screen_accessibility">Itonami の画面操作を有効にするため、ユーザー補助の設定を開く</string>
+    <string name="screen_recording">Itonami の画面録画中</string>
+    <string name="screen_recording_detail">映像のみ · 最大5分</string>
+    <string name="screen_stop">録画を停止</string>
+</resources>

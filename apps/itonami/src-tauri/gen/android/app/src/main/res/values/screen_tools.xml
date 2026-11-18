@@ -1,0 +1,13 @@
+<resources>
+    <string name="screen_navigation_name">Itonami · Screen navigation</string>
+    <string name="screen_navigation_description">Open Android Recents when you confirm the action in Itonami.</string>
+    <string name="screen_confirm">Run this action?</string>
+    <string name="screen_allow">Run</string>
+    <string name="screen_home">Open the Android home screen</string>
+    <string name="screen_recents">Show recent apps</string>
+    <string name="screen_settings">Open Android Settings</string>
+    <string name="screen_accessibility">Open accessibility settings to enable Itonami screen navigation</string>
+    <string name="screen_recording">Itonami screen recording</string>
+    <string name="screen_recording_detail">Video only · up to 5 minutes</string>
+    <string name="screen_stop">Stop recording</string>
+</resources>

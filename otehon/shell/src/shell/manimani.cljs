@@ -2,6 +2,7 @@
   (:require ["react" :refer [useCallback useEffect useRef useState]]
             ["../voice-input.js" :refer [createLocalDictation]]
             [shell.bot-chat :as conversation]
+            [shell.screen-tools :as screen]
             ["../bot-chat.js" :refer [chatBots]]))
 
 (def MANIMANI "manimani")
@@ -56,6 +57,7 @@
   [:main.chat.net-view {:data-manimani-conversation true}
    [:div.net-body
     [:h1 "Manimani"] [:p "Itonami Agent bots との新しい会話。会話と画像生成をひとつの履歴に。"]
+    [:f> screen/panel "ja"]
     [:button.secondary {:type "button" :disabled busy :on-click
      (fn [] (set-busy true) (set-problem nil)
       (-> (chatBots) (.then #(set-bots (js->clj % :keywordize-keys true)))
