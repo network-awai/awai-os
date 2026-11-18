@@ -7,13 +7,21 @@ Follow the workspace-level AGENTS.md architecture and Linear tracking rules.
 | Path | Contents |
 | --- | --- |
 | `android/` | Awai OS on Android AOSP: Home, Store, setup, SystemUI overlays, desktop PC work |
-| `apps/` | Bundled apps (Itonami, Murakumo inference, Drive, Yotei, Horei, x402 Pay, Isekai Fork) |
+| `apps/` | Existing in-tree integrations and pointers to independent app repositories |
 | `dapps/` | Otehon dapps (D1, reward loop, Saifu, Sanka, Wellbecoming) |
 | `otehon/` | Itonami shell UI shared with Android, and Otehon fleet sources: Meiji, Bot fleet, Soshiki, storage |
 | `packages/`, `store/`, `distribution/`, `deploy/` | Shared packages, signed catalog, distribution Worker, awai.link relay |
 | `ci/`, `scripts/`, `tests/` | Active checks and operator tools |
 | `docs/` | Decisions, design and dated evidence (`docs/evidence/` is a record; never rewrite it) |
 | `archive/` | Deprecated material kept for history; not built, not an install path |
+
+## Product app ownership
+
+Keep each product app in its owning repository. Its source, native host, tests,
+package identity and releases are owned there. Awai OS owns AOSP integration,
+Home, package discovery, Store catalog and distribution verification. Use
+pinned, signed artifacts for OS integrations that need an app binary. See
+[app ownership](docs/app-ownership.md) for the migration and consumer contract.
 
 ## Product OS direction — Android AOSP (owner decision 2026-11-17)
 
