@@ -176,8 +176,9 @@ QMP stop request is not evidence of a guest acknowledging clean shutdown.
 
 ## UI design and writing
 
-Apply [the shared UI rules](docs/design/interface-principles.md) to Awai OS and
-its bundled apps. Prefer recognizable controls, hierarchy, selection feedback
+Apply [the shared UI rules](docs/design/interface-principles.md) and the
+[Awai design system](docs/design/awai-design-system.md) (tokens, components and
+shared rules, AWAI-3402) to Awai OS and its bundled apps. Prefer recognizable controls, hierarchy, selection feedback
 and concise status labels over explanatory paragraphs. Keep implementation
 notes, measurement caveats and design rationale in engineering documentation;
 show optional technical facts through named disclosure controls. If an action
