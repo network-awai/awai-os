@@ -52,3 +52,19 @@ tailscale serve --bg --https=8443 http://127.0.0.1:18790          # tailnet only
 
 Tailscale Serve issues a certificate for `<node>.<tailnet>.ts.net`, so that name appears in public
 Certificate Transparency logs (owner decision 2026-11-18, AWAI-3377).
+
+## Measuring models (stage 6, AWAI-3391)
+
+`measure_model.py` measures one model with the pinned llama-server on a Mac node. `../test/measure_nodes.py`
+runs it over SSH for each model on each node: nodes in parallel, models one at a time.
+
+```bash
+python3 apps/murakumo/test/measure_nodes.py --out DIR --remote '~/github/workspaces/claude/awai-3391' \
+  node@benjamin:Qwen3-4B-Q4_K_M.gguf,Qwen3-8B-Q4_K_M.gguf node@levi:Qwen3-4B-Q4_K_M.gguf
+```
+
+- Each run uses ctx 4096, `-ngl 99`, temperature 0, `ignore_eos` and no prompt cache. Fixed prompts of
+  12, 251 and 1211 tokens each produce 128 tokens, 3 times, after one warm-up.
+- Each run records load time, the server's own timings, `/usr/bin/time -l` peak memory, the system
+  memory and swap delta, and GPU use sampled from IOAccelerator.
+- Results: [`docs/evidence/murakumo-measure-6-20261118/`](../../../docs/evidence/murakumo-measure-6-20261118/summary.json).
