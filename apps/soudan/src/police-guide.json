@@ -498,7 +498,64 @@
       "m49": "044",
       "name": "Bahamas",
       "region": "Americas",
-      "iso2": "BS"
+      "iso2": "BS",
+      "status": "official-route",
+      "sources": {
+        "fraud": {
+          "title": "Central Bank of The Bahamas — Public Notice on Investment Fraud and Scams",
+          "url": "https://www.centralbankbahamas.com/viewPDF/documents/2025-05-22-11-30-03-Press-Release-on-Investment-Fraud-and-Scams-22.05.2025-c-002.pdf",
+          "checkedOn": "2026-11-18"
+        },
+        "report": {
+          "title": "Royal Bahamas Police Force — Report a Crime or an Incident",
+          "url": "https://royalbahamaspolice.org/contactus/reportcrime.html",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "投資詐欺の窓口はバハマ警察の金融犯罪部門または最寄りの警察署。警察の一般オンラインフォームは国内で発生した対象事案向け。",
+          "refs": [
+            "fraud",
+            "report"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "投資詐欺は金融犯罪部門に電話するか警察署で申告する。一般オンラインフォームの対象事案では、本人、所有者または権限を得た代理人が提出する。",
+          "refs": [
+            "fraud",
+            "report"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "一般オンラインフォームには有効なメールアドレスが必要。金融詐欺の個別の必須資料は当該窓口に確認する。",
+          "refs": [
+            "report"
+          ],
+          "kind": "required"
+        }
+      ],
+      "progress": [
+        {
+          "text": "一般オンラインフォームに届いた報告は審査され、追加の情報が必要な場合などに担当者から連絡がある。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "投資詐欺を一般オンラインフォームから提出できない場合は金融犯罪部門か最寄りの警察署を利用する。",
+          "refs": [
+            "fraud"
+          ],
+          "kind": "channel-unavailable"
+        }
+      ]
     },
     "BIH": {
       "m49": "070",
@@ -528,7 +585,60 @@
       "m49": "060",
       "name": "Bermuda",
       "region": "Americas",
-      "iso2": "BM"
+      "iso2": "BM",
+      "status": "official-route",
+      "sources": {
+        "intake": {
+          "title": "Government of Bermuda — Bermuda Police Service and partners on reporting internet fraud",
+          "url": "https://www.gov.bm/news/bermuda-police-service-bermuda-bankers-association-and-ageing-and-disability-services",
+          "checkedOn": "2026-11-18"
+        },
+        "health": {
+          "title": "Bermuda Department of Health — Fraudulent health notice",
+          "url": "https://www.gov.bm/news/department-of-health-warns-businesses-of-fraudulent-health-notice",
+          "checkedOn": "2026-11-18"
+        },
+        "pca": {
+          "title": "Government of Bermuda — Police Complaints Authority",
+          "url": "https://www3.gov.bm/department/police-complaints-authority",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "バミューダ警察がインターネット詐欺を受け付ける。偽の公的通知についてはサイバー犯罪部門が案内されている。",
+          "refs": [
+            "intake",
+            "health"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "電話211または警察のオンライン窓口から電話・インターネット詐欺を報告する。",
+          "refs": [
+            "intake"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "偽の公的通知がメールで届いた事案では、元のメールと添付ファイルを保全する。",
+          "refs": [
+            "health"
+          ],
+          "kind": "retain"
+        }
+      ],
+      "followUp": [
+        {
+          "text": "警察の対応に関する苦情はPolice Complaints Authorityへ申し立てられる。",
+          "refs": [
+            "pca"
+          ],
+          "kind": "service-complaint"
+        }
+      ]
     },
     "BOL": {
       "m49": "068",
@@ -629,7 +739,51 @@
       "m49": "052",
       "name": "Barbados",
       "region": "Americas",
-      "iso2": "BB"
+      "iso2": "BB",
+      "status": "official-route",
+      "sources": {
+        "police": {
+          "title": "The Barbados Police Service — Ask the Police",
+          "url": "https://tbps.gov.bb/home/community-relations/ask-the-police/",
+          "checkedOn": "2026-11-18"
+        },
+        "fraud": {
+          "title": "Barbados Government Information Service — Avoid Being a Victim of Phishing",
+          "url": "https://gisbarbados.gov.bb/blog/avoid-being-a-victim-of-phishing/",
+          "checkedOn": "2026-11-18"
+        },
+        "pca": {
+          "title": "Office of the Attorney General — Police Complaints Authority",
+          "url": "https://oag.gov.bb/Departments/Police-Complaints-Authority/",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "バルバドス警察がフィッシング等の被害申告を受け付ける。",
+          "refs": [
+            "police",
+            "fraud"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "どの警察署または警察官にも犯罪を申告できる。匿名の情報提供は別途案内されている。",
+          "refs": [
+            "police"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "警察の対応への苦情は独立のPolice Complaints Authorityに連絡できる。",
+          "refs": [
+            "pca"
+          ],
+          "kind": "service-complaint"
+        }
+      ]
     },
     "BRN": {
       "m49": "096",
@@ -1102,7 +1256,70 @@
       "m49": "136",
       "name": "Cayman Islands",
       "region": "Americas",
-      "iso2": "KY"
+      "iso2": "KY",
+      "status": "official-route",
+      "sources": {
+        "formal": {
+          "title": "Royal Cayman Islands Police Service — How to Submit a Tip",
+          "url": "https://www.rcips.ky/submit-a-tip/",
+          "checkedOn": "2026-11-18"
+        },
+        "evidence": {
+          "title": "Cayman Islands Government — Cybersecurity Official Information & Alerts",
+          "url": "https://gov.ky/web/cybersecurity",
+          "checkedOn": "2026-11-18"
+        },
+        "case": {
+          "title": "Royal Cayman Islands Police Service — Police Investigate Suspected Banking Scam",
+          "url": "https://www.rcips.ky/police-investigate-suspected-banking-scam-11-june",
+          "checkedOn": "2026-11-18"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ロイヤル・ケイマン諸島警察が詐欺などの犯罪の申告を受け付ける。",
+          "refs": [
+            "formal",
+            "evidence"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "正式な届出は地域の警察署に行う。匿名の情報提供フォームは専用の別窓口。",
+          "refs": [
+            "formal",
+            "evidence"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "メッセージ、スクリーンショット、支払記録などを保全する。",
+          "refs": [
+            "evidence"
+          ],
+          "kind": "retain"
+        }
+      ],
+      "cases": [
+        {
+          "text": "金融機関を名乗る電話の後に口座で無断取引が起きた事案について、2026年6月11日に、警察が被害報告を受け捜査中と公表した。",
+          "refs": [
+            "case"
+          ],
+          "stage": "investigation-confirmed"
+        }
+      ],
+      "followUp": [
+        {
+          "text": "匿名フォームに情報を送った場合、被害の正式な届出は地域の警察署で行う。",
+          "refs": [
+            "formal"
+          ],
+          "kind": "channel-unavailable"
+        }
+      ]
     },
     "CYP": {
       "m49": "196",
