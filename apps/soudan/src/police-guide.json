@@ -740,7 +740,61 @@
       "m49": "204",
       "name": "Benin",
       "region": "Africa",
-      "iso2": "BJ"
+      "iso2": "BJ",
+      "status": "official-route",
+      "sources": {
+        "about": {
+          "title": "Benin Centre National d’Investigations Numériques — Qui sommes-nous ?",
+          "url": "https://www.cnin.bj/a-propos",
+          "checkedOn": "2026-11-19"
+        },
+        "report": {
+          "title": "Benin Centre National d’Investigations Numériques — Déposer une plainte",
+          "url": "https://www.cnin.bj/plainte",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ベナンのデジタル捜査センターCNINがサイバー犯罪や詐欺を扱う。",
+          "refs": [
+            "about",
+            "report"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "CNINの専用フォームで詐欺やデジタル被害を届け出られる。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "フォームの件名と被害の説明を記入する。",
+          "refs": [
+            "report"
+          ],
+          "kind": "required"
+        },
+        {
+          "text": "画面記録、メッセージ、文書などの関連証拠を添える。",
+          "refs": [
+            "report"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "CNINは電子メールで申告者に連絡すると案内している。",
+          "refs": [
+            "report"
+          ]
+        }
+      ]
     },
     "BES": {
       "m49": "535",
@@ -1759,7 +1813,38 @@
       "m49": "384",
       "name": "Côte d’Ivoire",
       "region": "Africa",
-      "iso2": "CI"
+      "iso2": "CI",
+      "status": "official-route",
+      "sources": {
+        "report": {
+          "title": "Côte d’Ivoire Ministry of Communication — Cybercrime reporting and PLCC contacts",
+          "url": "https://www.communication.gouv.ci/uploads/publications/17229472533.pdf",
+          "checkedOn": "2026-11-19"
+        },
+        "plcc": {
+          "title": "Côte d’Ivoire government — PLCC reporting route for victims on social media",
+          "url": "https://gouv.ci/index.php/actualite/lutte-contre-la-cybercriminalite-en-cote-divoire-la-plcc-est-disponible-pour-toute-victime-dinfraction-sur-les-reseaux-sociaux-ditt-2403",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "コートジボワールのサイバー犯罪対策の専門窓口PLCCが、SNS等での被害も取り扱う。",
+          "refs": [
+            "report",
+            "plcc"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "公式案内のPLCC連絡先を確認して届け出る。案内には被害者の申告と事案の情報提供が掲載されている。",
+          "refs": [
+            "report",
+            "plcc"
+          ]
+        }
+      ]
     },
     "CMR": {
       "m49": "120",
@@ -2487,7 +2572,39 @@
       "m49": "012",
       "name": "Algeria",
       "region": "Africa",
-      "iso2": "DZ"
+      "iso2": "DZ",
+      "status": "official-route",
+      "sources": {
+        "ppgn": {
+          "title": "Algeria National Gendarmerie — Pré-plainte en ligne",
+          "url": "https://www.mdn.dz/site_cgn/sommaire/services/ppgn/ppgn_fr.php",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "アルジェリア国家憲兵隊がオンライン事前申告と対面での確定を扱う。",
+          "refs": [
+            "ppgn"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "国家憲兵隊の公式サイトから事前申告を送り、指定された日時に憲兵隊の窓口で内容を確定する。",
+          "refs": [
+            "ppgn"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "オンラインの事前申告と、予約した窓口での確定が案内されている。情報提供にも別の機能がある。",
+          "refs": [
+            "ppgn"
+          ]
+        }
+      ]
     },
     "ECU": {
       "m49": "218",
@@ -2706,7 +2823,43 @@
       "m49": "231",
       "name": "Ethiopia",
       "region": "Africa",
-      "iso2": "ET"
+      "iso2": "ET",
+      "status": "partial",
+      "sources": {
+        "law": {
+          "title": "Ethiopia Information Network Security Administration — Computer Crime Proclamation No. 958/2016",
+          "url": "https://www.insa.gov.et/pdf/download/computer-crime-proclamation-no-958-2016",
+          "checkedOn": "2026-11-19"
+        },
+        "insa": {
+          "title": "Ethiopia Information Network Security Administration — Cyber incident reporting",
+          "url": "https://www.insa.gov.et/",
+          "checkedOn": "2026-11-19"
+        },
+        "form": {
+          "title": "Ethio-CERT — Incident Report",
+          "url": "https://ethiocert.insa.gov.et/ar/web/guest/incident-report",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "エチオピアのINSA・Ethio-CERTにサイバー事案を報告できる。警察は法の定める刑事対応を担当する。",
+          "refs": [
+            "law",
+            "insa"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "被害者はINSAのサイバー事案窓口を利用できる。警察での正式な刑事申告手順は要確認。",
+          "refs": [
+            "insa",
+            "form"
+          ]
+        }
+      ]
     },
     "FIN": {
       "m49": "246",
@@ -5878,7 +6031,57 @@
       "m49": "508",
       "name": "Mozambique",
       "region": "Africa",
-      "iso2": "MZ"
+      "iso2": "MZ",
+      "status": "official-route",
+      "sources": {
+        "cpp": {
+          "title": "Mozambique Procuradoria-Geral — Lei 25/2019, Código de Processo Penal",
+          "url": "https://www.pgr.gov.mz/por/content/download/6502/46281/version/1/file/6.%20Lei%2025_2019%20Lei%20de%20revis%C3%83%C2%A3o%20do%20C%C3%83%C2%B3digo%20de%20Processo%20Penal.pdf",
+          "checkedOn": "2026-11-19"
+        },
+        "guide": {
+          "title": "Mozambique Procuradoria-Geral — Guia de Boas Práticas na Investigação Criminal",
+          "url": "https://www.pgr.gov.mz/por/content/download/6588/46826/version/1/file/Boas_praticas_investigacao_MZ.pdf",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "モザンビークの検察や刑事捜査機関SERNICなどが刑事申告を取り扱う。",
+          "refs": [
+            "cpp",
+            "guide"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "口頭または書面で申告でき、口頭の場合は書面に記録される。",
+          "refs": [
+            "cpp",
+            "guide"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "分かる範囲で行為者、被害、目撃者、経緯など事実確認につながる情報を示す。",
+          "refs": [
+            "cpp"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "followUp": [
+        {
+          "text": "SERNICで申告が拒まれた場合、検察が案内する受付義務と検察への申告経路を確認する。",
+          "refs": [
+            "cpp",
+            "guide"
+          ],
+          "kind": "channel-unavailable"
+        }
+      ]
     },
     "MRT": {
       "m49": "478",
@@ -6088,7 +6291,46 @@
       "m49": "454",
       "name": "Malawi",
       "region": "Africa",
-      "iso2": "MW"
+      "iso2": "MW",
+      "status": "official-route",
+      "sources": {
+        "report": {
+          "title": "Malawi Police Service — How to Report a Crime",
+          "url": "https://www.police.gov.mw/index.php/services/how-to-report-a-crime",
+          "checkedOn": "2026-11-19"
+        },
+        "cyber": {
+          "title": "Malawi Police Service — Collaboration on technology-enabled crimes",
+          "url": "https://www.police.gov.mw/node/312",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "マラウイ警察が犯罪申告を受け付け、モバイル送金詐欺なども扱う。",
+          "refs": [
+            "report",
+            "cyber"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "最寄りの警察署へ対面か電話で申告できる。警察官に直接相談する方法も案内されている。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "発生場所、日時、何が起きたか、関係者について分かる情報を用意する。",
+          "refs": [
+            "report"
+          ],
+          "kind": "recommended"
+        }
+      ]
     },
     "MYS": {
       "m49": "458",
@@ -7970,7 +8212,40 @@
       "m49": "686",
       "name": "Senegal",
       "region": "Africa",
-      "iso2": "SN"
+      "iso2": "SN",
+      "status": "partial",
+      "sources": {
+        "case": {
+          "title": "Sénégal Police Nationale — Visa fraud case in Saint-Louis",
+          "url": "https://www.policenationale.gouv.sn/2026/08/18/association-de-malfaiteurs-escroquerie-au-visa-et-complicite-de-ces-chefs/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "セネガル国家警察が詐欺事件を取り扱う。ビザを装った詐欺の公表事例ではサンルイの移民搾取対策部門が担当した。",
+          "refs": [
+            "case"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "公表された個別事件では被害者の書面による申告が扱われた。一般のネット詐欺の正式な受付窓口は要確認。",
+          "refs": [
+            "case"
+          ]
+        }
+      ],
+      "cases": [
+        {
+          "text": "ビザ取得を名目とした送金の被害について、書面の申告を受けた警察が聴取・送金資料の確認を行い、容疑者を司法当局へ引き渡したと公表した。",
+          "refs": [
+            "case"
+          ],
+          "stage": "investigation-confirmed"
+        }
+      ]
     },
     "SGP": {
       "m49": "702",
@@ -8727,7 +9002,38 @@
       "m49": "690",
       "name": "Seychelles",
       "region": "Africa",
-      "iso2": "SC"
+      "iso2": "SC",
+      "status": "official-route",
+      "sources": {
+        "report": {
+          "title": "Seychelles State House — Reporting attempted fraud",
+          "url": "https://statehouse.gov.sc/news/7312/fake-social-media-profiles-impersonating-president-herminie-and-vice-president-pillay",
+          "checkedOn": "2026-11-19"
+        },
+        "contacts": {
+          "title": "Tourism Seychelles — Emergency and essential numbers",
+          "url": "https://tourism.gov.sc/wp-content/uploads/2022/08/SEYCHELLES-EMERGENGY-ESSENTIAL-NUMBERS-NEW.pdf",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "セーシェル警察が詐欺や詐欺未遂の申告先として案内されている。",
+          "refs": [
+            "report",
+            "contacts"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察の犯罪事案窓口や中央警察署の連絡先を公式一覧で確認して届け出る。",
+          "refs": [
+            "report",
+            "contacts"
+          ]
+        }
+      ]
     },
     "SYR": {
       "m49": "760",
@@ -8972,7 +9278,38 @@
       "m49": "788",
       "name": "Tunisia",
       "region": "Africa",
-      "iso2": "TN"
+      "iso2": "TN",
+      "status": "partial",
+      "sources": {
+        "int": {
+          "title": "Tunisia Ministry of Interior — Contacts for complaints and assistance",
+          "url": "https://www.interieur.gov.tn/actualite/3268/%25D8%25A8%25D9%2584%25D8%25A7%25D8%25BA",
+          "checkedOn": "2026-11-19"
+        },
+        "services": {
+          "title": "Tunisia Interior Ministry — e-Intérieur",
+          "url": "https://services.interieur.gov.tn/wap/ar/index.html",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "チュニジアの国家警察と国家警備隊の連絡系統を内務省が案内している。",
+          "refs": [
+            "int",
+            "services"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "苦情や緊急連絡に使う電話の案内がある。詐欺被害に関する正式な刑事受付手順は要確認。",
+          "refs": [
+            "int",
+            "services"
+          ]
+        }
+      ]
     },
     "TUR": {
       "m49": "792",
