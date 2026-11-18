@@ -5,15 +5,16 @@ import corpusJson from './corpus.js';
 import catalogJson from './catalog.js';
 import {loadCorpus, loadCatalog, search, trace, lawByLocalId, endpoint} from './model.js';
 import {pickLocale, translator} from './messages.js';
-import {runtimeDescriptor, SELECTOR, createFullText, indexedDbCache, lawText} from './fulltext.js';
+import {runtimeDescriptor, SELECTOR, createFullText, awaiFsCache, memoryCache, lawText} from './fulltext.js';
 
 bind_native(document.documentElement, {tonal: '.tonal', text: '.link'});
+const tauriInvoke = window.__TAURI__?.core?.invoke;
 // One external operation: a law's full text from Yataverse, asked for each time (AWAI-3316). The corpus itself ships inside the app.
 const descriptor = runtimeDescriptor();
 if (clientRuntimeProblems(descriptor, [SELECTOR.capability], location.origin).length) throw Error('invalid-runtime');
 const broker = createClientOperationBroker({runtime: descriptor, requestedCapabilities: [SELECTOR.capability], approvedOperations: descriptor.operations,
   hostSupportedOperations: [[SELECTOR.capability, SELECTOR.service, SELECTOR.operation]], consentHost: createClientConsentHost()});
-const fullText = createFullText({invoke: (selector, payload, options) => broker.invoke(selector, payload, options), cache: indexedDbCache()});
+const fullText = createFullText({invoke: (selector, payload, options) => broker.invoke(selector, payload, options), cache: tauriInvoke ? awaiFsCache(tauriInvoke) : memoryCache()});
 
 const locale = pickLocale(navigator.languages), t = translator(locale);
 document.documentElement.lang = locale;
@@ -125,13 +126,13 @@ function renderLaw(localId) {
     button.addEventListener('click', async e => {
       if (!e.isTrusted) return;
       button.disabled = true; say(t('text.fetching'));
-      try { const r = await fullText.fetch(law); show(r, r.source === 'cache' ? 'text.cached' : 'text.fetched'); say(note.textContent); body.focus(); }
+      try { const r = await fullText.fetch(law); show(r, !tauriInvoke ? 'text.webOnly' : r.source === 'cache' ? 'text.cached' : 'text.fetched'); say(note.textContent); body.focus(); }
       catch (err) { fail(err); } finally { button.disabled = false; }
     });
     body.tabIndex = -1;
     const d = el('details'); d.append(el('summary', t('text.details')), el('p', t('text.hash', {hash: law.textSha256}), 'mono'), el('p', t('text.bytes', {bytes: num.format(law.textBytes)})));
     text.append(button, hint, body, d);
-    fullText.cached(law).then(r => { if (!view.contains(text)) return; if (r) show(r, 'text.cached'); else button.hidden = hint.hidden = false; })
+    fullText.cached(law).then(r => { if (!view.contains(text)) return; if (r) show(r, tauriInvoke ? 'text.cached' : 'text.webOnly'); else button.hidden = hint.hidden = false; })
       .catch(() => { button.hidden = hint.hidden = false; });
   }
   view.append(back, h, chips(law), dl, text);

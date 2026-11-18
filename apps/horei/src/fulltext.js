@@ -1,14 +1,15 @@
-// Full text of a law, fetched from Yataverse only after the user approves that one request (AWAI-3316).
-// A law names its text by sha256. The CIDv1 (raw, sha2-256) is derived from that hash, so no lookup is needed.
-// Bytes are shown or cached only when their sha256 and size match the law's record.
-export const GATEWAY = 'https://ipfs.yataverse.com';
-export const SELECTOR = Object.freeze({capability: 'itonami.horei.fulltext', service: 'yataverse', operation: 'read-law-text'});
-// The gateway answers with a redirect to <cid>.ipfs.yataverse.com; only that subdomain family is accepted.
+// Full text of a law, fetched from Awai FS (the yataverse.com bytes plane) only after the user approves
+// that one request (AWAI-3316, AWAI-3324). A law names its text by sha256. The CIDv1 (raw, sha2-256) is
+// derived from that hash, so no lookup is needed. Bytes are shown or kept only when their sha256 and size
+// match the law's record. On the device they are kept in the host's Awai FS block store.
+export const GATEWAY = 'https://yataverse.com';
+export const SELECTOR = Object.freeze({capability: 'itonami.horei.fulltext', service: 'awai.fs', operation: 'read-law-text'});
+// yataverse.com serves blocks itself and never redirects, so no redirect origin is declared.
 export const OPERATION = Object.freeze({...SELECTOR, endpoint: {origin: GATEWAY, routes: [{method: 'GET', 'path-prefix': '/ipfs/', 'query-params': ['format'], 'query-values': {format: 'raw'}}]},
-  'redirect-origins': ['https://*.ipfs.yataverse.com'], 'data-categories': ['public-law-text-cid'], consent: 'each-operation'});
+  'data-categories': ['public-law-text-cid'], consent: 'each-operation'});
 export function runtimeDescriptor() {
   return {schema: 'kotoba.app.client-runtime.v1', target: 'browser', profile: 'trusted-page-v1', entry: 'index.html',
-    'local-state': {adapter: 'indexeddb', schema: 'itonami.horei.fulltext-cache.v1', version: 1}, workers: [], operations: [OPERATION]};
+    'local-state': {adapter: 'memory', schema: 'itonami.horei.state.v1', version: 1}, workers: [], operations: [OPERATION]};
 }
 
 const SHA256 = /^[0-9a-f]{64}$/;
@@ -71,26 +72,18 @@ export function createFullText({invoke, cache, timeoutMs = 90000}) {
     }};
 }
 
-// Device cache keyed by CID. IndexedDB is origin-scoped and stays on the device; nothing here syncs.
-export function indexedDbCache(name = 'horei-fulltext') {
-  const open = () => new Promise((resolve, reject) => {
-    const r = indexedDB.open(name, 1);
-    r.onupgradeneeded = () => r.result.createObjectStore('texts');
-    r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error);
-  });
-  const run = async (mode, fn) => {
-    const db = await open();
-    try {
-      return await new Promise((resolve, reject) => {
-        const tx = db.transaction('texts', mode), req = fn(tx.objectStore('texts'));
-        tx.oncomplete = () => resolve(req.result); tx.onerror = tx.onabort = () => reject(tx.error);
-      });
-    } finally { db.close(); }
-  };
+// Awai FS block store in the Tauri host (src-tauri/src/awai_fs.rs). The host recomputes the CID on every put
+// and get, refuses bytes that do not match and deletes a damaged block instead of returning it.
+export function awaiFsCache(invoke) {
   return {
-    async get(cid) { const v = await run('readonly', s => s.get(cid)); return v instanceof Uint8Array ? v : v ? new Uint8Array(v) : null; },
-    put: (cid, bytes) => run('readwrite', s => s.put(bytes, cid)),
-    delete: cid => run('readwrite', s => s.delete(cid))};
+    async get(cid) { const b = new Uint8Array(await invoke('awai_fs_get', {cid})); return b.byteLength ? b : null; },
+    put: (cid, bytes) => invoke('awai_fs_put', bytes, {headers: {'x-awai-cid': cid}}),
+    delete: cid => invoke('awai_fs_delete', {cid})};
+}
+// Outside the Tauri host there is no Awai FS: texts are kept only for this page session.
+export function memoryCache() {
+  const m = new Map();
+  return {persistent: false, get: async c => m.get(c) ?? null, put: async (c, b) => { m.set(c, b); }, delete: async c => { m.delete(c); }};
 }
 
 // e-Gov API v2 law_data: law_full_text is an element tree {tag, attr, children}. Flatten it to text,

@@ -1216,6 +1216,7 @@ name = "horei"
 version = "0.1.0"
 dependencies = [
  "serde_json",
+ "sha2",
  "tauri",
  "tauri-build",
  "tauri-runtime-wry",

@@ -10,7 +10,7 @@ Search Japan's laws, open a law's details, and follow its amendment history, all
 | Amendment links | 7,793 | same |
 | Jurisdiction catalog (legislatures, courts, primary sources) | 568 entities, 198 jurisdictions | same |
 
-`data/PROVENANCE.json` records the source commit, the sha256 of every input shard and every output file. The build refuses data whose bytes differ from it. **No full text is bundled** (`fullTextBytesHeld: 0`). Each law carries the sha256 and size of its text. The app can fetch that text from Yataverse on request ([AWAI-3316](https://linear.app/kotobalabs/issue/AWAI-3316), below). Publishing the texts to Yataverse is [AWAI-3317](https://linear.app/kotobalabs/issue/AWAI-3317) and has not happened yet, so the fetch currently fails.
+`data/PROVENANCE.json` records the source commit, the sha256 of every input shard and every output file. The build refuses data whose bytes differ from it. **No full text is bundled** (`fullTextBytesHeld: 0`). Each law carries the sha256 and size of its text. The app can fetch that text from Awai FS (yataverse.com) on request and keep it in the device's Awai FS block store ([AWAI-3316](https://linear.app/kotobalabs/issue/AWAI-3316), [AWAI-3324](https://linear.app/kotobalabs/issue/AWAI-3324), below). Publishing all texts is [AWAI-3317](https://linear.app/kotobalabs/issue/AWAI-3317); so far one qualification text (失火責任法) is published.
 
 Only Japan has a list of laws. The other jurisdictions show catalog entries only. EU, UK and US corpora exist upstream and are not imported here.
 
@@ -36,11 +36,12 @@ The import checks each shard against `data/corpus/manifest.edn`, refuses a dirty
 
 ## Boundaries
 
-- The descriptor (`kotoba.app.client-runtime.v1`) declares **one external operation**, `itonami.horei.fulltext` / `yataverse` / `read-law-text`: `GET https://ipfs.yataverse.com/ipfs/<cid>?format=raw`, with redirects accepted only to `https://*.ipfs.yataverse.com`, consent `each-operation` (`src/fulltext.js`). The build derives the CSP `connect-src` from it and refuses an `index.html` or `tauri.conf.json` that differs.
-- The CID is CIDv1 (raw, sha2-256) derived from the law's `:law.text/sha256`; only that identifier is sent. Denying the consent dialog sends no request. The received bytes are shown and cached only if their size and sha256 match the law's record. Anything else is refused and not cached, and a cached entry that no longer matches is deleted.
-- Verified texts are cached on the device in IndexedDB (`horei-fulltext`, keyed by CID), so a second open needs no request. This cache is local to the WebView. It is **not** synchronized to Awai FS.
+- The descriptor (`kotoba.app.client-runtime.v1`) declares **one external operation**, `itonami.horei.fulltext` / `awai.fs` / `read-law-text`: `GET https://yataverse.com/ipfs/<cid>?format=raw` (the Awai FS bytes plane, no redirects), consent `each-operation` (`src/fulltext.js`). The build derives the CSP `connect-src` from it and refuses an `index.html` or `tauri.conf.json` that differs.
+- The CID is CIDv1 (raw, sha2-256) derived from the law's `:law.text/sha256`; only that identifier is sent. Denying the consent dialog sends no request. The received bytes are shown and kept only if their size and sha256 match the law's record.
+- On the device, verified texts are kept in the host's **Awai FS block store** (`src-tauri/src/awai_fs.rs`, app-private `app_data_dir/awai-fs/blocks/<cid>`). The host recomputes the CID on every put and get, refuses bytes that do not match, writes via temp file, fsync and rename, and deletes a damaged block instead of returning it. A second open needs no request. The store is local to the app; it is not replicated back to yataverse.com. The Web build has no Awai FS and keeps a text only until the page is closed.
 - The request has a 90 s deadline, which includes the time the consent dialog is open. A timeout is reported as "could not get the full text".
-- The Android manifest now has `INTERNET`, which the full-text request needs. The Tauri host still exposes one command (`awai_host_info`) and has no filesystem, installer or shell permissions.
+- The WebView origin is `https://tauri.localhost` (`useHttpsScheme`), the origin yataverse.com's `/ipfs` CORS allow-list names (network-awai/app-itonami-yataverse `288a8be`, AWAI-3274). Until that Worker change is deployed, the WebView cannot read the response ([AWAI-3325](https://linear.app/kotobalabs/issue/AWAI-3325)).
+- The Tauri host exposes `awai_host_info` and `awai_fs_get` / `awai_fs_put` / `awai_fs_delete`. No network, installer or shell commands. The Android manifest has `INTERNET` for the WebView request.
 - UI text is keyed in `src/messages.js` (ja, en). Law titles, numbers and categories are source data and stay in Japanese.
 
 ## Known data gaps (upstream)
