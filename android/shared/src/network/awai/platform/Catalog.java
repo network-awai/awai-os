@@ -13,6 +13,7 @@ public final class Catalog {
             "2dfd2669315058eab39d98e4aa2424721e2dfd752995a0597d226bd4e1e7159f";
     private final JSONObject value;
     public final boolean online;
+    private final boolean bundledAssoc;
     public Catalog(Context context) throws Exception {
         byte[] bytes = Integrity.read(context.getAssets().open("catalog.json"), 131072);
         byte[] sig = Integrity.read(context.getAssets().open("catalog.sig"), 4096);
@@ -26,6 +27,21 @@ public final class Catalog {
         }
         value = verifyMetadata(bytes,sig,key,System.currentTimeMillis()/1000);
         if(value.getLong("revision")<Math.max(bundled.getLong("revision"),saved.getLong("highest",0)))throw new SecurityException("catalog-rollback");
+        JSONArray activeApps = value.getJSONArray("apps");
+        for (int i = 0; i < activeApps.length(); i++) {
+            activeApps.getJSONObject(i).remove("bundledDelivery");
+        }
+        JSONObject local = findApp(bundled.getJSONArray("apps"), REGISTRY_ASSOC);
+        JSONObject active = findApp(activeApps, REGISTRY_ASSOC);
+        bundledAssoc = local != null && (active == null || sameBundle(active, local));
+        if (online && bundledAssoc) {
+            if (active == null) {
+                local.put("bundledDelivery", true);
+                activeApps.put(local);
+            } else {
+                active.put("bundledDelivery", true);
+            }
+        }
     }
     public static JSONObject verifyMetadata(byte[] bytes,byte[] sig,byte[] key,long now) throws Exception {
         if (!Integrity.authentic(bytes, sig, key)) throw new SecurityException("catalog-signature");
@@ -111,16 +127,31 @@ public final class Catalog {
     public String json() { return value.toString(); }
     public JSONObject app(String id) throws Exception {
         assetFor(id);
-        JSONArray apps = value.getJSONArray("apps");
+        JSONObject entry = findApp(value.getJSONArray("apps"), id);
+        if (entry == null) throw new SecurityException("unknown-app");
+        return entry;
+    }
+    private static JSONObject findApp(JSONArray apps, String id) throws JSONException {
         for (int i = 0; i < apps.length(); i++) {
             JSONObject app = apps.getJSONObject(i);
-            if (app.getString("id").equals(id)) return app;
+            if (id.equals(app.getString("id"))) return app;
         }
-        throw new SecurityException("unknown-app");
+        return null;
+    }
+    private static boolean sameBundle(JSONObject active, JSONObject local) throws Exception {
+        JSONObject listedApk = androidArtifact(REGISTRY_ASSOC, active);
+        JSONObject bundledApk = androidArtifact(REGISTRY_ASSOC, local);
+        return active.getLong("versionCode") == local.getLong("versionCode")
+                && listedApk.getLong("bytes") == bundledApk.getLong("bytes")
+                && listedApk.getString("sha256").equals(bundledApk.getString("sha256"))
+                && listedApk.getString("signerSha256").equals(bundledApk.getString("signerSha256"));
     }
     public JSONObject artifact(String id) throws Exception {
+        return androidArtifact(id, app(id));
+    }
+    private static JSONObject androidArtifact(String id, JSONObject app) throws Exception {
         String asset = assetFor(id);
-        JSONArray entries = app(id).getJSONArray("artifacts");
+        JSONArray entries = app.getJSONArray("artifacts");
         for (int i = 0; i < entries.length(); i++) {
             JSONObject a = entries.getJSONObject(i);
             if ("android".equals(a.getString("platform")) && "android".equals(a.getString("runtime"))
@@ -128,13 +159,16 @@ public final class Catalog {
         }
         throw new SecurityException("no-android-artifact");
     }
+    public boolean isOnlineDelivery(String id) {
+        return online && !(REGISTRY_ASSOC.equals(id) && bundledAssoc);
+    }
     public byte[] verifiedApk(Context context, String id) throws Exception {
         String onlineFile = onlineFileFor(id);
         int budget = maxApkBytes(id);
         JSONObject app = app(id), a = artifact(id);
         if (REGISTRY_ASSOC.equals(id) && !REGISTRY_ASSOC_SIGNER.equals(a.getString("signerSha256")))
             throw new SecurityException("package-signer");
-        byte[] bytes = Integrity.read((online ? new FileInputStream(new File(context.getFilesDir(),onlineFile)) : context.getAssets().open(a.getString("asset"))), budget);
+        byte[] bytes = Integrity.read((isOnlineDelivery(id) ? new FileInputStream(new File(context.getFilesDir(),onlineFile)) : context.getAssets().open(a.getString("asset"))), budget);
         if (bytes.length != a.getLong("bytes") || !Integrity.sha256(bytes).equals(a.getString("sha256")))
             throw new SecurityException("artifact-integrity");
         File file = File.createTempFile("awai-verify-", ".apk", context.getCacheDir());

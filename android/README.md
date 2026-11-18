@@ -61,6 +61,13 @@ Store is offline by default. Home’s separately declared account-link relay is 
 
 The public development payload is under `store/distribution/dev-20261116` at commit `2cbd32f31b3053fd148e04dda25cbfd8e2f0b726`. Pins are immutable and must not be changed to `main` or an arbitrary URL. The signed catalog is revision100 and expires30 days after packaging. `store/distribution/dev-20261118` adds revision102 (Yotei, Itonami, Torihiki Bot) and the Torihiki Bot APK; Revision103 (`store/distribution/dev-20261118-r103`, AWAI-3320) adds the Torihiki devnet viewer. `android/online-pins.dev.json` now pins commit `30d2f1543aacdb585d460c0cf2dbf5ecbed4fb08`: revision104 (`store/distribution/dev-20261118-r104`, AWAI-3397), which adds Deai, and APK pins for all five apps. Revision102 was verified on an emulator (`docs/evidence/torihiki-bot-online-awai3313-20261118/`). The revision103 pins were then installed on an emulator (Torihiki, `docs/evidence/torihiki-online-awai3320-20261118/`). Revision 105 adds the release-signed arm64 Itonami Registry Assoc APK. It requires the updated Store host, which pins the Assoc release certificate independently of the development catalog key. A pin must name a commit that already contains the files, so new artifacts land first and the pins follow in a separate change. No production key rotation/revocation or automatic mutable latest channel is claimed. Browser-state and host-state failures remain visible; cached signed APKs can be installed offline with fresh native/OS confirmation.
 
+Use `--bundle-registry-assoc` to include the exact release-signed Assoc APK
+from revision 105 in a development Store build. This works alongside an
+older accepted online catalog. A newer online Assoc version uses the online
+path. Store verifies the local APK against its catalog and release
+certificate and requests Android installation confirmation. A bundled
+install makes no GitHub request.
+
 `node --test android/tests/domain.test.mjs android/tests/online.test.mjs` checks compiled domain behavior, exact URL scope, signature alteration, metadata expiry and revision floor. Build/runtime/online/NixOS evidence remain separate. See `docs/otehon/itonami-store-shared-install-sync-20261116.md` for the common auth/permission/sync recommendation and current native-Nix/sync boundaries.
 
 ## Android setup and account linking

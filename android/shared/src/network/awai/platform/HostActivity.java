@@ -202,12 +202,12 @@ public abstract class HostActivity extends Activity {
                 return getSharedPreferences("online",0).edit().putString("raw",raw).putString("signature",signature).putLong("highest",revision).commit()?"ok":"refused";
             }catch(Exception invalid){return "refused";}
         }
-        @JavascriptInterface public boolean hasOnlineApk(String id){if(!"store".equals(mode()))return false;try{Catalog c=trustedCatalog();if(!c.online)return false;c.verifiedApk(HostActivity.this,id);return true;}catch(Exception absent){return false;}}
+        @JavascriptInterface public boolean hasOnlineApk(String id){if(!"store".equals(mode()))return false;try{Catalog c=trustedCatalog();if(!c.isOnlineDelivery(id))return false;c.verifiedApk(HostActivity.this,id);return true;}catch(Exception absent){return false;}}
         @JavascriptInterface public String stageOnlineApk(String id,String encoded){
             int budget;try{budget=Catalog.maxApkBytes(id);}catch(SecurityException unadmitted){return "refused";}
             if(!"store".equals(mode())||encoded==null||encoded.length()>(long)budget*4/3+64)return "refused";
             File temporary=null;
-            try{Catalog c=trustedCatalog();if(!c.online)throw new SecurityException();JSONObject a=c.artifact(id);
+            try{Catalog c=trustedCatalog();if(!c.isOnlineDelivery(id))throw new SecurityException();JSONObject a=c.artifact(id);
                 byte[] bytes=android.util.Base64.decode(encoded,android.util.Base64.DEFAULT);
                 if(bytes.length>budget||bytes.length!=a.getLong("bytes")||!Integrity.sha256(bytes).equals(a.getString("sha256")))throw new SecurityException();
                 temporary=File.createTempFile("online-", ".apk",getFilesDir());try(FileOutputStream output=new FileOutputStream(temporary)){output.write(bytes);output.getFD().sync();}
@@ -223,13 +223,14 @@ public abstract class HostActivity extends Activity {
     }
     private void confirmInstall(String id){
         if(installing)return;
-        try{JSONObject app=trustedCatalog().app(id),a=trustedCatalog().artifact(id);
+        try{Catalog catalog=trustedCatalog();JSONObject app=catalog.app(id),a=catalog.artifact(id);
+            boolean onlineDelivery=catalog.isOnlineDelivery(id);
             if(!getPackageManager().canRequestPackageInstalls()){
                 new AlertDialog.Builder(this).setTitle("Android の追加設定").setMessage("Itonami Store からアプリを追加するには、次の Android 設定でこの Store からの追加を許可してください。その後、追加内容をもう一度確認できます。")
                     .setPositiveButton("Android 設定を開く",(d,w)->startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,Uri.parse("package:"+getPackageName())))).setNegativeButton("今は追加しない",null).show();return;
             }
             new AlertDialog.Builder(this).setTitle(app.getString("name")+" の追加を確認")
-                .setMessage("配布元: "+app.getString("publisher")+"\n版: "+app.getString("versionName")+"\n取得先: "+(trustedCatalog().online?"オンライン配信・検証済みキャッシュ":"この Store に同梱")+"\n外部への送信: なし（取得時に配信先へ IP 等が伝わります）"+("network.itonami.torihiki".equals(id)?"\nアプリ使用時: devnet ノードへ読み取り・署名した devnet 取引（送信ごとに確認）":"")+"\n\n署名と SHA-256 を確認した後、Android のインストール画面に進みます。\n\nSHA-256\n"+a.getString("sha256"))
+                .setMessage("配布元: "+app.getString("publisher")+"\n版: "+app.getString("versionName")+"\n取得先: "+(onlineDelivery?"オンライン配信・検証済みキャッシュ":"この Store に同梱")+"\n外部への送信: なし"+(onlineDelivery?"（取得時に配信先へ IP 等が伝わります）":"")+("network.itonami.torihiki".equals(id)?"\nアプリ使用時: devnet ノードへ読み取り・署名した devnet 取引（送信ごとに確認）":"")+"\n\n署名と SHA-256 を確認した後、Android のインストール画面に進みます。\n\nSHA-256\n"+a.getString("sha256"))
                 .setPositiveButton("今回の追加に進む",(d,w)->install(id)).setNegativeButton("今は追加しない",null).show();
         }catch(Exception invalid){message("配布元またはカタログを確認できません。追加を停止しました。");}
     }
