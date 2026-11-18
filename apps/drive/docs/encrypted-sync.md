@@ -73,6 +73,22 @@ ID; pack contents, names and metadata stay encrypted on the device. Quota and
 rate limits are open follow-ups. A receipt and readback prove that one service
 holds the bytes, not independent-node retention.
 
+**Signed storage receipts (AWAI-3314).** yataverse.com returns, with `{sha256,
+bytes}`, a `YataverseStorageReceipt` v1: EIP-712 typed data signed with Ed25519
+(app-itonami-yataverse `docs/storage-receipt-design.md`). A build whose origin is
+listed in [`receipt-trust.json`](../receipt-trust.json) pins that origin's key set
+into `sync-config.js` and then requires the receipt: `receipt/verify.mjs` (bundled
+as `generated/receipt.js`, using the pinned `@noble/curves` and `@noble/hashes`)
+checks the signature, the key's epoch and validity at `acceptedAt`, and that the
+receipt names this pack (kind 3, subject, content digest and request id equal to
+the pack ID, size, requester 0) and claims only `local-durable-readback`. A
+missing or failing receipt stops sync before the readback GET; nothing is marked
+synced and eviction stays refused. Keys are not fetched at run time, so there is
+no extra operation, consent or CSP entry; rotating the service key needs a Drive
+rebuild with the new key set, and until then sync fails closed. The receipt is
+not kept in the device control record. Origins not in `receipt-trust.json`
+(including the loopback fixture) keep the plain `{sha256, bytes}` check.
+
 Build with `AWAI_DRIVE_SYNC_ORIGIN=https://yataverse.com npm run build` (build
 `packages/awai-ui` first). The generated CSP is
 `connect-src https://yataverse.com ipc: http://ipc.localhost`. Do not commit the
