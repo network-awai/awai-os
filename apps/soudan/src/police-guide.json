@@ -12,7 +12,40 @@
       "m49": "533",
       "name": "Aruba",
       "region": "Americas",
-      "iso2": "AW"
+      "iso2": "AW",
+      "status": "official-route",
+      "sources": {
+        "report": {
+          "title": "Government of Aruba — Misdrijfaangifte bij de politie",
+          "url": "https://www.gobierno.aw/nl/misdrijfaangifte-bij-de-politie",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "アルバの犯罪申告は事件の発生地区を管轄するアルバ警察が扱う。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "事件の発生地区にある警察署の窓口や、公式案内の地区別電話窓口を利用する。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "居住地側の署で管轄外と案内された場合、事件が発生した地区の警察署を確認する。",
+          "refs": [
+            "report"
+          ],
+          "kind": "channel-unavailable"
+        }
+      ]
     },
     "AFG": {
       "m49": "004",
@@ -30,7 +63,38 @@
       "m49": "660",
       "name": "Anguilla",
       "region": "Americas",
-      "iso2": "AI"
+      "iso2": "AI",
+      "status": "official-route",
+      "sources": {
+        "fiu": {
+          "title": "Anguilla Financial Intelligence Unit — Advisories",
+          "url": "https://www.fiu.gov.ai/notices/advisories",
+          "checkedOn": "2026-11-19"
+        },
+        "police": {
+          "title": "Government of Anguilla — Royal Anguilla Police Force",
+          "url": "https://gov.ai/ministry/he-the-governor/royal-anguilla-police-force",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "王立アンギラ警察が詐欺の申告窓口。",
+          "refs": [
+            "fiu",
+            "police"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "金融情報部門の案内では、被害は警察本部に直接届け出られる。警察の連絡先は政府の窓口一覧を参照する。",
+          "refs": [
+            "fiu",
+            "police"
+          ]
+        }
+      ]
     },
     "ALA": {
       "m49": "248",
@@ -348,7 +412,37 @@
       "m49": "010",
       "name": "Antarctica",
       "region": "Antarctica",
-      "iso2": "AQ"
+      "iso2": "AQ",
+      "status": "partial",
+      "sources": {
+        "treaty": {
+          "title": "Antarctic Treaty Secretariat — The Antarctic Treaty",
+          "url": "https://documents.ats.aq/cep/handbook/Treaty_e.pdf",
+          "checkedOn": "2026-11-19"
+        },
+        "authorities": {
+          "title": "Antarctic Treaty Secretariat — National Competent Authorities",
+          "url": "https://www.ats.aq/devAS/e/Ats/NationalCompetentAuthorities",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "南極条約第8条は、指定観察員、交換科学要員と随行者が職務のため南極にいる場合の国籍国の管轄を定めている。その他の人や事案の管轄は個別に確認する。",
+          "refs": [
+            "treaty"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "共通の犯罪申告窓口は確認できていない。条約事務局の国別当局一覧は各国の連絡先を調べる入口となる。",
+          "refs": [
+            "treaty",
+            "authorities"
+          ]
+        }
+      ]
     },
     "ATF": {
       "m49": "260",
@@ -652,7 +746,52 @@
       "m49": "535",
       "name": "Bonaire, Sint Eustatius and Saba",
       "region": "Americas",
-      "iso2": "BQ"
+      "iso2": "BQ",
+      "status": "official-route",
+      "sources": {
+        "directory": {
+          "title": "Overheid.nl — Korps Politie Caribisch Nederland",
+          "url": "https://organisaties.overheid.nl/29908881/Korps_Politie_Caribisch_Nederland/",
+          "checkedOn": "2026-11-19"
+        },
+        "police": {
+          "title": "Politie Caribisch Nederland — Contact",
+          "url": "https://www.politiecn.com/service/contact",
+          "checkedOn": "2026-11-19"
+        },
+        "complaints": {
+          "title": "Openbaar Ministerie — Complaints for Curaçao, BES and Sint Maarten",
+          "url": "https://www.openbaarministerie.org/informatie-strafproces-cw",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ボネール、シント・ユースタティウス、サバの地域警察業務はカリブ・オランダ警察が担当する。",
+          "refs": [
+            "directory",
+            "police"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "島ごとのカリブ・オランダ警察署に連絡または来訪し、犯罪申告を行う。",
+          "refs": [
+            "directory",
+            "police"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "警察や検察の対応に関する苦情は、検察の3地域共通の専用連絡先を確認する。",
+          "refs": [
+            "complaints"
+          ],
+          "kind": "service-complaint"
+        }
+      ]
     },
     "BFA": {
       "m49": "854",
@@ -1823,7 +1962,55 @@
       "m49": "531",
       "name": "Curaçao",
       "region": "Americas",
-      "iso2": "CW"
+      "iso2": "CW",
+      "status": "official-route",
+      "sources": {
+        "om": {
+          "title": "Openbaar Ministerie Curaçao — Informatie Strafproces",
+          "url": "https://www.openbaarministerie.org/informatie-strafproces-cw",
+          "checkedOn": "2026-11-19"
+        },
+        "police": {
+          "title": "Government of Curaçao — Locations of government agencies",
+          "url": "https://gobiernu.cw/nl/locaties1/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "キュラソー警察が申告を受け付け、刑事事件は検察も担当する。",
+          "refs": [
+            "om",
+            "police"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "キュラソー警察に犯罪を届け出る。政府の所在地一覧と検察の被害者向け案内を参照できる。",
+          "refs": [
+            "om",
+            "police"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "警察と検察は事件を検討し、打切りの場合は警察または検察から通知される。",
+          "refs": [
+            "om"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "警察・検察の対応への苦情は、検察の専用窓口を確認する。",
+          "refs": [
+            "om"
+          ],
+          "kind": "service-complaint"
+        }
+      ]
     },
     "CXR": {
       "m49": "162",
@@ -2155,7 +2342,31 @@
       "m49": "212",
       "name": "Dominica",
       "region": "Americas",
-      "iso2": "DM"
+      "iso2": "DM",
+      "status": "partial",
+      "sources": {
+        "directory": {
+          "title": "Commonwealth of Dominica Police Force — Directory",
+          "url": "https://mail.cdpf.gov.dm/directory.html",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ドミニカ国警察が地域の法執行を担当する。",
+          "refs": [
+            "directory"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察の公式連絡先と地区別情報を参照できる。詐欺被害の正式な受付手順は要確認。",
+          "refs": [
+            "directory"
+          ]
+        }
+      ]
     },
     "DNK": {
       "m49": "208",
@@ -5679,7 +5890,45 @@
       "m49": "500",
       "name": "Montserrat",
       "region": "Americas",
-      "iso2": "MS"
+      "iso2": "MS",
+      "status": "partial",
+      "sources": {
+        "police": {
+          "title": "Government of Montserrat — Royal Montserrat Police Service",
+          "url": "https://www.gov.ms/government/non-ministerial-departments/royal-montserrat-police-service-rmps/6/",
+          "checkedOn": "2026-11-19"
+        },
+        "conduct": {
+          "title": "Government of Montserrat — Commissioner’s statement on police conduct",
+          "url": "https://www.gov.ms/2020/09/11/commissioners-statement-on-video-showing-officer-in-a-verbal-dialogue-with-a-member-of-the-public/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "モントセラトの警察は王立モントセラト警察。",
+          "refs": [
+            "police"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "政府サイトの警察案内から管轄機関を確認できる。詐欺被害の正式な受付方法は要確認。",
+          "refs": [
+            "police"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "警察官の対応に懸念があるときは、警察長官室への連絡が公式発表で案内されている。",
+          "refs": [
+            "conduct"
+          ],
+          "kind": "service-complaint"
+        }
+      ]
     },
     "MTQ": {
       "m49": "474",
@@ -6794,7 +7043,31 @@
       "m49": "612",
       "name": "Pitcairn",
       "region": "Oceania",
-      "iso2": "PN"
+      "iso2": "PN",
+      "status": "partial",
+      "sources": {
+        "help": {
+          "title": "UK Foreign, Commonwealth & Development Office — Getting help in Pitcairn",
+          "url": "https://www.gov.uk/foreign-travel-advice/pitcairn-island/getting-help",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ピトケアン諸島では現地の警察官と行政官が連絡先に掲げられている。",
+          "refs": [
+            "help"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "緊急時の警察官・行政官への連絡経路を英国政府が掲載している。平時に詐欺被害を申告する経路は要確認。",
+          "refs": [
+            "help"
+          ]
+        }
+      ]
     },
     "PER": {
       "m49": "604",
@@ -7806,7 +8079,37 @@
       "m49": "239",
       "name": "South Georgia and the South Sandwich Islands",
       "region": "Americas",
-      "iso2": "GS"
+      "iso2": "GS",
+      "status": "partial",
+      "sources": {
+        "code": {
+          "title": "South Georgia and the South Sandwich Islands — Guide to Police Ordinance",
+          "url": "https://laws.gov.gs/wp-content/uploads/2022/07/Guidance-to-Police-Ordinance-2017.pdf",
+          "checkedOn": "2026-11-19"
+        },
+        "government": {
+          "title": "South Georgia and the South Sandwich Islands — Government personnel",
+          "url": "https://gov.gs/personnel/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "サウスジョージア・サウスサンドウィッチ諸島には地域の警察条例がある。政府職員が警察業務を担い、必要に応じ王立フォークランド諸島警察等の支援を受ける。",
+          "refs": [
+            "code",
+            "government"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "政府の現地担当者案内で警察業務の連絡経路を確認できる。一般向けの正式な犯罪受付は要確認。",
+          "refs": [
+            "government"
+          ]
+        }
+      ]
     },
     "SHN": {
       "m49": "654",
@@ -8130,7 +8433,52 @@
       "m49": "740",
       "name": "Suriname",
       "region": "Americas",
-      "iso2": "SR"
+      "iso2": "SR",
+      "status": "official-route",
+      "sources": {
+        "advisory": {
+          "title": "Korps Politie Suriname — Waarschuwing tegen oplichting met valse bankovermakingsbewijzen",
+          "url": "https://politie.sr/waarschuwing-tegen-oplichting-met-valse-bankovermakingsbewijzen/",
+          "checkedOn": "2026-11-19"
+        },
+        "case": {
+          "title": "Korps Politie Suriname — Online fraud investigations",
+          "url": "https://politie.sr/twee-verdachten-aangehouden-in-onderzoeken-naar-online-oplichting/",
+          "checkedOn": "2026-11-19"
+        },
+        "contacts": {
+          "title": "Korps Politie Suriname — Belangrijke Telefoonnummers",
+          "url": "https://politie.sr/contact-nummers/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "スリナム警察が詐欺被害を受け付け、詐欺・経済犯罪部門がオンライン詐欺も扱う。",
+          "refs": [
+            "advisory",
+            "case"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "送金証明の偽造などによる被害は警察に申告する。警察署の連絡先は警察公式ページで確認できる。",
+          "refs": [
+            "advisory",
+            "contacts"
+          ]
+        }
+      ],
+      "cases": [
+        {
+          "text": "オンラインの携帯電話販売と投資を巡る別々の詐欺の疑いで、被害申告後に警察が捜査し、容疑者2人を拘束したと公表した。",
+          "refs": [
+            "case"
+          ],
+          "stage": "investigation-confirmed"
+        }
+      ]
     },
     "SVK": {
       "m49": "703",
@@ -8326,7 +8674,54 @@
       "m49": "534",
       "name": "Sint Maarten (Dutch part)",
       "region": "Americas",
-      "iso2": "SX"
+      "iso2": "SX",
+      "status": "official-route",
+      "sources": {
+        "report": {
+          "title": "Government of Sint Maarten — Report a Crime",
+          "url": "https://www.sintmaartengov.org/services/pages/Report-a-Crime.aspx",
+          "checkedOn": "2026-11-19"
+        },
+        "complaints": {
+          "title": "Openbaar Ministerie — Complaints for Curaçao, BES and Sint Maarten",
+          "url": "https://www.openbaarministerie.org/informatie-strafproces-cw",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "シント・マールテン警察が犯罪申告を扱い、複雑な申告は刑事部門へ回す場合がある。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "公式サービス案内に従って警察に来署の予約や、担当警察官への取次ぎを確認する。",
+          "refs": [
+            "report"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "氏名、生年月日、出生地、住所、連絡先、事案の短い説明を用意して予約時に伝える。",
+          "refs": [
+            "report"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "followUp": [
+        {
+          "text": "警察や検察の対応に関する苦情は、検察の3地域共通の専用連絡先を確認する。",
+          "refs": [
+            "complaints"
+          ],
+          "kind": "service-complaint"
+        }
+      ]
     },
     "SYC": {
       "m49": "690",
@@ -8344,7 +8739,37 @@
       "m49": "796",
       "name": "Turks and Caicos Islands",
       "region": "Americas",
-      "iso2": "TC"
+      "iso2": "TC",
+      "status": "partial",
+      "sources": {
+        "fcu": {
+          "title": "Royal Turks and Caicos Islands Police — Financial Crime Unit",
+          "url": "https://www.tcipolice.tc/financial-crime-unit/",
+          "checkedOn": "2026-11-19"
+        },
+        "police": {
+          "title": "Royal Turks and Caicos Islands Police — Home and contact routes",
+          "url": "https://www.tcipolice.tc/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "タークス・カイコス諸島警察の金融犯罪部門が重大詐欺の捜査を扱う。",
+          "refs": [
+            "fcu"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察・金融犯罪部門の連絡先は公式ウェブサイトで確認する。被害者の正式な詐欺申告手順は要確認。",
+          "refs": [
+            "fcu",
+            "police"
+          ]
+        }
+      ]
     },
     "TCD": {
       "m49": "148",
@@ -8426,7 +8851,31 @@
       "m49": "772",
       "name": "Tokelau",
       "region": "Oceania",
-      "iso2": "TK"
+      "iso2": "TK",
+      "status": "partial",
+      "sources": {
+        "gov": {
+          "title": "Government of Tokelau — Government and police",
+          "url": "https://www.tokelau.org.nz/About%2BUs/Government.html",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "トケラウ政府の案内ではファカオフォ、ヌクノヌ、アタフに警察官が配置されている。",
+          "refs": [
+            "gov"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "村ごとの警察体制を政府案内で確認する。詐欺被害の正式な受付窓口は要確認。",
+          "refs": [
+            "gov"
+          ]
+        }
+      ]
     },
     "TKM": {
       "m49": "795",
@@ -8934,7 +9383,38 @@
       "m49": "092",
       "name": "British Virgin Islands",
       "region": "Americas",
-      "iso2": "VG"
+      "iso2": "VG",
+      "status": "official-route",
+      "sources": {
+        "police": {
+          "title": "Government of the Virgin Islands — Royal Virgin Islands Police Force",
+          "url": "https://gov.vg/royal-virgin-islands-police-force",
+          "checkedOn": "2026-11-19"
+        },
+        "fiu": {
+          "title": "Financial Investigation Agency of the Virgin Islands — Fraud and scam advisory",
+          "url": "https://www.fiabvi.vg/Portals/0/Advisory%2011.11.19v2.pdf",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "英領ヴァージン諸島では王立ヴァージン諸島警察が詐欺を含む犯罪申告を扱う。",
+          "refs": [
+            "police",
+            "fiu"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "政府の警察連絡先一覧から窓口に連絡する。域内の非緊急のアクセス番号も掲載されている。",
+          "refs": [
+            "police",
+            "fiu"
+          ]
+        }
+      ]
     },
     "VIR": {
       "m49": "850",
