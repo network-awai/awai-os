@@ -19,6 +19,15 @@ const CONTRACT_KEYS = [
   "capability", "service", "operation", "consent", "endpoint",
   "origin", "routes", "method", "path",
   "totalNodes", "totalBots", "pages", "circleCount", "counts", "radius", "x", "y",
+  // Pinned guest declarations (vendor/egov) arrive with quoted keys; the canonical
+  // runtime reads them by name, so Closure must not rename these (AWAI-3272).
+  "revision", "sha256",
+  // mountRestrictedClientApp({ artifact, container, broker }) is called from cljs
+  // with a #js literal, whose keys are quoted.
+  "artifact", "container", "broker",
+  // The guest's kotoba.client.operation.v1 message {protocol, id, selector, payload}
+  // is a structured clone; the runtime reads data.selector by name.
+  "protocol", "id", "selector", "payload",
 ];
 
 function cljsProps(src) {
