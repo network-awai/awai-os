@@ -52,7 +52,7 @@ export function passkeyResponse(
   { origin = LINK_ORIGIN, type = "webauthn.get", rpId = RP_ID, flags = 0x05 } = {},
 ) {
   const expiresAt = new Date(now + SESSION_MS).toISOString();
-  const challenge = toBase64Url(passkeyChallenge({ device: request.device, nonce: request.nonce, expiresAt }));
+  const challenge = toBase64Url(passkeyChallenge({ ...request, expiresAt }));
   const clientData = encoder.encode(JSON.stringify({ type, challenge, origin, crossOrigin: false }));
   const authData = Uint8Array.from([...sha256(encoder.encode(rpId)), flags, 0, 0, 0, 1]);
   const signed = sha256(Uint8Array.from([...authData, ...sha256(clientData)]));

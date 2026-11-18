@@ -7,6 +7,7 @@ import { keccak_256 } from "@noble/hashes/sha3.js";
 
 export const LINK_ORIGIN = "https://awai.network";
 export const RP_ID = "awai.network";
+export const DRIVE_PASSKEY_PURPOSE = "awai.drive.device-authorize.v1";
 export const SESSION_MS = 30 * 24 * 60 * 60 * 1000;
 export const REQUEST_MS = 10 * 60 * 1000;
 const SKEW_MS = 5 * 60 * 1000;
@@ -77,6 +78,7 @@ function validRequest(request) {
     request !== null &&
     typeof request === "object" &&
     request.v === 1 &&
+    (request.purpose === undefined || request.purpose === DRIVE_PASSKEY_PURPOSE) &&
     /^did:key:z[1-9A-HJ-NP-Za-km-z]+$/.test(request.device) &&
     /^[0-9a-f]{32}$/.test(request.topic) &&
     /^[0-9a-f]{24}$/.test(request.nonce) &&
@@ -86,7 +88,8 @@ function validRequest(request) {
 }
 
 // The device calls this. The private half stays in this browser's memory.
-export async function createLinkRequest(deviceDid, now = Date.now()) {
+export async function createLinkRequest(deviceDid, now = Date.now(), purpose) {
+  if (purpose !== undefined && purpose !== DRIVE_PASSKEY_PURPOSE) throw new Error("invalid-request");
   const pair = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, false, ["deriveBits"]);
   const request = {
     v: 1,
@@ -96,6 +99,7 @@ export async function createLinkRequest(deviceDid, now = Date.now()) {
     ek: toBase64Url(new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey))),
     exp: new Date(now + REQUEST_MS).toISOString(),
   };
+  if (purpose) request.purpose = purpose;
   return { request, privateKey: pair.privateKey };
 }
 
@@ -199,8 +203,17 @@ export function personalMessageHash(message) {
   return keccak_256(Uint8Array.from([...prefix, ...body]));
 }
 
-export function passkeyChallenge({ device, nonce, expiresAt }) {
-  return sha256(encoder.encode(`awai.link.v1\n${device}\n${nonce}\n${expiresAt}`));
+export function passkeyChallenge({ device, nonce, expiresAt, purpose, topic, ek, exp }) {
+  const original = `awai.link.v1\n${device}\n${nonce}\n${expiresAt}`;
+  const binding = purpose === DRIVE_PASSKEY_PURPOSE
+    ? `\n${purpose}\n${topic}\n${ek}\n${exp}` : "";
+  return sha256(encoder.encode(original + binding));
+}
+
+export function passkeyForLink(request, saved, register) {
+  if (saved) return saved;
+  if (request.purpose === DRIVE_PASSKEY_PURPOSE) throw new Error("existing-passkey-required");
+  return register();
 }
 
 function checkWindow(response, request, now, atLink) {
@@ -256,7 +269,8 @@ function verifyPasskey(response, request) {
   }
   if (client.type !== "webauthn.get") throw new Error("wrong-ceremony");
   if (client.origin !== LINK_ORIGIN) throw new Error("wrong-origin");
-  const expected = toBase64Url(passkeyChallenge({ device: request.device, nonce: request.nonce, expiresAt }));
+  if (request.purpose === DRIVE_PASSKEY_PURPOSE && client.crossOrigin === true) throw new Error("wrong-origin");
+  const expected = toBase64Url(passkeyChallenge({ ...request, expiresAt }));
   if (client.challenge !== expected) throw new Error("wrong-challenge");
   if (authBytes.length < 37) throw new Error("invalid-response");
   if (toHex(authBytes.slice(0, 32)) !== toHex(sha256(encoder.encode(RP_ID)))) throw new Error("wrong-rp");
@@ -280,6 +294,9 @@ export function verifyLink({ request, response, deviceDid, now = Date.now(), atL
     throw new Error("invalid-response");
   }
   if (request.device !== deviceDid) throw new Error("wrong-device");
+  if (request.purpose === DRIVE_PASSKEY_PURPOSE && response.method !== "passkey") {
+    throw new Error("existing-passkey-required");
+  }
   checkWindow(response, request, now, atLink);
   let accountDid;
   if (response.method === "wallet") accountDid = verifyWallet(response, request);
