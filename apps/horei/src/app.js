@@ -16,12 +16,12 @@ const broker = createClientOperationBroker({runtime: descriptor, requestedCapabi
   hostSupportedOperations: [[SELECTOR.capability, SELECTOR.service, SELECTOR.operation]], consentHost: createClientConsentHost()});
 const fullText = createFullText({invoke: (selector, payload, options) => broker.invoke(selector, payload, options), cache: tauriInvoke ? awaiFsCache(tauriInvoke) : memoryCache()});
 
-const locale = pickLocale(navigator.languages), t = translator(locale);
+let locale = pickLocale(navigator.languages), t = translator(locale);
 document.documentElement.lang = locale;
 const corpus = loadCorpus(corpusJson), catalog = loadCatalog(catalogJson);
 const host = createHost({appId: 'network.itonami.horei'});
 const $ = id => document.getElementById(id);
-const num = new Intl.NumberFormat(locale), plural = new Intl.PluralRules(locale);
+let num = new Intl.NumberFormat(locale), plural = new Intl.PluralRules(locale);
 const countKey = (key, n) => (plural.select(n) === 'one' ? key + 'One' : key);
 function el(tag, text, cls) { const n = document.createElement(tag); if (text !== undefined && text !== null) n.textContent = text; if (cls) n.className = cls; return n; }
 function link(text, hash, cls = 'link') { const a = el('a', text, cls); a.href = hash; return a; }
@@ -207,12 +207,23 @@ function chrome() {
   $('nav-catalog').textContent = t('nav.catalog');
   $('footer').textContent = t('footer');
 }
+function showEnvironment() {
+  $('environment').textContent = t('env.line', {runtime: t(host.info().runtime === 'web' ? 'env.web' : 'env.tauri'), count: num.format(corpus.laws.length)});
+}
 window.addEventListener('hashchange', route);
+// On Android a locale change recreates the activity (locale is not in the
+// manifest's configChanges, AWAI-3437) and the page reloads. Runtimes that change
+// the language without a reload (desktop WebView, browser) arrive here instead.
+window.addEventListener('languagechange', () => {
+  const next = pickLocale(navigator.languages); if (next === locale) return;
+  locale = next; t = translator(locale); document.documentElement.lang = locale;
+  num = new Intl.NumberFormat(locale); plural = new Intl.PluralRules(locale);
+  chrome(); showEnvironment(); route();
+});
 async function start() {
   chrome();
   try { await host.initialize(); } catch { say(t('host.failed')); }
-  const info = host.info();
-  $('environment').textContent = t('env.line', {runtime: t(info.runtime === 'web' ? 'env.web' : 'env.tauri'), count: num.format(corpus.laws.length)});
+  showEnvironment();
   route();
 }
 start();
