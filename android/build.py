@@ -39,7 +39,7 @@ def manifest(pkg, activity, version, kind, online=False):
       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>{home}</activity>{extra}</application></manifest>'''
 
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument('--version',type=int,default=1);ap.add_argument('--sdk',type=pathlib.Path,default=pathlib.Path.home()/'Library/Android/sdk');ap.add_argument('--java',type=pathlib.Path,default=pathlib.Path('/opt/homebrew/opt/openjdk/bin'));ap.add_argument('--out',type=pathlib.Path,default=ROOT/'.agent-output/android');ap.add_argument('--skip-cljs',action='store_true');ap.add_argument('--online-pins',type=pathlib.Path);ap.add_argument('--catalog-revision',type=int,default=None);ap.add_argument('--itonami-apk',type=pathlib.Path,default=None);ap.add_argument('--torihiki-bot-apk',type=pathlib.Path,default=None);ap.add_argument('--tabi-mikake-apk',type=pathlib.Path,default=None);ap.add_argument('--hiring-apk',type=pathlib.Path,default=None);ap.add_argument('--home-only',action='store_true');args=ap.parse_args()
+    ap=argparse.ArgumentParser();ap.add_argument('--version',type=int,default=1);ap.add_argument('--sdk',type=pathlib.Path,default=pathlib.Path.home()/'Library/Android/sdk');ap.add_argument('--java',type=pathlib.Path,default=pathlib.Path('/opt/homebrew/opt/openjdk/bin'));ap.add_argument('--out',type=pathlib.Path,default=ROOT/'.agent-output/android');ap.add_argument('--skip-cljs',action='store_true');ap.add_argument('--online-pins',type=pathlib.Path);ap.add_argument('--catalog-revision',type=int,default=None);ap.add_argument('--itonami-apk',type=pathlib.Path,default=None);ap.add_argument('--torihiki-bot-apk',type=pathlib.Path,default=None);ap.add_argument('--tabi-mikake-apk',type=pathlib.Path,default=None);ap.add_argument('--deai-apk',type=pathlib.Path,default=None);ap.add_argument('--hiring-apk',type=pathlib.Path,default=None);ap.add_argument('--home-only',action='store_true');args=ap.parse_args()
     if args.catalog_revision is not None and args.catalog_revision<1:raise SystemExit('positive catalog revision required')
     if args.version<1:raise SystemExit('positive version required')
     out=args.out.resolve();out.mkdir(parents=True,exist_ok=True);tools=args.sdk/'build-tools/36.1.0';jar=args.sdk/'platforms/android-37.0/android.jar'
@@ -155,6 +155,18 @@ def main():
         # ADR 0046 D6: the app declares no external operation, so its APK must not ask for network access.
         if "uses-permission: name='android.permission.INTERNET'" in badging:raise SystemExit('tabi mikake APK requests INTERNET')
         listed.append({'id':'network.itonami.tabimikake','name':'Tabi Mikake','description':'航空券と宿の価格を、この端末で比べます。予約・支払いは予約先のサイトで行い、このアプリは予約しません。この版は架空のデータだけを使い、外部へは何も送信しません。Android development debug 署名（本番鍵ではない）。','publisher':'Awai Otehon 開発版','versionCode':int(m.group(2)),'versionName':m.group(3),'artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/tabi-mikake.apk','bytes':staged.stat().st_size,'sha256':digest(staged),'signerSha256':fp}]})
+    if args.deai_apk is not None:
+        # Tauri v3 APK built from network-awai/app-deai (AWAI-3373/3374). The listed id, version and signer are read
+        # from the APK itself and refused unless they are exactly the admitted package and the development identity.
+        staged=packages/'deai.apk';shutil.copyfile(args.deai_apk,staged)
+        signer=run([tools/'apksigner','verify','--print-certs',staged],capture_output=True).stdout
+        if [l.rsplit(' ',1)[-1] for l in signer.splitlines() if 'certificate SHA-256 digest:' in l]!=[fp]:raise SystemExit('deai APK signer does not match the development identity')
+        badging=run([tools/'aapt2','dump','badging',staged],capture_output=True).stdout
+        m=re.fullmatch(r"package: name='([^']+)' versionCode='([0-9]+)' versionName='([^']+)'.*",badging.splitlines()[0])
+        if not m or m.group(1)!='network.itonami.deai':raise SystemExit('deai APK package is not network.itonami.deai')
+        # The app declares no external operation (operations: []), so its APK must not ask for network access.
+        if "uses-permission: name='android.permission.INTERNET'" in badging:raise SystemExit('deai APK requests INTERNET')
+        listed.append({'id':'network.itonami.deai','name':'Deai','description':'出会いの準備をこの端末だけで進めます。プロフィールの下書きと、自分で入力した候補の並び順と理由を表示します。外部への送信、遠隔推論、利用者どうしの連絡はありません。Android development debug 署名（本番鍵ではない）。','publisher':'Awai Otehon 開発版','versionCode':int(m.group(2)),'versionName':m.group(3),'artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/deai.apk','bytes':staged.stat().st_size,'sha256':digest(staged),'signerSha256':fp}]})
     if args.hiring_apk is not None:
         # Tauri v3 APK built from network-awai/app-itonami-hiring (AWAI-3175/3176, ADR 0043 S1). The listed id, version and
         # signer are read from the APK itself and refused unless they are exactly the admitted package and the development identity.

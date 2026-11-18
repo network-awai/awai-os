@@ -32,7 +32,7 @@ not any of those.
 
 ## Source and build
 
-- `node --test` on each `android/tests/*.test.mjs`: 25 pass. The new domain
+- `node --test` on each `android/tests/*.test.mjs`: 25 pass (26 after merging main with the Deai listing, AWAI-3374; `build.py` re-run on the merged tree also passed). The new domain
   test admits a 20.6 MB `packages/hiring.apk` and refuses three other asset
   names.
 - `bb -cp android/contracts/src:android/contracts/test -m itonami.store.domain-test`:

@@ -23,7 +23,7 @@ platform decision lists the remaining gates.
 | Path | Contents |
 | --- | --- |
 | [`android/`](android) | Awai OS on Android: Home, Store, setup, SystemUI overlays, desktop PC work |
-| [`apps/`](apps) | Bundled apps: Itonami, Murakumo (local inference), Drive, Yotei |
+| [`apps/`](apps) | Existing in-tree integrations and pointers to independent app repositories |
 | [`dapps/`](dapps) | Otehon dapps: D1, reward loop, Saifu, Sanka, Wellbecoming |
 | [`otehon/`](otehon) | Itonami shell UI shared with Android, and Otehon fleet sources (Meiji, Bot fleet, Soshiki, storage) |
 | [`packages/`](packages) | Shared Awai inference and shell packages |
@@ -39,7 +39,8 @@ platform decision lists the remaining gates.
 today (emulator, PC LAN Live, PC NVMe persistence, phone) and what is still
 missing for a real Awai OS image. Android builds, emulator and device checks are
 described in [android/README.md](android/README.md) and [android/test/README.md](android/test/README.md).
-Each app documents its own build in its directory. Source, VM, device and
+Independent app repositories own their source, build, tests and releases. See
+[app ownership](docs/app-ownership.md) for the active split. Source, VM, device and
 release evidence are recorded separately; a passing build is not a released
 device image.
 

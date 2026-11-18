@@ -1,9 +1,0 @@
-;; Authority for the awai-drive profile (AWAI-3255). This file decides; itonami.edn holds a copy.
-;; Only the readback check runs on its own, and it writes only its own probe in
-;; awai-drive-bot-readback/. Evicting or fetching needs the user's approval for each operation;
-;; deleting user data is not this bot's job. Anything unlisted reads as :blocked.
-{:yakuwari/id :awai-drive
- :yakuwari/capabilities [{:capability :drive/readback-check :decision :autonomous}
-                         {:capability :drive/evict :decision :approval-required}
-                         {:capability :drive/prefetch :decision :approval-required}
-                         {:capability :drive/delete :decision :blocked}]}

@@ -1,0 +1,2 @@
++-o AGXAcceleratorG16G  <class AGXAcceleratorG16G, id 0x100000a2c, registered, matched, active, busy 0 (0 ms), retain 51>
+    "PerformanceStatistics" = {"In use system memory (driver)"=0,"Alloc system memory"=1092616192,"Device Utilization %"=12,"Renderer Utilization %"=11}
