@@ -1,0 +1,1 @@
+{"identifier":"webgpu-probe-local","description":"Local WebGPU capability probe; host version only. No external network, publishing, payment, filesystem, installer or shell permissions.","windows":["main"],"permissions":["allow-awai-host-info"]}
