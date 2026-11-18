@@ -18,6 +18,8 @@ It creates a device-local recipient, not an Awai account/Passkey enrollment.
 Uninstalling/clearing app data or losing device keys can make remote snapshots
 unreadable. Keep original data; independent owner recovery is not implemented.
 See [encryption, custody and transport boundaries](docs/encrypted-sync.md).
+The proposed design for removing the 8 MiB / 1000-entry bound (chunked packs, paged manifest, resumable
+upload, per-file eviction, macOS) is [docs/scalable-sync-design.md](docs/scalable-sync-design.md) — a proposal, not an implementation.
 
 ## Safety and integration
 
