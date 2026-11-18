@@ -9,13 +9,15 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 def run(args, **kw):
     return subprocess.run([str(x) for x in args], check=True, text=True, **kw)
 def digest(path): return hashlib.sha256(path.read_bytes()).hexdigest()
-def manifest(pkg, activity, version, kind, online=False):
+def manifest(pkg, activity, version, kind, online=False, debuggable=True):
     perms = ''
     extra = ''
     home = ''
     if kind == 'home':
         perms = '<uses-permission android:name="network.awai.permission.READ_AGENDA"/><uses-permission android:name="android.permission.SET_WALLPAPER"/><uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/><uses-permission android:name="android.permission.INTERNET"/>'
-        extra = '<activity android:name="network.awai.home.AppearanceActivity" android:exported="false" android:label="Awai の外観"/>'
+        perms += '<uses-permission android:name="android.permission.HIDE_OVERLAY_WINDOWS"/>'
+        extra = ('<activity android:name="network.awai.home.AppearanceActivity" android:exported="false" android:label="Awai の外観"/>'
+                 '<activity android:name="network.awai.home.AccountBrokerActivity" android:exported="true" android:excludeFromRecents="true" android:label="Awai アカウント"/>')
         home = '<intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.HOME"/><category android:name="android.intent.category.DEFAULT"/></intent-filter>'
     if kind == 'store':
         perms = '<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>' + ('<uses-permission android:name="android.permission.INTERNET"/><uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>' if online else '')
@@ -33,18 +35,27 @@ def manifest(pkg, activity, version, kind, online=False):
       <queries><intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent>
       <intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.APP_BROWSER"/></intent>
       <intent><action android:name="android.intent.action.DIAL"/></intent><intent><action android:name="android.media.action.STILL_IMAGE_CAMERA"/></intent>
-      <package android:name="network.itonami.yotei"/><package android:name="network.itonami.torihiki"/><package android:name="network.awai.store"/><provider android:authorities="network.itonami.yotei.agenda"/></queries>
-      <application android:theme="@style/{theme}" android:label="{title}" android:icon="{appicon}" android:allowBackup="false" android:usesCleartextTraffic="false" android:debuggable="true" android:enableOnBackInvokedCallback="true">
+      <package android:name="network.awai.drive"/><package android:name="network.awai.yataverse"/><package android:name="network.itonami.yotei"/><package android:name="network.itonami.torihiki"/><package android:name="network.awai.store"/><provider android:authorities="network.itonami.yotei.agenda"/></queries>
+      <application android:theme="@style/{theme}" android:label="{title}" android:icon="{appicon}" android:allowBackup="false" android:usesCleartextTraffic="false" android:debuggable="{str(debuggable).lower()}" android:enableOnBackInvokedCallback="true">
       <activity android:name="{activity}" android:exported="true" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize">
       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>{home}</activity>{extra}</application></manifest>'''
 
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument('--version',type=int,default=1);ap.add_argument('--sdk',type=pathlib.Path,default=pathlib.Path.home()/'Library/Android/sdk');ap.add_argument('--java',type=pathlib.Path,default=pathlib.Path('/opt/homebrew/opt/openjdk/bin'));ap.add_argument('--out',type=pathlib.Path,default=ROOT/'.agent-output/android');ap.add_argument('--skip-cljs',action='store_true');ap.add_argument('--online-pins',type=pathlib.Path);ap.add_argument('--catalog-revision',type=int,default=None);ap.add_argument('--itonami-apk',type=pathlib.Path,default=None);ap.add_argument('--torihiki-bot-apk',type=pathlib.Path,default=None);ap.add_argument('--tabi-mikake-apk',type=pathlib.Path,default=None);ap.add_argument('--deai-apk',type=pathlib.Path,default=None);ap.add_argument('--hiring-apk',type=pathlib.Path,default=None);ap.add_argument('--kumade-apk',type=pathlib.Path,default=None);ap.add_argument('--home-only',action='store_true');args=ap.parse_args()
+    ap=argparse.ArgumentParser();ap.add_argument('--version',type=int,default=1);ap.add_argument('--sdk',type=pathlib.Path,default=pathlib.Path.home()/'Library/Android/sdk');ap.add_argument('--java',type=pathlib.Path,default=pathlib.Path('/opt/homebrew/opt/openjdk/bin'));ap.add_argument('--out',type=pathlib.Path,default=ROOT/'.agent-output/android');ap.add_argument('--skip-cljs',action='store_true');ap.add_argument('--online-pins',type=pathlib.Path);ap.add_argument('--catalog-revision',type=int,default=None);ap.add_argument('--itonami-apk',type=pathlib.Path,default=None);ap.add_argument('--torihiki-bot-apk',type=pathlib.Path,default=None);ap.add_argument('--tabi-mikake-apk',type=pathlib.Path,default=None);ap.add_argument('--deai-apk',type=pathlib.Path,default=None);ap.add_argument('--hiring-apk',type=pathlib.Path,default=None);ap.add_argument('--kumade-apk',type=pathlib.Path,default=None);ap.add_argument('--home-only',action='store_true')
+    ap.add_argument('--unsigned-home', action='store_true', help='Build a non-debuggable Home APK for a separate APK signing service')
+    args=ap.parse_args()
+    if args.unsigned_home:
+        args.home_only = True
+        if args.out.exists() and any(args.out.iterdir()):
+            ap.error('--unsigned-home requires an empty output directory')
     if args.catalog_revision is not None and args.catalog_revision<1:raise SystemExit('positive catalog revision required')
     if args.version<1:raise SystemExit('positive version required')
     out=args.out.resolve();out.mkdir(parents=True,exist_ok=True);tools=args.sdk/'build-tools/36.1.0';jar=args.sdk/'platforms/android-37.0/android.jar'
     key=pathlib.Path.home()/'.android/debug.keystore'
-    for f in [jar,tools/'aapt2',tools/'d8',tools/'apksigner',key,args.java/'javac']:
+    required=[jar,tools/'aapt2',tools/'d8',tools/'zipalign',args.java/'javac']
+    if not args.unsigned_home:
+        required.extend([tools/'apksigner',key])
+    for f in required:
         if not f.is_file():raise SystemExit(f'missing build prerequisite: {f}')
     if not args.skip_cljs:run(['clojure','-M:build'],cwd=ROOT/'android/client')
     run(['node',ROOT/'android/build-identity.mjs'],cwd=ROOT)
@@ -55,6 +66,8 @@ def main():
     shutil.copytree(ROOT/'android/client/assets',assets/'assets',dirs_exist_ok=True)
     shutil.copyfile(ROOT/'android/client/generated/domain.js',assets/'domain.js')
     shutil.copyfile(ROOT/'android/client/generated/identity.js',assets/'identity.js')
+    shutil.copyfile(ROOT/'android/client/account-broker.html',assets/'account-broker.html')
+    shutil.copyfile(ROOT/'android/client/generated/account-broker.js',assets/'account-broker.js')
     pins=json.loads((ROOT/'otehon/shell/vendor/PINS.json').read_text());runtime=ROOT/'otehon/shell/vendor/kotoba-client-runtime.js'
     if digest(runtime)!=pins['files']['kotoba-client-runtime.js']:raise SystemExit('canonical runtime pin drift')
     shutil.copyfile(runtime,assets/'runtime.js')
@@ -80,14 +93,16 @@ def main():
     for folder in [resources/'values',resources/'values-night']:
         path=folder/'styles.xml'
         path.write_text(path.read_text().replace('</resources>','<style name="AwaiHomeTheme" parent="AwaiTheme"><item name="android:windowSplashScreenBackground">@color/awai_background</item><item name="android:windowSplashScreenAnimatedIcon">@drawable/awai_mark</item><item name="android:windowSplashScreenBehavior">icon_preferred</item></style></resources>'))
-    run([args.java/'javac','-d',out,ROOT/'android/SignCatalog.java'])
-    # SignCatalog emits only a public certificate fingerprint; private key/password never enter output artifacts.
-    probe=out/'probe';probe.write_bytes(b'fingerprint')
-    fp=run([args.java/'java','-cp',out,'SignCatalog',key,probe,out/'catalog-key.der',out/'probe.sig'],capture_output=True).stdout.strip()
+    fp=None
+    if not args.unsigned_home:
+        run([args.java/'javac','-d',out,ROOT/'android/SignCatalog.java'])
+        # SignCatalog emits only a public certificate fingerprint.
+        probe=out/'probe';probe.write_bytes(b'fingerprint')
+        fp=run([args.java/'java','-cp',out,'SignCatalog',key,probe,out/'catalog-key.der',out/'probe.sig'],capture_output=True).stdout.strip()
     def build(kind,pkg,activity):
         stage=out/f'{kind}-v{args.version}';stage.mkdir(exist_ok=True);classes=stage/'classes';classes.mkdir(exist_ok=True);gen=stage/'gen';gen.mkdir(exist_ok=True);dex=stage/'dex';dex.mkdir(exist_ok=True)
         # Explicitly rebuild only this task's generated outputs; unrelated workspace data is untouched.
-        xml=stage/'AndroidManifest.xml';xml.write_text(manifest(pkg,activity,args.version,kind,bool(pins_online)))
+        xml=stage/'AndroidManifest.xml';xml.write_text(manifest(pkg,activity,args.version,kind,bool(pins_online),debuggable=not args.unsigned_home))
         staged_assets=stage/'assets'
         shutil.copytree(assets,staged_assets,dirs_exist_ok=True,
                         ignore=shutil.ignore_patterns('packages','catalog.json','catalog.sig','catalog-key.der') if kind!='store' else None)
@@ -114,6 +129,10 @@ def main():
         with zipfile.ZipFile(unsigned,'a',compression=zipfile.ZIP_DEFLATED)as z:
             for f in dex.glob('*.dex'):z.write(f,f.name)
         run([tools/'zipalign','-f','4',unsigned,stage/'aligned.apk'])
+        if args.unsigned_home:
+            apk=out/f'{kind}-v{args.version}-unsigned.apk'
+            shutil.copyfile(stage/'aligned.apk',apk)
+            return apk
         apk=out/f'{kind}-v{args.version}.apk'
         run([tools/'apksigner','sign','--ks',key,'--ks-key-alias','androiddebugkey','--ks-pass','pass:android','--key-pass','pass:android','--out',apk,stage/'aligned.apk'])
         run([tools/'apksigner','verify','--verbose',apk],stdout=subprocess.DEVNULL)
