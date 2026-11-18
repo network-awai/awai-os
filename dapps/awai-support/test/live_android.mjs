@@ -3,6 +3,8 @@
 // usage (from dapps/awai-support, with test/devnet_stack.sh running and the debug APK built with
 // scripts/devnet-trust.mjs for the same CA):
 //   node test/live_android.mjs SERIAL APK STACK_DIR OUT_DIR
+//   AWAI_PHYSICAL=1 for a physical device: keep its app data (no `pm clear`), change no display or
+//   system setting, and stop instead of signing in a test wallet if the app is not signed in.
 //
 // Every decision is a real tap through `adb shell input tap` (trusted input), including the shared
 // broker's "Allow once" / "Deny" and the panel's approve/cancel buttons. Chrome DevTools on the debug
@@ -34,14 +36,17 @@ const fundsAny = () => deskRequests().filter((r) => r.path === "/v1/support/fund
 
 // ---- device
 step("install and reverse");
+const physical = process.env.AWAI_PHYSICAL === "1";
 adb("install", "-r", apk);
-adb("shell", "pm", "clear", PKG);
+if (!physical) adb("shell", "pm", "clear", PKG);
 adb("reverse", "tcp:18795", "tcp:18795");
-adb("shell", "settings", "put", "system", "screen_off_timeout", "1800000");
+if (!physical) adb("shell", "settings", "put", "system", "screen_off_timeout", "1800000");
 // The Itonami context lives in the desktop sidebar (hidden below 800 CSS px). Show the emulator as a
 // 1920x1080 desktop at density 160, the Otehon reference width; reset at the end.
-adb("shell", "wm", "size", "1920x1080");
-adb("shell", "wm", "density", "160");
+if (!physical) {
+  adb("shell", "wm", "size", "1920x1080");
+  adb("shell", "wm", "density", "160");
+}
 adb("shell", "am", "start", "-n", `${PKG}/.MainActivity`);
 await sleep(6000);
 
@@ -121,7 +126,14 @@ const supportState = () => js(`document.querySelector(".awai-support")?.dataset.
 
 // ---- first-run sign-in with a test wallet made for this run
 step("sign-in");
-await waitFor(`!!document.querySelector("#local-start, [data-next], .sidebar")`);
+await waitFor(`!!document.querySelector("#local-start, [data-next], .sidebar")`, 60000);
+const alreadySignedIn = await js(`!!document.querySelector(".sidebar")`);
+if (!alreadySignedIn && physical) {
+  console.error("the app on this physical device is not signed in; not linking a test wallet to it");
+  process.exit(3);
+}
+let address = null;
+if (!alreadySignedIn) {
 if (await js(`!!document.querySelector("[data-next]") && !document.querySelector("#local-start")`)) await tap("[data-next]", "next");
 await waitFor(`!!document.querySelector("#local-start")`);
 for (let i = 0; i < 5 && !(await js(`!!document.querySelector("#local-address")`)); i++) {
@@ -131,7 +143,7 @@ for (let i = 0; i < 5 && !(await js(`!!document.querySelector("#local-address")`
 }
 const wallet = secp256k1.utils.randomSecretKey();
 const pub = secp256k1.getPublicKey(wallet, false).slice(1);
-const address = "0x" + Buffer.from(keccak_256(pub).slice(-20)).toString("hex");
+address = "0x" + Buffer.from(keccak_256(pub).slice(-20)).toString("hex");
 const setValue = (sel, v) => js(`(()=>{const e=document.querySelector(${JSON.stringify(sel)});const s=Object.getOwnPropertyDescriptor(e.constructor.prototype,"value").set;s.call(e,${JSON.stringify(v)});e.dispatchEvent(new Event("input",{bubbles:true}));return true})()`);
 await waitFor(`!!document.querySelector("#local-address")`);
 await setValue("#local-address", address);
@@ -148,7 +160,8 @@ for (let i = 0; i < 6 && !(await js(`!!document.querySelector(".sidebar")`)); i+
   else if (await js(`!!document.querySelector("[data-next]")`)) await tap("[data-next]", "next");
   else await sleep(1000);
 }
-check("first-run sign-in with the test wallet reaches the shell", await waitFor(`!!document.querySelector(".sidebar")`), await js(`document.body.innerText.slice(0,300)`));
+}
+check(alreadySignedIn ? "the app was already signed in; its account was left as it was" : "first-run sign-in with the test wallet reaches the shell", await waitFor(`!!document.querySelector(".sidebar")`), await js(`document.body.innerText.slice(0,300)`));
 
 // ---- Itonami context and the support panel
 await tap('button[data-dapp="itonami"]', "Itonami");
@@ -198,16 +211,19 @@ check("the receipt on screen names the same transfer", panelText.includes(transf
 
 ws.close();
 adb("forward", "--remove", "tcp:9339");
-adb("shell", "wm", "size", "reset");
-adb("shell", "wm", "density", "reset");
+if (!physical) {
+  adb("shell", "wm", "size", "reset");
+  adb("shell", "wm", "density", "reset");
+}
+adb("reverse", "--remove", "tcp:18795");
 const passed = checks.filter((c) => c.passed).length;
 const evidence = {
   schema: "awai.support-android-evidence/1", issue: "AWAI-3170", parent: "AWAI-3112",
-  device: { serial, display: "1920x1080 at density 160 (wm override during the run)", model: adb("shell", "getprop", "ro.product.model").trim(), sdk: adb("shell", "getprop", "ro.build.version.sdk").trim(), abi: adb("shell", "getprop", "ro.product.cpu.abi").trim(), kind: "emulator owned by this run" },
-  apk: { sha256: execFileSync("shasum", ["-a", "256", apk], { encoding: "utf8" }).split(" ")[0], build: "debug, aarch64, debug-only trust of this run's devnet CA" },
+  device: { serial, display: physical ? adb("shell", "wm", "size").trim() : "1920x1080 at density 160 (wm override during the run)", model: adb("shell", "getprop", "ro.product.model").trim(), sdk: adb("shell", "getprop", "ro.build.version.sdk").trim(), abi: adb("shell", "getprop", "ro.product.cpu.abi").trim(), kind: physical ? "physical Awai Android OS device; app data kept" : "emulator owned by this run" },
+  apk: { sha256: execFileSync("shasum", ["-a", "256", apk], { encoding: "utf8" }).split(" ")[0], build: `debug, ${adb("shell", "getprop", "ro.product.cpu.abi").trim()}, debug-only trust of this run's devnet CA` },
   stack: { desk: stack.desk, node: stack.node, chain: "awai-en-devnet/awai-3170", valueClass: "devnet", finality: "single-operator-devnet" },
   recipient: "Awai Network LLC", wording: "support (donation wording undecided)",
-  anrWaits, testWallet: { address, note: "secp256k1 key made for this run; signs the app's own sign-in message" },
+  anrWaits, signIn: alreadySignedIn ? "existing account on the device, untouched" : "test wallet", testWallet: alreadySignedIn ? null : { address, note: "secp256k1 key made for this run; signs the app's own sign-in message" },
   transfer, deskReceipt: receipt, consentScopes: [scope1, scope2, scope3, scope4],
   deskRequests: deskRequests(), checks, passed, total: checks.length,
 };
