@@ -1,7 +1,7 @@
 import{readResponse}from'./bounded-response.js';
 import './core.js';
 import{createClientConsentHost,createClientOperationBroker}from'./runtime.js';
-import{runtimeFor,PACK_LIMIT}from'./sync-contract.js';import{syncOrigin}from'./sync-config.js';
+import{runtimeFor,PACK_LIMIT}from'./sync-contract.js';import{syncOrigin,receiptKeys}from'./sync-config.js';import{verifyDrivePackReceipt}from'./receipt.js';
 const core=window.AwaiDriveEncrypted;
 const b64=b=>{let s='';for(let i=0;i<b.length;i+=16384)s+=String.fromCharCode(...b.subarray(i,i+16384));return btoa(s);};
 const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
@@ -15,6 +15,8 @@ export async function sync(){const s=await session(true);try{
  const {entries}=await invoke('vaultInventory');const rows=[];
  for(const e of entries){if(e.directory)continue;const bytes=new Uint8Array(e.size);for(let at=0;at<e.size;at+=65531){const r=await invoke('vaultRead',{path:e.path,offset:at,length:Math.min(65531,e.size-at)});bytes.set(unb64(r.bytes),at);}if(await core.sha256(bytes)!==e.sha256)throw Error('source-size-changed');rows.push({path:e.path,bytes});}
  rows.directories=entries.filter(e=>e.directory).map(e=>e.path);const sealed=await core.sealSnapshot(s.record,s.secret,rows);const id=await core.sha256(sealed.bytes);const response=await request('upload',id,sealed.bytes);const receipt=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(await readResponse(response,2048)));if(receipt.sha256!==id||receipt.bytes!==sealed.bytes.length)throw Error('receipt-mismatch');
+ // A build-pinned key set (yataverse.com) makes the signed storage receipt mandatory: check it before the readback, and never mark the snapshot synced without it.
+ if(receiptKeys){try{verifyDrivePackReceipt(receipt,receiptKeys,{id,size:sealed.bytes.length});}catch(e){throw Error('storage-receipt-invalid:'+String(e?.message||e).slice(0,80));}}
  const verified=await readResponse(await request('download',id));if(verified.length!==sealed.bytes.length||await core.sha256(verified)!==id)throw Error('receipt-mismatch');
  await invoke('vaultCommit',{root:sealed.root,pack:id,origin:syncOrigin,entries});return {files:rows.length,root:sealed.root,pack:id};
  }finally{s.secret.fill(0);}}
