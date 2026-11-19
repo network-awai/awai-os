@@ -48,7 +48,25 @@ const paths = { search:'android-v2-icon-search.svg', apps:'android-v2-icon-apps.
 
 function el(tag, cls, text) { const n=document.createElement(tag); if(cls)n.className=cls; if(text!==undefined)n.textContent=text; return n; }
 function icon(name, feature=false) { const n=el('img','static-icon'); n.alt=''; n.src='assets/'+(feature&&name==='calendar'?'store-android-v2-icon-calendar.svg':paths[name]); n.width=feature?64:24; n.height=feature?64:24; return n; }
-const appCrests = new Map([['network.itonami.app', 'itonami.svg']]);
+const appCrests = new Map([
+  ['app.aozora', 'app.aozora.awai.preview.svg'],
+  ['app.aozora.awai.preview', 'app.aozora.awai.preview.svg'],
+  ['network.awai.deai.dev.debug', 'network.awai.deai.dev.debug.svg'],
+  ['network.awai.drive', 'network.awai.drive.svg'],
+  ['network.awai.physai', 'network.awai.physai.svg'],
+  ['network.awai.suji', 'network.awai.suji.svg'],
+  ['network.itonami.app', 'itonami.svg'],
+  ['network.itonami.client.preview', 'itonami.svg'],
+  ['network.itonami.deai', 'network.awai.deai.dev.debug.svg'],
+  ['network.itonami.dougaka.preview', 'network.itonami.dougaka.preview.svg'],
+  ['network.itonami.hiring', 'network.itonami.hiring.svg'],
+  ['network.itonami.kaisha', 'network.itonami.kaisha.svg'],
+  ['network.itonami.ongakuka.preview', 'network.itonami.ongakuka.preview.svg'],
+  ['network.itonami.registry.assoc', 'network.itonami.registry.assoc.svg'],
+  ['network.itonami.shakai', 'network.itonami.shakai.svg'],
+  ['network.itonami.yataverse.preview', 'network.itonami.yataverse.preview.svg'],
+  ['network.itonami.yotei', 'network.itonami.yotei.svg'],
+]);
 function storeAppIcon(app, feature=false) {
   const crest = appCrests.get(app.id);
   if (!crest) return icon(presentation(app).icon, feature);
