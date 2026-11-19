@@ -47,7 +47,7 @@ function usage() {
 // Commit whatever the bots left (scratch output excluded), then read the whole branch against its base, so
 // a second delivery of an already pushed branch is judged on the same facts as the first.
 const base = JSON.parse(execFileSync("gh", ["repo", "view", task.repo, "--json", "defaultBranchRef"], { encoding: "utf8" })).defaultBranchRef.name;
-sh("git", ["add", "-A", "--", ".", ":!.agent-output"]);
+sh("git", ["add", "-A", "--", ".", ":!.agent-output", ":!**/target/**", ":!**/node_modules/**"]);
 const staged = sh("git", ["diff", "--cached", "--name-only"]).trim() !== "";
 function readChange(range) {
   const files = sh("git", ["diff", ...range, "--numstat", "-z"]).split("\0").filter(Boolean).map((l) => {
@@ -81,6 +81,18 @@ let decision = decide({ task, verdict, files, addedLines, tests });
 const report = { task: task.issue, at: new Date().toISOString(), decision, tests, files: files.length, usage: usage() };
 const finish = (extra) => { Object.assign(report, extra); writeFileSync(join(out, "deliver.json"), JSON.stringify(report, null, 1)); console.log(JSON.stringify(report.decision), report.pr ?? ""); };
 if (dry || !files.length) { finish({ dryRun: dry }); process.exit(0); }
+
+// A hold means something is wrong (failed tests, rejected review, secret-like content, wrong repository).
+// Nothing leaves the host: no commit, no push, no PR. Only the Linear record says why.
+if (decision.action === "hold") {
+  sh("git", ["reset", "-q"]);
+  const why = decision.reasons.map((r) => `- ${r.level}: ${r.text}`).join("\n");
+  const tested = tests.map((t) => `- \`${t.cmd}\` exit ${t.exit}`).join("\n") || "- none declared";
+  writeFileSync(join(out, "linear-comment.md"), `Developer-bot delivery for ${task.issue}: **held**, nothing was committed or pushed.\n\n**Reasons**\n${why}\n\n**Tests run outside the agent sandbox**\n${tested}\n\n**Review (shinsa)**: ${verdict?.summary ?? "no verdict"}\n\nThe change stays in the task directory on the host until the reason is fixed.`);
+  const c = spawnSync("orca", ["linear", "comment", "add", task.issue, "--body-file", join(out, "linear-comment.md")], { encoding: "utf8" });
+  finish({ held: true, linearComment: c.status === 0 ? "posted" : "failed" });
+  process.exit(0);
+}
 
 const usageTable = ["| Run | Model | Calls | Input | of which cached | Output | of which reasoning |", "| -- | -- | -- | -- | -- | -- | -- |",
   ...report.usage.map((u) => `| ${u.run} | ${u.model} | ${u.calls} | ${u.input} | ${u.cached} | ${u.output} | ${u.reasoning} |`)].join("\n");

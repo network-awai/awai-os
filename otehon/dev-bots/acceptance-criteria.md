@@ -37,7 +37,8 @@ the `shinsa` profile judges the rest and writes the verdict that the gate reads.
 
 Otherwise the result is a **draft pull request** (something is unverified or reserved for the owner) or a
 **hold** (something is wrong: failed tests, rejected review, secrets, wrong repository). Both are recorded
-on the Linear issue with the reasons. A hold is never retried without a change.
+on the Linear issue with the reasons. On a hold nothing is committed, pushed or opened as a pull
+request: the change stays on the host. A hold is never retried without a change.
 
 ## What a merge does and does not mean
 
