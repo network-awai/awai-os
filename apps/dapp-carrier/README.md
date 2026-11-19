@@ -10,11 +10,12 @@ Install the exact npm lockfile with `npm ci --ignore-scripts`. Supply the previo
 
 ```sh
 node scripts/prepare.mjs --aozora-web /absolute/verified/aozora/dist --dougaka-web /absolute/verified/dougaka/dist
-npm run tauri -- icon generated/awai-icon.png --output generated/common-icons
 node scripts/android.mjs
 node scripts/build-android.mjs
 npx playwright test
 ```
+
+Android initialization generates each launcher icon from its approved SVG in `profiles/crests/`. Preparation hashes those masters alongside the profile configuration.
 
 Preparation verifies every input file against `profiles/web-sources.json`, and downloads only the immutable revision/digest-pinned canonical broker. `record-web.mjs` is an explicit developer pin-maintenance tool, not automatic acceptance of changed inputs. The maintained Cargo and npm lockfiles pin the carrier. Android SDK/NDK/JDK prerequisites must be installed; no credential is copied into generated output. `generated/` is disposable task build output and is never deployed by these commands.
 

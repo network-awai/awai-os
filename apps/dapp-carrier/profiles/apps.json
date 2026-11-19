@@ -14,7 +14,8 @@
       "listenPort": 40213,
       "source": "network-awai/app-aozora-appview",
       "revision": "7ffb5e75fe9976436f7e6af7e71a48b9fc2470e7",
-      "domainUi": "existing-static-artifact"
+      "domainUi": "existing-static-artifact",
+      "iconBackground": "#F6F8FB"
     },
     {
       "key": "dougaka",
@@ -23,7 +24,8 @@
       "listenPort": 40214,
       "source": "cloud-itonami/app-itonami-dougaka",
       "revision": "c29b87e59fdb1b8b65e18a2ca7295356cd0af1e9",
-      "domainUi": "existing-static-artifact"
+      "domainUi": "existing-static-artifact",
+      "iconBackground": "#F4F4F3"
     },
     {
       "key": "ongakuka",
@@ -32,7 +34,8 @@
       "listenPort": 40215,
       "source": "cloud-itonami/app-itonami-ongakuka",
       "revision": "8f1ad5d3535908996eb93e2bfccefcaf3e9bf73d",
-      "domainUi": "not-yet-ported"
+      "domainUi": "not-yet-ported",
+      "iconBackground": "#F6F8FB"
     },
     {
       "key": "itonami",
@@ -41,7 +44,8 @@
       "listenPort": 40216,
       "source": "cloud-itonami/app-itonami-cloud-itonami-app",
       "revision": "86870ddba5484e927c07f4b2ed358051bb9eae28",
-      "domainUi": "not-yet-ported"
+      "domainUi": "not-yet-ported",
+      "iconBackground": "#F7F7F7"
     },
     {
       "key": "yataverse",
@@ -50,7 +54,8 @@
       "listenPort": 40217,
       "source": "kotoba-lang/yataverse",
       "revision": "f1dfca16f9af665f455cd774c19d7429fe72e209",
-      "domainUi": "snapshot-pin-query"
+      "domainUi": "snapshot-pin-query",
+      "iconBackground": "#F6F8FB"
     }
   ],
   "version": "0.1.2"
