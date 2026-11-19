@@ -1,0 +1,80 @@
+{
+  "schema": "awai.os.setupwizard-evaluation.v1",
+  "issue": "AWAI-3563",
+  "date": "2026-11-19",
+  "source": {
+    "repository": "network-awai/awai-os",
+    "patchCommit": "7dcc9069082cb149ab0a834df3993b009a10865a",
+    "wizardUpstreamRevision": "d995f1a1949f5988850c9977658e2590efe502b4",
+    "buildTarget": "lineage_Generic_x86_64-userdebug",
+    "restoredBuildHost": "AWAI-3061 snapshot restore",
+    "isolatedSourceAndOutput": true,
+    "soongWizardCompletedUtc": "2026-11-19T08:08:33Z",
+    "soongTargetFilesAndLiveIsoCompletedUtc": "2026-11-19T08:17:15Z"
+  },
+  "signing": {
+    "profile": "evaluation-only",
+    "buildTags": "awai-eval-keys",
+    "setupWizardCertificateSha256": "52a81baa87d08e43687547acaf298a0f8e14596b0f2c193c78b453707fd23652",
+    "partitionAvbEnabled": false,
+    "otaInstallTested": false,
+    "isoPartitionsByteMatchedSignedTargetFiles": [
+      "system.img",
+      "system_dlkm.img",
+      "vendor.img",
+      "vendor_dlkm.img"
+    ],
+    "artifactSha256": {
+      "kernel": "be6e929579fb0ffefb3af9b081a2553224423fca446f72352c419c943c98c5b5",
+      "initrd": "076301e323005819c010aba4ac06d5f241ebafe38d94487e30af192fd241a477",
+      "live.iso": "3de677abdcb06146644362a18a90e775c110e7c811c44b66fc4fcb73685829e4",
+      "LineageSetupWizard.apk": "a849b8216732850901a1be6adbbfa4b9e459e8d964d9392b5afbe02e8414e142"
+    },
+    "digestManifestEd25519Verified": true
+  },
+  "vm": {
+    "host": "Vultr bare metal",
+    "machine": "QEMU KVM x86_64",
+    "systemBootCompletedAtGuestSeconds": 39.964584,
+    "diskless": true,
+    "networkIsolated": true,
+    "completedSetupThroughUi": true,
+    "checks": [
+      "native language shortcut and return",
+      "native accessibility and return",
+      "Start and Language",
+      "Internet offline",
+      "Date & time",
+      "Skip backup",
+      "location and diagnostics off",
+      "screen lock skipped in lab VM",
+      "Theme",
+      "Navigation",
+      "Enter to Launcher"
+    ],
+    "motionFrames": {
+      "firstVisiblePanel": 813,
+      "intermediateReveal": 813,
+      "settledBrand": 816,
+      "panelToSettledMs": 167,
+      "brandIntensityFractions": [
+        0.502,
+        0.502,
+        1.0
+      ]
+    },
+    "motionTimingCoverage": "Visible part of reveal only. QMP recorded intermediate and resting states. This delta is not a measurement of the entire animation.",
+    "displayEvidence": "QMP screenshots have red/blue channels reversed. Saved originals and a channel-corrected excerpt for review."
+  },
+  "physical": {
+    "device": "Ryzen 7 7735HS PC",
+    "mode": "PXE, read-only NBD, RAM Live with temporary userdata",
+    "kernelAndInitrdFetched": true,
+    "evaluationIsoNbdSessionObserved": true,
+    "tradeInModeResponded": true,
+    "displayCaptured": false,
+    "welcomeMotionVerified": false,
+    "defaultLanRouteRestored": true,
+    "persistentInstallPerformed": false
+  }
+}
