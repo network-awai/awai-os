@@ -1,0 +1,82 @@
+{
+  "issue": "AWAI-3586",
+  "date": "2026-11-19",
+  "where": "KVM, QEMU 8.2.2, shared NVMe disk with three stand-in partitions",
+  "cause": {
+    "property": "ro.surface_flinger.enable_frame_rate_override=false",
+    "file": "device/virt/virt-common/configs/properties/vendor.prop",
+    "vkmsModeFps": 60.00384,
+    "frameworkRenderRange": "0-60 Hz (config_defaultRefreshRate=60)",
+    "abort": "No matching frame rate modes for primary range even after ignoring the render range",
+    "code": "frameworks/native/services/surfaceflinger/Scheduler/RefreshRateSelector.cpp constructAvailableRefreshRates: filterModes requires supportsFrameRateOverride() or ranges.render.includes(mode.getPeakFps())"
+  },
+  "fix": "remove the property (patches/virt-common-awai-pc.patch)",
+  "builds": {
+    "awai-byname-v6": {
+      "targetFilesSha256": "93cd34bf4c43831941fcbdcfa49c978ed14cd7a0e4d76eda2d6c64efd21a2515",
+      "tfDiskSha256": "1db1408af8835d3bfc0fc43bc3c4b015b843b5b831a8203aba14d25cf99217c0"
+    },
+    "awai-byname-v7": {
+      "targetFilesSha256": "dddca819f3fbcdfc81e0640ed16669a42602c5f3f14979b091834852c59a3117"
+    },
+    "ota-byname-v7-full.zip": {
+      "bytes": 953885101,
+      "sha256": "05fbd2eb26b423b1487c8a95adc62ff210c21a30a13a4a1cf939fcf963250a03"
+    },
+    "ota-byname-v6-to-v7-incremental.zip": {
+      "bytes": 100887,
+      "sha256": "bff149d15781384acf2ca71e796b33701c81505d9dfd2bd122de6b0e8b4d890e"
+    }
+  },
+  "signing": "AOSP test key, userdebug; not a release candidate",
+  "runs": [
+    {
+      "build": "awai-byname-v6",
+      "nic": "e1000e",
+      "gpu": "ramfb only",
+      "entry": "headless swiftshader",
+      "result": "pass",
+      "boot_completed": 1,
+      "drm": [
+        "card0",
+        "card0-Virtual-1",
+        "card0-Writeback-1"
+      ],
+      "eth0Driver": "e1000e",
+      "surfaceflingerExits": 0,
+      "focus": "org.lineageos.setupwizard/.WelcomeActivity",
+      "installExistingUnchanged": true,
+      "existingAfterShutdown": "ALL_UNCHANGED"
+    },
+    {
+      "build": "awai-byname-v6",
+      "nic": "virtio-net",
+      "gpu": "virtio-vga",
+      "entry": "default",
+      "result": "pass",
+      "boot_completed": 1,
+      "surfaceflingerExits": 0,
+      "peakRefreshRateHz": 74.99
+    },
+    {
+      "id": "H1",
+      "name": "incremental v6->v7, headless, e1000e, no virtio GPU",
+      "result": "pass",
+      "error": "kSuccess",
+      "after": {
+        "slot": "_b",
+        "incremental": "awai-byname-v7",
+        "gpu": "vkms",
+        "eth0Driver": "e1000e",
+        "slot_b_is_successful": true
+      },
+      "surfaceflingerExits": 0,
+      "existing": "ALL_UNCHANGED"
+    }
+  ],
+  "notShown": [
+    "default entry without a virtio GPU after the fix",
+    "the Realtek NIC, the AMD GPU and real firmware boot",
+    "full OTA v7 in this configuration (package made, not applied)"
+  ]
+}
