@@ -3,6 +3,7 @@
 #   shared-disk-test.sh make                 64 GiB disk with the three stand-in partitions
 #   shared-disk-test.sh install <disk-vda>   plan + apply with awai-pc-install.py, then enable insecure adb (VM only)
 #   shared-disk-test.sh start|stop|wait|status|check
+#   NIC=e1000e GPU='-vga none -device ramfb' shared-disk-test.sh start   no virtio NIC or GPU: Intel NIC, firmware framebuffer only
 set -uo pipefail
 D=/root/awai-3586; W=$D/shared; mkdir -p $W; T=$W/nvme.img; S=127.0.0.1:5567
 case ${1:-} in
@@ -33,8 +34,8 @@ start)
   qemu-system-x86_64 -name awai3586shared -machine q35,accel=kvm -cpu host -smp 6 -m 8192 \
     -drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd -drive if=pflash,format=raw,file=$W/vars.fd \
     -drive file=$T,if=none,id=d0,format=raw,cache=writeback -device nvme,drive=d0,serial=awai3586s \
-    -netdev user,id=n0,hostfwd=tcp:127.0.0.1:5567-:5555 -device virtio-net-pci,netdev=n0 \
-    -device virtio-vga -display none -vnc 127.0.0.1:7 -serial file:$W/serial.log \
+    -netdev user,id=n0,hostfwd=tcp:127.0.0.1:5567-:5555 -device ${NIC:-virtio-net-pci},netdev=n0 \
+    ${GPU:--device virtio-vga} -display none -vnc 127.0.0.1:7 -serial file:$W/serial.log \
     -qmp unix:$W/qmp.sock,server,nowait -daemonize -pidfile $W/qemu.pid 2>/dev/null && echo started ;;
 stop) [ -f $W/qemu.pid ] && kill $(cat $W/qemu.pid) 2>/dev/null; sleep 3; echo stopped ;;
 wait) sleep 15; n=0; until (adb connect $S >/dev/null 2>&1; timeout 8 adb -s $S shell getprop sys.boot_completed 2>&1 | grep -q "^1") || [ $n -ge ${2:-30} ]; do n=$((n+1)); sleep 8; adb disconnect $S >/dev/null 2>&1; done; echo "polls=$n" ;;

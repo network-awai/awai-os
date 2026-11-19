@@ -12,5 +12,5 @@ one() { # <project path> <patch> <marker text that the patch adds>
   git -C "$dir" apply "$patch"
   echo "$1: applied"
 }
-one device/virt/virtio-common virtio-common-byname.patch 'AWAI-3586: label partitions by GPT name'
+one device/virt/virtio-common virtio-common-awai-pc.patch 'AWAI-3586: label partitions by GPT name'
 one device/virt/virt-common virt-common-grub-partguid.patch 'awai_find_part'
