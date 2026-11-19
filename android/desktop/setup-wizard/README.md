@@ -11,7 +11,7 @@ The patch is based on SetupWizard revision
 cd /path/to/android
 source build/envsetup.sh
 # Select the same Generic_x86_64 lunch target as the AWAI-3061 build.
-m SetupWizard
+m LineageSetupWizard
 ```
 
 Build and sign the resulting Awai product image using the platform release pipeline. Keep the package name, permissions, provisioning state and original wizard script so Start follows the existing language and network flow. The optional language shortcut opens the same native locale picker and returns to Welcome. Accessibility, emergency calling where supported, and device information retain their existing activities. Narrow screens, TV and managed-profile flows retain their existing entry points.
