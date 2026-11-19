@@ -28,7 +28,9 @@ def manifest(pkg, activity, version, kind, online=False, debuggable=True):
     if kind == 'torihiki':
         perms = '<uses-permission android:name="android.permission.INTERNET"/>'
     theme='AwaiHomeTheme' if kind=='home' else 'AwaiTheme'
-    appicon='@drawable/awai_mark' if kind=='home' else '@android:drawable/ic_menu_today'
+    appicon = {'home': '@drawable/awai_mark', 'yotei': '@drawable/yotei_crest'}.get(
+        kind, '@android:drawable/ic_menu_today')
+    round_icon = ' android:roundIcon="@drawable/yotei_crest_round"' if kind == 'yotei' else ''
     title={'home':'Awai Home','store':'itonami Store','yotei':'Yotei','torihiki':'Torihiki'}[kind]
     return f'''<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="{pkg}" android:versionCode="{version}" android:versionName="0.1.{version-1}">
       <uses-sdk android:minSdkVersion="35" android:targetSdkVersion="37"/>{perms}
@@ -36,7 +38,7 @@ def manifest(pkg, activity, version, kind, online=False, debuggable=True):
       <intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.APP_BROWSER"/></intent>
       <intent><action android:name="android.intent.action.DIAL"/></intent><intent><action android:name="android.media.action.STILL_IMAGE_CAMERA"/></intent>
       <package android:name="network.awai.drive"/><package android:name="network.awai.yataverse"/><package android:name="network.itonami.yotei"/><package android:name="network.itonami.torihiki"/><package android:name="network.awai.store"/><provider android:authorities="network.itonami.yotei.agenda"/></queries>
-      <application android:theme="@style/{theme}" android:label="{title}" android:icon="{appicon}" android:allowBackup="false" android:usesCleartextTraffic="false" android:debuggable="{str(debuggable).lower()}" android:enableOnBackInvokedCallback="true">
+      <application android:theme="@style/{theme}" android:label="{title}" android:icon="{appicon}"{round_icon} android:allowBackup="false" android:usesCleartextTraffic="false" android:debuggable="{str(debuggable).lower()}" android:enableOnBackInvokedCallback="true">
       <activity android:name="{activity}" android:exported="true" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize">
       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>{home}</activity>{extra}</application></manifest>'''
 
@@ -100,6 +102,8 @@ def main():
         (folder/'styles.xml').write_text(f'<resources><style name="AwaiTheme" parent="{parent}"><item name="android:fontFamily">sans</item><item name="android:windowActionModeOverlay">true</item><item name="android:colorAccent">{common["palette"][mode]["primary"]}</item></style><color name="awai_background">{common["palette"][mode]["background"]}</color></resources>')
     drawable=resources/'drawable-nodpi';drawable.mkdir(parents=True,exist_ok=True)
     shutil.copyfile(ROOT/'otehon/branding/awai-desktop-logo.png',drawable/'awai_mark.png')
+    for icon in ('yotei_crest.png', 'yotei_crest_round.png'):
+        shutil.copyfile(ROOT/'android/yotei/res/drawable-nodpi'/icon, drawable/icon)
     for folder in [resources/'values',resources/'values-night']:
         path=folder/'styles.xml'
         path.write_text(path.read_text().replace('</resources>','<style name="AwaiHomeTheme" parent="AwaiTheme"><item name="android:windowSplashScreenBackground">@color/awai_background</item><item name="android:windowSplashScreenAnimatedIcon">@drawable/awai_mark</item><item name="android:windowSplashScreenBehavior">icon_preferred</item></style></resources>'))
