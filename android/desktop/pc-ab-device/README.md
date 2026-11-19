@@ -7,8 +7,9 @@ Virtual A/B), whose OTA behaviour is recorded in [../ota-reference-check](../ota
 That device owns a whole virtio disk and addresses partitions by device name and number. This directory
 holds the changes that remove those assumptions, and the installer for a shared disk.
 
-**State: KVM only.** Nothing here ran on the 7735HS. The kernel still lacks the Desktop's NIC and GPU
-drivers (`CONFIG_R8169`, `CONFIG_DRM_AMDGPU` are off).
+**State: KVM only.** Nothing here ran on the 7735HS. The kernel now has the Desktop's NIC driver and
+builds the AMD GPU driver as a module, but the display path for a machine without a virtio GPU does not
+work yet (see "Real-hardware drivers").
 
 ## Patches
 
@@ -16,7 +17,7 @@ Apply to a synced source tree with `apply.sh <source tree root>`.
 
 | Patch | Project (revision) | What it changes |
 | --- | --- | --- |
-| `patches/virtio-common-byname.patch` | `device/virt/virtio-common` (`e6f2a7d2`) | SELinux labels for `/dev/block/by-name/{super,misc,userdata,persist,metadata,boot_[ab],vendor_boot_[ab]}`; userdata is mounted from the partition named `userdata` instead of `/dev/block/vdb`. |
+| `patches/virtio-common-awai-pc.patch` | `device/virt/virtio-common` (`e6f2a7d2`) | SELinux labels for `/dev/block/by-name/{super,misc,userdata,persist,metadata,boot_[ab],vendor_boot_[ab]}`; userdata is mounted from the partition named `userdata` instead of `/dev/block/vdb`. Kernel config fragment `awai-pc.config` for real PC hardware, and the Intel NIC modules in the boot-time load list. |
 | `patches/virt-common-grub-partguid.patch` | `device/virt/virt-common` (`0e62edf1`) | GRUB takes the boot disk from where the `PERSIST` filesystem is, and finds `misc`, `vendor_boot_a/b` and `boot_a/b` by fixed GPT partition GUIDs. `EFI` and `BIOS` leave `AB_OTA_PARTITIONS`, and Android no longer mounts the ESP. |
 
 Why the ESP leaves the A/B set: with `androidboot.boot_devices=any` every GPT partition on every disk
@@ -82,6 +83,36 @@ writes `IMAGES/boot.img`, `IMAGES/vendor_boot.img` and a `super` built by `build
 the disk image. Install from that. A release works the same way: sign target-files, then make both the
 install image and the OTA packages from it.
 
+## Real-hardware drivers (2026-11-19)
+
+`awai-pc.config` adds to the reference kernel (`gki_defconfig` plus the virt fragments):
+
+| Option | State | For |
+| --- | --- | --- |
+| `CONFIG_R8169`, `CONFIG_REALTEK_PHY` | built in | the Desktop's Realtek NIC |
+| `CONFIG_E1000E`, `CONFIG_IGC` | modules, loaded at boot | Intel NICs; they depend on PTP, which is a module |
+| `CONFIG_DRM_AMDGPU`, `CONFIG_DRM_AMD_DC` | module, **not loaded automatically** | Radeon 680M |
+| `CONFIG_FB_EFI` | built in | console text on the firmware framebuffer |
+| `CONFIG_PINCTRL_AMD`, `CONFIG_I2C_PIIX4`, `CONFIG_SENSORS_K10TEMP`, `CONFIG_SND_HDA_CODEC_HDMI` | built in / module | AMD platform |
+
+Results in [evidence/hardware-drivers-kvm-20261119.json](evidence/hardware-drivers-kvm-20261119.json):
+
+- Build `awai-byname-v5` installed on the shared disk (existing partitions unchanged) and booted with an
+  **Intel `e1000e` NIC instead of virtio**: `sys.boot_completed=1`, `eth0` on driver `e1000e`, adb over it.
+  The Realtek driver itself cannot be exercised in KVM.
+- **Without a virtio GPU the system does not finish booting.** SurfaceFlinger aborts in a loop with
+  `No matching frame rate modes for primary range`, and adb stays offline.
+- The upstream **headless entry** (`androidboot.gpu=vkms androidboot.graphics=swiftshader`) fails the same
+  way, also with the virtio GPU attached and also on `awai-byname-v2`, which has no hardware changes. So it
+  is not caused by this patch.
+- An earlier build with `CONFIG_DRM_SIMPLEDRM` failed the same way. That option was dropped, but the runs do
+  not show that simpledrm was the cause.
+
+What this means for the Desktop: storage, partitions, GRUB, NIC and OTA are covered, but the image would
+crash-loop in SurfaceFlinger there until a display path works: either the AMD driver with its firmware
+(`amdgpu/yellow_carp_*.bin`, 12 files, 1.7 MB in linux-firmware 20261019) and the Mesa `radeonsi` stack,
+or a fixed headless mode. Neither can be validated in KVM.
+
 ## Known gaps
 
 - `init.virtio.rc` still creates `by-name` links to `vda1`, `vda7` and so on. On NVMe they point nowhere
@@ -89,5 +120,5 @@ install image and the OTA packages from it.
 - Existing partitions appear under `/dev/block/by-name/` with their own names. Android did not mount them.
 - OVMF skipped the first ESP, which had no loader, and started GRUB from `awai_esp`. Real firmware may
   need a boot entry, or the PXE route may have to chain-load it.
-- No real-hardware drivers or firmware, no release keys, and `ro.ota.allow_downgrade` is still set by
-  LineageOS on this userdebug build.
+- No working display path without a virtio GPU, no firmware files in the image, no release keys, and
+  `ro.ota.allow_downgrade` is still set by LineageOS on this userdebug build.
