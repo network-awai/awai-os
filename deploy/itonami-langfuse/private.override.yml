@@ -1,0 +1,24 @@
+# Layer over upstream v4.82.0 docker-compose.yml using Compose 2.40.3 or newer.
+services:
+  langfuse-web:
+    ports: !override
+      - 127.0.0.1:32111:3000
+    environment:
+      LANGFUSE_DISABLE_SIGNUP: 'true'
+      LANGFUSE_DISABLE_SIGNUP_ONBOARDING: 'true'
+      LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: 'false'
+      LANGFUSE_AI_GATEWAY_ENABLED: 'false'
+      LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://minio:9000
+  langfuse-worker:
+    ports: !reset []
+  langfuse-ai-gateway:
+    profiles: [disabled-gateway]
+    ports: !reset []
+  postgres:
+    ports: !reset []
+  clickhouse:
+    ports: !reset []
+  redis:
+    ports: !reset []
+  minio:
+    ports: !reset []
