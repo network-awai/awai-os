@@ -18,7 +18,6 @@ const generated=resolve(app,'generated');await mkdir(generated,{recursive:true})
 const pin=profiles.canonicalRuntime;
 const response=await fetch(`https://raw.githubusercontent.com/kotoba-lang/kotoba/${pin.revision}/lib/kotoba.wasmWebcomponent/src/kotoba-client-runtime.js`,{redirect:'error',signal:AbortSignal.timeout(30000)});
 if(!response.ok)throw Error('Canonical runtime missing');const runtime=Buffer.from(await response.arrayBuffer());if(sha(runtime)!==pin.sha256)throw Error('Canonical runtime digest mismatch');
-const logo=execFileSync('git',['show','c7f1008cf06f4eacb7817d3602f7a9c0373146c5:nixos/otehon/branding/awai-logo.png'],{cwd:repo,maxBuffer:16000000});await writeFile(resolve(generated,'awai-icon.png'),logo);
 const members=[];
 const commands=['awai_host_info','peer_notification_permission','peer_host_info','peer_info','peer_begin','peer_reserve','peer_execute','peer_snapshot_execute','peer_cancel','peer_sessions','peer_stop','peer_import_begin','peer_import_chunk','peer_import_finish','peer_import_cancel','read_drafts','write_drafts'];
 for(const profile of profiles.apps){
@@ -60,6 +59,7 @@ await writeFile(resolve(generated,'Cargo.toml'),`[workspace]\nresolver="2"\nmemb
 await copyFile(resolve(app,'profiles/Cargo.lock'),resolve(generated,'Cargo.lock'));
 
 const sourceFiles=['profiles/apps.json','profiles/web-sources.json','profiles/Cargo.lock','scripts/prepare.mjs','scripts/android.mjs','web/peer-ui.js','web/peer-ui.css'];
+for (const profile of profiles.apps) sourceFiles.push(`profiles/crests/${profile.key}.svg`);
 const sourceHashes={};for(const file of sourceFiles)sourceHashes[file]=sha(await readFile(resolve(app,file)));
 sourceHashes['../../packages/awai-shell/host.js']=sha(await readFile(resolve(repo,'packages/awai-shell/host.js')));
 await writeFile(resolve(generated,'prepared.json'),JSON.stringify({schema:'awai.dapp.prepared.v1',platform,sourceHashes},null,2)+'\n');
