@@ -1,0 +1,17 @@
+t2-full-apply|228|onPayloadApplicationComplete(ErrorCode::kSuccess (0))|INFO:root:Update took 96.415 seconds
+t3-wrongkey|120|onPayloadApplicationComplete(ErrorCode::kDownloadPayloadPubKeyVerificationError (18))|INFO:root:Update took 77.963 seconds
+t4-downgrade|228|onPayloadApplicationComplete(ErrorCode::kSuccess (0))|INFO:root:Update took 90.860 seconds
+t5-downgrade-refused|20|onPayloadApplicationComplete(ErrorCode::kPayloadTimestampError (51))|INFO:root:Update took 2.666 seconds
+t6b-incremental|25|onPayloadApplicationComplete(ErrorCode::kDownloadStateInitializationError (20))|INFO:root:Update took 4.010 seconds
+t7b-1|59||INFO:root:Update took 39.075 seconds
+t7b-2|83|onPayloadApplicationComplete(ErrorCode::kNewRootfsVerificationError (15))|INFO:root:Update took 63.698 seconds
+t7b-3|227|onPayloadApplicationComplete(ErrorCode::kSuccess (0))|INFO:root:Update took 107.503 seconds
+t8b-apply|227|onPayloadApplicationComplete(ErrorCode::kSuccess (0))|INFO:root:Update took 109.924 seconds
+11-19 09:56:22.024   662   662 E update_engine: [ERROR:partition_writer.cc(334)] The hash of the source data on disk for this operation doesn't match the expected value. This could mean that the delta update payload was targeted for another version, or that the source partition was modified after it was installed, for example, b
+11-19 09:56:22.026   662   662 E update_engine: [ERROR:partition_writer.cc(339)] Expected:   sha256|hex = 22083261CFF2623E4A25BC5328DB6E0562F553F6E8444B39E28E3CD21C3871FB
+11-19 09:56:22.028   662   662 E update_engine: [ERROR:partition_writer.cc(342)] Calculated: sha256|hex = FDB0E8D3B792AC40B6FCD4222B664362778A2563D30B0F4D5972354F9FE1B2DD
+11-19 09:56:22.029   662   662 E update_engine: [ERROR:partition_writer.cc(353)] Operation source (offset:size) in blocks: 0:14848
+11-19 09:56:22.035   662   662 E update_engine: [ERROR:delta_performer.cc(241)] Failed to perform BROTLI_BSDIFF operation 2, which is the operation 0 in partition "EFI"
+QEMU emulator version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)
+6.8.0-149-generic
+model name	: Intel(R) Xeon(R) E-2286G CPU @ 4.00GHz

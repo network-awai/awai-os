@@ -1,0 +1,1 @@
+_b abootctrl_global_active_slot=b Update state: initiated 

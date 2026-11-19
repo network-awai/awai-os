@@ -1,0 +1,5 @@
+11-19 09:47:37.317   670   670 I update_engine: [INFO:cleanup_previous_update_action.cc(283)] Waiting for any previous merge request to complete. This can take up to several minutes.
+11-19 09:47:37.319   670   670 W update_engine: [WARN:snapshot.cpp(2293)] Detected rollback, cancelling unverified update.
+11-19 09:47:38.345   670   670 I update_engine: [INFO:snapshot.cpp(1674)] CheckMergeState for snapshots returned: Cancelled
+11-19 09:47:38.357   670   670 I update_engine: [INFO:snapshot.cpp(1639)] ProcessUpdateState handling state: Cancelled
+11-19 09:47:38.360   670   670 I update_engine: [INFO:cleanup_previous_update_action.cc(481)] Not reporting merge stats because state is Unverified
