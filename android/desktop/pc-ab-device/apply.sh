@@ -13,4 +13,4 @@ one() { # <project path> <patch> <marker text that the patch adds>
   echo "$1: applied"
 }
 one device/virt/virtio-common virtio-common-awai-pc.patch 'AWAI-3586: label partitions by GPT name'
-one device/virt/virt-common virt-common-grub-partguid.patch 'awai_find_part'
+one device/virt/virt-common virt-common-awai-pc.patch 'awai_find_part'

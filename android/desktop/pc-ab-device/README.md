@@ -7,9 +7,9 @@ Virtual A/B), whose OTA behaviour is recorded in [../ota-reference-check](../ota
 That device owns a whole virtio disk and addresses partitions by device name and number. This directory
 holds the changes that remove those assumptions, and the installer for a shared disk.
 
-**State: KVM only.** Nothing here ran on the 7735HS. The kernel now has the Desktop's NIC driver and
-builds the AMD GPU driver as a module, but the display path for a machine without a virtio GPU does not
-work yet (see "Real-hardware drivers").
+**State: KVM only.** Nothing here ran on the 7735HS. The kernel has the Desktop's NIC driver and builds
+the AMD GPU driver as a module. Without a virtio GPU the image boots in the headless mode, with no picture
+(see "Headless mode").
 
 ## Patches
 
@@ -18,7 +18,7 @@ Apply to a synced source tree with `apply.sh <source tree root>`.
 | Patch | Project (revision) | What it changes |
 | --- | --- | --- |
 | `patches/virtio-common-awai-pc.patch` | `device/virt/virtio-common` (`e6f2a7d2`) | SELinux labels for `/dev/block/by-name/{super,misc,userdata,persist,metadata,boot_[ab],vendor_boot_[ab]}`; userdata is mounted from the partition named `userdata` instead of `/dev/block/vdb`. Kernel config fragment `awai-pc.config` for real PC hardware, and the Intel NIC modules in the boot-time load list. |
-| `patches/virt-common-grub-partguid.patch` | `device/virt/virt-common` (`0e62edf1`) | GRUB takes the boot disk from where the `PERSIST` filesystem is, and finds `misc`, `vendor_boot_a/b` and `boot_a/b` by fixed GPT partition GUIDs. `EFI` and `BIOS` leave `AB_OTA_PARTITIONS`, and Android no longer mounts the ESP. |
+| `patches/virt-common-awai-pc.patch` | `device/virt/virt-common` (`0e62edf1`) | GRUB takes the boot disk from where the `PERSIST` filesystem is, and finds `misc`, `vendor_boot_a/b` and `boot_a/b` by fixed GPT partition GUIDs. `EFI` and `BIOS` leave `AB_OTA_PARTITIONS`, and Android no longer mounts the ESP. `ro.surface_flinger.enable_frame_rate_override=false` is removed (headless mode). |
 
 Why the ESP leaves the A/B set: with `androidboot.boot_devices=any` every GPT partition on every disk
 appears under `/dev/block/by-name/`. If an existing ESP is named `EFI`, an update could write to it.
@@ -108,10 +108,35 @@ Results in [evidence/hardware-drivers-kvm-20261119.json](evidence/hardware-drive
 - An earlier build with `CONFIG_DRM_SIMPLEDRM` failed the same way. That option was dropped, but the runs do
   not show that simpledrm was the cause.
 
-What this means for the Desktop: storage, partitions, GRUB, NIC and OTA are covered, but the image would
-crash-loop in SurfaceFlinger there until a display path works: either the AMD driver with its firmware
-(`amdgpu/yellow_carp_*.bin`, 12 files, 1.7 MB in linux-firmware 20261019) and the Mesa `radeonsi` stack,
-or a fixed headless mode. Neither can be validated in KVM.
+The headless failure is fixed below. The run without a virtio GPU in the default entry was not repeated
+after the fix.
+
+## Headless mode (2026-11-19)
+
+Cause of the crash loop: `device/virt/virt-common/configs/properties/vendor.prop` sets
+`ro.surface_flinger.enable_frame_rate_override=false`. With it off, SurfaceFlinger only accepts a display
+mode whose refresh rate is inside the render range the framework asks for, 0 to 60 Hz by default
+(`config_defaultRefreshRate`). The vkms display of the headless entry reports 60.00384 Hz, so no mode is
+left and `RefreshRateSelector::constructAvailableRefreshRates` aborts; the fallback that ignores the
+render range applies the same test. Removing the property (the platform default is on) fixes it. A real
+monitor mode slightly above 60 Hz would hit the same abort.
+
+While SurfaceFlinger crash-loops there is no adb, because the network comes up with the framework.
+`serial_console_function=console` in `grubenv` gives a shell on the serial port; `kvm/con.py` sends one
+command to it.
+
+Build `awai-byname-v6`, shared disk, Intel `e1000e` NIC, no virtio GPU (`-vga none -device ramfb`),
+headless entry ([evidence/headless-kvm-20261119.json](evidence/headless-kvm-20261119.json)):
+
+- `sys.boot_completed=1`, the only DRM card is vkms, SurfaceFlinger did not exit once, adb over `eth0`.
+- Incremental OTA v6 to v7 in that configuration: `kSuccess`; after reboot slot `_b`, `awai-byname-v7`,
+  still headless on `e1000e`; the three stand-in partitions unchanged.
+- Default entry with the virtio GPU: still boots, SurfaceFlinger did not exit.
+
+What this means for the Desktop: with a wired NIC and adb, an OTA can be checked there without a picture.
+A picture needs the AMD driver with its firmware (`amdgpu/yellow_carp_*.bin`, 12 files, 1.7 MB in
+linux-firmware 20261019) and the Mesa `radeonsi` stack, which KVM cannot validate. The Realtek NIC and
+the firmware's boot path are also only testable on the machine.
 
 ## Known gaps
 
@@ -120,5 +145,5 @@ or a fixed headless mode. Neither can be validated in KVM.
 - Existing partitions appear under `/dev/block/by-name/` with their own names. Android did not mount them.
 - OVMF skipped the first ESP, which had no loader, and started GRUB from `awai_esp`. Real firmware may
   need a boot entry, or the PXE route may have to chain-load it.
-- No working display path without a virtio GPU, no firmware files in the image, no release keys, and
+- No picture without a virtio GPU (headless only), no firmware files in the image, no release keys, and
   `ro.ota.allow_downgrade` is still set by LineageOS on this userdebug build.
