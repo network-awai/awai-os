@@ -51,7 +51,31 @@
       "m49": "004",
       "name": "Afghanistan",
       "region": "Asia",
-      "iso2": "AF"
+      "iso2": "AF",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "アフガニスタン内務省 — Community Policing and 119",
+          "url": "https://moi.gov.af/en/node/12489",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "内務省は警察の119を犯罪情報の連絡経路として案内している。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "緊急の警察連絡先は119。平時の詐欺被害の正式な申告方法は要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "AGO": {
       "m49": "024",
@@ -169,7 +193,31 @@
       "m49": "248",
       "name": "Åland Islands",
       "region": "Europe",
-      "iso2": "AX"
+      "iso2": "AX",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "Åland Living — Åland Police Authority",
+          "url": "https://www.alandliving.ax/en/welcome-guide/newcomers-guide/health-services-and-medical-care",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "オーランド諸島全域は自治政府の警察機関が管轄する。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "政府案内でマリエハムンの警察署と連絡先を確認できる。詐欺の正式な届出手順は要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "ALB": {
       "m49": "008",
@@ -517,7 +565,31 @@
       "m49": "260",
       "name": "French Southern Territories",
       "region": "Africa",
-      "iso2": "TF"
+      "iso2": "TF",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "フランス領南方・南極地域政府 — Guide de mission",
+          "url": "https://taaf.fr/content/uploads/2022/07/Guide-hivernant-2022.pdf",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "地域政府の任務ガイドでは、一部の地区で地区長が指定司法警察官を務める。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "滞在地区の地区長や憲兵隊が連絡先として案内されている。一般向けの詐欺申告手順は要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "ATG": {
       "m49": "028",
@@ -749,7 +821,31 @@
       "m49": "108",
       "name": "Burundi",
       "region": "Africa",
-      "iso2": "BI"
+      "iso2": "BI",
+      "status": "official-route",
+      "sources": {
+        "main": {
+          "title": "ブルンジ国民議会 — Code de procédure pénale",
+          "url": "https://assemblee.bi/wp-content/uploads/2024/01/9-du-11-mai-2018.pdf",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "刑事手続法上、司法警察官が犯罪の申告を受け付ける。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "司法警察官に申告する法定の経路がある。詐欺に特化したオンライン窓口は要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "BEL": {
       "m49": "056",
@@ -1271,7 +1367,31 @@
       "m49": "112",
       "name": "Belarus",
       "region": "Europe",
-      "iso2": "BY"
+      "iso2": "BY",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "ベラルーシ税務省 — サイバー犯罪対策",
+          "url": "https://nalog.gov.by/protivodeystvie-kiberprestupleniyam.php",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "政府は電話等の詐欺について警察を案内している。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "不審な電話については政府案内に掲載された警察の窓口に連絡する。正式登録時の資料や手続は要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "BLZ": {
       "m49": "084",
@@ -1681,7 +1801,31 @@
       "m49": "074",
       "name": "Bouvet Island",
       "region": "Americas",
-      "iso2": "BV"
+      "iso2": "BV",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "Lovdata — Bilandsloven",
+          "url": "https://lovdata.no/lov/1930-02-27-3",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ノルウェーの属領法はブーベ島に同国の刑法・司法に関する法令を適用する。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "島を対象とする一般向け犯罪申告窓口は確認できていない。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "BWA": {
       "m49": "072",
@@ -1740,7 +1884,31 @@
       "m49": "140",
       "name": "Central African Republic",
       "region": "Africa",
-      "iso2": "CF"
+      "iso2": "CF",
+      "status": "official-route",
+      "sources": {
+        "main": {
+          "title": "中央アフリカ共和国司法省 — Information sur la chaîne pénale",
+          "url": "https://justice.gouv.cf/services/13/information-sur-la-chaine-penale",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "警察、憲兵隊、検察が刑事申告を受け付ける。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "被害申告は警察・憲兵隊・検察の窓口で行う。刑事申告の提出は無料と案内されている。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "CAN": {
       "m49": "124",
@@ -2035,19 +2203,91 @@
       "m49": "120",
       "name": "Cameroon",
       "region": "Africa",
-      "iso2": "CM"
+      "iso2": "CM",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "カメルーンANTIC — Nos missions",
+          "url": "https://antic.cm/index.php/fr/component/k2/itemlist/category/107-nos-missions.html",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ANTICのCIRTが技術的なサイバー事案を扱う。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "公式ページに技術事案の連絡先がある。被害者の警察での正式な刑事申告手順は要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "COD": {
       "m49": "180",
       "name": "Democratic Republic of the Congo",
       "region": "Africa",
-      "iso2": "CD"
+      "iso2": "CD",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "コンゴ民主共和国内務省 — Sécurité & Territoire",
+          "url": "https://interieur.gouv.cd/securite-territoire",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "内務省はコンゴ民主共和国の治安を国家警察などと所管する。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "専門部署を含めた詐欺の一般向け届出案内は要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "COG": {
       "m49": "178",
       "name": "Congo",
       "region": "Africa",
-      "iso2": "CG"
+      "iso2": "CG",
+      "status": "official-route",
+      "sources": {
+        "main": {
+          "title": "コンゴ共和国政府 — Code de procédure pénale",
+          "url": "https://www.sgg.cg/codes/congo-code-1963-procedure-penale.pdf",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "司法警察官と共和国検察が刑事申告を受け付ける。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "刑事手続法で案内される管轄の司法警察または検察に申告する。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "COK": {
       "m49": "184",
@@ -2159,7 +2399,48 @@
       "m49": "174",
       "name": "Comoros",
       "region": "Africa",
-      "iso2": "KM"
+      "iso2": "KM",
+      "status": "official-route",
+      "sources": {
+        "main": {
+          "title": "コモロ司法省 — Porter plainte",
+          "url": "https://justice.gouv.km/foire-aux-questions/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "コモロの警察・憲兵隊が被害申告を受け付ける。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "モロニ、ムツァムドゥ、フォンボニなどの公式案内から窓口を確認する。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "聴取後に受領書が発行され、申請すれば申告の写しを受け取れる。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "管轄外を理由に案内された場合は、地理的な管轄外でも司法警察に受付義務があるという司法省の案内を参照する。",
+          "refs": [
+            "main"
+          ],
+          "kind": "channel-unavailable"
+        }
+      ]
     },
     "CPV": {
       "m49": "132",
@@ -2906,19 +3187,91 @@
       "m49": "818",
       "name": "Egypt",
       "region": "Africa",
-      "iso2": "EG"
+      "iso2": "EG",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "エジプト内務省 — مكافحة جرائم المعلومات",
+          "url": "https://www.moi.gov.eg/home/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "内務省は情報犯罪対策の専用窓口を掲載している。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "情報犯罪の電話窓口は108と案内されている。正式な詐欺申告の手続は担当窓口に確認する。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "ERI": {
       "m49": "232",
       "name": "Eritrea",
       "region": "Africa",
-      "iso2": "ER"
+      "iso2": "ER",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "エリトリア情報省 — Police personnel receive training in forensic chemistry",
+          "url": "https://shabait.com/2026/10/23/police-personnel-receive-training-in-forensic-chemistry/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "情報省はエリトリア警察の捜査部門の活動を公表している。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "一般の詐欺被害申告の窓口は要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "ESH": {
       "m49": "732",
       "name": "Western Sahara",
       "region": "Africa",
-      "iso2": "EH"
+      "iso2": "EH",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "国連平和維持活動 — MINURSO",
+          "url": "https://peacekeeping.un.org/en/factsheet/minurso",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "西サハラで国連が行う活動は住民投票・停戦等に関する任務。刑事事件の所管は発生場所に応じて確認が必要。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "全域共通の一般向け犯罪届出窓口は確認できていない。MINURSOの公開任務に刑事被害の受付は掲げられていない。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "ESP": {
       "m49": "724",
@@ -3344,13 +3697,61 @@
       "m49": "583",
       "name": "Micronesia (Federated States of)",
       "region": "Oceania",
-      "iso2": "FM"
+      "iso2": "FM",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "ミクロネシア連邦 — Government Directory",
+          "url": "https://gov.fm/directory/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "連邦政府は司法長官と連邦警察の連絡先を掲載している。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "一般案内の連邦警察の連絡先を確認できる。州と連邦の所管および正式受付手順は事件ごとに要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "GAB": {
       "m49": "266",
       "name": "Gabon",
       "region": "Africa",
-      "iso2": "GA"
+      "iso2": "GA",
+      "status": "official-route",
+      "sources": {
+        "main": {
+          "title": "ガボン官報 — Code de procédure pénale",
+          "url": "https://journal-officiel.ga/5211-043-2018-/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "司法警察官と共和国検察官が申告を受領する。司法警察官には地域管轄がある。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "刑事手続法第26・27・38条を参照し、管轄の司法警察または共和国検察に届け出る。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "GBR": {
       "m49": "826",
@@ -3758,13 +4159,70 @@
       "m49": "624",
       "name": "Guinea-Bissau",
       "region": "Africa",
-      "iso2": "GW"
+      "iso2": "GW",
+      "status": "official-route",
+      "sources": {
+        "main": {
+          "title": "ギニアビサウ司法警察 — 電子申告と照会",
+          "url": "https://pj.gw/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "司法警察が対象の犯罪について申告を受け付ける。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "司法警察の公式サイトに電子申告の入口がある。利用前に対象犯罪を確認する。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "司法警察サイトの照会入口で該当する届出の状況を確認できる。",
+          "refs": [
+            "main"
+          ],
+          "kind": "status-check"
+        }
+      ]
     },
     "GNQ": {
       "m49": "226",
       "name": "Equatorial Guinea",
       "region": "Africa",
-      "iso2": "GQ"
+      "iso2": "GQ",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "赤道ギニア政府 — 汚職通報ポータル",
+          "url": "https://anticorrupcion.gob.gq/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "政府の専用窓口は行政の汚職・不正を扱う。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "サイトは所管の汚職に関する通報向け。一般の詐欺の警察申告手順は要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "GRC": {
       "m49": "300",
@@ -4228,7 +4686,31 @@
       "m49": "334",
       "name": "Heard Island and McDonald Islands",
       "region": "Oceania",
-      "iso2": "HM"
+      "iso2": "HM",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "豪州連邦法令集 — Heard Island and McDonald Islands Act 1953",
+          "url": "https://www.legislation.gov.au/C1953A00007/latest",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ハード島・マクドナルド諸島の適用法と司法管轄は豪州の領域法が定める。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "島を対象にした一般向けの犯罪申告窓口は確認できていない。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "HND": {
       "m49": "340",
@@ -4363,7 +4845,31 @@
       "m49": "332",
       "name": "Haiti",
       "region": "Americas",
-      "iso2": "HT"
+      "iso2": "HT",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "ハイチ政府 — ポルトープランスの偽造事件の捜査発表",
+          "url": "https://communication.gouv.ht/in/le-ministere-de-linterieur-contribue-au-demantelement-de-plusieurs-reseaux-de-faussaires-a-port-au-prince/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "政府の公式発表に、偽造事件を扱う捜査当局の活動が掲載されている。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "被害者が一般の詐欺を正式に届け出る手順は要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "HUN": {
       "m49": "348",
@@ -4580,7 +5086,31 @@
       "m49": "086",
       "name": "British Indian Ocean Territory",
       "region": "Africa",
-      "iso2": "IO"
+      "iso2": "IO",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "インド洋地域の行政当局 — Governance",
+          "url": "https://www.biot.gov.io/governance/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "行政当局の案内では、ディエゴガルシアの地域警察が秩序維持と刑事事件の捜査を担当する。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "地域警察の存在を確認した。正式な詐欺申告手順と事案時点の適用管轄は要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "IRL": {
       "m49": "372",
@@ -5438,7 +5968,31 @@
       "m49": "418",
       "name": "Lao People's Democratic Republic",
       "region": "Asia",
-      "iso2": "LA"
+      "iso2": "LA",
+      "status": "official-route",
+      "sources": {
+        "main": {
+          "title": "ラオス国営通信 — Hotline 1533 Launched to Combat Online Fraud",
+          "url": "https://kpl.gov.la/detail.aspx?id=96241",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "当局はオンライン詐欺や不正取引の報告を専用窓口で扱う。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "公式発表で開設が確認できる専用電話1533を利用する。正式な事件登録は担当機関に確認する。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "LBN": {
       "m49": "422",
@@ -5490,7 +6044,40 @@
       "m49": "430",
       "name": "Liberia",
       "region": "Africa",
-      "iso2": "LR"
+      "iso2": "LR",
+      "status": "official-route",
+      "sources": {
+        "main": {
+          "title": "リベリア国家警察 — Report Crime",
+          "url": "https://lnp.gov.lr/reporting",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "リベリア国家警察が犯罪申告を扱う。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "国家警察の犯罪申告案内から連絡先を確認する。掲載されている個別フォームは対象犯罪を確認する。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "申告時に、被害の経緯や把握している事実を詳しく正確に伝える。",
+          "refs": [
+            "main"
+          ],
+          "kind": "recommended"
+        }
+      ]
     },
     "LBY": {
       "m49": "434",
@@ -6201,7 +6788,31 @@
       "m49": "584",
       "name": "Marshall Islands",
       "region": "Oceania",
-      "iso2": "MH"
+      "iso2": "MH",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "マーシャル諸島議会 — Public Safety Act",
+          "url": "https://rmiparliament.org/cms/images/LEGISLATION/PRINCIPAL/1988/1988-0017/1988-0017_1.pdf",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "公安法で警察の任務が定められている。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "一般の詐欺被害者向けの正式な申告方法は要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "MKD": {
       "m49": "807",
@@ -8727,7 +9338,31 @@
       "m49": "729",
       "name": "Sudan",
       "region": "Africa",
-      "iso2": "SD"
+      "iso2": "SD",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "スーダン警察 — 電子申告ポータル",
+          "url": "https://www.sudanpolice.net/index.php",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "スーダン警察は武力紛争下の特定事案を対象とした電子申告を案内している。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "当該フォームは案内された対象事案に限る。一般のオンライン詐欺の正式な受付は要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "SEN": {
       "m49": "686",
@@ -9334,13 +9969,61 @@
       "m49": "728",
       "name": "South Sudan",
       "region": "Africa",
-      "iso2": "SS"
+      "iso2": "SS",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "南スーダン統計局 — Crime Statistics",
+          "url": "https://nbs.gov.ss/statistics/Crime_Statistics.php",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "政府統計の資料に南スーダンの警察報告・捜査データが記載されている。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "一般向けの詐欺・サイバー犯罪の正式な報告先は要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "STP": {
       "m49": "678",
       "name": "Sao Tome and Principe",
       "region": "Africa",
-      "iso2": "ST"
+      "iso2": "ST",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "サントメ・プリンシペ検察 — DIAP",
+          "url": "https://ministeriopublico.st/index.php?pag=diap",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "サントメの刑事捜査・訴追は管轄の検察のDIAPが指揮する。専門部門の対象に一定の詐欺が含まれる。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "被害申告の具体的な受付方法は要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "SUR": {
       "m49": "740",
@@ -9748,7 +10431,31 @@
       "m49": "148",
       "name": "Chad",
       "region": "Africa",
-      "iso2": "TD"
+      "iso2": "TD",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "チャド政府 — Numéros d’urgence",
+          "url": "https://femme.gouv.td/numeros-durgence/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "チャド政府は国家警察と憲兵隊を緊急時の治安連絡先として案内している。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "緊急連絡先を確認できる。詐欺の正式な受付手順は要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "TGO": {
       "m49": "768",
@@ -9915,7 +10622,40 @@
       "m49": "795",
       "name": "Turkmenistan",
       "region": "Asia",
-      "iso2": "TM"
+      "iso2": "TM",
+      "status": "official-route",
+      "sources": {
+        "main": {
+          "title": "トルクメニスタン議会 — 刑事手続法",
+          "url": "https://mejlis.gov.tm/single-code/14?lang=ru",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "刑事手続法では捜査機関、検察官、裁判官が犯罪申告を受け付ける。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "管轄の機関に届け出る。法律は管轄外の申告も受領し登録するよう定める。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "立件しない決定の通知に、不服申立て方法が示される（第218条）。",
+          "refs": [
+            "main"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "TLS": {
       "m49": "626",
@@ -10148,13 +10888,61 @@
       "m49": "798",
       "name": "Tuvalu",
       "region": "Oceania",
-      "iso2": "TV"
+      "iso2": "TV",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "ツバル政府 — Office of the People’s Lawyer",
+          "url": "https://opl.gov.tv/tuv/ourservices.php",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "政府の法律支援機関は警察が扱う刑事事件の仕組みを案内している。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "詐欺被害者向けの正式な警察受付窓口は要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "TZA": {
       "m49": "834",
       "name": "United Republic of Tanzania",
       "region": "Africa",
-      "iso2": "TZ"
+      "iso2": "TZ",
+      "status": "official-route",
+      "sources": {
+        "main": {
+          "title": "タンザニア通信規制庁 — 詐欺の申告 FAQ",
+          "url": "https://www.address.tcra.go.tz/faqs",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "通信を介した詐欺もタンザニア警察が扱う。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "通信規制庁は被害を警察署へ届け出て登録を受けるよう案内している。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "UGA": {
       "m49": "800",
@@ -10272,7 +11060,31 @@
       "m49": "581",
       "name": "United States Minor Outlying Islands",
       "region": "Oceania",
-      "iso2": "UM"
+      "iso2": "UM",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "米国内務省 — U.S. territories and Fish and Wildlife jurisdiction",
+          "url": "https://www.doi.gov/oia/islands/islandfactsheet2",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "米領の諸島には、自然保護区など島ごとに異なる連邦機関の管理体制がある。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "管理機関の一覧を参照できる。個別の島・事件における犯罪申告窓口は要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "URY": {
       "m49": "858",
@@ -10898,7 +11710,40 @@
       "m49": "887",
       "name": "Yemen",
       "region": "Asia",
-      "iso2": "YE"
+      "iso2": "YE",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "イエメン内務省（アデン） — ブライカ警察の電子恐喝事案",
+          "url": "https://www.moi-gov-ye.org/view/7944",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "公表事例ではアデンのブライカ警察が電子恐喝の申告を受けた。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "アデンの個別事例で地区警察に連絡したことを確認した。地域ごとの正式な窓口は要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "cases": [
+        {
+          "text": "電子恐喝と脅迫を受けた被害者からの申告後、アデンの地区警察が捜査し、容疑者を拘束したと発表した。",
+          "refs": [
+            "main"
+          ],
+          "stage": "investigation-confirmed"
+        }
+      ]
     },
     "ZAF": {
       "m49": "710",
