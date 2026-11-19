@@ -2537,7 +2537,48 @@
       "m49": "192",
       "name": "Cuba",
       "region": "Americas",
-      "iso2": "CU"
+      "iso2": "CU",
+      "status": "official-route",
+      "sources": {
+        "main": {
+          "title": "Granma — Bandec・国家革命警察のデジタル詐欺対応案内",
+          "url": "https://www.granma.cu/cuba/2026-04-08/alerta-bandec-sobre-nueva-ola-de-estafas-digitales-mediante-whatsapp-08-04-2026-09-04-04",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "キューバの国家革命警察PNRがデジタル詐欺の正式な申告を受けると案内されている。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "被害者は最寄りのPNRの窓口に正式な申告をする。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "保存した画面の記録、メッセージや送金記録などのデジタル資料を提出する。",
+          "refs": [
+            "main"
+          ],
+          "kind": "recommended"
+        }
+      ],
+      "progress": [
+        {
+          "text": "警察の申告番号を控える。公式案内では、その番号とともに取引の被害を銀行へ申し出ることも案内している。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "CUW": {
       "m49": "531",
@@ -2917,7 +2958,53 @@
       "m49": "262",
       "name": "Djibouti",
       "region": "Africa",
-      "iso2": "DJ"
+      "iso2": "DJ",
+      "status": "official-route",
+      "sources": {
+        "main": {
+          "title": "ジブチ司法省 — Juge d’instruction",
+          "url": "https://justice.gouv.dj/pages/DetailPages/18",
+          "checkedOn": "2026-11-19"
+        },
+        "law": {
+          "title": "ジブチ汚職防止委員会 — Code de procédure pénale",
+          "url": "https://cniplc.gouv.dj/wp-content/uploads/2023/08/Code-de-procedure-penale.pdf",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "司法省は犯罪事件での予審判事と共和国検察の役割を説明している。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "刑事手続法では、司法警察官と共和国検察官が犯罪の申告を受け付ける。",
+          "refs": [
+            "law"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "検察が事件を打ち切った場合は、申告者と特定された被害者に通知する。",
+          "refs": [
+            "law"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "被害者が予審判事に当事者参加を伴う申告を行う手続がある。根拠資料や費用の供託に関する条件を確認する。",
+          "refs": [
+            "law"
+          ],
+          "kind": "review"
+        }
+      ]
     },
     "DMA": {
       "m49": "212",
@@ -4032,7 +4119,31 @@
       "m49": "324",
       "name": "Guinea",
       "region": "Africa",
-      "iso2": "GN"
+      "iso2": "GN",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "ギニア政府 — 国家警察の公表資料",
+          "url": "https://gouvernement.gov.gn/le-premier-ministre-aux-services-de-la-police-et-de-la-protection-civile-sans-la-securite-sans-la-paix-tout-est-illusoire/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "政府は国家警察の治安業務を案内している。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "詐欺被害の正式な警察・検察の受付方法は要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "GLP": {
       "m49": "312",
@@ -5093,6 +5204,11 @@
           "title": "インド洋地域の行政当局 — Governance",
           "url": "https://www.biot.gov.io/governance/",
           "checkedOn": "2026-11-19"
+        },
+        "admin": {
+          "title": "British Indian Ocean Territory — Contacts",
+          "url": "https://www.biot.gov.io/contacts/",
+          "checkedOn": "2026-11-19"
         }
       },
       "jurisdiction": [
@@ -5108,6 +5224,12 @@
           "text": "地域警察の存在を確認した。正式な詐欺申告手順と事案時点の適用管轄は要確認。",
           "refs": [
             "main"
+          ]
+        },
+        {
+          "text": "行政当局の連絡先が公開されている。地域警察の所管と申告先を事案時点で確認するための連絡先として参照できる。",
+          "refs": [
+            "admin"
           ]
         }
       ]
@@ -5749,7 +5871,31 @@
       "m49": "417",
       "name": "Kyrgyzstan",
       "region": "Asia",
-      "iso2": "KG"
+      "iso2": "KG",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "キルギス国立銀行 — 詐欺被害の案内",
+          "url": "https://www.nbkr.kg/printver.jsp?item=31&lang=RUS&material=129338",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "国立銀行は詐欺被害に遭った場合に法執行機関への申告を案内する。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "詐欺被害に気づいたら法執行機関へ連絡する。正式な事件の登録や地域別の窓口は要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "KHM": {
       "m49": "116",
@@ -6076,6 +6222,13 @@
             "main"
           ],
           "kind": "recommended"
+        },
+        {
+          "text": "写真・映像など事案に関係する資料があれば、警察への説明時に示せるよう保全する。",
+          "refs": [
+            "main"
+          ],
+          "kind": "retain"
         }
       ]
     },
@@ -6083,7 +6236,40 @@
       "m49": "434",
       "name": "Libya",
       "region": "Africa",
-      "iso2": "LY"
+      "iso2": "LY",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "リビアの組織犯罪対策機関 — 通報フォーム",
+          "url": "https://rctoc.gov.ly/complaints-form/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "組織犯罪対策機関の公式フォームには電子犯罪の項目がある。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "公表フォームで通報を受け付ける。地域別の一般警察への正式な刑事申告手順は要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "このフォームでは各必須欄を正確に記載するよう案内されている。",
+          "refs": [
+            "main"
+          ],
+          "kind": "required"
+        }
+      ]
     },
     "LCA": {
       "m49": "662",
@@ -6241,7 +6427,37 @@
       "m49": "426",
       "name": "Lesotho",
       "region": "Africa",
-      "iso2": "LS"
+      "iso2": "LS",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "レソト国営通信 — 警察による詐欺事案の公表",
+          "url": "https://www.lena.gov.ls/community-councilor-in-fraud-case/",
+          "checkedOn": "2026-11-19"
+        },
+        "bank": {
+          "title": "レソト中央銀行 — Complaints Registration",
+          "url": "https://centralbank.org.ls/complaints-registration-page/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "公表資料ではレソト騎馬警察が詐欺等を取り扱う。金融サービスに関する申立ては中央銀行にも専用窓口がある。",
+          "refs": [
+            "main",
+            "bank"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察での一般の詐欺被害の正式な申告手順は要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "LTU": {
       "m49": "440",
@@ -6573,7 +6789,53 @@
       "m49": "504",
       "name": "Morocco",
       "region": "Africa",
-      "iso2": "MA"
+      "iso2": "MA",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "モロッコ国家保安総局 — E-Blagh",
+          "url": "https://www.e-blagh.ma/",
+          "checkedOn": "2026-11-19"
+        },
+        "justice": {
+          "title": "モロッコ司法省 — خدمة تقديم الشكايات",
+          "url": "https://justice.gov.ma/%D8%AE%D8%AF%D9%85%D8%A9-%D8%AA%D9%82%D8%AF%D9%8A%D9%85-%D8%A7%D9%84%D8%B4%D9%83%D8%A7%D9%8A%D8%A7%D8%AA/",
+          "checkedOn": "2026-11-19"
+        },
+        "dgssi": {
+          "title": "モロッコ情報システム安全総局 — Déclaration d’incidents",
+          "url": "https://www.dgssi.gov.ma/fr/declaration-dincidents/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "国家保安総局の違法デジタルコンテンツに関する報告窓口がある。",
+          "refs": [
+            "main",
+            "dgssi"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "所管のオンライン事案はE-Blaghの対象を確認する。一般の詐欺被害の正式な刑事申告とは別に、司法省に一般の申立て・照会サービスがある。",
+          "refs": [
+            "main",
+            "justice",
+            "dgssi"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "司法省のサービスで、そのサービスに提出した申立ての状況を照会できる。",
+          "refs": [
+            "justice"
+          ],
+          "kind": "status-check"
+        }
+      ]
     },
     "MCO": {
       "m49": "492",
@@ -6665,7 +6927,40 @@
       "m49": "450",
       "name": "Madagascar",
       "region": "Africa",
-      "iso2": "MG"
+      "iso2": "MG",
+      "status": "official-route",
+      "sources": {
+        "main": {
+          "title": "マダガスカル政府サービス案内 — Lutte contre la délinquance économique et financier",
+          "url": "https://torolalana.gov.mg/fr/services/lutte-contre-la-delinquance-economique-et-financier/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "憲兵隊の捜査・司法警察部門が詐欺等の経済犯罪を受け付ける。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "公式サービス案内では、ラツィマンドラヴァの窓口や憲兵隊の捜査部門に対面または電話で連絡できる。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "text": "受付担当が対応を判断できるよう被害状況を具体的に説明する。",
+          "refs": [
+            "main"
+          ],
+          "kind": "recommended"
+        }
+      ]
     },
     "MDV": {
       "m49": "462",
@@ -6848,7 +7143,46 @@
       "m49": "466",
       "name": "Mali",
       "region": "Africa",
-      "iso2": "ML"
+      "iso2": "ML",
+      "status": "official-route",
+      "sources": {
+        "main": {
+          "title": "マリ国家警察 — Services & Démarches",
+          "url": "https://police.gouv.ml/services",
+          "checkedOn": "2026-11-19"
+        },
+        "example": {
+          "title": "マリ国家警察 — LUTTE CONTRE LA DÉLINQUANCE ET LA CRIMINALITÉ",
+          "url": "https://police.gouv.ml/article/show/lutte-contre-la-d-linquance-et-la-criminalit--3850",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "マリ国家警察が犯罪申告を扱う。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "国家警察のサービス案内で窓口を確認する。公表例では地区警察署に申告が登録された。",
+          "refs": [
+            "main",
+            "example"
+          ]
+        }
+      ],
+      "cases": [
+        {
+          "text": "携帯電話などが奪われた強盗被害の申告を登録した後、マリ警察が捜査し、容疑者を司法当局に引き渡したと公表した。",
+          "refs": [
+            "example"
+          ],
+          "stage": "investigation-confirmed"
+        }
+      ]
     },
     "MLT": {
       "m49": "470",
@@ -7158,7 +7492,31 @@
       "m49": "478",
       "name": "Mauritania",
       "region": "Africa",
-      "iso2": "MR"
+      "iso2": "MR",
+      "status": "official-route",
+      "sources": {
+        "main": {
+          "title": "モーリタニア国営通信 — 国家警察のデジタル窓口開設",
+          "url": "https://www.ami.mr/archives/247365",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "国家警察は申告・情報提供のデジタル窓口を開設したと発表している。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "国家警察のデジタル窓口に申告を提出できる。詐欺の個別要件と受付後の追跡方法は要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "MSR": {
       "m49": "500",
@@ -7706,7 +8064,31 @@
       "m49": "562",
       "name": "Niger",
       "region": "Africa",
-      "iso2": "NE"
+      "iso2": "NE",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "ニジェール国家警察 — サイバー犯罪対策の公表資料",
+          "url": "https://www.police-nationale.interieur.gouv.ne/actualits",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "司法警察にはサイバー犯罪対策部門がある。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "警察の公式案内で捜査部門を確認できる。一般の詐欺被害を正式に申告する手順は要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "NFK": {
       "m49": "574",
@@ -9345,6 +9727,11 @@
           "title": "スーダン警察 — 電子申告ポータル",
           "url": "https://www.sudanpolice.net/index.php",
           "checkedOn": "2026-11-19"
+        },
+        "lookup": {
+          "title": "スーダン警察 — 申告照会",
+          "url": "https://www.sudanpolice.net/reg/report_search",
+          "checkedOn": "2026-11-19"
         }
       },
       "jurisdiction": [
@@ -9361,6 +9748,15 @@
           "refs": [
             "main"
           ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "紛争下の電子申告ポータルに提出した場合、対象カテゴリについて専用の照会ページを確認する。",
+          "refs": [
+            "lookup"
+          ],
+          "kind": "status-check"
         }
       ]
     },
@@ -9818,7 +10214,43 @@
       "m49": "706",
       "name": "Somalia",
       "region": "Africa",
-      "iso2": "SO"
+      "iso2": "SO",
+      "status": "official-route",
+      "sources": {
+        "main": {
+          "title": "ソマリア連邦検事総長室 — File Opening and Complaints",
+          "url": "https://ago.gov.so/file-openingsection/",
+          "checkedOn": "2026-11-19"
+        },
+        "cyber": {
+          "title": "ソマリア連邦検事総長室 — Electronic and Cyber-Crime Unit",
+          "url": "https://ago.gov.so/electronic-and-cyber-crime-unit/",
+          "checkedOn": "2026-11-19"
+        },
+        "cirt": {
+          "title": "SOMCIRT — Report an Incident",
+          "url": "https://somcirt.gov.so/report-and-incident/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "連邦検事総長室の事件受付部門が一般からの犯罪報告等を受ける。サイバー犯罪の捜査・訴追には専門部門がある。",
+          "refs": [
+            "main",
+            "cyber"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "連邦検事総長室の受付部門を確認する。技術的なサイバー事案にはSOMCIRTの報告経路もある。",
+          "refs": [
+            "main",
+            "cirt"
+          ]
+        }
+      ]
     },
     "SPM": {
       "m49": "666",
@@ -10389,7 +10821,39 @@
       "m49": "760",
       "name": "Syrian Arab Republic",
       "region": "Asia",
-      "iso2": "SY"
+      "iso2": "SY",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "シリア国営通信 — ホムスのサイバー犯罪部門への取材",
+          "url": "https://sana.sy/governorates/homs/2601408/",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "ホムスでは刑事警察のサイバー犯罪部門がオンライン詐欺などの申告を受ける。他地域の正式手順は要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "ホムスの地域窓口について担当者が受付を案内している。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "担当部門は申告の記録を作成し検察へ回付する旨を説明している。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "TCA": {
       "m49": "796",
@@ -11324,7 +11788,31 @@
       "m49": "862",
       "name": "Venezuela (Bolivarian Republic of)",
       "region": "Americas",
-      "iso2": "VE"
+      "iso2": "VE",
+      "status": "partial",
+      "sources": {
+        "main": {
+          "title": "WIPO Lex — ベネズエラの刑事手続法の旧版",
+          "url": "https://www.wipo.int/wipolex/es/legislation/details/3996",
+          "checkedOn": "2026-11-19"
+        }
+      },
+      "jurisdiction": [
+        {
+          "text": "WIPO Lexの刑事手続法公表版には、検察や刑事捜査機関による申告受付が定められている。現行の実施窓口は要確認。",
+          "refs": [
+            "main"
+          ]
+        }
+      ],
+      "intake": [
+        {
+          "text": "詐欺被害について、現行の検察・刑事捜査機関への正式な申告方法を確認する必要がある。",
+          "refs": [
+            "main"
+          ]
+        }
+      ]
     },
     "VGB": {
       "m49": "092",
