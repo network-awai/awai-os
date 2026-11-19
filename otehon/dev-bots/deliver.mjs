@@ -50,7 +50,9 @@ function usage() {
 const base = JSON.parse(execFileSync("gh", ["repo", "view", task.repo, "--json", "defaultBranchRef"], { encoding: "utf8" })).defaultBranchRef.name;
 // Stage everything, then unstage what must never be delivered. An exclude pathspec on `git add` is not
 // portable: git 2.39 (Debian 12) fails when the excluded path is also in .gitignore.
-sh("git", ["add", "-A", "--", "."]);
+// `--sparse` (git 2.34+): in a sparse clone the scratch directory lies outside the checkout cone and a plain
+// `git add` refuses the whole command because of it.
+sh("git", ["add", "-A", "--sparse", "--", "."]);
 sh("git", ["reset", "-q", "--", ".agent-output", ":(glob)**/target/**", ":(glob)**/node_modules/**"]);
 const staged = sh("git", ["diff", "--cached", "--name-only"]).trim() !== "";
 function readChange(range) {
