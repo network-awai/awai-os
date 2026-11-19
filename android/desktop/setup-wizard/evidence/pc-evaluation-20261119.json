@@ -75,6 +75,8 @@
     "displayCaptured": false,
     "welcomeMotionVerified": false,
     "defaultLanRouteRestored": true,
-    "persistentInstallPerformed": false
+    "persistentInstallPerformed": false,
+    "welcomeObservedByOperator": true,
+    "observedWelcomeText": "Welcome to Awai OS"
   }
 }
