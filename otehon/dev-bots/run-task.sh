@@ -97,5 +97,10 @@ if [ "$FROM" != deliver ]; then
     phase run3 "$O/verdict-repair-prompt.md"
   fi
 fi
-if [ "$DELIVER" -eq 1 ]; then node "$HERE/deliver.mjs" "$D" > "$O/deliver.log" 2>&1; echo "deliver rc=$?" >> "$O/deliver.log"; fi
+if [ "$DELIVER" -eq 1 ]; then
+  node "$HERE/deliver.mjs" "$D" > "$O/deliver.log" 2>&1; DRC=$?
+  echo "deliver rc=$DRC" >> "$O/deliver.log"
+  # A delivery that crashed is a failed run, not a finished one: say so in the marker and the exit status.
+  if [ "$DRC" -ne 0 ]; then echo failed-deliver > "$O/pipeline.done"; exit 1; fi
+fi
 echo done > "$O/pipeline.done"
