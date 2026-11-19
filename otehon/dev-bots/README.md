@@ -11,6 +11,7 @@ one reviewer. Tracking: AWAI-3558 (handoff from Claude sessions), AWAI-3560 (thi
 | `deliver.mjs` | No model. Re-runs tests outside the sandbox, applies the gate, commits, pushes, opens the PR, squash-merges when allowed, comments on Linear with measured Muse usage. One delivery at a time per host (lock). |
 | `run-task.sh` | Implementer run, `shinsa` run, then `deliver.mjs`, for one task directory. |
 | `queue-runner.sh`, `queue.mjs`, `queue.test.mjs` | Work through a queue of task directories one at a time: `node --test otehon/dev-bots/queue.test.mjs`. |
+| `queue-sync.mjs`, `queue-sync.test.mjs` | From another host: add entries to a queue, bring its Linear records back and post them: `node --test otehon/dev-bots/queue-sync.test.mjs`. |
 
 ## State (2026-11-19)
 
@@ -65,8 +66,8 @@ whose post fails stays in place and blocks later records of the same issue for
 that run; other issues still post, and the exit is non-zero. `--dry-run` prints
 `would-post` lines without calling orca or changing any file.
 
-Copying the outbox off the device (or onto the draining host) is a separate
-manual step this command does not do.
+This command works on a local directory. `queue-sync.mjs` (below) copies the
+records off a queue host and calls it.
 
 ## Queue runner
 
@@ -114,9 +115,46 @@ When the token command yields no token, the runner logs one extra
 160 characters, or `redacted` when it looks token-like) before
 `failed no-token`; `result.json` still records `no-token`.
 
-What it does not do: it does not pick issues, does not restart itself after
-a reboot or a killed process, and does not move the Linear outbox off the
-host.
+What it does not do: it does not pick issues and does not restart itself
+after a reboot or a killed process. Moving entries in and the Linear outbox
+out is `queue-sync.mjs`.
+
+## Feeding a queue from another host
+
+`queue-sync.mjs` runs on the host that has `orca` (the Mac) and talks to the
+queue host (the phone) in one run: push entries, collect and post records,
+report.
+
+```sh
+export DEV_BOTS_REMOTE_SHELL="adb -s <serial> shell \"<userland entry> 'bash -s'\""   # or: ssh <host> bash -s
+export DEV_BOTS_ALLOWED_OWNERS=network-awai
+node otehon/dev-bots/queue-sync.mjs --queue <remote-queue-dir> --state <local-dir> [--dry-run] [entry-dir ...]
+```
+
+- `DEV_BOTS_REMOTE_SHELL` is run with `bash -c` and gets a bash script on its
+  stdin; that is the only way the queue host is reached. It is host
+  configuration: unset or empty refuses to run (exit 2). The queue host needs
+  bash, coreutils and `base64`.
+- An `<entry-dir>` holds `task.json` and `muse-prompt.md`; its directory name
+  is the entry name. It is checked with the runner's own validation, written
+  under `stage/`, then moved into `inbox/<name>/` with `ready` already in it.
+  A name that exists anywhere in the remote queue, or that this `--state`
+  directory already pushed, is refused.
+- `--state <local-dir>` must exist. It keeps `<name>/task.json` for every
+  entry pushed from here, `<name>/result.json`, and the collected records
+  under `<name>/linear-outbox/`.
+- Everything the queue host prints is data. Names are checked before they
+  become local paths. A record is posted only when this state directory
+  pushed that entry and the record's issue is the entry's issue; anything
+  else is `held` and the run exits 1.
+- Posted records are renamed to `*.posted` here and on the queue host. If the
+  remote rename is lost, the next run repeats only the rename; it does not
+  post again.
+- `--dry-run` sends only the read-only snapshot script, writes nothing on the
+  queue host and posts nothing (the local state directory still receives the
+  collected records).
+- Exit 0 when nothing was rejected, held or failed; 1 otherwise; 2 on a
+  usage error. A queue with no live runner is a warning, not a failure.
 
 ## Leasing a token with retries
 
