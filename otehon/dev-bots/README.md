@@ -10,6 +10,7 @@ one reviewer. Tracking: AWAI-3558 (handoff from Claude sessions), AWAI-3560 (thi
 | `gate.mjs`, `gate.test.mjs` | The mechanical merge gate (pure) and its tests: `node --test otehon/dev-bots/gate.test.mjs`. |
 | `deliver.mjs` | No model. Re-runs tests outside the sandbox, applies the gate, commits, pushes, opens the PR, squash-merges when allowed, comments on Linear with measured Muse usage. One delivery at a time per host (lock). |
 | `run-task.sh` | Implementer run, `shinsa` run, then `deliver.mjs`, for one task directory. |
+| `queue-runner.sh`, `queue.mjs`, `queue.test.mjs` | Work through a queue of task directories one at a time: `node --test otehon/dev-bots/queue.test.mjs`. |
 
 ## State (2026-11-19)
 
@@ -65,6 +66,52 @@ that run; other issues still post, and the exit is non-zero. `--dry-run` prints
 
 Copying the outbox off the device (or onto the draining host) is a separate
 manual step this command does not do.
+
+## Queue runner
+
+A host works through queued tasks without being started for each one:
+
+```sh
+DEV_BOTS_ALLOWED_OWNERS=network-awai \
+  otehon/dev-bots/queue-runner.sh <queue-dir> [--once]
+```
+
+Layout under `<queue-dir>/`: `inbox/<name>/` holds `task.json` and
+`muse-prompt.md`; the runner moves an entry to `running/<name>/`, then to
+`done/<name>/` or `failed/<name>/`, writing `result.json` there. Entries are
+taken in ascending `<name>` order, one at a time.
+
+To add an entry, write `task.json` and `muse-prompt.md` into
+`inbox/<name>/`, then create the empty file `ready` in it. An entry without
+`ready` is never taken, so a half-copied entry waits until it is complete.
+To stop the runner, create the empty file `<queue-dir>/stop`: the runner
+exits 0 after the current entry and does not delete the file.
+
+| Variable | Default | Meaning |
+| -- | -- | -- |
+| `DEV_BOTS_ALLOWED_OWNERS` | *(none; must be set)* | Comma-separated repo owners. Empty or unset refuses to start (exit 2). There is no default allowlist. |
+| `DEV_BOTS_CLONE_BASE` | `https://github.com/` | Prefix for `<repo>.git` when cloning into `<queue-dir>/work/<name>/`. |
+| `DEV_BOTS_CLONE_ARGS` | `--filter=blob:none` | Word-split clone flags. Empty means no extra flags. |
+| `DEV_BOTS_RUN_TASK` | `run-task.sh` next to the script | Task script, run as `<script> <work-dir> --no-deliver` then `<script> <work-dir> --from deliver`. |
+| `DEV_BOTS_TOKEN_CMD` | *(unset)* | Shell command run with `bash -c` (`TASK_OWNER` and `TASK_REPO` exported) whose stdout is the token, exported as `GH_TOKEN` for the delivery phase only. Unset: delivery runs with the ambient environment. The implement/review phase always runs with `GH_TOKEN` and `GITHUB_TOKEN` removed. |
+| `DEV_BOTS_QUEUE_POLL_S` | `30` | Seconds between polls without `--once`. |
+
+Validation happens before anything is cloned and fails closed: a bad name,
+`task.json`, issue, repo, branch, prompt or owner moves the entry to
+`failed/` with the reason. `result.json` records `{name, issue, repo,
+branch, state, reason, started, ended, pipeline, deliver}`; `deliver` is
+read from the work dir's `deliver.json` (`decision.action`, `pr`, `merged`)
+when it exists. An entry is `done` only when both phases exit 0; a held or
+draft delivery decision is still `done`. One runner per queue: the lock file
+under the queue dir holds the pid (a second runner exits 3; a stale lock is
+taken over) and is released on exit. Entries left in `running/` by a dead
+runner move to `failed/` with reason `interrupted` and are never re-run.
+`runner.log` gets one line per state change (UTC timestamp, name, state,
+reason); the token is never written to a file, a log or `result.json`.
+
+What it does not do: it does not pick issues, does not restart itself after
+a reboot or a killed process, and does not move the Linear outbox off the
+host.
 
 ## Leasing a token with retries
 
