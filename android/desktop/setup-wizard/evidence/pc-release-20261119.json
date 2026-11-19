@@ -45,5 +45,33 @@
       "kernel": "be6e929579fb0ffefb3af9b081a2553224423fca446f72352c419c943c98c5b5",
       "firmware.img": "91c5849a363f2c2a2e52389d77c0baa38ebf1b4c4e6fcbe583aa3e1df2b94a8f"
     }
+  },
+  "vm": {
+    "mode": "diskless QEMU x86_64 TCG, restricted user network, Live CD-ROM",
+    "bootStartUtc": "2026-11-19T10:24:07Z",
+    "liveIsoSha256": "754fe8f3fd9eab432dc056b7d5e233e73f56101a7cce05019040407e3a2fcf53",
+    "sysBootCompleted": true,
+    "buildTags": "release-keys",
+    "welcomeVisible": true,
+    "welcomeScreenshotSha256": "d8aea1d8a32b9709ae7e0c8736335899f25c14a3008a1e3ef30b81056fea9f47",
+    "startResult": "Setup Wizard ANR, input dispatch timed out waiting 5574 ms for MotionEvent",
+    "anrScreenshotSha256": "927136c0e1a94af5ee48e634285836c346d37d05a7905f7120532584d3a83517",
+    "setupComplete": false
+  },
+  "physicalPreparation": {
+    "device": "AMD Ryzen 7 7735HS",
+    "mode": "UEFI PXE, read-only NBD, RAM Live and temporary userdata",
+    "tftpReadbackVerifiedUtc": "2026-11-19T10:37:52Z",
+    "tftpIpxeSha256": "bfa3084d964bceae16299f36874db15530d3b100c6066614f39aa4a8340a5d54"
+  },
+  "physical": {
+    "releaseIsoFetchObserved": false,
+    "releaseIsoNbdConnectionObserved": false,
+    "releaseIsoSetupAccepted": false,
+    "observedBuildTags": "awai-eval-keys",
+    "observedWizardApkSha256": "a849b8216732850901a1be6adbbfa4b9e459e8d964d9392b5afbe02e8414e142",
+    "observedSetupComplete": false,
+    "pauseReason": "Other work on the same physical device; reboot pending operator handoff",
+    "defaultPxeRestoredUtc": "2026-11-19T10:48:38Z"
   }
 }
