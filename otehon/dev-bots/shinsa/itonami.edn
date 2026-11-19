@@ -1,0 +1,32 @@
+{:itonami/schema "cloud.itonami.profile.v2"
+ :profile/id "shinsa"
+ :profile/description "Review developer-bot changes against the issue's acceptance and write the merge verdict"
+ :profile/hermes-compatible true
+ :agent/kind :role-bot
+ :org/world :awai :org/path [:etzhayyim :awai :network-awai]
+ :org/github "network-awai" :org/unit :dev-bots :awai/business :awai-network
+ :invocation :on-demand
+ :runtime {:engine :itonami-agent :scheduler :itonami}
+ :placement {:mode :local :order [:local] :inference-rail :muse}
+ :inference {:rails [:muse] :authorities ["api.meta.ai"] :deny-hosts ["openrouter.ai"]}
+ :state {:workspace :host-local :results :cid-receipts :secrets :never-leave-host}
+ :ids {:repo "network-awai/awai-os" :yakuwari/id "shinsa"}
+ :authority {:default-decision :blocked :source :yakuwari :ref "yakuwari.edn"}
+ :capabilities [{:capability :read_source :decision :autonomous :note "The task working tree, its repository rules and the implementer log only"}
+  {:capability :inference_muse :decision :autonomous :note "muse-spark-1.3 on the Muse rail; no other provider"}
+  {:capability :draft_artifact :decision :autonomous :note "Defect fixes with a test first, inside the task working tree; no new scope"}
+  {:capability :record_local_receipt :decision :autonomous :note "verdict.json for the task under review"}
+  {:capability :git_push :decision :blocked :note "Performed by the deterministic deliver step after its gate, never by the model"}
+  {:capability :git_merge :decision :blocked :note "Performed by the deterministic deliver step after its gate, never by the model"}
+  {:capability :publish :decision :blocked}
+  {:capability :external_messaging :decision :blocked}
+  {:capability :delegate_task :decision :blocked}
+  {:capability :spend :decision :blocked}
+  {:capability :transfer_funds :decision :blocked}
+  {:capability :storage_upload :decision :blocked}
+  {:capability :delete_data :decision :blocked}
+  {:capability :manage_services :decision :blocked}
+  {:capability :use_signing_identity :decision :blocked}
+  {:capability :export_private_keys :decision :blocked}
+  {:capability :enable_cron :decision :blocked}]
+ :cron? false}
