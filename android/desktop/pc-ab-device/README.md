@@ -60,6 +60,28 @@ It has only been run against an image file. Running it on a real disk is a separ
 - After a clean shutdown the three stand-in partitions had the same sha256 as before the install.
 - `kvm/nvme-kvm.sh` is the earlier check: the stock layout plus a `userdata` partition on one NVMe disk.
 
+## OTA on the shared disk (2026-11-19)
+
+`kvm/shared-ota.sh` and `kvm/shared-ota2.sh`, results in
+[evidence/shared-disk-ota-kvm-20261119.json](evidence/shared-disk-ota-kvm-20261119.json). After every
+run the VM was shut down and the three stand-in partitions compared: unchanged each time.
+
+| Check | Result |
+| --- | --- |
+| Full OTA v2 to v3 | `kSuccess`; after reboot slot `_a` to `_b`, build `awai-byname-v3`, slot b marked successful. |
+| Full OTA, then `boot_b` (partition 13) zeroed with the VM off | GRUB: `Could not access kernel from active slot b. Switching active slot to a...`. Booted slot a with v2; Android cancelled the update. |
+| Incremental v2 to v3, installed from `disk-vda.img` | **Failed**, `kDownloadStateInitializationError`: the source hash of `boot_a` did not match. |
+| Incremental v2 to v3, installed from the target-files based image | `kSuccess` in 33 s; booted slot b with v3. |
+
+### Install from target-files, not from `disk-vda.img`
+
+An incremental package checks each source partition against the target-files it was generated from.
+`disk-vda.img` is assembled from `PRODUCT_OUT`, and its `boot.img` is not the `IMAGES/boot.img` of the
+target-files package (`vendor_boot.img` was the same). `make-tf-disk.sh <target_files.zip> <disk-vda.img> <out>`
+writes `IMAGES/boot.img`, `IMAGES/vendor_boot.img` and a `super` built by `build_super_image` into a copy of
+the disk image. Install from that. A release works the same way: sign target-files, then make both the
+install image and the OTA packages from it.
+
 ## Known gaps
 
 - `init.virtio.rc` still creates `by-name` links to `vda1`, `vda7` and so on. On NVMe they point nowhere

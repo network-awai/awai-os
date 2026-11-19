@@ -37,15 +37,16 @@ Build host: Vultr `vc2-16c-64gb`. KVM host: Vultr bare metal, Xeon E-2286G, QEMU
 | Older package with `ro.ota.allow_downgrade=false` | Refused in 3 s: `kPayloadTimestampError`. The property was changed inside the VM through `adb remount`. |
 | New slot cannot boot | After the update, `boot_b` was zeroed from the host with the VM off. GRUB printed `Could not access kernel from active slot b. Switching active slot to a...` and booted slot a with v1. Slot b was marked not bootable and Android cancelled the update. |
 | Update interrupted (VM killed at 41%) | The VM booted slot a with v1. Running the update again resumed at 35% and then failed: `kNewRootfsVerificationError`. After `update_engine_client --reset_status`, a third run succeeded and the VM booted v2 from slot b. Same result with `cache=unsafe` and `cache=writeback` disks. |
-| v1→v2 incremental OTA | **Failed**: `kDownloadStateInitializationError`. The source hash of partition `EFI` did not match. `EFI` is in `AB_OTA_PARTITIONS` and is also mounted read-write as vfat, so its content no longer equals the build output. |
+| v1→v2 incremental OTA | **Failed**: `kDownloadStateInitializationError`, first on the source hash of partition `EFI`. Later work (AWAI-3586, [../pc-ab-device](../pc-ab-device/README.md)) showed two causes: `EFI` is in `AB_OTA_PARTITIONS` and mounted read-write, and the disk image's `boot.img` is not the one in target-files. With the ESP out of the A/B set and the install made from target-files, an incremental package applied. |
 
 ## What this means for the Awai PC image
 
 - A release must not allow downgrades: build `user`, or drop `ro.ota.allow_downgrade` in the Awai fork.
 - After a hard power loss a resumed update can fail verification. The updater has to reset and start
   over by itself; whether the LineageOS Updater app does that was not checked.
-- Incremental packages need every A/B partition to stay byte-identical to the build. A writable ESP in the
-  A/B set breaks that. Full packages are not affected.
+- Incremental packages need every A/B partition to stay byte-identical to the target-files they were
+  generated from. Install from target-files images, and keep a writable ESP out of the A/B set.
+  Full packages are not affected.
 - The reference device owns a whole disk with fixed partition numbers. The Desktop's NVMe has three
   existing partitions that must stay, so the Awai PC device needs partitions found by name.
 
