@@ -41,3 +41,27 @@ chosen by environment variables; defaults keep the previous macOS behaviour.
 | `MUSE_SANDBOX_ARGS` | `--sandbox-network enabled` | Flags `run-task.sh` passes to `muse exec`. Set to `--disable-sandbox` where the sandbox is unavailable (e.g. proot on Debian). Each run records its setting in `.agent-output/run<N>.meta`; a run without the sandbox is marked there and in the PR body. |
 | `DEV_BOTS_TEST_SHELL` | `/bin/zsh` when it exists, else `/bin/bash` | Shell `deliver.mjs` uses for `task.tests`. The shell is logged per test and reported in `deliver.json`. |
 | `DEV_BOTS_LINEAR` | `orca` | Linear record sink. `outbox` writes comment/status JSON under `.agent-output/linear-outbox/` instead of calling `orca` (for hosts without it). The sink is reported in `deliver.json` (`linearSink`, `linearComment`, `linearOutbox`); a missing transport never changes the gate decision. |
+
+## Draining the outbox
+
+A run on a host without `orca` (e.g. this phone) only writes the outbox; nothing
+posts it later there. From a host that has `orca`, post the pending entries with:
+
+```sh
+node otehon/dev-bots/drain-outbox.mjs <outbox-dir> [--dry-run]
+```
+
+`<outbox-dir>` is the `linear-outbox/` directory itself, e.g.
+`<task>/.agent-output/linear-outbox/`. Records post oldest-first with the same
+`orca linear comment add --body-file` / `orca linear status set --to` arguments
+`recordLinearEntry` uses; a comment body is staged to a temporary file, so the
+stored `bodyFile` path (which points at another machine) is ignored.
+
+Exactly once: after a successful post the record is renamed to `<name>.posted`
+in the same directory, and `.posted` files are never posted again. A record
+whose post fails stays in place and blocks later records of the same issue for
+that run; other issues still post, and the exit is non-zero. `--dry-run` prints
+`would-post` lines without calling orca or changing any file.
+
+Copying the outbox off the device (or onto the draining host) is a separate
+manual step this command does not do.
