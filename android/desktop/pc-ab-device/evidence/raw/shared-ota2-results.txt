@@ -1,0 +1,6 @@
+S4_install|"existingUnchanged": true
+S4_before|slot=_a incr=awai-byname-v2 global_active_slot=a slot_a_is_bootable=true slot_a_is_successful=true slot_b_is_bootable=true slot_b_is_successful=false snap=none
+S4_apply|onPayloadApplicationComplete(ErrorCode::kSuccess (0))|32.743 seconds
+S4_after_reboot|slot=_b incr=awai-byname-v3 global_active_slot=b slot_a_is_bootable=false slot_a_is_successful=false slot_b_is_bootable=true slot_b_is_successful=true snap=none
+S4_existing|ALL_UNCHANGED
+DONE

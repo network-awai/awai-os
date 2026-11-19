@@ -1,0 +1,40 @@
+diff --git a/configs/fstab/fstab.virtio-common b/configs/fstab/fstab.virtio-common
+index 6e46a3a..e12293d 100644
+--- a/configs/fstab/fstab.virtio-common
++++ b/configs/fstab/fstab.virtio-common
+@@ -1,6 +1,6 @@
+ # Userdata (on separate disk)
+-/dev/block/vdb /data ext4 nodev,noatime,nosuid,discard latemount,check,quota,formattable,fileencryption,keydirectory=/metadata/vold/metadata_encryption
+-/dev/block/vdb /data f2fs nodev,noatime,nosuid,discard,reserve_root=32768 latemount,check,quota,formattable,fileencryption,keydirectory=/metadata/vold/metadata_encryption,fscompress,checkpoint=fs
++/dev/block/by-name/userdata /data ext4 nodev,noatime,nosuid,discard latemount,check,quota,formattable,fileencryption,keydirectory=/metadata/vold/metadata_encryption
++/dev/block/by-name/userdata /data f2fs nodev,noatime,nosuid,discard,reserve_root=32768 latemount,check,quota,formattable,fileencryption,keydirectory=/metadata/vold/metadata_encryption,fscompress,checkpoint=fs
+ 
+ # SD card (recovery only)
+ /dev/block/sda /sdcard vfat ro,defaults recoveryonly
+diff --git a/sepolicy/vendor/ab/file_contexts b/sepolicy/vendor/ab/file_contexts
+index 32a20cb..e07ed43 100644
+--- a/sepolicy/vendor/ab/file_contexts
++++ b/sepolicy/vendor/ab/file_contexts
+@@ -3,3 +3,9 @@
+ /dev/block/vda5		u:object_r:metadata_block_device:s0
+ /dev/block/vda[7-9]	u:object_r:boot_block_device:s0
+ /dev/block/vda10	u:object_r:boot_block_device:s0
++
++# AWAI-3586: label partitions by GPT name.
++/dev/block/by-name/persist		u:object_r:persist_block_device:s0
++/dev/block/by-name/metadata		u:object_r:metadata_block_device:s0
++/dev/block/by-name/boot_[ab]		u:object_r:boot_block_device:s0
++/dev/block/by-name/vendor_boot_[ab]	u:object_r:boot_block_device:s0
+diff --git a/sepolicy/vendor/file_contexts b/sepolicy/vendor/file_contexts
+index 09e96bd..9cefaa6 100644
+--- a/sepolicy/vendor/file_contexts
++++ b/sepolicy/vendor/file_contexts
+@@ -11,3 +11,8 @@
+ # Executables
+ /vendor/bin/hw/android\.hardware\.composer\.hwc3-service\.drm(|\.[0-9a-z_]+)		u:object_r:hal_graphics_composer_default_exec:s0
+ /vendor/bin/virtgpu_detect								u:object_r:vendor_virtgpu_detect_exec:s0
++
++# AWAI-3586: label partitions by GPT name, so the layout does not depend on the disk or partition number.
++/dev/block/by-name/super		u:object_r:super_block_device:s0
++/dev/block/by-name/misc			u:object_r:misc_block_device:s0
++/dev/block/by-name/userdata		u:object_r:userdata_block_device:s0
