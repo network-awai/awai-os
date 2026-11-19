@@ -11,7 +11,7 @@
 // The core drainOutbox() takes every side effect as an injected dependency so
 // tests never spawn orca or touch a real outbox. Importing this file runs
 // nothing; only running it as a CLI wires the real fs and spawnSync("orca").
-import { readdirSync, readFileSync, writeFileSync, renameSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, writeFileSync, renameSync, rmSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -208,21 +208,27 @@ export function main(argv) {
     console.error(usage());
     return 2;
   }
-  let counter = 0;
-  const { exitCode } = drainOutbox(
-    { dir, dryRun },
-    {
-      listDir: (d) => readdirSync(d),
-      readFile: (p) => readFileSync(p, "utf8"),
-      writeFile: (p, s) => writeFileSync(p, s),
-      removeFile: (p) => rmSync(p, { force: true }),
-      tempFile: () => join(tmpdir(), `linear-outbox-body-${process.pid}-${counter++}.md`),
-      rename: (from, to) => renameSync(from, to),
-      runOrca: (args) => spawnSync("orca", args, { encoding: "utf8" }),
-      log: (line) => console.log(line),
-    },
-  );
-  return exitCode;
+  // One private 0700 staging directory per run; body files live inside it.
+  const stageDir = mkdtempSync(join(tmpdir(), "linear-outbox-"));
+  try {
+    let counter = 0;
+    const { exitCode } = drainOutbox(
+      { dir, dryRun },
+      {
+        listDir: (d) => readdirSync(d),
+        readFile: (p) => readFileSync(p, "utf8"),
+        writeFile: (p, s) => writeFileSync(p, s),
+        removeFile: (p) => rmSync(p, { force: true }),
+        tempFile: () => join(stageDir, `linear-outbox-body-${process.pid}-${counter++}.md`),
+        rename: (from, to) => renameSync(from, to),
+        runOrca: (args) => spawnSync("orca", args, { encoding: "utf8" }),
+        log: (line) => console.log(line),
+      },
+    );
+    return exitCode;
+  } finally {
+    rmSync(stageDir, { recursive: true, force: true });
+  }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

@@ -56,6 +56,7 @@ node otehon/dev-bots/drain-outbox.mjs <outbox-dir> [--dry-run]
 `orca linear comment add --body-file` / `orca linear status set --to` arguments
 `recordLinearEntry` uses; a comment body is staged to a temporary file, so the
 stored `bodyFile` path (which points at another machine) is ignored.
+Each run stages body files inside a private `mkdtempSync(join(tmpdir(), "linear-outbox-"))` directory that is removed when the run ends.
 
 Exactly once: after a successful post the record is renamed to `<name>.posted`
 in the same directory, and `.posted` files are never posted again. A record

@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync, readdirSync } from "node:fs";
+import { chmodSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, delimiter, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { drainOutbox } from "./drain-outbox.mjs";
 
@@ -295,4 +295,43 @@ test("CLI: --dry-run on a real outbox posts nothing and changes nothing", () => 
 test("CLI: no directory argument is a usage error", () => {
   const r = runCli([]);
   assert.equal(r.status, 2);
+});
+
+test("CLI: comment body is staged in a private per-run directory that is removed", () => {
+  const tmpRoot = mkdtempSync(join(tmpdir(), "drain-tmp-"));
+  try {
+    const outbox = join(tmpRoot, "outbox");
+    mkdirSync(outbox);
+    const body = "private body text";
+    writeFileSync(join(outbox, "2026-11-19T00-00-01-000Z-comment.json"), comment("AWAI-9", body));
+    const fakeBin = join(tmpRoot, "bin");
+    mkdirSync(fakeBin);
+    const capture = join(tmpRoot, "capture.json");
+    const orcaPath = join(fakeBin, "orca");
+    writeFileSync(orcaPath, `#!/usr/bin/env node
+import { readFileSync, writeFileSync } from "node:fs";
+const args = process.argv.slice(2);
+const i = args.indexOf("--body-file");
+const bodyFile = i >= 0 ? args[i + 1] : "";
+const seen = i >= 0 ? readFileSync(bodyFile, "utf8") : "";
+writeFileSync(process.env.DRAIN_CAPTURE, JSON.stringify({ args, bodyFile, body: seen }));
+`);
+    chmodSync(orcaPath, 0o755);
+    const r = spawnSync(process.execPath, [cliPath, outbox], {
+      encoding: "utf8",
+      env: { ...process.env, TMPDIR: tmpRoot, PATH: `${fakeBin}${delimiter}${process.env.PATH}`, DRAIN_CAPTURE: capture },
+    });
+    assert.equal(r.status, 0, r.stderr);
+    const seen = JSON.parse(readFileSync(capture, "utf8"));
+    assert.deepEqual(seen.args.slice(0, 4), ["linear", "comment", "add", "AWAI-9"]);
+    assert.equal(seen.args[4], "--body-file");
+    assert.equal(seen.args[5], seen.bodyFile);
+    assert.ok(seen.bodyFile.startsWith(join(tmpRoot, "linear-outbox-")), seen.bodyFile);
+    assert.equal(dirname(dirname(seen.bodyFile)), tmpRoot);
+    assert.ok(basename(dirname(seen.bodyFile)).startsWith("linear-outbox-"), seen.bodyFile);
+    assert.equal(seen.body, body);
+    assert.deepEqual(readdirSync(tmpRoot).filter((n) => n.startsWith("linear-outbox-")), []);
+  } finally {
+    rmSync(tmpRoot, { recursive: true, force: true });
+  }
 });
