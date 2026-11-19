@@ -1,0 +1,176 @@
+{
+  "schema": "awai.pc.ab-install.record.v1",
+  "target": "nvme.img",
+  "source": "byname-v2-disk-vda.img",
+  "existing": [
+    {
+      "number": 1,
+      "start": 2048,
+      "end": 1050623,
+      "type": "EF00",
+      "name": "EFI system partition"
+    },
+    {
+      "number": 2,
+      "start": 1050624,
+      "end": 51382271,
+      "type": "8300",
+      "name": "existing-os"
+    },
+    {
+      "number": 3,
+      "start": 51382272,
+      "end": 68159487,
+      "type": "8309",
+      "name": "existing-luks"
+    }
+  ],
+  "freeRangeUsed": [
+    68159488,
+    134217694
+  ],
+  "new": [
+    {
+      "number": 4,
+      "name": "awai_esp",
+      "start": 68159488,
+      "end": 68421631,
+      "type": "ef00",
+      "guid": null,
+      "from": {
+        "name": "EFI",
+        "start": 2048,
+        "end": 264191
+      }
+    },
+    {
+      "number": 5,
+      "name": "super",
+      "start": 68421632,
+      "end": 93587455,
+      "type": "8300",
+      "guid": null,
+      "from": {
+        "name": "super",
+        "start": 264192,
+        "end": 25430015
+      }
+    },
+    {
+      "number": 6,
+      "name": "misc",
+      "start": 93587456,
+      "end": 93589503,
+      "type": "8300",
+      "guid": "41574149-0000-4d49-8000-000000000001",
+      "from": null
+    },
+    {
+      "number": 7,
+      "name": "persist",
+      "start": 93589504,
+      "end": 93622271,
+      "type": "8300",
+      "guid": null,
+      "from": {
+        "name": "persist",
+        "start": 25432064,
+        "end": 25464831
+      }
+    },
+    {
+      "number": 8,
+      "name": "metadata",
+      "start": 93622272,
+      "end": 93687807,
+      "type": "8300",
+      "guid": null,
+      "from": null
+    },
+    {
+      "number": 9,
+      "name": "firmware",
+      "start": 93687808,
+      "end": 93949951,
+      "type": "8300",
+      "guid": null,
+      "from": {
+        "name": "firmware",
+        "start": 25530368,
+        "end": 25792511
+      }
+    },
+    {
+      "number": 10,
+      "name": "vendor_boot_a",
+      "start": 93949952,
+      "end": 94154751,
+      "type": "8300",
+      "guid": "41574149-0000-5642-8000-00000000000a",
+      "from": {
+        "name": "vendor_boot_a",
+        "start": 25792512,
+        "end": 25997311
+      }
+    },
+    {
+      "number": 11,
+      "name": "vendor_boot_b",
+      "start": 94154752,
+      "end": 94359551,
+      "type": "8300",
+      "guid": "41574149-0000-5642-8000-00000000000b",
+      "from": {
+        "name": "vendor_boot_b",
+        "start": 25997312,
+        "end": 26202111
+      }
+    },
+    {
+      "number": 12,
+      "name": "boot_a",
+      "start": 94359552,
+      "end": 94523391,
+      "type": "8300",
+      "guid": "41574149-0000-424f-8000-00000000000a",
+      "from": {
+        "name": "boot_a",
+        "start": 26202112,
+        "end": 26365951
+      }
+    },
+    {
+      "number": 13,
+      "name": "boot_b",
+      "start": 94523392,
+      "end": 94687231,
+      "type": "8300",
+      "guid": "41574149-0000-424f-8000-00000000000b",
+      "from": {
+        "name": "boot_b",
+        "start": 26365952,
+        "end": 26529791
+      }
+    },
+    {
+      "number": 14,
+      "name": "userdata",
+      "start": 94687232,
+      "end": 128241663,
+      "type": "8300",
+      "guid": null,
+      "from": null
+    }
+  ],
+  "existingSha256Before": {
+    "1": "1da3f14d63b667daa326d961edcc8e1b2a1039e5499ad4a691aec1deeecc639e",
+    "2": "14466dad681323bb436fe596e363913ac50a6dab9bb4ef77b2013a954face8cd",
+    "3": "5c6e4c0b39c53990cbe695606a440dc25dc419f8b201b0a59815053fbda105d4"
+  },
+  "existingSha256After": {
+    "1": "1da3f14d63b667daa326d961edcc8e1b2a1039e5499ad4a691aec1deeecc639e",
+    "2": "14466dad681323bb436fe596e363913ac50a6dab9bb4ef77b2013a954face8cd",
+    "3": "5c6e4c0b39c53990cbe695606a440dc25dc419f8b201b0a59815053fbda105d4"
+  },
+  "existingUnchanged": true
+}
