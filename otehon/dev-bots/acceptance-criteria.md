@@ -22,8 +22,9 @@ the `shinsa` profile judges the rest and writes the verdict that the gate reads.
 3. **Reviewed**: `verdict.json` from `shinsa`, for this issue, with decision `approve`; no unfixed
    `critical` or `high` finding.
 4. **Accepted**: the verdict lists the issue's acceptance items one by one, and every item is `met` with
-   the command or evidence that showed it. An item that needs a device, a deployment, a live service or an
-   owner decision is not `met`.
+   the command or evidence that showed it. An item that needs a device, a deployment or a live service
+   is not `met`; it may be `deferred`, which does not block the merge but leaves the Linear issue open
+   for it. An item that needs an owner decision is not `met` and not deferred: the PR stays a draft.
 5. **Tested**: every test command declared for the task exits 0 when `deliver.mjs` runs it outside the
    agent sandbox. A task with no test command does not merge.
 6. **Clean**: no secret-like file or content, no scratch output, nothing outside the task's repository.

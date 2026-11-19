@@ -25,7 +25,7 @@ export function scanSecrets(files, addedLines) {
   return [...new Set(hits)];
 }
 
-function verdictProblems(verdict, task) {
+export function verdictProblems(verdict, task) {
   if (!verdict || typeof verdict !== "object") return ["no review verdict"];
   const p = [];
   if (verdict.schema !== VERDICT_SCHEMA) p.push("verdict schema mismatch");
@@ -56,7 +56,10 @@ export function decide({ task, verdict, files = [], addedLines = [], tests = [],
     if (verdict.decision === "reject") hold("review rejected the change");
     if (verdict.decision === "owner-decision") draft(`review asks for an owner decision: ${verdict.owner_question ?? "unspecified"}`);
     for (const f of verdict.findings) if (["critical", "high"].includes(f.severity) && f.fixed !== true) hold(`unfixed ${f.severity} finding: ${f.where ?? "?"}`);
-    for (const a of verdict.acceptance) if (a.met !== true) draft(`acceptance item not met or not verified: ${a.item ?? "?"}`);
+    // An item this unit cannot meet on a host (device, deployment, live service) may be deferred to its
+    // own issue: it does not block the merge, but the Linear issue is then not closed by the merge.
+    for (const a of verdict.acceptance) if (a.met !== true && a.deferred !== true) draft(`acceptance item not met or not verified: ${a.item ?? "?"}`);
+    if (!verdict.acceptance.some((a) => a.met === true)) draft("no acceptance item is met");
     if (!verdict.acceptance.length) draft("review lists no acceptance items");
   }
 
@@ -76,6 +79,7 @@ export function decide({ task, verdict, files = [], addedLines = [], tests = [],
     if (pr.pendingChecks?.length) draft(`checks still pending: ${pr.pendingChecks.join(", ")}`);
     if (pr.mergeable === false) hold("pull request is not mergeable");
   }
+  const deferred = (verdict?.acceptance ?? []).filter((a) => a.met !== true && a.deferred === true).map((a) => a.item);
   const action = reasons.some((r) => r.level === "hold") ? "hold" : reasons.some((r) => r.level === "draft") ? "draft" : "merge";
-  return { action, reasons };
+  return { action, reasons, deferred };
 }

@@ -32,6 +32,12 @@ if [[ $FROM != deliver ]]; then
   cp $HERE/shinsa/SOUL.md $O/shinsa-prompt.md
   phase run2 $O/shinsa-prompt.md
   [[ "$(cat $O/run2.rc)" == 0 ]] || { echo failed-review > $O/pipeline.done; exit 1; }
+  # A verdict with a format error gets one repair turn (format only); the gate still fails closed after it.
+  PROBLEMS=$(node $HERE/check-verdict.mjs "$D")
+  if [[ -n $PROBLEMS ]]; then
+    { echo "Your verdict file .agent-output/verdict.json has format problems: $PROBLEMS"; echo "Rewrite only that file so it matches the shape below exactly. Do not change your decision or any other file."; echo; sed -n '/^## Output/,/^## Boundaries/p' $HERE/shinsa/SOUL.md; } > $O/verdict-repair-prompt.md
+    phase run3 $O/verdict-repair-prompt.md
+  fi
 fi
 if (( DELIVER )); then node $HERE/deliver.mjs "$D" > $O/deliver.log 2>&1; echo "deliver rc=$?" >> $O/deliver.log; fi
 echo done > $O/pipeline.done

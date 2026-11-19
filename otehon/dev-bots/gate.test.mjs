@@ -10,7 +10,7 @@ const ok = { task, verdict, files, tests, addedLines: [{ path: "src/a.js", text:
 const action = (over) => decide({ ...ok, ...over }).action;
 
 test("a clean, approved, tested change in an owned org merges", () => {
-  assert.deepEqual(decide(ok), { action: "merge", reasons: [] });
+  assert.deepEqual(decide(ok), { action: "merge", reasons: [], deferred: [] });
 });
 test("other organisations and excluded repositories are held", () => {
   assert.equal(action({ task: { ...task, repo: "apache/arrow" } }), "hold");
@@ -62,4 +62,11 @@ test("pull request state gates the merge", () => {
 test("nothing to deliver or no issue key is held", () => {
   assert.equal(action({ files: [] }), "hold");
   assert.equal(action({ task: { ...task, issue: "" } }), "hold");
+});
+test("deferred device or live items do not block the merge but are reported", () => {
+  const acceptance = [{ item: "tests pass", met: true }, { item: "two devices", met: false, deferred: true }];
+  const d = decide({ ...ok, verdict: { ...verdict, acceptance } });
+  assert.equal(d.action, "merge");
+  assert.deepEqual(d.deferred, ["two devices"]);
+  assert.equal(action({ verdict: { ...verdict, acceptance: [{ item: "two devices", met: false, deferred: true }] } }), "draft");
 });

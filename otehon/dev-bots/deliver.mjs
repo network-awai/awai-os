@@ -44,21 +44,30 @@ function usage() {
   return rows;
 }
 
-// Stage everything except scratch output, then read the staged change.
+// Commit whatever the bots left (scratch output excluded), then read the whole branch against its base, so
+// a second delivery of an already pushed branch is judged on the same facts as the first.
+const base = JSON.parse(execFileSync("gh", ["repo", "view", task.repo, "--json", "defaultBranchRef"], { encoding: "utf8" })).defaultBranchRef.name;
 sh("git", ["add", "-A", "--", ".", ":!.agent-output"]);
-const numstat = sh("git", ["diff", "--cached", "--numstat", "-z"]).split("\0").filter(Boolean);
-const files = numstat.map((l) => {
-  const [a, , path] = l.split("\t");
-  const binary = a === "-";
-  let bytes = 0; try { bytes = statSync(join(dir, path)).size; } catch {}
-  return { path, added: binary ? 0 : Number(a), binary, bytes };
-});
-const addedLines = [];
-let cur = "";
-for (const l of sh("git", ["diff", "--cached", "--unified=0", "--no-color"]).split("\n")) {
-  if (l.startsWith("+++ b/")) cur = l.slice(6);
-  else if (l.startsWith("+") && !l.startsWith("+++")) addedLines.push({ path: cur, text: l.slice(1) });
+const staged = sh("git", ["diff", "--cached", "--name-only"]).trim() !== "";
+function readChange(range) {
+  const files = sh("git", ["diff", ...range, "--numstat", "-z"]).split("\0").filter(Boolean).map((l) => {
+    const [a, , path] = l.split("\t");
+    const binary = a === "-";
+    let bytes = 0; try { bytes = statSync(join(dir, path)).size; } catch {}
+    return { path, added: binary ? 0 : Number(a), binary, bytes };
+  });
+  const addedLines = [];
+  let cur = "";
+  for (const l of sh("git", ["diff", ...range, "--unified=0", "--no-color"]).split("\n")) {
+    if (l.startsWith("+++ b/")) cur = l.slice(6);
+    else if (l.startsWith("+") && !l.startsWith("+++")) addedLines.push({ path: cur, text: l.slice(1) });
+  }
+  return { files, addedLines };
 }
+sh("git", ["fetch", "-q", "origin", base]);
+const mergeBase = sh("git", ["merge-base", "HEAD", `origin/${base}`]).trim();
+// Index against the merge base = committed branch work plus what is staged now.
+const { files, addedLines } = readChange(["--cached", mergeBase]);
 
 // Tests run here, outside the agent sandbox; the agent's own report is not trusted.
 let testIndex = 0;
@@ -67,7 +76,6 @@ const tests = (task.tests ?? []).map((cmd) => {
   writeFileSync(join(out, `deliver-test-${testIndex++}.log`), `$ ${cmd}\n${r.stdout ?? ""}\n${r.stderr ?? ""}\nexit=${r.status}\n`);
   return { cmd, exit: r.status ?? 1 };
 });
-sh("git", ["add", "-A", "--", ".", ":!.agent-output"]); // tests may regenerate tracked files; re-read is not needed for the gate
 
 let decision = decide({ task, verdict, files, addedLines, tests });
 const report = { task: task.issue, at: new Date().toISOString(), decision, tests, files: files.length, usage: usage() };
@@ -79,16 +87,22 @@ const usageTable = ["| Run | Model | Calls | Input | of which cached | Output | 
 const reasons = decision.reasons.map((r) => `- ${r.level}: ${r.text}`).join("\n") || "- none";
 const checks = tests.map((t) => `- [${t.exit === 0 ? "x" : " "}] \`${t.cmd}\` (exit ${t.exit}, run outside the agent sandbox)`).join("\n") || "- none declared";
 const summary = verdict?.summary ?? "No review summary.";
-const unverified = (verdict?.unverified ?? []).map((u) => `- ${u}`).join("\n") || "- none recorded";
+const unverified = [...(decision.deferred ?? []).map((x) => `deferred acceptance item: ${x}`), ...(verdict?.unverified ?? [])].map((u) => `- ${u}`).join("\n") || "- none recorded";
 
-sh("git", ["commit", "-q", "-m", `${task.issue}: ${task.title}\n\nImplemented by an Itonami developer bot on Muse (muse-spark-1.3); reviewed by the shinsa profile.\nGate decision: ${decision.action}.`]);
+if (staged) sh("git", ["commit", "-q", "-m", `${task.issue}: ${task.title}\n\nImplemented by an Itonami developer bot on Muse (muse-spark-1.3); reviewed by the shinsa profile.\nGate decision: ${decision.action}.`]);
 const head = sh("git", ["rev-parse", "HEAD"]).trim();
 sh("git", ["push", "-q", "-u", "origin", task.branch]);
 const body = `Linear: ${task.issue}\n\n## Review (shinsa)\n\n${summary}\n\n## Checks\n\n${checks}\n\n## Gate\n\nDecision: **${decision.action}**\n\n${reasons}\n\n## Not verified\n\n${unverified}\n\nImplemented and reviewed by Itonami developer bots on Muse; delivered by \`otehon/dev-bots/deliver.mjs\`.\n`;
 writeFileSync(join(out, "pr-body.md"), body);
-const prArgs = ["pr", "create", "-R", task.repo, "--head", task.branch, "--title", `${task.issue}: ${task.title}`, "--body-file", join(out, "pr-body.md")];
-if (decision.action !== "merge") prArgs.push("--draft");
-const pr = sh("gh", prArgs).trim().split("\n").pop();
+let pr = null, wasDraft = false;
+try { const e = JSON.parse(sh("gh", ["pr", "view", task.branch, "-R", task.repo, "--json", "url,isDraft,state"])); if (e.state === "OPEN") { pr = e.url; wasDraft = e.isDraft; } } catch {}
+if (pr) sh("gh", ["pr", "edit", pr, "--body-file", join(out, "pr-body.md")]);
+else {
+  const prArgs = ["pr", "create", "-R", task.repo, "--head", task.branch, "--title", `${task.issue}: ${task.title}`, "--body-file", join(out, "pr-body.md")];
+  if (decision.action !== "merge") prArgs.push("--draft");
+  pr = sh("gh", prArgs).trim().split("\n").pop();
+}
+if (decision.action === "merge" && wasDraft) sh("gh", ["pr", "ready", pr]);
 
 let merged = null;
 if (decision.action === "merge") {
@@ -114,5 +128,5 @@ const comment = `Developer-bot delivery for ${task.issue} — PR ${pr} (head \`$
 writeFileSync(join(out, "linear-comment.md"), comment);
 const lin = (args) => spawnSync("orca", ["linear", ...args], { encoding: "utf8" });
 const c = lin(["comment", "add", task.issue, "--body-file", join(out, "linear-comment.md")]);
-if (merged && task.done_on_merge !== false) lin(["status", "set", task.issue, "--to", "Done"]);
+if (merged && task.done_on_merge !== false && !decision.deferred?.length) lin(["status", "set", task.issue, "--to", "Done"]);
 finish({ pr, head, merged, linearComment: c.status === 0 ? "posted" : `failed: ${(c.stderr ?? "").slice(0, 200)}` });
