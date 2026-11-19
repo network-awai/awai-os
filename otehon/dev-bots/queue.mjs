@@ -163,12 +163,36 @@ export function formatLogLine({ now, name, state, reason }) {
   return `${now} ${name} ${state} ${reason}`;
 }
 
+const TOKEN_REDACT_PATTERNS = ["ghp_", "ghs_", "gho_", "ghu_", "ghr_", "github_pat_"];
+
+/**
+ * One-line detail for a failed token command's stderr: the last non-empty
+ * line, with every character outside printable ASCII (0x20-0x7e) replaced by
+ * `?`, cut to 160 characters. "no-output" when there is no non-empty line.
+ * "redacted" when any line looks like it carries a GitHub token. Pure.
+ */
+export function tokenFailureDetail(stderrText) {
+  const text = String(stderrText ?? "");
+  for (const p of TOKEN_REDACT_PATTERNS) {
+    if (text.includes(p)) return "redacted";
+  }
+  const lines = text.split("\n");
+  let last = "";
+  for (const line of lines) {
+    const stripped = line.replace(/\r+$/, "");
+    if (stripped !== "") last = stripped;
+  }
+  if (last === "") return "no-output";
+  return last.replace(/[^\x20-\x7e]/g, "?").slice(0, 160);
+}
+
 function usage() {
   return [
     "usage:",
     "  node queue.mjs validate-entry <name> --task <task.json> --prompt <muse-prompt.md> --owners <csv>",
     "  node queue.mjs write-result --name <n> --task <task.json|-> --state <done|failed>",
     "    --reason <code> --started <ts> --ended <ts> --pipeline <text|-> --deliver <deliver.json|-> --out <result.json>",
+    "  echo <stderr-text> | node queue.mjs token-failure-detail",
   ].join("\n");
 }
 
@@ -178,6 +202,7 @@ export function main(argv, deps = {}) {
     fileExists = () => { throw new Error("queue: no fileExists"); },
     fileNonEmpty = () => { throw new Error("queue: no fileNonEmpty"); },
     writeFile = () => { throw new Error("queue: no writeFile"); },
+    readStdin = () => { throw new Error("queue: no readStdin"); },
     log = (line) => console.log(line),
     error = (line) => console.error(line),
   } = deps;
@@ -282,6 +307,20 @@ export function main(argv, deps = {}) {
     }), null, 1)}\n`);
     return 0;
   }
+  if (cmd === "token-failure-detail") {
+    if (rest.length !== 0) {
+      error(usage());
+      return 2;
+    }
+    let text = "";
+    try {
+      text = readStdin();
+    } catch {
+      text = "";
+    }
+    log(tokenFailureDetail(text));
+    return 0;
+  }
   error(usage());
   return 2;
 }
@@ -298,5 +337,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       }
     },
     writeFile: (p, s) => writeFileSync(p, s),
+    readStdin: () => readFileSync(0, "utf8"),
   });
 }

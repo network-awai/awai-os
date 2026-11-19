@@ -219,10 +219,35 @@ while true; do
   TOKEN=""
   if [ -n "${DEV_BOTS_TOKEN_CMD:-}" ]; then
     # The token lives in a shell variable only: never logged, never
-    # written to a file, never copied into result.json.
-    TOKEN="$(TASK_OWNER="$OWNER" TASK_REPO="$REPONAME" bash -c "$DEV_BOTS_TOKEN_CMD" 2>/dev/null)" || TOKEN=""
+    # written to a file, never copied into result.json. Stderr travels
+    # through a pipe into queue.mjs (never a file) for a one-line detail
+    # that is logged only when no token results; on success it is dropped,
+    # so the success log lines are exactly as before.
+    TOKEN_CAPTURED="$(
+      exec 3>&1
+      TOKEN_INNER="$(TASK_OWNER="$OWNER" TASK_REPO="$REPONAME" bash -c "$DEV_BOTS_TOKEN_CMD" 2>&1 1>&3 3>&- | node "$HERE/queue.mjs" token-failure-detail; printf 'RC=%s\n' "${PIPESTATUS[0]}")"
+      TOKEN_INNER_RC="${TOKEN_INNER##*$'\n'}"
+      TOKEN_INNER_FIRST="${TOKEN_INNER%%$'\n'*}"
+      case "$TOKEN_INNER_RC" in
+        RC=*) TOKEN_INNER_RC="${TOKEN_INNER_RC#RC=}";;
+        *) TOKEN_INNER_RC=""; TOKEN_INNER_FIRST=unknown;;
+      esac
+      if [ "$TOKEN_INNER" = "RC=$TOKEN_INNER_RC" ] || [ -z "$TOKEN_INNER_FIRST" ]; then
+        TOKEN_INNER_FIRST=unknown
+      fi
+      printf '\nRC=%s\nDETAIL=%s\n' "$TOKEN_INNER_RC" "$TOKEN_INNER_FIRST"
+    )"
+    TOKEN_DETAIL="${TOKEN_CAPTURED##*$'\n'}"
+    TOKEN_DETAIL="${TOKEN_DETAIL#DETAIL=}"
+    TOKEN_REST="${TOKEN_CAPTURED%$'\n'*}"
+    TOKEN_RC="${TOKEN_REST##*$'\n'}"
+    TOKEN_RC="${TOKEN_RC#RC=}"
+    TOKEN="${TOKEN_REST%$'\n'*}"
+    [ -n "$TOKEN_DETAIL" ] || TOKEN_DETAIL=unknown
+    [ "$TOKEN_RC" = 0 ] || TOKEN=""
     TOKEN="$(printf '%s' "$TOKEN" | tr -d '[:space:]')"
     if [ -z "$TOKEN" ]; then
+      log_line "$NEXT" token-error "$TOKEN_DETAIL"
       finish_entry "$NEXT" failed no-token "$STARTED"
       continue
     fi

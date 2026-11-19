@@ -23,6 +23,7 @@ import {
   parseTask,
   pickNext,
   splitRepo,
+  tokenFailureDetail,
   validateEntry,
 } from "./queue.mjs";
 
@@ -675,6 +676,115 @@ test("e2e: a draft delivery decision is still done and visible in deliver.decisi
   assert.equal(res.state, "done");
   assert.equal(res.deliver.decision.action, "draft");
   assert.equal(res.deliver.pr, 7);
+});
+
+test("tokenFailureDetail returns the last non-empty line", () => {
+  assert.equal(tokenFailureDetail("first\nsecond\n"), "second");
+  assert.equal(tokenFailureDetail("a\nb"), "b");
+  assert.equal(tokenFailureDetail("only"), "only");
+});
+
+test("tokenFailureDetail replaces non-printable-ASCII with ?", () => {
+  assert.equal(tokenFailureDetail("caf\u00e9 \u2603\n"), "caf? ?");
+  assert.equal(tokenFailureDetail("a\tb"), "a?b");
+});
+
+test("tokenFailureDetail cuts the detail to 160 characters", () => {
+  const long = "y".repeat(200);
+  const detail = tokenFailureDetail(`short\n${long}`);
+  assert.equal(detail, "y".repeat(160));
+  assert.equal(detail.length, 160);
+});
+
+test("tokenFailureDetail returns no-output for empty input", () => {
+  assert.equal(tokenFailureDetail(""), "no-output");
+  assert.equal(tokenFailureDetail("\n"), "no-output");
+  assert.equal(tokenFailureDetail("\n\n"), "no-output");
+  assert.equal(tokenFailureDetail(null), "no-output");
+  assert.equal(tokenFailureDetail(undefined), "no-output");
+});
+
+test("tokenFailureDetail returns redacted when any line looks like a token", () => {
+  assert.equal(tokenFailureDetail("oops ghs_abc123\nlast line"), "redacted");
+  assert.equal(tokenFailureDetail("last line is gho_xyz"), "redacted");
+  for (const prefix of ["ghp_", "ghs_", "gho_", "ghu_", "ghr_", "github_pat_"]) {
+    assert.equal(tokenFailureDetail(`minter said no\nsaw ${prefix}abc123\nbye`), "redacted", prefix);
+  }
+});
+
+test("CLI token-failure-detail reads stdin and prints the detail", () => {
+  const h = cliHarness({});
+  h.deps.readStdin = () => "trying minter\nminter timed out\n";
+  assert.equal(queueMain(["token-failure-detail"], h.deps), 0);
+  assert.deepEqual(h.lines, ["minter timed out"]);
+  const empty = cliHarness({});
+  empty.deps.readStdin = () => "";
+  assert.equal(queueMain(["token-failure-detail"], empty.deps), 0);
+  assert.deepEqual(empty.lines, ["no-output"]);
+  assert.equal(queueMain(["token-failure-detail", "extra"], cliHarness().deps), 2);
+});
+
+function filesUnder(dir) {
+  const out = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...filesUnder(p));
+    else if (entry.isFile()) out.push(p);
+  }
+  return out;
+}
+
+test("e2e: a failing token command logs token-error before failed no-token", (t) => {
+  const tmp = mkdtempSync(join(tmpdir(), "queue-test-"));
+  const ctx = makeQueue(tmp, t);
+  writeEntry(ctx.queue, "01-tokerr");
+  const env = baseEnv(tmp, ctx, {
+    DEV_BOTS_TOKEN_CMD: "printf 'trying minter\\nminter timed out after 5s\\n' >&2; exit 3",
+  });
+  assert.equal(runQueue(ctx.queue, env).status, 0);
+  const res = resultOf(ctx.queue, "failed", "01-tokerr");
+  assert.equal(res.state, "failed");
+  assert.equal(res.reason, "no-token");
+  const logLines = readFileSync(join(ctx.queue, "runner.log"), "utf8").trim().split("\n");
+  const errIdx = logLines.findIndex((l) => l.includes("01-tokerr token-error "));
+  const failIdx = logLines.findIndex((l) => l.includes("01-tokerr failed no-token"));
+  assert.ok(errIdx >= 0, "token-error line present");
+  assert.ok(failIdx >= 0, "failed no-token line present");
+  assert.equal(failIdx, errIdx + 1);
+  assert.match(logLines[errIdx], /01-tokerr token-error minter timed out after 5s$/);
+});
+
+test("e2e: token-looking stderr is redacted and never lands in a file", (t) => {
+  const tmp = mkdtempSync(join(tmpdir(), "queue-test-"));
+  const ctx = makeQueue(tmp, t);
+  writeEntry(ctx.queue, "01-tokred");
+  const secret = "ghs_abc123";
+  const env = baseEnv(tmp, ctx, {
+    DEV_BOTS_TOKEN_CMD: `echo 'refused, saw ${secret} in transit' >&2; exit 1`,
+  });
+  assert.equal(runQueue(ctx.queue, env).status, 0);
+  assert.equal(resultOf(ctx.queue, "failed", "01-tokred").reason, "no-token");
+  const log = readFileSync(join(ctx.queue, "runner.log"), "utf8");
+  assert.match(log, /01-tokred token-error redacted/);
+  assert.match(log, /01-tokred failed no-token/);
+  for (const p of filesUnder(ctx.queue)) {
+    assert.ok(!readFileSync(p, "utf8").includes(secret), p);
+  }
+});
+
+test("e2e: token-command stderr is not logged when the token succeeds", (t) => {
+  const tmp = mkdtempSync(join(tmpdir(), "queue-test-"));
+  const ctx = makeQueue(tmp, t);
+  writeEntry(ctx.queue, "01-tokok");
+  const env = baseEnv(tmp, ctx, {
+    DEV_BOTS_TOKEN_CMD: "echo 'minter slow, retrying' >&2; printf 'tok-ok-9'",
+  });
+  assert.equal(runQueue(ctx.queue, env).status, 0);
+  assert.equal(resultOf(ctx.queue, "done", "01-tokok").state, "done");
+  const log = readFileSync(join(ctx.queue, "runner.log"), "utf8");
+  assert.ok(!log.includes("token-error"), log);
+  assert.ok(!log.includes("minter slow"), log);
+  assert.ok(!log.includes("tok-ok-9"), log);
 });
 
 test("e2e: SIGTERM ends an idle runner and releases the lock", async (t) => {
