@@ -48,7 +48,10 @@ function usage() {
 // Commit whatever the bots left (scratch output excluded), then read the whole branch against its base, so
 // a second delivery of an already pushed branch is judged on the same facts as the first.
 const base = JSON.parse(execFileSync("gh", ["repo", "view", task.repo, "--json", "defaultBranchRef"], { encoding: "utf8" })).defaultBranchRef.name;
-sh("git", ["add", "-A", "--", ".", ":!.agent-output", ":!**/target/**", ":!**/node_modules/**"]);
+// Stage everything, then unstage what must never be delivered. An exclude pathspec on `git add` is not
+// portable: git 2.39 (Debian 12) fails when the excluded path is also in .gitignore.
+sh("git", ["add", "-A", "--", "."]);
+sh("git", ["reset", "-q", "--", ".agent-output", ":(glob)**/target/**", ":(glob)**/node_modules/**"]);
 const staged = sh("git", ["diff", "--cached", "--name-only"]).trim() !== "";
 function readChange(range) {
   const files = sh("git", ["diff", ...range, "--numstat", "-z"]).split("\0").filter(Boolean).map((l) => {
