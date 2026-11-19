@@ -66,6 +66,10 @@ LOG="$QUEUE/runner.log"
 
 now() { date -u +%FT%TZ; }
 
+# A literal newline. Kept in a variable so the expansions below stay plain for bash 3.2 (macOS).
+NL='
+'
+
 log_line() { # name state reason
   printf '%s %s %s %s\n' "$(now)" "$1" "$2" "$3" >> "$LOG"
 }
@@ -223,28 +227,29 @@ while true; do
     # through a pipe into queue.mjs (never a file) for a one-line detail
     # that is logged only when no token results; on success it is dropped,
     # so the success log lines are exactly as before.
+    # Layout of the capture: <token command stdout> NL <detail> NL RC=<status>.
+    # It is taken apart outside the substitution: bash 3.2 (macOS) cannot
+    # parse a case statement inside $( ).
     TOKEN_CAPTURED="$(
       exec 3>&1
-      TOKEN_INNER="$(TASK_OWNER="$OWNER" TASK_REPO="$REPONAME" bash -c "$DEV_BOTS_TOKEN_CMD" 2>&1 1>&3 3>&- | node "$HERE/queue.mjs" token-failure-detail; printf 'RC=%s\n' "${PIPESTATUS[0]}")"
-      TOKEN_INNER_RC="${TOKEN_INNER##*$'\n'}"
-      TOKEN_INNER_FIRST="${TOKEN_INNER%%$'\n'*}"
-      case "$TOKEN_INNER_RC" in
-        RC=*) TOKEN_INNER_RC="${TOKEN_INNER_RC#RC=}";;
-        *) TOKEN_INNER_RC=""; TOKEN_INNER_FIRST=unknown;;
-      esac
-      if [ "$TOKEN_INNER" = "RC=$TOKEN_INNER_RC" ] || [ -z "$TOKEN_INNER_FIRST" ]; then
-        TOKEN_INNER_FIRST=unknown
-      fi
-      printf '\nRC=%s\nDETAIL=%s\n' "$TOKEN_INNER_RC" "$TOKEN_INNER_FIRST"
+      TOKEN_INNER="$(TASK_OWNER="$OWNER" TASK_REPO="$REPONAME" bash -c "$DEV_BOTS_TOKEN_CMD" 2>&1 1>&3 3>&- | node "$HERE/queue.mjs" token-failure-detail; printf 'RC=%s' "${PIPESTATUS[0]}")"
+      printf '\n%s\n' "$TOKEN_INNER"
     )"
-    TOKEN_DETAIL="${TOKEN_CAPTURED##*$'\n'}"
-    TOKEN_DETAIL="${TOKEN_DETAIL#DETAIL=}"
-    TOKEN_REST="${TOKEN_CAPTURED%$'\n'*}"
-    TOKEN_RC="${TOKEN_REST##*$'\n'}"
-    TOKEN_RC="${TOKEN_RC#RC=}"
-    TOKEN="${TOKEN_REST%$'\n'*}"
+    TOKEN_RC="${TOKEN_CAPTURED##*$NL}"
+    TOKEN_REST="${TOKEN_CAPTURED%$NL*}"
+    TOKEN_DETAIL="${TOKEN_REST##*$NL}"
+    TOKEN="${TOKEN_REST%$NL*}"
+    case $TOKEN_RC in
+      RC=0) ;;
+      *) TOKEN="";;
+    esac
+    # No detail line came back (queue.mjs did not run): what sits in that
+    # position is the command's stdout, which must never be logged.
+    case $TOKEN_REST in
+      *"$NL"*) ;;
+      *) TOKEN_DETAIL=unknown;;
+    esac
     [ -n "$TOKEN_DETAIL" ] || TOKEN_DETAIL=unknown
-    [ "$TOKEN_RC" = 0 ] || TOKEN=""
     TOKEN="$(printf '%s' "$TOKEN" | tr -d '[:space:]')"
     if [ -z "$TOKEN" ]; then
       log_line "$NEXT" token-error "$TOKEN_DETAIL"
