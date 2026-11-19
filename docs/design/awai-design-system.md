@@ -20,6 +20,8 @@ File: `umqCqP5KSjLWh9fhCI1HaN`. The Otehon baseline (`215:2`, `216:475`/`216:476
 
 ## App icon family for Itonami dapps and Awai apps
 
+See the [crest icon rules in Figma](https://www.figma.com/design/RcXEPeAUkK6af6Ygl0IiPZ?node-id=17-8189).
+
 The Itonami icon is the approved **輪に結び** with faint diagonal twill
 (綾織り). Use the [approved Figma master](https://www.figma.com/design/RcXEPeAUkK6af6Ygl0IiPZ?node-id=12-5821).
 Use the [14-app comparison](https://www.figma.com/design/RcXEPeAUkK6af6Ygl0IiPZ?node-id=14-6812)
