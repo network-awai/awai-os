@@ -49,3 +49,24 @@ test("a local Bot is delegated (class A) and presented (class B) only by its own
   await assert.rejects(client((r) => ({ schema: "awai.approval.result.v1", requestId: r.requestId, ...DELEGATION, rootSignature: SIG, seal: "00" })).presentBotDelegation("b1"), /invalid-approval-result/);
   await assert.rejects(client(() => { throw new Error("stopped"); }).presentBotDelegation("b1"), /stopped/);
 });
+
+const RECEIVER = "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK";
+const T = { receiver: RECEIVER, amount: 250, spenderPrev: "bafyreieml4i4vd22i5tcya2kigi3fq4cakuvtp2rjphzfohwp4lj47dvbi", nonce: "0f8fad5b-d9cb-469f-a165-70867728950e", ts: 1795051302000 };
+const SIGNED = { transferId: "bafyreidyilmwpk5geup6n273fva3yubdpae6puduf4lka6lh52cud7rxny", sig: "A".repeat(86), spender: DELEGATION.holder };
+
+test("payments: policy (class A), transfer (class B) and one-off approval (class A) carry only typed fields", async () => {
+  const seen = [];
+  const c = client((r) => r.kind === "itonami.bot-signer.policy"
+    ? { schema: "awai.approval.result.v1", requestId: r.requestId, funding: DELEGATION.holder, operating: DELEGATION.holder, bindingByOperating: "B".repeat(86), bindingByFunding: "C".repeat(86) }
+    : { schema: "awai.approval.result.v1", requestId: r.requestId, ...SIGNED }, seen);
+  assert.equal((await c.setBotSpendingPolicy("b1", { receivers: [RECEIVER], perTransferMax: 300, dailyMax: 500 })).funding, DELEGATION.holder);
+  assert.deepEqual(await c.signBotTransfer("b1", T), SIGNED);
+  assert.deepEqual(await c.approveBotTransfer("b1", T), SIGNED);
+  assert.deepEqual(seen[1][1], { schema: "awai.approval.request.v1", requestId: ID, kind: "itonami.bot-signer.transfer", botId: "b1",
+    receiver: RECEIVER, amount: "250", spenderPrev: T.spenderPrev, nonce: T.nonce, ts: "1795051302000" });
+  const never = client(() => assert.fail("must not ask"));
+  await assert.rejects(never.signBotTransfer("b1", { ...T, amount: 0 }), /invalid-transfer/);
+  await assert.rejects(never.signBotTransfer("b1", { ...T, spenderPrev: "nil" }), /invalid-transfer/);
+  await assert.rejects(never.setBotSpendingPolicy("b1", { receivers: [RECEIVER], perTransferMax: 300, dailyMax: 100 }), /invalid-policy/);
+  await assert.rejects(client(() => { throw new Error("needs-owner-approval"); }).signBotTransfer("b1", T), /needs-owner-approval/);
+});
