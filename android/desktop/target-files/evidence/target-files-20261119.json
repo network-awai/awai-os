@@ -1,0 +1,47 @@
+{
+  "issue": "AWAI-3061",
+  "date": "2026-11-19",
+  "host": "Vultr vc2-16c-64gb (icn), instance 5d9ff602, restored from snapshot 7c9c0ce6",
+  "product": "lineage_Generic_x86_64-userdebug",
+  "command": "m -j16 target-files-package",
+  "device_tree": {
+    "path": "device/mainline/generic",
+    "revision": "4cc0f606198db7d9f3a577283ebb3969350a0d38",
+    "patch": "mkbootimg-header-version.patch"
+  },
+  "failure_before_patch": {
+    "date": "2026-11-18T10:11:52Z",
+    "error": "mkbootimg: ValueError: --vendor_boot not compatible with given header version",
+    "cause": "META/misc_info.txt had no mkbootimg_args, so mkbootimg ran with header version 0"
+  },
+  "result": {
+    "finished": "2026-11-19T07:07:59Z",
+    "file": "lineage_Generic_x86_64-target_files.zip",
+    "bytes": 2780221057,
+    "sha256": "6c757cce14ec69c5b5b66436950a7e127f7e3a82f35e5caed8250994d59b7285",
+    "entries": 14277,
+    "images": {
+      "IMAGES/system.img": 1388650496,
+      "IMAGES/system_dlkm.img": 8192,
+      "IMAGES/vendor.img": 174608384,
+      "IMAGES/vendor_boot.img": 31295488,
+      "IMAGES/vendor_dlkm.img": 196616192
+    },
+    "misc_info": {
+      "mkbootimg_args": "--header_version 4",
+      "mkbootimg_version_args": "--os_version 17 --os_patch_level 2026-11-01",
+      "default_system_dev_certificate": "build/make/target/product/security/testkey",
+      "no_recovery": "true"
+    }
+  },
+  "build_runs": [
+    {"log": "tf-build2-20261119.log", "start": "2026-11-19T04:40:04Z", "end": "2026-11-19T06:47:46Z", "out": "empty at start", "result": "failed at 173159/178228 on system/product/etc/build-manifest.xml: `repo manifest -r` could not read 4 projects whose git metadata was damaged by the filesystem repair"},
+    {"log": "tf-build3-20261119.log", "start": "2026-11-19T06:48:12Z", "end": "2026-11-19T07:07:59Z", "out": "kept from the run above", "result": "ok, 5160 steps, 19:47"}
+  ],
+  "repaired_projects": ["hardware/qcom-caf/bootctrl", "hardware/qcom-caf/common", "hardware/qcom-caf/wlan", "hardware/qcom/wlan"],
+  "step_counts_ninja_t_commands": {
+    "droid": 183692, "target-files-package": 173783, "diskimage": 173032, "liveisoimage": 173013,
+    "systemimage vendorimage": 169735, "otatools": 7352
+  },
+  "not_shown": ["signing with release keys (test-keys only)", "A/B", "an installable OTA", "boot of images from this package"]
+}
