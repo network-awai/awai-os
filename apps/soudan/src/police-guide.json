@@ -4277,6 +4277,11 @@
           "title": "ギニアビサウ司法警察 — 電子申告と照会",
           "url": "https://pj.gw/",
           "checkedOn": "2026-11-19"
+        },
+        "bissau-case": {
+          "title": "ギニアビサウ司法警察 — Bissauの捜査発表",
+          "url": "https://www.pj.gw/noticias/policia-judiciaria-desmantela-grupo-suspeito-de-assaltos-a-mao-armada-em-bissau",
+          "checkedOn": "2026-11-19"
         }
       },
       "jurisdiction": [
@@ -4302,6 +4307,15 @@
             "main"
           ],
           "kind": "status-check"
+        }
+      ],
+      "cases": [
+        {
+          "text": "ビサウの事業所で起きた強盗について、司法警察が申告を受けたことを端緒として捜査を開始したと公表した。",
+          "refs": [
+            "bissau-case"
+          ],
+          "stage": "investigation-confirmed"
         }
       ]
     },
@@ -5872,11 +5886,16 @@
       "name": "Kyrgyzstan",
       "region": "Asia",
       "iso2": "KG",
-      "status": "partial",
+      "status": "official-route",
       "sources": {
         "main": {
           "title": "キルギス国立銀行 — 詐欺被害の案内",
           "url": "https://www.nbkr.kg/printver.jsp?item=31&lang=RUS&material=129338",
+          "checkedOn": "2026-11-19"
+        },
+        "cpp": {
+          "title": "キルギス政府公表 — 刑事手続法第147・149・154条",
+          "url": "https://gosalko.gov.kg/documents/%D0%A3%D0%B3%D0%BE%D0%BB%D0%BE%D0%B2%D0%BD%D0%BE-%D0%BF%D1%80%D0%BE%D1%86%D0%B5%D1%81%D1%81%D1%83%D0%B0%D0%BB%D1%8C%D0%BD%D1%8B%D0%B9%20%D0%BA%D0%BE%D0%B4%D0%B5%D0%BA%D1%81%20%D0%9A%D1%8B%D1%80%D0%B3%D1%8B%D0%B7%D1%81%D0%BA%D0%BE%D0%B9%20%D0%A0%D0%B5%D1%81%D0%BF%D1%83%D0%B1%D0%BB%D0%B8%D0%BA%D0%B8.pdf",
           "checkedOn": "2026-11-19"
         }
       },
@@ -5890,10 +5909,27 @@
       ],
       "intake": [
         {
-          "text": "詐欺被害に気づいたら法執行機関へ連絡する。正式な事件の登録や地域別の窓口は要確認。",
+          "text": "捜査機関や検察に口頭または書面で申告する。口頭の場合は調書を作成し、書面の場合は申告者が署名する。",
           "refs": [
-            "main"
+            "cpp"
           ]
+        }
+      ],
+      "progress": [
+        {
+          "text": "受領担当者、登録時刻、登録番号が記載された登録確認書が交付される。",
+          "refs": [
+            "cpp"
+          ]
+        }
+      ],
+      "followUp": [
+        {
+          "text": "立件しない決定は、通知に示された方法に従い検察または裁判所へ申し立てられる。",
+          "refs": [
+            "cpp"
+          ],
+          "kind": "review"
         }
       ]
     },
@@ -6920,6 +6956,15 @@
           "refs": [
             "police"
           ]
+        }
+      ],
+      "cases": [
+        {
+          "text": "親族の事故を装う詐欺の申告について、キシナウの管轄警察が受け付け、事件の経緯を調べていると国家警察が公表した。",
+          "refs": [
+            "case"
+          ],
+          "stage": "investigation-confirmed"
         }
       ]
     },
@@ -11789,27 +11834,27 @@
       "name": "Venezuela (Bolivarian Republic of)",
       "region": "Americas",
       "iso2": "VE",
-      "status": "partial",
+      "status": "official-route",
       "sources": {
-        "main": {
-          "title": "WIPO Lex — ベネズエラの刑事手続法の旧版",
-          "url": "https://www.wipo.int/wipolex/es/legislation/details/3996",
+        "cpp2021": {
+          "title": "ベネズエラ官報第6.644号 — 刑事手続法第267条（2021年）",
+          "url": "https://www.alc.com.ve/wp-content/uploads/2021/09/COPP-2021.pdf",
           "checkedOn": "2026-11-19"
         }
       },
       "jurisdiction": [
         {
-          "text": "WIPO Lexの刑事手続法公表版には、検察や刑事捜査機関による申告受付が定められている。現行の実施窓口は要確認。",
+          "text": "刑事手続法第267条では検察官または刑事捜査を担当する警察機関が犯罪申告を受け付ける。",
           "refs": [
-            "main"
+            "cpp2021"
           ]
         }
       ],
       "intake": [
         {
-          "text": "詐欺被害について、現行の検察・刑事捜査機関への正式な申告方法を確認する必要がある。",
+          "text": "法に基づく窓口は検察または刑事捜査機関。詐欺専用の電子フォームや地域別の受付場所は要確認。",
           "refs": [
-            "main"
+            "cpp2021"
           ]
         }
       ]
