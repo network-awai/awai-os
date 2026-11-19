@@ -55,6 +55,7 @@ const appCrests = new Map([
   ['network.awai.drive', 'network.awai.drive.svg'],
   ['network.awai.physai', 'network.awai.physai.svg'],
   ['network.awai.suji', 'network.awai.suji.svg'],
+  ['network.awai.yataverse', 'network.itonami.yataverse.preview.svg'],
   ['network.itonami.app', 'itonami.svg'],
   ['network.itonami.client.preview', 'itonami.svg'],
   ['network.itonami.deai', 'network.awai.deai.dev.debug.svg'],
