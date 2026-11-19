@@ -65,3 +65,18 @@ that run; other issues still post, and the exit is non-zero. `--dry-run` prints
 
 Copying the outbox off the device (or onto the draining host) is a separate
 manual step this command does not do.
+
+## Leasing a token with retries
+
+On a host that gets its GitHub token from a minter over a private network (the phone), one failed request
+used to stop delivery after implement and review had already run. `lease-retry.mjs` wraps the lease command:
+
+```sh
+export GH_TOKEN=$(node otehon/dev-bots/lease-retry.mjs -- node kagitaba-lease.mjs lease --owner <org> --repo <repo> ...)
+```
+
+- Only a transport failure (the minter cannot be reached, or a 5xx) is retried. A refusal fails at once.
+- `DEV_BOTS_LEASE_TRIES` (default 3, 1-10) and `DEV_BOTS_LEASE_WAIT_S` (default 5) bound the retries.
+- `DEV_BOTS_NET_RECOVER` is an optional shell command run before each retry, for example one that reconnects
+  the VPN. It is host configuration: nothing in this repository chooses or runs a recovery command by itself.
+- The token is written to stdout only on success and is never logged.
