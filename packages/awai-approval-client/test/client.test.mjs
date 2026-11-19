@@ -30,3 +30,22 @@ test("refuses bad input before asking, and answers that do not match", async () 
 test("a refusal from the Awai app is passed on, not replaced by another signer", async () => {
   await assert.rejects(client(() => { throw new Error("denied"); }).signBotLaunch(LAUNCH), /denied/);
 });
+
+const BLOCK = "8213" + "00".repeat(40);
+const DELEGATION = { block: BLOCK, cid: "bafyreieml4i4vd22i5tcya2kigi3fq4cakuvtp2rjphzfohwp4lj47dvbi", before: 1797000000, holder: "did:key:z6MktwupdmLXVVqTzCw4i46r4uGyosGXRnR3XjN4Zq7oMMsw", owner: "0x4a62316623AD457f02CdC5D997DED67A383EC569" };
+
+test("a local Bot is delegated (class A) and presented (class B) only by its own kinds", async () => {
+  const seen = [];
+  const c = client((r) => r.kind === "itonami.bot-signer.delegate"
+    ? { schema: "awai.approval.result.v1", requestId: r.requestId, ...DELEGATION, signature: SIG }
+    : { schema: "awai.approval.result.v1", requestId: r.requestId, ...DELEGATION, rootSignature: SIG, seal: "cd".repeat(64) }, seen);
+  assert.equal((await c.delegateBot("business-6399-a")).rootSignature, SIG);
+  assert.equal((await c.presentBotDelegation("business-6399-a")).seal, "cd".repeat(64));
+  assert.deepEqual(seen.map(([, r]) => [r.kind, r.botId, Object.keys(r).sort().join(",")]), [
+    ["itonami.bot-signer.delegate", "business-6399-a", "botId,kind,requestId,schema"],
+    ["itonami.bot-signer.present", "business-6399-a", "botId,kind,requestId,schema"],
+  ]);
+  await assert.rejects(client(() => assert.fail("must not ask")).presentBotDelegation("../x"), /invalid-bot-id/);
+  await assert.rejects(client((r) => ({ schema: "awai.approval.result.v1", requestId: r.requestId, ...DELEGATION, rootSignature: SIG, seal: "00" })).presentBotDelegation("b1"), /invalid-approval-result/);
+  await assert.rejects(client(() => { throw new Error("stopped"); }).presentBotDelegation("b1"), /stopped/);
+});
