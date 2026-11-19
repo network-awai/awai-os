@@ -46,6 +46,7 @@
   .app-button .app-label { font-size:.75rem; overflow-wrap:anywhere; }
   .icon-box { inline-size:56px; block-size:56px; display:grid; place-items:center; border-radius:20px; background:var(--container); }
   .system-app-icon { inline-size:32px; block-size:32px; object-fit:contain; }
+  .app-crest { display:block; border-radius:25%; flex:none; }
   .dock { background:var(--surface); border-radius:28px; padding:.75rem 0; }
   .home-bottom { margin-block-start:auto; display:flex; flex-direction:column; gap:.75rem; }
   .app-bar { display:flex; align-items:center; gap:.75rem; }

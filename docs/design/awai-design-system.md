@@ -18,6 +18,33 @@ File: `umqCqP5KSjLWh9fhCI1HaN`. The Otehon baseline (`215:2`, `216:475`/`216:476
 | Components | [312:2](https://www.figma.com/design/umqCqP5KSjLWh9fhCI1HaN?node-id=312-2) |
 | Torihiki trade UX proposal | [315:2](https://www.figma.com/design/umqCqP5KSjLWh9fhCI1HaN?node-id=315-2) |
 
+## App icon family for Itonami dapps and Awai apps
+
+The Itonami icon is the approved **輪に結び** with faint diagonal twill
+(綾織り). Use the [approved Figma master](https://www.figma.com/design/RcXEPeAUkK6af6Ygl0IiPZ?node-id=12-5821).
+Use the [14-app comparison](https://www.figma.com/design/RcXEPeAUkK6af6Ygl0IiPZ?node-id=14-6812)
+and [layered artboards](https://www.figma.com/design/RcXEPeAUkK6af6Ygl0IiPZ?node-id=14-6087)
+for the other products. The marks interpret Japanese patterns and crests to show
+what each app does. Aozora uses a bird and a cloud, Drive uses three storehouses,
+and Yataverse uses three interlocking rings.
+
+- Use Awai blue (#1e50a2), red (#bc002d), white (#ffffff), and ink (#14110f)
+  or mixes of those colors. Start with a light ground, a fine blue circle, and
+  a restrained red accent. Give each app a distinct silhouette.
+- Keep the functional mark, the ground, and the faint repeating pattern
+  editable separately. The mark should remain recognizable at 34px under both
+  the circle and rounded-square masks. App names remain visible alongside the
+  icon where the UI needs a label.
+- The app owner supplies launcher resources for its existing package and
+  signing identity. The Store uses the same approved artwork for that catalog
+  entry. Use packaged local artwork and keep package, signature and digest
+  verification independent of the icon.
+- Verify Itonami in the physical Awai OS launcher and Store first. Then apply
+  and verify the other apps through their normal build and delivery paths.
+  Record design approval, source changes and actual device display separately.
+
+Tracking: [AWAI-3595](https://linear.app/kotobalabs/issue/AWAI-3595).
+
 ## Rules
 
 1. **Source of truth.**
