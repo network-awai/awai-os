@@ -676,3 +676,21 @@ test("e2e: a draft delivery decision is still done and visible in deliver.decisi
   assert.equal(res.deliver.decision.action, "draft");
   assert.equal(res.deliver.pr, 7);
 });
+
+test("e2e: SIGTERM ends an idle runner and releases the lock", async (t) => {
+  const tmp = mkdtempSync(join(tmpdir(), "queue-test-"));
+  const ctx = makeQueue(tmp, t);
+  const env = baseEnv(tmp, ctx, { DEV_BOTS_QUEUE_POLL_S: "60" });
+  const child = spawn("bash", [RUNNER, ctx.queue], { env, stdio: "ignore" });
+  const exited = new Promise((resolve) => child.on("exit", (code, signal) => resolve({ code, signal })));
+  const lock = join(ctx.queue, "runner.lock");
+  for (let i = 0; i < 100 && !existsSync(lock); i++) await new Promise((r) => setTimeout(r, 50));
+  assert.ok(existsSync(lock), "runner took the lock");
+  await new Promise((r) => setTimeout(r, 300)); // let it reach the poll wait
+  child.kill("SIGTERM");
+  const timer = setTimeout(() => child.kill("SIGKILL"), 10000);
+  const r = await exited;
+  clearTimeout(timer);
+  assert.equal(r.code, 143, `exit ${r.code} signal ${r.signal}`);
+  assert.ok(!existsSync(lock), "lock released");
+});

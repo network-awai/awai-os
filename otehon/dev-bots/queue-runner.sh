@@ -84,7 +84,13 @@ if [ -f "$LOCK" ]; then
 fi
 echo "$$" > "$LOCK"
 release_lock() { rm -f "$LOCK"; }
-trap release_lock EXIT INT TERM
+trap release_lock EXIT
+# A signal ends the runner (the EXIT trap then releases the lock). Without the
+# explicit exit the handler would return and the loop would go on, unlocked.
+# During an entry bash runs the handler when the current command returns, so
+# the entry in hand is finished first.
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 mkdir -p "$QUEUE/inbox" "$QUEUE/running" "$QUEUE/done" "$QUEUE/failed" "$QUEUE/work"
 
@@ -145,7 +151,10 @@ while true; do
 
   if [ -z "$NEXT" ]; then
     if [ "$ONCE" = 1 ]; then exit 0; fi
-    sleep "$POLL_S"
+    # Wait in the background so a signal is handled at once, not after the poll.
+    sleep "$POLL_S" &
+    SLEEP_PID=$!
+    wait "$SLEEP_PID" || { kill "$SLEEP_PID" 2>/dev/null; }
     continue
   fi
 
