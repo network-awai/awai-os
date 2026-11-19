@@ -110,6 +110,10 @@ taken over) and is released on exit. Entries left in `running/` by a dead
 runner move to `failed/` with reason `interrupted` and are never re-run.
 `runner.log` gets one line per state change (UTC timestamp, name, state,
 reason); the token is never written to a file, a log or `result.json`.
+When the token command yields no token, the runner logs one extra
+`token-error <detail>` line (the last stderr line, sanitized and capped at
+160 characters, or `redacted` when it looks token-like) before
+`failed no-token`; `result.json` still records `no-token`.
 
 What it does not do: it does not pick issues and does not restart itself
 after a reboot or a killed process. Moving entries in and the Linear outbox
