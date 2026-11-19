@@ -11,6 +11,26 @@ It is built on Android AOSP. The current release is **Awai OS Meiji**
 - [Shared setup design](https://www.figma.com/design/umqCqP5KSjLWh9fhCI1HaN?node-id=241-3)
   in Figma, and the [UI design rules](docs/design/interface-principles.md).
 
+## Quiet by design (静けさ)
+
+Awai OS, the Awai network and Murakumo share one product principle: quiet.
+
+- **Encrypted end to end.** Private messages, mail, private posts and files are
+  encrypted on the sending device and decrypted only on the recipient's devices.
+- **No advertising, no ad tracking.** The OS and its default apps show no ads,
+  carry no advertising identifier and do not profile use to sell attention.
+  Google Play services are not required.
+- **Not identifiable to other people.** Other members see a pseudonym, and peers
+  do not learn the home IP address. Accepted actions stay traceable to a
+  verified responsible party through a bounded case process; this is not
+  anonymity without responsibility.
+- **Decentralized.** Apps run on the device with local state, Murakumo inference
+  is local by default, and each external operation asks for consent first.
+
+These are directions with evidence gates, not released guarantees. The
+[public roadmap](https://awai.network/network/roadmap/#quiet-by-design-静けさ)
+lists the current position and the open gates for each point.
+
 ## Status
 
 Awai OS runs today as Android apps and system overlays on qualified test
