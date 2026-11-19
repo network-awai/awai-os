@@ -1,0 +1,2 @@
+running
+boot=1 slot=_b incr=awai-ota-test-v2 date=1795079485 tags=test-keys
