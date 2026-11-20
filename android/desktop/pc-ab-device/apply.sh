@@ -41,13 +41,15 @@ else
   echo "virtio-common userdata fstab: already applied"
 fi
 
-# The vendor patch applies only in the source checkout prepared for Awai PC.
+# The vendor patches apply only in the source checkout prepared for Awai PC.
 vendor="$src/vendor/lineage"
-patch="$here/patches/vendor-lineage-no-ota-downgrade.patch"
-if git -C "$vendor" apply --reverse --check "$patch" 2>/dev/null; then
-    echo "vendor/lineage: already applied"
-else
+for name in vendor-lineage-no-ota-downgrade.patch vendor-lineage-kernel-output-prefix.patch; do
+  patch="$here/patches/$name"
+  if git -C "$vendor" apply --reverse --check "$patch" 2>/dev/null; then
+    echo "vendor/lineage $name: already applied"
+  else
     git -C "$vendor" apply --check "$patch"
     git -C "$vendor" apply "$patch"
-    echo "vendor/lineage: applied"
-fi
+    echo "vendor/lineage $name: applied"
+  fi
+done
