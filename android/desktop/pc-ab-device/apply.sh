@@ -14,3 +14,14 @@ one() { # <project path> <patch> <marker text that the patch adds>
 }
 one device/virt/virtio-common virtio-common-awai-pc.patch 'AWAI-3586: label partitions by GPT name'
 one device/virt/virt-common virt-common-awai-pc.patch 'awai_find_part'
+
+# The vendor patch applies only in the source checkout prepared for Awai PC.
+vendor="$src/vendor/lineage"
+patch="$here/patches/vendor-lineage-no-ota-downgrade.patch"
+if git -C "$vendor" apply --reverse --check "$patch" 2>/dev/null; then
+    echo "vendor/lineage: already applied"
+else
+    git -C "$vendor" apply --check "$patch"
+    git -C "$vendor" apply "$patch"
+    echo "vendor/lineage: applied"
+fi
