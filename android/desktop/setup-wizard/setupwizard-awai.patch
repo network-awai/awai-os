@@ -98,3 +98,14 @@ index 1b72197..1a0c600 100644
          private const val TAG = "LocaleActivity"
      }
  }
+diff --git a/app/src/main/java/org/lineageos/setupwizard/settings/LineageSettingsActivity.kt b/app/src/main/java/org/lineageos/setupwizard/settings/LineageSettingsActivity.kt
+--- a/app/src/main/java/org/lineageos/setupwizard/settings/LineageSettingsActivity.kt
++++ b/app/src/main/java/org/lineageos/setupwizard/settings/LineageSettingsActivity.kt
+@@ -73,6 +73,5 @@
+     private fun updateMetricsOption() {
+         val myPageBundle = SetupWizardApp.settingsBundle
+-        val metricsChecked =
+-            !myPageBundle.containsKey(KEY_SEND_METRICS) || myPageBundle.getBoolean(KEY_SEND_METRICS)
++        val metricsChecked = myPageBundle.getBoolean(KEY_SEND_METRICS, false)
+         metricsItem.isChecked = metricsChecked
+         myPageBundle.putBoolean(KEY_SEND_METRICS, metricsChecked)
