@@ -2,6 +2,7 @@ import argparse
 from hashlib import sha256
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
+import struct
 import subprocess
 from tempfile import TemporaryDirectory
 import unittest
@@ -82,6 +83,39 @@ class UpdaterFeedTest(unittest.TestCase):
                     ):
                         with self.assertRaisesRegex(ValueError, error):
                             updater.make_index(package, url, invalid_digest, device, "RELEASE", "24.0", build)
+
+    def test_index_checks_ranges_against_signed_zip_layout(self):
+        payload = struct.pack(">4sQQI", b"CrAU", 2, 2, 1) + b"met" + b"data"
+        properties = b"FILE_SIZE=31\n"
+        payload_offset = 30 + len("payload.bin")
+        properties_offset = payload_offset + len(payload) + 30 + len("payload_properties.txt")
+        ranges = f"payload_metadata.bin:{payload_offset}:27,payload.bin:{payload_offset}:{len(payload)},"
+        ranges += f"payload_properties.txt:{properties_offset}:{len(properties)}"
+        with TemporaryDirectory() as directory:
+            package = Path(directory) / "update.zip"
+            url = f"https://release.example/files/{package.name}"
+            for candidate, error in (
+                (ranges + "   ", None),
+                (ranges.replace(f"payload.bin:{payload_offset}:", f"payload.bin:{payload_offset + 1}:"), "differs"),
+                (ranges + ",metadata:999999999:1", "exceeds"),
+                (ranges + f",payload_metadata.bin:{payload_offset}:27", "duplicate"),
+            ):
+                with self.subTest(candidate=candidate):
+                    with ZipFile(package, "w") as archive:
+                        archive.writestr("payload.bin", payload)
+                        archive.writestr("payload_properties.txt", properties)
+                        archive.writestr("META-INF/com/android/metadata", (
+                            "ota-type=AB\npre-device=awai_pc\npost-timestamp=1800000000\n"
+                            f"ota-property-files={candidate}\n"
+                        ))
+                    digest = sha256(package.read_bytes()).hexdigest()
+                    args = (package, url, digest, "awai_pc", "RELEASE", "24.0", None)
+                    if error:
+                        with self.assertRaisesRegex(ValueError, error):
+                            updater.make_index(*args)
+                    else:
+                        files = updater.make_index(*args)[0]["files"]
+                        self.assertEqual(files[0]["ota_property_files"], candidate)
 
 
 if __name__ == "__main__":

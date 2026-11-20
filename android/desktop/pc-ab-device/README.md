@@ -97,7 +97,8 @@ Use the OTA target device and the installed build's Lineage release type and
 version. Pass `--source-build` with the exact source incremental ID for a delta
 and publish it at the feed path for that source. Omit the flag for a full OTA.
 The index command checks the digest from the signing record and the archive
-metadata. The updater and Android still verify the signed package on device.
+metadata, including any streaming offsets against the ZIP and payload header.
+The updater and Android still verify the signed package on device.
 Retain a record of feed detection, apply, reboot, recovery, and rollback on the same PC.
 
 The pilot endpoint is backed by the dedicated Cloudflare R2 bucket
