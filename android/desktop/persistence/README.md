@@ -185,3 +185,12 @@ both GPT headers and validates both GPT CRCs, both partition arrays, and the
 pre/post capture hashes. The output includes partition bounds and free LBA
 ranges. Use the report with the exact installation image for placement
 planning. Any physical boot or disk change requires its own authorization.
+
+The [7735HS audit on 2026-11-21](evidence/physical-gpt-audit-20261121.json)
+found three existing partitions. Its only free range is LBA 34–2047, before
+the first 1 MiB-aligned sector. The signed installation image with 16 GiB
+userdata needs 60,082,176 contiguous sectors. No internal write range is
+available. Partition 2 spans 24 GiB total, so shrinking it alone cannot
+make room for this layout. Preserve the existing data and verify the
+contents, backup and restore path for partitions 2 and 3 before considering
+any repartitioning.
