@@ -169,3 +169,19 @@ Not done or not qualified:
 | [physical-small-image-repair-20261117.json](evidence/physical-small-image-repair-20261117.json), [small-image-reblock-vm-20261117.json](evidence/small-image-reblock-vm-20261117.json) | 1 KiB → 4 KiB migration |
 
 Source: [network-awai/awai-os#163](https://github.com/network-awai/awai-os/pull/163).
+
+## GPT-only audit report
+
+A dedicated RAM initrd can install `init-gpt-audit.sh` as `/init`,
+`serve-gpt-audit.sh` as `/awai/serve-gpt-audit.sh`, and the existing
+`readonly-nvme.sh` and pinned boot dependencies under `/awai`. This entry
+checks the existing NVMe guard limits and uses the observed 512-byte sector
+count to capture both ends of the disk. With `awai.disk_audit_report=1` it
+serves the audit report from RAM on the isolated direct LAN.
+
+Run `python3 collect-gpt-audit.py http://10.77.0.2:18092 audit.json` from the
+operator workstation. The collector checks the reported disk size against
+both GPT headers and validates both GPT CRCs, both partition arrays, and the
+pre/post capture hashes. The output includes partition bounds and free LBA
+ranges. Use the report with the exact installation image for placement
+planning. Any physical boot or disk change requires its own authorization.
