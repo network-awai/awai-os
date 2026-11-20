@@ -63,6 +63,12 @@ def configure_release(checkout, url):
         raise ValueError("unexpected Updater source revision")
     patch_dir = Path(__file__).resolve().parent / "patches"
     apply = [*git, "apply", "--unidiff-zero"]
+    maintenance = str(patch_dir / "updater-pc-maintenance.patch")
+    if subprocess.run([*apply, "--reverse", "--check", maintenance],
+                      capture_output=True).returncode == 0:
+        configure(checkout, url)
+        return
+
     pending = []
     for name in ("updater-empty-feed-withdrawal.patch", "updater-serialize-ab-preparation.patch"):
         patch = str(patch_dir / name)
@@ -70,9 +76,16 @@ def configure_release(checkout, url):
                           capture_output=True).returncode != 0:
             subprocess.run([*apply, "--check", patch], check=True)
             pending.append(patch)
-    configure(checkout, url)
     if pending:
         subprocess.run([*apply, *pending], check=True)
+    try:
+        subprocess.run([*apply, "--check", maintenance], check=True)
+        subprocess.run([*apply, maintenance], check=True)
+    except subprocess.CalledProcessError:
+        if pending:
+            subprocess.run([*apply, "--reverse", *pending], check=True)
+        raise
+    configure(checkout, url)
 
 
 def apk_resources(apk, aapt2):

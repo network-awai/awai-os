@@ -75,6 +75,18 @@ python3 android/desktop/pc-ab-device/updater-feed.py configure-release \
 git -C "$ANDROID_BUILD_TOP/packages/apps/Updater" diff --check
 ```
 
+On the PC pilot, the Updater preference **Automatic PC maintenance** is off by
+default. Enabling it requires scheduled checks and streaming. The worker uses a
+fresh offer from the pilot feed and an HTTPS package under
+`ota.awai.network/v1/pc/pilot/`. UpdateEngine verifies the A/B payload.
+It waits for completed setup, an inactive screen, and a validated, unmetered
+connection. It uses external power on devices with a battery. The first
+automatic reboot check is scheduled about 20 minutes after UpdateEngine accepts
+the payload. Checks back off if the device is in use, and normal scheduled
+checks can resume later. Automatic reboot requires the same offer in the fresh
+feed and an UpdateEngine completion marker belonging to an automatic update.
+Manual update and restart remain available through Updater.
+
 Check the final signed A/B target-files against the SHA-256 from the signing
 record. Use Android SDK build-tools `aapt2` on PATH:
 
