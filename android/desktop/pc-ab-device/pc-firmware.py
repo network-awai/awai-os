@@ -13,7 +13,10 @@ from zipfile import BadZipFile, ZipFile
 
 REVISION = "a2dcb924f0897368b0b4f305cbf9808cdda90ce0"
 OVERLAY = Path("vendor/awai/pc-firmware")
-PRODUCT = Path("device/virt/virtio_x86_64/lineage_virtio_x86_64.mk")
+DEVICE = Path("device/virt/virtio_x86_64")
+DEVICE_REVISION = "50dc14712023705ccf477af49a27ef9109b54d19"
+PRODUCT = DEVICE / "lineage_virtio_x86_64.mk"
+RADEON_PATCH = Path(__file__).resolve().parent / "patches/virtio-x86-64-awai-radeon.patch"
 PRODUCT_MARKER = "PRODUCT_NAME := lineage_virtio_x86_64\n"
 INCLUDE = f"$(call inherit-product, {OVERLAY}/firmware.mk)\n"
 NOTICES = ("LICENSES/LICENSE.amdgpu", "LICENSES/LICENSE.r8169", "WHENCE")
@@ -43,6 +46,15 @@ def installed_files(files):
 
 
 def prepare(source, firmware):
+    device = source / DEVICE
+    if git(device, "rev-parse", "HEAD").decode().strip() != DEVICE_REVISION:
+        raise ValueError("unexpected virtio_x86_64 device revision")
+    reverse = subprocess.run(
+        ["git", "-C", str(device), "apply", "--reverse", "--check", str(RADEON_PATCH)],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
+    if reverse.returncode:
+        git(device, "apply", "--check", str(RADEON_PATCH))
     product = source / PRODUCT
     existing = product.read_text()
     if existing.count(PRODUCT_MARKER) != 1 or existing.count(INCLUDE) > 1:
@@ -67,6 +79,8 @@ def prepare(source, firmware):
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 destination.write_bytes(data)
             stage.rename(overlay)
+    if reverse.returncode:
+        git(device, "apply", str(RADEON_PATCH))
     if INCLUDE not in existing:
         with tempfile.TemporaryDirectory(prefix=".pc-firmware-", dir=product.parent) as temporary:
             stage = Path(temporary) / product.name
