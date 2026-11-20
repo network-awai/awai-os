@@ -166,7 +166,7 @@ public abstract class HostActivity extends Activity {
         }
         @JavascriptInterface public String snapshot(){try{
             JSONObject o=new JSONObject();o.put("mode",mode());o.put("platform","android");o.put("runtime","android");o.put("apps","home".equals(mode())?launchable():new JSONArray());
-            JSONObject installed=new JSONObject();for(String id:new String[]{"network.itonami.yotei","network.itonami.app","network.itonami.torihiki",Catalog.REGISTRY_ASSOC}){try{installed.put(id,getPackageManager().getPackageInfo(id,0).getLongVersionCode());}catch(PackageManager.NameNotFoundException absent){}}
+            JSONObject installed=new JSONObject();for(String id:new String[]{"network.itonami.yotei","network.itonami.app","network.itonami.hiring","network.itonami.torihiki",Catalog.REGISTRY_ASSOC}){try{installed.put(id,getPackageManager().getPackageInfo(id,0).getLongVersionCode());}catch(PackageManager.NameNotFoundException absent){}}
             o.put("motionReduced",Settings.Global.getFloat(getContentResolver(),Settings.Global.ANIMATOR_DURATION_SCALE,1f)==0f || getSystemService(PowerManager.class).isPowerSaveMode());
             o.put("installed",installed);RoleManager roles=getSystemService(RoleManager.class);o.put("isDefaultHome",roles!=null&&roles.isRoleHeld(RoleManager.ROLE_HOME));
             JSONArray agenda=new JSONArray();if("home".equals(mode())){try(Cursor c=getContentResolver().query(Uri.parse("content://network.itonami.yotei.agenda/events"),null,null,null,null)){if(c!=null&&c.moveToFirst())agenda=new JSONArray(c.getString(0));}catch(Exception absent){}}
