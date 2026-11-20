@@ -2,9 +2,7 @@ diff --git a/config/common.mk b/config/common.mk
 index c3a9eed..9ff4738 100644
 --- a/config/common.mk
 +++ b/config/common.mk
-@@ -68,11 +68,6 @@ PRODUCT_ARTIFACT_PATH_REQUIREMENT_ALLOWED_LIST += \
-     system/bin/backuptool_ab.sh \
-     system/bin/backuptool_ab.functions \
+@@ -70,7 +70,2 @@ PRODUCT_ARTIFACT_PATH_REQUIREMENT_ALLOWED_LIST += \
      system/bin/backuptool_postinstall.sh
 -
 -ifneq ($(TARGET_BUILD_VARIANT),user)
@@ -12,5 +10,3 @@ index c3a9eed..9ff4738 100644
 -    ro.ota.allow_downgrade=true
 -endif
  endif
- 
- # Lineage-specific broadcast actions whitelist
