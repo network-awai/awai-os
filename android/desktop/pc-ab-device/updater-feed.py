@@ -198,7 +198,7 @@ def validate_stream_ranges(file, ota, properties, package_size):
             raise ValueError(f"{name}: streaming range differs from the OTA ZIP")
 
 
-def make_index(package, url, expected_sha256, device, release_type, version, source_build):
+def make_index(package, url, expected_sha256, device, release_type, version, source_build, *, require_streaming=False):
     if (urlsplit(url).path.rsplit("/", 1)[-1] != package.name
         or PLACEHOLDER.search(url) or package.suffix != ".zip"):
         raise ValueError("package URL must name the exact OTA ZIP and contain no placeholders")
@@ -214,8 +214,12 @@ def make_index(package, url, expected_sha256, device, release_type, version, sou
             ota.getinfo("payload.bin")
             ota.getinfo("payload_properties.txt")
             metadata = properties(raw)
+            if require_streaming and not metadata.get("ota-property-files"):
+                raise ValueError("missing OTA streaming ranges")
             if metadata.get("ota-property-files"):
                 validate_stream_ranges(file, ota, metadata["ota-property-files"], size)
+            if require_streaming and ota.getinfo("payload_properties.txt").file_size > 65_536:
+                raise ValueError("OTA payload properties exceed the Updater limit")
     if metadata.get("ota-type") != "AB" or device not in metadata.get("pre-device", "").split("|"):
         raise ValueError("OTA is not an A/B payload for the selected device")
     required_source = metadata.get("pre-build-incremental")
@@ -251,7 +255,7 @@ def verify_certificate(cert, cert_digest):
         raise ValueError("OTA certificate SHA-256 differs from the signing record")
 
 
-def verify_ota(ota, cert, cert_digest, target, target_digest, source, source_digest, checker):
+def verify_ota(ota, cert, cert_digest, target, target_digest, source, source_digest, checker, *, require_streaming=False):
     verify_certificate(cert, cert_digest)
     build = target_build(target, target_digest)
     with ota.open("rb") as file:
@@ -262,6 +266,13 @@ def verify_ota(ota, cert, cert_digest, target, target_digest, source, source_dig
             metadata = properties(package.read("META-INF/com/android/metadata").decode())
             if metadata.get("ota-type") != "AB" or "payload.bin" not in package.namelist():
                 raise ValueError("expected an A/B OTA payload")
+            if require_streaming:
+                stream_ranges = metadata.get("ota-property-files")
+                if not stream_ranges:
+                    raise ValueError("missing OTA streaming ranges")
+                if package.getinfo("payload_properties.txt").file_size > 65_536:
+                    raise ValueError("OTA payload properties exceed the Updater limit")
+                validate_stream_ranges(file, package, stream_ranges, file.seek(0, 2))
 
     for field, prop in (
         ("post-build", "ro.build.fingerprint"),
@@ -296,7 +307,8 @@ def verify_ota(ota, cert, cert_digest, target, target_digest, source, source_dig
         verified_sha256(file, ota_digest)
     return {"otaSha256": ota_digest, "certificateSha256": cert_digest,
             "targetFilesSha256": target_digest, "sourceTargetFilesSha256": source_digest,
-            "incremental": metadata["post-build-incremental"], "payloadVerified": True}
+            "incremental": metadata["post-build-incremental"], "payloadVerified": True,
+            "streamingVerified": require_streaming}
 
 
 def generate_ota(args):
@@ -321,7 +333,7 @@ def generate_ota(args):
                        stdin=subprocess.DEVNULL, stdout=sys.stderr)
         receipt = verify_ota(
             candidate, certificate, args.certificate_sha256, args.target_files, args.target_sha256,
-            args.source_target_files, args.source_sha256, args.checker,
+            args.source_target_files, args.source_sha256, args.checker, require_streaming=True,
         )
         os.link(candidate, output)
     return receipt
@@ -355,6 +367,7 @@ def main():
     ota.add_argument("--source-target-files", type=Path)
     ota.add_argument("--source-sha256")
     ota.add_argument("--checker", default="check_ota_package_signature")
+    ota.add_argument("--require-streaming", action="store_true")
     generate = subcommands.add_parser("generate-ota")
     generate.add_argument("target_files", type=Path)
     generate.add_argument("output", type=Path)
@@ -373,6 +386,7 @@ def main():
     index.add_argument("--device", required=True)
     index.add_argument("--release-type", required=True)
     index.add_argument("--version", required=True)
+    index.add_argument("--require-streaming", action="store_true")
     index.add_argument("--source-build", help="OTA source incremental version, omitted for a full OTA")
     args = parser.parse_args()
     try:
@@ -390,14 +404,14 @@ def main():
             print(json.dumps(verify_ota(
                 args.ota_zip, args.certificate, args.certificate_sha256,
                 args.target_files, args.target_sha256, args.source_target_files,
-                args.source_sha256, args.checker,
+                args.source_sha256, args.checker, require_streaming=args.require_streaming,
             ), indent=2))
         elif args.command == "generate-ota":
             print(json.dumps(generate_ota(args), indent=2))
         else:
             print(json.dumps(make_index(
                 args.ota_zip, args.artifact_url, args.sha256, args.device,
-                args.release_type, args.version, args.source_build,
+                args.release_type, args.version, args.source_build, require_streaming=args.require_streaming,
             ), indent=2))
     except (OSError, ValueError, KeyError, BadZipFile, struct.error, subprocess.CalledProcessError) as error:
         parser.exit(1, f"{error}\n")

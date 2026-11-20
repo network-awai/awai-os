@@ -106,7 +106,7 @@ to generate the full OTA and verify it before the output is made available:
 python3 android/desktop/pc-ab-device/updater-feed.py generate-ota \
     "$SIGNED_TARGET_FILES" "$OTA_ZIP" --key "$OTA_KEY_BASENAME" \
     --certificate-sha256 "$OTA_CERTIFICATE_SHA256" \
-    --target-sha256 "$SIGNED_TARGET_FILES_SHA256" > "$OTA_VERIFICATION_RECORD"
+    --target-sha256 "$SIGNED_TARGET_FILES_SHA256" --require-streaming > "$OTA_VERIFICATION_RECORD"
 ```
 
 The key basename refers to the private key and public certificate available
@@ -121,7 +121,7 @@ to verify the OTA with the public certificate pinned in the signing record:
 python3 android/desktop/pc-ab-device/updater-feed.py verify-ota \
     "$OTA_ZIP" "$OTA_CERTIFICATE" "$SIGNED_TARGET_FILES" \
     --certificate-sha256 "$OTA_CERTIFICATE_SHA256" \
-    --target-sha256 "$SIGNED_TARGET_FILES_SHA256" > "$OTA_VERIFICATION_RECORD"
+    --target-sha256 "$SIGNED_TARGET_FILES_SHA256" --require-streaming > "$OTA_VERIFICATION_RECORD"
 ```
 
 For a delta, also pass `--source-target-files "$SIGNED_SOURCE_TARGET_FILES"`
@@ -133,14 +133,16 @@ from the record to create the feed JSON:
 ```sh
 python3 android/desktop/pc-ab-device/updater-feed.py make-index "$OTA_ZIP" "$OTA_URL" \
     --sha256 "$SIGNED_OTA_SHA256" --device "$OTA_DEVICE" \
-    --release-type "$OTA_RELEASE_TYPE" --version "$OTA_VERSION" > "$FEED_INDEX"
+    --release-type "$OTA_RELEASE_TYPE" --version "$OTA_VERSION" --require-streaming > "$FEED_INDEX"
 ```
 
 Use the OTA target device and the installed build's Lineage release type and
 version. Pass `--source-build` with the exact source incremental ID for a delta
 and publish it at the feed path for that source. Omit the flag for a full OTA.
 The index command checks the digest from the signing record and the archive
-metadata, including any streaming offsets against the ZIP and payload header.
+metadata. For automatic PC maintenance, require usable streaming ranges in both
+the signature verification and index commands. The generator always checks
+these ranges, including the Updater limit for payload properties.
 The updater and Android still verify the signed package on device.
 Retain a record of feed detection, apply, reboot, recovery, and rollback on the same PC.
 

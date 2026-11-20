@@ -117,7 +117,11 @@ class UpdaterFeedTest(unittest.TestCase):
                 verify.return_value.stdout = ("Whole package signature VERIFIED\n"
                                               "Payload signatures VERIFIED\n")
                 args = (ota, cert, cert_digest, latest, latest_sha)
+                with self.assertRaisesRegex(ValueError, "missing OTA streaming ranges"):
+                    updater.verify_ota(*args, source, source_sha, "checker", require_streaming=True)
+                verify.assert_not_called()
                 record = updater.verify_ota(*args, source, source_sha, "checker")
+                self.assertFalse(record["streamingVerified"])
                 self.assertEqual(record["sourceTargetFilesSha256"], source_sha)
                 with self.assertRaisesRegex(ValueError, "source build"):
                     updater.verify_ota(*args, different, different_sha, "checker")
@@ -142,6 +146,9 @@ class UpdaterFeedTest(unittest.TestCase):
                         archive.writestr("payload_properties.txt", b"fixture")
                     digest = sha256(package.read_bytes()).hexdigest()
                     output = updater.make_index(package, url, digest, "awai_pc", "RELEASE", "24.0", source)
+                with self.assertRaisesRegex(ValueError, "missing OTA streaming ranges"):
+                    updater.make_index(package, url, digest, "awai_pc", "RELEASE", "24.0", source,
+                                       require_streaming=True)
                     self.assertEqual(output, [{
                         "type": "RELEASE", "version": "24.0", "datetime": 1800000000,
                         "files": [{"filename": package.name, "sha256": digest, "size": package.stat().st_size,
@@ -185,8 +192,21 @@ class UpdaterFeedTest(unittest.TestCase):
                         with self.assertRaisesRegex(ValueError, error):
                             updater.make_index(*args)
                     else:
-                        files = updater.make_index(*args)[0]["files"]
+                        files = updater.make_index(*args, require_streaming=True)[0]["files"]
                         self.assertEqual(files[0]["ota_property_files"], candidate)
+
+            with ZipFile(package, "w") as archive:
+                large = b"x" * 65_537
+                archive.writestr("payload.bin", payload)
+                archive.writestr("payload_properties.txt", large)
+                oversized = ranges.removesuffix(str(len(properties))) + str(len(large))
+                archive.writestr("META-INF/com/android/metadata",
+                                 "ota-type=AB\npre-device=awai_pc\npost-timestamp=1800000000\n"
+                                 f"ota-property-files={oversized}\n")
+            digest = sha256(package.read_bytes()).hexdigest()
+            with self.assertRaisesRegex(ValueError, "payload properties exceed"):
+                updater.make_index(package, url, digest, "awai_pc", "RELEASE", "24.0", None,
+                                   require_streaming=True)
 
 
 if __name__ == "__main__":
