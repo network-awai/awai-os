@@ -83,9 +83,21 @@ python3 android/desktop/pc-ab-device/updater-feed.py verify-apk "$UPDATER_APK" "
 ```
 
 Confirm the installed build has no different `lineage.updater.uri` override and
-that an actual update check contacts the expected feed. Use the device's exact
-build parameters when preparing the feed and its signed OTA artifacts. Retain a
-record of feed detection, apply, reboot, recovery, and rollback on the same PC.
+that an actual update check contacts the expected feed. Create the feed JSON
+from an already signed A/B OTA ZIP and its SHA-256 from the signing record:
+
+```sh
+python3 android/desktop/pc-ab-device/updater-feed.py make-index "$OTA_ZIP" "$OTA_URL" \
+    --sha256 "$SIGNED_OTA_SHA256" --device "$OTA_DEVICE" \
+    --release-type "$OTA_RELEASE_TYPE" --version "$OTA_VERSION" > "$FEED_INDEX"
+```
+
+Use the OTA target device and the installed build's Lineage release type and
+version. Pass `--source-build` with the exact source incremental ID for a delta
+and publish it at the feed path for that source. Omit the flag for a full OTA.
+The index command checks the digest from the signing record and the archive
+metadata. The updater and Android still verify the signed package on device.
+Retain a record of feed detection, apply, reboot, recovery, and rollback on the same PC.
 
 ## OTA on the shared disk (2026-11-19)
 

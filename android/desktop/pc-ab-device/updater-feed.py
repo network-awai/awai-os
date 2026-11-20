@@ -2,11 +2,14 @@
 """Set the Awai feed in a release source checkout and verify it in the built Updater APK."""
 
 import argparse
+import hashlib
+import json
 from pathlib import Path
 import re
 import subprocess
 from urllib.parse import urlsplit
 from xml.sax.saxutils import escape
+from zipfile import BadZipFile, ZipFile
 
 
 STRINGS = Path("app/src/main/res/values/strings.xml")
@@ -52,6 +55,44 @@ def verify_apk(apk, url, aapt2):
         raise ValueError("built Updater default feed does not match the configured release URL")
 
 
+def make_index(package, url, expected_sha256, device, release_type, version, source_build):
+    if (urlsplit(url).path.rsplit("/", 1)[-1] != package.name
+        or PLACEHOLDER.search(url) or package.suffix != ".zip"):
+        raise ValueError("package URL must name the exact OTA ZIP and contain no placeholders")
+    with package.open("rb") as file:
+        digest = hashlib.file_digest(file, "sha256").hexdigest()
+        if digest != expected_sha256:
+            raise ValueError("OTA ZIP digest differs from the signing record")
+        file.seek(0)
+        with ZipFile(file) as ota:
+            metadata_file = ota.getinfo("META-INF/com/android/metadata")
+            if metadata_file.file_size > 65536:
+                raise ValueError("OTA metadata exceeds 64 KiB")
+            raw = ota.read(metadata_file).decode("utf-8")
+            ota.getinfo("payload.bin")
+            ota.getinfo("payload_properties.txt")
+        file.seek(0, 2)
+        size = file.tell()
+    metadata = dict(line.split("=", 1) for line in raw.splitlines() if "=" in line)
+    if metadata.get("ota-type") != "AB" or device not in metadata.get("pre-device", "").split("|"):
+        raise ValueError("OTA is not an A/B payload for the selected device")
+    required_source = metadata.get("pre-build-incremental")
+    if required_source != source_build or (source_build is None and metadata.get("pre-build")):
+        raise ValueError("OTA source build does not match the selected feed")
+    timestamp = int(metadata.get("post-timestamp", "0"))
+    if timestamp <= 0:
+        raise ValueError("OTA metadata has no valid target timestamp")
+    artifact = {"filename": package.name, "sha256": digest, "size": size, "url": url}
+    for metadata_key, key, convert in (
+        ("post-security-patch-level", "os_patch_level", str),
+        ("post-sdk-level", "os_sdk_level", int),
+        ("ota-property-files", "ota_property_files", str),
+    ):
+        if metadata.get(metadata_key):
+            artifact[key] = convert(metadata[metadata_key])
+    return [{"datetime": timestamp, "files": [artifact], "type": release_type, "version": version}]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     subcommands = parser.add_subparsers(dest="command", required=True)
@@ -62,13 +103,26 @@ def main():
     apk.add_argument("apk", type=Path)
     apk.add_argument("feed", type=feed_url)
     apk.add_argument("--aapt2", default="aapt2")
+    index = subcommands.add_parser("make-index")
+    index.add_argument("ota_zip", type=Path)
+    index.add_argument("artifact_url", type=feed_url)
+    index.add_argument("--sha256", required=True, help="SHA-256 from the trusted signing record")
+    index.add_argument("--device", required=True)
+    index.add_argument("--release-type", required=True)
+    index.add_argument("--version", required=True)
+    index.add_argument("--source-build", help="OTA source incremental version, omitted for a full OTA")
     args = parser.parse_args()
     try:
         if args.command == "configure":
             configure(args.checkout, args.feed)
-        else:
+        elif args.command == "verify-apk":
             verify_apk(args.apk, args.feed, args.aapt2)
-    except (OSError, ValueError, subprocess.CalledProcessError) as error:
+        else:
+            print(json.dumps(make_index(
+                args.ota_zip, args.artifact_url, args.sha256, args.device,
+                args.release_type, args.version, args.source_build,
+            ), indent=2))
+    except (OSError, ValueError, KeyError, BadZipFile, subprocess.CalledProcessError) as error:
         parser.exit(1, f"{error}\n")
 
 
