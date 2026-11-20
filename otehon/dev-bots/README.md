@@ -143,7 +143,18 @@ node otehon/dev-bots/queue-sync.mjs --queue <remote-queue-dir> --state <local-di
   directory already pushed, is refused.
 - `--state <local-dir>` must exist. It keeps `<name>/task.json` for every
   entry pushed from here, `<name>/result.json`, and the collected records
-  under `<name>/linear-outbox/`.
+  under `<name>/linear-outbox/`. Before the push script is sent, the intent
+  is persisted as `<name>/pending.json` (task text plus the SHA-256 of
+  `task.json` and `muse-prompt.md`); `task.json` is still written only on
+  `PUSH <name> ok`, and the pending file is removed on `ok` or a definite
+  refusal. A failed or cut push keeps `pending.json` and exits 1.
+- Every run reconciles pending intents before pushing, using per-entry
+  SHA-256 lines in the snapshot: matching digests recover the submission
+  (`recovered <name>`), a same-name entry with different digests stays held
+  (`held <name> pending-mismatch`, nothing posted), and a missing entry is
+  forgotten so the caller can push again (`not-submitted <name>`).
+  `--dry-run` still sends only the snapshot and never changes
+  `pending.json` or `task.json`.
 - Everything the queue host prints is data. Names are checked before they
   become local paths. A record is posted only when this state directory
   pushed that entry and the record's issue is the entry's issue; anything
