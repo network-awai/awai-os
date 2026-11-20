@@ -1,0 +1,9 @@
+# Named Agent conversation image records
+
+AWAI-3076 extends the existing Agent session protocol. POST /v1/bot-chat/bots returns only registered, available persona metadata. POST /v1/bot-chat/media records a user prompt and a typed local-image assistant event in an existing named owner/Bot session. It never invokes a text model, downloads a model, accepts image pixels, fetches an arbitrary URL or stores an arbitrary file path. Existing origin/owner checks and fresh canonical operation consent remain.
+
+The owned CLJC media policy fixes the model set, engine, dimensions, size bound, request/image UUID identity and SHA256 shape. The existing real Kotobase/AwaiFS database writes and independently reads the events; replay is idempotent and changed metadata under the same ID refuses. Image metadata is explicitly owner-reported device-local receipt data; server persistence does not remotely verify image pixels or model execution. The generating device independently resolves its own image ID and compares bytes/digest. Missing local pixels remain unavailable; no remote fallback or inferred zero.
+
+Android Itonami retains a small private sidecar for generated images. A Bot/session-scoped read requires exactly the stored Bot/session pair and expected digest. No browser-local history becomes authoritative. The native image engine, native generation confirmation and local MediaStore save are the separate AWAI-3073 path, already physically qualified. Images remain on the generating device unless a separately declared upload is explicitly approved.
+
+Protocol tests use an isolated encrypted database and a synthetic text executor; passing them does not prove live Muse inference or production owner authentication. Current configured HTTPS conversation service is unavailable at the start of this slice. UI and real provider/device/service qualification are tracked separately in AWAI-3076. Never forge a production owner header to debug.

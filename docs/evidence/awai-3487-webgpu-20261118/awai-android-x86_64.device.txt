@@ -1,0 +1,5 @@
+17
+37
+MQ
+x86_64
+  Current WebView package (name, version): (app.vanadium.webview, 155.0.8059.84.0)

@@ -1,0 +1,369 @@
+(ns shell.setup
+  (:require [shell.net :refer [wifi-panel]]
+            ["../net.js" :refer [useNetStatus]]
+            ["react" :refer [useEffect useMemo useRef useState]]
+            ["qrcode-generator" :as qrcode]
+            ["../identity/link.js" :refer [REQUEST_MS SESSION_MS checksumAddress confirmationCode
+                                           createLinkRequest linkUrl openResponse siweMessage verifyLink]]
+            ["../identity/wallet.js" :refer [signWithProvider]]
+            ["../identity/device.js" :refer [saveSession]]
+            ["../runtime.js" :refer [awaitPhoneApproval relayFailureCode]]
+            ["../trust.js" :refer [POINTS]]))
+
+(def text
+  {"en" {:hello "Hello"
+         :getStarted "Get Started"
+         :botStatus "View Bot status"
+         :next "Continue"
+         :back "Back"
+         :languageTitle "Choose your language"
+         :networkTitle "Network"
+         :networkOnline "This device reports a network connection."
+         :networkOffline "This device reports no network connection."
+         :networkNote "A wallet sign-in on this device needs no network. Phone sign-in needs Internet. Connect below, or continue to use a local wallet."
+         :signInTitle "Sign In"
+         :signInBody "Use a Web3 wallet on this device, or approve with a passkey or wallet on your phone. There is no password or guest option."
+         :signInAgain "Sign in to open this device."
+         :localStart "Sign In with a Wallet"
+         :linkStart "Link with Phone"
+         :useWallet "Use the Wallet in This Browser"
+         :noWallet "No wallet was detected in this browser. Open this page in a browser with a wallet, link with your phone, or enter your address below to sign the displayed message with your wallet."
+         :preparing "Preparing phone sign-in…"
+         :addressLabel "Your wallet address"
+         :signThis "Sign this message with your wallet (personal_sign):"
+         :signatureLabel "Signature"
+         :verify "Verify and Sign In"
+         :chooseOther "Choose Another Way"
+         :scan "Scan this code with your phone."
+         :checkCode "Check that your phone shows this code:"
+         :waiting "Waiting for your phone…"
+         :denied "Nothing was sent. Choose Link with Phone to try again."
+         :failed "The relay could not be reached. Check the network and try again."
+         :expired "This code expired. Choose Link with Phone to try again."
+         :refused "An answer was refused"
+         :trustTitle "Trust Score"
+         :trustBody "Some apps and operations ask for a minimum score. The score is not a verdict on you, and you can raise it later in Account."
+         :yourScore "Your score"
+         :later "Set Up Later"
+         :doneTitle "You're all set"
+         :doneBody "Your apps are in the sidebar. Each one has its own conversation."
+         :enter "Open Itonami"}
+   "ja" {:hello "こんにちは"
+         :getStarted "はじめる"
+         :botStatus "Botの稼働状況を見る"
+         :next "続ける"
+         :back "戻る"
+         :languageTitle "言語を選択"
+         :networkTitle "ネットワーク"
+         :networkOnline "この端末はネットワークに接続されています。"
+         :networkOffline "この端末はネットワークに接続されていません。"
+         :networkNote "この端末のウォレットでのサインインにネットワークは不要です。スマートフォンでのサインインにはインターネット接続が必要です。下で接続するか、この端末のウォレットで続けられます。"
+         :signInTitle "サインイン"
+         :signInBody "この端末で Web3 ウォレットを使うか、スマートフォンでパスキーかウォレットを使って承認します。パスワードとゲストの利用はできません。"
+         :signInAgain "この端末を開くには、サインインしてください。"
+         :localStart "ウォレットでサインイン"
+         :linkStart "スマートフォンとリンク"
+         :useWallet "このブラウザーのウォレットを使う"
+         :noWallet "このブラウザーにはウォレットが見つかりません。ウォレットのあるブラウザーで開くか、スマートフォンとリンクしてください。手動で署名する場合は、下にアドレスを入力すると署名用メッセージが表示されます。"
+         :preparing "スマートフォンとのサインインを準備しています…"
+         :addressLabel "ウォレットのアドレス"
+         :signThis "このメッセージをウォレットで署名してください（personal_sign）:"
+         :signatureLabel "署名"
+         :verify "確認してサインイン"
+         :chooseOther "別の方法を選ぶ"
+         :scan "このコードをスマートフォンで読み取ってください。"
+         :checkCode "スマートフォンに同じコードが出ていることを確認してください:"
+         :waiting "スマートフォンの承認を待っています…"
+         :denied "何も送信していません。もう一度試すには「スマートフォンとリンク」を選んでください。"
+         :failed "サインイン用の中継に接続できませんでした。接続設定へ戻るか、もう一度お試しください。"
+         :expired "コードの期限が切れました。もう一度「スマートフォンとリンク」を選んでください。"
+         :refused "受け取った応答を拒否しました"
+         :trustTitle "Trust Score"
+         :trustBody "App や操作によっては、最低点が必要です。この点数はあなたへの評価ではありません。あとで「アカウント」から上げられます。"
+         :yourScore "現在の点数"
+         :later "あとで設定"
+         :doneTitle "準備ができました"
+         :doneBody "App はサイドバーにあります。App ごとに専用の会話があります。"
+         :enter "Itonami を開く"}})
+
+(def languages #js [#js ["en" "English"] #js ["ja" "日本語"]])
+(def steps #js ["hello" "language" "network" "signin" "trust" "done"])
+(def language-key "otehon.language.v1")
+
+(defn- saved-language []
+  (try
+    (let [saved (.getItem js/localStorage language-key)]
+      (if (or (= saved "ja") (= saved "en")) saved "en"))
+    (catch :default _ "en")))
+
+(defn qr-code [url]
+  (let [{:keys [size path]} (useMemo
+                             (fn []
+                               (let [code (qrcode 0 "M")
+                                     count (do (.addData code url)
+                                               (.make code)
+                                               (.getModuleCount code))]
+                                 {:size (+ count 8)
+                                  :path (loop [row 0 d ""]
+                                          (if (>= row count)
+                                            d
+                                            (recur (inc row)
+                                                   (loop [column 0 d d]
+                                                     (if (>= column count)
+                                                       d
+                                                       (recur (inc column)
+                                                              (if (.isDark code row column)
+                                                                (str d "M" (+ column 4) " " (+ row 4) "h1v1h-1z")
+                                                                d)))))))}))
+                             #js [url])]
+    [:svg.qr {:viewBox (str "0 0 " size " " size) :role "img" :aria-label url :data-link-url url}
+     [:rect {:width size :height size :fill "#fff"}]
+     [:path {:d path :fill "#000"}]]))
+
+(defn local-wallet [t did on-linked on-back]
+  (let [[request set-request] (useState nil)
+        [address set-address] (useState "")
+        [signature set-signature] (useState "")
+        [refusal set-refusal] (useState nil)]
+    (useEffect
+     (fn []
+       (-> (createLinkRequest did)
+           (.then (fn [created] (set-request (.-request created))))) js/undefined)
+     #js [did])
+    (let [valid (boolean (re-find #"^0x[0-9a-fA-F]{40}$" (.trim address)))
+          draft (useMemo
+                 (fn []
+                   (when (and request valid)
+                     (let [now (.now js/Date)]
+                       #js {:method "wallet"
+                            :address (checksumAddress (.trim address))
+                            :chainId 1
+                            :issuedAt (.toISOString (js/Date. now))
+                            :expiresAt (.toISOString (js/Date. (+ now SESSION_MS)))})))
+                 #js [request valid address])
+          finish (fn [response]
+                   (try
+                     (let [account (verifyLink #js {:request request :response response :deviceDid did})]
+                       (saveSession request response)
+                       (on-linked account))
+                     (catch :default error
+                       (set-refusal (.-message error)))))]
+      [:<>
+       [:h1 (:localStart t)]
+       (when-not (.-ethereum js/window)
+         [:p {:data-wallet-state "unavailable"} (:noWallet t)])
+       (when (.-ethereum js/window)
+         [:button.primary {:type "button" :id "local-provider" :disabled (not request)
+                            :on-click (fn []
+                                        (set-refusal nil)
+                                        (-> (signWithProvider (.-ethereum js/window) request)
+                                            (.then (fn [response] (finish response)))
+                                            (.catch (fn [error] (set-refusal (.-message error))))))}
+          (:useWallet t)])
+       [:label.field
+        [:span (:addressLabel t)]
+        [:input {:id "local-address" :value address :spell-check false :auto-complete "off"
+                  :placeholder "0x…" :on-change #(set-address (.. % -target -value))}]]
+       (when draft
+         [:<>
+          [:label.field
+           [:span (:signThis t)]
+           [:textarea {:id "local-message" :read-only true :rows 9
+                        :value (siweMessage #js {:address (.-address draft)
+                                                 :chainId (.-chainId draft)
+                                                 :device (.-device request)
+                                                 :nonce (.-nonce request)
+                                                 :issuedAt (.-issuedAt draft)
+                                                 :expiresAt (.-expiresAt draft)})}]]
+          [:label.field
+           [:span (:signatureLabel t)]
+           [:input {:id "local-signature" :value signature :spell-check false :auto-complete "off"
+                     :placeholder "0x…" :on-change #(set-signature (.. % -target -value))}]]
+          [:button.primary {:type "button" :id "local-verify" :disabled (empty? (.trim signature))
+                             :on-click (fn []
+                                         (set-refusal nil)
+                                         (finish (js/Object.assign #js {} draft
+                                                                   #js {:signature (.trim signature)})))}
+           (:verify t)]])
+       (when refusal
+         [:p.problem {:data-link-error refusal} (str (:refused t) ": " refusal)])
+       [:button.secondary {:type "button" :on-click on-back} (:chooseOther t)]])))
+
+(defn sign-in [t returning broker relay-origin did on-linked]
+  (let [[local set-local] (useState false)
+        [state set-state] (useState "idle")
+        [error-code set-error-code] (useState nil)
+        [pending set-pending] (useState nil)
+        [refusal set-refusal] (useState nil)
+        abort (useRef nil)]
+    (useEffect
+     (fn [] (fn [] (some-> abort .-current .abort)))
+     #js [])
+    (letfn [(pump [iter request private-key]
+              (-> (.next iter)
+                  (.then (fn [res]
+                           (if (.-done res)
+                             (set-state "failed")
+                             (-> (openResponse request private-key (.-value res))
+                                 (.then (fn [response]
+                                          (let [account (verifyLink #js {:request request
+                                                                          :response response
+                                                                          :deviceDid did})]
+                                            (saveSession request response)
+                                            (on-linked account))))
+                                 (.catch (fn [error]
+                                           ;; Anyone with the topic can post. Keep waiting.
+                                           (set-refusal (.-message error))
+                                           (pump iter request private-key)))))))))]
+      (let [start (fn []
+                    (set-refusal nil)
+                    (set-error-code nil)
+                    (set-pending nil)
+                    (set-state "asking")
+                    (let [controller (js/AbortController.)]
+                      (set! (.-current abort) controller)
+                      (let [timer (js/setTimeout #(.abort controller) REQUEST_MS)]
+                        (-> (createLinkRequest did)
+                            (.then (fn [created]
+                                     (let [request (.-request created)
+                                           private-key (.-privateKey created)]
+                                       (-> (awaitPhoneApproval broker relay-origin
+                                                               (.-topic request) (.-signal controller))
+                                           (.then (fn [stream]
+                                                    (set-pending #js {:url (linkUrl request)
+                                                                      :code (confirmationCode request)})
+                                                    (set-state "waiting")
+                                                    (pump (.messages stream) request private-key)))))))
+                            (.catch (fn [error]
+                                      (set-error-code (relayFailureCode error))
+                                      (cond
+                                        (.-aborted (.-signal controller)) (set-state "expired")
+                                        (re-find #"not approved" (or (.-message error) "")) (set-state "denied")
+                                        :else (set-state "failed"))
+                                      (set-pending nil)))
+                            (.finally (fn [] (js/clearTimeout timer)))))))]
+        (if local
+          [:f> local-wallet t did on-linked #(set-local false)]
+          [:<>
+           [:h1 (:signInTitle t)]
+           [:p (if returning (:signInAgain t) (:signInBody t))]
+           (when (= state "asking")
+             [:p {:role "status" :data-link-state "asking"} (:preparing t)])
+           (when pending
+             [:div.link-pending
+              [:f> qr-code (.-url pending)]
+              [:p (:scan t)]
+              [:p (:checkCode t) " " [:strong.code (.-code pending)]]
+              [:p.muted (:waiting t)]])
+           (when (= state "denied") [:p {:data-link-state "denied"} (:denied t)])
+           (when (= state "failed") [:p.problem {:role "status" :data-link-state "failed" :data-link-error-code error-code} (:failed t)])
+           (when (= state "expired") [:p.problem {:data-link-state "expired"} (:expired t)])
+           (when refusal
+             [:p.problem {:data-link-error refusal} (str (:refused t) ": " refusal)])
+           (when-not (or pending (= state "asking"))
+             [:<>
+              [:button.primary {:type "button" :id "local-start" :on-click #(set-local true)}
+               (:localStart t)]
+              [:button.secondary {:type "button" :id "link-start" :on-click start}
+               (:linkStart t)]])])))))
+
+(defn initial-step [android-shell? returning account]
+  (if returning "signin" (if account "trust" (if android-shell? "signin" "hello"))))
+
+(defn setup [broker relay-origin did account returning on-linked score on-finish]
+  (let [android-shell? (and (some? (.-__TAURI_INTERNALS__ js/window))
+                            (.includes (.-userAgent js/navigator) "Android"))
+        [language set-language] (useState (if android-shell?
+                                          (if (.startsWith (.-language js/navigator) "ja") "ja" "en")
+                                          saved-language))
+        [step set-step] (useState (initial-step android-shell? returning account))
+        [saving set-saving] (useState false)
+        [save-error set-save-error] (useState nil)
+        network (useNetStatus)
+        t (get text language)
+        index (.indexOf steps step)
+        next-step (fn [] (set-step (aget steps (inc index))))]
+    (useEffect
+     (fn []
+       (set! (.-lang js/document.documentElement) language)
+       (try
+         (.setItem js/localStorage language-key language)
+         (catch :default _ nil)) js/undefined)
+     #js [language])
+    [:div.setup {:data-step step}
+     [:div.setup-card
+      [:img.setup-logo {:src "assets/awai-logo.png" :alt "Awai" :width 96 :height 96}]
+      (when (= step "hello")
+        [:<>
+         [:h1.hello (:hello t)]
+         [:button.primary {:type "button" :data-next true :on-click next-step} (:getStarted t)]
+         [:p.muted [:a {:href "./soshiki-runtime/" :data-bot-status-link true} (:botStatus t)]]])
+      (when (= step "language")
+        [:<>
+         [:h1 (:languageTitle t)]
+         [:ul.choices
+          (map (fn [[code label]]
+                 [:li {:key code}
+                  [:button {:type "button" :data-language code :aria-pressed (= language code)
+                             :on-click #(set-language code)}
+                   [:span label]
+                   (when (= language code) [:span {:aria-hidden "true"} "✓"])]])
+               languages)]
+         [:button.primary {:type "button" :data-next true :on-click next-step} (:next t)]])
+      (when (= step "network")
+        [:<>
+         [:h1 (:networkTitle t)]
+         [:p {:role "status"}
+          (if (= "full" (some-> network (.-connectivity)))
+            (if (= language "ja") "インターネット接続を確認しました。" "Internet connection confirmed.")
+            (if (= language "ja") "インターネット接続はまだ確認できていません。下で接続できます。" "Internet access is not confirmed. Connect below."))]
+         [:p.muted (:networkNote t)]
+         [:f> wifi-panel {:embedded true}]
+         [:details
+          [:summary "有線 LAN・iPhone／Android のテザリング"]
+          [:p "有線はルーターへ接続してください。Mac との診断用 LAN だけではインターネットには接続しません。"]
+          [:p "Wi-Fi テザリングは、スマートフォンでインターネット共有を有効にし、上の Wi-Fi 一覧から選びます。"]
+          [:p "iPhone USB はインターネット共有を有効にし、データ対応ケーブルで接続して、iPhone 側でこの PC を信頼してください。"]
+          [:p "Bluetooth PAN は相手端末の対応とペアリング確認が必要です。準備状況は接続サービスで確認します。"]]
+         [:button.primary {:type "button" :data-next true :on-click next-step} (:next t)]])
+      (when (= step "signin")
+        [:<>
+         [:f> sign-in t returning broker relay-origin did
+          (fn [linked]
+            (on-linked linked)
+            (if returning (on-finish) (next-step)))]
+         [:p.muted [:a {:href "./soshiki-runtime/" :data-bot-status-link true} (:botStatus t)]]])
+      (when (= step "trust")
+        [:<>
+         [:h1 (:trustTitle t)]
+         [:p (:trustBody t)]
+         [:p (:yourScore t) ": " [:strong {:data-score score} score]
+          " / " (+ (.-login POINTS) (.-passport POINTS) (.-worldId POINTS))]
+         [:button.primary {:type "button" :data-next true :on-click next-step} (:later t)]])
+      (when (= step "done")
+        [:<>
+         [:h1 (:doneTitle t)]
+         [:p (:doneBody t)]
+         [:p.muted.account-id (some-> account (.-accountDid))]
+         [:button.primary {:type "button" :data-finish true :disabled saving
+                           :on-click (fn []
+                             (set-saving true) (set-save-error nil)
+                             (-> (js/Promise.resolve nil)
+                                 (.then (fn [_] (on-finish)))
+                                 (.catch (fn [_] (set-save-error (if (= language "ja") "設定を保存できませんでした。もう一度お試しください。" "Could not save setup. Please try again."))))
+                                 (.finally #(set-saving false))))}
+          (if saving (if (= language "ja") "保存しています…" "Saving…") (:enter t))]
+         (when save-error [:p.problem {:role "alert"} save-error])])
+      (when (and (= step "signin") (not android-shell?))
+        [:button.secondary {:type "button" :data-network-back true
+                            :on-click #(set-step "network")}
+         (if (= language "ja") "ネットワーク設定へ戻る" "Back to network settings")])
+      (when (and (pos? index) (< index 3))
+        [:button.secondary {:type "button"
+                             :on-click #(set-step (aget steps (dec index)))}
+         (:back t)])]
+     (when (and (not returning) (not android-shell?))
+       [:ol.progress {:aria-label (str (inc index) " / " (.-length steps))}
+        (map (fn [step-name]
+               [:li {:key step-name :class (when (= step-name step) "current")}])
+             steps)])]))

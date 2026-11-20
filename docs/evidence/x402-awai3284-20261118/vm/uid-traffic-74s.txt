@@ -1,0 +1,11 @@
+  mAppUidStatsMap: OK
+  mAppUidStatsMap:
+    uid rxBytes rxPackets txBytes txPackets
+    1020 64587 185 29205 91
+    10109 19652 29 6102 27
+    1000 14962 61 138 2
+    1051 21835 49 4512 47
+    10147 19326 25 4730 23
+    0 0 0 3604 48
+    1073 7751 35 3648 32
+    10061 8041 10 1296 11

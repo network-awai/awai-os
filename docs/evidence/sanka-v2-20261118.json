@@ -1,0 +1,210 @@
+{
+  "schema": "awai.sanka.v2-evidence/1",
+  "issue": "AWAI-3103",
+  "host": "node@benjamin",
+  "provider": "did:key:z6Mkki1CE3Rr1derBgHFBkqeaS7LnSA91SQ76gUeTozZiVbk",
+  "node": "did:key:z6MkeuWRmFRmVfAgNBJHUm59DHtcZG5PTukJsD7VFSVRuz5G",
+  "order": "baguqeerahbcbpx3xljk7qysrz7sh25fgn77gyu7lswmu3yyclnsagb7smtsq",
+  "receipt": "baguqeerasccjh4tblcj733q5q3petllv6rxspg4pftzf6xplhh7chcheyszq",
+  "engine": {
+    "digest": "sha256:1e8f702fb659aed68757a29678d97897740d9104e137437391f10c8b15d16f61",
+    "name": "llama.cpp",
+    "version": "9581154a2250cc9e6948e4c2a2fc4b4e19d1a57e"
+  },
+  "model": {
+    "digest": "sha256:9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031",
+    "revision": "23749fefcc72300e3a2ad315e1317431b06b590a"
+  },
+  "demand": "owner-internal",
+  "value-class": "devnet",
+  "measured": {
+    "completion-tokens": 12,
+    "finished-at": 1794928919,
+    "prompt-tokens": 25,
+    "started-at": 1794928919
+  },
+  "wall-seconds-through-tunnel": 0.178,
+  "answer-sha256": "ca4d29067163397ce60d3669bc92df5abc918f188f7fd3c75406e211dfc5fb20",
+  "answer-chars": 30,
+  "checks": [
+    {
+      "check": "the operator registers the order on the provider host",
+      "passed": true,
+      "detail": {
+        "order": "baguqeerahbcbpx3xljk7qysrz7sh25fgn77gyu7lswmu3yyclnsagb7smtsq"
+      }
+    },
+    {
+      "check": "the order CID is the CID of the buyer's canonical order",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "the desk serves the order through the tunnel",
+      "passed": true,
+      "detail": 200
+    },
+    {
+      "check": "the answer is a real model answer naming Tokyo",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "the receipt reads back with the order's key",
+      "passed": true,
+      "detail": 200
+    },
+    {
+      "check": "the X-Awai-Receipt header names the stored receipt",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "the independent verifier accepts the receipt",
+      "passed": true,
+      "detail": {
+        "receipt": "baguqeerasccjh4tblcj733q5q3petllv6rxspg4pftzf6xplhh7chcheyszq",
+        "errors": [],
+        "order": "baguqeerahbcbpx3xljk7qysrz7sh25fgn77gyu7lswmu3yyclnsagb7smtsq",
+        "ok": true
+      }
+    },
+    {
+      "check": "the receipt holds no prompt, output or key",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "a used key is refused, not run again",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "a request without a key opens nothing",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "an unknown key opens nothing",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "an order's key opens no other route",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "another order's key cannot read this receipt",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "a second order cannot reuse a registered key",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "the same order cannot register twice",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "the desk refuses another model",
+      "passed": true,
+      "detail": "order_model"
+    },
+    {
+      "check": "the desk refuses another node",
+      "passed": true,
+      "detail": "order_node"
+    },
+    {
+      "check": "the desk refuses another provider",
+      "passed": true,
+      "detail": "order_provider"
+    },
+    {
+      "check": "the desk refuses a live order",
+      "passed": true,
+      "detail": "order_invalid"
+    },
+    {
+      "check": "the desk refuses an expired order",
+      "passed": true,
+      "detail": "order_expired"
+    },
+    {
+      "check": "the desk refuses the node as payee",
+      "passed": true,
+      "detail": "order_invalid"
+    },
+    {
+      "check": "an unspent order still serves after the refusals",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "the verifier refuses a changed output",
+      "passed": true,
+      "detail": [
+        "verify/output"
+      ]
+    },
+    {
+      "check": "the verifier refuses another request",
+      "passed": true,
+      "detail": [
+        "verify/input"
+      ]
+    },
+    {
+      "check": "the verifier refuses the wrong key",
+      "passed": true,
+      "detail": [
+        "verify/input"
+      ]
+    },
+    {
+      "check": "the verifier refuses a forged signature",
+      "passed": true,
+      "detail": [
+        "verify/signature"
+      ]
+    },
+    {
+      "check": "the verifier refuses another order",
+      "passed": true,
+      "detail": [
+        "receipt/other-order",
+        "receipt/nonce"
+      ]
+    },
+    {
+      "check": "the stored receipt equals the one served",
+      "passed": true,
+      "detail": null
+    }
+  ],
+  "passed": 28,
+  "total": 28,
+  "observed": "2026-11-18; buyer: Apple M1 Max (macOS 26.4) through an SSH tunnel; provider: benjamin, Darwin arm64, 10 CPUs, 16 GiB, macOS 26.7.2; llama-server built on the buyer host from the pinned archive (sha256 6d06723d...) with LLAMA_OPENSSL/CURL off and copied; model and engine digests re-checked on arrival",
+  "negative-control": {
+    "desk-change": "output CID computed from a changed message, and the key never spent",
+    "passed": 25,
+    "total": 28,
+    "failed": [
+      "the independent verifier accepts the receipt",
+      "a used key is refused, not run again",
+      "the stored receipt equals the one served"
+    ],
+    "exit": 1
+  },
+  "not-shown": [
+    "Hermes or the AOSP buyer (the buyer was this harness on a Mac)",
+    "signer, devnet ledger or settlement",
+    "engine attestation: a dishonest provider can still fake a receipt",
+    "a measured inference latency (wall time is one request through the tunnel)",
+    "response delivery after spending: if the reply fails after the key is spent, the receipt exists but the buyer has no output (observed in the first run before a fix)"
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "schema": "awai.android.pc-live-observation.v1",
+  "observedDate": "2026-11-16",
+  "timeZone": "Asia/Tokyo",
+  "sourceRevision": "05d5237365311772e384b1fe090c3607a2834430",
+  "targetLabel": "6600H",
+  "observedCpu": "AMD Ryzen 7 7735HS with Radeon Graphics",
+  "observedRenderer": "AMD Radeon 680M (radeonsi, rembrandt, ACO, DRM 3.64, 7.2.0+), OpenGL ES 3.2 Mesa 26.2.3",
+  "androidRelease": "17",
+  "api": 37,
+  "bootCompleted": true,
+  "emulatorProperty": "",
+  "physicalLanLiveBootObserved": true,
+  "kernelInitrdHttpFetchObserved": true,
+  "firmwareEfiTransferProtocol": "not independently captured; owner selected HTTP IPv4; PXE/TFTP fallback available",
+  "sourceClosureVerified": false,
+  "productionQualified": false,
+  "display": {
+    "width": 1920,
+    "height": 1200,
+    "physicalId": "4632669056402301697"
+  },
+  "storage": {
+    "userdata": "tmpfs",
+    "localNvmeVisible": false,
+    "localNvmeInstallerExecuted": false,
+    "nixGptEdgesSha256BeforeTrial": "0cc75b8c6d0f9c73967f7fa95bb344ccc15ba10f87f5dd0ec1d2ef764a5390a7",
+    "nixPostTrialBootVerified": false,
+    "persistentAndroidInstall": "deferred; owner has not selected a target"
+  },
+  "apps": {
+    "buildReportVersion": 5,
+    "installation": "SHA256/length-checked ADB streamed installation; Store installation gate not newly qualified",
+    "homeDisplayed": true,
+    "homeToStorePointer": true,
+    "storeToYoteiPointer": true,
+    "yoteiKeyboardFixture": "AWAI-2992 LAN live check",
+    "savedFixtureVisibleInYotei": true,
+    "savedFixtureProjectedOnHome": true,
+    "defaultHomeRoleVerified": false
+  },
+  "liveSession": {
+    "notificationWarnsRamDataLoss": true,
+    "timezoneSet": "Asia/Tokyo",
+    "debugScreenOffTimeoutMs": 600000,
+    "originalScreenOffTimeoutMs": 60000
+  },
+  "unverified": [
+    "Android restart persistence (this Live mode is temporary)",
+    "physical Nix boot after the trial",
+    "persistent installation and rollback",
+    "physical keyboard and mouse hardware acceptance beyond remote injected input",
+    "Wi-Fi, Bluetooth and audio",
+    "production ROM signing, secure boot, updates and complete source closure",
+    "wallet/account recovery, inference and Awai FS synchronization"
+  ],
+  "evidence": {
+    "homePng": "evidence/20261116-physical-home.png",
+    "homePngSha256": "40acbc3644c8d71cde2cd9b3d1c60d087fd89f1a001bfc641fdda27274f6cc30"
+  }
+}

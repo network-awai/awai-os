@@ -1,0 +1,40 @@
+# NixOS / Murakumo Client delivery, 2026-10-10
+
+The frozen OS source is installer main `77fb99583916640d725dd2fed48707093b8ef956`, following naming PR #20 and replay-floor PR #21. The operating system is NixOS; the installed suite is Murakumo Client, and a participating machine is a Awai Node. AiueOS remains a future replacement. Compatibility service/schema names retain `aiueos`. No new Daemon executable is claimed by naming this role.
+
+## Delivered artifacts
+
+| Artifact | Bytes | SHA256 |
+| --- | ---: | --- |
+| Offline x86_64 ISO | 5,248,696,320 | `10159e4339fdcbedf058f47d2e5785a4470e4921eee92ec3d58a47cffde31779` |
+| UEFI system NAR export | 7,488,910,320 | `c7863f64de569525d41167ec6ff6ed99e0da6f8d6944d66ab7ec142c5ff584ea` |
+
+The ISO's UEFI target is `/nix/store/y2s98laxaq1fk39hz5pc3bmr41ps0swx-nixos-system-murakumo-node-26.05pre-git`; its BIOS target is `/nix/store/xslsyl42cpbmmwpvnz4v9q3x1wxmmdmc-nixos-system-murakumo-node-26.05pre-git`. The live and installed updater hashes match the frozen source. Full ISO streaming transfer and Mac SHA256 matched. After `nix-store --export` completed, Mac hashed the complete stable closure file; the guest's redundant hash pass was stopped after this verification and is not claimed complete.
+
+Both artifacts were uploaded to the private `aiueos-releases` bucket and then read back in full through the public read-only transport. HEAD, byte-range and complete SHA256 checks passed. Stable sequence **5** is published at [the production manifest](https://aiueos-updates.04-feasts-minded.workers.dev/stable/manifest.json), with two verified existing Keychain signatures, the above source and target, and policy source `2e0496249fb969b52cf3bdbbc1d8b0238c7ac559`. Public admission and a modified-payload refusal passed. Both keys belong to the same operator; this is not independent-authority quorum evidence. The temporary upload Worker was deleted and returns 404; transport POST returns 405.
+
+KIOXIA TransMemory serial `0022CFF6B899CA205987CBC4`, capacity 61,949,214,720 bytes, was written and read back for exactly the ISO byte length. The installed fixed helper passed SHA256 equality before its final disk identity query failed because the media disappeared. After the user reconnected it, the same serial/capacity and ISO were rechecked, without another write, and `diskutil eject` succeeded. This recovery is explicitly recorded in the [USB proof](../../../docs/evidence/nixos-client-delivery-20261010/nixos-fixed-usb-proof.json); it is not an invented normal helper completion event. The USB can be unplugged.
+
+## VM verification
+
+A dedicated no-NIC VM updated an existing NixOS installation using the real ISO's preserving update UI/backend. The receipt, root/boot UUID binding, previous generation root, device identity, legacy account proof, saved data and NetworkManager profile were retained. Four fixture hashes matched. The updated system subsequently booted from its internal disk through UEFI without the ISO or direct kernel boot, with NetworkManager active and the periodic update timer enabled/scheduled. Legacy account proof remained refused and fresh relinking remained available.
+
+The actual installed new updater reported installed floor 4, admitted floor 3 and effective floor 4, and refused a correctly signed sequence-4 replay. The fix takes the maximum installed/admitted/configured floor and rejects invalid sequence values. Related source tests passed 21/21; naming-related checks passed 44/44 and distribution checks 14/14. These are separate relevant checks, not a claim of complete fleet CI.
+
+Normal no-disk, no-network UEFI CD boot showed the actual Japanese/English selector, supplied Murakumo logo, NixOS/Murakumo Client wording, welcome/update choices and network page. Escape from the installer-stage network page redisplays that page; it does not return to the welcome choices. This remains a known navigation limitation. No disk erase was triggered in this screen test. VM display required a private Unix-socket VNC display backend for headless framebuffer refresh; no public VNC port was opened. Physical audio, real-phone signing and physical Node registration are not qualified by this test.
+
+The networked QA VM fetched the actual production manifest and complete archive through HTTPS using its original installed service. Both archive digest passes and NAR import completed. The subsequent full-store verification exceeded the provider's default 120-second subprocess limit under x86_64 CPU emulation on the Mac and produced `hold: incomplete or corrupted closure`; no trial reboot occurred. This generic message does not itself distinguish a timeout from damaged files. The preserved original hold/journal/service evidence records this result.
+
+To continue checking the imported release, a QA-only `/run` copy of the exact new installed runtime changes only the `nix-store --verify-path` timeout from 120 to 1,800 seconds. A transient service override uses that copy. Signature checks, monotonic sequence, every store hash, owner/time/space/recovery gates and the reboot/recovery logic remain in place. This adjustment is not part of the published ISO or closure, and its result cannot qualify the unmodified provider's timing on physical hardware.
+
+With that timeout allowance, both full-store verification passes succeeded and the controller prepared the trial and rebooted. The VM booted the exact published UEFI system from its internal disk and its unmodified new recovery service committed sequence 5: journal revision 23, installed/admitted sequence 5, `pending: null`, `lastOutcome: committed`. Four preservation hashes matched, UUID bindings and the previous-generation GC root were retained, and NetworkManager and the enabled periodic timer were active. The running new provider hash is the frozen `8b52b6b270c0a8d9e3c090bb65b9830f6f806007609fcf330013451f3efe4dcf`; the transient override disappeared at reboot. The trial's kernel command line has the preserved root/boot UUIDs and no QA mask or added serial-console parameter.
+
+This dedicated clone uses a virtual watchdog, local fixture owner authorization and explicit QA apply-now consent; its clock was NTP synchronized and no offline-time exception was used. A QA root login profile starts a serial getty when the local maintenance console is opened, allowing evidence capture without modifying the published boot entry. These are VM instrumentation and test policy, not physical owner/recovery qualification. The clone's root partition was grown inside its already dedicated 64-GiB virtual disk to satisfy staging space; no physical disk was resized. A further normal reboot retained the exact system, committed journal, four matching preservation hashes, enabled/active timer and previous-generation root. The QA login instrumentation was restored before normal poweroff.
+
+## Physical update and activation
+
+Boot this USB and select **Update existing NixOS (keep data)**, select the intended existing internal NixOS disk, then update. Remove the USB before booting the internal disk. A new installation is a separate erasing action.
+
+Open **NixOS updates** to inspect the policy/status, provision periodic signed checks on an unconfigured standalone Node, or check now. The signed stable feed is live and production public keys are shipped. Actual automatic application still needs that machine's owner policy, adequate space, trusted time and qualified hardware recovery. The normal timer checks every 15 minutes with jitter; installation does not itself qualify a physical watchdog or authorize an owner. Network publication and enabled timers do not establish that this particular physical Node has already updated.
+
+The [delivery receipt](../../../docs/evidence/nixos-client-delivery-20261010/delivery-status-20261010.json) and [evidence directory](../../../docs/evidence/nixos-client-delivery-20261010/) contain the exact observations and SHA256 inventory. All task-owned builder/media/update VMs were normally stopped after capture; unrelated user VMs/apps were preserved.

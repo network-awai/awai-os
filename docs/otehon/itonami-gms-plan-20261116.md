@@ -54,7 +54,7 @@ An Android-compatible build requires the relevant CDD/CTS. GMS/Play Store licens
 
 ## P0 implementation and evidence
 
-Source: `nixos/otehon/itonami-gms`. Shared pure `.cljc` selector/reporting core, offline Babashka CLI, opt-in Nix module and two Nix check expressions. Local7 tests/54 assertions passed on Babashka1.12.218 (initial test syntax errors corrected before passing). CLI contract smoke passed. No app catalog is shipped: bootstrap metadata is empty and expired. SHA-256 match authenticates bytes against a supplied value only; catalog signatures, secure fetching, installer and API adapters are still absent. Do not advertise this as a usable Store/GMS release.
+Source: `otehon/itonami-gms`. Shared pure `.cljc` selector/reporting core, offline Babashka CLI, opt-in Nix module and two Nix check expressions. Local7 tests/54 assertions passed on Babashka1.12.218 (initial test syntax errors corrected before passing). CLI contract smoke passed. No app catalog is shipped: bootstrap metadata is empty and expired. SHA-256 match authenticates bytes against a supplied value only; catalog signatures, secure fetching, installer and API adapters are still absent. Do not advertise this as a usable Store/GMS release.
 
 Nix binary unavailable locally: package/module evaluation and VM checks are **unverified**, not passed. No Android/Waydroid build or hardware GMS test performed. No CI has been changed to add Java/Gradle; check the Otehon toolchain boundary before adding Android adapter build gates. Current Otehon `.cljc`/Babashka implementation remains in its permitted profile, separate from Native.
 

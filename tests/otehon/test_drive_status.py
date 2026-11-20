@@ -2,7 +2,7 @@ import importlib.util
 from pathlib import Path
 import unittest
 
-spec = importlib.util.spec_from_file_location('drive_status', Path(__file__).parents[2] / 'nixos/otehon/drive/status.py')
+spec = importlib.util.spec_from_file_location('drive_status', Path(__file__).parents[2] / 'otehon/drive/status.py')
 s = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(s)
 

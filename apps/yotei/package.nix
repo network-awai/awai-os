@@ -13,9 +13,9 @@ rustPlatform.buildRustPackage {
       ../../android/client/generated/domain.js
       ../../android/contracts/src/itonami/store/domain.cljc
       ../../android/client/assets/android-v2-icon-calendar.svg
-      ../../nixos/otehon/shell/vendor/PINS.json
-      ../../nixos/otehon/shell/vendor/kotoba-client-runtime.js
-      ../../nixos/otehon/shell/vendor/kotoba-client-consent.css
+      ../../otehon/shell/vendor/PINS.json
+      ../../otehon/shell/vendor/kotoba-client-runtime.js
+      ../../otehon/shell/vendor/kotoba-client-consent.css
     ];
   };
   cargoRoot = "apps/yotei/src-tauri";

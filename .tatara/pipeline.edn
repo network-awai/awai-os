@@ -1,0 +1,9 @@
+;; Offline Android QA and Store catalog checks. Device and APK qualification
+;; use the separate Android build and test paths.
+{:tier :t2
+ :network :none
+ :quorum 2
+ :timeout-seconds 180
+ :steps [["bash" "scripts/ci/android-qa-scope.sh"]
+         ["node" "--test" "android/tests/local-apps.test.mjs"]]
+ :artifacts []}

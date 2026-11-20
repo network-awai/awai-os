@@ -1,0 +1,4 @@
+11-19 09:29:23.330   678   678 I update_engine: [INFO:metrics_utils.cc(349)] Update Monotonic Timestamp Start = 1/1/1970 0:04:23 GMT
+11-19 09:29:23.330   678   678 I update_engine: [INFO:metrics_utils.cc(358)] Update Boot Timestamp Start = 1/1/1970 0:04:23 GMT
+11-19 09:29:23.349   678   678 E update_engine: [ERROR:delta_performer.cc(1299)] The current OS build timestamp (1795079485) is newer than the maximum timestamp in the manifest (1795077496)
+11-19 09:29:23.349   678   678 I update_engine: [INFO:delta_performer.cc(1215)] The current OS build allows downgrade, continuing to apply the payload with an older timestamp.

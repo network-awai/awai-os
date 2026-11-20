@@ -1,0 +1,8 @@
+11-18 08:47:32.924  2164  2192 I cr_VariationsUtils: Requesting new seed from IVariationsSeedServer
+11-18 08:47:32.964   528   559 I ActivityManager: Start proc 2201:com.android.webview:webview_service/u0a108 for service {com.android.webview/org.chromium.android_webview.services.VariationsSeedServer}
+11-18 08:47:33.041  2201  2201 I webview_service: Using CollectorTypeCMC GC.
+11-18 08:47:33.056  2201  2201 E webview_service: Not starting debugger since process cannot load the jdwp agent.
+11-18 08:47:33.149  2201  2201 I cr_WebViewApkApp: Launched version=124.0.6367.219 minSdkVersion=1 isBundle=false processName=com.android.webview:webview_service
+11-18 08:47:33.180   528   942 D ConnectivityService: requestNetwork for uid/pid:1000/528 asUid: 10108 activeRequest: null callbackRequest: 61 [NetworkRequest [ REQUEST id=62, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED&NOT_BANDWIDTH_CONSTRAINED Uid: 10108 RequestorUid: 1000 RequestorPkg: android UnderlyingNetworks: Null] ]] callback flags: 0 order: 2147483647 isUidTracked: false
+11-18 08:47:33.653  2201  2239 I cr_VariationsSeedFetch: Fetched first run seed in 286 ms
+11-18 08:47:43.828   528   618 D ActivityManager: freezing 2201 com.android.webview:webview_service

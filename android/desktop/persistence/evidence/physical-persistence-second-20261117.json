@@ -1,0 +1,100 @@
+{
+  "schema": "awai.android.physical.persistence.acceptance.v1",
+  "bootCompleted": true,
+  "data": {
+    "source": "/dev/block/loop5",
+    "fsType": "ext4"
+  },
+  "metadata": {
+    "source": "/dev/block/loop4",
+    "fsType": "ext4"
+  },
+  "apkVersionName": "0.1.2",
+  "apkVersionCode": 1002,
+  "apkSourceRevision": "cfdacb7be5900c5082aecb443dd2fb063356eabc",
+  "osArtifactSourceRevision": "98831aa",
+  "protectedRegionsUnchanged": true,
+  "secondCleanRebootVerified": true,
+  "naturalLongDozeVerified": false,
+  "offlineKernelBootVerified": false,
+  "successfulPersistentBootsVerified": 2,
+  "bootId": "a3a92d00-e4cc-4bcb-b4e9-695e66524d13",
+  "previousPersistentBootId": "877712c8-f17f-422f-a5d4-40531faa3484",
+  "checkedAt": "2026-11-17T04:17:05.943Z",
+  "nativePeers": [
+    {
+      "id": "app.aozora.awai.preview",
+      "peer": "12D3KooWE7uJEbVoLWhBYzArir8insDVJ4aAWgGiDPKrag8oVbKX",
+      "storageKind": "app-private",
+      "nativeKeyDerivationMatched": true,
+      "receiveServiceAutoResumed": false
+    },
+    {
+      "id": "network.itonami.dougaka.preview",
+      "peer": "12D3KooWKUavvpLBn2VUpk9tzLrdDxLTjW2cHZKd3veCkVrZSR3H",
+      "storageKind": "app-private",
+      "nativeKeyDerivationMatched": true,
+      "receiveServiceAutoResumed": false
+    },
+    {
+      "id": "network.itonami.ongakuka.preview",
+      "peer": "12D3KooWRvDcYipGHgg99QnxxB2vRLi7KzSUkBUf2YJgXLfpdsMU",
+      "storageKind": "app-private",
+      "nativeKeyDerivationMatched": true,
+      "receiveServiceAutoResumed": false
+    },
+    {
+      "id": "network.itonami.client.preview",
+      "peer": "12D3KooWN4jsJYPZFVGtNuB5TDVHqLtn4Txb29Fsp6DRQPSAGcYg",
+      "storageKind": "app-private",
+      "nativeKeyDerivationMatched": true,
+      "receiveServiceAutoResumed": false
+    },
+    {
+      "id": "network.itonami.yataverse.preview",
+      "peer": "12D3KooWRfpqRG7XgNWfdBXCNoWJw1C4QXxyoCproM1Y8Zkqg3kY",
+      "storageKind": "app-private",
+      "nativeKeyDerivationMatched": true,
+      "receiveServiceAutoResumed": false
+    }
+  ],
+  "wnfs": {
+    "snapshot": "bafyreifxwjkaji62sdkwexji2cwtqqzqtim4yusgmc33zal2kbemqxdtja",
+    "blocks": 8,
+    "carBytes": 5179,
+    "carSha256": "f5c2bfb227ce42cbbe4b6d85c244a661f9bccf12c60b11fa104cbaa9fd8704d2",
+    "returnedCarSha256": "f5c2bfb227ce42cbbe4b6d85c244a661f9bccf12c60b11fa104cbaa9fd8704d2",
+    "canonicalTrustedUiApproval": true,
+    "storageKind": "app-private",
+    "preexistingSnapshotVerified": true,
+    "backgroundLanRoundTrip": true,
+    "backgroundActivityVerified": true,
+    "backgroundBeforeTransfer": [
+      {
+        "taskId": 65,
+        "displayId": 0,
+        "state": "STOPPED",
+        "visibleRequested": "false",
+        "visible": "false",
+        "clientVisible": "false"
+      }
+    ],
+    "backgroundAfterTransfer": [
+      {
+        "taskId": 65,
+        "displayId": 0,
+        "state": "STOPPED",
+        "visibleRequested": "false",
+        "visible": "false",
+        "clientVisible": "false"
+      }
+    ],
+    "backgroundMethod": "owned-preview-fullscreen",
+    "explicitStopRefusedTraffic": true,
+    "independentDevices": true,
+    "independentNetworks": false
+  },
+  "helperSourceCommit": "9e5531b",
+  "scriptedUiNotHumanConsentQualification": true,
+  "deviceLeaseReleasedToPrioritizedDesktopChat": true
+}

@@ -51,12 +51,12 @@ Qwen3-TTS and Qwen3-ASR look like the right pair: both are reported as Apache-2.
 - **Streaming.** Sources disagree on whether the official code streams. A third-party fork says it does not.
 - **Packaging.** Both use PyTorch, which is large for the image.
 
-The plan is microphone, then Qwen3-ASR, then the Manimani turn, then Qwen3-TTS, all on loopback. If Qwen3 cannot run in real time on the target, tell the owner rather than switching engines silently. Piper refused a Japanese voice in `docs/otehon/media-0.1.0.md`.
+The plan is microphone, then Qwen3-ASR, then the Manimani turn, then Qwen3-TTS, all on loopback. If Qwen3 cannot run in real time on the target, tell the owner rather than switching engines silently. Piper refused a Japanese voice in `archive/nixos/docs/otehon/media-0.1.0.md`.
 
 ## Check
 
 ```bash
-cd nixos/otehon/manimani
+cd otehon/manimani
 bb -cp src:test test/manimani/core_test.clj
 python3 -I test/check_service.py http://127.0.0.1:18772
 ```

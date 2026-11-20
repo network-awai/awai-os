@@ -1,7 +1,7 @@
 { pkgs ? import (import ../../ci/nixpkgs.nix) { } }:
 let
-  storage = import ../../nixos/otehon/storage/default.nix { inherit pkgs; };
-  classpath = "${../../nixos/otehon/storage/src}:${../../nixos/otehon/storage/vendor/apex/src}:${../../nixos/otehon/storage/vendor/apex-car/src}:${../../nixos/otehon/shell/src}";
+  storage = import ../../otehon/storage/default.nix { inherit pkgs; };
+  classpath = "${../../otehon/storage/src}:${../../otehon/storage/vendor/apex/src}:${../../otehon/storage/vendor/apex-car/src}:${../../otehon/shell/src}";
 in pkgs.runCommand "otehon-public-replica-fixture-check" {
   nativeBuildInputs = [ pkgs.babashka storage ];
 } ''

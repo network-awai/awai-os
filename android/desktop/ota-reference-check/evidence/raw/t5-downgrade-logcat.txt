@@ -1,0 +1,4 @@
+11-19 09:32:49.782   675   675 I update_engine: [INFO:metrics_utils.cc(358)] Update Boot Timestamp Start = 1/1/1970 0:00:25 GMT
+11-19 09:32:49.808   675   675 E update_engine: [ERROR:delta_performer.cc(1299)] The current OS build timestamp (1795079485) is newer than the maximum timestamp in the manifest (1795077496)
+11-19 09:32:49.809   675   675 E update_engine: [ERROR:download_action.cc(226)] Error ErrorCode::kPayloadTimestampError (51) in DeltaPerformer's Write method when processing the received payload -- Terminating processing
+11-19 09:32:49.835   675   675 I update_engine: [INFO:action_processor.cc(118)] ActionProcessor: finished DownloadAction with code ErrorCode::kPayloadTimestampError

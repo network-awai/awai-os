@@ -1,0 +1,54 @@
+{
+  "schema": "awai.ui.verification.v1",
+  "issue": "JUN-1328",
+  "figma": "https://www.figma.com/design/umqCqP5KSjLWh9fhCI1HaN?node-id=268-3",
+  "components": 6,
+  "node": "26.0.0",
+  "squint": "0.16.214",
+  "esbuild": "0.28.2",
+  "browser": "installed Google Chrome via Playwright1.65.1",
+  "viewports": [
+    320,
+    412,
+    1280
+  ],
+  "localeAndTextScale": "ja/en, 200% at320px",
+  "themes": [
+    "system-light",
+    "system-dark",
+    "explicit-light-override"
+  ],
+  "independentPackedConsumer": true,
+  "sharedStylesOutsideRoot": "body defaults preserved",
+  "busyDisabled": "native activation suppressed",
+  "keyboard": "Tab skips disabled, native fragment links/current-page",
+  "remoteRequests": 0,
+  "pageErrors": 0,
+  "limits": [
+    "existing applications not migrated",
+    "Android physical/TalkBack/ROM/OTA not qualified",
+    "Noto JP subset/system glyph fallback",
+    "not a complete design-system migration"
+  ],
+  "assets": {
+    "search.svg": "10a8cceeffe565174c23d83d671eb7acd5ca989038fb476d2281e2b432c01259",
+    "store.svg": "5719e425c3870756336ea641dfe4fdeb6dabf52c4abe9d2d83528627c50ab37e",
+    "download.svg": "f3921e1c96d85c24ff36a330acbfe1c3bd46699abb56fc86db10dfc419f4273f",
+    "apps.svg": "91439675adc58dd01e25bb1f797da7528a1519fc346e3e918f85d6de4359314b",
+    "noto-jp.woff2": "ed85d35a7db01e551510e0973745c17315c03ea01742d82b2bf8e5ac3bf76038",
+    "font-OFL.txt": "babcfe66c8a098b2fa279bc724a3a342f8124f77ce18941fbcc1bbb39823cded"
+  },
+  "v02": {
+    "issue": "JUN-1335",
+    "consumers": [
+      "Itonami owning shell",
+      "Murakumo",
+      "Drive",
+      "Yotei"
+    ],
+    "browser": "Chrome, 412 and1280px",
+    "nativeAdapter": "existing DOM identity preserved; hidden/disabled unchanged",
+    "theme": "existing Asa/Hiru/Yoru choice; Figma Hiru export",
+    "runtime": "Android verification recorded separately"
+  }
+}

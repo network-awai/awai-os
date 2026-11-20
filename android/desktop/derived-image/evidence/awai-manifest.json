@@ -1,0 +1,66 @@
+{
+  "schema": "awai.os.release-manifest.v1",
+  "kind": "derived-development-image",
+  "releasedAsAwaiOs": false,
+  "note": "Derived from a pinned third-party prebuilt PC Live image for development and verification. Not an Awai OS release; see AWAI-3061.",
+  "issue": "AWAI-3067",
+  "keyId": "release-2026-11",
+  "base": {
+    "isoSha256": "63c15c052ff4a9841c680f550c77f1dedaadc6455eca828edd6143f9d5e547e3",
+    "pins": "android/desktop/pc-evaluation-pins.json",
+    "systemSha256": "4c95555125385e1091183d4d8a8b4bdbd8c2a83b34ab56c4a180d9142588ae56",
+    "vendorSha256": "de90b3edef88f547e2eab90821764a9eee8c1f528da622284220544d6235b2ca"
+  },
+  "derivation": {
+    "sourceRevision": "2cfcf9074a131b9c45a92f2afa4d842d6dab984d",
+    "script": "android/desktop/derived-image/build-images.sh",
+    "productApps": {
+      "home-v15.apk": {
+        "sha256": "e854a3dae4cf169b9dbc8f021fbd3f36a84dae76fccd2bfd7f5284e47a4ff816",
+        "bytes": 4193990
+      },
+      "store-v15.apk": {
+        "sha256": "b78faaaacdf86d9d10d4b3296dbd5355bdf00017b7dba63306303431f62f98b5",
+        "bytes": 8384466
+      },
+      "yotei-v15.apk": {
+        "sha256": "e085c1f0a4434e9a0c58d9509104d9658140492293988ce1318b8ff74fa51ad8",
+        "bytes": 4189894
+      }
+    },
+    "vendorProperties": {
+      "vendor.hwc.drm.primary_display": "DP-1"
+    },
+    "unchanged": "All other files keep content, mode, owner and xattrs; symlink mode bits become 0777 (not checked by Linux or Android)."
+  },
+  "files": {
+    "kernel": {
+      "bytes": 14307328,
+      "sha256": "921907ef5703f4b762a0c0f457ecf1734eae8384fece79ca953d13c474d56c3a"
+    },
+    "ramdisk-all-combined.img": {
+      "bytes": 88440424,
+      "sha256": "fcdf797a751f97fb4027a1dd4c4cea1410e437a83cc85d7f4b9cccb232aad7f2"
+    },
+    "system.img": {
+      "bytes": 1833418752,
+      "sha256": "5aabc0079564fba4c9d7ecde057afb84bfb430810aeb43121e1efac305550f5c"
+    },
+    "system_dlkm.img": {
+      "bytes": 8192,
+      "sha256": "1fc36abc07d3bdebec565dbbe8e2c701a8bf07c40309f0f9616c001e45d26bcb"
+    },
+    "vendor.img": {
+      "bytes": 201424896,
+      "sha256": "4b4ae525838a65813a499a47dc40420feb8ba3b2962a0dbace3387407abf1a6f"
+    },
+    "vendor_dlkm.img": {
+      "bytes": 196726784,
+      "sha256": "e2a035d1d412ffe6916b26ea50140adf12320252c4acba3a948de5e56c2eeab3"
+    },
+    "firmware.img": {
+      "bytes": 503586816,
+      "sha256": "a636c0556e97f5136f0dc59ead68b64f06bd55acab355fbe79fb542f9d203e68"
+    }
+  }
+}

@@ -41,7 +41,7 @@ Forest 圧縮 Pack と WNFS PrivateForest は別の仕組みです。
 
 ## source と再現
 
-`nixos/otehon/drive/vendor/apex/source.json` は owning repository の immutable
+`otehon/drive/vendor/apex/source.json` は owning repository の immutable
 revision と全 snapshot ファイル SHA-256 を持ち、Nix package は全件照合します。
 `.cljc` の volume/codec/ID を独自実装せず、Otehon に許可された Node/nbb を
 Nix で固定します。Native gate/build/runtime の依存ではありません。
@@ -49,7 +49,7 @@ Nix で固定します。Native gate/build/runtime の依存ではありませ�
 Linux Nix/KVM builder の repository root で:
 
 ```sh
-nix-build nixos/otehon/drive/check.nix --out-link result-drive-vm
+nix-build archive/nixos/otehon/drive/check.nix --out-link result-drive-vm
 ```
 
 この VM だけの公開 fixture key で追加ディスクを LUKS 化し、実際の FUSE 保存・

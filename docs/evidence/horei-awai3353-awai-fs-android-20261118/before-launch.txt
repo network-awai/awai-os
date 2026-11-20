@@ -1,0 +1,7 @@
+Starting: Intent { cmp=network.itonami.horei/.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: network.itonami.horei/.MainActivity
+TotalTime: 1951
+WaitTime: 1985
+Complete

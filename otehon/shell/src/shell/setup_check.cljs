@@ -1,0 +1,61 @@
+(ns shell.setup-check
+  (:require [reagent.core :as r]
+            ["react-dom/server" :refer [renderToStaticMarkup]]
+            [shell.setup :refer [qr-code initial-step]]
+            [shell.bot-chat :as bot-chat]
+            [shell.agent-workspace :as workspace]
+            [shell.mail-progress :as mail]
+            ["../mail-aliases.js" :refer [validateAliases]]
+            [shell.fleet-circles :as circles]))
+
+;; Exercise the actual component and npm import after advanced compilation.
+;; No relay, account, signature or network operation is needed to render a QR.
+(defn main []
+  (doseq [[android returning account expected] [[true false nil "signin"] [true true nil "signin"] [false false nil "hello"] [false true nil "signin"] [true false #js {} "trust"]]]
+    (when-not (= expected (initial-step android returning account))
+      (throw (js/Error. "android-setup-entry-must-preserve-identity-gate"))))
+  (js/console.log "PASS: Android skips OS onboarding and preserves account authentication")
+  (doseq [[locale expected] [["ja" "メールを管理"] ["en" "Manage mail"]]]
+   (let [html (renderToStaticMarkup (r/as-element [:f> mail/manager "profile:fixture" locale]))]
+    (when-not (.includes html expected) (throw (js/Error. "mail-manager-render-failed")))))
+  (let [value (js/JSON.parse "{\"schema\":\"itonami.mail-alias-result.v1\",\"botId\":\"profile:fixture\",\"principalId\":\"10000000-0000-4000-8000-000000000000\",\"did\":\"did:key:z6MkrJVnaZkeFzdQyT6c4k7YVQBgYzG5wJE9G4o5eFssEUYh\",\"epoch\":0,\"routing\":\"not-provisioned\",\"basis\":null,\"store\":{\"owner\":\"itonami-agent\",\"readback\":true,\"engine\":\"kotobase-peer\",\"backend\":\"awai-fs-otehon-pack\",\"headCid\":null},\"aliases\":[]}")]
+   (validateAliases value "profile:fixture"))
+  (doseq [locale ["ja" "en"]]
+   (let [html (renderToStaticMarkup (r/as-element [:f> workspace/panel (mapv (fn [i] {:id (str "profile:sample-" i) :name (str "sample-" i) :repository "org/app" :configured true :state "waiting" :jobs [{:configured true :state "waiting" :sourceObservedAt (.toISOString (js/Date.))}]}) (range 21)) nil "catalog" false (js/Date.now) locale]))]
+    (when-not (and (.includes html "sample") (.includes html "agent-picker-row") (.includes html (if (= locale "en") "Show more" "もっと見る"))) (throw (js/Error. "agent-picker-render-failed")))))
+  (doseq [[locale expected] [["ja" "履歴を取得"] ["en" "Load history"]]]
+    (let [html (renderToStaticMarkup (r/as-element [:f> bot-chat/panel {:id "profile:sample" :name "sample"} locale]))]
+      (when-not (and (.includes html expected) (.includes html "<textarea") (.includes html "disabled"))
+        (throw (js/Error. "agent-conversation-render-failed")))))
+  (doseq [locale ["ja" "en"]]
+   (let [bots [{:id "profile:codinator" :name "codinator" :repository "cloud-itonami/ao-bot-fleet" :configured false :state "held"}
+               {:id "profile:cron-health" :name "cron-health" :repository "cloud-itonami/ao-bot-fleet" :configured false :state "held"}]
+         peer {:cycles [{:cycleKey "fixture" :state "completed" :observedAt "2026-11-13T12:00:00Z" :goal "Fixture collaboration" :completedTurns 4 :maxTurns 4 :issueId "AWAI-2862"
+                        :participants ["profile:codinator" "profile:cron-health"]
+                        :turns (mapv (fn [i] {:turn i :speaker (if (even? i) "profile:codinator" "profile:cron-health") :state "completed"}) (range 4))}]}
+         html (renderToStaticMarkup (r/as-element [:f> circles/panel bots false 0 "" (fn [_]) (fn [_]) locale nil peer]))]
+    (when-not (and (.includes html "Fixture collaboration") (.includes html "構成監視") (.includes html "cron・復旧監督") (.includes html "I-15") (.includes html "AWAI-2862") (not (.includes html "<animate")))
+     (throw (js/Error. "mission-peer-advanced-render-failed")))))
+  (let [url "https://awai.network/link/#local-qr-regression"
+        html (renderToStaticMarkup (r/as-element [:f> qr-code url]))]
+    (when-not (and (.includes html "<svg")
+                   (.includes html "<path")
+                   (.includes html "h1v1h-1z")
+                   (.includes html url))
+      (throw (js/Error. "phone-link-qr-render-failed")))
+    (js/console.log "PASS: phone sign-in QR renders after advanced compilation without a relay or identity"))
+  (let [bots [{:id "a" :name "a" :repository "current/app" :circleIds ["repo:original/app"] :state "waiting" :configured true}
+              {:id "b" :name "b" :repository "current/app" :circleIds ["repo:original/app"] :state "held" :configured false}]
+        html (renderToStaticMarkup (r/as-element [:f> circles/panel bots false 0 "" (fn [_]) (fn [_])]))]
+    (when-not (and (.includes html "2 Bot · 0 Circle")
+                   (.includes html "配置確認")
+                   (.includes html "Agentの活動")
+                   (not (.includes html "<animate"))
+                   (.includes html "定期待機 1")
+                   (.includes html "未有効 1"))
+      (throw (js/Error. "circle-advanced-interop-render-failed")))
+    (js/console.log "PASS: Circle totals, catalog identity and state ring render after advanced compilation")
+    (let [english (renderToStaticMarkup (r/as-element [:f> circles/panel bots false 0 "" (fn [_]) (fn [_]) "en"]))]
+      (when-not (and (.includes english "2 bots · 0 circles") (.includes english "Agent activity") (.includes english "Responsibilities"))
+        (throw (js/Error. "localized-circle-advanced-render-failed")))
+      (js/console.log "PASS: English copy and named counts survive advanced compilation"))))

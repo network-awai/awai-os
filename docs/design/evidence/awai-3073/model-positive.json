@@ -1,0 +1,10 @@
+{
+  "issue": "AWAI-3073",
+  "start": "2026-11-17T12:15:22.079Z",
+  "purpose": "positive control after one-byte model corruption was refused and exact digest restored; no additional gallery save",
+  "seconds": 73.173,
+  "sha256": "c626065708e75929f9f12d1405e0fff1a7a71ad25c26dfe3688f1762839b2539",
+  "equalsPreviouslySavedImage": false,
+  "status": "passed",
+  "end": "2026-11-17T12:16:37.821Z"
+}

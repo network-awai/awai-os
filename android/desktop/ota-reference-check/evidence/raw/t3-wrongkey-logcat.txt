@@ -1,0 +1,6 @@
+11-19 09:28:18.618   678   678 I update_engine: [INFO:payload_verifier.cc(190)] Failed to verify the signature with 1 keys.
+11-19 09:28:18.618   678   678 E update_engine: [ERROR:payload_verifier.cc(136)] None of the 1 signatures is correct. Expected hash before padding:
+11-19 09:28:18.619   678   678 E update_engine: [ERROR:payload_verifier.cc(139)] But found RSA decrypted hashes:
+11-19 09:28:18.620   678   678 E update_engine: [ERROR:delta_performer.cc(1448)] Public key verification failed, thus update failed.
+11-19 09:28:18.620   678   678 E update_engine: [ERROR:download_action.cc(268)] Download of file:///data/ota_package/debug.zip failed due to payload verification error.
+11-19 09:28:18.620   678   678 I update_engine: [INFO:action_processor.cc(118)] ActionProcessor: finished DownloadAction with code ErrorCode::kDownloadPayloadPubKeyVerificationError

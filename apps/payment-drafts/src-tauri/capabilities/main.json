@@ -1,0 +1,1 @@
+{"identifier":"payment-drafts-local","description":"Local drafting and L1 checking of the account holder's own pain.001 payment instructions; host version only. No external network, bank, signing, filesystem, installer or shell permissions.","windows":["main"],"permissions":["allow-awai-host-info"]}

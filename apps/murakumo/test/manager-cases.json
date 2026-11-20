@@ -1,0 +1,1675 @@
+[
+ {
+  "name": "the pinned catalog is complete",
+  "fn": "catalog-problems",
+  "args": [
+   {
+    "schema": "awai.murakumo.catalog.v1",
+    "observed": "2026-11-18 from the Hugging Face API (model sha, tree, config.json)",
+    "models": [
+     {
+      "id": "qwen3-0.6b-q8_0",
+      "label": "Qwen3 · 0.6B",
+      "repo": "Qwen/Qwen3-0.6B-GGUF",
+      "revision": "23749fefcc72300e3a2ad315e1317431b06b590a",
+      "file": "Qwen3-0.6B-Q8_0.gguf",
+      "quant": "Q8_0",
+      "bytes": 639446688,
+      "sha256": "9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031",
+      "layers": 28,
+      "kv-heads": 8,
+      "head-dim": 128,
+      "license": "apache-2.0"
+     },
+     {
+      "id": "qwen3-1.7b-q8_0",
+      "label": "Qwen3 · 1.7B",
+      "repo": "Qwen/Qwen3-1.7B-GGUF",
+      "revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+      "file": "Qwen3-1.7B-Q8_0.gguf",
+      "quant": "Q8_0",
+      "bytes": 1834426016,
+      "sha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+      "layers": 28,
+      "kv-heads": 8,
+      "head-dim": 128,
+      "license": "apache-2.0"
+     },
+     {
+      "id": "qwen3-4b-q4_k_m",
+      "label": "Qwen3 · 4B",
+      "repo": "Qwen/Qwen3-4B-GGUF",
+      "revision": "bc640142c66e1fdd12af0bd68f40445458f3869b",
+      "file": "Qwen3-4B-Q4_K_M.gguf",
+      "quant": "Q4_K_M",
+      "bytes": 2497280256,
+      "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+      "layers": 36,
+      "kv-heads": 8,
+      "head-dim": 128,
+      "license": "apache-2.0"
+     },
+     {
+      "id": "qwen3-8b-q4_k_m",
+      "label": "Qwen3 · 8B",
+      "repo": "Qwen/Qwen3-8B-GGUF",
+      "revision": "7c41481f57cb95916b40956ab2f0b139b296d974",
+      "file": "Qwen3-8B-Q4_K_M.gguf",
+      "quant": "Q4_K_M",
+      "bytes": 5027783488,
+      "sha256": "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785",
+      "layers": 36,
+      "kv-heads": 8,
+      "head-dim": 128,
+      "license": "apache-2.0"
+     },
+     {
+      "id": "qwen3-14b-q4_k_m",
+      "label": "Qwen3 · 14B",
+      "repo": "Qwen/Qwen3-14B-GGUF",
+      "revision": "530227a7d994db8eca5ab5ced2fb692b614357fd",
+      "file": "Qwen3-14B-Q4_K_M.gguf",
+      "quant": "Q4_K_M",
+      "bytes": 9001752960,
+      "sha256": "500a8806e85ee9c83f3ae08420295592451379b4f8cf2d0f41c15dffeb6b81f0",
+      "layers": 40,
+      "kv-heads": 8,
+      "head-dim": 128,
+      "license": "apache-2.0"
+     },
+     {
+      "id": "qwen3-30b-a3b-q4_k_m",
+      "label": "Qwen3 · 30B-A3B",
+      "repo": "Qwen/Qwen3-30B-A3B-GGUF",
+      "revision": "e4d4bafdfb96a411a163846265362aceb0b9c63a",
+      "file": "Qwen3-30B-A3B-Q4_K_M.gguf",
+      "quant": "Q4_K_M",
+      "bytes": 18556685824,
+      "sha256": "0d003f6662faee786ed5da3e31b29c978de5ae5d275c8794c606a7f3c01aa8f5",
+      "layers": 48,
+      "kv-heads": 4,
+      "head-dim": 128,
+      "license": "apache-2.0"
+     }
+    ]
+   }
+  ],
+  "expect": []
+ },
+ {
+  "name": "a short digest, an unpinned revision, zero bytes and a duplicate id are each named",
+  "fn": "catalog-problems",
+  "args": [
+   {
+    "schema": "awai.murakumo.catalog.v1",
+    "observed": "2026-11-18 from the Hugging Face API (model sha, tree, config.json)",
+    "models": [
+     {
+      "id": "qwen3-0.6b-q8_0",
+      "label": "Qwen3 · 0.6B",
+      "repo": "Qwen/Qwen3-0.6B-GGUF",
+      "revision": "23749fefcc72300e3a2ad315e1317431b06b590a",
+      "file": "Qwen3-0.6B-Q8_0.gguf",
+      "quant": "Q8_0",
+      "bytes": 639446688,
+      "sha256": "9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031",
+      "layers": 28,
+      "kv-heads": 8,
+      "head-dim": 128,
+      "license": "apache-2.0"
+     },
+     {
+      "id": "qwen3-1.7b-q8_0",
+      "label": "Qwen3 · 1.7B",
+      "repo": "Qwen/Qwen3-1.7B-GGUF",
+      "revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+      "file": "Qwen3-1.7B-Q8_0.gguf",
+      "quant": "Q8_0",
+      "bytes": 1834426016,
+      "sha256": "abc",
+      "layers": 28,
+      "kv-heads": 8,
+      "head-dim": 128,
+      "license": "apache-2.0"
+     },
+     {
+      "id": "qwen3-4b-q4_k_m",
+      "label": "Qwen3 · 4B",
+      "repo": "Qwen/Qwen3-4B-GGUF",
+      "revision": "main",
+      "file": "Qwen3-4B-Q4_K_M.gguf",
+      "quant": "Q4_K_M",
+      "bytes": 2497280256,
+      "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+      "layers": 36,
+      "kv-heads": 8,
+      "head-dim": 128,
+      "license": "apache-2.0"
+     },
+     {
+      "id": "qwen3-8b-q4_k_m",
+      "label": "Qwen3 · 8B",
+      "repo": "Qwen/Qwen3-8B-GGUF",
+      "revision": "7c41481f57cb95916b40956ab2f0b139b296d974",
+      "file": "Qwen3-8B-Q4_K_M.gguf",
+      "quant": "Q4_K_M",
+      "bytes": 0,
+      "sha256": "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785",
+      "layers": 36,
+      "kv-heads": 8,
+      "head-dim": 128,
+      "license": "apache-2.0"
+     },
+     {
+      "id": "qwen3-0.6b-q8_0",
+      "label": "Qwen3 · 14B",
+      "repo": "Qwen/Qwen3-14B-GGUF",
+      "revision": "530227a7d994db8eca5ab5ced2fb692b614357fd",
+      "file": "Qwen3-14B-Q4_K_M.gguf",
+      "quant": "Q4_K_M",
+      "bytes": 9001752960,
+      "sha256": "500a8806e85ee9c83f3ae08420295592451379b4f8cf2d0f41c15dffeb6b81f0",
+      "layers": 40,
+      "kv-heads": 8,
+      "head-dim": 128,
+      "license": "apache-2.0"
+     },
+     {
+      "id": "qwen3-30b-a3b-q4_k_m",
+      "label": "Qwen3 · 30B-A3B",
+      "repo": "Qwen/Qwen3-30B-A3B-GGUF",
+      "revision": "e4d4bafdfb96a411a163846265362aceb0b9c63a",
+      "file": "Qwen3-30B-A3B-Q4_K_M.gguf",
+      "quant": "Q4_K_M",
+      "bytes": 18556685824,
+      "sha256": "0d003f6662faee786ed5da3e31b29c978de5ae5d275c8794c606a7f3c01aa8f5",
+      "layers": 48,
+      "kv-heads": 4,
+      "head-dim": 128,
+      "license": "apache-2.0"
+     }
+    ]
+   }
+  ],
+  "expect": [
+   "catalog/duplicate-id",
+   "1:model/sha256",
+   "2:model/revision",
+   "3:model/bytes"
+  ]
+ },
+ {
+  "name": "a catalog with no models",
+  "fn": "catalog-problems",
+  "args": [
+   {
+    "schema": "awai.murakumo.catalog.v1",
+    "models": []
+   }
+  ],
+  "expect": [
+   "catalog/models"
+  ]
+ },
+ {
+  "name": "0.6B at ctx 2048: file + 112 KiB x 2048 + 0.3 GiB",
+  "fn": "estimate-bytes",
+  "args": [
+   {
+    "id": "qwen3-0.6b-q8_0",
+    "label": "Qwen3 · 0.6B",
+    "repo": "Qwen/Qwen3-0.6B-GGUF",
+    "revision": "23749fefcc72300e3a2ad315e1317431b06b590a",
+    "file": "Qwen3-0.6B-Q8_0.gguf",
+    "quant": "Q8_0",
+    "bytes": 639446688,
+    "sha256": "9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031",
+    "layers": 28,
+    "kv-heads": 8,
+    "head-dim": 128,
+    "license": "apache-2.0"
+   },
+   2048
+  ],
+  "expect": 1196450259
+ },
+ {
+  "name": "30B-A3B at ctx 4096 has 4 KV heads",
+  "fn": "estimate-bytes",
+  "args": [
+   {
+    "id": "qwen3-30b-a3b-q4_k_m",
+    "label": "Qwen3 · 30B-A3B",
+    "repo": "Qwen/Qwen3-30B-A3B-GGUF",
+    "revision": "e4d4bafdfb96a411a163846265362aceb0b9c63a",
+    "file": "Qwen3-30B-A3B-Q4_K_M.gguf",
+    "quant": "Q4_K_M",
+    "bytes": 18556685824,
+    "sha256": "0d003f6662faee786ed5da3e31b29c978de5ae5d275c8794c606a7f3c01aa8f5",
+    "layers": 48,
+    "kv-heads": 4,
+    "head-dim": 128,
+    "license": "apache-2.0"
+   },
+   4096
+  ],
+  "expect": 19281461555
+ },
+ {
+  "name": "android budget is 40 % of RAM, rounded down",
+  "fn": "budget-bytes",
+  "args": [
+   "android",
+   3221225472
+  ],
+  "expect": 1288490188
+ },
+ {
+  "name": "mac 16 GiB budget is 10 GiB",
+  "fn": "budget-bytes",
+  "args": [
+   "mac",
+   17179869184
+  ],
+  "expect": 10737418240
+ },
+ {
+  "name": "mac 32 GiB budget is 21 GiB",
+  "fn": "budget-bytes",
+  "args": [
+   "mac",
+   34359738368
+  ],
+  "expect": 22548578304
+ },
+ {
+  "name": "unknown RAM has no budget",
+  "fn": "budget-bytes",
+  "args": [
+   "android",
+   null
+  ],
+  "expect": null
+ },
+ {
+  "name": "an unknown device kind has no budget",
+  "fn": "budget-bytes",
+  "args": [
+   "linux",
+   17179869184
+  ],
+  "expect": null
+ },
+ {
+  "name": "exactly 80 % of budget is comfortable",
+  "fn": "fit",
+  "args": [
+   4,
+   5
+  ],
+  "expect": "comfortable"
+ },
+ {
+  "name": "exactly the budget is tight",
+  "fn": "fit",
+  "args": [
+   5,
+   5
+  ],
+  "expect": "tight"
+ },
+ {
+  "name": "above the budget does not fit",
+  "fn": "fit",
+  "args": [
+   6,
+   5
+  ],
+  "expect": "no-fit"
+ },
+ {
+  "name": "no budget is unknown, never a fit",
+  "fn": "fit",
+  "args": [
+   1,
+   null
+  ],
+  "expect": "unknown"
+ },
+ {
+  "name": "M4 16 GiB, ctx 4096: 8B, with 14B tight (research doc section 4)",
+  "fn": "recommend",
+  "args": [
+   [
+    {
+     "id": "qwen3-0.6b-q8_0",
+     "label": "Qwen3 · 0.6B",
+     "repo": "Qwen/Qwen3-0.6B-GGUF",
+     "revision": "23749fefcc72300e3a2ad315e1317431b06b590a",
+     "file": "Qwen3-0.6B-Q8_0.gguf",
+     "quant": "Q8_0",
+     "bytes": 639446688,
+     "sha256": "9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031",
+     "layers": 28,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-1.7b-q8_0",
+     "label": "Qwen3 · 1.7B",
+     "repo": "Qwen/Qwen3-1.7B-GGUF",
+     "revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+     "file": "Qwen3-1.7B-Q8_0.gguf",
+     "quant": "Q8_0",
+     "bytes": 1834426016,
+     "sha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+     "layers": 28,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-4b-q4_k_m",
+     "label": "Qwen3 · 4B",
+     "repo": "Qwen/Qwen3-4B-GGUF",
+     "revision": "bc640142c66e1fdd12af0bd68f40445458f3869b",
+     "file": "Qwen3-4B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 2497280256,
+     "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+     "layers": 36,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-8b-q4_k_m",
+     "label": "Qwen3 · 8B",
+     "repo": "Qwen/Qwen3-8B-GGUF",
+     "revision": "7c41481f57cb95916b40956ab2f0b139b296d974",
+     "file": "Qwen3-8B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 5027783488,
+     "sha256": "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785",
+     "layers": 36,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-14b-q4_k_m",
+     "label": "Qwen3 · 14B",
+     "repo": "Qwen/Qwen3-14B-GGUF",
+     "revision": "530227a7d994db8eca5ab5ced2fb692b614357fd",
+     "file": "Qwen3-14B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 9001752960,
+     "sha256": "500a8806e85ee9c83f3ae08420295592451379b4f8cf2d0f41c15dffeb6b81f0",
+     "layers": 40,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-30b-a3b-q4_k_m",
+     "label": "Qwen3 · 30B-A3B",
+     "repo": "Qwen/Qwen3-30B-A3B-GGUF",
+     "revision": "e4d4bafdfb96a411a163846265362aceb0b9c63a",
+     "file": "Qwen3-30B-A3B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 18556685824,
+     "sha256": "0d003f6662faee786ed5da3e31b29c978de5ae5d275c8794c606a7f3c01aa8f5",
+     "layers": 48,
+     "kv-heads": 4,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    }
+   ],
+   "mac",
+   17179869184,
+   4096
+  ],
+  "expect": {
+   "budget": 10737418240,
+   "recommended": "qwen3-8b-q4_k_m",
+   "quality": "qwen3-14b-q4_k_m",
+   "fits": [
+    [
+     "qwen3-0.6b-q8_0",
+     "comfortable"
+    ],
+    [
+     "qwen3-1.7b-q8_0",
+     "comfortable"
+    ],
+    [
+     "qwen3-4b-q4_k_m",
+     "comfortable"
+    ],
+    [
+     "qwen3-8b-q4_k_m",
+     "comfortable"
+    ],
+    [
+     "qwen3-14b-q4_k_m",
+     "tight"
+    ],
+    [
+     "qwen3-30b-a3b-q4_k_m",
+     "no-fit"
+    ]
+   ]
+  }
+ },
+ {
+  "name": "M1 Max 32 GiB, ctx 4096: 14B, with 30B-A3B tight",
+  "fn": "recommend",
+  "args": [
+   [
+    {
+     "id": "qwen3-0.6b-q8_0",
+     "label": "Qwen3 · 0.6B",
+     "repo": "Qwen/Qwen3-0.6B-GGUF",
+     "revision": "23749fefcc72300e3a2ad315e1317431b06b590a",
+     "file": "Qwen3-0.6B-Q8_0.gguf",
+     "quant": "Q8_0",
+     "bytes": 639446688,
+     "sha256": "9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031",
+     "layers": 28,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-1.7b-q8_0",
+     "label": "Qwen3 · 1.7B",
+     "repo": "Qwen/Qwen3-1.7B-GGUF",
+     "revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+     "file": "Qwen3-1.7B-Q8_0.gguf",
+     "quant": "Q8_0",
+     "bytes": 1834426016,
+     "sha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+     "layers": 28,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-4b-q4_k_m",
+     "label": "Qwen3 · 4B",
+     "repo": "Qwen/Qwen3-4B-GGUF",
+     "revision": "bc640142c66e1fdd12af0bd68f40445458f3869b",
+     "file": "Qwen3-4B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 2497280256,
+     "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+     "layers": 36,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-8b-q4_k_m",
+     "label": "Qwen3 · 8B",
+     "repo": "Qwen/Qwen3-8B-GGUF",
+     "revision": "7c41481f57cb95916b40956ab2f0b139b296d974",
+     "file": "Qwen3-8B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 5027783488,
+     "sha256": "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785",
+     "layers": 36,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-14b-q4_k_m",
+     "label": "Qwen3 · 14B",
+     "repo": "Qwen/Qwen3-14B-GGUF",
+     "revision": "530227a7d994db8eca5ab5ced2fb692b614357fd",
+     "file": "Qwen3-14B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 9001752960,
+     "sha256": "500a8806e85ee9c83f3ae08420295592451379b4f8cf2d0f41c15dffeb6b81f0",
+     "layers": 40,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-30b-a3b-q4_k_m",
+     "label": "Qwen3 · 30B-A3B",
+     "repo": "Qwen/Qwen3-30B-A3B-GGUF",
+     "revision": "e4d4bafdfb96a411a163846265362aceb0b9c63a",
+     "file": "Qwen3-30B-A3B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 18556685824,
+     "sha256": "0d003f6662faee786ed5da3e31b29c978de5ae5d275c8794c606a7f3c01aa8f5",
+     "layers": 48,
+     "kv-heads": 4,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    }
+   ],
+   "mac",
+   34359738368,
+   4096
+  ],
+  "expect": {
+   "budget": 22548578304,
+   "recommended": "qwen3-14b-q4_k_m",
+   "quality": "qwen3-30b-a3b-q4_k_m",
+   "fits": [
+    [
+     "qwen3-0.6b-q8_0",
+     "comfortable"
+    ],
+    [
+     "qwen3-1.7b-q8_0",
+     "comfortable"
+    ],
+    [
+     "qwen3-4b-q4_k_m",
+     "comfortable"
+    ],
+    [
+     "qwen3-8b-q4_k_m",
+     "comfortable"
+    ],
+    [
+     "qwen3-14b-q4_k_m",
+     "comfortable"
+    ],
+    [
+     "qwen3-30b-a3b-q4_k_m",
+     "tight"
+    ]
+   ]
+  }
+ },
+ {
+  "name": "Android 3 GiB, ctx 2048: only 0.6B, and only tight",
+  "fn": "recommend",
+  "args": [
+   [
+    {
+     "id": "qwen3-0.6b-q8_0",
+     "label": "Qwen3 · 0.6B",
+     "repo": "Qwen/Qwen3-0.6B-GGUF",
+     "revision": "23749fefcc72300e3a2ad315e1317431b06b590a",
+     "file": "Qwen3-0.6B-Q8_0.gguf",
+     "quant": "Q8_0",
+     "bytes": 639446688,
+     "sha256": "9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031",
+     "layers": 28,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-1.7b-q8_0",
+     "label": "Qwen3 · 1.7B",
+     "repo": "Qwen/Qwen3-1.7B-GGUF",
+     "revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+     "file": "Qwen3-1.7B-Q8_0.gguf",
+     "quant": "Q8_0",
+     "bytes": 1834426016,
+     "sha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+     "layers": 28,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-4b-q4_k_m",
+     "label": "Qwen3 · 4B",
+     "repo": "Qwen/Qwen3-4B-GGUF",
+     "revision": "bc640142c66e1fdd12af0bd68f40445458f3869b",
+     "file": "Qwen3-4B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 2497280256,
+     "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+     "layers": 36,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-8b-q4_k_m",
+     "label": "Qwen3 · 8B",
+     "repo": "Qwen/Qwen3-8B-GGUF",
+     "revision": "7c41481f57cb95916b40956ab2f0b139b296d974",
+     "file": "Qwen3-8B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 5027783488,
+     "sha256": "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785",
+     "layers": 36,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-14b-q4_k_m",
+     "label": "Qwen3 · 14B",
+     "repo": "Qwen/Qwen3-14B-GGUF",
+     "revision": "530227a7d994db8eca5ab5ced2fb692b614357fd",
+     "file": "Qwen3-14B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 9001752960,
+     "sha256": "500a8806e85ee9c83f3ae08420295592451379b4f8cf2d0f41c15dffeb6b81f0",
+     "layers": 40,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-30b-a3b-q4_k_m",
+     "label": "Qwen3 · 30B-A3B",
+     "repo": "Qwen/Qwen3-30B-A3B-GGUF",
+     "revision": "e4d4bafdfb96a411a163846265362aceb0b9c63a",
+     "file": "Qwen3-30B-A3B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 18556685824,
+     "sha256": "0d003f6662faee786ed5da3e31b29c978de5ae5d275c8794c606a7f3c01aa8f5",
+     "layers": 48,
+     "kv-heads": 4,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    }
+   ],
+   "android",
+   3221225472,
+   2048
+  ],
+  "expect": {
+   "budget": 1288490188,
+   "recommended": "qwen3-0.6b-q8_0",
+   "quality": null,
+   "fits": [
+    [
+     "qwen3-0.6b-q8_0",
+     "tight"
+    ],
+    [
+     "qwen3-1.7b-q8_0",
+     "no-fit"
+    ],
+    [
+     "qwen3-4b-q4_k_m",
+     "no-fit"
+    ],
+    [
+     "qwen3-8b-q4_k_m",
+     "no-fit"
+    ],
+    [
+     "qwen3-14b-q4_k_m",
+     "no-fit"
+    ],
+    [
+     "qwen3-30b-a3b-q4_k_m",
+     "no-fit"
+    ]
+   ]
+  }
+ },
+ {
+  "name": "Android 8 GiB, ctx 2048: 1.7B, with 4B tight (the Figma example)",
+  "fn": "recommend",
+  "args": [
+   [
+    {
+     "id": "qwen3-0.6b-q8_0",
+     "label": "Qwen3 · 0.6B",
+     "repo": "Qwen/Qwen3-0.6B-GGUF",
+     "revision": "23749fefcc72300e3a2ad315e1317431b06b590a",
+     "file": "Qwen3-0.6B-Q8_0.gguf",
+     "quant": "Q8_0",
+     "bytes": 639446688,
+     "sha256": "9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031",
+     "layers": 28,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-1.7b-q8_0",
+     "label": "Qwen3 · 1.7B",
+     "repo": "Qwen/Qwen3-1.7B-GGUF",
+     "revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+     "file": "Qwen3-1.7B-Q8_0.gguf",
+     "quant": "Q8_0",
+     "bytes": 1834426016,
+     "sha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+     "layers": 28,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-4b-q4_k_m",
+     "label": "Qwen3 · 4B",
+     "repo": "Qwen/Qwen3-4B-GGUF",
+     "revision": "bc640142c66e1fdd12af0bd68f40445458f3869b",
+     "file": "Qwen3-4B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 2497280256,
+     "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+     "layers": 36,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-8b-q4_k_m",
+     "label": "Qwen3 · 8B",
+     "repo": "Qwen/Qwen3-8B-GGUF",
+     "revision": "7c41481f57cb95916b40956ab2f0b139b296d974",
+     "file": "Qwen3-8B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 5027783488,
+     "sha256": "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785",
+     "layers": 36,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-14b-q4_k_m",
+     "label": "Qwen3 · 14B",
+     "repo": "Qwen/Qwen3-14B-GGUF",
+     "revision": "530227a7d994db8eca5ab5ced2fb692b614357fd",
+     "file": "Qwen3-14B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 9001752960,
+     "sha256": "500a8806e85ee9c83f3ae08420295592451379b4f8cf2d0f41c15dffeb6b81f0",
+     "layers": 40,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-30b-a3b-q4_k_m",
+     "label": "Qwen3 · 30B-A3B",
+     "repo": "Qwen/Qwen3-30B-A3B-GGUF",
+     "revision": "e4d4bafdfb96a411a163846265362aceb0b9c63a",
+     "file": "Qwen3-30B-A3B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 18556685824,
+     "sha256": "0d003f6662faee786ed5da3e31b29c978de5ae5d275c8794c606a7f3c01aa8f5",
+     "layers": 48,
+     "kv-heads": 4,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    }
+   ],
+   "android",
+   8589934592,
+   2048
+  ],
+  "expect": {
+   "budget": 3435973836,
+   "recommended": "qwen3-1.7b-q8_0",
+   "quality": "qwen3-4b-q4_k_m",
+   "fits": [
+    [
+     "qwen3-0.6b-q8_0",
+     "comfortable"
+    ],
+    [
+     "qwen3-1.7b-q8_0",
+     "comfortable"
+    ],
+    [
+     "qwen3-4b-q4_k_m",
+     "tight"
+    ],
+    [
+     "qwen3-8b-q4_k_m",
+     "no-fit"
+    ],
+    [
+     "qwen3-14b-q4_k_m",
+     "no-fit"
+    ],
+    [
+     "qwen3-30b-a3b-q4_k_m",
+     "no-fit"
+    ]
+   ]
+  }
+ },
+ {
+  "name": "unknown RAM recommends nothing and every fit is unknown",
+  "fn": "recommend",
+  "args": [
+   [
+    {
+     "id": "qwen3-0.6b-q8_0",
+     "label": "Qwen3 · 0.6B",
+     "repo": "Qwen/Qwen3-0.6B-GGUF",
+     "revision": "23749fefcc72300e3a2ad315e1317431b06b590a",
+     "file": "Qwen3-0.6B-Q8_0.gguf",
+     "quant": "Q8_0",
+     "bytes": 639446688,
+     "sha256": "9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031",
+     "layers": 28,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-1.7b-q8_0",
+     "label": "Qwen3 · 1.7B",
+     "repo": "Qwen/Qwen3-1.7B-GGUF",
+     "revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+     "file": "Qwen3-1.7B-Q8_0.gguf",
+     "quant": "Q8_0",
+     "bytes": 1834426016,
+     "sha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+     "layers": 28,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-4b-q4_k_m",
+     "label": "Qwen3 · 4B",
+     "repo": "Qwen/Qwen3-4B-GGUF",
+     "revision": "bc640142c66e1fdd12af0bd68f40445458f3869b",
+     "file": "Qwen3-4B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 2497280256,
+     "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+     "layers": 36,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-8b-q4_k_m",
+     "label": "Qwen3 · 8B",
+     "repo": "Qwen/Qwen3-8B-GGUF",
+     "revision": "7c41481f57cb95916b40956ab2f0b139b296d974",
+     "file": "Qwen3-8B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 5027783488,
+     "sha256": "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785",
+     "layers": 36,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-14b-q4_k_m",
+     "label": "Qwen3 · 14B",
+     "repo": "Qwen/Qwen3-14B-GGUF",
+     "revision": "530227a7d994db8eca5ab5ced2fb692b614357fd",
+     "file": "Qwen3-14B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 9001752960,
+     "sha256": "500a8806e85ee9c83f3ae08420295592451379b4f8cf2d0f41c15dffeb6b81f0",
+     "layers": 40,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-30b-a3b-q4_k_m",
+     "label": "Qwen3 · 30B-A3B",
+     "repo": "Qwen/Qwen3-30B-A3B-GGUF",
+     "revision": "e4d4bafdfb96a411a163846265362aceb0b9c63a",
+     "file": "Qwen3-30B-A3B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 18556685824,
+     "sha256": "0d003f6662faee786ed5da3e31b29c978de5ae5d275c8794c606a7f3c01aa8f5",
+     "layers": 48,
+     "kv-heads": 4,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    }
+   ],
+   "android",
+   null,
+   2048
+  ],
+  "expect": {
+   "budget": null,
+   "recommended": null,
+   "quality": null,
+   "fits": [
+    [
+     "qwen3-0.6b-q8_0",
+     "unknown"
+    ],
+    [
+     "qwen3-1.7b-q8_0",
+     "unknown"
+    ],
+    [
+     "qwen3-4b-q4_k_m",
+     "unknown"
+    ],
+    [
+     "qwen3-8b-q4_k_m",
+     "unknown"
+    ],
+    [
+     "qwen3-14b-q4_k_m",
+     "unknown"
+    ],
+    [
+     "qwen3-30b-a3b-q4_k_m",
+     "unknown"
+    ]
+   ]
+  }
+ },
+ {
+  "name": "a complete snapshot with an unknown GPU is valid",
+  "fn": "usage-problems",
+  "args": [
+   {
+    "schema": "awai.murakumo.device-usage.v1",
+    "device": "benjamin",
+    "kind": "mac",
+    "observed-at-ms": 1794930000000,
+    "ram": {
+     "total": 17179869184,
+     "used": 7946267443
+    },
+    "cpu-percent": 64,
+    "gpu-percent": null,
+    "disk": {
+     "free": 162135015424,
+     "total": 245107195904
+    },
+    "loaded": {
+     "model": "qwen3-8b-q4_k_m",
+     "context": 4096,
+     "state": "busy",
+     "since-ms": 1794929000000
+    }
+   }
+  ],
+  "expect": []
+ },
+ {
+  "name": "a measured zero CPU is valid",
+  "fn": "usage-problems",
+  "args": [
+   {
+    "schema": "awai.murakumo.device-usage.v1",
+    "device": "benjamin",
+    "kind": "mac",
+    "observed-at-ms": 1794930000000,
+    "ram": {
+     "total": 17179869184,
+     "used": 7946267443
+    },
+    "cpu-percent": 0,
+    "gpu-percent": null,
+    "disk": {
+     "free": 162135015424,
+     "total": 245107195904
+    },
+    "loaded": {
+     "model": "qwen3-8b-q4_k_m",
+     "context": 4096,
+     "state": "busy",
+     "since-ms": 1794929000000
+    }
+   }
+  ],
+  "expect": []
+ },
+ {
+  "name": "no loaded model is valid",
+  "fn": "usage-problems",
+  "args": [
+   {
+    "schema": "awai.murakumo.device-usage.v1",
+    "device": "benjamin",
+    "kind": "mac",
+    "observed-at-ms": 1794930000000,
+    "ram": {
+     "total": 17179869184,
+     "used": 7946267443
+    },
+    "cpu-percent": 64,
+    "gpu-percent": null,
+    "disk": {
+     "free": 162135015424,
+     "total": 245107195904
+    },
+    "loaded": null
+   }
+  ],
+  "expect": []
+ },
+ {
+  "name": "used RAM above total",
+  "fn": "usage-problems",
+  "args": [
+   {
+    "schema": "awai.murakumo.device-usage.v1",
+    "device": "benjamin",
+    "kind": "mac",
+    "observed-at-ms": 1794930000000,
+    "ram": {
+     "total": 17179869184,
+     "used": 18253611008
+    },
+    "cpu-percent": 64,
+    "gpu-percent": null,
+    "disk": {
+     "free": 162135015424,
+     "total": 245107195904
+    },
+    "loaded": {
+     "model": "qwen3-8b-q4_k_m",
+     "context": 4096,
+     "state": "busy",
+     "since-ms": 1794929000000
+    }
+   }
+  ],
+  "expect": [
+   "usage/ram-used-above-total"
+  ]
+ },
+ {
+  "name": "CPU above 100 %",
+  "fn": "usage-problems",
+  "args": [
+   {
+    "schema": "awai.murakumo.device-usage.v1",
+    "device": "benjamin",
+    "kind": "mac",
+    "observed-at-ms": 1794930000000,
+    "ram": {
+     "total": 17179869184,
+     "used": 7946267443
+    },
+    "cpu-percent": 101,
+    "gpu-percent": null,
+    "disk": {
+     "free": 162135015424,
+     "total": 245107195904
+    },
+    "loaded": {
+     "model": "qwen3-8b-q4_k_m",
+     "context": 4096,
+     "state": "busy",
+     "since-ms": 1794929000000
+    }
+   }
+  ],
+  "expect": [
+   "usage/cpu"
+  ]
+ },
+ {
+  "name": "a fractional GPU percent",
+  "fn": "usage-problems",
+  "args": [
+   {
+    "schema": "awai.murakumo.device-usage.v1",
+    "device": "benjamin",
+    "kind": "mac",
+    "observed-at-ms": 1794930000000,
+    "ram": {
+     "total": 17179869184,
+     "used": 7946267443
+    },
+    "cpu-percent": 64,
+    "gpu-percent": "48",
+    "disk": {
+     "free": 162135015424,
+     "total": 245107195904
+    },
+    "loaded": {
+     "model": "qwen3-8b-q4_k_m",
+     "context": 4096,
+     "state": "busy",
+     "since-ms": 1794929000000
+    }
+   }
+  ],
+  "expect": [
+   "usage/gpu"
+  ]
+ },
+ {
+  "name": "free disk above total",
+  "fn": "usage-problems",
+  "args": [
+   {
+    "schema": "awai.murakumo.device-usage.v1",
+    "device": "benjamin",
+    "kind": "mac",
+    "observed-at-ms": 1794930000000,
+    "ram": {
+     "total": 17179869184,
+     "used": 7946267443
+    },
+    "cpu-percent": 64,
+    "gpu-percent": null,
+    "disk": {
+     "free": 3,
+     "total": 2
+    },
+    "loaded": {
+     "model": "qwen3-8b-q4_k_m",
+     "context": 4096,
+     "state": "busy",
+     "since-ms": 1794929000000
+    }
+   }
+  ],
+  "expect": [
+   "usage/disk-free-above-total"
+  ]
+ },
+ {
+  "name": "an unknown load state",
+  "fn": "usage-problems",
+  "args": [
+   {
+    "schema": "awai.murakumo.device-usage.v1",
+    "device": "benjamin",
+    "kind": "mac",
+    "observed-at-ms": 1794930000000,
+    "ram": {
+     "total": 17179869184,
+     "used": 7946267443
+    },
+    "cpu-percent": 64,
+    "gpu-percent": null,
+    "disk": {
+     "free": 162135015424,
+     "total": 245107195904
+    },
+    "loaded": {
+     "model": "x",
+     "context": 4096,
+     "state": "warm",
+     "since-ms": 1
+    }
+   }
+  ],
+  "expect": [
+   "usage/loaded"
+  ]
+ },
+ {
+  "name": "an unknown device kind and schema",
+  "fn": "usage-problems",
+  "args": [
+   {
+    "schema": "v0",
+    "device": "benjamin",
+    "kind": "linux",
+    "observed-at-ms": 1794930000000,
+    "ram": {
+     "total": 17179869184,
+     "used": 7946267443
+    },
+    "cpu-percent": 64,
+    "gpu-percent": null,
+    "disk": {
+     "free": 162135015424,
+     "total": 245107195904
+    },
+    "loaded": {
+     "model": "qwen3-8b-q4_k_m",
+     "context": 4096,
+     "state": "busy",
+     "since-ms": 1794929000000
+    }
+   }
+  ],
+  "expect": [
+   "usage/schema",
+   "usage/kind"
+  ]
+ },
+ {
+  "name": "observed 12 s ago with a 60 s limit is fresh",
+  "fn": "freshness",
+  "args": [
+   1794930012000,
+   1794930000000,
+   60000
+  ],
+  "expect": "fresh"
+ },
+ {
+  "name": "observed 6 days ago is stale",
+  "fn": "freshness",
+  "args": [
+   1794930000000,
+   1794411600000,
+   60000
+  ],
+  "expect": "stale"
+ },
+ {
+  "name": "an observation from the future is unknown",
+  "fn": "freshness",
+  "args": [
+   1794930000000,
+   1794930060000,
+   60000
+  ],
+  "expect": "unknown"
+ },
+ {
+  "name": "no observation is unknown",
+  "fn": "freshness",
+  "args": [
+   1794930000000,
+   null,
+   60000
+  ],
+  "expect": "unknown"
+ },
+ {
+  "name": "a fresh device shows its values and recommendation",
+  "fn": "device-view",
+  "args": [
+   [
+    {
+     "id": "qwen3-0.6b-q8_0",
+     "label": "Qwen3 · 0.6B",
+     "repo": "Qwen/Qwen3-0.6B-GGUF",
+     "revision": "23749fefcc72300e3a2ad315e1317431b06b590a",
+     "file": "Qwen3-0.6B-Q8_0.gguf",
+     "quant": "Q8_0",
+     "bytes": 639446688,
+     "sha256": "9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031",
+     "layers": 28,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-1.7b-q8_0",
+     "label": "Qwen3 · 1.7B",
+     "repo": "Qwen/Qwen3-1.7B-GGUF",
+     "revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+     "file": "Qwen3-1.7B-Q8_0.gguf",
+     "quant": "Q8_0",
+     "bytes": 1834426016,
+     "sha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+     "layers": 28,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-4b-q4_k_m",
+     "label": "Qwen3 · 4B",
+     "repo": "Qwen/Qwen3-4B-GGUF",
+     "revision": "bc640142c66e1fdd12af0bd68f40445458f3869b",
+     "file": "Qwen3-4B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 2497280256,
+     "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+     "layers": 36,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-8b-q4_k_m",
+     "label": "Qwen3 · 8B",
+     "repo": "Qwen/Qwen3-8B-GGUF",
+     "revision": "7c41481f57cb95916b40956ab2f0b139b296d974",
+     "file": "Qwen3-8B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 5027783488,
+     "sha256": "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785",
+     "layers": 36,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-14b-q4_k_m",
+     "label": "Qwen3 · 14B",
+     "repo": "Qwen/Qwen3-14B-GGUF",
+     "revision": "530227a7d994db8eca5ab5ced2fb692b614357fd",
+     "file": "Qwen3-14B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 9001752960,
+     "sha256": "500a8806e85ee9c83f3ae08420295592451379b4f8cf2d0f41c15dffeb6b81f0",
+     "layers": 40,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-30b-a3b-q4_k_m",
+     "label": "Qwen3 · 30B-A3B",
+     "repo": "Qwen/Qwen3-30B-A3B-GGUF",
+     "revision": "e4d4bafdfb96a411a163846265362aceb0b9c63a",
+     "file": "Qwen3-30B-A3B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 18556685824,
+     "sha256": "0d003f6662faee786ed5da3e31b29c978de5ae5d275c8794c606a7f3c01aa8f5",
+     "layers": 48,
+     "kv-heads": 4,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    }
+   ],
+   {
+    "schema": "awai.murakumo.device-usage.v1",
+    "device": "benjamin",
+    "kind": "mac",
+    "observed-at-ms": 1794930000000,
+    "ram": {
+     "total": 17179869184,
+     "used": 7946267443
+    },
+    "cpu-percent": 64,
+    "gpu-percent": null,
+    "disk": {
+     "free": 162135015424,
+     "total": 245107195904
+    },
+    "loaded": {
+     "model": "qwen3-8b-q4_k_m",
+     "context": 4096,
+     "state": "busy",
+     "since-ms": 1794929000000
+    }
+   },
+   1794930012000,
+   60000,
+   4096
+  ],
+  "expect": {
+   "device": "benjamin",
+   "state": "fresh",
+   "age-ms": 12000,
+   "problems": [],
+   "loaded": {
+    "model": "qwen3-8b-q4_k_m",
+    "context": 4096,
+    "state": "busy",
+    "since-ms": 1794929000000
+   },
+   "ram-used": 7946267443,
+   "ram-total": 17179869184,
+   "cpu-percent": 64,
+   "gpu-percent": null,
+   "disk-free": 162135015424,
+   "recommended": "qwen3-8b-q4_k_m"
+  }
+ },
+ {
+  "name": "a stale device shows its age and no values",
+  "fn": "device-view",
+  "args": [
+   [
+    {
+     "id": "qwen3-0.6b-q8_0",
+     "label": "Qwen3 · 0.6B",
+     "repo": "Qwen/Qwen3-0.6B-GGUF",
+     "revision": "23749fefcc72300e3a2ad315e1317431b06b590a",
+     "file": "Qwen3-0.6B-Q8_0.gguf",
+     "quant": "Q8_0",
+     "bytes": 639446688,
+     "sha256": "9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031",
+     "layers": 28,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-1.7b-q8_0",
+     "label": "Qwen3 · 1.7B",
+     "repo": "Qwen/Qwen3-1.7B-GGUF",
+     "revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+     "file": "Qwen3-1.7B-Q8_0.gguf",
+     "quant": "Q8_0",
+     "bytes": 1834426016,
+     "sha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+     "layers": 28,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-4b-q4_k_m",
+     "label": "Qwen3 · 4B",
+     "repo": "Qwen/Qwen3-4B-GGUF",
+     "revision": "bc640142c66e1fdd12af0bd68f40445458f3869b",
+     "file": "Qwen3-4B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 2497280256,
+     "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+     "layers": 36,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-8b-q4_k_m",
+     "label": "Qwen3 · 8B",
+     "repo": "Qwen/Qwen3-8B-GGUF",
+     "revision": "7c41481f57cb95916b40956ab2f0b139b296d974",
+     "file": "Qwen3-8B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 5027783488,
+     "sha256": "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785",
+     "layers": 36,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-14b-q4_k_m",
+     "label": "Qwen3 · 14B",
+     "repo": "Qwen/Qwen3-14B-GGUF",
+     "revision": "530227a7d994db8eca5ab5ced2fb692b614357fd",
+     "file": "Qwen3-14B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 9001752960,
+     "sha256": "500a8806e85ee9c83f3ae08420295592451379b4f8cf2d0f41c15dffeb6b81f0",
+     "layers": 40,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-30b-a3b-q4_k_m",
+     "label": "Qwen3 · 30B-A3B",
+     "repo": "Qwen/Qwen3-30B-A3B-GGUF",
+     "revision": "e4d4bafdfb96a411a163846265362aceb0b9c63a",
+     "file": "Qwen3-30B-A3B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 18556685824,
+     "sha256": "0d003f6662faee786ed5da3e31b29c978de5ae5d275c8794c606a7f3c01aa8f5",
+     "layers": 48,
+     "kv-heads": 4,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    }
+   ],
+   {
+    "schema": "awai.murakumo.device-usage.v1",
+    "device": "levi",
+    "kind": "mac",
+    "observed-at-ms": 1794930000000,
+    "ram": {
+     "total": 17179869184,
+     "used": 7946267443
+    },
+    "cpu-percent": 64,
+    "gpu-percent": null,
+    "disk": {
+     "free": 162135015424,
+     "total": 245107195904
+    },
+    "loaded": {
+     "model": "qwen3-8b-q4_k_m",
+     "context": 4096,
+     "state": "busy",
+     "since-ms": 1794929000000
+    }
+   },
+   1795448400000,
+   60000,
+   4096
+  ],
+  "expect": {
+   "device": "levi",
+   "state": "stale",
+   "age-ms": 518400000,
+   "problems": [],
+   "loaded": null,
+   "ram-used": null,
+   "ram-total": null,
+   "cpu-percent": null,
+   "gpu-percent": null,
+   "disk-free": null,
+   "recommended": null
+  }
+ },
+ {
+  "name": "an invalid report shows its problems and no values",
+  "fn": "device-view",
+  "args": [
+   [
+    {
+     "id": "qwen3-0.6b-q8_0",
+     "label": "Qwen3 · 0.6B",
+     "repo": "Qwen/Qwen3-0.6B-GGUF",
+     "revision": "23749fefcc72300e3a2ad315e1317431b06b590a",
+     "file": "Qwen3-0.6B-Q8_0.gguf",
+     "quant": "Q8_0",
+     "bytes": 639446688,
+     "sha256": "9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031",
+     "layers": 28,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-1.7b-q8_0",
+     "label": "Qwen3 · 1.7B",
+     "repo": "Qwen/Qwen3-1.7B-GGUF",
+     "revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+     "file": "Qwen3-1.7B-Q8_0.gguf",
+     "quant": "Q8_0",
+     "bytes": 1834426016,
+     "sha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+     "layers": 28,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-4b-q4_k_m",
+     "label": "Qwen3 · 4B",
+     "repo": "Qwen/Qwen3-4B-GGUF",
+     "revision": "bc640142c66e1fdd12af0bd68f40445458f3869b",
+     "file": "Qwen3-4B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 2497280256,
+     "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+     "layers": 36,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-8b-q4_k_m",
+     "label": "Qwen3 · 8B",
+     "repo": "Qwen/Qwen3-8B-GGUF",
+     "revision": "7c41481f57cb95916b40956ab2f0b139b296d974",
+     "file": "Qwen3-8B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 5027783488,
+     "sha256": "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785",
+     "layers": 36,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-14b-q4_k_m",
+     "label": "Qwen3 · 14B",
+     "repo": "Qwen/Qwen3-14B-GGUF",
+     "revision": "530227a7d994db8eca5ab5ced2fb692b614357fd",
+     "file": "Qwen3-14B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 9001752960,
+     "sha256": "500a8806e85ee9c83f3ae08420295592451379b4f8cf2d0f41c15dffeb6b81f0",
+     "layers": 40,
+     "kv-heads": 8,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    },
+    {
+     "id": "qwen3-30b-a3b-q4_k_m",
+     "label": "Qwen3 · 30B-A3B",
+     "repo": "Qwen/Qwen3-30B-A3B-GGUF",
+     "revision": "e4d4bafdfb96a411a163846265362aceb0b9c63a",
+     "file": "Qwen3-30B-A3B-Q4_K_M.gguf",
+     "quant": "Q4_K_M",
+     "bytes": 18556685824,
+     "sha256": "0d003f6662faee786ed5da3e31b29c978de5ae5d275c8794c606a7f3c01aa8f5",
+     "layers": 48,
+     "kv-heads": 4,
+     "head-dim": 128,
+     "license": "apache-2.0"
+    }
+   ],
+   {
+    "schema": "awai.murakumo.device-usage.v1",
+    "device": "benjamin",
+    "kind": "mac",
+    "observed-at-ms": 1794930000000,
+    "ram": {
+     "total": 17179869184,
+     "used": 7946267443
+    },
+    "cpu-percent": 101,
+    "gpu-percent": null,
+    "disk": {
+     "free": 162135015424,
+     "total": 245107195904
+    },
+    "loaded": {
+     "model": "qwen3-8b-q4_k_m",
+     "context": 4096,
+     "state": "busy",
+     "since-ms": 1794929000000
+    }
+   },
+   1794930012000,
+   60000,
+   4096
+  ],
+  "expect": {
+   "device": "benjamin",
+   "state": "invalid",
+   "age-ms": 12000,
+   "problems": [
+    "usage/cpu"
+   ],
+   "loaded": null,
+   "ram-used": null,
+   "ram-total": null,
+   "cpu-percent": null,
+   "gpu-percent": null,
+   "disk-free": null,
+   "recommended": null
+  }
+ }
+]

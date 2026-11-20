@@ -22,6 +22,21 @@ import java.util.*;
 /** Narrow native adapter for a bundled, shared browser client. No remote UI or arbitrary commands. */
 public abstract class HostActivity extends Activity {
     public static final String ORIGIN = "https://appassets.androidplatform.net";
+    /** Torihiki devnet: one fixed host. Reads are exact GET routes (the account id is the only variable value);
+     *  the only write is POST /tx with no query (mirrors torihiki.js, AWAI-491). */
+    static final String TORIHIKI_HOST = "torihiki-node.04-feasts-minded.workers.dev";
+    static boolean torihikiHost(Uri u){
+        return "https".equals(u.getScheme())&&TORIHIKI_HOST.equals(u.getHost())&&(u.getPort()==-1||u.getPort()==443)&&u.getUserInfo()==null&&u.getEncodedFragment()==null;
+    }
+    static boolean torihikiRead(Uri u){
+        if(!torihikiHost(u))return false;
+        String path=u.getEncodedPath(),query=u.getEncodedQuery();
+        return ("/head".equals(path)&&query==null)||("/market".equals(path)&&"id=1".equals(query))||("/book".equals(path)&&"market=1&depth=15".equals(query))
+            ||("/account".equals(path)&&query!=null&&query.matches("id=[1-9][0-9]{5,13}"))
+            ||("/trades".equals(path)&&"market=1".equals(query))
+            ||("/candles".equals(path)&&("market=1&span=1".equals(query)||"market=1&span=10".equals(query)||"market=1&span=50".equals(query)));
+    }
+    static boolean torihikiTx(Uri u){ return torihikiHost(u)&&"/tx".equals(u.getEncodedPath())&&u.getEncodedQuery()==null; }
     protected WebView web;
     private Set<String> assets;
     private final Set<String> onlineUrls=new HashSet<>();
@@ -53,13 +68,17 @@ public abstract class HostActivity extends Activity {
         if("store".equals(mode()))try{
             JSONObject pins=new JSONObject(new String(Integrity.read(getAssets().open("online-pins.json"),16384),StandardCharsets.UTF_8));
             String rev=pins.getString("revision");if(!rev.matches("[0-9a-f]{40}"))throw new SecurityException();
-            for(String kind:new String[]{"catalog","apk"}){
-                String url=pins.getJSONObject(kind).getString("url");Uri parsed=Uri.parse(url);
+            // One catalog pin plus one APK pin per admitted app id; an unknown id refuses every online URL.
+            JSONObject apks=pins.getJSONObject("apks");if(apks.length()<1||apks.length()>16)throw new SecurityException();
+            java.util.List<String> urls=new java.util.ArrayList<>();urls.add(pins.getJSONObject("catalog").getString("url"));
+            for(java.util.Iterator<String> ids=apks.keys();ids.hasNext();){String id=ids.next();Catalog.assetFor(id);urls.add(apks.getJSONObject(id).getString("url"));}
+            for(String url:urls){
+                Uri parsed=Uri.parse(url);
                 if(!url.startsWith("https://raw.githubusercontent.com/network-awai/awai-os/"+rev+"/store/distribution/")||parsed.getEncodedQuery()!=null||parsed.getEncodedFragment()!=null)throw new SecurityException();
                 onlineUrls.add(url);
             }
         }catch(Exception absent){onlineUrls.clear();}
-        WebSettings s = web.getSettings(); s.setBlockNetworkLoads(onlineUrls.isEmpty()); s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true);
+        WebSettings s = web.getSettings(); s.setBlockNetworkLoads(onlineUrls.isEmpty()&&!"home".equals(mode())&&!"torihiki".equals(mode())); s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true);
         s.setAllowFileAccess(false); s.setAllowContentAccess(false); s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         s.setSupportMultipleWindows(false); s.setBuiltInZoomControls(true); s.setDisplayZoomControls(false);
         s.setUseWideViewPort(true); s.setLoadWithOverviewMode(true);
@@ -74,12 +93,17 @@ public abstract class HostActivity extends Activity {
             @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest req) {
                 Uri u = req.getUrl(); String path=u.getEncodedPath();
                 if("GET".equals(req.getMethod()) && onlineUrls.contains(u.toString()))return null;
+                if("torihiki".equals(mode())&&(("GET".equals(req.getMethod())&&torihikiRead(u))||("POST".equals(req.getMethod())&&torihikiTx(u))))return null;
+                if("home".equals(mode())&&"GET".equals(req.getMethod())&&"https".equals(u.getScheme())
+                    &&"relay.awai.network".equals(u.getHost())&&(u.getPort()==-1||u.getPort()==443)
+                    &&u.getUserInfo()==null&&u.getEncodedQuery()==null&&u.getEncodedFragment()==null
+                    &&path!=null&&path.matches("/[0-9a-f]{32}/json"))return null;
                 if (!"GET".equals(req.getMethod()) || !"https".equals(u.getScheme()) || !"appassets.androidplatform.net".equals(u.getHost())
                         || u.getPort()!=-1 || u.getEncodedQuery()!=null || u.getEncodedFragment()!=null || path==null || !path.startsWith("/awai/")) return denied();
                 String file = path.substring(6);
                 if (!assets.contains(file)) return denied();
                 try {
-                    String mime=file.endsWith(".html")?"text/html":file.endsWith(".js")?"text/javascript":file.endsWith(".css")?"text/css":file.endsWith(".svg")?"image/svg+xml":"image/png";
+                    String mime=file.endsWith(".html")?"text/html":file.endsWith(".js")?"text/javascript":file.endsWith(".css")?"text/css":file.endsWith(".svg")?"image/svg+xml":file.endsWith(".woff2")?"font/woff2":"image/png";
                     return new WebResourceResponse(mime,"UTF-8",200,"OK",Collections.singletonMap("Cache-Control","no-store"),getAssets().open(file));
                 } catch (IOException e) { return denied(); }
             }
@@ -118,12 +142,49 @@ public abstract class HostActivity extends Activity {
             if(!allowed)throw new SecurityException();Intent target=getPackageManager().getLaunchIntentForPackage(id);if(target==null)throw new SecurityException();startActivity(target);
         }catch(Exception e){message("このアプリは起動できません。");}
     }
+    private void recordInstalled(JSONObject installed, String id) throws JSONException {
+        try { installed.put(id, getPackageManager().getPackageInfo(id, 0).getLongVersionCode()); }
+        catch (PackageManager.NameNotFoundException absent) { /* fresh install */ }
+    }
     public final class Bridge {
+        @JavascriptInterface public String setupSnapshot(){
+            if(!"home".equals(mode()))return "null";
+            try{return Class.forName("network.awai.home.SetupPlatform").getMethod("snapshot",android.content.Context.class).invoke(null,HostActivity.this).toString();}
+            catch(Exception unavailable){return "null";}
+        }
+        @JavascriptInterface public boolean setupTransition(String action,int expected){
+            if(!"home".equals(mode()))return false;
+            try{return (Boolean)Class.forName("network.awai.home.SetupPlatform").getMethod("transition",android.content.Context.class,String.class,int.class).invoke(null,HostActivity.this,action,expected);}
+            catch(Exception unavailable){return false;}
+        }
+        @JavascriptInterface public void setupSettings(String kind){
+            if(!"home".equals(mode()))return;
+            runOnUiThread(()->{
+                String action="language".equals(kind)?Settings.ACTION_LOCALE_SETTINGS:
+                    "network".equals(kind)?Settings.ACTION_WIRELESS_SETTINGS:
+                    "wifi".equals(kind)?Settings.ACTION_WIFI_SETTINGS:
+                    "tether".equals(kind)?Settings.ACTION_WIRELESS_SETTINGS:
+                    "datetime".equals(kind)?Settings.ACTION_DATE_SETTINGS:
+                    "accessibility".equals(kind)?Settings.ACTION_ACCESSIBILITY_SETTINGS:
+                    "lock".equals(kind)?android.app.admin.DevicePolicyManager.ACTION_SET_NEW_PASSWORD:null;
+                if(action==null)return;
+                try{startActivity(new Intent(action));}catch(ActivityNotFoundException unavailable){message("対応する Android 設定が見つかりません。");}
+            });
+        }
         @JavascriptInterface public String snapshot(){try{
             JSONObject o=new JSONObject();o.put("mode",mode());o.put("platform","android");o.put("runtime","android");o.put("apps","home".equals(mode())?launchable():new JSONArray());
-            JSONObject installed=new JSONObject();JSONArray known="store".equals(mode())?new JSONObject(trustedCatalog().json()).getJSONArray("apps"):new JSONArray("[{\"id\":\"network.itonami.yotei\"}]");
-            for(int i=0;i<known.length();i++){String id=known.getJSONObject(i).getString("id");try{installed.put(id,getPackageManager().getPackageInfo(id,0).getLongVersionCode());}catch(PackageManager.NameNotFoundException absent){}}
-            o.put("storageKind",storageKind());o.put("temporaryStorage","temporary".equals(storageKind()));
+            JSONObject installed=new JSONObject();
+            if ("store".equals(mode())) {
+                try {
+                    JSONArray known = new JSONObject(trustedCatalog().json()).getJSONArray("apps");
+                    for (int i = 0; i < known.length(); i++) recordInstalled(installed, known.getJSONObject(i).getString("id"));
+                } catch (Exception invalidCatalog) { /* catalog() reports refusal independently */ }
+            } else {
+                recordInstalled(installed, "network.itonami.yotei");
+            }
+            String storage = storageKind();
+            o.put("storageKind", storage);
+            o.put("temporaryStorage", "temporary".equals(storage));
             o.put("motionReduced",Settings.Global.getFloat(getContentResolver(),Settings.Global.ANIMATOR_DURATION_SCALE,1f)==0f || getSystemService(PowerManager.class).isPowerSaveMode());
             o.put("installed",installed);RoleManager roles=getSystemService(RoleManager.class);o.put("isDefaultHome",roles!=null&&roles.isRoleHeld(RoleManager.ROLE_HOME));
             JSONArray agenda=new JSONArray();if("home".equals(mode())){try(Cursor c=getContentResolver().query(Uri.parse("content://network.itonami.yotei.agenda/events"),null,null,null,null)){if(c!=null&&c.moveToFirst())agenda=new JSONArray(c.getString(0));}catch(Exception absent){}}
@@ -151,22 +212,27 @@ public abstract class HostActivity extends Activity {
                 JSONObject pins=new JSONObject(new String(Integrity.read(getAssets().open("online-pins.json"),16384),StandardCharsets.UTF_8));
                 JSONObject envelope=new JSONObject();envelope.put("raw",raw);envelope.put("signature",signature);
                 // The exact release envelope is digest-pinned by the browser; host independently pins APK bytes and metadata signer.
-                JSONObject artifact=null;JSONArray entries=candidate.getJSONArray("apps").getJSONObject(0).getJSONArray("artifacts");
-                for(int i=0;i<entries.length();i++)if("android".equals(entries.getJSONObject(i).getString("platform")))artifact=entries.getJSONObject(i);
-                if(artifact==null||!artifact.getString("sha256").equals(pins.getJSONObject("apk").getString("sha256")))throw new SecurityException("unpinned-artifact");
+                // Pin-driven lookup across admitted apps: catalog order never grants admission.
+                // Every pinned app must be listed with exactly the pinned android artifact digest.
+                JSONObject apks=pins.getJSONObject("apks");JSONArray listed=candidate.getJSONArray("apps");
+                for(java.util.Iterator<String> ids=apks.keys();ids.hasNext();){String id=ids.next();Catalog.assetFor(id);String digest=null;
+                    for(int j=0;j<listed.length();j++)if(id.equals(listed.getJSONObject(j).getString("id"))){JSONArray entries=listed.getJSONObject(j).getJSONArray("artifacts");
+                        for(int i=0;i<entries.length();i++)if("android".equals(entries.getJSONObject(i).getString("platform")))digest=entries.getJSONObject(i).getString("sha256");}
+                    if(digest==null||!digest.equals(apks.getJSONObject(id).getString("sha256")))throw new SecurityException("unpinned-artifact");}
                 return getSharedPreferences("online",0).edit().putString("raw",raw).putString("signature",signature).putLong("highest",revision).commit()?"ok":"refused";
             }catch(Exception invalid){return "refused";}
         }
-        @JavascriptInterface public boolean hasOnlineApk(String id){if(!"store".equals(mode()))return false;try{Catalog c=trustedCatalog();if(!c.online)return false;File verified=c.verifiedApkFile(HostActivity.this,id);if(!verified.delete())verified.deleteOnExit();return true;}catch(Exception absent){return false;}}
+        @JavascriptInterface public boolean hasOnlineApk(String id){if(!"store".equals(mode()))return false;try{Catalog c=trustedCatalog();if(!c.isOnlineDelivery(id))return false;verifyStaged(c,id);return true;}catch(Exception absent){return false;}}
         @JavascriptInterface public String stageOnlineApk(String id,String encoded){
-            if(!"store".equals(mode())||encoded==null||encoded.length()>28*1024*1024)return "refused";
+            int budget;try{budget=Catalog.maxApkBytes(id);}catch(SecurityException unadmitted){return "refused";}
+            if(!"store".equals(mode())||encoded==null||encoded.length()>(long)budget*4/3+64)return "refused";
             File temporary=null;
-            try{Catalog c=trustedCatalog();if(!c.online)throw new SecurityException();JSONObject a=c.artifact(id);
+            try{Catalog c=trustedCatalog();if(!c.isOnlineDelivery(id))throw new SecurityException();JSONObject a=c.artifact(id);
                 byte[] bytes=android.util.Base64.decode(encoded,android.util.Base64.DEFAULT);
-                if(bytes.length>20*1024*1024||bytes.length!=a.getLong("bytes")||!Integrity.sha256(bytes).equals(a.getString("sha256")))throw new SecurityException();
+                if(bytes.length>budget||bytes.length!=a.getLong("bytes")||!Integrity.sha256(bytes).equals(a.getString("sha256")))throw new SecurityException();
                 temporary=File.createTempFile("online-", ".apk",getFilesDir());try(FileOutputStream output=new FileOutputStream(temporary)){output.write(bytes);output.getFD().sync();}
-                if(!temporary.renameTo(new File(getFilesDir(),"online-yotei.apk")))throw new IOException();
-                File verified=c.verifiedApkFile(HostActivity.this,id);if(!verified.delete())verified.deleteOnExit();return "ok";
+                if(!temporary.renameTo(new File(getFilesDir(),Catalog.onlineFileFor(id))))throw new IOException();
+                verifyStaged(c,id);return "ok";
             }catch(Exception invalid){if(temporary!=null)temporary.delete();return "refused";}
         }
         @JavascriptInterface public void prepareInstall(String id){if(!"store".equals(mode()))return;runOnUiThread(()->confirmInstall(id));}
@@ -175,17 +241,24 @@ public abstract class HostActivity extends Activity {
                 getSharedPreferences("agenda",0).edit().putString("events",events.toString()).apply();getContentResolver().notifyChange(Uri.parse("content://network.itonami.yotei.agenda/events"),null);
             }catch(JSONException invalid){} }
     }
+    private void verifyStaged(Catalog catalog, String id) throws Exception {
+        File file = catalog.verifiedApkFile(this, id);
+        if (!file.delete()) file.deleteOnExit();
+    }
     private void confirmInstall(String id){
         if(installing)return;
-        try{JSONObject app=trustedCatalog().app(id),a=trustedCatalog().artifact(id);
+        try{Catalog catalog=trustedCatalog();JSONObject app=catalog.app(id),a=catalog.artifact(id);
+            boolean onlineDelivery=catalog.isOnlineDelivery(id);
             if(!getPackageManager().canRequestPackageInstalls()){
                 new AlertDialog.Builder(this).setTitle("Android の追加設定").setMessage("Itonami Store からアプリを追加するには、次の Android 設定でこの Store からの追加を許可してください。その後、追加内容をもう一度確認できます。")
                     .setPositiveButton("Android 設定を開く",(d,w)->startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,Uri.parse("package:"+getPackageName())))).setNegativeButton("今は追加しない",null).show();return;
             }
-            String previous=null;try{previous=getPackageManager().getPackageInfo(id,0).versionName;}catch(PackageManager.NameNotFoundException absent){}
-            String operation=previous==null?"追加":"更新";
+            String previous = null;
+            try { previous = getPackageManager().getPackageInfo(id, 0).versionName; }
+            catch (PackageManager.NameNotFoundException absent) { /* fresh install */ }
+            String operation = previous == null ? "追加" : "更新";
             new AlertDialog.Builder(this).setTitle(app.getString("name")+" の"+operation+"を確認")
-                .setMessage("配布元: "+app.getString("publisher")+"\n版: "+(previous==null?"":previous+" → ")+app.getString("versionName")+"\n取得先: "+(trustedCatalog().online?"オンライン配信・検証済みキャッシュ":"この Store に同梱")+"\n外部への送信: "+(trustedCatalog().online?"取得時に配信先へ IP・要求 URL 等":"なし")+"\n\n署名と SHA-256 を確認した後、Android のインストール画面に進みます。\n\nSHA-256\n"+a.getString("sha256"))
+                .setMessage("配布元: "+app.getString("publisher")+"\n版: "+(previous==null?"":previous+" → ")+app.getString("versionName")+"\n取得先: "+(onlineDelivery?"オンライン配信・検証済みキャッシュ":"この Store に同梱")+"\n外部への送信: なし"+(onlineDelivery?"（取得時に配信先へ IP 等が伝わります）":"")+("network.itonami.torihiki".equals(id)?"\nアプリ使用時: devnet ノードへ読み取り・署名した devnet 取引（送信ごとに確認）":"")+"\n\n署名と SHA-256 を確認した後、Android のインストール画面に進みます。\n\nSHA-256\n"+a.getString("sha256"))
                 .setPositiveButton("今回の"+operation+"に進む",(d,w)->install(id)).setNegativeButton("今は追加しない",null).show();
         }catch(Exception invalid){message("配布元またはカタログを確認できません。追加を停止しました。");}
     }

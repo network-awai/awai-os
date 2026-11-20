@@ -1,0 +1,16 @@
+{
+  "name": "@itonami/desktop-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "npm run build:shell && node scripts/build.mjs",
+    "tauri": "tauri",
+    "build:android": "npm run build && tauri android build --apk --target x86_64",
+    "build:shell": "cd ../../otehon/shell && OTEHON_HTTP=1 npm run build",
+    "package:frontend": "node scripts/build.mjs"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "3.0.0-alpha.6"
+  }
+}

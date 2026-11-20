@@ -1,0 +1,26 @@
+{
+  "schema": "awai.android.persistence.image-creation.v1",
+  "deviceAudit": "read-only namespace and all three partitions verified",
+  "creationCompletionLogged": true,
+  "newRegularFiles": {
+    "userdata": {
+      "bytes": 6442450944,
+      "uuid": "9470e7ad-b343-4774-bfbb-9d3db42ce529"
+    },
+    "metadata": {
+      "bytes": 67108864,
+      "uuid": "9da2d63b-0833-4962-9bd7-221b7a7de2d2"
+    },
+    "cache": {
+      "bytes": 134217728,
+      "uuid": "0cd459f0-63d4-4a98-a1d4-a4b6c9443856"
+    }
+  },
+  "systemCopiesSha256Matched": true,
+  "protectedRegionsUnchanged": true,
+  "existingNixFilesRetained": true,
+  "restoreVerified": false,
+  "persistentBootVerified": false,
+  "aospFbeQualified": false,
+  "naturalLongDozeVerified": false
+}

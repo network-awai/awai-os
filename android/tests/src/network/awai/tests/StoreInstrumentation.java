@@ -25,13 +25,38 @@ public final class StoreInstrumentation extends Instrumentation {
         check(Integrity.authentic(raw,sig,key),"metadata signature");
         Catalog catalog=new Catalog(c);check(catalog.app("network.itonami.yotei").getLong("versionCode")>0,"version");
         byte[] apk=catalog.verifiedApk(c,"network.itonami.yotei");check(apk.length>0,"APK bytes and package/signer/version");
-        JSONArray apps=new JSONObject(catalog.json()).getJSONArray("apps");
-        for(int i=0;i<apps.length();i++){java.io.File verified=catalog.verifiedApkFile(c,apps.getJSONObject(i).getString("id"));try{check(verified.length()==catalog.artifact(apps.getJSONObject(i).getString("id")).getLong("bytes"),"streamed APK exact size/package/signer");}finally{verified.delete();}}
+        if(catalog.json().contains("\"network.itonami.app\"")){
+        check(catalog.app("network.itonami.app").getLong("versionCode")==1000,"itonami version");
+        byte[] second=catalog.verifiedApk(c,"network.itonami.app");check(second.length>20*1024*1024,"itonami APK bytes and package/signer/version");
+        }
+        if(catalog.json().contains("\"network.itonami.torihiki.bot\"")){byte[] bot=catalog.verifiedApk(c,"network.itonami.torihiki.bot");check(bot.length>20*1024*1024,"torihiki bot APK bytes and package/signer/version");}
+        if(catalog.json().contains("\"network.itonami.tabimikake\"")){byte[] tabi=catalog.verifiedApk(c,"network.itonami.tabimikake");check(tabi.length>20*1024*1024,"tabi mikake APK bytes and package/signer/version");}
+        if(catalog.json().contains("\"network.itonami.deai\"")){byte[] deai=catalog.verifiedApk(c,"network.itonami.deai");check(deai.length>10*1024*1024,"deai APK bytes and package/signer/version");}
+        if(catalog.json().contains("\"network.itonami.hiring\"")){byte[] hiring=catalog.verifiedApk(c,"network.itonami.hiring");check(hiring.length>10*1024*1024,"hiring APK bytes and package/signer/version");}
+        if(catalog.json().contains("\"network.itonami.kumade\"")){byte[] kumade=catalog.verifiedApk(c,"network.itonami.kumade");check(kumade.length>10*1024*1024,"kumade APK bytes and package/signer/version");}
+        for(String local:Catalog.LOCAL_APPS){String id="network.itonami."+local;check(("packages/"+local+".apk").equals(Catalog.assetFor(id))&&Catalog.maxApkBytes(id)==40*1024*1024,local+" fixed asset and budget");if(catalog.json().contains("\""+id+"\"")){byte[] b=catalog.verifiedApk(c,id);check(b.length>10*1024*1024,local+" APK bytes and package/signer/version");}}
+        refuses(()->Catalog.assetFor("network.itonami.notlisted"),"unlisted network.itonami id refuses");
+        check("packages/aozora.apk".equals(Catalog.assetFor("app.aozora")),"Aozora fixed bundled asset");
+        check("online-aozora.apk".equals(Catalog.onlineFileFor("app.aozora")),"Aozora fixed online file");
+        check(Catalog.maxApkBytes("app.aozora")==64*1024*1024,"Aozora size limit");
+        if (catalog.json().contains("\"app.aozora\"")) {
+            check(catalog.verifiedApk(c,"app.aozora").length > 0,"Aozora APK bytes and package/signer/version");
+        } else {
+            refuses(()->catalog.verifiedApk(c,"app.aozora"),"Aozora unavailable without signed catalog entry");
+        }
+        refuses(()->catalog.verifiedApk(c,"network.awai.notallowed"),"unknown APK refuses");
+        JSONArray apps = new JSONObject(catalog.json()).getJSONArray("apps");
+        for(int i=0;i<apps.length();i++){
+            String id=apps.getJSONObject(i).getString("id");
+            java.io.File verified=catalog.verifiedApkFile(c,id);
+            try{check(verified.length()==catalog.artifact(id).getLong("bytes"),"streamed APK exact size/package/signer");}
+            finally{verified.delete();}
+        }
         KeyPair pair=KeyPairGenerator.getInstance("RSA").generateKeyPair();
-        JSONObject duplicate=new JSONObject(catalog.json());duplicate.getJSONArray("apps").put(new JSONObject(apps.getJSONObject(0).toString()));refuses(()->verifySigned(duplicate,pair),"duplicate package refuses");
-        JSONObject path=new JSONObject(catalog.json());path.getJSONArray("apps").getJSONObject(0).getJSONArray("artifacts").getJSONObject(0).put("asset","packages/elsewhere.apk");refuses(()->verifySigned(path,pair),"package asset mapping refuses");
-        JSONObject size=new JSONObject(catalog.json());size.getJSONArray("apps").getJSONObject(0).getJSONArray("artifacts").getJSONObject(0).put("bytes",Catalog.MAX_APK_BYTES+1);refuses(()->verifySigned(size,pair),"APK byte ceiling refuses");
-        JSONObject unknown=new JSONObject(catalog.json());unknown.getJSONArray("apps").getJSONObject(0).put("id","network.awai.notallowed");refuses(()->verifySigned(unknown,pair),"unapproved package refuses");
+        JSONObject duplicate=new JSONObject(catalog.json());
+        duplicate.getJSONArray("apps").put(new JSONObject(apps.getJSONObject(0).toString()));
+        refuses(()->verifySigned(duplicate,pair),"duplicate package refuses");
+        refuses(()->Catalog.onlineFileFor("network.itonami.client.preview"),"preview has no online artifact path");
         byte[] changed=raw.clone();changed[0]^=1;check(!Integrity.authentic(changed,sig,key),"changed metadata refuses");
         refuses(()->catalog.app("network.awai.notallowed"),"unknown app refuses");
         long expires=catalog.app("network.itonami.yotei").getLong("versionCode");

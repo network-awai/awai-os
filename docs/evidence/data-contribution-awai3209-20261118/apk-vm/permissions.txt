@@ -1,0 +1,4 @@
+package: network.itonami.datacontribution
+uses-permission: name='android.permission.INTERNET'
+permission: network.itonami.datacontribution.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+uses-permission: name='network.itonami.datacontribution.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'

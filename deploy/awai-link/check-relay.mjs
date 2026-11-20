@@ -4,7 +4,7 @@ import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { keccak_256 } from "@noble/hashes/sha3.js";
 import {
   checksumAddress, compressP256, createLinkRequest, openResponse, p256Did, sealResponse, siweMessage, verifyLink,
-} from "../../nixos/otehon/shell/src/identity/link.js";
+} from "../../otehon/shell/src/identity/link.js";
 import { p256 } from "@noble/curves/nist.js";
 
 const origin = process.argv[2];

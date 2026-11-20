@@ -1,0 +1,30 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import fs from 'node:fs';
+const context={window:{},console};vm.createContext(context);
+vm.runInContext(fs.readFileSync(new URL('../client/generated/domain.js',import.meta.url),'utf8'),context);
+const domain=context.window.ItonamiDomain;
+const next=s=>domain.setupNext(JSON.stringify(s));
+test('no network or lock step gate: AOSP setup owns them',()=>{
+  assert.equal(next({stage:0,connected:false,validated:false}), 'next');
+  assert.equal(next({stage:5,secure:false}), 'next');
+});
+test('account enrollment and PIN cannot be manufactured by pressing Next',()=>{
+  assert.equal(next({stage:4}), 'account-required');
+  assert.equal(next({stage:7,secure:false,account:'deferred'}), 'refused');
+  assert.equal(next({stage:7,secure:true,account:'unlinked'}), 'refused');
+  assert.equal(next({stage:7,secure:true,account:'deferred'}), 'finish');
+  assert.equal(next({stage:7,secure:true,account:'linked'}), 'finish');
+});
+test('stage projection has a bounded unknown fallback',()=>{
+  assert.equal(domain.setupStage(0),'welcome');assert.equal(domain.setupStage(6),'lock');
+  assert.equal(domain.setupStage(800),'welcome');
+});
+
+test('disabled Open Awai explains the screen-lock requirement',()=>{
+  const src=fs.readFileSync(new URL('../client/setup.js',import.meta.url),'utf8');
+  assert.match(src,/next\.disabled=true;const why=el\('p','setup-lock-note/);
+  assert.match(src,/next\.setAttribute\('aria-describedby',why\.id\)/);
+  assert.match(src,/PIN・パターン・パスワード/);
+});

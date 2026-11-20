@@ -1,0 +1,12 @@
+{
+  "schema": "awai.android.boot.log.stream.vm.v1",
+  "actualKernel": true,
+  "fixedMacNicFixture": true,
+  "kernelLogTestMarkerReceived": true,
+  "receivedBytes": 27882,
+  "collectorClosedAfterConnection": true,
+  "fileMode": "0600",
+  "collectorMaxBytes": 8388608,
+  "collectorMaxSeconds": 600,
+  "physicalDiagnosisVerified": false
+}

@@ -1,6 +1,85 @@
-# Murakumo NixOS
+# Awai OS
 
 Follow the workspace-level AGENTS.md architecture and Linear tracking rules.
+
+## Repository layout
+
+| Path | Contents |
+| --- | --- |
+| `android/` | Awai OS on Android AOSP: Home, Store, setup, SystemUI overlays, desktop PC work |
+| `apps/` | Existing in-tree integrations and pointers to independent app repositories |
+| `dapps/` | Otehon dapps (D1, reward loop, Saifu, Sanka, Wellbecoming) |
+| `otehon/` | Itonami shell UI shared with Android, and Otehon fleet sources: Meiji, Bot fleet, Soshiki, storage |
+| `packages/`, `store/`, `distribution/`, `deploy/` | Shared packages, signed catalog, distribution Worker, awai.link relay |
+| `ci/`, `scripts/`, `tests/` | Active checks and operator tools |
+| `docs/` | Decisions, design and dated evidence (`docs/evidence/` is a record; never rewrite it) |
+| `archive/` | Deprecated material kept for history; not built, not an install path |
+
+## Product app ownership
+
+Keep each product app in its owning repository. Its source, native host, tests,
+package identity and releases are owned there. Awai OS owns AOSP integration,
+Home, package discovery, Store catalog and distribution verification. Use
+pinned, signed artifacts for OS integrations that need an app binary. See
+[app ownership](docs/app-ownership.md) for the migration and consumer contract.
+
+## Product OS direction — Android AOSP (owner decision 2026-11-17)
+
+Awai OS uses Android AOSP as its product OS for phones and desktop PCs.
+See [the accepted platform decision](docs/otehon/aosp-platform-decision-20261117.md)
+and [AWAI-3007](https://linear.app/kotobalabs/issue/AWAI-3007). It does not change
+Kotoba/Amu/AIUEOS Native qualification rules.
+
+- Present the product only as **Awai OS** (release name `Awai OS Meiji`). Upstream
+  community device trees may supply device bring-up and patches, but their
+  distribution names and logos are not product branding, UI copy or
+  architecture. Keep upstream license notices and pinned source references
+  intact. Never relabel a third-party prebuilt image as an Awai ROM: Awai
+  branding ships only in Awai's own source-built, signed release. Google Play
+  services and third-party PC images are not required architecture.
+- AOSP owns the OS lifecycle, permissions, connectivity, locale, screen lock,
+  Keystore/storage protection and update integration.
+- Phone and desktop share the Android setup state model and Figma-first UX.
+  Adapt layout, keyboard/mouse/touch and hardware capabilities. Itonami remains
+  an app: retain account authentication but omit repeated OS setup steps.
+- Preserve the approved Itonami Core / Apps / System and Manimani composition.
+  Keep shared domain/policy in `.cljc`/CLJS Otehon code; native Android and pinned
+  Tauri v3 adapters expose bounded platform operations. A Rust/Java adapter is
+  not a new authority, consent broker or second application shell.
+- Device PIN, Awai account, wallet, phone enrollment and encrypted profile
+  restore are distinct. Never infer signed enrollment from connectivity or a
+  completed screen; never import private keys to reproduce a design fixture.
+  AOSP alone does not establish PC hardware-backed key custody or FBE recovery.
+- Test source/build, Android VM, each actual device and persistent reboot
+  separately. Privileged SetupWizard/SystemUI, signed ROM/OTA, rollback and
+  recovery require their own evidence. An APK or RAM Live boot is not a ROM,
+  persistent install, encryption qualification or accepted device release.
+
+## Deprecated: NixOS install route and Murakumo installer
+
+The NixOS desktop boot/install route, the Murakumo NixOS installer, the native
+NixOS preview and the old Awai Node setup are deprecated (owner decision
+2026-11-17) and live in [`archive/nixos/`](archive/nixos/README.md) with their
+[former agent rules](archive/nixos/AGENTS.md). Do not offer them for new
+installs, wire active code to `archive/`, or re-add their workflows.
+
+- Cleanup of the old 6600H Nix files on devices follows the
+  [deprecation runbook](docs/otehon/nixos-route-deprecation-20261117.md): inventory,
+  encrypted preservation and dependency checks first. Preserve credentials,
+  keys, profiles and active Android images. The old Nix p2 filesystem also holds
+  Android's live image directory; never infer permission to wipe it.
+- The Otehon NixOS profiles and modules (desktop, installer, netboot, media,
+  update, backup, Bot/Meiji guest VMs, k3s, component NixOS modules and their
+  VM checks) are archived in [`archive/nixos/otehon/`](archive/nixos/otehon).
+  Their path references were rewritten and resolve, but they are not evaluated
+  or built here. Any redeploy of an existing Nix host or guest from them is a
+  deliberate maintenance action on archived code; running hosts, guests and
+  fleets are unaffected by the move, and no service shutdown or repartition
+  follows from it. `otehon/` keeps the shell, fleet and component sources and
+  their non-NixOS Nix package checks.
+- Use Android SDK/build and emulator/device checks for Android; a NixOS VM gate
+  does not qualify Android. The Otehon fleet may use `.cljc`, clj/JVM, cljs,
+  nbb and Babashka pinned with Nix (ADR 0026 D18); keep them out of Native.
 
 ## Awai Otehon UI: Figma design first (AWAI-538)
 
@@ -13,51 +92,7 @@ standalone `/workspace/` candidate or treat a fixture as physical acceptance.
 This owner-selected Figma contract controls visual composition; source code and
 tests remain evidence of actual behavior, not proof that the design is accepted.
 
-The native product entry is `nixos/murakumo-nixos.nix`. Keep it separate from
-the historical `node-base.nix` setup/provider/update closure. Never add those
-Node.js tools as a native profile fallback, and do not stop existing services.
-
-- Compile the monitor and dapp cores with the digest-pinned Amu selfhost native
-  compiler in `nixos/native-sources.json`. No JVM, nbb, KBB, babashka, Node.js
-  compiler, C compiler or C loader in this build/execution route.
-- Nix and its platform build shell package artifacts; this is not a claim that
-  the general installer, compiler project linker or CDCI controller is native.
-- Static localhost nginx serves only immutable app files. Browser JavaScript
-  owns UI/local state and a Worker executes selfhost-produced Wasm. Copy the
-  exact pinned canonical `wasm-webcomponent/src/kotoba-client-runtime.js`.
-  Current external operations are empty. Changes must follow the shared
-  operation-consent contract, never a product-local broker.
-- Keep observations outside the static root. Unsigned snapshots are neither
-  admission nor execution permission. Unknown Cell/peer state stays unknown.
-- Do not describe the observer as a complete Awai Node, hata conductor,
-  distributed state system, model provider or qualified economic participant.
-- Live sessions must warn that browser state is temporary. Validate recovery
-  files and refuse to overwrite existing work. Preserve unreadable data.
-- Use the pinned NixOS VM gates before claiming boot/restart/desktop behavior.
-  Keep source, build, VM, physical hardware and published releases separate.
-
-The new gate is `nixos/tests/native-workspace.nix` (add `--arg desktop true`
-for Cage/Chromium/OCR). No old JVM/nbb workflow is added or retained as a
-fallback. Historical setup/provider/voice/update tests do not qualify this
-native profile, and this profile does not replace their release/signing gate.
-Physical GPU/firmware, networking, full Cell execution, distributed app state
-and production keys remain independent acceptance work.
-
-Installed native OS network updates are an opt-in platform administration route
-in `nixos/network-update.nix`, qualified separately by
-`nixos/tests/network-update.nix`. Nix/systemd/OpenSSH/shell here manage the OS;
-they do not replace native app/Node logic or use the historical SCI/Node updater.
-Do not enable remote access, generate keys, accept changed SSH host keys, update
-live USB sessions or claim early-kernel hardware watchdog recovery. Preserve the
-old persistent boot default until an actual one-shot trial has booted and the
-authorized operator confirms its exact ID after local health. Never make a
-production update or USB refresh a side effect of building/testing this module.
-
-Awai Otehon (`network-awai/network-awai-apex` ADR 0026) is added as a profile
-separate from the native profile. It is the Otehon edition of Itonami OS and may
-use `.cljc`, clj / JVM, cljs builds, nbb, babashka and the rest of ADR 0026 D3,
-pinned with Nix (owner decision 2026-11-07, D18). Do not put Otehon dependencies
-in the native profile. The native profile rules above stay unchanged.
+## Otehon dapp intake (AWAI-155)
 
 Screen-bearing apps (kaisha/kaikei class) are taken in as MCP Apps-style
 iframes, not as vendored code (ADR 0026 D12; owner decision 2026-11-15,
@@ -67,6 +102,18 @@ shared `each-operation` consent. No `window.openai`, no server-held business
 state, no ChatGPT approval. The Hermes `mcp_servers` route (D14) is for
 agent-invoked tools, not for apps with a screen. Implementation is still open;
 this records only the intake choice.
+
+## In-app storage on Awai Android and Itonami dapps (AWAI-3386)
+
+Follow [the shared app storage contract](docs/otehon/app-storage.md). Use
+AwaiFS/WNFS for private snapshots, Kotobase for basis-bound graph queries,
+and Yataverse for verified ciphertext blocks over the applicable Awai
+Network transport. Reuse the owning SDKs and app-scoped host capabilities.
+Keep private indexing and key custody within the authorized client. Route
+external browser operations through the canonical Kotoba broker and fresh
+per-operation consent. The current bounded Drive owner-store profile and the
+WNFS migration have separate readback and release evidence.
+
 ## Meiji desktop entry (AWAI-195, owner direction 2026-11-16)
 
 Owner direction 2026-11-16, AWAI-2820: if former execution keys cannot be
@@ -86,8 +133,8 @@ QMP stop request is not evidence of a guest acknowledging clean shutdown.
   managing Meiji VMs; do not silently select v2. v3 is Alpha at implementation
   time: pin exact published crate versions and keep release qualification open.
 - Implement lifecycle policy, resource validation, persistence, inference
-  adapters in `.cljc` under `nixos/otehon/meiji/src/`; desktop views and the
-  local IPC client live in `nixos/otehon/shell/src/meiji/` so the existing Nix
+  adapters in `.cljc` under `otehon/meiji/src/`; desktop views and the
+  local IPC client live in `otehon/shell/src/meiji/` so the existing Nix
   shell source closure remains self-contained.
   Rust is the thin Tauri IPC/process adapter. The Babashka Otehon development
   controller does not establish the ADR 0031 `cljrs` AOT target as completed.
@@ -129,8 +176,9 @@ QMP stop request is not evidence of a guest acknowledging clean shutdown.
 
 ## UI design and writing
 
-Apply [the shared UI rules](docs/design/interface-principles.md) to Awai OS and
-its bundled apps. Prefer recognizable controls, hierarchy, selection feedback
+Apply [the shared UI rules](docs/design/interface-principles.md) and the
+[Awai design system](docs/design/awai-design-system.md) (tokens, components and
+shared rules, AWAI-3402) to Awai OS and its bundled apps. Prefer recognizable controls, hierarchy, selection feedback
 and concise status labels over explanatory paragraphs. Keep implementation
 notes, measurement caveats and design rationale in engineering documentation;
 show optional technical facts through named disclosure controls. If an action

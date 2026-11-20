@@ -1,0 +1,235 @@
+{
+  "schema": "awai.android.persistence.checkpoint-evidence.v1",
+  "checkedAt": "2026-11-17T00:47:33.479Z",
+  "issue": "AWAI-2992",
+  "thread": "01a1e34c-759f-7d81-966b-f033403032e9",
+  "checkpoint": {
+    "schema": "awai.android.encrypted.checkpoint.v1",
+    "checkedAt": "2026-11-17T00:44:23.736Z",
+    "bootId": "45e41292-bce0-4ac8-a896-8cc2fb61035c",
+    "archive": "android-data-metadata.tar.age",
+    "bytes": 923930024,
+    "sha256": "d17b92b14e5dada60c40674baedb13dd96f1487e8dd655d146c0ef7f195bf1ae",
+    "scope": [
+      "/data",
+      "/metadata"
+    ],
+    "frameworkQuiesced": true,
+    "frameworkRestarted": true,
+    "authenticatedArchiveVerified": true,
+    "encryptedBeforeExport": true,
+    "plaintextArchiveWritten": false,
+    "keyCustody": "macOS Keychain network.awai.android.checkpoint.v1 / AWAI-2992-20261117",
+    "remoteEncryptedArchive": "/data/local/tmp/awai-2992-maintenance/capture-1794876245165-53384/checkpoint.age",
+    "transientExclusions": "Other filesystems, sockets/FIFOs/devices, vendor IPC sockets directories and this task maintenance directory; enumerated entries only",
+    "selinuxLabels": "Not archived; restorecon and actual restart/application readback required",
+    "aospFbeQualified": false
+  },
+  "before": {
+    "schema": "awai.android.persistence.state.v1",
+    "checkedAt": "2026-11-17T00:23:53.056Z",
+    "bootId": "45e41292-bce0-4ac8-a896-8cc2fb61035c",
+    "model": "MQ",
+    "abi": "x86_64",
+    "data": {
+      "source": "/data",
+      "fsType": "tmpfs"
+    },
+    "metadata": {
+      "source": "/metadata",
+      "fsType": "tmpfs"
+    },
+    "cryptoState": "unsupported",
+    "applications": [
+      {
+        "id": "app.aozora.awai.preview",
+        "peer": "12D3KooWE7uJEbVoLWhBYzArir8insDVJ4aAWgGiDPKrag8oVbKX",
+        "versionCode": 1002,
+        "identityFilePresent": true,
+        "files": []
+      },
+      {
+        "id": "network.itonami.dougaka.preview",
+        "peer": "12D3KooWKUavvpLBn2VUpk9tzLrdDxLTjW2cHZKd3veCkVrZSR3H",
+        "versionCode": 1002,
+        "identityFilePresent": true,
+        "files": []
+      },
+      {
+        "id": "network.itonami.ongakuka.preview",
+        "peer": "12D3KooWRvDcYipGHgg99QnxxB2vRLi7KzSUkBUf2YJgXLfpdsMU",
+        "versionCode": 1002,
+        "identityFilePresent": true,
+        "files": []
+      },
+      {
+        "id": "network.itonami.client.preview",
+        "peer": "12D3KooWN4jsJYPZFVGtNuB5TDVHqLtn4Txb29Fsp6DRQPSAGcYg",
+        "versionCode": 1002,
+        "identityFilePresent": true,
+        "files": []
+      },
+      {
+        "id": "network.itonami.yataverse.preview",
+        "peer": "12D3KooWRfpqRG7XgNWfdBXCNoWJw1C4QXxyoCproM1Y8Zkqg3kY",
+        "versionCode": 1002,
+        "identityFilePresent": true,
+        "files": [
+          {
+            "path": "p2p/store/blocks/bafkr4ia2xxexscp3ss7fmx7bixxcfxr4en22qqo27pfy4yw7cmzgada2u4",
+            "sha256": "c8bc1fbd78921cebd48fc966e3278bd34732059ba754ecc50e628dbfb56fbad6"
+          },
+          {
+            "path": "p2p/store/blocks/bafkr4ibmcnej73jxsyadcd2fxtl7g2mxmyzk4wed5ewi7cwmoyukzredga",
+            "sha256": "b5bec65c65b4a1a68fb985f3fe9c58dc94c4856fd78898199fc3d8c8e71432ba"
+          },
+          {
+            "path": "p2p/store/blocks/bafkr4ibwexg3p6mxeqqv4p5jtmybk4gze4pcjw5zmszgytkdgdkdsrezia",
+            "sha256": "fc0cc597f0a0f9622dba6b9ec6283e1158eb0abedbdfc8113a62f82b91036b61"
+          },
+          {
+            "path": "p2p/store/blocks/bafkr4icwc2uiitzgfntde7hgdzyvzwh5x5jhktvddnptozq3ut4ld6wbum",
+            "sha256": "db579956ee8759ebb715d14c8ad1008c91dc332d043740f3b7e81b119734c5a5"
+          },
+          {
+            "path": "p2p/store/blocks/bafkr4if7utdwoycfbm47iqfxkyfcpdgpe734bv3jzge24tqzukgext7ini",
+            "sha256": "7e276ee7eb6f343dc9445e2af29061662c72ef0e3e6cb1213c866e6df29bc81e"
+          },
+          {
+            "path": "p2p/store/blocks/bafkr4ifw3euygvdgzs6f4yg5xz3h3remwkbx54py7iy6wbstzyoexyxhmy",
+            "sha256": "c2fa420cd6b63d30dee99045de0197ac8ef71f8e59e7fc57593065b58efc6b2e"
+          },
+          {
+            "path": "p2p/store/blocks/bafkr4igudqy57ilerq6332tewqwjw35dbzsebvr4tnvh5ximtg65aesixy",
+            "sha256": "7a8c2390eb367b62c24a5876092287fbb007a7696c93f956ab3330990c70875b"
+          },
+          {
+            "path": "p2p/store/blocks/bafyr4iavc3cxcwxmnohy2wvnbdsdnciqqt7i5khgutp36l3rakl4a6hubu",
+            "sha256": "b404bc70ba2c7d26cca0b31374afb974b3c50b6003f5a546ba6519c7de74d27b"
+          },
+          {
+            "path": "p2p/store/blocks/bafyreifxwjkaji62sdkwexji2cwtqqzqtim4yusgmc33zal2kbemqxdtja",
+            "sha256": "b7b25404a3da90d5625d28d0ad3843309a19cc524660b7bc817a5048c85c7348"
+          }
+        ]
+      }
+    ]
+  },
+  "after": {
+    "schema": "awai.android.persistence.state.v1",
+    "checkedAt": "2026-11-17T00:47:04.823Z",
+    "bootId": "45e41292-bce0-4ac8-a896-8cc2fb61035c",
+    "model": "MQ",
+    "abi": "x86_64",
+    "data": {
+      "source": "/data",
+      "fsType": "tmpfs"
+    },
+    "metadata": {
+      "source": "/metadata",
+      "fsType": "tmpfs"
+    },
+    "cryptoState": "unsupported",
+    "applications": [
+      {
+        "id": "app.aozora.awai.preview",
+        "peer": "12D3KooWE7uJEbVoLWhBYzArir8insDVJ4aAWgGiDPKrag8oVbKX",
+        "versionCode": 1002,
+        "identityFilePresent": true,
+        "files": []
+      },
+      {
+        "id": "network.itonami.dougaka.preview",
+        "peer": "12D3KooWKUavvpLBn2VUpk9tzLrdDxLTjW2cHZKd3veCkVrZSR3H",
+        "versionCode": 1002,
+        "identityFilePresent": true,
+        "files": []
+      },
+      {
+        "id": "network.itonami.ongakuka.preview",
+        "peer": "12D3KooWRvDcYipGHgg99QnxxB2vRLi7KzSUkBUf2YJgXLfpdsMU",
+        "versionCode": 1002,
+        "identityFilePresent": true,
+        "files": []
+      },
+      {
+        "id": "network.itonami.client.preview",
+        "peer": "12D3KooWN4jsJYPZFVGtNuB5TDVHqLtn4Txb29Fsp6DRQPSAGcYg",
+        "versionCode": 1002,
+        "identityFilePresent": true,
+        "files": []
+      },
+      {
+        "id": "network.itonami.yataverse.preview",
+        "peer": "12D3KooWRfpqRG7XgNWfdBXCNoWJw1C4QXxyoCproM1Y8Zkqg3kY",
+        "versionCode": 1002,
+        "identityFilePresent": true,
+        "files": [
+          {
+            "path": "p2p/store/blocks/bafkr4ia2xxexscp3ss7fmx7bixxcfxr4en22qqo27pfy4yw7cmzgada2u4",
+            "sha256": "c8bc1fbd78921cebd48fc966e3278bd34732059ba754ecc50e628dbfb56fbad6"
+          },
+          {
+            "path": "p2p/store/blocks/bafkr4ibmcnej73jxsyadcd2fxtl7g2mxmyzk4wed5ewi7cwmoyukzredga",
+            "sha256": "b5bec65c65b4a1a68fb985f3fe9c58dc94c4856fd78898199fc3d8c8e71432ba"
+          },
+          {
+            "path": "p2p/store/blocks/bafkr4ibwexg3p6mxeqqv4p5jtmybk4gze4pcjw5zmszgytkdgdkdsrezia",
+            "sha256": "fc0cc597f0a0f9622dba6b9ec6283e1158eb0abedbdfc8113a62f82b91036b61"
+          },
+          {
+            "path": "p2p/store/blocks/bafkr4icwc2uiitzgfntde7hgdzyvzwh5x5jhktvddnptozq3ut4ld6wbum",
+            "sha256": "db579956ee8759ebb715d14c8ad1008c91dc332d043740f3b7e81b119734c5a5"
+          },
+          {
+            "path": "p2p/store/blocks/bafkr4if7utdwoycfbm47iqfxkyfcpdgpe734bv3jzge24tqzukgext7ini",
+            "sha256": "7e276ee7eb6f343dc9445e2af29061662c72ef0e3e6cb1213c866e6df29bc81e"
+          },
+          {
+            "path": "p2p/store/blocks/bafkr4ifw3euygvdgzs6f4yg5xz3h3remwkbx54py7iy6wbstzyoexyxhmy",
+            "sha256": "c2fa420cd6b63d30dee99045de0197ac8ef71f8e59e7fc57593065b58efc6b2e"
+          },
+          {
+            "path": "p2p/store/blocks/bafkr4igudqy57ilerq6332tewqwjw35dbzsebvr4tnvh5ximtg65aesixy",
+            "sha256": "7a8c2390eb367b62c24a5876092287fbb007a7696c93f956ab3330990c70875b"
+          },
+          {
+            "path": "p2p/store/blocks/bafyr4iavc3cxcwxmnohy2wvnbdsdnciqqt7i5khgutp36l3rakl4a6hubu",
+            "sha256": "b404bc70ba2c7d26cca0b31374afb974b3c50b6003f5a546ba6519c7de74d27b"
+          },
+          {
+            "path": "p2p/store/blocks/bafyreifxwjkaji62sdkwexji2cwtqqzqtim4yusgmc33zal2kbemqxdtja",
+            "sha256": "b7b25404a3da90d5625d28d0ad3843309a19cc524660b7bc817a5048c85c7348"
+          }
+        ]
+      }
+    ]
+  },
+  "rebootPerformed": false,
+  "physicalDiskWrite": false,
+  "archivePubliclyPublished": false,
+  "backupIdentityExported": false,
+  "backupKeychainDependency": true,
+  "tests": {
+    "syntheticArchiveVerification": true,
+    "corruptedCiphertextRefused": true,
+    "symlinkInputRefused": true,
+    "sameBootRefusedAsReboot": true,
+    "privateIdentityBytesNeverLogged": true
+  },
+  "notes": [
+    "Initial streaming captures were refused; original RAM session was retained.",
+    "Device-local encryption with a detached bounded worker avoids coupling checkpoint completion to framework/network reconfiguration.",
+    "Vendor runtime IPC sockets directories and task maintenance files are excluded; SELinux restorecon and actual restart read-back are required.",
+    "Current generic engineering candidate reports crypto unsupported; AOSP FBE/source/build/signing qualification remains open."
+  ],
+  "measurement": {
+    "provider": "unknown",
+    "model": "unknown",
+    "settings": "unknown",
+    "tokens": "unknown",
+    "cost": "unknown",
+    "activeWaiting": "unknown",
+    "estimateUnit": "unknown"
+  }
+}

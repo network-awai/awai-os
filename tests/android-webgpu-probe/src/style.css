@@ -1,0 +1,4 @@
+main { max-width: 40rem; margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); }
+canvas { display: block; width: 160px; height: 160px; margin-block: 12px; border-radius: 8px; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
+body[data-status="unavailable"] canvas, body[data-status="failed"] canvas { display: none; }

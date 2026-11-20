@@ -48,7 +48,7 @@ Inspected native node structure and all screen bounds. Main-screen content botto
 
 Visual QA is a design review, not Android accessibility/runtime qualification: notch/insets, IME, large font settings, TalkBack, live network error handling and physical touch/navigation remain to verify during implementation. No automated application tests apply to this Figma-only change.
 
-![Verified editable screen overview](mobile/android-figma-20261116.png)
+![Verified editable screen overview](android-figma/android-figma-20261116.png)
 
 ## Run and measurement
 

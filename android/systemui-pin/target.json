@@ -1,0 +1,27 @@
+{
+  "issue": "AWAI-2997",
+  "frameworkRevision": "22de88b7b8eb979c816669c7963dee66ae4953cd",
+  "systemUiSha256": "e2f43a18f0e9cfeee1131120f718ab127544c39f0de3bd7729aad39f152b0a4a",
+  "systemUiSignerSha256": "59988fff31e2f85fbaddc5b37704be97d1c5b7db72a4fb2ed5f07b58ccf20ccf",
+  "buildManifestSha256": "b8ee0f13b68c5d5115e4313e95cd4d97c62545e51af48fcfd2c683e69e306539",
+  "wallpaperSha256": "4637ce4a054ea77ddf427889b2eff1b54c71df380aec4bd4cdea3ad8095f6fef",
+  "figma": {
+    "file": "umqCqP5KSjLWh9fhCI1HaN",
+    "rest": "231:1473",
+    "error": "231:1524",
+    "waiting": "231:1574"
+  },
+  "portrait": {
+    "keyDp": 80,
+    "columnGapDp": 24,
+    "rowGapDp": 16,
+    "sideDp": 24,
+    "topDp": 128,
+    "bottomDp": 36
+  },
+  "scope": "Two native PIN layouts only; no DEX, permissions, services, credential state, key definitions or authentication code. Native message/input/emergency views preserved. Landscape retains upstream layout.",
+  "upstreamSha256": {
+    "keyguard_pin_view.xml": "c95925ff353c55026628b734353a2fbe975b2ef926620a1ad0c20e54fb2ae193",
+    "keyguard_pin_motion_layout.xml": "47e1e5e3148a3692ca632d6660138fbadfa055feae745393fef086361703cead"
+  }
+}

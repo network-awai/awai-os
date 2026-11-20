@@ -1,0 +1,9 @@
+node_modules/
+dist/
+proof/
+.shadow-cljs/
+.cpcache/
+src/vendor-runtime.gen.js
+
+src/inference-client.gen.js
+src/egov-guest.gen.js

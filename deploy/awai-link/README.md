@@ -1,6 +1,6 @@
 # Awai link services
 
-What a phone needs to link a device (`docs/otehon/login-0.6.0.md`), in the Cloudflare account that holds
+What a phone needs to link a device (`archive/nixos/docs/otehon/login-0.6.0.md`), in the Cloudflare account that holds
 the `awai.network` zone.
 
 | Part | URL | What it is |
@@ -12,7 +12,7 @@ The relay speaks the two ntfy routes that `awai.link.v1` uses, so the Otehon tes
 A message lasts 10 minutes, up to 4 KiB and 8 messages per topic. Nothing is logged.
 
 ```bash
-ln -s ../../nixos/otehon/shell/node_modules node_modules
+ln -s ../otehon/shell/node_modules node_modules
 node check-relay.mjs https://relay.awai.network
 ```
 

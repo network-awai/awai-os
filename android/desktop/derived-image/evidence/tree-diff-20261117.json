@@ -1,0 +1,36 @@
+{
+  "checkedAt": "2026-11-17T08:40:55+00:00",
+  "environment": "Lima VM, Ubuntu 24.04 arm64, kernel 6.8.0-147, erofs-utils 1.7.1, run as root",
+  "schema": "awai.android.derived-image.tree-diff.v1",
+  "system": {
+    "added": [
+      "system/product/app/AwaiHome",
+      "system/product/app/AwaiHome/AwaiHome.apk",
+      "system/product/app/AwaiStore",
+      "system/product/app/AwaiStore/AwaiStore.apk",
+      "system/product/app/AwaiYotei",
+      "system/product/app/AwaiYotei/AwaiYotei.apk"
+    ],
+    "entriesBase": 7489,
+    "entriesDerived": 7495,
+    "otherChanges": {},
+    "removed": [],
+    "symlinkModeOnlyChanges": 303
+  },
+  "tool": "android/desktop/derived-image/compare-trees.py",
+  "vendor": {
+    "added": [],
+    "entriesBase": 2069,
+    "entriesDerived": 2069,
+    "otherChanges": {
+      "build.prop": {
+        "sha256": [
+          "73f18935016df639140cb3845148555c2a6ff927dbf8c4b9bbf07445444f0ac1",
+          "41ee445acfdd80bcbdddb07ace57ba27b77421b4a59fecad73ac093881f54a32"
+        ]
+      }
+    },
+    "removed": [],
+    "symlinkModeOnlyChanges": 541
+  }
+}

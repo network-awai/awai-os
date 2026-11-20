@@ -71,7 +71,7 @@ this check.
 ## Not verified or not implemented
 
 - The NixOS VM evidence run for this module (harness exists for
-  Sanka/D1 in `nixos/`, unexecuted for reward-loop).
+  Sanka/D1 in `archive/nixos/`, unexecuted for reward-loop).
 - Real node pull/start/receipt (JUN-288/292/296), Hermes keys (V2),
   signer/L1 settlement (V3).
 - Lending (`capital`) and AMM/liquidity (`liquidity`): ADR 0027 D9 puts

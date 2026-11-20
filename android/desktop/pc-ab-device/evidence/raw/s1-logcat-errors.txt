@@ -1,0 +1,6 @@
+11-19 11:21:17.771   637   637 E update_engine: [ERROR:fec_file_descriptor.cc(32)] No ECC data in the passed file
+11-19 11:21:17.772   637   637 E update_engine: [ERROR:verified_source_fd.cc(54)] Unable to open ECC source partition /dev/block/by-name/boot_a: Invalid argument (22)
+11-19 11:21:17.773   637   637 E update_engine: [ERROR:partition_writer.cc(334)] The hash of the source data on disk for this operation doesn't match the expected value. This could mean that the delta update payload was targeted for another
+11-19 11:21:17.775   637   637 E update_engine: [ERROR:partition_writer.cc(339)] Expected:   sha256|hex = C21AC6F9CA9D4E9FF090DBF93FDB7E73AD0A1724E7D8FCEC4DD367B0E2DDFDB4
+11-19 11:21:17.779   637   637 E update_engine: [ERROR:partition_writer.cc(342)] Calculated: sha256|hex = F9C4C725A93FC5708B79F4C6A364CA952CF33B83C036B2FF117CD62D6EB23FB4
+11-19 11:21:17.779   637   637 E update_engine: [ERROR:partition_writer.cc(353)] Operation source (offset:size) in blocks: 0:512

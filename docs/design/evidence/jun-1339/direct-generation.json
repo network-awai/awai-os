@@ -1,0 +1,25 @@
+{
+  "start": "2026-11-17T08:41:00.894Z",
+  "end": "2026-11-17T08:41:02.722Z",
+  "prompt": "Say hello in one short sentence.",
+  "modelId": "qwen3-0.6b-q8_0",
+  "modelSha256": "9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031",
+  "modelBytes": 639446688,
+  "loadMs": 1061,
+  "generationMs": 549,
+  "result": {
+    "text": "Hello! How can I assist you today?",
+    "meta": {
+      "engine": "llama.cpp",
+      "outputTokens": 9
+    },
+    "status": "生成しました",
+    "model": "読み込み済み · CPU"
+  },
+  "method": "actual Android input tap/text; native application handler; no invoke injection",
+  "device": "physical LXY MQ / AMD Ryzen7 7735HS / Android API37 x86_64",
+  "app": "network.awai.murakumo",
+  "appApkSha256": "814f4aac6fc10b0ab6766168b60fef40a2e5d12d7291acb5fb879316498aca56",
+  "coverage": "one direct native app request; not a benchmark, not Itonami handoff, not owner authentication",
+  "timingCoverage": "host UI tap-to-observed-loaded and tap-to-observed-complete,500ms poll; not native kernel/first-token timing"
+}

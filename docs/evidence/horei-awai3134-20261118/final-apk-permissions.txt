@@ -1,0 +1,3 @@
+package: network.itonami.horei
+permission: network.itonami.horei.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+uses-permission: name='network.itonami.horei.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'

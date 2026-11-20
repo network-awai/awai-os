@@ -6,11 +6,13 @@ on:
   pull_request:
     paths:
       - .github/workflows/sanka-vm-gate.yml
+      - scripts/ci/sanka-vm-gate.sh
       - dapps/sanka/**
       - dapps/d1/**
       - dapps/reward-loop/**
+      - dapps/en-devnet/**
       - dapps/saifu/nix/basilisp.nix
-      - nixos/tests/sanka-v1.nix
+      - dapps/sanka/nix/vm-v1.nix
   workflow_dispatch:
 
 permissions:
@@ -31,46 +33,8 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - uses: cachix/install-nix-action@b85815f71a6de0ddee80b8a80a98d43f4bcc66c7 # v31
-      - name: Record the runner
-        run: |
-          uname -srm
-          nproc
-          free -g | head -2
-          df -h / | tail -1
-          ls -l /dev/kvm
-          nix --version
-          nix config show system-features
-      - name: Shared cases on Babashka and Basilisp
-        working-directory: dapps/sanka
-        env:
-          # Basilisp would otherwise write its bytecode beside its sources, in the read-only store.
-          PYTHONDONTWRITEBYTECODE: "1"
-        run: |
-          nix-shell nix/shell.nix --run 'bb --classpath src:test test/run_cases.clj'
-          nix-shell nix/shell.nix --run 'PYTHONPATH=src:test basilisp run test/run_cases.lpy'
-      - name: Shared cases for D1 on Babashka and Basilisp
-        working-directory: dapps/d1
-        env:
-          # Same as above: no bytecode beside the sources in the read-only store.
-          PYTHONDONTWRITEBYTECODE: "1"
-        run: |
-          nix-shell nix/shell.nix --run 'bb --classpath src:test test/run_cases.clj'
-          nix-shell nix/shell.nix --run 'PYTHONPATH=src basilisp run test/run_cases.lpy'
-          nix-shell nix/shell.nix --run 'bb --classpath src:test test/reservation_test.clj'
-          nix-shell nix/shell.nix --run 'PYTHONPATH=src basilisp run test/reservation_run.lpy'
-      - name: Shared cases for reward-loop on Babashka and Basilisp
-        working-directory: dapps/reward-loop
-        env:
-          # Same as above: no bytecode beside the sources in the read-only store.
-          PYTHONDONTWRITEBYTECODE: "1"
-        run: |
-          nix-shell nix/shell.nix --run 'bb --classpath src:test test/run_cases.clj'
-          nix-shell nix/shell.nix --run 'PYTHONPATH=src basilisp run test/run_cases.lpy'
-      - name: One real order in a NixOS VM
-        run: |
-          started=$(date +%s)
-          nix-build nixos/tests/sanka-v1.nix --out-link result
-          echo "VM gate took $(( $(date +%s) - started )) seconds"
+      - name: Check (same script you can run on a Nix + KVM host)
+        run: bash scripts/ci/sanka-vm-gate.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
