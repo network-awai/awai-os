@@ -87,8 +87,21 @@ python3 android/desktop/pc-ab-device/updater-feed.py verify-target-files \
 This check reads the actual APK resources, A/B partition set and build
 properties for the selected device. Verify the Android signing certificates
 as part of the signing workflow. Confirm the installed build contacts the
-expected feed. Create the feed JSON
-from an already signed A/B OTA ZIP and its SHA-256 from the signing record:
+expected feed. Before publishing, use the build's AOSP releasetools on PATH
+to verify the OTA with the public certificate pinned in the signing record:
+
+```sh
+python3 android/desktop/pc-ab-device/updater-feed.py verify-ota \
+    "$OTA_ZIP" "$OTA_CERTIFICATE" "$SIGNED_TARGET_FILES" \
+    --certificate-sha256 "$OTA_CERTIFICATE_SHA256" \
+    --target-sha256 "$SIGNED_TARGET_FILES_SHA256" > "$OTA_VERIFICATION_RECORD"
+```
+
+For a delta, also pass `--source-target-files "$SIGNED_SOURCE_TARGET_FILES"`
+and `--source-sha256 "$SIGNED_SOURCE_TARGET_FILES_SHA256"`. The verifier checks
+both the ZIP and A/B payload signatures and binds the package to its exact
+build fingerprints and incremental versions. Use the verified OTA SHA-256
+from the record to create the feed JSON:
 
 ```sh
 python3 android/desktop/pc-ab-device/updater-feed.py make-index "$OTA_ZIP" "$OTA_URL" \

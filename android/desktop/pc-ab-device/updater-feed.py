@@ -4,8 +4,10 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
+import ssl
 import shutil
 import struct
 import subprocess
@@ -217,6 +219,66 @@ def make_index(package, url, expected_sha256, device, release_type, version, sou
     return [{"datetime": timestamp, "files": [artifact], "type": release_type, "version": version}]
 
 
+def target_build(package, digest):
+    with package.open("rb") as file:
+        verified_sha256(file, digest)
+        with ZipFile(file) as target:
+            build = properties(target.read("SYSTEM/build.prop").decode())
+            if properties(target.read("META/misc_info.txt").decode()).get("ab_update") != "true":
+                raise ValueError("expected A/B target-files")
+            return build
+
+
+def verify_ota(ota, cert, cert_digest, target, target_digest, source, source_digest, checker):
+    certificate = ssl.PEM_cert_to_DER_cert(cert.read_text())
+    if hashlib.sha256(certificate).hexdigest() != cert_digest:
+        raise ValueError("OTA certificate SHA-256 differs from the signing record")
+    build = target_build(target, target_digest)
+    with ota.open("rb") as file:
+        ota_digest = hashlib.file_digest(file, "sha256").hexdigest()
+        with ZipFile(file) as package:
+            if package.getinfo("META-INF/com/android/metadata").file_size > 65536:
+                raise ValueError("OTA metadata exceeds 64 KiB")
+            metadata = properties(package.read("META-INF/com/android/metadata").decode())
+            if metadata.get("ota-type") != "AB" or "payload.bin" not in package.namelist():
+                raise ValueError("expected an A/B OTA payload")
+
+    for field, prop in (
+        ("post-build", "ro.build.fingerprint"),
+        ("post-build-incremental", "ro.build.version.incremental"),
+        ("post-timestamp", "ro.build.date.utc"),
+    ):
+        if metadata.get(field) != build[prop]:
+            raise ValueError(f"{field} does not match the target build")
+
+    if source is None:
+        if source_digest is not None or {"pre-build", "pre-build-incremental"} & metadata.keys():
+            raise ValueError("expected a full OTA")
+    else:
+        if source_digest is None:
+            raise ValueError("source target-files SHA-256 is required for an incremental OTA")
+        before = target_build(source, source_digest)
+        if (metadata.get("pre-build") != before["ro.build.fingerprint"] or
+            metadata.get("pre-build-incremental") != before["ro.build.version.incremental"]):
+            raise ValueError("OTA does not match the source build")
+        if int(build["ro.build.date.utc"]) <= int(before["ro.build.date.utc"]):
+            raise ValueError("expected an incremental OTA to a newer build")
+
+    result = subprocess.run(
+        [checker, str(cert), str(ota)], capture_output=True, text=True, check=True,
+        env={key: value for key, value in os.environ.items() if key != "PYTHONOPTIMIZE"},
+    )
+    if any(line not in result.stdout.splitlines() for line in (
+        "Whole package signature VERIFIED", "Payload signatures VERIFIED",
+    )):
+        raise ValueError("AOSP checker did not verify both package and payload signatures")
+    with ota.open("rb") as file:
+        verified_sha256(file, ota_digest)
+    return {"otaSha256": ota_digest, "certificateSha256": cert_digest,
+            "targetFilesSha256": target_digest, "sourceTargetFilesSha256": source_digest,
+            "incremental": metadata["post-build-incremental"], "payloadVerified": True}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     subcommands = parser.add_subparsers(dest="command", required=True)
@@ -236,6 +298,15 @@ def main():
     target.add_argument("--sha256", required=True, help="SHA-256 from the trusted signing record")
     target.add_argument("--device", required=True)
     target.add_argument("--aapt2", default="aapt2")
+    ota = subcommands.add_parser("verify-ota")
+    ota.add_argument("ota_zip", type=Path)
+    ota.add_argument("certificate", type=Path)
+    ota.add_argument("target_files", type=Path)
+    ota.add_argument("--certificate-sha256", required=True)
+    ota.add_argument("--target-sha256", required=True)
+    ota.add_argument("--source-target-files", type=Path)
+    ota.add_argument("--source-sha256")
+    ota.add_argument("--checker", default="check_ota_package_signature")
     index = subcommands.add_parser("make-index")
     index.add_argument("ota_zip", type=Path)
     index.add_argument("artifact_url", type=feed_url)
@@ -255,6 +326,12 @@ def main():
         elif args.command == "verify-target-files":
             print(json.dumps(verify_target_files(
                 args.target_files, args.sha256, args.feed, args.device, args.aapt2,
+            ), indent=2))
+        elif args.command == "verify-ota":
+            print(json.dumps(verify_ota(
+                args.ota_zip, args.certificate, args.certificate_sha256,
+                args.target_files, args.target_sha256, args.source_target_files,
+                args.source_sha256, args.checker,
             ), indent=2))
         else:
             print(json.dumps(make_index(

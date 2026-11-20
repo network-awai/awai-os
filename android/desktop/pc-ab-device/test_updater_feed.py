@@ -89,6 +89,44 @@ class UpdaterFeedTest(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError, "does not match"):
                         updater.verify_apk(Path("Updater.apk"), FEED, "aapt2")
 
+    def test_ota_checks_incremental_source_and_both_signature_results(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            cert = root / "cert.pem"
+            cert.write_text("-----BEGIN CERTIFICATE-----\nYQ==\n-----END CERTIFICATE-----\n")
+            cert_digest = sha256(b"a").hexdigest()
+
+            def target(name, time):
+                path = root / f"{name}.zip"
+                with ZipFile(path, "w") as archive:
+                    archive.writestr("META/misc_info.txt", "ab_update=true\n")
+                    archive.writestr("SYSTEM/build.prop", f"ro.build.fingerprint={name}\n"
+                                    f"ro.build.version.incremental={name}\nro.build.date.utc={time}\n")
+                return path, sha256(path.read_bytes()).hexdigest()
+
+            source, source_sha = target("old", 10)
+            latest, latest_sha = target("new", 20)
+            different, different_sha = target("other", 12)
+            ota = root / "ota.zip"
+            with ZipFile(ota, "w") as archive:
+                archive.writestr("META-INF/com/android/metadata", "ota-type=AB\n"
+                                 "pre-build=old\npre-build-incremental=old\npost-build=new\n"
+                                 "post-build-incremental=new\npost-timestamp=20\n")
+                archive.writestr("payload.bin", b"fixture")
+            with patch.object(updater.subprocess, "run") as verify:
+                verify.return_value.stdout = ("Whole package signature VERIFIED\n"
+                                              "Payload signatures VERIFIED\n")
+                args = (ota, cert, cert_digest, latest, latest_sha)
+                record = updater.verify_ota(*args, source, source_sha, "checker")
+                self.assertEqual(record["sourceTargetFilesSha256"], source_sha)
+                with self.assertRaisesRegex(ValueError, "source build"):
+                    updater.verify_ota(*args, different, different_sha, "checker")
+                with self.assertRaisesRegex(ValueError, "expected a full OTA"):
+                    updater.verify_ota(*args, None, None, "checker")
+                verify.return_value.stdout = "Whole package signature VERIFIED\n"
+                with self.assertRaisesRegex(ValueError, "both package and payload"):
+                    updater.verify_ota(*args, source, source_sha, "checker")
+
     def test_index_binds_ota_to_digest_device_and_source(self):
         with TemporaryDirectory() as directory:
             package = Path(directory) / "update.zip"
