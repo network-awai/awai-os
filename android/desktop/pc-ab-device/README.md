@@ -61,6 +61,32 @@ It has only been run against an image file. Running it on a real disk is a separ
 - After a clean shutdown the three stand-in partitions had the same sha256 as before the install.
 - `kvm/nvme-kvm.sh` is the earlier check: the stock layout plus a `userdata` partition on one NVMe disk.
 
+## Updater feed in the release build (AWAI-3064)
+
+Configure the pinned LineageOS Updater checkout before building the Awai PC release
+`target-files`. Supply the approved HTTPS URL for the selected release channel.
+Updater supports the `{device}`, `{type}`, and `{incr}` placeholders. Keep these
+quoted when passing a template.
+
+```sh
+python3 android/desktop/pc-ab-device/updater-feed.py configure \
+    "$ANDROID_BUILD_TOP/packages/apps/Updater" "$AWAI_OTA_FEED"
+git -C "$ANDROID_BUILD_TOP/packages/apps/Updater" diff --check
+```
+
+Extract Updater.apk from the final signed target-files and run the release check
+with the Android SDK build-tools `aapt2` on PATH:
+
+```sh
+unzip -p "$SIGNED_TARGET_FILES" SYSTEM/system_ext/priv-app/Updater/Updater.apk > "$UPDATER_APK"
+python3 android/desktop/pc-ab-device/updater-feed.py verify-apk "$UPDATER_APK" "$AWAI_OTA_FEED"
+```
+
+Confirm the installed build has no different `lineage.updater.uri` override and
+that an actual update check contacts the expected feed. Use the device's exact
+build parameters when preparing the feed and its signed OTA artifacts. Retain a
+record of feed detection, apply, reboot, recovery, and rollback on the same PC.
+
 ## OTA on the shared disk (2026-11-19)
 
 `kvm/shared-ota.sh` and `kvm/shared-ota2.sh`, results in
