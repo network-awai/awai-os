@@ -172,8 +172,13 @@ def main():
     if args.itonami_apk is not None:
         staged=packages/'itonami.apk';shutil.copyfile(args.itonami_apk,staged)
         signer=run([tools/'apksigner','verify','--print-certs',staged],capture_output=True).stdout
-        if fp not in signer:raise SystemExit('itonami APK signer does not match the development identity')
-        listed.append({'id':'network.itonami.app','name':'Itonami','description':'NixOS 版 Itonami UI を一つの Tauri v3 アプリにまとめた開発版。既存 Home・Store・Yotei は保持し別アプリ ID で追加。Nix 専用サービスは未移植で機能表示しない。Android development debug 署名（本番鍵ではない）。','publisher':'Awai Otehon 開発版','versionCode':1000,'versionName':'0.1.0','artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/itonami.apk','bytes':staged.stat().st_size,'sha256':digest(staged),'signerSha256':fp}]})
+        if re.findall(r'certificate SHA-256 digest: ([a-f0-9]{64})', signer) != [fp]:
+            raise SystemExit('itonami APK signer does not match the development identity')
+        badging = run([tools/'aapt2','dump','badging',staged], capture_output=True).stdout
+        info = re.search(r"^package: name='network\.itonami\.app' versionCode='([0-9]+)' versionName='([^']+)'",badging,re.M)
+        if not info or int(info[1]) < 1:
+            raise SystemExit('itonami APK package/version mismatch')
+        listed.append({'id':'network.itonami.app','name':'Itonami','description':'NixOS 版 Itonami UI を一つの Tauri v3 アプリにまとめた開発版。既存 Home・Store・Yotei は保持し別アプリ ID で追加。Nix 専用サービスは未移植で機能表示しない。Android development debug 署名（本番鍵ではない）。','publisher':'Awai Otehon 開発版','versionCode':int(info[1]),'versionName':info[2],'artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/itonami.apk','bytes':staged.stat().st_size,'sha256':digest(staged),'signerSha256':fp}]})
     if args.torihiki_bot_apk is not None:
         # Tauri v3 APK built from network-awai/app-itonami-torihiki app/. The listed id, version and signer are read from
         # the APK itself and refused unless they are exactly the admitted package and the development identity.
