@@ -1,0 +1,19 @@
+{:yakuwari/capabilities
+ [{:capability :read_source :decision :autonomous :note "A clean checkout of the pull request head, the base branch and the repository rules only"}
+  {:capability :inference_muse :decision :autonomous :note "muse-spark-1.3 on the Muse rail; no other provider"}
+  {:capability :draft_artifact :decision :autonomous :note "Scratch files for checks only; never a change to the pull request"}
+  {:capability :record_local_receipt :decision :autonomous :note "kantoku-verdict.json for the pull request under review"}
+  {:capability :git_push :decision :blocked :note "Performed by the deterministic deliver step after its gate, never by the model"}
+  {:capability :git_merge :decision :blocked :note "Performed by the deterministic deliver step after its gate, never by the model"}
+  {:capability :publish :decision :blocked}
+  {:capability :external_messaging :decision :blocked}
+  {:capability :delegate_task :decision :blocked}
+  {:capability :spend :decision :blocked}
+  {:capability :transfer_funds :decision :blocked}
+  {:capability :storage_upload :decision :blocked}
+  {:capability :delete_data :decision :blocked}
+  {:capability :manage_services :decision :blocked}
+  {:capability :use_signing_identity :decision :blocked}
+  {:capability :export_private_keys :decision :blocked}
+  {:capability :enable_cron :decision :blocked}]
+ :yakuwari/runners [{:runner :itonami-agent :weight 1}]}
