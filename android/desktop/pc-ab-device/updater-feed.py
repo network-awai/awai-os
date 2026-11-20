@@ -61,16 +61,18 @@ def configure_release(checkout, url):
     actual = subprocess.check_output([*git, "rev-parse", "HEAD"], text=True).strip()
     if actual != revision:
         raise ValueError("unexpected Updater source revision")
-    patch = Path(__file__).resolve().parent / "patches/updater-empty-feed-withdrawal.patch"
+    patch_dir = Path(__file__).resolve().parent / "patches"
     apply = [*git, "apply", "--unidiff-zero"]
-    already_applied = subprocess.run(
-        [*apply, "--reverse", "--check", str(patch)], capture_output=True
-    ).returncode == 0
-    if not already_applied:
-        subprocess.run([*apply, "--check", str(patch)], check=True)
+    pending = []
+    for name in ("updater-empty-feed-withdrawal.patch", "updater-serialize-ab-preparation.patch"):
+        patch = str(patch_dir / name)
+        if subprocess.run([*apply, "--reverse", "--check", patch],
+                          capture_output=True).returncode != 0:
+            subprocess.run([*apply, "--check", patch], check=True)
+            pending.append(patch)
     configure(checkout, url)
-    if not already_applied:
-        subprocess.run([*apply, str(patch)], check=True)
+    if pending:
+        subprocess.run([*apply, *pending], check=True)
 
 
 def apk_resources(apk, aapt2):
