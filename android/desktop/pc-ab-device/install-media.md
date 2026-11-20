@@ -7,11 +7,17 @@ Android host tools, run:
 
 ```sh
 AWAI_ANDROID_ROOT="$ANDROID_ROOT" \
+AWAI_ANDROID_HOST_OUT="$ANDROID_HOST_OUT" \
 AWAI_TARGET_FILES_SHA256="$SIGNED_TARGET_FILES_SHA256" \
 AWAI_STOCK_DISK_SHA256="$STOCK_DISK_SHA256" \
 bash android/desktop/pc-ab-device/make-tf-disk.sh \
   "$SIGNED_TARGET_FILES" "$STOCK_DISK" "$INSTALL_IMAGE" > "$ASSEMBLY_LOG"
 ```
+
+Set `ANDROID_HOST_OUT` to this build's host output directory
+(`$OUT_DIR/host/linux-x86`) or to the verified extraction of its
+`otatools.tar`. The directory contains `bin/` and `lib64/`.
+When omitted, the assembler uses `$ANDROID_ROOT/out/host/linux-x86`.
 
 The output path must be new. The tool reads back the populated bytes of both
 boot slots, both vendor boot slots, and the reconstructed super partition.

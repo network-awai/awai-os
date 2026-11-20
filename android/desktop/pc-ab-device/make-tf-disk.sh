@@ -28,11 +28,25 @@ check_input() {
     printf '%s SHA-256 %s\n' "$description" "$digest"
 }
 
+android_root=${AWAI_ANDROID_ROOT:-/root/build/src}
+host_out=${AWAI_ANDROID_HOST_OUT:-"$android_root/out/host/linux-x86"}
+host_bin="$host_out/bin"
+if [[ -n ${AWAI_ANDROID_HOST_OUT:-} ]]; then
+    for tool in build_super_image lpmake simg2img; do
+        if [[ ! -x "$host_bin/$tool" ]]; then
+            echo "Missing Android host tool: $host_bin/$tool" >&2
+            exit 1
+        fi
+    done
+fi
+
 check_input "target-files" "$target_files" "${AWAI_TARGET_FILES_SHA256:-}"
 check_input "stock disk" "$stock_disk" "${AWAI_STOCK_DISK_SHA256:-}"
 
-android_root=${AWAI_ANDROID_ROOT:-/root/build/src}
-export PATH="$android_root/out/host/linux-x86/bin:$android_root/prebuilts/jdk/jdk21/linux-x86/bin:$PATH"
+export PATH="$host_bin:$android_root/prebuilts/jdk/jdk21/linux-x86/bin:$PATH"
+if [[ -n ${AWAI_ANDROID_HOST_OUT:-} ]]; then
+    export LD_LIBRARY_PATH="$host_out/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
 workspace=$(mktemp -d "$(dirname -- "$output")/.awai-tf-disk.XXXXXX")
 trap 'rm -rf -- "$workspace"' EXIT
 candidate="$workspace/disk.img"
