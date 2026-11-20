@@ -69,6 +69,7 @@ Updater supports the `{device}`, `{type}`, and `{incr}` placeholders. Keep these
 quoted when passing a template.
 
 ```sh
+AWAI_OTA_FEED='https://ota.awai.network/v1/pc/pilot/{device}/{incr}/builds.json'
 python3 android/desktop/pc-ab-device/updater-feed.py configure \
     "$ANDROID_BUILD_TOP/packages/apps/Updater" "$AWAI_OTA_FEED"
 git -C "$ANDROID_BUILD_TOP/packages/apps/Updater" diff --check
@@ -98,6 +99,13 @@ and publish it at the feed path for that source. Omit the flag for a full OTA.
 The index command checks the digest from the signing record and the archive
 metadata. The updater and Android still verify the signed package on device.
 Retain a record of feed detection, apply, reboot, recovery, and rollback on the same PC.
+
+The pilot endpoint is backed by the dedicated Cloudflare R2 bucket
+`awai-os-ota`. Publish the verified ZIP at a digest-qualified object path and
+check its public bytes and HTTP Range response before publishing the index.
+Serve the mutable index as `application/json` with `Cache-Control: no-store`.
+To stop offering updates, replace the affected index with `[]` and verify the
+public response. Keep the signed ZIP for diagnosis and recovery.
 
 ## OTA on the shared disk (2026-11-19)
 
