@@ -7,7 +7,8 @@ one reviewer. Tracking: AWAI-3558 (handoff from Claude sessions), AWAI-3560 (thi
 | -- | -- |
 | `acceptance-criteria.md` | When a developer-bot pull request may merge. Start here. |
 | `shinsa/` | The single review profile (`cloud.itonami.profile.v2`): `SOUL.md`, capabilities, `yakuwari.edn`. |
-| `kantoku/` | Profile for the second review of pull requests that change `otehon/dev-bots/` itself, run on another host (owner decision 2026-11-20, AWAI-3609). Profile source only: nothing runs it yet and the gate does not read its verdict yet, so such pull requests still stay drafts for a person. |
+| `kantoku/` | Profile for the second review of pull requests that change `otehon/dev-bots/` itself, run on another host (owner decision 2026-11-20, AWAI-3609). Profile source only: nothing runs it yet, so such pull requests still stay drafts for a person. |
+| `kantoku-gate.mjs`, `kantoku-gate.test.mjs` | The decision for those pull requests (pure): `merge`, `owner` (stays a draft) or `hold`, from GitHub's facts for the head commit, the ordinary gate's recorded decision, kantoku's verdict and the caller's own re-run of the tests under two shells. Both gates, `kantoku-*`, `kantoku/`, `shinsa/`, evaluation sets and anything outside `otehon/dev-bots/` are never approvable by a review bot. Nothing calls it yet (AWAI-3609). |
 | `gate.mjs`, `gate.test.mjs` | The mechanical merge gate (pure) and its tests: `node --test otehon/dev-bots/gate.test.mjs`. |
 | `deliver.mjs` | No model. Re-runs tests outside the sandbox, applies the gate, commits, pushes, opens the PR, squash-merges when allowed, comments on Linear with measured Muse usage. One delivery at a time per host (lock). |
 | `run-task.sh` | Implementer run, `shinsa` run, then `deliver.mjs`, for one task directory. |
