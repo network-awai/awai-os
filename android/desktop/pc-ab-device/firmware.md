@@ -10,8 +10,8 @@ source checkout. The x86_64 device is pinned to
 python3 android/desktop/pc-ab-device/pc-firmware.py prepare "$ANDROID_ROOT" "$FIRMWARE_GIT"
 ```
 
-This adds pinned Yellow Carp firmware to the vendor image. The Android
-`linux_firmware_r8168` module installs the RTL8168 firmware. Preparation checks
+This adds pinned Yellow Carp firmware to the vendor image and selects the Android
+`linux_firmware_r8168` module to install the RTL8168 firmware. Preparation checks
 that all 13 Android RTL8168 files match the pinned bytes before generating
 the Awai overlay. The overlay also installs the matching upstream notices
 and revision. Preparation can be rerun on the same checkout. For a checkout

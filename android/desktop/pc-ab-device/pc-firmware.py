@@ -74,7 +74,10 @@ def prepare(source, firmware):
     mapping = [
         f"    {OVERLAY}/{path}:$(TARGET_COPY_OUT_VENDOR)/{path}" for path in sorted(files)
     ]
-    files["firmware.mk"] = ("PRODUCT_COPY_FILES += \\\n" + " \\\n".join(mapping) + "\n").encode()
+    files["firmware.mk"] = (
+        "PRODUCT_PACKAGES += linux_firmware_r8168\n\n"
+        "PRODUCT_COPY_FILES += \\\n" + " \\\n".join(mapping) + "\n"
+    ).encode()
     if overlay.exists():
         actual = {str(path.relative_to(overlay)): path.read_bytes()
                   for path in overlay.rglob("*") if path.is_file()}
