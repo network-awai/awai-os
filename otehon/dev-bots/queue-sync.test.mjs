@@ -720,3 +720,68 @@ test("e2e: dry-run reports recovery without changing pending or task", (t) => {
   assert.equal(readFileSync(join(s.state, "10-a", "pending.json"), "utf8"), before);
   assert.ok(!existsSync(join(s.state, "10-a", "task.json")));
 });
+
+// ---- review additions (AWAI-3596): cases the first test set let through ----
+
+test("sync: an entry whose task matches but whose prompt differs is held, not recovered", () => {
+  const taskText = JSON.stringify(TASK);
+  const th = sha256hex(taskText);
+  const ph = sha256hex("local prompt");
+  const fs = fakeFsPending({ "/s/n/pending.json": JSON.stringify({ name: "n", taskText, taskSha256: th, promptSha256: ph }) });
+  const logs = [];
+  let drained = 0;
+  const recText = JSON.stringify({ issue: TASK.issue, kind: "comment", body: "x" });
+  const r = sync({ queue: "/q", stateDir: "/s" }, {
+    ...fs,
+    remote: () => snapshot([
+      "RUNNER alive 7", "ENTRY done n", `DIGEST done n ${th} ${sha256hex("another prompt")}`,
+      `OUTBOX n ${REC} ${b64(recText)}`,
+    ]),
+    drain: () => { drained += 1; return 0; },
+    log: (l) => logs.push(l),
+  });
+  assert.ok(logs.includes("held n pending-mismatch"));
+  assert.equal(logs.includes("recovered n"), false);
+  assert.equal(fs.store.has("/s/n/task.json"), false);
+  assert.ok(fs.store.has("/s/n/pending.json"));
+  assert.equal(drained, 0);
+  assert.equal(r.summary.recovered, 0);
+  assert.equal(r.exitCode, 1);
+});
+
+test("sync: a complete answer without this entry's PUSH line keeps the intent and exits 1", () => {
+  const taskText = JSON.stringify(TASK);
+  const prompt = "do it";
+  const fs = fakeFsPending({ "/e/n/task.json": taskText, "/e/n/muse-prompt.md": prompt });
+  const logs = [];
+  const r = sync({ queue: "/q", stateDir: "/s", entryDirs: ["/e/n"], owners: ["testowner"] }, {
+    ...fs,
+    // Both answers end with END; the push answer simply has no line for "n".
+    remote: () => snapshot(["RUNNER none 0"]),
+    drain: () => 0,
+    log: (l) => logs.push(l),
+  });
+  assert.ok(logs.includes("pending n no-answer"));
+  assert.equal(r.summary.pending, 1);
+  assert.equal(r.summary.pushed, 0);
+  assert.equal(r.summary.rejected, 0);
+  assert.ok(fs.store.has("/s/n/pending.json"), "an unanswered push must keep the intent");
+  assert.equal(fs.store.has("/s/n/task.json"), false);
+  assert.equal(r.exitCode, 1, "nothing else is wrong in this run: the pending entry alone must fail it");
+  // The entry did arrive: the next run recovers it instead of pushing again.
+  const scripts = [];
+  const logs2 = [];
+  const r2 = sync({ queue: "/q", stateDir: "/s", entryDirs: ["/e/n"], owners: ["testowner"] }, {
+    ...fs,
+    remote: (script) => {
+      scripts.push(script);
+      return snapshot(["RUNNER alive 7", "ENTRY inbox n", `DIGEST inbox n ${sha256hex(taskText)} ${sha256hex(prompt)}`]);
+    },
+    drain: () => 0,
+    log: (l) => logs2.push(l),
+  });
+  assert.ok(logs2.includes("recovered n"));
+  assert.equal(scripts.some((s) => s.includes("\nput ")), false, "a recovered entry is not pushed again");
+  assert.equal(fs.store.get("/s/n/task.json"), taskText);
+  assert.equal(r2.exitCode, 0);
+});
