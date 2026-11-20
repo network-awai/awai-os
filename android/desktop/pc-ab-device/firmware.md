@@ -10,10 +10,14 @@ source checkout. The x86_64 device is pinned to
 python3 android/desktop/pc-ab-device/pc-firmware.py prepare "$ANDROID_ROOT" "$FIRMWARE_GIT"
 ```
 
-This adds the pinned Yellow Carp and RTL8168 firmware to the vendor firmware
-directory and installs the matching upstream notices and revision alongside the
-vendor image. It reads the committed inputs and can be rerun on the same
-checkout. It also adds the Radeon option to the x86_64 GRUB submenu and
+This adds pinned Yellow Carp firmware to the vendor image. The Android
+`linux_firmware_r8168` module installs the RTL8168 firmware. Preparation checks
+that all 13 Android RTL8168 files match the pinned bytes before generating
+the Awai overlay. The overlay also installs the matching upstream notices
+and revision. Preparation can be rerun on the same checkout. For a checkout
+prepared by the earlier overlay, preserve and move the previous
+`vendor/awai/pc-firmware` directory aside before running preparation again.
+The tool also adds the Radeon option to the x86_64 GRUB submenu and
 builds the AMD Minigbm, Mesa and Vulkan paths. Select **Awai PC (AMD Radeon,
 Mesa graphics)** on the physical test machine. Run the normal Android build and signing procedure, then verify the
 vendor files in the final signed archive.

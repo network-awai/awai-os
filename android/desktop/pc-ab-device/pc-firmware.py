@@ -13,6 +13,7 @@ from zipfile import BadZipFile, ZipFile
 
 REVISION = "a2dcb924f0897368b0b4f305cbf9808cdda90ce0"
 OVERLAY = Path("vendor/awai/pc-firmware")
+MAINLINE_REALTEK = Path("external/linux-firmware-mainline/firmware/r8168")
 DEVICE = Path("device/virt/virtio_x86_64")
 DEVICE_REVISION = "50dc14712023705ccf477af49a27ef9109b54d19"
 PRODUCT = DEVICE / "lineage_virtio_x86_64.mk"
@@ -59,7 +60,16 @@ def prepare(source, firmware):
     existing = product.read_text()
     if existing.count(PRODUCT_MARKER) != 1 or existing.count(INCLUDE) > 1:
         raise ValueError("unexpected x86_64 product makefile")
-    files = installed_files(pinned_files(firmware))
+    expected_files = installed_files(pinned_files(firmware))
+    files = {}
+    for path, data in expected_files.items():
+        if path.startswith("firmware/rtl_nic/"):
+            # Soong's linux_firmware_r8168 already owns these destinations.
+            upstream = source / MAINLINE_REALTEK / Path(path).relative_to("firmware")
+            if upstream.read_bytes() != data:
+                raise ValueError(f"{upstream} does not match the pinned revision")
+        else:
+            files[path] = data
     overlay = source / OVERLAY
     mapping = [
         f"    {OVERLAY}/{path}:$(TARGET_COPY_OUT_VENDOR)/{path}" for path in sorted(files)
