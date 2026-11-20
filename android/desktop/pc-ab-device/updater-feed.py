@@ -11,6 +11,7 @@ import ssl
 import shutil
 import struct
 import subprocess
+import sys
 import tempfile
 from urllib.parse import urlsplit
 from xml.sax.saxutils import escape
@@ -229,10 +230,14 @@ def target_build(package, digest):
             return build
 
 
-def verify_ota(ota, cert, cert_digest, target, target_digest, source, source_digest, checker):
+def verify_certificate(cert, cert_digest):
     certificate = ssl.PEM_cert_to_DER_cert(cert.read_text())
     if hashlib.sha256(certificate).hexdigest() != cert_digest:
         raise ValueError("OTA certificate SHA-256 differs from the signing record")
+
+
+def verify_ota(ota, cert, cert_digest, target, target_digest, source, source_digest, checker):
+    verify_certificate(cert, cert_digest)
     build = target_build(target, target_digest)
     with ota.open("rb") as file:
         ota_digest = hashlib.file_digest(file, "sha256").hexdigest()
@@ -279,6 +284,34 @@ def verify_ota(ota, cert, cert_digest, target, target_digest, source, source_dig
             "incremental": metadata["post-build-incremental"], "payloadVerified": True}
 
 
+def generate_ota(args):
+    output = args.output.parent.resolve() / args.output.name
+    if os.path.lexists(output):
+        raise FileExistsError(f"output already exists: {output}")
+    certificate = args.key.parent / (args.key.name + ".x509.pem")
+    verify_certificate(certificate, args.certificate_sha256)
+    target = target_build(args.target_files, args.target_sha256)
+    command = [args.generator, "-k", str(args.key)]
+    if (args.source_target_files is None) != (args.source_sha256 is None):
+        raise ValueError("an incremental OTA requires both source target-files and its digest")
+    if args.source_target_files is not None:
+        source = target_build(args.source_target_files, args.source_sha256)
+        if int(target["ro.build.date.utc"]) <= int(source["ro.build.date.utc"]):
+            raise ValueError("the target must be newer than the source")
+        command += ["-i", str(args.source_target_files)]
+
+    with tempfile.TemporaryDirectory(prefix=".signed-ota-", dir=output.parent) as directory:
+        candidate = Path(directory) / "ota.zip"
+        subprocess.run([*command, str(args.target_files), str(candidate)], check=True,
+                       stdin=subprocess.DEVNULL, stdout=sys.stderr)
+        receipt = verify_ota(
+            candidate, certificate, args.certificate_sha256, args.target_files, args.target_sha256,
+            args.source_target_files, args.source_sha256, args.checker,
+        )
+        os.link(candidate, output)
+    return receipt
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     subcommands = parser.add_subparsers(dest="command", required=True)
@@ -307,6 +340,17 @@ def main():
     ota.add_argument("--source-target-files", type=Path)
     ota.add_argument("--source-sha256")
     ota.add_argument("--checker", default="check_ota_package_signature")
+    generate = subcommands.add_parser("generate-ota")
+    generate.add_argument("target_files", type=Path)
+    generate.add_argument("output", type=Path)
+    generate.add_argument("--key", required=True, type=Path,
+                          help="signing key basename in the local signing environment")
+    generate.add_argument("--certificate-sha256", required=True)
+    generate.add_argument("--target-sha256", required=True)
+    generate.add_argument("--source-target-files", type=Path)
+    generate.add_argument("--source-sha256")
+    generate.add_argument("--checker", default="check_ota_package_signature")
+    generate.add_argument("--generator", default="ota_from_target_files")
     index = subcommands.add_parser("make-index")
     index.add_argument("ota_zip", type=Path)
     index.add_argument("artifact_url", type=feed_url)
@@ -333,6 +377,8 @@ def main():
                 args.target_files, args.target_sha256, args.source_target_files,
                 args.source_sha256, args.checker,
             ), indent=2))
+        elif args.command == "generate-ota":
+            print(json.dumps(generate_ota(args), indent=2))
         else:
             print(json.dumps(make_index(
                 args.ota_zip, args.artifact_url, args.sha256, args.device,
