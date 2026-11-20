@@ -104,7 +104,8 @@ public final class Catalog {
     }
     public static int maxApkBytes(String id) throws SecurityException {
         if (REGISTRY_ASSOC.equals(id)) return 40 * 1024 * 1024;
-        if ("network.itonami.yotei".equals(id)) return 20 * 1024 * 1024;
+        // Standalone Tauri Yotei includes both arm64 and x86_64 (about 35 MiB).
+        if ("network.itonami.yotei".equals(id)) return 40 * 1024 * 1024;
         if ("network.itonami.app".equals(id)) return 64 * 1024 * 1024;
         if ("network.itonami.torihiki".equals(id)) return 20 * 1024 * 1024;
         // Tauri v3 APK (network-awai/app-itonami-torihiki app/), about 29.5 MB at 0.1.0.
