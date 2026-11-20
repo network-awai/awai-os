@@ -20,6 +20,13 @@ Apply to a synced source tree with `apply.sh <source tree root>`.
 | `patches/virtio-common-awai-pc.patch` | `device/virt/virtio-common` (`e6f2a7d2`) | SELinux labels for `/dev/block/by-name/{super,misc,userdata,persist,metadata,boot_[ab],vendor_boot_[ab]}`; userdata is mounted from the partition named `userdata` instead of `/dev/block/vdb`. Kernel config fragment `awai-pc.config` for real PC hardware, and the Intel NIC modules in the boot-time load list. |
 | `patches/virt-common-awai-pc.patch` | `device/virt/virt-common` (`0e62edf1`) | GRUB takes the boot disk from where the `PERSIST` filesystem is, and finds `misc`, `vendor_boot_a/b` and `boot_a/b` by fixed GPT partition GUIDs. `EFI` and `BIOS` leave `AB_OTA_PARTITIONS`, and Android no longer mounts the ESP. `ro.surface_flinger.enable_frame_rate_override=false` is removed (headless mode). |
 
+| `patches/vendor-lineage-no-ota-downgrade.patch` | `vendor/lineage` | Removes LineageOS's opt-in to older A/B payloads on non-`user` builds. |
+
+Use a dedicated LineageOS source checkout for these patches. The vendor change affects LineageOS
+products built from that patched checkout. The installed image must report an empty
+`adb shell getprop ro.ota.allow_downgrade`. Validate the rejection paths on the Awai PC NVMe
+guest using an older OTA signed with its test key and a current OTA signed with a different test key.
+
 Why the ESP leaves the A/B set: with `androidboot.boot_devices=any` every GPT partition on every disk
 appears under `/dev/block/by-name/`. If an existing ESP is named `EFI`, an update could write to it.
 
@@ -138,6 +145,21 @@ A picture needs the AMD driver with its firmware (`amdgpu/yellow_carp_*.bin`, 12
 linux-firmware 20261019) and the Mesa `radeonsi` stack, which KVM cannot validate. The Realtek NIC and
 the firmware's boot path are also only testable on the machine.
 
+## OTA rejection on the shared NVMe disk (2026-11-20)
+
+Build `awai-byname-v8-rollback-policy` omitted `ro.ota.allow_downgrade` from all eight
+`build.prop` files in target-files and from the running guest. Each case used a separate shared
+NVMe install under QEMU/KVM with the headless SwiftShader entry and an `e1000e` NIC.
+
+| OTA package | Update engine result |
+| --- | --- |
+| v7 full OTA, signed with the device's test key | `kPayloadTimestampError (51)` |
+| v8 full OTA, signed with a separate test key | `kDownloadPayloadPubKeyVerificationError (18)` |
+
+Both guests rebooted into v8 on slot `_a` with `sys.boot_completed=1`. After shutdown, all three
+protected partitions matched the SHA-256 hashes recorded at installation.
+[Evidence and artifact digests](evidence/ota-rejection-kvm-20261120.json).
+
 ## Known gaps
 
 - `init.virtio.rc` still creates `by-name` links to `vda1`, `vda7` and so on. On NVMe they point nowhere
@@ -145,5 +167,4 @@ the firmware's boot path are also only testable on the machine.
 - Existing partitions appear under `/dev/block/by-name/` with their own names. Android did not mount them.
 - OVMF skipped the first ESP, which had no loader, and started GRUB from `awai_esp`. Real firmware may
   need a boot entry, or the PXE route may have to chain-load it.
-- No picture without a virtio GPU (headless only), no firmware files in the image, no release keys, and
-  `ro.ota.allow_downgrade` is still set by LineageOS on this userdebug build.
+- No picture without a virtio GPU (headless only), no firmware files in the image, and no release keys.
