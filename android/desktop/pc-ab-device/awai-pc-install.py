@@ -10,7 +10,13 @@ partition of the same name in it. Nothing is written outside the new partitions 
 when a planned range overlaps an existing partition, and proves afterwards that every partition that
 existed before has the same sha256.
 """
-import hashlib, json, os, re, subprocess, sys
+import hashlib
+import json
+import os
+import re
+import stat
+import subprocess
+import sys
 
 SECTOR = 512
 ALIGN = 2048
@@ -33,11 +39,21 @@ RESERVED = {n for n, _, _, _ in LAYOUT} | {"efi", "bios", "cache", "recovery", "
 
 
 def sgdisk(*a):
-    return subprocess.run(["sgdisk", *a], check=True, capture_output=True, text=True).stdout
+    return subprocess.run(
+        ["sgdisk", *a], check=True, capture_output=True, text=True,
+        env={**os.environ, "LC_ALL": "C"},
+    ).stdout
 
 
 def table(path):
     out = sgdisk("-p", path)
+    logical_size = re.search(
+        r"^(?:Sector size \(logical(?:/physical)?\)|Logical sector size): "
+        r"(\d+)(?:\s*(?:bytes\s*)?/\s*\d+)? bytes$",
+        out, re.MULTILINE,
+    )
+    if not logical_size or int(logical_size[1]) != SECTOR:
+        sys.exit(f"REFUSED {path}: expected {SECTOR}-byte logical sectors")
     parts = []
     for line in out.splitlines():
         m = re.match(r"\s*(\d+)\s+(\d+)\s+(\d+)\s+\S+\s+\S+\s+(\S+)\s*(.*)$", line)
@@ -48,18 +64,23 @@ def table(path):
     return parts, first, last
 
 
+def read_range(file, start, end):
+    file.seek(start * SECTOR)
+    remaining = (end - start + 1) * SECTOR
+    while remaining:
+        chunk = file.read(min(remaining, 8 << 20))
+        if not chunk:
+            sys.exit(f"FAILED short read from {file.name} at byte {file.tell()} (sectors {start}–{end})")
+        remaining -= len(chunk)
+        yield chunk
+
+
 def sha_range(path, start, end):
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        f.seek(start * SECTOR)
-        left = (end - start + 1) * SECTOR
-        while left:
-            b = f.read(min(left, 8 << 20))
-            if not b:
-                break
-            h.update(b)
-            left -= len(b)
-    return h.hexdigest()
+    digest = hashlib.sha256()
+    with open(path, "rb") as file:
+        for chunk in read_range(file, start, end):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def free_ranges(parts, first, last):
@@ -74,6 +95,10 @@ def free_ranges(parts, first, last):
 
 
 def make_plan(target, source, userdata_gib):
+    if userdata_gib <= 0:
+        sys.exit("REFUSED userdata size must be positive")
+    if os.path.samefile(target, source):
+        sys.exit("REFUSED source and target identify the same file or device")
     tparts, tfirst, tlast = table(target)
     sparts, _, _ = table(source)
     src = {p["name"]: p for p in sparts}
@@ -117,6 +142,10 @@ def make_plan(target, source, userdata_gib):
 
 
 def apply(target, source, plan, record):
+    source_stat = os.stat(source)
+    required_size = max((n["from"]["end"] + 1) * SECTOR for n in plan["new"] if n["from"])
+    if stat.S_ISREG(source_stat.st_mode) and source_stat.st_size < required_size:
+        sys.exit(f"REFUSED {source}: source image is shorter than its partition table")
     before = {p["number"]: sha_range(target, p["start"], p["end"]) for p in plan["existing"]}
     for n in plan["new"]:
         args = [f"--new={n['number']}:{n['start']}:{n['end']}", f"--typecode={n['number']}:{n['type']}", f"--change-name={n['number']}:{n['name']}"]
@@ -127,12 +156,8 @@ def apply(target, source, plan, record):
         for n in plan["new"]:
             t.seek(n["start"] * SECTOR)
             if n["from"]:
-                s.seek(n["from"]["start"] * SECTOR)
-                left = (n["from"]["end"] - n["from"]["start"] + 1) * SECTOR
-                while left:
-                    b = s.read(min(left, 8 << 20))
-                    t.write(b)
-                    left -= len(b)
+                for chunk in read_range(s, n["from"]["start"], n["from"]["end"]):
+                    t.write(chunk)
             else:
                 # empty partitions: clear the first MiB so Android formats them
                 t.write(b"\0" * min(1 << 20, (n["end"] - n["start"] + 1) * SECTOR))
