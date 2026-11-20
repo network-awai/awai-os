@@ -77,12 +77,15 @@
     (if (.-current active)
      [:button.secondary {:type "button" :on-click #(stop "ended")} (tr :voiceStop)]
      [:button.primary {:type "button" :disabled (or blocked (not= true input) (not (speechAvailable)) (= session-id "default")) :on-click start} (tr :voiceStart)])]
-   (when (= false input) [:p {:role "status" :data-voice-input-missing true} (tr :voiceInputMissing)])
-   (when (= "unknown" input) [:p {:role "status"} (tr :voiceInputUnknown)])
-   (when-not (.-current active) [:button.secondary {:type "button" :disabled (or blocked (not (speechAvailable))) :on-click refresh-input} (tr :voiceInputRefresh)])
-   [:p (tr :voiceScopeInfo)] [:p (tr :voice-local-remote)]
-   (when (or (= true input) (not= state "ready")) [:p {:role (when (contains? #{"ended" "error"} state) "status")} (tr (keyword (str "voice-" state)))])
-   (when (contains? #{"ready" "ended" "error"} state) [:p (tr :voiceConsentInfo)])
+   [:details.chat-connection [:summary (tr :chatVoiceDetails)]
+    [:div.chat-connection-body
+     (when (= false input) [:p {:role "status" :data-voice-input-missing true} (tr :voiceInputMissing)])
+     (when (= "unknown" input) [:p {:role "status"} (tr :voiceInputUnknown)])
+     (when-not (.-current active)
+      [:button.secondary {:type "button" :disabled (or blocked (not (speechAvailable))) :on-click refresh-input} (tr :voiceInputRefresh)])
+     [:p (tr :voiceScopeInfo)] [:p (tr :voice-local-remote)] [:p (tr :voiceConsentInfo)]]]
+   (when (not= state "ready")
+    [:p {:role "status"} (tr (keyword (str "voice-" state)))])
    (when (seq heard-text) [:p {:data-voice-transcript true :role "status"} heard-text])
    (when remaining-text [:p (tr :voiceRemainingText)])]))
 
@@ -112,14 +115,14 @@
            (if-let [node (.-current history-node)]
             (do
              (if-let [old (.-current history-anchor)]
-             (do (set! (.-current history-anchor) nil)
-                 (when (identical? node (:node old))
-                  (set! (.-scrollTop node) (+ (:top old) (- (.-scrollHeight node) (:height old))))))
-             (when (.-current follow-history)
-              (set! (.-scrollTop node) (.-scrollHeight node))))
-            (let [latest (at-latest? node)]
-             (set! (.-current follow-history) latest)
-             (set-at-latest latest)))
+              (do (set! (.-current history-anchor) nil)
+                  (when (identical? node (:node old))
+                   (set! (.-scrollTop node) (+ (:top old) (- (.-scrollHeight node) (:height old))))))
+              (when (.-current follow-history)
+               (set! (.-scrollTop node) (.-scrollHeight node))))
+             (let [latest (at-latest? node)]
+              (set! (.-current follow-history) latest)
+              (set-at-latest latest)))
             (do (set! (.-current follow-history) true)
                 (set-at-latest true)))
            js/undefined)
@@ -251,8 +254,6 @@
           {:id (str (.-requestId (:request pending)) ":local") :role "assistant" :text "" :kind "local-image" :localOnly true
            :parentId (.-requestId (:request pending)) :image (js->clj (.-image (:request pending)) :keywordize-keys true) :local-result (:result pending)}))
           (set-pending nil) (set-text ""))} "会話に記録せず続ける"]])
-   (when-not (contains? #{"peer" "circle-work"} (:kind session-info))
-    [:f> voice-panel bot session-id ensure-session set-busy set-messages set-store locale (or busy (some? pending))])
    (when-let [[action label] (when (and (not busy) (nil? pending)
                                        (= "assistant" (:role (last messages)))
                                        (not (contains? #{"peer" "circle-work"} (:kind session-info))))
@@ -278,4 +279,6 @@
                                   (send event)))}]])
      [:div.chat-composer-actions
       [:button.primary {:type "submit" :disabled (or busy (some? pending) (empty? (.trim text)))}
-       (tr (if (= mode "image") :chatImageSend :chatSend))]]])]))
+       (tr (if (= mode "image") :chatImageSend :chatSend))]]])
+   (when-not (contains? #{"peer" "circle-work"} (:kind session-info))
+    [:f> voice-panel bot session-id ensure-session set-busy set-messages set-store locale (or busy (some? pending))])]))
