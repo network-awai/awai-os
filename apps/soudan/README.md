@@ -54,3 +54,26 @@ Debug APK for an emulator: `npx tauri android build --debug --apk --target aarch
 | Figma design review | — |
 | TalkBack testing | — |
 | Owner decisions O2–O10 | The owner |
+
+## Police reporting guide
+
+Open **警察への届出 / Police reporting** in Soudan. The guide is bundled in
+the app and covers preparation for reporting cybercrime and fraud. It uses the
+248 entries from the UN M49 geographic list as a lookup index. The list is a
+statistical classification. It does not establish police jurisdiction.
+
+The initial review uses the jurisdiction set from the Mithril intake survey
+(MITHRIL-1749 / MITHRIL-1750) and rechecks primary public sources. The
+MITHRIL-186 evidence-preparation and MITHRIL-365 case-stage models inform the
+guide. The bundled catalog contains only public guidance and published,
+anonymized case summaries. No private case records are imported.
+
+Update `src/police-guide.json` with the official publisher, URL and retrieval
+date for each statement. Use `official-route` for an official route documented
+for the stated scope, `partial` for narrower coverage and `unverified` for
+unconfirmed historical leads. An entry with no status is unassessed. Identify
+evidence items as required, recommended or to be retained using official
+wording as the basis. Record the specific confirmed stage for every public
+case. Record a supplement, a status check, a complaint about staff conduct and
+a challenge to an agency decision as distinct follow-up paths. An empty
+section means unverified.
