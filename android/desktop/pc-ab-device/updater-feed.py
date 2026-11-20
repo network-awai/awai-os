@@ -99,7 +99,10 @@ def make_index(package, url, expected_sha256, device, release_type, version, sou
         or PLACEHOLDER.search(url) or package.suffix != ".zip"):
         raise ValueError("package URL must name the exact OTA ZIP and contain no placeholders")
     with package.open("rb") as file:
-        digest = hashlib.file_digest(file, "sha256").hexdigest()
+        hash_state = hashlib.sha256()
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            hash_state.update(chunk)
+        digest = hash_state.hexdigest()
         if digest != expected_sha256:
             raise ValueError("OTA ZIP digest differs from the signing record")
         file.seek(0, 2)
