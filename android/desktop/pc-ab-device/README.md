@@ -145,6 +145,21 @@ A picture needs the AMD driver with its firmware (`amdgpu/yellow_carp_*.bin`, 12
 linux-firmware 20261019) and the Mesa `radeonsi` stack, which KVM cannot validate. The Realtek NIC and
 the firmware's boot path are also only testable on the machine.
 
+## OTA rejection on the shared NVMe disk (2026-11-20)
+
+Build `awai-byname-v8-rollback-policy` omitted `ro.ota.allow_downgrade` from all eight
+`build.prop` files in target-files and from the running guest. Each case used a separate shared
+NVMe install under QEMU/KVM with the headless SwiftShader entry and an `e1000e` NIC.
+
+| OTA package | Update engine result |
+| --- | --- |
+| v7 full OTA, signed with the device's test key | `kPayloadTimestampError (51)` |
+| v8 full OTA, signed with a separate test key | `kDownloadPayloadPubKeyVerificationError (18)` |
+
+Both guests rebooted into v8 on slot `_a` with `sys.boot_completed=1`. After shutdown, all three
+protected partitions matched the SHA-256 hashes recorded at installation.
+[Evidence and artifact digests](evidence/ota-rejection-kvm-20261120.json).
+
 ## Known gaps
 
 - `init.virtio.rc` still creates `by-name` links to `vda1`, `vda7` and so on. On NVMe they point nowhere
@@ -153,5 +168,3 @@ the firmware's boot path are also only testable on the machine.
 - OVMF skipped the first ESP, which had no loader, and started GRUB from `awai_esp`. Real firmware may
   need a boot entry, or the PXE route may have to chain-load it.
 - No picture without a virtio GPU (headless only), no firmware files in the image, and no release keys.
-- The recorded 2026-11-19 userdebug artifacts predate the vendor patch. The rebuilt image and
-  the wrong-key and older-payload rejection cases still need Awai PC NVMe guest evidence.
