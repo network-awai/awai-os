@@ -105,6 +105,9 @@ public final class Catalog {
         if (REGISTRY_ASSOC.equals(id)) return "packages/registry-assoc.apk";
         if ("network.itonami.yotei".equals(id)) return "packages/yotei.apk";
         if ("network.itonami.app".equals(id)) return "packages/itonami.apk";
+        if ("network.itonami.shakai".equals(id)) return "packages/shakai.apk";
+        if ("network.itonami.kaisha".equals(id)) return "packages/kaisha.apk";
+        if ("network.itonami.kaikei".equals(id)) return "packages/kaikei.apk";
         if ("network.itonami.torihiki".equals(id)) return "packages/torihiki.apk";
         if ("network.itonami.torihiki.bot".equals(id)) return "packages/torihiki-bot.apk";
         if ("network.itonami.tabimikake".equals(id)) return "packages/tabi-mikake.apk";
@@ -121,6 +124,9 @@ public final class Catalog {
         if (REGISTRY_ASSOC.equals(id)) return "online-registry-assoc.apk";
         if ("network.itonami.yotei".equals(id)) return "online-yotei.apk";
         if ("network.itonami.app".equals(id)) return "online-itonami.apk";
+        if ("network.itonami.shakai".equals(id)) return "online-shakai.apk";
+        if ("network.itonami.kaisha".equals(id)) return "online-kaisha.apk";
+        if ("network.itonami.kaikei".equals(id)) return "online-kaikei.apk";
         if ("network.itonami.torihiki".equals(id)) return "online-torihiki.apk";
         if ("network.itonami.torihiki.bot".equals(id)) return "online-torihiki-bot.apk";
         if ("network.itonami.tabimikake".equals(id)) return "online-tabi-mikake.apk";
@@ -139,6 +145,8 @@ public final class Catalog {
         // Standalone Tauri Yotei includes both arm64 and x86_64 (about 35 MiB).
         if ("network.itonami.yotei".equals(id)) return 40 * 1024 * 1024;
         if ("network.itonami.app".equals(id)) return 64 * 1024 * 1024;
+        if ("network.itonami.shakai".equals(id) || "network.itonami.kaisha".equals(id)
+                || "network.itonami.kaikei".equals(id)) return 64 * 1024 * 1024;
         if ("network.itonami.torihiki".equals(id)) return 20 * 1024 * 1024;
         // Tauri v3 APK (network-awai/app-itonami-torihiki app/), about 29.5 MB at 0.1.0.
         if ("network.itonami.torihiki.bot".equals(id)) return 40 * 1024 * 1024;

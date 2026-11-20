@@ -57,6 +57,12 @@ public final class StoreInstrumentation extends Instrumentation {
         duplicate.getJSONArray("apps").put(new JSONObject(apps.getJSONObject(0).toString()));
         refuses(()->verifySigned(duplicate,pair),"duplicate package refuses");
         refuses(()->Catalog.onlineFileFor("network.itonami.client.preview"),"preview has no online artifact path");
+        for(String name:new String[]{"shakai","kaisha","kaikei"}) {
+            String id="network.itonami."+name;
+            check(Catalog.assetFor(id).equals("packages/"+name+".apk"),name+" asset mapping");
+            check(Catalog.onlineFileFor(id).equals("online-"+name+".apk"),name+" online mapping");
+            check(Catalog.maxApkBytes(id)==64*1024*1024,name+" size bound");
+        }
         byte[] changed=raw.clone();changed[0]^=1;check(!Integrity.authentic(changed,sig,key),"changed metadata refuses");
         refuses(()->catalog.app("network.awai.notallowed"),"unknown app refuses");
         long expires=catalog.app("network.itonami.yotei").getLong("versionCode");
