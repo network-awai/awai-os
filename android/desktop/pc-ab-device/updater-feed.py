@@ -6,8 +6,10 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import shutil
 import struct
 import subprocess
+import tempfile
 from urllib.parse import urlsplit
 from xml.sax.saxutils import escape
 from zipfile import BadZipFile, ZIP_STORED, ZipFile
@@ -50,10 +52,76 @@ def configure(checkout, url):
         path.write_text(content[:match.start(2)] + replacement + content[match.end(2):], encoding="utf-8")
 
 
-def verify_apk(apk, url, aapt2):
+def apk_resources(apk, aapt2):
     result = subprocess.run([aapt2, "dump", "resources", str(apk)], capture_output=True, text=True, check=True)
-    if APK_DEFAULT.findall(result.stdout) != [url]:
+    return result.stdout
+
+
+def verify_apk(apk, url, aapt2):
+    if APK_DEFAULT.findall(apk_resources(apk, aapt2)) != [url]:
         raise ValueError("built Updater default feed does not match the configured release URL")
+
+
+def verified_sha256(file, expected):
+    digest = hashlib.sha256()
+    for chunk in iter(lambda: file.read(1024 * 1024), b""):
+        digest.update(chunk)
+    if digest.hexdigest() != expected:
+        raise ValueError("ZIP digest differs from the signing record")
+
+
+def properties(text):
+    return dict(line.split("=", 1) for line in text.splitlines() if "=" in line)
+
+
+def verify_target_files(package, expected_sha256, url, device, aapt2):
+    with package.open("rb") as file:
+        verified_sha256(file, expected_sha256)
+        with ZipFile(file) as archive, tempfile.TemporaryDirectory() as stage:
+            def read_text(name):
+                return archive.read(name).decode("utf-8")
+
+            metadata = properties(read_text("META/misc_info.txt"))
+            if metadata.get("ab_update") != "true" or "META/ab_partitions.txt" not in archive.namelist():
+                raise ValueError("target-files are missing PC A/B metadata")
+            partitions = set(read_text("META/ab_partitions.txt").split())
+            if not {"boot", "vendor_boot"} <= partitions:
+                raise ValueError("target-files lack the PC A/B partition set")
+            if {"efi", "bios", "esp", "awai_esp"} & {name.lower() for name in partitions}:
+                raise ValueError("target-files include a protected boot partition in A/B updates")
+
+            props = [properties(read_text(name)) for name in archive.namelist()
+                     if name.endswith("/build.prop") and name.split("/", 1)[0] in
+                     {"SYSTEM", "SYSTEM_EXT", "PRODUCT", "VENDOR", "ODM", "SYSTEM_DLKM", "VENDOR_DLKM", "ODM_DLKM"}]
+            def values(key):
+                return {p[key] for p in props if p.get(key)}
+
+            if values("ro.lineage.device") != {device} or values("ro.build.ab_update") != {"true"}:
+                raise ValueError("built device or A/B identity does not match the release target")
+            if values("ro.build.tags") != {"release-keys"}:
+                raise ValueError("built properties do not identify release keys")
+            if any(values(key) - {"false", "0"} for key in
+                   ("ro.ota.allow_downgrade", "lineage.updater.allow_downgrading")):
+                raise ValueError("built properties enable OTA downgrade")
+            if values("lineage.updater.uri") - {url}:
+                raise ValueError("built properties override the selected release feed")
+
+            apk_paths = {}
+            for name in ("Updater", "LineageSetupWizard"):
+                members = [entry for entry in archive.infolist() if entry.filename.endswith(f"/{name}.apk")]
+                if len(members) != 1:
+                    raise ValueError(f"expected one built {name}.apk")
+                destination = Path(stage) / f"{name}.apk"
+                with archive.open(members[0]) as content, destination.open("wb") as output:
+                    shutil.copyfileobj(content, output)
+                apk_paths[name] = destination
+
+            verify_apk(apk_paths["Updater"], url, aapt2)
+            if not re.search(r"\bresource \S+ layout/awai_welcome_activity\b",
+                             apk_resources(apk_paths["LineageSetupWizard"], aapt2)):
+                raise ValueError("built SetupWizard does not include Awai Welcome")
+    return {"targetFilesSha256": expected_sha256, "device": device,
+            "feed": url, "abPartitions": sorted(partitions), "welcome": True}
 
 
 def zip_data_range(file, entry):
@@ -99,12 +167,7 @@ def make_index(package, url, expected_sha256, device, release_type, version, sou
         or PLACEHOLDER.search(url) or package.suffix != ".zip"):
         raise ValueError("package URL must name the exact OTA ZIP and contain no placeholders")
     with package.open("rb") as file:
-        hash_state = hashlib.sha256()
-        for chunk in iter(lambda: file.read(1024 * 1024), b""):
-            hash_state.update(chunk)
-        digest = hash_state.hexdigest()
-        if digest != expected_sha256:
-            raise ValueError("OTA ZIP digest differs from the signing record")
+        verified_sha256(file, expected_sha256)
         file.seek(0, 2)
         size = file.tell()
         with ZipFile(file) as ota:
@@ -114,7 +177,7 @@ def make_index(package, url, expected_sha256, device, release_type, version, sou
             raw = ota.read(metadata_file).decode("utf-8")
             ota.getinfo("payload.bin")
             ota.getinfo("payload_properties.txt")
-            metadata = dict(line.split("=", 1) for line in raw.splitlines() if "=" in line)
+            metadata = properties(raw)
             if metadata.get("ota-property-files"):
                 validate_stream_ranges(file, ota, metadata["ota-property-files"], size)
     if metadata.get("ota-type") != "AB" or device not in metadata.get("pre-device", "").split("|"):
@@ -125,7 +188,7 @@ def make_index(package, url, expected_sha256, device, release_type, version, sou
     timestamp = int(metadata.get("post-timestamp", "0"))
     if timestamp <= 0:
         raise ValueError("OTA metadata has no valid target timestamp")
-    artifact = {"filename": package.name, "sha256": digest, "size": size, "url": url}
+    artifact = {"filename": package.name, "sha256": expected_sha256, "size": size, "url": url}
     for metadata_key, key, convert in (
         ("post-security-patch-level", "os_patch_level", str),
         ("post-sdk-level", "os_sdk_level", int),
@@ -146,6 +209,12 @@ def main():
     apk.add_argument("apk", type=Path)
     apk.add_argument("feed", type=feed_url)
     apk.add_argument("--aapt2", default="aapt2")
+    target = subcommands.add_parser("verify-target-files")
+    target.add_argument("target_files", type=Path)
+    target.add_argument("feed", type=feed_url)
+    target.add_argument("--sha256", required=True, help="SHA-256 from the trusted signing record")
+    target.add_argument("--device", required=True)
+    target.add_argument("--aapt2", default="aapt2")
     index = subcommands.add_parser("make-index")
     index.add_argument("ota_zip", type=Path)
     index.add_argument("artifact_url", type=feed_url)
@@ -160,6 +229,10 @@ def main():
             configure(args.checkout, args.feed)
         elif args.command == "verify-apk":
             verify_apk(args.apk, args.feed, args.aapt2)
+        elif args.command == "verify-target-files":
+            print(json.dumps(verify_target_files(
+                args.target_files, args.sha256, args.feed, args.device, args.aapt2,
+            ), indent=2))
         else:
             print(json.dumps(make_index(
                 args.ota_zip, args.artifact_url, args.sha256, args.device,

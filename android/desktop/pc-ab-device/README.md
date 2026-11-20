@@ -75,16 +75,19 @@ python3 android/desktop/pc-ab-device/updater-feed.py configure \
 git -C "$ANDROID_BUILD_TOP/packages/apps/Updater" diff --check
 ```
 
-Extract Updater.apk from the final signed target-files and run the release check
-with the Android SDK build-tools `aapt2` on PATH:
+Check the final signed A/B target-files against the SHA-256 from the signing
+record. Use Android SDK build-tools `aapt2` on PATH:
 
 ```sh
-unzip -p "$SIGNED_TARGET_FILES" SYSTEM/system_ext/priv-app/Updater/Updater.apk > "$UPDATER_APK"
-python3 android/desktop/pc-ab-device/updater-feed.py verify-apk "$UPDATER_APK" "$AWAI_OTA_FEED"
+python3 android/desktop/pc-ab-device/updater-feed.py verify-target-files \
+    "$SIGNED_TARGET_FILES" "$AWAI_OTA_FEED" \
+    --sha256 "$SIGNED_TARGET_FILES_SHA256" --device virtio_x86_64
 ```
 
-Confirm the installed build has no different `lineage.updater.uri` override and
-that an actual update check contacts the expected feed. Create the feed JSON
+This check reads the actual APK resources, A/B partition set and build
+properties for the selected device. Verify the Android signing certificates
+as part of the signing workflow. Confirm the installed build contacts the
+expected feed. Create the feed JSON
 from an already signed A/B OTA ZIP and its SHA-256 from the signing record:
 
 ```sh

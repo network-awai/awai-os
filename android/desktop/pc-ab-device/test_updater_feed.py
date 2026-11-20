@@ -19,6 +19,39 @@ UPSTREAM = "https://download.lineageos.org/api/v2/devices/{device}/builds"
 
 
 class UpdaterFeedTest(unittest.TestCase):
+    def test_release_target_files_need_apps_and_safe_ab_properties(self):
+        test_cases = (
+            ("boot\nvendor_boot\nsystem\n", "", True, None),
+            ("boot\nvendor_boot\nsystem\nEFI\n", "", True, "protected boot"),
+            ("boot\nvendor_boot\nsystem\n", "ro.ota.allow_downgrade=true\n", True, "downgrade"),
+            ("boot\nvendor_boot\nsystem\n", f"lineage.updater.uri={UPSTREAM}\n", True, "override"),
+            ("boot\nvendor_boot\nsystem\n", "", False, "Awai Welcome"),
+        )
+        with TemporaryDirectory() as directory:
+            package = Path(directory) / "target-files.zip"
+            for partitions, extra, welcome, error in test_cases:
+                with self.subTest(error=error):
+                    with ZipFile(package, "w") as archive:
+                        archive.writestr("META/misc_info.txt", "ab_update=true\n")
+                        archive.writestr("META/ab_partitions.txt", partitions)
+                        archive.writestr("SYSTEM/build.prop", "ro.build.tags=release-keys\n")
+                        archive.writestr("PRODUCT/etc/build.prop", "ro.lineage.device=virtio_x86_64\n" + extra)
+                        archive.writestr("VENDOR/build.prop", "ro.build.ab_update=true\n")
+                        archive.writestr("SYSTEM_EXT/priv-app/Updater/Updater.apk", b"updater")
+                        archive.writestr("SYSTEM_EXT/priv-app/LineageSetupWizard/LineageSetupWizard.apk", b"welcome")
+                    def resources(apk, _aapt):
+                        if apk.read_bytes() == b"updater":
+                            return f'  resource 0x7f12045b string/updater_server_url\n    () "{FEED}"\n'
+                        return "  resource 0x7f12045b layout/awai_welcome_activity\n" if welcome else ""
+                    digest = sha256(package.read_bytes()).hexdigest()
+                    args = (package, digest, FEED, "virtio_x86_64", "aapt2")
+                    with patch.object(updater, "apk_resources", side_effect=resources):
+                        if error:
+                            with self.assertRaisesRegex(ValueError, error):
+                                updater.verify_target_files(*args)
+                        else:
+                            self.assertEqual(updater.verify_target_files(*args)["targetFilesSha256"], digest)
+
     def test_configuration_is_literal_and_idempotent(self):
         with TemporaryDirectory() as directory:
             checkout = Path(directory)
