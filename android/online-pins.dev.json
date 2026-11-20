@@ -1,40 +1,45 @@
 {
-  "revision": "0a0a226370acc278b09eb4d94d59794faa5d6960",
+  "revision": "ed429b406cbecc048f3cb41a9f31a1fb4a4a636d",
   "catalog": {
-    "url": "https://raw.githubusercontent.com/network-awai/awai-os/0a0a226370acc278b09eb4d94d59794faa5d6960/store/distribution/dev-20261119-r105/catalog-envelope.json",
-    "sha256": "75369721ee625e929e1656f859ee066605d42ceed1521772f670c6259ffbbbb9",
-    "maxBytes": 4883
+    "url": "https://raw.githubusercontent.com/network-awai/awai-os/ed429b406cbecc048f3cb41a9f31a1fb4a4a636d/store/distribution/dev-20261120-r107/catalog-envelope.json",
+    "sha256": "adaf0c2819d2bbe9fd7be940a1e4c0cd55cc3e3cf62dba6b93c83c3369cef8ae",
+    "maxBytes": 5481
   },
   "apks": {
     "network.itonami.yotei": {
-      "url": "https://raw.githubusercontent.com/network-awai/awai-os/0a0a226370acc278b09eb4d94d59794faa5d6960/store/distribution/dev-20261116/yotei.apk",
-      "sha256": "0f5b2d0abac6b7b20689bc2cd5d446678bb1e9ef4ab81266f8dd375ec8f81eec",
-      "maxBytes": 1621048
+      "url": "https://raw.githubusercontent.com/network-awai/awai-os/ed429b406cbecc048f3cb41a9f31a1fb4a4a636d/store/distribution/dev-20261120-r106/yotei.apk",
+      "sha256": "ada3c897ce6e9910da114a0b20933ffe72c52416c9af2c5b3692d1e7069e37bf",
+      "maxBytes": 36155042
     },
     "network.itonami.app": {
-      "url": "https://raw.githubusercontent.com/network-awai/awai-os/0a0a226370acc278b09eb4d94d59794faa5d6960/store/distribution/dev-20261116/itonami.apk",
-      "sha256": "09e92086e6b5edde9c91804a4fc30b6c980299cd64d4924a2f1c65e74e9da5cb",
-      "maxBytes": 32644749
+      "url": "https://raw.githubusercontent.com/network-awai/awai-os/ed429b406cbecc048f3cb41a9f31a1fb4a4a636d/store/distribution/dev-20261120-r106/itonami.apk",
+      "sha256": "b1a5f7f73a0bc37dfdf924e92889136670feac1772ce02e8ddc4b76e87771dab",
+      "maxBytes": 55456456
     },
     "network.itonami.torihiki.bot": {
-      "url": "https://raw.githubusercontent.com/network-awai/awai-os/0a0a226370acc278b09eb4d94d59794faa5d6960/store/distribution/dev-20261118/torihiki-bot.apk",
+      "url": "https://raw.githubusercontent.com/network-awai/awai-os/ed429b406cbecc048f3cb41a9f31a1fb4a4a636d/store/distribution/dev-20261118/torihiki-bot.apk",
       "sha256": "797013c7abbd395eb09a75551838018a90211864b7012d0d7ccba1326556f99c",
       "maxBytes": 29506324
     },
     "network.itonami.torihiki": {
-      "url": "https://raw.githubusercontent.com/network-awai/awai-os/0a0a226370acc278b09eb4d94d59794faa5d6960/store/distribution/dev-20261118-r103/torihiki.apk",
+      "url": "https://raw.githubusercontent.com/network-awai/awai-os/ed429b406cbecc048f3cb41a9f31a1fb4a4a636d/store/distribution/dev-20261118-r103/torihiki.apk",
       "sha256": "0717795a3c05934d70a7791edaa2848d8264210ba1af6e2b2d01f0429a7cf86f",
       "maxBytes": 4206342
     },
     "network.itonami.deai": {
-      "url": "https://raw.githubusercontent.com/network-awai/awai-os/0a0a226370acc278b09eb4d94d59794faa5d6960/store/distribution/dev-20261118-r104/deai.apk",
+      "url": "https://raw.githubusercontent.com/network-awai/awai-os/ed429b406cbecc048f3cb41a9f31a1fb4a4a636d/store/distribution/dev-20261118-r104/deai.apk",
       "sha256": "c34527953fe95ddfe1c43c061b39be9b15db9a653116146942d4ed07cb50cffe",
       "maxBytes": 20782497
     },
     "network.itonami.registry.assoc": {
-      "url": "https://raw.githubusercontent.com/network-awai/awai-os/0a0a226370acc278b09eb4d94d59794faa5d6960/store/distribution/dev-20261119-r105/registry-assoc.apk",
+      "url": "https://raw.githubusercontent.com/network-awai/awai-os/ed429b406cbecc048f3cb41a9f31a1fb4a4a636d/store/distribution/dev-20261119-r105/registry-assoc.apk",
       "sha256": "c731003027201adc5cd5b5c0da9972f9541cfae3785d48258069586bb69239f8",
       "maxBytes": 16288100
+    },
+    "network.itonami.hiring": {
+      "url": "https://raw.githubusercontent.com/network-awai/awai-os/ed429b406cbecc048f3cb41a9f31a1fb4a4a636d/store/distribution/dev-20261120-r107/hiring.apk",
+      "sha256": "2003428177fedbf812a45ece64f3062e42bd5051a1c944e84126aeef28c0e5d4",
+      "maxBytes": 33722306
     }
   }
 }
