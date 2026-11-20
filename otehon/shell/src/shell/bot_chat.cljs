@@ -1,5 +1,5 @@
 (ns shell.bot-chat
- (:require ["react" :refer [useState useEffect useRef]] [shell.ui-copy :as ui] [shell.screen-tools :as screen]
+ (:require ["react" :refer [useState useEffect useLayoutEffect useRef]] [shell.ui-copy :as ui] [shell.screen-tools :as screen]
   ["../screen-tools.js" :refer [screenTool]]
   ["../agent-ui-state.js" :refer [readAgentSelection chooseAgent]]
   ["../bot-chat.js" :refer [CHAT_ORIGIN CHAT_MODEL chatRequest sendChat readChat agentSessions recordChatImage]]
@@ -86,12 +86,56 @@
    (when (seq heard-text) [:p {:data-voice-transcript true :role "status"} heard-text])
    (when remaining-text [:p (tr :voiceRemainingText)])]))
 
+(defn- message-copy [text locale]
+ (let [[status set-status] (useState nil)
+       copy (fn []
+              (set-status nil)
+              (if-let [clipboard (.-clipboard js/navigator)]
+                (-> (.writeText clipboard text)
+                    (.then #(set-status :chatCopied))
+                    (.catch #(set-status :chatCopyUnavailable)))
+                (set-status :chatCopyUnavailable)))]
+  [:div.chat-message-actions
+   [:button.secondary {:type "button" :on-click copy} (ui/t locale :chatCopy)]
+   [:span {:role "status"} (when status (ui/t locale status))]]))
+
+(defn- at-latest? [node]
+ (<= (- (.-scrollHeight node) (.-clientHeight node) (.-scrollTop node)) 32))
+
 (defn panel [bot & [locale draft-id]]
  (let [tr (fn [key & [parameters]] (ui/t locale key parameters))
        [messages set-messages] (useState []) [text set-text] (useState "") [busy set-busy] (useState false)
-       history-node (useRef nil)
-       _ (useEffect (fn [] (when (.-current history-node) (set! (.-scrollTop (.-current history-node)) (.-scrollHeight (.-current history-node)))) js/undefined) #js [(:id (last messages))])
+       history-node (useRef nil) history-anchor (useRef nil) follow-history (useRef true)
+       [at-latest set-at-latest] (useState true)
+       _ (useLayoutEffect
+          (fn []
+           (if-let [node (.-current history-node)]
+            (do
+             (if-let [old (.-current history-anchor)]
+             (do (set! (.-current history-anchor) nil)
+                 (when (identical? node (:node old))
+                  (set! (.-scrollTop node) (+ (:top old) (- (.-scrollHeight node) (:height old))))))
+             (when (.-current follow-history)
+              (set! (.-scrollTop node) (.-scrollHeight node))))
+            (let [latest (at-latest? node)]
+             (set! (.-current follow-history) latest)
+             (set-at-latest latest)))
+            (do (set! (.-current follow-history) true)
+                (set-at-latest true)))
+           js/undefined)
+          #js [messages])
+       track-history (fn [event]
+                       (let [latest (at-latest? (.-currentTarget event))]
+                        (set! (.-current follow-history) latest)
+                        (set-at-latest latest)))
+       jump-latest (fn []
+                     (when-let [node (.-current history-node)]
+                      (.focus node)
+                      (set! (.-scrollTop node) (.-scrollHeight node))
+                      (set! (.-current follow-history) true)
+                      (set-at-latest true)))
        [mode set-mode] (useState "text") [pending set-pending] (useState nil)
+       [last-reply set-last-reply] (useState nil)
        [created set-created] (useState (not draft-id))
        _ (useEffect (fn [] (let [guard (fn [event] (when (or busy pending) (.preventDefault event)))]
         (.addEventListener js/window "awai-request-new-conversation" guard)
@@ -105,6 +149,10 @@
         (set-busy true) (set-message nil)
         (-> (readChat (:id bot) before js/undefined id)
          (.then (fn [result] (let [rows (js->clj (.-messages result) :keywordize-keys true)]
+          (if before
+           (when-let [node (.-current history-node)]
+            (set! (.-current history-anchor) {:node node :top (.-scrollTop node) :height (.-scrollHeight node)}))
+           (do (set! (.-current follow-history) true) (set-last-reply nil)))
           (set-messages (if before (vec (concat rows messages)) rows)) (set-session-id id) (chooseAgent (:id bot) id) (set-session-info (js->clj (.-session result) :keywordize-keys true))
           (set-created true) (set-pending nil) (set-cursor (.-nextCursor result)) (set-store (.-store result)))))
          (.catch failure) (.finally #(set-busy false))))
@@ -125,6 +173,7 @@
         (-> (recordChatImage (:request item))
          (.then (fn [r] (set-messages (conj messages {:id (.-requestId r) :role "user" :text (:prompt item)}
           (assoc (js->clj (.-message r) :keywordize-keys true) :local-result (:result item))))
+          (set-last-reply (.. r -message -id))
           (set-pending nil) (set-message nil) (set-store (.-store r)) (set-text "")))))
        device-action (fn [action clear-draft?]
         (set-busy true)
@@ -149,11 +198,17 @@
                (set-pending item) (record-image item)))))
             (let [value text]
              (-> (sendChat (chatRequest (clj->js bot) value (.randomUUID js/crypto) session-id))
-              (.then (fn [r] (set-messages (conj messages {:id (.-requestId r) :role "user" :text value}
-               {:id (str (.-requestId r) ":reply") :role "assistant" :text (.-text r) :runId (.-runId r) :model (.-model r)}))
+              (.then (fn [r]
+               (let [reply-id (str (.-requestId r) ":reply")]
+                (set-messages (conj messages {:id (.-requestId r) :role "user" :text value}
+                 {:id reply-id :role "assistant" :text (.-text r) :runId (.-runId r) :model (.-model r)}))
+                (set-last-reply reply-id))
                (set-store (.-store r)) (set-text ""))))))))
           (.catch failure) (.finally #(set-busy false)))))))]
   [:section.bot-conversation {:aria-label (tr :conversation) :data-agent-session session-id}
+   [:header.bot-conversation-header
+    [:strong (:name bot)]
+    (when store [:span.bot-chat-saved {:title "Itonami Agent · AwaiFS · Kotobase"} (tr :chatSaved)])]
    [:div.agent-session-toolbar
     [:button.secondary {:type "button" :disabled (or busy (some? pending)) :on-click list-sessions} (tr :conversationSessions)]
     [:button.secondary {:type "button" :disabled (or busy (some? pending)) :on-click new-session} (tr :newConversation)]
@@ -164,17 +219,29 @@
       (when-not (some #(= session-id (:sessionId %)) sessions) [:option {:value session-id} (tr :defaultConversation)])
       (for [s sessions] ^{:key (:sessionId s)} [:option {:value (:sessionId s)} (str (if (empty? (:title s)) (tr :newConversation) (:title s)) " · " (ui/stamp locale (:updatedAt s)))])]])
    (when (contains? #{"peer" "circle-work"} (:kind session-info)) [:article.agent-peer-cycle [:strong (tr :peerDialogue)] [:h4 (:goal session-info)] [:span (if (= "circle-work" (:kind session-info)) (tr :proposalCount {:count (:completedTurns session-info)}) (tr :peerProgress {:done (:completedTurns session-info) :total (:maxTurns session-info)}))]])
+   [:details.chat-connection [:summary (tr :chatDetails)]
+    [:div.chat-connection-body
+     [:p (tr :chatModelInfo {:model CHAT_MODEL})] [:p CHAT_ORIGIN]
+     [:p (tr :chatDataInfo)] [:p (tr :chatStoreInfo)] [:dl [:dt (tr :conversationSessions)] [:dd session-id]]]]
    (when cursor [:button.secondary {:type "button" :disabled busy :on-click #(history session-id cursor)} (tr :chatEarlier)])
-   (when store [:span.bot-chat-saved {:title "Itonami Agent · AwaiFS · Kotobase"} (tr :chatSaved)])
-   [:details [:summary (tr :chatDetails)] [:p (tr :chatModelInfo {:model CHAT_MODEL})] [:p CHAT_ORIGIN]
-    [:p (tr :chatDataInfo)] [:p (tr :chatStoreInfo)] [:dl [:dt (tr :conversationSessions)] [:dd session-id]]]
-   [:ol.bot-conversation-history {:aria-label (tr :chatLoadHistory) :ref history-node :style (when (some #(= "local-image" (:kind %)) messages) {:max-height "56dvh"})}
-    (for [m messages] ^{:key (:id m)} [:li {:data-chat-role (:role m)}
-      [:strong (or (:speakerName m) (if (= "user" (:role m)) (tr :chatYou) (:name bot)))]
-      (if (and (= "user" (:role m)) (or (:peer m) (:work m))) [:details [:summary (tr :peerReceived)] [:p (:text m)]] [:p (:text m)])
-      (when (:localOnly m) [:p {:role "status"} "端末内のみ・Agent の会話には未記録です。履歴の再取得では表示されません。"] )
-      (when (= "local-image" (:kind m)) [:f> image-card (:image m) {:botId (:id bot) :sessionId session-id}
-       (or (:text (first (filter #(= (:id %) (:parentId m)) messages))) "会話で生成した画像") (:local-result m)])])]
+   (if (empty? messages)
+    [:p.chat-empty (tr (if (or (not created) store) :chatEmptyDraft :chatEmpty))]
+    [:ol.bot-conversation-history {:aria-label (tr :chatTranscript) :ref history-node :tab-index 0 :on-scroll track-history
+                                    :style (when (some #(= "local-image" (:kind %)) messages) {:max-height "56dvh"})}
+     (for [m messages :let [received? (and (= "user" (:role m)) (or (:peer m) (:work m)))]]
+      ^{:key (:id m)} [:li {:data-chat-role (:role m) :data-chat-new (when (= (:id m) last-reply) "true")}
+       [:strong (or (:speakerName m) (if (= "user" (:role m)) (tr :chatYou) (:name bot)))]
+       (if received?
+        [:details [:summary (tr :peerReceived)] [:p.chat-message-text (:text m)]
+         (when (seq (:text m)) [:f> message-copy (:text m) locale])]
+        (when (seq (:text m))
+         [:<> [:p.chat-message-text (:text m)] [:f> message-copy (:text m) locale]]))
+       (when (:localOnly m) [:p {:role "status"} "端末内のみ・Agent の会話には未記録です。履歴の再取得では表示されません。"])
+       (when (= "local-image" (:kind m)) [:f> image-card (:image m) {:botId (:id bot) :sessionId session-id}
+        (or (:text (first (filter #(= (:id %) (:parentId m)) messages))) "会話で生成した画像") (:local-result m)])])])
+   (when-not at-latest
+    [:button.secondary.chat-latest {:type "button" :on-click jump-latest} (tr :chatLatest)])
+   (when busy [:p.chat-waiting {:role "status"} (tr :chatBusy)])
    (when pending [:article {:data-image-record-pending true}
     [:p {:role "status"} "画像は端末内に生成済みです。会話への記録は未確認です。"]
     [:f> image-card (js->clj (.-image (:request pending)) :keywordize-keys true) {:botId (:id bot) :sessionId session-id} (:prompt pending) (:result pending)]
@@ -194,9 +261,21 @@
      (tr :screenBotProposal {:action (tr label)})])
    (when screen-state [:p {:role "status"} (tr screen-state)])
    (when message [:p.problem {:role "status"} (tr message)])
-   (when-not (contains? #{"peer" "circle-work"} (:kind session-info)) [:form {:on-submit send}
-    [:div.agent-session-toolbar
-     [:button.secondary {:type "button" :disabled (or busy (some? pending)) :aria-pressed (= mode "text") :on-click #(set-mode "text")} "会話"]
-     [:button.secondary {:type "button" :disabled (or busy (some? pending) (not (androidInferenceAvailable)) (= session-id "default")) :aria-pressed (= mode "image") :on-click #(set-mode "image")} "画像生成"]]
-    [:label.soshiki-field [:span (if (= mode "image") "作りたい画像" (tr :chatMessage))] [:textarea {:aria-label (tr :chatMessage) :value text :max-length 8192 :rows 3 :disabled (or busy (some? pending)) :on-change #(set-text (.. % -target -value))}]]
-    [:button.secondary {:type "submit" :disabled (or busy (some? pending) (empty? (.trim text)))} (if busy (tr :chatBusy) (if (= mode "image") "画像を生成" (tr :chatSend)))]])]))
+   (when-not (contains? #{"peer" "circle-work"} (:kind session-info))
+    [:form.chat-composer {:on-submit send}
+     [:div.agent-session-toolbar
+      [:button.secondary {:type "button" :disabled (or busy (some? pending)) :aria-pressed (= mode "text") :on-click #(set-mode "text")} (tr :chatTextMode)]
+      [:button.secondary {:type "button" :disabled (or busy (some? pending) (not (androidInferenceAvailable)) (= session-id "default")) :aria-pressed (= mode "image") :on-click #(set-mode "image")} (tr :chatImageMode)]]
+     (let [label (tr (if (= mode "image") :chatImagePrompt :chatMessage))]
+      [:label.soshiki-field [:span.sr-only label]
+       [:textarea {:placeholder label :value text :max-length 8192 :rows 2
+                   :read-only (or busy (some? pending))
+                   :on-change #(set-text (.. % -target -value))
+                   :on-key-down (fn [event]
+                                 (when (and (= "Enter" (.-key event))
+                                            (or (.-ctrlKey event) (.-metaKey event))
+                                            (not (.-isComposing (.-nativeEvent event))))
+                                  (send event)))}]])
+     [:div.chat-composer-actions
+      [:button.primary {:type "submit" :disabled (or busy (some? pending) (empty? (.trim text)))}
+       (tr (if (= mode "image") :chatImageSend :chatSend))]]])]))

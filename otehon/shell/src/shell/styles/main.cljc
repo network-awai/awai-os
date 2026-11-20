@@ -4,7 +4,7 @@
   font stacks, functions like min() and var()) are plain strings; simple
   selectors and single identifiers are keywords."
   (:require [garden.core :as garden]
-            [garden.stylesheet :refer [at-media]]))
+            [garden.stylesheet :refer [at-keyframes at-media]]))
 
 (def styles
   [[":root"
@@ -361,10 +361,54 @@
    [:.agent-workspace-conversation {:min-width 0 :padding "14px" :border "1px solid var(--border-strong)" :border-radius "14px" :background "var(--surface)"}]
    (at-media {:max-width "700px"} [:.agent-workspace {:grid-template-columns "minmax(0,1fr)"}] [:.agent-picker-list {:max-height "32dvh"}])
    [:.bot-conversation {:display "flex" :flex-direction "column" :gap "12px" :min-width 0}]
-   [:.bot-conversation-history {:display "grid" :gap "8px" :list-style "none" :padding 0 :margin 0 :max-height "32dvh" :overflow-y "auto" :overscroll-behavior "contain"}]
-   [".bot-conversation-history li" {:padding "10px" :border-radius "10px" :background "var(--surface-raised)" :overflow-wrap "anywhere"}]
-   [".bot-conversation-history [data-chat-role=user]" {:background "var(--surface-selected)"}]
-   [".bot-conversation textarea" {:width "100%" :min-height "96px" :max-height "180px" :resize "vertical" :font "inherit" :padding "10px" :border-radius "10px" :background "var(--surface-raised)" :color "var(--fg)" :border "1px solid var(--border-strong)"}]
+   [:.bot-conversation-header {:display "flex" :justify-content "space-between" :align-items "baseline"
+                               :flex-wrap "wrap" :gap "8px" :overflow-wrap "anywhere"}]
+   [".bot-conversation-header > strong" {:font-size "1.2rem"}]
+   [".bot-conversation > .agent-session-toolbar" ".chat-composer > .agent-session-toolbar" {:margin-bottom 0}]
+   [:.chat-connection {:border "1px solid var(--border-strong)" :border-radius "12px" :padding-inline "12px"}]
+   [".chat-connection > summary" {:cursor "pointer" :padding-block "12px" :min-height "44px"}]
+   [:.chat-connection-body {:padding-bottom "8px" :overflow-wrap "anywhere"}]
+   [:.chat-empty :.chat-waiting {:margin 0 :padding "12px" :color "var(--secondary-text)"
+                                :background "var(--surface-raised)" :border-radius "12px"}]
+   [:.bot-conversation-history {:display "flex" :flex-direction "column" :gap "8px" :list-style "none"
+                                :padding "4px" :margin 0 :max-height "42dvh" :overflow-y "auto"
+                                :overscroll-behavior "contain" :overflow-anchor "none"}]
+   [".bot-conversation-history > li" {:align-self "start" :max-inline-size "min(100%, 68ch)"
+                                      :padding "10px 12px" :border-radius "12px"
+                                      :background "var(--surface-raised)" :overflow-wrap "anywhere"}]
+   [".bot-conversation-history > [data-chat-role=user]" {:background "var(--surface-selected)" :align-self "end"}]
+   [:.chat-message-text {:margin "4px 0" :white-space "pre-wrap"}]
+   [:.chat-message-actions {:display "flex" :align-items "center" :flex-wrap "wrap" :gap "8px"
+                            :font-size "0.875rem"}]
+   [".chat-message-actions button" {:min-height "44px"}]
+   [:.chat-latest {:align-self "center"}]
+   [:.chat-composer {:display "grid" :gap "8px" :border "1px solid var(--border-strong)"
+                     :border-radius "14px" :padding "10px" :background "var(--surface)"}]
+   [".chat-composer .soshiki-field" {:margin 0}]
+   [".bot-conversation textarea" {:width "100%" :min-height "64px" :max-height "180px" :resize "vertical"
+                                  :font "inherit" :padding "10px" :border-radius "10px"
+                                  :background "var(--surface-raised)" :color "var(--fg)"
+                                  :border "1px solid var(--border-strong)"}]
+   [:.chat-composer-actions {:display "flex" :justify-content "flex-end"}]
+   [".bot-conversation :is(button, summary, textarea, select, .bot-conversation-history):focus-visible"
+    {:outline "2px solid var(--focus)" :outline-offset "2px"}]
+   [".bot-conversation button:enabled:active" {:background "var(--surface-selected)" :color "var(--fg)"}]
+   (at-media {:hover "hover" :pointer "fine"}
+    [".chat-message-actions" {:opacity 0}]
+    [".bot-conversation-history > li:hover .chat-message-actions"
+     ".bot-conversation-history > li:focus-within .chat-message-actions" {:opacity 1}]
+    [".bot-conversation button.secondary:enabled:hover" {:background "var(--surface-hover)"}])
+   (at-media {:any-pointer "coarse"}
+    [".chat-message-actions" {:opacity 1}])
+   (at-keyframes :conversation-enter
+    [:from {:opacity 0 :transform "translateY(4px)"}]
+    [:to {:opacity 1 :transform "translateY(0)"}])
+   (at-media {:prefers-reduced-motion "no-preference"}
+    [".bot-conversation-history > [data-chat-new=true]" ".chat-connection[open] .chat-connection-body"
+     {:animation "conversation-enter 180ms ease-out both"}]
+    [".chat-message-actions" {:transition "opacity 150ms ease-out"}]
+    [".bot-conversation button" {:transition "transform 150ms ease-out"}]
+    [".bot-conversation button:enabled:active" {:transform "scale(.98)"}])
    (at-media {:max-width "799px"}
      [".soshiki-totals.fleet-primary-totals" {:grid-template-columns "repeat(2, minmax(0, 1fr))"}]
      [:.fleet-list-filters {:grid-template-columns "minmax(0, 1fr)"}]

@@ -820,6 +820,12 @@ Object.prototype.dispatchEvent;
 Object.prototype.scrollTop;
 
 Object.prototype.scrollHeight;
+Object.prototype.clientHeight;
+Object.prototype.clipboard;
+Object.prototype.ctrlKey;
+Object.prototype.currentTarget;
+Object.prototype.metaKey;
+Object.prototype.writeText;
 Object.prototype.ready;
 Object.prototype.ensureAgentTransport;
 
