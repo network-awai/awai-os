@@ -52,6 +52,24 @@ def configure(checkout, url):
         path.write_text(content[:match.start(2)] + replacement + content[match.end(2):], encoding="utf-8")
 
 
+def configure_release(checkout, url):
+    revision = "1445c6104ffb33123d4e449a60e3c054ed5a9ee0"
+    git = ["git", "-C", str(checkout)]
+    actual = subprocess.check_output([*git, "rev-parse", "HEAD"], text=True).strip()
+    if actual != revision:
+        raise ValueError("unexpected Updater source revision")
+    patch = Path(__file__).resolve().parent / "patches/updater-empty-feed-withdrawal.patch"
+    apply = [*git, "apply", "--unidiff-zero"]
+    already_applied = subprocess.run(
+        [*apply, "--reverse", "--check", str(patch)], capture_output=True
+    ).returncode == 0
+    if not already_applied:
+        subprocess.run([*apply, "--check", str(patch)], check=True)
+    configure(checkout, url)
+    if not already_applied:
+        subprocess.run([*apply, str(patch)], check=True)
+
+
 def apk_resources(apk, aapt2):
     result = subprocess.run([aapt2, "dump", "resources", str(apk)], capture_output=True, text=True, check=True)
     return result.stdout
@@ -205,6 +223,9 @@ def main():
     source = subcommands.add_parser("configure")
     source.add_argument("checkout", type=Path)
     source.add_argument("feed", type=feed_url)
+    release = subcommands.add_parser("configure-release")
+    release.add_argument("checkout", type=Path)
+    release.add_argument("feed", type=feed_url)
     apk = subcommands.add_parser("verify-apk")
     apk.add_argument("apk", type=Path)
     apk.add_argument("feed", type=feed_url)
@@ -227,6 +248,8 @@ def main():
     try:
         if args.command == "configure":
             configure(args.checkout, args.feed)
+        elif args.command == "configure-release":
+            configure_release(args.checkout, args.feed)
         elif args.command == "verify-apk":
             verify_apk(args.apk, args.feed, args.aapt2)
         elif args.command == "verify-target-files":

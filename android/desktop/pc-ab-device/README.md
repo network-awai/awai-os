@@ -70,7 +70,7 @@ quoted when passing a template.
 
 ```sh
 AWAI_OTA_FEED='https://ota.awai.network/v1/pc/pilot/{device}/{incr}/builds.json'
-python3 android/desktop/pc-ab-device/updater-feed.py configure \
+python3 android/desktop/pc-ab-device/updater-feed.py configure-release \
     "$ANDROID_BUILD_TOP/packages/apps/Updater" "$AWAI_OTA_FEED"
 git -C "$ANDROID_BUILD_TOP/packages/apps/Updater" diff --check
 ```
@@ -109,7 +109,10 @@ The pilot endpoint is backed by the dedicated Cloudflare R2 bucket
 check its public bytes and HTTP Range response before publishing the index.
 Serve the mutable index as `application/json` with `Cache-Control: no-store`.
 To stop offering updates, replace the affected index with `[]` and verify the
-public response. Keep the signed ZIP for diagnosis and recovery.
+public response. The pinned Awai Updater removes undownloaded cached offers
+after a successful empty response. Updates already started and saved local
+packages are retained. A failed request does not withdraw an otherwise eligible cached offer. Keep
+the signed ZIP for diagnosis and recovery.
 
 ## OTA on the shared disk (2026-11-19)
 
