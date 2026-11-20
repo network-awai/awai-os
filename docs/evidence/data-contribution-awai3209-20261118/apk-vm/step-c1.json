@@ -1,0 +1,7 @@
+{
+ "result": {
+  "open": true,
+  "scope": "Service: murakumo.training\nOperation: submit-contribution\nCapability: itonami.datacontribution.submit\nEndpoint: https://api.murakumo.cloud\nAction: POST /training/contributions\nData categories: content-cid, content-sha256, rights-declaration, contributor-dids, contributor-shares, depicted-person-consent-cids\nDelivery redirects: (none)"
+ },
+ "requests": []
+}

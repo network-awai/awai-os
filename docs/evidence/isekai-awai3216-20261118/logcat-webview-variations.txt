@@ -1,0 +1,10 @@
+11-18 03:51:33.900  2157  2193 I chromium: [1118/035133.900254:INFO:variations_seed_loader.cc(66)] Failed to open file for reading.: No such file or directory (2)
+11-18 03:51:33.901  2157  2193 I cr_VariationsUtils: Failed reading seed file "/data/user/0/network.itonami.isekai/app_webview/variations_seed_new"
+11-18 03:51:33.901  2157  2193 I chromium: [1118/035133.901148:INFO:variations_seed_loader.cc(66)] Failed to open file for reading.: No such file or directory (2)
+11-18 03:51:33.901  2157  2193 I cr_VariationsUtils: Failed reading seed file "/data/user/0/network.itonami.isekai/app_webview/variations_seed"
+11-18 03:51:33.901  2157  2193 I cr_VariationsUtils: Requesting new seed from IVariationsSeedServer
+11-18 03:51:33.902  2157  2181 I RustStdoutStderr: [1118/035133.900254:INFO:variations_seed_loader.cc(66)] Failed to open file for reading.: No such file or directory (2)
+11-18 03:51:33.902  2157  2181 I RustStdoutStderr: [1118/035133.901148:INFO:variations_seed_loader.cc(66)] Failed to open file for reading.: No such file or directory (2)
+11-18 03:51:33.944   531   562 I ActivityManager: Start proc 2194:com.android.webview:webview_service/u0a109 for service {com.android.webview/org.chromium.android_webview.services.VariationsSeedServer}
+11-18 03:51:34.263   531  1171 D ConnectivityService: requestNetwork for uid/pid:1000/531 asUid: 10109 activeRequest: null callbackRequest: 64 [NetworkRequest [ REQUEST id=65, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED&NOT_BANDWIDTH_CONSTRAINED Uid: 10109 RequestorUid: 1000 RequestorPkg: android UnderlyingNetworks: Null] ]] callback flags: 0 order: 2147483647 isUidTracked: false
+11-18 03:51:34.581  2194  2238 I cr_VariationsSeedFetch: Fetched first run seed in 177 ms

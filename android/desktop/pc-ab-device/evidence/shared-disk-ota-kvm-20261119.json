@@ -1,0 +1,144 @@
+{
+  "issue": "AWAI-3586",
+  "date": "2026-11-19",
+  "where": "KVM, QEMU 8.2.2, one NVMe disk (-device nvme), OVMF; Vultr bare metal Xeon E-2286G",
+  "device": "lineage_virtio_x86_64-userdebug with patches/virtio-common-byname.patch and patches/virt-common-grub-partguid.patch",
+  "signing": "AOSP test key, userdebug; not a release candidate",
+  "artifacts": {
+    "awai-byname-v1": {
+      "targetFilesSha256": "80256414146b59e0166a56faead9205f26e00ab91ad2381b7db1bce520a5efe9",
+      "diskVdaSha256": "2593fd96ab827d1dfbd1ccb3942c2cadc1c307b85fd410e0dfdcd91d5bbb9c44",
+      "note": "by-name patch only"
+    },
+    "awai-byname-v2": {
+      "targetFilesSha256": "bc0bac1dd4499f54cb2e0f02cee9a791ae9a3696f20d4d6394efabe4078b1a18",
+      "diskVdaSha256": "a177db5ecb1f72c541d2bbb17470a166b0461f4b1ee5968528decc9c1c9def47",
+      "tfDiskSha256": "8a00d8b5a544a2a4f4812211ac7c89abfa6572c546e872dd3d55589369a07fac"
+    },
+    "awai-byname-v3": {
+      "targetFilesSha256": "5147fd4643ca3817271ceaf2e8c376bd988f7f5c1a3fb0dae816641d8de545cf"
+    },
+    "ota-byname-v3-full.zip": {
+      "bytes": 949654614,
+      "sha256": "f91bcb48a476eddac82d13e7433144966c686e99bad7484b58dfaceacb211922"
+    },
+    "ota-byname-v2-to-v3-incremental.zip": {
+      "bytes": 100091,
+      "sha256": "9994d5d4406cda720f54b2c871437ad34e97275e931a96536b223431c1fa9247"
+    }
+  },
+  "abPartitions": [
+    "boot",
+    "odm",
+    "product",
+    "system",
+    "system_dlkm",
+    "system_ext",
+    "vendor",
+    "vendor_boot",
+    "vendor_dlkm"
+  ],
+  "sharedDisk": {
+    "bytes": 68719476736,
+    "standIns": [
+      {
+        "number": 1,
+        "name": "EFI system partition",
+        "size": "512 MiB"
+      },
+      {
+        "number": 2,
+        "name": "existing-os",
+        "size": "24 GiB ext4"
+      },
+      {
+        "number": 3,
+        "name": "existing-luks",
+        "size": "8 GiB random data"
+      }
+    ],
+    "note": "sizes are placeholders; the Desktop's real sizes are not known"
+  },
+  "bootImageMismatch": {
+    "partition": "boot_a",
+    "targetFiles": "c0c45994ed50bea563ce1538a802f71f246a5f5fdee5829a36c659eae41e6272",
+    "diskVda": "4ce4f9846291858f (first 16 hex digits)",
+    "vendorBootSame": true
+  },
+  "checks": [
+    {
+      "id": "boot-single-nvme",
+      "result": "pass",
+      "build": "awai-byname-v1",
+      "detail": "stock layout plus userdata partition 12; nine by-name links point at nvme0n1pN with the expected SELinux labels"
+    },
+    {
+      "id": "install",
+      "result": "pass",
+      "detail": "partitions 4-14 added, existingUnchanged true"
+    },
+    {
+      "id": "boot-shared",
+      "result": "pass",
+      "grub": "boot_a=(hd0,gpt12) boot_b=(hd0,gpt13) vendor_boot_a=(hd0,gpt10) vendor_boot_b=(hd0,gpt11)",
+      "after": {
+        "slot": "_a",
+        "incremental": "awai-byname-v2"
+      },
+      "existingAfterShutdown": "ALL_UNCHANGED"
+    },
+    {
+      "id": "S1",
+      "name": "incremental, installed from disk-vda.img",
+      "result": "failed",
+      "error": "kDownloadStateInitializationError",
+      "cause": "source hash mismatch on boot_a",
+      "existing": "ALL_UNCHANGED"
+    },
+    {
+      "id": "S2",
+      "name": "full v2->v3",
+      "result": "pass",
+      "error": "kSuccess",
+      "after": {
+        "slot": "_b",
+        "incremental": "awai-byname-v3",
+        "slot_b_is_successful": true
+      },
+      "existing": "ALL_UNCHANGED"
+    },
+    {
+      "id": "S3",
+      "name": "full, then boot_b (partition 13) zeroed",
+      "result": "fell back",
+      "grub": "Could not access kernel from active slot b. Switching active slot to a...",
+      "after": {
+        "slot": "_a",
+        "incremental": "awai-byname-v2",
+        "slot_b_is_bootable": false,
+        "snapshot": "none"
+      },
+      "existing": "ALL_UNCHANGED"
+    },
+    {
+      "id": "S4",
+      "name": "incremental, installed from the target-files based disk image",
+      "result": "pass",
+      "error": "kSuccess",
+      "seconds": 32.7,
+      "after": {
+        "slot": "_b",
+        "incremental": "awai-byname-v3",
+        "slot_b_is_successful": true
+      },
+      "existing": "ALL_UNCHANGED"
+    }
+  ],
+  "notShown": [
+    "real hardware",
+    "wrong-key and downgrade refusal on this layout (shown on the unpatched reference device)",
+    "interrupted update on this layout",
+    "release keys",
+    "Updater app and feed"
+  ]
+}

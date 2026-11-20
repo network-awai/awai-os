@@ -1,0 +1,320 @@
+11-18 03:16:09.831  1085  1085 D CarrierSvcBindHelper: onPackageModified: network.itonami.x402
+11-18 03:16:09.842  1318  1337 D PackageUpdatedTask: Package updated: mOp=UPDATE packages=[network.itonami.x402]
+11-18 03:16:09.844  1085  1258 D ImsResolver: maybeAddedImsService, packageName: network.itonami.x402
+11-18 03:16:09.948   560  2185 I ActivityTaskManager: START u0 {flg=0x10000000 cmp=network.itonami.x402/.MainActivity} with LAUNCH_SINGLE_TASK from uid 2000 (BAL_ALLOW_PERMISSION) result code=0
+11-18 03:16:09.948   913   992 V WindowManagerShell: Transition requested (#6): android.os.BinderProxy@e78c08d TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=8 displayId=0 isRunning=true baseIntent=Intent { flg=
+11-18 03:16:09.952  1318  1318 I TopTaskTracker: onTaskMovedToFront: (moved taskInfo to front) taskId=8, baseIntent=Intent { flg=0x10000000 cmp=network.itonami.x402/.MainActivity }
+11-18 03:16:09.961   560   861 I AppWidgetServiceImpl: Updating package stopped masked state for uid 10148 package network.itonami.x402 isStopped false
+11-18 03:16:09.983   560   591 I ActivityManager: Start proc 2218:network.itonami.x402/u0a148 for next-top-activity {network.itonami.x402/network.itonami.x402.MainActivity}
+11-18 03:16:10.018   560  1960 D CoreBackPreview: Window{295d1bb u0 Splash Screen network.itonami.x402}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@945c516, mPriority=0, mIsAni
+11-18 03:16:10.091   560   579 V WindowManager: Sent Transition (#6) createdAt=11-18 03:16:09.944 via request=TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=8 displayId=0 isRunning=true baseIntent=Intent { flg=0
+11-18 03:16:10.091   560   579 V WindowManager:         {WCT{RemoteToken{df7041c Task{b4233b6 #8 type=standard A=10148:network.itonami.x402}}} m=OPEN f=NONE leash=Surface(name=Task=8)/@0xdde48f0 sb=Rect(0, 0 - 1080, 1920) eb=Rect(0, 0 - 108
+11-18 03:16:10.370  2218  2218 W ziparchive: Unable to open '/data/app/~~kEcW-qSbOVZKkgORp--SAw==/network.itonami.x402-PTKNDFgOQEAfhMBDuUqbRQ==/base.dm': No such file or directory
+11-18 03:16:10.370  2218  2218 W ziparchive: Unable to open '/data/app/~~kEcW-qSbOVZKkgORp--SAw==/network.itonami.x402-PTKNDFgOQEAfhMBDuUqbRQ==/base.dm': No such file or directory
+11-18 03:16:10.649  2218  2218 D nativeloader: Configuring clns-7 for other apk /data/app/~~kEcW-qSbOVZKkgORp--SAw==/network.itonami.x402-PTKNDFgOQEAfhMBDuUqbRQ==/base.apk. target_sdk_version=37, uses_libraries=, library_path=/data/app/~~kE
+11-18 03:16:10.850  2218  2218 D nativeloader: Load /data/app/~~kEcW-qSbOVZKkgORp--SAw==/network.itonami.x402-PTKNDFgOQEAfhMBDuUqbRQ==/base.apk!/lib/arm64-v8a/libx402_lib.so using ns clns-7 from class loader (caller=/data/app/~~kEcW-qSbOVZK
+11-18 03:16:11.011   560  1641 D CoreBackPreview: Window{3352175 u0 network.itonami.x402/network.itonami.x402.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@7435ff1,
+11-18 03:16:11.118   560   579 W ziparchive: Unable to open '/data/app/~~kEcW-qSbOVZKkgORp--SAw==/network.itonami.x402-PTKNDFgOQEAfhMBDuUqbRQ==/base.dm': No such file or directory
+11-18 03:16:11.126   560   579 I ActivityTaskManager: Displayed network.itonami.x402/.MainActivity for user 0: +1s178ms
+11-18 03:16:11.271   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{49251e5 com.android.cts.priv.ctsshim/10130} BLOCKED
+11-18 03:16:11.287   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{35ed4ba com.android.uwb.resources/10139} BLOCKED
+11-18 03:16:11.287   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{60d6f6b com.android.internal.display.cutout.emulation.corner/10024} BLOCKED
+11-18 03:16:11.288   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{36d3ac8 com.android.internal.display.cutout.emulation.double/10040} BLOCKED
+11-18 03:16:11.288   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{c1b2761 com.android.healthconnect.controller/10134} BLOCKED
+11-18 03:16:11.288   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{3958286 com.android.health.connect.backuprestore/10135} BLOCKED
+11-18 03:16:11.288   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{e119747 com.android.virtualmachine.res/10138} BLOCKED
+11-18 03:16:11.288   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{17f3b74 com.android.carrierconfig.auto_generated_rro_vendor__/10057} BLOCKED
+11-18 03:16:11.288   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{701d89d com.android.systemui.emulation.pixel_3_xl/10039} BLOCKED
+11-18 03:16:11.288   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{2374112 com.android.systemui.emulation.pixel_4_xl/10032} BLOCKED
+11-18 03:16:11.288   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{d4660e3 com.android.systemui.emulation.pixel_fold/10037} BLOCKED
+11-18 03:16:11.288   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{b0e9ae0 com.android.providers.telephony.auto_generated_characteristics_rro/10013} BLOCKED
+11-18 03:16:11.288   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{1a86199 com.android.htmlviewer/10090} BLOCKED
+11-18 03:16:11.288   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{7c45c5e com.android.quicksearchbox/10105} BLOCKED
+11-18 03:16:11.288   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{174283f com.android.networkstack.tethering.emulator/10015} BLOCKED
+11-18 03:16:11.288   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{272850c com.android.internal.emulation.pixel_3a_xl/10035} BLOCKED
+11-18 03:16:11.288   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{2947e55 com.android.internal.emulation.pixel_6_pro/10034} BLOCKED
+11-18 03:16:11.288   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{275e06a com.android.internal.emulation.pixel_7_pro/10005} BLOCKED
+11-18 03:16:11.289   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{28d095b com.android.internal.emulation.pixel_8_pro/10020} BLOCKED
+11-18 03:16:11.289   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{648e5f8 com.android.internal.emulation.pixel_3a/10045} BLOCKED
+11-18 03:16:11.289   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{8ebaad1 com.android.internal.emulation.pixel_4a/10004} BLOCKED
+11-18 03:16:11.289   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{9099936 com.android.internal.emulation.pixel_6a/10006} BLOCKED
+11-18 03:16:11.289   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{b88e037 com.android.internal.emulation.pixel_7a/10000} BLOCKED
+11-18 03:16:11.289   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{f2269a4 com.android.internal.emulation.pixel_8a/10036} BLOCKED
+11-18 03:16:11.289   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{6af230d com.android.safetycenter.resources/10125} BLOCKED
+11-18 03:16:11.289   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{e4e12c2 com.android.simappdialog/10094} BLOCKED
+11-18 03:16:11.289   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{50148d3 com.android.connectivity.resources/10143} BLOCKED
+11-18 03:16:11.289   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{bee7c10 com.android.internal.display.cutout.emulation.hole/10011} BLOCKED
+11-18 03:16:11.289   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{2b7e309 com.android.internal.display.cutout.emulation.tall/10002} BLOCKED
+11-18 03:16:11.289   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{16e990e com.android.modulemetadata/10103} BLOCKED
+11-18 03:16:11.289   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{d8d9f2f com.android.internal.systemui.navbar.threebutton/10026} BLOCKED
+11-18 03:16:11.289   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{927493c com.android.wifi.dialog/10129} BLOCKED
+11-18 03:16:11.289   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{e72a6c5 com.android.contacts/10101} BLOCKED
+11-18 03:16:11.289   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{6ff381a com.android.camera2/10114} BLOCKED
+11-18 03:16:11.289   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{bdeff4b com.android.internal.ranchu.commonoverlay/10028} BLOCKED
+11-18 03:16:11.289   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{ebdbd28 com.android.launcher3/10122} BLOCKED
+11-18 03:16:11.289   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{b5bea41 com.android.systemui.auto_generated_rro_vendor__/10055} BLOCKED
+11-18 03:16:11.289   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{6c8bbe6 com.android.internal.systemui.navbar.twobutton/10047} BLOCKED
+11-18 03:16:11.289   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{69c4527 com.android.settings.intelligence/10099} BLOCKED
+11-18 03:16:11.289   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{c583d4 com.android.calendar/10106} BLOCKED
+11-18 03:16:11.289   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{c3be97d com.android.systemui.emulation.pixel_3/10007} BLOCKED
+11-18 03:16:11.289   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{a54b072 com.android.systemui.emulation.pixel_4/10050} BLOCKED
+11-18 03:16:11.289   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{dfe0cc3 com.android.systemui.emulation.pixel_5/10051} BLOCKED
+11-18 03:16:11.292   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{ee10940 com.android.systemui.emulation.pixel_6/10012} BLOCKED
+11-18 03:16:11.292   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{e22a079 com.android.systemui.emulation.pixel_7/10046} BLOCKED
+11-18 03:16:11.292   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{83961be com.android.systemui.emulation.pixel_8/10010} BLOCKED
+11-18 03:16:11.292   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{32ab21f com.android.printspooler/10089} BLOCKED
+11-18 03:16:11.292   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{e6d796c com.android.dreams.basic/10096} BLOCKED
+11-18 03:16:11.292   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{523cb35 com.android.rkpdapp/10140} BLOCKED
+11-18 03:16:11.292   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{825dbca com.android.internal.emulation.pixel_3/10023} BLOCKED
+11-18 03:16:11.292   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{952513b com.android.internal.emulation.pixel_4/10029} BLOCKED
+11-18 03:16:11.292   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{b6ec058 com.android.internal.emulation.pixel_5/10003} BLOCKED
+11-18 03:16:11.292   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{8d2e5b1 com.android.internal.emulation.pixel_6/10043} BLOCKED
+11-18 03:16:11.292   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{badea96 com.android.internal.emulation.pixel_7/10054} BLOCKED
+11-18 03:16:11.292   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{c8ac617 com.android.internal.emulation.pixel_8/10021} BLOCKED
+11-18 03:16:11.292   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{c3b8a04 android.auto_generated_characteristics_rro/10042} BLOCKED
+11-18 03:16:11.292   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{c7f2bed com.android.musicfx/10077} BLOCKED
+11-18 03:16:11.292   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{7d61a22 com.android.phone.auto_generated_characteristics_rro/10027} BLOCKED
+11-18 03:16:11.292   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{a6bacb3 com.android.printservice.recommendation/10085} BLOCKED
+11-18 03:16:11.292   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{3e94270 com.android.dialer/10102} BLOCKED
+11-18 03:16:11.292   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{f2f99e9 com.android.gallery3d/10112} BLOCKED
+11-18 03:16:11.292   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{b5fb66e com.android.wifi.resources/10127} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{86a610f com.android.theme.font.notoserifsource/10016} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{f78159c com.android.internal.display.cutout.emulation.waterfall/10053} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{f5eeba5 com.android.inputmethod.latin/10111} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{dd4cb7a com.android.internal.systemui.navbar.transparent/10008} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{3f5ff2b org.chromium.webview_shell/10104} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{9beef88 com.android.systemui.emulation.pixel_3a_xl/10044} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{e779d21 com.android.systemui.emulation.pixel_6_pro/10052} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{3542546 com.android.systemui.emulation.pixel_7_pro/10038} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{8536307 com.android.systemui.emulation.pixel_8_pro/10018} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{2177c34 com.android.dreams.phototable/10113} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{fea5d com.android.providers.partnerbookmarks/10083} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{11d4fd2 com.android.wallpaper.livepicker/10069} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{63928a3 com.android.cellbroadcastreceiver.module/10147} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{1ca27a0 com.android.phone.auto_generated_rro_vendor__/10058} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{e5cf59 com.android.apps.tag/10078} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{edc971e com.android.imsserviceentitlement/10100} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{92babff com.android.appsearch.apk/10142} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{c3a1dcc com.android.internal.emulation.pixel_2_xl/10025} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{19b0815 com.android.internal.emulation.pixel_3_xl/10022} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{b7072a com.android.internal.emulation.pixel_4_xl/10031} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{699091b com.android.internal.emulation.pixel_fold/10041} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{5d14ab8 com.android.bookmarkprovider/10082} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{1311091 com.android.systemui.emulation.pixel_3a/10019} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{6166bf6 com.android.systemui.emulation.pixel_4a/10017} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{2b51bf7 com.android.systemui.emulation.pixel_6a/10009} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{dac5a64 com.android.systemui.emulation.pixel_7a/10049} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{34524cd com.android.systemui.emulation.pixel_8a/10048} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{2ff6115 com.android.cts.ctsshim/10131} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{9355182 com.android.wallpaper/10119} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{7158093 com.android.connectivity.resources.goldfish.overlay/10059} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{606b8d0 com.android.music/10107} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{e0c40c9 com.android.hotspot2.osulogin/10128} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{b6b03ce com.android.companiondevicemanager.auto_generated_characteristics_rro/10014} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{70d92ef com.android.internal.systemui.navbar.gestural/10030} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{76691fc com.android.deskclock/10110} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{c0f2085 com.android.bluetoothmidiservice/10086} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{a378eda com.android.captiveportallogin/10098} BLOCKED
+11-18 03:16:11.293   560  2185 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{dca6f0b android.auto_generated_rro_vendor__/10056} BLOCKED
+11-18 03:16:11.325  2218  2253 I cr_VariationsUtils: Failed reading seed file "/data/user/0/network.itonami.x402/app_webview/variations_seed_new"
+11-18 03:16:11.326  2218  2253 I cr_VariationsUtils: Failed reading seed file "/data/user/0/network.itonami.x402/app_webview/variations_seed"
+11-18 03:16:11.462   560   591 I ActivityManager: Start proc 2271:com.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0/u0ai9000 for  {network.itonami.x402/org.chromium.content.app.SandboxedProcessServic
+11-18 03:16:11.525   560  2185 W InputManager-JNI: Input channel object '295d1bb Splash Screen network.itonami.x402 (client)' was disposed without first being removed with the input manager!
+11-18 03:16:11.526   560  1641 D CoreBackPreview: Window{295d1bb u0 Splash Screen network.itonami.x402 EXITING}: Setting back callback null
+11-18 03:16:11.945   560   673 I ImeTracker: network.itonami.x402:b6fcad62: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+11-18 03:16:11.945   560   673 I ImeTracker: network.itonami.x402:b6fcad62: onCancelled at PHASE_SERVER_SHOULD_HIDE
+11-18 03:16:16.513  2218  2394 D ProfileInstaller: Installing profile for network.itonami.x402
+11-18 03:16:27.706  2218  2218 I ImeTracker: network.itonami.x402:1d402802: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser false
+11-18 03:16:27.710  2218  2218 D InputMethodManager: showSoftInput() view=network.itonami.x402.RustWebView{2deafe4 VFEDHVC.. .F....ID 0,63-1080,1794 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+11-18 03:16:28.381  2218  2419 W InteractionJankMonitor: Initializing without READ_DEVICE_CONFIG permission. enabled=true, interval=1, missedFrameThreshold=3, frameTimeThreshold=64, package=network.itonami.x402
+11-18 03:16:28.868  2218  2218 I ImeTracker: network.itonami.x402:1d402802: onShown
+11-18 03:16:37.883  2218  2218 I ImeTracker: network.itonami.x402:6e99e065: onRequestHide at ORIGIN_CLIENT reason HIDE_SOFT_INPUT_ON_ANIMATION_STATE_CHANGED fromUser false
+11-18 03:16:37.885   560   673 I ImeTracker: network.itonami.x402:6e99e065: onCancelled at PHASE_SERVER_SHOULD_HIDE
+11-18 03:16:39.712  2218  2218 E FrameTracker: force finish cuj, time out: J<IME_INSETS_SHOW_ANIMATION::0@0@network.itonami.x402>
+11-18 03:16:48.140  2218  2218 E FrameTracker: force finish cuj, time out: J<IME_INSETS_HIDE_ANIMATION::1@0@network.itonami.x402>
+11-18 03:16:48.140  2218  2218 W FrameTracker: Missed App frame:UNKNOWN: 10, 9768, 0, CUJ=J<IME_INSETS_HIDE_ANIMATION::1@0@network.itonami.x402>
+11-18 03:16:48.140  2218  2218 W FrameTracker: Missed SF frame:UNKNOWN: 10, 9768, 0, CUJ=J<IME_INSETS_HIDE_ANIMATION::1@0@network.itonami.x402>
+11-18 03:16:48.140  2218  2218 W FrameTracker: Missed SF frame:JANK_SURFACEFLINGER_DEADLINE_MISSED, 9804, 0, CUJ=J<IME_INSETS_HIDE_ANIMATION::1@0@network.itonami.x402>
+11-18 03:16:48.140  2218  2218 W FrameTracker: Missed SF frame:JANK_SURFACEFLINGER_DEADLINE_MISSED, 9839, 0, CUJ=J<IME_INSETS_HIDE_ANIMATION::1@0@network.itonami.x402>
+11-18 03:16:48.140  2218  2218 W FrameTracker: Missed SF frame:JANK_SURFACEFLINGER_DEADLINE_MISSED, 9861, 0, CUJ=J<IME_INSETS_HIDE_ANIMATION::1@0@network.itonami.x402>
+11-18 03:16:48.140  2218  2218 W FrameTracker: Missed SF frame:JANK_SURFACEFLINGER_DEADLINE_MISSED, 9883, 0, CUJ=J<IME_INSETS_HIDE_ANIMATION::1@0@network.itonami.x402>
+11-18 03:16:48.140  2218  2218 W FrameTracker: Missed SF frame:JANK_SURFACEFLINGER_DEADLINE_MISSED, 9897, 0, CUJ=J<IME_INSETS_HIDE_ANIMATION::1@0@network.itonami.x402>
+11-18 03:16:48.140  2218  2218 W FrameTracker: Missed SF frame:JANK_SURFACEFLINGER_DEADLINE_MISSED, 9912, 0, CUJ=J<IME_INSETS_HIDE_ANIMATION::1@0@network.itonami.x402>
+11-18 03:16:48.140  2218  2218 W FrameTracker: Missed SF frame:JANK_SURFACEFLINGER_DEADLINE_MISSED, 9934, 0, CUJ=J<IME_INSETS_HIDE_ANIMATION::1@0@network.itonami.x402>
+11-18 03:16:48.140  2218  2218 W FrameTracker: Missed SF frame:JANK_SURFACEFLINGER_DEADLINE_MISSED, 9970, 0, CUJ=J<IME_INSETS_HIDE_ANIMATION::1@0@network.itonami.x402>
+11-18 03:16:50.614  2218  2218 I ImeTracker: network.itonami.x402:572a8a3d: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser false
+11-18 03:16:50.615  2218  2218 D InputMethodManager: showSoftInput() view=network.itonami.x402.RustWebView{2deafe4 VFEDHVC.. .F...... 0,63-1080,1794 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+11-18 03:16:51.567  2218  2218 I ImeTracker: network.itonami.x402:572a8a3d: onShown
+11-18 03:16:51.567  2218  2218 W FrameTracker: Missed SF frame:UNKNOWN: 66, 11471, 0, CUJ=J<IME_INSETS_SHOW_ANIMATION::0@0@network.itonami.x402>
+11-18 03:16:52.249   560  1015 I AppsFilter: interaction: PackageSetting{fdc2cdc network.itonami.x402/10148} -> PackageSetting{7c45c5e com.android.quicksearchbox/10105} BLOCKED
+11-18 03:16:54.505   560   673 I ImeTracker: network.itonami.x402:9d16d6ba: onRequestShow at ORIGIN_SERVER reason ATTACH_NEW_INPUT fromUser false
+11-18 03:16:54.505  2218  2218 I ImeTracker: network.itonami.x402:14831296: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser false
+11-18 03:16:54.506  2218  2218 D InputMethodManager: showSoftInput() view=network.itonami.x402.RustWebView{2deafe4 VFEDHVC.. .F...... 0,63-1080,1019 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+11-18 03:16:54.590  2218  2218 I ImeTracker: network.itonami.x402:9d16d6ba: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+11-18 03:16:54.597  2218  2218 I ImeTracker: network.itonami.x402:14831296: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+11-18 03:16:55.812   560   673 I ImeTracker: network.itonami.x402:4a8166ff: onRequestShow at ORIGIN_SERVER reason ATTACH_NEW_INPUT fromUser false
+11-18 03:16:55.812  2218  2218 I ImeTracker: network.itonami.x402:bfb28d91: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser false
+11-18 03:16:55.813  2218  2218 D InputMethodManager: showSoftInput() view=network.itonami.x402.RustWebView{2deafe4 VFEDHVC.. .F...... 0,63-1080,1019 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+11-18 03:16:55.856  2218  2218 I ImeTracker: network.itonami.x402:4a8166ff: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+11-18 03:16:55.856  2218  2218 I ImeTracker: network.itonami.x402:bfb28d91: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+11-18 03:17:10.100  2218  2218 I ImeTracker: network.itonami.x402:5f8c1355: onRequestHide at ORIGIN_CLIENT reason HIDE_SOFT_INPUT_ON_ANIMATION_STATE_CHANGED fromUser false
+11-18 03:17:10.101   560   673 I ImeTracker: network.itonami.x402:5f8c1355: onCancelled at PHASE_SERVER_SHOULD_HIDE
+11-18 03:17:10.101  2218  2218 W FrameTracker: Missed App frame:UNKNOWN: 10, 13974, 0, CUJ=J<IME_INSETS_HIDE_ANIMATION::1@0@network.itonami.x402>
+11-18 03:17:10.101  2218  2218 W FrameTracker: Missed SF frame:UNKNOWN: 10, 13974, 0, CUJ=J<IME_INSETS_HIDE_ANIMATION::1@0@network.itonami.x402>
+11-18 03:17:10.101  2218  2218 W FrameTracker: Missed App frame:UNKNOWN: 10, 13989, 0, CUJ=J<IME_INSETS_HIDE_ANIMATION::1@0@network.itonami.x402>
+11-18 03:17:10.101  2218  2218 W FrameTracker: Missed SF frame:UNKNOWN: 10, 13989, 0, CUJ=J<IME_INSETS_HIDE_ANIMATION::1@0@network.itonami.x402>
+11-18 03:17:10.101  2218  2218 W FrameTracker: Missed SF frame:JANK_SURFACEFLINGER_DEADLINE_MISSED, 14054, 0, CUJ=J<IME_INSETS_HIDE_ANIMATION::1@0@network.itonami.x402>
+11-18 03:17:10.101  2218  2218 W FrameTracker: Missed SF frame:JANK_SURFACEFLINGER_DEADLINE_MISSED, 14075, 0, CUJ=J<IME_INSETS_HIDE_ANIMATION::1@0@network.itonami.x402>
+11-18 03:17:10.101  2218  2218 W FrameTracker: Missed SF frame:JANK_SURFACEFLINGER_DEADLINE_MISSED, 14103, 0, CUJ=J<IME_INSETS_HIDE_ANIMATION::1@0@network.itonami.x402>
+11-18 03:17:10.101  2218  2218 W FrameTracker: Missed SF frame:JANK_SURFACEFLINGER_DEADLINE_MISSED, 14124, 0, CUJ=J<IME_INSETS_HIDE_ANIMATION::1@0@network.itonami.x402>
+11-18 03:17:10.101  2218  2218 W FrameTracker: Missed SF frame:JANK_SURFACEFLINGER_DEADLINE_MISSED, 14153, 0, CUJ=J<IME_INSETS_HIDE_ANIMATION::1@0@network.itonami.x402>
+11-18 03:17:10.793  2548  2548 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+11-18 03:17:10.799  2548  2548 I AndroidRuntime: Using default boot image
+11-18 03:17:10.799  2548  2548 I AndroidRuntime: Leaving lock profiling enabled
+11-18 03:17:10.950  2548  2548 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-18 03:17:12.050  2548  2548 D AndroidRuntime: Shutting down VM
+11-18 03:17:15.917  2562  2562 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+11-18 03:17:15.947  2562  2562 I AndroidRuntime: Using default boot image
+11-18 03:17:15.952  2562  2562 I AndroidRuntime: Leaving lock profiling enabled
+11-18 03:17:16.092  2562  2562 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-18 03:17:17.207  2562  2562 D AndroidRuntime: Shutting down VM
+11-18 03:17:31.058   560  1081 I ActivityManager: Force stopping network.itonami.x402 appid=10148 user=0: from pid 2588
+11-18 03:17:31.070   560  1081 I ActivityManager: Killing 2218:network.itonami.x402/u0a148 (adj 0): stop network.itonami.x402 due to from pid 2588
+11-18 03:17:31.082   560  1081 W ActivityTaskManager: Force removing ActivityRecord{5941f51 u0 network.itonami.x402/.MainActivity t8 f}}: app died, no saved state
+11-18 03:17:31.090  2271  2271 I AndroidRuntime: VM exiting with result code 0, cleanup skipped.
+11-18 03:17:31.104   913   992 V WindowManagerShell: Transition requested (#7): android.os.BinderProxy@e5f5b3 TransitionRequestInfo { type = CLOSE, triggerTask = TaskInfo{userId=0 taskId=8 displayId=0 isRunning=false baseIntent=Intent { flg
+11-18 03:17:31.198   560   861 I AppWidgetServiceImpl: Updating package stopped masked state for uid 10148 package network.itonami.x402 isStopped true
+11-18 03:17:31.213  1085  1085 D CarrierSvcBindHelper: onHandleForceStop: [network.itonami.x402]
+11-18 03:17:31.295   560   583 W ActivityTaskManager: Unable to send transaction to client proc network.itonami.x402: no app thread
+11-18 03:17:31.306   560  2185 V ActivityManager: Got obituary of 2218:network.itonami.x402
+11-18 03:17:31.307   560  1007 I ImeTracker: network.itonami.x402:8bc4496: onRequestHide at ORIGIN_SERVER reason HIDE_REMOVE_CLIENT fromUser false
+11-18 03:17:31.307   560  1007 I ImeTracker: network.itonami.x402:8bc4496: onCancelled at PHASE_SERVER_SHOULD_HIDE
+11-18 03:17:31.310   560  2185 I WindowManager: WIN DEATH: Window{3352175 u0 network.itonami.x402/network.itonami.x402.MainActivity}
+11-18 03:17:31.310   560  2185 W InputManager-JNI: Input channel object '3352175 network.itonami.x402/network.itonami.x402.MainActivity (client)' was disposed without first being removed with the input manager!
+11-18 03:17:31.448   560   579 V WindowManager: Sent Transition (#7) createdAt=11-18 03:17:31.083 via request=TransitionRequestInfo { type = CLOSE, triggerTask = TaskInfo{userId=0 taskId=8 displayId=0 isRunning=false baseIntent=Intent { flg
+11-18 03:17:31.448   560   579 V WindowManager:         {WCT{RemoteToken{df7041c Task{b4233b6 #8 type=standard A=10148:network.itonami.x402}}} m=CLOSE f=NONE leash=Surface(name=Task=8)/@0xdde48f0 sb=Rect(0, 0 - 1080, 1920) eb=Rect(0, 0 - 10
+11-18 03:17:31.843   560  2594 W WindowManager: Exception thrown during dispatchAppVisibility Window{3352175 u0 network.itonami.x402/network.itonami.x402.MainActivity EXITING}
+11-18 03:17:32.294   560  1080 I ActivityTaskManager: START u0 {flg=0x10000000 cmp=network.itonami.x402/.MainActivity} with LAUNCH_SINGLE_TASK from uid 2000 (BAL_ALLOW_PERMISSION) result code=0
+11-18 03:17:32.295   913   992 V WindowManagerShell: Transition requested (#8): android.os.BinderProxy@857b1a3 TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=9 displayId=0 isRunning=true baseIntent=Intent { flg=
+11-18 03:17:32.299  1318  1318 I TopTaskTracker: onTaskMovedToFront: (moved taskInfo to front) taskId=9, baseIntent=Intent { flg=0x10000000 cmp=network.itonami.x402/.MainActivity }
+11-18 03:17:32.307   560   861 I AppWidgetServiceImpl: Updating package stopped masked state for uid 10148 package network.itonami.x402 isStopped false
+11-18 03:17:32.341   560  1532 D CoreBackPreview: Window{4cc6fb1 u0 Splash Screen network.itonami.x402}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@6e86017, mPriority=0, mIsAni
+11-18 03:17:32.350   560   591 I ActivityManager: Start proc 2603:network.itonami.x402/u0a148 for next-top-activity {network.itonami.x402/network.itonami.x402.MainActivity}
+11-18 03:17:32.447   560   579 V WindowManager: Sent Transition (#8) createdAt=11-18 03:17:32.288 via request=TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=9 displayId=0 isRunning=true baseIntent=Intent { flg=0
+11-18 03:17:32.447   560   579 V WindowManager:         {WCT{RemoteToken{608e6b3 Task{a5cea79 #9 type=standard A=10148:network.itonami.x402}}} m=OPEN f=NONE leash=Surface(name=Task=9)/@0xf8755ed sb=Rect(0, 0 - 1080, 1920) eb=Rect(0, 0 - 108
+11-18 03:17:32.713  2603  2603 W ziparchive: Unable to open '/data/app/~~kEcW-qSbOVZKkgORp--SAw==/network.itonami.x402-PTKNDFgOQEAfhMBDuUqbRQ==/base.dm': No such file or directory
+11-18 03:17:32.713  2603  2603 W ziparchive: Unable to open '/data/app/~~kEcW-qSbOVZKkgORp--SAw==/network.itonami.x402-PTKNDFgOQEAfhMBDuUqbRQ==/base.dm': No such file or directory
+11-18 03:17:33.033  2603  2603 D nativeloader: Configuring clns-7 for other apk /data/app/~~kEcW-qSbOVZKkgORp--SAw==/network.itonami.x402-PTKNDFgOQEAfhMBDuUqbRQ==/base.apk. target_sdk_version=37, uses_libraries=, library_path=/data/app/~~kE
+11-18 03:17:33.242  2603  2603 D nativeloader: Load /data/app/~~kEcW-qSbOVZKkgORp--SAw==/network.itonami.x402-PTKNDFgOQEAfhMBDuUqbRQ==/base.apk!/lib/arm64-v8a/libx402_lib.so using ns clns-7 from class loader (caller=/data/app/~~kEcW-qSbOVZK
+11-18 03:17:33.384   560  1532 D CoreBackPreview: Window{b23191e u0 network.itonami.x402/network.itonami.x402.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@3596fcc,
+11-18 03:17:33.515   560   579 W ziparchive: Unable to open '/data/app/~~kEcW-qSbOVZKkgORp--SAw==/network.itonami.x402-PTKNDFgOQEAfhMBDuUqbRQ==/base.dm': No such file or directory
+11-18 03:17:33.516   560   579 I ActivityTaskManager: Displayed network.itonami.x402/.MainActivity for user 0: +1s231ms
+11-18 03:17:33.572   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{49251e5 com.android.cts.priv.ctsshim/10130} BLOCKED
+11-18 03:17:33.572   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{35ed4ba com.android.uwb.resources/10139} BLOCKED
+11-18 03:17:33.572   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{60d6f6b com.android.internal.display.cutout.emulation.corner/10024} BLOCKED
+11-18 03:17:33.572   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{36d3ac8 com.android.internal.display.cutout.emulation.double/10040} BLOCKED
+11-18 03:17:33.572   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{c1b2761 com.android.healthconnect.controller/10134} BLOCKED
+11-18 03:17:33.572   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{3958286 com.android.health.connect.backuprestore/10135} BLOCKED
+11-18 03:17:33.572   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{e119747 com.android.virtualmachine.res/10138} BLOCKED
+11-18 03:17:33.572   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{17f3b74 com.android.carrierconfig.auto_generated_rro_vendor__/10057} BLOCKED
+11-18 03:17:33.572   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{701d89d com.android.systemui.emulation.pixel_3_xl/10039} BLOCKED
+11-18 03:17:33.572   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{2374112 com.android.systemui.emulation.pixel_4_xl/10032} BLOCKED
+11-18 03:17:33.572   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{d4660e3 com.android.systemui.emulation.pixel_fold/10037} BLOCKED
+11-18 03:17:33.573   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{b0e9ae0 com.android.providers.telephony.auto_generated_characteristics_rro/10013} BLOCKED
+11-18 03:17:33.573   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{1a86199 com.android.htmlviewer/10090} BLOCKED
+11-18 03:17:33.573   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{7c45c5e com.android.quicksearchbox/10105} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{174283f com.android.networkstack.tethering.emulator/10015} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{272850c com.android.internal.emulation.pixel_3a_xl/10035} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{2947e55 com.android.internal.emulation.pixel_6_pro/10034} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{275e06a com.android.internal.emulation.pixel_7_pro/10005} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{28d095b com.android.internal.emulation.pixel_8_pro/10020} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{648e5f8 com.android.internal.emulation.pixel_3a/10045} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{8ebaad1 com.android.internal.emulation.pixel_4a/10004} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{9099936 com.android.internal.emulation.pixel_6a/10006} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{b88e037 com.android.internal.emulation.pixel_7a/10000} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{f2269a4 com.android.internal.emulation.pixel_8a/10036} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{6af230d com.android.safetycenter.resources/10125} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{e4e12c2 com.android.simappdialog/10094} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{50148d3 com.android.connectivity.resources/10143} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{bee7c10 com.android.internal.display.cutout.emulation.hole/10011} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{2b7e309 com.android.internal.display.cutout.emulation.tall/10002} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{16e990e com.android.modulemetadata/10103} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{d8d9f2f com.android.internal.systemui.navbar.threebutton/10026} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{927493c com.android.wifi.dialog/10129} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{e72a6c5 com.android.contacts/10101} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{6ff381a com.android.camera2/10114} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{bdeff4b com.android.internal.ranchu.commonoverlay/10028} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{ebdbd28 com.android.launcher3/10122} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{b5bea41 com.android.systemui.auto_generated_rro_vendor__/10055} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{6c8bbe6 com.android.internal.systemui.navbar.twobutton/10047} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{69c4527 com.android.settings.intelligence/10099} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{c583d4 com.android.calendar/10106} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{c3be97d com.android.systemui.emulation.pixel_3/10007} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{a54b072 com.android.systemui.emulation.pixel_4/10050} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{dfe0cc3 com.android.systemui.emulation.pixel_5/10051} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{ee10940 com.android.systemui.emulation.pixel_6/10012} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{e22a079 com.android.systemui.emulation.pixel_7/10046} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{83961be com.android.systemui.emulation.pixel_8/10010} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{32ab21f com.android.printspooler/10089} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{e6d796c com.android.dreams.basic/10096} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{523cb35 com.android.rkpdapp/10140} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{825dbca com.android.internal.emulation.pixel_3/10023} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{952513b com.android.internal.emulation.pixel_4/10029} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{b6ec058 com.android.internal.emulation.pixel_5/10003} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{8d2e5b1 com.android.internal.emulation.pixel_6/10043} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{badea96 com.android.internal.emulation.pixel_7/10054} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{c8ac617 com.android.internal.emulation.pixel_8/10021} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{c3b8a04 android.auto_generated_characteristics_rro/10042} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{c7f2bed com.android.musicfx/10077} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{7d61a22 com.android.phone.auto_generated_characteristics_rro/10027} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{a6bacb3 com.android.printservice.recommendation/10085} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{3e94270 com.android.dialer/10102} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{f2f99e9 com.android.gallery3d/10112} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{b5fb66e com.android.wifi.resources/10127} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{86a610f com.android.theme.font.notoserifsource/10016} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{f78159c com.android.internal.display.cutout.emulation.waterfall/10053} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{f5eeba5 com.android.inputmethod.latin/10111} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{dd4cb7a com.android.internal.systemui.navbar.transparent/10008} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{3f5ff2b org.chromium.webview_shell/10104} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{9beef88 com.android.systemui.emulation.pixel_3a_xl/10044} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{e779d21 com.android.systemui.emulation.pixel_6_pro/10052} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{3542546 com.android.systemui.emulation.pixel_7_pro/10038} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{8536307 com.android.systemui.emulation.pixel_8_pro/10018} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{2177c34 com.android.dreams.phototable/10113} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{fea5d com.android.providers.partnerbookmarks/10083} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{11d4fd2 com.android.wallpaper.livepicker/10069} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{63928a3 com.android.cellbroadcastreceiver.module/10147} BLOCKED
+11-18 03:17:33.582   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{1ca27a0 com.android.phone.auto_generated_rro_vendor__/10058} BLOCKED
+11-18 03:17:33.583   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{e5cf59 com.android.apps.tag/10078} BLOCKED
+11-18 03:17:33.583   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{edc971e com.android.imsserviceentitlement/10100} BLOCKED
+11-18 03:17:33.583   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{92babff com.android.appsearch.apk/10142} BLOCKED
+11-18 03:17:33.583   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{c3a1dcc com.android.internal.emulation.pixel_2_xl/10025} BLOCKED
+11-18 03:17:33.583   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{19b0815 com.android.internal.emulation.pixel_3_xl/10022} BLOCKED
+11-18 03:17:33.583   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{b7072a com.android.internal.emulation.pixel_4_xl/10031} BLOCKED
+11-18 03:17:33.583   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{699091b com.android.internal.emulation.pixel_fold/10041} BLOCKED
+11-18 03:17:33.583   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{5d14ab8 com.android.bookmarkprovider/10082} BLOCKED
+11-18 03:17:33.583   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{1311091 com.android.systemui.emulation.pixel_3a/10019} BLOCKED
+11-18 03:17:33.583   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{6166bf6 com.android.systemui.emulation.pixel_4a/10017} BLOCKED
+11-18 03:17:33.583   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{2b51bf7 com.android.systemui.emulation.pixel_6a/10009} BLOCKED
+11-18 03:17:33.583   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{dac5a64 com.android.systemui.emulation.pixel_7a/10049} BLOCKED
+11-18 03:17:33.583   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{34524cd com.android.systemui.emulation.pixel_8a/10048} BLOCKED
+11-18 03:17:33.583   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{2ff6115 com.android.cts.ctsshim/10131} BLOCKED
+11-18 03:17:33.583   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{9355182 com.android.wallpaper/10119} BLOCKED
+11-18 03:17:33.583   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{7158093 com.android.connectivity.resources.goldfish.overlay/10059} BLOCKED
+11-18 03:17:33.583   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{606b8d0 com.android.music/10107} BLOCKED
+11-18 03:17:33.583   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{e0c40c9 com.android.hotspot2.osulogin/10128} BLOCKED
+11-18 03:17:33.583   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{b6b03ce com.android.companiondevicemanager.auto_generated_characteristics_rro/10014} BLOCKED
+11-18 03:17:33.583   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{70d92ef com.android.internal.systemui.navbar.gestural/10030} BLOCKED
+11-18 03:17:33.583   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{76691fc com.android.deskclock/10110} BLOCKED
+11-18 03:17:33.583   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{c0f2085 com.android.bluetoothmidiservice/10086} BLOCKED
+11-18 03:17:33.583   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{a378eda com.android.captiveportallogin/10098} BLOCKED
+11-18 03:17:33.583   560  1532 I AppsFilter: interaction: PackageSetting{1143382 network.itonami.x402/10148} -> PackageSetting{dca6f0b android.auto_generated_rro_vendor__/10056} BLOCKED
+11-18 03:17:33.646  2603  2633 I cr_VariationsUtils: Failed reading seed file "/data/user/0/network.itonami.x402/app_webview/variations_seed_new"
+11-18 03:17:33.646  2603  2633 I cr_VariationsUtils: Failed reading seed file "/data/user/0/network.itonami.x402/app_webview/variations_seed"
+11-18 03:17:33.693   560  1532 I ActivityManager: Start proc 2636:com.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0/u0i1 for  {network.itonami.x402/org.chromium.content.app.SandboxedProcessService0:0
+11-18 03:17:33.843   560  1532 W ProcessStats: Tracking association SourceState{abb9ae2 network.itonami.x402/10148 BTop #569} whose proc state 2 is better than process ProcessState{da64001 com.android.webview:webview_service/10109 pkg=com.a
+11-18 03:17:33.941   560  1532 D CoreBackPreview: Window{4cc6fb1 u0 Splash Screen network.itonami.x402 EXITING}: Setting back callback null
+11-18 03:17:33.941   560  1532 W InputManager-JNI: Input channel object '4cc6fb1 Splash Screen network.itonami.x402 (client)' was disposed without first being removed with the input manager!
+11-18 03:17:34.235   560   673 I ImeTracker: network.itonami.x402:751ede25: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+11-18 03:17:34.236   560   673 I ImeTracker: network.itonami.x402:751ede25: onCancelled at PHASE_SERVER_SHOULD_HIDE
+11-18 03:17:38.452  2603  2690 D ProfileInstaller: Installing profile for network.itonami.x402

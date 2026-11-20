@@ -1,0 +1,3654 @@
+[ {
+  "name" : "fund, settle, read back, reconcile",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : 1,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zProvider",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zProvider",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":balance",
+    "did" : "did:key:zProvider"
+  }, {
+    "op" : ":balance",
+    "did" : "did:key:zProviderNode"
+  }, {
+    "op" : ":reconcile",
+    "signer" : [ {
+      "transfer-id" : "t-settle",
+      "amount" : 1,
+      "state" : ":finalized"
+    } ]
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "finalized" : true,
+      "transfer-id" : "t-settle",
+      "height" : 2,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "known?" : true,
+      "balance" : 1,
+      "floor" : 0,
+      "value-class" : ":devnet"
+    }, {
+      "known?" : false
+    }, {
+      "match" : true,
+      "count" : 1,
+      "height" : 2
+    } ],
+    "final" : {
+      "height" : 2,
+      "balances" : [ [ "did:key:zBot", 0 ], [ "did:key:zProvider", 1 ], [ "did:key:zSponsor", -1 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ], [ "t-settle", "did:key:zBot", ":provider-expense", 1 ], [ "t-settle", "did:key:zProvider", ":earned-en", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 1
+      }
+    }
+  }
+}, {
+  "name" : "sponsor floor -2 admits two units and refuses the third",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund2" ], [ ":nonce", "s2" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund2" ], [ ":nonce", "s2" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund2",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s2"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund3" ], [ ":nonce", "s3" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund3" ], [ ":nonce", "s3" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund3",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s3"
+    },
+    "now-ms" : 1000
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "finalized" : true,
+      "transfer-id" : "t-fund2",
+      "height" : 2,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "refused" : true,
+      "cause" : ":below-floor",
+      "transfer-id" : "t-fund3"
+    } ],
+    "final" : {
+      "height" : 2,
+      "balances" : [ [ "did:key:zBot", 2 ], [ "did:key:zProvider", 0 ], [ "did:key:zSponsor", -2 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ], [ "t-fund2", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund2", "did:key:zBot", ":credit-received", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 0
+      }
+    }
+  }
+}, {
+  "name" : "bot cannot pay before it is funded (floor 0)",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : 1,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zProvider",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zProvider",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "refused" : true,
+      "cause" : ":below-floor",
+      "transfer-id" : "t-settle"
+    } ],
+    "final" : {
+      "height" : 0,
+      "balances" : [ [ "did:key:zBot", 0 ], [ "did:key:zProvider", 0 ], [ "did:key:zSponsor", 0 ] ],
+      "net-zero" : true,
+      "journal" : [ ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 0
+      }
+    }
+  }
+}, {
+  "name" : "the same signed settlement twice finalizes once",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : 1,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zProvider",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zProvider",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : 1,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zProvider",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zProvider",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "finalized" : true,
+      "transfer-id" : "t-settle",
+      "height" : 2,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "refused" : true,
+      "cause" : ":duplicate-nonce",
+      "transfer-id" : "t-settle"
+    } ],
+    "final" : {
+      "height" : 2,
+      "balances" : [ [ "did:key:zBot", 0 ], [ "did:key:zProvider", 1 ], [ "did:key:zSponsor", -1 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ], [ "t-settle", "did:key:zBot", ":provider-expense", 1 ], [ "t-settle", "did:key:zProvider", ":earned-en", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 1
+      }
+    }
+  }
+}, {
+  "name" : "genesis refuses a non-devnet value class",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":live",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ ] ],
+  "expect" : {
+    "genesis" : {
+      "refused" : true,
+      "cause" : ":not-devnet"
+    }
+  }
+}, {
+  "name" : "genesis refuses a chain id outside the devnet prefix",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-l1",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ ] ],
+  "expect" : {
+    "genesis" : {
+      "refused" : true,
+      "cause" : ":bad-chain-id"
+    }
+  }
+}, {
+  "name" : "genesis refuses the bare prefix",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ ] ],
+  "expect" : {
+    "genesis" : {
+      "refused" : true,
+      "cause" : ":bad-chain-id"
+    }
+  }
+}, {
+  "name" : "genesis refuses a non-zero fee cap",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 1,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ ] ],
+  "expect" : {
+    "genesis" : {
+      "refused" : true,
+      "cause" : ":bad-fee-cap"
+    }
+  }
+}, {
+  "name" : "genesis refuses a positive opening balance",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0,
+      "opening-balance" : 1
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ ] ],
+  "expect" : {
+    "genesis" : {
+      "refused" : true,
+      "cause" : ":opening-balance-refused"
+    }
+  }
+}, {
+  "name" : "genesis refuses a positive floor",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 1
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ ] ],
+  "expect" : {
+    "genesis" : {
+      "refused" : true,
+      "cause" : ":bad-floor"
+    }
+  }
+}, {
+  "name" : "genesis refuses a duplicate account",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ ] ],
+  "expect" : {
+    "genesis" : {
+      "refused" : true,
+      "cause" : ":duplicate-account"
+    }
+  }
+}, {
+  "name" : "genesis refuses an unknown role",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":node",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ ] ],
+  "expect" : {
+    "genesis" : {
+      "refused" : true,
+      "cause" : ":bad-role"
+    }
+  }
+}, {
+  "name" : "wrong chain id",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : 1,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/other" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zProvider",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/other" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zProvider",
+      "chain-id" : "awai-en-devnet/other",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "refused" : true,
+      "cause" : ":wrong-chain",
+      "transfer-id" : "t-settle"
+    } ],
+    "final" : {
+      "height" : 1,
+      "balances" : [ [ "did:key:zBot", 1 ], [ "did:key:zProvider", 0 ], [ "did:key:zSponsor", -1 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 0
+      }
+    }
+  }
+}, {
+  "name" : "live value class",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : 1,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zProvider",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":live",
+      "fee" : 0,
+      "receiver" : "did:key:zProvider",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "refused" : true,
+      "cause" : ":not-devnet",
+      "transfer-id" : "t-settle"
+    } ],
+    "final" : {
+      "height" : 1,
+      "balances" : [ [ "did:key:zBot", 1 ], [ "did:key:zProvider", 0 ], [ "did:key:zSponsor", -1 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 0
+      }
+    }
+  }
+}, {
+  "name" : "unknown kind",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : 1,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":mint" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zProvider",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":mint" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zProvider",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":mint",
+      "order" : "bafyOrder1",
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "refused" : true,
+      "cause" : ":bad-kind",
+      "transfer-id" : "t-settle"
+    } ],
+    "final" : {
+      "height" : 1,
+      "balances" : [ [ "did:key:zBot", 1 ], [ "did:key:zProvider", 0 ], [ "did:key:zSponsor", -1 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 0
+      }
+    }
+  }
+}, {
+  "name" : "zero amount",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : 1,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 0 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zProvider",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 0 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zProvider",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : 0,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "refused" : true,
+      "cause" : ":bad-amount",
+      "transfer-id" : "t-settle"
+    } ],
+    "final" : {
+      "height" : 1,
+      "balances" : [ [ "did:key:zBot", 1 ], [ "did:key:zProvider", 0 ], [ "did:key:zSponsor", -1 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 0
+      }
+    }
+  }
+}, {
+  "name" : "non-integer amount",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : 1,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", "1" ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zProvider",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", "1" ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zProvider",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : "1",
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "refused" : true,
+      "cause" : ":bad-amount",
+      "transfer-id" : "t-settle"
+    } ],
+    "final" : {
+      "height" : 1,
+      "balances" : [ [ "did:key:zBot", 1 ], [ "did:key:zProvider", 0 ], [ "did:key:zSponsor", -1 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 0
+      }
+    }
+  }
+}, {
+  "name" : "fee above cap 0",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : 1,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 1 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zProvider",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 1 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":devnet",
+      "fee" : 1,
+      "receiver" : "did:key:zProvider",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "refused" : true,
+      "cause" : ":fee-over-cap",
+      "transfer-id" : "t-settle"
+    } ],
+    "final" : {
+      "height" : 1,
+      "balances" : [ [ "did:key:zBot", 1 ], [ "did:key:zProvider", 0 ], [ "did:key:zSponsor", -1 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 0
+      }
+    }
+  }
+}, {
+  "name" : "self transfer",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : 1,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zProvider",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "refused" : true,
+      "cause" : ":self-transfer",
+      "transfer-id" : "t-settle"
+    } ],
+    "final" : {
+      "height" : 1,
+      "balances" : [ [ "did:key:zBot", 1 ], [ "did:key:zProvider", 0 ], [ "did:key:zSponsor", -1 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 0
+      }
+    }
+  }
+}, {
+  "name" : "node id as receiver",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : 1,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProviderNode" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zProvider",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProviderNode" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zProviderNode",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "refused" : true,
+      "cause" : ":unknown-account",
+      "transfer-id" : "t-settle"
+    } ],
+    "final" : {
+      "height" : 1,
+      "balances" : [ [ "did:key:zBot", 1 ], [ "did:key:zProvider", 0 ], [ "did:key:zSponsor", -1 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 0
+      }
+    }
+  }
+}, {
+  "name" : "receiver outside the allowlist",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : 1,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zSponsor" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zProvider",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zSponsor" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zSponsor",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "refused" : true,
+      "cause" : ":receiver-not-allowlisted",
+      "transfer-id" : "t-settle"
+    } ],
+    "final" : {
+      "height" : 1,
+      "balances" : [ [ "did:key:zBot", 1 ], [ "did:key:zProvider", 0 ], [ "did:key:zSponsor", -1 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 0
+      }
+    }
+  }
+}, {
+  "name" : "expired at now",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : 1,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 1000 ] ]
+      }, {
+        "signer" : "did:key:zProvider",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 1000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zProvider",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 1000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "refused" : true,
+      "cause" : ":expired",
+      "transfer-id" : "t-settle"
+    } ],
+    "final" : {
+      "height" : 1,
+      "balances" : [ [ "did:key:zBot", 1 ], [ "did:key:zProvider", 0 ], [ "did:key:zSponsor", -1 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 0
+      }
+    }
+  }
+}, {
+  "name" : "a nonce is per spender; the floor still applies",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : 2,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 2 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zProvider",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 2 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zProvider",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : 2,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "refused" : true,
+      "cause" : ":below-floor",
+      "transfer-id" : "t-settle"
+    } ],
+    "final" : {
+      "height" : 1,
+      "balances" : [ [ "did:key:zBot", 1 ], [ "did:key:zProvider", 0 ], [ "did:key:zSponsor", -1 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 0
+      }
+    }
+  }
+}, {
+  "name" : "duplicate transfer id",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : 1,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zProvider",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zProvider",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "refused" : true,
+      "cause" : ":duplicate-transfer",
+      "transfer-id" : "t-fund"
+    } ],
+    "final" : {
+      "height" : 1,
+      "balances" : [ [ "did:key:zBot", 1 ], [ "did:key:zProvider", 0 ], [ "did:key:zSponsor", -1 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 0
+      }
+    }
+  }
+}, {
+  "name" : "settlement without acceptance",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "reserved" : 1,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zProvider",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zProvider",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "refused" : true,
+      "cause" : ":missing-acceptance",
+      "transfer-id" : "t-settle"
+    } ],
+    "final" : {
+      "height" : 1,
+      "balances" : [ [ "did:key:zBot", 1 ], [ "did:key:zProvider", 0 ], [ "did:key:zSponsor", -1 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 0
+      }
+    }
+  }
+}, {
+  "name" : "settlement without reservation",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zProvider",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zProvider",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "refused" : true,
+      "cause" : ":missing-reservation",
+      "transfer-id" : "t-settle"
+    } ],
+    "final" : {
+      "height" : 1,
+      "balances" : [ [ "did:key:zBot", 1 ], [ "did:key:zProvider", 0 ], [ "did:key:zSponsor", -1 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 0
+      }
+    }
+  }
+}, {
+  "name" : "amount above reservation",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : 1,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 2 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zProvider",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 2 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zProvider",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : 2,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "refused" : true,
+      "cause" : ":over-reservation",
+      "transfer-id" : "t-settle"
+    } ],
+    "final" : {
+      "height" : 1,
+      "balances" : [ [ "did:key:zBot", 1 ], [ "did:key:zProvider", 0 ], [ "did:key:zSponsor", -1 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 0
+      }
+    }
+  }
+}, {
+  "name" : "provider signature missing (one-sided binding)",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : 1,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zProvider",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "refused" : true,
+      "cause" : ":missing-receiver-signature",
+      "transfer-id" : "t-settle"
+    } ],
+    "final" : {
+      "height" : 1,
+      "balances" : [ [ "did:key:zBot", 1 ], [ "did:key:zProvider", 0 ], [ "did:key:zSponsor", -1 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 0
+      }
+    }
+  }
+}, {
+  "name" : "spender signature missing",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : 1,
+      "signatures" : [ {
+        "signer" : "did:key:zProvider",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zProvider",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "refused" : true,
+      "cause" : ":missing-spender-signature",
+      "transfer-id" : "t-settle"
+    } ],
+    "final" : {
+      "height" : 1,
+      "balances" : [ [ "did:key:zBot", 1 ], [ "did:key:zProvider", 0 ], [ "did:key:zSponsor", -1 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 0
+      }
+    }
+  }
+}, {
+  "name" : "node signature in place of operator",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : 1,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zProvider",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zProviderNode",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zProvider",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "refused" : true,
+      "cause" : ":foreign-signature",
+      "transfer-id" : "t-settle"
+    } ],
+    "final" : {
+      "height" : 1,
+      "balances" : [ [ "did:key:zBot", 1 ], [ "did:key:zProvider", 0 ], [ "did:key:zSponsor", -1 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 0
+      }
+    }
+  }
+}, {
+  "name" : "signature the host could not verify",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : 1,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zProvider",
+        "verified" : false,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zProvider",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "refused" : true,
+      "cause" : ":unverified-signature",
+      "transfer-id" : "t-settle"
+    } ],
+    "final" : {
+      "height" : 1,
+      "balances" : [ [ "did:key:zBot", 1 ], [ "did:key:zProvider", 0 ], [ "did:key:zSponsor", -1 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 0
+      }
+    }
+  }
+}, {
+  "name" : "signature over a different amount",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : 1,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 2 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zProvider",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 2 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zProvider",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "refused" : true,
+      "cause" : ":payload-mismatch",
+      "transfer-id" : "t-settle"
+    } ],
+    "final" : {
+      "height" : 1,
+      "balances" : [ [ "did:key:zBot", 1 ], [ "did:key:zProvider", 0 ], [ "did:key:zSponsor", -1 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 0
+      }
+    }
+  }
+}, {
+  "name" : "signer finality missing on the ledger stops",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : 1,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zProvider",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zProvider",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":reconcile",
+    "signer" : [ {
+      "transfer-id" : "t-settle",
+      "amount" : 1,
+      "state" : ":finalized"
+    }, {
+      "transfer-id" : "t-ghost",
+      "amount" : 1,
+      "state" : ":finalized"
+    } ]
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "finalized" : true,
+      "transfer-id" : "t-settle",
+      "height" : 2,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "cause" : ":missing-on-ledger",
+      "transfer-id" : "t-ghost",
+      "stop" : true
+    } ],
+    "final" : {
+      "height" : 2,
+      "balances" : [ [ "did:key:zBot", 0 ], [ "did:key:zProvider", 1 ], [ "did:key:zSponsor", -1 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ], [ "t-settle", "did:key:zBot", ":provider-expense", 1 ], [ "t-settle", "did:key:zProvider", ":earned-en", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 1
+      }
+    }
+  }
+}, {
+  "name" : "amount disagreement stops",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : 1,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zProvider",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zProvider",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":reconcile",
+    "signer" : [ {
+      "transfer-id" : "t-settle",
+      "amount" : 2,
+      "state" : ":finalized"
+    } ]
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "finalized" : true,
+      "transfer-id" : "t-settle",
+      "height" : 2,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "cause" : ":amount-mismatch",
+      "transfer-id" : "t-settle",
+      "stop" : true
+    } ],
+    "final" : {
+      "height" : 2,
+      "balances" : [ [ "did:key:zBot", 0 ], [ "did:key:zProvider", 1 ], [ "did:key:zSponsor", -1 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ], [ "t-settle", "did:key:zBot", ":provider-expense", 1 ], [ "t-settle", "did:key:zProvider", ":earned-en", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 1
+      }
+    }
+  }
+}, {
+  "name" : "a dropped journal entry stops",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : 1,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zProvider",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zProvider",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":reconcile",
+    "signer" : [ {
+      "transfer-id" : "t-settle",
+      "amount" : 1,
+      "state" : ":finalized"
+    } ],
+    "tamper" : {
+      "drop-transfer-id" : "t-settle"
+    }
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "finalized" : true,
+      "transfer-id" : "t-settle",
+      "height" : 2,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "cause" : ":journal-mismatch",
+      "transfer-id" : "t-settle",
+      "stop" : true
+    } ],
+    "final" : {
+      "height" : 2,
+      "balances" : [ [ "did:key:zBot", 0 ], [ "did:key:zProvider", 1 ], [ "did:key:zSponsor", -1 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ], [ "t-settle", "did:key:zBot", ":provider-expense", 1 ], [ "t-settle", "did:key:zProvider", ":earned-en", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 1
+      }
+    }
+  }
+}, {
+  "name" : "a settlement the signer never saw stops",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : 1,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zProvider",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zProvider",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":reconcile",
+    "signer" : [ ]
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "finalized" : true,
+      "transfer-id" : "t-settle",
+      "height" : 2,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "cause" : ":unexpected-on-ledger",
+      "transfer-id" : "t-settle",
+      "stop" : true
+    } ],
+    "final" : {
+      "height" : 2,
+      "balances" : [ [ "did:key:zBot", 0 ], [ "did:key:zProvider", 1 ], [ "did:key:zSponsor", -1 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ], [ "t-settle", "did:key:zBot", ":provider-expense", 1 ], [ "t-settle", "did:key:zProvider", ":earned-en", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 1
+      }
+    }
+  }
+}, {
+  "name" : "journal entry without a ledger transfer stops",
+  "fn" : "run-scenario",
+  "args" : [ {
+    "chain-id" : "awai-en-devnet/adr0027-v3a",
+    "value-class" : ":devnet",
+    "operator" : "did:key:zOperator",
+    "fee-cap" : 0,
+    "accounts" : [ {
+      "did" : "did:key:zSponsor",
+      "role" : ":sponsor",
+      "floor" : -2
+    }, {
+      "did" : "did:key:zBot",
+      "role" : ":bot",
+      "floor" : 0
+    }, {
+      "did" : "did:key:zProvider",
+      "role" : ":provider",
+      "floor" : 0
+    } ],
+    "allowlist" : [ {
+      "spender" : "did:key:zSponsor",
+      "receivers" : [ "did:key:zBot" ]
+    }, {
+      "spender" : "did:key:zBot",
+      "receivers" : [ "did:key:zProvider" ]
+    } ]
+  }, [ {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : null,
+      "signatures" : [ {
+        "signer" : "did:key:zSponsor",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":funding" ], [ ":transfer-id", "t-fund" ], [ ":nonce", "s1" ], [ ":spender", "did:key:zSponsor" ], [ ":receiver", "did:key:zBot" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", null ], [ ":acceptance", null ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-fund",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zBot",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zSponsor",
+      "kind" : ":funding",
+      "order" : null,
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "s1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":transfer",
+    "tx" : {
+      "acceptance" : "bafyAcceptance1",
+      "reserved" : 1,
+      "signatures" : [ {
+        "signer" : "did:key:zBot",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      }, {
+        "signer" : "did:key:zProvider",
+        "verified" : true,
+        "payload" : [ [ ":chain-id", "awai-en-devnet/adr0027-v3a" ], [ ":kind", ":settlement" ], [ ":transfer-id", "t-settle" ], [ ":nonce", "b1" ], [ ":spender", "did:key:zBot" ], [ ":receiver", "did:key:zProvider" ], [ ":amount", 1 ], [ ":fee", 0 ], [ ":order", "bafyOrder1" ], [ ":acceptance", "bafyAcceptance1" ], [ ":demand", ":owner-internal" ], [ ":expires-ms", 2000 ] ]
+      } ],
+      "transfer-id" : "t-settle",
+      "value-class" : ":devnet",
+      "fee" : 0,
+      "receiver" : "did:key:zProvider",
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "spender" : "did:key:zBot",
+      "kind" : ":settlement",
+      "order" : "bafyOrder1",
+      "amount" : 1,
+      "demand" : ":owner-internal",
+      "expires-ms" : 2000,
+      "nonce" : "b1"
+    },
+    "now-ms" : 1000
+  }, {
+    "op" : ":reconcile",
+    "signer" : [ {
+      "transfer-id" : "t-settle",
+      "amount" : 1,
+      "state" : ":finalized"
+    } ],
+    "tamper" : {
+      "add" : {
+        "transfer-id" : "t-extra",
+        "account" : "did:key:zProvider",
+        "entry" : ":earned-en",
+        "amount" : 1
+      }
+    }
+  } ] ],
+  "expect" : {
+    "genesis" : {
+      "ok" : true,
+      "chain-id" : "awai-en-devnet/adr0027-v3a",
+      "finality" : ":single-operator-devnet"
+    },
+    "results" : [ {
+      "finalized" : true,
+      "transfer-id" : "t-fund",
+      "height" : 1,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "finalized" : true,
+      "transfer-id" : "t-settle",
+      "height" : 2,
+      "finality" : ":single-operator-devnet"
+    }, {
+      "cause" : ":journal-without-ledger",
+      "transfer-id" : "t-extra",
+      "stop" : true
+    } ],
+    "final" : {
+      "height" : 2,
+      "balances" : [ [ "did:key:zBot", 0 ], [ "did:key:zProvider", 1 ], [ "did:key:zSponsor", -1 ] ],
+      "net-zero" : true,
+      "journal" : [ [ "t-fund", "did:key:zSponsor", ":credit-extended", 1 ], [ "t-fund", "did:key:zBot", ":credit-received", 1 ], [ "t-settle", "did:key:zBot", ":provider-expense", 1 ], [ "t-settle", "did:key:zProvider", ":earned-en", 1 ] ],
+      "earned" : {
+        "value-class" : ":devnet",
+        "external-earned-en" : 0,
+        "owner-internal-excluded" : 1
+      }
+    }
+  }
+} ]

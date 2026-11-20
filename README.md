@@ -11,6 +11,26 @@ It is built on Android AOSP. The current release is **Awai OS Meiji**
 - [Shared setup design](https://www.figma.com/design/umqCqP5KSjLWh9fhCI1HaN?node-id=241-3)
   in Figma, and the [UI design rules](docs/design/interface-principles.md).
 
+## Quiet by design (静けさ)
+
+Awai OS, the Awai network and Murakumo share one product principle: quiet.
+
+- **Encrypted end to end.** Private messages, mail, private posts and files are
+  encrypted on the sending device and decrypted only on the recipient's devices.
+- **No advertising, no ad tracking.** The OS and its default apps show no ads,
+  carry no advertising identifier and do not profile use to sell attention.
+  Google Play services are not required.
+- **Not identifiable to other people.** Other members see a pseudonym, and peers
+  do not learn the home IP address. Accepted actions stay traceable to a
+  verified responsible party through a bounded case process; this is not
+  anonymity without responsibility.
+- **Decentralized.** Apps run on the device with local state, Murakumo inference
+  is local by default, and each external operation asks for consent first.
+
+These are directions with evidence gates, not released guarantees. The
+[public roadmap](https://awai.network/network/roadmap/#quiet-by-design-静けさ)
+lists the current position and the open gates for each point.
+
 ## Status
 
 Awai OS runs today as Android apps and system overlays on qualified test
@@ -23,7 +43,7 @@ platform decision lists the remaining gates.
 | Path | Contents |
 | --- | --- |
 | [`android/`](android) | Awai OS on Android: Home, Store, setup, SystemUI overlays, desktop PC work |
-| [`apps/`](apps) | Bundled apps: Itonami, Murakumo (local inference), Drive, Yotei |
+| [`apps/`](apps) | Existing in-tree integrations and pointers to independent app repositories |
 | [`dapps/`](dapps) | Otehon dapps: D1, reward loop, Saifu, Sanka, Wellbecoming |
 | [`otehon/`](otehon) | Itonami shell UI shared with Android, and Otehon fleet sources (Meiji, Bot fleet, Soshiki, storage) |
 | [`packages/`](packages) | Shared Awai inference and shell packages |
@@ -39,7 +59,8 @@ platform decision lists the remaining gates.
 today (emulator, PC LAN Live, PC NVMe persistence, phone) and what is still
 missing for a real Awai OS image. Android builds, emulator and device checks are
 described in [android/README.md](android/README.md) and [android/test/README.md](android/test/README.md).
-Each app documents its own build in its directory. Source, VM, device and
+Independent app repositories own their source, build, tests and releases. See
+[app ownership](docs/app-ownership.md) for the active split. Source, VM, device and
 release evidence are recorded separately; a passing build is not a released
 device image.
 

@@ -1,0 +1,62 @@
+{
+  "issue": "AWAI-2927",
+  "start": "2026-11-17T12:08:15.254Z",
+  "cases": [
+    {
+      "name": "isolated-signed-QA-pair-and-fixed-public-models"
+    },
+    {
+      "name": "deny-produces-no-image"
+    },
+    {
+      "name": "cancel-during-model-admission-no-image"
+    },
+    {
+      "name": "actual-generated-PNG-decoded-and-displayed"
+    },
+    {
+      "name": "MediaStore-save-and-independent-file-readback"
+    }
+  ],
+  "samples": [
+    {
+      "at": "2026-11-17T12:08:30.016Z",
+      "memory": "VmHWM:\t  282728 kB\nVmRSS:\t  282728 kB"
+    },
+    {
+      "at": "2026-11-17T12:08:45.494Z",
+      "memory": "VmHWM:\t 5754456 kB\nVmRSS:\t 5752144 kB"
+    },
+    {
+      "at": "2026-11-17T12:09:00.637Z",
+      "memory": "VmHWM:\t 5754456 kB\nVmRSS:\t 5732192 kB"
+    },
+    {
+      "at": "2026-11-17T12:09:15.988Z",
+      "memory": "VmHWM:\t 5754456 kB\nVmRSS:\t 5732204 kB"
+    },
+    {
+      "at": "2026-11-17T12:09:31.125Z",
+      "memory": "VmHWM:\t 5754456 kB\nVmRSS:\t 5732204 kB"
+    },
+    {
+      "at": "2026-11-17T12:09:46.944Z",
+      "memory": "VmHWM:\t 6557604 kB\nVmRSS:\t 6225880 kB"
+    }
+  ],
+  "elapsedGenerationSeconds": 80.5,
+  "output": {
+    "sha256": "f6c9090fb7344fd4503fc193e0dc09e31d5d5d6d5d5436a26cd2f35ddb3a574f",
+    "bytes": 341012,
+    "width": 512,
+    "height": 512
+  },
+  "save": {
+    "path": "/sdcard/Pictures/Awai/awai-002a9edc-e3f3-4eed-b0f8-40a965c954e7.png",
+    "bytes": 341012,
+    "sha256": "f6c9090fb7344fd4503fc193e0dc09e31d5d5d6d5d5436a26cd2f35ddb3a574f",
+    "independentAdbReadbackEqual": true
+  },
+  "status": "passed",
+  "end": "2026-11-17T12:10:29.913Z"
+}

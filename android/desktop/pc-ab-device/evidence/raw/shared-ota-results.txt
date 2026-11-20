@@ -1,0 +1,14 @@
+S1_before|slot=_a incr=awai-byname-v2 global_active_slot=a slot_a_is_bootable=true slot_a_is_successful=true slot_b_is_bootable=true slot_b_is_successful=false snap=none
+S1_apply|onPayloadApplicationComplete(ErrorCode::kDownloadStateInitializationError (20))
+S1_after_reboot|slot=_a incr=awai-byname-v2 global_active_slot=a slot_a_is_bootable=true slot_a_is_successful=true slot_b_is_bootable=false slot_b_is_successful=false snap=initiated
+S1_existing|ALL_UNCHANGED
+S2_before|slot=_a incr=awai-byname-v2 global_active_slot=a slot_a_is_bootable=true slot_a_is_successful=true slot_b_is_bootable=true slot_b_is_successful=false snap=none
+S2_apply|onPayloadApplicationComplete(ErrorCode::kSuccess (0))
+S2_after_reboot|slot=_b incr=awai-byname-v3 global_active_slot=b slot_a_is_bootable=false slot_a_is_successful=false slot_b_is_bootable=true slot_b_is_successful=true snap=none
+S2_existing|ALL_UNCHANGED
+S3_apply|onPayloadApplicationComplete(ErrorCode::kSuccess (0))
+S3_after_apply|slot=_a incr=awai-byname-v2 global_active_slot=b slot_a_is_bootable=true slot_a_is_successful=true slot_b_is_bootable=true slot_b_is_successful=false snap=unverified
+S3_break|zeroed 64 MiB at partition 13 (boot_b), sectors 94523392-94687231
+S3_after_boot|slot=_a incr=awai-byname-v2 global_active_slot=a slot_a_is_bootable=true slot_a_is_successful=true slot_b_is_bootable=false slot_b_is_successful=false snap=none
+S3_existing|ALL_UNCHANGED
+DONE

@@ -73,20 +73,16 @@ Verification needs only the public key. On 2026-11-17 these all behaved as expec
 The signed manifest is [evidence/awai-manifest.json](evidence/awai-manifest.json),
 and its signature is [evidence/awai-manifest.json.sig](evidence/awai-manifest.json.sig).
 
-## Not done
+## Testing status and remaining work
 
-- **Desktop boot test.** On 2026-11-17 the images booted in an x86_64 VM on the operator Mac
-  (QEMU, no hardware acceleration): `sys.boot_completed=1` after about 4 minutes, the three apps
-  are system apps under `/system/product/app` and render, and the DP-1 property is set. Without a
-  DP-1 connector the VM still used its virtual display. See
-  [vm-boot-20261117.json](evidence/vm-boot-20261117.json) and the
-  [Home](evidence/vm-home-20261117.png), [Store](evidence/vm-store-20261117.png) and
-  [Yotei](evidence/vm-yotei-20261117.png) screens. They have not been booted on the Desktop. To do that:
-  - Use them in place of the base images in the [LAN Live route](../netboot/README.md),
-    or as the NVMe copies in the [persistence route](../persistence/README.md).
-  - The persistence route's `verify-images.sh` pins the base digests, so it needs
-    new pins first.
-  - Coordinate device time with the other sessions using the Desktop first.
+- **Desktop boot test.** Done on 2026-11-17 in RAM Live mode, after the same path booted in a VM:
+  the Desktop booted the derived images from a read-only NBD export with tmpfs `/data` and no
+  local disk visible. Home, Store and Yotei ran as system apps, and DP-1 was the primary display
+  without a `video=` argument. Only DP-1 had a monitor, so DP-1 winning over a connected HDMI
+  display is not shown. See [desktop-boot-20261117.json](evidence/desktop-boot-20261117.json),
+  [vm-boot-20261117.json](evidence/vm-boot-20261117.json) and the screenshots in `evidence/`.
+  The persistence route with these images is not tested: its `verify-images.sh` pins the base
+  digests, so it needs new pins first.
 - **More apps.** Itonami, Murakumo and Drive (Tauri apps) are not included yet.
 - **Publishing.** The images are not published anywhere, and must not be released
   as Awai OS.

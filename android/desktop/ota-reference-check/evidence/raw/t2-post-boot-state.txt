@@ -1,0 +1,15 @@
+Update state: none
+abootctrl_global_active_slot=b
+abootctrl_global_current_slot=b
+abootctrl_global_no_auto_slot_switch=false
+abootctrl_global_snapshot_merge_status=none
+abootctrl_slot_a_is_bootable=false
+abootctrl_slot_a_is_successful=false
+abootctrl_slot_a_retry_count=
+abootctrl_slot_b_is_bootable=true
+abootctrl_slot_b_is_successful=true
+abootctrl_slot_b_retry_count=
+11-19 09:25:21.433   678   678 I update_engine: [INFO:snapshot.cpp(1674)] CheckMergeState for snapshots returned: MergeCompleted
+11-19 09:25:21.438   678   678 I update_engine: [INFO:snapshot.cpp(1639)] ProcessUpdateState handling state: MergeCompleted
+11-19 09:25:21.439   678   678 I update_engine: [INFO:cleanup_previous_update_action.cc(342)] Merge finished with state MergeCompleted.
+11-19 09:25:21.448   678   678 I update_engine: [INFO:cleanup_previous_update_action.cc(516)] Reporting merge stats: MergeCompleted in 3469ms (resumed 0 times), using 0 bytes of COW image, ublk_used=0

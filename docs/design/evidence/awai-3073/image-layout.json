@@ -1,0 +1,38 @@
+[
+  {
+    "width": 390,
+    "docWidth": 390,
+    "img": {
+      "x": 84,
+      "right": 306,
+      "width": 222
+    },
+    "save": {
+      "x": 84,
+      "right": 202,
+      "width": 118,
+      "height": 52
+    },
+    "complete": true,
+    "naturalWidth": 512,
+    "alt": "生成画像: A blue ceramic cup on a wooden table, soft daylight, product photograph."
+  },
+  {
+    "width": 320,
+    "docWidth": 320,
+    "img": {
+      "x": 84,
+      "right": 236,
+      "width": 152
+    },
+    "save": {
+      "x": 84,
+      "right": 202,
+      "width": 118,
+      "height": 52
+    },
+    "complete": true,
+    "naturalWidth": 512,
+    "alt": "生成画像: A blue ceramic cup on a wooden table, soft daylight, product photograph."
+  }
+]

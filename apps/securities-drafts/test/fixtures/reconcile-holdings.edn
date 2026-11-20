@@ -1,0 +1,8 @@
+;; The holder's own positions against the custodian's semt.002 statement:
+;; one match, one quantity difference, one position the statement lacks.
+{:request/id "reconcile-holdings"
+ :kind :reconcile-holdings
+ :positions [{:isin "US0378331005" :quantity "100.00"}
+             {:isin "JP3633400001" :quantity "3" :short? true}
+             {:isin "DE0007164600" :quantity "10"}]
+ :messages ["messages/semt002-statement.xml"]}

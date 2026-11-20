@@ -1,0 +1,12 @@
+11-19 09:51:27.454   673   673 I update_engine: [INFO:action_processor.cc(118)] ActionProcessor: finished UpdateBootFlagsAction with code ErrorCode::kSuccess
+11-19 09:51:27.469   673   673 E update_engine: [ERROR:cleanup_previous_update_action.cc(320)] Previous update has not been completed, not cleaning up
+11-19 09:51:27.477   673   673 I update_engine: [INFO:action_processor.cc(118)] ActionProcessor: finished CleanupPreviousUpdateAction with code ErrorCode::kSuccess
+11-19 09:51:27.478   673   673 I update_engine: [INFO:action_processor.cc(118)] ActionProcessor: finished InstallPlanAction with code ErrorCode::kSuccess
+11-19 09:51:27.485   673   673 I update_engine: [INFO:delta_performer.cc(1137)] Verifying using certificates: /system/etc/security/otacerts.zip
+11-19 09:51:27.491   673   673 I update_engine: [INFO:payload_verifier.cc(101)] signature blob size = 267
+11-19 09:51:27.492   673   673 I update_engine: [INFO:payload_verifier.cc(117)] Truncating the signature to its unpadded size: 256.
+11-19 09:51:27.494   673   673 I update_engine: [INFO:payload_verifier.cc(128)] Verified correct signature 1 out of 1 signatures.
+11-19 09:51:29.333   673   673 I update_engine: [INFO:delta_performer.cc(120)] Resuming after 527/1503 operations (35%), 387945345/964662861 bytes downloaded (40%), overall progress 37%
+11-19 09:52:26.510   673   673 I update_engine: [INFO:delta_performer.cc(1137)] Verifying using certificates: /system/etc/security/otacerts.zip
+11-19 09:52:26.512   673   673 I update_engine: [INFO:payload_verifier.cc(101)] signature blob size = 267
+11-19 09:52:26.513   673   673 I update_engine: [INFO:payload_verifier.cc(117)] Truncating the signature to its unpadded size: 256.

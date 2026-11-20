@@ -1,0 +1,4 @@
+avd=Awai_X402_AWAI3252 (copy of Awai_Horei_AWAI3134 config; system-images;android-35;default;arm64-v8a)
+sdk=35 abi=arm64-v8a release=15 webview=124.0.6367.219
+apk sha256=7e529a046010e493bd3693d3c367cee06ad7f454cafa4c0284c19adddb986f46 bytes=21727843
+launch TotalTime=1178ms (cold), 1231ms (restart)

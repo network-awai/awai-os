@@ -1,0 +1,10 @@
+true
+userdebug
+[INFO:update_engine_client_android.cc(367)] Command took 3 ms
+abootctrl_global_active_slot=b
+abootctrl_slot_a_is_bootable=true
+abootctrl_slot_a_is_successful=false
+abootctrl_slot_b_is_bootable=true
+abootctrl_slot_b_is_successful=true
+[INFO:update_engine_client_android.cc(367)] Command took 2108 ms
+Update state: none

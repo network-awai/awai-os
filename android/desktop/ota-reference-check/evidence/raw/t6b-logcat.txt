@@ -1,0 +1,14 @@
+11-19 09:56:19.169   662   662 I update_engine: [INFO:delta_performer.cc(1579)] Resetting recorded hash for prepared partitions.
+11-19 09:56:19.187   662   662 I update_engine: source_slot: A
+11-19 09:56:19.187   662   662 I update_engine: hash_checks_mandatory: false
+11-19 09:56:19.187   662   662 I update_engine:   hash: 042F153C71231AED85C825501AAB37121A7B548A0EA00FA4EB69C2B0280D76D4
+11-19 09:56:19.239   662   662 E update_engine: [ERROR:snapshot.cpp(5116)] Read merge_stats file failed: No such file or directory
+11-19 09:56:19.252   662   662 I update_engine: source_slot: A
+11-19 09:56:19.252   662   662 I update_engine: hash_checks_mandatory: false
+11-19 09:56:19.252   662   662 I update_engine:   hash: 042F153C71231AED85C825501AAB37121A7B548A0EA00FA4EB69C2B0280D76D4
+11-19 09:56:19.280   662   662 I update_engine: [INFO:payload_metadata.cc(221)] Metadata hash signature matches value in Omaha response.
+11-19 09:56:19.296   662   662 I update_engine: [INFO:delta_performer.cc(967)] Preparing partitions for new update. last hash = , new hash = BC8VPHEjGu2FyCVQGqs3Ehp7VIoOoA+k62nCsCgNdtQ=6WcQYdXnQ15/lxd9fWP7jqujRF+ZMOBQx8Y6StLWF1E=
+11-19 09:56:19.302   662   662 I update_engine: [INFO:delta_performer.cc(1579)] Resetting recorded hash for prepared partitions.
+11-19 09:56:20.334   662   662 E update_engine: [ERROR:snapshot.cpp(5116)] Read merge_stats file failed: No such file or directory
+11-19 09:56:22.022   662   662 E update_engine: [ERROR:fec_file_descriptor.cc(32)] No ECC data in the passed file
+11-19 09:56:22.023   662   662 E update_engine: [ERROR:verified_source_fd.cc(54)] Unable to open ECC source partition /dev/block/by-name/EFI_a: Invalid argument (22)

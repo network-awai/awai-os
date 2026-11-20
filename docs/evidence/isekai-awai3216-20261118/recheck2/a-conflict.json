@@ -1,0 +1,11 @@
+{
+  "first": "Draft saved.",
+  "revisionBefore": 1,
+  "afterConflict": "The drafts changed in another window and were read again. Try once more.",
+  "retry": "Draft saved.",
+  "revisionEnd": 3,
+  "messages": [
+    "third",
+    "first"
+  ]
+}

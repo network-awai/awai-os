@@ -1,0 +1,7 @@
+{
+  "startup": "The saved drafts are in a format this app cannot read. Saving and deleting are off so they are not overwritten.",
+  "saveDisabled": true,
+  "afterSubmit": "The saved drafts cannot be read, so saving and deleting are off.",
+  "draftsView": "The saved drafts are in a format this app cannot read. Saving and deleting are off so they are not overwritten.",
+  "storageUnchanged": true
+}

@@ -1,0 +1,2 @@
+11-18 10:32:21.180   582  2962 I am_anr  : [0,2872,network.itonami.publicfunds,682114630,Input dispatching timed out (d6b4fdc network.itonami.publicfunds/network.itonami.publicfunds.MainActivity (server) is not responding. Waited 5003ms for FocusEvent(hasFocus=true)).]
+11-18 10:42:12.268   582  3377 I am_anr  : [0,3317,network.itonami.publicfunds,680017478,Input dispatching timed out (8c87dca network.itonami.publicfunds/network.itonami.publicfunds.MainActivity (server) is not responding. Waited 5110ms for FocusEvent(hasFocus=true)).]

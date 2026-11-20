@@ -1,0 +1,6 @@
+Android/sdk_phone64_arm64/emu64a:15/AE3A.240806.019/12368160:userdebug/test-keys
+    versionName=124.0.6367.219
+2026-11-18T01:25:05Z
+AVD Awai_PublicFunds_AWAI3297 (config copied from Awai_Drafts_AWAI3285, 2 cores, 3 GiB): -port 5560 -wipe-data -no-snapshot -no-window -no-audio -no-boot-anim
+emulator start 2026-11-18T01:21:10Z, stop 2026-11-18T01:46:19Z
+build: CARGO_BUILD_JOBS=4 nice -n 10 npx tauri android build --debug --apk --target aarch64 (JDK 21 temurin, NDK 27.0.12077973)

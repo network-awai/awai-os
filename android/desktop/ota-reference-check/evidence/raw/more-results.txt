@@ -1,0 +1,14 @@
+T6_before|slot=_a incr=1795077496 global_active_slot=a slot_a_is_bootable=true slot_a_is_successful=true slot_a_retry_count= slot_b_is_bootable=true slot_b_is_successful=false slot_b_retry_count= snap=none
+T6_apply|onPayloadApplicationComplete(ErrorCode::kDownloadStateInitializationError (20))
+T6_after_reboot|slot=_a incr=1795077496 global_active_slot=a slot_a_is_bootable=true slot_a_is_successful=true slot_a_retry_count= slot_b_is_bootable=false slot_b_is_successful=false slot_b_retry_count= snap=initiated
+T7_before|slot=_a incr=1795077496 global_active_slot=a slot_a_is_bootable=true slot_a_is_successful=true slot_a_retry_count= slot_b_is_bootable=true slot_b_is_successful=false slot_b_retry_count= snap=none
+T7_progress_at_kill|DOWNLOADING (3), 0.420171
+T7_after_kill_boot|slot=_a incr=1795077496 global_active_slot=a slot_a_is_bootable=true slot_a_is_successful=true slot_a_retry_count= slot_b_is_bootable=false slot_b_is_successful=false slot_b_retry_count= snap=initiated
+T7_second_run|onPayloadApplicationComplete(ErrorCode::kNewRootfsVerificationError (15))|first_progress=DOWNLOADING (3), 0.417918
+T7_after_reboot|slot=_a incr=1795077496 global_active_slot=a slot_a_is_bootable=true slot_a_is_successful=true slot_a_retry_count= slot_b_is_bootable=false slot_b_is_successful=false slot_b_retry_count= snap=initiated
+T8_before|slot=_a incr=1795077496 global_active_slot=a slot_a_is_bootable=true slot_a_is_successful=true slot_a_retry_count= slot_b_is_bootable=true slot_b_is_successful=false slot_b_retry_count= snap=none
+T8_apply|onPayloadApplicationComplete(ErrorCode::kSuccess (0))
+T8_after_apply|slot=_a incr=1795077496 global_active_slot=b slot_a_is_bootable=true slot_a_is_successful=true slot_a_retry_count= slot_b_is_bootable=true slot_b_is_successful=false slot_b_retry_count= snap=unverified
+T8_after_reboot|slot=_b incr=awai-ota-test-v2 global_active_slot=b slot_a_is_bootable=false slot_a_is_successful=false slot_a_retry_count= slot_b_is_bootable=true slot_b_is_successful=true slot_b_retry_count= snap=none
+T8_later|slot=_b incr=awai-ota-test-v2 global_active_slot=b slot_a_is_bootable=false slot_a_is_successful=false slot_a_retry_count= slot_b_is_bootable=true slot_b_is_successful=true slot_b_retry_count= snap=none
+DONE

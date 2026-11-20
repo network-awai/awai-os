@@ -1,0 +1,99 @@
+{
+  "model_file": "Qwen3-8B-Q4_K_M.gguf",
+  "model_bytes": 5027783488,
+  "ctx": 4096,
+  "tokens": 128,
+  "repeats": 3,
+  "loadavg_before": [
+    2.29248046875,
+    1.6572265625,
+    1.65478515625
+  ],
+  "vm_before": {
+    "used_bytes": 6919798784,
+    "swapouts": 5076,
+    "compressor_pages": 11331
+  },
+  "load_seconds": 5.03,
+  "gpu_percent_samples": 134,
+  "gpu_percent_max": 100,
+  "gpu_percent_median": 99,
+  "runs": {
+    "short": [
+      {
+        "prompt_n": 12,
+        "prompt_per_second": 110.38,
+        "predicted_n": 128,
+        "predicted_per_second": 20.39
+      },
+      {
+        "prompt_n": 12,
+        "prompt_per_second": 114.05,
+        "predicted_n": 128,
+        "predicted_per_second": 20.34
+      },
+      {
+        "prompt_n": 12,
+        "prompt_per_second": 111.87,
+        "predicted_n": 128,
+        "predicted_per_second": 20.29
+      }
+    ],
+    "medium": [
+      {
+        "prompt_n": 251,
+        "prompt_per_second": 215.96,
+        "predicted_n": 128,
+        "predicted_per_second": 20.59
+      },
+      {
+        "prompt_n": 251,
+        "prompt_per_second": 219.02,
+        "predicted_n": 128,
+        "predicted_per_second": 20.61
+      },
+      {
+        "prompt_n": 251,
+        "prompt_per_second": 218.85,
+        "predicted_n": 128,
+        "predicted_per_second": 20.61
+      }
+    ],
+    "long": [
+      {
+        "prompt_n": 1211,
+        "prompt_per_second": 218.15,
+        "predicted_n": 128,
+        "predicted_per_second": 20.02
+      },
+      {
+        "prompt_n": 1211,
+        "prompt_per_second": 218.62,
+        "predicted_n": 128,
+        "predicted_per_second": 19.97
+      },
+      {
+        "prompt_n": 1211,
+        "prompt_per_second": 218.53,
+        "predicted_n": 128,
+        "predicted_per_second": 20.03
+      }
+    ]
+  },
+  "vm_during": {
+    "used_bytes": 12521127936,
+    "swapouts": 5076,
+    "compressor_pages": 11330
+  },
+  "max_rss_bytes": 5545312256,
+  "peak_footprint_bytes": 771953368,
+  "vm_after": {
+    "used_bytes": 10082975744,
+    "swapouts": 5076,
+    "compressor_pages": 11330
+  },
+  "engine_log": [
+    "0.00.030.675 I srv    load_model: loading model '/Users/node/github/workspaces/claude/awai-3391/models/Qwen3-8B-Q4_K_M.gguf'",
+    "0.04.943.072 I srv    load_model: initializing, n_slots = 1, n_ctx_slot = 4096, kv_unified = 'false'"
+  ]
+}

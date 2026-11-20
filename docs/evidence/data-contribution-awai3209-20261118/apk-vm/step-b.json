@@ -1,0 +1,19 @@
+{
+ "result": {
+  "status": "",
+  "state": [
+   {
+    "status": "draft",
+    "contentCid": "bafkreid7cnmr27vb2dtz4rwu57wshqbzolqr774zpsewyjum62zzrkmp3e",
+    "statementCid": "bafkreibvqtatsl7jyvgtplqs5syoulcxx3jlvklxexlieyl4w7evxijmx4",
+    "statementSha256": "3584c1392fe9c54d37ae12ecb0ea2c57bed2baa97725d682617cb7c95ba12cbf"
+   }
+  ]
+ },
+ "requests": [
+  {
+   "method": "GET",
+   "url": "https://tauri.localhost/icon.png"
+  }
+ ]
+}

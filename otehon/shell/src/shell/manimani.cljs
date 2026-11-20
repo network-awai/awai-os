@@ -1,6 +1,9 @@
 (ns shell.manimani
   (:require ["react" :refer [useCallback useEffect useRef useState]]
-            ["../voice-input.js" :refer [createLocalDictation]]))
+            ["../voice-input.js" :refer [createLocalDictation]]
+            [shell.bot-chat :as conversation]
+            [shell.screen-tools :as screen]
+            ["../bot-chat.js" :refer [chatBots]]))
 
 (def MANIMANI "manimani")
 (def MANIMANI-ORIGIN "http://127.0.0.1:8771")
@@ -39,14 +42,34 @@
    "model-unavailable" "The local model is not available. Nothing is sent elsewhere."})
 
 (defn manimani-link [active on-select]
-  (let [[state] (use-manimani)]
-    [:button {:type "button"
-               :class (if active "new-chat manimani-link active" "new-chat manimani-link")
-               :aria-current (when active "page")
-               :data-manimani-link true
-               :on-click on-select}
-     [:span.dot {:data-status (status-of state) :aria-hidden "true"}]
-     "Bots · Manimani"]))
+  [:button {:type "button" :class (if active "new-chat manimani-link active" "new-chat manimani-link")
+            :aria-current (when active "page") :data-manimani-link true
+            :on-click (fn [] (when (.dispatchEvent js/window (js/Event. "awai-request-new-conversation" #js {:cancelable true})) (.dispatchEvent js/window (js/Event. "awai-new-conversation")) (on-select)))}
+   [:span {:aria-hidden "true"} "+"] "Manimani · 新しい会話"])
+
+(defn conversation-entry []
+ (let [[bots set-bots] (useState []) [bot set-bot] (useState nil)
+       [draft set-draft] (useState #(.randomUUID js/crypto))
+       [busy set-busy] (useState false) [problem set-problem] (useState nil)]
+  (useEffect (fn [] (let [fresh #(set-draft (.randomUUID js/crypto))]
+    (.addEventListener js/window "awai-new-conversation" fresh)
+    (fn [] (.removeEventListener js/window "awai-new-conversation" fresh)))) #js [])
+  [:main.chat.net-view {:data-manimani-conversation true}
+   [:div.net-body
+    [:h1 "Manimani"] [:p "Itonami Agent bots との新しい会話。会話と画像生成をひとつの履歴に。"]
+    [:f> screen/panel "ja"]
+    [:button.secondary {:type "button" :disabled busy :on-click
+     (fn [] (set-busy true) (set-problem nil)
+      (-> (chatBots) (.then #(set-bots (js->clj % :keywordize-keys true)))
+       (.catch #(set-problem "Bot 一覧を取得できませんでした。接続先と操作の承認を確認してください。"))
+       (.finally #(set-busy false))))} (if busy "確認中…" "Bot を選ぶ")]
+    (when problem [:p.problem {:role "status"} problem])
+    (when (seq bots) [:label.soshiki-field [:span "会話する Bot"]
+     [:select {:value (or (:id bot) "") :on-change
+      (fn [e] (when (.dispatchEvent js/window (js/Event. "awai-request-new-conversation" #js {:cancelable true})) (set-bot (first (filter #(= (:id %) (.. e -target -value)) bots))) (set-draft (.randomUUID js/crypto))))}
+      [:option {:value ""} "Bot を選択"]
+      (for [b bots] ^{:key (:id b)} [:option {:value (:id b)} (:name b)])]])
+    (when bot (with-meta [:f> conversation/panel bot "ja" draft] {:key (str (:id bot) ":" draft)}))]]))
 
 (def launchers [["wifi" "Wi-Fi"] ["bluetooth" "Bluetooth"] ["sound" "Sound"] ["display" "Display"]])
 

@@ -1,0 +1,3 @@
+AVD Awai_Drafts_AWAI3285 (config copied from Awai_Isekai_AWAI3216): API 35 sdk_phone64_arm64 userdebug, 3 GiB RAM, 2 cores, -wipe-data -no-snapshot -no-window
+Android/sdk_phone64_arm64/emu64a:15/AE3A.240806.019/12368160:userdebug/test-keys
+2026-11-17T23:47:09Z

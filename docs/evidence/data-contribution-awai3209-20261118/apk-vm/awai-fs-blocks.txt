@@ -1,0 +1,2 @@
+./awai-fs/blocks/bafkreid7cnmr27vb2dtz4rwu57wshqbzolqr774zpsewyjum62zzrkmp3e
+./awai-fs/blocks/bafkreibvqtatsl7jyvgtplqs5syoulcxx3jlvklxexlieyl4w7evxijmx4

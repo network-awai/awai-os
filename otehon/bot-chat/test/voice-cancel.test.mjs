@@ -1,0 +1,10 @@
+import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs/promises';import path from'node:path';import{createHash,randomUUID}from'node:crypto';import{infer}from'../inference.mjs';
+const sha=b=>createHash('sha256').update(b).digest('hex');
+test('cancellation kills only the owned fixture process group including a TERM-ignoring descendant',async()=>{
+ const dir=path.resolve(process.env.CHAT_TEST_ROOT??'.agent-output','voice-cancel-'+randomUUID());await fs.mkdir(dir,{recursive:true});const soul='Synthetic fixture persona',digest=sha(soul);await fs.writeFile(path.join(dir,digest+'.txt'),soul);
+ const binary=path.join(dir,'synthetic-model.mjs'),pidFile=path.join(dir,'child.pid');const code=`#!${process.execPath}\nimport{spawn}from'node:child_process';import fs from'node:fs';const c=spawn(process.execPath,['-e','process.on("SIGTERM",()=>{});setInterval(()=>{},1000)'],{stdio:'ignore'});fs.writeFileSync(${JSON.stringify(pidFile)},String(c.pid));setInterval(()=>{},1000);`;
+ await fs.writeFile(binary,code,{mode:0o700});const runs=path.join(dir,'runs');await fs.mkdir(runs);const auth=path.join(dir,'synthetic-auth');await fs.writeFile(auth,'{}');const cfg={personaRoot:dir,muse:binary,museSha256:sha(code),runRoot:runs,museAuthPath:auth,model:'muse-spark-1.3',bb:process.env.BB_BIN??'bb'},controller=new AbortController();
+ const promise=infer(cfg,{id:'profile:synthetic',name:'synthetic',chatPersona:{available:true,sourceSha256:digest}},{requestId:randomUUID(),sessionId:randomUUID(),text:'Synthetic cancellation fixture'},[],{signal:controller.signal});promise.catch(()=>{});
+ let pid;for(let i=0;i<100;i++){try{pid=Number(await fs.readFile(pidFile,'utf8'));break}catch{}await new Promise(r=>setTimeout(r,20))}assert.ok(pid>1);await new Promise(r=>setTimeout(r,100));controller.abort();await assert.rejects(promise);
+ let exists=true;for(let i=0;i<150;i++){try{process.kill(pid,0)}catch{exists=false;break}await new Promise(r=>setTimeout(r,20))}assert.equal(exists,false,'owned descendant must die after grace, even after leader has exited');
+});

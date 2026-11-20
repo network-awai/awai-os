@@ -1,0 +1,5 @@
+H1_before|slot=_a incr=awai-byname-v6 gpu=vkms eth0=e1000e global_active_slot=a slot_a_is_successful=true slot_b_is_successful=false
+H1_apply|onPayloadApplicationComplete(ErrorCode::kSuccess (0))
+H1_after_reboot|slot=_b incr=awai-byname-v7 gpu=vkms eth0=e1000e global_active_slot=b slot_a_is_successful=false slot_b_is_successful=true
+H1_sf_exits|0
+H1_existing|ALL_UNCHANGED

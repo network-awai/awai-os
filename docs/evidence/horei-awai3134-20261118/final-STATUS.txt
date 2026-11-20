@@ -1,0 +1,2 @@
+Final APK 84df5e653fa1a3a496868bb3c4c6e989cf9f7c68149c7f6f8d631809cb81c47e installed on emulator-5644 (Awai_Horei_AWAI3134, API 35) with airplane mode on and per-app locale ja-JP.
+Re-run not completed: the emulator display stalled (black screencap, uiautomator "null root node") under host memory pressure after a QEMU hang/crash on the first boot. Acceptance flow evidence is from the earlier APK (run1).

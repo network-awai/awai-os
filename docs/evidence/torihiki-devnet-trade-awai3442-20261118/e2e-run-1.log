@@ -1,0 +1,6 @@
+2026-11-18T05:23:29.269Z head 62 torihiki-devnet-1
+2026-11-18T05:23:29.279Z account 3070423463122
+2026-11-18T05:23:29.488Z account before 200 {"equity":0,"maintenance-margin":0,"liquidatable":false,"triggers":[],"next-nonce":1,"account":3070423463122,"bound-key":null,"collateral":0,"free-collateral":0,"initial-margin":0,"positions":{}}
+2026-11-18T05:23:29.617Z deposit nonce 1 status 401 {"ok":false,"height":62,"reason":"bad-signature"}
+2026-11-18T05:23:29.784Z head after deposit 62
+2026-11-18T05:23:29.784Z STOP: deposit not accepted

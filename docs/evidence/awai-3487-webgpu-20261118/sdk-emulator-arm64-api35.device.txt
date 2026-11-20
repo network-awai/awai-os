@@ -1,0 +1,5 @@
+15
+35
+Android SDK built for arm64
+arm64-v8a
+  Current WebView package (name, version): (com.android.webview, 124.0.6367.219)

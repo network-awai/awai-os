@@ -1,0 +1,4 @@
+Processes: 512 total, 3 running, 509 sleeping, 2290 threads
+CPU usage: 9.81% user, 7.40% sys, 82.77% idle
+Processes: 512 total, 3 running, 509 sleeping, 2290 threads
+CPU usage: 3.10% user, 2.18% sys, 94.71% idle

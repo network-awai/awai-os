@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <permission android:name="network.awai.permission.LOCAL_INFERENCE" android:protectionLevel="signature" />
+    <!-- AWAI-3307: model downloads only, through the canonical broker's per-operation consent and
+         the CSP connect-src derived from client/download-contract.js. No remote inference. -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <!-- AndroidTV support -->
     <uses-feature android:name="android.software.leanback" android:required="false" />

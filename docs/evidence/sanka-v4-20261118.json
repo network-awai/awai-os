@@ -1,0 +1,205 @@
+{
+  "schema": "awai.sanka.v4-evidence/1",
+  "issue": "AWAI-3123",
+  "serial": "emulator-5620",
+  "apk-sha256": "3f1a6340266e3ac850f3cc6e3ecef40da3b297a232cdac97dd7effb2fac1feba",
+  "owner-spki-sha256": "d93f81af0107cd98b895ff79c4d748701ae63af304cdc7967bc49bcf0b05b38e",
+  "chain-id": "awai-en-devnet/adr0027-v4",
+  "value-class": "devnet",
+  "head": {
+    "chain-id": "awai-en-devnet/adr0027-v4",
+    "entries": 3,
+    "finality": ":single-operator-devnet",
+    "head": "d7516b9e0cb050e6529fc57b6466716321d454a2f999540d806b5b2f3f4c1926",
+    "height": 3,
+    "net-zero": true,
+    "value-class": ":devnet"
+  },
+  "checks": [
+    {
+      "check": "the app makes an owner key in Android Keystore",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "the app has no INTERNET permission",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "the signer enrolls the owner's device key",
+      "passed": true,
+      "detail": {
+        "enrolled": true,
+        "owner-spki-sha256": "d93f81af0107cd98b895ff79c4d748701ae63af304cdc7967bc49bcf0b05b38e"
+      }
+    },
+    {
+      "check": "no reservation without the owner's approval",
+      "passed": true,
+      "detail": {
+        "cause": ":owner-approval-required",
+        "message": "owner-approval-required",
+        "refused": true
+      }
+    },
+    {
+      "check": "the native card shows the order's own fields",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "check": "the owner taps Approve on the card",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "the approved order is reserved",
+      "passed": true,
+      "detail": {
+        "amount": 1,
+        "at": 1794931083688,
+        "order": "baguqeerarbbp2dlzxcnidv2gm3jehevpc7ifftfsmjxjkkirxqu6grcmqbra",
+        "state": ":reserved"
+      }
+    },
+    {
+      "check": "an approval signed by another key (a fake dapp) is refused",
+      "passed": true,
+      "detail": {
+        "cause": ":owner-signature-invalid",
+        "message": "owner-signature-invalid",
+        "refused": true
+      }
+    },
+    {
+      "check": "an approval for another order is refused",
+      "passed": true,
+      "detail": {
+        "cause": ":approval-for-another-order",
+        "message": "approval-for-another-order",
+        "refused": true
+      }
+    },
+    {
+      "check": "a denied order is not reserved",
+      "passed": true,
+      "detail": {
+        "cause": ":owner-denied",
+        "message": "owner-denied",
+        "refused": true
+      }
+    },
+    {
+      "check": "no settlement without the owner's acceptance",
+      "passed": true,
+      "detail": {
+        "cause": ":owner-acceptance-required",
+        "message": "owner-acceptance-required",
+        "refused": true
+      }
+    },
+    {
+      "check": "the acceptance card shows the answer and the receipt",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "the owner taps Accept",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "an acceptance for another receipt is refused",
+      "passed": true,
+      "detail": {
+        "cause": ":acceptance-for-another-receipt",
+        "message": "acceptance-for-another-receipt",
+        "refused": true
+      }
+    },
+    {
+      "check": "the accepted result yields a bot-signed settlement",
+      "passed": true,
+      "detail": {
+        "acceptance": "baguqeerayxjfaq5k4pmqlta5iol46bcrwrrap6xec3ubco6pr4pj6vwwtmhq",
+        "amount": 1,
+        "chain-id": "awai-en-devnet/adr0027-v4",
+        "demand": ":owner-internal",
+        "expires-ms": 1794931700709,
+        "fee": 0,
+        "kind": ":settlement",
+        "nonce": "1e0904a4741b7e38e7ed5b33",
+        "order": "baguqeerarbbp2dlzxcnidv2gm3jehevpc7ifftfsmjxjkkirxqu6grcmqbra",
+        "receiver": "did:key:z6MkqtPhzsWuzPTxE4n8j6CuYKh99GHxMrTzpnbVCANc4qgr",
+        "reserved": 1,
+        "signatures": [
+          {
+            "sig": "swecmjDwAY-MchQ0wM69SLAmn9vK7Rc9N6_kPsLYA0WN2Lqs_GBPLUidc5SyuvpvJt-WmXm6mWJnIZxm1eqjAg",
+            "signer": "did:key:z6MkrJUtqWia3oKnbhuCFKyGAe7s1dmMifuuLa6RnahTPaKZ"
+          }
+        ],
+        "spender": "did:key:z6MkrJUtqWia3oKnbhuCFKyGAe7s1dmMifuuLa6RnahTPaKZ",
+        "transfer-id": "settle-baguqeerarbbp2dlzxcnidv2-c5c4d076cd4ebe2c04667200",
+        "value-class": ":devnet"
+      }
+    },
+    {
+      "check": "the provider counter-signs and the node finalizes",
+      "passed": true,
+      "detail": {
+        "entry-hash": "d7516b9e0cb050e6529fc57b6466716321d454a2f999540d806b5b2f3f4c1926",
+        "finality": ":single-operator-devnet",
+        "finalized": true,
+        "height": 3,
+        "transfer-id": "settle-baguqeerarbbp2dlzxcnidv2-c5c4d076cd4ebe2c04667200"
+      }
+    },
+    {
+      "check": "an answer that does not match its receipt gets no buttons",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "a rejected result releases the reservation and pays nothing",
+      "passed": true,
+      "detail": {
+        "cause": ":rejected-by-owner",
+        "order": "baguqeeranbtjmm46hfvqtp6pbaeqpxw4df3fpxatkmimz7gpw7pxyf7c2omq",
+        "paid": 0,
+        "released": true
+      }
+    },
+    {
+      "check": "signer, ledger and journal reconcile",
+      "passed": true,
+      "detail": {
+        "count": 1,
+        "height": 3,
+        "match": true
+      }
+    }
+  ],
+  "passed": 19,
+  "total": 19,
+  "observed": "2026-11-18; disposable AVD (AOSP API 35 userdebug, arm64, swiftshader) created by this run on emulator-5620; host Apple M1 Max; the emulators of other sessions (5570/5590/5600) were not touched",
+  "negative-control": {
+    "signer-change": "owner statements accepted without verifying the signature, and a rejected result settled like an accepted one",
+    "passed": 17,
+    "total": 19,
+    "failed": [
+      "an approval signed by another key (a fake dapp) is refused",
+      "a rejected result releases the reservation and pays nothing"
+    ],
+    "exit": 1
+  },
+  "screenshot": "docs/evidence/sanka-v4-20261118-order-card.png (a separate order card, captured after the run)",
+  "not-shown": [
+    "Passkey/WebAuthn or wallet: the owner key is a Keystore device key with no user authentication on this build",
+    "a physical device or hardware-backed key attestation",
+    "taps by a person: adb input stands in for the owner's finger",
+    "a real receipt from the provider desk (the receipt is a fixture with the V2 shape); V5 binds it",
+    "Figma design and localization of the cards (prototype UI)",
+    "Hermes proposing the order from a conversation"
+  ]
+}

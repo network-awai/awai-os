@@ -31,6 +31,16 @@
                    (throw (js/Error. "advanced-native-response-keys-renamed")))
                  (js/console.log "PASS: advanced SDK preserves native readiness/request/result JSON keys")))
         (.then (fn [_]
+          (let [image-client (createInferenceClient #js {:uuid (fn [] id)
+            :invoke (fn [_ args]
+              (js/Promise.resolve (.parse js/JSON
+                (if (= "saveImage" (aget args "request" "action"))
+                  "{\"saved\":true,\"readbackVerified\":true,\"uri\":\"content://media/external/images/media/1\",\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}"
+                  "{\"schema\":\"awai.inference.result.v1\",\"requestId\":\"11111111-1111-4111-a111-111111111111\",\"imageId\":\"11111111-1111-4111-a111-111111111111\",\"modality\":\"image\",\"engine\":\"stable-diffusion.cpp\",\"modelSet\":\"qwen-image-2.1-turbo-uncensored-ad-q2-k\",\"width\":512,\"height\":512,\"bytes\":3,\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"dataUrl\":\"data:image/png;base64,YWJj\"}"))))})]
+            (-> (.generate image-client #js {:modality "image" :prompt "public image fixture"})
+              (.then (fn [r] (when-not (= id (.-imageId r)) (throw (js/Error. "advanced-image-keys-renamed"))) (.saveImage image-client (.-imageId r))))
+              (.then (fn [r] (when-not (.-readbackVerified r) (throw (js/Error. "advanced-save-keys-renamed"))) (js/console.log "PASS: advanced image and save native JSON keys")))))))
+        (.then (fn [_]
                  (.complete (createSetupState
                               #js {:invoke (fn [_ _] (js/Promise.resolve (.parse js/JSON "{\"schema\":\"awai.setup.state.v1\",\"complete\":true}")))
                                    :storage #js {:getItem (fn [_] nil)}}))))

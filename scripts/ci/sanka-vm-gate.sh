@@ -11,13 +11,18 @@ export PYTHONDONTWRITEBYTECODE=1
 cases() {
   (cd dapps/sanka
    nix-shell nix/shell.nix --run 'bb --classpath src:test test/run_cases.clj'
-   nix-shell nix/shell.nix --run 'PYTHONPATH=src:test basilisp run test/run_cases.lpy')
+   nix-shell nix/shell.nix --run 'PYTHONPATH=src:test basilisp run test/run_cases.lpy'
+   nix-shell nix/shell.nix --run 'bb --classpath src:test test/run_device_cases.clj'
+   nix-shell nix/shell.nix --run 'PYTHONPATH=src:test basilisp run test/run_device_cases.lpy')
   (cd dapps/d1
    nix-shell nix/shell.nix --run 'bb --classpath src:test test/run_cases.clj'
    nix-shell nix/shell.nix --run 'PYTHONPATH=src basilisp run test/run_cases.lpy'
    nix-shell nix/shell.nix --run 'bb --classpath src:test test/reservation_test.clj'
    nix-shell nix/shell.nix --run 'PYTHONPATH=src basilisp run test/reservation_run.lpy')
   (cd dapps/reward-loop
+   nix-shell nix/shell.nix --run 'bb --classpath src:test test/run_cases.clj'
+   nix-shell nix/shell.nix --run 'PYTHONPATH=src basilisp run test/run_cases.lpy')
+  (cd dapps/en-devnet
    nix-shell nix/shell.nix --run 'bb --classpath src:test test/run_cases.clj'
    nix-shell nix/shell.nix --run 'PYTHONPATH=src basilisp run test/run_cases.lpy')
 }
