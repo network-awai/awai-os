@@ -1,0 +1,59 @@
+{
+  "schema": "awai.pc.nvme.audit.v1",
+  "sectorBytes": 512,
+  "sectors": 500118192,
+  "firstUsableLba": 34,
+  "lastUsableLba": 500118158,
+  "partitions": [
+    {
+      "number": 1,
+      "name": "otehon-esp",
+      "typeGuid": "c12a7328-f81f-11d2-ba4b-00a0c93ec93b",
+      "start": 2048,
+      "end": 2099199
+    },
+    {
+      "number": 2,
+      "name": "otehon-root",
+      "typeGuid": "4f68bce3-e8cd-4db1-96e7-fbcaf984b709",
+      "start": 2099200,
+      "end": 52430847
+    },
+    {
+      "number": 3,
+      "name": "otehon-state",
+      "typeGuid": "0fc63daf-8483-4772-8e79-3d69d8477de4",
+      "start": 52430848,
+      "end": 500118158
+    }
+  ],
+  "free": [
+    {
+      "start": 34,
+      "end": 2047
+    }
+  ],
+  "witness": {
+    "before.head": "554522a048eebe037880c076db79926ad78aabd529f1d4f7f8ad41ddb213be13",
+    "before.tail": "babb4d5dbbfdababf7221945c19d91c7dec4c063a43a480b78be2c47453ae40d",
+    "after.head": "554522a048eebe037880c076db79926ad78aabd529f1d4f7f8ad41ddb213be13",
+    "after.tail": "babb4d5dbbfdababf7221945c19d91c7dec4c063a43a480b78be2c47453ae40d",
+    "sectors": "6ed43efbac58fe101d36999cf17c83af82f536cdc00d9bc1f5e73f29176dd1f5"
+  },
+  "gptUnchanged": true,
+  "date": "2026-11-21",
+  "issue": "AWAI-3585",
+  "installPlanning": {
+    "sourceSha256": "cd22c7624f0058b0972c6d49b0b8d51aedc2e4c919486ed48bbf404d9c16d396",
+    "installerRevision": "dd91657562ac6e25ea7970a7cec1d13bcbf21a35",
+    "userdataGiB": 16,
+    "minimumContiguousSectors": 60082176,
+    "result": "refused-no-aligned-free-range",
+    "writeRanges": [],
+    "plannerResult": "REFUSED not-enough-free-space: need 60082176 sectors in one free range, free ranges [(34, 2047)]"
+  },
+  "tftp": {
+    "restored": true,
+    "originalIpxeSha256": "bfa3084d964bceae16299f36874db15530d3b100c6066614f39aa4a8340a5d54"
+  }
+}
