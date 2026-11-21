@@ -105,3 +105,27 @@ export function recordLinearEntry(
   writeFile(`${outDir}/${file}`, `${JSON.stringify(record, null, 1)}\n`);
   return { posted: `outbox:${file}`, file };
 }
+
+// When the task started (run-task.sh writes run1.start), carried in the pull
+// request body so the DORA lead time can be measured from any host (AWAI-3708).
+// deliver.mjs always writes exactly one such line, with a time or `unknown`.
+const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
+export const isUtcTime = (t) => typeof t === "string" && ISO_UTC.test(t) && Number.isFinite(Date.parse(t));
+
+/** Text of run1.start -> the body line. Anything that is not a UTC time becomes `unknown`. */
+export function taskStartLine(text) {
+  const t = String(text ?? "").trim();
+  return `- Task started: ${isUtcTime(t) ? t : "unknown"}`;
+}
+
+/**
+ * Pull request body -> the start time, or null. The body also carries text a
+ * bot wrote (the review summary), so a body with more than one such line is
+ * not trusted: it yields null, never the first or the last.
+ */
+export function taskStartFromBody(body) {
+  const lines = String(body ?? "").split("\n").map((l) => l.trim()).filter((l) => /^-\s*Task started:/i.test(l));
+  if (lines.length !== 1) return null;
+  const m = /^- Task started: (\S+)$/.exec(lines[0]);
+  return m && isUtcTime(m[1]) ? m[1] : null;
+}

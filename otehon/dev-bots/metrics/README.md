@@ -63,7 +63,9 @@ node otehon/dev-bots/dora.mjs --discover --since <Monday of the week under revie
 
 `--discover` searches every owned organisation for merged `muse/*` pull
 requests, so a repository nobody listed still shows up as not looked at. Pass
-`--state <queue-sync state dir>` on the host that has one, for lead times.
+`--state <queue-sync state dir>` and `--runs <directory of task worktrees>` on the
+host that has them, for the lead times of changes whose pull request body has
+no `- Task started:` line (changes delivered before AWAI-3708).
 
 1. Post the report as a comment on AWAI-3608. Do not edit the numbers.
 2. Exit code 1 means the ledger has a problem. Report it; do not "fix" the
