@@ -2,3 +2,13 @@
 # whether the app has a Japanese name (our translation). Read by android/series-catalog.py; applies only to apps in
 # series-apps.json. Add rows with android/isco-source-add.py from a batch TSV.
 repo	commit	ja
+cloud-itonami/app-itonami-cloud-itonami-isco-0110	79ddcb10a3dec6ee62aa8a84a5b02356e800c35d	true
+cloud-itonami/app-itonami-cloud-itonami-isco-0210	c0c64343b8b1b7c3addc5b8e9ecc2b05dfe62e84	true
+cloud-itonami/app-itonami-cloud-itonami-isco-0310	29ad44293fa6236a7d423ff02b45add9af862d6c	true
+cloud-itonami/app-itonami-cloud-itonami-isco-1111	014823be446c9700c42ad5b45a762898ab9829b4	false
+cloud-itonami/app-itonami-cloud-itonami-isco-1112	b40ffbdf1a4b39f0c3d06e29977e70df3a648550	false
+cloud-itonami/app-itonami-cloud-itonami-isco-1113	8bdac4f0017f94679818b97445357272c6b32417	true
+cloud-itonami/app-itonami-cloud-itonami-isco-1114	15ac675f62f67eea5d157654ad1b601bd13a7ac7	false
+cloud-itonami/app-itonami-cloud-itonami-isco-1120	8ed7594e128e879b0987819cbe274789a5781955	true
+cloud-itonami/app-itonami-cloud-itonami-isco-1211	a8a6acb0f0543d6bd7099f0d59e297307e6d1621	true
+cloud-itonami/app-itonami-cloud-itonami-isco-1212	871fede6c2a4b3c181f12bab641369944dda997f	true
