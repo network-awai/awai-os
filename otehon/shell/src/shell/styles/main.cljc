@@ -370,6 +370,10 @@
    [:.chat-connection-body {:padding-bottom "8px" :overflow-wrap "anywhere"}]
    [:.chat-empty :.chat-waiting {:margin 0 :padding "12px" :color "var(--secondary-text)"
                                 :background "var(--surface-raised)" :border-radius "12px"}]
+   [".chat-search > button" ".chat-search-navigation > button" {:min-height "44px"}]
+   [:.chat-search-controls {:display "grid" :gap "8px" :margin-block-start "8px"}]
+   [".chat-search-controls .soshiki-field" {:margin 0}]
+   [:.chat-search-navigation {:display "flex" :align-items "center" :flex-wrap "wrap" :gap "8px"}]
    [:.bot-conversation-history {:display "flex" :flex-direction "column" :gap "8px" :list-style "none"
                                 :padding "4px" :margin 0 :max-height "42dvh" :overflow-y "auto"
                                 :overscroll-behavior "contain" :overflow-anchor "none"}]
@@ -377,6 +381,7 @@
                                       :padding "10px 12px" :border-radius "12px"
                                       :background "var(--surface-raised)" :overflow-wrap "anywhere"}]
    [".bot-conversation-history > [data-chat-role=user]" {:background "var(--surface-selected)" :align-self "end"}]
+   [".bot-conversation-history > [aria-current=true]" {:outline "2px solid var(--focus)" :outline-offset "1px"}]
    [:.chat-message-text {:margin "4px 0" :white-space "pre-wrap"}]
    [:.chat-message-actions {:display "flex" :align-items "center" :flex-wrap "wrap" :gap "8px"
                             :font-size "0.875rem"}]
@@ -390,7 +395,7 @@
                                   :background "var(--surface-raised)" :color "var(--fg)"
                                   :border "1px solid var(--border-strong)"}]
    [:.chat-composer-actions {:display "flex" :justify-content "flex-end"}]
-   [".bot-conversation :is(button, summary, textarea, select, .bot-conversation-history):focus-visible"
+   [".bot-conversation :is(button, summary, input, textarea, select, .bot-conversation-history):focus-visible"
     {:outline "2px solid var(--focus)" :outline-offset "2px"}]
    [".bot-conversation button:enabled:active" {:background "var(--surface-selected)" :color "var(--fg)"}]
    (at-media {:hover "hover" :pointer "fine"}

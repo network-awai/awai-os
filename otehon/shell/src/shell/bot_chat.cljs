@@ -1,5 +1,6 @@
 (ns shell.bot-chat
- (:require ["react" :refer [useState useEffect useLayoutEffect useRef]] [shell.ui-copy :as ui] [shell.screen-tools :as screen]
+ (:require ["react" :refer [useState useEffect useLayoutEffect useRef]] [clojure.string :as str]
+  [shell.ui-copy :as ui] [shell.screen-tools :as screen]
   ["../screen-tools.js" :refer [screenTool]]
   ["../agent-ui-state.js" :refer [readAgentSelection chooseAgent]]
   ["../bot-chat.js" :refer [CHAT_ORIGIN CHAT_MODEL chatRequest sendChat readChat agentSessions recordChatImage]]
@@ -105,10 +106,35 @@
 (defn- at-latest? [node]
  (<= (- (.-scrollHeight node) (.-clientHeight node) (.-scrollTop node)) 32))
 
+(defn- search-text [value]
+ (str/lower-case (.normalize value)))
+
+(defn- composing? [event]
+ (let [native (.-nativeEvent event)]
+  (or (.-isComposing native) (= 229 (.-keyCode native)))))
+
 (defn panel [bot & [locale draft-id]]
  (let [tr (fn [key & [parameters]] (ui/t locale key parameters))
        [messages set-messages] (useState []) [text set-text] (useState "") [busy set-busy] (useState false)
        history-node (useRef nil) history-anchor (useRef nil) follow-history (useRef true)
+       search-input (useRef nil) search-toggle (useRef nil) search-row (useRef nil)
+       [search-open set-search-open] (useState false) [query set-query] (useState "")
+       [selected-match set-selected-match] (useState nil)
+       search-term (search-text (str/trim query))
+       matches (when (and search-open (seq search-term))
+                 (into [] (comp (filter #(str/includes? (search-text (or (:text %) "")) search-term))
+                                (map :id)) messages))
+       match-count (count matches)
+       match-index (or (first (keep-indexed #(when (= %2 selected-match) %1) matches)) 0)
+       match-id (get matches match-index)
+       shift-match (fn [direction]
+                     (when (pos? match-count)
+                      (set-selected-match (nth matches (mod (+ match-index direction) match-count)))))
+       close-search (fn []
+                      (set-search-open false)
+                      (set-query "")
+                      (set-selected-match nil)
+                      (when-let [toggle (.-current search-toggle)] (.focus toggle)))
        [at-latest set-at-latest] (useState true)
        _ (useLayoutEffect
           (fn []
@@ -127,6 +153,20 @@
                 (set-at-latest true)))
            js/undefined)
           #js [messages])
+       _ (useLayoutEffect (fn []
+           (when search-open
+            (when-let [input (.-current search-input)] (.focus input)))
+           js/undefined) #js [search-open])
+       _ (useLayoutEffect (fn []
+           (when-let [row (.-current search-row)]
+            (when-let [node (.-current history-node)]
+             (when-let [details (.querySelector row "details")] (set! (.-open details) true))
+             (let [row-rect (.getBoundingClientRect row)
+                   view-rect (.getBoundingClientRect node)]
+              (when (or (< (.-top row-rect) (.-top view-rect))
+                        (> (.-bottom row-rect) (.-bottom view-rect)))
+               (set! (.-scrollTop node) (+ (.-scrollTop node) (- (.-top row-rect) (.-top view-rect)) -4))))))
+           js/undefined) #js [match-id search-term])
        track-history (fn [event]
                        (let [latest (at-latest? (.-currentTarget event))]
                         (set! (.-current follow-history) latest)
@@ -155,7 +195,8 @@
           (if before
            (when-let [node (.-current history-node)]
             (set! (.-current history-anchor) {:node node :top (.-scrollTop node) :height (.-scrollHeight node)}))
-           (do (set! (.-current follow-history) true) (set-last-reply nil)))
+           (do (set! (.-current follow-history) true) (set-last-reply nil) (set-search-open false)
+               (set-query "") (set-selected-match nil)))
           (set-messages (if before (vec (concat rows messages)) rows)) (set-session-id id) (chooseAgent (:id bot) id) (set-session-info (js->clj (.-session result) :keywordize-keys true))
           (set-created true) (set-pending nil) (set-cursor (.-nextCursor result)) (set-store (.-store result)))))
          (.catch failure) (.finally #(set-busy false))))
@@ -167,6 +208,7 @@
         (let [id (.randomUUID js/crypto)]
          (-> (agentSessions (:id bot) #js {:action "create" :sessionId id :title (tr :newConversation)})
           (.then (fn [r] (set-created true) (set-pending nil) (set-session-id id) (chooseAgent (:id bot) id) (set-session-info (js->clj (.-session r) :keywordize-keys true)) (set-messages []) (set-text "") (set-cursor nil)
+                   (set-search-open false) (set-query "") (set-selected-match nil)
                    (set-sessions (conj sessions (js->clj (.-session r) :keywordize-keys true))) (set-store (.-store r))))
           (.catch failure) (.finally #(set-busy false)))))
        ensure-session (fn [] (if created (js/Promise.resolve nil)
@@ -226,13 +268,42 @@
     [:div.chat-connection-body
      [:p (tr :chatModelInfo {:model CHAT_MODEL})] [:p CHAT_ORIGIN]
      [:p (tr :chatDataInfo)] [:p (tr :chatStoreInfo)] [:dl [:dt (tr :conversationSessions)] [:dd session-id]]]]
+   (when (seq messages)
+    [:div.chat-search
+     [:button.secondary {:type "button" :ref search-toggle :aria-expanded search-open
+                         :on-click #(if search-open (close-search) (set-search-open true))}
+      (tr :chatFind)]
+     (when search-open
+      [:div.chat-search-controls
+       {:on-key-down (fn [event]
+                       (when (and (= "Escape" (.-key event)) (not (composing? event)))
+                        (.preventDefault event) (.stopPropagation event) (close-search)))}
+       [:label.soshiki-field
+        [:span (tr :chatFindLoaded)]
+        [:input {:type "search" :name "query" :ref search-input :value query
+                 :auto-complete "off" :auto-capitalize "none" :auto-correct "off" :spell-check false
+                 :on-change #(do (set-query (.. % -target -value)) (set-selected-match nil))
+                 :on-key-down (fn [event]
+                                (when (and (= "Enter" (.-key event)) (not (composing? event)))
+                                 (.preventDefault event)
+                                 (shift-match (if (.-shiftKey event) -1 1))))}]]
+       [:div.chat-search-navigation
+        [:button.secondary {:type "button" :disabled (< match-count 2) :on-click #(shift-match -1)} (tr :chatFindPrevious)]
+        [:button.secondary {:type "button" :disabled (< match-count 2) :on-click #(shift-match 1)} (tr :chatFindNext)]
+        [:span {:role "status"}
+         (when (seq search-term)
+          (if (pos? match-count)
+           (tr :chatFindPosition {:current (inc match-index) :total match-count})
+           (tr :chatFindNone)))]]])])
    (when cursor [:button.secondary {:type "button" :disabled busy :on-click #(history session-id cursor)} (tr :chatEarlier)])
    (if (empty? messages)
     [:p.chat-empty (tr (if (or (not created) store) :chatEmptyDraft :chatEmpty))]
     [:ol.bot-conversation-history {:aria-label (tr :chatTranscript) :ref history-node :tab-index 0 :on-scroll track-history
                                     :style (when (some #(= "local-image" (:kind %)) messages) {:max-height "56dvh"})}
      (for [m messages :let [received? (and (= "user" (:role m)) (or (:peer m) (:work m)))]]
-      ^{:key (:id m)} [:li {:data-chat-role (:role m) :data-chat-new (when (= (:id m) last-reply) "true")}
+      ^{:key (:id m)} [:li {:data-chat-role (:role m) :data-chat-new (when (= (:id m) last-reply) "true")
+                           :ref (when (= (:id m) match-id) search-row)
+                           :aria-current (when (= (:id m) match-id) "true")}
        [:strong (or (:speakerName m) (if (= "user" (:role m)) (tr :chatYou) (:name bot)))]
        (if received?
         [:details [:summary (tr :peerReceived)] [:p.chat-message-text (:text m)]
@@ -275,8 +346,9 @@
                    :on-key-down (fn [event]
                                  (when (and (= "Enter" (.-key event))
                                             (or (.-ctrlKey event) (.-metaKey event))
-                                            (not (.-isComposing (.-nativeEvent event))))
-                                  (send event)))}]])
+                                            (not (composing? event)))
+                                  (.preventDefault event)
+                                  (when-not (.-repeat event) (send event))))}]])
      [:div.chat-composer-actions
       [:button.primary {:type "submit" :disabled (or busy (some? pending) (empty? (.trim text)))}
        (tr (if (= mode "image") :chatImageSend :chatSend))]]])
