@@ -1,0 +1,78 @@
+diff --git a/build/tasks/01-diskimage.mk b/build/tasks/01-diskimage.mk
+--- a/build/tasks/01-diskimage.mk
++++ b/build/tasks/01-diskimage.mk
+@@ -112,2 +112,10 @@
+ endif
++# AWAI-3715: the PC AVB evaluation image adds the root metadata to each slot.
++ifeq ($(AWAI_PC_AVB_BUILD),true)
++ifneq ($(TARGET_ARCH)/$(AB_OTA_UPDATER)/$(BOARD_AVB_ENABLE),x86_64/true/true)
++$(error AWAI_PC_AVB_BUILD requires x86_64 A/B with BOARD_AVB_ENABLE=true)
++endif
++DISK_VDA_WRITE_PARTITIONS += vbmeta
++endif
++
+ # Assuming disk VDA size is 1MB aligned
+@@ -117,14 +125,17 @@
+ # $(2): disk name
+-define make-diskimage-target
+-	$(call pretty,"Target $(2) disk image: $(1)")
+-	$(if $(DISK_$(call to-upper,$(2))_SIZE_MB),
+-		/bin/dd if=/dev/zero of=$(1) bs=1M count=$(DISK_$(call to-upper,$(2))_SIZE_MB)
+-	,
+-		/bin/dd if=/dev/zero of=$(1) bs=$(DISK_$(call to-upper,$(2))_SECTOR_SIZE) count=$(DISK_$(call to-upper,$(2))_SECTORS)
+-	)
+-	/bin/sh -e $(VIRT_COMMON_PATH)/configs/scripts/create_partition_table.sh $(SGDISK_EXEC) $(1) $(2) $(AB_OTA_UPDATER) $(BOARD_SUPER_PARTITION_SIZE)
+-	$(if $(INSTALLED_MBRIMAGE_TARGET), /bin/dd if=$(INSTALLED_MBRIMAGE_TARGET) of=$(1) bs=446 count=1 conv=notrunc)
+-    python3 $(VIRT_COMMON_PATH)/configs/scripts/write_disk_partitions.py $(1) $(PRODUCT_OUT) $(2) "$(BOARD_SUPER_PARTITION_SIZE)" "$(AB_OTA_UPDATER)" "$(strip $(DISK_VDA_WRITE_PARTITIONS))"
+-endef
+-
++define make-diskimage-target
++	$(call pretty,"Target $(2) disk image: $(1)")
++	$(if $(DISK_$(call to-upper,$(2))_SIZE_MB),
++		/bin/dd if=/dev/zero of=$(1) bs=1M count=$(DISK_$(call to-upper,$(2))_SIZE_MB)
++	,
++		/bin/dd if=/dev/zero of=$(1) bs=$(DISK_$(call to-upper,$(2))_SECTOR_SIZE) count=$(DISK_$(call to-upper,$(2))_SECTORS)
++	)
++	/bin/sh -e $(VIRT_COMMON_PATH)/configs/scripts/create_partition_table.sh $(SGDISK_EXEC) $(1) $(2) $(AB_OTA_UPDATER) $(BOARD_SUPER_PARTITION_SIZE)
++	$(if $(filter vbmeta,$(DISK_VDA_WRITE_PARTITIONS)), \
++		$(SGDISK_EXEC) --new=12:26537984:+1M --change-name=12:vbmeta_a \
++			--new=13:26540032:+1M --change-name=13:vbmeta_b "$(1)")
++	$(if $(INSTALLED_MBRIMAGE_TARGET), /bin/dd if=$(INSTALLED_MBRIMAGE_TARGET) of=$(1) bs=446 count=1 conv=notrunc)
++    python3 $(VIRT_COMMON_PATH)/configs/scripts/write_disk_partitions.py $(1) $(PRODUCT_OUT) $(2) "$(BOARD_SUPER_PARTITION_SIZE)" "$(AB_OTA_UPDATER)" "$(strip $(DISK_VDA_WRITE_PARTITIONS))"
++endef
++
+ INSTALLED_DISKIMAGE_VDA_TARGET_DEPS := $(SGDISK_EXEC)
+diff --git a/configs/scripts/write_disk_partitions.py b/configs/scripts/write_disk_partitions.py
+--- a/configs/scripts/write_disk_partitions.py
++++ b/configs/scripts/write_disk_partitions.py
+@@ -34,2 +34,3 @@
+                 "boot": {"start": 26202112, "sectors": 163840, "ab": True},
++                "vbmeta": {"start": 26537984, "sectors": 2048, "ab": True},
+                 "BIOS": {"start": 26529792, "sectors": 8192, "ab": True, "fake_ab": True},
+@@ -83,2 +84,13 @@
+     write_partitions_list = [part for part in write_partitions.split() if part]
++    if "vbmeta" in write_partitions_list:
++        if ab_ota_updater != "true":
++            sys.exit("ERROR: vbmeta requires the PC A/B layout")
++        if os.path.getsize(output_file) != disk["sectors"] * sector_size:
++            sys.exit("ERROR: vbmeta requires a complete 13 GiB stock disk image")
++        vbmeta_capacity = disk["partitions"]["vbmeta"]["sectors"] * sector_size
++        with open(os.path.join(product_out, "vbmeta.img"), "rb") as source:
++            vbmeta = source.read(vbmeta_capacity + 1)
++        if not 256 <= len(vbmeta) <= vbmeta_capacity or not vbmeta.startswith(b"AVB0"):
++            sys.exit("ERROR: expected a raw vbmeta image fitting its GPT slot")
++
+     print(f"INFO: write_partitions_list: {write_partitions_list}")
+@@ -108,2 +120,12 @@
+                 image_path = os.path.join(product_out, f"{partition_name}.img")
++                if partition_name == "vbmeta":
++                    with open(output_file, "r+b") as target:
++                        target.seek(start_byte)
++                        target.write(vbmeta)
++                        target.flush()
++                        os.fsync(target.fileno())
++                        target.seek(start_byte)
++                        if target.read(len(vbmeta)) != vbmeta:
++                            sys.exit(f"ERROR: vbmeta{ab_slot_suffix} readback mismatch")
++                    continue
+                 image_size_byte = os.path.getsize(image_path)
