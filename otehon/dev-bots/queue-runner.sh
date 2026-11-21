@@ -60,11 +60,8 @@ fi
 
 RUN_TASK="${DEV_BOTS_RUN_TASK:-$HERE/run-task.sh}"
 # Host kind, for the log line written at start.
-HOST_KIND="$(case "$(uname -s)" in
-  Linux) echo linux;;
-  Darwin) echo macos;;
-  *) echo other;;
-esac)"
+HOST_KIND="$(uname -s)"
+HOST_KIND="${HOST_KIND,,}"
 POLL_S="${DEV_BOTS_QUEUE_POLL_S:-30}"
 case $POLL_S in ''|*[!0-9]*) POLL_S=30;; esac
 LOCK="$QUEUE/runner.lock"
