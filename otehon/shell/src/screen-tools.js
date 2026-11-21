@@ -17,3 +17,12 @@ export async function screenTool(action) {
   }
   return result;
 }
+
+export async function openGaka() {
+  if (!screenToolsAvailable()) throw new Error("gaka-unavailable");
+  const result = await globalThis.__TAURI_INTERNALS__.invoke("awai_screen_tools", { action: "open-gaka" });
+  if (result?.schema !== "awai.local-app-launch.v1"
+      || result.packageId !== "network.awai.gaka" || result.opened !== true) {
+    throw new Error("invalid-gaka-launch-result");
+  }
+}

@@ -12,6 +12,7 @@
     <uses-permission android:name="network.awai.permission.HOST_ACCOUNT"/>
     <queries>
         <package android:name="network.awai.murakumo"/>
+        <package android:name="network.awai.gaka"/>
         <provider android:authorities="network.awai.home.account"/>
     </queries>
 

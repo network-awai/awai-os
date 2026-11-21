@@ -112,6 +112,13 @@ function home() {
   },'motion-control');
   function labelMotion(){motion.textContent=native.motionReduced?'背景は静止':motionEnabled?'背景を停止':'背景を再生';motion.disabled=!!native.motionReduced;}
   labelMotion();heading.append(date,motion);p.append(heading,time);
+  const conversation=el('section','card primary');
+  conversation.append(el('h2','','何を手伝いましょうか？'));
+  const itonamiInstalled=native.apps.some(app=>app.id==='network.itonami.app');
+  conversation.append(button(itonamiInstalled?'Manimani に相談する':'Itonami を Store で探す',
+    ()=>itonamiInstalled?launch('network.itonami.app'):host?host.openStore():navigate('discover')));
+  conversation.append(button('アプリ',()=>navigate('apps'),'button tonal'));
+  p.append(conversation);
   const w=button('',openYotei,'card');const event=nextEvent();w.append(el('span','caption primary-text',event?'次の予定':'予定を、手元に。'),el('span','',event?`${new Intl.DateTimeFormat('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(event.at))}  ${event.title}`:native.installed['network.itonami.yotei']?'まだ予定はありません':'Yotei を Store から追加できます'),el('span','caption muted',event?'あとで、自分のペースで。':'この端末に保存。外部には送信しません。'));p.append(w,el('div','space'));
   const apps=el('div','app-grid');apps.append(appButton('Store','store',()=>host?host.openStore():navigate('discover')),appButton(native.installed['network.itonami.yotei']?'Yotei':'Yotei を追加','calendar',openYotei),appButton('設定','settings',()=>host?host.openAppearance():notify('Android の端末設定です。')),appButton('すべて','apps',()=>navigate('apps')));p.append(apps);
   if(setup.canLinkAccount())p.append(button('Awai アカウントを連携',()=>setup.openAccountLink(),'button tonal'));

@@ -27,7 +27,7 @@ async fn awai_screen_tools(
     action: String,
 ) -> Result<serde_json::Value, String> {
     if !matches!(action.as_str(), "status" | "record-start" | "record-stop" |
-        "home" | "settings" | "recents" | "accessibility-settings") {
+        "home" | "settings" | "recents" | "accessibility-settings" | "open-gaka") {
         return Err("unsupported-screen-operation".into());
     }
     #[cfg(target_os = "android")]
