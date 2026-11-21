@@ -24,10 +24,20 @@ the repositories' current `main`); the series build stamps `network.itonami.<sch
   one key per ISIC Rev.4 section and per ISCO-08 major group; first-party apps have one key each (decision on
   AWAI-3771). `android/series-catalog.py` checks that each app's group follows from its code. In development,
   every group's signer is the Android debug identity `2507930b…`.
-- **ISCO-08 source text.** An ISCO-08 app stays out of the generated catalog until `iscoSource.commit` names the
-  commit that added the ISCO-08 source text, and the app's `release.json` records a `source_commit` that is that one
-  or later (checked in a local clone with `--repos`). Marked (2026-11-22): isco-2423 `5bf9ea32…`, isco-3333
-  `29773278…`, isco-4311 `b796093e…`, isco-2411 `4e578b83…` (AWAI-3629 attribution commits).
+- **ISCO-08 source text.** The marks are in `isco-source.tsv` (`repo`, `commit`, `ja`); they apply only to apps in
+  `series-apps.json`. An ISCO-08 app stays out until it has a row whose commit added the final ISCO-08 source text,
+  and its `release.json` records a `source_commit` that is that one or later (checked in a local clone with `--repos`).
+  The four earlier marks pointed at the earlier wording and were cleared (2026-11-22). Add rows from a batch with
+  `python3 android/isco-source-add.py BATCH.tsv [--extra REPO=COMMIT]`: it checks each commit is on the repository's
+  default branch, that a mark only moves forward, and, when a repository has two candidate commits (README and app
+  screen), takes the later one and refuses diverged branches. Nothing is written if any row fails.
+- **ILO reference (AWAI-3629).** Each listed ISCO-08 app's description ends with one reference built from its code:
+  `Occupation reference: ISCO-08 (International Labour Organization, 2012), code XXXX. This app is not produced,
+  reviewed or endorsed by the ILO.`, and, when `ja` is true, `職業の参照: ISCO-08（国際労働機関 ILO、2012 年）のコード
+  XXXX。日本語の名称は当方の訳です。この app は ILO が作成・確認・推奨したものではありません。` No list of codes and names,
+  and no ILO logo.
+- **Holds.** `hold.json` lists source patterns kept out of the catalog as `held`, with the reason and who lifts the
+  hold. Now: `unspsc-*` (Legal is checking the UNSPSC/GS1 US terms; Decision lifts it).
 - **Clean builds only.** The series build writes `source_commit` (40 hex, or null without git) and `dirty`
   (true, false or null) into `release.json`. Any app whose `dirty` is not `false` is left out as `release-dirty`.
 - **Which packages the Store admits.** The signed catalog decides. `Catalog.java` admits any

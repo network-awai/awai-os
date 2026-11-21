@@ -75,9 +75,16 @@ def main():
             (d / 'release.json').write_text(json.dumps(release))
             apk(d / 'app-release.apk', package or pid, apk_version or version, label or f'Series test {source}', group)
 
-        def generate(inputs, tab, out='raw.json', extra=()):
+        # ISCO-08 source marks: repo, commit, ja (store/catalog-source/isco-source.tsv form).
+        def write_marks(rows, name='marks.tsv'):
+            (t / name).write_text('repo\tcommit\tja\n' + ''.join(f'{r}\t{c}\t{j}\n' for r, c, j in rows))
+            return t / name
+        no_marks = write_marks([], 'no-marks.tsv')
+        REPO = 'cloud-itonami/app-itonami-cloud-itonami-isco-2423'
+
+        def generate(inputs, tab, out='raw.json', extra=(), marks=None, hold=None):
             return run(sys.executable, GEN, '--inputs', inputs, '--revision', '200', '--out', t / out, '--table', tab, '--report', t / (out + '.report'),
-                       '--repos', t / 'repos', *extra)
+                       '--repos', t / 'repos', '--isco-source', marks or no_marks, '--hold', hold or ROOT / 'store/catalog-source/hold.json', *extra)
 
         # A stand-in app repository: before, the commit that adds the ISCO-08 source text, and after.
         repo = t / 'repos/isco-2423'; repo.mkdir(parents=True)
@@ -92,14 +99,13 @@ def main():
         app_input(good, 'isic-7810', group='isic-N')
         app_input(good, 'isic-6209', group='isic-J')
         app_input(good, 'isco-2423', group='isco-2')
-        # The real table marks the four ISCO-08 apps with their repositories' commits; the basic run uses a copy
-        # without the marks, and the marks have their own checks below.
-        marks = {a['source']: a['iscoSource'] for a in table['apps'] if a['source'].startswith('isco-')}
-        check('the real table marks the four ISCO-08 apps with the commits that added their source text',
-              marks == {'isco-2423': {'commit': '5bf9ea32d105d679254d8f48f61c7cc8d5fb177e'}, 'isco-3333': {'commit': '29773278fee35c246dc7e0c4033d5e69f5734113'},
-                        'isco-4311': {'commit': 'b796093e8996567909347036e9445f68034701ea'}, 'isco-2411': {'commit': '4e578b83efc0050a2de772f7736b7916e525808b'}}, str(marks))
-        for a in table['apps']:
-            if a['source'].startswith('isco-'): a['iscoSource'] = None
+        # The marks live in isco-source.tsv. The four earlier marks pointed at the earlier wording and were cleared, so
+        # the real file holds the header only until the final text is added (batches via android/isco-source-add.py).
+        real = (ROOT / 'store/catalog-source/isco-source.tsv').read_text(encoding='utf-8')
+        check('the real isco-source.tsv parses and has no marks yet', run(sys.executable, '-c',
+              'import importlib.util,sys;s=importlib.util.spec_from_file_location("m",sys.argv[1]);m=importlib.util.module_from_spec(s);'
+              's.loader.exec_module(m);print(len(m.read_isco_marks(open(sys.argv[2]).read())))', GEN, ROOT / 'store/catalog-source/isco-source.tsv').stdout.strip() == '0', real)
+        check('the table carries no iscoSource field', all('iscoSource' not in a for a in table['apps']))
         tab = write_table(table)
         r = generate(good, tab)
         check('generator succeeds', r.returncode == 0, r.stderr)
@@ -160,27 +166,52 @@ def main():
 
         # An ISCO-08 app marked with the commit that added its source text: listed only when its release.json records
         # that commit or a later one.
-        checked = json.loads(json.dumps(table)); next(a for a in checked['apps'] if a['source'] == 'isco-2423')['iscoSource'] = {'commit': commits['source']}
-        ctab = write_table(checked, 'checked.json')
+        ctab = tab
+        marked = write_marks([(REPO, commits['source'], 'false')], 'marked.tsv')
         for label, commit, listed, reason in (('the marked commit', commits['source'], True, None), ('a later commit', commits['after'], True, None),
                                               ('an earlier commit', commits['before'], False, 'built-before-isco-source'),
                                               ('no source_commit in release.json', None, False, 'release-without-commit')):
             root = t / ('isco-' + label.replace(' ', '-'))
             app_input(root, 'isco-2423', group='isco-2', commit=commit)
             out = 'isco-' + label.replace(' ', '-') + '.json'
-            r = generate(root, ctab, out)
+            r = generate(root, ctab, out, marks=marked)
             rep = json.loads((t / (out + '.report')).read_text()) if r.returncode == 0 else {'listed': [], 'excluded': []}
             got_listed = [x['id'] for x in rep['listed']] == ['network.itonami.isco2423']
             got_reason = {e['source']: e['reason'] for e in rep['excluded']}.get('isco-2423')
             check(f'marked ISCO-08 app built from {label}: ' + ('listed' if listed else reason),
                   r.returncode == 0 and got_listed == listed and (listed or got_reason == reason), r.stderr)
 
+        # The ILO reference (AWAI-3629): exactly this text, once, at the end of the ISCO-08 app's description;
+        # Japanese only when ja is true; nothing on ISIC apps.
+        EN = ('Occupation reference: ISCO-08 (International Labour Organization, 2012), code 2423. '
+              'This app is not produced, reviewed or endorsed by the ILO.')
+        JA = ('職業の参照: ISCO-08（国際労働機関 ILO、2012 年）のコード 2423。日本語の名称は当方の訳です。'
+              'この app は ILO が作成・確認・推奨したものではありません。')
+        base_desc = next(a['description'] for a in table['apps'] if a['source'] == 'isco-2423')
+        attr = t / 'attribution'
+        app_input(attr, 'isco-2423', group='isco-2', commit=commits['source'])
+        app_input(attr, 'isic-7810', group='isic-N')
+        for ja, want in (('false', base_desc + '\n\n' + EN), ('true', base_desc + '\n\n' + EN + '\n' + JA)):
+            out = f'attr-{ja}.json'
+            r = generate(attr, tab, out, marks=write_marks([(REPO, commits['source'], ja)], f'attr-{ja}.tsv'))
+            apps = {a['id']: a for a in json.loads((t / out).read_text())['apps']} if r.returncode == 0 else {}
+            got = apps.get('network.itonami.isco2423', {}).get('description')
+            check(f'ISCO-08 description ends with the exact ILO reference (ja {ja})', got == want, repr(got))
+            check(f'the ILO reference appears once (ja {ja})', got is not None and got.count('Occupation reference') == 1
+                  and got.count('職業の参照') == (1 if ja == 'true' else 0))
+            isic = apps.get('network.itonami.isic7810', {}).get('description')
+            check(f'no ILO reference on an ISIC app (ja {ja})', isic == next(a['description'] for a in table['apps'] if a['source'] == 'isic-7810'), repr(isic))
+        r = generate(attr, tab, 'attr-other.json', marks=write_marks([(REPO, commits['source'], 'false'),
+                     ('cloud-itonami/app-itonami-cloud-itonami-isco-9111', '1' * 40, 'true')], 'attr-other.tsv'))
+        check('a mark for a repository outside the table changes nothing', r.returncode == 0
+              and [a['id'] for a in json.loads((t / 'attr-other.json').read_text())['apps']] == ['network.itonami.isco2423', 'network.itonami.isic7810'], r.stderr)
+
         # Refusals: each stops the whole run and writes nothing.
-        def refused(name, setup, want, tab_override=None):
+        def refused(name, setup, want, tab_override=None, marks=None):
             root = t / ('neg-' + str(len(results)))
             setup(root)
             out = 'neg-' + str(len(results)) + '.json'
-            r = generate(root, tab_override or tab, out)
+            r = generate(root, tab_override or tab, out, marks=marks)
             check(name, r.returncode != 0 and want in r.stderr and not (t / out).exists(), r.stderr)
 
         refused('APK signed by another group\'s key', lambda d: app_input(d, 'isic-7810', group='isic-J'), 'single signer of group isic-N')
@@ -195,13 +226,80 @@ def main():
         refused('table puts an app in the wrong group', lambda d: app_input(d, 'isic-6209', group='isic-J'), 'its code puts it in isic-N', write_table(wrong_group, 'wg.json'))
         wrong_id = json.loads(json.dumps(table)); next(a for a in wrong_id['apps'] if a['source'] == 'isic-7120-cyberassurance')['id'] = 'network.itonami.isic7120'
         refused('table package id is not the series identifier', lambda d: app_input(d, 'isic-6209', group='isic-J'), 'the series build stamps', write_table(wrong_id, 'wi.json'))
-        no_mark = json.loads(json.dumps(table)); del next(a for a in no_mark['apps'] if a['source'] == 'isco-4311')['iscoSource']
-        refused('ISCO-08 app without a source mark', lambda d: app_input(d, 'isic-6209', group='isic-J'), 'no iscoSource mark', write_table(no_mark, 'nm.json'))
-        bad_mark = json.loads(json.dumps(table)); next(a for a in bad_mark['apps'] if a['source'] == 'isco-4311')['iscoSource'] = True
-        refused('ISCO-08 mark that is not a commit', lambda d: app_input(d, 'isic-6209', group='isic-J'), 'not {"commit"', write_table(bad_mark, 'bm.json'))
-        unknown = json.loads(json.dumps(table)); next(a for a in unknown['apps'] if a['source'] == 'isco-2423')['iscoSource'] = {'commit': '0' * 40}
+        with_field = json.loads(json.dumps(table)); next(a for a in with_field['apps'] if a['source'] == 'isco-4311')['iscoSource'] = {'commit': '1' * 40}
+        refused('a mark in the table instead of isco-source.tsv', lambda d: app_input(d, 'isic-6209', group='isic-J'), 'live in isco-source.tsv',
+                write_table(with_field, 'wf.json'))
+        for name, rows, want in (('a short commit', [(REPO, commits['source'][:12], 'false')], 'not 40 lowercase hex'),
+                                 ('an upper-case commit', [(REPO, commits['source'].upper(), 'false')], 'not 40 lowercase hex'),
+                                 ('a ja that is not true or false', [(REPO, commits['source'], 'yes')], 'ja must be true or false'),
+                                 ('an ISIC repository', [('cloud-itonami/app-itonami-cloud-itonami-isic-7810', commits['source'], 'false')], 'not an ISCO-08'),
+                                 ('a repository listed twice', [(REPO, commits['source'], 'false'), (REPO, commits['after'], 'false')], 'listed twice')):
+            refused(f'isco-source.tsv with {name}', lambda d: app_input(d, 'isic-6209', group='isic-J'), want, marks=write_marks(rows, 'bad.tsv'))
+        (t / 'nohead.tsv').write_text(f'{REPO}\t{commits["source"]}\tfalse\n')
+        refused('isco-source.tsv without its header', lambda d: app_input(d, 'isic-6209', group='isic-J'), 'header', marks=t / 'nohead.tsv')
         refused('marked commit missing from the clone', lambda d: app_input(d, 'isco-2423', group='isco-2', commit=commits['after']), 'is not in the clone',
-                write_table(unknown, 'uk.json'))
+                marks=write_marks([(REPO, '0' * 40, 'false')], 'missing.tsv'))
+
+        # Holds (store/catalog-source/hold.json): UNSPSC apps stay out while Legal checks the terms; Decision lifts it.
+        real_hold = json.loads((ROOT / 'store/catalog-source/hold.json').read_text(encoding='utf-8'))
+        check('the real hold list holds unspsc-* for Legal, lifted by Decision',
+              [(h['pattern'], h['decidedBy']) for h in real_hold['holds']] == [('unspsc-*', 'Decision')] and 'Legal' in real_hold['holds'][0]['reason'])
+        with_unspsc = json.loads(json.dumps(table))
+        with_unspsc['apps'].append({'rank': 11, 'source': 'unspsc-43211500', 'id': 'network.itonami.unspsc43211500',
+                                    'repo': 'cloud-itonami/app-itonami-cloud-itonami-unspsc-43211500', 'group': 'unspsc-43', 'description': 'held test'})
+        utab = write_table(with_unspsc, 'unspsc.json')
+        held = t / 'held'
+        app_input(held, 'isic-7810', group='isic-N')
+        (held / 'unspsc-43211500').mkdir()
+        r = generate(held, utab, 'held.json')
+        hrep = json.loads((t / 'held.json.report').read_text()) if r.returncode == 0 else {'listed': [], 'excluded': []}
+        hx = next((e for e in hrep['excluded'] if e['source'] == 'unspsc-43211500'), {})
+        check('an app matching a hold is left out as held, with the reason and who lifts it',
+              r.returncode == 0 and hx.get('reason') == 'held' and hx.get('decidedBy') == 'Decision' and 'Legal' in hx.get('hold', '')
+              and [x['id'] for x in hrep['listed']] == ['network.itonami.isic7810'], r.stderr)
+        (t / 'no-hold.json').write_text(json.dumps({'schema': 'awai.store.catalog-hold.v1', 'holds': []}))
+        r = generate(held, utab, 'unheld.json', hold=t / 'no-hold.json')
+        check('without the hold the same app is refused (not a series source yet)', r.returncode != 0 and 'not a series source' in r.stderr, r.stderr)
+        (t / 'bad-hold.json').write_text(json.dumps({'schema': 'awai.store.catalog-hold.v1', 'holds': [{'pattern': 'unspsc-*', 'reason': 'x'}]}))
+        r = generate(held, utab, 'badhold.json', hold=t / 'bad-hold.json')
+        check('a hold without decidedBy is refused', r.returncode != 0 and 'decidedBy' in r.stderr and not (t / 'badhold.json').exists(), r.stderr)
+
+        # android/isco-source-add.py: adds a batch with the ancestry checks; one failure writes nothing.
+        ADD = ROOT / 'android/isco-source-add.py'
+        # A side branch merged back, so `side` and `source` are both in the history but neither comes after the other.
+        git('checkout', '-q', '-b', 'side', commits['before']); (repo / 'y').write_text('side'); git('add', 'y'); git('commit', '-q', '-m', 'side')
+        commits['side'] = git('rev-parse', 'HEAD'); git('checkout', '-q', '-'); git('merge', '-q', '--no-edit', 'side'); commits['merge'] = git('rev-parse', 'HEAD')
+        target = t / 'isco-source.tsv'; target.write_text('# test marks\nrepo\tcommit\tja\n')
+
+        def add(rows, *extra):
+            before = target.read_text()
+            r = run(sys.executable, ADD, write_marks(rows, 'batch.tsv'), '--repos', t / 'repos', '--tsv', target, *extra)
+            return r, before, target.read_text()
+        r, before, after = add([(REPO, commits['source'], 'true')])
+        check('script adds a new mark', r.returncode == 0 and after == f'# test marks\nrepo\tcommit\tja\n{REPO}\t{commits["source"]}\ttrue\n', r.stderr + after)
+        r, before, after = add([(REPO, commits['before'], 'true')])
+        check('script refuses a mark that moves backward, writes nothing', r.returncode != 0 and 'does not come after' in r.stderr and after == before, r.stderr)
+        r, before, after = add([(REPO, commits['source'], 'true')], '--extra', f'{REPO}={commits["after"]}')
+        check('script takes the later of the batch commit and the --extra commit', r.returncode == 0 and f'\t{commits["after"]}\t' in after, r.stderr + after)
+        r, before, after = add([(REPO, commits['merge'], 'true')], '--extra', f'{REPO}={commits["after"]}')
+        check('script takes the later one when the --extra commit is the earlier', r.returncode == 0 and f'\t{commits["merge"]}\t' in after, r.stderr + after)
+        target.write_text('# test marks\nrepo\tcommit\tja\n')
+        r, before, after = add([(REPO, commits['source'], 'true')], '--extra', f'{REPO}={commits["side"]}')
+        check('script refuses two candidates on diverged branches, writes nothing', r.returncode != 0 and 'diverged' in r.stderr and after == before, r.stderr)
+        git('checkout', '-q', '-b', 'loose', commits['before']); (repo / 'z').write_text('loose'); git('add', 'z'); git('commit', '-q', '-m', 'loose')
+        commits['loose'] = git('rev-parse', 'HEAD'); git('checkout', '-q', '-')
+        r, before, after = add([(REPO, commits['loose'], 'true')])
+        check('script refuses a commit outside the default branch, writes nothing', r.returncode != 0 and 'history of the default branch' in r.stderr and after == before, r.stderr)
+        target.write_text('# test marks\nrepo\tcommit\tja\n')
+        (t / 'alias.tsv').write_text(f'repo\tmerge_commit\tja_title\n{REPO}\t{commits["source"]}\tfalse\n')
+        r = run(sys.executable, ADD, t / 'alias.tsv', '--repos', t / 'repos', '--tsv', target)
+        check('script reads the batch spelling repo/merge_commit/ja_title', r.returncode == 0
+              and target.read_text().endswith(f'{REPO}\t{commits["source"]}\tfalse\n') and target.read_text().count('repo\tcommit\tja\n') == 1, r.stderr)
+        r, before, after = add([(REPO, commits['source'][:12], 'true')])
+        check('script refuses a malformed batch, writes nothing', r.returncode != 0 and 'not 40 lowercase hex' in r.stderr and after == before, r.stderr)
+        r, before, after = add([(REPO, commits['source'], 'true')], '--extra', f'cloud-itonami/app-itonami-cloud-itonami-isco-3333={commits["after"]}')
+        check('script refuses --extra for a repository without a batch row', r.returncode != 0 and 'no row in the batch' in r.stderr and after == before, r.stderr)
+
         r = generate(good, tab, 'collide.json', ('--base', t / 'raw.json', '--revision', '201'))
         check('refuses an app already in the base catalog', r.returncode != 0 and 'already in the base catalog' in (r.stderr + r.stdout), r.stderr)
         leaked = [str(p) for p in t.glob('*.report') if env['SERIES_TEST_PASS'] in p.read_text()]
