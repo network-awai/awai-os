@@ -29,8 +29,10 @@ products built from that patched checkout. The installed image must report an em
 guest using an older OTA signed with its test key and a current OTA signed with a different test key.
 
 For `virtio-common`, `apply.sh` selects a matching userdata fstab patch before
-changing any source files. Both variants change the device path. The newer
-variant preserves the ext4 `checkpoint=block` option as written upstream.
+changing any source files. Both variants use the userdata GPT name and enable
+`checkpoint=block` for ext4. Older Awai source trees without the ext4 flag are
+updated on reapplication. F2FS keeps `checkpoint=fs`. The PC kernel must include
+`CONFIG_DM_BOW=y` for ext4 checkpoints.
 
 Why the ESP leaves the A/B set: with `androidboot.boot_devices=any` every GPT partition on every disk
 appears under `/dev/block/by-name/`. If an existing ESP is named `EFI`, an update could write to it.
