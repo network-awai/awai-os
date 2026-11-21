@@ -117,16 +117,18 @@ def main():
     for f in required:
         if not f.is_file():raise SystemExit(f'missing build prerequisite: {f}')
     if not args.skip_cljs:run(['clojure','-M:build'],cwd=ROOT/'android/client')
-    run(['node',ROOT/'android/build-identity.mjs'],cwd=ROOT)
+    if not (ROOT/'otehon/shell/node_modules/esbuild').is_dir():raise SystemExit('missing build prerequisite: run `npm ci` in otehon/shell (esbuild for the identity bundle)')
+    generated=out/'generated';generated.mkdir(exist_ok=True)
+    run(['node',ROOT/'android/build-identity.mjs',generated],cwd=ROOT)
     if not (ROOT/'android/client/generated/domain.js').is_file():raise SystemExit('shared CLJS domain is not built')
     run(['bb','-cp','android/contracts/src','android/contracts/export.clj',out/'shared.json'],cwd=ROOT)
     common=json.loads((out/'shared.json').read_text());assets=out/'web';assets.mkdir(exist_ok=True)
     for name in ['index.html','client.css','client.js','online.js','key-list.js','setup.js','setup.css','torihiki.js']:shutil.copyfile(ROOT/'android/client'/name,assets/name)
     shutil.copytree(ROOT/'android/client/assets',assets/'assets',dirs_exist_ok=True)
     shutil.copyfile(ROOT/'android/client/generated/domain.js',assets/'domain.js')
-    shutil.copyfile(ROOT/'android/client/generated/identity.js',assets/'identity.js')
+    shutil.copyfile(generated/'identity.js',assets/'identity.js')
     shutil.copyfile(ROOT/'android/client/account-broker.html',assets/'account-broker.html')
-    shutil.copyfile(ROOT/'android/client/generated/account-broker.js',assets/'account-broker.js')
+    shutil.copyfile(generated/'account-broker.js',assets/'account-broker.js')
     pins=json.loads((ROOT/'otehon/shell/vendor/PINS.json').read_text());runtime=ROOT/'otehon/shell/vendor/kotoba-client-runtime.js'
     if digest(runtime)!=pins['files']['kotoba-client-runtime.js']:raise SystemExit('canonical runtime pin drift')
     shutil.copyfile(runtime,assets/'runtime.js')
@@ -209,7 +211,9 @@ def main():
         home=build('home','network.awai.home','network.awai.home.HomeActivity')
         report={'schema':'awai.android.home-build.v1','version':args.version,'publicSignerSha256':fp,'runtime':pins,'artifacts':{home.name:{'sha256':digest(home),'bytes':home.stat().st_size}},'identitySourceSha256':digest(ROOT/'android/client/identity-entry.js'),'identityVerifierSha256':digest(ROOT/'otehon/shell/src/identity/link.js'),'deviceSourceSha256':digest(ROOT/'otehon/shell/src/identity/device.js')}
         (out/f'home-build-v{args.version}.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2));return
-    yotei=out/f'yotei-v{args.version}.apk' if args.store_only else build('yotei','network.itonami.yotei','network.itonami.yotei.YoteiActivity')
+    # --store-only reuses the Yotei APK of an earlier full build in the same output directory, and builds it when there is none.
+    previous_yotei=out/f'yotei-v{args.version}.apk'
+    yotei=previous_yotei if args.store_only and previous_yotei.is_file() else build('yotei','network.itonami.yotei','network.itonami.yotei.YoteiActivity')
     run([tools/'apksigner','verify',yotei],stdout=subprocess.DEVNULL)
     torihiki=build('torihiki','network.itonami.torihiki','network.itonami.torihiki.TorihikiActivity')
     packages=assets/'packages';packages.mkdir(exist_ok=True);shutil.copyfile(yotei,packages/'yotei.apk');shutil.copyfile(torihiki,packages/'torihiki.apk')
