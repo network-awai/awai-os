@@ -81,7 +81,7 @@ reads the battery, thermal and network state from Android and passes them in as 
 | --- | --- |
 | `check-offer` | An `awai.compute-offer/1`: pinned model and engine, amount per order, `simulation` or `devnet` only (`live` is refused), provider and node kept apart, and the device limits (lowest battery, charging required, highest Android thermal status 0–6, metered network allowed, orders per day). Since C1b-1 also the mailbox (`https://` origin with a lowercase host and no port or path, and a 32-hex topic), the X25519 seal key (`x25519:` and 64 hex) and the buyers: 1 to 16 distinct `did:key`, none of them the provider or the node (ADR 0051 D2–D4) |
 | `offer-transition` | `draft → offered ⇄ paused`, `withdrawn` and `expired` are final. Publishing and resuming need the fact that the person chose to offer the device |
-| `admit-order` | Whether to take an order now, or the first refusal in a fixed order: offer, order, offer state, order against offer, missing device facts, buyer not on the offer's list, missing device facts, already run, expiry, charging, battery, heat, metered network, busy (one order at a time), daily cap. A missing or mistyped fact refuses. An order the host already ran is refused even after it expired; the host may send back the result it kept |
+| `admit-order` | Whether to take an order now, or the first refusal in a fixed order: offer, order, offer state, order against offer, missing device facts, buyer not on the offer's list, missing device facts, already run, expiry, more than 24 hours of the offer left (ADR 0051 D5), charging, battery, heat, metered network, busy (one order at a time), daily cap. A missing or mistyped fact refuses. An order the host already ran is refused even after it expired; the host may send back the result it kept |
 | `receipt-body` | The `awai.work-receipt/1` body the host signs. It refuses an engine other than the offer's and more completion tokens than the order allowed |
 | `check-order-envelope` | The opened `awai.compute-order/1`: the offer's CID, the order, its CID, the prompt and the reply (a topic and an X25519 key only). The reply has no origin field, so it can only go back to the offer's mailbox; a reply topic equal to the offer's topic is refused |
 | `result-envelope` | The `awai.compute-result/1` the device seals back: the refusal reason, or the output with the signed receipt for this order |
@@ -112,6 +112,7 @@ C1b-1 evidence (2026-11-22, same host and tools, [AWAI-3757](https://linear.app/
 | Check | Result |
 | --- | --- |
 | 150 cases on Babashka, Basilisp and nbb | 150 of 150 on each |
+| 24-hour offer limit added (2026-11-22, [AWAI-3788](https://linear.app/kotobalabs/issue/AWAI-3788)): 154 cases | 154 of 154 on each. Exactly 24 hours left is taken, one second more is refused; without the check, 2 failures on each |
 | One changed expectation | 1 failure, exit 1 |
 | Core changed to ignore the buyer list and the already-run fact, and to accept a reply that names an origin | 4 failures on each, exit 1 |
 | Generator run twice | Same file |

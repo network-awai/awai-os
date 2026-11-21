@@ -37,13 +37,13 @@
 (def offer
   {"kind" "awai.compute-offer/1" "work-kind" "compute" "provider" provider "node" node
    "asset" "native/engi/EN" "amount" "1" "value-class" "devnet" "model" model "engine" engine
-   "max-tokens" 128 "limits" limits "expires-at" 2000000000 "nonce" "offer-1"
+   "max-tokens" 128 "limits" limits "expires-at" 1800086400 "nonce" "offer-1"
    "mailbox" mailbox "seal-key" seal-key "buyers" [buyer]})
 
 (def order
   {"kind" "awai.order/1" "work-kind" "compute" "buyer" buyer "provider" provider
    "node" node "asset" "native/engi/EN" "amount" "1" "value-class" "devnet" "model" model
-   "max-tokens" 64 "expires-at" 1900000000 "data-categories" ["prompt"] "policy" sha-b
+   "max-tokens" 64 "expires-at" 1800003600 "data-categories" ["prompt"] "policy" sha-b
    "demand" "owner-internal" "nonce" "n-1"})
 
 (def facts
@@ -155,7 +155,7 @@
     (c "admit-order" (admit-case :o (assoc offer "buyers" ["did:key:zOtherBot" buyer])) admit)
     (c "admit-order" (admit-case :f (assoc facts "already-run" true)) (refuse "device/already-run"))
     ;; A run order is refused as run even after it expired: the host never runs it again.
-    (c "admit-order" (admit-case :f (assoc facts "already-run" true "now" 1900000000)) (refuse "device/already-run"))]
+    (c "admit-order" (admit-case :f (assoc facts "already-run" true "now" 1800003600)) (refuse "device/already-run"))]
    (for [[field value reason] [["now" nil "device/unknown-time"]
                                ["now" "1800000000" "device/unknown-time"]
                                ["battery-percent" nil "device/unknown-battery"]
@@ -175,7 +175,12 @@
         (refuse reason)))
    [(c "admit-order" (admit-case :f "facts") (refuse "device/unknown-facts"))
     (c "admit-order" (admit-case :o (assoc offer "expires-at" 1800000000)) (refuse "device/offer-expired"))
-    (c "admit-order" (admit-case :f (assoc facts "now" 1900000000)) (refuse "device/order-expired"))
+    (c "admit-order" (admit-case :f (assoc facts "now" 1800003600)) (refuse "device/order-expired"))
+    ;; ADR 0051 D5: at most 24 hours of the offer may be left when an order comes in.
+    (c "admit-order" (admit-case :o (assoc offer "expires-at" 1800086401)) (refuse "device/offer-too-long"))
+    (c "admit-order" (admit-case :o (assoc offer "expires-at" 2000000000)) (refuse "device/offer-too-long"))
+    (c "admit-order" (admit-case :o (assoc offer "expires-at" 1800086400)) admit)
+    (c "admit-order" (admit-case :o (assoc offer "expires-at" 1800086401) :f (assoc facts "now" 1800000001)) admit)
     (c "admit-order" (admit-case :f (assoc facts "charging" false)) (refuse "device/not-charging"))
     (c "admit-order" (admit-case :o (assoc-in offer ["limits" "require-charging"] false)
                                  :f (assoc facts "charging" false)) admit)

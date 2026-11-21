@@ -26,6 +26,10 @@
   #{:min-battery-percent :require-charging :max-thermal-status :allow-metered
     :max-orders-per-day})
 
+;; ADR 0051 D5 (owner decision 2026-11-22): an offer lives at most 24 hours, so the person's
+;; consent is asked again at least once a day.
+(def ^:private longest-offer-seconds 86400)
+
 ;; Android PowerManager thermal status: 0 none ... 6 shutdown.
 (def ^:private highest-thermal-status 6)
 
@@ -234,6 +238,7 @@
           ;; The host may send back the result it kept; it never runs the same order twice.
           (:already-run facts) (refuse "device/already-run")
           (>= (:now facts) (:expires-at offer)) (refuse "device/offer-expired")
+          (> (- (:expires-at offer) (:now facts)) longest-offer-seconds) (refuse "device/offer-too-long")
           (>= (:now facts) (:expires-at order)) (refuse "device/order-expired")
           (and (:require-charging limits) (not (:charging facts))) (refuse "device/not-charging")
           (< (:battery-percent facts) (:min-battery-percent limits)) (refuse "device/low-battery")
