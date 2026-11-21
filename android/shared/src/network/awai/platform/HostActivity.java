@@ -202,10 +202,10 @@ public abstract class HostActivity extends Activity {
             o.put("motionReduced",Settings.Global.getFloat(getContentResolver(),Settings.Global.ANIMATOR_DURATION_SCALE,1f)==0f || getSystemService(PowerManager.class).isPowerSaveMode());
             o.put("installed",installed);RoleManager roles=getSystemService(RoleManager.class);o.put("isDefaultHome",roles!=null&&roles.isRoleHeld(RoleManager.ROLE_HOME));
             JSONArray agenda=new JSONArray();if("home".equals(mode())){try(Cursor c=getContentResolver().query(Uri.parse("content://network.itonami.yotei.agenda/events"),null,null,null,null)){if(c!=null&&c.moveToFirst())agenda=new JSONArray(c.getString(0));}catch(Exception absent){}}
-            o.put("agenda",agenda);o.put("catalogOnline","store".equals(mode())&&getSharedPreferences("online",0).contains("raw"));String msg=getSharedPreferences("host",0).getString("message","");o.put("message",msg);getSharedPreferences("host",0).edit().remove("message").apply();return o.toString();
+            o.put("agenda",agenda);o.put("catalogOnline","store".equals(mode())&&Catalog.hasOnline(HostActivity.this));String msg=getSharedPreferences("host",0).getString("message","");o.put("message",msg);getSharedPreferences("host",0).edit().remove("message").apply();return o.toString();
         }catch(Exception e){return "{\"mode\":\""+mode()+"\",\"platform\":\"android\",\"runtime\":\"android\",\"apps\":[],\"installed\":{},\"agenda\":[]}";}}
-        /** The key list this Store uses, for the page's own catalog check (AWAI-3775). Empty for a build without a root. */
-        @JavascriptInterface public String keyList(){if(!"store".equals(mode()))return "{}";try{KeyList k=StoreTrust.load(HostActivity.this);if(!k.rooted())return "{}";
+        /** The key list this Store uses, for the page's own catalog check (AWAI-3775). */
+        @JavascriptInterface public String keyList(){if(!"store".equals(mode()))return "{}";try{KeyList k=StoreTrust.load(HostActivity.this);
             java.util.Base64.Encoder b=java.util.Base64.getEncoder();
             return new JSONObject().put("root",b.encodeToString(Integrity.read(getAssets().open("store-root.der"),4096))).put("raw",b.encodeToString(k.raw())).put("signature",b.encodeToString(k.signature())).toString();
         }catch(Exception unavailable){return "{}";}}
@@ -239,7 +239,7 @@ public abstract class HostActivity extends Activity {
                     for(int j=0;j<listed.length();j++)if(id.equals(listed.getJSONObject(j).getString("id"))){JSONArray entries=listed.getJSONObject(j).getJSONArray("artifacts");
                         for(int i=0;i<entries.length();i++)if("android".equals(entries.getJSONObject(i).getString("platform")))digest=entries.getJSONObject(i).getString("sha256");}
                     if(digest==null||!digest.equals(apks.getJSONObject(id).getString("sha256")))throw new SecurityException("unpinned-artifact");}
-                return getSharedPreferences("online",0).edit().putString("raw",raw).putString("signature",signature).putLong("highest",revision).commit()?"ok":refusedCatalog("catalog-store");
+                return Catalog.saveOnline(HostActivity.this,raw,signature,revision)?"ok":refusedCatalog("catalog-store");
             }catch(Exception invalid){return refusedCatalog(invalid instanceof SecurityException&&invalid.getMessage()!=null&&invalid.getMessage().matches("[a-z0-9-]{1,40}")?invalid.getMessage():invalid.getClass().getSimpleName());}
         }
         @JavascriptInterface public boolean hasOnlineApk(String id){if(!"store".equals(mode()))return false;try{Catalog c=trustedCatalog();if(!c.isOnlineDelivery(id))return false;verifyStaged(c,id);return true;}catch(Exception absent){return false;}}

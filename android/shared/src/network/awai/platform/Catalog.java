@@ -36,8 +36,8 @@ public final class Catalog {
         JSONObject bundled=verifyMetadata(bytes,sig,keys,System.currentTimeMillis()/1000);
         android.content.SharedPreferences saved=context.getSharedPreferences("online",0);
         JSONObject admitted=null;
-        if(saved.contains("raw")){
-            byte[] onlineBytes=saved.getString("raw","").getBytes(StandardCharsets.UTF_8);
+        if(hasOnline(context)){
+            byte[] onlineBytes=savedRaw(saved);
             byte[] onlineSig=android.util.Base64.decode(saved.getString("signature",""),android.util.Base64.DEFAULT);
             try{admitted=verifyMetadata(onlineBytes,onlineSig,keys,System.currentTimeMillis()/1000);}
             catch(SecurityException e){
@@ -45,7 +45,7 @@ public final class Catalog {
                 // before AWAI-3775) is dropped, not trusted. The revision floor is kept, so the bundled catalog
                 // must still be at least as new as anything admitted before.
                 if(!"catalog-signature".equals(e.getMessage()))throw e;
-                saved.edit().remove("raw").remove("signature").commit();
+                saved.edit().remove("raw").remove("raw64").remove("signature").commit();
             }
         }
         online=admitted!=null;
@@ -69,6 +69,25 @@ public final class Catalog {
                 active.put("bundledDelivery", true);
             }
         }
+    }
+    /**
+     * Keeps an admitted online catalog. The raw bytes are stored as base64: SharedPreferences' XML file does not
+     * keep a string's trailing whitespace exactly (a raw ending in a newline came back with indentation added), and
+     * the signature covers every byte. Older Stores wrote "raw" as text; it is still read, and dropped if it no
+     * longer verifies.
+     */
+    public static boolean saveOnline(Context context, String raw, String signature, long revision) {
+        return context.getSharedPreferences("online", 0).edit().remove("raw")
+                .putString("raw64", android.util.Base64.encodeToString(raw.getBytes(StandardCharsets.UTF_8), android.util.Base64.NO_WRAP))
+                .putString("signature", signature).putLong("highest", revision).commit();
+    }
+    public static boolean hasOnline(Context context) {
+        android.content.SharedPreferences s = context.getSharedPreferences("online", 0);
+        return s.contains("raw64") || s.contains("raw");
+    }
+    private static byte[] savedRaw(android.content.SharedPreferences s) {
+        String b = s.getString("raw64", null);
+        return b != null ? android.util.Base64.decode(b, android.util.Base64.NO_WRAP) : s.getString("raw", "").getBytes(StandardCharsets.UTF_8);
     }
     /** An online catalog may not carry offline-only preview apps; the constructor would refuse it after admission. */
     public static void checkOnline(JSONObject candidate) throws Exception {

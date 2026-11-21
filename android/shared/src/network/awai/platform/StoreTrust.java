@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.AssetManager;
 import org.json.JSONObject;
-import java.io.FileNotFoundException;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -16,8 +15,7 @@ import java.nio.charset.StandardCharsets;
  * accepted and refuses any list below it, bundled or fetched. Verification grants nothing: fetching the
  * list needs the same standing update approval as the pointer.
  *
- * <p>A package built without a root (before AWAI-3775 step 3) still pins one key in
- * {@code catalog-key.der}; {@link KeyList#legacy} covers it until every build bundles a list.
+ * <p>A package without a root or a list trusts nothing: every catalog and pointer is refused.
  */
 public final class StoreTrust {
     public static final String URL =
@@ -28,11 +26,7 @@ public final class StoreTrust {
     /** The list to use now. Records its sequence as the floor when it is higher than the saved one. */
     public static KeyList load(Context c) throws Exception {
         AssetManager assets = c.getAssets();
-        byte[] root;
-        try { root = Integrity.read(assets.open("store-root.der"), 4096); }
-        catch (FileNotFoundException legacyBuild) {
-            return KeyList.legacy(Integrity.read(assets.open("catalog-key.der"), 4096));
-        }
+        byte[] root = Integrity.read(assets.open("store-root.der"), 4096);
         byte[] raw = Integrity.read(assets.open("keys.txt"), KeyList.MAX_BYTES);
         byte[] sig = Integrity.read(assets.open("keys.sig"), 4096);
         SharedPreferences p = c.getSharedPreferences(PREFS, 0);
@@ -50,7 +44,6 @@ public final class StoreTrust {
     public static KeyList admit(Context c, byte[] envelope) throws Exception {
         if (envelope == null || envelope.length > MAX_ENVELOPE_BYTES) throw new SecurityException("keys-size");
         KeyList current = load(c);
-        if (!current.rooted()) throw new SecurityException("keys-legacy-build");
         JSONObject e = new JSONObject(new String(envelope, StandardCharsets.UTF_8));
         if (e.length() != 2) throw new SecurityException("keys-shape");
         byte[] raw = e.getString("raw").getBytes(StandardCharsets.US_ASCII);
