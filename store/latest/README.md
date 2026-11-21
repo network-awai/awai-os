@@ -21,4 +21,6 @@
 
 A pointer lasts 30 days. **Re-sign it before it expires**; otherwise automatic updates stop.
 
-Published: sequence 1 (2026-11-21, catalog r107 at `ed429b4`), expires 2026-12-21.
+Published:
+- sequence 1 (2026-11-21, catalog r107 at `ed429b4`).
+- sequence 2 (2026-11-21, catalog r108 at `89aeb54`, which declares the Torihiki operations). Expires 2026-12-21.
