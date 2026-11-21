@@ -133,13 +133,14 @@ owner 決定（2026-11-21）。「残る課題」は決定を実現するのに�
 | 3 | 保存領域 | **Awai Drive の同期で、ネットワーク越しに node 間で持つ** | いまの Drive の経路は 1 ファイル 8 MiB・合計 64 MiB が上限（[drive-storage.md](drive-storage.md)）。node が持つ量（数十 GB 以上）には足りない。大きな block の扱いと、公開の block を Drive のどの面に置くかを決める必要がある |
 | 4 | 遠隔の管理 | **遠隔から管理できるようにする** | 経路の設計。認証、何をできるようにするか（状態を見る、pin を足す、設定を変える、再起動）、ADB を使わないこと |
 | 5 | Xavier | **Android にする** | Jetson のモデルの確認。公式に対応がある機種（TX2 NX、TX1、Nano 2GB）か、有志の preview（Xavier NX）か、見つからない機種（AGX Xavier）かで、作業量が大きく変わる |
-| 6 | 1 回線・1 台への依存 | 未決定（下に提案） | — |
+| 6 | 1 回線・1 台への依存 | **予備の配信元を持つ。** 主は node のまま | 構成と足りないものは network-awai-apex の `docs/itonami-domain-unification-design.md` §8.7、追跡は [JUN-1414](https://linear.app/kotobalabs/issue/JUN-1414)。gateway の出どころと Cloudflare のアカウントが未確定。下の 2 と 3 は未決定 |
 
-### 6 の提案（未決定）
+### 6 の段階（1 は決定、2 と 3 は未決定）
 
 入口が家庭の 1 回線と 1 台に依存していて、2026-11 の停止はその例になった。段階を踏むことを提案する。
 
-1. **いますぐ: 予備の配信元を 1 つ持つ。** 候補は、既に code がある Cloudflare の gateway（`kotobase-ipfs`）。
+1. **いますぐ: 予備の配信元を 1 つ持つ（owner 決定 2026-11-21）。** 候補は Cloudflare の gateway。code は `kotobase-ipfs` にあるが、
+   この repo は archive 済みで、いま動いている Worker の出どころは未確認。
    DNS は既に Cloudflare にあるので、新しい種類の依存は増えない。返す内容は CID で検証できるので、
    予備の配信元を信頼する範囲も広がらない。主は node のまま、node が落ちているときだけ使う。
 2. **次に: 別の回線の node を足す。** Awai Android の node は、置き場所を選ばないのが利点になる。
