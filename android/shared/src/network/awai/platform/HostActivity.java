@@ -204,6 +204,11 @@ public abstract class HostActivity extends Activity {
             JSONArray agenda=new JSONArray();if("home".equals(mode())){try(Cursor c=getContentResolver().query(Uri.parse("content://network.itonami.yotei.agenda/events"),null,null,null,null)){if(c!=null&&c.moveToFirst())agenda=new JSONArray(c.getString(0));}catch(Exception absent){}}
             o.put("agenda",agenda);o.put("catalogOnline","store".equals(mode())&&getSharedPreferences("online",0).contains("raw"));String msg=getSharedPreferences("host",0).getString("message","");o.put("message",msg);getSharedPreferences("host",0).edit().remove("message").apply();return o.toString();
         }catch(Exception e){return "{\"mode\":\""+mode()+"\",\"platform\":\"android\",\"runtime\":\"android\",\"apps\":[],\"installed\":{},\"agenda\":[]}";}}
+        /** The key list this Store uses, for the page's own catalog check (AWAI-3775). Empty for a build without a root. */
+        @JavascriptInterface public String keyList(){if(!"store".equals(mode()))return "{}";try{KeyList k=StoreTrust.load(HostActivity.this);if(!k.rooted())return "{}";
+            java.util.Base64.Encoder b=java.util.Base64.getEncoder();
+            return new JSONObject().put("root",b.encodeToString(Integrity.read(getAssets().open("store-root.der"),4096))).put("raw",b.encodeToString(k.raw())).put("signature",b.encodeToString(k.signature())).toString();
+        }catch(Exception unavailable){return "{}";}}
         @JavascriptInterface public String catalog(){try{return "store".equals(mode())?trustedCatalog().json():"{\"apps\":[]}";}catch(Exception invalid){return "{}";}}
         @JavascriptInterface public void launch(String id){runOnUiThread(()->launchPackage(id));}
         @JavascriptInterface public void openStore(){runOnUiThread(()->launchPackage("network.awai.store"));}
