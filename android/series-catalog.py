@@ -291,7 +291,8 @@ def isco_attribution(source, ja):
     return text + '\n' + ISCO_ATTRIBUTION_JA.format(code=code) if ja else text
 
 
-def generate(table, inputs, revision, expires_at, base=None, repos=None, marks=None, holds=(), unspsc_marks=None):
+def generate(table, inputs, revision, expires_at, base=None, repos=None, marks=None, holds=(), unspsc_marks=None, top=None):
+    """top: list only apps of App Cycle rank 1..top (None: every ranked and unranked app in the table)."""
     check_table(table, holds)
     by_scheme = {'isco': marks or {}, 'unspsc': unspsc_marks or {}}
     # Marks apply only to apps in the table; a row for any other repository changes nothing.
@@ -308,6 +309,10 @@ def generate(table, inputs, revision, expires_at, base=None, repos=None, marks=N
         hold = held_by(s, holds)
         if hold:
             excluded.append({'source': s, 'id': app['id'], 'reason': 'held', 'hold': hold['reason'], 'decidedBy': hold['decidedBy']})
+            continue
+        if top is not None and (app.get('rank') is None or app['rank'] > top):
+            excluded.append({'source': s, 'id': app['id'], 'reason': 'outside-top',
+                             'detail': f'rank {app.get("rank")} is outside --top {top}'})
             continue
         scheme = scheme_code(s)[0]
         if scheme in MARKED_SCHEMES and app['sourceMark'] is None:
@@ -326,7 +331,13 @@ def generate(table, inputs, revision, expires_at, base=None, repos=None, marks=N
         if scheme in MARKED_SCHEMES:
             reason = built_after_source(app, release, repos)
             if reason:
-                excluded.append({'source': s, 'id': app['id'], 'reason': reason})
+                item = {'source': s, 'id': app['id'], 'reason': reason}
+                if reason.startswith('built-before-'):
+                    mark, built = app['sourceMark']['commit'], release['source_commit']
+                    item.update({'mark': mark, 'sourceCommit': built,
+                                 'detail': f'APK built from {built[:12]}, which is before the source mark {mark[:12]} '
+                                           f'({MARKED_SCHEMES[scheme][0]}); rebuild from {mark[:12]} or a later commit'})
+                excluded.append(item)
                 continue
         if app['id'] in present:
             raise Refused(f'{s}: {app["id"]} is already in the base catalog')
@@ -351,16 +362,19 @@ def main():
     ap.add_argument('--isco-source', type=pathlib.Path, default=ISCO_SOURCE, help='ISCO-08 source marks (repo, commit, ja)')
     ap.add_argument('--unspsc-source', type=pathlib.Path, default=UNSPSC_SOURCE, help='UNSPSC source marks (repo, commit, ja)')
     ap.add_argument('--repos', type=pathlib.Path, help='directory of app repository clones, one per source, for the ISCO-08 source commit check')
+    ap.add_argument('--top', type=int, help='list only App Cycle ranks 1..N (the first catalog uses --top 10)')
     a = ap.parse_args()
     if a.revision < 1 or not 1 <= a.expires_days <= 365:
         ap.error('--revision must be positive and --expires-days 1..365')
+    if a.top is not None and a.top < 1:
+        ap.error('--top must be a positive rank')
     base = json.loads(a.base.read_text()) if a.base else None
     if base and a.revision <= base['revision']:
         ap.error(f'--revision must be above the base revision {base["revision"]}')
     try:
         catalog, report = generate(json.loads(a.table.read_text()), a.inputs, a.revision, int(time.time()) + a.expires_days * 86400, base, a.repos,
                                    read_isco_marks(a.isco_source.read_text(encoding='utf-8')), read_holds(json.loads(a.hold.read_text(encoding='utf-8'))),
-                                   read_source_marks(a.unspsc_source.read_text(encoding='utf-8'), 'unspsc'))
+                                   read_source_marks(a.unspsc_source.read_text(encoding='utf-8'), 'unspsc'), a.top)
     except Refused as e:
         sys.exit(f'refused: {e}')
     a.out.write_text(json.dumps(catalog, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
