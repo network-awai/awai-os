@@ -41,6 +41,14 @@ else
   echo "virtio-common userdata fstab: already applied"
 fi
 
+# The older fstab selects ext4 on a blank NVMe but has no data checkpoint.
+checkpoint_patch="$here/patches/virtio-userdata-ext4-checkpoint.patch"
+if ! git -C "$virtio" apply --reverse --check "$checkpoint_patch" 2>/dev/null; then
+  git -C "$virtio" apply --check "$checkpoint_patch"
+  git -C "$virtio" apply "$checkpoint_patch"
+  echo "virtio-common ext4 userdata checkpoint: enabled"
+fi
+
 # The vendor patches apply only in the source checkout prepared for Awai PC.
 vendor="$src/vendor/lineage"
 for name in vendor-lineage-no-ota-downgrade.patch vendor-lineage-kernel-output-prefix.patch; do
