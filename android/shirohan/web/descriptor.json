@@ -1,0 +1,9 @@
+{
+  "schema": "kotoba.app.client-runtime.v1",
+  "profile": "trusted-page-v1",
+  "target": "browser",
+  "entry": "index.html",
+  "local-state": {"adapter": "memory", "schema": "itonami.shirohan.local.v1", "version": 1},
+  "workers": [{"id": "plate", "entry": "worker.js", "protocol": "shirohan.plate.v1"}],
+  "operations": []
+}
