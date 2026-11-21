@@ -36,15 +36,18 @@ the repositories' current `main`); the series build stamps `network.itonami.<sch
   reviewed or endorsed by the ILO.`, and, when `ja` is true, `職業の参照: ISCO-08（国際労働機関 ILO、2012 年）のコード
   XXXX。日本語の名称は当方の訳です。この app は ILO が作成・確認・推奨したものではありません。` No list of codes and names,
   and no ILO logo.
+- **UNSPSC (unspsc-10, 27, 39, 43, 73).** In the table without a rank, one key group per segment (`unspsc-10`
+  and so on). Their marks are in `unspsc-source.tsv` (same form as `isco-source.tsv`; the import script routes each
+  row by its repository). A listed UNSPSC app's description ends with the reference and trademark line from the
+  Legal memo (`unspsc-redistribution.md`, 2026-11-22), with the code in eight digits (segment 10 is `10000000`):
+  `Classification reference: UNSPSC® (United Nations Standard Products and Services Code), code XXXXXXXX. © United
+  Nations Development Programme (UNDP). UNSPSC® is a registered trademark of UNDP. This app is not produced, reviewed
+  or endorsed by UNDP.`, and, when `ja` is true, the Japanese line from the memo. One code per app, no list of codes
+  and names, no UNDP emblem.
 - **Holds.** `hold.json` lists source patterns kept out of the catalog as `held`, with the reason and who lifts the
-  hold. Now: `unspsc-*` (Legal is checking the UNSPSC/GS1 US terms; Decision lifts it).
-- **Clean builds only.** The series build writes `source_commit` (40 hex, or null without git) and `dirty`
-  (true, false or null) into `release.json`. Any app whose `dirty` is not `false` is left out as `release-dirty`.
-- **Which packages the Store admits.** The signed catalog decides. `Catalog.java` admits any
-  `network.itonami.<one lowercase segment>` that the catalog lists, with the asset `packages/<segment>.apk`, the
-  download name `online-<segment>.apk` and a 64 MiB ceiling; the catalog's APK asset must be exactly that name. No
-  hand-written list of series package ids has to follow the table. Apps with their own rules (previews, Registry
-  Assoc, the named apps and their budgets) keep them.
+  hold. Now: `unspsc-*` (Store distribution waits for the UNDP addendum; the application is in the owner's name and
+  Legal is checking; Decision lifts it). When the hold is lifted, the UNSPSC apps go through the marks and the
+  reference line above without further changes.
 
 Generate, then sign with a catalog key from the key list:
 
