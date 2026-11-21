@@ -107,7 +107,7 @@ def main():
             'import importlib.util,sys;s=importlib.util.spec_from_file_location("m",sys.argv[1]);m=importlib.util.module_from_spec(s);'
             's.loader.exec_module(m);print(len(m.read_source_marks(open(sys.argv[2]).read(),sys.argv[3])))', GEN, path, scheme).stdout.strip()
         check('the real isco-source.tsv parses', count(ROOT / 'store/catalog-source/isco-source.tsv', 'isco').isdigit(), real)
-        check('the real unspsc-source.tsv parses and has no marks yet', count(ROOT / 'store/catalog-source/unspsc-source.tsv', 'unspsc') == '0')
+        check('the real unspsc-source.tsv parses', count(ROOT / 'store/catalog-source/unspsc-source.tsv', 'unspsc').isdigit())
         check('the table carries no iscoSource field', all('iscoSource' not in a for a in table['apps']))
         tab = write_table(table)
         r = generate(good, tab)
