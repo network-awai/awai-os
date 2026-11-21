@@ -11,15 +11,18 @@ The scope comes from ADR 0001 in `kotoba-lang/app-itonami-cloud-itonami-isic-691
 - **No default jurisdiction (O7 open).** The user must choose one. Only Japan has a template, so Japan is the only choice.
 - No referral fee or other payment path exists (D2).
 
-## Sending is not declared yet
+## Sending (X1, ADR 0001 D9 / owner decision O1)
 
-ADR 0001 D9 allows sending the memo (operation X1), but its service and endpoint have not been chosen. The canonical `kotoba-client-runtime.js` requires an `https` service origin for a `browser-action` operation. Handing the memo to the user's own mail app through the Android share sheet has no such origin, so it cannot be declared yet.
+The descriptor declares **one operation**: handing the memo to the lawyer the user chose, through the Android share sheet (`browser-action: share`, recipient `user-selected-app`; no service origin is fabricated — the AWAI-3336 pin of the canonical `kotoba-client-runtime.js` allows this shape). Scope is the O1/D9 range only: the memo the user assembled, to the lawyer the user named. The app holds no lawyer list and never suggests one (a test checks this).
 
-Until it can, the descriptor declares **no operations**:
+Two gates, both fail closed:
 
-- The send button stays disabled and says no sending route exists yet.
-- A send attempt goes through the canonical broker and is refused there.
-- The Android manifest has no `INTERNET` permission.
+- Governor review: the operation runs only when it is in the broker's eligible operations (`approvedOperations` intersected with `hostSupportedOperations`). Otherwise the send button stays disabled and `invoke` refuses before consent is even shown.
+- User approval: every send shows the canonical per-operation consent dialog (`consent: each-operation`), which names the receiver as "the app you pick next". Denial throws and nothing leaves the device.
+
+Wiring: the page's browser adapter calls the Tauri `soudan_share` command (Android only; other platforms fail closed with `android-only`), which fires `ACTION_SEND` through `SharePlugin` (no chooser result is read back: resolving means the chooser opened). Tests prove approval hands the memo over exactly once and denial hands nothing over, through the real broker and consent host.
+
+- The Android manifest has no `INTERNET` permission: the share sheet needs none.
 
 ## Build
 
@@ -36,17 +39,17 @@ Debug APK for an emulator: `npx tauri android build --debug --apk --target aarch
 ## Boundaries
 
 - `kotoba.app.client-runtime.v1` descriptor:
-  - `operations: []`;
+  - one operation (`itonami.soudan.send` / `user-chosen-lawyer` / `send-consultation-memo`, consent `each-operation`, share-sheet endpoint);
   - local state in `localstorage` through `awai.shell.host.v1`, with revision-checked writes.
 - The page and Tauri CSPs allow only the Tauri IPC for `connect-src`. The build fails if either CSP or the descriptor says otherwise.
-- The Tauri host exposes only `awai_host_info`. It has no network, filesystem, share, installer or shell permissions.
+- The Tauri host exposes `awai_host_info` and the Android-only `soudan_share`. It has no network, filesystem, installer or shell permissions.
 - UI text is keyed in `src/messages.js` (ja, en). Text the user types is never translated or rewritten.
 
 ## Not yet qualified
 
 | Item | Waiting on |
 |---|---|
-| Sending (X1) and the lawyer's return path (X3) | A runtime declaration shape for the share sheet |
+| The lawyer's return path (X3) | — |
 | The lawyer-side screens | X3 |
 | Store distribution | [AWAI-3238](https://linear.app/kotobalabs/issue/AWAI-3238) |
 | Physical devices | — |

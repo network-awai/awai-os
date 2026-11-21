@@ -30,8 +30,8 @@ const ja = {
   'recipient.name': '弁護士の名前', 'recipient.office': '事務所名（任意）', 'recipient.contact': '弁護士の連絡先',
   'recipient.invalid': '送付先を読み込めませんでした。', 'recipient.nameProblem': '弁護士の名前を書いてください。', 'recipient.officeProblem': '事務所名が長すぎます。', 'recipient.contactProblem': '弁護士の連絡先を書いてください。',
   'confirm.label': 'この資料の内容と送付先を確認しました',
-  'send': '送付する', 'send.undeclared': '送付の経路はまだ用意されていません。このアプリは今、外部へ何も送りません。',
-  'send.blocked': '送付できませんでした。外部への送信はしていません。',
+  'send': '送付する', 'send.note': '確認にチェックを入れると送付できます。送付すると、この端末で選んだアプリに資料が渡ります。渡す前に毎回確認が出ます。',
+  'send.shared': '資料を渡すアプリの選択を開きました。', 'send.blocked': '送付できませんでした。外部への送信はしていません。',
   'footer': '法的助言ではありません。紹介料は誰からも受け取りません。'};
 const en = {
   'app.title': 'Legal consultation', 'nav.label': 'Views', 'nav.input': 'Write it down', 'nav.memo': 'Memo and recipient',
@@ -64,8 +64,8 @@ const en = {
   'recipient.name': 'Lawyer\'s name', 'recipient.office': 'Office (optional)', 'recipient.contact': 'Lawyer\'s contact',
   'recipient.invalid': 'Could not read the recipient.', 'recipient.nameProblem': 'Write the lawyer\'s name.', 'recipient.officeProblem': 'The office name is too long.', 'recipient.contactProblem': 'Write the lawyer\'s contact.',
   'confirm.label': 'I checked this memo and the recipient',
-  'send': 'Send', 'send.undeclared': 'There is no way to send yet. This app sends nothing outside the device for now.',
-  'send.blocked': 'Not sent. Nothing left the device.',
+  'send': 'Send', 'send.note': 'Check the confirmation to enable sending. Sending hands the memo to an app you pick on this device. Every send asks for confirmation first.',
+  'send.shared': 'Opened your app choice for sending.', 'send.blocked': 'Not sent. Nothing left the device.',
   'footer': 'Not legal advice. No referral fee is taken from anyone.'};
 export const MESSAGES = {ja, en};
 export function pickLocale(languages) {

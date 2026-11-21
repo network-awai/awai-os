@@ -1,7 +1,7 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
 import {CATEGORIES,JURISDICTIONS,LIMITS,emptyDraft,draftProblems,recipientProblems,assembleMemo,restoreDraft} from '../src/model.js';
 import {MESSAGES,translator} from '../src/messages.js';
-import {runtimeDescriptor,REQUESTED_CAPABILITIES,SEND_SELECTOR} from '../src/operations.js';
+import {runtimeDescriptor,REQUESTED_CAPABILITIES,SEND_SELECTOR,SEND_OPERATION} from '../src/operations.js';
 import {clientRuntimeProblems,clientRuntimeConnectSrc,effectiveClientOperations} from '../../../otehon/shell/vendor/kotoba-client-runtime.js';
 const t=translator('ja');
 function fixture(){return {...emptyDraft(),jurisdiction:'JPN',category:'money',summary:'友人に50万円を貸したが返ってこない。',
@@ -43,7 +43,7 @@ test('the recipient is only what the user typed; shape is checked, nothing is lo
   assert.deepEqual(emptyDraft().recipient,{name:'',office:'',contact:''});
 });
 test('D9: the app ships no list of lawyers and no ranking or recommendation wording',()=>{
-  const src=['model.js','app.js','operations.js'].map(f=>readFileSync(new URL('../src/'+f,import.meta.url),'utf8')).join('\n');
+  const src=['model.js','app.js','operations.js','send.js'].map(f=>readFileSync(new URL('../src/'+f,import.meta.url),'utf8')).join('\n');
   assert.doesNotMatch(src,/lawyers\s*[:=]\s*\[|directory|ranking|recommend\(/i);
   for(const key of Object.keys(MESSAGES.ja))assert.doesNotMatch(MESSAGES.ja[key],/おすすめ|ランキング|紹介します|候補/,key);
 });
@@ -58,16 +58,19 @@ test('every category and every problem key has ja and en text',()=>{
     for(const k of ['summary.tooLong','timeline.event'])assert.ok(tl(k,{max:1}));}
   assert.deepEqual(Object.keys(MESSAGES.en).sort(),Object.keys(MESSAGES.ja).sort());
 });
-test('the descriptor is valid and declares no external operation; connect-src is none',()=>{
+test('the descriptor declares exactly the O1/D9 send; a share-sheet operation causes no fetch, so connect-src is none',()=>{
   const d=runtimeDescriptor();
   assert.deepEqual(clientRuntimeProblems(d,[...REQUESTED_CAPABILITIES],'http://tauri.localhost'),[]);
-  assert.deepEqual(d.operations,[]);
+  assert.deepEqual(d.operations,[SEND_OPERATION]);
   assert.equal(clientRuntimeConnectSrc(d,[...REQUESTED_CAPABILITIES],[],'http://tauri.localhost'),"connect-src 'none'");
 });
-test('negative control: even if the send selector were approved and host-supported, it is not eligible because it is undeclared',()=>{
-  const d=runtimeDescriptor(),op={...SEND_SELECTOR,consent:'each-operation','data-categories':['legal.consultation'],endpoint:{origin:'https://example.com','browser-action':'send'}};
-  assert.deepEqual(effectiveClientOperations(d,{requestedCapabilities:[SEND_SELECTOR.capability],approvedOperations:[op],
-    hostSupportedOperations:[[SEND_SELECTOR.capability,SEND_SELECTOR.service,SEND_SELECTOR.operation]]}),[]);
+test('the send is eligible only when governor-approved and host-supported; a fabricated origin never matches',()=>{
+  const d=runtimeDescriptor(),host=[[SEND_SELECTOR.capability,SEND_SELECTOR.service,SEND_SELECTOR.operation]];
+  assert.deepEqual(effectiveClientOperations(d,{requestedCapabilities:[...REQUESTED_CAPABILITIES],approvedOperations:d.operations,hostSupportedOperations:host}).length,1);
+  for(const opts of [{approvedOperations:[],hostSupportedOperations:host},{approvedOperations:d.operations,hostSupportedOperations:[]}])
+    assert.deepEqual(effectiveClientOperations(d,{requestedCapabilities:[...REQUESTED_CAPABILITIES],...opts}),[]);
+  const forged={...SEND_SELECTOR,consent:'each-operation','data-categories':['legal.consultation-memo'],endpoint:{origin:'https://example.com','browser-action':'share'}};
+  assert.deepEqual(effectiveClientOperations(d,{requestedCapabilities:[...REQUESTED_CAPABILITIES],approvedOperations:[forged],hostSupportedOperations:host}),[]);
 });
 test('page and Tauri CSPs allow only the IPC for connections',()=>{
   const html=readFileSync(new URL('../src/index.html',import.meta.url),'utf8');
@@ -75,5 +78,5 @@ test('page and Tauri CSPs allow only the IPC for connections',()=>{
   for(const csp of [html.match(/Content-Security-Policy" content="([^"]+)"/)[1],conf.app.security.csp]){
     assert.match(csp,/connect-src ipc: http:\/\/ipc\.localhost;/);assert.doesNotMatch(csp,/unsafe-eval|unsafe-inline|https:/);}
   const caps=JSON.parse(readFileSync(new URL('../src-tauri/capabilities/main.json',import.meta.url),'utf8'));
-  assert.deepEqual(caps.permissions,['allow-awai-host-info']);
+  assert.deepEqual(caps.permissions,['allow-awai-host-info','allow-soudan-share']);
 });
