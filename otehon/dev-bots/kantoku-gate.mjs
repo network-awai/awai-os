@@ -24,6 +24,7 @@ const NEVER_APPROVE = [
   /^otehon\/dev-bots\/kantoku\//,
   /^otehon\/dev-bots\/shinsa\//,
   /^otehon\/dev-bots\/(eval|evals|replay|metrics)\//,
+  /^otehon\/dev-bots\/dora(\.test)?\.mjs$/, // the definition of the process metrics
 ];
 
 /** Why a changed path is the owner's to merge, or null when kantoku may approve it. */
