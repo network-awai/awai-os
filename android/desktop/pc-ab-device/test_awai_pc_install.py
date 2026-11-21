@@ -14,6 +14,34 @@ USABLE_SECTORS = "First usable sector is 34, last usable sector is 4095\n"
 
 
 class InstallPreflightTest(unittest.TestCase):
+    def test_vbmeta_layout_requires_complete_named_slot_pairs(self):
+        metadata = ["vbmeta_a", "vbmeta_b", "vbmeta_system_a", "vbmeta_system_b"]
+        parts = [{"name": name} for name in metadata]
+        self.assertEqual(installer.vbmeta_layout([]), [])
+        self.assertEqual(
+            installer.vbmeta_layout(parts),
+            [(name, name, None, "8300") for name in metadata],
+        )
+        for names, reason in (
+            (metadata[1:], "both root vbmeta slots"),
+            (metadata[:-1], "both vbmeta_system slots"),
+            (metadata + ["vbmeta_b"], "duplicate source vbmeta"),
+            (metadata + ["vbmeta_unexpected_a"], "invalid or duplicate source vbmeta"),
+        ):
+            with self.subTest(names=names), self.assertRaisesRegex(SystemExit, reason):
+                installer.vbmeta_layout([{"name": name} for name in names])
+
+    def test_existing_vbmeta_is_protected_even_with_legacy_source(self):
+        with TemporaryDirectory() as folder:
+            source = Path(folder) / "source.img"
+            target = Path(folder) / "target.img"
+            source.touch()
+            target.touch()
+            with patch.object(installer, "table", side_effect=[
+                ([{"name": "VBMETA_A"}], 1, 4096), ([], 1, 4096),
+            ]), self.assertRaisesRegex(SystemExit, "name-in-use"):
+                installer.make_plan(target, source, 16)
+
     def test_accepts_512_logical_with_4096_physical(self):
         with patch.object(installer, "sgdisk", return_value=(
             "Sector size (logical/physical): 512/4096 bytes\n" + USABLE_SECTORS

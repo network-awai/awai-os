@@ -62,16 +62,18 @@ else
 fi
 
 cp --sparse=always -- "$stock_disk" "$candidate"
-python3 - "$candidate" "$workspace" <<'PY'
+python3 - "$candidate" "$workspace" "$target_files" <<'PY'
 from collections import Counter
 import hashlib
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
+from zipfile import ZipFile
 
-disk, workspace = map(Path, sys.argv[1:])
+disk, workspace, target_files = map(Path, sys.argv[1:])
 partitions = {
     "boot_a": "IMAGES/boot.img",
     "boot_b": "IMAGES/boot.img",
@@ -89,8 +91,43 @@ if not sector or int(sector[1]) != 512:
 rows = re.findall(r"^\s*\d+\s+(\d+)\s+(\d+)\s+\S+\s+\S+\s+\S+\s+(\S+)\s*$",
                   table, re.MULTILINE)
 names = Counter(name for _, _, name in rows)
+root_names = ("vbmeta", "vbmeta_system", "vbmeta_vendor")
+with ZipFile(target_files) as archive:
+    avb_properties = [
+        value for line in archive.read("META/misc_info.txt").decode().splitlines()
+        for key, _, value in (line.strip().partition("="),) if key == "avb_enable"
+    ]
+    if avb_properties not in ([], ["false"], ["true"]):
+        sys.exit("invalid or duplicate target-files avb_enable value")
+    avb_enabled = avb_properties == ["true"]
+    members = [
+        name for name in archive.namelist() if re.fullmatch(r"IMAGES/vbmeta[^/]*\.img", name)
+    ]
+    allowed = {f"IMAGES/{root}.img": root for root in root_names}
+    if len(members) != len(set(members)) or set(members) - allowed.keys():
+        sys.exit("invalid or duplicate target-files vbmeta images")
+    if avb_enabled != ("IMAGES/vbmeta.img" in members) or (members and not avb_enabled):
+        sys.exit("target-files avb_enable and vbmeta images do not match")
+    expected_slots = {
+        f"{allowed[member]}_{slot}" for member in members for slot in ("a", "b")
+    }
+    actual_slots = {
+        name for name in names if re.match(r"^vbmeta(?:_|$)", name, re.IGNORECASE)
+    }
+    if expected_slots != actual_slots or any(names[name] != 1 for name in expected_slots):
+        sys.exit("stock disk vbmeta slots do not match target-files")
+    for member in members:
+        root = allowed[member]
+        with archive.open(member) as payload, (workspace / member).open("xb") as image:
+            header = payload.read(256)
+            if len(header) != 256 or not header.startswith(b"AVB0"):
+                sys.exit(f"{member}: expected a raw AVB header")
+            image.write(header)
+            shutil.copyfileobj(payload, image)
+        for slot in ("a", "b"):
+            partitions[f"{root}_{slot}"] = member
 if any(names[name] != 1 for name in partitions):
-    sys.exit("expected one partition with each of the boot, vendor_boot and super names")
+    sys.exit("expected one partition for each required payload")
 ranges = {name: (int(start), int(end)) for start, end, name in rows if name in partitions}
 
 with disk.open("r+b") as image:
