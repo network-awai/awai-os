@@ -68,7 +68,7 @@ test("what a review bot may never approve stays with the owner, whatever the ver
     "otehon/dev-bots/gate.mjs", "otehon/dev-bots/gate.test.mjs",
     "otehon/dev-bots/kantoku-gate.mjs", "otehon/dev-bots/kantoku-gate.test.mjs", "otehon/dev-bots/kantoku-review.sh",
     "otehon/dev-bots/kantoku/SOUL.md", "otehon/dev-bots/shinsa/SOUL.md", "otehon/dev-bots/shinsa/profile.yaml",
-    "otehon/dev-bots/eval/set.json", "otehon/dev-bots/replay/case-1.json", "otehon/dev-bots/metrics/dora.json",
+    "otehon/dev-bots/eval/set.json", "otehon/dev-bots/replay/case-1.json", "otehon/dev-bots/metrics/dora.json", "otehon/dev-bots/dora.mjs", "otehon/dev-bots/dora.test.mjs",
     ".github/workflows/ci.yml", "AGENTS.md", "SECURITY.md", "deploy/wrangler.toml", "README.md",
     "apps/x/otehon/dev-bots/queue.mjs", "otehon/dev-bots-other/x.mjs", "otehon/dev-bots",
   ];
