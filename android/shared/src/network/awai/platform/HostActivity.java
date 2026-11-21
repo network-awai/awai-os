@@ -217,7 +217,7 @@ public abstract class HostActivity extends Activity {
         @JavascriptInterface public String admitOnlineCatalog(String raw,String signature){
             if(!"store".equals(mode())||onlineUrls.isEmpty()||raw==null||raw.length()>131072||signature==null||signature.length()>8192)return "refused";
             try{
-                byte[] key=Integrity.read(getAssets().open("catalog-key.der"),4096);
+                KeyList key=StoreTrust.load(HostActivity.this);
                 JSONObject candidate=Catalog.verifyMetadata(raw.getBytes(StandardCharsets.UTF_8),android.util.Base64.decode(signature,android.util.Base64.DEFAULT),key,System.currentTimeMillis()/1000);
                 // Existing online transport is pinned to Yotei only. Bundled dapps do not widen it.
                 if(candidate.getJSONArray("apps").length()!=1||!"network.itonami.yotei".equals(candidate.getJSONArray("apps").getJSONObject(0).getString("id")))throw new SecurityException("online-app");
@@ -307,7 +307,7 @@ public abstract class HostActivity extends Activity {
         String until=java.text.DateFormat.getDateInstance(java.text.DateFormat.LONG,Locale.JAPAN).format(new Date((now+UpdatePolicy.MAX_APPROVAL_SECONDS)*1000));
         String body="対象: この Store で追加したアプリの更新\n"
             +"取得先: raw.githubusercontent.com（network-awai/awai-os の署名済み配布ファイル）\n"
-            +"操作: 署名済みカタログの読み取り（1 日 1 回まで）と、更新ファイルの取得・インストール\n"
+            +"操作: 署名済みの鍵の一覧とカタログの読み取り（1 日 1 回まで）と、更新ファイルの取得・インストール\n"
             +"伝わる情報: IP アドレス、確認の時刻、追加済みのアプリ\n"
             +"条件: 同じ配布元の署名で、より新しい版で、新しい権限や通信先を追加しない更新だけ。それ以外の更新は、これまでどおり毎回確認します。\n"
             +"回線: "+(unmeteredOnly?"従量制でない回線（Wi-Fi など）のみ":"すべての回線")+"\n"

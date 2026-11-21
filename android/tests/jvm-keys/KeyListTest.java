@@ -43,6 +43,14 @@ public final class KeyListTest {
         refuse(name, code, ascii(body), sign(root, ascii(body)), root, NOW, 0);
     }
 
+    static void chooseRefuse(String name, String code, byte[] br, byte[] bs, byte[] sr, byte[] ss, byte[] root, long floor) {
+        checks++;
+        try { KeyList.choose(br, bs, sr, ss, root, NOW, floor); failures++; System.out.println("FAIL " + name + ": accepted, want " + code); }
+        catch (SecurityException e) {
+            if (code.equals(e.getMessage())) System.out.println("ok   " + name + " -> " + code);
+            else { failures++; System.out.println("FAIL " + name + ": got " + e.getMessage() + ", want " + code); }
+        } catch (Exception e) { failures++; System.out.println("FAIL " + name + ": " + e); }
+    }
     public static void main(String[] args) throws Exception {
         KeyPair root = pair(2048), other = pair(2048), c1 = pair(2048), c2 = pair(2048), p1 = pair(2048), weak = pair(1024);
         long issued = NOW - DAY, expires = NOW + 90 * DAY;
@@ -146,6 +154,27 @@ public final class KeyListTest {
         StringBuilder big = new StringBuilder(good); while (big.length() <= KeyList.MAX_BYTES) big.append("key catalog AAAA\n");
         refuse("more than the size limit", "keys-size", big.toString(), root);
         refuse("empty bytes", "keys-size", new byte[0], goodSig, root, NOW, 0);
+
+        // choose(): the saved list and the bundled one; the valid one with the higher sequence wins (AWAI-3775).
+        byte[] r = root.getPublic().getEncoded();
+        String l2 = list(2, NOW - DAY, NOW + 90 * DAY, cat(c1), ptr(p1)), l3 = list(3, NOW - DAY, NOW + 90 * DAY, cat(c2), ptr(p1));
+        byte[] s2 = sign(root, ascii(l2)), s3 = sign(root, ascii(l3));
+        ok("choose: saved newer than bundled", KeyList.choose(ascii(l2), s2, ascii(l3), s3, r, NOW, 0).sequence == 3);
+        ok("choose: bundled newer than saved", KeyList.choose(ascii(l3), s3, ascii(l2), s2, r, NOW, 0).sequence == 3);
+        ok("choose: nothing saved", KeyList.choose(ascii(l2), s2, null, null, r, NOW, 0).sequence == 2);
+        ok("choose: saved list with a bad signature is ignored", KeyList.choose(ascii(l2), s2, ascii(l3), s2, r, NOW, 0).sequence == 2);
+        ok("choose: keeps the verified bytes", Arrays.equals(KeyList.choose(ascii(l2), s2, null, null, r, NOW, 0).raw(), ascii(l2)));
+        ok("choose: new catalog key after rotation", KeyList.choose(ascii(l2), s2, ascii(l3), s3, r, NOW, 0).authentic(KeyList.CATALOG, ascii("x"), sign(c2, ascii("x")))
+                && !KeyList.choose(ascii(l2), s2, ascii(l3), s3, r, NOW, 0).authentic(KeyList.CATALOG, ascii("x"), sign(c1, ascii("x"))));
+        chooseRefuse("choose: bundled below the floor and nothing saved", "keys-rollback", ascii(l2), s2, null, null, r, 3);
+        chooseRefuse("choose: neither verifies, bundled reason", "keys-signature", ascii(l2), s3, ascii(l3), s2, r, 0);
+        chooseRefuse("choose: other root", "keys-signature", ascii(l2), s2, ascii(l3), s3, other.getPublic().getEncoded(), 0);
+        chooseRefuse("choose: nothing at all", "keys-size", null, null, null, null, r, 0);
+        // legacy(): the temporary single-key form used by Stores built without a list.
+        KeyList legacy = KeyList.legacy(c1.getPublic().getEncoded());
+        ok("legacy: one key for both roles, not rooted", !legacy.rooted() && legacy.sequence == 0 && legacy.raw() == null
+                && legacy.authentic(KeyList.CATALOG, ascii("x"), sign(c1, ascii("x"))) && legacy.authentic(KeyList.POINTER, ascii("x"), sign(c1, ascii("x")))
+                && !legacy.authentic(KeyList.CATALOG, ascii("x"), sign(c2, ascii("x"))));
 
         System.out.println(checks + " checks, " + failures + " failures");
         if (failures > 0) System.exit(1);

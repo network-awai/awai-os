@@ -12,7 +12,7 @@ import java.util.Map;
  * The signed pointer to the newest Store catalog (AWAI-3653, step 3).
  *
  * <p>The pointer lives at one fixed, mutable location ({@link #URL}). Nothing in it is trusted until
- * the signature verifies against the pinned catalog key, its sequence is not below the highest one
+ * a key listed for the pointer role in the Store's key list signed it (AWAI-3775), its sequence is not below the highest one
  * this host has accepted, it has not expired, and every pin is an exact, commit-pinned URL under
  * this repository's {@code store/distribution/} with a digest and a byte ceiling. The pins have the
  * same shape as {@code android/online-pins.dev.json}. Verification grants nothing: fetching still
@@ -49,18 +49,18 @@ public final class LatestPointer {
     }
 
     /** Verifies the envelope bytes as fetched from {@link #URL}. */
-    public static LatestPointer verifyEnvelope(byte[] envelope, byte[] pinnedKey, long now, long sequenceFloor) throws Exception {
+    public static LatestPointer verifyEnvelope(byte[] envelope, KeyList keys, long now, long sequenceFloor) throws Exception {
         if (envelope == null || envelope.length > MAX_ENVELOPE_BYTES) throw new SecurityException("pointer-size");
         JSONObject e = new JSONObject(new String(envelope, StandardCharsets.UTF_8));
         if (e.length() != 2) throw new SecurityException("pointer-shape");
         String raw = e.getString("raw"), signature = e.getString("signature");
         if (raw.length() > MAX_RAW_CHARS || signature.length() > 8192) throw new SecurityException("pointer-size");
-        return verify(raw.getBytes(StandardCharsets.UTF_8), java.util.Base64.getMimeDecoder().decode(signature), pinnedKey, now, sequenceFloor);
+        return verify(raw.getBytes(StandardCharsets.UTF_8), java.util.Base64.getMimeDecoder().decode(signature), keys, now, sequenceFloor);
     }
 
-    public static LatestPointer verify(byte[] raw, byte[] signature, byte[] pinnedKey, long now, long sequenceFloor) throws Exception {
+    public static LatestPointer verify(byte[] raw, byte[] signature, KeyList keys, long now, long sequenceFloor) throws Exception {
         if (raw == null || raw.length > MAX_RAW_CHARS * 4) throw new SecurityException("pointer-size");
-        if (!Integrity.authentic(raw, signature, pinnedKey)) throw new SecurityException("pointer-signature");
+        if (!keys.authentic(KeyList.POINTER, raw, signature)) throw new SecurityException("pointer-signature");
         JSONObject v = new JSONObject(new String(raw, StandardCharsets.UTF_8));
         if (!SCHEMA.equals(v.getString("schema"))) throw new SecurityException("pointer-schema");
         long sequence = exactLong(v, "sequence"), issuedAt = exactLong(v, "issuedAt"), expiresAt = exactLong(v, "expiresAt");

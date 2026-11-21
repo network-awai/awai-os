@@ -32,15 +32,24 @@ public final class Catalog {
     public Catalog(Context context) throws Exception {
         byte[] bytes = Integrity.read(context.getAssets().open("catalog.json"), 131072);
         byte[] sig = Integrity.read(context.getAssets().open("catalog.sig"), 4096);
-        byte[] key = Integrity.read(context.getAssets().open("catalog-key.der"), 4096);
-        JSONObject bundled=verifyMetadata(bytes,sig,key,System.currentTimeMillis()/1000);
+        KeyList keys = StoreTrust.load(context);
+        JSONObject bundled=verifyMetadata(bytes,sig,keys,System.currentTimeMillis()/1000);
         android.content.SharedPreferences saved=context.getSharedPreferences("online",0);
-        online=saved.contains("raw");
-        if(online){
-            bytes=saved.getString("raw","").getBytes(StandardCharsets.UTF_8);
-            sig=android.util.Base64.decode(saved.getString("signature",""),android.util.Base64.DEFAULT);
+        JSONObject admitted=null;
+        if(saved.contains("raw")){
+            byte[] onlineBytes=saved.getString("raw","").getBytes(StandardCharsets.UTF_8);
+            byte[] onlineSig=android.util.Base64.decode(saved.getString("signature",""),android.util.Base64.DEFAULT);
+            try{admitted=verifyMetadata(onlineBytes,onlineSig,keys,System.currentTimeMillis()/1000);}
+            catch(SecurityException e){
+                // A catalog admitted under keys this Store no longer trusts (for example the single development key
+                // before AWAI-3775) is dropped, not trusted. The revision floor is kept, so the bundled catalog
+                // must still be at least as new as anything admitted before.
+                if(!"catalog-signature".equals(e.getMessage()))throw e;
+                saved.edit().remove("raw").remove("signature").commit();
+            }
         }
-        value = verifyMetadata(bytes,sig,key,System.currentTimeMillis()/1000);
+        online=admitted!=null;
+        value = online ? admitted : bundled;
         if(value.getLong("revision")<Math.max(bundled.getLong("revision"),saved.getLong("highest",0)))throw new SecurityException("catalog-rollback");
         JSONArray activeApps = value.getJSONArray("apps");
         for (int i = 0; i < activeApps.length(); i++) {
@@ -61,8 +70,9 @@ public final class Catalog {
             }
         }
     }
-    public static JSONObject verifyMetadata(byte[] bytes,byte[] sig,byte[] key,long now) throws Exception {
-        if (!Integrity.authentic(bytes, sig, key)) throw new SecurityException("catalog-signature");
+    /** Verifies a catalog: a key listed for the catalog role signed it, it is current, and its entries are admitted. */
+    public static JSONObject verifyMetadata(byte[] bytes,byte[] sig,KeyList keys,long now) throws Exception {
+        if (!keys.authentic(KeyList.CATALOG, bytes, sig)) throw new SecurityException("catalog-signature");
         JSONObject value = new JSONObject(new String(bytes, StandardCharsets.UTF_8));
         if (!"itonami.store.bundled.v1".equals(value.getString("schema")) || value.getLong("revision") < 1
                 || value.getLong("expiresAt") <= now) throw new SecurityException("catalog-expired");

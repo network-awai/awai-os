@@ -4,6 +4,8 @@ import android.os.Bundle;
 import android.content.Context;
 import network.awai.platform.Catalog;
 import network.awai.platform.Integrity;
+import network.awai.platform.KeyList;
+import network.awai.platform.StoreTrust;
 import network.awai.platform.LatestPointer;
 import network.awai.platform.StorageProfile;
 import java.util.Arrays;
@@ -18,7 +20,7 @@ public final class StoreInstrumentation extends Instrumentation {
     private interface Action{void run() throws Exception;}
     private void refuses(Action action,String name)throws Exception{boolean failed=false;try{action.run();}catch(Exception expected){failed=true;}check(failed,name);}
     private static void verifySigned(JSONObject value,KeyPair pair)throws Exception{
-        byte[] raw=value.toString().getBytes(StandardCharsets.UTF_8);java.security.Signature signer=java.security.Signature.getInstance("SHA256withRSA");signer.initSign(pair.getPrivate());signer.update(raw);Catalog.verifyMetadata(raw,signer.sign(),pair.getPublic().getEncoded(),System.currentTimeMillis()/1000);
+        byte[] raw=value.toString().getBytes(StandardCharsets.UTF_8);java.security.Signature signer=java.security.Signature.getInstance("SHA256withRSA");signer.initSign(pair.getPrivate());signer.update(raw);Catalog.verifyMetadata(raw,signer.sign(),KeyList.legacy(pair.getPublic().getEncoded()),System.currentTimeMillis()/1000);
     }
     // AWAI-3662: the signed latest-catalog pointer.
     private static final String REV="ed429b406cbecc048f3cb41a9f31a1fb4a4a636d";
@@ -31,7 +33,30 @@ public final class StoreInstrumentation extends Instrumentation {
                 .put("apks",new JSONObject().put("network.itonami.torihiki",pin(BASE+"dev-r/torihiki.apk",sha,1))));
     }
     private static byte[] sign(byte[] raw,KeyPair pair)throws Exception{java.security.Signature s=java.security.Signature.getInstance("SHA256withRSA");s.initSign(pair.getPrivate());s.update(raw);return s.sign();}
-    private LatestPointer accept(JSONObject v,KeyPair pair,long now,long floor)throws Exception{byte[] raw=v.toString().getBytes(StandardCharsets.UTF_8);return LatestPointer.verify(raw,sign(raw,pair),pair.getPublic().getEncoded(),now,floor);}
+    // AWAI-3775: a root-signed key list with separate catalog and pointer keys.
+    private KeyPair root,catalogKey;
+    private static KeyPair rsa()throws Exception{KeyPairGenerator g=KeyPairGenerator.getInstance("RSA");g.initialize(2048);return g.generateKeyPair();}
+    private static String b64(KeyPair k){return java.util.Base64.getEncoder().encodeToString(k.getPublic().getEncoded());}
+    private byte[] listBytes(long seq,long now,KeyPair cat,KeyPair ptr){return ("itonami.store.keys.v1\nsequence "+seq+"\nissued "+(now-60)+"\nexpires "+(now+90*86_400L)+"\nkey catalog "+b64(cat)+"\nkey pointer "+b64(ptr)+"\n").getBytes(StandardCharsets.US_ASCII);}
+    private KeyList list(long seq,long now,KeyPair cat,KeyPair ptr)throws Exception{byte[] raw=listBytes(seq,now,cat,ptr);return KeyList.verify(raw,sign(raw,root),root.getPublic().getEncoded(),now,0);}
+    private LatestPointer accept(JSONObject v,KeyPair pair,long now,long floor)throws Exception{byte[] raw=v.toString().getBytes(StandardCharsets.UTF_8);return LatestPointer.verify(raw,sign(raw,pair),list(1,now,catalogKey,pair),now,floor);}
+    private void roles()throws Exception{
+        long now=System.currentTimeMillis()/1000;KeyPair ptr=rsa(),next=rsa();KeyList keys=list(2,now,catalogKey,ptr);
+        byte[] p=pointer(5,now-60,now+86_400L).toString().getBytes(StandardCharsets.UTF_8);
+        check(LatestPointer.verify(p,sign(p,ptr),keys,now,1).sequence==5,"pointer signed by the listed pointer key");
+        refuses(()->LatestPointer.verify(p,sign(p,catalogKey),keys,now,1),"pointer signed by the catalog key");
+        refuses(()->LatestPointer.verify(p,sign(p,root),keys,now,1),"pointer signed by the root");
+        refuses(()->LatestPointer.verify(p,sign(p,ptr),list(3,now,catalogKey,next),now,1),"pointer key withdrawn from a newer list");
+        JSONObject cat=new JSONObject().put("schema","itonami.store.bundled.v1").put("revision",1).put("expiresAt",now+86_400L)
+            .put("apps",new JSONArray().put(new JSONObject().put("id","network.itonami.yotei").put("versionCode",1)));
+        byte[] c=cat.toString().getBytes(StandardCharsets.UTF_8);
+        check(Catalog.verifyMetadata(c,sign(c,catalogKey),keys,now).getLong("revision")==1,"catalog signed by the listed catalog key");
+        refuses(()->Catalog.verifyMetadata(c,sign(c,ptr),keys,now),"catalog signed by the pointer key");
+        refuses(()->Catalog.verifyMetadata(c,sign(c,root),keys,now),"catalog signed by the root");
+        byte[] l=listBytes(2,now,catalogKey,ptr);
+        refuses(()->KeyList.verify(l,sign(l,catalogKey),root.getPublic().getEncoded(),now,0),"list not signed by the root");
+        refuses(()->KeyList.verify(l,sign(l,root),root.getPublic().getEncoded(),now,3),"list below the accepted sequence");
+    }
     private void refusesPointer(JSONObject v,KeyPair pair,long now,long floor,String name)throws Exception{refuses(()->accept(v,pair,now,floor),name);}
     private void latestPointer()throws Exception{
         KeyPair pair=KeyPairGenerator.getInstance("RSA").generateKeyPair();long now=1_800_000_000L,day=86_400L;
@@ -41,9 +66,9 @@ public final class StoreInstrumentation extends Instrumentation {
         ok.checkApk("network.itonami.torihiki",new byte[]{1});refuses(()->ok.checkApk("network.itonami.yotei",new byte[]{1}),"pointer unlisted app");
         byte[] raw=pointer(5,now-day,now+30*day).toString().getBytes(StandardCharsets.UTF_8);
         byte[] env=new JSONObject().put("raw",new String(raw,StandardCharsets.UTF_8)).put("signature",android.util.Base64.encodeToString(sign(raw,pair),android.util.Base64.NO_WRAP)).toString().getBytes(StandardCharsets.UTF_8);
-        check(LatestPointer.verifyEnvelope(env,pair.getPublic().getEncoded(),now,1).sequence==5,"pointer envelope accepted");
-        refuses(()->LatestPointer.verify(raw,sign(raw,pair),KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic().getEncoded(),now,1),"pointer wrong key");
-        byte[] changed=raw.clone();changed[raw.length-2]^=1;refuses(()->LatestPointer.verify(changed,sign(raw,pair),pair.getPublic().getEncoded(),now,1),"pointer changed bytes");
+        check(LatestPointer.verifyEnvelope(env,list(1,now,catalogKey,pair),now,1).sequence==5,"pointer envelope accepted");
+        refuses(()->LatestPointer.verify(raw,sign(raw,pair),list(1,now,catalogKey,rsa()),now,1),"pointer wrong key");
+        byte[] changed=raw.clone();changed[raw.length-2]^=1;refuses(()->LatestPointer.verify(changed,sign(raw,pair),list(1,now,catalogKey,pair),now,1),"pointer changed bytes");
         refusesPointer(pointer(4,now-day,now+30*day),pair,now,5,"pointer sequence rollback");
         refusesPointer(pointer(5,now-31*day,now),pair,now,1,"pointer expired");
         refusesPointer(pointer(5,now-day,now-day+32*day),pair,now,1,"pointer lifetime over 31 days");
@@ -64,12 +89,13 @@ public final class StoreInstrumentation extends Instrumentation {
         refusesPointer(over,pair,now,1,"pointer over app budget");
         JSONObject badSha=pointer(5,now-day,now+10*day);badSha.getJSONObject("pins").getJSONObject("catalog").put("sha256","XYZ");
         refusesPointer(badSha,pair,now,1,"pointer bad digest");
-        refuses(()->LatestPointer.verifyEnvelope(new byte[LatestPointer.MAX_ENVELOPE_BYTES+1],pair.getPublic().getEncoded(),now,1),"pointer envelope size");
+        refuses(()->LatestPointer.verifyEnvelope(new byte[LatestPointer.MAX_ENVELOPE_BYTES+1],list(1,now,catalogKey,pair),now,1),"pointer envelope size");
     }
     @Override public void onCreate(Bundle args){super.onCreate(args);start();}
     @Override public void onStart(){Bundle result=new Bundle();try{
-        Context c=getTargetContext();byte[] raw=Integrity.read(c.getAssets().open("catalog.json"),131072),sig=Integrity.read(c.getAssets().open("catalog.sig"),4096),key=Integrity.read(c.getAssets().open("catalog-key.der"),4096);
-        check(Integrity.authentic(raw,sig,key),"metadata signature");
+        root=rsa();catalogKey=rsa();
+        Context c=getTargetContext();byte[] raw=Integrity.read(c.getAssets().open("catalog.json"),131072),sig=Integrity.read(c.getAssets().open("catalog.sig"),4096);KeyList trust=StoreTrust.load(c);
+        check(trust.authentic(KeyList.CATALOG,raw,sig),"metadata signature");
         Catalog catalog=new Catalog(c);check(catalog.app("network.itonami.yotei").getLong("versionCode")>0,"version");
         byte[] apk=catalog.verifiedApk(c,"network.itonami.yotei");check(apk.length>0,"APK bytes and package/signer/version");
         if(catalog.json().contains("\"network.itonami.app\"")){
@@ -119,12 +145,12 @@ public final class StoreInstrumentation extends Instrumentation {
             check(Catalog.onlineFileFor(id).equals("online-"+name+".apk"),name+" online mapping");
             check(Catalog.maxApkBytes(id)==64*1024*1024,name+" size bound");
         }
-        byte[] changed=raw.clone();changed[0]^=1;check(!Integrity.authentic(changed,sig,key),"changed metadata refuses");
+        byte[] changed=raw.clone();changed[0]^=1;check(!trust.authentic(KeyList.CATALOG,changed,sig),"changed metadata refuses");
         refuses(()->catalog.app("network.awai.notallowed"),"unknown app refuses");
         long expires=catalog.app("network.itonami.yotei").getLong("versionCode");
-        refuses(()->Catalog.verifyMetadata(raw,sig,key,Long.MAX_VALUE),"expired metadata refuses");
+        refuses(()->Catalog.verifyMetadata(raw,sig,trust,Long.MAX_VALUE),"expired metadata refuses");
         byte[] wrong=KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic().getEncoded();
-        boolean bad=false;try{bad=!Integrity.authentic(raw,sig,wrong);}catch(Exception expected){bad=true;}check(bad,"wrong key refuses");
+        check(!KeyList.legacy(wrong).authentic(KeyList.CATALOG,raw,sig),"wrong key refuses");
         byte[] altered=apk.clone();altered[altered.length-1]^=1;check(!Integrity.sha256(apk).equals(Integrity.sha256(altered)),"changed APK digest");
         check(Integrity.sha256("abc".getBytes(StandardCharsets.UTF_8)).equals("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"),"SHA256 known answer");
         refuses(()->Integrity.read(new java.io.ByteArrayInputStream(new byte[10]),5),"size bound");
@@ -133,6 +159,7 @@ public final class StoreInstrumentation extends Instrumentation {
         check("app-private".equals(StorageProfile.kind("/data/user/0/app/files","tmpfs /data tmpfs rw 0 0\n/dev/block /data/user/0/app ext4 rw 0 0\n")),"longest nested mount wins");
         check("unknown".equals(StorageProfile.kind("/data/user/0/app/files","invalid")),"unknown storage is not durability");
         latestPointer();
+        roles();
         result.putString("stream","Awai Android store integrity: "+assertions+" assertions passed\n");finish(-1,result);
     }catch(Throwable e){result.putString("stream","FAIL: "+e.getClass().getSimpleName()+" "+e.getMessage());finish(0,result);}}
 }
