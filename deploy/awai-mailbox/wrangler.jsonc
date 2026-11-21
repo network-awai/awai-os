@@ -1,0 +1,13 @@
+{
+  // mailbox.awai.network (ADR 0051 D2), in the same account and zone as relay.awai.network.
+  // Not deployed: creating the Worker and its custom domain waits for the owner's approval.
+  "name": "network-awai-mailbox",
+  "account_id": "4da88288dc30d9ee257f319d3c33ecf0",
+  "main": "worker.js",
+  "compatibility_date": "2026-01-01",
+  "routes": [{ "pattern": "mailbox.awai.network", "custom_domain": true }],
+  "durable_objects": { "bindings": [{ "name": "TOPIC", "class_name": "Topic" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Topic"] }],
+  // Topics and traffic are not logged.
+  "observability": { "enabled": false }
+}
