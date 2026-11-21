@@ -1,13 +1,13 @@
 # Awai OS の debug 経路の設計（PC・mobile）
 
-2026-11-21、AWAI-3676。状態: **提案**。「owner 決定」と書いた項目は未決定。
+2026-11-21、AWAI-3676。状態: **提案**。「owner 決定」と書いた項目は、決定済みと明記したもの以外は未決定。
 この文書は設計と現状の記録であり、image・実機・権限を変更しない。
 
 ## 結論
 
 - PC 版も mobile 版も、debug 経路は製品として設計されていなかった。あるのは検証 script が使う ADB だけである。
 - PC 版の image は upstream の設定を引き継いでおり、ADB を有効にすると **TCP 5555 を全 interface で待ち受ける**。記録にある PC image は全て `userdebug` で、出荷用の `user` build の記録はない。
-- 提案: 出荷 image は `user` build で ADB を既定で無効にし、TCP 5555 の既定値と `android_insecure_adb` を外す。対応する debug 経路は、PC が wireless debug、mobile が USB debug と wireless debug。PC の USB debug は対応しない。
+- 提案: 出荷 image は `user` build で ADB を既定で無効にし、TCP 5555 の既定値と `android_insecure_adb` を外す。対応する debug 経路は、PC・mobile とも USB debug と wireless debug の両方（owner 決定 2026-11-21）。PC の USB debug は実現方法が未調査で、対応機種と方法は別 issue で決める。
 
 ## 現状（測定）
 
@@ -53,8 +53,8 @@ adb -s <serial> shell 'for p in ro.build.type ro.debuggable ro.adb.secure persis
 
 | 経路 | PC 版 | mobile 版 | 既定 | 認証 |
 | --- | --- | --- | --- | --- |
-| USB debug | **対応しない** | 対応する | 無効 | host の RSA 鍵を画面で承認 |
-| Wireless debug（TLS、ペアリング） | 対応する（主経路） | 対応する | 無効 | ペアリングコードまたは QR、その後 TLS |
+| USB debug | 対応する（owner 決定 2026-11-21。実現方法は未調査） | 対応する | 無効 | host の RSA 鍵を画面で承認 |
+| Wireless debug（TLS、ペアリング） | 対応する | 対応する | 無効 | ペアリングコードまたは QR、その後 TLS |
 | 平文の TCP 5555 | 出荷 image では**無効**。開発用 image と VM のみ | 対応しない | 無効 | 開発用: RSA 鍵。VM: 現行の insecure 設定を許す |
 | `android_insecure_adb` | 出荷 image では**受け付けない**。VM の検証のみ | 該当なし | 0 | なし（認証を外す設定） |
 | 初期設定前の trade-in ADB | 未決定（下記） | 未決定 | AOSP の既定 | AOSP の既定 |
@@ -62,8 +62,8 @@ adb -s <serial> shell 'for p in ro.build.type ro.debuggable ro.adb.secure persis
 ### 理由
 
 1. **出荷 image は `user` build にする。** `userdebug` は ADB root と `ro.debuggable=1` を持ち、利用者の端末に出すものではない。`android/lockscreen-design-qualification-20261116.md` も本番 build を `ro.debuggable` 0 と前提している。
-2. **PC の主経路は wireless debug。** PC には USB の device 側ポートが通常なく、今の検証も network 経由である。wireless debug は TLS とペアリングがあり、平文の 5555 より LAN 上で安全。
-3. **PC の USB debug は対応しない。** USB で ADB を受けるには、device mode に切り替えられるポートと kernel の UDC／gadget 設定が要る。対象機（6600H、7735HS、7735H）にそのポートがあるかは未調査で、あっても機種ごとの検証が要る。必要になった機種だけ、別 issue で扱う。
+2. **PC の network 経路は wireless debug。** 今の検証も network 経由である。wireless debug は TLS とペアリングがあり、平文の 5555 より LAN 上で安全。
+3. **PC でも USB debug に対応する（owner 決定 2026-11-21）。** mobile 版と同じ 2 経路をそろえる。当初の提案は「対応しない」だったが、owner が両方に対応すると決めた。実現方法は下の「PC の USB debug の実現条件」のとおり未調査で、機種ごとに対応可否が分かれる可能性がある。
 4. **平文の 5555 は開発用に限る。** 現行の検証 script（`10.77.0.2:5555` の直結）は開発用 image で使い続けられる。出荷 image からは `service.adb.tcp.port` を外す。
 5. **`android_insecure_adb` は出荷 image で無効にする。** grub の `load_env` の一覧から外すか、`user` build で `androidboot.insecure_adb` を無視する。どちらにするかは実装 issue で決める。
 6. **設定画面の導線は AOSP 標準のまま。** 「ビルド番号を 7 回」→ 開発者向けオプション → USB debug／wireless debug。Awai 独自の UI は足さない。
@@ -72,12 +72,26 @@ adb -s <serial> shell 'for p in ro.build.type ro.debuggable ro.adb.secure persis
 
 - A. 出荷 image を `user` build に限るか。限る場合、今日（2026-11-21）の初回導入（AWAI-3600）の候補が `userdebug` なら、5555 の扱いをどうするか。
 - B. 初期設定前の trade-in ADB を出荷 image で残すか。Android の標準機能だが、設定完了前の端末に network から届く経路になる。
-- C. PC の USB debug を「対応しない」で確定するか。
+- C. PC の USB debug: **決定済み（2026-11-21）。対応する。** wireless debug と両方に対応する。
 
 ### 未確認で、設計に影響する点
 
 - AOSP の wireless debug の切り替えは Wi-Fi 接続を前提にしている。有線 LAN だけの PC で設定画面から有効にできるかは未確認。できない場合は、Ethernet でも有効にできるよう Settings を変えるか、PC では開発用 image の 5555 だけにするかを選ぶ。
 - 6600H に Wi-Fi があるか、Android から使えるかは、この文書では調べていない。
+
+## PC の USB debug の実現条件（未調査）
+
+USB で ADB を受けるには、PC 側が USB の device として動く必要がある。次の 3 点がそろうかを機種ごとに調べる。どれもこの文書では未測定である。
+
+| 条件 | 調べ方（読み取りのみ） | 現状 |
+| --- | --- | --- |
+| device mode で動く USB controller とポートがある | 実機で `ls /sys/class/udc`、`ls /sys/class/typec`、`ls /sys/class/usb_role` | unknown（6600H、7735HS、7735H とも） |
+| kernel に UDC の driver、gadget、FunctionFS がある | build した kernel の config で `CONFIG_USB_GADGET`、`CONFIG_USB_CONFIGFS_F_FS`、controller の driver を確認 | unknown。この repo の patch と文書に該当の設定は見つからない |
+| Android 側が gadget で ADB を出す（`sys.usb.config`、USB HAL、init の設定） | `virt-common` の init と HAL を確認 | unknown |
+
+- 条件 1 を満たさない機種では、ソフトウェアだけでは USB debug を実現できない。その場合の扱い（その機種は wireless debug のみとする、対応ポートを持つ機種を要件にする、など）は調査結果を見て owner が決める。
+- USB の A-A ケーブルや host 同士の直結では ADB は通らない。
+- USB の Ethernet adapter を挟んだ接続は network 経路であり、USB debug ではない。
 
 ## 検証（対応すると決めた経路ごと）
 
@@ -88,7 +102,7 @@ adb -s <serial> shell 'for p in ro.build.type ro.debuggable ro.adb.secure persis
 | V1 | PC 出荷 image | 初期設定直後に上の読み取りコマンドの値を console から取得し、LAN の別 host から 5555 に接続 | `ro.debuggable=0`、`adb_enabled=0`、5555 に接続できない | 同じ手順を開発用 image で行い、5555 に接続できることを確認（検査が効いている証拠） |
 | V2 | PC 出荷 image | grubenv に `android_insecure_adb=1` を書いて起動 | ADB は無効のまま。認証は外れない | 開発用の VM image では同じ設定で認証が外れる |
 | V3 | PC wireless debug | 設定画面で有効にし、Mac から `adb pair` → `adb connect` → `adb shell getprop` | ペアリング後に shell が開く | ペアリングしていない host からの `adb connect` が拒否される。無効に戻すと接続が切れる |
-| V4 | mobile USB debug | 有効にして Mac に接続 | 画面の承認後に shell が開く | 承認前は `unauthorized`。承認を取り消すと再び `unauthorized` |
+| V4 | mobile USB debug、PC USB debug（対応機種） | 有効にして Mac に接続 | 画面の承認後に shell が開く | 承認前は `unauthorized`。承認を取り消すと再び `unauthorized` |
 | V5 | mobile wireless debug | V3 と同じ | V3 と同じ | V3 と同じ |
 | V6 | 両方 | 再起動後の状態 | wireless debug は再起動で無効に戻る（AOSP の既定）か、設定どおり | 記録のみ |
 
@@ -101,6 +115,7 @@ adb -s <serial> shell 'for p in ro.build.type ro.debuggable ro.adb.secure persis
 3. PC の wireless debug を有線 LAN で有効にできるかの確認と、V3 の実機検証。
 4. mobile の V4・V5 の実機検証。
 5. trade-in ADB の扱い（決定 B の後）。
+6. PC の USB debug: 上の実現条件を機種ごとに調査し、対応機種と実装方法を決める。
 
 ## この文書がしていないこと
 
