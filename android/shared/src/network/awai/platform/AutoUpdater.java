@@ -119,6 +119,7 @@ public final class AutoUpdater {
         String raw = e.getString("raw"), signature = e.getString("signature");
         JSONObject candidate = Catalog.verifyMetadata(raw.getBytes(StandardCharsets.UTF_8),
                 android.util.Base64.decode(signature, android.util.Base64.DEFAULT), key, now);
+        Catalog.checkOnline(candidate);
         long revision = candidate.getLong("revision");
         if (revision < new Catalog(c).valueRevision()) throw new SecurityException("catalog-rollback");
         JSONArray listed = candidate.getJSONArray("apps");

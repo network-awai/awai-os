@@ -70,6 +70,12 @@ public final class Catalog {
             }
         }
     }
+    /** An online catalog may not carry offline-only preview apps; the constructor would refuse it after admission. */
+    public static void checkOnline(JSONObject candidate) throws Exception {
+        JSONArray apps = candidate.getJSONArray("apps");
+        for (int i = 0; i < apps.length(); i++)
+            if (previewAsset(apps.getJSONObject(i).getString("id")) != null) throw new SecurityException("preview-offline-only");
+    }
     /** Verifies a catalog: a key listed for the catalog role signed it, it is current, and its entries are admitted. */
     public static JSONObject verifyMetadata(byte[] bytes,byte[] sig,KeyList keys,long now) throws Exception {
         if (!keys.authentic(KeyList.CATALOG, bytes, sig)) throw new SecurityException("catalog-signature");
