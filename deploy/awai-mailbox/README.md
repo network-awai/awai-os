@@ -5,8 +5,9 @@ buyer ([ADR 0051](https://github.com/network-awai/network-awai-apex/blob/main/do
 D2, [AWAI-3766](https://linear.app/kotobalabs/issue/AWAI-3766)). The phone and the buyer only connect out to it.
 It is a remote protocol service, apart from any app origin.
 
-**Not deployed.** The Worker and its custom domain do not exist yet. `deploy.sh` refuses to run until the owner
-approves the deploy (ADR 0051, open decision 1) and `AWAI_MAILBOX_DEPLOY_APPROVED=yes` is set.
+**Deployed 2026-11-22** on the owner's approval, from main `8c39e92c`: Worker `network-awai-mailbox`, custom
+domain `mailbox.awai.network`, version `7f120f18-c882-406e-9f66-e85fdadc0f7f`. `deploy.sh` still refuses to run
+unless `AWAI_MAILBOX_DEPLOY_APPROVED=yes` is set, so each later deploy needs its own approval.
 
 | Route | What it does |
 | --- | --- |
@@ -46,5 +47,9 @@ Evidence (2026-11-22, Apple M1 Max, macOS, Node 26.0.0, wrangler 4.103.0):
 | `wrangler deploy --dry-run` | Builds, 4.09 KiB, binding `TOPIC` |
 | `wrangler dev --local` (workerd) | Ciphertext 200, JSON prompt 400, bad topic 404, past expiry 400, OPTIONS 405, the stream returns the message, no CORS header |
 
-Not done here: the deploy and the DNS name, the HPKE seal in the hosts, and any device. The Murakumo provider
+Live checks after the deploy (2026-11-22, against `https://mailbox.awai.network`): ciphertext 200, JSON prompt
+400, body over 64 KiB 413, bad topic 404, past expiry 400, GET on the topic and OPTIONS 405, the 17th message on
+a topic 429, the stream returns the message, no CORS header.
+
+Not done here: the HPKE seal in the hosts, and any device. The Murakumo provider
 service (C1b-3) and the buyer side (C1b-4) use this mailbox.
