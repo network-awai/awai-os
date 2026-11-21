@@ -116,7 +116,16 @@ public final class Catalog {
                         || !apk.getString("sha256").matches("[0-9a-f]{64}")
                         || !apk.getString("signerSha256").matches("[0-9a-f]{64}"))
                     throw new SecurityException("catalog-artifact");
-            } else assetFor(id);
+            } else {
+                // The asset follows from the id; a catalog cannot point an app at another app's file.
+                String asset = assetFor(id);
+                JSONArray artifacts = entry.optJSONArray("artifacts");
+                for (int j = 0; artifacts != null && j < artifacts.length(); j++) {
+                    JSONObject a = artifacts.getJSONObject(j);
+                    if ("android".equals(a.optString("platform")) && !asset.equals(a.optString("asset")))
+                        throw new SecurityException("catalog-artifact");
+                }
+            }
             if(entry.getLong("versionCode")<1||entry.getDouble("versionCode")!=entry.getLong("versionCode"))
                 throw new SecurityException("catalog-version");
         }
@@ -127,6 +136,19 @@ public final class Catalog {
     // that). Each is network.itonami.<suffix>, asset packages/<suffix>.apk, 40 MiB budget.
     public static final java.util.List<String> LOCAL_APPS = java.util.Collections.unmodifiableList(java.util.Arrays.asList(
             "ki", "hakkou", "koke", "openossekai", "otakiage", "seibutsu", "shinka", "kabi", "kinoko", "kobo", "saikin", "kiyome", "omikuji", "moldallergy", "explorer", "organismviz", "icc", "abaki", "hibiki", "wakai", "tawami", "yudane", "minori", "torifune", "hiramekietz", "umisachi", "tomoshibi", "tsumugi", "shirohan"));
+    /**
+     * Apps admitted by the signed catalog itself (AWAI-3771): any network.itonami.<one lowercase segment> that the
+     * catalog lists, such as the classification-series apps (network.itonami.isco2423). The asset name, the staged
+     * download name and the byte ceiling follow from the id, so the catalog decides which apps exist and no hand-written
+     * list has to follow it. The catalog's APK asset must be exactly packages/<segment>.apk (verifyMetadata).
+     */
+    private static final java.util.regex.Pattern CATALOG_APP = java.util.regex.Pattern.compile("network\\.itonami\\.([a-z][a-z0-9]{1,62})");
+    public static final int MAX_CATALOG_APP_BYTES = 64 * 1024 * 1024;
+    static String catalogSuffix(String id) {
+        if (id == null) return null;
+        java.util.regex.Matcher m = CATALOG_APP.matcher(id);
+        return m.matches() ? m.group(1) : null;
+    }
     static String localSuffix(String id) {
         if (id == null || !id.startsWith("network.itonami.")) return null;
         String suffix = id.substring("network.itonami.".length());
@@ -153,6 +175,8 @@ public final class Catalog {
         if ("network.itonami.agenttrace".equals(id)) return "packages/agent-trace.apk";
         String local = localSuffix(id);
         if (local != null) return "packages/" + local + ".apk";
+        String listed = catalogSuffix(id);
+        if (listed != null) return "packages/" + listed + ".apk";
         throw new SecurityException("unknown-app");
     }
     public static String onlineFileFor(String id) throws SecurityException {
@@ -172,6 +196,8 @@ public final class Catalog {
         if ("network.itonami.agenttrace".equals(id)) return "online-agent-trace.apk";
         String local = localSuffix(id);
         if (local != null) return "online-" + local + ".apk";
+        String listed = catalogSuffix(id);
+        if (listed != null) return "online-" + listed + ".apk";
         throw new SecurityException("unknown-app");
     }
     public static int maxApkBytes(String id) throws SecurityException {
@@ -197,6 +223,7 @@ public final class Catalog {
         if ("network.itonami.agenttrace".equals(id)) return 2 * 1024 * 1024;
         // AWAI-3502 local apps: Tauri v3 debug builds without native debug symbols, about 19.6 MB at 0.1.0.
         if (localSuffix(id) != null) return 40 * 1024 * 1024;
+        if (catalogSuffix(id) != null) return MAX_CATALOG_APP_BYTES;
         throw new SecurityException("unknown-app");
     }
     public long valueRevision() throws Exception { return value.getLong("revision"); }
