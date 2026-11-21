@@ -59,9 +59,13 @@ if [ -z "${DEV_BOTS_ALLOWED_OWNERS:-}" ]; then
 fi
 
 RUN_TASK="${DEV_BOTS_RUN_TASK:-$HERE/run-task.sh}"
-# Host kind, for the log line written at start.
-HOST_KIND="$(uname -s)"
-HOST_KIND="${HOST_KIND,,}"
+# Owners as a list, so an empty list is refused as well as an empty string.
+mapfile -t OWNER_LIST < <(printf '%s' "$DEV_BOTS_ALLOWED_OWNERS" | tr ',' '\n')
+if [ "${#OWNER_LIST[@]}" -eq 0 ]; then
+  echo "queue-runner: DEV_BOTS_ALLOWED_OWNERS lists no owner; refusing to start" >&2
+  exit 2
+fi
+OWNERS_CSV="$(IFS=,; echo "${OWNER_LIST[*]}")"
 POLL_S="${DEV_BOTS_QUEUE_POLL_S:-30}"
 case $POLL_S in ''|*[!0-9]*) POLL_S=30;; esac
 LOCK="$QUEUE/runner.lock"
@@ -172,7 +176,7 @@ while true; do
 
   if VALID="$(node "$HERE/queue.mjs" validate-entry "$NEXT" \
     --task "$RDIR/task.json" --prompt "$RDIR/muse-prompt.md" \
-    --owners "$DEV_BOTS_ALLOWED_OWNERS")"; then
+    --owners "$OWNERS_CSV")"; then
     # "ok <issue> <repo> <branch>"; fields carry no spaces by validation.
     # shellcheck disable=SC2086
     set -- $VALID
