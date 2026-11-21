@@ -14,9 +14,15 @@ public final class InstallReceiver extends BroadcastReceiver {
             if(result==PackageInstaller.STATUS_PENDING_USER_ACTION){
                 context.getPackageManager().getPackageInstaller().abandonSession(session);
                 AutoInstall.finished(context,session,false,id);
+                AutoUpdater.log(context,"needs-approval",id,"android-asked");
+                AutoUpdater.notify(context,"更新の確認が必要です","Android が確認を求めました。Store の「更新」から確認してください。");
                 context.getSharedPreferences("host",0).edit().putString("message","更新には確認が必要です。「更新」から確認してください。").apply();
             }else{
-                AutoInstall.finished(context,session,result==PackageInstaller.STATUS_SUCCESS,id);
+                boolean ok=result==PackageInstaller.STATUS_SUCCESS;
+                AutoInstall.finished(context,session,ok,id);
+                AutoUpdater.log(context,ok?"installed":"failed",id,ok?"":"status-"+result);
+                if(ok){String name=id;try{name=String.valueOf(context.getPackageManager().getApplicationLabel(context.getPackageManager().getApplicationInfo(id,0)));}catch(Exception ignored){}
+                    AutoUpdater.notify(context,name+" を更新しました","自動更新で新しい版を入れました。");}
             }
             return;
         }
