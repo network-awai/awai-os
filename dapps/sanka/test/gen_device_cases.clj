@@ -19,6 +19,14 @@
 (def output-cid (str "b" (times "d" 58)))
 (def head-cid (str "b" (times "e" 58)))
 
+(def offer-cid (str "b" (times "f" 58)))
+(def buyer "did:key:zBuyer")
+(def offer-topic (times "1" 32))
+(def reply-topic (times "2" 32))
+(def seal-key (str "x25519:" (times "3" 64)))
+(def reply-key (str "x25519:" (times "4" 64)))
+(def mailbox {"origin" "https://mailbox.awai.network" "topic" offer-topic})
+
 (def model {"revision" "rev-1" "digest" sha-a})
 (def engine {"name" "llama.cpp" "version" "b6000" "digest" sha-e})
 
@@ -29,17 +37,18 @@
 (def offer
   {"kind" "awai.compute-offer/1" "work-kind" "compute" "provider" provider "node" node
    "asset" "native/engi/EN" "amount" "1" "value-class" "devnet" "model" model "engine" engine
-   "max-tokens" 128 "limits" limits "expires-at" 2000000000 "nonce" "offer-1"})
+   "max-tokens" 128 "limits" limits "expires-at" 2000000000 "nonce" "offer-1"
+   "mailbox" mailbox "seal-key" seal-key "buyers" [buyer]})
 
 (def order
-  {"kind" "awai.order/1" "work-kind" "compute" "buyer" "did:key:zBuyer" "provider" provider
+  {"kind" "awai.order/1" "work-kind" "compute" "buyer" buyer "provider" provider
    "node" node "asset" "native/engi/EN" "amount" "1" "value-class" "devnet" "model" model
    "max-tokens" 64 "expires-at" 1900000000 "data-categories" ["prompt"] "policy" sha-b
    "demand" "owner-internal" "nonce" "n-1"})
 
 (def facts
   {"now" 1800000000 "battery-percent" 80 "charging" true "thermal-status" 1 "metered" false
-   "active-orders" 0 "orders-today" 3})
+   "active-orders" 0 "orders-today" 3 "already-run" false})
 
 (def run
   {"engine" engine "input" hmac "output" output-cid "ledger-head" head-cid
@@ -78,8 +87,27 @@
                               ["max-tokens" 0 "offer/max-tokens"]
                               ["max-tokens" true "offer/max-tokens"]
                               ["expires-at" "2000000000" "offer/expires-at"]
-                              ["nonce" "" "offer/nonce"]]]
-     (c "check-offer" [(assoc offer field value)] (bad error)))
+                              ["nonce" "" "offer/nonce"]
+                              ["mailbox" nil "offer/mailbox"]
+                              ["mailbox" (assoc mailbox "origin" "http://mailbox.awai.network") "offer/mailbox"]
+                              ["mailbox" (assoc mailbox "origin" "https://mailbox.awai.network/x") "offer/mailbox"]
+                              ["mailbox" (assoc mailbox "origin" "https://mailbox.awai.network:8443") "offer/mailbox"]
+                              ["mailbox" (assoc mailbox "origin" "https://Mailbox.awai.network") "offer/mailbox"]
+                              ["mailbox" (assoc mailbox "origin" "https://localhost") "offer/mailbox"]
+                              ["mailbox" (assoc mailbox "topic" (times "1" 31)) "offer/mailbox"]
+                              ["mailbox" (assoc mailbox "topic" (times "A" 32)) "offer/mailbox"]
+                              ["mailbox" (assoc mailbox "extra" 1) "offer/mailbox"]
+                              ["seal-key" (times "3" 64) "offer/seal-key"]
+                              ["seal-key" (str "x25519:" (times "3" 63)) "offer/seal-key"]
+                              ["buyers" [] "offer/buyers"]
+                              ["buyers" buyer "offer/buyers"]
+                              ["buyers" [buyer buyer] "offer/buyers"]
+                              ["buyers" ["zBuyer"] "offer/buyers"]
+                              ["buyers" [buyer node] "offer/buyers"]
+                              ["buyers" [buyer provider] "offer/buyers"]
+                              ["buyers" (mapv #(str "did:key:zB" %) (range 17)) "offer/buyers"]]]
+     (c "check-offer" [(if (nil? value) (dissoc offer field) (assoc offer field value))] (bad error)))
+   [(c "check-offer" [(assoc offer "buyers" (mapv #(str "did:key:zB" %) (range 16)))] {"ok" true})]
    (for [[field value] [["min-battery-percent" 101] ["min-battery-percent" -1]
                         ["require-charging" "yes"] ["max-thermal-status" 7]
                         ["allow-metered" 0] ["max-orders-per-day" 0]]]
@@ -122,7 +150,12 @@
     (c "admit-order" (admit-case :r (assoc order "value-class" "simulation")) (refuse "device/other-value-class"))
     (c "admit-order" (admit-case :r (assoc order "model" {"revision" "rev-2" "digest" sha-a})) (refuse "device/other-model"))
     (c "admit-order" (admit-case :r (assoc order "max-tokens" 129)) (refuse "device/too-many-tokens"))
-    (c "admit-order" (admit-case :r (assoc order "max-tokens" 128)) admit)]
+    (c "admit-order" (admit-case :r (assoc order "max-tokens" 128)) admit)
+    (c "admit-order" (admit-case :r (assoc order "buyer" "did:key:zStranger")) (refuse "device/buyer-not-allowed"))
+    (c "admit-order" (admit-case :o (assoc offer "buyers" ["did:key:zOtherBot" buyer])) admit)
+    (c "admit-order" (admit-case :f (assoc facts "already-run" true)) (refuse "device/already-run"))
+    ;; A run order is refused as run even after it expired: the host never runs it again.
+    (c "admit-order" (admit-case :f (assoc facts "already-run" true "now" 1900000000)) (refuse "device/already-run"))]
    (for [[field value reason] [["now" nil "device/unknown-time"]
                                ["now" "1800000000" "device/unknown-time"]
                                ["battery-percent" nil "device/unknown-battery"]
@@ -135,7 +168,9 @@
                                ["metered" nil "device/unknown-network"]
                                ["active-orders" nil "device/unknown-active-orders"]
                                ["active-orders" -1 "device/unknown-active-orders"]
-                               ["orders-today" nil "device/unknown-orders-today"]]]
+                               ["orders-today" nil "device/unknown-orders-today"]
+                               ["already-run" nil "device/unknown-already-run"]
+                               ["already-run" "false" "device/unknown-already-run"]]]
      (c "admit-order" (admit-case :f (if (nil? value) (dissoc facts field) (assoc facts field value)))
         (refuse reason)))
    [(c "admit-order" (admit-case :f "facts") (refuse "device/unknown-facts"))
@@ -176,7 +211,77 @@
    (c "receipt-roundtrip" [offer order order-cid (assoc run "input" (str "sha256:" (times "c" 64)))]
       {"ok" false "errors" ["receipt/input"]})])
 
-(def cases (vec (concat offer-cases transition-cases admit-cases receipt-cases)))
+(def envelope
+  {"kind" "awai.compute-order/1" "offer" offer-cid "order" order "order-cid" order-cid
+   "prompt" "Summarise the week." "reply" {"topic" reply-topic "seal-key" reply-key}})
+
+(defn- env-bad [& errors] {"ok" false "errors" (vec errors)})
+
+(def envelope-cases
+  (concat
+   [(c "check-order-envelope" [offer offer-cid envelope] {"ok" true})
+    (c "check-order-envelope" [offer offer-cid (assoc envelope "extra" 1)] (env-bad "envelope/unknown-field"))
+    (c "check-order-envelope" [offer offer-cid "envelope"] (env-bad "envelope/unknown-field"))
+    ;; The reply cannot name an origin of its own: it goes back to the offer's mailbox.
+    (c "check-order-envelope" [offer offer-cid (assoc-in envelope ["reply" "origin"] "https://evil.example")]
+       (env-bad "envelope/reply"))
+    (c "check-order-envelope" [offer offer-cid (assoc-in envelope ["reply" "topic"] offer-topic)]
+       (env-bad "envelope/reply-to-offer-topic"))
+    (c "check-order-envelope" [offer (str "b" (times "g" 58)) envelope] (env-bad "envelope/other-offer"))]
+   (for [[field value error] [["kind" "awai.compute-result/1" "envelope/kind"]
+                              ["offer" "offer-1" "envelope/offer"]
+                              ["order" (assoc order "value-class" "live") "envelope/order"]
+                              ["order-cid" "n-1" "envelope/order-cid"]
+                              ["prompt" "" "envelope/prompt"]
+                              ["prompt" nil "envelope/prompt"]
+                              ["reply" {"topic" reply-topic} "envelope/reply"]
+                              ["reply" {"topic" reply-topic "seal-key" (times "4" 64)} "envelope/reply"]
+                              ["reply" {"topic" "2" "seal-key" reply-key} "envelope/reply"]]]
+     (c "check-order-envelope" [offer offer-cid (if (nil? value) (dissoc envelope field) (assoc envelope field value))]
+        (env-bad error)))))
+
+(def signed-receipt (assoc receipt "signer" node "signature" "host-signature"))
+(def done {"kind" "awai.compute-result/1" "offer" offer-cid "order-cid" order-cid
+           "output" "Three meetings." "receipt" signed-receipt})
+(def refused {"kind" "awai.compute-result/1" "offer" offer-cid "order-cid" order-cid
+              "refused" "device/low-battery"})
+(def pins {"provider" provider "node" node "model-digest" sha-a "demand" "owner-internal" "nonce" "n-1"})
+
+(def result-cases
+  [(c "result-envelope" [offer-cid order-cid {"admit" false "reason" "device/low-battery"}]
+      {"ok" true "envelope" refused})
+   (c "result-envelope" [offer-cid order-cid {"admit" false}] {"ok" false "error" "result/reason"})
+   (c "result-envelope" [offer-cid order-cid {"output" "Three meetings." "receipt" signed-receipt}]
+      {"ok" true "envelope" done})
+   (c "result-envelope" [offer-cid order-cid {"output" "" "receipt" signed-receipt}]
+      {"ok" false "error" "result/output"})
+   (c "result-envelope" [offer-cid order-cid {"output" "Three meetings." "receipt" receipt}]
+      {"ok" false "error" "result/receipt"})
+   (c "result-envelope" [offer-cid order-cid {"output" "Three meetings."
+                                               "receipt" (assoc signed-receipt "order" offer-cid)}]
+      {"ok" false "error" "result/other-order"})
+   (c "check-result-envelope" [offer-cid order-cid pins done] {"ok" true})
+   (c "check-result-envelope" [offer-cid order-cid pins refused] {"ok" true "refused" "device/low-battery"})
+   (c "check-result-envelope" [offer-cid order-cid pins (assoc refused "refused" "")]
+      {"ok" false "errors" ["result/reason"]})
+   (c "check-result-envelope" [offer-cid order-cid pins (assoc done "refused" "x")]
+      {"ok" false "errors" ["result/shape"]})
+   (c "check-result-envelope" [offer-cid order-cid pins (dissoc done "receipt")]
+      {"ok" false "errors" ["result/shape"]})
+   (c "check-result-envelope" [offer-cid order-cid pins (assoc done "kind" "awai.compute-order/1")]
+      {"ok" false "errors" ["result/kind"]})
+   (c "check-result-envelope" [(str "b" (times "g" 58)) order-cid pins done]
+      {"ok" false "errors" ["result/other-offer"]})
+   (c "check-result-envelope" [offer-cid output-cid pins done]
+      {"ok" false "errors" ["result/other-order" "receipt/other-order"]})
+   (c "check-result-envelope" [offer-cid order-cid pins (assoc done "output" "")]
+      {"ok" false "errors" ["result/output"]})
+   (c "check-result-envelope" [offer-cid order-cid pins (assoc-in done ["receipt" "signer"] provider)]
+      {"ok" false "errors" ["receipt/signer"]})
+   (c "check-result-envelope" [offer-cid order-cid (assoc pins "model-digest" sha-b) done]
+      {"ok" false "errors" ["receipt/other-model"]})])
+
+(def cases (vec (concat offer-cases transition-cases admit-cases receipt-cases envelope-cases result-cases)))
 
 (spit "test/device_cases.json"
       (str "[\n" (str/join ",\n" (map json/generate-string cases)) "\n]\n"))
