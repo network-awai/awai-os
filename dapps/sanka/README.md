@@ -122,9 +122,67 @@ Android key in `android/sanka` is a Keystore P-256 key. Whether the phone's Keys
 non-exportable Ed25519 node key, or the verifier should also accept P-256, is decided in C1b-3 on
 a device.
 
-Not done here: no device, network, key, signature or ledger is involved. The mailbox Worker
-(C1b-2), the Murakumo provider service (C1b-3), the buyer side (C1b-4) and on-device evidence are
-the next units of AWAI-3115.
+Not done here: no device, network, key, signature or ledger is involved. The mailbox Worker is
+C1b-2 (`deploy/awai-mailbox`), the buyer is C1b-4 (below); the Murakumo provider service (C1b-3)
+and on-device evidence are the next units of AWAI-3115.
+
+## Buyer through the mailbox (AWAI-3115, stage C1b-4)
+
+The owner's bot sends one compute order to a device through its offer's mailbox
+(`https://mailbox.awai.network`, ADR 0051) and checks the sealed result
+([AWAI-3781](https://linear.app/kotobalabs/issue/AWAI-3781)). It runs on nbb (ADR 0026 D3).
+
+| File | What it is |
+| --- | --- |
+| `host/sanka/hpke.cljs` | HPKE (RFC 9180), base mode: DHKEM(X25519, HKDF-SHA256), HKDF-SHA256, ChaCha20-Poly1305, on `node:crypto` |
+| `host/sanka/wire.cljs` | What buyer and provider compute the same way: canonical JSON, CIDs, Ed25519 `did:key`, document signatures, sealed messages |
+| `host/sanka/buyer.cljs` | `prepare-order` and `read-result` (no I/O), and `post!` and `subscribe!` to the offer's own mailbox |
+| `buyer/cli.cljs` | `order ROOT OFFER.json ORDER.json PROMPT.txt` and `wait ROOT ORDER-CID [SECONDS]` |
+| `test/host/fake_provider.cljs` | What C1b-3's Murakumo will do with one order, with a given output instead of a model |
+
+### Host protocol
+
+The Murakumo provider service (C1b-3) has to do the same, byte for byte.
+
+| Item | Rule |
+| --- | --- |
+| Offer and order CIDs | `cid-of(canonical(document))`, CIDv1 dag-json sha2-256 in base32, as the provider desk computes them |
+| Sealed message | base64url without padding of the 32-byte encapsulated key followed by the ciphertext. Empty AAD, sequence 0, one HPKE context per message |
+| Order `info` | `awai.compute-order/1 <offer-cid>`, sealed to the offer's `seal-key`, posted to the offer's topic |
+| Result `info` | `awai.compute-result/1 <offer-cid> <order-cid>`, sealed to the order's reply key, posted to the reply topic on the same origin |
+| Plaintext | Canonical JSON of the `awai.compute-order/1` or `awai.compute-result/1` envelope (`sanka.device`) |
+| Receipt `input` | `hmac-sha256:` and the hex HMAC-SHA256 of the prompt's UTF-8 bytes, keyed by the order context's `Export("awai.compute-input/1", 32)`. Only buyer and provider can derive the key |
+| Receipt `output` | `cid-of(canonical({"content": output, "role": "assistant"}))` |
+| Receipt signature | Ed25519 by the node's `did:key` over the canonical receipt without `signature`, as the provider desk signs |
+| `x-expires` | The order's `expires-at`, at most one hour ahead |
+
+The buyer refuses before sealing when the offer fails `check-offer`, the order's buyer is not on the
+offer, the order or offer has expired, or the envelope fails `check-order-envelope`. A message on
+the reply topic that does not open for this order is skipped. A result that opens must pass
+`check-result-envelope`, the signature, the output CID and the keyed input hash.
+
+```bash
+nbb -cp host test/host/hpke_test.cljs
+nbb -cp src:host:test/host test/host/buyer_test.cljs
+MAILBOX_LIVE=https://mailbox.awai.network nbb -cp src:host:test/host test/host/buyer_test.cljs
+```
+
+The pinned Nix shell has no nbb, so these are not in `scripts/ci/sanka-vm-gate.sh`.
+
+Evidence (2026-11-22, Apple M1 Max, macOS, nbb 1.4.208 on Node 26.0.0):
+
+| Check | Result |
+| --- | --- |
+| RFC 9180 A.2.1 (shared secret, key, nonce, exporter, three exports, ciphertext, open; both ends) | 0 failures |
+| Buyer and fake provider, in memory | 25 of 25 |
+| Once more through the live `mailbox.awai.network` | 29 of 29 |
+| `buyer/cli.cljs order` and `wait` through the live mailbox, with a fake provider process | Both exit 0. Files are mode 0600, the reply key is removed after the result is read, no stored file holds the prompt |
+| Python `cryptography` 3.11 checks an nbb-signed receipt the way `tools/verify_receipt.lpy` does | Verifies; a changed receipt does not |
+| Buyer changed to skip the signature, the output, the input or the buyer list, or not to cap `x-expires` | Each fails exactly its check |
+| HPKE changed to label `HPKE-v2` | 15 vector failures. The round trip still passes, since both ends share the code: the RFC vector is what guards interoperability |
+
+Not done here: the owner's approval of the order and the en-devnet acceptance (ADR 0027), a
+device, and a model. The provider in these tests is a fake.
 
 ## A real order (stage V1)
 
