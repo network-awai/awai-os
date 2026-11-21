@@ -4,14 +4,22 @@ import {clientRuntimeProblems, createClientConsentHost, createClientOperationBro
 import {CATEGORIES, JURISDICTIONS, LIMITS, emptyDraft, draftProblems, recipientProblems, assembleMemo, restoreDraft} from './model.js';
 import {pickLocale, translator} from './messages.js';
 import {runtimeDescriptor, REQUESTED_CAPABILITIES, SEND_SELECTOR} from './operations.js';
+import {createShareHandler} from './send.js';
 
 bind_native(document.documentElement, {tonal: '.tonal', text: '.link'});
-// No external operation is declared (see operations.js). The broker is built anyway, so a send attempt goes through
-// the canonical gate and is refused there, not by a flag in this file.
+// One declared send (see operations.js): the consultation memo to the lawyer the user chose, through the
+// Android share sheet. It runs only when the operation is governor-approved and host-supported (otherwise
+// it is not in broker.operations and the send button stays disabled) and the user approves this one
+// operation in the canonical consent dialog. Denial throws before anything leaves the device.
 const descriptor = runtimeDescriptor();
 if (clientRuntimeProblems(descriptor, REQUESTED_CAPABILITIES, location.origin).length) throw Error('invalid-runtime');
-const broker = createClientOperationBroker({runtime: descriptor, requestedCapabilities: [...REQUESTED_CAPABILITIES], approvedOperations: [],
-  hostSupportedOperations: [], consentHost: createClientConsentHost()});
+const tauriInvoke = window.__TAURI__?.core?.invoke;
+const SEND_HOST = [SEND_SELECTOR.capability, SEND_SELECTOR.service, SEND_SELECTOR.operation];
+async function shareViaSheet(memo) { await tauriInvoke('soudan_share', {text: memo}); }
+const broker = createClientOperationBroker({runtime: descriptor, requestedCapabilities: [...REQUESTED_CAPABILITIES], approvedOperations: descriptor.operations,
+  hostSupportedOperations: tauriInvoke ? [SEND_HOST] : [],
+  browserAdapters: tauriInvoke ? {[SEND_SELECTOR.service]: {[SEND_SELECTOR.operation]: createShareHandler({shareText: shareViaSheet})}} : {},
+  consentHost: createClientConsentHost()});
 
 const locale = pickLocale(navigator.languages), t = translator(locale);
 document.documentElement.lang = locale;
@@ -131,12 +139,14 @@ function renderMemo() {
   const confirmBox = el('input'); confirmBox.type = 'checkbox'; confirmBox.id = 'confirm';
   const confirmLabel = el('label', t('confirm.label'), 'check'); confirmLabel.prepend(confirmBox);
   const send = el('button', t('send')); send.type = 'button';
-  const note = el('p', t('send.undeclared'), 'muted');
+  const note = el('p', t('send.note'), 'muted');
   function refresh() { send.disabled = !confirmBox.checked || recipientProblems(draft.recipient).length > 0 || broker.operations.length === 0; }
   confirmBox.addEventListener('change', refresh);
   send.addEventListener('click', async e => {
     if (!e.isTrusted) return;
-    try { await broker.invoke(SEND_SELECTOR, {memo: memo.text, recipient: draft.recipient}); }
+    if (recipientProblems(draft.recipient).length || broker.operations.length === 0) { say(t('send.blocked')); return; }
+    const to = {name: draft.recipient.name.trim(), office: (draft.recipient.office ?? '').trim(), contact: draft.recipient.contact.trim()};
+    try { await broker.invoke(SEND_SELECTOR, {memo: memo.text, recipient: to}); say(t('send.shared')); }
     catch { say(t('send.blocked')); }
   });
   const saveButton = el('button', t('save'), 'tonal'); saveButton.type = 'button'; saveButton.addEventListener('click', () => save());
