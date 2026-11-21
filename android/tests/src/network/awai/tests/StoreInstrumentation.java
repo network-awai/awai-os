@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.content.Context;
 import network.awai.platform.Catalog;
 import network.awai.platform.Integrity;
+import network.awai.platform.LatestPointer;
 import network.awai.platform.StorageProfile;
 import java.util.Arrays;
 import java.security.KeyPairGenerator;
@@ -18,6 +19,52 @@ public final class StoreInstrumentation extends Instrumentation {
     private void refuses(Action action,String name)throws Exception{boolean failed=false;try{action.run();}catch(Exception expected){failed=true;}check(failed,name);}
     private static void verifySigned(JSONObject value,KeyPair pair)throws Exception{
         byte[] raw=value.toString().getBytes(StandardCharsets.UTF_8);java.security.Signature signer=java.security.Signature.getInstance("SHA256withRSA");signer.initSign(pair.getPrivate());signer.update(raw);Catalog.verifyMetadata(raw,signer.sign(),pair.getPublic().getEncoded(),System.currentTimeMillis()/1000);
+    }
+    // AWAI-3662: the signed latest-catalog pointer.
+    private static final String REV="ed429b406cbecc048f3cb41a9f31a1fb4a4a636d";
+    private static final String BASE="https://raw.githubusercontent.com/network-awai/awai-os/"+REV+"/store/distribution/";
+    private static JSONObject pin(String url,String sha,long max)throws Exception{return new JSONObject().put("url",url).put("sha256",sha).put("maxBytes",max);}
+    private static JSONObject pointer(long seq,long issued,long expires)throws Exception{
+        String sha=Integrity.sha256(new byte[]{1});
+        return new JSONObject().put("schema",LatestPointer.SCHEMA).put("sequence",seq).put("issuedAt",issued).put("expiresAt",expires)
+            .put("pins",new JSONObject().put("revision",REV).put("catalog",pin(BASE+"dev-r/catalog-envelope.json",sha,100))
+                .put("apks",new JSONObject().put("network.itonami.torihiki",pin(BASE+"dev-r/torihiki.apk",sha,1))));
+    }
+    private static byte[] sign(byte[] raw,KeyPair pair)throws Exception{java.security.Signature s=java.security.Signature.getInstance("SHA256withRSA");s.initSign(pair.getPrivate());s.update(raw);return s.sign();}
+    private LatestPointer accept(JSONObject v,KeyPair pair,long now,long floor)throws Exception{byte[] raw=v.toString().getBytes(StandardCharsets.UTF_8);return LatestPointer.verify(raw,sign(raw,pair),pair.getPublic().getEncoded(),now,floor);}
+    private void refusesPointer(JSONObject v,KeyPair pair,long now,long floor,String name)throws Exception{refuses(()->accept(v,pair,now,floor),name);}
+    private void latestPointer()throws Exception{
+        KeyPair pair=KeyPairGenerator.getInstance("RSA").generateKeyPair();long now=1_800_000_000L,day=86_400L;
+        LatestPointer ok=accept(pointer(5,now-day,now+30*day),pair,now,5);
+        check(ok.sequence==5&&ok.apks.containsKey("network.itonami.torihiki")&&ok.catalog.maxBytes==100,"pointer accepted");
+        ok.checkCatalog(new byte[]{1});refuses(()->ok.checkCatalog(new byte[]{2}),"pointer catalog digest");
+        ok.checkApk("network.itonami.torihiki",new byte[]{1});refuses(()->ok.checkApk("network.itonami.yotei",new byte[]{1}),"pointer unlisted app");
+        byte[] raw=pointer(5,now-day,now+30*day).toString().getBytes(StandardCharsets.UTF_8);
+        byte[] env=new JSONObject().put("raw",new String(raw,StandardCharsets.UTF_8)).put("signature",android.util.Base64.encodeToString(sign(raw,pair),android.util.Base64.NO_WRAP)).toString().getBytes(StandardCharsets.UTF_8);
+        check(LatestPointer.verifyEnvelope(env,pair.getPublic().getEncoded(),now,1).sequence==5,"pointer envelope accepted");
+        refuses(()->LatestPointer.verify(raw,sign(raw,pair),KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic().getEncoded(),now,1),"pointer wrong key");
+        byte[] changed=raw.clone();changed[raw.length-2]^=1;refuses(()->LatestPointer.verify(changed,sign(raw,pair),pair.getPublic().getEncoded(),now,1),"pointer changed bytes");
+        refusesPointer(pointer(4,now-day,now+30*day),pair,now,5,"pointer sequence rollback");
+        refusesPointer(pointer(5,now-31*day,now),pair,now,1,"pointer expired");
+        refusesPointer(pointer(5,now-day,now-day+32*day),pair,now,1,"pointer lifetime over 31 days");
+        refusesPointer(pointer(5,now+3600,now+10*day),pair,now,1,"pointer issued in the future");
+        refusesPointer(pointer(5,now-day,now+10*day).put("schema","itonami.store.latest.v2"),pair,now,1,"pointer schema");
+        refusesPointer(pointer(5,now-day,now+10*day).put("sequence",5.5),pair,now,1,"pointer non-integer sequence");
+        String sha=Integrity.sha256(new byte[]{1});
+        for(String url:new String[]{"https://example.com/network-awai/awai-os/"+REV+"/store/distribution/x.apk",
+                "https://raw.githubusercontent.com/network-awai/awai-os/main/store/distribution/x.apk",
+                BASE+"x.apk?y=1",BASE+"x.apk#f",BASE+"../../../x.apk",BASE+"%2e%2e/x.apk","http://raw.githubusercontent.com/network-awai/awai-os/"+REV+"/store/distribution/x.apk",
+                "https://raw.githubusercontent.com:8443/network-awai/awai-os/"+REV+"/store/distribution/x.apk"}){
+            JSONObject v=pointer(5,now-day,now+10*day);v.getJSONObject("pins").getJSONObject("apks").put("network.itonami.torihiki",pin(url,sha,1));
+            refusesPointer(v,pair,now,1,"pointer url "+url);
+        }
+        JSONObject unknown=pointer(5,now-day,now+10*day);unknown.getJSONObject("pins").getJSONObject("apks").put("network.itonami.notlisted",pin(BASE+"x.apk",sha,1));
+        refusesPointer(unknown,pair,now,1,"pointer unknown app");
+        JSONObject over=pointer(5,now-day,now+10*day);over.getJSONObject("pins").getJSONObject("apks").put("network.itonami.torihiki",pin(BASE+"x.apk",sha,Catalog.maxApkBytes("network.itonami.torihiki")+1));
+        refusesPointer(over,pair,now,1,"pointer over app budget");
+        JSONObject badSha=pointer(5,now-day,now+10*day);badSha.getJSONObject("pins").getJSONObject("catalog").put("sha256","XYZ");
+        refusesPointer(badSha,pair,now,1,"pointer bad digest");
+        refuses(()->LatestPointer.verifyEnvelope(new byte[LatestPointer.MAX_ENVELOPE_BYTES+1],pair.getPublic().getEncoded(),now,1),"pointer envelope size");
     }
     @Override public void onCreate(Bundle args){super.onCreate(args);start();}
     @Override public void onStart(){Bundle result=new Bundle();try{
@@ -76,6 +123,7 @@ public final class StoreInstrumentation extends Instrumentation {
         check("app-private".equals(StorageProfile.kind("/data/user/0/app/files","/dev/data /data ext4 rw 0 0\ntmpfs /data-other tmpfs rw 0 0\n")),"mount prefix boundary");
         check("app-private".equals(StorageProfile.kind("/data/user/0/app/files","tmpfs /data tmpfs rw 0 0\n/dev/block /data/user/0/app ext4 rw 0 0\n")),"longest nested mount wins");
         check("unknown".equals(StorageProfile.kind("/data/user/0/app/files","invalid")),"unknown storage is not durability");
+        latestPointer();
         result.putString("stream","Awai Android store integrity: "+assertions+" assertions passed\n");finish(-1,result);
     }catch(Throwable e){result.putString("stream","FAIL: "+e.getClass().getSimpleName()+" "+e.getMessage());finish(0,result);}}
 }
