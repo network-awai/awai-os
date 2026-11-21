@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {generateKeyPairSync,sign} from 'node:crypto';
 import vm from 'node:vm';
 const runtime=new URL('../../otehon/shell/vendor/kotoba-client-runtime.js',import.meta.url);
-const text=readFileSync(new URL('../client/online.js',import.meta.url),'utf8').replace("'./runtime.js'",JSON.stringify(runtime.href));
+const text=readFileSync(new URL('../client/online.js',import.meta.url),'utf8').replace("'./runtime.js'",JSON.stringify(runtime.href)).replace("'./key-list.js'",JSON.stringify(new URL('../client/key-list.js',import.meta.url).href));
 const {validatePins,onlineRuntime,authenticateCatalog}=await import('data:text/javascript;base64,'+Buffer.from(text).toString('base64'));
 const {clientRuntimeProblems,clientEndpointAllowsRequest}=await import(runtime.href);
 const ctx=vm.createContext({window:{}});vm.runInContext(readFileSync(new URL('../client/generated/domain.js',import.meta.url),'utf8'),ctx);
@@ -56,4 +56,19 @@ test('one pinned download operation per app; ids, budgets and the legacy single 
 test('the checked-in development pins use the per-app shape',()=>{
  const dev=JSON.parse(readFileSync(new URL('../online-pins.dev.json',import.meta.url),'utf8'));
  validatePins(dev);assert(Object.keys(dev.apks).length>=1);
+});
+
+test('catalog signature through the root-signed key list (AWAI-3775)',async()=>{
+ const rsa=()=>generateKeyPairSync('rsa',{modulusLength:2048});const root=rsa(),cat=rsa(),ptr=rsa();
+ const b64=k=>k.publicKey.export({type:'spki',format:'der'}).toString('base64');const now=Math.floor(Date.now()/1000);
+ const list=`itonami.store.keys.v1\nsequence 2\nissued ${now-60}\nexpires ${now+86400}\nkey catalog ${b64(cat)}\nkey pointer ${b64(ptr)}\n`;
+ const trust={root:b64(root),raw:Buffer.from(list).toString('base64'),signature:sign('sha256',Buffer.from(list),root.privateKey).toString('base64')};
+ const raw=JSON.stringify({schema:'itonami.store.bundled.v1',revision:100,expiresAt:now+60,apps:[]});
+ const by=k=>({raw,signature:sign('sha256',Buffer.from(raw),k.privateKey).toString('base64')});
+ assert.equal((await authenticateCatalog(by(cat),trust,domain,100)).revision,100);
+ await assert.rejects(authenticateCatalog(by(ptr),trust,domain),/署名/,'pointer key cannot sign a catalog');
+ await assert.rejects(authenticateCatalog(by(root),trust,domain),/署名/,'root cannot sign a catalog');
+ await assert.rejects(authenticateCatalog(by(cat),{...trust,root:b64(rsa())},domain),/keys-signature/,'list from another root');
+ await assert.rejects(authenticateCatalog(by(cat),{...trust,signature:sign('sha256',Buffer.from(list),cat.privateKey).toString('base64')},domain),/keys-signature/,'list not signed by the root');
+ await assert.rejects(authenticateCatalog(by(cat),undefined,domain),/鍵の一覧/,'no trust at all');
 });
