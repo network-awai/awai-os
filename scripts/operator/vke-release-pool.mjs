@@ -6,7 +6,9 @@ import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 
 const namespace = "awai-pc-release-build";
-const plan = "voc-m-16c-128gb-800s-amd";
+const defaultPlan = "voc-m-16c-128gb-800s-amd";
+const plans = new Set([defaultPlan, "vc2-16c-64gb"]);
+const planKey = "awai.network/vke-plan";
 const labelKey = "vke.vultr.com/node-pool";
 const taintKey = "awai.network/release-build";
 const ownerKey = "awai.network/vke-run";
@@ -49,7 +51,7 @@ export async function teardown({ kube, vultr, run, wait, deleteLock, empty = fal
     "The empty release needs a provider pool. Investigate a missing or ambiguous create before removing the lock.");
   if (matches.length === 1) {
     const [pool] = matches;
-    requireState(pool.plan === plan && pool.tag === run.label,
+    requireState(pool.plan === (run.plan ?? defaultPlan) && pool.tag === run.label,
       "The provider pool does not match the release owner and plan.");
     requireState(nodes.every((node) => node.metadata.labels["vke.vultr.com/node-pool-id"] === pool.id),
       "The Kubernetes node belongs to a different provider pool.");
@@ -97,7 +99,7 @@ function vultrClient(cluster, key) {
         "Vultr did not return a complete node-pool inventory.");
       return result.node_pools;
     },
-    async create(label) {
+    async create(label, plan) {
       await request(base, "POST", { label, tag: label, plan, node_quantity: 1, auto_scaler: false });
     },
     async remove(id) {
@@ -144,23 +146,27 @@ async function main([mode, kubeconfig, ...args]) {
     const lock = await kube("get", "namespace", namespace);
     const label = lock.metadata.annotations?.[ownerKey];
     requireState(/^awai-pc-release-[0-9a-f]{12}$/.test(label ?? ""), "No owned release pool is recorded.");
-    await teardown({ kube, vultr, wait, deleteLock, empty: mode === "release-empty", run: { label, uid: lock.metadata.uid } });
+    const plan = lock.metadata.annotations?.[planKey] ?? defaultPlan;
+    requireState(plans.has(plan), "The release plan is outside the supported VKE plans.");
+    await teardown({ kube, vultr, wait, deleteLock, empty: mode === "release-empty", run: { label, plan, uid: lock.metadata.uid } });
     return;
   }
 
   requireState(!(await vultr.list()).some(({ label }) => label?.startsWith("awai-pc-release-")),
     "An existing release pool must be reconciled before starting a new run.");
+  const plan = process.env.AWAI_VKE_RELEASE_PLAN ?? defaultPlan;
+  requireState(plans.has(plan), "The release plan is outside the supported VKE plans.");
   const label = `awai-pc-release-${randomUUID().replaceAll("-", "").slice(0, 12)}`;
   const lock = call(["create", "-f", "-"], "json", JSON.stringify({
     apiVersion: "v1", kind: "Namespace",
-    metadata: { name: namespace, annotations: { [ownerKey]: label } },
+    metadata: { name: namespace, annotations: { [ownerKey]: label, [planKey]: plan } },
   }));
-  const run = { label, uid: lock.metadata.uid };
+  const run = { label, plan, uid: lock.metadata.uid };
   console.error(`Release run ${label}. If interrupted, inspect the recorded namespace before resuming.`);
 
   // Persist ownership before the POST so a lost response never starts another paid pool.
   try {
-    await vultr.create(label);
+    await vultr.create(label, plan);
   } catch (error) {
     if ([400, 401, 403, 404, 422].includes(error.httpStatus)) deleteLock(run.uid);
     throw error;

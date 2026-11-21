@@ -86,3 +86,11 @@ test("an ambiguous create retains the lock", async () => {
   await assert.rejects(teardown({ ...options, empty: true }), /ambiguous create/);
   assert.deepEqual(operations, []);
 });
+
+test("releases the alternative plan only when the run recorded that plan", async () => {
+  const alternative = { ...providerPool, plan: "vc2-16c-64gb" };
+  const { options, operations } = fixture({ pool: alternative });
+  await assert.rejects(teardown(options), /provider pool/);
+  await teardown({ ...options, run: { ...run, plan: alternative.plan } });
+  assert.deepEqual(operations, [["pool", providerPool.id], ["namespace", run.uid]]);
+});
