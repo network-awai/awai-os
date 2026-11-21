@@ -1,8 +1,9 @@
 # Itonami Store entry page (AWAI-3730)
 
 `build.mjs` generates the static entry page for the Itonami Store from the signed latest pointer
-(`store/latest/pointer-envelope.json`). The chosen host is `store.itonami.app` (owner decision
-2026-11-21, AWAI-3731). This directory does not deploy anything.
+(`store/latest/pointer-envelope.json`). The host is `store.itonami.app` (owner decision
+2026-11-21, AWAI-3731). The page is live there since 2026-11-21; see "Publishing" below. The build
+itself sends nothing.
 
 ```sh
 node --test store/site/build.test.mjs
@@ -41,6 +42,26 @@ An app is listed with a download link only when all of these hold. Any failure s
 - It says that this is a development build. The catalog and most APKs are signed with the Android
   debug identity; there is no production publisher key, rotation or revocation yet (AWAI-2982, AWAI-3732).
 - It does not offer the Store APK itself, an iOS build or a desktop build. None is published.
+
+## Publishing
+
+`store.itonami.app` is served by the name plane of the `yataverse-bytes` Worker (Cloudflare account
+`cloud-kotoba`): the host's `_dnslink` TXT record names a UnixFS root, and the Worker returns the
+files under it. Owner instruction 2026-11-21: publish through Cloudflare first, while the node
+entrance is down. Steps and limits of the name plane are in `docs/name-plane-deploy-runbook.md` of
+`network-awai/app-itonami-yataverse`; the record of the first publication is
+[docs/otehon/itonami-store-web-entry-publication-20261121.md](../../docs/otehon/itonami-store-web-entry-publication-20261121.md).
+
+```sh
+node store/site/build.mjs --out <new directory>            # from a clean checkout of main
+yataverse site-pack <that directory> -o <car directory>     # local; prints the root
+yataverse car-put <car directory>/site-001.car              # writes the blocks, verifies the receipt
+```
+
+Then set the TXT record `_dnslink.store.itonami.app` to `dnslink=/ipfs/<root>` in the Cloudflare
+dashboard (exactly one record; the local wrangler login cannot edit DNS), and compare each served
+file with `site-manifest.json` by SHA-256. To take the page down, delete that record: the host then
+answers `404 name-not-published`.
 
 ## Limits
 
