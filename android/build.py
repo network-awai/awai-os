@@ -14,7 +14,20 @@ DEBUG_KEYSTORE=pathlib.Path.home()/'.android/debug.keystore'
 DEV_KEY_DIR=pathlib.Path.home()/'.android/awai-store-dev'
 DEV_CATALOG_KEYSTORE=DEV_KEY_DIR/'catalog.p12'
 DEV_KEY_PASSWORD=DEV_KEY_DIR/'password'
-def manifest(pkg, activity, version, kind, online=False, debuggable=True):
+def store_query_packages(pins=None):
+    """Every package the Store may list, named in <queries> so the Store sees it whether or not it has a launcher
+    activity (AWAI-3771): the ids written in Catalog.java, the local apps, the series table, and any online pins.
+    Without this, a package with no MAIN/LAUNCHER activity looked not installed, and the Store's own downgrade and
+    signer checks were skipped. QUERY_ALL_PACKAGES is not used."""
+    ids = set(re.findall(r'"((?:network|app)\.[a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*)+)"',
+                         (ROOT/'android/shared/src/network/awai/platform/Catalog.java').read_text()))
+    ids.update('network.itonami.'+a['suffix'] for a in json.loads((ROOT/'android/local-apps.json').read_text())['apps'])
+    ids.update(a['id'] for a in json.loads((ROOT/'store/catalog-source/series-apps.json').read_text())['apps'])
+    if pins: ids.update(pins['apks'])
+    for i in ids:
+        if not re.fullmatch(r'[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)+', i): raise SystemExit(f'not a package id for <queries>: {i}')
+    return sorted(ids)
+def manifest(pkg, activity, version, kind, online=False, debuggable=True, query_packages=()):
     perms = ''
     extra = ''
     home = ''
@@ -39,12 +52,14 @@ def manifest(pkg, activity, version, kind, online=False, debuggable=True):
         kind, '@android:drawable/ic_menu_today')
     round_icon = ' android:roundIcon="@drawable/yotei_crest_round"' if kind == 'yotei' else ''
     title={'home':'Awai Home','store':'itonami Store','yotei':'Yotei','torihiki':'Torihiki'}[kind]
+    known={'network.awai.drive','network.awai.yataverse','network.itonami.yotei','network.itonami.torihiki','network.awai.store'}
+    listed=''.join(f'<package android:name="{p}"/>' for p in query_packages if p not in known)
     return f'''<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="{pkg}" android:versionCode="{version}" android:versionName="0.1.{version-1}">
       <uses-sdk android:minSdkVersion="33" android:targetSdkVersion="37"/>{perms}
       <queries><intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent>
       <intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.APP_BROWSER"/></intent>
       <intent><action android:name="android.intent.action.DIAL"/></intent><intent><action android:name="android.media.action.STILL_IMAGE_CAMERA"/></intent>
-      <package android:name="network.awai.drive"/><package android:name="network.awai.yataverse"/><package android:name="network.itonami.yotei"/><package android:name="network.itonami.torihiki"/><package android:name="network.awai.store"/><provider android:authorities="network.itonami.yotei.agenda"/></queries>
+      <package android:name="network.awai.drive"/><package android:name="network.awai.yataverse"/><package android:name="network.itonami.yotei"/><package android:name="network.itonami.torihiki"/><package android:name="network.awai.store"/>{listed}<provider android:authorities="network.itonami.yotei.agenda"/></queries>
       <application android:theme="@style/{theme}" android:label="{title}" android:icon="{appicon}"{round_icon} android:allowBackup="false" android:usesCleartextTraffic="false" android:debuggable="{str(debuggable).lower()}" android:enableOnBackInvokedCallback="true">
       <activity android:name="{activity}" android:exported="true" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize">
       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>{home}</activity>{extra}</application></manifest>'''
@@ -182,7 +197,8 @@ def main():
     def build(kind,pkg,activity):
         stage=out/f'{kind}-v{args.version}';stage.mkdir(exist_ok=True);classes=stage/'classes';classes.mkdir(exist_ok=True);gen=stage/'gen';gen.mkdir(exist_ok=True);dex=stage/'dex';dex.mkdir(exist_ok=True)
         # Explicitly rebuild only this task's generated outputs; unrelated workspace data is untouched.
-        xml=stage/'AndroidManifest.xml';xml.write_text(manifest(pkg,activity,args.version,kind,bool(pins_online),debuggable=not (args.unsigned_home or args.release)))
+        xml=stage/'AndroidManifest.xml';xml.write_text(manifest(pkg,activity,args.version,kind,bool(pins_online),debuggable=not (args.unsigned_home or args.release),
+                                                                query_packages=store_query_packages(pins_online) if kind=='store' else ()))
         staged_assets=stage/'assets'
         shutil.copytree(assets,staged_assets,dirs_exist_ok=True,
                         ignore=shutil.ignore_patterns('packages','catalog.json','catalog.sig','catalog-key.der','store-root.der','keys.txt','keys.sig') if kind!='store' else None)
