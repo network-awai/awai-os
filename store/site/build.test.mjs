@@ -41,16 +41,21 @@ test('the published pointer and catalog build a page that matches the catalog', 
   assert.equal(manifest.development, true);
   assert.equal(manifest.files['index.html'], sha256(files['index.html']));
   assert.equal(manifest.files['style.css'], sha256(files['style.css']));
+  assert.equal(manifest.files['logo.png'], sha256(files['logo.png']));
 });
 
-test('the page is a document: no script, no remote subresource, strict CSP', () => {
-  const html = buildSite(published()).files['index.html'].toString('utf8');
-  assert(!/<script|<iframe|<img|<form|\son[a-z]+=|javascript:/i.test(html));
-  assert(html.includes(`content="default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'"`));
+test('the page is a document: no script, one same-origin image, strict CSP', () => {
+  const {files} = buildSite(published());
+  const html = files['index.html'].toString('utf8');
+  assert(!/<script|<iframe|<form|<object|<embed|\son[a-z]+=|\sstyle=|javascript:/i.test(html));
+  assert(html.includes(`content="default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'"`));
   assert.deepEqual([...html.matchAll(/<link[^>]*href="([^"]+)"/g)].map(m => m[1]), ['style.css']);
+  assert.deepEqual([...html.matchAll(/<img[^>]*src="([^"]+)"/g)].map(m => m[1]), ['logo.png']);
+  assert(files['logo.png'].subarray(1, 4).toString('latin1') === 'PNG');
+  assert(!/url\(|@import|@font-face/i.test(files['style.css'].toString('utf8')));
   assert(html.includes('開発版です'));
   for (const [, href] of html.matchAll(/<a[^>]*href="([^"]+)"/g))
-    assert(href === 'site-manifest.json' || href === 'https://github.com/network-awai/awai-os/tree/main/store'
+    assert(href === 'site-manifest.json'
       || /^https:\/\/raw\.githubusercontent\.com\/network-awai\/awai-os\/[0-9a-f]{40}\/store\/distribution\//.test(href), href);
 });
 

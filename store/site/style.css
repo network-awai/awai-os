@@ -1,99 +1,218 @@
-/* Itonami Store entry page (AWAI-3730). No script; Baseline Widely available CSS only. */
+/* Itonami Store entry page. Composition and values follow the Figma proposal (AWAI-3735,
+   file umqCqP5KSjLWh9fhCI1HaN, page 903:2): Awai Web · Daylight colors (Asa for light, Yoru for
+   dark), the Awai Web type ramp, Spacing and Radius. No script; Baseline Widely available CSS. */
 :root {
   color-scheme: light dark;
-  --bg: #fbfaf7;
-  --surface: #ffffff;
-  --text: #1c1b19;
-  --muted: #5c5a55;
-  --line: #dedbd3;
-  --accent: #1f5c4d;
-  --accent-text: #ffffff;
-  --notice-bg: #fff4d6;
-  --notice-line: #d9a514;
+  /* Awai Web · Daylight / Asa */
+  --background: #ffffff;
+  --surface: #f5f6f8;
+  --text: #182332;
+  --muted: #485c74;
+  --accent: #1e50a2;
+  --border: #9aaabd;
+  --on-accent: #ffffff;
+  /* Spacing and Radius */
+  --xs: 4px;
+  --sm: 8px;
+  --md: 16px;
+  --lg: 24px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --page-pad: 20px;
+  --page-gap: var(--md);
+  --card-pad: var(--md);
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #151614;
-    --surface: #1e201d;
-    --text: #ecebe6;
-    --muted: #a9a79f;
-    --line: #363933;
-    --accent: #8fd3bf;
-    --accent-text: #10221d;
-    --notice-bg: #3a2f10;
-    --notice-line: #d9a514;
+    /* Awai Web · Daylight / Yoru */
+    --background: #14110f;
+    --surface: #272422;
+    --text: #ffffff;
+    --muted: #b8b8b7;
+    --accent: #1e50a2;
+    --border: #4f4d4b;
+    --on-accent: #ffffff;
+  }
+}
+@media (min-width: 900px) {
+  :root {
+    --page-pad: 40px;
+    --page-gap: var(--lg);
+    --card-pad: var(--lg);
   }
 }
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  background: var(--bg);
+  background: var(--background);
   color: var(--text);
-  font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
-  line-height: 1.7;
+  font-family: "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", system-ui, sans-serif;
+  /* Awai Web/Body */
+  font-size: 16px;
+  line-height: 28px;
 }
-header, main, footer {
-  max-width: 46rem;
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--page-gap);
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 0 1rem;
+  padding: var(--page-pad);
 }
-header { padding-top: 2.5rem; }
-h1 { margin: 0; font-size: 2rem; line-height: 1.2; }
-h2 { margin: 2.5rem 0 0.5rem; font-size: 1.25rem; }
-h3 { margin: 0 0 0.25rem; font-size: 1.1rem; }
-p { margin: 0.5rem 0; }
-a { color: var(--accent); }
-a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.85em;
+h1, h2, h3, p, dl, dd, pre { margin: 0; }
+/* Awai Web/Display mobile, then Display */
+h1 { font-size: 32px; line-height: 46px; font-weight: 400; }
+/* Awai Web/Heading */
+h2, h3 { font-size: 24px; line-height: 36px; font-weight: 500; }
+/* Awai Web/Lead on wide screens; Body on phones */
+.lead { font-size: 16px; line-height: 28px; }
+/* Awai Web/Caption */
+.caption { font-size: 12px; line-height: 20px; color: var(--muted); }
+.muted { color: var(--muted); }
+@media (min-width: 900px) {
+  h1 { font-size: 48px; line-height: 67px; }
+  .lead { font-size: 18px; line-height: 32px; }
+}
+
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--md);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sm);
+  /* Awai Web/Label */
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 500;
+}
+.brand img { display: block; width: 36px; height: 36px; }
+.org { font-size: 12px; line-height: 20px; color: var(--muted); }
+@media (min-width: 900px) {
+  .brand img { width: 44px; height: 44px; }
+  .org { font-size: 14px; line-height: 22px; font-weight: 500; }
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md);
+  padding: var(--card-pad);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.notice { border: 2px solid var(--accent); }
+
+.columns {
+  display: flex;
+  flex-direction: column;
+  gap: var(--page-gap);
+}
+.apps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md);
+  min-width: 0;
+}
+@media (min-width: 900px) {
+  .columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 368px;
+    grid-template-rows: auto auto auto auto 1fr;
+    column-gap: var(--lg);
+    row-gap: var(--md);
+    align-items: start;
+  }
+  .apps { grid-column: 1; grid-row: 1 / span 5; }
+  .how, .verify, .record, .source { grid-column: 2; }
+}
+
+/* Facts: Label (muted) beside Caption */
+.facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sm);
+}
+.facts > div {
+  display: flex;
+  gap: var(--md);
+}
+.facts dt {
+  flex: 0 0 96px;
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.facts dd {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 20px;
   overflow-wrap: anywhere;
 }
-pre {
-  overflow-x: auto;
-  padding: 0.75rem 1rem;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 0.5rem;
-}
-.notice {
-  margin-top: 1.5rem;
-  padding: 0.25rem 1rem 0.75rem;
-  background: var(--notice-bg);
-  border-left: 0.3rem solid var(--notice-line);
-  border-radius: 0.25rem;
-}
-.notice h2 { margin-top: 0.75rem; }
-dl { margin: 0.75rem 0; }
-dl > div {
+/* Stacked rows: Label (muted) above Body or Caption */
+.stacked {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0 1rem;
-  padding: 0.35rem 0;
-  border-top: 1px solid var(--line);
+  flex-direction: column;
+  gap: var(--md);
 }
-dt { flex: 0 0 10rem; color: var(--muted); }
-dd { flex: 1 1 14rem; margin: 0; min-width: 0; }
-.app {
-  margin: 1rem 0;
-  padding: 1rem;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 0.75rem;
+.stacked > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--xs);
 }
-.download {
-  display: inline-block;
-  padding: 0.6rem 1rem;
-  background: var(--accent);
-  color: var(--accent-text);
-  border-radius: 0.5rem;
-  font-weight: 600;
+.stacked dt {
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.stacked.small dd {
+  font-size: 12px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sm);
+}
+/* Button: 48 high, 12/32 padding, radius 8, 13px/150% */
+.button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 12px 32px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
   text-decoration: none;
 }
-.note { color: var(--muted); }
-footer {
-  margin-top: 3rem;
-  padding-bottom: 2rem;
-  color: var(--muted);
-  font-size: 0.9rem;
+.button.primary { background: var(--accent); color: var(--on-accent); }
+.button.secondary { background: var(--background); border-color: var(--border); color: var(--text); }
+.button:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
+
+pre {
+  display: flex;
+  flex-direction: column;
+  padding: var(--md);
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+}
+code {
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 20px;
 }

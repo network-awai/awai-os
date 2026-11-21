@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Build the static Itonami Store entry page (AWAI-3730) from the signed latest pointer.
 //
-// The page is a document: HTML and CSS, no script, no request-time handler. Every listed
+// The page is a document: HTML, CSS and one logo image, no script, no request-time handler. Every listed
 // download is a commit-pinned URL with its SHA-256, taken from the signed pointer and catalog.
 // Nothing is listed unless the pointer signature, the catalog signature, the pins and the
 // local bytes all agree. Development signer only: there is no production key yet.
@@ -97,80 +97,85 @@ function appHtml(app) {
   const d = app.download;
   const operations = app.operations === null ? '記載なし' : app.operations === 0 ? 'なし' : `${app.operations} 件（アプリ内で、通信のたびに確認します）`;
   const rows = [
-    ['パッケージ', `<code>${esc(app.id)}</code>`],
+    ['パッケージ', esc(app.id)],
     ['版', `${esc(app.versionName)}（versionCode ${esc(app.versionCode)}）`],
-    ['発行者', esc(app.publisher)],
-    ['外部との通信の宣言', operations],
   ];
-  if (d) rows.push(['大きさ', `${esc(size(d.bytes))}（${esc(d.bytes)} bytes）`],
-    ['SHA-256', `<code>${esc(d.sha256)}</code>`],
-    ['署名者の証明書', `<code>${esc(d.signerSha256)}</code>${d.developmentSigner ? '（開発用の鍵）' : '（リリース用の鍵）'}`]);
+  if (d) rows.push(['大きさ', esc(size(d.bytes))]);
+  rows.push(['外部との通信', operations]);
+  if (d) rows.push(['SHA-256', esc(d.sha256)],
+    ['署名者', `${esc(d.signerSha256)}${d.developmentSigner ? '（開発用の鍵）' : '（リリース用の鍵）'}`]);
   const action = d
-    ? `<p><a class="download" href="${esc(d.url)}" rel="noreferrer" download>APK を取得（raw.githubusercontent.com）</a></p>`
-    : '<p class="note">Android 向けの APK は公開していません。</p>';
-  return `<article class="app" id="${esc(app.id)}">
+    ? `<div class="action"><a class="button primary" href="${esc(d.url)}" rel="noreferrer" download>APK を取得</a>
+<p class="caption">リンク先: raw.githubusercontent.com（commit を固定した変わらないファイル）</p></div>`
+    : '<p class="caption">Android 向けの APK は公開していません。</p>';
+  return `<article class="card app" id="${esc(app.id)}">
 <h3>${esc(app.name)}</h3>
 <p>${esc(app.description)}</p>
-<dl>${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
+<dl class="facts">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
 ${action}
 </article>`;
 }
 
+// Composition follows the Figma proposal (AWAI-3735): file umqCqP5KSjLWh9fhCI1HaN, page 903:2.
 export function renderHtml(store) {
   return `<!doctype html>
 <html lang="ja">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="color-scheme" content="light dark">
 <title>Itonami Store</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header>
-<h1>Itonami Store</h1>
-<p>Awai Network のアプリを入手するための入口です。</p>
+<div class="page">
+<header class="site-header">
+<div class="brand"><img src="logo.png" width="44" height="44" alt=""><span>Itonami Store</span></div>
+<span class="org">Awai Network</span>
 </header>
-<main>
-<section class="notice" aria-labelledby="status">
+<p class="caption">store.itonami.app</p>
+<h1>Itonami Store</h1>
+<p class="lead">Awai Network のアプリを入手するための入口です。</p>
+<section class="card notice" aria-labelledby="status">
 <h2 id="status">開発版です</h2>
 <p>ここに載っているアプリとカタログは、開発用の鍵で署名した開発版です。正式なリリースではありません。本番の署名鍵と、鍵の更新・失効の仕組みはまだありません。</p>
 </section>
-<section aria-labelledby="how">
+<div class="columns">
+<section class="card how" aria-labelledby="how">
 <h2 id="how">入手のしかた</h2>
-<dl class="platforms">
+<dl class="stacked">
 <div><dt>Awai OS</dt><dd>Itonami Store が入っています。Store を開いてアプリを選びます。</dd></div>
-<div><dt>Android</dt><dd>Android 15 以降が必要です。下の一覧から APK を取得して入れられます。Store 本体の一般向けの配布は準備中です。</dd></div>
+<div><dt>Android</dt><dd>Android 15 以降が必要です。一覧から APK を取得して入れられます。Store 本体の一般向けの配布は準備中です。</dd></div>
 <div><dt>iPhone・iPad</dt><dd>提供していません。</dd></div>
 <div><dt>Mac・Windows・Linux</dt><dd>提供していません。</dd></div>
 </dl>
 </section>
-<section aria-labelledby="apps">
+<main class="apps" aria-labelledby="apps">
 <h2 id="apps">アプリ（${store.apps.length} 件）</h2>
-<p>カタログ revision ${esc(store.revision)}。リンク先は GitHub（raw.githubusercontent.com）の、commit を固定した変わらないファイルです。このページは、あなたがリンクを押すまで外部と通信しません。</p>
+<p class="muted">カタログ revision ${esc(store.revision)}。このページは、あなたがリンクを押すまで外部と通信しません。</p>
 ${store.apps.map(appHtml).join('\n')}
-</section>
-<section aria-labelledby="verify">
+</main>
+<section class="card verify" aria-labelledby="verify">
 <h2 id="verify">取得したファイルを確かめる</h2>
-<p>入れる前に、ファイルの SHA-256 が上の値と同じことを確かめてください。</p>
+<p>入れる前に、ファイルの SHA-256 と署名者が、一覧の値と同じことを確かめてください。一致しないファイルは入れないでください。</p>
 <pre><code>shasum -a 256 取得したファイル.apk
 apksigner verify --print-certs 取得したファイル.apk</code></pre>
-<p>1 行目の結果が「SHA-256」と、2 行目の certificate SHA-256 digest が「署名者の証明書」と一致すれば、このページが示すファイルと同じです。一致しないファイルは入れないでください。</p>
 </section>
-<section aria-labelledby="record">
+<section class="card record" aria-labelledby="record">
 <h2 id="record">このページの根拠</h2>
-<dl>
+<dl class="stacked small">
 <div><dt>署名つきの最新 pointer</dt><dd>sequence ${esc(store.sequence)}、${esc(date(store.pointerExpiresAt))} まで有効</dd></div>
-<div><dt>署名つきカタログ</dt><dd>revision ${esc(store.revision)}、${esc(date(store.catalogExpiresAt))} まで有効</dd></div>
-<div><dt>固定した commit</dt><dd><code>${esc(store.sourceRevision)}</code></dd></div>
-<div><dt>カタログの署名者</dt><dd><code>${esc(store.signer)}</code>（開発用の鍵）</dd></div>
+<div><dt>署名つきカタログ</dt><dd>revision ${esc(store.revision)}</dd></div>
+<div><dt>固定した commit</dt><dd>${esc(store.sourceRevision)}</dd></div>
+<div><dt>カタログの署名者</dt><dd>${esc(store.signer.slice(0, 8))}…（開発用の鍵）</dd></div>
 </dl>
-<p>このページは <a href="https://github.com/network-awai/awai-os/tree/main/store" rel="noreferrer">network-awai/awai-os の <code>store/</code></a> から、署名と digest を検証したうえで生成しています。ファイルごとの digest は <a href="site-manifest.json">site-manifest.json</a> にあります。</p>
 </section>
-</main>
-<footer><p>Itonami Store — Awai Network</p></footer>
+<a class="button secondary source" href="site-manifest.json">生成元と digest を見る</a>
+</div>
+<footer><p class="caption">Itonami Store — Awai Network</p></footer>
+</div>
 </body>
 </html>
 `;
@@ -178,7 +183,7 @@ apksigner verify --print-certs 取得したファイル.apk</code></pre>
 
 export function buildSite(input) {
   const store = verifyStore(input);
-  const files = {'index.html': Buffer.from(renderHtml(store), 'utf8'), 'style.css': input.css};
+  const files = {'index.html': Buffer.from(renderHtml(store), 'utf8'), 'style.css': input.css, 'logo.png': input.logo};
   const manifest = {schema: 'awai.store-site.v1', pointerSequence: store.sequence, catalogRevision: store.revision,
     sourceRevision: store.sourceRevision, signer: store.signer, development: true,
     apps: store.apps.map(a => ({id: a.id, versionCode: a.versionCode, sha256: a.download?.sha256 ?? null, url: a.download?.url ?? null})),
@@ -192,6 +197,7 @@ export function repositoryInput(root, now) {
     pointerBytes: readFileSync(join(root, 'store/latest/pointer-envelope.json')),
     signerPem: readFileSync(join(root, 'store/keys/dev-catalog-signer.pem')),
     css: readFileSync(join(root, 'store/site/style.css')),
+    logo: readFileSync(join(root, 'store/site/logo.png')),
     read: path => existsSync(join(root, path)) ? readFileSync(join(root, path)) : null,
     now,
   };
