@@ -43,6 +43,21 @@ formatted (`mke2fs returned 1`, the device node has no label) and `/dev/block/vd
 The stock GRUB has no search by partition name. It has `probe --part-uuid` and `regexp`, which is what
 the second patch uses. A disk without the fixed GUIDs (the stock `disk-vda.img`) keeps the stock numbers.
 
+## PC AVB metadata build (AWAI-3714)
+
+Apply `apply-pc-avb-build.sh <source tree root>` to the dedicated x86_64 A/B checkout.
+For an evaluation build, set the following make inputs before building `target-files-package`:
+
+- `AWAI_PC_AVB_BUILD=true`
+- `AWAI_PC_AVB_KEY_PATH` pointing to an explicit RSA-4096 evaluation key, relative to the Android source tree
+- `AWAI_PC_AVB_ROLLBACK_INDEX` set to the evaluation image's rollback index
+
+This requests AOSP's SHA256_RSA4096 AVB metadata, selects SHA-256 for the PC logical partitions'
+hashtrees, and includes `vbmeta` in the A/B OTA partition list. An unset option keeps the existing
+build settings. Product qualification also requires the production
+signing path, the stock disk's A/B vbmeta layout, verified mounting, and the UEFI trust chain.
+The boot-state reporting path is unchanged.
+
 ## Shipping debug lockdown (AWAI-3682)
 
 **State: patches only. Not built, not booted.** `apply.sh` does not call this; run it yourself on the
