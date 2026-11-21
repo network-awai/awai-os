@@ -7,7 +7,7 @@
 
 - PC 版も mobile 版も、debug 経路は製品として設計されていなかった。あるのは検証 script が使う ADB だけである。
 - PC 版の image は upstream の設定を引き継いでおり、ADB を有効にすると **TCP 5555 を全 interface で待ち受ける**。記録にある PC image は全て `userdebug` で、出荷用の `user` build の記録はない。
-- 提案: 出荷 image は `user` build で ADB を既定で無効にし、TCP 5555 の既定値と `android_insecure_adb` を外す。対応する debug 経路は、PC・mobile とも USB debug と wireless debug の両方（owner 決定 2026-11-21）。PC の USB debug は実現方法が未調査で、対応機種と方法は別 issue で決める。
+- 出荷 image は `user` build に限り、ADB を既定で無効にする（owner 決定 2026-11-21）。あわせて TCP 5555 の既定値と `android_insecure_adb` を外す（提案、実装は AWAI-3682）。対応する debug 経路は、PC・mobile とも USB debug と wireless debug の両方（owner 決定 2026-11-21）。PC の USB debug は実現方法が未調査で、対応機種と方法は別 issue で決める。
 
 ## 現状（測定）
 
@@ -61,7 +61,7 @@ adb -s <serial> shell 'for p in ro.build.type ro.debuggable ro.adb.secure persis
 
 ### 理由
 
-1. **出荷 image は `user` build にする。** `userdebug` は ADB root と `ro.debuggable=1` を持ち、利用者の端末に出すものではない。`android/lockscreen-design-qualification-20261116.md` も本番 build を `ro.debuggable` 0 と前提している。
+1. **出荷 image は `user` build に限り、ADB を既定で無効にする（owner 決定 2026-11-21）。** `userdebug` は ADB root と `ro.debuggable=1` を持ち、利用者の端末に出すものではない。`android/lockscreen-design-qualification-20261116.md` も本番 build を `ro.debuggable` 0 と前提している。
 2. **PC の network 経路は wireless debug。** 今の検証も network 経由である。wireless debug は TLS とペアリングがあり、平文の 5555 より LAN 上で安全。
 3. **PC でも USB debug に対応する（owner 決定 2026-11-21）。** mobile 版と同じ 2 経路をそろえる。当初の提案は「対応しない」だったが、owner が両方に対応すると決めた。実現方法は下の「PC の USB debug の実現条件」のとおり未調査で、機種ごとに対応可否が分かれる可能性がある。
 4. **平文の 5555 は開発用に限る。** 現行の検証 script（`10.77.0.2:5555` の直結）は開発用 image で使い続けられる。出荷 image からは `service.adb.tcp.port` を外す。
@@ -70,7 +70,7 @@ adb -s <serial> shell 'for p in ro.build.type ro.debuggable ro.adb.secure persis
 
 ### owner 決定が要る点
 
-- A. 出荷 image を `user` build に限るか。限る場合、今日（2026-11-21）の初回導入（AWAI-3600）の候補が `userdebug` なら、5555 の扱いをどうするか。
+- A. 出荷 image の build variant: **決定済み（2026-11-21）。`user` build に限り、ADB を既定で無効にする。** `userdebug` の image は開発と検証に限り、客先には出さない。この決定の時点で `user` build の PC image は記録になく、build・署名・起動の検証は未実施である（AWAI-3682）。今日（2026-11-21）の初回導入（AWAI-3600）の候補の variant は、この文書では確認していない。
 - B. 初期設定前の trade-in ADB を出荷 image で残すか。Android の標準機能だが、設定完了前の端末に network から届く経路になる。
 - C. PC の USB debug: **決定済み（2026-11-21）。対応する。** wireless debug と両方に対応する。
 
