@@ -36,6 +36,30 @@ LAYOUT = [
 ]
 EMPTY_SECTORS = {"misc": 2048, "metadata": 65536}
 RESERVED = {n for n, _, _, _ in LAYOUT} | {"efi", "bios", "cache", "recovery", "boot", "vendor_boot"}
+VBMETA_ROOTS = ("vbmeta", "vbmeta_system", "vbmeta_vendor")
+VBMETA_SLOTS = {f"{name}_{slot}" for name in VBMETA_ROOTS for slot in ("a", "b")}
+
+
+def is_vbmeta_partition(name):
+    return name == "vbmeta" or name.startswith("vbmeta_")
+
+
+def vbmeta_layout(parts):
+    names = [p["name"] for p in parts if is_vbmeta_partition(p["name"].lower())]
+    if not names:
+        return []
+    if len(names) != len(set(names)) or set(names) - VBMETA_SLOTS:
+        sys.exit("REFUSED invalid or duplicate source vbmeta partition names")
+    if not {"vbmeta_a", "vbmeta_b"}.issubset(names):
+        sys.exit("REFUSED source must contain both root vbmeta slots")
+    layout = []
+    for root in VBMETA_ROOTS:
+        slot_a, slot_b = f"{root}_a", f"{root}_b"
+        if (slot_a in names) != (slot_b in names):
+            sys.exit(f"REFUSED source must contain both {root} slots")
+        if slot_a in names:
+            layout.extend((name, name, None, "8300") for name in (slot_a, slot_b))
+    return layout
 
 
 def sgdisk(*a):
@@ -102,11 +126,13 @@ def make_plan(target, source, userdata_gib):
     tparts, tfirst, tlast = table(target)
     sparts, _, _ = table(source)
     src = {p["name"]: p for p in sparts}
-    clash = sorted(p["name"] for p in tparts if p["name"].lower() in RESERVED)
+    clash = sorted(p["name"] for p in tparts
+                   if p["name"].lower() in RESERVED or is_vbmeta_partition(p["name"].lower()))
     if clash:
         sys.exit(f"REFUSED name-in-use: {clash}")
     need = []
-    for name, sname, guid, code in LAYOUT:
+    layout = LAYOUT[:-1] + vbmeta_layout(sparts) + LAYOUT[-1:]
+    for name, sname, guid, code in layout:
         if sname:
             if sname not in src:
                 sys.exit(f"REFUSED source-has-no-partition: {sname}")
