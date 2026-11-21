@@ -55,7 +55,13 @@ export async function teardown({ kube, vultr, run, wait, deleteLock, empty = fal
       "The provider pool does not match the release owner and plan.");
     requireState(nodes.every((node) => node.metadata.labels["vke.vultr.com/node-pool-id"] === pool.id),
       "The Kubernetes node belongs to a different provider pool.");
-    await vultr.remove(pool.id);
+    try {
+      await vultr.remove(pool.id);
+    } catch (error) {
+      // A lost DELETE response can still mean Vultr accepted the deletion.
+      // Keep the lock until the subsequent inventory proves its outcome.
+      if (error.name !== "TimeoutError" && !(error instanceof TypeError)) throw error;
+    }
   }
   await wait(async () => {
     const activePools = await vultr.list();
