@@ -11,19 +11,20 @@ bind_native(document.documentElement, {tonal: '.tonal', text: '.link'});
 // Android share sheet. It runs only when the operation is governor-approved and host-supported (otherwise
 // it is not in broker.operations and the send button stays disabled) and the user approves this one
 // operation in the canonical consent dialog. Denial throws before anything leaves the device.
-const descriptor = runtimeDescriptor();
-if (clientRuntimeProblems(descriptor, REQUESTED_CAPABILITIES, location.origin).length) throw Error('invalid-runtime');
 const tauriInvoke = window.__TAURI__?.core?.invoke;
 const SEND_HOST = [SEND_SELECTOR.capability, SEND_SELECTOR.service, SEND_SELECTOR.operation];
 async function shareViaSheet(memo) { await tauriInvoke('soudan_share', {text: memo}); }
 // The device language picks the consent dialog language (ja when the device is Japanese).
+// The declared disclosure facts follow it too (operations.js disclosureFacts;
+// the broker shows recipient/data/purpose/withdrawal as declared), as does the app name.
 const locale = pickLocale(navigator.languages);
+const t = translator(locale);
+const descriptor = runtimeDescriptor(locale);
+if (clientRuntimeProblems(descriptor, REQUESTED_CAPABILITIES, location.origin).length) throw Error('invalid-runtime');
 const broker = createClientOperationBroker({runtime: descriptor, requestedCapabilities: [...REQUESTED_CAPABILITIES], approvedOperations: descriptor.operations,
   hostSupportedOperations: tauriInvoke ? [SEND_HOST] : [],
   browserAdapters: tauriInvoke ? {[SEND_SELECTOR.service]: {[SEND_SELECTOR.operation]: createShareHandler({shareText: shareViaSheet})}} : {},
-  consentHost: createClientConsentHost({locale}), app: {name: '法律相談'}});
-
-const t = translator(locale);
+  consentHost: createClientConsentHost({locale}), app: {name: t('app.title')}});
 document.documentElement.lang = locale;
 const host = createHost({appId: 'network.itonami.soudan'});
 const $ = id => document.getElementById(id);
@@ -147,6 +148,9 @@ function renderMemo() {
   send.addEventListener('click', async e => {
     if (!e.isTrusted) return;
     if (recipientProblems(draft.recipient).length || broker.operations.length === 0) { say(t('send.blocked')); return; }
+    // A new send starts here: drop the previous result line first, so a stale
+    // "not sent" is not still showing behind the chooser (App QA r2 point 2).
+    say('');
     const to = {name: draft.recipient.name.trim(), office: (draft.recipient.office ?? '').trim(), contact: draft.recipient.contact.trim()};
     try { await broker.invoke(SEND_SELECTOR, {memo: addressedMemo(memo.text, to, t), recipient: to}); say(t('send.shared')); }
     catch { say(t('send.blocked')); }

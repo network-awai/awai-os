@@ -1,7 +1,7 @@
-import {test} from 'node:test';import assert from 'node:assert/strict';
+import {test} from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
 import {emptyDraft,draftProblems,recipientProblems,assembleMemo,addressedMemo} from '../src/model.js';
 import {translator} from '../src/messages.js';
-import {runtimeDescriptor,REQUESTED_CAPABILITIES,SEND_SELECTOR,SEND_OPERATION} from '../src/operations.js';
+import {runtimeDescriptor,disclosureFacts,REQUESTED_CAPABILITIES,SEND_SELECTOR,SEND_OPERATION} from '../src/operations.js';
 import {createShareHandler} from '../src/send.js';
 import {clientRuntimeProblems,clientRuntimeConnectSrc,clientDisclosureProblems,effectiveClientOperations,createClientOperationBroker,createClientConsentHost} from '../../../otehon/shell/vendor/kotoba-client-runtime.js';
 const t=translator('ja');
@@ -34,12 +34,13 @@ function installedDocument(){const {doc,elements}=makeDocument();globalThis.docu
 function wire({approved=true,supported=true,shareText,doc,locale='ja'}={}){
   const calls=[];
   const share=shareText??(async text=>{calls.push(text);});
-  const descriptor=runtimeDescriptor();
+  // Same wiring as src/app.js: the descriptor and the broker app name follow the dialog language.
+  const descriptor=runtimeDescriptor(locale);
   const host=[SEND_SELECTOR.capability,SEND_SELECTOR.service,SEND_SELECTOR.operation];
   const consentHost=createClientConsentHost({document:doc,locale});
   const broker=createClientOperationBroker({runtime:descriptor,requestedCapabilities:[...REQUESTED_CAPABILITIES],
     approvedOperations:approved?descriptor.operations:[],hostSupportedOperations:supported?[host]:[],
-    browserAdapters:supported?{[SEND_SELECTOR.service]:{[SEND_SELECTOR.operation]:createShareHandler({shareText:share})}}:{},consentHost,app:{name:'法律相談'}});
+    browserAdapters:supported?{[SEND_SELECTOR.service]:{[SEND_SELECTOR.operation]:createShareHandler({shareText:share})}}:{},consentHost,app:{name:translator(locale)('app.title')}});
   return {descriptor,broker,calls};
 }
 function flatDialog(dialog){return [...dialog.children].flatMap(c=>[c,...(c.children??[])]);}
@@ -151,20 +152,56 @@ test('when the device language is Japanese the consent dialog is Japanese; recip
   }finally{delete globalThis.document;}
 });
 
-test('an English device language shows the English dialog over the same declared facts',async()=>{
+test('an English device language shows the English dialog with English declared facts',async()=>{
   const {doc,dialog,scope}=installedDocument();
   try{
-    const {broker}=wire({doc,locale:'en'});
-    const invoked=broker.invoke(SEND_SELECTOR,memoPayload());
+    const {broker,calls}=wire({doc,locale:'en'});
+    const payload=memoPayload();
+    const invoked=broker.invoke(SEND_SELECTOR,payload);
     assert.equal(dialog().open,true,'consent is showing');
-    assert.equal(flatDialog(dialog()).find(e=>e.tag==='h2')?.textContent,'法律相談 will send the following information');
-    assert.ok(buttonByText(dialog(),'Continue'),'English allow button exists');
-    assert.ok(buttonByText(dialog(),'Close'),'English deny button exists');
+    assert.equal(flatDialog(dialog()).find(e=>e.tag==='h2')?.textContent,'Legal consultation will send the following information');
+    const summary=flatDialog(dialog()).find(e=>e.tag==='ul');
+    assert.match(summary?.textContent??'',/Recipient: the app you choose on this device \(Japan\)/);
+    assert.match(summary?.textContent??'',/Information: consultation memo \(name, contact, consultation details\)/);
+    assert.match(summary?.textContent??'',/Purpose: to send the consultation memo to the lawyer you chose/);
+    assert.match(summary?.textContent??'',/Frequency: Once/);
+    assert.match(flatDialog(dialog()).map(e=>e.textContent??'').join('\n'),/in Settings/);
+    const allow=buttonByText(dialog(),'Continue');
+    const deny=buttonByText(dialog(),'Close');
+    assert.ok(allow,'English allow button exists');assert.ok(deny,'English deny button exists');
     assert.match(scope().textContent,/Receiver: the app you pick next receives the data/);
     assert.match(scope().textContent,/legal\.consultation-memo/);
-    fire(buttonByText(dialog(),'Close'),'click',{type:'click',isTrusted:true});
-    await assert.rejects(invoked,/not approved/);
+    await approve(dialog(),allow);
+    assert.deepEqual(await invoked,{shared:true});
+    assert.equal(calls.length,1,'exactly one hand-off');
+    assert.equal(calls[0],payload.memo,'the addressed memo text as assembled');
   }finally{delete globalThis.document;}
+});
+
+test('the declared disclosure facts follow the dialog language, and the default stays Japanese',()=>{
+  assert.deepEqual(disclosureFacts(),disclosureFacts('ja'));
+  assert.deepEqual(disclosureFacts('fr'),disclosureFacts('ja'),'unknown locales fall back to Japanese');
+  assert.deepEqual(disclosureFacts('en'),{recipient:'the app you choose on this device',
+    data:['consultation memo (name, contact, consultation details)'],
+    purpose:'to send the consultation memo to the lawyer you chose',withdrawal:'Settings'});
+  for(const locale of ['ja','en']){
+    const d=runtimeDescriptor(locale);
+    assert.deepEqual(clientRuntimeProblems(d,[...REQUESTED_CAPABILITIES],'http://tauri.localhost'),[]);
+    assert.deepEqual(clientDisclosureProblems(d.operations[0].disclosure),[]);
+    assert.equal(d.operations[0].disclosure.country,'JP');
+    assert.equal(d.operations[0].disclosure.frequency,'one-time');
+  }
+  assert.deepEqual(runtimeDescriptor(),runtimeDescriptor('ja'),'the default descriptor stays Japanese');
+  assert.deepEqual(runtimeDescriptor().operations,[SEND_OPERATION]);
+  assert.deepEqual(runtimeDescriptor('en').operations[0].disclosure,{
+    ...SEND_OPERATION.disclosure,...disclosureFacts('en')});
+});
+
+test('starting a new send clears the previous result line before consent (no stale notice behind the chooser)',()=>{
+  const src=readFileSync(new URL('../src/app.js',import.meta.url),'utf8');
+  const handler=src.slice(src.indexOf("send.addEventListener('click'"));
+  assert.ok(handler.includes("say('')"),'the previous result is cleared when a new send starts');
+  assert.ok(handler.indexOf("say('')")<handler.indexOf('broker.invoke'),'cleared before consent/chooser, not after');
 });
 
 test('the sent body heads with the destination the user typed and nothing else',async()=>{
