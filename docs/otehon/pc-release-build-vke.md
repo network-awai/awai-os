@@ -13,7 +13,7 @@ Use a dedicated x86_64 VKE node pool for unsigned AOSP release builds. Keep the 
 
 ## Scale with work
 
-VKE scales nodes in a configured range when pods need resources. Verify whether the dedicated pool can drop to zero and come back from a pending Job in this tenant and region. Keep the small system/CI capacity available. If VKE cannot resume an empty pool, use queue admission to create one dedicated node when there is a build, then remove that pool once the queue is empty and the completed outputs are verified. Serialize queue admission and teardown so a new build cannot be assigned to a pool being removed. Do not report zero idle compute cost until billing confirms it. Retained storage has its own cost.
+Keep the small system/CI capacity available. For the current Tokyo cluster, use queue admission to create one dedicated node when there is a build. Remove that pool once the queue is empty and the restored outputs are verified. Serialize queue admission and teardown so a new build cannot be assigned to a pool being removed. Confirm both the compute instance removal and the final time on its Vultr billing line. Retained storage has its own cost.
 
 Pilot the entire cycle with pinned inputs from a completed release build. Record the node plan, allocatable resources, cold-start delay, workspace peak, build duration, artifact readback and cost. Check a completed run and a failed run. Ensure a failed build or upload is visible and retains relevant logs. Verify that teardown affects only the dedicated build pool and that the next queued build can start afresh.
 
@@ -30,3 +30,14 @@ Pilot the entire cycle with pinned inputs from a completed release build. Record
 After the release and restore checks close, confirm there are no running jobs or unique dependencies on the old host. Verify the provider instance ID against the build record. Remove only that instance and confirm its absence in Vultr and the end of recurring compute charges. Keep the verified recovery objects available for the next release. If a build is needed before the VKE pilot passes, restore the verified inputs on a short-lived build VM and remove it after output verification. Vultr continues to bill a stopped instance.
 
 [Awai release signing](../../android/release-signing/README.md) · [Vultr billing for servers](https://docs.vultr.com/support/platform/billing/how-am-i-billed-for-my-servers)
+
+
+## Tokyo pilot, 2026-11-21
+
+One `voc-m-16c-128gb-800s-amd` node reported 15.8 allocatable vCPUs, 131,693,052 KiB of RAM and 804,963,184,640 bytes of ephemeral storage. The unsigned Awai PC install build completed at 17:19 JST. Use root-anchored exclusions when transferring the source tree to preserve tracked nested paths such as flashrom's `src/out/built.rs`. Install host Ninja for Mesa, and preserve the build workspace for recoverable environment errors.
+
+The 5,669,737,286-byte archive was copied out of VKE to the retained build VM. A fresh restore Job read it back at 17:25 JST, verified the archive and all five build output digests, tested the target-files ZIP, and listed the OTA tools archive. The pilot used the retained VM as an independent location from the VKE pool. Keep the release recovery copy in storage with a lifetime independent of both environments.
+
+The VKE control plane accepted a 0–1 autoscaling range. When the jobs were gone, the Cluster Autoscaler could reschedule zero of one pods on the dedicated node. Calico Typha had three replicas with required per-host anti-affinity, one on each node. Manual resize to zero was rejected. Removing the empty dedicated pool released its only node. The two Tatara nodes remained registered. The estimated Vultr charges show a closed line from 13:23 to 17:34 JST, five billed hours and USD 4.77 before tax. Check plan availability when admitting the next job.
+
+[Live build, restore and teardown evidence](https://linear.app/kotobalabs/issue/AWAI-3664)
