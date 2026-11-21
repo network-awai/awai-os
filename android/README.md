@@ -35,6 +35,20 @@ python3 android/build-tests.py --version 1
 
 Account linking also requires the owning shell’s lockfile-pinned npm dependencies: run `npm ci` inside `otehon/shell` before building. `android/build-identity.mjs` bundles the existing awai.link.v1 verifier, device-key custody and QR renderer; the canonical runtime stays an external, digest-checked module. `--home-only` builds Home without rebuilding Store/Yotei.
 
+### Signing key and release builds (AWAI-3761)
+
+By default `build.py` signs the APKs and the catalog with the local Android debug identity and builds debuggable APKs, as before (`signing: local-android-debug-only`). Another key is given with three options together:
+
+```sh
+export STORE_KS_PASS=...   # set it without echoing; the value is never put on a command line or in a report
+python3 android/build.py --version 1 --skip-cljs --release \
+  --keystore /path/to/keystore.p12 --key-alias <alias> --keystore-pass-env STORE_KS_PASS
+```
+
+`--release` builds non-debuggable APKs (`signing: release-key`, `debuggable: false`) and refuses the Android debug identity, a missing password variable, an APK whose single signer is not the given key, and a debuggable result. The keystore may be JKS or PKCS12; the keystore and the key use the same password. `publish-latest-pointer.py` takes the same key options plus `--expected-signer <certificate SHA-256>` and refuses to write when the key is a different one. `python3 android/tests/release-signing.py` checks all of this with a throwaway key (about two minutes; nothing is installed or published).
+
+What this does not do: there is no production key; the same key still signs the APKs, the catalog and the pointer (separating them and key rotation are AWAI-3763); a Store built with another key does not accept the development catalogs or pointer and cannot update a development Store in place; APKs supplied with `--*-apk` must carry the same signer as the catalog, so development-signed app APKs are refused in a release build; `build-tests.py` still signs the instrumentation APK with the debug identity.
+
 Build outputs, signed APKs, public fingerprint/digests and tool logs stay in `.agent-output/android`. The existing debug key stays in Android's credential directory and is never copied to source or reports. `build.py` never connects to or installs on a device.
 
 The build generates tokens/CSS/resources from one shared palette, compiles shared domain functions once for both browser clients, and packages original Figma assets. Raw SVG dimensions are retained:24px controls,28px Store header source and64px featured calendar source. API-supplied installed app icons remain dynamic. Design-time Aozora/Murakumo/Itonami placeholders are not advertised as installable without actual release artifacts.
