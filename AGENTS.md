@@ -42,7 +42,14 @@ Kotoba/Amu/AIUEOS Native qualification rules.
 - Phone and desktop share the Android setup state model and Figma-first UX.
   Adapt layout, keyboard/mouse/touch and hardware capabilities. Itonami remains
   an app: retain account authentication but omit repeated OS setup steps.
-- Preserve the approved Itonami Core / Apps / System and Manimani composition.
+- Itonami is the bot runtime and its bots; Manimani is its default bot. Awai Home
+  is the entry and centres on the conversation with Manimani; a swipe reaches the
+  classic home. The earlier rule to preserve the Itonami Core / Apps / System
+  composition is withdrawn (owner decision 2026-11-22, AWAI-3770): OS state and
+  settings belong to Android and Awai OS, and apps are separate APKs reached
+  through Home and Store. See
+  [the responsibilities record](docs/otehon/home-itonami-manimani-responsibilities-20261122.md);
+  its open items stay proposals until decided.
   Keep shared domain/policy in `.cljc`/CLJS Otehon code; native Android and pinned
   Tauri v3 adapters expose bounded platform operations. A Rust/Java adapter is
   not a new authority, consent broker or second application shell.
