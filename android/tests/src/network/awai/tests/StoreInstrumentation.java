@@ -19,8 +19,8 @@ public final class StoreInstrumentation extends Instrumentation {
     private void check(boolean value,String name){assertions++;if(!value)throw new AssertionError(name);}
     private interface Action{void run() throws Exception;}
     private void refuses(Action action,String name)throws Exception{boolean failed=false;try{action.run();}catch(Exception expected){failed=true;}check(failed,name);}
-    private static void verifySigned(JSONObject value,KeyPair pair)throws Exception{
-        byte[] raw=value.toString().getBytes(StandardCharsets.UTF_8);java.security.Signature signer=java.security.Signature.getInstance("SHA256withRSA");signer.initSign(pair.getPrivate());signer.update(raw);Catalog.verifyMetadata(raw,signer.sign(),KeyList.legacy(pair.getPublic().getEncoded()),System.currentTimeMillis()/1000);
+    private void verifySigned(JSONObject value,KeyPair pair)throws Exception{
+        byte[] raw=value.toString().getBytes(StandardCharsets.UTF_8);long now=System.currentTimeMillis()/1000;Catalog.verifyMetadata(raw,sign(raw,pair),list(1,now,pair,rsa()),now);
     }
     // AWAI-3662: the signed latest-catalog pointer.
     private static final String REV="ed429b406cbecc048f3cb41a9f31a1fb4a4a636d";
@@ -149,8 +149,8 @@ public final class StoreInstrumentation extends Instrumentation {
         refuses(()->catalog.app("network.awai.notallowed"),"unknown app refuses");
         long expires=catalog.app("network.itonami.yotei").getLong("versionCode");
         refuses(()->Catalog.verifyMetadata(raw,sig,trust,Long.MAX_VALUE),"expired metadata refuses");
-        byte[] wrong=KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic().getEncoded();
-        check(!KeyList.legacy(wrong).authentic(KeyList.CATALOG,raw,sig),"wrong key refuses");
+        check(trust.sequence>=1&&trust.fingerprints(KeyList.CATALOG).size()>=1&&trust.fingerprints(KeyList.POINTER).size()>=1,"bundled root-signed key list");
+        check(!list(1,System.currentTimeMillis()/1000,KeyPairGenerator.getInstance("RSA").generateKeyPair(),rsa()).authentic(KeyList.CATALOG,raw,sig),"wrong key refuses");
         byte[] altered=apk.clone();altered[altered.length-1]^=1;check(!Integrity.sha256(apk).equals(Integrity.sha256(altered)),"changed APK digest");
         check(Integrity.sha256("abc".getBytes(StandardCharsets.UTF_8)).equals("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"),"SHA256 known answer");
         refuses(()->Integrity.read(new java.io.ByteArrayInputStream(new byte[10]),5),"size bound");

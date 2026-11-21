@@ -12,6 +12,11 @@ const domain=ctx.window.ItonamiDomain, rev='a'.repeat(40);
 const base=`https://raw.githubusercontent.com/network-awai/awai-os/${rev}/store/distribution/dev/`;
 const pins={revision:rev,catalog:{url:base+'catalog-envelope.json',sha256:'b'.repeat(64),maxBytes:131072},apks:{'network.itonami.yotei':{url:base+'yotei.apk',sha256:'c'.repeat(64),maxBytes:2097152}}};
 const yotei=pins.apks['network.itonami.yotei'];
+// A root-signed key list (AWAI-3775) whose catalog key is the given public key.
+const trustRoot=generateKeyPairSync('rsa',{modulusLength:2048}),trustPointer=generateKeyPairSync('rsa',{modulusLength:2048});
+function trustFor(catalogPublicKey){const b=k=>k.export({type:'spki',format:'der'}).toString('base64');const now=Math.floor(Date.now()/1000);
+ const list=`itonami.store.keys.v1\nsequence 1\nissued ${now-60}\nexpires ${now+86400}\nkey catalog ${b(catalogPublicKey)}\nkey pointer ${b(trustPointer.publicKey)}\n`;
+ return {root:b(trustRoot.publicKey),raw:Buffer.from(list).toString('base64'),signature:sign('sha256',Buffer.from(list),trustRoot.privateKey).toString('base64')};}
 test('online operations pin exact immutable HTTPS paths, digests and no query',()=>{
  const r=onlineRuntime(domain.descriptor,pins);assert.deepEqual(clientRuntimeProblems(r,['store-download'],'http://127.0.0.1:8791'),[]);
  const e=r.operations[0].endpoint;assert(clientEndpointAllowsRequest(e,pins.catalog.url));
@@ -19,7 +24,7 @@ test('online operations pin exact immutable HTTPS paths, digests and no query',(
  for(const u of ['http://raw.githubusercontent.com/x','https://evil.test/a',yotei.url+'?x=1',yotei.url.replace(rev,'main')])assert.throws(()=>validatePins({...pins,apks:{'network.itonami.yotei':{...yotei,url:u}}}));
 });
 test('catalog signature, expiry and highest accepted revision fail closed',async()=>{
- const {privateKey,publicKey}=generateKeyPairSync('rsa',{modulusLength:2048});const key=publicKey.export({type:'spki',format:'der'}).toString('base64');
+ const {privateKey,publicKey}=generateKeyPairSync('rsa',{modulusLength:2048});const key=trustFor(publicKey);
  const raw=JSON.stringify({schema:'itonami.store.bundled.v1',revision:100,expiresAt:Math.floor(Date.now()/1000)+60,apps:[]});
  const envelope={raw,signature:sign('sha256',Buffer.from(raw),privateKey).toString('base64')};
  assert.equal((await authenticateCatalog(envelope,key,domain,100)).revision,100);
@@ -29,7 +34,7 @@ test('catalog signature, expiry and highest accepted revision fail closed',async
  const old=JSON.stringify({...JSON.parse(raw),expiresAt:1});await assert.rejects(authenticateCatalog({raw:old,signature:sign('sha256',Buffer.from(old),privateKey).toString('base64')},key,domain));
 });
 test('two-app catalog authenticates and tampering with either entry fails closed',async()=>{
- const {privateKey,publicKey}=generateKeyPairSync('rsa',{modulusLength:2048});const key=publicKey.export({type:'spki',format:'der'}).toString('base64');
+ const {privateKey,publicKey}=generateKeyPairSync('rsa',{modulusLength:2048});const key=trustFor(publicKey);
  const apk=(id,asset,bytes)=>({id,name:id,versionName:'0.1.0',versionCode:2,publisher:'Awai Otehon 開発版',artifacts:[{platform:'android',runtime:'android',kind:'apk',asset,bytes,sha256:'a'.repeat(64),signerSha256:'b'.repeat(64)}]});
  const two=JSON.stringify({schema:'itonami.store.bundled.v1',revision:101,expiresAt:Math.floor(Date.now()/1000)+60,
   apps:[apk('network.itonami.yotei','packages/yotei.apk',1621048),apk('network.itonami.app','packages/itonami.apk',32644749)]});

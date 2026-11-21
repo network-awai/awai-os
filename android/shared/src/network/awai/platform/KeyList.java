@@ -56,25 +56,9 @@ public final class KeyList {
         this.raw = raw == null ? null : raw.clone(); this.signature = signature == null ? null : signature.clone();
     }
 
-    /** The verified bytes and the root's signature, so a host can keep the list it accepted. Null for {@link #legacy}. */
+    /** The verified bytes and the root's signature, so a host can keep the list it accepted. */
     public byte[] raw() { return raw == null ? null : raw.clone(); }
     public byte[] signature() { return signature == null ? null : signature.clone(); }
-
-    /** True for a root-signed list; false for the temporary {@link #legacy} single key. */
-    public boolean rooted() { return raw != null; }
-
-    /**
-     * Temporary (AWAI-3775 step 1 to 3): a Store built before it bundles a root and a list still pins one
-     * key for both the catalog and the pointer. Sequence 0, no expiry. Removed once every build bundles a list.
-     */
-    @Deprecated
-    public static KeyList legacy(byte[] spki) {
-        if (spki == null) throw new SecurityException("keys-key");
-        List<byte[]> one = Collections.singletonList(spki.clone());
-        Map<String, List<byte[]>> keys = new LinkedHashMap<>();
-        keys.put(CATALOG, one); keys.put(POINTER, one);
-        return new KeyList(0, 0, Long.MAX_VALUE, Collections.unmodifiableMap(keys), null, null);
-    }
 
     /**
      * The list a host should use: of the list it saved and the list bundled in its package, the valid one with

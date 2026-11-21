@@ -10,6 +10,10 @@ def run(args, **kw):
     return subprocess.run([str(x) for x in args], check=True, text=True, **kw)
 def digest(path): return hashlib.sha256(path.read_bytes()).hexdigest()
 DEBUG_KEYSTORE=pathlib.Path.home()/'.android/debug.keystore'
+# AWAI-3775: development root and role keys, outside any repository (see store/keys/README.md).
+DEV_KEY_DIR=pathlib.Path.home()/'.android/awai-store-dev'
+DEV_CATALOG_KEYSTORE=DEV_KEY_DIR/'catalog.p12'
+DEV_KEY_PASSWORD=DEV_KEY_DIR/'password'
 def manifest(pkg, activity, version, kind, online=False, debuggable=True):
     perms = ''
     extra = ''
@@ -98,19 +102,31 @@ def main():
     sign_catalog_key=[key,args.key_alias]+([args.keystore_pass_env] if args.keystore_pass_env else [])
     def apk_key_sign(data,key_out,sig_out,**kw):
         return run([args.java/'java','-cp',out,'SignCatalog',key,data,key_out,sig_out,*sign_catalog_key[1:]],**kw)
-    catalog_sign=apk_key_sign
-    key_list=None
-    if args.key_list or args.catalog_keystore or args.catalog_key_alias or args.catalog_pass_env:
-        if not (args.key_list and args.catalog_keystore and args.catalog_key_alias and args.catalog_pass_env):
-            ap.error('--key-list, --catalog-keystore, --catalog-key-alias and --catalog-pass-env go together')
-        if not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', args.catalog_pass_env) or not os.environ.get(args.catalog_pass_env):
-            ap.error('--catalog-pass-env takes the name of a set environment variable')
-        if args.catalog_keystore.resolve()==key.resolve() and args.catalog_key_alias==args.key_alias:
-            ap.error('the catalog key must not be the APK signing key')
-        checked=run(['python3',ROOT/'android/key-list.py','verify','--dir',args.key_list],capture_output=True)
-        key_list=json.loads(checked.stdout)
-        def catalog_sign(data,key_out,sig_out,**kw):
-            return run([args.java/'java','-cp',out,'SignCatalog',args.catalog_keystore,data,key_out,sig_out,args.catalog_key_alias,args.catalog_pass_env],**kw)
+    # AWAI-3775: the Store trusts a root and a root-signed key list, and the bundled catalog is signed by a listed
+    # catalog key, never by the APK key. Defaults: the published development list (store/keys/store-root.der and
+    # store/latest/keys-envelope.json) and the development catalog key in ~/.android/awai-store-dev.
+    if not args.key_list:
+        args.key_list=out/'key-list';args.key_list.mkdir(exist_ok=True)
+        shutil.copyfile(ROOT/'store/keys/store-root.der',args.key_list/'store-root.der')
+        published=json.loads((ROOT/'store/latest/keys-envelope.json').read_text())
+        (args.key_list/'keys.txt').write_bytes(published['raw'].encode('ascii'))
+        (args.key_list/'keys.sig').write_bytes(base64.b64decode(published['signature']))
+    if not args.catalog_keystore:
+        if args.catalog_key_alias or args.catalog_pass_env:ap.error('--catalog-key-alias and --catalog-pass-env need --catalog-keystore')
+        if not DEV_CATALOG_KEYSTORE.is_file() or not DEV_KEY_PASSWORD.is_file():
+            raise SystemExit(f'missing the development catalog key {DEV_CATALOG_KEYSTORE}: see store/keys/README.md, or give --key-list and --catalog-keystore')
+        # Read into this process's environment only; SignCatalog reads it from there, never from the command line.
+        os.environ['AWAI_STORE_DEV_PASS']=DEV_KEY_PASSWORD.read_text().strip()
+        args.catalog_keystore,args.catalog_key_alias,args.catalog_pass_env=DEV_CATALOG_KEYSTORE,'catalog','AWAI_STORE_DEV_PASS'
+    if not (args.catalog_key_alias and args.catalog_pass_env):
+        ap.error('--catalog-keystore needs --catalog-key-alias and --catalog-pass-env')
+    if not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', args.catalog_pass_env) or not os.environ.get(args.catalog_pass_env):
+        ap.error('--catalog-pass-env takes the name of a set environment variable')
+    if args.catalog_keystore.resolve()==key.resolve() and args.catalog_key_alias==args.key_alias:
+        ap.error('the catalog key must not be the APK signing key')
+    key_list=json.loads(run(['python3',ROOT/'android/key-list.py','verify','--dir',args.key_list],capture_output=True).stdout)
+    def catalog_sign(data,key_out,sig_out,**kw):
+        return run([args.java/'java','-cp',out,'SignCatalog',args.catalog_keystore,data,key_out,sig_out,args.catalog_key_alias,args.catalog_pass_env],**kw)
     required=[jar,tools/'aapt2',tools/'d8',tools/'zipalign',args.java/'javac']
     if not args.unsigned_home:
         required.extend([tools/'apksigner',key])
@@ -161,7 +177,7 @@ def main():
         run([args.java/'javac','-d',out,ROOT/'android/SignCatalog.java'])
         # SignCatalog emits only a public certificate fingerprint.
         probe=out/'probe';probe.write_bytes(b'fingerprint')
-        fp=apk_key_sign(probe,out/'catalog-key.der',out/'probe.sig',capture_output=True).stdout.strip()
+        fp=apk_key_sign(probe,out/'apk-key.der',out/'probe.sig',capture_output=True).stdout.strip()
         if not re.fullmatch(r'[a-f0-9]{64}',fp):raise SystemExit('signing key could not be read')
     def build(kind,pkg,activity):
         stage=out/f'{kind}-v{args.version}';stage.mkdir(exist_ok=True);classes=stage/'classes';classes.mkdir(exist_ok=True);gen=stage/'gen';gen.mkdir(exist_ok=True);dex=stage/'dex';dex.mkdir(exist_ok=True)
@@ -377,7 +393,6 @@ def main():
             listed.append({'id':profile['id'],'name':profile['name'],'description':descriptions[name],'publisher':'Awai Otehon 開発版','versionCode':a['versionCode'],'versionName':a['versionName'],'artifacts':[{k:a[k] for k in ['bytes','sha256','signerSha256']}|{'asset':target_asset,'platform':'android','runtime':'android','kind':'apk'}]})
     catalog={'schema':'itonami.store.bundled.v1','revision':revision,'expiresAt':int(time.time())+30*86400,'apps':listed}
     raw=json.dumps(catalog,ensure_ascii=False,separators=(',',':'));(assets/'catalog.json').write_text(raw)
-    trust={'mode':'single-key'}
     if key_list:
         catalog_sign(assets/'catalog.json',out/'catalog-role-key.der',assets/'catalog.sig',stdout=subprocess.DEVNULL)
         catalog_key_id=digest(out/'catalog-role-key.der')
@@ -387,9 +402,6 @@ def main():
         trust={'mode':'key-list','sequence':key_list['sequence'],'expiresAt':key_list['expiresAt'],'root':key_list['root'],'catalogKey':catalog_key_id,'pointerKeys':key_list['pointerKeys']}
         b64=lambda name:base64.b64encode((assets/name).read_bytes()).decode()
         trust_js='window.ItonamiKeyList='+json.dumps({'root':b64('store-root.der'),'raw':b64('keys.txt'),'signature':b64('keys.sig')})+';'
-    else:
-        catalog_sign(assets/'catalog.json',assets/'catalog-key.der',assets/'catalog.sig',stdout=subprocess.DEVNULL)
-        trust_js='window.ItonamiPublicKey='+json.dumps(base64.b64encode((assets/'catalog-key.der').read_bytes()).decode())+';'
     (assets/'catalog-data.js').write_text('window.ItonamiCatalogRaw='+json.dumps(raw,ensure_ascii=False)+';window.ItonamiCatalog=JSON.parse(window.ItonamiCatalogRaw);window.ItonamiCatalogSignature='+json.dumps(base64.b64encode((assets/'catalog.sig').read_bytes()).decode())+';'+trust_js+'\n')
     store=build('store',args.store_package,'network.awai.store.StoreActivity')
     built=[store]

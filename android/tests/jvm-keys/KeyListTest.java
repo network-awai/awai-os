@@ -170,11 +170,6 @@ public final class KeyListTest {
         chooseRefuse("choose: neither verifies, bundled reason", "keys-signature", ascii(l2), s3, ascii(l3), s2, r, 0);
         chooseRefuse("choose: other root", "keys-signature", ascii(l2), s2, ascii(l3), s3, other.getPublic().getEncoded(), 0);
         chooseRefuse("choose: nothing at all", "keys-size", null, null, null, null, r, 0);
-        // legacy(): the temporary single-key form used by Stores built without a list.
-        KeyList legacy = KeyList.legacy(c1.getPublic().getEncoded());
-        ok("legacy: one key for both roles, not rooted", !legacy.rooted() && legacy.sequence == 0 && legacy.raw() == null
-                && legacy.authentic(KeyList.CATALOG, ascii("x"), sign(c1, ascii("x"))) && legacy.authentic(KeyList.POINTER, ascii("x"), sign(c1, ascii("x")))
-                && !legacy.authentic(KeyList.CATALOG, ascii("x"), sign(c2, ascii("x"))));
 
         System.out.println(checks + " checks, " + failures + " failures");
         if (failures > 0) System.exit(1);

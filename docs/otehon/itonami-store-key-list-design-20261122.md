@@ -94,7 +94,7 @@ key pointer <base64 の SubjectPublicKeyInfo>
 - 鍵の最小の長さ: 2048 bit。
 - 時計のずれの許容: 300 秒。pointer と同じ値。
 
-## この PR に入っているもの、いないもの
+## 最初の PR（#392、AWAI-3774）に入っていたもの、いなかったもの
 
 入っている:
 
@@ -116,3 +116,24 @@ key pointer <base64 の SubjectPublicKeyInfo>
 - shared と Store の Java を `android.jar`（platform 37.0）に対して compile できる。`python3 android/min-sdk-floor.py --max 33` は exit 0（新しい API の参照を足していない）。
 
 確かめていないこと: 端末での動作（まだ呼ばれていない）、JavaScript 側の実装との一致（まだ無い）。
+
+## 実装の状況（2026-11-22、AWAI-3775）
+
+上の「入っていない」1〜3 と 5 は、次の PR で入った。4（更新と失効の運用手順）は `store/keys/README.md` と
+`store/latest/README.md` に手順を書いたが、本番の運用の手順は Dev の署名手順案（AWAI-3763）と合わせて別に決める。
+
+| 範囲 | PR | 内容 |
+|---|---|---|
+| 1 | #398 | Store の Java が root と一覧で検証する（`StoreTrust`）。受け入れた最大の番号を保存する |
+| 2 | #399 | Web 側（`key-list.js`）と入口ページの build。Java と JS が同じ test vector（46 件）で一致する |
+| 3 | #402 | `key-list.py`（export・prepare・sign・verify）、`build.py --key-list`、pointer とカタログの署名 script |
+| 4 | #406（r110）、この PR | 開発用の root と役割の鍵。一覧 sequence 1、カタログ r110、pointer sequence 4。旧形式の経路を外した |
+
+実装で決めたこと（owner の決定ではない）:
+
+- 一覧は `store/latest/keys-envelope.json`（`{raw, signature}`）に置き、Store は pointer の前に読む。取れないか、
+  拒否したときは、いまの一覧のまま続ける（log に残す）。
+- 保存済みのオンラインカタログが、いま信じていない鍵で署名されていたら捨てる。巻き戻しの下限は残す。
+- 受け入れたオンラインカタログは base64 で保存する。SharedPreferences の XML は、末尾が改行の文字列に字下げを
+  足して読み戻すので、文のまま保存すると再起動の後に署名が合わなくなっていた（以前からの不具合）。
+- 開発用の鍵は RSA 3072。秘密鍵は `~/.android/awai-store-dev/` にあり、repo には公開鍵の ID だけを置く。

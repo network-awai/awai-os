@@ -71,13 +71,14 @@ def main():
 
         # Pointer: only a listed pointer key may sign.
         pp = ROOT / 'android/publish-latest-pointer.py'
+        published_pointer = (ROOT / 'store/latest/pointer-envelope.json').read_bytes()
         pointer = lambda key, out: run(sys.executable, pp, '--sequence', '99', '--keystore', t / f'{key}.p12', '--key-alias', key,
                                        '--keystore-pass-env', 'AWAI_TEST_KEY_PASS', '--key-list', t / 'list', '--out', t / out, env=env)
         r = pointer('pointer', 'pointer.json')
         check('a listed pointer key signs the pointer', r.returncode == 0 and json.loads(r.stdout)['signer'] == ids['pointer'])
         check('the catalog key may not sign the pointer', pointer('catalog', 'p2.json').returncode != 0 and not (t / 'p2.json').exists())
         check('an unlisted key may not sign the pointer', pointer('other', 'p3.json').returncode != 0 and not (t / 'p3.json').exists())
-        check('the published pointer is untouched', run('git', '-C', ROOT, 'diff', '--quiet', '--', 'store/latest').returncode == 0)
+        check('the published pointer is untouched', (ROOT / 'store/latest/pointer-envelope.json').read_bytes() == published_pointer)
 
         # Distribution catalog: only a listed catalog key may sign; any number of apps.
         import time

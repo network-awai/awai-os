@@ -101,13 +101,11 @@ rejects('an APK whose bytes differ from the catalog', input => {
 }, 'apk-digest');
 
 rejects('an expired pointer', input => ({...input, now: input.pointer.expiresAt}), 'pointer-expired');
+rejects('the published pointer checked against another root', input => ({...input,
+  rootDer: generateKeyPairSync('rsa', {modulusLength: 2048}).publicKey.export({type: 'spki', format: 'der'})}), 'keys-signature');
+rejects('no key list', input => ({...input, keysBytes: null}), 'keys-missing');
 
-rejects('a certificate that is not the pinned signer', input => ({...input, signer: 'f'.repeat(64)}), 'signer-fingerprint');
 
-rejects('a bare public key in place of the pinned certificate', input => {
-  const {publicKey} = generateKeyPairSync('rsa', {modulusLength: 2048});
-  return {...input, signerPem: publicKey.export({type: 'spki', format: 'pem'})};
-}, /./);
 
 // AWAI-3775: the root-signed key list. Synthetic pointer and catalog, read from memory.
 const keyListInput = ({signPointer, signCatalog, signList, listRoot} = {}) => {
