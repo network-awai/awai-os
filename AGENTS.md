@@ -90,12 +90,15 @@ installs, wire active code to `archive/`, or re-add their workflows.
 
 ## Awai Otehon UI: Figma design first (AWAI-538)
 
-For Otehon UI work, follow [the design-first contract](docs/otehon/design-first.md)
-and its [pinned baseline](docs/otehon/ui-baseline.json). Preserve the existing
-Core / Apps / System navigation, Manimani workspace and docks. Design affected
-states in Figma before changing UI code; implement within the existing shell,
-then compare rendered screens and verify on 6600H. Do not substitute the rejected
-standalone `/workspace/` candidate or treat a fixture as physical acceptance.
+For Awai OS and Otehon UI work, follow [the design-first contract](docs/otehon/design-first.md).
+Design affected states in Figma before changing UI code, then compare rendered
+screens and verify on the target Android device or emulator. The earlier
+requirement to preserve the Core / Apps / System navigation, Manimani workspace
+and docks, and to implement only within the existing shell, is withdrawn (owner
+decision 2026-11-22, AWAI-3770; see Product OS direction above). The
+[pinned baseline](docs/otehon/ui-baseline.json) records the former Otehon
+desktop composition as history; it does not constrain new screens. Do not treat
+a fixture as physical acceptance.
 This owner-selected Figma contract controls visual composition; source code and
 tests remain evidence of actual behavior, not proof that the design is accepted.
 
