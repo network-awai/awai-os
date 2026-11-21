@@ -88,8 +88,11 @@ class SpeechPlugin(private val owner:Activity):Plugin(owner){
  }
  @PermissionCallback fun microphoneResult(invoke:Invoke){if(getPermissionState("microphone")==PermissionState.GRANTED)begin(invoke)else invoke.reject("microphone-denied")}
  private fun begin(invoke:Invoke){
-  AlertDialog.Builder(owner).setTitle("音声会話を始める")
-   .setMessage("Bot: "+invoke.getArgs().getString("botId").removePrefix("profile:")+"\nマイクと読み上げを最大3分間、この端末で使います。音声は保存・送信しません。文字だけを送る音声会話の接続先と上限は、別の画面で確認します。")
+  val botId=invoke.getArgs().getString("botId")
+  val description=if(botId=="profile:local-conversation")
+   "Murakumo の端末内会話でマイクと読み上げを最大3分間使います。音声と文字は外部に送信しません。"
+   else "Bot: "+botId.removePrefix("profile:")+"\nマイクと読み上げを最大3分間、この端末で使います。音声は保存・送信しません。文字だけを送る音声会話の接続先と上限は、別の画面で確認します。"
+  AlertDialog.Builder(owner).setTitle("音声会話を始める").setMessage(description)
    .setNegativeButton("キャンセル"){_,_->invoke.reject("speech-denied")}.setOnCancelListener{invoke.reject("speech-denied")}
    .setPositiveButton("始める"){_,_->
     if(!busy.compareAndSet(false,true)){invoke.reject("speech-busy");return@setPositiveButton}

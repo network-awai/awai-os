@@ -17,6 +17,8 @@ struct AndroidAgentTransport(tauri::plugin::PluginHandle<tauri::DynRuntime>);
 #[cfg(target_os="android")]
 struct AndroidSpeech(tauri::plugin::PluginHandle<tauri::DynRuntime>);
 #[cfg(target_os = "android")]
+struct HostAccount(tauri::plugin::PluginHandle<tauri::DynRuntime>);
+#[cfg(target_os = "android")]
 struct AndroidScreenTools(tauri::plugin::PluginHandle<tauri::DynRuntime>);
 
 #[tauri::command]
@@ -62,6 +64,25 @@ async fn awai_local_inference(app:tauri::AppHandle,request:serde_json::Value)->R
  #[cfg(not(target_os="android"))]{let _=app;Err("android-only".into())}
 }
 #[tauri::command]
+async fn awai_host_account(app: tauri::AppHandle, nonce: String) -> Result<serde_json::Value, String> {
+    if nonce.len() != 36 {
+        return Err("invalid-host-account-nonce".into());
+    }
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        app.state::<HostAccount>().0
+            .run_mobile_plugin_async("proof", serde_json::json!({ "nonce": nonce }))
+            .await
+            .map_err(|_| "host-account-unavailable".into())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Err("android-only".into())
+    }
+}
+#[tauri::command]
 fn awai_host_info() -> serde_json::Value {
     serde_json::json!({
         "schema": "awai.shell.host.v1",
@@ -85,6 +106,19 @@ pub fn run() {
  #[cfg(target_os="android")]{use tauri::Manager;let h=_api.register_android_plugin("network.itonami.app","AgentTransportPlugin")?;_app.manage(AndroidAgentTransport(h));}Ok(())}).build())
         .plugin(tauri::plugin::Builder::<tauri::DynRuntime,()>::new("awai-speech").setup(|_app,_api|{
  #[cfg(target_os="android")]{use tauri::Manager;let h=_api.register_android_plugin("network.awai.speech","SpeechPlugin")?;_app.manage(AndroidSpeech(h));}Ok(())}).build())
+        .plugin(tauri::plugin::Builder::<tauri::DynRuntime, ()>::new("awai-host-account")
+            .setup(|app, api| {
+                #[cfg(target_os = "android")]
+                {
+                    use tauri::Manager;
+                    let handle = api.register_android_plugin("network.itonami.app", "HostAccountPlugin")?;
+                    app.manage(HostAccount(handle));
+                }
+                #[cfg(not(target_os = "android"))]
+                let _ = (app, api);
+                Ok(())
+            })
+            .build())
         .plugin(tauri::plugin::Builder::<tauri::DynRuntime, ()>::new("awai-screen-tools")
             .setup(|app, api| {
                 #[cfg(target_os = "android")]
@@ -98,7 +132,7 @@ pub fn run() {
                 Ok(())
             })
             .build())
-        .invoke_handler(tauri::generate_handler![awai_host_info,awai_local_inference,awai_setup_state,awai_agent_transport,awai_local_speech,awai_screen_tools])
+        .invoke_handler(tauri::generate_handler![awai_host_info,awai_host_account,awai_local_inference,awai_setup_state,awai_agent_transport,awai_local_speech,awai_screen_tools])
         .run(tauri::generate_context!())
         .expect("Itonami initialization failed");
 }
