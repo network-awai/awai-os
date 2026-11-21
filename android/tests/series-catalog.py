@@ -62,14 +62,16 @@ def main():
             shutil.rmtree(stage)
 
         def app_input(root, source, *, group, release_id=None, release_source=None, version='0.1.0', apk_version=None,
-                      package=None, operations=(), descriptor_digest=None, label=None, commit=None):
+                      package=None, operations=(), descriptor_digest=None, label=None, commit=None, dirty=False):
             d = root / source; d.mkdir(parents=True)
             pid = 'network.itonami.' + source.replace('-', '')
             descriptor = json.dumps({'schema': 'kotoba.app.client-runtime.v1', 'operations': list(operations)}).encode()
             (d / 'descriptor.json').write_bytes(descriptor)
             release = {'schema': 'awai.app.artifact.v1', 'id': release_id or pid, 'source': release_source or 'cloud-itonami-' + source,
                        'version': version, 'files': {'descriptor.json': descriptor_digest or hashlib.sha256(descriptor).hexdigest()}}
-            if commit: release['commit'] = commit
+            # As the series app build writes them: source_commit (40 hex, or null without git) and dirty (true/false/null).
+            release['source_commit'] = commit
+            if dirty != 'absent': release['dirty'] = dirty
             (d / 'release.json').write_text(json.dumps(release))
             apk(d / 'app-release.apk', package or pid, apk_version or version, label or f'Series test {source}', group)
 
@@ -90,6 +92,14 @@ def main():
         app_input(good, 'isic-7810', group='isic-N')
         app_input(good, 'isic-6209', group='isic-J')
         app_input(good, 'isco-2423', group='isco-2')
+        # The real table marks the four ISCO-08 apps with their repositories' commits; the basic run uses a copy
+        # without the marks, and the marks have their own checks below.
+        marks = {a['source']: a['iscoSource'] for a in table['apps'] if a['source'].startswith('isco-')}
+        check('the real table marks the four ISCO-08 apps with the commits that added their source text',
+              marks == {'isco-2423': {'commit': '5bf9ea32d105d679254d8f48f61c7cc8d5fb177e'}, 'isco-3333': {'commit': '29773278fee35c246dc7e0c4033d5e69f5734113'},
+                        'isco-4311': {'commit': 'b796093e8996567909347036e9445f68034701ea'}, 'isco-2411': {'commit': '4e578b83efc0050a2de772f7736b7916e525808b'}}, str(marks))
+        for a in table['apps']:
+            if a['source'].startswith('isco-'): a['iscoSource'] = None
         tab = write_table(table)
         r = generate(good, tab)
         check('generator succeeds', r.returncode == 0, r.stderr)
@@ -98,7 +108,7 @@ def main():
         check('lists the two ISIC apps in table order', [a['id'] for a in raw['apps']] == ['network.itonami.isic7810', 'network.itonami.isic6209'])
         excluded = {e['source']: e['reason'] for e in report['excluded']}
         check('leaves out the ISCO-08 app whose source is unchecked', excluded.get('isco-2423') == 'isco-source-unchecked')
-        check('leaves out every ISCO-08 app of the real table (none is checked yet)',
+        check('leaves out every unmarked ISCO-08 app',
               all(excluded.get(a['source']) == 'isco-source-unchecked' for a in table['apps'] if a['source'].startswith('isco-')))
         check('leaves out apps with no APK yet', excluded.get('isic-7820') == 'no-apk' and excluded.get('isic-8020') == 'no-apk')
         entry = next((a for a in raw['apps'] if a['id'] == 'network.itonami.isic7810'), {})
@@ -138,13 +148,23 @@ def main():
         check('carries the base catalog entries and appends the series apps', r.returncode == 0 and len(carried['apps']) == 10
               and [a['id'] for a in carried['apps']][-2:] == ['network.itonami.isic7810', 'network.itonami.isic6209'], r.stderr)
 
+        # A build from uncommitted changes, or with an unknown state, is left out, for every app.
+        for label, dirty in (('dirty true', True), ('dirty null', None), ('no dirty field', 'absent')):
+            root = t / ('dirty-' + label.replace(' ', '-'))
+            app_input(root, 'isic-7810', group='isic-N', commit='1' * 40, dirty=dirty)
+            out = 'dirty-' + label.replace(' ', '-') + '.json'
+            r = generate(root, tab, out)
+            rep = json.loads((t / (out + '.report')).read_text()) if r.returncode == 0 else {'listed': [], 'excluded': []}
+            check(f'leaves out a release with {label} as release-dirty', r.returncode == 0 and rep['listed'] == []
+                  and {e['source']: e['reason'] for e in rep['excluded']}.get('isic-7810') == 'release-dirty', r.stderr)
+
         # An ISCO-08 app marked with the commit that added its source text: listed only when its release.json records
         # that commit or a later one.
         checked = json.loads(json.dumps(table)); next(a for a in checked['apps'] if a['source'] == 'isco-2423')['iscoSource'] = {'commit': commits['source']}
         ctab = write_table(checked, 'checked.json')
         for label, commit, listed, reason in (('the marked commit', commits['source'], True, None), ('a later commit', commits['after'], True, None),
                                               ('an earlier commit', commits['before'], False, 'built-before-isco-source'),
-                                              ('no commit in release.json', None, False, 'release-without-commit')):
+                                              ('no source_commit in release.json', None, False, 'release-without-commit')):
             root = t / ('isco-' + label.replace(' ', '-'))
             app_input(root, 'isco-2423', group='isco-2', commit=commit)
             out = 'isco-' + label.replace(' ', '-') + '.json'

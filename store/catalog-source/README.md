@@ -24,12 +24,12 @@ the repositories' current `main`); the series build stamps `network.itonami.<sch
   one key per ISIC Rev.4 section and per ISCO-08 major group; first-party apps have one key each (decision on
   AWAI-3771). `android/series-catalog.py` checks that each app's group follows from its code. In development,
   every group's signer is the Android debug identity `2507930b…`.
-- **ISCO-08 source text.** An ISCO-08 app stays out of the generated catalog until `iscoSource` names the commit
-  that added the ISCO-08 source text, and the app's `release.json` records a `commit` that is that one or later
-  (checked in a local clone with `--repos`). The series `release.json` does not record a commit yet, so no
-  ISCO-08 app is marked: App Build has added the source text (isco-2423 `5bf9ea3`, isco-3333 `2977327`, isco-4311
-  `b796093`, isco-2411 `4e578b8`), and the mark goes in once the build records the commit.
-
+- **ISCO-08 source text.** An ISCO-08 app stays out of the generated catalog until `iscoSource.commit` names the
+  commit that added the ISCO-08 source text, and the app's `release.json` records a `source_commit` that is that one
+  or later (checked in a local clone with `--repos`). Marked (2026-11-22): isco-2423 `5bf9ea32…`, isco-3333
+  `29773278…`, isco-4311 `b796093e…`, isco-2411 `4e578b83…` (AWAI-3629 attribution commits).
+- **Clean builds only.** The series build writes `source_commit` (40 hex, or null without git) and `dirty`
+  (true, false or null) into `release.json`. Any app whose `dirty` is not `false` is left out as `release-dirty`.
 - **Which packages the Store admits.** The signed catalog decides. `Catalog.java` admits any
   `network.itonami.<one lowercase segment>` that the catalog lists, with the asset `packages/<segment>.apk`, the
   download name `online-<segment>.apk` and a 64 MiB ceiling; the catalog's APK asset must be exactly that name. No
