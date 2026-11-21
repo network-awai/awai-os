@@ -96,26 +96,26 @@
        [status set-status] (useState nil)
        stop (fn []
               (when-let [run (.-current active)]
-               (set! (.-cancelled run) true)
+               (vreset! run true)
                (-> (stopSpeech) (.catch (fn [_] nil)))))
        run (fn [kind]
              (when-not (or busy (.-current active))
-              (let [turn #js {:cancelled false}]
+              (let [turn (volatile! false)]
                (set! (.-current active) turn)
                (set-busy true) (set-action kind) (set-status nil)
                (-> (beginSpeech scope)
                 (.then (fn [session]
-                         (when-not (.-cancelled turn)
+                         (when-not @turn
                           (if (= kind "listen") (listenSpeech session)
                            (speakSpeech session (.slice reply 0 512))))))
                 (.finally stopSpeech)
                 (.then (fn [result]
-                         (when (and (not (.-cancelled turn)) (= kind "listen"))
+                         (when (and (not @turn) (= kind "listen"))
                           (if-let [heard (not-empty (.trim (.-text result)))]
                            (set-text (fn [draft] (if (seq draft) (str draft "\n" heard) heard)))
                            (set-status "音声を認識できませんでした。")))))
                 (.catch (fn [_]
-                          (when-not (.-cancelled turn)
+                          (when-not @turn
                            (set-status "端末内の音声機能を使えませんでした。マイクの許可と音声モデルを確認してください。"))))
                 (.finally (fn [] (set! (.-current active) nil) (set-action nil) (set-busy false)))))))]
   (useEffect

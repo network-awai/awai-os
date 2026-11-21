@@ -938,3 +938,14 @@ Object.prototype.issueWnfsAccountProof;
 Object.prototype.screenToolsAvailable;
 
 Object.prototype.screenTool;
+
+// The native Awai Home IPC result and host account proof.
+Object.prototype.issueHostAccountProof;
+Object.prototype.uid;
+Object.prototype.proof;
+Object.prototype.claim;
+Object.prototype.expires;
+Object.prototype.issued;
+Object.prototype.host;
+Object.prototype.fromBase64Url;
+Object.prototype.toBase64Url;
