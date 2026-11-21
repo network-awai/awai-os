@@ -1,0 +1,4 @@
+# ISCO-08 source marks (AWAI-3629): the commit that added the final ISCO-08 source text to each repository, and
+# whether the app has a Japanese name (our translation). Read by android/series-catalog.py; applies only to apps in
+# series-apps.json. Add rows with android/isco-source-add.py from a batch TSV.
+repo	commit	ja

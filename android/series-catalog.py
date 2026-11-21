@@ -8,15 +8,18 @@ DIR holds one directory per series app, named by its source (for example DIR/isc
 release.json and descriptor.json (from `app/dist/` of the app repository) and its APK (one *.apk file).
 
 The table (store/catalog-source/series-apps.json) is the authority for which apps may be listed, in App Cycle
-order: package id, repository, APK signing-key group and, for ISCO-08 apps, the commit that added the ISCO-08
-source text (`iscoSource`, null until checked). release.json carries no APK signer, so the expected signer comes from the app's group.
+order: package id, repository and APK signing-key group. ISCO-08 source marks are in a separate file,
+store/catalog-source/isco-source.tsv (repo, commit that added the ISCO-08 source text, ja), and apply only to apps
+in the table. Each listed ISCO-08 app's description ends with the ILO reference built from its code (AWAI-3629):
+English always, Japanese as well when ja is true. release.json carries no APK signer, so the expected signer comes from the app's group.
 
 An app is listed only when all of these hold; otherwise the run stops with the reason:
 - release.json is awai.app.artifact.v1, its id is the table's package id, and its source is the repository's;
 - descriptor.json has the digest release.json pins, and declares no external operation;
 - the APK's package, versionName and single signer are the table id, the release version and the group's signer;
 - the APK fits the table's byte ceiling, and its label fits the catalog's 80 characters.
-Left out, without stopping the run (the report says why): an ISCO-08 app whose source is not yet checked
+Left out, without stopping the run (the report says why): an app matching a hold in store/catalog-source/hold.json
+(held, with the hold's reason and who lifts it; checked first), an ISCO-08 app whose source is not yet checked
 (isco-source-unchecked), an app whose release.json does not say dirty false (release-dirty: built from uncommitted
 changes, or unknown), an ISCO-08 app whose release.json has no source_commit (release-without-commit) or one before
 the marked commit (built-before-isco-source, checked in a clone under --repos), and an app with no input directory
@@ -28,10 +31,20 @@ null when the build had no git) and dirty (true, false or null), as written by t
 The output is the catalog body (itonami.store.bundled.v1). Sign it with a catalog key from the Store's key list:
 `python3 android/sign-catalog-envelope.py --raw OUT ...`. Nothing is signed, committed or published here.
 """
-import argparse, hashlib, json, pathlib, re, subprocess, sys, time
+import argparse, fnmatch, hashlib, json, pathlib, re, subprocess, sys, time
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 TABLE = ROOT / 'store/catalog-source/series-apps.json'
+ISCO_SOURCE = ROOT / 'store/catalog-source/isco-source.tsv'
+HOLD = ROOT / 'store/catalog-source/hold.json'
+ISCO_REPO = re.compile(r'^cloud-itonami/app-itonami-cloud-itonami-(isco-[0-9]{4}(?:-[0-9a-z]+)*)$')
+
+# AWAI-3629 (Legal, Decision): the ILO reference shown with each ISCO-08 app, one per app, built from its code.
+# No list of codes and names, and no ILO logo.
+ISCO_ATTRIBUTION_EN = ('Occupation reference: ISCO-08 (International Labour Organization, 2012), code {code}. '
+                       'This app is not produced, reviewed or endorsed by the ILO.')
+ISCO_ATTRIBUTION_JA = ('職業の参照: ISCO-08（国際労働機関 ILO、2012 年）のコード {code}。日本語の名称は当方の訳です。'
+                       'この app は ILO が作成・確認・推奨したものではありません。')
 SDK_TOOLS = pathlib.Path.home() / 'Library/Android/sdk/build-tools/36.1.0'
 ISIC_SECTIONS = [('A', 1, 3), ('B', 5, 9), ('C', 10, 33), ('D', 35, 35), ('E', 36, 39), ('F', 41, 43), ('G', 45, 47),
                  ('H', 49, 53), ('I', 55, 56), ('J', 58, 63), ('K', 64, 66), ('L', 68, 68), ('M', 69, 75), ('N', 77, 82),
@@ -67,7 +80,22 @@ def package_of(source):
     return 'network.itonami.' + source.replace('-', '')
 
 
-def check_table(table):
+def read_holds(value):
+    """hold.json: patterns of sources kept out of the catalog, each with its reason and who decides to lift it."""
+    if not isinstance(value, dict) or value.get('schema') != 'awai.store.catalog-hold.v1' or not isinstance(value.get('holds'), list):
+        raise Refused('hold.json: not awai.store.catalog-hold.v1')
+    for h in value['holds']:
+        if not (isinstance(h, dict) and isinstance(h.get('pattern'), str) and re.fullmatch(r'[a-z0-9*-]{1,64}', h['pattern'])
+                and all(isinstance(h.get(k), str) and h[k].strip() for k in ('reason', 'decidedBy'))):
+            raise Refused(f'hold.json: each hold needs a pattern (a-z, 0-9, -, *), a reason and decidedBy: {h!r}')
+    return value['holds']
+
+
+def held_by(source, holds):
+    return next((h for h in holds if fnmatch.fnmatchcase(source, h['pattern'])), None)
+
+
+def check_table(table, holds=()):
     if table.get('schema') != 'awai.store.series-apps.v1':
         raise Refused('table: not awai.store.series-apps.v1')
     groups, seen, ranks = table['groups'], set(), []
@@ -76,6 +104,13 @@ def check_table(table):
             raise Refused(f'table: group {g} has no signer')
     for a in table['apps']:
         s = a['source']
+        if held_by(s, holds):
+            # A held app is left out before anything else; its other fields are not checked while it is held.
+            if a['id'] in seen:
+                raise Refused(f'table: {a["id"]} is listed twice')
+            seen.add(a['id'])
+            ranks.append(a['rank'])
+            continue
         if a['id'] != package_of(s):
             raise Refused(f'table: {s} has package id {a["id"]}, the series build stamps {package_of(s)}')
         if a['repo'] != 'cloud-itonami/app-itonami-cloud-itonami-' + s:
@@ -84,12 +119,8 @@ def check_table(table):
             raise Refused(f'table: {s} is in group {a["group"]}, its code puts it in {group_of(s)}')
         if a['group'] not in groups:
             raise Refused(f'table: {s} names group {a["group"]}, which has no signer')
-        if s.startswith('isco-'):
-            if 'iscoSource' not in a:
-                raise Refused(f'table: ISCO-08 app {s} has no iscoSource mark (null until its source text is checked)')
-            mark = a['iscoSource']
-            if mark is not None and not (isinstance(mark, dict) and set(mark) == {'commit'} and re.fullmatch(r'[0-9a-f]{40}', mark['commit'])):
-                raise Refused(f'table: ISCO-08 app {s} has an iscoSource mark that is not {{"commit": <40 hex>}}')
+        if 'iscoSource' in a:
+            raise Refused(f'table: {s} has an iscoSource field; ISCO-08 source marks live in isco-source.tsv')
         if a['id'] in seen:
             raise Refused(f'table: {a["id"]} is listed twice')
         seen.add(a['id'])
@@ -150,7 +181,8 @@ def entry(app, directory, table):
         raise Refused(f'{s}: APK label is missing or longer than 80 characters')
     slug = app['id'].split('.')[-1]
     return {
-        'id': app['id'], 'name': f['label'], 'description': app['description'], 'publisher': table['publisher'],
+        'id': app['id'], 'name': f['label'], 'publisher': table['publisher'],
+        'description': app['description'] + ('\n\n' + isco_attribution(s, app['iscoSource']['ja']) if s.startswith('isco-') else ''),
         'versionCode': f['versionCode'], 'versionName': f['versionName'], 'operations': [],
         'artifacts': [{'platform': 'android', 'runtime': 'android', 'kind': 'apk', 'asset': f'packages/{slug}.apk',
                        'bytes': f['bytes'], 'sha256': f['sha256'], 'signerSha256': expected}],
@@ -175,14 +207,55 @@ def built_after_source(app, release, repos):
     return None if r.returncode == 0 else 'built-before-isco-source'
 
 
-def generate(table, inputs, revision, expires_at, base=None, repos=None):
-    check_table(table)
+def read_isco_marks(text):
+    """isco-source.tsv: a header `repo<TAB>commit<TAB>ja`, then one row per ISCO-08 repository whose source text is
+    checked. commit is the 40-hex commit that added it; ja is true when the app has a Japanese name (our translation).
+    Lines starting with # and blank lines are ignored. Anything else malformed refuses the whole file."""
+    rows = [l for l in text.split('\n') if l.strip() and not l.startswith('#')]
+    if not rows or rows[0] != 'repo\tcommit\tja':
+        raise Refused('isco-source.tsv: the first line must be the header repo<TAB>commit<TAB>ja')
+    marks = {}
+    for n, line in enumerate(rows[1:], 2):
+        f = line.split('\t')
+        if len(f) != 3:
+            raise Refused(f'isco-source.tsv row {n}: expected 3 tab-separated fields')
+        repo, commit, ja = f
+        if not ISCO_REPO.match(repo):
+            raise Refused(f'isco-source.tsv row {n}: {repo!r} is not an ISCO-08 series repository')
+        if not re.fullmatch(r'[0-9a-f]{40}', commit):
+            raise Refused(f'isco-source.tsv row {n}: commit {commit!r} is not 40 lowercase hex characters')
+        if ja not in ('true', 'false'):
+            raise Refused(f'isco-source.tsv row {n}: ja must be true or false')
+        if repo in marks:
+            raise Refused(f'isco-source.tsv row {n}: {repo} is listed twice')
+        marks[repo] = {'commit': commit, 'ja': ja == 'true'}
+    return marks
+
+
+def isco_attribution(source, ja):
+    """The ILO reference for one ISCO-08 app, in English, and in Japanese too when the app has a Japanese name."""
+    code = SOURCE.match(source).group(2)
+    text = ISCO_ATTRIBUTION_EN.format(code=code)
+    return text + '\n' + ISCO_ATTRIBUTION_JA.format(code=code) if ja else text
+
+
+def generate(table, inputs, revision, expires_at, base=None, repos=None, marks=None, holds=()):
+    check_table(table, holds)
+    marks = marks or {}
+    # Marks apply only to apps in the table; a row for any other repository changes nothing.
+    table = json.loads(json.dumps(table))
+    for app in table['apps']:
+        app['iscoSource'] = marks.get(app['repo']) if app['source'].startswith('isco-') else None
     listed, excluded, apps = [], [], []
     if base:
         apps = list(base['apps'])
     present = {a['id'] for a in apps}
     for app in table['apps']:
         s = app['source']
+        hold = held_by(s, holds)
+        if hold:
+            excluded.append({'source': s, 'id': app['id'], 'reason': 'held', 'hold': hold['reason'], 'decidedBy': hold['decidedBy']})
+            continue
         if s.startswith('isco-') and app['iscoSource'] is None:
             excluded.append({'source': s, 'id': app['id'], 'reason': 'isco-source-unchecked'})
             continue
@@ -220,6 +293,8 @@ def main():
     ap.add_argument('--table', type=pathlib.Path, default=TABLE)
     ap.add_argument('--expires-days', type=int, default=60)
     ap.add_argument('--report', type=pathlib.Path)
+    ap.add_argument('--hold', type=pathlib.Path, default=HOLD, help='hold list (patterns, reasons, who lifts them)')
+    ap.add_argument('--isco-source', type=pathlib.Path, default=ISCO_SOURCE, help='ISCO-08 source marks (repo, commit, ja)')
     ap.add_argument('--repos', type=pathlib.Path, help='directory of app repository clones, one per source, for the ISCO-08 source commit check')
     a = ap.parse_args()
     if a.revision < 1 or not 1 <= a.expires_days <= 365:
@@ -228,7 +303,8 @@ def main():
     if base and a.revision <= base['revision']:
         ap.error(f'--revision must be above the base revision {base["revision"]}')
     try:
-        catalog, report = generate(json.loads(a.table.read_text()), a.inputs, a.revision, int(time.time()) + a.expires_days * 86400, base, a.repos)
+        catalog, report = generate(json.loads(a.table.read_text()), a.inputs, a.revision, int(time.time()) + a.expires_days * 86400, base, a.repos,
+                                   read_isco_marks(a.isco_source.read_text(encoding='utf-8')), read_holds(json.loads(a.hold.read_text(encoding='utf-8'))))
     except Refused as e:
         sys.exit(f'refused: {e}')
     a.out.write_text(json.dumps(catalog, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
