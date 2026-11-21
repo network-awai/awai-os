@@ -1,0 +1,118 @@
+{
+ "schema": "awai.store.series-apps.v1",
+ "note": "Series apps for the Store catalog, in App Cycle order (the order App Build makes APKs). release.json carries no APK signer, so this table maps each app to its APK signing-key group: one key per ISIC section and per ISCO-08 major group (AWAI-3771). Development: every group is still the Android debug identity. An ISCO-08 app is left out of the generated catalog until iscoSource names the commit that added the ISCO-08 source text ({\"commit\": <40 hex>}), and its release.json records a commit that is that one or a later one. Series release.json does not record a commit yet (2026-11-22), so no ISCO-08 app is marked.",
+ "publisher": "Awai Otehon 開発版",
+ "maxApkBytes": 67108864,
+ "groups": {
+  "isco-2": {
+   "signerSha256": "2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29",
+   "development": true
+  },
+  "isco-3": {
+   "signerSha256": "2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29",
+   "development": true
+  },
+  "isco-4": {
+   "signerSha256": "2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29",
+   "development": true
+  },
+  "isic-J": {
+   "signerSha256": "2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29",
+   "development": true
+  },
+  "isic-M": {
+   "signerSha256": "2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29",
+   "development": true
+  },
+  "isic-N": {
+   "signerSha256": "2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29",
+   "development": true
+  }
+ },
+ "apps": [
+  {
+   "rank": 1,
+   "source": "isco-2423",
+   "id": "network.itonami.isco2423",
+   "repo": "cloud-itonami/app-itonami-cloud-itonami-isco-2423",
+   "group": "isco-2",
+   "description": "ISCO-08 2423 の系列アプリ（開発版）。記録と判断はこの端末の中だけで行い、外部への送信はありません。",
+   "iscoSource": null
+  },
+  {
+   "rank": 2,
+   "source": "isic-7810",
+   "id": "network.itonami.isic7810",
+   "repo": "cloud-itonami/app-itonami-cloud-itonami-isic-7810",
+   "group": "isic-N",
+   "description": "ISIC Rev.4 7810 の系列アプリ（開発版）。記録と判断はこの端末の中だけで行い、外部への送信はありません。"
+  },
+  {
+   "rank": 3,
+   "source": "isic-7820",
+   "id": "network.itonami.isic7820",
+   "repo": "cloud-itonami/app-itonami-cloud-itonami-isic-7820",
+   "group": "isic-N",
+   "description": "ISIC Rev.4 7820 の系列アプリ（開発版）。記録と判断はこの端末の中だけで行い、外部への送信はありません。"
+  },
+  {
+   "rank": 4,
+   "source": "isco-3333",
+   "id": "network.itonami.isco3333",
+   "repo": "cloud-itonami/app-itonami-cloud-itonami-isco-3333",
+   "group": "isco-3",
+   "description": "ISCO-08 3333 の系列アプリ（開発版）。記録と判断はこの端末の中だけで行い、外部への送信はありません。",
+   "iscoSource": null
+  },
+  {
+   "rank": 5,
+   "source": "isco-4311",
+   "id": "network.itonami.isco4311",
+   "repo": "cloud-itonami/app-itonami-cloud-itonami-isco-4311",
+   "group": "isco-4",
+   "description": "ISCO-08 4311 の系列アプリ（開発版）。記録と判断はこの端末の中だけで行い、外部への送信はありません。",
+   "iscoSource": null
+  },
+  {
+   "rank": 6,
+   "source": "isco-2411",
+   "id": "network.itonami.isco2411",
+   "repo": "cloud-itonami/app-itonami-cloud-itonami-isco-2411",
+   "group": "isco-2",
+   "description": "ISCO-08 2411 の系列アプリ（開発版）。記録と判断はこの端末の中だけで行い、外部への送信はありません。",
+   "iscoSource": null
+  },
+  {
+   "rank": 7,
+   "source": "isic-7120-cyberassurance",
+   "id": "network.itonami.isic7120cyberassurance",
+   "repo": "cloud-itonami/app-itonami-cloud-itonami-isic-7120-cyberassurance",
+   "group": "isic-M",
+   "description": "ISIC Rev.4 7120 の系列アプリ（開発版）。記録と判断はこの端末の中だけで行い、外部への送信はありません。"
+  },
+  {
+   "rank": 8,
+   "source": "isic-6209",
+   "id": "network.itonami.isic6209",
+   "repo": "cloud-itonami/app-itonami-cloud-itonami-isic-6209",
+   "group": "isic-J",
+   "description": "ISIC Rev.4 6209 の系列アプリ（開発版）。記録と判断はこの端末の中だけで行い、外部への送信はありません。"
+  },
+  {
+   "rank": 9,
+   "source": "isic-8020",
+   "id": "network.itonami.isic8020",
+   "repo": "cloud-itonami/app-itonami-cloud-itonami-isic-8020",
+   "group": "isic-N",
+   "description": "ISIC Rev.4 8020 の系列アプリ（開発版）。記録と判断はこの端末の中だけで行い、外部への送信はありません。"
+  },
+  {
+   "rank": 10,
+   "source": "isic-6311-chainexplorer",
+   "id": "network.itonami.isic6311chainexplorer",
+   "repo": "cloud-itonami/app-itonami-cloud-itonami-isic-6311-chainexplorer",
+   "group": "isic-J",
+   "description": "ISIC Rev.4 6311 の系列アプリ（開発版）。記録と判断はこの端末の中だけで行い、外部への送信はありません。"
+  }
+ ]
+}
