@@ -109,6 +109,7 @@ public abstract class HostActivity extends Activity {
             }
             @Override public void onPageFinished(WebView view,String url) { ready=true; }
         });
+        if("store".equals(mode()))AutoUpdater.sync(this);
         web.loadUrl(ORIGIN+"/awai/index.html");
         getOnBackInvokedDispatcher().registerOnBackInvokedCallback(0,()->web.evaluateJavascript("window.awaiBack ? window.awaiBack() : false",result->{ if (!"true".equals(result) && !"home".equals(mode())) finish(); }));
     }
@@ -243,11 +244,14 @@ public abstract class HostActivity extends Activity {
             try{UpdatePolicy.Approval a=loadApproval();long now=System.currentTimeMillis()/1000;JSONObject o=new JSONObject();
                 o.put("enabled",a.enabled);o.put("active",a.enabled&&a.grantedAt<=now&&a.expiresAt>now);
                 o.put("expiresAt",a.expiresAt);o.put("unmeteredOnly",a.unmeteredOnly);o.put("excluded",new JSONArray(a.excludedApps));
-                o.put("developmentKey",true);o.put("running",false);return o.toString();
+                o.put("developmentKey",true);
+                android.app.job.JobScheduler js=getSystemService(android.app.job.JobScheduler.class);
+                o.put("running",js!=null&&js.getPendingJob(AutoUpdater.JOB_ID)!=null);
+                o.put("log",new JSONArray(AutoUpdater.logJson(HostActivity.this)));return o.toString();
             }catch(Exception e){return "{}";}
         }
         @JavascriptInterface public void requestAutoUpdate(boolean unmeteredOnly){if(!"store".equals(mode()))return;runOnUiThread(()->confirmAutoUpdate(unmeteredOnly));}
-        @JavascriptInterface public void revokeAutoUpdate(){if(!"store".equals(mode()))return;saveApproval(UpdateApprovalRecord.revoke(loadApproval()));message("自動更新を止めました。更新はこれまでどおり毎回確認します。");}
+        @JavascriptInterface public void revokeAutoUpdate(){if(!"store".equals(mode()))return;saveApproval(UpdateApprovalRecord.revoke(loadApproval()));AutoUpdater.sync(HostActivity.this);message("自動更新を止めました。更新はこれまでどおり毎回確認します。");}
         @JavascriptInterface public void excludeFromAutoUpdate(String id){if(!"store".equals(mode()))return;
             try{Catalog.assetFor(id);}catch(SecurityException unknown){return;}
             saveApproval(UpdateApprovalRecord.exclude(loadApproval(),id));message("このアプリは自動更新の対象外にしました。");}
@@ -284,6 +288,9 @@ public abstract class HostActivity extends Activity {
             +"この版の配布は開発用の署名鍵です。本番の鍵はまだありません。";
         confirmNative("自動更新を有効にしますか？",body,"自動更新を有効にする",()->{
             saveApproval(UpdateApprovalRecord.grant(System.currentTimeMillis()/1000,unmeteredOnly,loadApproval().excludedApps));
+            AutoUpdater.sync(this);
+            if(checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)
+                requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS},11);
             message("自動更新を有効にしました。");
         });
     }
