@@ -47,6 +47,31 @@ The file is append-only. A failure that shows up later is added as a new
 `failure` line; the earlier `reviewed` line stays as the record of what was
 known then, and the failure line wins.
 
+## Weekly run
+
+Once a week (AWAI-3709), from a checkout of `main`:
+
+```
+node otehon/dev-bots/dora.mjs --discover --since <Monday of the week under review> --report --check
+```
+
+`--discover` searches every owned organisation for merged `muse/*` pull
+requests, so a repository nobody listed still shows up as not looked at. Pass
+`--state <queue-sync state dir>` on the host that has one, for lead times.
+
+1. Post the report as a comment on AWAI-3608. Do not edit the numbers.
+2. Exit code 1 means the ledger has a problem. Report it; do not "fix" the
+   ledger to make the check pass.
+3. The run does not classify. "Not looked at yet" is work for a person or a
+   session that follows "How to look at a change" above and opens a pull
+   request, which the owner merges.
+4. The owner reviews the lines under "Borderline decisions to review" and the
+   table under "What counts". A changed decision is a new ledger line or an
+   edit to this file, through a pull request.
+
+A week whose changes are not all looked at prints `unknown` for the fail rate
+and the rework rate. That is the correct output, not an error.
+
 ## Limits
 
 - "No later change touches its files" is weak evidence for a change that was
