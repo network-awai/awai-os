@@ -513,9 +513,9 @@
      #js [zenoh matter open did])
     [:<>
      (when (and android? host-checking (nil? route) (not open))
-      [:main.chat [:p {:role "status"} "Awai OS のアカウントを確認しています。"]])
+      [:main.chat.net-view.android-entry [:div.net-body [:p {:role "status"} "Awai OS のアカウントを確認しています。"]]])
      (when android?
-      [:div {:hidden (or (not local?) (and host-checking (nil? route)))}
+      [:div.android-entry {:hidden (or (not local?) (and host-checking (nil? route)))}
        [:main.chat.net-view
         [:div.net-body
          [:header
@@ -529,7 +529,7 @@
       (if-not open
        [:<>
         (when android?
-         [:button.secondary {:type "button" :on-click go-local} "端末内の会話に戻る"])
+         [:button.secondary.android-entry {:type "button" :on-click go-local} "端末内の会話に戻る"])
         (when (and android? host-paused)
           [:button.secondary {:type "button" :on-click
                               #(do (set-host-paused false) (set-route nil)
@@ -568,7 +568,6 @@
        (saveTheme js/undefined theme) js/undefined)
      #js [theme])
     [:<>
-     [:f> app]
      [:div.system-status
       [:f> network-indicator]
       [:fieldset.theme-switcher {:aria-label "テーマ"}
@@ -578,7 +577,8 @@
                         :aria-pressed (= theme theme-name)
                         :on-click #(set-theme theme-name)}
               theme-name])
-           THEMES)]]]))
+           THEMES)]]
+     [:f> app]]))
 
 (defn init []
   (let [root (rdom/create-root (.getElementById js/document "root"))]

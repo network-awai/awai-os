@@ -298,6 +298,8 @@
    [:.system-status {:position "fixed" :z-index 50 :top "12px" :right "14px" :display "flex"
                      :align-items "center" :justify-content "flex-end" :gap "8px"
                      :flex-wrap "wrap" :max-width "calc(100vw - 28px)"}]
+   ["#root:has(> .android-entry:not([hidden])) > .system-status"
+    {:position "static" :margin "12px 14px 0"}]
    [:.network-indicator {:display "flex" :align-items "center" :gap "8px" :min-height "36px"
                          :max-width "min(65vw, 36rem)" :padding "6px 12px" :border-radius "12px"
                          :border "1px solid var(--border-strong)" :background "var(--surface)"
