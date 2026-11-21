@@ -5,6 +5,8 @@ set -eu
 src=${1:?usage: apply.sh <source tree root>}
 here=$(cd "$(dirname "$0")" && pwd)
 virtio="$src/device/virt/virtio-common"
+checkpoint_patch="$here/patches/virtio-userdata-ext4-checkpoint.patch"
+wait_patch="$here/patches/virtio-userdata-ext4-checkpoint-wait.patch"
 
 select_fstab_patch() {
   for candidate in virtio-userdata.patch virtio-userdata-block-checkpoint.patch; do
@@ -21,7 +23,13 @@ select_fstab_patch() {
   return 1
 }
 
-fstab_patch=$(select_fstab_patch)
+fstab_patch=
+if git -C "$virtio" apply --reverse --check "$wait_patch" 2>/dev/null; then
+  userdata_wait_applied=true
+else
+  userdata_wait_applied=false
+  fstab_patch=$(select_fstab_patch)
+fi
 
 one() { # <project path> <patch> <marker text that the patch adds>
   dir="$src/$1"; patch="$here/patches/$2"
@@ -41,12 +49,17 @@ else
   echo "virtio-common userdata fstab: already applied"
 fi
 
-# The older fstab selects ext4 on a blank NVMe but has no data checkpoint.
-checkpoint_patch="$here/patches/virtio-userdata-ext4-checkpoint.patch"
-if ! git -C "$virtio" apply --reverse --check "$checkpoint_patch" 2>/dev/null; then
-  git -C "$virtio" apply --check "$checkpoint_patch"
-  git -C "$virtio" apply "$checkpoint_patch"
-  echo "virtio-common ext4 userdata checkpoint: enabled"
+if [ "$userdata_wait_applied" = false ]; then
+  # The older fstab selects ext4 on a blank NVMe but has no data checkpoint.
+  if ! git -C "$virtio" apply --reverse --check "$checkpoint_patch" 2>/dev/null; then
+    git -C "$virtio" apply --check "$checkpoint_patch"
+    git -C "$virtio" apply "$checkpoint_patch"
+    echo "virtio-common ext4 userdata checkpoint: enabled"
+  fi
+  # fs_mgr creates dm-bow before mounting. Wait for its device node to appear.
+  git -C "$virtio" apply --check "$wait_patch"
+  git -C "$virtio" apply "$wait_patch"
+  echo "virtio-common ext4 userdata checkpoint device wait: enabled"
 fi
 
 # The vendor patches apply only in the source checkout prepared for Awai PC.
