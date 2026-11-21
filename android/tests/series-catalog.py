@@ -33,7 +33,7 @@ def main():
         t = pathlib.Path(t)
         # One throwaway key per group used below; the test table points each group at its key.
         signer = {}
-        for g in ('isic-N', 'isic-J', 'isco-2'):
+        for g in ('isic-N', 'isic-J', 'isco-2', 'unspsc-10'):
             ks = t / f'{g}.p12'
             r = run(JAVA / 'keytool', '-genkeypair', '-keystore', ks, '-storetype', 'PKCS12', '-alias', 'k', '-keyalg', 'RSA', '-keysize', '2048',
                     '-validity', '2', '-dname', f'CN=series test {g}', '-storepass:env', 'SERIES_TEST_PASS', env=env)
@@ -82,9 +82,10 @@ def main():
         no_marks = write_marks([], 'no-marks.tsv')
         REPO = 'cloud-itonami/app-itonami-cloud-itonami-isco-2423'
 
-        def generate(inputs, tab, out='raw.json', extra=(), marks=None, hold=None):
+        def generate(inputs, tab, out='raw.json', extra=(), marks=None, hold=None, unspsc=None):
             return run(sys.executable, GEN, '--inputs', inputs, '--revision', '200', '--out', t / out, '--table', tab, '--report', t / (out + '.report'),
-                       '--repos', t / 'repos', '--isco-source', marks or no_marks, '--hold', hold or ROOT / 'store/catalog-source/hold.json', *extra)
+                       '--repos', t / 'repos', '--isco-source', marks or no_marks, '--hold', hold or ROOT / 'store/catalog-source/hold.json',
+                       '--unspsc-source', unspsc or no_marks, *extra)
 
         # A stand-in app repository: before, the commit that adds the ISCO-08 source text, and after.
         repo = t / 'repos/isco-2423'; repo.mkdir(parents=True)
@@ -102,9 +103,11 @@ def main():
         # The marks live in isco-source.tsv. The four earlier marks pointed at the earlier wording and were cleared, so
         # the real file holds the header only until the final text is added (batches via android/isco-source-add.py).
         real = (ROOT / 'store/catalog-source/isco-source.tsv').read_text(encoding='utf-8')
-        check('the real isco-source.tsv parses and has no marks yet', run(sys.executable, '-c',
-              'import importlib.util,sys;s=importlib.util.spec_from_file_location("m",sys.argv[1]);m=importlib.util.module_from_spec(s);'
-              's.loader.exec_module(m);print(len(m.read_isco_marks(open(sys.argv[2]).read())))', GEN, ROOT / 'store/catalog-source/isco-source.tsv').stdout.strip() == '0', real)
+        count = lambda path, scheme: run(sys.executable, '-c',
+            'import importlib.util,sys;s=importlib.util.spec_from_file_location("m",sys.argv[1]);m=importlib.util.module_from_spec(s);'
+            's.loader.exec_module(m);print(len(m.read_source_marks(open(sys.argv[2]).read(),sys.argv[3])))', GEN, path, scheme).stdout.strip()
+        check('the real isco-source.tsv parses', count(ROOT / 'store/catalog-source/isco-source.tsv', 'isco').isdigit(), real)
+        check('the real unspsc-source.tsv parses and has no marks yet', count(ROOT / 'store/catalog-source/unspsc-source.tsv', 'unspsc') == '0')
         check('the table carries no iscoSource field', all('iscoSource' not in a for a in table['apps']))
         tab = write_table(table)
         r = generate(good, tab)
@@ -240,28 +243,61 @@ def main():
         refused('marked commit missing from the clone', lambda d: app_input(d, 'isco-2423', group='isco-2', commit=commits['after']), 'is not in the clone',
                 marks=write_marks([(REPO, '0' * 40, 'false')], 'missing.tsv'))
 
-        # Holds (store/catalog-source/hold.json): UNSPSC apps stay out while Legal checks the terms; Decision lifts it.
+        # Holds (store/catalog-source/hold.json): UNSPSC apps stay out until the UNDP addendum is confirmed; Decision lifts it.
         real_hold = json.loads((ROOT / 'store/catalog-source/hold.json').read_text(encoding='utf-8'))
-        check('the real hold list holds unspsc-* for Legal, lifted by Decision',
-              [(h['pattern'], h['decidedBy']) for h in real_hold['holds']] == [('unspsc-*', 'Decision')] and 'Legal' in real_hold['holds'][0]['reason'])
-        with_unspsc = json.loads(json.dumps(table))
-        with_unspsc['apps'].append({'rank': 11, 'source': 'unspsc-43211500', 'id': 'network.itonami.unspsc43211500',
-                                    'repo': 'cloud-itonami/app-itonami-cloud-itonami-unspsc-43211500', 'group': 'unspsc-43', 'description': 'held test'})
-        utab = write_table(with_unspsc, 'unspsc.json')
+        check('the real hold list holds unspsc-* for the UNDP addendum, lifted by Decision',
+              [(h['pattern'], h['decidedBy']) for h in real_hold['holds']] == [('unspsc-*', 'Decision')]
+              and real_hold['holds'][0]['reason'] == 'Store での配布を広げる前に UNDP の addendum の確認が要る（申請の名義はオーナー、Legal が確認中）',
+              json.dumps(real_hold, ensure_ascii=False))
+        unspsc_apps = [a for a in table['apps'] if a['source'].startswith('unspsc-')]
+        check('the real table has the five UNSPSC apps without a rank, one key group per segment',
+              [(a['source'], a['id'], a['group'], a.get('rank')) for a in unspsc_apps] ==
+              [(f'unspsc-{c}', f'network.itonami.unspsc{c}', f'unspsc-{c}', None) for c in ('10', '27', '39', '43', '73')])
         held = t / 'held'
         app_input(held, 'isic-7810', group='isic-N')
-        (held / 'unspsc-43211500').mkdir()
-        r = generate(held, utab, 'held.json')
+        app_input(held, 'unspsc-10', group='unspsc-10', commit='1' * 40)
+        r = generate(held, tab, 'held.json')
         hrep = json.loads((t / 'held.json.report').read_text()) if r.returncode == 0 else {'listed': [], 'excluded': []}
-        hx = next((e for e in hrep['excluded'] if e['source'] == 'unspsc-43211500'), {})
-        check('an app matching a hold is left out as held, with the reason and who lifts it',
-              r.returncode == 0 and hx.get('reason') == 'held' and hx.get('decidedBy') == 'Decision' and 'Legal' in hx.get('hold', '')
+        hx = {e['source']: e for e in hrep['excluded']}
+        check('every UNSPSC app is left out as held, with the reason and who lifts it', r.returncode == 0
+              and all(hx.get(a['source'], {}).get('reason') == 'held' and hx[a['source']].get('decidedBy') == 'Decision'
+                      and 'addendum' in hx[a['source']].get('hold', '') for a in unspsc_apps)
               and [x['id'] for x in hrep['listed']] == ['network.itonami.isic7810'], r.stderr)
+
+        # When the hold is lifted, the UNSPSC apps go through the same marks as ISCO-08 (unspsc-source.tsv).
         (t / 'no-hold.json').write_text(json.dumps({'schema': 'awai.store.catalog-hold.v1', 'holds': []}))
-        r = generate(held, utab, 'unheld.json', hold=t / 'no-hold.json')
-        check('without the hold the same app is refused (not a series source yet)', r.returncode != 0 and 'not a series source' in r.stderr, r.stderr)
+        urepo = t / 'repos/unspsc-10'; urepo.mkdir(parents=True)
+        ugit = lambda *a: subprocess.run(['git', '-C', str(urepo), *a], capture_output=True, text=True, check=True).stdout.strip()
+        ugit('init', '-q'); ugit('config', 'user.email', 'test@example.invalid'); ugit('config', 'user.name', 'series test')
+        (urepo / 'x').write_text('unspsc'); ugit('add', 'x'); ugit('commit', '-q', '-m', 'unspsc source'); ucommit = ugit('rev-parse', 'HEAD')
+        UREPO = 'cloud-itonami/app-itonami-cloud-itonami-unspsc-10'
+        unheld = t / 'unheld'
+        app_input(unheld, 'unspsc-10', group='unspsc-10', commit=ucommit)
+        app_input(unheld, 'isic-7810', group='isic-N')
+        r = generate(unheld, tab, 'unheld.json', hold=t / 'no-hold.json')
+        ux = {e['source']: e['reason'] for e in json.loads((t / 'unheld.json.report').read_text())['excluded']} if r.returncode == 0 else {}
+        check('without the hold, an unmarked UNSPSC app is left out as unspsc-source-unchecked', ux.get('unspsc-10') == 'unspsc-source-unchecked', r.stderr)
+        UEN = ('Classification reference: UNSPSC® (United Nations Standard Products and Services Code), code 10000000. '
+               '© United Nations Development Programme (UNDP). UNSPSC® is a registered trademark of UNDP. '
+               'This app is not produced, reviewed or endorsed by UNDP.')
+        UJA = ('分類の参照: UNSPSC®（国連標準製品・サービス分類）のコード 10000000。© 国連開発計画（UNDP）。'
+               'UNSPSC® は UNDP の登録商標です。日本語の名称は当方の訳です。この app は UNDP が作成・確認・推奨したものではありません。')
+        udesc = next(a['description'] for a in table['apps'] if a['source'] == 'unspsc-10')
+        for ja, want in (('false', udesc + '\n\n' + UEN), ('true', udesc + '\n\n' + UEN + '\n' + UJA)):
+            out = f'unspsc-{ja}.json'
+            r = generate(unheld, tab, out, hold=t / 'no-hold.json', unspsc=write_marks([(UREPO, ucommit, ja)], f'unspsc-{ja}.tsv'))
+            apps = {a['id']: a for a in json.loads((t / out).read_text())['apps']} if r.returncode == 0 else {}
+            got = apps.get('network.itonami.unspsc10', {}).get('description')
+            check(f'UNSPSC description ends with the exact UNDP reference and trademark line, code in 8 digits (ja {ja})', got == want, repr(got) + r.stderr)
+            check(f'the UNDP reference appears once and no ILO reference (ja {ja})', got is not None and got.count('Classification reference') == 1
+                  and got.count('分類の参照') == (1 if ja == 'true' else 0) and 'ILO' not in got)
+            check(f'no UNDP reference on an ISIC app (ja {ja})', 'UNSPSC' not in apps.get('network.itonami.isic7810', {}).get('description', 'UNSPSC'))
+        r = generate(unheld, tab, 'unspsc-in-isco.json', hold=t / 'no-hold.json', marks=write_marks([(UREPO, ucommit, 'false')], 'u-in-i.tsv'))
+        check('a UNSPSC repository in isco-source.tsv is refused', r.returncode != 0 and 'not an ISCO-08 series repository' in r.stderr, r.stderr)
+        r = generate(unheld, tab, 'isco-in-unspsc.json', hold=t / 'no-hold.json', unspsc=write_marks([(REPO, commits['source'], 'false')], 'i-in-u.tsv'))
+        check('an ISCO-08 repository in unspsc-source.tsv is refused', r.returncode != 0 and 'not a UNSPSC series repository' in r.stderr, r.stderr)
         (t / 'bad-hold.json').write_text(json.dumps({'schema': 'awai.store.catalog-hold.v1', 'holds': [{'pattern': 'unspsc-*', 'reason': 'x'}]}))
-        r = generate(held, utab, 'badhold.json', hold=t / 'bad-hold.json')
+        r = generate(held, tab, 'badhold.json', hold=t / 'bad-hold.json')
         check('a hold without decidedBy is refused', r.returncode != 0 and 'decidedBy' in r.stderr and not (t / 'badhold.json').exists(), r.stderr)
 
         # android/isco-source-add.py: adds a batch with the ancestry checks; one failure writes nothing.
@@ -295,6 +331,16 @@ def main():
         r = run(sys.executable, ADD, t / 'alias.tsv', '--repos', t / 'repos', '--tsv', target)
         check('script reads the batch spelling repo/merge_commit/ja_title', r.returncode == 0
               and target.read_text().endswith(f'{REPO}\t{commits["source"]}\tfalse\n') and target.read_text().count('repo\tcommit\tja\n') == 1, r.stderr)
+        # A batch with both schemes: ISCO-08 rows to the ISCO file, UNSPSC rows to the UNSPSC file.
+        itarget, utarget = t / 'mix-isco.tsv', t / 'mix-unspsc.tsv'
+        for f in (itarget, utarget): f.write_text('repo\tcommit\tja\n')
+        r = run(sys.executable, ADD, write_marks([(REPO, commits['source'], 'false'), (UREPO, ucommit, 'true')], 'mix.tsv'), '--repos', t / 'repos',
+                '--isco-tsv', itarget, '--unspsc-tsv', utarget)
+        check('script routes ISCO-08 and UNSPSC rows to their own files', r.returncode == 0
+              and itarget.read_text() == f'repo\tcommit\tja\n{REPO}\t{commits["source"]}\tfalse\n'
+              and utarget.read_text() == f'repo\tcommit\tja\n{UREPO}\t{ucommit}\ttrue\n', r.stderr)
+        r = run(sys.executable, ADD, write_marks([(REPO, commits['source'], 'false'), (UREPO, ucommit, 'true')], 'mix.tsv'), '--repos', t / 'repos', '--tsv', itarget)
+        check('script refuses --tsv for a batch of two schemes', r.returncode != 0 and 'single scheme' in r.stderr, r.stderr)
         r, before, after = add([(REPO, commits['source'][:12], 'true')])
         check('script refuses a malformed batch, writes nothing', r.returncode != 0 and 'not 40 lowercase hex' in r.stderr and after == before, r.stderr)
         r, before, after = add([(REPO, commits['source'], 'true')], '--extra', f'cloud-itonami/app-itonami-cloud-itonami-isco-3333={commits["after"]}')

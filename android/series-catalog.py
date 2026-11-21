@@ -38,6 +38,10 @@ TABLE = ROOT / 'store/catalog-source/series-apps.json'
 ISCO_SOURCE = ROOT / 'store/catalog-source/isco-source.tsv'
 HOLD = ROOT / 'store/catalog-source/hold.json'
 ISCO_REPO = re.compile(r'^cloud-itonami/app-itonami-cloud-itonami-(isco-[0-9]{4}(?:-[0-9a-z]+)*)$')
+UNSPSC_SOURCE = ROOT / 'store/catalog-source/unspsc-source.tsv'
+UNSPSC_REPO = re.compile(r'^cloud-itonami/app-itonami-cloud-itonami-(unspsc-[0-9]{2,8}(?:-[0-9a-z]+)*)$')
+# Source-mark files per scheme: which repositories each may name. Marked schemes are left out until marked.
+MARKED_SCHEMES = {'isco': ('isco-source.tsv', ISCO_REPO, 'an ISCO-08'), 'unspsc': ('unspsc-source.tsv', UNSPSC_REPO, 'a UNSPSC')}
 
 # AWAI-3629 (Legal, Decision): the ILO reference shown with each ISCO-08 app, one per app, built from its code.
 # No list of codes and names, and no ILO logo.
@@ -49,7 +53,23 @@ SDK_TOOLS = pathlib.Path.home() / 'Library/Android/sdk/build-tools/36.1.0'
 ISIC_SECTIONS = [('A', 1, 3), ('B', 5, 9), ('C', 10, 33), ('D', 35, 35), ('E', 36, 39), ('F', 41, 43), ('G', 45, 47),
                  ('H', 49, 53), ('I', 55, 56), ('J', 58, 63), ('K', 64, 66), ('L', 68, 68), ('M', 69, 75), ('N', 77, 82),
                  ('O', 84, 84), ('P', 85, 85), ('Q', 86, 88), ('R', 90, 93), ('S', 94, 96), ('T', 97, 98), ('U', 99, 99)]
-SOURCE = re.compile(r'^(isic|isco)-([0-9]{2,4})((?:-[0-9a-z]+)*)$')
+SOURCE = re.compile(r'^(isic|isco)-([0-9]{2,4})((?:-[0-9a-z]+)*)$|^(unspsc)-([0-9]{2,8})((?:-[0-9a-z]+)*)$')
+
+# Legal memo unspsc-redistribution.md §2 and "出典の文言" (2026-11-22), copied verbatim: one code per app, no list of
+# codes and names, no UNDP emblem. The Japanese line is shown only when the app has a Japanese name (our translation).
+UNSPSC_ATTRIBUTION_EN = ('Classification reference: UNSPSC® (United Nations Standard Products and Services Code), code {code}. '
+                         '© United Nations Development Programme (UNDP). UNSPSC® is a registered trademark of UNDP. '
+                         'This app is not produced, reviewed or endorsed by UNDP.')
+UNSPSC_ATTRIBUTION_JA = ('分類の参照: UNSPSC®（国連標準製品・サービス分類）のコード {code}。© 国連開発計画（UNDP）。'
+                         'UNSPSC® は UNDP の登録商標です。日本語の名称は当方の訳です。'
+                         'この app は UNDP が作成・確認・推奨したものではありません。')
+
+
+def scheme_code(source):
+    m = SOURCE.match(source)
+    if not m:
+        return None, None
+    return (m.group(1), m.group(2)) if m.group(1) else (m.group(4), m.group(5))
 
 
 class Refused(Exception):
@@ -61,13 +81,15 @@ def sha256(b):
 
 
 def group_of(source):
-    """The signing-key group a series source belongs to: its ISIC Rev.4 section or its ISCO-08 major group."""
-    m = SOURCE.match(source)
-    if not m:
-        raise Refused(f'{source}: not a series source (isic-NNNN or isco-NNNN, optional -suffix)')
-    scheme, code = m.group(1), m.group(2)
+    """The signing-key group a series source belongs to: its ISIC Rev.4 section, its ISCO-08 major group, or its
+    UNSPSC segment (the first two digits; the AWAI-3771 decision names ISIC and ISCO only, so this is provisional)."""
+    scheme, code = scheme_code(source)
+    if not scheme:
+        raise Refused(f'{source}: not a series source (isic-NNNN, isco-NNNN or unspsc-NNNNNNNN, optional -suffix)')
     if scheme == 'isco':
         return 'isco-' + code[0]
+    if scheme == 'unspsc':
+        return 'unspsc-' + code[:2]
     division = int(code[:2])
     for section, low, high in ISIC_SECTIONS:
         if low <= division <= high:
@@ -109,7 +131,7 @@ def check_table(table, holds=()):
             if a['id'] in seen:
                 raise Refused(f'table: {a["id"]} is listed twice')
             seen.add(a['id'])
-            ranks.append(a['rank'])
+            if a.get('rank') is not None: ranks.append(a['rank'])
             continue
         if a['id'] != package_of(s):
             raise Refused(f'table: {s} has package id {a["id"]}, the series build stamps {package_of(s)}')
@@ -119,12 +141,13 @@ def check_table(table, holds=()):
             raise Refused(f'table: {s} is in group {a["group"]}, its code puts it in {group_of(s)}')
         if a['group'] not in groups:
             raise Refused(f'table: {s} names group {a["group"]}, which has no signer')
-        if 'iscoSource' in a:
-            raise Refused(f'table: {s} has an iscoSource field; ISCO-08 source marks live in isco-source.tsv')
+        if 'iscoSource' in a or 'sourceMark' in a or 'ja' in a:
+            raise Refused(f'table: {s} has a source mark or ja; they live in isco-source.tsv and unspsc-source.tsv')
         if a['id'] in seen:
             raise Refused(f'table: {a["id"]} is listed twice')
         seen.add(a['id'])
-        ranks.append(a['rank'])
+        # rank is the App Cycle order; an app without a rank (such as a held one) has no place in it yet.
+        if a.get('rank') is not None: ranks.append(a['rank'])
     if ranks != sorted(ranks) or len(set(ranks)) != len(ranks):
         raise Refused('table: ranks must be unique and in order')
 
@@ -182,7 +205,7 @@ def entry(app, directory, table):
     slug = app['id'].split('.')[-1]
     return {
         'id': app['id'], 'name': f['label'], 'publisher': table['publisher'],
-        'description': app['description'] + ('\n\n' + isco_attribution(s, app['iscoSource']['ja']) if s.startswith('isco-') else ''),
+        'description': app['description'] + attribution(app),
         'versionCode': f['versionCode'], 'versionName': f['versionName'], 'operations': [],
         'artifacts': [{'platform': 'android', 'runtime': 'android', 'kind': 'apk', 'asset': f'packages/{slug}.apk',
                        'bytes': f['bytes'], 'sha256': f['sha256'], 'signerSha256': expected}],
@@ -191,61 +214,91 @@ def entry(app, directory, table):
 
 
 def built_after_source(app, release, repos):
-    """None when the ISCO-08 app's APK was built from the marked commit or a later one; otherwise the reason to leave it out."""
+    """None when the marked app's APK was built from the marked commit or a later one; otherwise the reason to leave it out."""
     commit = release.get('source_commit')
     if not (isinstance(commit, str) and re.fullmatch(r'[0-9a-f]{40}', commit)):
         return 'release-without-commit'
     if repos is None:
-        raise Refused(f'{app["source"]}: checking the ISCO-08 source commit needs --repos with a clone of {app["repo"]}')
+        raise Refused(f'{app["source"]}: checking the source commit needs --repos with a clone of {app["repo"]}')
     clone = repos / app['source']
     if not (clone / '.git').exists():
         raise Refused(f'{app["source"]}: no clone at {clone}')
-    for c in (app['iscoSource']['commit'], commit):
+    for c in (app['sourceMark']['commit'], commit):
         if subprocess.run(['git', '-C', str(clone), 'cat-file', '-e', c + '^{commit}'], capture_output=True).returncode:
             raise Refused(f'{app["source"]}: commit {c[:12]} is not in the clone; fetch the history')
-    r = subprocess.run(['git', '-C', str(clone), 'merge-base', '--is-ancestor', app['iscoSource']['commit'], commit], capture_output=True)
-    return None if r.returncode == 0 else 'built-before-isco-source'
+    r = subprocess.run(['git', '-C', str(clone), 'merge-base', '--is-ancestor', app['sourceMark']['commit'], commit], capture_output=True)
+    return None if r.returncode == 0 else f'built-before-{scheme_code(app["source"])[0]}-source'
 
 
-def read_isco_marks(text):
-    """isco-source.tsv: a header `repo<TAB>commit<TAB>ja`, then one row per ISCO-08 repository whose source text is
-    checked. commit is the 40-hex commit that added it; ja is true when the app has a Japanese name (our translation).
-    Lines starting with # and blank lines are ignored. Anything else malformed refuses the whole file."""
+def read_source_marks(text, scheme):
+    """isco-source.tsv or unspsc-source.tsv: a header `repo<TAB>commit<TAB>ja`, then one row per repository of that
+    scheme whose source text is checked. commit is the 40-hex commit that added it; ja is true when the app has a
+    Japanese name (our translation). Lines starting with # and blank lines are ignored. Anything else malformed
+    refuses the whole file."""
+    name, repo_re, kind = MARKED_SCHEMES[scheme]
     rows = [l for l in text.split('\n') if l.strip() and not l.startswith('#')]
     if not rows or rows[0] != 'repo\tcommit\tja':
-        raise Refused('isco-source.tsv: the first line must be the header repo<TAB>commit<TAB>ja')
+        raise Refused(f'{name}: the first line must be the header repo<TAB>commit<TAB>ja')
     marks = {}
     for n, line in enumerate(rows[1:], 2):
         f = line.split('\t')
         if len(f) != 3:
-            raise Refused(f'isco-source.tsv row {n}: expected 3 tab-separated fields')
+            raise Refused(f'{name} row {n}: expected 3 tab-separated fields')
         repo, commit, ja = f
-        if not ISCO_REPO.match(repo):
-            raise Refused(f'isco-source.tsv row {n}: {repo!r} is not an ISCO-08 series repository')
+        if not repo_re.match(repo):
+            raise Refused(f'{name} row {n}: {repo!r} is not {kind} series repository')
         if not re.fullmatch(r'[0-9a-f]{40}', commit):
-            raise Refused(f'isco-source.tsv row {n}: commit {commit!r} is not 40 lowercase hex characters')
+            raise Refused(f'{name} row {n}: commit {commit!r} is not 40 lowercase hex characters')
         if ja not in ('true', 'false'):
-            raise Refused(f'isco-source.tsv row {n}: ja must be true or false')
+            raise Refused(f'{name} row {n}: ja must be true or false')
         if repo in marks:
-            raise Refused(f'isco-source.tsv row {n}: {repo} is listed twice')
+            raise Refused(f'{name} row {n}: {repo} is listed twice')
         marks[repo] = {'commit': commit, 'ja': ja == 'true'}
     return marks
 
 
+def read_isco_marks(text):
+    return read_source_marks(text, 'isco')
+
+
+def unspsc_code(source):
+    """The code as the UNSPSC reference shows it: eight digits, so segment 10 is 10000000 (owner answer 2026-11-22).
+    Change this one line if the repositories' README uses another spelling."""
+    return scheme_code(source)[1].ljust(8, '0')
+
+
+def unspsc_attribution(source, ja):
+    """The UNDP reference and trademark line for one UNSPSC app, in English, and in Japanese too when ja is true."""
+    code = unspsc_code(source)
+    text = UNSPSC_ATTRIBUTION_EN.format(code=code)
+    return text + '\n' + UNSPSC_ATTRIBUTION_JA.format(code=code) if ja else text
+
+
+def attribution(app):
+    """The classification reference appended to a listed app's description: ISCO-08 and UNSPSC apps only."""
+    s = app['source']
+    if s.startswith('isco-'):
+        return '\n\n' + isco_attribution(s, app['sourceMark']['ja'])
+    if s.startswith('unspsc-'):
+        return '\n\n' + unspsc_attribution(s, app['sourceMark']['ja'])
+    return ''
+
+
 def isco_attribution(source, ja):
     """The ILO reference for one ISCO-08 app, in English, and in Japanese too when the app has a Japanese name."""
-    code = SOURCE.match(source).group(2)
+    code = scheme_code(source)[1]
     text = ISCO_ATTRIBUTION_EN.format(code=code)
     return text + '\n' + ISCO_ATTRIBUTION_JA.format(code=code) if ja else text
 
 
-def generate(table, inputs, revision, expires_at, base=None, repos=None, marks=None, holds=()):
+def generate(table, inputs, revision, expires_at, base=None, repos=None, marks=None, holds=(), unspsc_marks=None):
     check_table(table, holds)
-    marks = marks or {}
+    by_scheme = {'isco': marks or {}, 'unspsc': unspsc_marks or {}}
     # Marks apply only to apps in the table; a row for any other repository changes nothing.
     table = json.loads(json.dumps(table))
     for app in table['apps']:
-        app['iscoSource'] = marks.get(app['repo']) if app['source'].startswith('isco-') else None
+        scheme = scheme_code(app['source'])[0]
+        app['sourceMark'] = by_scheme[scheme].get(app['repo']) if scheme in by_scheme else None
     listed, excluded, apps = [], [], []
     if base:
         apps = list(base['apps'])
@@ -256,8 +309,9 @@ def generate(table, inputs, revision, expires_at, base=None, repos=None, marks=N
         if hold:
             excluded.append({'source': s, 'id': app['id'], 'reason': 'held', 'hold': hold['reason'], 'decidedBy': hold['decidedBy']})
             continue
-        if s.startswith('isco-') and app['iscoSource'] is None:
-            excluded.append({'source': s, 'id': app['id'], 'reason': 'isco-source-unchecked'})
+        scheme = scheme_code(s)[0]
+        if scheme in MARKED_SCHEMES and app['sourceMark'] is None:
+            excluded.append({'source': s, 'id': app['id'], 'reason': f'{scheme}-source-unchecked'})
             continue
         directory = inputs / s
         if not directory.is_dir():
@@ -269,7 +323,7 @@ def generate(table, inputs, revision, expires_at, base=None, repos=None, marks=N
         if release.get('dirty') is not False:
             excluded.append({'source': s, 'id': app['id'], 'reason': 'release-dirty'})
             continue
-        if s.startswith('isco-'):
+        if scheme in MARKED_SCHEMES:
             reason = built_after_source(app, release, repos)
             if reason:
                 excluded.append({'source': s, 'id': app['id'], 'reason': reason})
@@ -295,6 +349,7 @@ def main():
     ap.add_argument('--report', type=pathlib.Path)
     ap.add_argument('--hold', type=pathlib.Path, default=HOLD, help='hold list (patterns, reasons, who lifts them)')
     ap.add_argument('--isco-source', type=pathlib.Path, default=ISCO_SOURCE, help='ISCO-08 source marks (repo, commit, ja)')
+    ap.add_argument('--unspsc-source', type=pathlib.Path, default=UNSPSC_SOURCE, help='UNSPSC source marks (repo, commit, ja)')
     ap.add_argument('--repos', type=pathlib.Path, help='directory of app repository clones, one per source, for the ISCO-08 source commit check')
     a = ap.parse_args()
     if a.revision < 1 or not 1 <= a.expires_days <= 365:
@@ -304,7 +359,8 @@ def main():
         ap.error(f'--revision must be above the base revision {base["revision"]}')
     try:
         catalog, report = generate(json.loads(a.table.read_text()), a.inputs, a.revision, int(time.time()) + a.expires_days * 86400, base, a.repos,
-                                   read_isco_marks(a.isco_source.read_text(encoding='utf-8')), read_holds(json.loads(a.hold.read_text(encoding='utf-8'))))
+                                   read_isco_marks(a.isco_source.read_text(encoding='utf-8')), read_holds(json.loads(a.hold.read_text(encoding='utf-8'))),
+                                   read_source_marks(a.unspsc_source.read_text(encoding='utf-8'), 'unspsc'))
     except Refused as e:
         sys.exit(f'refused: {e}')
     a.out.write_text(json.dumps(catalog, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')

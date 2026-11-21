@@ -4,7 +4,7 @@
  "holds": [
   {
    "pattern": "unspsc-*",
-   "reason": "UNSPSC/GS1 US の利用条件を Legal が確認中",
+   "reason": "Store での配布を広げる前に UNDP の addendum の確認が要る（申請の名義はオーナー、Legal が確認中）",
    "decidedBy": "Decision",
    "since": "2026-11-22"
   }
