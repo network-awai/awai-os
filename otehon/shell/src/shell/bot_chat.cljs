@@ -1,7 +1,7 @@
 (ns shell.bot-chat
  (:require ["react" :refer [useState useEffect useLayoutEffect useRef]] [clojure.string :as str]
   [shell.ui-copy :as ui] [shell.screen-tools :as screen]
-  ["../screen-tools.js" :refer [screenTool screenToolsAvailable openGaka]]
+  ["../screen-tools.js" :refer [screenTool gakaHandoffAvailable openGaka]]
   ["../agent-ui-state.js" :refer [readAgentSelection chooseAgent]]
   ["../bot-chat.js" :refer [CHAT_ORIGIN CHAT_MODEL chatRequest sendChat readChat agentSessions recordChatImage]]
   ["../voice-channel.js" :refer [openVoiceChannel]]
@@ -471,7 +471,7 @@
      [:div.agent-session-toolbar {:role "group" :aria-label (tr :conversation)}
       [:button.secondary {:type "button" :disabled (or busy (some? pending)) :aria-pressed (= mode "text") :on-click #(set-mode "text")} (tr :chatTextMode)]
       [:button.secondary {:type "button" :disabled (or busy (some? pending) (not (androidInferenceAvailable)) (= session-id "default")) :aria-pressed (= mode "image") :on-click #(set-mode "image")} (tr :chatImageMode)]
-      (when (and (not local?) (screenToolsAvailable))
+      (when (and (not local?) (gakaHandoffAvailable))
        [:button.secondary {:type "button" :disabled (or busy (some? pending))
                            :aria-pressed (= mode "gaka") :on-click #(set-mode "gaka")}
         (tr :chatGakaMode)])

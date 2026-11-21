@@ -1,4 +1,4 @@
-// The trusted shell passes a single action name to the native Android host.
+// The trusted shell passes a single action name to the native host.
 const actions = new Set([
   "status", "record-start", "record-stop", "home", "recents", "settings", "accessibility-settings",
 ]);
@@ -18,8 +18,13 @@ export async function screenTool(action) {
   return result;
 }
 
+export function gakaHandoffAvailable() {
+  return typeof globalThis.__TAURI_INTERNALS__?.invoke === "function"
+    && /Android|Macintosh/i.test(globalThis.navigator?.userAgent ?? "");
+}
+
 export async function openGaka() {
-  if (!screenToolsAvailable()) throw new Error("gaka-unavailable");
+  if (!gakaHandoffAvailable()) throw new Error("gaka-unavailable");
   const result = await globalThis.__TAURI_INTERNALS__.invoke("awai_screen_tools", { action: "open-gaka" });
   if (result?.["schema"] !== "awai.local-app-launch.v1"
       || result["packageId"] !== "network.awai.gaka" || result["opened"] !== true) {
