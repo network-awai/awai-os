@@ -49,6 +49,17 @@ test("resumes teardown after a previously successful provider deletion", async (
   assert.deepEqual(operations, [["namespace", run.uid]]);
 });
 
+test("reconciles a timed-out deletion against Vultr and Kubernetes", async () => {
+  const { options, operations } = fixture();
+  const remove = options.vultr.remove;
+  options.vultr.remove = async (id) => {
+    await remove(id);
+    throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
+  };
+  await teardown({ ...options });
+  assert.deepEqual(operations, [["pool", providerPool.id], ["namespace", run.uid]]);
+});
+
 test("leaves the pool when the restore receipt Job is missing", async () => {
   const { options, operations } = fixture({ jobs: [build] });
   await assert.rejects(teardown(options), /restore Jobs/);

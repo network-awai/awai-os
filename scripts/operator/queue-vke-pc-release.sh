@@ -9,6 +9,21 @@ build_job=awai-pc-release-build
 restore_job=awai-pc-release-restore
 image=ubuntu@sha256:9a04f13b3f80ef056361e30868593b1cfd2279fe19e4081cb93a90bf56819d6a
 role=awai-release-source-transfer
+kit_files=(android-release-input.tar.gz expected-android-manifest.xml overlay-revisions.txt
+    prior-overlay-revisions.txt check-manifest.py build-pc.sh assemble-verified.sh previous-welcome.patch)
+
+read_kit_manifest() {
+    local manifest=$1 listed
+    listed=$(LC_ALL=C awk '
+        /^[[:xdigit:]]{64}  [a-zA-Z0-9._-]+$/ { print $2; next }
+        { exit 1 }
+    ' "$manifest")
+    if grep -Fxq run-builds.sh <<< "$listed"; then
+        kit_files+=(run-builds.sh)
+    fi
+    diff -u <(printf '%s\n' "${kit_files[@]}" | LC_ALL=C sort) \
+        <(printf '%s\n' "$listed" | LC_ALL=C sort)
+}
 
 if [[ ${1:-} != --worker ]]; then
     [[ $# = 3 ]] || { echo "Usage: queue-vke-pc-release.sh KUBECONFIG RELEASE_STATE NEW_ARCHIVE_DIR" >&2; exit 2; }
@@ -20,6 +35,7 @@ if [[ ${1:-} != --worker ]]; then
     export AWAI_RELEASE_KIT
     export AWAI_RELEASE_SSH="$state/ssh-build"
     [[ -x $AWAI_RELEASE_SSH && -d $AWAI_RELEASE_KIT ]]
+    read_kit_manifest "$AWAI_RELEASE_KIT/inputs.sha256"
     (cd "$AWAI_RELEASE_KIT" && shasum -a 256 -c inputs.sha256)
     mkdir -m 700 "$3"
     export AWAI_RELEASE_ARCHIVE=$(cd "$3" && pwd)
@@ -143,9 +159,8 @@ BUILD
 build_pod=$(pod_for "$build_job")
 await_file "$build_pod" /root/build/tools-ready 360
 
-COPYFILE_DISABLE=1 tar -C "$AWAI_RELEASE_KIT" -cf - inputs.sha256 android-release-input.tar.gz \
-    expected-android-manifest.xml overlay-revisions.txt prior-overlay-revisions.txt \
-    check-manifest.py build-pc.sh assemble-verified.sh previous-welcome.patch |
+read_kit_manifest "$AWAI_RELEASE_KIT/inputs.sha256"
+COPYFILE_DISABLE=1 tar --no-xattrs -C "$AWAI_RELEASE_KIT" -cf - inputs.sha256 "${kit_files[@]}" |
     k exec -i "$build_pod" -- tar -xf - -C /root/build/kit
 k exec "$build_pod" -- bash -ceu 'cd /root/build/kit; sha256sum -c inputs.sha256'
 
