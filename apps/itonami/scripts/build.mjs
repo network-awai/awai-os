@@ -49,7 +49,10 @@ const html=original.replace("<head>", '<head>\n    <meta name="viewport" content
 const csp=html.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/)?.[1];
 if(!csp || !csp.includes("default-src 'none'") || !csp.includes("script-src 'self'"))throw Error('HTTP/self shell CSP required');
 await writeFile(path.join(dest,'index.html'),html);
-await writeFile(path.join(app,'src-tauri/tauri.android.conf.json'),JSON.stringify({app:{security:{csp:csp+"; object-src 'none'; base-uri 'none'; form-action 'none'"}}},null,2)+'\n');
+const nativeSecurity = {app: {security: {csp: csp + "; object-src 'none'; base-uri 'none'; form-action 'none'"}}};
+for (const platform of ['android', 'macos']) {
+  await writeFile(path.join(app, `src-tauri/tauri.${platform}.conf.json`), JSON.stringify(nativeSecurity, null, 2) + '\n');
+}
 const artifacts={};
 for (const name of await files(dest)) if(name!=='itonami-bundle.json') {
   const b=await readFile(path.join(dest,name));artifacts[name]={bytes:b.length,sha256:sha(b)};
