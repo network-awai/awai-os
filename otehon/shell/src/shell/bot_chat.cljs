@@ -1,7 +1,7 @@
 (ns shell.bot-chat
  (:require ["react" :refer [useState useEffect useLayoutEffect useRef]] [clojure.string :as str]
   [shell.ui-copy :as ui] [shell.screen-tools :as screen]
-  ["../screen-tools.js" :refer [screenTool]]
+  ["../screen-tools.js" :refer [screenTool screenToolsAvailable openGaka]]
   ["../agent-ui-state.js" :refer [readAgentSelection chooseAgent]]
   ["../bot-chat.js" :refer [CHAT_ORIGIN CHAT_MODEL chatRequest sendChat readChat agentSessions recordChatImage]]
   ["../voice-channel.js" :refer [openVoiceChannel]]
@@ -163,6 +163,22 @@
                    (str/join "\n" (map #(str (if (= "user" (:role %)) "利用者: " "Murakumo: ") (:text %)) prior))
                    "\n利用者: " text)]
   (if (and (seq prior) (<= (.-length (.encode (js/TextEncoder.) prompt)) 8192)) prompt text)))
+
+(defn- gaka-card [locale]
+ (let [[opening? set-opening] (useState false)
+       [failed? set-failed] (useState false)]
+  [:aside.chat-app-card {:data-conversation-app "gaka"}
+   [:strong (ui/t locale :chatGakaName)]
+   [:p (ui/t locale :chatGakaDetail)]
+   [:button.primary {:type "button" :disabled opening?
+                     :on-click (fn []
+                                 (set-opening true)
+                                 (set-failed false)
+                                 (-> (openGaka)
+                                     (.catch #(set-failed true))
+                                     (.finally #(set-opening false))))}
+    (ui/t locale :chatGakaOpen)]
+   (when failed? [:p {:role "status"} (ui/t locale :chatGakaUnavailable)])]))
 
 (defn panel [bot & [locale draft-id local?]]
  (let [tr (fn [key & [parameters]] (ui/t locale key parameters))
@@ -347,7 +363,8 @@
               (.then (fn [r]
                (let [reply-id (str (.-requestId r) ":reply")]
                 (set-messages (conj messages {:id (.-requestId r) :role "user" :text value}
-                 {:id reply-id :role "assistant" :text (.-text r) :runId (.-runId r) :model (.-model r)}))
+                 {:id reply-id :role "assistant" :text (.-text r) :runId (.-runId r) :model (.-model r)
+                  :gaka-handoff (= mode "gaka")}))
                 (set-last-reply reply-id))
                (set-store (.-store r)) (set-text ""))))))))
           (.catch failure) (.finally finish-submit)))))))]
@@ -424,6 +441,7 @@
          (when (seq (:text m)) [:f> message-copy (:text m) locale])]
         (when (seq (:text m))
          [:<> [:p.chat-message-text (:text m)] [:f> message-copy (:text m) locale]]))
+       (when (:gaka-handoff m) [:f> gaka-card locale])
        (when (:localOnly m) [:p {:role "status"} "端末内のみ・Agent の会話には未記録です。履歴の再取得では表示されません。"])
        (when (= "local-image" (:kind m)) [:f> image-card (:image m) {:botId (:id bot) :sessionId session-id}
         (or (:text (first (filter #(= (:id %) (:parentId m)) messages))) "会話で生成した画像") (:local-result m)])])])
@@ -453,6 +471,10 @@
      [:div.agent-session-toolbar {:role "group" :aria-label (tr :conversation)}
       [:button.secondary {:type "button" :disabled (or busy (some? pending)) :aria-pressed (= mode "text") :on-click #(set-mode "text")} (tr :chatTextMode)]
       [:button.secondary {:type "button" :disabled (or busy (some? pending) (not (androidInferenceAvailable)) (= session-id "default")) :aria-pressed (= mode "image") :on-click #(set-mode "image")} (tr :chatImageMode)]
+      (when (and (not local?) (screenToolsAvailable))
+       [:button.secondary {:type "button" :disabled (or busy (some? pending))
+                           :aria-pressed (= mode "gaka") :on-click #(set-mode "gaka")}
+        (tr :chatGakaMode)])
       (when local?
        [:button.secondary {:type "button" :disabled busy :aria-pressed (= mode "voice") :on-click #(set-mode "voice")} (tr :voiceConversation)])]
      (let [label (tr (if (= mode "image") :chatImagePrompt :chatMessage))]
