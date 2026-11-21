@@ -396,6 +396,11 @@
                                   :font "inherit" :padding "10px" :border-radius "10px"
                                   :background "var(--surface-raised)" :color "var(--fg)"
                                   :border "1px solid var(--border-strong)"}]
+   [:.chat-app-card {:display "grid" :gap "8px" :margin-block-start "12px"
+                     :padding "16px" :border "1px solid var(--border-strong)"
+                     :border-radius "16px" :background "var(--surface-raised)"}
+    [:p {:margin 0}]
+    [:button {:justify-self "start" :min-block-size "48px"}]]
    [:.chat-composer-actions {:display "flex" :justify-content "flex-end"}]
    [".bot-conversation :is(button, summary, input, textarea, select, .bot-conversation-history):focus-visible"
     {:outline "2px solid var(--focus)" :outline-offset "2px"}]

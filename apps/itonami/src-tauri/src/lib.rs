@@ -27,7 +27,7 @@ async fn awai_screen_tools(
     action: String,
 ) -> Result<serde_json::Value, String> {
     if !matches!(action.as_str(), "status" | "record-start" | "record-stop" |
-        "home" | "settings" | "recents" | "accessibility-settings") {
+        "home" | "settings" | "recents" | "accessibility-settings" | "open-gaka") {
         return Err("unsupported-screen-operation".into());
     }
     #[cfg(target_os = "android")]
@@ -42,6 +42,25 @@ async fn awai_screen_tools(
     #[cfg(not(target_os = "android"))]
     {
         let _ = app;
+        #[cfg(target_os = "macos")]
+        if action == "open-gaka" {
+            return tauri::async_runtime::spawn_blocking(|| {
+                let opened = std::process::Command::new("/usr/bin/open")
+                    .args(["-b", "network.awai.gaka"])
+                    .output()
+                    .is_ok_and(|result| result.status.success());
+                if !opened {
+                    return Err("gaka-unavailable".into());
+                }
+                Ok(serde_json::json!({
+                    "schema": "awai.local-app-launch.v1",
+                    "packageId": "network.awai.gaka",
+                    "opened": true
+                }))
+            })
+            .await
+            .map_err(|_| "gaka-unavailable".to_string())?;
+        }
         Err("android-only".into())
     }
 }
