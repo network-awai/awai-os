@@ -1,0 +1,19 @@
+diff --git a/app/src/main/java/org/lineageos/updater/data/UpdatesRepository.kt b/app/src/main/java/org/lineageos/updater/data/UpdatesRepository.kt
+index c9e2350..056860c 100644
+--- a/app/src/main/java/org/lineageos/updater/data/UpdatesRepository.kt
++++ b/app/src/main/java/org/lineageos/updater/data/UpdatesRepository.kt
+@@ -60 +60,13 @@ class UpdatesRepository(
+-        if (networkUpdates.isEmpty()) return System.currentTimeMillis()
++        if (networkUpdates.isEmpty()) {
++            // A successful empty response withdraws offers that have not been downloaded.
++            // Leave local packages and tasks already started for the installer to handle.
++            withContext(Dispatchers.IO) {
++                localUpdates.values.filter {
++                    it.downloadId != Update.LOCAL_ID && it.downloadUrl != null &&
++                            it.status.persistentStatus == 0
++                }.forEach {
++                    localDataSource.removeUpdate(it.downloadId)
++                }
++            }
++            return System.currentTimeMillis()
++        }

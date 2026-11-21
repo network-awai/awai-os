@@ -5,5 +5,6 @@
  :quorum 2
  :timeout-seconds 180
  :steps [["bash" "scripts/ci/android-qa-scope.sh"]
-         ["node" "--test" "android/tests/local-apps.test.mjs"]]
+         ["node" "--test" "android/tests/local-apps.test.mjs"]
+         ["python3" "-B" "-m" "unittest" "discover" "-s" "android/desktop/pc-ab-device"]]
  :artifacts []}

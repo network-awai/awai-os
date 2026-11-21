@@ -73,6 +73,101 @@ It has only been run against an image file. Running it on a real disk is a separ
 - After a clean shutdown the three stand-in partitions had the same sha256 as before the install.
 - `kvm/nvme-kvm.sh` is the earlier check: the stock layout plus a `userdata` partition on one NVMe disk.
 
+## Updater feed in the release build (AWAI-3064)
+
+Configure the pinned LineageOS Updater checkout before building the Awai PC release
+`target-files`. Supply the approved HTTPS URL for the selected release channel.
+Updater supports the `{device}`, `{type}`, and `{incr}` placeholders. Keep these
+quoted when passing a template.
+
+```sh
+AWAI_OTA_FEED='https://ota.awai.network/v1/pc/pilot/{device}/{incr}/builds.json'
+python3 android/desktop/pc-ab-device/updater-feed.py configure-release \
+    "$ANDROID_BUILD_TOP/packages/apps/Updater" "$AWAI_OTA_FEED"
+git -C "$ANDROID_BUILD_TOP/packages/apps/Updater" diff --check
+```
+
+On the PC pilot, the Updater preference **Automatic PC maintenance** is off by
+default. Enabling it requires scheduled checks and streaming. The worker uses a
+fresh offer from the pilot feed and an HTTPS package under
+`ota.awai.network/v1/pc/pilot/`. UpdateEngine verifies the A/B payload.
+It waits for completed setup, an inactive screen, and a validated, unmetered
+connection. It uses external power on devices with a battery. The first
+automatic reboot check is scheduled about 20 minutes after UpdateEngine accepts
+the payload. Checks back off if the device is in use, and normal scheduled
+checks can resume later. Automatic reboot requires the same offer in the fresh
+feed and an UpdateEngine completion marker belonging to an automatic update.
+Manual update and restart remain available through Updater.
+
+Check the final signed A/B target-files against the SHA-256 from the signing
+record. Use Android SDK build-tools `aapt2` on PATH:
+
+```sh
+python3 android/desktop/pc-ab-device/updater-feed.py verify-target-files \
+    "$SIGNED_TARGET_FILES" "$AWAI_OTA_FEED" \
+    --sha256 "$SIGNED_TARGET_FILES_SHA256" --device virtio_x86_64
+```
+
+This check reads the actual APK resources, A/B partition set and build
+properties for the selected device. Verify the Android signing certificates
+as part of the signing workflow. Confirm the installed build contacts the
+expected feed. Use the local signing environment with the build's AOSP releasetools on PATH
+to generate the full OTA and verify it before the output is made available:
+
+```sh
+python3 android/desktop/pc-ab-device/updater-feed.py generate-ota \
+    "$SIGNED_TARGET_FILES" "$OTA_ZIP" --key "$OTA_KEY_BASENAME" \
+    --certificate-sha256 "$OTA_CERTIFICATE_SHA256" \
+    --target-sha256 "$SIGNED_TARGET_FILES_SHA256" --require-streaming > "$OTA_VERIFICATION_RECORD"
+```
+
+The key basename refers to the private key and public certificate available
+inside the local signing environment. For a delta, also pass the exact signed
+source target-files and SHA-256 with `--source-target-files` and `--source-sha256`.
+The command makes a new output only after both signature checks pass.
+
+Before publishing an already-produced package, use the build's AOSP releasetools on PATH
+to verify the OTA with the public certificate pinned in the signing record:
+
+```sh
+python3 android/desktop/pc-ab-device/updater-feed.py verify-ota \
+    "$OTA_ZIP" "$OTA_CERTIFICATE" "$SIGNED_TARGET_FILES" \
+    --certificate-sha256 "$OTA_CERTIFICATE_SHA256" \
+    --target-sha256 "$SIGNED_TARGET_FILES_SHA256" --require-streaming > "$OTA_VERIFICATION_RECORD"
+```
+
+For a delta, also pass `--source-target-files "$SIGNED_SOURCE_TARGET_FILES"`
+and `--source-sha256 "$SIGNED_SOURCE_TARGET_FILES_SHA256"`. The verifier checks
+both the ZIP and A/B payload signatures and binds the package to its exact
+build fingerprints and incremental versions. Use the verified OTA SHA-256
+from the record to create the feed JSON:
+
+```sh
+python3 android/desktop/pc-ab-device/updater-feed.py make-index "$OTA_ZIP" "$OTA_URL" \
+    --sha256 "$SIGNED_OTA_SHA256" --device "$OTA_DEVICE" \
+    --release-type "$OTA_RELEASE_TYPE" --version "$OTA_VERSION" --require-streaming > "$FEED_INDEX"
+```
+
+Use the OTA target device and the installed build's Lineage release type and
+version. Pass `--source-build` with the exact source incremental ID for a delta
+and publish it at the feed path for that source. Omit the flag for a full OTA.
+The index command checks the digest from the signing record and the archive
+metadata. For automatic PC maintenance, require usable streaming ranges in both
+the signature verification and index commands. The generator always checks
+these ranges, including the Updater limit for payload properties.
+The updater and Android still verify the signed package on device.
+Retain a record of feed detection, apply, reboot, recovery, and rollback on the same PC.
+
+The pilot endpoint is backed by the dedicated Cloudflare R2 bucket
+`awai-os-ota`. Publish the verified ZIP at a digest-qualified object path and
+check its public bytes and HTTP Range response before publishing the index.
+Serve the mutable index as `application/json` with `Cache-Control: no-store`.
+To stop offering updates, replace the affected index with `[]` and verify the
+public response. The pinned Awai Updater removes undownloaded cached offers
+after a successful empty response. Updates already started and saved local
+packages are retained. A failed request does not withdraw an otherwise eligible cached offer. Keep
+the signed ZIP for diagnosis and recovery.
+
 ## OTA on the shared disk (2026-11-19)
 
 `kvm/shared-ota.sh` and `kvm/shared-ota2.sh`, results in
