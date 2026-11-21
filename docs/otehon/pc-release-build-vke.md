@@ -30,6 +30,14 @@ node scripts/operator/vke-release-pool.mjs run "$KUBECONFIG" -- "$RELEASE_WORKFL
 
 The workflow uses `AWAI_VKE_NAMESPACE` and `AWAI_VKE_NODE_POOL` from the wrapper. It creates Jobs named `awai-pc-release-build` and `awai-pc-release-restore`. Each Job selects `vke.vultr.com/node-pool=$AWAI_VKE_NODE_POOL` and tolerates `awai.network/release-build=release:NoSchedule`. The restore Job reads the independent archive, verifies its manifest and persists the checksums and logs outside the pool. Return success after both Jobs complete. Include the artifacts and verification reports in the external release record.
 
+For the existing Awai PC release queue, [the queue adapter](../../scripts/operator/queue-vke-pc-release.sh) reads the queue state directory's `privacy-build-kit` reference and uses its existing `ssh-build` helper. It verifies the kit before provisioning, builds one unsigned install candidate, writes the archive to a new operator-provided directory outside VKE, and reads it back in the separate restore Job. Run it with the release state directory and the archive path as separate arguments. Local archives from this workflow require the workspace storage guard.
+
+```sh
+bash scripts/operator/queue-vke-pc-release.sh "$KUBECONFIG" "$RELEASE_STATE" "$ARCHIVE_DIR"
+```
+
+Select `AWAI_VKE_RELEASE_PLAN=vc2-16c-64gb` when that alternative is available for VKE and the authorized cost fits. The adapter then requests 52 GiB of memory to allow room for the worker's system overhead. Check Tokyo stock and price before submitting any paid run.
+
 Check the result of a failed or interrupted run promptly because a retained pool can still accrue charges. After the release worker exits, use `release` with the same kubeconfig once both Jobs have completed and restore evidence is available. Use `release-empty` when a provisioned run stopped before creating any Jobs or Pods. The release checks require the recorded run, its provider tag, and an idle pool. It waits for both Vultr and Kubernetes to report removal before releasing the run lock. Resolve an ambiguous create response against Vultr's cluster inventory before clearing any leftover lock.
 
 ## Preserve and restore the current release
