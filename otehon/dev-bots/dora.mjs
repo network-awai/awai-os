@@ -4,7 +4,7 @@
 //
 //   node dora.mjs --repos <owner/name,...> --since <YYYY-MM-DD>
 //        [--state <queue-sync state dir>] [--ledger <file.jsonl>] [--json]
-//        [--check] [--unclassified] [--report]
+//        [--check] [--unclassified] [--report] [--runs <dir>]
 //   node dora.mjs --discover --since <YYYY-MM-DD> ...
 //
 //   --discover       instead of --repos: every repository in the owned
@@ -23,9 +23,13 @@
 // branch stands in for a deployment; say so wherever the numbers are shown.
 //
 //   deployment frequency   changes merged in the week
-//   change lead time       task start -> merge, median. The start is the queue
-//                          runner's `started` time in <state>/<name>/result.json;
-//                          a change without one is left out and counted.
+//   change lead time       task start -> merge, median. The start comes from, in
+//                          this order: the queue runner's `started` time in
+//                          <state>/<name>/result.json; `run1.start` of a local run
+//                          under --runs <dir> (<dir>/<task>/.agent-output/, matched
+//                          by the merge or head commit in its deliver.json); the
+//                          `- Task started:` line deliver.mjs writes in the pull
+//                          request body. A change with none is left out and counted.
 //   change fail rate       changes that needed a revert or an urgent fix
 //   failed deployment      for those, merge of the change -> merge of its fix,
 //     recovery time        median
@@ -56,6 +60,7 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ALLOWED_ORGS, EXCLUDED_REPOS } from "./gate.mjs";
 import { NAME_RE, REPO_RE } from "./queue.mjs";
+import { isUtcTime, taskStartFromBody } from "./runner-env.mjs";
 
 export const UNKNOWN = "unknown";
 const DEFAULT_LEDGER = join(fileURLToPath(new URL(".", import.meta.url)), "metrics", "dora-ledger.jsonl");
@@ -240,14 +245,39 @@ export function toReport(r) {
   return out.join("\n");
 }
 
+const OID = /^[0-9a-f]{40}$/;
+
+/**
+ * Local run records -> Map "commit:<merge oid>" | "head:<head oid>" -> start time.
+ * A record is a run's run1.start text and its deliver.json. Names of repositories
+ * change, commits do not, so a run is matched to a change by commit.
+ */
+export function runStarts(records) {
+  const out = new Map();
+  for (const r of records ?? []) {
+    const start = String(r?.start ?? "").trim();
+    if (!isUtcTime(start)) continue;
+    const commit = r?.deliver?.merged?.commit, head = r?.deliver?.head;
+    if (typeof commit === "string" && OID.test(commit)) out.set(`commit:${commit}`, start);
+    if (typeof head === "string" && OID.test(head)) out.set(`head:${head}`, start);
+  }
+  return out;
+}
+
+/** The start of one change from the three sources, in the documented order; null when none has it. */
+export function startOf({ queueStart = null, runs = new Map(), mergeCommit = null, head = null, body = "" } = {}) {
+  if (isUtcTime(queueStart)) return queueStart;
+  return runs.get(`commit:${mergeCommit}`) ?? runs.get(`head:${head}`) ?? taskStartFromBody(body);
+}
+
 export function fixCommitCount(commits) {
   if (!Array.isArray(commits) || !commits.length) return null;
   return Math.max(0, commits.filter((c) => !/^Merge /.test(String(c?.messageHeadline ?? ""))).length - 1);
 }
 
 export function parseArgs(argv) {
-  const o = { json: false, check: false, unclassified: false, discover: false, report: false, state: null, ledger: null };
-  const want = { "--repos": "repos", "--since": "since", "--state": "state", "--ledger": "ledger" };
+  const o = { json: false, check: false, unclassified: false, discover: false, report: false, state: null, ledger: null, runs: null };
+  const want = { "--repos": "repos", "--since": "since", "--state": "state", "--ledger": "ledger", "--runs": "runs" };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--json") o.json = true;
     else if (argv[i] === "--check") o.check = true;
@@ -285,6 +315,17 @@ export function main(argv) {
       } catch { /* no result yet */ }
     }
   }
+  const records = [];
+  for (const n of o.runs && existsSync(o.runs) ? readdirSync(o.runs) : []) {
+    try {
+      const d = join(o.runs, n, ".agent-output");
+      records.push({ start: readFileSync(join(d, "run1.start"), "utf8"), deliver: JSON.parse(readFileSync(join(d, "deliver.json"), "utf8")) });
+    } catch { /* not a delivered run */ }
+  }
+  const runs = runStarts(records);
+  const VIEW = "commits,headRefName,mergedAt,body,mergeCommit,headRefOid";
+  const change = (repo, pr, v) => ({ repo, pr, head: v.headRefName, mergedAt: v.mergedAt, fixCommits: fixCommitCount(v.commits),
+    startedAt: startOf({ queueStart: started.get(`${repo} ${v.headRefName}`) ?? null, runs, mergeCommit: v.mergeCommit?.oid ?? null, head: v.headRefOid ?? null, body: v.body }) });
   const changes = [];
   try {
     // Every owned organisation, one search each; a repository outside them or excluded is dropped.
@@ -293,9 +334,9 @@ export function main(argv) {
       for (const f of found) {
         const repo = String(f?.repository?.nameWithOwner ?? "");
         if (!REPO_RE.test(repo) || repo.split("/")[0] !== org || EXCLUDED_REPOS.includes(repo)) continue;
-        const v = gh(["pr", "view", String(f.number), "-R", repo, "--json", "commits,headRefName,mergedAt"]);
+        const v = gh(["pr", "view", String(f.number), "-R", repo, "--json", VIEW]);
         if (!String(v.headRefName).startsWith("muse/") || ms(v.mergedAt) === null) continue;
-        changes.push({ repo, pr: f.number, head: v.headRefName, mergedAt: v.mergedAt, startedAt: started.get(`${repo} ${v.headRefName}`) ?? null, fixCommits: fixCommitCount(v.commits) });
+        changes.push(change(repo, f.number, v));
         if (!o.repos.includes(repo)) o.repos.push(repo);
       }
     }
@@ -303,8 +344,7 @@ export function main(argv) {
     for (const repo of o.discover ? [] : o.repos) {
       const prs = gh(["pr", "list", "-R", repo, "--state", "merged", "--search", `head:muse/ merged:>=${o.since}`, "--limit", "200", "--json", "number,headRefName,mergedAt"]);
       for (const p of prs.filter((x) => String(x.headRefName).startsWith("muse/"))) {
-        const commits = gh(["pr", "view", String(p.number), "-R", repo, "--json", "commits"]).commits;
-        changes.push({ repo, pr: p.number, head: p.headRefName, mergedAt: p.mergedAt, startedAt: started.get(`${repo} ${p.headRefName}`) ?? null, fixCommits: fixCommitCount(commits) });
+        changes.push(change(repo, p.number, gh(["pr", "view", String(p.number), "-R", repo, "--json", VIEW])));
       }
     }
   } catch (e) { console.error(`dora: ${e.message}`); return 1; }

@@ -11,8 +11,7 @@ import {
   recordLinearEntry,
   resolveLinearSink,
   resolveTestShell,
-  sandboxReport,
-} from "./runner-env.mjs";
+  sandboxReport, isUtcTime, taskStartFromBody, taskStartLine } from "./runner-env.mjs";
 
 test("test shell defaults to zsh and falls back to bash without it", () => {
   assert.equal(resolveTestShell({ env: {}, exists: () => true }), DEFAULT_TEST_SHELL);
@@ -188,3 +187,27 @@ test("outbox recording writes real files under linear-outbox", () => {
   assert.ok(existsSync(join(out, "linear-outbox")));
 });
 
+
+test("taskStartLine always writes one line: the time, or unknown", () => {
+  assert.equal(taskStartLine("2026-11-21T01:03:08Z\n"), "- Task started: 2026-11-21T01:03:08Z");
+  assert.equal(taskStartLine("2026-11-21T01:03:08.751Z"), "- Task started: 2026-11-21T01:03:08.751Z");
+  for (const bad of ["", undefined, null, "yesterday", "2026-11-21", "2026-11-21T01:03:08+09:00", "2026-13-45T01:03:08Z", "2026-11-21T01:03:08Z\n- Task started: 2020-01-01T00:00:00Z", "2026-11-21T01:03:08Z extra"]) {
+    assert.equal(taskStartLine(bad), "- Task started: unknown", String(bad));
+  }
+  assert.ok(isUtcTime("2026-11-21T01:03:08Z") && !isUtcTime("2026-11-21T01:03:08") && !isUtcTime(5) && !isUtcTime("2026-02-31T25:00:00Z"));
+});
+
+test("taskStartFromBody reads the single line deliver wrote and refuses a body with two", () => {
+  const body = (extra = "", line = "- Task started: 2026-11-21T01:03:08Z") => `Linear: AWAI-1\n\n## Review (shinsa)\n\nFine.${extra}\n\n## Runner\n\n${line}\n- Test shell: \`/bin/bash\`\n\n## Not verified\n\n- none recorded\n`;
+  assert.equal(taskStartFromBody(body()), "2026-11-21T01:03:08Z");
+  assert.equal(taskStartFromBody(body().replace(/\n/g, "\r\n")), "2026-11-21T01:03:08Z");
+  // A review summary that carries its own line makes two: neither is used.
+  assert.equal(taskStartFromBody(body("\n- Task started: 2026-11-21T01:08:00Z")), null);
+  assert.equal(taskStartFromBody(body("\n  - task started: soon")), null);
+  assert.equal(taskStartFromBody(body("\n-Task started: 2026-11-21T01:08:00Z", "- Task started: unknown")), null);
+  // unknown, a malformed time, trailing text, or no line at all: null.
+  for (const line of ["- Task started: unknown", "- Task started: 2026-11-21", "- Task started: 2026-11-21T01:03:08Z (approx)", "- Test shell: x"]) assert.equal(taskStartFromBody(body("", line)), null, line);
+  for (const none of ["", undefined, null, "Task started: 2026-11-21T01:03:08Z"]) assert.equal(taskStartFromBody(none), null);
+  // What taskStartLine writes, taskStartFromBody reads back.
+  assert.equal(taskStartFromBody(body("", taskStartLine("2026-11-21T01:03:08Z\n"))), "2026-11-21T01:03:08Z");
+});
