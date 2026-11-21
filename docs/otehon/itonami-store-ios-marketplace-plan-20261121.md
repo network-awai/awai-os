@@ -14,6 +14,8 @@ Apple の条件は §8 の一次資料を 2026-11-21 に読んだ記録で、App
 - **日本で自前のマーケットプレイスを出す道は、いまは 100 万米ドルの信用状だけ。** もう一つの条件（2 年の良好な在籍と年間 100 万件の初回インストール）は満たしていない（§2.2）。
 - **EU は入口が広い。** 信用状のほかに財務監査、D&B の評価などで資格を得られる。掲載が自社アプリだけなら、
   マーケットプレイスを作らずに Web Distribution で配れる（§2.1、§3）。
+- **マーケットプレイスも Web Distribution も、動的に応答するサーバーが要る。** 静的な配信だけでは成り立たない（§4.1、
+  [AWAI-3727](https://linear.app/kotobalabs/issue/AWAI-3727) で確認）。環境契約との関係は owner の判断が要る。
 - **推奨: 自前マーケットプレイスの申請はいま決めない。** 先に owner の前提作業（§6）と、費用のかからない試作（§7 の子 issue 1〜3）で
   作業量を測る。Android の一般配布（AWAI-2982）を先に進める。理由は §5。
 
@@ -100,8 +102,8 @@ iOS 26.2 から、代替マーケットプレイスでの配布と運営がで�
 
 | 選択肢 | 使える地域 | 資格と費用 | 掲載できるもの | 未解決の点 |
 | --- | --- | --- | --- | --- |
-| A. 自前のマーケットプレイス app | EU、日本、ブラジル（地域ごとに申請） | 日本とブラジルは信用状 100 万米ドルが事実上の条件。EU は財務監査や D&B でも可。運営の義務を負う | 自社と他社のアプリ | 配布用のサーバーの要否（§4）、運営体制、信用状の調達 |
-| B. Web Distribution | EU だけ | EU の 7 つの資格のどれか。売上に 5% | 自社 account のアプリだけ | 一覧と更新の画面を Web でどう作るか。他社のアプリは載せられない |
+| A. 自前のマーケットプレイス app | EU、日本、ブラジル（地域ごとに申請） | 日本とブラジルは信用状 100 万米ドルが事実上の条件。EU は財務監査や D&B でも可。運営の義務を負う | 自社と他社のアプリ | 配布用のサーバーの運用（§4.1）、運営体制、信用状の調達 |
+| B. Web Distribution | EU だけ | EU の 7 つの資格のどれか。売上に 5% | 自社 account のアプリだけ | 認証、license、app データの各サーバーが要る（§4.1）。他社のアプリは載せられない |
 | C. 既存の代替マーケットプレイスに掲載 | そのマーケットプレイスが動く地域 | 自社は運営資格が要らない。条件は相手による | 自社のアプリ | 候補と条件は **未確認** |
 | D. 通常の App Store | 全地域 | 既存の組織 account で出せる。審査を受ける | 自社のアプリを 1 本ずつ | 似たアプリを多数出す場合の審査上の扱いは **未確認**。Store 自体は出せない見込み（**未確認**） |
 | E. Web（PWA） | 全地域 | Apple の資格は要らない | 静的な Web app | native の鍵の保管が使えない。iOS での制限は **未確認** |
@@ -116,13 +118,54 @@ Itonami Store に載っているのは、いまはすべて自社のアプリ（
 | Store が APK の digest、package、署名者を検証する | バイナリの信頼の根は Apple の公証と署名になる。Store はバイナリを自分で検証しない | 署名つきカタログを、掲載情報の認証だけに使う形で残すか |
 | 本番の publisher 鍵、更新、失効（AWAI-2982） | iOS のバイナリには効かない。カタログの認証に限れば使える | Android と iOS で鍵の役割が違うことを契約に書く |
 | PackageInstaller と OS の確認ダイアログ | MarketplaceKit と iOS の確認画面になる | Store の native 確認を iOS でどう置くか |
-| 取得は commit 固定の HTTPS の不変バイト | 配布物の受け渡しに運営者のサーバーが要る可能性がある（**未確認**。MarketplaceKit の文書で確かめる） | サーバーが要る場合、app origin ではなく配布基盤として別の役割に置く。環境契約との関係は owner が決める |
+| 取得は commit 固定の HTTPS の不変バイト | 運営者のサーバーが要る。Apple から配布物を受け取り、端末の要求ごとに配布物、license、検証用の token を返す（§4.1） | app origin ではなく配布基盤として別の役割に置くか。環境契約との関係は owner が決める |
 | 取得ごとの同意（canonical broker、each-operation） | WebView の中の取得操作には同じ broker を使える | iOS の確認画面は Kotoba の操作同意の代わりにならない。両方を残す |
 | `INTERNET` 権限の無いアプリは OS が通信を止める | iOS にはインストール時の通信権限が無い。同じ保証は成り立たない | 「通信しない」をどう示すか（CSP と公証だけになる） |
-| 自動更新の適格判定（AWAI-3653） | 更新は MarketplaceKit の仕組みに従う（詳細は **未確認**） | 同じ方針をどこまで適用できるか |
-| app origin は静的配信だけ | B と E は静的配信で成り立つ。A は上のサーバーの点が残る | 同上 |
+| 自動更新の適格判定（AWAI-3653） | OS が運営者の updates endpoint を最大で 24 時間に 1 回呼ぶ。利用者の操作か、自動更新が有効なときに更新される | 同じ方針をどこまで適用できるか。更新の可否は OS の設定が決める |
+| app origin は静的配信だけ | 静的配信で成り立つのは E だけ。A と B は動的な endpoint が要る（§4.1） | 同上 |
 
-iOS で成り立たないもの: Store 自身によるバイナリの検証、`INTERNET` 権限による通信の遮断、publisher 鍵によるバイナリの失効。
+iOS で成り立たないもの: Store 自身によるバイナリの検証、`INTERNET` 権限による通信の遮断、publisher 鍵によるバイナリの失効、静的配信だけでの配布。
+
+### 4.1 MarketplaceKit の仕組み（2026-11-21 確認、AWAI-3727）
+
+出典は §8 の MarketplaceKit の技術文書。
+
+**マーケットプレイスの構成。** Apple の文書は、構成を「app、その app を入れる Web ページ、App Store Connect から
+定期的に受け取る app データを保存する Web サーバー」と書いている。サーバーの役割は次のとおり。
+
+| 役割 | 内容 |
+| --- | --- |
+| 通知の受信 | App Store Connect からの webhook を受ける endpoint。署名は `x-apple-signature` header の HMAC。通知は、新しい配布物が出た、版が使えなくなった、app が使えなくなった、の 3 種。重複して届くことがある |
+| 配布物の取り込み | 公証の後、Apple が alternative distribution package（ADP）を用意する。運営者が App Store Connect API で取得し、自分のサーバーに保存して配る。中身は暗号化されている |
+| 端末への応答 | `/.well-known/marketplace-kit` に restore と updates の endpoint を書く。HTTPS、有効な証明書、redirect なし |
+| license の発行 | インストールごとに動的な license を発行する。Apple の App License Delivery SDK を Swift のサーバーに組み込む |
+| 検証用の token | インストールと更新のたびに、alternative distribution key で署名した install verification token（ES256）を返す |
+| 認証 | 必須ではない。ダウンロードを制限する場合だけ認証サービスを置く。復元時の再認証は OAuth 2.0 に沿う |
+
+**開発者から運営者への流れ。** 運営者が開発者に marketplace token を渡し、開発者が App Store Connect に登録する。
+開発者が公証に出すと、運営者のサーバーに通知が届く。
+
+**取り下げと失効。** 開発者が販売をやめたとき、または Apple が取り下げを求めたときに、通知が運営者のサーバーに届く。
+運営者は配布物を外し、以後の要求に「使えない」と返す。入れ済みの app が端末から消えるかは、読んだ範囲に記載が無い（**未確認**）。
+
+**復元。** 端末を復元すると、マーケットプレイス app とそこから入れた app は暗い placeholder になり、OS が restore の endpoint を呼ぶ。
+
+**Web Distribution。** 自社の app だけを配る場合も、文書は認証、license、app データの 3 種のサーバーを挙げ、
+それぞれに 2 つ以上の endpoint があると書いている。license と検証用の token は要求ごとに作る。
+静的に置けるのは配布物と `.well-known` の JSON だけである。domain と鍵は App Store Connect API で登録する。
+Web ページは、利用者がボタンを押したときだけインストールを始められる。
+
+**entitlement。** マーケットプレイス app の key は `com.apple.developer.marketplace.app-installation`（iOS 17.4、iPadOS 17.4 以降）。
+Enterprise 配布と Developer ID 配布の app には使えない。
+
+**検証の環境。** 開発用署名のマーケットプレイス app は Simulator と実機で動かせる。app のインストールは実機で示されている。
+App Store Connect への提出を含む手順（内部 TestFlight、Web Distribution）は、対象地域にある端末で行う必要がある。
+日本は iOS 26.2 以降で、app は iPhone に対応している必要がある。
+
+**環境契約との関係（事実だけ）。** Kotoba end-user app の環境契約は、app origin に要求時の処理を置かないと定めている。
+上のサーバーは、利用者ごとの license と token を要求時に作る。これを app origin に置けば契約に反する。
+契約は「静的な配信」と「build／release の基盤」を別の役割として分けているので、配布基盤として別に置く読み方はあり得るが、
+契約の本文はマーケットプレイスの配布サーバーを扱っていない。どちらに当たるかは owner が決める。
 
 ## 5. 推奨と理由
 
@@ -130,7 +173,8 @@ iOS で成り立たないもの: Store 自身によるバイナリの検証、`I
 
 1. **前提作業を済ませる（§6）。** EU trader status は App Store の掲載にも要る。
 2. **費用のかからない試作で測る。** 開発用 entitlement の申請と、アプリ 1 本の iOS build（§7 の 1〜3）。
-3. **EU は B（Web Distribution）を第一候補にする。** 掲載が自社アプリだけなら条件に合い、静的配信の契約とも合う。
+3. **EU は B（Web Distribution）を第一候補にする。** 掲載が自社アプリだけなら条件に合い、運営者の義務も小さい。
+   ただし A と同じく動的なサーバーが要る（§4.1）ので、静的配信だけでは済まない。
    資格は財務監査か D&B の評価で得られるかを先に確かめる。
 4. **日本は A を保留する。** 信用状 100 万米ドルの調達を決めるまでは、D（App Store に 1 本ずつ）と E（Web）で届ける。
 5. **Android の一般配布（AWAI-2982）を先に進める。** 本番鍵とカタログの認証は iOS でも使う部分で、先に固まる。
@@ -162,7 +206,9 @@ iOS で成り立たないもの: Store 自身によるバイナリの検証、`I
 1 件が 1 つの PR で終わる単位。番号は順序の案で、起票はしていない。
 
 1. Tauri v3 の iOS target を 1 本のアプリ（例: `network.itonami.kabi`）で build し、simulator で起動する。必要な手順と時間を記録する。
+   → [AWAI-3728](https://linear.app/kotobalabs/issue/AWAI-3728) として起票した。
 2. MarketplaceKit の文書を読み、配布物の受け渡しにサーバーが要るか、更新と失効の仕組みを §4 の表に書き足す（文書だけ）。
+   → [AWAI-3727](https://linear.app/kotobalabs/issue/AWAI-3727) で実施し、§4.1 に書いた。
 3. 開発用 entitlement で、アプリ一覧を出すだけの marketplace app を試作する（owner が entitlement を申請した後）。
 4. 署名つきカタログの schema に、iOS の掲載情報（bundle ID、公証済みの版）を足す案を `.cljc` の契約とテストで書く。
 5. Web Distribution 用の静的な一覧ページを、既存の `export-web.py` の出力から作る試作（EU の資格が決まった後）。
@@ -179,13 +225,31 @@ iOS で成り立たないもの: Store 自身によるバイナリの検証、`I
 - [Operating an alternative app marketplace in Brazil](https://developer.apple.com/support/alternative-app-marketplace-br/)
 - [Create a marketplace app（App Store Connect Help）](https://developer.apple.com/help/app-store-connect/distributing-apps-in-the-european-union/create-an-marketplace-app)
 
+MarketplaceKit の技術文書（AWAI-3727、2026-11-21 に確認。HTML は本文を返さないため、同じ文書の JSON 形式を読んだ）:
+
+- [Creating an alternative app marketplace](https://developer.apple.com/documentation/marketplacekit/creating-an-alternative-app-marketplace)
+- [Processing alternative marketplace notifications](https://developer.apple.com/documentation/marketplacekit/processing-alternative-marketplace-notifications)
+- [Ingesting an alternative distribution package](https://developer.apple.com/documentation/marketplacekit/ingesting-an-alternative-distribution-package)
+- [Installing apps from an alternative marketplace](https://developer.apple.com/documentation/marketplacekit/installing-apps-from-an-alternative-marketplace)
+- [Installing your app from your website](https://developer.apple.com/documentation/marketplacekit/installing-your-app-from-your-website)
+- [Distributing your app from your website](https://developer.apple.com/documentation/marketplacekit/distributing-your-app-from-your-website)
+- [Distributing your app on an alternative marketplace](https://developer.apple.com/documentation/marketplacekit/distributing-your-app-on-an-alternative-marketplace)
+- [Participating in alternative distribution for specific regions](https://developer.apple.com/documentation/marketplacekit/participating-in-alternative-distribution-for-specific-regions)
+- [Reauthenticating a person to manage apps](https://developer.apple.com/documentation/marketplacekit/reauthenticating-a-person-to-manage-apps)
+- [Supplying an install verification token](https://developer.apple.com/documentation/marketplacekit/supplying-an-install-verification-token)
+- [com.apple.developer.marketplace.app-installation](https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.marketplace.app-installation)
+
 確認の限界:
 
 - ページは要約を介して読んだ。数値と条件は引用で確かめたが、契約本文（License Agreement の Attachment 14 と日本向けの条項）は読んでいない。
-- App Store Connect Help のページは、手順の部分が要約だけで、文言は確かめていない。entitlement の名前が
-  ほかのページ（Alternative App Marketplace Entitlement）と違って伝わっており、正しい名前は **未確認**。
+- App Store Connect Help のページは、手順の部分が要約だけで、文言は確かめていない。
+- entitlement は、申請ページでは「Alternative App Marketplace Entitlement」と呼ばれ、key は
+  `com.apple.developer.marketplace.app-installation` である（§4.1）。
+- MarketplaceKit の文書のうち、鍵の作成と接続の確立、App License Delivery SDK、Core Technology Commission の取引報告、
+  App Store Connect API の各 endpoint のページは読んでいない。webhook の登録 API は文書の metadata で deprecated と
+  なっており、後継は **未確認**。
 - EU のページは Initial Acquisition Fee と Store Services Fee を廃止したと書く一方で、「Store services commission」の料率を載せている。
   App Store の外で配る場合には関係しないが、読み違いの可能性がある。
-- MarketplaceKit の技術文書、Tauri v3 の iOS 対応、App Review Guidelines は読んでいない。
+- Tauri v3 の iOS 対応、App Review Guidelines は読んでいない。
 
 これらのページは変わる。設計の根拠であって、申請時点の条件の証明ではない。
