@@ -235,6 +235,23 @@ public abstract class HostActivity extends Activity {
                 verifyStaged(c,id);return "ok";
             }catch(Exception invalid){if(temporary!=null)temporary.delete();return "refused";}
         }
+        // AWAI-3661: standing update approval. The page may read it, narrow it (stop, exclude) or ask
+        // the host to show its native confirmation. Only a press in that native dialog turns it on or
+        // widens it; no bridge method writes an approval directly.
+        @JavascriptInterface public String autoUpdateState(){
+            if(!"store".equals(mode()))return "{}";
+            try{UpdatePolicy.Approval a=loadApproval();long now=System.currentTimeMillis()/1000;JSONObject o=new JSONObject();
+                o.put("enabled",a.enabled);o.put("active",a.enabled&&a.grantedAt<=now&&a.expiresAt>now);
+                o.put("expiresAt",a.expiresAt);o.put("unmeteredOnly",a.unmeteredOnly);o.put("excluded",new JSONArray(a.excludedApps));
+                o.put("developmentKey",true);o.put("running",false);return o.toString();
+            }catch(Exception e){return "{}";}
+        }
+        @JavascriptInterface public void requestAutoUpdate(boolean unmeteredOnly){if(!"store".equals(mode()))return;runOnUiThread(()->confirmAutoUpdate(unmeteredOnly));}
+        @JavascriptInterface public void revokeAutoUpdate(){if(!"store".equals(mode()))return;saveApproval(UpdateApprovalRecord.revoke(loadApproval()));message("自動更新を止めました。更新はこれまでどおり毎回確認します。");}
+        @JavascriptInterface public void excludeFromAutoUpdate(String id){if(!"store".equals(mode()))return;
+            try{Catalog.assetFor(id);}catch(SecurityException unknown){return;}
+            saveApproval(UpdateApprovalRecord.exclude(loadApproval(),id));message("このアプリは自動更新の対象外にしました。");}
+        @JavascriptInterface public void requestAutoUpdateFor(String id){if(!"store".equals(mode()))return;runOnUiThread(()->confirmAutoUpdateFor(id));}
         @JavascriptInterface public void prepareInstall(String id){if(!"store".equals(mode()))return;runOnUiThread(()->confirmInstall(id));}
         @JavascriptInterface public void persistEvents(String json){if(!"yotei".equals(mode())||json==null||json.length()>131072)return;
             try{JSONArray events=new JSONArray(json);if(events.length()>200)return;for(int i=0;i<events.length();i++){JSONObject e=events.getJSONObject(i);if(e.getString("title").length()>160||e.getString("id").length()>80||e.getLong("at")<=0)return;}
@@ -244,6 +261,39 @@ public abstract class HostActivity extends Activity {
     private void verifyStaged(Catalog catalog, String id) throws Exception {
         File file = catalog.verifiedApkFile(this, id);
         if (!file.delete()) file.deleteOnExit();
+    }
+    private UpdatePolicy.Approval loadApproval(){return UpdateApprovalRecord.decode(getSharedPreferences("auto-update",0).getString("approval",null));}
+    private void saveApproval(UpdatePolicy.Approval a){getSharedPreferences("auto-update",0).edit().putString("approval",UpdateApprovalRecord.encode(a)).commit();}
+    /** Native, outside page control. Allow is armed after 600 ms, as in the consent dialog. */
+    private void confirmNative(String title,String body,String allow,Runnable onAllow){
+        AlertDialog d=new AlertDialog.Builder(this).setTitle(title).setMessage(body)
+            .setPositiveButton(allow,(x,w)->onAllow.run()).setNegativeButton("今はしない",null).create();
+        d.setOnShowListener(v->{Button b=d.getButton(AlertDialog.BUTTON_POSITIVE);b.setFilterTouchesWhenObscured(true);b.setEnabled(false);b.postDelayed(()->b.setEnabled(true),600);});
+        d.show();
+    }
+    private void confirmAutoUpdate(boolean unmeteredOnly){
+        long now=System.currentTimeMillis()/1000;
+        String until=java.text.DateFormat.getDateInstance(java.text.DateFormat.LONG,Locale.JAPAN).format(new Date((now+UpdatePolicy.MAX_APPROVAL_SECONDS)*1000));
+        String body="対象: この Store で追加したアプリの更新\n"
+            +"取得先: raw.githubusercontent.com（network-awai/awai-os の署名済み配布ファイル）\n"
+            +"操作: 署名済みカタログの読み取り（1 日 1 回まで）と、更新ファイルの取得・インストール\n"
+            +"伝わる情報: IP アドレス、確認の時刻、追加済みのアプリ\n"
+            +"条件: 同じ配布元の署名で、より新しい版で、新しい権限や通信先を追加しない更新だけ。それ以外の更新は、これまでどおり毎回確認します。\n"
+            +"回線: "+(unmeteredOnly?"従量制でない回線（Wi-Fi など）のみ":"すべての回線")+"\n"
+            +"期限: "+until+" まで（90 日）。Store の「更新」からいつでも止められます。\n\n"
+            +"この版の配布は開発用の署名鍵です。本番の鍵はまだありません。";
+        confirmNative("自動更新を有効にしますか？",body,"自動更新を有効にする",()->{
+            saveApproval(UpdateApprovalRecord.grant(System.currentTimeMillis()/1000,unmeteredOnly,loadApproval().excludedApps));
+            message("自動更新を有効にしました。");
+        });
+    }
+    private void confirmAutoUpdateFor(String id){
+        String name=id;
+        try{name=trustedCatalog().app(id).getString("name");}catch(Exception unknown){return;}
+        UpdatePolicy.Approval a=loadApproval();if(!a.enabled||!a.excludedApps.contains(id))return;
+        confirmNative(name+" を自動更新の対象に戻しますか？","有効な自動更新の範囲に "+name+" の更新を加えます。条件と取得先は自動更新の設定と同じです。","対象に戻す",()->{
+            saveApproval(UpdateApprovalRecord.include(loadApproval(),id));message("自動更新の対象に戻しました。");
+        });
     }
     private void confirmInstall(String id){
         if(installing)return;
