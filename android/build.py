@@ -9,15 +9,18 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 def run(args, **kw):
     return subprocess.run([str(x) for x in args], check=True, text=True, **kw)
 def digest(path): return hashlib.sha256(path.read_bytes()).hexdigest()
+DEBUG_KEYSTORE=pathlib.Path.home()/'.android/debug.keystore'
 def manifest(pkg, activity, version, kind, online=False, debuggable=True):
     perms = ''
     extra = ''
     home = ''
     if kind == 'home':
         perms = '<uses-permission android:name="network.awai.permission.READ_AGENDA"/><uses-permission android:name="android.permission.SET_WALLPAPER"/><uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/><uses-permission android:name="android.permission.INTERNET"/>'
-        perms += '<uses-permission android:name="android.permission.HIDE_OVERLAY_WINDOWS"/>'
+        perms += ('<uses-permission android:name="android.permission.HIDE_OVERLAY_WINDOWS"/>'
+                  '<permission android:name="network.awai.permission.HOST_ACCOUNT" android:protectionLevel="signature"/>')
         extra = ('<activity android:name="network.awai.home.AppearanceActivity" android:exported="false" android:label="Awai の外観"/>'
-                 '<activity android:name="network.awai.home.AccountBrokerActivity" android:exported="true" android:excludeFromRecents="true" android:label="Awai アカウント"/>')
+                 '<activity android:name="network.awai.home.AccountBrokerActivity" android:exported="true" android:excludeFromRecents="true" android:label="Awai アカウント"/>'
+                 '<provider android:name="network.awai.home.HostAccountProvider" android:authorities="network.awai.home.account" android:exported="true" android:permission="network.awai.permission.HOST_ACCOUNT"/>')
         home = '<intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.HOME"/><category android:name="android.intent.category.DEFAULT"/></intent-filter>'
     if kind == 'store':
         perms = '<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/><uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION"/>' + ('<uses-permission android:name="android.permission.INTERNET"/><uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/><uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/><uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>' if online else '')
@@ -52,6 +55,11 @@ def main():
     ap.add_argument('--dapp-distribution', type=pathlib.Path)
     ap.add_argument('--store-package', choices=['network.awai.store','network.awai.store.p2p.preview'], default='network.awai.store')
     ap.add_argument('--store-only', action='store_true')
+    # AWAI-3761: the signing identity. The defaults are the local Android debug identity, as before.
+    ap.add_argument('--keystore', type=pathlib.Path, default=DEBUG_KEYSTORE, help='JKS or PKCS12 keystore that signs the APKs and the catalog')
+    ap.add_argument('--key-alias', default='androiddebugkey')
+    ap.add_argument('--keystore-pass-env', help='name of the environment variable that holds the keystore and key password; the value is never put on a command line or in a report')
+    ap.add_argument('--release', action='store_true', help='non-debuggable APKs signed by --keystore; refuses the Android debug identity')
     args=ap.parse_args()
     if args.dapp_distribution and (args.online_pins or args.store_package != 'network.awai.store.p2p.preview'):
         ap.error('dapp bundle requires the isolated offline preview Store')
@@ -70,7 +78,20 @@ def main():
     if args.catalog_revision is not None and args.catalog_revision<1:raise SystemExit('positive catalog revision required')
     if args.version<1:raise SystemExit('positive version required')
     out=args.out.resolve();out.mkdir(parents=True,exist_ok=True);tools=args.sdk/'build-tools/36.1.0';jar=args.sdk/'platforms/android-37.0/android.jar'
-    key=pathlib.Path.home()/'.android/debug.keystore'
+    key=args.keystore
+    if args.keystore_pass_env is not None and not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', args.keystore_pass_env):
+        ap.error('--keystore-pass-env takes the name of an environment variable')
+    if args.keystore_pass_env and not os.environ.get(args.keystore_pass_env):
+        ap.error(f'environment variable {args.keystore_pass_env} is not set')
+    if args.release:
+        if args.unsigned_home: ap.error('--release signs the APKs; --unsigned-home leaves Home unsigned')
+        if not args.keystore_pass_env or key.resolve()==DEBUG_KEYSTORE.resolve() or args.key_alias=='androiddebugkey':
+            ap.error('--release requires --keystore, --key-alias and --keystore-pass-env for a key other than the Android debug identity')
+    # apksigner and SignCatalog read the password from the environment themselves.
+    ks_pass=['env:'+args.keystore_pass_env] if args.keystore_pass_env else ['pass:android']
+    sign_catalog_key=[key,args.key_alias]+([args.keystore_pass_env] if args.keystore_pass_env else [])
+    def catalog_sign(data,key_out,sig_out,**kw):
+        return run([args.java/'java','-cp',out,'SignCatalog',key,data,key_out,sig_out,*sign_catalog_key[1:]],**kw)
     required=[jar,tools/'aapt2',tools/'d8',tools/'zipalign',args.java/'javac']
     if not args.unsigned_home:
         required.extend([tools/'apksigner',key])
@@ -119,11 +140,12 @@ def main():
         run([args.java/'javac','-d',out,ROOT/'android/SignCatalog.java'])
         # SignCatalog emits only a public certificate fingerprint.
         probe=out/'probe';probe.write_bytes(b'fingerprint')
-        fp=run([args.java/'java','-cp',out,'SignCatalog',key,probe,out/'catalog-key.der',out/'probe.sig'],capture_output=True).stdout.strip()
+        fp=catalog_sign(probe,out/'catalog-key.der',out/'probe.sig',capture_output=True).stdout.strip()
+        if not re.fullmatch(r'[a-f0-9]{64}',fp):raise SystemExit('signing key could not be read')
     def build(kind,pkg,activity):
         stage=out/f'{kind}-v{args.version}';stage.mkdir(exist_ok=True);classes=stage/'classes';classes.mkdir(exist_ok=True);gen=stage/'gen';gen.mkdir(exist_ok=True);dex=stage/'dex';dex.mkdir(exist_ok=True)
         # Explicitly rebuild only this task's generated outputs; unrelated workspace data is untouched.
-        xml=stage/'AndroidManifest.xml';xml.write_text(manifest(pkg,activity,args.version,kind,bool(pins_online),debuggable=not args.unsigned_home))
+        xml=stage/'AndroidManifest.xml';xml.write_text(manifest(pkg,activity,args.version,kind,bool(pins_online),debuggable=not (args.unsigned_home or args.release)))
         staged_assets=stage/'assets'
         shutil.copytree(assets,staged_assets,dirs_exist_ok=True,
                         ignore=shutil.ignore_patterns('packages','catalog.json','catalog.sig','catalog-key.der') if kind!='store' else None)
@@ -155,8 +177,14 @@ def main():
             shutil.copyfile(stage/'aligned.apk',apk)
             return apk
         apk=out/f'{kind}-v{args.version}.apk'
-        run([tools/'apksigner','sign','--ks',key,'--ks-key-alias','androiddebugkey','--ks-pass','pass:android','--key-pass','pass:android','--out',apk,stage/'aligned.apk'])
+        run([tools/'apksigner','sign','--ks',key,'--ks-key-alias',args.key_alias,'--ks-pass',*ks_pass,'--key-pass',*ks_pass,'--out',apk,stage/'aligned.apk'])
         run([tools/'apksigner','verify','--verbose',apk],stdout=subprocess.DEVNULL)
+        if args.release:
+            # A release build must carry exactly the given key, must not be the debug identity and must not be debuggable.
+            certs=run([tools/'apksigner','verify','--print-certs',apk],capture_output=True).stdout
+            if re.findall(r'certificate SHA-256 digest: ([a-f0-9]{64})',certs)!=[fp]:raise SystemExit(f'{kind} APK signer is not the given key')
+            if 'CN=Android Debug' in certs:raise SystemExit('--release refuses the Android debug identity')
+            if 'application-debuggable' in run([tools/'aapt2','dump','badging',apk],capture_output=True).stdout:raise SystemExit(f'{kind} APK is debuggable')
         return apk
     if args.home_only:
         home=build('home','network.awai.home','network.awai.home.HomeActivity')
@@ -326,12 +354,14 @@ def main():
             listed.append({'id':profile['id'],'name':profile['name'],'description':descriptions[name],'publisher':'Awai Otehon 開発版','versionCode':a['versionCode'],'versionName':a['versionName'],'artifacts':[{k:a[k] for k in ['bytes','sha256','signerSha256']}|{'asset':target_asset,'platform':'android','runtime':'android','kind':'apk'}]})
     catalog={'schema':'itonami.store.bundled.v1','revision':revision,'expiresAt':int(time.time())+30*86400,'apps':listed}
     raw=json.dumps(catalog,ensure_ascii=False,separators=(',',':'));(assets/'catalog.json').write_text(raw)
-    run([args.java/'java','-cp',out,'SignCatalog',key,assets/'catalog.json',assets/'catalog-key.der',assets/'catalog.sig'],stdout=subprocess.DEVNULL)
+    catalog_sign(assets/'catalog.json',assets/'catalog-key.der',assets/'catalog.sig',stdout=subprocess.DEVNULL)
     (assets/'catalog-data.js').write_text('window.ItonamiCatalogRaw='+json.dumps(raw,ensure_ascii=False)+';window.ItonamiCatalog=JSON.parse(window.ItonamiCatalogRaw);window.ItonamiCatalogSignature='+json.dumps(base64.b64encode((assets/'catalog.sig').read_bytes()).decode())+';window.ItonamiPublicKey='+json.dumps(base64.b64encode((assets/'catalog-key.der').read_bytes()).decode())+';\n')
     store=build('store',args.store_package,'network.awai.store.StoreActivity')
     built=[store]
     if not args.store_only:
         built.extend((build('home','network.awai.home','network.awai.home.HomeActivity'), yotei, torihiki))
-    report={'schema':'awai.android.build.v1','version':args.version,'sdk':37,'buildTools':'36.1.0','signing':'local-android-debug-only','publicSignerSha256':fp,'runtime':pins,'artifacts':{p.name:{'sha256':digest(p),'bytes':p.stat().st_size}for p in built},'storePackage':args.store_package,'sharedDomainSha256':digest(ROOT/'android/contracts/src/itonami/store/domain.cljc'),'sharedClientSha256':digest(assets/'client.js')}
+    signing='release-key' if args.release else 'local-android-debug-only' if key.resolve()==DEBUG_KEYSTORE.resolve() and args.key_alias=='androiddebugkey' else 'custom-key-debuggable'
+    report={'schema':'awai.android.build.v1','version':args.version,'sdk':37,'buildTools':'36.1.0','signing':signing,'publicSignerSha256':fp,'runtime':pins,'artifacts':{p.name:{'sha256':digest(p),'bytes':p.stat().st_size}for p in built},'storePackage':args.store_package,'sharedDomainSha256':digest(ROOT/'android/contracts/src/itonami/store/domain.cljc'),'sharedClientSha256':digest(assets/'client.js')}
+    if args.release:report['debuggable']=False
     (out/f'build-v{args.version}.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2))
 if __name__=='__main__':main()

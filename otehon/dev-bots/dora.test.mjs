@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { fixCommitCount, isoWeek, ledgerProblems, median, parseArgs, parseLedger, summarize, toMarkdown, toReport, unclassified, UNKNOWN } from "./dora.mjs";
+import { fixCommitCount, isoWeek, ledgerProblems, median, parseArgs, parseLedger, runStarts, startOf, summarize, toMarkdown, toReport, unclassified, UNKNOWN } from "./dora.mjs";
 
 const R = "network-awai/awai-os";
 const ch = (pr, mergedAt, over = {}) => ({ repo: R, pr, mergedAt, startedAt: null, fixCommits: null, ...over });
@@ -287,4 +287,35 @@ test("a moved line keeps the classification of a renamed or transferred reposito
   assert.deepEqual([led({ kind: "moved", from: OLD, to: OLD }).badLines, led({ kind: "moved", from: OLD, to: OLD }).moved.size], [[1], 0]);
   const cyc = led({ kind: "moved", from: OLD, to: NEW }, { kind: "moved", from: NEW, to: OLD }, { kind: "reviewed", repo: OLD, pr: 1 });
   assert.equal(cyc.reviewed.size, 1);
+});
+
+test("runStarts keys a local run by its merge commit and its head commit", () => {
+  const A = "a".repeat(40), B = "b".repeat(40), C = "c".repeat(40);
+  const m = runStarts([
+    { start: "2026-11-21T01:03:08Z\n", deliver: { head: A, merged: { commit: B } } },
+    { start: "2026-11-21T02:00:00Z", deliver: { head: C } },
+    { start: "not a time", deliver: { head: "d".repeat(40) } },
+    { start: "2026-11-21T03:00:00Z", deliver: { head: "short", merged: { commit: 7 } } },
+    { start: "2026-11-21T04:00:00Z" }, null,
+    { start: "2026-11-21T05:00:00Z", deliver: { head: 9, merged: { commit: "not-a-commit" } } },
+  ]);
+  assert.deepEqual([...m], [[`commit:${B}`, "2026-11-21T01:03:08Z"], [`head:${A}`, "2026-11-21T01:03:08Z"], [`head:${C}`, "2026-11-21T02:00:00Z"]]);
+  assert.equal(runStarts(undefined).size, 0);
+});
+
+test("startOf takes the queue start, then a local run, then the pull request body", () => {
+  const A = "a".repeat(40), B = "b".repeat(40);
+  const runs = runStarts([{ start: "2026-11-21T02:00:00Z", deliver: { head: A, merged: { commit: B } } }]);
+  const body = "## Runner\n\n- Task started: 2026-11-21T03:00:00Z\n";
+  assert.equal(startOf({ queueStart: "2026-11-21T01:00:00Z", runs, mergeCommit: B, head: A, body }), "2026-11-21T01:00:00Z");
+  assert.equal(startOf({ queueStart: "garbage", runs, mergeCommit: B, head: "x", body }), "2026-11-21T02:00:00Z");
+  assert.equal(startOf({ runs, mergeCommit: "x", head: A, body }), "2026-11-21T02:00:00Z");
+  assert.equal(startOf({ runs, mergeCommit: null, head: null, body }), "2026-11-21T03:00:00Z");
+  assert.equal(startOf({ runs, mergeCommit: "x", head: "y", body: "nothing" }), null);
+  assert.equal(startOf(), null);
+  // A merge commit match wins over a head match of another run.
+  const two = runStarts([{ start: "2026-11-21T05:00:00Z", deliver: { head: A } }, { start: "2026-11-21T06:00:00Z", deliver: { merged: { commit: B } } }]);
+  assert.equal(startOf({ runs: two, mergeCommit: B, head: A }), "2026-11-21T06:00:00Z");
+  assert.equal(parseArgs(["--repos", R, "--since", "2026-11-01", "--runs", "/tmp/x"]).runs, "/tmp/x");
+  assert.equal(parseArgs(["--repos", R, "--since", "2026-11-01"]).runs, null);
 });
