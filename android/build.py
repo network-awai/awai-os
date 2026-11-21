@@ -60,6 +60,12 @@ def main():
     ap.add_argument('--key-alias', default='androiddebugkey')
     ap.add_argument('--keystore-pass-env', help='name of the environment variable that holds the keystore and key password; the value is never put on a command line or in a report')
     ap.add_argument('--release', action='store_true', help='non-debuggable APKs signed by --keystore; refuses the Android debug identity')
+    # AWAI-3775: the Store trusts a root and a root-signed key list; the catalog is signed by a listed catalog key,
+    # not by the APK key. Without --key-list the Store pins the APK key for both, as before.
+    ap.add_argument('--key-list', type=pathlib.Path, help='directory with store-root.der, keys.txt and keys.sig (android/key-list.py sign)')
+    ap.add_argument('--catalog-keystore', type=pathlib.Path, help='keystore of a catalog key listed in --key-list')
+    ap.add_argument('--catalog-key-alias')
+    ap.add_argument('--catalog-pass-env', help='name of the environment variable that holds the catalog keystore password')
     args=ap.parse_args()
     if args.dapp_distribution and (args.online_pins or args.store_package != 'network.awai.store.p2p.preview'):
         ap.error('dapp bundle requires the isolated offline preview Store')
@@ -90,8 +96,21 @@ def main():
     # apksigner and SignCatalog read the password from the environment themselves.
     ks_pass=['env:'+args.keystore_pass_env] if args.keystore_pass_env else ['pass:android']
     sign_catalog_key=[key,args.key_alias]+([args.keystore_pass_env] if args.keystore_pass_env else [])
-    def catalog_sign(data,key_out,sig_out,**kw):
+    def apk_key_sign(data,key_out,sig_out,**kw):
         return run([args.java/'java','-cp',out,'SignCatalog',key,data,key_out,sig_out,*sign_catalog_key[1:]],**kw)
+    catalog_sign=apk_key_sign
+    key_list=None
+    if args.key_list or args.catalog_keystore or args.catalog_key_alias or args.catalog_pass_env:
+        if not (args.key_list and args.catalog_keystore and args.catalog_key_alias and args.catalog_pass_env):
+            ap.error('--key-list, --catalog-keystore, --catalog-key-alias and --catalog-pass-env go together')
+        if not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', args.catalog_pass_env) or not os.environ.get(args.catalog_pass_env):
+            ap.error('--catalog-pass-env takes the name of a set environment variable')
+        if args.catalog_keystore.resolve()==key.resolve() and args.catalog_key_alias==args.key_alias:
+            ap.error('the catalog key must not be the APK signing key')
+        checked=run(['python3',ROOT/'android/key-list.py','verify','--dir',args.key_list],capture_output=True)
+        key_list=json.loads(checked.stdout)
+        def catalog_sign(data,key_out,sig_out,**kw):
+            return run([args.java/'java','-cp',out,'SignCatalog',args.catalog_keystore,data,key_out,sig_out,args.catalog_key_alias,args.catalog_pass_env],**kw)
     required=[jar,tools/'aapt2',tools/'d8',tools/'zipalign',args.java/'javac']
     if not args.unsigned_home:
         required.extend([tools/'apksigner',key])
@@ -140,7 +159,7 @@ def main():
         run([args.java/'javac','-d',out,ROOT/'android/SignCatalog.java'])
         # SignCatalog emits only a public certificate fingerprint.
         probe=out/'probe';probe.write_bytes(b'fingerprint')
-        fp=catalog_sign(probe,out/'catalog-key.der',out/'probe.sig',capture_output=True).stdout.strip()
+        fp=apk_key_sign(probe,out/'catalog-key.der',out/'probe.sig',capture_output=True).stdout.strip()
         if not re.fullmatch(r'[a-f0-9]{64}',fp):raise SystemExit('signing key could not be read')
     def build(kind,pkg,activity):
         stage=out/f'{kind}-v{args.version}';stage.mkdir(exist_ok=True);classes=stage/'classes';classes.mkdir(exist_ok=True);gen=stage/'gen';gen.mkdir(exist_ok=True);dex=stage/'dex';dex.mkdir(exist_ok=True)
@@ -148,7 +167,7 @@ def main():
         xml=stage/'AndroidManifest.xml';xml.write_text(manifest(pkg,activity,args.version,kind,bool(pins_online),debuggable=not (args.unsigned_home or args.release)))
         staged_assets=stage/'assets'
         shutil.copytree(assets,staged_assets,dirs_exist_ok=True,
-                        ignore=shutil.ignore_patterns('packages','catalog.json','catalog.sig','catalog-key.der') if kind!='store' else None)
+                        ignore=shutil.ignore_patterns('packages','catalog.json','catalog.sig','catalog-key.der','store-root.der','keys.txt','keys.sig') if kind!='store' else None)
         if kind!='store':
             (staged_assets/'catalog-data.js').write_text('window.ItonamiCatalog={apps:[]};\n')
             (staged_assets/'online-data.js').write_text('window.ItonamiOnlinePins=null;\n')
@@ -161,13 +180,13 @@ def main():
         if kind=='home':
             html=(staged_assets/'index.html').read_text().replace("connect-src 'none'","connect-src https://relay.awai.network")
             (staged_assets/'index.html').write_text(html)
-        files=sorted(str(p.relative_to(staged_assets)).replace(os.sep,'/')for p in staged_assets.rglob('*')if p.is_file()and p.name not in ['assets.list','catalog.json','catalog.sig','catalog-key.der']and not str(p.relative_to(staged_assets)).startswith('packages/'))
+        files=sorted(str(p.relative_to(staged_assets)).replace(os.sep,'/')for p in staged_assets.rglob('*')if p.is_file()and p.name not in ['assets.list','catalog.json','catalog.sig','catalog-key.der','store-root.der','keys.txt','keys.sig']and not str(p.relative_to(staged_assets)).startswith('packages/'))
         (staged_assets/'assets.list').write_text('\n'.join(files)+'\n')
         run([tools/'aapt2','compile','--dir',resources,'-o',stage/'resources.zip'])
         run([tools/'aapt2','link','-o',stage/'resources.apk','--manifest',xml,'-I',jar,'--java',gen,'-R',stage/'resources.zip','-A',staged_assets,'--auto-add-overlay'])
         sources=list((ROOT/'android/shared/src').rglob('*.java'))+list((ROOT/'android'/kind/'src').rglob('*.java'))+list(gen.rglob('*.java'))
         run([args.java/'javac','--release','8','-encoding','UTF-8','-cp',jar,'-d',classes,*sources])
-        run([tools/'d8','--min-api','35','--lib',jar,'--output',dex,*classes.rglob('*.class')])
+        run([tools/'d8','--min-api','33','--lib',jar,'--output',dex,*classes.rglob('*.class')])
         unsigned=stage/'unsigned.apk';shutil.copyfile(stage/'resources.apk',unsigned)
         with zipfile.ZipFile(unsigned,'a',compression=zipfile.ZIP_DEFLATED)as z:
             for f in dex.glob('*.dex'):z.write(f,f.name)
@@ -354,14 +373,26 @@ def main():
             listed.append({'id':profile['id'],'name':profile['name'],'description':descriptions[name],'publisher':'Awai Otehon 開発版','versionCode':a['versionCode'],'versionName':a['versionName'],'artifacts':[{k:a[k] for k in ['bytes','sha256','signerSha256']}|{'asset':target_asset,'platform':'android','runtime':'android','kind':'apk'}]})
     catalog={'schema':'itonami.store.bundled.v1','revision':revision,'expiresAt':int(time.time())+30*86400,'apps':listed}
     raw=json.dumps(catalog,ensure_ascii=False,separators=(',',':'));(assets/'catalog.json').write_text(raw)
-    catalog_sign(assets/'catalog.json',assets/'catalog-key.der',assets/'catalog.sig',stdout=subprocess.DEVNULL)
-    (assets/'catalog-data.js').write_text('window.ItonamiCatalogRaw='+json.dumps(raw,ensure_ascii=False)+';window.ItonamiCatalog=JSON.parse(window.ItonamiCatalogRaw);window.ItonamiCatalogSignature='+json.dumps(base64.b64encode((assets/'catalog.sig').read_bytes()).decode())+';window.ItonamiPublicKey='+json.dumps(base64.b64encode((assets/'catalog-key.der').read_bytes()).decode())+';\n')
+    trust={'mode':'single-key'}
+    if key_list:
+        catalog_sign(assets/'catalog.json',out/'catalog-role-key.der',assets/'catalog.sig',stdout=subprocess.DEVNULL)
+        catalog_key_id=digest(out/'catalog-role-key.der')
+        if catalog_key_id not in key_list['catalogKeys']:raise SystemExit('the catalog key is not listed for the catalog role in --key-list')
+        for name in ('store-root.der','keys.txt','keys.sig'):shutil.copyfile(args.key_list/name,assets/name)
+        (assets/'catalog-key.der').unlink(missing_ok=True)
+        trust={'mode':'key-list','sequence':key_list['sequence'],'expiresAt':key_list['expiresAt'],'root':key_list['root'],'catalogKey':catalog_key_id,'pointerKeys':key_list['pointerKeys']}
+        b64=lambda name:base64.b64encode((assets/name).read_bytes()).decode()
+        trust_js='window.ItonamiKeyList='+json.dumps({'root':b64('store-root.der'),'raw':b64('keys.txt'),'signature':b64('keys.sig')})+';'
+    else:
+        catalog_sign(assets/'catalog.json',assets/'catalog-key.der',assets/'catalog.sig',stdout=subprocess.DEVNULL)
+        trust_js='window.ItonamiPublicKey='+json.dumps(base64.b64encode((assets/'catalog-key.der').read_bytes()).decode())+';'
+    (assets/'catalog-data.js').write_text('window.ItonamiCatalogRaw='+json.dumps(raw,ensure_ascii=False)+';window.ItonamiCatalog=JSON.parse(window.ItonamiCatalogRaw);window.ItonamiCatalogSignature='+json.dumps(base64.b64encode((assets/'catalog.sig').read_bytes()).decode())+';'+trust_js+'\n')
     store=build('store',args.store_package,'network.awai.store.StoreActivity')
     built=[store]
     if not args.store_only:
         built.extend((build('home','network.awai.home','network.awai.home.HomeActivity'), yotei, torihiki))
     signing='release-key' if args.release else 'local-android-debug-only' if key.resolve()==DEBUG_KEYSTORE.resolve() and args.key_alias=='androiddebugkey' else 'custom-key-debuggable'
-    report={'schema':'awai.android.build.v1','version':args.version,'sdk':37,'buildTools':'36.1.0','signing':signing,'publicSignerSha256':fp,'runtime':pins,'artifacts':{p.name:{'sha256':digest(p),'bytes':p.stat().st_size}for p in built},'storePackage':args.store_package,'sharedDomainSha256':digest(ROOT/'android/contracts/src/itonami/store/domain.cljc'),'sharedClientSha256':digest(assets/'client.js')}
+    report={'schema':'awai.android.build.v1','version':args.version,'sdk':37,'buildTools':'36.1.0','signing':signing,'publicSignerSha256':fp,'trust':trust,'runtime':pins,'artifacts':{p.name:{'sha256':digest(p),'bytes':p.stat().st_size}for p in built},'storePackage':args.store_package,'sharedDomainSha256':digest(ROOT/'android/contracts/src/itonami/store/domain.cljc'),'sharedClientSha256':digest(assets/'client.js')}
     if args.release:report['debuggable']=False
     (out/f'build-v{args.version}.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2))
 if __name__=='__main__':main()
