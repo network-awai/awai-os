@@ -1,0 +1,34 @@
+diff --git a/BoardConfig.mk b/BoardConfig.mk
+--- a/BoardConfig.mk
++++ b/BoardConfig.mk
+@@ -50 +50,30 @@
+ TARGET_VM_UTM_TEMPLATE_DIR := $(DEVICE_PATH)/vm_templates/utm
++
++# AWAI-3714: opt in to AOSP system AVB metadata generation for the PC A/B build.
++AWAI_PC_AVB_BUILD ?= false
++ifeq ($(AWAI_PC_AVB_BUILD),true)
++ifneq ($(AB_OTA_UPDATER),true)
++$(error AWAI_PC_AVB_BUILD requires the PC A/B product)
++endif
++ifeq ($(strip $(AWAI_PC_AVB_KEY_PATH)),)
++$(error AWAI_PC_AVB_BUILD requires an explicit AWAI_PC_AVB_KEY_PATH)
++endif
++ifeq ($(strip $(AWAI_PC_AVB_ROLLBACK_INDEX)),)
++$(error AWAI_PC_AVB_BUILD requires an explicit AWAI_PC_AVB_ROLLBACK_INDEX)
++endif
++
++BOARD_AVB_ENABLE := true
++BOARD_AVB_ALGORITHM := SHA256_RSA4096
++BOARD_AVB_KEY_PATH := $(strip $(AWAI_PC_AVB_KEY_PATH))
++BOARD_AVB_ROLLBACK_INDEX := $(strip $(AWAI_PC_AVB_ROLLBACK_INDEX))
++
++# The pinned avbtool otherwise selects SHA-1 for hashtree footers.
++AWAI_PC_AVB_HASHTREE_PARTITIONS := SYSTEM SYSTEM_EXT PRODUCT ODM VENDOR SYSTEM_DLKM VENDOR_DLKM
++$(foreach p,$(AWAI_PC_AVB_HASHTREE_PARTITIONS), \
++    $(eval BOARD_AVB_$(p)_ADD_HASHTREE_FOOTER_ARGS += --hash_algorithm sha256))
++ifeq ($(filter vbmeta,$(AB_OTA_PARTITIONS)),)
++AB_OTA_PARTITIONS += vbmeta
++endif
++else ifneq ($(AWAI_PC_AVB_BUILD),false)
++$(error AWAI_PC_AVB_BUILD accepts true or false)
++endif
