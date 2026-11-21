@@ -49,7 +49,7 @@ Apply `apply-pc-avb-build.sh <source tree root>` to the dedicated x86_64 A/B che
 For an evaluation build, set the following make inputs before building `target-files-package`:
 
 - `AWAI_PC_AVB_BUILD=true`
-- `AWAI_PC_AVB_KEY_PATH` pointing to an explicit RSA-4096 evaluation key
+- `AWAI_PC_AVB_KEY_PATH` pointing to an explicit RSA-4096 evaluation key, relative to the Android source tree
 - `AWAI_PC_AVB_ROLLBACK_INDEX` set to the evaluation image's rollback index
 
 This requests AOSP's SHA256_RSA4096 AVB metadata, selects SHA-256 for the PC logical partitions'

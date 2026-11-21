@@ -1,7 +1,7 @@
 diff --git a/BoardConfig.mk b/BoardConfig.mk
 --- a/BoardConfig.mk
 +++ b/BoardConfig.mk
-@@ -50 +50,30 @@
+@@ -50 +50,33 @@
  TARGET_VM_UTM_TEMPLATE_DIR := $(DEVICE_PATH)/vm_templates/utm
 +
 +# AWAI-3714: opt in to AOSP system AVB metadata generation for the PC A/B build.
@@ -12,6 +12,9 @@ diff --git a/BoardConfig.mk b/BoardConfig.mk
 +endif
 +ifeq ($(strip $(AWAI_PC_AVB_KEY_PATH)),)
 +$(error AWAI_PC_AVB_BUILD requires an explicit AWAI_PC_AVB_KEY_PATH)
++endif
++ifneq ($(filter /%,$(strip $(AWAI_PC_AVB_KEY_PATH))),)
++$(error AWAI_PC_AVB_KEY_PATH must be relative to the Android source tree)
 +endif
 +ifeq ($(strip $(AWAI_PC_AVB_ROLLBACK_INDEX)),)
 +$(error AWAI_PC_AVB_BUILD requires an explicit AWAI_PC_AVB_ROLLBACK_INDEX)
