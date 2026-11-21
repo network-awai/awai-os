@@ -149,7 +149,7 @@ public final class UpdatePolicy {
         // 3. Artifact digest and size, as checked against the catalog entry.
         if (!c.digestMatches) r.add("digest");
         // 4. No new Android permission.
-        if (i.permissions == null || c.permissions == null || !i.permissions.containsAll(c.permissions))
+        if (i.permissions == null || c.permissions == null || !addedPermissions(i.permissions, c.permissions).isEmpty())
             r.add("new-permission");
         // 5. No new external operation, endpoint origin or data category.
         if (i.operations == null || c.operations == null) r.add("operations-unknown");
@@ -161,6 +161,17 @@ public final class UpdatePolicy {
         // 7. Network condition the person chose.
         if (a != null && a.unmeteredOnly && !x.networkUnmetered) r.add("network-metered");
         return r;
+    }
+
+    /**
+     * Android permissions the candidate requests that the installed version does not, sorted.
+     * The Store shows this list on the update screen instead of a fixed sentence (AWAI-3653).
+     */
+    public static List<String> addedPermissions(Set<String> installed, Set<String> candidate) {
+        List<String> out = new ArrayList<>();
+        for (String p : candidate) if (!installed.contains(p)) out.add(p);
+        Collections.sort(out);
+        return out;
     }
 
     public static boolean eligible(Approval a, Installed i, Candidate c, Device x) {

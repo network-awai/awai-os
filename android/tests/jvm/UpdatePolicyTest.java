@@ -29,6 +29,11 @@ public final class UpdatePolicyTest {
             System.out.println("FAIL " + name + ": got " + got + ", want " + Arrays.asList(want));
         } else System.out.println("ok   " + name + (want.length == 0 ? " (eligible)" : " -> " + Arrays.asList(want)));
     }
+    static void same(String name, List<String> got, String... want) {
+        checks++;
+        if (!got.equals(Arrays.asList(want))) { failures++; System.out.println("FAIL " + name + ": got " + got + ", want " + Arrays.asList(want)); }
+        else System.out.println("ok   " + name + " -> " + got);
+    }
     static List<String> run(Approval a, Installed i, Candidate c, Device d) { return UpdatePolicy.refusals(a, i, c, d); }
 
     public static void main(String[] args) {
@@ -78,6 +83,13 @@ public final class UpdatePolicyTest {
 
         expect("missing facts", run(a, null, c, d), "missing-facts");
         expect("several at once", run(new Approval(false, 0, 0, set(), true), i, new Candidate(true, 108, c.catalogExpiresAt, ID, 999, OTHER, c.bytes, true, c.permissions, c.operations), d), "approval-off", "signer-changed", "not-newer");
+
+        // The update screen lists exactly the added permissions (AWAI-3653), in a stable order.
+        same("added permissions: none", UpdatePolicy.addedPermissions(set("android.permission.INTERNET", "android.permission.POST_NOTIFICATIONS"), set("android.permission.INTERNET")));
+        same("added permissions: removed one is not added", UpdatePolicy.addedPermissions(set("android.permission.CAMERA"), set()));
+        same("added permissions: two, sorted", UpdatePolicy.addedPermissions(set("android.permission.INTERNET"),
+                set("android.permission.POST_NOTIFICATIONS", "android.permission.INTERNET", "android.permission.CAMERA")),
+                "android.permission.CAMERA", "android.permission.POST_NOTIFICATIONS");
 
         System.out.println(checks + " checks, " + failures + " failures");
         if (failures > 0) System.exit(1);

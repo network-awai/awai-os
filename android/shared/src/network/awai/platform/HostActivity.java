@@ -237,6 +237,19 @@ public abstract class HostActivity extends Activity {
             }catch(Exception invalid){return "refused";}
         }
         @JavascriptInterface public boolean hasOnlineApk(String id){if(!"store".equals(mode()))return false;try{Catalog c=trustedCatalog();if(!c.isOnlineDelivery(id))return false;verifyStaged(c,id);return true;}catch(Exception absent){return false;}}
+        /** Permission difference between the installed app and its verified catalog APK. known=false when either side is unavailable. */
+        @JavascriptInterface public String permissionChanges(String id){
+            if(!"store".equals(mode()))return "{\"known\":false}";
+            File file=null;
+            try{Catalog c=trustedCatalog();PackageInfo installed=getPackageManager().getPackageInfo(id,PackageManager.GET_PERMISSIONS);
+                file=c.verifiedApkFile(HostActivity.this,id);
+                PackageInfo candidate=getPackageManager().getPackageArchiveInfo(file.getAbsolutePath(),PackageManager.GET_PERMISSIONS);
+                if(candidate==null)return "{\"known\":false}";
+                JSONObject o=new JSONObject();o.put("known",true);o.put("versionCode",candidate.getLongVersionCode());
+                o.put("added",new JSONArray(UpdatePolicy.addedPermissions(requested(installed),requested(candidate))));return o.toString();
+            }catch(Exception unknown){return "{\"known\":false}";}
+            finally{if(file!=null&&!file.delete())file.deleteOnExit();}
+        }
         @JavascriptInterface public String stageOnlineApk(String id,String encoded){
             int budget;try{budget=Catalog.maxApkBytes(id);}catch(SecurityException unadmitted){return "refused";}
             if(!"store".equals(mode())||encoded==null||encoded.length()>(long)budget*4/3+64)return "refused";
@@ -275,6 +288,7 @@ public abstract class HostActivity extends Activity {
                 getSharedPreferences("agenda",0).edit().putString("events",events.toString()).apply();getContentResolver().notifyChange(Uri.parse("content://network.itonami.yotei.agenda/events"),null);
             }catch(JSONException invalid){} }
     }
+    private static Set<String> requested(PackageInfo p){return p.requestedPermissions==null?new HashSet<String>():new HashSet<>(Arrays.asList(p.requestedPermissions));}
     private void verifyStaged(Catalog catalog, String id) throws Exception {
         File file = catalog.verifiedApkFile(this, id);
         if (!file.delete()) file.deleteOnExit();
