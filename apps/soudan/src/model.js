@@ -79,6 +79,15 @@ export function assembleMemo(d, t) {
   return {template: JURISDICTIONS[d.jurisdiction].template, title, sections, notice, text: textOut};
 }
 
+// The sent body heads with the destination line: the lawyer the user typed,
+// nothing else (ADR D9: user-typed only, no list, no suggestion, no lookup).
+// User text is copied as typed (trimmed), never rewritten or translated.
+export function addressedMemo(memoText, recipient, t) {
+  const parts = [recipient?.name, recipient?.office, recipient?.contact]
+    .map(v => (typeof v === 'string' ? v.trim() : '')).filter(v => v.length > 0);
+  return t('memo.to') + ': ' + parts.join(' / ') + '\n' + memoText;
+}
+
 // Restore a stored draft, keeping only known fields of the right type. Anything else starts empty.
 export function restoreDraft(data) {
   const d = emptyDraft();

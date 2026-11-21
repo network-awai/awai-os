@@ -13,12 +13,14 @@ The scope comes from ADR 0001 in `kotoba-lang/app-itonami-cloud-itonami-isic-691
 
 ## Sending (X1, ADR 0001 D9 / owner decision O1)
 
-The descriptor declares **one operation**: handing the memo to the lawyer the user chose, through the Android share sheet (`browser-action: share`, recipient `user-selected-app`; no service origin is fabricated — the AWAI-3336 pin of the canonical `kotoba-client-runtime.js` allows this shape). Scope is the O1/D9 range only: the memo the user assembled, to the lawyer the user named. The app holds no lawyer list and never suggests one (a test checks this).
+The descriptor declares **one operation**: handing the memo to the lawyer the user chose, through the Android share sheet (`browser-action: share`, recipient `user-selected-app`; no service origin is fabricated). Scope is the O1/D9 range only: the memo the user assembled, to the lawyer the user named. The app holds no lawyer list and never suggests one (a test checks this). The operation also declares the finding-9 disclosure the canonical broker shows (recipient, country JP, data, purpose, `one-time` frequency, withdrawal slot); the canonical `kotoba-client-runtime.js` pin is recorded in `otehon/shell/vendor/PINS.json`.
 
 Two gates, both fail closed:
 
 - Governor review: the operation runs only when it is in the broker's eligible operations (`approvedOperations` intersected with `hostSupportedOperations`). Otherwise the send button stays disabled and `invoke` refuses before consent is even shown.
-- User approval: every send shows the canonical per-operation consent dialog (`consent: each-operation`), which names the receiver as "the app you pick next". Denial throws and nothing leaves the device.
+- User approval: every send shows the canonical per-operation consent dialog (`consent: each-operation`). When the device language is Japanese the dialog is Japanese (the device language picks the wording; English otherwise). The first screen shows the declared facts (送り先, 送る情報, 目的, 送る回数); the technical scope (Service, Operation, Receiver "the app you pick next", Data categories `legal.consultation-memo`) stays behind 詳細を見る. Denial throws and nothing leaves the device.
+
+The sent body heads with a 宛先 line built only from what the user typed (name / office / contact, `model.js addressedMemo`): no candidates, no lookup, no recommendation (ADR D9, tested). The memo preview itself is unchanged.
 
 Wiring: the page's browser adapter calls the Tauri `soudan_share` command (Android only; other platforms fail closed with `android-only`), which fires `ACTION_SEND` through `SharePlugin` (no chooser result is read back: resolving means the chooser opened). Tests prove approval hands the memo over exactly once and denial hands nothing over, through the real broker and consent host.
 

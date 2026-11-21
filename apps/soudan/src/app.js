@@ -1,7 +1,7 @@
 import {bind_native} from './awai-ui/index.js';
 import {createHost} from './host.js';
 import {clientRuntimeProblems, createClientConsentHost, createClientOperationBroker} from './runtime.js';
-import {CATEGORIES, JURISDICTIONS, LIMITS, emptyDraft, draftProblems, recipientProblems, assembleMemo, restoreDraft} from './model.js';
+import {CATEGORIES, JURISDICTIONS, LIMITS, emptyDraft, draftProblems, recipientProblems, assembleMemo, addressedMemo, restoreDraft} from './model.js';
 import {pickLocale, translator} from './messages.js';
 import {runtimeDescriptor, REQUESTED_CAPABILITIES, SEND_SELECTOR} from './operations.js';
 import {createShareHandler} from './send.js';
@@ -16,12 +16,14 @@ if (clientRuntimeProblems(descriptor, REQUESTED_CAPABILITIES, location.origin).l
 const tauriInvoke = window.__TAURI__?.core?.invoke;
 const SEND_HOST = [SEND_SELECTOR.capability, SEND_SELECTOR.service, SEND_SELECTOR.operation];
 async function shareViaSheet(memo) { await tauriInvoke('soudan_share', {text: memo}); }
+// The device language picks the consent dialog language (ja when the device is Japanese).
+const locale = pickLocale(navigator.languages);
 const broker = createClientOperationBroker({runtime: descriptor, requestedCapabilities: [...REQUESTED_CAPABILITIES], approvedOperations: descriptor.operations,
   hostSupportedOperations: tauriInvoke ? [SEND_HOST] : [],
   browserAdapters: tauriInvoke ? {[SEND_SELECTOR.service]: {[SEND_SELECTOR.operation]: createShareHandler({shareText: shareViaSheet})}} : {},
-  consentHost: createClientConsentHost()});
+  consentHost: createClientConsentHost({locale}), app: {name: '法律相談'}});
 
-const locale = pickLocale(navigator.languages), t = translator(locale);
+const t = translator(locale);
 document.documentElement.lang = locale;
 const host = createHost({appId: 'network.itonami.soudan'});
 const $ = id => document.getElementById(id);
@@ -146,7 +148,7 @@ function renderMemo() {
     if (!e.isTrusted) return;
     if (recipientProblems(draft.recipient).length || broker.operations.length === 0) { say(t('send.blocked')); return; }
     const to = {name: draft.recipient.name.trim(), office: (draft.recipient.office ?? '').trim(), contact: draft.recipient.contact.trim()};
-    try { await broker.invoke(SEND_SELECTOR, {memo: memo.text, recipient: to}); say(t('send.shared')); }
+    try { await broker.invoke(SEND_SELECTOR, {memo: addressedMemo(memo.text, to, t), recipient: to}); say(t('send.shared')); }
     catch { say(t('send.blocked')); }
   });
   const saveButton = el('button', t('save'), 'tonal'); saveButton.type = 'button'; saveButton.addEventListener('click', () => save());
