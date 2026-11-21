@@ -1,5 +1,5 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
-import {CATEGORIES,JURISDICTIONS,LIMITS,emptyDraft,draftProblems,recipientProblems,assembleMemo,restoreDraft} from '../src/model.js';
+import {CATEGORIES,JURISDICTIONS,LIMITS,emptyDraft,draftProblems,recipientProblems,assembleMemo,addressedMemo,restoreDraft} from '../src/model.js';
 import {MESSAGES,translator} from '../src/messages.js';
 import {runtimeDescriptor,REQUESTED_CAPABILITIES,SEND_SELECTOR,SEND_OPERATION} from '../src/operations.js';
 import {clientRuntimeProblems,clientRuntimeConnectSrc,effectiveClientOperations} from '../../../otehon/shell/vendor/kotoba-client-runtime.js';
@@ -36,6 +36,14 @@ test('negative control: missing, oversized and malformed input is refused with m
     [{timeline:Array.from({length:LIMITS.timeline+1},()=>({date:'',event:'x'}))},'timeline.tooMany']];
   for(const [patch,key] of cases){const p=draftProblems({...fixture(),...patch});assert.ok(p.includes(key),key+' in '+p);assert.ok(t(key,{max:1}));}
   assert.deepEqual(draftProblems(null),['draft.invalid']);
+});
+test('the sent body heads with the destination the user typed, trimmed and without lookup',()=>{
+  const to={name:'鈴木花子',office:'鈴木法律事務所',contact:'hanako@example.jp'};
+  assert.equal(addressedMemo('本文',to,t),'宛先: 鈴木花子 / 鈴木法律事務所 / hanako@example.jp\n本文');
+  assert.equal(addressedMemo('本文',{...to,office:'  '},t),'宛先: 鈴木花子 / hanako@example.jp\n本文');
+  assert.equal(addressedMemo('本文',{name:'  鈴木花子　',office:'',contact:'hanako@example.jp'},t),'宛先: 鈴木花子 / hanako@example.jp\n本文');
+  assert.equal(addressedMemo('body',to,translator('en')),'To: 鈴木花子 / 鈴木法律事務所 / hanako@example.jp\nbody');
+  assert.equal(addressedMemo('本文',to,t).split('\n')[0].slice(0,3),'宛先:');
 });
 test('the recipient is only what the user typed; shape is checked, nothing is looked up',()=>{
   assert.deepEqual(recipientProblems({name:'鈴木花子',office:'',contact:'hanako@example.jp'}),[]);
