@@ -9,13 +9,13 @@ node --test store/site/build.test.mjs
 node store/site/build.mjs --out <new directory>
 ```
 
-Output: `index.html`, `style.css` and `site-manifest.json` (`awai.store-site.v1`, with the SHA-256
+Output: `index.html`, `style.css`, `logo.png` and `site-manifest.json` (`awai.store-site.v1`, with the SHA-256
 of each file, the pointer sequence, the catalog revision and each listed APK).
 
-The screen composition is designed in Figma:
-[docs/otehon/itonami-store-web-entry-figma-20261121.md](../../docs/otehon/itonami-store-web-entry-figma-20261121.md)
-(AWAI-3735). The HTML and CSS here were written before that design and differ from it; the
-differences are listed there and tracked in AWAI-3736.
+The screen composition is designed in Figma, and the HTML and CSS follow it (AWAI-3735, AWAI-3736):
+[docs/otehon/itonami-store-web-entry-figma-20261121.md](../../docs/otehon/itonami-store-web-entry-figma-20261121.md).
+Change the Figma proposal first, then this directory. The colors, type ramp, spacing and radius in
+`style.css` are copies of the Figma variables and text styles; they are not read from Figma at build time.
 
 ## What the build checks
 
@@ -32,8 +32,10 @@ An app is listed with a download link only when all of these hold. Any failure s
 
 ## What the page is
 
-- A document: HTML and CSS only. No script, no form, no image, no remote subresource. The
-  `Content-Security-Policy` meta is `default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'`.
+- A document: HTML, CSS and one same-origin logo image. No script, no form, no remote subresource,
+  no web font. The `Content-Security-Policy` meta is
+  `default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'`.
+- `logo.png` is the Figma component `Awai / Site logo 02 master` exported at 128 px.
 - The page sends nothing until the person follows a link. Each download link names its host and
   shows the SHA-256 and signer next to it. There is no request-time handler, per-user state or proxy.
 - It says that this is a development build. The catalog and most APKs are signed with the Android
@@ -48,4 +50,5 @@ An app is listed with a download link only when all of these hold. Any failure s
 - The build reads APK bytes from this repository. It does not fetch the pinned URLs, so it does not
   prove that GitHub serves the same bytes.
 - CSS uses only Baseline Widely available features. The `modern-web-guidance` skill was not available
-  in the session that wrote it.
+  in the sessions that wrote it.
+- No font file is shipped. Devices without Noto Sans JP render with their own font.

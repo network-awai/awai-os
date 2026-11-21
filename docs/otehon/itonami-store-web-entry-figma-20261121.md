@@ -46,31 +46,51 @@ Store 本体の APK、iOS、desktop は公開していないので、入手で�
 
 - 4 画面と component のスクリーンショットを確認した。親からはみ出す text は 0 件。
 - 通常幅の画面は text 145、instance 18、画像は logo の 1 件。画面全体を画像で貼ったものは無い。
+  （AWAI-3736 で component に行を足す前の数。足した後も、はみ出す text は 0 件。）
 - 使われている font は Noto Sans JP の Regular と Medium だけ。
 
-## 実装（`store/site`）との差分
+## 実装（`store/site`）との対応（AWAI-3736、2026-11-21）
 
-いまの HTML／CSS は Figma より先に書いたので、次の点が違う。直すのは別 issue（[AWAI-3736](https://linear.app/kotobalabs/issue/AWAI-3736)）。
+[AWAI-3736](https://linear.app/kotobalabs/issue/AWAI-3736) で、HTML／CSS を Figma に合わせた。
+先に決めていなかった点は、次のように決めて進めた。owner の決定ではなく、作業上の選択である。
 
-| 点 | Figma | いまの実装 |
+| 点 | 選んだこと | 理由 |
 | --- | --- | --- |
-| 文字 | Noto Sans JP、Awai Web の文字の段階 | system-ui、独自の大きさ |
-| 配色 | Awai Web · Daylight の Asa と Yoru | 独自の配色（緑の強調色、黄色の注意書き） |
-| 通常幅の構成 | 2 列（一覧 808、補足 368） | 1 列（最大 46rem） |
-| 見出し部 | logo と「Itonami Store」「Awai Network」 | logo なし |
-| 開発版の表示 | 強調色の枠の card | 黄色の背景と左の線 |
-| 取得ボタンと補足 | 既存の Button と、digest を見る Secondary ボタン | 独自のボタンと文中のリンク |
-| アプリの項目 | パッケージ、版、大きさ、SHA-256、署名者（短縮） | 加えて発行者、外部との通信の宣言、versionCode、署名者の全桁 |
+| アプリの項目 | Figma の component に「外部との通信」の行を足し、版に versionCode、署名者に全桁を出す。発行者の行は実装から外した | 検証に使う情報を残す。発行者は署名者と重なる |
+| logo | Figma の `Awai / Site logo 02 master` を 128px の PNG で書き出し、同じ origin に置く。CSP に `img-src 'self'` を足した | 画像は 1 枚で、外部からは読まない |
+| font | font ファイルは配らない。`font-family` の先頭に Noto Sans JP を置き、無い端末は端末の font になる | 数 MB の font を配らない。外部の font 配信は使わない |
+| 明暗 | OS の明暗の設定で Asa と Yoru を切り替える。Hiru と Yuu は使わない | ページは script を持たない |
 
-決めていない点:
+### 比べた結果
 
-- **アプリの項目。** 実装にある「外部との通信の宣言」と署名者の全桁は、検証に使う情報である。Figma に足すか、
-  実装から外すかは未決定。提案は、Figma に足す。
-- **logo。** 実装の CSP は画像を許していない（`default-src 'none'`）。logo を入れるなら `img-src 'self'` を足すか、
-  HTML に SVG を直接書く。
-- **font。** Noto Sans JP を配るには font ファイルを同じ origin に置く必要がある。外部の font 配信は使わない。
-  端末にある font に任せる場合は、Figma と見た目が変わる。
-- **昼と夕の配色。** Daylight には Asa、Hiru、Yuu、Yoru の 4 つがある。ページは script を持たないので、
-  時刻では切り替えられない。OS の明暗の設定で Asa と Yoru を切り替える形になる。
+生成したページをローカルの HTTP server で表示し、Figma の 4 画面と比べた（Chromium、Noto Sans JP が入っている Mac）。
+
+| 項目 | Figma | 実装（計測値） |
+| --- | --- | --- |
+| 通常幅の列 | 一覧 808、補足 368、間 24 | 一覧 808、補足 368、間 24（幅 1280） |
+| 余白 | 通常幅 40、スマホ幅 20 | 40、20 |
+| card | 余白 24（スマホ幅 16）、角 12、枠 1 | 24（16）、12px、1px |
+| 見出し | Display 48/67、スマホ幅 32/46 | 48px/67px、32px/46px |
+| 小見出し | Heading 24/36、500 | 24px/36px、500 |
+| 本文 | Body 16/28 | 16px/28px |
+| ボタン | 高さ 48、13px | 48px、13px |
+| 明の配色 | 背景 #ffffff、面 #f5f6f8、文字 #182332、枠 #9aaabd、強調 #1e50a2 | 同じ値 |
+| 暗の配色 | 背景 #14110f、面 #272422、文字 #ffffff、枠 #4f4d4b | 同じ値 |
+| スマホ幅の順 | 開発版、入手のしかた、アプリ、確かめ方、根拠、ボタン | 同じ順 |
+| 横スクロール | — | 1280 と 390 のどちらも無し |
+
+意図した違い:
+
+- **font。** Noto Sans JP が無い端末では、端末の font で表示される。
+- **Secondary ボタンと Primary ボタンの色。** Figma の Button は別の variable（`action/bg`、`bg/raised` など）を使う。
+  実装は Daylight の accent、background、border、text で近い色にした。値は読み比べていない。
+- **幅 390〜899 の間。** Figma には 1280 と 390 の 2 つしか無い。実装は 900 未満を 1 列にした。
+- **ページ全体の高さ。** 文字の折り返しで変わるので、合わせていない。
+
+確かめていないもの: Chromium 以外のブラウザ、Noto Sans JP が無い端末、画面の読み上げ、キーボードだけの操作。
+
+## 残っている点
+
 - **ページが古い場合。** pointer の期限が切れても、script の無いページは自分では気づけない。
   「いつまで有効か」を根拠の欄に書く形にとどめた。古い状態の画面は作っていない。
+- **Figma の prototype。** 遷移は付けていない。
