@@ -309,10 +309,14 @@
                        (.catch (fn [_] (set-readiness nil)))))
        _ (useEffect
           (fn []
-           (when local?
-            (refresh-local)
-            (.addEventListener js/window "focus" refresh-local))
-           (fn [] (when local? (.removeEventListener js/window "focus" refresh-local)))) #js [local?])
+           (if-not local? js/undefined
+            (let [visible #(when (= "visible" (.-visibilityState js/document)) (refresh-local))]
+             (refresh-local)
+             (.addEventListener js/window "focus" refresh-local)
+             (.addEventListener js/document "visibilitychange" visible)
+             (fn []
+              (.removeEventListener js/window "focus" refresh-local)
+              (.removeEventListener js/document "visibilitychange" visible))))) #js [local?])
        ready? (and (some-> readiness .-installed)
                    (if (= mode "image") (some-> readiness .-status .-image .-imported)
                     (some-> readiness .-status .-loaded)))

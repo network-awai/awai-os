@@ -112,6 +112,7 @@ function home() {
   },'motion-control');
   function labelMotion(){motion.textContent=native.motionReduced?'背景は静止':motionEnabled?'背景を停止':'背景を再生';motion.disabled=!!native.motionReduced;}
   labelMotion();heading.append(date,motion);p.append(heading,time);
+  if(host&&!native.isDefaultHome){p.append(button('Awai をホームに設定',()=>host.chooseHome(),'button tonal'));}
   const conversation=el('section','card primary');
   conversation.append(el('h2','','何を手伝いましょうか？'));
   const itonamiInstalled=native.apps.some(app=>app.id==='network.itonami.app');
@@ -124,7 +125,6 @@ function home() {
   if(setup.canLinkAccount())p.append(button('Awai アカウントを連携',()=>setup.openAccountLink(),'button tonal'));
   const bottom=el('div','home-bottom');const dock=el('nav','app-grid dock');dock.setAttribute('aria-label','よく使うアプリ');dock.append(appButton('電話','phone',()=>launchCategory('phone')),appButton('ブラウザ','search',()=>launchCategory('browser')),appButton('カメラ','camera',()=>launchCategory('camera')),appButton('すべて','apps',()=>navigate('apps')));bottom.append(dock);
   const sb=button('',()=>navigate('apps'),'search-box home-search');sb.append(icon('search'),el('span','muted','この端末を検索'));bottom.append(sb);p.append(bottom);
-  if(host&&!native.isDefaultHome){p.append(button('Awai をホームに設定',()=>host.chooseHome(),'button tonal'));}
   let sy; p.addEventListener('touchstart',e=>sy=e.changedTouches[0].clientY,{passive:true});p.addEventListener('touchend',e=>{if(sy-e.changedTouches[0].clientY>90&&!e.target.closest('button'))navigate('apps');},{passive:true});
 }
 function drawer(){const p=page('すべてのアプリ',()=>navigate('home'));let grid;search(p,'アプリを検索',q=>{query=q;fill();});grid=el('div','app-grid');p.append(grid);function fill(){grid.replaceChildren();for(const a of native.apps.filter(a=>a.label.toLocaleLowerCase().includes(query.toLocaleLowerCase()))){grid.append(appButton(a.label,'apps',()=>launch(a.id),a.icon));}if(!grid.children.length)grid.append(el('p','muted','一致するアプリはありません。'));}fill();}

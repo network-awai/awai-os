@@ -3,13 +3,13 @@
 // Completion still requires an Android screen lock, set through native Settings.
 import {createIdentity} from './identity.js';
 export function createSetup({host,domain,root,button,el,icon,notify,render}) {
-  let detail=false, accountLink=false;
+  let detail=false, accountLink=false, useQr=false;
   const identity=host&&JSON.parse(host.snapshot()).mode==='home'?createIdentity(render):null;
   const read=()=>{try{return host?.setupSnapshot?JSON.parse(host.setupSnapshot()):null;}catch{return null;}};
   const canLinkAccount=()=>{const s=read();return s?.complete&&s.account==='deferred';};
   const closeAccountLink=()=>{
     identity?.cancel();
-    accountLink=false;detail=false;
+    accountLink=false;detail=false;useQr=false;
     render();root.querySelector('h1')?.focus();
   };
   const move=action=>{
@@ -53,12 +53,24 @@ export function createSetup({host,domain,root,button,el,icon,notify,render}) {
     const network=s.validated?tr('接続済み · インターネット利用可能','Connected · Internet available'):s.captive?tr('ネットワークのログインが必要','Network sign-in required'):s.connected?tr('接続済み · インターネット未確認','Connected · Internet not verified'):tr('未接続','Not connected');
     if(stage===0)rows(panel,[[tr('言語','Language'),s.locale,()=>settings('language')],[tr('ユーザー補助','Accessibility'),tr('文字・読み上げ・操作をサポート','Display, reading and input'),()=>settings('accessibility')]]);
     if(stage===4){
-      rows(panel,[[tr('スマートフォンから','From your phone'),tr('iPhone ／ Android で承認','Approve on iPhone / Android'),()=>{detail=true;render();},'phone'],[tr('新しくはじめる','Create a profile'),tr('スマートフォンでアカウントを用意','Prepare an account on your phone'),()=>{detail=true;render();},'phone']]);
+      if(!detail)panel.append(button(tr('この端末で続ける','Continue on this device'),()=>{detail=true;render();},'button'));
       if(detail){
         const state=identity.state;
-        const message=identity.account?tr('署名を確認しました。この端末にアカウントを連携できます。','Signature verified. Link this device to your account.'):state.status==='waiting'?tr('QR を読み取り、スマートフォンで承認してください。','Scan the QR code and approve on your phone.'):state.status==='asking'?tr('中継への接続を確認しています。','Waiting for connection approval.'):['expired','unavailable','denied-or-unavailable','storage-error'].includes(state.status)?tr('連携を完了できませんでした。接続を確認して、もう一度お試しください。','Linking did not complete. Check your connection and retry.'):tr('スマートフォンの署名で、この端末を連携します。','Link this device with your phone’s signature.');
+        const message=identity.account?tr('署名を確認しました。この端末にアカウントを連携できます。','Signature verified. Link this device to your account.'):state.status==='waiting'?tr('ブラウザで承認し、Awai Home に戻ってください。','Approve in your browser, then return to Awai Home.'):state.status==='asking'?tr('中継への接続を確認しています。','Waiting for connection approval.'):['expired','unavailable','denied-or-unavailable','storage-error'].includes(state.status)?tr('連携を完了できませんでした。接続を確認して、もう一度お試しください。','Linking did not complete. Check your connection and retry.'):tr('この端末でアカウント連携を始めます。','Link your account on this device.');
         const p=el('p','',message);p.role='status';panel.append(p);
-        if(state.status==='waiting'){const qr=el('img','setup-qr');qr.src=state.qr;qr.alt=tr('スマートフォン連携用 QR コード','QR code for phone approval');qr.width=256;qr.height=256;panel.append(qr,el('p','',tr('両画面の確認コード：','Compare on both screens: ')+state.code));}
+        if(state.status==='waiting'){
+          panel.append(button(tr('この端末のブラウザで承認','Approve in this device’s browser'),()=>identity.continueHere(),'button'));
+          if(state.browserFailed)panel.append(el('p','muted',tr('ブラウザを開けませんでした。操作の承認を確認してください。','The browser did not open. Check operation approval.')));
+          const alternate=button(tr('別端末で QR を使う','Use a QR code on another device'),()=>{
+            useQr=!useQr;render();root.querySelector('#account-qr-toggle')?.focus();
+          },'button text');
+          alternate.id='account-qr-toggle';
+          alternate.setAttribute('aria-expanded',String(useQr));panel.append(alternate);
+          if(useQr){
+            const qr=el('img','setup-qr');qr.src=state.qr;qr.alt=tr('スマートフォン連携用 QR コード','QR code for phone approval');qr.width=256;qr.height=256;
+            panel.append(qr,el('p','',tr('端末間で確認コードを照合：','Compare the code on both devices: ')+state.code));
+          }
+        }
         if(identity.account)panel.append(button(tr('このアカウントで続ける','Continue with this account'),()=>move('linked'),'button'));
         else if(!['asking','waiting','loading'].includes(state.status))panel.append(button(tr('連携を開始','Start linking'),()=>identity.begin(),'button'));
         panel.append(button(tr('ネットワークを確認','Check network'),()=>settings('network'),'button text'));
