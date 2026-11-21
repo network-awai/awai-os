@@ -43,6 +43,37 @@ formatted (`mke2fs returned 1`, the device node has no label) and `/dev/block/vd
 The stock GRUB has no search by partition name. It has `probe --part-uuid` and `regexp`, which is what
 the second patch uses. A disk without the fixed GUIDs (the stock `disk-vda.img`) keeps the stock numbers.
 
+## Shipping debug lockdown (AWAI-3682)
+
+**State: patches only. Not built, not booted.** `apply.sh` does not call this; run it yourself on the
+dedicated checkout, after `apply.sh`:
+
+```sh
+apply-shipping-debug-lockdown.sh --check <source tree root>   # changes nothing
+apply-shipping-debug-lockdown.sh <source tree root>
+```
+
+It checks all three patches first and applies none if one does not match. A second run reports `applied`.
+
+| Patch | Project (upstream revision it was written against) | What it changes |
+| --- | --- | --- |
+| `patches/virt-common-user-no-adb-tcp.patch` | `device/virt/virt-common` (`5da81829` plus `virt-common-awai-pc.patch`) | `service.adb.tcp.port=5555` moves from `product.prop` to the product makefile and is set only when the variant is not `user`. |
+| `patches/mainline-common-user-no-insecure-debugging.patch` | `device/mainline/common` (`e237088e`) | `androidboot.insecure_adb` and `/metadata/.enable_insecure_debugging` are honoured only in debuggable builds. A `user` build ignores both. |
+| `patches/build-no-trade-in-mode-trigger.patch` | `build/make` (`90d00638`) | Removes `DeviceDiagnostics`, the app that starts ADB trade-in mode during setup, from `handheld_system.mk`. This affects every product built from the checkout. |
+
+Why, and what each route does without the patch:
+[debug route design](../../../docs/otehon/android-debug-routes-design-20261121.md).
+
+What was checked (2026-11-21, on the Mac, against clones of the three upstream projects at the revisions
+above): `--check` reports `pending` and leaves the trees clean; a run applies all three; a second run
+reports `applied`; with one project edited so its patch no longer fits, the script exits 1 and changes
+nothing.
+
+What was not checked: the revisions on the build host (they may differ, in which case the script reports
+`mismatch`); that the tree builds; that `product_variables.debuggable` selects the flag as intended; that a
+`user` image boots, finishes setup and shows no ADB at the Welcome screen; that development `userdebug`
+images still serve ADB on 5555. Those are checks V1, V2 and V7 in the design document.
+
 ## Installer
 
 `awai-pc-install.py` adds the Awai partitions to a disk that already has partitions:
