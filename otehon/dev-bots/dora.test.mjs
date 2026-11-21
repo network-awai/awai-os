@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { fixCommitCount, isoWeek, ledgerProblems, median, parseArgs, parseLedger, summarize, toMarkdown, unclassified, UNKNOWN } from "./dora.mjs";
+import { fixCommitCount, isoWeek, ledgerProblems, median, parseArgs, parseLedger, summarize, toMarkdown, toReport, unclassified, UNKNOWN } from "./dora.mjs";
 
 const R = "network-awai/awai-os";
 const ch = (pr, mergedAt, over = {}) => ({ repo: R, pr, mergedAt, startedAt: null, fixCommits: null, ...over });
@@ -232,4 +232,33 @@ test("parseArgs reads --check and --unclassified", () => {
   assert.deepEqual([o.check, o.unclassified, o.json], [true, true, false]);
   const d = parseArgs(["--repos", R, "--since", "2026-11-01"]);
   assert.deepEqual([d.check, d.unclassified, d.ledger], [false, false, null]);
+});
+
+test("parseArgs: --discover stands in for --repos, and the two do not combine", () => {
+  const d = parseArgs(["--discover", "--since", "2026-11-16", "--report", "--check"]);
+  assert.deepEqual([d.discover, d.report, d.check, d.repos], [true, true, true, []]);
+  assert.deepEqual([parseArgs(["--repos", R, "--since", "2026-11-16"]).discover, parseArgs(["--repos", R, "--since", "2026-11-16"]).report], [false, false]);
+  assert.match(parseArgs(["--repos", R, "--discover", "--since", "2026-11-16"]).error, /cannot be combined/);
+  assert.ok(parseArgs(["--since", "2026-11-16"]).error);
+  assert.ok(parseArgs(["--discover"]).error);
+});
+
+test("parseLedger collects the notes marked borderline, for the weekly review", () => {
+  const l = led({ kind: "failure", repo: R, pr: 1, note: "borderline: met its own acceptance items" }, { kind: "rework", repo: R, pr: 2, note: "unplanned fix; not borderline: clear" },
+    { kind: "reviewed", repo: R, pr: 3, note: "borderline: could be rework" }, { kind: "classified-through", at: "2026-11-21T00:00:00Z", note: "borderline: x" }, { kind: "failure", repo: "x", pr: 4, note: "borderline: bad ref" });
+  assert.deepEqual(l.borderline, [{ kind: "failure", change: `${R}#1`, note: "borderline: met its own acceptance items" }, { kind: "reviewed", change: `${R}#3`, note: "borderline: could be rework" }]);
+  assert.deepEqual(parseLedger("").borderline, []);
+});
+
+test("toReport lists what a weekly review has to act on", () => {
+  const changes = [ch(1, "2026-11-19T10:00:00Z"), ch(2, "2026-11-22T10:00:00Z")];
+  const l = led({ kind: "classified-through", from: "2026-11-18T00:00:00Z", at: "2026-11-21T00:00:00Z", repos: [R] }, { kind: "failure", repo: R, pr: 1, note: "borderline: judgement call" });
+  const md = toReport({ since: "2026-11-16", repos: [R], changes: 2, ledger: true, rows: summarize(changes, l), todo: unclassified(changes, l), problems: ["line(s) 9: not a valid ledger line"], borderline: l.borderline });
+  for (const part of ["since 2026-11-16", "| 2026-W47 | 2 |", "2 merged bot change(s) in 1 repository.", "**Not looked at yet: 1**", `- ${R}#2 (merged 2026-11-22T10:00:00Z)`, "**Ledger problems: 1**", "- line(s) 9: not a valid ledger line",
+    "**Borderline decisions to review: 1**", `- ${R}#1 (failure): borderline: judgement call`]) assert.ok(md.includes(part), part);
+  assert.ok(!md.includes("No ledger was read"));
+  const empty = toReport({ since: "2026-11-23", repos: [], changes: 0, ledger: false, rows: [], todo: [], problems: [], borderline: [] });
+  for (const part of ["No merged bot change in this period.", "0 merged bot change(s) in 0 repositories.", "No ledger was read", "**Not looked at yet: 0**", "**Ledger problems: 0**", "**Borderline decisions to review: 0**"]) assert.ok(empty.includes(part), part);
+  const many = toReport({ since: "2026-11-16", repos: [R, R2], changes: 130, ledger: true, rows: [], todo: Array.from({ length: 130 }, (_, i) => ({ repo: R, pr: i + 1, mergedAt: "2026-11-22T10:00:00Z" })), problems: [], borderline: [] });
+  assert.ok(many.includes(`- ${R}#100 (`) && !many.includes(`- ${R}#101 (`) && many.includes("- and 30 more") && many.includes("in 2 repositories."));
 });

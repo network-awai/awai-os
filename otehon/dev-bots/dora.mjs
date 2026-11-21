@@ -4,7 +4,15 @@
 //
 //   node dora.mjs --repos <owner/name,...> --since <YYYY-MM-DD>
 //        [--state <queue-sync state dir>] [--ledger <file.jsonl>] [--json]
-//        [--check] [--unclassified]
+//        [--check] [--unclassified] [--report]
+//   node dora.mjs --discover --since <YYYY-MM-DD> ...
+//
+//   --discover       instead of --repos: every repository in the owned
+//                    organisations with a merged `muse/*` pull request since
+//                    that day, so a repository nobody listed is not left out.
+//   --report         the weekly report as Markdown: the table, the changes not
+//                    looked at, ledger problems, and the notes marked
+//                    `borderline:` (see metrics/README.md, "Weekly run").
 //
 //   --ledger         defaults to metrics/dora-ledger.jsonl beside this file.
 //   --check          exit 1 when the ledger has a problem (see ledgerProblems).
@@ -73,16 +81,18 @@ export function median(xs) {
  * Ledger text -> {failures: Map change->fix|null, rework: Set, reviewed: Set,
  * through: Map repo|"*" -> ms, from: Map repo|"*" -> ms (-Infinity when no line gave one), classifiedThrough: ms|null (the "*" entry),
  * bad: number of lines ignored, badLines: numbers of the lines with a problem
- * (the ignored ones, and a failure whose fixed_by is unreadable), conflicts: number[]}.
+ * (the ignored ones, and a failure whose fixed_by is unreadable), conflicts: number[],
+ * borderline: the lines whose note starts with "borderline:", for the weekly review}.
  */
 export function parseLedger(text) {
-  const out = { failures: new Map(), rework: new Set(), reviewed: new Set(), through: new Map(), from: new Map(), classifiedThrough: null, bad: 0, badLines: [], conflicts: [] };
+  const out = { failures: new Map(), rework: new Set(), reviewed: new Set(), through: new Map(), from: new Map(), classifiedThrough: null, bad: 0, badLines: [], conflicts: [], borderline: [] };
   const okRef = (r) => r && typeof r === "object" && REPO_RE.test(r.repo ?? "") && Number.isInteger(r.pr) && r.pr > 0;
   const okRepos = (rs) => rs === undefined || (Array.isArray(rs) && rs.length > 0 && rs.every((r) => typeof r === "string" && REPO_RE.test(r)));
   String(text ?? "").split("\n").forEach((line, i) => {
     if (!line.trim()) return;
     let e = null;
     try { e = JSON.parse(line); } catch { e = null; }
+    if (["failure", "rework", "reviewed"].includes(e?.kind) && okRef(e) && /^borderline:/.test(String(e.note ?? ""))) out.borderline.push({ kind: e.kind, change: key(e.repo, e.pr), note: String(e.note) });
     if (e?.kind === "classified-through" && ms(e.at) !== null && okRepos(e.repos) && (e.from === undefined || (ms(e.from) !== null && ms(e.from) <= ms(e.at)))) {
       for (const r of e.repos ?? ["*"]) {
         out.through.set(r, Math.max(out.through.get(r) ?? 0, ms(e.at)));
@@ -196,24 +206,46 @@ export function toMarkdown(rows) {
 }
 
 /** Commits a review added: every commit after the first, merges of the base branch aside. */
+/**
+ * The weekly report, as Markdown. Pure: everything it prints is passed in.
+ * @param {{since: string, repos: string[], changes: number, ledger: boolean, rows: object[], todo: object[], problems: string[], borderline: object[]}} r
+ */
+export function toReport(r) {
+  const out = [`**DORA weekly report** (bot changes merged since ${r.since}; a merge stands in for a deployment; "unknown" means not measured, not zero)`, ""];
+  out.push(r.rows.length ? toMarkdown(r.rows) : "No merged bot change in this period.", "");
+  out.push(`${r.changes} merged bot change(s) in ${r.repos.length} repositor${r.repos.length === 1 ? "y" : "ies"}.`);
+  if (!r.ledger) out.push("No ledger was read: fail rate, recovery time and rework rate cannot be measured.");
+  out.push("", `**Not looked at yet: ${r.todo.length}**`);
+  for (const c of r.todo.slice(0, 100)) out.push(`- ${c.repo}#${c.pr} (merged ${c.mergedAt})`);
+  if (r.todo.length > 100) out.push(`- and ${r.todo.length - 100} more`);
+  out.push("", `**Ledger problems: ${r.problems.length}**`);
+  for (const p of r.problems) out.push(`- ${p}`);
+  out.push("", `**Borderline decisions to review: ${r.borderline.length}**`);
+  for (const b of r.borderline) out.push(`- ${b.change} (${b.kind}): ${b.note}`);
+  return out.join("\n");
+}
+
 export function fixCommitCount(commits) {
   if (!Array.isArray(commits) || !commits.length) return null;
   return Math.max(0, commits.filter((c) => !/^Merge /.test(String(c?.messageHeadline ?? ""))).length - 1);
 }
 
 export function parseArgs(argv) {
-  const o = { json: false, check: false, unclassified: false, state: null, ledger: null };
+  const o = { json: false, check: false, unclassified: false, discover: false, report: false, state: null, ledger: null };
   const want = { "--repos": "repos", "--since": "since", "--state": "state", "--ledger": "ledger" };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--json") o.json = true;
     else if (argv[i] === "--check") o.check = true;
     else if (argv[i] === "--unclassified") o.unclassified = true;
+    else if (argv[i] === "--discover") o.discover = true;
+    else if (argv[i] === "--report") o.report = true;
     else if (want[argv[i]] && i + 1 < argv.length) o[want[argv[i]]] = argv[++i];
     else return { error: `unknown or incomplete argument: ${argv[i]}` };
   }
-  if (!o.repos || !o.since) return { error: "--repos and --since are required" };
+  if (!o.since || (!o.repos && !o.discover)) return { error: "--since and one of --repos or --discover are required" };
+  if (o.repos && o.discover) return { error: "--repos and --discover cannot be combined" };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(o.since) || ms(o.since) === null) return { error: "--since must be YYYY-MM-DD" };
-  o.repos = o.repos.split(",").map((s) => s.trim()).filter(Boolean);
+  o.repos = (o.repos ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   for (const r of o.repos) {
     if (!REPO_RE.test(r) || !ALLOWED_ORGS.includes(r.split("/")[0]) || EXCLUDED_REPOS.includes(r)) return { error: `repository not in an owned organisation: ${r}` };
   }
@@ -240,7 +272,20 @@ export function main(argv) {
   }
   const changes = [];
   try {
-    for (const repo of o.repos) {
+    // Every owned organisation, one search each; a repository outside them or excluded is dropped.
+    for (const org of o.discover ? ALLOWED_ORGS : []) {
+      const found = gh(["search", "prs", "--owner", org, "--merged", "--limit", "1000", "--json", "repository,number", "head:muse/", `merged:>=${o.since}`]);
+      for (const f of found) {
+        const repo = String(f?.repository?.nameWithOwner ?? "");
+        if (!REPO_RE.test(repo) || repo.split("/")[0] !== org || EXCLUDED_REPOS.includes(repo)) continue;
+        const v = gh(["pr", "view", String(f.number), "-R", repo, "--json", "commits,headRefName,mergedAt"]);
+        if (!String(v.headRefName).startsWith("muse/") || ms(v.mergedAt) === null) continue;
+        changes.push({ repo, pr: f.number, head: v.headRefName, mergedAt: v.mergedAt, startedAt: started.get(`${repo} ${v.headRefName}`) ?? null, fixCommits: fixCommitCount(v.commits) });
+        if (!o.repos.includes(repo)) o.repos.push(repo);
+      }
+    }
+    o.repos.sort();
+    for (const repo of o.discover ? [] : o.repos) {
       const prs = gh(["pr", "list", "-R", repo, "--state", "merged", "--search", `head:muse/ merged:>=${o.since}`, "--limit", "200", "--json", "number,headRefName,mergedAt"]);
       for (const p of prs.filter((x) => String(x.headRefName).startsWith("muse/"))) {
         const commits = gh(["pr", "view", String(p.number), "-R", repo, "--json", "commits"]).commits;
@@ -265,6 +310,7 @@ export function main(argv) {
   const problems = ledgerFile ? ledgerProblems(changes, ledger, fixMergedAt) : [];
   const todo = unclassified(changes, ledger);
   if (o.json) console.log(JSON.stringify({ since: o.since, repos: o.repos, changes: changes.length, ledger: ledgerFile, ledgerLinesIgnored: ledger.bad, ledgerProblems: problems, unclassified: todo.map((c) => ({ repo: c.repo, pr: c.pr, mergedAt: c.mergedAt })), rows }, null, 1));
+  else if (o.report) console.log(toReport({ since: o.since, repos: o.repos, changes: changes.length, ledger: Boolean(ledgerFile), rows, todo, problems, borderline: ledger.borderline }));
   else if (o.unclassified) {
     for (const c of todo) console.log(`${c.repo}#${c.pr}\t${c.mergedAt}\t${c.head ?? ""}`);
     console.log(`${todo.length} of ${changes.length} merged bot change(s) since ${o.since} not looked at yet.`);
