@@ -19,6 +19,19 @@ Pilot the entire cycle with pinned inputs from a completed release build. Record
 
 [How to scale VKE node pools](https://docs.vultr.com/products/compute/kubernetes/management/node-pool/scale) · [Vultr provider report on initial node quantity](https://github.com/vultr/terraform-provider-vultr/issues/771)
 
+## Run the pool lifecycle from the release queue
+
+Invoke [the operator command](../../scripts/operator/vke-release-pool.mjs) from the release queue worker. The queue opens a single run per cluster and supplies the build-and-restore command. Use Node.js with the built-in Fetch API, an authorized VKE kubeconfig, and a Vultr key supplied by the operator's secret store. The read-only `status` operation uses the kubeconfig alone.
+
+```sh
+node scripts/operator/vke-release-pool.mjs status "$KUBECONFIG"
+node scripts/operator/vke-release-pool.mjs run "$KUBECONFIG" -- "$RELEASE_WORKFLOW"
+```
+
+The workflow uses `AWAI_VKE_NAMESPACE` and `AWAI_VKE_NODE_POOL` from the wrapper. It creates Jobs named `awai-pc-release-build` and `awai-pc-release-restore`. Each Job selects `vke.vultr.com/node-pool=$AWAI_VKE_NODE_POOL` and tolerates `awai.network/release-build=release:NoSchedule`. The restore Job reads the independent archive, verifies its manifest and persists the checksums and logs outside the pool. Return success after both Jobs complete. Include the artifacts and verification reports in the external release record.
+
+Check the result of a failed or interrupted run promptly because a retained pool can still accrue charges. After the release worker exits, use `release` with the same kubeconfig once both Jobs have completed and restore evidence is available. Use `release-empty` when a provisioned run stopped before creating any Jobs or Pods. The release checks require the recorded run, its provider tag, and an idle pool. It waits for both Vultr and Kubernetes to report removal before releasing the run lock. Resolve an ambiguous create response against Vultr's cluster inventory before clearing any leftover lock.
+
 ## Preserve and restore the current release
 
 1. Identify the exact candidate and needed predecessors from the release decision. Inventory build inputs, unsigned target-files, tools, logs, signed target-files, install image, OTA payloads and feed metadata as applicable. Record byte counts and SHA-256 digests. Keep provenance linking each signed output to its unsigned input. Track any host-only patch, artifact or log in the inventory.
