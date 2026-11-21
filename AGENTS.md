@@ -103,6 +103,16 @@ state, no ChatGPT approval. The Hermes `mcp_servers` route (D14) is for
 agent-invoked tools, not for apps with a screen. Implementation is still open;
 this records only the intake choice.
 
+## Terms: Itonami dapp and Awai app (owner decision 2026-11-21, JUN-1416)
+
+An **Itonami dapp** is an app that has an AI agent bot profile. An **Awai app**
+(Awai OS app) is a Tauri app without a bot. Classify by whether a bot profile
+exists: a Tauri app that has one is an Itonami dapp. Use these names in new
+documents, issues and lists. Do not rename existing identifiers (Itonami Store,
+`itonami.dapp.v1`, dapp carrier, repository names) for this reason alone. The
+distinction changes no permission, consent or distribution contract. Canonical
+text: `network-awai/network-awai-apex` `docs/itonami-dapp-distribution-index.md` §0.
+
 ## In-app storage on Awai Android and Itonami dapps (AWAI-3386)
 
 Follow [the shared app storage contract](docs/otehon/app-storage.md). Use
