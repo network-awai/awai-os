@@ -40,6 +40,7 @@
 //   {"kind":"rework","repo":"o/n","pr":15,"note":"..."}
 //   {"kind":"reviewed","repo":"o/n","pr":13,"note":"..."}
 //   {"kind":"classified-through","at":"2026-11-21T00:00:00Z","repos":["o/n"]}
+//   {"kind":"moved","from":"old/name","to":"new/name"}
 // `reviewed` says someone looked at the change and found neither. `fixed_by`
 // may name any merged pull request, a bot change or not. `classified-through`
 // covers the listed repositories (all of them when `repos` is absent), from
@@ -82,16 +83,30 @@ export function median(xs) {
  * through: Map repo|"*" -> ms, from: Map repo|"*" -> ms (-Infinity when no line gave one), classifiedThrough: ms|null (the "*" entry),
  * bad: number of lines ignored, badLines: numbers of the lines with a problem
  * (the ignored ones, and a failure whose fixed_by is unreadable), conflicts: number[],
- * borderline: the lines whose note starts with "borderline:", for the weekly review}.
+ * borderline: the lines whose note starts with "borderline:", for the weekly review,
+ * moved: Map old repository name -> the name it has now}. Lines written under an old
+ * name count under the current one, so a rename or transfer does not lose a classification.
  */
 export function parseLedger(text) {
-  const out = { failures: new Map(), rework: new Set(), reviewed: new Set(), through: new Map(), from: new Map(), classifiedThrough: null, bad: 0, badLines: [], conflicts: [], borderline: [] };
+  const out = { failures: new Map(), rework: new Set(), reviewed: new Set(), through: new Map(), from: new Map(), classifiedThrough: null, bad: 0, badLines: [], conflicts: [], borderline: [], moved: new Map() };
   const okRef = (r) => r && typeof r === "object" && REPO_RE.test(r.repo ?? "") && Number.isInteger(r.pr) && r.pr > 0;
   const okRepos = (rs) => rs === undefined || (Array.isArray(rs) && rs.length > 0 && rs.every((r) => typeof r === "string" && REPO_RE.test(r)));
+  // First pass: repositories that were renamed or transferred. Every other line is read under the current name.
+  const lines = String(text ?? "").split("\n").map((line) => { try { return JSON.parse(line); } catch { return null; } });
+  for (const e of lines) {
+    if (e?.kind === "moved" && REPO_RE.test(e.from ?? "") && REPO_RE.test(e.to ?? "") && e.from !== e.to) out.moved.set(e.from, e.to);
+  }
+  const now = (repo) => { let r = repo; for (let n = 0; out.moved.has(r) && n < 20; n += 1) r = out.moved.get(r); return r; };
+  const renamed = (ref) => (ref && typeof ref === "object" && typeof ref.repo === "string" ? { ...ref, repo: now(ref.repo) } : ref);
   String(text ?? "").split("\n").forEach((line, i) => {
     if (!line.trim()) return;
-    let e = null;
-    try { e = JSON.parse(line); } catch { e = null; }
+    let e = lines[i];
+    if (e?.kind === "moved") { if (out.moved.get(e.from) !== e.to) { out.bad += 1; out.badLines.push(i + 1); } return; }
+    if (e && typeof e === "object") {
+      e = renamed(e);
+      if (e.fixed_by !== undefined) e.fixed_by = renamed(e.fixed_by);
+      if (Array.isArray(e.repos)) e.repos = e.repos.map((r) => (typeof r === "string" ? now(r) : r));
+    }
     if (["failure", "rework", "reviewed"].includes(e?.kind) && okRef(e) && /^borderline:/.test(String(e.note ?? ""))) out.borderline.push({ kind: e.kind, change: key(e.repo, e.pr), note: String(e.note) });
     if (e?.kind === "classified-through" && ms(e.at) !== null && okRepos(e.repos) && (e.from === undefined || (ms(e.from) !== null && ms(e.from) <= ms(e.at)))) {
       for (const r of e.repos ?? ["*"]) {

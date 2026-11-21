@@ -43,6 +43,12 @@ owner can find and overturn it.
    fails when a change inside the span has no line, when a fix is not merged or
    was merged before the change it fixes, and when a line cannot be read.
 
+When a repository is renamed or transferred, its old name no longer matches
+what GitHub reports, and its changes show up as not looked at. Add a `moved`
+line (`from`, `to`, and in `note` how you confirmed it, for example the
+repository id). Lines written under the old name then count under the new one.
+Do not rewrite the old lines.
+
 The file is append-only. A failure that shows up later is added as a new
 `failure` line; the earlier `reviewed` line stays as the record of what was
 known then, and the failure line wins.
