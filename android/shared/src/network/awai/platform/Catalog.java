@@ -5,12 +5,27 @@ import android.content.pm.*;
 import org.json.*;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.Set;
+import java.security.MessageDigest;
+import java.util.*;
 
 /** Android host boundary: authenticated bundled metadata and exact APK identity. No network. */
 public final class Catalog {
     public static final String REGISTRY_ASSOC = "network.itonami.registry.assoc";
     private static final String REGISTRY_ASSOC_SIGNER =
             "2dfd2669315058eab39d98e4aa2424721e2dfd752995a0597d226bd4e1e7159f";
+    private static final int MAX_PREVIEW_APK_BYTES = 256 * 1024 * 1024;
+    private static String previewAsset(String id) {
+        if ("app.aozora.awai.preview".equals(id)) return "packages/aozora.apk";
+        if ("network.itonami.dougaka.preview".equals(id)) return "packages/dougaka.apk";
+        if ("network.itonami.ongakuka.preview".equals(id)) return "packages/ongakuka.apk";
+        if ("network.itonami.client.preview".equals(id)) return "packages/itonami-preview.apk";
+        if ("network.itonami.yataverse.preview".equals(id)) return "packages/yataverse.apk";
+        return null;
+    }
     private final JSONObject value;
     public final boolean online;
     private final boolean bundledAssoc;
@@ -29,7 +44,10 @@ public final class Catalog {
         if(value.getLong("revision")<Math.max(bundled.getLong("revision"),saved.getLong("highest",0)))throw new SecurityException("catalog-rollback");
         JSONArray activeApps = value.getJSONArray("apps");
         for (int i = 0; i < activeApps.length(); i++) {
-            activeApps.getJSONObject(i).remove("bundledDelivery");
+            JSONObject entry = activeApps.getJSONObject(i);
+            if (online && previewAsset(entry.getString("id")) != null)
+                throw new SecurityException("preview-offline-only");
+            entry.remove("bundledDelivery");
         }
         JSONObject local = findApp(bundled.getJSONArray("apps"), REGISTRY_ASSOC);
         JSONObject active = findApp(activeApps, REGISTRY_ASSOC);
@@ -50,9 +68,20 @@ public final class Catalog {
                 || value.getLong("expiresAt") <= now) throw new SecurityException("catalog-expired");
         JSONArray apps = value.getJSONArray("apps");
         if (apps.length() < 1) throw new SecurityException("catalog-app");
+        Set<String> seen = new HashSet<>();
         for (int i = 0; i < apps.length(); i++) {
             JSONObject entry = apps.getJSONObject(i);
-            assetFor(entry.getString("id"));
+            String id = entry.getString("id");
+            if (!seen.add(id)) throw new SecurityException("catalog-app");
+            if (previewAsset(id) != null) {
+                JSONObject apk = androidArtifact(id, entry);
+                if (entry.getJSONArray("artifacts").length() != 1
+                        || apk.getLong("bytes") < 1 || apk.getLong("bytes") > maxApkBytes(id)
+                        || apk.getDouble("bytes") != apk.getLong("bytes")
+                        || !apk.getString("sha256").matches("[0-9a-f]{64}")
+                        || !apk.getString("signerSha256").matches("[0-9a-f]{64}"))
+                    throw new SecurityException("catalog-artifact");
+            } else assetFor(id);
             if(entry.getLong("versionCode")<1||entry.getDouble("versionCode")!=entry.getLong("versionCode"))
                 throw new SecurityException("catalog-version");
         }
@@ -71,6 +100,8 @@ public final class Catalog {
     // Admitted store apps. Unknown ids are refused; per-app asset name, staged
     // download filename and byte budget are fixed here, never taken from callers.
     public static String assetFor(String id) throws SecurityException {
+        String preview = previewAsset(id);
+        if (preview != null) return preview;
         if (REGISTRY_ASSOC.equals(id)) return "packages/registry-assoc.apk";
         if ("network.itonami.yotei".equals(id)) return "packages/yotei.apk";
         if ("network.itonami.app".equals(id)) return "packages/itonami.apk";
@@ -109,6 +140,7 @@ public final class Catalog {
         throw new SecurityException("unknown-app");
     }
     public static int maxApkBytes(String id) throws SecurityException {
+        if (previewAsset(id) != null) return MAX_PREVIEW_APK_BYTES;
         if (REGISTRY_ASSOC.equals(id)) return 40 * 1024 * 1024;
         // Standalone Tauri Yotei includes both arm64 and x86_64 (about 35 MiB).
         if ("network.itonami.yotei".equals(id)) return 40 * 1024 * 1024;
@@ -171,18 +203,36 @@ public final class Catalog {
     public boolean isOnlineDelivery(String id) {
         return online && !(REGISTRY_ASSOC.equals(id) && bundledAssoc);
     }
-    public byte[] verifiedApk(Context context, String id) throws Exception {
-        String onlineFile = onlineFileFor(id);
+    /** The caller deletes the verified temporary file after use. */
+    public File verifiedApkFile(Context context, String id) throws Exception {
         int budget = maxApkBytes(id);
         JSONObject app = app(id), a = artifact(id);
         if (REGISTRY_ASSOC.equals(id) && !REGISTRY_ASSOC_SIGNER.equals(a.getString("signerSha256")))
             throw new SecurityException("package-signer");
-        byte[] bytes = Integrity.read((isOnlineDelivery(id) ? new FileInputStream(new File(context.getFilesDir(),onlineFile)) : context.getAssets().open(a.getString("asset"))), budget);
-        if (bytes.length != a.getLong("bytes") || !Integrity.sha256(bytes).equals(a.getString("sha256")))
-            throw new SecurityException("artifact-integrity");
+        long expected = a.getLong("bytes");
+        if (expected < 1 || expected > budget) throw new SecurityException("artifact-size");
         File file = File.createTempFile("awai-verify-", ".apk", context.getCacheDir());
+        boolean verified = false;
         try {
-            try (FileOutputStream out = new FileOutputStream(file)) { out.write(bytes); }
+            MessageDigest hash = MessageDigest.getInstance("SHA-256");
+            long count = 0;
+            try (InputStream input = isOnlineDelivery(id)
+                     ? new FileInputStream(new File(context.getFilesDir(), onlineFileFor(id)))
+                     : context.getAssets().open(a.getString("asset"));
+                 FileOutputStream output = new FileOutputStream(file)) {
+                byte[] buffer = new byte[65536];
+                int length;
+                while ((length = input.read(buffer)) != -1) {
+                    count += length;
+                    if (count > expected) throw new SecurityException("artifact-size");
+                    hash.update(buffer, 0, length);
+                    output.write(buffer, 0, length);
+                }
+            }
+            StringBuilder hex = new StringBuilder();
+            for (byte b : hash.digest()) hex.append(String.format(Locale.ROOT, "%02x", b & 255));
+            if (count != expected || !hex.toString().equals(a.getString("sha256")))
+                throw new SecurityException("artifact-integrity");
             PackageInfo info = context.getPackageManager().getPackageArchiveInfo(file.getAbsolutePath(), PackageManager.GET_SIGNING_CERTIFICATES);
             if (info == null || !id.equals(info.packageName) || info.getLongVersionCode() != app.getLong("versionCode"))
                 throw new SecurityException("package-version");
@@ -197,7 +247,19 @@ public final class Catalog {
                         || !Integrity.sha256(installed.signingInfo.getApkContentsSigners()[0].toByteArray()).equals(a.getString("signerSha256")))
                     throw new SecurityException("installed-signer");
             } catch (PackageManager.NameNotFoundException absent) { /* fresh install */ }
-            return bytes;
-        } finally { if (!file.delete()) file.deleteOnExit(); }
+            verified = true;
+            return file;
+        } finally {
+            if (!verified && !file.delete()) file.deleteOnExit();
+        }
+    }
+
+    public byte[] verifiedApk(Context context, String id) throws Exception {
+        File file = verifiedApkFile(context, id);
+        try {
+            return Integrity.read(new FileInputStream(file), maxApkBytes(id));
+        } finally {
+            if (!file.delete()) file.deleteOnExit();
+        }
     }
 }

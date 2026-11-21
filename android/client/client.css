@@ -111,6 +111,7 @@
   @media (prefers-reduced-motion:no-preference) { button { transition:background-color .12s ease; } }
 }
 
+@layer components{.session-notice{max-inline-size:720px;margin:1rem auto;padding:1rem;border-radius:12px;background:var(--container);color:var(--text)}}
 /* Torihiki devnet viewer (AWAI-3100) */
 .torihiki-body { display: grid; gap: 12px; }
 table.book { inline-size: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; margin-block: 8px; }

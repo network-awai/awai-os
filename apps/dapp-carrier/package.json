@@ -1,0 +1,1 @@
+{"name":"@awai/dapp-carrier","private":true,"version":"0.1.0","type":"module","scripts":{"prepare":"node scripts/prepare.mjs","test":"playwright test","tauri":"tauri"},"devDependencies":{"@playwright/test":"1.65.1","@tauri-apps/cli":"3.0.0-alpha.6"}}
