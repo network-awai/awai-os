@@ -1,0 +1,144 @@
+[=3h[=3h[=3hBdsDxe: loading Boot0001 "UEFI QEMU NVMe Ctrl awai0 1" from PciRoot(0x0)/Pci(0x1,0x0)/NVMe(0x1,00-00-00-00-00-00-00-00)
+BdsDxe: starting Boot0001 "UEFI QEMU NVMe Ctrl awai0 1" from PciRoot(0x0)/Pci(0x1,0x0)/NVMe(0x1,00-00-00-00-00-00-00-00)
+INFO: boot_a=(hd0,gpt9) boot_b=(hd0,gpt10) vendor_boot_a=(hd0,gpt7) vendor_boot_b=(hd0,gpt8)
+misc=(hd0,gpt3)
+INFO: awai_gpu virtio=1af4 amd_class= default=0
+GNU GRUB  version 2.15
+
++----------------------------------------------------------------------------+||||||||||||||||||||||+----------------------------------------------------------------------------+     Use the ^ and v keys to select which entry is highlighted.          
+      Press enter to boot the selected OS, `e' to edit the commands       
+      before booting or `c' for a command-line. ESC to return             
+      previous menu.                                                       *LineageOS 24.0                                                              LineageOS 24.0 Recovery                                                     Settings                                                                    Advanced options                                                            Advanced options (virtio_x86_64 specific)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              The highlighted entry will be executed automatically in 10s.                   The highlighted entry will be executed automatically in 9s.                    The highlighted entry will be executed automatically in 8s.                    The highlighted entry will be executed automatically in 7s.                    The highlighted entry will be executed automatically in 6s.                    The highlighted entry will be executed automatically in 5s.                    The highlighted entry will be executed automatically in 4s.                    The highlighted entry will be executed automatically in 3s.                    The highlighted entry will be executed automatically in 2s.                    The highlighted entry will be executed automatically in 1s.                    The highlighted entry will be executed automatically in 0s.                   Booting `LineageOS 24.0'
+
+INFO: Booting active slot a...
+Loading parameters...
+Loading kernel...
+Loading ramdisk...
+[    3.158408][    T1] kvm_intel: VMX not supported by CPU 1
+[   14.140288][    T1] Problem parsing in-kernel X.509 certificate list
+[   16.796233][    T1] init: Failed to read vbmeta partitions.
+[   22.816590][    T1] init: Do not have permissions to set 'persist.bluetooth.a2dp_aac.vbr_supported' to 'true' in property file '/vendor/build.prop': SELinux permission check failed (source_context=u:r:vendor_init:s0, target_context=u:object_r:bluetooth_prop:s0)
+[   23.419689][    T1] init: /vendor/etc/init/hw/init.mainline.rc: 9: ParseTriggers() failed: unexported property trigger found: sys.bootstat.first_boot_completed
+[   42.245064][  T229] main[229]: Failed to initialize platform storage in early init: failed to copy file from /system/etc/aconfig/package.map to /metadata/aconfig/maps/system.package.new: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+[  124.614539][    T1] init: [libfs_mgr] mount_with_alternatives(): skipping mount due to invalid magic, mountpoint=/metadata blk_dev=/dev/block/nvme0n1p5 rec[1].fs_type=ext4
+[  125.111922][    T1] init: [libfs_mgr] fs_mgr_mount_all(): /dev/block/nvme0n1p5 is wiped and /metadata ext4 is formattable. Format it.
+[  125.664783][    T1] init: [libfs_mgr] fs_mgr_do_format: Format /dev/block/by-name/metadata as 'ext4'
+[  135.345321][  T239] cutils-trace: Error opening trace file: No such file or directory (2)
+[  154.411191][    T1] 9pnet_virtio: no channels available for device share
+[  155.053787][   T97] init: Unable to set property 'ro.boottime.init.fsck.shared' from uid:0 gid:0 pid:1: Read-only property was already set
+[  155.114912][    T1] 9pnet_virtio: no channels available for device share
+[  155.321296][    T1] init: [libfs_mgr] Ignoring failure to mount an un-encryptable, interrupted, or wiped partition on share at /mnt/vendor/shared options: : No such file or directory
+[  174.597781][    T1] init: [libfs_mgr] Failed to open '/dev/block/by-name/userdata': No such file or directory
+[  174.721095][    T1] /dev/block/by-name/userdata: Can't lookup blockdev
+[  176.352545][    T1] /dev/block/by-name/userdata: Can't lookup blockdev
+[  176.391509][    T1] init: [libfs_mgr] Failed to open '/dev/block/by-name/userdata': No such file or directory
+[  176.408756][    T1] /dev/block/by-name/userdata: Can't lookup blockdev
+[  181.409156][   T97] init: Unable to set property 'ro.boottime.init.fsck.data' from uid:0 gid:0 pid:1: Read-only property was already set
+[  181.515343][    T1] /dev/block/by-name/userdata: Can't lookup blockdev
+[  183.751746][  T248] vold: No key found in /metadata/vold/metadata_encryption/key
+[  183.760333][  T248] vold: read_key failed in mountFstab
+[  183.834352][  T283] vdc: Command: cryptfs mountFstab /dev/block/by-name/userdata /data false  Failed: Status(-8, EX_SERVICE_SPECIFIC): '0: '
+[  184.009105][    T1] init: vdc call failed with error code: 25
+[  184.019137][    T1] init: Control message: Could not find 'aidl/android.system.suspend.ISystemSuspend/default' for ctl.interface_start from pid: 239 (/system/bin/servicemanager)
+[  187.830849][    T1] selinux: SELinux: Could not get canonical path for /data/misc/keystore restorecon: No such file or directory.
+[  192.202616][  T248] vold: keystore2 Communication with Keystore earlyBootEnded failed error: -129
+[  193.310238][   T96] init: Could not load single persistent property file, trying legacy directory: Unable to read persistent property file: open() failed: No such file or directory
+[  193.367843][   T96] init: Unable to load legacy persistent properties: Unable to open persistent property directory "/data/property": No such file or directory
+[  195.610042][  T262] logd: FrameworkListener: read() failed (Connection reset by peer)
+[  200.342082][    T1] selinux: SELinux: Could not get canonical path for /data/system/environ restorecon: No such file or directory.
+[  200.402743][    T1] selinux: SELinux: Could not get canonical path for /data/system/shutdown-checkpoints restorecon: No such file or directory.
+[  202.102742][  T301] apexd: Failed to clean up reserved space: Failed to delete /data/apex/ota_reserved : Can't open /data/apex/ota_reserved for reading: No such file or directory
+[  202.177299][  T301] apexd: Failed to clean up reserved space: Failed to delete /data/apex/ota_reserved : Can't open /data/apex/ota_reserved for reading: No such file or directory
+[  202.208108][  T301] apexd: Failed to clean up reserved space: Failed to delete /data/apex/ota_reserved : Can't open /data/apex/ota_reserved for reading: No such file or directory
+[  202.212800][  T301] apexd: Failed to clean up reserved space: Failed to delete /data/apex/ota_reserved : Can't open /data/apex/ota_reserved for reading: No such file or directory
+[  202.221239][  T301] apexd: Failed to clean up reserved space: Failed to delete /data/apex/ota_reserved : Can't open /data/apex/ota_reserved for reading: No such file or directory
+[  202.677671][  T301] apexd: Failed to clean up reserved space: Failed to delete /data/apex/ota_reserved : Can't open /data/apex/ota_reserved for reading: No such file or directory
+[  202.711934][  T301] apexd: Failed to clean up reserved space: Failed to delete /data/apex/ota_reserved : Can't open /data/apex/ota_reserved for reading: No such file or directory
+[  203.438654][  T301] apexd: Failed to clean up reserved space: Failed to delete /data/apex/ota_reserved : Can't open /data/apex/ota_reserved for reading: No such file or directory
+[  203.655120][  T301] apexd: Failed to clean up reserved space: Failed to delete /data/apex/ota_reserved : Can't open /data/apex/ota_reserved for reading: No such file or directory
+[  203.692693][  T301] apexd: Failed to clean up reserved space: Failed to delete /data/apex/ota_reserved : Can't open /data/apex/ota_reserved for reading: No such file or directory
+[  203.971387][  T301] apexd: Failed to clean up reserved space: Failed to delete /data/apex/ota_reserved : Can't open /data/apex/ota_reserved for reading: No such file or directory
+[  204.103373][  T301] apexd: Failed to clean up reserved space: Failed to delete /data/apex/ota_reserved : Can't open /data/apex/ota_reserved for reading: No such file or directory
+[  204.166863][  T301] apexd: Failed to clean up reserved space: Failed to delete /data/apex/ota_reserved : Can't open /data/apex/ota_reserved for reading: No such file or directory
+[  204.489693][  T301] apexd: Failed to clean up reserved space: Failed to delete /data/apex/ota_reserved : Can't open /data/apex/ota_reserved for reading: No such file or directory
+[  204.890776][  T301] apexd: Failed to clean up reserved space: Failed to delete /data/apex/ota_reserved : Can't open /data/apex/ota_reserved for reading: No such file or directory
+[  205.217849][  T301] apexd: Failed to clean up reserved space: Failed to delete /data/apex/ota_reserved : Can't open /data/apex/ota_reserved for reading: No such file or directory
+[  205.530143][  T301] apexd: Failed to clean up reserved space: Failed to delete /data/apex/ota_reserved : Can't open /data/apex/ota_reserved for reading: No such file or directory
+[  205.549826][  T301] apexd: Failed to clean up reserved space: Failed to delete /data/apex/ota_reserved : Can't open /data/apex/ota_reserved for reading: No such file or directory
+[  205.601116][  T301] apexd: Failed to clean up reserved space: Failed to delete /data/apex/ota_reserved : Can't open /data/apex/ota_reserved for reading: No such file or directory
+[  205.612343][  T301] apexd: Failed to clean up reserved space: Failed to delete /data/apex/ota_reserved : Can't open /data/apex/ota_reserved for reading: No such file or directory
+[  206.048826][  T301] apexd: Failed to clean up reserved space: Failed to delete /data/apex/ota_reserved : Can't open /data/apex/ota_reserved for reading: No such file or directory
+[  206.357496][  T301] apexd: Failed to clean up reserved space: Failed to delete /data/apex/ota_reserved : Can't open /data/apex/ota_reserved for reading: No such file or directory
+[  206.409184][  T301] apexd: Failed to clean up reserved space: Failed to delete /data/apex/ota_reserved : Can't open /data/apex/ota_reserved for reading: No such file or directory
+[  206.494428][  T301] apexd: Failed to clean up reserved space: Failed to delete /data/apex/ota_reserved : Can't open /data/apex/ota_reserved for reading: No such file or directory
+[  206.562588][  T301] apexd: Failed to clean up reserved space: Failed to delete /data/apex/ota_reserved : Can't open /data/apex/ota_reserved for reading: No such file or directory
+[  206.682200][  T301] apexd: Failed to clean up reserved space: Failed to delete /data/apex/ota_reserved : Can't open /data/apex/ota_reserved for reading: No such file or directory
+[  206.761966][  T301] apexd: Failed to clean up reserved space: Failed to delete /data/apex/ota_reserved : Can't open /data/apex/ota_reserved for reading: No such file or directory
+[  209.504418][  T301] apexd: Failed to decompress : /system/apex/com.android.profiling.capex Failed to open decompression destination /data/apex/decompressed/com.android.profiling@370399999.decompressed.apex: No such file or directory
+[  209.528280][  T301] apexd: Failed to decompress : /system/apex/com.android.appsearch.capex Failed to open decompression destination /data/apex/decompressed/com.android.appsearch@370399999.decompressed.apex: No such file or directory
+[  209.570229][  T301] apexd: Failed to decompress : /system/apex/com.android.tethering.capex Failed to open decompression destination /data/apex/decompressed/com.android.tethering@370399999.decompressed.apex: No such file or directory
+[  209.620038][  T301] apexd: Failed to decompress : /system/apex/com.android.webapp.capex Failed to open decompression destination /data/apex/decompressed/com.android.webapp@370399999.decompressed.apex: No such file or directory
+[  209.647497][  T301] apexd: Failed to decompress : /system/apex/com.android.wifi.capex Failed to open decompression destination /data/apex/decompressed/com.android.wifi@370399999.decompressed.apex: No such file or directory
+[  209.662696][  T301] apexd: Failed to decompress : /system/apex/com.android.uwb.capex Failed to open decompression destination /data/apex/decompressed/com.android.uwb@370399999.decompressed.apex: No such file or directory
+[  209.702528][  T301] apexd: Failed to decompress : /system/apex/com.android.ondevicepersonalization.capex Failed to open decompression destination /data/apex/decompressed/com.android.ondevicepersonalization@370399999.decompressed.apex: No such file or directory
+[  209.749399][  T301] apexd: Failed to decompress : /system/apex/com.android.neuralnetworks.capex Failed to open decompression destination /data/apex/decompressed/com.android.neuralnetworks@370399999.decompressed.apex: No such file or directory
+[  209.790227][  T301] apexd: Failed to decompress : /system/apex/com.android.npumanager.capex Failed to open decompression destination /data/apex/decompressed/com.android.npumanager@370399999.decompressed.apex: No such file or directory
+[  209.823600][  T301] apexd: Failed to decompress : /system/apex/com.android.resolv.capex Failed to open decompression destination /data/apex/decompressed/com.android.resolv@370399999.decompressed.apex: No such file or directory
+[  209.896307][  T301] apexd: Failed to decompress : /system/apex/com.android.permission.capex Failed to open decompression destination /data/apex/decompressed/com.android.permission@370399999.decompressed.apex: No such file or directory
+[  209.939678][  T301] apexd: Failed to decompress : /system/apex/com.android.media.swcodec.capex Failed to open decompression destination /data/apex/decompressed/com.android.media.swcodec@370399999.decompressed.apex: No such file or directory
+[  209.961573][  T301] apexd: Failed to decompress : /system/apex/com.android.nfcservices.capex Failed to open decompression destination /data/apex/decompressed/com.android.nfcservices@370399999.decompressed.apex: No such file or directory
+[  209.996092][  T301] apexd: Failed to decompress : /system/apex/com.android.ipsec.capex Failed to open decompression destination /data/apex/decompressed/com.android.ipsec@370399999.decompressed.apex: No such file or directory
+[  210.012130][  T301] apexd: Failed to decompress : /system/apex/com.android.crashrecovery.capex Failed to open decompression destination /data/apex/decompressed/com.android.crashrecovery@370399999.decompressed.apex: No such file or directory
+[  210.027253][  T301] apexd: Failed to decompress : /system/apex/com.android.adbd.capex Failed to open decompression destination /data/apex/decompressed/com.android.adbd@370399999.decompressed.apex: No such file or directory
+[  210.094253][  T301] apexd: Failed to decompress : /system/apex/com.android.uprobestats.capex Failed to open decompression destination /data/apex/decompressed/com.android.uprobestats@370399999.decompressed.apex: No such file or directory
+[  210.148937][  T301] apexd: Failed to decompress : /system/apex/com.android.adservices.capex Failed to open decompression destination /data/apex/decompressed/com.android.adservices@370399999.decompressed.apex: No such file or directory
+[  210.181580][  T301] apexd: Failed to decompress : /system/apex/com.android.extservices.capex Failed to open decompression destination /data/apex/decompressed/com.android.extservices@370399999.decompressed.apex: No such file or directory
+[  210.194982][  T301] apexd: Failed to decompress : /system/apex/com.android.telephonycore.capex Failed to open decompression destination /data/apex/decompressed/com.android.telephonycore@370399999.decompressed.apex: No such file or directory
+[  210.292030][  T301] apexd: Failed to decompress : /system/apex/com.android.scheduling.capex Failed to open decompression destination /data/apex/decompressed/com.android.scheduling@370399999.decompressed.apex: No such file or directory
+[  210.377573][  T301] apexd: Failed to decompress : /system/apex/com.android.bt.capex Failed to open decompression destination /data/apex/decompressed/com.android.bt@370399999.decompressed.apex: No such file or directory
+[  210.417109][  T301] apexd: Failed to decompress : /system/apex/com.android.conscrypt.capex Failed to open decompression destination /data/apex/decompressed/com.android.conscrypt@370399999.decompressed.apex: No such file or directory
+[  210.654744][  T301] apexd: Failed to decompress : /system/apex/com.android.media.capex Failed to open decompression destination /data/apex/decompressed/com.android.media@370399999.decompressed.apex: No such file or directory
+[  210.705603][  T301] apexd: Failed to decompress : /system/apex/com.android.mediaprovider.capex Failed to open decompression destination /data/apex/decompressed/com.android.mediaprovider@370399999.decompressed.apex: No such file or directory
+[  210.745273][  T301] apexd: Failed to decompress : /system/apex/com.android.art.capex Failed to open decompression destination /data/apex/decompressed/com.android.art@370399999.decompressed.apex: No such file or directory
+[  210.775687][  T301] apexd: Failed to decompress : /system/apex/com.android.configinfrastructure.capex Failed to open decompression destination /data/apex/decompressed/com.android.configinfrastructure@370399999.decompressed.apex: No such file or directory
+[  210.840326][  T301] apexd: Failed to activate packages: Failed to decompress : /system/apex/com.android.profiling.capex Failed to open decompression destination /data/apex/decompressed/com.android.profiling@370399999.decompressed.apex: No such file or directory
+[  210.920178][  T301] apexd: Failed to revert : Revert requested, when there are no active sessions.
+[  215.403958][  T248] cutils: Failed to mkdir(/data/misc/vold/user_keys): No such file or directory
+[  215.450885][  T248] vold: Failed to prepare /data/misc/vold/user_keys: No such file or directory
+[  215.462970][  T452] vdc: Command: cryptfs init_user0 Failed: Status(-8, EX_SERVICE_SPECIFIC): '0: '
+[  215.485446][    T1] init: Exec service failed, status 25: Rebooting into recovery, reason: init_user0_failed
+[  215.501713][    T1] init: Rebooting into recovery
+[  215.657942][   T97] init: Recovering persistent properties from memory: Unable to read persistent property file: open() failed: No such file or directory
+[  217.609649][    T1] reboot: Restarting system with command 'recovery'
+[=3h[=3h[=3hBdsDxe: loading Boot0001 "UEFI QEMU NVMe Ctrl awai0 1" from PciRoot(0x0)/Pci(0x1,0x0)/NVMe(0x1,00-00-00-00-00-00-00-00)
+BdsDxe: starting Boot0001 "UEFI QEMU NVMe Ctrl awai0 1" from PciRoot(0x0)/Pci(0x1,0x0)/NVMe(0x1,00-00-00-00-00-00-00-00)
+INFO: boot_a=(hd0,gpt9) boot_b=(hd0,gpt10) vendor_boot_a=(hd0,gpt7) vendor_boot_b=(hd0,gpt8)
+misc=(hd0,gpt3)
+GNU GRUB  version 2.15
+
++----------------------------------------------------------------------------+||||||||||||||||||||||+----------------------------------------------------------------------------+     Use the ^ and v keys to select which entry is highlighted.          
+      Press enter to boot the selected OS, `e' to edit the commands       
+      before booting or `c' for a command-line. ESC to return             
+      previous menu.                                                        LineageOS 24.0                                                             *LineageOS 24.0 Recovery                                                     Settings                                                                    Advanced options                                                            Advanced options (virtio_x86_64 specific)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              The highlighted entry will be executed automatically in 10s.                   The highlighted entry will be executed automatically in 9s.                    The highlighted entry will be executed automatically in 8s.                    The highlighted entry will be executed automatically in 7s.                    The highlighted entry will be executed automatically in 6s.                    The highlighted entry will be executed automatically in 5s.                    The highlighted entry will be executed automatically in 4s.                    The highlighted entry will be executed automatically in 3s.                    The highlighted entry will be executed automatically in 2s.                    The highlighted entry will be executed automatically in 1s.                    The highlighted entry will be executed automatically in 0s.                   Booting `LineageOS 24.0 Recovery'
+
+INFO: Booting active slot a...
+Loading parameters...
+Loading kernel...
+Loading recovery ramdisk...
+[    1.975307][    T1] kvm_intel: VMX not supported by CPU 1
+[    6.121402][    T1] Problem parsing in-kernel X.509 certificate list
+[    7.565757][    T1] init: Failed to open device-mapper: No such file or directory
+[    7.573043][    T1] init: Could not update logical partition
+[    7.576195][    T1] init: Could not update logical partition
+[    7.578339][    T1] init: Could not update logical partition
+[    7.580674][    T1] init: Could not update logical partition
+[    9.015821][    T1] selinux: SELinux:  Could not stat /dev/block: No such file or directory.
+[    9.497153][    T1] libprocessgroup: Failed to read task profiles from /etc/task_profiles.json
+[    9.507058][    T1] libprocessgroup: Loading /etc/task_profiles.json for [1] failed
+[   42.878533][    T1] init: Could not start service 'charger' as part of class 'default': Cannot find '/system/bin/charger': No such file or directory
+[   43.452394][   T95] healthd: Failed to lookup glob /sys/devices/platform/*gcdd/system_dev_stat: -3
+[   45.133888][   T92] recovery: Failed to get interface active flags: No such device
+[   45.168545][   T92] recovery: Failed to bring up interface
+[   46.193163][   T92] recovery: Failed to get interface active flags: No such device
+[   46.242516][   T92] recovery: Failed to bring up interface
+[   46.950047][   T92] /dev/block/by-name/userdata: Can't lookup blockdev

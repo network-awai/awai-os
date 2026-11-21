@@ -17,9 +17,10 @@ the Awai overlay. The overlay also installs the matching upstream notices
 and revision. Preparation can be rerun on the same checkout. For a checkout
 prepared by the earlier overlay, preserve and move the previous
 `vendor/awai/pc-firmware` directory aside before running preparation again.
-The tool also adds the Radeon option to the x86_64 GRUB submenu and
-builds the AMD Minigbm, Mesa and Vulkan paths. Select **Awai PC (AMD Radeon,
-Mesa graphics)** on the physical test machine. Run the normal Android build and signing procedure, then verify the
+The tool also adds the Radeon option to the x86_64 GRUB submenu, makes it the
+first-boot default on a PC with an AMD GPU and no virtio GPU (see "Default boot
+entry" in [README.md](README.md)), and builds the AMD Minigbm, Mesa and Vulkan
+paths. Run the normal Android build and signing procedure, then verify the
 vendor files in the final signed archive.
 
 ```sh
