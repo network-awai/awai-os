@@ -2,15 +2,21 @@
 """AWAI-3586: add the Awai A/B partitions to a disk that already has partitions, without touching them.
 
   awai-pc-install.py plan  <target disk or image> <source disk image> [--userdata-gib N]
-  awai-pc-install.py apply <target disk or image> <source disk image> [--userdata-gib N] --record out.json
+  awai-pc-install.py apply <target disk or image> <source disk image> [--userdata-gib N] [--source-sha256 SHA256] --record out.json
 
 The source is the disk image the build makes (disk-vda.img). Each Awai partition is copied from the
 partition of the same name in it. Nothing is written outside the new partitions and the GPT.
 `plan` writes nothing. `apply` refuses when a name is already used, when the free space is too small, or
-when a planned range overlaps an existing partition, and proves afterwards that every partition that
-existed before has the same sha256.
+when a planned range overlaps an existing partition. It reads back the new layout and copied data
+and checks that every existing partition has the same SHA-256.
 """
-import hashlib, json, os, re, subprocess, sys
+import hashlib
+import json
+import os
+import re
+import stat
+import subprocess
+import sys
 
 SECTOR = 512
 ALIGN = 2048
@@ -33,11 +39,21 @@ RESERVED = {n for n, _, _, _ in LAYOUT} | {"efi", "bios", "cache", "recovery", "
 
 
 def sgdisk(*a):
-    return subprocess.run(["sgdisk", *a], check=True, capture_output=True, text=True).stdout
+    return subprocess.run(
+        ["sgdisk", *a], check=True, capture_output=True, text=True,
+        env={**os.environ, "LC_ALL": "C"},
+    ).stdout
 
 
 def table(path):
     out = sgdisk("-p", path)
+    logical_size = re.search(
+        r"^(?:Sector size \(logical(?:/physical)?\)|Logical sector size): "
+        r"(\d+)(?:\s*(?:bytes\s*)?/\s*\d+)? bytes$",
+        out, re.MULTILINE,
+    )
+    if not logical_size or int(logical_size[1]) != SECTOR:
+        sys.exit(f"REFUSED {path}: expected {SECTOR}-byte logical sectors")
     parts = []
     for line in out.splitlines():
         m = re.match(r"\s*(\d+)\s+(\d+)\s+(\d+)\s+\S+\s+\S+\s+(\S+)\s*(.*)$", line)
@@ -48,18 +64,23 @@ def table(path):
     return parts, first, last
 
 
+def read_range(file, start, end):
+    file.seek(start * SECTOR)
+    remaining = (end - start + 1) * SECTOR
+    while remaining:
+        chunk = file.read(min(remaining, 8 << 20))
+        if not chunk:
+            sys.exit(f"FAILED short read from {file.name} at byte {file.tell()} (sectors {start}–{end})")
+        remaining -= len(chunk)
+        yield chunk
+
+
 def sha_range(path, start, end):
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        f.seek(start * SECTOR)
-        left = (end - start + 1) * SECTOR
-        while left:
-            b = f.read(min(left, 8 << 20))
-            if not b:
-                break
-            h.update(b)
-            left -= len(b)
-    return h.hexdigest()
+    digest = hashlib.sha256()
+    with open(path, "rb") as file:
+        for chunk in read_range(file, start, end):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def free_ranges(parts, first, last):
@@ -74,6 +95,10 @@ def free_ranges(parts, first, last):
 
 
 def make_plan(target, source, userdata_gib):
+    if userdata_gib <= 0:
+        sys.exit("REFUSED userdata size must be positive")
+    if os.path.samefile(target, source):
+        sys.exit("REFUSED source and target identify the same file or device")
     tparts, tfirst, tlast = table(target)
     sparts, _, _ = table(source)
     src = {p["name"]: p for p in sparts}
@@ -116,43 +141,91 @@ def make_plan(target, source, userdata_gib):
             "existing": tparts, "freeRangeUsed": list(best), "new": new}
 
 
-def apply(target, source, plan, record):
-    before = {p["number"]: sha_range(target, p["start"], p["end"]) for p in plan["existing"]}
-    for n in plan["new"]:
-        args = [f"--new={n['number']}:{n['start']}:{n['end']}", f"--typecode={n['number']}:{n['type']}", f"--change-name={n['number']}:{n['name']}"]
-        if n["guid"]:
-            args.append(f"--partition-guid={n['number']}:{n['guid']}")
-        sgdisk(*args, target)
-    with open(target, "r+b") as t, open(source, "rb") as s:
+def partition_shape(row):
+    return row["start"], row["end"], row["type"].upper(), row["name"]
+
+
+def source_identity(metadata):
+    return metadata.st_dev, metadata.st_ino, metadata.st_size, metadata.st_mtime_ns, metadata.st_ctime_ns
+
+
+def apply(target, source, plan, record, source_sha256=None):
+    if os.path.lexists(record):
+        sys.exit(f"REFUSED {record}: install record already exists")
+    expected = {}
+    with open(source, "rb") as s:
+        source_stat = os.fstat(s.fileno())
+        required_size = max((n["from"]["end"] + 1) * SECTOR for n in plan["new"] if n["from"])
+        if stat.S_ISREG(source_stat.st_mode) and source_stat.st_size < required_size:
+            sys.exit(f"REFUSED {source}: source image is shorter than its partition table")
+        if source_sha256 and hashlib.file_digest(s, "sha256").hexdigest() != source_sha256:
+            sys.exit(f"REFUSED {source}: source image digest does not match the release record")
+        before = {p["number"]: sha_range(target, p["start"], p["end"]) for p in plan["existing"]}
+        if source_identity(source_stat) != source_identity(os.stat(source)):
+            sys.exit(f"REFUSED {source}: source changed during verification")
+        if table(target)[0] != plan["existing"]:
+            sys.exit(f"REFUSED {target}: target partition table changed during verification")
         for n in plan["new"]:
-            t.seek(n["start"] * SECTOR)
-            if n["from"]:
-                s.seek(n["from"]["start"] * SECTOR)
-                left = (n["from"]["end"] - n["from"]["start"] + 1) * SECTOR
-                while left:
-                    b = s.read(min(left, 8 << 20))
-                    t.write(b)
-                    left -= len(b)
-            else:
-                # empty partitions: clear the first MiB so Android formats them
-                t.write(b"\0" * min(1 << 20, (n["end"] - n["start"] + 1) * SECTOR))
-        t.flush()
-        os.fsync(t.fileno())
+            args = [f"--new={n['number']}:{n['start']}:{n['end']}", f"--typecode={n['number']}:{n['type']}", f"--change-name={n['number']}:{n['name']}"]
+            if n["guid"]:
+                args.append(f"--partition-guid={n['number']}:{n['guid']}")
+            sgdisk(*args, target)
+        with open(target, "r+b") as t:
+            for n in plan["new"]:
+                t.seek(n["start"] * SECTOR)
+                if n["from"]:
+                    end = n["end"]
+                    chunks = read_range(s, n["from"]["start"], n["from"]["end"])
+                else:
+                    # Zero the first MiB so Android formats new, empty partitions.
+                    end = min(n["end"], n["start"] + (1 << 20) // SECTOR - 1)
+                    chunks = [bytes((end - n["start"] + 1) * SECTOR)]
+                digest = hashlib.sha256()
+                for chunk in chunks:
+                    if t.write(chunk) != len(chunk):
+                        sys.exit(f"FAILED {n['name']}: short write to target")
+                    digest.update(chunk)
+                expected[n["name"]] = (end, digest.hexdigest())
+            t.flush()
+            os.fsync(t.fileno())
+        if source_identity(source_stat) != source_identity(os.fstat(s.fileno())):
+            sys.exit(f"FAILED {source}: source changed during copying")
+
     after_parts, _, _ = table(target)
-    byn = {p["number"]: p for p in after_parts}
-    after, same = {}, True
+    by_number = {p["number"]: p for p in after_parts}
+    after = {}
     for p in plan["existing"]:
-        q = byn.get(p["number"])
-        ok = q is not None and (q["start"], q["end"], q["name"]) == (p["start"], p["end"], p["name"])
+        q = by_number.get(p["number"])
+        if q is None or partition_shape(q) != partition_shape(p):
+            sys.exit(f"FAILED existing partition {p['number']}: GPT entry changed")
         after[p["number"]] = sha_range(target, p["start"], p["end"])
-        same = same and ok and after[p["number"]] == before[p["number"]]
-    out = dict(plan, schema="awai.pc.ab-install.record.v1", existingSha256Before=before, existingSha256After=after, existingUnchanged=same)
+        if after[p["number"]] != before[p["number"]]:
+            sys.exit(f"FAILED existing partition {p['number']}: data changed")
+
+    new_hashes = {}
+    for n in plan["new"]:
+        q = by_number.get(n["number"])
+        name = n["name"]
+        if q is None or partition_shape(q) != partition_shape(n):
+            sys.exit(f"FAILED {name}: new GPT entry differs from the plan")
+        if n["guid"]:
+            detail = sgdisk(f"-i{n['number']}", target)
+            if f"Partition unique GUID: {n['guid'].upper()}\n" not in detail:
+                sys.exit(f"FAILED {name}: new GPT partition GUID differs from the plan")
+        end, expected_digest = expected[name]
+        actual = sha_range(target, n["start"], end)
+        if actual != expected_digest:
+            sys.exit(f"FAILED {name}: written data differs on readback")
+        new_hashes[name] = {"start": n["start"], "end": end, "sha256": actual}
+
+    out = dict(plan, schema="awai.pc.ab-install.record.v1", existingSha256Before=before,
+               existingSha256After=after, existingUnchanged=True,
+               sourceSha256=source_sha256, newPartitionReadback=new_hashes)
     with open(record, "x") as f:
         json.dump(out, f, indent=2)
         f.write("\n")
-    print(json.dumps({"existingUnchanged": same, "record": record}))
-    if not same:
-        sys.exit("FAILED existing partition changed")
+    print(json.dumps({"existingUnchanged": True, "newPartitionsVerified": len(new_hashes),
+                      "record": os.fspath(record)}))
 
 
 def main():
@@ -166,7 +239,10 @@ def main():
         return
     if "--record" not in a:
         sys.exit("apply needs --record FILE")
-    apply(a[1], a[2], plan, a[a.index("--record") + 1])
+    expected_sha256 = a[a.index("--source-sha256") + 1] if "--source-sha256" in a else None
+    if expected_sha256 is not None and not re.fullmatch(r"[0-9a-f]{64}", expected_sha256):
+        sys.exit("REFUSED --source-sha256 must be a lowercase SHA-256 digest")
+    apply(a[1], a[2], plan, a[a.index("--record") + 1], expected_sha256)
 
 
 if __name__ == "__main__":

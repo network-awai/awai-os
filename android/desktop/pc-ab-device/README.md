@@ -42,15 +42,20 @@ the second patch uses. A disk without the fixed GUIDs (the stock `disk-vda.img`)
 
 ```sh
 awai-pc-install.py plan  <disk or image> <disk-vda.img from the build>
-awai-pc-install.py apply <disk or image> <disk-vda.img from the build> --record record.json
+awai-pc-install.py apply <disk or image> <verified install image> \
+  --source-sha256 "$INSTALL_IMAGE_SHA256" --record record.json
 ```
 
 - `plan` writes nothing and prints every sector range it would use.
 - It copies each partition from the partition of the same name in the build's disk image. The Awai ESP
   is named `awai_esp`.
-- It refuses when an existing partition already uses an Awai name, when no single free range is large
-  enough, or when a planned range overlaps an existing partition.
-- `apply` takes the sha256 of every existing partition before and after, and fails if one differs.
+- It requires 512-byte logical sectors on both the source and target and refuses to use the same
+  file or device for both. It also refuses an existing Awai partition name, insufficient contiguous
+  free space, or an overlap.
+- `apply` rejects a source image that is shorter than the partitions it needs before changing the GPT.
+  It hashes complete existing partitions before and after. It also reads back new GPT entries,
+  fixed GUIDs, copied data and the zeroed prefix of new empty partitions. A success record includes
+  the verified ranges and the supplied release digest. The record path must be new.
 
 It has only been run against an image file. Running it on a real disk is a separate, approved step
 (AWAI-3585 first reads the Desktop's partition table).
