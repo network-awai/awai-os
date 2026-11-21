@@ -12,6 +12,11 @@ node store/site/build.mjs --out <new directory>
 Output: `index.html`, `style.css` and `site-manifest.json` (`awai.store-site.v1`, with the SHA-256
 of each file, the pointer sequence, the catalog revision and each listed APK).
 
+The screen composition is designed in Figma:
+[docs/otehon/itonami-store-web-entry-figma-20261121.md](../../docs/otehon/itonami-store-web-entry-figma-20261121.md)
+(AWAI-3735). The HTML and CSS here were written before that design and differ from it; the
+differences are listed there and tracked in AWAI-3736.
+
 ## What the build checks
 
 An app is listed with a download link only when all of these hold. Any failure stops the build.
