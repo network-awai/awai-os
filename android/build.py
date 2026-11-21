@@ -36,7 +36,7 @@ def manifest(pkg, activity, version, kind, online=False, debuggable=True):
     round_icon = ' android:roundIcon="@drawable/yotei_crest_round"' if kind == 'yotei' else ''
     title={'home':'Awai Home','store':'itonami Store','yotei':'Yotei','torihiki':'Torihiki'}[kind]
     return f'''<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="{pkg}" android:versionCode="{version}" android:versionName="0.1.{version-1}">
-      <uses-sdk android:minSdkVersion="35" android:targetSdkVersion="37"/>{perms}
+      <uses-sdk android:minSdkVersion="33" android:targetSdkVersion="37"/>{perms}
       <queries><intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent>
       <intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.APP_BROWSER"/></intent>
       <intent><action android:name="android.intent.action.DIAL"/></intent><intent><action android:name="android.media.action.STILL_IMAGE_CAMERA"/></intent>

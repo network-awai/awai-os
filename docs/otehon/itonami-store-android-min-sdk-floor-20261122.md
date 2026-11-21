@@ -12,6 +12,8 @@ Store の Java が実際に参照する API から、下げられる下限を求
 
 下げるかどうか、どこまで下げるかは owner の判断。
 
+**決定（2026-11-22）:** owner の既定値で 33 にした（AWAI-3729 のコメント）。`android/build.py` と `android/build-tests.py` を 33 に変えた。API 33 の emulator での確認は `docs/evidence/store-min-sdk-33-awai3762-20261122/`。
+
 ## 測定
 
 ```sh
