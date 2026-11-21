@@ -17,7 +17,8 @@ Apply to a synced source tree with `apply.sh <source tree root>`.
 
 | Patch | Project (revision) | What it changes |
 | --- | --- | --- |
-| `patches/virtio-common-awai-pc.patch` | `device/virt/virtio-common` (`e6f2a7d2`) | SELinux labels for `/dev/block/by-name/{super,misc,userdata,persist,metadata,boot_[ab],vendor_boot_[ab]}`; userdata is mounted from the partition named `userdata` instead of `/dev/block/vdb`. Kernel config fragment `awai-pc.config` for real PC hardware, and the Intel NIC modules in the boot-time load list. |
+| `patches/virtio-common-awai-pc.patch` | `device/virt/virtio-common` (`e6f2a7d2`) | SELinux labels for `/dev/block/by-name/{super,misc,userdata,persist,metadata,boot_[ab],vendor_boot_[ab]}`, kernel config fragment `awai-pc.config`, and Intel NIC modules in the boot-time load list. |
+| `patches/virtio-userdata*.patch` | `device/virt/virtio-common` | Mounts userdata by partition name while preserving the existing ext4 and f2fs mount options. |
 | `patches/virt-common-awai-pc.patch` | `device/virt/virt-common` (`0e62edf1`) | GRUB takes the boot disk from where the `PERSIST` filesystem is, and finds `misc`, `vendor_boot_a/b` and `boot_a/b` by fixed GPT partition GUIDs. `EFI` and `BIOS` leave `AB_OTA_PARTITIONS`, and Android no longer mounts the ESP. `ro.surface_flinger.enable_frame_rate_override=false` is removed (headless mode). |
 
 | `patches/vendor-lineage-no-ota-downgrade.patch` | `vendor/lineage` | Removes LineageOS's opt-in to older A/B payloads on non-`user` builds. |
@@ -26,6 +27,10 @@ Use a dedicated LineageOS source checkout for these patches. The vendor change a
 products built from that patched checkout. The installed image must report an empty
 `adb shell getprop ro.ota.allow_downgrade`. Validate the rejection paths on the Awai PC NVMe
 guest using an older OTA signed with its test key and a current OTA signed with a different test key.
+
+For `virtio-common`, `apply.sh` selects a matching userdata fstab patch before
+changing any source files. Both variants change the device path. The newer
+variant preserves the ext4 `checkpoint=block` option as written upstream.
 
 Why the ESP leaves the A/B set: with `androidboot.boot_devices=any` every GPT partition on every disk
 appears under `/dev/block/by-name/`. If an existing ESP is named `EFI`, an update could write to it.

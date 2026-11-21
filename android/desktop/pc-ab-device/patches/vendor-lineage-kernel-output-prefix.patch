@@ -1,0 +1,10 @@
+diff --git a/build/tasks/kernel.mk b/build/tasks/kernel.mk
+--- a/build/tasks/kernel.mk
++++ b/build/tasks/kernel.mk
+@@ -129,3 +129,6 @@
+ DTC := $(HOST_OUT_EXECUTABLES)/dtc
+ KERNEL_OUT := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ
++# Kernel make runs with -C, so resolve a relative Android OUT_DIR at the source root.
++KERNEL_BUILD_OUT_PREFIX := $(if $(filter /%,$(KERNEL_OUT)),,$(abspath .)/)
++
+ DTBO_OUT := $(TARGET_OUT_INTERMEDIATES)/DTBO_OBJ
