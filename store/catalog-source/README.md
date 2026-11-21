@@ -16,6 +16,15 @@ Store catalog may carry, in App Cycle order: the order in which App Build makes 
 | 8 | isic-6209 | network.itonami.isic6209 | isic-J |
 | 9 | isic-8020 | network.itonami.isic8020 | isic-N |
 | 10 | isic-6311-chainexplorer | network.itonami.isic6311chainexplorer | isic-J |
+| 11 | isco-2221 | network.itonami.isco2221 | isco-2 |
+| 12 | isic-8810 | network.itonami.isic8810 | isic-Q |
+| 13 | isco-2634 | network.itonami.isco2634 | isco-2 |
+| 14 | isco-2320 | network.itonami.isco2320 | isco-2 |
+| 15 | isco-9111 | network.itonami.isco9111 | isco-9 |
+
+The first catalog lists ranks 1 to 10: run the generator with `--top 10`. Apps above the limit are left out as
+`outside-top`. An APK built from a commit before its app's source mark is left out as `built-before-isco-source`
+(or `-unspsc-`), and the report names the mark, the APK's `source_commit` and the fix (rebuild from the mark or later).
 
 The package ids are the `identifier` in each repository's `app/src-tauri/tauri.conf.json` (checked 2026-11-22 at
 the repositories' current `main`); the series build stamps `network.itonami.<scheme><code><suffix>`.

@@ -1,6 +1,6 @@
 {
  "schema": "awai.store.series-apps.v1",
- "note": "Series apps for the Store catalog, in App Cycle order (the order App Build makes APKs). release.json carries no APK signer, so this table maps each app to its APK signing-key group: one key per ISIC section and per ISCO-08 major group (AWAI-3771). Development: every group is still the Android debug identity. An ISCO-08 app is left out of the generated catalog until isco-source.tsv names the commit that added the ISCO-08 source text, and its release.json records a clean build (dirty false) from source_commit that is that one or a later one. UNSPSC apps have no rank: they are held (hold.json) and App Cycle places them when the hold is lifted; their key group is the UNSPSC segment (owner answer 2026-11-22), and their source marks live in unspsc-source.tsv.",
+ "note": "Series apps for the Store catalog, in App Cycle order (the order App Build makes APKs); `--top N` limits a catalog to ranks 1..N. release.json carries no APK signer, so this table maps each app to its APK signing-key group: one key per ISIC section and per ISCO-08 major group (AWAI-3771). Development: every group is still the Android debug identity. An ISCO-08 app is left out of the generated catalog until isco-source.tsv names the commit that added the ISCO-08 source text, and its release.json records a clean build (dirty false) from source_commit that is that one or a later one. UNSPSC apps have no rank: they are held (hold.json) and App Cycle places them when the hold is lifted; their key group is the UNSPSC segment (owner answer 2026-11-22), and their source marks live in unspsc-source.tsv.",
  "publisher": "Awai Otehon 開発版",
  "maxApkBytes": 67108864,
  "groups": {
@@ -16,6 +16,10 @@
    "signerSha256": "2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29",
    "development": true
   },
+  "isco-9": {
+   "signerSha256": "2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29",
+   "development": true
+  },
   "isic-J": {
    "signerSha256": "2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29",
    "development": true
@@ -25,6 +29,10 @@
    "development": true
   },
   "isic-N": {
+   "signerSha256": "2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29",
+   "development": true
+  },
+  "isic-Q": {
    "signerSha256": "2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29",
    "development": true
   },
@@ -129,6 +137,46 @@
    "repo": "cloud-itonami/app-itonami-cloud-itonami-isic-6311-chainexplorer",
    "group": "isic-J",
    "description": "ISIC Rev.4 6311 の系列アプリ（開発版）。記録と判断はこの端末の中だけで行い、外部への送信はありません。"
+  },
+  {
+   "rank": 11,
+   "source": "isco-2221",
+   "id": "network.itonami.isco2221",
+   "repo": "cloud-itonami/app-itonami-cloud-itonami-isco-2221",
+   "group": "isco-2",
+   "description": "ISCO-08 2221 の系列アプリ（開発版）。記録と判断はこの端末の中だけで行い、外部への送信はありません。"
+  },
+  {
+   "rank": 12,
+   "source": "isic-8810",
+   "id": "network.itonami.isic8810",
+   "repo": "cloud-itonami/app-itonami-cloud-itonami-isic-8810",
+   "group": "isic-Q",
+   "description": "ISIC Rev.4 8810 の系列アプリ（開発版）。記録と判断はこの端末の中だけで行い、外部への送信はありません。"
+  },
+  {
+   "rank": 13,
+   "source": "isco-2634",
+   "id": "network.itonami.isco2634",
+   "repo": "cloud-itonami/app-itonami-cloud-itonami-isco-2634",
+   "group": "isco-2",
+   "description": "ISCO-08 2634 の系列アプリ（開発版）。記録と判断はこの端末の中だけで行い、外部への送信はありません。"
+  },
+  {
+   "rank": 14,
+   "source": "isco-2320",
+   "id": "network.itonami.isco2320",
+   "repo": "cloud-itonami/app-itonami-cloud-itonami-isco-2320",
+   "group": "isco-2",
+   "description": "ISCO-08 2320 の系列アプリ（開発版）。記録と判断はこの端末の中だけで行い、外部への送信はありません。"
+  },
+  {
+   "rank": 15,
+   "source": "isco-9111",
+   "id": "network.itonami.isco9111",
+   "repo": "cloud-itonami/app-itonami-cloud-itonami-isco-9111",
+   "group": "isco-9",
+   "description": "ISCO-08 9111 の系列アプリ（開発版）。記録と判断はこの端末の中だけで行い、外部への送信はありません。"
   },
   {
    "rank": null,

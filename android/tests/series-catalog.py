@@ -33,7 +33,7 @@ def main():
         t = pathlib.Path(t)
         # One throwaway key per group used below; the test table points each group at its key.
         signer = {}
-        for g in ('isic-N', 'isic-J', 'isco-2', 'unspsc-10'):
+        for g in ('isic-N', 'isic-J', 'isco-2', 'unspsc-10', 'isic-Q'):
             ks = t / f'{g}.p12'
             r = run(JAVA / 'keytool', '-genkeypair', '-keystore', ks, '-storetype', 'PKCS12', '-alias', 'k', '-keyalg', 'RSA', '-keysize', '2048',
                     '-validity', '2', '-dname', f'CN=series test {g}', '-storepass:env', 'SERIES_TEST_PASS', env=env)
@@ -183,6 +183,14 @@ def main():
             got_reason = {e['source']: e['reason'] for e in rep['excluded']}.get('isco-2423')
             check(f'marked ISCO-08 app built from {label}: ' + ('listed' if listed else reason),
                   r.returncode == 0 and got_listed == listed and (listed or got_reason == reason), r.stderr)
+            if reason == 'built-before-isco-source':
+                # As with an App Build APK made before the README commit became the mark (isco-2423 2102ed33).
+                e = next((x for x in rep['excluded'] if x['source'] == 'isco-2423'), {})
+                check('an APK built before the source mark says which commits and what to do',
+                      e.get('mark') == commits['source'] and e.get('sourceCommit') == commits['before']
+                      and e.get('detail') == f'APK built from {commits["before"][:12]}, which is before the source mark '
+                                             f'{commits["source"][:12]} (isco-source.tsv); rebuild from {commits["source"][:12]} or a later commit',
+                      json.dumps(e))
 
         # The ILO reference (AWAI-3629): exactly this text, once, at the end of the ISCO-08 app's description;
         # Japanese only when ja is true; nothing on ISIC apps.
@@ -242,6 +250,30 @@ def main():
         refused('isco-source.tsv without its header', lambda d: app_input(d, 'isic-6209', group='isic-J'), 'header', marks=t / 'nohead.tsv')
         refused('marked commit missing from the clone', lambda d: app_input(d, 'isco-2423', group='isco-2', commit=commits['after']), 'is not in the clone',
                 marks=write_marks([(REPO, '0' * 40, 'false')], 'missing.tsv'))
+
+        # App Cycle ranks 11-15 are in the table; --top N keeps a catalog to ranks 1..N.
+        ranked = [(a['rank'], a['source'], a['id'], a['group']) for a in table['apps'] if a.get('rank') is not None]
+        check('the real table has App Cycle ranks 1-15, with 11-15 as given',
+              [x[0] for x in ranked] == list(range(1, 16)) and ranked[10:] == [
+                  (11, 'isco-2221', 'network.itonami.isco2221', 'isco-2'), (12, 'isic-8810', 'network.itonami.isic8810', 'isic-Q'),
+                  (13, 'isco-2634', 'network.itonami.isco2634', 'isco-2'), (14, 'isco-2320', 'network.itonami.isco2320', 'isco-2'),
+                  (15, 'isco-9111', 'network.itonami.isco9111', 'isco-9')], str(ranked[10:]))
+        topin = t / 'top'
+        app_input(topin, 'isic-7810', group='isic-N')
+        app_input(topin, 'isic-8810', group='isic-Q')
+        r = generate(topin, tab, 'all.json')
+        check('without --top, rank 12 (isic-8810) is listed', r.returncode == 0
+              and [a['id'] for a in json.loads((t / 'all.json').read_text())['apps']] == ['network.itonami.isic7810', 'network.itonami.isic8810'], r.stderr)
+        r = generate(topin, tab, 'top10.json', ('--top', '10'))
+        trep = json.loads((t / 'top10.json.report').read_text()) if r.returncode == 0 else {'listed': [], 'excluded': []}
+        tx = {e['source']: e for e in trep['excluded']}
+        check('--top 10 lists rank 2 and leaves rank 12 out as outside-top', r.returncode == 0
+              and [x['id'] for x in trep['listed']] == ['network.itonami.isic7810']
+              and tx.get('isic-8810', {}).get('reason') == 'outside-top' and tx['isic-8810'].get('detail') == 'rank 12 is outside --top 10', r.stderr)
+        check('--top 10 still reports held apps as held', all(tx.get(a['source'], {}).get('reason') == 'held'
+                                                              for a in table['apps'] if a['source'].startswith('unspsc-')))
+        r = generate(topin, tab, 'top0.json', ('--top', '0'))
+        check('--top 0 is refused', r.returncode != 0 and '--top must be a positive rank' in r.stderr, r.stderr)
 
         # Holds (store/catalog-source/hold.json): UNSPSC apps stay out until the UNDP addendum is confirmed; Decision lifts it.
         real_hold = json.loads((ROOT / 'store/catalog-source/hold.json').read_text(encoding='utf-8'))
