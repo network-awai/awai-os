@@ -3,6 +3,7 @@
             ["react" :as react :refer [useEffect useMemo useRef useState]]
             [shell.manimani :refer [MANIMANI conversation-entry manimani-link]]
             [shell.android-inference :as android-inference]
+            [shell.bot-chat :as bot-chat]
             [shell.screen-tools :as screen]
             ["../android-inference.js" :refer [androidInferenceAvailable]]
             [shell.net :refer [bluetooth-panel wifi-panel]]
@@ -16,6 +17,7 @@
             [shell.docks :refer [device-dock node-dock]]
             [shell.setup :refer [setup]]
             ["../setup-state.js" :refer [setupState]]
+            ["../identity/host-account.js" :refer [readHostAccount]]
             ["../identity/device.js" :refer [clearSession deviceDid loadProofs loadSession saveProof sessionRetention]]
             ["../runtime.js" :refer [createBroker osOperations readPassport readWalletBalance]]
             ["../media.js" :refer [MEDIA_ORIGIN describeMessage requestImage requestSpeech
@@ -347,7 +349,7 @@
       [:button.secondary {:type "button" :data-sign-out true :on-click on-sign-out}
        "Sign Out of This Device"]]]))
 
-(defn shell [did account proofs score broker zenoh matter on-proof on-sign-out]
+(defn shell [did account proofs score broker zenoh matter on-proof on-sign-out on-local]
   (let [now (use-now)
         [context set-context] (useState MANIMANI)
         [threads add-message update-message] (use-threads)
@@ -419,7 +421,9 @@
                    :on-change #(set-context (.. % -target -value))}
           [:option {:value MANIMANI} "Bots · Manimani"]
           (map (fn [item] [:option {:key (.-id item) :value (.-id item)} (.-title item)]) (.-dapps catalog))
-          [:option {:value ACCOUNT} "Account / 認証の保存"]]]]
+          [:option {:value ACCOUNT} "Account / 認証の保存"]]]
+        (when on-local
+         [:button.secondary {:type "button" :on-click on-local} "端末内の会話"])]
        [:f> sidebar context set-context threads now zenoh matter account score]
        body
        (when panel [:f> dapp-panel panel score open-account])
@@ -429,22 +433,71 @@
          proofs capabilities zenoh matter open-account]
         [:f> node-dock did zenoh matter]]])))
 
+(def ^:private host-account-paused-key "awai.itonami.host-account-paused")
+
+(defn- use-host-account [enabled?]
+  (let [[account set-account] (useState nil)
+        [checking set-checking] (useState enabled?)]
+    (useEffect
+     (fn []
+       (if-not enabled?
+         (do (set-account nil) (set-checking false) js/undefined)
+         (let [alive (volatile! true)
+               pending (volatile! false)
+               expiry (volatile! nil)
+               clear-expiry #(when @expiry (js/clearTimeout @expiry))
+               refresh (fn []
+                         (when (and (not @pending) (= "visible" (.-visibilityState js/document)))
+                           (vreset! pending true)
+                           (-> (readHostAccount)
+                               (.then (fn [verified]
+                                        (when @alive
+                                          (clear-expiry)
+                                          (set-account verified)
+                                          (vreset! expiry (js/setTimeout #(set-account nil)
+                                                                          (max 0 (- (.parse js/Date (.-expiresAt verified))
+                                                                                    (.now js/Date))))))))
+                               (.catch (fn [_] (when @alive (clear-expiry) (set-account nil))))
+                               (.finally (fn []
+                                           (vreset! pending false)
+                                           (when @alive (set-checking false)))))))
+               timer (js/setInterval refresh 15000)]
+           (.addEventListener js/document "visibilitychange" refresh)
+           (refresh)
+           (fn []
+             (vreset! alive false)
+             (js/clearInterval timer)
+             (clear-expiry)
+             (.removeEventListener js/document "visibilitychange" refresh)))))
+     #js [enabled?])
+    [(when enabled? account) (and enabled? checking)]))
+
 (defn app []
   (let [zenoh (use-service zenoh-up)
         matter (use-service matter-up)
         broker (useMemo (fn [] (createBroker "index.html" (osOperations relay-origin support-desk-origin))) #js [])
         [did set-did] (useState nil)
-        [account set-account] (useState nil)
+        [app-account set-account] (useState nil)
+        [route set-route] (useState nil)
+        android? (androidInferenceAvailable)
+        [host-paused set-host-paused] (useState #(try (= "true" (.getItem js/localStorage host-account-paused-key))
+                                                      (catch :default _ false)))
+        [host-account host-checking] (use-host-account (and android? (not host-paused) (nil? app-account)))
+        account (or app-account host-account)
         [finished set-finished] (useState false)
         [setup-error set-setup-error] (useState nil)
         [proofs set-proofs] (useState loadProofs)
         score (trustScore #js {:accountDid (some-> account (.-accountDid)) :proofs proofs})
-        open (boolean (and did account finished))]
+        open (boolean (and did account (or android? finished)))
+        local? (and android? (or (= route "local")
+                                (and (not open) (or (nil? route) (= route "agent")))))
+        go-local #(set-route "local")]
     (useEffect
      (fn []
        (-> (deviceDid)
+           (.catch (fn [_] (set-setup-error "このアプリの端末鍵を確認できません。") nil))
            (.then (fn [value]
-                    (set-account (loadSession value))
+                    (when value (set-account (loadSession value)))
                     (-> (.read setupState)
                         (.then (fn [done] (set-finished done) (set-did value)))
                         (.catch (fn [_] (set-setup-error "設定の保存状態を確認できません。もう一度お試しください。") (set-did value))))))) js/undefined)
@@ -458,22 +511,47 @@
                     " gate=" (if open 0 1)
                     " dapps=" dapps))) js/undefined)
      #js [zenoh matter open did])
-    (if-not did
-      nil
+    [:<>
+     (when (and android? host-checking (nil? route) (not open))
+      [:main.chat [:p {:role "status"} "Awai OS のアカウントを確認しています。"]])
+     (when android?
+      [:div {:hidden (or (not local?) (and host-checking (nil? route)))}
+       [:main.chat.net-view
+        [:div.net-body
+         [:header
+          [:h1 "端末内の会話"]
+          [:button.secondary {:type "button" :on-click
+                              #(when (.dispatchEvent js/window (js/Event. "awai-request-new-conversation" #js {:cancelable true}))
+                                 (set-route (if open "agent" "account")))}
+           (if open "Agent の会話" "アカウントを接続")]]
+         [:f> bot-chat/panel {:id "profile:local-conversation" :name "Murakumo"} "ja" nil true]]]])
+     (when (and did (not local?))
       (if-not open
-        [:<> (when setup-error [:p.problem {:role "alert"} setup-error])
-         [:f> setup broker relay-origin did account finished set-account score
+       [:<>
+        (when android?
+         [:button.secondary {:type "button" :on-click go-local} "端末内の会話に戻る"])
+        (when (and android? host-paused)
+          [:button.secondary {:type "button" :on-click
+                              #(do (set-host-paused false) (set-route nil)
+                                   (try (.removeItem js/localStorage host-account-paused-key) (catch :default _ nil)))}
+           "Awai OS のアカウントを使う"])
+        (when setup-error [:p.problem {:role "alert"} setup-error])
+        [:f> setup broker relay-origin did account finished set-account score
          (fn []
-           (-> (.complete setupState)
-               (.then (fn [_] (set-setup-error nil) (set-finished true)))))]]
-        [:f> shell did account proofs score broker zenoh matter
-         (fn [proof-name proof]
-           (saveProof proof-name proof)
-           (set-proofs (loadProofs)))
-         (fn []
-           (clearSession)
-           (set-proofs #js {})
-           (set-account nil))]))))
+          (-> (.complete setupState)
+           (.then (fn [_] (set-setup-error nil) (set-finished true)))))]]
+       ^{:key (.-accountDid account)}
+       [:f> shell did account proofs score broker zenoh matter
+        (fn [proof-name proof]
+         (saveProof proof-name proof)
+         (set-proofs (loadProofs)))
+        (fn []
+         (if host-account
+           (do (set-host-paused true)
+               (try (.setItem js/localStorage host-account-paused-key "true") (catch :default _ nil)))
+           (do (clearSession) (set-proofs #js {}) (set-account nil)))
+         (when android? (go-local)))
+        (when android? go-local)]))]))
 
 (defn network-indicator []
   (let [status (useNetStatus)

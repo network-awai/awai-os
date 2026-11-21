@@ -90,6 +90,50 @@
    (when (seq heard-text) [:p {:data-voice-transcript true :role "status"} heard-text])
    (when remaining-text [:p (tr :voiceRemainingText)])]))
 
+(defn- local-voice [scope busy set-busy set-text reply]
+ (let [active (useRef nil)
+       [action set-action] (useState nil)
+       [status set-status] (useState nil)
+       stop (fn []
+              (when-let [run (.-current active)]
+               (set! (.-cancelled run) true)
+               (-> (stopSpeech) (.catch (fn [_] nil)))))
+       run (fn [kind]
+             (when-not (or busy (.-current active))
+              (let [turn #js {:cancelled false}]
+               (set! (.-current active) turn)
+               (set-busy true) (set-action kind) (set-status nil)
+               (-> (beginSpeech scope)
+                (.then (fn [session]
+                         (when-not (.-cancelled turn)
+                          (if (= kind "listen") (listenSpeech session)
+                           (speakSpeech session (.slice reply 0 512))))))
+                (.finally stopSpeech)
+                (.then (fn [result]
+                         (when (and (not (.-cancelled turn)) (= kind "listen"))
+                          (if-let [heard (not-empty (.trim (.-text result)))]
+                           (set-text (fn [draft] (if (seq draft) (str draft "\n" heard) heard)))
+                           (set-status "音声を認識できませんでした。")))))
+                (.catch (fn [_]
+                          (when-not (.-cancelled turn)
+                           (set-status "端末内の音声機能を使えませんでした。マイクの許可と音声モデルを確認してください。"))))
+                (.finally (fn [] (set! (.-current active) nil) (set-action nil) (set-busy false)))))))]
+  (useEffect
+   (fn []
+    (let [hide #(when (= "hidden" (.-visibilityState js/document)) (stop))]
+     (.addEventListener js/document "visibilitychange" hide)
+     (fn [] (.removeEventListener js/document "visibilitychange" hide) (stop)))) #js [])
+  [:div.agent-session-toolbar
+   (if action
+    [:button.secondary {:type "button" :on-click stop} "停止"]
+    [:<>
+     [:button.secondary {:type "button" :disabled (or busy (not (speechAvailable))) :on-click #(run "listen")}
+      "マイクで入力"]
+     (when (seq reply)
+      [:button.secondary {:type "button" :disabled (or busy (not (speechAvailable))) :on-click #(run "speak")}
+       (if (> (count reply) 512) "応答の冒頭を読み上げる" "応答を読み上げる")])])
+   (when status [:p {:role "status"} status])]))
+
 (defn- message-copy [text locale]
  (let [[status set-status] (useState nil)
        copy (fn []
@@ -113,11 +157,19 @@
  (let [native (.-nativeEvent event)]
   (or (.-isComposing native) (= 229 (.-keyCode native)))))
 
-(defn panel [bot & [locale draft-id]]
+(defn- local-prompt [messages text]
+ (let [prior (->> messages (filter #(seq (:text %))) (take-last 6))
+       prompt (str "会話の続きとして、最後の利用者のメッセージに応答してください。\n"
+                   (str/join "\n" (map #(str (if (= "user" (:role %)) "利用者: " "Murakumo: ") (:text %)) prior))
+                   "\n利用者: " text)]
+  (if (and (seq prior) (<= (.-length (.encode (js/TextEncoder.) prompt)) 8192)) prompt text)))
+
+(defn panel [bot & [locale draft-id local?]]
  (let [tr (fn [key & [parameters]] (ui/t locale key parameters))
        [messages set-messages] (useState []) [text set-text] (useState "") [busy set-busy] (useState false)
        history-node (useRef nil) history-anchor (useRef nil) follow-history (useRef true)
        search-input (useRef nil) search-toggle (useRef nil) search-row (useRef nil)
+       composition (useRef false) shortcut-armed (useRef false) submit-lock (useRef false)
        [search-open set-search-open] (useState false) [query set-query] (useState "")
        [selected-match set-selected-match] (useState nil)
        search-term (search-text (str/trim query))
@@ -179,13 +231,15 @@
                       (set-at-latest true)))
        [mode set-mode] (useState "text") [pending set-pending] (useState nil)
        [last-reply set-last-reply] (useState nil)
-       [created set-created] (useState (not draft-id))
+       [created set-created] (useState (or local? (not draft-id)))
        _ (useEffect (fn [] (let [guard (fn [event] (when (or busy pending) (.preventDefault event)))]
         (.addEventListener js/window "awai-request-new-conversation" guard)
         (fn [] (.removeEventListener js/window "awai-request-new-conversation" guard)))) #js [busy pending])
        [sessions set-sessions] (useState []) [session-info set-session-info] (useState nil)
-       [session-id set-session-id] (useState (fn [] (let [s (readAgentSelection)] (or draft-id (if (= (:id bot) (.-botId s)) (.-sessionId s) "default")))))
-       _ (useEffect (fn [] (chooseAgent (:id bot) session-id) js/undefined) #js [(:id bot)])
+       [session-id set-session-id] (useState (fn [] (or draft-id (when local? (.randomUUID js/crypto))
+                                      (let [s (readAgentSelection)]
+                                       (if (= (:id bot) (.-botId s)) (.-sessionId s) "default")))))
+       _ (useEffect (fn [] (when-not local? (chooseAgent (:id bot) session-id)) js/undefined) #js [(:id bot)])
        [message set-message] (useState nil) [screen-state set-screen-state] (useState nil) [store set-store] (useState nil) [cursor set-cursor] (useState nil)
        failure (fn [e] (set-message (if (= "client operation was not approved" (.-message e)) :chatDenied :chatUnavailable)))
        history (fn [id before]
@@ -227,11 +281,54 @@
          (.then (fn [_] (set-screen-state :screenAccepted) (when clear-draft? (set-text ""))))
          (.catch (fn [_] (set-screen-state :screenUnavailable)))
          (.finally #(set-busy false))))
+       scope #js {:botId (:id bot) :sessionId session-id}
+       [local-status set-local-status] (useState nil)
+       [readiness set-readiness] (useState nil)
+       refresh-local (fn []
+                      (-> (.info localInference)
+                       (.then (fn [info]
+                                (set-readiness (when (and (= "awai.inference.client.v1" (.-schema info))
+                                                          (= "network.awai.murakumo" (.-provider info))
+                                                          (= false (.-remote info))) info))))
+                       (.catch (fn [_] (set-readiness nil)))))
+       _ (useEffect
+          (fn []
+           (when local?
+            (refresh-local)
+            (.addEventListener js/window "focus" refresh-local))
+           (fn [] (when local? (.removeEventListener js/window "focus" refresh-local)))) #js [local?])
+       ready? (and (some-> readiness .-installed)
+                   (if (= mode "image") (some-> readiness .-status .-image .-imported)
+                    (some-> readiness .-status .-loaded)))
+       local-submit (fn []
+                      (set-local-status nil)
+                      (-> (.generate localInference #js {:prompt (if (= mode "image") text (local-prompt messages text))
+                                                          :modality (if (= mode "image") "image" "text")
+                                                          :conversation scope})
+                       (.then (fn [result]
+                                (let [id (.-requestId result)
+                                      reply (str id ":reply")]
+                                 (set! (.-current follow-history) true)
+                                 (set-messages (conj messages {:id id :role "user" :text text}
+                                                 (if (= mode "image")
+                                                  {:id reply :role "assistant" :kind "local-image" :parentId id
+                                                   :image {:imageId (.-imageId result) :sha256 (.-sha256 result)}
+                                                   :local-result result}
+                                                  {:id reply :role "assistant" :text (.-text result)})))
+                                 (set-last-reply reply)
+                                 (set-text ""))))
+                       (.catch (fn [_] (set-local-status "生成を完了できませんでした。Murakumo の許可とモデルを確認してください。")))))
+       finish-submit (fn [] (set! (.-current submit-lock) false) (set-busy false))
        send (fn [event] (.preventDefault event)
-        (when-not (or busy pending (empty? (.trim text)))
-         (if-let [[action _] (when (= mode "text") (screen/command text))]
+        (when-not (or busy pending (.-current composition) (.-current submit-lock)
+                      (and local? (not ready?)) (empty? (.trim text)))
+         (if local?
+          (do (set! (.-current submit-lock) true) (set-busy true)
+              (-> (local-submit) (.finally finish-submit)))
+          (if-let [[action _] (when (= mode "text") (screen/command text))]
           (device-action action true)
           (do
+           (set! (.-current submit-lock) true)
            (set-busy true) (set-message nil)
            (-> (ensure-session)
           (.then (fn [_]
@@ -249,26 +346,39 @@
                  {:id reply-id :role "assistant" :text (.-text r) :runId (.-runId r) :model (.-model r)}))
                 (set-last-reply reply-id))
                (set-store (.-store r)) (set-text ""))))))))
-          (.catch failure) (.finally #(set-busy false)))))))]
-  [:section.bot-conversation {:aria-label (tr :conversation) :data-agent-session session-id}
+          (.catch failure) (.finally finish-submit)))))))]
+  [:section.bot-conversation {:aria-label (tr :conversation)
+                             :data-agent-session (when-not local? session-id)
+                             :data-local-conversation (when local? true)}
    [:header.bot-conversation-header
     [:strong (:name bot)]
     (when store [:span.bot-chat-saved {:title "Itonami Agent · AwaiFS · Kotobase"} (tr :chatSaved)])]
-   [:div.agent-session-toolbar
+   (when-not local?
+    [:div.agent-session-toolbar
     [:button.secondary {:type "button" :disabled (or busy (some? pending)) :on-click list-sessions} (tr :conversationSessions)]
     [:button.secondary {:type "button" :disabled (or busy (some? pending)) :on-click new-session} (tr :newConversation)]
-    [:button.secondary {:type "button" :disabled (or busy (some? pending) (not created)) :on-click #(history session-id nil)} (tr :chatLoadHistory)]]
+    [:button.secondary {:type "button" :disabled (or busy (some? pending) (not created)) :on-click #(history session-id nil)} (tr :chatLoadHistory)]])
    (when (seq sessions)
     [:label.soshiki-field [:span.sr-only (tr :conversationSessions)]
      [:select {:aria-label (tr :conversationSessions) :value session-id :disabled (or busy (some? pending)) :on-change #(history (.. % -target -value) nil)}
       (when-not (some #(= session-id (:sessionId %)) sessions) [:option {:value session-id} (tr :defaultConversation)])
       (for [s sessions] ^{:key (:sessionId s)} [:option {:value (:sessionId s)} (str (if (empty? (:title s)) (tr :newConversation) (:title s)) " · " (ui/stamp locale (:updatedAt s)))])]])
    (when (contains? #{"peer" "circle-work"} (:kind session-info)) [:article.agent-peer-cycle [:strong (tr :peerDialogue)] [:h4 (:goal session-info)] [:span (if (= "circle-work" (:kind session-info)) (tr :proposalCount {:count (:completedTurns session-info)}) (tr :peerProgress {:done (:completedTurns session-info) :total (:maxTurns session-info)}))]])
-   [:details.chat-connection [:summary (tr :chatDetails)]
-    [:div.chat-connection-body
-     [:p (tr :chatModelInfo {:model CHAT_MODEL})] [:p CHAT_ORIGIN]
-     [:p (tr :chatDataInfo)] [:p (tr :chatStoreInfo)] [:dl [:dt (tr :conversationSessions)] [:dd session-id]]]]
-   (when (seq messages)
+   (if local?
+    [:div
+     [:p.muted {:role "status"}
+      (cond ready? "Murakumo · この端末のみ"
+            (some-> readiness .-installed) "Murakumo で対応するモデルを準備してください。"
+            :else "この端末で使える Murakumo を確認できません。")]
+     (when (and (some-> readiness .-installed) (not ready?))
+      [:button.secondary {:type "button" :disabled busy :on-click
+                          #(-> (.open localInference) (.catch (fn [_] (set-local-status "Murakumo を開けませんでした。"))))}
+       "Murakumo を開く"])]
+    [:details.chat-connection [:summary (tr :chatDetails)]
+     [:div.chat-connection-body
+      [:p (tr :chatModelInfo {:model CHAT_MODEL})] [:p CHAT_ORIGIN]
+      [:p (tr :chatDataInfo)] [:p (tr :chatStoreInfo)] [:dl [:dt (tr :conversationSessions)] [:dd session-id]]]])
+   (when (or local? (seq messages))
     [:div.chat-search
      [:button.secondary {:type "button" :ref search-toggle :aria-expanded search-open
                          :on-click #(if search-open (close-search) (set-search-open true))}
@@ -297,7 +407,7 @@
            (tr :chatFindNone)))]]])])
    (when cursor [:button.secondary {:type "button" :disabled busy :on-click #(history session-id cursor)} (tr :chatEarlier)])
    (if (empty? messages)
-    [:p.chat-empty (tr (if (or (not created) store) :chatEmptyDraft :chatEmpty))]
+    [:p.chat-empty (if local? "この端末の新しい会話です。" (tr (if (or (not created) store) :chatEmptyDraft :chatEmpty)))]
     [:ol.bot-conversation-history {:aria-label (tr :chatTranscript) :ref history-node :tab-index 0 :on-scroll track-history
                                     :style (when (some #(= "local-image" (:kind %)) messages) {:max-height "56dvh"})}
      (for [m messages :let [received? (and (= "user" (:role m)) (or (:peer m) (:work m)))]]
@@ -325,7 +435,7 @@
           {:id (str (.-requestId (:request pending)) ":local") :role "assistant" :text "" :kind "local-image" :localOnly true
            :parentId (.-requestId (:request pending)) :image (js->clj (.-image (:request pending)) :keywordize-keys true) :local-result (:result pending)}))
           (set-pending nil) (set-text ""))} "会話に記録せず続ける"]])
-   (when-let [[action label] (when (and (not busy) (nil? pending)
+   (when-let [[action label] (when (and (not local?) (not busy) (nil? pending)
                                        (= "assistant" (:role (last messages)))
                                        (not (contains? #{"peer" "circle-work"} (:kind session-info))))
                               (screen/command (:text (last messages))))]
@@ -333,24 +443,39 @@
      (tr :screenBotProposal {:action (tr label)})])
    (when screen-state [:p {:role "status"} (tr screen-state)])
    (when message [:p.problem {:role "status"} (tr message)])
+   (when local-status [:p {:role "status"} local-status])
    (when-not (contains? #{"peer" "circle-work"} (:kind session-info))
     [:form.chat-composer {:on-submit send}
-     [:div.agent-session-toolbar
+     [:div.agent-session-toolbar {:role "group" :aria-label (tr :conversation)}
       [:button.secondary {:type "button" :disabled (or busy (some? pending)) :aria-pressed (= mode "text") :on-click #(set-mode "text")} (tr :chatTextMode)]
-      [:button.secondary {:type "button" :disabled (or busy (some? pending) (not (androidInferenceAvailable)) (= session-id "default")) :aria-pressed (= mode "image") :on-click #(set-mode "image")} (tr :chatImageMode)]]
+      [:button.secondary {:type "button" :disabled (or busy (some? pending) (not (androidInferenceAvailable)) (= session-id "default")) :aria-pressed (= mode "image") :on-click #(set-mode "image")} (tr :chatImageMode)]
+      (when local?
+       [:button.secondary {:type "button" :disabled busy :aria-pressed (= mode "voice") :on-click #(set-mode "voice")} (tr :voiceConversation)])]
      (let [label (tr (if (= mode "image") :chatImagePrompt :chatMessage))]
       [:label.soshiki-field [:span.sr-only label]
        [:textarea {:placeholder label :value text :max-length 8192 :rows 2
                    :read-only (or busy (some? pending))
                    :on-change #(set-text (.. % -target -value))
+                   :on-blur #(do (set! (.-current composition) false) (set! (.-current shortcut-armed) false))
+                   :on-composition-start #(do (set! (.-current composition) true) (set! (.-current shortcut-armed) false))
+                   :on-composition-end #(set! (.-current composition) false)
                    :on-key-down (fn [event]
-                                 (when (and (= "Enter" (.-key event))
-                                            (or (.-ctrlKey event) (.-metaKey event))
-                                            (not (composing? event)))
-                                  (.preventDefault event)
-                                  (when-not (.-repeat event) (send event))))}]])
+                                 (when (= "Enter" (.-key event))
+                                  (let [shortcut? (or (.-ctrlKey event) (.-metaKey event))
+                                        editing? (or (.-current composition) (composing? event))]
+                                   (when (and shortcut? (not editing?)) (.preventDefault event))
+                                   (set! (.-current shortcut-armed)
+                                         (boolean (and shortcut? (not editing?) (not (.-repeat event))))))))
+                   :on-key-up (fn [event]
+                                (when (= "Enter" (.-key event))
+                                 (let [submit? (.-current shortcut-armed)]
+                                  (set! (.-current shortcut-armed) false)
+                                  (when (and submit? (not (composing? event))) (send event)))))}]])
+     (when (and local? (= mode "voice"))
+      [:f> local-voice scope busy set-busy set-text
+       (some->> messages (filter #(and (= "assistant" (:role %)) (seq (:text %)))) last :text)])
      [:div.chat-composer-actions
-      [:button.primary {:type "submit" :disabled (or busy (some? pending) (empty? (.trim text)))}
+      [:button.primary {:type "submit" :disabled (or busy (some? pending) (and local? (not ready?)) (empty? (.trim text)))}
        (tr (if (= mode "image") :chatImageSend :chatSend))]]])
-   (when-not (contains? #{"peer" "circle-work"} (:kind session-info))
+   (when (and (not local?) (not (contains? #{"peer" "circle-work"} (:kind session-info))))
     [:f> voice-panel bot session-id ensure-session set-busy set-messages set-store locale (or busy (some? pending))])]))

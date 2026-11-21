@@ -9,7 +9,11 @@
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
     <uses-permission android:name="network.awai.permission.LOCAL_INFERENCE"/>
-    <queries><package android:name="network.awai.murakumo"/></queries>
+    <uses-permission android:name="network.awai.permission.HOST_ACCOUNT"/>
+    <queries>
+        <package android:name="network.awai.murakumo"/>
+        <provider android:authorities="network.awai.home.account"/>
+    </queries>
 
     <!-- AndroidTV support -->
     <uses-feature android:name="android.software.leanback" android:required="false" />
