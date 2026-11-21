@@ -298,6 +298,14 @@ Both guests rebooted into v8 on slot `_a` with `sys.boot_completed=1`. After shu
 protected partitions matched the SHA-256 hashes recorded at installation.
 [Evidence and artifact digests](evidence/ota-rejection-kvm-20261120.json).
 
+## Stock disk for the PC AVB evaluation build (AWAI-3715)
+
+Apply `apply-pc-avb-disk.sh <source tree root>` alongside the PC AVB build configuration
+(AWAI-3714). With `AWAI_PC_AVB_BUILD=true` on the x86_64 A/B build, `diskimage-vda` depends on
+`vbmeta.img`, reserves two 1 MiB GPT partitions after BIOS, and reads back `vbmeta.img` from each
+slot after writing it. The existing 11 GPT entries keep their positions. These slots hold the root
+vbmeta image. UEFI trust establishment and device acceptance remain in AWAI-3612.
+
 ## Known gaps
 
 - `init.virtio.rc` still creates `by-name` links to `vda1`, `vda7` and so on. On NVMe they point nowhere
