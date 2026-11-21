@@ -36,7 +36,7 @@ import java.util.Set;
  * installing still need the person's approval.
  *
  * <p>No Android API is used here, so the class is tested on a plain JVM
- * ({@code bash android/tests/key-list.sh}). Nothing calls it yet.
+ * ({@code bash android/tests/key-list.sh}). The Store loads it through {@link StoreTrust} (AWAI-3775).
  */
 public final class KeyList {
     public static final String SCHEMA = "itonami.store.keys.v1";
@@ -49,9 +49,54 @@ public final class KeyList {
 
     public final long sequence, issuedAt, expiresAt;
     private final Map<String, List<byte[]>> keys;
+    private final byte[] raw, signature;
 
-    private KeyList(long sequence, long issuedAt, long expiresAt, Map<String, List<byte[]>> keys) {
+    private KeyList(long sequence, long issuedAt, long expiresAt, Map<String, List<byte[]>> keys, byte[] raw, byte[] signature) {
         this.sequence = sequence; this.issuedAt = issuedAt; this.expiresAt = expiresAt; this.keys = keys;
+        this.raw = raw == null ? null : raw.clone(); this.signature = signature == null ? null : signature.clone();
+    }
+
+    /** The verified bytes and the root's signature, so a host can keep the list it accepted. Null for {@link #legacy}. */
+    public byte[] raw() { return raw == null ? null : raw.clone(); }
+    public byte[] signature() { return signature == null ? null : signature.clone(); }
+
+    /** True for a root-signed list; false for the temporary {@link #legacy} single key. */
+    public boolean rooted() { return raw != null; }
+
+    /**
+     * Temporary (AWAI-3775 step 1 to 3): a Store built before it bundles a root and a list still pins one
+     * key for both the catalog and the pointer. Sequence 0, no expiry. Removed once every build bundles a list.
+     */
+    @Deprecated
+    public static KeyList legacy(byte[] spki) {
+        if (spki == null) throw new SecurityException("keys-key");
+        List<byte[]> one = Collections.singletonList(spki.clone());
+        Map<String, List<byte[]>> keys = new LinkedHashMap<>();
+        keys.put(CATALOG, one); keys.put(POINTER, one);
+        return new KeyList(0, 0, Long.MAX_VALUE, Collections.unmodifiableMap(keys), null, null);
+    }
+
+    /**
+     * The list a host should use: of the list it saved and the list bundled in its package, the valid one with
+     * the higher sequence. Both are checked against the same root and floor. When neither is valid, the
+     * bundled list's refusal is thrown (or the saved list's when nothing is bundled).
+     */
+    public static KeyList choose(byte[] bundledRaw, byte[] bundledSignature, byte[] savedRaw, byte[] savedSignature,
+                                 byte[] rootSpki, long now, long sequenceFloor) throws Exception {
+        KeyList best = null;
+        SecurityException refusal = null;
+        for (int i = 0; i < 2; i++) {
+            byte[] r = i == 0 ? savedRaw : bundledRaw, s = i == 0 ? savedSignature : bundledSignature;
+            if (r == null) continue;
+            try {
+                KeyList k = verify(r, s, rootSpki, now, sequenceFloor);
+                if (best == null || k.sequence > best.sequence) best = k;
+            } catch (SecurityException e) {
+                if (i == 1 || refusal == null) refusal = e;
+            }
+        }
+        if (best != null) return best;
+        throw refusal != null ? refusal : new SecurityException("keys-size");
     }
 
     /**
@@ -102,7 +147,7 @@ public final class KeyList {
         for (List<byte[]> role : keys.values())
             if (role.isEmpty() || role.size() > MAX_KEYS_PER_ROLE) throw new SecurityException("keys-count");
         for (Map.Entry<String, List<byte[]>> e : keys.entrySet()) e.setValue(Collections.unmodifiableList(e.getValue()));
-        return new KeyList(sequence, issuedAt, expiresAt, Collections.unmodifiableMap(keys));
+        return new KeyList(sequence, issuedAt, expiresAt, Collections.unmodifiableMap(keys), raw, signature);
     }
 
     /** True when a key listed for this role signed the data. Unknown roles are never authentic. */

@@ -65,7 +65,14 @@ public final class AutoUpdater {
         }
         SharedPreferences prefs = c.getSharedPreferences(AutoInstall.PREFS, 0);
         try {
-            byte[] key = Integrity.read(c.getAssets().open("catalog-key.der"), 4096);
+            KeyList key = StoreTrust.load(c);
+            if (key.rooted()) {
+                // A newer key list replaces or withdraws role keys. A refused or unreachable list keeps the one in use.
+                try { KeyList fetched = StoreTrust.admit(c, fetch(StoreTrust.URL, StoreTrust.MAX_ENVELOPE_BYTES));
+                    if (fetched.sequence > key.sequence) log(c, "keys", null, "sequence " + fetched.sequence);
+                    key = fetched; }
+                catch (Exception notAdopted) { log(c, notAdopted instanceof SecurityException ? "keys-refused" : "keys-unreachable", null, code(notAdopted)); }
+            }
             long floor = prefs.getLong("pointer-sequence", 0);
             LatestPointer p = LatestPointer.verifyEnvelope(fetch(LatestPointer.URL, LatestPointer.MAX_ENVELOPE_BYTES), key, now, floor);
             prefs.edit().putLong("pointer-sequence", p.sequence).commit();
@@ -97,13 +104,17 @@ public final class AutoUpdater {
             if (installed + refused == 0) log(c, "current", null, "no updates");
             if (refused > 0) notify(c, "更新の確認が必要です", refused + " 件の更新は自動では入れられません。Store の「更新」で確認してください。");
         } catch (Exception e) {
-            String m = e.getMessage();
-            log(c, "error", null, e instanceof SecurityException && m != null && m.matches("[a-z0-9-]{1,40}") ? m : e.getClass().getSimpleName());
+            log(c, "error", null, code(e));
         }
     }
 
+    private static String code(Exception e) {
+        String m = e.getMessage();
+        return e instanceof SecurityException && m != null && m.matches("[a-z0-9-]{1,40}") ? m : e.getClass().getSimpleName();
+    }
+
     /** Admits the pointer's catalog as the Store's online catalog after the same checks as a manual check. */
-    private static void admitCatalog(Context c, byte[] envelope, byte[] key, long now, LatestPointer p) throws Exception {
+    private static void admitCatalog(Context c, byte[] envelope, KeyList key, long now, LatestPointer p) throws Exception {
         JSONObject e = new JSONObject(new String(envelope, StandardCharsets.UTF_8));
         String raw = e.getString("raw"), signature = e.getString("signature");
         JSONObject candidate = Catalog.verifyMetadata(raw.getBytes(StandardCharsets.UTF_8),
