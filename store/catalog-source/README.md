@@ -30,6 +30,12 @@ the repositories' current `main`); the series build stamps `network.itonami.<sch
   ISCO-08 app is marked: App Build has added the source text (isco-2423 `5bf9ea3`, isco-3333 `2977327`, isco-4311
   `b796093`, isco-2411 `4e578b8`), and the mark goes in once the build records the commit.
 
+- **Which packages the Store admits.** The signed catalog decides. `Catalog.java` admits any
+  `network.itonami.<one lowercase segment>` that the catalog lists, with the asset `packages/<segment>.apk`, the
+  download name `online-<segment>.apk` and a 64 MiB ceiling; the catalog's APK asset must be exactly that name. No
+  hand-written list of series package ids has to follow the table. Apps with their own rules (previews, Registry
+  Assoc, the named apps and their budgets) keep them.
+
 Generate, then sign with a catalog key from the key list:
 
 ```sh
