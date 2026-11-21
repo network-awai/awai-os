@@ -319,7 +319,8 @@ public abstract class HostActivity extends Activity {
             try(PackageInstaller.Session session=installer.openSession(sessionId)){
                 try(InputStream input=new FileInputStream(verified);OutputStream out=session.openWrite("base.apk",0,verified.length())){byte[] buffer=new byte[65536];int n;while((n=input.read(buffer))!=-1)out.write(buffer,0,n);session.fsync(out);}
                 getSharedPreferences("host",0).edit().putInt("install-session",sessionId).apply();
-                Intent callback=new Intent(this,InstallReceiver.class).setAction(getPackageName()+".INSTALL_RESULT");
+                AutoInstall.rememberPending(this,sessionId,trustedCatalog().app(id),verified);
+                Intent callback=new Intent(this,InstallReceiver.class).setAction(getPackageName()+".INSTALL_RESULT").putExtra("package",id);
                 PendingIntent status=PendingIntent.getBroadcast(this,sessionId,callback,PendingIntent.FLAG_MUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
                 session.commit(status.getIntentSender());
             }message("Android の追加確認をお待ちください。");

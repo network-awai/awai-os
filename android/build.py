@@ -20,7 +20,7 @@ def manifest(pkg, activity, version, kind, online=False, debuggable=True):
                  '<activity android:name="network.awai.home.AccountBrokerActivity" android:exported="true" android:excludeFromRecents="true" android:label="Awai アカウント"/>')
         home = '<intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.HOME"/><category android:name="android.intent.category.DEFAULT"/></intent-filter>'
     if kind == 'store':
-        perms = '<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>' + ('<uses-permission android:name="android.permission.INTERNET"/><uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>' if online else '')
+        perms = '<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/><uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION"/>' + ('<uses-permission android:name="android.permission.INTERNET"/><uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>' if online else '')
         extra = '<receiver android:name="network.awai.platform.InstallReceiver" android:exported="false"/>'
     if kind == 'yotei':
         perms = '<permission android:name="network.awai.permission.READ_AGENDA" android:protectionLevel="signature"/>'

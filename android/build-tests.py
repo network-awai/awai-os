@@ -14,7 +14,8 @@ def main():
     testclass='SetupInstrumentation' if a.kind=='setup' else 'StoreInstrumentation'
     testpkg='network.awai.home' if a.kind=='setup' else a.target_package
     test_package='network.awai.tests.p2p.preview' if testpkg.endswith('.p2p.preview') else 'network.awai.tests'
-    manifest=stage/'AndroidManifest.xml';manifest.write_text(f'''<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="{test_package}" android:versionCode="1" android:versionName="1"><uses-sdk android:minSdkVersion="35" android:targetSdkVersion="37"/><application android:label="Awai tests" android:debuggable="true"/><instrumentation android:name="network.awai.tests.{testclass}" android:targetPackage="{testpkg}"/></manifest>''')
+    auto='' if a.kind=='setup' else f'<instrumentation android:name="network.awai.tests.AutoUpdateInstrumentation" android:targetPackage="{testpkg}"/>'
+    manifest=stage/'AndroidManifest.xml';manifest.write_text(f'''<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="{test_package}" android:versionCode="1" android:versionName="1"><uses-sdk android:minSdkVersion="35" android:targetSdkVersion="37"/><application android:label="Awai tests" android:debuggable="true"/><instrumentation android:name="network.awai.tests.{testclass}" android:targetPackage="{testpkg}"/>{auto}</manifest>''')
     run([java/'javac','--release','8','-encoding','UTF-8','-cp',str(jar)+':'+str(cp),'-d',classes,*list((ROOT/'android/tests/src').rglob('*.java'))])
     run([tools/'d8','--min-api','35','--lib',jar,'--classpath',cp,'--output',dex,*classes.rglob('*.class')])
     apk=stage/'unsigned.apk';run([tools/'aapt2','link','-o',apk,'--manifest',manifest,'-I',jar])
