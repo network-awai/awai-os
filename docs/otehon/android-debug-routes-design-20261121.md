@@ -57,7 +57,7 @@ adb -s <serial> shell 'for p in ro.build.type ro.debuggable ro.adb.secure persis
 | Wireless debug（TLS、ペアリング） | 対応する | 対応する | 無効 | ペアリングコードまたは QR、その後 TLS |
 | 平文の TCP 5555 | 出荷 image では**無効**。開発用 image と VM のみ | 対応しない | 無効 | 開発用: RSA 鍵。VM: 現行の insecure 設定を許す |
 | `android_insecure_adb` | 出荷 image では**受け付けない**。VM の検証のみ | 該当なし | 0 | なし（認証を外す設定） |
-| 初期設定前の trade-in ADB | 未決定（下記） | 未決定 | AOSP の既定 | AOSP の既定 |
+| 初期設定前の trade-in ADB | 出荷 image では**無効**（owner 決定 2026-11-21） | 出荷 image では**無効**（同左） | 無効 | 該当なし（経路を閉じる） |
 
 ### 理由
 
@@ -71,7 +71,7 @@ adb -s <serial> shell 'for p in ro.build.type ro.debuggable ro.adb.secure persis
 ### owner 決定が要る点
 
 - A. 出荷 image の build variant: **決定済み（2026-11-21）。`user` build に限り、ADB を既定で無効にする。** `userdebug` の image は開発と検証に限り、客先には出さない。この決定の時点で `user` build の PC image は記録になく、build・署名・起動の検証は未実施である（AWAI-3682）。今日（2026-11-21）の初回導入（AWAI-3600）の候補の variant は、この文書では確認していない。
-- B. 初期設定前の trade-in ADB を出荷 image で残すか。Android の標準機能だが、設定完了前の端末に network から届く経路になる。
+- B. 初期設定前の trade-in ADB: **決定済み（2026-11-21）。出荷 image では無効にする。** 初期設定が終わる前に ADB が開いていると、端末を持っている人や同じ network にいる人が、owner の承認なしに端末へ届いてしまう。debug を有効にできるのは、初期設定が終わった後に利用者が明示的に操作したときだけにする。無効にする方法（AOSP のどの設定・service を止めるか）は未調査で、実装は AWAI-3682 で扱う。開発用の `userdebug` image での扱いはこの決定に含まれない。
 - C. PC の USB debug: **決定済み（2026-11-21）。対応する。** wireless debug と両方に対応する。
 
 ### 未確認で、設計に影響する点
@@ -104,6 +104,7 @@ USB で ADB を受けるには、PC 側が USB の device として動く必要�
 | V3 | PC wireless debug | 設定画面で有効にし、Mac から `adb pair` → `adb connect` → `adb shell getprop` | ペアリング後に shell が開く | ペアリングしていない host からの `adb connect` が拒否される。無効に戻すと接続が切れる |
 | V4 | mobile USB debug、PC USB debug（対応機種） | 有効にして Mac に接続 | 画面の承認後に shell が開く | 承認前は `unauthorized`。承認を取り消すと再び `unauthorized` |
 | V5 | mobile wireless debug | V3 と同じ | V3 と同じ | V3 と同じ |
+| V7 | PC・mobile の出荷 image | 初期設定を終える前（Welcome 画面）に、USB と LAN の別 host から `adb devices`、TCP 5555 への接続、`adb shell` を試す | 端末が見えない、または接続できない。shell は開かない | 同じ手順を trade-in ADB が有効な image（現行の 7735HS RAM Live と同じ構成）で行い、応答することを確認 |
 | V6 | 両方 | 再起動後の状態 | wireless debug は再起動で無効に戻る（AOSP の既定）か、設定どおり | 記録のみ |
 
 証跡は日付つきの JSON で `android/desktop/` と `android/` の該当 directory に置き、コマンド、ADB の version、image の SHA-256、結果を書く。
@@ -114,7 +115,7 @@ USB で ADB を受けるには、PC 側が USB の device として動く必要�
 2. PC 出荷 image: `user` build、`service.adb.tcp.port` の削除、`android_insecure_adb` の無効化（決定 A の後）。
 3. PC の wireless debug を有線 LAN で有効にできるかの確認と、V3 の実機検証。
 4. mobile の V4・V5 の実機検証。
-5. trade-in ADB の扱い（決定 B の後）。
+5. trade-in ADB を出荷 image で無効にする（決定 B。AWAI-3682 に含める）。
 6. PC の USB debug: 上の実現条件を機種ごとに調査し、対応機種と実装方法を決める。
 
 ## この文書がしていないこと
