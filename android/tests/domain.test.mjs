@@ -88,3 +88,12 @@ test('local event lifecycle is shared and bounded',()=>{
   const many=Array.from({length:200},(_,n)=>({...e,id:String(n)}));
   assert.equal(JSON.parse(d.saveEvent(JSON.stringify(many),JSON.stringify({...e,id:'new'}))).error,'event-limit');
 });
+
+test('only the matching offline preview artifact admits a dual-ABI APK',()=>{
+ const artifact={...apk,asset:'packages/itonami-preview.apk',bytes:120*1024*1024};
+ const candidate={...app,id:'network.itonami.client.preview',artifacts:[artifact]};
+ assert.equal(d.appState(JSON.stringify(candidate),'android','android',null),'available');
+ assert.equal(d.appState(JSON.stringify({...candidate,id:'network.itonami.app'}),'android','android',null),'unavailable');
+ assert.equal(d.appState(JSON.stringify({...candidate,artifacts:[{...artifact,asset:'packages/itonami.apk'}]}),'android','android',null),'unavailable');
+ for(const bytes of [0,268435457,1.5])assert.equal(d.appState(JSON.stringify({...candidate,artifacts:[{...artifact,bytes}]}),'android','android',null),'unavailable');
+});

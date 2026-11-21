@@ -20,8 +20,8 @@ def manifest(pkg, activity, version, kind, online=False, debuggable=True):
                  '<activity android:name="network.awai.home.AccountBrokerActivity" android:exported="true" android:excludeFromRecents="true" android:label="Awai アカウント"/>')
         home = '<intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.HOME"/><category android:name="android.intent.category.DEFAULT"/></intent-filter>'
     if kind == 'store':
-        perms = '<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>' + ('<uses-permission android:name="android.permission.INTERNET"/><uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>' if online else '')
-        extra = '<receiver android:name="network.awai.platform.InstallReceiver" android:exported="false"/>'
+        perms = '<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/><uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION"/>' + ('<uses-permission android:name="android.permission.INTERNET"/><uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/><uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/><uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>' if online else '')
+        extra = '<receiver android:name="network.awai.platform.InstallReceiver" android:exported="false"/>' + ('<service android:name="network.awai.platform.AutoUpdateJob" android:permission="android.permission.BIND_JOB_SERVICE" android:exported="false"/>' if online else '')
     if kind == 'yotei':
         perms = '<permission android:name="network.awai.permission.READ_AGENDA" android:protectionLevel="signature"/>'
         extra = '<provider android:name="network.itonami.yotei.AgendaProvider" android:authorities="network.itonami.yotei.agenda" android:exported="true" android:readPermission="network.awai.permission.READ_AGENDA" android:writePermission="network.awai.permission.READ_AGENDA"/>'
@@ -49,7 +49,14 @@ def main():
     ap.add_argument('--agent-trace-sha256', help='Expected SHA-256 from the source app build receipt')
     ap.add_argument('--bundle-registry-assoc', action='store_true', help='Bundle the pinned release-signed Registry Assoc APK')
     ap.add_argument('--unsigned-home', action='store_true', help='Build a non-debuggable Home APK for a separate APK signing service')
+    ap.add_argument('--dapp-distribution', type=pathlib.Path)
+    ap.add_argument('--store-package', choices=['network.awai.store','network.awai.store.p2p.preview'], default='network.awai.store')
+    ap.add_argument('--store-only', action='store_true')
     args=ap.parse_args()
+    if args.dapp_distribution and (args.online_pins or args.store_package != 'network.awai.store.p2p.preview'):
+        ap.error('dapp bundle requires the isolated offline preview Store')
+    if args.store_only and (args.home_only or args.unsigned_home):
+        ap.error('--store-only cannot build Home')
     if args.unsigned_home:
         args.home_only = True
         if args.out.exists() and any(args.out.iterdir()):
@@ -155,7 +162,8 @@ def main():
         home=build('home','network.awai.home','network.awai.home.HomeActivity')
         report={'schema':'awai.android.home-build.v1','version':args.version,'publicSignerSha256':fp,'runtime':pins,'artifacts':{home.name:{'sha256':digest(home),'bytes':home.stat().st_size}},'identitySourceSha256':digest(ROOT/'android/client/identity-entry.js'),'identityVerifierSha256':digest(ROOT/'otehon/shell/src/identity/link.js'),'deviceSourceSha256':digest(ROOT/'otehon/shell/src/identity/device.js')}
         (out/f'home-build-v{args.version}.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2));return
-    yotei=build('yotei','network.itonami.yotei','network.itonami.yotei.YoteiActivity')
+    yotei=out/f'yotei-v{args.version}.apk' if args.store_only else build('yotei','network.itonami.yotei','network.itonami.yotei.YoteiActivity')
+    run([tools/'apksigner','verify',yotei],stdout=subprocess.DEVNULL)
     torihiki=build('torihiki','network.itonami.torihiki','network.itonami.torihiki.TorihikiActivity')
     packages=assets/'packages';packages.mkdir(exist_ok=True);shutil.copyfile(yotei,packages/'yotei.apk');shutil.copyfile(torihiki,packages/'torihiki.apk')
     revision=args.catalog_revision if args.catalog_revision is not None else args.version
@@ -296,12 +304,34 @@ def main():
             raise SystemExit('Registry Assoc APK does not have its dedicated release signer')
         shutil.copyfile(apk, packages / 'registry-assoc.apk')
         listed.append(entry)
+    if args.dapp_distribution:
+        if pins_online:raise SystemExit('dapp bundle is offline-only; do not widen online Yotei transport')
+        distribution=args.dapp_distribution.resolve();release=json.loads((distribution/'distribution.json').read_text())
+        profiles=json.loads((ROOT/'apps/dapp-carrier/profiles/apps.json').read_text())
+        allowed={p['key']:p for p in profiles['apps']};seen=set()
+        if release.get('schema')!='awai.dapp.distribution.v1' or len(release.get('artifacts',[]))!=len(allowed):raise SystemExit('invalid dapp distribution')
+        descriptions={'aozora':'言葉と、選んだ Peer との同期。','dougaka':'動画づくりと、選んだ Peer との同期。','ongakuka':'P2P 接続プレビュー。音楽制作の画面はまだ含まれていません。','itonami':'P2P 接続プレビュー。エージェントの画面はまだ含まれていません。','yataverse':'選んだ相手からスナップショットを受信し、保持を確認します。'}
+        for a in release['artifacts']:
+            name=a.get('key');profile=allowed.get(name)
+            if not profile or name in seen or a.get('id')!=profile['id'] or a.get('asset')!=f'packages/{name}.apk':raise SystemExit('unapproved dapp identity')
+            seen.add(name);source=distribution/a['asset']
+            if source.is_symlink() or not source.is_file() or not 1<=source.stat().st_size<=256*1024*1024 or source.stat().st_size!=a['bytes'] or digest(source)!=a['sha256']:raise SystemExit('dapp APK digest/size mismatch')
+            printed=run([tools/'apksigner','verify','--print-certs',source],capture_output=True).stdout
+            signer=re.search(r'Signer #1 certificate SHA-256 digest: ([0-9a-f]+)',printed,re.I)
+            badging=run([tools/'aapt2','dump','badging',source],capture_output=True).stdout
+            info=re.search(r"package: name='([^']+)' versionCode='(\d+)' versionName='([^']+)'",badging)
+            if not signer or signer[1].lower()!=fp or a['signerSha256']!=fp or not info or info[1]!=profile['id'] or int(info[2])!=a['versionCode'] or info[3]!=a['versionName']:raise SystemExit('dapp APK signer/package/version mismatch')
+            target_asset = 'packages/itonami-preview.apk' if name == 'itonami' else a['asset']
+            shutil.copyfile(source, assets / target_asset)
+            listed.append({'id':profile['id'],'name':profile['name'],'description':descriptions[name],'publisher':'Awai Otehon 開発版','versionCode':a['versionCode'],'versionName':a['versionName'],'artifacts':[{k:a[k] for k in ['bytes','sha256','signerSha256']}|{'asset':target_asset,'platform':'android','runtime':'android','kind':'apk'}]})
     catalog={'schema':'itonami.store.bundled.v1','revision':revision,'expiresAt':int(time.time())+30*86400,'apps':listed}
     raw=json.dumps(catalog,ensure_ascii=False,separators=(',',':'));(assets/'catalog.json').write_text(raw)
     run([args.java/'java','-cp',out,'SignCatalog',key,assets/'catalog.json',assets/'catalog-key.der',assets/'catalog.sig'],stdout=subprocess.DEVNULL)
     (assets/'catalog-data.js').write_text('window.ItonamiCatalogRaw='+json.dumps(raw,ensure_ascii=False)+';window.ItonamiCatalog=JSON.parse(window.ItonamiCatalogRaw);window.ItonamiCatalogSignature='+json.dumps(base64.b64encode((assets/'catalog.sig').read_bytes()).decode())+';window.ItonamiPublicKey='+json.dumps(base64.b64encode((assets/'catalog-key.der').read_bytes()).decode())+';\n')
-    store=build('store','network.awai.store','network.awai.store.StoreActivity')
-    home=build('home','network.awai.home','network.awai.home.HomeActivity')
-    report={'schema':'awai.android.build.v1','version':args.version,'sdk':37,'buildTools':'36.1.0','signing':'local-android-debug-only','publicSignerSha256':fp,'runtime':pins,'artifacts':{p.name:{'sha256':digest(p),'bytes':p.stat().st_size}for p in [home,store,yotei,torihiki]},'sharedDomainSha256':digest(ROOT/'android/contracts/src/itonami/store/domain.cljc'),'sharedClientSha256':digest(assets/'client.js')}
+    store=build('store',args.store_package,'network.awai.store.StoreActivity')
+    built=[store]
+    if not args.store_only:
+        built.extend((build('home','network.awai.home','network.awai.home.HomeActivity'), yotei, torihiki))
+    report={'schema':'awai.android.build.v1','version':args.version,'sdk':37,'buildTools':'36.1.0','signing':'local-android-debug-only','publicSignerSha256':fp,'runtime':pins,'artifacts':{p.name:{'sha256':digest(p),'bytes':p.stat().st_size}for p in built},'storePackage':args.store_package,'sharedDomainSha256':digest(ROOT/'android/contracts/src/itonami/store/domain.cljc'),'sharedClientSha256':digest(assets/'client.js')}
     (out/f'build-v{args.version}.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2))
 if __name__=='__main__':main()

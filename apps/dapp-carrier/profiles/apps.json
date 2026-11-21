@@ -1,0 +1,62 @@
+{
+  "schema": "awai.dapp.carrier.profiles.v1",
+  "tauri": "3.0.0-alpha.6",
+  "canonicalRuntime": {
+    "revision": "5a49411f586f094b6056724a36d56da2bac0ca4b",
+    "sha256": "739a24fa73f2d4d08436cdac4816abe940344b31a4363b8a879cea29cb547f0e"
+  },
+  "apps": [
+    {
+      "key": "aozora",
+      "name": "Aozora",
+      "id": "app.aozora.awai.preview",
+      "storeUpdateId": "app.aozora",
+      "listenPort": 40213,
+      "source": "network-awai/app-aozora-appview",
+      "revision": "7ffb5e75fe9976436f7e6af7e71a48b9fc2470e7",
+      "domainUi": "existing-static-artifact",
+      "iconBackground": "#F6F8FB"
+    },
+    {
+      "key": "dougaka",
+      "name": "Dougaka",
+      "id": "network.itonami.dougaka.preview",
+      "listenPort": 40214,
+      "source": "cloud-itonami/app-itonami-dougaka",
+      "revision": "c29b87e59fdb1b8b65e18a2ca7295356cd0af1e9",
+      "domainUi": "existing-static-artifact",
+      "iconBackground": "#F4F4F3"
+    },
+    {
+      "key": "ongakuka",
+      "name": "Ongakuka",
+      "id": "network.itonami.ongakuka.preview",
+      "listenPort": 40215,
+      "source": "cloud-itonami/app-itonami-ongakuka",
+      "revision": "8f1ad5d3535908996eb93e2bfccefcaf3e9bf73d",
+      "domainUi": "not-yet-ported",
+      "iconBackground": "#F6F8FB"
+    },
+    {
+      "key": "itonami",
+      "name": "Itonami",
+      "id": "network.itonami.client.preview",
+      "listenPort": 40216,
+      "source": "cloud-itonami/app-itonami-cloud-itonami-app",
+      "revision": "86870ddba5484e927c07f4b2ed358051bb9eae28",
+      "domainUi": "not-yet-ported",
+      "iconBackground": "#F7F7F7"
+    },
+    {
+      "key": "yataverse",
+      "name": "Yataverse",
+      "id": "network.itonami.yataverse.preview",
+      "listenPort": 40217,
+      "source": "kotoba-lang/yataverse",
+      "revision": "f1dfca16f9af665f455cd774c19d7429fe72e209",
+      "domainUi": "snapshot-pin-query",
+      "iconBackground": "#F6F8FB"
+    }
+  ],
+  "version": "0.1.2"
+}
