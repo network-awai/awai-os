@@ -96,31 +96,39 @@
        [status set-status] (useState nil)
        stop (fn []
               (when-let [run (.-current active)]
-               (vreset! run true)
+               (vreset! run :cancelled)
                (-> (stopSpeech) (.catch (fn [_] nil)))))
        run (fn [kind]
              (when-not (or busy (.-current active))
-              (let [turn (volatile! false)]
+              (let [turn (volatile! :preparing)]
                (set! (.-current active) turn)
                (set-busy true) (set-action kind) (set-status nil)
                (-> (beginSpeech scope)
                 (.then (fn [session]
-                         (when-not @turn
-                          (if (= kind "listen") (listenSpeech session)
-                           (speakSpeech session (.slice reply 0 512))))))
+                         (when (= :preparing @turn)
+                          (if (= "visible" (.-visibilityState js/document))
+                           (do
+                            (vreset! turn :running)
+                            (if (= kind "listen") (listenSpeech session)
+                             (speakSpeech session (.slice reply 0 512))))
+                           (stop)))))
                 (.finally stopSpeech)
                 (.then (fn [result]
-                         (when (and (not @turn) (= kind "listen"))
+                         (when (and (= :running @turn) (= kind "listen"))
                           (if-let [heard (not-empty (.trim (.-text result)))]
                            (set-text (fn [draft] (if (seq draft) (str draft "\n" heard) heard)))
                            (set-status "音声を認識できませんでした。")))))
                 (.catch (fn [_]
-                          (when-not @turn
+                          (when-not (= :cancelled @turn)
                            (set-status "端末内の音声機能を使えませんでした。マイクの許可と音声モデルを確認してください。"))))
                 (.finally (fn [] (set! (.-current active) nil) (set-action nil) (set-busy false)))))))]
   (useEffect
    (fn []
-    (let [hide #(when (= "hidden" (.-visibilityState js/document)) (stop))]
+    ;; Android's permission dialog can hide the WebView before a session starts.
+    (let [hide (fn []
+                 (when-let [turn (.-current active)]
+                  (when (and (= :running @turn) (= "hidden" (.-visibilityState js/document)))
+                   (stop))))]
      (.addEventListener js/document "visibilitychange" hide)
      (fn [] (.removeEventListener js/document "visibilitychange" hide) (stop)))) #js [])
   [:div.agent-session-toolbar
