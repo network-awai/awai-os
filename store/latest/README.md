@@ -24,3 +24,4 @@ A pointer lasts 30 days. **Re-sign it before it expires**; otherwise automatic u
 Published:
 - sequence 1 (2026-11-21, catalog r107 at `ed429b4`).
 - sequence 2 (2026-11-21, catalog r108 at `89aeb54`, which declares the Torihiki operations). Expires 2026-12-21.
+- sequence 3 (2026-11-21, catalog r109, which adds Shirohan 白版). Expires 2026-12-21.

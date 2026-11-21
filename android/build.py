@@ -269,7 +269,7 @@ def main():
                            'sha256': actual_digest, 'signerSha256': fp}],
         })
     if args.local_apps_dir is not None:
-        # AWAI-3502: Tauri v3 itonami apps that keep everything on the device. android/local-apps.json fixes the admitted
+        # Local Itonami apps that keep everything on the device. android/local-apps.json fixes the admitted
         # suffixes and their Store text; the directory holds <suffix>.apk files. Each APK is refused unless its package is
         # exactly network.itonami.<suffix>, its single signer is the development identity, it requests no permission other
         # than AndroidX's own non-exported receiver permission (so no INTERNET), and it fits the 40 MiB budget. Version,

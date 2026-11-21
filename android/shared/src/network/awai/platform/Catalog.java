@@ -87,11 +87,11 @@ public final class Catalog {
         }
         return value;
     }
-    // AWAI-3502: Tauri v3 itonami apps that keep all data on the device and request no INTERNET
+    // Local Itonami apps that keep all data on the device and request no INTERNET
     // permission (android/local-apps.json lists the same suffixes; tests/local-apps.test.mjs checks
     // that). Each is network.itonami.<suffix>, asset packages/<suffix>.apk, 40 MiB budget.
     public static final java.util.List<String> LOCAL_APPS = java.util.Collections.unmodifiableList(java.util.Arrays.asList(
-            "ki", "hakkou", "koke", "openossekai", "otakiage", "seibutsu", "shinka", "kabi", "kinoko", "kobo", "saikin", "kiyome", "omikuji", "moldallergy", "explorer", "organismviz", "icc", "abaki", "hibiki", "wakai", "tawami", "yudane", "minori", "torifune", "hiramekietz", "umisachi", "tomoshibi", "tsumugi"));
+            "ki", "hakkou", "koke", "openossekai", "otakiage", "seibutsu", "shinka", "kabi", "kinoko", "kobo", "saikin", "kiyome", "omikuji", "moldallergy", "explorer", "organismviz", "icc", "abaki", "hibiki", "wakai", "tawami", "yudane", "minori", "torifune", "hiramekietz", "umisachi", "tomoshibi", "tsumugi", "shirohan"));
     static String localSuffix(String id) {
         if (id == null || !id.startsWith("network.itonami.")) return null;
         String suffix = id.substring("network.itonami.".length());
