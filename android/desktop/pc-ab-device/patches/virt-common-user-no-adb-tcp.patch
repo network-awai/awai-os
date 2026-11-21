@@ -1,0 +1,28 @@
+diff --git a/configs/properties/product.prop b/configs/properties/product.prop
+index 8053fe0..4c5fbac 100644
+--- a/configs/properties/product.prop
++++ b/configs/properties/product.prop
+@@ -1,5 +1,2 @@
+-# ADB
+-service.adb.tcp.port=5555
+-
+ # FUSE passthrough
+ persist.sys.fuse.passthrough.enable=true
+diff --git a/virt-common.mk b/virt-common.mk
+index 99303e1..ceb2665 100644
+--- a/virt-common.mk
++++ b/virt-common.mk
+@@ -35,6 +35,13 @@ PRODUCT_VENDOR_PROPERTIES += \
+ endif
+ endif
+ 
++# AWAI-3682: ADB over TCP only on development builds. A user build keeps
++# the AOSP default: no fixed TCP port; wireless debugging pairs over TLS.
++ifneq ($(TARGET_BUILD_VARIANT),user)
++PRODUCT_PRODUCT_PROPERTIES += \
++    service.adb.tcp.port=5555
++endif
++
+ # Bootanimation
+ ifeq ($(PRODUCT_IS_GO),true)
+ TARGET_SCREEN_WIDTH := 100

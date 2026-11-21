@@ -6,7 +6,7 @@
 ## 結論
 
 - PC 版も mobile 版も、debug 経路は製品として設計されていなかった。あるのは検証 script が使う ADB だけである。
-- PC 版の image は upstream の設定を引き継いでおり、ADB を有効にすると **TCP 5555 を全 interface で待ち受ける**。記録にある PC image は全て `userdebug` で、出荷用の `user` build の記録はない。
+- PC 版の image は upstream の設定を引き継いでおり、ADB を有効にすると **TCP 5555 を全 interface で待ち受ける**。この repo に記録のある PC image は全て `userdebug` だが、出荷候補は `user` build で作られている（下の訂正）。
 - 出荷 image は `user` build に限り、ADB を既定で無効にする（owner 決定 2026-11-21）。あわせて TCP 5555 の既定値と `android_insecure_adb` を外す（提案、実装は AWAI-3682）。対応する debug 経路は、PC・mobile とも USB debug と wireless debug の両方（owner 決定 2026-11-21）。PC の USB debug は実現方法が未調査で、対応機種と方法は別 issue で決める。
 
 ## 現状（測定）
@@ -20,7 +20,7 @@
 | Awai の patch による上書き | なし（patch 群に `adb` の変更は `load_env` の 1 行だけ） | `android/desktop/pc-ab-device/patches/*.patch` |
 | `android_insecure_adb` | grubenv から読まれ、`1` なら kernel に `androidboot.insecure_adb=1` を渡す。upstream の説明は「ADB の認証を無効にし、ADB root を有効にする」。既定は `0` | upstream `bootmgr/grub/grub-boot.cfg`、`configs/misc/grubenv.txt`、`README.md`。Awai の patch は同じ `load_env` 行を保持 |
 | 記録にある PC image の variant | 全て `userdebug`（`test-keys` と `release-keys` の両方） | `android/desktop/vm-boot-check/README.md`、`android/desktop/derived-image/evidence/desktop-boot-20261117.json`、`android/desktop/pc-ab-device/evidence/*.json` |
-| `user` build の PC image | 記録なし | 同上を検索 |
+| `user` build の PC image | repo には記録なし。Linear には `user / release-keys` の出荷候補の記録がある（2026-11-21 の訂正） | repo は同上を検索。Linear は AWAI-3061 のコメント（署名済み target-files `3adde12d…cc6d`、2026-11-21 15:18 JST） |
 | PC 実機（6600H）の接続 | Mac と直結した LAN で `10.77.0.2:5555` | `android/desktop/persistence/README.md` |
 | PC の VM の認証 | `android_insecure_adb=1`、または host の公開鍵を `/data/misc/adb/adb_keys` に書く。どちらも script に「VM only」と明記 | `android/desktop/pc-ab-device/kvm/*.sh`、`android/desktop/vm-boot-check/bm-boot-check.sh` |
 | 初期設定前の ADB | 7735HS の RAM Live で「trade-in ADB が応答した」「制限された ADB では画面を取得できなかった」 | PR #302 の本文（未 merge、候補） |
@@ -47,6 +47,18 @@ adb -s <serial> shell 'for p in ro.build.type ro.debuggable ro.adb.secure persis
 - `android/desktop/README.md` の「5555 を LAN に公開しない」は運用上の注意であり、image 側にそれを守る仕組みはない。
 - grubenv は persist 区画にあるので、disk に書ける者は `android_insecure_adb=1` を設定できる。
 
+## `user` build に残る経路（2026-11-21、upstream のソースを読み取り）
+
+出荷候補が `user` build でも、次の 3 つは upstream の既定のままだと残る。どれも実機と候補 image では未測定で、ソースから読んだ挙動である。
+
+| 経路 | 仕組み | 出典（`lineage-24.0`） |
+| --- | --- | --- |
+| 初期設定前の trade-in ADB | `user` build の初期設定中、`DeviceDiagnostics` が起動時に trade-in mode を開始する。条件は「ADB 無効・`ro.debuggable=0`・初期設定未完了・Wi-Fi 未接続」で、有線 LAN は条件に入らない。開始すると `adb_enabled=1` になり、**認証なし**で `adb shell tradeinmode` だけが通る。`tradeinmode evaluate` を実行すると初期設定を飛ばして制限のない ADB（認証なし）になり、次の起動で factory reset される | `LineageOS/android_packages_modules_adb` `docs/dev/adb_tradeinmode.md`、`LineageOS/android_frameworks_base` `TradeInModeService.java`、`LineageOS/android_build` `target/product/handheld_system.mk`（90d00638） |
+| TCP 5555 | `service.adb.tcp.port=5555` があるので、上の trade-in ADB も、利用者が後から有効にした ADB も、USB ではなく LAN の 5555 で待ち受ける | `LineageOS/android_device_virt_virt-common` `configs/properties/product.prop`（5da81829） |
+| 認証を外す切り替え | kernel の `androidboot.insecure_adb` か、`/metadata/.enable_insecure_debugging` という file があると、build variant に関係なく `ro.debuggable=1`、`ro.secure=0`、`ro.adb.secure=0`、`sys.usb.config=adb` に上書きされる。grubenv の `android_insecure_adb=1` と、GRUB の画面での kernel 引数の編集の両方から届く | `LineageOS/android_device_mainline_common` `libraries/libinit/libinit_mainline_common.cpp`、`libinit_misc.cpp`（e237088e） |
+
+3 つを閉じる patch は `android/desktop/pc-ab-device/apply-shipping-debug-lockdown.sh` にある（AWAI-3682）。patch は build も起動もまだ通していない。
+
 ## 設計（提案）
 
 ### 経路ごとの方針
@@ -70,7 +82,7 @@ adb -s <serial> shell 'for p in ro.build.type ro.debuggable ro.adb.secure persis
 
 ### owner 決定が要る点
 
-- A. 出荷 image の build variant: **決定済み（2026-11-21）。`user` build に限り、ADB を既定で無効にする。** `userdebug` の image は開発と検証に限り、客先には出さない。この決定の時点で `user` build の PC image は記録になく、build・署名・起動の検証は未実施である（AWAI-3682）。今日（2026-11-21）の初回導入（AWAI-3600）の候補の variant は、この文書では確認していない。
+- A. 出荷 image の build variant: **決定済み（2026-11-21）。`user` build に限り、ADB を既定で無効にする。** `userdebug` の image は開発と検証に限り、客先には出さない。**訂正（2026-11-21）**: 当初「`user` build の PC image は記録にない」と書いたが、調べたのは repo だけだった。AWAI-3061 の記録では、出荷候補は既に `user / release-keys` で build・署名されている。この文書はその image を自分では読んでいない。
 - B. 初期設定前の trade-in ADB: **決定済み（2026-11-21）。出荷 image では無効にする。** 初期設定が終わる前に ADB が開いていると、端末を持っている人や同じ network にいる人が、owner の承認なしに端末へ届いてしまう。debug を有効にできるのは、初期設定が終わった後に利用者が明示的に操作したときだけにする。無効にする方法（AOSP のどの設定・service を止めるか）は未調査で、実装は AWAI-3682 で扱う。開発用の `userdebug` image での扱いはこの決定に含まれない。
 - C. PC の USB debug: **決定済み（2026-11-21）。対応する。** wireless debug と両方に対応する。
 
