@@ -17,9 +17,13 @@ An app is listed only when all of these hold; otherwise the run stops with the r
 - the APK's package, versionName and single signer are the table id, the release version and the group's signer;
 - the APK fits the table's byte ceiling, and its label fits the catalog's 80 characters.
 Left out, without stopping the run (the report says why): an ISCO-08 app whose source is not yet checked
-(isco-source-unchecked), an ISCO-08 app whose release.json records no commit (release-without-commit) or a commit
-before the marked one (built-before-isco-source, checked in a clone under --repos), and an app with no input
-directory (its APK is not built yet, no-apk).
+(isco-source-unchecked), an app whose release.json does not say dirty false (release-dirty: built from uncommitted
+changes, or unknown), an ISCO-08 app whose release.json has no source_commit (release-without-commit) or one before
+the marked commit (built-before-isco-source, checked in a clone under --repos), and an app with no input directory
+(its APK is not built yet, no-apk).
+
+release.json fields read here: schema, id, source, version, files["descriptor.json"], source_commit (40 hex, or
+null when the build had no git) and dirty (true, false or null), as written by the series app build.
 
 The output is the catalog body (itonami.store.bundled.v1). Sign it with a catalog key from the Store's key list:
 `python3 android/sign-catalog-envelope.py --raw OUT ...`. Nothing is signed, committed or published here.
@@ -156,7 +160,7 @@ def entry(app, directory, table):
 
 def built_after_source(app, release, repos):
     """None when the ISCO-08 app's APK was built from the marked commit or a later one; otherwise the reason to leave it out."""
-    commit = release.get('commit')
+    commit = release.get('source_commit')
     if not (isinstance(commit, str) and re.fullmatch(r'[0-9a-f]{40}', commit)):
         return 'release-without-commit'
     if repos is None:
@@ -186,8 +190,14 @@ def generate(table, inputs, revision, expires_at, base=None, repos=None):
         if not directory.is_dir():
             excluded.append({'source': s, 'id': app['id'], 'reason': 'no-apk'})
             continue
+        release = json.loads((directory / 'release.json').read_text())
+        # A build from a working tree with uncommitted changes (dirty true), or with unknown state (null), is not
+        # the source it names.
+        if release.get('dirty') is not False:
+            excluded.append({'source': s, 'id': app['id'], 'reason': 'release-dirty'})
+            continue
         if s.startswith('isco-'):
-            reason = built_after_source(app, json.loads((directory / 'release.json').read_text()), repos)
+            reason = built_after_source(app, release, repos)
             if reason:
                 excluded.append({'source': s, 'id': app['id'], 'reason': reason})
                 continue
