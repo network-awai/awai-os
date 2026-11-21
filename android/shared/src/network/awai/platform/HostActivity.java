@@ -158,6 +158,19 @@ public abstract class HostActivity extends Activity {
             try{return (Boolean)Class.forName("network.awai.home.SetupPlatform").getMethod("transition",android.content.Context.class,String.class,int.class).invoke(null,HostActivity.this,action,expected);}
             catch(Exception unavailable){return false;}
         }
+        @JavascriptInterface public boolean openAccountLink(String address) {
+            if(!"home".equals(mode()) || address==null || address.length()>4096)return false;
+            Uri uri=Uri.parse(address);
+            String fragment=uri.getEncodedFragment();
+            if(!"https".equals(uri.getScheme()) || !"awai.network".equals(uri.getEncodedAuthority())
+                    || !"/link/".equals(uri.getEncodedPath()) || uri.getEncodedQuery()!=null
+                    || fragment==null || !fragment.matches("[A-Za-z0-9_-]{1,4000}"))return false;
+            runOnUiThread(()->{
+                try {startActivity(new Intent(Intent.ACTION_VIEW,uri).addCategory(Intent.CATEGORY_BROWSABLE));}
+                catch(android.content.ActivityNotFoundException unavailable){message("アカウント連携を開けるブラウザがありません。");}
+            });
+            return true;
+        }
         @JavascriptInterface public void setupSettings(String kind){
             if(!"home".equals(mode()))return;
             runOnUiThread(()->{

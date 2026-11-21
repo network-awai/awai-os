@@ -15,9 +15,11 @@ def manifest(pkg, activity, version, kind, online=False, debuggable=True):
     home = ''
     if kind == 'home':
         perms = '<uses-permission android:name="network.awai.permission.READ_AGENDA"/><uses-permission android:name="android.permission.SET_WALLPAPER"/><uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/><uses-permission android:name="android.permission.INTERNET"/>'
-        perms += '<uses-permission android:name="android.permission.HIDE_OVERLAY_WINDOWS"/>'
+        perms += ('<uses-permission android:name="android.permission.HIDE_OVERLAY_WINDOWS"/>'
+                  '<permission android:name="network.awai.permission.HOST_ACCOUNT" android:protectionLevel="signature"/>')
         extra = ('<activity android:name="network.awai.home.AppearanceActivity" android:exported="false" android:label="Awai の外観"/>'
-                 '<activity android:name="network.awai.home.AccountBrokerActivity" android:exported="true" android:excludeFromRecents="true" android:label="Awai アカウント"/>')
+                 '<activity android:name="network.awai.home.AccountBrokerActivity" android:exported="true" android:excludeFromRecents="true" android:label="Awai アカウント"/>'
+                 '<provider android:name="network.awai.home.HostAccountProvider" android:authorities="network.awai.home.account" android:exported="true" android:permission="network.awai.permission.HOST_ACCOUNT"/>')
         home = '<intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.HOME"/><category android:name="android.intent.category.DEFAULT"/></intent-filter>'
     if kind == 'store':
         perms = '<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/><uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION"/>' + ('<uses-permission android:name="android.permission.INTERNET"/><uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/><uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/><uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>' if online else '')
