@@ -29,6 +29,17 @@ one reviewer. Tracking: AWAI-3558 (handoff from Claude sessions), AWAI-3560 (thi
   `:bundle` is absent from `itonami.edn` until the profile is bundled by the registry tooling.
 - Task intake (choosing issues from Linear, claiming them) is still done by an operator session.
 
+## Run evidence
+
+A run's evidence (task, prompts, session jsonl, verdict, delivery records) does not stay in the
+task worktree. Per ADR 0040 (`network-awai/network-awai-apex/docs/adr/0040-bot-run-evidence-outside-worktrees.md`),
+the durable home is `github/workspaces/<agent>/<task>/`, with a `README.md` (issue, PR, merge
+commit, what each file is) and a `SHA256SUMS.txt` over the rest. `.agent-output/` inside the
+worktree is scratch for the run itself: before the worktree is removed, move the evidence out
+and verify the checksums, then remove the worktree the plain way (no `--force`). A worktree
+whose evidence has not been moved stays, with the reason recorded on its issue. Files under
+`.agent-output/` that are tracked in the repository are not run evidence and are not moved.
+
 ## Task file
 
 ```json
