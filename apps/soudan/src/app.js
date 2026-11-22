@@ -1,7 +1,7 @@
 import {bind_native} from './awai-ui/index.js';
 import {createHost} from './host.js';
 import {clientRuntimeProblems, createClientConsentHost, createClientOperationBroker} from './runtime.js';
-import {CATEGORIES, JURISDICTIONS, LIMITS, emptyDraft, draftProblems, recipientProblems, assembleMemo, addressedMemo, restoreDraft} from './model.js';
+import {CATEGORIES, JURISDICTIONS, LIMITS, emptyDraft, newEvidence, sha256Hex, draftProblems, recipientProblems, assembleMemo, addressedMemo, restoreDraft} from './model.js';
 import {pickLocale, translator} from './messages.js';
 import {runtimeDescriptor, REQUESTED_CAPABILITIES, SEND_SELECTOR} from './operations.js';
 import {createShareHandler} from './send.js';
@@ -86,6 +86,71 @@ function listEditor(title, items, make, addKey, removeKey, max, render) {
   }
   return fs;
 }
+// Evidence editor (O11 scope 3): the user types the post URL/date/author and picks a
+// screenshot image. Picking records the file name, size, capture time and SHA-256 next to
+// the row; the image bytes are never persisted or sent. Rows are deletable by the user.
+async function attachShot(entry, files, control) {
+  const f = files?.[0];
+  if (!f) return;
+  if (f.size > LIMITS.evidenceFile) { say(t('evidence.tooBig', {max: LIMITS.evidenceFile})); control.value = ''; return; }
+  try {
+    const buf = new Uint8Array(await f.arrayBuffer());
+    entry.shotName = [...f.name].slice(0, LIMITS.evidenceField).join('');
+    entry.shotSize = f.size;
+    entry.sha256 = sha256Hex(buf);
+    entry.capturedAt = new Date().toISOString();
+    say(t('evidence.picked', {name: entry.shotName, size: String(entry.shotSize)}));
+  } catch { say(t('evidence.hashFail')); }
+  renderInput();
+}
+function evidenceEditor() {
+  const fs = el('fieldset'); fs.append(el('legend', t('field.evidence')));
+  fs.append(el('p', t('evidence.hint'), 'muted hint'));
+  draft.evidence.forEach((e, i) => {
+    const box = el('fieldset'); box.append(el('legend', String(i + 1)));
+    box.append(
+      field(t('evidence.url'), 'ev-url-' + i, input(e.url, v => { e.url = v; }, {type: 'url', max: LIMITS.evidenceUrl})),
+      field(t('evidence.postedAt'), 'ev-posted-' + i, input(e.postedAt, v => { e.postedAt = v; }, {type: 'datetime-local'}), t('evidence.postedAtHint')),
+      field(t('evidence.authorName'), 'ev-name-' + i, input(e.authorName, v => { e.authorName = v; }, {max: LIMITS.evidenceField})),
+      field(t('evidence.authorId'), 'ev-id-' + i, input(e.authorId, v => { e.authorId = v; }, {max: LIMITS.evidenceField})));
+    const shot = el('div', null, 'field');
+    const lab = el('label', t('evidence.shot')); lab.htmlFor = 'ev-shot-' + i; shot.append(lab);
+    const picker = el('input'); picker.type = 'file'; picker.id = 'ev-shot-' + i; picker.accept = 'image/*';
+    picker.addEventListener('change', () => attachShot(e, picker.files, picker));
+    shot.append(picker);
+    const rec = e.sha256 || e.shotName
+      ? (e.shotName || t('evidence.noShot')) + ' (' + e.shotSize + ' ' + t('evidence.f.bytes') + ') / ' +
+        t('evidence.f.capturedAt') + ': ' + (e.capturedAt || t('evidence.f.none')) + ' / SHA-256: ' + (e.sha256 || t('evidence.f.none'))
+      : t('evidence.noShot');
+    shot.append(el('p', rec, 'muted hint'));
+    box.append(shot);
+    const rm = el('button', t('evidence.remove'), 'link'); rm.type = 'button';
+    rm.addEventListener('click', () => { draft.evidence.splice(i, 1); renderInput(); });
+    box.append(rm); fs.append(box);
+  });
+  if (draft.evidence.length < LIMITS.evidence) {
+    const add = el('button', t('evidence.add'), 'tonal'); add.type = 'button';
+    add.addEventListener('click', () => { draft.evidence.push(newEvidence()); renderInput(); });
+    fs.append(add);
+  }
+  return fs;
+}
+// Fixed guidance (O11 scope 2 and 4): a general retention note with sources and dates,
+// the user-facing routes, the official form pointer, and the on-device storage note.
+// Nothing here judges the matter and nothing computes a deadline.
+function guideBlock() {
+  const s = el('section'); s.setAttribute('aria-labelledby', 'guide-h');
+  const h = el('h3', t('guide.title')); h.id = 'guide-h'; s.append(h);
+  s.append(el('p', t('guide.noJudgment'), 'muted'));
+  s.append(el('p', t('guide.deadline')));
+  s.append(el('p', t('guide.source'), 'muted'));
+  const ul = el('ul');
+  for (let i = 1; i <= 6; i++) ul.append(el('li', t('guide.route.' + i)));
+  s.append(ul);
+  s.append(el('p', t('guide.forms')));
+  s.append(el('p', t('guide.storage'), 'muted'));
+  return s;
+}
 function renderInput(problems = []) {
   const view = $('view'); view.replaceChildren();
   view.append(el('p', t('intro'), 'muted'));
@@ -105,6 +170,8 @@ function renderInput(problems = []) {
     listEditor(t('field.documents'), draft.documents, (d, i) => [
       field(t('field.document'), 'doc-' + i, input(d, v => { draft.documents[i] = v; }, {max: LIMITS.document}))],
     'documents.add', 'documents.remove', LIMITS.documents, () => renderInput()),
+    evidenceEditor(),
+    guideBlock(),
     field(t('field.name'), 'name', input(draft.name, v => { draft.name = v; }, {max: LIMITS.name, autocomplete: 'name'})),
     field(t('field.contact'), 'contact', input(draft.contact, v => { draft.contact = v; }, {max: LIMITS.contact, autocomplete: 'email'})));
   const actions = el('div', null, 'actions');
