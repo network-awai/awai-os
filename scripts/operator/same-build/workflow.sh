@@ -55,7 +55,9 @@ job() {
 
 node "$operator/release-artifacts-secret.mjs" "$namespace" "$secret"
 
-job "$build_job" 14 64Gi 520Gi 19800 <<'BUILD'
+build_memory=64Gi
+if [[ ${AWAI_VKE_RELEASE_PLAN:-} = vc2-16c-64gb ]]; then build_memory=52Gi; fi
+job "$build_job" 14 "$build_memory" 520Gi 19800 <<'BUILD'
 apt-get -qq update
 apt-get -qq install -y bc bison build-essential ca-certificates ccache cmake curl flex g++-multilib gcc-multilib git git-lfs gperf imagemagick lib32readline-dev lib32z1-dev libclang-18-dev libegl1 libelf-dev libglvnd-dev liblapack-dev liblz4-tool libopenblas-dev libpam-pwquality libsdl1.2-dev libssl-dev libxml2 libxml2-utils lz4 lzop ninja-build pkg-config python-is-python3 python3-dev python3-jsonschema python3-mako python3-packaging python3-pip python3-pycparser python3-ply python3-yaml rclone rsync schedtool squashfs-tools unzip xorriso xsltproc zip zstd
 mkdir -p /root/build/kit
