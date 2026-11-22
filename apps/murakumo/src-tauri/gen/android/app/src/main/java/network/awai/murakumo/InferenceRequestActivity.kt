@@ -20,10 +20,12 @@ class InferenceRequestActivity:Activity(){
   if(!Models.trustedCaller(this,caller)){finishWith("caller-denied");return}
   val requestId=intent.getStringExtra("requestId")?:"";val prompt=intent.getStringExtra("prompt")?:"";val tokens=intent.getIntExtra("maxTokens",128);val modality=intent.getStringExtra("modality")
   if(!requestId.matches(Regex("[a-f0-9-]{36}"))||intent.getStringExtra("schema")!="awai.inference.request.v1"||modality !in setOf("text","image")||prompt.isBlank()||prompt.toByteArray(Charsets.UTF_8).size>8192||tokens !in 1..256){finishWith("invalid-request");return}
+  val phi=caller in Models.phiCallers
+  if(phi&&modality!="text"){finishWith("unsupported-modality");return}
   imageJob=modality=="image"
   val label=packageManager.getApplicationLabel(packageManager.getApplicationInfo(caller!!,0)).toString().take(60)
   AlertDialog.Builder(this).setTitle("${label} からの生成")
-   .setMessage((if(modality=="image")"この端末の Qwen Image 2.1 Turbo (AD-Q2_K / Vulkan) で画像を生成します。"else "この端末の Qwen3 でテキストを生成します。")+"外部へ送信しません。\n\n"+prompt.take(240))
+   .setMessage((if(modality=="image")"この端末の Qwen Image 2.1 Turbo (AD-Q2_K / Vulkan) で画像を生成します。"else "この端末の Qwen3 でテキストを生成します。")+"外部へ送信しません。\n\n"+(if(phi)"健康の情報を含む ${"%,d".format(prompt.codePointCount(0,prompt.length))} 文字のテキスト（内容はこの画面に出しません）" else prompt.take(240)))
    .setNegativeButton("キャンセル"){_,_->finishWith("denied")}.setOnCancelListener{finishWith("denied")}
    .setPositiveButton("生成する"){_,_->
     if(!Models.busy.compareAndSet(false,true)){finishWith("busy");return@setPositiveButton}

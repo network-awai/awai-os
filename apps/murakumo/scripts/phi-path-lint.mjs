@@ -8,7 +8,7 @@
 //
 // DIR is the repository root (default: this checkout). test/phi-path.test.mjs runs it on the tree and,
 // as the negative control, on copies with one violation injected per rule.
-import {readFileSync,existsSync} from 'node:fs';import path from 'node:path';import {fileURLToPath} from 'node:url';
+import {readFileSync,existsSync,readdirSync} from 'node:fs';import path from 'node:path';import {fileURLToPath} from 'node:url';
 
 const K='apps/murakumo/src-tauri/gen/android/app/src/main/java/network/awai/murakumo/';
 /** Every source file the prompt or the output passes through, from the consumer's page to the engine. */
@@ -17,9 +17,21 @@ export const FILES=[
  'packages/awai-inference/android/network/awai/inference/InferenceClientPlugin.kt',
  'apps/murakumo/src-tauri/src/lib.rs',
  K+'ErrorCodes.kt',K+'InferencePlugin.kt',K+'InferenceRequestActivity.kt',K+'InferenceStatusProvider.kt',
- K+'Models.kt',K+'ImageModels.kt',K+'Engine.java',K+'ImageEngine.java',
+ K+'Models.kt',K+'ImageModels.kt',K+'Engine.java',K+'ImageEngine.java',K+'MainActivity.kt','apps/murakumo/src-tauri/src/main.rs',
  'apps/murakumo/native/engine.cpp','apps/murakumo/native/image/image.cpp'];
 export const ERROR_CODES=K+'ErrorCodes.kt';
+/** Source files under the scanned directories that are not on the Android inference path, each with why. */
+export const NOT_ON_PATH={
+ 'apps/murakumo/native/image/macos/main.cpp':'macOS image helper (JUN-1424); a separate Mac executable, never in the Android APK',
+};
+/** Directories skipped by the completeness check, each with why. */
+export const NOT_ON_PATH_DIRS={
+ [K+'generated/']:'wry/Tauri WebView host written by the Tauri CLI at build time (gitignored). Its logging and devtools are gated by BuildConfig.DEBUG and debug_assertions; check-release.py proves a release APK has them off',
+};
+/** Every source file in these directories must be in FILES or NOT_ON_PATH, so a new file cannot skip the lint. */
+export const DIRS=[K,'apps/murakumo/native/','packages/awai-inference/','apps/murakumo/src-tauri/src/'];
+const SOURCE=/\.(?:kt|kts|java|c|cc|cpp|cxx|h|hpp|m|mm|js|mjs|cjs|ts|rs)$/;
+function sources(root,dir){const out=[];const walk=d=>{if(!existsSync(path.join(root,d))||d in NOT_ON_PATH_DIRS)return;for(const e of readdirSync(path.join(root,d),{withFileTypes:true})){const rel=d+e.name;if(e.isDirectory())walk(rel+'/');else if(SOURCE.test(e.name))out.push(rel);}};walk(dir);return out;}
 
 const jvm=[
  ['android-log',/\bandroid\.util\.Log\b|(?<![\w.])Log\.(?:v|d|i|w|e|wtf|println)\s*\(/],
@@ -64,6 +76,7 @@ export function allowedCodes(root){
 /** Violations in the inference path under root: [{file,line,rule,text}]. */
 export function scan(root){
  const out=[];const allowed=allowedCodes(root);
+ for(const d of DIRS)for(const f of sources(root,d))if(!FILES.includes(f)&&!(f in NOT_ON_PATH))out.push({file:f,line:0,rule:'unlisted-source-file',text:'add it to FILES or, with a reason, to NOT_ON_PATH'});
  for(const f of FILES){
   const full=path.join(root,f);if(!existsSync(full)){out.push({file:f,line:0,rule:'missing-file',text:''});continue;}
   const text=readFileSync(full,'utf8');const lines=text.split('\n');const rules=rulesFor(f);

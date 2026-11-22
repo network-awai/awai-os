@@ -83,7 +83,7 @@ def apk_failures(apk:pathlib.Path,check_pins=True)->list:
   if r.returncode:f+=[l[5:] for l in r.stdout.splitlines() if l.startswith('FAIL ')] or ['native pins: verification failed']
  return f
 
-def catalog_failures(raw:pathlib.Path,assets:pathlib.Path|None)->list:
+def catalog_failures(raw,assets=None)->list:
  f=[];catalog=json.loads(raw.read_text())
  for entry in catalog.get('apps',[]):
   if entry.get('id') not in MEDICAL:continue

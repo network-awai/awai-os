@@ -1,4 +1,4 @@
-;; Offline Android QA and Store catalog checks. Device and APK qualification
+;; Offline Android QA, Store catalog and Murakumo PHI path checks. Device and APK qualification
 ;; use the separate Android build and test paths.
 {:tier :t2
  :network :none
@@ -7,5 +7,9 @@
  :steps [["bash" "scripts/ci/android-qa-scope.sh"]
          ["node" "--test" "android/tests/local-apps.test.mjs"]
          ["node" "--test" "scripts/operator/vke-release-pool.test.mjs" "scripts/operator/vke-release-pool.signal.test.mjs" "deploy/build-reaper/reaper.test.mjs"]
-         ["python3" "-B" "-m" "unittest" "discover" "-s" "android/desktop/pc-ab-device"]]
+         ["python3" "-B" "-m" "unittest" "discover" "-s" "android/desktop/pc-ab-device"]
+         ;; Murakumo PHI path: lint with negative controls, release-only and Store catalog checks.
+         ["node" "--test" "apps/murakumo/test/phi-path.test.mjs"]
+         ["python3" "-B" "apps/murakumo/scripts/check-release.py" "--source"]
+         ["python3" "-B" "-m" "unittest" "apps/murakumo/test/release_check_test.py"]]
  :artifacts []}

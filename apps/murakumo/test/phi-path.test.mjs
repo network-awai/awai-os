@@ -2,7 +2,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,readFileSync,writeFileSync,copyFileSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import path from 'node:path';
 import {fileURLToPath} from 'node:url';import {spawnSync} from 'node:child_process';
-import {FILES,ERROR_CODES,scan,allowedCodes} from '../scripts/phi-path-lint.mjs';
+import {FILES,ERROR_CODES,NOT_ON_PATH,scan,allowedCodes} from '../scripts/phi-path-lint.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
 const lint=path.join(root,'apps/murakumo/scripts/phi-path-lint.mjs');
@@ -62,4 +62,22 @@ test('the confirmation Activity keeps every window out of screenshots and Recent
  assert.match(src,/\.create\(\)\.apply\{secure\(window!!\)\}\.show\(\)/,'the dialog has its own window, secured before show');
  assert.match(src,/FLAG_SECURE,WindowManager\.LayoutParams\.FLAG_SECURE/);
  assert.doesNotMatch(src,/\.show\(\)[\s\S]*\.show\(\)/,'no second, unsecured dialog');
+});
+
+test('negative control: a new source file on the path that is not listed fails the lint',()=>{
+ for(const f of [K+'PhiExport.kt','apps/murakumo/native/extra.cpp','packages/awai-inference/android/network/awai/inference/Upload.kt']){
+  const d=copy();try{mkdirSync(path.dirname(path.join(d,f)),{recursive:true});writeFileSync(path.join(d,f),'// synthetic\n');
+   assert.ok(scan(d).some(v=>v.rule==='unlisted-source-file'&&v.file===f),f);
+   const run=spawnSync(process.execPath,[lint,'--root',d],{encoding:'utf8'});assert.equal(run.status,1,run.stdout);
+  }finally{rmSync(d,{recursive:true,force:true});}
+ }
+ for(const [f,why] of Object.entries(NOT_ON_PATH))assert.ok(why.length>20,f);
+});
+
+test('PHI callers get no prompt text on screen and no image modality',()=>{
+ const models=readFileSync(path.join(root,K+'Models.kt'),'utf8');assert.match(models,/val phiCallers=setOf\("network\.itonami\.karute"\)/);
+ const src=readFileSync(path.join(root,K+'InferenceRequestActivity.kt'),'utf8');
+ assert.match(src,/val phi=caller in Models\.phiCallers\n\s*if\(phi&&modality!="text"\)\{finishWith\("unsupported-modality"\);return\}/,'image refused for PHI callers before any dialog');
+ assert.match(src,/\(if\(phi\)"健康の情報を含む \$\{[^}]+\} 文字のテキスト（内容はこの画面に出しません）" else prompt\.take\(240\)\)/,'PHI callers see length and category only');
+ assert.ok(src.indexOf('if(phi&&modality')<src.indexOf('AlertDialog.Builder'),'refusal precedes the dialog');
 });

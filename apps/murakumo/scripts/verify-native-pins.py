@@ -22,6 +22,9 @@ FORBIDDEN={'__android_log_print','__android_log_write','__android_log_vprint','_
 # failed request does not reach it. Allowed only in the two libraries that carry that code.
 CRASH_ONLY={'syslog','openlog','closelog','vsyslog','android_set_abort_message'}
 CRASH_ONLY_LIBS={'libc++_shared.so','libggml-base.so'}
+# Libraries an APK may carry without a pin: the Rust app library (built by Tauri from this checkout's
+# Cargo.lock; checked by check-release.py for devtools code) and the image engine, not reproducible yet.
+UNPINNED={'libmurakumo_app_lib.so','libawai_diffusion.so'}
 
 def undefined_symbols(data:bytes)->set:
  """Undefined dynamic symbols of a 64-bit little-endian ELF shared object."""
@@ -54,7 +57,10 @@ def check(libs:dict,pins:dict,present_abis_only=False)->list:
    if bad:failures.append(f'{abi}/{name}: forbidden imports {sorted(bad)}')
  for abi,found in libs.items():
   for name in found:
-   if abi not in pins['abis'] or name not in pins['abis'][abi]:print(f'not pinned: {abi}/{name}')
+   if abi not in pins['abis'] or name not in pins['abis'][abi]:
+    # In a shipped APK every native library is pinned, except the documented ones below.
+    if present_abis_only and name not in UNPINNED:failures.append(f'{abi}/{name}: not pinned (add it to native-pins.json or UNPINNED with a reason)')
+    else:print(f'not pinned: {abi}/{name}')
  return failures
 
 def read_dir(d:pathlib.Path)->dict:

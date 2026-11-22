@@ -91,6 +91,12 @@ class NativePins(unittest.TestCase):
   if logging:
    p2=json.loads(json.dumps(p));import hashlib;p2['abis']['arm64-v8a'][name]=hashlib.sha256(logging).hexdigest()
    f={a:dict(v) for a,v in found.items()};f['arm64-v8a'][name]=logging;self.assertTrue(any('forbidden imports' in x for x in pins.check(f,p2)))
+ def test_unpinned_library_in_an_apk_fails(self):
+  p=json.loads((app/'native-pins.json').read_text());lib=b'\x7fELF'
+  ok={'arm64-v8a':{'libmurakumo_app_lib.so':lib,'libawai_diffusion.so':lib}}
+  self.assertFalse(any('not pinned' in x for x in pins.check(ok,p,present_abis_only=True)),'documented unpinned libraries pass')
+  bad={'arm64-v8a':{'libnew_engine.so':lib}};self.assertTrue(any('libnew_engine.so: not pinned' in x for x in pins.check(bad,p,present_abis_only=True)))
+  self.assertFalse(any('libnew_engine.so' in x for x in pins.check(bad,p)),'directory mode only reports it')
  @staticmethod
  def with_import(data,old,new):
   """Overwrite an undefined dynamic symbol's name in place to simulate a forbidden import."""

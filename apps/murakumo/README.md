@@ -46,14 +46,19 @@ negative control. Synthetic data only.
   `ErrorCodes.kt`; an exception's message is compared with that list, never passed on. The JNI entry
   points catch every C++ exception, so a failed request does not reach `std::terminate` (whose message
   goes to logcat and the tombstone). The image engine no longer writes to logcat either.
+- **PHI callers** (`Models.phiCallers`, now karute): the confirmation shows only the length and category
+  ("健康の情報を含む N 文字のテキスト"), never the text, and the image modality is refused until the image
+  path's PNG/JSON files have a deletion and retention rule (privacy review §4 item 8).
 - **Lint:** `scripts/phi-path-lint.mjs` (test: `test/phi-path.test.mjs`) fails on Android logging,
   `console.*`, printing, network APIs (java.net, OkHttp, sockets, fetch, sendBeacon, std::net …) and
-  non-fixed error text in the 13 files the prompt passes through, from `packages/awai-inference` to the
-  JNI engines.
+  non-fixed error text in the 15 files the prompt passes through, from `packages/awai-inference` to the
+  JNI engines. A new source file in those directories fails the lint until it is listed in `FILES` or,
+  with a reason, in `NOT_ON_PATH`.
 - **Native libraries:** `scripts/build-native.py` builds the text engine reproducibly (host paths mapped
   out, stripped, fixed build info). `native-pins.json` holds the SHA-256 of each library for both ABIs;
   `scripts/verify-native-pins.py [--dir DIR | --apk APK]` compares them and also fails when a pinned
-  library imports Android logging, sockets or name resolution. Gradle packages these libraries
+  library imports Android logging, sockets or name resolution. In an APK, a `.so` that is neither pinned
+  nor in the documented `UNPINNED` set (the Rust app library, the image engine) fails. Gradle packages these libraries
   unchanged, so an APK carries the pinned bytes. The image engine (`libawai_diffusion.so`) is not
   pinned yet.
 - **Release only:** a debug build turns on WebView devtools (CDP) and copies `console.*` to logcat. Only
@@ -61,7 +66,9 @@ negative control. Synthetic data only.
   configuration (not debuggable, no `devtools` feature, the reviewed Tauri/wry versions, no
   `setWebContentsDebuggingEnabled`); `--apk APK` checks a built APK (not debuggable or testOnly, no
   devtools code in the Rust library, native pins); `--catalog RAW` checks that every Murakumo or karute
-  entry in a Store catalog points at an APK that passes `--apk`. Tests: `test/release_check_test.py`.
+  entry in a Store catalog points at an APK that passes `--apk`. Tests: `test/release_check_test.py`. Tatara (`.tatara/pipeline.edn`) runs the lint and these checks offline;
+  the Linux rebuild of the pins is in `.github/workflows/murakumo-phi-path.yml` (GitHub Actions is off
+  for this repository, so it does not run yet).
 
 ## Model manager domain (AWAI-3240)
 
