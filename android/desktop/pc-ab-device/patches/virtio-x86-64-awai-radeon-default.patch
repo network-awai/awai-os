@@ -1,0 +1,25 @@
+diff --git a/bootmgr/grub/grub-boot.cfg b/bootmgr/grub/grub-boot.cfg
+index 9a4f549..da11274 100644
+--- a/bootmgr/grub/grub-boot.cfg
++++ b/bootmgr/grub/grub-boot.cfg
+@@ -40,3 +40,20 @@ submenu 'Advanced options (virtio_x86_64 specific)' --class format-list-bulleted
+ 		initrd ${boot_partition}/${boot_ramdisk_filename}
+ 	}
+ }
++
++# AWAI-3563: a PC with an AMD Radeon GPU and no virtio GPU starts the Radeon entry by default.
++# Only the factory value of grub_android_default (0) is replaced. An entry the user picked is kept,
++# and a VM with a virtio GPU keeps the stock entry.
++if [ "$default" = "0" ]; then
++	insmod setpci
++	set awai_virtio_gpu=
++	set awai_amd_class=
++	setpci -d 1af4:1050 -v awai_virtio_gpu VENDOR_ID
++	setpci -d 1002: -v awai_amd_class CLASS_DEVICE
++	if [ -z "$awai_virtio_gpu" ]; then
++		if regexp '^3[0-9a-f][0-9a-f]$' "$awai_amd_class"; then
++			set default="advancedoptions-virtio_x86_64>android-awai-pc-amd-mesa"
++		fi
++	fi
++	echo "INFO: awai_gpu virtio=${awai_virtio_gpu} amd_class=${awai_amd_class} default=${default}"
++fi

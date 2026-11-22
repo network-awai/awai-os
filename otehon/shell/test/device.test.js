@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { p256 } from "@noble/curves/nist.js";
 import { createLinkRequest, p256Did, SESSION_MS } from "../src/identity/link.js";
 import { clearSession, saveSession, loadSession, sessionRetention,verifyDeviceKeyPair } from "../src/identity/device.js";
+import { issueHostAccountProof, verifyHostAccountProof } from "../src/identity/host-account.js";
 import { passkeyResponse, randomWallet, walletResponse } from "./signers.js";
 
 test("restored identity requires possession of the matching non-exportable device key", async()=>{
@@ -107,4 +108,28 @@ test("loading a link never destroys account state; only explicit logout clears i
     if (previous === undefined) delete globalThis.localStorage;
     else globalThis.localStorage = previous;
   }
+});
+
+
+test("host account proofs are short-lived and bound to the Itonami caller and fresh nonce", async () => {
+  const pair = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+  const now = Date.now();
+  const app = "network.itonami.app";
+  const nonce = crypto.randomUUID();
+  const uid = 10172;
+  const accountDid = p256Did(p256.getPublicKey(p256.utils.randomSecretKey()));
+  const expiresAt = new Date(now + 10_000).toISOString();
+  const session = { accountDid, method: "passkey", expiresAt };
+  const request = { app, uid, nonce };
+  const proof = await issueHostAccountProof(pair, session, request, now);
+
+  assert.deepEqual(await verifyHostAccountProof(proof, nonce, uid, now), session);
+  assert.deepEqual(Object.keys(proof).sort(), ["claim", "key", "schema", "signature"]);
+  await assert.rejects(verifyHostAccountProof(proof, crypto.randomUUID(), uid, now));
+  await assert.rejects(verifyHostAccountProof(proof, nonce, uid + 100_000, now));
+  await assert.rejects(verifyHostAccountProof(proof, nonce, uid, now + 10_000));
+  await assert.rejects(verifyHostAccountProof({ ...proof, claim: { ...proof.claim, app: "other.app" } }, nonce, uid, now));
+  await assert.rejects(verifyHostAccountProof({ ...proof, claim: { ...proof.claim,
+    accountDid: p256Did(p256.getPublicKey(p256.utils.randomSecretKey())) } }, nonce, uid, now), /invalid-host-account-signature/);
+  await assert.rejects(issueHostAccountProof(pair, session, { ...request, app: "other.app" }, now));
 });

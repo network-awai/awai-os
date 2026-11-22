@@ -17,7 +17,9 @@ MAINLINE_REALTEK = Path("external/linux-firmware-mainline/firmware/r8168")
 DEVICE = Path("device/virt/virtio_x86_64")
 DEVICE_REVISION = "50dc14712023705ccf477af49a27ef9109b54d19"
 PRODUCT = DEVICE / "lineage_virtio_x86_64.mk"
-RADEON_PATCH = Path(__file__).resolve().parent / "patches/virtio-x86-64-awai-radeon.patch"
+PATCHES = Path(__file__).resolve().parent / "patches"
+# The Radeon entry, then the factory default that selects it on an AMD GPU without a virtio GPU.
+RADEON_PATCHES = (PATCHES / "virtio-x86-64-awai-radeon.patch", PATCHES / "virtio-x86-64-awai-radeon-default.patch")
 PRODUCT_MARKER = "PRODUCT_NAME := lineage_virtio_x86_64\n"
 INCLUDE = f"$(call inherit-product, {OVERLAY}/firmware.mk)\n"
 NOTICES = ("LICENSES/LICENSE.amdgpu", "LICENSES/LICENSE.r8169", "WHENCE")
@@ -50,12 +52,15 @@ def prepare(source, firmware):
     device = source / DEVICE
     if git(device, "rev-parse", "HEAD").decode().strip() != DEVICE_REVISION:
         raise ValueError("unexpected virtio_x86_64 device revision")
-    reverse = subprocess.run(
-        ["git", "-C", str(device), "apply", "--reverse", "--check", str(RADEON_PATCH)],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-    )
-    if reverse.returncode:
-        git(device, "apply", "--check", str(RADEON_PATCH))
+    pending = [
+        patch for patch in RADEON_PATCHES
+        if subprocess.run(
+            ["git", "-C", str(device), "apply", "--reverse", "--check", str(patch)],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        ).returncode
+    ]
+    for patch in pending:
+        git(device, "apply", "--check", str(patch))
     product = source / PRODUCT
     existing = product.read_text()
     if existing.count(PRODUCT_MARKER) != 1 or existing.count(INCLUDE) > 1:
@@ -92,8 +97,8 @@ def prepare(source, firmware):
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 destination.write_bytes(data)
             stage.rename(overlay)
-    if reverse.returncode:
-        git(device, "apply", str(RADEON_PATCH))
+    for patch in pending:
+        git(device, "apply", str(patch))
     if INCLUDE not in existing:
         with tempfile.TemporaryDirectory(prefix=".pc-firmware-", dir=product.parent) as temporary:
             stage = Path(temporary) / product.name

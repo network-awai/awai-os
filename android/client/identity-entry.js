@@ -1,10 +1,13 @@
 // Existing awai.link.v1 verifier and device-key custody, not a new identity protocol.
 import {deviceDid,loadSession,saveSession} from '../../otehon/shell/src/identity/device.js';
-import {createLinkRequest,linkUrl,confirmationCode,openResponse,verifyLink,REQUEST_MS} from '../../otehon/shell/src/identity/link.js';
+import {createLinkRequest,linkUrl,confirmationCode,openResponse,verifyLink,REQUEST_MS,LINK_ORIGIN} from '../../otehon/shell/src/identity/link.js';
 import qrcode from 'qrcode-generator';
 import {createClientOperationBroker,createClientConsentHost} from './runtime.js';
 export const RELAY='https://relay.awai.network';
 const operation={capability:'awai-link',service:'awai-relay',operation:'await-phone-approval',consent:'each-operation','data-categories':['link-topic'],endpoint:{origin:RELAY,routes:[{method:'GET',path:'/:topic/json','query-params':[]}]}};
+const openBrowser={capability:'awai-link',service:'awai-identity',operation:'open-link-on-this-device',consent:'each-operation',
+  'data-categories':['link-request'],endpoint:{origin:LINK_ORIGIN,'browser-action':'open-account-link'}};
+
 export function relayRequestAllowed(input,method='GET') {
   try{const u=new URL(input);return method==='GET'&&u.origin!== 'null'&&u.origin===RELAY&&!u.username&&!u.password&&!u.search&&!u.hash&&/^\/[0-9a-f]{32}\/json$/.test(u.pathname);}catch{return false;}
 }
@@ -12,7 +15,26 @@ export function createIdentity(changed) {
   let did=null,account=null,state={status:'loading'},abort=null,sequence=0;
   const update=value=>{state=value;changed();};
   const ready=deviceDid().then(value=>{did=value;account=loadSession(did);update({status:account?'linked':'ready'});}).catch(()=>update({status:'storage-error'}));
-  const broker=createClientOperationBroker({runtime:{schema:'kotoba.app.client-runtime.v1',target:'browser',profile:'trusted-page-v1',entry:'index.html','local-state':{adapter:'localstorage',schema:'awai.account',version:1},operations:[operation]},requestedCapabilities:['awai-link'],approvedOperations:[operation],hostSupportedOperations:[['awai-link','awai-relay','await-phone-approval']],consentHost:createClientConsentHost()});
+  const operations=[operation,openBrowser];
+  const broker=createClientOperationBroker({
+    runtime:{schema:'kotoba.app.client-runtime.v1',target:'browser',profile:'trusted-page-v1',entry:'index.html',
+      'local-state':{adapter:'localstorage',schema:'awai.account',version:1},operations},
+    requestedCapabilities:['awai-link'],approvedOperations:operations,
+    hostSupportedOperations:operations.map(op=>[op.capability,op.service,op.operation]),
+    browserAdapters:{'awai-identity':{'open-link-on-this-device':({payload})=>{
+      if(state.status!=='waiting'||payload.url!==state.url||!window.AwaiHost?.openAccountLink(payload.url))
+        throw Error('account-link-browser-unavailable');
+    }}},consentHost:createClientConsentHost(),
+  });
+  async function continueHere(){
+    const {status,url}=state;
+    if(status!=='waiting'||!abort)return;
+    try{
+      await broker.invoke(openBrowser,{url},{signal:abort.signal});
+    }catch{
+      if(state.status==='waiting')update({...state,browserFailed:true});
+    }
+  }
   async function begin(){
     await ready;if(!did||state.status==='storage-error')return;
     abort?.abort();const run=++sequence;const controller=new AbortController();abort=controller;
@@ -45,5 +67,5 @@ export function createIdentity(changed) {
     }catch(error){if(run===sequence)update({status:controller.signal.aborted?'expired':state.status==='asking'?'denied-or-unavailable':'unavailable'});}
     finally{clearTimeout(timer);}
   }
-  return {get state(){return state;},get account(){if(account)account=loadSession(did);return account;},begin,cancel(){sequence++;abort?.abort();if(!account)state={status:'ready'};}};
+  return {get state(){return state;},get account(){if(account)account=loadSession(did);return account;},begin,continueHere,cancel(){sequence++;abort?.abort();if(!account)state={status:'ready'};}};
 }

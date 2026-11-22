@@ -1,8 +1,8 @@
 (ns sanka.device
   "What an Android phone or PC enforces before it serves one compute order as a provider
-  (AWAI-3115, stage C1). It checks the device's offer, decides from the device's own facts whether
-  to take an order now, walks the offer through its states, and builds the receipt body for the
-  host to sign. Like sanka.core it has no I/O, regular expressions, dates, hashing or signatures,
+  (AWAI-3115, stage C1; delivery by mailbox in ADR 0051). It checks the device's offer, decides
+  from the device's own facts whether to take an order now, walks the offer through its states,
+  builds the receipt body for the host to sign, and checks what travels inside the seal. Like sanka.core it has no I/O, regular expressions, dates, hashing or signatures,
   and runs unchanged on ClojureScript, Babashka and Basilisp. The host reads the battery, thermal
   and network state from Android and passes them in as facts. An absent fact is not a yes."
   (:require [sanka.core :as core]))
@@ -15,11 +15,20 @@
 
 (def ^:private offer-keys
   #{:kind :work-kind :provider :node :asset :amount :value-class :model :engine :max-tokens
-    :limits :expires-at :nonce})
+    :limits :expires-at :nonce :mailbox :seal-key :buyers})
+
+;; ADR 0051 D4: the first buyers are the owner's own bots, named one by one.
+(def ^:private most-buyers 16)
+
+(def ^:private host-chars "abcdefghijklmnopqrstuvwxyz0123456789.-")
 
 (def ^:private limit-keys
   #{:min-battery-percent :require-charging :max-thermal-status :allow-metered
     :max-orders-per-day})
+
+;; ADR 0051 D5 (owner decision 2026-11-22): an offer lives at most 24 hours, so the person's
+;; consent is asked again at least once a day.
+(def ^:private longest-offer-seconds 86400)
 
 ;; Android PowerManager thermal status: 0 none ... 6 shutdown.
 (def ^:private highest-thermal-status 6)
@@ -75,6 +84,48 @@
 (defn- all-keys? [wanted value]
   (and (map? value) (= (set (keys value)) wanted)))
 
+(defn- cid?
+  "The shape of a CIDv1 in base32, as sanka.core checks it. The host recomputes the hash."
+  [value]
+  (boolean (and (string? value)
+                (< 50 (count value) 70)
+                (= (subs value 0 1) "b")
+                (all-in? "abcdefghijklmnopqrstuvwxyz234567" value))))
+
+(defn- hex-of-length? [size value]
+  (and (string? value) (= size (count value)) (all-in? hex-digits value)))
+
+(defn- topic?
+  "A mailbox topic: 128 random bits as 32 lowercase hex digits."
+  [value]
+  (hex-of-length? 32 value))
+
+(defn- seal-key?
+  "An X25519 public key for HPKE (ADR 0051 D3): 32 bytes as 64 lowercase hex digits."
+  [value]
+  (hex-of-length? 64 (prefixed "x25519:" value)))
+
+(defn- https-origin?
+  "https:// and a lowercase host name, with no port, path, user or trailing dot."
+  [value]
+  (let [host (prefixed "https://" value)]
+    (boolean (and host (pos? (count host)) (all-in? host-chars host)
+                  (not= (first host) (first ".")) (not= (last host) (first "."))
+                  (some? (index-of-char host (first ".")))))))
+
+(defn- mailbox? [mailbox]
+  (and (all-keys? #{:origin :topic} mailbox)
+       (https-origin? (:origin mailbox))
+       (topic? (:topic mailbox))))
+
+(defn- buyers-ok? [offer]
+  (let [buyers (:buyers offer)]
+    (and (sequential? buyers)
+         (<= 1 (count buyers) most-buyers)
+         (every? did? buyers)
+         (= (count buyers) (count (set buyers)))
+         (not-any? #(or (= % (:provider offer)) (= % (:node offer))) buyers))))
+
 (defn- outcome [errors]
   (if (seq errors) {:ok false :errors errors} {:ok true}))
 
@@ -113,7 +164,10 @@
        (not (positive-int? (:max-tokens offer))) (conj "offer/max-tokens")
        (not (limits-ok? (:limits offer))) (conj "offer/limits")
        (not (positive-int? (:expires-at offer))) (conj "offer/expires-at")
-       (not (text? (:nonce offer))) (conj "offer/nonce")))))
+       (not (text? (:nonce offer))) (conj "offer/nonce")
+       (not (mailbox? (:mailbox offer))) (conj "offer/mailbox")
+       (not (seal-key? (:seal-key offer))) (conj "offer/seal-key")
+       (not (buyers-ok? offer)) (conj "offer/buyers")))))
 
 ;; The person turns the offer on and off. Withdrawal is final for this offer: a new offer starts
 ;; again from draft. A running order is not cut off; admit-order refuses new ones.
@@ -150,6 +204,7 @@
     "device/unknown-active-orders"
     (not (and (count-int? (:orders-today facts)) (>= (:orders-today facts) 0)))
     "device/unknown-orders-today"
+    (not (boolean? (:already-run facts))) "device/unknown-already-run"
     :else nil))
 
 (defn- mismatch
@@ -163,6 +218,7 @@
     (not= (:value-class offer) (:value-class order)) "device/other-value-class"
     (not= (:model offer) (:model order)) "device/other-model"
     (> (:max-tokens order) (:max-tokens offer)) "device/too-many-tokens"
+    (not (some #(= % (:buyer order)) (:buyers offer))) "device/buyer-not-allowed"
     :else nil))
 
 (defn admit-order
@@ -179,7 +235,10 @@
       (if-let [reason (or (mismatch offer order) (fact-error facts))]
         (refuse reason)
         (cond
+          ;; The host may send back the result it kept; it never runs the same order twice.
+          (:already-run facts) (refuse "device/already-run")
           (>= (:now facts) (:expires-at offer)) (refuse "device/offer-expired")
+          (> (- (:expires-at offer) (:now facts)) longest-offer-seconds) (refuse "device/offer-too-long")
           (>= (:now facts) (:expires-at order)) (refuse "device/order-expired")
           (and (:require-charging limits) (not (:charging facts))) (refuse "device/not-charging")
           (< (:battery-percent facts) (:min-battery-percent limits)) (refuse "device/low-battery")
@@ -216,3 +275,71 @@
                  :ledger-head (:ledger-head run)
                  :demand (:demand order)
                  :nonce (:nonce order)}})))
+
+;; What travels inside the HPKE seal (ADR 0051 D3). The host seals and opens; these functions only
+;; check what was opened, and build what will be sealed. The reply goes to the offer's own mailbox
+;; origin, so the order names only a topic and a key: an order cannot name another origin.
+
+(def ^:private order-envelope-keys #{:kind :offer :order :order-cid :prompt :reply})
+(def ^:private done-keys #{:kind :offer :order-cid :output :receipt})
+(def ^:private refused-keys #{:kind :offer :order-cid :refused})
+
+(defn check-order-envelope
+  "Checks an opened order against the offer it was sealed to. Who the buyer is, and whether the
+  device takes the order now, is admit-order's question."
+  [offer offer-cid envelope]
+  (if-not (only-keys? order-envelope-keys envelope)
+    {:ok false :errors ["envelope/unknown-field"]}
+    (let [reply (:reply envelope)]
+      (outcome
+       (cond-> []
+         (not= "awai.compute-order/1" (:kind envelope)) (conj "envelope/kind")
+         (not (cid? (:offer envelope))) (conj "envelope/offer")
+         (and (cid? (:offer envelope)) (not= offer-cid (:offer envelope))) (conj "envelope/other-offer")
+         (not (:ok (core/check-order (:order envelope)))) (conj "envelope/order")
+         (not (cid? (:order-cid envelope))) (conj "envelope/order-cid")
+         (not (text? (:prompt envelope))) (conj "envelope/prompt")
+         (not (and (all-keys? #{:topic :seal-key} reply) (topic? (:topic reply))
+                   (seal-key? (:seal-key reply))))
+         (conj "envelope/reply")
+         (and (map? reply) (= (:topic reply) (get-in offer [:mailbox :topic])))
+         (conj "envelope/reply-to-offer-topic"))))))
+
+(defn result-envelope
+  "What the device seals back to the buyer: the refusal reason from admit-order, or the output
+  with the receipt the host signed."
+  [offer-cid order-cid outcome]
+  (let [receipt (:receipt outcome)]
+    (cond
+      (false? (:admit outcome))
+      (if (text? (:reason outcome))
+        {:ok true :envelope {:kind "awai.compute-result/1" :offer offer-cid :order-cid order-cid
+                             :refused (:reason outcome)}}
+        {:ok false :error "result/reason"})
+      (not (text? (:output outcome))) {:ok false :error "result/output"}
+      (not (and (map? receipt) (text? (:signature receipt)))) {:ok false :error "result/receipt"}
+      (not= order-cid (:order receipt)) {:ok false :error "result/other-order"}
+      :else {:ok true :envelope {:kind "awai.compute-result/1" :offer offer-cid :order-cid order-cid
+                                 :output (:output outcome) :receipt receipt}})))
+
+(defn check-result-envelope
+  "The buyer's check of an opened result. A refusal carries only its reason. A served order's
+  receipt goes through sanka.core/check-receipt with the buyer's pins; the host still checks the
+  signature, and that the output hashes to the receipt's output CID."
+  [offer-cid order-cid pins envelope]
+  (let [refused? (all-keys? refused-keys envelope)]
+    (if-not (or refused? (all-keys? done-keys envelope))
+      {:ok false :errors ["result/shape"]}
+      (let [errors (cond-> []
+                     (not= "awai.compute-result/1" (:kind envelope)) (conj "result/kind")
+                     (not= offer-cid (:offer envelope)) (conj "result/other-offer")
+                     (not= order-cid (:order-cid envelope)) (conj "result/other-order"))]
+        (cond
+          refused? (if (and (empty? errors) (text? (:refused envelope)))
+                     {:ok true :refused (:refused envelope)}
+                     (outcome (cond-> errors (not (text? (:refused envelope))) (conj "result/reason"))))
+          :else (outcome
+                 (cond-> errors
+                   (not (text? (:output envelope))) (conj "result/output")
+                   true (into (:errors (core/check-receipt (:receipt envelope)
+                                                           (assoc pins :order-cid order-cid)))))))))))
