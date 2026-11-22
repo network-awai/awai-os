@@ -239,6 +239,14 @@ bound. Preserve original cron and the original distributed occurrence claim;
 uncertain results do not authorize replay or another cycle. Keep public presence
 and progress metadata free of transcripts, private identities and session IDs.
 
+## Landing a change: squash merge (owner decision 2026-11-23)
+
+- 着地は PR 経由の **squash merge** に統一する: `gh pr merge --squash --delete-branch`。merge commit と rebase merge は使わない。
+- `main` への直接 push、`gh api .../merges`、ローカルの `git merge` で着地しない。
+- **branch は remote にも local にも残さない。** squash merge では local branch が `main` の ancestry に残らないため `git branch -d` は拒否される。`gh pr view <n> --json headRefOid` の値と `git rev-parse <branch>` が一致することを確かめてから `git branch -D` で消す。
+- 消す前に必ず `gh pr list --head <branch> --state all` を見る。open の PR がある branch、未マージの branch は消さない。
+- 終わりの状態: `git branch -a` に自分の作業 branch が 1 本も無いこと。
+
 ## Current release codename — Meiji
 
 Owner decision 2026-11-15: the current Awai OS release codename is **Meiji**.
