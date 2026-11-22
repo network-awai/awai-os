@@ -1,0 +1,589 @@
+--------- beginning of system
+11-23 06:12:15.590   540  1768 I ActivityManager: Force stopping network.itonami.publicfunds appid=10207 user=0: from pid 4160
+11-23 06:12:15.591   540  1768 D OomAdjuster: Not killing cached processes
+11-23 06:12:15.603   540   817 I AppWidgetServiceImpl: Received broadcast: android.intent.action.PACKAGE_RESTARTED on user 0
+11-23 06:12:15.603   540   817 I AppWidgetServiceImpl: Updating package stopped masked state for uid 10207 package network.itonami.publicfunds isStopped true
+--------- beginning of main
+11-23 06:12:15.612   344   464 I netd    : tetherGetStats() -> {[]} <0.22ms>
+11-23 06:12:15.616  1038  1038 D CarrierSvcBindHelper: onHandleForceStop: [network.itonami.publicfunds]
+11-23 06:12:15.628  1038  1038 D CarrierSvcBindHelper: No carrier app for: 0
+11-23 06:12:15.638  1659  1681 W d.process.media: ApkAssets: Deleting an ApkAssets object '<empty> and /product/priv-app/ConfigUpdater/ConfigUpdater.apk' with 1 weak references
+11-23 06:12:17.691   540   780 W ActivityTaskManager: callingPackage for (uid=2000, pid=4165) has no WPC
+11-23 06:12:17.692   540   780 W OptProp : Cannot read opt property android.window.PROPERTY_COMPAT_ALLOW_USER_ASPECT_RATIO_OVERRIDE
+11-23 06:12:17.692   540   780 W OptProp : Cannot read opt property android.window.PROPERTY_COMPAT_ALLOW_USER_ASPECT_RATIO_FULLSCREEN_OVERRIDE
+11-23 06:12:17.692   540   780 W OptProp : Cannot read opt property android.window.PROPERTY_COMPAT_ALLOW_ORIENTATION_OVERRIDE
+11-23 06:12:17.695   540   780 V GrammaticalInflectionUtils: AttributionSource: AttributionSource { uid = 10207, packageName = null, attributionTag = null, token = android.os.Binder@ea51057, deviceId = 0, next = null } does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+11-23 06:12:17.696   540   780 W OptProp : Cannot read opt property android.window.PROPERTY_COMPAT_ALLOW_RESIZEABLE_ACTIVITY_OVERRIDES
+11-23 06:12:17.696   540   780 W OptProp : Cannot read opt property android.window.PROPERTY_COMPAT_ALLOW_MIN_ASPECT_RATIO_OVERRIDE
+11-23 06:12:17.727   870   921 V WindowManagerShell: Transition requested (#24): android.os.BinderProxy@5e34225 TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=8 displayId=0 isRunning=true baseIntent=Intent { flg=0x10000000 cmp=network.itonami.publicfunds/.MainActivity } baseActivity=ComponentInfo{network.itonami.publicfunds/network.itonami.publicfunds.MainActivity} topActivity=ComponentInfo{network.itonami.publicfunds/network.itonami.publicfunds.MainActivity} origActivity=null realActivity=ComponentInfo{network.itonami.publicfunds/network.itonami.publicfunds.MainActivity} numActivities=1 lastActiveTime=150272 supportsMultiWindow=true resizeMode=1 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{android.window.IWindowContainerToken$Stub$Proxy@d889ffa} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=Rect(0, 128 - 0, 0) topActivityInfo=ActivityInfo{94679ab network.itonami.publicfunds.MainActivity} launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=false isVisible=false isVisibleRequested=false isSleeping=false locusId=null displayAreaFeatureId=1 isTopActivityTransparent=false appCompatTaskInfo=AppCompatTaskInfo { topActivityInSizeCompat=false topActivityEligibleForLetterboxEducation= falseisLetterboxEducationEnabled= true isLetterboxDoubleTapEnabled= false topActivityEligibleForUserAspectRatioButton= false topActivityBoundsLetterboxed= false isFromLetterboxDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=1080 topActivityLetterboxHeight=2400 isUserFullscreenOverrideEnabled=false isSystemFullscreenOverrideEnabled=false cameraCompatTaskInfo=CameraCompatTaskInfo { cameraCompatControlState=hidden freeformCameraCompatMode=inactive}}}, pipTask = null, remoteTransition = null, displayChange = null, flags = 0, debugId = 24 }
+11-23 06:12:17.727   540   780 I ActivityTaskManager: START u0 {flg=0x10000000 cmp=network.itonami.publicfunds/.MainActivity} with LAUNCH_SINGLE_TASK from uid 2000 (BAL_ALLOW_PERMISSION) result code=0
+11-23 06:12:17.728   540   563 V GrammaticalInflectionUtils: AttributionSource: AttributionSource { uid = 10207, packageName = null, attributionTag = null, token = android.os.Binder@ea51057, deviceId = 0, next = null } does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+11-23 06:12:17.733  1133  1133 W SplitSelectStateCtor: Missing session instanceIds
+11-23 06:12:17.733  1133  1133 D StatsLog: LAUNCHER_SPLIT_SELECTION_EXIT_INTERRUPTED
+11-23 06:12:17.739   540   817 I AppWidgetServiceImpl: Received broadcast: android.intent.action.PACKAGE_UNSTOPPED on user 0
+11-23 06:12:17.739   540   817 I AppWidgetServiceImpl: Updating package stopped masked state for uid 10207 package network.itonami.publicfunds isStopped false
+11-23 06:12:17.740   345   345 I Zygote  : Entering forkRepeatedly native zygote loop
+11-23 06:12:17.751   344   464 I netd    : tetherGetStats() -> {[]} <4.88ms>
+11-23 06:12:17.751   870   921 D WindowManagerShell: setLauncherKeepClearAreaHeight: visible=false, height=527
+11-23 06:12:17.752  1133  1133 I TopTaskTracker: onTaskMovedToFront: (moved taskInfo to front) taskId=8, baseIntent=Intent { flg=0x10000000 cmp=network.itonami.publicfunds/.MainActivity }
+11-23 06:12:17.766   345   345 D Zygote  : Forked child process 4168
+11-23 06:12:17.767   540   571 I ActivityManager: Start proc 4168:network.itonami.publicfunds/u0a207 for next-top-activity {network.itonami.publicfunds/network.itonami.publicfunds.MainActivity}
+11-23 06:12:17.769   389   389 I BpBinder: onLastStrongRef automatically unlinking death recipients: 
+11-23 06:12:17.780  1429  1756 I AssistantForeground: (REDACTED) Get launcher package: %s
+11-23 06:12:17.785   870   992 D SplashScreenView: Build android.window.SplashScreenView{f0de020 V.E...... ......ID 0,0-0,0}
+11-23 06:12:17.785   870   992 D SplashScreenView: Icon: view: android.widget.ImageView{bf25dd9 V.ED..... ......I. 0,0-0,0 #1020504 android:id/splashscreen_icon_view} drawable: com.android.wm.shell.startingsurface.SplashscreenIconDrawableFactory$ImmobileIconDrawable@da0439e size: 420
+11-23 06:12:17.785   870   992 D SplashScreenView: Branding: view: android.view.View{c0b1e7f G.ED..... ......I. 0,0-0,0 #1020503 android:id/splashscreen_branding_view} drawable: null size w: 0 h: 0
+11-23 06:12:17.800  4168  4168 I ami.publicfunds: Late-enabling -Xcheck:jni
+11-23 06:12:17.801   540   964 D CoreBackPreview: Window{5fdc889 u0 Splash Screen network.itonami.publicfunds}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@c47c0af, mPriority=0, mIsAnimationCallback=false}
+11-23 06:12:17.818  1133  1556 D EGL_emulation: app_time_stats: avg=17773.45ms min=17773.45ms max=17773.45ms count=1
+11-23 06:12:17.845  4168  4168 I ami.publicfunds: Using CollectorTypeCMC GC.
+11-23 06:12:17.853   392   433 I adbd    : jdwp connection from 4168
+11-23 06:12:17.872   540   560 V WindowManager: Sent Transition (#24) createdAt=11-23 06:12:17.697 via request=TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=8 displayId=0 isRunning=true baseIntent=Intent { flg=0x10000000 cmp=network.itonami.publicfunds/.MainActivity } baseActivity=ComponentInfo{network.itonami.publicfunds/network.itonami.publicfunds.MainActivity} topActivity=ComponentInfo{network.itonami.publicfunds/network.itonami.publicfunds.MainActivity} origActivity=null realActivity=ComponentInfo{network.itonami.publicfunds/network.itonami.publicfunds.MainActivity} numActivities=1 lastActiveTime=150272 supportsMultiWindow=true resizeMode=1 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{RemoteToken{8c7e366 Task{92cc660 #8 type=standard A=10207:network.itonami.publicfunds}}} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=Rect(0, 128 - 0, 0) topActivityInfo=ActivityInfo{b4916a7 network.itonami.publicfunds.MainActivity} launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=false isVisible=false isVisibleRequested=false isSleeping=false locusId=null displayAreaFeatureId=1 isTopActivityTransparent=false appCompatTaskInfo=AppCompatTaskInfo { topActivityInSizeCompat=false topActivityEligibleForLetterboxEducation= falseisLetterboxEducationEnabled= true isLetterboxDoubleTapEnabled= false topActivityEligibleForUserAspectRatioButton= false topActivityBoundsLetterboxed= false isFromLetterboxDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=1080 topActivityLetterboxHeight=2400 isUserFullscreenOverrideEnabled=false isSystemFullscreenOverrideEnabled=false cameraCompatTaskInfo=CameraCompatTaskInfo { cameraCompatControlState=hidden freeformCameraCompatMode=inactive}}}, pipTask = null, remoteTransition = null, displayChange = null, flags = 0, debugId = 24 }
+11-23 06:12:17.872   540   560 V WindowManager:     startWCT=WindowContainerTransaction { changes = {} hops = [] errorCallbackToken=null taskFragmentOrganizer=null }
+11-23 06:12:17.872   540   560 V WindowManager:     info={id=24 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[
+11-23 06:12:17.872   540   560 V WindowManager:         {WCT{RemoteToken{8c7e366 Task{92cc660 #8 type=standard A=10207:network.itonami.publicfunds}}} m=OPEN f=NONE leash=Surface(name=Task=8)/@0xd9c8cbc sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) d=0 taskParent=-1},
+11-23 06:12:17.872   540   560 V WindowManager:         {WCT{RemoteToken{f2fb754 Task{27e8495 #1 type=home}}} m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1)/@0x7b5432d sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) d=0 taskParent=-1}
+11-23 06:12:17.872   540   560 V WindowManager:     ]}
+11-23 06:12:17.872   870  1969 V WindowManagerShell: onTransitionReady(transaction=2319282340425)
+11-23 06:12:17.878   870   921 V WindowManagerShell: onTransitionReady (#24) android.os.BinderProxy@5e34225: {id=24 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{WCT{android.window.IWindowContainerToken$Stub$Proxy@1e99150} m=OPEN f=NONE leash=Surface(name=Task=8)/@0xbbaaae4 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) d=0 taskParent=-1},{WCT{android.window.IWindowContainerToken$Stub$Proxy@e996f49} m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1)/@0xee46b4d sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) d=0 taskParent=-1}]}
+11-23 06:12:17.878   870   921 V WindowManagerShell: Playing animation for (#24) android.os.BinderProxy@5e34225@0
+11-23 06:12:17.880   870   921 V WindowManagerShell:  try handler com.android.wm.shell.transition.DefaultMixedHandler@4e6d794
+11-23 06:12:17.880   870   921 V WindowManagerShell:  try handler com.android.wm.shell.keyguard.KeyguardTransitionHandler@c71123d
+11-23 06:12:17.880   870   921 V WindowManagerShell:  try handler com.android.wm.shell.pip.PipTransition@7e18a32
+11-23 06:12:17.880   870   921 V WindowManagerShell:  try handler com.android.wm.shell.activityembedding.ActivityEmbeddingController@7cf4383
+11-23 06:12:17.880   870   921 V WindowManagerShell:  try handler com.android.wm.shell.recents.RecentsTransitionHandler@423d900
+11-23 06:12:17.880   870   921 V ShellRecents: RecentsTransitionHandler.startAnimation: no controller found
+11-23 06:12:17.880   870   921 V WindowManagerShell:  try handler com.android.wm.shell.splitscreen.StageCoordinator@5619539
+11-23 06:12:17.881   870   921 V WindowManagerShell:  try handler com.android.wm.shell.transition.RemoteTransitionHandler@91a177e
+11-23 06:12:17.882   870   921 V WindowManagerShell: Transition doesn't have explicit remote, search filters for match for {id=24 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{WCT{android.window.IWindowContainerToken$Stub$Proxy@1e99150} m=OPEN f=NONE leash=Surface(name=Task=8)/@0xbbaaae4 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) d=0 taskParent=-1},{WCT{android.window.IWindowContainerToken$Stub$Proxy@e996f49} m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1)/@0xee46b4d sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) d=0 taskParent=-1}]}
+11-23 06:12:17.882   870   921 V WindowManagerShell:  Checking filter Pair{{types=[] flags=0x0] notFlags=0x0 checks=[{atype=undefined independent=true modes=[OPEN,TO_FRONT] flags=IN_TASK_WITH_EMBEDDED_ACTIVITY mustBeTask=false order=ANY topActivity=ComponentInfo{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity} launchCookie=null},{atype=undefined independent=true modes=[CLOSE,TO_BACK] flags=IN_TASK_WITH_EMBEDDED_ACTIVITY mustBeTask=false order=ANY topActivity=null launchCookie=null}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@2b2d04e, appThread = android.app.IApplicationThread$Stub$Proxy@beea56f, debugName = OverlaySwipeBack }}
+11-23 06:12:17.883  4168  4168 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+11-23 06:12:17.884   870   921 V WindowManagerShell:  Checking filter Pair{{types=[] flags=0x0] notFlags=0x0 checks=[{atype=dream independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null},{atype=home independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@619c353, appThread = android.app.IApplicationThread$Stub$Proxy@7ada490, debugName = LauncherToDream }}
+11-23 06:12:17.886   870   921 V WindowManagerShell:  Checking filter Pair{{types=[] flags=0x0] notFlags=0x100 checks=[{atype=home independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=TOP topActivity=ComponentInfo{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity} launchCookie=null},{atype=standard independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@4732189, appThread = android.app.IApplicationThread$Stub$Proxy@233358e, debugName = QuickstepLaunchHome }}
+11-23 06:12:17.886   870   921 V WindowManagerShell:  Delegate animation for (#24) to null
+11-23 06:12:17.887   870   921 V WindowManagerShell:  try handler com.android.wm.shell.transition.DefaultTransitionHandler@cb894df
+11-23 06:12:17.887   870   921 V WindowManagerShell: start default transition animation, info = {id=24 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{WCT{android.window.IWindowContainerToken$Stub$Proxy@1e99150} m=OPEN f=NONE leash=Surface(name=Task=8)/@0xbbaaae4 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) d=0 taskParent=-1},{WCT{android.window.IWindowContainerToken$Stub$Proxy@e996f49} m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1)/@0xee46b4d sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) d=0 taskParent=-1}]}
+11-23 06:12:17.897   870   921 V WindowManagerShell: loadAnimation: anim=android.view.animation.AnimationSet@7ea298b animAttr=0x13 type=OPEN isEntrance=false
+11-23 06:12:17.902   540   964 W UserManagerService: Requested status bar icon for non-badged user 0
+11-23 06:12:17.907   870   921 V WindowManagerShell: loadAnimation: anim=android.view.animation.AnimationSet@acfd367 animAttr=0x12 type=OPEN isEntrance=true
+11-23 06:12:17.912   870   921 V WindowManagerShell:  animated by com.android.wm.shell.transition.DefaultTransitionHandler@cb894df
+11-23 06:12:17.913   870   921 W Looper  : Slow dispatch took 35ms wmshell.main h=android.os.Handler c=com.android.wm.shell.transition.Transitions$TransitionPlayerImpl$$ExternalSyntheticLambda0@d73c1bd m=0
+11-23 06:12:17.933   870  1014 D EGL_emulation: app_time_stats: avg=17849.74ms min=17849.74ms max=17849.74ms count=1
+11-23 06:12:17.945  4168  4168 W ziparchive: Unable to open '/data/app/~~_Mk2JVTpM5plLZb2D-9clw==/network.itonami.publicfunds-c7_IvlIZf-TG8FaMoDeTiA==/base.dm': No such file or directory
+11-23 06:12:17.946  4168  4168 W ziparchive: Unable to open '/data/app/~~_Mk2JVTpM5plLZb2D-9clw==/network.itonami.publicfunds-c7_IvlIZf-TG8FaMoDeTiA==/base.dm': No such file or directory
+11-23 06:12:18.090   870   963 W Looper  : Slow delivery took 55ms wmshell.anim h=android.view.Choreographer$FrameHandler c=android.view.Choreographer$FrameDisplayEventReceiver@8e08146 m=0
+11-23 06:12:18.108  1133  1556 D EGL_emulation: app_time_stats: avg=95385.16ms min=95385.16ms max=95385.16ms count=1
+11-23 06:12:18.108   870   963 W Looper  : Drained
+11-23 06:12:18.200  4168  4168 D nativeloader: Configuring clns-7 for other apk /data/app/~~_Mk2JVTpM5plLZb2D-9clw==/network.itonami.publicfunds-c7_IvlIZf-TG8FaMoDeTiA==/base.apk. target_sdk_version=37, uses_libraries=, library_path=/data/app/~~_Mk2JVTpM5plLZb2D-9clw==/network.itonami.publicfunds-c7_IvlIZf-TG8FaMoDeTiA==/lib/arm64:/data/app/~~_Mk2JVTpM5plLZb2D-9clw==/network.itonami.publicfunds-c7_IvlIZf-TG8FaMoDeTiA==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/network.itonami.publicfunds
+11-23 06:12:18.202   870   921 V WindowManagerShell: Transition animation finished (aborted=false), notifying core (#24) android.os.BinderProxy@5e34225@0
+11-23 06:12:18.206   540   560 V WindowManager: Finish Transition (#24): created at 11-23 06:12:17.697 collect-started=0.051ms request-sent=29.115ms started=52.839ms ready=170.097ms sent=171.585ms finished=505.837ms
+11-23 06:12:18.206   870   921 V WindowManagerShell: Track 0 became idle
+11-23 06:12:18.206   870   921 V WindowManagerShell: All active transition animations finished
+11-23 06:12:18.220   540  1767 W UserManagerService: Requested status bar icon for non-badged user 0
+11-23 06:12:18.220   540  1767 W UserManagerService: Requested status bar icon for non-badged user 0
+11-23 06:12:18.226  4168  4168 V GraphicsEnvironment: Currently set values for:
+11-23 06:12:18.226  4168  4168 V GraphicsEnvironment:   angle_gl_driver_selection_pkgs=[]
+11-23 06:12:18.226  4168  4168 V GraphicsEnvironment:   angle_gl_driver_selection_values=[]
+11-23 06:12:18.226  4168  4168 V GraphicsEnvironment: Global.Settings values are invalid: number of packages: 0, number of values: 0
+11-23 06:12:18.226  4168  4168 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+11-23 06:12:18.233   540  1767 W OptProp : Cannot read opt property android.window.PROPERTY_COMPAT_ENABLE_FAKE_FOCUS
+11-23 06:12:18.251  1133  1133 D VRI[NexusLauncherActivity]: visibilityChanged oldVisibility=true newVisibility=false
+11-23 06:12:18.252  1133  1133 D NexusLauncherModelDelegate: notifySmartspaceEvent: SmartspaceTargetEvent{mSmartspaceTarget=null, mSmartspaceActionId='null', mEventType=7}
+11-23 06:12:18.294  4168  4168 D AppCompatDelegate: Checking for metadata for AppLocalesMetadataHolderService : Service not found
+11-23 06:12:18.333  4168  4168 D nativeloader: Load /data/app/~~_Mk2JVTpM5plLZb2D-9clw==/network.itonami.publicfunds-c7_IvlIZf-TG8FaMoDeTiA==/base.apk!/lib/arm64-v8a/libpublic_funds_lib.so using ns clns-7 from class loader (caller=/data/app/~~_Mk2JVTpM5plLZb2D-9clw==/network.itonami.publicfunds-c7_IvlIZf-TG8FaMoDeTiA==/base.apk!classes6.dex): ok
+11-23 06:12:18.429  4168  4168 W ami.publicfunds: Accessing hidden method Landroid/view/ViewGroup;->makeOptionalFitsSystemWindows()V (unsupported, reflection, allowed)
+11-23 06:12:18.435  4168  4168 W HWUI    : Unknown dataspace 0
+11-23 06:12:18.449   540  1767 D CoreBackPreview: Window{7e719a2 u0 network.itonami.publicfunds/network.itonami.publicfunds.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@3950df0, mPriority=0, mIsAnimationCallback=false}
+11-23 06:12:18.460   389   591 W ServiceManagerCppClient: Permission failure: android.permission.ACCESS_SURFACE_FLINGER from uid=10207 pid=0
+11-23 06:12:18.460   389   591 D PermissionCache: checking android.permission.ACCESS_SURFACE_FLINGER for uid=10207 => denied (197 us)
+11-23 06:12:18.461   389   593 W ServiceManagerCppClient: Permission failure: android.permission.ROTATE_SURFACE_FLINGER from uid=10207 pid=4168
+11-23 06:12:18.461   389   593 D PermissionCache: checking android.permission.ROTATE_SURFACE_FLINGER for uid=10207 => denied (166 us)
+11-23 06:12:18.462   389   591 W ServiceManagerCppClient: Permission failure: android.permission.ROTATE_SURFACE_FLINGER from uid=10207 pid=0
+11-23 06:12:18.462   389   591 D PermissionCache: checking android.permission.ROTATE_SURFACE_FLINGER for uid=10207 => denied (1979 us)
+11-23 06:12:18.462   389   593 W ServiceManagerCppClient: Permission failure: android.permission.INTERNAL_SYSTEM_WINDOW from uid=10207 pid=4168
+11-23 06:12:18.462   389   593 D PermissionCache: checking android.permission.INTERNAL_SYSTEM_WINDOW for uid=10207 => denied (429 us)
+11-23 06:12:18.462   389   591 W ServiceManagerCppClient: Permission failure: android.permission.INTERNAL_SYSTEM_WINDOW from uid=10207 pid=0
+11-23 06:12:18.462   389   591 D PermissionCache: checking android.permission.INTERNAL_SYSTEM_WINDOW for uid=10207 => denied (458 us)
+11-23 06:12:18.462  4168  4184 I EGL_emulation: Opening libGLESv1_CM_emulation.so
+11-23 06:12:18.463  4168  4184 I EGL_emulation: Opening libGLESv2_emulation.so
+11-23 06:12:18.476  4168  4184 W HWUI    : Failed to choose config with EGL_SWAP_BEHAVIOR_PRESERVED, retrying without...
+11-23 06:12:18.476  4168  4184 W HWUI    : Failed to initialize 101010-2 format, error = EGL_SUCCESS
+--------- beginning of kernel
+11-23 06:12:18.494   136   136 I servicemanager: Caller(pid=4168,uid=10207,sid=u:r:untrusted_app:s0:c207,c256,c512,c768) Could not find android.hardware.graphics.allocator.IAllocator/default in the VINTF manifest. No alternative instances declared in VINTF.
+11-23 06:12:18.495   137   137 I hwservicemanager: getTransport: Cannot find entry android.hardware.graphics.mapper@4.0::IMapper/default in either framework or device VINTF manifest.
+11-23 06:12:18.495  4168  4184 I Gralloc4: mapper 4.x is not supported
+11-23 06:12:18.508   540   964 W ServiceManagerCppClient: Permission failure: android.permission.ACCESS_SURFACE_FLINGER from uid=10207 pid=0
+11-23 06:12:18.508   540   964 D PermissionCache: checking android.permission.ACCESS_SURFACE_FLINGER for uid=10207 => denied (62 us)
+11-23 06:12:18.508   540   964 W ServiceManagerCppClient: Permission failure: android.permission.ROTATE_SURFACE_FLINGER from uid=10207 pid=0
+11-23 06:12:18.508   540   964 D PermissionCache: checking android.permission.ROTATE_SURFACE_FLINGER for uid=10207 => denied (12 us)
+11-23 06:12:18.508   540   964 W ServiceManagerCppClient: Permission failure: android.permission.INTERNAL_SYSTEM_WINDOW from uid=10207 pid=0
+11-23 06:12:18.508   540   964 D PermissionCache: checking android.permission.INTERNAL_SYSTEM_WINDOW for uid=10207 => denied (3 us)
+11-23 06:12:18.511   540   560 W ziparchive: Unable to open '/data/app/~~_Mk2JVTpM5plLZb2D-9clw==/network.itonami.publicfunds-c7_IvlIZf-TG8FaMoDeTiA==/base.dm': No such file or directory
+11-23 06:12:18.512   540   560 I ActivityTaskManager: Displayed network.itonami.publicfunds/.MainActivity for user 0: +819ms
+11-23 06:12:18.514  4168  4168 W WindowOnBackDispatcher: OnBackInvokedCallback is not enabled for the application.
+11-23 06:12:18.514  4168  4168 W WindowOnBackDispatcher: Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+11-23 06:12:18.516  1133  1133 D BaseDepthController: setSurface:
+11-23 06:12:18.516  1133  1133 D BaseDepthController: 	mWaitingOnSurfaceValidity: false
+11-23 06:12:18.516  1133  1133 D BaseDepthController: 	mSurface: null
+11-23 06:12:18.526  1133  1133 D BaseDepthController: mSurface is null and mCurrentBlur is: 0
+11-23 06:12:18.530  1133  1133 I ActivityThread: Schedule relaunch activity: com.google.android.apps.nexuslauncher.NexusLauncherActivity
+11-23 06:12:18.531  1133  1133 I ActivityThread: Schedule relaunch activity: com.google.android.apps.nexuslauncher.NexusLauncherActivity
+11-23 06:12:18.533  1133  1133 D StateManager: goToState - fromState: Normal, toState: Normal, partial trace:
+11-23 06:12:18.533  1133  1133 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(go/retraceme 31f9979659277bb965985aff1272c33e3c3c9e755b77166d20a2465454178f2c:4)
+11-23 06:12:18.533  1133  1133 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(go/retraceme 31f9979659277bb965985aff1272c33e3c3c9e755b77166d20a2465454178f2c:1)
+11-23 06:12:18.533  1133  1133 D StateManager: 	at com.android.launcher3.statemanager.StatefulActivity.onStop(go/retraceme 31f9979659277bb965985aff1272c33e3c3c9e755b77166d20a2465454178f2c:34)
+11-23 06:12:18.539  1133  1133 D StatsLog: LAUNCHER_ONSTOP
+11-23 06:12:18.539   540   964 I AppWidgetServiceImpl: setAppWidgetHidden() 0
+11-23 06:12:18.539  1133  1965 D OneSearchSuggestProvider: Shut down the binder channel
+11-23 06:12:18.602   540   652 I ImeTracker: network.itonami.publicfunds:72c5047f: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+11-23 06:12:18.606   540   652 I ImeTracker: network.itonami.publicfunds:72c5047f: onCancelled at PHASE_SERVER_SHOULD_HIDE
+11-23 06:12:18.607  1133  1133 D StatsLog: LAUNCHER_GOOGLE_SEARCH_RESTORE_LIST_SIZE_AFTER_ACTIVITY_RESTART
+11-23 06:12:18.609  1133  1133 D CannedAnimCoordinator: Wrong controller access from h2.i@52b75ff, actual provider null
+11-23 06:12:18.613  1133  1133 D b/254119092: unregistering activity lifecycle callbacks from onActivityDestroyed.
+11-23 06:12:18.613  1133  1133 D b/254119092: clearActivity
+11-23 06:12:18.613  1133  1133 D b/254119092: mActivity and mContext agree taskbarIsPresent=false
+11-23 06:12:18.614   540   964 I AppWidgetServiceImpl: setAppWidgetHidden() 0
+11-23 06:12:18.616   540   780 D ActivityTaskManager: Remove task fragment: deleteTaskFragment
+11-23 06:12:18.617   540  1767 D SearchUiPerUserService: Removing callback for session Id=com.google.android.apps.nexuslauncher:bea96d70-1b1f-428b-bd7a-5ecc64715ada,0 and callback=android.os.BinderProxy@691ea24
+11-23 06:12:18.617   540   964 D SearchUiPerUserService: Removing all callbacks for session Id=com.google.android.apps.nexuslauncher:bea96d70-1b1f-428b-bd7a-5ecc64715ada,0 and 0 callbacks.
+11-23 06:12:18.626   870   921 V WindowManagerShell: Transition requested (#25): android.os.BinderProxy@3f9c85f TransitionRequestInfo { type = CLOSE, triggerTask = null, pipTask = null, remoteTransition = RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@4e172ac, appThread = null, debugName = null }, displayChange = null, flags = 0, debugId = 25 }
+11-23 06:12:18.626   870   921 V WindowManagerShell: RemoteTransition directly requested for (#25) android.os.BinderProxy@3f9c85f: RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@4e172ac, appThread = null, debugName = null }
+11-23 06:12:18.630  4168  4168 I WebViewFactory: Loading com.google.android.webview version 124.0.6367.219 (code 636771932)
+11-23 06:12:18.631  1133  1133 D RecentsView: reset - mEnableDrawingLiveTile: false, mRecentsAnimationController: null
+11-23 06:12:18.639  1327  1327 I GoogleInputMethodService: GoogleInputMethodService.onFinishInput():3157 
+11-23 06:12:18.640  1133  1133 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=false callback=com.android.launcher3.uioverrides.QuickstepLauncher$2@42c6b06
+11-23 06:12:18.640   540   780 D CoreBackPreview: Window{ef94656 u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}: Setting back callback null
+11-23 06:12:18.645  1327  1327 I GoogleInputMethodService: GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+11-23 06:12:18.645  1327  1327 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=network.itonami.publicfunds, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+11-23 06:12:18.645   540   780 D CoreBackPreview: Window{ef94656 u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@1c0d4d9, mPriority=-1, mIsAnimationCallback=false}
+11-23 06:12:18.645   540   773 D CoreBackPreview: Window{ef94656 u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@8caee9e, mPriority=0, mIsAnimationCallback=true}
+11-23 06:12:18.645  1327  1327 I GoogleInputMethodService: GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+11-23 06:12:18.647  1327  1327 I GoogleInputMethodService: GoogleInputMethodService.onStartInputInternal():2077 Reset input view per cached request.
+11-23 06:12:18.647  1327  1327 I GoogleInputMethodService: GoogleInputMethodService.clearInputMethodServiceData():1613 clearInputMethodServiceData for resetInputView
+11-23 06:12:18.651  4168  4168 V ResourcesManager: The following library key has been added: ResourcesKey{ mHash=12fe9bef mResDir=null mSplitDirs=[] mOverlayDirs=[/product/overlay/EmulationPixel6/EmulationPixel6Overlay.apk,/product/overlay/NavigationBarModeGestural/NavigationBarModeGesturalOverlay.apk] mLibDirs=[/data/app/~~ts6zlBgOHltAutSqpJDU5w==/com.google.android.webview-rLukTx1IqEpr30F2nd0y9w==/WebViewGoogle.apk,/data/app/~~Vh1jVXcmAERK5ByBfEDsyQ==/com.google.android.trichromelibrary_636771932-HB0eLN_IMs5kvmTdTEk8fQ==/TrichromeLibrary.apk,/system_ext/framework/androidx.window.extensions.jar] mDisplayId=0 mOverrideConfig=v35 mCompatInfo={420dpi always-compat} mLoaders=[]}
+11-23 06:12:18.652  1327  1327 I GoogleInputMethodService: GoogleInputMethodService.discardAllKeyboardViewAndInputView():1818 discardAllKeyboardViewAndInputView()
+11-23 06:12:18.652   389   389 I BpBinder: onLastStrongRef automatically unlinking death recipients: 
+11-23 06:12:18.654  1327  1327 I KeyboardModeManager: KeyboardModeManager.setInputViewKeyboardViewHolderProvider():625 setInputView() : supportsOneHandedMode=true supportsSplitMode=true
+11-23 06:12:18.654  1327  1327 I NormalModeController: NormalModeController.getKeyboardBodyViewHolderPaddingBottom():104 currentPrimeKeyboardType:SOFT systemPaddingBottom:-1
+11-23 06:12:18.654  1327  1327 I KeyboardModeManager: KeyboardModeManager.setInputViewKeyboardViewHolderProvider():613 setInputView() : supportsOneHandedMode=true, supportSplitMode=true
+11-23 06:12:18.654  1327  1327 I GoogleInputMethodService: GoogleInputMethodService.initializeInputMethodServiceData():1382 initializeInputMethodServiceData for kct{languageTag=en-US, variant=qwerty, hasLocalizedResources=true, conditionCacheKey=_cache_additional_ime_defs_for_condition_change=false_cache_ime_defs_for_condition_change=false_device=phone_device_size=default_enable_flick_symbols=false_enable_more_candidates_view_for_multilingual=false_enable_number_row=false_enable_preemptive_decode=true_enable_secondary_digits=true_enable_secondary_symbols=false_enable_show_foldable_layout_on_small_tablet=true_expressions=normal_four_or_more_letter_rows=false_keyboard_mode=normal_language=en-US_orientation=portrait_physical_keyboard=nokeys_rtl_layout=false_show_secondary_digits=true_show_suggestions=true_split_with_duplicate_keys=true_variant=qwerty, imeDef.stringId=ime_english_united_states, imeDef.className=com.google.android.apps.inputmethod.libs.latin5.LatinIme, imeDef.languageTag=en-US}
+11-23 06:12:18.669  1327  1327 I StyledKeyboardThemeBuilder: StyledKeyboardThemeBuilder.build():132 Pref: [], themeName: [silk:], darkMode: [false], cacheKey: [overlay_builtin_dynamic_color_light_base.binarypb:dynamic-gm3-light-fffefbff-ff475d92-21eef06c8465a51eb0abebf952ba428b]
+11-23 06:12:18.669  1327  1327 I KeyboardThemeProvider: KeyboardThemeProvider.applyKeyboardTheme():27 Apply keyboard theme: theme_border_stylesheet_noshadow_gsans_pillkey_silkpopup_hover_light_phone_bottom4dp_navredesign_400_overlay_builtin_dynamic_color_light_base.binarypb:dynamic-gm3-light-fffefbff-ff475d92-21eef06c8465a51eb0abebf952ba428b_port
+11-23 06:12:18.670  4168  4168 W ziparchive: Unable to open '/data/app/~~Vh1jVXcmAERK5ByBfEDsyQ==/com.google.android.trichromelibrary_636771932-HB0eLN_IMs5kvmTdTEk8fQ==/TrichromeLibrary.dm': No such file or directory
+11-23 06:12:18.670  4168  4168 W ziparchive: Unable to open '/data/app/~~Vh1jVXcmAERK5ByBfEDsyQ==/com.google.android.trichromelibrary_636771932-HB0eLN_IMs5kvmTdTEk8fQ==/TrichromeLibrary.dm': No such file or directory
+11-23 06:12:18.670  4168  4168 W ami.publicfunds: Entry not found
+11-23 06:12:18.671  1327  1327 I AndroidIME: InputBundleManager.loadActiveInputBundleId():450 loadActiveInputBundleId: und-Latn-x-password, password
+11-23 06:12:18.671  1327  1327 I GoogleInputMethodService: GoogleInputMethodService.onCreateInputView():1884 onCreateInputView()
+11-23 06:12:18.672  4168  4168 D nativeloader: Configuring clns-8 for other apk /data/app/~~Vh1jVXcmAERK5ByBfEDsyQ==/com.google.android.trichromelibrary_636771932-HB0eLN_IMs5kvmTdTEk8fQ==/TrichromeLibrary.apk. target_sdk_version=34, uses_libraries=ALL, library_path=/data/app/~~ts6zlBgOHltAutSqpJDU5w==/com.google.android.webview-rLukTx1IqEpr30F2nd0y9w==/lib/arm64:/data/app/~~ts6zlBgOHltAutSqpJDU5w==/com.google.android.webview-rLukTx1IqEpr30F2nd0y9w==/WebViewGoogle.apk!/lib/arm64-v8a:/data/app/~~Vh1jVXcmAERK5ByBfEDsyQ==/com.google.android.trichromelibrary_636771932-HB0eLN_IMs5kvmTdTEk8fQ==/TrichromeLibrary.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand
+11-23 06:12:18.672  4168  4168 D ApplicationLoaders: Returning zygote-cached class loader: /system_ext/framework/androidx.window.extensions.jar
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{e9f014c com.android.cts.priv.ctsshim/10203} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{396a2b0 com.google.android.youtube/10167} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{8e0e595 com.android.internal.display.cutout.emulation.corner/10014} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{3f356aa com.android.internal.display.cutout.emulation.double/10076} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{47448dc com.google.android.googlequicksearchbox/10143} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{47fe29b com.google.android.onetimeinitializer/10128} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{60e638 com.google.android.ext.shared/10118} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{6b74611 com.android.virtualmachine.res/10184} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{5883376 com.android.managedprovisioning.auto_generated_rro_product__/10015} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{df00d77 com.android.carrierconfig.auto_generated_rro_vendor__/10085} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{45a2de4 com.google.android.server.deviceconfig.resources/10185} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{6b9324d com.android.systemui.emulation.pixel_3_xl/10009} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{ebc1102 com.android.systemui.emulation.pixel_4_xl/10077} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{cce0a13 com.android.systemui.emulation.pixel_fold/10037} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{87e4450 com.android.providers.telephony.auto_generated_characteristics_rro/10062} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{c73a649 com.android.simappdialog.auto_generated_rro_product__/10016} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{f5e3b4e com.android.htmlviewer/10116} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{d85346f com.google.android.health.connect.backuprestore/10192} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{48b557c com.android.systemui.auto_generated_rro_product__/10064} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{c00c03 com.google.android.apps.messaging/10137} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{d475e05 com.google.android.soundpicker/10163} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{2e6be5a com.google.android.marvin.talkbackoverlay/10090} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{ddaa88b com.google.android.configupdater/10141} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{bf64d68 com.android.internal.emulation.pixel_3a_xl/10063} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{9e4d581 com.android.internal.emulation.pixel_6_pro/10038} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{2426626 com.android.internal.emulation.pixel_7_pro/10020} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{8c94267 com.android.internal.emulation.pixel_8_pro/10036} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{296d814 com.android.internal.emulation.pixel_9_pro/10039} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{38848bd com.android.internal.emulation.pixel_3a/10042} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{65ebeb2 com.android.internal.emulation.pixel_4a/10023} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{41d9e03 com.android.internal.emulation.pixel_6a/10048} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{136180 com.android.internal.emulation.pixel_7a/10060} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{8f5b3b9 com.android.internal.emulation.pixel_8a/10007} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{77613fe com.google.android.overlay.googlewebview/10033} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{336eecf com.google.android.apps.safetyhub/10134} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{bd2175f com.google.android.hotspot2.osulogin/10202} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{e0d15ac com.android.simappdialog/10121} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{734d275 com.android.internal.display.cutout.emulation.hole/10035} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{51b720a com.android.internal.display.cutout.emulation.tall/10022} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{72aca7b com.android.internal.systemui.navbar.threebutton/10078} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{de2b0ae com.android.camera2/10154} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{d0be098 com.android.internal.ranchu.commonoverlay/10057} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{a0d20f1 com.android.systemui.auto_generated_rro_vendor__/10086} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{306a4d6 com.google.android.deskclock/10151} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{3919357 com.android.internal.systemui.navbar.twobutton/10059} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{f2071b2 com.google.android.as/10132} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{c2a6e44 com.google.android.gm/10166} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{841db2d com.android.systemui.emulation.pixel_3/10004} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{6a03862 com.android.systemui.emulation.pixel_4/10067} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{1320df3 com.android.systemui.emulation.pixel_5/10073} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{f822ab0 com.android.systemui.emulation.pixel_6/10008} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{78dfd29 com.android.systemui.emulation.pixel_7/10069} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{14d78ae com.android.systemui.emulation.pixel_8/10074} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{d55964f com.android.systemui.emulation.pixel_9/10055} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{15741dc com.android.printspooler/10112} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{46042e5 com.google.android.connectivity.resources.goldfish.overlay/10087} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{37c71ba com.android.dreams.basic/10127} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{67f486b com.google.android.networkstack.tethering.emulator/10019} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{a049fc8 com.android.providers.settings.auto_generated_rro_product__/10053} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{9572861 com.google.android.as.oss/10142} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{46fef86 com.android.traceur.auto_generated_rro_product__/10017} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{6480047 com.android.internal.emulation.pixel_9_pro_fold/10044} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{fee6e4f com.google.android.devicelockcontroller/10188} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{aa7f074 com.google.android.dialer/10133} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{27ce99d com.android.internal.emulation.pixel_3/10065} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{acb7e12 com.android.internal.emulation.pixel_4/10049} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{cfa59e3 com.android.internal.emulation.pixel_5/10001} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{68d9fe0 com.android.internal.emulation.pixel_6/10031} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{8438299 com.android.internal.emulation.pixel_7/10075} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{1df695e com.android.internal.emulation.pixel_8/10021} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{aeeb13f com.android.internal.emulation.pixel_9/10011} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{75cda0c com.google.android.captiveportallogin/10113} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{e40af55 android.auto_generated_characteristics_rro/10010} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{7b4bd6a com.google.android.appsearch.apk/10195} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{3a7225b com.android.musicfx/10092} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{8038af8 com.google.android.apps.docs/10158} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{a4b0e79 com.google.android.apps.maps/10157} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{1a9ebd1 com.google.android.markup/10156} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{e3b39dc com.google.android.rkpdapp/10190} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{fd94636 com.google.android.contacts/10155} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{6ab8937 com.android.server.telecom.auto_generated_rro_product__/10030} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{2625ea4 com.android.phone.auto_generated_characteristics_rro/10072} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{390740d com.google.android.overlay.googleconfig/10051} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{6eb8fc2 com.android.chrome/10148} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{a2581d3 com.android.bips.auto_generated_rro_product__/10013} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{bb8c110 com.google.android.apps.customization.pixel/10165} BLOCKED
+11-23 06:12:18.673   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{add4409 com.google.android.tag/10097} BLOCKED
+11-23 06:12:18.674   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{2e6e60e com.google.android.overlay.permissioncontroller/10034} BLOCKED
+11-23 06:12:18.674   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{ff8e5a5 com.google.android.partnersetup/10131} BLOCKED
+11-23 06:12:18.674   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{33c682f com.google.android.apps.wallpaper.nexus/10145} BLOCKED
+11-23 06:12:18.674   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{bd0de3c com.google.android.apps.nexuslauncher/10177} BLOCKED
+11-23 06:12:18.674   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{a0d17c5 com.android.theme.font.notoserifsource/10012} BLOCKED
+11-23 06:12:18.674   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{c2f551a com.google.android.safetycenter.resources/10193} BLOCKED
+11-23 06:12:18.674   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{831584b com.android.internal.display.cutout.emulation.waterfall/10046} BLOCKED
+11-23 06:12:18.674   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{aeba228 com.android.internal.systemui.navbar.transparent/10003} BLOCKED
+11-23 06:12:18.674   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{4ac6b41 com.google.android.connectivity.resources/10196} BLOCKED
+11-23 06:12:18.674   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{b5da8e6 com.android.providers.contacts.auto_generated_rro_product__/10071} BLOCKED
+11-23 06:12:18.674   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{83b2e27 com.google.android.feedback/10175} BLOCKED
+11-23 06:12:18.674   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{26cb8d4 com.google.android.printservice.recommendation/10120} BLOCKED
+11-23 06:12:18.674   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{937a7d com.google.android.apps.photos/10168} BLOCKED
+11-23 06:12:18.674   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{420becb com.google.android.calendar/10161} BLOCKED
+11-23 06:12:18.674   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{fa10a71 com.google.android.documentsui/10109} BLOCKED
+11-23 06:12:18.674   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{7cb6d72 com.android.systemui.emulation.pixel_3a_xl/10002} BLOCKED
+11-23 06:12:18.674   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{52285c3 com.android.systemui.emulation.pixel_6_pro/10025} BLOCKED
+11-23 06:12:18.674   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{c468e40 com.android.systemui.emulation.pixel_7_pro/10024} BLOCKED
+11-23 06:12:18.674   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{ee24179 com.android.systemui.emulation.pixel_8_pro/10000} BLOCKED
+11-23 06:12:18.674   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{2deeebe com.android.systemui.emulation.pixel_9_pro/10054} BLOCKED
+11-23 06:12:18.674   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{a9dbb1f com.android.carrierconfig.auto_generated_rro_product__/10081} BLOCKED
+11-23 06:12:18.674   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{d264e6c com.android.devicediagnostics.auto_generated_rro_product__/10026} BLOCKED
+11-23 06:12:18.674   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{8bc7c35 com.android.providers.partnerbookmarks/10126} BLOCKED
+11-23 06:12:18.674   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{c1738ca com.android.wallpaper.livepicker/10105} BLOCKED
+11-23 06:12:18.674   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{f6cea3b com.android.providers.telephony.auto_generated_rro_product__/10006} BLOCKED
+11-23 06:12:18.674   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{55fe558 com.android.phone.auto_generated_rro_vendor__/10088} BLOCKED
+11-23 06:12:18.674   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{bc5a6b1 com.android.imsserviceentitlement/10140} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{9d81796 com.android.internal.emulation.pixel_9_pro_xl/10070} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{df84acf com.google.android.healthconnect.controller/10191} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{c35ef17 com.android.internal.emulation.pixel_2_xl/10018} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{499ff04 com.android.internal.emulation.pixel_3_xl/10043} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{25cfced com.android.internal.emulation.pixel_4_xl/10082} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{2f61722 com.android.internal.emulation.pixel_fold/10061} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{42065b3 com.android.bookmarkprovider/10122} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{c3a0770 com.google.android.overlay.pixelconfigcommon/10029} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{3997ae9 com.android.systemui.accessibility.accessibilitymenu.auto_generated_rro_product__/10079} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{502836e com.android.systemui.emulation.pixel_3a/10066} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{b31aa0f com.android.systemui.emulation.pixel_4a/10040} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{c902a9c com.android.systemui.emulation.pixel_6a/10047} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{705dca5 com.android.systemui.emulation.pixel_7a/10032} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{357687a com.android.systemui.emulation.pixel_8a/10041} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{12543c7 com.google.android.settings.intelligence/10139} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{90d7eab com.google.android.projection.gearhead/10136} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{668d82b com.google.android.uwb.resources/10197} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{a993908 com.android.cts.ctsshim/10204} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{8c35488 com.google.android.wifi.resources/10200} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{81c9e21 com.google.android.wifi.dialog/10201} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{ae39246 com.android.wallpaper/10174} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{19acc07 com.google.android.apps.wallpaper/10181} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{d7d3134 com.google.android.odad/10129} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{583fb5d com.android.settings.auto_generated_rro_product__/10028} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{6b68cd2 com.android.systemui.emulation.pixel_9_pro_xl/10083} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{70e21a3 com.android.companiondevicemanager.auto_generated_characteristics_rro/10050} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{6562ca0 com.android.internal.systemui.navbar.gestural/10056} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{809f059 com.google.android.apps.youtube.music/10159} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{14ca41e com.android.bluetoothmidiservice/10110} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{4d734ff com.android.storagemanager.auto_generated_rro_product__/10080} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{781892b com.google.android.cellbroadcastreceiver/10206} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{e0172cc com.android.phone.auto_generated_rro_product__/10052} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{d603915 com.android.systemui.emulation.pixel_9_pro_fold/10058} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{e9ae42a android.auto_generated_rro_product__/10068} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{20fec6a com.google.android.inputmethod.latin/10164} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{bf4221b android.auto_generated_rro_vendor__/10089} BLOCKED
+11-23 06:12:18.676   540   780 I AppsFilter: interaction: PackageSetting{f4fed7f network.itonami.publicfunds/10207} -> PackageSetting{538efb8 com.google.android.apps.restore/10135} BLOCKED
+11-23 06:12:18.678  4168  4168 D nativeloader: Configuring clns-9 for other apk /data/app/~~ts6zlBgOHltAutSqpJDU5w==/com.google.android.webview-rLukTx1IqEpr30F2nd0y9w==/WebViewGoogle.apk. target_sdk_version=34, uses_libraries=, library_path=/data/app/~~ts6zlBgOHltAutSqpJDU5w==/com.google.android.webview-rLukTx1IqEpr30F2nd0y9w==/lib/arm64:/data/app/~~ts6zlBgOHltAutSqpJDU5w==/com.google.android.webview-rLukTx1IqEpr30F2nd0y9w==/WebViewGoogle.apk!/lib/arm64-v8a:/data/app/~~Vh1jVXcmAERK5ByBfEDsyQ==/com.google.android.trichromelibrary_636771932-HB0eLN_IMs5kvmTdTEk8fQ==/TrichromeLibrary.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand
+11-23 06:12:18.732  1133  1133 D AutofillManager: Fill dialog is enabled:false, hints=[password, passwordAuto, creditCardNumber, creditCardSecurityCode, creditCardExpirationDate]
+11-23 06:12:18.732  1133  1133 D DeviceSearchAlg: search timeout = %d200
+11-23 06:12:18.733  1133  1133 W PageIndicator: Total number of pages invalid: 0. Assuming 1 page.
+11-23 06:12:18.733  1133  1133 W BcSmartspaceView: Current card is not present in the Adapter; cannot log.
+11-23 06:12:18.734  1133  1133 I OverviewComponentObserver: updateOverviewTargets: mIsHomeDisabled=false, isDefaultHomeNull=false, mIsDefaultHome=true
+11-23 06:12:18.734  1133  1133 D OverviewActionsView: updateActionButtonsVisibility() called: showSingleTaskActions = [true], showGroupActions = [false]
+11-23 06:12:18.742   540  1767 I AppWidgetServiceImpl: startListening() 0
+11-23 06:12:18.743  1133  1133 D ModelCallbacks: startBinding: hotseat layout was vertical: false and is setting to false
+11-23 06:12:18.743  1133  1133 D Launcher.Workspace: addInScreenFromBind: hotseat inflation with x = 0 and y = 0
+11-23 06:12:18.743   540  1767 I AppWidgetServiceImpl: getInstalledProvidersForProfiles() 0
+11-23 06:12:18.746  1133  1133 D Launcher.Workspace: addInScreenFromBind: hotseat inflation with x = 1 and y = 0
+11-23 06:12:18.746  1133  1133 D Launcher.Workspace: addInScreenFromBind: hotseat inflation with x = 2 and y = 0
+11-23 06:12:18.746  1133  1133 D Launcher.Workspace: addInScreenFromBind: hotseat inflation with x = 3 and y = 0
+11-23 06:12:18.746   540  1767 I AppWidgetServiceImpl: notifyProviderInheritance() 0
+11-23 06:12:18.773  4168  4168 I cr_WVCFactoryProvider: Loaded version=124.0.6367.219 minSdkVersion=29 isBundle=false multiprocess=true packageId=2
+11-23 06:12:18.779  4168  4168 D nativeloader: Load /data/app/~~Vh1jVXcmAERK5ByBfEDsyQ==/com.google.android.trichromelibrary_636771932-HB0eLN_IMs5kvmTdTEk8fQ==/TrichromeLibrary.apk!/lib/arm64-v8a/libmonochrome_64.so using ns clns-9 from class loader (caller=/data/app/~~ts6zlBgOHltAutSqpJDU5w==/com.google.android.webview-rLukTx1IqEpr30F2nd0y9w==/WebViewGoogle.apk): ok
+11-23 06:12:18.784   540  1767 D SearchUiPerUserService: Creating SearchSessionInfo for session Id=com.google.android.apps.nexuslauncher:c94e4093-e7e9-4c99-9bd9-e430462f845d,0
+11-23 06:12:18.784  4168  4168 D nativeloader: Load /system/lib64/libwebviewchromium_plat_support.so using ns clns-9 from class loader (caller=/data/app/~~ts6zlBgOHltAutSqpJDU5w==/com.google.android.webview-rLukTx1IqEpr30F2nd0y9w==/WebViewGoogle.apk): ok
+11-23 06:12:18.785   540  1767 D SearchUiPerUserService: Storing callback for session Id=com.google.android.apps.nexuslauncher:c94e4093-e7e9-4c99-9bd9-e430462f845d,0 and callback=android.os.BinderProxy@d2d5bef
+11-23 06:12:18.786  1407  1407 I AiAiEcho: SearchContextManagerImpl::setSearchContext resultTypes=[141151] extras=[Bundle[{launcher.maxInlineIcons=3, dynamic_ranking_m3_enabled=true, qs_tiles_asi_enabled=true, allowlist_enabled=false, one_search_enabled=true, system_clock=true, version_code=12, gms_play_query_lower_bound=2, gms_play_query_upper_bound=20, recent_search_block_enabled=true, gms_play_feature_supported=true, launcher.gridSize=4, showhiddentargets_enabled=false, ose_info=1}]] sessionId=[com.google.android.apps.nexuslauncher:c94e4093-e7e9-4c99-9bd9-e430462f845d,0]
+11-23 06:12:18.797  1133  1133 D OverviewActionsView: updateActionButtonsVisibility() called: showSingleTaskActions = [true], showGroupActions = [false]
+11-23 06:12:18.799  1133  1179 D InputMonitorCompat: Input monitor (minus-one-disp0) created
+11-23 06:12:18.799   540  1767 V WindowManager: Queueing transition: TransitionRecord{bdfc101 id=-1 type=CHANGE flags=0x0}
+11-23 06:12:18.801  1133  1133 W SplitSelectStateCtor: Missing session instanceIds
+11-23 06:12:18.801  1133  1133 D StatsLog: LAUNCHER_SPLIT_SELECTION_EXIT_INTERRUPTED
+11-23 06:12:18.801  1133  1133 D StateManager: goToState - fromState: Normal, toState: Normal, partial trace:
+11-23 06:12:18.801  1133  1133 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(go/retraceme 31f9979659277bb965985aff1272c33e3c3c9e755b77166d20a2465454178f2c:4)
+11-23 06:12:18.801  1133  1133 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(go/retraceme 31f9979659277bb965985aff1272c33e3c3c9e755b77166d20a2465454178f2c:1)
+11-23 06:12:18.801  1133  1133 D StateManager: 	at com.android.launcher3.statemanager.StatefulActivity.onStop(go/retraceme 31f9979659277bb965985aff1272c33e3c3c9e755b77166d20a2465454178f2c:34)
+11-23 06:12:18.801   540  1767 I AppWidgetServiceImpl: setAppWidgetHidden() 0
+11-23 06:12:18.801  1133  1133 D StatsLog: LAUNCHER_GOOGLE_SEARCH_RESTORE_LIST_SIZE_AFTER_ACTIVITY_RESTART
+11-23 06:12:18.802  1133  1179 D InputMonitorCompat: Input event receiver for monitor (minus-one-disp0) created
+11-23 06:12:18.802  1133  1133 D OverviewActionsView: updateActionButtonsVisibility() called: showSingleTaskActions = [true], showGroupActions = [false]
+11-23 06:12:18.816  1133  1179 D SearchTargetUtil: query= size=1
+11-23 06:12:18.816  1133  1179 D SearchTargetUtil: layoutType=icon_row resultType=4096 packageName= extras=Bundle{aiai_settings_enabled=true,icon_container_enabled=true,zero_state_query_ready=true,zero_state_all_apps_web_suggest_count=3,rank=1.0,toast_settings_toggle_values=16777476,key_ipc_start=151346,hide_subtitle=true,enable_launch_animations=true,zero_state_qsb_web_suggest_count=10,}ParentID: null targetID: SESSION_INFO:0::zero_state_flags
+11-23 06:12:18.817   870   921 D WindowManagerShell: setLauncherKeepClearAreaHeight: visible=true, height=527
+11-23 06:12:18.817  1133  1133 I SsCardPagerAdapter: [rmv] Rendering flag - enabled: false 
+11-23 06:12:18.819  1133  1133 I SsCardPagerAdapter: Use UI template for the feature: 1
+11-23 06:12:18.823  1133  1133 D SsBaseTemplateCard: No text view can be set up
+11-23 06:12:18.826  1133  1133 D SsBaseTemplateCard: Passed-in item info is null
+11-23 06:12:18.826  1133  1133 D SsBaseTemplateCard: Passed-in item info is null
+11-23 06:12:18.826  1133  1133 D SsBaseTemplateCard: Passed-in item info is null
+11-23 06:12:18.826  1133  1133 I SsBaseTemplateCard: Secondary card pane is null
+11-23 06:12:18.840  1327  1327 I KeyboardModeManager: KeyboardModeManager.setInputViewKeyboardViewHolderProvider():625 setInputView() : supportsOneHandedMode=true supportsSplitMode=true
+11-23 06:12:18.842  1327  1327 I AndroidIME: KeyboardViewManager.updateKeyboardBackgroundFrameVisibility():314 Set background frame visibility. old:8, new:8
+11-23 06:12:18.842  1327  1327 I NormalModeController: NormalModeController.getKeyboardBodyViewHolderPaddingBottom():104 currentPrimeKeyboardType:SOFT systemPaddingBottom:-1
+11-23 06:12:18.842  1327  1327 I KeyboardHeightUtil: KeyboardHeightUtil.calculateMaxKeyboardBodyHeight():45 leave 281 height for app when ime window height:2272, header height:116 and isFullscreenMode:false, so the max keyboard body height is:1875
+11-23 06:12:18.842  1327  1327 I KeyboardHeightUtil: KeyboardHeightUtil.calculateMaxKeyboardBodyHeight():45 leave 281 height for app when ime window height:2272, header height:116 and isFullscreenMode:false, so the max keyboard body height is:1875
+11-23 06:12:18.842  1327  1327 I KeyboardHeightUtil: KeyboardHeightUtil.calculateMaxKeyboardBodyHeight():45 leave 281 height for app when ime window height:2272, header height:116 and isFullscreenMode:false, so the max keyboard body height is:1875
+11-23 06:12:18.842  1327  1327 I KeyboardHeightUtil: KeyboardHeightUtil.calculateMaxKeyboardBodyHeight():45 leave 281 height for app when ime window height:2272, header height:116 and isFullscreenMode:false, so the max keyboard body height is:1875
+11-23 06:12:18.842  1327  1327 I NormalModeController: NormalModeController.getKeyboardBodyViewHolderPaddingBottom():104 currentPrimeKeyboardType:SOFT systemPaddingBottom:-1
+11-23 06:12:18.842  1327  1327 I KeyboardHeightUtil: KeyboardHeightUtil.calculateMaxKeyboardBodyHeight():45 leave 281 height for app when ime window height:2272, header height:116 and isFullscreenMode:false, so the max keyboard body height is:1875
+11-23 06:12:18.842  1327  1327 I KeyboardHeightUtil: KeyboardHeightUtil.calculateMaxKeyboardBodyHeight():45 leave 281 height for app when ime window height:2272, header height:116 and isFullscreenMode:false, so the max keyboard body height is:1875
+11-23 06:12:18.842  1327  1327 I KeyboardModeManager: KeyboardModeManager.setInputViewKeyboardViewHolderProvider():613 setInputView() : supportsOneHandedMode=true, supportSplitMode=true
+11-23 06:12:18.842  1327  1327 I KeyboardModeManager: KeyboardModeManager.setInputViewKeyboardViewHolderProvider():625 setInputView() : supportsOneHandedMode=true supportsSplitMode=true
+11-23 06:12:18.842  1327  1327 I NormalModeController: NormalModeController.getKeyboardBodyViewHolderPaddingBottom():104 currentPrimeKeyboardType:SOFT systemPaddingBottom:-1
+11-23 06:12:18.842  1327  1327 I KeyboardHeightUtil: KeyboardHeightUtil.calculateMaxKeyboardBodyHeight():45 leave 281 height for app when ime window height:2272, header height:116 and isFullscreenMode:false, so the max keyboard body height is:1875
+11-23 06:12:18.842  1327  1327 I KeyboardHeightUtil: KeyboardHeightUtil.calculateMaxKeyboardBodyHeight():45 leave 281 height for app when ime window height:2272, header height:116 and isFullscreenMode:false, so the max keyboard body height is:1875
+11-23 06:12:18.842  1327  1327 I KeyboardHeightUtil: KeyboardHeightUtil.calculateMaxKeyboardBodyHeight():45 leave 281 height for app when ime window height:2272, header height:116 and isFullscreenMode:false, so the max keyboard body height is:1875
+11-23 06:12:18.842  1327  1327 I KeyboardHeightUtil: KeyboardHeightUtil.calculateMaxKeyboardBodyHeight():45 leave 281 height for app when ime window height:2272, header height:116 and isFullscreenMode:false, so the max keyboard body height is:1875
+11-23 06:12:18.842  1327  1327 I NormalModeController: NormalModeController.getKeyboardBodyViewHolderPaddingBottom():104 currentPrimeKeyboardType:SOFT systemPaddingBottom:-1
+11-23 06:12:18.843  1327  1327 I KeyboardHeightUtil: KeyboardHeightUtil.calculateMaxKeyboardBodyHeight():45 leave 281 height for app when ime window height:2272, header height:116 and isFullscreenMode:false, so the max keyboard body height is:1875
+11-23 06:12:18.843  1327  1327 I KeyboardHeightUtil: KeyboardHeightUtil.calculateMaxKeyboardBodyHeight():45 leave 281 height for app when ime window height:2272, header height:116 and isFullscreenMode:false, so the max keyboard body height is:1875
+11-23 06:12:18.843  1327  1327 I KeyboardModeManager: KeyboardModeManager.setInputViewKeyboardViewHolderProvider():613 setInputView() : supportsOneHandedMode=true, supportSplitMode=true
+11-23 06:12:18.843  1327  1327 I AndroidIME: InputBundleManager.loadActiveInputBundleId():450 loadActiveInputBundleId: und-Latn-x-password, password
+11-23 06:12:18.843   540  1767 W PackageConfigPersister: App-specific configuration not found for packageName: network.itonami.publicfunds and userId: 0
+11-23 06:12:18.846  1133  1133 D InputMonitorCompat: Input event receiver for monitor (minus-one-disp0) disposed
+11-23 06:12:18.847  1133  1133 D InputMonitorCompat: Input monitor (minus-one-disp0) disposed
+11-23 06:12:18.848  1133  1133 D TISBindHelper: TIS service connected
+11-23 06:12:18.848  1133  1133 D b/254119092: Set mActivity=com.google.android.apps.nexuslauncher.NexusLauncherActivity@8863dee
+11-23 06:12:18.848  1133  1133 D b/254119092: mActivity and mContext agree taskbarIsPresent=false
+11-23 06:12:18.848  1133  1133 D b/254119092: registering activity lifecycle callbacks from setActivity().
+11-23 06:12:18.850   540   964 W InputManager-JNI: Input channel object '[Gesture Monitor] minus-one (client)' was disposed without first being removed with the input manager!
+11-23 06:12:18.850   540  1767 I ActivityTaskManager: Activity reported stop, but no longer stopping: ActivityRecord{f2d6e99 u0 com.google.android.apps.nexuslauncher/.NexusLauncherActivity t7} STOPPED
+11-23 06:12:18.864  4168  4168 I cr_LibraryLoader: Successfully loaded native library
+11-23 06:12:18.865  4168  4168 I cr_CachingUmaRecorder: Flushed 6 samples from 6 histograms, 0 samples were dropped.
+11-23 06:12:18.866  4168  4206 I chromium: [INFO:variations_seed_loader.cc(66)] Failed to open file for reading.: No such file or directory (2)
+11-23 06:12:18.866  4168  4206 I cr_VariationsUtils: Failed reading seed file "/data/user/0/network.itonami.publicfunds/app_webview/variations_seed_new"
+11-23 06:12:18.866  4168  4206 I chromium: [INFO:variations_seed_loader.cc(66)] Failed to open file for reading.: No such file or directory (2)
+11-23 06:12:18.866  4168  4206 I cr_VariationsUtils: Failed reading seed file "/data/user/0/network.itonami.publicfunds/app_webview/variations_seed"
+11-23 06:12:18.866  4168  4206 I cr_VariationsUtils: Requesting new seed from IVariationsSeedServer
+11-23 06:12:18.867   540   964 D CompatChangeReporter: Compat change id reported: 261072174; UID 10152; state: ENABLED
+11-23 06:12:18.868   540   964 D ActivityManager: sync unfroze 3538 com.google.android.webview:webview_service for 6
+11-23 06:12:18.868   540   964 W IPCThreadState: Sending oneway calls to frozen process.
+11-23 06:12:18.870  4168  4187 I RustStdoutStderr: [INFO:variations_seed_loader.cc(66)] Failed to open file for reading.: No such file or directory (2)
+11-23 06:12:18.870  4168  4187 I RustStdoutStderr: [INFO:variations_seed_loader.cc(66)] Failed to open file for reading.: No such file or directory (2)
+11-23 06:12:18.879  4168  4168 I cr_CombinedPProvider: #registerProvider() provider:WV.V7@c2dd487 isPolicyCacheEnabled:false policyProvidersSize:0
+11-23 06:12:18.880   540   560 V WindowManager: Sent Transition (#25) createdAt=11-23 06:12:18.616 via request=TransitionRequestInfo { type = CLOSE, triggerTask = null, pipTask = null, remoteTransition = RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@f931edf, appThread = null, debugName = null }, displayChange = null, flags = 0, debugId = 25 }
+11-23 06:12:18.880   540   560 V WindowManager:     startWCT=WindowContainerTransaction { changes = {} hops = [] errorCallbackToken=null taskFragmentOrganizer=null }
+11-23 06:12:18.880   540   560 V WindowManager:     info={id=25 t=CLOSE f=0x0 trk=0 r=[] c=[]}
+11-23 06:12:18.881   870  1002 V WindowManagerShell: onTransitionReady(transaction=2319282340459)
+11-23 06:12:18.881   870   921 V WindowManagerShell: onTransitionReady (#25) android.os.BinderProxy@3f9c85f: {id=25 t=CLOSE f=0x0 trk=0 r=[] c=[]}
+11-23 06:12:18.881   870   921 V WindowManagerShell: No transition roots in (#25) android.os.BinderProxy@3f9c85f@0 so abort
+11-23 06:12:18.882   870   921 V WindowManagerShell: Transition animation finished (aborted=true), notifying core (#25) android.os.BinderProxy@3f9c85f@0
+11-23 06:12:18.884   540   560 V WindowManager: Finish Transition (#25): created at 11-23 06:12:18.616 collect-started=0.014ms request-sent=9.155ms started=10.723ms ready=234.269ms sent=263.929ms finished=266.918ms
+11-23 06:12:18.885   870   921 V WindowManagerShell: Track 0 became idle
+11-23 06:12:18.885   870   921 V WindowManagerShell: All active transition animations finished
+11-23 06:12:18.885  4168  4168 I cr_PolicyProvider: #setManagerAndSource() 0
+11-23 06:12:18.887   870   921 V WindowManagerShell: Transition requested (#26): android.os.BinderProxy@1cf49f1 TransitionRequestInfo { type = CHANGE, triggerTask = null, pipTask = null, remoteTransition = RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@f3019d6, appThread = null, debugName = null }, displayChange = null, flags = 0, debugId = 26 }
+11-23 06:12:18.888   870   921 V WindowManagerShell: RemoteTransition directly requested for (#26) android.os.BinderProxy@1cf49f1: RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@f3019d6, appThread = null, debugName = null }
+11-23 06:12:18.889   389   389 I BpBinder: onLastStrongRef automatically unlinking death recipients: 
+11-23 06:12:18.894   344   464 I netd    : tetherGetStats() -> {[]} <0.48ms>
+11-23 06:12:18.894   540   794 D ConnectivityService: releasing NetworkRequest [ REQUEST id=114, [ Transports: CELLULAR Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&NOT_VCN_MANAGED&NOT_BANDWIDTH_CONSTRAINED Forbidden: LOCAL_NETWORK Uid: 10143 RequestorUid: 10143 RequestorPkg: com.google.android.googlequicksearchbox UnderlyingNetworks: Null] ] (release request)
+11-23 06:12:18.895   540  1875 W ProcessStats: Tracking association SourceState{e7c0ad7 network.itonami.publicfunds/10207 BTop #6099} whose proc state 2 is better than process ProcessState{433d691 com.google.android.webview:webview_service/10152 pkg=com.google.android.webview} proc state 14 (0 skipped)
+11-23 06:12:18.897   540   773 V WindowManager: Queueing transition: TransitionRecord{d4fdead id=-1 type=CLOSE flags=0x0}
+11-23 06:12:18.898   540   794 I ConnectivityService: Update capabilities for net 101 : -FOREGROUND
+11-23 06:12:18.907   344   464 I netd    : networkSetPermissionForNetwork(101, 1) <9.05ms>
+11-23 06:12:18.908   540   794 W IPCThreadState: Sending oneway calls to frozen process.
+11-23 06:12:18.913   870  1313 V WindowManagerShell: onTransitionReady(transaction=2319282340472)
+11-23 06:12:18.914   870   921 V WindowManagerShell: onTransitionReady (#26) android.os.BinderProxy@1cf49f1: {id=26 t=CHANGE f=0x0 trk=1 r=[] c=[]}
+11-23 06:12:18.914   870   921 V WindowManagerShell: No transition roots in (#26) android.os.BinderProxy@1cf49f1@1 so abort
+11-23 06:12:18.914   870   921 V WindowManagerShell: Transition animation finished (aborted=true), notifying core (#26) android.os.BinderProxy@1cf49f1@1
+11-23 06:12:18.916   540   560 V WindowManager: Sent Transition (#26) createdAt=11-23 06:12:18.799 via request=TransitionRequestInfo { type = CHANGE, triggerTask = null, pipTask = null, remoteTransition = RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@90c7d73, appThread = null, debugName = null }, displayChange = null, flags = 0, debugId = 26 }
+11-23 06:12:18.916   540   560 V WindowManager:     startWCT=WindowContainerTransaction { changes = {} hops = [] errorCallbackToken=null taskFragmentOrganizer=null }
+11-23 06:12:18.916   540   560 V WindowManager:     info={id=26 t=CHANGE f=0x0 trk=1 r=[] c=[]}
+11-23 06:12:18.916   540   560 V WindowManager: Finish Transition (#26): created at 11-23 06:12:18.799 collect-started=80.35ms request-sent=87.845ms started=88.208ms ready=104.669ms sent=113.972ms finished=116.105ms
+11-23 06:12:18.917   870   921 V WindowManagerShell: Track 1 became idle
+11-23 06:12:18.917   870   921 V WindowManagerShell: All active transition animations finished
+11-23 06:12:18.917   870   921 V WindowManagerShell: Transition requested (#27): android.os.BinderProxy@de6457 TransitionRequestInfo { type = CLOSE, triggerTask = null, pipTask = null, remoteTransition = RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@38d6b44, appThread = null, debugName = null }, displayChange = null, flags = 0, debugId = 27 }
+11-23 06:12:18.917   870   921 V WindowManagerShell: RemoteTransition directly requested for (#27) android.os.BinderProxy@de6457: RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@38d6b44, appThread = null, debugName = null }
+11-23 06:12:18.919   389   389 I BpBinder: onLastStrongRef automatically unlinking death recipients: 
+11-23 06:12:18.931   540   560 V WindowManager: Sent Transition (#27) createdAt=11-23 06:12:18.897 via request=TransitionRequestInfo { type = CLOSE, triggerTask = null, pipTask = null, remoteTransition = RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@d277dcf, appThread = null, debugName = null }, displayChange = null, flags = 0, debugId = 27 }
+11-23 06:12:18.931   540   560 V WindowManager:     startWCT=WindowContainerTransaction { changes = {} hops = [] errorCallbackToken=null taskFragmentOrganizer=null }
+11-23 06:12:18.931   540   560 V WindowManager:     info={id=27 t=CLOSE f=0x0 trk=2 r=[] c=[]}
+11-23 06:12:18.932   540  1875 W UserManagerService: Requested status bar icon for non-badged user 0
+11-23 06:12:18.932   540  1875 W UserManagerService: Requested status bar icon for non-badged user 0
+11-23 06:12:18.932   870  1005 V WindowManagerShell: onTransitionReady(transaction=2319282340479)
+11-23 06:12:18.932   870   921 V WindowManagerShell: onTransitionReady (#27) android.os.BinderProxy@de6457: {id=27 t=CLOSE f=0x0 trk=2 r=[] c=[]}
+11-23 06:12:18.933   870   921 V WindowManagerShell: No transition roots in (#27) android.os.BinderProxy@de6457@2 so abort
+11-23 06:12:18.933   870   921 V WindowManagerShell: Transition animation finished (aborted=true), notifying core (#27) android.os.BinderProxy@de6457@2
+11-23 06:12:18.933   870   921 V WindowManagerShell: Track 2 became idle
+11-23 06:12:18.933   870   921 V WindowManagerShell: All active transition animations finished
+11-23 06:12:18.933   540   560 V WindowManager: Finish Transition (#27): created at 11-23 06:12:18.897 collect-started=16.899ms request-sent=17.293ms started=21.372ms ready=21.357ms sent=33.729ms finished=36.038ms
+11-23 06:12:18.936  4168  4168 I cr_CombinedPProvider: #linkNativeInternal() 1
+11-23 06:12:18.936  4168  4168 I cr_AppResProvider: #getApplicationRestrictionsFromUserManager() Bundle[EMPTY_PARCEL]
+11-23 06:12:18.936  4168  4168 I cr_PolicyProvider: #notifySettingsAvailable() 0
+11-23 06:12:18.937  4168  4168 I cr_CombinedPProvider: #onSettingsAvailable() 0
+11-23 06:12:18.937  4168  4168 I cr_CombinedPProvider: #flushPolicies()
+11-23 06:12:18.942  1327  1332 I putmethod.latin: Background concurrent mark compact GC freed 22MB AllocSpace bytes, 30(65MB) LOS objects, 49% free, 12MB/25MB, paused 534us,29.736ms total 230.238ms
+11-23 06:12:18.956   540  1875 W UserManagerService: Requested status bar icon for non-badged user 0
+11-23 06:12:18.956   540   964 V GrammaticalInflectionUtils: AttributionSource: AttributionSource { uid = 99001, packageName = null, attributionTag = null, token = android.os.Binder@ea51057, deviceId = 0, next = null } does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+11-23 06:12:18.957   870   991 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=false callback=android.view.ViewRootImpl$$ExternalSyntheticLambda11@3d239b
+11-23 06:12:18.958   540  1875 D CoreBackPreview: Window{5fdc889 u0 Splash Screen network.itonami.publicfunds EXITING}: Setting back callback null
+11-23 06:12:18.964   540   607 W InputManager-JNI: Input channel object '5fdc889 Splash Screen network.itonami.publicfunds (client)' was disposed without first being removed with the input manager!
+11-23 06:12:18.964  1327  1334 W SP      : File ref is being finalized but wasn't closed, file: transformer_latin_tflite_20231010_zip[3]
+11-23 06:12:18.964  1327  1334 W SP      : File ref is being finalized but wasn't closed, file: scribe_latin_20231123_tflite_zip[3]
+11-23 06:12:18.964  1327  1334 W SP      : File ref is being finalized but wasn't closed, file: qrnn_en_us_reco_20231010_fst_20230613_recospec_zip[3]
+11-23 06:12:18.964  1327  1334 W SP      : File ref is being finalized but wasn't closed, file: transformer_latin_conf_tflite_20231010_zip[3]
+11-23 06:12:18.964  1327  1334 W SP      : File ref is being finalized but wasn't closed, file: pack_mapping_v1_lstm_20231127[2]
+11-23 06:12:18.964  1327  1334 W SP      : File ref is being finalized but wasn't closed, file: transformer_latin_seg_tflite_20231010_zip[3]
+11-23 06:12:18.964  1327  1334 W SP      : File ref is being finalized but wasn't closed, file: scribe_latin_20231123_recospec_zip[3]
+11-23 06:12:18.964  1327  1334 W SP      : File ref is being finalized but wasn't closed, file: en_us_20230613_compact_fst_zip[3]
+11-23 06:12:18.964  1327  1334 W SP      : File ref is being finalized but wasn't closed, file: transformer_latin_tflite_20231010_zip[3]
+11-23 06:12:18.964  1327  1334 W SP      : File ref is being finalized but wasn't closed, file: scribe_latin_20231123_tflite_zip[3]
+11-23 06:12:18.964  1327  1334 W SP      : File ref is being finalized but wasn't closed, file: qrnn_en_us_reco_20231010_fst_20230613_recospec_zip[3]
+11-23 06:12:18.964  1327  1334 W SP      : File ref is being finalized but wasn't closed, file: transformer_latin_conf_tflite_20231010_zip[3]
+11-23 06:12:18.964  1327  1334 W SP      : File ref is being finalized but wasn't closed, file: pack_mapping_v1_lstm_20231127[2]
+11-23 06:12:18.964  1327  1334 W SP      : File ref is being finalized but wasn't closed, file: transformer_latin_seg_tflite_20231010_zip[3]
+11-23 06:12:18.964  1327  1334 W SP      : File ref is being finalized but wasn't closed, file: scribe_latin_20231123_recospec_zip[3]
+11-23 06:12:18.964  1327  1334 W SP      : File ref is being finalized but wasn't closed, file: en_us_20230613_compact_fst_zip[3]
+11-23 06:12:18.964  1327  1334 W SP      : File ref is being finalized but wasn't closed, file: scribe_latin_20231123_recospec_zip[3]
+11-23 06:12:18.964  1327  1334 W SP      : File ref is being finalized but wasn't closed, file: scribe_latin_20231123_tflite_zip[3]
+11-23 06:12:18.964  1327  1334 W SP      : File ref is being finalized but wasn't closed, file: qrnn_en_us_reco_20231010_fst_20230613_recospec_zip[3]
+11-23 06:12:18.964  1327  1334 W SP      : File ref is being finalized but wasn't closed, file: transformer_latin_conf_tflite_20231010_zip[3]
+11-23 06:12:18.964  1327  1334 W SP      : File ref is being finalized but wasn't closed, file: transformer_latin_seg_tflite_20231010_zip[3]
+11-23 06:12:18.964  1327  1334 W SP      : File ref is being finalized but wasn't closed, file: transformer_latin_tflite_20231010_zip[3]
+11-23 06:12:18.964  1327  1334 W SP      : File ref is being finalized but wasn't closed, file: en_us_20230613_compact_fst_zip[3]
+11-23 06:12:18.966   937   937 D Zygote  : Forked child process 4213
+11-23 06:12:18.975  4213  4213 E libc    : SetHeapTaggingLevel: re-enabling tagging after it was disabled is not supported
+11-23 06:12:18.977  4213  4213 I ocessService0:0: Using CollectorTypeCMC GC.
+11-23 06:12:18.993  4213  4213 E ocessService0:0: Not starting debugger since process cannot load the jdwp agent.
+11-23 06:12:18.999   540   571 I ActivityManager: Start proc 4213:com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0/u0i1 for  {network.itonami.publicfunds/org.chromium.content.app.SandboxedProcessService0:0}
+11-23 06:12:18.999  4213  4213 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+11-23 06:12:19.003  4168  4219 W chromium: [WARNING:dns_config_service_android.cc(81)] Failed to read DnsConfig.
+11-23 06:12:19.004  4168  4187 I RustStdoutStderr: [WARNING:dns_config_service_android.cc(81)] Failed to read DnsConfig.
+11-23 06:12:19.008   870   991 W FrameTracker: Missed App frame:UNKNOWN: 24, 13122, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+11-23 06:12:19.008   870   991 W FrameTracker: Missed SF frame:UNKNOWN: 24, 13122, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+11-23 06:12:19.008   870   991 W FrameTracker: Missing HWUI jank callback for vsyncId: 13122, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+11-23 06:12:19.008   870   991 W FrameTracker: Missed SF frame:UNKNOWN: 80, 13137, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+11-23 06:12:19.008   870   991 W FrameTracker: Missing HWUI jank callback for vsyncId: 13137, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+11-23 06:12:19.008   870   991 W FrameTracker: Missed App frame:UNKNOWN: 88, 13152, 133526557, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+11-23 06:12:19.008   870   991 W FrameTracker: Missed SF frame:UNKNOWN: 88, 13152, 133526557, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+11-23 06:12:19.008   870   991 W FrameTracker: Missed App frame:UNKNOWN: 72, 13160, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+11-23 06:12:19.008   870   991 W FrameTracker: Missing HWUI jank callback for vsyncId: 13160, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+11-23 06:12:19.008   870   991 W FrameTracker: Missed App frame:UNKNOWN: 72, 13208, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+11-23 06:12:19.008   870   991 W FrameTracker: Missing HWUI jank callback for vsyncId: 13208, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+11-23 06:12:19.008   870   991 W FrameTracker: Missing HWUI jank callback for vsyncId: 13224, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+11-23 06:12:19.008   870   991 W FrameTracker: Missed App frame:UNKNOWN: 72, 13244, 94392192, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+11-23 06:12:19.033  4213  4213 D CompatChangeReporter: Compat change id reported: 242716250; UID 99001; state: ENABLED
+11-23 06:12:19.039  4213  4213 D ApplicationLoaders: Returning zygote-cached class loader: /system_ext/framework/androidx.window.extensions.jar
+11-23 06:12:19.039   136   136 W servicemanager: Isolated app with UID 99001 requested 'network_management', but the service is not allowed for isolated apps.
+11-23 06:12:19.070   136   136 W servicemanager: Isolated app with UID 99001 requested 'connectivity', but the service is not allowed for isolated apps.
+11-23 06:12:19.083  4213  4213 I LoadedApk: No resource references to update in package com.google.android.trichromelibrary
+11-23 06:12:19.084  4213  4213 I cr_WebViewApkApp: Launched version=124.0.6367.219 minSdkVersion=29 isBundle=false processName=com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0
+11-23 06:12:19.087  1327  1331 I putmethod.latin: JIT allocated 58KB for compiled code of boolean fjt.a(kwp, java.lang.Object[])
+11-23 06:12:19.093  1327  1331 I putmethod.latin: Compiler allocated 4729KB to compile boolean fjt.a(kwp, java.lang.Object[])
+11-23 06:12:19.094   136   136 W servicemanager: Isolated app with UID 99001 requested 'content_capture', but the service is not allowed for isolated apps.
+11-23 06:12:19.096  4213  4213 I cr_ChildProcessService: Creating new ChildProcessService pid=4213
+11-23 06:12:19.152  3538  3586 I cr_VariationsUtils: Throttling seed download job
+11-23 06:12:19.152  3538  3586 I cr_VariationsUtils: Writing new seed to app's data directory
+11-23 06:12:19.162  4168  4172 I ami.publicfunds: Compiler allocated 5250KB to compile void android.view.ViewRootImpl.performTraversals()
+11-23 06:12:19.175  1222  2469 I FontLog : Received query Noto Color Emoji Compat, URI content://com.google.android.gms.fonts [CONTEXT service_id=132 ]
+11-23 06:12:19.176  1222  2469 I FontLog : Query [emojicompat-emoji-font] resolved to {Noto Color Emoji Compat, wdth 100.0, wght 400, ital 0.0, bestEffort false} [CONTEXT service_id=132 ]
+11-23 06:12:19.177  1222  2469 I FontLog : Fetch {Noto Color Emoji Compat, wdth 100.0, wght 400, ital 0.0, bestEffort false} end status Status{statusCode=SUCCESS, resolution=null} [CONTEXT service_id=132 ]
+11-23 06:12:19.186  1222  2469 I FontLog : Pulling font file for id = 7, cache size = 7 [CONTEXT service_id=132 ]
+11-23 06:12:19.195  1222  2469 I FontLog : Pulling font file for id = 7, cache size = 7 [CONTEXT service_id=132 ]
+11-23 06:12:19.241  4168  4220 W cr_media: BLUETOOTH_CONNECT permission is missing.
+11-23 06:12:19.241  4168  4220 W cr_media: registerBluetoothIntentsIfNeeded: Requires BLUETOOTH permission
+11-23 06:12:19.246  4213  4240 I cr_LibraryLoader: Successfully loaded native library
+11-23 06:12:19.246  4213  4240 I cr_CachingUmaRecorder: Flushed 2 samples from 2 histograms, 0 samples were dropped.
+11-23 06:12:19.248  4213  4240 W SystemServiceRegistry: No service published for: uimode
+11-23 06:12:19.248   136   136 W servicemanager: Isolated app with UID 99001 requested 'uimode', but the service is not allowed for isolated apps.
+11-23 06:12:19.256  4213  4240 W chromium: [WARNING:runtime_features.cc(694)] SharedStorage for M118+ cannot be enabled in this configuration. Use --enable-features=SharedStorageAPI,SharedStorageAPIM118 in addition.
+11-23 06:12:19.256  4213  4240 W chromium: [WARNING:runtime_features.cc(730)] AttributionReportingCrossAppWeb cannot be enabled in this configuration. Use --enable-features=ConversionMeasurement,AttributionReportingCrossAppWeb in addition.
+11-23 06:12:19.265  1222  2469 I FontLog : Received query name=Google Sans&weight=700&besteffort=false, URI content://com.google.android.gms.fonts [CONTEXT service_id=132 ]
+11-23 06:12:19.266  1222  2469 I FontLog : Query [name=Google Sans&weight=700&besteffort=false] resolved to {Google Sans, wdth 100.0, wght 700, ital 0.0, bestEffort false} [CONTEXT service_id=132 ]
+11-23 06:12:19.267  1222  2469 I FontLog : Font PFD returned from cache for {Google Sans, wdth 100.0, wght 700, ital 0.0, bestEffort false} [CONTEXT service_id=132 ]
+11-23 06:12:19.267  1222  2469 I FontLog : Fetch {Google Sans, wdth 100.0, wght 700, ital 0.0, bestEffort false} end status Status{statusCode=SUCCESS, resolution=null} [CONTEXT service_id=132 ]
+11-23 06:12:19.271  1222  1240 I FontLog : Pulling font file for id = 8, cache size = 8 [CONTEXT service_id=132 ]
+11-23 06:12:19.275  1222  2469 I FontLog : Received query name=Noto Color Emoji Compat&weight=400&besteffort=false, URI content://com.google.android.gms.fonts [CONTEXT service_id=132 ]
+11-23 06:12:19.275  1222  2469 I FontLog : Query [name=Noto Color Emoji Compat&weight=400&besteffort=false] resolved to {Noto Color Emoji Compat, wdth 100.0, wght 400, ital 0.0, bestEffort false} [CONTEXT service_id=132 ]
+11-23 06:12:19.276  1222  2469 I FontLog : Fetch {Noto Color Emoji Compat, wdth 100.0, wght 400, ital 0.0, bestEffort false} end status Status{statusCode=SUCCESS, resolution=null} [CONTEXT service_id=132 ]
+11-23 06:12:19.277  1222  1240 I FontLog : Pulling font file for id = 9, cache size = 7 [CONTEXT service_id=132 ]
+11-23 06:12:19.279  1222  1240 I FontLog : Received query name=Google Sans&weight=400&besteffort=false, URI content://com.google.android.gms.fonts [CONTEXT service_id=132 ]
+11-23 06:12:19.279  1222  1240 I FontLog : Query [name=Google Sans&weight=400&besteffort=false] resolved to {Google Sans, wdth 100.0, wght 400, ital 0.0, bestEffort false} [CONTEXT service_id=132 ]
+11-23 06:12:19.279  1222  1240 I FontLog : Font PFD returned from cache for {Google Sans, wdth 100.0, wght 400, ital 0.0, bestEffort false} [CONTEXT service_id=132 ]
+11-23 06:12:19.279  1222  1240 I FontLog : Fetch {Google Sans, wdth 100.0, wght 400, ital 0.0, bestEffort false} end status Status{statusCode=SUCCESS, resolution=null} [CONTEXT service_id=132 ]
+11-23 06:12:19.280  1222  1240 I FontLog : Pulling font file for id = 10, cache size = 8 [CONTEXT service_id=132 ]
+11-23 06:12:19.282  1222  1240 I FontLog : Received query name=Google Sans&weight=500&besteffort=false, URI content://com.google.android.gms.fonts [CONTEXT service_id=132 ]
+11-23 06:12:19.282  1222  1240 I FontLog : Query [name=Google Sans&weight=500&besteffort=false] resolved to {Google Sans, wdth 100.0, wght 500, ital 0.0, bestEffort false} [CONTEXT service_id=132 ]
+11-23 06:12:19.282  1222  1240 I FontLog : Font PFD returned from cache for {Google Sans, wdth 100.0, wght 500, ital 0.0, bestEffort false} [CONTEXT service_id=132 ]
+11-23 06:12:19.282  1222  1240 I FontLog : Fetch {Google Sans, wdth 100.0, wght 500, ital 0.0, bestEffort false} end status Status{statusCode=SUCCESS, resolution=null} [CONTEXT service_id=132 ]
+11-23 06:12:19.284  1222  1240 I FontLog : Pulling font file for id = 11, cache size = 7 [CONTEXT service_id=132 ]
+11-23 06:12:19.336  4213  4240 I chromium: [INFO:viewport_data.cc(133)] E2E_Used ViewportFitCover
+11-23 06:12:19.358  4213  4240 I chromium: [INFO:document_style_environment_variables.cc(104)] E2E_Used SafeAreaInsetBottom
+11-23 06:12:19.358  4213  4240 I chromium: [INFO:document_style_environment_variables.cc(104)] E2E_Used SafeAreaInsetBottom
+11-23 06:12:19.388  4213  4260 E chromium: [ERROR:tile_manager.cc(982)] WARNING: tile memory limits exceeded, some content may not draw
+11-23 06:12:19.388  4213  4260 E chromium: [ERROR:tile_manager.cc(982)] WARNING: tile memory limits exceeded, some content may not draw
+11-23 06:12:19.395  4213  4260 E chromium: [ERROR:tile_manager.cc(982)] WARNING: tile memory limits exceeded, some content may not draw
+11-23 06:12:19.395  4213  4260 E chromium: [ERROR:tile_manager.cc(982)] WARNING: tile memory limits exceeded, some content may not draw
+11-23 06:12:19.404  4213  4240 I chromium: [INFO:document_style_environment_variables.cc(104)] E2E_Used SafeAreaInsetBottom
+11-23 06:12:19.404  4213  4240 I chromium: [INFO:document_style_environment_variables.cc(104)] E2E_Used SafeAreaInsetBottom
+11-23 06:12:19.441  4168  4187 I RustStdoutStderr: s_glBindAttribLocation: bind attrib 0 name inPosition
+11-23 06:12:19.441  4168  4187 I RustStdoutStderr: s_glBindAttribLocation: bind attrib 1 name inColor
+11-23 06:12:19.441  4168  4187 I RustStdoutStderr: s_glBindAttribLocation: bind attrib 2 name inTextureCoords
+11-23 06:12:19.446  4168  4187 I RustStdoutStderr: s_glBindAttribLocation: bind attrib 0 name position
+11-23 06:12:19.446  4168  4187 I RustStdoutStderr: s_glBindAttribLocation: bind attrib 1 name color
+11-23 06:12:19.448  4168  4187 I RustStdoutStderr: s_glBindAttribLocation: bind attrib 0 name inPosition
+11-23 06:12:19.448  4168  4187 I RustStdoutStderr: s_glBindAttribLocation: bind attrib 1 name inColor
+11-23 06:12:19.448  4168  4187 I RustStdoutStderr: s_glBindAttribLocation: bind attrib 2 name inCircleEdge
+11-23 06:12:19.473  4168  4187 I RustStdoutStderr: s_glBindAttribLocation: bind attrib 0 name position
+11-23 06:12:19.473  4168  4187 I RustStdoutStderr: s_glBindAttribLocation: bind attrib 1 name localCoord
+11-23 06:12:19.523  4168  4187 I RustStdoutStderr: s_glBindAttribLocation: bind attrib 0 name inPosition
+11-23 06:12:19.523  4168  4187 I RustStdoutStderr: s_glBindAttribLocation: bind attrib 1 name inColor
+11-23 06:12:19.523  4168  4187 I RustStdoutStderr: s_glBindAttribLocation: bind attrib 2 name inCircleEdge
+11-23 06:12:20.742   540  2767 E TaskPersister: File error accessing recents directory (directory doesn't exist?).
+11-23 06:12:20.757  4168  4184 D EGL_emulation: app_time_stats: avg=450.87ms min=55.56ms max=1225.17ms count=5
+11-23 06:12:21.218   540   773 D OomAdjuster: Not killing cached processes
+11-23 06:12:21.703   147   147 I logd    : logdr: UID=2000 GID=2000 PID=4263 n tail=0 logMask=99 pid=0 start=0ns deadline=0ns
