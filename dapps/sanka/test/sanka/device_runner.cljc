@@ -23,7 +23,10 @@
    "offer-transition" device/offer-transition
    "admit-order" device/admit-order
    "receipt-body" device/receipt-body
-   "receipt-roundtrip" receipt-roundtrip})
+   "receipt-roundtrip" receipt-roundtrip
+   "check-order-envelope" device/check-order-envelope
+   "result-envelope" device/result-envelope
+   "check-result-envelope" device/check-result-envelope})
 
 (defn- plain [value]
   (cond

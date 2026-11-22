@@ -53,6 +53,14 @@ android {
     buildFeatures {
         buildConfig = true
     }
+    // The text engine's libraries are already stripped by scripts/build-native.py and pinned by
+    // SHA-256 in native-pins.json. Package them unchanged, so the APK carries the pinned bytes
+    // (scripts/verify-native-pins.py --apk).
+    packaging {
+        jniLibs {
+            keepDebugSymbols += listOf("**/libawai_llama.so", "**/libllama.so", "**/libggml.so", "**/libggml-base.so", "**/libggml-cpu.so", "**/libc++_shared.so")
+        }
+    }
 }
 
 kotlin {

@@ -1,0 +1,51 @@
+diff --git a/BoardConfig.mk b/BoardConfig.mk
+index 8f056a4..543d157 100644
+--- a/BoardConfig.mk
++++ b/BoardConfig.mk
+@@ -24,11 +24,11 @@ TARGET_ARCH_VARIANT := sandybridge
+ TARGET_GRUB_BOOT_CONFIGS += $(DEVICE_PATH)/bootmgr/grub/grub-boot.cfg
+ 
+ # Graphics (Allocator)
+-$(call soong_config_set_string_list,minigbm_upstream,cflags,-DDRV_I915 -DDRV_XE)
++$(call soong_config_set_string_list,minigbm_upstream,cflags,-DDRV_I915 -DDRV_XE -DDRV_AMDGPU)
+ 
+ # Graphics (Mesa)
+-BOARD_MESA3D_GALLIUM_DRIVERS += crocus iris
+-BOARD_MESA3D_VULKAN_DRIVERS += intel intel_hasvk
++BOARD_MESA3D_GALLIUM_DRIVERS += crocus iris radeonsi
++BOARD_MESA3D_VULKAN_DRIVERS += intel intel_hasvk amd
+ 
+ # Kernel
+ BOARD_KERNEL_CMDLINE += \
+diff --git a/bootmgr/grub/grub-boot.cfg b/bootmgr/grub/grub-boot.cfg
+index 936bd88..9a4f549 100644
+--- a/bootmgr/grub/grub-boot.cfg
++++ b/bootmgr/grub/grub-boot.cfg
+@@ -1,4 +1,9 @@
+ submenu 'Advanced options (virtio_x86_64 specific)' --class format-list-bulleted --id advancedoptions-virtio_x86_64 {
++
++	menuentry "Awai PC (AMD Radeon, Mesa graphics)" --id android-awai-pc-amd-mesa {
++		set_android_default "advancedoptions-virtio_x86_64>android-awai-pc-amd-mesa"
++		boot_android virtio_gpu.modeset=0 androidboot.gpu=amdgpu androidboot.graphics=mesa
++	}
+ 	menuentry "@BOOTMGR_ANDROID_DISTRIBUTION_NAME@ ${kernel_version_display} (Intel pre-Skylake GPU passthrough with workarounds, Mesa graphics)" --id android-virtio_x86_64-intelpreskylakewithworkarounds__mesa {
+ 		pre_boot_hook
+ 		set_android_default "advancedoptions-virtio_x86_64>android-virtio_x86_64-intelpreskylakewithworkarounds__mesa"
+diff --git a/configs/init/virtio_x86_64-graphics.rc b/configs/init/virtio_x86_64-graphics.rc
+index 52bd38d..6623757 100644
+--- a/configs/init/virtio_x86_64-graphics.rc
++++ b/configs/init/virtio_x86_64-graphics.rc
+@@ -16,3 +16,13 @@ on property:ro.vendor.graphics.gpu=intel && property:ro.vendor.graphics=mesa &&
+ 
+ on property:ro.vendor.graphics.gpu=intel && property:ro.vendor.graphics=mesa && property:ro.boot.hardware_vulkan=intel_hasvk
+     setprop ro.hardware.vulkan intel_hasvk
++
++# AMD Radeon: load after the vendor firmware is mounted.
++on init && property:ro.vendor.graphics.gpu=amdgpu
++    write /sys/module/firmware_class/parameters/path /vendor/firmware/
++    exec u:r:vendor_modprobe:s0 -- /vendor/bin/modprobe -a -d /vendor/lib/modules amdgpu.ko
++    setprop ro.vendor.graphics mesa
++
++on property:ro.vendor.graphics.gpu=amdgpu && property:ro.vendor.graphics=mesa
++    setprop ro.hardware.vulkan radeon
++    setprop ro.opengles.version 196610

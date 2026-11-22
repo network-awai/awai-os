@@ -1,0 +1,357 @@
+diff --git a/app/src/main/java/org/lineageos/updater/controller/ABUpdateInstaller.java b/app/src/main/java/org/lineageos/updater/controller/ABUpdateInstaller.java
+index 7a6bf8b..59f7bfa 100644
+--- a/app/src/main/java/org/lineageos/updater/controller/ABUpdateInstaller.java
++++ b/app/src/main/java/org/lineageos/updater/controller/ABUpdateInstaller.java
+@@ -8,0 +9 @@ import android.content.SharedPreferences;
++import android.os.PowerManager;
+@@ -20,0 +22 @@ import org.lineageos.updater.data.UserPreferencesRepository;
++import org.lineageos.updater.deviceinfo.DeviceInfoUtils;
+@@ -23,0 +26 @@ import org.lineageos.updater.misc.Utils;
++import org.lineageos.updater.updatescheck.UpdatesCheckWorker;
+@@ -32,0 +36 @@ import java.util.List;
++import java.util.function.BooleanSupplier;
+@@ -48,2 +52,2 @@ class ABUpdateInstaller {
+-    private String mDownloadId;
+-    private boolean mPreparing;
++    private volatile String mDownloadId;
++    private volatile boolean mPreparing;
+@@ -60,0 +65,4 @@ class ABUpdateInstaller {
++            // The initial snapshot from bind can be IDLE while a new payload is prepared.
++            if (mDownloadId == null || (mPreparing && status == UpdateEngine.UpdateStatusConstants.IDLE)) {
++                return;
++            }
+@@ -109 +117 @@ class ABUpdateInstaller {
+-            if (errorCode != UpdateEngine.ErrorCodeConstants.SUCCESS) {
++            if (mDownloadId != null && errorCode != UpdateEngine.ErrorCodeConstants.SUCCESS) {
+@@ -111,0 +120,3 @@ class ABUpdateInstaller {
++                if (update == null) {
++                    return;
++                }
+@@ -182,0 +194,3 @@ class ABUpdateInstaller {
++        // Clear stale ownership before either a manual or a new automatic attempt.
++        PreferenceManager.getDefaultSharedPreferences(mContext).edit()
++                .remove(PcMaintenance.OWNED_UPDATE).apply();
+@@ -272,0 +287,41 @@ class ABUpdateInstaller {
++    void installAutomaticStreaming(Update update, BooleanSupplier stillAllowed) {
++        String downloadId = update.getDownloadId();
++        if (!reservePreparation(downloadId)) {
++            return;
++        }
++        try {
++            if (!stillAllowed.getAsBoolean()) {
++                return;
++            }
++            String url = update.getDownloadUrl();
++            String[] headers = fetchPayloadProperties(url, update.getPayloadPropertiesOffset(),
++                    update.getPayloadPropertiesSize());
++            if (stillAllowed.getAsBoolean()) {
++                mUpdaterController.addUpdate(update);
++                if (!stillAllowed.getAsBoolean()) {
++                    return;
++                }
++                applyUpdate(url, update.getPayloadOffset(), update.getPayloadSize(), headers, update);
++            }
++        } catch (IOException | ServiceSpecificException e) {
++            Log.w(TAG, "Automatic update preparation or handoff failed", e);
++        } finally {
++            finishPreparation();
++        }
++    }
++
++    synchronized boolean rebootAutomaticUpdate(String downloadId, BooleanSupplier stillAllowed) {
++        SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(mContext);
++        PowerManager power = mContext.getSystemService(PowerManager.class);
++        if (mPreparing || power == null ||
++                !downloadId.equals(settings.getString(PcMaintenance.OWNED_UPDATE, null)) ||
++                !isWaitingForReboot(mContext, downloadId) || !stillAllowed.getAsBoolean()) {
++            return false;
++        }
++        if (!settings.edit().remove(PcMaintenance.OWNED_UPDATE).commit()) {
++            return false;
++        }
++        power.reboot(null);
++        return true;
++    }
++
+@@ -281,0 +337,5 @@ class ABUpdateInstaller {
++        applyUpdate(url, offset, size, headerKeyValuePairs, null);
++    }
++
++    private synchronized void applyUpdate(String url, long offset, long size,
++            String[] headerKeyValuePairs, Update automatic) {
+@@ -299,0 +360 @@ class ABUpdateInstaller {
++                // UpdateEngine doesn't identify the previous owner. Acknowledge for a manual reboot.
+@@ -315,4 +376,16 @@ class ABUpdateInstaller {
+-        PreferenceManager.getDefaultSharedPreferences(mContext).edit()
+-                .putString(PREF_INSTALLING_AB_ID, mDownloadId)
+-                .apply();
+-
++        SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(mContext)
++                .edit().putString(PREF_INSTALLING_AB_ID, mDownloadId);
++        if (automatic == null) {
++            editor.apply();
++        } else {
++            boolean stored = editor.putString(PcMaintenance.OWNED_UPDATE, mDownloadId)
++                    .putLong(Constants.PREF_INSTALL_OLD_TIMESTAMP,
++                            DeviceInfoUtils.getBuildDateTimestamp())
++                    .putLong(Constants.PREF_INSTALL_NEW_TIMESTAMP, automatic.getTimestamp())
++                    .putBoolean(Constants.PREF_INSTALL_AGAIN, false)
++                    .putBoolean(Constants.PREF_INSTALL_NOTIFIED, false)
++                    .commit();
++            if (stored) {
++                UpdatesCheckWorker.scheduleMaintenanceFollowUp(mContext);
++            }
++        }
+@@ -321 +394 @@ class ABUpdateInstaller {
+-    public void reconnect() {
++    public synchronized void reconnect() {
+@@ -344 +417 @@ class ABUpdateInstaller {
+-    private void installationDone(boolean needsReboot) {
++    private synchronized void installationDone(boolean needsReboot) {
+@@ -346,4 +419,6 @@ class ABUpdateInstaller {
+-        PreferenceManager.getDefaultSharedPreferences(mContext).edit()
+-                .putString(Constants.PREF_NEEDS_REBOOT_ID, id)
+-                .remove(PREF_INSTALLING_AB_ID)
+-                .apply();
++        SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(mContext)
++                .edit().putString(Constants.PREF_NEEDS_REBOOT_ID, id).remove(PREF_INSTALLING_AB_ID);
++        if (!needsReboot) {
++            editor.remove(PcMaintenance.OWNED_UPDATE);
++        }
++        editor.apply();
+diff --git a/app/src/main/java/org/lineageos/updater/controller/PcMaintenance.kt b/app/src/main/java/org/lineageos/updater/controller/PcMaintenance.kt
+new file mode 100644
+index 0000000..7ef4c50
+--- /dev/null
++++ b/app/src/main/java/org/lineageos/updater/controller/PcMaintenance.kt
+@@ -0,0 +1,107 @@
++/*
++ * SPDX-FileCopyrightText: The Awai Network Project
++ * SPDX-License-Identifier: Apache-2.0
++ */
++package org.lineageos.updater.controller
++
++import android.content.Context
++import android.content.Intent
++import android.content.IntentFilter
++import android.net.ConnectivityManager
++import android.net.NetworkCapabilities
++import android.os.BatteryManager
++import android.os.PowerManager
++import android.provider.Settings
++import androidx.preference.PreferenceManager
++import kotlinx.coroutines.Dispatchers
++import kotlinx.coroutines.currentCoroutineContext
++import kotlinx.coroutines.ensureActive
++import kotlinx.coroutines.runBlocking
++import kotlinx.coroutines.withContext
++import org.lineageos.updater.UpdaterApplication
++import org.lineageos.updater.data.Update
++import org.lineageos.updater.deviceinfo.DeviceInfoUtils
++import org.lineageos.updater.util.InstallUtils
++import java.net.URI
++
++object PcMaintenance {
++    // This preference identifies only payloads handed to UpdateEngine by the maintenance worker.
++    internal const val OWNED_UPDATE = "automatic_pc_maintenance_id"
++
++    val isSupported: Boolean
++        get() = DeviceInfoUtils.isABDevice && DeviceInfoUtils.device == "virtio_x86_64"
++
++    internal fun isAwaiPackage(url: String?): Boolean {
++        val uri = url?.let { runCatching { URI(it) }.getOrNull() } ?: return false
++        return uri.scheme == "https" && uri.host == "ota.awai.network" &&
++                (uri.port == -1 || uri.port == 443) && uri.userInfo == null &&
++                uri.rawQuery == null && uri.rawFragment == null &&
++                uri.rawPath.startsWith("/v1/pc/pilot/") &&
++                !uri.rawPath.contains('%') && uri.normalize().rawPath == uri.rawPath
++    }
++
++    private fun canMaintain(context: Context): Boolean {
++        val power = context.getSystemService(PowerManager::class.java) ?: return false
++        if (power.isInteractive || Settings.Global.getInt(
++                context.contentResolver, Settings.Global.DEVICE_PROVISIONED, 0,
++            ) != 1 || Settings.Secure.getInt(context.contentResolver, "user_setup_complete", 0) != 1
++        ) return false
++
++        val network = context.getSystemService(ConnectivityManager::class.java) ?: return false
++        val capabilities = network.getNetworkCapabilities(network.activeNetwork) ?: return false
++        if (!capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) ||
++            !capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED) ||
++            network.isActiveNetworkMetered
++        ) return false
++
++        val battery = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
++            ?: return false
++        return battery.hasExtra(BatteryManager.EXTRA_PRESENT) &&
++                (!battery.getBooleanExtra(BatteryManager.EXTRA_PRESENT, true) ||
++                        battery.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0)
++    }
++
++    internal suspend fun run(
++        application: UpdaterApplication,
++        offers: List<Update>,
++        allowNewUpdate: Boolean = true,
++    ): Boolean = withContext(Dispatchers.IO) {
++        val prefs = application.userPreferencesRepository
++        if (!isSupported || !prefs.canRunAutomaticPcMaintenance()) return@withContext false
++
++        val storage = PreferenceManager.getDefaultSharedPreferences(application)
++        val owned = storage.getString(OWNED_UPDATE, null)
++        val inProgress = owned != null && ABUpdateInstaller.isInstallingUpdate(application, owned)
++        if (!canMaintain(application)) return@withContext inProgress
++        if (!inProgress && (!allowNewUpdate || offers.isEmpty())) return@withContext false
++
++        val approved = offers.filter {
++            it.timestamp > DeviceInfoUtils.buildDateTimestamp &&
++                    isAwaiPackage(it.downloadUrl) &&
++                    InstallUtils.canInstall(it) && InstallUtils.canStreamUpdate(it, true) &&
++                    it.payloadPropertiesSize in 1L..65_536L
++        }
++
++        val context = currentCoroutineContext()
++        val stillAllowed = {
++            context.ensureActive()
++            runBlocking { prefs.canRunAutomaticPcMaintenance() } && canMaintain(application)
++        }
++        val controller = UpdaterController.getInstance(application)
++        val installer = ABUpdateInstaller.getInstance(application, controller, prefs)
++        if (owned != null && inProgress) {
++            if (!ABUpdateInstaller.isWaitingForReboot(application, owned)) {
++                installer.reconnect()
++                return@withContext true
++            }
++            return@withContext approved.any { it.downloadId == owned } &&
++                    !installer.rebootAutomaticUpdate(owned, stillAllowed)
++        }
++
++        val update = approved.maxByOrNull { it.timestamp } ?: return@withContext false
++        if (!controller.isBusy) {
++            installer.installAutomaticStreaming(update, stillAllowed)
++        }
++        false
++    }
++}
+diff --git a/app/src/main/java/org/lineageos/updater/data/UpdatesRepository.kt b/app/src/main/java/org/lineageos/updater/data/UpdatesRepository.kt
+index 056860c..421e289 100644
+--- a/app/src/main/java/org/lineageos/updater/data/UpdatesRepository.kt
++++ b/app/src/main/java/org/lineageos/updater/data/UpdatesRepository.kt
+@@ -40 +40 @@ class UpdatesRepository(
+-    suspend fun fetchUpdates(): Long? {
++    suspend fun fetchUpdates(onFreshOffers: (List<Update>) -> Unit = {}): Long? {
+@@ -102,0 +103 @@ class UpdatesRepository(
++        onFreshOffers(networkUpdates)
+diff --git a/app/src/main/java/org/lineageos/updater/data/UserPreferencesRepository.kt b/app/src/main/java/org/lineageos/updater/data/UserPreferencesRepository.kt
+index d4b71ba..93c2940 100644
+--- a/app/src/main/java/org/lineageos/updater/data/UserPreferencesRepository.kt
++++ b/app/src/main/java/org/lineageos/updater/data/UserPreferencesRepository.kt
+@@ -37,0 +38 @@ private object UserPreferencesKeys {
++    val AUTOMATIC_PC_MAINTENANCE = booleanPreferencesKey("automatic_pc_maintenance")
+@@ -50,0 +52,15 @@ class UserPreferencesRepository(context: Context) {
++    val automaticPcMaintenanceFlow = userPreferencesFlow.map { preferences ->
++        preferences[UserPreferencesKeys.AUTOMATIC_PC_MAINTENANCE] ?: false
++    }
++
++    suspend fun canRunAutomaticPcMaintenance(): Boolean = userPreferencesFlow.map {
++        it[UserPreferencesKeys.AUTOMATIC_PC_MAINTENANCE] == true &&
++                it[UserPreferencesKeys.PERIODIC_CHECK_ENABLED] != false &&
++                it[UserPreferencesKeys.STREAM_UPDATES] != false
++    }.first()
++
++    suspend fun setAutomaticPcMaintenance(enabled: Boolean) {
++        userPreferences.edit { it[UserPreferencesKeys.AUTOMATIC_PC_MAINTENANCE] = enabled }
++        UpdatesCheckWorker.reschedulePeriodicCheck(appContext)
++    }
++
+diff --git a/app/src/main/java/org/lineageos/updater/preferences/PreferencesScreen.kt b/app/src/main/java/org/lineageos/updater/preferences/PreferencesScreen.kt
+index 4f3a2a4..5e70e06 100644
+--- a/app/src/main/java/org/lineageos/updater/preferences/PreferencesScreen.kt
++++ b/app/src/main/java/org/lineageos/updater/preferences/PreferencesScreen.kt
+@@ -27,0 +28 @@ import org.lineageos.updater.UpdaterApplication
++import org.lineageos.updater.controller.PcMaintenance
+@@ -67,0 +69,2 @@ private fun PreferencesContent(
++    val automaticPcMaintenance by repository.automaticPcMaintenanceFlow
++        .collectAsStateWithLifecycle(false)
+@@ -90,0 +94,15 @@ private fun PreferencesContent(
++        if (PcMaintenance.isSupported) {
++            val summaryText = stringResource(R.string.menu_automatic_pc_maintenance_summary)
++            SwitchPreference(object : SwitchPreferenceModel {
++                override val title = stringResource(R.string.menu_automatic_pc_maintenance)
++                override val summary = { summaryText }
++                override val checked = { automaticPcMaintenance }
++                override val changeable = {
++                    automaticPcMaintenance || (periodicCheckEnabled && streamUpdates)
++                }
++                override val onCheckedChange: (Boolean) -> Unit = { value ->
++                    coroutineScope.launch { repository.setAutomaticPcMaintenance(value) }
++                }
++            })
++        }
++
+diff --git a/app/src/main/java/org/lineageos/updater/updatescheck/UpdatesCheckWorker.kt b/app/src/main/java/org/lineageos/updater/updatescheck/UpdatesCheckWorker.kt
+index 49dce2a..b720df5 100644
+--- a/app/src/main/java/org/lineageos/updater/updatescheck/UpdatesCheckWorker.kt
++++ b/app/src/main/java/org/lineageos/updater/updatescheck/UpdatesCheckWorker.kt
+@@ -19,0 +20,2 @@ import androidx.work.WorkerParameters
++import androidx.work.workDataOf
++import kotlinx.coroutines.CancellationException
+@@ -24,0 +27 @@ import org.lineageos.updater.UpdaterApplication
++import org.lineageos.updater.controller.PcMaintenance
+@@ -25,0 +29 @@ import org.lineageos.updater.data.CheckInterval
++import org.lineageos.updater.data.Update
+@@ -26,0 +31 @@ import kotlin.time.Duration.Companion.hours
++import kotlin.time.Duration.Companion.minutes
+@@ -33,0 +39 @@ class UpdatesCheckWorker(
++        val followUp = inputData.getBoolean(MAINTENANCE_FOLLOW_UP, false)
+@@ -36 +42,2 @@ class UpdatesCheckWorker(
+-            val fetchedAt = application.updatesRepository.fetchUpdates()
++            var offers = emptyList<Update>()
++            val fetchedAt = application.updatesRepository.fetchUpdates { offers = it }
+@@ -38,0 +46,6 @@ class UpdatesCheckWorker(
++                if (followUp || inputData.getBoolean(PERIODIC, false)) {
++                    val pending = PcMaintenance.run(application, offers, allowNewUpdate = !followUp)
++                    if (followUp && pending && runAttemptCount < 6) return Result.retry()
++                }
++            } else if (followUp && runAttemptCount < 6) {
++                return Result.retry()
+@@ -40,0 +54,2 @@ class UpdatesCheckWorker(
++        } catch (e: CancellationException) {
++            throw e
+@@ -43 +58 @@ class UpdatesCheckWorker(
+-            Result.retry()
++            if (followUp && runAttemptCount >= 6) Result.failure() else Result.retry()
+@@ -49,0 +65,2 @@ class UpdatesCheckWorker(
++        private const val PERIODIC = "periodic"
++        private const val MAINTENANCE_FOLLOW_UP = "maintenance_follow_up"
+@@ -72,0 +90,15 @@ class UpdatesCheckWorker(
++        @JvmStatic
++        fun scheduleMaintenanceFollowUp(context: Context) {
++            val request = OneTimeWorkRequestBuilder<UpdatesCheckWorker>()
++                .setInputData(workDataOf(MAINTENANCE_FOLLOW_UP to true))
++                .setInitialDelay(20.minutes.toJavaDuration())
++                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 20.minutes.toJavaDuration())
++                .setConstraints(networkConstraints)
++                .build()
++            WorkManager.getInstance(context).enqueueUniqueWork(
++                MAINTENANCE_FOLLOW_UP,
++                ExistingWorkPolicy.KEEP,
++                request,
++            )
++        }
++
+@@ -111,0 +144 @@ class UpdatesCheckWorker(
++                    .setInputData(workDataOf(PERIODIC to true))
+diff --git a/app/src/main/res/values-ja/strings.xml b/app/src/main/res/values-ja/strings.xml
+index 4acb653..9328873 100644
+--- a/app/src/main/res/values-ja/strings.xml
++++ b/app/src/main/res/values-ja/strings.xml
+@@ -132,0 +133,2 @@
++    <string name="menu_automatic_pc_maintenance">PC の自動メンテナンス</string>
++    <string name="menu_automatic_pc_maintenance_summary">従量制でない回線と外部電源を使い、画面が消えている間に Awai の更新と再起動を行います。定期確認とストリーミング更新が必要です。</string>
+diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
+index df56e15..7fce2e7 100644
+--- a/app/src/main/res/values/strings.xml
++++ b/app/src/main/res/values/strings.xml
+@@ -193,0 +194,2 @@
++    <string name="menu_automatic_pc_maintenance">Automatic PC maintenance</string>
++    <string name="menu_automatic_pc_maintenance_summary">Apply Awai updates over an unmetered connection on external power, and restart while the screen is off. Requires scheduled checks and streaming updates.</string>

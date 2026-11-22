@@ -1,0 +1,124 @@
+{
+  "schema": "awai.store.device.qualification.v1",
+  "checkedAt": "2026-11-16T13:57:24.345064+00:00",
+  "sourceRevision": "62d1120655c34c157260a486c2623ed05e7f94f9",
+  "androidApi": 37,
+  "androidAbi": "x86_64",
+  "store": {
+    "schema": "awai.android.build.v1",
+    "version": 1001,
+    "sdk": 37,
+    "buildTools": "36.1.0",
+    "signing": "local-android-debug-only",
+    "storePackage": "network.awai.store.p2p.preview",
+    "publicSignerSha256": "2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29",
+    "runtime": {
+      "source": "kotoba-lang/kotoba lib/kotoba.wasmWebcomponent/src",
+      "revision": "91ed14c090c90ceff833a868f1685c8840503f76",
+      "files": {
+        "kotoba-client-runtime.js": "5a950051c484a992caba0ad9edff780938648f9cade0b18f2d016812742ee6fb",
+        "kotoba-client-consent.css": "eb1caab0619c5ca4428df637ae140bc3774582fa3f0b95a44bbd39b27b6b9086"
+      }
+    },
+    "artifacts": {
+      "store-v1001.apk": {
+        "sha256": "6ccb7f854a2ab36736bd4ab205678e470c87038136a40105ca866e39f8e266ad",
+        "bytes": 158605141
+      }
+    },
+    "sharedDomainSha256": "0e0976a2e925fb18c0b851a963260d577604cd9b9d2ad979cc26772de5752a29",
+    "sharedClientSha256": "574483c51810c1d2ff862b68a223dfd7e388facd0d9048708e8abe5d8b396f7d"
+  },
+  "storeInstrumentationAssertions": 20,
+  "storeInstallationApps": 4,
+  "allFiveNativeHostBoots": true,
+  "distinctAppPeerIds": 5,
+  "applications": [
+    {
+      "key": "aozora",
+      "id": "app.aozora.awai.preview",
+      "domainUi": "existing-static-artifact",
+      "versionCode": 1000,
+      "installer": "network.awai.store.p2p.preview",
+      "sharedNativePeerReady": true,
+      "peer": "12D3KooWE7uJEbVoLWhBYzArir8insDVJ4aAWgGiDPKrag8oVbKX",
+      "storeNativeAndAndroidConfirmation": true
+    },
+    {
+      "key": "dougaka",
+      "id": "network.itonami.dougaka.preview",
+      "domainUi": "existing-static-artifact",
+      "versionCode": 1000,
+      "installer": "network.awai.store.p2p.preview",
+      "sharedNativePeerReady": true,
+      "peer": "12D3KooWKUavvpLBn2VUpk9tzLrdDxLTjW2cHZKd3veCkVrZSR3H",
+      "storeNativeAndAndroidConfirmation": true
+    },
+    {
+      "key": "ongakuka",
+      "id": "network.itonami.ongakuka.preview",
+      "domainUi": "not-yet-ported",
+      "versionCode": 1000,
+      "installer": "network.awai.store.p2p.preview",
+      "sharedNativePeerReady": true,
+      "peer": "12D3KooWRvDcYipGHgg99QnxxB2vRLi7KzSUkBUf2YJgXLfpdsMU",
+      "storeNativeAndAndroidConfirmation": true
+    },
+    {
+      "key": "itonami",
+      "id": "network.itonami.client.preview",
+      "domainUi": "not-yet-ported",
+      "versionCode": 1000,
+      "installer": "network.awai.store.p2p.preview",
+      "sharedNativePeerReady": true,
+      "peer": "12D3KooWN4jsJYPZFVGtNuB5TDVHqLtn4Txb29Fsp6DRQPSAGcYg",
+      "storeNativeAndAndroidConfirmation": true
+    },
+    {
+      "key": "yataverse",
+      "id": "network.itonami.yataverse.preview",
+      "domainUi": "snapshot-pin-query",
+      "versionCode": 1000,
+      "installer": "null",
+      "sharedNativePeerReady": true,
+      "peer": "12D3KooWRfpqRG7XgNWfdBXCNoWJw1C4QXxyoCproM1Y8Zkqg3kY",
+      "storeNativeAndAndroidConfirmation": false
+    }
+  ],
+  "consentQualification": "Automated trusted-UI fixture controls; not a human-consent qualification",
+  "figma": {
+    "baseline": "216:475",
+    "proposal": "241:592",
+    "codeDesktopViewport": [
+      1920,
+      1140
+    ],
+    "proposalViewport": [
+      411,
+      1240
+    ],
+    "baselineChanged": false,
+    "footerOverflowCorrected": true,
+    "differences": [
+      "Source keeps version/install-state metadata in rows; proposal shows descriptions",
+      "Source uses generic Apps icon for non-Yotei entries; proposal reuses launcher icons"
+    ],
+    "fullVisualAcceptance": false
+  },
+  "sourceProvenanceMismatch": {
+    "file": "nixos/otehon/shell/vendor-dougaka/PROVENANCE.edn",
+    "line": 6,
+    "recordedRevision": "c29b87e59fdb1b8b3a2ca7295356cd0af1e9",
+    "upstreamReferenceRevision": "c29b87e59fdb1b8b65e18a2ca7295356cd0af1e9",
+    "staticArtifactOwningRevision": "c7f1008cf06f4eacb7817d3602f7a9c0373146c5",
+    "action": "Preserved original provenance; checked exact per-file hashes from OS vendor input. Upstream build correspondence remains unqualified."
+  },
+  "remaining": [
+    "Production Aozora update package/signing/store publication",
+    "Browser WNFS provider and domain-state adoption/merge (owning CLJC currently imports node:crypto/fs/path)",
+    "WAN NAT/DCUtR qualification",
+    "Indefinite mobile reception/Doze/reboot",
+    "Ongakuka/Itonami domain UI",
+    "Canonical ui:// dapp intake and Web snapshot transport parity"
+  ]
+}

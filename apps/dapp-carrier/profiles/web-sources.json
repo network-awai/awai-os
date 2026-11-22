@@ -1,0 +1,43 @@
+{
+  "schema": "awai.dapp.web-sources.v1",
+  "apps": {
+    "aozora": {
+      "bytes": 674999,
+      "files": {
+        "_headers": "f0fbd79eb0e41a3becea083afe1fde43f3ef9c32808b45e4cf0c2a86bacc035f",
+        "assets/core-CwxXejkd.js": "b4709cdfbc9bdaae22b529c2fe534c689a904ef8e6f58637ebf5b1245729fcc0",
+        "assets/index-BvdN5i-B.js": "69fb14d1579f22148d85665a4ea115dbd01032bfb2d9dc432cccf3b807ff0d27",
+        "assets/index-BviPDjZN.css": "7c14f76b7d255355557f4fe9bf264fe8e90879304e45260cad168dca9839f32b",
+        "assets/peer-browser-D-PYxjQ2.js": "eab91239ef781f1914d2b7ce640d86c809f9dbfcfacd324392f3b61430f14d84",
+        "index.html": "863f170089759864a4da7a401243f8e905b3a0e80aaf4517a778f3f950462f7b",
+        "runtime-attestation.json": "208f2adc87cbe97f0170d26211909b8e40392fe6333ee430069cdf886e8e1ba9"
+      }
+    },
+    "dougaka": {
+      "bytes": 1566914,
+      "files": {
+        "PROVENANCE.edn": "c998d4afaeaeb28d388047b03be35a974f8f4fad4ffb1076ef4817776fbc8412",
+        "SHA256SUMS": "db34879e3dee7422ad899511dd88f9c2398a943497b0a4089f2fa82b89de00e5",
+        "app.cljs": "4994c08a2a006a3ff2c382c37696847f46a82993a790b2f0e2f8c699015bb8a6",
+        "dougaka/core.cljs": "a8296ff5c94864e29cec65dd4676debc41166f26fa26ccd63dc3fbb7b71f76ff",
+        "dougaka/export.cljs": "add7227787c00a4e20fa4dd143f774ae991013908f20741abc15f3ce5ba3e0c7",
+        "dougaka/ingest.cljs": "37af09554d208a74c615db7b4b117eae738fdd7df161f88509b94d4eb49d4b6e",
+        "dougaka/view.cljs": "8841571e5c67770fc37f8887979053dbde31d945c326c8ed72343793d815ea82",
+        "index.html": "2361fe743396556fcdee5af84d03d98208a22fdd151a1808e1f8f8afdea63068",
+        "kotoba/lang/text.cljs": "1443b860b807731a59236d07e1184f311a03b82dcf307ca62b11e0dba49a36de",
+        "kotoba-client-consent.css": "eb1caab0619c5ca4428df637ae140bc3774582fa3f0b95a44bbd39b27b6b9086",
+        "kotoba-client-runtime.js": "5a950051c484a992caba0ad9edff780938648f9cade0b18f2d016812742ee6fb",
+        "studio-contract.js": "87aeca878c997a98ae9a1594b8244dd5cd82d50802f72e134c8b90cfc798574a",
+        "studio-core.js": "17f30904bcb3356b90188a4c9ecc6fe5aca1398a46103f5225889d3e9515488d",
+        "studio-host.js": "0e22001de4ca39197692291466fe62b0b4e5aad65b999068181019aa1c5e8c0f",
+        "studio-local.js": "8975064d32b7bf87e79fda3fc91db3d394fcab6746898bce7939729ba1ab29fb",
+        "studio.css": "72bba68d44ba2a51a21107422ce312a333d362115fc2e4ce2bfa6d126687419e",
+        "vendor/react-dom.production.min.js": "35f4f974f4b2bcd44da73963347f8952e341f83909e4498227d4e26b98f66f0d",
+        "vendor/react.production.min.js": "d949f1c3687aedadcedac85261865f29b17cd273997e7f6b2bfc53b2f9d4c4dd",
+        "vendor/scittle.js": "e04a33ff90947057772f42e683314e9c9f8671ebb922398208b4ad1c76991373",
+        "vendor/scittle.re-frame.js": "efa6c33bca35620f5630c0f3cec44b39bfd7ed408140229ce87e2fe8499eaac6",
+        "vendor/scittle.reagent.js": "67b764d914f6348c5a6486b94cc9614dcc004812c998835bc35b64ef22ce6536"
+      }
+    }
+  }
+}

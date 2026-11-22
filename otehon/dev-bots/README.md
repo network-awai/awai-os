@@ -7,6 +7,10 @@ one reviewer. Tracking: AWAI-3558 (handoff from Claude sessions), AWAI-3560 (thi
 | -- | -- |
 | `acceptance-criteria.md` | When a developer-bot pull request may merge. Start here. |
 | `shinsa/` | The single review profile (`cloud.itonami.profile.v2`): `SOUL.md`, capabilities, `yakuwari.edn`. |
+| `kantoku/` | Profile for the second review of pull requests that change `otehon/dev-bots/` itself, run on another host (owner decision 2026-11-20, AWAI-3609). Profile source only: nothing runs it yet, so such pull requests still stay drafts for a person. |
+| `kantoku-gate.mjs`, `kantoku-gate.test.mjs` | The decision for those pull requests (pure): `merge`, `owner` (stays a draft) or `hold`, from GitHub's facts for the head commit, the ordinary gate's recorded decision, kantoku's verdict and the caller's own re-run of the tests under two shells. Both gates, `kantoku-*`, `kantoku/`, `shinsa/`, evaluation sets and anything outside `otehon/dev-bots/` are never approvable by a review bot. Nothing calls it yet (AWAI-3609). |
+| `dora.mjs`, `dora.test.mjs` | Weekly DORA delivery metrics for bot work (owner instruction 2026-11-21, AWAI-3617): merges of `muse/*` pull requests as deployments, lead time from the queue start, and fail, recovery and rework figures from an explicit ledger; anything not measured prints `unknown`. Usage and the ledger format are in the file header. Owner-only under `kantoku-gate.mjs`. |
+| `metrics/dora-ledger.jsonl`, `metrics/README.md` | The ledger `dora.mjs` reads by default (AWAI-3685): which merged bot changes failed, which were rework, which were looked at and were neither, and the span of time and repositories that has been looked at, and repositories that were renamed or transferred. `metrics/README.md` says what counts and how to add lines; `dora.mjs --check` fails when the span covers a change with no line. `dora.mjs --discover --report` is the weekly report (AWAI-3709). Lead times use the task start that `deliver.mjs` writes in each pull request body (`- Task started:`, AWAI-3708). Owner-only under `kantoku-gate.mjs`. |
 | `gate.mjs`, `gate.test.mjs` | The mechanical merge gate (pure) and its tests: `node --test otehon/dev-bots/gate.test.mjs`. |
 | `deliver.mjs` | No model. Re-runs tests outside the sandbox, applies the gate, commits, pushes, opens the PR, squash-merges when allowed, comments on Linear with measured Muse usage. One delivery at a time per host (lock). |
 | `run-task.sh` | Implementer run, `shinsa` run, then `deliver.mjs`, for one task directory. |
@@ -142,7 +146,18 @@ node otehon/dev-bots/queue-sync.mjs --queue <remote-queue-dir> --state <local-di
   directory already pushed, is refused.
 - `--state <local-dir>` must exist. It keeps `<name>/task.json` for every
   entry pushed from here, `<name>/result.json`, and the collected records
-  under `<name>/linear-outbox/`.
+  under `<name>/linear-outbox/`. Before the push script is sent, the intent
+  is persisted as `<name>/pending.json` (task text plus the SHA-256 of
+  `task.json` and `muse-prompt.md`); `task.json` is still written only on
+  `PUSH <name> ok`, and the pending file is removed on `ok` or a definite
+  refusal. A failed or cut push keeps `pending.json` and exits 1.
+- Every run reconciles pending intents before pushing, using per-entry
+  SHA-256 lines in the snapshot: matching digests recover the submission
+  (`recovered <name>`), a same-name entry with different digests stays held
+  (`held <name> pending-mismatch`, nothing posted), and a missing entry is
+  forgotten so the caller can push again (`not-submitted <name>`).
+  `--dry-run` still sends only the snapshot and never changes
+  `pending.json` or `task.json`.
 - Everything the queue host prints is data. Names are checked before they
   become local paths. A record is posted only when this state directory
   pushed that entry and the record's issue is the entry's issue; anything

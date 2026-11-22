@@ -17,6 +17,8 @@ struct AndroidAgentTransport(tauri::plugin::PluginHandle<tauri::DynRuntime>);
 #[cfg(target_os="android")]
 struct AndroidSpeech(tauri::plugin::PluginHandle<tauri::DynRuntime>);
 #[cfg(target_os = "android")]
+struct HostAccount(tauri::plugin::PluginHandle<tauri::DynRuntime>);
+#[cfg(target_os = "android")]
 struct AndroidScreenTools(tauri::plugin::PluginHandle<tauri::DynRuntime>);
 
 #[tauri::command]
@@ -25,7 +27,7 @@ async fn awai_screen_tools(
     action: String,
 ) -> Result<serde_json::Value, String> {
     if !matches!(action.as_str(), "status" | "record-start" | "record-stop" |
-        "home" | "settings" | "recents" | "accessibility-settings") {
+        "home" | "settings" | "recents" | "accessibility-settings" | "open-gaka") {
         return Err("unsupported-screen-operation".into());
     }
     #[cfg(target_os = "android")]
@@ -40,6 +42,25 @@ async fn awai_screen_tools(
     #[cfg(not(target_os = "android"))]
     {
         let _ = app;
+        #[cfg(target_os = "macos")]
+        if action == "open-gaka" {
+            return tauri::async_runtime::spawn_blocking(|| {
+                let opened = std::process::Command::new("/usr/bin/open")
+                    .args(["-b", "network.awai.gaka"])
+                    .output()
+                    .is_ok_and(|result| result.status.success());
+                if !opened {
+                    return Err("gaka-unavailable".into());
+                }
+                Ok(serde_json::json!({
+                    "schema": "awai.local-app-launch.v1",
+                    "packageId": "network.awai.gaka",
+                    "opened": true
+                }))
+            })
+            .await
+            .map_err(|_| "gaka-unavailable".to_string())?;
+        }
         Err("android-only".into())
     }
 }
@@ -60,6 +81,25 @@ async fn awai_local_inference(app:tauri::AppHandle,request:serde_json::Value)->R
  if serde_json::to_vec(&request).map_err(|_|"invalid-request")?.len()>32768{return Err("request-limit".into());}
  #[cfg(target_os="android")]{use tauri::Manager;return app.state::<AndroidInferenceClient>().0.run_mobile_plugin_async("operation",request).await.map_err(|_|"local-inference-denied-or-unavailable".into());}
  #[cfg(not(target_os="android"))]{let _=app;Err("android-only".into())}
+}
+#[tauri::command]
+async fn awai_host_account(app: tauri::AppHandle, nonce: String) -> Result<serde_json::Value, String> {
+    if nonce.len() != 36 {
+        return Err("invalid-host-account-nonce".into());
+    }
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        app.state::<HostAccount>().0
+            .run_mobile_plugin_async("proof", serde_json::json!({ "nonce": nonce }))
+            .await
+            .map_err(|_| "host-account-unavailable".into())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Err("android-only".into())
+    }
 }
 #[tauri::command]
 fn awai_host_info() -> serde_json::Value {
@@ -85,6 +125,19 @@ pub fn run() {
  #[cfg(target_os="android")]{use tauri::Manager;let h=_api.register_android_plugin("network.itonami.app","AgentTransportPlugin")?;_app.manage(AndroidAgentTransport(h));}Ok(())}).build())
         .plugin(tauri::plugin::Builder::<tauri::DynRuntime,()>::new("awai-speech").setup(|_app,_api|{
  #[cfg(target_os="android")]{use tauri::Manager;let h=_api.register_android_plugin("network.awai.speech","SpeechPlugin")?;_app.manage(AndroidSpeech(h));}Ok(())}).build())
+        .plugin(tauri::plugin::Builder::<tauri::DynRuntime, ()>::new("awai-host-account")
+            .setup(|app, api| {
+                #[cfg(target_os = "android")]
+                {
+                    use tauri::Manager;
+                    let handle = api.register_android_plugin("network.itonami.app", "HostAccountPlugin")?;
+                    app.manage(HostAccount(handle));
+                }
+                #[cfg(not(target_os = "android"))]
+                let _ = (app, api);
+                Ok(())
+            })
+            .build())
         .plugin(tauri::plugin::Builder::<tauri::DynRuntime, ()>::new("awai-screen-tools")
             .setup(|app, api| {
                 #[cfg(target_os = "android")]
@@ -98,7 +151,7 @@ pub fn run() {
                 Ok(())
             })
             .build())
-        .invoke_handler(tauri::generate_handler![awai_host_info,awai_local_inference,awai_setup_state,awai_agent_transport,awai_local_speech,awai_screen_tools])
+        .invoke_handler(tauri::generate_handler![awai_host_info,awai_host_account,awai_local_inference,awai_setup_state,awai_agent_transport,awai_local_speech,awai_screen_tools])
         .run(tauri::generate_context!())
         .expect("Itonami initialization failed");
 }
