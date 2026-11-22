@@ -58,6 +58,8 @@ Inspection is read-only by default. Installation first verifies the VM identity,
 API, ABI, completed boot and every APK's size/SHA-256. It never partitions a
 disk or changes the HOME role. Its report labels physical and LAN boot unverified.
 Bind ADB only to a trusted local transport; do not expose port 5555 on the LAN.
+The image does not enforce this; see the
+[debug route design](../../docs/otehon/android-debug-routes-design-20261121.md) (proposal).
 
 ## VM image provenance and runtime adaptation
 

@@ -1,0 +1,218 @@
+/* Itonami Store entry page. Composition and values follow the Figma proposal (AWAI-3735,
+   file umqCqP5KSjLWh9fhCI1HaN, page 903:2): Awai Web · Daylight colors (Asa for light, Yoru for
+   dark), the Awai Web type ramp, Spacing and Radius. No script; Baseline Widely available CSS. */
+:root {
+  color-scheme: light dark;
+  /* Awai Web · Daylight / Asa */
+  --background: #ffffff;
+  --surface: #f5f6f8;
+  --text: #182332;
+  --muted: #485c74;
+  --accent: #1e50a2;
+  --border: #9aaabd;
+  --on-accent: #ffffff;
+  /* Spacing and Radius */
+  --xs: 4px;
+  --sm: 8px;
+  --md: 16px;
+  --lg: 24px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --page-pad: 20px;
+  --page-gap: var(--md);
+  --card-pad: var(--md);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Awai Web · Daylight / Yoru */
+    --background: #14110f;
+    --surface: #272422;
+    --text: #ffffff;
+    --muted: #b8b8b7;
+    --accent: #1e50a2;
+    --border: #4f4d4b;
+    --on-accent: #ffffff;
+  }
+}
+@media (min-width: 900px) {
+  :root {
+    --page-pad: 40px;
+    --page-gap: var(--lg);
+    --card-pad: var(--lg);
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--text);
+  font-family: "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", system-ui, sans-serif;
+  /* Awai Web/Body */
+  font-size: 16px;
+  line-height: 28px;
+}
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--page-gap);
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--page-pad);
+}
+h1, h2, h3, p, dl, dd, pre { margin: 0; }
+/* Awai Web/Display mobile, then Display */
+h1 { font-size: 32px; line-height: 46px; font-weight: 400; }
+/* Awai Web/Heading */
+h2, h3 { font-size: 24px; line-height: 36px; font-weight: 500; }
+/* Awai Web/Lead on wide screens; Body on phones */
+.lead { font-size: 16px; line-height: 28px; }
+/* Awai Web/Caption */
+.caption { font-size: 12px; line-height: 20px; color: var(--muted); }
+.muted { color: var(--muted); }
+@media (min-width: 900px) {
+  h1 { font-size: 48px; line-height: 67px; }
+  .lead { font-size: 18px; line-height: 32px; }
+}
+
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--md);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sm);
+  /* Awai Web/Label */
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 500;
+}
+.brand img { display: block; width: 36px; height: 36px; }
+.org { font-size: 12px; line-height: 20px; color: var(--muted); }
+@media (min-width: 900px) {
+  .brand img { width: 44px; height: 44px; }
+  .org { font-size: 14px; line-height: 22px; font-weight: 500; }
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md);
+  padding: var(--card-pad);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.notice { border: 2px solid var(--accent); }
+
+.columns {
+  display: flex;
+  flex-direction: column;
+  gap: var(--page-gap);
+}
+.apps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md);
+  min-width: 0;
+}
+@media (min-width: 900px) {
+  .columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 368px;
+    grid-template-rows: auto auto auto auto 1fr;
+    column-gap: var(--lg);
+    row-gap: var(--md);
+    align-items: start;
+  }
+  .apps { grid-column: 1; grid-row: 1 / span 5; }
+  .how, .verify, .record, .source { grid-column: 2; }
+}
+
+/* Facts: Label (muted) beside Caption */
+.facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sm);
+}
+.facts > div {
+  display: flex;
+  gap: var(--md);
+}
+.facts dt {
+  flex: 0 0 96px;
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.facts dd {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+/* Stacked rows: Label (muted) above Body or Caption */
+.stacked {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md);
+}
+.stacked > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--xs);
+}
+.stacked dt {
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.stacked.small dd {
+  font-size: 12px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sm);
+}
+/* Button: 48 high, 12/32 padding, radius 8, 13px/150% */
+.button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 12px 32px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+  text-decoration: none;
+}
+.button.primary { background: var(--accent); color: var(--on-accent); }
+.button.secondary { background: var(--background); border-color: var(--border); color: var(--text); }
+.button:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
+
+pre {
+  display: flex;
+  flex-direction: column;
+  padding: var(--md);
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+}
+code {
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 20px;
+}

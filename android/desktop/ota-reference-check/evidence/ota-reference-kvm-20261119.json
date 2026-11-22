@@ -1,0 +1,155 @@
+{
+  "issue": "AWAI-3064",
+  "date": "2026-11-19",
+  "device": "lineage_virtio_x86_64-userdebug (LineageOS 24.0, upstream A/B reference device; not the Awai PC image)",
+  "kvmHost": {
+    "cpu": "Intel Xeon E-2286G",
+    "qemu": "8.2.2",
+    "kernel": "6.8.0-149-generic",
+    "disks": "virtio, OVMF; cache=unsafe for the first runs, cache=writeback for the *b runs"
+  },
+  "builds": {
+    "v1": {
+      "targetFilesSha256": "5977a134c9af761f4fe924d9fc12eb1cf5b343fcc7d1862e3c440133f4ae6a85",
+      "incremental": "1795077496",
+      "dateUtc": 1795077496,
+      "buildMinutes": 32
+    },
+    "v2": {
+      "targetFilesSha256": "dd1a6b68f1a03051853b9561f34eaf0fd252131713cf31f1cfd17c5490179994",
+      "incremental": "awai-ota-test-v2",
+      "dateUtc": 1795079485,
+      "buildSeconds": 336
+    }
+  },
+  "miscInfo": {
+    "ab_update": "true",
+    "virtual_ab": "true",
+    "use_dynamic_partitions": "true",
+    "super_partition_size": 12884901888,
+    "ab_partitions": [
+      "BIOS",
+      "EFI",
+      "boot",
+      "odm",
+      "product",
+      "system",
+      "system_dlkm",
+      "system_ext",
+      "vendor",
+      "vendor_boot",
+      "vendor_dlkm"
+    ]
+  },
+  "packages": {
+    "ota-v2-full.zip": {
+      "bytes": 964670565,
+      "sha256": "35f6f41300af2e01a887bef89fbe2185c8e4fd68e4d1f34eb8cf90b231a8f3c2",
+      "key": "AOSP testkey"
+    },
+    "ota-v1-to-v2-incremental.zip": {
+      "bytes": 109689,
+      "sha256": "f92aca62878d63b4117242d9fcb1965c600c99c8133dc8065496bb4a1fc62fc9",
+      "key": "AOSP testkey"
+    },
+    "ota-v2-full-WRONGKEY.zip": {
+      "bytes": 964672050,
+      "sha256": "39d5dfc4df105dea9a8e3d5f4388814147ae94a33035ea47a2e2d48f1cab82fc",
+      "key": "throwaway test key"
+    },
+    "ota-v1-full-older.zip": {
+      "bytes": 964670804,
+      "sha256": "acdbc7305705b2dde5866878eb4cb9de65a8db431022d06525e40d8e54b89260",
+      "key": "AOSP testkey"
+    }
+  },
+  "checks": [
+    {
+      "id": "T2",
+      "name": "full OTA v1->v2",
+      "result": "pass",
+      "error": "kSuccess",
+      "seconds": 96,
+      "after": {
+        "slot": "_b",
+        "incremental": "awai-ota-test-v2",
+        "slot_b_is_successful": true,
+        "merge": "MergeCompleted"
+      }
+    },
+    {
+      "id": "T3",
+      "name": "package signed with another key",
+      "result": "refused",
+      "error": "kDownloadPayloadPubKeyVerificationError",
+      "seconds": 78,
+      "activeSlotUnchanged": true
+    },
+    {
+      "id": "T4",
+      "name": "older package, build as is",
+      "result": "applied (not refused)",
+      "error": "kSuccess",
+      "cause": "ro.ota.allow_downgrade=true on userdebug",
+      "reverted": "update_engine_client --switch_slot=false"
+    },
+    {
+      "id": "T5",
+      "name": "older package, ro.ota.allow_downgrade=false",
+      "result": "refused",
+      "error": "kPayloadTimestampError",
+      "seconds": 3
+    },
+    {
+      "id": "T8",
+      "name": "new slot cannot boot, first try",
+      "result": "invalid",
+      "note": "dd inside the guest wrote 0 bytes; slot b booted normally"
+    },
+    {
+      "id": "T8b",
+      "name": "new slot cannot boot (boot_b zeroed from the host)",
+      "result": "fell back",
+      "grub": "Could not access kernel from active slot b. Switching active slot to a...",
+      "after": {
+        "slot": "_a",
+        "incremental": "1795077496",
+        "slot_b_is_bootable": false,
+        "snapshot": "none"
+      }
+    },
+    {
+      "id": "T7",
+      "name": "interrupted at 42%, cache=unsafe",
+      "result": "second run failed",
+      "error": "kNewRootfsVerificationError",
+      "resumedAt": "532/1503 operations (35%)"
+    },
+    {
+      "id": "T7b",
+      "name": "interrupted at 41%, cache=writeback",
+      "result": "recovered after reset",
+      "secondRun": "kNewRootfsVerificationError",
+      "afterReset": "kSuccess",
+      "after": {
+        "slot": "_b",
+        "incremental": "awai-ota-test-v2"
+      }
+    },
+    {
+      "id": "T6",
+      "name": "incremental v1->v2",
+      "result": "failed",
+      "error": "kDownloadStateInitializationError",
+      "cause": "source hash mismatch on partition EFI (expected 22083261..., calculated fdb0e8d3...)"
+    }
+  ],
+  "notShown": [
+    "real hardware",
+    "the Awai PC image",
+    "release keys",
+    "a disk image from signed target-files",
+    "retry-count fallback",
+    "Updater app and feed"
+  ]
+}

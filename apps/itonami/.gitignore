@@ -12,3 +12,4 @@
 /src-tauri/gen/android/local.properties
 
 /src-tauri/tauri.android.conf.json
+/src-tauri/tauri.macos.conf.json

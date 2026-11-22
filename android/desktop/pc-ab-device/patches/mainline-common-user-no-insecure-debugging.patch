@@ -1,0 +1,36 @@
+diff --git a/libraries/libinit/Android.bp b/libraries/libinit/Android.bp
+index d06cf5a..58c46b7 100644
+--- a/libraries/libinit/Android.bp
++++ b/libraries/libinit/Android.bp
+@@ -34,6 +34,11 @@ cc_library_static {
+         false: [],
+         default: ["-DSET_DALVIK_HEAP"],
+     }),
++    product_variables: {
++        debuggable: {
++            cflags: ["-DAWAI_ALLOW_INSECURE_DEBUGGING"],
++        },
++    },
+     whole_static_libs: ["libbase"],
+     export_include_dirs: ["include"],
+     recovery_available: true,
+diff --git a/libraries/libinit/libinit_mainline_common.cpp b/libraries/libinit/libinit_mainline_common.cpp
+index 208dd7f..cf28d67 100644
+--- a/libraries/libinit/libinit_mainline_common.cpp
++++ b/libraries/libinit/libinit_mainline_common.cpp
+@@ -17,10 +17,15 @@
+ using android::base::GetBoolProperty;
+ 
+ void vendor_process_bootenv_mainline_common(void) {
++#ifdef AWAI_ALLOW_INSECURE_DEBUGGING
++    // AWAI-3682: only debuggable builds (userdebug, eng) honour these switches.
++    // A user build ignores both, so neither the kernel command line nor a file
++    // on /metadata can turn off ADB authentication or set ro.debuggable.
+     if (access("/metadata/.enable_insecure_debugging", F_OK) == 0 ||
+         GetBoolProperty("ro.boot.insecure_adb", false)) {
+         enable_insecure_debugging();
+     }
++#endif
+ }
+ 
+ void vendor_load_properties_mainline_common(void) {

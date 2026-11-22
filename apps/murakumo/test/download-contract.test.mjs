@@ -5,6 +5,9 @@ import {runtimeFor,DOWNLOAD_CAPABILITY} from '../client/download-contract.js';
 const catalog=JSON.parse(fs.readFileSync(new URL('../catalog.json',import.meta.url)));
 const runtime=runtimeFor(catalog);const APP='https://tauri.localhost';
 test('the download descriptor passes the canonical validator',()=>{assert.deepEqual(clientRuntimeProblems(runtime,[DOWNLOAD_CAPABILITY],APP),[]);});
+test('each download discloses its foreign recipient',()=>{
+ for(const o of runtime.operations){assert.equal(o.disclosure.country,'US');assert.equal(o.disclosure['country-name'],'United States');
+  assert.match(o.disclosure['foreign-info-url'],/^https:/);}});
 test('each operation pins its catalog revision, digest and exact size',()=>{
  assert.equal(runtime.operations.length,catalog.models.length);
  for(const [i,m] of catalog.models.entries()){const o=runtime.operations[i];

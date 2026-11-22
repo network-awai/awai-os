@@ -1,6 +1,6 @@
 {
  "schema": "awai.store.local-apps.v1",
- "note": "AWAI-3502: Tauri v3 itonami apps that keep everything on the device. Each APK must be network.itonami.<suffix>, signed by the single development identity, request no INTERNET permission, and fit 40 MiB. Catalog.java holds the same suffix allowlist; tests/local-apps.test.mjs checks the two agree.",
+ "note": "Local Itonami apps that keep everything on the device. Each APK must be network.itonami.<suffix>, signed by the single development identity, request no INTERNET permission, and fit 40 MiB. Catalog.java holds the same suffix allowlist; tests/local-apps.test.mjs checks the two agree.",
  "apps": [
   {
    "suffix": "ki",
@@ -169,6 +169,12 @@
    "name": "Tsumugi",
    "repo": "network-awai/app-itonami-tsumugi",
    "description": "紡ぎ — 情報とエネルギーの流れが、どれだけ秩序を生んだかを、この端末で測ります。流れの記録から、正味の利得・秩序化の度合い・エージェントの効率をまとめます。成員になる準備ができた候補を、評議会の審査に回す「提案」として示します（決定はしません）。外部へは何も送信しません。"
+  },
+  {
+   "suffix": "shirohan",
+   "name": "Shirohan 白版",
+   "repo": "cloud-itonami/app-itonami-shirohan",
+   "description": "SVG・PNG・JPEG・WebP の図案から白インクの下地と色版を生成し、版下 SVG をダウンロードに保存します。製版は端末内で行われます。"
   }
  ]
 }

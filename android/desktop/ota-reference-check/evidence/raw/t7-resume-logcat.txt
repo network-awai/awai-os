@@ -1,0 +1,5 @@
+11-19 09:37:49.004   667   667 I update_engine: type: resume
+11-19 09:37:49.012   667   667 I update_engine: [INFO:cleanup_previous_update_action.cc(150)] Starting/resuming CleanupPreviousUpdateAction
+11-19 09:37:49.021   667   667 I update_engine: type: resume
+11-19 09:37:51.024   667   667 I update_engine: [INFO:delta_performer.cc(120)] Resuming after 532/1503 operations (35%), 393483021/964662861 bytes downloaded (40%), overall progress 37%
+11-19 09:38:38.287   667   667 I update_engine: type: resume

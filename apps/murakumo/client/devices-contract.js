@@ -18,8 +18,16 @@ export function devicesProblems(devices){
   if(!KEY.test(d.key??''))problems.push(`${at}/key`);
   const extra=Object.keys(d).filter(k=>!['id','kind','origin','key','label'].includes(k));if(extra.length)problems.push(`${at}/unknown-field`);}
  return problems;}
+/* AWAI-3842: the finding-9 disclosure for a usage read. The recipient is the owner's own pinned
+   device on the tailnet (JP); only the usage request is sent, and the report is verified against
+   the pinned key before it is shown (see usage-report.js). */
+export const usageDisclosure=d=>({recipient:`pinned device ${d.id}`,country:'JP',
+ data:['device usage read request'],'special-care':false,
+ purpose:"read the pinned device's inference usage report",frequency:'one-time',
+ withdrawal:'decline the prompt; a read stores nothing',
+ note:'Only the usage request is sent. The report is verified against the pinned key before it is shown.'});
 export const usageOperations=devices=>devices.map(d=>({capability:USAGE_CAPABILITY,service:usageService(d.id),operation:USAGE_OPERATION,consent:'each-operation',
- 'data-categories':['device-usage-report'],endpoint:{origin:d.origin,method:'GET',path:USAGE_PATH}}));
+ 'data-categories':['device-usage-report'],endpoint:{origin:d.origin,method:'GET',path:USAGE_PATH},disclosure:usageDisclosure(d)}));
 /** The app's whole descriptor: catalog downloads plus pinned-device usage reads. */
 export function appRuntime(catalog,devices){const r=runtimeFor(catalog);return {...r,operations:[...r.operations,...usageOperations(devices)]};}
 export const appCapabilities=devices=>devices.length?[DOWNLOAD_CAPABILITY,USAGE_CAPABILITY]:[DOWNLOAD_CAPABILITY];

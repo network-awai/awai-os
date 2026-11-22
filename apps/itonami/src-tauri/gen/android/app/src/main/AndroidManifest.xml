@@ -9,7 +9,12 @@
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
     <uses-permission android:name="network.awai.permission.LOCAL_INFERENCE"/>
-    <queries><package android:name="network.awai.murakumo"/></queries>
+    <uses-permission android:name="network.awai.permission.HOST_ACCOUNT"/>
+    <queries>
+        <package android:name="network.awai.murakumo"/>
+        <package android:name="network.awai.gaka"/>
+        <provider android:authorities="network.awai.home.account"/>
+    </queries>
 
     <!-- AndroidTV support -->
     <uses-feature android:name="android.software.leanback" android:required="false" />
@@ -17,6 +22,7 @@
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
         android:theme="@style/Theme.itonami_app"
         android:usesCleartextTraffic="${usesCleartextTraffic}">

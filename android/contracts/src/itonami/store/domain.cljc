@@ -17,17 +17,29 @@
 ;; still enforces the tighter per-app budget. Browser pin validation keeps
 ;; its own lower ceiling for remote downloads.
 (def max-artifact-bytes (* 64 1024 1024))
-(defn safe-artifact? [{:keys [platform runtime kind asset sha256 bytes signerSha256]}]
-  (and (digest? sha256) (integer? bytes) (pos? bytes) (<= bytes max-artifact-bytes)
+(def preview-assets
+  {"app.aozora.awai.preview" "packages/aozora.apk"
+   "network.itonami.dougaka.preview" "packages/dougaka.apk"
+   "network.itonami.ongakuka.preview" "packages/ongakuka.apk"
+   "network.itonami.client.preview" "packages/itonami-preview.apk"
+   "network.itonami.yataverse.preview" "packages/yataverse.apk"})
+(defn- artifact-within? [ceiling {:keys [platform runtime kind asset sha256 bytes signerSha256]}]
+  (and (digest? sha256) (integer? bytes) (pos? bytes) (<= bytes ceiling)
        (or (and (= platform "android") (= runtime "android") (= kind "apk")
                 (string? asset) (boolean (re-matches #"packages/[a-z0-9-]+\.apk" asset))
                 (digest? signerSha256))
            (and (= platform "nixos") (= runtime "browser") (= kind "bundled-web")
                 (= asset "bundled:yotei")))))
+(defn safe-artifact? [artifact] (artifact-within? max-artifact-bytes artifact))
+(defn- app-artifact? [id artifact]
+  (if-let [asset (get preview-assets id)]
+    (and (= "android" (:platform artifact)) (= asset (:asset artifact))
+         (artifact-within? (* 256 1024 1024) artifact))
+    (safe-artifact? artifact)))
 (defn app? [{:keys [id name versionCode versionName artifacts]}]
   (and (package-id? id) (good-text? name 80) (good-text? versionName 40)
        (integer? versionCode) (pos? versionCode)
-       (vector? artifacts) (seq artifacts) (every? safe-artifact? artifacts)
+       (vector? artifacts) (seq artifacts) (every? #(app-artifact? id %) artifacts)
        (= (count artifacts) (count (set (map #(select-keys % [:platform :runtime]) artifacts))))))
 (defn valid-catalog? [c now]
   (and (map? c) (= schema (:schema c)) (integer? (:revision c)) (pos? (:revision c))

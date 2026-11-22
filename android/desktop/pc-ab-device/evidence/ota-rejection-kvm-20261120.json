@@ -1,0 +1,76 @@
+{
+  "issue": "AWAI-3586",
+  "date": "2026-11-20",
+  "sourceChangeCommit": "3462fac14d1ef3177eb601b27e92503a08ef86b9",
+  "buildManifest": {
+    "projects": 1279,
+    "sha256": "2c567abce809f66272e6fe392874f151ddcfd26c1436e4678d25c74968bb7962"
+  },
+  "where": "KVM, QEMU 8.2.2, e1000e, ramfb, headless SwiftShader, shared virtual NVMe",
+  "signing": "AOSP test keys for the device and older package. Separate test key for the wrong-key package.",
+  "build": {
+    "incremental": "awai-byname-v8-rollback-policy",
+    "variant": "userdebug",
+    "timestampUtcEpochSeconds": 1795157345,
+    "targetFilesSha256": "e7400a06d30eb58b217fb3c8846c6d4216b1b3554effc498bba146d378eb0271",
+    "tfDiskSha256": "4c201cff39779b26bb9b5689dce8cfb63e422c3f14062a7f67d50096c057f8ed",
+    "buildPropFilesInspected": 8,
+    "otaAllowDowngradeInTargetFiles": null,
+    "otaAllowDowngradeAtRuntime": null
+  },
+  "olderPackage": {
+    "incremental": "awai-byname-v7",
+    "timestampUtcEpochSeconds": 1795094895,
+    "regeneratedBitIdenticallyFromVerifiedTargetFiles": true
+  },
+  "runs": [
+    {
+      "name": "older-payload",
+      "package": "older-test-key.zip",
+      "packageSha256": "05fbd2eb26b423b1487c8a95adc62ff210c21a30a13a4a1cf939fcf963250a03",
+      "error": "kPayloadTimestampError",
+      "code": 51,
+      "updateDriverSeconds": 4.844,
+      "before": {
+        "bootCompleted": 1,
+        "slot": "_a",
+        "incremental": "awai-byname-v8-rollback-policy"
+      },
+      "afterReboot": {
+        "bootCompleted": 1,
+        "slot": "_a",
+        "incremental": "awai-byname-v8-rollback-policy"
+      },
+      "protectedPartitionsSha256": {
+        "1": "febc2aa0bd9b82347f17f7d61a7380968d099bb8313d0ae453a952c6f98dcb6b",
+        "2": "baf1b3962a9674b7085987146ac9cae197c4a8ed1b905473ac2c6cf1047cb50e",
+        "3": "ed1880b4736852836bceea7d640cc83c5dd6561733d853ca806d3e8f60923daf"
+      },
+      "protectedPartitionsUnchangedAfterShutdown": true
+    },
+    {
+      "name": "wrong-key",
+      "package": "wrong-key.zip",
+      "packageSha256": "08c485fdb29f78c6b5f04eabcbae390ae90717070697cf8c1a15e1a178cca2b7",
+      "error": "kDownloadPayloadPubKeyVerificationError",
+      "code": 18,
+      "updateDriverSeconds": 79.247,
+      "before": {
+        "bootCompleted": 1,
+        "slot": "_a",
+        "incremental": "awai-byname-v8-rollback-policy"
+      },
+      "afterReboot": {
+        "bootCompleted": 1,
+        "slot": "_a",
+        "incremental": "awai-byname-v8-rollback-policy"
+      },
+      "protectedPartitionsSha256": {
+        "1": "e9c84f54885f14fb068b326b4663977f91b4868bb4c6f0d088fc11fb324fd4a5",
+        "2": "71da78461a014129ed5e31e48458f531b7a5aa06619ab2af71d38ef757d5e19d",
+        "3": "23c1ef163c04f25b30ce570feac1cb2ce34953295259aec03ff88d3b6c4d0bbe"
+      },
+      "protectedPartitionsUnchangedAfterShutdown": true
+    }
+  ]
+}

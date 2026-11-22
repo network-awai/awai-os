@@ -8,6 +8,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmdirSync, statSync, 
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { decide } from "./gate.mjs";
+import { resolveLinearSink, resolveTestShell, recordLinearEntry, sandboxReport, taskStartLine } from "./runner-env.mjs";
 
 const [dir, flag] = process.argv.slice(2);
 const dry = flag === "--dry-run";
@@ -47,7 +48,12 @@ function usage() {
 // Commit whatever the bots left (scratch output excluded), then read the whole branch against its base, so
 // a second delivery of an already pushed branch is judged on the same facts as the first.
 const base = JSON.parse(execFileSync("gh", ["repo", "view", task.repo, "--json", "defaultBranchRef"], { encoding: "utf8" })).defaultBranchRef.name;
-sh("git", ["add", "-A", "--", ".", ":!.agent-output"]);
+// Stage everything, then unstage what must never be delivered. An exclude pathspec on `git add` is not
+// portable: git 2.39 (Debian 12) fails when the excluded path is also in .gitignore.
+// `--sparse` (git 2.34+): in a sparse clone the scratch directory lies outside the checkout cone and a plain
+// `git add` refuses the whole command because of it.
+sh("git", ["add", "-A", "--sparse", "--", "."]);
+sh("git", ["reset", "-q", "--", ".agent-output", ":(glob)**/target/**", ":(glob)**/node_modules/**"]);
 const staged = sh("git", ["diff", "--cached", "--name-only"]).trim() !== "";
 function readChange(range) {
   const files = sh("git", ["diff", ...range, "--numstat", "-z"]).split("\0").filter(Boolean).map((l) => {
@@ -70,17 +76,65 @@ const mergeBase = sh("git", ["merge-base", "HEAD", `origin/${base}`]).trim();
 const { files, addedLines } = readChange(["--cached", mergeBase]);
 
 // Tests run here, outside the agent sandbox; the agent's own report is not trusted.
+// The shell is /bin/zsh when it exists, otherwise /bin/bash (override: DEV_BOTS_TEST_SHELL).
+const TEST_SHELL = resolveTestShell({ env: process.env, exists: existsSync });
 let testIndex = 0;
 const tests = (task.tests ?? []).map((cmd) => {
-  const r = spawnSync("/bin/zsh", ["-lc", cmd], { cwd: join(dir, task.test_cwd ?? "."), encoding: "utf8", maxBuffer: 1 << 28, timeout: (task.test_timeout_s ?? 1800) * 1000 });
-  writeFileSync(join(out, `deliver-test-${testIndex++}.log`), `$ ${cmd}\n${r.stdout ?? ""}\n${r.stderr ?? ""}\nexit=${r.status}\n`);
-  return { cmd, exit: r.status ?? 1 };
+  const r = spawnSync(TEST_SHELL, ["-lc", cmd], { cwd: join(dir, task.test_cwd ?? "."), encoding: "utf8", maxBuffer: 1 << 28, timeout: (task.test_timeout_s ?? 1800) * 1000 });
+  writeFileSync(join(out, `deliver-test-${testIndex++}.log`), `$ ${cmd}\nshell=${TEST_SHELL}\n${r.stdout ?? ""}\n${r.stderr ?? ""}\nexit=${r.status}\n`);
+  return { cmd, shell: TEST_SHELL, exit: r.status ?? 1 };
 });
 
+// Sandbox the implementer/review runs used (recorded by run-task.sh in run<N>.meta).
+// Display only: a missing sandbox never changes the gate decision, it is reported.
+function collectSandbox() {
+  let metas = [];
+  try {
+    metas = readdirSync(out).filter((n) => /^run\d+\.meta$/.test(n)).sort().map((n) => {
+      let meta = null;
+      try { meta = JSON.parse(readFileSync(join(out, n), "utf8")); } catch {}
+      return { run: n.replace(/\.meta$/, ""), meta };
+    });
+  } catch {}
+  return sandboxReport(metas);
+}
+const sandbox = collectSandbox();
+
+// Linear record sink: "orca" (default) or "outbox" (DEV_BOTS_LINEAR=outbox writes
+// JSON under .agent-output/linear-outbox/ instead of calling orca). Recording
+// never changes the gate decision, which is already computed above.
+const linearSink = resolveLinearSink({ env: process.env });
+const linearOutboxFiles = [];
+const recordLinear = (kind, payload) => {
+  const r = recordLinearEntry(
+    { sink: linearSink, outDir: out, issue: task.issue, kind, payload },
+    {
+      runOrca: (args) => spawnSync("orca", args, { encoding: "utf8" }),
+      writeFile: (p, s) => writeFileSync(p, s),
+      mkdir: (p) => mkdirSync(p, { recursive: true }),
+      readFile: (p) => readFileSync(p, "utf8"),
+    },
+  );
+  if (r.file) linearOutboxFiles.push(r.file);
+  return r;
+};
+
 let decision = decide({ task, verdict, files, addedLines, tests });
-const report = { task: task.issue, at: new Date().toISOString(), decision, tests, files: files.length, usage: usage() };
+const report = { task: task.issue, at: new Date().toISOString(), decision, tests, files: files.length, usage: usage(), testShell: TEST_SHELL, linearSink, sandbox: { disabled: sandbox.disabled, note: sandbox.note } };
 const finish = (extra) => { Object.assign(report, extra); writeFileSync(join(out, "deliver.json"), JSON.stringify(report, null, 1)); console.log(JSON.stringify(report.decision), report.pr ?? ""); };
 if (dry || !files.length) { finish({ dryRun: dry }); process.exit(0); }
+
+// A hold means something is wrong (failed tests, rejected review, secret-like content, wrong repository).
+// Nothing leaves the host: no commit, no push, no PR. Only the Linear record says why.
+if (decision.action === "hold") {
+  sh("git", ["reset", "-q"]);
+  const why = decision.reasons.map((r) => `- ${r.level}: ${r.text}`).join("\n");
+  const tested = tests.map((t) => `- \`${t.cmd}\` exit ${t.exit}`).join("\n") || "- none declared";
+  writeFileSync(join(out, "linear-comment.md"), `Developer-bot delivery for ${task.issue}: **held**, nothing was committed or pushed.\n\n**Reasons**\n${why}\n\n**Tests run outside the agent sandbox** (shell: \`${TEST_SHELL}\`)\n${tested}\n\n**Review (shinsa)**: ${verdict?.summary ?? "no verdict"}\n\n${sandbox.note}\n\nThe change stays in the task directory on the host until the reason is fixed.`);
+  const c = recordLinear("comment", { bodyFile: join(out, "linear-comment.md") });
+  finish({ held: true, linearSink, linearComment: c.posted, ...(c.file ? { linearOutbox: [...linearOutboxFiles] } : {}) });
+  process.exit(0);
+}
 
 const usageTable = ["| Run | Model | Calls | Input | of which cached | Output | of which reasoning |", "| -- | -- | -- | -- | -- | -- | -- |",
   ...report.usage.map((u) => `| ${u.run} | ${u.model} | ${u.calls} | ${u.input} | ${u.cached} | ${u.output} | ${u.reasoning} |`)].join("\n");
@@ -92,7 +146,13 @@ const unverified = [...(decision.deferred ?? []).map((x) => `deferred acceptance
 if (staged) sh("git", ["commit", "-q", "-m", `${task.issue}: ${task.title}\n\nImplemented by an Itonami developer bot on Muse (muse-spark-1.3); reviewed by the shinsa profile.\nGate decision: ${decision.action}.`]);
 const head = sh("git", ["rev-parse", "HEAD"]).trim();
 sh("git", ["push", "-q", "-u", "origin", task.branch]);
-const body = `Linear: ${task.issue}\n\n## Review (shinsa)\n\n${summary}\n\n## Checks\n\n${checks}\n\n## Gate\n\nDecision: **${decision.action}**\n\n${reasons}\n\n## Not verified\n\n${unverified}\n\nImplemented and reviewed by Itonami developer bots on Muse; delivered by \`otehon/dev-bots/deliver.mjs\`.\n`;
+const linearRecord = linearSink === "outbox"
+  ? "outbox (JSON in `.agent-output/linear-outbox/`, not posted to Linear)"
+  : "orca";
+// run-task.sh writes run1.start when the implementer run begins. Display and metrics only.
+let startText = "";
+try { startText = readFileSync(join(out, "run1.start"), "utf8"); } catch {}
+const body = `Linear: ${task.issue}\n\n## Review (shinsa)\n\n${summary}\n\n## Checks\n\n${checks}\n\n## Gate\n\nDecision: **${decision.action}**\n\n${reasons}\n\n## Runner\n\n${taskStartLine(startText)}\n- Test shell: \`${TEST_SHELL}\`\n- ${sandbox.note}\n- Linear record: ${linearRecord}\n\n## Not verified\n\n${unverified}\n\nImplemented and reviewed by Itonami developer bots on Muse; delivered by \`otehon/dev-bots/deliver.mjs\`.\n`;
 writeFileSync(join(out, "pr-body.md"), body);
 let pr = null, wasDraft = false;
 try { const e = JSON.parse(sh("gh", ["pr", "view", task.branch, "-R", task.repo, "--json", "url,isDraft,state"])); if (e.state === "OPEN") { pr = e.url; wasDraft = e.isDraft; } } catch {}
@@ -126,7 +186,6 @@ if (decision.action === "merge") {
 const state = merged ? `Merged (squash) as \`${merged.commit}\` at ${merged.at}.` : `Not merged: gate decision **${decision.action}**.`;
 const comment = `Developer-bot delivery for ${task.issue} — PR ${pr} (head \`${head}\`). ${state}\n\n**Review (shinsa)**: ${summary}\n\n**Checks**\n${checks}\n\n**Gate reasons**\n${decision.reasons.map((r) => `- ${r.level}: ${r.text}`).join("\n") || "- none"}\n\n**Not verified**\n${unverified}\n\n**Muse usage** (source: \`run.usage\` events of \`muse exec --json\`; \`unknown\` where a run recorded none)\n\n${usageTable}\n\nA merge does not prove deployment or device acceptance.`;
 writeFileSync(join(out, "linear-comment.md"), comment);
-const lin = (args) => spawnSync("orca", ["linear", ...args], { encoding: "utf8" });
-const c = lin(["comment", "add", task.issue, "--body-file", join(out, "linear-comment.md")]);
-if (merged && task.done_on_merge !== false && !decision.deferred?.length) lin(["status", "set", task.issue, "--to", "Done"]);
-finish({ pr, head, merged, linearComment: c.status === 0 ? "posted" : `failed: ${(c.stderr ?? "").slice(0, 200)}` });
+const c = recordLinear("comment", { bodyFile: join(out, "linear-comment.md") });
+if (merged && task.done_on_merge !== false && !decision.deferred?.length) recordLinear("status", { to: "Done" });
+finish({ pr, head, merged, linearSink, linearComment: c.posted, ...(linearOutboxFiles.length ? { linearOutbox: [...linearOutboxFiles] } : {}) });
