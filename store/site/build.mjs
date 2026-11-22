@@ -95,6 +95,9 @@ export async function verifyStore({pointerBytes, rootDer, keysBytes, read, now, 
   const apps = catalog.apps.map(app => {
     if (!/^network\.(itonami|awai)\.[a-z0-9.]+$/.test(app.id) || listed.has(app.id)) fail('app-id');
     listed.add(app.id);
+    // AWAI-3882: fail closed — every catalog entry must resolve a publisher. A blank or
+    // missing publisher aborts the build instead of rendering a blank 配布元.
+    if (typeof app.publisher !== 'string' || !app.publisher.trim()) fail('publisher');
     const apk = (app.artifacts || []).find(a => a.platform === 'android' && a.kind === 'apk');
     const pin = pins.apks[app.id];
     let download = null;
@@ -106,7 +109,7 @@ export async function verifyStore({pointerBytes, rootDer, keysBytes, read, now, 
       download = {url: pin.url, sha256: apk.sha256, bytes: apk.bytes, signerSha256: apk.signerSha256,
         developmentSigner: apk.signerSha256 === signer, bytesChecked: Boolean(bytes)};
     } else if (pin) fail('apk-pin-mismatch');
-    return {id: app.id, name: String(app.name), description: String(app.description || ''), publisher: String(app.publisher || ''),
+    return {id: app.id, name: String(app.name), description: String(app.description || ''), publisher: app.publisher,
       versionName: String(app.versionName), versionCode: app.versionCode,
       operations: Array.isArray(app.operations) ? app.operations.length : null, download};
   });

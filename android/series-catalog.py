@@ -117,6 +117,16 @@ def held_by(source, holds):
     return next((h for h in holds if fnmatch.fnmatchcase(source, h['pattern'])), None)
 
 
+def resolved_publisher(table, app):
+    """The publisher one app entry resolves to (AWAI-3882): always the top-level value.
+
+    Per-entry publisher fields are refused in check_table, so resolution is a single reference.
+    Returns '' when the top-level publisher is missing or blank, which callers treat as fail-closed.
+    """
+    value = table.get('publisher')
+    return value if isinstance(value, str) and value.strip() else ''
+
+
 def check_table(table, holds=()):
     if table.get('schema') != 'awai.store.series-apps.v1':
         raise Refused('table: not awai.store.series-apps.v1')
@@ -126,6 +136,11 @@ def check_table(table, holds=()):
     for a in table['apps']:
         if 'publisher' in a:
             raise Refused(f"table: {a.get('source')} carries its own publisher; reference the top-level publisher instead")
+    # Fail closed: every app entry resolves to the same top-level publisher. Any entry whose
+    # resolved publisher is blank fails here instead of emitting an unlabelled catalog entry.
+    for a in table['apps']:
+        if not resolved_publisher(table, a):
+            raise Refused(f"table: {a.get('source')} does not resolve a publisher; refusing is the only option")
     groups, seen, ranks = table['groups'], set(), []
     for g, v in groups.items():
         if not re.fullmatch(r'[0-9a-f]{64}', v.get('signerSha256', '')):
@@ -209,8 +224,11 @@ def entry(app, directory, table):
     if not f['label'] or len(f['label']) > 80:
         raise Refused(f'{s}: APK label is missing or longer than 80 characters')
     slug = app['id'].split('.')[-1]
+    publisher = resolved_publisher(table, app)
+    if not publisher:
+        raise Refused(f'{s}: publisher does not resolve to a value; refusing is the only option')
     return {
-        'id': app['id'], 'name': f['label'], 'publisher': table['publisher'],
+        'id': app['id'], 'name': f['label'], 'publisher': publisher,
         'description': app['description'] + attribution(app),
         'versionCode': f['versionCode'], 'versionName': f['versionName'], 'operations': [],
         'artifacts': [{'platform': 'android', 'runtime': 'android', 'kind': 'apk', 'asset': f'packages/{slug}.apk',
