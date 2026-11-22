@@ -1,0 +1,17 @@
+# Apply with: kubectl apply -k deploy/build-reaper  (after creating the Secret; see README.md)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: build-reaper
+resources:
+  - namespace.yaml
+  - rbac.yaml
+  - networkpolicy.yaml
+  - heartbeat.yaml
+  - cronjob.yaml
+configMapGenerator:
+  - name: build-reaper-script
+    files:
+      - reaper.mjs
+generatorOptions:
+  labels:
+    app.kubernetes.io/name: build-reaper
