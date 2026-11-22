@@ -74,6 +74,20 @@ What was not checked: the revisions on the build host (they may differ, in which
 `user` image boots, finishes setup and shows no ADB at the Welcome screen; that development `userdebug`
 images still serve ADB on 5555. Those are checks V1, V2 and V7 in the design document.
 
+## PC installer and OTA host checks
+
+With Bazelisk and Python 3 on the host, run both regression suites using the
+Bazel version in `.bazelversion`:
+
+```sh
+bazel test //android/desktop/pc-ab-device:pc_verification
+```
+
+For a focused run, use `:installer_test` or `:ota_feed_test` in the same
+package. Each target declares its Python sources and runs locally. These suites
+cover installer planning and OTA metadata checks. The AOSP build, signing and
+on-device acceptance continue to use their documented release workflows.
+
 ## Installer
 
 `awai-pc-install.py` adds the Awai partitions to a disk that already has partitions:
