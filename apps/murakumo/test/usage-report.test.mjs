@@ -34,6 +34,7 @@ test('pinned devices validate and join the canonical descriptor',()=>{
  const runtime=appRuntime(catalog,[device]);assert.deepEqual(clientRuntimeProblems(runtime,appCapabilities([device]),APP),[]);
  const read=runtime.operations.find(o=>o.capability===USAGE_CAPABILITY);
  assert.deepEqual(read.endpoint,{origin:device.origin,method:'GET',path:'/v1/murakumo/usage'});assert.equal(read.consent,'each-operation');
+ assert.equal(read.disclosure.country,'JP');assert.ok(!('foreign-info-url' in read.disclosure));
  assert.equal(clientRuntimeConnectSrc(runtime,appCapabilities([device]),[],APP),'connect-src https://*.cdn.hf.co https://benjamin.example.ts.net:8443 https://huggingface.co');
  assert.deepEqual(appCapabilities([]),['awai.murakumo.model-download']);});
 test('the committed devices.json is valid',()=>{assert.deepEqual(devicesProblems(JSON.parse(fs.readFileSync(path.join(here,'../devices.json')))),[]);});

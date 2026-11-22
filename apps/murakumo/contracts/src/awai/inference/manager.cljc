@@ -120,7 +120,8 @@
 ;; Device usage snapshot: awai.murakumo.device-usage.v1
 
 (def kinds #{"android" "mac"})
-(def load-states #{"idle" "busy" "loading"})
+;; "unknown": the copy another app reads has no live job state (Murakumo Models.usage forOtherApp).
+(def load-states #{"idle" "busy" "loading" "unknown"})
 
 (defn- nil-or [pred x] (or (nil? x) (pred x)))
 (defn- percent? [x] (and (nat-n? x) (<= x 100)))

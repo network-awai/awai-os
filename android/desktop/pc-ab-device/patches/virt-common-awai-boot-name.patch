@@ -1,0 +1,15 @@
+diff --git a/build/tasks/10-bootmgr-defs.mk b/build/tasks/10-bootmgr-defs.mk
+--- a/build/tasks/10-bootmgr-defs.mk
++++ b/build/tasks/10-bootmgr-defs.mk
+@@ -28,6 +28,11 @@
+ ifneq ($(LINEAGE_BUILD),)
++# AWAI-3747: use the release name for the Awai PC boot and installer menus.
++ifeq ($(TARGET_PRODUCT),lineage_virtio_x86_64)
++BOOTMGR_ANDROID_DISTRIBUTION_NAME := Awai OS Meiji
++else
+ BOOTMGR_ANDROID_DISTRIBUTION_NAME := LineageOS $(PRODUCT_VERSION_MAJOR).$(PRODUCT_VERSION_MINOR)
++endif
+ BOOTMGR_ANDROID_OTA_PACKAGE_NAME := lineage-$(LINEAGE_VERSION).zip
+ BOOTMGR_ARTIFACT_FILENAME_PREFIX := lineage-$(LINEAGE_VERSION)
+ BOOTMGR_THEME := lineage
+ else
