@@ -7,7 +7,7 @@ in this process's environment, and are deleted at the end. Nothing is installed,
 
   python3 android/tests/series-catalog.py
 """
-import hashlib, json, os, pathlib, secrets, shutil, subprocess, sys, tempfile
+import hashlib, json, os, pathlib, re, secrets, shutil, subprocess, sys, tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 SDK = pathlib.Path.home() / 'Library/Android/sdk'
@@ -70,10 +70,30 @@ def main():
             release = {'schema': 'awai.app.artifact.v1', 'id': release_id or pid, 'source': release_source or 'cloud-itonami-' + source,
                        'version': version, 'files': {'descriptor.json': descriptor_digest or hashlib.sha256(descriptor).hexdigest()}}
             # As the series app build writes them: source_commit (40 hex, or null without git) and dirty (true/false/null).
-            release['source_commit'] = commit
+            # An ISIC app without an explicit commit is built from a stand-in repository whose blueprint.edn says isic-rev5.
+            if commit is None and source.startswith('isic-'):
+                commit = isic_repo(source)
+            release['source_commit'] = None if commit == 'none' else commit
             if dirty != 'absent': release['dirty'] = dirty
             (d / 'release.json').write_text(json.dumps(release))
             apk(d / 'app-release.apk', package or pid, apk_version or version, label or f'Series test {source}', group)
+
+        # Stand-in ISIC repositories: blueprint.edn with the classification key; one commit per distinct blueprint text.
+        def isic_repo(source, blueprint=None):
+            code = source.split('-')[1]
+            text = blueprint if blueprint is not None else (
+                f'{{:itonami.blueprint/id "cloud-itonami-{source}"\n :itonami.blueprint/isic-rev5 "{code}"\n :itonami.blueprint/name "Test"}}\n')
+            clone = t / 'repos' / source
+            g = lambda *a: subprocess.run(['git', '-C', str(clone), *a], capture_output=True, text=True, check=True).stdout.strip()
+            if not clone.exists():
+                clone.mkdir(parents=True)
+                g('init', '-q'); g('config', 'user.email', 'test@example.invalid'); g('config', 'user.name', 'series test')
+            (clone / 'blueprint.edn').write_text(text)
+            g('add', 'blueprint.edn')
+            g('commit', '-q', '--allow-empty', '-m', 'blueprint')
+            return g('rev-parse', 'HEAD')
+
+        ISIC_7810_DESC = 'ISIC Rev.5 7810 の系列アプリ（開発版）。記録と判断はこの端末の中だけで行い、外部への送信はありません。'
 
         # ISCO-08 source marks: repo, commit, ja (store/catalog-source/isco-source.tsv form).
         def write_marks(rows, name='marks.tsv'):
@@ -211,7 +231,7 @@ def main():
             check(f'the ILO reference appears once (ja {ja})', got is not None and got.count('Occupation reference') == 1
                   and got.count('職業の参照') == (1 if ja == 'true' else 0))
             isic = apps.get('network.itonami.isic7810', {}).get('description')
-            check(f'no ILO reference on an ISIC app (ja {ja})', isic == next(a['description'] for a in table['apps'] if a['source'] == 'isic-7810'), repr(isic))
+            check(f'no ILO reference on an ISIC app (ja {ja})', isic == ISIC_7810_DESC, repr(isic))
         r = generate(attr, tab, 'attr-other.json', marks=write_marks([(REPO, commits['source'], 'false'),
                      ('cloud-itonami/app-itonami-cloud-itonami-isco-9111', '1' * 40, 'true')], 'attr-other.tsv'))
         check('a mark for a repository outside the table changes nothing', r.returncode == 0
@@ -250,6 +270,40 @@ def main():
         refused('isco-source.tsv without its header', lambda d: app_input(d, 'isic-6209', group='isic-J'), 'header', marks=t / 'nohead.tsv')
         refused('marked commit missing from the clone', lambda d: app_input(d, 'isco-2423', group='isco-2', commit=commits['after']), 'is not in the clone',
                 marks=write_marks([(REPO, '0' * 40, 'false')], 'missing.tsv'))
+
+        # ISIC revision: from blueprint.edn at the build commit, never written by hand (AWAI-3771).
+        check('the real table has no hand-written ISIC description', all('description' not in a for a in table['apps'] if a['source'].startswith('isic-')))
+        rev = t / 'rev'
+        app_input(rev, 'isic-6209', group='isic-J', commit=isic_repo('isic-6209',
+                  '{:itonami.blueprint/id "cloud-itonami-isic-6209"\n :itonami.blueprint/isic-rev4 "6209"}\n'))
+        app_input(rev, 'isic-7810', group='isic-N')
+        r = generate(rev, tab, 'rev.json')
+        apps = {a['id']: a for a in json.loads((t / 'rev.json').read_text())['apps']} if r.returncode == 0 else {}
+        check('isic-rev5 in blueprint.edn gives "ISIC Rev.5 7810 …" exactly', apps.get('network.itonami.isic7810', {}).get('description') == ISIC_7810_DESC, r.stderr)
+        check('isic-rev4 in blueprint.edn gives "ISIC Rev.4 6209 …" exactly', apps.get('network.itonami.isic6209', {}).get('description') ==
+              'ISIC Rev.4 6209 の系列アプリ（開発版）。記録と判断はこの端末の中だけで行い、外部への送信はありません。', r.stderr)
+        check('no UN classification text (includes / excludes) in ISIC descriptions',
+              all(not re.search(r'(?i)includ|exclud', a['description']) for a in apps.values()))
+        fixed = json.loads(json.dumps(table))
+        next(a for a in fixed['apps'] if a['source'] == 'isic-7810')['description'] = ISIC_7810_DESC
+        r = generate(rev, write_table(fixed, 'fixed-ok.json'), 'fixed-ok.json')
+        check('a table description that matches blueprint.edn is accepted', r.returncode == 0, r.stderr)
+        next(a for a in fixed['apps'] if a['source'] == 'isic-7810')['description'] = ISIC_7810_DESC.replace('Rev.5', 'Rev.4')
+        r = generate(rev, write_table(fixed, 'fixed-bad.json'), 'fixed-bad.json')
+        check('a table description that disagrees with blueprint.edn is refused', r.returncode != 0 and 'disagrees with blueprint.edn' in r.stderr, r.stderr)
+        for name, text, want in (
+                ('both revisions', '{:itonami.blueprint/isic-rev4 "8020"\n :itonami.blueprint/isic-rev5 "8020"}\n', 'names 2 ISIC revisions'),
+                ('no revision', '{:itonami.blueprint/id "cloud-itonami-isic-8020"}\n', 'names 0 ISIC revisions'),
+                ('another code', '{:itonami.blueprint/isic-rev5 "8010"}\n', 'not the code of isic-8020')):
+            d = t / ('bp-' + name.replace(' ', '-'))
+            app_input(d, 'isic-8020', group='isic-N', commit=isic_repo('isic-8020', text))
+            r = generate(d, tab, 'bp.json')
+            check(f'blueprint.edn with {name} is refused', r.returncode != 0 and want in r.stderr, r.stderr)
+        nocommit = t / 'isic-no-commit'
+        app_input(nocommit, 'isic-7810', group='isic-N', commit='none')
+        r = generate(nocommit, tab, 'isic-no-commit.json')
+        x = {e['source']: e['reason'] for e in json.loads((t / 'isic-no-commit.json.report').read_text())['excluded']} if r.returncode == 0 else {}
+        check('an ISIC release without source_commit is left out as release-without-commit', x.get('isic-7810') == 'release-without-commit', r.stderr)
 
         # App Cycle ranks 11-15 are in the table; --top N keeps a catalog to ranks 1..N.
         ranked = [(a['rank'], a['source'], a['id'], a['group']) for a in table['apps'] if a.get('rank') is not None]
