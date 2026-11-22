@@ -60,11 +60,26 @@ export const torihikiUrls = {
 export const accountUrl = (id) => `${TORIHIKI_NODE}/account?id=${accountId(id)}`;
 export const TX_URL = `${TORIHIKI_NODE}/tx`;
 
+// AWAI-3881: finding-9 disclosure for every operation (same shape as
+// apps/murakumo/client/download-contract.js, AWAI-3842). The node runs on
+// Cloudflare Workers; per the owner decision (2026-11-23) it is declared
+// as the US infrastructure recipient rather than as a domestic service.
+const NODE_DISCLOSURE = { recipient: 'Cloudflare, Inc.', country: 'US', 'country-name': 'United States',
+  'foreign-info-url': 'https://www.cloudflare.com/', 'special-care': false, frequency: 'one-time',
+  note: 'Devnet only: no real assets. A signed transaction is public to the node once sent.' };
+const DATA_WORDS = { 'request-ip': 'request IP address', 'market-id': 'market id', 'account-id': 'account id',
+  'public-key': 'public key', 'signed-transaction': 'signed transaction', order: 'order details' };
+const disclosureFor = (capability, categories) => ({ ...NODE_DISCLOSURE,
+  data: categories.map((c) => DATA_WORDS[c] ?? c),
+  purpose: capability === READ ? 'read devnet market data from the node' : 'submit a signed devnet transaction to the node',
+  withdrawal: capability === READ ? 'cancel the request before it is sent' : 'do not sign; a sent transaction cannot be unsent' });
+
 export function torihikiRuntime(base) {
   return { ...base, operations: operations.map(([capability, operation, route, categories]) => ({
     capability, service: SERVICE, operation, consent: 'each-operation',
     'data-categories': categories,
     endpoint: { origin: TORIHIKI_NODE, routes: [route] },
+    disclosure: disclosureFor(capability, categories),
   })) };
 }
 
