@@ -98,7 +98,7 @@
     {
       "id": "shakai",
       "dock": 7,
-      "title": "Shakai",
+      "title": "Aozora Social",
       "section": "Apps",
       "summary": "Social: reads and composes the local Aozora outbox timeline",
       "install": "os-image",
