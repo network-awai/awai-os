@@ -70,6 +70,22 @@ test('the Kumade Tauri artifact fits the shared ceiling and keeps its own asset 
     assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,bad]}),100),false,asset);
   }
 });
+test('the Payment Drafts Tauri artifact fits the shared ceiling and keeps its own asset name',()=>{
+  const pay={...app,id:'network.itonami.paymentdrafts',versionCode:1000,artifacts:[{...apk,asset:'packages/paymentdrafts.apk',bytes:21736705}]};
+  assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,pay]}),100),true);
+  for(const asset of ['packages/PaymentDrafts.apk','packages/paymentdrafts.apk/../x.apk','packages/paymentdrafts.APK']){
+    const bad={...pay,artifacts:[{...apk,asset,bytes:21736705}]};
+    assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,bad]}),100),false,asset);
+  }
+});
+test('the Securities Drafts Tauri artifact fits the shared ceiling and keeps its own asset name',()=>{
+  const sec={...app,id:'network.itonami.securitiesdrafts',versionCode:1000,artifacts:[{...apk,asset:'packages/securitiesdrafts.apk',bytes:21733964}]};
+  assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,sec]}),100),true);
+  for(const asset of ['packages/SecuritiesDrafts.apk','packages/securitiesdrafts.apk/../x.apk','packages/securitiesdrafts.APK']){
+    const bad={...sec,artifacts:[{...apk,asset,bytes:21733964}]};
+    assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,bad]}),100),false,asset);
+  }
+});
 test('an AWAI-3502 local Tauri app fits the shared ceiling under its own asset name',()=>{
   const local={...app,id:'network.itonami.icc',versionCode:1000,artifacts:[{...apk,asset:'packages/icc.apk',bytes:20*1024*1024}]};
   assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,local]}),100),true);

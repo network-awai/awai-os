@@ -34,6 +34,10 @@ An app is listed with a download link only when all of these hold. Any failure s
   has the `itonami.store.bundled.v1` schema, and has not expired.
 - Each APK pin equals the catalog's SHA-256 for that app, and no pin names an unlisted app.
 - Each APK present in this repository has the catalog's size and SHA-256.
+- Every listed app carries a non-blank publisher from the signed catalog (AWAI-3882). A
+  missing or blank publisher aborts the build (`publisher`) instead of rendering a blank
+  配布元; the detail view shows each app's publisher as 配布元 and `site-manifest.json`
+  carries the same value per app.
 
 ## What the page is
 
@@ -46,6 +50,10 @@ An app is listed with a download link only when all of these hold. Any failure s
 - It says that this is a development build. The catalog and most APKs are signed with the Android
   debug identity; there is no production publisher key, rotation or revocation yet (AWAI-2982, AWAI-3732).
 - It does not offer the Store APK itself, an iOS build or a desktop build. None is published.
+- It shows each app's publisher from the signed catalog as 配布元 and writes the same value
+  into `site-manifest.json`. Production catalogs carry `Awai Network LLC`, defined once in
+  `store/catalog-source/series-apps.json` (see `store/README.md`); signed development catalogs
+  keep the publisher they were signed with. The page never invents a publisher string.
 
 ## Publishing
 
