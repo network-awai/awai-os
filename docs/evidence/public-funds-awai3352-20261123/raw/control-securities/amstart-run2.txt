@@ -1,0 +1,7 @@
+Starting: Intent { cmp=network.itonami.securitiesdrafts/.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: network.itonami.securitiesdrafts/.MainActivity
+TotalTime: 438
+WaitTime: 440
+Complete

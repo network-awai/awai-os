@@ -1,0 +1,7 @@
+Starting: Intent { cmp=network.itonami.publicfunds/.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: network.itonami.publicfunds/.MainActivity
+TotalTime: 768
+WaitTime: 773
+Complete
