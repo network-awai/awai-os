@@ -47,6 +47,15 @@ fi
 stage sync
 cd "$SRC"
 repo init -u https://github.com/LineageOS/android.git -b lineage-24.0 --no-clone-bundle
+# The Generic PC device tree is not in the default lineage-24.0 manifest.
+mkdir -p .repo/local_manifests
+cat > .repo/local_manifests/awai-generic.xml <<'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <project name="LineageOS/android_device_mainline_generic" path="device/mainline/generic"
+           remote="github" revision="3d402dc58aa2086a960abd076204836259387a79" />
+</manifest>
+EOF
 repo sync -c --no-clone-bundle --optimized-fetch -j"$(nproc)" || \
   repo sync -c --no-clone-bundle --optimized-fetch -j4
 repo manifest -r -o "$UP/pinned-manifest-initial.xml"
@@ -66,18 +75,19 @@ done < <(find "$KIT/inputs/res" -type f -print0)
 mkdir -p "$wizard/app/src/main/res/drawable-nodpi"
 cp "$KIT/inputs/setup-logo.png" "$wizard/app/src/main/res/drawable-nodpi/awai_welcome_logo.png"
 
-stage generic-fix
-dev="$SRC/device/mainline/generic"
-if ! grep -q -- '--header_version $(BOARD_BOOT_HEADER_VERSION)' "$dev/BoardConfig.mk"; then
-  git -C "$dev" apply --check "$KIT/inputs/mkbootimg-header-version.patch"
-  git -C "$dev" apply "$KIT/inputs/mkbootimg-header-version.patch"
-fi
-
 source build/envsetup.sh
 stage breakfast-lamu
 breakfast lamu userdebug
 stage breakfast-generic
 breakfast Generic_x86_64 userdebug
+
+stage generic-fix
+dev="$SRC/device/mainline/generic"
+[[ -f "$dev/BoardConfig.mk" ]] || { echo "AWAI3850_ERROR: $dev missing after breakfast" >&2; exit 1; }
+if ! grep -q -- '--header_version $(BOARD_BOOT_HEADER_VERSION)' "$dev/BoardConfig.mk"; then
+  git -C "$dev" apply --check "$KIT/inputs/mkbootimg-header-version.patch"
+  git -C "$dev" apply "$KIT/inputs/mkbootimg-header-version.patch"
+fi
 # Snapshot of record: after roomservice pulled device dependencies.
 repo manifest -r -o "$UP/pinned-manifest.xml"
 sha256sum "$UP/pinned-manifest.xml" > "$UP/pinned-manifest.xml.sha256"
