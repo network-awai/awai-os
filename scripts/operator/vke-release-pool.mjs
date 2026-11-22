@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
@@ -15,12 +16,32 @@ const ownerKey = "awai.network/vke-run";
 const jobNames = ["awai-pc-release-build", "awai-pc-release-restore"];
 const finished = new Set(["Succeeded", "Failed"]);
 const systemPods = /^(calico-node|calico-typha|csi-vultr-node|konnectivity-agent|kube-proxy)-/;
+// Release pools carry this Vultr node-pool label (and therefore node label) so the
+// in-cluster build-reaper can find them. Tatara pools carry tatara.network/role.
+export const purposeKey = "awai.network/purpose";
+export const purposeValue = "release-build";
+// Shared with other on-demand pools (Tatara APK lane): the build-reaper deletes
+// idle pools carrying this label and never the Tatara pools.
+export const reapableKey = "awai.network/reapable";
+export const tataraRoleKey = "tatara.network/role";
+export const releaseLabel = /^awai-pc-release-[0-9a-f]{12}$/;
+
+// Identify the Awai Tatara cluster by the role labels on its nodes, not by pool
+// names, so renaming a Tatara pool does not break the check.
+export function tataraRoles(nodes) {
+  return [...new Set(nodes.map((node) => node.metadata.labels?.[tataraRoleKey]).filter(Boolean))].sort();
+}
+
+export function requireTataraCluster(nodes) {
+  requireState(tataraRoles(nodes).includes("system"),
+    `The kubeconfig must target the Awai Tatara cluster (no node labelled ${tataraRoleKey}=system).`);
+}
 
 function requireState(ok, message) {
   if (!ok) throw new Error(message);
 }
 
-export async function teardown({ kube, vultr, run, wait, deleteLock, empty = false }) {
+export async function teardown({ kube, vultr, run, wait, deleteLock, empty = false, allowMissing = false }) {
   const lock = await kube("get", "namespace", namespace);
   requireState(lock.metadata.uid === run.uid && lock.metadata.annotations?.[ownerKey] === run.label,
     "The release namespace no longer belongs to this run.");
@@ -47,12 +68,13 @@ export async function teardown({ kube, vultr, run, wait, deleteLock, empty = fal
   const pools = await vultr.list();
   const matches = pools.filter((pool) => pool.label === run.label);
   requireState(matches.length <= 1, "More than one Vultr pool matches this run.");
-  requireState(!empty || matches.length === 1,
+  requireState(!empty || allowMissing || matches.length === 1,
     "The empty release needs a provider pool. Investigate a missing or ambiguous create before removing the lock.");
   if (matches.length === 1) {
     const [pool] = matches;
     requireState(pool.plan === (run.plan ?? defaultPlan) && pool.tag === run.label,
       "The provider pool does not match the release owner and plan.");
+    requireState(!pool.labels?.[tataraRoleKey], "Refusing to remove a Tatara pool.");
     requireState(nodes.every((node) => node.metadata.labels["vke.vultr.com/node-pool-id"] === pool.id),
       "The Kubernetes node belongs to a different provider pool.");
     try {
@@ -71,6 +93,41 @@ export async function teardown({ kube, vultr, run, wait, deleteLock, empty = fal
   await deleteLock(run.uid);
 }
 
+// Idempotent release used on every failure, interruption or ambiguous exit.
+// Built outputs already live in B2, so nothing on the pool is worth keeping.
+export async function abort({ getLock, kube, vultr, wait, deleteLock, deleteJobs, settle = async () => {}, expect }) {
+  const lock = await getLock();
+  if (!lock) return { released: false, reason: "No release run is recorded." };
+  const label = lock.metadata.annotations?.[ownerKey];
+  requireState(releaseLabel.test(label ?? ""), "The release lock records no valid run.");
+  // A caller that owns one run must never release a different, newer run.
+  if (expect && expect !== label) return { released: false, reason: `Run ${expect} was already released; ${label} is another run.` };
+  const plan = lock.metadata.annotations?.[planKey] ?? defaultPlan;
+  requireState(plans.has(plan), "The release plan is outside the supported VKE plans.");
+  await deleteJobs();
+  await wait(async () => (await kube("-n", namespace, "get", "pods")).items.length === 0,
+    "Release Pods did not terminate");
+  // A lost create response can surface a pool late; give the inventory a moment.
+  if (!(await vultr.list()).some((pool) => pool.label === label)) await settle();
+  await teardown({ kube, vultr, wait, deleteLock, empty: true, allowMissing: true,
+    run: { label, plan, uid: lock.metadata.uid } });
+  return { released: true, label };
+}
+
+export async function releaseWithRetry(attempt, { attempts = 3, pause = () => delay(30_000), log = console.error } = {}) {
+  let last;
+  for (let index = 1; index <= attempts; index += 1) {
+    try {
+      return await attempt(index);
+    } catch (error) {
+      last = error;
+      log(`Release attempt ${index}/${attempts} failed: ${error.message}`);
+      if (index < attempts) await pause();
+    }
+  }
+  throw last;
+}
+
 function kubeClient(config) {
   const base = ["--kubeconfig", config, "--request-timeout=20s"];
   const env = { ...process.env };
@@ -79,7 +136,8 @@ function kubeClient(config) {
     const result = spawnSync("kubectl", [...base, ...args, ...(output ? ["-o", output] : [])],
       { encoding: "utf8", env, input, timeout: 115_000, maxBuffer: 32 * 1024 * 1024 });
     requireState(!result.error && result.status === 0, `kubectl ${args.join(" ")} failed`);
-    return output === "json" ? JSON.parse(result.stdout) : result.stdout.trim();
+    if (output !== "json") return result.stdout.trim();
+    return result.stdout.trim() ? JSON.parse(result.stdout) : null;
   };
 }
 
@@ -106,7 +164,11 @@ function vultrClient(cluster, key) {
       return result.node_pools;
     },
     async create(label, plan) {
-      await request(base, "POST", { label, tag: label, plan, node_quantity: 1, auto_scaler: false });
+      await request(base, "POST", {
+        label, tag: label, plan, node_quantity: 1, auto_scaler: false,
+        labels: { [purposeKey]: purposeValue, [reapableKey]: "true" },
+        taints: [{ key: taintKey, value: "release", effect: "NoSchedule" }],
+      });
     },
     async remove(id) {
       await request(`${base}/${encodeURIComponent(id)}`, "DELETE");
@@ -114,9 +176,12 @@ function vultrClient(cluster, key) {
   };
 }
 
+let interrupted = null;
+
 async function wait(read, message) {
   const deadline = Date.now() + 15 * 60_000;
   do {
+    if (interrupted && !releasing) throw new Error(`Interrupted by ${interrupted}`);
     const value = await read();
     if (value) return value;
     await delay(10_000);
@@ -124,10 +189,39 @@ async function wait(read, message) {
   throw new Error(message);
 }
 
+let releasing = false;
+
+function runChild(command, args, env) {
+  return new Promise((resolveChild) => {
+    const child = spawn(command, args, { stdio: "inherit", env });
+    const forward = (signal) => { if (child.exitCode === null) child.kill(signal); };
+    const handlers = ["SIGINT", "SIGTERM", "SIGHUP"].map((signal) => {
+      const handler = () => forward(signal);
+      process.on(signal, handler);
+      return [signal, handler];
+    });
+    const timer = setTimeout(() => forward("SIGTERM"), 6 * 60 * 60_000);
+    child.on("error", () => {});
+    child.on("close", (code, signal) => {
+      clearTimeout(timer);
+      for (const [name, handler] of handlers) process.off(name, handler);
+      resolveChild(code === 0 && !signal);
+    });
+  });
+}
+
 async function main([mode, kubeconfig, ...args]) {
-  requireState(["status", "run", "release", "release-empty"].includes(mode) && kubeconfig &&
+  if (mode === "release-empty") mode = "abort";
+  requireState(["status", "run", "release", "abort"].includes(mode) && kubeconfig &&
     (mode === "run" ? args.length > 1 && args[0] === "--" : args.length === 0),
-  "Usage: vke-release-pool.mjs status|release|release-empty KUBECONFIG | run KUBECONFIG -- COMMAND [ARGS]");
+  "Usage: vke-release-pool.mjs status|release|abort KUBECONFIG | run KUBECONFIG -- COMMAND [ARGS]");
+  // Never die mid-provisioning or mid-release on a signal: record it and release.
+  for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
+    process.on(signal, () => {
+      if (!interrupted) console.error(`Received ${signal}; releasing the build pool before exit.`);
+      interrupted ??= signal;
+    });
+  }
   const config = resolve(kubeconfig);
   const call = kubeClient(config);
   const kube = (...command) => call(command, command[0] === "delete" ? null : "json");
@@ -139,16 +233,39 @@ async function main([mode, kubeconfig, ...args]) {
   const match = /^https:\/\/([a-f0-9-]{36})\.vultr-k8s\.com:6443$/.exec(server);
   requireState(match, "The selected kubeconfig must point to the Vultr VKE API.");
   const nodes = (await kube("get", "nodes")).items;
-  const pools = nodes.map((node) => node.metadata.labels?.[labelKey]).filter(Boolean);
-  requireState(pools.includes("tatara-runners"), "The kubeconfig must target the Awai Tatara cluster.");
+  requireTataraCluster(nodes);
+  const pools = [...new Set(nodes.map((node) => node.metadata.labels?.[labelKey]).filter(Boolean))];
+  const getLock = async () => call(["get", "namespace", namespace, "--ignore-not-found"], "json");
   if (mode === "status") {
     const lock = call(["get", "namespace", namespace, "--ignore-not-found"], "jsonpath={.metadata.annotations.awai\\.network/vke-run}");
-    console.log(JSON.stringify({ cluster: match[1], pools, releaseRun: lock || null }));
+    console.log(JSON.stringify({ cluster: match[1], pools, tataraRoles: tataraRoles(nodes), releaseRun: lock || null }));
     return;
   }
   requireState(process.env.VULTR_API_KEY, "Load VULTR_API_KEY from the authorized secret store.");
   const vultr = vultrClient(match[1], process.env.VULTR_API_KEY);
-  if (mode === "release" || mode === "release-empty") {
+  const deleteJobs = async () => {
+    call(["-n", namespace, "delete", "jobs", "--all", "--cascade=foreground", "--wait=true", "--timeout=5m"], null);
+  };
+  const abortRun = (expect = process.env.AWAI_VKE_EXPECT_RUN?.trim() || undefined) =>
+    abort({ getLock, kube, vultr, wait, deleteLock, deleteJobs, settle: () => delay(60_000), expect });
+  const releaseOrReport = async (label, attempt) => {
+    releasing = true;
+    try {
+      const result = await releaseWithRetry(attempt);
+      console.error(result?.released === false ? result.reason : `Released build pool ${result?.label ?? label}.`);
+    } catch (error) {
+      console.error(`RELEASE FAILED: build pool ${label ?? "(unknown)"} may still be billing: ${error.message} ` +
+        "Run `node scripts/operator/vke-release-pool.mjs abort KUBECONFIG` now. " +
+        "The in-cluster build-reaper deletes an idle release pool after 30 minutes.");
+      process.exitCode = 3;
+      throw error;
+    }
+  };
+  if (mode === "abort") {
+    await releaseOrReport(null, () => abortRun());
+    return;
+  }
+  if (mode === "release") {
     const lock = await kube("get", "namespace", namespace);
     const label = lock.metadata.annotations?.[ownerKey];
     requireState(/^awai-pc-release-[0-9a-f]{12}$/.test(label ?? ""), "No owned release pool is recorded.");
@@ -158,7 +275,8 @@ async function main([mode, kubeconfig, ...args]) {
     return;
   }
 
-  requireState(!(await vultr.list()).some(({ label }) => label?.startsWith("awai-pc-release-")),
+  requireState(!(await vultr.list()).some(({ label, labels }) =>
+    label?.startsWith("awai-pc-release-") || labels?.[purposeKey] === purposeValue),
     "An existing release pool must be reconciled before starting a new run.");
   const plan = process.env.AWAI_VKE_RELEASE_PLAN ?? defaultPlan;
   requireState(plans.has(plan), "The release plan is outside the supported VKE plans.");
@@ -168,33 +286,52 @@ async function main([mode, kubeconfig, ...args]) {
     metadata: { name: namespace, annotations: { [ownerKey]: label, [planKey]: plan } },
   }));
   const run = { label, plan, uid: lock.metadata.uid };
+  if (process.env.AWAI_VKE_RUN_FILE) writeFileSync(process.env.AWAI_VKE_RUN_FILE, `${label}\n`, { mode: 0o600 });
   console.error(`Release run ${label}. If interrupted, inspect the recorded namespace before resuming.`);
 
   // Persist ownership before the POST so a lost response never starts another paid pool.
   try {
     await vultr.create(label, plan);
   } catch (error) {
-    if ([400, 401, 403, 404, 422].includes(error.httpStatus)) deleteLock(run.uid);
+    if ([400, 401, 403, 404, 422].includes(error.httpStatus)) {
+      deleteLock(run.uid);
+      throw error;
+    }
+    console.error(`Pool create response was ambiguous: ${error.message}`);
+    await releaseOrReport(label, () => abortRun(label));
     throw error;
   }
-  const worker = await wait(async () => {
-    const matches = (await kube("get", "nodes", "-l", `${labelKey}=${label}`)).items;
-    requireState(matches.length <= 1, "More than one node joined the dedicated pool.");
-    return matches.find((node) => node.status.conditions.some(({ type, status }) => type === "Ready" && status === "True"));
-  }, "The dedicated release node did not become Ready");
-  const pool = (await vultr.list()).find((item) => item.label === label);
-  requireState(pool?.tag === label && pool.plan === plan &&
-    worker.metadata.labels["vke.vultr.com/node-pool-id"] === pool.id &&
-    worker.metadata.labels["node.kubernetes.io/instance-type"] === plan, "Unverified release node ownership.");
-  call(["taint", "nodes", worker.metadata.name, `${taintKey}=release:NoSchedule`], null);
+  let succeeded = false;
+  try {
+    const worker = await wait(async () => {
+      const matches = (await kube("get", "nodes", "-l", `${labelKey}=${label}`)).items;
+      requireState(matches.length <= 1, "More than one node joined the dedicated pool.");
+      return matches.find((node) => node.status.conditions.some(({ type, status }) => type === "Ready" && status === "True"));
+    }, "The dedicated release node did not become Ready");
+    const pool = (await vultr.list()).find((item) => item.label === label);
+    requireState(pool?.tag === label && pool.plan === plan && pool.labels?.[purposeKey] === purposeValue &&
+      worker.metadata.labels["vke.vultr.com/node-pool-id"] === pool.id &&
+      worker.metadata.labels["node.kubernetes.io/instance-type"] === plan, "Unverified release node ownership.");
+    call(["taint", "nodes", worker.metadata.name, `${taintKey}=release:NoSchedule`, "--overwrite"], null);
+    requireState(!interrupted, `Interrupted by ${interrupted}`);
 
-  const env = { ...process.env, KUBECONFIG: config, AWAI_VKE_NAMESPACE: namespace, AWAI_VKE_NODE_POOL: label };
-  delete env.VULTR_API_KEY;
-  const [command, ...commandArgs] = args.slice(1);
-  const result = spawnSync(command, commandArgs, { stdio: "inherit", env, timeout: 6 * 60 * 60_000 });
-  requireState(!result.error && result.status === 0,
-    "The build/restore command failed. The recorded pool was retained to preserve its workspace. Inspect it promptly.");
-  await teardown({ kube, vultr, run, wait, deleteLock });
+    const env = { ...process.env, KUBECONFIG: config, AWAI_VKE_NAMESPACE: namespace, AWAI_VKE_NODE_POOL: label };
+    delete env.VULTR_API_KEY;
+    const [command, ...commandArgs] = args.slice(1);
+    succeeded = await runChild(command, commandArgs, env) && !interrupted;
+    if (!succeeded) console.error(`The build/restore command failed or was interrupted. Releasing ${label}.`);
+  } finally {
+    // Always release: completed runs through the strict check, everything else
+    // (failure, signal, verification error) through the idempotent abort.
+    await releaseOrReport(label, async (attempt) => {
+      if (succeeded && attempt === 1) {
+        await teardown({ kube, vultr, run, wait, deleteLock });
+        return { released: true, label };
+      }
+      return abortRun(label);
+    });
+  }
+  requireState(succeeded, "The build/restore command failed; its pool was released.");
   console.log(`Release pool ${label} removed. Check the final line in Vultr Billing.`);
 }
 

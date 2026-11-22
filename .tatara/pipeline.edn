@@ -6,5 +6,6 @@
  :timeout-seconds 180
  :steps [["bash" "scripts/ci/android-qa-scope.sh"]
          ["node" "--test" "android/tests/local-apps.test.mjs"]
+         ["node" "--test" "scripts/operator/vke-release-pool.test.mjs" "scripts/operator/vke-release-pool.signal.test.mjs" "deploy/build-reaper/reaper.test.mjs"]
          ["python3" "-B" "-m" "unittest" "discover" "-s" "android/desktop/pc-ab-device"]]
  :artifacts []}

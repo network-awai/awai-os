@@ -9,6 +9,7 @@ build_job=awai-pc-release-build
 restore_job=awai-pc-release-restore
 image=ubuntu@sha256:9a04f13b3f80ef056361e30868593b1cfd2279fe19e4081cb93a90bf56819d6a
 role=awai-release-source-transfer
+bucket=awai-os-release-artifacts
 kit_files=(android-release-input.tar.gz expected-android-manifest.xml overlay-revisions.txt
     prior-overlay-revisions.txt check-manifest.py build-pc.sh assemble-verified.sh previous-welcome.patch)
 
@@ -42,16 +43,26 @@ if [[ ${1:-} != --worker ]]; then
     # Check the source route before creating a billable pool.
     "$AWAI_RELEASE_SSH" 'test -d /root/build/src/.repo && test -x /root/build/bin/repo && test -d /root/build/firmware/src/.git'
     node "$wrapper" status "$KUBECONFIG"
-    set +e
+    # The wrapper records its run label here; the trap releases only that run.
+    export AWAI_VKE_RUN_FILE="$AWAI_RELEASE_ARCHIVE/vke-run"
+    release_owned_run() {
+        local status=$? owned
+        trap - EXIT INT TERM HUP
+        set +e
+        owned=$(cat "$AWAI_VKE_RUN_FILE" 2>/dev/null)
+        if [[ -n $owned ]]; then
+            # Idempotent: a run already released by the wrapper is a no-op.
+            AWAI_VKE_EXPECT_RUN="$owned" node "$wrapper" abort "$KUBECONFIG" ||
+                echo "RELEASE FAILED for $owned: run 'node $wrapper abort KUBECONFIG' now; the pool may still be billing." >&2
+        fi
+        exit "$status"
+    }
+    trap release_owned_run EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+    trap 'exit 129' HUP
     node "$wrapper" run "$KUBECONFIG" -- bash "$here/queue-vke-pc-release.sh" --worker
-    result=$?
-    set -e
-    if (( result != 0 )); then
-        # Worker failure exports logs and removes only the Jobs it created.
-        # An empty release cannot delete an active or ambiguous run.
-        node "$wrapper" release-empty "$KUBECONFIG" || true
-    fi
-    exit "$result"
+    exit 0
 fi
 
 : "${KUBECONFIG:?}" "${AWAI_VKE_NODE_POOL:?}" "${AWAI_RELEASE_ARCHIVE:?}" "${AWAI_RELEASE_KIT:?}" "${AWAI_RELEASE_SSH:?}"
@@ -60,6 +71,8 @@ out=$AWAI_RELEASE_ARCHIVE
 pool=$AWAI_VKE_NODE_POOL
 ssh_build=$AWAI_RELEASE_SSH
 k() { kubectl -n "$namespace" "$@"; }
+secret=release-artifacts-b2
+prefix="awai-pc/$pool"
 
 cleanup() {
     local status=$?
@@ -67,6 +80,7 @@ cleanup() {
     set +e
     k delete serviceaccount "$role" --ignore-not-found --request-timeout=12s
     k delete role,rolebinding "$role" --ignore-not-found --request-timeout=12s
+    k delete secret "$secret" --ignore-not-found --request-timeout=12s
     if [[ -n ${remote_tools:-} ]]; then
         "$ssh_build" "rm -f -- '$remote_tools/kubectl' '$remote_tools/kubectl.sha256'; rmdir -- '$remote_tools'"
     fi
@@ -74,32 +88,21 @@ cleanup() {
         k logs "job/$job" --request-timeout=25s 2>/dev/null > "$out/$job.log" || true
     done
     if (( status != 0 )); then
-        local disposition=empty
-        if [[ -n ${build_pod:-} ]]; then
-            local phase
-            phase=$(k get pod "$build_pod" --request-timeout=12s -o jsonpath='{.status.phase}')
-            if [[ $phase = Failed ]]; then
-                disposition=failed
-            else
-                disposition=$(k exec "$build_pod" --request-timeout=12s -- bash -c                     'if test -f /root/build/artifacts-ready; then echo retained; else echo empty; fi')
-            fi
-        fi
-        if [[ $disposition = empty || $disposition = failed ]]; then
-            k delete job "$build_job" "$restore_job" --ignore-not-found --wait=true --timeout=90s
-        else
-            echo "Build output is present or its state is unknown. The pool was retained for recovery." >&2
-        fi
+        # Outputs are in B2 once uploaded, so nothing on the pool is retained.
+        # The wrapper releases the pool after this worker exits.
+        k delete job "$build_job" "$restore_job" --ignore-not-found --wait=true --timeout=90s
     fi
     exit "$status"
 }
 trap cleanup EXIT
-trap 'exit 124' TERM INT
+trap 'exit 124' TERM INT HUP
 
 job() {
     local name=$1 cpu=$2 memory=$3 space=$4 deadline=$5 command
     command=$(cat)
     jq -n --arg name "$name" --arg ns "$namespace" --arg pool "$pool" --arg image "$image" \
-        --arg command "$command" --arg cpu "$cpu" --arg memory "$memory" --arg space "$space" --argjson deadline "$deadline" '
+        --arg command "$command" --arg cpu "$cpu" --arg memory "$memory" --arg space "$space" --argjson deadline "$deadline" \
+        --arg bucket "$bucket" --arg prefix "$prefix" --arg secret "$secret" '
       {apiVersion:"batch/v1",kind:"Job",metadata:{name:$name,namespace:$ns},spec:{
         backoffLimit:0,activeDeadlineSeconds:$deadline,template:{
          metadata:{annotations:{"cluster-autoscaler.kubernetes.io/safe-to-evict":"false"}},
@@ -107,7 +110,9 @@ job() {
           nodeSelector:{"vke.vultr.com/node-pool":$pool,"kubernetes.io/arch":"amd64"},
           tolerations:[{key:"awai.network/release-build",operator:"Equal",value:"release",effect:"NoSchedule"}],
           containers:[{name:"worker",image:$image,
-           env:[{name:"DEBIAN_FRONTEND",value:"noninteractive"}],command:["bash","-euo","pipefail","-c",$command],
+           env:[{name:"DEBIAN_FRONTEND",value:"noninteractive"},{name:"AWAI_ARTIFACT_BUCKET",value:$bucket},
+                {name:"AWAI_ARTIFACT_PREFIX",value:$prefix}],
+           envFrom:[{secretRef:{name:$secret}}],command:["bash","-euo","pipefail","-c",$command],
            resources:{requests:{cpu:$cpu,memory:$memory,"ephemeral-storage":$space}},
            volumeMounts:[{name:"workspace",mountPath:"/root/build"}]}],
           volumes:[{name:"workspace",emptyDir:{sizeLimit:"700Gi"}}]}}}}' | k create -f -
@@ -132,11 +137,15 @@ await_file() {
     while (( SECONDS < deadline )); do
         if k exec "$pod" --request-timeout=12s -- test -f "$file" >/dev/null 2>&1; then return; fi
         phase=$(k get pod "$pod" -o jsonpath='{.status.phase}')
+        [[ $phase = Succeeded ]] && return
         [[ $phase = Running || $phase = Pending ]] || return 1
         sleep 15
     done
     return 1
 }
+
+# The bucket-scoped B2 key comes from the operator Keychain over stdin only.
+node "$here/release-artifacts-secret.mjs" "$namespace" "$secret"
 
 build_memory=64Gi
 if [[ ${AWAI_VKE_RELEASE_PLAN:-} = vc2-16c-64gb ]]; then build_memory=52Gi; fi
@@ -152,9 +161,40 @@ git config --global user.email release-build@awai.network
 git config --global user.name "Awai release build"
 test "$(git -C firmware/src rev-parse HEAD)" = a2dcb924f0897368b0b4f305cbf9808cdda90ce0
 bash kit/build-pc.sh /root/build/src /root/build/firmware/src install
-(cd kit/product-user-radeon && sha256sum -c SHA256SUMS)
-touch artifacts-ready
-until test -f restore-verified; do sleep 5; done
+cd kit/product-user-radeon
+sha256sum -c SHA256SUMS
+mkdir /root/build/upload
+files=(prepared-target-files.zip disk-vda.img otatools.tar android-manifest.xml vendor-firmware.sha256 SHA256SUMS source-revisions.txt build-properties build.log)
+tar --sparse -cf - "${files[@]}" | zstd -q -T12 -3 -c > /root/build/upload/artifacts.tar.zst
+zstd -tq /root/build/upload/artifacts.tar.zst
+python3 - "$AWAI_ARTIFACT_PREFIX" "${files[@]}" > /root/build/upload/manifest.json <<'MANIFEST'
+import hashlib, json, os, sys, datetime
+def entry(path, root="."):
+    full = os.path.join(root, path)
+    digest = hashlib.sha256()
+    with open(full, "rb") as handle:
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(block)
+    return {"path": path, "size": os.path.getsize(full), "sha256": digest.hexdigest()}
+prefix, files = sys.argv[1], sys.argv[2:]
+print(json.dumps({"schema": "awai.release-artifacts.v1", "prefix": prefix,
+  "created": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+  "objects": [entry("artifacts.tar.zst", "/root/build/upload")],
+  "contents": [entry(path) for path in files]}, indent=1))
+MANIFEST
+cd /root/build/upload
+# Write-only key: list/read/write, no delete. The bucket keeps every version.
+rclone copy . "art:$AWAI_ARTIFACT_BUCKET/$AWAI_ARTIFACT_PREFIX/" -q --transfers 2 --b2-chunk-size 96M --b2-upload-cutoff 200M
+python3 - <<'READBACK'
+import json, subprocess, os
+manifest = json.load(open("manifest.json"))
+remote = f"art:{os.environ['AWAI_ARTIFACT_BUCKET']}/{os.environ['AWAI_ARTIFACT_PREFIX']}/"
+listed = {item["Path"]: item["Size"] for item in json.loads(subprocess.check_output(["rclone", "lsjson", remote]))}
+for item in manifest["objects"] + [{"path": "manifest.json", "size": os.path.getsize("manifest.json")}]:
+    assert listed.get(item["path"]) == item["size"], f"B2 size mismatch for {item['path']}"
+print("UPLOAD_LISTED=" + ",".join(sorted(listed)))
+READBACK
+touch /root/build/artifacts-ready
 BUILD
 build_pod=$(pod_for "$build_job")
 await_file "$build_pod" /root/build/tools-ready 360
@@ -197,33 +237,46 @@ k exec "$build_pod" -- bash -ceu 'cd /root/build; test -s src/external/flashrom/
 printf 'BUILD_INPUTS_READY=%s\n' "$(date -u +%FT%TZ)"
 await_file "$build_pod" /root/build/artifacts-ready 16800
 
-k exec "$build_pod" -- bash -eo pipefail -c '
-  cd /root/build/kit/product-user-radeon
-  tar --sparse -cf - prepared-target-files.zip disk-vda.img otatools.tar android-manifest.xml vendor-firmware.sha256 SHA256SUMS source-revisions.txt build-properties build.log | zstd -q -T3 -1 -c' > "$out/artifacts.tar.zst.part"
-zstd -tq "$out/artifacts.tar.zst.part"
-mv "$out/artifacts.tar.zst.part" "$out/artifacts.tar.zst"
-(cd "$out" && shasum -a 256 artifacts.tar.zst > archive.sha256)
-job "$restore_job" 500m 1Gi 45Gi 2700 <<'RESTORE'
+k wait job/"$build_job" --for=condition=Complete --timeout=10m
+k logs job/"$build_job" --tail=40 | grep -F 'UPLOAD_LISTED='
+
+# An independent Pod reads the objects back from B2 and verifies them against
+# the manifest. The Mac keeps only the manifest and verification log.
+job "$restore_job" 2 4Gi 60Gi 3600 <<'RESTORE'
 apt-get -qq update
-apt-get -qq install -y --no-install-recommends zstd unzip
-cd /root/build
-touch tools-ready
-until test -f download-ready; do sleep 5; done
-sha256sum -c archive.sha256
-zstd -dc artifacts.tar.zst | tar -xf -
+apt-get -qq install -y --no-install-recommends ca-certificates python3 rclone unzip zstd
+mkdir -p /root/build/restore
+cd /root/build/restore
+rclone copy "art:$AWAI_ARTIFACT_BUCKET/$AWAI_ARTIFACT_PREFIX/" . -q --transfers 2
+python3 - <<'VERIFY'
+import hashlib, json, os
+def digest(path):
+    value = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            value.update(block)
+    return value.hexdigest()
+manifest = json.load(open("manifest.json"))
+for item in manifest["objects"]:
+    assert os.path.getsize(item["path"]) == item["size"] and digest(item["path"]) == item["sha256"], item["path"]
+os.makedirs("contents")
+os.system("zstd -dc artifacts.tar.zst | tar -xf - -C contents") == 0 or exit(1)
+for item in manifest["contents"]:
+    path = os.path.join("contents", item["path"])
+    assert os.path.getsize(path) == item["size"] and digest(path) == item["sha256"], item["path"]
+print("MANIFEST_BEGIN")
+print(json.dumps(manifest, indent=1))
+print("MANIFEST_END")
+VERIFY
+cd contents
 sha256sum -c SHA256SUMS
 unzip -tq prepared-target-files.zip
 tar -tf otatools.tar >/dev/null
 printf 'RESTORE_VERIFIED=%s\n' "$(date -u +%FT%TZ)"
 RESTORE
-restore_pod=$(pod_for "$restore_job")
-await_file "$restore_pod" /root/build/tools-ready 360
-for file in archive.sha256 artifacts.tar.zst; do
-    k exec -i "$restore_pod" -- bash -ceu 'cat > "/root/build/$1"' bash "$file" < "$out/$file"
-done
-k exec "$restore_pod" -- touch /root/build/download-ready
-k wait job/"$restore_job" --for=condition=Complete --timeout=15m
-k logs job/"$restore_job" | tee "$out/restore-verification.log"
+k wait job/"$restore_job" --for=condition=Complete --timeout=60m
+k logs job/"$restore_job" > "$out/restore-verification.log"
 grep -F 'RESTORE_VERIFIED=' "$out/restore-verification.log"
-k exec "$build_pod" -- touch /root/build/restore-verified
-k wait job/"$build_job" --for=condition=Complete --timeout=2m
+sed -n '/^MANIFEST_BEGIN$/,/^MANIFEST_END$/p' "$out/restore-verification.log" | sed '1d;$d' > "$out/manifest.json"
+jq -e '.objects | length == 1' "$out/manifest.json" >/dev/null
+printf 'ARTIFACTS=b2://%s/%s/\n' "$bucket" "$prefix"
