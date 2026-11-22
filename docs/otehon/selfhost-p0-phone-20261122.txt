@@ -1,0 +1,23 @@
+AWAI_SELFHOST_PROBE_V1
+observed_at_utc=2026-11-22T14:55:06Z
+ro.product.manufacturer=motorola
+ro.product.model=moto g05
+ro.product.device=lamul
+ro.product.board=mt6768
+ro.board.platform=mt6768
+ro.product.cpu.abi=arm64-v8a
+ro.build.version.sdk=37
+ro.build.version.release=17
+ro.build.type=userdebug
+uname_-m=aarch64
+uname_-r=6.6.139-android15-8-g5fe428e1a8ce-abafa18d86c8-4k
+MemTotal=7911268 kB
+MemAvailable=2891456 kB
+df_data=/dev/block/dm-49 111078368 23182428  87359072  21% /data/user/0
+dev_kvm=absent
+avf_feature=absent
+pkg_com_android_virtualization_terminal=absent
+pkg_com_termux=absent
+pkg_com_android_virt=absent
+apex_virt=unknown
+collection_status=0
