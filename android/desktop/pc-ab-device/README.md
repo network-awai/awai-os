@@ -76,8 +76,9 @@ images still serve ADB on 5555. Those are checks V1, V2 and V7 in the design doc
 
 ## PC installer and OTA host checks
 
-With Bazelisk and Python 3 on the host, run both regression suites using the
-Bazel version in `.bazelversion`:
+With Bazelisk and Python >= 3.11 on the host, run both regression suites using the
+Bazel version in `.bazelversion` (the runner resolves a suitable `python3` and
+fails with a clear message when none is found, AWAI-3852):
 
 ```sh
 bazel test //android/desktop/pc-ab-device:pc_verification
