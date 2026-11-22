@@ -55,6 +55,26 @@ cat > .repo/local_manifests/awai-generic.xml <<'EOF'
   <remote name="themuppets" fetch="https://github.com/TheMuppets/" />
   <project name="LineageOS/android_device_mainline_generic" path="device/mainline/generic"
            remote="github" revision="3d402dc58aa2086a960abd076204836259387a79" />
+  <project name="LineageOS/android_device_mainline_common" path="device/mainline/common"
+           remote="github" revision="lineage-24.0" />
+  <project name="LineageOS/android_external_tinyhal" path="external/tinyhal"
+           remote="github" revision="lineage-24.0" />
+  <project name="LineageOS/android_kernel_mainline_configs" path="kernel/mainline/configs"
+           remote="github" revision="lineage-24.0" />
+  <project name="LineageOS/android_prebuilts_bootmgr" path="prebuilts/bootmgr"
+           remote="github" revision="lineage-24.0" />
+  <project name="LineageOS/android_external_drm_hwcomposer-upstream" path="external/drm_hwcomposer-upstream"
+           remote="github" revision="lineage-24.0" />
+  <project name="LineageOS/android_external_minigbm-upstream" path="external/minigbm-upstream"
+           remote="github" revision="lineage-24.0" />
+  <project name="LineageOS/android_external_linux-firmware-mainline" path="external/linux-firmware-mainline"
+           remote="github" revision="lineage-24.0" />
+  <project name="LineageOS/android_external_mesa" path="external/mesa"
+           remote="github" revision="lineage-24.0" />
+  <project name="LineageOS/android_hardware_mainline_common" path="hardware/mainline/common"
+           remote="github" revision="lineage-24.0" />
+  <project name="LineageOS/android_vendor_mainline" path="vendor/mainline"
+           remote="github" revision="lineage-24.0" />
   <project name="proprietary_vendor_motorola_lamu" path="vendor/motorola/lamu"
            remote="themuppets" revision="lineage-24.0" />
   <project name="proprietary_vendor_motorola_mt6768-common" path="vendor/motorola/mt6768-common"
