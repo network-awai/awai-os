@@ -42,8 +42,13 @@ public final class SetupPlatform {
             JSONObject s=snapshot(c);int stage=s.getInt("stage");
             if(expected!=stage)return false;
             SharedPreferences.Editor e=c.getSharedPreferences("android-setup-v1",0).edit();
-            if("relink".equals(action)&&"linked".equals(s.getString("account")))
+            if("relink".equals(action)&&"linked".equals(s.getString("account"))) {
+                if(s.getBoolean("complete"))return e.putString("account","deferred").commit();
                 return e.putInt("stage",4).putBoolean("complete",false).putString("account","unlinked").commit();
+            }
+            if("link-after-setup".equals(action)&&stage==7&&s.getBoolean("complete")
+                    &&"deferred".equals(s.getString("account")))
+                return e.putString("account","linked").commit();
             if(s.getBoolean("complete"))return false;
             if("back".equals(action)&&stage>0)e.putInt("stage",backward(stage-1));
             else if("defer".equals(action)&&stage==4)e.putString("account","deferred").putInt("stage",5);

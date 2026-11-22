@@ -12,6 +12,7 @@ import androidx.lifecycle.Lifecycle
 import app.tauri.annotation.Command
 import app.tauri.annotation.TauriPlugin
 import app.tauri.plugin.Invoke
+import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
 import app.tauri.plugin.PluginManager
 
@@ -39,6 +40,10 @@ class ScreenToolsPlugin(activity: Activity) : Plugin(activity) {
         val owner = PluginManager.activity as? MainActivity
         if (owner == null || !foreground(owner) || approvalOwner?.isDestroyed == false) {
             invoke.reject("screen-operation-unavailable")
+            return
+        }
+        if (action == "open-gaka") {
+            launchGaka(owner, invoke)
             return
         }
         if (action == "record-stop") {
@@ -105,6 +110,24 @@ class ScreenToolsPlugin(activity: Activity) : Plugin(activity) {
             }
             .setOnDismissListener { clearApproval(owner) }
             .show()
+    }
+
+    private fun launchGaka(owner: MainActivity, invoke: Invoke) {
+        val packageName = "network.awai.gaka"
+        val launcher = owner.packageManager.getLaunchIntentForPackage(packageName)
+        if (launcher == null || launcher.component?.packageName != packageName) {
+            invoke.reject("gaka-unavailable")
+            return
+        }
+        try {
+            owner.startActivity(launcher)
+            invoke.resolve(JSObject()
+                .put("schema", "awai.local-app-launch.v1")
+                .put("packageId", packageName)
+                .put("opened", true))
+        } catch (_: Exception) {
+            invoke.reject("gaka-unavailable")
+        }
     }
 
     private fun projectionApproved(owner: MainActivity, invoke: Invoke, result: ActivityResult) {

@@ -1,4 +1,5 @@
 import { clientRuntimeProblems, createClientConsentHost, createClientOperationBroker, clientRuntimeConnectSrc } from './runtime.js';
+import { verifyKeyList, authentic, base64Bytes, CATALOG } from './key-list.js';
 
 // Pins: one catalog envelope plus one APK pin per app id. Each pin is an exact immutable URL under
 // this repository's pinned revision; per-app byte budgets are enforced again by the host Catalog.
@@ -38,12 +39,18 @@ export function createOnline(base,pins) {
     return new Uint8Array(await result.blob.arrayBuffer());
   }};
 }
-export async function authenticateCatalog(envelope,publicKey,domain,minimumRevision=1) {
+// trust: {root, raw, signature} (base64): the root public key and the root-signed key list (AWAI-3775).
+export async function catalogSigned(trust,data,signature,now=Math.floor(Date.now()/1000)) {
+  if(!trust||typeof trust.root!=='string'||typeof trust.raw!=='string'||typeof trust.signature!=='string')throw Error('署名の鍵の一覧がありません。');
+  let list;
+  try{list=await verifyKeyList(base64Bytes(trust.raw),base64Bytes(trust.signature),base64Bytes(trust.root),now,0);}
+  catch(e){throw Error(`署名の鍵の一覧を確認できません（${e.message}）。`);}
+  return authentic(list,CATALOG,data,signature);
+}
+export async function authenticateCatalog(envelope,trust,domain,minimumRevision=1) {
   if(!Number.isSafeInteger(minimumRevision)||minimumRevision<1)throw Error('保存済みのカタログ履歴を確認できません。');
   if(!envelope||typeof envelope.raw!=='string'||envelope.raw.length>131072||typeof envelope.signature!=='string'||envelope.signature.length>8192)throw Error('カタログの形式を確認できません。');
-  const bytes=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
-  const key=await crypto.subtle.importKey('spki',bytes(publicKey),{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['verify']);
-  if(!await crypto.subtle.verify('RSASSA-PKCS1-v1_5',key,bytes(envelope.signature),new TextEncoder().encode(envelope.raw)))throw Error('カタログの署名を確認できません。');
+  if(!await catalogSigned(trust,new TextEncoder().encode(envelope.raw),base64Bytes(envelope.signature)))throw Error('カタログの署名を確認できません。');
   const value=JSON.parse(envelope.raw);
   if(!domain.validCatalog(envelope.raw,Math.floor(Date.now()/1000))||value.revision<minimumRevision)throw Error('有効期限またはカタログの巻き戻しを検出しました。');
   return value;

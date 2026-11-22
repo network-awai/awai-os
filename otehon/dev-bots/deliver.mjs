@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmdirSync, statSync, 
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { decide } from "./gate.mjs";
-import { resolveLinearSink, resolveTestShell, recordLinearEntry, sandboxReport } from "./runner-env.mjs";
+import { resolveLinearSink, resolveTestShell, recordLinearEntry, sandboxReport, taskStartLine } from "./runner-env.mjs";
 
 const [dir, flag] = process.argv.slice(2);
 const dry = flag === "--dry-run";
@@ -149,7 +149,10 @@ sh("git", ["push", "-q", "-u", "origin", task.branch]);
 const linearRecord = linearSink === "outbox"
   ? "outbox (JSON in `.agent-output/linear-outbox/`, not posted to Linear)"
   : "orca";
-const body = `Linear: ${task.issue}\n\n## Review (shinsa)\n\n${summary}\n\n## Checks\n\n${checks}\n\n## Gate\n\nDecision: **${decision.action}**\n\n${reasons}\n\n## Runner\n\n- Test shell: \`${TEST_SHELL}\`\n- ${sandbox.note}\n- Linear record: ${linearRecord}\n\n## Not verified\n\n${unverified}\n\nImplemented and reviewed by Itonami developer bots on Muse; delivered by \`otehon/dev-bots/deliver.mjs\`.\n`;
+// run-task.sh writes run1.start when the implementer run begins. Display and metrics only.
+let startText = "";
+try { startText = readFileSync(join(out, "run1.start"), "utf8"); } catch {}
+const body = `Linear: ${task.issue}\n\n## Review (shinsa)\n\n${summary}\n\n## Checks\n\n${checks}\n\n## Gate\n\nDecision: **${decision.action}**\n\n${reasons}\n\n## Runner\n\n${taskStartLine(startText)}\n- Test shell: \`${TEST_SHELL}\`\n- ${sandbox.note}\n- Linear record: ${linearRecord}\n\n## Not verified\n\n${unverified}\n\nImplemented and reviewed by Itonami developer bots on Muse; delivered by \`otehon/dev-bots/deliver.mjs\`.\n`;
 writeFileSync(join(out, "pr-body.md"), body);
 let pr = null, wasDraft = false;
 try { const e = JSON.parse(sh("gh", ["pr", "view", task.branch, "-R", task.repo, "--json", "url,isDraft,state"])); if (e.state === "OPEN") { pr = e.url; wasDraft = e.isDraft; } } catch {}

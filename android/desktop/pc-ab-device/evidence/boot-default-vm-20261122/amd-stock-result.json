@@ -1,0 +1,9 @@
+{
+  "case": "amd-stock",
+  "accel": "tcg",
+  "gpu": "ati-vga",
+  "savedDefault": "android",
+  "expectedSavedDefault": "android",
+  "ok": true,
+  "grubInfo": ""
+}

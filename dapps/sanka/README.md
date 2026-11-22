@@ -71,7 +71,7 @@ Versions: nbb 1.4.208 on Node 26.0.0, Babashka 1.12.218, Basilisp 0.5.1 on Pytho
 Each order, receipt and acceptance case changes one field of a good document. Each scenario pairs a
 correct walk with the walk that has to be refused in the same situation.
 
-## Device provider core (AWAI-3115, stage C1a)
+## Device provider core (AWAI-3115, stages C1a and C1b-1)
 
 `src/sanka/device.cljc` is what an Android phone or PC enforces before it serves one compute order
 as a provider ([AWAI-3190](https://linear.app/kotobalabs/issue/AWAI-3190)). It is pure like the core: the host
@@ -79,10 +79,13 @@ reads the battery, thermal and network state from Android and passes them in as 
 
 | Function | What it decides |
 | --- | --- |
-| `check-offer` | An `awai.compute-offer/1`: pinned model and engine, amount per order, `simulation` or `devnet` only (`live` is refused), provider and node kept apart, and the device limits (lowest battery, charging required, highest Android thermal status 0–6, metered network allowed, orders per day) |
+| `check-offer` | An `awai.compute-offer/1`: pinned model and engine, amount per order, `simulation` or `devnet` only (`live` is refused), provider and node kept apart, and the device limits (lowest battery, charging required, highest Android thermal status 0–6, metered network allowed, orders per day). Since C1b-1 also the mailbox (`https://` origin with a lowercase host and no port or path, and a 32-hex topic), the X25519 seal key (`x25519:` and 64 hex) and the buyers: 1 to 16 distinct `did:key`, none of them the provider or the node (ADR 0051 D2–D4) |
 | `offer-transition` | `draft → offered ⇄ paused`, `withdrawn` and `expired` are final. Publishing and resuming need the fact that the person chose to offer the device |
-| `admit-order` | Whether to take an order now, or the first refusal in a fixed order: offer, order, offer state, order against offer, missing device facts, expiry, charging, battery, heat, metered network, busy (one order at a time), daily cap. A missing or mistyped fact refuses |
+| `admit-order` | Whether to take an order now, or the first refusal in a fixed order: offer, order, offer state, order against offer, missing device facts, buyer not on the offer's list, missing device facts, already run, expiry, more than 24 hours of the offer left (ADR 0051 D5), charging, battery, heat, metered network, busy (one order at a time), daily cap. A missing or mistyped fact refuses. An order the host already ran is refused even after it expired; the host may send back the result it kept |
 | `receipt-body` | The `awai.work-receipt/1` body the host signs. It refuses an engine other than the offer's and more completion tokens than the order allowed |
+| `check-order-envelope` | The opened `awai.compute-order/1`: the offer's CID, the order, its CID, the prompt and the reply (a topic and an X25519 key only). The reply has no origin field, so it can only go back to the offer's mailbox; a reply topic equal to the offer's topic is refused |
+| `result-envelope` | The `awai.compute-result/1` the device seals back: the refusal reason, or the output with the signed receipt for this order |
+| `check-result-envelope` | The buyer's check of an opened result. A served order's receipt goes through `sanka.core/check-receipt` with the buyer's pins |
 
 ```bash
 bb --classpath src:test test/run_device_cases.clj
@@ -104,8 +107,83 @@ Homebrew, not `nix/shell.nix`):
 | Core changed to ignore the battery limit and to allow a `live` offer | 4 failures on each, exit 1 |
 | Generator run twice | Same file |
 
-Not done here: no device, network, key, signature or ledger is involved. The Android host, the
-order transport and on-device evidence are the next units of AWAI-3115.
+C1b-1 evidence (2026-11-22, same host and tools, [AWAI-3757](https://linear.app/kotobalabs/issue/AWAI-3757)):
+
+| Check | Result |
+| --- | --- |
+| 150 cases on Babashka, Basilisp and nbb | 150 of 150 on each |
+| 24-hour offer limit added (2026-11-22, [AWAI-3788](https://linear.app/kotobalabs/issue/AWAI-3788)): 154 cases | 154 of 154 on each. Exactly 24 hours left is taken, one second more is refused; without the check, 2 failures on each |
+| One changed expectation | 1 failure, exit 1 |
+| Core changed to ignore the buyer list and the already-run fact, and to accept a reply that names an origin | 4 failures on each, exit 1 |
+| Generator run twice | Same file |
+
+The HPKE seal and open, the mailbox and the signatures are the host's (ADR 0051 D3). The receipt
+verifier (`tools/verify_receipt.lpy`) accepts only Ed25519 `did:key` signers, while the existing
+Android key in `android/sanka` is a Keystore P-256 key. Whether the phone's Keystore can make a
+non-exportable Ed25519 node key, or the verifier should also accept P-256, is decided in C1b-3 on
+a device.
+
+Not done here: no device, network, key, signature or ledger is involved. The mailbox Worker is
+C1b-2 (`deploy/awai-mailbox`), the buyer is C1b-4 (below); the Murakumo provider service (C1b-3)
+and on-device evidence are the next units of AWAI-3115.
+
+## Buyer through the mailbox (AWAI-3115, stage C1b-4)
+
+The owner's bot sends one compute order to a device through its offer's mailbox
+(`https://mailbox.awai.network`, ADR 0051) and checks the sealed result
+([AWAI-3781](https://linear.app/kotobalabs/issue/AWAI-3781)). It runs on nbb (ADR 0026 D3).
+
+| File | What it is |
+| --- | --- |
+| `host/sanka/hpke.cljs` | HPKE (RFC 9180), base mode: DHKEM(X25519, HKDF-SHA256), HKDF-SHA256, ChaCha20-Poly1305, on `node:crypto` |
+| `host/sanka/wire.cljs` | What buyer and provider compute the same way: canonical JSON, CIDs, Ed25519 `did:key`, document signatures, sealed messages |
+| `host/sanka/buyer.cljs` | `prepare-order` and `read-result` (no I/O), and `post!` and `subscribe!` to the offer's own mailbox |
+| `buyer/cli.cljs` | `order ROOT OFFER.json ORDER.json PROMPT.txt` and `wait ROOT ORDER-CID [SECONDS]` |
+| `test/host/fake_provider.cljs` | What C1b-3's Murakumo will do with one order, with a given output instead of a model |
+
+### Host protocol
+
+The Murakumo provider service (C1b-3) has to do the same, byte for byte.
+
+| Item | Rule |
+| --- | --- |
+| Offer and order CIDs | `cid-of(canonical(document))`, CIDv1 dag-json sha2-256 in base32, as the provider desk computes them |
+| Sealed message | base64url without padding of the 32-byte encapsulated key followed by the ciphertext. Empty AAD, sequence 0, one HPKE context per message |
+| Order `info` | `awai.compute-order/1 <offer-cid>`, sealed to the offer's `seal-key`, posted to the offer's topic |
+| Result `info` | `awai.compute-result/1 <offer-cid> <order-cid>`, sealed to the order's reply key, posted to the reply topic on the same origin |
+| Plaintext | Canonical JSON of the `awai.compute-order/1` or `awai.compute-result/1` envelope (`sanka.device`) |
+| Receipt `input` | `hmac-sha256:` and the hex HMAC-SHA256 of the prompt's UTF-8 bytes, keyed by the order context's `Export("awai.compute-input/1", 32)`. Only buyer and provider can derive the key |
+| Receipt `output` | `cid-of(canonical({"content": output, "role": "assistant"}))` |
+| Receipt signature | Ed25519 by the node's `did:key` over the canonical receipt without `signature`, as the provider desk signs |
+| `x-expires` | The order's `expires-at`, at most one hour ahead |
+
+The buyer refuses before sealing when the offer fails `check-offer`, the order's buyer is not on the
+offer, the order or offer has expired, or the envelope fails `check-order-envelope`. A message on
+the reply topic that does not open for this order is skipped. A result that opens must pass
+`check-result-envelope`, the signature, the output CID and the keyed input hash.
+
+```bash
+nbb -cp host test/host/hpke_test.cljs
+nbb -cp src:host:test/host test/host/buyer_test.cljs
+MAILBOX_LIVE=https://mailbox.awai.network nbb -cp src:host:test/host test/host/buyer_test.cljs
+```
+
+The pinned Nix shell has no nbb, so these are not in `scripts/ci/sanka-vm-gate.sh`.
+
+Evidence (2026-11-22, Apple M1 Max, macOS, nbb 1.4.208 on Node 26.0.0):
+
+| Check | Result |
+| --- | --- |
+| RFC 9180 A.2.1 (shared secret, key, nonce, exporter, three exports, ciphertext, open; both ends) | 0 failures |
+| Buyer and fake provider, in memory | 25 of 25 |
+| Once more through the live `mailbox.awai.network` | 29 of 29 |
+| `buyer/cli.cljs order` and `wait` through the live mailbox, with a fake provider process | Both exit 0. Files are mode 0600, the reply key is removed after the result is read, no stored file holds the prompt |
+| Python `cryptography` 3.11 checks an nbb-signed receipt the way `tools/verify_receipt.lpy` does | Verifies; a changed receipt does not |
+| Buyer changed to skip the signature, the output, the input or the buyer list, or not to cap `x-expires` | Each fails exactly its check |
+| HPKE changed to label `HPKE-v2` | 15 vector failures. The round trip still passes, since both ends share the code: the RFC vector is what guards interoperability |
+
+Not done here: the owner's approval of the order and the en-devnet acceptance (ADR 0027), a
+device, and a model. The provider in these tests is a fake.
 
 ## A real order (stage V1)
 

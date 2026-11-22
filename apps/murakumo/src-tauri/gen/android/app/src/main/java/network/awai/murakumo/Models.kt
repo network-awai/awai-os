@@ -96,6 +96,12 @@ internal object Models {
    .put("disk",JSONObject().put("free",fs.availableBytes).put("total",fs.totalBytes))
    .put("loaded",loadedJson?:JSONObject.NULL)}
 
+ /**
+  * Callers whose prompts may be PHI (medical records). For them the confirmation shows only the length
+  * and category, never the text, and the image modality is refused until its PNG/JSON files have a
+  * deletion and retention rule (Murakumo privacy review §4 item 8).
+  */
+ val phiCallers=setOf("network.itonami.karute")
  fun trustedCaller(c:Context,caller:String?):Boolean {
   val allowed=setOf("network.itonami.app","network.itonami.gaka","network.awai.gaka","network.itonami.dougaka","network.itonami.dougaka.preview","network.itonami.mangaka","network.itonami.animeka","network.itonami.ongakuka","network.itonami.rodo","network.itonami.karute")
   return caller in allowed && c.packageManager.checkSignatures(c.packageName,caller!!)==android.content.pm.PackageManager.SIGNATURE_MATCH

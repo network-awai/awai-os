@@ -22,7 +22,7 @@ class InferencePlugin(private val owner:Activity):Plugin(owner){
   // Host-stream downloads (AWAI-3307): called only by the Rust bridge's model_download_* commands.
   if(action in setOf("download-begin","download-finish","download-abort")){val id=args.optString("model")
    Models.worker.execute{try{val r=when(action){"download-begin"->Models.downloadBegin(owner,id);"download-finish"->{Models.downloadFinish(owner,id);Models.status(owner)};else->{Models.downloadAbort(owner,id);org.json.JSONObject().put("aborted",true)}}
-    invoke.resolve(JSObject(r.toString()))}catch(e:Exception){invoke.reject(e.message?.takeIf{it.matches(Regex("[a-z-]{1,60}"))}?:"model-download-rejected")}};return}
+    invoke.resolve(JSObject(r.toString()))}catch(e:Exception){invoke.reject(ErrorCodes.of(e,"model-download-rejected"))}};return}
   if(action=="cancel"){Engine.cancel();invoke.resolve(JSObject().put("cancelRequested",true));return}
   if(action !in setOf("import","load","generate","release")){invoke.reject("unknown-operation");return}
   if(!Models.busy.compareAndSet(false,true)){invoke.reject("busy");return}
@@ -36,7 +36,7 @@ class InferencePlugin(private val owner:Activity):Plugin(owner){
   Models.worker.execute{try{
    val result=when(action){"load"->{Models.load(owner,args.optString("model"));JSObject(Models.status(owner).toString())};"release"->{Models.release();JSObject(Models.status(owner).toString())};else->{val prompt=args.optString("prompt");val count=args.optInt("maxTokens",128);require(args.optString("modality","text")=="text"){"unsupported-modality"};JSObject().put("text",Models.generate(prompt,count)).put("outputTokens",Engine.tokens()).put("engine","llama.cpp").put("modality","text")}}
    invoke.resolve(result)
-  }catch(e:Exception){invoke.reject(e.message?.takeIf{it.matches(Regex("[a-z-]{1,60}"))}?:"inference-failed")}finally{Models.busy.set(false)}}
+  }catch(e:Exception){invoke.reject(ErrorCodes.of(e,"inference-failed"))}finally{Models.busy.set(false)}}
  }
  @ActivityCallback fun importResult(invoke:Invoke,result:ActivityResult){
   if(result.resultCode!=Activity.RESULT_OK||result.data?.data==null){Models.busy.set(false);invoke.reject("cancelled");return}

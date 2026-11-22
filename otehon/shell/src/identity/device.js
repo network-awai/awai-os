@@ -1,3 +1,4 @@
+import { issueHostAccountProof } from "./host-account.js";
 // This device's key and its link to an account. The private key cannot be exported.
 // Local state is a convenience: the link is verified again each time it is loaded.
 import { compressP256, p256Did, verifyLink } from "./link.js";
@@ -87,6 +88,23 @@ export async function signWnfsAccountAction(app, action) {
     await verifyDeviceKeyPair(pair);
     const saved = read(SESSION_KEY);
     const proof = await issueWnfsAccountProof(pair, saved, app, action);
+    if (JSON.stringify(read(SESSION_KEY)) !== JSON.stringify(saved)) throw Error("account-link-changed");
+    return proof;
+  } finally {
+    db.close();
+  }
+}
+
+export async function signHostAccount(request) {
+  const db = await open();
+  try {
+    const pair = await run(db, "readonly", (store) => store.get(KEY_ID));
+    await verifyDeviceKeyPair(pair);
+    const raw = new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey));
+    const did = p256Did(compressP256(raw));
+    const saved = read(SESSION_KEY);
+    const session = verifyLink({ ...saved, deviceDid: did, atLink: false });
+    const proof = await issueHostAccountProof(pair, session, request);
     if (JSON.stringify(read(SESSION_KEY)) !== JSON.stringify(saved)) throw Error("account-link-changed");
     return proof;
   } finally {
