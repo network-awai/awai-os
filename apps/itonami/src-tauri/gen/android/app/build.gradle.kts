@@ -29,6 +29,7 @@ android {
     sourceSets.getByName("main").java.srcDir("../../../../../../packages/awai-inference/android")
     sourceSets.getByName("main").java.srcDir("../../../../../../packages/awai-speech/android")
     sourceSets.getByName("main").assets.srcDir("../../../../../../packages/awai-speech/android-assets")
+    sourceSets.getByName("main").java.srcDir("../../../../../../packages/awai-system-bars/android")
     buildTypes {
         getByName("debug") {
             manifestPlaceholders["usesCleartextTraffic"] = "false"
