@@ -71,6 +71,8 @@
              :card-ttl-ms (or (when ttl-ms (js/Number ttl-ms)) default-ttl-ms)}]
     (when-not (contains? #{"http:"} (.-protocol (js/URL. engine-url)))
       (throw (ex-info "the engine must be a local http address" {:engine-url engine-url})))
+    (when (> (:card-ttl-ms cfg) c/longest-offer-ms)
+      (throw (ex-info "the offer lives at most 24 hours (ADR 0051 D5)" {:card-ttl-ms (:card-ttl-ms cfg)})))
     (write-file! (path/join dir "desk.json") cfg "wx")
     (select-keys cfg [:chain-id :bot :provider :node :allow-origin :model-digest :card-ttl-ms])))
 
@@ -146,15 +148,23 @@
                           #js {:key k :dsaEncoding "ieee-p1363"} (js/Buffer.from sig "base64"))))
     (catch :default _ false)))
 
-(defn issue-offer! [dir {:keys [provider]}]
+(defn issue-offer! [dir {:keys [provider ttl-ms]}]
   (let [cfg (config dir)
-        tid (str "compute-" (.toString (crypto/randomBytes 12) "hex"))]
-    (if-not (and (string? provider) (seq provider))
+        tid (str "compute-" (.toString (crypto/randomBytes 12) "hex"))
+        lifetime (or ttl-ms (:card-ttl-ms cfg))]
+    (cond
+      (not (and (string? provider) (seq provider)))
       [400 {:refused true :cause :bad-provider}]
+      (not (and (integer? lifetime) (pos? lifetime)))
+      [400 {:refused true :cause :bad-ttl}]
+      ;; ADR 0051 D5: at most 24 hours; anything longer is refused.
+      (> lifetime c/longest-offer-ms)
+      [400 {:refused true :cause :offer-too-long}]
+      :else
       (let [card (c/offer-card {:route :en-devnet :chain-id (:chain-id cfg)
                                 :provider provider :consumer (:bot cfg)
                                 :amount c/provisional-credit-per-order
-                                :order-id tid :expires-ms (+ (js/Date.now) (:card-ttl-ms cfg))})]
+                                :order-id tid :expires-ms (+ (js/Date.now) lifetime)})]
         (if (:refused card)
           [400 card]
           (let [text (host/canonical-string (host/enc card))

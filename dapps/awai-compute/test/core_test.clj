@@ -96,6 +96,17 @@
       (is (= :below-floor (:cause decision)))
       (is (= 0 (:height l))))))
 
+(deftest an-offer-lives-at-most-24h
+  (testing "ADR 0051 D5: the offer lifetime cap"
+    (let [day c/longest-offer-ms
+          at (fn [exp] (c/decide (c/offer-card (assoc request :expires-ms exp))
+                                 {:approved true :card (c/offer-card (assoc request :expires-ms exp))}
+                                 now))]
+      ;; Exactly 24h is accepted.
+      (is (:order? (at (+ now day))))
+      ;; One millisecond over is refused.
+      (is (= :offer-too-long (:cause (at (+ now day 1)))))
+      (is (= 86400000 day)))))
 (deftest receipt-does-not-trust-a-bad-readback
   (let [card (c/offer-card request)
         c (c/decide card {:approved true :card card} now)

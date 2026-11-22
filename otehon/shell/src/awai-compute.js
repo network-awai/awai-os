@@ -110,9 +110,12 @@ export async function providerKey() {
   return pair;
 }
 
-export async function prepareCompute(broker, deskOrigin, providerDid) {
+export async function prepareCompute(broker, deskOrigin, providerDid, ttlMs) {
+  if (ttlMs !== undefined
+      && (!Number.isSafeInteger(ttlMs) || ttlMs <= 0 || ttlMs > 86400000)) throw new Error("invalid-compute-ttl-offer-too-long");
+  const body = { provider: providerDid, ...(ttlMs !== undefined ? { "ttl-ms": ttlMs } : {}) };
   const r = await broker.invoke(selector("prepare-compute"),
-    { input: `${deskOrigin}/v1/compute/offers`, init: json({ provider: providerDid }) });
+    { input: `${deskOrigin}/v1/compute/offers`, init: json(body) });
   const v = await r.json();
   if (!r.ok || typeof v["offer-text"] !== "string" || typeof v["funding-payload"] !== "string")
     throw new Error("compute-offer-unavailable");

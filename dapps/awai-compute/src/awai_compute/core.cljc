@@ -30,6 +30,11 @@
 ;; Replaceable later; C1 only.
 (def provisional-credit-per-order 1)
 
+;; ADR 0051 D5: an offer lives at most 24 hours, so the person's consent is
+;; asked again at least once a day. Shared by the desk's prepare-compute
+;; route and the C1b-3 offer-publish surface (which does not exist yet).
+(def longest-offer-ms 86400000)
+
 (def target
   {:id "awai-compute"
    :wording :provide
@@ -94,6 +99,7 @@
     (not (map? answer)) {:order? false :cause :no-answer}
     (not (true? (:approved answer))) {:order? false :cause :denied}
     (not= card (:card answer)) {:order? false :cause :card-mismatch}
+    (> (- (:expires-ms card) now-ms) longest-offer-ms) {:order? false :cause :offer-too-long}
     (<= (:expires-ms card) now-ms) {:order? false :cause :expired}
     :else
     {:order? true

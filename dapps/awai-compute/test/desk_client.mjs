@@ -78,6 +78,16 @@ r = await post("/v1/compute/orders", { "order-id": e.offer.orderId, "offer-text"
   "funding-signature": await signFundingPayload(device, e.fundingPayload), prompt: PROMPT }, origin, desk2);
 check("an expired offer: refused, nothing sent", r.status === 409 && (await r.json()).cause === ":expired" && (await height()) === h0, r.status);
 
+// ADR 0051 D5 boundary: exactly 24h is accepted; 24h + 1ms is refused.
+const DAY = 86400000;
+r = await post("/v1/compute/offers", { provider, "ttl-ms": DAY });
+const dayOk = r.status === 200 && (await r.json())["offer-text"];
+check("an offer of exactly 24h: accepted", !!dayOk, r.status);
+r = await post("/v1/compute/offers", { provider, "ttl-ms": DAY + 1 });
+check("an offer 1ms over 24h: refused, nothing sent", r.status === 400 && (await r.json()).cause === ":offer-too-long" && (await height()) === h0, r.status);
+let ttlThrew = false; try { await prepareCompute(broker, desk, provider, DAY + 1); } catch { ttlThrew = true; }
+check("the client itself refuses a lifetime over 24h", ttlThrew);
+
 // -- happy path --------------------------------------------------------------
 const sent = await runCompute(brokerP, desk, a.offerText, offerSig, fundSig, PROMPT);
 check("the approved order finalizes", sent.finalized === true && sent.orderId === a.offer.orderId, JSON.stringify(sent));
