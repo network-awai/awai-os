@@ -24,6 +24,16 @@ do not silently replace the design with whatever the latest code renders.
 
 ## Preserve these boundaries
 
+> Updated 2026-11-22 (owner decision, [AWAI-3770](https://linear.app/kotobalabs/issue/AWAI-3770)):
+> the first three items below are withdrawn. They kept the Core / Apps / System
+> navigation, the Manimani workspace and docks, and placed Bots and apps inside
+> the existing shell. Itonami is now the bot runtime and its bots, Manimani is
+> its default bot, Awai Home centres on the conversation, and apps are separate
+> APKs reached through Home and Store. See
+> [the responsibilities record](home-itonami-manimani-responsibilities-20261122.md).
+> The three items stay here as the record of baseline v1. The remaining items
+> still apply. Figma remains the source of truth for UI composition.
+
 - Upper-left product name: Awai. Keep Core / Apps / System navigation, current
   context selection and the existing account entry.
 - Keep the Manimani conversation and right-hand activity area; keep account and

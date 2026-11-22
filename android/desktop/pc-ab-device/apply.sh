@@ -42,6 +42,7 @@ one() { # <project path> <patch> <marker text that the patch adds>
 one device/virt/virtio-common virtio-common-awai-pc.patch 'AWAI-3586: label partitions by GPT name'
 one device/virt/virtio-common virtio-common-aw-mesa-sphal.patch 'AWAI-3686: label the Mesa Gallium and RADV DRM dependencies'
 one device/virt/virt-common virt-common-awai-pc.patch 'awai_find_part'
+one device/virt/virt-common virt-common-awai-boot-name.patch 'AWAI-3747: use the release name'
 
 if [ -n "$fstab_patch" ]; then
   git -C "$virtio" apply "$fstab_patch"

@@ -1,0 +1,9 @@
+{
+  "case": "amd-saved",
+  "accel": "tcg",
+  "gpu": "ati-vga",
+  "savedDefault": "android",
+  "expectedSavedDefault": "android",
+  "ok": true,
+  "grubInfo": ""
+}

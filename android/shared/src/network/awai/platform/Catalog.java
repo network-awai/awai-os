@@ -32,15 +32,24 @@ public final class Catalog {
     public Catalog(Context context) throws Exception {
         byte[] bytes = Integrity.read(context.getAssets().open("catalog.json"), 131072);
         byte[] sig = Integrity.read(context.getAssets().open("catalog.sig"), 4096);
-        byte[] key = Integrity.read(context.getAssets().open("catalog-key.der"), 4096);
-        JSONObject bundled=verifyMetadata(bytes,sig,key,System.currentTimeMillis()/1000);
+        KeyList keys = StoreTrust.load(context);
+        JSONObject bundled=verifyMetadata(bytes,sig,keys,System.currentTimeMillis()/1000);
         android.content.SharedPreferences saved=context.getSharedPreferences("online",0);
-        online=saved.contains("raw");
-        if(online){
-            bytes=saved.getString("raw","").getBytes(StandardCharsets.UTF_8);
-            sig=android.util.Base64.decode(saved.getString("signature",""),android.util.Base64.DEFAULT);
+        JSONObject admitted=null;
+        if(hasOnline(context)){
+            byte[] onlineBytes=savedRaw(saved);
+            byte[] onlineSig=android.util.Base64.decode(saved.getString("signature",""),android.util.Base64.DEFAULT);
+            try{admitted=verifyMetadata(onlineBytes,onlineSig,keys,System.currentTimeMillis()/1000);}
+            catch(SecurityException e){
+                // A catalog admitted under keys this Store no longer trusts (for example the single development key
+                // before AWAI-3775) is dropped, not trusted. The revision floor is kept, so the bundled catalog
+                // must still be at least as new as anything admitted before.
+                if(!"catalog-signature".equals(e.getMessage()))throw e;
+                saved.edit().remove("raw").remove("raw64").remove("signature").commit();
+            }
         }
-        value = verifyMetadata(bytes,sig,key,System.currentTimeMillis()/1000);
+        online=admitted!=null;
+        value = online ? admitted : bundled;
         if(value.getLong("revision")<Math.max(bundled.getLong("revision"),saved.getLong("highest",0)))throw new SecurityException("catalog-rollback");
         JSONArray activeApps = value.getJSONArray("apps");
         for (int i = 0; i < activeApps.length(); i++) {
@@ -61,8 +70,34 @@ public final class Catalog {
             }
         }
     }
-    public static JSONObject verifyMetadata(byte[] bytes,byte[] sig,byte[] key,long now) throws Exception {
-        if (!Integrity.authentic(bytes, sig, key)) throw new SecurityException("catalog-signature");
+    /**
+     * Keeps an admitted online catalog. The raw bytes are stored as base64: SharedPreferences' XML file does not
+     * keep a string's trailing whitespace exactly (a raw ending in a newline came back with indentation added), and
+     * the signature covers every byte. Older Stores wrote "raw" as text; it is still read, and dropped if it no
+     * longer verifies.
+     */
+    public static boolean saveOnline(Context context, String raw, String signature, long revision) {
+        return context.getSharedPreferences("online", 0).edit().remove("raw")
+                .putString("raw64", android.util.Base64.encodeToString(raw.getBytes(StandardCharsets.UTF_8), android.util.Base64.NO_WRAP))
+                .putString("signature", signature).putLong("highest", revision).commit();
+    }
+    public static boolean hasOnline(Context context) {
+        android.content.SharedPreferences s = context.getSharedPreferences("online", 0);
+        return s.contains("raw64") || s.contains("raw");
+    }
+    private static byte[] savedRaw(android.content.SharedPreferences s) {
+        String b = s.getString("raw64", null);
+        return b != null ? android.util.Base64.decode(b, android.util.Base64.NO_WRAP) : s.getString("raw", "").getBytes(StandardCharsets.UTF_8);
+    }
+    /** An online catalog may not carry offline-only preview apps; the constructor would refuse it after admission. */
+    public static void checkOnline(JSONObject candidate) throws Exception {
+        JSONArray apps = candidate.getJSONArray("apps");
+        for (int i = 0; i < apps.length(); i++)
+            if (previewAsset(apps.getJSONObject(i).getString("id")) != null) throw new SecurityException("preview-offline-only");
+    }
+    /** Verifies a catalog: a key listed for the catalog role signed it, it is current, and its entries are admitted. */
+    public static JSONObject verifyMetadata(byte[] bytes,byte[] sig,KeyList keys,long now) throws Exception {
+        if (!keys.authentic(KeyList.CATALOG, bytes, sig)) throw new SecurityException("catalog-signature");
         JSONObject value = new JSONObject(new String(bytes, StandardCharsets.UTF_8));
         if (!"itonami.store.bundled.v1".equals(value.getString("schema")) || value.getLong("revision") < 1
                 || value.getLong("expiresAt") <= now) throw new SecurityException("catalog-expired");
@@ -81,7 +116,16 @@ public final class Catalog {
                         || !apk.getString("sha256").matches("[0-9a-f]{64}")
                         || !apk.getString("signerSha256").matches("[0-9a-f]{64}"))
                     throw new SecurityException("catalog-artifact");
-            } else assetFor(id);
+            } else {
+                // The asset follows from the id; a catalog cannot point an app at another app's file.
+                String asset = assetFor(id);
+                JSONArray artifacts = entry.optJSONArray("artifacts");
+                for (int j = 0; artifacts != null && j < artifacts.length(); j++) {
+                    JSONObject a = artifacts.getJSONObject(j);
+                    if ("android".equals(a.optString("platform")) && !asset.equals(a.optString("asset")))
+                        throw new SecurityException("catalog-artifact");
+                }
+            }
             if(entry.getLong("versionCode")<1||entry.getDouble("versionCode")!=entry.getLong("versionCode"))
                 throw new SecurityException("catalog-version");
         }
@@ -92,6 +136,19 @@ public final class Catalog {
     // that). Each is network.itonami.<suffix>, asset packages/<suffix>.apk, 40 MiB budget.
     public static final java.util.List<String> LOCAL_APPS = java.util.Collections.unmodifiableList(java.util.Arrays.asList(
             "ki", "hakkou", "koke", "openossekai", "otakiage", "seibutsu", "shinka", "kabi", "kinoko", "kobo", "saikin", "kiyome", "omikuji", "moldallergy", "explorer", "organismviz", "icc", "abaki", "hibiki", "wakai", "tawami", "yudane", "minori", "torifune", "hiramekietz", "umisachi", "tomoshibi", "tsumugi", "shirohan"));
+    /**
+     * Apps admitted by the signed catalog itself (AWAI-3771): any network.itonami.<one lowercase segment> that the
+     * catalog lists, such as the classification-series apps (network.itonami.isco2423). The asset name, the staged
+     * download name and the byte ceiling follow from the id, so the catalog decides which apps exist and no hand-written
+     * list has to follow it. The catalog's APK asset must be exactly packages/<segment>.apk (verifyMetadata).
+     */
+    private static final java.util.regex.Pattern CATALOG_APP = java.util.regex.Pattern.compile("network\\.itonami\\.([a-z][a-z0-9]{1,62})");
+    public static final int MAX_CATALOG_APP_BYTES = 64 * 1024 * 1024;
+    static String catalogSuffix(String id) {
+        if (id == null) return null;
+        java.util.regex.Matcher m = CATALOG_APP.matcher(id);
+        return m.matches() ? m.group(1) : null;
+    }
     static String localSuffix(String id) {
         if (id == null || !id.startsWith("network.itonami.")) return null;
         String suffix = id.substring("network.itonami.".length());
@@ -118,6 +175,8 @@ public final class Catalog {
         if ("network.itonami.agenttrace".equals(id)) return "packages/agent-trace.apk";
         String local = localSuffix(id);
         if (local != null) return "packages/" + local + ".apk";
+        String listed = catalogSuffix(id);
+        if (listed != null) return "packages/" + listed + ".apk";
         throw new SecurityException("unknown-app");
     }
     public static String onlineFileFor(String id) throws SecurityException {
@@ -137,6 +196,8 @@ public final class Catalog {
         if ("network.itonami.agenttrace".equals(id)) return "online-agent-trace.apk";
         String local = localSuffix(id);
         if (local != null) return "online-" + local + ".apk";
+        String listed = catalogSuffix(id);
+        if (listed != null) return "online-" + listed + ".apk";
         throw new SecurityException("unknown-app");
     }
     public static int maxApkBytes(String id) throws SecurityException {
@@ -162,6 +223,7 @@ public final class Catalog {
         if ("network.itonami.agenttrace".equals(id)) return 2 * 1024 * 1024;
         // AWAI-3502 local apps: Tauri v3 debug builds without native debug symbols, about 19.6 MB at 0.1.0.
         if (localSuffix(id) != null) return 40 * 1024 * 1024;
+        if (catalogSuffix(id) != null) return MAX_CATALOG_APP_BYTES;
         throw new SecurityException("unknown-app");
     }
     public long valueRevision() throws Exception { return value.getLong("revision"); }

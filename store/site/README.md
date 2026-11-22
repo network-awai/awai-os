@@ -22,7 +22,11 @@ Change the Figma proposal first, then this directory. The colors, type ramp, spa
 
 An app is listed with a download link only when all of these hold. Any failure stops the build.
 
-- The signer certificate (`store/keys/dev-catalog-signer.pem`) has the pinned SHA-256 fingerprint.
+- Who may sign (AWAI-3775): when `store/keys/store-root.der` and `store/latest/keys-envelope.json` are both in
+  the repository, the key list must verify against that root with the Store's rules
+  (`android/client/key-list.js`); the pointer must then be signed by a listed pointer key and the catalog by a
+  listed catalog key. Otherwise, as before, the signer certificate (`store/keys/dev-catalog-signer.pem`) has the
+  pinned SHA-256 fingerprint and signs both.
 - The pointer envelope is signed by that key (SHA256withRSA), has the `itonami.store.latest.v1`
   schema, a lifetime of at most 31 days, and has not expired.
 - Every pinned URL is a commit-pinned `raw.githubusercontent.com/network-awai/awai-os/<commit>/store/distribution/…` URL.

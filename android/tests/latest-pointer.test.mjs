@@ -2,7 +2,7 @@ import {readFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 const runtime=new URL('../../otehon/shell/vendor/kotoba-client-runtime.js',import.meta.url);
-const text=readFileSync(new URL('../client/online.js',import.meta.url),'utf8').replace("'./runtime.js'",JSON.stringify(runtime.href));
+const text=readFileSync(new URL('../client/online.js',import.meta.url),'utf8').replace("'./runtime.js'",JSON.stringify(runtime.href)).replace("'./key-list.js'",JSON.stringify(new URL('../client/key-list.js',import.meta.url).href));
 const {validatePins}=await import('data:text/javascript;base64,'+Buffer.from(text).toString('base64'));
 
 // AWAI-3662: the committed latest-catalog pointer. The signature is checked by
