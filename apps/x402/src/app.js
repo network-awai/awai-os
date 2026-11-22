@@ -25,9 +25,10 @@ const form = {amount: '0.01', payTo: '', resource: '/', description: ''};
 
 // Read the stored drafts. snapshot (the revision the next write expects) is only
 // taken over when its drafts decode, so unreadable drafts are never overwritten.
+// A read failure is unreadable too: the stored drafts are unknown, so the app
+// goes read-only exactly as for a decode failure.
 async function load() {
-  const next = await host.read();
-  try { state = decodeState(next.data); snapshot = next; readOnly = false; }
+  try { const next = await host.read(); state = decodeState(next.data); snapshot = next; readOnly = false; }
   catch (e) { readOnly = true; throw e; }
 }
 // change: state -> next state. Model errors (such as the draft limit) and host
