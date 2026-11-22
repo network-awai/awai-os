@@ -34,6 +34,10 @@ An app is listed with a download link only when all of these hold. Any failure s
   has the `itonami.store.bundled.v1` schema, and has not expired.
 - Each APK pin equals the catalog's SHA-256 for that app, and no pin names an unlisted app.
 - Each APK present in this repository has the catalog's size and SHA-256.
+- Every listed app carries a non-blank publisher from the signed catalog (AWAI-3882). A
+  missing or blank publisher aborts the build (`publisher`) instead of rendering a blank
+  配布元; the detail view shows each app's publisher as 配布元 and `site-manifest.json`
+  carries the same value per app.
 
 ## What the page is
 

@@ -147,6 +147,13 @@ def main():
               and art.get('bytes') == len(apk_bytes) and art.get('signerSha256') == signer['isic-N'] and art.get('asset') == 'packages/isic7810.apk')
         check('entry name is the APK label, versions from the APK, no operations',
               entry.get('name') == 'Series test isic-7810' and entry.get('versionCode') == 1 and entry.get('versionName') == '0.1.0' and entry.get('operations') == [])
+        # AWAI-3882: defined once, artifacts carry the resolved value — every generated entry's
+        # publisher equals the single top-level definition, never a per-entry copy.
+        check('every generated entry carries the single-definition publisher',
+              bool(raw['apps']) and all(a.get('publisher') == table['publisher'] for a in raw['apps']),
+              json.dumps([a.get('publisher') for a in raw['apps']]))
+        check('the table carries no per-entry publisher field',
+              all('publisher' not in a for a in table['apps']))
 
         # The catalog body is accepted by the Store's shared domain rules.
         domain = ROOT / 'android/client/generated/domain.js'

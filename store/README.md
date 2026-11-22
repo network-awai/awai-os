@@ -9,16 +9,22 @@ The legal publisher is defined exactly once in
 (`Awai Network LLC`). The string is never copied per app entry:
 
 - Series apps: `android/series-catalog.py` writes that single value into every
-  listed catalog entry (`table['publisher']`). `check_table` refuses a table
-  without a non-empty top-level publisher and refuses any per-entry `publisher`
-  field.
+  listed catalog entry. `check_table` refuses a table without a non-empty
+  top-level publisher, refuses any per-entry `publisher` field, and fails
+  closed if any entry does not resolve the publisher
+  (`resolved_publisher()`); entry generation fails the same way. So adding a
+  new app entry without a resolution aborts the run instead of emitting an
+  unlabelled entry.
 - Other built apps: `android/build.py` loads the same file once as `PUBLISHER`
   and references it for every built entry (Itonami, Yotei, Torihiki, Deai,
   Hiring, Shirohan and the remaining local/dapp entries). It never repeats the
   literal.
 - Entry page: `store/site/build.mjs` shows each app's `publisher` from the
   signed catalog as 配布元 and writes the same value into
-  `site-manifest.json`. The build never invents a publisher string.
+  `site-manifest.json`. The build never invents a publisher string, and it
+  fails closed (`publisher`) if any catalog entry's publisher is missing or
+  blank. `store/site/build.test.mjs` covers both: the detail view renders each
+  publisher, and missing/blank publishers are rejected.
 - Latest pointer: `store/latest/README.md` documents that the pointer carries
   the signed catalog entries, publisher included; production catalogs carry the
   publisher above.
