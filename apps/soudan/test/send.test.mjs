@@ -105,6 +105,28 @@ test('denial hands nothing over',async()=>{
   }finally{delete globalThis.document;}
 });
 
+test('approval hands a memo with the lawyer-facing evidence list over exactly once, as text only',async()=>{
+  const {doc,dialog}=installedDocument();
+  try{
+    const {broker,calls}=wire({doc});
+    const d=fixture();
+    d.evidence=[{url:'https://example.com/posts/123',postedAt:'2026-11-20T21:00',authorName:'表示名',authorId:'user123',
+      shotName:'shot.png',shotSize:12345,sha256:'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',capturedAt:'2026-11-21T10:00:00.000Z'}];
+    assert.deepEqual(draftProblems(d),[]);
+    const to={name:d.recipient.name,office:d.recipient.office,contact:d.recipient.contact};
+    const payload={memo:addressedMemo(assembleMemo(d,t).text,to,t),recipient:to};
+    const invoked=broker.invoke(SEND_SELECTOR,payload);
+    const allow=buttonByText(dialog(),'続ける');
+    assert.ok(allow,'allow button exists');
+    await approve(dialog(),allow);
+    assert.deepEqual(await invoked,{shared:true});
+    assert.equal(calls.length,1,'exactly one hand-off');
+    assert.ok(calls[0].includes('弁護士に見せるための一覧'));
+    assert.ok(calls[0].includes('https://example.com/posts/123'));
+    assert.ok(!calls[0].includes('data:image'),'no image bytes cross the send gate');
+  }finally{delete globalThis.document;}
+});
+
 test('without governor approval the send is not eligible and nothing is handed over',async()=>{
   const {doc}=installedDocument();
   try{

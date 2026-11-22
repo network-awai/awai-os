@@ -11,6 +11,34 @@ The scope comes from ADR 0001 in `kotoba-lang/app-itonami-cloud-itonami-isic-691
 - **No default jurisdiction (O7 open).** The user must choose one. Only Japan has a template, so Japan is the only choice.
 - No referral fee or other payment path exists (D2).
 
+## Evidence list for a lawyer (AWAI-3505 scope 3, owner answer O11 of 2026-11-22)
+
+The input screen adds post records the user types themselves (post URL, date-time, poster display
+name and ID) plus a screenshot image they pick. Picking an image records the file name, size,
+capture time and SHA-256 next to the row; the image bytes are never persisted or sent. The memo
+gains one section titled 弁護士に見せるための一覧 / List for your lawyer that repeats those rows
+under fixed labels. Rows live in the same on-device draft and the user can delete them.
+
+What the app does **not** do (O11):
+
+- It never judges whether anything is infringing or meets any disclosure condition, and never
+  writes petition or claim text. It only points at the official forms (Tokyo District Court Civil
+  Division 9 page for disclosure-order petitions).
+- The retention note is a general guide with sources and dates only ("often disappears within
+  months" as a rough guide that varies by company; exact periods go to each company or a lawyer).
+  It never counts remaining days or names a filing date. Sources: the Information Platform Act
+  (e-Gov law API `lawId 413AC0000000137`, retrieved 2026-11-22), the Tokyo District Court petition
+  page (retrieved 2026-11-22), and the MIC White Paper 2025 edition (retrieved 2026-11-22).
+- Evidence records stay inside this device (app-private storage protected by device encryption);
+  nothing is uploaded or synced, images are not edited, published or shared, and no
+  Government Request Portal is shown. The user-facing routes are: each company's removal and
+  disclosure request forms, requests to prevent transmission, a court disclosure-order petition
+  (consult a lawyer), Legal Affairs Bureau human-rights consultation, the Illegal and Harmful
+  Information Consultation Center, and the police (#9110 and the prefectural cybercrime desks).
+
+Sending still hands over only the memo text (one approval, one share-sheet hand-off); screenshot
+bytes never cross the send gate. UI text stays keyed in `src/messages.js` (ja, en).
+
 ## Sending (X1, ADR 0001 D9 / owner decision O1)
 
 The descriptor declares **one operation**: handing the memo to the lawyer the user chose, through the Android share sheet (`browser-action: share`, recipient `user-selected-app`; no service origin is fabricated). Scope is the O1/D9 range only: the memo the user assembled, to the lawyer the user named. The app holds no lawyer list and never suggests one (a test checks this). The operation also declares the finding-9 disclosure the canonical broker shows (recipient, country JP, data, purpose, `one-time` frequency, withdrawal slot); the canonical `kotoba-client-runtime.js` pin is recorded in `otehon/shell/vendor/PINS.json`.
