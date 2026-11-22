@@ -1,0 +1,4 @@
+package:network.awai.home
+package:network.awai.store
+package:network.awai.tests
+package:network.itonami.yotei

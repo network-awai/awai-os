@@ -70,6 +70,14 @@ test('the Kumade Tauri artifact fits the shared ceiling and keeps its own asset 
     assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,bad]}),100),false,asset);
   }
 });
+test('an AWAI-3502 local Tauri app fits the shared ceiling under its own asset name',()=>{
+  const local={...app,id:'network.itonami.icc',versionCode:1000,artifacts:[{...apk,asset:'packages/icc.apk',bytes:20*1024*1024}]};
+  assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,local]}),100),true);
+  for(const asset of ['packages/ICC.apk','packages/icc.apk/../x.apk','packages/icc.APK']){
+    const bad={...local,artifacts:[{...apk,asset,bytes:20*1024*1024}]};
+    assert.equal(d.validCatalog(JSON.stringify({...c,apps:[app,bad]}),100),false,asset);
+  }
+});
 test('local event lifecycle is shared and bounded',()=>{
   const e={id:'1',title:'散歩 <img src=x onerror=alert(1)>',at:200};
   const saved=JSON.parse(d.saveEvent('[]',JSON.stringify(e)));
@@ -79,4 +87,13 @@ test('local event lifecycle is shared and bounded',()=>{
   assert.equal(JSON.parse(d.saveEvent('[]',JSON.stringify({...e,title:''}))).error,'invalid-event');
   const many=Array.from({length:200},(_,n)=>({...e,id:String(n)}));
   assert.equal(JSON.parse(d.saveEvent(JSON.stringify(many),JSON.stringify({...e,id:'new'}))).error,'event-limit');
+});
+
+test('only the matching offline preview artifact admits a dual-ABI APK',()=>{
+ const artifact={...apk,asset:'packages/itonami-preview.apk',bytes:120*1024*1024};
+ const candidate={...app,id:'network.itonami.client.preview',artifacts:[artifact]};
+ assert.equal(d.appState(JSON.stringify(candidate),'android','android',null),'available');
+ assert.equal(d.appState(JSON.stringify({...candidate,id:'network.itonami.app'}),'android','android',null),'unavailable');
+ assert.equal(d.appState(JSON.stringify({...candidate,artifacts:[{...artifact,asset:'packages/itonami.apk'}]}),'android','android',null),'unavailable');
+ for(const bytes of [0,268435457,1.5])assert.equal(d.appState(JSON.stringify({...candidate,artifacts:[{...artifact,bytes}]}),'android','android',null),'unavailable');
 });

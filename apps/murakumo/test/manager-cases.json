@@ -1671,5 +1671,65 @@
    "disk-free": null,
    "recommended": null
   }
+ },
+ {
+  "name": "another app's copy: unknown job state and unknown used RAM are valid",
+  "fn": "usage-problems",
+  "args": [
+   {
+    "schema": "awai.murakumo.device-usage.v1",
+    "device": "this-device",
+    "kind": "android",
+    "observed-at-ms": 1794930000000,
+    "ram": {
+     "total": 17179869184,
+     "used": null
+    },
+    "cpu-percent": null,
+    "gpu-percent": null,
+    "disk": {
+     "free": 162135015424,
+     "total": 245107195904
+    },
+    "loaded": {
+     "model": "qwen3-8b-q4_k_m",
+     "context": 4096,
+     "state": "unknown",
+     "since-ms": 1794929000000
+    }
+   }
+  ],
+  "expect": []
+ },
+ {
+  "name": "a job state outside the fixed set is a problem",
+  "fn": "usage-problems",
+  "args": [
+   {
+    "schema": "awai.murakumo.device-usage.v1",
+    "device": "this-device",
+    "kind": "android",
+    "observed-at-ms": 1794930000000,
+    "ram": {
+     "total": 17179869184,
+     "used": null
+    },
+    "cpu-percent": null,
+    "gpu-percent": null,
+    "disk": {
+     "free": 162135015424,
+     "total": 245107195904
+    },
+    "loaded": {
+     "model": "qwen3-8b-q4_k_m",
+     "context": 4096,
+     "state": "generating",
+     "since-ms": 1794929000000
+    }
+   }
+  ],
+  "expect": [
+   "usage/loaded"
+  ]
  }
 ]

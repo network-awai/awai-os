@@ -1,0 +1,103 @@
+{
+  "issue": "AWAI-3586",
+  "date": "2026-11-19",
+  "where": "KVM, QEMU 8.2.2, shared NVMe disk with three stand-in partitions",
+  "builds": {
+    "awai-byname-v4": {
+      "targetFilesSha256": "c556d85a3860d8605b11a19b009a80dd198af5cde26e9bbdb179bbbc1d171ccb",
+      "tfDiskSha256": "8db2658f6a413c575be16f2d6315fac16b9bbcbc8d7ae80cc986c5bf32c086fb",
+      "note": "awai-pc.config with CONFIG_DRM_SIMPLEDRM and CONFIG_SYSFB_SIMPLEFB",
+      "buildTime": "09:39"
+    },
+    "awai-byname-v5": {
+      "targetFilesSha256": "d98b2c14c0dcae89dd26c7eadbb82bc6bc6dff50a08190cea98f77e3d4fd4321",
+      "tfDiskSha256": "a2a4b585695cb7b922df1cd248d83962e6c1d27d7164ec1ffc952c836398df87",
+      "note": "CONFIG_FB_EFI instead of simpledrm; e1000e.ko and igc.ko in modules.load",
+      "buildTime": "10:36"
+    }
+  },
+  "kernelConfig": {
+    "CONFIG_R8169": "y",
+    "CONFIG_REALTEK_PHY": "y",
+    "CONFIG_E1000E": "m",
+    "CONFIG_IGC": "m",
+    "CONFIG_DRM_AMDGPU": "m",
+    "CONFIG_DRM_AMD_DC": "y",
+    "CONFIG_FB_EFI": "y",
+    "CONFIG_PINCTRL_AMD": "y",
+    "CONFIG_DRM_VKMS": "m"
+  },
+  "runs": [
+    {
+      "build": "awai-byname-v5",
+      "nic": "e1000e",
+      "gpu": "virtio-vga",
+      "entry": "default",
+      "result": "pass",
+      "boot_completed": 1,
+      "eth0Driver": "e1000e",
+      "modulesLoaded": [
+        "e1000e",
+        "igc"
+      ],
+      "surfaceflinger": "running",
+      "installExistingUnchanged": true
+    },
+    {
+      "build": "awai-byname-v4",
+      "nic": "virtio-net",
+      "gpu": "ramfb only",
+      "entry": "default",
+      "result": "fail",
+      "detail": "SurfaceFlinger crash loop, adb offline"
+    },
+    {
+      "build": "awai-byname-v4",
+      "nic": "virtio-net",
+      "gpu": "ramfb only",
+      "entry": "headless swiftshader",
+      "result": "fail",
+      "abort": "No matching frame rate modes for primary range even after ignoring the render range"
+    },
+    {
+      "build": "awai-byname-v5",
+      "nic": "e1000e",
+      "gpu": "ramfb only",
+      "entry": "headless swiftshader",
+      "result": "fail",
+      "detail": "SurfaceFlinger crash loop, adb offline"
+    },
+    {
+      "build": "awai-byname-v5",
+      "nic": "e1000e",
+      "gpu": "virtio-vga",
+      "entry": "headless swiftshader",
+      "result": "fail",
+      "detail": "SurfaceFlinger crash loop, adb offline"
+    },
+    {
+      "build": "awai-byname-v2",
+      "nic": "virtio-net",
+      "gpu": "virtio-vga",
+      "entry": "headless swiftshader",
+      "result": "fail",
+      "abort": "No matching frame rate modes for primary range even after ignoring the render range",
+      "note": "no hardware changes in this build: the headless entry fails in the unmodified display stack"
+    }
+  ],
+  "firmwareAvailable": {
+    "source": "linux-firmware 20261019 on the build host",
+    "amdgpuYellowCarpFiles": 12,
+    "amdgpuYellowCarpBytes": "1.7 MB",
+    "rtlNic": [
+      "rtl8168h-1.fw",
+      "rtl8168h-2.fw"
+    ],
+    "inImage": false
+  },
+  "notShown": [
+    "the Realtek NIC and the AMD GPU themselves",
+    "any display path without a virtio GPU",
+    "firmware loading"
+  ]
+}

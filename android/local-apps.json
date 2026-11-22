@@ -1,0 +1,180 @@
+{
+ "schema": "awai.store.local-apps.v1",
+ "note": "Local Itonami apps that keep everything on the device. Each APK must be network.itonami.<suffix>, signed by the single development identity, request no INTERNET permission, and fit 40 MiB. Catalog.java holds the same suffix allowlist; tests/local-apps.test.mjs checks the two agree.",
+ "apps": [
+  {
+   "suffix": "ki",
+   "name": "Ki",
+   "repo": "network-awai/app-itonami-ki",
+   "description": "樹液（sap）— koke・hakkou などからの信号を吸い上げ（absorb）、成果物に合成し（synthesize）、公開し（bloom）、期間ごとの年輪（ring）として残します。"
+  },
+  {
+   "suffix": "hakkou",
+   "name": "Hakkou",
+   "repo": "network-awai/app-itonami-hakkou",
+   "description": "発酵 — koke で固定した信号（glucose）を、ki が吸収できる構造化した知識（ethanol）へ不可逆に変える発酵のバッチと工程を記録します。"
+  },
+  {
+   "suffix": "koke",
+   "name": "Koke",
+   "repo": "network-awai/app-itonami-koke",
+   "description": "苔 — 外からの信号（CO₂）を取り込み、構造化した vertex（glucose）として固定する一次固定の層です。炭素の登録・放出と相殺の記録を扱います。"
+  },
+  {
+   "suffix": "openossekai",
+   "name": "Open Ossekai",
+   "repo": "network-awai/app-itonami-open-ossekai",
+   "description": "おせっかい — 需給のずれ（arbitrage の機会）を公共財のカタログとして記録し、本人の同意にもとづく情緒（jocho）の評価を手元で残します。推論は含みません。"
+  },
+  {
+   "suffix": "otakiage",
+   "name": "Otakiage",
+   "repo": "network-awai/app-itonami-otakiage",
+   "description": "お焚き上げ — 品物を登録し、再利用の依頼・引き渡し・期限切れ・供養の依頼と供養までを 1 つの状態機械で扱い、証明書とお祭りの予定を記録します。"
+  },
+  {
+   "suffix": "seibutsu",
+   "name": "Seibutsu",
+   "repo": "network-awai/app-itonami-seibutsu",
+   "description": "生物 — 生物分類（taxon）と形質（traits）と観察記録を扱う、公開データ型の生物多様性カタログです。画像からの種の同定（推論）は含みません。"
+  },
+  {
+   "suffix": "shinka",
+   "name": "Shinka",
+   "repo": "network-awai/app-itonami-shinka",
+   "description": "進化 — 歴史上の出来事のカタログと、actor ごとの情緒（joucho）の評価を記録します。推論・クレジット精算・投稿の実行は含みません。"
+  },
+  {
+   "suffix": "kabi",
+   "name": "Kabi",
+   "repo": "network-awai/app-itonami-kabi",
+   "description": "カビ — 菌糸のネットワーク層です。agent 同士を結ぶ菌糸（hypha）を伸ばし・刈り込み、菌糸融合の相性（VCG）を確かめ、活きている菌糸の容量から最大の養分の流れを計算します。"
+  },
+  {
+   "suffix": "kinoko",
+   "name": "Kinoko",
+   "repo": "network-awai/app-itonami-kinoko",
+   "description": "きのこ — 養分の流れ（flow）の証明（PoNF）の層です。流れの寄与を記録し、しきい値に届いたら子実体（block）として封じ、前の block の hash をつないだ鎖にします。鎖は手元で検証できます。"
+  },
+  {
+   "suffix": "kobo",
+   "name": "Kobo",
+   "repo": "network-awai/app-itonami-kobo",
+   "description": "酵母 — agent 一体ずつの一生を扱う層です。生まれ（spawn）、出芽で子を作り（bud、世代が 1 つ深くなる）、出芽痕が上限に達すると老化し、胞子になって休眠し（sporulate）、基質を発酵させます（ferment）。"
+  },
+  {
+   "suffix": "saikin",
+   "name": "Saikin",
+   "repo": "network-awai/app-itonami-saikin",
+   "description": "細菌 — 水平伝達の層です。場所ごとに環境を調べ（probe）、そこで集落（colony）を作り、集落の間で信号を水平に移し（transfer）、Ki に渡せる形にまとめます。溶菌（lyse）した集落は信号を放出して止まります。"
+  },
+  {
+   "suffix": "kiyome",
+   "name": "Kiyome",
+   "repo": "network-awai/app-itonami-kiyome",
+   "description": "清め — コンプライアンスの承認（clearance）を扱います。申請・承認・却下・期限切れ（清め）を、変更のたびに監査ログを残しながら進めます。"
+  },
+  {
+   "suffix": "omikuji",
+   "name": "Omikuji",
+   "repo": "network-awai/app-itonami-omikuji",
+   "description": "おみくじ — 神社ごとのおみくじの割合を決め、引いた結果を残します。同じ人は同じ神社で 1 日 1 回まで。結んだ（resetFortune）おみくじは手放したことになり、もう一度引けます。"
+  },
+  {
+   "suffix": "moldallergy",
+   "name": "Mold Allergy",
+   "repo": "network-awai/app-itonami-mold-allergy",
+   "description": "カビアレルギー研究ノート — 真菌アレルゲンの目録、舌下免疫療法（SLIT）錠の設計案、安全性の観察を記録します。研究の記録用で、医療上の助言や用量の推奨はしません。"
+  },
+  {
+   "suffix": "explorer",
+   "name": "Explorer",
+   "repo": "network-awai/app-itonami-explorer",
+   "description": "kotoba の Datom ログ（content-addressed な追記型の commit 鎖）を手元で読み込み、すべての CID を計算し直して鎖を検証し、EAVT で entity を見て、属性で問い合わせます。"
+  },
+  {
+   "suffix": "organismviz",
+   "name": "Organism Viz",
+   "repo": "network-awai/app-itonami-organism-viz",
+   "description": "organism の生きている度合い A(t) = ⟨M,D,C,P,G⟩ を、合計値にせず 5 つのまま計算します。観察サイクルの軸の表、cell の数、恒常性の範囲（ideal state）との照合、剪定候補の報告を手元で扱います。"
+  },
+  {
+   "suffix": "icc",
+   "name": "OpenICC",
+   "repo": "network-awai/app-itonami-icc",
+   "description": "ローマ規程の分析手続（9 体の bot と governor）を、この端末で試します。事件の記録を入力すると、14 の憲章ゲートの判定、弁護 bot の反論、状況のまとめを返します。名指しの公表や検察官への通報はせず、外部へは何も送信しません。"
+  },
+  {
+   "suffix": "abaki",
+   "name": "Abaki",
+   "repo": "network-awai/app-itonami-abaki",
+   "description": "独占・チョークポイントの観察を、この端末で試します。事業者の特徴を入力すると Chokepoint Index（CI）を計算し、迂回先（route around）と生存ツリーを示します。外部へは何も送信しません。"
+  },
+  {
+   "suffix": "hibiki",
+   "name": "Hibiki",
+   "repo": "network-awai/app-itonami-hibiki",
+   "description": "提案を、短い説明動画の「計画」にします。わかりやすさと共感だけで伝え、急かす演出・視聴時間の最適化・実在の人物の似姿や声は憲章で退けます。描画・合成・公開はせず、外部へは何も送信しません。"
+  },
+  {
+   "suffix": "wakai",
+   "name": "Wakai",
+   "repo": "network-awai/app-itonami-wakai",
+   "description": "和会 — 会員どうしの助け合いの記録を、この端末で検証します。拠出・分配の記録が憲章（保険でも投資でもない、3 人以上の識別と評議会の証明）を満たすかを確かめ、期間の集計を作ります。お金は動かさず、外部へは何も送信しません。"
+  },
+  {
+   "suffix": "tawami",
+   "name": "Tawami",
+   "repo": "network-awai/app-itonami-tawami",
+   "description": "撓 — 電力の柔軟性（時間をずらせる力）を、この端末で見積もります。蓄電池や EV などの資産を入力すると、応答の速さ・ずらせる量・柔軟性の価値と区分を計算します。指令や取引はせず、外部へは何も送信しません。"
+  },
+  {
+   "suffix": "yudane",
+   "name": "Yudane",
+   "repo": "network-awai/app-itonami-yudane",
+   "description": "委ね — 暮らしの予定から生まれる電力の柔軟性を、同意と匿名性の条件で確かめます。申し出ごとに、能力（capability）・期限・互恵性・k-匿名性（5 人以上）を判定し、集計だけを示します。個人のデータは扱わず、外部へは何も送信しません。"
+  },
+  {
+   "suffix": "minori",
+   "name": "Minori",
+   "repo": "network-awai/app-itonami-minori",
+   "description": "稔り — 社会的な資本の育ち方を、この端末で評価します。共生（η）・採用・価値の捕捉・エネルギー流（Φ）から成長 G を計算し、次に打つ手（憲章に沿う介入だけ）を試算し、伸びしろが外部の条件待ちかを判定します。何も送信せず、寄付の案内も下書きだけです。"
+  },
+  {
+   "suffix": "torifune",
+   "name": "Torifune",
+   "repo": "network-awai/app-itonami-torifune",
+   "description": "鳥船 — 民生用ロケットの機体グラフを、この端末で検算します。段ごとの Δv（ツィオルコフスキー）、推進剤の正味の炭素収支、段とデブリの処分計画を、repo の種データ（代表的な推定値）から計算します。兵器の運搬は表現できず、外部へは何も送信しません。"
+  },
+  {
+   "suffix": "hiramekietz",
+   "name": "Hirameki (etz)",
+   "repo": "network-awai/app-itonami-hirameki-etz",
+   "description": "閃き — 特許の集中と解放を、この端末で観察します。分野ごとの出願人の占有率から、集中度（HHI）・チョークポイントの危険度・満了や開放ライセンスによる解放の進み具合を計算し、迂回・解放・監視のどれに回すかを示します。外部へは何も送信しません。"
+  },
+  {
+   "suffix": "umisachi",
+   "name": "Umisachi",
+   "repo": "network-awai/app-itonami-umisachi",
+   "description": "海幸 — 海の恵みのグラフ（資源・漁業・物流・市場・圧力）を、この端末で読み解きます。分け合いの広がり（nourishment）と、資源が負う取りの重さ（depletion）を計算し、回復へ回す先を示します。漁場の位置や破壊的な漁法は表現できず、外部へは何も送信しません。"
+  },
+  {
+   "suffix": "tomoshibi",
+   "name": "Tomoshibi",
+   "repo": "network-awai/app-itonami-tomoshibi",
+   "description": "灯 — 招きの便りを出す actor の、配信停止と会員のリード（許可）を、この端末で確かめます。受け取った文面が配信停止の求めかを判定し、停止の記録と照合し、リード（許可の記録）が有効かを判定します。メールの送受信はせず、外部へは何も送信しません。"
+  },
+  {
+   "suffix": "tsumugi",
+   "name": "Tsumugi",
+   "repo": "network-awai/app-itonami-tsumugi",
+   "description": "紡ぎ — 情報とエネルギーの流れが、どれだけ秩序を生んだかを、この端末で測ります。流れの記録から、正味の利得・秩序化の度合い・エージェントの効率をまとめます。成員になる準備ができた候補を、評議会の審査に回す「提案」として示します（決定はしません）。外部へは何も送信しません。"
+  },
+  {
+   "suffix": "shirohan",
+   "name": "Shirohan 白版",
+   "repo": "cloud-itonami/app-itonami-shirohan",
+   "description": "SVG・PNG・JPEG・WebP の図案から白インクの下地と色版を生成し、版下 SVG をダウンロードに保存します。製版は端末内で行われます。"
+  }
+ ]
+}

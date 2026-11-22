@@ -1,0 +1,50 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_14_6650)">
+<rect width="120" height="120" fill="#F4F4F3"/>
+<g opacity="0.057" clip-path="url(#clip1_14_6650)">
+<path d="M16 0H0V16H16V0Z" fill="#1E50A2"/>
+<path d="M16 32H0V48H16V32Z" fill="#1E50A2"/>
+<path d="M16 64H0V80H16V64Z" fill="#1E50A2"/>
+<path d="M16 96H0V112H16V96Z" fill="#1E50A2"/>
+<path d="M32 16H16V32H32V16Z" fill="#1E50A2"/>
+<path d="M32 48H16V64H32V48Z" fill="#1E50A2"/>
+<path d="M32 80H16V96H32V80Z" fill="#1E50A2"/>
+<path d="M32 112H16V128H32V112Z" fill="#1E50A2"/>
+<path d="M48 0H32V16H48V0Z" fill="#1E50A2"/>
+<path d="M48 32H32V48H48V32Z" fill="#1E50A2"/>
+<path d="M48 64H32V80H48V64Z" fill="#1E50A2"/>
+<path d="M48 96H32V112H48V96Z" fill="#1E50A2"/>
+<path d="M64 16H48V32H64V16Z" fill="#1E50A2"/>
+<path d="M64 48H48V64H64V48Z" fill="#1E50A2"/>
+<path d="M64 80H48V96H64V80Z" fill="#1E50A2"/>
+<path d="M64 112H48V128H64V112Z" fill="#1E50A2"/>
+<path d="M80 0H64V16H80V0Z" fill="#1E50A2"/>
+<path d="M80 32H64V48H80V32Z" fill="#1E50A2"/>
+<path d="M80 64H64V80H80V64Z" fill="#1E50A2"/>
+<path d="M80 96H64V112H80V96Z" fill="#1E50A2"/>
+<path d="M96 16H80V32H96V16Z" fill="#1E50A2"/>
+<path d="M96 48H80V64H96V48Z" fill="#1E50A2"/>
+<path d="M96 80H80V96H96V80Z" fill="#1E50A2"/>
+<path d="M96 112H80V128H96V112Z" fill="#1E50A2"/>
+<path d="M112 0H96V16H112V0Z" fill="#1E50A2"/>
+<path d="M112 32H96V48H112V32Z" fill="#1E50A2"/>
+<path d="M112 64H96V80H112V64Z" fill="#1E50A2"/>
+<path d="M112 96H96V112H112V96Z" fill="#1E50A2"/>
+<path d="M128 16H112V32H128V16Z" fill="#1E50A2"/>
+<path d="M128 48H112V64H128V48Z" fill="#1E50A2"/>
+<path d="M128 80H112V96H128V80Z" fill="#1E50A2"/>
+<path d="M128 112H112V128H128V112Z" fill="#1E50A2"/>
+</g>
+<path d="M60 105C84.8528 105 105 84.8528 105 60C105 35.1472 84.8528 15 60 15C35.1472 15 15 35.1472 15 60C15 84.8528 35.1472 105 60 105Z" stroke="#1E50A2" stroke-width="3.1"/>
+<path d="M60 47C52 41 42 40 33 43V74C43 71 52 73 60 79C68 73 77 71 87 74V43C78 40 68 41 60 47ZM60 47V77M41 53H51M41 61H51M69 53H79M69 61H76" stroke="#1E50A2" stroke-width="3.9" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M80 69H72V77H80V69Z" fill="#BC002D"/>
+</g>
+<defs>
+<clipPath id="clip0_14_6650">
+<rect width="120" height="120" fill="white"/>
+</clipPath>
+<clipPath id="clip1_14_6650">
+<rect width="120" height="120" fill="white"/>
+</clipPath>
+</defs>
+</svg>

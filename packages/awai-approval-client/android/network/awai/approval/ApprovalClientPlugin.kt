@@ -16,6 +16,10 @@ import java.util.concurrent.atomic.AtomicBoolean
 /** ADR 0048 client: hands one typed request to the Awai app's ApprovalRequestActivity. Holds no key, stores no grant, never signs itself. */
 @TauriPlugin
 class ApprovalClientPlugin(private val owner:Activity):Plugin(owner){
+ private val classB=setOf("itonami.bot-signer.present","itonami.bot-signer.transfer")
+ private val transferFields=listOf("receiver","amount","spenderPrev","nonce","ts")
+ private val extraFields=mapOf("itonami.bot-signer.policy" to listOf("receivers","perTransferMax","dailyMax"),"itonami.bot-signer.transfer" to transferFields,"itonami.bot-signer.transfer-approve" to transferFields)
+ private val localKinds=setOf("itonami.bot-signer.delegate","itonami.bot-signer.present","itonami.bot-signer.policy","itonami.bot-signer.transfer","itonami.bot-signer.transfer-approve")
  private val provider="network.awai.app"
  private val busy=AtomicBoolean(false)
  private fun available():Boolean=try{
@@ -25,7 +29,19 @@ class ApprovalClientPlugin(private val owner:Activity):Plugin(owner){
  }catch(e:Exception){false}
  @Command fun operation(invoke:Invoke){
   val a=invoke.getArgs();val kind=a.optString("kind");val id=a.optString("requestId");val wallet=a.optString("walletId")
-  if(a.optString("schema")!="awai.approval.request.v1"||!id.matches(Regex("[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"))||!wallet.matches(Regex("[a-z0-9][a-z0-9-]{0,39}"))){invoke.reject("invalid-request");return}
+  if(a.optString("schema")!="awai.approval.request.v1"||!id.matches(Regex("[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"))){invoke.reject("invalid-request");return}
+  // ADR 0048 stage 7: a local Bot's delegation (class A card) or its sealed presentation (class B, no card).
+  if(kind in localKinds){
+   val bot=a.optString("botId");if(!bot.matches(Regex("[a-z0-9][a-z0-9._-]{0,63}"))){invoke.reject("invalid-request");return}
+   val target=if(kind in classB)"BotSignerActivity" else "ApprovalRequestActivity"
+   val local=Intent().setComponent(ComponentName(provider,"$provider.$target")).putExtra("schema","awai.approval.request.v1").putExtra("requestId",id).putExtra("kind",kind).putExtra("botId",bot)
+   // String fields pass through unchanged; the Awai app validates every one of them.
+   for(k in extraFields[kind].orEmpty()){val v=a.opt(k);if(v !is String||v.length>1024){invoke.reject("invalid-request");return};local.putExtra(k,v)}
+   if(!available()){invoke.reject("key-approval-unavailable");return}
+   if(!busy.compareAndSet(false,true)){invoke.reject("busy");return}
+   try{startActivityForResult(invoke,local,"answered")}catch(e:Exception){busy.set(false);invoke.reject("key-approval-unavailable")};return
+  }
+  if(!wallet.matches(Regex("[a-z0-9][a-z0-9-]{0,39}"))){invoke.reject("invalid-request");return}
   val intent=Intent().setComponent(ComponentName(provider,"$provider.ApprovalRequestActivity")).putExtra("schema","awai.approval.request.v1").putExtra("requestId",id).putExtra("kind",kind).putExtra("walletId",wallet)
   when(kind){
    "itonami.bot-wallet.address"->{}
@@ -40,6 +56,13 @@ class ApprovalClientPlugin(private val owner:Activity):Plugin(owner){
  }
  @ActivityCallback fun answered(invoke:Invoke,result:ActivityResult){busy.set(false);val data=result.data;val id=invoke.getArgs().optString("requestId")
   if(result.resultCode!=Activity.RESULT_OK||data==null||data.getStringExtra("schema")!="awai.approval.result.v1"||data.getStringExtra("requestId")!=id){invoke.reject(data?.getStringExtra("error")?.takeIf{it.matches(Regex("[a-z-]{1,40}"))}?:"denied");return}
+  val kind=invoke.getArgs().optString("kind")
+  if(kind in localKinds){
+   val out=JSObject().put("schema","awai.approval.result.v1").put("requestId",id)
+   for(k in listOf("block","cid","holder","owner","signature","rootSignature","seal","funding","operating","bindingByOperating","bindingByFunding","transferId","sig","spender"))data.getStringExtra(k)?.let{v->if(v.length>8192||!v.matches(Regex("[0-9A-Za-z:_-]+"))){invoke.reject("invalid-approval-result");return}else out.put(k,v)}
+   out.put("before",data.getLongExtra("before",-1))
+   invoke.resolve(out);return
+  }
   val address=data.getStringExtra("walletAddress")?:"";val signature=data.getStringExtra("walletSignature")
   if(!address.matches(Regex("0x[0-9a-f]{40}"))||(signature!=null&&!signature.matches(Regex("0x[0-9a-f]{130}")))){invoke.reject("invalid-approval-result");return}
   val out=JSObject().put("schema","awai.approval.result.v1").put("requestId",id).put("walletAddress",address)

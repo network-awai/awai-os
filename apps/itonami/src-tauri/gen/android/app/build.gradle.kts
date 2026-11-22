@@ -49,6 +49,12 @@ android {
             )
         }
     }
+    packaging {
+        jniLibs {
+            // Keep the dual-ABI development APK within the Store's 64 MiB limit.
+            useLegacyPackaging = true
+        }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8

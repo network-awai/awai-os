@@ -8,7 +8,7 @@ const app = fileURLToPath(new URL('../', import.meta.url)), repo = resolve(app, 
 const sha = b => createHash('sha256').update(b).digest('hex');
 await rm(out, {recursive: true, force: true});
 await mkdir(out, {recursive: true});
-for (const name of ['style.css', 'app.js', 'model.js', 'messages.js', 'operations.js', 'police-guide.js']) await copyFile(resolve(app, 'src', name), resolve(out, name));
+for (const name of ['style.css', 'app.js', 'model.js', 'messages.js', 'operations.js', 'police-guide.js', 'send.js']) await copyFile(resolve(app, 'src', name), resolve(out, name));
 const guide = JSON.parse(await readFile(resolve(app, 'src/police-guide.json'), 'utf8'));
 await writeFile(resolve(out, 'police-guide-data.js'), 'export default ' + JSON.stringify(guide) + ';\n');
 await copyFile(resolve(repo, 'packages/awai-shell/host.js'), resolve(out, 'host.js'));
@@ -23,12 +23,18 @@ for (const [input, output] of [['kotoba-client-runtime.js', 'runtime.js'], ['kot
   if (sha(bytes) !== pins.files[input]) throw Error('canonical runtime pin drift');
   await writeFile(resolve(out, output), bytes);
 }
-// No external operation is declared, so connect-src carries only the Tauri IPC. Both CSPs must say so.
-const {runtimeDescriptor, REQUESTED_CAPABILITIES} = await import('../src/operations.js');
+// The only declared operation hands the memo to the OS share sheet (a browser-action with the
+// user-selected-app recipient), which causes no fetch from the page: connect-src carries only the
+// Tauri IPC. Both CSPs must say so.
+const {runtimeDescriptor, REQUESTED_CAPABILITIES, SEND_SELECTOR} = await import('../src/operations.js');
 const {clientRuntimeProblems, clientRuntimeConnectSrc} = await import('../../../otehon/shell/vendor/kotoba-client-runtime.js');
 const descriptor = runtimeDescriptor();
 if (clientRuntimeProblems(descriptor, [...REQUESTED_CAPABILITIES], 'http://tauri.localhost').length) throw Error('invalid runtime descriptor');
-if (descriptor.operations.length || clientRuntimeConnectSrc(descriptor, [...REQUESTED_CAPABILITIES], [], 'http://tauri.localhost') !== "connect-src 'none'") throw Error('unexpected external operation');
+if (descriptor.operations.length !== 1
+  || descriptor.operations[0].capability !== SEND_SELECTOR.capability
+  || descriptor.operations[0].service !== SEND_SELECTOR.service
+  || descriptor.operations[0].operation !== SEND_SELECTOR.operation
+  || clientRuntimeConnectSrc(descriptor, [...REQUESTED_CAPABILITIES], [], 'http://tauri.localhost') !== "connect-src 'none'") throw Error('unexpected external operation');
 const tauriCsp = JSON.parse(await readFile(resolve(app, 'src-tauri/tauri.conf.json'), 'utf8')).app.security.csp;
 for (const [name, csp] of [['index.html', html], ['tauri.conf.json', tauriCsp]]) if (!csp.includes('connect-src ipc: http://ipc.localhost;')) throw Error('CSP connect-src must be IPC only: ' + name);
 await writeFile(resolve(out, 'descriptor.json'), JSON.stringify(descriptor, null, 2) + '\n');

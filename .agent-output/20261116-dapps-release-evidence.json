@@ -1,0 +1,233 @@
+{
+  "schema": "awai.dapp.distribution.v1",
+  "createdAt": "2026-11-16T13:23:23.067Z",
+  "sourceRevision": "63ecc6d67485cacf2d0902d0d4c75be0b82c1495",
+  "tauri": "3.0.0-alpha.6",
+  "signing": "local-android-debug-only",
+  "productionStore": false,
+  "canonicalRuntime": {
+    "revision": "ee6a910b11302d9b7bdcbd12984ed2f203282fa6",
+    "sha256": "3283b99be69022ca564d799973abbb939e652fe10361ba1925ab17ae25f0b1fd"
+  },
+  "artifacts": [
+    {
+      "key": "aozora",
+      "name": "Aozora",
+      "id": "app.aozora.awai.preview",
+      "storeUpdateId": "app.aozora",
+      "listenPort": 40213,
+      "source": "network-awai/app-aozora-appview",
+      "revision": "7ffb5e75fe9976436f7e6af7e71a48b9fc2470e7",
+      "domainUi": "existing-static-artifact",
+      "versionCode": 1000,
+      "versionName": "0.1.0",
+      "asset": "packages/aozora.apk",
+      "bytes": 172437750,
+      "sha256": "ba677f3b06964810222c15a2160f0cbc50540bfbacaaf7631524406a0734b774",
+      "signerSha256": "2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29",
+      "abis": [
+        "arm64-v8a",
+        "x86_64"
+      ],
+      "bundle": {
+        "asset": "aozora.dapp.zip",
+        "sha256": "d3a91f20d631f9417f9008a7d4c9ae3fe6b9adbc3f08c4263ece0051a0293adb"
+      }
+    },
+    {
+      "key": "dougaka",
+      "name": "Dougaka",
+      "id": "network.itonami.dougaka.preview",
+      "listenPort": 40214,
+      "source": "cloud-itonami/app-itonami-dougaka",
+      "revision": "c29b87e59fdb1b8b65e18a2ca7295356cd0af1e9",
+      "domainUi": "existing-static-artifact",
+      "versionCode": 1000,
+      "versionName": "0.1.0",
+      "asset": "packages/dougaka.apk",
+      "bytes": 173059320,
+      "sha256": "5ee20c1cb136e5c855902c6e692ed1622108c1b727ff67a8986bbeb6b6229189",
+      "signerSha256": "2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29",
+      "abis": [
+        "arm64-v8a",
+        "x86_64"
+      ],
+      "bundle": {
+        "asset": "dougaka.dapp.zip",
+        "sha256": "315d65bf4125992eb39c50fe224172703a45fa9731f81b1ca16ba62d7173a450"
+      }
+    },
+    {
+      "key": "ongakuka",
+      "name": "Ongakuka",
+      "id": "network.itonami.ongakuka.preview",
+      "listenPort": 40215,
+      "source": "cloud-itonami/app-itonami-ongakuka",
+      "revision": "8f1ad5d3535908996eb93e2bfccefcaf3e9bf73d",
+      "domainUi": "not-yet-ported",
+      "versionCode": 1000,
+      "versionName": "0.1.0",
+      "asset": "packages/ongakuka.apk",
+      "bytes": 171975138,
+      "sha256": "2ec27bbb40221a33080f714682e867b9b47bdc3f2cb42959d56f311e96c135d5",
+      "signerSha256": "2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29",
+      "abis": [
+        "arm64-v8a",
+        "x86_64"
+      ],
+      "bundle": {
+        "asset": "ongakuka.dapp.zip",
+        "sha256": "ba585cfe50a68ca28e8719174a9b9e9c731271bad6679c41ae5eb61b4a9d53c6"
+      }
+    },
+    {
+      "key": "itonami",
+      "name": "Itonami",
+      "id": "network.itonami.client.preview",
+      "listenPort": 40216,
+      "source": "cloud-itonami/app-itonami-cloud-itonami-app",
+      "revision": "86870ddba5484e927c07f4b2ed358051bb9eae28",
+      "domainUi": "not-yet-ported",
+      "versionCode": 1000,
+      "versionName": "0.1.0",
+      "asset": "packages/itonami.apk",
+      "bytes": 171932008,
+      "sha256": "ceec06847278777c5c36efac08dc87b74a65e983f45cefced01b651fdcd6942b",
+      "signerSha256": "2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29",
+      "abis": [
+        "arm64-v8a",
+        "x86_64"
+      ],
+      "bundle": {
+        "asset": "itonami.dapp.zip",
+        "sha256": "477911add27b620b75074e6018f052fa459c15f7ef37fd85ee39ed09241d3bbe"
+      }
+    },
+    {
+      "key": "yataverse",
+      "name": "Yataverse",
+      "id": "network.itonami.yataverse.preview",
+      "listenPort": 40217,
+      "source": "kotoba-lang/yataverse",
+      "revision": "f1dfca16f9af665f455cd774c19d7429fe72e209",
+      "domainUi": "snapshot-pin-query",
+      "versionCode": 1000,
+      "versionName": "0.1.0",
+      "asset": "packages/yataverse.apk",
+      "bytes": 172001868,
+      "sha256": "14ab34a673443a1798c4fc65e6b7f9162277bca62c2c811e19bb84b0315bd411",
+      "signerSha256": "2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29",
+      "abis": [
+        "arm64-v8a",
+        "x86_64"
+      ],
+      "bundle": {
+        "asset": "yataverse.dapp.zip",
+        "sha256": "186738fee45e524e96ad1a2bbd46e0325c7da7c6c371664b05be9164cdc81e29"
+      }
+    }
+  ],
+  "pair": {
+    "schema": "awai.apk.peer.pair.v1",
+    "checkedAt": "2026-11-16T13:31:30.861Z",
+    "sourceRevision": "63ecc6d67485cacf2d0902d0d4c75be0b82c1495",
+    "package": "network.itonami.yataverse.preview",
+    "tauri": "3.0.0-alpha.6",
+    "devices": [
+      {
+        "role": "sender",
+        "abi": "arm64-v8a",
+        "peer": "12D3KooWGRBdm5PUSyPgZARk7uPSHCWuLuuNGYuQ7dBEDrjk6xgg"
+      },
+      {
+        "role": "receiver",
+        "abi": "x86_64",
+        "peer": "12D3KooWRfpqRG7XgNWfdBXCNoWJw1C4QXxyoCproM1Y8Zkqg3kY"
+      }
+    ],
+    "snapshot": "bafyreifxwjkaji62sdkwexji2cwtqqzqtim4yusgmc33zal2kbemqxdtja",
+    "relay": "12D3KooWRMXFR519heASeNHU1tXxrdcdR8McorQjaKQMiRUpTmfR",
+    "explicitRelayCircuit": true,
+    "canonicalTrustedUiApproval": true,
+    "backgroundReceiver": true,
+    "push": true,
+    "verifiedPinQuery": true,
+    "pull": true,
+    "explicitStop": true,
+    "independentDevices": true,
+    "localNetworkSegments": 2,
+    "wanNatHolePunchQualified": false,
+    "results": {
+      "push": {
+        "receipt": {
+          "blocks": 8,
+          "bytes": 4817,
+          "observed_at": 1794835888,
+          "provider": "12D3KooWRfpqRG7XgNWfdBXCNoWJw1C4QXxyoCproM1Y8Zkqg3kY",
+          "retain_until": 1794836484,
+          "schema": "yataverse.pin.receipt.v1",
+          "snapshot": "bafyreifxwjkaji62sdkwexji2cwtqqzqtim4yusgmc33zal2kbemqxdtja"
+        },
+        "snapshot": "bafyreifxwjkaji62sdkwexji2cwtqqzqtim4yusgmc33zal2kbemqxdtja",
+        "verified": true
+      },
+      "query": {
+        "receipt": {
+          "blocks": 8,
+          "bytes": 4817,
+          "observed_at": 1794835890,
+          "provider": "12D3KooWRfpqRG7XgNWfdBXCNoWJw1C4QXxyoCproM1Y8Zkqg3kY",
+          "retain_until": 1794836484,
+          "schema": "yataverse.pin.receipt.v1",
+          "snapshot": "bafyreifxwjkaji62sdkwexji2cwtqqzqtim4yusgmc33zal2kbemqxdtja"
+        },
+        "verified": true
+      },
+      "pull": {
+        "snapshot": "bafyreifxwjkaji62sdkwexji2cwtqqzqtim4yusgmc33zal2kbemqxdtja",
+        "state": "stored",
+        "verified": true
+      }
+    }
+  },
+  "desktopDirectRoundTrip": {
+    "schema": "awai.apk.peer.device.v1",
+    "workingTreeCandidate": true,
+    "checkedAt": "2026-11-16T13:28:32.282Z",
+    "devices": [
+      "macOS",
+      "MQ"
+    ],
+    "androidAbi": "x86_64",
+    "androidApi": "37",
+    "tauri": "3.0.0-alpha.6",
+    "package": "network.itonami.yataverse.preview",
+    "sender": "12D3KooWRApajGZMzukftgDr1QS55jkqzViCQYLZ8hDvXdBMLGwh",
+    "receiver": "12D3KooWRfpqRG7XgNWfdBXCNoWJw1C4QXxyoCproM1Y8Zkqg3kY",
+    "snapshot": "bafyreifxwjkaji62sdkwexji2cwtqqzqtim4yusgmc33zal2kbemqxdtja",
+    "blocks": 8,
+    "carBytes": 5179,
+    "carSha256": "f5c2bfb227ce42cbbe4b6d85c244a661f9bccf12c60b11fa104cbaa9fd8704d2",
+    "returnedCarSha256": "f5c2bfb227ce42cbbe4b6d85c244a661f9bccf12c60b11fa104cbaa9fd8704d2",
+    "canonicalTrustedUiApproval": true,
+    "foregroundService": true,
+    "backgroundLanRoundTrip": true,
+    "explicitStopRefusedTraffic": true,
+    "independentDevices": true,
+    "independentNetworks": false,
+    "usbUsedFor": "installation, own WebView UI control and diagnostics only; ciphertext travels over literal IPv4 TCP/Noise/Yamux"
+  },
+  "motoPrivateWnfsRestore": {
+    "verified": true,
+    "bytes": 32,
+    "sha256": "037da1e44fb4bd1cb57ceb46237f0ff3d4ee402f379ce34935547c05403238d2"
+  },
+  "fixtureApproval": "Automated trusted-UI clicks and fixture OS grants; not a human consent qualification",
+  "limitations": [
+    "WAN NAT/DCUtR hole punching unqualified",
+    "Bounded visible foreground receive; indefinite/Doze/reboot reception unqualified",
+    "Ongakuka/Itonami domain UI not ported",
+    "Static bundles do not implement canonical ui:// intake or Web snapshot transport parity",
+    "Production signer/store update, iOS packaging and permanent provider deployment pending"
+  ]
+}

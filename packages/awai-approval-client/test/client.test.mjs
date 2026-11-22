@@ -30,3 +30,43 @@ test("refuses bad input before asking, and answers that do not match", async () 
 test("a refusal from the Awai app is passed on, not replaced by another signer", async () => {
   await assert.rejects(client(() => { throw new Error("denied"); }).signBotLaunch(LAUNCH), /denied/);
 });
+
+const BLOCK = "8213" + "00".repeat(40);
+const DELEGATION = { block: BLOCK, cid: "bafyreieml4i4vd22i5tcya2kigi3fq4cakuvtp2rjphzfohwp4lj47dvbi", before: 1797000000, holder: "did:key:z6MktwupdmLXVVqTzCw4i46r4uGyosGXRnR3XjN4Zq7oMMsw", owner: "0x4a62316623AD457f02CdC5D997DED67A383EC569" };
+
+test("a local Bot is delegated (class A) and presented (class B) only by its own kinds", async () => {
+  const seen = [];
+  const c = client((r) => r.kind === "itonami.bot-signer.delegate"
+    ? { schema: "awai.approval.result.v1", requestId: r.requestId, ...DELEGATION, signature: SIG }
+    : { schema: "awai.approval.result.v1", requestId: r.requestId, ...DELEGATION, rootSignature: SIG, seal: "cd".repeat(64) }, seen);
+  assert.equal((await c.delegateBot("business-6399-a")).rootSignature, SIG);
+  assert.equal((await c.presentBotDelegation("business-6399-a")).seal, "cd".repeat(64));
+  assert.deepEqual(seen.map(([, r]) => [r.kind, r.botId, Object.keys(r).sort().join(",")]), [
+    ["itonami.bot-signer.delegate", "business-6399-a", "botId,kind,requestId,schema"],
+    ["itonami.bot-signer.present", "business-6399-a", "botId,kind,requestId,schema"],
+  ]);
+  await assert.rejects(client(() => assert.fail("must not ask")).presentBotDelegation("../x"), /invalid-bot-id/);
+  await assert.rejects(client((r) => ({ schema: "awai.approval.result.v1", requestId: r.requestId, ...DELEGATION, rootSignature: SIG, seal: "00" })).presentBotDelegation("b1"), /invalid-approval-result/);
+  await assert.rejects(client(() => { throw new Error("stopped"); }).presentBotDelegation("b1"), /stopped/);
+});
+
+const RECEIVER = "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK";
+const T = { receiver: RECEIVER, amount: 250, spenderPrev: "bafyreieml4i4vd22i5tcya2kigi3fq4cakuvtp2rjphzfohwp4lj47dvbi", nonce: "0f8fad5b-d9cb-469f-a165-70867728950e", ts: 1795051302000 };
+const SIGNED = { transferId: "bafyreidyilmwpk5geup6n273fva3yubdpae6puduf4lka6lh52cud7rxny", sig: "A".repeat(86), spender: DELEGATION.holder };
+
+test("payments: policy (class A), transfer (class B) and one-off approval (class A) carry only typed fields", async () => {
+  const seen = [];
+  const c = client((r) => r.kind === "itonami.bot-signer.policy"
+    ? { schema: "awai.approval.result.v1", requestId: r.requestId, funding: DELEGATION.holder, operating: DELEGATION.holder, bindingByOperating: "B".repeat(86), bindingByFunding: "C".repeat(86) }
+    : { schema: "awai.approval.result.v1", requestId: r.requestId, ...SIGNED }, seen);
+  assert.equal((await c.setBotSpendingPolicy("b1", { receivers: [RECEIVER], perTransferMax: 300, dailyMax: 500 })).funding, DELEGATION.holder);
+  assert.deepEqual(await c.signBotTransfer("b1", T), SIGNED);
+  assert.deepEqual(await c.approveBotTransfer("b1", T), SIGNED);
+  assert.deepEqual(seen[1][1], { schema: "awai.approval.request.v1", requestId: ID, kind: "itonami.bot-signer.transfer", botId: "b1",
+    receiver: RECEIVER, amount: "250", spenderPrev: T.spenderPrev, nonce: T.nonce, ts: "1795051302000" });
+  const never = client(() => assert.fail("must not ask"));
+  await assert.rejects(never.signBotTransfer("b1", { ...T, amount: 0 }), /invalid-transfer/);
+  await assert.rejects(never.signBotTransfer("b1", { ...T, spenderPrev: "nil" }), /invalid-transfer/);
+  await assert.rejects(never.setBotSpendingPolicy("b1", { receivers: [RECEIVER], perTransferMax: 300, dailyMax: 100 }), /invalid-policy/);
+  await assert.rejects(client(() => { throw new Error("needs-owner-approval"); }).signBotTransfer("b1", T), /needs-owner-approval/);
+});

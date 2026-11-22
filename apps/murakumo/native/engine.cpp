@@ -18,10 +18,10 @@ struct Batch {llama_batch_ext*p=nullptr;~Batch(){if(p)llama_batch_ext_free(p);}}
 struct Sampler {llama_sampler*p=nullptr;~Sampler(){if(p)llama_sampler_free(p);}};
 void batch(Batch&b,const llama_token*t,int n,int start){llama_batch_ext_clear(b.p);for(int i=0;i<n;i++){auto index=llama_batch_ext_add_token(b.p,0,t[i]);llama_pos pos=start+i;llama_batch_ext_set_pos(b.p,index,&pos);}llama_batch_ext_set_output_logits(b.p,n-1,true);}
 }
-extern "C" JNIEXPORT jboolean JNICALL Java_network_awai_murakumo_Engine_load(JNIEnv*env,jclass,jstring file){
+static jboolean doLoad(JNIEnv*env,jstring file){
  std::unique_lock<std::mutex> guard(lock,std::try_to_lock);if(!guard.owns_lock()){fail(env,"busy");return false;}
  if(model){fail(env,"release-required");return false;}
- std::call_once(initialized,[]{llama_backend_init();llama_log_set([](ggml_log_level,const char*,void*){},nullptr);});
+ std::call_once(initialized,[]{llama_log_set([](ggml_log_level,const char*,void*){},nullptr);llama_backend_init();});
  const char*p=env->GetStringUTFChars(file,nullptr);auto params=llama_model_default_params();params.n_gpu_layers=0;
  model=llama_model_load_from_file(p,params);env->ReleaseStringUTFChars(file,p);
  if(!model){fail(env,"model-load-failed");return false;}return true;
@@ -31,7 +31,7 @@ extern "C" JNIEXPORT void JNICALL Java_network_awai_murakumo_Engine_prepare(JNIE
 extern "C" JNIEXPORT jint JNICALL Java_network_awai_murakumo_Engine_tokens(JNIEnv*,jclass){return produced.load();}
 extern "C" JNIEXPORT void JNICALL Java_network_awai_murakumo_Engine_cancel(JNIEnv*,jclass){cancelled=true;}
 extern "C" JNIEXPORT void JNICALL Java_network_awai_murakumo_Engine_release(JNIEnv*env,jclass){std::unique_lock<std::mutex>g(lock,std::try_to_lock);if(!g.owns_lock()){fail(env,"busy");return;}if(model)llama_model_free(model);model=nullptr;}
-extern "C" JNIEXPORT jbyteArray JNICALL Java_network_awai_murakumo_Engine_generate(JNIEnv*env,jclass,jbyteArray raw,jint count){
+static jbyteArray doGenerate(JNIEnv*env,jbyteArray raw,jint count){
  std::unique_lock<std::mutex>guard(lock,std::try_to_lock);if(!guard.owns_lock()){fail(env,"busy");return nullptr;}
  const int bytes=env->GetArrayLength(raw);if(!model||bytes<1||bytes>8192||count<1||count>256){fail(env,"invalid-request");return nullptr;}
  std::string prompt(bytes,'\0');env->GetByteArrayRegion(raw,0,bytes,reinterpret_cast<jbyte*>(prompt.data()));
@@ -54,4 +54,12 @@ extern "C" JNIEXPORT jbyteArray JNICALL Java_network_awai_murakumo_Engine_genera
   output.append(piece,size);produced++;batch(b,&token,1,pos++);
  }
  auto result=env->NewByteArray(output.size());if(result)env->SetByteArrayRegion(result,0,output.size(),reinterpret_cast<const jbyte*>(output.data()));return result;
+}
+// An exception that left a JNI call would end in std::terminate, whose message (the exception's what())
+// goes to logcat and the tombstone. Both entry points therefore turn every exception into a fixed code.
+extern "C" JNIEXPORT jboolean JNICALL Java_network_awai_murakumo_Engine_load(JNIEnv*env,jclass,jstring file){
+ try{return doLoad(env,file);}catch(...){fail(env,"model-load-failed");return false;}
+}
+extern "C" JNIEXPORT jbyteArray JNICALL Java_network_awai_murakumo_Engine_generate(JNIEnv*env,jclass,jbyteArray raw,jint count){
+ try{return doGenerate(env,raw,count);}catch(...){fail(env,"inference-failed");return nullptr;}
 }

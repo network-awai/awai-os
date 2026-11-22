@@ -1,0 +1,8 @@
+diff --git a/configs/fstab/fstab.virtio-common b/configs/fstab/fstab.virtio-common
+--- a/configs/fstab/fstab.virtio-common
++++ b/configs/fstab/fstab.virtio-common
+@@ -1,3 +1,3 @@
+ # Userdata (on separate disk)
+-/dev/block/by-name/userdata /data ext4 nodev,noatime,nosuid,discard latemount,check,quota,formattable,fileencryption,keydirectory=/metadata/vold/metadata_encryption,checkpoint=block
++/dev/block/by-name/userdata /data ext4 nodev,noatime,nosuid,discard wait,latemount,check,quota,formattable,fileencryption,keydirectory=/metadata/vold/metadata_encryption,checkpoint=block
+ /dev/block/by-name/userdata /data f2fs nodev,noatime,nosuid,discard,reserve_root=32768 latemount,check,quota,formattable,fileencryption,keydirectory=/metadata/vold/metadata_encryption,fscompress,checkpoint=fs

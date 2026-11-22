@@ -1,0 +1,11 @@
+constexpr char modelId[] = "@model_id@";
+struct ModelFile {
+    const char* name;
+    uint64_t bytes;
+    const char* sha256;
+};
+constexpr ModelFile models[] = {
+    {"@model_0_localFile@", @model_0_bytes@, "@model_0_sha256@"},
+    {"@model_1_localFile@", @model_1_bytes@, "@model_1_sha256@"},
+    {"@model_2_localFile@", @model_2_bytes@, "@model_2_sha256@"},
+};

@@ -1,0 +1,169 @@
+#!/usr/bin/env python3
+"""Tests for scripts/check-release.py and scripts/verify-native-pins.py, with negative controls.
+
+Synthetic APKs only (aapt2 from the Android SDK). Set REQUIRE_ANDROID_SDK=1 to fail instead of skip
+when aapt2 or android.jar is missing (CI does). Run: python3 -m unittest apps/murakumo/test/release_check_test.py
+"""
+import importlib.util,json,os,pathlib,re,shutil,subprocess,sys,tempfile,unittest,zipfile
+app=pathlib.Path(__file__).resolve().parents[1];repo=app.parents[1]
+def load(name):
+ spec=importlib.util.spec_from_file_location(name.replace('-','_'),app/'scripts'/f'{name}.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return m
+release=load('check-release');pins=load('verify-native-pins')
+
+def sdk():
+ home=pathlib.Path(os.environ.get('ANDROID_HOME') or os.environ.get('ANDROID_SDK_ROOT') or pathlib.Path.home()/'Library/Android/sdk')
+ tools=sorted(home.glob('build-tools/*/aapt2'));jars=sorted(home.glob('platforms/android-3*/android.jar'))
+ return (tools[-1],jars[-1]) if tools and jars else (None,None)
+AAPT2,ANDROID_JAR=sdk()
+need_sdk=unittest.skipUnless(AAPT2 or os.environ.get('REQUIRE_ANDROID_SDK')=='1','Android SDK (aapt2, android.jar) not found')
+
+class Source(unittest.TestCase):
+ def copy(self):
+  d=pathlib.Path(tempfile.mkdtemp());self.addCleanup(shutil.rmtree,d)
+  for rel in ['src-tauri/gen/android/app/build.gradle.kts','src-tauri/gen/android/app/src/main/AndroidManifest.xml','src-tauri/Cargo.toml','src-tauri/tauri.conf.json','src-tauri/Cargo.lock']:
+   (d/rel).parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(app/rel,d/rel)
+  shutil.copytree(app/'src-tauri/gen/android/app/src/main/java',d/'src-tauri/gen/android/app/src/main/java');return d
+ def edit(self,d,rel,old,new):
+  p=d/rel;s=p.read_text();self.assertIn(old,s);p.write_text(s.replace(old,new,1))
+ def test_tree_is_release_only(self):self.assertEqual(release.source_failures(),[])
+ def test_negative_controls(self):
+  cases=[('src-tauri/gen/android/app/build.gradle.kts','getByName("release") {','getByName("release") {\n            isDebuggable = true','debuggable'),
+   ('src-tauri/Cargo.toml','features = []','features = ["devtools"]','devtools'),
+   ('src-tauri/tauri.conf.json','"label": "main",','"label": "main", "devtools": true,','devtools'),
+   ('src-tauri/gen/android/app/src/main/AndroidManifest.xml','<application','<application android:debuggable="true"','debuggable'),
+   ('src-tauri/gen/android/app/src/main/AndroidManifest.xml','<application','<uses-permission android:name="android.permission.INTERNET" />\n    <application','INTERNET'),
+   ('src-tauri/gen/android/app/src/main/java/network/awai/murakumo/MainActivity.kt','enableEdgeToEdge();','android.webkit.WebView.setWebContentsDebuggingEnabled(true);enableEdgeToEdge();','WebView debugging'),
+   ('src-tauri/Cargo.lock','name = "wry"\nversion = "0.57.2"','name = "wry"\nversion = "0.57.3"','reviewed')]
+  for rel,old,new,word in cases:
+   with self.subTest(rel=rel,word=word):
+    d=self.copy();self.edit(d,rel,old,new);f=release.source_failures(d);self.assertTrue(any(word in x for x in f),f)
+
+@need_sdk
+class Apk(unittest.TestCase):
+ def apk(self,attrs='',libs=None):
+  self.assertIsNotNone(AAPT2,'REQUIRE_ANDROID_SDK=1 but aapt2/android.jar missing')
+  d=pathlib.Path(tempfile.mkdtemp());self.addCleanup(shutil.rmtree,d)
+  (d/'M.xml').write_text(f'<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="network.awai.murakumo"><application android:label="Synthetic" {attrs}/></manifest>')
+  subprocess.run([str(AAPT2),'link','--manifest',str(d/'M.xml'),'-I',str(ANDROID_JAR),'-o',str(d/'a.apk')],check=True)
+  with zipfile.ZipFile(d/'a.apk','a') as z:
+   for name,data in (libs or {}).items():z.writestr(name,data)
+  return d/'a.apk'
+ def test_release_manifest_passes(self):
+  self.assertEqual(release.apk_failures(self.apk(),check_pins=False),[])
+  self.assertEqual(release.apk_failures(self.apk('android:debuggable="false"'),check_pins=False),[])
+ def test_negative_controls(self):
+  for attrs,libs,word in [('android:debuggable="true"',None,'debuggable'),('android:testOnly="true"',None,'testOnly'),
+    ('',{'lib/arm64-v8a/libmurakumo_app_lib.so':b'\x7fELF...setWebContentsDebuggingEnabled...'},'devtools')]:
+   with self.subTest(word=word):f=release.apk_failures(self.apk(attrs,libs),check_pins=False);self.assertTrue(any(word in x for x in f),f)
+ def test_apk_without_pinned_native_libraries_fails(self):
+  f=release.apk_failures(self.apk());self.assertTrue(any('native pins' in x or 'pinned ABI' in x for x in f),f)
+ def test_catalog_with_medical_debug_apk_fails(self):
+  d=pathlib.Path(tempfile.mkdtemp());self.addCleanup(shutil.rmtree,d);(d/'packages').mkdir()
+  shutil.copyfile(self.apk('android:debuggable="true"'),d/'packages/karute.apk');shutil.copyfile(self.apk('android:debuggable="true"'),d/'packages/yotei.apk')
+  art=lambda a:[{'platform':'android','kind':'apk','asset':a,'sha256':'0'*64}]
+  raw=d/'raw.json';raw.write_text(json.dumps({'apps':[{'id':'network.itonami.yotei','artifacts':art('packages/yotei.apk')},{'id':'network.itonami.karute','artifacts':art('packages/karute.apk')}]}))
+  f=release.catalog_failures(raw,d);self.assertTrue(f and all(x.startswith('network.itonami.karute') for x in f),f)
+  raw.write_text(json.dumps({'apps':[{'id':'network.awai.murakumo','artifacts':art('packages/missing.apk')}]}))
+  self.assertTrue(any('not found' in x for x in release.catalog_failures(raw,d)),'a missing medical APK fails closed')
+
+class NetRelease(unittest.TestCase):
+ """Murakumo Net is release-only too (Dev review #430), and carries no native library but its Rust one."""
+ net=repo/'apps/murakumo-net'
+ def copy(self):
+  d=pathlib.Path(tempfile.mkdtemp());self.addCleanup(shutil.rmtree,d)
+  for rel in ['src-tauri/gen/android/app/build.gradle.kts','src-tauri/gen/android/app/src/main/AndroidManifest.xml','src-tauri/Cargo.toml','src-tauri/tauri.conf.json','src-tauri/Cargo.lock']:
+   (d/rel).parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(self.net/rel,d/rel)
+  shutil.copytree(self.net/'src-tauri/gen/android/app/src/main/java',d/'src-tauri/gen/android/app/src/main/java');return d
+ def test_source_is_release_only(self):self.assertEqual(release.source_failures(self.net,inference=False),[])
+ def test_source_negative_controls(self):
+  for rel,old,new,word in [('src-tauri/Cargo.toml','features = []','features = ["devtools"]','devtools'),
+    ('src-tauri/gen/android/app/build.gradle.kts','getByName("release") {','getByName("release") {\n            isDebuggable = true','debuggable')]:
+   with self.subTest(word=word):
+    d=self.copy();p=d/rel;t=p.read_text();self.assertIn(old,t);p.write_text(t.replace(old,new,1));self.assertTrue(any(word in x for x in release.source_failures(d,inference=False)))
+ @need_sdk
+ def test_apk_negative_controls(self):
+  self.assertIsNotNone(AAPT2)
+  d=pathlib.Path(tempfile.mkdtemp());self.addCleanup(shutil.rmtree,d)
+  def apk(attrs='',libs=None):
+   (d/'M.xml').write_text(f'<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="network.awai.murakumo.net"><uses-permission android:name="android.permission.INTERNET"/><application android:label="Synthetic" {attrs}/></manifest>')
+   out=d/f'n{len(list(d.glob("*.apk")))}.apk';subprocess.run([str(AAPT2),'link','--manifest',str(d/'M.xml'),'-I',str(ANDROID_JAR),'-o',str(out)],check=True)
+   with zipfile.ZipFile(out,'a') as z:
+    for n,b in (libs or {}).items():z.writestr(n,b)
+   return out
+  self.assertEqual(release.apk_failures(apk('',{'lib/arm64-v8a/libmurakumo_net_app_lib.so':b'\x7fELF'})),[],'a release Murakumo Net APK with INTERNET passes')
+  for attrs,libs,word in [('android:debuggable="true"',None,'debuggable'),('',{'lib/arm64-v8a/libmurakumo_net_app_lib.so':b'setWebContentsDebuggingEnabled'},'devtools'),('',{'lib/arm64-v8a/libllama.so':b'\x7fELF'},'no native library')]:
+   with self.subTest(word=word):f=release.apk_failures(apk(attrs,libs));self.assertTrue(any(word in x for x in f),f)
+
+class NoInternet(unittest.TestCase):
+ """network.awai.murakumo (prompts, possibly PHI) holds no INTERNET permission; Murakumo Net does.
+ Committed fixture APKs (built with aapt2) keep these negative controls running without an SDK."""
+ fx=app/'test/fixtures/manifest'
+ def manifest(self,name):
+  with zipfile.ZipFile(self.fx/name) as z:return z.read('AndroidManifest.xml')
+ def test_inference_app_without_internet_passes(self):
+  self.assertEqual(release.no_network_failures(self.manifest('inference-no-internet.apk')),[])
+  self.assertEqual(release.merged_manifest_failures(self.fx/'inference-no-internet-merged.xml'),[])
+ def test_negative_controls(self):
+  for name in ['inference-internet.apk','inference-internet-sdk23.apk']:
+   with self.subTest(name=name):f=release.no_network_failures(self.manifest(name));self.assertTrue(any('android.permission.INTERNET' in x for x in f),f)
+  self.assertTrue(release.merged_manifest_failures(self.fx/'inference-internet-merged.xml'))
+  self.assertEqual(release.axml_package_and_permissions(self.manifest('net-internet.apk')),('network.awai.murakumo.net',{'android.permission.INTERNET'}))
+  self.assertEqual(release.no_network_failures(self.manifest('net-internet.apk')),[],'Murakumo Net may hold INTERNET')
+ def test_cli_fails_on_internet(self):
+  for name,code in [('inference-no-internet.apk',0),('inference-internet.apk',1),('net-internet.apk',1)]:
+   with self.subTest(name=name):r=subprocess.run([sys.executable,str(app/'scripts/check-release.py'),'--no-internet',str(self.fx/name)],capture_output=True,text=True);self.assertEqual(r.returncode,code,r.stdout)
+ @unittest.skipUnless(AAPT2,'aapt2 not found')
+ def test_parser_agrees_with_aapt2(self):
+  for f in sorted(self.fx.glob('*.apk')):
+   with self.subTest(apk=f.name):
+    out=subprocess.run([str(AAPT2),'dump','permissions',str(f)],capture_output=True,text=True,check=True).stdout
+    expected={m for m in re.findall(r"uses-permission(?:-sdk-23)?: name='([^']+)'",out)};pkg=re.search(r'package: (\S+)',out).group(1)
+    self.assertEqual(release.axml_package_and_permissions(self.manifest(f.name)),(pkg,expected))
+ def test_sources_split_the_network_out(self):
+  m=(app/'src-tauri/gen/android/app/src/main/AndroidManifest.xml').read_text();self.assertNotIn('android.permission.INTERNET"',m)
+  net=(repo/'apps/murakumo-net/src-tauri/gen/android/app/src/main/AndroidManifest.xml').read_text();self.assertIn('<uses-permission android:name="android.permission.INTERNET" />',net)
+  lib=(app/'src-tauri/src/lib.rs').read_text();self.assertNotIn('model_download',lib)
+  conf=json.loads((app/'src-tauri/tauri.conf.json').read_text())['app']['security']['csp'];self.assertIn('connect-src ipc: http://ipc.localhost;',conf);self.assertNotIn('https:',conf)
+
+class Catalogs(unittest.TestCase):
+ def test_committed_store_catalogs_carry_no_unproven_medical_apk(self):
+  raws=sorted((repo/'store/distribution').glob('*/catalog-rev*-raw.json'));self.assertTrue(raws)
+  for raw in raws:
+   with self.subTest(raw=raw.parent.name):self.assertEqual(release.catalog_failures(raw,None),[])
+
+class NativePins(unittest.TestCase):
+ def test_pin_file_covers_both_abis_and_the_engine(self):
+  p=json.loads((app/'native-pins.json').read_text());self.assertEqual(set(p['abis']),{'arm64-v8a','x86_64'})
+  self.assertEqual(p['engine'],json.loads((app/'pins.json').read_text())['engine']['revision'])
+  for libs in p['abis'].values():self.assertIn('libawai_llama.so',libs);self.assertTrue(all(len(h)==64 for h in libs.values()))
+ def test_negative_controls(self):
+  libs=pathlib.Path(os.environ.get('MURAKUMO_NATIVE_DIR',app/'src-tauri/gen/android/app/src/main/jniLibs'))
+  p=json.loads((app/'native-pins.json').read_text());found=pins.read_dir(libs)
+  if pins.check(found,p):
+   if os.environ.get('MURAKUMO_NATIVE_DIR'):self.fail(pins.check(found,p))
+   self.skipTest('no pinned build in '+str(libs))
+  tampered={a:dict(v) for a,v in found.items()};name='libawai_llama.so';b=bytearray(tampered['arm64-v8a'][name]);b[-1]^=1;tampered['arm64-v8a'][name]=bytes(b)
+  self.assertTrue(any('sha256' in x for x in pins.check(tampered,p)))
+  missing={a:dict(v) for a,v in found.items()};del missing['x86_64']['libllama.so'];self.assertTrue(any('missing' in x for x in pins.check(missing,p)))
+  # A pinned library that imports Android logging fails even when its digest is pinned.
+  logging=self.with_import(found['arm64-v8a'][name],'llama_batch_ext_set_output_logits','__android_log_print')
+  self.assertIsNotNone(logging)
+  if logging:
+   p2=json.loads(json.dumps(p));import hashlib;p2['abis']['arm64-v8a'][name]=hashlib.sha256(logging).hexdigest()
+   f={a:dict(v) for a,v in found.items()};f['arm64-v8a'][name]=logging;self.assertTrue(any('forbidden imports' in x for x in pins.check(f,p2)))
+ def test_unpinned_library_in_an_apk_fails(self):
+  p=json.loads((app/'native-pins.json').read_text());lib=b'\x7fELF'
+  ok={'arm64-v8a':{'libmurakumo_app_lib.so':lib,'libawai_diffusion.so':lib}}
+  self.assertFalse(any('not pinned' in x for x in pins.check(ok,p,present_abis_only=True)),'documented unpinned libraries pass')
+  bad={'arm64-v8a':{'libnew_engine.so':lib}};self.assertTrue(any('libnew_engine.so: not pinned' in x for x in pins.check(bad,p,present_abis_only=True)))
+  self.assertFalse(any('libnew_engine.so' in x for x in pins.check(bad,p)),'directory mode only reports it')
+ @staticmethod
+ def with_import(data,old,new):
+  """Overwrite an undefined dynamic symbol's name in place to simulate a forbidden import."""
+  old=b'\0'+old.encode()+b'\0';new=new.encode()+b'\0';assert len(new)<len(old)
+  i=data.find(old);return data[:i+1]+new+data[i+1+len(new):] if i>=0 else None
+ def test_symbol_reader_sees_forbidden_imports(self):
+  logging=pins.FORBIDDEN&{'__android_log_print','socket','getaddrinfo'};self.assertEqual(len(logging),3)
+  self.assertTrue(pins.CRASH_ONLY.isdisjoint(pins.FORBIDDEN))
+
+if __name__=='__main__':unittest.main()

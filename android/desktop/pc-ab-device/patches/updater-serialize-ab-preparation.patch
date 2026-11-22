@@ -1,0 +1,93 @@
+diff --git a/app/src/main/java/org/lineageos/updater/controller/ABUpdateInstaller.java b/app/src/main/java/org/lineageos/updater/controller/ABUpdateInstaller.java
+index b012b2d..7a6bf8b 100644
+--- a/app/src/main/java/org/lineageos/updater/controller/ABUpdateInstaller.java
++++ b/app/src/main/java/org/lineageos/updater/controller/ABUpdateInstaller.java
+@@ -48,0 +49 @@ class ABUpdateInstaller {
++    private boolean mPreparing;
+@@ -175,4 +176,6 @@ class ABUpdateInstaller {
+-    public void install(String downloadId) {
+-        if (isInstallingUpdate(mContext)) {
+-            Log.e(TAG, "Already installing an update");
+-            return;
++    // Hold this reservation while the ZIP or network range is being prepared.
++    // The durable install marker is written by applyUpdate after UpdateEngine accepts it.
++    private synchronized boolean reservePreparation(String downloadId) {
++        if (mPreparing || isInstallingUpdate(mContext)) {
++            Log.e(TAG, "Already preparing or installing an update");
++            return false;
+@@ -180 +183 @@ class ABUpdateInstaller {
+-
++        mPreparing = true;
+@@ -181,0 +185,2 @@ class ABUpdateInstaller {
++        return true;
++    }
+@@ -183,2 +188,14 @@ class ABUpdateInstaller {
+-        File file = mUpdaterController.getUpdate(mDownloadId).getFile();
+-        install(file, downloadId);
++    private synchronized void finishPreparation() {
++        mPreparing = false;
++    }
++
++    public void install(String downloadId) {
++        Update update = mUpdaterController.getUpdate(downloadId);
++        if (update == null || !reservePreparation(downloadId)) {
++            return;
++        }
++        try {
++            install(update.getFile(), downloadId);
++        } finally {
++            finishPreparation();
++        }
+@@ -187,2 +204,2 @@ class ABUpdateInstaller {
+-    public void install(File file, String downloadId) {
+-        if (!file.exists()) {
++    private void install(File file, String downloadId) {
++        if (file == null || !file.exists()) {
+@@ -228,2 +245,2 @@ class ABUpdateInstaller {
+-        if (isInstallingUpdate(mContext)) {
+-            Log.e(TAG, "Already installing an update");
++        Update update = mUpdaterController.getUpdate(downloadId);
++        if (update == null || !reservePreparation(downloadId)) {
+@@ -232,20 +249,22 @@ class ABUpdateInstaller {
+-
+-        mDownloadId = downloadId;
+-
+-        Update update = mUpdaterController.getUpdate(mDownloadId);
+-        String downloadUrl = update.getDownloadUrl();
+-
+-        new Thread(() -> {
+-            try {
+-                String[] headerKeyValuePairs = fetchPayloadProperties(downloadUrl,
+-                        update.getPayloadPropertiesOffset(),
+-                        update.getPayloadPropertiesSize());
+-                applyUpdate(downloadUrl, update.getPayloadOffset(),
+-                        update.getPayloadSize(), headerKeyValuePairs);
+-            } catch (IOException | ServiceSpecificException e) {
+-                Log.e(TAG, "Could not prepare streaming update", e);
+-                mUpdaterController.setUpdate(downloadId,
+-                        update.withStatus(UpdateStatus.INSTALLATION_FAILED));
+-                mUpdaterController.notifyUpdateChange(downloadId);
+-            }
+-        }, "UpdaterStreamingInstall").start();
++        try {
++            new Thread(() -> {
++                try {
++                    String downloadUrl = update.getDownloadUrl();
++                    String[] headerKeyValuePairs = fetchPayloadProperties(downloadUrl,
++                            update.getPayloadPropertiesOffset(),
++                            update.getPayloadPropertiesSize());
++                    applyUpdate(downloadUrl, update.getPayloadOffset(),
++                            update.getPayloadSize(), headerKeyValuePairs);
++                } catch (IOException | ServiceSpecificException e) {
++                    Log.e(TAG, "Could not prepare streaming update", e);
++                    mUpdaterController.setUpdate(downloadId,
++                            update.withStatus(UpdateStatus.INSTALLATION_FAILED));
++                    mUpdaterController.notifyUpdateChange(downloadId);
++                } finally {
++                    finishPreparation();
++                }
++            }, "UpdaterStreamingInstall").start();
++        } catch (RuntimeException | Error e) {
++            finishPreparation();
++            throw e;
++        }

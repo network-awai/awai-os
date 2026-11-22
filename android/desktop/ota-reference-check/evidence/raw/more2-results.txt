@@ -1,0 +1,16 @@
+T8b_before|slot=_a incr=1795077496 global_active_slot=a slot_a_is_bootable=true slot_a_is_successful=true slot_a_retry_count= slot_b_is_bootable=true slot_b_is_successful=false slot_b_retry_count= snap=none
+T8b_apply|onPayloadApplicationComplete(ErrorCode::kSuccess (0))
+T8b_after_apply|slot=_a incr=1795077496 global_active_slot=b slot_a_is_bootable=true slot_a_is_successful=true slot_a_retry_count= slot_b_is_bootable=true slot_b_is_successful=false slot_b_retry_count= snap=unverified
+T8b_break|part=loop0p10 67108864 bytes (67 MB, 64 MiB) copied, 0.192422 s, 349 MB/s
+T8b_grubenv_before_boot|global_active_slot=b global_current_slot=a global_no_auto_slot_switch=false global_snapshot_merge_status=snapshotted slot_a_is_bootable=true slot_a_is_successful=true slot_a_retry_count= slot_b_is_bootable=true slot_b_is_successful=false slot_b_retry_count= 
+T8b_after_boot|slot=_a incr=1795077496 global_active_slot=a slot_a_is_bootable=true slot_a_is_successful=true slot_a_retry_count= slot_b_is_bootable=false slot_b_is_successful=false slot_b_retry_count= snap=none
+T8b_later|slot=_a incr=1795077496 global_active_slot=a slot_a_is_bootable=true slot_a_is_successful=true slot_a_retry_count= slot_b_is_bootable=false slot_b_is_successful=false slot_b_retry_count= snap=none
+T7b_before|slot=_a incr=1795077496 global_active_slot=a slot_a_is_bootable=true slot_a_is_successful=true slot_a_retry_count= slot_b_is_bootable=true slot_b_is_successful=false slot_b_retry_count= snap=none
+T7b_progress_at_kill|DOWNLOADING (3), 0.410168
+T7b_after_kill_boot|slot=_a incr=1795077496 global_active_slot=a slot_a_is_bootable=true slot_a_is_successful=true slot_a_retry_count= slot_b_is_bootable=false slot_b_is_successful=false slot_b_retry_count= snap=initiated
+T7b_second_run|onPayloadApplicationComplete(ErrorCode::kNewRootfsVerificationError (15))
+T7b_after_reset|slot=_a incr=1795077496 global_active_slot=a slot_a_is_bootable=true slot_a_is_successful=true slot_a_retry_count= slot_b_is_bootable=false slot_b_is_successful=false slot_b_retry_count= snap=none
+T7b_third_run|onPayloadApplicationComplete(ErrorCode::kSuccess (0))
+T7b_after_reboot|slot=_b incr=awai-ota-test-v2 global_active_slot=b slot_a_is_bootable=false slot_a_is_successful=false slot_a_retry_count= slot_b_is_bootable=true slot_b_is_successful=true slot_b_retry_count= snap=none
+T6b_apply|onPayloadApplicationComplete(ErrorCode::kDownloadStateInitializationError (20))
+DONE
