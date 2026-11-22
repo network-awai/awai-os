@@ -1,0 +1,61 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: build-reaper
+  namespace: build-reaper
+spec:
+  schedule: "*/10 * * * *"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 300
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 300
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: build-reaper
+        spec:
+          serviceAccountName: build-reaper
+          restartPolicy: Never
+          nodeSelector:
+            tatara.network/role: system
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: reaper
+              image: node@sha256:b2358485e3e33bc3a33114d2b1bdb18cdbe4df01bd2b257198eb51beb1f026c5 # node:22.21.1-alpine3.22
+              command: ["node", "/reaper/reaper.mjs"]
+              env:
+                - name: VKE_CLUSTER_ID
+                  value: 3f1932a3-896f-417a-a1e4-9d0ef6b57711 # awai-tatara-ci (nrt)
+                - name: REAPER_DRY_RUN
+                  value: "0"
+                - name: VULTR_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: build-reaper-vultr
+                      key: VULTR_API_KEY
+              resources:
+                requests: { cpu: 10m, memory: 64Mi }
+                limits: { memory: 128Mi }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: script
+                  mountPath: /reaper
+                  readOnly: true
+          volumes:
+            - name: script
+              configMap:
+                name: build-reaper-script
