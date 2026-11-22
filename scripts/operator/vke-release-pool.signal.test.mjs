@@ -35,7 +35,10 @@ async function runWrapper({ dir, bin, state }, signalWhen, target = (pid) => -pi
   let stderr = "";
   child.stderr.on("data", (chunk) => { stderr += chunk; });
   const poll = setInterval(() => {
-    const current = JSON.parse(readFileSync(state, "utf8"));
+    // The build and the wrapper rewrite the state file with a truncating write; a read that lands
+    // mid-write sees a torn file (AWAI-3747: tatara/ci replica split, "Unexpected end of JSON input").
+    // Skip that tick and re-check 50 ms later; a permanently broken file still fails by timeout.
+    let current; try { current = JSON.parse(readFileSync(state, "utf8")); } catch { return; }
     if (signalWhen(current)) { clearInterval(poll); process.kill(target(child.pid), "SIGTERM"); }
   }, 50);
   const code = await new Promise((done) => child.on("close", (exitCode) => done(exitCode)));
