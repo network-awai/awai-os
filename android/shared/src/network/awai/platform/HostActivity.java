@@ -158,6 +158,19 @@ public abstract class HostActivity extends Activity {
             try{return (Boolean)Class.forName("network.awai.home.SetupPlatform").getMethod("transition",android.content.Context.class,String.class,int.class).invoke(null,HostActivity.this,action,expected);}
             catch(Exception unavailable){return false;}
         }
+        @JavascriptInterface public boolean openAccountLink(String address) {
+            if(!"home".equals(mode()) || address==null || address.length()>4096)return false;
+            Uri uri=Uri.parse(address);
+            String fragment=uri.getEncodedFragment();
+            if(!"https".equals(uri.getScheme()) || !"awai.network".equals(uri.getEncodedAuthority())
+                    || !"/link/".equals(uri.getEncodedPath()) || uri.getEncodedQuery()!=null
+                    || fragment==null || !fragment.matches("[A-Za-z0-9_-]{1,4000}"))return false;
+            runOnUiThread(()->{
+                try {startActivity(new Intent(Intent.ACTION_VIEW,uri).addCategory(Intent.CATEGORY_BROWSABLE));}
+                catch(android.content.ActivityNotFoundException unavailable){message("アカウント連携を開けるブラウザがありません。");}
+            });
+            return true;
+        }
         @JavascriptInterface public void setupSettings(String kind){
             if(!"home".equals(mode()))return;
             runOnUiThread(()->{
@@ -189,8 +202,13 @@ public abstract class HostActivity extends Activity {
             o.put("motionReduced",Settings.Global.getFloat(getContentResolver(),Settings.Global.ANIMATOR_DURATION_SCALE,1f)==0f || getSystemService(PowerManager.class).isPowerSaveMode());
             o.put("installed",installed);RoleManager roles=getSystemService(RoleManager.class);o.put("isDefaultHome",roles!=null&&roles.isRoleHeld(RoleManager.ROLE_HOME));
             JSONArray agenda=new JSONArray();if("home".equals(mode())){try(Cursor c=getContentResolver().query(Uri.parse("content://network.itonami.yotei.agenda/events"),null,null,null,null)){if(c!=null&&c.moveToFirst())agenda=new JSONArray(c.getString(0));}catch(Exception absent){}}
-            o.put("agenda",agenda);o.put("catalogOnline","store".equals(mode())&&getSharedPreferences("online",0).contains("raw"));String msg=getSharedPreferences("host",0).getString("message","");o.put("message",msg);getSharedPreferences("host",0).edit().remove("message").apply();return o.toString();
+            o.put("agenda",agenda);o.put("catalogOnline","store".equals(mode())&&Catalog.hasOnline(HostActivity.this));String msg=getSharedPreferences("host",0).getString("message","");o.put("message",msg);getSharedPreferences("host",0).edit().remove("message").apply();return o.toString();
         }catch(Exception e){return "{\"mode\":\""+mode()+"\",\"platform\":\"android\",\"runtime\":\"android\",\"apps\":[],\"installed\":{},\"agenda\":[]}";}}
+        /** The key list this Store uses, for the page's own catalog check (AWAI-3775). */
+        @JavascriptInterface public String keyList(){if(!"store".equals(mode()))return "{}";try{KeyList k=StoreTrust.load(HostActivity.this);
+            java.util.Base64.Encoder b=java.util.Base64.getEncoder();
+            return new JSONObject().put("root",b.encodeToString(Integrity.read(getAssets().open("store-root.der"),4096))).put("raw",b.encodeToString(k.raw())).put("signature",b.encodeToString(k.signature())).toString();
+        }catch(Exception unavailable){return "{}";}}
         @JavascriptInterface public String catalog(){try{return "store".equals(mode())?trustedCatalog().json():"{\"apps\":[]}";}catch(Exception invalid){return "{}";}}
         @JavascriptInterface public void launch(String id){runOnUiThread(()->launchPackage(id));}
         @JavascriptInterface public void openStore(){runOnUiThread(()->launchPackage("network.awai.store"));}
@@ -202,14 +220,15 @@ public abstract class HostActivity extends Activity {
         });}
         @JavascriptInterface public void chooseHome(){if(!"home".equals(mode()))return;runOnUiThread(()->{RoleManager rm=getSystemService(RoleManager.class);if(rm!=null&&rm.isRoleAvailable(RoleManager.ROLE_HOME)&&!rm.isRoleHeld(RoleManager.ROLE_HOME))startActivityForResult(rm.createRequestRoleIntent(RoleManager.ROLE_HOME),10);});}
         @JavascriptInterface public String admitOnlineCatalog(String raw,String signature){
-            if(!"store".equals(mode())||onlineUrls.isEmpty()||raw==null||raw.length()>131072||signature==null||signature.length()>8192)return "refused";
+            if(!"store".equals(mode())||onlineUrls.isEmpty()||raw==null||raw.length()>131072||signature==null||signature.length()>8192)return refusedCatalog("input");
             try{
-                byte[] key=Integrity.read(getAssets().open("catalog-key.der"),4096);
+                KeyList key=StoreTrust.load(HostActivity.this);
                 JSONObject candidate=Catalog.verifyMetadata(raw.getBytes(StandardCharsets.UTF_8),android.util.Base64.decode(signature,android.util.Base64.DEFAULT),key,System.currentTimeMillis()/1000);
-                // Existing online transport is pinned to Yotei only. Bundled dapps do not widen it.
-                if(candidate.getJSONArray("apps").length()!=1||!"network.itonami.yotei".equals(candidate.getJSONArray("apps").getJSONObject(0).getString("id")))throw new SecurityException("online-app");
+                // Any number of admitted apps (AWAI-3729). Transport stays limited to the pinned URLs: an app listed
+                // without a pin is shown but cannot be fetched. Offline-only previews are refused here, not later.
+                Catalog.checkOnline(candidate);
                 Catalog current=trustedCatalog();long revision=candidate.getLong("revision");
-                if(revision<current.valueRevision())throw new SecurityException("rollback");
+                if(revision<current.valueRevision())throw new SecurityException("catalog-rollback");
                 JSONObject pins=new JSONObject(new String(Integrity.read(getAssets().open("online-pins.json"),16384),StandardCharsets.UTF_8));
                 JSONObject envelope=new JSONObject();envelope.put("raw",raw);envelope.put("signature",signature);
                 // The exact release envelope is digest-pinned by the browser; host independently pins APK bytes and metadata signer.
@@ -220,10 +239,23 @@ public abstract class HostActivity extends Activity {
                     for(int j=0;j<listed.length();j++)if(id.equals(listed.getJSONObject(j).getString("id"))){JSONArray entries=listed.getJSONObject(j).getJSONArray("artifacts");
                         for(int i=0;i<entries.length();i++)if("android".equals(entries.getJSONObject(i).getString("platform")))digest=entries.getJSONObject(i).getString("sha256");}
                     if(digest==null||!digest.equals(apks.getJSONObject(id).getString("sha256")))throw new SecurityException("unpinned-artifact");}
-                return getSharedPreferences("online",0).edit().putString("raw",raw).putString("signature",signature).putLong("highest",revision).commit()?"ok":"refused";
-            }catch(Exception invalid){return "refused";}
+                return Catalog.saveOnline(HostActivity.this,raw,signature,revision)?"ok":refusedCatalog("catalog-store");
+            }catch(Exception invalid){return refusedCatalog(invalid instanceof SecurityException&&invalid.getMessage()!=null&&invalid.getMessage().matches("[a-z0-9-]{1,40}")?invalid.getMessage():invalid.getClass().getSimpleName());}
         }
         @JavascriptInterface public boolean hasOnlineApk(String id){if(!"store".equals(mode()))return false;try{Catalog c=trustedCatalog();if(!c.isOnlineDelivery(id))return false;verifyStaged(c,id);return true;}catch(Exception absent){return false;}}
+        /** Permission difference between the installed app and its verified catalog APK. known=false when either side is unavailable. */
+        @JavascriptInterface public String permissionChanges(String id){
+            if(!"store".equals(mode()))return "{\"known\":false}";
+            File file=null;
+            try{Catalog c=trustedCatalog();PackageInfo installed=getPackageManager().getPackageInfo(id,PackageManager.GET_PERMISSIONS);
+                file=c.verifiedApkFile(HostActivity.this,id);
+                PackageInfo candidate=getPackageManager().getPackageArchiveInfo(file.getAbsolutePath(),PackageManager.GET_PERMISSIONS);
+                if(candidate==null)return "{\"known\":false}";
+                JSONObject o=new JSONObject();o.put("known",true);o.put("versionCode",candidate.getLongVersionCode());
+                o.put("added",new JSONArray(UpdatePolicy.addedPermissions(requested(installed),requested(candidate))));return o.toString();
+            }catch(Exception unknown){return "{\"known\":false}";}
+            finally{if(file!=null&&!file.delete())file.deleteOnExit();}
+        }
         @JavascriptInterface public String stageOnlineApk(String id,String encoded){
             int budget;try{budget=Catalog.maxApkBytes(id);}catch(SecurityException unadmitted){return "refused";}
             if(!"store".equals(mode())||encoded==null||encoded.length()>(long)budget*4/3+64)return "refused";
@@ -262,6 +294,9 @@ public abstract class HostActivity extends Activity {
                 getSharedPreferences("agenda",0).edit().putString("events",events.toString()).apply();getContentResolver().notifyChange(Uri.parse("content://network.itonami.yotei.agenda/events"),null);
             }catch(JSONException invalid){} }
     }
+    /** "refused:<code>" for the page, and one log line, so a refusal is never silent. The code names a check, never data. */
+    private static String refusedCatalog(String code){android.util.Log.w("AwaiStore","online catalog refused: "+code);return "refused:"+code;}
+    private static Set<String> requested(PackageInfo p){return p.requestedPermissions==null?new HashSet<String>():new HashSet<>(Arrays.asList(p.requestedPermissions));}
     private void verifyStaged(Catalog catalog, String id) throws Exception {
         File file = catalog.verifiedApkFile(this, id);
         if (!file.delete()) file.deleteOnExit();
@@ -280,7 +315,7 @@ public abstract class HostActivity extends Activity {
         String until=java.text.DateFormat.getDateInstance(java.text.DateFormat.LONG,Locale.JAPAN).format(new Date((now+UpdatePolicy.MAX_APPROVAL_SECONDS)*1000));
         String body="対象: この Store で追加したアプリの更新\n"
             +"取得先: raw.githubusercontent.com（network-awai/awai-os の署名済み配布ファイル）\n"
-            +"操作: 署名済みカタログの読み取り（1 日 1 回まで）と、更新ファイルの取得・インストール\n"
+            +"操作: 署名済みの鍵の一覧とカタログの読み取り（1 日 1 回まで）と、更新ファイルの取得・インストール\n"
             +"伝わる情報: IP アドレス、確認の時刻、追加済みのアプリ\n"
             +"条件: 同じ配布元の署名で、より新しい版で、新しい権限や通信先を追加しない更新だけ。それ以外の更新は、これまでどおり毎回確認します。\n"
             +"回線: "+(unmeteredOnly?"従量制でない回線（Wi-Fi など）のみ":"すべての回線")+"\n"

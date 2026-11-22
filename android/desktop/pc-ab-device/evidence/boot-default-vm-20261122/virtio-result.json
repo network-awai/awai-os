@@ -1,0 +1,9 @@
+{
+  "case": "virtio",
+  "accel": "tcg",
+  "gpu": "virtio-vga",
+  "savedDefault": "android",
+  "expectedSavedDefault": "android",
+  "ok": true,
+  "grubInfo": "INFO: awai_gpu vi"
+}

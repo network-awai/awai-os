@@ -42,7 +42,14 @@ Kotoba/Amu/AIUEOS Native qualification rules.
 - Phone and desktop share the Android setup state model and Figma-first UX.
   Adapt layout, keyboard/mouse/touch and hardware capabilities. Itonami remains
   an app: retain account authentication but omit repeated OS setup steps.
-- Preserve the approved Itonami Core / Apps / System and Manimani composition.
+- Itonami is the bot runtime and its bots; Manimani is its default bot. Awai Home
+  is the entry and centres on the conversation with Manimani; a swipe reaches the
+  classic home. The earlier rule to preserve the Itonami Core / Apps / System
+  composition is withdrawn (owner decision 2026-11-22, AWAI-3770): OS state and
+  settings belong to Android and Awai OS, and apps are separate APKs reached
+  through Home and Store. See
+  [the responsibilities record](docs/otehon/home-itonami-manimani-responsibilities-20261122.md);
+  its open items stay proposals until decided.
   Keep shared domain/policy in `.cljc`/CLJS Otehon code; native Android and pinned
   Tauri v3 adapters expose bounded platform operations. A Rust/Java adapter is
   not a new authority, consent broker or second application shell.
@@ -83,12 +90,15 @@ installs, wire active code to `archive/`, or re-add their workflows.
 
 ## Awai Otehon UI: Figma design first (AWAI-538)
 
-For Otehon UI work, follow [the design-first contract](docs/otehon/design-first.md)
-and its [pinned baseline](docs/otehon/ui-baseline.json). Preserve the existing
-Core / Apps / System navigation, Manimani workspace and docks. Design affected
-states in Figma before changing UI code; implement within the existing shell,
-then compare rendered screens and verify on 6600H. Do not substitute the rejected
-standalone `/workspace/` candidate or treat a fixture as physical acceptance.
+For Awai OS and Otehon UI work, follow [the design-first contract](docs/otehon/design-first.md).
+Design affected states in Figma before changing UI code, then compare rendered
+screens and verify on the target Android device or emulator. The earlier
+requirement to preserve the Core / Apps / System navigation, Manimani workspace
+and docks, and to implement only within the existing shell, is withdrawn (owner
+decision 2026-11-22, AWAI-3770; see Product OS direction above). The
+[pinned baseline](docs/otehon/ui-baseline.json) records the former Otehon
+desktop composition as history; it does not constrain new screens. Do not treat
+a fixture as physical acceptance.
 This owner-selected Figma contract controls visual composition; source code and
 tests remain evidence of actual behavior, not proof that the design is accepted.
 
@@ -102,6 +112,20 @@ shared `each-operation` consent. No `window.openai`, no server-held business
 state, no ChatGPT approval. The Hermes `mcp_servers` route (D14) is for
 agent-invoked tools, not for apps with a screen. Implementation is still open;
 this records only the intake choice.
+
+## Terms: Itonami dapp and Awai app (owner decision 2026-11-21, JUN-1416)
+
+Both follow the Awai OS specification. An **Itonami dapp** also follows the
+Itonami Agent bot specification: it has an AI agent bot profile, has a
+decentralized wallet and a DID, and operates autonomously. An **Awai app**
+(Awai OS app) is a Tauri app without a bot; it may still expose MCP, API and
+similar interfaces. Classify by whether a bot profile exists: a Tauri app that
+gains one becomes an Itonami dapp and must then meet the wallet, DID and
+autonomy requirements. Use these names in new documents, issues and lists. Do
+not rename existing identifiers (Itonami Store, `itonami.dapp.v1`, dapp carrier,
+repository names) for this reason alone. The distinction changes no permission,
+consent, distribution or key-custody contract. Canonical text:
+`network-awai/network-awai-apex` `docs/itonami-dapp-distribution-index.md` §0.
 
 ## In-app storage on Awai Android and Itonami dapps (AWAI-3386)
 

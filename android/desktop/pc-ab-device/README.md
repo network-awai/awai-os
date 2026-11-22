@@ -313,6 +313,80 @@ Both guests rebooted into v8 on slot `_a` with `sys.boot_completed=1`. After shu
 protected partitions matched the SHA-256 hashes recorded at installation.
 [Evidence and artifact digests](evidence/ota-rejection-kvm-20261120.json).
 
+## Default boot entry on an AMD PC (AMD Radeon/Mesa, AWAI-3563)
+
+Owner decision 2026-11-22: a 7735H install starts **Awai PC (AMD Radeon, Mesa graphics)** by default.
+
+How GRUB chooses: `grubenv` on the `persist` partition holds `grub_android_default`. The build writes `0`
+(the first entry, "LineageOS 24.0", which boots without `androidboot.gpu`/`androidboot.graphics` and so takes
+the virtio GPU path, `init.virtio.rc`). Every entry saves its own id there when it boots. The USB installer
+copies `persist` and the ESP as they are, and OTA updates neither (see Patches), so a new install starts
+with `0`.
+
+`patches/virtio-x86-64-awai-radeon-default.patch` (applied by `pc-firmware.py prepare` after the Radeon
+entry patch) adds a block to the end of the device `grub-boot.cfg`. When the normal-boot default is still
+the factory `0`, it reads PCI with GRUB's `setpci`:
+
+- a virtio GPU (`1af4:1050`) present: keep the stock entry (KVM, TCG and every VM with `virtio-vga`/`virtio-gpu`);
+- otherwise, the first PCI device of vendor `1002` has class `03xx` (display): start the Radeon entry.
+
+It prints `INFO: awai_gpu virtio=… amd_class=… default=…` on the GRUB console. The entry then saves its id,
+so later boots use it directly. An entry the user picked (stored by name, for example `android`) is never
+replaced, and recovery and `bootonce-bootloader` boots are not affected.
+
+Why detection in GRUB rather than an installer machine profile: it works for every path that installs this
+ESP (USB, PXE-written disks, `disk-vda.img`) without a profile to keep in sync, it keeps the VM path as long
+as the VM has a virtio GPU, and a disk moved between a VM and a PC still picks the right entry on its first
+boot. It does not conflict with PR #379 (AWAI-3747): that patch changes only the distribution name in
+`device/virt/virt-common`, while this one changes `device/virt/virtio_x86_64`, matches entries by id, and
+the Radeon entry title is fixed text.
+
+Limits:
+
+- Disks installed before this change keep `grub_android_default=0` and their old ESP, because OTA does not
+  update the ESP. On those, pick the Radeon entry once under "Advanced options (virtio_x86_64 specific)"
+  (it is then saved), or reinstall.
+- `setpci` is refused under GRUB lockdown. If UEFI Secure Boot with lockdown is enabled (AWAI-3612), the
+  variable stays empty and the stock entry starts; revisit this block then.
+- Any `1002` display device matches, including pre-GCN cards that `amdgpu` does not drive.
+
+Checks:
+
+```sh
+python3 android/desktop/pc-ab-device/boot-default.py image "$INSTALL_IMAGE"   # ESP grub.cfg + persist grubenv, read only
+python3 android/desktop/pc-ab-device/boot-default.py cfg grub.cfg
+python3 -m unittest discover -s android/desktop/pc-ab-device -p 'test_*.py'
+android/desktop/pc-ab-device/kvm/boot-default-vm.sh "$INSTALL_IMAGE" virtio|amd|amd-saved|amd-stock out/ [patch]
+```
+
+`image` fails on the current release candidate (`cd22c762…`) until it is rebuilt with the patch. VM
+readback on 2026-11-22 (TCG): [evidence/boot-default-vm-20261122](evidence/boot-default-vm-20261122/README.md).
+
+### Acceptance for first setup and on the 7735H
+
+- First-setup timing results (ANR, reaching Home, input response) are judged only in a **KVM** VM or on the
+  machine. Under TCG, an ANR dialog is not a reason to fail: TCG with SwiftShader makes every UI frame take
+  seconds, and AOSP re-shows a continuous ANR dialog after "Wait" even when the app responds
+  (AWAI-3563 report). Under TCG, record whether `InputDispatcher` logged a new unresponsive window, the
+  `Displayed …` activity transitions, and `user_setup_complete`.
+- A VM has no Radeon, so graphics are accepted only on the machine.
+- The 7735H acceptance record includes `/proc/cmdline`, `ro.vendor.graphics`, `ro.vendor.graphics.gpu`,
+  `ro.hardware.egl`, `ro.hardware.vulkan`, and the SurfaceFlinger renderer line.
+
+On the 7735H, after installing an image built with the patch, with no key pressed in the GRUB menu:
+
+1. On the first boot the highlighted entry is under "Advanced options (virtio_x86_64 specific)" and GRUB
+   boots `Awai PC (AMD Radeon, Mesa graphics)`.
+2. `/proc/cmdline` contains `androidboot.gpu=amdgpu androidboot.graphics=mesa virtio_gpu.modeset=0`.
+3. `getprop ro.vendor.graphics.gpu` is `amdgpu`, `ro.vendor.graphics` is `mesa`, `ro.hardware.vulkan` is
+   `radeon`, and `ro.hardware.egl` names the Mesa EGL (not `angle`/`swiftshader`).
+4. `dumpsys SurfaceFlinger | grep -iE 'renderengine|GLES:'` names AMD/radeonsi, not SwiftShader or llvmpipe.
+5. After a reboot, the same entry starts again; `grubenv` has
+   `grub_android_default=advancedoptions-virtio_x86_64>android-awai-pc-amd-mesa`.
+
+A user build has no shell, so steps 2 to 4 need the build's approved debug route (AWAI-3682); otherwise
+record them as not observed.
+
 ## Known gaps
 
 - `init.virtio.rc` still creates `by-name` links to `vda1`, `vda7` and so on. On NVMe they point nowhere
