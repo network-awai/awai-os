@@ -24,19 +24,39 @@ replacing it is one edit and nothing in the phone hard-codes a meaning.
 | HTTPS compute desk (AWAI-3115) | `host/desk.cljs` | nbb, loopback, with `../en-devnet/src` |
 | Shell client (3 ops) | `otehon/shell/src/awai-compute.js` | WebView (Android), through the shared consent broker |
 | Shell client tests | `otehon/shell/test/awai-compute.test.js` | Node |
+| Stack + negative-control client | `test/devnet_stack.sh`, `test/desk_client.mjs`, `test/fund.cljs` | nbb/Node, loopback |
 
-## Keys and trust
+## Key custody (devnet stand-ins)
 
-- **Provider key**: a non-exportable P-256 key on the device
-  (WebCrypto/IndexedDB in the shell; Android Keystore in the phone
-  native host). It is separate from the device identity key. It signs
-  the Offer (`awai.compute.offer/1`) and the work receipt
-  (`awai.work-receipt/1`). The prompt and the output body are never in
-  the receipt.
-- **Acceptor key**: the desk host's bot key signs the Order acceptance
-  and the funding transfer from the desk. It is a separate key, devnet
-  only. The sponsor key stays in the support desk; its ACL and the EN
-  devnet operator rules are unchanged.
+- **Provider P-256 key** (`awai.compute.offer/1`, `awai.work-receipt/1`):
+  held on the device (shell `providerKey()`, WebCrypto/IndexedDB,
+  non-extractable; Android Keystore in the phone native host). It signs
+  the Offer and the EN funding payload. Never in the desk, never on disk.
+- **Provider Ed25519 key file** (`PROVIDER.pem`): the EN ledger account of
+  the provider node; co-signs the funding transfer as receiver. A
+  stand-in file like the support desk's sponsor/bot files, mode 0600.
+- **Bot/acceptor Ed25519 key file** (`BOT.pem`): signs the funding
+  transfer as spender (consumer). Separate file, separate role.
+- The **sponsor key** is not in this flow at all; the bot is pre-funded
+  once (sponsor -> bot, the support path) by `test/fund.cljs`. Sponsor ACL
+  and EN devnet operator rules are unchanged.
+
+The desk pins the engine model file by digest at init, checks
+`/props` before any credit moves, runs the order on the loopback
+llama.cpp engine once, and the work receipt carries the input hash,
+the output CID and measured counters only.
+
+## Run the E2E
+
+```bash
+# from dapps/awai-compute; MODEL is the pinned murakumo model (pins.json)
+bash test/devnet_stack.sh OUT_DIR MODEL-FILE
+NODE_EXTRA_CA_CERTS=OUT_DIR/ca.pem node test/desk_client.mjs OUT_DIR/stack.json out.json
+```
+
+Ports default to node 18797, desk 18796, desk2 18798, engine 18080;
+override with NODE_PORT/DESK_PORT/DESK2_PORT/ENGINE_PORT. The client
+uses ephemeral in-memory P-256 pairs; nothing private is written.
 
 ## What the core decides
 
