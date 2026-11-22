@@ -42,15 +42,20 @@ internal object Models {
  private fun migrate(c:Context){val old=File(dir(c),"qwen3.gguf");val id=pins(c).getString("id").let{if(it=="qwen3-0.6b-q8_0")it else null}?:return
   val target=file(c,id);if(old.isFile&&!target.exists())old.renameTo(target)}
 
- fun status(c:Context):JSONObject{migrate(c);val models=JSONArray();val cat=catalog(c)
+ /**
+  * Readiness. [forOtherApp]: the copy another app reads through InferenceStatusProvider (karute,
+  * Murakumo Net …). It carries no live job state, since busy/idle timing would tell an app with
+  * network access when a PHI caller runs inference (Dev review #430): busy and image progress are null.
+  */
+ fun status(c:Context,forOtherApp:Boolean=false):JSONObject{migrate(c);val models=JSONArray();val cat=catalog(c)
   for(i in 0 until cat.length()){val e=cat.getJSONObject(i);val f=file(c,e.getString("id"))
    models.put(JSONObject().put("id",e.getString("id")).put("imported",f.isFile&&f.length()==e.getLong("bytes")))}
   val label=loadedId?.let{entry(c,it).getString("label")}?:pins(c).getString("label")
   return JSONObject().put("schema","awai.inference.local.v1").put("engine","llama.cpp").put("model",label)
    .put("imported",models.let{m->(0 until m.length()).any{m.getJSONObject(it).getBoolean("imported")}})
    .put("loaded",loaded).put("loadedModel",loadedId?:JSONObject.NULL).put("loading",loading?:JSONObject.NULL)
-   .put("context",CONTEXT).put("busy",busy.get()).put("models",models).put("downloading",JSONObject.NULL)
-   .put("modalities",JSONArray().put("text")).put("remote",false).put("image",ImageModels.status(c))}
+   .put("context",CONTEXT).put("busy",if(forOtherApp)JSONObject.NULL else busy.get()).put("models",models).put("downloading",JSONObject.NULL)
+   .put("modalities",JSONArray().put("text")).put("remote",false).put("image",ImageModels.status(c).apply{if(forOtherApp)put("progress",JSONObject.NULL)})}
 
  private fun digest(f:File):String{val d=MessageDigest.getInstance("SHA-256");f.inputStream().use{val b=ByteArray(1 shl 20);while(true){val n=it.read(b);if(n<0)break;d.update(b,0,n)}};return d.digest().joinToString(""){"%02x".format(it.toInt() and 255)}}
  private fun admit(f:File,e:JSONObject){require(f.length()==e.getLong("bytes")&&digest(f)==e.getString("sha256")){"model-digest-mismatch"}}
@@ -74,18 +79,26 @@ internal object Models {
   * (/proc/stat is closed since Android 8), so cpu-percent is null (unknown) and app-cpu-percent is
   * this app's share of all cores since the previous reading. The engine is CPU-only: gpu-percent null.
   */
- @Synchronized fun usage(c:Context):JSONObject{
+ /**
+  * [forOtherApp]: Murakumo Net's copy (it holds INTERNET). Fixed schema, numbers and fixed enums only;
+  * the only strings are the schema, "this-device", "android", Build.MODEL, a catalog model id and the
+  * state. Anything that moves with a running job is withheld: the job state ("unknown" instead of
+  * busy/idle), this app's CPU share and used RAM (the per-request context) are null, and the load
+  * time is rounded down to the minute. test/release_check_test.py checks this function's shape.
+  */
+ @Synchronized fun usage(c:Context,forOtherApp:Boolean=false):JSONObject{
   val am=c.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager;val mi=ActivityManager.MemoryInfo();am.getMemoryInfo(mi)
   val fs=StatFs(c.filesDir.absolutePath)
-  val now=Pair(Process.getElapsedCpuTime(),SystemClock.elapsedRealtime());val prev=cpuSample;cpuSample=now
+  val now=Pair(Process.getElapsedCpuTime(),SystemClock.elapsedRealtime());val prev=cpuSample;if(!forOtherApp)cpuSample=now
   val wall=(now.second-prev.second)*Runtime.getRuntime().availableProcessors()
   val appCpu=if(prev.second>0&&wall>0)((now.first-prev.first)*100/wall).coerceIn(0,100) else null
-  val loadedJson=loadedId?.let{JSONObject().put("model",it).put("context",CONTEXT).put("state",if(busy.get())"busy" else "idle").put("since-ms",loadedSinceMs)}
-   ?:loading?.let{JSONObject().put("model",it).put("context",CONTEXT).put("state","loading").put("since-ms",System.currentTimeMillis())}
+  val minute=60000L;val coarse={ms:Long->if(forOtherApp)ms/minute*minute else ms}
+  val loadedJson=loadedId?.let{JSONObject().put("model",it).put("context",CONTEXT).put("state",if(forOtherApp)"unknown" else if(busy.get())"busy" else "idle").put("since-ms",coarse(loadedSinceMs))}
+   ?:loading?.let{JSONObject().put("model",it).put("context",CONTEXT).put("state","loading").put("since-ms",coarse(System.currentTimeMillis()))}
   return JSONObject().put("schema","awai.murakumo.device-usage.v1").put("device","this-device").put("kind","android")
    .put("model-name",Build.MODEL).put("observed-at-ms",System.currentTimeMillis())
-   .put("ram",JSONObject().put("total",mi.totalMem).put("used",mi.totalMem-mi.availMem))
-   .put("cpu-percent",JSONObject.NULL).put("app-cpu-percent",appCpu?:JSONObject.NULL).put("gpu-percent",JSONObject.NULL)
+   .put("ram",JSONObject().put("total",mi.totalMem).put("used",if(forOtherApp)JSONObject.NULL else mi.totalMem-mi.availMem))
+   .put("cpu-percent",JSONObject.NULL).put("app-cpu-percent",if(forOtherApp)JSONObject.NULL else appCpu?:JSONObject.NULL).put("gpu-percent",JSONObject.NULL)
    .put("disk",JSONObject().put("free",fs.availableBytes).put("total",fs.totalBytes))
    .put("loaded",loadedJson?:JSONObject.NULL)}
 

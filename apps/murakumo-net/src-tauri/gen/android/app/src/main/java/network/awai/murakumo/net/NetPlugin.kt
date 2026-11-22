@@ -30,7 +30,6 @@ class NetPlugin(private val owner:Activity):Plugin(owner){
  private val engine=Uri.parse("content://network.awai.murakumo.engine")
  private val worker=Executors.newSingleThreadExecutor()
  @Volatile private var downloading:String?=null
- private val codes=setOf("busy","unknown-model","release-required","model-digest-mismatch","model-size-limit","model-store-failed","model-import-rejected","caller-denied","unsupported-operation")
 
  private fun catalog()=JSONObject(owner.assets.open("catalog.json").bufferedReader().use{it.readText()})
  private fun entry(id:String):JSONObject{val m=catalog().getJSONArray("models");for(i in 0 until m.length())if(m.getJSONObject(i).getString("id")==id)return m.getJSONObject(i);throw IllegalArgumentException("unknown-model")}
@@ -39,7 +38,6 @@ class NetPlugin(private val owner:Activity):Plugin(owner){
  private fun ready(id:String)=File(dir(),"$id.gguf")
  private fun call(method:String,arg:String?=null,extras:Bundle?=null):Bundle=owner.contentResolver.call(engine,method,arg,extras)?:throw IllegalStateException("murakumo-unavailable")
  private fun digest(f:File):String{val d=MessageDigest.getInstance("SHA-256");f.inputStream().use{val b=ByteArray(1 shl 20);while(true){val n=it.read(b);if(n<0)break;d.update(b,0,n)}};return d.digest().joinToString(""){"%02x".format(it.toInt() and 255)}}
- private fun code(e:Exception,fallback:String)=codes.firstOrNull{it==e.message}?:fallback
 
  @Command fun operation(invoke:Invoke){
   val a=invoke.getArgs();val action=a.optString("action")
@@ -54,7 +52,7 @@ class NetPlugin(private val owner:Activity):Plugin(owner){
     "download-finish"->finish(a.optString("model"))
     "download-abort"->{abort(a.optString("model"));"{\"aborted\":true}"}
     else->throw IllegalArgumentException("unknown-operation")}))
-  }catch(e:Exception){invoke.reject(if(action=="status"||action=="usage")"murakumo-unavailable" else if(action=="download-finish")code(e,"model-handoff-failed") else code(e,"model-download-rejected"))}}
+  }catch(e:Exception){invoke.reject(NetCodes.of(e,if(action=="status"||action=="usage")"murakumo-unavailable" else if(action=="download-finish")"model-handoff-failed" else "model-download-rejected"))}}
  }
 
  @Synchronized private fun begin(id:String):JSONObject{val e=entry(id);check(downloading==null){"busy"};downloading=id;part(id).delete();ready(id).delete()

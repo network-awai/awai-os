@@ -66,6 +66,34 @@ class Apk(unittest.TestCase):
   raw.write_text(json.dumps({'apps':[{'id':'network.awai.murakumo','artifacts':art('packages/missing.apk')}]}))
   self.assertTrue(any('not found' in x for x in release.catalog_failures(raw,d)),'a missing medical APK fails closed')
 
+class NetRelease(unittest.TestCase):
+ """Murakumo Net is release-only too (Dev review #430), and carries no native library but its Rust one."""
+ net=repo/'apps/murakumo-net'
+ def copy(self):
+  d=pathlib.Path(tempfile.mkdtemp());self.addCleanup(shutil.rmtree,d)
+  for rel in ['src-tauri/gen/android/app/build.gradle.kts','src-tauri/gen/android/app/src/main/AndroidManifest.xml','src-tauri/Cargo.toml','src-tauri/tauri.conf.json','src-tauri/Cargo.lock']:
+   (d/rel).parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(self.net/rel,d/rel)
+  shutil.copytree(self.net/'src-tauri/gen/android/app/src/main/java',d/'src-tauri/gen/android/app/src/main/java');return d
+ def test_source_is_release_only(self):self.assertEqual(release.source_failures(self.net,inference=False),[])
+ def test_source_negative_controls(self):
+  for rel,old,new,word in [('src-tauri/Cargo.toml','features = []','features = ["devtools"]','devtools'),
+    ('src-tauri/gen/android/app/build.gradle.kts','getByName("release") {','getByName("release") {\n            isDebuggable = true','debuggable')]:
+   with self.subTest(word=word):
+    d=self.copy();p=d/rel;t=p.read_text();self.assertIn(old,t);p.write_text(t.replace(old,new,1));self.assertTrue(any(word in x for x in release.source_failures(d,inference=False)))
+ @need_sdk
+ def test_apk_negative_controls(self):
+  self.assertIsNotNone(AAPT2)
+  d=pathlib.Path(tempfile.mkdtemp());self.addCleanup(shutil.rmtree,d)
+  def apk(attrs='',libs=None):
+   (d/'M.xml').write_text(f'<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="network.awai.murakumo.net"><uses-permission android:name="android.permission.INTERNET"/><application android:label="Synthetic" {attrs}/></manifest>')
+   out=d/f'n{len(list(d.glob("*.apk")))}.apk';subprocess.run([str(AAPT2),'link','--manifest',str(d/'M.xml'),'-I',str(ANDROID_JAR),'-o',str(out)],check=True)
+   with zipfile.ZipFile(out,'a') as z:
+    for n,b in (libs or {}).items():z.writestr(n,b)
+   return out
+  self.assertEqual(release.apk_failures(apk('',{'lib/arm64-v8a/libmurakumo_net_app_lib.so':b'\x7fELF'})),[],'a release Murakumo Net APK with INTERNET passes')
+  for attrs,libs,word in [('android:debuggable="true"',None,'debuggable'),('',{'lib/arm64-v8a/libmurakumo_net_app_lib.so':b'setWebContentsDebuggingEnabled'},'devtools'),('',{'lib/arm64-v8a/libllama.so':b'\x7fELF'},'no native library')]:
+   with self.subTest(word=word):f=release.apk_failures(apk(attrs,libs));self.assertTrue(any(word in x for x in f),f)
+
 class NoInternet(unittest.TestCase):
  """network.awai.murakumo (prompts, possibly PHI) holds no INTERNET permission; Murakumo Net does.
  Committed fixture APKs (built with aapt2) keep these negative controls running without an SDK."""

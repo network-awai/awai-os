@@ -18,14 +18,17 @@ Exit status 1 on any failure. Nothing is installed, signed or published.
 """
 import json,pathlib,re,struct,subprocess,sys,zipfile
 app=pathlib.Path(__file__).resolve().parents[1]
-MEDICAL={'network.awai.murakumo','network.itonami.karute'}
+NET_PACKAGE='network.awai.murakumo.net'
+net_app=app.parent/'murakumo-net'
+# Release-only in a Store catalog: the medical caller, the inference app and Murakumo Net (Dev review #430).
+MEDICAL={'network.awai.murakumo','network.itonami.karute',NET_PACKAGE}
 REVIEWED={'tauri':'3.0.0-alpha.6','wry':'0.57.2','tauri-runtime-wry':'3.0.0-alpha.6'}
 DEBUGGABLE,TEST_ONLY,NAME=0x0101000f,0x01010272,0x01010003
 # The inference app (prompts, possibly PHI) must not hold these: Android then refuses its sockets.
 INFERENCE_PACKAGE='network.awai.murakumo'
 NETWORK_PERMISSIONS={'android.permission.INTERNET'}
 
-def source_failures(base=app)->list:
+def source_failures(base=app,inference=True)->list:
  f=[]
  gradle=(base/'src-tauri/gen/android/app/build.gradle.kts').read_text()
  m=re.search(r'getByName\("release"\)\s*\{(.*?)\n        \}',gradle,re.S)
@@ -33,9 +36,9 @@ def source_failures(base=app)->list:
  elif re.search(r'is(?:Jni)?Debuggable\s*=\s*true|isTestOnly|debuggable\s*true',m.group(1)):f.append('gradle: release buildType is debuggable')
  manifest=(base/'src-tauri/gen/android/app/src/main/AndroidManifest.xml').read_text()
  if re.search(r'android:(?:debuggable|testOnly)\s*=\s*"true"',manifest):f.append('manifest: debuggable or testOnly')
- for p in NETWORK_PERMISSIONS:
+ for p in (NETWORK_PERMISSIONS if inference else ()):
   if re.search(r'<uses-permission(?:-sdk-23)?\s+android:name="%s"'%re.escape(p),manifest):f.append(f'manifest: requests {p} (the inference app must not reach the network)')
- if re.search(r'tools:node="(?:merge|replace)"[^>]*INTERNET|INTERNET[^>]*tools:node',manifest):f.append('manifest: INTERNET through a tools:node rule')
+ if inference and re.search(r'tools:node="(?:merge|replace)"[^>]*INTERNET|INTERNET[^>]*tools:node',manifest):f.append('manifest: INTERNET through a tools:node rule')
  cargo=(base/'src-tauri/Cargo.toml').read_text()
  if 'devtools' in cargo:f.append('Cargo.toml: devtools feature (keeps CDP on in release)')
  conf=json.loads((base/'src-tauri/tauri.conf.json').read_text())
@@ -115,12 +118,16 @@ def merged_manifest_failures(xml_path:pathlib.Path)->list:
 def apk_failures(apk:pathlib.Path,check_pins=True)->list:
  f=[]
  with zipfile.ZipFile(apk) as z:
-  flags=axml_application_flags(z.read('AndroidManifest.xml'))
-  f+=no_network_failures(z.read('AndroidManifest.xml'))
+  manifest=z.read('AndroidManifest.xml');flags=axml_application_flags(manifest);pkg,_=axml_package_and_permissions(manifest)
+  f+=no_network_failures(manifest)
+  libs=[n for n in z.namelist() if re.fullmatch(r'lib/[^/]+/[^/]+\.so',n)]
+  if pkg==NET_PACKAGE:
+   check_pins=False  # no native engine: only its Rust app library
+   f+=[f'{n}: Murakumo Net carries no native library but its Rust app library' for n in libs if not n.endswith('/libmurakumo_net_app_lib.so')]
   if flags.get('debuggable'):f.append('APK is debuggable (debug build: devtools and console forwarding on)')
   if flags.get('testOnly'):f.append('APK is testOnly')
   for n in z.namelist():
-   if re.fullmatch(r'lib/[^/]+/libmurakumo_app_lib\.so',n) and b'setWebContentsDebuggingEnabled' in z.read(n):
+   if re.fullmatch(r'lib/[^/]+/libmurakumo(?:_net)?_app_lib\.so',n) and b'setWebContentsDebuggingEnabled' in z.read(n):
     f.append(f'{n}: WebView devtools code is compiled in (debug_assertions or the devtools feature)')
  if check_pins:
   r=subprocess.run([sys.executable,str(app/'scripts/verify-native-pins.py'),'--apk',str(apk)],capture_output=True,text=True)
@@ -139,7 +146,7 @@ def catalog_failures(raw,assets=None)->list:
  return f
 
 def main(argv):
- if argv==['--source']:failures=source_failures()
+ if argv==['--source']:failures=source_failures()+[f'murakumo-net: {x}' for x in source_failures(net_app,inference=False)]
  elif len(argv)==2 and argv[0]=='--apk':failures=apk_failures(pathlib.Path(argv[1]))
  elif len(argv)==2 and argv[0]=='--no-internet':
   # Any build type (the operator lane builds debug): only the network permission check.

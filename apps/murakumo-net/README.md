@@ -10,7 +10,14 @@ has no INTERNET permission (PHI rule; karute passes medical text to it).
   one-file read grant on this app's FileProvider (`files/downloads/`) and admits the file again itself
   (`InferenceStatusProvider` "admit", allowed only for this package with the same signature). The local copy
   is deleted whether or not Murakumo accepts it.
-- **Status and this device's usage** are read from Murakumo's provider ("status", "usage"); nothing else.
+- **What it reads from Murakumo:** only "status" (which models are imported) and "usage" (this device), both
+  in the copy for other apps: fixed schema, numbers and fixed enums, with nothing that moves while a job runs
+  (no busy/idle, no image progress, no app CPU, no used RAM; the load time is rounded to the minute). An app
+  with INTERNET therefore cannot tell when karute is running inference. Nothing else crosses.
+- **PHI rules apply here too:** errors leave only as fixed codes (`NetCodes.kt`); no logging, printing or
+  exception text (`apps/murakumo/scripts/phi-path-lint.mjs` scans these files and any new one); release-only
+  (`check-release.py --source` checks this app's release config, `--apk` its APK: not debuggable, no devtools,
+  no native library but its Rust one).
 
 The page is Murakumo's (`apps/murakumo/client`, role `net`):
 
