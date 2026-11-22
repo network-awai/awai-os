@@ -193,8 +193,14 @@ let releasing = false;
 
 function runChild(command, args, env) {
   return new Promise((resolveChild) => {
-    const child = spawn(command, args, { stdio: "inherit", env });
-    const forward = (signal) => { if (child.exitCode === null) child.kill(signal); };
+    // The build runs in its own process group and a forwarded signal goes to the whole
+    // group: killing only the shell leaves its background children holding the inherited
+    // stdio, and 'close' would not arrive until they exit on their own.
+    const child = spawn(command, args, { stdio: "inherit", env, detached: true });
+    const forward = (signal) => {
+      if (child.exitCode !== null) return;
+      try { process.kill(-child.pid, signal); } catch { child.kill(signal); }
+    };
     const handlers = ["SIGINT", "SIGTERM", "SIGHUP"].map((signal) => {
       const handler = () => forward(signal);
       process.on(signal, handler);

@@ -36,7 +36,7 @@ async function runWrapper({ dir, bin, state }, signalWhen, target = (pid) => -pi
   chmodSync(join(here, "testdata/fake-kubectl.mjs"), 0o755);
   // The "build": marks a running Job, then waits to be killed.
   const build = join(dir, "build.sh");
-  writeFileSync(build, `node -e 'const f=process.env.FAKE_VKE_STATE,fs=require("fs");const s=JSON.parse(fs.readFileSync(f));s.jobs=[{metadata:{name:"awai-pc-release-build"}}];fs.writeFileSync(f,JSON.stringify(s))'\ntrap 'exit 124' TERM\nsleep 60 & wait\n`);
+  writeFileSync(build, `node -e 'const f=process.env.FAKE_VKE_STATE,fs=require("fs");const s=JSON.parse(fs.readFileSync(f));s.jobs=[{metadata:{name:"awai-pc-release-build"}}];fs.writeFileSync(f,JSON.stringify(s))'\ntrap 'exit 124' TERM\nnode -e 'const f=process.env.FAKE_VKE_STATE,fs=require("fs");const s=JSON.parse(fs.readFileSync(f));s.started=true;fs.writeFileSync(f,JSON.stringify(s))'\nsleep 60 & wait\n`);
   const child = spawn(process.execPath, ["--import", join(here, "testdata/fake-vultr.mjs"), join(here, "vke-release-pool.mjs"),
     "run", join(dir, "kubeconfig"), "--", "bash", build], {
     detached: true, stdio: ["ignore", "pipe", "pipe"],
@@ -72,6 +72,19 @@ test("SIGTERM to the process group during the build still removes the pool and t
 test("SIGTERM to the wrapper alone while provisioning still releases the pool", { timeout: 60_000 }, async () => {
   const env = setup();
   const { code, stderr, final } = await runWrapper(env, (state) => state.pools.length > 0, (pid) => pid);
+  assert.notEqual(code, 0);
+  assert.equal(final.deleted, 1, stderr);
+  assert.equal(final.pools.length, 0, stderr);
+  assert.equal(final.namespace, null, stderr);
+  assert.match(stderr, /Received SIGTERM/);
+  rmSync(env.dir, { recursive: true, force: true });
+});
+
+test("SIGTERM to the wrapper alone during the build still releases the pool", { timeout: 60_000 }, async () => {
+  const env = setup();
+  // Signal only once the build is running (its background sleep is alive): the wrapper
+  // must stop the whole build tree, not just its shell, or the orphan keeps it waiting.
+  const { code, stderr, final } = await runWrapper(env, (state) => state.started === true, (pid) => pid);
   assert.notEqual(code, 0);
   assert.equal(final.deleted, 1, stderr);
   assert.equal(final.pools.length, 0, stderr);
