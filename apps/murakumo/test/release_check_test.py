@@ -4,7 +4,7 @@
 Synthetic APKs only (aapt2 from the Android SDK). Set REQUIRE_ANDROID_SDK=1 to fail instead of skip
 when aapt2 or android.jar is missing (CI does). Run: python3 -m unittest apps/murakumo/test/release_check_test.py
 """
-import importlib.util,json,os,pathlib,shutil,subprocess,tempfile,unittest,zipfile
+import importlib.util,json,os,pathlib,re,shutil,subprocess,sys,tempfile,unittest,zipfile
 app=pathlib.Path(__file__).resolve().parents[1];repo=app.parents[1]
 def load(name):
  spec=importlib.util.spec_from_file_location(name.replace('-','_'),app/'scripts'/f'{name}.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return m
@@ -31,6 +31,7 @@ class Source(unittest.TestCase):
    ('src-tauri/Cargo.toml','features = []','features = ["devtools"]','devtools'),
    ('src-tauri/tauri.conf.json','"label": "main",','"label": "main", "devtools": true,','devtools'),
    ('src-tauri/gen/android/app/src/main/AndroidManifest.xml','<application','<application android:debuggable="true"','debuggable'),
+   ('src-tauri/gen/android/app/src/main/AndroidManifest.xml','<application','<uses-permission android:name="android.permission.INTERNET" />\n    <application','INTERNET'),
    ('src-tauri/gen/android/app/src/main/java/network/awai/murakumo/MainActivity.kt','enableEdgeToEdge();','android.webkit.WebView.setWebContentsDebuggingEnabled(true);enableEdgeToEdge();','WebView debugging'),
    ('src-tauri/Cargo.lock','name = "wry"\nversion = "0.57.2"','name = "wry"\nversion = "0.57.3"','reviewed')]
   for rel,old,new,word in cases:
@@ -64,6 +65,37 @@ class Apk(unittest.TestCase):
   f=release.catalog_failures(raw,d);self.assertTrue(f and all(x.startswith('network.itonami.karute') for x in f),f)
   raw.write_text(json.dumps({'apps':[{'id':'network.awai.murakumo','artifacts':art('packages/missing.apk')}]}))
   self.assertTrue(any('not found' in x for x in release.catalog_failures(raw,d)),'a missing medical APK fails closed')
+
+class NoInternet(unittest.TestCase):
+ """network.awai.murakumo (prompts, possibly PHI) holds no INTERNET permission; Murakumo Net does.
+ Committed fixture APKs (built with aapt2) keep these negative controls running without an SDK."""
+ fx=app/'test/fixtures/manifest'
+ def manifest(self,name):
+  with zipfile.ZipFile(self.fx/name) as z:return z.read('AndroidManifest.xml')
+ def test_inference_app_without_internet_passes(self):
+  self.assertEqual(release.no_network_failures(self.manifest('inference-no-internet.apk')),[])
+  self.assertEqual(release.merged_manifest_failures(self.fx/'inference-no-internet-merged.xml'),[])
+ def test_negative_controls(self):
+  for name in ['inference-internet.apk','inference-internet-sdk23.apk']:
+   with self.subTest(name=name):f=release.no_network_failures(self.manifest(name));self.assertTrue(any('android.permission.INTERNET' in x for x in f),f)
+  self.assertTrue(release.merged_manifest_failures(self.fx/'inference-internet-merged.xml'))
+  self.assertEqual(release.axml_package_and_permissions(self.manifest('net-internet.apk')),('network.awai.murakumo.net',{'android.permission.INTERNET'}))
+  self.assertEqual(release.no_network_failures(self.manifest('net-internet.apk')),[],'Murakumo Net may hold INTERNET')
+ def test_cli_fails_on_internet(self):
+  for name,code in [('inference-no-internet.apk',0),('inference-internet.apk',1),('net-internet.apk',1)]:
+   with self.subTest(name=name):r=subprocess.run([sys.executable,str(app/'scripts/check-release.py'),'--no-internet',str(self.fx/name)],capture_output=True,text=True);self.assertEqual(r.returncode,code,r.stdout)
+ @unittest.skipUnless(AAPT2,'aapt2 not found')
+ def test_parser_agrees_with_aapt2(self):
+  for f in sorted(self.fx.glob('*.apk')):
+   with self.subTest(apk=f.name):
+    out=subprocess.run([str(AAPT2),'dump','permissions',str(f)],capture_output=True,text=True,check=True).stdout
+    expected={m for m in re.findall(r"uses-permission(?:-sdk-23)?: name='([^']+)'",out)};pkg=re.search(r'package: (\S+)',out).group(1)
+    self.assertEqual(release.axml_package_and_permissions(self.manifest(f.name)),(pkg,expected))
+ def test_sources_split_the_network_out(self):
+  m=(app/'src-tauri/gen/android/app/src/main/AndroidManifest.xml').read_text();self.assertNotIn('android.permission.INTERNET"',m)
+  net=(repo/'apps/murakumo-net/src-tauri/gen/android/app/src/main/AndroidManifest.xml').read_text();self.assertIn('<uses-permission android:name="android.permission.INTERNET" />',net)
+  lib=(app/'src-tauri/src/lib.rs').read_text();self.assertNotIn('model_download',lib)
+  conf=json.loads((app/'src-tauri/tauri.conf.json').read_text())['app']['security']['csp'];self.assertIn('connect-src ipc: http://ipc.localhost;',conf);self.assertNotIn('https:',conf)
 
 class Catalogs(unittest.TestCase):
  def test_committed_store_catalogs_carry_no_unproven_medical_apk(self):

@@ -8,6 +8,9 @@ release build may be handed to karute or any other medical caller.
   check-release.py --source                       the release configuration in this checkout
   check-release.py --apk APK                       a built APK: not debuggable, not testOnly, no devtools
                                                    code in the Rust library, native libraries as pinned
+  check-release.py --no-internet APK               the inference app's merged manifest (any build type)
+                                                   requests no INTERNET
+  check-release.py --merged-manifest XML           the same on Gradle's merged AndroidManifest.xml
   check-release.py --catalog RAW [--assets DIR]    a Store catalog: every medical package it lists must
                                                    point at an APK that passes --apk (DIR holds the assets)
 
@@ -17,7 +20,10 @@ import json,pathlib,re,struct,subprocess,sys,zipfile
 app=pathlib.Path(__file__).resolve().parents[1]
 MEDICAL={'network.awai.murakumo','network.itonami.karute'}
 REVIEWED={'tauri':'3.0.0-alpha.6','wry':'0.57.2','tauri-runtime-wry':'3.0.0-alpha.6'}
-DEBUGGABLE,TEST_ONLY=0x0101000f,0x01010272
+DEBUGGABLE,TEST_ONLY,NAME=0x0101000f,0x01010272,0x01010003
+# The inference app (prompts, possibly PHI) must not hold these: Android then refuses its sockets.
+INFERENCE_PACKAGE='network.awai.murakumo'
+NETWORK_PERMISSIONS={'android.permission.INTERNET'}
 
 def source_failures(base=app)->list:
  f=[]
@@ -27,6 +33,9 @@ def source_failures(base=app)->list:
  elif re.search(r'is(?:Jni)?Debuggable\s*=\s*true|isTestOnly|debuggable\s*true',m.group(1)):f.append('gradle: release buildType is debuggable')
  manifest=(base/'src-tauri/gen/android/app/src/main/AndroidManifest.xml').read_text()
  if re.search(r'android:(?:debuggable|testOnly)\s*=\s*"true"',manifest):f.append('manifest: debuggable or testOnly')
+ for p in NETWORK_PERMISSIONS:
+  if re.search(r'<uses-permission(?:-sdk-23)?\s+android:name="%s"'%re.escape(p),manifest):f.append(f'manifest: requests {p} (the inference app must not reach the network)')
+ if re.search(r'tools:node="(?:merge|replace)"[^>]*INTERNET|INTERNET[^>]*tools:node',manifest):f.append('manifest: INTERNET through a tools:node rule')
  cargo=(base/'src-tauri/Cargo.toml').read_text()
  if 'devtools' in cargo:f.append('Cargo.toml: devtools feature (keeps CDP on in release)')
  conf=json.loads((base/'src-tauri/tauri.conf.json').read_text())
@@ -40,9 +49,10 @@ def source_failures(base=app)->list:
   if p.suffix in('.kt','.java') and 'setWebContentsDebuggingEnabled' in p.read_text():f.append(f'{p.name}: enables WebView debugging')
  return f
 
-def axml_application_flags(data:bytes)->dict:
- """debuggable / testOnly on <application> in a binary AndroidManifest.xml."""
- strings=[];resmap=[];pos=8;flags={}
+def axml_elements(data:bytes):
+ """Start elements of a binary AndroidManifest.xml: [(name, {attribute: value})]. An attribute is keyed
+ by its Android resource id when it has one, else by its name; a value is its string or (type, data)."""
+ strings=[];resmap=[];pos=8;out=[]
  while pos<len(data):
   ctype,hsize,size=struct.unpack_from('<HHI',data,pos)
   if ctype==0x0001:  # string pool
@@ -60,19 +70,53 @@ def axml_application_flags(data:bytes)->dict:
      strings.append(data[p:p+2*n].decode('utf-16le','replace'))
   elif ctype==0x0180:resmap=list(struct.unpack_from('<%dI'%((size-hsize)//4),data,pos+hsize))
   elif ctype==0x0102:
-   _,name,astart,asize,acount=struct.unpack_from('<IIHHH',data,pos+16)
-   if strings[name]=='application':
-    for i in range(acount):
-     a=pos+16+astart+i*asize;_,aname,_,_,_,dtype,value=struct.unpack_from('<IIIHBBI',data,a)
-     rid=resmap[aname] if aname<len(resmap) else None
-     if rid in(DEBUGGABLE,TEST_ONLY):flags['debuggable' if rid==DEBUGGABLE else 'testOnly']=dtype==0x12 and value!=0
+   _,name,astart,asize,acount=struct.unpack_from('<IIHHH',data,pos+16);attrs={}
+   for i in range(acount):
+    a=pos+16+astart+i*asize;_,aname,raw,_,_,dtype,value=struct.unpack_from('<IIIHBBI',data,a)
+    key=resmap[aname] if aname<len(resmap) and resmap[aname] else strings[aname]
+    attrs[key]=strings[raw] if raw!=0xffffffff else strings[value] if dtype==0x03 else (dtype,value)
+   out.append((strings[name],attrs))
   pos+=size if ctype!=0x0003 else hsize
+ return out
+
+def axml_application_flags(data:bytes)->dict:
+ """debuggable / testOnly on <application> in a binary AndroidManifest.xml."""
+ flags={}
+ for name,attrs in axml_elements(data):
+  if name!='application':continue
+  for rid,key in((DEBUGGABLE,'debuggable'),(TEST_ONLY,'testOnly')):
+   v=attrs.get(rid)
+   if v is not None:flags[key]=isinstance(v,tuple) and v[0]==0x12 and v[1]!=0
  return flags
+
+def axml_package_and_permissions(data:bytes):
+ """The package name and the requested permissions (uses-permission, uses-permission-sdk-23)."""
+ package=None;perms=set()
+ for name,attrs in axml_elements(data):
+  if name=='manifest':package=attrs.get('package')
+  if name in('uses-permission','uses-permission-sdk-23') and isinstance(attrs.get(NAME),str):perms.add(attrs[NAME])
+ return package,perms
+
+def no_network_failures(manifest:bytes,package=INFERENCE_PACKAGE)->list:
+ """The merged manifest of the inference app requests no network permission."""
+ pkg,perms=axml_package_and_permissions(manifest)
+ if pkg!=package:return []
+ bad=sorted(perms&NETWORK_PERMISSIONS)
+ return [f'{pkg} requests {p} (the inference app must not reach the network)' for p in bad]
+
+def merged_manifest_failures(xml_path:pathlib.Path)->list:
+ """The same check on Gradle's merged manifest (app/build/intermediates/merged_manifest/<variant>/…)."""
+ import xml.etree.ElementTree as ET
+ A='{http://schemas.android.com/apk/res/android}';root=ET.parse(xml_path).getroot()
+ if root.get('package') not in(None,INFERENCE_PACKAGE):return []
+ perms={e.get(A+'name') for e in root.iter() if e.tag in('uses-permission','uses-permission-sdk-23')}
+ return [f'merged manifest requests {p} (the inference app must not reach the network)' for p in sorted(perms&NETWORK_PERMISSIONS)]
 
 def apk_failures(apk:pathlib.Path,check_pins=True)->list:
  f=[]
  with zipfile.ZipFile(apk) as z:
   flags=axml_application_flags(z.read('AndroidManifest.xml'))
+  f+=no_network_failures(z.read('AndroidManifest.xml'))
   if flags.get('debuggable'):f.append('APK is debuggable (debug build: devtools and console forwarding on)')
   if flags.get('testOnly'):f.append('APK is testOnly')
   for n in z.namelist():
@@ -97,6 +141,11 @@ def catalog_failures(raw,assets=None)->list:
 def main(argv):
  if argv==['--source']:failures=source_failures()
  elif len(argv)==2 and argv[0]=='--apk':failures=apk_failures(pathlib.Path(argv[1]))
+ elif len(argv)==2 and argv[0]=='--no-internet':
+  # Any build type (the operator lane builds debug): only the network permission check.
+  with zipfile.ZipFile(argv[1]) as z:m=z.read('AndroidManifest.xml')
+  pkg,_=axml_package_and_permissions(m);failures=no_network_failures(m) if pkg==INFERENCE_PACKAGE else [f'not the inference app: {pkg}']
+ elif len(argv)==2 and argv[0]=='--merged-manifest':failures=merged_manifest_failures(pathlib.Path(argv[1]))
  elif argv[:1]==['--catalog'] and len(argv) in(2,4):failures=catalog_failures(pathlib.Path(argv[1]),pathlib.Path(argv[3]) if len(argv)==4 and argv[2]=='--assets' else None)
  else:raise SystemExit(__doc__)
  for x in failures:print('FAIL',x)

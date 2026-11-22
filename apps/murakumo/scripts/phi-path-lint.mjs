@@ -61,6 +61,7 @@ function errorUse(text){
  // Exception messages and native failure codes: a literal code (or a choice of two), nothing built from data.
  for(const re of [/\b\w*Exception\(([^()]*(?:\([^()]*\))?[^()]*)\)/g,/\bfail\(\s*(?:env|e)\s*,([^;]*?)\);/g]){
   while((m=re.exec(text))){const a=m[1].trim();if(a===''||a==='e')continue;
+   if(/^ErrorCodes\.of\(\s*e\s*,\s*"[a-z0-9-]+"\s*\)$/.test(a))continue; // fixed code, its fallback is checked above
    if(literal.test(a)||ternary.test(a))codes.push(...[...a.matchAll(/"([^"]*)"/g)].map(x=>x[1]));else loose.push(a);}
  }
  for(const re of [/invoke\.reject\(([^)]*)\)/g,/finishWith\(([^)]*)\)/g])
