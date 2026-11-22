@@ -46,6 +46,10 @@ An app is listed with a download link only when all of these hold. Any failure s
 - It says that this is a development build. The catalog and most APKs are signed with the Android
   debug identity; there is no production publisher key, rotation or revocation yet (AWAI-2982, AWAI-3732).
 - It does not offer the Store APK itself, an iOS build or a desktop build. None is published.
+- It shows each app's publisher from the signed catalog as 配布元 and writes the same value
+  into `site-manifest.json`. Production catalogs carry `Awai Network LLC`, defined once in
+  `store/catalog-source/series-apps.json` (see `store/README.md`); signed development catalogs
+  keep the publisher they were signed with. The page never invents a publisher string.
 
 ## Publishing
 

@@ -120,6 +120,12 @@ def held_by(source, holds):
 def check_table(table, holds=()):
     if table.get('schema') != 'awai.store.series-apps.v1':
         raise Refused('table: not awai.store.series-apps.v1')
+    # AWAI-3882: publisher is defined exactly once at the top level and referenced by every app entry.
+    if not (isinstance(table.get('publisher'), str) and table['publisher'].strip()):
+        raise Refused('table: publisher must be a non-empty string defined once at the top level')
+    for a in table['apps']:
+        if 'publisher' in a:
+            raise Refused(f"table: {a.get('source')} carries its own publisher; reference the top-level publisher instead")
     groups, seen, ranks = table['groups'], set(), []
     for g, v in groups.items():
         if not re.fullmatch(r'[0-9a-f]{64}', v.get('signerSha256', '')):

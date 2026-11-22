@@ -122,6 +122,7 @@ function appHtml(app) {
   const operations = app.operations === null ? '記載なし' : app.operations === 0 ? 'なし' : `${app.operations} 件（アプリ内で、通信のたびに確認します）`;
   const rows = [
     ['パッケージ', esc(app.id)],
+    ['配布元', esc(app.publisher)],
     ['版', `${esc(app.versionName)}（versionCode ${esc(app.versionCode)}）`],
   ];
   if (d) rows.push(['大きさ', esc(size(d.bytes))]);
@@ -213,7 +214,7 @@ export async function buildSite(input) {
   const files = {'index.html': Buffer.from(renderHtml(store), 'utf8'), 'style.css': input.css, 'logo.png': input.logo};
   const manifest = {schema: 'awai.store-site.v1', pointerSequence: store.sequence, catalogRevision: store.revision,
     sourceRevision: store.sourceRevision, signer: store.signer, trust: store.trust, development: true,
-    apps: store.apps.map(a => ({id: a.id, versionCode: a.versionCode, sha256: a.download?.sha256 ?? null, url: a.download?.url ?? null})),
+    apps: store.apps.map(a => ({id: a.id, publisher: a.publisher, versionCode: a.versionCode, sha256: a.download?.sha256 ?? null, url: a.download?.url ?? null})),
     files: Object.fromEntries(Object.entries(files).map(([name, bytes]) => [name, sha256(bytes)]))};
   files['site-manifest.json'] = Buffer.from(JSON.stringify(manifest, null, 2) + '\n', 'utf8');
   return {store, files};

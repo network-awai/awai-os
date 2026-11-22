@@ -23,6 +23,10 @@ import { restrictedGuestHashes } from "./scripts/guest-csp.mjs";
 const relayOrigin = process.env.RELAY_ORIGIN ?? "https://relay.awai.network";
 // EN devnet support desk (AWAI-3170). Unset in normal builds: no support operations, no CSP origin.
 const supportDeskOrigin = process.env.AWAI_SUPPORT_DESK_ORIGIN || "";
+// EN devnet compute desk (AWAI-3115). Unset in normal builds: no compute operations, no CSP origin.
+const computeDeskOrigin = process.env.AWAI_COMPUTE_DESK_ORIGIN || "";
+// EN devnet compute provider DID (AWAI-3115). Unset: the compute panel stays unavailable.
+const computeProviderDid = process.env.AWAI_COMPUTE_PROVIDER_DID || "";
 // OTEHON_HTTP=1 builds for the stable loopback OS origin and HTTP preview.
 // File-mode remains only for legacy images; profile migration is a separate gate.
 const cspMode = process.env.OTEHON_HTTP === "1" ? "http" : "file";
@@ -49,7 +53,7 @@ await mkdir("dist/fs-reliability", { recursive: true });
 await copyFile("fs-reliability/index.html", "dist/fs-reliability/index.html");
 clojure(["-m", "shadow.cljs.devtools.cli", "release", "soshiki-runtime"]);
 await mkdir("dist/soshiki-runtime", { recursive: true });
-const chatConnect = clientRuntimeConnectSrc(runtimeDescriptor("soshiki-runtime/index.html", osOperations(relayOrigin, supportDeskOrigin)), [...new Set(osOperations(relayOrigin, supportDeskOrigin).map(o => o.capability))], [], []);
+const chatConnect = clientRuntimeConnectSrc(runtimeDescriptor("soshiki-runtime/index.html", osOperations(relayOrigin, supportDeskOrigin, computeDeskOrigin)), [...new Set(osOperations(relayOrigin, supportDeskOrigin, computeDeskOrigin).map(o => o.capability))], [], []);
 await writeFile("dist/soshiki-runtime/index.html", (await readFile("soshiki-runtime/index.html", "utf8")).replace("__CONNECT_SRC__", `${chatConnect} 'self'`));
 
 const guestHashes = restrictedGuestHashes({
@@ -80,14 +84,16 @@ async function page({ html, outdir, operations, appOrigins, guests = null }) {
       .replace("__IMAGE_SRC__", imageSrc(cspMode))
       .replace("__DAPPS_JSON__", catalog)
       .replace("__RELAY_ORIGIN__", relayOrigin)
-      .replace("__SUPPORT_DESK_ORIGIN__", supportDeskOrigin),
+      .replace("__SUPPORT_DESK_ORIGIN__", supportDeskOrigin)
+      .replace("__COMPUTE_DESK_ORIGIN__", computeDeskOrigin)
+      .replace("__COMPUTE_PROVIDER_DID__", computeProviderDid),
   );
 }
 
 await page({
   html: "index.html",
   outdir: "dist",
-  operations: osOperations(relayOrigin, supportDeskOrigin),
+  operations: osOperations(relayOrigin, supportDeskOrigin, computeDeskOrigin),
   appOrigins: [],
   guests: guestHashes,
 });

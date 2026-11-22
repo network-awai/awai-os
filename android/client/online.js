@@ -18,6 +18,16 @@ export function validatePins(pins) {
 }
 const pinFor=(pins,kind)=>kind==='catalog'?pins.catalog:Object.hasOwn(pins.apks,kind)?pins.apks[kind]:null;
 const operationFor=kind=>kind==='catalog'?'download-catalog':`download-apk-${kind}`;
+// AWAI-3881: every operation needs its finding-9 disclosure, in the same shape as
+// apps/murakumo/client/download-contract.js (AWAI-3842). The catalog and every pinned
+// APK are fetched from raw.githubusercontent.com; nothing but the pinned request leaves.
+const DOWNLOAD_DISCLOSURE={recipient:'GitHub, Inc.',country:'US','country-name':'United States',
+ 'foreign-info-url':'https://github.com/','special-care':false,frequency:'one-time',
+ withdrawal:'cancel before it finishes',
+ note:'Only the pinned file request is sent. Any HTTPS request also carries your IP address.'};
+const disclosureFor=kind=>({...DOWNLOAD_DISCLOSURE,
+ data:kind==='catalog'?['request IP address','app version','store catalog request']:['request IP address','app version','pinned app package request'],
+ purpose:kind==='catalog'?'download the pinned store catalog':'download a pinned app package from the store catalog'});
 export function onlineRuntime(base,pins) {
   validatePins(pins);
   return {...base,operations:[['catalog',pins.catalog],...Object.entries(pins.apks)].map(([kind,pin])=>({
@@ -25,6 +35,7 @@ export function onlineRuntime(base,pins) {
     consent:'each-operation','data-categories':['request-ip','app-version'],
     endpoint:{origin:new URL(pin.url).origin,routes:[{method:'GET',path:new URL(pin.url).pathname,'query-params':[]}]},
     artifact:{revision:pins.revision,sha256:pin.sha256,'max-bytes':pin.maxBytes},
+    disclosure:disclosureFor(kind),
   }))};
 }
 export function createOnline(base,pins) {
