@@ -184,7 +184,7 @@
       "id": "network.itonami.paymentdrafts",
       "name": "Payment Drafts",
       "description": "自分の送金指示（ISO 20022 pain.001.001.09）を作り、XSD の形と照らして、手元で下書きとして保存します。承認しても送信しません。銀行への接続・署名・支払いはありません。Android development debug 署名（本番鍵ではない）。",
-      "publisher": "Awai Otehon 開発版",
+      "publisher": "Awai Network LLC",
       "versionCode": 1000,
       "versionName": "0.1.0",
       "artifacts": [
@@ -203,7 +203,7 @@
       "id": "network.itonami.securitiesdrafts",
       "name": "Securities Drafts",
       "description": "自分の証券口座の決済指示（ISO 20022 sese.023.001.09）を作り、保管口座の明細（semt.002.001.10）と手元の保有を照合します。承認しても送信・注文・移動はしません。Android development debug 署名（本番鍵ではない）。",
-      "publisher": "Awai Otehon 開発版",
+      "publisher": "Awai Network LLC",
       "versionCode": 1000,
       "versionName": "0.1.0",
       "artifacts": [

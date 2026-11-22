@@ -29,6 +29,13 @@ host, so the envelope must be signed there before this catalog can be trusted by
 repository (AWAI-3775). The `expiresAt` above is a placeholder (build time + 30 days); refresh it at
 signing time if it is close to expiry.
 
+The two new entries use the single publisher definition (`Awai Network LLC`, `store/catalog-source/
+series-apps.json` via `PUBLISHER` in `android/build.py`); the eight r110 entries keep their published
+publisher unchanged. After the merge of `origin/main` (conflict resolution for #448/#452/#447), the
+CDN pins in `android/online-pins.dev.json` point at the merge head `859db278` (which contains this
+directory); the r111 envelope stays unsigned and the `store/latest` pointer stays unissued
+(`catalog envelope 未署名 / store/latest pointer 未発行（follow-up: 鍵保持者）`) until the key holder signs.
+
 ## Signing and publishing (follow-up, on the development Mac)
 
 ```sh
