@@ -22,7 +22,7 @@ npm run tauri --prefix apps/murakumo -- android build --apk --target aarch64 --d
 
 Shared `.cljc` admission is actually compiled to CLJS. The Java/Kotlin and C++ adapters independently enforce request, context/output, model digest, memory-residency and concurrency limits. One model, four CPU threads, context2048, prompt8192 UTF-8 bytes, output256 tokens, CPU abort callback/deadline90s. Model loading itself is bounded by the admitted639,446,688-byte artifact, not claimed to obey the generation deadline. Cancel produces no completed output. Release frees the model; process death requires a new explicit load.
 
-The app holds the INTERNET permission only for the consented model download and the pinned device-usage reads below (the native inference path has no network code; see "PHI path"). It has no listening HTTP server, no remote inference or app-origin BFF. The static frontend talks only to its scoped Tauri native command. The host engine stays on the user's device. Android lifecycle/ordinary app memory behavior is not a foreground-resident-service guarantee.
+The app has **no INTERNET permission** (PHI rule): Android refuses its sockets, so a prompt or an output cannot leave this uid even if code changes. Model downloads and the pinned device-usage reads moved to **Murakumo Net** (`network.awai.murakumo.net`, [`apps/murakumo-net`](../murakumo-net/README.md)), which hands each downloaded file over through `InferenceStatusProvider` "admit". It has no listening HTTP server, no remote inference or app-origin BFF. The static frontend talks only to its scoped Tauri native command. The host engine stays on the user's device. Android lifecycle/ordinary app memory behavior is not a foreground-resident-service guarantee.
 
 ## App-to-app contract
 
@@ -61,6 +61,10 @@ negative control. Synthetic data only.
   nor in the documented `UNPINNED` set (the Rust app library, the image engine) fails. Gradle packages these libraries
   unchanged, so an APK carries the pinned bytes. The image engine (`libawai_diffusion.so`) is not
   pinned yet.
+- **No INTERNET:** this app's merged manifest requests no `android.permission.INTERNET`.
+  `scripts/check-release.py --no-internet APK` (any build type; the operator lane `ci/android/run.mjs` runs it),
+  `--merged-manifest XML` (Gradle's merged manifest), `--apk` (release) and `--source` check it. The negative
+  controls use committed fixture APKs (`test/fixtures/manifest/`), so Tatara runs them without an SDK.
 - **Release only:** a debug build turns on WebView devtools (CDP) and copies `console.*` to logcat. Only
   a release build may go to a medical caller. `scripts/check-release.py --source` checks the release
   configuration (not debuggable, no `devtools` feature, the reviewed Tauri/wry versions, no
@@ -121,6 +125,8 @@ The app now lists the pinned catalog with each model's fit on this device, from 
 
 ## Model download (stage 4b, AWAI-3307)
 
+> Since the INTERNET split, downloads run in Murakumo Net (`apps/murakumo-net`), not in this app. The flow below is unchanged there, except that the finished file is handed to `network.awai.murakumo` ("admit") instead of being renamed in place. `test/live-download-4b.mjs` still drives the old single app and must be moved to the two-app flow before it is run again.
+
 Each catalog model can be downloaded from Hugging Face. The canonical client-runtime broker carries the download, with its `host-stream` artifact delivery ([kotoba-lang/kotoba#1356](https://github.com/kotoba-lang/kotoba/pull/1356)).
 
 - **Declaration:** `client/download-contract.js` declares one operation per catalog model:
@@ -144,6 +150,8 @@ Each catalog model can be downloaded from Hugging Face. The canonical client-run
 `test/live-download-4b.mjs` runs the real APK on an emulator this run owns. It taps the canonical consent dialog with UI Automator and walks through four steps: Deny, Stop partway, a full download, then load and generate. It relaunches after the upstream wry startup timeout and presses "Wait" on system ANR dialogs, and it records each case. Evidence: [`docs/evidence/murakumo-download-4b-20261118.json`](../../docs/evidence/murakumo-download-4b-20261118.json), 15/15, with [the phone screen](../../docs/evidence/murakumo-download-4b-20261118-phone.png). Qwen3 0.6B (609.8 MiB) took 168 s on a loaded host.
 
 ## All devices (stage 5, AWAI-3377)
+
+> Since the INTERNET split, the pinned-device reads run in Murakumo Net; this app shows only this device. `test/live-devices-5.mjs` must be moved to Murakumo Net before it is run again.
 
 The All devices section lists this device and every owner-pinned device in `devices.json` (id, kind, HTTPS origin, raw Ed25519 public key). The build validates the file and ships it as a module. Each pinned device adds one usage read to the client descriptor, and its origin to the CSP.
 

@@ -12,6 +12,8 @@
 
 ## B. INTERNET 権限を推論の uid から外す（項目 6）
 
+**実装した（2 つの app 案）。** 推論の app `network.awai.murakumo` から INTERNET を外し、ダウンロードと使用量の読み取りを `network.awai.murakumo.net`（`apps/murakumo-net`）に移した。以下は検討の記録。
+
 ### 今
 `network.awai.murakumo` 1 つの uid が、(1) 推論（llama.cpp、stable-diffusion.cpp）、(2) model のダウンロード（Hugging Face への固定の GET）、(3) Mac ノードの使用量の読み取り（固定の GET）を持つ。(2)(3) のため INTERNET 権限がある。推論の経路に通信のコードがないことは、ソースのレビューと、今回入れた lint・.so の import 検査で確かめているが、OS は保証していない。
 
