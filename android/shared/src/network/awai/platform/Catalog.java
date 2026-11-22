@@ -135,7 +135,7 @@ public final class Catalog {
     // permission (android/local-apps.json lists the same suffixes; tests/local-apps.test.mjs checks
     // that). Each is network.itonami.<suffix>, asset packages/<suffix>.apk, 40 MiB budget.
     public static final java.util.List<String> LOCAL_APPS = java.util.Collections.unmodifiableList(java.util.Arrays.asList(
-            "ki", "hakkou", "koke", "openossekai", "otakiage", "seibutsu", "shinka", "kabi", "kinoko", "kobo", "saikin", "kiyome", "omikuji", "moldallergy", "explorer", "organismviz", "icc", "abaki", "hibiki", "wakai", "tawami", "yudane", "minori", "torifune", "hiramekietz", "umisachi", "tomoshibi", "tsumugi", "shirohan"));
+            "ki", "hakkou", "koke", "openossekai", "otakiage", "seibutsu", "shinka", "kabi", "kinoko", "kobo", "saikin", "kiyome", "omikuji", "moldallergy", "explorer", "organismviz", "icc", "abaki", "hibiki", "wakai", "tawami", "yudane", "minori", "torifune", "hiramekietz", "umisachi", "tomoshibi", "tsumugi", "shirohan", "paymentdrafts", "securitiesdrafts"));
     /**
      * Apps admitted by the signed catalog itself (AWAI-3771): any network.itonami.<one lowercase segment> that the
      * catalog lists, such as the classification-series apps (network.itonami.isco2423). The asset name, the staged

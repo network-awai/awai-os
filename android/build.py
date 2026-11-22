@@ -68,7 +68,7 @@ def manifest(pkg, activity, version, kind, online=False, debuggable=True, query_
       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>{home}</activity>{extra}</application></manifest>'''
 
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument('--version',type=int,default=1);ap.add_argument('--sdk',type=pathlib.Path,default=pathlib.Path.home()/'Library/Android/sdk');ap.add_argument('--java',type=pathlib.Path,default=pathlib.Path('/opt/homebrew/opt/openjdk/bin'));ap.add_argument('--out',type=pathlib.Path,default=ROOT/'.agent-output/android');ap.add_argument('--skip-cljs',action='store_true');ap.add_argument('--online-pins',type=pathlib.Path);ap.add_argument('--catalog-revision',type=int,default=None);ap.add_argument('--itonami-apk',type=pathlib.Path,default=None);ap.add_argument('--torihiki-bot-apk',type=pathlib.Path,default=None);ap.add_argument('--tabi-mikake-apk',type=pathlib.Path,default=None);ap.add_argument('--deai-apk',type=pathlib.Path,default=None);ap.add_argument('--hiring-apk',type=pathlib.Path,default=None);ap.add_argument('--kumade-apk',type=pathlib.Path,default=None);ap.add_argument('--local-apps-dir',type=pathlib.Path,default=None);ap.add_argument('--home-only',action='store_true')
+    ap=argparse.ArgumentParser();ap.add_argument('--version',type=int,default=1);ap.add_argument('--sdk',type=pathlib.Path,default=pathlib.Path.home()/'Library/Android/sdk');ap.add_argument('--java',type=pathlib.Path,default=pathlib.Path('/opt/homebrew/opt/openjdk/bin'));ap.add_argument('--out',type=pathlib.Path,default=ROOT/'.agent-output/android');ap.add_argument('--skip-cljs',action='store_true');ap.add_argument('--online-pins',type=pathlib.Path);ap.add_argument('--catalog-revision',type=int,default=None);ap.add_argument('--itonami-apk',type=pathlib.Path,default=None);ap.add_argument('--torihiki-bot-apk',type=pathlib.Path,default=None);ap.add_argument('--tabi-mikake-apk',type=pathlib.Path,default=None);ap.add_argument('--deai-apk',type=pathlib.Path,default=None);ap.add_argument('--hiring-apk',type=pathlib.Path,default=None);ap.add_argument('--kumade-apk',type=pathlib.Path,default=None);ap.add_argument('--payment-drafts-apk',type=pathlib.Path,default=None, help='Development-signed Tauri APK from apps/payment-drafts (AWAI-3157/3159)');ap.add_argument('--securities-drafts-apk',type=pathlib.Path,default=None, help='Development-signed Tauri APK from apps/securities-drafts (AWAI-3158/3159)');ap.add_argument('--local-apps-dir',type=pathlib.Path,default=None);ap.add_argument('--home-only',action='store_true')
     ap.add_argument('--agent-trace-apk', type=pathlib.Path, help='Development-signed APK from app-itonami-agent-trace')
     ap.add_argument('--agent-trace-online', action='store_true', help='Admit the feed-enabled agent trace APK with INTERNET')
     ap.add_argument('--agent-trace-sha256', help='Expected SHA-256 from the source app build receipt')
@@ -325,6 +325,39 @@ def main():
         perms=sorted(set(re.findall(r"uses-permission: name='([^']+)'",badging)))
         if perms!=sorted({'android.permission.INTERNET','network.itonami.kumade.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'}):raise SystemExit(f'kumade APK permissions are not exactly INTERNET: {perms}')
         listed.append({'id':'network.itonami.kumade','name':'Kumade','description':'公開 Web のページを、この端末で読み解きます。貼り付けた HTML の抽出、Common Crawl の過去のアーカイブの検索と取得（通信は毎回確認）、端末内の索引での検索ができます。任意の URL の取得とクロールは、取得用サービスが止まっているため使えません。Android development debug 署名（本番鍵ではない）。','publisher':PUBLISHER,'versionCode':int(m.group(2)),'versionName':m.group(3),'artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/kumade.apk','bytes':staged.stat().st_size,'sha256':digest(staged),'signerSha256':fp}]})
+    # Payment Drafts / Securities Drafts (AWAI-3157/3158/3159, ADR 0042). Both are Tauri v3 APKs built from
+    # apps/payment-drafts and apps/securities-drafts in this repository. They declare no external operation and
+    # no INTERNET permission, so they are the same local-only class as android/local-apps.json entries:
+    # package network.itonami.<suffix>, asset packages/<suffix>.apk, 40 MiB budget, permissions exactly the
+    # AndroidX non-exported receiver permission (or none). The listed id, version and signer are read from the
+    # APK itself. Text comes from android/local-apps.json so --payment-drafts-apk/--securities-drafts-apk and
+    # --local-apps-dir produce the same catalog row for the same APK.
+    _draft_table = {a['suffix']: a for a in json.loads((ROOT/'android/local-apps.json').read_text())['apps']}
+    def _stage_draft(apk_path, suffix, package, staged_name):
+        meta = _draft_table.get(suffix)
+        if meta is None:
+            raise SystemExit(f'{package} is not listed in android/local-apps.json')
+        if apk_path.stat().st_size > 40 * 1024 * 1024:
+            raise SystemExit(f'{package} APK exceeds its 40 MiB Store budget')
+        staged = packages / staged_name
+        shutil.copyfile(apk_path, staged)
+        signer = run([tools/'apksigner', 'verify', '--print-certs', staged], capture_output=True).stdout
+        if [l.rsplit(' ', 1)[-1] for l in signer.splitlines() if 'certificate SHA-256 digest:' in l] != [fp]:
+            raise SystemExit(f'{package} APK signer does not match the development identity')
+        badging = run([tools/'aapt2', 'dump', 'badging', staged], capture_output=True).stdout
+        m = re.fullmatch(r"package: name='([^']+)' versionCode='([0-9]+)' versionName='([^']+)'.*", badging.splitlines()[0])
+        if not m or m.group(1) != package:
+            raise SystemExit(f'{staged_name} package is not {package}')
+        perms = sorted(set(re.findall(r"uses-permission: name='([^']+)'", badging)))
+        if perms not in ([], [package + '.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION']):
+            raise SystemExit(f'{package} APK requests permissions: {perms}')
+        if 'uses-permission: name=\'android.permission.INTERNET\'' in badging:
+            raise SystemExit(f'{package} APK requests INTERNET')
+        listed.append({'id': package, 'name': meta['name'], 'description': meta['description'] + 'Android development debug 署名（本番鍵ではない）。', 'publisher': PUBLISHER, 'versionCode': int(m.group(2)), 'versionName': m.group(3), 'artifacts': [{'platform': 'android', 'runtime': 'android', 'kind': 'apk', 'asset': f'packages/{staged_name}', 'bytes': staged.stat().st_size, 'sha256': digest(staged), 'signerSha256': fp}]})
+    if args.payment_drafts_apk is not None:
+        _stage_draft(args.payment_drafts_apk, 'paymentdrafts', 'network.itonami.paymentdrafts', 'paymentdrafts.apk')
+    if args.securities_drafts_apk is not None:
+        _stage_draft(args.securities_drafts_apk, 'securitiesdrafts', 'network.itonami.securitiesdrafts', 'securitiesdrafts.apk')
     if args.agent_trace_apk is not None:
         staged = packages / 'agent-trace.apk'
         if args.agent_trace_apk.stat().st_size > 2 * 1024 * 1024:
