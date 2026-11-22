@@ -17,6 +17,16 @@ export const WORK_RECEIPT_KIND = "awai.work-receipt/1";
 const operation = (name, categories, route) => ({
   capability: CAPABILITY, service: SERVICE, operation: name, consent: "each-operation",
   "data-categories": categories, endpoint: { origin: null, routes: [route] },
+  scope: "lan",
+  disclosure: {
+    recipient: "Awai Network LLC（devnet desk）",
+    country: "JP",
+    data: ["計算の注文", "署名", "公開鍵"],
+    "special-care": false,
+    purpose: "devnet 計算の注文と領収書の取得",
+    frequency: "one-time",
+    withdrawal: "設定 › 許可した送信",
+  },
 });
 const TEMPLATES = [
   operation("prepare-compute", ["compute-offer", "provider-identity"], { method: "POST", path: "/v1/compute/offers", "query-params": [] }),
