@@ -1,0 +1,9 @@
+# UNSPSC source marks: the commit that added the UNSPSC reference and trademark text to each repository, and
+# whether the app has a Japanese name (our translation). Read by android/series-catalog.py; applies only to apps in
+# series-apps.json. Add rows with android/isco-source-add.py from a batch TSV (same form as isco-source.tsv).
+repo	commit	ja
+cloud-itonami/app-itonami-cloud-itonami-unspsc-10	26089894527a966762aaac6356c4179a61452712	true
+cloud-itonami/app-itonami-cloud-itonami-unspsc-27	ba942d90c08b77e7327f814af968b2fb6f8ccb75	true
+cloud-itonami/app-itonami-cloud-itonami-unspsc-39	14226aab30fe1b5513dd113dbdf7f299c6a98bf7	true
+cloud-itonami/app-itonami-cloud-itonami-unspsc-43	aa61944c349685daa40b45350786fb4cfe4495dc	true
+cloud-itonami/app-itonami-cloud-itonami-unspsc-73	92962e13af2877b7cd6a7f1d09340440958ce093	true

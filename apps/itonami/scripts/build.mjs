@@ -45,16 +45,19 @@ await mkdir(dest,{recursive:true});
 await cp(source,dest,{recursive:true});
 const original=await readFile(path.join(dest,'index.html'),'utf8');
 if(/__(CONNECT_SRC|SCRIPT_SRC|STYLE_SRC|IMAGE_SRC|DAPPS_JSON|RELAY_ORIGIN)__/.test(original))throw Error('unresolved shell template');
-const html=original.replace(/(connect-src[^;"\n]*)/, '$1 ipc: http://ipc.localhost').replace(/(img-src[^;"\n]*)/, '$1 data:');
+const html=original.replace("<head>", '<head>\n    <meta name="viewport" content="width=device-width, initial-scale=1">').replace(/(connect-src[^;"\n]*)/, '$1 ipc: http://ipc.localhost').replace(/(img-src[^;"\n]*)/, '$1 data:');
 const csp=html.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/)?.[1];
 if(!csp || !csp.includes("default-src 'none'") || !csp.includes("script-src 'self'"))throw Error('HTTP/self shell CSP required');
 await writeFile(path.join(dest,'index.html'),html);
-await writeFile(path.join(app,'src-tauri/tauri.android.conf.json'),JSON.stringify({app:{security:{csp:csp+"; object-src 'none'; base-uri 'none'; form-action 'none'"}}},null,2)+'\n');
+const nativeSecurity = {app: {security: {csp: csp + "; object-src 'none'; base-uri 'none'; form-action 'none'"}}};
+for (const platform of ['android', 'macos']) {
+  await writeFile(path.join(app, `src-tauri/tauri.${platform}.conf.json`), JSON.stringify(nativeSecurity, null, 2) + '\n');
+}
 const artifacts={};
 for (const name of await files(dest)) if(name!=='itonami-bundle.json') {
   const b=await readFile(path.join(dest,name));artifacts[name]={bytes:b.length,sha256:sha(b)};
 }
 const revision=execFileSync('git',['rev-parse','HEAD'],{cwd:repo,encoding:'utf8'}).trim();
 const shellTree=execFileSync('git',['rev-parse','HEAD:otehon/shell'],{cwd:repo,encoding:'utf8'}).trim();
-await writeFile(path.join(dest,'itonami-bundle.json'),JSON.stringify({schema:'awai.itonami.tauri-bundle.v1',revision,shellTree,broker:pins,ui:'otehon/shell/dist; unchanged composition',htmlChange:'local Tauri IPC CSP transport only',artifacts},null,2)+'\n');
+await writeFile(path.join(dest,'itonami-bundle.json'),JSON.stringify({schema:'awai.itonami.tauri-bundle.v1',revision,shellTree,broker:pins,ui:'otehon/shell/dist; unchanged composition',htmlChange:'device viewport and local Tauri IPC CSP transport',artifacts},null,2)+'\n');
 console.log('Packaged owning NixOS shell:',Object.keys(artifacts).length,'files');

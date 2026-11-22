@@ -43,6 +43,12 @@ owner can find and overturn it.
    fails when a change inside the span has no line, when a fix is not merged or
    was merged before the change it fixes, and when a line cannot be read.
 
+When a repository is renamed or transferred, its old name no longer matches
+what GitHub reports, and its changes show up as not looked at. Add a `moved`
+line (`from`, `to`, and in `note` how you confirmed it, for example the
+repository id). Lines written under the old name then count under the new one.
+Do not rewrite the old lines.
+
 The file is append-only. A failure that shows up later is added as a new
 `failure` line; the earlier `reviewed` line stays as the record of what was
 known then, and the failure line wins.
@@ -57,7 +63,9 @@ node otehon/dev-bots/dora.mjs --discover --since <Monday of the week under revie
 
 `--discover` searches every owned organisation for merged `muse/*` pull
 requests, so a repository nobody listed still shows up as not looked at. Pass
-`--state <queue-sync state dir>` on the host that has one, for lead times.
+`--state <queue-sync state dir>` and `--runs <directory of task worktrees>` on the
+host that has them, for the lead times of changes whose pull request body has
+no `- Task started:` line (changes delivered before AWAI-3708).
 
 1. Post the report as a comment on AWAI-3608. Do not edit the numbers.
 2. Exit code 1 means the ledger has a problem. Report it; do not "fix" the

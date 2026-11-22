@@ -1,0 +1,9 @@
+{
+  "case": "amd",
+  "accel": "tcg",
+  "gpu": "ati-vga",
+  "savedDefault": "advancedoptions-virtio_x86_64>android-awai-pc-amd-mesa",
+  "expectedSavedDefault": "advancedoptions-virtio_x86_64>android-awai-pc-amd-mesa",
+  "ok": true,
+  "grubInfo": "INFO: awai_gpu vi"
+}

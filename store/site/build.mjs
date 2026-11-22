@@ -6,11 +6,16 @@
 // Nothing is listed unless the pointer signature, the catalog signature, the pins and the
 // local bytes all agree. Development signer only: there is no production key yet.
 //
+// Trust (AWAI-3775): the root public key (store/keys/store-root.der) and the root-signed key list
+// (store/latest/keys-envelope.json). The pointer must be signed by a listed pointer key and the catalog by a
+// listed catalog key, with the same rules as the Store (android/client/key-list.js, KeyList.java).
+//
 //   node store/site/build.mjs --out <new dir> [--now <epoch seconds>]
-import {createHash, createPublicKey, verify, X509Certificate} from 'node:crypto';
+import {createHash} from 'node:crypto';
 import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {dirname, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {verifyKeyList, authentic, CATALOG, POINTER} from '../../android/client/key-list.js';
 
 export const DEV_SIGNER = '2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29';
 const PIN_URL = /^https:\/\/raw\.githubusercontent\.com\/network-awai\/awai-os\/([0-9a-f]{40})\/(store\/distribution\/[A-Za-z0-9._\/-]+)$/;
@@ -20,17 +25,33 @@ const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const fail = code => { throw new Error(code); };
 const esc = text => String(text).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 
-function signerKey(pem, expected) {
-  const cert = new X509Certificate(pem);
-  if (sha256(cert.raw) !== expected) fail('signer-fingerprint');
-  return createPublicKey(cert.publicKey.export({type: 'spki', format: 'pem'}));
-}
-
-function openEnvelope(bytes, key, code) {
+function envelopeOf(bytes, code) {
   const envelope = JSON.parse(bytes.toString('utf8'));
   if (Object.keys(envelope).sort().join() !== 'raw,signature') fail(code + '-shape');
   if (typeof envelope.raw !== 'string' || !/^[A-Za-z0-9+/=]+$/.test(envelope.signature)) fail(code + '-shape');
-  if (!verify('RSA-SHA256', Buffer.from(envelope.raw, 'utf8'), key, Buffer.from(envelope.signature, 'base64'))) fail(code + '-signature');
+  return envelope;
+}
+
+// Who may sign the catalog and the pointer: the key list under the root.
+async function trustOf({rootDer, keysBytes, now}) {
+  {
+    if (!rootDer || !keysBytes) fail('keys-missing');
+    const envelope = envelopeOf(keysBytes, 'keys');
+    const raw = Buffer.from(envelope.raw, 'utf8');
+    let list;
+    try { list = await verifyKeyList(new Uint8Array(raw), new Uint8Array(Buffer.from(envelope.signature, 'base64')), new Uint8Array(rootDer), now, 0); }
+    catch (e) { fail(e.message); }
+    const fingerprints = role => envelope.raw.split('\n').filter(l => l.startsWith(`key ${role} `))
+      .map(l => sha256(Buffer.from(l.split(' ')[2], 'base64')));
+    return {mode: 'key-list', sequence: list.sequence, expiresAt: list.expiresAt, rootSha256: sha256(rootDer),
+      catalogKeys: fingerprints(CATALOG), pointerKeys: fingerprints(POINTER),
+      signed: (role, data, sig) => authentic(list, role, new Uint8Array(data), new Uint8Array(sig))};
+  }
+}
+
+async function openEnvelope(bytes, trust, role, code) {
+  const envelope = envelopeOf(bytes, code);
+  if (!await trust.signed(role, Buffer.from(envelope.raw, 'utf8'), Buffer.from(envelope.signature, 'base64'))) fail(code + '-signature');
   return JSON.parse(envelope.raw);
 }
 
@@ -50,9 +71,10 @@ function date(seconds) {
 
 // Verify everything and return the facts the page shows. `read(path)` returns the bytes of a
 // repository path, or null when the file is not present locally.
-export function verifyStore({pointerBytes, signerPem, read, now, signer = DEV_SIGNER}) {
-  const key = signerKey(signerPem, signer);
-  const pointer = openEnvelope(pointerBytes, key, 'pointer');
+// `signer` is the development APK signer; it only labels APKs, it does not sign the catalog or the pointer.
+export async function verifyStore({pointerBytes, rootDer, keysBytes, read, now, signer = DEV_SIGNER}) {
+  const trust = await trustOf({rootDer, keysBytes, now});
+  const pointer = await openEnvelope(pointerBytes, trust, POINTER, 'pointer');
   if (pointer.schema !== 'itonami.store.latest.v1') fail('pointer-schema');
   if (!Number.isSafeInteger(pointer.sequence) || pointer.sequence < 1) fail('pointer-sequence');
   if (!Number.isSafeInteger(pointer.issuedAt) || !Number.isSafeInteger(pointer.expiresAt)) fail('pointer-time');
@@ -64,7 +86,7 @@ export function verifyStore({pointerBytes, signerPem, read, now, signer = DEV_SI
   const catalogBytes = read(pinPath(pins.catalog, 'catalog-pin'));
   if (!catalogBytes) fail('catalog-missing');
   if (catalogBytes.length > pins.catalog.maxBytes || sha256(catalogBytes) !== pins.catalog.sha256) fail('catalog-digest');
-  const catalog = openEnvelope(catalogBytes, key, 'catalog');
+  const catalog = await openEnvelope(catalogBytes, trust, CATALOG, 'catalog');
   if (catalog.schema !== 'itonami.store.bundled.v1') fail('catalog-schema');
   if (!Number.isSafeInteger(catalog.revision) || !Array.isArray(catalog.apps)) fail('catalog-shape');
   if (!Number.isSafeInteger(catalog.expiresAt) || now >= catalog.expiresAt) fail('catalog-expired');
@@ -90,7 +112,9 @@ export function verifyStore({pointerBytes, signerPem, read, now, signer = DEV_SI
   });
   for (const id of Object.keys(pins.apks)) if (!listed.has(id)) fail('apk-pin-unlisted');
   return {sequence: pointer.sequence, pointerExpiresAt: pointer.expiresAt, revision: catalog.revision,
-    catalogExpiresAt: catalog.expiresAt, sourceRevision: pins.revision, signer, apps};
+    catalogExpiresAt: catalog.expiresAt, sourceRevision: pins.revision, signer, apps,
+    trust: trust.mode === 'key-list' ? {mode: trust.mode, sequence: trust.sequence, expiresAt: trust.expiresAt, rootSha256: trust.rootSha256,
+      catalogKeys: trust.catalogKeys, pointerKeys: trust.pointerKeys} : {mode: trust.mode}};
 }
 
 function appHtml(app) {
@@ -140,14 +164,14 @@ export function renderHtml(store) {
 <p class="lead">Awai Network のアプリを入手するための入口です。</p>
 <section class="card notice" aria-labelledby="status">
 <h2 id="status">開発版です</h2>
-<p>ここに載っているアプリとカタログは、開発用の鍵で署名した開発版です。正式なリリースではありません。本番の署名鍵と、鍵の更新・失効の仕組みはまだありません。</p>
+<p>ここに載っているアプリとカタログは、開発用の鍵で署名した開発版です。正式なリリースではありません。${store.trust?.mode === 'key-list' ? '本番の署名鍵はまだありません。' : '本番の署名鍵と、鍵の更新・失効の仕組みはまだありません。'}</p>
 </section>
 <div class="columns">
 <section class="card how" aria-labelledby="how">
 <h2 id="how">入手のしかた</h2>
 <dl class="stacked">
 <div><dt>Awai OS</dt><dd>Itonami Store が入っています。Store を開いてアプリを選びます。</dd></div>
-<div><dt>Android</dt><dd>Android 15 以降が必要です。一覧から APK を取得して入れられます。Store 本体の一般向けの配布は準備中です。</dd></div>
+<div><dt>Android</dt><dd>Android 13 以降が必要です。一覧から APK を取得して入れられます。Store 本体の一般向けの配布は準備中です。</dd></div>
 <div><dt>iPhone・iPad</dt><dd>提供していません。</dd></div>
 <div><dt>Mac・Windows・Linux</dt><dd>提供していません。</dd></div>
 </dl>
@@ -169,7 +193,10 @@ apksigner verify --print-certs 取得したファイル.apk</code></pre>
 <div><dt>署名つきの最新 pointer</dt><dd>sequence ${esc(store.sequence)}、${esc(date(store.pointerExpiresAt))} まで有効</dd></div>
 <div><dt>署名つきカタログ</dt><dd>revision ${esc(store.revision)}</dd></div>
 <div><dt>固定した commit</dt><dd>${esc(store.sourceRevision)}</dd></div>
-<div><dt>カタログの署名者</dt><dd>${esc(store.signer.slice(0, 8))}…（開発用の鍵）</dd></div>
+${store.trust?.mode === 'key-list'
+  ? `<div><dt>鍵の一覧</dt><dd>sequence ${esc(store.trust.sequence)}、${esc(date(store.trust.expiresAt))} まで有効（root ${esc(store.trust.rootSha256.slice(0, 8))}…、開発用）</dd></div>
+<div><dt>カタログの署名鍵</dt><dd>${store.trust.catalogKeys.map(k => esc(k.slice(0, 8)) + '…').join('、')}（開発用）</dd></div>`
+  : `<div><dt>カタログの署名者</dt><dd>${esc(store.signer.slice(0, 8))}…（開発用の鍵）</dd></div>`}
 </dl>
 </section>
 <a class="button secondary source" href="site-manifest.json">生成元と digest を見る</a>
@@ -181,11 +208,11 @@ apksigner verify --print-certs 取得したファイル.apk</code></pre>
 `;
 }
 
-export function buildSite(input) {
-  const store = verifyStore(input);
+export async function buildSite(input) {
+  const store = await verifyStore(input);
   const files = {'index.html': Buffer.from(renderHtml(store), 'utf8'), 'style.css': input.css, 'logo.png': input.logo};
   const manifest = {schema: 'awai.store-site.v1', pointerSequence: store.sequence, catalogRevision: store.revision,
-    sourceRevision: store.sourceRevision, signer: store.signer, development: true,
+    sourceRevision: store.sourceRevision, signer: store.signer, trust: store.trust, development: true,
     apps: store.apps.map(a => ({id: a.id, versionCode: a.versionCode, sha256: a.download?.sha256 ?? null, url: a.download?.url ?? null})),
     files: Object.fromEntries(Object.entries(files).map(([name, bytes]) => [name, sha256(bytes)]))};
   files['site-manifest.json'] = Buffer.from(JSON.stringify(manifest, null, 2) + '\n', 'utf8');
@@ -195,7 +222,8 @@ export function buildSite(input) {
 export function repositoryInput(root, now) {
   return {
     pointerBytes: readFileSync(join(root, 'store/latest/pointer-envelope.json')),
-    signerPem: readFileSync(join(root, 'store/keys/dev-catalog-signer.pem')),
+    rootDer: readFileSync(join(root, 'store/keys/store-root.der')),
+    keysBytes: readFileSync(join(root, 'store/latest/keys-envelope.json')),
     css: readFileSync(join(root, 'store/site/style.css')),
     logo: readFileSync(join(root, 'store/site/logo.png')),
     read: path => existsSync(join(root, path)) ? readFileSync(join(root, path)) : null,
@@ -211,7 +239,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   if (existsSync(out)) { console.error('destination must be new'); process.exit(2); }
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
   const now = value('--now') ? Number(value('--now')) : Math.floor(Date.now() / 1000);
-  const {store, files} = buildSite(repositoryInput(root, now));
+  const {store, files} = await buildSite(repositoryInput(root, now));
   mkdirSync(out, {recursive: true});
   for (const [name, bytes] of Object.entries(files)) writeFileSync(join(out, name), bytes);
   console.log(JSON.stringify({out, sequence: store.sequence, revision: store.revision, apps: store.apps.length,

@@ -1,0 +1,12 @@
+diff --git a/BoardConfig.mk b/BoardConfig.mk
+index a37bc15a5312f5d241fb49532bf362d29b77667c..5558c3ee3451577ec5457657feba6a7f417027b4 100644
+--- a/BoardConfig.mk
++++ b/BoardConfig.mk
+@@ -13,6 +13,7 @@ AB_OTA_UPDATER := false
+ 
+ # Boot image
+ BOARD_BOOT_HEADER_VERSION := 4
++BOARD_MKBOOTIMG_ARGS += --header_version $(BOARD_BOOT_HEADER_VERSION)
+ 
+ # Boot manager
+ TARGET_BOOT_MANAGER := grub

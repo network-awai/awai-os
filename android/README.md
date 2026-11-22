@@ -35,6 +35,22 @@ python3 android/build-tests.py --version 1
 
 Account linking also requires the owning shell’s lockfile-pinned npm dependencies: run `npm ci` inside `otehon/shell` before building. `android/build-identity.mjs` bundles the existing awai.link.v1 verifier, device-key custody and QR renderer; the canonical runtime stays an external, digest-checked module. `--home-only` builds Home without rebuilding Store/Yotei.
 
+### Signing key and release builds (AWAI-3761)
+
+By default `build.py` signs the APKs and the catalog with the local Android debug identity and builds debuggable APKs, as before (`signing: local-android-debug-only`). Another key is given with three options together:
+
+```sh
+export STORE_KS_PASS=...   # set it without echoing; the value is never put on a command line or in a report
+python3 android/build.py --version 1 --skip-cljs --release \
+  --keystore /path/to/keystore.p12 --key-alias <alias> --keystore-pass-env STORE_KS_PASS
+```
+
+`--release` builds non-debuggable APKs (`signing: release-key`, `debuggable: false`) and refuses the Android debug identity, a missing password variable, an APK whose single signer is not the given key, and a debuggable result. The keystore may be JKS or PKCS12; the keystore and the key use the same password. `python3 android/tests/release-signing.py` checks all of this with a throwaway key (about two minutes; nothing is installed or published).
+
+Key list (AWAI-3775, design `docs/otehon/itonami-store-key-list-design-20261122.md`): the Store pins a root public key and a root-signed list of catalog and pointer keys. `python3 android/key-list.py` exports a key's public key (`export`), writes the list text and the facts for a sign request (`prepare`: SHA-256, sequence, validity, key IDs per role), signs exactly that text with the root (`sign --expected-sha256 … --expected-root …`), and checks a result with the Store's rules (`verify`). Key IDs are the SHA-256 of the SubjectPublicKeyInfo. `build.py --key-list DIR --catalog-keystore K --catalog-key-alias A --catalog-pass-env NAME` bundles the root and the list into the Store, signs the bundled catalog with that catalog key (refused unless it is listed, and never the APK key) and reports `trust`. By default the build uses the published development list (`store/keys/store-root.der`, `store/latest/keys-envelope.json`) and the development catalog key in `~/.android/awai-store-dev` (see `store/keys/README.md`); without that key it stops. `publish-latest-pointer.py` signs with a listed pointer key (default: the development pointer key) and refuses a key the list does not list for the pointer role; `android/sign-catalog-envelope.py` signs a distribution catalog of any number of apps with a listed catalog key. `python3 android/tests/key-list-signing.py` checks all of this with throwaway keys (about ten minutes with the full build; nothing is installed or published).
+
+Release boundary: no production key or production rotation/revocation operation is qualified here. The current key-list profile separates APK, catalog and pointer signing roles: `build.py` refuses configuring the same resolved keystore path and alias for the APK and catalog roles and requires the catalog key to be listed for that role. Trust in development catalogs and pointers follows the configured root-signed key list, separately from the Store APK identity. A Store APK signed by a different signer cannot update a development Store in place. The ordinary supplied `--*-apk` inputs are checked against the configured APK signer (not the catalog key), so a development-signed input is refused when a different release APK signer is configured. Dedicated pinned-signer inputs, such as Registry Assoc, have their own admission path. `build-tests.py` still signs the instrumentation APK with the debug identity.
+
 Build outputs, signed APKs, public fingerprint/digests and tool logs stay in `.agent-output/android`. The existing debug key stays in Android's credential directory and is never copied to source or reports. `build.py` never connects to or installs on a device.
 
 The build generates tokens/CSS/resources from one shared palette, compiles shared domain functions once for both browser clients, and packages original Figma assets. Raw SVG dimensions are retained:24px controls,28px Store header source and64px featured calendar source. API-supplied installed app icons remain dynamic. Design-time Aozora/Murakumo/Itonami placeholders are not advertised as installable without actual release artifacts.

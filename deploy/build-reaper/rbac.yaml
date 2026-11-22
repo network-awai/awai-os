@@ -1,0 +1,40 @@
+# The reaper reads cluster inventory only. It gets no Secret, write or exec
+# permission. Its Vultr key reaches the Pod through secretKeyRef (kubelet), so
+# no ServiceAccount in this namespace can read Secrets through the API.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: build-reaper
+  namespace: build-reaper
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: default
+  namespace: build-reaper
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: build-reaper-inventory
+rules:
+  - apiGroups: [""]
+    resources: ["nodes", "pods"]
+    verbs: ["list"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: build-reaper-inventory
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: build-reaper-inventory
+subjects:
+  - kind: ServiceAccount
+    name: build-reaper
+    namespace: build-reaper
