@@ -42,6 +42,24 @@ wizard and mkbootimg inputs, builds `otapackage` for lamu and
 re-downloads and verifies every digest. The Mac keeps only logs and the
 manifest in `$AWAI_SAME_BUILD_OUT`.
 
+## Efficiency (AWAI-3850 plan)
+
+- **Cache in B2**: `build-inside.sh` restores `src` + `ccache` from
+  `b2://awai-os-release-artifacts/awai-same-build-cache/v1/` and saves them
+  back at the end, keyed by the recorded pinned-manifest SHA in `cache.json`.
+  Caches are content-addressed, so a restore for a different snapshot is
+  still correct — the build re-syncs to the pinned branch. The B2 key cannot
+  delete, so retire a generation by bumping `CACHE_PREFIX` (v1 → v2) and
+  noting the old prefix in the issue; keep at most two generations.
+- **Parallelism**: jobs are capped by memory (`MemTotal / 4 GiB`), not cores.
+- **Split runs**: `TARGETS=lamu` or `TARGETS=generic` builds one device per
+  run on the shared cache; upload is per-run.
+- **Plan choice**: compare plans by cost per completed build, not per hour.
+  In `nrt` the 128 GiB plan is unavailable; `vc2-16c-64gb` is the baseline.
+- **Cadence**: rebuild the base ROM only when the pinned manifest or overlay
+  changes. App updates ship as the same built APK set through the Store
+  without a ROM rebuild.
+
 ## After the build
 
 1. moto: flash `lamu-images.tar` / sideload `lamu-ota.zip` with the bootloader

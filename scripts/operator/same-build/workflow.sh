@@ -37,7 +37,8 @@ job() {
     command=$(cat)
     jq -n --arg name "$name" --arg ns "$namespace" --arg pool "$pool" --arg image "$image" \
         --arg command "$command" --arg cpu "$cpu" --arg memory "$memory" --arg space "$space" \
-        --argjson deadline "$deadline" --arg bucket "$bucket" --arg prefix "$prefix" --arg secret "$secret" '
+        --argjson deadline "$deadline" --arg bucket "$bucket" --arg prefix "$prefix" --arg secret "$secret" \
+        --arg targets "${TARGETS:-lamu,generic}" '
       {apiVersion:"batch/v1",kind:"Job",metadata:{name:$name,namespace:$ns},spec:{
         backoffLimit:0,activeDeadlineSeconds:$deadline,template:{
          metadata:{annotations:{"cluster-autoscaler.kubernetes.io/safe-to-evict":"false"}},
@@ -46,7 +47,7 @@ job() {
           tolerations:[{key:"awai.network/release-build",operator:"Equal",value:"release",effect:"NoSchedule"}],
           containers:[{name:"worker",image:$image,
            env:[{name:"DEBIAN_FRONTEND",value:"noninteractive"},{name:"AWAI_ARTIFACT_BUCKET",value:$bucket},
-                {name:"AWAI_ARTIFACT_PREFIX",value:$prefix}],
+                {name:"AWAI_ARTIFACT_PREFIX",value:$prefix},{name:"TARGETS",value:$targets}],
            envFrom:[{secretRef:{name:$secret}}],command:["bash","-euo","pipefail","-c",$command],
            resources:{requests:{cpu:$cpu,memory:$memory,"ephemeral-storage":$space}},
            volumeMounts:[{name:"workspace",mountPath:"/root/build"}]}],

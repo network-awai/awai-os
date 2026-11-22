@@ -8,6 +8,13 @@ SRC=${SRC:-/root/build/src}
 KIT=${KIT:-/root/build/kit/same-build}
 UP=${UP:-/root/build/upload}
 export USE_CCACHE=1 CCACHE_DIR=${CCACHE_DIR:-/root/build/ccache}
+export CCACHE_MAXSIZE=${CCACHE_MAXSIZE:-50G} CCACHE_COMPRESS=true
+TARGETS=${TARGETS:-lamu,generic}
+CACHE_PREFIX=${CACHE_PREFIX:-awai-same-build-cache/v1}
+# Parallelism is bounded by memory, not cores: large links spike past 4 GiB/job.
+mem_gb=$(( $(awk '/MemTotal/ {print $2}' /proc/meminfo) / 1024 / 1024 ))
+JOBS=$(( $(nproc) < mem_gb / 4 ? $(nproc) : mem_gb / 4 ))
+(( JOBS < 1 )) && JOBS=1
 mkdir -p "$SRC" "$UP" /root/build/bin
 stage() { printf 'AWAI3850_STAGE=%s %s\n' "$1" "$(date -u +%FT%TZ)"; }
 
@@ -18,6 +25,24 @@ export PATH="/root/build/bin:$PATH"
 git config --global user.email same-build@awai.network
 git config --global user.name "Awai same-build"
 git config --global color.ui false
+
+stage cache-restore
+# Content-addressed caches are safe to restore for any snapshot: the build
+# still syncs to the pinned branch and verifies the recorded manifest.
+if rclone lsf "art:$AWAI_ARTIFACT_BUCKET/$CACHE_PREFIX/" 2>/dev/null | grep -qx cache.json; then
+  mkdir -p /root/build/cache-dl
+  rclone copy "art:$AWAI_ARTIFACT_BUCKET/$CACHE_PREFIX/" /root/build/cache-dl -q --transfers 2 || true
+  if [[ -s /root/build/cache-dl/src.tar.zst ]]; then
+    ( cd /root/build && zstd -dc cache-dl/src.tar.zst | tar -xf - ) || true
+  fi
+  if [[ -s /root/build/cache-dl/ccache.tar.zst ]]; then
+    mkdir -p "$CCACHE_DIR"
+    ( cd "$CCACHE_DIR" && zstd -dc /root/build/cache-dl/ccache.tar.zst | tar -xf - ) || true
+  fi
+  echo "AWAI3850_CACHE_RESTORED $(cat /root/build/cache-dl/cache.json 2>/dev/null || echo unknown)"
+else
+  echo "AWAI3850_CACHE_MISS"
+fi
 
 stage sync
 cd "$SRC"
@@ -58,40 +83,71 @@ repo manifest -r -o "$UP/pinned-manifest.xml"
 sha256sum "$UP/pinned-manifest.xml" > "$UP/pinned-manifest.xml.sha256"
 repo forall -c 'echo "$REPO_PATH $REPO_LREV"' > "$UP/source-revisions.txt" || true
 
-stage build-lamu
-breakfast lamu userdebug
-m -j"$(nproc)" otapackage 2>&1 | tee /root/build/build-lamu.log
 lamu_out="$SRC/out/target/product/lamu"
-ls "$lamu_out"/*.zip "$lamu_out"/boot.img >/dev/null
-
-stage build-generic
-breakfast Generic_x86_64 userdebug
-m -j"$(nproc)" target-files-package otatools liveisoimage 2>&1 | tee /root/build/build-generic.log
 gen_out="$SRC/out/target/product/Generic_x86_64"
-ls "$gen_out"/*-live.iso >/dev/null
-# The physical PC needs AMD firmware in the vendor image; fail loudly if absent.
-unzip -l "$gen_out"/obj/PACKAGING/target_files_intermediates/*target_files.zip | grep -q 'amdgpu' || {
-  echo "AWAI3850_ERROR: no amdgpu firmware in Generic target-files" >&2; exit 1; }
+if [[ ",$TARGETS," = *",lamu,"* ]]; then
+  stage build-lamu
+  breakfast lamu userdebug
+  m -j"$JOBS" otapackage 2>&1 | tee /root/build/build-lamu.log
+  ls "$lamu_out"/lineage-*.zip "$lamu_out"/boot.img >/dev/null
+fi
+if [[ ",$TARGETS," = *",generic,"* ]]; then
+  stage build-generic
+  breakfast Generic_x86_64 userdebug
+  m -j"$JOBS" target-files-package otatools liveisoimage 2>&1 | tee /root/build/build-generic.log
+  ls "$gen_out"/*-live.iso >/dev/null
+  # The physical PC needs AMD firmware in the vendor image; fail loudly if absent.
+  unzip -l "$gen_out"/obj/PACKAGING/target_files_intermediates/*target_files.zip | grep -q 'amdgpu' || {
+    echo "AWAI3850_ERROR: no amdgpu firmware in Generic target-files" >&2; exit 1; }
+fi
+ccache -s > "$UP/ccache-stats.txt" 2>/dev/null || true
 
 stage collect
 mkdir -p "$UP/files"
 cp "$UP/pinned-manifest.xml" "$UP/pinned-manifest.xml.sha256" "$UP/source-revisions.txt" "$UP/files/"
-cp /root/build/build-lamu.log /root/build/build-generic.log "$UP/files/"
-cp "$lamu_out"/lineage-*.zip "$UP/files/lamu-ota.zip"
-( cd "$lamu_out" && tar -cf "$UP/files/lamu-images.tar" \
-    boot.img init_boot.img vendor_boot.img dtbo.img vbmeta.img vbmeta_system.img \
-    system.img system_ext.img product.img vendor.img vendor_dlkm.img system_dlkm.img 2>/dev/null || \
-  tar -cf "$UP/files/lamu-images.tar" boot.img system.img vendor.img )
-cp "$gen_out"/*-live.iso "$UP/files/generic-live.iso"
-cp "$gen_out"/obj/PACKAGING/target_files_intermediates/*target_files.zip "$UP/files/generic-target-files.zip"
-cp "$gen_out/kernel" "$UP/files/generic-kernel"
-cp "$gen_out/ramdisk-all-combined.img" "$UP/files/generic-ramdisk.img"
+cp "$UP/ccache-stats.txt" "$UP/files/" 2>/dev/null || true
+if [[ ",$TARGETS," = *",lamu,"* ]]; then
+  cp /root/build/build-lamu.log "$UP/files/"
+  cp "$lamu_out"/lineage-*.zip "$UP/files/lamu-ota.zip"
+  ( cd "$lamu_out" && tar -cf "$UP/files/lamu-images.tar" \
+      boot.img init_boot.img vendor_boot.img dtbo.img vbmeta.img vbmeta_system.img \
+      system.img system_ext.img product.img vendor.img vendor_dlkm.img system_dlkm.img 2>/dev/null || \
+    tar -cf "$UP/files/lamu-images.tar" boot.img system.img vendor.img )
+fi
+if [[ ",$TARGETS," = *",generic,"* ]]; then
+  cp /root/build/build-generic.log "$UP/files/"
+  cp "$gen_out"/*-live.iso "$UP/files/generic-live.iso"
+  cp "$gen_out"/obj/PACKAGING/target_files_intermediates/*target_files.zip "$UP/files/generic-target-files.zip"
+  cp "$gen_out/kernel" "$UP/files/generic-kernel"
+  cp "$gen_out/ramdisk-all-combined.img" "$UP/files/generic-ramdisk.img"
+fi
 for d in lamu Generic_x86_64; do
   unzip -p "$SRC/out/target/product/$d/obj/PACKAGING/target_files_intermediates/"*target_files.zip \
     SYSTEM/build.prop > "$UP/files/build-prop-$d.txt" 2>/dev/null || \
-  cp "$SRC/out/target/product/$d/system/build.prop" "$UP/files/build-prop-$d.txt" || true
+  cp "$SRC/out/target/product/$d/system/build.prop" "$UP/files/build-prop-$d.txt" 2>/dev/null || true
 done
 ( cd "$UP/files" && sha256sum -- * > SHA256SUMS )
+
+stage cache-save
+# Keep at most the current generation; the key has no delete scope, so old
+# generations are retired by changing CACHE_PREFIX (see README).
+mkdir -p /root/build/cache-up
+( cd "$CCACHE_DIR" && tar -cf - . | zstd -q -T"$(nproc)" -3 -c > /root/build/cache-up/ccache.tar.zst )
+( cd /root/build && tar --exclude='src/out' -cf - src | zstd -q -T"$(nproc)" -3 -c > /root/build/cache-up/src.tar.zst )
+python3 - > /root/build/cache-up/cache.json <<'PYEOF'
+import json, os, datetime
+def size(name): return os.path.getsize("/root/build/cache-up/" + name)
+manifest_sha = ""
+try: manifest_sha = open("/root/build/upload/pinned-manifest.xml.sha256").read().split()[0]
+except OSError: pass
+print(json.dumps({"schema": "awai.same-build-cache.v1",
+  "created": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+  "pinnedManifestSha256": manifest_sha,
+  "ccacheBytes": size("ccache.tar.zst"), "srcBytes": size("src.tar.zst")}, indent=1))
+PYEOF
+rclone copy /root/build/cache-up "art:$AWAI_ARTIFACT_BUCKET/$CACHE_PREFIX/" -q --transfers 2 --b2-chunk-size 96M --b2-upload-cutoff 200M || \
+  echo "AWAI3850_CACHE_SAVE_FAILED (non-fatal)"
+echo "AWAI3850_CACHE_SAVED"
 
 stage upload
 ( cd "$UP/files" && tar --sparse -cf - . | zstd -q -T"$(nproc)" -3 -c > "$UP/artifacts.tar.zst" )
