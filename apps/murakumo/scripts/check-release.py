@@ -23,7 +23,7 @@ net_app=app.parent/'murakumo-net'
 # Release-only in a Store catalog: the medical caller, the inference app and Murakumo Net (Dev review #430).
 MEDICAL={'network.awai.murakumo','network.itonami.karute',NET_PACKAGE}
 REVIEWED={'tauri':'3.0.0-alpha.6','wry':'0.57.2','tauri-runtime-wry':'3.0.0-alpha.6'}
-DEBUGGABLE,TEST_ONLY,NAME=0x0101000f,0x01010272,0x01010003
+DEBUGGABLE,TEST_ONLY,ALLOW_BACKUP,NAME=0x0101000f,0x01010272,0x01010280,0x01010003
 # The inference app (prompts, possibly PHI) must not hold these: Android then refuses its sockets.
 INFERENCE_PACKAGE='network.awai.murakumo'
 NETWORK_PERMISSIONS={'android.permission.INTERNET'}
@@ -39,6 +39,7 @@ def source_failures(base=app,inference=True)->list:
  for p in (NETWORK_PERMISSIONS if inference else ()):
   if re.search(r'<uses-permission(?:-sdk-23)?\s+android:name="%s"'%re.escape(p),manifest):f.append(f'manifest: requests {p} (the inference app must not reach the network)')
  if inference and re.search(r'tools:node="(?:merge|replace)"[^>]*INTERNET|INTERNET[^>]*tools:node',manifest):f.append('manifest: INTERNET through a tools:node rule')
+ if inference and not re.search(r'android:allowBackup\s*=\s*"false"',manifest):f.append('manifest: allowBackup is not false (generated images and models must stay out of backup)')
  cargo=(base/'src-tauri/Cargo.toml').read_text()
  if 'devtools' in cargo:f.append('Cargo.toml: devtools feature (keeps CDP on in release)')
  conf=json.loads((base/'src-tauri/tauri.conf.json').read_text())
@@ -83,11 +84,11 @@ def axml_elements(data:bytes):
  return out
 
 def axml_application_flags(data:bytes)->dict:
- """debuggable / testOnly on <application> in a binary AndroidManifest.xml."""
+ """debuggable / testOnly / allowBackup on <application> in a binary AndroidManifest.xml."""
  flags={}
  for name,attrs in axml_elements(data):
   if name!='application':continue
-  for rid,key in((DEBUGGABLE,'debuggable'),(TEST_ONLY,'testOnly')):
+  for rid,key in((DEBUGGABLE,'debuggable'),(TEST_ONLY,'testOnly'),(ALLOW_BACKUP,'allowBackup')):
    v=attrs.get(rid)
    if v is not None:flags[key]=isinstance(v,tuple) and v[0]==0x12 and v[1]!=0
  return flags
@@ -113,7 +114,10 @@ def merged_manifest_failures(xml_path:pathlib.Path)->list:
  A='{http://schemas.android.com/apk/res/android}';root=ET.parse(xml_path).getroot()
  if root.get('package') not in(None,INFERENCE_PACKAGE):return []
  perms={e.get(A+'name') for e in root.iter() if e.tag in('uses-permission','uses-permission-sdk-23')}
- return [f'merged manifest requests {p} (the inference app must not reach the network)' for p in sorted(perms&NETWORK_PERMISSIONS)]
+ f=[f'merged manifest requests {p} (the inference app must not reach the network)' for p in sorted(perms&NETWORK_PERMISSIONS)]
+ app=root.find('application')
+ if app is None or app.get(A+'allowBackup')!='false':f.append('merged manifest: allowBackup is not false (generated images and models must stay out of backup)')
+ return f
 
 def apk_failures(apk:pathlib.Path,check_pins=True)->list:
  f=[]
@@ -126,6 +130,7 @@ def apk_failures(apk:pathlib.Path,check_pins=True)->list:
    f+=[f'{n}: Murakumo Net carries no native library but its Rust app library' for n in libs if not n.endswith('/libmurakumo_net_app_lib.so')]
   if flags.get('debuggable'):f.append('APK is debuggable (debug build: devtools and console forwarding on)')
   if flags.get('testOnly'):f.append('APK is testOnly')
+  if pkg==INFERENCE_PACKAGE and flags.get('allowBackup') is not False:f.append('APK allows backup (generated images and models must stay out of backup)')
   for n in z.namelist():
    if re.fullmatch(r'lib/[^/]+/libmurakumo(?:_net)?_app_lib\.so',n) and b'setWebContentsDebuggingEnabled' in z.read(n):
     f.append(f'{n}: WebView devtools code is compiled in (debug_assertions or the devtools feature)')
