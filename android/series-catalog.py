@@ -230,6 +230,35 @@ def built_after_source(app, release, repos):
     return None if r.returncode == 0 else f'built-before-{scheme_code(app["source"])[0]}-source'
 
 
+ISIC_REVISIONS = {'isic-rev4': 'ISIC Rev.4', 'isic-rev5': 'ISIC Rev.5'}
+SERIES_DESCRIPTION = '{classification} の系列アプリ（開発版）。記録と判断はこの端末の中だけで行い、外部への送信はありません。'
+
+
+def isic_description(app, commit, repos):
+    """The listed description of an ISIC app. The revision is not written by hand: it is the classification key of
+    the app's blueprint.edn at the commit the APK was built from (`:itonami.blueprint/isic-rev4` or `isic-rev5`), which
+    must name exactly one revision and the app's own code. No text from the UN classification (includes, excludes)
+    goes into the description."""
+    if repos is None:
+        raise Refused(f'{app["source"]}: reading the ISIC revision needs --repos with a clone of {app["repo"]}')
+    clone = repos / app['source']
+    if not (clone / '.git').exists():
+        raise Refused(f'{app["source"]}: no clone at {clone}')
+    r = subprocess.run(['git', '-C', str(clone), 'show', f'{commit}:blueprint.edn'], capture_output=True, text=True)
+    if r.returncode:
+        raise Refused(f'{app["source"]}: blueprint.edn is not readable at {commit[:12]}; fetch the history')
+    keys = re.findall(r':itonami\.blueprint/(isic-rev[0-9]+)\s+"([^"]*)"', r.stdout)
+    if len(keys) != 1:
+        raise Refused(f'{app["source"]}: blueprint.edn at {commit[:12]} names {len(keys)} ISIC revisions '
+                      f'({", ".join(k for k, _ in keys) or "none"}); exactly one of isic-rev4 / isic-rev5 is expected')
+    key, code = keys[0]
+    if key not in ISIC_REVISIONS:
+        raise Refused(f'{app["source"]}: blueprint.edn at {commit[:12]} uses {key}, which the Store does not know')
+    if code != scheme_code(app['source'])[1]:
+        raise Refused(f'{app["source"]}: blueprint.edn at {commit[:12]} gives {key} {code}, not the code of {app["source"]}')
+    return SERIES_DESCRIPTION.format(classification=f'{ISIC_REVISIONS[key]} {code}')
+
+
 def read_source_marks(text, scheme):
     """isco-source.tsv or unspsc-source.tsv: a header `repo<TAB>commit<TAB>ja`, then one row per repository of that
     scheme whose source text is checked. commit is the 40-hex commit that added it; ja is true when the app has a
@@ -339,6 +368,15 @@ def generate(table, inputs, revision, expires_at, base=None, repos=None, marks=N
                                            f'({MARKED_SCHEMES[scheme][0]}); rebuild from {mark[:12]} or a later commit'})
                 excluded.append(item)
                 continue
+        if scheme == 'isic':
+            if not (isinstance(release.get('source_commit'), str) and re.fullmatch(r'[0-9a-f]{40}', release['source_commit'])):
+                excluded.append({'source': s, 'id': app['id'], 'reason': 'release-without-commit',
+                                 'detail': 'the ISIC revision is read from blueprint.edn at the build commit'})
+                continue
+            generated = isic_description(app, release['source_commit'], repos)
+            if 'description' in app and app['description'] != generated:
+                raise Refused(f'{s}: the table description {app["description"]!r} disagrees with blueprint.edn, which gives {generated!r}')
+            app['description'] = generated
         if app['id'] in present:
             raise Refused(f'{s}: {app["id"]} is already in the base catalog')
         e, facts = entry(app, directory, table)

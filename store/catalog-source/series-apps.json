@@ -1,6 +1,6 @@
 {
  "schema": "awai.store.series-apps.v1",
- "note": "Series apps for the Store catalog, in App Cycle order (the order App Build makes APKs); `--top N` limits a catalog to ranks 1..N. release.json carries no APK signer, so this table maps each app to its APK signing-key group: one key per ISIC section and per ISCO-08 major group (AWAI-3771). Development: every group is still the Android debug identity. An ISCO-08 app is left out of the generated catalog until isco-source.tsv names the commit that added the ISCO-08 source text, and its release.json records a clean build (dirty false) from source_commit that is that one or a later one. UNSPSC apps have no rank: they are held (hold.json) and App Cycle places them when the hold is lifted; their key group is the UNSPSC segment (owner answer 2026-11-22), and their source marks live in unspsc-source.tsv.",
+ "note": "Series apps for the Store catalog, in App Cycle order (the order App Build makes APKs); `--top N` limits a catalog to ranks 1..N. release.json carries no APK signer, so this table maps each app to its APK signing-key group: one key per ISIC section and per ISCO-08 major group (AWAI-3771). Development: every group is still the Android debug identity. An ISCO-08 app is left out of the generated catalog until isco-source.tsv names the commit that added the ISCO-08 source text, and its release.json records a clean build (dirty false) from source_commit that is that one or a later one. UNSPSC apps have no rank: they are held (hold.json) and App Cycle places them when the hold is lifted; their key group is the UNSPSC segment (owner answer 2026-11-22), and their source marks live in unspsc-source.tsv. ISIC apps have no description here: the generator writes it from the classification key of the app's blueprint.edn (isic-rev4 or isic-rev5) at the commit the APK was built from.",
  "publisher": "Awai Otehon 開発版",
  "maxApkBytes": 67108864,
  "groups": {
@@ -71,16 +71,14 @@
    "source": "isic-7810",
    "id": "network.itonami.isic7810",
    "repo": "cloud-itonami/app-itonami-cloud-itonami-isic-7810",
-   "group": "isic-N",
-   "description": "ISIC Rev.4 7810 の系列アプリ（開発版）。記録と判断はこの端末の中だけで行い、外部への送信はありません。"
+   "group": "isic-N"
   },
   {
    "rank": 3,
    "source": "isic-7820",
    "id": "network.itonami.isic7820",
    "repo": "cloud-itonami/app-itonami-cloud-itonami-isic-7820",
-   "group": "isic-N",
-   "description": "ISIC Rev.4 7820 の系列アプリ（開発版）。記録と判断はこの端末の中だけで行い、外部への送信はありません。"
+   "group": "isic-N"
   },
   {
    "rank": 4,
@@ -111,32 +109,28 @@
    "source": "isic-7120-cyberassurance",
    "id": "network.itonami.isic7120cyberassurance",
    "repo": "cloud-itonami/app-itonami-cloud-itonami-isic-7120-cyberassurance",
-   "group": "isic-M",
-   "description": "ISIC Rev.4 7120 の系列アプリ（開発版）。記録と判断はこの端末の中だけで行い、外部への送信はありません。"
+   "group": "isic-M"
   },
   {
    "rank": 8,
    "source": "isic-6209",
    "id": "network.itonami.isic6209",
    "repo": "cloud-itonami/app-itonami-cloud-itonami-isic-6209",
-   "group": "isic-J",
-   "description": "ISIC Rev.4 6209 の系列アプリ（開発版）。記録と判断はこの端末の中だけで行い、外部への送信はありません。"
+   "group": "isic-J"
   },
   {
    "rank": 9,
    "source": "isic-8020",
    "id": "network.itonami.isic8020",
    "repo": "cloud-itonami/app-itonami-cloud-itonami-isic-8020",
-   "group": "isic-N",
-   "description": "ISIC Rev.4 8020 の系列アプリ（開発版）。記録と判断はこの端末の中だけで行い、外部への送信はありません。"
+   "group": "isic-N"
   },
   {
    "rank": 10,
    "source": "isic-6311-chainexplorer",
    "id": "network.itonami.isic6311chainexplorer",
    "repo": "cloud-itonami/app-itonami-cloud-itonami-isic-6311-chainexplorer",
-   "group": "isic-J",
-   "description": "ISIC Rev.4 6311 の系列アプリ（開発版）。記録と判断はこの端末の中だけで行い、外部への送信はありません。"
+   "group": "isic-J"
   },
   {
    "rank": 11,
@@ -151,8 +145,7 @@
    "source": "isic-8810",
    "id": "network.itonami.isic8810",
    "repo": "cloud-itonami/app-itonami-cloud-itonami-isic-8810",
-   "group": "isic-Q",
-   "description": "ISIC Rev.4 8810 の系列アプリ（開発版）。記録と判断はこの端末の中だけで行い、外部への送信はありません。"
+   "group": "isic-Q"
   },
   {
    "rank": 13,

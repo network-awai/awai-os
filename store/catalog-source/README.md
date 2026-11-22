@@ -33,6 +33,11 @@ the repositories' current `main`); the series build stamps `network.itonami.<sch
   one key per ISIC Rev.4 section and per ISCO-08 major group; first-party apps have one key each (decision on
   AWAI-3771). `android/series-catalog.py` checks that each app's group follows from its code. In development,
   every group's signer is the Android debug identity `2507930b…`.
+- **ISIC revision.** ISIC apps have no description in the table. The generator writes
+  `ISIC Rev.N NNNN の系列アプリ（開発版）。…` from the classification key of the app's `blueprint.edn`
+  (`:itonami.blueprint/isic-rev4` or `isic-rev5`) at the `source_commit` the APK was built from, read in the clone
+  under `--repos`. A blueprint with both keys, neither, or another code stops the run; so does a description put back
+  in the table that disagrees with the blueprint. No text from the UN classification (includes, excludes) is used.
 - **ISCO-08 source text.** The marks are in `isco-source.tsv` (`repo`, `commit`, `ja`); they apply only to apps in
   `series-apps.json`. An ISCO-08 app stays out until it has a row whose commit added the final ISCO-08 source text,
   and its `release.json` records a `source_commit` that is that one or later (checked in a local clone with `--repos`).
