@@ -37,6 +37,8 @@ try{
  await step('provider-contract','node',['--test','apps/murakumo/test/contract.test.mjs']);
  await step('provider-apk','npm',['run','tauri','--prefix','apps/murakumo','--','android','build','--apk','--target','aarch64','--debug']);
  const provider=path.join(root,'apps/murakumo/src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk');result.artifacts.provider=await hash(provider);
+ // PHI rule: the inference app's merged manifest requests no INTERNET (apps/murakumo/scripts/check-release.py).
+ await step('provider-no-internet','python3',['apps/murakumo/scripts/check-release.py','--no-internet',provider]);
  if(!options['--model'])throw Error('pinned public model input required; no download fallback');result.artifacts.model=await hash(options['--model']);
  await step('immediate-stop-os-reboot-inference','node',['android/test/run-auth-emulator.mjs',`--apk=${consumer}`,`--provider=${provider}`,`--model=${path.resolve(options['--model'])}`,'--restart=abrupt']);
  const text=await readFile(path.join(out,'immediate-stop-os-reboot-inference.log'),'utf8');const reportPath=JSON.parse(text.slice(text.indexOf('{'))).report;

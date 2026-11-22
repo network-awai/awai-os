@@ -1,0 +1,31 @@
+sh_test(
+    name = "installer_test",
+    srcs = ["run-python-test.sh"],
+    args = ["test_awai_pc_install.py"],
+    data = [
+        ":awai-pc-install.py",
+        ":test_awai_pc_install.py",
+    ],
+    size = "small",
+    tags = ["no-remote"],
+)
+
+sh_test(
+    name = "ota_feed_test",
+    srcs = ["run-python-test.sh"],
+    args = ["test_updater_feed.py"],
+    data = [
+        ":test_updater_feed.py",
+        ":updater-feed.py",
+    ],
+    size = "small",
+    tags = ["no-remote"],
+)
+
+test_suite(
+    name = "pc_verification",
+    tests = [
+        ":installer_test",
+        ":ota_feed_test",
+    ],
+)
