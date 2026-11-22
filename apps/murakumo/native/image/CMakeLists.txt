@@ -19,6 +19,6 @@ include_directories(${SPIRV_INCLUDE_DIR})
 add_subdirectory(${SD_SOURCE} sd)
 add_library(awai_diffusion SHARED image.cpp)
 target_include_directories(awai_diffusion PRIVATE ${SD_SOURCE}/include)
-target_link_libraries(awai_diffusion PRIVATE stable-diffusion log)
+target_link_libraries(awai_diffusion PRIVATE stable-diffusion)
 # This engine and llama use independently pinned ggml versions. Never interpose them.
 target_link_options(awai_diffusion PRIVATE -Wl,--exclude-libs,ALL -Wl,-Bsymbolic)

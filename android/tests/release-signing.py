@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Check build.py --release with a throwaway key (AWAI-3761).
+"""Check build.py --release with a throwaway key (AWAI-3761). The catalog is signed by the development catalog key
+of the key list (AWAI-3775), so ~/.android/awai-store-dev must hold it.
 
 Creates a PKCS12 keystore with a random password in a temporary directory, builds the hosts with it and
 checks every APK: exactly that signer, not the Android debug identity, not debuggable. Then the refusals.
@@ -56,14 +57,23 @@ def main():
                 check(f'{apk.name}: single signer is the given key', re.findall(r'certificate SHA-256 digest: ([a-f0-9]{64})', certs) == [expected], certs[:300])
                 check(f'{apk.name}: not the Android debug identity', 'CN=Android Debug' not in certs)
                 check(f'{apk.name}: not debuggable', 'application-debuggable' not in badging)
+            # AWAI-3775: the catalog is signed by a catalog key from the bundled key list, not by the APK key.
             with zipfile.ZipFile(out / 'store-v1.apk') as z:
-                spki, raw, sig = (z.read('assets/' + n) for n in ('catalog-key.der', 'catalog.json', 'catalog.sig'))
-            pem = subprocess.run(['openssl', 'pkey', '-pubin', '-inform', 'DER'], input=spki, capture_output=True, check=True).stdout
-            (tmp / 'pub.pem').write_bytes(pem); (tmp / 'raw').write_bytes(raw); (tmp / 'sig').write_bytes(sig)
+                names = set(z.namelist())
+                raw, sig = z.read('assets/catalog.json'), z.read('assets/catalog.sig')
+                bundled = {n: z.read('assets/' + n) for n in ('store-root.der', 'keys.txt', 'keys.sig')}
+            check('Store bundles the published root and key list, not a single catalog key',
+                  'assets/catalog-key.der' not in names and bundled['store-root.der'] == (ROOT / 'store/keys/store-root.der').read_bytes()
+                  and bundled['keys.txt'] == json.loads((ROOT / 'store/latest/keys-envelope.json').read_text())['raw'].encode())
+            (tmp / 'raw').write_bytes(raw); (tmp / 'sig').write_bytes(sig)
             cert_spki = subprocess.run(['openssl', 'x509', '-inform', 'DER', '-pubkey', '-noout'], input=der, capture_output=True, check=True).stdout
-            check('Store pins the given key for its catalog', pem.strip() == cert_spki.strip())
-            verified = subprocess.run(['openssl', 'dgst', '-sha256', '-verify', str(tmp / 'pub.pem'), '-signature', str(tmp / 'sig'), str(tmp / 'raw')], capture_output=True)
-            check('bundled catalog verifies with that key', verified.returncode == 0)
+            (tmp / 'apk.pem').write_bytes(cert_spki)
+            by_apk_key = subprocess.run(['openssl', 'dgst', '-sha256', '-verify', str(tmp / 'apk.pem'), '-signature', str(tmp / 'sig'), str(tmp / 'raw')], capture_output=True)
+            check('the APK key does not sign the catalog', by_apk_key.returncode != 0)
+            trust = report.get('trust', {})
+            check('bundled catalog is signed by a listed catalog key', trust.get('mode') == 'key-list' and trust.get('catalogKey') in
+                  json.loads(subprocess.run([sys.executable, str(ROOT / 'android/key-list.py'), 'verify', '--dir', str(out / 'key-list')],
+                                            capture_output=True, text=True).stdout)['catalogKeys'], json.dumps(trust))
             leaked = [n for n, t in (('stdout', r.stdout), ('stderr', r.stderr), ('report', (out / 'build-v1.json').read_text())) if password in t]
             check('password is absent from output and report', not leaked, str(leaked))
 

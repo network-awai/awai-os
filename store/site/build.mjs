@@ -6,13 +6,12 @@
 // Nothing is listed unless the pointer signature, the catalog signature, the pins and the
 // local bytes all agree. Development signer only: there is no production key yet.
 //
-// Trust (AWAI-3775): with the root public key (store/keys/store-root.der) and the root-signed key list
-// (store/latest/keys-envelope.json), the pointer must be signed by a listed pointer key and the catalog by a
-// listed catalog key, with the same rules as the Store (android/client/key-list.js, KeyList.java). Without
-// them, the single development signer certificate (store/keys/dev-catalog-signer.pem) is used, as before.
+// Trust (AWAI-3775): the root public key (store/keys/store-root.der) and the root-signed key list
+// (store/latest/keys-envelope.json). The pointer must be signed by a listed pointer key and the catalog by a
+// listed catalog key, with the same rules as the Store (android/client/key-list.js, KeyList.java).
 //
 //   node store/site/build.mjs --out <new dir> [--now <epoch seconds>]
-import {createHash, createPublicKey, verify, X509Certificate} from 'node:crypto';
+import {createHash} from 'node:crypto';
 import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {dirname, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -26,12 +25,6 @@ const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const fail = code => { throw new Error(code); };
 const esc = text => String(text).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 
-function signerKey(pem, expected) {
-  const cert = new X509Certificate(pem);
-  if (sha256(cert.raw) !== expected) fail('signer-fingerprint');
-  return createPublicKey(cert.publicKey.export({type: 'spki', format: 'pem'}));
-}
-
 function envelopeOf(bytes, code) {
   const envelope = JSON.parse(bytes.toString('utf8'));
   if (Object.keys(envelope).sort().join() !== 'raw,signature') fail(code + '-shape');
@@ -39,9 +32,9 @@ function envelopeOf(bytes, code) {
   return envelope;
 }
 
-// Who may sign the catalog and the pointer: the key list under the root, or the single signer certificate.
-async function trustOf({rootDer, keysBytes, signerPem, signer = DEV_SIGNER, now}) {
-  if (rootDer || keysBytes) {
+// Who may sign the catalog and the pointer: the key list under the root.
+async function trustOf({rootDer, keysBytes, now}) {
+  {
     if (!rootDer || !keysBytes) fail('keys-missing');
     const envelope = envelopeOf(keysBytes, 'keys');
     const raw = Buffer.from(envelope.raw, 'utf8');
@@ -54,8 +47,6 @@ async function trustOf({rootDer, keysBytes, signerPem, signer = DEV_SIGNER, now}
       catalogKeys: fingerprints(CATALOG), pointerKeys: fingerprints(POINTER),
       signed: (role, data, sig) => authentic(list, role, new Uint8Array(data), new Uint8Array(sig))};
   }
-  const key = signerKey(signerPem, signer);
-  return {mode: 'single-signer', signed: async (role, data, sig) => verify('RSA-SHA256', data, key, sig)};
 }
 
 async function openEnvelope(bytes, trust, role, code) {
@@ -80,8 +71,9 @@ function date(seconds) {
 
 // Verify everything and return the facts the page shows. `read(path)` returns the bytes of a
 // repository path, or null when the file is not present locally.
-export async function verifyStore({pointerBytes, signerPem, rootDer, keysBytes, read, now, signer = DEV_SIGNER}) {
-  const trust = await trustOf({rootDer, keysBytes, signerPem, signer, now});
+// `signer` is the development APK signer; it only labels APKs, it does not sign the catalog or the pointer.
+export async function verifyStore({pointerBytes, rootDer, keysBytes, read, now, signer = DEV_SIGNER}) {
+  const trust = await trustOf({rootDer, keysBytes, now});
   const pointer = await openEnvelope(pointerBytes, trust, POINTER, 'pointer');
   if (pointer.schema !== 'itonami.store.latest.v1') fail('pointer-schema');
   if (!Number.isSafeInteger(pointer.sequence) || pointer.sequence < 1) fail('pointer-sequence');
@@ -230,10 +222,8 @@ export async function buildSite(input) {
 export function repositoryInput(root, now) {
   return {
     pointerBytes: readFileSync(join(root, 'store/latest/pointer-envelope.json')),
-    signerPem: readFileSync(join(root, 'store/keys/dev-catalog-signer.pem')),
-    // The key list replaces the single signer once both files are in the repository (AWAI-3775).
-    rootDer: existsSync(join(root, 'store/keys/store-root.der')) ? readFileSync(join(root, 'store/keys/store-root.der')) : null,
-    keysBytes: existsSync(join(root, 'store/latest/keys-envelope.json')) ? readFileSync(join(root, 'store/latest/keys-envelope.json')) : null,
+    rootDer: readFileSync(join(root, 'store/keys/store-root.der')),
+    keysBytes: readFileSync(join(root, 'store/latest/keys-envelope.json')),
     css: readFileSync(join(root, 'store/site/style.css')),
     logo: readFileSync(join(root, 'store/site/logo.png')),
     read: path => existsSync(join(root, path)) ? readFileSync(join(root, path)) : null,

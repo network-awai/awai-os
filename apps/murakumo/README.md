@@ -12,6 +12,7 @@ Use installed CMake, Android NDK27.0.12077973, SDK37, JDK21 and Rust Android tar
 
 ```sh
 python3 apps/murakumo/scripts/build-native.py arm64-v8a x86_64
+python3 apps/murakumo/scripts/verify-native-pins.py   # SHA-256 against native-pins.json
 npm ci --prefix apps/murakumo
 npm run build --prefix apps/murakumo
 npm test --prefix apps/murakumo
@@ -21,7 +22,7 @@ npm run tauri --prefix apps/murakumo -- android build --apk --target aarch64 --d
 
 Shared `.cljc` admission is actually compiled to CLJS. The Java/Kotlin and C++ adapters independently enforce request, context/output, model digest, memory-residency and concurrency limits. One model, four CPU threads, context2048, prompt8192 UTF-8 bytes, output256 tokens, CPU abort callback/deadline90s. Model loading itself is bounded by the admitted639,446,688-byte artifact, not claimed to obey the generation deadline. Cancel produces no completed output. Release frees the model; process death requires a new explicit load.
 
-The app has no INTERNET permission, no listening HTTP server, no remote inference or app-origin BFF. The static frontend talks only to its scoped Tauri native command. The host engine stays on the user's device. Android lifecycle/ordinary app memory behavior is not a foreground-resident-service guarantee.
+The app has **no INTERNET permission** (PHI rule): Android refuses its sockets, so a prompt or an output cannot leave this uid even if code changes. Model downloads and the pinned device-usage reads moved to **Murakumo Net** (`network.awai.murakumo.net`, [`apps/murakumo-net`](../murakumo-net/README.md)), which hands each downloaded file over through `InferenceStatusProvider` "admit". It has no listening HTTP server, no remote inference or app-origin BFF. The static frontend talks only to its scoped Tauri native command. The host engine stays on the user's device. Android lifecycle/ordinary app memory behavior is not a foreground-resident-service guarantee.
 
 ## App-to-app contract
 
@@ -30,6 +31,48 @@ The app has no INTERNET permission, no listening HTTP server, no remote inferenc
 Development signer is the existing Android debug identity. Production signer/allowlist rotation, independent permission-adversary APK tests, store delivery, model acquisition UX, full phone/desktop lifecycle, image/video engines and Awai FS output sync remain separate qualification work. The SDK's presence is not acceptance of every consumer app. Home enrollment, Itonami authentication and local inference are distinct; no owner identity is fabricated/copied to expose this view.
 
 6600H is reserved by the independent AWAI-2992 persistence chat. This task stops all physical ADB/install/settings/reboot operations until that work releases the device. VM tests use only `emulator-5570`.
+
+## PHI path (karute)
+
+karute passes medical text through `awai_local_inference`. The prompt and the output must not reach a log, a
+metric, a crash report or the network, and must not leave the device. The checks below hold that in the
+source and in the shipped artifact; `.github/workflows/murakumo-phi-path.yml` runs them, each with a
+negative control. Synthetic data only.
+
+- **Screen:** `InferenceRequestActivity` sets `FLAG_SECURE` on its own window and on the confirmation
+  dialog's window, and turns off its Recents snapshot. The prompt excerpt stays out of screenshots, screen
+  recording and the Recents thumbnail.
+- **Errors and logs:** the inference path logs nothing. Errors leave only as a fixed code from
+  `ErrorCodes.kt`; an exception's message is compared with that list, never passed on. The JNI entry
+  points catch every C++ exception, so a failed request does not reach `std::terminate` (whose message
+  goes to logcat and the tombstone). The image engine no longer writes to logcat either.
+- **PHI callers** (`Models.phiCallers`, now karute): the confirmation shows only the length and category
+  ("健康の情報を含む N 文字のテキスト"), never the text, and the image modality is refused until the image
+  path's PNG/JSON files have a deletion and retention rule (privacy review §4 item 8).
+- **Lint:** `scripts/phi-path-lint.mjs` (test: `test/phi-path.test.mjs`) fails on Android logging,
+  `console.*`, printing, network APIs (java.net, OkHttp, sockets, fetch, sendBeacon, std::net …) and
+  non-fixed error text in the 15 files the prompt passes through, from `packages/awai-inference` to the
+  JNI engines. A new source file in those directories fails the lint until it is listed in `FILES` or,
+  with a reason, in `NOT_ON_PATH`.
+- **Native libraries:** `scripts/build-native.py` builds the text engine reproducibly (host paths mapped
+  out, stripped, fixed build info). `native-pins.json` holds the SHA-256 of each library for both ABIs;
+  `scripts/verify-native-pins.py [--dir DIR | --apk APK]` compares them and also fails when a pinned
+  library imports Android logging, sockets or name resolution. In an APK, a `.so` that is neither pinned
+  nor in the documented `UNPINNED` set (the Rust app library, the image engine) fails. Gradle packages these libraries
+  unchanged, so an APK carries the pinned bytes. The image engine (`libawai_diffusion.so`) is not
+  pinned yet.
+- **No INTERNET:** this app's merged manifest requests no `android.permission.INTERNET`.
+  `scripts/check-release.py --no-internet APK` (any build type; the operator lane `ci/android/run.mjs` runs it),
+  `--merged-manifest XML` (Gradle's merged manifest), `--apk` (release) and `--source` check it. The negative
+  controls use committed fixture APKs (`test/fixtures/manifest/`), so Tatara runs them without an SDK.
+- **Release only:** a debug build turns on WebView devtools (CDP) and copies `console.*` to logcat. Only
+  a release build may go to a medical caller. `scripts/check-release.py --source` checks the release
+  configuration (not debuggable, no `devtools` feature, the reviewed Tauri/wry versions, no
+  `setWebContentsDebuggingEnabled`); `--apk APK` checks a built APK (not debuggable or testOnly, no
+  devtools code in the Rust library, native pins); `--catalog RAW` checks that every Murakumo or karute
+  entry in a Store catalog points at an APK that passes `--apk`. Tests: `test/release_check_test.py`. Tatara (`.tatara/pipeline.edn`) runs the lint and these checks offline;
+  the Linux rebuild of the pins is in `.github/workflows/murakumo-phi-path.yml` (GitHub Actions is off
+  for this repository, so it does not run yet).
 
 ## Model manager domain (AWAI-3240)
 
@@ -82,6 +125,8 @@ The app now lists the pinned catalog with each model's fit on this device, from 
 
 ## Model download (stage 4b, AWAI-3307)
 
+> Since the INTERNET split, downloads run in Murakumo Net (`apps/murakumo-net`), not in this app. The flow below is unchanged there, except that the finished file is handed to `network.awai.murakumo` ("admit") instead of being renamed in place. `test/live-download-4b.mjs` still drives the old single app and must be moved to the two-app flow before it is run again.
+
 Each catalog model can be downloaded from Hugging Face. The canonical client-runtime broker carries the download, with its `host-stream` artifact delivery ([kotoba-lang/kotoba#1356](https://github.com/kotoba-lang/kotoba/pull/1356)).
 
 - **Declaration:** `client/download-contract.js` declares one operation per catalog model:
@@ -105,6 +150,8 @@ Each catalog model can be downloaded from Hugging Face. The canonical client-run
 `test/live-download-4b.mjs` runs the real APK on an emulator this run owns. It taps the canonical consent dialog with UI Automator and walks through four steps: Deny, Stop partway, a full download, then load and generate. It relaunches after the upstream wry startup timeout and presses "Wait" on system ANR dialogs, and it records each case. Evidence: [`docs/evidence/murakumo-download-4b-20261118.json`](../../docs/evidence/murakumo-download-4b-20261118.json), 15/15, with [the phone screen](../../docs/evidence/murakumo-download-4b-20261118-phone.png). Qwen3 0.6B (609.8 MiB) took 168 s on a loaded host.
 
 ## All devices (stage 5, AWAI-3377)
+
+> Since the INTERNET split, the pinned-device reads run in Murakumo Net; this app shows only this device. `test/live-devices-5.mjs` must be moved to Murakumo Net before it is run again.
 
 The All devices section lists this device and every owner-pinned device in `devices.json` (id, kind, HTTPS origin, raw Ed25519 public key). The build validates the file and ships it as a module. Each pinned device adds one usage read to the client descriptor, and its origin to the CSP.
 

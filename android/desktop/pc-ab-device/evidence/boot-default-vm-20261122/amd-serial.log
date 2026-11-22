@@ -1,0 +1,44 @@
+[=3h[=3hBdsDxe: loading Boot0001 "UEFI QEMU NVMe Ctrl awai0 1" from PciRoot(0x0)/Pci(0x1,0x0)/NVMe(0x1,00-00-00-00-00-00-00-00)
+BdsDxe: starting Boot0001 "UEFI QEMU NVMe Ctrl awai0 1" from PciRoot(0x0)/Pci(0x1,0x0)/NVMe(0x1,00-00-00-00-00-00-00-00)
+INFO: boot_a=(hd0,gpt9) boot_b=(hd0,gpt10) vendor_boot_a=(hd0,gpt7)
+vendor_boot_b=(hd0,gpt8) misc=(hd0,gpt3)
+error: /t/gw/grub-core/video/video.c:grub_video_set_mode:782:no suitable video
+mode found.
+error: /t/gw/grub-core/video/video.c:grub_video_get_info:54:no video mode
+activated.
+INFO: awai_gpu virtio= amd_class=300
+default=advancedoptions-virtio_x86_64
+>android-awai-pc-amd-mesaINFO: awai_gpu virtio= amd_class=300
+default=advancedoptions-virtio_x86_64>android-awai-pc-amd-mesa
+
+GNU GRUB  version 2.15
+
++----------------------------------------------------------------------------+||||||||||||||||||||||+----------------------------------------------------------------------------+     Use the ^ and v keys to select which entry is highlighted.          
+      Press enter to boot the selected OS, `e' to edit the commands       
+      before booting or `c' for a command-line. ESC to return             
+      previous menu.                                                        LineageOS 24.0                                                              LineageOS 24.0 Recovery                                                     Settings                                                                    Advanced options                                                           *Advanced options (virtio_x86_64 specific)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           GNU GRUB  version 2.15
+
+┌────────────────────────────────────────────────────────────────────────────┐││││││││││││││││││││││││││││││││││││││││││││││││││││││││││││││││││││││││││└────────────────────────────────────────────────────────────────────────────┘     Use the ▲ and ▼ keys to select which entry is highlighted.          
+      Press enter to boot the selected OS, `e' to edit the commands       
+      before booting or `c' for a command-line. ESC to return previous    
+      menu.                                                                 LineageOS 24.0                                                              LineageOS 24.0 Recovery                                                     Settings                                                                    Advanced options                                                           *Advanced options (virtio_x86_64 specific)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      The highlighted entry will be executed automatically in 10s.                   The highlighted entry will be executed automatically in 10s.                   The highlighted entry will be executed automatically in 9s.                    The highlighted entry will be executed automatically in 9s.                    The highlighted entry will be executed automatically in 8s.                    The highlighted entry will be executed automatically in 8s.                    The highlighted entry will be executed automatically in 7s.                    The highlighted entry will be executed automatically in 7s.                    The highlighted entry will be executed automatically in 6s.                    The highlighted entry will be executed automatically in 6s.                    The highlighted entry will be executed automatically in 5s.                    The highlighted entry will be executed automatically in 5s.                    The highlighted entry will be executed automatically in 4s.                    The highlighted entry will be executed automatically in 4s.                    The highlighted entry will be executed automatically in 3s.                    The highlighted entry will be executed automatically in 3s.                    The highlighted entry will be executed automatically in 2s.                    The highlighted entry will be executed automatically in 2s.                    The highlighted entry will be executed automatically in 1s.                    The highlighted entry will be executed automatically in 1s.                    The highlighted entry will be executed automatically in 0s.                    The highlighted entry will be executed automatically in 0s.                     Booting `Advanced options (virtio_x86_64 specific)'Booting `Advanced options (virtio_x86_64 specific)'
+
+
+
+    Booting `Awai PC (AMD Radeon, Mesa graphics)'Booting `Awai PC (AMD Radeon, Mesa graphics)'
+
+
+
+INFO: Booting active slot a...INFO: Booting active slot a...
+
+Loading parameters...Loading parameters...
+
+Loading kernel...Loading kernel...
+
+Loading ramdisk...Loading ramdisk...
+
+[    6.466956][    T1] kvm_intel: VMX not supported by CPU 0
+[   43.129660][    T1] Problem parsing in-kernel X.509 certificate list
+[   46.522446][    T1] init: Failed to read vbmeta partitions.
+[   53.479220][    T1] init: Do not have permissions to set 'persist.bluetooth.a2dp_aac.vbr_supported' to 'true' in property file '/vendor/build.prop': SELinux permission check failed (source_context=u:r:vendor_init:s0, target_context=u:object_r:bluetooth_prop:s0)
+[   55.628736][    T1] init: /vendor/etc/init/hw/init.mainline.rc: 9: ParseTriggers() failed: unexported property trigger found: sys.bootstat.first_boot_completed

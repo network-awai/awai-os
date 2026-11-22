@@ -66,13 +66,11 @@ public final class AutoUpdater {
         SharedPreferences prefs = c.getSharedPreferences(AutoInstall.PREFS, 0);
         try {
             KeyList key = StoreTrust.load(c);
-            if (key.rooted()) {
-                // A newer key list replaces or withdraws role keys. A refused or unreachable list keeps the one in use.
-                try { KeyList fetched = StoreTrust.admit(c, fetch(StoreTrust.URL, StoreTrust.MAX_ENVELOPE_BYTES));
-                    if (fetched.sequence > key.sequence) log(c, "keys", null, "sequence " + fetched.sequence);
-                    key = fetched; }
-                catch (Exception notAdopted) { log(c, notAdopted instanceof SecurityException ? "keys-refused" : "keys-unreachable", null, code(notAdopted)); }
-            }
+            // A newer key list replaces or withdraws role keys. A refused or unreachable list keeps the one in use.
+            try { KeyList fetched = StoreTrust.admit(c, fetch(StoreTrust.URL, StoreTrust.MAX_ENVELOPE_BYTES));
+                if (fetched.sequence > key.sequence) log(c, "keys", null, "sequence " + fetched.sequence);
+                key = fetched; }
+            catch (Exception notAdopted) { log(c, notAdopted instanceof SecurityException ? "keys-refused" : "keys-unreachable", null, code(notAdopted)); }
             long floor = prefs.getLong("pointer-sequence", 0);
             LatestPointer p = LatestPointer.verifyEnvelope(fetch(LatestPointer.URL, LatestPointer.MAX_ENVELOPE_BYTES), key, now, floor);
             prefs.edit().putLong("pointer-sequence", p.sequence).commit();
@@ -119,6 +117,7 @@ public final class AutoUpdater {
         String raw = e.getString("raw"), signature = e.getString("signature");
         JSONObject candidate = Catalog.verifyMetadata(raw.getBytes(StandardCharsets.UTF_8),
                 android.util.Base64.decode(signature, android.util.Base64.DEFAULT), key, now);
+        Catalog.checkOnline(candidate);
         long revision = candidate.getLong("revision");
         if (revision < new Catalog(c).valueRevision()) throw new SecurityException("catalog-rollback");
         JSONArray listed = candidate.getJSONArray("apps");
@@ -132,8 +131,7 @@ public final class AutoUpdater {
             }
             if (digest == null || !digest.equals(pin.getValue().sha256)) throw new SecurityException("unpinned-artifact");
         }
-        if (!c.getSharedPreferences("online", 0).edit().putString("raw", raw).putString("signature", signature)
-                .putLong("highest", revision).commit()) throw new SecurityException("catalog-store");
+        if (!Catalog.saveOnline(c, raw, signature, revision)) throw new SecurityException("catalog-store");
     }
 
     private static void stage(Context c, LatestPointer p, String id, LatestPointer.Pin pin) throws Exception {

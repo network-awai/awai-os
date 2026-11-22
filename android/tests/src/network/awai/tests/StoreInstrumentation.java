@@ -19,8 +19,8 @@ public final class StoreInstrumentation extends Instrumentation {
     private void check(boolean value,String name){assertions++;if(!value)throw new AssertionError(name);}
     private interface Action{void run() throws Exception;}
     private void refuses(Action action,String name)throws Exception{boolean failed=false;try{action.run();}catch(Exception expected){failed=true;}check(failed,name);}
-    private static void verifySigned(JSONObject value,KeyPair pair)throws Exception{
-        byte[] raw=value.toString().getBytes(StandardCharsets.UTF_8);java.security.Signature signer=java.security.Signature.getInstance("SHA256withRSA");signer.initSign(pair.getPrivate());signer.update(raw);Catalog.verifyMetadata(raw,signer.sign(),KeyList.legacy(pair.getPublic().getEncoded()),System.currentTimeMillis()/1000);
+    private void verifySigned(JSONObject value,KeyPair pair)throws Exception{
+        byte[] raw=value.toString().getBytes(StandardCharsets.UTF_8);long now=System.currentTimeMillis()/1000;Catalog.verifyMetadata(raw,sign(raw,pair),list(1,now,pair,rsa()),now);
     }
     // AWAI-3662: the signed latest-catalog pointer.
     private static final String REV="ed429b406cbecc048f3cb41a9f31a1fb4a4a636d";
@@ -40,6 +40,24 @@ public final class StoreInstrumentation extends Instrumentation {
     private byte[] listBytes(long seq,long now,KeyPair cat,KeyPair ptr){return ("itonami.store.keys.v1\nsequence "+seq+"\nissued "+(now-60)+"\nexpires "+(now+90*86_400L)+"\nkey catalog "+b64(cat)+"\nkey pointer "+b64(ptr)+"\n").getBytes(StandardCharsets.US_ASCII);}
     private KeyList list(long seq,long now,KeyPair cat,KeyPair ptr)throws Exception{byte[] raw=listBytes(seq,now,cat,ptr);return KeyList.verify(raw,sign(raw,root),root.getPublic().getEncoded(),now,0);}
     private LatestPointer accept(JSONObject v,KeyPair pair,long now,long floor)throws Exception{byte[] raw=v.toString().getBytes(StandardCharsets.UTF_8);return LatestPointer.verify(raw,sign(raw,pair),list(1,now,catalogKey,pair),now,floor);}
+    // AWAI-3771: apps admitted by the signed catalog itself, such as the classification-series apps.
+    private void catalogRule()throws Exception{
+        for(String[] c:new String[][]{{"network.itonami.isco2423","isco2423"},{"network.itonami.isic6311chainexplorer","isic6311chainexplorer"}})
+            check(("packages/"+c[1]+".apk").equals(Catalog.assetFor(c[0]))&&("online-"+c[1]+".apk").equals(Catalog.onlineFileFor(c[0]))
+                &&Catalog.maxApkBytes(c[0])==Catalog.MAX_CATALOG_APP_BYTES,c[1]+" admitted by the catalog rule");
+        for(String bad:new String[]{"network.itonami.isco-2423","network.itonami.Isco2423","network.itonami.a","network.other.isco2423","network.itonami.isco2423.x"})
+            refuses(()->Catalog.assetFor(bad),"not a catalog app id: "+bad);
+        check("packages/yotei.apk".equals(Catalog.assetFor("network.itonami.yotei"))&&Catalog.maxApkBytes("network.itonami.yotei")==40*1024*1024,"named apps keep their own rules");
+        long now=System.currentTimeMillis()/1000;KeyPair cat=rsa();KeyList keys=list(1,now,cat,rsa());
+        for(String asset:new String[]{"packages/isco2423.apk","packages/yotei.apk"}){
+            JSONObject c=new JSONObject().put("schema","itonami.store.bundled.v1").put("revision",1).put("expiresAt",now+86_400L)
+                .put("apps",new JSONArray().put(new JSONObject().put("id","network.itonami.isco2423").put("versionCode",1)
+                    .put("artifacts",new JSONArray().put(new JSONObject().put("platform","android").put("asset",asset)))));
+            byte[] b=c.toString().getBytes(StandardCharsets.UTF_8);
+            if(asset.equals("packages/isco2423.apk"))check(Catalog.verifyMetadata(b,sign(b,cat),keys,now).getJSONArray("apps").length()==1,"series app listed with its own asset");
+            else refuses(()->Catalog.verifyMetadata(b,sign(b,cat),keys,now),"series app pointed at another app's file");
+        }
+    }
     private void roles()throws Exception{
         long now=System.currentTimeMillis()/1000;KeyPair ptr=rsa(),next=rsa();KeyList keys=list(2,now,catalogKey,ptr);
         byte[] p=pointer(5,now-60,now+86_400L).toString().getBytes(StandardCharsets.UTF_8);
@@ -83,7 +101,7 @@ public final class StoreInstrumentation extends Instrumentation {
             JSONObject v=pointer(5,now-day,now+10*day);v.getJSONObject("pins").getJSONObject("apks").put("network.itonami.torihiki",pin(url,sha,1));
             refusesPointer(v,pair,now,1,"pointer url "+url);
         }
-        JSONObject unknown=pointer(5,now-day,now+10*day);unknown.getJSONObject("pins").getJSONObject("apks").put("network.itonami.notlisted",pin(BASE+"x.apk",sha,1));
+        JSONObject unknown=pointer(5,now-day,now+10*day);unknown.getJSONObject("pins").getJSONObject("apks").put("network.itonami.not.listed",pin(BASE+"x.apk",sha,1));
         refusesPointer(unknown,pair,now,1,"pointer unknown app");
         JSONObject over=pointer(5,now-day,now+10*day);over.getJSONObject("pins").getJSONObject("apks").put("network.itonami.torihiki",pin(BASE+"x.apk",sha,Catalog.maxApkBytes("network.itonami.torihiki")+1));
         refusesPointer(over,pair,now,1,"pointer over app budget");
@@ -117,7 +135,7 @@ public final class StoreInstrumentation extends Instrumentation {
                         local + " APK bytes and package/signer/version");
             }
         }
-        refuses(()->Catalog.assetFor("network.itonami.notlisted"),"unlisted network.itonami id refuses");
+        refuses(()->Catalog.assetFor("network.itonami.not.listed"),"unlisted network.itonami id with two segments refuses");
         check("packages/aozora.apk".equals(Catalog.assetFor("app.aozora")),"Aozora fixed bundled asset");
         check("online-aozora.apk".equals(Catalog.onlineFileFor("app.aozora")),"Aozora fixed online file");
         check(Catalog.maxApkBytes("app.aozora")==64*1024*1024,"Aozora size limit");
@@ -149,8 +167,8 @@ public final class StoreInstrumentation extends Instrumentation {
         refuses(()->catalog.app("network.awai.notallowed"),"unknown app refuses");
         long expires=catalog.app("network.itonami.yotei").getLong("versionCode");
         refuses(()->Catalog.verifyMetadata(raw,sig,trust,Long.MAX_VALUE),"expired metadata refuses");
-        byte[] wrong=KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic().getEncoded();
-        check(!KeyList.legacy(wrong).authentic(KeyList.CATALOG,raw,sig),"wrong key refuses");
+        check(trust.sequence>=1&&trust.fingerprints(KeyList.CATALOG).size()>=1&&trust.fingerprints(KeyList.POINTER).size()>=1,"bundled root-signed key list");
+        check(!list(1,System.currentTimeMillis()/1000,KeyPairGenerator.getInstance("RSA").generateKeyPair(),rsa()).authentic(KeyList.CATALOG,raw,sig),"wrong key refuses");
         byte[] altered=apk.clone();altered[altered.length-1]^=1;check(!Integrity.sha256(apk).equals(Integrity.sha256(altered)),"changed APK digest");
         check(Integrity.sha256("abc".getBytes(StandardCharsets.UTF_8)).equals("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"),"SHA256 known answer");
         refuses(()->Integrity.read(new java.io.ByteArrayInputStream(new byte[10]),5),"size bound");
@@ -160,6 +178,7 @@ public final class StoreInstrumentation extends Instrumentation {
         check("unknown".equals(StorageProfile.kind("/data/user/0/app/files","invalid")),"unknown storage is not durability");
         latestPointer();
         roles();
+        catalogRule();
         result.putString("stream","Awai Android store integrity: "+assertions+" assertions passed\n");finish(-1,result);
     }catch(Throwable e){result.putString("stream","FAIL: "+e.getClass().getSimpleName()+" "+e.getMessage());finish(0,result);}}
 }

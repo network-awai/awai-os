@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Only finished, digest-checked downloads, granted one at a time to network.awai.murakumo. -->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+  <files-path name="downloads" path="downloads/" />
+</paths>

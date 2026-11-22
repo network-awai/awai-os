@@ -1,0 +1,12 @@
+{
+ "schema": "awai.store.catalog-hold.v1",
+ "note": "Apps matching a pattern are left out of the generated catalog as held, whatever else holds for them. Each hold names its reason and who decides to lift it. Read by android/series-catalog.py.",
+ "holds": [
+  {
+   "pattern": "unspsc-*",
+   "reason": "Store での配布を広げる前に UNDP の addendum の確認が要る（申請の名義はオーナー、Legal が確認中）",
+   "decidedBy": "Decision",
+   "since": "2026-11-22"
+  }
+ ]
+}

@@ -39,13 +39,8 @@ export function createOnline(base,pins) {
     return new Uint8Array(await result.blob.arrayBuffer());
   }};
 }
-// trust: {root, raw, signature} (base64; the root public key and the root-signed key list, AWAI-3775), or, for a
-// package built before it bundled a list, the single pinned public key as a base64 string.
+// trust: {root, raw, signature} (base64): the root public key and the root-signed key list (AWAI-3775).
 export async function catalogSigned(trust,data,signature,now=Math.floor(Date.now()/1000)) {
-  if(typeof trust==='string'){
-    const key=await crypto.subtle.importKey('spki',base64Bytes(trust),{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['verify']);
-    return crypto.subtle.verify('RSASSA-PKCS1-v1_5',key,signature,data);
-  }
   if(!trust||typeof trust.root!=='string'||typeof trust.raw!=='string'||typeof trust.signature!=='string')throw Error('署名の鍵の一覧がありません。');
   let list;
   try{list=await verifyKeyList(base64Bytes(trust.raw),base64Bytes(trust.signature),base64Bytes(trust.root),now,0);}
