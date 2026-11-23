@@ -53,7 +53,7 @@ is replaced; the firmware route (`activate-route.mjs`/`switch-route.mjs`)
 decides which artifact directory is live, and the operator switches it back
 afterward.
 
-- `../persistence/patch-ipxe.mjs <in> install <out> [erase|shared] [sectors]`
+- `../persistence/patch-ipxe.mjs <in> install <out> [erase|shared|second] [sectors]`
   — same port/blacklist ops as the other modes; appends only a short
   `awai.install.profile/mode/sectors` marker. Image sha/bytes/url pins live
   inside the initrd overlay (`/awai/install.pins`, template
@@ -63,11 +63,11 @@ afterward.
 - `../persistence/serve-install.mjs <dir> <manifest.json>` — same static,
   manifest-pinned server as `serve-artifacts.mjs`, plus `install.img`,
   on the same 10.77.0.1:18091.
-- `../persistence/init-install.sh` — BusyBox init with fixed profile `1`,
-  mode `erase` and capacity 500118192 sectors in the initrd. The boot
-  arguments must agree with those pins. One NVMe namespace, its root/LUKS
-  UUIDs, absence of other local disks, and NIC MAC 0c:47:a9:60:9d:34 are
-  checked before configuring the link or starting diagnostics.
+- `../persistence/init-install.sh` — BusyBox init with fixed profile `1`.
+  The boot arguments must agree with the initrd pins. The historical
+  `erase` profile requires exactly one NVMe namespace with 500118192
+  sectors and the pinned root/LUKS UUIDs. Both modes check NIC MAC
+  0c:47:a9:60:9d:34 before configuring the link or starting diagnostics.
   `shared` always reports `shared-not-implemented`.
 - The installer downloads the image once over direct-LAN HTTP to a
   size-limited tmpfs. It checks the exact length, remounts the copy
@@ -81,6 +81,22 @@ afterward.
   once writing has started, including a failed sync or readback. Treat
   the disk as modified and use the owner's recovery procedure before
   attempting to boot from it.
+
+### Second-disk mode
+
+Option (c), the owner's approved install path, writes only to the blank second
+disk. Keep the original 7735HS NVMe connected. Init verifies its pinned root
+and state UUIDs and requires a different device and serial for the target.
+
+Use a second disk with 512-byte logical sectors (512e), at least 64 GiB per the
+device specification, and enough capacity for the complete image. Fill in
+`install_mode=second`, `target_serial` from the target's sysfs `device/serial`,
+and `target_sectors` from its sysfs `size` in the digest-pinned initrd
+`install.pins`. Place `init-install.sh` in the overlay as the executable
+`/awai-netboot` selected by the retained `rdinit` boot argument. Patch iPXE
+with `install <out> second <target_sectors>`.
+The init scans the entire target for zero bytes before bringing up the LAN.
+If it finds any data, deliberately blank the second disk before retrying.
 
 ## Missing inputs — the owner prepares these 9 (worker does not fetch)
 

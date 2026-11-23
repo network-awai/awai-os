@@ -34,6 +34,8 @@ if command == "blkid":
 if command == "wget":
     data = b"B" * 512 if fault == "image-digest" else b"A" * 512
     Path(args[2]).write_bytes(data * (2 if fault == "overlong" else 1))
+    if fault == "disk-replaced":
+        (root / "sys/block/nvme1n1/diskseq").write_text("3\n")
     sys.exit(int(fault == "wget-status"))
 if command == "stat":
     print(Path(args[2]).stat().st_size)
@@ -44,24 +46,32 @@ if command == "sha256sum":
     sys.exit(int(not args and fault == "hash-status"))
 if command == "dd":
     options = dict(arg.split("=", 1) for arg in args)
+    if options.get("if") == str(root / "dev/zero"):
+        sys.stdout.buffer.write(bytes(int(options["bs"]) * int(options["count"])))
+        sys.exit(0)
     assert options["bs"] == "512" and options["count"] == "1"
-    data = Path(options["if"]).read_bytes()[:512]
+    data = Path(options["if"]).read_bytes()[:512] if "if" in options else sys.stdin.buffer.read(512)
     if "of" in options:
         target = root / "dev/nvme0n1"
         assert Path(options["of"]) == target
         with target.open("r+b") as disk:
             disk.write(data)
+    elif "conv" in options:
+        assert os.path.samestat(os.fstat(1), (root / "dev/nvme1n1").stat())
+        sys.stdout.buffer.write(data)
     else:
+        if "if" not in options:
+            assert os.path.samestat(os.fstat(0), (root / "dev/nvme1n1").stat())
         sys.stdout.buffer.write(b"B" * 512 if fault == "readback-digest" else data)
         sys.exit(int(fault == "readback-status"))
     sys.exit(0)
-assert command in {"awk", "cat", "mkdir", "mkfifo"}, command
+assert command in {"awk", "cat", "cmp", "mkdir", "mkfifo"}, command
 os.execvp(command, [command, *args])
 '''
 
 
 class InitInstallTest(unittest.TestCase):
-    def run_installer(self, fault="", *, before_network=False, writes=0):
+    def run_installer(self, fault="", *, before_network=False, writes=0, second=False):
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)
             target = base / "dev/nvme0n1"
@@ -73,10 +83,12 @@ class InitInstallTest(unittest.TestCase):
             busybox.chmod(0o700)
             target.write_bytes(ORIGINAL_DISK)
             sectors = "600000000" if fault == "capacity" else "500118192"
-            mode = "shared" if fault == "shared" else "erase"
+            mode = "second" if second else "shared" if fault == "shared" else "erase"
+            target_sectors = "1" if fault == "undersized" else "2"
+            command_sectors = target_sectors if second else sectors
             profile = "2" if fault == "profile" else "1"
             (base / "proc/cmdline").write_text(
-                f"awai.install.profile={profile} awai.install.mode={mode} awai.install.sectors={sectors}\n"
+                f"awai.install.profile={profile} awai.install.mode={mode} awai.install.sectors={command_sectors}\n"
             )
             available = 262144 if fault == "low-memory" else 1048576
             (base / "proc/meminfo").write_text(f"MemAvailable: {available} kB\n")
@@ -89,7 +101,37 @@ class InitInstallTest(unittest.TestCase):
             if fault == "namespace":
                 (base / "sys/block/nvme1n1").mkdir()
             pins = f"image_url=http://10.77.0.1:18091/install.img\nimage_sha={DIGEST}\n"
-            pins += f"img_bytes={513 if fault == 'unaligned' else 512}\n"
+            image_bytes = {"unaligned": 513, "undersized": 1024}.get(fault, 512)
+            pins += f"img_bytes={image_bytes}\n"
+            if second:
+                first_sys = base / "sys/block/nvme0n1"
+                second_sys = base / "sys/block/nvme1n1"
+                second_target = base / "dev/nvme1n1"
+                for disk, serial in ((first_sys, "old-serial"), (second_sys, "new-serial")):
+                    (disk / "device").mkdir(parents=True)
+                    if disk != second_sys or fault != "serial-absent":
+                        (disk / "device/serial").write_text(serial + "   \n")
+                if fault != "existing-missing":
+                    for number in (2, 3):
+                        part = first_sys / f"nvme0n1p{number}"
+                        part.mkdir()
+                        (part / "partition").write_text(str(number))
+                if fault == "serial-duplicate":
+                    duplicate = base / "sys/block/nvme2n1/device"
+                    duplicate.mkdir(parents=True)
+                    (duplicate / "serial").write_text("new-serial\n")
+                (second_sys / "queue").mkdir()
+                (second_sys / "queue/logical_block_size").write_text("4096" if fault == "4kn" else "512")
+                (second_sys / "size").write_text(target_sectors)
+                (second_sys / "diskseq").write_text("2\n")
+                original_second = bytes(int(target_sectors) * 512 - 1) + (b"X" if fault == "nonblank" else b"\0")
+                second_target.write_bytes(original_second)
+                serial_pin = {
+                    "target-is-existing": "old-serial",
+                    "placeholder-serial": "<second-disk-device-serial>",
+                }.get(fault, "new-serial")
+                capacity_pin = "<second-disk-size-in-512-byte-sectors>" if fault == "placeholder-capacity" else target_sectors
+                pins += f"install_mode=second\ntarget_serial={serial_pin}\ntarget_sectors={capacity_pin}\n"
             if fault == "malformed-pins":
                 pins += f"image_sha={DIGEST}\n"
             if fault != "missing-pins":
@@ -105,8 +147,11 @@ class InitInstallTest(unittest.TestCase):
                 env={**os.environ, "INSTALL_TEST_FAULT": fault},
             )
             calls = (base / "calls").read_text().splitlines()
-            self.assertEqual(sum(call.startswith("dd ") and " of=" in call for call in calls), writes)
-            self.assertEqual(target.read_bytes(), IMAGE + ORIGINAL_DISK[512:] if writes else ORIGINAL_DISK)
+            self.assertEqual(sum(call.startswith("dd ") and " conv=notrunc" in call for call in calls), writes)
+            self.assertEqual(target.read_bytes(), IMAGE + ORIGINAL_DISK[512:] if writes and not second else ORIGINAL_DISK)
+            if second:
+                expected_second = IMAGE + original_second[512:] if writes else original_second
+                self.assertEqual(second_target.read_bytes(), expected_second)
             if before_network:
                 self.assertFalse(any(call.startswith(("ip ", "httpd ", "wget ", "sh ")) for call in calls))
                 self.assertFalse((base / "awai-status").exists())
@@ -183,6 +228,51 @@ class InitInstallTest(unittest.TestCase):
     def test_verified_bytes_written_once_with_bounded_count(self):
         output, calls = self.run_installer(writes=1)
         self.assertIn("AWAI_INSTALL_COMPLETE", output)
+        self.assertEqual(sum(call.startswith("wget ") for call in calls), 1)
+
+    def assert_second_refusal(self, fault, reason, *, before_network=True):
+        output, calls = self.run_installer(fault, second=True, before_network=before_network)
+        self.assertIn(f"REFUSED {reason} (disk untouched)", output)
+        self.assertNotIn("AWAI_INSTALL_COMPLETE", output)
+        self.assertNotIn("dd bs=512 count=1", calls)
+
+    def test_second_disk_absent_serial_refuses(self):
+        self.assert_second_refusal("serial-absent", "target-serial-absent")
+
+    def test_second_disk_duplicate_serial_refuses(self):
+        self.assert_second_refusal("serial-duplicate", "duplicate-target-serial")
+
+    def test_second_disk_4kn_refuses(self):
+        self.assert_second_refusal("4kn", "target-sector-size")
+
+    def test_second_disk_undersized_refuses(self):
+        self.assert_second_refusal("undersized", "target-too-small")
+
+    def test_second_disk_existing_nvme_as_target_refuses(self):
+        self.assert_second_refusal("target-is-existing", "target-is-existing-nvme")
+
+    def test_second_disk_missing_existing_nvme_refuses(self):
+        self.assert_second_refusal("existing-missing", "missing-existing-nvme")
+
+    def test_second_disk_nonzero_tail_refuses(self):
+        self.assert_second_refusal(
+            "nonblank", "target is not blank; deliberately blank the second disk before retrying"
+        )
+
+    def test_second_disk_placeholder_pins_refuse(self):
+        self.assert_second_refusal("placeholder-serial", "invalid-target-serial")
+        self.assert_second_refusal("placeholder-capacity", "invalid-target-capacity")
+
+    def test_second_disk_wrong_mac_refuses_before_network(self):
+        self.assert_second_refusal("mac", "wrong-target")
+
+    def test_second_disk_replacement_after_fetch_refuses(self):
+        self.assert_second_refusal("disk-replaced", "target-changed", before_network=False)
+
+    def test_second_disk_writes_and_reads_back_only_the_pinned_target(self):
+        output, calls = self.run_installer(second=True, writes=1)
+        self.assertIn("AWAI_INSTALL_COMPLETE", output)
+        self.assertEqual(calls.count("dd bs=512 count=1"), 1)
         self.assertEqual(sum(call.startswith("wget ") for call in calls), 1)
 
 
