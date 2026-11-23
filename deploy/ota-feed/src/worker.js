@@ -17,23 +17,44 @@
 //     updater-feed.py make-index). Publishing an index is therefore a
 //     git-reviewed `wrangler deploy` of this Worker. No KV/D1/object store
 //     is involved; only the free Worker tier.
-//   - Payload bytes are content-addressed on the yataverse protocol. A
-//     blob at /v1/pc/pilot/blobs/<sha256>.zip (or /v1/pc/pilot/<sha256>.zip)
-//     is fetched from https://yataverse.com/ipfs/<CID> where
-//     CIDv1 = base32(0x01 || 0x55 || 0x12 || 0x20 || sha256-bytes),
-//     i.e. a raw-codec (0x55) sha2-256 (0x12) multihash with a 32-byte
-//     digest. No data map is maintained. The client's Range header is
-//     forwarded upstream and 206/Content-Range pass straight through.
-//   - Uploading bytes to the yataverse network is deliberately NOT this
-//     deploy's job: this Worker 404s (payload-unavailable, never 500)
-//     until the bytes are ingested elsewhere. See README.md "Publishing".
+//   - Payload bytes are content-addressed on the yataverse protocol and
+//     served by streaming through the gateway at
+//     https://yataverse.com/ipfs/<CID>. Resolution is manifest-driven,
+//     never name-synthesized and never CID-derived-only:
+//     (a) If MANIFEST_CID (env, JSON, pinned per channel) maps the sha256
+//     to a {rootCid, chunkMap}, fetch that rootCid.
+//     (b) Otherwise, single raw blocks up to 16 MiB use the derived
+//     CIDv1 = base32(0x01 || 0x55 || 0x12 || 0x20 || sha256-bytes) —
+//     valid only for the 16 MiB single-block case (measured).
+//     (c) Anything above 16 MiB requires (a): the CAR route's dag-pb root
+//     cannot be derived from the sha256, so the root CID + chunk map must
+//     be pinned in the manifest. The packer's per-file-node bound is
+//     43.5 MiB; ingestion limits are 256 blocks / 32 MiB per POST.
+//   - 504 (and any other upstream non-200/206, or a network throw) means
+//     "not ingested": it is answered as 404, never 500, and the upstream
+//     5xx is never passed through. Range is forwarded verbatim; if the
+//     upstream answers 206, 206 + Content-Range + Accept-Ranges (+upstream
+//     ETag) pass through; if the upstream answers 200, the whole body is
+//     returned as 200 — a 206 is never synthesized (synthesizing one would
+//     break client resume). Multi-range is also forwarded verbatim.
+//   - yataverse is a distribution cache, never the only copy: receipts are
+//     state:1 local-durable-readback / storeClass:1 edge-gateway /
+//     retentionUntil:0 with no retention promise or replication proof, so
+//     the original ZIP stays on the OTA side (git or another store) and
+//     long retention needs a separate lease (R1 operator-archive).
+//   - Writes never happen here: ingestion is serial via the yataverse CLI
+//     (60 req/60s, 64 MiB/60s, WAF 10 req/10s per IP — no parallel burst;
+//     retry with the same request-id). Cost is not committed here: USD
+//     unit prices, free-tier overage absolutes and GC presence are
+//     unknown; no cost assumption is written as fact.
 //
 // Anything outside /v1/pc/pilot/ is refused (404) so no SPA, Pages
 // fallback page or other app can ever answer on this origin.
 
 import { INDEXES } from "./indexes.js";
+import { MANIFEST_SEED } from "./manifest-cids.js";
 
-export { INDEXES };
+export { INDEXES, MANIFEST_SEED };
 
 const GATEWAY = "https://yataverse.com/ipfs";
 const INDEX = /^\/v1\/pc\/pilot\/([A-Za-z0-9_-]{1,64})\/([A-Za-z0-9._-]{1,128})\/builds\.json$/;
@@ -44,8 +65,8 @@ const B32 = "abcdefghijklmnopqrstuvwxyz234567";
 
 // base32 (RFC 4648, lowercase, no padding) of the CIDv1 bytes for a sha256
 // hex digest: 0x01 (version 1) || 0x55 (raw codec) || 0x12 (sha2-256) ||
-// 0x20 (digest length 32) || digest. Vector: sha256("abc") ->
-// afkreif2pall7dybz7vecqka3zo24irdwabwdi4wc55jznaq75q7eaavvu.
+// 0x20 (digest length 32) || digest. Only valid for the single raw block
+// case (<= 16 MiB); larger payloads resolve via MANIFEST_CID.
 export function cidFromSha256(hex) {
   const bytes = new Uint8Array(4 + 32);
   bytes[0] = 0x01;
@@ -57,15 +78,31 @@ export function cidFromSha256(hex) {
   let value = 0;
   let out = "";
   for (const byte of bytes) {
-    value = (value << 8) | byte;
+    value = (value >>> 0) * 256 + byte;
     bits += 8;
     while (bits >= 5) {
       out += B32[(value >>> (bits - 5)) & 31];
       bits -= 5;
+      value &= (1 << bits) - 1;
     }
   }
   if (bits > 0) out += B32[(value << (5 - bits)) & 31];
   return out;
+}
+
+// MANIFEST_CID: pinned per channel as an env var (production source of
+// truth); the generated seed is the pre-deploy mirror for `wrangler dev`.
+// Shape: { "<sha256>": { "rootCid": "<cid>", "chunkMap": [...], "size": n } }.
+function manifestMap(env) {
+  if (env && typeof env.MANIFEST_CID === "string" && env.MANIFEST_CID) {
+    try {
+      const parsed = JSON.parse(env.MANIFEST_CID);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+    } catch {
+      // Invalid env pin: fall through to the seed rather than 500.
+    }
+  }
+  return MANIFEST_SEED || {};
 }
 
 function error(status, body, extra = {}) {
@@ -93,39 +130,46 @@ function indexResponse(device, incr, headOnly) {
   });
 }
 
-async function blobResponse(sha256, request) {
+async function blobResponse(sha256, request, env) {
   const headers = {};
   if (request.headers.has("range")) headers.range = request.headers.get("range");
   // HEAD: probe a single byte instead of downloading the whole object.
   const headOnly = request.method === "HEAD";
   if (headOnly && !headers.range) headers.range = "bytes=0-0";
+  // Manifest-first resolution: pinned (sha256 -> root CID + chunk map).
+  // CID derivation is the <= 16 MiB fallback only.
+  const pinned = manifestMap(env)[sha256];
+  const cid = pinned && pinned.rootCid ? pinned.rootCid : cidFromSha256(sha256);
   let upstream;
   try {
-    upstream = await fetch(`${GATEWAY}/${cidFromSha256(sha256)}`, { headers });
+    upstream = await fetch(`${GATEWAY}/${cid}`, { headers });
   } catch {
     return error(404, { error: "ota-payload-unavailable" });
   }
-  if (!upstream.ok && upstream.status !== 206) {
-    return upstream.status === 404
-      ? error(404, { error: "ota-payload-unavailable" })
-      : error(404, { error: "ota-payload-unavailable" });
+  // 504 (un-ingested) and every other non-200/206 are 404, never 500 and
+  // never passed through verbatim.
+  if (upstream.status !== 200 && upstream.status !== 206) {
+    return error(404, { error: "ota-payload-unavailable" });
   }
   const out = new Headers();
-  const contentType = upstream.headers.get("content-type");
-  out.set("content-type", contentType && contentType !== "application/json" ? contentType : "application/zip");
+  const contentType = upstream.headers.get("content-type") || "";
+  const isBlock = /application\/json|vnd\.ipld\./.test(contentType);
+  out.set("content-type", isBlock ? "application/zip" : contentType);
   out.set("cache-control", "public, max-age=31536000, immutable");
   out.set("x-content-type-options", "nosniff");
-  out.set("accept-ranges", "bytes");
-  out.set("etag", `"${sha256}"`);
-  // Pass Range negotiation through verbatim.
-  for (const name of ["content-range", "content-length", "content-encoding"]) {
+  // Upstream Range negotiation passes through verbatim; a 200 stays a
+  // whole-body 200 (a 206 is never synthesized; resume breaks otherwise).
+  if (upstream.headers.has("accept-ranges")) out.set("accept-ranges", upstream.headers.get("accept-ranges"));
+  else out.set("accept-ranges", "bytes");
+  for (const name of ["content-range", "content-length", "content-encoding", "etag"]) {
     if (upstream.headers.has(name)) out.set(name, upstream.headers.get(name));
   }
+  if (!out.has("etag")) out.set("etag", `"${sha256}"`);
   return new Response(headOnly ? null : upstream.body, { status: upstream.status, headers: out });
 }
 
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     if (!["GET", "HEAD"].includes(request.method)) {
       return error(405, { error: "method-not-allowed" }, { allow: "GET, HEAD" });
     }
@@ -139,7 +183,7 @@ export default {
     const index = INDEX.exec(pathname);
     if (index) return indexResponse(index[1], index[2], headOnly);
     const blob = BLOB.exec(pathname);
-    if (blob) return blobResponse(blob[1], request);
+    if (blob) return blobResponse(blob[1], request, env);
     return error(404, { error: "not-found" });
   },
 };

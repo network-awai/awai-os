@@ -143,6 +143,87 @@ describe("payload blobs", () => {
       fake.restore();
     }
   });
+
+  it("converts an upstream 504 (un-ingested) to 404, never passing it through", async () => {
+    const fake = withUpstream(() => new Response("gateway timeout", { status: 504 }));
+    try {
+      const res = await worker.fetch(new Request(`${ORIGIN}/v1/pc/pilot/blobs/${ABC_SHA}.zip`));
+      assert.equal(res.status, 404);
+      assert.deepEqual(await res.json(), { error: "ota-payload-unavailable" });
+    } finally {
+      fake.restore();
+    }
+  });
+
+  it("passes upstream 200 whole-body as 200 (never a synthesized 206)", async () => {
+    const fake = withUpstream(() => new Response("whole zip", {
+      status: 200,
+      headers: { "content-length": "9" },
+    }));
+    try {
+      const res = await worker.fetch(new Request(`${ORIGIN}/v1/pc/pilot/blobs/${ABC_SHA}.zip`, {
+        headers: { range: "bytes=0-3" },
+      }));
+      assert.equal(fake.calls[0].init.headers.range, "bytes=0-3");
+      assert.equal(res.status, 200);
+      assert.equal(res.headers.get("content-range"), null);
+      assert.equal(await res.text(), "whole zip");
+    } finally {
+      fake.restore();
+    }
+  });
+
+  it("substitutes the IPLD block content-type with application/zip", async () => {
+    const fake = withUpstream(() => new Response("car-bytes", {
+      headers: { "content-type": "application/vnd.ipld.car" },
+    }));
+    try {
+      const res = await worker.fetch(new Request(`${ORIGIN}/v1/pc/pilot/blobs/${ABC_SHA}.zip`));
+      assert.equal(res.headers.get("content-type"), "application/zip");
+      assert.equal(await res.text(), "car-bytes");
+    } finally {
+      fake.restore();
+    }
+  });
+});
+
+describe("manifest resolution", () => {
+  const CAR_CID = "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi";
+
+  it("fetches the pinned root CID, not the derived raw CID", async () => {
+    const fake = withUpstream(() => new Response("car zip", { headers: { "content-type": "application/zip" } }));
+    try {
+      const env = { MANIFEST_CID: JSON.stringify({ [ABC_SHA]: { rootCid: CAR_CID, chunkMap: [{ cid: CAR_CID }], size: 100 } }) };
+      const res = await worker.fetch(new Request(`${ORIGIN}/v1/pc/pilot/blobs/${ABC_SHA}.zip`), env);
+      assert.equal(fake.calls[0].url, `https://yataverse.com/ipfs/${CAR_CID}`);
+      assert.equal(res.status, 200);
+      assert.equal(await res.text(), "car zip");
+    } finally {
+      fake.restore();
+    }
+  });
+
+  it("falls back to the derived raw CID when unpinned", async () => {
+    const fake = withUpstream(() => new Response("raw zip", {}));
+    try {
+      const res = await worker.fetch(new Request(`${ORIGIN}/v1/pc/pilot/blobs/${ABC_SHA}.zip`), { MANIFEST_CID: "{}" });
+      assert.equal(fake.calls[0].url, `https://yataverse.com/ipfs/${ABC_CID}`);
+      assert.equal(res.status, 200);
+    } finally {
+      fake.restore();
+    }
+  });
+
+  it("survives an invalid MANIFEST_CID pin (falls back, never 500)", async () => {
+    const fake = withUpstream(() => new Response("raw zip", {}));
+    try {
+      const res = await worker.fetch(new Request(`${ORIGIN}/v1/pc/pilot/blobs/${ABC_SHA}.zip`), { MANIFEST_CID: "not-json" });
+      assert.equal(fake.calls[0].url, `https://yataverse.com/ipfs/${ABC_CID}`);
+      assert.equal(res.status, 200);
+    } finally {
+      fake.restore();
+    }
+  });
 });
 
 describe("path guard", () => {
