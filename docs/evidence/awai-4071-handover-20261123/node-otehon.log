@@ -1,0 +1,37 @@
+✔ restored identity requires possession of the matching non-exportable device key (7.057292ms)
+(node:85561) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ saved passkey proof restores after QR expiry but refuses session expiry and tampering (29.922542ms)
+✔ storage protection is requested explicitly and never extends the stored proof (0.860875ms)
+✔ unsupported and refused storage protection stay visible (0.153125ms)
+✔ loading a link never destroys account state; only explicit logout clears it (18.787959ms)
+✔ host account proofs are short-lived and bound to the Itonami caller and fresh nonce (3.438333ms)
+✔ challenge binds device pubkey, device name, expiry and profile scope (9.392583ms)
+✔ a challenge for another device, expired, revoked or cancelled is refused (1.57675ms)
+✔ QR/Passkey approval does not copy a profile: transfer is a separate sealed envelope (5.1825ms)
+✔ no secret or owner authentication material is ever copied (0.72475ms)
+✔ unimplemented scopes report truthful unavailable/defer, never ready (0.623458ms)
+✔ device name and scope validation are strict (0.234291ms)
+✔ Drive authorization binds the existing Passkey to the request and each device (28.444917ms)
+✔ a Bot launch approval is bound to every launch field and to this request (6.15ms)
+✔ a Bot launch request must carry exactly a well-formed launch (0.783458ms)
+✔ the runtime is the pinned copy of the shared broker (1.287666ms)
+✔ a request survives the QR link and both screens get the same code (0.409792ms)
+✔ an expired or malformed request is refused (0.243542ms)
+✔ only the requesting device can open the sealed answer (0.975584ms)
+✔ a wallet signature links the device to did:pkh (2.227125ms)
+✔ a wallet signature with v 27 or 28 is accepted (2.319292ms)
+✔ two devices link to the same account (3.467416ms)
+✔ wallet refusals (3.689583ms)
+✔ a stored link stays valid after the request window and until its expiry (1.981667ms)
+✔ a passkey assertion links the device to did:key (2.342792ms)
+✔ passkey refusals (4.37475ms)
+✔ an EIP-1193 wallet on this device signs a verifiable link (1.861583ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 171.671833

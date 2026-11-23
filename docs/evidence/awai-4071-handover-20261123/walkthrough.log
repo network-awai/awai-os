@@ -1,0 +1,18 @@
+1. New device challenge created
+   deviceDid: did:key:zDnaem7yca7UCPxbVyYzQAPb2LM4NiZwydtQZFHvmAMQFHDNc
+   deviceName: My Android
+   scope: ["profile:settings"]
+   exp: 2026-11-23T00:10:00.000Z
+   confirmationCode: 106-6FA
+2. Phone verified device-key signature
+   verified.device: did:key:zDnaem7yca7UCPxbVyYzQAPb2LM4NiZwydtQZFHvmAMQFHDNc
+   verified.status: ready
+   profile in verdict? false (must be false: approval alone copies nothing)
+3. Phone sealed selected-profile transfer (ciphertext only)
+   sealed.bytes: 401
+   contains plaintext ja-JP? false (must be false)
+4. New device opened the envelope with its ephemeral key
+   opened: {"scope":"profile:settings","locale":"ja-JP","homeBackground":"auto"}
+5. Secret-bearing payload refused: forbidden-field (must be forbidden-field)
+6. Unimplemented scope: ["profile:wnfs-snapshot"] -> unavailable (must be unavailable/defer)
+WALKTHROUGH-OK

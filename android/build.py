@@ -161,6 +161,7 @@ def main():
     shutil.copytree(ROOT/'android/client/assets',assets/'assets',dirs_exist_ok=True)
     shutil.copyfile(ROOT/'android/client/generated/domain.js',assets/'domain.js')
     shutil.copyfile(generated/'identity.js',assets/'identity.js')
+    shutil.copyfile(generated/'handover.js',assets/'handover.js')
     shutil.copyfile(ROOT/'android/client/account-broker.html',assets/'account-broker.html')
     shutil.copyfile(generated/'account-broker.js',assets/'account-broker.js')
     pins=json.loads((ROOT/'otehon/shell/vendor/PINS.json').read_text());runtime=ROOT/'otehon/shell/vendor/kotoba-client-runtime.js'
