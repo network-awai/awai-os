@@ -98,8 +98,9 @@ function syncMotion(){
 }
 document.addEventListener('visibilitychange',syncMotion);
 window.awaiVisibility=hidden=>{hostHidden=hidden;syncMotion();};
+const isPC = ()=> !!(native && native.isPC);
 function home() {
-  const p=el('section','page home');root.append(p);
+  const p=el('section','page home'+(isPC()?' pc-desktop':' '));p.setAttribute('data-pc',String(isPC()));root.append(p);
   if(firstHomeAppearance&&!native.motionReduced){p.classList.add('first-appearance');firstHomeAppearance=false;}
   const atmosphere=el('div','home-atmosphere');atmosphere.setAttribute('aria-hidden','true');
   const artwork=el('img');artwork.src='assets/awai-original-source-wallpaper.png';artwork.alt='';atmosphere.append(artwork);p.append(atmosphere);
@@ -113,6 +114,12 @@ function home() {
   function labelMotion(){motion.textContent=native.motionReduced?'背景は静止':motionEnabled?'背景を停止':'背景を再生';motion.disabled=!!native.motionReduced;}
   labelMotion();heading.append(date,motion);p.append(heading,time);
   if(host&&!native.isDefaultHome){p.append(button('Awai をホームに設定',()=>host.chooseHome(),'button tonal'));}
+  // PC desktop: permanent top strip so the desktop never looks blank (AWAI-4072).
+  if(isPC()){
+    const bar=el('div','pc-topbar');bar.setAttribute('role','toolbar');bar.setAttribute('aria-label','デスクトップ');
+    bar.append(button('設定',()=>host.openAppearance(),'pc-topbar-btn'),button('壁紙',()=>host.setAwaiWallpaper&&host.setAwaiWallpaper('both'),'pc-topbar-btn'),button('スクリーンセーバー',()=>host.openScreensaverSettings&&host.openScreensaverSettings(),'pc-topbar-btn'));
+    p.append(bar);
+  }
   const conversation=el('section','card primary');
   conversation.append(el('h2','','何を手伝いましょうか？'));
   const itonamiInstalled=native.apps.some(app=>app.id==='network.itonami.app');

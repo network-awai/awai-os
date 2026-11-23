@@ -153,9 +153,19 @@ public abstract class HostActivity extends Activity {
             try{return Class.forName("network.awai.home.SetupPlatform").getMethod("snapshot",android.content.Context.class).invoke(null,HostActivity.this).toString();}
             catch(Exception unavailable){return "null";}
         }
+        @JavascriptInterface public String pcSetupSnapshot(){
+            if(!"home".equals(mode()))return "null";
+            try{return Class.forName("network.awai.home.SetupPlatform").getMethod("pcSnapshot",android.content.Context.class).invoke(null,HostActivity.this).toString();}
+            catch(Exception unavailable){return "null";}
+        }
         @JavascriptInterface public boolean setupTransition(String action,int expected){
             if(!"home".equals(mode()))return false;
             try{return (Boolean)Class.forName("network.awai.home.SetupPlatform").getMethod("transition",android.content.Context.class,String.class,int.class).invoke(null,HostActivity.this,action,expected);}
+            catch(Exception unavailable){return false;}
+        }
+        @JavascriptInterface public boolean pcSetupTransition(String action,int expected){
+            if(!"home".equals(mode()))return false;
+            try{return (Boolean)Class.forName("network.awai.home.SetupPlatform").getMethod("pcTransition",android.content.Context.class,String.class,int.class).invoke(null,HostActivity.this,action,expected);}
             catch(Exception unavailable){return false;}
         }
         @JavascriptInterface public boolean openAccountLink(String address) {
@@ -177,16 +187,62 @@ public abstract class HostActivity extends Activity {
                 String action="language".equals(kind)?Settings.ACTION_LOCALE_SETTINGS:
                     "network".equals(kind)?Settings.ACTION_WIRELESS_SETTINGS:
                     "wifi".equals(kind)?Settings.ACTION_WIFI_SETTINGS:
+                    "ethernet".equals(kind)?Settings.ACTION_SETTINGS:
                     "tether".equals(kind)?Settings.ACTION_WIRELESS_SETTINGS:
                     "datetime".equals(kind)?Settings.ACTION_DATE_SETTINGS:
                     "accessibility".equals(kind)?Settings.ACTION_ACCESSIBILITY_SETTINGS:
-                    "lock".equals(kind)?android.app.admin.DevicePolicyManager.ACTION_SET_NEW_PASSWORD:null;
+                    "lock".equals(kind)?android.app.admin.DevicePolicyManager.ACTION_SET_NEW_PASSWORD:
+                    "wallpaper".equals(kind)?Intent.ACTION_SET_WALLPAPER:
+                    "screensaver".equals(kind)?Settings.ACTION_DREAM_SETTINGS:
+                    "appearance".equals(kind)?Settings.ACTION_SETTINGS:null;
                 if(action==null)return;
-                try{startActivity(new Intent(action));}catch(ActivityNotFoundException unavailable){message("対応する Android 設定が見つかりません。");}
+                try{
+                    Intent i=new Intent(action);
+                    if("ethernet".equals(kind)) i.putExtra("extra_ethernet_settings",true);
+                    startActivity(i);
+                }catch(ActivityNotFoundException unavailable){message("対応する Android 設定が見つかりません。");}
             });
+        }
+        /** PC / desktop wallpaper: Awai original applies to home + lock (AWAI-4072). */
+        @JavascriptInterface public void setAwaiWallpaper(String target){
+            if(!"home".equals(mode()))return;
+            boolean homeFlag = target==null || "home".equals(target) || "both".equals(target);
+            boolean lockFlag = target==null || "lock".equals(target) || "both".equals(target);
+            runOnUiThread(()->{
+                new Thread(()->{
+                    String result;
+                    try{
+                        android.app.WallpaperManager wm = android.app.WallpaperManager.getInstance(HostActivity.this);
+                        if(!wm.isWallpaperSupported()||!wm.isSetWallpaperAllowed()) throw new IllegalStateException();
+                        try(java.io.InputStream in=getAssets().open("assets/awai-original-source-wallpaper.png")){
+                            int flags=0; if(homeFlag) flags|=android.app.WallpaperManager.FLAG_SYSTEM; if(lockFlag) flags|=android.app.WallpaperManager.FLAG_LOCK;
+                            wm.setStream(in,null,false,flags);
+                        }
+                        result="Awai の壁紙を反映しました。";
+                    }catch(Exception e){ result="反映できませんでした。Android の壁紙設定から確認してください。"; }
+                    final String msg=result;
+                    runOnUiThread(()->message(msg));
+                },"awai-wallpaper").start();
+            });
+        }
+        /** Open screensaver / wallpaper picker (Settings-owned). */
+        @JavascriptInterface public void openScreensaverSettings(){
+            if(!"home".equals(mode()))return;
+            runOnUiThread(()->{ try{ startActivity(new Intent(Settings.ACTION_DREAM_SETTINGS)); }catch(Exception e){ message("スクリーンセーバー設定を開けませんでした。"); } });
         }
         @JavascriptInterface public String snapshot(){try{
             JSONObject o=new JSONObject();o.put("mode",mode());o.put("platform","android");o.put("runtime","android");o.put("apps","home".equals(mode())?launchable():new JSONArray());
+            // AWAI-4072: expose PC capability for desktop routing (keyboard/mouse, Ethernet).
+            try{
+                Object pcObj = Class.forName("network.awai.home.SetupPlatform").getMethod("pcSnapshot",android.content.Context.class).invoke(null,HostActivity.this);
+                if(pcObj instanceof org.json.JSONObject){
+                    org.json.JSONObject pcs=(org.json.JSONObject)pcObj;
+                    o.put("isPC",pcs.optBoolean("isPC",false));
+                    o.put("hasEthernet",pcs.optBoolean("hasEthernet",false));
+                    o.put("hasWifi",pcs.optBoolean("hasWifi",false));
+                    o.put("hasTethering",pcs.optBoolean("hasTethering",false));
+                }
+            }catch(Exception ignored){ o.put("isPC",false); }
             JSONObject installed=new JSONObject();
             if ("store".equals(mode())) {
                 try {
