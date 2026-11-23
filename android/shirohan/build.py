@@ -76,7 +76,7 @@ def main():
     run(tools / "aapt2", "link", "-o", out / "unsigned.apk", "--manifest", APP / "AndroidManifest.xml",
         "-I", jar, "-A", assets, "-R", out / "res.zip", "--auto-add-overlay")
     run(args.java / "javac", "--release", "11", "-encoding", "UTF-8", "-cp", jar, "-d", classes,
-        *sorted((APP / "src").rglob("*.java")))
+        *sorted((APP / "src").rglob("*.java")), *sorted((ROOT / "packages/awai-system-bars/android").rglob("*.java")))
     run(tools / "d8", "--min-api", "35", "--lib", jar, "--output", dex, *sorted(classes.rglob("*.class")), env=env)
     with ZipFile(out / "unsigned.apk", "a", ZIP_DEFLATED) as apk:
         apk.write(dex / "classes.dex", "classes.dex")

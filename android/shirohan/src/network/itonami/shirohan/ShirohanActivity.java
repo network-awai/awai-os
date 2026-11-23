@@ -1,6 +1,7 @@
 package network.itonami.shirohan;
 
 import android.app.Activity;
+import network.awai.systembars.SystemBars;
 import android.content.ActivityNotFoundException;
 import android.content.ContentResolver;
 import android.content.ContentValues;
@@ -42,6 +43,7 @@ public final class ShirohanActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        SystemBars.applyForUiMode(this, getResources().getConfiguration());
         web = new WebView(this);
         web.setOnApplyWindowInsetsListener((view, insets) -> {
             Insets bars = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout()
