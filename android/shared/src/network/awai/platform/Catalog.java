@@ -179,7 +179,10 @@ public final class Catalog {
         if ("network.itonami.animeka".equals(id)) return "packages/animeka.apk";
         if ("network.itonami.ongakuka".equals(id)) return "packages/ongakuka.apk";
         if ("network.itonami.gameka".equals(id)) return "packages/gameka.apk";
-        if ("network.itonami.shosetsuka".equals(id)) return "packages/shosetsuka.apk";
+        // The independent writing practice (執筆) app ships as network.itonami.isco2641:
+        // its package id, descriptor schema (itonami.series.isco2641.v1) and built APK all use
+        // that id, so the catalog follows the implementation instead of renaming the app.
+        if ("network.itonami.isco2641".equals(id)) return "packages/isco2641.apk";
         if ("network.awai.gaka".equals(id)) return "packages/gaka.apk";
         String local = localSuffix(id);
         if (local != null) return "packages/" + local + ".apk";
@@ -208,7 +211,7 @@ public final class Catalog {
         if ("network.itonami.animeka".equals(id)) return "online-animeka.apk";
         if ("network.itonami.ongakuka".equals(id)) return "online-ongakuka.apk";
         if ("network.itonami.gameka".equals(id)) return "online-gameka.apk";
-        if ("network.itonami.shosetsuka".equals(id)) return "online-shosetsuka.apk";
+        if ("network.itonami.isco2641".equals(id)) return "online-isco2641.apk";
         if ("network.awai.gaka".equals(id)) return "online-gaka.apk";
         String local = localSuffix(id);
         if (local != null) return "online-" + local + ".apk";
@@ -243,7 +246,7 @@ public final class Catalog {
         // asset variance the other Tauri v3 store apps already use (Yotei: 40 MiB).
         if ("network.itonami.mangaka".equals(id) || "network.itonami.dougaka".equals(id)
                 || "network.itonami.animeka".equals(id) || "network.itonami.ongakuka".equals(id)
-                || "network.itonami.gameka".equals(id) || "network.itonami.shosetsuka".equals(id)
+                || "network.itonami.gameka".equals(id) || "network.itonami.isco2641".equals(id)
                 || "network.awai.gaka".equals(id)) return 40 * 1024 * 1024;
         // AWAI-3502 local apps: Tauri v3 debug builds without native debug symbols, about 19.6 MB at 0.1.0.
         if (localSuffix(id) != null) return 40 * 1024 * 1024;
