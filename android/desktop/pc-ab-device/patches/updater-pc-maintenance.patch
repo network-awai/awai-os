@@ -124,7 +124,7 @@ new file mode 100644
 index 0000000..7ef4c50
 --- /dev/null
 +++ b/app/src/main/java/org/lineageos/updater/controller/PcMaintenance.kt
-@@ -0,0 +1,107 @@
+@@ -0,0 +1,97 @@
 +/*
 + * SPDX-FileCopyrightText: The Awai Network Project
 + * SPDX-License-Identifier: Apache-2.0
@@ -149,7 +149,6 @@ index 0000000..7ef4c50
 +import org.lineageos.updater.data.Update
 +import org.lineageos.updater.deviceinfo.DeviceInfoUtils
 +import org.lineageos.updater.util.InstallUtils
-+import java.net.URI
 +
 +object PcMaintenance {
 +    // This preference identifies only payloads handed to UpdateEngine by the maintenance worker.
@@ -157,15 +156,6 @@ index 0000000..7ef4c50
 +
 +    val isSupported: Boolean
 +        get() = DeviceInfoUtils.isABDevice && DeviceInfoUtils.device == "virtio_x86_64"
-+
-+    internal fun isAwaiPackage(url: String?): Boolean {
-+        val uri = url?.let { runCatching { URI(it) }.getOrNull() } ?: return false
-+        return uri.scheme == "https" && uri.host == "ota.awai.network" &&
-+                (uri.port == -1 || uri.port == 443) && uri.userInfo == null &&
-+                uri.rawQuery == null && uri.rawFragment == null &&
-+                uri.rawPath.startsWith("/v1/pc/pilot/") &&
-+                !uri.rawPath.contains('%') && uri.normalize().rawPath == uri.rawPath
-+    }
 +
 +    private fun canMaintain(context: Context): Boolean {
 +        val power = context.getSystemService(PowerManager::class.java) ?: return false
@@ -204,7 +194,7 @@ index 0000000..7ef4c50
 +
 +        val approved = offers.filter {
 +            it.timestamp > DeviceInfoUtils.buildDateTimestamp &&
-+                    isAwaiPackage(it.downloadUrl) &&
++                    PcPackagePolicy.isAllowed(it.downloadUrl, it.downloadId) &&
 +                    InstallUtils.canInstall(it) && InstallUtils.canStreamUpdate(it, true) &&
 +                    it.payloadPropertiesSize in 1L..65_536L
 +        }
@@ -355,3 +345,114 @@ index df56e15..7fce2e7 100644
 @@ -193,0 +194,2 @@
 +    <string name="menu_automatic_pc_maintenance">Automatic PC maintenance</string>
 +    <string name="menu_automatic_pc_maintenance_summary">Apply Awai updates over an unmetered connection on external power, and restart while the screen is off. Requires scheduled checks and streaming updates.</string>
+diff --git a/app/src/main/java/org/lineageos/updater/controller/PcPackagePolicy.java b/app/src/main/java/org/lineageos/updater/controller/PcPackagePolicy.java
+new file mode 100644
+index 0000000..5546b01
+--- /dev/null
++++ b/app/src/main/java/org/lineageos/updater/controller/PcPackagePolicy.java
+@@ -0,0 +1,72 @@
++// SPDX-License-Identifier: Apache-2.0
++package org.lineageos.updater.controller;
++
++import java.io.File;
++import java.io.FileInputStream;
++import java.io.IOException;
++import java.net.URI;
++import java.net.URISyntaxException;
++import java.security.MessageDigest;
++import java.security.NoSuchAlgorithmException;
++import java.util.regex.Pattern;
++
++final class PcPackagePolicy {
++    private static final Pattern SHA256 = Pattern.compile("[0-9a-f]{64}");
++    private static final Pattern RELEASE_PATH = Pattern.compile(
++            "/network-awai/awai-os/releases/download/[A-Za-z0-9][A-Za-z0-9._-]*/[0-9a-f]{64}\\.zip");
++    private static final Pattern RAW_PATH = Pattern.compile(
++            "/network-awai/awai-os/[0-9a-fA-F]{40}(/[A-Za-z0-9._-]+)+");
++
++    static boolean isAllowed(String url, String sha256) {
++        if (url == null) {
++            return false;
++        }
++        final URI uri;
++        try {
++            uri = new URI(url);
++        } catch (URISyntaxException e) {
++            return false;
++        }
++        String path = uri.getRawPath();
++        if (!"https".equals(uri.getScheme()) || path == null ||
++                (uri.getPort() != -1 && uri.getPort() != 443) ||
++                uri.getRawUserInfo() != null || uri.getRawQuery() != null ||
++                uri.getRawFragment() != null || path.contains("%") ||
++                !uri.normalize().getRawPath().equals(path)) {
++            return false;
++        }
++        if ("ota.awai.network".equals(uri.getHost())) {
++            return path.startsWith("/v1/pc/pilot/");
++        }
++        if (sha256 == null || !SHA256.matcher(sha256).matches()) {
++            return false;
++        }
++        if ("github.com".equals(uri.getHost())) {
++            return RELEASE_PATH.matcher(path).matches() && path.endsWith("/" + sha256 + ".zip");
++        }
++        return "raw.githubusercontent.com".equals(uri.getHost()) && RAW_PATH.matcher(path).matches()
++                && !path.endsWith("/..") && !path.endsWith("/.");
++    }
++
++    static boolean matchesDigest(File file, String expected) throws IOException {
++        if (expected == null || !SHA256.matcher(expected).matches()) {
++            return false;
++        }
++        try (FileInputStream input = new FileInputStream(file)) {
++            MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
++            byte[] buffer = new byte[64 * 1024];
++            int count;
++            while ((count = input.read(buffer)) != -1) {
++                sha256.update(buffer, 0, count);
++            }
++            StringBuilder actual = new StringBuilder(64);
++            for (byte value : sha256.digest()) {
++                actual.append(Character.forDigit((value & 0xff) >>> 4, 16));
++                actual.append(Character.forDigit(value & 0xf, 16));
++            }
++            return expected.contentEquals(actual);
++        } catch (NoSuchAlgorithmException e) {
++            throw new AssertionError(e);
++        }
++    }
++}
+diff --git a/app/src/main/java/org/lineageos/updater/controller/UpdaterController.java b/app/src/main/java/org/lineageos/updater/controller/UpdaterController.java
+index 9b85612..8626bb3 100644
+--- a/app/src/main/java/org/lineageos/updater/controller/UpdaterController.java
++++ b/app/src/main/java/org/lineageos/updater/controller/UpdaterController.java
+@@ -263 +263 @@ public class UpdaterController {
+-                if (file.exists() && verifyPackage(file)) {
++                if (file.exists() && verifyPackage(file, update)) {
+@@ -284 +284 @@ public class UpdaterController {
+-    private boolean verifyPackage(File file) {
++    private boolean verifyPackage(File file, Update update) {
+@@ -285,0 +286,5 @@ public class UpdaterController {
++            if (PcMaintenance.INSTANCE.isSupported() &&
++                    (file.length() != update.getFileSize() ||
++                     !PcPackagePolicy.matchesDigest(file, update.getDownloadId()))) {
++                throw new IOException("Downloaded ZIP differs from the OTA index");
++            }
+diff --git a/app/src/main/java/org/lineageos/updater/download/HttpURLConnectionClient.java b/app/src/main/java/org/lineageos/updater/download/HttpURLConnectionClient.java
+index 70f4094..29f81d8 100644
+--- a/app/src/main/java/org/lineageos/updater/download/HttpURLConnectionClient.java
++++ b/app/src/main/java/org/lineageos/updater/download/HttpURLConnectionClient.java
+@@ -248 +248 @@ public class HttpURLConnectionClient implements DownloadClient {
+-                    Log.d(TAG, "Downloading from " + newUrl);
++                    Log.d(TAG, "Following download redirect");
+@@ -262 +262 @@ public class HttpURLConnectionClient implements DownloadClient {
+-                            Log.e(TAG, "Using duplicate link " + link.mUrl, e);
++                            Log.e(TAG, "Trying duplicate download link");
+diff --git a/app/src/main/java/org/lineageos/updater/download/SingleRangeHttpFetcher.kt b/app/src/main/java/org/lineageos/updater/download/SingleRangeHttpFetcher.kt
+index 51d2481..b98edc1 100644
+--- a/app/src/main/java/org/lineageos/updater/download/SingleRangeHttpFetcher.kt
++++ b/app/src/main/java/org/lineageos/updater/download/SingleRangeHttpFetcher.kt
+@@ -17,0 +18,2 @@ class SingleRangeHttpFetcher(private val url: String) {
++        // GitHub redirects the range request to an HTTPS asset host.
++        .followSslRedirects(false)

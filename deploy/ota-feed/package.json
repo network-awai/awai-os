@@ -1,0 +1,10 @@
+{
+  "name": "awai-ota-feed",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "check": "node --check src/worker.js",
+    "serve": "node serve.mjs"
+  }
+}

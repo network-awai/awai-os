@@ -271,7 +271,7 @@ CAR 経路で 16 MiB を超える payload を配れるか、実測した（こ�
 | `GET /ipfs/<dir-root>` | 200 だが `application/vnd.ipld.raw` の **62B**（dag-pb ブロックそのもの） |
 | `GET /ipfs/<dir-root>/small2m.bin` | **404**（gateway にファイル再構成の経路が無い） |
 | 小ブロックの `Range: bytes=0-9` | 206 + `content-range: bytes 0-9/55` |
-| 比較: commit-pin の raw.githubusercontent 55MB APK | HEAD 200（etag = sha256）、`Range: bytes=0-99` → **206** |
+| 比較: commit-pin の raw.githubusercontent 55MB APK | HEAD 200（ETag と実バイトの SHA-256 は不一致）、`Range: bytes=0-99` → **206** |
 
 **つまり「16 MiB 超は CAR + chunk map」は成立しない**。chunk map を manifest に持たせても、
 **それを展開する HTTP 経路が yataverse に無い**。Worker がチャンクを都度 fetch して組み立てる案も、
@@ -281,8 +281,8 @@ CAR 経路で 16 MiB を超える payload を配れるか、実測した（こ�
 
 | 用途 | 置き場 |
 |---|---|
-| **payload（APK・zip・ISO など大きい実体）** | **commit-pin した `raw.githubusercontent.com/network-awai/awai-os/<40hex>/…`**（store の pins と同じ方式）。R2 例外は installer のみ |
+| **payload（APK・zip・ISO など大きい実体）** | ≤100 MiB は **commit-pin した `raw.githubusercontent.com/network-awai/awai-os/<40hex>/…`**（Store と同じ方式）。PC A/B OTA は **GitHub Release asset** が既定、100 MiB 超は必須。署名付き manifest の SHA-256 で照合する。R2 例外は installer のみ |
 | **可変 index / feed（ota の manifest）** | 専用 Worker（`ota.awai.network`） |
 | **≤16 MiB のブロック（manifest スナップショット・receipt・小さな index）** | **yataverse**（`GET /ipfs/<cid>` + Range 206） |
 
-**yataverse を唯一のコピーにしない**原則はこの構成でも保たれる（原本は git 側、yataverse は cache）。
+**yataverse を唯一のコピーにしない**原則はこの構成でも保たれる（原本はリリース側、yataverse は cache）。
