@@ -1,0 +1,16 @@
+;; Native reproduction lane (AWAI-3839): rebuild Murakumo's text and image
+;; engines from the pinned sources on Linux (android-v1 toolchain) and compare
+;; every byte with apps/murakumo/native-pins.json. Runs only on a coordinator
+;; that understands named pipelines (AWAI-3897); the default pipeline.edn keeps
+;; the fleet checks. The image engine is not pinned yet (AWAI-3840): its
+;; receipts are printed so its Linux SHA-256 can be pinned from this lane.
+;; Sequencing: deploy the multi-pipeline coordinator and the cmake-bearing
+;; toolchain before this file can take effect; until then it is inert.
+{:tier :t2
+ :network :fetch
+ :toolchain :android-v1
+ :quorum 1
+ :status-context "tatara/native"
+ :timeout-seconds 3600
+ :steps [["bash" "scripts/ci/native-rebuild.sh"]]
+ :artifacts []}
