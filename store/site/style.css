@@ -107,6 +107,31 @@ h2, h3 { font-size: 24px; line-height: 36px; font-weight: 500; }
 }
 .notice { border: 2px solid var(--accent); }
 
+/* AWAI-4070 browse: quiet in-page anchors (no script, no fetch, same as Figma 241:3 step list).
+   No badges, no promo color — text links in Awai Web/Label size. */
+.browse {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sm) var(--md);
+}
+.browse a {
+  color: var(--accent);
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 500;
+  text-decoration: none;
+  padding: 6px 2px;
+}
+.browse a:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
+/* One featured card (first catalog entry), then the plain list. No rotation,
+   no autoplay, no badge — a 2px accent border is the only emphasis. */
+.featured-wrap, .list-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md);
+}
+.featured { border: 2px solid var(--accent); }
+
 .columns {
   display: flex;
   flex-direction: column;

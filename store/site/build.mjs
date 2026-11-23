@@ -140,6 +140,10 @@ ${action}
 </article>`;
 }
 
+function featuredHtml(app) {
+  return appHtml(app).replace('<article class="card app"', '<article class="card app featured" aria-label="おすすめ"');
+}
+
 // Composition follows the Figma proposal (AWAI-3735): file umqCqP5KSjLWh9fhCI1HaN, page 903:2.
 export function renderHtml(store) {
   return `<!doctype html>
@@ -162,6 +166,12 @@ export function renderHtml(store) {
 <p class="caption">store.itonami.app</p>
 <h1>Itonami Store</h1>
 <p class="lead">Awai Network のアプリを入手するための入口です。</p>
+<nav class="browse" aria-label="このページの案内">
+<a href="#apps">アプリ一覧（${store.apps.length} 件）</a>
+<a href="#how">入手のしかた</a>
+<a href="#verify">取得したファイルを確かめる</a>
+<a href="#record">このページの根拠</a>
+</nav>
 <section class="card notice" aria-labelledby="status">
 <h2 id="status">開発版です</h2>
 <p>ここに載っているアプリとカタログは、開発用の鍵で署名した開発版です。正式なリリースではありません。${store.trust?.mode === 'key-list' ? '本番の署名鍵はまだありません。' : '本番の署名鍵と、鍵の更新・失効の仕組みはまだありません。'}</p>
@@ -178,8 +188,8 @@ export function renderHtml(store) {
 </section>
 <main class="apps" aria-labelledby="apps">
 <h2 id="apps">アプリ（${store.apps.length} 件）</h2>
-<p class="muted">カタログ revision ${esc(store.revision)}。このページは、あなたがリンクを押すまで外部と通信しません。</p>
-${store.apps.map(appHtml).join('\n')}
+<p class="muted">カタログ revision ${esc(store.revision)}。このページは、あなたがリンクを押すまで外部と通信しません。広告や追跡はなく、取得はあなたが押した時だけです。</p>
+${store.apps.length ? `<section class="featured-wrap" aria-label="おすすめ">\n<h3 class="label muted">おすすめ</h3>\n${featuredHtml(store.apps[0])}\n</section>\n<section class="list-wrap" aria-label="アプリ一覧">\n<h3 class="label muted">すべてのアプリ</h3>\n${store.apps.slice(1).map(appHtml).join('\n')}\n</section>` : ''}
 </main>
 <section class="card verify" aria-labelledby="verify">
 <h2 id="verify">取得したファイルを確かめる</h2>
@@ -201,7 +211,7 @@ ${store.trust?.mode === 'key-list'
 </section>
 <a class="button secondary source" href="site-manifest.json">生成元と digest を見る</a>
 </div>
-<footer><p class="caption">Itonami Store — Awai Network</p></footer>
+<footer><p class="caption">Itonami Store — Awai Network</p>\n<p class="caption">このページに広告や追跡はありません。署名つきカタログの内容だけを表示します。</p></footer>
 </div>
 </body>
 </html>
