@@ -109,9 +109,16 @@ breakfast Generic_x86_64 userdebug
 stage generic-fix
 dev="$SRC/device/mainline/generic"
 [[ -f "$dev/BoardConfig.mk" ]] || { echo "AWAI3850_ERROR: $dev missing after breakfast" >&2; exit 1; }
-if ! grep -q -- '--header_version $(BOARD_BOOT_HEADER_VERSION)' "$dev/BoardConfig.mk"; then
+# The AWAI-3061 patch targets a tree that sets BOARD_BOOT_HEADER_VERSION
+# (revision 4cc0f606). The pinned 3d402dc tree no longer sets it, so the
+# vendor_boot mkbootimg failure it fixed cannot occur; skip there.
+if grep -q 'BOARD_BOOT_HEADER_VERSION' "$dev/BoardConfig.mk" && \
+   ! grep -q -- '--header_version $(BOARD_BOOT_HEADER_VERSION)' "$dev/BoardConfig.mk"; then
   git -C "$dev" apply --check "$KIT/inputs/mkbootimg-header-version.patch"
   git -C "$dev" apply "$KIT/inputs/mkbootimg-header-version.patch"
+  echo "AWAI3850_GENERIC_FIX_APPLIED"
+else
+  echo "AWAI3850_GENERIC_FIX_SKIPPED"
 fi
 # Snapshot of record: after roomservice pulled device dependencies.
 repo manifest -r -o "$UP/pinned-manifest.xml"
