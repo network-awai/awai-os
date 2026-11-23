@@ -175,6 +175,11 @@ export function createSetup({host,domain,root,button,el,icon,notify,render}) {
         const state=identity.state;
         const message=identity.account?tr('署名を確認しました。この端末にアカウントを連携できます。','Signature verified. Link this device to your account.'):state.status==='waiting'?tr('ブラウザで承認し、Awai Home に戻ってください。','Approve in your browser, then return to Awai Home.'):state.status==='asking'?tr('中継への接続を確認しています。','Waiting for connection approval.'):['expired','unavailable','denied-or-unavailable','storage-error'].includes(state.status)?tr('連携を完了できませんでした。接続を確認して、もう一度お試しください。','Linking did not complete. Check your connection and retry.'):tr('この端末でアカウント連携を始めます。','Link your account on this device.');
         const p=el('p','',message);p.role='status';panel.append(p);
+        // AWAI-4071: QR/Passkey approval does not itself copy a profile or
+        // credential. The selected-profile transfer after approval is a
+        // separate encrypted envelope; unimplemented scopes show
+        // unavailable and offer defer instead of a fabricated restored state.
+        if(identity.account)panel.append(el('p','muted',tr('QR・パスキー承認だけではプロフィールや認証情報はコピーされません。選択したプロフィールの引き継ぎは短命チャレンジと暗号化転送で別に行われます。未実装の範囲は「利用できません」となり、あとで設定できます。','QR / Passkey approval alone does not copy a profile or credentials. Selected-profile transfer uses a short-lived challenge and a separate encrypted envelope. Unimplemented scopes report unavailable and can be deferred.')));
         if(state.status==='waiting'){
           panel.append(button(tr('この端末のブラウザで承認','Approve in this device’s browser'),()=>identity.continueHere(),'button'));
           if(state.browserFailed)panel.append(el('p','muted',tr('ブラウザを開けませんでした。操作の承認を確認してください。','The browser did not open. Check operation approval.')));

@@ -86,6 +86,35 @@ export function osOperations(relayOrigin, supportDeskOrigin, computeDeskOrigin) 
       },
       disclosure: { ...RELAY_DISCLOSURE },
     },
+    // AWAI-4071 account handover: the new Android device creates a
+    // short-lived challenge bound to its device pubkey/device name/expiry/
+    // selected profile scope; the phone approves it and the selected-
+    // profile transfer is a separate sealed envelope over the same relay.
+    // QR/Passkey approval does not itself copy a profile or credential.
+    {
+      capability: "awai-handover",
+      service: "awai-relay",
+      operation: "await-handover-approval",
+      consent: "each-operation",
+      "data-categories": ["handover-topic"],
+      endpoint: {
+        origin: relayOrigin,
+        routes: [{ method: "GET", path: "/v1/:topic/json", "query-params": [] }],
+      },
+      disclosure: { ...RELAY_DISCLOSURE },
+    },
+    {
+      capability: "awai-handover",
+      service: "awai-relay",
+      operation: "deliver-handover-envelope",
+      consent: "each-operation",
+      "data-categories": ["encrypted-profile-envelope"],
+      endpoint: {
+        origin: relayOrigin,
+        routes: [{ method: "POST", path: "/v1/:topic", "query-params": [] }],
+      },
+      disclosure: { ...RELAY_DISCLOSURE },
+    },
     {
       capability: "awai-trust",
       service: "human-passport-onchain",
@@ -155,6 +184,18 @@ export function phoneOperations(relayOrigin) {
       // tauri:// / appassets — so it stays an external operation with a pending country
       // (operator Awai Network LLC, registration unconfirmed), and the origin is named in
       // the user-visible note.
+      disclosure: { ...RELAY_DISCLOSURE, note: `origin: ${relayOrigin}; 登記国 未確認（暫定: 日本）` },
+    },
+    {
+      capability: "awai-handover",
+      service: "awai-relay",
+      operation: "deliver-handover-envelope",
+      consent: "each-operation",
+      "data-categories": ["encrypted-profile-envelope"],
+      endpoint: {
+        origin: relayOrigin,
+        routes: [{ method: "POST", path: "/v1/:topic", "query-params": [] }],
+      },
       disclosure: { ...RELAY_DISCLOSURE, note: `origin: ${relayOrigin}; 登記国 未確認（暫定: 日本）` },
     },
   ];
