@@ -105,45 +105,26 @@ feed の index 配置と publish は §6 の担当。
 `index` の配置と publish、Updater の allowlist は **`deploy/ota-feed/` 側の担当（Organizer の worker）**。
 この文書は手順を持たず、§2 #9 から参照するだけ。
 
-## 7. dapps をオンライン更新できる状態にする（端末の5段）
+## 7. dapps をオンライン更新できる状態にする（5段）
 
-対象: Store から入れた dapp を、端末側の自動更新で更新できるようにする。順序を変えると通りません。
+前提として、イメージに入っている Store がルート同梱ビルド（`assets/store-root.der`、`keys.txt`、`keys.sig`）であることを確認する。同梱されていないビルドは現行の pointer を `pointer-signature` で拒否する。以下は main の `0dc2ae2f` にある `android/shared/src/network/awai/platform/` の実装に基づく。
 
-**前提（イメージ側）**: Store が **root 同梱ビルド**であること — `assets` に `store-root.der` / `keys.txt` / `keys.sig` が
-入っている（[StoreTrust.java:29-31](../../android/shared/src/network/awai/platform/StoreTrust.java)）。
-無いビルドは現 pointer を `pointer-signature` で拒否します。
+1. Store のインストール権限を設定する。
 
-1. **インストール許可（人の初回トグル相当）**
-   `adb shell appops set network.awai.store REQUEST_INSTALL_PACKAGES allow`
-2. **更新したい dapp を Store の画面から入れる**
-   `adb install -i network.awai.store` で installer of record だけ揃えても足りません。INTERNET を持つアプリは
-   `installed-ops-<id>` が無いため **`operations-unknown`** で止まります
-   （[AutoInstall.java:101](../../android/shared/src/network/awai/platform/AutoInstall.java)、
-   [UpdatePolicy.java:155](../../android/shared/src/network/awai/platform/UpdatePolicy.java)）。
-3. **更新タブ →「自動更新を有効にする（Wi-Fi のみ／すべての回線）」→ native dialog → Allow**
-   `UpdateApprovalRecord.grant()` が 90 日で許可を記録します
-   （[UpdateApprovalRecord.java:27](../../android/shared/src/network/awai/platform/UpdateApprovalRecord.java)、
-   [UpdatePolicy.java:24](../../android/shared/src/network/awai/platform/UpdatePolicy.java) の `MAX_APPROVAL_SECONDS`）。
-   保存先は SharedPreferences `auto-update`（端末上は `shared_prefs/auto-update.xml`、
-   [HostActivity.java:360-361](../../android/shared/src/network/awai/platform/HostActivity.java)）。
-4. **端末時計を正しく**
-   pointer の `issued` が未来、`expires` が過去だと拒否。許容 skew は **300 秒**
-   （[LatestPointer.java:28](../../android/shared/src/network/awai/platform/LatestPointer.java)、
-   [KeyList.java:48](../../android/shared/src/network/awai/platform/KeyList.java)）。
-5. **初回は手動で「確認」を1回走らせ、`logcat` で拒否理由を読む**
-   出る値: `not-installed-by-store` / `operations-unknown` / `new-permission` / `not-newer` / `network-metered`。
+   ```sh
+   adb shell appops set network.awai.store REQUEST_INSTALL_PACKAGES allow
+   ```
 
-**やってはいけない**: adb や `run-as` で `auto-update.xml`（SharedPreferences）を直接書くのは正規手段ではありません。
-Store が唯一の書き手で、`run-as` は debuggable ビルドのみ、同意の証跡を飛ばすことになります。**必ず UI から**。
+2. dapp を **Store の画面から**インストールする。Store は自らのインストールが成功したときに `installed-ops-<id>` を記録する。`adb install -i network.awai.store` で設定できるのは installer of record だけで、`INTERNET` 権限を持つアプリはこの記録が無いと `operations-unknown` になる（`AutoInstall.java:171–175`）。
+3. Store の「更新」タブで自動更新を有効にし、「Wi-Fi のみ」または「全回線」を選び、ネイティブダイアログで「許可」（Allow）を押す。Store は `UpdateApprovalRecord.grant()` で有効期間 90 日の承認を作成し、`v1|1|grantedAt|expiresAt|unmeteredOnly|excluded` 形式で保存する。**prefs は手で書かない。** 書き手は Store のみで、`run-as` は debuggable ビルドでしか使えず、手書きすると同意の証跡を飛ばす。
+4. 端末の時計を確認する。`issuedAt` が端末時刻より 300 秒を超えて未来なら `pointer-issued`、`expiresAt` が端末時刻以前なら `pointer-expired` で拒否される。
+5. 更新を手動で 1 回確認し、`adb logcat -d -s AwaiStore AwaiAutoInstall` と Store の更新ログを確認する。アプリ単位のポリシー拒否は Store の更新ログで確認する（`not-installed-by-store`、`operations-unknown`、`new-permission`、`not-newer`、`network-metered`）。
 
-**既知の落とし穴**
+既知の落とし穴
 
-- **catalog に `operations` 宣言が無い6本**（itonami app / animeka / dougaka / gameka / mangaka / ongakuka）は
-  **自動更新の対象外**（`operations-unknown`）。item 134 側で修正。
-- 17 本中 15 本が `<pkg>.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` を持つため、イメージのビルド世代によっては
-  **`new-permission`** で止まる。
-- **`signer-changed` は実機でしか判定できない**: `pm path <pkg>` → APK を pull →
-  `apksigner verify --print-certs` の SHA-256 を catalog の4証明書と突き合わせる。
+- itonami app、animeka、dougaka、gameka、mangaka、ongakuka の 6 本は catalog に `operations` 宣言が無く、item 134 で修正されるまで自動更新の対象外。
+- 17 本中 15 本が `<pkg>.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` を要求する。この権限を含まない世代の APK がイメージに入っている場合、該当 15 本はすべて `new-permission` で止まる。
+- `signer-changed` は実機で判定する。`adb shell pm path <pkg>` でインストール済み APK のパスを確認し、`adb pull <APK のパス>` で取得する。`apksigner verify --print-certs <取得した APK>` が出力する署名証明書の SHA-256 を catalog の 4 証明書と突き合わせ、更新先 APK の証明書との一致を確認する。
 
 ## 8. `10.77.0.1` のホスト — **未確定・オーナー確認中**
 
@@ -166,24 +147,3 @@ evidence に機種名・ホスト名の記録が無い（[ipxe.nix](../../androi
 - 署名に要する実時間（この Mac に署名環境が無く計測不能）
 - 実機 NVMe への書込時間（この規模の実測記録が無い）
 - p3 の LUKS 縮小が成立するか（LUKS と fs の縮小可否の確認が未実施）
-
-## 10. dapps をオンライン更新できる状態にする（5段）
-
-前提として、イメージに入っている Store がルート同梱ビルド（`assets/store-root.der`、`keys.txt`、`keys.sig`）であることを確認する。同梱されていないビルドは現行の pointer を `pointer-signature` で拒否する。以下は main の `0dc2ae2f` にある `android/shared/src/network/awai/platform/` の実装に基づく。
-
-1. Store のインストール権限を設定する。
-
-   ```sh
-   adb shell appops set network.awai.store REQUEST_INSTALL_PACKAGES allow
-   ```
-
-2. dapp を **Store の画面から**インストールする。Store は自らのインストールが成功したときに `installed-ops-<id>` を記録する。`adb install -i network.awai.store` で設定できるのは installer of record だけで、`INTERNET` 権限を持つアプリはこの記録が無いと `operations-unknown` になる（`AutoInstall.java:171–175`）。
-3. Store の「更新」タブで自動更新を有効にし、「Wi-Fi のみ」または「全回線」を選び、ネイティブダイアログで「許可」（Allow）を押す。Store は `UpdateApprovalRecord.grant()` で有効期間 90 日の承認を作成し、`v1|1|grantedAt|expiresAt|unmeteredOnly|excluded` 形式で保存する。**prefs は手で書かない。** 書き手は Store のみで、`run-as` は debuggable ビルドでしか使えず、手書きすると同意の証跡を飛ばす。
-4. 端末の時計を確認する。`issuedAt` が端末時刻より 300 秒を超えて未来なら `pointer-issued`、`expiresAt` が端末時刻以前なら `pointer-expired` で拒否される。
-5. 更新を手動で 1 回確認し、`adb logcat -d -s AwaiStore AwaiAutoInstall` と Store の更新ログを確認する。アプリ単位のポリシー拒否は Store の更新ログで確認する（`not-installed-by-store`、`operations-unknown`、`new-permission`、`not-newer`、`network-metered`）。
-
-既知の落とし穴
-
-- itonami app、animeka、dougaka、gameka、mangaka、ongakuka の 6 本は catalog に `operations` 宣言が無く、item 134 で修正されるまで自動更新の対象外。
-- 17 本中 15 本が `<pkg>.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` を要求する。この権限を含まない世代の APK がイメージに入っている場合、該当 15 本はすべて `new-permission` で止まる。
-- `signer-changed` は実機で判定する。`adb shell pm path <pkg>` でインストール済み APK のパスを確認し、`adb pull <APK のパス>` で取得する。`apksigner verify --print-certs <取得した APK>` が出力する署名証明書の SHA-256 を catalog の 4 証明書と突き合わせ、更新先 APK の証明書との一致を確認する。
