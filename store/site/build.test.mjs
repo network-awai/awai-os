@@ -56,12 +56,31 @@ test('the page is a document: no script, one same-origin image, strict CSP', asy
   assert(html.includes('開発版です'));
   for (const [, href] of html.matchAll(/<a[^>]*href="([^"]+)"/g))
     assert(href === 'site-manifest.json'
+      || /^#/.test(href)
       || /^https:\/\/raw\.githubusercontent\.com\/network-awai\/awai-os\/[0-9a-f]{40}\/store\/distribution\//.test(href), href);
 });
 
 test('the build is deterministic', async () => {
   const a = (await buildSite(published())).files, b = (await buildSite(published())).files;
   for (const name of Object.keys(a)) assert(a[name].equals(b[name]), name);
+});
+
+// AWAI-4070: browse anchors, one quiet featured card, then the plain list.
+test('browse is anchored, featured once, quiet footer on the page', async () => {
+  const {files} = (await buildSite(published()));
+  const html = files['index.html'].toString('utf8');
+  const anchors = [...html.matchAll(/<a[^>]*href="([^"]+)"/g)].map(m => m[1]).filter(h => h.startsWith('#'));
+  assert.deepEqual(anchors, ['#apps', '#how', '#verify', '#record']);
+  for (const id of ['apps', 'how', 'verify', 'record']) assert(html.includes(`id="${id}"`), id);
+  assert.equal((html.match(/class="card app featured"/g) || []).length, 1);
+  assert(html.includes('おすすめ') && html.includes('すべてのアプリ'));
+  assert(html.includes('広告や追跡はなく'));
+  // featured app appears exactly once in the whole page (featured + list split)
+  const store = (await buildSite(published())).store;
+  for (const app of store.apps) {
+    const count = html.split(`id="${app.id}"`).length - 1;
+    assert.equal(count, 1, `${app.id} appears ${count} times`);
+  }
 });
 
 test('catalog text is escaped', async () => {
