@@ -1,0 +1,24 @@
+name: same-build kit (AWAI-3850)
+on:
+  pull_request:
+    paths:
+      - 'scripts/operator/**'
+      - '.github/workflows/same-build-kit.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/operator/**'
+      - '.github/workflows/same-build-kit.yml'
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Operator unit and SIGTERM tests
+        run: node --test scripts/operator/*.test.mjs

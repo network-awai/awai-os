@@ -940,6 +940,19 @@ Object.prototype["funding-payload"];
 Object.prototype.engineCalls;
 Object.prototype.measured;
 Object.prototype.output;
+// Finding-9 disclosure keys (AWAI-3115 compute, AWAI-3883): read by name by the
+// canonical client runtime's string-key checks in advanced builds.
+Object.prototype.country;
+Object.prototype.frequency;
+Object.prototype.withdrawal;
+Object.prototype["special-care"];
+Object.prototype.disclosure;
+Object.prototype.note;
+Object.prototype.countryStatus;
+Object.prototype.confirmCondition;
+Object.prototype.CHAT_DISCLOSURE;
+Object.prototype.RELAY_DISCLOSURE;
+Object.prototype.OPTIMISM_DISCLOSURE;
 
 // awai.link.v1 purposes (AWAI-2898 Drive, AWAI-3478 Itonami Bot launch): the
 // WebAuthn clientData flag and the launch fields are read by name from parsed JSON.

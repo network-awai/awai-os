@@ -10,14 +10,63 @@ import { createClientConsentHost, createClientOperationBroker } from "./vendor-r
 
 const PASSPORT_ORIGIN = "https://mainnet.optimism.io";
 
-// AWAI-3884: finding-9 disclosures, in the download-contract shape (AWAI-3842).
-// Per the owner decision (2026-11-23) our own relay is declared on the US entity
-// side, and the Optimism public RPC as OP Labs PBC (US).
-const RELAY_DISCLOSURE = { recipient: "Awai Network LLC", country: "US", "country-name": "United States",
-  "foreign-info-url": "https://awai.network/", "special-care": false, frequency: "one-time" };
-const OPTIMISM_DISCLOSURE = { recipient: "OP Labs PBC", country: "US", "country-name": "United States",
-  "foreign-info-url": "https://www.optimism.io/", data: ["wallet address"], "special-care": false,
-  frequency: "one-time", withdrawal: "cancel the request before it is sent" };
+// AWAI-3883: finding-9 disclosures (Legal decision via Organizer, 2026-11-23; recipient
+// definition and country handling corrected 2026-11-23; country nullable validator
+// 2026-11-23; merge with main AWAI-3884 2026-11-23 — main's US-entity disclosures are
+// superseded by the Legal pending values below). Recipient is limited to the entity that
+// operates the endpoint processing logic AND decides the purpose of data use
+// (データの利用目的を決める主体); hosting/line/CDN = processor, not recipient. Cloudflare
+// runs the relay Worker, so the relay recipient is Awai Network LLC (operator), not
+// Cloudflare, Inc. Country is UNCONFIRMED: the consent dialog reads the machine country
+// field for display, so no code is written — country is null with countryStatus "pending",
+// the user-visible `note` carries the provisional wording, and `confirmCondition` says
+// what would confirm it. Frequency is validator 'one-time' for each-operation consent
+// (all precedents). Relay routes follow main's /v1/ protocol.
+// Why the countryStatus rules live in the vendor and not in a shell-side wrapper
+// (Organizer Option 1, 2026-11-23 — attempted, principledly impossible, probe recorded):
+// with main's pre-fix vendor bytes (ee75001), a pending disclosure fails the exported
+// clientRuntimeProblems (invalid-disclosure-keys/invalid-country) AND — decisively —
+// createClientOperationBroker throws "invalid client runtime descriptor" for the same
+// descriptor even with a real consent host, because the broker validates through its
+// INTERNAL clientRuntimeProblems call, which no exported wrapper can intercept. The
+// dialog renderer (consentFirstScreen) is likewise internal and not exported: any
+// shell-side transform that makes the broker accept the descriptor must write a
+// two-letter code into the very disclosure object the dialog reads, displaying an
+// unconfirmed country as confirmed (Legal violation). A wrapper could only fix the
+// build/test call sites while the shipped WebView still refused the descriptor.
+// Hence the upstream-first order was taken instead: kotoba-lang/kotoba PR #1378
+// (merged 889239dc), re-vendored byte-identical, PINS.json carrying the upstream
+// revision + digest verbatim. Reverting vendor/PINS to main's bytes would re-break
+// every pending disclosure at broker creation.
+const RELAY_DISCLOSURE = {
+  recipient: "Awai Network LLC",
+  country: null, // unconfirmed: no code; see note + confirmCondition
+  countryStatus: "pending",
+  data: ["承認要求の内容", "端末記録"],
+  "special-care": false,
+  purpose: "端末承認の受け渡し",
+  frequency: "one-time",
+  withdrawal: "relay 側で要求を破棄／端末で拒否",
+  note: "登記国 未確認（暫定: 日本）",
+  confirmCondition: "登記国の確認（法務・税務）",
+};
+// Group D: operator and country are UNCONFIRMED (expert review pending). Legal: OP Labs
+// develops/maintains core tech; Terms are provided by the Foundation; OP Mainnet
+// ownership/control is denied — the mainnet.optimism.io operator cannot be officially
+// identified. Recipient is written exactly as Legal directed; no country code is guessed
+// (US/Cayman are listed only as candidates in the note, as Legal allows).
+const OPTIMISM_DISCLOSURE = {
+  recipient: "未確定（OP Labs PBC または Optimism Foundation）",
+  country: null, // unconfirmed: no code; see note + confirmCondition
+  countryStatus: "pending",
+  data: ["読み取るアドレス", "スコア"],
+  "special-care": false,
+  purpose: "残高とスコアの読み取り",
+  frequency: "one-time",
+  withdrawal: "読み取りを止める (no local residue)",
+  note: "operator 未確定（OP Labs PBC または Optimism Foundation）; country 未確定（US または Cayman）; origin: https://mainnet.optimism.io",
+  confirmCondition: "OP Labs PBC / Optimism Foundation への確認",
+};
 
 export function osOperations(relayOrigin, supportDeskOrigin, computeDeskOrigin) {
   return [
@@ -31,12 +80,11 @@ export function osOperations(relayOrigin, supportDeskOrigin, computeDeskOrigin) 
       operation: "await-phone-approval",
       consent: "each-operation",
       "data-categories": ["link-topic"],
-      disclosure: { ...RELAY_DISCLOSURE, data: ["link topic"],
-        purpose: "wait for a phone approval on the link topic", withdrawal: "cancel the wait at any time" },
       endpoint: {
         origin: relayOrigin,
         routes: [{ method: "GET", path: "/v1/:topic/json", "query-params": [] }],
       },
+      disclosure: { ...RELAY_DISCLOSURE },
     },
     {
       capability: "awai-trust",
@@ -44,8 +92,8 @@ export function osOperations(relayOrigin, supportDeskOrigin, computeDeskOrigin) 
       operation: "read-score",
       consent: "each-operation",
       "data-categories": ["wallet-address"],
-      disclosure: { ...OPTIMISM_DISCLOSURE, purpose: "read a Human Passport score from the chain" },
       endpoint: { origin: PASSPORT_ORIGIN, method: "POST", path: "/" },
+      disclosure: { ...OPTIMISM_DISCLOSURE },
     },
     {
       capability: "awai-wallet",
@@ -53,8 +101,8 @@ export function osOperations(relayOrigin, supportDeskOrigin, computeDeskOrigin) 
       operation: "read-eth-balance",
       consent: "each-operation",
       "data-categories": ["wallet-address"],
-      disclosure: { ...OPTIMISM_DISCLOSURE, purpose: "read an ETH balance from the chain" },
       endpoint: { origin: PASSPORT_ORIGIN, method: "POST", path: "/" },
+      disclosure: { ...OPTIMISM_DISCLOSURE },
     },
   ];
 }
@@ -98,12 +146,16 @@ export function phoneOperations(relayOrigin) {
       operation: "deliver-approval",
       consent: "each-operation",
       "data-categories": ["encrypted-link-approval"],
-      disclosure: { ...RELAY_DISCLOSURE, data: ["encrypted link approval"],
-        purpose: "deliver an encrypted approval to the waiting device", withdrawal: "do not approve; a delivered approval cannot be recalled" },
       endpoint: {
         origin: relayOrigin,
         routes: [{ method: "POST", path: "/v1/:topic", "query-params": [] }],
       },
+      // AWAI-3883 phone measurement (2026-11-23): deliver-approval hits the EXTERNAL relay
+      // origin (the default relay host, deploy/awai-link Worker), not localhost /
+      // tauri:// / appassets — so it stays an external operation with a pending country
+      // (operator Awai Network LLC, registration unconfirmed), and the origin is named in
+      // the user-visible note.
+      disclosure: { ...RELAY_DISCLOSURE, note: `origin: ${relayOrigin}; 登記国 未確認（暫定: 日本）` },
     },
   ];
 }
@@ -175,6 +227,13 @@ export async function awaitPhoneApproval(broker, relayOrigin, topic, signal) {
 }
 
 export async function deliverApproval(broker, relayOrigin, topic, sealed) {
+  // AWAI-3883 phone decision (2026-11-23): the relay accepts only a 32-hex topic
+  // (/v1/<32hex>); the client matches the relay contract and never widens it. A topic
+  // that is not already 32 lowercase hex fails before anything is sent — valid topics
+  // come from createLinkRequest (randomHex(16)) and are validated on parse.
+  if (typeof topic !== "string" || !/^[0-9a-f]{32}$/.test(topic)) {
+    throw new Error("invalid-link-topic");
+  }
   const response = await broker.invoke(
     { capability: "awai-link", service: "awai-relay", operation: "deliver-approval" },
     {
