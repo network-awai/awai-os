@@ -1,0 +1,120 @@
+{
+  "checks": [
+    {
+      "check": "three declared operations on the desk origin",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "invalid origin throws",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "offer names the provider on devnet",
+      "passed": true,
+      "detail": "{\"provider\":\"did:key:z6Mkv4NqybLjBA6oojBqvwjHTWinAM47MmD6gVKCnVbssWcT\",\"consumer\":\"did:key:z6MkhEBEN756UBbB7bqS11oqjRRzn67kpKrV1SmJ9ewbVr9W\",\"amount\":1,\"chainId\":\"awai-en-devnet/awai-3115\",\"orderId\":\"compute-dc35e945c4144538707012c5\",\"expiresMs\":1795383021201,\"purpose\":[]}"
+    },
+    {
+      "check": "preparing an offer sends nothing to the node",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "no signatures: refused, nothing sent",
+      "passed": true,
+      "detail": "403"
+    },
+    {
+      "check": "no prompt: refused, nothing sent",
+      "passed": true,
+      "detail": "400"
+    },
+    {
+      "check": "an offer signature of another offer text: refused",
+      "passed": true,
+      "detail": "403"
+    },
+    {
+      "check": "a tampered offer text: refused",
+      "passed": true,
+      "detail": "409"
+    },
+    {
+      "check": "a signature by another key under this key's name: refused",
+      "passed": true,
+      "detail": "403"
+    },
+    {
+      "check": "a reply from another web origin: refused, no send",
+      "passed": true,
+      "detail": "403"
+    },
+    {
+      "check": "an expired offer: refused, nothing sent",
+      "passed": true,
+      "detail": "409"
+    },
+    {
+      "check": "the approved order finalizes",
+      "passed": true,
+      "detail": "{\"finalized\":true,\"height\":2,\"orderId\":\"compute-dc35e945c4144538707012c5\"}"
+    },
+    {
+      "check": "exactly one transfer reached the node",
+      "passed": true,
+      "detail": "2"
+    },
+    {
+      "check": "the work receipt reads back with hashes and counters",
+      "passed": true,
+      "detail": "{\"received\":true,\"orderId\":\"compute-dc35e945c4144538707012c5\",\"height\":2,\"amount\":1,\"finality\":\":single-operator-devnet\",\"input\":\"sha256:b35fe243e72b4e6108066158ffab452b67c7d64e7b1bd2a3d502fb820b15cc04\",\"output\":\"baguqeeragjtsdzjltvsuzxrpucp2czca27x7vpgguixusfg5agtm5xjfyvkq\",\"measured\":{\"completion-tokens\":10,\"finished-at\":1795382421,\"prompt-tokens\":36,\"started-at\":1795382421},\"engineCalls\":1}"
+    },
+    {
+      "check": "the receipt carries no prompt or output text",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "the same order cannot be run twice",
+      "passed": true,
+      "detail": "409"
+    },
+    {
+      "check": "the engine ran at most once for this order",
+      "passed": true,
+      "detail": "engineCalls=1"
+    },
+    {
+      "check": "another provider key pair after enrollment: refused",
+      "passed": true,
+      "detail": "403"
+    },
+    {
+      "check": "the client refuses an offer that is not devnet",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "passed": 19,
+  "total": 19,
+  "receipt": {
+    "received": true,
+    "orderId": "compute-dc35e945c4144538707012c5",
+    "height": 2,
+    "amount": 1,
+    "finality": ":single-operator-devnet",
+    "input": "sha256:b35fe243e72b4e6108066158ffab452b67c7d64e7b1bd2a3d502fb820b15cc04",
+    "output": "baguqeeragjtsdzjltvsuzxrpucp2czca27x7vpgguixusfg5agtm5xjfyvkq",
+    "measured": {
+      "completion-tokens": 10,
+      "finished-at": 1795382421,
+      "prompt-tokens": 36,
+      "started-at": 1795382421
+    },
+    "engineCalls": 1
+  },
+  "provider": "did:key:z6Mkv4NqybLjBA6oojBqvwjHTWinAM47MmD6gVKCnVbssWcT",
+  "providerSpki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE+nLrW6OatoljzI7SCHj7HR23TGSTKpLNTgR3gi1jhnQhBGU1yPiapTdvU5tVuz342LCc0IwKFEkLtJjB6tnHow==",
+  "strangerSpki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE4pSULcu3FVjq8SFSs+I2sXbLUqZquVvMlcqqVe44Lg8SJ9L9P9pTVXK6j3FQnX0BmLPc1Lwu7JI7hLFDDaCYBQ=="
+}

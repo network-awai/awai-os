@@ -66,3 +66,13 @@ waited 8 s before the force-stop.
 - Release signing, store distribution, physical devices, reboot persistence, TalkBack, Japanese locale on the device, tablet width.
 - The paired bot profile running against this app.
 - Any bank connection or payment.
+
+## Build generations (history)
+
+New builds are recorded as immutable `apk-vm-<yyyymmdd>-<shortsha>/` directories; this
+`apk-vm/` (2026-11-18) is not rewritten.
+
+| generation | source commit | sha256 (bytes) | permission check |
+|---|---|---|---|
+| `apk-vm/` (2026-11-18) | 671edcb | `8bbea1ba79ba96683be2bf807b739c2d36d1e537f0994ebe5e4f1187cf95e991` (21,736,705) | `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` only; no `INTERNET` (`permissions.txt`) |
+| `apk-vm-20261123-9ab74d7e/` | 9ab74d7e | `2637069876b59e9ac8e6cfc7138e3a6a7885d3b26e3727e007e697bf9acaaa28` (21,801,241) | `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` only; no `INTERNET` (`apk-vm-20261123-9ab74d7e/permissions.txt`); debug signing only, versionCode 1000 |

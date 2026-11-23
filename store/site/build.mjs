@@ -95,6 +95,9 @@ export async function verifyStore({pointerBytes, rootDer, keysBytes, read, now, 
   const apps = catalog.apps.map(app => {
     if (!/^network\.(itonami|awai)\.[a-z0-9.]+$/.test(app.id) || listed.has(app.id)) fail('app-id');
     listed.add(app.id);
+    // AWAI-3882: fail closed — every catalog entry must resolve a publisher. A blank or
+    // missing publisher aborts the build instead of rendering a blank 配布元.
+    if (typeof app.publisher !== 'string' || !app.publisher.trim()) fail('publisher');
     const apk = (app.artifacts || []).find(a => a.platform === 'android' && a.kind === 'apk');
     const pin = pins.apks[app.id];
     let download = null;
@@ -106,7 +109,7 @@ export async function verifyStore({pointerBytes, rootDer, keysBytes, read, now, 
       download = {url: pin.url, sha256: apk.sha256, bytes: apk.bytes, signerSha256: apk.signerSha256,
         developmentSigner: apk.signerSha256 === signer, bytesChecked: Boolean(bytes)};
     } else if (pin) fail('apk-pin-mismatch');
-    return {id: app.id, name: String(app.name), description: String(app.description || ''), publisher: String(app.publisher || ''),
+    return {id: app.id, name: String(app.name), description: String(app.description || ''), publisher: app.publisher,
       versionName: String(app.versionName), versionCode: app.versionCode,
       operations: Array.isArray(app.operations) ? app.operations.length : null, download};
   });
@@ -122,6 +125,7 @@ function appHtml(app) {
   const operations = app.operations === null ? '記載なし' : app.operations === 0 ? 'なし' : `${app.operations} 件（アプリ内で、通信のたびに確認します）`;
   const rows = [
     ['パッケージ', esc(app.id)],
+    ['配布元', esc(app.publisher)],
     ['版', `${esc(app.versionName)}（versionCode ${esc(app.versionCode)}）`],
   ];
   if (d) rows.push(['大きさ', esc(size(d.bytes))]);
@@ -223,7 +227,7 @@ export async function buildSite(input) {
   const files = {'index.html': Buffer.from(renderHtml(store), 'utf8'), 'style.css': input.css, 'logo.png': input.logo};
   const manifest = {schema: 'awai.store-site.v1', pointerSequence: store.sequence, catalogRevision: store.revision,
     sourceRevision: store.sourceRevision, signer: store.signer, trust: store.trust, development: true,
-    apps: store.apps.map(a => ({id: a.id, versionCode: a.versionCode, sha256: a.download?.sha256 ?? null, url: a.download?.url ?? null})),
+    apps: store.apps.map(a => ({id: a.id, publisher: a.publisher, versionCode: a.versionCode, sha256: a.download?.sha256 ?? null, url: a.download?.url ?? null})),
     files: Object.fromEntries(Object.entries(files).map(([name, bytes]) => [name, sha256(bytes)]))};
   files['site-manifest.json'] = Buffer.from(JSON.stringify(manifest, null, 2) + '\n', 'utf8');
   return {store, files};

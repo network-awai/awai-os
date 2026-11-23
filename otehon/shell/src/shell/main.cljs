@@ -14,6 +14,7 @@
             [shell.gyosei :as gyosei]
             [shell.fleet-overview :as fleet]
             [shell.awai-support :as awai-support]
+            [shell.awai-compute :as awai-compute]
             [shell.docks :refer [device-dock node-dock]]
             [shell.setup :refer [setup]]
             ["../setup-state.js" :refer [setupState]]
@@ -35,6 +36,15 @@
 ;; EN devnet support desk (AWAI-3170); empty unless the build set AWAI_SUPPORT_DESK_ORIGIN.
 (def support-desk-origin
   (or (some-> (.getElementById js/document "root") (.-dataset) (.-supportDeskOrigin)) ""))
+
+;; EN devnet compute desk (AWAI-3115); empty unless the build set AWAI_COMPUTE_DESK_ORIGIN.
+(def compute-desk-origin
+  (or (some-> (.getElementById js/document "root") (.-dataset) (.-computeDeskOrigin)) ""))
+
+;; EN devnet compute provider DID; empty unless the build set AWAI_COMPUTE_PROVIDER_DID.
+;; The desk pins the same DID from its provider key file; a mismatch is refused by the node.
+(def compute-provider-did
+  (or (some-> (.getElementById js/document "root") (.-dataset) (.-computeProviderDid)) ""))
 
 (def poll-ms 3000)
 (def sections #js ["Core" "Apps" "System"])
@@ -403,7 +413,7 @@
                  (and dapp (< score minimum))
                  [locked dapp minimum score open-account]
                  (and (= context "murakumo") (androidInferenceAvailable)) [:f> android-inference/panel]
-                 (= context "itonami") [:main.chat.net-view [:div.net-body [:h1 "Itonami Agent"] [:f> screen/panel "ja"] [:f> fleet/panel "agents"] [:f> awai-support/panel broker support-desk-origin]]]
+                 (= context "itonami") [:main.chat.net-view [:div.net-body [:h1 "Itonami Agent"] [:f> screen/panel "ja"] [:f> fleet/panel "agents"] [:f> awai-support/panel broker support-desk-origin] [:f> awai-compute/panel broker compute-desk-origin compute-provider-did]]]
                  :else
                  [:f> chat dapp context (or (aget threads context) #js [])
                   (fn [text] (add-message context text))
@@ -475,7 +485,7 @@
 (defn app []
   (let [zenoh (use-service zenoh-up)
         matter (use-service matter-up)
-        broker (useMemo (fn [] (createBroker "index.html" (osOperations relay-origin support-desk-origin))) #js [])
+        broker (useMemo (fn [] (createBroker "index.html" (osOperations relay-origin support-desk-origin compute-desk-origin))) #js [])
         [did set-did] (useState nil)
         [app-account set-account] (useState nil)
         [route set-route] (useState nil)

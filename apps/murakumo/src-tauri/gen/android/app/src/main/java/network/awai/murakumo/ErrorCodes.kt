@@ -13,12 +13,12 @@ internal object ErrorCodes {
   "caller-denied","unsupported-operation","unsupported","invalid-request","denied","busy","unknown-operation","unsupported-modality","prompt-limit","invalid-prompt",
   // model lifecycle
   "unknown-model","release-required","model-digest-mismatch","model-size-limit","model-store-failed","no-download",
-  "model-load-failed","model-not-loaded","model-download-rejected","model-import-rejected","file-picker-unavailable",
+  "model-load-failed","model-not-loaded","model-download-rejected","model-import-rejected","file-picker-unavailable","net-app-unavailable",
   // text engine (native/engine.cpp)
   "context-limit","tokenize-failed","context-failed","allocation-failed","cancelled","timeout","decode-failed","output-limit","empty-result",
   // image engine (native/image/image.cpp, ImageModels.kt)
   "release-text-model-required","image-model-missing","image-engine-unavailable","image-model-digest-mismatch","image-options-rejected",
-  "image-model-load-failed","image-generation-failed","invalid-image-output","image-encode-failed","image-size-limit","duplicate-image-id",
+  "image-model-load-failed","image-generation-failed","invalid-image-output","image-encode-failed","image-size-limit","duplicate-image-id","generated-cleanup-failed",
   // generic fallbacks
   "inference-failed","inference-unavailable")
 

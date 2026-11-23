@@ -2,6 +2,7 @@ package network.awai.platform;
 
 import android.app.*;
 import android.app.role.RoleManager;
+import network.awai.systembars.SystemBars;
 import android.content.*;
 import android.content.pm.*;
 import android.content.res.Configuration;
@@ -46,13 +47,12 @@ public abstract class HostActivity extends Activity {
     protected abstract String mode();
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);
-        boolean dark = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
         getWindow().setDecorFitsSystemWindows(false);
-        getWindow().setStatusBarColor(Color.TRANSPARENT); getWindow().setNavigationBarColor(Color.TRANSPARENT);
-        getWindow().getDecorView(); // Ensure PhoneWindow creates its decor before requesting the controller.
-        getWindow().getInsetsController().setSystemBarsAppearance(
-                dark ? 0 : WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS,
-                WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS);
+        // The bars are drawn over the decor view (edge-to-edge), following the
+        // device theme through the shared library (AWAI-3443). awai_background
+        // is the palette background, the same color as the lib's canonical
+        // light/dark backgrounds, so the lib's default matches the frame.
+        SystemBars.applyForUiMode(this, getResources().getConfiguration());
         FrameLayout frame = new FrameLayout(this); frame.setBackgroundColor(getColor(getResources().getIdentifier("awai_background","color",getPackageName())));
         web = new WebView(this); web.setBackgroundColor(Color.TRANSPARENT);
         if((getApplicationInfo().flags&android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)!=0)WebView.setWebContentsDebuggingEnabled(true);

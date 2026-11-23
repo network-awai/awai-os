@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<resources>
+    <dimen name="awai_welcome_brand_bottom">112dp</dimen>
+    <dimen name="awai_welcome_gutter">88dp</dimen>
+    <dimen name="awai_welcome_gap">80dp</dimen>
+    <dimen name="awai_welcome_logo_size">144dp</dimen>
+    <dimen name="awai_welcome_title_size">48sp</dimen>
+    <dimen name="awai_welcome_panel_padding">40dp</dimen>
+</resources>

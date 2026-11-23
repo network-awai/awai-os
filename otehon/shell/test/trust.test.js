@@ -2,7 +2,7 @@ import {CHAT_ORIGIN} from '../src/bot-chat-contract.js';
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { clientRuntimeConnectSrc, clientRuntimeProblems } from "../vendor/kotoba-client-runtime.js";
-import { osOperations, phoneOperations, runtimeDescriptor } from "../src/runtime.js";
+import { deliverApproval, osOperations, phoneOperations, runtimeDescriptor } from "../src/runtime.js";
 import {
   PROOF_MAX_AGE_MS,
   accountAddress,
@@ -71,6 +71,17 @@ test("the shared broker accepts both descriptors", () => {
     clientRuntimeConnectSrc(os, ["awai-egov", "awai-link", "awai-trust", "awai-wallet", "itonami-bot-chat", "itonami-bot-voice", "itonami-mail-aliases"], [], []),
     "connect-src " + [CHAT_ORIGIN,"https://laws.e-gov.go.jp","https://mainnet.optimism.io","https://relay.awai.network"].sort().join(" "),
   );
+});
+
+test("a non-32hex link topic fails before deliver-approval sends anything", async () => {
+  let calls = 0;
+  const broker = { invoke: async () => { calls++; return { ok: true }; } };
+  for (const topic of ["fixture", "ABCDEF0123456789ABCDEF0123456789", "a".repeat(31), "a".repeat(33), "", null, 123]) {
+    await assert.rejects(deliverApproval(broker, "https://relay.awai.network", topic, "sealed"), /invalid-link-topic/);
+  }
+  assert.equal(calls, 0, "nothing reaches the broker");
+  await deliverApproval(broker, "https://relay.awai.network", "a".repeat(32), "sealed");
+  assert.equal(calls, 1, "a 32-hex topic is sent");
 });
 
 test("the voice follows the text, and old string messages still read as text", async () => {

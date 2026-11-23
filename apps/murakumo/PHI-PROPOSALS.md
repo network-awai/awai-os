@@ -12,6 +12,8 @@
 
 ## B. INTERNET 権限を推論の uid から外す（項目 6）
 
+**実装した（2 つの app 案）。** 推論の app `network.awai.murakumo` から INTERNET を外し、ダウンロードと使用量の読み取りを `network.awai.murakumo.net`（`apps/murakumo-net`）に移した。以下は検討の記録。
+
 ### 今
 `network.awai.murakumo` 1 つの uid が、(1) 推論（llama.cpp、stable-diffusion.cpp）、(2) model のダウンロード（Hugging Face への固定の GET）、(3) Mac ノードの使用量の読み取り（固定の GET）を持つ。(2)(3) のため INTERNET 権限がある。推論の経路に通信のコードがないことは、ソースのレビューと、今回入れた lint・.so の import 検査で確かめているが、OS は保証していない。
 
@@ -43,3 +45,12 @@
 2. 管理の app を作り、ダウンロードと使用量の読み取りをそちらに移す。両方の app を並べて配る期間を置く。
 3. 推論の app の UI から通信の機能を外し、manifest から INTERNET を外す。`check-release.py --apk` に「推論の app の manifest に INTERNET がない」検査を足す（負の対照つき）。
 4. karute の Legal 条件の根拠を「ソースのレビュー」から「OS の権限」に書き換える。
+
+## C. 生成した画像の保持（AWAI-3841）
+
+**実装した（owner 決定 2026-11-23）。** 生成した画像は最大で直近の 1 件だけを保持する。新しい生成は、前回の結果が呼び出し元へ渡った後の直列化された次の要求なので、生成開始時に `cacheDir/generated` の既存ファイルをすべて削除する。削除できない場合は生成自体を固定コード `generated-cleanup-failed` で拒む。
+
+- 保存先は端末内の `cacheDir/generated` のみ。外部保存先はない。呼び出し元への受け渡しは FileProvider の読み取り grant で、コピーは呼び出し元側の責務。
+- 推論 app の manifest は `allowBackup=false`（`check-release.py` が source、merged manifest、APK で検査する）。model ファイル（`filesDir/models`、`filesDir/image-models`）も同じくバックアップ対象外。
+- 入力の画像は Murakumo では受け取らない（画像生成の入力はテキスト prompt のみで、メモリ内だけで扱う）。生成の過程は log にも計測にも出さない。
+- PHI の呼び出し元は今のところ text のみ（`InferenceRequestActivity` が image を `unsupported-modality` で拒否する）。保持規則は modality によらず同じ。

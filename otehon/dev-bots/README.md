@@ -8,7 +8,8 @@ one reviewer. Tracking: AWAI-3558 (handoff from Claude sessions), AWAI-3560 (thi
 | `acceptance-criteria.md` | When a developer-bot pull request may merge. Start here. |
 | `shinsa/` | The single review profile (`cloud.itonami.profile.v2`): `SOUL.md`, capabilities, `yakuwari.edn`. |
 | `kantoku/` | Profile for the second review of pull requests that change `otehon/dev-bots/` itself, run on another host (owner decision 2026-11-20, AWAI-3609). Profile source only: nothing runs it yet, so such pull requests still stay drafts for a person. |
-| `kantoku-gate.mjs`, `kantoku-gate.test.mjs` | The decision for those pull requests (pure): `merge`, `owner` (stays a draft) or `hold`, from GitHub's facts for the head commit, the ordinary gate's recorded decision, kantoku's verdict and the caller's own re-run of the tests under two shells. Both gates, `kantoku-*`, `kantoku/`, `shinsa/`, evaluation sets and anything outside `otehon/dev-bots/` are never approvable by a review bot. Nothing calls it yet (AWAI-3609). |
+| `kantoku-gate.mjs`, `kantoku-gate.test.mjs` | The decision for those pull requests (pure): `merge`, `owner` (stays a draft) or `hold`, from GitHub's facts for the head commit, the ordinary gate's recorded decision, kantoku's verdict and the caller's own re-run of the tests under two shells. Both gates, `kantoku-*`, `kantoku/`, `shinsa/`, evaluation sets and anything outside `otehon/dev-bots/` are never approvable by a review bot. Called by `kantoku-run.mjs` (AWAI-3609). |
+| `kantoku-run.mjs`, `kantoku-run.test.mjs` | The caller the gate assumes: collects PR facts with the `gh` CLI, runs the kantoku review as a fresh `muse exec` session, re-runs the declared tests under `/bin/bash` and `/bin/zsh`, calls `decideSelfChange`, writes `.agent-output/kantoku-result.json` and merges only on `merge` (`gh pr ready` then squash; `owner` stays a draft, `hold` exits non-zero; `--dry-run` writes nothing to GitHub): `node --test otehon/dev-bots/kantoku-run.test.mjs`. |
 | `dora.mjs`, `dora.test.mjs` | Weekly DORA delivery metrics for bot work (owner instruction 2026-11-21, AWAI-3617): merges of `muse/*` pull requests as deployments, lead time from the queue start, and fail, recovery and rework figures from an explicit ledger; anything not measured prints `unknown`. Usage and the ledger format are in the file header. Owner-only under `kantoku-gate.mjs`. |
 | `metrics/dora-ledger.jsonl`, `metrics/README.md` | The ledger `dora.mjs` reads by default (AWAI-3685): which merged bot changes failed, which were rework, which were looked at and were neither, and the span of time and repositories that has been looked at, and repositories that were renamed or transferred. `metrics/README.md` says what counts and how to add lines; `dora.mjs --check` fails when the span covers a change with no line. `dora.mjs --discover --report` is the weekly report (AWAI-3709). Lead times use the task start that `deliver.mjs` writes in each pull request body (`- Task started:`, AWAI-3708). Owner-only under `kantoku-gate.mjs`. |
 | `gate.mjs`, `gate.test.mjs` | The mechanical merge gate (pure) and its tests: `node --test otehon/dev-bots/gate.test.mjs`. |
@@ -27,6 +28,17 @@ one reviewer. Tracking: AWAI-3558 (handoff from Claude sessions), AWAI-3560 (thi
   registered in the bot registry, not installed in a profile store and has no cron (AWAI-517, AWAI-3470).
   `:bundle` is absent from `itonami.edn` until the profile is bundled by the registry tooling.
 - Task intake (choosing issues from Linear, claiming them) is still done by an operator session.
+
+## Run evidence
+
+A run's evidence (task, prompts, session jsonl, verdict, delivery records) does not stay in the
+task worktree. Per ADR 0040 (`network-awai/network-awai-apex/docs/adr/0040-bot-run-evidence-outside-worktrees.md`),
+the durable home is `github/workspaces/<agent>/<task>/`, with a `README.md` (issue, PR, merge
+commit, what each file is) and a `SHA256SUMS.txt` over the rest. `.agent-output/` inside the
+worktree is scratch for the run itself: before the worktree is removed, move the evidence out
+and verify the checksums, then remove the worktree the plain way (no `--force`). A worktree
+whose evidence has not been moved stays, with the reason recorded on its issue. Files under
+`.agent-output/` that are tracked in the repository are not run evidence and are not moved.
 
 ## Task file
 

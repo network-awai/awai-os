@@ -1,0 +1,21 @@
+Android/sdk_gphone64_arm64/emu64a:15/AE3A.240806.043/12960925:userdebug/dev-keys
+    versionName=124.0.6367.219
+    system image: system-images;android-35;google_apis;arm64-v8a (API 35, installed 2026-11-22 via sdkmanager; prior run used API 35 sdk_phone64_arm64 userdebug of the same sdk_gphone64_arm64 class)
+    AVD Awai_PublicFunds_AWAI3352 (device profile pixel_6, 2 cores, 3072 RAM), flags: -port 5556 -wipe-data -no-snapshot -no-snapshot-save -no-window -no-audio -gpu swiftshader_indirect -no-boot-anim
+    emulator start 2026-11-22T21:09Z (host local 06:09 JST), stop 2026-11-22T21:15Z (06:15 JST), via `adb -s emulator-5556 emu kill`
+    app UID 10207; WebView 124.0.6367.219 (same as AWAI-3297)
+    Foreign emulator awai-emu (emulator-5554, other session) was running at session start and exited on its own before measurement; never addressed. 10.77.0.2:5555 never addressed.
+    only device attached during measurement: emulator-5556 (`adb devices -l`)
+build (apps/public-funds from awai-os main bb2a01f0, branch awai-3352-anr-remeasure):
+    (cd packages/awai-ui && npm ci && npm run build)
+    npm ci && npm test (13/13) && npm run build (20 pinned files, dist/ static)
+    CARGO_BUILD_JOBS=4 nice -n 10 npx tauri android build --debug --apk --target aarch64
+    toolchain: ANDROID_HOME=~/Android/sdk, JAVA_HOME=/opt/homebrew/opt/openjdk@21 (OpenJDK 21.0.10), NDK_HOME=~/Android/sdk/ndk/27.0.12077973, Rust toolchain at ~/.cargo/bin (first attempt without ~/.cargo/bin on PATH failed on `rustup target add`; retry with ~/.cargo/bin on PATH succeeded)
+    build window: 2026-11-22T21:05:03Z-21:06:43Z (host local 06:05-06:06 JST)
+    final APK app-universal-debug.apk: sha256 1b8a36082999176fa7e6d3200f133763c95a2d8e28158a768305b4de265fcb25, 21,816,403 bytes (`apk-sha256.txt`). Debug build, test signing, not a release.
+control build (apps/securities-drafts, same procedure):
+    npm test 14/14; npm run build (20 pinned files)
+    CARGO_BUILD_JOBS=4 nice -n 10 npx tauri android build --debug --apk --target aarch64
+    build window: 2026-11-22T21:13:23Z-21:14:44Z (host local 06:13-06:14 JST)
+    final APK app-universal-debug.apk: sha256 b246bf08434302c8f8a6f793d8bb97f63cea35dbd19a1fd46f829e4929446062, 21,798,452 bytes
+low-load rule: keep only measurements with 1-minute load average < 8.0 (all kept runs: 5.81-7.31 1-min at start; end-of-run up to 7.31). Prior AWAI-3297 host load was 140-310.

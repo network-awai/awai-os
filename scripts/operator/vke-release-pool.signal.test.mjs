@@ -10,6 +10,17 @@ import { fileURLToPath } from "node:url";
 
 const here = fileURLToPath(new URL(".", import.meta.url));
 
+// The child processes rewrite the state file with writeFileSync, which is
+// not atomic: a poll can observe the file empty or half-written. That
+// observation means "not ready yet", not a test failure (AWAI-3851).
+function readState(path) {
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
 function setup() {
   const dir = mkdtempSync(join(tmpdir(), "vke-signal-"));
   const bin = join(dir, "bin");
@@ -25,7 +36,7 @@ async function runWrapper({ dir, bin, state }, signalWhen, target = (pid) => -pi
   chmodSync(join(here, "testdata/fake-kubectl.mjs"), 0o755);
   // The "build": marks a running Job, then waits to be killed.
   const build = join(dir, "build.sh");
-  writeFileSync(build, `node -e 'const f=process.env.FAKE_VKE_STATE,fs=require("fs");const s=JSON.parse(fs.readFileSync(f));s.jobs=[{metadata:{name:"awai-pc-release-build"}}];fs.writeFileSync(f,JSON.stringify(s))'\ntrap 'exit 124' TERM\nsleep 60 & wait\n`);
+  writeFileSync(build, `node -e 'const f=process.env.FAKE_VKE_STATE,fs=require("fs");const s=JSON.parse(fs.readFileSync(f));s.jobs=[{metadata:{name:"awai-pc-release-build"}}];fs.writeFileSync(f,JSON.stringify(s))'\ntrap 'exit 124' TERM\nnode -e 'const f=process.env.FAKE_VKE_STATE,fs=require("fs");const s=JSON.parse(fs.readFileSync(f));s.started=true;fs.writeFileSync(f,JSON.stringify(s))'\nsleep 60 & wait\n`);
   const child = spawn(process.execPath, ["--import", join(here, "testdata/fake-vultr.mjs"), join(here, "vke-release-pool.mjs"),
     "run", join(dir, "kubeconfig"), "--", "bash", build], {
     detached: true, stdio: ["ignore", "pipe", "pipe"],
@@ -35,8 +46,8 @@ async function runWrapper({ dir, bin, state }, signalWhen, target = (pid) => -pi
   let stderr = "";
   child.stderr.on("data", (chunk) => { stderr += chunk; });
   const poll = setInterval(() => {
-    const current = JSON.parse(readFileSync(state, "utf8"));
-    if (signalWhen(current)) { clearInterval(poll); process.kill(target(child.pid), "SIGTERM"); }
+    const current = readState(state);
+    if (current && signalWhen(current)) { clearInterval(poll); process.kill(target(child.pid), "SIGTERM"); }
   }, 50);
   const code = await new Promise((done) => child.on("close", (exitCode) => done(exitCode)));
   clearInterval(poll);
@@ -67,4 +78,28 @@ test("SIGTERM to the wrapper alone while provisioning still releases the pool", 
   assert.equal(final.namespace, null, stderr);
   assert.match(stderr, /Received SIGTERM/);
   rmSync(env.dir, { recursive: true, force: true });
+});
+
+test("SIGTERM to the wrapper alone during the build still releases the pool", { timeout: 60_000 }, async () => {
+  const env = setup();
+  // Signal only once the build is running (its background sleep is alive): the wrapper
+  // must stop the whole build tree, not just its shell, or the orphan keeps it waiting.
+  const { code, stderr, final } = await runWrapper(env, (state) => state.started === true, (pid) => pid);
+  assert.notEqual(code, 0);
+  assert.equal(final.deleted, 1, stderr);
+  assert.equal(final.pools.length, 0, stderr);
+  assert.equal(final.namespace, null, stderr);
+  assert.match(stderr, /Received SIGTERM/);
+  rmSync(env.dir, { recursive: true, force: true });
+});
+
+test("polling tolerates the state file observed mid-write", () => {
+  const { dir, state } = setup();
+  writeFileSync(state, "");
+  assert.equal(readState(state), null);
+  writeFileSync(state, '{"pools":[{');
+  assert.equal(readState(state), null);
+  writeFileSync(state, JSON.stringify({ pools: [1], jobs: [] }));
+  assert.deepEqual(readState(state), { pools: [1], jobs: [] });
+  rmSync(dir, { recursive: true, force: true });
 });

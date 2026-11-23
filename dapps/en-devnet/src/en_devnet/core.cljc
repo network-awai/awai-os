@@ -134,7 +134,7 @@
     (cond
       (not= (:chain-id ledger) (:chain-id tx)) :wrong-chain
       (not= :devnet (:value-class tx)) :not-devnet
-      (not (contains? #{:funding :settlement} kind)) :bad-kind
+      (not (contains? #{:funding :settlement :compute-funding} kind)) :bad-kind
       (not (pos-amount? amount)) :bad-amount
       (not (and (int-value? fee) (<= 0 fee (:fee-cap ledger)))) :fee-over-cap
       (= spender receiver) :self-transfer

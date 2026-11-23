@@ -1,6 +1,7 @@
 package network.awai.sanka;
 
 import android.app.Activity;
+import network.awai.systembars.SystemBars;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.security.keystore.KeyGenParameterSpec;
@@ -51,6 +52,7 @@ public final class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        SystemBars.applyForUiMode(this, getResources().getConfiguration());
         ScrollView scroll = new ScrollView(this);
         root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);

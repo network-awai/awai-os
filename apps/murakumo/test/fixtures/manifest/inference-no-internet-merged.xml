@@ -1,0 +1,1 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="network.awai.murakumo"><uses-permission android:name="network.awai.permission.LOCAL_INFERENCE"/><application android:label="Synthetic" android:allowBackup="false"/></manifest>

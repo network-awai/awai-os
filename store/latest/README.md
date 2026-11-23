@@ -38,3 +38,12 @@ refuses a lower one. Replacing or withdrawing a key is a new list with a higher 
 **Stores built before the key list stop updating.** They trust only the debug key, so they refuse sequence 4 and
 later. They are reinstalled (owner default 2026-11-22) by installing a current build over them with
 `adb install -r`, which keeps their data and every other app (`docs/otehon/itonami-store-key-list-moto-g05-20261122.md`).
+
+## Publisher (AWAI-3882)
+
+The pointer carries no publisher of its own: each app's publisher comes from the signed catalog
+it pins, and production catalogs write the single publisher defined once in
+`store/catalog-source/series-apps.json` (`Awai Network LLC`). Development catalogs keep the
+publisher they were signed with. See `store/README.md` for the key custody rule (production key
+stays with the owner; this repository holds only the public key and chain), the Store-then-Play
+order, and the `rel-YYYYMMDD-rNNN` one-file release record.

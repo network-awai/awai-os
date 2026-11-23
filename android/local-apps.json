@@ -175,6 +175,18 @@
    "name": "Shirohan 白版",
    "repo": "cloud-itonami/app-itonami-shirohan",
    "description": "SVG・PNG・JPEG・WebP の図案から白インクの下地と色版を生成し、版下 SVG をダウンロードに保存します。製版は端末内で行われます。"
+  },
+  {
+   "suffix": "paymentdrafts",
+   "name": "Payment Drafts",
+   "repo": "apps/payment-drafts",
+   "description": "自分の送金指示（ISO 20022 pain.001.001.09）を作り、XSD の形と照らして、手元で下書きとして保存します。承認しても送信しません。銀行への接続・署名・支払いはありません。"
+  },
+  {
+   "suffix": "securitiesdrafts",
+   "name": "Securities Drafts",
+   "repo": "apps/securities-drafts",
+   "description": "自分の証券口座の決済指示（ISO 20022 sese.023.001.09）を作り、保管口座の明細（semt.002.001.10）と手元の保有を照合します。承認しても送信・注文・移動はしません。"
   }
  ]
 }

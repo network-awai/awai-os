@@ -920,6 +920,40 @@ Object.prototype.support;
 Object.prototype.wording;
 Object.prototype.RECIPIENT;
 
+// Awai compute panel (AWAI-3115): desk origin, offer, order and work receipt fields.
+Object.prototype.computeOperations;
+Object.prototype.computeDeskOrigin;
+Object.prototype.computeProviderDid;
+Object.prototype.offerText;
+Object.prototype.offer;
+Object.prototype.orderId;
+Object.prototype.provider;
+Object.prototype.OFFER_KIND;
+Object.prototype.WORK_RECEIPT_KIND;
+Object.prototype.compute;
+Object.prototype.consumer;
+Object.prototype.work;
+Object.prototype.cljc;
+Object.prototype.fundingPayload;
+Object.prototype["funding-signature"];
+Object.prototype["funding-payload"];
+Object.prototype.engineCalls;
+Object.prototype.measured;
+Object.prototype.output;
+// Finding-9 disclosure keys (AWAI-3115 compute, AWAI-3883): read by name by the
+// canonical client runtime's string-key checks in advanced builds.
+Object.prototype.country;
+Object.prototype.frequency;
+Object.prototype.withdrawal;
+Object.prototype["special-care"];
+Object.prototype.disclosure;
+Object.prototype.note;
+Object.prototype.countryStatus;
+Object.prototype.confirmCondition;
+Object.prototype.CHAT_DISCLOSURE;
+Object.prototype.RELAY_DISCLOSURE;
+Object.prototype.OPTIMISM_DISCLOSURE;
+
 // awai.link.v1 purposes (AWAI-2898 Drive, AWAI-3478 Itonami Bot launch): the
 // WebAuthn clientData flag and the launch fields are read by name from parsed JSON.
 Object.prototype.crossOrigin;
@@ -949,3 +983,14 @@ Object.prototype.issued;
 Object.prototype.host;
 Object.prototype.fromBase64Url;
 Object.prototype.toBase64Url;
+
+// AWAI-3884: finding-9 disclosure keys and the disclosure constants beside them
+// (runtime.js, voice-channel-contract.js, awai-support.js, egov-host.js): the
+// canonical runtime reads disclosure fields by name, so Closure must not rename them.
+Object.prototype.country;
+Object.prototype.frequency;
+Object.prototype.withdrawal;
+Object.prototype.SUPPORT_DISCLOSURE;
+Object.prototype.RELAY_DISCLOSURE;
+Object.prototype.OPTIMISM_DISCLOSURE;
+Object.prototype.chatDisclosure;
