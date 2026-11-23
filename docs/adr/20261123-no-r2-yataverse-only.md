@@ -258,3 +258,31 @@ grep 結果: **146 ファイル**（17 repo、うち `network-awai/awai-os-wt-da
 **PR #478 はこの Worker を yataverse 直結に書き換え、main に入っている**（`9a8c158`、テスト 8/8）。
 binding を持たないため、**この版はデプロイしない**（デプロイすると installer が 404 になる）。
 将来 installer を別経路（GitHub Release 等）へ移すと決めた時点で、この例外は解除する。
+
+## 実測で分かった配信の制約（2026-11-24）: yataverse は payload CDN ではない
+
+CAR 経路で 16 MiB を超える payload を配れるか、実測した（この Mac、すべて実行済み）:
+
+| 試行 | 結果 |
+|---|---|
+| raw 16 MiB PUT | 200 / `verified:true`（上限内） |
+| raw 32 MiB PUT | `put-too-large: HTTP 413`（16–32 MiB の間に壁） |
+| 2 MiB UnixFS を `car-put` | 200 / `verified:true` / blocks:10（**投入は成功**） |
+| `GET /ipfs/<dir-root>` | 200 だが `application/vnd.ipld.raw` の **62B**（dag-pb ブロックそのもの） |
+| `GET /ipfs/<dir-root>/small2m.bin` | **404**（gateway にファイル再構成の経路が無い） |
+| 小ブロックの `Range: bytes=0-9` | 206 + `content-range: bytes 0-9/55` |
+| 比較: commit-pin の raw.githubusercontent 55MB APK | HEAD 200（etag = sha256）、`Range: bytes=0-99` → **206** |
+
+**つまり「16 MiB 超は CAR + chunk map」は成立しない**。chunk map を manifest に持たせても、
+**それを展開する HTTP 経路が yataverse に無い**。Worker がチャンクを都度 fetch して組み立てる案も、
+実 OTA サイズ（数百 MB〜2 GB）では Workers の subrequest 制限に当たる。
+
+### したがって payload の置き場は3層に分ける
+
+| 用途 | 置き場 |
+|---|---|
+| **payload（APK・zip・ISO など大きい実体）** | **commit-pin した `raw.githubusercontent.com/network-awai/awai-os/<40hex>/…`**（store の pins と同じ方式）。R2 例外は installer のみ |
+| **可変 index / feed（ota の manifest）** | 専用 Worker（`ota.awai.network`） |
+| **≤16 MiB のブロック（manifest スナップショット・receipt・小さな index）** | **yataverse**（`GET /ipfs/<cid>` + Range 206） |
+
+**yataverse を唯一のコピーにしない**原則はこの構成でも保たれる（原本は git 側、yataverse は cache）。
