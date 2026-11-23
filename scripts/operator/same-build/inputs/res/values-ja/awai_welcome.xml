@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<resources>
+    <string name="awai_welcome_description">この端末の初期設定を始めます。</string>
+    <string name="awai_welcome_setup_heading">初期設定</string>
+    <string name="awai_welcome_language_label">言語を変更</string>
+    <string name="awai_welcome_accessibility">ユーザー補助</string>
+    <string name="awai_welcome_start">はじめる</string>
+</resources>
