@@ -1,0 +1,8 @@
+# install.pins — placed at /awai/install.pins inside the install initrd
+# overlay. Three key=value lines, no spaces around '='. Edited per release;
+# the whole initrd (including this file) is then pinned by the serve
+# manifest's initrd SHA-256, and the iPXE script's url/sha/bytes are never
+# mixed across builds. The init refuses on any missing/malformed pin.
+image_url=http://10.77.0.1:18091/install.img
+image_sha=<64-hex-sha256-of-install.img-from-the-build-record>
+img_bytes=<decimal-bytes-of-install.img>
