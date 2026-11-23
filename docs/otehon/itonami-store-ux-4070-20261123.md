@@ -1,6 +1,6 @@
 # Itonami Store UX: aligned catalog / browse / install / update flow
 
-2026-11-23, [AWAI-4070](https://linear.app/kotobalabs/issue/AWAI-4070)（優先度 2/3、2026-11-23 順序）。状態: **実装済み・未マージ**（PR 作成後 URL を追記）。
+2026-11-23, [AWAI-4070](https://linear.app/kotobalabs/issue/AWAI-4070)（優先度 2/3、2026-11-23 順序）。状態: **実装済み・未マージ**（https://github.com/network-awai/awai-os/pull/467）。
 
 AWAI-4072（PC 版 Figma 設計）の worker と重ならないよう、worktree
 `~/orca/workspaces/awai-os/awai-4070-itonami-store` と branch
