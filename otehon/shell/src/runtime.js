@@ -22,6 +22,22 @@ const PASSPORT_ORIGIN = "https://mainnet.optimism.io";
 // the user-visible `note` carries the provisional wording, and `confirmCondition` says
 // what would confirm it. Frequency is validator 'one-time' for each-operation consent
 // (all precedents). Relay routes follow main's /v1/ protocol.
+// Why the countryStatus rules live in the vendor and not in a shell-side wrapper
+// (Organizer Option 1, 2026-11-23 — attempted, principledly impossible, probe recorded):
+// with main's pre-fix vendor bytes (ee75001), a pending disclosure fails the exported
+// clientRuntimeProblems (invalid-disclosure-keys/invalid-country) AND — decisively —
+// createClientOperationBroker throws "invalid client runtime descriptor" for the same
+// descriptor even with a real consent host, because the broker validates through its
+// INTERNAL clientRuntimeProblems call, which no exported wrapper can intercept. The
+// dialog renderer (consentFirstScreen) is likewise internal and not exported: any
+// shell-side transform that makes the broker accept the descriptor must write a
+// two-letter code into the very disclosure object the dialog reads, displaying an
+// unconfirmed country as confirmed (Legal violation). A wrapper could only fix the
+// build/test call sites while the shipped WebView still refused the descriptor.
+// Hence the upstream-first order was taken instead: kotoba-lang/kotoba PR #1378
+// (merged 889239dc), re-vendored byte-identical, PINS.json carrying the upstream
+// revision + digest verbatim. Reverting vendor/PINS to main's bytes would re-break
+// every pending disclosure at broker creation.
 const RELAY_DISCLOSURE = {
   recipient: "Awai Network LLC",
   country: null, // unconfirmed: no code; see note + confirmCondition
