@@ -11,7 +11,7 @@ function validPin(entry,revision,ceiling){
 export function validatePins(pins) {
   if (!pins || !/^[0-9a-f]{40}$/.test(pins.revision) || !pins.catalog || !pins.apks || typeof pins.apks!=='object' || Array.isArray(pins.apks)) throw Error('配信情報が未設定です。');
   const ids=Object.keys(pins.apks);
-  if(ids.length<1||ids.length>16||!ids.every(id=>APP_ID.test(id)))throw Error('配信先の固定情報を確認できません。');
+  if(ids.length<1||ids.length>32||!ids.every(id=>APP_ID.test(id)))throw Error('配信先の固定情報を確認できません。');
   validPin(pins.catalog,pins.revision,131072);
   for(const id of ids)validPin(pins.apks[id],pins.revision,64*1024*1024);
   return pins;
