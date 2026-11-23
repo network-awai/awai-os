@@ -42,15 +42,16 @@
 | 7 | full OTA 生成 | B | **オーナー**（鍵が要る） | `updater-feed.py generate-ota "$SIGNED_TARGET_FILES" "$OTA_ZIP" --key "$OTA_KEY_BASENAME" --certificate-sha256 "$OTA_CERTIFICATE_SHA256" --target-sha256 "$SIGNED_TARGET_FILES_SHA256" --require-streaming > "$OTA_VERIFICATION_RECORD"` | 署名検証が通るまで出力を作らない＝**出力が無いのが正常な失敗形** |
 | 8 | OTA 検証 | E または C | bot | `updater-feed.py verify-ota "$OTA_ZIP" "$OTA_CERTIFICATE" "$SIGNED_TARGET_FILES" --certificate-sha256 … --target-sha256 … --require-streaming`（delta は `--source-target-files` / `--source-sha256`） | ZIP 署名と A/B payload 署名のどちらで落ちたかがメッセージに出る。fingerprint／増分版の不一致もここで止まる |
 | 9 | index / feed 公開 | feed 側 | **Organizer の worker** | §6 の担当。この文書は手順を持たない | — |
-| 10 | install の plan | C | bot（`apply` は承認後） | §3 | `REFUSED not-enough-free-space` / `REFUSED name-in-use` / `REFUSED overlap` / `REFUSED source-has-no-partition` |
-| 11 | install の apply | C | **オーナー承認 → bot** | `awai-pc-install.py apply <disk> <verified image> --source-sha256 "$INSTALL_IMAGE_SHA256" --record record.json`（`--record` は新規パス） | 既存分区の前後 digest 不一致、新 GPT の readback 不一致、`--source-sha256` 形式エラーで停止。成功時のみ record に `existingUnchanged: true` |
-| 12 | LAN ブート（RAM Live） | D | bot（電源とブート選択はオーナー） | §4 | `sys.boot_completed` が 1 にならない／NVMe が見える／`/data` が tmpfs でない＝§4 の前提が崩れている |
+| 10 | install 先のセクタ確認 | C | bot | `sgdisk -p <new disk>` で **logical sector size 512** を確認。**4Kn（4096）は installer が拒否するので中止**。64 GiB 以上・2本目ディスク（既存 NVMe は無傷のまま） | 4096 が出たら中止（plan に進まない） |
+| 11 | install の plan | C | bot（`apply` は承認後） | §3 | `REFUSED not-enough-free-space` / `REFUSED name-in-use` / `REFUSED overlap` / `REFUSED source-has-no-partition` |
+| 12 | install の apply | C | **オーナー承認 → bot** | `awai-pc-install.py apply <disk> <verified image> --source-sha256 "$INSTALL_IMAGE_SHA256" --record record.json`（`--record` は新規パス） | 既存分区の前後 digest 不一致、新 GPT の readback 不一致、`--source-sha256` 形式エラーで停止。成功時のみ record に `existingUnchanged: true` |
+| 13 | LAN ブート（RAM Live） | D | bot（電源とブート選択はオーナー） | §4 | `sys.boot_completed` が 1 にならない／NVMe が見える／`/data` が tmpfs でない＝§4 の前提が崩れている |
 
 「persistent」はディスクに書いた場合だけ使う。RAM Live は RAM Live と書く。
 
-## 3. インストーラ run plan（2分岐）
+## 3. インストーラ run plan（3分岐・**決定は (c)**）
 
-分岐は **消去** と **p3 の末尾を切る縮小**。sector・候補順序・何が失われるかの根拠は
+分岐は **(c) 2本目のディスク**、**(a) 全消去**、**(b1) p3 末尾切断**。sector・候補順序・何が失われるかの根拠は
 [#479 §3](7735h-measured-status-20261123.md) が正。ここは**実行手順と前提だけ**。
 
 - **plan を実行するホスト**: **C**（Linux、`sgdisk` あり、NVMe 直結）。この Mac（E）では `plan` すら動かない。
@@ -63,7 +64,7 @@
   したがって「`resize2fs` で縮小」はそのままでは通らない。成立するのは LUKS とその中の fs の両方を
   縮小・再暗号化できる場合だけで、**末尾を切る形では末尾のデータは失われる**。データ保持の縮小ではない。
 - **`apply` はこの runbook では実行しない。** C 上でオーナー承認後にのみ。
-- 2本目のディスクを使う案は #479 §3 の候補順序が持っている（決定はオーナー）。
+- **2026-11-24 オーナー決定: (c) 2本目ディスク。(a)(b1) は承認されず実行対象外。(c) の必須仕様は 512e・64 GiB 以上**。
 
 ## 4. LAN 復旧時の **RAM Live** 再確認手順
 
