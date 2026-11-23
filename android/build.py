@@ -6,6 +6,9 @@ Never installs on a device. Outputs stay in the task's .agent-output directory b
 import argparse, base64, hashlib, json, os, pathlib, shutil, subprocess, time, zipfile, re
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+# AWAI-3882: the publisher is defined once in store/catalog-source/series-apps.json and
+# referenced here; never copy the literal per app entry.
+PUBLISHER = json.loads((ROOT / 'store/catalog-source/series-apps.json').read_text())['publisher']
 def run(args, **kw):
     return subprocess.run([str(x) for x in args], check=True, text=True, **kw)
 def digest(path): return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -65,7 +68,7 @@ def manifest(pkg, activity, version, kind, online=False, debuggable=True, query_
       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>{home}</activity>{extra}</application></manifest>'''
 
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument('--version',type=int,default=1);ap.add_argument('--sdk',type=pathlib.Path,default=pathlib.Path.home()/'Library/Android/sdk');ap.add_argument('--java',type=pathlib.Path,default=pathlib.Path('/opt/homebrew/opt/openjdk/bin'));ap.add_argument('--out',type=pathlib.Path,default=ROOT/'.agent-output/android');ap.add_argument('--skip-cljs',action='store_true');ap.add_argument('--online-pins',type=pathlib.Path);ap.add_argument('--catalog-revision',type=int,default=None);ap.add_argument('--itonami-apk',type=pathlib.Path,default=None);ap.add_argument('--torihiki-bot-apk',type=pathlib.Path,default=None);ap.add_argument('--tabi-mikake-apk',type=pathlib.Path,default=None);ap.add_argument('--deai-apk',type=pathlib.Path,default=None);ap.add_argument('--hiring-apk',type=pathlib.Path,default=None);ap.add_argument('--kumade-apk',type=pathlib.Path,default=None);ap.add_argument('--local-apps-dir',type=pathlib.Path,default=None);ap.add_argument('--home-only',action='store_true')
+    ap=argparse.ArgumentParser();ap.add_argument('--version',type=int,default=1);ap.add_argument('--sdk',type=pathlib.Path,default=pathlib.Path.home()/'Library/Android/sdk');ap.add_argument('--java',type=pathlib.Path,default=pathlib.Path('/opt/homebrew/opt/openjdk/bin'));ap.add_argument('--out',type=pathlib.Path,default=ROOT/'.agent-output/android');ap.add_argument('--skip-cljs',action='store_true');ap.add_argument('--online-pins',type=pathlib.Path);ap.add_argument('--catalog-revision',type=int,default=None);ap.add_argument('--itonami-apk',type=pathlib.Path,default=None);ap.add_argument('--torihiki-bot-apk',type=pathlib.Path,default=None);ap.add_argument('--tabi-mikake-apk',type=pathlib.Path,default=None);ap.add_argument('--deai-apk',type=pathlib.Path,default=None);ap.add_argument('--hiring-apk',type=pathlib.Path,default=None);ap.add_argument('--kumade-apk',type=pathlib.Path,default=None);ap.add_argument('--payment-drafts-apk',type=pathlib.Path,default=None, help='Development-signed Tauri APK from apps/payment-drafts (AWAI-3157/3159)');ap.add_argument('--securities-drafts-apk',type=pathlib.Path,default=None, help='Development-signed Tauri APK from apps/securities-drafts (AWAI-3158/3159)');ap.add_argument('--local-apps-dir',type=pathlib.Path,default=None);ap.add_argument('--home-only',action='store_true')
     ap.add_argument('--agent-trace-apk', type=pathlib.Path, help='Development-signed APK from app-itonami-agent-trace')
     ap.add_argument('--agent-trace-online', action='store_true', help='Admit the feed-enabled agent trace APK with INTERNET')
     ap.add_argument('--agent-trace-sha256', help='Expected SHA-256 from the source app build receipt')
@@ -218,7 +221,7 @@ def main():
         (staged_assets/'assets.list').write_text('\n'.join(files)+'\n')
         run([tools/'aapt2','compile','--dir',resources,'-o',stage/'resources.zip'])
         run([tools/'aapt2','link','-o',stage/'resources.apk','--manifest',xml,'-I',jar,'--java',gen,'-R',stage/'resources.zip','-A',staged_assets,'--auto-add-overlay'])
-        sources=list((ROOT/'android/shared/src').rglob('*.java'))+list((ROOT/'android'/kind/'src').rglob('*.java'))+list(gen.rglob('*.java'))
+        sources=list((ROOT/'android/shared/src').rglob('*.java'))+list((ROOT/'android'/kind/'src').rglob('*.java'))+list((ROOT/'packages/awai-system-bars/android').rglob('*.java'))+list(gen.rglob('*.java'))
         run([args.java/'javac','--release','8','-encoding','UTF-8','-cp',jar,'-d',classes,*sources])
         run([tools/'d8','--min-api','33','--lib',jar,'--output',dex,*classes.rglob('*.class')])
         unsigned=stage/'unsigned.apk';shutil.copyfile(stage/'resources.apk',unsigned)
@@ -250,8 +253,8 @@ def main():
     torihiki=build('torihiki','network.itonami.torihiki','network.itonami.torihiki.TorihikiActivity')
     packages=assets/'packages';packages.mkdir(exist_ok=True);shutil.copyfile(yotei,packages/'yotei.apk');shutil.copyfile(torihiki,packages/'torihiki.apk')
     revision=args.catalog_revision if args.catalog_revision is not None else args.version
-    listed=[{'id':'network.itonami.yotei','name':'Yotei','description':'予定をこの端末に保存します。外部への送信や同期、通知配信は行いません。','publisher':'Awai Otehon 開発版','versionCode':args.version,'versionName':f'0.1.{args.version-1}','artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/yotei.apk','bytes':yotei.stat().st_size,'sha256':digest(yotei),'signerSha256':fp},{'platform':'nixos','runtime':'browser','kind':'bundled-web','asset':'bundled:yotei','bytes':(assets/'client.js').stat().st_size,'sha256':digest(assets/'client.js')}]},
-            {'id':'network.itonami.torihiki','name':'Torihiki','description':'取引所 devnet の価格・板・ノード状態を表示し、端末の鍵で署名して devnet に発注できます。devnet・デモ専用で、実際の資産は扱いません。通信は毎回確認します。','publisher':'Awai Otehon 開発版','versionCode':args.version,'versionName':f'0.1.{args.version-1}','artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/torihiki.apk','bytes':torihiki.stat().st_size,'sha256':digest(torihiki),'signerSha256':fp}]}]
+    listed=[{'id':'network.itonami.yotei','name':'Yotei','description':'予定をこの端末に保存します。外部への送信や同期、通知配信は行いません。','publisher':PUBLISHER,'versionCode':args.version,'versionName':f'0.1.{args.version-1}','artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/yotei.apk','bytes':yotei.stat().st_size,'sha256':digest(yotei),'signerSha256':fp},{'platform':'nixos','runtime':'browser','kind':'bundled-web','asset':'bundled:yotei','bytes':(assets/'client.js').stat().st_size,'sha256':digest(assets/'client.js')}]},
+            {'id':'network.itonami.torihiki','name':'Torihiki','description':'取引所 devnet の価格・板・ノード状態を表示し、端末の鍵で署名して devnet に発注できます。devnet・デモ専用で、実際の資産は扱いません。通信は毎回確認します。','publisher':PUBLISHER,'versionCode':args.version,'versionName':f'0.1.{args.version-1}','artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/torihiki.apk','bytes':torihiki.stat().st_size,'sha256':digest(torihiki),'signerSha256':fp}]}]
     if args.itonami_apk is not None:
         staged=packages/'itonami.apk';shutil.copyfile(args.itonami_apk,staged)
         signer=run([tools/'apksigner','verify','--print-certs',staged],capture_output=True).stdout
@@ -261,7 +264,7 @@ def main():
         info = re.search(r"^package: name='network\.itonami\.app' versionCode='([0-9]+)' versionName='([^']+)'",badging,re.M)
         if not info or int(info[1]) < 1:
             raise SystemExit('itonami APK package/version mismatch')
-        listed.append({'id':'network.itonami.app','name':'Itonami','description':'NixOS 版 Itonami UI を一つの Tauri v3 アプリにまとめた開発版。既存 Home・Store・Yotei は保持し別アプリ ID で追加。Nix 専用サービスは未移植で機能表示しない。Android development debug 署名（本番鍵ではない）。','publisher':'Awai Otehon 開発版','versionCode':int(info[1]),'versionName':info[2],'artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/itonami.apk','bytes':staged.stat().st_size,'sha256':digest(staged),'signerSha256':fp}]})
+        listed.append({'id':'network.itonami.app','name':'Itonami','description':'NixOS 版 Itonami UI を一つの Tauri v3 アプリにまとめた開発版。既存 Home・Store・Yotei は保持し別アプリ ID で追加。Nix 専用サービスは未移植で機能表示しない。Android development debug 署名（本番鍵ではない）。','publisher':PUBLISHER,'versionCode':int(info[1]),'versionName':info[2],'artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/itonami.apk','bytes':staged.stat().st_size,'sha256':digest(staged),'signerSha256':fp}]})
     if args.torihiki_bot_apk is not None:
         # Tauri v3 APK built from network-awai/app-itonami-torihiki app/. The listed id, version and signer are read from
         # the APK itself and refused unless they are exactly the admitted package and the development identity.
@@ -271,7 +274,7 @@ def main():
         badging=run([tools/'aapt2','dump','badging',staged],capture_output=True).stdout.splitlines()[0]
         m=re.fullmatch(r"package: name='([^']+)' versionCode='([0-9]+)' versionName='([^']+)'.*",badging)
         if not m or m.group(1)!='network.itonami.torihiki.bot':raise SystemExit('torihiki bot APK package is not network.itonami.torihiki.bot')
-        listed.append({'id':'network.itonami.torihiki.bot','name':'Torihiki Bot','description':'市場運営 bot（ISIC 6611）の profile と稼働状況、取引所 devnet の価格・板を読み取り専用で表示します。発注・鍵・入出金はありません。devnet・デモ専用で、通信は毎回確認します。Android development debug 署名（本番鍵ではない）。','publisher':'Awai Otehon 開発版','versionCode':int(m.group(2)),'versionName':m.group(3),'artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/torihiki-bot.apk','bytes':staged.stat().st_size,'sha256':digest(staged),'signerSha256':fp}]})
+        listed.append({'id':'network.itonami.torihiki.bot','name':'Torihiki Bot','description':'市場運営 bot（ISIC 6611）の profile と稼働状況、取引所 devnet の価格・板を読み取り専用で表示します。発注・鍵・入出金はありません。devnet・デモ専用で、通信は毎回確認します。Android development debug 署名（本番鍵ではない）。','publisher':PUBLISHER,'versionCode':int(m.group(2)),'versionName':m.group(3),'artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/torihiki-bot.apk','bytes':staged.stat().st_size,'sha256':digest(staged),'signerSha256':fp}]})
     if args.tabi_mikake_apk is not None:
         # Tauri v3 APK built from network-awai/app-tabi-mikake (AWAI-3301/3302). The listed id, version and signer are read
         # from the APK itself and refused unless they are exactly the admitted package and the development identity.
@@ -283,7 +286,7 @@ def main():
         if not m or m.group(1)!='network.itonami.tabimikake':raise SystemExit('tabi mikake APK package is not network.itonami.tabimikake')
         # ADR 0046 D6: the app declares no external operation, so its APK must not ask for network access.
         if "uses-permission: name='android.permission.INTERNET'" in badging:raise SystemExit('tabi mikake APK requests INTERNET')
-        listed.append({'id':'network.itonami.tabimikake','name':'Tabi Mikake','description':'航空券と宿の価格を、この端末で比べます。予約・支払いは予約先のサイトで行い、このアプリは予約しません。この版は架空のデータだけを使い、外部へは何も送信しません。Android development debug 署名（本番鍵ではない）。','publisher':'Awai Otehon 開発版','versionCode':int(m.group(2)),'versionName':m.group(3),'artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/tabi-mikake.apk','bytes':staged.stat().st_size,'sha256':digest(staged),'signerSha256':fp}]})
+        listed.append({'id':'network.itonami.tabimikake','name':'Tabi Mikake','description':'航空券と宿の価格を、この端末で比べます。予約・支払いは予約先のサイトで行い、このアプリは予約しません。この版は架空のデータだけを使い、外部へは何も送信しません。Android development debug 署名（本番鍵ではない）。','publisher':PUBLISHER,'versionCode':int(m.group(2)),'versionName':m.group(3),'artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/tabi-mikake.apk','bytes':staged.stat().st_size,'sha256':digest(staged),'signerSha256':fp}]})
     if args.deai_apk is not None:
         # Tauri v3 APK built from network-awai/app-deai (AWAI-3373/3374). The listed id, version and signer are read
         # from the APK itself and refused unless they are exactly the admitted package and the development identity.
@@ -295,7 +298,7 @@ def main():
         if not m or m.group(1)!='network.itonami.deai':raise SystemExit('deai APK package is not network.itonami.deai')
         # The app declares no external operation (operations: []), so its APK must not ask for network access.
         if "uses-permission: name='android.permission.INTERNET'" in badging:raise SystemExit('deai APK requests INTERNET')
-        listed.append({'id':'network.itonami.deai','name':'Deai','description':'出会いの準備をこの端末だけで進めます。プロフィールの下書きと、自分で入力した候補の並び順と理由を表示します。外部への送信、遠隔推論、利用者どうしの連絡はありません。Android development debug 署名（本番鍵ではない）。','publisher':'Awai Otehon 開発版','versionCode':int(m.group(2)),'versionName':m.group(3),'artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/deai.apk','bytes':staged.stat().st_size,'sha256':digest(staged),'signerSha256':fp}]})
+        listed.append({'id':'network.itonami.deai','name':'Deai','description':'出会いの準備をこの端末だけで進めます。プロフィールの下書きと、自分で入力した候補の並び順と理由を表示します。外部への送信、遠隔推論、利用者どうしの連絡はありません。Android development debug 署名（本番鍵ではない）。','publisher':PUBLISHER,'versionCode':int(m.group(2)),'versionName':m.group(3),'artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/deai.apk','bytes':staged.stat().st_size,'sha256':digest(staged),'signerSha256':fp}]})
     if args.hiring_apk is not None:
         # Tauri v3 APK built from network-awai/app-itonami-hiring (AWAI-3175/3176, ADR 0043 S1). The listed id, version and
         # signer are read from the APK itself and refused unless they are exactly the admitted package and the development identity.
@@ -307,7 +310,7 @@ def main():
         if not m or m.group(1)!='network.itonami.hiring':raise SystemExit('hiring APK package is not network.itonami.hiring')
         # The app declares no external operation (AWAI-3175), so its APK must not ask for network access.
         if "uses-permission: name='android.permission.INTERNET'" in badging:raise SystemExit('hiring APK requests INTERNET')
-        listed.append({'id':'network.itonami.hiring','name':'Hiring','description':'求職・求人の bot が作った下書き（応募文・求人告知）を、この端末で確かめて承認・差し戻しします。応募・投稿・送信はしません。記録は端末の中だけに残します。Android development debug 署名（本番鍵ではない）。','publisher':'Awai Otehon 開発版','versionCode':int(m.group(2)),'versionName':m.group(3),'artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/hiring.apk','bytes':staged.stat().st_size,'sha256':digest(staged),'signerSha256':fp}]})
+        listed.append({'id':'network.itonami.hiring','name':'Hiring','description':'求職・求人の bot が作った下書き（応募文・求人告知）を、この端末で確かめて承認・差し戻しします。応募・投稿・送信はしません。記録は端末の中だけに残します。Android development debug 署名（本番鍵ではない）。','publisher':PUBLISHER,'versionCode':int(m.group(2)),'versionName':m.group(3),'artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/hiring.apk','bytes':staged.stat().st_size,'sha256':digest(staged),'signerSha256':fp}]})
     if args.kumade_apk is not None:
         # Tauri v3 APK built from network-awai/app-itonami-kumade (AWAI-3165/3166/3167, network-awai-apex ADR 0043). The listed
         # id, version and signer are read from the APK itself and refused unless they are exactly the admitted package and the
@@ -321,7 +324,40 @@ def main():
         if not m or m.group(1)!='network.itonami.kumade':raise SystemExit('kumade APK package is not network.itonami.kumade')
         perms=sorted(set(re.findall(r"uses-permission: name='([^']+)'",badging)))
         if perms!=sorted({'android.permission.INTERNET','network.itonami.kumade.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'}):raise SystemExit(f'kumade APK permissions are not exactly INTERNET: {perms}')
-        listed.append({'id':'network.itonami.kumade','name':'Kumade','description':'公開 Web のページを、この端末で読み解きます。貼り付けた HTML の抽出、Common Crawl の過去のアーカイブの検索と取得（通信は毎回確認）、端末内の索引での検索ができます。任意の URL の取得とクロールは、取得用サービスが止まっているため使えません。Android development debug 署名（本番鍵ではない）。','publisher':'Awai Otehon 開発版','versionCode':int(m.group(2)),'versionName':m.group(3),'artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/kumade.apk','bytes':staged.stat().st_size,'sha256':digest(staged),'signerSha256':fp}]})
+        listed.append({'id':'network.itonami.kumade','name':'Kumade','description':'公開 Web のページを、この端末で読み解きます。貼り付けた HTML の抽出、Common Crawl の過去のアーカイブの検索と取得（通信は毎回確認）、端末内の索引での検索ができます。任意の URL の取得とクロールは、取得用サービスが止まっているため使えません。Android development debug 署名（本番鍵ではない）。','publisher':PUBLISHER,'versionCode':int(m.group(2)),'versionName':m.group(3),'artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/kumade.apk','bytes':staged.stat().st_size,'sha256':digest(staged),'signerSha256':fp}]})
+    # Payment Drafts / Securities Drafts (AWAI-3157/3158/3159, ADR 0042). Both are Tauri v3 APKs built from
+    # apps/payment-drafts and apps/securities-drafts in this repository. They declare no external operation and
+    # no INTERNET permission, so they are the same local-only class as android/local-apps.json entries:
+    # package network.itonami.<suffix>, asset packages/<suffix>.apk, 40 MiB budget, permissions exactly the
+    # AndroidX non-exported receiver permission (or none). The listed id, version and signer are read from the
+    # APK itself. Text comes from android/local-apps.json so --payment-drafts-apk/--securities-drafts-apk and
+    # --local-apps-dir produce the same catalog row for the same APK.
+    _draft_table = {a['suffix']: a for a in json.loads((ROOT/'android/local-apps.json').read_text())['apps']}
+    def _stage_draft(apk_path, suffix, package, staged_name):
+        meta = _draft_table.get(suffix)
+        if meta is None:
+            raise SystemExit(f'{package} is not listed in android/local-apps.json')
+        if apk_path.stat().st_size > 40 * 1024 * 1024:
+            raise SystemExit(f'{package} APK exceeds its 40 MiB Store budget')
+        staged = packages / staged_name
+        shutil.copyfile(apk_path, staged)
+        signer = run([tools/'apksigner', 'verify', '--print-certs', staged], capture_output=True).stdout
+        if [l.rsplit(' ', 1)[-1] for l in signer.splitlines() if 'certificate SHA-256 digest:' in l] != [fp]:
+            raise SystemExit(f'{package} APK signer does not match the development identity')
+        badging = run([tools/'aapt2', 'dump', 'badging', staged], capture_output=True).stdout
+        m = re.fullmatch(r"package: name='([^']+)' versionCode='([0-9]+)' versionName='([^']+)'.*", badging.splitlines()[0])
+        if not m or m.group(1) != package:
+            raise SystemExit(f'{staged_name} package is not {package}')
+        perms = sorted(set(re.findall(r"uses-permission: name='([^']+)'", badging)))
+        if perms not in ([], [package + '.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION']):
+            raise SystemExit(f'{package} APK requests permissions: {perms}')
+        if 'uses-permission: name=\'android.permission.INTERNET\'' in badging:
+            raise SystemExit(f'{package} APK requests INTERNET')
+        listed.append({'id': package, 'name': meta['name'], 'description': meta['description'] + 'Android development debug 署名（本番鍵ではない）。', 'publisher': PUBLISHER, 'versionCode': int(m.group(2)), 'versionName': m.group(3), 'artifacts': [{'platform': 'android', 'runtime': 'android', 'kind': 'apk', 'asset': f'packages/{staged_name}', 'bytes': staged.stat().st_size, 'sha256': digest(staged), 'signerSha256': fp}]})
+    if args.payment_drafts_apk is not None:
+        _stage_draft(args.payment_drafts_apk, 'paymentdrafts', 'network.itonami.paymentdrafts', 'paymentdrafts.apk')
+    if args.securities_drafts_apk is not None:
+        _stage_draft(args.securities_drafts_apk, 'securitiesdrafts', 'network.itonami.securitiesdrafts', 'securitiesdrafts.apk')
     if args.agent_trace_apk is not None:
         staged = packages / 'agent-trace.apk'
         if args.agent_trace_apk.stat().st_size > 2 * 1024 * 1024:
@@ -345,7 +381,7 @@ def main():
         listed.append({
             'id': 'network.itonami.agenttrace', 'name': '営トレース',
             'description': 'OTLP のエージェント実行履歴を端末内で確認し、OpenTelemetry または Langfuse 用に書き出します。',
-            'publisher': 'Awai Otehon 開発版',
+            'publisher': PUBLISHER,
             'versionCode': int(package.group(1)), 'versionName': package.group(2),
             'artifacts': [{'platform': 'android', 'runtime': 'android', 'kind': 'apk',
                            'asset': 'packages/agent-trace.apk', 'bytes': staged.stat().st_size,
@@ -372,7 +408,7 @@ def main():
             if not m or m.group(1)!=pkg:raise SystemExit(f'{apk_path.name} package is not {pkg}')
             perms=sorted(set(re.findall(r"uses-permission: name='([^']+)'",badging)))
             if perms not in ([],[pkg+'.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION']):raise SystemExit(f'{pkg} APK requests permissions: {perms}')
-            listed.append({'id':pkg,'name':meta['name'],'description':meta['description']+'Android development debug 署名（本番鍵ではない）。','publisher':'Awai Otehon 開発版','versionCode':int(m.group(2)),'versionName':m.group(3),'artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':f'packages/{suffix}.apk','bytes':staged.stat().st_size,'sha256':digest(staged),'signerSha256':fp}]})
+            listed.append({'id':pkg,'name':meta['name'],'description':meta['description']+'Android development debug 署名（本番鍵ではない）。','publisher':PUBLISHER,'versionCode':int(m.group(2)),'versionName':m.group(3),'artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':f'packages/{suffix}.apk','bytes':staged.stat().st_size,'sha256':digest(staged),'signerSha256':fp}]})
     if args.bundle_registry_assoc:
         distribution = ROOT / 'store/distribution/dev-20261119-r105'
         published = json.loads((distribution / 'catalog-rev105-raw.json').read_bytes())
@@ -406,7 +442,7 @@ def main():
             if not signer or signer[1].lower()!=fp or a['signerSha256']!=fp or not info or info[1]!=profile['id'] or int(info[2])!=a['versionCode'] or info[3]!=a['versionName']:raise SystemExit('dapp APK signer/package/version mismatch')
             target_asset = 'packages/itonami-preview.apk' if name == 'itonami' else a['asset']
             shutil.copyfile(source, assets / target_asset)
-            listed.append({'id':profile['id'],'name':profile['name'],'description':descriptions[name],'publisher':'Awai Otehon 開発版','versionCode':a['versionCode'],'versionName':a['versionName'],'artifacts':[{k:a[k] for k in ['bytes','sha256','signerSha256']}|{'asset':target_asset,'platform':'android','runtime':'android','kind':'apk'}]})
+            listed.append({'id':profile['id'],'name':profile['name'],'description':descriptions[name],'publisher':PUBLISHER,'versionCode':a['versionCode'],'versionName':a['versionName'],'artifacts':[{k:a[k] for k in ['bytes','sha256','signerSha256']}|{'asset':target_asset,'platform':'android','runtime':'android','kind':'apk'}]})
     catalog={'schema':'itonami.store.bundled.v1','revision':revision,'expiresAt':int(time.time())+30*86400,'apps':listed}
     raw=json.dumps(catalog,ensure_ascii=False,separators=(',',':'));(assets/'catalog.json').write_text(raw)
     if key_list:

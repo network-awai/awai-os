@@ -8,6 +8,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import kotlin.math.max
+import android.content.res.Configuration
+import network.awai.systembars.SystemBars
 class MainActivity : TauriActivity() {
  private var screenCaptureResult: ((ActivityResult) -> Unit)? = null
  private val screenCapture = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -48,5 +50,12 @@ class MainActivity : TauriActivity() {
    view.setPadding(bars.left,bars.top,bars.right,max(bars.bottom,ime.bottom));insets
   }
   ViewCompat.requestApplyInsets(content)
+  SystemBars.applyForUiMode(this, resources.configuration)
+ }
+ // uiMode is in the manifest's configChanges, so a theme switch arrives
+ // here instead of recreating the activity.
+ override fun onConfigurationChanged(newConfig: Configuration) {
+  super.onConfigurationChanged(newConfig)
+  SystemBars.applyForUiMode(this, newConfig)
  }
 }

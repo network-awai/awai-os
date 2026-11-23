@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="#33628CC9">
+    <item>
+        <selector>
+            <item android:state_focused="true">
+                <shape>
+                    <solid android:color="#204E9E" />
+                    <stroke android:width="4dp" android:color="@color/awai_welcome_focus" />
+                    <corners android:radius="16dp" />
+                </shape>
+            </item>
+            <item>
+                <shape>
+                    <solid android:color="#204E9E" />
+                    <corners android:radius="16dp" />
+                </shape>
+            </item>
+        </selector>
+    </item>
+</ripple>

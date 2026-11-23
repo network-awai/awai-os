@@ -1,0 +1,1 @@
+b246bf08434302c8f8a6f793d8bb97f63cea35dbd19a1fd46f829e4929446062  21798452 bytes  app-universal-debug.apk (debug, aarch64, built 2026-11-23 from awai-os main 9ab74d7e on jacob)

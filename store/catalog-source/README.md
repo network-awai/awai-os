@@ -29,6 +29,15 @@ The first catalog lists ranks 1 to 10: run the generator with `--top 10`. Apps a
 The package ids are the `identifier` in each repository's `app/src-tauri/tauri.conf.json` (checked 2026-11-22 at
 the repositories' current `main`); the series build stamps `network.itonami.<scheme><code><suffix>`.
 
+- **Publisher (AWAI-3882).** The legal publisher is defined exactly once in this file under the
+  top-level `publisher` field (currently `Awai Network LLC`). The generator writes that single
+  value into every listed catalog entry; no app entry carries its own `publisher` field, and
+  the generator refuses one if it appears. `android/build.py` loads the same value once for the
+  apps it builds from outside the series table. Existing signed `dev-` catalogs keep the
+  publisher they were signed with; production `rel-` releases carry the value above. See
+  `store/README.md` for the key custody, distribution order, and the `rel-YYYYMMDD-rNNN`
+  one-file release record.
+
 - **Key groups.** `release.json` carries no APK signer, so this table maps each app to its APK signing-key group:
   one key per ISIC Rev.4 section and per ISCO-08 major group; first-party apps have one key each (decision on
   AWAI-3771). `android/series-catalog.py` checks that each app's group follows from its code. In development,

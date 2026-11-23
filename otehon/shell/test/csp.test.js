@@ -30,7 +30,7 @@ test("the http preview allows its own origin like the link page", () => {
 test("the shell template carries the build placeholders", async () => {
   const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
   const template = await readFile(path.join(root, "index.html"), "utf8");
-  for (const token of ["__SCRIPT_SRC__", "__STYLE_SRC__", "__IMAGE_SRC__", "__DAPPS_JSON__", "__RELAY_ORIGIN__", "__SUPPORT_DESK_ORIGIN__"]) {
+  for (const token of ["__SCRIPT_SRC__", "__STYLE_SRC__", "__IMAGE_SRC__", "__DAPPS_JSON__", "__RELAY_ORIGIN__", "__SUPPORT_DESK_ORIGIN__", "__COMPUTE_DESK_ORIGIN__", "__COMPUTE_PROVIDER_DID__"]) {
     assert.ok(template.includes(token), token);
   }
   // What build.mjs writes by default must equal the pre-change template.
@@ -42,9 +42,13 @@ test("the shell template carries the build placeholders", async () => {
     .replace("__IMAGE_SRC__", imageSrc("file"))
     .replace("__DAPPS_JSON__", catalog)
     .replace("__RELAY_ORIGIN__", "https://relay.awai.network")
-    .replace("__SUPPORT_DESK_ORIGIN__", "");
+    .replace("__SUPPORT_DESK_ORIGIN__", "")
+    .replace("__COMPUTE_DESK_ORIGIN__", "")
+    .replace("__COMPUTE_PROVIDER_DID__", "");
   assert.ok(!built.includes("__"));
   assert.ok(built.includes('data-support-desk-origin=""'));
+  assert.ok(built.includes('data-compute-desk-origin=""'));
+  assert.ok(built.includes('data-compute-provider-did=""'));
   assert.ok(built.includes("script-src file:; style-src file:;"));
   assert.ok(built.includes('"id":"soshiki"'));
   assert.ok(built.includes('data-relay-origin="https://relay.awai.network"'));

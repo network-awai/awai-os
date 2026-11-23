@@ -55,3 +55,13 @@ record.
 - The paired bot profile running against this app.
 - Any custodian connection or order.
 - L2 and L3 (ADR 0042 O3, O5).
+
+## Build generations (history)
+
+New builds are recorded as immutable `apk-vm-<yyyymmdd>-<shortsha>/` directories; this
+`apk-vm/` (2026-11-18) is not rewritten.
+
+| generation | source commit | sha256 (bytes) | permission check |
+|---|---|---|---|
+| `apk-vm/` (2026-11-18) | 671edcb | `bcf9e739e73f3f25f41d611060fd216fbdbb9838d3e04153fee84a3ad3bf2760` (21,733,964) | `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` only; no `INTERNET` (`permissions.txt`) |
+| `apk-vm-20261123-9ab74d7e/` | 9ab74d7e | `b246bf08434302c8f8a6f793d8bb97f63cea35dbd19a1fd46f829e4929446062` (21,798,452) | `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` only; no `INTERNET` (`apk-vm-20261123-9ab74d7e/permissions.txt`); debug signing only, versionCode 1000 |

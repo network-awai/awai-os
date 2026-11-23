@@ -1,0 +1,138 @@
+Activity Resolver Table:
+  Non-Data Actions:
+      android.intent.action.MAIN:
+        e7d8477 network.itonami.publicfunds/.MainActivity filter 4d7d8e4
+          Action: "android.intent.action.MAIN"
+          Category: "android.intent.category.LAUNCHER"
+          Category: "android.intent.category.LEANBACK_LAUNCHER"
+
+Receiver Resolver Table:
+  Non-Data Actions:
+      androidx.profileinstaller.action.SAVE_PROFILE:
+        855014d network.itonami.publicfunds/androidx.profileinstaller.ProfileInstallReceiver filter aab9f50
+          Action: "androidx.profileinstaller.action.SAVE_PROFILE"
+      androidx.profileinstaller.action.INSTALL_PROFILE:
+        855014d network.itonami.publicfunds/androidx.profileinstaller.ProfileInstallReceiver filter 1253402
+          Action: "androidx.profileinstaller.action.INSTALL_PROFILE"
+      androidx.profileinstaller.action.SKIP_FILE:
+        855014d network.itonami.publicfunds/androidx.profileinstaller.ProfileInstallReceiver filter e3bf113
+          Action: "androidx.profileinstaller.action.SKIP_FILE"
+      androidx.profileinstaller.action.BENCHMARK_OPERATION:
+        855014d network.itonami.publicfunds/androidx.profileinstaller.ProfileInstallReceiver filter d7d6549
+          Action: "androidx.profileinstaller.action.BENCHMARK_OPERATION"
+
+Domain verification status:
+
+Permissions:
+  Permission [network.itonami.publicfunds.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION] (753442d):
+    sourcePackage=network.itonami.publicfunds
+    uid=10207 gids=[] type=0 prot=signature
+    perm=PermissionInfo{bb36565 network.itonami.publicfunds.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION}
+    flags=0x0
+
+Registered ContentProviders:
+  network.itonami.publicfunds/androidx.core.content.FileProvider:
+    Provider{565223a network.itonami.publicfunds/androidx.core.content.FileProvider}
+  network.itonami.publicfunds/androidx.startup.InitializationProvider:
+    Provider{f596eeb network.itonami.publicfunds/androidx.startup.InitializationProvider}
+
+ContentProvider Authorities:
+  [network.itonami.publicfunds.androidx-startup]:
+    Provider{f596eeb network.itonami.publicfunds/androidx.startup.InitializationProvider}
+      applicationInfo=ApplicationInfo{507ed62 network.itonami.publicfunds}
+  [network.itonami.publicfunds.fileprovider]:
+    Provider{565223a network.itonami.publicfunds/androidx.core.content.FileProvider}
+      applicationInfo=ApplicationInfo{a801ef3 network.itonami.publicfunds}
+
+Key Set Manager:
+  [network.itonami.publicfunds]
+      Signing KeySets: 59
+
+Packages:
+  Package [network.itonami.publicfunds] (fb43903):
+    appId=10207
+    pkg=Package{cde0ec7 network.itonami.publicfunds}
+    codePath=/data/app/~~_Mk2JVTpM5plLZb2D-9clw==/network.itonami.publicfunds-c7_IvlIZf-TG8FaMoDeTiA==
+    resourcePath=/data/app/~~_Mk2JVTpM5plLZb2D-9clw==/network.itonami.publicfunds-c7_IvlIZf-TG8FaMoDeTiA==
+    legacyNativeLibraryDir=/data/app/~~_Mk2JVTpM5plLZb2D-9clw==/network.itonami.publicfunds-c7_IvlIZf-TG8FaMoDeTiA==/lib
+    extractNativeLibs=false
+    primaryCpuAbi=arm64-v8a
+    secondaryCpuAbi=null
+    cpuAbiOverride=null
+    versionCode=1000 minSdk=24 targetSdk=37
+    minExtensionVersions=[]
+    versionName=0.1.0
+    hiddenApiEnforcementPolicy=2
+    usesNonSdkApi=false
+    splits=[base]
+    apkSigningVersion=2
+    flags=[ DEBUGGABLE HAS_CODE ALLOW_CLEAR_USER_DATA ]
+    privateFlags=[ PRIVATE_FLAG_ACTIVITIES_RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION ALLOW_AUDIO_PLAYBACK_CAPTURE PRIVATE_FLAG_ALLOW_NATIVE_HEAP_POINTER_TAGGING ]
+    forceQueryable=false
+    scannedAsStoppedSystemApp=false
+    supportsScreens=[small, medium, large, xlarge, resizeable, anyDensity]
+    timeStamp=2026-11-23 06:10:27
+    lastUpdateTime=2026-11-23 06:10:30
+    installerPackageName=null
+    installerPackageUid=-1
+    initiatingPackageName=com.android.shell
+    originatingPackageName=null
+    packageSource=1
+    appMetadataFilePath=null
+    appMetadataSource=0
+    signatures=PackageSignatures{7f71cf4 version:2, signatures:[25003cfb], past signatures:[]}
+    installPermissionsFixed=false
+    pkgFlags=[ DEBUGGABLE HAS_CODE ALLOW_CLEAR_USER_DATA ]
+    privatePkgFlags=[ PRIVATE_FLAG_ACTIVITIES_RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION ALLOW_AUDIO_PLAYBACK_CAPTURE PRIVATE_FLAG_ALLOW_NATIVE_HEAP_POINTER_TAGGING ]
+    apexModuleName=null
+    declared permissions:
+      network.itonami.publicfunds.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION: prot=signature
+    requested permissions:
+      network.itonami.publicfunds.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+    install permissions:
+      network.itonami.publicfunds.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION: granted=true
+    User 0: ceDataInode=352698 deDataInode=57758 installed=true hidden=false suspended=false distractionFlags=0 stopped=false notLaunched=false enabled=0 instant=false virtual=false quarantined=false
+      installReason=0
+      dataDir=/data/user/0/network.itonami.publicfunds
+      firstInstallTime=2026-11-23 06:10:30
+      uninstallReason=0
+      overlay paths:
+        /product/overlay/EmulationPixel6/EmulationPixel6Overlay.apk
+        /product/overlay/NavigationBarModeGestural/NavigationBarModeGesturalOverlay.apk
+      legacy overlay paths:
+        /product/overlay/EmulationPixel6/EmulationPixel6Overlay.apk
+        /product/overlay/NavigationBarModeGestural/NavigationBarModeGesturalOverlay.apk
+      runtime permissions:
+
+Queries:
+  system apps queryable: false
+  queries via forceQueryable:
+  queries via package name:
+  queries via component:
+    com.google.android.as:
+      network.itonami.publicfunds
+    com.google.android.settings.intelligence:
+      network.itonami.publicfunds
+  queryable via interaction:
+    User 0:
+      [com.android.emulator.multidisplay,android,com.android.settings,com.android.dynsystem,com.android.location.fused,com.android.localtransport,com.android.server.telecom,com.android.inputdevices,com.android.keychain,com.android.DeviceAsWebcam,com.android.providers.settings]:
+        network.itonami.publicfunds
+      [com.google.android.gsf,com.google.android.gms]:
+        network.itonami.publicfunds
+      com.google.android.webview:
+        network.itonami.publicfunds
+      com.google.android.inputmethod.latin:
+        network.itonami.publicfunds
+      network.itonami.publicfunds:
+        com.google.android.webview
+  queryable via uses-library:
+
+Dexopt state:
+  [network.itonami.publicfunds]
+    path: /data/app/~~_Mk2JVTpM5plLZb2D-9clw==/network.itonami.publicfunds-c7_IvlIZf-TG8FaMoDeTiA==/base.apk
+      arm64: [status=run-from-apk] [reason=unknown] [primary-abi]
+        [location is error]
+
+Compiler stats:
+  [network.itonami.publicfunds]
+    (No recorded stats)

@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<com.google.android.setupdesign.GlifLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@id/setup_wizard_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:layout="@layout/welcome_template">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#E8EEF6"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:baselineAligned="false"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="@dimen/awai_welcome_gutter"
+            android:paddingTop="64dp"
+            android:paddingEnd="@dimen/awai_welcome_gutter"
+            android:paddingBottom="64dp">
+
+            <LinearLayout
+                android:id="@+id/awai_welcome_brand"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="@dimen/awai_welcome_gap"
+                android:layout_weight="656"
+                android:orientation="vertical"
+                android:paddingBottom="@dimen/awai_welcome_brand_bottom">
+
+                <ImageView
+                    android:layout_width="@dimen/awai_welcome_logo_size"
+                    android:layout_height="@dimen/awai_welcome_logo_size"
+                    android:background="@drawable/awai_welcome_mark"
+                    android:clipToOutline="true"
+                    android:importantForAccessibility="no"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/awai_welcome_logo" />
+
+                <TextView
+                    style="@style/AwaiWelcome.Brand"
+                    android:layout_marginTop="20dp"
+                    android:text="@string/awai_welcome_release" />
+
+                <TextView
+                    android:id="@id/welcome_title"
+                    style="@style/AwaiWelcome.Title"
+                    android:accessibilityHeading="true"
+                    android:layout_marginTop="16dp" />
+
+                <TextView
+                    style="@style/AwaiWelcome.Description"
+                    android:layout_marginTop="18dp"
+                    android:text="@string/awai_welcome_description" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="528"
+                android:background="@drawable/awai_welcome_panel"
+                android:minHeight="400dp"
+                android:orientation="vertical"
+                android:padding="@dimen/awai_welcome_panel_padding">
+
+                <TextView
+                    style="@style/AwaiWelcome.PanelTitle"
+                    android:accessibilityHeading="true"
+                    android:text="@string/awai_welcome_setup_heading" />
+
+                <android.widget.Button
+                    android:id="@+id/awai_welcome_language"
+                    style="@style/AwaiWelcome.Option"
+                    android:layout_marginTop="28dp"
+                    android:nextFocusDown="@id/launch_accessibility"
+                    android:nextFocusForward="@id/launch_accessibility"
+                    android:text="@string/awai_welcome_language_label" />
+
+                <android.widget.Button
+                    android:id="@id/launch_accessibility"
+                    style="@style/AwaiWelcome.Option"
+                    android:layout_marginTop="16dp"
+                    android:nextFocusUp="@id/awai_welcome_language"
+                    android:nextFocusDown="@id/start"
+                    android:nextFocusForward="@id/start"
+                    android:text="@string/awai_welcome_accessibility" />
+
+                <android.widget.Button
+                    android:id="@id/start"
+                    style="@style/AwaiWelcome.Start"
+                    android:layout_marginTop="48dp"
+                    android:nextFocusUp="@id/launch_accessibility"
+                    android:text="@string/awai_welcome_start" />
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</com.google.android.setupdesign.GlifLayout>

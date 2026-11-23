@@ -920,6 +920,27 @@ Object.prototype.support;
 Object.prototype.wording;
 Object.prototype.RECIPIENT;
 
+// Awai compute panel (AWAI-3115): desk origin, offer, order and work receipt fields.
+Object.prototype.computeOperations;
+Object.prototype.computeDeskOrigin;
+Object.prototype.computeProviderDid;
+Object.prototype.offerText;
+Object.prototype.offer;
+Object.prototype.orderId;
+Object.prototype.provider;
+Object.prototype.OFFER_KIND;
+Object.prototype.WORK_RECEIPT_KIND;
+Object.prototype.compute;
+Object.prototype.consumer;
+Object.prototype.work;
+Object.prototype.cljc;
+Object.prototype.fundingPayload;
+Object.prototype["funding-signature"];
+Object.prototype["funding-payload"];
+Object.prototype.engineCalls;
+Object.prototype.measured;
+Object.prototype.output;
+
 // awai.link.v1 purposes (AWAI-2898 Drive, AWAI-3478 Itonami Bot launch): the
 // WebAuthn clientData flag and the launch fields are read by name from parsed JSON.
 Object.prototype.crossOrigin;

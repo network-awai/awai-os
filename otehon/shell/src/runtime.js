@@ -1,6 +1,7 @@
 import {chatOperation,chatHistoryOperation,chatSessionsOperation,chatCreateOperation,chatBotsOperation,chatMediaOperation} from './bot-chat-contract.js';
 import {aliasOperations,identityOperations} from './mail-alias-contract.js';
 import {supportOperations} from './awai-support.js';
+import {computeOperations} from './awai-compute.js';
 import {voiceOperation} from './voice-channel-contract.js';
 import {egovOperation} from './egov-host.js';
 // External operations of the OS shell and the phone page, through the shared
@@ -18,9 +19,10 @@ const OPTIMISM_DISCLOSURE = { recipient: "OP Labs PBC", country: "US", "country-
   "foreign-info-url": "https://www.optimism.io/", data: ["wallet address"], "special-care": false,
   frequency: "one-time", withdrawal: "cancel the request before it is sent" };
 
-export function osOperations(relayOrigin, supportDeskOrigin) {
+export function osOperations(relayOrigin, supportDeskOrigin, computeDeskOrigin) {
   return [
     ...supportOperations(supportDeskOrigin),
+    ...computeOperations(computeDeskOrigin),
     chatOperation,chatHistoryOperation,chatSessionsOperation,chatCreateOperation,chatBotsOperation,chatMediaOperation,voiceOperation,...aliasOperations,...identityOperations,
     egovOperation,
     {

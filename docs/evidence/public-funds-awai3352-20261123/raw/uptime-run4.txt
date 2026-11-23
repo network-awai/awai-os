@@ -1,0 +1,2 @@
+ 6:12  up 15 days, 16:56, 15 users, load averages: 6.41 7.81 5.71
+ 6:12  up 15 days, 16:56, 15 users, load averages: 6.05 7.72 5.68
