@@ -90,28 +90,69 @@
 6. 記録: 上の値を `android/desktop/netboot/` 形式の観測 JSON で**新しい日付のファイル**に残す
    （この文書では実行していない。既存 evidence は書き換えない）。
 
-## 5. 配信経路（commit-pin）
+## 5. 配信経路（3つに分かれている）
 
-payload は **commit-pin の `raw.githubusercontent.com`** 経由。yataverse の raw は **16 MiB まで**で
-32 MiB 級は 413、CAR は gateway が返さない。したがって:
+- **payload（APK・image・OTA の実体）** = **commit-pin の `raw.githubusercontent.com`**。
+  リポジトリ内の commit-pin URL（`store/site/build.mjs` の host/commit 規則と同じ考え方）で参照する。
+- **index / feed（JSON）** = **`ota.awai.network` の Worker**。
+- **yataverse** は **16 MiB 以下のブロックのみ**。32 MiB 級は 413、CAR は gateway が返さない。
 
-- 大きな OTA / disk image を「yataverse の raw で配る」前提を書かない
-- リポジトリ内の commit-pin URL（`store/site/build.mjs` の host/commit 規則と同じ考え方）で参照する
-- feed の index 配置と publish は §6 の担当
+したがって「大きな OTA / disk image を yataverse の raw で配る」前提は書きません。
+feed の index 配置と publish は §6 の担当。
 
 ## 6. OTA feed の公開先（参照のみ）
 
 `index` の配置と publish、Updater の allowlist は **`deploy/ota-feed/` 側の担当（Organizer の worker）**。
 この文書は手順を持たず、§2 #9 から参照するだけ。
 
-## 7. `10.77.0.1` のホスト — **未確定・オーナー確認中**
+## 7. dapps をオンライン更新できる状態にする（端末の5段）
+
+対象: Store から入れた dapp を、端末側の自動更新で更新できるようにする。順序を変えると通りません。
+
+**前提（イメージ側）**: Store が **root 同梱ビルド**であること — `assets` に `store-root.der` / `keys.txt` / `keys.sig` が
+入っている（[StoreTrust.java:29-31](../../android/shared/src/network/awai/platform/StoreTrust.java)）。
+無いビルドは現 pointer を `pointer-signature` で拒否します。
+
+1. **インストール許可（人の初回トグル相当）**
+   `adb shell appops set network.awai.store REQUEST_INSTALL_PACKAGES allow`
+2. **更新したい dapp を Store の画面から入れる**
+   `adb install -i network.awai.store` で installer of record だけ揃えても足りません。INTERNET を持つアプリは
+   `installed-ops-<id>` が無いため **`operations-unknown`** で止まります
+   （[AutoInstall.java:101](../../android/shared/src/network/awai/platform/AutoInstall.java)、
+   [UpdatePolicy.java:155](../../android/shared/src/network/awai/platform/UpdatePolicy.java)）。
+3. **更新タブ →「自動更新を有効にする（Wi-Fi のみ／すべての回線）」→ native dialog → Allow**
+   `UpdateApprovalRecord.grant()` が 90 日で許可を記録します
+   （[UpdateApprovalRecord.java:27](../../android/shared/src/network/awai/platform/UpdateApprovalRecord.java)、
+   [UpdatePolicy.java:24](../../android/shared/src/network/awai/platform/UpdatePolicy.java) の `MAX_APPROVAL_SECONDS`）。
+   保存先は SharedPreferences `auto-update`（端末上は `shared_prefs/auto-update.xml`、
+   [HostActivity.java:360-361](../../android/shared/src/network/awai/platform/HostActivity.java)）。
+4. **端末時計を正しく**
+   pointer の `issued` が未来、`expires` が過去だと拒否。許容 skew は **300 秒**
+   （[LatestPointer.java:28](../../android/shared/src/network/awai/platform/LatestPointer.java)、
+   [KeyList.java:48](../../android/shared/src/network/awai/platform/KeyList.java)）。
+5. **初回は手動で「確認」を1回走らせ、`logcat` で拒否理由を読む**
+   出る値: `not-installed-by-store` / `operations-unknown` / `new-permission` / `not-newer` / `network-metered`。
+
+**やってはいけない**: adb や `run-as` で `auto-update.xml`（SharedPreferences）を直接書くのは正規手段ではありません。
+Store が唯一の書き手で、`run-as` は debuggable ビルドのみ、同意の証跡を飛ばすことになります。**必ず UI から**。
+
+**既知の落とし穴**
+
+- **catalog に `operations` 宣言が無い6本**（itonami app / animeka / dougaka / gameka / mangaka / ongakuka）は
+  **自動更新の対象外**（`operations-unknown`）。item 134 側で修正。
+- 17 本中 15 本が `<pkg>.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` を持つため、イメージのビルド世代によっては
+  **`new-permission`** で止まる。
+- **`signer-changed` は実機でしか判定できない**: `pm path <pkg>` → APK を pull →
+  `apksigner verify --print-certs` の SHA-256 を catalog の4証明書と突き合わせる。
+
+## 8. `10.77.0.1` のホスト — **未確定・オーナー確認中**
 
 evidence に機種名・ホスト名の記録が無い（[ipxe.nix](../../android/desktop/netboot/ipxe.nix) はアドレスを埋め込むだけ、
 [lan-diagnostics.md](../../archive/nixos/docs/otehon/lan-diagnostics.md) は "The Mac's direct Ethernet interface" とだけ記載、
 2026-11-16 の観測 JSON と 11-17 の QA 記録にも記載なし）。この Mac に `10.77.0.0/24` が無いことは実測済み（#479 §1）。
 **どの Mac か（jacob / mini-2xx / 別機）は item 166 でオーナー確認中**。確定まで §4 の D は未確定として扱う。
 
-## 8. この文書で実行していないこと
+## 9. この文書で実行していないこと
 
 - 有償 VKE ビルドの開始（オーナー承認待ち）
 - OTA/リリース鍵の生成・署名（オーナー手番）
@@ -119,7 +160,7 @@ evidence に機種名・ホスト名の記録が無い（[ipxe.nix](../../androi
 - OTA feed / 公開物 / Updater allowlist の変更（`deploy/ota-feed/` の担当）
 - `store/distribution` や既存 `docs/evidence` の書き換え
 
-## 9. 分かっていないこと
+## 10. 分かっていないこと
 
 - Vultr/VKE ホストの現在の生死と、直近ビルド成果物の所在（この Mac に認証情報が無い）
 - 署名に要する実時間（この Mac に署名環境が無く計測不能）
