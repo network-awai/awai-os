@@ -1,20 +1,12 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   // awai-ota-feed (ota.awai.network). Deliberately NO object-store bucket binding:
-  // payload bytes come from the yataverse protocol, the index from this
-  // repo. Deploy with: wrangler deploy -c wrangler.jsonc
+  // the mutable index lives in this repo; payload bytes stay at the
+  // commit-pinned raw URL carried inside the index (never proxied here).
   "name": "awai-ota-feed",
   "main": "src/worker.js",
   "compatibility_date": "2026-01-01",
   "workers_dev": true,
-  "vars": {
-    // MANIFEST_CID: sha256 -> {rootCid, chunkMap} pin, per channel. Empty
-    // means "not pinned yet" — blobs then fall back to the <= 16 MiB raw
-    // CID derivation only. NEVER synthesize from a name. Set at deploy
-    // time from the manifest the publish script prints; the committed
-    // src/manifest-cids.js is the pre-deploy mirror of this value.
-    "MANIFEST_CID": "{}"
-  },
   "routes": [{ "pattern": "ota.awai.network", "custom_domain": true }],
   "observability": { "enabled": false }
 }

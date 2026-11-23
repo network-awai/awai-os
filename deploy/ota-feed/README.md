@@ -1,81 +1,57 @@
 # Awai PC pilot OTA feed origin (ota.awai.network)
 
 `https://ota.awai.network/v1/pc/pilot/...` — a Cloudflare Worker that
-serves the Updater feed for the Awai PC pilot and streams signed OTA
-payloads. Plain JS, zero dependencies, no build step. **No R2.**
+serves the Updater feed for the Awai PC pilot. Plain JS, zero
+dependencies, no build step. **No R2.**
 
 Upstream contract: [../android/desktop/pc-ab-device/README.md](../../android/desktop/pc-ab-device/README.md)
 "Updater feed in the release build (AWAI-3064)" — feed URL
 `https://ota.awai.network/v1/pc/pilot/{device}/{incr}/builds.json`, index
 as `application/json` / `Cache-Control: no-store`, withdrawal as `[]`,
-payloads at digest-qualified `/v1/pc/pilot/` paths answering HTTP Range.
-The Updater only accepts an `ota.awai.network` https URI whose path
-starts with `/v1/pc/pilot/` ([updater-pc-maintenance.patch](../../android/desktop/pc-ab-device/patches/updater-pc-maintenance.patch)).
+payloads at pinned URLs with HTTP Range. The Updater only accepts a
+package URL that matches its allowlist ([updater-pc-maintenance.patch](../../android/desktop/pc-ab-device/patches/updater-pc-maintenance.patch)).
 
-What this Worker does today:
+**Scope (2026-11-24): this Worker serves ONLY the mutable index.**
+It never proxies payload bytes.
+
+## Why no payload proxy (measured 2026-11-24)
+
+- A 32 MiB raw `yataverse put` is rejected: `put-too-large: HTTP 413`
+  (16 MiB succeeds).
+- A 2 MiB UnixFS file ingested via `car-put` (`verified:true, blocks:10`)
+  cannot be read back: the gateway returns only the 62 B dag-pb block
+  at `/ipfs/<dir-root>` and `404` for `/ipfs/<dir-root>/<file>` — there
+  is no chunk-map resolution path through the gateway.
+
+So yataverse cannot distribute OTA payloads. Payloads live at the
+commit-pinned `raw.githubusercontent.com` URL carried verbatim in the
+index; the pinned-raw payload + Updater allowlist + publish path is
+owned by a separate change (not this Worker).
+
+## What this Worker does
 
 | Path | Answer |
 | --- | --- |
 | `/v1/pc/pilot/{device}/{incr}/builds.json` (well-formed) | `200` `application/json` `no-store`; `[]` when unpublished/withdrawn |
-| `/v1/pc/pilot/blobs/<sha256>.zip` (also `/v1/pc/pilot/<sha256>.zip`) | streams the bytes from the yataverse gateway via the manifest; `200` whole or `206` + `Content-Range` on Range; immutable cache; upstream `ETag` passed through (else the `sha256` hex); `404`, never `500`, when the bytes are not ingested (upstream 504 is converted to 404) |
+| anything else (off-prefix or malformed) | `400` (fail-closed before any fetch — this Worker has no upstream fetch at all) |
+| non-GET/HEAD | `405` |
 
-Payload storage is the yataverse protocol, manifest-driven:
+Index entries carry the payload `sha256` and the pinned package `url`
+(plus the fields `updater-feed.py make-index` generates). The Updater
+and UpdateEngine verify the signed package on device; nothing here is
+trusted on the way out.
 
-| Size | Route |
-| --- | --- |
-| ≤ 16 MiB | single raw block: `CIDv1 = base32(0x01‖0x55‖0x12‖0x20‖sha256)` derived in code (no pin needed) |
-| > 16 MiB | CAR route: the dag-pb root cannot be derived from the sha256 — the root CID + chunk map must be pinned in `MANIFEST_CID` (env var, per channel; the generated `src/manifest-cids.js` is the pre-deploy mirror). Ingestion limits: 256 blocks / 32 MiB per POST, site-pack per-file-node bound 43.5 MiB |
-
-A real ~5.6 GB (hundreds of MB–GB class) OTA therefore takes the **CAR +
-chunk-map path by default**; the raw path is an optimization for small
-artifacts. The manifest is itself a block: its `MANIFEST_CID` is pinned as
-an env var per channel and never synthesized from a name. When the router
-needs a CID, it uses the pinned root CID; CID derivation alone never
-decides a > 16 MiB payload.
-
-Ingestion uses the `app-itonami-yataverse` CLI (`bin/yataverse.mjs`,
-cacao-signed): for small files `yataverse cid <zip>` must print the same
-CID that `scripts/publish-index.py` prints, then `yataverse put <zip>`
-ingests the bytes (verified + receipt). Measured 2026-11-24: a real CID
-answers `Range: bytes=0-9` with `HTTP/2 206 / content-range: bytes 0-9/55 /
-accept-ranges: bytes` — see
-[`docs/evidence/ota-feed-origin-20261124.md`](../../docs/evidence/ota-feed-origin-20261124.md).
-Publishing an index means re-running `scripts/publish-index.py` (which reuses
-`updater-feed.py make-index` — verification logic is not forked, not
-re-implemented) and redeploying; the indexes live in this repo as
-[`src/indexes.js`](src/indexes.js)
-(audit mirror: [`indexes/indexes.json`](indexes/indexes.json)).
-
-## yataverse is a distribution cache, not the only copy
-
-yataverse receipts are `state:1 local-durable-readback / storeClass:1
-edge-gateway / retentionUntil:0` — **no retention promise and no
-replication proof**: bytes sit as a single B2 copy and can be GC'd.
-Keep the original signed ZIP on the OTA side (git or another store) and
-treat yataverse as a delivery cache; if long retention is required,
-lease it separately (`R1 operator-archive`).
-
-## Ingestion safety limits
-
-Write rate is throttled: 60 requests / 60s, 64 MiB / 60s, WAF 10 req / 10s
-per IP. A 40-way parallel burst got only 16 through. Default is **serial
-`yataverse put`** (1–2 puts per build), never a parallel burst; retry with
-the same request-id, never a new id.
-
-## Cost
-
-No cost commitment is recorded anywhere in this repo. The yataverse plane
-itself carries no charge (B2 and Cloudflare are the operator's burden);
-USD unit prices, free-tier absolute overage figures and GC presence are
-**unknown** — treat any cost statement as unproven until measured.
+Any future block fetch must convert upstream `504` (un-ingested) to
+`404` — this worker performs no fetch today, so there is no 504 to
+surface.
 
 ## Run locally
 
 ```sh
 cd deploy/ota-feed
-node serve.mjs                 # http://127.0.0.1:8787 (payloads proxy to yataverse)
-node --test test/*.test.js     # 20 tests, no network (fetch stubbed)
-node test/local-check.mjs      # real loopback HTTP proof, incl. 206 ranges
+node serve.mjs                 # http://127.0.0.1:8787 (index only)
+node --test test/*.test.js     # 10 tests, no network
+node test/local-check.mjs      # real loopback HTTP proof
 python3.11 -m unittest discover -s ../../android/desktop/pc-ab-device -p 'test_updater_feed.py'
 ```
 
@@ -90,45 +66,26 @@ today every path on `ota.awai.network` returns a generic Cloudflare 404
 1. Build + sign the OTA with the existing toolchain
    ([updater-feed.py](../../android/desktop/pc-ab-device/updater-feed.py)
    `verify-target-files`, `generate-ota`, `verify-ota`).
-2. Index it (≤ 16 MiB: single raw block; > 16 MiB: CAR route, needs
-   `--root-cid` + `--chunk-map` from the packer):
+2. Index it (the pinned payload URL is carried verbatim):
 
    ```sh
    cd deploy/ota-feed
    python3.11 scripts/publish-index.py ../../out/update.zip \
      --device virtio_x86_64 --incr <post-build-incremental> \
      --release-type DEV --version 24.0 --sha256 <SIGNING-RECORD-SHA256> \
-     [--require-streaming]
-   # big files additionally:
-   #   --root-cid <dag-pb root CID> --chunk-map <packer chunk-map JSON>
+     --artifact-url <pinned raw payload URL> [--require-streaming]
    ```
 
    The script checks the SHA-256 and the post-build-incremental, writes
-   `src/indexes.js` + `indexes/indexes.json`, and prints the object path
-   `https://ota.awai.network/v1/pc/pilot/blobs/<sha256>.zip` plus the
-   route (derived CID, or the pinned CAR root) and the manifest pin
-   JSON (it never deploys). For files over 16 MiB it refuses without
-   `--root-cid`/`--chunk-map`.
-3. Ingest the ZIP bytes into the yataverse network with the
-   `app-itonami-yataverse` CLI (`bin/yataverse.mjs`, cacao-signed),
-   **serially, 1–2 puts per build** (never a parallel burst):
-
-   ```sh
-   yataverse cid <zip>           # ≤ 16 MiB: the CID from the SHA-256; must
-                                 # match the CID printed by publish-index.py
-   yataverse put <zip>           # verified:true + returned CID + storage receipt
-   ```
-
-   The Worker serves `https://yataverse.com/ipfs/<CID>` and 404s until the
-   bytes are ingested. Original ZIP stays on the OTA side (yataverse is
-   a distribution cache only — see above).
-4. Verify:
+   `src/indexes.js` + `indexes/indexes.json`, and prints the operator
+   steps (it never deploys and never publishes payload bytes — that path
+   is the separate pinned-raw change).
+3. Verify:
 
    ```sh
    curl -sS -D- https://ota.awai.network/v1/pc/pilot/<device>/<incr>/builds.json | head -30
-   curl -sSI -H 'Range: bytes=0-99' https://ota.awai.network/v1/pc/pilot/blobs/<sha256>.zip | grep -iE 'HTTP|content-range'
    ```
-5. Deploy (production; the only state change):
+4. Deploy (production; the only state change):
 
    ```sh
    wrangler deploy -c deploy/ota-feed/wrangler.jsonc
@@ -140,3 +97,21 @@ Withdrawal:
 python3.11 scripts/publish-index.py --withdraw --device virtio_x86_64 --incr <incr>
 # then: wrangler deploy -c deploy/ota-feed/wrangler.jsonc
 ```
+
+## Storage notes
+
+- yataverse is for **≤ 16 MiB blocks only** (index snapshots, receipts,
+  manifests) — **never for payloads**. It is a distribution cache, never
+  the only copy: receipts are `state:1 local-durable-readback /
+  storeClass:1 edge-gateway / retentionUntil:0` — **no retention promise
+  and no replication proof** (single B2 copy, GC-able). The original ZIP
+  stays on the OTA side (git); if long retention is required, lease it
+  separately (`R1 operator-archive`).
+- Ingestion writes are serial: 60 req / 60s, 64 MiB / 60s, WAF 10 req /
+  10s per IP. A 40-way parallel burst got only 16 through. Default is
+  **serial `yataverse put`** (1–2 puts per build), never a parallel
+  burst; retry with the same request-id.
+- **Cost: no commitment recorded.** The yataverse plane itself carries
+  no charge (B2 and Cloudflare are operator burden); USD unit prices,
+  free-tier absolute overage and GC presence are **unknown** — treat
+  any cost statement as unproven until measured.

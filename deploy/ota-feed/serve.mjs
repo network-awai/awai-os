@@ -24,5 +24,5 @@ createServer((req, res) => handle(req, res).catch((err) => {
   res.writeHead(500);
   res.end("serve-error");
 })).listen(PORT, "127.0.0.1", () => {
-  console.log(`ota-feed dry-run on http://127.0.0.1:${PORT} (payloads proxy to yataverse)`);
+  console.log(`ota-feed dry-run on http://127.0.0.1:${PORT} (index only; no upstream)`);
 });
