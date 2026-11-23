@@ -1,93 +1,93 @@
 {
-  "revision": "30508ad8778304826b0ae29f118f2bc4f28f112f",
+  "revision": "24d9c40c52cb9fcc1529356bbe8cc6c0214ab593",
   "catalog": {
-    "url": "https://raw.githubusercontent.com/network-awai/awai-os/30508ad8778304826b0ae29f118f2bc4f28f112f/store/distribution/dev-20261122-r110/catalog-envelope.json",
+    "url": "https://raw.githubusercontent.com/network-awai/awai-os/24d9c40c52cb9fcc1529356bbe8cc6c0214ab593/store/distribution/dev-20261122-r110/catalog-envelope.json",
     "sha256": "c02159abda7c0a18f8b3f75a1ea3483c92e234440d948bd262ae43e8636599f1",
     "maxBytes": 9667
   },
   "apks": {
     "network.itonami.yotei": {
-      "url": "https://raw.githubusercontent.com/network-awai/awai-os/30508ad8778304826b0ae29f118f2bc4f28f112f/store/distribution/dev-20261120-r106/yotei.apk",
+      "url": "https://raw.githubusercontent.com/network-awai/awai-os/24d9c40c52cb9fcc1529356bbe8cc6c0214ab593/store/distribution/dev-20261120-r106/yotei.apk",
       "sha256": "ada3c897ce6e9910da114a0b20933ffe72c52416c9af2c5b3692d1e7069e37bf",
       "maxBytes": 36155042
     },
     "network.itonami.app": {
-      "url": "https://raw.githubusercontent.com/network-awai/awai-os/30508ad8778304826b0ae29f118f2bc4f28f112f/store/distribution/dev-20261120-r106/itonami.apk",
+      "url": "https://raw.githubusercontent.com/network-awai/awai-os/24d9c40c52cb9fcc1529356bbe8cc6c0214ab593/store/distribution/dev-20261120-r106/itonami.apk",
       "sha256": "b1a5f7f73a0bc37dfdf924e92889136670feac1772ce02e8ddc4b76e87771dab",
       "maxBytes": 55456456
     },
     "network.itonami.torihiki.bot": {
-      "url": "https://raw.githubusercontent.com/network-awai/awai-os/30508ad8778304826b0ae29f118f2bc4f28f112f/store/distribution/dev-20261118/torihiki-bot.apk",
+      "url": "https://raw.githubusercontent.com/network-awai/awai-os/24d9c40c52cb9fcc1529356bbe8cc6c0214ab593/store/distribution/dev-20261118/torihiki-bot.apk",
       "sha256": "797013c7abbd395eb09a75551838018a90211864b7012d0d7ccba1326556f99c",
       "maxBytes": 29506324
     },
     "network.itonami.torihiki": {
-      "url": "https://raw.githubusercontent.com/network-awai/awai-os/30508ad8778304826b0ae29f118f2bc4f28f112f/store/distribution/dev-20261118-r103/torihiki.apk",
+      "url": "https://raw.githubusercontent.com/network-awai/awai-os/24d9c40c52cb9fcc1529356bbe8cc6c0214ab593/store/distribution/dev-20261118-r103/torihiki.apk",
       "sha256": "0717795a3c05934d70a7791edaa2848d8264210ba1af6e2b2d01f0429a7cf86f",
       "maxBytes": 4206342
     },
     "network.itonami.deai": {
-      "url": "https://raw.githubusercontent.com/network-awai/awai-os/30508ad8778304826b0ae29f118f2bc4f28f112f/store/distribution/dev-20261118-r104/deai.apk",
+      "url": "https://raw.githubusercontent.com/network-awai/awai-os/24d9c40c52cb9fcc1529356bbe8cc6c0214ab593/store/distribution/dev-20261118-r104/deai.apk",
       "sha256": "c34527953fe95ddfe1c43c061b39be9b15db9a653116146942d4ed07cb50cffe",
       "maxBytes": 20782497
     },
     "network.itonami.registry.assoc": {
-      "url": "https://raw.githubusercontent.com/network-awai/awai-os/30508ad8778304826b0ae29f118f2bc4f28f112f/store/distribution/dev-20261119-r105/registry-assoc.apk",
+      "url": "https://raw.githubusercontent.com/network-awai/awai-os/24d9c40c52cb9fcc1529356bbe8cc6c0214ab593/store/distribution/dev-20261119-r105/registry-assoc.apk",
       "sha256": "c731003027201adc5cd5b5c0da9972f9541cfae3785d48258069586bb69239f8",
       "maxBytes": 16288100
     },
     "network.itonami.hiring": {
-      "url": "https://raw.githubusercontent.com/network-awai/awai-os/30508ad8778304826b0ae29f118f2bc4f28f112f/store/distribution/dev-20261120-r107/hiring.apk",
+      "url": "https://raw.githubusercontent.com/network-awai/awai-os/24d9c40c52cb9fcc1529356bbe8cc6c0214ab593/store/distribution/dev-20261120-r107/hiring.apk",
       "sha256": "2003428177fedbf812a45ece64f3062e42bd5051a1c944e84126aeef28c0e5d4",
       "maxBytes": 33722306
     },
     "network.itonami.shirohan": {
-      "url": "https://raw.githubusercontent.com/network-awai/awai-os/30508ad8778304826b0ae29f118f2bc4f28f112f/store/distribution/dev-20261121-r109/shirohan.apk",
+      "url": "https://raw.githubusercontent.com/network-awai/awai-os/24d9c40c52cb9fcc1529356bbe8cc6c0214ab593/store/distribution/dev-20261121-r109/shirohan.apk",
       "sha256": "cbe5122d22b050360a2f22e7a3e3573f35311e33b3d0b8b0583c1e8a2767494c",
       "maxBytes": 213914
     },
     "network.itonami.paymentdrafts": {
-      "url": "https://raw.githubusercontent.com/network-awai/awai-os/30508ad8778304826b0ae29f118f2bc4f28f112f/store/distribution/dev-20261123-r111/paymentdrafts.apk",
+      "url": "https://raw.githubusercontent.com/network-awai/awai-os/24d9c40c52cb9fcc1529356bbe8cc6c0214ab593/store/distribution/dev-20261123-r111/paymentdrafts.apk",
       "sha256": "2637069876b59e9ac8e6cfc7138e3a6a7885d3b26e3727e007e697bf9acaaa28",
       "maxBytes": 21801241
     },
     "network.itonami.securitiesdrafts": {
-      "url": "https://raw.githubusercontent.com/network-awai/awai-os/30508ad8778304826b0ae29f118f2bc4f28f112f/store/distribution/dev-20261123-r111/securitiesdrafts.apk",
+      "url": "https://raw.githubusercontent.com/network-awai/awai-os/24d9c40c52cb9fcc1529356bbe8cc6c0214ab593/store/distribution/dev-20261123-r111/securitiesdrafts.apk",
       "sha256": "b246bf08434302c8f8a6f793d8bb97f63cea35dbd19a1fd46f829e4929446062",
       "maxBytes": 21798452
     },
     "network.itonami.animeka": {
-      "url": "https://raw.githubusercontent.com/network-awai/awai-os/30508ad8778304826b0ae29f118f2bc4f28f112f/store/distribution/dev-20261123-r112/animeka.apk",
+      "url": "https://raw.githubusercontent.com/network-awai/awai-os/24d9c40c52cb9fcc1529356bbe8cc6c0214ab593/store/distribution/dev-20261123-r112/animeka.apk",
       "sha256": "ab1398625a682e256cbcf4c129cc3d0624eb3cea50b7df6be410c7f3280899ef",
       "maxBytes": 12552458
     },
     "network.itonami.dougaka": {
-      "url": "https://raw.githubusercontent.com/network-awai/awai-os/30508ad8778304826b0ae29f118f2bc4f28f112f/store/distribution/dev-20261123-r113/dougaka.apk",
+      "url": "https://raw.githubusercontent.com/network-awai/awai-os/24d9c40c52cb9fcc1529356bbe8cc6c0214ab593/store/distribution/dev-20261123-r113/dougaka.apk",
       "sha256": "0d5a08ac015140085b88e7e76145a08d5e0fc94cc42c16fd2c0ae22006379f73",
       "maxBytes": 12802310
     },
     "network.awai.gaka": {
-      "url": "https://raw.githubusercontent.com/network-awai/awai-os/30508ad8778304826b0ae29f118f2bc4f28f112f/store/distribution/dev-20261123-r112/gaka.apk",
+      "url": "https://raw.githubusercontent.com/network-awai/awai-os/24d9c40c52cb9fcc1529356bbe8cc6c0214ab593/store/distribution/dev-20261123-r112/gaka.apk",
       "sha256": "29df849813a9acdc60b96e03872c01474be5f9d87e592dc9868964ab00d51421",
       "maxBytes": 4788881
     },
     "network.itonami.gameka": {
-      "url": "https://raw.githubusercontent.com/network-awai/awai-os/30508ad8778304826b0ae29f118f2bc4f28f112f/store/distribution/dev-20261123-r112/gameka.apk",
+      "url": "https://raw.githubusercontent.com/network-awai/awai-os/24d9c40c52cb9fcc1529356bbe8cc6c0214ab593/store/distribution/dev-20261123-r112/gameka.apk",
       "sha256": "98cc34e8e4bdee8861319e2dac34dccd6f89da2ed5c8b68fabaa2ae2272837b9",
       "maxBytes": 12519692
     },
     "network.itonami.isco2641": {
-      "url": "https://raw.githubusercontent.com/network-awai/awai-os/30508ad8778304826b0ae29f118f2bc4f28f112f/store/distribution/dev-20261123-r112/isco2641.apk",
+      "url": "https://raw.githubusercontent.com/network-awai/awai-os/24d9c40c52cb9fcc1529356bbe8cc6c0214ab593/store/distribution/dev-20261123-r112/isco2641.apk",
       "sha256": "e50b41fe057f5067b276c529fc752939a8ed1c7a8f68baddfd5fb8114c179675",
       "maxBytes": 12544269
     },
     "network.itonami.mangaka": {
-      "url": "https://raw.githubusercontent.com/network-awai/awai-os/30508ad8778304826b0ae29f118f2bc4f28f112f/store/distribution/dev-20261123-r112/mangaka.apk",
+      "url": "https://raw.githubusercontent.com/network-awai/awai-os/24d9c40c52cb9fcc1529356bbe8cc6c0214ab593/store/distribution/dev-20261123-r112/mangaka.apk",
       "sha256": "25ed2f70c38ed5c51335f92d028b187b521ef3493191c79e7bf5016b1eafbbcf",
       "maxBytes": 12495110
     },
     "network.itonami.ongakuka": {
-      "url": "https://raw.githubusercontent.com/network-awai/awai-os/30508ad8778304826b0ae29f118f2bc4f28f112f/store/distribution/dev-20261123-r112/ongakuka.apk",
+      "url": "https://raw.githubusercontent.com/network-awai/awai-os/24d9c40c52cb9fcc1529356bbe8cc6c0214ab593/store/distribution/dev-20261123-r112/ongakuka.apk",
       "sha256": "4fb20e8c4d9493d03f8fe507d8f733198fcd09b117144883b44cfb021b2fadfb",
       "maxBytes": 12564751
     }
