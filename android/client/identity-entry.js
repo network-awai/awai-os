@@ -4,12 +4,16 @@ import {createLinkRequest,linkUrl,confirmationCode,openResponse,verifyLink,REQUE
 import qrcode from 'qrcode-generator';
 import {createClientOperationBroker,createClientConsentHost} from './runtime.js';
 export const RELAY='https://relay.awai.network';
-const operation={capability:'awai-link',service:'awai-relay',operation:'await-phone-approval',consent:'each-operation','data-categories':['link-topic'],endpoint:{origin:RELAY,routes:[{method:'GET',path:'/:topic/json','query-params':[]}]}};
+// AWAI-3884: finding-9 disclosures (same declarations as otehon/shell/src/runtime.js).
+const RELAY_DISCLOSURE={recipient:'Awai Network LLC',country:'US','country-name':'United States',
+ 'foreign-info-url':'https://awai.network/','special-care':false,frequency:'one-time',
+ data:['link topic'],purpose:'wait for a phone approval on the link topic',withdrawal:'cancel the wait at any time'};
+const operation={capability:'awai-link',service:'awai-relay',operation:'await-phone-approval',consent:'each-operation','data-categories':['link-topic'],disclosure:RELAY_DISCLOSURE,endpoint:{origin:RELAY,routes:[{method:'GET',path:'/v1/:topic/json','query-params':[]}]}};
 const openBrowser={capability:'awai-link',service:'awai-identity',operation:'open-link-on-this-device',consent:'each-operation',
-  'data-categories':['link-request'],endpoint:{origin:LINK_ORIGIN,'browser-action':'open-account-link'}};
+  'data-categories':['link-request'],disclosure:{...RELAY_DISCLOSURE,data:['link request'],purpose:'open the account link on this device',withdrawal:'cancel before the link is opened'},endpoint:{origin:LINK_ORIGIN,'browser-action':'open-account-link'}};
 
 export function relayRequestAllowed(input,method='GET') {
-  try{const u=new URL(input);return method==='GET'&&u.origin!== 'null'&&u.origin===RELAY&&!u.username&&!u.password&&!u.search&&!u.hash&&/^\/[0-9a-f]{32}\/json$/.test(u.pathname);}catch{return false;}
+  try{const u=new URL(input);return method==='GET'&&u.origin!== 'null'&&u.origin===RELAY&&!u.username&&!u.password&&!u.search&&!u.hash&&/^\/v1\/[0-9a-f]{32}\/json$/.test(u.pathname);}catch{return false;}
 }
 export function createIdentity(changed) {
   let did=null,account=null,state={status:'loading'},abort=null,sequence=0;
@@ -42,7 +46,7 @@ export function createIdentity(changed) {
     try{
       update({status:'asking'});
       const {request,privateKey}=await createLinkRequest(did);
-      const input=RELAY+'/'+request.topic+'/json';if(!relayRequestAllowed(input))throw Error('scope');
+      const input=RELAY+'/v1/'+request.topic+'/json';if(!relayRequestAllowed(input))throw Error('scope');
       const response=await broker.invoke({capability:'awai-link',service:'awai-relay',operation:'await-phone-approval'},{input,init:{method:'GET'}},{signal:controller.signal});
       if(!response.ok||!response.body)throw Error('relay');
       const url=linkUrl(request),qr=qrcode(0,'M');qr.addData(url);qr.make();
