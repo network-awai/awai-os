@@ -1,0 +1,34 @@
+AWAI-3890(d) system-bars contract: GREEN after fix (shared-library contract)
+Branch: awai-3890d-systembar-contract  Base: origin/main 55b68ee05a0b196a774a2f743f45a55d89b3b630
+Command: cd apps/x402 && npm test
+Context: (d) now asserts SystemBars.applyForUiMode in onCreate/onConfigurationChanged, no per-app bar-color path, and library policy in packages/awai-system-bars: 17 tests, 17 pass, 0 fail. Also: python3 scripts/check-system-bars.py OK (was FAIL on 3 old (d) lines).
+--- raw output ---
+
+> @itonami/x402@0.1.0 test
+> node --test ../../packages/awai-shell/test/*.test.mjs test/*.test.mjs
+
+✔ revision conflicts prevent concurrent overwrite and survive recreation (1.545834ms)
+✔ corrupt state, oversized data, unsafe identity and unavailable locks fail closed (0.43575ms)
+✔ apps are isolated and unsupported operations never invoke the host (0.153083ms)
+✔ detected native host must match protocol and explicitly advertise projection (0.2355ms)
+✔ USD amounts convert to USDC base units (6 decimals) and back (0.944083ms)
+✔ payTo and resource are validated (0.292625ms)
+✔ a requirement matches the nexus-x402 wire shape and is Base Sepolia only (0.745083ms)
+✔ drafts are bounded, validated on load and removable (0.829792ms)
+✔ planned external operations are display data only (0.05125ms)
+✔ ja and en have the same message keys and every problem code has a label (0.2705ms)
+✔ (a) host refuses to overwrite corrupt stored bytes (fail closed) (1.506208ms)
+✔ (a) unreadable drafts are never truncated or replaced by defaults (0.861666ms)
+✔ (b) every limit violation returns a specific error code (0.251709ms)
+✔ (c) every startup notice key has a label in ja and en (0.115583ms)
+✔ (a/c) undecodable stored drafts go read-only with the error on screen (58.6585ms)
+✔ (a) corrupt storage envelope also goes read-only instead of overwriting (57.353125ms)
+✔ (d) system bars follow the theme via the shared library, also on live switch (0.731ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 199.79325

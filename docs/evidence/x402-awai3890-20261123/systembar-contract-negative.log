@@ -1,0 +1,83 @@
+AWAI-3890(d) system-bars contract: NEGATIVE CONTROL (temp edit, textually reverted after)
+Branch: awai-3890d-systembar-contract  Base: origin/main 55b68ee05a0b196a774a2f743f45a55d89b3b630
+Command: cd apps/x402 && npm test
+Context: Temporarily injected window.decorView.setBackgroundColor(if (light) 0xFFFFFFFF.toInt() else 0xFF14110F.toInt()) into MainActivity.kt onCreate, ran the suite: 16 pass, 1 fail on (d) doesNotMatch /setBackgroundColor\(if \(light\)/. Injection reverted; MainActivity.kt byte-identical to base (git status shows only the test file).
+--- raw output ---
+
+> @itonami/x402@0.1.0 test
+> node --test ../../packages/awai-shell/test/*.test.mjs test/*.test.mjs
+
+✔ revision conflicts prevent concurrent overwrite and survive recreation (1.593291ms)
+✔ corrupt state, oversized data, unsafe identity and unavailable locks fail closed (0.489083ms)
+✔ apps are isolated and unsupported operations never invoke the host (0.134958ms)
+✔ detected native host must match protocol and explicitly advertise projection (0.136958ms)
+✔ USD amounts convert to USDC base units (6 decimals) and back (0.938458ms)
+✔ payTo and resource are validated (0.265ms)
+✔ a requirement matches the nexus-x402 wire shape and is Base Sepolia only (0.783ms)
+✔ drafts are bounded, validated on load and removable (1.130667ms)
+✔ planned external operations are display data only (0.061083ms)
+✔ ja and en have the same message keys and every problem code has a label (0.233083ms)
+✔ (a) host refuses to overwrite corrupt stored bytes (fail closed) (1.452958ms)
+✔ (a) unreadable drafts are never truncated or replaced by defaults (1.067125ms)
+✔ (b) every limit violation returns a specific error code (0.208459ms)
+✔ (c) every startup notice key has a label in ja and en (0.1355ms)
+✔ (a/c) undecodable stored drafts go read-only with the error on screen (57.975416ms)
+✔ (a) corrupt storage envelope also goes read-only instead of overwriting (54.988667ms)
+✖ (d) system bars follow the theme via the shared library, also on live switch (1.479959ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 16
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 196.32525
+
+✖ failing tests:
+
+test at test/repro-3890.test.mjs:132:1
+✖ (d) system bars follow the theme via the shared library, also on live switch (1.479959ms)
+  AssertionError [ERR_ASSERTION]: The input was expected to not match the regular expression /setBackgroundColor\(if \(light\)/. Input:
+  
+  'package network.itonami.x402\n' +
+    'import android.content.res.Configuration\n' +
+    'import android.os.Bundle\n' +
+    'import androidx.core.view.ViewCompat\n' +
+    'import androidx.core.view.WindowInsetsCompat\n' +
+    'import kotlin.math.max\n' +
+    'import network.awai.systembars.SystemBars\n' +
+    'class MainActivity : TauriActivity() {\n' +
+    '    override fun onCreate(savedInstanceState: Bundle?) {\n' +
+    '        super.onCreate(savedInstanceState)\n' +
+    '        val content=findViewById<android.view.View>(android.R.id.content)\n' +
+    '        ViewCompat.setOnApplyWindowInsetsListener(content){view,insets->\n' +
+    '            val bars=insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())\n' +
+    '            val ime=insets.getInsets(WindowInsetsCompat.Type.ime())\n' +
+    '            view.setPadding(bars.left,bars.top,bars.right,max(bars.bottom,ime.bottom));insets\n' +
+    '        }\n' +
+    '        SystemBars.applyForUiMode(this, resources.configuration)\n' +
+    '        window.decorView.setBackgroundColor(if (light) 0xFFFFFFFF.toInt() else 0xFF14110F.toInt())\n' +
+    '        ViewCompat.requestApplyInsets(content)\n' +
+    '    }\n' +
+    "    // uiMode is in the manifest's configChanges, so a theme switch arrives here\n" +
+    '    // instead of recreating the activity.\n' +
+    '    override fun onConfigurationChanged(newConfig: Configuration) {\n' +
+    '        super.onConfigurationChanged(newConfig)\n' +
+    '        SystemBars.applyForUiMode(this, newConfig)\n' +
+    '    }\n' +
+    '}\n'
+  
+      at TestContext.<anonymous> (file:///Users/node/orca/workspaces/awai-os/awai-3890d-systembar/apps/x402/test/repro-3890.test.mjs:155:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: "package network.itonami.x402\nimport android.content.res.Configuration\nimport android.os.Bundle\nimport androidx.core.view.ViewCompat\nimport androidx.core.view.WindowInsetsCompat\nimport kotlin.math.max\nimport network.awai.systembars.SystemBars\nclass MainActivity : TauriActivity() {\n    override fun onCreate(savedInstanceState: Bundle?) {\n        super.onCreate(savedInstanceState)\n        val content=findViewById<android.view.View>(android.R.id.content)\n        ViewCompat.setOnApplyWindowInsetsListener(content){view,insets->\n            val bars=insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())\n            val ime=insets.getInsets(WindowInsetsCompat.Type.ime())\n            view.setPadding(bars.left,bars.top,bars.right,max(bars.bottom,ime.bottom));insets\n        }\n        SystemBars.applyForUiMode(this, resources.configuration)\n        window.decorView.setBackgroundColor(if (light) 0xFFFFFFFF.toInt() else 0xFF14110F.toInt())\n        ViewCompat.requestApplyInsets(content)\n    }\n    // uiMode is in the manifest's configChanges, so a theme switch arrives here\n    // instead of recreating the activity.\n    override fun onConfigurationChanged(newConfig: Configuration) {\n        super.onConfigurationChanged(newConfig)\n        SystemBars.applyForUiMode(this, newConfig)\n    }\n}\n",
+    expected: /setBackgroundColor\(if \(light\)/,
+    operator: 'doesNotMatch',
+    diff: 'simple'
+  }

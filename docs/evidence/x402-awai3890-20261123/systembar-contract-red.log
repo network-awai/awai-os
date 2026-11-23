@@ -1,0 +1,82 @@
+AWAI-3890(d) system-bars contract: RED before fix (pre-#456 per-app assertions)
+Branch: awai-3890d-systembar-contract  Base: origin/main 55b68ee05a0b196a774a2f743f45a55d89b3b630
+Command: cd apps/x402 && npm test
+Context: MainActivity.kt already delegates to packages/awai-system-bars (PR #456); the old (d) still asserted UI_MODE_NIGHT_YES / setBackgroundColor(if (light) / 0xFF14110F in x402, so the suite was red on main: 17 tests, 16 pass, 1 fail. First failing assertion: /UI_MODE_NIGHT_YES/ at repro-3890.test.mjs:136.
+--- raw output ---
+
+> @itonami/x402@0.1.0 test
+> node --test ../../packages/awai-shell/test/*.test.mjs test/*.test.mjs
+
+✔ revision conflicts prevent concurrent overwrite and survive recreation (2.430709ms)
+✔ corrupt state, oversized data, unsafe identity and unavailable locks fail closed (0.507ms)
+✔ apps are isolated and unsupported operations never invoke the host (0.142584ms)
+✔ detected native host must match protocol and explicitly advertise projection (0.136666ms)
+✔ USD amounts convert to USDC base units (6 decimals) and back (0.816416ms)
+✔ payTo and resource are validated (0.208542ms)
+✔ a requirement matches the nexus-x402 wire shape and is Base Sepolia only (0.987041ms)
+✔ drafts are bounded, validated on load and removable (1.031ms)
+✔ planned external operations are display data only (0.056917ms)
+✔ ja and en have the same message keys and every problem code has a label (0.213333ms)
+✔ (a) host refuses to overwrite corrupt stored bytes (fail closed) (2.148125ms)
+✔ (a) unreadable drafts are never truncated or replaced by defaults (0.869584ms)
+✔ (b) every limit violation returns a specific error code (0.19475ms)
+✔ (c) every startup notice key has a label in ja and en (0.079166ms)
+✔ (a/c) undecodable stored drafts go read-only with the error on screen (61.0155ms)
+✔ (a) corrupt storage envelope also goes read-only instead of overwriting (55.744ms)
+✖ (d) system bars follow the theme with legible icons, also on live switch (1.6485ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 16
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 194.146959
+
+✖ failing tests:
+
+test at test/repro-3890.test.mjs:132:1
+✖ (d) system bars follow the theme with legible icons, also on live switch (1.6485ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /UI_MODE_NIGHT_YES/. Input:
+  
+  'package network.itonami.x402\n' +
+    'import android.content.res.Configuration\n' +
+    'import android.os.Bundle\n' +
+    'import androidx.core.view.ViewCompat\n' +
+    'import androidx.core.view.WindowInsetsCompat\n' +
+    'import kotlin.math.max\n' +
+    'import network.awai.systembars.SystemBars\n' +
+    'class MainActivity : TauriActivity() {\n' +
+    '    override fun onCreate(savedInstanceState: Bundle?) {\n' +
+    '        super.onCreate(savedInstanceState)\n' +
+    '        val content=findViewById<android.view.View>(android.R.id.content)\n' +
+    '        ViewCompat.setOnApplyWindowInsetsListener(content){view,insets->\n' +
+    '            val bars=insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())\n' +
+    '            val ime=insets.getInsets(WindowInsetsCompat.Type.ime())\n' +
+    '            view.setPadding(bars.left,bars.top,bars.right,max(bars.bottom,ime.bottom));insets\n' +
+    '        }\n' +
+    '        SystemBars.applyForUiMode(this, resources.configuration)\n' +
+    '        ViewCompat.requestApplyInsets(content)\n' +
+    '    }\n' +
+    "    // uiMode is in the manifest's configChanges, so a theme switch arrives here\n" +
+    '    // instead of recreating the activity.\n' +
+    '    override fun onConfigurationChanged(newConfig: Configuration) {\n' +
+    '        super.onConfigurationChanged(newConfig)\n' +
+    '        SystemBars.applyForUiMode(this, newConfig)\n' +
+    '    }\n' +
+    '}\n'
+  
+      at TestContext.<anonymous> (file:///Users/node/orca/workspaces/awai-os/awai-3890d-systembar/apps/x402/test/repro-3890.test.mjs:136:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: "package network.itonami.x402\nimport android.content.res.Configuration\nimport android.os.Bundle\nimport androidx.core.view.ViewCompat\nimport androidx.core.view.WindowInsetsCompat\nimport kotlin.math.max\nimport network.awai.systembars.SystemBars\nclass MainActivity : TauriActivity() {\n    override fun onCreate(savedInstanceState: Bundle?) {\n        super.onCreate(savedInstanceState)\n        val content=findViewById<android.view.View>(android.R.id.content)\n        ViewCompat.setOnApplyWindowInsetsListener(content){view,insets->\n            val bars=insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())\n            val ime=insets.getInsets(WindowInsetsCompat.Type.ime())\n            view.setPadding(bars.left,bars.top,bars.right,max(bars.bottom,ime.bottom));insets\n        }\n        SystemBars.applyForUiMode(this, resources.configuration)\n        ViewCompat.requestApplyInsets(content)\n    }\n    // uiMode is in the manifest's configChanges, so a theme switch arrives here\n    // instead of recreating the activity.\n    override fun onConfigurationChanged(newConfig: Configuration) {\n        super.onConfigurationChanged(newConfig)\n        SystemBars.applyForUiMode(this, newConfig)\n    }\n}\n",
+    expected: /UI_MODE_NIGHT_YES/,
+    operator: 'match',
+    diff: 'simple'
+  }

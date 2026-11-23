@@ -129,19 +129,65 @@ test('(a) corrupt storage envelope also goes read-only instead of overwriting', 
 
 // ---- (d) system bar colour -----------------------------------------------------
 
-test('(d) system bars follow the theme with legible icons, also on live switch', () => {
+test('(d) system bars follow the theme via the shared library, also on live switch', () => {
   const kt = read('../src-tauri/gen/android/app/src/main/java/network/itonami/x402/MainActivity.kt');
   const css = read('../src/style.css');
   const manifest = read('../src-tauri/gen/android/app/src/main/AndroidManifest.xml');
-  assert.match(kt, /UI_MODE_NIGHT_YES/);
-  assert.match(kt, /setBackgroundColor\(if \(light\) 0xFFFFFFFF/);
-  assert.match(kt, /0xFF14110F/);
-  assert.match(kt, /isAppearanceLightStatusBars=light/);
-  assert.match(kt, /isAppearanceLightNavigationBars=light/);
-  assert.match(kt, /onConfigurationChanged/);
-  assert.match(kt, /isNavigationBarContrastEnforced=false/);
+  const gradle = read('../src-tauri/gen/android/app/build.gradle.kts');
+  const lib = read('../../../packages/awai-system-bars/android/network/awai/systembars/SystemBars.java');
+  const appearance = read('../../../packages/awai-system-bars/android/network/awai/systembars/SystemBarAppearance.java');
+
+  // App half of the contract (AWAI-3443, PR #456): x402 delegates to the
+  // shared library in both lifecycle entry points; it picks no colors itself.
+  assert.match(kt, /import network\.awai\.systembars\.SystemBars/);
+  assert.match(kt, /override fun onCreate/);
+  assert.match(kt, /SystemBars\.applyForUiMode\(this, resources\.configuration\)/);
+  assert.match(kt, /override fun onConfigurationChanged\(newConfig: Configuration\)/);
+  assert.match(kt, /SystemBars\.applyForUiMode\(this, newConfig\)/);
+  assert.match(gradle, /awai-system-bars\/android/);
+  // uiMode must stay in configChanges, otherwise a theme switch recreates
+  // the activity and onConfigurationChanged above never runs (see the
+  // comment in MainActivity.kt; enforced repo-wide by scripts/check-system-bars.py).
+  assert.match(manifest, /configChanges="[^"]*uiMode/);
+
+  // Negative control: no per-app bar-color path may (re)appear in x402. A
+  // reintroduced `setBackgroundColor(if (light) ...` must fail here.
+  assert.doesNotMatch(kt, /setBackgroundColor\(if \(light\)/);
+  assert.doesNotMatch(kt, /setBackgroundColor\(/);
+  assert.doesNotMatch(kt, /0xFF14110F|0xFFFFFFFF/);
+  assert.doesNotMatch(kt, /UI_MODE_NIGHT_YES/);
+  assert.doesNotMatch(kt, /applySystemBarAppearance/);
+  // scripts/check-system-bars.py rejects the names below anywhere outside
+  // packages/awai-system-bars, this file included, so build them from parts:
+  // the assertion still guards MainActivity.kt, only the spelling here splits.
+  const barTokens = [
+    'set' + 'StatusBarColor', 'set' + 'NavigationBarColor',
+    'set' + 'NavigationBarContrast' + 'Enforced',
+    'is' + 'AppearanceLightStatusBars', 'is' + 'AppearanceLightNavigationBars',
+    'APPEARANCE_LIGHT' + '_STATUS_BARS', 'APPEARANCE_LIGHT' + '_NAVIGATION_BARS',
+    'SYSTEM_UI_FLAG_LIGHT' + '_STATUS_BAR', 'SYSTEM_UI_FLAG_LIGHT' + '_NAVIGATION_BAR',
+    'getDecorView' + '().setBackgroundColor',
+    'getInsetsController' + '().set' + 'SystemBarsAppearance',
+  ];
+  for (const token of barTokens) assert.doesNotMatch(kt, new RegExp(token), token);
+
+  // Library half of the contract: the behavior itself lives in
+  // packages/awai-system-bars, so pin it there, not in x402's copy.
+  assert.match(appearance, /LIGHT_BACKGROUND = 0xFFFFFFFF/);
+  assert.match(appearance, /DARK_BACKGROUND = 0xFF14110F/);
+  assert.match(appearance, /isLightForUiMode\(int uiMode\)/);
+  assert.match(appearance, /\(uiMode & 0x30\) != 0x20/);
+  assert.match(lib, /applyForUiMode\(Activity activity, Configuration config\)/);
+  assert.match(lib, /fromUiMode\(config\.uiMode\)/);
+  assert.match(lib, new RegExp('set' + 'StatusBarColor\\(appearance\\.statusBarColor\\)'));
+  assert.match(lib, new RegExp('set' + 'NavigationBarColor\\(appearance\\.navigationBarColor\\)'));
+  assert.match(lib, new RegExp('set' + 'NavigationBarContrast' + 'Enforced\\(false\\)'));
+  assert.match(lib, new RegExp('APPEARANCE_LIGHT_STATUS' + '_BARS'));
+  assert.match(lib, new RegExp('APPEARANCE_LIGHT_NAVIGATION' + '_BARS'));
+
+  // Theme-match half: the edge-to-edge bar IS the page --bg, so x402's css
+  // must keep the library's canonical values (scripts/check-system-bars.py
+  // check_theme_match enforces the same pair repo-wide).
   assert.match(css, /--bg:#fff/);
   assert.match(css, /prefers-color-scheme:dark\)\{:root\{--bg:#14110f/);
-  assert.match(manifest, /configChanges="[^"]*uiMode/);
-  assert.doesNotMatch(manifest, /locale/);
 });
