@@ -187,7 +187,7 @@ test('an English device language shows the English dialog with English declared 
     assert.match(summary?.textContent??'',/Information: consultation memo \(name, contact, consultation details\)/);
     assert.match(summary?.textContent??'',/Purpose: to send the consultation memo to the lawyer you chose/);
     assert.match(summary?.textContent??'',/Frequency: Once/);
-    assert.match(flatDialog(dialog()).map(e=>e.textContent??'').join('\n'),/in Settings/);
+    assert.match(flatDialog(dialog()).map(e=>e.textContent??'').join('\n'),/not saved/);
     const allow=buttonByText(dialog(),'Continue');
     const deny=buttonByText(dialog(),'Close');
     assert.ok(allow,'English allow button exists');assert.ok(deny,'English deny button exists');
