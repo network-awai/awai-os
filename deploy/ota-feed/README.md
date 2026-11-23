@@ -22,10 +22,17 @@ What this Worker does today:
 
 Payload storage is the yataverse protocol: `CIDv1 = base32(0x01‖0x55‖0x12‖0x20‖sha256)`
 served at `https://yataverse.com/ipfs/<cid>`, derived in code from the
-SHA-256 — no data map, no bucket. Publishing an index means re-running
-`scripts/publish-index.py` (which reuses `updater-feed.py make-index` —
-verification logic is not forked, not re-implemented) and redeploying;
-the indexes live in this repo as [`src/indexes.js`](src/indexes.js)
+SHA-256 — no data map, no bucket. Ingestion uses the
+`app-itonami-yataverse` CLI (`bin/yataverse.mjs`, cacao-signed):
+`yataverse cid <zip>` must print the same CID that `scripts/publish-index.py`
+prints, then `yataverse put <zip>` ingests the bytes (verified + receipt).
+Measured 2026-11-24: a real CID answers `Range: bytes=0-9` with
+`HTTP/2 206 / content-range: bytes 0-9/55 / accept-ranges: bytes` — see
+[`docs/evidence/ota-feed-origin-20261124.md`](../../docs/evidence/ota-feed-origin-20261124.md).
+Publishing an index means re-running `scripts/publish-index.py` (which reuses
+`updater-feed.py make-index` — verification logic is not forked, not
+re-implemented) and redeploying; the indexes live in this repo as
+[`src/indexes.js`](src/indexes.js)
 (audit mirror: [`indexes/indexes.json`](indexes/indexes.json)).
 
 ## Run locally
@@ -63,8 +70,17 @@ today every path on `ota.awai.network` returns a generic Cloudflare 404
    `src/indexes.js` + `indexes/indexes.json`, and prints the object path
    `https://ota.awai.network/v1/pc/pilot/blobs/<sha256>.zip` plus its
    yataverse CID (it never deploys).
-3. Ingest the ZIP bytes into the yataverse network (the Worker serves
-   `https://yataverse.com/ipfs/<CID>` and 404s until then).
+3. Ingest the ZIP bytes into the yataverse network with the
+   `app-itonami-yataverse` CLI (`bin/yataverse.mjs`, cacao-signed):
+
+   ```sh
+   yataverse cid <zip>           # the CID from the SHA-256; must match the
+                                 # CID printed by publish-index.py step 2
+   yataverse put <zip>           # verified:true + returned CID + storage receipt
+   ```
+
+   The Worker serves `https://yataverse.com/ipfs/<CID>` and 404s until the
+   bytes are ingested.
 4. Verify:
 
    ```sh
