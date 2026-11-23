@@ -983,3 +983,14 @@ Object.prototype.issued;
 Object.prototype.host;
 Object.prototype.fromBase64Url;
 Object.prototype.toBase64Url;
+
+// AWAI-3884: finding-9 disclosure keys and the disclosure constants beside them
+// (runtime.js, voice-channel-contract.js, awai-support.js, egov-host.js): the
+// canonical runtime reads disclosure fields by name, so Closure must not rename them.
+Object.prototype.country;
+Object.prototype.frequency;
+Object.prototype.withdrawal;
+Object.prototype.SUPPORT_DISCLOSURE;
+Object.prototype.RELAY_DISCLOSURE;
+Object.prototype.OPTIMISM_DISCLOSURE;
+Object.prototype.chatDisclosure;

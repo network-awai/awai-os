@@ -221,7 +221,7 @@ def main():
         (staged_assets/'assets.list').write_text('\n'.join(files)+'\n')
         run([tools/'aapt2','compile','--dir',resources,'-o',stage/'resources.zip'])
         run([tools/'aapt2','link','-o',stage/'resources.apk','--manifest',xml,'-I',jar,'--java',gen,'-R',stage/'resources.zip','-A',staged_assets,'--auto-add-overlay'])
-        sources=list((ROOT/'android/shared/src').rglob('*.java'))+list((ROOT/'android'/kind/'src').rglob('*.java'))+list(gen.rglob('*.java'))
+        sources=list((ROOT/'android/shared/src').rglob('*.java'))+list((ROOT/'android'/kind/'src').rglob('*.java'))+list((ROOT/'packages/awai-system-bars/android').rglob('*.java'))+list(gen.rglob('*.java'))
         run([args.java/'javac','--release','8','-encoding','UTF-8','-cp',jar,'-d',classes,*sources])
         run([tools/'d8','--min-api','33','--lib',jar,'--output',dex,*classes.rglob('*.class')])
         unsigned=stage/'unsigned.apk';shutil.copyfile(stage/'resources.apk',unsigned)

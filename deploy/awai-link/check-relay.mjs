@@ -46,7 +46,7 @@ const secret = secp256k1.utils.randomSecretKey();
 const address = checksumAddress(`0x${hex(keccak_256(secp256k1.getPublicKey(secret, false).slice(1))).slice(-40)}`);
 const did = p256Did(compressP256(p256.getPublicKey(p256.utils.randomSecretKey(), false)));
 const { request, privateKey } = await createLinkRequest(did);
-const waiting = firstMessage(request.topic, 15000);
+const waiting = firstMessage(`v1/${request.topic}`, 15000);
 await new Promise((resolve) => setTimeout(resolve, 1000));
 
 const issuedAt = new Date().toISOString();
@@ -57,14 +57,14 @@ const hash = keccak_256(Uint8Array.from([...encoder.encode(`\x19Ethereum Signed 
 const recovered = secp256k1.sign(hash, secret, { prehash: false, format: "recovered" });
 const signature = `0x${hex(recovered.slice(1))}${(27 + recovered[0]).toString(16)}`;
 const sealed = await sealResponse(request, { method: "wallet", address, chainId: 1, issuedAt, expiresAt, signature });
-const posted = await fetch(`${origin}/${request.topic}`, { method: "POST", headers: { "content-type": "text/plain" }, body: sealed });
+const posted = await fetch(`${origin}/v1/${request.topic}`, { method: "POST", headers: { "content-type": "text/plain" }, body: sealed });
 check(`post is accepted (${posted.status})`, posted.ok);
 check("post allows any origin", posted.headers.get("access-control-allow-origin") === "*");
 const received = await waiting;
 check("a waiting device receives it", received === sealed);
 const opened = await openResponse(request, privateKey, received);
 check("Otehon accepts the link", verifyLink({ request, response: opened, deviceDid: did }).accountDid === `did:pkh:eip155:1:${address}`);
-check("a device that connects later still receives it", (await firstMessage(request.topic, 8000)) === sealed);
+check("a device that connects later still receives it", (await firstMessage(`v1/${request.topic}`, 8000)) === sealed);
 
 // Negative controls.
 const quiet = firstMessage(topic(), 2500);
@@ -80,6 +80,8 @@ check("an oversized body is refused", (await status(`/${topic()}`, { method: "PO
 const flooded = topic();
 for (let i = 0; i < 8; i += 1) await status(`/${flooded}`, { method: "POST", body: "x" });
 check("a flooded topic is refused", (await status(`/${flooded}`, { method: "POST", body: "x" })) === 429);
+check("the bare route still serves the same topic", (await status(`/${topic()}`, { method: "POST", body: "x" })) === 200);
+check("a v1 short topic is refused", (await status("/v1/abc", { method: "POST", body: "x" })) === 404);
 const preflight = await fetch(`${origin}/${topic()}`, { method: "OPTIONS" });
 check("a preflight is answered", preflight.status === 204);
 

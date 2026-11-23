@@ -12,14 +12,16 @@ const PASSPORT_ORIGIN = "https://mainnet.optimism.io";
 
 // AWAI-3883: finding-9 disclosures (Legal decision via Organizer, 2026-11-23; recipient
 // definition and country handling corrected 2026-11-23; country nullable validator
-// 2026-11-23). Recipient is limited to the entity that operates the endpoint processing
-// logic AND decides the purpose of data use (データの利用目的を決める主体); hosting/line/CDN
-// = processor, not recipient. Cloudflare runs the relay Worker, so the relay recipient is
-// Awai Network LLC (operator), not Cloudflare, Inc. Country is UNCONFIRMED: the consent
-// dialog reads the machine country field for display, so no code is written — country is
-// null with countryStatus "pending", the user-visible `note` carries the provisional
-// wording, and `confirmCondition` says what would confirm it. Frequency is validator
-// 'one-time' for each-operation consent (all precedents).
+// 2026-11-23; merge with main AWAI-3884 2026-11-23 — main's US-entity disclosures are
+// superseded by the Legal pending values below). Recipient is limited to the entity that
+// operates the endpoint processing logic AND decides the purpose of data use
+// (データの利用目的を決める主体); hosting/line/CDN = processor, not recipient. Cloudflare
+// runs the relay Worker, so the relay recipient is Awai Network LLC (operator), not
+// Cloudflare, Inc. Country is UNCONFIRMED: the consent dialog reads the machine country
+// field for display, so no code is written — country is null with countryStatus "pending",
+// the user-visible `note` carries the provisional wording, and `confirmCondition` says
+// what would confirm it. Frequency is validator 'one-time' for each-operation consent
+// (all precedents). Relay routes follow main's /v1/ protocol.
 const RELAY_DISCLOSURE = {
   recipient: "Awai Network LLC",
   country: null, // unconfirmed: no code; see note + confirmCondition
@@ -64,7 +66,7 @@ export function osOperations(relayOrigin, supportDeskOrigin, computeDeskOrigin) 
       "data-categories": ["link-topic"],
       endpoint: {
         origin: relayOrigin,
-        routes: [{ method: "GET", path: "/:topic/json", "query-params": [] }],
+        routes: [{ method: "GET", path: "/v1/:topic/json", "query-params": [] }],
       },
       disclosure: { ...RELAY_DISCLOSURE },
     },
@@ -130,7 +132,7 @@ export function phoneOperations(relayOrigin) {
       "data-categories": ["encrypted-link-approval"],
       endpoint: {
         origin: relayOrigin,
-        routes: [{ method: "POST", path: "/:topic", "query-params": [] }],
+        routes: [{ method: "POST", path: "/v1/:topic", "query-params": [] }],
       },
       // AWAI-3883 phone measurement (2026-11-23): deliver-approval hits the EXTERNAL relay
       // origin (the default relay host, deploy/awai-link Worker), not localhost /
@@ -179,7 +181,7 @@ export function relayFailureCode(error) {
 export async function awaitPhoneApproval(broker, relayOrigin, topic, signal) {
   const response = await broker.invoke(
     { capability: "awai-link", service: "awai-relay", operation: "await-phone-approval" },
-    { input: `${relayOrigin}/${topic}/json`, init: { method: "GET" } },
+    { input: `${relayOrigin}/v1/${topic}/json`, init: { method: "GET" } },
     { signal },
   );
   if (!response.ok) {
@@ -209,10 +211,17 @@ export async function awaitPhoneApproval(broker, relayOrigin, topic, signal) {
 }
 
 export async function deliverApproval(broker, relayOrigin, topic, sealed) {
+  // AWAI-3883 phone decision (2026-11-23): the relay accepts only a 32-hex topic
+  // (/v1/<32hex>); the client matches the relay contract and never widens it. A topic
+  // that is not already 32 lowercase hex fails before anything is sent — valid topics
+  // come from createLinkRequest (randomHex(16)) and are validated on parse.
+  if (typeof topic !== "string" || !/^[0-9a-f]{32}$/.test(topic)) {
+    throw new Error("invalid-link-topic");
+  }
   const response = await broker.invoke(
     { capability: "awai-link", service: "awai-relay", operation: "deliver-approval" },
     {
-      input: `${relayOrigin}/${topic}`,
+      input: `${relayOrigin}/v1/${topic}`,
       init: { method: "POST", headers: { "content-type": "text/plain" }, body: sealed },
     },
   );
