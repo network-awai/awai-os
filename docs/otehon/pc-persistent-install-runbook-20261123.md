@@ -67,6 +67,19 @@
 - 2026-11-24 オーナー決定: (c) 2本目ディスク。(a)(b1) は承認されず実行対象外。(c) の必須仕様は 512e・64 GiB 以上。
 - 注意: この決定を実行する「second-disk モード」は #479 で実装中。現行の実装は (a) 既存 NVMe 全消去のみで、2本目ディスクを接続した状態では namespace-count / other-local-disk で拒否される。
 
+### 決定 (c) 2本目ディスクの実行手順（second-disk モード, #479 `0d5c52ac`）
+
+オーナー承認済みの (c) を実行するときの前提と手順:
+
+1. 元の 7735HS NVMe は**接続したまま**にする（second-disk モードは元 NVMe の存在と UUID を guard に使う。不在なら拒否＝ケーブル誤抜きの検知）。
+2. 2本目のディスクは**意図的にゼロ化**しておく（パーティション・非ゼロバイトが残っていると拒否される）。
+3. 次の 3 つを満たすことを確認する: 論理セクタ 512（`sgdisk -p`）、容量がイメージサイズ以上、`/sys/block/<disk>/device/serial` が読めること。
+4. そのディスクの **serial とセクタ数**を、digest で守られた initrd 内の `install.pins` に pin する（`install_mode=second`）。プレースホルダのままでは拒否される。
+5. インストーラを `/awai-netboot` に置き、iPXE を `install <out> second <target_sectors>` で patch する。
+6. 起動後は typed SHA-256 の確認 → 書込み → 同一範囲の readback まで。失敗時は「元 NVMe は無傷」か「対象が PARTIALLY WRITTEN」かを表示で区別する。
+
+注意: serial が読めないディスク、serial が重複するディスク、4Kn、容量不足、元 NVMe を対象にした場合、元 NVMe が見つからない場合は、いずれも**書込み前に拒否**される。
+
 ## 4. LAN 復旧時の **RAM Live** 再確認手順
 
 これは RAM Live。**再起動でデータは消える**（2026-11-16 の観測でも `persistentAndroidInstall: deferred`、
