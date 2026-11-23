@@ -237,3 +237,24 @@ grep 結果: **146 ファイル**（17 repo、うち `network-awai/awai-os-wt-da
 
 
 優先順位（再掲）: ① mangaka reader（`ai-gftd-cdn`、本番 500 の実例）② awai-os `distribution/`（`aiueos-releases`、APK/配布物）③ `kotoba.kotobaseStorage…/wrangler.r2-bench.jsonc`（ベンチ・試験用）。
+
+## 例外: installer の配布 transport（オーナー決定 2026-11-23）
+
+`distribution/`（Worker `aiueos-updates`）だけは **R2 に残す**。理由は実測したサイズと limit の不一致:
+
+- 配信中 artifact: `/stable/8f671359….iso` は **200 / `content-length: 5248696320`（5.2 GiB）**
+- yataverse の limit: **`maxBlockBytes` 16 MiB**、CAR 32 MiB / 256 blocks、書き込み **64 MiB/分**（`/.well-known/yataverse-policy/current.json`）
+- 5.2 GiB を移すと**連続 ~83 分**の書き込みになり、その間 `stable/manifest.json` を見るノードは更新を受け取れない
+
+したがって:
+
+| 項目 | 決定 |
+|---|---|
+| binding | **`aiueos-releases` のまま**（既存 ISO が 404 になる切替はしない） |
+| 新規 artifact | **`awai-os-ota`**（同 account、2026-11-20 作成）に置く |
+| yataverse への移送 | **しない** |
+| 例外の範囲 | **`distribution/`（installer / nar-export の transport）だけ**。apps / dapps / bots の R2 禁止は維持 |
+
+**PR #478 はこの Worker を yataverse 直結に書き換え、main に入っている**（`9a8c158`、テスト 8/8）。
+binding を持たないため、**この版はデプロイしない**（デプロイすると installer が 404 になる）。
+将来 installer を別経路（GitHub Release 等）へ移すと決めた時点で、この例外は解除する。
