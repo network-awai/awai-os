@@ -16,5 +16,6 @@ ja+en labels AND runs a boot harness over corrupt storage showing a non-empty st
 view, so no failure can be invisible. For (d) system bar colour, the test reads the actual
 sources (`MainActivity.kt`, `style.css`, `AndroidManifest.xml`) and asserts the light/dark
 colors, light-icon flags, `onConfigurationChanged` handling, and the `uiMode` configChanges
-entry — the shared theme lib pattern is applied, so no per-app hard-coded bar colour remains.
+entry — the common library (`packages/awai-system-bars`, PR #456) is applied
+(`SystemBars.applyForUiMode` in `MainActivity.kt`), so no per-app hard-coded bar colour remains.
 asked by Organizer via Awai OS
