@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { test } from "node:test";
@@ -6,6 +7,7 @@ import { fileURLToPath } from "node:url";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const bundlePath = path.join(root, "vendor/THIRD-PARTY-LICENSES.md");
+const noticePath = path.join(root, "vendor/NOTICE");
 
 // AWAI-3883 vendor license attribution: the kotoba runtime is public Apache-2.0
 // (kotoba-lang/kotoba), not internal. Each vendored file needs its own section with
@@ -62,6 +64,26 @@ test("the full Apache-2.0 text and the kotoba NOTICE are bundled byte-present", 
   // kotoba NOTICE (Apache-2.0 §4(d)).
   assert.ok(bundle.includes("kotoba\nCopyright 2026 Jun Kawasaki"), "NOTICE copyright");
   assert.ok(bundle.includes("https://github.com/kotoba-lang"), "NOTICE project URL");
+});
+
+test("the standalone vendor/NOTICE is byte-identical to upstream (364B, sha256 pinned)", async () => {
+  const bytes = await readFile(noticePath);
+  assert.equal(bytes.length, 364, "NOTICE must be exactly 364 bytes");
+  assert.equal(
+    createHash("sha256").update(bytes).digest("hex"),
+    "a263dafd3b98365765d784f139c44888ef6298d5b2b9ef6edbc5d84ffb86b0c9",
+    "NOTICE sha256 must match upstream kotoba-lang/kotoba NOTICE",
+  );
+  // PINS.json ties the pin to the standalone file (browser #11 shape): the
+  // notice key must name a real file under vendor/.
+  const pins = JSON.parse(await readFile(path.join(root, "vendor/PINS.json"), "utf8"));
+  assert.equal(pins.notice, "NOTICE", "PINS.json must carry the notice key");
+  const linked = await readFile(path.join(root, "vendor", pins.notice));
+  assert.equal(
+    createHash("sha256").update(linked).digest("hex"),
+    "a263dafd3b98365765d784f139c44888ef6298d5b2b9ef6edbc5d84ffb86b0c9",
+    "PINS notice key must point to the byte-identical NOTICE file",
+  );
 });
 
 test("completeness: every vendored script/style file has a per-file section", async () => {
