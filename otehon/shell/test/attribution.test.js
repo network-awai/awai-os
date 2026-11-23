@@ -74,6 +74,16 @@ test("the standalone vendor/NOTICE is byte-identical to upstream (364B, sha256 p
     "a263dafd3b98365765d784f139c44888ef6298d5b2b9ef6edbc5d84ffb86b0c9",
     "NOTICE sha256 must match upstream kotoba-lang/kotoba NOTICE",
   );
+  // PINS.json ties the pin to the standalone file (browser #11 shape): the
+  // notice key must name a real file under vendor/.
+  const pins = JSON.parse(await readFile(path.join(root, "vendor/PINS.json"), "utf8"));
+  assert.equal(pins.notice, "NOTICE", "PINS.json must carry the notice key");
+  const linked = await readFile(path.join(root, "vendor", pins.notice));
+  assert.equal(
+    createHash("sha256").update(linked).digest("hex"),
+    "a263dafd3b98365765d784f139c44888ef6298d5b2b9ef6edbc5d84ffb86b0c9",
+    "PINS notice key must point to the byte-identical NOTICE file",
+  );
 });
 
 test("completeness: every vendored script/style file has a per-file section", async () => {
