@@ -35,10 +35,11 @@ the published list against the retired root, so the sequence-2 list fails there 
 trusting its bundled sequence-1 list. Until it is rebuilt and reinstalled (owner default 2026-11-22:
 `adb install -r` of a fresh build keeps data), it will not follow the new catalog and pointer keys.
 The same applies to every development app that bundles this root. Production Stores pin a different root
-and are unaffected. Existing published pointers and catalogs are not touched by this change: a Store trusting
-the new root refuses the current pointer (signed by the retired pointer key), so a new pointer signed with the
-new pointer key must be published before new-root Stores can update. `store/distribution` revisions
-(r112/r113) are unchanged.
+and are unaffected. The follow-up publication has now landed: catalog r114 (first catalog signed by the new
+catalog key `73e8cf0d…`) and pointer sequence 5 (first pointer signed by the new pointer key `c1587368…`),
+carrying forward the 17 pinned apps unchanged — so a new-root Store can update from it, while an old-root-pinned
+Store still needs the rebuild above. Existing `store/distribution` revisions (r112/r113) are unchanged;
+r114 only adds the new envelope.
 
 The private keys are on the development Mac in `~/.android/awai-store-dev/` (`root.p12`, `catalog.p12`,
 `pointer.p12`, password file `password`, all 0600), next to Android's own debug keystore. `android/build.py`

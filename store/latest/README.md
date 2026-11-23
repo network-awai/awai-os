@@ -4,7 +4,7 @@
 `https://raw.githubusercontent.com/network-awai/awai-os/main/store/latest/pointer-envelope.json`.
 
 - Format `itonami.store.latest.v1`: `{raw, signature}`. `raw` holds `sequence`, `issuedAt`, `expiresAt` and `pins`. The pins have the same shape as `android/online-pins.dev.json`: commit-pinned URLs, SHA-256 and byte ceilings for the catalog and for each APK.
-- Signed SHA256withRSA with a **pointer key** listed in the Store's key list (AWAI-3775): `keys-envelope.json`, signed by the development root `8707b4bb…` (see `store/keys/README.md`). From sequence 4 on, the development pointer key `8250a122…`; sequences 1 to 3 were signed by the debug key `2507930b…`, which Stores built since the key list no longer trust. There is no production key yet. The key list was re-rooted at sequence 2 (2026-11-23): the published pointer is still signed by the retired pointer key, so a Store trusting the new root refuses it. Publish a new pointer signed with the new pointer key (`c1587368…`) before new-root Stores can update; see "Publishing a new pointer" below. The pointer is not changed by this re-root.
+- Signed SHA256withRSA with a **pointer key** listed in the Store's key list (AWAI-3775): `keys-envelope.json`, signed by the development root `8707b4bb…` (see `store/keys/README.md`). From sequence 5 on, the development pointer key `c1587368…` (key list sequence 2); from sequence 4 on (key list sequence 1) the development pointer key `8250a122…`; sequences 1 to 3 were signed by the debug key `2507930b…`, which Stores built since the key list no longer trust. There is no production key yet. The key list was re-rooted at sequence 2 (2026-11-23, new root `8707b4bb…`): the sequence-4 pointer was still signed by the retired pointer key, so a Store trusting the new root refused it. Sequence 5 (2026-11-23) re-signs the pointer with the new pointer key and pins catalog r114; after merge, the pins revision is re-pointed at the merge head in a follow-up.
 - The Store trusts it only after `LatestPointer.java` checks:
   - the signature against a pointer key in its key list (the bundled one, or a newer `keys-envelope.json` that verifies against the same root);
   - the schema;
@@ -26,6 +26,7 @@ Published:
 - sequence 2 (2026-11-21, catalog r108 at `89aeb54`, which declares the Torihiki operations). Expires 2026-12-21.
 - sequence 3 (2026-11-21, catalog r109, which adds Shirohan 白版). Expires 2026-12-21.
 - sequence 4 (2026-11-22, catalog r110 at `60c5e04`, signed by the development catalog key). First pointer signed by the development pointer key of the key list. Expires 2026-12-22.
+- sequence 5 (2026-11-23, catalog r114; first catalog and pointer under key list sequence 2, signed by the new development catalog `73e8cf0d…` and pointer `c1587368…` keys). Carries forward the 17 apps pinned since r112/r113 unchanged. Expires 2026-12-23. The pins revision names the r114 artifacts commit; after the squash merge it is re-pointed at the merge head in a follow-up (same as #474), then the pointer is re-signed once more if the merge owner republishes.
 
 ## Key list
 
