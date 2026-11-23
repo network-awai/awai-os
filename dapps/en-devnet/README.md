@@ -32,7 +32,9 @@ never below a declared credit floor), not a dependency.
   fund only the bot, and the bot may pay only the provider operator. A node
   id is not an account (JUN-28).
 - **Transfers.** `:funding` (sponsor → bot) and `:settlement` (bot →
-  provider, with Order and Acceptance CIDs and a reserved amount). The first
+  provider, with Order and Acceptance CIDs and a reserved amount) and
+  `:compute-funding` (bot → provider, a devnet compute credit; no
+  acceptance or reservation). The first
   refusal is named in a fixed order: `wrong-chain`, `not-devnet`,
   `bad-kind`, `bad-amount`, `fee-over-cap`, `self-transfer`,
   `unknown-account`, `receiver-not-allowlisted`, `bad-expiry`, `expired`,

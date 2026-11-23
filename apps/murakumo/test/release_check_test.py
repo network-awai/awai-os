@@ -31,6 +31,7 @@ class Source(unittest.TestCase):
    ('src-tauri/Cargo.toml','features = []','features = ["devtools"]','devtools'),
    ('src-tauri/tauri.conf.json','"label": "main",','"label": "main", "devtools": true,','devtools'),
    ('src-tauri/gen/android/app/src/main/AndroidManifest.xml','<application','<application android:debuggable="true"','debuggable'),
+   ('src-tauri/gen/android/app/src/main/AndroidManifest.xml','android:allowBackup="false"','android:allowBackup="true"','backup'),
    ('src-tauri/gen/android/app/src/main/AndroidManifest.xml','<application','<uses-permission android:name="android.permission.INTERNET" />\n    <application','INTERNET'),
    ('src-tauri/gen/android/app/src/main/java/network/awai/murakumo/MainActivity.kt','enableEdgeToEdge();','android.webkit.WebView.setWebContentsDebuggingEnabled(true);enableEdgeToEdge();','WebView debugging'),
    ('src-tauri/Cargo.lock','name = "wry"\nversion = "0.57.2"','name = "wry"\nversion = "0.57.3"','reviewed')]
@@ -42,7 +43,7 @@ class Source(unittest.TestCase):
 class Apk(unittest.TestCase):
  def apk(self,attrs='',libs=None):
   self.assertIsNotNone(AAPT2,'REQUIRE_ANDROID_SDK=1 but aapt2/android.jar missing')
-  d=pathlib.Path(tempfile.mkdtemp());self.addCleanup(shutil.rmtree,d)
+  d=pathlib.Path(tempfile.mkdtemp());self.addCleanup(shutil.rmtree,d);attrs=attrs or 'android:allowBackup="false"'
   (d/'M.xml').write_text(f'<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="network.awai.murakumo"><application android:label="Synthetic" {attrs}/></manifest>')
   subprocess.run([str(AAPT2),'link','--manifest',str(d/'M.xml'),'-I',str(ANDROID_JAR),'-o',str(d/'a.apk')],check=True)
   with zipfile.ZipFile(d/'a.apk','a') as z:
@@ -50,9 +51,9 @@ class Apk(unittest.TestCase):
   return d/'a.apk'
  def test_release_manifest_passes(self):
   self.assertEqual(release.apk_failures(self.apk(),check_pins=False),[])
-  self.assertEqual(release.apk_failures(self.apk('android:debuggable="false"'),check_pins=False),[])
+  self.assertEqual(release.apk_failures(self.apk('android:debuggable="false" android:allowBackup="false"'),check_pins=False),[])
  def test_negative_controls(self):
-  for attrs,libs,word in [('android:debuggable="true"',None,'debuggable'),('android:testOnly="true"',None,'testOnly'),
+  for attrs,libs,word in [('android:debuggable="true"',None,'debuggable'),('android:testOnly="true"',None,'testOnly'),('android:allowBackup="true"',None,'backup'),('android:debuggable="false"',None,'backup'),
     ('',{'lib/arm64-v8a/libmurakumo_app_lib.so':b'\x7fELF...setWebContentsDebuggingEnabled...'},'devtools')]:
    with self.subTest(word=word):f=release.apk_failures(self.apk(attrs,libs),check_pins=False);self.assertTrue(any(word in x for x in f),f)
  def test_apk_without_pinned_native_libraries_fails(self):
@@ -107,6 +108,8 @@ class NoInternet(unittest.TestCase):
   for name in ['inference-internet.apk','inference-internet-sdk23.apk']:
    with self.subTest(name=name):f=release.no_network_failures(self.manifest(name));self.assertTrue(any('android.permission.INTERNET' in x for x in f),f)
   self.assertTrue(release.merged_manifest_failures(self.fx/'inference-internet-merged.xml'))
+  d=pathlib.Path(tempfile.mkdtemp());self.addCleanup(shutil.rmtree,d);(d/'M.xml').write_text('<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="network.awai.murakumo"><application android:label="Synthetic"/></manifest>')
+  self.assertTrue(any('backup' in x for x in release.merged_manifest_failures(d/'M.xml')),'merged manifest without allowBackup=false fails')
   self.assertEqual(release.axml_package_and_permissions(self.manifest('net-internet.apk')),('network.awai.murakumo.net',{'android.permission.INTERNET'}))
   self.assertEqual(release.no_network_failures(self.manifest('net-internet.apk')),[],'Murakumo Net may hold INTERNET')
  def test_cli_fails_on_internet(self):

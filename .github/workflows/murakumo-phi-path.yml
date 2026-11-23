@@ -1,7 +1,8 @@
 name: Murakumo PHI path
 # Local inference carries medical text (karute). Checks that the inference path cannot log or send it,
 # that the shipped build is release-only, and that the text engine's native libraries rebuild on Linux
-# to the SHA-256 pinned in apps/murakumo/native-pins.json. Every check has a negative control.
+# to the SHA-256 pinned in apps/murakumo/native-pins.json. The image engine is rebuilt too and its
+# receipts are printed; pinning its SHA-256 from the Linux rebuild is AWAI-3840. Every check has a negative control.
 on:
   pull_request:
     paths:
@@ -37,7 +38,7 @@ jobs:
           python3 -m unittest -v apps/murakumo/test/release_check_test.py
   native-reproduction:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     env:
       NDK_VERSION: 27.0.12077973
     steps:
@@ -52,6 +53,11 @@ jobs:
           echo "ANDROID_NDK_HOME=$ndk" >> "$GITHUB_ENV"
       - name: Rebuild the text engine from the pinned llama.cpp archive
         run: python3 apps/murakumo/scripts/build-native.py --out "$RUNNER_TEMP/native" arm64-v8a x86_64
+      - name: Rebuild the image engine from the pinned stable-diffusion.cpp archive
+        run: |
+          python3 apps/murakumo/scripts/build-image-native.py arm64-v8a x86_64
+          for abi in arm64-v8a x86_64; do cp "apps/murakumo/src-tauri/gen/android/app/src/main/jniLibs/$abi/libawai_diffusion.so" "$RUNNER_TEMP/native/$abi/"; done
+          cat .agent-output/image-native-arm64-v8a.json .agent-output/image-native-x86_64.json
       - name: Compare with native-pins.json (SHA-256 and forbidden imports)
         run: python3 apps/murakumo/scripts/verify-native-pins.py --dir "$RUNNER_TEMP/native"
       - name: Pin check negative controls on the rebuilt libraries

@@ -124,6 +124,8 @@ public final class StoreInstrumentation extends Instrumentation {
         if(catalog.json().contains("\"network.itonami.deai\"")){byte[] deai=catalog.verifiedApk(c,"network.itonami.deai");check(deai.length>10*1024*1024,"deai APK bytes and package/signer/version");}
         if(catalog.json().contains("\"network.itonami.hiring\"")){byte[] hiring=catalog.verifiedApk(c,"network.itonami.hiring");check(hiring.length>10*1024*1024,"hiring APK bytes and package/signer/version");}
         if(catalog.json().contains("\"network.itonami.kumade\"")){byte[] kumade=catalog.verifiedApk(c,"network.itonami.kumade");check(kumade.length>10*1024*1024,"kumade APK bytes and package/signer/version");}
+        if(catalog.json().contains("\"network.itonami.paymentdrafts\"")){byte[] pay=catalog.verifiedApk(c,"network.itonami.paymentdrafts");check(pay.length>10*1024*1024,"payment drafts APK bytes and package/signer/version");}
+        if(catalog.json().contains("\"network.itonami.securitiesdrafts\"")){byte[] sec=catalog.verifiedApk(c,"network.itonami.securitiesdrafts");check(sec.length>10*1024*1024,"securities drafts APK bytes and package/signer/version");}
         for (String local : Catalog.LOCAL_APPS) {
             String id = "network.itonami." + local;
             check(("packages/" + local + ".apk").equals(Catalog.assetFor(id))

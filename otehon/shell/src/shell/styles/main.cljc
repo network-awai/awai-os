@@ -240,6 +240,22 @@
    [:.support-row {:display "contents"}]
    [".support-row dt" {:color "var(--muted)"}]
    [".support-row dd" {:margin 0 :overflow-wrap "anywhere"}]
+   ;; Awai compute panel (AWAI-3115)
+   [:.awai-compute {:display "flex" :flex-direction "column" :gap "12px" :margin-top "24px"
+                    :padding "16px" :border-radius "12px" :background "var(--surface)"}]
+   [".awai-compute h2" {:margin 0 :font-size "20px"}]
+   [:.compute-notice {:padding "12px 16px" :border-radius "12px" :background "var(--surface-selected)"}]
+   [".compute-notice p" {:margin "4px 0 0" :font-size "12px"}]
+   [:.compute-details {:display "grid" :grid-template-columns "96px minmax(0, 1fr)" :gap "8px 12px"
+                       :margin 0 :font-size "13px"}]
+   [:.compute-row {:display "contents"}]
+   [".compute-row dt" {:color "var(--muted)"}]
+   [".compute-row dd" {:margin 0 :overflow-wrap "anywhere"}]
+   [:.compute-prompt {:display "flex" :flex-direction "column" :gap "6px" :font-size "13px"
+                      :color "var(--secondary-text)"}]
+   [".compute-prompt input" {:padding "10px 12px" :border-radius "10px"
+                             :border "1px solid var(--surface-selected)" :background "var(--surface)"
+                             :color "inherit" :font "inherit"}]
    [:.net-list {:display "flex" :flex-direction "column"}]
    [".net-list li" {:display "flex" :align-items "center" :gap "10px" :padding "9px 0"
                      :border-top "1px solid var(--surface-hover)" :font-size "14px"}]

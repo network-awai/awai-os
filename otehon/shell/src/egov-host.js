@@ -22,7 +22,7 @@ export const egovOperation = Object.freeze({
 });
 
 // Laws cited by the bundled institution packs; the guest cannot widen this.
-const LAW_IDS = new Set(["342AC0000000081", "417AC0000000086"]);
+const LAW_IDS = new Set(["342AC0000000081", "417AC0000000086", "322AC0000000224"]);
 const ARTICLE = /^MainProvision-Article_[0-9]{1,4}(?:_[0-9]{1,3})?$/;
 
 function hasOnlyKeys(value, keys) {
