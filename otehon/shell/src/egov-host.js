@@ -10,11 +10,6 @@ export const egovOperation = Object.freeze({
   operation: "read-statute",
   consent: "each-operation",
   "data-categories": ["statute-identifier"],
-  // AWAI-3884: finding-9 disclosure (domestic recipient, no foreign fields).
-  disclosure: { recipient: "Digital Agency, Government of Japan", country: "JP",
-    data: ["statute identifier"], "special-care": false,
-    purpose: "read the text of a statute article", frequency: "one-time",
-    withdrawal: "cancel the request before it is sent" },
   endpoint: {
     origin: EGOV_ORIGIN,
     routes: [{
