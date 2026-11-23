@@ -176,10 +176,7 @@ out["option_c_second_disk"] = {
     "planOnBlankDisk": plan_c_result,
 }
 
-# KVM-source placement total check
-total = installer.make_plan if False else None
-vec = 0
-# compute aligned total for KVM source (16 GiB userdata)
+# KVM-source aligned placement total (16 GiB userdata).
 layout = installer.LAYOUT[:-1] + installer.vbmeta_layout(SRC) + installer.LAYOUT[-1:]
 tot = 0
 for name, sname, guid, code in layout:

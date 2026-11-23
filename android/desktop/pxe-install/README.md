@@ -54,19 +54,24 @@ afterward.
 - `../persistence/serve-install.mjs <dir> <manifest.json>` — same static,
   manifest-pinned server as `serve-artifacts.mjs`, plus `install.img`,
   on the same 10.77.0.1:18091.
-- `../persistence/init-install.sh` — BusyBox init with the same guard
-  style as `init-persistent.sh`: exact NIC MAC 0c:47:a9:60:9d:34, boot-mode
-  marker on cmdline, one NVMe namespace of `awai.install.sectors`, root/LUKS
-  UUID checks *before* any write (erase mode), every other local disk
-  refused, and — before anything is written — the fetched bytes' SHA-256
-  must equal the pin. The write itself additionally needs the operator to
-  type the full SHA-256 on the console (destructive writes are the owner's
-  hand, not an unattended default). After the write it re-hashes the
-  written range and only then prints `AWAI_INSTALL_COMPLETE`. Default mode
-  is `erase` (full-disk image, GPT carried inside the image — no
-  runtime partition editor needed). `shared` mode refuses explicitly until
-  a staged `/awai/sgdisk` GPT-splice writer is implemented; it never
-  silently falls back to erase.
+- `../persistence/init-install.sh` — BusyBox init with fixed profile `1`,
+  mode `erase` and capacity 500118192 sectors in the initrd. The boot
+  arguments must agree with those pins. One NVMe namespace, its root/LUKS
+  UUIDs, absence of other local disks, and NIC MAC 0c:47:a9:60:9d:34 are
+  checked before configuring the link or starting diagnostics.
+  `shared` always reports `shared-not-implemented`.
+- The installer downloads the image once over direct-LAN HTTP to a
+  size-limited tmpfs. It checks the exact length, remounts the copy
+  read-only, and checks its SHA-256 against the initrd pin. Insufficient RAM
+  stops installation before download. The operator must type the complete
+  digest on the console. The installer writes the verified copy with a
+  sector count taken from the aligned image size, syncs, and prints
+  `AWAI_INSTALL_COMPLETE` only after the readback digest matches.
+- `REFUSED … (disk untouched)` indicates a failure before the write starts.
+  `PARTIALLY WRITTEN … (disk contents unverified)` indicates a failure
+  once writing has started, including a failed sync or readback. Treat
+  the disk as modified and use the owner's recovery procedure before
+  attempting to boot from it.
 
 ## Missing inputs — the owner prepares these 9 (worker does not fetch)
 
@@ -116,6 +121,6 @@ images from 2026-11-17 (`/awai-android-2992/*.img`) are already on p2.
   `python3.11 -m unittest` (pc-ab-device, 24 tests) — all pass.
 - `patch-ipxe.mjs` against the real pinned iPXE, serving real artifacts,
   and any physical 7735HS boot — not run (inputs absent, box unreachable).
-  The patch-ipxe existing-mode outputs are provably unchanged: the diff
-  adds only the `install` branch and the `&& mode!=='install'` guards;
-  all five old modes follow the identical code paths.
+  The five existing modes follow identical transformation and checksum
+  code paths. Byte identity is established at trace level because the
+  pinned iPXE binary is absent. Marker fit on that binary remains unverified.
