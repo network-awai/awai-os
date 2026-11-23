@@ -16,13 +16,22 @@ does (sgdisk is not on the operator Mac).
 
 ## Disk options (sector-exact) — candidate order
 
-1. **(c) Second disk** — first candidate. The current NVMe stays untouched.
-2. **(a) Erase `nvme0n1`** — second candidate. Fastest, but all existing
-   data is lost. Backup first.
-3. **(b1) Shrink only p3's tail** — last resort, only when the data loss is
-   accepted. The LUKS volume's last 28.65 GiB of data is lost. The LUKS
-   header, p1 and p2 remain — that is **data loss, not a data-retention
+> **2026-11-24 owner decision: (c) second disk. (a) erase and (b1) p3-tail
+> truncate are NOT approved and are out of scope for execution** (they
+> destroy existing data). (a)/(b1) below remain documented as history.
+
+1. **(c) Second disk** — decided. The current NVMe stays untouched.
+2. **(a) Erase `nvme0n1`** — NOT approved (historical option only). Fastest,
+   but all existing data is lost.
+3. **(b1) Shrink only p3's tail** — NOT approved (historical option only).
+   The LUKS volume's last 28.65 GiB of data is lost. The LUKS header,
+   p1 and p2 remain — that is **data loss, not a data-retention
    shrink**: truncating a LUKS container does not preserve its tail.
+
+**(c) required spec:** 512e (512-byte logical sectors), ≥ 64 GiB. Confirm
+with `sgdisk -p <disk>` that the logical sector size is 512 bytes before
+running `awai-pc-install.py plan`. A 4Kn disk stops there — the installer
+refuses non-512 logical sectors and never reaches `plan`.
 
 | Option | What happens | Destroys | Plan |
 | --- | --- | --- | --- |
@@ -89,7 +98,7 @@ SHA-256 (or other pin) gets recorded.
 | 6 | OTA key basename + certificate SHA-256 | the owner's signing macOS Keychain item / signing environment | the signing record (`OTA_CERTIFICATE_SHA256`) |
 | 7 | pinned iPXE binary | the engineering tool source (sha256 `e7fb0e08d957f4e8014348f95717ececbf81513d52a5b6f275b782fed426d5eb`, unsigned — `patch-ipxe.mjs` refuses anything else) | `patch-ipxe.mjs` itself (the pinned constant) |
 | 8 | kernel + initrd (pinned PC Live candidate) | the pinned candidate build (`pc-evaluation-pins.json` / `artifacts-20261116.json`) | the serve manifest `files` pins (bytes + sha256 each) |
-| 9 | second disk (for option (c)) | owner-supplied 512e-logical-sector disk ≥ 64 GiB | `sgdisk -p` of the blank disk, confirmed 512-byte logical before `plan`/`apply` |
+| 9 | second disk (for option (c)) | **(c) decided** — 512e-logical-sector disk ≥ 64 GiB (spec above) | `sgdisk -p` of the blank disk, confirmed 512-byte logical before `plan`/`apply` |
 
 Full detail: [evidence/inputs-audit-20261123.json](evidence/inputs-audit-20261123.json)
 (command outputs included). Only `aapt2` (SDK 36.x, not on PATH) and internet

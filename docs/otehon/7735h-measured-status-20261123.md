@@ -48,6 +48,9 @@ LUKS コンテナの末尾を切る = その領域のデータは失われる（
 候補順序（決定はオーナー）：1. **(c) 2本目ディスク** — 既存 NVMe 無傷で最安全（推奨の代替は後述）。
 2. **(a) nvme0n1 全消去** — 最短。既存データ全喪失。3. **(b) p3 末尾 truncate** — データ喪失を承知の上での最後の手段。
 
+> **2026-11-24 オーナー決定: (c) 2本目ディスク。(a)(b1) は承認されず実行対象外**（既存データを破壊するため）。
+> (a)(b1) は履歴として残す。**(c) 必須仕様: 512e（論理セクタ 512）・64 GiB 以上。** `sgdisk -p <disk>` で論理セクタが 512 であることを確認してから `awai-pc-install.py plan`。4Kn は installer が拒否するため、そこで止まる。
+
 記録 GPT（[`evidence/physical-gpt-audit-20261121.json`](../../android/desktop/persistence/evidence/physical-gpt-audit-20261121.json)）:
 `nvme0n1` 500118192 sectors、512-byte。p1 otehon-esp 2048–2099199、p2 otehon-root 2099200–52430847（24.0 GiB）、p3 otehon-state 52430848–500118158（447687311 sectors = 213.5 GiB）。free は 34–2047 のみ（aligned 空間 0）。`minimumContiguousSectors` = **60082176**（userdata 16 GiB + 残りの aligned 合計）。
 
@@ -65,9 +68,9 @@ LUKS コンテナの末尾を切る = その領域のデータは失われる（
 - **実行ホスト**: オフライン縮小はこの Mac ではなく、この Mac の Mac 以外（NVMe の縮小は 7735HS 上の Linux または PXE RAM Live の別の運用）で、オーナーが実施・押さえる。**本番 NVMe への適用は sgdisk がこの Mac に無いため禁止**（§1）
 - **plan の想定出力**: 既存 p2 保持時に `existingUnchanged: true` の条件で新しい 11 分区が置ける（`new[0].start = 440035328`）。`awai-pc-install.py plan` をオフライン縮小後・install image 同伴で実行し、track record を作る。確認してから install に進める。**apply は本 plan で実行しない**
 
-### 推奨の代替 (c) 2本目ディスク — 既存 NVMe を触らない第一候補
+### 推奨の代替 (c) 2本目ディスク — 既存 NVMe を触らない第一候補（**2026-11-24 オーナー決定**）
 
-上記 2 分岐は既存 NVMe の上での計画だが、推奨は新しい第 2 のディスクを使う方法であり、2 分岐のどれも実行しない。512e disk（≥ 64 GiB 推奨）への install で、既存 NVMe を読込にもしない。plan は (a) と同じ行（`freeRangeUsed` 先頭 2048、最小 disk sectors 60084257）、実行は §2 #6 の NVMe を付けた Linux ホスト（本物は 2 本目 disk の sgdisk 検証）。
+上記 2 分岐は既存 NVMe の上での計画だが、推奨は新しい第 2 のディスクを使う方法であり、2 分岐のどれも実行しない。512e disk（≥ 64 GiB）・`sgdisk -p` で 512-byte logical 確認 — 4Kn は installer が拒否するのでそこで止まる。既存 NVMe を読込にもしない。plan は (a) と同じ行（`freeRangeUsed` 先頭 2048、最小 disk sectors 60084257）、実行は §2 #6 の NVMe を付けた Linux ホスト（本物は 2 本目 disk の sgdisk 検証）。
 
 ### 3分岐の共通注記
 
