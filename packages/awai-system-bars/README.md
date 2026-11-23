@@ -66,3 +66,7 @@ aligned form), 16 KB page alignment (AWAI-3393), and apps whose canonical
 source lives outside this repo (`apps/drive` is a pointer; series/cloud repos
 are future work). No new permission, capability, or consent contract: this is
 a local display setting.
+
+## 対象外
+- `apps/dapp-carrier`: web-only, MainActivity無し — バー色の対象自体が無いため対象外。
+- `apps/drive`: awai-os内に正本が無く，正本は `network-awai/app-drive` — 外部repoのためここに未適用。
