@@ -70,6 +70,12 @@
   .app-row { display:flex; align-items:center; gap:1rem; inline-size:100%; text-align:start; padding:0; min-block-size:72px; }
   .app-row .copy { flex:1; min-inline-size:0; display:flex; flex-direction:column; gap:.25rem; }
   .app-row .app-name { font-size:1rem; }
+  /* Play-style row: tap opens detail, the tonal inline action goes to review.
+     Quiet by design: no badges, no progress animation, min 48px touch target. */
+  .store-row { display:flex; align-items:center; gap:.75rem; }
+  .store-row .app-row { flex:1; min-inline-size:0; }
+  .store-action { flex:none; border-radius:999px; padding:.75rem 1.25rem; min-block-size:48px; background:var(--container); color:var(--primary); font-size:.875rem; font-weight:500; }
+  .store-status { padding-block-start:.5rem; }
   .store-nav { position:fixed; inset-block-end:0; inset-inline:0; margin-inline:auto; inline-size:min(100%,48rem); padding:.5rem 1.5rem 1rem; background:var(--background); display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.25rem; }
   .nav-item { display:flex; flex-direction:column; align-items:center; gap:.25rem; min-block-size:72px; font-size:.75rem; }
   .nav-icon { display:grid; place-items:center; inline-size:64px; min-block-size:32px; border-radius:999px; }

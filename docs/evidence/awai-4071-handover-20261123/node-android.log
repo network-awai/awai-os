@@ -1,0 +1,32 @@
+✔ compiled shared schema and exact platform decisions (2.493417ms)
+✔ untrusted paths and signer fields are refused by actual browser core (0.256416ms)
+✔ multi-app catalog admits a Tauri-sized artifact within the shared ceiling (0.307625ms)
+✔ the Torihiki Bot Tauri artifact fits the shared ceiling and keeps its own asset name (0.635708ms)
+✔ the Tabi Mikake Tauri artifact fits the shared ceiling and keeps its own asset name (0.660542ms)
+✔ the Deai Tauri artifact fits the shared ceiling and keeps its own asset name (0.803208ms)
+✔ the Hiring Tauri artifact fits the shared ceiling and keeps its own asset name (0.65925ms)
+✔ the Kumade Tauri artifact fits the shared ceiling and keeps its own asset name (0.566583ms)
+✔ the Payment Drafts Tauri artifact fits the shared ceiling and keeps its own asset name (0.560334ms)
+✔ the Securities Drafts Tauri artifact fits the shared ceiling and keeps its own asset name (0.921542ms)
+✔ an AWAI-3502 local Tauri app fits the shared ceiling under its own asset name (0.513625ms)
+✔ local event lifecycle is shared and bounded (2.728542ms)
+✔ only the matching offline preview artifact admits a dual-ABI APK (0.35025ms)
+✔ compiled handover schema and descriptor (0.641958ms)
+✔ challenge shape and expiry are enforced by the shared domain (1.265833ms)
+✔ verify-challenge rejects wrong device, expiry, scope, revocation and cancellation (1.441125ms)
+✔ phone-loss recovery: lost key revoked, fresh key verified (0.2895ms)
+✔ unimplemented scopes are truthful unavailable, never completed (0.432625ms)
+✔ forbidden credential fields and envelope shape (0.250583ms)
+✔ account relay requests use a normalized, fixed HTTPS route with no caller parameters (0.731375ms)
+✔ no network or lock step gate: AOSP setup owns them (0.985958ms)
+✔ account enrollment and PIN cannot be manufactured by pressing Next (0.210916ms)
+✔ stage projection has a bounded unknown fallback (0.081083ms)
+✔ disabled Open Awai explains the screen-lock requirement (0.444458ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 90.791
