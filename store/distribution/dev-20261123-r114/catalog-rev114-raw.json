@@ -1,0 +1,355 @@
+{
+  "schema": "itonami.store.bundled.v1",
+  "revision": 114,
+  "expiresAt": 1798025113,
+  "apps": [
+    {
+      "id": "network.itonami.yotei",
+      "name": "Yotei",
+      "description": "予定をこの端末に保存します。外部への送信や同期、通知配信は行いません。",
+      "publisher": "Awai Otehon 開発版",
+      "versionCode": 2001,
+      "versionName": "0.2.1",
+      "artifacts": [
+        {
+          "platform": "android",
+          "runtime": "android",
+          "kind": "apk",
+          "asset": "packages/yotei.apk",
+          "bytes": 36155042,
+          "sha256": "ada3c897ce6e9910da114a0b20933ffe72c52416c9af2c5b3692d1e7069e37bf",
+          "signerSha256": "2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29"
+        },
+        {
+          "platform": "nixos",
+          "runtime": "browser",
+          "kind": "bundled-web",
+          "asset": "bundled:yotei",
+          "bytes": 19364,
+          "sha256": "c7ab401880731724730d9187f1bc9e8db87503f8e276257a06cbd6d6f5124ba3"
+        }
+      ]
+    },
+    {
+      "id": "network.itonami.app",
+      "name": "Itonami",
+      "description": "NixOS 版 Itonami UI を一つの Tauri v3 アプリにまとめた開発版。既存 Home・Store・Yotei は保持し別アプリ ID で追加。Nix 専用サービスは未移植で機能表示しない。Android development debug 署名（本番鍵ではない）。",
+      "publisher": "Awai Otehon 開発版",
+      "versionCode": 1002,
+      "versionName": "0.1.2",
+      "artifacts": [
+        {
+          "platform": "android",
+          "runtime": "android",
+          "kind": "apk",
+          "asset": "packages/itonami.apk",
+          "bytes": 55456456,
+          "sha256": "b1a5f7f73a0bc37dfdf924e92889136670feac1772ce02e8ddc4b76e87771dab",
+          "signerSha256": "2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29"
+        }
+      ]
+    },
+    {
+      "id": "network.itonami.torihiki.bot",
+      "name": "Torihiki Bot",
+      "description": "市場運営 bot（ISIC 6611）の profile と稼働状況、取引所 devnet の価格・板を読み取り専用で表示します。発注・鍵・入出金はありません。devnet・デモ専用で、通信は毎回確認します。Android development debug 署名（本番鍵ではない）。",
+      "publisher": "Awai Otehon 開発版",
+      "versionCode": 1000,
+      "versionName": "0.1.0",
+      "artifacts": [
+        {
+          "platform": "android",
+          "runtime": "android",
+          "kind": "apk",
+          "asset": "packages/torihiki-bot.apk",
+          "bytes": 29506324,
+          "sha256": "797013c7abbd395eb09a75551838018a90211864b7012d0d7ccba1326556f99c",
+          "signerSha256": "2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29"
+        }
+      ],
+      "operations": [
+        "itonami-grok-bots|https://bots.itonami.cloud|read-activity|GET:/v1/grok-bots/bots/*|bot-id,request-ip",
+        "itonami-grok-bots|https://bots.itonami.cloud|read-assignments|GET:/v1/grok-bots/businesses|request-ip",
+        "torihiki-devnet|https://torihiki-node.04-feasts-minded.workers.dev|read-book|GET:/book?market,depth|market-id,request-ip",
+        "torihiki-devnet|https://torihiki-node.04-feasts-minded.workers.dev|read-head|GET:/head|request-ip",
+        "torihiki-devnet|https://torihiki-node.04-feasts-minded.workers.dev|read-market|GET:/market?id|market-id,request-ip"
+      ]
+    },
+    {
+      "id": "network.itonami.torihiki",
+      "name": "Torihiki",
+      "description": "取引所 devnet の価格・板・ノード状態を表示し、端末の鍵で署名して devnet に発注できます。devnet・デモ専用で、実際の資産は扱いません。通信は毎回確認します。",
+      "publisher": "Awai Otehon 開発版",
+      "versionCode": 1,
+      "versionName": "0.1.0",
+      "artifacts": [
+        {
+          "platform": "android",
+          "runtime": "android",
+          "kind": "apk",
+          "asset": "packages/torihiki.apk",
+          "bytes": 4206342,
+          "sha256": "0717795a3c05934d70a7791edaa2848d8264210ba1af6e2b2d01f0429a7cf86f",
+          "signerSha256": "2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29"
+        }
+      ],
+      "operations": [
+        "torihiki-devnet|https://torihiki-node.04-feasts-minded.workers.dev|cancel-all|POST:/tx|account-id,market-id,public-key,request-ip,signed-transaction",
+        "torihiki-devnet|https://torihiki-node.04-feasts-minded.workers.dev|read-account|GET:/account?id|account-id,request-ip",
+        "torihiki-devnet|https://torihiki-node.04-feasts-minded.workers.dev|read-book|GET:/book?market,depth|market-id,request-ip",
+        "torihiki-devnet|https://torihiki-node.04-feasts-minded.workers.dev|read-head|GET:/head|request-ip",
+        "torihiki-devnet|https://torihiki-node.04-feasts-minded.workers.dev|read-market|GET:/market?id|market-id,request-ip",
+        "torihiki-devnet|https://torihiki-node.04-feasts-minded.workers.dev|request-devnet-funds|POST:/tx|account-id,public-key,request-ip,signed-transaction",
+        "torihiki-devnet|https://torihiki-node.04-feasts-minded.workers.dev|submit-order|POST:/tx|account-id,order,public-key,request-ip,signed-transaction"
+      ]
+    },
+    {
+      "id": "network.itonami.deai",
+      "name": "Deai",
+      "description": "出会いの準備をこの端末だけで進めます。プロフィールの下書きと、自分で入力した候補の並び順と理由を表示します。外部への送信、遠隔推論、利用者どうしの連絡はありません。Android development debug 署名（本番鍵ではない）。",
+      "publisher": "Awai Otehon 開発版",
+      "versionCode": 1000,
+      "versionName": "0.1.0",
+      "artifacts": [
+        {
+          "platform": "android",
+          "runtime": "android",
+          "kind": "apk",
+          "asset": "packages/deai.apk",
+          "bytes": 20782497,
+          "sha256": "c34527953fe95ddfe1c43c061b39be9b15db9a653116146942d4ed07cb50cffe",
+          "signerSha256": "2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29"
+        }
+      ]
+    },
+    {
+      "id": "network.itonami.registry.assoc",
+      "name": "Itonami Registry Assoc",
+      "description": "国・業種で81件の業界団体を検索し、ルールと出典を確認できます。収録データは端末内にあり、検索と出典の表示に通信は不要です。",
+      "publisher": "Itonami Registry",
+      "versionCode": 1001,
+      "versionName": "0.1.1",
+      "artifacts": [
+        {
+          "platform": "android",
+          "runtime": "android",
+          "kind": "apk",
+          "asset": "packages/registry-assoc.apk",
+          "bytes": 16288100,
+          "sha256": "c731003027201adc5cd5b5c0da9972f9541cfae3785d48258069586bb69239f8",
+          "signerSha256": "2dfd2669315058eab39d98e4aa2424721e2dfd752995a0597d226bd4e1e7159f"
+        }
+      ]
+    },
+    {
+      "id": "network.itonami.hiring",
+      "name": "Hiring",
+      "description": "応募文と求人告知の下書きを端末で確認し、承認・差し戻しします。送信はしません。",
+      "publisher": "Awai Otehon 開発版",
+      "versionCode": 1001,
+      "artifacts": [
+        {
+          "platform": "android",
+          "runtime": "android",
+          "kind": "apk",
+          "asset": "packages/hiring.apk",
+          "signerSha256": "2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29",
+          "bytes": 33722306,
+          "sha256": "2003428177fedbf812a45ece64f3062e42bd5051a1c944e84126aeef28c0e5d4"
+        }
+      ],
+      "versionName": "0.1.1"
+    },
+    {
+      "id": "network.itonami.shirohan",
+      "name": "Shirohan 白版",
+      "description": "SVG・PNG・JPEG・WebP の図案から白インクの下地と色版を生成し、版下 SVG をダウンロードに保存します。製版は端末内で行われます。",
+      "publisher": "Awai Otehon 開発版",
+      "versionCode": 1,
+      "versionName": "0.1.0",
+      "operations": [],
+      "artifacts": [
+        {
+          "platform": "android",
+          "runtime": "android",
+          "kind": "apk",
+          "asset": "packages/shirohan.apk",
+          "bytes": 213914,
+          "sha256": "cbe5122d22b050360a2f22e7a3e3573f35311e33b3d0b8b0583c1e8a2767494c",
+          "signerSha256": "2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29"
+        }
+      ]
+    },
+    {
+      "id": "network.itonami.paymentdrafts",
+      "name": "Payment Drafts",
+      "description": "自分の送金指示（ISO 20022 pain.001.001.09）を作り、XSD の形と照らして、手元で下書きとして保存します。承認しても送信しません。銀行への接続・署名・支払いはありません。Android development debug 署名（本番鍵ではない）。",
+      "publisher": "Awai Network LLC",
+      "versionCode": 1000,
+      "versionName": "0.1.0",
+      "artifacts": [
+        {
+          "platform": "android",
+          "runtime": "android",
+          "kind": "apk",
+          "asset": "packages/paymentdrafts.apk",
+          "bytes": 21801241,
+          "sha256": "2637069876b59e9ac8e6cfc7138e3a6a7885d3b26e3727e007e697bf9acaaa28",
+          "signerSha256": "1c73b625bebc3e897b27d74e32813c12c34628288f037eed59ec6120d6f65061"
+        }
+      ]
+    },
+    {
+      "id": "network.itonami.securitiesdrafts",
+      "name": "Securities Drafts",
+      "description": "自分の証券口座の決済指示（ISO 20022 sese.023.001.09）を作り、保管口座の明細（semt.002.001.10）と手元の保有を照合します。承認しても送信・注文・移動はしません。Android development debug 署名（本番鍵ではない）。",
+      "publisher": "Awai Network LLC",
+      "versionCode": 1000,
+      "versionName": "0.1.0",
+      "artifacts": [
+        {
+          "platform": "android",
+          "runtime": "android",
+          "kind": "apk",
+          "asset": "packages/securitiesdrafts.apk",
+          "bytes": 21798452,
+          "sha256": "b246bf08434302c8f8a6f793d8bb97f63cea35dbd19a1fd46f829e4929446062",
+          "signerSha256": "1c73b625bebc3e897b27d74e32813c12c34628288f037eed59ec6120d6f65061"
+        }
+      ]
+    },
+    {
+      "id": "network.itonami.animeka",
+      "name": "Animeka",
+      "description": "Itonami Store item 134 creator dapp. Release-signed APK (CN=AWAI Release, O=AWAI, C=JP).",
+      "publisher": "Awai Network LLC",
+      "versionCode": 1000,
+      "versionName": "0.1.0",
+      "artifacts": [
+        {
+          "platform": "android",
+          "runtime": "android",
+          "kind": "apk",
+          "asset": "packages/animeka.apk",
+          "bytes": 12552458,
+          "sha256": "ab1398625a682e256cbcf4c129cc3d0624eb3cea50b7df6be410c7f3280899ef",
+          "signerSha256": "a90ff0c5b71570eb239356bc8bf2d97005f63c6b92924e001e065b5063a2f049"
+        }
+      ]
+    },
+    {
+      "id": "network.itonami.dougaka",
+      "name": "dougaka Studio — Itonami メディア制作",
+      "description": "Itonami Store item 134 creator dapp. Release-signed APK (CN=AWAI Release, O=AWAI, C=JP).",
+      "publisher": "Awai Network LLC",
+      "versionCode": 1000,
+      "versionName": "0.1.0",
+      "artifacts": [
+        {
+          "platform": "android",
+          "runtime": "android",
+          "kind": "apk",
+          "asset": "packages/dougaka.apk",
+          "bytes": 12802310,
+          "sha256": "0d5a08ac015140085b88e7e76145a08d5e0fc94cc42c16fd2c0ae22006379f73",
+          "signerSha256": "a90ff0c5b71570eb239356bc8bf2d97005f63c6b92924e001e065b5063a2f049"
+        }
+      ]
+    },
+    {
+      "id": "network.awai.gaka",
+      "name": "画家",
+      "description": "Itonami Store item 134 creator dapp. Release-signed APK (CN=AWAI Release, O=AWAI, C=JP).",
+      "publisher": "Awai Network LLC",
+      "versionCode": 1000,
+      "versionName": "0.1.0",
+      "artifacts": [
+        {
+          "platform": "android",
+          "runtime": "android",
+          "kind": "apk",
+          "asset": "packages/gaka.apk",
+          "bytes": 4788881,
+          "sha256": "29df849813a9acdc60b96e03872c01474be5f9d87e592dc9868964ab00d51421",
+          "signerSha256": "a90ff0c5b71570eb239356bc8bf2d97005f63c6b92924e001e065b5063a2f049"
+        }
+      ]
+    },
+    {
+      "id": "network.itonami.gameka",
+      "name": "Gameka Studio",
+      "description": "Itonami Store item 134 creator dapp. Release-signed APK (CN=AWAI Release, O=AWAI, C=JP).",
+      "publisher": "Awai Network LLC",
+      "versionCode": 1000,
+      "versionName": "0.1.0",
+      "artifacts": [
+        {
+          "platform": "android",
+          "runtime": "android",
+          "kind": "apk",
+          "asset": "packages/gameka.apk",
+          "bytes": 12519692,
+          "sha256": "98cc34e8e4bdee8861319e2dac34dccd6f89da2ed5c8b68fabaa2ae2272837b9",
+          "signerSha256": "a90ff0c5b71570eb239356bc8bf2d97005f63c6b92924e001e065b5063a2f049"
+        }
+      ]
+    },
+    {
+      "id": "network.itonami.isco2641",
+      "name": "Independent Writing Practice",
+      "description": "Itonami Store item 134 creator dapp. Release-signed APK (CN=AWAI Release, O=AWAI, C=JP).",
+      "publisher": "Awai Network LLC",
+      "versionCode": 1000,
+      "versionName": "0.1.0",
+      "artifacts": [
+        {
+          "platform": "android",
+          "runtime": "android",
+          "kind": "apk",
+          "asset": "packages/isco2641.apk",
+          "bytes": 12544269,
+          "sha256": "e50b41fe057f5067b276c529fc752939a8ed1c7a8f68baddfd5fb8114c179675",
+          "signerSha256": "a90ff0c5b71570eb239356bc8bf2d97005f63c6b92924e001e065b5063a2f049"
+        }
+      ]
+    },
+    {
+      "id": "network.itonami.mangaka",
+      "name": "mangaka (漫画家) — AI manga publishing and reworking",
+      "description": "Itonami Store item 134 creator dapp. Release-signed APK (CN=AWAI Release, O=AWAI, C=JP).",
+      "publisher": "Awai Network LLC",
+      "versionCode": 1000,
+      "versionName": "0.1.0",
+      "artifacts": [
+        {
+          "platform": "android",
+          "runtime": "android",
+          "kind": "apk",
+          "asset": "packages/mangaka.apk",
+          "bytes": 12495110,
+          "sha256": "25ed2f70c38ed5c51335f92d028b187b521ef3493191c79e7bf5016b1eafbbcf",
+          "signerSha256": "a90ff0c5b71570eb239356bc8bf2d97005f63c6b92924e001e065b5063a2f049"
+        }
+      ]
+    },
+    {
+      "id": "network.itonami.ongakuka",
+      "name": "Ongakuka — AI Music Generator",
+      "description": "Itonami Store item 134 creator dapp. Release-signed APK (CN=AWAI Release, O=AWAI, C=JP).",
+      "publisher": "Awai Network LLC",
+      "versionCode": 1000,
+      "versionName": "0.1.0",
+      "artifacts": [
+        {
+          "platform": "android",
+          "runtime": "android",
+          "kind": "apk",
+          "asset": "packages/ongakuka.apk",
+          "bytes": 12564751,
+          "sha256": "4fb20e8c4d9493d03f8fe507d8f733198fcd09b117144883b44cfb021b2fadfb",
+          "signerSha256": "a90ff0c5b71570eb239356bc8bf2d97005f63c6b92924e001e065b5063a2f049"
+        }
+      ]
+    }
+  ]
+}
