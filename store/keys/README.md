@@ -10,14 +10,35 @@ Store's key list. Every Store built from this repository pins it; the list itsel
 
 | Role | Key ID | Since |
 |---|---|---|
-| root | `c3ad794d52bdc3f79693a70b6b6b2a68ae2430f068b14c52851a6431b684c436` | list sequence 1, 2026-11-22 |
-| catalog | `82522d92d054acdd08b31ef71c9a15c9bf2c6d76b9ee75c47b4fcfe077196449` | list sequence 1 |
-| pointer | `8250a1229ddbc01d18baed34cfee7239d3969539e4bd1401495ab92c86d20a8a` | list sequence 1 |
+| root | `8707b4bbca6d14338f6ef29e816a2141594b7f9a9e70f338258b00682bec0e5b` | list sequence 2, 2026-11-23 |
+| catalog | `73e8cf0d0ac997713adc296a25a96ce49755768a6327ded41e45621e2e0f5189` | list sequence 2 |
+| pointer | `c158736823262a44c3832bafcb8da394a2f2eb24bd510aa44b8328dc3ca80e5d` | list sequence 2 |
 
 All three are RSA 3072 development keys (owner default 2026-11-22: development catalogs and pointers use a
 development root and role keys; development APKs stay signed by the Android debug key). Production Stores will
-pin a different root. The list expires 2027-05-21 (sequence 1, 180 days); the root must sign a new list before
+pin a different root. The list expires 2027-05-22 (sequence 2, 180 days); the root must sign a new list before
 then, and at most every 190 days.
+
+## Re-root (sequence 2, 2026-11-23)
+
+The private key of the sequence-1 root (`c3ad794d52bdc3f79693a70b6b6b2a68ae2430f068b14c52851a6431b684c436`)
+was never found — only the public key was kept — so new lists could not be signed. Sequence 2 re-roots the
+Store on a new root generated on the development Mac: the old root is retired, and the sequence-1 catalog
+(`82522d92…`) and pointer (`8250a122…`) keys are no longer listed. The new role keys are listed in the
+sequence-2 list; the retired SPKI values stay in the test `android/tests/key-list-reroot.test.mjs`, which
+asserts the published sequence-2 list verifies under the new root and is refused (`keys-signature`) under the
+retired root.
+
+Impact on already-built development Stores: the root is pinned in the build
+(`store/keys/store-root.der`, bundled as `assets/store-root.der`). A Store built before this change verifies
+the published list against the retired root, so the sequence-2 list fails there (`keys-signature`) and it keeps
+trusting its bundled sequence-1 list. Until it is rebuilt and reinstalled (owner default 2026-11-22:
+`adb install -r` of a fresh build keeps data), it will not follow the new catalog and pointer keys.
+The same applies to every development app that bundles this root. Production Stores pin a different root
+and are unaffected. Existing published pointers and catalogs are not touched by this change: a Store trusting
+the new root refuses the current pointer (signed by the retired pointer key), so a new pointer signed with the
+new pointer key must be published before new-root Stores can update. `store/distribution` revisions
+(r112/r113) are unchanged.
 
 The private keys are on the development Mac in `~/.android/awai-store-dev/` (`root.p12`, `catalog.p12`,
 `pointer.p12`, password file `password`, all 0600), next to Android's own debug keystore. `android/build.py`
@@ -28,7 +49,7 @@ build stops and asks for `--key-list` and `--catalog-keystore`. Signing a new li
 python3 android/key-list.py export --keystore ~/.android/awai-store-dev/catalog.p12 --alias catalog --pass-env VAR --out catalog.der
 python3 android/key-list.py prepare --sequence N --catalog-key catalog.der --pointer-key pointer.der --out keys.txt
 python3 android/key-list.py sign --list keys.txt --expected-sha256 <from prepare> --keystore ~/.android/awai-store-dev/root.p12 \
-  --alias root --pass-env VAR --expected-root c3ad794d52bdc3f79693a70b6b6b2a68ae2430f068b14c52851a6431b684c436 --out-dir OUT
+  --alias root --pass-env VAR --expected-root 8707b4bbca6d14338f6ef29e816a2141594b7f9a9e70f338258b00682bec0e5b --out-dir OUT
 cp OUT/keys-envelope.json store/latest/keys-envelope.json
 ```
 
