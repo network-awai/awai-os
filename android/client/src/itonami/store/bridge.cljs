@@ -1,4 +1,4 @@
-(ns itonami.store.bridge (:require [itonami.store.domain :as d] [itonami.store.setup :as setup]))
+(ns itonami.store.bridge (:require [itonami.store.domain :as d] [itonami.store.setup :as setup] [itonami.store.pc-setup :as pc]))
 (defn parse [value] (js->clj (js/JSON.parse value) :keywordize-keys true))
 (aset js/window "ItonamiDomain"
       #js {"schema" d/schema
@@ -6,6 +6,10 @@
            "descriptor" (clj->js (d/runtime-descriptor))
            "setupStage" setup/stage-name
            "setupNext" (fn [json] (setup/next-action (parse json)))
+           "pcSetupStage" pc/stage-name
+           "pcSetupNext" (fn [json] (pc/next-action (parse json)))
+           "pcSetupTransports" (fn [json] (clj->js (pc/available-transports (parse json))))
+           "pcProfileUnavailable" (fn [] (pc/honest-profile-copy))
            "validCatalog" (fn [json now] (boolean (d/valid-catalog? (parse json) now)))
            "appState" (fn [json platform runtime installed] (d/app-state (parse json) platform runtime installed))
            "saveEvent" (fn [json entry] (js/JSON.stringify (clj->js (d/save-event (parse json) (parse entry)))))

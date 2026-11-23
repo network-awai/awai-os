@@ -22,4 +22,6 @@
   @keyframes kf_241_5_opacity_0 { 0% { animation-timing-function:ease-out; opacity:0; } 30%,100% { opacity:1; } }
   @media (prefers-reduced-motion:no-preference) { .setup-page[data-motion-reduced=false] .setup-context.welcome { animation:kf_241_5_opacity_0 2s linear 1; } }
   @media(max-width:1100px) { .setup-page { grid-template-columns:minmax(0,520px); justify-content:center; padding:32px 24px 100px; gap:24px; } .setup-context h1,.setup-context.welcome h1 { font-size:32px; } .setup-context.welcome .setup-mark { inline-size:104px; block-size:104px; } .setup-panel { padding:24px; } .setup-status { inset-inline-start:24px; } }
+  /* AWAI-4072: PC keyboard/mouse focus is visible and persistent. */
+  .setup-page.pc :focus-visible { outline:3px solid var(--primary); outline-offset:3px; }
 }

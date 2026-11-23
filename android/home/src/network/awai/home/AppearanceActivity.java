@@ -10,7 +10,8 @@ import android.view.View;
 import android.widget.*;
 import java.io.InputStream;
 
-/** Local appearance settings. Android SystemUI exclusively owns credentials and unlock. */
+/** Local appearance settings. Android SystemUI exclusively owns credentials and unlock.
+ *  AWAI-4072: PC desktop shows Awai original on home + lock and exposes screensaver. */
 public final class AppearanceActivity extends Activity {
     private int dp(int value){return Math.round(value*getResources().getDisplayMetrics().density);}
     private void text(LinearLayout page,String value,int size){TextView t=new TextView(this);t.setText(value);t.setTextSize(size);t.setPadding(0,dp(8),0,dp(8));page.addView(t);}
@@ -24,23 +25,24 @@ public final class AppearanceActivity extends Activity {
         ImageView image=new ImageView(this);image.setAdjustViewBounds(true);image.setScaleType(ImageView.ScaleType.CENTER_CROP);
         try(InputStream in=getAssets().open("assets/awai-original-source-wallpaper.png")){image.setImageBitmap(BitmapFactory.decodeStream(in));}catch(Exception ignored){}
         page.addView(image,new LinearLayout.LayoutParams(-1,dp(200)));
-        text(page,"ロック画面",22);text(page,"Awai の原画をロック画面に設定します。ホームの壁紙設定は変更しません。",16);
+        text(page,"デスクトップとロック画面",22);text(page,"Awai の原画をデスクトップとロック画面に反映します。スクリーンセーバーも設定できます。",16);
         TextView status=new TextView(this);status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
-        action(page,"ロック画面に Awai を反映",v->{
+        action(page,"デスクトップ＋ロック画面に Awai を反映",v->{
             v.setEnabled(false);
             new Thread(()->{
                 String result;
                 WallpaperManager manager=WallpaperManager.getInstance(this);
                 try(InputStream in=getAssets().open("assets/awai-original-source-wallpaper.png")){
                     if(!manager.isWallpaperSupported()||!manager.isSetWallpaperAllowed())throw new IllegalStateException();
-                    manager.setStream(in,null,false,WallpaperManager.FLAG_LOCK);
-                    result="ロック画面に反映しました。";
+                    manager.setStream(in,null,false,WallpaperManager.FLAG_SYSTEM|WallpaperManager.FLAG_LOCK);
+                    result="デスクトップとロック画面に反映しました。";
                 }catch(Exception error){result="反映できませんでした。Android の壁紙設定から確認してください。";}
                 final String message=result;runOnUiThread(()->{status.setText(message);v.setEnabled(true);});
-            },"awai-lock-wallpaper").start();
+            },"awai-desktop-wallpaper").start();
         });page.addView(status);
         text(page,"時計・配色・PIN",22);text(page,"時計や色は Android の壁紙・スタイル設定で調整できます。PIN と指紋による認証は Android が管理します。",16);
         action(page,"壁紙・時計・配色を調整",v->settings(new Intent(Intent.ACTION_SET_WALLPAPER)));
+        action(page,"スクリーンセーバーを選ぶ",v->settings(new Intent(Settings.ACTION_DREAM_SETTINGS)));
         action(page,"画面ロックの設定",v->settings(new Intent(Settings.ACTION_SECURITY_SETTINGS)));
         action(page,"Android の設定を開く",v->settings(new Intent(Settings.ACTION_SETTINGS)));
     }
