@@ -38,28 +38,40 @@
 | 9 | インストール後の起動 | **7735HS** | オーナー（firmware 起動スキャン） | 8 で readback が一致 | reboot → firmware の boot entry でインストール済み disk から GRUB 起動 → 実測（sys.boot_completed 等）を新規日付の `docs/evidence/` に記録（既存は書き換えない） |
 
 注意: 「persistent」はディスクに書いた場合だけ書く。RAM Live は RAM Live と書く。
-§3 の (b) は「p3 を 28.65 GiB 以上オフライン縮小」の意味であり、LUKS ヘッダを壊さず尾を落とす方法（ファイルシステム縮小を含む）としてのみ成立する。
+§3 の (b) は「p3 の尾 28.65 GiB のデータを失う縮小」の意味であり、**データ保持の縮小ではない**。
+LUKS コンテナの末尾を切る = その領域のデータは失われる（縮小が成立するのは、fs が縮小可能で LUKS を縮小・再暗号化できる場合だけ）。
 
-## 3. インストーラ run plan 2分岐（apply しない）
+## 3. インストーラ run plan 3分岐（apply しない）
+
+候補順序（決定はオーナー）：1. **(c) 2本目ディスク** — 既存 NVMe 無傷で最安全。
+2. **(a) nvme0n1 全消去** — 最短。既存データ全喪失。3. **(b) p3 末尾 truncate** — データ喪失を承知の上での最後の手段。
 
 記録 GPT（[`evidence/physical-gpt-audit-20261121.json`](../../android/desktop/persistence/evidence/physical-gpt-audit-20261121.json)）:
 `nvme0n1` 500118192 sectors、512-byte。p1 otehon-esp 2048–2099199、p2 otehon-root 2099200–52430847（24.0 GiB）、p3 otehon-state 52430848–500118158（447687311 sectors = 213.5 GiB）。free は 34–2047 のみ（aligned 空間 0）。`minimumContiguousSectors` = **60082176**（userdata 16 GiB + 残りの aligned 合計）。
 
-### (a) nvme0n1 全消去して新規 A/B
+### (c) 2本目ディスク（**第一候補**）
+
+- **方法**: 新しい 512e-logical-sector disk（≥ 64 GiB 推奨）に空の GPT 上に 11 分区。既存 NVMe には一切書かない
+- **失われるもの**: 2本目ディスクの内容だけ（新しい disk なので実質なし）
+- **実行ホスト**: plan/apply は sgdisk 入りの Linux ホスト（§2 #6〜#8 を 2本目経路に読み替える）。`install.img` は PXE init-install.sh の erase モード（ネットワーク経由 dd）が書く
+- **plan の想定出力**: 空の disk に対して (a) と同じ 11 分区（`freeRangeUsed` 先頭は 2048、最小 disk sectors 60084257）
+- **決定**: どちらの disk でも GRUB は固定 GPT GUID でスロットを見つける。再利用の際 OVMF は loader の無い先行 ESP を飛ばしうる点（pc-ab-device README の Known gaps）は実機確認が必要
+
+### (a) nvme0n1 全消去して新規 A/B（第二候補）
 
 - **free range**: 2048–500118158 = 500116111 sectors（60082176 ≥ 必要を満たす）
 - **失われるもの**: p1（ESP）、p2（nvme0n1p2 ext4：`/awai-android-2992` の userdata/metadata/cache images を含む）、p3 の LUKS 暗号全体（~213 GiB）。実行前に p2 の contents と p3 のオフライン暗号化保存が必須
 - **実行ホスト**: p3 の暗号化保存後に、オーナーが決めてから PXE install profile（§2 #7, #8）。この Mac からは apply は実行しない
 - **`awai-pc-install.py plan` の想定出力**: この分岐は空の disk に新しい 11 分区を作る（`freeRangeUsed: [2048, 500118158]`、first は `awai_esp 2048–264191`、last は `userdata …–60084223` ）。想定は KVM 2026-11-19 record がちょうど `minimumContiguousSectors=60082176` に一致するので、サイズの並びはその record と同等。cd22c762 の per-partition 内訳は stock disk が来れば確定。それ以外は上記総量で成立
 
-### (b) p3（52430848–500118158 = 213.5 GiB）を 28.65 GiB 以上オフライン縮小
+### (b) p3（52430848–500118158 = 213.5 GiB）末尾 truncate — 28.65 GiB のデータ喪失を承知の上での最後の手段
 
 - **方法**: p3 の**尾**を切る（LUKS ヘッダのある先頭は触らない）。`sgdisk` で新 p3 end = **440035327** とし、新 free range = [440035328, 500118158] = 60082831 sectors。p1/p2 は無変更、幅は 60082176 を満たす
-- **失われるもの**: p3 の尾 28.65 GiB（LUKS ボリューム + ファイルシステムの shrink 後でないと破壊。owner のオフライン作業が必須）。LUKS ヘッダと p1/p2、`p2` 上の persistence images は残る（ただし p2 は変わらず使える）
-- **実行ホスト**: オフライン縮小はこの Mac ではなく、この Mac の Mac 以外（NVMe のデバイス的な縮小は 7735HS 上の Linux または PXE RAM Live の copy 可能な運用）で、オーナーが実施・押さえる。**本番 NVMe への適用は sgdisk がこの Mac に無いため禁止**（§1）
+- **失われるもの**: **LUKS ボリュームの末尾 28.65 GiB のデータは失われる**（LUKS ヘッダと p1/p2 は残るが、それはデータ保持ではない）。LUKS + fs の shrink 後でないとその領域は破壊される。owner のオフライン作業が必須
+- **実行ホスト**: オフライン縮小はこの Mac ではなく、この Mac の Mac 以外（NVMe の縮小は 7735HS 上の Linux または PXE RAM Live の別の運用）で、オーナーが実施・押さえる。**本番 NVMe への適用は sgdisk がこの Mac に無いため禁止**（§1）
 - **plan の想定出力**: 既存 p2 保持時に `existingUnchanged: true` の条件で新しい 11 分区が置ける（`new[0].start = 440035328`）。`awai-pc-install.py plan` をオフライン縮小後・install image 同伴で実行し、track record を作る。確認してから install に進める。**apply は本 plan で実行しない**
 
-### 両分岐の共通注記
+### 3分岐の共通注記
 
 - `sgdisk` が無いこの Mac では **plan は実行できない**（`FileNotFoundError: 'sgdisk'`）。実際に走るのは別環境（sgdisk 入りの Linux ホスト §2）で、その結果はまだ得ていない。したがって本稿の plan 出力は想定であり、実測とは呼ばない（分岐の数値は記録 GPT から算出）
 - R2 非依存: PXE の install image 配信はこの Mac の 10.77.0.1:18091（直結 LAN）で、R2 は介さない。OTA の publish 側は `deploy/ota-feed/`（参照のみ）
