@@ -13,6 +13,25 @@ export const RECIPIENT = "Awai Network LLC";
 const operation = (name, categories, route) => ({
   capability: CAPABILITY, service: SERVICE, operation: name, consent: "each-operation",
   "data-categories": categories, endpoint: { origin: null, routes: [route] },
+  // AWAI-3883: finding-9 disclosure (Legal decision via Organizer, 2026-11-23, group F;
+  // country nullable validator 2026-11-23). Recipient is limited to the entity that operates
+  // the endpoint processing logic AND decides the purpose of data use (データの利用目的を決める主体);
+  // recipient is the RECIPIENT constant above. Country is UNCONFIRMED: no code is written
+  // (country null, countryStatus pending); the user-visible note carries the provisional
+  // wording and confirmCondition what would confirm it. Frequency is validator 'one-time'
+  // for each-operation consent (all precedents).
+  disclosure: {
+    recipient: RECIPIENT,
+    country: null, // unconfirmed: no code; see note + confirmCondition
+    countryStatus: "pending",
+    data: ["支援の金額", "宛先", "受領書"],
+    "special-care": false,
+    purpose: "支援の準備・送信・受領確認",
+    frequency: "one-time",
+    withdrawal: "送信前の取消し",
+    note: "登記国 未確認（暫定: 日本）",
+    confirmCondition: "登記国の確認（法務・税務）",
+  },
 });
 const TEMPLATES = [
   operation("prepare-support", ["support-amount"], { method: "POST", path: "/v1/support/cards", "query-params": [] }),

@@ -4,9 +4,26 @@ import {createLinkRequest,linkUrl,confirmationCode,openResponse,verifyLink,REQUE
 import qrcode from 'qrcode-generator';
 import {createClientOperationBroker,createClientConsentHost} from './runtime.js';
 export const RELAY='https://relay.awai.network';
-const operation={capability:'awai-link',service:'awai-relay',operation:'await-phone-approval',consent:'each-operation','data-categories':['link-topic'],endpoint:{origin:RELAY,routes:[{method:'GET',path:'/:topic/json','query-params':[]}]}};
+// AWAI-3883: finding-9 disclosures (Legal decision via Organizer, 2026-11-23, groups C and E;
+// country nullable validator 2026-11-23). Recipient is limited to the entity that operates
+// the endpoint processing logic AND decides the purpose of data use (データの利用目的を決める主体);
+// hosting/line/CDN (Cloudflare Worker for the relay) = processor, not recipient. Country is
+// UNCONFIRMED: no code is written (country null, countryStatus pending); the user-visible
+// note carries the provisional wording and confirmCondition what would confirm it. Frequency
+// is validator 'one-time' for each-operation consent (all precedents).
+const RELAY_DISCLOSURE={recipient:'Awai Network LLC',country:null,countryStatus:'pending',
+ data:['承認要求の内容','端末記録'],'special-care':false,
+ purpose:'端末承認の受け渡し',frequency:'one-time',
+ withdrawal:'relay 側で要求を破棄／端末で拒否',
+ note:'登記国 未確認（暫定: 日本）',confirmCondition:'登記国の確認（法務・税務）'};
+const LINK_DISCLOSURE={recipient:'Awai Network LLC',country:null,countryStatus:'pending',
+ data:['リンク開始の要求'],'special-care':false,
+ purpose:'端末とアカウントのリンク開始',frequency:'one-time',
+ withdrawal:'リンクを端末で取り消す',
+ note:'登記国 未確認（暫定: 日本）',confirmCondition:'登記国の確認（法務・税務）'};
+const operation={capability:'awai-link',service:'awai-relay',operation:'await-phone-approval',consent:'each-operation','data-categories':['link-topic'],endpoint:{origin:RELAY,routes:[{method:'GET',path:'/:topic/json','query-params':[]}]},disclosure:{...RELAY_DISCLOSURE}};
 const openBrowser={capability:'awai-link',service:'awai-identity',operation:'open-link-on-this-device',consent:'each-operation',
-  'data-categories':['link-request'],endpoint:{origin:LINK_ORIGIN,'browser-action':'open-account-link'}};
+  'data-categories':['link-request'],endpoint:{origin:LINK_ORIGIN,'browser-action':'open-account-link'},disclosure:{...LINK_DISCLOSURE}};
 
 export function relayRequestAllowed(input,method='GET') {
   try{const u=new URL(input);return method==='GET'&&u.origin!== 'null'&&u.origin===RELAY&&!u.username&&!u.password&&!u.search&&!u.hash&&/^\/[0-9a-f]{32}\/json$/.test(u.pathname);}catch{return false;}

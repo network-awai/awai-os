@@ -10,6 +10,46 @@ import { createClientConsentHost, createClientOperationBroker } from "./vendor-r
 
 const PASSPORT_ORIGIN = "https://mainnet.optimism.io";
 
+// AWAI-3883: finding-9 disclosures (Legal decision via Organizer, 2026-11-23; recipient
+// definition and country handling corrected 2026-11-23; country nullable validator
+// 2026-11-23). Recipient is limited to the entity that operates the endpoint processing
+// logic AND decides the purpose of data use (データの利用目的を決める主体); hosting/line/CDN
+// = processor, not recipient. Cloudflare runs the relay Worker, so the relay recipient is
+// Awai Network LLC (operator), not Cloudflare, Inc. Country is UNCONFIRMED: the consent
+// dialog reads the machine country field for display, so no code is written — country is
+// null with countryStatus "pending", the user-visible `note` carries the provisional
+// wording, and `confirmCondition` says what would confirm it. Frequency is validator
+// 'one-time' for each-operation consent (all precedents).
+const RELAY_DISCLOSURE = {
+  recipient: "Awai Network LLC",
+  country: null, // unconfirmed: no code; see note + confirmCondition
+  countryStatus: "pending",
+  data: ["承認要求の内容", "端末記録"],
+  "special-care": false,
+  purpose: "端末承認の受け渡し",
+  frequency: "one-time",
+  withdrawal: "relay 側で要求を破棄／端末で拒否",
+  note: "登記国 未確認（暫定: 日本）",
+  confirmCondition: "登記国の確認（法務・税務）",
+};
+// Group D: operator and country are UNCONFIRMED (expert review pending). Legal: OP Labs
+// develops/maintains core tech; Terms are provided by the Foundation; OP Mainnet
+// ownership/control is denied — the mainnet.optimism.io operator cannot be officially
+// identified. Recipient is written exactly as Legal directed; no country code is guessed
+// (US/Cayman are listed only as candidates in the note, as Legal allows).
+const OPTIMISM_DISCLOSURE = {
+  recipient: "未確定（OP Labs PBC または Optimism Foundation）",
+  country: null, // unconfirmed: no code; see note + confirmCondition
+  countryStatus: "pending",
+  data: ["読み取るアドレス", "スコア"],
+  "special-care": false,
+  purpose: "残高とスコアの読み取り",
+  frequency: "one-time",
+  withdrawal: "読み取りを止める (no local residue)",
+  note: "operator 未確定（OP Labs PBC または Optimism Foundation）; country 未確定（US または Cayman）; origin: https://mainnet.optimism.io",
+  confirmCondition: "OP Labs PBC / Optimism Foundation への確認",
+};
+
 export function osOperations(relayOrigin, supportDeskOrigin, computeDeskOrigin) {
   return [
     ...supportOperations(supportDeskOrigin),
@@ -26,6 +66,7 @@ export function osOperations(relayOrigin, supportDeskOrigin, computeDeskOrigin) 
         origin: relayOrigin,
         routes: [{ method: "GET", path: "/:topic/json", "query-params": [] }],
       },
+      disclosure: { ...RELAY_DISCLOSURE },
     },
     {
       capability: "awai-trust",
@@ -34,6 +75,7 @@ export function osOperations(relayOrigin, supportDeskOrigin, computeDeskOrigin) 
       consent: "each-operation",
       "data-categories": ["wallet-address"],
       endpoint: { origin: PASSPORT_ORIGIN, method: "POST", path: "/" },
+      disclosure: { ...OPTIMISM_DISCLOSURE },
     },
     {
       capability: "awai-wallet",
@@ -42,6 +84,7 @@ export function osOperations(relayOrigin, supportDeskOrigin, computeDeskOrigin) 
       consent: "each-operation",
       "data-categories": ["wallet-address"],
       endpoint: { origin: PASSPORT_ORIGIN, method: "POST", path: "/" },
+      disclosure: { ...OPTIMISM_DISCLOSURE },
     },
   ];
 }
@@ -89,6 +132,12 @@ export function phoneOperations(relayOrigin) {
         origin: relayOrigin,
         routes: [{ method: "POST", path: "/:topic", "query-params": [] }],
       },
+      // AWAI-3883 phone measurement (2026-11-23): deliver-approval hits the EXTERNAL relay
+      // origin (the default relay host, deploy/awai-link Worker), not localhost /
+      // tauri:// / appassets — so it stays an external operation with a pending country
+      // (operator Awai Network LLC, registration unconfirmed), and the origin is named in
+      // the user-visible note.
+      disclosure: { ...RELAY_DISCLOSURE, note: `origin: ${relayOrigin}; 登記国 未確認（暫定: 日本）` },
     },
   ];
 }

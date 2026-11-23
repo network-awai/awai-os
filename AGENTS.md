@@ -211,6 +211,7 @@ needs a paragraph to explain it, simplify the interaction first.
 Keep actionable errors, stale/unknown states, destructive consequences and the
 canonical operation-consent disclosures visible when relevant. Moving a note
 out of the main view never grants capabilities or changes what a metric means.
+For every finding-9 disclosure, the recipient is limited to the entity that operates the endpoint processing logic AND decides the purpose of data use (データの利用目的を決める主体); hosting, line, CDN and transport providers that merely carry the request are processors and are never named as the recipient, and a country value stays provisional (marked as such in code) until the operator's registration country is independently confirmed, with `frequency: "one-time"` for each-operation consent as in all precedents (AWAI-3883).
 
 Use stable translation keys, complete messages with named placeholders, and
 locale-aware formatting. Do not assemble sentences from translated fragments,
