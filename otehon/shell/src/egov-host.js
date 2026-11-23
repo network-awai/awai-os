@@ -10,11 +10,6 @@ export const egovOperation = Object.freeze({
   operation: "read-statute",
   consent: "each-operation",
   "data-categories": ["statute-identifier"],
-  // AWAI-3884: finding-9 disclosure (domestic recipient, no foreign fields).
-  disclosure: { recipient: "Digital Agency, Government of Japan", country: "JP",
-    data: ["statute identifier"], "special-care": false,
-    purpose: "read the text of a statute article", frequency: "one-time",
-    withdrawal: "cancel the request before it is sent" },
   endpoint: {
     origin: EGOV_ORIGIN,
     routes: [{
@@ -23,6 +18,20 @@ export const egovOperation = Object.freeze({
       "query-params": ["law_full_text_format", "elm"],
       "query-values": { law_full_text_format: "json" },
     }],
+  },
+  // AWAI-3883: finding-9 disclosure (Legal decision via Organizer, 2026-11-23, group B;
+  // recipient corrected 2026-11-23). Country JP is CONFIRMED: the e-Gov law API transferred
+  // 2021-09-01 from MIC administrative management bureau to the Digital Agency (Legal confirmed).
+  // Frequency is validator 'one-time' for each-operation consent (all precedents).
+  disclosure: {
+    recipient: "デジタル庁（e-Gov 法令検索）",
+    country: "JP",
+    countryStatus: "confirmed",
+    data: ["法令 id", "条番号"],
+    "special-care": false,
+    purpose: "条文取得と表示",
+    frequency: "one-time",
+    withdrawal: "leaving no local residue",
   },
 });
 
