@@ -88,7 +88,7 @@ install makes no GitHub request.
 
 ## Android setup and account linking
 
-Home follows the existing Figma Android setup composition. Android Settings owns the actual language, networking and screen lock; Awai never receives the PIN. The account step uses the existing `awai.link.v1` phone/wallet/Passkey protocol through `https://relay.awai.network/<32-hex-topic>/json`. Each attempt requires the canonical broker’s direct user consent before its GET; native filtering and CSP independently restrict the route. No approval or private key is imported from a fixture.
+Home follows the existing Figma Android setup composition. Android Settings owns the actual language, networking and screen lock; Awai never receives the PIN. The account step uses the existing `awai.link.v1` phone/wallet/Passkey protocol through `https://relay.awai.network/v1/<32-hex-topic>/json`. Each attempt requires the canonical broker’s direct user consent before its GET; native filtering and CSP independently restrict the route. No approval or private key is imported from a fixture.
 
 A saved signed link is reverified for expiry, device binding and the non-exportable device key’s possession before it can restore an authenticated account. The native setup preference is only a flow marker, not an identity credential. Invalid or missing proof returns to account linking while retaining saved evidence. Explicit account deferral remains available. Home’s WebView and Itonami’s WebView have separate stores: shared sign-in, encrypted profile transfer and sync are not implemented by this change.
 

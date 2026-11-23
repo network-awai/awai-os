@@ -9,6 +9,15 @@ import { createClientConsentHost, createClientOperationBroker } from "./vendor-r
 
 const PASSPORT_ORIGIN = "https://mainnet.optimism.io";
 
+// AWAI-3884: finding-9 disclosures, in the download-contract shape (AWAI-3842).
+// Per the owner decision (2026-11-23) our own relay is declared on the US entity
+// side, and the Optimism public RPC as OP Labs PBC (US).
+const RELAY_DISCLOSURE = { recipient: "Awai Network LLC", country: "US", "country-name": "United States",
+  "foreign-info-url": "https://awai.network/", "special-care": false, frequency: "one-time" };
+const OPTIMISM_DISCLOSURE = { recipient: "OP Labs PBC", country: "US", "country-name": "United States",
+  "foreign-info-url": "https://www.optimism.io/", data: ["wallet address"], "special-care": false,
+  frequency: "one-time", withdrawal: "cancel the request before it is sent" };
+
 export function osOperations(relayOrigin, supportDeskOrigin) {
   return [
     ...supportOperations(supportDeskOrigin),
@@ -20,9 +29,11 @@ export function osOperations(relayOrigin, supportDeskOrigin) {
       operation: "await-phone-approval",
       consent: "each-operation",
       "data-categories": ["link-topic"],
+      disclosure: { ...RELAY_DISCLOSURE, data: ["link topic"],
+        purpose: "wait for a phone approval on the link topic", withdrawal: "cancel the wait at any time" },
       endpoint: {
         origin: relayOrigin,
-        routes: [{ method: "GET", path: "/:topic/json", "query-params": [] }],
+        routes: [{ method: "GET", path: "/v1/:topic/json", "query-params": [] }],
       },
     },
     {
@@ -31,6 +42,7 @@ export function osOperations(relayOrigin, supportDeskOrigin) {
       operation: "read-score",
       consent: "each-operation",
       "data-categories": ["wallet-address"],
+      disclosure: { ...OPTIMISM_DISCLOSURE, purpose: "read a Human Passport score from the chain" },
       endpoint: { origin: PASSPORT_ORIGIN, method: "POST", path: "/" },
     },
     {
@@ -39,6 +51,7 @@ export function osOperations(relayOrigin, supportDeskOrigin) {
       operation: "read-eth-balance",
       consent: "each-operation",
       "data-categories": ["wallet-address"],
+      disclosure: { ...OPTIMISM_DISCLOSURE, purpose: "read an ETH balance from the chain" },
       endpoint: { origin: PASSPORT_ORIGIN, method: "POST", path: "/" },
     },
   ];
@@ -83,9 +96,11 @@ export function phoneOperations(relayOrigin) {
       operation: "deliver-approval",
       consent: "each-operation",
       "data-categories": ["encrypted-link-approval"],
+      disclosure: { ...RELAY_DISCLOSURE, data: ["encrypted link approval"],
+        purpose: "deliver an encrypted approval to the waiting device", withdrawal: "do not approve; a delivered approval cannot be recalled" },
       endpoint: {
         origin: relayOrigin,
-        routes: [{ method: "POST", path: "/:topic", "query-params": [] }],
+        routes: [{ method: "POST", path: "/v1/:topic", "query-params": [] }],
       },
     },
   ];
@@ -128,7 +143,7 @@ export function relayFailureCode(error) {
 export async function awaitPhoneApproval(broker, relayOrigin, topic, signal) {
   const response = await broker.invoke(
     { capability: "awai-link", service: "awai-relay", operation: "await-phone-approval" },
-    { input: `${relayOrigin}/${topic}/json`, init: { method: "GET" } },
+    { input: `${relayOrigin}/v1/${topic}/json`, init: { method: "GET" } },
     { signal },
   );
   if (!response.ok) {
@@ -161,7 +176,7 @@ export async function deliverApproval(broker, relayOrigin, topic, sealed) {
   const response = await broker.invoke(
     { capability: "awai-link", service: "awai-relay", operation: "deliver-approval" },
     {
-      input: `${relayOrigin}/${topic}`,
+      input: `${relayOrigin}/v1/${topic}`,
       init: { method: "POST", headers: { "content-type": "text/plain" }, body: sealed },
     },
   );
