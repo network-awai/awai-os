@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // awai-ota-feed (ota.awai.network). Deliberately NO object-store bucket binding:
+  // payload bytes come from the yataverse protocol, the index from this
+  // repo. Deploy with: wrangler deploy -c wrangler.jsonc
+  "name": "awai-ota-feed",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-01-01",
+  "workers_dev": true,
+  "routes": [{ "pattern": "ota.awai.network", "custom_domain": true }],
+  "observability": { "enabled": false }
+}

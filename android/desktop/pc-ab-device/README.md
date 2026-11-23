@@ -211,9 +211,12 @@ these ranges, including the Updater limit for payload properties.
 The updater and Android still verify the signed package on device.
 Retain a record of feed detection, apply, reboot, recovery, and rollback on the same PC.
 
-The pilot endpoint is backed by the dedicated Cloudflare R2 bucket
-`awai-os-ota`. Publish the verified ZIP at a digest-qualified object path and
-check its public bytes and HTTP Range response before publishing the index.
+The pilot endpoint is backed by the Awai PC pilot OTA feed origin Worker
+in [`deploy/ota-feed/`](../../../deploy/ota-feed/README.md) (yataverse
+protocol for payload bytes; no object-store bucket, owner policy
+2026-11-23). Publish the verified ZIP at a digest-qualified object path
+and check its public bytes and HTTP Range response before publishing the
+index.
 Serve the mutable index as `application/json` with `Cache-Control: no-store`.
 To stop offering updates, replace the affected index with `[]` and verify the
 public response. The pinned Awai Updater removes undownloaded cached offers
