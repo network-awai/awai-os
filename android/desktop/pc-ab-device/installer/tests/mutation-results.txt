@@ -1,81 +1,93 @@
-killed       typed-name (core)  tests/test_core.py
-killed       typed-name (server)  tests/test_server.py
-killed       identity before image prep  tests/test_core.py
-killed       identity immediately before writing  tests/test_core.py
-killed       target checks before image prep  tests/test_core.py
-killed       target checks immediately before writing  tests/test_core.py
-killed       whole NVMe name  tests/test_core.py
-killed       block device  tests/test_core.py
-killed       TYPE disk / RO 0  tests/test_core.py
-killed       no partitions  tests/test_core.py
-killed       512-byte sectors  tests/test_core.py
-killed       nothing mounted  tests/test_core.py
-killed       wipefs signatures  tests/test_core.py
-killed       boot medium  tests/test_core.py
-killed       boot medium unknown  tests/test_core.py
-killed       archive.sha256  tests/test_core.py
-killed       raw sha256 (final re-hash)  tests/test_core.py
-killed       raw sha256 (both layers: stream + re-hash)  tests/test_core.py
-killed       pins are valid files  tests/test_core.py
-killed       plan existing == []  tests/test_core.py
-killed       plan new count  tests/test_core.py
-killed       record sourceSha256  tests/test_core.py
-killed       record existingUnchanged  tests/test_core.py
-killed       record 11 readbacks  tests/test_core.py
-killed       record readback digests  tests/test_core.py
-killed       sgdisk -v exit code  tests/test_core.py
-killed       sgdisk -v output  tests/test_core.py
-killed       sync  tests/test_core.py
-killed       lock (exactly one install)  tests/test_core.py
-killed       record/marker blocks restart  tests/test_core.py
-killed       write marker before first change  tests/test_core.py
-killed       dead worker is interrupted  tests/test_core.py
-killed       apply: write-start precedes GPT change  tests/test_core.py
-killed       server token  tests/test_server.py
-killed       server Host check  tests/test_server.py
-killed       server Origin match  tests/test_server.py
-killed       server Origin required on POST  tests/test_server.py
-killed       server CSP default-src none  tests/test_server.py
-killed       server CORS absent (adds a header)  tests/test_server.py
-killed       server ticket one-shot  tests/test_server.py
-killed       server busy on install  tests/test_server.py
-killed       server power refused while writing  tests/test_server.py
-killed       server token never in worker argv  tests/test_server.py
-killed       detached worker session  tests/test_server.py
-killed       UI: power disabled while installing  tests/test_browser.py
-killed       UI: typed-name gate  tests/test_browser.py
-killed       UI: completion only from done  tests/test_browser.py
-killed       UI: no completion link  tests/test_web_and_build.py
-killed       build refuses a font with missing glyphs  tests/test_web_and_build.py
-killed       CSS: only the bundled face  tests/test_web_and_build.py
-killed       proportions: rail 30.5vw  tests/test_browser.py
-killed       vendor shown with the model  tests/test_browser.py
-killed       kiosk policy installed or text fallback  tests/test_web_and_build.py
-killed       kiosk policy: devtools disabled  tests/test_web_and_build.py
-killed       text installer follows a running install  tests/test_web_and_build.py
-killed       overlay copies canonical installer  tests/test_web_and_build.py
-killed       overlay checks stock iso sha  tests/test_web_and_build.py
-killed       overlay checks raw sha  tests/test_web_and_build.py
-killed       read_state retries a partial read  tests/test_core.py
-killed       grub text entry option  tests/test_web_and_build.py
-killed       grub stock kernel option kept  tests/test_web_and_build.py
-killed       syslinux default entry  tests/test_web_and_build.py
-killed       syslinux stock append kept  tests/test_web_and_build.py
-killed       grub entry order (text first)  tests/test_web_and_build.py
-killed       overlay maps boot menus  tests/test_web_and_build.py
-killed       ENOSPC while unpacking -> no-space (core)
-killed       free-space pre-check before unpacking (core)
-killed       ENOSPC outside unpacking -> no-space (core)
-killed       UI: primary action is the first tab stop (browser)
-killed       UI: power off asks once (browser)
-killed       launcher looks for firefox-esr (web_build)
-killed       session starts firefox-esr (web_build)
-killed       policy next to the real binary (web_build)
-killed       watchdog only signals xinit (kiosk)
-killed       watchdog restarts a silent page (kiosk)
-killed       server heartbeat on authenticated requests (kiosk)
-killed       kiosk: keyset removal
+killed       typed-name (core)
+killed       typed-name (server)
+killed       identity before image prep
+killed       identity immediately before writing
+killed       target checks before image prep
+killed       target checks immediately before writing
+killed       whole NVMe name
+killed       block device
+killed       TYPE disk / RO 0
+killed       no partitions
+killed       512-byte sectors
+killed       nothing mounted
+killed       wipefs signatures
+killed       boot medium
+killed       boot medium unknown
+killed       archive.sha256
+killed       raw sha256 (final re-hash)
+killed       raw sha256 (both layers: stream + re-hash)
+killed       pins are valid files
+killed       plan existing == []
+killed       plan new count
+killed       record sourceSha256
+killed       record existingUnchanged
+killed       record 11 readbacks
+killed       record readback digests
+killed       sgdisk -v exit code
+killed       sgdisk -v output
+killed       sync
+killed       lock (exactly one install)
+killed       record/marker blocks restart
+killed       write marker before first change
+killed       dead worker is interrupted
+killed       apply: write-start precedes GPT change
+killed       server token
+killed       server Host check
+killed       server Origin match
+killed       server Origin required on POST
+killed       server CSP default-src none
+killed       server CORS absent (adds a header)
+killed       server ticket one-shot
+killed       server busy on install
+killed       server power refused while writing
+killed       server token never in worker argv
+killed       detached worker session
+killed       UI: power disabled while installing
+killed       UI: typed-name gate
+killed       UI: completion only from done
+killed       UI: no completion link
+killed       build refuses a font with missing glyphs
+killed       CSS: only the bundled face
+killed       proportions: rail 30.5vw
+killed       vendor shown with the model
+killed       kiosk policy installed or text fallback
+killed       kiosk policy: devtools disabled
+killed       grub text entry option
+killed       grub stock kernel option kept
+killed       syslinux default entry
+killed       syslinux stock append kept
+killed       grub entry order (text first)
+killed       overlay maps boot menus
+killed       ENOSPC while unpacking -> no-space
+killed       free-space pre-check before unpacking
+killed       ENOSPC outside unpacking -> no-space
+killed       UI: primary action is the first tab stop
+killed       UI: power off asks once
+killed       launcher looks for firefox-esr
+killed       session starts firefox-esr
+killed       policy next to the real binary
+killed       watchdog only signals xinit
+killed       watchdog restarts a silent page
+killed       server heartbeat on authenticated requests
+killed       kiosk: disable keys
+killed       kiosk: guard after delayed startup
+killed       kiosk: force full screen
+killed       watchdog: no restart on another console
+killed       watchdog: fresh timeout after returning
+killed       session: blanking off
 killed       kiosk: autoconfig required
 killed       kiosk: autoconfig installed in the overlay
+killed       firefox: chrome hidden
+killed       firefox: full screen forced
+killed       firefox: shortcuts swallowed
+killed       firefox: one tab only
+killed       firefox: foreign pages return to the installer
+killed       firefox: tokenless page recovers
+killed       page: token removed from the URL
+killed       read_state retries a partial read
+killed       text installer follows a running install
+killed       overlay copies canonical installer
+killed       overlay checks stock iso sha
+killed       overlay checks raw sha
 
-79/79 mutations killed
+91/91 mutations killed (listed by name; the suite named for each is in mutations.py; the original 48/52 first run and the later additions are in the PR history)

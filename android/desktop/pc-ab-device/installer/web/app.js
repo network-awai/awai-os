@@ -1,6 +1,13 @@
 "use strict";
 (function () {
-  const token = location.hash.slice(1);
+  // The per-boot token arrives in the URL fragment (launch.html). Keep it in memory and sessionStorage and take it out of the
+  // address immediately, so it can never be displayed; a reload or F5 goes through launch.html again and brings it back.
+  let token = location.hash.slice(1);
+  try {
+    if (token) { sessionStorage.setItem("awai-token", token); } else { token = sessionStorage.getItem("awai-token") || ""; }
+  } catch (e) { /* storage unavailable: the fragment copy is all there is */ }
+  if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+  if (!token) document.title = "awai-no-token"; // the browser shell sends such a page back to launch.html
   const T = {
     rail: ["インストール先", "内容の確認", "インストール", "完了"], current: "現在", done: "済み",
     pickTitle: "インストール先を選ぶ", pickSub: "Awai OS を入れる空の内蔵 SSD を選んでください。",

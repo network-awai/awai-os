@@ -82,7 +82,7 @@ while kill -0 "$server" 2>/dev/null; do
     xinit "$here/xsession.sh" "$launch" "$work" -- :0 vt1 -nolisten tcp -nocursor > "$work/x.out" 2>&1 &
     xpid=$!
     # restarts the browser session if the installer page stops talking to the backend (it never touches the install worker)
-    "$python" "$here/kiosk/watchdog.py" --work-dir "$work" --pid "$xpid" > /dev/null 2>&1 &
+    "$python" "$here/kiosk/watchdog.py" --work-dir "$work" --pid "$xpid" --vt tty1 > /dev/null 2>&1 &
     watchdog=$!
     wait "$xpid"
     code=$?

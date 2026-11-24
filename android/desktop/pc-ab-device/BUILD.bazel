@@ -40,6 +40,8 @@ sh_test(
         ("server", "server"),
         ("web_build", "web_and_build"),
         ("browser", "browser"),
+        ("kiosk", "kiosk"),
+        ("firefox_headless", "firefox_headless"),
     ]
 ]
 
@@ -51,5 +53,6 @@ test_suite(
         ":screen_installer_core_test",
         ":screen_installer_server_test",
         ":screen_installer_web_build_test",
+        ":screen_installer_kiosk_test",
     ],
 )

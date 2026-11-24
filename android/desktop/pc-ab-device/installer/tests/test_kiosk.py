@@ -72,6 +72,61 @@ class Logic(unittest.TestCase):
         time.sleep(0.2)
         self.assertIsNone(decoy.poll(), "the process must still be running")
 
+    def drive_vt(self, vt_at, beats, steps=60):
+        clock = {"t": 0.0}
+        killed = []
+        orig = watchdog.heartbeat
+        watchdog.heartbeat = lambda path: beats(clock["t"])
+        self.addCleanup(setattr, watchdog, "heartbeat", orig)
+        n = {"n": 0}
+
+        def alive(pid):
+            n["n"] += 1
+            return n["n"] < steps
+
+        def sleep(x):
+            clock["t"] += x
+        result = watchdog.run("w", 1, 20, 60, now=lambda: clock["t"], sleep=sleep, kill=lambda p, sg: killed.append(sg),
+                              read=lambda p: "xinit x", alive=alive, vt="tty1", active=lambda: vt_at(clock["t"]))
+        return result, killed, clock["t"]
+
+    def test_no_restart_while_x_is_not_the_active_console(self):
+        # the page went silent at t=5 and the console is on tty2 the whole time: nothing is restarted
+        result, killed, _ = self.drive_vt(lambda t: "tty2", lambda t: 5.0)
+        self.assertEqual((result, killed), ("exited", []))
+
+    def test_back_on_x_the_page_gets_a_fresh_timeout(self):
+        # tty2 until t=60, then tty1: no kill before t=60+20, kill after silence persists
+        result, killed, end = self.drive_vt(lambda t: "tty2" if t < 60 else "tty1", lambda t: 5.0, steps=200)
+        self.assertEqual(result, "restarted")
+        self.assertGreaterEqual(end, 80)
+        # ... and a page that pings again after the switch is never restarted
+        result, killed, _ = self.drive_vt(lambda t: "tty2" if t < 60 else "tty1", lambda t: max(0.0, t - 3) if t >= 60 else 5.0, steps=100)
+        self.assertEqual((result, killed), ("exited", []))
+
+    def test_active_console_is_read_from_sysfs(self):
+        f = Path(tempfile.mkdtemp()) / "active"
+        f.write_text("tty2\n")
+        self.assertEqual(watchdog.active_vt(str(f)), "tty2")
+        self.assertIsNone(watchdog.active_vt(str(f) + ".missing"))
+
+    def test_x_session_turns_blanking_and_dpms_off(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(__import__("shutil").rmtree, tmp, True)
+        bin_dir = tmp / "bin"
+        bin_dir.mkdir()
+        for t in ("install", "rm", "cat", "mkdir"):
+            (bin_dir / t).symlink_to(__import__("shutil").which(t))
+        (bin_dir / "xset").write_text(f'#!/bin/sh\necho "$@" >> "{tmp}/xset.log"\n')
+        (bin_dir / "firefox-esr").write_text("#!/bin/sh\nexit 0\n")
+        for t in ("xset", "firefox-esr"):
+            (bin_dir / t).chmod(0o755)
+        (tmp / "work").mkdir()
+        subprocess.run(["/bin/bash", str(fakes.INSTALLER / "xsession.sh"), "/x/launch.html", str(tmp / "work")], env={"PATH": str(bin_dir)}, check=True)
+        log = (tmp / "xset.log").read_text().splitlines()
+        for want in ("s off", "s noblank", "-dpms"):
+            self.assertIn(want, log)
+
     def test_the_loop_ends_when_the_browser_exits(self):
         result, killed = self.drive(lambda t: t, steps=3)
         self.assertEqual((result, killed), ("exited", []))

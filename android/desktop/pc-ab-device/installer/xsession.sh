@@ -24,6 +24,8 @@ user_pref("browser.safebrowsing.malware.enabled", false);
 user_pref("browser.safebrowsing.phishing.enabled", false);
 user_pref("security.sandbox.content.level", 4);
 PREFS
+# no screen blanking, no power saving: a long write must not lose the display
+command -v xset >/dev/null 2>&1 && { xset s off; xset s noblank; xset -dpms; }
 command -v xsetroot >/dev/null 2>&1 && xsetroot -solid '#f2f4f8'
 command -v xfwm4 >/dev/null 2>&1 && xfwm4 --compositor=off >/dev/null 2>&1 &
 firefox=${AWAI_FIREFOX:-$(command -v firefox-esr || command -v firefox)}

@@ -236,23 +236,37 @@ the mark exists in the repo or in PR #302 (its `awai_welcome_mark.xml` is only a
 **Proportions.** One design unit `--u = min(100vw/740, 100vh/440)` scales text, logo, cards and gaps with the frame; the
 rail is 30.5vw and cards 57.7vw as in `design/installer.png` (browser test checks both sizes).
 
-**Kiosk (hardening in progress; NOT verified as locked).** QEMU run 1 showed that with the keyboard only, Ctrl+T / Ctrl+N /
-Ctrl+L / Ctrl+O and F12 leave the installer for Firefox's blocked page and new-tab page (third-party branding, no way back).
-Policy prefs alone did not stop that. What is now in place, untested against a real Firefox until the next QEMU run:
+**Kiosk (verified headless in Firefox 153.6 ESR for macOS; the physical-keyboard behaviour on the ISO is for the QEMU run).**
+QEMU run 1: Ctrl+T / Ctrl+N / Ctrl+L / Ctrl+O and F12 left the installer for Firefox's blocked page and new-tab page. Run 3
+(autoconfig honoured by the real Firefox) fixed that but showed the browser chrome and the token in the URL bar. Now:
 (1) `kiosk/autoconfig.js` + `kiosk/mozilla.cfg`, installed next to the real binary (`/opt/firefox-esr/defaults/pref/autoconfig.js`,
-`/opt/firefox-esr/mozilla.cfg`; required, else the text installer): removes every `<keyset>` of the browser window, swallows
-Ctrl/Alt/Meta/function keys and the context menu, keeps one window and one tab, and sends any page that is not the launch page
-or `http://127.0.0.1:PORT/` (blocked page, new tab, about:*) back to the launch page; **F5 is the recovery key** (reload or
-return to the installer). (2) `firefox-policies.json` (installed in `<real binary dir>/distribution/` - required - and in
-`/etc/firefox-esr/policies/`, `/etc/firefox/policies/`): developer tools, about:*, private browsing, safe mode, popups off;
-every URL blocked except the backend and the launch page; Homepage = launch page (locked), NewTabPage off, FirefoxHome and
-user messaging off. (3) `kiosk/watchdog.py`: the page pings `/api/ping` every 5 s while it is visible and the backend touches
-`heartbeat` on every authenticated request; if nothing arrives for 20 s (60 s grace after a session start) the watchdog
-terminates the `xinit` it was given and `start.sh` starts a new browser session. It refuses to signal anything that is not
-`xinit` and never touches the detached install worker, so a restart is safe at any moment of a write. Tested here: the files
-exist and match, the prefs/policy values, JavaScript syntax (`node --check`), watchdog decisions on a fake clock including a
-real decoy process named like the worker, heartbeat behaviour. Not tested here: any of it inside Firefox, and whether
-`xinit` still works when started in the background by `start.sh` (QEMU).
+`/opt/firefox-esr/mozilla.cfg`; required, else the text installer). Each browser window is guarded once its
+`browser-delayed-startup-finished` has fired: every `<key>` is **disabled, not removed**; Ctrl/Alt/Meta/function keys and the
+context menu are swallowed in the capture phase; `window.fullScreen` is forced on every 500 ms; the toolbox, tab strip,
+sidebar and notification boxes are hidden both by an agent style sheet and by collapsing them; one window and one tab only;
+any other page (blocked page, new tab, about:*, a page that lost its token) is sent back to the launch page. **F5 always goes
+back through the launch page** (fresh token fragment). (2) The page reads the token from the URL fragment, keeps it in memory and
+sessionStorage and removes it from the address with `history.replaceState`, so it is never displayable (also not in the session
+history). (3) `firefox-policies.json` (installed in `<real binary dir>/distribution/` - required - and in `/etc/firefox-esr/policies/`,
+`/etc/firefox/policies/`): developer tools, about:*, private browsing, safe mode, popups off; every URL blocked except the backend
+and the launch page; Homepage = launch page (locked), NewTabPage off, FirefoxHome and user messaging off. (4) `kiosk/watchdog.py`:
+the page pings `/api/ping` every 5 s while it is visible and the backend touches `heartbeat` on every authenticated request; after
+20 s of silence (60 s grace after a session start) the watchdog terminates the `xinit` it was given and `start.sh` starts a new
+session. It never signals anything that is not `xinit` (so never the detached install worker; a restart is safe at any moment of a
+write), **does nothing while X's virtual terminal is not the active one** (`/sys/class/tty/tty0/active`, e.g. after Ctrl+Alt+F2;
+the silence clock restarts when X is active again), and `xsession.sh` turns off screen blanking and DPMS (`xset s off`, `s noblank`,
+`-dpms`). Tested here: file contents and prefs, `node --check`, watchdog decisions on a fake clock (incl. the console switch and a
+real decoy process named like the worker), heartbeat, the xset calls, and - **optional, skipped without a Firefox** - 
+`tests/test_firefox_headless.py`, which runs a real Firefox ESR **headless** (never a visible window) over Marionette with the kiosk
+files installed in a private copy: full screen, no chrome (height 0), one tab and one window, the page is the installer, the URL and
+session history hold no token, shortcut events are swallowed at the listener, new tab / new window / blocked and about: pages return
+to the installer, F5 works, a tokenless page recovers. Setup: download `Firefox 153.6.0esr.dmg` from
+`download-installer.cdn.mozilla.net/pub/firefox/releases/153.6.0esr/mac/en-US/`, verify it against that directory's `SHA256SUMS`,
+unpack `Firefox.app` to `~/awai-ff-test/app` (or set `AWAI_FIREFOX_APP`); the test adds and removes its files in that copy. Limits:
+synthetic key events cannot trigger Firefox's built-in shortcuts headless (a plain Firefox ignores them too), so shortcut handling
+is checked at the listener and through the programmatic equivalents; the test policy leaves DisableDeveloperTools off because that
+switch also shuts Marionette. Whether the chrome regression came from removing the keysets was not reproduced headless (the
+keyset-removing variant also passed there); the fix does not rely on that guess.
 
 ### Checks
 

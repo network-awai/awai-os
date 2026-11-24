@@ -14,6 +14,7 @@ PC_AB = INSTALLER.parent
 CORE, SERVER, APP, APPLY = "installer/core.py", "installer/server.py", "installer/web/app.js", "awai-pc-install.py"
 C, S, W, B = "tests/test_core.py", "tests/test_server.py", "tests/test_web_and_build.py", "tests/test_browser.py"
 KI = "tests/test_kiosk.py"
+H = "tests/test_firefox_headless.py"
 M = [
     ("typed-name (core)", CORE, [('    if request.get("typed") != name:\n        raise Refusal("typed-name")', "    pass", 1)], [C]),
     ("typed-name (server)", SERVER, [('if body.get("typed") != ticket["device"]:', "if False:", 1)], [S]),
@@ -86,9 +87,21 @@ M = [
     ("watchdog only signals xinit", "installer/kiosk/watchdog.py", [("            if is_xinit(pid, read):", "            if True:", 1)], [KI]),
     ("watchdog restarts a silent page", "installer/kiosk/watchdog.py", [("    return now - last_beat > timeout", "    return False", 1)], [KI]),
     ("server heartbeat on authenticated requests", SERVER, [("            app.beat()\n            return True", "            return True", 1)], [KI]),
-    ("kiosk: keyset removal", "installer/kiosk/mozilla.cfg", [('querySelectorAll("keyset")', 'querySelectorAll("nothing")', 1)], [W]),
+    ("kiosk: disable keys", "installer/kiosk/mozilla.cfg", [('querySelectorAll("key")', 'querySelectorAll("nothing")', 1)], [W]),
+    ("kiosk: guard after delayed startup", "installer/kiosk/mozilla.cfg", [('"browser-delayed-startup-finished"', '"nothing"', 1)], [W]),
+    ("kiosk: force full screen", "installer/kiosk/mozilla.cfg", [("win.fullScreen = true;", "", 1)], [W]),
+    ("watchdog: no restart on another console", "installer/kiosk/watchdog.py", [("        if current is not None and current != vt:", "        if False:", 1)], [KI]),
+    ("watchdog: fresh timeout after returning", "installer/kiosk/watchdog.py", [("            beat = resumed  # back on X", "            pass  # back on X", 1)], [KI]),
+    ("session: blanking off", "installer/xsession.sh", [("xset s off; xset s noblank; xset -dpms;", "true;", 1)], [KI]),
     ("kiosk: autoconfig required", "installer/start.sh", [("could not install the browser kiosk configuration", "x", 1), ("if ! { mkdir -p \"$ffdir/defaults/pref\"", "if false && ! { mkdir -p \"$ffdir/defaults/pref\"", 1)], [W]),
     ("kiosk: autoconfig installed in the overlay", "installer/build-overlay.py", [('("autoconfig.js", "mozilla.cfg", "watchdog.py")', '("autoconfig.js",)', 1)], [W]),
+    ("firefox: chrome hidden", "installer/kiosk/mozilla.cfg", [('var HIDE_IDS = ["navigator-toolbox", "sidebar-box", "sidebar-main", "sidebar-splitter", "global-notificationbox", "tab-notification-deck"];', "var HIDE_IDS = [];", 1), ('"#titlebar, #global-notificationbox, #tab-notification-deck, #notification-popup-box { visibility: collapse !important; "', '"#nothing { visibility: collapse !important; "', 1)], [H]),
+    ("firefox: full screen forced", "installer/kiosk/mozilla.cfg", [("win.fullScreen = true;", "", 1)], [H]),
+    ("firefox: shortcuts swallowed", "installer/kiosk/mozilla.cfg", [("if (e.ctrlKey || e.altKey || e.metaKey ||", "if (false ||", 1)], [H]),
+    ("firefox: one tab only", "installer/kiosk/mozilla.cfg", [("gb.removeTab(gb.tabs[i]);", "", 1)], [H]),
+    ("firefox: foreign pages return to the installer", "installer/kiosk/mozilla.cfg", [("if (!isOk(b.currentURI && b.currentURI.spec) ||", "if (false ||", 1)], [H]),
+    ("firefox: tokenless page recovers", "installer/kiosk/mozilla.cfg", [(' || b.contentTitle === "awai-no-token"', "", 1)], [H]),
+    ("page: token removed from the URL", "installer/web/app.js", [('  if (location.hash) history.replaceState(null, "", location.pathname + location.search);\n', "", 1)], [H]),
     ("read_state retries a partial read", CORE, [("for attempt in range(4):", "for attempt in range(1):", 1)], [C]),
     ("text installer follows a running install", "installer/text_installer.py", [('    if core.status(a.work_dir).get("state") == "running" or core.lock_held(a.work_dir):\n        return follow(a.work_dir)', "    pass", 1)], [W]),
     ("overlay copies canonical installer", "installer/build-overlay.py", [('shutil.copy(os.path.join(PC_AB, "awai-pc-install.py"), awai)', 'open(os.path.join(awai, "awai-pc-install.py"), "w").write("#")', 1)], [W]),

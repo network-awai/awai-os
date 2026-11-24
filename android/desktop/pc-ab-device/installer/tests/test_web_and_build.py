@@ -46,7 +46,7 @@ class PageText(unittest.TestCase):
     def test_only_awai_branding(self):
         everything = self.app + (INSTALLER / "web" / "index.html").read_text() + "".join(ja for ja, _ in core.MESSAGES.values())
         for name in ("SystemRescue", "Sysrescue", "Linux", "Arch", "Firefox", "Mozilla", "archiso"):
-            self.assertNotIn(name.lower(), everything.lower(), name)
+            self.assertIsNone(re.search(r"\b%s\b" % name, everything, re.I), name)
 
     def test_no_prototype_completion_link_and_no_erase_control(self):
         self.assertNotIn("完了画面を見る", self.app)
@@ -313,9 +313,12 @@ class Launcher(unittest.TestCase):
         self.assertIn('var AWAI_HOME = "%s"' % pol["Homepage"]["URL"], cfg)
         self.assertTrue(pol["Homepage"]["Locked"])
         self.assertIs(pol["NewTabPage"], False)
-        for needle in ('lockPref("browser.newtabpage.enabled", false)', 'lockPref("browser.startup.page", 1)', 'querySelectorAll("keyset")',
-                       "e.ctrlKey || e.altKey || e.metaKey", "removeTab", "goHome(win)", '"F5"', "domwindowopened", "win.close()", "isLoadingDocument"):
+        for needle in ('lockPref("browser.newtabpage.enabled", false)', 'lockPref("browser.startup.page", 1)', 'querySelectorAll("key")', 'setAttribute("disabled", "true")',
+                       "e.ctrlKey || e.altKey || e.metaKey", "removeTab", "goHome(win)", '"F5"', "domwindowopened", "win.close()", "isLoadingDocument",
+                       "browser-delayed-startup-finished", "win.fullScreen = true", "AGENT_SHEET", "#navigator-toolbox", "awai-no-token"):
             self.assertIn(needle, cfg, needle)
+        self.assertNotIn('"keyset"', cfg.split("function guard")[1], "key elements are disabled, never removed (full screen broke in QEMU run 3)")
+        self.assertNotRegex(cfg, r"\.remove\(\)")
         self.assertIn("127\\.0\\.0\\.1", cfg)
         for url in re.findall(r"https?://[^\s\"']+", cfg):
             self.fail(f"external URL in the kiosk config: {url}")
