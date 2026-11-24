@@ -46,7 +46,7 @@ class Drive:
         self.win.show_all()
         self.spin()
         gui.ensure_toplevel_focus(self.win)  # the same helper the real window uses
-        self.win.set_focus(None)
+        self.ui.reset_focus()
 
     def spin(self, n=25, settle=0.12):
         """Run the main loop long enough for the frame clock to redraw (a stale offscreen pixbuf otherwise)."""
@@ -95,9 +95,9 @@ class Drive:
 
     def key(self, name):
         if name == "Tab":
-            self.win.child_focus(self.Gtk.DirectionType.TAB_FORWARD)
+            self.ui.on_tab(False)
         elif name == "Shift+Tab":
-            self.win.child_focus(self.Gtk.DirectionType.TAB_BACKWARD)
+            self.ui.on_tab(True)
         elif name in ("Enter", "Space"):
             f = self.focus()
             if isinstance(f, self.Gtk.Button) and f.get_sensitive():

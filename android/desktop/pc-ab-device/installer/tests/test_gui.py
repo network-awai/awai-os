@@ -76,6 +76,54 @@ class Widgets(unittest.TestCase):
         d.key("Tab")
         self.assertEqual(d.focus_text(), "戻る")
 
+    def test_cold_start_focus_is_the_invisible_anchor_and_the_first_tab_is_the_first_card(self):
+        """Models the real order: the window starts with the heading anchor focused (never a control), Enter does nothing,
+        the first Tab reaches the first selectable card, then 内容を確認 (once selected), then 電源を切る - never power off first."""
+        d = self.d
+        self.assertIs(d.focus(), d.ui.anchor, "nothing but the anchor may hold the focus at start")
+        d.key("Enter")
+        self.assertNotIn("選択済み", d.text(), "Enter before any Tab must do nothing")
+        d.key("Tab")
+        self.assertIn("内蔵 SSD", d.focus_text())
+        d.key("Enter")
+        d.key("Tab")
+        self.assertEqual(d.focus_text(), "内容を確認")
+        d.key("Tab")
+        self.assertEqual(d.focus_text(), "電源を切る")
+
+    def test_wrapping_around_never_stops_on_the_invisible_anchor(self):
+        d = self.d
+        d.key("Tab")
+        seen = [d.focus_text()]
+        for _ in range(6):
+            d.key("Tab")
+            self.assertIsNot(d.focus(), d.ui.anchor, "the anchor is not a Tab stop")
+            seen.append(d.focus_text())
+        self.assertEqual(seen[0], seen[2], "cards -> power off -> cards (the disabled primary is skipped)")
+
+    def test_focus_returns_to_the_anchor_after_refresh_back_and_dismiss(self):
+        d = self.d
+        d.key("Tab")
+        d.key("Enter")
+        d.key("Tab")
+        d.key("Enter")  # review
+        d.key("Tab")    # 内容を確認 is disabled until typed: first stop is 戻る
+        self.assertEqual(d.focus_text(), "戻る")
+        d.key("Enter")  # back
+        self.assertIs(d.focus(), d.ui.anchor)
+        d.key("Tab")
+        self.assertIn("内蔵 SSD", d.focus_text())
+        d.w.edit_disk("nvme0n1", children=[{}])
+        d.c.refresh()
+        d.ui.render(force=True)
+        d.ui.reset_focus()
+        d.spin()
+        self.assertIs(d.focus(), d.ui.anchor)
+        d.key("Tab")
+        self.assertEqual(d.focus_text(), "一覧を更新")  # screen 6: the primary action first,
+        d.key("Tab")
+        self.assertEqual(d.focus_text(), "電源を切る")  # then power off - never power off first
+
     def test_first_tab_lands_on_the_first_selectable_card_even_after_focus_was_lost(self):
         import gi
         gi.require_version("Gdk", "3.0")
@@ -87,7 +135,7 @@ class Widgets(unittest.TestCase):
         ev.focus_change._in = 0
         d.win.emit("focus-out-event", ev)
         self.assertFalse(d.win.has_toplevel_focus())
-        d.win.set_focus(None)
+        d.ui.reset_focus()
         import gui
         gui.ensure_toplevel_focus(d.win)  # what the window's key handler does before the key reaches the widgets
         self.assertTrue(d.win.has_toplevel_focus())

@@ -239,8 +239,8 @@ python3 android/desktop/pc-ab-device/installer/tests/shots.py OUTDIR            
 No root, no real disk: fake `lsblk`/`blockdev`/`wipefs`/`findmnt`/`sgdisk`/`zstd`/`sync`/`systemctl` on `PATH` and sparse temp files;
 the production `Host` is replaced only in tests. The GTK tests drive the real widget tree in a `Gtk.OffscreenWindow` (nothing is shown
 on a display; Tab/Enter/typing are simulated at widget level) and skip themselves where PyGObject/Gtk 3 is missing (CI runs
-117 of 130 tests there; the 13 GTK tests ran locally in a conda env with Gtk 3.24). Bazel: `:screen_installer_*_test`. Mutation list:
-`installer/tests/mutation-results.txt` (77 of 78 guards killed; the one survivor is equivalent offscreen and covered by the VM run).
+117 of 133 tests there; the 16 GTK tests ran locally in a conda env with Gtk 3.24). Bazel: `:screen_installer_*_test`. Mutation list:
+`installer/tests/mutation-results.txt` (80 of 81 guards killed; the one survivor is equivalent offscreen and covered by the VM run).
 Screenshots from the widget tree and the design side by side: `installer/screenshots/` (`fonts-used.txt` proves every label is drawn
 by the bundled face, `keyboard-walkthrough.txt` is the Tab/Enter sequence).
 
@@ -256,6 +256,15 @@ state (step 3) and then 完了; all 8 data partitions identical to the source im
 screen 6 with only the used disk; the text boot entry (`awai.installer=text`) starts the text installer and lists both disks as
 not selectable with the reasons. The VM run found one bug, fixed before this record: the power-off question disarmed itself when the
 poll redrew the screen (rebuilding destroyed the focused button, which counted as the user leaving it); two tests now pin it.
+
+**Focus on a cold start (second VM round, `screenshots/vm/focus/`).** A first VM round showed that on a real X server GTK focused the
+first control silently when the window mapped, so the first Tab skipped it and landed on 電源を切る. Now the invisible heading is the
+focus anchor on every new screen and after back/refresh/dismiss (`gui.on_tab` moves straight from it to the first control and never
+stops on it, also when wrapping around). Verified on a cold boot and after key mashing: screen 1 (no ring, Enter does nothing, first
+Tab = the first selectable card, then 電源を切る while 内容を確認 is disabled, a third Tab wraps to the card), screen 3 (the typed-name
+field has the focus, mashing changes nothing, Tab goes to 戻る), screen 5 (first Tab = 再起動; the state came from a written
+`state.json`, not a real install) and screen 6 (first Tab = 一覧を更新, then 電源を切る, never power off first); the text boot entry lists
+both disks as not selectable. The offscreen test models this order and fails on the previous revision.
 
 ### Not tested
 

@@ -64,7 +64,7 @@ window, .app {{ background: #ffffff; }}
 .hint {{ font-size: {p(9.5)}; color: #5b6678; }}
 .hintrule {{ background: #d9dee7; min-height: 1px; }}
 .title {{ font-size: {p(26)}; font-weight: 500; }}
-.title:focus {{ outline: none; }}
+.title:focus, eventbox:focus, .anchor:focus {{ outline: none; box-shadow: none; }}
 .sub {{ font-size: {p(11.5)}; color: #5b6678; }}
 .caption {{ font-size: {p(9.5)}; color: #5b6678; }}
 .footrule {{ background: #d9dee7; min-height: 1px; }}
@@ -158,7 +158,14 @@ class InstallerUI:
         rule.set_size_request(round(0.614 * width), 1)
         rule.set_halign(Gtk.Align.START)
         self.actions_rule = rule
-        self.main.pack_start(self.title, False, False, 0)
+        # The heading is the focus anchor: it takes the focus on every new screen (invisible, does nothing on Enter) so GTK cannot
+        # silently focus the first real control; the first Tab then goes to the first selectable card.
+        self.anchor = Gtk.EventBox()
+        self.anchor.set_visible_window(False)
+        self.anchor.set_can_focus(True)
+        self.anchor.get_style_context().add_class("anchor")
+        self.anchor.add(self.title)
+        self.main.pack_start(self.anchor, False, False, 0)
         self.main.pack_start(self.sub, False, False, 0)
         self.main.pack_start(self.body, True, True, 0)
         self.main.pack_start(rule, False, False, round(12 * u))
@@ -239,9 +246,36 @@ class InstallerUI:
         top = self.root.get_toplevel()
         if not screen_changed and focus_key in self.widgets:
             self.widgets[focus_key].grab_focus()
-        elif hasattr(top, "set_focus"):
-            top.set_focus(None)  # like the heading in the design: nothing focused until the first Tab
+        else:
+            self.reset_focus()
         self.rebuilding = False
+
+    def on_tab(self, backward=False):
+        """Tab / Shift+Tab. From the invisible anchor (or no focus) the first Tab goes to the first control, never to the anchor
+        again; otherwise ordinary GTK traversal. Returns whether focus moved."""
+        top = self.root.get_toplevel()
+        direction = self.Gtk.DirectionType.TAB_BACKWARD if backward else self.Gtk.DirectionType.TAB_FORWARD
+        if top.get_focus() in (self.anchor, None):
+            self.anchor.set_can_focus(False)
+            try:
+                top.set_focus(None)
+                return top.child_focus(direction)
+            finally:
+                self.anchor.set_can_focus(True)
+        moved = top.child_focus(direction)
+        if top.get_focus() is self.anchor:  # wrapped around onto the invisible anchor: that is not a stop, go on
+            self.anchor.set_can_focus(False)
+            try:
+                moved = top.child_focus(direction)
+            finally:
+                self.anchor.set_can_focus(True)
+        return moved
+
+    def reset_focus(self):
+        """Back to 'nothing focused yet': the invisible heading holds the focus, the next Tab is the first Tab."""
+        top = self.root.get_toplevel()
+        if hasattr(top, "set_focus"):
+            top.set_focus(self.anchor)
 
     def render_rail(self, active):
         from strings import T
@@ -444,6 +478,7 @@ class InstallerUI:
     def on_back(self):
         self.c.back()
         self.render(force=True)
+        self.reset_focus()
 
     def on_start(self, typed):
         self.c.start(typed)
@@ -452,10 +487,12 @@ class InstallerUI:
     def on_refresh(self):
         self.c.refresh()
         self.render(force=True)
+        self.reset_focus()
 
     def on_dismiss(self):
         self.c.dismiss()
         self.render(force=True)
+        self.reset_focus()
 
     def on_reboot(self):
         if self.c.reboot() == "refused":
@@ -518,6 +555,10 @@ def main(argv=None):
         if keys.swallow(Gdk.keyval_name(event.keyval), int(event.state)):
             return True
         ensure_toplevel_focus(win)  # focus can be lost to key mashing or a lost X focus; the first Tab must still count
+        name = Gdk.keyval_name(event.keyval)
+        if name in ("Tab", "ISO_Left_Tab"):
+            ui.on_tab(backward=name == "ISO_Left_Tab" or bool(event.state & Gdk.ModifierType.SHIFT_MASK))
+            return True
         return False
     win.connect("key-press-event", on_key)
     win.connect("key-release-event", lambda _w, e: keys.swallow(Gdk.keyval_name(e.keyval), int(e.state)))
@@ -529,6 +570,7 @@ def main(argv=None):
     ui.render(force=True)
     win.present()
     ensure_toplevel_focus(win)
+    ui.reset_focus()
     GLib.timeout_add(700, ui.poll)
     Gtk.main()
     return 0
