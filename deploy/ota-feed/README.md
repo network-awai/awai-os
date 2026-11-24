@@ -91,6 +91,66 @@ for range requests.
    curl -fsS -D- "https://ota.awai.network/v1/pc/pilot/virtio_x86_64/$INSTALLED_BUILD/builds.json"
    ```
 
+## Deploy record and rollback
+
+Production deploy of 2026-11-24 (measured). Worker `awai-ota-feed` in
+account `cloud-kotoba` (`4da88288dc30d9ee257f319d3c33ecf0`), zone
+`awai.network` (`2a66cffc76aec17a25057816481c8ee2`). Worker Version ID
+`263618ff-32a3-4e1d-9f4e-c1cfc587b9b2`, deployed 2026-11-24T00:05:24Z
+from merge commit `f5b363beab1365ba94f531bc4116ae25e9a74113` (pull
+request #484, head `1b5287cf`), wrangler 4.167.0. This was the first
+deploy: the Worker did not exist before it, so there is no previous
+version. The config has no `account_id`, so `CLOUDFLARE_ACCOUNT_ID`
+must be set when more than one account is available.
+
+Before the deploy, `ota.awai.network` was an R2 custom domain on bucket
+`awai-os-ota` (SSL active). A custom domain cannot be attached while
+the hostname already has records, so that R2 custom domain was detached
+only; the R2 objects were not deleted (7 objects, 961,584,407 bytes).
+
+Verification after the deploy:
+
+```sh
+curl -sS -D- https://ota.awai.network/v1/pc/pilot/virtio_x86_64/awai-pilot-ota-target-202611210724/builds.json
+```
+
+gave HTTP 200, `content-type: application/json`, `content-length: 2`,
+`cache-control: no-store`, `x-content-type-options: nosniff`, body
+`[]`. An unknown device/build path answered 200 with `[]`; `/` gave 404
+`{"error":"not-found"}`; POST gave 405. The former R2 payload path
+`.../v1/pc/pilot/packages/.../full.zip` gave 404 (closed). TLS from
+`openssl s_client -connect ota.awai.network:443` showed `CN=awai.network`
+issued by Google Trust Services WE1. `INDEXES = {}` at this revision, so
+every index answers `[]`; payload bytes come from GitHub release
+assets.
+
+Rollback. For any later deploy (a previous version exists):
+
+```sh
+wrangler rollback --name awai-ota-feed
+```
+
+or `wrangler versions list --name awai-ota-feed` then
+`wrangler rollback --name awai-ota-feed <VERSION_ID>`. Re-run the
+verification commands above afterwards.
+
+For this first deploy (no previous version), delete the Worker to free
+the hostname and re-attach the R2 custom domain:
+
+```sh
+wrangler delete --name awai-ota-feed
+```
+
+```
+POST /accounts/<account>/r2/buckets/awai-os-ota/domains/custom
+{"domain":"ota.awai.network","zoneId":"2a66cffc76aec17a25057816481c8ee2","enabled":true,"minTLS":"1.2"}
+```
+
+Confirm the restore: the former payload path answers 200 with
+961,474,941 bytes and the index path answers `[]` from R2. A hostname
+belongs to either R2 or the Worker, never both; always detach before
+attaching, and never delete R2 objects while switching.
+
 ## Local tests
 
 ```sh
