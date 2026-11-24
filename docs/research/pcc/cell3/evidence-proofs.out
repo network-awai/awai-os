@@ -1,0 +1,1741 @@
+This is SBCL 2.4.0, an implementation of ANSI Common Lisp.
+More information about SBCL is available at <http://www.sbcl.org/>.
+
+SBCL is free software, provided as is, with absolutely no warranty.
+It is mostly in the public domain; some portions are provided under
+BSD-style licenses.  See the CREDITS and COPYING files in the
+distribution for more information.
+
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ + ACL2 Version 8.7                                                     +
+ +   built November 24, 2026  20:34:44.                                 +
+ + Copyright (C) 2026, Regents of the University of Texas.              +
+ + ACL2 comes with ABSOLUTELY NO WARRANTY.  This is free software and   +
+ + you are welcome to redistribute it under certain conditions.  For    +
+ + details, see the LICENSE file distributed with ACL2.                 +
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Project-dir-alist:
+((:SYSTEM . "/Users/node/pcc/src/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !> "ACL2"
+ACL2 !>
+Summary
+Form:  ( DEFCONST *RULES* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ *RULES*
+ACL2 !>
+The admission of FREEP is trivial, using the relation O< (which is
+known to be well-founded on the domain recognized by O-P) and the measure
+(ACL2-COUNT X).  We observe that the type of FREEP is described by
+the theorem (OR (EQUAL (FREEP V X) T) (EQUAL (FREEP V X) NIL)).  We
+used primitive type reasoning.
+
+Summary
+Form:  ( DEFUN FREEP ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FREEP
+ACL2 !>
+The admission of MATCH-PAT is trivial, using the relation O< (which
+is known to be well-founded on the domain recognized by O-P) and the
+measure (ACL2-COUNT PAT).  We observe that the type of MATCH-PAT is
+described by the theorem 
+(OR (OR (CONSP (MATCH-PAT PAT X AL))
+        (AND (SYMBOLP (MATCH-PAT PAT X AL))
+             (NOT (EQUAL (MATCH-PAT PAT X AL) T))
+             (NOT (EQUAL (MATCH-PAT PAT X AL) NIL))))
+    (EQUAL (MATCH-PAT PAT X AL) AL)).
+We used primitive type reasoning.
+
+Summary
+Form:  ( DEFUN MATCH-PAT ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ MATCH-PAT
+ACL2 !>
+The admission of INSTANTIATE is trivial, using the relation O< (which
+is known to be well-founded on the domain recognized by O-P) and the
+measure (ACL2-COUNT TMPL).  We could deduce no constraints on the type
+of INSTANTIATE.
+
+Summary
+Form:  ( DEFUN INSTANTIATE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ INSTANTIATE
+ACL2 !>
+Since RULE-MATCH is non-recursive, its admission is trivial.  We observe
+that the type of RULE-MATCH is described by the theorem 
+(OR (CONSP (RULE-MATCH RULE X))
+    (AND (SYMBOLP (RULE-MATCH RULE X))
+         (NOT (EQUAL (RULE-MATCH RULE X) T))
+         (NOT (EQUAL (RULE-MATCH RULE X) NIL)))
+    (EQUAL (RULE-MATCH RULE X) NIL)).
+We used the :type-prescription rules FREEP and MATCH-PAT.
+
+Summary
+Form:  ( DEFUN RULE-MATCH ...)
+Rules: ((:TYPE-PRESCRIPTION FREEP)
+        (:TYPE-PRESCRIPTION MATCH-PAT))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ RULE-MATCH
+ACL2 !>
+For the admission of FETCH we will use the relation O< (which is known
+to be well-founded on the domain recognized by O-P) and the measure
+(ACL2-COUNT X).  The non-trivial part of the measure conjecture is
+
+Goal
+(IMPLIES (AND (NOT (ENDP P))
+              (AND (CONSP X)
+                   (INTEGERP (CAR P))
+                   (<= 0 (CAR P))
+                   (< (CAR P) (LEN X))))
+         (O< (ACL2-COUNT (NTH (CAR P) X))
+             (ACL2-COUNT X))).
+Goal'
+Goal''
+Goal'''
+Goal'4'
+Goal'5'
+
+([ A key checkpoint:
+
+Goal''
+(IMPLIES (AND (CONSP P)
+              (CONSP X)
+              (INTEGERP (CAR P))
+              (<= 0 (CAR P))
+              (< (CAR P) (LEN X)))
+         (< (ACL2-COUNT (NTH (CAR P) X))
+            (ACL2-COUNT X)))
+
+*1 (Goal'5') is pushed for proof by induction:
+(IMPLIES (AND (INTEGERP P1)
+              (<= 0 P1)
+              (CONSP X)
+              (< P1 (LEN X)))
+         (< (ACL2-COUNT (NTH P1 X))
+            (ACL2-COUNT X))).
+
+])
+
+Perhaps we can prove *1 by induction.  Three induction schemes are
+suggested by this conjecture.  Subsumption reduces that number to two.
+These merge into one derived induction scheme.  
+
+We will induct according to a scheme suggested by (ACL2-COUNT X), while
+accommodating (NTH P1 X) and (LEN X).
+
+These suggestions were produced using the :induction rules ACL2-COUNT,
+LEN and NTH.  If we let (:P P1 X) denote *1 above then the induction
+scheme we'll use is
+(AND (IMPLIES (AND (NOT (CONSP X))
+                   (NOT (RATIONALP X))
+                   (NOT (COMPLEX-RATIONALP X))
+                   (NOT (STRINGP X)))
+              (:P P1 X))
+     (IMPLIES (AND (NOT (CONSP X))
+                   (NOT (RATIONALP X))
+                   (NOT (COMPLEX-RATIONALP X))
+                   (STRINGP X))
+              (:P P1 X))
+     (IMPLIES (AND (NOT (CONSP X))
+                   (NOT (RATIONALP X))
+                   (COMPLEX-RATIONALP X)
+                   (:P P1 (REALPART X))
+                   (:P P1 (IMAGPART X)))
+              (:P P1 X))
+     (IMPLIES (AND (NOT (CONSP X))
+                   (RATIONALP X)
+                   (NOT (INTEGERP X)))
+              (:P P1 X))
+     (IMPLIES (AND (NOT (CONSP X))
+                   (RATIONALP X)
+                   (INTEGERP X))
+              (:P P1 X))
+     (IMPLIES (AND (CONSP X)
+                   (:P P1 (CAR X))
+                   (:P (+ -1 P1) (CDR X)))
+              (:P P1 X))).
+This induction is justified by the same argument used to admit ACL2-COUNT.
+Note, however, that the unmeasured variable P1 is being instantiated.
+When applied to the goal at hand the above induction scheme produces
+15 nontautological subgoals.
+Subgoal *1/15
+
+Splitter note (see :DOC splitter) for Subgoal *1/15 (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/15.2
+Subgoal *1/15.1
+Subgoal *1/14
+
+Splitter note (see :DOC splitter) for Subgoal *1/14 (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/14.2
+Subgoal *1/14.1
+Subgoal *1/13
+
+Splitter note (see :DOC splitter) for Subgoal *1/13 (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/13.2
+Subgoal *1/13.1
+Subgoal *1/12
+Subgoal *1/11
+Subgoal *1/10
+Subgoal *1/9
+
+Splitter note (see :DOC splitter) for Subgoal *1/9 (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/9.2
+Subgoal *1/9.1
+Subgoal *1/8
+
+Splitter note (see :DOC splitter) for Subgoal *1/8 (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/8.2
+Subgoal *1/8.1
+Subgoal *1/7
+
+Splitter note (see :DOC splitter) for Subgoal *1/7 (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/7.2
+Subgoal *1/7.1
+Subgoal *1/6
+Subgoal *1/6'
+
+Splitter note (see :DOC splitter) for Subgoal *1/6' (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/6.2
+Subgoal *1/6.1
+Subgoal *1/5
+Subgoal *1/5'
+Subgoal *1/5''
+Subgoal *1/5'''
+Subgoal *1/4
+Subgoal *1/4'
+Subgoal *1/4''
+Subgoal *1/3
+Subgoal *1/2
+Subgoal *1/1
+
+*1 is COMPLETED!
+Thus key checkpoint Goal'' is COMPLETED!
+
+Q.E.D.
+
+That completes the proof of the measure theorem for FETCH.  Thus, we
+admit this function under the principle of definition.  We could deduce
+no constraints on the type of FETCH.
+
+Summary
+Form:  ( DEFUN FETCH ...)
+Rules: ((:COMPOUND-RECOGNIZER ZP-COMPOUND-RECOGNIZER)
+        (:DEFINITION ACL2-COUNT)
+        (:DEFINITION ENDP)
+        (:DEFINITION LEN)
+        (:DEFINITION NOT)
+        (:DEFINITION NTH)
+        (:DEFINITION O-FINP)
+        (:DEFINITION O<)
+        (:ELIM CAR-CDR-ELIM)
+        (:EXECUTABLE-COUNTERPART <)
+        (:EXECUTABLE-COUNTERPART ACL2-COUNT)
+        (:EXECUTABLE-COUNTERPART BINARY-+)
+        (:EXECUTABLE-COUNTERPART INTEGERP)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM)
+        (:EXECUTABLE-COUNTERPART ZP)
+        (:FAKE-RUNE-FOR-LINEAR NIL)
+        (:FAKE-RUNE-FOR-LINEAR-EQUALITIES NIL)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION ACL2-COUNT)
+        (:INDUCTION LEN)
+        (:INDUCTION NTH)
+        (:TYPE-PRESCRIPTION ACL2-COUNT)
+        (:TYPE-PRESCRIPTION LEN))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION NTH))
+Time:  0.01 seconds (prove: 0.01, print: 0.00, other: 0.00)
+Prover steps counted:  6397
+ FETCH
+ACL2 !>
+For the admission of EMBED we will use the relation O< (which is known
+to be well-founded on the domain recognized by O-P) and the measure
+(ACL2-COUNT X).  The non-trivial part of the measure conjecture is
+
+Goal
+(IMPLIES (AND (NOT (ENDP P))
+              (AND (CONSP X)
+                   (INTEGERP (CAR P))
+                   (<= 0 (CAR P))
+                   (< (CAR P) (LEN X))))
+         (O< (ACL2-COUNT (NTH (CAR P) X))
+             (ACL2-COUNT X))).
+Goal'
+Goal''
+Goal'''
+Goal'4'
+Goal'5'
+
+([ A key checkpoint:
+
+Goal''
+(IMPLIES (AND (CONSP P)
+              (CONSP X)
+              (INTEGERP (CAR P))
+              (<= 0 (CAR P))
+              (< (CAR P) (LEN X)))
+         (< (ACL2-COUNT (NTH (CAR P) X))
+            (ACL2-COUNT X)))
+
+*1 (Goal'5') is pushed for proof by induction:
+(IMPLIES (AND (INTEGERP P1)
+              (<= 0 P1)
+              (CONSP X)
+              (< P1 (LEN X)))
+         (< (ACL2-COUNT (NTH P1 X))
+            (ACL2-COUNT X))).
+
+])
+
+Perhaps we can prove *1 by induction.  Three induction schemes are
+suggested by this conjecture.  Subsumption reduces that number to two.
+These merge into one derived induction scheme.  
+
+We will induct according to a scheme suggested by (ACL2-COUNT X), while
+accommodating (NTH P1 X) and (LEN X).
+
+These suggestions were produced using the :induction rules ACL2-COUNT,
+LEN and NTH.  If we let (:P P1 X) denote *1 above then the induction
+scheme we'll use is
+(AND (IMPLIES (AND (NOT (CONSP X))
+                   (NOT (RATIONALP X))
+                   (NOT (COMPLEX-RATIONALP X))
+                   (NOT (STRINGP X)))
+              (:P P1 X))
+     (IMPLIES (AND (NOT (CONSP X))
+                   (NOT (RATIONALP X))
+                   (NOT (COMPLEX-RATIONALP X))
+                   (STRINGP X))
+              (:P P1 X))
+     (IMPLIES (AND (NOT (CONSP X))
+                   (NOT (RATIONALP X))
+                   (COMPLEX-RATIONALP X)
+                   (:P P1 (REALPART X))
+                   (:P P1 (IMAGPART X)))
+              (:P P1 X))
+     (IMPLIES (AND (NOT (CONSP X))
+                   (RATIONALP X)
+                   (NOT (INTEGERP X)))
+              (:P P1 X))
+     (IMPLIES (AND (NOT (CONSP X))
+                   (RATIONALP X)
+                   (INTEGERP X))
+              (:P P1 X))
+     (IMPLIES (AND (CONSP X)
+                   (:P P1 (CAR X))
+                   (:P (+ -1 P1) (CDR X)))
+              (:P P1 X))).
+This induction is justified by the same argument used to admit ACL2-COUNT.
+Note, however, that the unmeasured variable P1 is being instantiated.
+When applied to the goal at hand the above induction scheme produces
+15 nontautological subgoals.
+Subgoal *1/15
+
+Splitter note (see :DOC splitter) for Subgoal *1/15 (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/15.2
+Subgoal *1/15.1
+Subgoal *1/14
+
+Splitter note (see :DOC splitter) for Subgoal *1/14 (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/14.2
+Subgoal *1/14.1
+Subgoal *1/13
+
+Splitter note (see :DOC splitter) for Subgoal *1/13 (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/13.2
+Subgoal *1/13.1
+Subgoal *1/12
+Subgoal *1/11
+Subgoal *1/10
+Subgoal *1/9
+
+Splitter note (see :DOC splitter) for Subgoal *1/9 (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/9.2
+Subgoal *1/9.1
+Subgoal *1/8
+
+Splitter note (see :DOC splitter) for Subgoal *1/8 (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/8.2
+Subgoal *1/8.1
+Subgoal *1/7
+
+Splitter note (see :DOC splitter) for Subgoal *1/7 (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/7.2
+Subgoal *1/7.1
+Subgoal *1/6
+Subgoal *1/6'
+
+Splitter note (see :DOC splitter) for Subgoal *1/6' (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/6.2
+Subgoal *1/6.1
+Subgoal *1/5
+Subgoal *1/5'
+Subgoal *1/5''
+Subgoal *1/5'''
+Subgoal *1/4
+Subgoal *1/4'
+Subgoal *1/4''
+Subgoal *1/3
+Subgoal *1/2
+Subgoal *1/1
+
+*1 is COMPLETED!
+Thus key checkpoint Goal'' is COMPLETED!
+
+Q.E.D.
+
+That completes the proof of the measure theorem for EMBED.  Thus, we
+admit this function under the principle of definition.  We observe
+that the type of EMBED is described by the theorem 
+(OR (OR (CONSP (EMBED X P V))
+        (AND (SYMBOLP (EMBED X P V))
+             (NOT (EQUAL (EMBED X P V) T))
+             (NOT (EQUAL (EMBED X P V) NIL))))
+    (EQUAL (EMBED X P V) V)).
+We used the :type-prescription rule UPDATE-NTH.
+
+Summary
+Form:  ( DEFUN EMBED ...)
+Rules: ((:COMPOUND-RECOGNIZER ZP-COMPOUND-RECOGNIZER)
+        (:DEFINITION ACL2-COUNT)
+        (:DEFINITION ENDP)
+        (:DEFINITION LEN)
+        (:DEFINITION NOT)
+        (:DEFINITION NTH)
+        (:DEFINITION O-FINP)
+        (:DEFINITION O<)
+        (:ELIM CAR-CDR-ELIM)
+        (:EXECUTABLE-COUNTERPART <)
+        (:EXECUTABLE-COUNTERPART ACL2-COUNT)
+        (:EXECUTABLE-COUNTERPART BINARY-+)
+        (:EXECUTABLE-COUNTERPART INTEGERP)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM)
+        (:EXECUTABLE-COUNTERPART ZP)
+        (:FAKE-RUNE-FOR-LINEAR NIL)
+        (:FAKE-RUNE-FOR-LINEAR-EQUALITIES NIL)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION ACL2-COUNT)
+        (:INDUCTION LEN)
+        (:INDUCTION NTH)
+        (:TYPE-PRESCRIPTION ACL2-COUNT)
+        (:TYPE-PRESCRIPTION LEN)
+        (:TYPE-PRESCRIPTION UPDATE-NTH))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION NTH))
+Time:  0.01 seconds (prove: 0.01, print: 0.00, other: 0.00)
+Prover steps counted:  6397
+ EMBED
+ACL2 !>
+The admission of REWRITES-AT-RULES is trivial, using the relation O<
+(which is known to be well-founded on the domain recognized by O-P)
+and the measure (ACL2-COUNT RULES).  We observe that the type of 
+REWRITES-AT-RULES is described by the theorem 
+(TRUE-LISTP (REWRITES-AT-RULES RULES X P)).  We used primitive type
+reasoning.
+
+Summary
+Form:  ( DEFUN REWRITES-AT-RULES ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ REWRITES-AT-RULES
+ACL2 !>
+The admission of ROOT-STEP-RULES is trivial, using the relation O<
+(which is known to be well-founded on the domain recognized by O-P)
+and the measure (ACL2-COUNT RULES).  We observe that the type of 
+ROOT-STEP-RULES is described by the theorem 
+(OR (EQUAL (ROOT-STEP-RULES RULES X U) T)
+    (EQUAL (ROOT-STEP-RULES RULES X U)
+           NIL)).
+
+Summary
+Form:  ( DEFUN ROOT-STEP-RULES ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ ROOT-STEP-RULES
+ACL2 !>
+Since ROOT-STEP is non-recursive, its admission is trivial.  We observe
+that the type of ROOT-STEP is described by the theorem 
+(OR (EQUAL (ROOT-STEP X U) T) (EQUAL (ROOT-STEP X U) NIL)).  We used
+the :type-prescription rule ROOT-STEP-RULES.
+
+Summary
+Form:  ( DEFUN ROOT-STEP ...)
+Rules: ((:TYPE-PRESCRIPTION ROOT-STEP-RULES))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ ROOT-STEP
+ACL2 !>
+For the admission of STEP-REL we will use the relation O< (which is
+known to be well-founded on the domain recognized by O-P) and the measure
+(ACL2-COUNT X).  The non-trivial part of the measure conjecture is
+
+Goal
+(AND (IMPLIES (AND (NOT (ROOT-STEP X U))
+                   (AND (CONSP X) (CONSP U)))
+              (O< (ACL2-COUNT (CAR X))
+                  (ACL2-COUNT X)))
+     (IMPLIES (AND (NOT (ROOT-STEP X U))
+                   (AND (CONSP X) (CONSP U))
+                   (NOT (STEP-REL (CAR X) (CAR U)))
+                   (EQUAL (CAR X) (CAR U)))
+              (O< (ACL2-COUNT (CDR X))
+                  (ACL2-COUNT X)))).
+Subgoal 2
+Subgoal 1
+
+Q.E.D.
+
+That completes the proof of the measure theorem for STEP-REL.  Thus,
+we admit this function under the principle of definition.  We observe
+that the type of STEP-REL is described by the theorem 
+(OR (EQUAL (STEP-REL X U) T) (EQUAL (STEP-REL X U) NIL)).  We used
+primitive type reasoning.
+
+Summary
+Form:  ( DEFUN STEP-REL ...)
+Rules: ((:DEFINITION NOT)
+        (:DEFINITION ROOT-STEP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  91
+ STEP-REL
+ACL2 !>
+The admission of RTC is trivial, using the relation O< (which is known
+to be well-founded on the domain recognized by O-P) and the measure
+(ACL2-COUNT TS).  We observe that the type of RTC is described by the
+theorem (OR (EQUAL (RTC X U TS) T) (EQUAL (RTC X U TS) NIL)).  We used
+primitive type reasoning.
+
+Summary
+Form:  ( DEFUN RTC ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ RTC
+ACL2 !>
+The admission of FIND-RULE is trivial, using the relation O< (which
+is known to be well-founded on the domain recognized by O-P) and the
+measure (ACL2-COUNT RULES).  We could deduce no constraints on the
+type of FIND-RULE.
+
+Summary
+Form:  ( DEFUN FIND-RULE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FIND-RULE
+ACL2 !>
+Since APPLY-STEP is non-recursive, its admission is trivial.  We could
+deduce no constraints on the type of APPLY-STEP.
+
+Summary
+Form:  ( DEFUN APPLY-STEP ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ APPLY-STEP
+ACL2 !>
+The admission of RUN is trivial, using the relation O< (which is known
+to be well-founded on the domain recognized by O-P) and the measure
+(ACL2-COUNT STEPS).  We could deduce no constraints on the type of
+RUN.
+
+Summary
+Form:  ( DEFUN RUN ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ RUN
+ACL2 !>
+The admission of TERMS-OF is trivial, using the relation O< (which
+is known to be well-founded on the domain recognized by O-P) and the
+measure (ACL2-COUNT STEPS).  We observe that the type of TERMS-OF is
+described by the theorem (TRUE-LISTP (TERMS-OF X STEPS)).  We used
+primitive type reasoning.
+
+Summary
+Form:  ( DEFUN TERMS-OF ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ TERMS-OF
+ACL2 !>
+Since CHECK is non-recursive, its admission is trivial.  We observe
+that the type of CHECK is described by the theorem 
+(OR (EQUAL (CHECK CLAIM STEPS) T) (EQUAL (CHECK CLAIM STEPS) NIL)).
+We used primitive type reasoning.
+
+Summary
+Form:  ( DEFUN CHECK ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ CHECK
+ACL2 !> "ACL2"
+ACL2 !>
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+Perhaps we can prove *1 by induction.  Three induction schemes are
+suggested by this conjecture.  Subsumption reduces that number to two.
+These merge into one derived induction scheme.  
+
+We will induct according to a scheme suggested by 
+(MEMBER-EQUAL (FIND-RULE NAME RULES) RULES), while accommodating 
+(FIND-RULE NAME RULES).
+
+These suggestions were produced using the :induction rules FIND-RULE
+and MEMBER-EQUAL.  If we let (:P NAME RULES) denote *1 above then the
+induction scheme we'll use is
+(AND (IMPLIES (AND (NOT (ENDP RULES))
+                   (NOT (EQUAL (FIND-RULE NAME RULES)
+                               (CAR RULES)))
+                   (:P NAME (CDR RULES)))
+              (:P NAME RULES))
+     (IMPLIES (AND (NOT (ENDP RULES))
+                   (EQUAL (FIND-RULE NAME RULES)
+                          (CAR RULES)))
+              (:P NAME RULES))
+     (IMPLIES (ENDP RULES) (:P NAME RULES))).
+This induction is justified by the same argument used to admit MEMBER-EQUAL.
+When applied to the goal at hand the above induction scheme produces
+four nontautological subgoals.
+Subgoal *1/4
+Subgoal *1/4'
+Subgoal *1/3
+Subgoal *1/3'
+Subgoal *1/2
+Subgoal *1/2'
+Subgoal *1/1
+Subgoal *1/1'
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FIND-RULE-MEMBER ...)
+Rules: ((:DEFINITION ENDP)
+        (:DEFINITION FIND-RULE)
+        (:DEFINITION MEMBER-EQUAL)
+        (:DEFINITION NOT)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION FIND-RULE)
+        (:INDUCTION MEMBER-EQUAL)
+        (:TYPE-PRESCRIPTION MEMBER-EQUAL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  730
+ FIND-RULE-MEMBER
+ACL2 !>
+ACL2 Warning [Free] in ( DEFTHM ROOT-STEP-RULES-MEMBER ...):  A :REWRITE
+rule generated from ROOT-STEP-RULES-MEMBER contains the free variable
+RULE.  This variable will be chosen by searching for an instance of
+(MEMBER-EQUAL RULE RULES) in the context of the term being rewritten.
+This is generally a severe restriction on the applicability of a :REWRITE
+rule.  See :DOC free-variables.
+
+Goal'
+
+Splitter note (see :DOC splitter) for Goal' (2 subgoals).
+  if-intro: ((:DEFINITION RULE-MATCH))
+
+Subgoal 2
+Subgoal 2.4
+Subgoal 2.4'
+Subgoal 2.4''
+
+([ A key checkpoint:
+
+Subgoal 2
+(IMPLIES (AND (MEMBER-EQUAL RULE RULES)
+              (NOT (EQUAL (MATCH-PAT (CADR RULE) X NIL)
+                          :FAIL))
+              (NOT (CADDR RULE)))
+         (ROOT-STEP-RULES RULES X NIL))
+
+Normally we would attempt to prove Subgoal 2.4'' by induction.  However,
+we prefer in this instance to focus on the original input conjecture
+rather than this simplified special case.  We therefore abandon our
+previous work on this conjecture and reassign the name *1 to the original
+conjecture.  (See :DOC otf-flg.)
+
+])
+
+Perhaps we can prove *1 by induction.  Two induction schemes are suggested
+by this conjecture.  These merge into one derived induction scheme.
+
+We will induct according to a scheme suggested by 
+(ROOT-STEP-RULES RULES X U), while accommodating (MEMBER-EQUAL RULE RULES).
+
+These suggestions were produced using the :induction rules MEMBER-EQUAL
+and ROOT-STEP-RULES.  If we let (:P RULE RULES U X) denote *1 above
+then the induction scheme we'll use is
+(AND (IMPLIES (AND (NOT (ENDP RULES))
+                   (NOT (AND (NOT (EQ (RULE-MATCH (CAR RULES) X) :FAIL))
+                             (EQUAL (INSTANTIATE (CADDR (CAR RULES))
+                                                 (RULE-MATCH (CAR RULES) X))
+                                    U)))
+                   (:P RULE (CDR RULES) U X))
+              (:P RULE RULES U X))
+     (IMPLIES (AND (NOT (ENDP RULES))
+                   (AND (NOT (EQ (RULE-MATCH (CAR RULES) X) :FAIL))
+                        (EQUAL (INSTANTIATE (CADDR (CAR RULES))
+                                            (RULE-MATCH (CAR RULES) X))
+                               U)))
+              (:P RULE RULES U X))
+     (IMPLIES (ENDP RULES)
+              (:P RULE RULES U X))).
+This induction is justified by the same argument used to admit 
+ROOT-STEP-RULES.  When applied to the goal at hand the above induction
+scheme produces three nontautological subgoals.
+Subgoal *1/3
+Subgoal *1/3'
+
+Splitter note (see :DOC splitter) for Subgoal *1/3' (3 subgoals).
+  if-intro: ((:DEFINITION MEMBER-EQUAL)
+             (:DEFINITION NOT)
+             (:DEFINITION RULE-MATCH))
+
+Subgoal *1/3.3
+Subgoal *1/3.2
+Subgoal *1/3.1
+Subgoal *1/2
+Subgoal *1/2'
+Subgoal *1/1
+Subgoal *1/1'
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+The storage of ROOT-STEP-RULES-MEMBER depends upon the :type-prescription
+rule ROOT-STEP-RULES.
+
+Summary
+Form:  ( DEFTHM ROOT-STEP-RULES-MEMBER ...)
+Rules: ((:DEFINITION ENDP)
+        (:DEFINITION EQ)
+        (:DEFINITION INSTANTIATE)
+        (:DEFINITION MEMBER-EQUAL)
+        (:DEFINITION NOT)
+        (:DEFINITION ROOT-STEP-RULES)
+        (:DEFINITION RULE-MATCH)
+        (:EXECUTABLE-COUNTERPART CONSP)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART KEYWORDP)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION MEMBER-EQUAL)
+        (:INDUCTION ROOT-STEP-RULES)
+        (:TYPE-PRESCRIPTION FREEP)
+        (:TYPE-PRESCRIPTION ROOT-STEP-RULES))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION MEMBER-EQUAL)
+             (:DEFINITION NOT)
+             (:DEFINITION RULE-MATCH))
+Warnings:  Free
+Time:  0.02 seconds (prove: 0.02, print: 0.00, other: 0.00)
+Prover steps counted:  33817
+ ROOT-STEP-RULES-MEMBER
+ACL2 !>
+ACL2 Warning [Non-rec] in ( DEFTHM ROOT-STEP-BY-RULE ...):  A :REWRITE
+rule generated from ROOT-STEP-BY-RULE will be triggered only by terms
+containing the function symbols ROOT-STEP and RULE-MATCH, which have
+non-recursive definitions.  Unless these definitions are disabled,
+this rule is unlikely ever to be used.
+
+
+ACL2 Warning [Subsume] in ( DEFTHM ROOT-STEP-BY-RULE ...):  The previously
+added rule ROOT-STEP subsumes a newly proposed :REWRITE rule generated
+from ROOT-STEP-BY-RULE, in the sense that the old rule rewrites a more
+general target.  Because the new rule will be tried first, it may nonetheless
+find application.
+
+
+ACL2 Warning [Use] in ( DEFTHM ROOT-STEP-BY-RULE ...):  It is unusual
+to :USE the formula of an enabled :REWRITE or :DEFINITION rule, so
+you may want to consider disabling (:REWRITE ROOT-STEP-RULES-MEMBER)
+in the hint provided for Goal.  See :DOC using-enabled-rules.
+
+Goal'
+Goal''
+
+Splitter note (see :DOC splitter) for Goal'' (196 subgoals).
+  if-intro: ((:DEFINITION INSTANTIATE)
+             (:DEFINITION MATCH-PAT)
+             (:DEFINITION MEMBER-EQUAL)
+             (:DEFINITION NOT)
+             (:DEFINITION ROOT-STEP-RULES)
+             (:DEFINITION RULE-MATCH))
+
+Subgoal 196
+
+Splitter note (see :DOC splitter) for Subgoal 196 (5 subgoals).
+  if-intro: ((:DEFINITION INSTANTIATE)
+             (:DEFINITION MATCH-PAT)
+             (:DEFINITION ROOT-STEP-RULES)
+             (:DEFINITION RULE-MATCH)
+             (:REWRITE CONS-EQUAL))
+
+Subgoal 196.5
+Subgoal 196.4
+Subgoal 196.3
+Subgoal 196.2
+Subgoal 196.1
+Subgoal 195
+
+Splitter note (see :DOC splitter) for Subgoal 195 (6 subgoals).
+  if-intro: ((:DEFINITION INSTANTIATE)
+             (:DEFINITION MATCH-PAT)
+             (:DEFINITION ROOT-STEP-RULES)
+             (:DEFINITION RULE-MATCH)
+             (:REWRITE CONS-EQUAL))
+
+Subgoal 195.6
+Subgoal 195.5
+Subgoal 195.4
+Subgoal 195.3
+Subgoal 195.2
+Subgoal 195.1
+Subgoal 194
+
+Splitter note (see :DOC splitter) for Subgoal 194 (6 subgoals).
+  if-intro: ((:DEFINITION INSTANTIATE)
+             (:DEFINITION MATCH-PAT)
+             (:DEFINITION ROOT-STEP-RULES)
+             (:DEFINITION RULE-MATCH)
+             (:REWRITE CONS-EQUAL))
+
+Subgoal 194.6
+Subgoal 194.5
+Subgoal 194.4
+Subgoal 194.3
+Subgoal 194.2
+Subgoal 194.1
+Subgoal 193
+Subgoal 192
+Subgoal 192'
+Subgoal 191
+Subgoal 191'
+Subgoal 190
+Subgoal 190'
+Subgoal 189
+Subgoal 188
+Subgoal 188'
+Subgoal 187
+Subgoal 187'
+Subgoal 186
+Subgoal 186'
+Subgoal 185
+Subgoal 185'
+Subgoal 184
+Subgoal 183
+Subgoal 183'
+Subgoal 182
+Subgoal 182'
+Subgoal 181
+Subgoal 181'
+Subgoal 180
+Subgoal 179
+Subgoal 179'
+Subgoal 178
+Subgoal 178'
+Subgoal 177
+Subgoal 177'
+Subgoal 176
+Subgoal 176'
+Subgoal 175
+Subgoal 174
+Subgoal 173
+Subgoal 172
+Subgoal 171
+Subgoal 170
+Subgoal 169
+Subgoal 168
+Subgoal 167
+Subgoal 166
+Subgoal 165
+Subgoal 165'
+Subgoal 164
+Subgoal 164'
+Subgoal 163
+Subgoal 163'
+Subgoal 162
+Subgoal 161
+Subgoal 161'
+Subgoal 160
+Subgoal 160'
+Subgoal 159
+Subgoal 159'
+Subgoal 158
+Subgoal 158'
+Subgoal 157
+
+Splitter note (see :DOC splitter) for Subgoal 157 (79 subgoals).
+  if-intro: ((:DEFINITION INSTANTIATE)
+             (:DEFINITION MATCH-PAT)
+             (:DEFINITION ROOT-STEP-RULES)
+             (:DEFINITION RULE-MATCH))
+
+Subgoal 157.79
+Subgoal 157.79.4
+Subgoal 157.79.4'
+
+([ A key checkpoint:
+
+Subgoal 157.79
+(IMPLIES (AND (NOT (EQUAL RULE
+                          '(IF-NOT (IF-NOT :C :A :B)
+                                   (IF (NOT :C) :A :B)
+                                   NIL)))
+              (NOT (EQUAL RULE
+                          '(IF-NOT-SWAP (IF (NOT :C) :A :B)
+                                        (IF :C :B :A)
+                                        NIL)))
+              (NOT (EQUAL RULE
+                          '(COND-2 (COND :T1 :E1 :ELSE :E2)
+                                   (IF :T1 :E1 :E2)
+                                   NIL)))
+              (NOT (EQUAL RULE
+                          '(COND-STEP (COND :T1 :E1 . :REST)
+                                      (IF :T1 :E1 (COND . :REST))
+                                      NIL)))
+              (NOT (EQUAL RULE
+                          '(CASE-1 (CASE :E :K :R :D)
+                                   (LET (T :E) (IF (= T :K) :R :D))
+                                   T)))
+              (NOT (EQUAL (MATCH-PAT (CADR RULE) (FETCH X P) NIL)
+                          :FAIL)))
+         (CADDR RULE))
+
+Normally we would attempt to prove Subgoal 157.79.4' by induction.
+However, we prefer in this instance to focus on the original input
+conjecture rather than this simplified special case.  We therefore
+abandon our previous work on this conjecture and reassign the name
+*1 to the original conjecture.  (See :DOC otf-flg.)
+
+])
+
+Perhaps we can prove *1 by induction.  Three induction schemes are
+suggested by this conjecture.  Subsumption reduces that number to one.
+
+We will induct according to a scheme suggested by (FETCH X P), while
+accommodating (FETCH X P).
+
+These suggestions were produced using the :induction rule FETCH.  If
+we let (:P P RULE X) denote *1 above then the induction scheme we'll
+use is
+(AND (IMPLIES (AND (NOT (ENDP P))
+                   (NOT (AND (CONSP X)
+                             (INTEGERP (CAR P))
+                             (<= 0 (CAR P))
+                             (< (CAR P) (LEN X)))))
+              (:P P RULE X))
+     (IMPLIES (AND (NOT (ENDP P))
+                   (AND (CONSP X)
+                        (INTEGERP (CAR P))
+                        (<= 0 (CAR P))
+                        (< (CAR P) (LEN X)))
+                   (:P (CDR P) RULE (NTH (CAR P) X)))
+              (:P P RULE X))
+     (IMPLIES (ENDP P) (:P P RULE X))).
+This induction is justified by the same argument used to admit FETCH.
+Note, however, that the unmeasured variable P is being instantiated.
+When applied to the goal at hand the above induction scheme produces
+three nontautological subgoals.
+Subgoal *1/3
+Subgoal *1/3'
+
+Splitter note (see :DOC splitter) for Subgoal *1/3' (4 subgoals).
+  if-intro: ((:DEFINITION ASSOC-EQUAL)
+             (:DEFINITION KEYWORDP)
+             (:DEFINITION MATCH-PAT)
+             (:DEFINITION NOT)
+             (:DEFINITION RULE-MATCH))
+
+Subgoal *1/3.4
+
+Splitter note (see :DOC splitter) for Subgoal *1/3.4 (4 subgoals).
+  if-intro: ((:DEFINITION ASSOC-EQUAL))
+
+Subgoal *1/3.4.4
+Subgoal *1/3.4.4'
+Subgoal *1/3.4.4.4
+Subgoal *1/3.4.4.3
+Subgoal *1/3.4.4.2
+Subgoal *1/3.4.4.2'
+Subgoal *1/3.4.4.2''
+
+([ A key checkpoint while proving *1 (descended from Goal):
+
+Subgoal *1/3.4.4'
+(IMPLIES (AND (CONSP P)
+              (NOT (CONSP X))
+              (NOT (CONSP (CADR RULE)))
+              (SYMBOLP (CADR RULE))
+              (EQUAL (SYMBOL-PACKAGE-NAME (CADR RULE))
+                     "KEYWORD"))
+         (CADDR RULE))
+
+*1.1 (Subgoal *1/3.4.4.2'') is pushed for proof by induction.
+Subgoal *1/3.4.4.1
+Subgoal *1/3.4.4.1'
+Subgoal *1/3.4.4.1''
+
+*1.2 (Subgoal *1/3.4.4.1'') is pushed for proof by induction.
+
+])
+Subgoal *1/3.4.3
+Subgoal *1/3.4.3'
+Subgoal *1/3.4.3''
+Subgoal *1/3.4.3.3
+Subgoal *1/3.4.3.2
+Subgoal *1/3.4.3.1
+Subgoal *1/3.4.3.1'
+Subgoal *1/3.4.3.1''
+
+([ A key checkpoint while proving *1 (descended from Goal):
+
+Subgoal *1/3.4.3''
+(IMPLIES (AND (CONSP P)
+              (NOT (CONSP X))
+              (NOT (CONSP (CADR RULE)))
+              (SYMBOLP (CADR RULE))
+              (EQUAL (SYMBOL-PACKAGE-NAME (CADR RULE))
+                     "KEYWORD")
+              (NOT (EQUAL :R (CADR RULE))))
+         (EQUAL :D (CADR RULE)))
+
+*1.3 (Subgoal *1/3.4.3.1'') is pushed for proof by induction.
+
+])
+Subgoal *1/3.4.2
+Subgoal *1/3.4.2'
+Subgoal *1/3.4.2.3
+Subgoal *1/3.4.2.2
+Subgoal *1/3.4.2.1
+Subgoal *1/3.4.2.1'
+Subgoal *1/3.4.2.1''
+Subgoal *1/3.4.2.1'''
+
+([ A key checkpoint while proving *1 (descended from Goal):
+
+Subgoal *1/3.4.2'
+(IMPLIES (AND (CONSP P) (NOT (CONSP X)))
+         (NOT (EQUAL :R (CADR RULE))))
+
+A goal of NIL, Subgoal *1/3.4.2.1''', has been generated!  Obviously,
+the proof attempt has failed.
+
+])
+
+Summary
+Form:  ( DEFTHM ROOT-STEP-BY-RULE ...)
+Rules: ((:DEFINITION ASSOC-EQUAL)
+        (:DEFINITION ENDP)
+        (:DEFINITION EQ)
+        (:DEFINITION FETCH)
+        (:DEFINITION INSTANTIATE)
+        (:DEFINITION KEYWORDP)
+        (:DEFINITION MATCH-PAT)
+        (:DEFINITION MEMBER-EQUAL)
+        (:DEFINITION NOT)
+        (:DEFINITION ROOT-STEP)
+        (:DEFINITION ROOT-STEP-RULES)
+        (:DEFINITION RULE-MATCH)
+        (:ELIM CAR-CDR-ELIM)
+        (:EXECUTABLE-COUNTERPART ASSOC-EQUAL)
+        (:EXECUTABLE-COUNTERPART CAR)
+        (:EXECUTABLE-COUNTERPART CDR)
+        (:EXECUTABLE-COUNTERPART CONS)
+        (:EXECUTABLE-COUNTERPART CONSP)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FREEP)
+        (:EXECUTABLE-COUNTERPART INSTANTIATE)
+        (:EXECUTABLE-COUNTERPART KEYWORDP)
+        (:EXECUTABLE-COUNTERPART MATCH-PAT)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART RULE-MATCH)
+        (:EXECUTABLE-COUNTERPART SYMBOL-PACKAGE-NAME)
+        (:EXECUTABLE-COUNTERPART SYMBOLP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION FETCH)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:REWRITE CONS-EQUAL)
+        (:REWRITE DEFAULT-CAR)
+        (:REWRITE DEFAULT-CDR)
+        (:TYPE-PRESCRIPTION LEN))
+Hint-events: ((:USE ROOT-STEP-RULES-MEMBER))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION ASSOC-EQUAL)
+             (:DEFINITION INSTANTIATE)
+             (:DEFINITION KEYWORDP)
+             (:DEFINITION MATCH-PAT)
+             (:DEFINITION MEMBER-EQUAL)
+             (:DEFINITION NOT)
+             (:DEFINITION ROOT-STEP-RULES)
+             (:DEFINITION RULE-MATCH)
+             (:REWRITE CONS-EQUAL))
+Warnings:  Use, Subsume and Non-rec
+Time:  18.08 seconds (prove: 18.08, print: 0.00, other: 0.00)
+Prover steps counted:  28711511
+
+---
+The key checkpoint goals, below, may help you to debug this failure.
+See :DOC failure and see :DOC set-checkpoint-summary-limit.
+---
+
+*** Key checkpoint before reverting to proof by induction: ***
+
+Subgoal 157.79
+(IMPLIES (AND (NOT (EQUAL RULE
+                          '(IF-NOT (IF-NOT :C :A :B)
+                                   (IF (NOT :C) :A :B)
+                                   NIL)))
+              (NOT (EQUAL RULE
+                          '(IF-NOT-SWAP (IF (NOT :C) :A :B)
+                                        (IF :C :B :A)
+                                        NIL)))
+              (NOT (EQUAL RULE
+                          '(COND-2 (COND :T1 :E1 :ELSE :E2)
+                                   (IF :T1 :E1 :E2)
+                                   NIL)))
+              (NOT (EQUAL RULE
+                          '(COND-STEP (COND :T1 :E1 . :REST)
+                                      (IF :T1 :E1 (COND . :REST))
+                                      NIL)))
+              (NOT (EQUAL RULE
+                          '(CASE-1 (CASE :E :K :R :D)
+                                   (LET (T :E) (IF (= T :K) :R :D))
+                                   T)))
+              (NOT (EQUAL (MATCH-PAT (CADR RULE) (FETCH X P) NIL)
+                          :FAIL)))
+         (CADDR RULE))
+
+*** Key checkpoints under a top-level induction
+    before generating a goal of NIL (see :DOC nil-goal): ***
+
+Subgoal *1/3.4.4'
+(IMPLIES (AND (CONSP P)
+              (NOT (CONSP X))
+              (NOT (CONSP (CADR RULE)))
+              (SYMBOLP (CADR RULE))
+              (EQUAL (SYMBOL-PACKAGE-NAME (CADR RULE))
+                     "KEYWORD"))
+         (CADDR RULE))
+
+Subgoal *1/3.4.3''
+(IMPLIES (AND (CONSP P)
+              (NOT (CONSP X))
+              (NOT (CONSP (CADR RULE)))
+              (SYMBOLP (CADR RULE))
+              (EQUAL (SYMBOL-PACKAGE-NAME (CADR RULE))
+                     "KEYWORD")
+              (NOT (EQUAL :R (CADR RULE))))
+         (EQUAL :D (CADR RULE)))
+
+Subgoal *1/3.4.2'
+(IMPLIES (AND (CONSP P) (NOT (CONSP X)))
+         (NOT (EQUAL :R (CADR RULE))))
+
+ACL2 Error [Failure] in ( DEFTHM ROOT-STEP-BY-RULE ...):  See :DOC
+failure.
+
+******** FAILED ********
+ACL2 !>
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+We have been told to use induction.  One induction scheme is suggested
+by the induction hint.  
+
+We will induct according to a scheme suggested by (NTH I X).
+
+This suggestion was produced using the :induction rule NTH.  If we
+let (:P I X Y) denote *1 above then the induction scheme we'll use
+is
+(AND (IMPLIES (AND (NOT (ENDP X))
+                   (NOT (ZP I))
+                   (:P (+ -1 I) (CDR X) Y))
+              (:P I X Y))
+     (IMPLIES (AND (NOT (ENDP X)) (ZP I))
+              (:P I X Y))
+     (IMPLIES (ENDP X) (:P I X Y))).
+This induction is justified by the same argument used to admit NTH.
+Note, however, that the unmeasured variable X is being instantiated.
+When applied to the goal at hand the above induction scheme produces
+three nontautological subgoals.
+Subgoal *1/3
+Subgoal *1/3'
+Subgoal *1/3.2
+Subgoal *1/3.1
+
+Splitter note (see :DOC splitter) for Subgoal *1/3.1 (30 subgoals).
+  if-intro: ((:DEFINITION INSTANTIATE)
+             (:DEFINITION MATCH-PAT)
+             (:DEFINITION ROOT-STEP-RULES)
+             (:DEFINITION RULE-MATCH)
+             (:DEFINITION STEP-REL)
+             (:REWRITE CONS-EQUAL))
+
+Subgoal *1/3.1.30
+Subgoal *1/3.1.30'
+Subgoal *1/3.1.30''
+Subgoal *1/3.1.30'''
+Subgoal *1/3.1.30'4'
+Subgoal *1/3.1.30'5'
+Subgoal *1/3.1.30'6'
+Subgoal *1/3.1.30'7'
+
+([ A key checkpoint while proving *1 (descended from Goal):
+
+Subgoal *1/3.1.30'4'
+(IMPLIES (AND (CONSP X)
+              (CONSP (CDR X))
+              (STEP-REL (CADR X) Y)
+              (NOT (CONSP (CDDR X)))
+              (STEP-REL (CAR X) (CAR X)))
+         (EQUAL (CDR X) (CONS Y (CDDR X))))
+
+*1.1 (Subgoal *1/3.1.30'7') is pushed for proof by induction.
+
+])
+Subgoal *1/3.1.29
+Subgoal *1/3.1.29.3
+Subgoal *1/3.1.29.2
+
+Splitter note (see :DOC splitter) for Subgoal *1/3.1.29.2 (9 subgoals).
+  if-intro: ((:DEFINITION INSTANTIATE)
+             (:DEFINITION MATCH-PAT)
+             (:DEFINITION ROOT-STEP-RULES)
+             (:DEFINITION RULE-MATCH)
+             (:DEFINITION STEP-REL))
+
+Subgoal *1/3.1.29.2.9
+Subgoal *1/3.1.29.2.9'
+Subgoal *1/3.1.29.2.9''
+Subgoal *1/3.1.29.2.9'''
+Subgoal *1/3.1.29.2.9'4'
+Subgoal *1/3.1.29.2.9'5'
+Subgoal *1/3.1.29.2.9'6'
+
+([ A key checkpoint while proving *1 (descended from Goal):
+
+Subgoal *1/3.1.29
+(IMPLIES (AND (CONSP X)
+              (NOT (ZP I))
+              (STEP-REL (CDR X)
+                        (UPDATE-NTH (+ -1 I) Y (CDR X)))
+              (<= 0 I)
+              (< I (+ 1 (LEN (CDR X))))
+              (STEP-REL (NTH (+ -1 I) (CDR X)) Y)
+              (NOT (CONSP (CDR (CADR X))))
+              (STEP-REL (CAR X) (CAR X)))
+         (EQUAL (CDR X)
+                (UPDATE-NTH (+ -1 I) Y (CDR X))))
+
+*1.2 (Subgoal *1/3.1.29.2.9'6') is pushed for proof by induction.
+Subgoal *1/3.1.29.2.8
+Subgoal *1/3.1.29.2.8'
+Subgoal *1/3.1.29.2.8''
+Subgoal *1/3.1.29.2.8'''
+
+*1.3 (Subgoal *1/3.1.29.2.8''') is pushed for proof by induction.
+Subgoal *1/3.1.29.2.7
+Subgoal *1/3.1.29.2.7'
+Subgoal *1/3.1.29.2.7''
+Subgoal *1/3.1.29.2.7'''
+
+*1.4 (Subgoal *1/3.1.29.2.7''') is pushed for proof by induction.
+Subgoal *1/3.1.29.2.6
+Subgoal *1/3.1.29.2.6'
+Subgoal *1/3.1.29.2.6''
+Subgoal *1/3.1.29.2.6'''
+
+*1.5 (Subgoal *1/3.1.29.2.6''') is pushed for proof by induction.
+Subgoal *1/3.1.29.2.5
+Subgoal *1/3.1.29.2.5'
+Subgoal *1/3.1.29.2.5''
+Subgoal *1/3.1.29.2.5'''
+
+*1.6 (Subgoal *1/3.1.29.2.5''') is pushed for proof by induction.
+Subgoal *1/3.1.29.2.4
+Subgoal *1/3.1.29.2.3
+Subgoal *1/3.1.29.2.3'
+Subgoal *1/3.1.29.2.3''
+Subgoal *1/3.1.29.2.3'''
+
+*1.7 (Subgoal *1/3.1.29.2.3''') is pushed for proof by induction.
+Subgoal *1/3.1.29.2.2
+Subgoal *1/3.1.29.2.1
+Subgoal *1/3.1.29.1
+
+Splitter note (see :DOC splitter) for Subgoal *1/3.1.29.1 (3 subgoals).
+  if-intro: ((:DEFINITION MATCH-PAT)
+             (:DEFINITION STEP-REL))
+
+Subgoal *1/3.1.29.1.3
+Subgoal *1/3.1.29.1.3'
+Subgoal *1/3.1.29.1.3''
+Subgoal *1/3.1.29.1.3'''
+Subgoal *1/3.1.29.1.3'4'
+Subgoal *1/3.1.29.1.3'5'
+Subgoal *1/3.1.29.1.3'6'
+
+Splitter note (see :DOC splitter) for Subgoal *1/3.1.29.1.3'6' (3 subgoals).
+  if-intro: ((:REWRITE CONS-EQUAL))
+
+Subgoal *1/3.1.29.1.3.3
+
+*1.8 (Subgoal *1/3.1.29.1.3.3) is pushed for proof by induction.
+Subgoal *1/3.1.29.1.3.2
+
+*1.9 (Subgoal *1/3.1.29.1.3.2) is pushed for proof by induction.
+Subgoal *1/3.1.29.1.3.1
+
+*1.10 (Subgoal *1/3.1.29.1.3.1) is pushed for proof by induction.
+Subgoal *1/3.1.29.1.2
+Subgoal *1/3.1.29.1.2'
+Subgoal *1/3.1.29.1.2''
+Subgoal *1/3.1.29.1.2'''
+Subgoal *1/3.1.29.1.2'4'
+Subgoal *1/3.1.29.1.2'5'
+Subgoal *1/3.1.29.1.2'6'
+Subgoal *1/3.1.29.1.2'7'
+
+*1.11 (Subgoal *1/3.1.29.1.2'7') is pushed for proof by induction.
+Subgoal *1/3.1.29.1.1
+
+])
+Subgoal *1/3.1.28
+Subgoal *1/3.1.27
+Subgoal *1/3.1.27.3
+Subgoal *1/3.1.27.2
+
+Splitter note (see :DOC splitter) for Subgoal *1/3.1.27.2 (9 subgoals).
+  if-intro: ((:DEFINITION INSTANTIATE)
+             (:DEFINITION MATCH-PAT)
+             (:DEFINITION ROOT-STEP-RULES)
+             (:DEFINITION RULE-MATCH)
+             (:DEFINITION STEP-REL))
+
+Subgoal *1/3.1.27.2.9
+Subgoal *1/3.1.27.2.9'
+Subgoal *1/3.1.27.2.9''
+Subgoal *1/3.1.27.2.9'''
+Subgoal *1/3.1.27.2.9'4'
+Subgoal *1/3.1.27.2.9'5'
+Subgoal *1/3.1.27.2.9'6'
+
+([ A key checkpoint while proving *1 (descended from Goal):
+
+Subgoal *1/3.1.27
+(IMPLIES (AND (CONSP X)
+              (NOT (ZP I))
+              (STEP-REL (CDR X)
+                        (UPDATE-NTH (+ -1 I) Y (CDR X)))
+              (<= 0 I)
+              (< I (+ 1 (LEN (CDR X))))
+              (STEP-REL (NTH (+ -1 I) (CDR X)) Y)
+              (NOT (EQUAL 'NOT (CAR (CADR X))))
+              (STEP-REL (CAR X) (CAR X)))
+         (EQUAL (CDR X)
+                (UPDATE-NTH (+ -1 I) Y (CDR X))))
+
+*1.12 (Subgoal *1/3.1.27.2.9'6') is pushed for proof by induction.
+Subgoal *1/3.1.27.2.8
+Subgoal *1/3.1.27.2.8'
+Subgoal *1/3.1.27.2.8''
+Subgoal *1/3.1.27.2.8'''
+
+*1.13 (Subgoal *1/3.1.27.2.8''') is pushed for proof by induction.
+Subgoal *1/3.1.27.2.7
+Subgoal *1/3.1.27.2.7'
+Subgoal *1/3.1.27.2.7''
+Subgoal *1/3.1.27.2.7'''
+
+*1.14 (Subgoal *1/3.1.27.2.7''') is pushed for proof by induction.
+Subgoal *1/3.1.27.2.6
+Subgoal *1/3.1.27.2.6'
+Subgoal *1/3.1.27.2.6''
+Subgoal *1/3.1.27.2.6'''
+
+*1.15 (Subgoal *1/3.1.27.2.6''') is pushed for proof by induction.
+Subgoal *1/3.1.27.2.5
+Subgoal *1/3.1.27.2.5'
+Subgoal *1/3.1.27.2.5''
+Subgoal *1/3.1.27.2.5'''
+
+*1.16 (Subgoal *1/3.1.27.2.5''') is pushed for proof by induction.
+Subgoal *1/3.1.27.2.4
+Subgoal *1/3.1.27.2.3
+Subgoal *1/3.1.27.2.3'
+Subgoal *1/3.1.27.2.3''
+Subgoal *1/3.1.27.2.3'''
+
+*1.17 (Subgoal *1/3.1.27.2.3''') is pushed for proof by induction.
+Subgoal *1/3.1.27.2.2
+Subgoal *1/3.1.27.2.1
+Subgoal *1/3.1.27.1
+
+Splitter note (see :DOC splitter) for Subgoal *1/3.1.27.1 (195 subgoals).
+  if-intro: ((:DEFINITION INSTANTIATE)
+             (:DEFINITION MATCH-PAT)
+             (:DEFINITION ROOT-STEP-RULES)
+             (:DEFINITION RULE-MATCH)
+             (:DEFINITION STEP-REL))
+
+Subgoal *1/3.1.27.1.195
+Subgoal *1/3.1.27.1.195'
+Subgoal *1/3.1.27.1.195''
+Subgoal *1/3.1.27.1.195'''
+Subgoal *1/3.1.27.1.195'4'
+Subgoal *1/3.1.27.1.195'5'
+Subgoal *1/3.1.27.1.195'6'
+Subgoal *1/3.1.27.1.195'7'
+
+Splitter note (see :DOC splitter) for Subgoal *1/3.1.27.1.195'7' (3
+subgoals).
+  if-intro: ((:REWRITE CONS-EQUAL))
+
+Subgoal *1/3.1.27.1.195.3
+
+*1.18 (Subgoal *1/3.1.27.1.195.3) is pushed for proof by induction.
+Subgoal *1/3.1.27.1.195.2
+
+*1.19 (Subgoal *1/3.1.27.1.195.2) is pushed for proof by induction.
+Subgoal *1/3.1.27.1.195.1
+
+*1.20 (Subgoal *1/3.1.27.1.195.1) is pushed for proof by induction.
+Subgoal *1/3.1.27.1.194
+Subgoal *1/3.1.27.1.194'
+Subgoal *1/3.1.27.1.194''
+Subgoal *1/3.1.27.1.194'''
+Subgoal *1/3.1.27.1.194'4'
+Subgoal *1/3.1.27.1.194'5'
+Subgoal *1/3.1.27.1.194'6'
+Subgoal *1/3.1.27.1.194'7'
+
+Splitter note (see :DOC splitter) for Subgoal *1/3.1.27.1.194'7' (3
+subgoals).
+  if-intro: ((:REWRITE CONS-EQUAL))
+
+Subgoal *1/3.1.27.1.194.3
+
+*1.21 (Subgoal *1/3.1.27.1.194.3) is pushed for proof by induction.
+Subgoal *1/3.1.27.1.194.2
+
+*1.22 (Subgoal *1/3.1.27.1.194.2) is pushed for proof by induction.
+Subgoal *1/3.1.27.1.194.1
+
+*1.23 (Subgoal *1/3.1.27.1.194.1) is pushed for proof by induction.
+Subgoal *1/3.1.27.1.193
+Subgoal *1/3.1.27.1.193'
+Subgoal *1/3.1.27.1.193''
+Subgoal *1/3.1.27.1.193'''
+Subgoal *1/3.1.27.1.193'4'
+Subgoal *1/3.1.27.1.193'5'
+Subgoal *1/3.1.27.1.193'6'
+Subgoal *1/3.1.27.1.193'7'
+
+*1.24 (Subgoal *1/3.1.27.1.193'7') is pushed for proof by induction.
+Subgoal *1/3.1.27.1.192
+Subgoal *1/3.1.27.1.191
+Subgoal *1/3.1.27.1.190
+Subgoal *1/3.1.27.1.189
+Subgoal *1/3.1.27.1.189'
+Subgoal *1/3.1.27.1.189''
+Subgoal *1/3.1.27.1.189'''
+Subgoal *1/3.1.27.1.189'4'
+Subgoal *1/3.1.27.1.189'5'
+Subgoal *1/3.1.27.1.189'6'
+Subgoal *1/3.1.27.1.189'7'
+
+*1.25 (Subgoal *1/3.1.27.1.189'7') is pushed for proof by induction.
+Subgoal *1/3.1.27.1.188
+Subgoal *1/3.1.27.1.187
+Subgoal *1/3.1.27.1.186
+Subgoal *1/3.1.27.1.186'
+Subgoal *1/3.1.27.1.186''
+Subgoal *1/3.1.27.1.186'''
+Subgoal *1/3.1.27.1.186'4'
+Subgoal *1/3.1.27.1.186'5'
+Subgoal *1/3.1.27.1.186'6'
+Subgoal *1/3.1.27.1.186'7'
+
+*1.26 (Subgoal *1/3.1.27.1.186'7') is pushed for proof by induction.
+Subgoal *1/3.1.27.1.185
+Subgoal *1/3.1.27.1.184
+Subgoal *1/3.1.27.1.183
+Subgoal *1/3.1.27.1.182
+Subgoal *1/3.1.27.1.182'
+Subgoal *1/3.1.27.1.182''
+Subgoal *1/3.1.27.1.182'''
+Subgoal *1/3.1.27.1.182'4'
+Subgoal *1/3.1.27.1.182'5'
+Subgoal *1/3.1.27.1.182'6'
+Subgoal *1/3.1.27.1.182'7'
+
+*1.27 (Subgoal *1/3.1.27.1.182'7') is pushed for proof by induction.
+Subgoal *1/3.1.27.1.181
+Subgoal *1/3.1.27.1.180
+Subgoal *1/3.1.27.1.179
+Subgoal *1/3.1.27.1.178
+Subgoal *1/3.1.27.1.178'
+Subgoal *1/3.1.27.1.178''
+Subgoal *1/3.1.27.1.178'''
+Subgoal *1/3.1.27.1.178'4'
+Subgoal *1/3.1.27.1.178'5'
+Subgoal *1/3.1.27.1.178'6'
+Subgoal *1/3.1.27.1.178'7'
+
+*1.28 (Subgoal *1/3.1.27.1.178'7') is pushed for proof by induction.
+Subgoal *1/3.1.27.1.177
+Subgoal *1/3.1.27.1.176
+Subgoal *1/3.1.27.1.176'
+Subgoal *1/3.1.27.1.176''
+Subgoal *1/3.1.27.1.176'''
+Subgoal *1/3.1.27.1.176'4'
+Subgoal *1/3.1.27.1.176'5'
+Subgoal *1/3.1.27.1.176'6'
+Subgoal *1/3.1.27.1.176'7'
+
+*1.29 (Subgoal *1/3.1.27.1.176'7') is pushed for proof by induction.
+Subgoal *1/3.1.27.1.175
+Subgoal *1/3.1.27.1.174
+Subgoal *1/3.1.27.1.174'
+Subgoal *1/3.1.27.1.174''
+Subgoal *1/3.1.27.1.174'''
+Subgoal *1/3.1.27.1.174'4'
+Subgoal *1/3.1.27.1.174'5'
+Subgoal *1/3.1.27.1.174'6'
+Subgoal *1/3.1.27.1.174'7'
+
+*1.30 (Subgoal *1/3.1.27.1.174'7') is pushed for proof by induction.
+Subgoal *1/3.1.27.1.173
+Subgoal *1/3.1.27.1.172
+Subgoal *1/3.1.27.1.171
+Subgoal *1/3.1.27.1.170
+Subgoal *1/3.1.27.1.169
+Subgoal *1/3.1.27.1.168
+Subgoal *1/3.1.27.1.167
+Subgoal *1/3.1.27.1.166
+Subgoal *1/3.1.27.1.165
+Subgoal *1/3.1.27.1.164
+Subgoal *1/3.1.27.1.163
+Subgoal *1/3.1.27.1.162
+Subgoal *1/3.1.27.1.161
+Subgoal *1/3.1.27.1.160
+Subgoal *1/3.1.27.1.159
+Subgoal *1/3.1.27.1.158
+Subgoal *1/3.1.27.1.157
+Subgoal *1/3.1.27.1.156
+Subgoal *1/3.1.27.1.155
+Subgoal *1/3.1.27.1.154
+Subgoal *1/3.1.27.1.153
+Subgoal *1/3.1.27.1.152
+Subgoal *1/3.1.27.1.151
+Subgoal *1/3.1.27.1.150
+Subgoal *1/3.1.27.1.149
+Subgoal *1/3.1.27.1.148
+Subgoal *1/3.1.27.1.147
+Subgoal *1/3.1.27.1.146
+Subgoal *1/3.1.27.1.145
+
+Splitter note (see :DOC splitter) for Subgoal *1/3.1.27.1.145 (2 subgoals).
+  if-intro: ((:DEFINITION MATCH-PAT)
+             (:DEFINITION STEP-REL))
+
+Subgoal *1/3.1.27.1.145.2
+Subgoal *1/3.1.27.1.145.2'
+Subgoal *1/3.1.27.1.145.2''
+Subgoal *1/3.1.27.1.145.2'''
+Subgoal *1/3.1.27.1.145.2'4'
+Subgoal *1/3.1.27.1.145.2'5'
+Subgoal *1/3.1.27.1.145.2'6'
+Subgoal *1/3.1.27.1.145.2'7'
+
+*1.31 (Subgoal *1/3.1.27.1.145.2'7') is pushed for proof by induction.
+Subgoal *1/3.1.27.1.145.1
+Subgoal *1/3.1.27.1.145.1'
+Subgoal *1/3.1.27.1.145.1''
+Subgoal *1/3.1.27.1.145.1'''
+Subgoal *1/3.1.27.1.145.1'4'
+Subgoal *1/3.1.27.1.145.1'5'
+Subgoal *1/3.1.27.1.145.1'6'
+
+*1.32 (Subgoal *1/3.1.27.1.145.1'6') is pushed for proof by induction.
+Subgoal *1/3.1.27.1.144
+
+Summary
+Form:  ( DEFTHM STEP-REL-UPDATE-NTH ...)
+Rules: ((:COMPOUND-RECOGNIZER ZP-COMPOUND-RECOGNIZER)
+        (:DEFINITION ASSOC-EQUAL)
+        (:DEFINITION ENDP)
+        (:DEFINITION INSTANTIATE)
+        (:DEFINITION LEN)
+        (:DEFINITION MATCH-PAT)
+        (:DEFINITION NOT)
+        (:DEFINITION NTH)
+        (:DEFINITION ROOT-STEP)
+        (:DEFINITION ROOT-STEP-RULES)
+        (:DEFINITION RULE-MATCH)
+        (:DEFINITION STEP-REL)
+        (:DEFINITION SYNP)
+        (:DEFINITION UPDATE-NTH)
+        (:ELIM CAR-CDR-ELIM)
+        (:EXECUTABLE-COUNTERPART <)
+        (:EXECUTABLE-COUNTERPART ASSOC-EQUAL)
+        (:EXECUTABLE-COUNTERPART BINARY-+)
+        (:EXECUTABLE-COUNTERPART CAR)
+        (:EXECUTABLE-COUNTERPART CDR)
+        (:EXECUTABLE-COUNTERPART CONS)
+        (:EXECUTABLE-COUNTERPART CONSP)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FREEP)
+        (:EXECUTABLE-COUNTERPART KEYWORDP)
+        (:EXECUTABLE-COUNTERPART LEN)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART STEP-REL)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM)
+        (:EXECUTABLE-COUNTERPART ZP)
+        (:FAKE-RUNE-FOR-LINEAR-EQUALITIES NIL)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION NTH)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:REWRITE CONS-EQUAL)
+        (:REWRITE DEFAULT-CAR)
+        (:REWRITE DEFAULT-CDR)
+        (:REWRITE FOLD-CONSTS-IN-+)
+        (:TYPE-PRESCRIPTION STEP-REL)
+        (:TYPE-PRESCRIPTION UPDATE-NTH))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION INSTANTIATE)
+             (:DEFINITION MATCH-PAT)
+             (:DEFINITION ROOT-STEP-RULES)
+             (:DEFINITION RULE-MATCH)
+             (:DEFINITION STEP-REL)
+             (:REWRITE CONS-EQUAL))
+Time:  600.04 seconds (prove: 572.05, print: 0.01, other: 27.98)
+Prover steps counted:  677585658
+
+---
+The key checkpoint goals, below, may help you to debug this failure.
+See :DOC failure and see :DOC set-checkpoint-summary-limit.
+---
+
+*** Key checkpoint at the top level: ***
+
+Goal
+(IMPLIES (AND (INTEGERP I)
+              (<= 0 I)
+              (< I (LEN X))
+              (STEP-REL (NTH I X) Y))
+         (STEP-REL X (UPDATE-NTH I Y X)))
+
+*** Key checkpoints under a top-level induction: ***
+
+Subgoal *1/3.1.30'4'
+(IMPLIES (AND (CONSP X)
+              (CONSP (CDR X))
+              (STEP-REL (CADR X) Y)
+              (NOT (CONSP (CDDR X)))
+              (STEP-REL (CAR X) (CAR X)))
+         (EQUAL (CDR X) (CONS Y (CDDR X))))
+
+Subgoal *1/3.1.29
+(IMPLIES (AND (CONSP X)
+              (NOT (ZP I))
+              (STEP-REL (CDR X)
+                        (UPDATE-NTH (+ -1 I) Y (CDR X)))
+              (<= 0 I)
+              (< I (+ 1 (LEN (CDR X))))
+              (STEP-REL (NTH (+ -1 I) (CDR X)) Y)
+              (NOT (CONSP (CDR (CADR X))))
+              (STEP-REL (CAR X) (CAR X)))
+         (EQUAL (CDR X)
+                (UPDATE-NTH (+ -1 I) Y (CDR X))))
+
+Subgoal *1/3.1.27
+(IMPLIES (AND (CONSP X)
+              (NOT (ZP I))
+              (STEP-REL (CDR X)
+                        (UPDATE-NTH (+ -1 I) Y (CDR X)))
+              (<= 0 I)
+              (< I (+ 1 (LEN (CDR X))))
+              (STEP-REL (NTH (+ -1 I) (CDR X)) Y)
+              (NOT (EQUAL 'NOT (CAR (CADR X))))
+              (STEP-REL (CAR X) (CAR X)))
+         (EQUAL (CDR X)
+                (UPDATE-NTH (+ -1 I) Y (CDR X))))
+
+ACL2 Error [Failure] in ( DEFTHM STEP-REL-UPDATE-NTH ...):  See :DOC
+failure.
+
+******** FAILED ********
+ACL2 !>
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+We have been told to use induction.  One induction scheme is suggested
+by the induction hint.  
+
+We will induct according to a scheme suggested by (FETCH X P).
+
+This suggestion was produced using the :induction rule FETCH.  If we
+let (:P P X Y) denote *1 above then the induction scheme we'll use
+is
+(AND (IMPLIES (AND (NOT (ENDP P))
+                   (NOT (AND (CONSP X)
+                             (INTEGERP (CAR P))
+                             (<= 0 (CAR P))
+                             (< (CAR P) (LEN X)))))
+              (:P P X Y))
+     (IMPLIES (AND (NOT (ENDP P))
+                   (AND (CONSP X)
+                        (INTEGERP (CAR P))
+                        (<= 0 (CAR P))
+                        (< (CAR P) (LEN X)))
+                   (:P (CDR P) (NTH (CAR P) X) Y))
+              (:P P X Y))
+     (IMPLIES (ENDP P) (:P P X Y))).
+This induction is justified by the same argument used to admit FETCH.
+Note, however, that the unmeasured variable P is being instantiated.
+When applied to the goal at hand the above induction scheme produces
+three nontautological subgoals.
+Subgoal *1/3
+Subgoal *1/3'
+Subgoal *1/2
+Subgoal *1/2'
+Subgoal *1/2''

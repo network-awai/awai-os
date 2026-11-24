@@ -1,0 +1,171 @@
+This is SBCL 2.4.0, an implementation of ANSI Common Lisp.
+More information about SBCL is available at <http://www.sbcl.org/>.
+
+SBCL is free software, provided as is, with absolutely no warranty.
+It is mostly in the public domain; some portions are provided under
+BSD-style licenses.  See the CREDITS and COPYING files in the
+distribution for more information.
+
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ + ACL2 Version 8.7                                                     +
+ +   built November 24, 2026  20:34:44.                                 +
+ + Copyright (C) 2026, Regents of the University of Texas.              +
+ + ACL2 comes with ABSOLUTELY NO WARRANTY.  This is free software and   +
+ + you are welcome to redistribute it under certain conditions.  For    +
+ + details, see the LICENSE file distributed with ACL2.                 +
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Project-dir-alist:
+((:SYSTEM . "/Users/node/pcc/src/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !> "ACL2"
+ACL2 !>
+Since REF-NAME-P is non-recursive, its admission is trivial.  We observe
+that the type of REF-NAME-P is described by the theorem 
+(EQUAL (REF-NAME-P X) NIL).  
+
+Summary
+Form:  ( DEFUN REF-NAME-P ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ REF-NAME-P
+ACL2 !>
+For the admission of DG, DG-LIST, DG-COND and DG-CASE-IF we will use
+the relation O< (which is known to be well-founded on the domain recognized
+by O-P) and the measure (NFIX N) for DG, (NFIX N) for DG-LIST, (NFIX N)
+for DG-COND and (NFIX N) for DG-CASE-IF.  The non-trivial part of the
+measure conjecture, given the :type-prescription rule REF-NAME-P, is
+
+Goal
+(AND (O-P (NFIX N))
+     (IMPLIES (NOT (ZP N))
+              (O< (NFIX (+ -1 N)) (NFIX N)))).
+Subgoal 2
+Subgoal 1
+Subgoal 1'
+
+Q.E.D.
+
+That completes the proof of the measure theorem for DG, DG-LIST, DG-COND
+and DG-CASE-IF.  Thus, we admit these functions under the principle
+of definition.  We observe that the type of DG is described by the
+theorem (NOT (AND (CONSP (DG X N)) (NOT (TRUE-LISTP (DG X N))))), the
+type of DG-LIST is described by the theorem (TRUE-LISTP (DG-LIST XS N)),
+the type of DG-COND is described by the theorem 
+(NOT (AND (CONSP (DG-COND CLAUSES N))
+          (NOT (TRUE-LISTP (DG-COND CLAUSES N)))))
+and the type of DG-CASE-IF is described by the theorem 
+(NOT (AND (CONSP (DG-CASE-IF V REST N))
+          (NOT (TRUE-LISTP (DG-CASE-IF V REST N))))).
+
+Summary
+Form:  ( MUTUAL-RECURSION ( DEFUN DG ...) ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:COMPOUND-RECOGNIZER ZP-COMPOUND-RECOGNIZER)
+        (:DEFINITION NFIX)
+        (:DEFINITION O-FINP)
+        (:DEFINITION O-P)
+        (:DEFINITION O<)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:TYPE-PRESCRIPTION REF-NAME-P))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  103
+ (DG DG-LIST DG-COND DG-CASE-IF)
+ACL2 !>
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM COND-VS-IF ...)
+Rules: ((:EXECUTABLE-COUNTERPART DG)
+        (:EXECUTABLE-COUNTERPART EQUAL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  5
+ COND-VS-IF
+ACL2 !>
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM COND-CHAIN-VS-NESTED-IF ...)
+Rules: ((:EXECUTABLE-COUNTERPART DG)
+        (:EXECUTABLE-COUNTERPART EQUAL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  5
+ COND-CHAIN-VS-NESTED-IF
+ACL2 !>
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM COND-CHAIN-VS-NESTED-IF-CONTROL ...)
+Rules: ((:EXECUTABLE-COUNTERPART DG)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART NOT))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  6
+ COND-CHAIN-VS-NESTED-IF-CONTROL
+ACL2 !>
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM IF-NOT-VS-SWAPPED-IF ...)
+Rules: ((:EXECUTABLE-COUNTERPART DG)
+        (:EXECUTABLE-COUNTERPART EQUAL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  5
+ IF-NOT-VS-SWAPPED-IF
+ACL2 !>
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM IF-NOT-VS-SWAPPED-IF-CONTROL ...)
+Rules: ((:EXECUTABLE-COUNTERPART DG)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART NOT))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  6
+ IF-NOT-VS-SWAPPED-IF-CONTROL
+ACL2 !>
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM CASE-ONE-CLAUSE-VS-LET-IF ...)
+Rules: ((:EXECUTABLE-COUNTERPART DG)
+        (:EXECUTABLE-COUNTERPART EQUAL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  5
+ CASE-ONE-CLAUSE-VS-LET-IF
+ACL2 !>
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM CASE-ONE-CLAUSE-VS-LET-IF-CONTROL ...)
+Rules: ((:EXECUTABLE-COUNTERPART DG)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART NOT))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  6
+ CASE-ONE-CLAUSE-VS-LET-IF-CONTROL
+ACL2 !>
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM CASE-TWO-CLAUSES-VS-LET-IF ...)
+Rules: ((:EXECUTABLE-COUNTERPART DG)
+        (:EXECUTABLE-COUNTERPART EQUAL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  5
+ CASE-TWO-CLAUSES-VS-LET-IF
+ACL2 !>
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM CASE-TWO-CLAUSES-VS-LET-IF-CONTROL ...)
+Rules: ((:EXECUTABLE-COUNTERPART DG)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART NOT))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  6
+ CASE-TWO-CLAUSES-VS-LET-IF-CONTROL
+ACL2 !>Bye.
