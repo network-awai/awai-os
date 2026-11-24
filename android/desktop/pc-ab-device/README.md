@@ -229,11 +229,17 @@ instance name; the family is "Noto Sans JP".)
 **Logo.** `web/logo.png` is `android/client/assets/setup-logo.png` (the Awai mark) scaled to 256 px. No vector version of
 the mark exists in the repo or in PR #302 (its `awai_welcome_mark.xml` is only a rounded rectangle), so it is raster.
 
+**Focus and power.** After a selection the first Tab stop is the primary action (内容を確認; on the review screen この SSD にインストール), then the secondary one; DOM order is primary first and CSS keeps the left/right look. 電源を切る asks once (first activation only arms it and says もう一度押すと電源を切ります; leaving the button disarms it). Disabled and refused by the backend while writing.
+
+**Memory.** The work directory is a tmpfs (half of RAM) that holds the unpacked image. Before unpacking, free space below the archive size is refused; a full disk while unpacking (ENOSPC) or anywhere before writing becomes the refusal "メモリが足りません。インストールイメージを展開できませんでした。" with nothing written and the partial file removed. The unpacked size is only an upper bound (the file is sparse), so no exact pre-check is attempted.
+
 **Proportions.** One design unit `--u = min(100vw/740, 100vh/440)` scales text, logo, cards and gaps with the frame; the
 rail is 30.5vw and cards 57.7vw as in `design/installer.png` (browser test checks both sizes).
 
-**Kiosk.** `firefox-policies.json` (installed by `start.sh` to `/etc/firefox/policies/` and Firefox's `distribution/`, and
-the screen installer falls back to text if it cannot be installed): developer tools, about:config/addons/profiles/support,
+**Kiosk.** `firefox-policies.json` (the base medium has `/usr/bin/firefox-esr -> /opt/firefox-esr/firefox-esr` and no plain
+`firefox`, so `start.sh` and `xsession.sh` look for `firefox-esr` first, then `firefox`; the policy is installed in
+`<real binary dir>/distribution/` (required: the screen installer falls back to text if that fails) and in
+`/etc/firefox-esr/policies/` and `/etc/firefox/policies/`; tests provide only `firefox-esr`, behind a symlink like the medium): developer tools, about:config/addons/profiles/support,
 private browsing, safe mode, popups off; every URL blocked except `http://127.0.0.1/*` and the launch page; locked prefs
 that unbind the accelerator and menu-access keys (Ctrl+T/N/L/O/W, Alt menus) and new-window behaviour. There is no file
 input in the page, and `file:` URLs are blocked, so no file picker can be reached. Written from Mozilla's documented

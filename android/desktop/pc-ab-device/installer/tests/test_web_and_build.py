@@ -205,7 +205,7 @@ class TextFrontEnd(unittest.TestCase):
 
 
 class Launcher(unittest.TestCase):
-    def run_start(self, *args, cmdline=None, path_tools=(), extra_env=None, timeout=60):
+    def run_start(self, *args, cmdline=None, path_tools=(), extra_env=None, timeout=60, real_policy_dirs=False):
         tmp = Path(tempfile.mkdtemp(prefix="awai-start-"))
         self.addCleanup(__import__("shutil").rmtree, tmp, True)
         bin_dir = tmp / "bin"
@@ -214,11 +214,18 @@ class Launcher(unittest.TestCase):
             src = __import__("shutil").which(t)
             (bin_dir / t).symlink_to(src)
         for t in path_tools:
+            if t == "firefox-esr":  # like the base medium: /usr/bin/firefox-esr -> /opt/firefox-esr/firefox-esr
+                real = tmp / "opt" / "firefox-esr" / "firefox-esr"
+                real.parent.mkdir(parents=True)
+                real.write_text("#!/bin/sh\nexit 1\n")
+                real.chmod(0o755)
+                (bin_dir / t).symlink_to(real)
+                continue
             (bin_dir / t).write_text("#!/bin/sh\nexit 1\n")
             (bin_dir / t).chmod(0o755)
         env = {"PATH": str(bin_dir) + ":/bin:/usr/bin" if False else str(bin_dir), "AWAI_WORK_DIR": str(tmp / "work"),
                "AWAI_MEDIA_DIR": str(tmp), "AWAI_PYTHON": sys.executable,
-               "AWAI_POLICY_DIRS": str(tmp / "policies"), **(extra_env or {})}
+               "AWAI_ETC": str(tmp / "etc"), **({} if real_policy_dirs else {"AWAI_POLICY_DIRS": str(tmp / "policies")}), **(extra_env or {})}
         self.last_tmp = tmp
         return subprocess.run(["/bin/bash", str(INSTALLER / "start.sh"), *args], env=env, capture_output=True, text=True, input="\n", timeout=timeout)
 
@@ -234,14 +241,48 @@ class Launcher(unittest.TestCase):
         self.assertIn("Offline PC installer", r.stdout)
 
     def test_policy_is_installed_before_the_browser_starts_and_is_required(self):
-        r = self.run_start(path_tools=("xinit", "firefox"))
+        r = self.run_start(path_tools=("xinit", "firefox-esr"))
         installed = self.last_tmp / "policies" / "policies.json"
         self.assertEqual(json.loads(installed.read_text()), json.loads((INSTALLER / "firefox-policies.json").read_text()))
         script = (INSTALLER / "start.sh").read_text()
         self.assertLess(script.index("policies.json"), script.index("xinit \"$here/xsession.sh\""))
-        r = self.run_start(path_tools=("xinit", "firefox"), extra_env={"AWAI_POLICY_DIRS": "/proc/awai-no-such-dir"})
+        r = self.run_start(path_tools=("xinit", "firefox-esr"), extra_env={"AWAI_POLICY_DIRS": "/proc/awai-no-such-dir"})
         self.assertIn("could not install the browser lock-down policy", r.stderr)
         self.assertIn("Offline PC installer", r.stdout)
+
+    def test_only_firefox_esr_exists_like_the_base_medium(self):
+        """The base medium has /usr/bin/firefox-esr and no plain `firefox`: the policy goes next to the real binary and to /etc."""
+        r = self.run_start(path_tools=("xinit", "firefox-esr"), real_policy_dirs=True)
+        tmp = self.last_tmp
+        self.assertNotIn("firefox not found", r.stderr)
+        self.assertNotIn("firefox-esr not found", r.stderr)
+        self.assertIn("X or the browser stopped 3 times", r.stderr)  # got as far as launching X
+        want = (INSTALLER / "firefox-policies.json").read_text()
+        self.assertEqual((tmp / "opt" / "firefox-esr" / "distribution" / "policies.json").read_text(), want)
+        self.assertEqual((tmp / "etc" / "firefox-esr" / "policies" / "policies.json").read_text(), want)
+        self.assertEqual((tmp / "etc" / "firefox" / "policies" / "policies.json").read_text(), want)
+
+    def test_missing_browser_is_reported_by_its_real_name(self):
+        r = self.run_start(path_tools=("xinit",))
+        self.assertIn("firefox-esr not found", r.stderr)
+        self.assertIn("Offline PC installer", r.stdout)
+        r = self.run_start(path_tools=("xinit", "firefox"))  # a plain firefox is accepted too
+        self.assertNotIn("not found", r.stderr)
+
+    def test_session_starts_the_esr_binary(self):
+        tmp = Path(tempfile.mkdtemp(prefix="awai-xs-"))
+        self.addCleanup(__import__("shutil").rmtree, tmp, True)
+        bin_dir = tmp / "bin"
+        bin_dir.mkdir()
+        for t in ("install", "rm", "cat", "mkdir"):
+            (bin_dir / t).symlink_to(__import__("shutil").which(t))
+        (bin_dir / "firefox-esr").write_text(f'#!/bin/sh\necho "$@" > "{tmp}/args"\n')
+        (bin_dir / "firefox-esr").chmod(0o755)
+        (tmp / "work").mkdir()
+        subprocess.run(["/bin/bash", str(INSTALLER / "xsession.sh"), "/run/x/launch.html", str(tmp / "work")], env={"PATH": str(bin_dir)}, check=True)
+        args = (tmp / "args").read_text()
+        self.assertIn("--kiosk", args)
+        self.assertIn("file:///run/x/launch.html", args)
 
     def test_policy_locks_the_kiosk_down(self):
         pol = json.loads((INSTALLER / "firefox-policies.json").read_text())["policies"]
@@ -271,7 +312,7 @@ class Launcher(unittest.TestCase):
         timer = threading.Timer(4, finish)
         timer.start()
         self.addCleanup(timer.cancel)
-        r = self.run_start(path_tools=("xinit", "firefox"), extra_env={"AWAI_WORK_DIR": str(work)})
+        r = self.run_start(path_tools=("xinit", "firefox-esr"), extra_env={"AWAI_WORK_DIR": str(work)})
         self.assertIn("an installation is still running", r.stdout)
         self.assertIn("step 2/3", r.stdout)
         self.assertIn("Installed and verified all 11 partitions", r.stdout)
@@ -280,7 +321,7 @@ class Launcher(unittest.TestCase):
         self.assertEqual(r.returncode, 0)
 
     def test_failing_x_falls_back_to_text(self):
-        r = self.run_start(path_tools=("xinit", "firefox"))
+        r = self.run_start(path_tools=("xinit", "firefox-esr"))
         self.assertIn("X or the browser stopped 3 times", r.stderr)
         self.assertIn("Offline PC installer", r.stdout)
 

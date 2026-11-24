@@ -33,7 +33,7 @@ class BrowserFlow(unittest.TestCase):
         for k in ("Tab", "Enter"):
             b.key(k)
         self.assertIn("選択済み", b.text())
-        b.key("Tab"); b.key("Tab"); b.key("Enter")
+        b.key("Tab"); b.key("Enter")
         b.wait_text("インストール内容を確認")
         self.assertTrue(self.disabled(b, "この SSD にインストール"))
         b.type("nvme0")
@@ -43,7 +43,7 @@ class BrowserFlow(unittest.TestCase):
         b.eval("document.getElementById('typed').value=''")
         b.type("nvme0n1")
         self.assertFalse(self.disabled(b, "この SSD にインストール"))
-        b.key("Tab"); b.key("Tab"); b.key("Enter")
+        b.key("Tab"); b.key("Enter")
         b.wait_text("インストールしています")
         self.assertTrue(self.disabled(b, "電源を切る"), "power off must be disabled while writing")
         self.assertNotIn("インストールが完了しました", b.text())
@@ -78,10 +78,45 @@ class BrowserFlow(unittest.TestCase):
             live = Live()
             b = self.open(live, size)
             b.wait_text("選択可能")
-            for k in ("Tab", "Enter", "Tab", "Tab", "Enter"):
+            for k in ("Tab", "Enter", "Tab", "Enter"):
                 b.key(k)
             b.wait_text("インストール内容を確認")
             self.assertTrue(b.eval("(() => { const e = document.querySelector('.body'); return e.scrollHeight <= e.clientHeight + 1 && document.documentElement.scrollHeight <= innerHeight; })()"))
+
+    def test_first_tab_stop_is_the_primary_action_and_power_off_asks_once(self):
+        live = Live()
+        b = self.open(live)
+        b.wait_text("選択可能")
+        b.key("Tab"); b.key("Enter")                      # card selected
+        b.key("Tab")
+        self.assertEqual(b.focused(), "内容を確認")
+        b.key("Tab")
+        self.assertEqual(b.focused(), "電源を切る")
+        b.key("Enter")                                    # first activation only asks
+        self.assertIn("もう一度押すと電源を切ります", b.text())
+        self.assertNotIn("power_calls", live.w.world_file.read_text())
+        b.key("Tab")                                      # leaving the button disarms it
+        self.assertNotIn("もう一度押すと", b.text())
+        b.eval("document.querySelector('[data-power]').focus()")
+        b.key("Enter")
+        self.assertIn("もう一度押すと電源を切ります", b.text())
+        b.key("Enter")                                    # second activation acts
+        end = time.time() + 5
+        while time.time() < end and "power_calls" not in live.w.world_file.read_text():
+            time.sleep(0.1)
+        self.assertIn('"poweroff"', live.w.world_file.read_text())
+        # review screen: the primary action is the first stop, and 戻る is not between the field and it
+        live2 = Live()
+        b2 = self.open(live2)
+        b2.wait_text("選択可能")
+        for k in ("Tab", "Enter", "Tab", "Enter"):
+            b2.key(k)
+        b2.wait_text("インストール内容を確認")
+        b2.type("nvme0n1")
+        b2.key("Tab")
+        self.assertEqual(b2.focused(), "この SSD にインストール")
+        b2.key("Tab")
+        self.assertEqual(b2.focused(), "戻る")
 
     def test_hold_running_fixture_shows_progress_and_blocks_power(self):
         live = Live()
@@ -101,11 +136,11 @@ class BrowserFlow(unittest.TestCase):
             setup(live)
             b = self.open(live)
             b.wait_text("選択可能")
-            for k in ("Tab", "Enter", "Tab", "Tab", "Enter"):
+            for k in ("Tab", "Enter", "Tab", "Enter"):
                 b.key(k)
             b.wait_text("インストール内容を確認")
             b.type("nvme0n1")
-            for k in ("Tab", "Tab", "Enter"):
+            for k in ("Tab", "Enter"):
                 b.key(k)
             b.wait_text("インストールできませんでした")
             text = b.text()

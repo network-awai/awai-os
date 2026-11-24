@@ -271,6 +271,63 @@ class ImageAndPlan(Base):
                 self.assertNothingWritten()
 
 
+class MemoryLimits(Base):
+    """The work directory is a tmpfs (half of RAM). A full disk must be a clear refusal, never a write to the SSD."""
+    def assertNoSpace(self, state):
+        self.assertRefused(state, "no-space")
+        self.assertIn("メモリが足りません", core.status(str(self.w.work))["error"]["ja"])
+        self.assertNothingWritten()
+        self.assertEqual(state["error"]["step"], 1)
+
+    def test_too_little_free_space_is_refused_before_unpacking(self):
+        req = self.w.request()
+        with mock.patch.object(core.shutil, "disk_usage", return_value=types.SimpleNamespace(total=1, used=1, free=0)):
+            state = self.w.run(req)
+        self.assertNoSpace(state)
+        self.assertFalse((self.w.work / core.IMAGE_NAME).exists())
+        self.assertFalse((self.w.work / (core.IMAGE_NAME + ".part")).exists())
+
+    def test_enospc_while_unpacking_is_a_clear_refusal_and_leaves_nothing(self):
+        import builtins
+        import errno as errno_mod
+        real_open = builtins.open
+
+        class Full:
+            def __init__(self, f):
+                self.f, self.n = f, 0
+
+            def write(self, data):
+                self.n += len(data)
+                if self.n > 100_000:
+                    raise OSError(errno_mod.ENOSPC, "No space left on device")
+                return self.f.write(data)
+
+            def __getattr__(self, name):
+                return getattr(self.f, name)
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return self.f.__exit__(*a)
+
+        def fake_open(path, mode="r", *a, **k):
+            f = real_open(path, mode, *a, **k)
+            return Full(f) if str(path).endswith(".part") else f
+        req = self.w.request()
+        with mock.patch.object(core, "open", fake_open, create=True):
+            state = self.w.run(req)
+        self.assertNoSpace(state)
+        self.assertFalse((self.w.work / (core.IMAGE_NAME + ".part")).exists(), "the partial file must be removed")
+        self.assertFalse((self.w.work / core.IMAGE_NAME).exists())
+
+    def test_enospc_anywhere_before_writing_is_still_not_an_install(self):
+        import errno as errno_mod
+        req = self.w.request()
+        with mock.patch.object(core, "prepare_image", side_effect=OSError(errno_mod.ENOSPC, "full")):
+            self.assertNoSpace(self.w.run(req))
+
+
 class AfterApply(Base):
     def wrapped(self, record_edit=None, **flags):
         real = core.load_installer()

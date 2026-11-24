@@ -6,7 +6,7 @@
     pickTitle: "インストール先を選ぶ", pickSub: "Awai OS を入れる空の内蔵 SSD を選んでください。",
     pickNote: "既存の区画があるディスクは、選択できない理由を一覧に表示します。",
     internal: "内蔵 SSD", free: "空きディスク", okTag: "選択可能", selTag: "選択済み", offTag: "選択不可",
-    detail: "デバイスの詳細", poweroff: "電源を切る", review: "内容を確認", back: "戻る", reboot: "再起動",
+    detail: "デバイスの詳細", poweroff: "電源を切る", powerAsk: "もう一度押すと電源を切ります", review: "内容を確認", back: "戻る", reboot: "再起動",
     refresh: "一覧を更新", reviewTitle: "インストール内容を確認", reviewSub: "書き込み先と内容を確認してください。",
     target: "書き込み先", plan: "Awai OS とユーザーデータ用の区画を作成",
     planBody1: "選択した空の SSD に区画を作成します。", planBody2: "この USB は起動用の媒体として使用します。",
@@ -46,7 +46,7 @@
     try { data = await r.json(); } catch (e) { /* empty */ }
     return { ok: r.ok, status: r.status, data };
   };
-  const ui = { screen: "", disks: [], selected: null, ticket: null, state: {}, message: "", poll: null };
+  const ui = { armed: false, screen: "", disks: [], selected: null, ticket: null, state: {}, message: "", poll: null };
 
   function rail(active) { // active: 0..3, all earlier steps are done
     const ol = $("steps"); ol.replaceChildren();
@@ -56,7 +56,7 @@
   function frame(active, title, sub, body, actions) {
     rail(active);
     $("title").textContent = title; $("sub").textContent = sub;
-    $("body").replaceChildren(...body.filter(Boolean)); $("actions").replaceChildren(...actions.filter(Boolean));
+    $("body").replaceChildren(...body.filter(Boolean)); $("actions").replaceChildren(...actions.filter(Boolean).reverse());
   }
   const diskCard = (d, extra, detail) => {
     const shown = d.problems.includes("boot-medium") ? ["boot-medium"] : d.problems;
@@ -78,7 +78,17 @@
     const c = (name && document.querySelector('button.card[data-name="' + name + '"]')) || document.querySelector("button.card[aria-pressed=true]") || document.querySelector("button.card");
     if (c) c.focus();
   }
-  const power = (label) => h("button", { class: "link", type: "button", disabled: ui.screen === "progress", onclick: doPower("poweroff") }, label);
+  // Power off asks once: the first activation only arms the button (and says so), the second one acts.
+  const powerBtn = (cls) => {
+    const b = h("button", { class: cls, type: "button", "data-power": "1", disabled: ui.screen === "progress" }, ui.armed ? T.powerAsk : T.poweroff);
+    b.addEventListener("click", async () => {
+      if (!ui.armed) { ui.armed = true; b.textContent = T.powerAsk; return; }
+      ui.armed = false; b.textContent = T.poweroff; await doPower("poweroff")();
+    });
+    b.addEventListener("blur", () => { ui.armed = false; b.textContent = T.poweroff; });
+    return b;
+  };
+  const power = () => powerBtn("link");
   const doPower = (what) => async () => { const r = await api("POST", "/api/" + what, {}); if (!r.ok) { ui.message = (r.data && r.data.ja) || T.loadFail; render(); } };
   const alertLine = () => ui.message ? [h("p", { class: "alert", role: "alert" }, ui.message)] : [];
 
@@ -91,11 +101,11 @@
     const refresh = h("button", { class: "btn", type: "button", onclick: loadDisks }, T.refresh);
     if (none) {
       frame(0, T.noneTitle, T.noneSub, [...ui.disks.map((d) => diskCard(d)),
-        h("div", { class: "note err" }, h("b", {}, T.noneBox), h("span", {}, T.noneBody)), ...alertLine()], [power(T.poweroff), refresh]);
+        h("div", { class: "note err" }, h("b", {}, T.noneBox), h("span", {}, T.noneBody)), ...alertLine()], [power(), refresh]);
     } else {
       frame(0, T.pickTitle, sel ? "選んだ SSD の内容を確認してから、書き込みに進みます。" : T.pickSub,
         [...ui.disks.map((d) => diskCard(d)), h("p", { class: "caption" }, sel ? T.detail + "  /dev/" + sel.name + (sel.model ? " · " + sel.model : "") : T.pickNote), ...alertLine()],
-        [power(T.poweroff), h("button", { class: "btn", type: "button", disabled: !sel, onclick: toReview }, T.review)]);
+        [power(), h("button", { class: "btn", type: "button", disabled: !sel, onclick: toReview }, T.review)]);
     }
   }
   async function loadDisks() {
@@ -151,7 +161,7 @@
   function showProgress() {
     const first = ui.screen !== "progress"; ui.screen = "progress";
     const st = ui.state;
-    frame(2, T.busyTitle, T.busySub, [stateDisk(st, T.dest), ...[0, 1, 2].flatMap((i) => stepLine(i, st))], [power(T.poweroff)]);
+    frame(2, T.busyTitle, T.busySub, [stateDisk(st, T.dest), ...[0, 1, 2].flatMap((i) => stepLine(i, st))], [power()]);
     if (first) $("title").focus();
   }
   function showDone() {
@@ -167,7 +177,7 @@
     ui.screen = "failed"; const st = ui.state, e = st.error || {};
     const wrote = st.written === "started";
     const buttons = [wrote ? h("span") : h("button", { class: "link", type: "button", onclick: dismiss }, T.again),
-      h("button", { class: "btn", type: "button", onclick: doPower("poweroff") }, T.poweroff)];
+      powerBtn("btn")];
     frame(2, T.failTitle, T.failedStep + ": " + (e.step || 1) + " " + (e.stepJa || ""), [
       h("div", { class: "note err" }, h("b", {}, e.ja || ""), h("span", {}, T.detailLabel + ": " + (e.code || ""))),
       h("div", { class: "note" }, h("span", {}, wrote ? T.written : T.notWritten)), ...alertLine()], buttons);

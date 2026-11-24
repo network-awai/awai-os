@@ -50,16 +50,14 @@ def keyboard_flow(b, live, out, log, prefix=""):
     b.key("Tab"); note("Tab")
     b.key("Enter"); note("Enter  -> select the SSD")
     snap(b, f"{out}/2-select-chosen.png")
-    b.key("Tab"); note("Tab")
-    b.key("Tab"); note("Tab")
+    b.key("Tab"); note("Tab  (first stop: 内容を確認)")
     b.key("Enter"); note("Enter  -> 内容を確認")
     b.wait_text("インストール内容を確認")
     b.type("nvme0"); note("type nvme0 (button still disabled)")
     snap(b, f"{out}/3a-review-typed-partial.png")
     b.type("n1"); note("type n1")
     snap(b, f"{out}/3-review.png")
-    b.key("Tab"); note("Tab")
-    b.key("Tab"); note("Tab")
+    b.key("Tab"); note("Tab  (first stop: この SSD にインストール)")
     b.key("Enter"); note("Enter  -> この SSD にインストール")
     b.wait_text("インストールしています")
     snap(b, f"{out}/4a-installing-real-start.png")
@@ -111,11 +109,11 @@ def main(outdir):
             try:
                 b.goto(live.url)
                 b.wait_text("選択可能")
-                for k in ("Tab", "Enter", "Tab", "Tab", "Enter"):
+                for k in ("Tab", "Enter", "Tab", "Enter"):
                     b.key(k)
                 b.wait_text("インストール内容を確認")
                 b.type("nvme0n1")
-                for k in ("Tab", "Tab", "Enter"):
+                for k in ("Tab", "Enter"):
                     b.key(k)
                 b.wait_text("インストールできませんでした")
                 snap(b, f"{out}/{name}.png")

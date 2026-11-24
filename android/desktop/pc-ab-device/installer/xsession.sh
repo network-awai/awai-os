@@ -26,4 +26,5 @@ user_pref("security.sandbox.content.level", 4);
 PREFS
 command -v xsetroot >/dev/null 2>&1 && xsetroot -solid '#f2f4f8'
 command -v xfwm4 >/dev/null 2>&1 && xfwm4 --compositor=off >/dev/null 2>&1 &
-exec firefox --kiosk --no-remote --profile "$profile" "file://$launch"
+firefox=${AWAI_FIREFOX:-$(command -v firefox-esr || command -v firefox)}
+exec "$firefox" --kiosk --no-remote --profile "$profile" "file://$launch"

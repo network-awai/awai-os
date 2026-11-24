@@ -63,5 +63,13 @@ killed       syslinux default entry  tests/test_web_and_build.py
 killed       syslinux stock append kept  tests/test_web_and_build.py
 killed       grub entry order (text first)  tests/test_web_and_build.py
 killed       overlay maps boot menus  tests/test_web_and_build.py
+killed       ENOSPC while unpacking -> no-space (core)
+killed       free-space pre-check before unpacking (core)
+killed       ENOSPC outside unpacking -> no-space (core)
+killed       UI: primary action is the first tab stop (browser)
+killed       UI: power off asks once (browser)
+killed       launcher looks for firefox-esr (web_build)
+killed       session starts firefox-esr (web_build)
+killed       policy next to the real binary (web_build)
 
-65/65 mutations killed
+73/73 mutations killed

@@ -12,6 +12,7 @@ Nothing in the front ends decides whether a disk may be written. They call `disk
   before writing -> `awai-pc-install.py apply --record` -> record checks -> `sgdisk -v` -> sync.
 """
 import contextlib
+import errno
 import fcntl
 import hashlib
 import importlib.util
@@ -19,6 +20,7 @@ import io
 import json
 import os
 import re
+import shutil
 import stat
 import subprocess
 import sys
@@ -54,6 +56,7 @@ MESSAGES = {
     "pins-invalid": ("USB のハッシュ記録が正しくありません。", "The pinned hash files are missing or malformed."),
     "archive-sha": ("インストールイメージの確認に失敗しました。USB の内容が正しくありません。", "archive.sha256 check failed."),
     "image-sha": ("展開したイメージが期待する内容と一致しません。", "The raw image SHA-256 does not match the pinned value."),
+    "no-space": ("メモリが足りません。インストールイメージを展開できませんでした。", "Not enough memory (the work directory is a RAM disk) to unpack the image."),
     "image-failed": ("インストールイメージを展開できませんでした。", "The image could not be decompressed."),
     "plan-refused": ("書き込み計画を作れなかったため中止しました。", "The plan was refused."),
     "plan-name-in-use": ("SSD にすでに Awai OS の区画があるため中止しました。", "A partition name is already in use."),
@@ -248,6 +251,11 @@ def prepare_image(host, media, work, archive_sha, image_sha, progress):
     if _hash_file(archive, lambda f: progress(0.15 * f)) != archive_sha:
         raise Refusal("archive-sha")
     if not os.path.exists(raw):
+        # /run is a tmpfs (half of RAM) and holds the unpacked image. The unpacked size is only an upper bound (the file is
+        # sparse), but it can never be smaller than the archive's incompressible content: refuse early below that, and map
+        # a full disk during unpacking to the same clear message.
+        if shutil.disk_usage(work).free < os.path.getsize(archive):
+            raise Refusal("no-space", "free space below the archive size")
         _decompress(host, archive, raw + ".part", image_sha, lambda f: progress(0.15 + 0.45 * f))
         os.replace(raw + ".part", raw)
     else:
@@ -298,7 +306,9 @@ def _decompress(host, archive, part, image_sha, progress):
         if proc.wait() != 0 or fed[0] != os.path.getsize(archive):
             raise Refusal("image-failed", f"zstd exit {proc.returncode}")
     except OSError as e:
-        raise Refusal("image-failed", str(e))
+        with contextlib.suppress(OSError):
+            os.unlink(part)
+        raise Refusal("no-space" if e.errno == errno.ENOSPC else "image-failed", str(e))
     finally:
         if proc.poll() is None:
             proc.kill()
@@ -443,6 +453,8 @@ def run_install(host, work, media, request, on_update=None, installer_py=None):
             rep.fail(e)
         except SystemExit as e:
             rep.fail(Refusal("internal", str(e.code)))
+        except OSError as e:
+            rep.fail(Refusal("no-space" if e.errno == errno.ENOSPC else "internal", f"{type(e).__name__}: {e}"))
         except Exception as e:  # never let an unexpected error look like success
             rep.fail(Refusal("internal", f"{type(e).__name__}: {e}"))
         return rep.state
