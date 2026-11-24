@@ -1,0 +1,18 @@
+# installer-macs.txt — placed at /etc/awai/installer-macs.txt inside the
+# install initrd overlay (alongside /awai/install.pins).
+#
+# init-install.sh refuses to start unless one of the machine's NIC MAC
+# addresses appears here. One MAC per line. Blank lines and lines whose
+# first non-space character is '#' are ignored. Upper/lower case and ':'
+# vs '-' separators are normalized; a malformed entry refuses loudly.
+#
+# Fail closed: no file, no entries, or any malformed entry means the
+# installer refuses before touching the network or the disk.
+#
+# The one existing machine (below) must stay listed so it keeps working.
+0c:47:a9:60:9d:34
+#
+# Real 7735HS machine, PXE-confirmed 2026-11-24. To enable it, add a
+# second line for it and rebuild the initrd overlay (no kernel or image
+# rebuild needed):
+# 0c:47:a9:60:99:4a

@@ -26,6 +26,23 @@ exec </dev/console >/dev/console 2>&1
 
 cmdline=$("$B" cat /proc/cmdline) || fail cmdline
 case " $cmdline " in *" awai.install.profile=$pinned_profile "*) ;; *) fail invalid-mode;; esac
+
+# NIC allowlist location: kernel arg wins, then environment, then the
+# in-initrd default. The allowlist itself lives in the overlay; this script
+# never carries a MAC literal.
+installer_macs=/etc/awai/installer-macs.txt
+if [ -n "${AWAI_INSTALLER_MACS:-}" ]; then installer_macs=$AWAI_INSTALLER_MACS; fi
+macs_seen=
+for token in $cmdline; do
+ case "$token" in
+  awai.install.macs=*)
+   [ -z "$macs_seen" ] || fail invalid-installer-macs-path
+   macs_seen=true
+   installer_macs=${token#awai.install.macs=};;
+ esac
+done
+case "$installer_macs" in /*) ;; *) fail invalid-installer-macs-path;; esac
+case "$installer_macs" in *" "*) fail invalid-installer-macs-path;; esac
 image_url=
 image_sha=
 img_bytes=
@@ -206,11 +223,38 @@ for module in mii phy_package realtek e1000 r8169; do
   "$B" insmod "/awai/$module.ko" || fail nic-module
  fi
 done
+
+# Normalize a MAC for comparison: lowercase, '-' separators become ':',
+# surrounding whitespace/CR removed. The sysfs address and every allowlist
+# entry go through the same normalization.
+normalize_mac() {
+ printf '%s' "$1" | "$B" tr 'A-Z' 'a-z' | "$B" tr '-' ':' | "$B" tr -d ' \t\r'
+}
+valid_mac() {
+ case "$1" in
+  [0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]) return 0;;
+  *) return 1;;
+ esac
+}
+# The allowlist is fail-closed: no file, no entries, or any malformed entry
+# refuses before the link is configured or diagnostics start.
+[ -f "$installer_macs" ] && [ ! -L "$installer_macs" ] || fail missing-installer-macs
+allowed_macs=
+while IFS= read -r line || [ -n "$line" ]; do
+ entry=$(normalize_mac "$line")
+ case "$entry" in ""|"#"*) continue;; esac
+ valid_mac "$entry" || fail malformed-installer-macs
+ allowed_macs="$allowed_macs $entry"
+done < "$installer_macs"
+[ -n "$allowed_macs" ] || fail empty-installer-macs
+
 interface=
 for candidate in /sys/class/net/*; do
  [ -d "$candidate" ] || continue
- mac=$("$B" cat "$candidate/address") || fail nic-address
- if [ "$mac" = 0c:47:a9:60:9d:34 ]; then interface=${candidate##*/}; break; fi
+ raw_mac=$("$B" cat "$candidate/address") || fail nic-address
+ mac=$(normalize_mac "$raw_mac")
+ valid_mac "$mac" || continue
+ case " $allowed_macs " in *" $mac "*) interface=${candidate##*/}; break;; esac
 done
 [ -n "$interface" ] || fail wrong-target
 

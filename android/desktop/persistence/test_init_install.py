@@ -65,13 +65,14 @@ if command == "dd":
         sys.stdout.buffer.write(b"B" * 512 if fault == "readback-digest" else data)
         sys.exit(int(fault == "readback-status"))
     sys.exit(0)
-assert command in {"awk", "cat", "cmp", "mkdir", "mkfifo"}, command
+assert command in {"awk", "cat", "cmp", "mkdir", "mkfifo", "tr"}, command
 os.execvp(command, [command, *args])
 '''
 
 
 class InitInstallTest(unittest.TestCase):
-    def run_installer(self, fault="", *, before_network=False, writes=0, second=False):
+    def run_installer(self, fault="", *, before_network=False, writes=0, second=False,
+                      macs="default", nic_mac=None, cmdline_macs=False):
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)
             target = base / "dev/nvme0n1"
@@ -90,11 +91,28 @@ class InitInstallTest(unittest.TestCase):
             (base / "proc/cmdline").write_text(
                 f"awai.install.profile={profile} awai.install.mode={mode} awai.install.sectors={command_sectors}\n"
             )
+            # NIC allowlist: the installer reads AWAI_INSTALLER_MACS (or the
+            # awai.install.macs= kernel arg) and fails closed without it.
+            macs_path = base / "awai/installer-macs.txt"
+            macs_contents = {
+                "default": "0c:47:a9:60:9d:34\n",
+                "empty": "# comments only\n\n",
+                "malformed": "not-a-mac\n",
+                "normalized": "0C-47-A9-60-9D-34\n",
+            }.get(macs)
+            if macs_contents is not None:
+                macs_path.write_text(macs_contents)
+            if cmdline_macs:
+                (base / "proc/cmdline").write_text(
+                    f"awai.install.profile={profile} awai.install.mode={mode} "
+                    f"awai.install.sectors={command_sectors} awai.install.macs={macs_path}\n"
+                )
             available = 262144 if fault == "low-memory" else 1048576
             (base / "proc/meminfo").write_text(f"MemAvailable: {available} kB\n")
             (base / "sys/block/nvme0n1/size").write_text(sectors)
             (base / "sys/class/net/eth0/address").write_text(
-                "00:00:00:00:00:00" if fault == "mac" else "0c:47:a9:60:9d:34"
+                nic_mac if nic_mac is not None
+                else ("00:00:00:00:00:00" if fault == "mac" else "0c:47:a9:60:9d:34")
             )
             if fault == "local-disk":
                 (base / "sys/block/sda").mkdir()
@@ -141,10 +159,20 @@ class InitInstallTest(unittest.TestCase):
             script = re.sub(r"/(?:awai|sys|proc|dev)(?=[/ -])", lambda m: str(base) + m[0], script)
             init = base / "init.sh"
             init.write_text(script)
+            env = {**os.environ, "INSTALL_TEST_FAULT": fault}
+            if cmdline_macs:
+                # Deliberately point the env var at a missing file: the
+                # kernel arg must win over the environment.
+                env["AWAI_INSTALLER_MACS"] = str(base / "awai/no-such-macs.txt")
+            else:
+                # macs="missing" points at a path that does not exist; the
+                # other modes point at the allowlist file written above.
+                env["AWAI_INSTALLER_MACS"] = (
+                    str(base / "awai/no-such-macs.txt") if macs == "missing" else str(macs_path)
+                )
             result = subprocess.run(
                 ["/bin/sh", str(init)], input=("wrong" if fault == "confirm" else DIGEST) + "\n",
-                text=True, capture_output=True, timeout=10, check=True,
-                env={**os.environ, "INSTALL_TEST_FAULT": fault},
+                text=True, capture_output=True, timeout=10, check=True, env=env,
             )
             calls = (base / "calls").read_text().splitlines()
             self.assertEqual(sum(call.startswith("dd ") and " conv=notrunc" in call for call in calls), writes)
@@ -158,8 +186,8 @@ class InitInstallTest(unittest.TestCase):
                 self.assertFalse((base / "sys/module/firmware_class/parameters/path").exists())
             return result.stdout + result.stderr, calls
 
-    def assert_refusal(self, fault, reason, *, before_network=True):
-        output, _ = self.run_installer(fault, before_network=before_network)
+    def assert_refusal(self, fault, reason, *, before_network=True, **kwargs):
+        output, _ = self.run_installer(fault, before_network=before_network, **kwargs)
         self.assertIn(f"REFUSED {reason} (disk untouched)", output)
         self.assertNotIn("AWAI_INSTALL_COMPLETE", output)
 
@@ -185,6 +213,42 @@ class InitInstallTest(unittest.TestCase):
 
     def test_wrong_mac_refuses_before_network(self):
         self.assert_refusal("mac", "wrong-target")
+
+    def test_allowlisted_mac_installs(self):
+        output, _ = self.run_installer(writes=1)
+        self.assertIn("AWAI_INSTALL_COMPLETE", output)
+
+    def test_missing_allowlist_refuses_before_network(self):
+        self.assert_refusal("", "missing-installer-macs", macs="missing")
+
+    def test_empty_allowlist_refuses_before_network(self):
+        self.assert_refusal("", "empty-installer-macs", macs="empty")
+
+    def test_malformed_allowlist_refuses_before_network(self):
+        self.assert_refusal("", "malformed-installer-macs", macs="malformed")
+
+    def test_allowlist_normalizes_case_and_separators(self):
+        output, _ = self.run_installer(writes=1, macs="normalized")
+        self.assertIn("AWAI_INSTALL_COMPLETE", output)
+
+    def test_sysfs_mac_normalizes_case_and_separators(self):
+        output, _ = self.run_installer(writes=1, nic_mac="0C-47-A9-60-9D-34")
+        self.assertIn("AWAI_INSTALL_COMPLETE", output)
+
+    def test_cmdline_macs_path_overrides_env(self):
+        output, _ = self.run_installer(writes=1, cmdline_macs=True)
+        self.assertIn("AWAI_INSTALL_COMPLETE", output)
+
+    def test_installer_script_has_no_mac_literal(self):
+        script = Path(__file__).with_name("init-install.sh").read_text()
+        self.assertEqual(
+            re.findall(r"([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}", script), []
+        )
+
+    def test_bundled_default_allowlist_keeps_existing_machine(self):
+        lines = Path(__file__).with_name("installer-macs.txt").read_text().splitlines()
+        entries = [line.strip() for line in lines if line.strip() and not line.strip().startswith("#")]
+        self.assertIn("0c:47:a9:60:9d:34", entries)
 
     def test_cmdline_cannot_override_capacity(self):
         self.assert_refusal("capacity", "unexpected-capacity")
