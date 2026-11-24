@@ -113,6 +113,123 @@ awai-pc-install.py apply <disk or image> <verified install image> \
 It has only been run against an image file. Running it on a real disk is a separate, approved step
 (AWAI-3585 first reads the Desktop's partition table).
 
+## Screen installer on the USB (item 205)
+
+`installer/` is the screen version of the USB installer (the Figma design, six screens plus a failure screen).
+`awai/install` on the USB now starts it; if X, Firefox or the backend cannot start it says why in one line and
+continues with the text installer on tty1.
+
+| Path | What |
+| --- | --- |
+| `installer/core.py` | **Every guard and the install sequence.** Both front ends call it; neither decides anything. |
+| `installer/server.py` | stdlib HTTP backend on `127.0.0.1`, random port, per-start token. Runs the install in a detached worker. |
+| `installer/web/` | the page (`index.html`, `app.js`, `style.css`, `logo.svg`, bundled Japanese font). No external resources. |
+| `installer/text_installer.py` | the text front end (English, on `core.py`). |
+| `installer/start.sh`, `xsession.sh`, `awai-install` | tty1 entry, xinit session (kiosk Firefox), the `/awai/install` shim. |
+| `installer/build-overlay.py` | stock SystemRescue ISO + image -> overlay -> `xorriso`. `--dry-run`; downloads nothing. |
+| `installer/700-awai-installer.yaml` | SystemRescue autorun for tty1 (unchanged content: it still runs `/awai/install`). |
+| `installer/tests/` | tests, fakes, browser driver, screenshot and mutation tools. |
+
+Build the USB image (digests come from the signing and build records):
+
+```sh
+python3 android/desktop/pc-ab-device/installer/build-overlay.py \
+  --stock-iso systemrescue-13.03-amd64.iso --stock-iso-sha256 "$STOCK_ISO_SHA256" \
+  --image-zst awai-pc-install.img.zst --archive-sha256 "$ARCHIVE_SHA256" --image-sha256 "$RAW_IMAGE_SHA256" \
+  --font NotoSansJP-subset.woff2 --out awai-os-pc-usb-installer.iso          # add --dry-run to check only
+```
+
+It checks the stock ISO, the archive and (streaming through `zstd`) the raw image digests, writes
+`archive.sha256` and `install-image.sha256` (the **only** place the expected digests live; the constant that was
+duplicated in the old `awai/install` is gone), copies the canonical `awai-pc-install.py` unedited, and calls
+`xorriso -indev stock -outdev out -boot_image any replay -map ...` as the previous build did.
+
+### Text mode
+
+Add `awai.installer=text` to the kernel command line (GRUB: `e`; syslinux: `Tab`), or switch to tty2 and run
+`/run/archiso/bootmnt/awai/install --text`. A dedicated boot menu entry needs a change to the stock ISO's boot
+configuration, which this task could not inspect (no ISO here); it is left open. If an install is already running
+when the text installer starts (for example after the screen session died) it follows that install instead of
+starting another.
+
+### What `core.py` enforces (in the backend, never only in the page)
+
+Target: `/dev/nvme[0-9]+n[0-9]+`, block device, `TYPE disk`, `RO 0`, no partitions, 512-byte logical sectors, nothing
+mounted, `wipefs` signatures only `gpt`/`PMBR`, never the device the media directory is served from (resolved with
+`findmnt` plus `lsblk -s`; if it cannot be resolved every disk is refused). Every disk is listed; the ones that fail are
+`選択不可` with the reason. There is no erase operation anywhere.
+
+Order of `run_install`: typed device name == target -> target checks and identity (major:minor, size, model, serial,
+WWN; a serial or WWN appearing or vanishing counts as a change) equal to what was confirmed -> `archive.sha256` ->
+raw image sha256 == pinned value -> plan with `existing == []` and the expected number of new partitions ->
+**all target checks and identity again, plus a fresh plan, immediately before writing** ->
+`awai-pc-install.py apply --record` -> record has `sourceSha256 == pinned`, `existingUnchanged`, one readback per
+partition with a digest -> `sgdisk -v` exit 0 and "No problems found" -> `sync` -> only then `done`. Any other path ends
+in `failed`; the page shows the completion screen only for `state == "done"`.
+
+Two-step confirmation: the review screen asks for the device name (`nvme0n1`); the backend checks it twice (server and
+worker). The text installer still asks for `INSTALL nvme0n1` and hands the name to the same check.
+
+One install: the worker holds `flock` on `/run/awai-pc-installer/lock`; it is a separate, detached process, so closing
+or crashing Firefox or the backend neither stops the write nor allows another. A restarted backend reads the true state
+(`running` only with a live lock holder; `running` without one is reported as interrupted, never as running or done).
+`write-started` / `install-record.json` block any further start until reboot (`/run` is a tmpfs). Reboot and power off
+are refused by the backend while an install runs, and the buttons are disabled.
+
+Local transport: loopback only, random port; the token exists only in `launch.html` (mode 0600 in a 0700 directory) as a
+URL fragment, so it is not in argv, logs, request lines or a world-readable file; `X-Awai-Token` is compared in constant
+time; `Host` must equal `127.0.0.1:PORT`; `Origin` is required on POST and must match when present on GET; no CORS
+headers; `default-src 'none'` CSP with only `'self'` for script, style, font, image and connect; `Content-Type:
+application/json` is required for POST.
+
+### Progress
+
+`awai-pc-install.py apply` gained an optional `progress(event, done, total)` callback (events `write-start`, `write`,
+`write-done`, `verify`). It only reports: no check was changed or reordered, `write-start` is emitted immediately before
+the first GPT change, and the existing suite is untouched and green. Step 1 is the byte progress of hashing the archive,
+unpacking and re-hashing the raw image; step 2 the bytes written; step 3 the bytes read back. `apply` itself first
+hashes the source and existing partitions without progress, so step 2 can sit at 0% for a while on a large image.
+
+### Differences between the shipped overlay copy and the repo
+
+The overlay's `awai-pc-install.py` is older: it has no vbmeta handling (`VBMETA_ROOTS`, `vbmeta_layout`, vbmeta in the
+name clash check). The repo copy is canonical and is what `build-overlay.py` ships. Consequence: the old `jq` check
+`(.new|length)==11` is wrong for an image with vbmeta slots (13 to 17 new partitions). `core.py` expects
+`len(LAYOUT) + len(vbmeta_layout(source))`, taken from the canonical script, so an image without vbmeta still needs
+exactly 11. The review screen therefore does not say "11 区画を作成します" (the image is not unpacked yet); the completion
+screen says `{n} 区画を確認` with the real count.
+
+### Font
+
+The live system has no Japanese font. The repo's `android/client/assets/setup-noto-jp.woff2` (SIL OFL, Adobe Source
+Han / Noto Sans JP, licence text shipped as `web/font-OFL.txt`) is a 447-glyph subset made for the setup screens and
+**does not cover 76 characters of the installer copy** (for example 内 蔵 電 源 込 書 先, see `installer/font-gap.json`).
+A test pins that list; `build-overlay.py` refuses to build with a font that lacks glyphs unless
+`--allow-missing-glyphs`, and takes `--font` (WOFF2) to supply a covering subset. Producing that subset needs the
+full Noto Sans JP and `pyftsubset`, which this task could not download. Screenshots on a Mac use the system's
+Japanese font for the missing characters, so they look right where the live system would show empty boxes.
+
+### Checks
+
+```sh
+python3 -m unittest discover -s android/desktop/pc-ab-device/installer/tests -p 'test_*.py'   # python >= 3.11
+python3 android/desktop/pc-ab-device/installer/tests/mutations.py --jobs 5                  # every guard removed in turn
+python3 android/desktop/pc-ab-device/installer/tests/shots.py OUTDIR                        # screenshots (Chrome)
+```
+
+No root, no real disk: fake `lsblk`/`blockdev`/`wipefs`/`findmnt`/`sgdisk`/`zstd`/`sync`/`systemctl` on `PATH` and
+sparse temp files; the production `Host` is replaced only in tests. Bazel: `:screen_installer_*_test`.
+Screenshots and the design side by side: `installer/screenshots/`.
+
+### Not tested
+
+QEMU, a real machine, real X and real Firefox (kiosk under `xinit`), SystemRescue's own Python/tool versions, a real
+`sgdisk`/`zstd` run against the fake-free path, `xorriso` itself (only its command line), the boot entry, USB removal
+mid-install, and the live Japanese rendering (see Font). The fake `sgdisk` emulates the output format the installer
+parses; real `sgdisk -v` wording ("No problems found") is taken from its documented output and must be confirmed in
+the QEMU run. AGENTS.md prefers shared policy in `.cljc`; the live system has no Clojure runtime and nothing here may
+download one, so the guards are stdlib Python next to the existing Python installer.
+
 ## KVM check (2026-11-19)
 
 `kvm/shared-disk-test.sh` on a 64 GiB image with three stand-in partitions (ESP 512 MiB, ext4 24 GiB,

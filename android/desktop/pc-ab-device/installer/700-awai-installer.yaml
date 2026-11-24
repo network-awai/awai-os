@@ -1,0 +1,3 @@
+---
+autoterminal:
+    tty1: "/usr/bin/bash /run/archiso/bootmnt/awai/install"

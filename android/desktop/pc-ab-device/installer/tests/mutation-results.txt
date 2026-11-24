@@ -1,0 +1,53 @@
+killed       typed-name (core)  tests/test_core.py
+killed       typed-name (server)  tests/test_server.py
+killed       identity before image prep  tests/test_core.py
+killed       identity immediately before writing  tests/test_core.py
+killed(2nd)  target checks before image prep  (test added after the first run)
+killed       target checks immediately before writing  tests/test_core.py
+killed       whole NVMe name  tests/test_core.py
+killed       block device  tests/test_core.py
+killed       TYPE disk / RO 0  tests/test_core.py
+killed       no partitions  tests/test_core.py
+killed       512-byte sectors  tests/test_core.py
+killed       nothing mounted  tests/test_core.py
+killed       wipefs signatures  tests/test_core.py
+killed       boot medium  tests/test_core.py
+killed       boot medium unknown  tests/test_core.py
+killed       archive.sha256  tests/test_core.py
+killed       raw sha256 (final re-hash)  tests/test_core.py
+killed       raw sha256 (both layers: stream + re-hash)  tests/test_core.py
+killed       pins are valid files  tests/test_core.py
+killed       plan existing == []  tests/test_core.py
+killed       plan new count  tests/test_core.py
+killed       record sourceSha256  tests/test_core.py
+killed       record existingUnchanged  tests/test_core.py
+killed       record 11 readbacks  tests/test_core.py
+killed       record readback digests  tests/test_core.py
+killed       sgdisk -v exit code  tests/test_core.py
+killed       sgdisk -v output  tests/test_core.py
+killed       sync  tests/test_core.py
+killed       lock (exactly one install)  tests/test_core.py
+killed       record/marker blocks restart  tests/test_core.py
+killed       write marker before first change  tests/test_core.py
+killed       dead worker is interrupted  tests/test_core.py
+killed       apply: write-start precedes GPT change  tests/test_core.py
+killed       server token  tests/test_server.py
+killed       server Host check  tests/test_server.py
+killed       server Origin match  tests/test_server.py
+killed       server Origin required on POST  tests/test_server.py
+killed       server CSP default-src none  tests/test_server.py
+killed       server CORS absent (adds a header)  tests/test_server.py
+killed       server ticket one-shot  tests/test_server.py
+killed(2nd)  server busy on install  (test added after the first run)
+killed       server power refused while writing  tests/test_server.py
+killed(2nd)  server token never in worker argv  (test added after the first run)
+killed(2nd)  detached worker session  (test added after the first run)
+killed       UI: power disabled while installing  tests/test_browser.py
+killed       UI: typed-name gate  tests/test_browser.py
+killed       UI: completion only from done  tests/test_browser.py
+killed       UI: no completion link  tests/test_web_and_build.py
+killed       font gap pin  tests/test_web_and_build.py
+killed       overlay copies canonical installer  tests/test_web_and_build.py
+killed       overlay checks stock iso sha  tests/test_web_and_build.py
+killed       overlay checks raw sha  tests/test_web_and_build.py
+52/52 killed after adding four tests (first run: 48/52)

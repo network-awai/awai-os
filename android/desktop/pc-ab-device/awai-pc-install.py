@@ -99,11 +99,13 @@ def read_range(file, start, end):
         yield chunk
 
 
-def sha_range(path, start, end):
+def sha_range(path, start, end, progress=None):
     digest = hashlib.sha256()
     with open(path, "rb") as file:
         for chunk in read_range(file, start, end):
             digest.update(chunk)
+            if progress:
+                progress(len(chunk))
     return digest.hexdigest()
 
 
@@ -175,7 +177,11 @@ def source_identity(metadata):
     return metadata.st_dev, metadata.st_ino, metadata.st_size, metadata.st_mtime_ns, metadata.st_ctime_ns
 
 
-def apply(target, source, plan, record, source_sha256=None):
+def apply(target, source, plan, record, source_sha256=None, progress=None):
+    """`progress(event, done, total)` is optional and only reports; it never changes a check or its order.
+    Events: "write-start" (called once, immediately before the first GPT change), "write" and "verify"
+    (bytes done of total, after each chunk), "write-done" (all new partitions written, before readback)."""
+    report = progress or (lambda *_: None)
     if os.path.lexists(record):
         sys.exit(f"REFUSED {record}: install record already exists")
     expected = {}
@@ -191,11 +197,16 @@ def apply(target, source, plan, record, source_sha256=None):
             sys.exit(f"REFUSED {source}: source changed during verification")
         if table(target)[0] != plan["existing"]:
             sys.exit(f"REFUSED {target}: target partition table changed during verification")
+        total = sum(((n["from"]["end"] - n["from"]["start"] + 1) if n["from"]
+                     else (min(n["end"], n["start"] + (1 << 20) // SECTOR - 1) - n["start"] + 1)) * SECTOR
+                    for n in plan["new"])
+        report("write-start", 0, total)
         for n in plan["new"]:
             args = [f"--new={n['number']}:{n['start']}:{n['end']}", f"--typecode={n['number']}:{n['type']}", f"--change-name={n['number']}:{n['name']}"]
             if n["guid"]:
                 args.append(f"--partition-guid={n['number']}:{n['guid']}")
             sgdisk(*args, target)
+        written = 0
         with open(target, "r+b") as t:
             for n in plan["new"]:
                 t.seek(n["start"] * SECTOR)
@@ -211,11 +222,14 @@ def apply(target, source, plan, record, source_sha256=None):
                     if t.write(chunk) != len(chunk):
                         sys.exit(f"FAILED {n['name']}: short write to target")
                     digest.update(chunk)
+                    written += len(chunk)
+                    report("write", written, total)
                 expected[n["name"]] = (end, digest.hexdigest())
             t.flush()
             os.fsync(t.fileno())
         if source_identity(source_stat) != source_identity(os.fstat(s.fileno())):
             sys.exit(f"FAILED {source}: source changed during copying")
+        report("write-done", total, total)
 
     after_parts, _, _ = table(target)
     by_number = {p["number"]: p for p in after_parts}
@@ -229,6 +243,13 @@ def apply(target, source, plan, record, source_sha256=None):
             sys.exit(f"FAILED existing partition {p['number']}: data changed")
 
     new_hashes = {}
+    verified = 0
+
+    def verify_progress(size):
+        nonlocal verified
+        verified += size
+        report("verify", verified, total)
+
     for n in plan["new"]:
         q = by_number.get(n["number"])
         name = n["name"]
@@ -239,7 +260,7 @@ def apply(target, source, plan, record, source_sha256=None):
             if f"Partition unique GUID: {n['guid'].upper()}\n" not in detail:
                 sys.exit(f"FAILED {name}: new GPT partition GUID differs from the plan")
         end, expected_digest = expected[name]
-        actual = sha_range(target, n["start"], end)
+        actual = sha_range(target, n["start"], end, verify_progress)
         if actual != expected_digest:
             sys.exit(f"FAILED {name}: written data differs on readback")
         new_hashes[name] = {"start": n["start"], "end": end, "sha256": actual}

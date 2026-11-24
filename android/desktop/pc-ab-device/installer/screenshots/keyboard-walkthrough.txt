@@ -1,0 +1,14 @@
+load (nothing selected)            focus='インストール先を選ぶ'
+Tab                                focus='内蔵 SSD\n20.0 GiB · NVMe · 空きディスク\n選択可能'
+Enter  -> select the SSD           focus='内蔵 SSD\n20.0 GiB · NVMe · 空きディスク\n選択済み'
+Tab                                focus='電源を切る'
+Tab                                focus='内容を確認'
+Enter  -> 内容を確認                    focus='typed'
+type nvme0 (button still disabled) focus='typed'
+type n1                            focus='typed'
+Tab                                focus='戻る'
+Tab                                focus='この SSD にインストール'
+Enter  -> この SSD にインストール           focus='インストールしています'
+done                               focus='インストールが完了しました'
+[7a-failed-nothing-written] page text: Awai OS Meiji | PC に | インストール | インストール先 | 済み | 内容の確認 | 済み | インストール | 現在 | 完了 | Tab で項目を移動 | Enter で選択 | インストールできませんでした | 失敗した手順: 1 イメージの確認 | インストールイメージの確認に失敗しました。USB の内容が正しくありません。 | 詳細: archive-sha | SSD への書き込み: 行われていません。SSD は変更されていません。 | 最初に戻る | 電源を切る
+[7b-failed-after-write] page text: Awai OS Meiji | PC に | インストール | インストール先 | 済み | 内容の確認 | 済み | インストール | 現在 | 完了 | Tab で項目を移動 | Enter で選択 | インストールできませんでした | 失敗した手順: 3 書き込んだ内容の読み戻し | 区画表の検証で問題が見つかりました。 | 詳細: sgdisk-verify | SSD への書き込み: 始まっていました。SSD の内容が途中の状態になっている可能性があります。 | 電源を切る

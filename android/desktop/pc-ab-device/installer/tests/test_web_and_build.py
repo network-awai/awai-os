@@ -1,0 +1,312 @@
+"""Page text, font coverage, text front end and overlay assembly."""
+import hashlib
+import io
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+import unittest
+from contextlib import redirect_stdout
+from pathlib import Path
+from unittest import mock
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import fakes  # noqa: E402
+from fakes import core, INSTALLER  # noqa: E402
+import glyphs  # noqa: E402
+import text_installer  # noqa: E402
+
+PC_AB = INSTALLER.parent
+FONT = INSTALLER / "web" / "noto-jp.woff2"
+CLIENT_FONT = INSTALLER.parent.parent.parent / "client" / "assets" / "setup-noto-jp.woff2"
+# copy that must read exactly as in the approved design (installer.png)
+DESIGN_COPY = ["PC に", "インストール", "Awai OS Meiji", "現在", "済み", "Tab で項目を移動", "Enter で選択",
+               "インストール先を選ぶ", "Awai OS を入れる空の内蔵 SSD を選んでください。", "内蔵 SSD", "空きディスク",
+               "選択可能", "選択済み", "選択不可", "電源を切る", "内容を確認", "デバイスの詳細", "インストール内容を確認",
+               "書き込み先と内容を確認してください。", "書き込み先", "Awai OS とユーザーデータ用の区画を作成", "戻る",
+               "この SSD にインストール", "インストールしています", "電源を入れたまま、USB を接続してお待ちください。",
+               "導入先", "イメージの確認", "SSD への書き込み", "書き込んだ内容の読み戻し", "完了", "進行中", "待機中",
+               "インストールが完了しました", "SSD に書き込んだ内容の読み戻しが完了しました。", "確認済み", "区画を確認",
+               "再起動して Awai OS をはじめる", "起動画面に戻ったら USB を抜き、内蔵 SSD を選んでください。", "再起動",
+               "インストール先が見つかりません", "既存のデータを保護するため、一覧で理由を確認できます。", "既存の区画あり",
+               "この PC を起動した USB", "空の内蔵 SSD を接続し、一覧を更新してください。",
+               "ここからディスクの消去は実行できません。", "一覧を更新"]
+
+
+class PageText(unittest.TestCase):
+    def setUp(self):
+        self.app = (INSTALLER / "web" / "app.js").read_text()
+
+    def test_design_copy_present_verbatim(self):
+        for s in DESIGN_COPY:
+            self.assertIn(s, self.app + (INSTALLER / "web" / "index.html").read_text(), s)
+
+    def test_only_awai_branding(self):
+        everything = self.app + (INSTALLER / "web" / "index.html").read_text() + "".join(ja for ja, _ in core.MESSAGES.values())
+        for name in ("SystemRescue", "Sysrescue", "Linux", "Arch", "Firefox", "Mozilla", "archiso"):
+            self.assertNotIn(name.lower(), everything.lower(), name)
+
+    def test_no_prototype_completion_link_and_no_erase_control(self):
+        self.assertNotIn("完了画面を見る", self.app)
+        for word in ("消去する", "ディスクを消", "フォーマット", "erase", "wipe"):
+            self.assertNotIn(word, self.app.replace("ディスクの消去は実行できません", ""))
+
+    def test_completion_screen_is_reached_only_from_a_done_state(self):
+        calls = [l for l in self.app.splitlines() if "showDone()" in l and "function showDone" not in l]
+        self.assertEqual(len(calls), 2)
+        for line in calls:
+            self.assertIn('state === "done"', line)
+
+    def test_failure_screen_does_not_use_the_completion_wording(self):
+        block = self.app[self.app.index("function showFailed"):self.app.index("async function dismiss")]
+        for word in ("T.doneTitle", "T.doneSub", "T.verified", "T.reboot", "T.parts"):
+            self.assertNotIn(word, block)
+        fail_title = re.search(r'failTitle: "([^"]+)"', self.app)[1]
+        self.assertNotIn("インストールが完了しました", fail_title)
+
+    def test_no_dead_ends_for_keyboard(self):
+        self.assertIn("tabindex=\"-1\"", (INSTALLER / "web" / "index.html").read_text())
+        self.assertNotIn("tabindex=\"[1-9]", self.app)
+
+
+class FontCoverage(unittest.TestCase):
+    def test_bundled_font_is_the_repo_asset_with_its_licence(self):
+        if CLIENT_FONT.exists():
+            self.assertEqual(FONT.read_bytes(), CLIENT_FONT.read_bytes())
+            self.assertEqual((INSTALLER / "web" / "font-OFL.txt").read_bytes(), (CLIENT_FONT.parent / "setup-font-OFL.txt").read_bytes())
+        self.assertIn("SIL OPEN FONT LICENSE", (INSTALLER / "web" / "font-OFL.txt").read_text())
+
+    def test_glyph_list_belongs_to_the_font_file(self):
+        glyphs.coverage_of(INSTALLER / "glyphs-noto-jp.json", FONT)
+        with tempfile.NamedTemporaryFile(suffix=".woff2") as other:
+            other.write(b"wOF2 other")
+            other.flush()
+            with self.assertRaises(ValueError):
+                glyphs.coverage_of(INSTALLER / "glyphs-noto-jp.json", other.name)
+
+    @unittest.skipUnless(subprocess.run(["which", "brotli"], capture_output=True).returncode == 0, "brotli command not installed")
+    def test_glyph_list_matches_the_font(self):
+        self.assertEqual(glyphs.cmap_codepoints(FONT), set(json.load(open(INSTALLER / "glyphs-noto-jp.json"))["codepoints"]))
+
+    def test_every_installer_character_is_checked_against_the_font(self):
+        coverage = glyphs.font_coverage(str(FONT), str(INSTALLER))
+        missing = sorted(ord(c) for c in glyphs.ui_characters(str(INSTALLER)) if ord(c) not in coverage)
+        gap = json.load(open(INSTALLER / "font-gap.json"))["missing"]
+        # The bundled subset predates this installer and lacks these kanji; the live system has no other
+        # Japanese font. This pins the truth: the list must equal what is really missing, so it shrinks to
+        # [] when a covering font is supplied and grows if copy is added without glyphs.
+        self.assertEqual(missing, sorted(gap), "update font-gap.json (and supply a covering font) when copy or font changes")
+        self.assertTrue(missing, "gap closed: delete font-gap.json handling and the --allow-missing-glyphs path")
+
+    def test_checker_reports_a_missing_glyph(self):
+        coverage = glyphs.font_coverage(str(FONT), str(INSTALLER))
+        self.assertIn(ord("蔵"), {ord(c) for c in glyphs.ui_characters(str(INSTALLER))})
+        self.assertNotIn(ord("蔵"), coverage)
+        self.assertIn(ord("あ"), coverage)
+
+
+class TextFrontEnd(unittest.TestCase):
+    def setUp(self):
+        self.w = fakes.World()
+        self.addCleanup(self.w.cleanup)
+
+    def run_text(self, *answers):
+        it = iter(answers)
+
+        def read(prompt):
+            try:
+                return next(it)
+            except StopIteration:
+                raise EOFError
+        out = io.StringIO()
+        with redirect_stdout(out):
+            rc = text_installer.main(["--work-dir", str(self.w.work), "--media-dir", str(self.w.media)], host=self.w.host, read=read)
+        return rc, out.getvalue()
+
+    def test_install_with_the_same_guards(self):
+        dev = str(self.w.dev / "nvme0n1")
+        rc, out = self.run_text(dev, "INSTALL nvme0n1")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("Installed and verified all 11 partitions", out)
+        self.assertIn("not selectable", out)
+
+    def test_wrong_phrase_cancels_without_writing(self):
+        rc, out = self.run_text(str(self.w.dev / "nvme0n1"), "install nvme0n1")
+        self.assertEqual(rc, 0)
+        self.assertIn("Cancelled", out)
+        self.assertFalse((self.w.dev / "nvme0n1.gpt.json").exists())
+
+    def test_ineligible_target_refused(self):
+        self.w.edit_disk("nvme0n1", children=[{}])
+        rc, out = self.run_text(str(self.w.dev / "nvme0n1"), "INSTALL nvme0n1")
+        self.assertEqual(rc, 1)
+        self.assertIn("already has partitions", out)
+
+    def test_not_a_whole_nvme_path(self):
+        rc, out = self.run_text("/dev/sda")
+        self.assertEqual(rc, 1)
+
+    def test_follows_a_running_install_instead_of_starting_another(self):
+        import fcntl
+        self.w.work.mkdir(mode=0o700)
+        fd = os.open(self.w.work / "lock", os.O_RDWR | os.O_CREAT, 0o600)
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        (self.w.work / "state.json").write_text(json.dumps({"state": "running", "step": 2, "fraction": 0.5}))
+
+        def finish():
+            (self.w.work / "state.json").write_text(json.dumps({"state": "done", "partitions": 11, "record": "r"}))
+            os.close(fd)
+        import threading
+        t = threading.Timer(0.3, finish)
+        t.start()
+        real_sleep = __import__("time").sleep
+        with mock.patch.object(text_installer.time, "sleep", lambda s: real_sleep(0.2)):
+            rc, out = self.run_text()
+        t.join()
+        self.assertEqual(rc, 0, out)
+        self.assertIn("already running", out)
+        self.assertFalse((self.w.dev / "nvme0n1.gpt.json").exists())
+
+
+class Launcher(unittest.TestCase):
+    def run_start(self, *args, cmdline=None, path_tools=()):
+        tmp = Path(tempfile.mkdtemp(prefix="awai-start-"))
+        self.addCleanup(__import__("shutil").rmtree, tmp, True)
+        bin_dir = tmp / "bin"
+        bin_dir.mkdir()
+        for t in ("python3", "grep", "install", "head", "seq", "kill", "sleep", "dirname", "cat", "rm"):
+            src = __import__("shutil").which(t)
+            (bin_dir / t).symlink_to(src)
+        for t in path_tools:
+            (bin_dir / t).write_text("#!/bin/sh\nexit 1\n")
+            (bin_dir / t).chmod(0o755)
+        env = {"PATH": str(bin_dir) + ":/bin:/usr/bin" if False else str(bin_dir), "AWAI_WORK_DIR": str(tmp / "work"),
+               "AWAI_MEDIA_DIR": str(tmp), "AWAI_PYTHON": sys.executable}
+        return subprocess.run(["/bin/bash", str(INSTALLER / "start.sh"), *args], env=env, capture_output=True, text=True, input="\n", timeout=60)
+
+    def test_forced_text_mode(self):
+        r = self.run_start("--text")
+        self.assertIn("text mode requested", r.stderr)
+        self.assertIn("Offline PC installer", r.stdout)
+
+    def test_missing_x_falls_back_to_text_with_one_line_reason(self):
+        r = self.run_start()
+        self.assertRegex(r.stderr, r"AWAI INSTALLER: screen installer unavailable \(xinit not found\); using the text installer\.")
+        self.assertEqual(len([l for l in r.stderr.splitlines() if l.startswith("AWAI INSTALLER")]), 1)
+        self.assertIn("Offline PC installer", r.stdout)
+
+    def test_failing_x_falls_back_to_text(self):
+        r = self.run_start(path_tools=("xinit", "firefox"))
+        self.assertIn("X or the browser stopped 3 times", r.stderr)
+        self.assertIn("Offline PC installer", r.stdout)
+
+
+class Overlay(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="awai-build-"))
+        self.addCleanup(__import__("shutil").rmtree, self.tmp, True)
+        bin_dir = self.tmp / "bin"
+        bin_dir.mkdir()
+        (bin_dir / "zstd").write_text(f'#!/bin/sh\nexec "{sys.executable}" -c "import sys; sys.stdout.buffer.write(sys.stdin.buffer.read() if False else open(sys.argv[-1],\'rb\').read())" "$@"\n')
+        (bin_dir / "zstd").chmod(0o755)
+        (bin_dir / "xorriso").write_text(f'#!/bin/sh\necho "$@" > "{self.tmp}/xorriso.args"\n')
+        (bin_dir / "xorriso").chmod(0o755)
+        self._path = os.environ["PATH"]
+        os.environ["PATH"] = f"{bin_dir}{os.pathsep}{self._path}"
+        self.addCleanup(os.environ.__setitem__, "PATH", self._path)
+        self.iso, self.zst = self.tmp / "stock.iso", self.tmp / "image.zst"
+        self.iso.write_bytes(b"stock iso")
+        self.zst.write_bytes(b"raw image bytes")  # the fake zstd copies, so raw == archive
+        self.sha = lambda p: hashlib.sha256(Path(p).read_bytes()).hexdigest()
+
+    def args(self, **over):
+        a = {"--stock-iso": self.iso, "--stock-iso-sha256": self.sha(self.iso), "--image-zst": self.zst,
+             "--archive-sha256": self.sha(self.zst), "--image-sha256": self.sha(self.zst), "--out": self.tmp / "out.iso",
+             "--allow-missing-glyphs": None}
+        a.update(over)
+        out = []
+        for k, v in a.items():
+            out.append(k)
+            if v is not None:
+                out.append(str(v))
+        return out
+
+    def build(self, *extra, **over):
+        mod = __import__("importlib").import_module("build-overlay".replace("-", "_")) if False else None
+        spec = __import__("importlib.util").util.spec_from_file_location("build_overlay", INSTALLER / "build-overlay.py")
+        module = __import__("importlib.util").util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        out = io.StringIO()
+        with redirect_stdout(out):
+            try:
+                rc = module.main(self.args(**over) + list(extra))
+            except SystemExit as e:
+                return str(e.code), out.getvalue()
+        return rc, out.getvalue()
+
+    def test_wrong_stock_iso_digest_refused(self):
+        rc, _ = self.build(**{"--stock-iso-sha256": "0" * 64})
+        self.assertIn("stock ISO digest", str(rc))
+
+    def test_wrong_archive_digest_refused(self):
+        rc, _ = self.build(**{"--archive-sha256": "0" * 64})
+        self.assertIn("archive digest", str(rc))
+
+    def test_wrong_raw_digest_refused(self):
+        rc, _ = self.build(**{"--image-sha256": "0" * 64})
+        self.assertIn("decompressed image digest", str(rc))
+
+    def test_existing_output_refused(self):
+        (self.tmp / "out.iso").write_text("x")
+        rc, _ = self.build()
+        self.assertIn("already exists", str(rc))
+
+    def test_malformed_digest_refused(self):
+        rc, _ = self.build(**{"--image-sha256": "ABC"})
+        self.assertIn("lowercase SHA-256", str(rc))
+
+    def test_missing_glyphs_refuse_the_build_unless_allowed(self):
+        a = self.args()
+        a.remove("--allow-missing-glyphs")
+        spec = __import__("importlib.util").util.spec_from_file_location("build_overlay2", INSTALLER / "build-overlay.py")
+        module = __import__("importlib.util").util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with self.assertRaises(SystemExit) as cm, redirect_stdout(io.StringIO()):
+            module.main(a + ["--dry-run"])
+        self.assertIn("no glyph", str(cm.exception.code))
+
+    def test_dry_run_builds_the_overlay_but_calls_nothing(self):
+        keep = self.tmp / "overlay"
+        rc, out = self.build("--dry-run", "--keep-overlay", str(keep))
+        self.assertEqual(rc, 0)
+        self.assertFalse((self.tmp / "out.iso").exists())
+        self.assertFalse((self.tmp / "xorriso.args").exists())
+        self.assertIn("-boot_image any replay", out)
+        awai = keep / "awai"
+        self.assertEqual((awai / "awai-pc-install.py").read_bytes(), (PC_AB / "awai-pc-install.py").read_bytes())
+        self.assertEqual((awai / "install-image.sha256").read_text(), f"{self.sha(self.zst)}  awai-pc-install.img\n")
+        self.assertEqual((awai / "archive.sha256").read_text(), f"{self.sha(self.zst)}  awai-pc-install.img.zst\n")
+        for f in ("core.py", "server.py", "text_installer.py", "start.sh", "xsession.sh", "web/index.html", "web/app.js", "web/noto-jp.woff2", "web/font-OFL.txt"):
+            self.assertTrue((awai / "installer" / f).is_file(), f)
+        self.assertIn("/run/archiso/bootmnt/awai/install", (keep / "sysrescue.d" / "700-awai-installer.yaml").read_text())
+        self.assertEqual(os.stat(awai / "install").st_mode & 0o111, 0o111)
+        # the overlay's core.py finds the canonical installer exactly where it ships
+        self.assertTrue((awai / "installer" / ".." / "awai-pc-install.py").exists())
+
+    def test_real_run_calls_xorriso_like_the_previous_build(self):
+        rc, _ = self.build()
+        self.assertEqual(rc, 0)
+        args = (self.tmp / "xorriso.args").read_text()
+        for part in ("-indev", "-outdev", "-boot_image any replay", "/awai", "/sysrescue.d/700-awai-installer.yaml", "/awai/awai-pc-install.img.zst", "-commit"):
+            self.assertIn(part, args)
+
+    def test_does_not_download(self):
+        src = (INSTALLER / "build-overlay.py").read_text()
+        for word in ("urllib", "requests", "curl", "wget", "http.client", "socket"):
+            self.assertNotIn(word, src)
+
+
+if __name__ == "__main__":
+    unittest.main()
