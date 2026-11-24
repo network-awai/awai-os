@@ -1,7 +1,5 @@
 MATCHED: PASS — allows=true prepped-url=https://svc.example/items effective=1 problems=0
 MISMATCHED: PASS — scope-allows=false scope-threw=true actor-changed-effective=0
-EXPIRED: PASS — inject_time=1700000000000 expiry=1700000060000 now=1700000060001 effective-after-expiry=0
 ALL PASS (synthetic)
-broker: kotoba-lang/kotoba d42d09220 lib/kotoba.wasmWebcomponent/src/kotoba-client-runtime.js (kotoba.app.client-runtime.v1)
-command: node research/trust-cells-harness.mjs (2026-11-24 JST, isolated synthetic, no network)
-metric: reproducibility rate (independent readback match rate)
+broker: kotoba-lang/kotoba d42d092203eac885f4fccce8ce4b0fb97e49b400 lib/kotoba.wasmWebcomponent/src/kotoba-client-runtime.js sha256 5a950051c484a992caba0ad9edff780938648f9cade0b18f2d016812742ee6fb
+command: node docs/research/trust-cells-harness-d42.mjs (module path: kotoba-lang/kotoba at d42d0922) (2026-11-24 JST, isolated synthetic, no network); EXPIRED line withdrawn (tautology) — not emitted

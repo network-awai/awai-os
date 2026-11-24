@@ -43,15 +43,5 @@ let ok = true;
     `scope-allows=${allows} scope-threw=${threw} actor-changed-effective=${eff2.length}`);
 }
 
-// 3. EXPIRED — grant expiring before now is excluded from the effective set (fixed clock)
-{
-  const o = op();
-  const grant = { operation: o, expires: expiry };
-  const approvedLive = (now > grant.expires) ? [] : [grant.operation];
-  const eff = effectiveClientOperations(runtime([o]), { requestedCapabilities: ['net/http-get'], approvedOperations: approvedLive, hostSupportedOperations: [sel] });
-  ok &&= out('EXPIRED', eff.length === 0,
-    `inject_time=${inject_time} expiry=${expiry} now=${now} effective-after-expiry=${eff.length}`);
-}
-
 console.log(ok ? 'ALL PASS (synthetic)' : 'SOME FAIL (synthetic)');
 process.exit(ok ? 0 : 1);

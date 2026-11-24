@@ -54,13 +54,11 @@ The harness invokes only `prepareClientOperationRequest` /
 `clientEndpointAllowsRequest` / `effectiveClientOperations` — the HTTP
 `fetch` step is never reached, so nothing is fetched over the network
 (trace: `synthetic, no network activity`). The broker's consent-dialog step
-(`createClientConsentHost`) is not exercised by this harness, so matched
-acceptance here is the request-preparation/eligibility layer, not the
-consent UI; consent wiring was covered earlier in the trusted-event-shim
-note (`docs/research/trust-cells-harness-889.mjs`), which does not drive the
-trusted Allow click headlessly — shimmed clicks would confirm wiring only,
-never real user consent, and a real click would need gesture provenance.
-Matched control must be accepted; refusals alone do not falsify.
+(`createClientConsentHost`) is not exercised by this harness — no harness
+imports it, and no Allow click (trusted or shimmed) has been driven, so
+consent acceptance here is the request-preparation/eligibility layer only,
+not consent UI evidence. Consent is a future cell (drive a real click,
+record gesture provenance — never a shim claiming user consent). Matched control must be accepted; refusals alone do not falsify.
 
 1. **Matched:** `capability=net/http-get`, `service=svc`, `operation=read`,
    endpoint `https://svc.example/items` GET. Consent host requires trusted
