@@ -2,7 +2,11 @@
 // Module: kotoba-lang/kotoba @ 889239dc972a868ee9e824517aad07c343972e7d
 //   lib/kotoba.wasmWebcomponent/src/kotoba-client-runtime.js
 //   sha256 76bc0d8358ebcc62c3bf530c5958e9b9040184dd3b9c358b5cf38a0f4b17182c
-import { prepareClientOperationRequest, clientEndpointAllowsRequest, effectiveClientOperations, clientRuntimeProblems } from '/tmp/kotoba-889.mjs';
+// Usage: node docs/research/trust-cells-harness-889.mjs [path-to-kotoba-client-runtime.js]
+// Default module path: /tmp/kotoba-889.mjs (generate with:
+//   git -C kotoba-lang/kotoba show 889239dc...:lib/kotoba.wasmWebcomponent/src/kotoba-client-runtime.js > /tmp/kotoba-889.mjs)
+const modPath = process.argv[2] ?? '/tmp/kotoba-889.mjs';
+const { prepareClientOperationRequest, clientEndpointAllowsRequest, effectiveClientOperations, clientRuntimeProblems } = await import(modPath);
 
 const disclosure = { recipient: 'svc', country: 'JP', data: ['public'], 'special-care': false, purpose: 'read items', frequency: 'one-time' };
 const op = (over = {}) => ({
