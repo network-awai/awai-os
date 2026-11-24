@@ -1,0 +1,14 @@
+serial=ZY32MCL7RD
+model=moto g05
+product=lamul_gjpn
+device=lamul
+android_release=17
+sdk=37
+abi=arm64-v8a
+display=720x1604 physical, density 280
+date=2026-11-25 (JST)
+app=network.itonami.x402 (x402 Pay) versionName 0.1.0 versionCode 1000
+apk=app-universal-debug.apk 21821477 bytes sha256 24bfca5a8c3b357bc87037a6ee8e9232f97945ed0cedac362fcc95c560725eb2 (installed base.apk pulled and re-hashed identical)
+build=npx tauri android build --debug --apk --target aarch64 (from apps/x402, origin/main 1fe377d5 + this evidence only, no code changes)
+night_mode_at_start=yes (device default); rotation was landscape until set to portrait for screenshots
+device_restored=app uninstalled (pm list packages absent), accelerometer_rotation restored to 1, night mode left yes
