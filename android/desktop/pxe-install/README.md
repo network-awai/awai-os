@@ -101,8 +101,9 @@ is gone: the script reads an allowlist and fails closed.
   starting diagnostics. The disk is untouched.
 - **Bundled default:** `../persistence/installer-macs.txt` ships with the
   one existing machine (`0c:47:a9:60:9d:34`) already listed, so that
-  machine keeps working unchanged. The real 7735HS is recorded there as a
-  commented example. Copy the file into the overlay at
+  machine keeps working unchanged. A second PXE-confirmed machine (Ryzen 5 6600H, measured
+  2026-11-24; not the 7735HS, disk not audited) is recorded there as a
+  commented, disabled example only. Copy the file into the overlay at
   `/etc/awai/installer-macs.txt` when assembling the initrd, the same way
   `install.pins.template` goes to `/awai/install.pins`.
 - **Adding a machine:** append one line with its NIC MAC to the copy in
