@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Math-core fitness simulator — provisional scores</title>
+<style>
+  :root { color-scheme: dark; --bg:#0f1115; --panel:#171a21; --line:#262b36; --ink:#e8ecf3; --dim:#9aa4b5; --ok:#3ecf8e; --warn:#f0b34a; --bad:#e2657b; --accent:#7aa2f7; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", Meiryo, sans-serif; }
+  header { padding:20px 24px 8px; }
+  h1 { margin:0 0 6px; font-size:17px; letter-spacing:.01em; }
+  .note { color:var(--dim); font-size:12px; max-width:78ch; }
+  .note strong { color:var(--warn); font-weight:600; }
+  main { display:grid; grid-template-columns: 320px minmax(0,1fr); gap:20px; padding:16px 24px 40px; align-items:start; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  h2 { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); margin:0 0 12px; font-weight:600; }
+  .ctl { display:grid; grid-template-columns: 1fr 92px; gap:2px 10px; align-items:center; margin-bottom:10px; }
+  .ctl label { font-size:12.5px; }
+  .ctl .val { font-variant-numeric: tabular-nums; color:var(--dim); font-size:11.5px; text-align:right; }
+  input[type=range] { grid-column:1 / -1; width:100%; accent-color:var(--accent); }
+  button { background:#1e2430; color:var(--ink); border:1px solid var(--line); border-radius:7px; padding:7px 11px; font-size:12.5px; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  .row { display:grid; grid-template-columns: 22px minmax(0,1fr) 60px; gap:8px; align-items:center; padding:5px 0; }
+  .row .n { color:var(--dim); font-size:11.5px; font-variant-numeric: tabular-nums; text-align:right; }
+  .bar { position:relative; height:20px; background:#12151c; border-radius:4px; overflow:hidden; }
+  .bar > i { position:absolute; inset:0 auto 0 0; background:linear-gradient(90deg,#2b4f8a,#4f7fd6); border-radius:4px; }
+  .bar > span { position:relative; padding-left:8px; font-size:12px; line-height:20px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; }
+  .row.excluded .bar > i { background:linear-gradient(90deg,#3a2b2f,#5c3a42); }
+  .row.excluded .bar > span { color:var(--dim); }
+  .sc { text-align:right; font-variant-numeric: tabular-nums; font-size:12.5px; }
+  .tag { display:inline-block; font-size:10px; padding:0 5px; border-radius:3px; margin-left:6px; vertical-align:1px; }
+  .tag.ok { background:rgba(62,207,142,.14); color:var(--ok); }
+  .tag.bad { background:rgba(226,101,123,.14); color:var(--bad); }
+  .first { margin-top:12px; padding:9px 11px; border-radius:7px; background:rgba(122,162,247,.10); border:1px solid rgba(122,162,247,.35); font-size:12.5px; }
+  table { width:100%; border-collapse:collapse; font-size:11px; }
+  th, td { border:1px solid var(--line); padding:3px 5px; text-align:center; font-variant-numeric: tabular-nums; }
+  th { color:var(--dim); font-weight:600; font-size:10.5px; }
+  th.name, td.name { text-align:left; white-space:nowrap; }
+  td.cell { color:#0b0d11; font-weight:600; }
+  .scroll { overflow-x:auto; }
+  footer { color:var(--dim); font-size:11.5px; padding:0 24px 32px; max-width:88ch; }
+  code { background:#12151c; padding:1px 5px; border-radius:4px; font-size:11.5px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Math-core fitness simulator</h1>
+  <p class="note">
+    <strong>Provisional scores — not measurements.</strong>
+    Per-axis cells are researcher-entered reference values used to order candidate reference
+    implementations. Weights and the 14 axes come from the owner survey (2026-11-24, weight sum 59).
+    The score is a ranking aid, never evidence of runtime performance.
+    Constraint floor excludes candidates that fail the safety/termination/determinism requirement
+    before any performance comparison — a high score cannot buy past it.
+  </p>
+</header>
+
+<main>
+  <div>
+    <section>
+      <h2>Axis weights (0–5)</h2>
+      <div id="controls"></div>
+      <div class="ctl">
+        <label for="floor">Hard-constraint floor</label>
+        <div class="val" id="floorVal">7</div>
+        <input type="range" id="floor" min="0" max="10" step="1" value="7">
+      </div>
+      <button id="reset">Reset weights</button>
+      <div class="first" id="first"></div>
+    </section>
+  </div>
+
+  <div>
+    <section>
+      <h2>Ranking (16 systems × 14 axes)</h2>
+      <div id="ranking"></div>
+    </section>
+    <section style="margin-top:20px">
+      <h2>Score matrix (0–10 per axis)</h2>
+      <div class="scroll"><table id="matrix"></table></div>
+    </section>
+  </div>
+</main>
+
+<footer>
+  Reference implementation: <code>docs/research/simulator/rank.py</code> (deterministic, stdlib only),
+  data <code>systems.json</code>, checks <code>test_rank.py</code>. Reproduce:
+  <code>python3 docs/research/simulator/rank.py</code>.
+  Any cell replaced by a measured value must cite its measurement path in
+  <code>research/kotoba-mathematical-core.md</code>.
+</footer>
+
+<script id="sim-data" type="application/json">
+{
+ "schema": "awai.research.math-core-simulator.v1",
+ "provenance": {
+  "status": "PROVISIONAL — researcher-entered reference scores, NOT measured",
+  "note": "The source survey published axis weights and 16 final totals but not its per-axis cell values. These cells are reconstructed by Researcher to sit in the published order; the computed totals therefore differ from the survey's totals and neither is evidence. Replace a cell only with a measured value and record the measurement path.",
+  "weightsSource": "owner survey 2026-11-24 (14 axes, sum 59)"
+ },
+ "axes": [
+  {
+   "id": "cpu",
+   "label": "CPU compute",
+   "weight": 4
+  },
+  {
+   "id": "gpu",
+   "label": "GPU compute",
+   "weight": 3
+  },
+  {
+   "id": "ram",
+   "label": "RAM / cache",
+   "weight": 4
+  },
+  {
+   "id": "storage",
+   "label": "Storage",
+   "weight": 4
+  },
+  {
+   "id": "network",
+   "label": "Network",
+   "weight": 5
+  },
+  {
+   "id": "knowledge",
+   "label": "Knowledge / inference",
+   "weight": 4
+  },
+  {
+   "id": "llm",
+   "label": "AI / LLM efficiency",
+   "weight": 4
+  },
+  {
+   "id": "proof",
+   "label": "Formal proof",
+   "weight": 3
+  },
+  {
+   "id": "security",
+   "label": "Security",
+   "weight": 5
+  },
+  {
+   "id": "termination",
+   "label": "Termination / resource bound",
+   "weight": 5
+  },
+  {
+   "id": "dag",
+   "label": "DAG / CID fit",
+   "weight": 5
+  },
+  {
+   "id": "parallel",
+   "label": "Parallel / distributed",
+   "weight": 5
+  },
+  {
+   "id": "determinism",
+   "label": "Determinism / reproducibility",
+   "weight": 5
+  },
+  {
+   "id": "dev",
+   "label": "Developer productivity",
+   "weight": 3
+  }
+ ],
+ "hardConstraints": [
+  "security",
+  "termination",
+  "determinism"
+ ],
+ "hardConstraintFloor": 7,
+ "systems": [
+  {
+   "id": "rewriting_logic",
+   "label": "Rewriting logic",
+   "scores": {
+    "cpu": 7,
+    "gpu": 6,
+    "ram": 7,
+    "storage": 8,
+    "network": 9,
+    "knowledge": 9,
+    "llm": 7,
+    "proof": 8,
+    "security": 9,
+    "termination": 9,
+    "dag": 9,
+    "parallel": 9,
+    "determinism": 9,
+    "dev": 6
+   }
+  },
+  {
+   "id": "trs",
+   "label": "Term rewriting (TRS)",
+   "scores": {
+    "cpu": 9,
+    "gpu": 8,
+    "ram": 8,
+    "storage": 7,
+    "network": 6,
+    "knowledge": 6,
+    "llm": 5,
+    "proof": 7,
+    "security": 8,
+    "termination": 10,
+    "dag": 7,
+    "parallel": 8,
+    "determinism": 10,
+    "dev": 7
+   }
+  },
+  {
+   "id": "graph_rewriting",
+   "label": "Graph rewriting",
+   "scores": {
+    "cpu": 6,
+    "gpu": 9,
+    "ram": 9,
+    "storage": 9,
+    "network": 9,
+    "knowledge": 8,
+    "llm": 6,
+    "proof": 6,
+    "security": 8,
+    "termination": 6,
+    "dag": 10,
+    "parallel": 9,
+    "determinism": 7,
+    "dev": 5
+   }
+  },
+  {
+   "id": "computational_logic",
+   "label": "Computational logic (ACL2 type)",
+   "scores": {
+    "cpu": 9,
+    "gpu": 4,
+    "ram": 8,
+    "storage": 6,
+    "network": 5,
+    "knowledge": 7,
+    "llm": 5,
+    "proof": 10,
+    "security": 8,
+    "termination": 9,
+    "dag": 5,
+    "parallel": 4,
+    "determinism": 9,
+    "dev": 7
+   }
+  },
+  {
+   "id": "dependent_lambda",
+   "label": "Dependent lambda calculus",
+   "scores": {
+    "cpu": 8,
+    "gpu": 4,
+    "ram": 6,
+    "storage": 6,
+    "network": 5,
+    "knowledge": 7,
+    "llm": 6,
+    "proof": 10,
+    "security": 9,
+    "termination": 10,
+    "dag": 7,
+    "parallel": 5,
+    "determinism": 9,
+    "dev": 8
+   }
+  },
+  {
+   "id": "equational_logic",
+   "label": "Equational logic / multi-sorted algebra",
+   "scores": {
+    "cpu": 8,
+    "gpu": 6,
+    "ram": 6,
+    "storage": 7,
+    "network": 6,
+    "knowledge": 7,
+    "llm": 5,
+    "proof": 6,
+    "security": 7,
+    "termination": 8,
+    "dag": 9,
+    "parallel": 6,
+    "determinism": 9,
+    "dev": 7
+   }
+  },
+  {
+   "id": "matching_logic",
+   "label": "Matching logic",
+   "scores": {
+    "cpu": 6,
+    "gpu": 4,
+    "ram": 6,
+    "storage": 6,
+    "network": 8,
+    "knowledge": 8,
+    "llm": 5,
+    "proof": 8,
+    "security": 8,
+    "termination": 6,
+    "dag": 6,
+    "parallel": 6,
+    "determinism": 7,
+    "dev": 5
+   }
+  },
+  {
+   "id": "linear_logic",
+   "label": "Linear logic",
+   "scores": {
+    "cpu": 7,
+    "gpu": 5,
+    "ram": 7,
+    "storage": 6,
+    "network": 8,
+    "knowledge": 6,
+    "llm": 5,
+    "proof": 8,
+    "security": 10,
+    "termination": 7,
+    "dag": 6,
+    "parallel": 7,
+    "determinism": 7,
+    "dev": 5
+   }
+  },
+  {
+   "id": "horn_logic",
+   "label": "Horn clause logic",
+   "scores": {
+    "cpu": 8,
+    "gpu": 5,
+    "ram": 8,
+    "storage": 8,
+    "network": 9,
+    "knowledge": 10,
+    "llm": 6,
+    "proof": 5,
+    "security": 6,
+    "termination": 8,
+    "dag": 6,
+    "parallel": 7,
+    "determinism": 8,
+    "dev": 9
+   }
+  },
+  {
+   "id": "higher_order_logic",
+   "label": "Higher-order logic (HOL)",
+   "scores": {
+    "cpu": 6,
+    "gpu": 3,
+    "ram": 6,
+    "storage": 5,
+    "network": 4,
+    "knowledge": 8,
+    "llm": 5,
+    "proof": 10,
+    "security": 7,
+    "termination": 8,
+    "dag": 4,
+    "parallel": 4,
+    "determinism": 8,
+    "dev": 6
+   }
+  },
+  {
+   "id": "category_theory",
+   "label": "Category theory / categorical logic",
+   "scores": {
+    "cpu": 5,
+    "gpu": 4,
+    "ram": 5,
+    "storage": 5,
+    "network": 5,
+    "knowledge": 8,
+    "llm": 4,
+    "proof": 8,
+    "security": 5,
+    "termination": 5,
+    "dag": 6,
+    "parallel": 5,
+    "determinism": 7,
+    "dev": 4
+   }
+  },
+  {
+   "id": "interaction_nets",
+   "label": "Interaction nets",
+   "scores": {
+    "cpu": 7,
+    "gpu": 10,
+    "ram": 5,
+    "storage": 5,
+    "network": 6,
+    "knowledge": 4,
+    "llm": 3,
+    "proof": 5,
+    "security": 5,
+    "termination": 6,
+    "dag": 7,
+    "parallel": 10,
+    "determinism": 6,
+    "dev": 3
+   }
+  },
+  {
+   "id": "combinatory_logic",
+   "label": "Combinatory logic",
+   "scores": {
+    "cpu": 7,
+    "gpu": 4,
+    "ram": 5,
+    "storage": 6,
+    "network": 4,
+    "knowledge": 4,
+    "llm": 3,
+    "proof": 5,
+    "security": 5,
+    "termination": 6,
+    "dag": 8,
+    "parallel": 5,
+    "determinism": 7,
+    "dev": 4
+   }
+  },
+  {
+   "id": "realizability",
+   "label": "Realizability theory",
+   "scores": {
+    "cpu": 4,
+    "gpu": 3,
+    "ram": 4,
+    "storage": 4,
+    "network": 4,
+    "knowledge": 5,
+    "llm": 3,
+    "proof": 7,
+    "security": 5,
+    "termination": 5,
+    "dag": 3,
+    "parallel": 3,
+    "determinism": 6,
+    "dev": 2
+   }
+  },
+  {
+   "id": "topos_theory",
+   "label": "Topos theory",
+   "scores": {
+    "cpu": 4,
+    "gpu": 3,
+    "ram": 4,
+    "storage": 4,
+    "network": 4,
+    "knowledge": 7,
+    "llm": 3,
+    "proof": 7,
+    "security": 4,
+    "termination": 4,
+    "dag": 3,
+    "parallel": 3,
+    "determinism": 6,
+    "dev": 2
+   }
+  },
+  {
+   "id": "constructive_set_theory",
+   "label": "Constructive set theory",
+   "scores": {
+    "cpu": 4,
+    "gpu": 3,
+    "ram": 4,
+    "storage": 4,
+    "network": 4,
+    "knowledge": 6,
+    "llm": 3,
+    "proof": 7,
+    "security": 4,
+    "termination": 4,
+    "dag": 3,
+    "parallel": 3,
+    "determinism": 6,
+    "dev": 2
+   }
+  }
+ ]
+}
+</script>
+<script>
+(function () {
+  const DATA = JSON.parse(document.getElementById('sim-data').textContent);
+  const defaults = DATA.axes.map(a => a.weight);
+  const controls = document.getElementById('controls');
+  const floorInput = document.getElementById('floor');
+  const floorVal = document.getElementById('floorVal');
+  const ranking = document.getElementById('ranking');
+  const first = document.getElementById('first');
+  const sliders = [];
+
+  DATA.axes.forEach((axis, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'ctl';
+    const label = document.createElement('label');
+    label.textContent = axis.label;
+    label.htmlFor = 'w-' + axis.id;
+    const val = document.createElement('div');
+    val.className = 'val';
+    const input = document.createElement('input');
+    input.type = 'range'; input.min = '0'; input.max = '5'; input.step = '1';
+    input.value = String(axis.weight); input.id = 'w-' + axis.id;
+    input.addEventListener('input', render);
+    sliders.push({ input, val, index: i });
+    wrap.append(label, val, input);
+    controls.appendChild(wrap);
+  });
+
+  function weights() {
+    return sliders.map(s => Number(s.input.value));
+  }
+
+  function scoreOf(system, w) {
+    const total = w.reduce((a, b) => a + b, 0);
+    if (total === 0) return 0;
+    const earned = DATA.axes.reduce((acc, axis, i) => acc + w[i] * system.scores[axis.id], 0);
+    return 100 * earned / (10 * total);
+  }
+
+  function failures(system, floor) {
+    return DATA.hardConstraints.filter(id => system.scores[id] < floor);
+  }
+
+  function render() {
+    const w = weights();
+    const floor = Number(floorInput.value);
+    floorVal.textContent = String(floor);
+    const total = w.reduce((a, b) => a + b, 0);
+    sliders.forEach(s => {
+      const share = total === 0 ? 0 : 100 * Number(s.input.value) / total;
+      s.val.textContent = s.input.value + ' · ' + share.toFixed(1) + '%';
+    });
+
+    const rows = DATA.systems.map(s => {
+      const failed = failures(s, floor);
+      return { label: s.label, score: scoreOf(s, w), failed };
+    }).sort((a, b) => b.score - a.score);
+
+    ranking.textContent = '';
+    const max = Math.max(...rows.map(r => r.score), 1);
+    rows.forEach((r, i) => {
+      const row = document.createElement('div');
+      row.className = 'row' + (r.failed.length ? ' excluded' : '');
+      const n = document.createElement('div'); n.className = 'n'; n.textContent = String(i + 1);
+      const bar = document.createElement('div'); bar.className = 'bar';
+      const fill = document.createElement('i');
+      fill.style.width = (100 * r.score / max) + '%';
+      const span = document.createElement('span');
+      span.textContent = r.label;
+      if (r.failed.length) {
+        const tag = document.createElement('em'); tag.className = 'tag bad';
+        tag.textContent = 'excluded: ' + r.failed.join(', ');
+        span.appendChild(tag);
+      } else {
+        const tag = document.createElement('em'); tag.className = 'tag ok';
+        tag.textContent = 'eligible';
+        span.appendChild(tag);
+      }
+      bar.append(fill, span);
+      const sc = document.createElement('div'); sc.className = 'sc'; sc.textContent = r.score.toFixed(2);
+      row.append(n, bar, sc);
+      ranking.appendChild(row);
+    });
+
+    const eligible = rows.filter(r => !r.failed.length);
+    first.textContent = eligible.length
+      ? 'First to build under these weights: ' + eligible[0].label + ' (' + eligible[0].score.toFixed(2) + ')'
+      : 'No candidate satisfies the hard constraints at floor ' + floor + '.';
+  }
+
+  function renderMatrix() {
+    const table = document.getElementById('matrix');
+    const thead = document.createElement('thead');
+    const hr = document.createElement('tr');
+    hr.appendChild(headerCell('system', 'name'));
+    DATA.axes.forEach(a => hr.appendChild(headerCell(a.label, '')));
+    thead.appendChild(hr);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    DATA.systems.forEach(s => {
+      const tr = document.createElement('tr');
+      tr.appendChild(headerCell(s.label, 'name'));
+      DATA.axes.forEach(a => {
+        const v = s.scores[a.id];
+        const td = document.createElement('td');
+        td.className = 'cell';
+        td.textContent = String(v);
+        td.style.background = heat(v);
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+  }
+
+  function headerCell(text, cls) {
+    const th = document.createElement('th');
+    th.textContent = text;
+    if (cls) th.className = cls;
+    return th;
+  }
+
+  function heat(v) {
+    const t = Math.max(0, Math.min(10, v)) / 10;
+    const r = Math.round(38 + t * (122 - 38));
+    const g = Math.round(43 + t * (162 - 43));
+    const b = Math.round(54 + t * (247 - 54));
+    return 'rgb(' + r + ',' + g + ',' + b + ')';
+  }
+
+  floorInput.addEventListener('input', render);
+  document.getElementById('reset').addEventListener('click', () => {
+    sliders.forEach((s, i) => { s.input.value = String(defaults[i]); });
+    render();
+  });
+
+  renderMatrix();
+  render();
+})();
+</script>
+</body>
+</html>
