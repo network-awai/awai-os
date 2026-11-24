@@ -1,0 +1,25 @@
+claim_id	source	evidence_ref	resolved	reproduced	外部依存	未検証明記
+BOOT-LAN	docs/research/evidence-map.md:7	android/desktop/netboot/physical-observation-20261116.json + android/desktop/netboot/README.md:65	yes	yes	none	no
+BOOT-PINS	docs/research/evidence-map.md:8	android/desktop/netboot/artifacts-20261116.json	yes	yes	none	no
+BOOT-INPUT	docs/research/evidence-map.md:9	android/desktop/pc-evaluation-pins.json	yes	yes	github.com	no
+GPT-REFUSAL	docs/research/evidence-map.md:10	android/desktop/persistence/evidence/physical-gpt-audit-20261121.json	yes	yes	none	no
+INSTALL-REVIEW	docs/research/evidence-map.md:11	https://github.com/network-awai/awai-os/pull/479 (head 0d5c52ace9321f058d29271b91ab52b59f05c754, MERGED, tatara/ci pass)	yes	未再現	github.com	no
+INSTALL-PC	docs/research/evidence-map.md:12	https://github.com/network-awai/awai-os/pull/479 (review gaps)	yes	未再現	github.com	yes
+OTA-REF	docs/research/evidence-map.md:13	android/desktop/ota-reference-check/evidence/ota-reference-kvm-20261119.json	yes	yes	none	no
+OTA-REF-LIMIT	docs/research/evidence-map.md:14	android/desktop/ota-reference-check/evidence/ota-reference-kvm-20261119.json	yes	yes	none	no
+OTA-PC	docs/research/evidence-map.md:15	android/desktop/pc-ab-device/evidence/shared-disk-ota-kvm-20261119.json	yes	yes	none	no
+OTA-DELTA	docs/research/evidence-map.md:16	android/desktop/pc-ab-device/evidence/shared-disk-ota-kvm-20261119.json	yes	yes	none	no
+OTA-REJECT	docs/research/evidence-map.md:17	android/desktop/pc-ab-device/evidence/ota-rejection-kvm-20261120.json	yes	yes	none	no
+OTA-DESIGN	docs/research/evidence-map.md:18	https://github.com/network-awai/awai-os/pull/484 (MERGED, tatara/ci pass) + docs/evidence/ota-payload-release-assets-20261124.md	yes	未再現	github.com	no
+OTA-RANGE	docs/research/evidence-map.md:19	docs/evidence/ota-payload-release-assets-20261124.md + github.com release asset (read-only Range 206 re-fetched, content-range bytes 0-99/1800000000, content-length 100)	yes	yes	github.com,release-assets.githubusercontent.com	no
+OTA-ETAG	docs/research/evidence-map.md:20	docs/evidence/ota-payload-release-assets-20261124.md + raw.githubusercontent.com GET re-fetched (HEAD 200, ETag match, 55456456 B, SHA-256 b1a5f7f73a0bc37dfdf924e92889136670feac1772ce02e8ddc4b76e87771dab)	yes	yes	raw.githubusercontent.com	no
+OTA-FEED	docs/research/evidence-map.md:21	deploy/ota-feed/README.md + https://github.com/network-awai/awai-os/pull/485 (MERGED) + https://ota.awai.network GET re-fetched (200, content-length 2, cache-control no-store, [])	yes	yes	ota.awai.network,github.com	no
+OTA-ENDTOEND	docs/research/evidence-map.md:22	https://github.com/network-awai/awai-os/pull/484 + docs/evidence/ota-payload-release-assets-20261124.md	yes	未再現	github.com	yes
+STORE-PINS	docs/research/evidence-map.md:23	docs/evidence/store-latest-pointer-20261121/README.md + instrumentation.log (85 assertions passed reproduced)	yes	未再現	none	no
+STORE-BODY	docs/research/evidence-map.md:24	android/shared/src/network/awai/platform/AutoUpdater.java:137,153 + Integrity.java:9	yes	yes	raw.githubusercontent.com	no
+STORE-DECLARATION	docs/research/evidence-map.md:25	docs/evidence/store-silent-update-20261121/README.md + UpdatePolicy.java:155	yes	yes	none	no
+STORE-JOB	docs/research/evidence-map.md:26	docs/evidence/store-auto-update-job-20261121/README.md + instrumentation.log (85 assertions passed)	yes	未再現	raw.githubusercontent.com	no
+STORE-TEXT	docs/research/evidence-map.md:27	docs/evidence/store-auto-update-job-20261121/README.md + docs/evidence/store-permission-note-awai3653-20261122/README.md	yes	yes	none	no
+STORE-REFUSAL	docs/research/evidence-map.md:28	docs/evidence/store-auto-update-job-20261121/README.md (new-permission, Yotei 1→2001)	yes	yes	none	no
+YATA-RAW	docs/research/evidence-map.md:29	docs/evidence/ota-payload-release-assets-20261124.md (yataverse put 16 MiB / 32 MiB)	yes	未再現	yataverse.com	no
+YATA-CAR	docs/research/evidence-map.md:30	docs/evidence/ota-payload-release-assets-20261124.md + docs/adr/20261123-no-r2-yataverse-only.md (car-put; GET small block Range 206 bytes 0-9/55 re-fetched)	yes	未再現	yataverse.com	no
