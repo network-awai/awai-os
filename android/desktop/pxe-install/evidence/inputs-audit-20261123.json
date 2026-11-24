@@ -1,0 +1,32 @@
+{
+  "schema": "awai.pc.7735h.inputs-audit.v1",
+  "date": "2026-11-23",
+  "host": "operator Mac (this worktree)",
+  "requirements": [
+    {"name": "signed target-files zip", "found": "NO — no target-files zip anywhere under ~/orca/workspaces/awai-os or scratch (find output empty). Only repo references: target-files-20261119.json records a test-key build (sha256 6c757cce…) on the Vultr host, not a signed release."},
+    {"name": "stock disk-vda.img (same build)", "found": "NO — no disk-vda img found on this Mac. The pinned cd22c762 image itself is not present; its provenance is the USB installer overlay (physical media, not reachable from here)."},
+    {"name": "otatools (build_super_image, lpmake, simg2img)", "found": "NO — find / -maxdepth 4 -name otatools empty; none in SDK dirs."},
+    {"name": "aapt2", "found": "PRESENT but not on PATH: ~/Library/Android/sdk/build-tools/36.0.0/aapt2 and 36.1.0/aapt2 exist. which aapt2 fails; verify command must pass --aapt2 with full path."},
+    {"name": "OTA key basename + certificate SHA-256", "found": "NO — no signing-environment keys on this Mac. Hard rule: no key handling here; keys stay on build host / owner signing environment."},
+    {"name": "AOSP releasetools (ota_from_target_files, check_ota_package_signature)", "found": "NO — live with the AOSP build tree on the build host."},
+    {"name": "install image (make-tf-disk output)", "found": "NO — derived artifact; cannot exist without signed target-files + stock disk above."},
+    {"name": "pinned iPXE binary", "found": "NO — not on this Mac. patch-ipxe.mjs could NOT be run against the real binary today (sha guard e7fb0e08… refuses anything else)."},
+    {"name": "kernel + initrd (pinned PC Live candidate)", "found": "NO — not staged on this Mac. Upstream release tag page answered HTTP 200 this session (third-party prebuilt, not the Awai signed ROM); not downloaded (1.4 GB x2 parts, wrong provenance for Awai OS)."},
+    {"name": "second disk for option (c)", "found": "NO — not attached to this Mac."},
+    {"name": "7735H LAN reachability", "found": "NO — ping 10.77.0.2 timed out (100% loss); this Mac has no 10.77.0.1 interface. The box is powered off or the direct cable is unplugged. Both PXE-install boot and the §4 persistent boot are blocked until the owner re-plugs."},
+    {"name": "build host access (Vultr vc2-16c-64gb)", "found": "NOT CHECKED — no address/credential in repo for this session. Internet IS available (github.com 200, ota.awai.network host answers), but that does not imply build-host access. Recorded as unknown, not blocked."}
+  ],
+  "r2Finding": "pc-ab-device/README.md Updater feed section states the pilot endpoint is backed by Cloudflare R2 bucket awai-os-ota. Owner policy 2026-11-23: no R2 dependency. The existing OTA feed path ASSUMES R2 and must not be built on without a non-R2 replacement decided by the owner. The PXE install route here does NOT need R2: it serves kernel/initrd/efi/install.img from the operator Mac over the direct LAN. Only post-install OTA updates are affected.",
+  "exactCommandSequenceOnceInputsExist": [
+    "1. (build host) Gather signed target-files + stock disk + build/signing records; record SIGNED_TARGET_FILES_SHA256 and STOCK_DISK_SHA256.",
+    "2. (build host) make-tf-disk.sh SIGNED_TARGET_FILES STOCK_DISK INSTALL_IMAGE with AWAI_ANDROID_ROOT/AWAI_ANDROID_HOST_OUT set.",
+    "3. (build host) updater-feed.py verify-target-files SIGNED_TARGET_FILES FEED --sha256 SIGNED_SHA --device virtio_x86_64 --aapt2 <aapt2>. Needs non-R2 feed decision first for pilot.",
+    "4. (Mac) Copy install.img to fresh artifact dir; write manifest.json pins; bake install.pins into NEW initrd overlay with init-install.sh as /init.",
+    "5. (Mac) patch-ipxe.mjs <pinned ipxe.efi> install <out.efi> erase 500118192 — separate artifact dir, switch firmware route with switch-route.mjs.",
+    "6. (Mac) serve-install.mjs <dir> <manifest.json> on 10.77.0.1:18091; collect-boot-log running; watch status page.",
+    "7. (7735H owner hand) PXE boot, guards, operator types full image SHA-256 on console, write, readback, reboot into firmware boot entry.",
+    "8. (Mac) Post-install plan/boot proof recorded as new dated evidence."
+  ],
+  "boardBlockers": ["Box unreachable (no 10.77.0.2, no 10.77.0.1 on this Mac) — blocks all physical boot evidence.", "Signed target-files + stock disk + install image absent and not obtainable from here — blocks the A/B install itself.", "OTA pilot assumes R2 (awai-os-ota) — conflicts with owner no-R2 policy; needs non-R2 feed/hosting decision before OTA publish.", "Destructive steps (erase/shrink/flash/key handling) are the owner's hand by hard rule."],
+  "notRun": ["patch-ipxe.mjs against real pinned ipxe.efi — binary absent; tool's sha guard refuses anything else, so no substitute run attempted.", "serve-install.mjs against real artifacts — files absent; only node --check parse run.", "any 7735H boot (PXE install or persistent) — box unreachable; the commands actually run live in persistent-boot-attempt-20261123.json."]
+}
