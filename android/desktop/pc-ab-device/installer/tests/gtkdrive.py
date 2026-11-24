@@ -45,15 +45,7 @@ class Drive:
         self.ui.render(force=True)
         self.win.show_all()
         self.spin()
-        # an offscreen window never gets focus from a display: give it toplevel focus so Tab traversal behaves as on screen
-        import gi
-        gi.require_version("Gdk", "3.0")
-        from gi.repository import Gdk
-        ev = Gdk.Event.new(Gdk.EventType.FOCUS_CHANGE)
-        ev.window = self.win.get_window()
-        ev.focus_change.window = self.win.get_window()
-        ev.focus_change._in = 1
-        self.win.emit("focus-in-event", ev)
+        gui.ensure_toplevel_focus(self.win)  # the same helper the real window uses
         self.win.set_focus(None)
 
     def spin(self, n=25, settle=0.12):

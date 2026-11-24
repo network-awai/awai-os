@@ -239,8 +239,8 @@ python3 android/desktop/pc-ab-device/installer/tests/shots.py OUTDIR            
 No root, no real disk: fake `lsblk`/`blockdev`/`wipefs`/`findmnt`/`sgdisk`/`zstd`/`sync`/`systemctl` on `PATH` and sparse temp files;
 the production `Host` is replaced only in tests. The GTK tests drive the real widget tree in a `Gtk.OffscreenWindow` (nothing is shown
 on a display; Tab/Enter/typing are simulated at widget level) and skip themselves where PyGObject/Gtk 3 is missing (CI runs
-117 of 128 tests there; the 11 GTK tests ran locally in a conda env with Gtk 3.24). Bazel: `:screen_installer_*_test`. Mutation list:
-`installer/tests/mutation-results.txt` (74 of 75 guards killed; the one survivor is equivalent offscreen and covered by the VM run).
+117 of 130 tests there; the 13 GTK tests ran locally in a conda env with Gtk 3.24). Bazel: `:screen_installer_*_test`. Mutation list:
+`installer/tests/mutation-results.txt` (77 of 78 guards killed; the one survivor is equivalent offscreen and covered by the VM run).
 Screenshots from the widget tree and the design side by side: `installer/screenshots/` (`fonts-used.txt` proves every label is drawn
 by the bundled face, `keyboard-walkthrough.txt` is the Tab/Enter sequence).
 

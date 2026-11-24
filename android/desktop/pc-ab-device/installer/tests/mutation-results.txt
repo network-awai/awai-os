@@ -73,5 +73,8 @@ killed       overlay checks stock iso sha  tests/test_web_and_build.py
 killed       overlay checks raw sha  tests/test_web_and_build.py
 killed       gui: power question survives the poll redraw  tests/test_gui.py   (added after the VM run found the label flickering back)
 killed       gui: rebuild is not a blur  tests/test_gui.py   (same)
+killed       gui: card tag centred  tests/test_gui.py   (added with the alignment fix)
+killed       gui: product title line pitch  tests/test_gui.py   (same)
+killed       gui: toplevel focus ensured  tests/test_gui.py   (same)
 
-74/75 killed; the 1 survivor is equivalent offscreen (see above)
+77/78 killed; the 1 survivor is equivalent offscreen (see above)

@@ -76,6 +76,40 @@ class Widgets(unittest.TestCase):
         d.key("Tab")
         self.assertEqual(d.focus_text(), "戻る")
 
+    def test_first_tab_lands_on_the_first_selectable_card_even_after_focus_was_lost(self):
+        import gi
+        gi.require_version("Gdk", "3.0")
+        from gi.repository import Gdk
+        d = self.d
+        ev = Gdk.Event.new(Gdk.EventType.FOCUS_CHANGE)  # key mashing / a lost X focus: GTK is told the toplevel lost focus
+        ev.window = d.win.get_window()
+        ev.focus_change.window = d.win.get_window()
+        ev.focus_change._in = 0
+        d.win.emit("focus-out-event", ev)
+        self.assertFalse(d.win.has_toplevel_focus())
+        d.win.set_focus(None)
+        import gui
+        gui.ensure_toplevel_focus(d.win)  # what the window's key handler does before the key reaches the widgets
+        self.assertTrue(d.win.has_toplevel_focus())
+        d.key("Tab")
+        self.assertIn("内蔵 SSD", d.focus_text())
+        self.assertIn("選択可能", d.focus_text(), "one Tab reaches the first selectable card, not the unselectable USB")
+
+    def test_card_tags_are_centred_and_the_product_title_uses_the_design_pitch(self):
+        d = self.d
+        tags = [l for l in d.labels() if l.get_text() in ("選択可能", "選択不可")]
+        self.assertTrue(tags)
+        for tag in tags:
+            card = tag.get_ancestor(d.Gtk.Button) or tag.get_parent().get_parent()
+            _x, off_y = tag.get_layout_offsets()  # where the text really is, not the label's allocation
+            mid_tag = off_y + tag.get_layout().get_pixel_size()[1] / 2  # window coordinates
+            mid_card = card.translate_coordinates(d.win, 0, card.get_allocated_height() / 2)[1]
+            self.assertAlmostEqual(mid_tag, mid_card, delta=3, msg=tag.get_text())
+        prod = [l for l in d.labels() if l.get_text().startswith("PC に")][0]
+        lines = prod.get_layout().get_pixel_size()[1]
+        size = prod.get_pango_context().get_font_description().get_size() / 1024 * 96 / 72
+        self.assertLessEqual(lines / (2 * size), 1.25, "two lines of the product title must not be wider than the design's pitch")
+
     def test_power_off_asks_once(self):
         d = self.d
         d.key("Tab")

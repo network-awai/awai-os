@@ -27,6 +27,26 @@ def use_bundled_fonts(work):
     os.environ.setdefault("PANGOCAIRO_BACKEND", "fc")
 
 
+def ensure_toplevel_focus(win):
+    """Without a window manager nobody tells GTK that its window has the keyboard focus, and GTK then ignores Tab traversal.
+    Tell it: give the X window the input focus and mark the GTK toplevel as focused (idempotent)."""
+    import gi
+    gi.require_version("Gdk", "3.0")
+    from gi.repository import Gdk
+    gw = win.get_window()
+    if gw is not None and type(win).__name__ != "OffscreenWindow":  # an offscreen window has no X window to focus
+        try:
+            gw.focus(Gdk.CURRENT_TIME)
+        except Exception:
+            pass
+    if not win.has_toplevel_focus() and gw is not None:
+        ev = Gdk.Event.new(Gdk.EventType.FOCUS_CHANGE)
+        ev.window = gw
+        ev.focus_change.window = gw
+        ev.focus_change._in = 1
+        win.emit("focus-in-event", ev)
+
+
 def css_for(u):
     """Gtk CSS for one design unit u (pixels). Same colours and sizes as the approved design."""
     p = lambda n: f"{max(1, round(n * u))}px"
@@ -163,6 +183,7 @@ class InstallerUI:
         rel.set_margin_top(round(9 * u))
         self.rail.pack_start(rel, False, False, 0)
         prod = self.label(T["product"], "product")
+        self.line_height(prod, round(25 * u * 1024))  # the design's line pitch: 25 units for the 22-unit font
         prod.set_margin_top(round(18 * u))
         self.rail.pack_start(prod, False, False, 0)
         self.steps_box.set_margin_top(round(34 * u))
@@ -175,6 +196,15 @@ class InstallerUI:
         rule.set_size_request(-1, 1)
         self.rail.pack_end(hint, False, False, 0)
         self.rail.pack_end(rule, False, False, 0)
+
+    def line_height(self, label, pango_units):
+        """Pango >= 1.50 absolute line height (pixels * 1024); older Pango keeps its default spacing."""
+        try:
+            attrs = self.Pango.AttrList()
+            attrs.insert(self.Pango.attr_line_height_new_absolute(pango_units))
+            label.set_attributes(attrs)
+        except Exception:
+            pass
 
     def clear(self, box):
         for child in box.get_children():
@@ -254,6 +284,9 @@ class InstallerUI:
         inner.pack_start(text, True, True, 0)
         tag = self.label(extra or c["tag"], "card-tag")
         tag.set_size_request(round(96 * u), -1)
+        tag.set_yalign(0.5)
+        tag.set_valign(Gtk.Align.CENTER)
+        text.set_valign(Gtk.Align.CENTER)
         inner.pack_end(tag, False, False, 0)
         if c["eligible"] and not extra:
             w = Gtk.Button()
@@ -482,17 +515,20 @@ def main(argv=None):
     win.add(ui.root)
 
     def on_key(_w, event):
-        return keys.swallow(Gdk.keyval_name(event.keyval), int(event.state))
+        if keys.swallow(Gdk.keyval_name(event.keyval), int(event.state)):
+            return True
+        ensure_toplevel_focus(win)  # focus can be lost to key mashing or a lost X focus; the first Tab must still count
+        return False
     win.connect("key-press-event", on_key)
     win.connect("key-release-event", lambda _w, e: keys.swallow(Gdk.keyval_name(e.keyval), int(e.state)))
     win.connect("destroy", lambda _w: Gtk.main_quit())
+    win.connect("focus-out-event", lambda _w, _e: GLib.idle_add(ensure_toplevel_focus, win) and False)
     ui.render(force=True)
     win.show_all()
     win.fullscreen()
     ui.render(force=True)
     win.present()
-    if win.get_window():
-        win.get_window().focus(Gdk.CURRENT_TIME)
+    ensure_toplevel_focus(win)
     GLib.timeout_add(700, ui.poll)
     Gtk.main()
     return 0
