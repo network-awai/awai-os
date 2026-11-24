@@ -113,6 +113,169 @@ awai-pc-install.py apply <disk or image> <verified install image> \
 It has only been run against an image file. Running it on a real disk is a separate, approved step
 (AWAI-3585 first reads the Desktop's partition table).
 
+## Screen installer on the USB (item 205)
+
+`installer/` is the screen version of the USB installer (the Figma design: six screens plus a failure screen). `awai/install`
+on the USB starts it: **one GTK 3 window** on a bare X server (no window manager, no browser, no listener of any kind). If X or
+GTK cannot start it says why in one line and continues with the text installer on tty1.
+
+| Path | What |
+| --- | --- |
+| `installer/core.py` | **Every guard and the install sequence** (and the detached `worker` entry). Both front ends call it; neither decides anything. |
+| `installer/controller.py` | front-end-neutral controller: list/confirm -> one-shot ticket -> typed device name -> exactly one detached worker, true install state, power-off question. Unit-tested without GTK. |
+| `installer/gui.py`, `keys.py`, `strings.py` | the GTK 3 widget tree (CSS from one design unit), the key policy, every Japanese string. |
+| `installer/fonts/`, `assets/` | bundled Noto Sans JP subset (3 static weights, OFL) and the Awai mark. |
+| `installer/text_installer.py` | the text front end (English, on `core.py`). |
+| `installer/start.sh`, `xsession.sh`, `awai-install` | tty1 entry and restart loop, the xinit session, the `/awai/install` shim. |
+| `installer/build-overlay.py` | stock SystemRescue ISO + image -> overlay -> `xorriso`. `--dry-run`; downloads nothing. |
+| `installer/700-awai-installer.yaml` | SystemRescue autorun for tty1 (unchanged content: it still runs `/awai/install`). |
+| `installer/tests/` | tests, fakes, GTK offscreen driver, screenshot and mutation tools. |
+
+How it runs: `start.sh` checks `xinit` and `python3 -c 'import gi; Gtk 3'`, then loops `xinit xsession.sh -- :0 vt1`. `xsession.sh`
+turns off blanking and DPMS (`xset s off`, `s noblank`, `-dpms`) and runs `gui.py`. The window is undecorated and as large as the
+screen; with no window manager there is nothing to switch to, and `keys.py` swallows every Ctrl/Alt/Super combination, function key
+and the menu key before any widget sees it (no accelerators, no mnemonics, no context menu). Closing or killing the window (Alt+F4 has
+no effect without a window manager; `kill -9` does) ends X, `start.sh` starts it again and it shows the true state from
+`/run/awai-pc-installer/state.json`; the install itself is the detached `core.py worker` holding the lock, so it never notices.
+Three windows that die within 20 s each mean GTK/X do not work here and `start.sh` falls back to the text installer. X VT switching
+is untouched (Ctrl+Alt+F2 gives the console shell).
+
+### Boot menu and text mode
+
+`build-overlay.py` replaces three files of the base medium's boot configuration (from SystemRescue 13.03, kept as
+`installer/tests/stock-bootcfg/` with SHA-256s): GRUB for UEFI `boot/grub/grubsrcd.cfg` and syslinux for BIOS
+`boot/syslinux/sysresccd_head.cfg` + `sysresccd_sys.cfg`; xorriso maps them with `-overwrite on`. The menu is
+**Install Awai OS** (default, first), **Install Awai OS (text)** (`awai.installer=text`, read by `start.sh`) and
+**Install Awai OS (basic display, nomodeset)**, then the stock custom hook, firmware setup, reboot and power off. Timeout 5 s;
+an unattended boot only reaches the installer screen, which still needs the typed device name. The kernel and initrd lines
+are the stock ones character for character (a test compares them with the stock files), and the text entry adds only
+`awai.installer=text`. Labels are English: GRUB's `font.pf2` and syslinux's menu font are not known to draw Japanese, and
+no base-distribution name appears in menu text (the `archisolabel=RESCUE1303` parameter and `/sysresccd` paths are
+parameters, not text). The stock memory test, EFI shell, copytoram, checksum, serial, nomdlvm, findroot and break entries are
+dropped from the installer medium. Other ways into text mode: `awai.installer=text` typed at the boot prompt, or tty2 and
+`/run/archiso/bootmnt/awai/install --text`. If an install is already running when the text installer starts (for example the
+screen session died and `start.sh` fell back to text) it says so, follows the install to its true end state and never offers a
+target (it also holds off while the worker's lock is held but no state exists yet). Not exercised on a real boot (QEMU run).
+
+### What `core.py` enforces (in the backend, never only in the window)
+
+Target: `/dev/nvme[0-9]+n[0-9]+`, block device, `TYPE disk`, `RO 0`, no partitions, 512-byte logical sectors, nothing
+mounted, `wipefs` signatures only `gpt`/`PMBR`, never the device the media directory is served from (resolved with
+`findmnt` plus `lsblk -s`; if it cannot be resolved every disk is refused). Every disk is listed; the ones that fail are
+`選択不可` with the reason. There is no erase operation anywhere.
+
+Order of `run_install`: typed device name == target -> target checks and identity (major:minor, size, model, serial,
+WWN; a serial or WWN appearing or vanishing counts as a change) equal to what was confirmed -> `archive.sha256` ->
+raw image sha256 == pinned value -> plan with `existing == []` and the expected number of new partitions ->
+**all target checks and identity again, plus a fresh plan, immediately before writing** ->
+`awai-pc-install.py apply --record` -> record has `sourceSha256 == pinned`, `existingUnchanged`, one readback per
+partition with a digest -> `sgdisk -v` exit 0 and "No problems found" -> `sync` -> only then `done`. Any other path ends
+in `failed`; the window shows the completion screen only for `state == "done"`.
+
+Two-step confirmation: the review screen asks for the device name (`nvme0n1`); the controller checks it and the worker
+checks it again. The text installer still asks for `INSTALL nvme0n1` and hands the name to the same check.
+
+One install: the worker holds `flock` on `/run/awai-pc-installer/lock`; it is a separate, detached process (own session), so
+closing, killing or crashing the GTK window neither stops the write nor allows another. A restarted window reads the true state
+(`running` only with a live lock holder; `running` without one is reported as interrupted, never as running or done).
+`write-started` / `install-record.json` block any further start until reboot (`/run` is a tmpfs). Reboot and power off are
+refused by the controller while an install runs, and the buttons are disabled. The ticket from `内容を確認` (identity at that
+moment) is consumed by the one start, whatever happens; a wrong typed name consumes it too.
+
+### Progress
+
+`awai-pc-install.py apply` gained an optional `progress(event, done, total)` callback (events `write-start`, `write`,
+`write-done`, `verify`). It only reports: no check was changed or reordered, `write-start` is emitted immediately before
+the first GPT change, and the existing suite is untouched and green. Step 1 is the byte progress of hashing the archive,
+unpacking and re-hashing the raw image; step 2 the bytes written; step 3 the bytes read back. `apply` itself first
+hashes the source and existing partitions without progress, so step 2 can sit at 0% for a while on a large image.
+
+### Differences between the shipped overlay copy and the repo
+
+The overlay's `awai-pc-install.py` is older: it has no vbmeta handling (`VBMETA_ROOTS`, `vbmeta_layout`, vbmeta in the
+name clash check). The repo copy is canonical and is what `build-overlay.py` ships. Consequence: the old `jq` check
+`(.new|length)==11` is wrong for an image with vbmeta slots (13 to 17 new partitions). `core.py` expects
+`len(LAYOUT) + len(vbmeta_layout(source))`, taken from the canonical script, so an image without vbmeta still needs
+exactly 11. The review screen therefore does not say "11 区画を作成します" (the image is not unpacked yet); the completion
+screen says `{n} 区画を確認` with the real count.
+
+### Font, logo, proportions
+
+**Font.** The live system has no Japanese font, so the window registers its own for this process only: `gui.py` writes a private
+fontconfig file (`FONTCONFIG_FILE`, system config included, cache under the work dir) that adds `installer/fonts/`, and CSS names only
+`"Noto Sans JP"`. It is Noto Sans JP, SIL OFL 1.1, cut into three static TTFs (Regular 400, Medium 500, Bold 700; fontconfig and Pango
+cannot load WOFF2) and subset to 678 codepoints (ASCII, Latin-1, general and CJK punctuation, kana, full-width ASCII, and every
+character in `strings.py`, `core.MESSAGES` and `core.STEPS_JA`). The OFL text ships unchanged as `fonts/OFL.txt`; the Reserved Font
+Name 'Source' is not in any name the build keeps (`font/build_font.py` refuses otherwise). Source (pinned): `google/fonts` commit
+`66a36c8c94b1a5d992ee4e7f392fccfe4945767c`, `ofl/notosansjp/NotoSansJP[wght].ttf` (sha256
+`c2f3b4d463500a2ddcd3849cded1fceeb9fd6d1c32e6cbecd568453ba50fc68f`) and `OFL.txt` (sha256
+`1c05c68c34f9708415aada51f17e1b0092d2cea709bf4a94cd38114f9e73d7d9`); URLs in `font/font-pin.json`. Rebuild (development only):
+`pip install fonttools brotli` in a venv outside the repo, then `python font/build_font.py 'NotoSansJP[wght].ttf' OFL.txt`.
+A missing glyph is a hard failure: the tests compare the screens' characters with all three fonts' cmaps (`glyphs-noto-jp.json`, tied
+to the Regular file's SHA-256), the GTK tests ask Pango which font it loads for every label and require exact coverage, and
+`build-overlay.py` refuses to build, with no override option. `android/client/assets/setup-noto-jp.woff2` is untouched.
+
+**Logo.** `assets/logo.png` is `android/client/assets/setup-logo.png` (the Awai mark) scaled to 256 px. No vector version of the mark
+exists in the repo or in PR #302 (its `awai_welcome_mark.xml` is only a rounded rectangle), so it is raster.
+
+**Proportions.** One design unit `u = min(W/740, H/440)` pixels scales text, logo, cards and gaps with the screen; the rail is 30.5% of
+the width and cards 57.7%, as in `design/installer.png`. Gtk CSS only, software rendering (no GL): the window uses the plain cairo
+paths of GTK 3.
+
+**No browser, no listener.** An earlier revision showed the screen in a kiosk browser. VM runs showed that this cannot be made
+reliable (shortcuts left the installer, browser chrome and the per-boot token showed in the address bar, and the browser's own
+first-run terms dialog covered the installer; accepting that on the user's behalf is not ours to decide). The browser, its policies,
+the HTTP backend, the token and the watchdog are gone, and a test asserts that nothing in the installer imports `socket` or
+`http.server` or calls `bind`/`listen`.
+
+### Checks
+
+```sh
+python3 -m unittest discover -s android/desktop/pc-ab-device/installer/tests -p 'test_*.py'   # python >= 3.11
+python3 android/desktop/pc-ab-device/installer/tests/mutations.py --jobs 5                  # every guard removed in turn
+python3 android/desktop/pc-ab-device/installer/tests/shots.py OUTDIR                        # screenshots (needs PyGObject + Gtk 3)
+```
+
+No root, no real disk: fake `lsblk`/`blockdev`/`wipefs`/`findmnt`/`sgdisk`/`zstd`/`sync`/`systemctl` on `PATH` and sparse temp files;
+the production `Host` is replaced only in tests. The GTK tests drive the real widget tree in a `Gtk.OffscreenWindow` (nothing is shown
+on a display; Tab/Enter/typing are simulated at widget level) and skip themselves where PyGObject/Gtk 3 is missing (CI runs
+117 of 133 tests there; the 16 GTK tests ran locally in a conda env with Gtk 3.24). Bazel: `:screen_installer_*_test`. Mutation list:
+`installer/tests/mutation-results.txt` (80 of 81 guards killed; the one survivor is equivalent offscreen and covered by the VM run).
+Screenshots from the widget tree and the design side by side: `installer/screenshots/` (`fonts-used.txt` proves every label is drawn
+by the bundled face, `keyboard-walkthrough.txt` is the Tab/Enter sequence).
+
+### VM run (real SystemRescue 13.03, QEMU/TCG on another host, UEFI, one blank and one used virtual NVMe)
+
+Built with `build-overlay.py`'s `build_overlay` into the shipped ISO; screenshots in `installer/screenshots/vm/`.
+Passed: GRUB default entry starts the GTK window by itself; screens 1, 2, 3 and the wrong-name case (button stays disabled);
+Ctrl+T/N/L/W/O/Q, Ctrl+Shift+I, Alt+F4, Alt+Tab, Alt+F2, Ctrl+Alt+Backspace, F1-F12, Menu, Super, Print and Ctrl+Alt+Delete pressed on
+the review screen change nothing (typed text still there, nobody left the screen); Ctrl+Alt+F2 reaches the console and X does not take
+it back; the power-off question (first Enter asks, it stays asked across polls, Tab away disarms it); a full install to 完了 (11 区画);
+`kill -9` of the GTK process at step 2, 36.46 %, `written: started` - the write went on and the restarted window showed the true
+state (step 3) and then 完了; all 8 data partitions identical to the source image and the used NVMe byte-identical (sha256 unchanged);
+screen 6 with only the used disk; the text boot entry (`awai.installer=text`) starts the text installer and lists both disks as
+not selectable with the reasons. The VM run found one bug, fixed before this record: the power-off question disarmed itself when the
+poll redrew the screen (rebuilding destroyed the focused button, which counted as the user leaving it); two tests now pin it.
+
+**Focus on a cold start (second VM round, `screenshots/vm/focus/`).** A first VM round showed that on a real X server GTK focused the
+first control silently when the window mapped, so the first Tab skipped it and landed on 電源を切る. Now the invisible heading is the
+focus anchor on every new screen and after back/refresh/dismiss (`gui.on_tab` moves straight from it to the first control and never
+stops on it, also when wrapping around). Verified on a cold boot and after key mashing: screen 1 (no ring, Enter does nothing, first
+Tab = the first selectable card, then 電源を切る while 内容を確認 is disabled, a third Tab wraps to the card), screen 3 (the typed-name
+field has the focus, mashing changes nothing, Tab goes to 戻る), screen 5 (first Tab = 再起動; the state came from a written
+`state.json`, not a real install) and screen 6 (first Tab = 一覧を更新, then 電源を切る, never power off first); the text boot entry lists
+both disks as not selectable. The offscreen test models this order and fails on the previous revision.
+
+### Not tested
+
+Failure screens in the VM (they are in the widget-tree screenshots only), the power-off and reboot buttons actually powering the machine
+(the first press of the question is tested, the second only against the fake `systemctl`), typing a device path in the text installer
+inside the VM (the harness did not deliver it; the unit tests cover it), the BIOS/syslinux boot path, 1920x1080 in the VM (VGA was
+1280x720), real hardware, USB removal mid-install, and window behaviour on a GPU/KMS display (the VM used the VGA framebuffer). The old
+text installer's `sgdisk -v` wording ("No problems found") was confirmed by the real install above. AGENTS.md prefers shared policy in
+`.cljc`; the live system has no Clojure runtime and nothing here may download one, so the guards are stdlib Python next to the existing
+Python installer.
+
 ## KVM check (2026-11-19)
 
 `kvm/shared-disk-test.sh` on a 64 GiB image with three stand-in partitions (ESP 512 MiB, ext4 24 GiB,

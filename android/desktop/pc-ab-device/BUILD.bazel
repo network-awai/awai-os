@@ -22,10 +22,35 @@ sh_test(
     tags = ["no-remote"],
 )
 
+# Screen installer (AWAI item 205): guards, backend, page text, overlay build. The browser suite skips
+# itself where Chrome is not installed.
+[
+    sh_test(
+        name = "screen_installer_%s_test" % name,
+        srcs = ["run-python-test.sh"],
+        args = ["installer/tests/test_%s.py" % suite],
+        data = [
+            ":awai-pc-install.py",
+        ] + glob(["installer/**"], exclude = ["installer/screenshots/**"]),
+        size = "medium",
+        tags = ["no-remote"],
+    )
+    for name, suite in [
+        ("core", "core"),
+        ("controller", "controller"),
+        ("gui", "gui"),  # the GTK widget tests skip themselves where PyGObject / Gtk 3 is missing
+        ("web_build", "web_and_build"),
+    ]
+]
+
 test_suite(
     name = "pc_verification",
     tests = [
         ":installer_test",
         ":ota_feed_test",
+        ":screen_installer_core_test",
+        ":screen_installer_web_build_test",
+        ":screen_installer_controller_test",
+        ":screen_installer_gui_test",
     ],
 )
