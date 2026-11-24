@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import threading
+import time
 import types
 import unittest
 from pathlib import Path
@@ -381,6 +382,25 @@ class SingleInstall(Base):
             t.join()
         self.assertEqual(len(results), 3)
         self.assertEqual(results.count("done"), 1)
+
+
+class StateFile(Base):
+    def test_partial_read_is_retried_not_reported_as_idle(self):
+        self.w.work.mkdir(mode=0o700)
+        path = self.w.work / "state.json"
+        path.write_text("")  # caught between truncate and write
+
+        def finish():
+            time.sleep(0.08)
+            path.write_text(json.dumps({"state": "running", "step": 2}))
+        t = threading.Thread(target=finish)
+        t.start()
+        self.assertEqual(core.read_state(str(self.w.work))["state"], "running")
+        t.join()
+        path.write_text("{not json")
+        self.assertEqual(core.read_state(str(self.w.work))["state"], "idle")
+        path.unlink()
+        self.assertEqual(core.read_state(str(self.w.work))["state"], "idle")
 
 
 class ProgressHook(Base):

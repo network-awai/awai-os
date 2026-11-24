@@ -28,14 +28,9 @@ def follow(work, wait=time.sleep):
     """An install is running (started by the screen installer or by another process): show it and follow it to
     its true end state. This never offers a target and never starts anything."""
     say("AWAI INSTALLER: an installation is still running. Do not power off or remove the USB.")
-    last, seen_running, idle_reads = None, False, 0
+    last = None
     while True:
         st = core.status(work)
-        if seen_running and st.get("state") == "idle" and idle_reads < 2:  # a half-written state file is not an end state
-            idle_reads += 1
-            wait(1)
-            continue
-        seen_running = seen_running or st.get("state") == "running"
         if st.get("state") in ("done", "failed") or (st.get("state") != "running" and not core.lock_held(work)):
             return report(st)
         if st.get("state") == "running":

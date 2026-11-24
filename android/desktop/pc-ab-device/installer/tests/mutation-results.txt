@@ -56,6 +56,6 @@ killed       text installer follows a running install  tests/test_web_and_build.
 killed       overlay copies canonical installer  tests/test_web_and_build.py
 killed       overlay checks stock iso sha  tests/test_web_and_build.py
 killed       overlay checks raw sha  tests/test_web_and_build.py
+killed       read_state retries a partial read  tests/test_core.py
 
 59/59 mutations killed
-killed       text follow tolerates a half-written state  tests/test_web_and_build.py
