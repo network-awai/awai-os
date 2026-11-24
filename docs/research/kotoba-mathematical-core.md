@@ -89,6 +89,21 @@ PoC target values (proposal, not commitments): CPU ≥70% of equivalent C, GPU �
 5. Awai distributed runtime — CID diff sync, shared results, state transitions, consensus separate.
 6. GPU / large-scale parallel — data parallel, graph reduction, interaction-net comparison.
 
+## Measured so far (4 of 14 axes)
+
+`docs/research/simulator/measure.py` measures determinism, storage, network and
+cost on real repository artifacts; results and the numeric comparison against the
+targets in this document are in [measured-baseline.md](measured-baseline.md).
+Measured weight coverage is 18 of 59 points. Three target-level findings:
+
+- Storage dedup saves 0.51–2.42% on this corpus, not the 20% the target presumes.
+- Diff-sync saves 87.5% only with content-defined chunking on a file much larger
+  than the block size; on a 5.7 KB document it saves nothing.
+- Canonical-form determinism is 240/240; cost is 135 MB/s at 78 MB peak RSS.
+
+The per-system scores in `systems.json` are unchanged by this: they are still
+provisional, because no candidate system has a reference implementation here.
+
 ## Open, not claimed
 
 - No reference implementation exists for the proposed core; the ranking is over paper structures.

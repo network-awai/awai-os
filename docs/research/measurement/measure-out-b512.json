@@ -1,0 +1,170 @@
+{
+  "M1_determinism": {
+    "failure_count": 0,
+    "failures": [],
+    "files_parsed": 120,
+    "files_skipped": 0,
+    "invariance_fraction": 1.0,
+    "invariance_rate": "240/240",
+    "variant_checks": 240,
+    "variant_matched": 240,
+    "variants": 2
+  },
+  "M2_storage": {
+    "block_size": 512,
+    "blocks_total_fixed": null,
+    "bytes_total": 4027805,
+    "bytes_unique_cdc": 3930340,
+    "bytes_unique_fixed": 3993128,
+    "cdc_bytes_total": 4027805,
+    "dedup_ratio_cdc": 0.024198043351155274,
+    "dedup_ratio_fixed": 0.008609403881270294,
+    "files": 120
+  },
+  "M3_network": {
+    "block_size": 512,
+    "diff_bytes_cdc_total": 81272,
+    "diff_bytes_fixed_total": 481342,
+    "full_bytes_total": 652583,
+    "mean_ratio_cdc": 0.1251922788274282,
+    "mean_ratio_fixed": 0.7313314887706117,
+    "pairs": [
+      {
+        "diff_cdc_bytes": 2834,
+        "diff_fixed_bytes": 7915,
+        "full_bytes": 39659,
+        "ratio_cdc": 0.07145918959126554,
+        "ratio_fixed": 0.19957638871378502,
+        "rev": "5095b5c2"
+      },
+      {
+        "diff_cdc_bytes": 2578,
+        "diff_fixed_bytes": 38973,
+        "full_bytes": 39997,
+        "ratio_cdc": 0.06445483411255844,
+        "ratio_fixed": 0.9743980798559893,
+        "rev": "d10f309b"
+      },
+      {
+        "diff_cdc_bytes": 12845,
+        "diff_fixed_bytes": 42217,
+        "full_bytes": 42729,
+        "ratio_cdc": 0.3006155070326944,
+        "ratio_fixed": 0.9880175056753024,
+        "rev": "d383613b"
+      },
+      {
+        "diff_cdc_bytes": 1795,
+        "diff_fixed_bytes": 512,
+        "full_bytes": 42729,
+        "ratio_cdc": 0.04200894006412507,
+        "ratio_fixed": 0.011982494324697512,
+        "rev": "f3d8d70f"
+      },
+      {
+        "diff_cdc_bytes": 549,
+        "diff_fixed_bytes": 31991,
+        "full_bytes": 42743,
+        "ratio_cdc": 0.012844208408394358,
+        "ratio_fixed": 0.7484500386028121,
+        "rev": "f8bd14af"
+      },
+      {
+        "diff_cdc_bytes": 13488,
+        "diff_fixed_bytes": 37898,
+        "full_bytes": 45578,
+        "ratio_cdc": 0.2959322480143929,
+        "ratio_fixed": 0.8314976523761464,
+        "rev": "0c472b09"
+      },
+      {
+        "diff_cdc_bytes": 4819,
+        "diff_fixed_bytes": 33687,
+        "full_bytes": 45975,
+        "ratio_cdc": 0.1048178357803154,
+        "ratio_fixed": 0.7327243066884176,
+        "rev": "9cbd37c2"
+      },
+      {
+        "diff_cdc_bytes": 9743,
+        "diff_fixed_bytes": 46651,
+        "full_bytes": 47163,
+        "ratio_cdc": 0.20658143035854376,
+        "ratio_fixed": 0.9891440323982783,
+        "rev": "5fe65b51"
+      },
+      {
+        "diff_cdc_bytes": 6835,
+        "diff_fixed_bytes": 48116,
+        "full_bytes": 48628,
+        "ratio_cdc": 0.14055688080941023,
+        "ratio_fixed": 0.989471086616764,
+        "rev": "e3c9d4e0"
+      },
+      {
+        "diff_cdc_bytes": 13927,
+        "diff_fixed_bytes": 48717,
+        "full_bytes": 48717,
+        "ratio_cdc": 0.28587556705051625,
+        "ratio_fixed": 1.0,
+        "rev": "b2259bb7"
+      },
+      {
+        "diff_cdc_bytes": 8995,
+        "diff_fixed_bytes": 44414,
+        "full_bytes": 52094,
+        "ratio_cdc": 0.17266863746304756,
+        "ratio_fixed": 0.8525741928053134,
+        "rev": "568485d6"
+      },
+      {
+        "diff_cdc_bytes": 816,
+        "diff_fixed_bytes": 29119,
+        "full_bytes": 52159,
+        "ratio_cdc": 0.015644471711497538,
+        "ratio_fixed": 0.5582737399106578,
+        "rev": "4c948d09"
+      },
+      {
+        "diff_cdc_bytes": 1145,
+        "diff_fixed_bytes": 35789,
+        "full_bytes": 52173,
+        "ratio_cdc": 0.021946217392137694,
+        "ratio_fixed": 0.6859678377704943,
+        "rev": "97af2007"
+      },
+      {
+        "diff_cdc_bytes": 903,
+        "diff_fixed_bytes": 35343,
+        "full_bytes": 52239,
+        "ratio_cdc": 0.017285935795095617,
+        "ratio_fixed": 0.6765634870499052,
+        "rev": "fe0cfeaf"
+      }
+    ],
+    "path": "android/build.py",
+    "versions": 15
+  },
+  "M4_cost": {
+    "bytes": 4027805,
+    "files": 120,
+    "mb_per_second": 134.706,
+    "peak_rss_bytes_after": 77774848,
+    "peak_rss_bytes_before": 77578240,
+    "wall_seconds": 0.029901
+  },
+  "corpus": {
+    "bytes": 4027805,
+    "files": 120,
+    "root": "/Users/node/.orca/bots/researcher/awai-os-contributions"
+  },
+  "environment": {
+    "cpu_count": 10,
+    "git_head": "481ab9e0",
+    "machine": "arm64",
+    "platform": "macOS-26.3.1-arm64-arm-64bit",
+    "python": "3.9.6"
+  },
+  "kind": "measurement",
+  "not_evidence_for": "candidate mathematical systems (no reference implementation yet)"
+}
