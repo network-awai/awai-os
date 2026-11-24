@@ -1,22 +1,41 @@
-# SURFACE-MODEL-EVAL-2 — :logic model, one defthm per pair, certificate rejected when corrupted
+# SURFACE-MODEL-EVAL-2 — :logic ground equations accepted by ACL2; a false one is refused
 
 Status: **draft, MEASURED-ONCE (2026-11-24)**. Not admitted.
 
-Cell 1 measured evaluation (no proof, no certificate). This cell puts the same
-idea in ACL2's logic with a real proof object, so a checker can accept or reject
-it. It covers **5 of the 8 pairs** — the ones whose desugaring is a pure
-structural rewrite.
+Cell 1 measured the same thing in `:program` mode. This cell restates it in
+ACL2's `:logic` so the equations are accepted without the `defthm`-on-`program`
+error, and so the function can appear in a theorem at all. It covers **5 of the 8
+pairs** — the ones whose desugaring is a pure structural rewrite.
+
+## What these 9 theorems actually are
+
+Every theorem is a **ground equality with no variables** (for example
+`(equal (dg '(defn f (n :i64) :i64 (cond ...)) 200) '(defn f ...))`). ACL2 accepts
+each one by **running the function and comparing**, which its own output shows:
+
+```
+Rules: ((:EXECUTABLE-COUNTERPART DG)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        ...)
+```
+
+`(:EXECUTABLE-COUNTERPART DG)` means the definition was used as a computation, not
+that any rewrite rule about the desugar relation was applied. So this is the same
+content as cell 1, written where `:logic` accepts it. **It is not a proof about
+the desugaring relation and it is not a proof object.**
 
 ## Result
 
-| Run | Theorems proved | ACL2 errors | Verdict |
+| Run | Ground equations accepted | ACL2 errors | Verdict |
 | --- | --- | --- | --- |
-| certificate (as published) | 9 of 9 (5 positives + 4 controls) | 0 | **accepted** |
-| certificate with one constant corrupted | 8 of 9 | 1, `ACL2 Error [Failure] in ( DEFTHM CASE-ONE-CLAUSE-VS-LET-IF ...)` | **rejected** |
+| equations (as published) | 9 of 9 (5 positives + 4 controls) | 0 | accepted |
+| one equation made false (`20` → `21` in the input of the `case` theorem) | 8 of 9 | 1, `ACL2 Error [Failure] in ( DEFTHM CASE-ONE-CLAUSE-VS-LET-IF ...)` | refused |
 
-So the checker is discriminating: the same checker that accepts the certificate
-rejects the corrupted copy, and names the theorem whose statement no longer
-holds.
+The second run changes the **claim**, not a proof: the input constant in the
+equality is altered, so a false ground equation is submitted and ACL2 refuses it.
+That is a check that ACL2 notices falsehood; it is **not** the check the earlier
+handoff asked for ("corrupt the proof object and the checker refuses it"), because
+no proof object exists here.
 
 ## Pins
 
@@ -31,43 +50,35 @@ holds.
 
 ```bash
 cd ~/pcc/src/acl2-8.7
-./saved_acl2 < surface-model.certificate.lisp > run.out 2>&1
-grep -c 'Q.E.D.' run.out          # 10  (9 theorems + the model's own admission)
-grep -c 'ACL2 Error' run.out      # 0
+./saved_acl2 < surface-model.equations.lisp > run.out 2>&1
+grep -c 'Q.E.D.' run.out        # 10  (9 equations + the model's own admission)
+grep -c 'ACL2 Error' run.out    # 0
 
-./saved_acl2 < surface-model.corrupt.lisp > run-corrupt.out 2>&1
-grep -c 'ACL2 Error' run-corrupt.out   # 1  -> rejected
+./saved_acl2 < surface-model.false-equation.lisp > run-false-equation.out 2>&1
+grep -c 'ACL2 Error' run-false-equation.out   # 1  -> refused
 ```
-
-## What "certificate" means here, and what it does not
-
-The certificate is the file of `defthm` forms; the checker is ACL2's kernel
-running it. Corrupting a statement makes the kernel refuse it. That is a real
-proof-object/checker pair in the narrow sense, and it is **all** this cell shows.
-It is not a PCC pipeline: nothing transports the certificate as a standalone
-artifact to an untrusted peer, and the checker trusts the whole ACL2 kernel, so
-this does not reduce the trusted base below "ACL2 is correct".
 
 ## Scope
 
 **Shown.**
 
-- A fuel-bounded model (`measure (nfix n)`) maps each of 5 corpus sugar forms to
-  exactly its recorded pure form, as a proven theorem, not an evaluation.
-- The 4 meaning-changing controls are also proved (as `not equal`), so acceptance
-  is discriminating.
-- Corrupting one theorem's constant causes exactly that theorem to be rejected.
+- A fuel-bounded model (`measure (nfix n)`) computes exactly the recorded pure
+  form for 5 of 5 positives, and the 4 meaning-changing controls are refused, in
+  `:logic` mode where the function may appear in a theorem.
+- A ground equation that is false is refused, and the refusal names it.
 
 **Not shown:**
 
-1. **Termination is by fuel, not by structural descent.** Every recursive call
-   decreases `n`; a result is exact only when `n` exceeds the term's depth. This
-   proves the *equations* hold, not that the function is defined without a bound.
-   A structural version was attempted first and failed the measure conjecture
+1. **No proof about the rules.** Ground equations discharged by execution say
+   nothing about all inputs; there is no induction and no rule-level soundness.
+2. **Termination is by fuel, not structural descent.** A structural version was
+   attempted first and failed the measure conjecture
    (`ACL2 Error ... measure conjecture for DG, DG-LIST, DG-COND and DG-CASE-IF has
    failed`); that failure is recorded rather than hidden.
-2. **Threading (`->`, `->>`) is not in this model** — it carries an accumulator.
-   Those pairs remain evaluation-only (cell 1).
-3. **No fidelity to Amu**, and **no Definition CID equality**. `SEC-PCC-SURFACE`
+3. **No proof object, no certificate, no untrusted verifier.** This cell is not a
+   PCC pipeline; see `../cell3/DESIGN.md` for the design that would attempt one.
+4. **Threading (`->`, `->>`) is not in this model** — it carries an accumulator;
+   those pairs remain evaluation-only in cell 1.
+5. **No fidelity to Amu**, and **no Definition CID equality**. `SEC-PCC-SURFACE`
    stays UNVERIFIED.
-4. **5 of 21 pairs, 4 controls.**
+6. **5 of 21 pairs, 4 controls.**
