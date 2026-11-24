@@ -66,9 +66,10 @@ afterward.
 - `../persistence/init-install.sh` — BusyBox init with fixed profile `1`.
   The boot arguments must agree with the initrd pins. The historical
   `erase` profile requires exactly one NVMe namespace with 500118192
-  sectors and the pinned root/LUKS UUIDs. Both modes check NIC MAC
-  0c:47:a9:60:9d:34 before configuring the link or starting diagnostics.
-  `shared` always reports `shared-not-implemented`.
+  sectors and the pinned root/LUKS UUIDs. Both modes check the NIC MAC
+  against an allowlist file before configuring the link or starting
+  diagnostics (see "NIC allowlist" below) — there is no MAC pinned in the
+  script itself. `shared` always reports `shared-not-implemented`.
 - The installer downloads the image once over direct-LAN HTTP to a
   size-limited tmpfs. It checks the exact length, remounts the copy
   read-only, and checks its SHA-256 against the initrd pin. Insufficient RAM
@@ -81,6 +82,39 @@ afterward.
   once writing has started, including a failed sync or readback. Treat
   the disk as modified and use the owner's recovery procedure before
   attempting to boot from it.
+
+### NIC allowlist (installer MAC guard)
+
+`init-install.sh` used to hard-pin one NIC MAC, so every other machine was
+refused a persistent install even when it was the intended target. The pin
+is gone: the script reads an allowlist and fails closed.
+
+- **Default path:** `/etc/awai/installer-macs.txt` inside the install
+  initrd overlay (next to `/awai/install.pins`). One MAC per line; blank
+  lines and lines whose first non-space character is `#` are ignored.
+  Upper/lower case and `:` vs `-` separators are normalized before
+  comparison; the sysfs address is normalized the same way.
+- **Fail closed:** with no allowlist file, with no entries (empty or
+  comment-only), or with any malformed entry, the installer prints
+  `REFUSED missing-installer-macs` / `empty-installer-macs` /
+  `malformed-installer-macs` and stops before configuring the link or
+  starting diagnostics. The disk is untouched.
+- **Bundled default:** `../persistence/installer-macs.txt` ships with the
+  one existing machine (`0c:47:a9:60:9d:34`) already listed, so that
+  machine keeps working unchanged. The real 7735HS is recorded there as a
+  commented example. Copy the file into the overlay at
+  `/etc/awai/installer-macs.txt` when assembling the initrd, the same way
+  `install.pins.template` goes to `/awai/install.pins`.
+- **Adding a machine:** append one line with its NIC MAC to the copy in
+  the overlay, rebuild the initrd, and re-pin the manifest digests (no
+  kernel or image rebuild, and no change to the install script). The next
+  PXE boot then accepts that machine.
+- **Overriding the path** (priority order): kernel argument
+  `awai.install.macs=<absolute-path>` over environment variable
+  `AWAI_INSTALLER_MACS=<absolute-path>` over the default
+  `/etc/awai/installer-macs.txt`. The path must be absolute; a duplicate
+  `awai.install.macs=` argument or a relative path refuses with
+  `invalid-installer-macs-path`.
 
 ### Second-disk mode
 
