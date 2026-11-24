@@ -6,6 +6,12 @@ Status: user survey 2026-11-24, recorded verbatim as a research draft (UNVERIFIE
 
 Computational logic (ACL2-type), higher-order logic, constructive set theory, category theory/categorical logic, topos theory, combinatory logic, term rewriting systems (TRS), rewriting logic, equational logic/multi-sorted algebra, linear logic, interaction nets, matching logic, Horn clause logic, graph rewriting systems, realizability theory. Dependent-type lambda calculus remains the baseline; the 15 are not mutually independent (TRS-rewriting, linear-interaction, category-topos overlap).
 
+## Fitness simulator snapshot (2026-11-24, user-provided)
+
+Weights (0..5): Knowledge 2, Compute 2, Proof 1, Safety 5, Termination 3, DAG-fit 2, Parallel 2, Implementation maturity 1.
+
+Ranking by weighted score: 1. Dependent lambda (91.7), 2. Rewriting logic (88.9), 3. Linear logic (88.3), 4. Computational logic (87.8).
+
 ## Core formulas (reference)
 
 Computational logic f(x)=t(x) (ACL2); HOL ∀P:A→Bool (Isabelle/HOL); CZF/IZF; g∘f:A→C; χ_A:X→Ω; Sxyz=xz(yz) (SKI); lσ→rσ (Stratego, AProVE); [t]→[t'] (Maude); t1=t2 (OBJ, CafeOBJ); A⊸B (LLF); α⋈β→N (HVM); M⊨φ (K Framework); H←B1∧B2 (Prolog/Datalog); L←K→R (GROOVE/GP 2); e⊩P (Kleene).
