@@ -32,10 +32,18 @@ lead. Reviewer independence: broker owner (Kotoba) ≠ Researcher ≠ Organizer.
 
 ## Claims (draft rows only — not in prose)
 
-- `TRUST-DELEGATION-MATCHED` — bounded grant permits authorized workflow.
-- `TRUST-DELEGATION-MISMATCHED` — changed actor/operation/scope fails closed.
-- `TRUST-DELEGATION-EXPIRED` — expired grant fails closed (fixed clock).
-- `TRUST-DELEGATION-COMPARE` — d42d0922 vs 889239dc comparison (optional, separate).
+- `TRUST-DELEGATION-MATCHED` — bounded grant permits authorized workflow
+  (net/http-get, prepare + endpoint-allows; consent dialog NOT exercised).
+- `TRUST-DELEGATION-MISMATCHED` — changed actor/operation/scope fails closed
+  (same net/http-get operations; scope refused by runtime).
+- `TRUST-DELEGATION-EXPIRED` — ABSENT claim: `kotoba-client-runtime.js` has
+  no expiry/ttl concept; expiry cannot be enforced by this module (see
+  research/trust-draft-claims.md). Enforcement anchor is the dango oracle
+  grant module (follow-up (B)); nothing about failing closed is claimed here.
+- `TRUST-DELEGATION-COMPARE` — d42d0922 vs 889239dc comparison with
+  disclosure (d42 run `docs/research/trust-cells-harness-d42.mjs` +
+  `trust-cells-output-d42.txt`; 889 run `trust-cells-harness-889.mjs` +
+  `trust-cells-output-889.txt`). Never mix traces.
 
 ## Cells (isolated, synthetic, no private data)
 
@@ -71,8 +79,9 @@ inject/expiry timestamps, Organizer readback. Draft rows only.
 
 ## Falsifier
 
-Handler executes a mismatched or expired request, or the matched valid
-request is refused — either defeats the hypothesis for that workflow.
+Acceptance of a mismatched or expired request by
+`prepareClientOperationRequest` / `effectiveClientOperations`, or refusal of
+the matched valid request — either defeats the hypothesis for that workflow.
 
 ## Dependencies
 
