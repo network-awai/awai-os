@@ -28,6 +28,9 @@ PC_AB = os.path.dirname(HERE)
 REPO_FONT = os.path.join(HERE, "web", "noto-jp.woff2")  # byte-identical copy of android/client/assets/setup-noto-jp.woff2 (tested)
 REPO_FONT_LICENSE = os.path.join(HERE, "web", "font-OFL.txt")
 SHA = re.compile(r"[0-9a-f]{64}")
+# boot menus replaced in the image (GRUB for UEFI, syslinux for BIOS); kernel/initrd lines are the stock ones
+BOOT_FILES = [("boot/grub/grubsrcd.cfg", "grubsrcd.cfg"), ("boot/syslinux/sysresccd_head.cfg", "sysresccd_head.cfg"),
+              ("boot/syslinux/sysresccd_sys.cfg", "sysresccd_sys.cfg")]
 INSTALLER_FILES = ["core.py", "server.py", "text_installer.py", "start.sh", "xsession.sh", "firefox-policies.json"]
 
 
@@ -73,6 +76,9 @@ def build_overlay(args, overlay):
     shutil.copy(REPO_FONT, os.path.join(inst, "web", "noto-jp.woff2"))
     shutil.copy(REPO_FONT_LICENSE, os.path.join(inst, "web", "font-OFL.txt"))
     shutil.copy(os.path.join(HERE, "700-awai-installer.yaml"), os.path.join(overlay, "sysrescue.d"))
+    for target, name in BOOT_FILES:
+        os.makedirs(os.path.join(overlay, os.path.dirname(target)), exist_ok=True)
+        shutil.copy(os.path.join(HERE, "boot", name), os.path.join(overlay, target))
     with open(os.path.join(awai, "archive.sha256"), "w") as f:
         f.write(f"{args.archive_sha256}  awai-pc-install.img.zst\n")
     with open(os.path.join(awai, "install-image.sha256"), "w") as f:
@@ -84,9 +90,10 @@ def build_overlay(args, overlay):
 
 
 def xorriso_command(args, overlay):
-    return ["xorriso", "-indev", args.stock_iso, "-outdev", args.out, "-boot_image", "any", "replay",
+    return ["xorriso", "-indev", args.stock_iso, "-outdev", args.out, "-boot_image", "any", "replay", "-overwrite", "on",
             "-map", os.path.join(overlay, "awai"), "/awai",
             "-map", os.path.join(overlay, "sysrescue.d", "700-awai-installer.yaml"), "/sysrescue.d/700-awai-installer.yaml",
+            *[arg for target, _ in BOOT_FILES for arg in ("-map", os.path.join(overlay, target), "/" + target)],
             "-map", args.image_zst, "/awai/awai-pc-install.img.zst", "-commit"]
 
 

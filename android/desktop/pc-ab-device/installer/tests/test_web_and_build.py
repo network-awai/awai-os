@@ -285,6 +285,87 @@ class Launcher(unittest.TestCase):
         self.assertIn("Offline PC installer", r.stdout)
 
 
+class BootMenus(unittest.TestCase):
+    stock = PC_AB / "installer" / "tests" / "stock-bootcfg"
+
+    def grub_entries(self, path):
+        text = path.read_text()
+        out = {}
+        for m in re.finditer(r"menuentry '([^']+)' \{(.*?)\n\}", text, re.S):
+            lines = {k: v.strip() for k, v in re.findall(r"^\s*(linux|initrd) (.*)$", m[2], re.M)}
+            out[m[1]] = lines
+        return out
+
+    def syslinux_entries(self, path):
+        out = {}
+        for block in re.split(r"\n(?=LABEL )", path.read_text()):
+            if not block.startswith("LABEL "):
+                continue
+            label = re.search(r"MENU LABEL (.*)", block)
+            if label:
+                out[label[1].strip()] = {"linux": re.search(r"^LINUX (.*)$", block, re.M), "initrd": re.search(r"^INITRD (.*)$", block, re.M),
+                                         "append": re.search(r"^APPEND (.*)$", block, re.M), "default": "MENU DEFAULT" in block}
+        return out
+
+    def test_stock_files_are_the_ones_we_derived_from(self):
+        for line in (self.stock / "SHA256SUMS").read_text().splitlines():
+            digest, name = line.split()
+            self.assertEqual(hashlib.sha256((self.stock / name).read_bytes()).hexdigest(), digest, name)
+
+    def test_grub_entries_default_first_text_second_stock_parameters_unchanged(self):
+        ours = self.grub_entries(INSTALLER / "boot" / "grubsrcd.cfg")
+        stock = self.grub_entries(self.stock / "grubsrcd.cfg")
+        names = list(ours)
+        self.assertEqual(names[:2], ["Install Awai OS", "Install Awai OS (text)"])
+        base = stock["Boot SystemRescue using default options"]
+        self.assertEqual(ours["Install Awai OS"], base)  # default entry = stock default line for line
+        text = dict(base, linux=base["linux"] + " awai.installer=text")
+        self.assertEqual(ours["Install Awai OS (text)"], text)
+        nomodeset = stock["Boot SystemRescue using basic display drivers (nomodeset)"]
+        self.assertEqual(ours["Install Awai OS (basic display, nomodeset)"], nomodeset)
+        for entry in [e for n, e in ours.items() if n.startswith("Install")]:
+            self.assertIn("/sysresccd/boot/x86_64/vmlinuz archisobasedir=sysresccd $archiso_param iomem=relaxed", entry["linux"])
+            self.assertEqual(entry["initrd"], base["initrd"])
+        grub = (INSTALLER / "boot" / "grubsrcd.cfg").read_text()
+        self.assertIn("set default=0", grub)
+        self.assertRegex(grub, r"set timeout=([1-9]|10)\b")
+        self.assertIn("source /boot/grub/custom.cfg", grub)
+        # everything outside the menu (display, serial, fallback, archiso label) is the stock text
+        stock_text = (self.stock / "grubsrcd.cfg").read_text()
+        for needle in ('archiso_param="archisolabel=RESCUE1303"', "set fallback=1", "loadfont /boot/grub/font.pf2", "terminal_input --append serial"):
+            self.assertIn(needle, stock_text)
+            self.assertIn(needle, grub)
+
+    def test_syslinux_entries_default_first_text_second_stock_parameters_unchanged(self):
+        ours = self.syslinux_entries(INSTALLER / "boot" / "sysresccd_sys.cfg")
+        stock = self.syslinux_entries(self.stock / "sysresccd_sys.cfg")
+        names = list(ours)
+        self.assertEqual(names[:2], ["Install Awai OS", "Install Awai OS (text)"])
+        self.assertTrue(ours["Install Awai OS"]["default"])
+        g = lambda e, k: e[k][1] if e[k] else None
+        base = stock["Boot SystemRescue using default options"]
+        for name, extra, src in (("Install Awai OS", "", base), ("Install Awai OS (text)", " awai.installer=text", base),
+                                 ("Install Awai OS (basic display, nomodeset)", "", stock["Boot SystemRescue using basic display drivers (nomodeset)"])):
+            self.assertEqual(g(ours[name], "linux"), g(src, "linux"))
+            self.assertEqual(g(ours[name], "initrd"), g(src, "initrd"))
+            self.assertEqual(g(ours[name], "append"), g(src, "append") + extra)
+        head = (INSTALLER / "boot" / "sysresccd_head.cfg").read_text()
+        self.assertIn("TIMEOUT 50", head)
+        self.assertIn("MENU TITLE Awai OS Meiji installer", head)
+
+    def test_no_base_distribution_name_in_menu_text(self):
+        for name in ("grubsrcd.cfg", "sysresccd_head.cfg", "sysresccd_sys.cfg"):
+            text = (INSTALLER / "boot" / name).read_text()
+            visible = re.sub(r"archisolabel=RESCUE1303|archiso\w*|sysresccd[\w/.-]*", "", text)
+            for word in ("SystemRescue", "SYSTEM-RESCUE", "system-rescue", "Linux", "Arch"):
+                self.assertNotIn(word, visible, (name, word))
+            self.assertTrue(text.isascii(), "GRUB/syslinux fonts cannot be assumed to draw Japanese")
+
+    def test_text_entry_option_is_what_the_launcher_reads(self):
+        self.assertIn("awai.installer=text", (INSTALLER / "start.sh").read_text())
+        self.assertIn("awai.installer=text", (INSTALLER / "boot" / "grubsrcd.cfg").read_text())
+
+
 class Overlay(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="awai-build-"))
@@ -374,6 +455,8 @@ class Overlay(unittest.TestCase):
         self.assertEqual((awai / "archive.sha256").read_text(), f"{self.sha(self.zst)}  awai-pc-install.img.zst\n")
         for f in ("core.py", "server.py", "text_installer.py", "start.sh", "xsession.sh", "firefox-policies.json", "web/logo.png", "web/index.html", "web/app.js", "web/noto-jp.woff2", "web/font-OFL.txt"):
             self.assertTrue((awai / "installer" / f).is_file(), f)
+        for f in ("boot/grub/grubsrcd.cfg", "boot/syslinux/sysresccd_head.cfg", "boot/syslinux/sysresccd_sys.cfg"):
+            self.assertEqual((keep / f).read_bytes(), (INSTALLER / "boot" / Path(f).name).read_bytes(), f)
         self.assertIn("/run/archiso/bootmnt/awai/install", (keep / "sysrescue.d" / "700-awai-installer.yaml").read_text())
         self.assertEqual(os.stat(awai / "install").st_mode & 0o111, 0o111)
         # the overlay's core.py finds the canonical installer exactly where it ships
@@ -383,7 +466,7 @@ class Overlay(unittest.TestCase):
         rc, _ = self.build()
         self.assertEqual(rc, 0)
         args = (self.tmp / "xorriso.args").read_text()
-        for part in ("-indev", "-outdev", "-boot_image any replay", "/awai", "/sysrescue.d/700-awai-installer.yaml", "/awai/awai-pc-install.img.zst", "-commit"):
+        for part in ("-overwrite on", "/boot/grub/grubsrcd.cfg", "/boot/syslinux/sysresccd_sys.cfg", "/boot/syslinux/sysresccd_head.cfg", "-indev", "-outdev", "-boot_image any replay", "/awai", "/sysrescue.d/700-awai-installer.yaml", "/awai/awai-pc-install.img.zst", "-commit"):
             self.assertIn(part, args)
 
     def test_does_not_download(self):

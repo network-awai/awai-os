@@ -144,14 +144,22 @@ It checks the stock ISO, the archive and (streaming through `zstd`) the raw imag
 duplicated in the old `awai/install` is gone), copies the canonical `awai-pc-install.py` unedited, and calls
 `xorriso -indev stock -outdev out -boot_image any replay -map ...` as the previous build did.
 
-### Text mode
+### Boot menu and text mode
 
-Add `awai.installer=text` to the kernel command line (GRUB: `e`; syslinux: `Tab`), or switch to tty2 and run
-`/run/archiso/bootmnt/awai/install --text`. A dedicated boot menu entry needs a change to the stock ISO's boot
-configuration, which this task could not inspect (no ISO here); it is left open. If an install is already running
-when the text installer starts (for example the screen session died and `start.sh` fell back to text) it says so, follows
-the install to its true end state and never offers a target (it also holds off while the worker's lock is held but no state
-exists yet).
+`build-overlay.py` replaces three files of the base medium's boot configuration (from SystemRescue 13.03, kept as
+`installer/tests/stock-bootcfg/` with SHA-256s): GRUB for UEFI `boot/grub/grubsrcd.cfg` and syslinux for BIOS
+`boot/syslinux/sysresccd_head.cfg` + `sysresccd_sys.cfg`; xorriso maps them with `-overwrite on`. The menu is
+**Install Awai OS** (default, first), **Install Awai OS (text)** (`awai.installer=text`, read by `start.sh`) and
+**Install Awai OS (basic display, nomodeset)**, then the stock custom hook, firmware setup, reboot and power off. Timeout 5 s;
+an unattended boot only reaches the installer screen, which still needs the typed device name. The kernel and initrd lines
+are the stock ones character for character (a test compares them with the stock files), and the text entry adds only
+`awai.installer=text`. Labels are English: GRUB's `font.pf2` and syslinux's menu font are not known to draw Japanese, and
+no base-distribution name appears in menu text (the `archisolabel=RESCUE1303` parameter and `/sysresccd` paths are
+parameters, not text). The stock memory test, EFI shell, copytoram, checksum, serial, nomdlvm, findroot and break entries are
+dropped from the installer medium. Other ways into text mode: `awai.installer=text` typed at the boot prompt, or tty2 and
+`/run/archiso/bootmnt/awai/install --text`. If an install is already running when the text installer starts (for example the
+screen session died and `start.sh` fell back to text) it says so, follows the install to its true end state and never offers a
+target (it also holds off while the worker's lock is held but no state exists yet). Not exercised on a real boot (QEMU run).
 
 ### What `core.py` enforces (in the backend, never only in the page)
 

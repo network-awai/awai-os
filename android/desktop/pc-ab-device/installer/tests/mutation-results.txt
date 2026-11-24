@@ -57,5 +57,11 @@ killed       overlay copies canonical installer  tests/test_web_and_build.py
 killed       overlay checks stock iso sha  tests/test_web_and_build.py
 killed       overlay checks raw sha  tests/test_web_and_build.py
 killed       read_state retries a partial read  tests/test_core.py
+killed       grub text entry option  tests/test_web_and_build.py
+killed       grub stock kernel option kept  tests/test_web_and_build.py
+killed       syslinux default entry  tests/test_web_and_build.py
+killed       syslinux stock append kept  tests/test_web_and_build.py
+killed       grub entry order (text first)  tests/test_web_and_build.py
+killed       overlay maps boot menus  tests/test_web_and_build.py
 
-59/59 mutations killed
+65/65 mutations killed
