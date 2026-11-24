@@ -30,12 +30,18 @@ outside ACL2 parses it**, so no parser sits in the trust base (review point 4).
 
 ## Rules (4, as data with patterns)
 
+**Revision after review:** metavariables are the `?`-symbols of `*metavars*`, so
+`:else` is a literal again; refusal is a multiple value `(mv ok term)`, never a
+term; `case-1` is **not** in the table because its correctness theorem is unproved
+(see `RESULTS.md` §3).
+
 | Rule | Left pattern | Right template | Extra condition | Source |
 | --- | --- | --- | --- | --- |
 | `if-not` | `(if-not :c :a :b)` | `(if (not :c) :a :b)` | — | `guest-grammar.edn:476` ("if + not") |
 | `if-not-swap` | `(if (not :c) :a :b)` | `(if :c :b :a)` | — | **corpus** `:if-not-vs-swapped-if` pure form |
-| `cond-2` | `(cond :t1 :e1 :else :e2)` | `(if :t1 :e1 :e2)` | `:else` must be final | `guest-grammar.edn:551` |
-| `case-1` | `(case :e :k :r :d)` | `(let (t :e) (if (= t :k) :r :d))` | **`t` not free in `:r` or `:d`** | `guest-grammar.edn:558` |
+| `cond-2` | `(cond ?t1 ?e1 :else ?e2)` | `(if ?t1 ?e1 ?e2)` | `:else` final **and** the test is not `:else` | `guest-grammar.edn:551` |
+| `cond-step` | `(cond ?t1 ?e1 . ?rest)` | `(if ?t1 ?e1 (cond . ?rest))` | another clause follows; neither test is `:else` | `guest-grammar.edn:551` |
+| ~~`case-1`~~ | dropped | — | correctness theorem unproved | `guest-grammar.edn:558` |
 
 Review point 2: `if-not` is split into two rules — the grammar's "if + not" and the
 arm swap that comes from the corpus, cited to the corpus rather than the grammar.
@@ -61,6 +67,15 @@ is Researcher's reading of that prose. Nothing here shows Amu desugars this way;
   fold over the steps, compare with `pure`.
 - Trust base: ACL2 kernel, the checker source, the 4-rule table, the claim file.
   No parser and no desugar model.
+
+## Rule correctness comes before checker soundness
+
+A checker soundness theorem cannot catch a wrong rule: `step-rel` and `apply-step`
+share the rule table, so a bad rule is applied identically on both sides. Each rule
+must therefore be justified **independently of the table and of `match-pat`**, by a
+theorem over a small separate evaluator: for every environment and every subterm,
+the two sides evaluate to the same value. A rule whose theorem is not proved is
+removed from the table. Results: `RESULTS.md` §3.
 
 ## The theorem with variables (review point 1)
 

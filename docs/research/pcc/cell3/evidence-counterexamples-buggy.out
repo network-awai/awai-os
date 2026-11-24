@@ -1,0 +1,616 @@
+This is SBCL 2.4.0, an implementation of ANSI Common Lisp.
+More information about SBCL is available at <http://www.sbcl.org/>.
+
+SBCL is free software, provided as is, with absolutely no warranty.
+It is mostly in the public domain; some portions are provided under
+BSD-style licenses.  See the CREDITS and COPYING files in the
+distribution for more information.
+
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ + ACL2 Version 8.7                                                     +
+ +   built November 24, 2026  20:34:44.                                 +
+ + Copyright (C) 2026, Regents of the University of Texas.              +
+ + ACL2 comes with ABSOLUTELY NO WARRANTY.  This is free software and   +
+ + you are welcome to redistribute it under certain conditions.  For    +
+ + details, see the LICENSE file distributed with ACL2.                 +
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Project-dir-alist:
+((:SYSTEM . "/Users/node/pcc/src/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !> "ACL2"
+ACL2 !>
+Summary
+Form:  ( DEFCONST *RULES* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ *RULES*
+ACL2 !>
+The admission of FREEP is trivial, using the relation O< (which is
+known to be well-founded on the domain recognized by O-P) and the measure
+(ACL2-COUNT X).  We observe that the type of FREEP is described by
+the theorem (OR (EQUAL (FREEP V X) T) (EQUAL (FREEP V X) NIL)).  We
+used primitive type reasoning.
+
+Summary
+Form:  ( DEFUN FREEP ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FREEP
+ACL2 !>
+The admission of MATCH-PAT is trivial, using the relation O< (which
+is known to be well-founded on the domain recognized by O-P) and the
+measure (ACL2-COUNT PAT).  We observe that the type of MATCH-PAT is
+described by the theorem 
+(OR (OR (CONSP (MATCH-PAT PAT X AL))
+        (AND (SYMBOLP (MATCH-PAT PAT X AL))
+             (NOT (EQUAL (MATCH-PAT PAT X AL) T))
+             (NOT (EQUAL (MATCH-PAT PAT X AL) NIL))))
+    (EQUAL (MATCH-PAT PAT X AL) AL)).
+We used primitive type reasoning.
+
+Summary
+Form:  ( DEFUN MATCH-PAT ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ MATCH-PAT
+ACL2 !>
+The admission of INSTANTIATE is trivial, using the relation O< (which
+is known to be well-founded on the domain recognized by O-P) and the
+measure (ACL2-COUNT TMPL).  We could deduce no constraints on the type
+of INSTANTIATE.
+
+Summary
+Form:  ( DEFUN INSTANTIATE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ INSTANTIATE
+ACL2 !>
+Since RULE-MATCH is non-recursive, its admission is trivial.  We observe
+that the type of RULE-MATCH is described by the theorem 
+(OR (CONSP (RULE-MATCH RULE X))
+    (AND (SYMBOLP (RULE-MATCH RULE X))
+         (NOT (EQUAL (RULE-MATCH RULE X) T))
+         (NOT (EQUAL (RULE-MATCH RULE X) NIL)))
+    (EQUAL (RULE-MATCH RULE X) NIL)).
+We used the :type-prescription rules FREEP and MATCH-PAT.
+
+Summary
+Form:  ( DEFUN RULE-MATCH ...)
+Rules: ((:TYPE-PRESCRIPTION FREEP)
+        (:TYPE-PRESCRIPTION MATCH-PAT))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ RULE-MATCH
+ACL2 !>
+For the admission of FETCH we will use the relation O< (which is known
+to be well-founded on the domain recognized by O-P) and the measure
+(ACL2-COUNT X).  The non-trivial part of the measure conjecture is
+
+Goal
+(IMPLIES (AND (NOT (ENDP P))
+              (AND (CONSP X)
+                   (INTEGERP (CAR P))
+                   (<= 0 (CAR P))
+                   (< (CAR P) (LEN X))))
+         (O< (ACL2-COUNT (NTH (CAR P) X))
+             (ACL2-COUNT X))).
+Goal'
+Goal''
+Goal'''
+Goal'4'
+Goal'5'
+
+([ A key checkpoint:
+
+Goal''
+(IMPLIES (AND (CONSP P)
+              (CONSP X)
+              (INTEGERP (CAR P))
+              (<= 0 (CAR P))
+              (< (CAR P) (LEN X)))
+         (< (ACL2-COUNT (NTH (CAR P) X))
+            (ACL2-COUNT X)))
+
+*1 (Goal'5') is pushed for proof by induction:
+(IMPLIES (AND (INTEGERP P1)
+              (<= 0 P1)
+              (CONSP X)
+              (< P1 (LEN X)))
+         (< (ACL2-COUNT (NTH P1 X))
+            (ACL2-COUNT X))).
+
+])
+
+Perhaps we can prove *1 by induction.  Three induction schemes are
+suggested by this conjecture.  Subsumption reduces that number to two.
+These merge into one derived induction scheme.  
+
+We will induct according to a scheme suggested by (ACL2-COUNT X), while
+accommodating (NTH P1 X) and (LEN X).
+
+These suggestions were produced using the :induction rules ACL2-COUNT,
+LEN and NTH.  If we let (:P P1 X) denote *1 above then the induction
+scheme we'll use is
+(AND (IMPLIES (AND (NOT (CONSP X))
+                   (NOT (RATIONALP X))
+                   (NOT (COMPLEX-RATIONALP X))
+                   (NOT (STRINGP X)))
+              (:P P1 X))
+     (IMPLIES (AND (NOT (CONSP X))
+                   (NOT (RATIONALP X))
+                   (NOT (COMPLEX-RATIONALP X))
+                   (STRINGP X))
+              (:P P1 X))
+     (IMPLIES (AND (NOT (CONSP X))
+                   (NOT (RATIONALP X))
+                   (COMPLEX-RATIONALP X)
+                   (:P P1 (REALPART X))
+                   (:P P1 (IMAGPART X)))
+              (:P P1 X))
+     (IMPLIES (AND (NOT (CONSP X))
+                   (RATIONALP X)
+                   (NOT (INTEGERP X)))
+              (:P P1 X))
+     (IMPLIES (AND (NOT (CONSP X))
+                   (RATIONALP X)
+                   (INTEGERP X))
+              (:P P1 X))
+     (IMPLIES (AND (CONSP X)
+                   (:P P1 (CAR X))
+                   (:P (+ -1 P1) (CDR X)))
+              (:P P1 X))).
+This induction is justified by the same argument used to admit ACL2-COUNT.
+Note, however, that the unmeasured variable P1 is being instantiated.
+When applied to the goal at hand the above induction scheme produces
+15 nontautological subgoals.
+Subgoal *1/15
+
+Splitter note (see :DOC splitter) for Subgoal *1/15 (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/15.2
+Subgoal *1/15.1
+Subgoal *1/14
+
+Splitter note (see :DOC splitter) for Subgoal *1/14 (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/14.2
+Subgoal *1/14.1
+Subgoal *1/13
+
+Splitter note (see :DOC splitter) for Subgoal *1/13 (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/13.2
+Subgoal *1/13.1
+Subgoal *1/12
+Subgoal *1/11
+Subgoal *1/10
+Subgoal *1/9
+
+Splitter note (see :DOC splitter) for Subgoal *1/9 (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/9.2
+Subgoal *1/9.1
+Subgoal *1/8
+
+Splitter note (see :DOC splitter) for Subgoal *1/8 (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/8.2
+Subgoal *1/8.1
+Subgoal *1/7
+
+Splitter note (see :DOC splitter) for Subgoal *1/7 (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/7.2
+Subgoal *1/7.1
+Subgoal *1/6
+Subgoal *1/6'
+
+Splitter note (see :DOC splitter) for Subgoal *1/6' (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/6.2
+Subgoal *1/6.1
+Subgoal *1/5
+Subgoal *1/5'
+Subgoal *1/5''
+Subgoal *1/5'''
+Subgoal *1/4
+Subgoal *1/4'
+Subgoal *1/4''
+Subgoal *1/3
+Subgoal *1/2
+Subgoal *1/1
+
+*1 is COMPLETED!
+Thus key checkpoint Goal'' is COMPLETED!
+
+Q.E.D.
+
+That completes the proof of the measure theorem for FETCH.  Thus, we
+admit this function under the principle of definition.  We could deduce
+no constraints on the type of FETCH.
+
+Summary
+Form:  ( DEFUN FETCH ...)
+Rules: ((:COMPOUND-RECOGNIZER ZP-COMPOUND-RECOGNIZER)
+        (:DEFINITION ACL2-COUNT)
+        (:DEFINITION ENDP)
+        (:DEFINITION LEN)
+        (:DEFINITION NOT)
+        (:DEFINITION NTH)
+        (:DEFINITION O-FINP)
+        (:DEFINITION O<)
+        (:ELIM CAR-CDR-ELIM)
+        (:EXECUTABLE-COUNTERPART <)
+        (:EXECUTABLE-COUNTERPART ACL2-COUNT)
+        (:EXECUTABLE-COUNTERPART BINARY-+)
+        (:EXECUTABLE-COUNTERPART INTEGERP)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM)
+        (:EXECUTABLE-COUNTERPART ZP)
+        (:FAKE-RUNE-FOR-LINEAR NIL)
+        (:FAKE-RUNE-FOR-LINEAR-EQUALITIES NIL)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION ACL2-COUNT)
+        (:INDUCTION LEN)
+        (:INDUCTION NTH)
+        (:TYPE-PRESCRIPTION ACL2-COUNT)
+        (:TYPE-PRESCRIPTION LEN))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION NTH))
+Time:  0.01 seconds (prove: 0.01, print: 0.00, other: 0.00)
+Prover steps counted:  6397
+ FETCH
+ACL2 !>
+For the admission of EMBED we will use the relation O< (which is known
+to be well-founded on the domain recognized by O-P) and the measure
+(ACL2-COUNT X).  The non-trivial part of the measure conjecture is
+
+Goal
+(IMPLIES (AND (NOT (ENDP P))
+              (AND (CONSP X)
+                   (INTEGERP (CAR P))
+                   (<= 0 (CAR P))
+                   (< (CAR P) (LEN X))))
+         (O< (ACL2-COUNT (NTH (CAR P) X))
+             (ACL2-COUNT X))).
+Goal'
+Goal''
+Goal'''
+Goal'4'
+Goal'5'
+
+([ A key checkpoint:
+
+Goal''
+(IMPLIES (AND (CONSP P)
+              (CONSP X)
+              (INTEGERP (CAR P))
+              (<= 0 (CAR P))
+              (< (CAR P) (LEN X)))
+         (< (ACL2-COUNT (NTH (CAR P) X))
+            (ACL2-COUNT X)))
+
+*1 (Goal'5') is pushed for proof by induction:
+(IMPLIES (AND (INTEGERP P1)
+              (<= 0 P1)
+              (CONSP X)
+              (< P1 (LEN X)))
+         (< (ACL2-COUNT (NTH P1 X))
+            (ACL2-COUNT X))).
+
+])
+
+Perhaps we can prove *1 by induction.  Three induction schemes are
+suggested by this conjecture.  Subsumption reduces that number to two.
+These merge into one derived induction scheme.  
+
+We will induct according to a scheme suggested by (ACL2-COUNT X), while
+accommodating (NTH P1 X) and (LEN X).
+
+These suggestions were produced using the :induction rules ACL2-COUNT,
+LEN and NTH.  If we let (:P P1 X) denote *1 above then the induction
+scheme we'll use is
+(AND (IMPLIES (AND (NOT (CONSP X))
+                   (NOT (RATIONALP X))
+                   (NOT (COMPLEX-RATIONALP X))
+                   (NOT (STRINGP X)))
+              (:P P1 X))
+     (IMPLIES (AND (NOT (CONSP X))
+                   (NOT (RATIONALP X))
+                   (NOT (COMPLEX-RATIONALP X))
+                   (STRINGP X))
+              (:P P1 X))
+     (IMPLIES (AND (NOT (CONSP X))
+                   (NOT (RATIONALP X))
+                   (COMPLEX-RATIONALP X)
+                   (:P P1 (REALPART X))
+                   (:P P1 (IMAGPART X)))
+              (:P P1 X))
+     (IMPLIES (AND (NOT (CONSP X))
+                   (RATIONALP X)
+                   (NOT (INTEGERP X)))
+              (:P P1 X))
+     (IMPLIES (AND (NOT (CONSP X))
+                   (RATIONALP X)
+                   (INTEGERP X))
+              (:P P1 X))
+     (IMPLIES (AND (CONSP X)
+                   (:P P1 (CAR X))
+                   (:P (+ -1 P1) (CDR X)))
+              (:P P1 X))).
+This induction is justified by the same argument used to admit ACL2-COUNT.
+Note, however, that the unmeasured variable P1 is being instantiated.
+When applied to the goal at hand the above induction scheme produces
+15 nontautological subgoals.
+Subgoal *1/15
+
+Splitter note (see :DOC splitter) for Subgoal *1/15 (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/15.2
+Subgoal *1/15.1
+Subgoal *1/14
+
+Splitter note (see :DOC splitter) for Subgoal *1/14 (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/14.2
+Subgoal *1/14.1
+Subgoal *1/13
+
+Splitter note (see :DOC splitter) for Subgoal *1/13 (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/13.2
+Subgoal *1/13.1
+Subgoal *1/12
+Subgoal *1/11
+Subgoal *1/10
+Subgoal *1/9
+
+Splitter note (see :DOC splitter) for Subgoal *1/9 (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/9.2
+Subgoal *1/9.1
+Subgoal *1/8
+
+Splitter note (see :DOC splitter) for Subgoal *1/8 (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/8.2
+Subgoal *1/8.1
+Subgoal *1/7
+
+Splitter note (see :DOC splitter) for Subgoal *1/7 (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/7.2
+Subgoal *1/7.1
+Subgoal *1/6
+Subgoal *1/6'
+
+Splitter note (see :DOC splitter) for Subgoal *1/6' (2 subgoals).
+  if-intro: ((:DEFINITION NTH))
+
+Subgoal *1/6.2
+Subgoal *1/6.1
+Subgoal *1/5
+Subgoal *1/5'
+Subgoal *1/5''
+Subgoal *1/5'''
+Subgoal *1/4
+Subgoal *1/4'
+Subgoal *1/4''
+Subgoal *1/3
+Subgoal *1/2
+Subgoal *1/1
+
+*1 is COMPLETED!
+Thus key checkpoint Goal'' is COMPLETED!
+
+Q.E.D.
+
+That completes the proof of the measure theorem for EMBED.  Thus, we
+admit this function under the principle of definition.  We observe
+that the type of EMBED is described by the theorem 
+(OR (OR (CONSP (EMBED X P V))
+        (AND (SYMBOLP (EMBED X P V))
+             (NOT (EQUAL (EMBED X P V) T))
+             (NOT (EQUAL (EMBED X P V) NIL))))
+    (EQUAL (EMBED X P V) V)).
+We used the :type-prescription rule UPDATE-NTH.
+
+Summary
+Form:  ( DEFUN EMBED ...)
+Rules: ((:COMPOUND-RECOGNIZER ZP-COMPOUND-RECOGNIZER)
+        (:DEFINITION ACL2-COUNT)
+        (:DEFINITION ENDP)
+        (:DEFINITION LEN)
+        (:DEFINITION NOT)
+        (:DEFINITION NTH)
+        (:DEFINITION O-FINP)
+        (:DEFINITION O<)
+        (:ELIM CAR-CDR-ELIM)
+        (:EXECUTABLE-COUNTERPART <)
+        (:EXECUTABLE-COUNTERPART ACL2-COUNT)
+        (:EXECUTABLE-COUNTERPART BINARY-+)
+        (:EXECUTABLE-COUNTERPART INTEGERP)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM)
+        (:EXECUTABLE-COUNTERPART ZP)
+        (:FAKE-RUNE-FOR-LINEAR NIL)
+        (:FAKE-RUNE-FOR-LINEAR-EQUALITIES NIL)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION ACL2-COUNT)
+        (:INDUCTION LEN)
+        (:INDUCTION NTH)
+        (:TYPE-PRESCRIPTION ACL2-COUNT)
+        (:TYPE-PRESCRIPTION LEN)
+        (:TYPE-PRESCRIPTION UPDATE-NTH))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION NTH))
+Time:  0.01 seconds (prove: 0.01, print: 0.00, other: 0.00)
+Prover steps counted:  6397
+ EMBED
+ACL2 !>
+The admission of REWRITES-AT-RULES is trivial, using the relation O<
+(which is known to be well-founded on the domain recognized by O-P)
+and the measure (ACL2-COUNT RULES).  We observe that the type of 
+REWRITES-AT-RULES is described by the theorem 
+(TRUE-LISTP (REWRITES-AT-RULES RULES X P)).  We used primitive type
+reasoning.
+
+Summary
+Form:  ( DEFUN REWRITES-AT-RULES ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ REWRITES-AT-RULES
+ACL2 !>
+The admission of ROOT-STEP-RULES is trivial, using the relation O<
+(which is known to be well-founded on the domain recognized by O-P)
+and the measure (ACL2-COUNT RULES).  We observe that the type of 
+ROOT-STEP-RULES is described by the theorem 
+(OR (EQUAL (ROOT-STEP-RULES RULES X U) T)
+    (EQUAL (ROOT-STEP-RULES RULES X U)
+           NIL)).
+
+Summary
+Form:  ( DEFUN ROOT-STEP-RULES ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ ROOT-STEP-RULES
+ACL2 !>
+Since ROOT-STEP is non-recursive, its admission is trivial.  We observe
+that the type of ROOT-STEP is described by the theorem 
+(OR (EQUAL (ROOT-STEP X U) T) (EQUAL (ROOT-STEP X U) NIL)).  We used
+the :type-prescription rule ROOT-STEP-RULES.
+
+Summary
+Form:  ( DEFUN ROOT-STEP ...)
+Rules: ((:TYPE-PRESCRIPTION ROOT-STEP-RULES))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ ROOT-STEP
+ACL2 !>
+For the admission of STEP-REL we will use the relation O< (which is
+known to be well-founded on the domain recognized by O-P) and the measure
+(ACL2-COUNT X).  The non-trivial part of the measure conjecture is
+
+Goal
+(AND (IMPLIES (AND (NOT (ROOT-STEP X U))
+                   (AND (CONSP X) (CONSP U)))
+              (O< (ACL2-COUNT (CAR X))
+                  (ACL2-COUNT X)))
+     (IMPLIES (AND (NOT (ROOT-STEP X U))
+                   (AND (CONSP X) (CONSP U))
+                   (NOT (STEP-REL (CAR X) (CAR U)))
+                   (EQUAL (CAR X) (CAR U)))
+              (O< (ACL2-COUNT (CDR X))
+                  (ACL2-COUNT X)))).
+Subgoal 2
+Subgoal 1
+
+Q.E.D.
+
+That completes the proof of the measure theorem for STEP-REL.  Thus,
+we admit this function under the principle of definition.  We observe
+that the type of STEP-REL is described by the theorem 
+(OR (EQUAL (STEP-REL X U) T) (EQUAL (STEP-REL X U) NIL)).  We used
+primitive type reasoning.
+
+Summary
+Form:  ( DEFUN STEP-REL ...)
+Rules: ((:DEFINITION NOT)
+        (:DEFINITION ROOT-STEP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  91
+ STEP-REL
+ACL2 !>
+The admission of RTC is trivial, using the relation O< (which is known
+to be well-founded on the domain recognized by O-P) and the measure
+(ACL2-COUNT TS).  We observe that the type of RTC is described by the
+theorem (OR (EQUAL (RTC X U TS) T) (EQUAL (RTC X U TS) NIL)).  We used
+primitive type reasoning.
+
+Summary
+Form:  ( DEFUN RTC ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ RTC
+ACL2 !>
+The admission of FIND-RULE is trivial, using the relation O< (which
+is known to be well-founded on the domain recognized by O-P) and the
+measure (ACL2-COUNT RULES).  We could deduce no constraints on the
+type of FIND-RULE.
+
+Summary
+Form:  ( DEFUN FIND-RULE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FIND-RULE
+ACL2 !>
+Since APPLY-STEP is non-recursive, its admission is trivial.  We could
+deduce no constraints on the type of APPLY-STEP.
+
+Summary
+Form:  ( DEFUN APPLY-STEP ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ APPLY-STEP
+ACL2 !>
+The admission of RUN is trivial, using the relation O< (which is known
+to be well-founded on the domain recognized by O-P) and the measure
+(ACL2-COUNT STEPS).  We could deduce no constraints on the type of
+RUN.
+
+Summary
+Form:  ( DEFUN RUN ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ RUN
+ACL2 !>
+The admission of TERMS-OF is trivial, using the relation O< (which
+is known to be well-founded on the domain recognized by O-P) and the
+measure (ACL2-COUNT STEPS).  We observe that the type of TERMS-OF is
+described by the theorem (TRUE-LISTP (TERMS-OF X STEPS)).  We used
+primitive type reasoning.
+
+Summary
+Form:  ( DEFUN TERMS-OF ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ TERMS-OF
+ACL2 !>
+Since CHECK is non-recursive, its admission is trivial.  We observe
+that the type of CHECK is described by the theorem 
+(OR (EQUAL (CHECK CLAIM STEPS) T) (EQUAL (CHECK CLAIM STEPS) NIL)).
+We used primitive type reasoning.
+
+Summary
+Form:  ( DEFUN CHECK ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ CHECK
+ACL2 !>
+RESULT neg-x-else-as-metavar expected=NIL got=T
+NIL
+ACL2 !>
+RESULT neg-xi-case-key-capture expected=NIL got=T
+NIL
+ACL2 !>
+RESULT neg-xii-else-not-final expected=NIL got=T
+NIL
+ACL2 !>
+RESULT neg-xiii-fail-as-term expected=NIL got=T
+NIL
+ACL2 !>Bye.
