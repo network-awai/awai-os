@@ -236,14 +236,23 @@ the mark exists in the repo or in PR #302 (its `awai_welcome_mark.xml` is only a
 **Proportions.** One design unit `--u = min(100vw/740, 100vh/440)` scales text, logo, cards and gaps with the frame; the
 rail is 30.5vw and cards 57.7vw as in `design/installer.png` (browser test checks both sizes).
 
-**Kiosk.** `firefox-policies.json` (the base medium has `/usr/bin/firefox-esr -> /opt/firefox-esr/firefox-esr` and no plain
-`firefox`, so `start.sh` and `xsession.sh` look for `firefox-esr` first, then `firefox`; the policy is installed in
-`<real binary dir>/distribution/` (required: the screen installer falls back to text if that fails) and in
-`/etc/firefox-esr/policies/` and `/etc/firefox/policies/`; tests provide only `firefox-esr`, behind a symlink like the medium): developer tools, about:config/addons/profiles/support,
-private browsing, safe mode, popups off; every URL blocked except `http://127.0.0.1/*` and the launch page; locked prefs
-that unbind the accelerator and menu-access keys (Ctrl+T/N/L/O/W, Alt menus) and new-window behaviour. There is no file
-input in the page, and `file:` URLs are blocked, so no file picker can be reached. Written from Mozilla's documented
-policy names; not exercised against a real Firefox here (QEMU run).
+**Kiosk (hardening in progress; NOT verified as locked).** QEMU run 1 showed that with the keyboard only, Ctrl+T / Ctrl+N /
+Ctrl+L / Ctrl+O and F12 leave the installer for Firefox's blocked page and new-tab page (third-party branding, no way back).
+Policy prefs alone did not stop that. What is now in place, untested against a real Firefox until the next QEMU run:
+(1) `kiosk/autoconfig.js` + `kiosk/mozilla.cfg`, installed next to the real binary (`/opt/firefox-esr/defaults/pref/autoconfig.js`,
+`/opt/firefox-esr/mozilla.cfg`; required, else the text installer): removes every `<keyset>` of the browser window, swallows
+Ctrl/Alt/Meta/function keys and the context menu, keeps one window and one tab, and sends any page that is not the launch page
+or `http://127.0.0.1:PORT/` (blocked page, new tab, about:*) back to the launch page; **F5 is the recovery key** (reload or
+return to the installer). (2) `firefox-policies.json` (installed in `<real binary dir>/distribution/` - required - and in
+`/etc/firefox-esr/policies/`, `/etc/firefox/policies/`): developer tools, about:*, private browsing, safe mode, popups off;
+every URL blocked except the backend and the launch page; Homepage = launch page (locked), NewTabPage off, FirefoxHome and
+user messaging off. (3) `kiosk/watchdog.py`: the page pings `/api/ping` every 5 s while it is visible and the backend touches
+`heartbeat` on every authenticated request; if nothing arrives for 20 s (60 s grace after a session start) the watchdog
+terminates the `xinit` it was given and `start.sh` starts a new browser session. It refuses to signal anything that is not
+`xinit` and never touches the detached install worker, so a restart is safe at any moment of a write. Tested here: the files
+exist and match, the prefs/policy values, JavaScript syntax (`node --check`), watchdog decisions on a fake clock including a
+real decoy process named like the worker, heartbeat behaviour. Not tested here: any of it inside Firefox, and whether
+`xinit` still works when started in the background by `start.sh` (QEMU).
 
 ### Checks
 

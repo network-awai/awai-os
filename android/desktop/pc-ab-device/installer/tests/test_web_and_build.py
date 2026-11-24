@@ -205,7 +205,7 @@ class TextFrontEnd(unittest.TestCase):
 
 
 class Launcher(unittest.TestCase):
-    def run_start(self, *args, cmdline=None, path_tools=(), extra_env=None, timeout=60, real_policy_dirs=False):
+    def run_start(self, *args, cmdline=None, path_tools=(), extra_env=None, timeout=60, real_policy_dirs=False, before=None):
         tmp = Path(tempfile.mkdtemp(prefix="awai-start-"))
         self.addCleanup(__import__("shutil").rmtree, tmp, True)
         bin_dir = tmp / "bin"
@@ -227,6 +227,8 @@ class Launcher(unittest.TestCase):
                "AWAI_MEDIA_DIR": str(tmp), "AWAI_PYTHON": sys.executable,
                "AWAI_ETC": str(tmp / "etc"), **({} if real_policy_dirs else {"AWAI_POLICY_DIRS": str(tmp / "policies")}), **(extra_env or {})}
         self.last_tmp = tmp
+        if before:
+            before(tmp)
         return subprocess.run(["/bin/bash", str(INSTALLER / "start.sh"), *args], env=env, capture_output=True, text=True, input="\n", timeout=timeout)
 
     def test_forced_text_mode(self):
@@ -261,6 +263,9 @@ class Launcher(unittest.TestCase):
         self.assertEqual((tmp / "opt" / "firefox-esr" / "distribution" / "policies.json").read_text(), want)
         self.assertEqual((tmp / "etc" / "firefox-esr" / "policies" / "policies.json").read_text(), want)
         self.assertEqual((tmp / "etc" / "firefox" / "policies" / "policies.json").read_text(), want)
+        base = tmp / "opt" / "firefox-esr"
+        self.assertEqual((base / "defaults" / "pref" / "autoconfig.js").read_text(), (INSTALLER / "kiosk" / "autoconfig.js").read_text())
+        self.assertEqual((base / "mozilla.cfg").read_text(), (INSTALLER / "kiosk" / "mozilla.cfg").read_text())
 
     def test_missing_browser_is_reported_by_its_real_name(self):
         r = self.run_start(path_tools=("xinit",))
@@ -283,6 +288,45 @@ class Launcher(unittest.TestCase):
         args = (tmp / "args").read_text()
         self.assertIn("--kiosk", args)
         self.assertIn("file:///run/x/launch.html", args)
+
+    @unittest.skipIf(os.geteuid() == 0, "root ignores directory permissions")
+    def test_autoconfig_is_required_like_the_policy(self):
+        tmp = Path(tempfile.mkdtemp(prefix="awai-ro-"))
+        self.addCleanup(__import__("shutil").rmtree, tmp, True)
+        # an unwritable <real dir>/defaults/pref: the kiosk configuration cannot be installed -> text fallback
+
+        def lock(t):
+            (t / "opt" / "firefox-esr" / "defaults").mkdir()
+            (t / "opt" / "firefox-esr" / "defaults").chmod(0o555)
+        r = self.run_start(path_tools=("xinit", "firefox-esr"), real_policy_dirs=True, before=lock)
+        self.assertIn("could not install the browser kiosk configuration", r.stderr)
+        self.assertIn("Offline PC installer", r.stdout)
+        os.chmod(self.last_tmp / "opt" / "firefox-esr" / "defaults", 0o755)
+
+    def test_kiosk_config_removes_shortcuts_and_returns_every_other_page_to_the_installer(self):
+        cfg = (INSTALLER / "kiosk" / "mozilla.cfg").read_text()
+        auto = (INSTALLER / "kiosk" / "autoconfig.js").read_text()
+        self.assertTrue(cfg.startswith("//"), "autoconfig requires a leading comment")
+        self.assertIn('pref("general.config.filename", "mozilla.cfg")', auto)
+        self.assertIn('pref("general.config.sandbox_enabled", false)', auto)
+        pol = json.loads((INSTALLER / "firefox-policies.json").read_text())["policies"]
+        self.assertIn('var AWAI_HOME = "%s"' % pol["Homepage"]["URL"], cfg)
+        self.assertTrue(pol["Homepage"]["Locked"])
+        self.assertIs(pol["NewTabPage"], False)
+        for needle in ('lockPref("browser.newtabpage.enabled", false)', 'lockPref("browser.startup.page", 1)', 'querySelectorAll("keyset")',
+                       "e.ctrlKey || e.altKey || e.metaKey", "removeTab", "goHome(win)", '"F5"', "domwindowopened", "win.close()", "isLoadingDocument"):
+            self.assertIn(needle, cfg, needle)
+        self.assertIn("127\\.0\\.0\\.1", cfg)
+        for url in re.findall(r"https?://[^\s\"']+", cfg):
+            self.fail(f"external URL in the kiosk config: {url}")
+
+    @unittest.skipUnless(subprocess.run(["which", "node"], capture_output=True).returncode == 0, "node not installed")
+    def test_kiosk_config_is_valid_javascript(self):
+        for name in ("mozilla.cfg", "autoconfig.js"):
+            src = Path(tempfile.mkdtemp()) / (name + ".js")
+            src.write_text((INSTALLER / "kiosk" / name).read_text())
+            r = subprocess.run(["node", "--check", str(src)], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
 
     def test_policy_locks_the_kiosk_down(self):
         pol = json.loads((INSTALLER / "firefox-policies.json").read_text())["policies"]
@@ -494,7 +538,7 @@ class Overlay(unittest.TestCase):
         self.assertEqual((awai / "awai-pc-install.py").read_bytes(), (PC_AB / "awai-pc-install.py").read_bytes())
         self.assertEqual((awai / "install-image.sha256").read_text(), f"{self.sha(self.zst)}  awai-pc-install.img\n")
         self.assertEqual((awai / "archive.sha256").read_text(), f"{self.sha(self.zst)}  awai-pc-install.img.zst\n")
-        for f in ("core.py", "server.py", "text_installer.py", "start.sh", "xsession.sh", "firefox-policies.json", "web/logo.png", "web/index.html", "web/app.js", "web/noto-jp.woff2", "web/font-OFL.txt"):
+        for f in ("kiosk/autoconfig.js", "kiosk/mozilla.cfg", "kiosk/watchdog.py", "core.py", "server.py", "text_installer.py", "start.sh", "xsession.sh", "firefox-policies.json", "web/logo.png", "web/index.html", "web/app.js", "web/noto-jp.woff2", "web/font-OFL.txt"):
             self.assertTrue((awai / "installer" / f).is_file(), f)
         for f in ("boot/grub/grubsrcd.cfg", "boot/syslinux/sysresccd_head.cfg", "boot/syslinux/sysresccd_sys.cfg"):
             self.assertEqual((keep / f).read_bytes(), (INSTALLER / "boot" / Path(f).name).read_bytes(), f)

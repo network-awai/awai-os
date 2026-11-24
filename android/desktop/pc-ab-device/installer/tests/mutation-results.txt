@@ -71,5 +71,11 @@ killed       UI: power off asks once (browser)
 killed       launcher looks for firefox-esr (web_build)
 killed       session starts firefox-esr (web_build)
 killed       policy next to the real binary (web_build)
+killed       watchdog only signals xinit (kiosk)
+killed       watchdog restarts a silent page (kiosk)
+killed       server heartbeat on authenticated requests (kiosk)
+killed       kiosk: keyset removal
+killed       kiosk: autoconfig required
+killed       kiosk: autoconfig installed in the overlay
 
-73/73 mutations killed
+79/79 mutations killed

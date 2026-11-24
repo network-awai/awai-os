@@ -73,6 +73,9 @@ def build_overlay(args, overlay):
     for name in os.listdir(os.path.join(HERE, "web")):
         if name not in ("noto-jp.woff2", "font-OFL.txt"):
             shutil.copy(os.path.join(HERE, "web", name), os.path.join(inst, "web"))
+    os.makedirs(os.path.join(inst, "kiosk"))
+    for name in ("autoconfig.js", "mozilla.cfg", "watchdog.py"):
+        shutil.copy(os.path.join(HERE, "kiosk", name), os.path.join(inst, "kiosk"))
     shutil.copy(REPO_FONT, os.path.join(inst, "web", "noto-jp.woff2"))
     shutil.copy(REPO_FONT_LICENSE, os.path.join(inst, "web", "font-OFL.txt"))
     shutil.copy(os.path.join(HERE, "700-awai-installer.yaml"), os.path.join(overlay, "sysrescue.d"))

@@ -45,6 +45,16 @@ class App:
         self.proc = None
         self.mutex = threading.Lock()
         core.ensure_work(work)
+        self.beat()
+
+    def beat(self):
+        """Proof that an authenticated page is talking to us (the browser watchdog reads this file's mtime)."""
+        path = os.path.join(self.work, "heartbeat")
+        try:
+            os.utime(path)
+        except FileNotFoundError:
+            open(path, "a").close()
+            os.chmod(path, 0o600)
 
     # -- state
     def starting(self):
@@ -172,6 +182,7 @@ def make_handler(app, port):
             if not secrets.compare_digest(token.encode(), app.token.encode()):
                 self._send(403, {"error": "token"})
                 return False
+            app.beat()
             return True
 
         def do_GET(self):
@@ -189,6 +200,8 @@ def make_handler(app, port):
                 return self._send(404, {"error": "not-found"})
             if not self._api_guard(False):
                 return
+            if path == "/api/ping":
+                return self._send(200, {"ok": True})
             if path == "/api/disks":
                 return self._send(*app.disks())
             if path == "/api/install":

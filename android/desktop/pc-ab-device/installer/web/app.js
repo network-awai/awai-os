@@ -198,5 +198,7 @@
     loadDisks();
   }
   async function preload() { const r = await api("GET", "/api/disks"); if (r.ok) ui.disks = r.data.disks; }
+  // heartbeat for the browser watchdog: only while this page is the visible one
+  setInterval(() => { if (document.visibilityState === "visible") api("GET", "/api/ping"); }, 5000);
   boot();
 })();

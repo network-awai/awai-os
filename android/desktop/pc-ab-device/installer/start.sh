@@ -64,12 +64,29 @@ if (( ! policy_ok )); then
     kill "$server" 2>/dev/null
     text "screen installer unavailable (could not install the browser lock-down policy); using the text installer."
 fi
+# Autoconfig next to the real binary: removes the window's key bindings, keeps one tab/window, returns any other page to the
+# installer. Required as well: without it Ctrl+T / Ctrl+L / Ctrl+N leave the installer.
+if [[ -z ${AWAI_POLICY_DIRS:-} || -n ${AWAI_FF_AUTOCONFIG:-} ]]; then
+    ffdir=$(dirname "$(readlink -f "$firefox")")
+    if ! { mkdir -p "$ffdir/defaults/pref" 2>/dev/null \
+           && install -m 0644 "$here/kiosk/autoconfig.js" "$ffdir/defaults/pref/autoconfig.js" 2>/dev/null \
+           && install -m 0644 "$here/kiosk/mozilla.cfg" "$ffdir/mozilla.cfg" 2>/dev/null; }; then
+        kill "$server" 2>/dev/null
+        text "screen installer unavailable (could not install the browser kiosk configuration); using the text installer."
+    fi
+fi
 
 quick=0
 while kill -0 "$server" 2>/dev/null; do
     started=$SECONDS
-    xinit "$here/xsession.sh" "$launch" "$work" -- :0 vt1 -nolisten tcp -nocursor > "$work/x.out" 2>&1
+    xinit "$here/xsession.sh" "$launch" "$work" -- :0 vt1 -nolisten tcp -nocursor > "$work/x.out" 2>&1 &
+    xpid=$!
+    # restarts the browser session if the installer page stops talking to the backend (it never touches the install worker)
+    "$python" "$here/kiosk/watchdog.py" --work-dir "$work" --pid "$xpid" > /dev/null 2>&1 &
+    watchdog=$!
+    wait "$xpid"
     code=$?
+    kill "$watchdog" 2>/dev/null
     if (( SECONDS - started < 20 )); then quick=$((quick + 1)); else quick=0; fi
     if (( quick >= 3 )); then
         kill "$server" 2>/dev/null

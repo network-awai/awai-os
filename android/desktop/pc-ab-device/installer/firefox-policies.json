@@ -78,6 +78,37 @@
         "Value": false,
         "Status": "locked"
       }
+    },
+    "Homepage": {
+      "URL": "file:///run/awai-pc-installer/launch.html",
+      "Locked": true,
+      "StartPage": "homepage"
+    },
+    "NewTabPage": false,
+    "OverrideFirstRunPage": "",
+    "OverridePostUpdatePage": "",
+    "DisplayBookmarksToolbar": "never",
+    "DisableFeedbackCommands": true,
+    "DisableFirefoxScreenshots": true,
+    "DisableSystemAddonUpdate": true,
+    "FirefoxHome": {
+      "Search": false,
+      "TopSites": false,
+      "SponsoredTopSites": false,
+      "Highlights": false,
+      "Pocket": false,
+      "SponsoredPocket": false,
+      "Snippets": false,
+      "Locked": true
+    },
+    "UserMessaging": {
+      "WhatsNew": false,
+      "ExtensionRecommendations": false,
+      "FeatureRecommendations": false,
+      "UrlbarInterventions": false,
+      "SkipOnboarding": true,
+      "MoreFromMozilla": false,
+      "FirefoxLabs": false
     }
   }
 }

@@ -13,6 +13,7 @@ INSTALLER = Path(__file__).resolve().parent.parent
 PC_AB = INSTALLER.parent
 CORE, SERVER, APP, APPLY = "installer/core.py", "installer/server.py", "installer/web/app.js", "awai-pc-install.py"
 C, S, W, B = "tests/test_core.py", "tests/test_server.py", "tests/test_web_and_build.py", "tests/test_browser.py"
+KI = "tests/test_kiosk.py"
 M = [
     ("typed-name (core)", CORE, [('    if request.get("typed") != name:\n        raise Refusal("typed-name")', "    pass", 1)], [C]),
     ("typed-name (server)", SERVER, [('if body.get("typed") != ticket["device"]:', "if False:", 1)], [S]),
@@ -82,6 +83,12 @@ M = [
     ("launcher looks for firefox-esr", "installer/start.sh", [("command -v firefox-esr || command -v firefox", "command -v firefox", 1)], [W]),
     ("session starts firefox-esr", "installer/xsession.sh", [("${AWAI_FIREFOX:-$(command -v firefox-esr || command -v firefox)}", "${AWAI_FIREFOX:-firefox}", 1)], [W]),
     ("policy next to the real binary", "installer/start.sh", [('policy_dirs=("$(dirname "$(readlink -f "$firefox")")/distribution")', 'policy_dirs=("/etc/awai-none")', 1)], [W]),
+    ("watchdog only signals xinit", "installer/kiosk/watchdog.py", [("            if is_xinit(pid, read):", "            if True:", 1)], [KI]),
+    ("watchdog restarts a silent page", "installer/kiosk/watchdog.py", [("    return now - last_beat > timeout", "    return False", 1)], [KI]),
+    ("server heartbeat on authenticated requests", SERVER, [("            app.beat()\n            return True", "            return True", 1)], [KI]),
+    ("kiosk: keyset removal", "installer/kiosk/mozilla.cfg", [('querySelectorAll("keyset")', 'querySelectorAll("nothing")', 1)], [W]),
+    ("kiosk: autoconfig required", "installer/start.sh", [("could not install the browser kiosk configuration", "x", 1), ("if ! { mkdir -p \"$ffdir/defaults/pref\"", "if false && ! { mkdir -p \"$ffdir/defaults/pref\"", 1)], [W]),
+    ("kiosk: autoconfig installed in the overlay", "installer/build-overlay.py", [('("autoconfig.js", "mozilla.cfg", "watchdog.py")', '("autoconfig.js",)', 1)], [W]),
     ("read_state retries a partial read", CORE, [("for attempt in range(4):", "for attempt in range(1):", 1)], [C]),
     ("text installer follows a running install", "installer/text_installer.py", [('    if core.status(a.work_dir).get("state") == "running" or core.lock_held(a.work_dir):\n        return follow(a.work_dir)', "    pass", 1)], [W]),
     ("overlay copies canonical installer", "installer/build-overlay.py", [('shutil.copy(os.path.join(PC_AB, "awai-pc-install.py"), awai)', 'open(os.path.join(awai, "awai-pc-install.py"), "w").write("#")', 1)], [W]),
