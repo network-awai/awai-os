@@ -12,7 +12,12 @@
 # The one existing machine (below) must stay listed so it keeps working.
 0c:47:a9:60:9d:34
 #
-# Real 7735HS machine, PXE-confirmed 2026-11-24. To enable it, add a
-# second line for it and rebuild the initrd overlay (no kernel or image
-# rebuild needed):
+# CORRECTION 2026-11-24: this MAC is NOT the 7735HS. Measured 2026-11-24
+# 21:06 JST over adb on the machine booted with exactly this MAC:
+# /proc/cpuinfo = "AMD Ryzen 5 6600H with Radeon Graphics", DMI vendor LXY,
+# product MQ. It is a different machine from the Ryzen 7 7735HS recorded in
+# ../netboot/physical-observation-20261116.json. This installer's disk plan
+# (NVMe 500118192 sectors, pinned root/LUKS UUIDs) belongs to the 7735HS.
+# Do NOT enable this MAC for the 7735HS disk profile until this machine's
+# own disk has been audited. Keep the entry commented out.
 # 0c:47:a9:60:99:4a
