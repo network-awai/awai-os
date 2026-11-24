@@ -57,8 +57,14 @@ checker. One theorem per rule, quantified over every environment and every subte
 | `cond-2` | `rule-cond-2` (hypothesis: test ≠ `:else`) | **Q.E.D.** |
 | `cond-step` | `rule-cond-step` (rest non-empty; first rest test ≠ `:else`; test ≠ `:else`) | **Q.E.D.** |
 | `case-1` | `rule-case-1` | **failed** |
-| helper | `evl-ignore-unbound` (if `t` is not free, binding it does not change the value) | **Q.E.D.** |
+| helper | `evl-ignore-unbound` (if `t` is not free, binding it does not change the value) | **FAILED** (corrected — an earlier version of this file said Q.E.D.; see note) |
 
+The five `Q.E.D.` lines in the run are the four rule theorems above plus the model's
+own admission of the mutual recursion — **not** the helper, which failed. Which form
+each `Q.E.D.` belongs to can be read from `evidence-rules.out` in order; an earlier
+version of this file misread that sequence and credited `evl-ignore-unbound`.
+
+Because the helper failed, the `case-1` proof never had its main ingredient, and
 `case-1` was therefore **removed from the rule table**: an unproved rule does not
 belong in a checker. Its positive and capture tests were dropped with it, which is why
 this run has 3 positives rather than 4. Note the hypotheses are not decoration: the
@@ -81,7 +87,48 @@ proved, would have been equally blind. That is why rule correctness came before 
 proof engineering, and why "enumerate on the same recursion" (my earlier proposal) was
 dropped: it removes the last place where the two sides could disagree.
 
-## 5. What is still missing
+## 5. Four more counterexamples: correct rules, wrong context
+
+The rules being individually correct does not make them correct *where they are
+applied*. Run against the current (fixed) checker, all four are **accepted**
+(`evidence-context.out`):
+
+```
+RESULT neg-xv-args-position        expected=NIL got=T  (defn f (if-not a b c) :i64 1) → (defn f (if (not a) b c) :i64 1)   path (2)
+RESULT neg-xvi-let-binding-position expected=NIL got=T (let (if-not x y z) 1) → (let (if (not x) y z) 1)                    path (1)
+RESULT neg-xvii-cond-arity         expected=NIL got=T  (cond a 1 b) → (if a 1 (cond b))
+RESULT neg-xviii-not-shadowed      expected=NIL got=T  (defn f (not :i64) :i64 (if-not a b c)) → (if (not a) b c)
+```
+
+Why each slips through:
+
+- **(xv)/(xvi)** the checker has no notion of *which* positions hold expressions. A
+  parameter list and a `let` binding vector are not expression positions, but a path
+  into them is a path like any other, so the rule fires there.
+- **(xvii)** no rule requires a `cond` to keep its clause count consistent: a trailing
+  test with no branch is accepted, and `(cond b)` is not a term of the language.
+- **(xviii)** `not` is an operator, but nothing prevents a parameter from being named
+  `not`; where that binding is in scope, `(not a)` is a call of a variable, so the rule
+  changes the meaning even though its theorem holds for all subterms.
+
+The point for the record: **rule correctness is a statement about subterms, and cannot
+see binding structure or position kinds.** No number of rule theorems removes these
+four, and the earlier "prove soundness for the proved rules only" plan would not have
+either — which is why cell 3 ends here rather than continuing.
+
+## 6. Not started: a checker that knows positions and bindings
+
+The next stage would give the checker (a) a *position predicate* saying which child
+indices of each form are expression positions (`defn` body but not its parameter list;
+`let` body but not its binding vector; statement positions in a `do`), and (b) a
+*binding predicate* per position (which names are shadowed there, so a rule whose
+right-hand side introduces or mentions an operator name is refused under a shadowing
+binding), plus (c) a congruence theorem per form: if a rewrite is valid at an
+expression position and does not capture, then the whole term rewrites to the same
+value. Only after that does a soundness theorem mean anything. This is a proposal;
+nothing is implemented, and starting it is the owner's call.
+
+## 7. What is still missing
 
 - **No checker soundness theorem.** `check-sound` is not proved; acceptance by this
   checker is not known to place the endpoints in the rules' transitive closure. Cell 3
