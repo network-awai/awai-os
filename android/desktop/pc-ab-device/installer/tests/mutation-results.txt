@@ -57,4 +57,5 @@ killed       overlay copies canonical installer  tests/test_web_and_build.py
 killed       overlay checks stock iso sha  tests/test_web_and_build.py
 killed       overlay checks raw sha  tests/test_web_and_build.py
 
-58/58 mutations killed
+59/59 mutations killed
+killed       text follow tolerates a half-written state  tests/test_web_and_build.py

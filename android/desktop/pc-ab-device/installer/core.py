@@ -353,11 +353,16 @@ def ensure_work(work):
 
 
 def read_state(work):
-    try:
-        with open(_path(work, "state.json")) as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return {"state": "idle"}
+    """Writers replace the file atomically, so a partial read means another writer is not ours: retry before giving up."""
+    for attempt in range(4):
+        try:
+            with open(_path(work, "state.json")) as f:
+                return json.load(f)
+        except FileNotFoundError:
+            break
+        except (OSError, ValueError):
+            time.sleep(0.05 * (attempt + 1))
+    return {"state": "idle"}
 
 
 def lock_held(work):

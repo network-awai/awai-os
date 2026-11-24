@@ -159,6 +159,27 @@ class TextFrontEnd(unittest.TestCase):
         rc, out = self.run_text("/dev/sda")
         self.assertEqual(rc, 1)
 
+    def test_a_half_written_state_file_is_not_an_end_state(self):
+        import fcntl
+        self.w.work.mkdir(mode=0o700)
+        fd = os.open(self.w.work / "lock", os.O_RDWR | os.O_CREAT, 0o600)
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        (self.w.work / "state.json").write_text(json.dumps({"state": "running", "step": 2, "fraction": 0.5}))
+        calls = []
+
+        def wait(_):
+            calls.append(1)
+            if len(calls) == 1:
+                (self.w.work / "state.json").write_text("")  # truncated by a non-atomic writer
+            elif len(calls) == 2:
+                (self.w.work / "state.json").write_text(json.dumps({"state": "done", "partitions": 11, "record": "r"}))
+                os.close(fd)
+        out = io.StringIO()
+        with redirect_stdout(out):
+            rc = text_installer.follow(str(self.w.work), wait=wait)
+        self.assertEqual(rc, 0, out.getvalue())
+        self.assertIn("Installed and verified", out.getvalue())
+
     def test_follows_a_running_install_instead_of_starting_another(self):
         import fcntl
         self.w.work.mkdir(mode=0o700)
@@ -167,7 +188,9 @@ class TextFrontEnd(unittest.TestCase):
         (self.w.work / "state.json").write_text(json.dumps({"state": "running", "step": 2, "fraction": 0.5}))
 
         def finish():
-            (self.w.work / "state.json").write_text(json.dumps({"state": "done", "partitions": 11, "record": "r"}))
+            tmp = self.w.work / "state.json.tmp"  # atomic, like the real writer
+            tmp.write_text(json.dumps({"state": "done", "partitions": 11, "record": "r"}))
+            os.replace(tmp, self.w.work / "state.json")
             os.close(fd)
         import threading
         t = threading.Timer(0.3, finish)
@@ -242,7 +265,8 @@ class Launcher(unittest.TestCase):
 
         def finish():
             (work / "install-record.json").write_text("{}")
-            (work / "state.json").write_text(json.dumps({"state": "done", "partitions": 11, "record": "r", "step": 3, "fraction": 1}))
+            (work / "state.json.tmp").write_text(json.dumps({"state": "done", "partitions": 11, "record": "r", "step": 3, "fraction": 1}))
+            os.replace(work / "state.json.tmp", work / "state.json")
             os.close(fd)
         timer = threading.Timer(4, finish)
         timer.start()

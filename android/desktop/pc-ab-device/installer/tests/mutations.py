@@ -68,6 +68,7 @@ M = [
     ("vendor shown with the model", APP, [('((d.model || "").startsWith(d.vendor || "\\0") ? d.model : [d.vendor, d.model].filter(Boolean).join(" ")) || d.name', "d.model || d.name", 1)], [B]),
     ("kiosk policy installed or text fallback", "installer/start.sh", [("if (( ! policy_ok )); then", "if false; then", 1)], [W]),
     ("kiosk policy: devtools disabled", "installer/firefox-policies.json", [('"DisableDeveloperTools": true', '"DisableDeveloperTools": false', 1)], [W]),
+    ("text follow tolerates a half-written state", "installer/text_installer.py", [("idle_reads < 2", "idle_reads < 0", 1)], [W]),
     ("text installer follows a running install", "installer/text_installer.py", [('    if core.status(a.work_dir).get("state") == "running" or core.lock_held(a.work_dir):\n        return follow(a.work_dir)', "    pass", 1)], [W]),
     ("overlay copies canonical installer", "installer/build-overlay.py", [('shutil.copy(os.path.join(PC_AB, "awai-pc-install.py"), awai)', 'open(os.path.join(awai, "awai-pc-install.py"), "w").write("#")', 1)], [W]),
     ("overlay checks stock iso sha", "installer/build-overlay.py", [("    if sha256_file(args.stock_iso) != args.stock_iso_sha256:", "    if False:", 1)], [W]),
