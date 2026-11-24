@@ -1,0 +1,114 @@
+{
+  "M1_determinism": {
+    "failure_count": 0,
+    "failures": [],
+    "files_parsed": 120,
+    "files_skipped": 0,
+    "invariance_fraction": 1.0,
+    "invariance_rate": "240/240",
+    "variant_checks": 240,
+    "variant_matched": 240,
+    "variants": 2
+  },
+  "M2_storage": {
+    "block_size": 4096,
+    "blocks_total_fixed": null,
+    "bytes_total": 4027805,
+    "bytes_unique_cdc": 3930340,
+    "bytes_unique_fixed": 4007464,
+    "cdc_bytes_total": 4027805,
+    "dedup_ratio_cdc": 0.024198043351155274,
+    "dedup_ratio_fixed": 0.005050145178329135,
+    "files": 120
+  },
+  "M3_network": {
+    "block_size": 4096,
+    "diff_bytes_cdc_total": 28868,
+    "diff_bytes_fixed_total": 28916,
+    "full_bytes_total": 28916,
+    "mean_ratio_cdc": 0.9987968869357109,
+    "mean_ratio_fixed": 1.0,
+    "pairs": [
+      {
+        "diff_cdc_bytes": 2557,
+        "diff_fixed_bytes": 2557,
+        "full_bytes": 2557,
+        "ratio_cdc": 1.0,
+        "ratio_fixed": 1.0,
+        "rev": "2fd2ab10"
+      },
+      {
+        "diff_cdc_bytes": 2869,
+        "diff_fixed_bytes": 2869,
+        "full_bytes": 2869,
+        "ratio_cdc": 1.0,
+        "ratio_fixed": 1.0,
+        "rev": "d18a4f04"
+      },
+      {
+        "diff_cdc_bytes": 2869,
+        "diff_fixed_bytes": 2869,
+        "full_bytes": 2869,
+        "ratio_cdc": 1.0,
+        "ratio_fixed": 1.0,
+        "rev": "5fe65b51"
+      },
+      {
+        "diff_cdc_bytes": 3523,
+        "diff_fixed_bytes": 3523,
+        "full_bytes": 3523,
+        "ratio_cdc": 1.0,
+        "ratio_fixed": 1.0,
+        "rev": "568485d6"
+      },
+      {
+        "diff_cdc_bytes": 5699,
+        "diff_fixed_bytes": 5699,
+        "full_bytes": 5699,
+        "ratio_cdc": 1.0,
+        "ratio_fixed": 1.0,
+        "rev": "24d9c40c"
+      },
+      {
+        "diff_cdc_bytes": 5675,
+        "diff_fixed_bytes": 5699,
+        "full_bytes": 5699,
+        "ratio_cdc": 0.9957887348657659,
+        "ratio_fixed": 1.0,
+        "rev": "6030d429"
+      },
+      {
+        "diff_cdc_bytes": 5676,
+        "diff_fixed_bytes": 5700,
+        "full_bytes": 5700,
+        "ratio_cdc": 0.9957894736842106,
+        "ratio_fixed": 1.0,
+        "rev": "5256f8b3"
+      }
+    ],
+    "path": "android/online-pins.dev.json",
+    "versions": 8
+  },
+  "M4_cost": {
+    "bytes": 4027805,
+    "files": 120,
+    "mb_per_second": 137.187,
+    "peak_rss_bytes_after": 77692928,
+    "peak_rss_bytes_before": 77578240,
+    "wall_seconds": 0.02936
+  },
+  "corpus": {
+    "bytes": 4027805,
+    "files": 120,
+    "root": "/Users/node/.orca/bots/researcher/awai-os-contributions"
+  },
+  "environment": {
+    "cpu_count": 10,
+    "git_head": "481ab9e0",
+    "machine": "arm64",
+    "platform": "macOS-26.3.1-arm64-arm-64bit",
+    "python": "3.9.6"
+  },
+  "kind": "measurement",
+  "not_evidence_for": "candidate mathematical systems (no reference implementation yet)"
+}
