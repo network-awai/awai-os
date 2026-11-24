@@ -1,0 +1,6 @@
+MATCHED: PASS — allows=true prepped-url=https://svc.example/items effective=1 problems=[]
+MISMATCHED: PASS — scope-allows=false scope-threw=true actor-changed-effective=0
+ALL PASS (synthetic, vendored 889)
+broker: kotoba-lang/kotoba 889239dc972a868ee9e824517aad07c343972e7d lib/kotoba.wasmWebcomponent/src/kotoba-client-runtime.js sha256 76bc0d8358ebcc62c3bf530c5958e9b9040184dd3b9c358b5cf38a0f4b17182c
+command: git -C kotoba-lang/kotoba show 889239dc...:lib/kotoba.wasmWebcomponent/src/kotoba-client-runtime.js > /tmp/kotoba-889.mjs ; node research/trust-cells-harness-889.mjs (2026-11-24 JST, isolated synthetic, no network)
+metric: reproducibility rate (independent readback match rate)

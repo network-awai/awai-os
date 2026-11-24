@@ -1,0 +1,5 @@
+{:test 26, :pass 120, :fail 0, :error 0, :type :summary}
+revocation/grant expiry run by research/trust-b-expired.clj, revision 889239dc972a868ee9e824517aad07c343972e7d
+file lib/kotoba.dango/oracle/src/authority/grant.cljc sha256 1ff2b0e76b77d6e59db3ddfe52b98c857236d57f83a4e870ea087c8128e6d33c
+command: cd lib/kotoba.dango/oracle && clojure -M -e "(load-file \"test/run.cljc\")"
+fixture: expiry-boundary (live while now < before; boundary expired), dango chain :dango/expired
