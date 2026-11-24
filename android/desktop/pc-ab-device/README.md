@@ -142,8 +142,9 @@ git -C "$ANDROID_BUILD_TOP/packages/apps/Updater" diff --check
 
 On the PC pilot, the Updater preference **Automatic PC maintenance** is off by
 default. Enabling it requires scheduled checks and streaming. The worker uses a
-fresh offer from the pilot feed and an HTTPS package under
-`ota.awai.network/v1/pc/pilot/`. UpdateEngine verifies the A/B payload.
+fresh offer from the pilot feed. It accepts GitHub release assets named by the
+ZIP SHA-256, commit-pinned raw URLs, and HTTPS package URLs under
+`ota.awai.network/v1/pc/pilot/`. UpdateEngine verifies the streamed A/B payload.
 It waits for completed setup, an inactive screen, and a validated, unmetered
 connection. It uses external power on devices with a battery. The first
 automatic reboot check is scheduled about 20 minutes after UpdateEngine accepts
@@ -211,15 +212,16 @@ these ranges, including the Updater limit for payload properties.
 The updater and Android still verify the signed package on device.
 Retain a record of feed detection, apply, reboot, recovery, and rollback on the same PC.
 
-The pilot endpoint is backed by the dedicated Cloudflare R2 bucket
-`awai-os-ota`. Publish the verified ZIP at a digest-qualified object path and
-check its public bytes and HTTP Range response before publishing the index.
-Serve the mutable index as `application/json` with `Cache-Control: no-store`.
-To stop offering updates, replace the affected index with `[]` and verify the
-public response. The pinned Awai Updater removes undownloaded cached offers
-after a successful empty response. Updates already started and saved local
-packages are retained. A failed request does not withdraw an otherwise eligible cached offer. Keep
-the signed ZIP for diagnosis and recovery.
+The pilot Worker serves the mutable index as `application/json` with
+`Cache-Control: no-store`. The ZIP is a GitHub release asset pinned by its
+signed SHA-256 and size. An Awai repository commit-pinned raw URL can serve
+a ZIP up to 100 MiB. Follow the [OTA publish runbook](../../../deploy/ota-feed/README.md)
+to verify public Range and hash the downloaded bytes before offering an update.
+
+To withdraw an offer, publish `[]` at that device/build path. Updater drops
+undownloaded cached offers after a successful empty response. It retains
+started updates and saved local packages. A failed request preserves otherwise
+eligible cached offers. Keep the signed ZIP for diagnosis and recovery.
 
 ## OTA on the shared disk (2026-11-19)
 

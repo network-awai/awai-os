@@ -1,0 +1,101 @@
+# Awai PC pilot OTA feed
+
+`ota.awai.network/v1/pc/pilot/{device}/{incr}/builds.json` serves the mutable
+index as `application/json` with `Cache-Control: no-store`. An unknown device
+or installed build receives `[]`, the same response as a withdrawn offer.
+
+GitHub release assets serve the ZIP bytes directly. The index holds the public
+download URL, SHA-256, size, and A/B streaming ranges. GitHub redirects that
+URL to an HTTPS CDN URL with a short-lived signed query. Keep the stable release
+URL in the feed. Release tags and assets can change. Pin the bytes with the
+signed manifest's SHA-256 and size. The publisher and Updater's full-download
+verification compute SHA-256 from the received bytes. The GitHub ETag differs
+from the actual SHA-256. During streaming, UpdateEngine verifies the A/B
+payload signature and hashes from the signed payload metadata. It reads the
+required ranges of the ZIP, so it cannot verify the hash of the entire ZIP.
+
+Yataverse is suitable for blocks up to 16 MiB, including index snapshots. The
+Yataverse OTA payload route is impossible for larger ZIPs. A 32 MiB raw PUT
+returned HTTP 413 and a GET for a file path in an imported CAR returned 404.
+[Transport measurements](../../docs/evidence/ota-payload-release-assets-20261124.md)
+
+| ZIP size | Transport |
+| --- | --- |
+| Up to 100 MiB | GitHub release asset, or a commit-pinned raw URL in `network-awai/awai-os` |
+| Above 100 MiB and below 2 GiB | GitHub release asset |
+| 2 GiB or larger | Split installer archives into release assets under 2 GiB. For A/B OTA, use a qualifying smaller signed package, such as a delta. Updater requires one range-addressable ZIP per offer. |
+
+GitHub warns on regular Git files over 50 MiB and rejects those over 100 MiB.
+Release assets must be under 2 GiB.
+[Git file limits](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github)
+[Release limits](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases)
+
+Itonami Store APK updates use a separate client. Its `AutoUpdater` expects
+HTTP 200 and reads the full APK into memory, so keep dapp APKs small. The
+system Updater and AOSP UpdateEngine stream A/B OS updates and require HTTP 206
+for range requests.
+
+## Publish an offer
+
+1. In the [PC OTA release workflow](../../android/desktop/pc-ab-device/README.md#updater-feed-in-the-release-build-awai-3064),
+   verify the signed ZIP and take its SHA-256 from the verification record.
+   Stage the exact bytes under the digest-qualified name for the release asset.
+
+   ```sh
+   ASSET="$STAGING_DIR/$SIGNED_OTA_SHA256.zip"
+   cp "$VERIFIED_OTA_ZIP" "$ASSET"
+   node android/release-signing/manifest.mjs make-ota \
+     "$ASSET" "$SOURCE_REVISION" "$STAGING_DIR/ota-manifest.json"
+   ```
+
+   Have the release operator sign the manifest using the existing Awai Ed25519
+   release-signing workflow. Keep the manifest and detached signature with the
+   release record.
+
+2. Attach the staged ZIP to a public Awai OS release. For a new release, upload
+   to a draft before it is published. Keep published payload names and bytes
+   stable and publish a new asset for any new digest.
+
+   ```sh
+   gh release upload "$RELEASE_TAG" "$ASSET" --repo network-awai/awai-os
+   OTA_URL="https://github.com/network-awai/awai-os/releases/download/$RELEASE_TAG/$(basename "$ASSET")"
+   ```
+
+   For the optional raw route, commit the verified ZIP with a normal Git blob
+   on a branch, land the artifact PR, and retrieve the **landed** commit SHA.
+   Use `https://raw.githubusercontent.com/network-awai/awai-os/<40-hex>/<path-to-zip>`
+   as `OTA_URL`. The local filename must match the URL.
+
+3. Generate the index with Python 3.11+ and Node.js. The command uses the Awai
+   release public key to verify the manifest, invokes `updater-feed.py make-index`
+   logic for ZIP integrity and metadata, then verifies public Range, length and
+   the SHA-256 of the full public response before writing the index.
+
+   ```sh
+   python3.11 deploy/ota-feed/scripts/publish-index.py "$ASSET" \
+     --artifact-url "$OTA_URL" --sha256 "$SIGNED_OTA_SHA256" \
+     --manifest "$STAGING_DIR/ota-manifest.json" --manifest-signature "$OTA_MANIFEST_SIGNATURE" \
+     --device virtio_x86_64 --incr "$INSTALLED_BUILD" \
+     --release-type "$RELEASE_TYPE" --version "$RELEASE_VERSION"
+   ```
+
+   For a delta, add `--source-build "$INSTALLED_BUILD"`. Review and commit the
+   generated JSON audit and Worker index together. To withdraw the offer,
+   rerun with `--withdraw --device virtio_x86_64 --incr "$INSTALLED_BUILD"` in
+   place of the publication arguments.
+
+4. Deploy the index Worker and verify the exact device/build path.
+
+   ```sh
+   wrangler deploy -c deploy/ota-feed/wrangler.jsonc
+   curl -fsS -D- "https://ota.awai.network/v1/pc/pilot/virtio_x86_64/$INSTALLED_BUILD/builds.json"
+   ```
+
+## Local tests
+
+```sh
+node --test deploy/ota-feed/test/worker.test.js android/release-signing/manifest.test.mjs
+PYTHONDONTWRITEBYTECODE=1 python3.11 -m unittest discover -s deploy/ota-feed/test
+sh deploy/ota-feed/test/test-updater-policy.sh
+node deploy/ota-feed/serve.mjs
+```
