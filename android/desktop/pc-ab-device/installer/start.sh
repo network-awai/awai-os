@@ -40,6 +40,25 @@ if [[ -z $launch || ! -f $launch ]]; then
     text "screen installer unavailable (backend did not start); using the text installer."
 fi
 
+# Kiosk lock-down (devtools, about:*, new windows/tabs, URL shortcuts, file pickers, every URL but this page and
+# the backend). Installed where Firefox reads enterprise policies; the live root is writable. Fail closed: no
+# policy file, no browser.
+if [[ -n ${AWAI_POLICY_DIRS:-} ]]; then
+    read -r -a policy_dirs <<< "$AWAI_POLICY_DIRS"   # tests only: keeps them out of the real /etc
+else
+    policy_dirs=(/etc/firefox/policies)
+    ff=$(command -v firefox)
+    [[ -n $ff ]] && policy_dirs+=("$(dirname "$(readlink -f "$ff")")/distribution")
+fi
+policy_ok=0
+for dir in "${policy_dirs[@]}"; do
+    if mkdir -p "$dir" 2>/dev/null && install -m 0644 "$here/firefox-policies.json" "$dir/policies.json" 2>/dev/null; then policy_ok=1; fi
+done
+if (( ! policy_ok )); then
+    kill "$server" 2>/dev/null
+    text "screen installer unavailable (could not install the browser lock-down policy); using the text installer."
+fi
+
 quick=0
 while kill -0 "$server" 2>/dev/null; do
     started=$SECONDS

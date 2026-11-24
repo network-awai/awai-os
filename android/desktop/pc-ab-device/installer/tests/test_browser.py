@@ -53,6 +53,36 @@ class BrowserFlow(unittest.TestCase):
         b.wait_text("インストールが完了しました")
         self.assertFalse(self.disabled(b, "再起動"))
 
+    def test_bundled_font_draws_every_glyph_and_proportions_follow_the_design(self):
+        for size in ((1280, 720), (1920, 1080)):
+            live = Live()
+            b = self.open(live, size)
+            b.wait_text("選択可能")
+            used, faces = b.fonts_used()
+            self.assertTrue(used and all(custom for (_f, custom) in used), used)
+            self.assertIn("Awai JP:loaded", faces)
+            m = b.eval("""(() => { const r = (q) => document.querySelector(q).getBoundingClientRect();
+              return {w: innerWidth, rail: r('.rail').width, card: r('button.card').width, h1: parseFloat(getComputedStyle(document.querySelector('h1')).fontSize),
+                      sub: parseFloat(getComputedStyle(document.querySelector('.sub')).fontSize), logo: r('.logo').width,
+                      cardTitle: parseFloat(getComputedStyle(document.querySelector('.card .t')).fontSize)}; })()""")
+            self.assertAlmostEqual(m["rail"] / m["w"], 0.305, delta=0.01)
+            self.assertAlmostEqual(m["card"] / m["w"], 0.577, delta=0.012)
+            scale = size[0] / 740 if size[1] / 440 > size[0] / 740 else size[1] / 440
+            self.assertAlmostEqual(m["h1"], 26 * scale, delta=1.5)
+            self.assertAlmostEqual(m["sub"], 11.5 * scale, delta=1)
+            self.assertAlmostEqual(m["logo"], 35 * scale, delta=1.5)
+            self.assertGreaterEqual(m["sub"], 17 if size[0] == 1280 else 26)
+
+    def test_review_screen_fits_without_scrolling(self):
+        for size in ((1280, 720), (1920, 1080)):
+            live = Live()
+            b = self.open(live, size)
+            b.wait_text("選択可能")
+            for k in ("Tab", "Enter", "Tab", "Tab", "Enter"):
+                b.key(k)
+            b.wait_text("インストール内容を確認")
+            self.assertTrue(b.eval("(() => { const e = document.querySelector('.body'); return e.scrollHeight <= e.clientHeight + 1 && document.documentElement.scrollHeight <= innerHeight; })()"))
+
     def test_hold_running_fixture_shows_progress_and_blocks_power(self):
         live = Live()
         fd = hold_running(live, 2, 0.42)
@@ -94,6 +124,7 @@ class BrowserFlow(unittest.TestCase):
         b.wait_text("インストール先が見つかりません")
         text = b.text()
         self.assertIn("既存の区画あり", text)
+        self.assertIn("KIOXIA TransMemory", text)
         self.assertIn("この PC を起動した USB", text)
         self.assertIn("ここからディスクの消去は実行できません", text)
         self.assertEqual(text.count("選択不可"), 2)

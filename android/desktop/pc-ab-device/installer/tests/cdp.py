@@ -130,6 +130,24 @@ class Browser:
             time.sleep(0.2)
         raise AssertionError(f"{needle!r} never appeared: {self.text()!r}")
 
+    def fonts_used(self):
+        """{(family, isCustomFont): glyph count} over every element, from Chrome's own font matching, plus the
+        document.fonts status of the bundled face. A glyph drawn from a system font shows up as isCustomFont False."""
+        self.call("DOM.enable")
+        self.call("CSS.enable")
+        root = self.call("DOM.getDocument", depth=-1)["root"]["nodeId"]
+        total = {}
+        for node in self.call("DOM.querySelectorAll", nodeId=root, selector="body, body *")["nodeIds"]:
+            try:
+                fonts = self.call("CSS.getPlatformFontsForNode", nodeId=node)["fonts"]
+            except RuntimeError:
+                continue
+            for f in fonts:
+                key = (f["familyName"], bool(f.get("isCustomFont")))
+                total[key] = total.get(key, 0) + f["glyphCount"]
+        faces = self.eval("Array.from(document.fonts).map(f => f.family + ':' + f.status).join(',')")
+        return total, faces
+
     def shot(self, path):
         data = self.call("Page.captureScreenshot", format="png")["data"]
         with open(path, "wb") as f:

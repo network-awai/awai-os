@@ -123,6 +123,11 @@ if __name__ == "__main__":
         sys.exit(__doc__)
 
 
+def required_codepoints(installer_dir):
+    """Everything the screens can draw from their own copy: ui_characters plus printable ASCII (digits, Latin, punctuation)."""
+    return {ord(c) for c in ui_characters(installer_dir)} | set(range(0x20, 0x7F))
+
+
 def ui_characters(installer_dir):
     """Every character the screen installer can show: page, script, and the Japanese backend messages."""
     import os

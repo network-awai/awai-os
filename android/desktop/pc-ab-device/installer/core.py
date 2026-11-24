@@ -120,11 +120,11 @@ def parse_pairs(line):
     return dict(re.findall(r'([A-Z][A-Z0-9:_-]*)="((?:[^"\\]|\\.)*)"', line))
 
 
-LSBLK_COLS = "NAME,SIZE,MODEL,SERIAL,WWN,TRAN,RO,TYPE,MAJ:MIN"
+LSBLK_COLS = "NAME,SIZE,VENDOR,MODEL,SERIAL,WWN,TRAN,RO,TYPE,MAJ:MIN"
 
 
 def _facts(row):
-    return {"name": row["NAME"], "size": int(row["SIZE"]), "model": row.get("MODEL", "").strip(),
+    return {"name": row["NAME"], "size": int(row["SIZE"]), "vendor": row.get("VENDOR", "").strip(), "model": row.get("MODEL", "").strip(),
             "serial": row.get("SERIAL", "").strip() or None, "wwn": row.get("WWN", "").strip() or None,
             "tran": row.get("TRAN", "").strip(), "ro": row.get("RO"), "type": row.get("TYPE"),
             "majmin": row.get("MAJ:MIN")}

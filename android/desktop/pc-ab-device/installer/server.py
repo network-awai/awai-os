@@ -27,7 +27,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 CSP = ("default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; "
        "connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
 STATIC = {"/": ("index.html", "text/html; charset=utf-8"), "/app.js": ("app.js", "text/javascript; charset=utf-8"),
-          "/style.css": ("style.css", "text/css; charset=utf-8"), "/logo.svg": ("logo.svg", "image/svg+xml"),
+          "/style.css": ("style.css", "text/css; charset=utf-8"), "/logo.png": ("logo.png", "image/png"),
           "/font.woff2": ("noto-jp.woff2", "font/woff2")}
 FONT_FALLBACK = os.path.join(HERE, "..", "..", "..", "client", "assets", "setup-noto-jp.woff2")
 MAX_BODY = 4096

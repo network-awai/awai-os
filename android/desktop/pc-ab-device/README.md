@@ -136,7 +136,7 @@ Build the USB image (digests come from the signing and build records):
 python3 android/desktop/pc-ab-device/installer/build-overlay.py \
   --stock-iso systemrescue-13.03-amd64.iso --stock-iso-sha256 "$STOCK_ISO_SHA256" \
   --image-zst awai-pc-install.img.zst --archive-sha256 "$ARCHIVE_SHA256" --image-sha256 "$RAW_IMAGE_SHA256" \
-  --font NotoSansJP-subset.woff2 --out awai-os-pc-usb-installer.iso          # add --dry-run to check only
+  --out awai-os-pc-usb-installer.iso          # add --dry-run to check only
 ```
 
 It checks the stock ISO, the archive and (streaming through `zstd`) the raw image digests, writes
@@ -149,8 +149,9 @@ duplicated in the old `awai/install` is gone), copies the canonical `awai-pc-ins
 Add `awai.installer=text` to the kernel command line (GRUB: `e`; syslinux: `Tab`), or switch to tty2 and run
 `/run/archiso/bootmnt/awai/install --text`. A dedicated boot menu entry needs a change to the stock ISO's boot
 configuration, which this task could not inspect (no ISO here); it is left open. If an install is already running
-when the text installer starts (for example after the screen session died) it follows that install instead of
-starting another.
+when the text installer starts (for example the screen session died and `start.sh` fell back to text) it says so, follows
+the install to its true end state and never offers a target (it also holds off while the worker's lock is held but no state
+exists yet).
 
 ### What `core.py` enforces (in the backend, never only in the page)
 
@@ -199,15 +200,36 @@ name clash check). The repo copy is canonical and is what `build-overlay.py` shi
 exactly 11. The review screen therefore does not say "11 区画を作成します" (the image is not unpacked yet); the completion
 screen says `{n} 区画を確認` with the real count.
 
-### Font
+### Font, logo, kiosk
 
-The live system has no Japanese font. The repo's `android/client/assets/setup-noto-jp.woff2` (SIL OFL, Adobe Source
-Han / Noto Sans JP, licence text shipped as `web/font-OFL.txt`) is a 447-glyph subset made for the setup screens and
-**does not cover 76 characters of the installer copy** (for example 内 蔵 電 源 込 書 先, see `installer/font-gap.json`).
-A test pins that list; `build-overlay.py` refuses to build with a font that lacks glyphs unless
-`--allow-missing-glyphs`, and takes `--font` (WOFF2) to supply a covering subset. Producing that subset needs the
-full Noto Sans JP and `pyftsubset`, which this task could not download. Screenshots on a Mac use the system's
-Japanese font for the missing characters, so they look right where the live system would show empty boxes.
+**Font.** The live system has no Japanese font, so the page ships one and uses *only* that face (`font-family: "Awai JP"`,
+no fallback names). It is Noto Sans JP (variable, weight axis limited to 400-700), SIL OFL 1.1, subset to WOFF2
+(`web/noto-jp.woff2`, 108 KB, 677 codepoints: ASCII, Latin-1, general and CJK punctuation, kana, full-width ASCII, and
+every character in `index.html`, `app.js`, `MESSAGES` and `STEPS_JA`). The OFL text ships unchanged as `web/font-OFL.txt`;
+the Reserved Font Name 'Source' is not in any name the build keeps (`font/build_font.py` refuses otherwise).
+Source (pinned): `google/fonts` commit `66a36c8c94b1a5d992ee4e7f392fccfe4945767c`, `ofl/notosansjp/NotoSansJP[wght].ttf`
+(sha256 `c2f3b4d463500a2ddcd3849cded1fceeb9fd6d1c32e6cbecd568453ba50fc68f`) and `OFL.txt`
+(sha256 `1c05c68c34f9708415aada51f17e1b0092d2cea709bf4a94cd38114f9e73d7d9`); URLs in `font/font-pin.json`.
+Rebuild (development only): `pip install fonttools brotli` in a venv outside the repo, then
+`python font/build_font.py 'NotoSansJP[wght].ttf' OFL.txt`. A missing glyph is a hard failure: `tests` compare the
+screens' characters with the font's cmap (`glyphs-noto-jp.json`, tied to the font's SHA-256) and `build-overlay.py`
+refuses to build, with no override option. The screenshot run asks Chrome which font drew every element
+(`CSS.getPlatformFontsForNode`) and fails unless every glyph came from the bundled face (`screenshots/fonts-used.txt`).
+`android/client/assets/setup-noto-jp.woff2` is untouched. (The variable font's name table still says "Thin", its default
+instance name; the family is "Noto Sans JP".)
+
+**Logo.** `web/logo.png` is `android/client/assets/setup-logo.png` (the Awai mark) scaled to 256 px. No vector version of
+the mark exists in the repo or in PR #302 (its `awai_welcome_mark.xml` is only a rounded rectangle), so it is raster.
+
+**Proportions.** One design unit `--u = min(100vw/740, 100vh/440)` scales text, logo, cards and gaps with the frame; the
+rail is 30.5vw and cards 57.7vw as in `design/installer.png` (browser test checks both sizes).
+
+**Kiosk.** `firefox-policies.json` (installed by `start.sh` to `/etc/firefox/policies/` and Firefox's `distribution/`, and
+the screen installer falls back to text if it cannot be installed): developer tools, about:config/addons/profiles/support,
+private browsing, safe mode, popups off; every URL blocked except `http://127.0.0.1/*` and the launch page; locked prefs
+that unbind the accelerator and menu-access keys (Ctrl+T/N/L/O/W, Alt menus) and new-window behaviour. There is no file
+input in the page, and `file:` URLs are blocked, so no file picker can be reached. Written from Mozilla's documented
+policy names; not exercised against a real Firefox here (QEMU run).
 
 ### Checks
 

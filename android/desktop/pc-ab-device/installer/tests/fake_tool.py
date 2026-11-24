@@ -44,7 +44,7 @@ def lsblk(a, w):
             if n not in w["disks"]:
                 fail(f"{path}: not a block device", 32)
             d = w["disks"][n]
-            vals = {"NAME": n, "SIZE": d["size"], "MODEL": d.get("model", ""), "SERIAL": d.get("serial") or "",
+            vals = {"NAME": n, "SIZE": d["size"], "VENDOR": d.get("vendor", ""), "MODEL": d.get("model", ""), "SERIAL": d.get("serial") or "",
                     "WWN": d.get("wwn") or "", "TRAN": d.get("tran", ""), "RO": d.get("ro", "0"),
                     "TYPE": d.get("type", "disk"), "MAJ:MIN": d.get("majmin", "259:0")}
             print(" ".join(f'{c}="{vals[c]}"' for c in cols))

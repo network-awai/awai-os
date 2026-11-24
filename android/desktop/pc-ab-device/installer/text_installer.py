@@ -21,22 +21,30 @@ def refuse(code, detail=""):
     return 1
 
 
-def follow(work):
-    """Another installer (the screen one, started earlier) is writing: show its state, never start a second."""
-    say("An installation is already running. Waiting for it; do not power off.")
+STEP_NAMES = {1: "checking the image", 2: "writing the SSD", 3: "reading back what was written"}
+
+
+def follow(work, wait=time.sleep):
+    """An install is running (started by the screen installer or by another process): show it and follow it to
+    its true end state. This never offers a target and never starts anything."""
+    say("AWAI INSTALLER: an installation is still running. Do not power off or remove the USB.")
     last = None
     while True:
         st = core.status(work)
-        line = f"step {st.get('step')} {int(100 * st.get('fraction', 0))}%"
-        if line != last and st.get("state") == "running":
-            say(line)
-            last = line
-        if st.get("state") != "running":
+        if st.get("state") in ("done", "failed") or (st.get("state") != "running" and not core.lock_held(work)):
             return report(st)
-        time.sleep(1)
+        if st.get("state") == "running":
+            line = f"step {st.get('step')}/3 ({STEP_NAMES.get(st.get('step'), '')}) {int(100 * st.get('fraction', 0))}%"
+            if line != last:
+                say(line)
+                last = line
+        wait(1)
 
 
 def report(st):
+    if st.get("state") == "idle":
+        say("The installer that was running has ended without a result. Reboot before installing again.")
+        return 1
     if st.get("state") == "done":
         say(f"\nInstalled and verified all {st['partitions']} partitions.")
         say(f"Record: {st['record']}")
@@ -55,7 +63,7 @@ def main(argv=None, host=None, read=input):
     a = ap.parse_args(argv)
     host = host or core.Host()
     core.ensure_work(a.work_dir)
-    if core.status(a.work_dir).get("state") == "running":
+    if core.status(a.work_dir).get("state") == "running" or core.lock_held(a.work_dir):
         return follow(a.work_dir)
     if core.write_started(a.work_dir):
         return refuse("record-exists")

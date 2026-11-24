@@ -2,7 +2,7 @@
 """Assemble the Awai OS PC installer USB image: stock SystemRescue ISO + overlay -> new ISO. Downloads nothing.
 
   build-overlay.py --stock-iso ISO --stock-iso-sha256 SHA --image-zst awai-pc-install.img.zst \\
-      --archive-sha256 SHA --image-sha256 SHA --out awai-os-pc-usb-installer.iso [--font FILE] [--dry-run]
+      --archive-sha256 SHA --image-sha256 SHA --out awai-os-pc-usb-installer.iso [--dry-run]
 
 --archive-sha256 is the digest of the .zst, --image-sha256 of the raw image inside it (both come from the
 signing / build record). The script checks the stock ISO digest, the archive digest and (streaming through
@@ -28,7 +28,7 @@ PC_AB = os.path.dirname(HERE)
 REPO_FONT = os.path.join(HERE, "web", "noto-jp.woff2")  # byte-identical copy of android/client/assets/setup-noto-jp.woff2 (tested)
 REPO_FONT_LICENSE = os.path.join(HERE, "web", "font-OFL.txt")
 SHA = re.compile(r"[0-9a-f]{64}")
-INSTALLER_FILES = ["core.py", "server.py", "text_installer.py", "start.sh", "xsession.sh"]
+INSTALLER_FILES = ["core.py", "server.py", "text_installer.py", "start.sh", "xsession.sh", "firefox-policies.json"]
 
 
 class BuildError(SystemExit):
@@ -70,8 +70,8 @@ def build_overlay(args, overlay):
     for name in os.listdir(os.path.join(HERE, "web")):
         if name not in ("noto-jp.woff2", "font-OFL.txt"):
             shutil.copy(os.path.join(HERE, "web", name), os.path.join(inst, "web"))
-    shutil.copy(args.font or REPO_FONT, os.path.join(inst, "web", "noto-jp.woff2"))
-    shutil.copy(args.font_license or REPO_FONT_LICENSE, os.path.join(inst, "web", "font-OFL.txt"))
+    shutil.copy(REPO_FONT, os.path.join(inst, "web", "noto-jp.woff2"))
+    shutil.copy(REPO_FONT_LICENSE, os.path.join(inst, "web", "font-OFL.txt"))
     shutil.copy(os.path.join(HERE, "700-awai-installer.yaml"), os.path.join(overlay, "sysrescue.d"))
     with open(os.path.join(awai, "archive.sha256"), "w") as f:
         f.write(f"{args.archive_sha256}  awai-pc-install.img.zst\n")
@@ -98,9 +98,6 @@ def main(argv=None):
     ap.add_argument("--archive-sha256", required=True)
     ap.add_argument("--image-sha256", required=True)
     ap.add_argument("--out", required=True)
-    ap.add_argument("--font", help="Japanese font (OFL) covering every installer string; default: the repo's subset")
-    ap.add_argument("--font-license")
-    ap.add_argument("--allow-missing-glyphs", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--keep-overlay", help="build the overlay in this new directory and keep it")
     args = ap.parse_args(argv)
@@ -120,14 +117,15 @@ def main(argv=None):
     if raw_digest(args.image_zst) != args.image_sha256:
         fail("decompressed image digest does not match --image-sha256")
 
-    font = args.font or REPO_FONT
-    with open(font, "rb") as f:
-        if f.read(4) != b"wOF2":
-            fail("--font must be a WOFF2 file (the page loads it as font/woff2)")
-    missing = sorted(c for c in glyphs.ui_characters(HERE) if ord(c) not in glyphs.font_coverage(font, HERE))
-    if missing and not args.allow_missing_glyphs:
-        fail(f"the font has no glyph for {len(missing)} installer characters ({''.join(missing)}); the live system has no other "
-             "Japanese font. Pass --font with a font that covers them, or --allow-missing-glyphs to build anyway.")
+    # The live system has no other Japanese font: a missing glyph is a hard failure, with no override.
+    try:
+        coverage = glyphs.font_coverage(REPO_FONT, HERE)
+    except (ValueError, OSError, KeyError) as e:
+        fail(f"cannot read the bundled font's glyph list: {e}")
+    missing = sorted(c for c in glyphs.required_codepoints(HERE) if c not in coverage)
+    if missing:
+        fail(f"the bundled font has no glyph for {len(missing)} installer characters ({''.join(map(chr, missing))}); "
+             "rebuild it with font/build_font.py")
 
     parent = args.keep_overlay
     if parent:
@@ -140,8 +138,6 @@ def main(argv=None):
         cmd = xorriso_command(args, overlay)
         print("overlay:", overlay)
         print("xorriso:", " ".join(shlex.quote(c) for c in cmd))
-        if missing:
-            print(f"warning: {len(missing)} characters have no glyph in the font", file=sys.stderr)
         if args.dry_run:
             print("dry run: xorriso not called, nothing written")
             return 0

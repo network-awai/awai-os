@@ -63,7 +63,7 @@
     const reasons = shown.map((p) => T.reasons[p] || T.reasons["inspect-failed"]).join("、");
     const nvme = /^nvme/.test(d.name);
     const sub = [gib(d.size), nvme ? "NVMe" : "", extra ? detail : d.eligible ? T.free : reasons].filter(Boolean).join(" · ");
-    const title = nvme ? T.internal : (d.model || d.name);
+    const title = nvme ? T.internal : ((d.model || "").startsWith(d.vendor || "\0") ? d.model : [d.vendor, d.model].filter(Boolean).join(" ")) || d.name;
     if (!d.eligible || extra) {
       return h("div", { class: "card " + (d.eligible ? "selected" : "off"), "aria-disabled": d.eligible ? null : "true" },
         h("span", {}, h("span", { class: "t" }, title), h("br"), h("span", { class: "s" }, sub)), h("span", { class: "tag" }, extra || T.offTag));
@@ -115,9 +115,9 @@
     const go = h("button", { class: "btn", type: "button", disabled: true, onclick: () => start(input.value) }, T.go);
     frame(1, T.reviewTitle, T.reviewSub, [diskCard(Object.assign({}, d, { eligible: true }), T.target, "/dev/" + d.name),
       h("div", { class: "note" }, h("b", {}, T.plan), h("span", {}, T.planBody1), h("span", {}, T.planBody2)),
-      h("label", { class: "confirm", for: "typed" }, T.typePrompt, h("span", { class: "caption" }, T.detail + "  /dev/" + d.name), input), ...alertLine()],
+      h("label", { class: "confirm", for: "typed" }, h("span", { class: "q" }, T.typePrompt, h("span", { class: "caption" }, T.detail + "  /dev/" + d.name)), input), ...alertLine()],
       [h("button", { class: "link", type: "button", onclick: () => { ui.ticket = null; showDisks(); focusCard(); } }, T.back), go]);
-    input.focus();
+    input.focus({ preventScroll: true });
   }
   async function start(typed) {
     const r = await api("POST", "/api/install", { ticket: ui.ticket, typed });

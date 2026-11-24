@@ -72,11 +72,18 @@ class PageText(unittest.TestCase):
 
 
 class FontCoverage(unittest.TestCase):
-    def test_bundled_font_is_the_repo_asset_with_its_licence(self):
-        if CLIENT_FONT.exists():
-            self.assertEqual(FONT.read_bytes(), CLIENT_FONT.read_bytes())
-            self.assertEqual((INSTALLER / "web" / "font-OFL.txt").read_bytes(), (CLIENT_FONT.parent / "setup-font-OFL.txt").read_bytes())
+    pin = json.load(open(INSTALLER / "font" / "font-pin.json"))
+
+    def test_font_comes_from_the_pinned_upstream_and_keeps_its_licence(self):
+        self.assertRegex(self.pin["commit"], r"^[0-9a-f]{40}$")
+        self.assertIn(self.pin["commit"], self.pin["ttf_url"])
+        self.assertEqual(hashlib.sha256((INSTALLER / "web" / "font-OFL.txt").read_bytes()).hexdigest(), self.pin["ofl_sha256"])
         self.assertIn("SIL OPEN FONT LICENSE", (INSTALLER / "web" / "font-OFL.txt").read_text())
+        self.assertIn("Reserved Font Name 'Source'", (INSTALLER / "web" / "font-OFL.txt").read_text())
+        self.assertFalse((INSTALLER / "font-gap.json").exists())
+        # the repo's other font asset is left alone (not the bundled one)
+        if CLIENT_FONT.exists():
+            self.assertNotEqual(FONT.read_bytes(), CLIENT_FONT.read_bytes())
 
     def test_glyph_list_belongs_to_the_font_file(self):
         glyphs.coverage_of(INSTALLER / "glyphs-noto-jp.json", FONT)
@@ -90,21 +97,25 @@ class FontCoverage(unittest.TestCase):
     def test_glyph_list_matches_the_font(self):
         self.assertEqual(glyphs.cmap_codepoints(FONT), set(json.load(open(INSTALLER / "glyphs-noto-jp.json"))["codepoints"]))
 
-    def test_every_installer_character_is_checked_against_the_font(self):
+    def test_every_character_the_screens_can_show_has_a_glyph(self):
         coverage = glyphs.font_coverage(str(FONT), str(INSTALLER))
-        missing = sorted(ord(c) for c in glyphs.ui_characters(str(INSTALLER)) if ord(c) not in coverage)
-        gap = json.load(open(INSTALLER / "font-gap.json"))["missing"]
-        # The bundled subset predates this installer and lacks these kanji; the live system has no other
-        # Japanese font. This pins the truth: the list must equal what is really missing, so it shrinks to
-        # [] when a covering font is supplied and grows if copy is added without glyphs.
-        self.assertEqual(missing, sorted(gap), "update font-gap.json (and supply a covering font) when copy or font changes")
-        self.assertTrue(missing, "gap closed: delete font-gap.json handling and the --allow-missing-glyphs path")
+        needed = glyphs.required_codepoints(str(INSTALLER))
+        self.assertEqual(sorted(c for c in needed if c not in coverage), [])
+        for ch in "内蔵電源込書先始失敗0123456789 ./:·、。（）-_%":
+            self.assertIn(ord(ch), coverage, ch)
 
     def test_checker_reports_a_missing_glyph(self):
         coverage = glyphs.font_coverage(str(FONT), str(INSTALLER))
-        self.assertIn(ord("蔵"), {ord(c) for c in glyphs.ui_characters(str(INSTALLER))})
-        self.assertNotIn(ord("蔵"), coverage)
-        self.assertIn(ord("あ"), coverage)
+        needed = glyphs.required_codepoints(str(INSTALLER))
+        self.assertEqual([c for c in needed if c not in coverage - {ord("蔵")}], [ord("蔵")])
+
+    def test_css_uses_only_the_bundled_face_and_both_weights(self):
+        css = (INSTALLER / "web" / "style.css").read_text()
+        self.assertRegex(css, r'body \{ font-family: "Awai JP";')
+        self.assertNotRegex(css, r'font-family:[^;]*(sans-serif|DejaVu|Noto Sans JP|serif|system-ui)')
+        self.assertIn("font-weight: 400 700", css)
+        for w in re.findall(r"font-weight: (\d+)", css.replace("font-weight: 400 700", "")):
+            self.assertIn(int(w), (400, 500, 700))
 
 
 class TextFrontEnd(unittest.TestCase):
@@ -166,25 +177,27 @@ class TextFrontEnd(unittest.TestCase):
             rc, out = self.run_text()
         t.join()
         self.assertEqual(rc, 0, out)
-        self.assertIn("already running", out)
+        self.assertIn("still running", out)
         self.assertFalse((self.w.dev / "nvme0n1.gpt.json").exists())
 
 
 class Launcher(unittest.TestCase):
-    def run_start(self, *args, cmdline=None, path_tools=()):
+    def run_start(self, *args, cmdline=None, path_tools=(), extra_env=None, timeout=60):
         tmp = Path(tempfile.mkdtemp(prefix="awai-start-"))
         self.addCleanup(__import__("shutil").rmtree, tmp, True)
         bin_dir = tmp / "bin"
         bin_dir.mkdir()
-        for t in ("python3", "grep", "install", "head", "seq", "kill", "sleep", "dirname", "cat", "rm"):
+        for t in ("python3", "grep", "install", "head", "seq", "kill", "sleep", "dirname", "cat", "rm", "readlink", "mkdir"):
             src = __import__("shutil").which(t)
             (bin_dir / t).symlink_to(src)
         for t in path_tools:
             (bin_dir / t).write_text("#!/bin/sh\nexit 1\n")
             (bin_dir / t).chmod(0o755)
         env = {"PATH": str(bin_dir) + ":/bin:/usr/bin" if False else str(bin_dir), "AWAI_WORK_DIR": str(tmp / "work"),
-               "AWAI_MEDIA_DIR": str(tmp), "AWAI_PYTHON": sys.executable}
-        return subprocess.run(["/bin/bash", str(INSTALLER / "start.sh"), *args], env=env, capture_output=True, text=True, input="\n", timeout=60)
+               "AWAI_MEDIA_DIR": str(tmp), "AWAI_PYTHON": sys.executable,
+               "AWAI_POLICY_DIRS": str(tmp / "policies"), **(extra_env or {})}
+        self.last_tmp = tmp
+        return subprocess.run(["/bin/bash", str(INSTALLER / "start.sh"), *args], env=env, capture_output=True, text=True, input="\n", timeout=timeout)
 
     def test_forced_text_mode(self):
         r = self.run_start("--text")
@@ -196,6 +209,51 @@ class Launcher(unittest.TestCase):
         self.assertRegex(r.stderr, r"AWAI INSTALLER: screen installer unavailable \(xinit not found\); using the text installer\.")
         self.assertEqual(len([l for l in r.stderr.splitlines() if l.startswith("AWAI INSTALLER")]), 1)
         self.assertIn("Offline PC installer", r.stdout)
+
+    def test_policy_is_installed_before_the_browser_starts_and_is_required(self):
+        r = self.run_start(path_tools=("xinit", "firefox"))
+        installed = self.last_tmp / "policies" / "policies.json"
+        self.assertEqual(json.loads(installed.read_text()), json.loads((INSTALLER / "firefox-policies.json").read_text()))
+        script = (INSTALLER / "start.sh").read_text()
+        self.assertLess(script.index("policies.json"), script.index("xinit \"$here/xsession.sh\""))
+        r = self.run_start(path_tools=("xinit", "firefox"), extra_env={"AWAI_POLICY_DIRS": "/proc/awai-no-such-dir"})
+        self.assertIn("could not install the browser lock-down policy", r.stderr)
+        self.assertIn("Offline PC installer", r.stdout)
+
+    def test_policy_locks_the_kiosk_down(self):
+        pol = json.loads((INSTALLER / "firefox-policies.json").read_text())["policies"]
+        for key in ("DisableDeveloperTools", "BlockAboutConfig", "DisablePrivateBrowsing", "DisableSafeMode"):
+            self.assertIs(pol[key], True, key)
+        self.assertEqual(pol["WebsiteFilter"]["Block"], ["<all_urls>"])
+        self.assertTrue(all(e.startswith(("http://127.0.0.1/", "file:///run/awai-pc-installer/")) for e in pol["WebsiteFilter"]["Exceptions"]))
+        self.assertTrue(pol["PopupBlocking"]["Locked"])
+        self.assertEqual(pol["Preferences"]["ui.key.accelKey"]["Status"], "locked")
+
+    def test_dead_screen_during_a_write_follows_the_running_install_and_offers_no_target(self):
+        import fcntl, threading
+        tmp = Path(tempfile.mkdtemp(prefix="awai-follow-"))
+        self.addCleanup(__import__("shutil").rmtree, tmp, True)
+        work = tmp / "work"
+        work.mkdir(mode=0o700)
+        fd = os.open(work / "lock", os.O_RDWR | os.O_CREAT, 0o600)
+        fcntl.flock(fd, fcntl.LOCK_EX)  # the detached worker, still writing
+        (work / "write-started").write_text("")
+        (work / "state.json").write_text(json.dumps({"state": "running", "step": 2, "fraction": 0.4, "written": "started"}))
+
+        def finish():
+            (work / "install-record.json").write_text("{}")
+            (work / "state.json").write_text(json.dumps({"state": "done", "partitions": 11, "record": "r", "step": 3, "fraction": 1}))
+            os.close(fd)
+        timer = threading.Timer(4, finish)
+        timer.start()
+        self.addCleanup(timer.cancel)
+        r = self.run_start(path_tools=("xinit", "firefox"), extra_env={"AWAI_WORK_DIR": str(work)})
+        self.assertIn("an installation is still running", r.stdout)
+        self.assertIn("step 2/3", r.stdout)
+        self.assertIn("Installed and verified all 11 partitions", r.stdout)
+        for offered in ("Whole NVMe path", "type INSTALL", "not selectable", "eligible"):
+            self.assertNotIn(offered, r.stdout)
+        self.assertEqual(r.returncode, 0)
 
     def test_failing_x_falls_back_to_text(self):
         r = self.run_start(path_tools=("xinit", "firefox"))
@@ -223,8 +281,7 @@ class Overlay(unittest.TestCase):
 
     def args(self, **over):
         a = {"--stock-iso": self.iso, "--stock-iso-sha256": self.sha(self.iso), "--image-zst": self.zst,
-             "--archive-sha256": self.sha(self.zst), "--image-sha256": self.sha(self.zst), "--out": self.tmp / "out.iso",
-             "--allow-missing-glyphs": None}
+             "--archive-sha256": self.sha(self.zst), "--image-sha256": self.sha(self.zst), "--out": self.tmp / "out.iso"}
         a.update(over)
         out = []
         for k, v in a.items():
@@ -267,15 +324,18 @@ class Overlay(unittest.TestCase):
         rc, _ = self.build(**{"--image-sha256": "ABC"})
         self.assertIn("lowercase SHA-256", str(rc))
 
-    def test_missing_glyphs_refuse_the_build_unless_allowed(self):
+    def test_missing_glyphs_refuse_the_build_with_no_override(self):
         a = self.args()
-        a.remove("--allow-missing-glyphs")
+        self.assertNotIn("--allow-missing-glyphs", (INSTALLER / "build-overlay.py").read_text())
         spec = __import__("importlib.util").util.spec_from_file_location("build_overlay2", INSTALLER / "build-overlay.py")
         module = __import__("importlib.util").util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        with self.assertRaises(SystemExit) as cm, redirect_stdout(io.StringIO()):
+        real = module.glyphs.font_coverage
+        with mock.patch.object(module.glyphs, "font_coverage", lambda *x: real(*x) - {ord("蔵")}), \
+                self.assertRaises(SystemExit) as cm, redirect_stdout(io.StringIO()):
             module.main(a + ["--dry-run"])
         self.assertIn("no glyph", str(cm.exception.code))
+        self.assertIn("蔵", str(cm.exception.code))
 
     def test_dry_run_builds_the_overlay_but_calls_nothing(self):
         keep = self.tmp / "overlay"
@@ -288,7 +348,7 @@ class Overlay(unittest.TestCase):
         self.assertEqual((awai / "awai-pc-install.py").read_bytes(), (PC_AB / "awai-pc-install.py").read_bytes())
         self.assertEqual((awai / "install-image.sha256").read_text(), f"{self.sha(self.zst)}  awai-pc-install.img\n")
         self.assertEqual((awai / "archive.sha256").read_text(), f"{self.sha(self.zst)}  awai-pc-install.img.zst\n")
-        for f in ("core.py", "server.py", "text_installer.py", "start.sh", "xsession.sh", "web/index.html", "web/app.js", "web/noto-jp.woff2", "web/font-OFL.txt"):
+        for f in ("core.py", "server.py", "text_installer.py", "start.sh", "xsession.sh", "firefox-policies.json", "web/logo.png", "web/index.html", "web/app.js", "web/noto-jp.woff2", "web/font-OFL.txt"):
             self.assertTrue((awai / "installer" / f).is_file(), f)
         self.assertIn("/run/archiso/bootmnt/awai/install", (keep / "sysrescue.d" / "700-awai-installer.yaml").read_text())
         self.assertEqual(os.stat(awai / "install").st_mode & 0o111, 0o111)

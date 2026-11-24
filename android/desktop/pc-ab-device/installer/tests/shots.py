@@ -28,31 +28,43 @@ def hold_running(live, step, fraction):
     return fd
 
 
+FONT_LOG = []
+
+
+def snap(b, path, fonts_log=None):
+    """Screenshot plus proof of which font drew the page: every glyph must come from the bundled face."""
+    b.shot(path)
+    used, faces = b.fonts_used()
+    FONT_LOG.append(f"{Path(path).parent.name}/{Path(path).name}: {faces} " + ", ".join(f"{fam!r} custom={c} glyphs={n}" for (fam, c), n in sorted(used.items())))
+    assert used and all(custom for (_f, custom) in used), f"system font used in {path}: {used}"
+    assert "loaded" in faces, faces
+
+
 def keyboard_flow(b, live, out, log, prefix=""):
     def note(action):
         log.append(f"{action:<34} focus={b.focused()!r}")
     b.goto(live.url)
     b.wait_text("選択可能")
-    b.shot(f"{out}/1-select-empty.png")
+    snap(b, f"{out}/1-select-empty.png")
     note("load (nothing selected)")
     b.key("Tab"); note("Tab")
     b.key("Enter"); note("Enter  -> select the SSD")
-    b.shot(f"{out}/2-select-chosen.png")
+    snap(b, f"{out}/2-select-chosen.png")
     b.key("Tab"); note("Tab")
     b.key("Tab"); note("Tab")
     b.key("Enter"); note("Enter  -> 内容を確認")
     b.wait_text("インストール内容を確認")
     b.type("nvme0"); note("type nvme0 (button still disabled)")
-    b.shot(f"{out}/3a-review-typed-partial.png")
+    snap(b, f"{out}/3a-review-typed-partial.png")
     b.type("n1"); note("type n1")
-    b.shot(f"{out}/3-review.png")
+    snap(b, f"{out}/3-review.png")
     b.key("Tab"); note("Tab")
     b.key("Tab"); note("Tab")
     b.key("Enter"); note("Enter  -> この SSD にインストール")
     b.wait_text("インストールしています")
-    b.shot(f"{out}/4a-installing-real-start.png")
+    snap(b, f"{out}/4a-installing-real-start.png")
     b.wait_text("インストールが完了しました")
-    b.shot(f"{out}/5-done.png")
+    snap(b, f"{out}/5-done.png")
     note("done")
 
 
@@ -77,7 +89,7 @@ def main(outdir):
         try:
             b.goto(live.url)
             b.wait_text("進行中")
-            b.shot(f"{out}/4-installing.png")
+            snap(b, f"{out}/4-installing.png")
         finally:
             b.close(); os.close(fd); live.close()
         # 6: no eligible disk (the only NVMe already has partitions)
@@ -87,7 +99,7 @@ def main(outdir):
         try:
             b.goto(live.url)
             b.wait_text("インストール先が見つかりません")
-            b.shot(f"{out}/6-no-target.png")
+            snap(b, f"{out}/6-no-target.png")
         finally:
             b.close(); live.close()
         # 7a / 7b: failure before and after writing began
@@ -106,11 +118,12 @@ def main(outdir):
                 for k in ("Tab", "Tab", "Enter"):
                     b.key(k)
                 b.wait_text("インストールできませんでした")
-                b.shot(f"{out}/{name}.png")
+                snap(b, f"{out}/{name}.png")
                 if (w, h) == SIZES[0]:
                     log.append(f"[{name}] page text: " + " | ".join(l for l in b.text().splitlines() if l.strip())[:300])
             finally:
                 b.close(); live.close()
+    (outdir / "fonts-used.txt").write_text("\n".join(FONT_LOG) + "\n")
     (outdir / "keyboard-walkthrough.txt").write_text("\n".join(log) + "\n")
 
 

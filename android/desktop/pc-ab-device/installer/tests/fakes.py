@@ -43,7 +43,7 @@ class World:
         for p in (self.dev, self.media, self.bin):
             p.mkdir()
         self.world_file = self.tmp / "world.json"
-        self.world = {"disks": {"nvme0n1": disk(), "sda": disk(size=62 << 30, model="TransMemory", serial="USB1", wwn=None, tran="usb", majmin="8:0",
+        self.world = {"disks": {"nvme0n1": disk(), "sda": disk(size=62 << 30, vendor="KIOXIA", model="TransMemory", serial="USB1", wwn=None, tran="usb", majmin="8:0",
                                                                signatures=["iso9660"], children=[{}])},
                       "boot": {"source": "/dev/sda1", "chain": ["sda1", "sda"]}}
         for name in self.world["disks"]:
