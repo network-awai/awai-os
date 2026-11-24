@@ -39,7 +39,19 @@ lead. Reviewer independence: broker owner (Kotoba) ≠ Researcher ≠ Organizer.
 
 ## Cells (isolated, synthetic, no private data)
 
-Use `browser-action` operations with stub handlers (no HTTP fetch, no network).
+All 3 cells use the same HTTP operation kind (`net/http-get` with a declared
+endpoint), so `clientEndpointAllowsRequest` and `prepareClientOperationRequest`
+are judged on the same scope. No `browser-action` operations are used anywhere.
+The harness invokes only `prepareClientOperationRequest` /
+`clientEndpointAllowsRequest` / `effectiveClientOperations` — the HTTP
+`fetch` step is never reached, so nothing is fetched over the network
+(trace: `synthetic, no network activity`). The broker's consent-dialog step
+(`createClientConsentHost`) is not exercised by this harness, so matched
+acceptance here is the request-preparation/eligibility layer, not the
+consent UI; consent wiring was covered earlier in the trusted-event-shim
+note (`docs/research/trust-cells-harness-889.mjs`), which does not drive the
+trusted Allow click headlessly — shimmed clicks would confirm wiring only,
+never real user consent, and a real click would need gesture provenance.
 Matched control must be accepted; refusals alone do not falsify.
 
 1. **Matched:** `capability=net/http-get`, `service=svc`, `operation=read`,
