@@ -1,20 +1,20 @@
-1280x720/1-select-empty.png: Awai JP:loaded 'Noto Sans JP Thin' custom=True glyphs=456
-1280x720/2-select-chosen.png: Awai JP:loaded 'Noto Sans JP Thin' custom=True glyphs=460
-1280x720/3a-review-typed-partial.png: Awai JP:loaded 'Noto Sans JP Thin' custom=True glyphs=503
-1280x720/3-review.png: Awai JP:loaded 'Noto Sans JP Thin' custom=True glyphs=505
-1280x720/4a-installing-real-start.png: Awai JP:loaded 'Noto Sans JP Thin' custom=True glyphs=332
-1280x720/5-done.png: Awai JP:loaded 'Noto Sans JP Thin' custom=True glyphs=400
-1280x720/4-installing.png: Awai JP:loaded 'Noto Sans JP Thin' custom=True glyphs=360
-1280x720/6-no-target.png: Awai JP:loaded 'Noto Sans JP Thin' custom=True glyphs=490
-1280x720/7a-failed-nothing-written.png: Awai JP:loaded 'Noto Sans JP Thin' custom=True glyphs=396
-1280x720/7b-failed-after-write.png: Awai JP:loaded 'Noto Sans JP Thin' custom=True glyphs=386
-1920x1080/1-select-empty.png: Awai JP:loaded 'Noto Sans JP Thin' custom=True glyphs=456
-1920x1080/2-select-chosen.png: Awai JP:loaded 'Noto Sans JP Thin' custom=True glyphs=460
-1920x1080/3a-review-typed-partial.png: Awai JP:loaded 'Noto Sans JP Thin' custom=True glyphs=503
-1920x1080/3-review.png: Awai JP:loaded 'Noto Sans JP Thin' custom=True glyphs=505
-1920x1080/4a-installing-real-start.png: Awai JP:loaded 'Noto Sans JP Thin' custom=True glyphs=332
-1920x1080/5-done.png: Awai JP:loaded 'Noto Sans JP Thin' custom=True glyphs=400
-1920x1080/4-installing.png: Awai JP:loaded 'Noto Sans JP Thin' custom=True glyphs=360
-1920x1080/6-no-target.png: Awai JP:loaded 'Noto Sans JP Thin' custom=True glyphs=490
-1920x1080/7a-failed-nothing-written.png: Awai JP:loaded 'Noto Sans JP Thin' custom=True glyphs=396
-1920x1080/7b-failed-after-write.png: Awai JP:loaded 'Noto Sans JP Thin' custom=True glyphs=386
+1280x720/1-select-empty.png: 'Noto Sans JP' bundled-face-exact=True glyphs=206
+1280x720/2-select-chosen.png: 'Noto Sans JP' bundled-face-exact=True glyphs=207
+1280x720/3a-review-typed-partial.png: 'Noto Sans JP' bundled-face-exact=True glyphs=239
+1280x720/3-review.png: 'Noto Sans JP' bundled-face-exact=True glyphs=239
+1280x720/4a-installing-real-start.png: 'Noto Sans JP' bundled-face-exact=True glyphs=166
+1280x720/5-done.png: 'Noto Sans JP' bundled-face-exact=True glyphs=180
+1280x720/4-installing.png: 'Noto Sans JP' bundled-face-exact=True glyphs=166
+1280x720/6-no-target.png: 'Noto Sans JP' bundled-face-exact=True glyphs=225
+1280x720/7a-failed-nothing-written.png: 'Noto Sans JP' bundled-face-exact=True glyphs=186
+1280x720/7b-failed-after-write.png: 'Noto Sans JP' bundled-face-exact=True glyphs=182
+1920x1080/1-select-empty.png: 'Noto Sans JP' bundled-face-exact=True glyphs=206
+1920x1080/2-select-chosen.png: 'Noto Sans JP' bundled-face-exact=True glyphs=207
+1920x1080/3a-review-typed-partial.png: 'Noto Sans JP' bundled-face-exact=True glyphs=239
+1920x1080/3-review.png: 'Noto Sans JP' bundled-face-exact=True glyphs=239
+1920x1080/4a-installing-real-start.png: 'Noto Sans JP' bundled-face-exact=True glyphs=166
+1920x1080/5-done.png: 'Noto Sans JP' bundled-face-exact=True glyphs=180
+1920x1080/4-installing.png: 'Noto Sans JP' bundled-face-exact=True glyphs=166
+1920x1080/6-no-target.png: 'Noto Sans JP' bundled-face-exact=True glyphs=225
+1920x1080/7a-failed-nothing-written.png: 'Noto Sans JP' bundled-face-exact=True glyphs=186
+1920x1080/7b-failed-after-write.png: 'Noto Sans JP' bundled-face-exact=True glyphs=182

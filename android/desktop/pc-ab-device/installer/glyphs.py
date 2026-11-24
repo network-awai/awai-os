@@ -129,10 +129,10 @@ def required_codepoints(installer_dir):
 
 
 def ui_characters(installer_dir):
-    """Every character the screen installer can show: page, script, and the Japanese backend messages."""
+    """Every non-ASCII character the screens can show: strings.py, the Japanese backend messages and step names."""
     import os
     sys.path.insert(0, installer_dir)
     import core
-    text = "".join(open(os.path.join(installer_dir, "web", n), encoding="utf-8").read() for n in ("index.html", "app.js"))
-    text += "".join(ja for ja, _ in core.MESSAGES.values()) + "".join(core.STEPS_JA.values())
+    import strings
+    text = strings.all_text() + "".join(ja for ja, _ in core.MESSAGES.values()) + "".join(core.STEPS_JA.values())
     return {c for c in text if ord(c) > 0x7F}

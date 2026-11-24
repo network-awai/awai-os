@@ -25,13 +25,12 @@ sys.path.insert(0, HERE)
 import glyphs  # noqa: E402
 
 PC_AB = os.path.dirname(HERE)
-REPO_FONT = os.path.join(HERE, "web", "noto-jp.woff2")  # byte-identical copy of android/client/assets/setup-noto-jp.woff2 (tested)
-REPO_FONT_LICENSE = os.path.join(HERE, "web", "font-OFL.txt")
+REPO_FONT = os.path.join(HERE, "fonts", "NotoSansJP-Regular.ttf")
 SHA = re.compile(r"[0-9a-f]{64}")
 # boot menus replaced in the image (GRUB for UEFI, syslinux for BIOS); kernel/initrd lines are the stock ones
 BOOT_FILES = [("boot/grub/grubsrcd.cfg", "grubsrcd.cfg"), ("boot/syslinux/sysresccd_head.cfg", "sysresccd_head.cfg"),
               ("boot/syslinux/sysresccd_sys.cfg", "sysresccd_sys.cfg")]
-INSTALLER_FILES = ["core.py", "server.py", "text_installer.py", "start.sh", "xsession.sh", "firefox-policies.json"]
+INSTALLER_FILES = ["core.py", "controller.py", "gui.py", "keys.py", "strings.py", "text_installer.py", "start.sh", "xsession.sh"]
 
 
 class BuildError(SystemExit):
@@ -64,20 +63,14 @@ def raw_digest(zst):
 def build_overlay(args, overlay):
     awai = os.path.join(overlay, "awai")
     inst = os.path.join(awai, "installer")
-    os.makedirs(os.path.join(inst, "web"))
+    os.makedirs(inst)
     os.makedirs(os.path.join(overlay, "sysrescue.d"))
     shutil.copy(os.path.join(PC_AB, "awai-pc-install.py"), awai)  # canonical copy, never an edited one
     shutil.copy(os.path.join(HERE, "awai-install"), os.path.join(awai, "install"))
     for name in INSTALLER_FILES:
         shutil.copy(os.path.join(HERE, name), inst)
-    for name in os.listdir(os.path.join(HERE, "web")):
-        if name not in ("noto-jp.woff2", "font-OFL.txt"):
-            shutil.copy(os.path.join(HERE, "web", name), os.path.join(inst, "web"))
-    os.makedirs(os.path.join(inst, "kiosk"))
-    for name in ("autoconfig.js", "mozilla.cfg", "watchdog.py"):
-        shutil.copy(os.path.join(HERE, "kiosk", name), os.path.join(inst, "kiosk"))
-    shutil.copy(REPO_FONT, os.path.join(inst, "web", "noto-jp.woff2"))
-    shutil.copy(REPO_FONT_LICENSE, os.path.join(inst, "web", "font-OFL.txt"))
+    for folder in ("fonts", "assets"):
+        shutil.copytree(os.path.join(HERE, folder), os.path.join(inst, folder))
     shutil.copy(os.path.join(HERE, "700-awai-installer.yaml"), os.path.join(overlay, "sysrescue.d"))
     for target, name in BOOT_FILES:
         os.makedirs(os.path.join(overlay, os.path.dirname(target)), exist_ok=True)

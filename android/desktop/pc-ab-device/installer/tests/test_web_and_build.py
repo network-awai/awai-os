@@ -19,7 +19,7 @@ import glyphs  # noqa: E402
 import text_installer  # noqa: E402
 
 PC_AB = INSTALLER.parent
-FONT = INSTALLER / "web" / "noto-jp.woff2"
+FONT = INSTALLER / "fonts" / "NotoSansJP-Regular.ttf"
 CLIENT_FONT = INSTALLER.parent.parent.parent / "client" / "assets" / "setup-noto-jp.woff2"
 # copy that must read exactly as in the approved design (installer.png)
 DESIGN_COPY = ["PC に", "インストール", "Awai OS Meiji", "現在", "済み", "Tab で項目を移動", "Enter で選択",
@@ -35,40 +35,43 @@ DESIGN_COPY = ["PC に", "インストール", "Awai OS Meiji", "現在", "済�
                "ここからディスクの消去は実行できません。", "一覧を更新"]
 
 
-class PageText(unittest.TestCase):
+class GuiText(unittest.TestCase):
     def setUp(self):
-        self.app = (INSTALLER / "web" / "app.js").read_text()
+        import strings
+        self.strings = strings
+        self.text = strings.all_text()
+        self.gui = (INSTALLER / "gui.py").read_text()
 
     def test_design_copy_present_verbatim(self):
-        for s in DESIGN_COPY:
-            self.assertIn(s, self.app + (INSTALLER / "web" / "index.html").read_text(), s)
+        for c in DESIGN_COPY:
+            self.assertIn(c.replace("\n", ""), self.text.replace("\n", ""), c)
 
     def test_only_awai_branding(self):
-        everything = self.app + (INSTALLER / "web" / "index.html").read_text() + "".join(ja for ja, _ in core.MESSAGES.values())
+        everything = self.text + "".join(ja for ja, _ in core.MESSAGES.values())
         for name in ("SystemRescue", "Sysrescue", "Linux", "Arch", "Firefox", "Mozilla", "archiso"):
             self.assertIsNone(re.search(r"\b%s\b" % name, everything, re.I), name)
 
     def test_no_prototype_completion_link_and_no_erase_control(self):
-        self.assertNotIn("完了画面を見る", self.app)
+        self.assertNotIn("完了画面を見る", self.text)
         for word in ("消去する", "ディスクを消", "フォーマット", "erase", "wipe"):
-            self.assertNotIn(word, self.app.replace("ディスクの消去は実行できません", ""))
-
-    def test_completion_screen_is_reached_only_from_a_done_state(self):
-        calls = [l for l in self.app.splitlines() if "showDone()" in l and "function showDone" not in l]
-        self.assertEqual(len(calls), 2)
-        for line in calls:
-            self.assertIn('state === "done"', line)
+            self.assertNotIn(word, self.text.replace("ディスクの消去は実行できません", ""))
 
     def test_failure_screen_does_not_use_the_completion_wording(self):
-        block = self.app[self.app.index("function showFailed"):self.app.index("async function dismiss")]
-        for word in ("T.doneTitle", "T.doneSub", "T.verified", "T.reboot", "T.parts"):
+        block = self.gui[self.gui.index("def screen_failed"):self.gui.index("# -- events")]
+        for word in ('T["doneTitle"]', 'T["doneSub"]', 'T["verified"]', 'T["reboot"]', 'T["parts"]'):
             self.assertNotIn(word, block)
-        fail_title = re.search(r'failTitle: "([^"]+)"', self.app)[1]
-        self.assertNotIn("インストールが完了しました", fail_title)
+        self.assertNotIn("インストールが完了しました", self.strings.T["failTitle"])
 
-    def test_no_dead_ends_for_keyboard(self):
-        self.assertIn("tabindex=\"-1\"", (INSTALLER / "web" / "index.html").read_text())
-        self.assertNotIn("tabindex=\"[1-9]", self.app)
+    def test_completion_screen_only_from_a_done_state(self):
+        import controller
+        src = (INSTALLER / "controller.py").read_text()
+        self.assertEqual(src.count('self.screen = "done"'), 1)
+        self.assertIn('elif st["state"] == "done":', src)
+
+    def test_gui_has_no_hardcoded_japanese(self):
+        for line in self.gui.splitlines():
+            code = line.split("#")[0]
+            self.assertFalse(re.search(r"[\u3040-\u30ff\u4e00-\u9fff]", code), line)
 
 
 class FontCoverage(unittest.TestCase):
@@ -77,25 +80,25 @@ class FontCoverage(unittest.TestCase):
     def test_font_comes_from_the_pinned_upstream_and_keeps_its_licence(self):
         self.assertRegex(self.pin["commit"], r"^[0-9a-f]{40}$")
         self.assertIn(self.pin["commit"], self.pin["ttf_url"])
-        self.assertEqual(hashlib.sha256((INSTALLER / "web" / "font-OFL.txt").read_bytes()).hexdigest(), self.pin["ofl_sha256"])
-        self.assertIn("SIL OPEN FONT LICENSE", (INSTALLER / "web" / "font-OFL.txt").read_text())
-        self.assertIn("Reserved Font Name 'Source'", (INSTALLER / "web" / "font-OFL.txt").read_text())
+        self.assertEqual(hashlib.sha256((INSTALLER / "fonts" / "OFL.txt").read_bytes()).hexdigest(), self.pin["ofl_sha256"])
+        self.assertIn("SIL OPEN FONT LICENSE", (INSTALLER / "fonts" / "OFL.txt").read_text())
+        self.assertIn("Reserved Font Name 'Source'", (INSTALLER / "fonts" / "OFL.txt").read_text())
         self.assertFalse((INSTALLER / "font-gap.json").exists())
-        # the repo's other font asset is left alone (not the bundled one)
-        if CLIENT_FONT.exists():
-            self.assertNotEqual(FONT.read_bytes(), CLIENT_FONT.read_bytes())
+        self.assertEqual(sorted(p.name for p in (INSTALLER / "fonts").iterdir()),
+                         ["NotoSansJP-Bold.ttf", "NotoSansJP-Medium.ttf", "NotoSansJP-Regular.ttf", "OFL.txt"])
 
     def test_glyph_list_belongs_to_the_font_file(self):
         glyphs.coverage_of(INSTALLER / "glyphs-noto-jp.json", FONT)
-        with tempfile.NamedTemporaryFile(suffix=".woff2") as other:
-            other.write(b"wOF2 other")
+        with tempfile.NamedTemporaryFile(suffix=".ttf") as other:
+            other.write(b"\0\1\0\0 other")
             other.flush()
             with self.assertRaises(ValueError):
                 glyphs.coverage_of(INSTALLER / "glyphs-noto-jp.json", other.name)
 
-    @unittest.skipUnless(subprocess.run(["which", "brotli"], capture_output=True).returncode == 0, "brotli command not installed")
-    def test_glyph_list_matches_the_font(self):
-        self.assertEqual(glyphs.cmap_codepoints(FONT), set(json.load(open(INSTALLER / "glyphs-noto-jp.json"))["codepoints"]))
+    def test_glyph_list_matches_every_bundled_weight(self):
+        listed = set(json.load(open(INSTALLER / "glyphs-noto-jp.json"))["codepoints"])
+        for style in ("Regular", "Medium", "Bold"):
+            self.assertEqual(glyphs.cmap_codepoints(INSTALLER / "fonts" / f"NotoSansJP-{style}.ttf"), listed, style)
 
     def test_every_character_the_screens_can_show_has_a_glyph(self):
         coverage = glyphs.font_coverage(str(FONT), str(INSTALLER))
@@ -109,13 +112,21 @@ class FontCoverage(unittest.TestCase):
         needed = glyphs.required_codepoints(str(INSTALLER))
         self.assertEqual([c for c in needed if c not in coverage - {ord("蔵")}], [ord("蔵")])
 
-    def test_css_uses_only_the_bundled_face_and_both_weights(self):
-        css = (INSTALLER / "web" / "style.css").read_text()
-        self.assertRegex(css, r'body \{ font-family: "Awai JP";')
-        self.assertNotRegex(css, r'font-family:[^;]*(sans-serif|DejaVu|Noto Sans JP|serif|system-ui)')
-        self.assertIn("font-weight: 400 700", css)
-        for w in re.findall(r"font-weight: (\d+)", css.replace("font-weight: 400 700", "")):
-            self.assertIn(int(w), (400, 500, 700))
+    def test_the_gui_registers_the_bundled_fonts_for_its_own_process_only(self):
+        import gui
+        work = Path(tempfile.mkdtemp())
+        self.addCleanup(__import__("shutil").rmtree, work, True)
+        saved = {k: os.environ.get(k) for k in ("FONTCONFIG_FILE", "PANGOCAIRO_BACKEND")}
+        try:
+            gui.use_bundled_fonts(str(work))
+            conf = Path(os.environ["FONTCONFIG_FILE"]).read_text()
+            self.assertIn(str(INSTALLER / "fonts"), conf)
+            self.assertTrue(str(work) in os.environ["FONTCONFIG_FILE"])
+        finally:
+            for k, v in saved.items():
+                os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+        self.assertRegex(gui.css_for(1.6), r'font-family: "Noto Sans JP"')
+        self.assertNotRegex(gui.css_for(1.6), r"font-family:[^;]*(sans-serif|DejaVu|serif|system-ui)")
 
 
 class TextFrontEnd(unittest.TestCase):
@@ -205,30 +216,25 @@ class TextFrontEnd(unittest.TestCase):
 
 
 class Launcher(unittest.TestCase):
-    def run_start(self, *args, cmdline=None, path_tools=(), extra_env=None, timeout=60, real_policy_dirs=False, before=None):
+    """start.sh with fake xinit and a fake python wrapper (its `import gi` probe succeeds or fails on demand)."""
+
+    def run_start(self, *args, tools=("xinit",), gtk=True, extra_env=None, timeout=90, xinit_body="exit 1\n"):
+        shutil = __import__("shutil")
         tmp = Path(tempfile.mkdtemp(prefix="awai-start-"))
-        self.addCleanup(__import__("shutil").rmtree, tmp, True)
+        self.addCleanup(shutil.rmtree, tmp, True)
         bin_dir = tmp / "bin"
         bin_dir.mkdir()
-        for t in ("python3", "grep", "install", "head", "seq", "kill", "sleep", "dirname", "cat", "rm", "readlink", "mkdir"):
-            src = __import__("shutil").which(t)
-            (bin_dir / t).symlink_to(src)
-        for t in path_tools:
-            if t == "firefox-esr":  # like the base medium: /usr/bin/firefox-esr -> /opt/firefox-esr/firefox-esr
-                real = tmp / "opt" / "firefox-esr" / "firefox-esr"
-                real.parent.mkdir(parents=True)
-                real.write_text("#!/bin/sh\nexit 1\n")
-                real.chmod(0o755)
-                (bin_dir / t).symlink_to(real)
-                continue
-            (bin_dir / t).write_text("#!/bin/sh\nexit 1\n")
+        for t in ("grep", "install", "head", "seq", "kill", "sleep", "dirname", "cat", "rm", "readlink", "mkdir"):
+            (bin_dir / t).symlink_to(shutil.which(t))
+        py = bin_dir / "py"
+        py.write_text(f'#!/bin/sh\ncase "$1" in -c) case "$2" in *"import gi"*) exit {0 if gtk else 1};; esac;; esac\nexec "{sys.executable}" "$@"\n')
+        py.chmod(0o755)
+        (bin_dir / "python3").symlink_to(py)
+        for t in tools:
+            (bin_dir / t).write_text(f'#!/bin/sh\necho "$@" >> "{tmp}/{t}.log"\n{xinit_body if t == "xinit" else "exit 1"}')
             (bin_dir / t).chmod(0o755)
-        env = {"PATH": str(bin_dir) + ":/bin:/usr/bin" if False else str(bin_dir), "AWAI_WORK_DIR": str(tmp / "work"),
-               "AWAI_MEDIA_DIR": str(tmp), "AWAI_PYTHON": sys.executable,
-               "AWAI_ETC": str(tmp / "etc"), **({} if real_policy_dirs else {"AWAI_POLICY_DIRS": str(tmp / "policies")}), **(extra_env or {})}
+        env = {"PATH": str(bin_dir), "AWAI_WORK_DIR": str(tmp / "work"), "AWAI_MEDIA_DIR": str(tmp), "AWAI_PYTHON": str(py), **(extra_env or {})}
         self.last_tmp = tmp
-        if before:
-            before(tmp)
         return subprocess.run(["/bin/bash", str(INSTALLER / "start.sh"), *args], env=env, capture_output=True, text=True, input="\n", timeout=timeout)
 
     def test_forced_text_mode(self):
@@ -237,108 +243,49 @@ class Launcher(unittest.TestCase):
         self.assertIn("Offline PC installer", r.stdout)
 
     def test_missing_x_falls_back_to_text_with_one_line_reason(self):
-        r = self.run_start()
+        r = self.run_start(tools=())
         self.assertRegex(r.stderr, r"AWAI INSTALLER: screen installer unavailable \(xinit not found\); using the text installer\.")
         self.assertEqual(len([l for l in r.stderr.splitlines() if l.startswith("AWAI INSTALLER")]), 1)
         self.assertIn("Offline PC installer", r.stdout)
 
-    def test_policy_is_installed_before_the_browser_starts_and_is_required(self):
-        r = self.run_start(path_tools=("xinit", "firefox-esr"))
-        installed = self.last_tmp / "policies" / "policies.json"
-        self.assertEqual(json.loads(installed.read_text()), json.loads((INSTALLER / "firefox-policies.json").read_text()))
-        script = (INSTALLER / "start.sh").read_text()
-        self.assertLess(script.index("policies.json"), script.index("xinit \"$here/xsession.sh\""))
-        r = self.run_start(path_tools=("xinit", "firefox-esr"), extra_env={"AWAI_POLICY_DIRS": "/proc/awai-no-such-dir"})
-        self.assertIn("could not install the browser lock-down policy", r.stderr)
+    def test_missing_gtk_bindings_fall_back_to_text_with_the_reason(self):
+        r = self.run_start(gtk=False)
+        self.assertIn("Python GTK 3 bindings not available", r.stderr)
         self.assertIn("Offline PC installer", r.stdout)
+        self.assertFalse((self.last_tmp / "xinit.log").exists(), "X must not be started without the bindings")
 
-    def test_only_firefox_esr_exists_like_the_base_medium(self):
-        """The base medium has /usr/bin/firefox-esr and no plain `firefox`: the policy goes next to the real binary and to /etc."""
-        r = self.run_start(path_tools=("xinit", "firefox-esr"), real_policy_dirs=True)
-        tmp = self.last_tmp
-        self.assertNotIn("firefox not found", r.stderr)
-        self.assertNotIn("firefox-esr not found", r.stderr)
-        self.assertIn("X or the browser stopped 3 times", r.stderr)  # got as far as launching X
-        want = (INSTALLER / "firefox-policies.json").read_text()
-        self.assertEqual((tmp / "opt" / "firefox-esr" / "distribution" / "policies.json").read_text(), want)
-        self.assertEqual((tmp / "etc" / "firefox-esr" / "policies" / "policies.json").read_text(), want)
-        self.assertEqual((tmp / "etc" / "firefox" / "policies" / "policies.json").read_text(), want)
-        base = tmp / "opt" / "firefox-esr"
-        self.assertEqual((base / "defaults" / "pref" / "autoconfig.js").read_text(), (INSTALLER / "kiosk" / "autoconfig.js").read_text())
-        self.assertEqual((base / "mozilla.cfg").read_text(), (INSTALLER / "kiosk" / "mozilla.cfg").read_text())
-
-    def test_missing_browser_is_reported_by_its_real_name(self):
-        r = self.run_start(path_tools=("xinit",))
-        self.assertIn("firefox-esr not found", r.stderr)
+    def test_a_window_that_keeps_dying_is_restarted_then_the_text_installer_takes_over(self):
+        r = self.run_start()
+        self.assertIn("X or the GTK window stopped 3 times", r.stderr)
         self.assertIn("Offline PC installer", r.stdout)
-        r = self.run_start(path_tools=("xinit", "firefox"))  # a plain firefox is accepted too
-        self.assertNotIn("not found", r.stderr)
+        calls = (self.last_tmp / "xinit.log").read_text().splitlines()
+        self.assertEqual(len(calls), 3, "start.sh restarts the window after each exit")
+        for call in calls:
+            self.assertIn("xsession.sh", call)
+            self.assertIn("vt1", call)
+            self.assertIn("-nolisten tcp", call)
 
-    def test_session_starts_the_esr_binary(self):
-        tmp = Path(tempfile.mkdtemp(prefix="awai-xs-"))
+    def test_no_window_manager_is_started(self):
+        for f in ("start.sh", "xsession.sh"):
+            self.assertNotRegex((INSTALLER / f).read_text(), r"xfwm|openbox|metacity|mutter|twm|kwin")
+
+    def test_session_runs_the_gtk_window_with_blanking_off(self):
+        tmp = Path(tempfile.mkdtemp())
         self.addCleanup(__import__("shutil").rmtree, tmp, True)
         bin_dir = tmp / "bin"
         bin_dir.mkdir()
-        for t in ("install", "rm", "cat", "mkdir"):
-            (bin_dir / t).symlink_to(__import__("shutil").which(t))
-        (bin_dir / "firefox-esr").write_text(f'#!/bin/sh\necho "$@" > "{tmp}/args"\n')
-        (bin_dir / "firefox-esr").chmod(0o755)
-        (tmp / "work").mkdir()
-        subprocess.run(["/bin/bash", str(INSTALLER / "xsession.sh"), "/run/x/launch.html", str(tmp / "work")], env={"PATH": str(bin_dir)}, check=True)
-        args = (tmp / "args").read_text()
-        self.assertIn("--kiosk", args)
-        self.assertIn("file:///run/x/launch.html", args)
-
-    @unittest.skipIf(os.geteuid() == 0, "root ignores directory permissions")
-    def test_autoconfig_is_required_like_the_policy(self):
-        tmp = Path(tempfile.mkdtemp(prefix="awai-ro-"))
-        self.addCleanup(__import__("shutil").rmtree, tmp, True)
-        # an unwritable <real dir>/defaults/pref: the kiosk configuration cannot be installed -> text fallback
-
-        def lock(t):
-            (t / "opt" / "firefox-esr" / "defaults").mkdir()
-            (t / "opt" / "firefox-esr" / "defaults").chmod(0o555)
-        r = self.run_start(path_tools=("xinit", "firefox-esr"), real_policy_dirs=True, before=lock)
-        self.assertIn("could not install the browser kiosk configuration", r.stderr)
-        self.assertIn("Offline PC installer", r.stdout)
-        os.chmod(self.last_tmp / "opt" / "firefox-esr" / "defaults", 0o755)
-
-    def test_kiosk_config_removes_shortcuts_and_returns_every_other_page_to_the_installer(self):
-        cfg = (INSTALLER / "kiosk" / "mozilla.cfg").read_text()
-        auto = (INSTALLER / "kiosk" / "autoconfig.js").read_text()
-        self.assertTrue(cfg.startswith("//"), "autoconfig requires a leading comment")
-        self.assertIn('pref("general.config.filename", "mozilla.cfg")', auto)
-        self.assertIn('pref("general.config.sandbox_enabled", false)', auto)
-        pol = json.loads((INSTALLER / "firefox-policies.json").read_text())["policies"]
-        self.assertIn('var AWAI_HOME = "%s"' % pol["Homepage"]["URL"], cfg)
-        self.assertTrue(pol["Homepage"]["Locked"])
-        self.assertIs(pol["NewTabPage"], False)
-        for needle in ('lockPref("browser.newtabpage.enabled", false)', 'lockPref("browser.startup.page", 1)', 'querySelectorAll("key")', 'setAttribute("disabled", "true")',
-                       "e.ctrlKey || e.altKey || e.metaKey", "removeTab", "goHome(win)", '"F5"', "domwindowopened", "win.close()", "isLoadingDocument",
-                       "browser-delayed-startup-finished", "win.fullScreen = true", "AGENT_SHEET", "#navigator-toolbox", "awai-no-token"):
-            self.assertIn(needle, cfg, needle)
-        self.assertNotIn('"keyset"', cfg.split("function guard")[1], "key elements are disabled, never removed (full screen broke in QEMU run 3)")
-        self.assertNotRegex(cfg, r"\.remove\(\)")
-        self.assertIn("127\\.0\\.0\\.1", cfg)
-        for url in re.findall(r"https?://[^\s\"']+", cfg):
-            self.fail(f"external URL in the kiosk config: {url}")
-
-    @unittest.skipUnless(subprocess.run(["which", "node"], capture_output=True).returncode == 0, "node not installed")
-    def test_kiosk_config_is_valid_javascript(self):
-        for name in ("mozilla.cfg", "autoconfig.js"):
-            src = Path(tempfile.mkdtemp()) / (name + ".js")
-            src.write_text((INSTALLER / "kiosk" / name).read_text())
-            r = subprocess.run(["node", "--check", str(src)], capture_output=True, text=True)
-            self.assertEqual(r.returncode, 0, r.stderr)
-
-    def test_policy_locks_the_kiosk_down(self):
-        pol = json.loads((INSTALLER / "firefox-policies.json").read_text())["policies"]
-        for key in ("DisableDeveloperTools", "BlockAboutConfig", "DisablePrivateBrowsing", "DisableSafeMode"):
-            self.assertIs(pol[key], True, key)
-        self.assertEqual(pol["WebsiteFilter"]["Block"], ["<all_urls>"])
-        self.assertTrue(all(e.startswith(("http://127.0.0.1/", "file:///run/awai-pc-installer/")) for e in pol["WebsiteFilter"]["Exceptions"]))
-        self.assertTrue(pol["PopupBlocking"]["Locked"])
-        self.assertEqual(pol["Preferences"]["ui.key.accelKey"]["Status"], "locked")
+        for t in ("xset", "xsetroot", "py"):
+            (bin_dir / t).write_text(f'#!/bin/sh\necho "$@" >> "{tmp}/{t}.log"\nenv | grep -E "^(GDK_BACKEND|NO_AT_BRIDGE|GSETTINGS_BACKEND)=" >> "{tmp}/env.log"\n')
+            (bin_dir / t).chmod(0o755)
+        subprocess.run(["/bin/bash", str(INSTALLER / "xsession.sh"), "/run/work", "/run/media"], env={"PATH": str(bin_dir) + ":/usr/bin:/bin", "AWAI_PYTHON": str(bin_dir / "py")}, check=True)
+        xset = (tmp / "xset.log").read_text().splitlines()
+        for want in ("s off", "s noblank", "-dpms"):
+            self.assertIn(want, xset)
+        args = (tmp / "py.log").read_text()
+        self.assertIn("gui.py", args)
+        self.assertIn("--work-dir /run/work", args)
+        self.assertIn("--media-dir /run/media", args)
+        self.assertIn("GDK_BACKEND=x11", (tmp / "env.log").read_text())
 
     def test_dead_screen_during_a_write_follows_the_running_install_and_offers_no_target(self):
         import fcntl, threading
@@ -359,18 +306,13 @@ class Launcher(unittest.TestCase):
         timer = threading.Timer(4, finish)
         timer.start()
         self.addCleanup(timer.cancel)
-        r = self.run_start(path_tools=("xinit", "firefox-esr"), extra_env={"AWAI_WORK_DIR": str(work)})
+        r = self.run_start(extra_env={"AWAI_WORK_DIR": str(work)})
         self.assertIn("an installation is still running", r.stdout)
         self.assertIn("step 2/3", r.stdout)
         self.assertIn("Installed and verified all 11 partitions", r.stdout)
         for offered in ("Whole NVMe path", "type INSTALL", "not selectable", "eligible"):
             self.assertNotIn(offered, r.stdout)
         self.assertEqual(r.returncode, 0)
-
-    def test_failing_x_falls_back_to_text(self):
-        r = self.run_start(path_tools=("xinit", "firefox-esr"))
-        self.assertIn("X or the browser stopped 3 times", r.stderr)
-        self.assertIn("Offline PC installer", r.stdout)
 
 
 class BootMenus(unittest.TestCase):
@@ -541,7 +483,7 @@ class Overlay(unittest.TestCase):
         self.assertEqual((awai / "awai-pc-install.py").read_bytes(), (PC_AB / "awai-pc-install.py").read_bytes())
         self.assertEqual((awai / "install-image.sha256").read_text(), f"{self.sha(self.zst)}  awai-pc-install.img\n")
         self.assertEqual((awai / "archive.sha256").read_text(), f"{self.sha(self.zst)}  awai-pc-install.img.zst\n")
-        for f in ("kiosk/autoconfig.js", "kiosk/mozilla.cfg", "kiosk/watchdog.py", "core.py", "server.py", "text_installer.py", "start.sh", "xsession.sh", "firefox-policies.json", "web/logo.png", "web/index.html", "web/app.js", "web/noto-jp.woff2", "web/font-OFL.txt"):
+        for f in ("core.py", "controller.py", "gui.py", "keys.py", "strings.py", "text_installer.py", "start.sh", "xsession.sh", "assets/logo.png", "fonts/NotoSansJP-Regular.ttf", "fonts/NotoSansJP-Medium.ttf", "fonts/NotoSansJP-Bold.ttf", "fonts/OFL.txt"):
             self.assertTrue((awai / "installer" / f).is_file(), f)
         for f in ("boot/grub/grubsrcd.cfg", "boot/syslinux/sysresccd_head.cfg", "boot/syslinux/sysresccd_sys.cfg"):
             self.assertEqual((keep / f).read_bytes(), (INSTALLER / "boot" / Path(f).name).read_bytes(), f)

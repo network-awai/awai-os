@@ -115,34 +115,30 @@ It has only been run against an image file. Running it on a real disk is a separ
 
 ## Screen installer on the USB (item 205)
 
-`installer/` is the screen version of the USB installer (the Figma design, six screens plus a failure screen).
-`awai/install` on the USB now starts it; if X, Firefox or the backend cannot start it says why in one line and
-continues with the text installer on tty1.
+`installer/` is the screen version of the USB installer (the Figma design: six screens plus a failure screen). `awai/install`
+on the USB starts it: **one GTK 3 window** on a bare X server (no window manager, no browser, no listener of any kind). If X or
+GTK cannot start it says why in one line and continues with the text installer on tty1.
 
 | Path | What |
 | --- | --- |
-| `installer/core.py` | **Every guard and the install sequence.** Both front ends call it; neither decides anything. |
-| `installer/server.py` | stdlib HTTP backend on `127.0.0.1`, random port, per-start token. Runs the install in a detached worker. |
-| `installer/web/` | the page (`index.html`, `app.js`, `style.css`, `logo.svg`, bundled Japanese font). No external resources. |
+| `installer/core.py` | **Every guard and the install sequence** (and the detached `worker` entry). Both front ends call it; neither decides anything. |
+| `installer/controller.py` | front-end-neutral controller: list/confirm -> one-shot ticket -> typed device name -> exactly one detached worker, true install state, power-off question. Unit-tested without GTK. |
+| `installer/gui.py`, `keys.py`, `strings.py` | the GTK 3 widget tree (CSS from one design unit), the key policy, every Japanese string. |
+| `installer/fonts/`, `assets/` | bundled Noto Sans JP subset (3 static weights, OFL) and the Awai mark. |
 | `installer/text_installer.py` | the text front end (English, on `core.py`). |
-| `installer/start.sh`, `xsession.sh`, `awai-install` | tty1 entry, xinit session (kiosk Firefox), the `/awai/install` shim. |
+| `installer/start.sh`, `xsession.sh`, `awai-install` | tty1 entry and restart loop, the xinit session, the `/awai/install` shim. |
 | `installer/build-overlay.py` | stock SystemRescue ISO + image -> overlay -> `xorriso`. `--dry-run`; downloads nothing. |
 | `installer/700-awai-installer.yaml` | SystemRescue autorun for tty1 (unchanged content: it still runs `/awai/install`). |
-| `installer/tests/` | tests, fakes, browser driver, screenshot and mutation tools. |
+| `installer/tests/` | tests, fakes, GTK offscreen driver, screenshot and mutation tools. |
 
-Build the USB image (digests come from the signing and build records):
-
-```sh
-python3 android/desktop/pc-ab-device/installer/build-overlay.py \
-  --stock-iso systemrescue-13.03-amd64.iso --stock-iso-sha256 "$STOCK_ISO_SHA256" \
-  --image-zst awai-pc-install.img.zst --archive-sha256 "$ARCHIVE_SHA256" --image-sha256 "$RAW_IMAGE_SHA256" \
-  --out awai-os-pc-usb-installer.iso          # add --dry-run to check only
-```
-
-It checks the stock ISO, the archive and (streaming through `zstd`) the raw image digests, writes
-`archive.sha256` and `install-image.sha256` (the **only** place the expected digests live; the constant that was
-duplicated in the old `awai/install` is gone), copies the canonical `awai-pc-install.py` unedited, and calls
-`xorriso -indev stock -outdev out -boot_image any replay -map ...` as the previous build did.
+How it runs: `start.sh` checks `xinit` and `python3 -c 'import gi; Gtk 3'`, then loops `xinit xsession.sh -- :0 vt1`. `xsession.sh`
+turns off blanking and DPMS (`xset s off`, `s noblank`, `-dpms`) and runs `gui.py`. The window is undecorated and as large as the
+screen; with no window manager there is nothing to switch to, and `keys.py` swallows every Ctrl/Alt/Super combination, function key
+and the menu key before any widget sees it (no accelerators, no mnemonics, no context menu). Closing or killing the window (Alt+F4 has
+no effect without a window manager; `kill -9` does) ends X, `start.sh` starts it again and it shows the true state from
+`/run/awai-pc-installer/state.json`; the install itself is the detached `core.py worker` holding the lock, so it never notices.
+Three windows that die within 20 s each mean GTK/X do not work here and `start.sh` falls back to the text installer. X VT switching
+is untouched (Ctrl+Alt+F2 gives the console shell).
 
 ### Boot menu and text mode
 
@@ -161,7 +157,7 @@ dropped from the installer medium. Other ways into text mode: `awai.installer=te
 screen session died and `start.sh` fell back to text) it says so, follows the install to its true end state and never offers a
 target (it also holds off while the worker's lock is held but no state exists yet). Not exercised on a real boot (QEMU run).
 
-### What `core.py` enforces (in the backend, never only in the page)
+### What `core.py` enforces (in the backend, never only in the window)
 
 Target: `/dev/nvme[0-9]+n[0-9]+`, block device, `TYPE disk`, `RO 0`, no partitions, 512-byte logical sectors, nothing
 mounted, `wipefs` signatures only `gpt`/`PMBR`, never the device the media directory is served from (resolved with
@@ -174,22 +170,17 @@ raw image sha256 == pinned value -> plan with `existing == []` and the expected 
 **all target checks and identity again, plus a fresh plan, immediately before writing** ->
 `awai-pc-install.py apply --record` -> record has `sourceSha256 == pinned`, `existingUnchanged`, one readback per
 partition with a digest -> `sgdisk -v` exit 0 and "No problems found" -> `sync` -> only then `done`. Any other path ends
-in `failed`; the page shows the completion screen only for `state == "done"`.
+in `failed`; the window shows the completion screen only for `state == "done"`.
 
-Two-step confirmation: the review screen asks for the device name (`nvme0n1`); the backend checks it twice (server and
-worker). The text installer still asks for `INSTALL nvme0n1` and hands the name to the same check.
+Two-step confirmation: the review screen asks for the device name (`nvme0n1`); the controller checks it and the worker
+checks it again. The text installer still asks for `INSTALL nvme0n1` and hands the name to the same check.
 
-One install: the worker holds `flock` on `/run/awai-pc-installer/lock`; it is a separate, detached process, so closing
-or crashing Firefox or the backend neither stops the write nor allows another. A restarted backend reads the true state
+One install: the worker holds `flock` on `/run/awai-pc-installer/lock`; it is a separate, detached process (own session), so
+closing, killing or crashing the GTK window neither stops the write nor allows another. A restarted window reads the true state
 (`running` only with a live lock holder; `running` without one is reported as interrupted, never as running or done).
-`write-started` / `install-record.json` block any further start until reboot (`/run` is a tmpfs). Reboot and power off
-are refused by the backend while an install runs, and the buttons are disabled.
-
-Local transport: loopback only, random port; the token exists only in `launch.html` (mode 0600 in a 0700 directory) as a
-URL fragment, so it is not in argv, logs, request lines or a world-readable file; `X-Awai-Token` is compared in constant
-time; `Host` must equal `127.0.0.1:PORT`; `Origin` is required on POST and must match when present on GET; no CORS
-headers; `default-src 'none'` CSP with only `'self'` for script, style, font, image and connect; `Content-Type:
-application/json` is required for POST.
+`write-started` / `install-record.json` block any further start until reboot (`/run` is a tmpfs). Reboot and power off are
+refused by the controller while an install runs, and the buttons are disabled. The ticket from `内容を確認` (identity at that
+moment) is consumed by the one start, whatever happens; a wrong typed name consumes it too.
 
 ### Progress
 
@@ -208,86 +199,73 @@ name clash check). The repo copy is canonical and is what `build-overlay.py` shi
 exactly 11. The review screen therefore does not say "11 区画を作成します" (the image is not unpacked yet); the completion
 screen says `{n} 区画を確認` with the real count.
 
-### Font, logo, kiosk
+### Font, logo, proportions
 
-**Font.** The live system has no Japanese font, so the page ships one and uses *only* that face (`font-family: "Awai JP"`,
-no fallback names). It is Noto Sans JP (variable, weight axis limited to 400-700), SIL OFL 1.1, subset to WOFF2
-(`web/noto-jp.woff2`, 108 KB, 677 codepoints: ASCII, Latin-1, general and CJK punctuation, kana, full-width ASCII, and
-every character in `index.html`, `app.js`, `MESSAGES` and `STEPS_JA`). The OFL text ships unchanged as `web/font-OFL.txt`;
-the Reserved Font Name 'Source' is not in any name the build keeps (`font/build_font.py` refuses otherwise).
-Source (pinned): `google/fonts` commit `66a36c8c94b1a5d992ee4e7f392fccfe4945767c`, `ofl/notosansjp/NotoSansJP[wght].ttf`
-(sha256 `c2f3b4d463500a2ddcd3849cded1fceeb9fd6d1c32e6cbecd568453ba50fc68f`) and `OFL.txt`
-(sha256 `1c05c68c34f9708415aada51f17e1b0092d2cea709bf4a94cd38114f9e73d7d9`); URLs in `font/font-pin.json`.
-Rebuild (development only): `pip install fonttools brotli` in a venv outside the repo, then
-`python font/build_font.py 'NotoSansJP[wght].ttf' OFL.txt`. A missing glyph is a hard failure: `tests` compare the
-screens' characters with the font's cmap (`glyphs-noto-jp.json`, tied to the font's SHA-256) and `build-overlay.py`
-refuses to build, with no override option. The screenshot run asks Chrome which font drew every element
-(`CSS.getPlatformFontsForNode`) and fails unless every glyph came from the bundled face (`screenshots/fonts-used.txt`).
-`android/client/assets/setup-noto-jp.woff2` is untouched. (The variable font's name table still says "Thin", its default
-instance name; the family is "Noto Sans JP".)
+**Font.** The live system has no Japanese font, so the window registers its own for this process only: `gui.py` writes a private
+fontconfig file (`FONTCONFIG_FILE`, system config included, cache under the work dir) that adds `installer/fonts/`, and CSS names only
+`"Noto Sans JP"`. It is Noto Sans JP, SIL OFL 1.1, cut into three static TTFs (Regular 400, Medium 500, Bold 700; fontconfig and Pango
+cannot load WOFF2) and subset to 678 codepoints (ASCII, Latin-1, general and CJK punctuation, kana, full-width ASCII, and every
+character in `strings.py`, `core.MESSAGES` and `core.STEPS_JA`). The OFL text ships unchanged as `fonts/OFL.txt`; the Reserved Font
+Name 'Source' is not in any name the build keeps (`font/build_font.py` refuses otherwise). Source (pinned): `google/fonts` commit
+`66a36c8c94b1a5d992ee4e7f392fccfe4945767c`, `ofl/notosansjp/NotoSansJP[wght].ttf` (sha256
+`c2f3b4d463500a2ddcd3849cded1fceeb9fd6d1c32e6cbecd568453ba50fc68f`) and `OFL.txt` (sha256
+`1c05c68c34f9708415aada51f17e1b0092d2cea709bf4a94cd38114f9e73d7d9`); URLs in `font/font-pin.json`. Rebuild (development only):
+`pip install fonttools brotli` in a venv outside the repo, then `python font/build_font.py 'NotoSansJP[wght].ttf' OFL.txt`.
+A missing glyph is a hard failure: the tests compare the screens' characters with all three fonts' cmaps (`glyphs-noto-jp.json`, tied
+to the Regular file's SHA-256), the GTK tests ask Pango which font it loads for every label and require exact coverage, and
+`build-overlay.py` refuses to build, with no override option. `android/client/assets/setup-noto-jp.woff2` is untouched.
 
-**Logo.** `web/logo.png` is `android/client/assets/setup-logo.png` (the Awai mark) scaled to 256 px. No vector version of
-the mark exists in the repo or in PR #302 (its `awai_welcome_mark.xml` is only a rounded rectangle), so it is raster.
+**Logo.** `assets/logo.png` is `android/client/assets/setup-logo.png` (the Awai mark) scaled to 256 px. No vector version of the mark
+exists in the repo or in PR #302 (its `awai_welcome_mark.xml` is only a rounded rectangle), so it is raster.
 
-**Focus and power.** After a selection the first Tab stop is the primary action (内容を確認; on the review screen この SSD にインストール), then the secondary one; DOM order is primary first and CSS keeps the left/right look. 電源を切る asks once (first activation only arms it and says もう一度押すと電源を切ります; leaving the button disarms it). Disabled and refused by the backend while writing.
+**Proportions.** One design unit `u = min(W/740, H/440)` pixels scales text, logo, cards and gaps with the screen; the rail is 30.5% of
+the width and cards 57.7%, as in `design/installer.png`. Gtk CSS only, software rendering (no GL): the window uses the plain cairo
+paths of GTK 3.
 
-**Memory.** The work directory is a tmpfs (half of RAM) that holds the unpacked image. Before unpacking, free space below the archive size is refused; a full disk while unpacking (ENOSPC) or anywhere before writing becomes the refusal "メモリが足りません。インストールイメージを展開できませんでした。" with nothing written and the partial file removed. The unpacked size is only an upper bound (the file is sparse), so no exact pre-check is attempted.
-
-**Proportions.** One design unit `--u = min(100vw/740, 100vh/440)` scales text, logo, cards and gaps with the frame; the
-rail is 30.5vw and cards 57.7vw as in `design/installer.png` (browser test checks both sizes).
-
-**Kiosk (verified headless in Firefox 153.6 ESR for macOS; the physical-keyboard behaviour on the ISO is for the QEMU run).**
-QEMU run 1: Ctrl+T / Ctrl+N / Ctrl+L / Ctrl+O and F12 left the installer for Firefox's blocked page and new-tab page. Run 3
-(autoconfig honoured by the real Firefox) fixed that but showed the browser chrome and the token in the URL bar. Now:
-(1) `kiosk/autoconfig.js` + `kiosk/mozilla.cfg`, installed next to the real binary (`/opt/firefox-esr/defaults/pref/autoconfig.js`,
-`/opt/firefox-esr/mozilla.cfg`; required, else the text installer). Each browser window is guarded once its
-`browser-delayed-startup-finished` has fired: every `<key>` is **disabled, not removed**; Ctrl/Alt/Meta/function keys and the
-context menu are swallowed in the capture phase; `window.fullScreen` is forced on every 500 ms; the toolbox, tab strip,
-sidebar and notification boxes are hidden both by an agent style sheet and by collapsing them; one window and one tab only;
-any other page (blocked page, new tab, about:*, a page that lost its token) is sent back to the launch page. **F5 always goes
-back through the launch page** (fresh token fragment). (2) The page reads the token from the URL fragment, keeps it in memory and
-sessionStorage and removes it from the address with `history.replaceState`, so it is never displayable (also not in the session
-history). (3) `firefox-policies.json` (installed in `<real binary dir>/distribution/` - required - and in `/etc/firefox-esr/policies/`,
-`/etc/firefox/policies/`): developer tools, about:*, private browsing, safe mode, popups off; every URL blocked except the backend
-and the launch page; Homepage = launch page (locked), NewTabPage off, FirefoxHome and user messaging off. (4) `kiosk/watchdog.py`:
-the page pings `/api/ping` every 5 s while it is visible and the backend touches `heartbeat` on every authenticated request; after
-20 s of silence (60 s grace after a session start) the watchdog terminates the `xinit` it was given and `start.sh` starts a new
-session. It never signals anything that is not `xinit` (so never the detached install worker; a restart is safe at any moment of a
-write), **does nothing while X's virtual terminal is not the active one** (`/sys/class/tty/tty0/active`, e.g. after Ctrl+Alt+F2;
-the silence clock restarts when X is active again), and `xsession.sh` turns off screen blanking and DPMS (`xset s off`, `s noblank`,
-`-dpms`). Tested here: file contents and prefs, `node --check`, watchdog decisions on a fake clock (incl. the console switch and a
-real decoy process named like the worker), heartbeat, the xset calls, and - **optional, skipped without a Firefox** - 
-`tests/test_firefox_headless.py`, which runs a real Firefox ESR **headless** (never a visible window) over Marionette with the kiosk
-files installed in a private copy: full screen, no chrome (height 0), one tab and one window, the page is the installer, the URL and
-session history hold no token, shortcut events are swallowed at the listener, new tab / new window / blocked and about: pages return
-to the installer, F5 works, a tokenless page recovers. Setup: download `Firefox 153.6.0esr.dmg` from
-`download-installer.cdn.mozilla.net/pub/firefox/releases/153.6.0esr/mac/en-US/`, verify it against that directory's `SHA256SUMS`,
-unpack `Firefox.app` to `~/awai-ff-test/app` (or set `AWAI_FIREFOX_APP`); the test adds and removes its files in that copy. Limits:
-synthetic key events cannot trigger Firefox's built-in shortcuts headless (a plain Firefox ignores them too), so shortcut handling
-is checked at the listener and through the programmatic equivalents; the test policy leaves DisableDeveloperTools off because that
-switch also shuts Marionette. Whether the chrome regression came from removing the keysets was not reproduced headless (the
-keyset-removing variant also passed there); the fix does not rely on that guess.
+**No browser, no listener.** An earlier revision showed the screen in a kiosk browser. VM runs showed that this cannot be made
+reliable (shortcuts left the installer, browser chrome and the per-boot token showed in the address bar, and the browser's own
+first-run terms dialog covered the installer; accepting that on the user's behalf is not ours to decide). The browser, its policies,
+the HTTP backend, the token and the watchdog are gone, and a test asserts that nothing in the installer imports `socket` or
+`http.server` or calls `bind`/`listen`.
 
 ### Checks
 
 ```sh
 python3 -m unittest discover -s android/desktop/pc-ab-device/installer/tests -p 'test_*.py'   # python >= 3.11
 python3 android/desktop/pc-ab-device/installer/tests/mutations.py --jobs 5                  # every guard removed in turn
-python3 android/desktop/pc-ab-device/installer/tests/shots.py OUTDIR                        # screenshots (Chrome)
+python3 android/desktop/pc-ab-device/installer/tests/shots.py OUTDIR                        # screenshots (needs PyGObject + Gtk 3)
 ```
 
-No root, no real disk: fake `lsblk`/`blockdev`/`wipefs`/`findmnt`/`sgdisk`/`zstd`/`sync`/`systemctl` on `PATH` and
-sparse temp files; the production `Host` is replaced only in tests. Bazel: `:screen_installer_*_test`.
-Screenshots and the design side by side: `installer/screenshots/`.
+No root, no real disk: fake `lsblk`/`blockdev`/`wipefs`/`findmnt`/`sgdisk`/`zstd`/`sync`/`systemctl` on `PATH` and sparse temp files;
+the production `Host` is replaced only in tests. The GTK tests drive the real widget tree in a `Gtk.OffscreenWindow` (nothing is shown
+on a display; Tab/Enter/typing are simulated at widget level) and skip themselves where PyGObject/Gtk 3 is missing (CI runs
+117 of 128 tests there; the 11 GTK tests ran locally in a conda env with Gtk 3.24). Bazel: `:screen_installer_*_test`. Mutation list:
+`installer/tests/mutation-results.txt` (74 of 75 guards killed; the one survivor is equivalent offscreen and covered by the VM run).
+Screenshots from the widget tree and the design side by side: `installer/screenshots/` (`fonts-used.txt` proves every label is drawn
+by the bundled face, `keyboard-walkthrough.txt` is the Tab/Enter sequence).
+
+### VM run (real SystemRescue 13.03, QEMU/TCG on another host, UEFI, one blank and one used virtual NVMe)
+
+Built with `build-overlay.py`'s `build_overlay` into the shipped ISO; screenshots in `installer/screenshots/vm/`.
+Passed: GRUB default entry starts the GTK window by itself; screens 1, 2, 3 and the wrong-name case (button stays disabled);
+Ctrl+T/N/L/W/O/Q, Ctrl+Shift+I, Alt+F4, Alt+Tab, Alt+F2, Ctrl+Alt+Backspace, F1-F12, Menu, Super, Print and Ctrl+Alt+Delete pressed on
+the review screen change nothing (typed text still there, nobody left the screen); Ctrl+Alt+F2 reaches the console and X does not take
+it back; the power-off question (first Enter asks, it stays asked across polls, Tab away disarms it); a full install to 完了 (11 区画);
+`kill -9` of the GTK process at step 2, 36.46 %, `written: started` - the write went on and the restarted window showed the true
+state (step 3) and then 完了; all 8 data partitions identical to the source image and the used NVMe byte-identical (sha256 unchanged);
+screen 6 with only the used disk; the text boot entry (`awai.installer=text`) starts the text installer and lists both disks as
+not selectable with the reasons. The VM run found one bug, fixed before this record: the power-off question disarmed itself when the
+poll redrew the screen (rebuilding destroyed the focused button, which counted as the user leaving it); two tests now pin it.
 
 ### Not tested
 
-QEMU, a real machine, real X and real Firefox (kiosk under `xinit`), SystemRescue's own Python/tool versions, a real
-`sgdisk`/`zstd` run against the fake-free path, `xorriso` itself (only its command line), the boot entry, USB removal
-mid-install, and the live Japanese rendering (see Font). The fake `sgdisk` emulates the output format the installer
-parses; real `sgdisk -v` wording ("No problems found") is taken from its documented output and must be confirmed in
-the QEMU run. AGENTS.md prefers shared policy in `.cljc`; the live system has no Clojure runtime and nothing here may
-download one, so the guards are stdlib Python next to the existing Python installer.
+Failure screens in the VM (they are in the widget-tree screenshots only), the power-off and reboot buttons actually powering the machine
+(the first press of the question is tested, the second only against the fake `systemctl`), typing a device path in the text installer
+inside the VM (the harness did not deliver it; the unit tests cover it), the BIOS/syslinux boot path, 1920x1080 in the VM (VGA was
+1280x720), real hardware, USB removal mid-install, and window behaviour on a GPU/KMS display (the VM used the VGA framebuffer). The old
+text installer's `sgdisk -v` wording ("No problems found") was confirmed by the real install above. AGENTS.md prefers shared policy in
+`.cljc`; the live system has no Clojure runtime and nothing here may download one, so the guards are stdlib Python next to the existing
+Python installer.
 
 ## KVM check (2026-11-19)
 
