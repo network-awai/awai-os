@@ -56,6 +56,7 @@ async function extractedRealKit() {
   assert.ok(existsSync(join(kit, "pc-ab-device/apply.sh")));
   assert.ok(existsSync(join(kit, "scripts/operator/virtio-dryrun/build-inside.sh")));
   assert.ok(existsSync(join(kit, "scripts/operator/virtio-dryrun/check-manifest-revisions.py")));
+  assert.ok(existsSync(join(kit, "setupwizard-patches/setupwizard-awai.patch")));
   return { base, kit, kitTar, kitSha };
 }
 
@@ -70,7 +71,14 @@ function stubPath(work, kitTar) {
       `#!/bin/sh\necho "${name} $*" >> "${calls}"\n${body}`, { mode: 0o755 });
   };
   mk("apt-get", "exit 0\n");
-  mk("git", "exit 0\n");
+  // fake git: reports the SetupWizard patch as NOT yet applied
+  // (reverse-check exits 1), so the script proceeds with git apply;
+  // every other git invocation succeeds.
+  mk("git", `case "$*" in
+  *SetupWizard*apply*--reverse*--check*) echo "error"; exit 1 ;;
+  *) exit 0 ;;
+esac
+`);
   const up = join(work, "upload");
   writeFileSync(join(dir, "rclone"),
     `#!/bin/sh
@@ -206,7 +214,7 @@ test("approved mode executes the same ordered command list end to end (real kit)
   writeFileSync(fncalls, "");
   const src = join(work, "src");
   // apply.sh's project directories (real apply.sh runs from the kit).
-  for (const d of ["device/virt/virtio-common", "device/virt/virt-common", "vendor/lineage"]) {
+  for (const d of ["device/virt/virtio-common", "device/virt/virt-common", "vendor/lineage", "packages/apps/SetupWizard"]) {
     mkdirSync(join(src, d), { recursive: true });
   }
   mkdirSync(join(src, "build"), { recursive: true });
@@ -244,10 +252,16 @@ m() { echo "m $*" >> "${fncalls}";
     "repo manifest -r",
     "git init -q",
     "git -C",
+    // SetupWizard patches: reverse-check (fake git must report it not
+    // yet applied, so this succeeds only if the script would apply).
+    "git -C <work>/src/packages/apps/SetupWizard apply --reverse --check <work>/kit/setupwizard-patches/setupwizard-awai.patch",
+    "git -C <work>/src/packages/apps/SetupWizard apply <work>/kit/setupwizard-patches/setupwizard-awai.patch",
   ];
   let pos = -1;
   for (const snippet of order) {
-    const i = fcalls.indexOf(snippet);
+    // expand path placeholders to this run's dirs
+    const expanded = snippet.replaceAll("<work>", work);
+    const i = fcalls.indexOf(expanded);
     assert.ok(i > pos, `${snippet} out of order or missing (pos ${pos}, found ${i})`);
     pos = i;
   }
@@ -275,7 +289,8 @@ m() { echo "m $*" >> "${fncalls}";
   assert.equal(otaLines.length, 2, fcalls);
   assert.match(otaLines[0], /-k .*testkey .*virtio-full-ota\.zip$/);
   assert.match(otaLines[1], /-i .*virtio-target-files-v1\.zip .*virtio-incremental-ota\.zip$/);
-  assert.match(r.stdout, /AWAI4089_PATCH_COUNT=/);
+  assert.match(r.stdout, /AWAI4089_PATCH_COUNT=19/);
+  assert.match(r.stdout, /setupwizard=1/);
   assert.match(r.stdout, /AWAI4089_RESTORE_VERIFY ok/);
   assert.match(r.stdout, /AWAI4089_DONE approved=1/);
 });

@@ -9,7 +9,7 @@
 # real. Anything else refuses.
 #
 # The kit (scripts/operator/virtio-dryrun/, android/desktop/manifest/
-# pinned-manifest.xml, pc-ab-device/) is built with
+# pinned-manifest.xml, pc-ab-device/, setupwizard-patches/) is built with
 # scripts/operator/virtio-dryrun/make-kit.sh <commit> (git archive)
 # and fetched here with KIT_URL/KIT_SHA256; its SHA is verified before
 # use, and its manifest is validated before anything else after the
@@ -181,11 +181,35 @@ run apply-shipping-debug-lockdown.sh "$SRC"
 run pc-firmware.py prepare "$SRC" "$FIRMWARE_GIT"
 run updater-feed.py configure-release "$SRC/packages/apps/Updater" "$AWAI_FEED_URL"
 stage patches
-# Record how many patch files the repo provided at run time (they are
-# time-bearing: patches merged to main later — e.g. AWAI-4092 Wi-Fi or
-# 4093 diagnostics — are included automatically via these paths).
+
+# SetupWizard patches (outside pc-ab-device/; they live in the repo at
+# scripts/operator/same-build/inputs/ and ship in the kit as
+# setupwizard-patches/). Apply all of them, in order, to the pinned
+# packages/apps/SetupWizard with the same reverse-check idempotence as
+# the repo's own apply paths: an already-applied patch is skipped.
+SW="$SRC/packages/apps/SetupWizard"
+SWPATCH_DIR="$KIT/setupwizard-patches"
+if [[ -d "$SWPATCH_DIR" ]]; then
+  for swpatch in "$SWPATCH_DIR"/*.patch; do
+    [[ -e "$swpatch" ]] || continue
+    if run git -C "$SW" apply --reverse --check "$swpatch"; then
+      echo "AWAI4089_SETUPWIZARD_SKIP $swpatch already applied"
+    else
+      run git -C "$SW" apply "$swpatch"
+    fi
+  done
+fi
+stage setupwizard
+
+# Record how many patch files the kit provided at run time, by source
+# (they are time-bearing: patches merged to main later — e.g.
+# AWAI-4092 Wi-Fi or 4093 diagnostics — are included automatically via
+# these paths; SetupWizard patches live outside pc-ab-device/ and are
+# counted separately). Not fixed values.
 PCNT=$(ls "$KIT"/pc-ab-device/patches/*.patch 2>/dev/null | wc -l | tr -d ' ' || true)
-printf 'AWAI4089_PATCH_COUNT=%s\n' "${PCNT:-0}"
+SWCNT=$(ls "$KIT"/setupwizard-patches/*.patch 2>/dev/null | wc -l | tr -d ' ' || true)
+PCNT=${PCNT:-0}; SWCNT=${SWCNT:-0}
+printf 'AWAI4089_PATCH_COUNT=%s (pc-ab-device=%s setupwizard=%s)\n' "$((PCNT + SWCNT))" "$PCNT" "$SWCNT"
 # No standalone `make olddefconfig`: the AOSP build already merges
 # the external defconfig (vendor/lineage@5a1814d..., KERNEL_DEFCONFIG_EXT
 # line 116 in build/tasks/kernel.mk) and runs olddefconfig itself

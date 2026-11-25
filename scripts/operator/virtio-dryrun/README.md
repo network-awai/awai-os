@@ -12,7 +12,10 @@ Dry-run by default; executes for real only when
   `repo sync -m default.xml --no-manifest-update`, `repo manifest -r`
   full 1264-revision comparison, the repo's own apply tools
   (`apply.sh`, `apply-shipping-debug-lockdown.sh`, `pc-firmware.py
-  prepare`, `updater-feed.py configure-release`), `breakfast
+  prepare`, `updater-feed.py configure-release`), the SetupWizard
+  patches from `setupwizard-patches/` (all, in order, with
+  reverse-check idempotence, to the pinned `packages/apps/SetupWizard`),
+  `breakfast
   lineage_virtio_x86_64 $RELEASE_TYPE`, v1 build + B2 upload,
   v2 rebuild, full + incremental OTA via `ota_from_target_files`,
   manifest.json/SHA256SUMS collection, B2 upload, and restore
@@ -56,11 +59,17 @@ for the userdebug-first proposal.
 
 Patches are applied through the repository's own apply paths
 (`pc-ab-device/apply.sh`, the lockdown script, `pc-firmware.py`),
-never a hardcoded list, so patches merged to main later (e.g.
-AWAI-4092 Wi-Fi or AWAI-4093 diagnostics) are included automatically.
-At run time `AWAI4089_PATCH_COUNT` records how many patch files were
-present, for comparison against the #504 record (20 = 17 applied /
-2 not applicable / 1 superseded).
+the SetupWizard patch files in `setupwizard-patches/` (from
+`scripts/operator/same-build/inputs/setupwizard-awai.patch`), and
+`updater-feed.py` — never a hardcoded list, so patches merged to
+main later (e.g. AWAI-4092 Wi-Fi or AWAI-4093 diagnostics) are
+included automatically. At run time `AWAI4089_PATCH_COUNT` records,
+by source, how many patch files the kit provided (total plus
+`pc-ab-device=` and `setupwizard=` separately — SetupWizard
+patches live outside `pc-ab-device/`), for comparison against the
+#504 record (20 = 17 applied / 2 not applicable / 1 superseded) and
+the run's patch state. Counts are always measured at run time,
+never written as fixed values.
 
 Kernel config regeneration is NOT a separate step in this Job. The
 AOSP build merges `TARGET_KERNEL_CONFIG_EXT` (`KERNEL_DEFCONFIG_EXT`,
