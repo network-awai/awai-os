@@ -56,6 +56,9 @@ async function extractedRealKit() {
   assert.ok(existsSync(join(kit, "pc-ab-device/apply.sh")));
   assert.ok(existsSync(join(kit, "scripts/operator/virtio-dryrun/build-inside.sh")));
   assert.ok(existsSync(join(kit, "scripts/operator/virtio-dryrun/check-manifest-revisions.py")));
+  assert.ok(existsSync(join(kit, "scripts/operator/same-build/inputs/setupwizard-awai.patch")));
+  assert.ok(existsSync(join(kit, "scripts/operator/same-build/inputs/res/layout/awai_welcome_activity.xml")));
+  assert.ok(existsSync(join(kit, "scripts/operator/same-build/inputs/setup-logo.png")));
   return { base, kit, kitTar, kitSha };
 }
 
@@ -183,6 +186,9 @@ test("dry-run prints the exact command list and executes nothing", async () => {
     "apply-shipping-debug-lockdown.sh",
     "pc-firmware.py prepare",
     "updater-feed.py configure-release",
+    "1d158e23847b5d9f9523ce6cfc51df2b0c54f6cd",
+    "setupwizard-awai.patch",
+    "awai_welcome_logo.png",
     "source build/envsetup.sh",
     "breakfast lineage_virtio_x86_64 userdebug",
     "m target-files-package otatools diskimage-vda",
@@ -242,6 +248,9 @@ m() { echo "m $*" >> "${fncalls}";
     "repo manifest -r",
     "git init -q",
     "git -C",
+    "SetupWizard checkout 1d158e23847b5d9f9523ce6cfc51df2b0c54f6cd",
+    "SetupWizard apply --check",
+    "SetupWizard apply",
   ];
   let pos = -1;
   for (const snippet of order) {
@@ -288,12 +297,21 @@ test("Job command from empty dir runs the extracted kit to restore (real kit)", 
     "pc-ab-device/updater-feed.py",
     "pc-ab-device/make-tf-disk.sh",
     "pc-ab-device/patches/virtio-common-awai-pc-gpu-sysfs.patch",
+    "scripts/operator/same-build/inputs/setupwizard-awai.patch",
+    "scripts/operator/same-build/inputs/res/layout/awai_welcome_activity.xml",
+    "scripts/operator/same-build/inputs/setup-logo.png",
   ]) {
     assert.ok(listing.stdout.includes(want), `kit missing ${want}`);
   }
   for (const banned of ["pc-ab-device/installer/", "pc-ab-device/evidence/", "pc-ab-device/kvm/"]) {
     assert.ok(!listing.stdout.includes(banned), `kit must not contain ${banned}`);
   }
+  // No double-apply: #510's stats patch was removed (same-line collision
+  // with the Awai Welcome patch), so the kit's only SetupWizard patch
+  // is setupwizard-awai.patch, and apply.sh carries no SetupWizard block.
+  const setupwizardEntries = listing.stdout.split("\n")
+    .filter((l) => l.includes("inputs/setupwizard-") || l.includes("setupwizard-stats"));
+  assert.deepEqual(setupwizardEntries, ["./scripts/operator/same-build/inputs/setupwizard-awai.patch"]);
   // Generate the approved Job; its command must fetch+verify+extract
   // the kit itself before running the extracted build-inside.sh.
   const work = mkdtempSync(join(tmpdir(), "g2jobwork-"));
@@ -352,8 +370,13 @@ m() { echo "m $*" >> "${fncalls}";
   const { readdirSync } = await import("node:fs");
   const patchFiles = readdirSync(join(env.KIT, "pc-ab-device", "patches"))
     .filter((n) => n.endsWith(".patch"));
-  assert.equal(Number(pcMatch[1]), patchFiles.length);
+  // count = pc-ab-device patches + the single SetupWizard patch
+  assert.equal(Number(pcMatch[1]), patchFiles.length + 1);
   assert.ok(patchFiles.includes("virtio-common-awai-pc-gpu-sysfs.patch"));
+  assert.ok(existsSync(join(env.KIT, "scripts/operator/same-build/inputs/setupwizard-awai.patch")));
+  assert.ok(existsSync(join(env.KIT, "scripts/operator/same-build/inputs/setup-logo.png")));
+  const applySh = readFileSync(join(env.KIT, "pc-ab-device", "apply.sh"), "utf8");
+  assert.ok(!applySh.includes("packages/apps/SetupWizard"), "apply.sh must not carry a SetupWizard block");
   const fb = readFileSync(fncalls, "utf8");
   assert.match(fb, /breakfast lineage_virtio_x86_64 userdebug/);
   assert.match(fb, /m target-files-package otatools diskimage-vda/);
@@ -366,6 +389,8 @@ m() { echo "m $*" >> "${fncalls}";
     "repo sync -m default.xml --no-manifest-update",
     "repo manifest -r",
     "timeout 20m git -C",
+    "SetupWizard checkout 1d158e23847b5d9f9523ce6cfc51df2b0c54f6cd",
+    "SetupWizard apply",
     "rclone copy",
     "ota_from_target_files",
     "rclone copy",
@@ -478,6 +503,47 @@ test("check-manifest-revisions: path or name key; notdefault excluded; mismatch 
   r = await run("python3", [comparePy, a, b]);
   assert.equal(r.code, 1);
   assert.match(r.stderr, /AWAI4089_MANIFEST_MISMATCH p1/);
+});
+
+test("SetupWizard patches applied in order, exactly once (single awai patch)", async () => {
+  const kitInfo = await extractedRealKit();
+  // The kit inventories exactly one SetupWizard patch (the Awai Welcome
+  // patch from same-build inputs); #510's stats patch was removed because
+  // it collides on the same lines, so double-apply cannot happen.
+  const { readdirSync } = await import("node:fs");
+  const wiz = readdirSync(join(kitInfo.kit, "scripts/operator/same-build/inputs"))
+    .filter((n) => n.endsWith(".patch"));
+  assert.deepEqual(wiz, ["setupwizard-awai.patch"]);
+  const work = mkdtempSync(join(tmpdir(), "g2wiz-"));
+  const fncalls = join(work, "fncalls.log");
+  writeFileSync(fncalls, "");
+  const src = join(work, "src");
+  mkdirSync(join(src, "build"), { recursive: true });
+  writeFileSync(join(src, "build", "envsetup.sh"),
+    `breakfast() { echo "breakfast $*" >> "${fncalls}"; }
+m() { echo "m $*" >> "${fncalls}";
+  mkdir -p "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates"
+  echo tf > "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates/lineage_virtio_x86_64-target_files.zip"
+  echo stock > "$SRC/out/target/product/virtio_x86_64/disk-vda.img"
+}
+`);
+  const stub = stubPath(work, kitInfo.kitTar);
+  const env = envFor(stub, work, {
+    SRC: src, KIT: kitInfo.kit, KIT_SHA256: kitInfo.kitSha,
+    BILLING_ALLOWED: "1", OWNER_APPROVED: "1",
+  });
+  const r = await run("bash", [join(kitInfo.kit, "scripts/operator/virtio-dryrun/build-inside.sh")], env, 120000);
+  assert.equal(r.code, 0, r.stderr);
+  // every SetupWizard git invocation, in argv order, before breakfast/m
+  const gitLines = stub.calls().split("\n").filter((l) => l.includes("SetupWizard"));
+  assert.deepEqual(gitLines, [
+    `git -C ${join(src, "packages/apps/SetupWizard")} checkout 1d158e23847b5d9f9523ce6cfc51df2b0c54f6cd`,
+    `git -C ${join(src, "packages/apps/SetupWizard")} apply --check ${join(kitInfo.kit, "scripts/operator/same-build/inputs/setupwizard-awai.patch")}`,
+    `git -C ${join(src, "packages/apps/SetupWizard")} apply ${join(kitInfo.kit, "scripts/operator/same-build/inputs/setupwizard-awai.patch")}`,
+  ]);
+  const fb = readFileSync(fncalls, "utf8");
+  assert.match(fb, /breakfast lineage_virtio_x86_64 userdebug/);
+  assert.match(r.stdout, /AWAI4089_PATCH_COUNT=(\d+)/);
 });
 
 test("job definition prints Job JSON (toolchain-first; kit fetch inside Job command)", async () => {

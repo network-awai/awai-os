@@ -48,21 +48,30 @@ Contents: `scripts/operator/virtio-dryrun/`,
 `android/desktop/manifest/pinned-manifest.xml`, `pc-ab-device/patches/`
 (all repo patches) and the five apply tools (`apply.sh`,
 `apply-shipping-debug-lockdown.sh`, `pc-firmware.py`, `updater-feed.py`,
-`make-tf-disk.sh`) — evidence/installer subdirectories are excluded.
-The Job command fetches the kit, verifies its SHA-256, extracts it,
-and runs the extracted kit's `build-inside.sh` (see `virtio-job.sh`;
-the script's own fetch is a fallback for direct invocation). The kit
-SHA and the pinned manifest SHA are both verified before use.
-`RELEASE_TYPE` is one of `user`/`userdebug` and has no default — see
-`release-type.md` for the userdebug-first proposal.
+`make-tf-disk.sh`), plus `scripts/operator/same-build/inputs/`
+(`setupwizard-awai.patch`, `res/`, `setup-logo.png`) — evidence/
+installer subdirectories are excluded. The Job command fetches the kit,
+verifies its SHA-256, extracts it, and runs the extracted kit's
+`build-inside.sh` (see `virtio-job.sh`; the script's own fetch is a
+fallback for direct invocation). The kit SHA and the pinned manifest
+SHA are both verified before use. `RELEASE_TYPE` is one of
+`user`/`userdebug` and has no default — see `release-type.md` for the
+userdebug-first proposal.
 
 Patches are applied through the repository's own apply paths
 (`pc-ab-device/apply.sh`, the lockdown script, `pc-firmware.py`),
 never a hardcoded list, so patches merged to main later (e.g.
 AWAI-4092 Wi-Fi or AWAI-4093 diagnostics) are included automatically.
-At run time `AWAI4089_PATCH_COUNT` records how many `.patch` files the
-kit carries (no frozen head). When #510/#511 land, regenerate the kit
-from the new head and re-run the same approved test.
+At run time `AWAI4089_PATCH_COUNT` records the total: all of
+`pc-ab-device/patches/*.patch` plus the single SetupWizard patch
+(which ships outside `pc-ab-device/`). The SetupWizard patch
+(`setupwizard-awai.patch` at the pinned `packages/apps/SetupWizard`
+`1d158e23` tree) and its `res/`/`setup-logo.png` are applied before
+`breakfast`/`m`; only one SetupWizard patch ships, so it applies
+exactly once (the removed #510 stats patch would collide on the same
+lines and cannot double-apply). No head is frozen: when #510/#511
+land, regenerate the kit from the new head and re-run the same
+approved test.
 
 Kernel config regeneration is NOT a separate step in this Job. The
 AOSP build merges `TARGET_KERNEL_CONFIG_EXT` (`KERNEL_DEFCONFIG_EXT`,

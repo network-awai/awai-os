@@ -184,11 +184,24 @@ run apply.sh "$SRC"
 run apply-shipping-debug-lockdown.sh "$SRC"
 run pc-firmware.py prepare "$SRC" "$FIRMWARE_GIT"
 run updater-feed.py configure-release "$SRC/packages/apps/Updater" "$AWAI_FEED_URL"
+
+# SetupWizard (Awai Welcome): pinned checkout + patch + resources/logo,
+# same inputs as same-build (scripts/operator/same-build/inputs).
+# Pinned to the manifest rev (verified: setupwizard-awai.patch applies
+# with rc=0 there); ordered before breakfast/m so Welcome ships.
+run git -C "$SRC/packages/apps/SetupWizard" checkout 1d158e23847b5d9f9523ce6cfc51df2b0c54f6cd
+run git -C "$SRC/packages/apps/SetupWizard" apply --check "$KIT/scripts/operator/same-build/inputs/setupwizard-awai.patch"
+run git -C "$SRC/packages/apps/SetupWizard" apply "$KIT/scripts/operator/same-build/inputs/setupwizard-awai.patch"
+run mkdir -p "$SRC/packages/apps/SetupWizard/app/src/main/res/drawable-nodpi"
+run cp -r "$KIT/scripts/operator/same-build/inputs/res/." "$SRC/packages/apps/SetupWizard/app/src/main/res/"
+run cp "$KIT/scripts/operator/same-build/inputs/setup-logo.png" "$SRC/packages/apps/SetupWizard/app/src/main/res/drawable-nodpi/awai_welcome_logo.png"
 stage patches
-# Record how many patch files the repo provided at run time (they are
-# time-bearing: patches merged to main later — e.g. AWAI-4092 Wi-Fi or
-# 4093 diagnostics — are included automatically via these paths).
-PCNT=$(ls "$KIT"/pc-ab-device/patches/*.patch 2>/dev/null | wc -l | tr -d ' ' || true)
+# Record how many patch files the kit provides at run time: ALL of
+# pc-ab-device/patches/*.patch plus the SetupWizard patch, which ships
+# outside pc-ab-device (same-build inputs). They are time-bearing:
+# patches merged to main later — e.g. AWAI-4092 Wi-Fi or
+# 4093 diagnostics — are included automatically via these paths.
+PCNT=$(ls "$KIT"/pc-ab-device/patches/*.patch "$KIT"/scripts/operator/same-build/inputs/setupwizard-awai.patch 2>/dev/null | wc -l | tr -d ' ' || true)
 printf 'AWAI4089_PATCH_COUNT=%s\n' "${PCNT:-0}"
 # No standalone `make olddefconfig`: the AOSP build already merges
 # the external defconfig (vendor/lineage@5a1814d..., KERNEL_DEFCONFIG_EXT

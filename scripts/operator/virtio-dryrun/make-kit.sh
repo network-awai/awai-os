@@ -14,11 +14,15 @@
 #   pc-ab-device/pc-firmware.py
 #   pc-ab-device/updater-feed.py
 #   pc-ab-device/make-tf-disk.sh
+#   scripts/operator/same-build/inputs/setupwizard-awai.patch
+#   scripts/operator/same-build/inputs/res/          (Awai Welcome res)
+#   scripts/operator/same-build/inputs/setup-logo.png
 # Bundle is limited to Job needs: evidence/installer subdirectories
 # and non-Job sources do not enter the kit; patch-file count is taken at
-# run time from pc-ab-device/patches/*.patch (no frozen head). The
-# five tools stay the repo's own apply paths; #510/#511 update them
-# and add patches, so no new tool list is needed when they land.
+# run time from pc-ab-device/patches/*.patch plus the SetupWizard patch
+# (no frozen head). The five tools stay the repo's own apply paths;
+# #510/#511 update them and add patches, so no new tool list is needed
+# when they land.
 # Prints the tar's SHA-256 (the value the Job compares with KIT_SHA256).
 set -euo pipefail
 umask 077
@@ -37,7 +41,10 @@ git -C "$repo" archive "$commit" -- \
   android/desktop/pc-ab-device/apply-shipping-debug-lockdown.sh \
   android/desktop/pc-ab-device/pc-firmware.py \
   android/desktop/pc-ab-device/updater-feed.py \
-  android/desktop/pc-ab-device/make-tf-disk.sh | tar -x -C "$stage"
+  android/desktop/pc-ab-device/make-tf-disk.sh \
+  scripts/operator/same-build/inputs/setupwizard-awai.patch \
+  scripts/operator/same-build/inputs/res \
+  scripts/operator/same-build/inputs/setup-logo.png | tar -x -C "$stage"
 mv "$stage/android/desktop/pc-ab-device" "$stage/pc-ab-device"
 rmdir "$stage/android/desktop" 2>/dev/null || true
 # Plain `tar -x` under umask 077 drops the executable bits git archive
