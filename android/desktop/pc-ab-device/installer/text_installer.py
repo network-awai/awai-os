@@ -105,7 +105,7 @@ def main(argv=None, host=None, read=input):
             last[0] = line
 
     try:
-        st = core.run_install(host, a.work_dir, a.media_dir, {"device": name, "typed": name, "identity": ident}, on_update=show)
+        st = core.run_install(host, a.work_dir, a.media_dir, {"device": name, "confirmed": True, "identity": ident}, on_update=show)
     except core.Busy:
         return follow(a.work_dir)
     except core.Blocked:

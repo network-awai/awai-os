@@ -39,6 +39,7 @@ class Drive:
         from gi.repository import Gtk
         self.Gtk = Gtk
         self.ui = gui.InstallerUI(self.c, width, height)
+        self.ui.grace = 0.0  # tests do not wait; test_keyboard sets it back to prove the guard
         self.win = Gtk.OffscreenWindow()
         self.win.set_default_size(width, height)
         self.win.add(self.ui.root)
@@ -47,6 +48,7 @@ class Drive:
         self.spin()
         gui.ensure_toplevel_focus(self.win)  # the same helper the real window uses
         self.ui.reset_focus()
+        self.spin()
 
     def spin(self, n=25, settle=0.12):
         """Run the main loop long enough for the frame clock to redraw (a stale offscreen pixbuf otherwise)."""
@@ -72,8 +74,6 @@ class Drive:
                 return child.get_text()
             texts = [l.get_text() for l in self.labels(f)]
             return " | ".join(texts)
-        if isinstance(f, self.Gtk.Entry):
-            return "typed"
         if isinstance(f, self.Gtk.Label):
             return f.get_text()
         return type(f).__name__
@@ -98,6 +98,10 @@ class Drive:
             self.ui.on_tab(False)
         elif name == "Shift+Tab":
             self.ui.on_tab(True)
+        elif name == "Escape":
+            self.ui.on_escape()
+        elif name in ("Up", "Down", "Left", "Right"):
+            self.ui.on_arrow(name)
         elif name in ("Enter", "Space"):
             f = self.focus()
             if isinstance(f, self.Gtk.Button) and f.get_sensitive():
@@ -106,10 +110,11 @@ class Drive:
             raise ValueError(name)
         self.spin()
 
-    def type(self, text):
-        f = self.focus()
-        assert isinstance(f, self.Gtk.Entry), f
-        f.set_text(f.get_text() + text)
+    def click(self, label):
+        """A mouse click / tap on the named button: the real `clicked` path, whole card or button."""
+        b = self.button(label)
+        assert b.get_sensitive(), label
+        b.clicked()
         self.spin()
 
     def poll(self):
@@ -121,6 +126,17 @@ class Drive:
             if self.button_text(b) == label:
                 return b
         raise KeyError(label)
+
+    def all_widgets(self):
+        out = []
+
+        def walk(w):
+            out.append(w)
+            if isinstance(w, self.Gtk.Container):
+                for c in w.get_children():
+                    walk(c)
+        walk(self.ui.root)
+        return out
 
     def buttons(self):
         out = []

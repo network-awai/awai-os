@@ -1,6 +1,6 @@
 """Front-end-neutral controller of the screen installer (no GTK, no sockets). It owns what the old backend owned:
 
-  list / confirm (core.confirm_target) -> one-shot ticket -> typed device name -> exactly one detached worker start,
+  list / confirm (core.confirm_target) -> one-shot ticket -> one explicit in-window confirmation -> exactly one detached worker start,
   the true install state (core.status), and the power-off question. The GTK front end only renders `view()` and forwards
   events; every refusal still comes from core.py, so nothing here can write a disk.
 """
@@ -29,6 +29,17 @@ def disk_title(d):
     return name or d["name"]
 
 
+def serial_tail(d):
+    serial = (d.get("serial") or "").strip()
+    return serial[-4:] if serial else ""
+
+
+def identify(d):
+    """Model and the last 4 of the serial: what tells two empty SSDs of the same size apart."""
+    tail = serial_tail(d)
+    return " ".join(x for x in ((d.get("model") or "").strip(), T["serialTail"].format(tail=tail) if tail else "") if x)
+
+
 class Controller:
     def __init__(self, host, work, media, worker_cmd=None):
         self.host, self.work, self.media = host, work, media
@@ -40,6 +51,7 @@ class Controller:
         self.ticket = None
         self.message = ""
         self.armed = False
+        self.confirming = False
         self.screen = "pick"
         core.ensure_work(work)
 
@@ -76,7 +88,10 @@ class Controller:
         eligible = [d for d in self.disks if d["eligible"]]
         if self.selected and not any(d["name"] == self.selected for d in eligible):
             self.selected = None
+        if self.selected is None and len(eligible) == 1:
+            self.selected = eligible[0]["name"]  # exactly one empty SSD: nothing to choose, so it is already chosen
         self.ticket = None
+        self.confirming = False
         self.screen = "pick" if eligible else "none"
 
     # -- the one-shot confirmation chain ---------------------------------------------------------------------------------
@@ -85,7 +100,7 @@ class Controller:
             return
         if not any(d["name"] == name and d["eligible"] for d in self.disks):
             return
-        self.selected = None if self.selected == name else name
+        self.selected = name  # choosing never un-chooses: Enter / a second click on the chosen SSD goes on instead
         self.message = ""
 
     def review(self):
@@ -102,7 +117,8 @@ class Controller:
                 ident = core.confirm_target(self.host, self.media, name)
             except core.Refusal as e:
                 return self._refuse(e.code)
-            self.ticket = {"id": secrets.token_urlsafe(16), "device": name, "identity": ident}
+            self.ticket = {"id": secrets.token_urlsafe(16), "device": name, "identity": ident, "asked": False}
+            self.confirming = False
             self.message = ""
             self.screen = "review"
             return True
@@ -113,20 +129,38 @@ class Controller:
 
     def back(self):
         self.ticket = None
+        self.confirming = False
         self.message = ""
         self.screen = "pick"
 
-    def typed_ok(self, typed):
-        return bool(self.ticket) and typed == self.ticket["device"]
+    def ask(self):
+        """この SSD にインストール: open the one confirmation. It starts nothing; only start(confirmed=True) after it does."""
+        with self.mutex:
+            if self.screen != "review" or not self.ticket:
+                return False
+            if self.busy():
+                return self._refuse("busy")
+            self.ticket["asked"] = True
+            self.confirming = True
+            self.message = ""
+            return True
 
-    def start(self, typed):
-        """この SSD にインストール: consumes the ticket whatever happens, checks the typed name, starts exactly one worker."""
+    def cancel(self):
+        """やめる / Esc: close the confirmation. The ticket stays, so the review screen is still valid (identity is checked again at start)."""
+        self.confirming = False
+        if self.ticket:
+            self.ticket["asked"] = False
+
+    def start(self, confirmed=False):
+        """インストールする: consumes the ticket whatever happens, needs the confirmation that ask() opened and an explicit
+        confirmed=True, starts exactly one worker. The request the worker gets carries confirmed=True; core.py refuses without it."""
         with self.mutex:
             ticket, self.ticket = self.ticket, None
+            self.confirming = False
             if not ticket:
                 return self._fail_to_pick("no-ticket")
-            if typed != ticket["device"]:
-                return self._fail_to_pick("typed-name")
+            if confirmed is not True or not ticket.get("asked"):
+                return self._fail_to_pick("not-confirmed")
             if self.busy():
                 return self._fail_to_pick("busy")
             if core.write_started(self.work):
@@ -138,7 +172,7 @@ class Controller:
                 pass
             fd = os.open(os.path.join(self.work, "request.json"), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
             with os.fdopen(fd, "w") as f:
-                json.dump({"device": ticket["device"], "typed": typed, "identity": ticket["identity"]}, f)
+                json.dump({"device": ticket["device"], "confirmed": True, "identity": ticket["identity"]}, f)
             self.proc = subprocess.Popen(self.worker_cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                                          stderr=subprocess.DEVNULL, start_new_session=True, close_fds=True)
             self.screen = "progress"
@@ -185,15 +219,16 @@ class Controller:
     # -- what a renderer needs -----------------------------------------------------------------------------------------------
     def cards(self):
         out = []
+        many = sum(1 for d in self.disks if d["eligible"]) > 1  # several empty SSDs: the card must tell them apart
         for d in self.disks:
-            nvme = d["name"].startswith("nvme")
             shown = ["boot-medium"] if "boot-medium" in d["problems"] else d["problems"]
-            reasons = "、".join(T["reasons"].get(p, T["reasons"]["inspect-failed"]) for p in shown)
-            sub = " · ".join(x for x in (gib(d["size"]), "NVMe" if nvme else "", T["free"] if d["eligible"] else reasons) if x)
+            reasons = "、".join(dict.fromkeys(T["reasons"].get(p, T["reasons"]["inspect-failed"]) for p in shown))  # one line per distinct reason
+            who = identify(d) if many and d["eligible"] else ""
+            sub = f" {T['dot']} ".join(x for x in (gib(d["size"]), T["free"] if d["eligible"] else reasons, who) if x)
             sel = self.selected == d["name"]
             out.append({"name": d["name"], "title": disk_title(d), "sub": sub, "eligible": d["eligible"], "selected": sel,
                         "tag": T["offTag"] if not d["eligible"] else (T["selTag"] if sel else T["okTag"]), "path": "/dev/" + d["name"],
-                        "model": d.get("model", ""), "size": d["size"]})
+                        "model": d.get("model", ""), "size": d["size"], "who": identify(d)})
         return out
 
     def disk(self, name):
@@ -205,4 +240,4 @@ class Controller:
     def view(self):
         st = self.state()
         return {"screen": self.screen, "cards": self.cards(), "selected": self.selected, "message": self.message, "armed": self.armed,
-                "state": st, "rail": self.rail_index(), "device": self.ticket["device"] if self.ticket else st.get("device")}
+                "state": st, "confirming": self.confirming, "rail": self.rail_index(), "device": self.ticket["device"] if self.ticket else st.get("device")}

@@ -89,9 +89,9 @@ class World:
         self.world["disks"][name].update(fields)
         self.save()
 
-    def request(self, device="nvme0n1", typed=None):
+    def request(self, device="nvme0n1", confirmed=True):
         ident = core.confirm_target(self.host, str(self.media), device)
-        return {"device": device, "typed": typed if typed is not None else device, "identity": ident}
+        return {"device": device, "confirmed": confirmed, "identity": ident}
 
     def run(self, request, **kw):
         return core.run_install(self.host, str(self.work), str(self.media), request, **kw)

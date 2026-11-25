@@ -21,18 +21,20 @@ import text_installer  # noqa: E402
 PC_AB = INSTALLER.parent
 FONT = INSTALLER / "fonts" / "NotoSansJP-Regular.ttf"
 CLIENT_FONT = INSTALLER.parent.parent.parent / "client" / "assets" / "setup-noto-jp.woff2"
-# copy that must read exactly as in the approved design (installer.png)
-DESIGN_COPY = ["PC に", "インストール", "Awai OS Meiji", "現在", "済み", "Tab で項目を移動", "Enter で選択",
-               "インストール先を選ぶ", "Awai OS を入れる空の内蔵 SSD を選んでください。", "内蔵 SSD", "空きディスク",
-               "選択可能", "選択済み", "選択不可", "電源を切る", "内容を確認", "デバイスの詳細", "インストール内容を確認",
-               "書き込み先と内容を確認してください。", "書き込み先", "Awai OS とユーザーデータ用の区画を作成", "戻る",
-               "この SSD にインストール", "インストールしています", "電源を入れたまま、USB を接続してお待ちください。",
-               "導入先", "イメージの確認", "SSD への書き込み", "書き込んだ内容の読み戻し", "完了", "進行中", "待機中",
-               "インストールが完了しました", "SSD に書き込んだ内容の読み戻しが完了しました。", "確認済み", "区画を確認",
-               "再起動して Awai OS をはじめる", "起動画面に戻ったら USB を抜き、内蔵 SSD を選んでください。", "再起動",
-               "インストール先が見つかりません", "既存のデータを保護するため、一覧で理由を確認できます。", "既存の区画あり",
-               "この PC を起動した USB", "空の内蔵 SSD を接続し、一覧を更新してください。",
-               "ここからディスクの消去は実行できません。", "一覧を更新"]
+# copy that must read exactly as in the approved design (design/installer-rev2.png, the revised Figma board)
+DESIGN_COPY = ["PC に", "インストール", "Awai OS Meiji", "SSD を選ぶ", "内容を確認", "完了", "どの SSD に入れますか？",
+               "空の SSD が見つかりました。ほかのディスクには触れません。", "入れる SSD を1つ選んでください。", "内蔵 SSD", "空です",
+               "✓ 選択中", "選べます", "使えません", "電源を切る", "この内容で入れます", "よければ「この SSD にインストール」を押してください。",
+               "入れる先", "入れるもの", "Awai OS Meiji と、あなたのデータ用の場所を作ります。", "この USB には何も書き込みません。", "戻る",
+               "この SSD にインストール", "この SSD に Awai OS を入れます。", "よろしいですか？", "途中で電源を切らないでください。",
+               "やめる", "インストールする", "インストールしています", "電源を入れたまま、USB を挿したままお待ちください。", "入れています",
+               "この間は操作できません。画面はこのままにしてください。", "イメージの確認", "SSD への書き込み", "書き込んだ内容の確かめ",
+               "インストールが完了しました", "書き込んだ内容の確かめも終わりました。", "✓ 確認済み", "区画を確認",
+               "USB を抜いて、再起動してください", "再起動すると Awai OS が始まります。", "再起動", "入れられる SSD がありません",
+               "データを守るため、空の SSD にだけ入れられます。", "この PC を起動した USB", "すでに使われています",
+               "空の SSD をつないで「もう一度さがす」を押してください", "この画面からディスクの中身は消せません。", "もう一度さがす",
+               "インストールできませんでした", "SSD への書き込みは始まっていません。SSD は変わっていません。", "最初に戻る",
+               "サポート用の番号：", "Enter：", "↑↓：選ぶ", "マウスも使えます", "Esc：", "←→：選ぶ　　Enter：決定　　Esc：やめる"]
 
 
 class GuiText(unittest.TestCase):
@@ -268,6 +270,34 @@ class Launcher(unittest.TestCase):
     def test_no_window_manager_is_started(self):
         for f in ("start.sh", "xsession.sh"):
             self.assertNotRegex((INSTALLER / f).read_text(), r"xfwm|openbox|metacity|mutter|twm|kwin")
+
+    def test_the_pointer_is_visible_and_the_monitors_are_set_up_and_logged(self):
+        start = (INSTALLER / "start.sh").read_text()
+        self.assertNotIn("-nocursor", start, "the pointer must be visible: the mouse works")
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(__import__("shutil").rmtree, tmp, True)
+        bin_dir, work = tmp / "bin", tmp / "work"
+        bin_dir.mkdir()
+        work.mkdir()
+        for t in ("xset", "xsetroot", "py"):
+            (bin_dir / t).write_text(f'#!/bin/sh\necho "$@" >> "{tmp}/{t}.log"\n')
+            (bin_dir / t).chmod(0o755)
+        (bin_dir / "xrandr").write_text(f'#!/bin/sh\necho "xrandr $@" >> "{tmp}/xrandr.calls"\n'
+                                        'case "$*" in "--query") echo "Screen 0: minimum 8 x 8, current 1920 x 1080"; echo "eDP-1 connected 1920x1080+0+0"; echo "HDMI-1 connected 1366x768+0+0";; esac\n')
+        (bin_dir / "xrandr").chmod(0o755)
+        for t in ("awk",):
+            (bin_dir / t).symlink_to(__import__("shutil").which(t))
+        subprocess.run(["/bin/bash", str(INSTALLER / "xsession.sh"), str(work), "/run/media"], env={"PATH": str(bin_dir) + ":/usr/bin:/bin", "AWAI_PYTHON": str(bin_dir / "py")}, check=True)
+        calls = (tmp / "xrandr.calls").read_text()
+        self.assertIn("xrandr --auto", calls, "every connected monitor at its preferred mode")
+        self.assertIn("--output eDP-1 --primary --auto", calls, "one primary: the first connected output")
+        log = (work / "xrandr.txt").read_text()
+        self.assertIn("eDP-1 connected 1920x1080", log, "xrandr --query is logged for diagnosis")
+        self.assertIn("xrandr --query (before)", log)
+        self.assertIn("xrandr --query (after)", log)
+        self.assertIn("-cursor_name left_ptr", (tmp / "xsetroot.log").read_text())
+        order = [l for l in (tmp / "xrandr.calls").read_text().splitlines()]
+        self.assertLess(order.index("xrandr --auto"), len(order), "set up before the window starts")
 
     def test_session_runs_the_gtk_window_with_blanking_off(self):
         tmp = Path(tempfile.mkdtemp())

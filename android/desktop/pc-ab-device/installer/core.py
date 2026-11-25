@@ -7,7 +7,7 @@ Nothing in the front ends decides whether a disk may be written. They call `disk
   core.py worker --work-dir DIR --media-dir DIR     run the install described by DIR/request.json (detached by server.py)
 
 `run_install` order (each step may only add refusals, none may be skipped):
-  typed name -> target checks + identity == confirmed -> archive.sha256 -> raw image sha256 == pinned value
+  explicit confirmation -> target checks + identity == confirmed -> archive.sha256 -> raw image sha256 == pinned value
   -> plan (existing == [], expected new partition count) -> target checks + identity again, immediately
   before writing -> `awai-pc-install.py apply --record` -> record checks -> `sgdisk -v` -> sync.
 """
@@ -50,7 +50,7 @@ MESSAGES = {
     "boot-medium": ("この PC を起動した USB のため選べません。", "This is the boot medium."),
     "boot-unknown": ("起動した USB を特定できないため選べません。", "The boot medium could not be identified."),
     "inspect-failed": ("ディスクの情報を取得できないため選べません。", "The disk could not be inspected."),
-    "typed-name": ("入力したデバイス名が一致しません。", "The typed device name does not match the target."),
+    "not-confirmed": ("インストールの確認が完了していません。もう一度やり直してください。", "The install was not explicitly confirmed."),
     "no-ticket": ("確認の手順が完了していません。もう一度やり直してください。", "The target was not confirmed."),
     "identity-changed": ("確認した後に SSD の情報が変わったため、書き込まずに中止しました。", "The target identity changed after it was confirmed."),
     "record-exists": ("このセッションではすでに書き込みが行われています。再起動してからやり直してください。", "An install record exists. Reboot before another installation."),
@@ -436,7 +436,7 @@ class Reporter:
 # --------------------------------------------------------------------------- the install
 
 def run_install(host, work, media, request, on_update=None, installer_py=None):
-    """request = {"device": "nvme0n1", "typed": "nvme0n1", "identity": {...}}. Returns the final state.
+    """request = {"device": "nvme0n1", "confirmed": True, "identity": {...}}. Returns the final state.
     Raises Busy / Blocked without touching state when it must not start at all."""
     ensure_work(work)
     lock_fd = os.open(_path(work, "lock"), os.O_RDWR | os.O_CREAT, 0o600)
@@ -471,8 +471,8 @@ _APPLY_MESSAGES = (("written data differs on readback", "readback"), ("data chan
 
 def _install(host, work, media, request, rep, installer_py):
     name = request.get("device") or ""
-    if request.get("typed") != name:
-        raise Refusal("typed-name")
+    if request.get("confirmed") is not True:
+        raise Refusal("not-confirmed")
     confirmed = request.get("identity")
     if not isinstance(confirmed, dict):
         raise Refusal("no-ticket")
