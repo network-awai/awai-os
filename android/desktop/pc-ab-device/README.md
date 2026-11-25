@@ -65,12 +65,11 @@ from the Store) and make Awai Home the home screen on a fresh `/data`.
 `awai-apps/verify-apks.sh` compares `apksigner verify --print-certs` with those values. A
 missing APK, an unset expected value, a missing tool, an unsigned APK or a mismatch prints
 `AWAI_APPS_FAIL: …` and the product config stops (`$(error)`). `AWAI_ALLOW_UNVERIFIED_APKS=1`
-skips the comparison for development builds only and is refused when
-`TARGET_BUILD_VARIANT=user`. `AWAI_WITHOUT_APPS=1` is the explicit escape for an evaluation
-build of other device-tree changes: it installs neither app and prints
-`AWAI_WITHOUT_APPS: Home/Store are NOT preinstalled`; it is refused when
-`TARGET_BUILD_VARIANT=user` or `LINEAGE_BUILDTYPE=RELEASE`. The default stays fail-closed. The
-shipping signing key is not decided, so no expected value is committed.
+skips the comparison for development builds. `AWAI_WITHOUT_APPS=1` installs neither app in
+an evaluation build and prints `AWAI_WITHOUT_APPS: Home/Store are NOT preinstalled`. Both
+flags are refused when `TARGET_BUILD_VARIANT=user` or `LINEAGE_BUILDTYPE=RELEASE`. The
+default stays fail-closed. The shipping signing key is not decided, so no expected value
+is committed.
 
 **Default home.** No `config_defaultRoleHolders` or default-home string exists in
 `framework-res` at the pins, and `roles.xml` gives `android.app.role.HOME` no `defaultHolders`,

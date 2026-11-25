@@ -31,7 +31,7 @@ index 0000000..476c0e7
 +include $(BUILD_PREBUILT)
 diff --git a/awai-apps/product.mk b/awai-apps/product.mk
 new file mode 100644
-index 0000000..34c28bd
+index 0000000..32960ba
 --- /dev/null
 +++ b/awai-apps/product.mk
 @@ -0,0 +1,49 @@
@@ -45,7 +45,7 @@ index 0000000..34c28bd
 +# (lowercase hex, as printed by `apksigner verify --print-certs`), with
 +#   AWAI_APKSIGNER=<path to a host apksigner>
 +# AWAI_ALLOW_UNVERIFIED_APKS=1 skips the comparison for development builds only and is
-+# refused on user builds. The shipping signing key is not decided yet, so no value is
++# refused on release builds. The shipping signing key is not decided yet, so no value is
 +# baked in: an unset expected signer fails the build (see awai-apps/verify-apks.sh).
 +#
 +# AWAI_WITHOUT_APPS=1 is the explicit escape for a build that only evaluates other
@@ -68,8 +68,8 @@ index 0000000..34c28bd
 +else
 +    AWAI_APPS_ARGS := $(AWAI_APPS_PATH) "$(AWAI_APKSIGNER)" "$(AWAI_HOME_EXPECTED_SIGNER_SHA256)" "$(AWAI_STORE_EXPECTED_SIGNER_SHA256)"
 +    ifeq ($(strip $(AWAI_ALLOW_UNVERIFIED_APKS)),1)
-+        ifeq ($(TARGET_BUILD_VARIANT),user)
-+            $(error AWAI-4094: AWAI_ALLOW_UNVERIFIED_APKS=1 is refused for user builds; set AWAI_HOME_EXPECTED_SIGNER_SHA256 and AWAI_STORE_EXPECTED_SIGNER_SHA256 instead)
++        ifneq ($(filter user,$(TARGET_BUILD_VARIANT))$(filter RELEASE,$(LINEAGE_BUILDTYPE)),)
++            $(error AWAI-4094: AWAI_ALLOW_UNVERIFIED_APKS=1 is refused on release builds (TARGET_BUILD_VARIANT=$(TARGET_BUILD_VARIANT), LINEAGE_BUILDTYPE=$(LINEAGE_BUILDTYPE)); set AWAI_HOME_EXPECTED_SIGNER_SHA256 and AWAI_STORE_EXPECTED_SIGNER_SHA256 instead)
 +        endif
 +        $(warning AWAI-4094: AWAI_ALLOW_UNVERIFIED_APKS=1: unverified APKs go into the image; development builds only)
 +        AWAI_APPS_ARGS += --allow-unverified
@@ -86,7 +86,7 @@ index 0000000..34c28bd
 +endif
 diff --git a/awai-apps/verify-apks.sh b/awai-apps/verify-apks.sh
 new file mode 100755
-index 0000000..bee37ba
+index 0000000..9dd8946
 --- /dev/null
 +++ b/awai-apps/verify-apks.sh
 @@ -0,0 +1,46 @@
@@ -99,7 +99,7 @@ index 0000000..bee37ba
 +# the expected value. Prints "AWAI_APPS_FAIL: <reason>" and exits 1 on a missing APK, an
 +# unset expected value, a missing apksigner, an APK without a signer, or a mismatch.
 +# --allow-unverified skips the signer comparison (development only; the caller refuses it
-+# on user builds). The shipping signing key is not decided yet, so no value is baked in.
++# on release builds). The shipping signing key is not decided yet, so no value is baked in.
 +set -eu
 +dir=${1:-}
 +signer=${2:-}

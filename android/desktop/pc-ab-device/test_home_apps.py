@@ -340,6 +340,32 @@ class MakeBehaviour(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("AWAI_APPS_FAIL: missing", out)
 
+    def test_unverified_apks_are_allowed_on_a_development_build(self):
+        self.add_apks()
+        r, out = self.run_make("AWAI_ALLOW_UNVERIFIED_APKS=1", "TARGET_BUILD_VARIANT=userdebug",
+                               "LINEAGE_BUILDTYPE=UNOFFICIAL")
+        self.assertEqual(r.returncode, 0, out)
+        self.assertIn("AWAI_ALLOW_UNVERIFIED_APKS=1: unverified APKs", out)
+        self.assertIn("PRODUCT_PACKAGES=[AwaiHome AwaiStore]", out)
+
+    def test_unverified_apks_are_refused_on_release_builds(self):
+        self.add_apks()
+        for variant, build_type in (("user", "UNOFFICIAL"), ("userdebug", "RELEASE")):
+            with self.subTest(variant=variant, build_type=build_type):
+                r, out = self.run_make("AWAI_ALLOW_UNVERIFIED_APKS=1",
+                                       f"TARGET_BUILD_VARIANT={variant}",
+                                       f"LINEAGE_BUILDTYPE={build_type}")
+                self.assertNotEqual(r.returncode, 0, out)
+                self.assertIn("AWAI_ALLOW_UNVERIFIED_APKS=1 is refused on release builds", out)
+                self.assertNotIn("PRODUCT_PACKAGES=", out)
+
+    def test_release_without_escape_requires_signer_pin(self):
+        self.add_apks()
+        r, out = self.run_make("TARGET_BUILD_VARIANT=userdebug", "LINEAGE_BUILDTYPE=RELEASE",
+                               "AWAI_HOME_EXPECTED_SIGNER_SHA256=")
+        self.assertNotEqual(r.returncode, 0, out)
+        self.assertIn("AWAI_HOME_EXPECTED_SIGNER_SHA256 is unset", out)
+
     def test_verified_apks_are_added(self):
         self.add_apks()
         r, out = self.run_make(f"AWAI_HOME_EXPECTED_SIGNER_SHA256={self.HOME}",

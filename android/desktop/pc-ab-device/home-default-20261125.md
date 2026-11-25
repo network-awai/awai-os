@@ -173,7 +173,7 @@ No APK is added by this change. Operator inputs and the failure matrix:
 | signer digest differs, or the APK has no signer | `AWAI_APPS_FAIL: … signer … != expected …`, `$(error)` |
 | both APKs present, both digests match | `AWAI_APPS_OK: …`, the modules are added |
 | `AWAI_ALLOW_UNVERIFIED_APKS=1` on a development build | warning, digests are not compared |
-| `AWAI_ALLOW_UNVERIFIED_APKS=1` with `TARGET_BUILD_VARIANT=user` | `$(error)`: refused |
+| `AWAI_ALLOW_UNVERIFIED_APKS=1` with `TARGET_BUILD_VARIANT=user` or `LINEAGE_BUILDTYPE=RELEASE` | `$(error)`: refused |
 | `AWAI_WITHOUT_APPS=1` on a development build | `AWAI_WITHOUT_APPS: Home/Store are NOT preinstalled`; nothing is added |
 | `AWAI_WITHOUT_APPS=1` with `TARGET_BUILD_VARIANT=user` | `$(error)`: refused |
 | `AWAI_WITHOUT_APPS=1` with `LINEAGE_BUILDTYPE=RELEASE` | `$(error)`: refused |
@@ -278,8 +278,9 @@ source build when a reproducible one exists; record which one.
    before compiling: `lunch`/`make` with the APKs absent; with the APKs present but
    `AWAI_HOME_EXPECTED_SIGNER_SHA256`/`AWAI_STORE_EXPECTED_SIGNER_SHA256` unset; with a
    signer that differs from the expected value; with `AWAI_ALLOW_UNVERIFIED_APKS=1` and
-   `TARGET_BUILD_VARIANT=user`. Then supply both APKs, `AWAI_APKSIGNER` and the expected
-   digests: the include passes and `AwaiHome`/`AwaiStore` are in `PRODUCT_PACKAGES` (check
+   `TARGET_BUILD_VARIANT=user` or `LINEAGE_BUILDTYPE=RELEASE`. Then supply both APKs,
+   `AWAI_APKSIGNER` and the expected digests. Confirm the include passes and
+   `AwaiHome`/`AwaiStore` are in `PRODUCT_PACKAGES` (check
    `out/.../installed-files.txt` or the built `system.img`). Do not build or ship with
    `AWAI_ALLOW_UNVERIFIED_APKS=1` outside a development image. Separately, on a
    `userdebug` tree with no APKs, `AWAI_WITHOUT_APPS=1` must print the warning and build
