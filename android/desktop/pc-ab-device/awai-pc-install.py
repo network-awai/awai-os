@@ -5,8 +5,11 @@
   awai-pc-install.py apply <target disk or image> <source disk image> [--userdata-gib N] [--source-sha256 SHA256] --record out.json
 
 Without --userdata-gib, userdata takes the largest free range minus the other
-Awai partitions and USERDATA_RESERVE_SECTORS (AWAI-4091); with --userdata-gib N
-it uses N GiB. `apply` uses the plan's userdata sectors unchanged.
+Awai partitions and USERDATA_RESERVE_SECTORS (AWAI-4091); remaining-based
+userdata below USERDATA_MIN_SECTORS (16 GiB, AWAI-4091 supplement) is refused
+as not-enough-free-space. With --userdata-gib N it uses N GiB exactly and the
+minimum does not apply (an explicit size is the operator's decision).
+`apply` uses the plan's userdata sectors unchanged.
 
 The source is the disk image the build makes (disk-vda.img). Each Awai partition is copied from the
 partition of the same name in it. Nothing is written outside the new partitions and the GPT.
@@ -27,6 +30,11 @@ ALIGN = 2048
 # AWAI-4091: reserve kept free at the end of the chosen free range in remaining-based
 # sizing. Replaceable in this one place; apply() never recomputes it from the plan.
 USERDATA_RESERVE_SECTORS = (1 << 30) // SECTOR
+# AWAI-4091 supplement: floor for remaining-based sizing only. Without it a
+# nearly-full disk yields a few-MiB userdata that still plans successfully
+# (the old fixed 16 GiB sizing refused such a disk). Explicit --userdata-gib
+# values are the operator's decision and are exempt from this floor.
+USERDATA_MIN_SECTORS = (16 << 30) // SECTOR
 # name on the target, name in the source image (None: created empty), fixed partition GUID or None, type code
 LAYOUT = [
     ("awai_esp",      "EFI",           None,                                   "ef00"),
@@ -186,6 +194,8 @@ def make_plan(target, source, userdata_gib=None):
         if candidate < ALIGN:
             sys.exit(f"REFUSED not-enough-free-space: need {non_userdata_sectors + reserve_sectors + ALIGN} sectors in one free range, free ranges {free}")
         userdata_sectors = (candidate // ALIGN) * ALIGN
+        if userdata_sectors < USERDATA_MIN_SECTORS:
+            sys.exit(f"REFUSED not-enough-free-space: need {non_userdata_sectors + reserve_sectors + USERDATA_MIN_SECTORS} sectors in one free range, free ranges {free}")
     # userdata is last in the layout, so appending preserves placement order.
     need = need_without_userdata + [("userdata", None, None, "8300", userdata_sectors)]
     total = non_userdata_sectors + (-(-userdata_sectors // ALIGN) * ALIGN)
