@@ -19,7 +19,8 @@ Apply to a synced source tree with `apply.sh <source tree root>`.
 | --- | --- | --- |
 | `patches/virtio-common-awai-pc.patch` | `device/virt/virtio-common` (`e6f2a7d2`) | SELinux labels for `/dev/block/by-name/{super,misc,userdata,persist,metadata,boot_[ab],vendor_boot_[ab]}`, kernel config fragment `awai-pc.config`, and Intel NIC modules in the boot-time load list. |
 | `patches/virtio-userdata*.patch` | `device/virt/virtio-common` | Mounts userdata by partition name while preserving the existing ext4 and f2fs mount options. |
-| `patches/virtio-common-awai-apps.patch` | `device/virt/virtio-common` (`9d5c9307`) | Prebuilt `AwaiHome` and `AwaiStore` (`BUILD_PREBUILT`, `PRESIGNED`) and their `PRODUCT_PACKAGES` entries. The product include is fail-closed: missing APK, unset expected signer or a signer mismatch stops the build. Yotei is not added. |
+| `patches/virtio-common-awai-apps.patch` | `device/virt/virtio-common` (`9d5c9307`) | Prebuilt `AwaiHome` and `AwaiStore` (`BUILD_PREBUILT`, `PRESIGNED`) and their `PRODUCT_PACKAGES` entries. The product include is fail-closed: missing APK, unset expected signer or a signer mismatch stops the build; `AWAI_WITHOUT_APPS=1` is refused on release builds. Yotei is not added. |
+| `patches/launcher3-home-priority-fallback.patch` | `packages/apps/Launcher3` (`3e0e4f19`) | Lowers the HOME intent filter to `android:priority="-1"` in `AndroidManifest.xml` (Launcher3) and `quickstep/AndroidManifest-launcher.xml` (Launcher3QuickStep), so Awai Home (0, non-privileged) is the unique highest after the setup wizard. |
 | `patches/virt-common-awai-pc.patch` | `device/virt/virt-common` (`0e62edf1`) | GRUB takes the boot disk from where the `PERSIST` filesystem is, and finds `misc`, `vendor_boot_a/b` and `boot_a/b` by fixed GPT partition GUIDs. `EFI` and `BIOS` leave `AB_OTA_PARTITIONS`, and Android no longer mounts the ESP. `ro.surface_flinger.enable_frame_rate_override=false` is removed (headless mode). |
 
 | `patches/vendor-lineage-no-ota-downgrade.patch` | `vendor/lineage` | Removes LineageOS's opt-in to older A/B payloads on non-`user` builds. |
@@ -65,19 +66,28 @@ from the Store) and make Awai Home the home screen on a fresh `/data`.
 missing APK, an unset expected value, a missing tool, an unsigned APK or a mismatch prints
 `AWAI_APPS_FAIL: …` and the product config stops (`$(error)`). `AWAI_ALLOW_UNVERIFIED_APKS=1`
 skips the comparison for development builds only and is refused when
-`TARGET_BUILD_VARIANT=user`. The shipping signing key is not decided, so no expected value is
-committed.
+`TARGET_BUILD_VARIANT=user`. `AWAI_WITHOUT_APPS=1` is the explicit escape for an evaluation
+build of other device-tree changes: it installs neither app and prints
+`AWAI_WITHOUT_APPS: Home/Store are NOT preinstalled`; it is refused when
+`TARGET_BUILD_VARIANT=user` or `LINEAGE_BUILDTYPE=RELEASE`. The default stays fail-closed. The
+shipping signing key is not decided, so no expected value is committed.
 
 **Default home.** No `config_defaultRoleHolders` or default-home string exists in
 `framework-res` at the pins, and `roles.xml` gives `android.app.role.HOME` no `defaultHolders`,
 so a device overlay cannot express this. The platform uses the unique highest-priority HOME
 activity (`HomeRoleBehavior.getFallbackHolderAsUser`, `ComputerEngine.getDefaultHomeActivity`).
-Input: `android:priority="999"` on Awai Home's HOME filter in
-[`android/build.py`](../../build.py) (`manifest()`, `:51`). Known limit: any app may declare
-`999`; a launcher installed from the Store with the same value ties and no ranking follows —
-a Store review/policy question, not a security boundary. Evidence, the Launcher3 fallback and
-the unrun checks are in [home-default-20261125.md](home-default-20261125.md).
-`Launcher3QuickStep` still comes from `build/make` `handheld_system_ext.mk:27`.
+Home is a non-privileged `product/app`, and `ComponentResolver.adjustPriority` caps a
+non-privileged filter's priority above 0 back to 0 (pinned `frameworks/base` `0a607d06`,
+`ComponentResolver.java:493-515`), so Home declares **no priority** in
+[`android/build.py`](../../build.py) (`manifest()`, `:55`).
+`patches/launcher3-home-priority-fallback.patch` sets Launcher3's HOME filter to `-1` in both
+its manifests (`AndroidManifest.xml` and `quickstep/AndroidManifest-launcher.xml`). Resulting
+order: setup wizard 9 (Organizer's 6600H observation) > Awai Home 0 > Launcher3 -1 > Settings
+`FallbackHome` -1000. A Store-installed launcher is also capped to 0 and can only tie Home;
+ranking it remains a Store review/policy question, not a security boundary. Evidence, the
+Launcher3 fallback and the unrun checks are in
+[home-default-20261125.md](home-default-20261125.md). `Launcher3QuickStep` still comes from
+`build/make` `handheld_system_ext.mk:27`.
 
 ## Shipping debug lockdown (AWAI-3682)
 

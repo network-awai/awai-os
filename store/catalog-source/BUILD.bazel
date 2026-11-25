@@ -1,0 +1,4 @@
+# AWAI-4094: android/build.py reads the publisher from series-apps.json at import time;
+# expose it to the //android/desktop/pc-ab-device:home_apps_test runfiles.
+
+exports_files(["series-apps.json"])

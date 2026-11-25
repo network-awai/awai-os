@@ -44,6 +44,20 @@ one device/virt/virtio-common virtio-common-rtw89-8851be.patch 'AWAI-4092: RTL88
 one device/virt/virtio-common virtio-common-aw-mesa-sphal.patch 'AWAI-3686: label the Mesa Gallium and RADV DRM dependencies'
 one device/virt/virtio-common virtio-common-awai-pc-gpu-sysfs.patch 'AWAI-4090 Awai PC, Ryzen 5 6600H iGPU'
 one device/virt/virtio-common virtio-common-awai-apps.patch 'AWAI-4094: preinstall Awai Home and Awai Store'
+
+# AWAI-4094: lower Launcher3's HOME filter to -1 (builds Launcher3QuickStep; the Launcher3
+# module's own manifest is patched too). Home stays non-privileged at 0.
+launcher3="$src/packages/apps/Launcher3"
+launcher3_patch="$here/patches/launcher3-home-priority-fallback.patch"
+[ -d "$launcher3" ] || { echo "no $launcher3" >&2; exit 1; }
+if git -C "$launcher3" apply --reverse --check "$launcher3_patch" 2>/dev/null; then
+  echo "packages/apps/Launcher3: already applied"
+else
+  git -C "$launcher3" apply --check "$launcher3_patch"
+  git -C "$launcher3" apply "$launcher3_patch"
+  echo "packages/apps/Launcher3: HOME priority fallback applied"
+fi
+
 one device/virt/virt-common virt-common-awai-pc.patch 'awai_find_part'
 one device/virt/virt-common virt-common-awai-boot-name.patch 'AWAI-3747: use the release name'
 

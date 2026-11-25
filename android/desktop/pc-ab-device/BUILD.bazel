@@ -88,15 +88,19 @@ sh_test(
     tags = ["no-remote"],
 )
 
-# AWAI-4094: prebuilt Home/Store input and its fail-closed APK signer guard.
+# AWAI-4094: prebuilt Home/Store input, its fail-closed APK signer guard, the Home/Launcher3
+# HOME priority inputs, and the AWAI_WITHOUT_APPS escape.
 sh_test(
     name = "home_apps_test",
     srcs = ["run-python-test.sh"],
     args = ["test_home_apps.py"],
     data = [
         "apply.sh",
+        "patches/launcher3-home-priority-fallback.patch",
         "patches/virtio-common-awai-apps.patch",
         "test_home_apps.py",
+        "//android:build.py",
+        "//store/catalog-source:series-apps.json",
     ],
     size = "small",
     tags = ["no-remote"],

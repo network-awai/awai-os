@@ -32,12 +32,19 @@ default launcher only when the user chooses it. The platform's own APK signature
 untouched: replacing them needs the source build's target files.
 
 Default home input (AWAI-4094, 2026-11-25): the pinned platform has no resource that
-names a default HOME role holder, so `android/build.py` now puts
-`android:priority="999"` on Awai Home's HOME intent filter; on a fresh `/data` the
-platform grants HOME to the unique highest-priority HOME activity. The mechanism,
-evidence and the unrun checks are in
-[home-default-20261125.md](../pc-ab-device/home-default-20261125.md). The v15 APKs
-predate this change, so a rebuild from those exact APKs keeps the old behaviour.
+names a default HOME role holder. Home is a normal `product/app` prebuilt and the platform
+caps a non-privileged HOME filter's priority above 0 back to 0
+(`ComponentResolver.adjustPriority`, pinned `frameworks/base` `0a607d06`,
+`ComponentResolver.java:493-515`), so `android/build.py` declares **no** priority on Awai
+Home's HOME filter and
+[`launcher3-home-priority-fallback.patch`](../pc-ab-device/patches/launcher3-home-priority-fallback.patch)
+lowers Launcher3's HOME filter to `-1`. On a fresh `/data` the order is setup wizard 9
+(Organizer's 6600H observation) > Awai Home 0 > Launcher3 -1 > Settings `FallbackHome`
+-1000, so the fallback resolves without any privilege. The mechanism, evidence,
+acceptance list and the unrun checks are in
+[home-default-20261125.md](../pc-ab-device/home-default-20261125.md). The v15 APKs and any
+image built before this change keep the old behaviour, so the image needs a rebuild from
+the patched source tree with current APKs.
 Launcher3 stays installed and becomes the HOME holder again when Awai Home is not
 installed; if Awai Home stays installed but fails to start, the holder stays on it and
 the recovery is Settings → Default apps → Home app.
@@ -113,8 +120,10 @@ system paths and `build.prop` as the only vendor change, so the base's
   That run does **not** cover the default HOME role: `vm-boot-20261117.json` records it as not
   verified, and Home was opened explicitly. The persistence route with these images is not
   tested: its `verify-images.sh` pins the base digests, so it needs new pins first.
-- **Two-app input (AWAI-4094).** Not built. The input now lists Home and Store only, and the
-  default-home priority needs APKs built after 2026-11-25. Acceptance steps are in
+- **Two-app input (AWAI-4094).** Not built. The input now lists Home and Store only; the
+  default-home input (no Home priority, Launcher3 `-1`) needs an image rebuilt from the
+  patched source tree with current APKs, not the v15 APKs. Acceptance steps and the
+  acceptance list are in
   [home-default-20261125.md](../pc-ab-device/home-default-20261125.md).
 - **More apps.** Itonami, Murakumo and Drive (Tauri apps) are not included yet. Yotei is not
   preinstalled; it is installed from the Store's own catalog.

@@ -379,3 +379,16 @@ It adds `awai-apps/{Android.mk,product.mk,verify-apks.sh}` and one include line 
 `device-common.mk`. Its fail-closed guard was exercised with a stub `apksigner` and GNU
 make; no kati/Soong build ran. See `home-default-20261125.md` ("Source-build preinstall
 input and its signing guard").
+
+## Correction (AWAI-4094, 2026-11-25, same day)
+
+The paragraph above is wrong about where the patch applies. Its paths carried the
+`device/virt/virtio-common/` project prefix, but `apply.sh` runs
+`git -C <src>/device/virt/virtio-common apply`; with the repository root at the project,
+the patch looked for `device/virt/virtio-common/device-common.mk` inside it and `git apply
+--check` failed (`error: device/virt/virtio-common/device-common.mk: No such file or
+directory`, reproduced on a scratch repository whose only file is the pristine
+`device-common.mk`). The patch now uses project-relative paths (`awai-apps/…`,
+`device-common.mk`), like the other `virtio-common` patches; `git apply --check`, apply
+and `git apply --reverse --check` pass in that scratch. The scratch was not a full source
+tree, and no kati/Soong build ran.

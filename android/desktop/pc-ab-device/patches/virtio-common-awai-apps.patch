@@ -1,8 +1,8 @@
-diff --git a/device/virt/virtio-common/awai-apps/Android.mk b/device/virt/virtio-common/awai-apps/Android.mk
+diff --git a/awai-apps/Android.mk b/awai-apps/Android.mk
 new file mode 100644
 index 0000000..476c0e7
 --- /dev/null
-+++ b/device/virt/virtio-common/awai-apps/Android.mk
++++ b/awai-apps/Android.mk
 @@ -0,0 +1,25 @@
 +# AWAI-4094: Awai Home and Awai Store as prebuilt product apps.
 +#
@@ -29,12 +29,12 @@ index 0000000..476c0e7
 +LOCAL_CERTIFICATE := PRESIGNED
 +LOCAL_DEX_PREOPT := false
 +include $(BUILD_PREBUILT)
-diff --git a/device/virt/virtio-common/awai-apps/product.mk b/device/virt/virtio-common/awai-apps/product.mk
+diff --git a/awai-apps/product.mk b/awai-apps/product.mk
 new file mode 100644
-index 0000000..494d483
+index 0000000..34c28bd
 --- /dev/null
-+++ b/device/virt/virtio-common/awai-apps/product.mk
-@@ -0,0 +1,35 @@
++++ b/awai-apps/product.mk
+@@ -0,0 +1,49 @@
 +# AWAI-4094: preinstall Awai Home and Awai Store only; Yotei is installed from the Store.
 +#
 +# The APKs are not part of this project. Before building, place them at
@@ -48,33 +48,47 @@ index 0000000..494d483
 +# refused on user builds. The shipping signing key is not decided yet, so no value is
 +# baked in: an unset expected signer fails the build (see awai-apps/verify-apks.sh).
 +#
++# AWAI_WITHOUT_APPS=1 is the explicit escape for a build that only evaluates other
++# device-tree changes: it skips the check and installs no Awai app. It is refused on
++# release builds, where TARGET_BUILD_VARIANT=user or LINEAGE_BUILDTYPE=RELEASE
++# (vendor/lineage/config/version.mk:21-22,45; inherited before device.mk at
++# lineage_virtio_x86_64.mk:11, so the value is set when this file is parsed). An unset
++# or 0 value keeps the fail-closed default; the escape is never implied.
++#
 +# Note: make modules in a device tree are included from Soong's Android.mk list
 +# (build/make/core/main.mk:247-276), which is Linux-only. This device tree already
 +# builds only on Linux.
 +AWAI_APPS_PATH := $(COMMON_PATH)/awai-apps
 +
-+AWAI_APPS_ARGS := $(AWAI_APPS_PATH) "$(AWAI_APKSIGNER)" "$(AWAI_HOME_EXPECTED_SIGNER_SHA256)" "$(AWAI_STORE_EXPECTED_SIGNER_SHA256)"
-+ifeq ($(strip $(AWAI_ALLOW_UNVERIFIED_APKS)),1)
-+    ifeq ($(TARGET_BUILD_VARIANT),user)
-+        $(error AWAI-4094: AWAI_ALLOW_UNVERIFIED_APKS=1 is refused for user builds; set AWAI_HOME_EXPECTED_SIGNER_SHA256 and AWAI_STORE_EXPECTED_SIGNER_SHA256 instead)
++ifeq ($(strip $(AWAI_WITHOUT_APPS)),1)
++    ifneq ($(filter user,$(TARGET_BUILD_VARIANT))$(filter RELEASE,$(LINEAGE_BUILDTYPE)),)
++        $(error AWAI-4094: AWAI_WITHOUT_APPS=1 is refused on release builds (TARGET_BUILD_VARIANT=$(TARGET_BUILD_VARIANT), LINEAGE_BUILDTYPE=$(LINEAGE_BUILDTYPE)); install the verified APKs instead)
 +    endif
-+    $(warning AWAI-4094: AWAI_ALLOW_UNVERIFIED_APKS=1: unverified APKs go into the image; development builds only)
-+    AWAI_APPS_ARGS += --allow-unverified
-+endif
++    $(warning AWAI_WITHOUT_APPS: Home/Store are NOT preinstalled)
++else
++    AWAI_APPS_ARGS := $(AWAI_APPS_PATH) "$(AWAI_APKSIGNER)" "$(AWAI_HOME_EXPECTED_SIGNER_SHA256)" "$(AWAI_STORE_EXPECTED_SIGNER_SHA256)"
++    ifeq ($(strip $(AWAI_ALLOW_UNVERIFIED_APKS)),1)
++        ifeq ($(TARGET_BUILD_VARIANT),user)
++            $(error AWAI-4094: AWAI_ALLOW_UNVERIFIED_APKS=1 is refused for user builds; set AWAI_HOME_EXPECTED_SIGNER_SHA256 and AWAI_STORE_EXPECTED_SIGNER_SHA256 instead)
++        endif
++        $(warning AWAI-4094: AWAI_ALLOW_UNVERIFIED_APKS=1: unverified APKs go into the image; development builds only)
++        AWAI_APPS_ARGS += --allow-unverified
++    endif
 +
-+AWAI_APPS_VERIFY := $(shell sh $(AWAI_APPS_PATH)/verify-apks.sh $(AWAI_APPS_ARGS) 2>&1)
-+ifeq ($(filter AWAI_APPS_OK:%,$(AWAI_APPS_VERIFY)),)
-+    $(error AWAI-4094: prebuilt Awai APK check failed: $(AWAI_APPS_VERIFY))
-+endif
++    AWAI_APPS_VERIFY := $(shell sh $(AWAI_APPS_PATH)/verify-apks.sh $(AWAI_APPS_ARGS) 2>&1)
++    ifeq ($(filter AWAI_APPS_OK:%,$(AWAI_APPS_VERIFY)),)
++        $(error AWAI-4094: prebuilt Awai APK check failed: $(AWAI_APPS_VERIFY))
++    endif
 +
-+PRODUCT_PACKAGES += \
-+    AwaiHome \
-+    AwaiStore
-diff --git a/device/virt/virtio-common/awai-apps/verify-apks.sh b/device/virt/virtio-common/awai-apps/verify-apks.sh
++    PRODUCT_PACKAGES += \
++        AwaiHome \
++        AwaiStore
++endif
+diff --git a/awai-apps/verify-apks.sh b/awai-apps/verify-apks.sh
 new file mode 100755
 index 0000000..bee37ba
 --- /dev/null
-+++ b/device/virt/virtio-common/awai-apps/verify-apks.sh
++++ b/awai-apps/verify-apks.sh
 @@ -0,0 +1,46 @@
 +#!/bin/sh
 +# AWAI-4094: fail-closed check for the prebuilt Awai Home and Awai Store APKs.
@@ -122,10 +136,10 @@ index 0000000..bee37ba
 +check "$dir/AwaiHome.apk" "$home"
 +check "$dir/AwaiStore.apk" "$store"
 +echo "AWAI_APPS_OK: signers match the expected SHA-256 values"
-diff --git a/device/virt/virtio-common/device-common.mk b/device/virt/virtio-common/device-common.mk
+diff --git a/device-common.mk b/device-common.mk
 index f268ca5..4b9eaec 100644
---- a/device/virt/virtio-common/device-common.mk
-+++ b/device/virt/virtio-common/device-common.mk
+--- a/device-common.mk
++++ b/device-common.mk
 @@ -35,6 +35,11 @@ PRODUCT_PACKAGES += \
  PRODUCT_COPY_FILES += \
      $(COMMON_PATH)/configs/input/excluded-input-devices.xml:$(TARGET_COPY_OUT_VENDOR)/etc/excluded-input-devices.xml

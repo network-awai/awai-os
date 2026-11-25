@@ -44,11 +44,15 @@ def manifest(pkg, activity, version, kind, online=False, debuggable=True, query_
         # AWAI-4094: the platform has no default-HOME config (roles.xml gives HOME no
         # defaultHolders), so RoleControllerServiceImpl falls back to the unique
         # highest-priority HOME filter (HomeRoleBehavior.getFallbackHolderAsUser), and
-        # ComputerEngine.getDefaultHomeActivity uses the same rule. 999 is inside the
-        # documented app range (IntentFilter: > SYSTEM_LOW_PRIORITY, < SYSTEM_HIGH_PRIORITY
-        # 1000) and beats Launcher3's filter, which sets no priority (0). See
-        # android/desktop/pc-ab-device/home-default-20261125.md.
-        home = '<intent-filter android:priority="999"><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.HOME"/><category android:name="android.intent.category.DEFAULT"/></intent-filter>'
+        # ComputerEngine.getDefaultHomeActivity uses the same rule. Home is a normal
+        # `product/app` APK, not a privileged module, and ComponentResolver.adjustPriority
+        # caps every non-privileged filter at >0 back to 0 (pinned frameworks/base
+        # 0a607d06, services/core/java/com/android/server/pm/resolution/ComponentResolver.java:
+        # 493-515), so a priority here would only tie Launcher3. Home keeps 0;
+        # patches/launcher3-home-priority-fallback.patch lowers Launcher3 to -1. Order on a
+        # fresh /data: setup wizard 9 > Awai Home 0 > Launcher3 -1 > Settings FallbackHome
+        # -1000. See android/desktop/pc-ab-device/home-default-20261125.md.
+        home = '<intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.HOME"/><category android:name="android.intent.category.DEFAULT"/></intent-filter>'
     if kind == 'store':
         perms = '<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/><uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION"/>' + ('<uses-permission android:name="android.permission.INTERNET"/><uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/><uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/><uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>' if online else '')
         extra = '<receiver android:name="network.awai.platform.InstallReceiver" android:exported="false"/>' + ('<service android:name="network.awai.platform.AutoUpdateJob" android:permission="android.permission.BIND_JOB_SERVICE" android:exported="false"/>' if online else '')
