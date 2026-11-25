@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
-<resources>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="awai_welcome_name" translatable="false">Awai OS</string>
     <string name="awai_welcome_release" translatable="false">Awai OS Meiji</string>
     <string name="awai_welcome_description">Let\'s set up this device.</string>
@@ -8,6 +8,14 @@
     <string name="awai_welcome_language_label">Change language</string>
     <string name="awai_welcome_accessibility">Accessibility</string>
     <string name="awai_welcome_start">Start</string>
+
+    <!-- AWAI-3563 PC SetupWizard wording (wide screens only; see res/values/awai_welcome.xml usage in patch). -->
+    <string name="awai_intro_restore_subtitle">If you have a Seedvault backup from Awai OS or any other OS, you can restore it here.</string>
+    <string name="awai_setup_services">Awai OS features</string>
+    <string name="awai_services_help_improve">Help improve <xliff:g id="name" example="Awai OS">%s</xliff:g></string>
+    <string name="awai_services_metrics_label"><xliff:g id="name" example="Help improve Awai OS">%1$s</xliff:g> by sharing diagnostic and usage data with <xliff:g id="name" example="Awai OS">%2$s</xliff:g>. This is off by default. If you turn it on, <xliff:g id="name" example="Awai OS">%2$s</xliff:g> will send diagnostic and usage data. This information can’t be used to identify you and lends a hand to teams working on things like battery life, app performance, and new <xliff:g id="name" example="Awai OS">%3$s</xliff:g> features.</string>
+    <string name="awai_screen_lock_title">Protect this PC</string>
+
     <color name="awai_welcome_ink">#13233D</color>
     <color name="awai_welcome_focus">#4B7BD1</color>
     <dimen name="awai_welcome_brand_bottom">48dp</dimen>

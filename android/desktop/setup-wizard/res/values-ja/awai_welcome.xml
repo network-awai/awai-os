@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
-<resources>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="awai_welcome_description">この端末の初期設定を始めます。</string>
     <string name="awai_welcome_setup_heading">初期設定</string>
     <string name="awai_welcome_language_label">言語を変更</string>
     <string name="awai_welcome_accessibility">ユーザー補助</string>
     <string name="awai_welcome_start">はじめる</string>
+    <string name="awai_intro_restore_subtitle">Awai OS または他の OS の Seedvault バックアップがある場合は、ここで復元できます。</string>
+    <string name="awai_setup_services">Awai OS の機能</string>
+    <string name="awai_services_help_improve"><xliff:g id="name" example="Awai OS">%s</xliff:g>の改善に協力します</string>
+    <string name="awai_services_metrics_label">診断と使用状況データを <xliff:g id="name" example="Awai OS">%2$s</xliff:g> と共有して、<xliff:g id="name" example="Help improve Awai OS">%1$s</xliff:g>。既定ではオフです。オンにすると、<xliff:g id="name" example="Awai OS">%2$s</xliff:g> が診断と使用状況データを送信します。この情報は個人を特定するために使用されることはなく、電池持ち、アプリのパフォーマンス、<xliff:g id="name" example="Awai OS">%3$s</xliff:g> の新機能などへの取り組みに活用されます。</string>
+    <string name="awai_screen_lock_title">この PC の保護</string>
 </resources>
