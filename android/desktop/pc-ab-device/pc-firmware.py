@@ -15,7 +15,7 @@ REVISION = "a2dcb924f0897368b0b4f305cbf9808cdda90ce0"
 OVERLAY = Path("vendor/awai/pc-firmware")
 MAINLINE_REALTEK = Path("external/linux-firmware-mainline/firmware/r8168")
 DEVICE = Path("device/virt/virtio_x86_64")
-DEVICE_REVISION = "50dc14712023705ccf477af49a27ef9109b54d19"
+DEVICE_REVISION = "0e8571a0d7fce749856e9dea72e99a8a83f8f9b4"
 PRODUCT = DEVICE / "lineage_virtio_x86_64.mk"
 PATCHES = Path(__file__).resolve().parent / "patches"
 # The Radeon entry, then the factory default that selects it on an AMD GPU without a virtio GPU.

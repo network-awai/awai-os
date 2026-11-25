@@ -1,0 +1,190 @@
+=== FETCH build/make LineageOS/android_build 90d006387398ae6899145e6531a304500cfa0f70 ===
++ git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/build/make fetch --depth 1 origin 90d006387398ae6899145e6531a304500cfa0f70
+From https://github.com/LineageOS/android_build
+ * branch            90d006387398ae6899145e6531a304500cfa0f70 -> FETCH_HEAD
+FETCH_SHA_OK build/make
++ git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/build/make checkout FETCH_HEAD (or 90d006387398ae6899145e6531a304500cfa0f70)
+Note: switching to 'FETCH_HEAD'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at 90d0063 Revert "releasetools: build_super_image: Do not set readonly attr"
+RESULT path=build/make sha=90d006387398ae6899145e6531a304500cfa0f70 head=90d006387398ae6899145e6531a304500cfa0f70 seconds=3
+HEAD_MATCH build/make YES
+
+=== FETCH device/mainline/common LineageOS/android_device_mainline_common e237088ec3475c6b93e7148bdcc32218e36f782f ===
++ git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/mainline/common fetch --depth 1 origin e237088ec3475c6b93e7148bdcc32218e36f782f
+From https://github.com/LineageOS/android_device_mainline_common
+ * branch            e237088ec3475c6b93e7148bdcc32218e36f782f -> FETCH_HEAD
+FETCH_SHA_OK device/mainline/common
++ git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/mainline/common checkout FETCH_HEAD (or e237088ec3475c6b93e7148bdcc32218e36f782f)
+Note: switching to 'FETCH_HEAD'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at e237088 mainline/common: sepolicy: Let the composer drive backlights
+RESULT path=device/mainline/common sha=e237088ec3475c6b93e7148bdcc32218e36f782f head=e237088ec3475c6b93e7148bdcc32218e36f782f seconds=1
+HEAD_MATCH device/mainline/common YES
+
+=== FETCH packages/apps/Updater LineageOS/android_packages_apps_Updater 1445c6104ffb33123d4e449a60e3c054ed5a9ee0 ===
++ git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/packages/apps/Updater fetch --depth 1 origin 1445c6104ffb33123d4e449a60e3c054ed5a9ee0
+From https://github.com/LineageOS/android_packages_apps_Updater
+ * branch            1445c6104ffb33123d4e449a60e3c054ed5a9ee0 -> FETCH_HEAD
+FETCH_SHA_OK packages/apps/Updater
++ git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/packages/apps/Updater checkout FETCH_HEAD (or 1445c6104ffb33123d4e449a60e3c054ed5a9ee0)
+Note: switching to 'FETCH_HEAD'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at 1445c61 Automatic translation import
+RESULT path=packages/apps/Updater sha=1445c6104ffb33123d4e449a60e3c054ed5a9ee0 head=1445c6104ffb33123d4e449a60e3c054ed5a9ee0 seconds=1
+HEAD_MATCH packages/apps/Updater YES
+
+=== FETCH vendor/lineage LineageOS/android_vendor_lineage 5a1814d916321aecb72d60d13b5e52bc719251bd ===
++ git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/vendor/lineage fetch --depth 1 origin 5a1814d916321aecb72d60d13b5e52bc719251bd
+From https://github.com/LineageOS/android_vendor_lineage
+ * branch            5a1814d916321aecb72d60d13b5e52bc719251bd -> FETCH_HEAD
+FETCH_SHA_OK vendor/lineage
++ git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/vendor/lineage checkout FETCH_HEAD (or 5a1814d916321aecb72d60d13b5e52bc719251bd)
+Note: switching to 'FETCH_HEAD'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at 5a1814d config: Explicitly include Lineage SDK
+RESULT path=vendor/lineage sha=5a1814d916321aecb72d60d13b5e52bc719251bd head=5a1814d916321aecb72d60d13b5e52bc719251bd seconds=3
+HEAD_MATCH vendor/lineage YES
+
+=== FETCH device/virt/virt-common LineageOS/android_device_virt_virt-common 5da818292d9a66cf282e909287fdab14eb80711b ===
++ git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virt-common fetch --depth 1 origin 5da818292d9a66cf282e909287fdab14eb80711b
+From https://github.com/LineageOS/android_device_virt_virt-common
+ * branch            5da818292d9a66cf282e909287fdab14eb80711b -> FETCH_HEAD
+FETCH_SHA_OK device/virt/virt-common
++ git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virt-common checkout FETCH_HEAD (or 5da818292d9a66cf282e909287fdab14eb80711b)
+Note: switching to 'FETCH_HEAD'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at 5da8182 virt-common: Copy camera permission xmls
+RESULT path=device/virt/virt-common sha=5da818292d9a66cf282e909287fdab14eb80711b head=5da818292d9a66cf282e909287fdab14eb80711b seconds=1
+HEAD_MATCH device/virt/virt-common YES
+
+=== FETCH device/virt/virtio-common LineageOS/android_device_virt_virtio-common 9d5c9307434bba31d19030fcc61086efcd248997 ===
++ git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virtio-common fetch --depth 1 origin 9d5c9307434bba31d19030fcc61086efcd248997
+From https://github.com/LineageOS/android_device_virt_virtio-common
+ * branch            9d5c9307434bba31d19030fcc61086efcd248997 -> FETCH_HEAD
+FETCH_SHA_OK device/virt/virtio-common
++ git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virtio-common checkout FETCH_HEAD (or 9d5c9307434bba31d19030fcc61086efcd248997)
+Note: switching to 'FETCH_HEAD'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at 9d5c930 virtio-common: Remove support for ranchu Audio HAL
+RESULT path=device/virt/virtio-common sha=9d5c9307434bba31d19030fcc61086efcd248997 head=9d5c9307434bba31d19030fcc61086efcd248997 seconds=1
+HEAD_MATCH device/virt/virtio-common YES
+
+=== FETCH device/virt/virtio_x86_64 LineageOS/android_device_virt_virtio_x86_64 0e8571a0d7fce749856e9dea72e99a8a83f8f9b4 ===
++ git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virtio_x86_64 fetch --depth 1 origin 0e8571a0d7fce749856e9dea72e99a8a83f8f9b4
+From https://github.com/LineageOS/android_device_virt_virtio_x86_64
+ * branch            0e8571a0d7fce749856e9dea72e99a8a83f8f9b4 -> FETCH_HEAD
+FETCH_SHA_OK device/virt/virtio_x86_64
++ git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virtio_x86_64 checkout FETCH_HEAD (or 0e8571a0d7fce749856e9dea72e99a8a83f8f9b4)
+Note: switching to 'FETCH_HEAD'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at 0e8571a Revert "virtio_x86_64: Exclude AudioFX for lineage"
+RESULT path=device/virt/virtio_x86_64 sha=0e8571a0d7fce749856e9dea72e99a8a83f8f9b4 head=0e8571a0d7fce749856e9dea72e99a8a83f8f9b4 seconds=0
+HEAD_MATCH device/virt/virtio_x86_64 YES
+
+ALL_FETCH_DONE 2026-11-25T02:06:09Z

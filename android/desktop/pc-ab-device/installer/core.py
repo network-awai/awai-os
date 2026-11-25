@@ -31,7 +31,9 @@ DEFAULT_WORK = "/run/awai-pc-installer"
 DEFAULT_MEDIA = "/run/archiso/bootmnt/awai"
 ARCHIVE_NAME = "awai-pc-install.img.zst"
 IMAGE_NAME = "awai-pc-install.img"
-USERDATA_GIB = 16
+# AWAI-4091: None = remaining-based userdata sizing in make_plan(); the USB
+# installer must not pin the legacy 16 GiB when the whole blank disk is free.
+USERDATA_GIB = None
 SECTOR = 512
 SKIPPED_DISKS = re.compile(r"^(loop|ram|zram|sr|fd|nbd)\d*$")
 
