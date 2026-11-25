@@ -25,15 +25,25 @@ contains **every** project with an explicit 40-hex `revision`; `<default>`
 carries no `revision` and no `<remote>` carries one, so no branch or tag
 can be inherited. `test_complete_manifest.py` fails otherwise.
 
-## Project set: 1260
+## Project set: 1264
 
 | Source | Projects |
 | --- | --- |
 | `base/default.xml` (LineageOS/android `913c6baa`) | 1067 |
 | `base/snippets/lineage.xml` | 176 |
 | `base/overlay.xml` (13 `local_manifests` from AWAI-3850 + 3 `device/virt`) | 16 |
-| `lineage.dependencies` closure additions (`kernel/virt/virtio`) | 1 |
-| **Total, no duplicates by path** | **1260** |
+| `lineage.dependencies` closure additions | 5 (`kernel/virt/virtio` + 4) |
+| **Total, no duplicates by path** | **1264** |
+
+**Source fidelity.** Each `<project>` element from the three committed
+source manifests is carried through unchanged — every attribute (`name`,
+`path`, `remote`, `groups`, `sync-c`, `clone-depth`, `upstream`,
+`dest-branch`, …) and every child (`<linkfile>` / `<copyfile>`) — with only
+`revision` replaced by the resolved 40-hex SHA. The 24 linkfile/copyfile
+lines (9 in `default.xml`, 15 in `lineage.xml`, including the six
+`build/make` ones such as `build/envsetup.sh`) are present.
+`test_complete_manifest.py` compares every attribute and every
+linkfile/copyfile pair and fails on any mismatch.
 
 Resolution (per project, `resolve.log`): branches →
 `git ls-remote <url> refs/heads/<ref>`; tags → `git ls-remote <url>
@@ -47,15 +57,24 @@ earlier session's pins exactly.
 
 ## Dependencies closure
 
-`lineage.dependencies` (JSON) was followed recursively at the pinned SHAs
-from the product device tree (`virtio_x86_64` → `virtio-common` →
-`virt-common` → `device/mainline/common`, `external/mesa`,
-`kernel/mainline/configs`, `prebuilts/bootmgr` — all already in the
-overlay — plus `kernel/virt/virtio`). That kernel
-(`LineageOS/android_kernel_virt_virtio` → `604b22fb`) is the one addition
-(its `lineage.dependencies` is HTTP 404 at the pinned SHA, so the closure
-stops). Every step is in `deps.log`; the visited files are committed
-under `base/deps/` and the test asserts every entry is present.
+`lineage.dependencies` (JSON) is traversed recursively at the pinned SHAs
+from the product device tree, **reaching every dependency whether or not it
+is already in the manifest**: 17 projects reached, 4 added, 0 absent —
+`kernel/virt/virtio` (`604b22fb`), `prebuilts/mesa-build-dep`
+(`d68b2751`), `external/libdisplay-info-upstream` (`dffa9dee`),
+`external/alsa-lib` (`533b21f7`), `external/alsa-ucm-conf`
+(`b695e875`). (Order: `virtio_x86_64` → `virtio-common` → `virt-common` →
+`device/mainline/common`, `external/mesa`, `kernel/mainline/configs`,
+`prebuilts/bootmgr`; `device/mainline/common` → `external/drm_hwcomposer-upstream`
+→ `external/libdisplay-info-upstream`; `external/mesa` →
+`prebuilts/mesa-build-dep`; `hardware/mainline/common` →
+`external/alsa-lib`, `external/alsa-ucm-conf`.) Projects without a
+`lineage.dependencies` (404: both kernels, `prebuilts/bootmgr`,
+`external/minigbm-upstream`, `external/linux-firmware-mainline`,
+`vendor/mainline`, and the 4 additions) stop the closure. Every step —
+path, pinned SHA, deps URL, every entry, added-or-present — is in
+`deps.log`; non-404 visited files are committed under `base/deps/` and the
+test asserts every entry is present with matching name/path.
 
 ## Patch applicability
 
@@ -97,15 +116,15 @@ invented. Full commands and outputs are in `resolve.log`.
 
 | File | What |
 | --- | --- |
-| `pinned-manifest.xml` | Complete manifest: 1260 projects, every `revision` 40-hex, no inheritable `<default>`/`<remote>` revision |
+| `pinned-manifest.xml` | Complete manifest: 1264 projects, every `revision` 40-hex, no inheritable `<default>`/`<remote>` revision; source attributes and all 24 linkfile/copyfile children carried through |
 | `base/default.xml`, `base/snippets/lineage.xml` | Base manifests verbatim at `913c6baa` |
 | `base/overlay.xml` | The 16 overlay projects (13 + 3 `device/virt`) |
-| `base/deps/*.lineage.dependencies.json` | Visited `lineage.dependencies` files at pinned SHAs |
+| `base/deps/*.lineage.dependencies.json` | Visited `lineage.dependencies` files at pinned SHAs (7 non-404 files) |
 | `base/SHA256SUMS` | SHA-256 of every file under `base/` |
-| `resolve.log` | Method + per-project URL, ref, resolved SHA, kind, UTC timestamp (1260 lines) |
-| `deps.log` | Dependency-closure steps and closure additions |
+| `resolve.log` | Method + per-project URL, ref, resolved SHA, kind, UTC timestamp (1264 lines) |
+| `deps.log` | Dependency-closure traversal: 17 reached, 4 added, 0 absent (per project: path, pinned SHA, deps URL, entries, added/present; 404s recorded) |
 | `manifest-inputs.sha256` | SHA-256 of the manifest, logs, base files and every inventoried patch |
-| `test_complete_manifest.py` | Offline `unittest`: 40-hex everywhere, no inherited branch/tag, coverage vs base+overlay+closure, deps presence, and negative controls (a)-(d) |
+| `test_complete_manifest.py` | Offline `unittest`: 40-hex everywhere, no inherited branch/tag, attributes + linkfile/copyfile fidelity vs sources, coverage, transitive deps, negative controls (a)-(f) |
 
 ## Not verified
 

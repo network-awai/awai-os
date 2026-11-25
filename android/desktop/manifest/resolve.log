@@ -1267,3 +1267,8 @@
 2026-11-25T00:50:43Z vendor/qcom/opensource/thermal-engine https://github.com/LineageOS/android_vendor_qcom_opensource_thermal-engine.git refs/heads/lineage-24.0 branch -> 0815f34094ebc952c8e1dd3619e384c7f9d1195b
 2026-11-25T00:50:43Z vendor/qcom/opensource/usb https://github.com/LineageOS/android_vendor_qcom_opensource_usb.git refs/heads/lineage-24.0 branch -> 0d32cd0034b767aa8a6b5fbc8516570af8cf3e5f
 2026-11-25T00:50:43Z vendor/qcom/opensource/vibrator https://github.com/LineageOS/android_vendor_qcom_opensource_vibrator.git refs/heads/lineage-24.0 branch -> 97d88ab231d84ba0b5549e6d6148522d6d73ee24
+# deps-closure additions resolved 2026-11-25 (lineage.dependencies traversal, refs/heads/lineage-24.0):
+2026-11-25 prebuilts/mesa-build-dep https://github.com/LineageOS/android_prebuilts_mesa-build-dep.git refs/heads/lineage-24.0 branch -> d68b27515a9298010c945f44353d5aec6c53eedd (deps closure, git ls-remote)
+2026-11-25 external/libdisplay-info-upstream https://github.com/LineageOS/android_external_libdisplay-info-upstream.git refs/heads/lineage-24.0 branch -> dffa9dee319f956c94a2cb4a853f9d55ff84a560 (deps closure, git ls-remote)
+2026-11-25 external/alsa-lib https://github.com/LineageOS/android_external_alsa-lib.git refs/heads/lineage-24.0 branch -> 533b21f75eb2bd3fe46e9259dccf1628e318f859 (deps closure, git ls-remote)
+2026-11-25 external/alsa-ucm-conf https://github.com/LineageOS/android_external_alsa-ucm-conf.git refs/heads/lineage-24.0 branch -> b695e87520201d31a9207a1108648c3f83f71e11 (deps closure, git ls-remote)
