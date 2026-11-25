@@ -640,3 +640,6 @@ record them as not observed.
 - OVMF skipped the first ESP, which had no loader, and started GRUB from `awai_esp`. Real firmware may
   need a boot entry, or the PXE route may have to chain-load it.
 - No picture without a virtio GPU (headless only), no firmware files in the image, and no release keys.
+- USB mass storage is not configured or measured. `system/vold` is pinned, but the
+  product fstab has no USB entry and the kernel fragment has no USB options. Static
+  assessment: [AWAI-4118 USB media](../../../docs/evidence/awai-4118-usb-media-awai-os-20261125.md).
