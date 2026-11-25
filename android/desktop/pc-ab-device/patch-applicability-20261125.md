@@ -133,7 +133,7 @@ Two methodological details are load-bearing:
   not a signal. (The "13 applicable" figure in the #505 evidence
   README counted a different set and is superseded here.)
 - **Radeon patches are applied by `pc-firmware.py prepare`, not
-  pre-applied by the Job** (one path): `prepare` applies both
+  pre-applied by the Job (proposed in #507)** (one path): `prepare` applies both
   `virtio-x86-64-awai-radeon.patch` and
   `virtio-x86-64-awai-radeon-default.patch` after staging the
   firmware overlay.
@@ -166,11 +166,10 @@ branch retained) — `raw/fetch.log`, `raw/chains.txt`, `raw/pristine.txt`,
 `raw/patches.sha256`, `raw/manifest-inputs-patches.txt`,
 `SHA256SUMS` — verbatim; no counts from that PR's README are
 reproduced here (its "13 applicable" exclusions are superseded by
-this document's 17; see above). The committed Job at
-`scripts/operator/virtio-dryrun/` supersedes #505's Job definition
-rather than copying its apply step (which ran only `apply.sh` and
-dropped Radeon, lockdown and Updater): patch application in this Job
-calls the repo's own tools, never a second explicit list.
+this document's 17; see above). The Job is **not in this PR**:
+it is proposed in the separate #507, which supersedes #505's Job
+definition rather than copying its apply step (which ran only
+`apply.sh` and dropped Radeon, lockdown and Updater).
 
 ## Latent blockers for a real (non-dry-run) build at the pinned SHAs
 
@@ -188,7 +187,7 @@ calls the repo's own tools, never a second explicit list.
   `apply.sh`/lockdown runs in a real synced tree (the scratch
   reproductions above used the fetched files only), the lockdown
   patch set in a real build product, and OTA registration
-  end-to-end. The G2 dry-run Job records the plan; it is not
+  end-to-end. The Job proposed in #507 records the plan; it is not
   evidence of a build.
 
 ## Product target
