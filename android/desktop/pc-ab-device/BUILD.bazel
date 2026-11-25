@@ -58,10 +58,25 @@ sh_test(
     tags = ["no-remote"],
 )
 
+# AWAI-4092: RTL8851BE kernel-config fragment + vendor module load order.
+sh_test(
+    name = "rtw8851be_test",
+    srcs = ["run-python-test.sh"],
+    args = ["test_rtw8851be.py"],
+    data = [
+        "apply.sh",
+        "patches/virtio-common-rtw89-8851be.patch",
+        "test_rtw8851be.py",
+    ],
+    size = "small",
+    tags = ["no-remote"],
+)
+
 test_suite(
     name = "pc_verification",
     tests = [
         ":gpu_sysfs_test",
+        ":rtw8851be_test",
         ":installer_test",
         ":ota_feed_test",
         ":screen_installer_core_test",
