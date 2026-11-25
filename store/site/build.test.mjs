@@ -56,6 +56,7 @@ test('the page is a document: no script, one same-origin image, strict CSP', asy
   assert(html.includes('開発版です'));
   for (const [, href] of html.matchAll(/<a[^>]*href="([^"]+)"/g))
     assert(href === 'site-manifest.json'
+      || /^#/.test(href)
       || /^https:\/\/raw\.githubusercontent\.com\/network-awai\/awai-os\/[0-9a-f]{40}\/store\/distribution\//.test(href), href);
 });
 
@@ -64,12 +65,43 @@ test('the build is deterministic', async () => {
   for (const name of Object.keys(a)) assert(a[name].equals(b[name]), name);
 });
 
+// AWAI-4070: browse anchors, one quiet featured card, then the plain list.
+test('browse is anchored, featured once, quiet footer on the page', async () => {
+  const {files} = (await buildSite(published()));
+  const html = files['index.html'].toString('utf8');
+  const anchors = [...html.matchAll(/<a[^>]*href="([^"]+)"/g)].map(m => m[1]).filter(h => h.startsWith('#'));
+  assert.deepEqual(anchors, ['#apps', '#how', '#verify', '#record']);
+  for (const id of ['apps', 'how', 'verify', 'record']) assert(html.includes(`id="${id}"`), id);
+  assert.equal((html.match(/class="card app featured"/g) || []).length, 1);
+  assert(html.includes('おすすめ') && html.includes('すべてのアプリ'));
+  assert(html.includes('広告や追跡はなく'));
+  // featured app appears exactly once in the whole page (featured + list split)
+  const store = (await buildSite(published())).store;
+  for (const app of store.apps) {
+    const count = html.split(`id="${app.id}"`).length - 1;
+    assert.equal(count, 1, `${app.id} appears ${count} times`);
+  }
+});
+
 test('catalog text is escaped', async () => {
   const store = (await buildSite(published())).store;
   store.apps[0] = {...store.apps[0], name: '<b>x</b>', description: '"quoted" & <i>tagged</i>'};
   const html = renderHtml(store);
   assert(html.includes('&lt;b&gt;x&lt;/b&gt;') && html.includes('&quot;quoted&quot; &amp; &lt;i&gt;tagged&lt;/i&gt;'));
   assert(!html.includes('<b>') && !html.includes('<i>'));
+});
+
+// AWAI-3882: the per-app detail view renders the catalog publisher as 配布元, and the
+// manifest carries the same value — a defined-but-not-displayed publisher would be caught here.
+test('the detail view renders each app publisher', async () => {
+  const input = published();
+  const {files} = await buildSite(input);
+  const catalog = JSON.parse(JSON.parse(input.read(catalogPath(input)).toString('utf8')).raw);
+  const html = files['index.html'].toString('utf8');
+  assert(html.includes('配布元'));
+  for (const app of catalog.apps) assert(html.includes(app.publisher), `publisher rendered for ${app.id}`);
+  const manifest = JSON.parse(files['site-manifest.json'].toString('utf8'));
+  assert.deepEqual(manifest.apps.map(a => a.publisher), catalog.apps.map(a => a.publisher));
 });
 
 const rejects = (name, change, code) => test(`rejects ${name}`, async () => {
@@ -108,7 +140,9 @@ rejects('no key list', input => ({...input, keysBytes: null}), 'keys-missing');
 
 
 // AWAI-3775: the root-signed key list. Synthetic pointer and catalog, read from memory.
-const keyListInput = ({signPointer, signCatalog, signList, listRoot} = {}) => {
+// AWAI-3882: publisher defaults to the single-definition value; pass publisher: null to omit it
+// (fail-closed test) or any string to use it verbatim.
+const keyListInput = ({signPointer, signCatalog, signList, listRoot, publisher = 'Awai Network LLC'} = {}) => {
   const rsa = () => generateKeyPairSync('rsa', {modulusLength: 2048});
   const root = rsa(), cat = rsa(), ptr = rsa(), other = rsa();
   const k = {root, cat, ptr, other};
@@ -117,8 +151,10 @@ const keyListInput = ({signPointer, signCatalog, signList, listRoot} = {}) => {
   const list = `itonami.store.keys.v1\nsequence 2\nissued ${now - 60}\nexpires ${now + 90 * 86400}\nkey catalog ${spki(cat).toString('base64')}\nkey pointer ${spki(ptr).toString('base64')}\n`;
   const env = (raw, key) => Buffer.from(JSON.stringify({raw, signature: sign('sha256', Buffer.from(raw), key.privateKey).toString('base64')}));
   const rev = 'a'.repeat(40), base = `https://raw.githubusercontent.com/network-awai/awai-os/${rev}/store/distribution/dev-test/`;
+  const yotei = {id: 'network.itonami.yotei', name: 'Yotei', versionName: '1', versionCode: 1, artifacts: []};
+  if (publisher !== null) yotei.publisher = publisher;
   const catalog = env(JSON.stringify({schema: 'itonami.store.bundled.v1', revision: 110, expiresAt: now + 86400,
-    apps: [{id: 'network.itonami.yotei', name: 'Yotei', versionName: '1', versionCode: 1, artifacts: []}]}), k[signCatalog ?? 'cat']);
+    apps: [yotei]}), k[signCatalog ?? 'cat']);
   const pointer = env(JSON.stringify({schema: 'itonami.store.latest.v1', sequence: 4, issuedAt: now - 60, expiresAt: now + 86400,
     pins: {revision: rev, catalog: {url: base + 'catalog-envelope.json', sha256: sha256(catalog), maxBytes: 131072}, apks: {}}}), k[signPointer ?? 'ptr']);
   const published = published0();
@@ -151,4 +187,13 @@ for (const [name, change, code] of [
 });
 test('key list: a root without a list is refused', async () => {
   await assert.rejects(verifyStore({...keyListInput(), keysBytes: null}), {message: 'keys-missing'});
+});
+
+// AWAI-3882: fail closed — a catalog entry whose publisher does not resolve (missing or
+// blank) aborts the build instead of rendering a blank 配布元.
+test('publisher: a catalog entry without a publisher fails closed', async () => {
+  await assert.rejects(verifyStore(keyListInput({publisher: null})), {message: 'publisher'});
+});
+test('publisher: a catalog entry with a blank publisher fails closed', async () => {
+  await assert.rejects(verifyStore(keyListInput({publisher: '   '})), {message: 'publisher'});
 });

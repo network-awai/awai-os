@@ -1,0 +1,9 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "awai-ota-feed",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-01-01",
+  "workers_dev": false,
+  "routes": [{ "pattern": "ota.awai.network", "custom_domain": true }],
+  "observability": { "enabled": false }
+}

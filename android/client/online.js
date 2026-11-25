@@ -11,13 +11,23 @@ function validPin(entry,revision,ceiling){
 export function validatePins(pins) {
   if (!pins || !/^[0-9a-f]{40}$/.test(pins.revision) || !pins.catalog || !pins.apks || typeof pins.apks!=='object' || Array.isArray(pins.apks)) throw Error('配信情報が未設定です。');
   const ids=Object.keys(pins.apks);
-  if(ids.length<1||ids.length>16||!ids.every(id=>APP_ID.test(id)))throw Error('配信先の固定情報を確認できません。');
+  if(ids.length<1||ids.length>32||!ids.every(id=>APP_ID.test(id)))throw Error('配信先の固定情報を確認できません。');
   validPin(pins.catalog,pins.revision,131072);
   for(const id of ids)validPin(pins.apks[id],pins.revision,64*1024*1024);
   return pins;
 }
 const pinFor=(pins,kind)=>kind==='catalog'?pins.catalog:Object.hasOwn(pins.apks,kind)?pins.apks[kind]:null;
 const operationFor=kind=>kind==='catalog'?'download-catalog':`download-apk-${kind}`;
+// AWAI-3881: every operation needs its finding-9 disclosure, in the same shape as
+// apps/murakumo/client/download-contract.js (AWAI-3842). The catalog and every pinned
+// APK are fetched from raw.githubusercontent.com; nothing but the pinned request leaves.
+const DOWNLOAD_DISCLOSURE={recipient:'GitHub, Inc.',country:'US','country-name':'United States',
+ 'foreign-info-url':'https://github.com/','special-care':false,frequency:'one-time',
+ withdrawal:'cancel before it finishes',
+ note:'Only the pinned file request is sent. Any HTTPS request also carries your IP address.'};
+const disclosureFor=kind=>({...DOWNLOAD_DISCLOSURE,
+ data:kind==='catalog'?['request IP address','app version','store catalog request']:['request IP address','app version','pinned app package request'],
+ purpose:kind==='catalog'?'download the pinned store catalog':'download a pinned app package from the store catalog'});
 export function onlineRuntime(base,pins) {
   validatePins(pins);
   return {...base,operations:[['catalog',pins.catalog],...Object.entries(pins.apks)].map(([kind,pin])=>({
@@ -25,6 +35,7 @@ export function onlineRuntime(base,pins) {
     consent:'each-operation','data-categories':['request-ip','app-version'],
     endpoint:{origin:new URL(pin.url).origin,routes:[{method:'GET',path:new URL(pin.url).pathname,'query-params':[]}]},
     artifact:{revision:pins.revision,sha256:pin.sha256,'max-bytes':pin.maxBytes},
+    disclosure:disclosureFor(kind),
   }))};
 }
 export function createOnline(base,pins) {

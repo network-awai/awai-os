@@ -1,0 +1,111 @@
+diff --git a/app/src/main/java/org/lineageos/setupwizard/WelcomeActivity.kt b/app/src/main/java/org/lineageos/setupwizard/WelcomeActivity.kt
+index 9b80d62..2bb2de5 100644
+--- a/app/src/main/java/org/lineageos/setupwizard/WelcomeActivity.kt
++++ b/app/src/main/java/org/lineageos/setupwizard/WelcomeActivity.kt
+@@ -5,6 +5,7 @@
+  */
+ package org.lineageos.setupwizard
+
++import android.animation.ValueAnimator
+ import android.content.Intent
+ import android.os.Build
+ import android.os.Bundle
+@@ -12,6 +13,7 @@ import android.util.TypedValue
+ import android.view.View
+ import android.view.ViewGroup
+ import android.view.ViewGroup.MarginLayoutParams
++import android.view.animation.PathInterpolator
+ import android.widget.TextView
+ import androidx.activity.OnBackPressedCallback
+ import androidx.core.view.updateLayoutParams
+@@ -22,6 +24,7 @@ import com.google.android.setupdesign.template.FloatingActionButtonMixin
+ import com.google.android.setupdesign.template.FloatingBackButtonMixin
+ import org.lineageos.setupwizard.base.GlifTemplate
+ import org.lineageos.setupwizard.base.SubBaseActivity
++import org.lineageos.setupwizard.locale.LocaleActivity
+ import org.lineageos.setupwizard.system.DeviceInfoActivity
+ import org.lineageos.setupwizard.util.SetupWizardUtils
+
+@@ -57,12 +60,32 @@ class WelcomeActivity : SubBaseActivity() {
+             startSubactivity(Intent(ACTION_ACCESSIBILITY_SETTINGS))
+         }
+
++        findViewById<View>(R.id.awai_welcome_language)?.setOnClickListener {
++            startActivity(
++                Intent(this, LocaleActivity::class.java)
++                    .putExtra(LocaleActivity.EXTRA_WELCOME_SHORTCUT, true)
++            )
++        }
++        if (savedInstanceState == null && ValueAnimator.areAnimatorsEnabled()) {
++            findViewById<View>(R.id.awai_welcome_brand)?.let { brand ->
++                brand.alpha = 0f
++                brand.translationY = 16f * resources.displayMetrics.density
++                brand.animate()
++                    .alpha(1f)
++                    .translationY(0f)
++                    .setDuration(600)
++                    .setInterpolator(PathInterpolator(0f, 0f, 0.58f, 1f))
++                    .start()
++            }
++        }
++
+         val welcomeTitle: TextView = findViewById(R.id.welcome_title)
+         welcomeTitle.text =
+             if (SetupWizardUtils.isManagedProfile(this)) {
+                 getString(R.string.setup_managed_profile_welcome_message)
+             } else {
+-                getString(R.string.setup_welcome_message, getString(R.string.os_name))
++                val productName = if (usesAwaiWelcome()) R.string.awai_welcome_name else R.string.os_name
++                getString(R.string.setup_welcome_message, getString(productName))
+             }
+     }
+
+@@ -144,7 +167,11 @@ class WelcomeActivity : SubBaseActivity() {
+         }
+     }
+
+-    override val layoutResId = R.layout.welcome_activity
++    private fun usesAwaiWelcome() =
++        resources.configuration.screenWidthDp >= 600 && !SetupWizardUtils.isManagedProfile(this)
++
++    override val layoutResId
++        get() = if (usesAwaiWelcome()) R.layout.awai_welcome_activity else R.layout.welcome_activity
+
+     override val titleResId = -1
+
+diff --git a/app/src/main/java/org/lineageos/setupwizard/locale/LocaleActivity.kt b/app/src/main/java/org/lineageos/setupwizard/locale/LocaleActivity.kt
+index 1b72197..1a0c600 100644
+--- a/app/src/main/java/org/lineageos/setupwizard/locale/LocaleActivity.kt
++++ b/app/src/main/java/org/lineageos/setupwizard/locale/LocaleActivity.kt
+@@ -222,7 +222,11 @@ open class LocaleActivity : BaseSetupWizardActivity() {
+
+     private fun applyLocale(locale: Locale) {
+         com.android.internal.app.LocalePicker.updateLocale(locale)
+-        nextAction(RESULT_OK)
++        if (intent.getBooleanExtra(EXTRA_WELCOME_SHORTCUT, false)) {
++            finish()
++        } else {
++            nextAction(RESULT_OK)
++        }
+     }
+
+     private fun fetchAndUpdateSimLocale() {
+@@ -297,6 +301,7 @@ open class LocaleActivity : BaseSetupWizardActivity() {
+     }
+
+     companion object {
++        internal const val EXTRA_WELCOME_SHORTCUT = "network.awai.setupwizard.WELCOME_SHORTCUT"
+         private const val TAG = "LocaleActivity"
+     }
+ }
+diff --git a/app/src/main/java/org/lineageos/setupwizard/settings/LineageSettingsActivity.kt b/app/src/main/java/org/lineageos/setupwizard/settings/LineageSettingsActivity.kt
+--- a/app/src/main/java/org/lineageos/setupwizard/settings/LineageSettingsActivity.kt
++++ b/app/src/main/java/org/lineageos/setupwizard/settings/LineageSettingsActivity.kt
+@@ -73,6 +73,5 @@
+     private fun updateMetricsOption() {
+         val myPageBundle = SetupWizardApp.settingsBundle
+-        val metricsChecked =
+-            !myPageBundle.containsKey(KEY_SEND_METRICS) || myPageBundle.getBoolean(KEY_SEND_METRICS)
++        val metricsChecked = myPageBundle.getBoolean(KEY_SEND_METRICS, false)
+         metricsItem.isChecked = metricsChecked
+         myPageBundle.putBoolean(KEY_SEND_METRICS, metricsChecked)

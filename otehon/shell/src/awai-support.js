@@ -10,16 +10,40 @@ const SERVICE = "awai-support-devnet-desk";
 export const APPROVAL_KIND = "awai.support.approval/1";
 export const RECIPIENT = "Awai Network LLC";
 
+// AWAI-3883: finding-9 disclosure (Legal decision via Organizer, 2026-11-23, group F;
+// country nullable validator 2026-11-23; merge with main AWAI-3884 2026-11-23 — main's
+// US-entity disclosure is superseded by the Legal pending values below). Recipient is
+// limited to the entity that operates the endpoint processing logic AND decides the
+// purpose of data use (データの利用目的を決める主体); recipient is the RECIPIENT constant
+// above. Country is UNCONFIRMED: no code is written (country null, countryStatus pending);
+// the user-visible note carries the provisional wording and confirmCondition what would
+// confirm it. Frequency is validator 'one-time' for each-operation consent (all precedents).
+const SUPPORT_DISCLOSURE = {
+  recipient: RECIPIENT,
+  country: null, // unconfirmed: no code; see note + confirmCondition
+  countryStatus: "pending",
+  "special-care": false,
+  frequency: "one-time",
+  note: "登記国 未確認（暫定: 日本）",
+  confirmCondition: "登記国の確認（法務・税務）",
+};
 const operation = (name, categories, route) => ({
   capability: CAPABILITY, service: SERVICE, operation: name, consent: "each-operation",
   "data-categories": categories, endpoint: { origin: null, routes: [route] },
+  disclosure: { ...SUPPORT_DISCLOSURE,
+    data: ["支援の金額", "宛先", "受領書"],
+    purpose: "支援の準備・送信・受領確認",
+    withdrawal: "送信前の取消し" },
 });
 const TEMPLATES = [
-  operation("prepare-support", ["support-amount"], { method: "POST", path: "/v1/support/cards", "query-params": [] }),
+  operation("prepare-support", ["support-amount"], { method: "POST", path: "/v1/support/cards", "query-params": [] },
+    "prepare a devnet support card", "cancel before the card is prepared"),
   operation("send-support", ["support-card", "support-approval-signature", "approval-public-key"],
-    { method: "POST", path: "/v1/support/funds", "query-params": [] }),
+    { method: "POST", path: "/v1/support/funds", "query-params": [] },
+    "send the approved devnet support card", "do not approve; a sent card cannot be recalled"),
   operation("read-support-receipt", ["support-transfer-id"],
-    { method: "GET", path: "/v1/support/receipts/:transfer", "query-params": [] }),
+    { method: "GET", path: "/v1/support/receipts/:transfer", "query-params": [] },
+    "read a devnet support receipt", "cancel the request before it is sent"),
 ];
 
 const ORIGIN = /^https:\/\/[a-z0-9.-]+(?::[0-9]{1,5})?$/;

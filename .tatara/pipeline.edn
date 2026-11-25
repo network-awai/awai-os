@@ -5,9 +5,11 @@
  :quorum 2
  :timeout-seconds 180
  :steps [["bash" "scripts/ci/android-qa-scope.sh"]
-         ["node" "--test" "android/tests/local-apps.test.mjs"]
+         ["node" "--test" "android/tests/local-apps.test.mjs" "android/tests/online.test.mjs" "android/tests/torihiki.test.mjs" "android/tests/domain.test.mjs" "android/tests/identity.test.mjs" "android/tests/key-list.test.mjs" "android/tests/latest-pointer.test.mjs" "android/tests/setup.test.mjs"]
          ["node" "--test" "scripts/operator/vke-release-pool.test.mjs" "scripts/operator/vke-release-pool.signal.test.mjs" "deploy/build-reaper/reaper.test.mjs"]
-         ["python3" "-B" "-m" "unittest" "discover" "-s" "android/desktop/pc-ab-device"]
+         ;; python suites need >= 3.11 (pc-ab-device uses hashlib.file_digest; 3.9 lacks it)
+         ["bash" "scripts/ci/python-suite.sh" "discover" "-s" "android/desktop/pc-ab-device" "-p" "test_*.py"]
+         ["bash" "scripts/ci/python-suite.sh" "discover" "-s" "android/desktop/manifest" "-p" "test_*.py"]
          ;; Murakumo PHI path: lint with negative controls, release-only and Store catalog checks.
          ["node" "--test" "apps/murakumo/test/phi-path.test.mjs"]
          ["python3" "-B" "apps/murakumo/scripts/check-release.py" "--source"]

@@ -1,0 +1,547 @@
+This is SBCL 2.4.0, an implementation of ANSI Common Lisp.
+More information about SBCL is available at <http://www.sbcl.org/>.
+
+SBCL is free software, provided as is, with absolutely no warranty.
+It is mostly in the public domain; some portions are provided under
+BSD-style licenses.  See the CREDITS and COPYING files in the
+distribution for more information.
+
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ + ACL2 Version 8.7                                                     +
+ +   built November 24, 2026  20:34:44.                                 +
+ + Copyright (C) 2026, Regents of the University of Texas.              +
+ + ACL2 comes with ABSOLUTELY NO WARRANTY.  This is free software and   +
+ + you are welcome to redistribute it under certain conditions.  For    +
+ + details, see the LICENSE file distributed with ACL2.                 +
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Project-dir-alist:
+((:SYSTEM . "/Users/node/pcc/src/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !> "ACL2"
+ACL2 !>
+The admission of LOOKUP is trivial, using the relation O< (which is
+known to be well-founded on the domain recognized by O-P) and the measure
+(ACL2-COUNT ENV).  We could deduce no constraints on the type of LOOKUP.
+
+Summary
+Form:  ( DEFUN LOOKUP ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ LOOKUP
+ACL2 !>
+The admission of FREE-OF is trivial, using the relation O< (which is
+known to be well-founded on the domain recognized by O-P) and the measure
+(ACL2-COUNT X).  We observe that the type of FREE-OF is described by
+the theorem (OR (EQUAL (FREE-OF V X) T) (EQUAL (FREE-OF V X) NIL)).
+We used primitive type reasoning.
+
+Summary
+Form:  ( DEFUN FREE-OF ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FREE-OF
+ACL2 !>
+For the admission of EV-COND, EV-CASE-BRANCHES and EVL we will use
+the relation O< (which is known to be well-founded on the domain recognized
+by O-P) and the measure (ACL2-COUNT CLAUSES) for EV-COND, (ACL2-COUNT REST)
+for EV-CASE-BRANCHES and (ACL2-COUNT X) for EVL.  The non-trivial part
+of the measure conjecture is
+
+Goal
+(AND (IMPLIES (AND (NOT (ENDP CLAUSES))
+                   (EQ (CAR CLAUSES) :ELSE)
+                   (ENDP (CDDR CLAUSES)))
+              (O< (ACL2-COUNT (CADR CLAUSES))
+                  (ACL2-COUNT CLAUSES)))
+     (IMPLIES (AND (NOT (ENDP CLAUSES))
+                   (NOT (EQ (CAR CLAUSES) :ELSE))
+                   (NOT (EVL (CAR CLAUSES) ENV)))
+              (O< (ACL2-COUNT (CDDR CLAUSES))
+                  (ACL2-COUNT CLAUSES)))
+     (IMPLIES (AND (NOT (ENDP CLAUSES))
+                   (NOT (EQ (CAR CLAUSES) :ELSE))
+                   (EVL (CAR CLAUSES) ENV))
+              (O< (ACL2-COUNT (CADR CLAUSES))
+                  (ACL2-COUNT CLAUSES)))
+     (IMPLIES (AND (NOT (ENDP REST))
+                   (NOT (ENDP (CDR REST)))
+                   (NOT (EQUAL V (EVL (CAR REST) ENV))))
+              (O< (ACL2-COUNT (CDDR REST))
+                  (ACL2-COUNT REST)))
+     (IMPLIES (AND (NOT (ENDP REST))
+                   (NOT (ENDP (CDR REST)))
+                   (EQUAL V (EVL (CAR REST) ENV)))
+              (O< (ACL2-COUNT (CADR REST))
+                  (ACL2-COUNT REST)))
+     (IMPLIES (AND (NOT (INTEGERP X))
+                   (NOT (EQ X T))
+                   (NOT (EQ X NIL))
+                   (NOT (SYMBOLP X))
+                   (CONSP X)
+                   (EQ (CAR X) '+))
+              (O< (ACL2-COUNT (CADR X))
+                  (ACL2-COUNT X)))
+     (IMPLIES (AND (NOT (INTEGERP X))
+                   (NOT (EQ X T))
+                   (NOT (EQ X NIL))
+                   (NOT (SYMBOLP X))
+                   (CONSP X)
+                   (EQ (CAR X) '+))
+              (O< (ACL2-COUNT (CADDR X))
+                  (ACL2-COUNT X)))
+     (IMPLIES (AND (NOT (INTEGERP X))
+                   (NOT (EQ X T))
+                   (NOT (EQ X NIL))
+                   (NOT (SYMBOLP X))
+                   (CONSP X)
+                   (EQ (CAR X) 'IF-NOT))
+              (O< (ACL2-COUNT (CADR X))
+                  (ACL2-COUNT X)))
+     (IMPLIES (AND (NOT (INTEGERP X))
+                   (NOT (EQ X T))
+                   (NOT (EQ X NIL))
+                   (NOT (SYMBOLP X))
+                   (CONSP X)
+                   (EQ (CAR X) 'IF-NOT)
+                   (NOT (EVL (CADR X) ENV)))
+              (O< (ACL2-COUNT (CADDR X))
+                  (ACL2-COUNT X)))
+     (IMPLIES (AND (NOT (INTEGERP X))
+                   (NOT (EQ X T))
+                   (NOT (EQ X NIL))
+                   (NOT (SYMBOLP X))
+                   (CONSP X)
+                   (EQ (CAR X) 'IF-NOT)
+                   (EVL (CADR X) ENV))
+              (O< (ACL2-COUNT (CADDDR X))
+                  (ACL2-COUNT X)))
+     (IMPLIES (AND (NOT (INTEGERP X))
+                   (NOT (EQ X T))
+                   (NOT (EQ X NIL))
+                   (NOT (SYMBOLP X))
+                   (CONSP X)
+                   (EQ (CAR X) '=))
+              (O< (ACL2-COUNT (CADR X))
+                  (ACL2-COUNT X)))
+     (IMPLIES (AND (NOT (INTEGERP X))
+                   (NOT (EQ X T))
+                   (NOT (EQ X NIL))
+                   (NOT (SYMBOLP X))
+                   (CONSP X)
+                   (EQ (CAR X) '=))
+              (O< (ACL2-COUNT (CADDR X))
+                  (ACL2-COUNT X)))
+     (IMPLIES (AND (NOT (INTEGERP X))
+                   (NOT (EQ X T))
+                   (NOT (EQ X NIL))
+                   (NOT (SYMBOLP X))
+                   (CONSP X)
+                   (EQ (CAR X) 'LET))
+              (O< (ACL2-COUNT (CADDR X))
+                  (ACL2-COUNT X)))
+     (IMPLIES (AND (NOT (INTEGERP X))
+                   (NOT (EQ X T))
+                   (NOT (EQ X NIL))
+                   (NOT (SYMBOLP X))
+                   (CONSP X)
+                   (EQ (CAR X) 'LET))
+              (O< (ACL2-COUNT (CADR (CADR X)))
+                  (ACL2-COUNT X)))
+     (IMPLIES (AND (NOT (INTEGERP X))
+                   (NOT (EQ X T))
+                   (NOT (EQ X NIL))
+                   (NOT (SYMBOLP X))
+                   (CONSP X)
+                   (EQ (CAR X) '<))
+              (O< (ACL2-COUNT (CADR X))
+                  (ACL2-COUNT X)))
+     (IMPLIES (AND (NOT (INTEGERP X))
+                   (NOT (EQ X T))
+                   (NOT (EQ X NIL))
+                   (NOT (SYMBOLP X))
+                   (CONSP X)
+                   (EQ (CAR X) '<))
+              (O< (ACL2-COUNT (CADDR X))
+                  (ACL2-COUNT X)))
+     (IMPLIES (AND (NOT (INTEGERP X))
+                   (NOT (EQ X T))
+                   (NOT (EQ X NIL))
+                   (NOT (SYMBOLP X))
+                   (CONSP X)
+                   (EQ (CAR X) 'IF))
+              (O< (ACL2-COUNT (CADR X))
+                  (ACL2-COUNT X)))
+     (IMPLIES (AND (NOT (INTEGERP X))
+                   (NOT (EQ X T))
+                   (NOT (EQ X NIL))
+                   (NOT (SYMBOLP X))
+                   (CONSP X)
+                   (EQ (CAR X) 'IF)
+                   (EVL (CADR X) ENV))
+              (O< (ACL2-COUNT (CADDR X))
+                  (ACL2-COUNT X)))
+     (IMPLIES (AND (NOT (INTEGERP X))
+                   (NOT (EQ X T))
+                   (NOT (EQ X NIL))
+                   (NOT (SYMBOLP X))
+                   (CONSP X)
+                   (EQ (CAR X) 'IF)
+                   (NOT (EVL (CADR X) ENV)))
+              (O< (ACL2-COUNT (CADDDR X))
+                  (ACL2-COUNT X)))
+     (IMPLIES (AND (NOT (INTEGERP X))
+                   (NOT (EQ X T))
+                   (NOT (EQ X NIL))
+                   (NOT (SYMBOLP X))
+                   (CONSP X)
+                   (EQ (CAR X) 'NOT))
+              (O< (ACL2-COUNT (CADR X))
+                  (ACL2-COUNT X)))
+     (IMPLIES (AND (NOT (INTEGERP X))
+                   (NOT (EQ X T))
+                   (NOT (EQ X NIL))
+                   (NOT (SYMBOLP X))
+                   (CONSP X)
+                   (EQ (CAR X) 'CASE)
+                   (NOT (ENDP (CDR X))))
+              (O< (ACL2-COUNT (CDDR X))
+                  (ACL2-COUNT X)))
+     (IMPLIES (AND (NOT (INTEGERP X))
+                   (NOT (EQ X T))
+                   (NOT (EQ X NIL))
+                   (NOT (SYMBOLP X))
+                   (CONSP X)
+                   (EQ (CAR X) 'CASE)
+                   (NOT (ENDP (CDR X))))
+              (O< (ACL2-COUNT (CADR X))
+                  (ACL2-COUNT X)))).
+Subgoal 22
+Subgoal 22'
+Subgoal 22.2
+Subgoal 22.2'
+Subgoal 22.2''
+Subgoal 22.1
+Subgoal 22.1'
+Subgoal 22.1''
+Subgoal 21
+Subgoal 21'
+Subgoal 21.2
+Subgoal 21.2'
+Subgoal 21.1
+Subgoal 21.1'
+Subgoal 20
+Subgoal 20'
+Subgoal 20.2
+Subgoal 20.2'
+Subgoal 20.1
+Subgoal 20.1'
+Subgoal 19
+Subgoal 19'
+Subgoal 18
+Subgoal 18'
+Subgoal 17
+Subgoal 17'
+Subgoal 17.2
+Subgoal 17.2'
+Subgoal 17.2''
+Subgoal 17.1
+Subgoal 17.1'
+Subgoal 17.1''
+Subgoal 16
+Subgoal 16'
+Subgoal 16.3
+Subgoal 16.3'
+Subgoal 16.3''
+Subgoal 16.2
+Subgoal 16.2'
+Subgoal 16.2''
+Subgoal 16.1
+Subgoal 16.1'
+Subgoal 16.1''
+Subgoal 15
+Subgoal 15'
+Subgoal 15.2
+Subgoal 15.2'
+Subgoal 15.2''
+Subgoal 15.1
+Subgoal 15.1'
+Subgoal 15.1''
+Subgoal 14
+Subgoal 14'
+Subgoal 14.3
+Subgoal 14.3'
+Subgoal 14.3''
+Subgoal 14.2
+Subgoal 14.2'
+Subgoal 14.2''
+Subgoal 14.1
+Subgoal 14.1'
+Subgoal 14.1''
+Subgoal 13
+Subgoal 13'
+Subgoal 13.4
+Subgoal 13.4'
+Subgoal 13.4''
+Subgoal 13.3
+Subgoal 13.3'
+Subgoal 13.3''
+Subgoal 13.2
+Subgoal 13.2'
+Subgoal 13.2''
+Subgoal 13.1
+Subgoal 13.1'
+Subgoal 13.1''
+Subgoal 12
+Subgoal 12'
+Subgoal 12.2
+Subgoal 12.2'
+Subgoal 12.2''
+Subgoal 12.1
+Subgoal 12.1'
+Subgoal 12.1''
+Subgoal 11
+Subgoal 11'
+Subgoal 11.3
+Subgoal 11.3'
+Subgoal 11.3''
+Subgoal 11.2
+Subgoal 11.2'
+Subgoal 11.2''
+Subgoal 11.1
+Subgoal 11.1'
+Subgoal 11.1''
+Subgoal 10
+Subgoal 10'
+Subgoal 10.3
+Subgoal 10.3'
+Subgoal 10.3''
+Subgoal 10.2
+Subgoal 10.2'
+Subgoal 10.2''
+Subgoal 10.1
+Subgoal 10.1'
+Subgoal 10.1''
+Subgoal 9
+Subgoal 9'
+Subgoal 9.4
+Subgoal 9.4'
+Subgoal 9.4''
+Subgoal 9.3
+Subgoal 9.3'
+Subgoal 9.3''
+Subgoal 9.2
+Subgoal 9.2'
+Subgoal 9.2''
+Subgoal 9.1
+Subgoal 9.1'
+Subgoal 9.1''
+Subgoal 8
+Subgoal 8'
+Subgoal 8.2
+Subgoal 8.2'
+Subgoal 8.2''
+Subgoal 8.1
+Subgoal 8.1'
+Subgoal 8.1''
+Subgoal 7
+Subgoal 7'
+Subgoal 7.3
+Subgoal 7.3'
+Subgoal 7.3''
+Subgoal 7.2
+Subgoal 7.2'
+Subgoal 7.2''
+Subgoal 7.1
+Subgoal 7.1'
+Subgoal 7.1''
+Subgoal 6
+Subgoal 6'
+Subgoal 6.2
+Subgoal 6.2'
+Subgoal 6.2''
+Subgoal 6.1
+Subgoal 6.1'
+Subgoal 6.1''
+Subgoal 5
+Subgoal 5'
+Subgoal 5.3
+Subgoal 5.3'
+Subgoal 5.3''
+Subgoal 5.2
+Subgoal 5.2'
+Subgoal 5.2''
+Subgoal 5.1
+Subgoal 5.1'
+Subgoal 5.1''
+Subgoal 4
+Subgoal 4'
+Subgoal 4.4
+Subgoal 4.4'
+Subgoal 4.4''
+Subgoal 4.3
+Subgoal 4.3'
+Subgoal 4.3''
+Subgoal 4.2
+Subgoal 4.2'
+Subgoal 4.2''
+Subgoal 4.1
+Subgoal 4.1'
+Subgoal 4.1''
+Subgoal 3
+Subgoal 3'
+Subgoal 3.2
+Subgoal 3.2'
+Subgoal 3.2''
+Subgoal 3.1
+Subgoal 3.1'
+Subgoal 3.1''
+Subgoal 2
+Subgoal 2'
+Subgoal 1
+Subgoal 1'
+
+Q.E.D.
+
+That completes the proof of the measure theorem for EV-COND, EV-CASE-BRANCHES
+and EVL.  Thus, we admit these functions under the principle of definition.
+We could deduce no constraints on the type of any of the functions
+in the clique.  However, in normalizing the definitions we used primitive
+type reasoning.
+
+Summary
+Form:  ( MUTUAL-RECURSION ( DEFUN EV-COND ...) ...)
+Rules: ((:DEFINITION ACL2-COUNT)
+        (:DEFINITION ENDP)
+        (:DEFINITION EQ)
+        (:DEFINITION FIX)
+        (:DEFINITION NOT)
+        (:DEFINITION O-FINP)
+        (:DEFINITION O<)
+        (:DEFINITION SYNP)
+        (:ELIM CAR-CDR-ELIM)
+        (:EXECUTABLE-COUNTERPART ACL2-COUNT)
+        (:EXECUTABLE-COUNTERPART BINARY-+)
+        (:EXECUTABLE-COUNTERPART CAR)
+        (:EXECUTABLE-COUNTERPART CDR)
+        (:EXECUTABLE-COUNTERPART CONSP)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART SYMBOLP)
+        (:FAKE-RUNE-FOR-LINEAR NIL)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:LINEAR ACL2-COUNT-CAR-CDR-LINEAR)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:REWRITE COMMUTATIVITY-2-OF-+)
+        (:REWRITE COMMUTATIVITY-OF-+)
+        (:REWRITE DEFAULT-CAR)
+        (:REWRITE DEFAULT-CDR)
+        (:REWRITE FOLD-CONSTS-IN-+)
+        (:REWRITE UNICITY-OF-0)
+        (:TYPE-PRESCRIPTION ACL2-COUNT))
+Time:  0.04 seconds (prove: 0.03, print: 0.00, other: 0.00)
+Prover steps counted:  40453
+ (EV-COND EV-CASE-BRANCHES EVL)
+ACL2 !>
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM RULE-IF-NOT ...)
+Rules: ((:DEFINITION EVL)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  1917
+ RULE-IF-NOT
+ACL2 !>
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM RULE-IF-NOT-SWAP ...)
+Rules: ((:DEFINITION EVL)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  1913
+ RULE-IF-NOT-SWAP
+ACL2 !>
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+No induction schemes are suggested by the induction hint.  Consequently,
+the proof attempt has failed.
+
+Summary
+Form:  ( DEFTHM EVL-IGNORE-UNBOUND ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+
+---
+The key checkpoint goal, below, may help you to debug this failure.
+See :DOC failure and see :DOC set-checkpoint-summary-limit.
+---
+
+*** Key checkpoint at the top level: ***
+
+Goal
+(IMPLIES (NOT (FREE-OF V X))
+         (EQUAL (EVL X (CONS (CONS V Y) ENV))
+                (EVL X ENV)))
+
+ACL2 Error [Failure] in ( DEFTHM EVL-IGNORE-UNBOUND ...):  See :DOC
+failure.
+
+******** FAILED ********
+ACL2 !>
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM RULE-COND-2 ...)
+Rules: ((:DEFINITION EV-COND)
+        (:DEFINITION EVL)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART CONSP)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  1977
+ RULE-COND-2
+ACL2 !>
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM RULE-COND-STEP ...)
+Rules: ((:DEFINITION EV-COND)
+        (:DEFINITION EVL)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  1538
+ RULE-COND-STEP
+ACL2 !>
+
+ACL2 Error in ( DEFTHM RULE-CASE-1 ...):  The object EVL-IGNORE-UNBOUND
+is an ill-formed lemma instance because there is no formula associated
+with the name EVL-IGNORE-UNBOUND.  See :DOC lemma-instance.
+
+
+Summary
+Form:  ( DEFTHM RULE-CASE-1 ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+
+ACL2 Error [Failure] in ( DEFTHM RULE-CASE-1 ...):  See :DOC failure.
+
+******** FAILED ********
+ACL2 !>Bye.

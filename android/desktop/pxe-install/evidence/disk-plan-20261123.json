@@ -1,0 +1,621 @@
+{
+  "schema": "awai.pc.7735h.disk-plan.v1",
+  "date": "2026-11-23",
+  "issue": "AWAI-3585/AWAI-3586",
+  "recordedGpt": {
+    "schema": "awai.pc.nvme.audit.v1",
+    "sectorBytes": 512,
+    "sectors": 500118192,
+    "firstUsableLba": 34,
+    "lastUsableLba": 500118158,
+    "partitions": [
+      {
+        "number": 1,
+        "name": "otehon-esp",
+        "typeGuid": "c12a7328-f81f-11d2-ba4b-00a0c93ec93b",
+        "start": 2048,
+        "end": 2099199
+      },
+      {
+        "number": 2,
+        "name": "otehon-root",
+        "typeGuid": "4f68bce3-e8cd-4db1-96e7-fbcaf984b709",
+        "start": 2099200,
+        "end": 52430847
+      },
+      {
+        "number": 3,
+        "name": "otehon-state",
+        "typeGuid": "0fc63daf-8483-4772-8e79-3d69d8477de4",
+        "start": 52430848,
+        "end": 500118158
+      }
+    ],
+    "free": [
+      {
+        "start": 34,
+        "end": 2047
+      }
+    ],
+    "witness": {
+      "before.head": "554522a048eebe037880c076db79926ad78aabd529f1d4f7f8ad41ddb213be13",
+      "before.tail": "babb4d5dbbfdababf7221945c19d91c7dec4c063a43a480b78be2c47453ae40d",
+      "after.head": "554522a048eebe037880c076db79926ad78aabd529f1d4f7f8ad41ddb213be13",
+      "after.tail": "babb4d5dbbfdababf7221945c19d91c7dec4c063a43a480b78be2c47453ae40d",
+      "sectors": "6ed43efbac58fe101d36999cf17c83af82f536cdc00d9bc1f5e73f29176dd1f5"
+    },
+    "gptUnchanged": true,
+    "date": "2026-11-21",
+    "issue": "AWAI-3585",
+    "installPlanning": {
+      "sourceSha256": "cd22c7624f0058b0972c6d49b0b8d51aedc2e4c919486ed48bbf404d9c16d396",
+      "installerRevision": "dd91657562ac6e25ea7970a7cec1d13bcbf21a35",
+      "userdataGiB": 16,
+      "minimumContiguousSectors": 60082176,
+      "result": "refused-no-aligned-free-range",
+      "writeRanges": [],
+      "plannerResult": "REFUSED not-enough-free-space: need 60082176 sectors in one free range, free ranges [(34, 2047)]"
+    },
+    "tftp": {
+      "restored": true,
+      "originalIpxeSha256": "bfa3084d964bceae16299f36874db15530d3b100c6066614f39aa4a8340a5d54"
+    }
+  },
+  "notes": [
+    "GPT bytes are the 2026-11-21 recorded audit, not the live disk.",
+    "make_plan() was run with table() mocked (same technique as test_awai_pc_install.py) because sgdisk is not installed on this Mac and no stock disk image exists here.",
+    "Per-partition source sizes below are the 2026-11-19 KVM byname-v2 build (install-record-kvm-20261119.json). The pinned candidate cd22c762 is a different build: only its total (60082176) is pinned. Exact cd22c placement needs its stock disk image."
+  ],
+  "current": {
+    "firstUsableLba": 34,
+    "lastUsableLba": 500118158,
+    "partitions": [
+      {
+        "number": 1,
+        "start": 2048,
+        "end": 2099199,
+        "type": "EF00",
+        "name": "otehon-esp"
+      },
+      {
+        "number": 2,
+        "start": 2099200,
+        "end": 52430847,
+        "type": "8300",
+        "name": "otehon-root"
+      },
+      {
+        "number": 3,
+        "start": 52430848,
+        "end": 500118158,
+        "type": "8300",
+        "name": "otehon-state"
+      }
+    ],
+    "freeRanges": [
+      [
+        34,
+        2047
+      ]
+    ],
+    "minimumContiguousSectors": 60082176,
+    "minimumContiguousGiB": 28.6494,
+    "plannerOnCurrentLayout": "REFUSED not-enough-free-space: need 60082176 sectors in one free range, free ranges [(34, 2047)]",
+    "p2Sectors": 50331648,
+    "p2GiB": 24.0,
+    "p3Sectors": 447687311,
+    "p3GiB": 213.4739,
+    "p2DeletingAloneFreesLessThanNeed": true
+  },
+  "option_a_erase": {
+    "destroys": [
+      "nvme0n1p1 (otehon-esp 2048-2099199)",
+      "nvme0n1p2 (otehon-root 2099200-52430847, incl /awai-android-2992)",
+      "nvme0n1p3 (otehon-state 52430848-500118158, LUKS ~213 GiB)"
+    ],
+    "freeRangeAfterErase": [
+      2048,
+      500118158
+    ],
+    "freeRangeSectors": 500116111,
+    "freeRangeGiB": 238.4739,
+    "fitsNeed": true,
+    "plan": {
+      "result": "ok",
+      "plan": {
+        "schema": "awai.pc.ab-install.plan.v1",
+        "target": "pxe-plan-target.img",
+        "source": "pxe-plan-source.img",
+        "existing": [],
+        "freeRangeUsed": [
+          2048,
+          500118158
+        ],
+        "new": [
+          {
+            "number": 1,
+            "name": "awai_esp",
+            "start": 2048,
+            "end": 264191,
+            "type": "ef00",
+            "guid": null,
+            "from": {
+              "name": "EFI",
+              "start": 2048,
+              "end": 264191
+            }
+          },
+          {
+            "number": 2,
+            "name": "super",
+            "start": 264192,
+            "end": 25430015,
+            "type": "8300",
+            "guid": null,
+            "from": {
+              "name": "super",
+              "start": 264192,
+              "end": 25430015
+            }
+          },
+          {
+            "number": 3,
+            "name": "misc",
+            "start": 25430016,
+            "end": 25432063,
+            "type": "8300",
+            "guid": "41574149-0000-4d49-8000-000000000001",
+            "from": null
+          },
+          {
+            "number": 4,
+            "name": "persist",
+            "start": 25432064,
+            "end": 25464831,
+            "type": "8300",
+            "guid": null,
+            "from": {
+              "name": "persist",
+              "start": 25432064,
+              "end": 25464831
+            }
+          },
+          {
+            "number": 5,
+            "name": "metadata",
+            "start": 25464832,
+            "end": 25530367,
+            "type": "8300",
+            "guid": null,
+            "from": null
+          },
+          {
+            "number": 6,
+            "name": "firmware",
+            "start": 25530368,
+            "end": 25792511,
+            "type": "8300",
+            "guid": null,
+            "from": {
+              "name": "firmware",
+              "start": 25530368,
+              "end": 25792511
+            }
+          },
+          {
+            "number": 7,
+            "name": "vendor_boot_a",
+            "start": 25792512,
+            "end": 25997311,
+            "type": "8300",
+            "guid": "41574149-0000-5642-8000-00000000000a",
+            "from": {
+              "name": "vendor_boot_a",
+              "start": 25792512,
+              "end": 25997311
+            }
+          },
+          {
+            "number": 8,
+            "name": "vendor_boot_b",
+            "start": 25997312,
+            "end": 26202111,
+            "type": "8300",
+            "guid": "41574149-0000-5642-8000-00000000000b",
+            "from": {
+              "name": "vendor_boot_b",
+              "start": 25997312,
+              "end": 26202111
+            }
+          },
+          {
+            "number": 9,
+            "name": "boot_a",
+            "start": 26202112,
+            "end": 26365951,
+            "type": "8300",
+            "guid": "41574149-0000-424f-8000-00000000000a",
+            "from": {
+              "name": "boot_a",
+              "start": 26202112,
+              "end": 26365951
+            }
+          },
+          {
+            "number": 10,
+            "name": "boot_b",
+            "start": 26365952,
+            "end": 26529791,
+            "type": "8300",
+            "guid": "41574149-0000-424f-8000-00000000000b",
+            "from": {
+              "name": "boot_b",
+              "start": 26365952,
+              "end": 26529791
+            }
+          },
+          {
+            "number": 11,
+            "name": "userdata",
+            "start": 26529792,
+            "end": 60084223,
+            "type": "8300",
+            "guid": null,
+            "from": null
+          }
+        ]
+      }
+    }
+  },
+  "option_b1_shrink_p3_tail": {
+    "frees": [
+      440035328,
+      500118158
+    ],
+    "freesSectors": 60082831,
+    "freesGiB": 28.6497,
+    "fitsNeed": true,
+    "p3KeptSectors": 387604480,
+    "p3KeptGiB": 184.8242,
+    "p3TruncatedSectors": 60082831,
+    "p3TruncatedGiB": 28.6497,
+    "destroys": [
+      "otehon-state tail 28.65 GiB: LUKS volume + filesystem truncated; needs unmount, filesystem shrink, backup. LUKS header (at p3 start) preserved."
+    ],
+    "preserves": [
+      "nvme0n1p1 (otehon-esp, full)",
+      "nvme0n1p2 (otehon-root 24 GiB, full, incl /awai-android-2992)"
+    ],
+    "plan": {
+      "result": "ok",
+      "plan": {
+        "schema": "awai.pc.ab-install.plan.v1",
+        "target": "pxe-plan-target.img",
+        "source": "pxe-plan-source.img",
+        "existing": [
+          {
+            "number": 1,
+            "start": 2048,
+            "end": 2099199,
+            "type": "EF00",
+            "name": "otehon-esp"
+          },
+          {
+            "number": 2,
+            "start": 2099200,
+            "end": 52430847,
+            "type": "8300",
+            "name": "otehon-root"
+          },
+          {
+            "number": 3,
+            "start": 52430848,
+            "end": 440035327,
+            "type": "8300",
+            "name": "otehon-state"
+          }
+        ],
+        "freeRangeUsed": [
+          440035328,
+          500118158
+        ],
+        "new": [
+          {
+            "number": 4,
+            "name": "awai_esp",
+            "start": 440035328,
+            "end": 440297471,
+            "type": "ef00",
+            "guid": null,
+            "from": {
+              "name": "EFI",
+              "start": 2048,
+              "end": 264191
+            }
+          },
+          {
+            "number": 5,
+            "name": "super",
+            "start": 440297472,
+            "end": 465463295,
+            "type": "8300",
+            "guid": null,
+            "from": {
+              "name": "super",
+              "start": 264192,
+              "end": 25430015
+            }
+          },
+          {
+            "number": 6,
+            "name": "misc",
+            "start": 465463296,
+            "end": 465465343,
+            "type": "8300",
+            "guid": "41574149-0000-4d49-8000-000000000001",
+            "from": null
+          },
+          {
+            "number": 7,
+            "name": "persist",
+            "start": 465465344,
+            "end": 465498111,
+            "type": "8300",
+            "guid": null,
+            "from": {
+              "name": "persist",
+              "start": 25432064,
+              "end": 25464831
+            }
+          },
+          {
+            "number": 8,
+            "name": "metadata",
+            "start": 465498112,
+            "end": 465563647,
+            "type": "8300",
+            "guid": null,
+            "from": null
+          },
+          {
+            "number": 9,
+            "name": "firmware",
+            "start": 465563648,
+            "end": 465825791,
+            "type": "8300",
+            "guid": null,
+            "from": {
+              "name": "firmware",
+              "start": 25530368,
+              "end": 25792511
+            }
+          },
+          {
+            "number": 10,
+            "name": "vendor_boot_a",
+            "start": 465825792,
+            "end": 466030591,
+            "type": "8300",
+            "guid": "41574149-0000-5642-8000-00000000000a",
+            "from": {
+              "name": "vendor_boot_a",
+              "start": 25792512,
+              "end": 25997311
+            }
+          },
+          {
+            "number": 11,
+            "name": "vendor_boot_b",
+            "start": 466030592,
+            "end": 466235391,
+            "type": "8300",
+            "guid": "41574149-0000-5642-8000-00000000000b",
+            "from": {
+              "name": "vendor_boot_b",
+              "start": 25997312,
+              "end": 26202111
+            }
+          },
+          {
+            "number": 12,
+            "name": "boot_a",
+            "start": 466235392,
+            "end": 466399231,
+            "type": "8300",
+            "guid": "41574149-0000-424f-8000-00000000000a",
+            "from": {
+              "name": "boot_a",
+              "start": 26202112,
+              "end": 26365951
+            }
+          },
+          {
+            "number": 13,
+            "name": "boot_b",
+            "start": 466399232,
+            "end": 466563071,
+            "type": "8300",
+            "guid": "41574149-0000-424f-8000-00000000000b",
+            "from": {
+              "name": "boot_b",
+              "start": 26365952,
+              "end": 26529791
+            }
+          },
+          {
+            "number": 14,
+            "name": "userdata",
+            "start": 466563072,
+            "end": 500117503,
+            "type": "8300",
+            "guid": null,
+            "from": null
+          }
+        ]
+      }
+    }
+  },
+  "option_b2_b3_not_viable": {
+    "shrink_p2_alone_maxFrees": 50331648,
+    "reason_p2_alone": "deleting/shrinking p2 (24.0 GiB) frees at most 50331648 sectors < 60082176",
+    "reason_gap_before_p3": "any free range before p3 requires moving p3 start forward, which erases the LUKS header at p3 start and destroys the encrypted volume; equivalent to (a) for p3.",
+    "reason_shrink_p3_head_only": "new p3 start would be 112513024, LUKS header lost"
+  },
+  "option_c_second_disk": {
+    "destroys": [
+      "only the new disk (erased)"
+    ],
+    "touchesCurrentNvme": false,
+    "minimumDiskSectors": 60084257,
+    "minimumDiskGiB": 28.6504,
+    "recommendation": "use a 512e disk >= 64 GiB (installer refuses non-512 logical sectors); firmware boot entry / GRUB ESP choice must be qualified (OVMF skipped the first ESP without a loader, pc-ab-device README Known gaps).",
+    "planOnBlankDisk": {
+      "result": "ok",
+      "plan": {
+        "schema": "awai.pc.ab-install.plan.v1",
+        "target": "pxe-plan-target.img",
+        "source": "pxe-plan-source.img",
+        "existing": [],
+        "freeRangeUsed": [
+          2048,
+          500118158
+        ],
+        "new": [
+          {
+            "number": 1,
+            "name": "awai_esp",
+            "start": 2048,
+            "end": 264191,
+            "type": "ef00",
+            "guid": null,
+            "from": {
+              "name": "EFI",
+              "start": 2048,
+              "end": 264191
+            }
+          },
+          {
+            "number": 2,
+            "name": "super",
+            "start": 264192,
+            "end": 25430015,
+            "type": "8300",
+            "guid": null,
+            "from": {
+              "name": "super",
+              "start": 264192,
+              "end": 25430015
+            }
+          },
+          {
+            "number": 3,
+            "name": "misc",
+            "start": 25430016,
+            "end": 25432063,
+            "type": "8300",
+            "guid": "41574149-0000-4d49-8000-000000000001",
+            "from": null
+          },
+          {
+            "number": 4,
+            "name": "persist",
+            "start": 25432064,
+            "end": 25464831,
+            "type": "8300",
+            "guid": null,
+            "from": {
+              "name": "persist",
+              "start": 25432064,
+              "end": 25464831
+            }
+          },
+          {
+            "number": 5,
+            "name": "metadata",
+            "start": 25464832,
+            "end": 25530367,
+            "type": "8300",
+            "guid": null,
+            "from": null
+          },
+          {
+            "number": 6,
+            "name": "firmware",
+            "start": 25530368,
+            "end": 25792511,
+            "type": "8300",
+            "guid": null,
+            "from": {
+              "name": "firmware",
+              "start": 25530368,
+              "end": 25792511
+            }
+          },
+          {
+            "number": 7,
+            "name": "vendor_boot_a",
+            "start": 25792512,
+            "end": 25997311,
+            "type": "8300",
+            "guid": "41574149-0000-5642-8000-00000000000a",
+            "from": {
+              "name": "vendor_boot_a",
+              "start": 25792512,
+              "end": 25997311
+            }
+          },
+          {
+            "number": 8,
+            "name": "vendor_boot_b",
+            "start": 25997312,
+            "end": 26202111,
+            "type": "8300",
+            "guid": "41574149-0000-5642-8000-00000000000b",
+            "from": {
+              "name": "vendor_boot_b",
+              "start": 25997312,
+              "end": 26202111
+            }
+          },
+          {
+            "number": 9,
+            "name": "boot_a",
+            "start": 26202112,
+            "end": 26365951,
+            "type": "8300",
+            "guid": "41574149-0000-424f-8000-00000000000a",
+            "from": {
+              "name": "boot_a",
+              "start": 26202112,
+              "end": 26365951
+            }
+          },
+          {
+            "number": 10,
+            "name": "boot_b",
+            "start": 26365952,
+            "end": 26529791,
+            "type": "8300",
+            "guid": "41574149-0000-424f-8000-00000000000b",
+            "from": {
+              "name": "boot_b",
+              "start": 26365952,
+              "end": 26529791
+            }
+          },
+          {
+            "number": 11,
+            "name": "userdata",
+            "start": 26529792,
+            "end": 60084223,
+            "type": "8300",
+            "guid": null,
+            "from": null
+          }
+        ]
+      }
+    }
+  },
+  "kvmSourceAlignedTotalSectors": 60082176,
+  "kvmSourceAlignedTotalGiB": 28.6494
+}

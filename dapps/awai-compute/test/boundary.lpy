@@ -1,0 +1,31 @@
+;; AWAI-3115: the 24h offer cap (ADR 0051 D5) on Basilisp, the third runtime.
+;; usage (from dapps/awai-compute): PYTHONPATH=src:../en-devnet/src basilisp run test/boundary.lpy
+(ns boundary
+  (:require [awai-compute.core :as c])
+  (:import sys))
+
+(def now 1000)
+(def request {:route :en-devnet :chain-id "awai-en-devnet/awai-3115-test"
+              :provider "did:key:zProvider" :consumer "did:key:zBot"
+              :amount 1 :order-id "compute-0123456789abcdef01234567"
+              :expires-ms 600000})
+
+(defn decide-at [expires-ms]
+  (let [card (c/offer-card (assoc request :expires-ms expires-ms))]
+    (c/decide card {:approved true :card card} now)))
+
+(def failures (atom []))
+
+(defn check [name ok]
+  (when-not ok (swap! failures conj name))
+  (println (if ok "PASS" "FAIL") name))
+
+(check "24h constant is 86400000" (= 86400000 c/longest-offer-ms))
+(let [d (decide-at (+ now c/longest-offer-ms))]
+  (check "exactly 24h lifetime is accepted" (true? (:order? d))))
+(let [d (decide-at (+ now (inc c/longest-offer-ms)))]
+  (check "24h + 1ms lifetime is refused as offer-too-long"
+         (and (false? (:order? d)) (= :offer-too-long (:cause d)))))
+
+(println (count @failures) "failures")
+(sys/exit (if (empty? @failures) 0 1))

@@ -16,7 +16,7 @@ struct Result {sd_result_t*p=nullptr;~Result(){sd_result_free(p);}};
 std::string str(JNIEnv*e,jstring s){const char*p=e->GetStringUTFChars(s,nullptr);std::string x(p);e->ReleaseStringUTFChars(s,p);return x;}
 bool ok(sd_status_t s){return s==SD_STATUS_OK;}
 }
-extern "C" JNIEXPORT jbyteArray JNICALL Java_network_awai_murakumo_ImageEngine_generate(JNIEnv*e,jclass,jstring root,jbyteArray raw){
+static jbyteArray doGenerate(JNIEnv*e,jstring root,jbyteArray raw){
  std::unique_lock<std::mutex> guard(mutex,std::try_to_lock);if(!guard.owns_lock()){fail(e,"busy");return nullptr;}
  const int n=e->GetArrayLength(raw);if(n<1||n>8192){fail(e,"prompt-limit");return nullptr;}
  std::string prompt(n,'\0');e->GetByteArrayRegion(raw,0,n,reinterpret_cast<jbyte*>(prompt.data()));
@@ -40,6 +40,13 @@ extern "C" JNIEXPORT jbyteArray JNICALL Java_network_awai_murakumo_ImageEngine_g
  const auto channels=sd_tensor_dim(t,0);const auto*data=static_cast<const unsigned char*>(sd_tensor_data(t));
  std::vector<unsigned char> rgba(512*512*4);for(int i=0;i<512*512;i++){for(int j=0;j<3;j++)rgba[i*4+j]=data[i*channels+j];rgba[i*4+3]=channels==4?data[i*4+3]:255;}
  auto b=e->NewByteArray(rgba.size());if(b)e->SetByteArrayRegion(b,0,rgba.size(),reinterpret_cast<const jbyte*>(rgba.data()));progress=100;return b;
+}
+// An exception that left a JNI call would end in std::terminate, whose message (the exception's what())
+// goes to logcat and the tombstone. Like the text engine, turn every exception into a fixed code.
+extern "C" JNIEXPORT jbyteArray JNICALL Java_network_awai_murakumo_ImageEngine_generate(JNIEnv*e,jclass,jstring root,jbyteArray raw){
+ try{return doGenerate(e,root,raw);}catch(...){
+  {std::lock_guard<std::mutex>state(ctxMutex);if(ctx){sd_ctx_free(ctx);ctx=nullptr;}}
+  if(!e->ExceptionCheck())fail(e,"image-generation-failed");return nullptr;}
 }
 extern "C" JNIEXPORT jint JNICALL Java_network_awai_murakumo_ImageEngine_progress(JNIEnv*,jclass){return progress.load();}
 // Cancellation is cooperative; never free a running context from the UI thread.

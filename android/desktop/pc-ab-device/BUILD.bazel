@@ -22,10 +22,84 @@ sh_test(
     tags = ["no-remote"],
 )
 
+# Screen installer (AWAI item 205): guards, backend, page text, overlay build. The browser suite skips
+# itself where Chrome is not installed.
+[
+    sh_test(
+        name = "screen_installer_%s_test" % name,
+        srcs = ["run-python-test.sh"],
+        args = ["installer/tests/test_%s.py" % suite],
+        data = [
+            ":awai-pc-install.py",
+        ] + glob(["installer/**"], exclude = ["installer/screenshots/**"]),
+        size = "large" if name == "layout" else "medium",
+        tags = ["no-remote"],
+    )
+    for name, suite in [
+        ("core", "core"),
+        ("controller", "controller"),
+        ("gui", "gui"),  # the GTK widget tests skip themselves where PyGObject / Gtk 3 is missing
+        ("layout", "layout"),  # every size: inside the safe area, nothing overlaps (skips without GTK)
+        ("web_build", "web_and_build"),
+    ]
+]
+
+# AWAI-4090: GPU sysfs label patch and the no-flash trial policy builder.
+sh_test(
+    name = "gpu_sysfs_test",
+    srcs = ["run-python-test.sh"],
+    args = ["test_gpu_sysfs.py"],
+    data = [
+        "apply.sh",
+        "gpu-sysfs-trial.py",
+        "patches/virtio-common-awai-pc-gpu-sysfs.patch",
+        "test_gpu_sysfs.py",
+    ],
+    size = "small",
+    tags = ["no-remote"],
+)
+
+# AWAI-4092: RTL8851BE kernel-config fragment + vendor module load order + firmware selection.
+sh_test(
+    name = "rtw8851be_test",
+    srcs = ["run-python-test.sh"],
+    args = ["test_rtw8851be.py"],
+    data = [
+        "apply.sh",
+        "patches/virtio-common-rtw89-8851be.patch",
+        "pc-firmware.py",
+        "test_rtw8851be.py",
+    ],
+    size = "small",
+    tags = ["no-remote"],
+)
+
+# AWAI-4093: diagnostics default-off patch (vendor provider seed).
+sh_test(
+    name = "diagnostics_off_test",
+    srcs = ["run-python-test.sh"],
+    args = ["test_diagnostics_off.py"],
+    data = [
+        "apply.sh",
+        "patches/vendor-lineage-stats-default-off.patch",
+        "test_diagnostics_off.py",
+    ],
+    size = "small",
+    tags = ["no-remote"],
+)
+
 test_suite(
     name = "pc_verification",
     tests = [
+        ":gpu_sysfs_test",
+        ":rtw8851be_test",
+        ":diagnostics_off_test",
         ":installer_test",
         ":ota_feed_test",
+        ":screen_installer_core_test",
+        ":screen_installer_web_build_test",
+        ":screen_installer_controller_test",
+        ":screen_installer_gui_test",
+        ":screen_installer_layout_test",
     ],
 )

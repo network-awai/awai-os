@@ -43,6 +43,18 @@ test('PC manifest verification requires authentic metadata and matching image by
   assert.match(run().stderr, /signature does not verify/);
   await signManifest(derivedBytes);
   assert.match(run().stderr, /source-built PC manifest required/);
+
+  const ota = join(folder, 'candidate.zip');
+  await writeFile(ota, 'abc');
+  await rm(manifest);
+  const madeOta = cli('make-ota', ota, revision, manifest);
+  assert.equal(madeOta.status, 0, madeOta.stderr);
+  await signManifest(await readFile(manifest));
+  const verifiedOta = cli('verify-ota', manifest, signature, publicKeyPath);
+  assert.equal(verifiedOta.status, 0, verifiedOta.stderr);
+  assert.deepEqual(JSON.parse(verifiedOta.stdout), {
+    'candidate.zip': {bytes:3, sha256:'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad'},
+  });
 });
 
 test('historical derived manifest still verifies with the existing public key', () => {
@@ -53,4 +65,32 @@ test('historical derived manifest still verifies with the existing public key', 
     path('./keys/release-2026-11.pub'));
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {signatureVerified:true, filesVerified:false, files:7});
+});
+
+test('OTA manifest pins a ZIP and requires an authentic OTA manifest', async t => {
+  const folder = await mkdtemp(join(tmpdir(), 'awai-ota-manifest-'));
+  t.after(() => rm(folder, {recursive:true, force:true}));
+  const zip = join(folder, 'test.zip');
+  const manifest = join(folder, 'ota-manifest.json');
+  const signature = join(folder, 'ota-manifest.sig');
+  const publicKeyPath = fileURLToPath(new URL('./keys/release-2026-11.pub', import.meta.url));
+  await writeFile(zip, 'abc');
+  const made = cli('make-ota', zip, revision, manifest);
+  assert.equal(made.status, 0, made.stderr);
+  const bytes = JSON.parse(await readFile(manifest));
+  assert.equal(bytes.kind, 'pc-ab-ota');
+  assert.deepEqual(bytes.files, {
+    'test.zip': {bytes:3, sha256:'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad'},
+  });
+
+  await writeFile(signature, 'invalid');
+  assert.match(cli('verify-ota', manifest, signature, publicKeyPath).stderr, /signature does not verify/);
+  assert.match(cli('make-ota', manifest, revision, join(folder, 'invalid.json')).stderr, /OTA ZIP required/);
+
+  const path = relative => fileURLToPath(new URL(relative, import.meta.url));
+  const wrongKind = cli('verify-ota',
+    path('../desktop/derived-image/evidence/awai-manifest.json'),
+    path('../desktop/derived-image/evidence/awai-manifest.json.sig'),
+    publicKeyPath);
+  assert.match(wrongKind.stderr, /PC A\/B OTA manifest required/);
 });

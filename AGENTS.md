@@ -211,6 +211,7 @@ needs a paragraph to explain it, simplify the interaction first.
 Keep actionable errors, stale/unknown states, destructive consequences and the
 canonical operation-consent disclosures visible when relevant. Moving a note
 out of the main view never grants capabilities or changes what a metric means.
+For every finding-9 disclosure, the recipient is limited to the entity that operates the endpoint processing logic AND decides the purpose of data use (データの利用目的を決める主体); hosting, line, CDN and transport providers that merely carry the request are processors and are never named as the recipient, and a country value stays provisional (marked as such in code) until the operator's registration country is independently confirmed, with `frequency: "one-time"` for each-operation consent as in all precedents (AWAI-3883). Under the Personal Information Protection Act (個人情報保護法), that handling is 委託 (entrustment), confirmed — the former undecided both-constructions position is abolished: 利用目的の特定・通知は第17条・第18条・第21条、安全管理措置は第23条、委託先の監督は第25条、委託は第27条第5項第1号、第三者提供の制限は第27条第1項、外国にある第三者への提供は第28条 (https://laws.e-gov.go.jp/law/415AC0000000057), and a switch to 共同利用 (第27条第5項第3号) is kept only for the case where co-decision of the purpose becomes evident.
 
 Use stable translation keys, complete messages with named placeholders, and
 locale-aware formatting. Do not assemble sentences from translated fragments,
@@ -238,6 +239,14 @@ to its goal, named participants, source hashes, owning Issue, model and turn
 bound. Preserve original cron and the original distributed occurrence claim;
 uncertain results do not authorize replay or another cycle. Keep public presence
 and progress metadata free of transcripts, private identities and session IDs.
+
+## Landing a change: squash merge (owner decision 2026-11-23)
+
+- 着地は PR 経由の **squash merge** に統一する: `gh pr merge --squash --delete-branch`。merge commit と rebase merge は使わない。
+- `main` への直接 push、`gh api .../merges`、ローカルの `git merge` で着地しない。
+- **branch は remote にも local にも残さない。** squash merge では local branch が `main` の ancestry に残らないため `git branch -d` は拒否される。`gh pr view <n> --json headRefOid` の値と `git rev-parse <branch>` が一致することを確かめてから `git branch -D` で消す。
+- 消す前に必ず `gh pr list --head <branch> --state all` を見る。open の PR がある branch、未マージの branch は消さない。
+- 終わりの状態: `git branch -a` に自分の作業 branch が 1 本も無いこと。
 
 ## Current release codename — Meiji
 

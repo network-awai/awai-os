@@ -1,0 +1,36 @@
+name: System-bar library (AWAI-3443)
+on:
+  pull_request:
+    paths:
+      - 'packages/awai-system-bars/**'
+      - 'apps/**'
+      - 'android/**'
+      - 'tests/android-webgpu-probe/**'
+      - 'scripts/check-system-bars.py'
+      - '.github/workflows/system-bars.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'packages/awai-system-bars/**'
+      - 'apps/**'
+      - 'android/**'
+      - 'tests/android-webgpu-probe/**'
+      - 'scripts/check-system-bars.py'
+      - '.github/workflows/system-bars.yml'
+permissions:
+  contents: read
+jobs:
+  system-bars:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Unit tests (pure JVM, no emulator)
+        run: python3 packages/awai-system-bars/test/run_tests.py
+        env:
+          PYTHONPATH: ''
+      - name: Duplication, wiring and theme-match gate
+        run: python3 scripts/check-system-bars.py

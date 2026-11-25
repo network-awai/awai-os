@@ -33,7 +33,7 @@ def main():
     (stage / "classes").mkdir(parents=True)
     run([tools / "aapt2", "link", "-o", stage / "resources.apk", "--manifest", HERE / "AndroidManifest.xml",
          "-I", jar, "--debug-mode"])
-    sources = sorted((HERE / "src").rglob("*.java"))
+    sources = sorted((HERE / "src").rglob("*.java")) + sorted((ROOT / "packages/awai-system-bars/android").rglob("*.java"))
     run([args.java / "javac", "--release", "8", "-encoding", "UTF-8", "-cp", jar, "-d", stage / "classes", *sources])
     run([tools / "d8", "--min-api", "35", "--lib", jar, "--output", stage, *sorted((stage / "classes").rglob("*.class"))])
     unsigned = stage / "unsigned.apk"

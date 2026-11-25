@@ -19,10 +19,24 @@ export const egovOperation = Object.freeze({
       "query-values": { law_full_text_format: "json" },
     }],
   },
+  // AWAI-3883: finding-9 disclosure (Legal decision via Organizer, 2026-11-23, group B;
+  // recipient corrected 2026-11-23). Country JP is CONFIRMED: the e-Gov law API transferred
+  // 2021-09-01 from MIC administrative management bureau to the Digital Agency (Legal confirmed).
+  // Frequency is validator 'one-time' for each-operation consent (all precedents).
+  disclosure: {
+    recipient: "デジタル庁（e-Gov 法令検索）",
+    country: "JP",
+    countryStatus: "confirmed",
+    data: ["法令 id", "条番号"],
+    "special-care": false,
+    purpose: "条文取得と表示",
+    frequency: "one-time",
+    withdrawal: "leaving no local residue",
+  },
 });
 
 // Laws cited by the bundled institution packs; the guest cannot widen this.
-const LAW_IDS = new Set(["342AC0000000081", "417AC0000000086"]);
+const LAW_IDS = new Set(["342AC0000000081", "417AC0000000086", "322AC0000000224"]);
 const ARTICLE = /^MainProvision-Article_[0-9]{1,4}(?:_[0-9]{1,3})?$/;
 
 function hasOnlyKeys(value, keys) {

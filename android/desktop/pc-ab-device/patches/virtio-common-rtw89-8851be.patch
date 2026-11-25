@@ -1,0 +1,37 @@
+diff --git a/BoardConfigCommon.mk b/BoardConfigCommon.mk
+index 70eeea8..02f5451 100644
+--- a/BoardConfigCommon.mk
++++ b/BoardConfigCommon.mk
+@@ -74,3 +74,10 @@ SYSTEM_EXT_PUBLIC_SEPOLICY_DIRS += $(COMMON_PATH)/sepolicy/public
+ BOARD_VENDOR_KERNEL_MODULES_LOAD += \
+     e1000e.ko \
+     igc.ko
++# AWAI-4092: RTL8851BE load order (rf kill/cfg80211/mac80211 first, then the
++# rtw89 core and chip/bus modules; PCI autoload would also trigger rtw89_8851be).
++BOARD_VENDOR_KERNEL_MODULES_LOAD += \
++    rtw89_core.ko \
++    rtw89_8851b.ko \
++    rtw89_pci.ko \
++    rtw89_8851be.ko
+diff --git a/configs/kernel/awai-pc.config b/configs/kernel/awai-pc.config
+index 00fdfb2..389a9f6 100644
+--- a/configs/kernel/awai-pc.config
++++ b/configs/kernel/awai-pc.config
+@@ -16,3 +16,17 @@ CONFIG_PINCTRL_AMD=y
+ CONFIG_I2C_PIIX4=y
+ CONFIG_SENSORS_K10TEMP=m
+ CONFIG_SND_HDA_CODEC_HDMI=y
++# AWAI-4092: Realtek RTL8851BE Wi-Fi 6 (PCI). Built as modules -> vendor image.
++# Kconfig chain at kernel/virt/virtio 604b22fb (rtw89/Kconfig): WLAN_VENDOR_REALTEK
++# gates the directory; RTW89 depends on MAC80211; MAC80211 depends on CFG80211;
++# RTW89_8851BE depends on PCI and selects RTW89_CORE/RTW89_PCI/RTW89_8851B.
++# CFG80211/MAC80211/PCI/RFKILL already =m/=y in defconfigs/x86/gki_defconfig;
++# re-asserted here. Kernel olddefconfig runs on the build host (Job B).
++CONFIG_WLAN_VENDOR_REALTEK=y
++CONFIG_CFG80211=m
++CONFIG_MAC80211=m
++CONFIG_RTW89=m
++CONFIG_RTW89_CORE=m
++CONFIG_RTW89_PCI=m
++CONFIG_RTW89_8851B=m
++CONFIG_RTW89_8851BE=m

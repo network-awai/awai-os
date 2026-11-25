@@ -1,0 +1,8 @@
+start (one SSD: chosen, focus on 内容を確認)  focus='内容を確認'
+Enter  -> review (focus on この SSD にインストール) focus='この SSD にインストール'
+Enter  -> confirmation (focus on やめる)    focus='やめる'
+Right  -> インストールする                       focus='インストールする'
+Enter  -> install starts                 focus=None
+done                                     focus='再起動'
+[7a-failed-nothing-written] text: Awai OS | SSD を選ぶ　✓ | 内容を確認　✓ | インストール | 完了 | Awai OS Meiji | PC に | インストール | SSD を選ぶ　✓ | 内容を確認　✓ | インストール | 完了 | インストールできませんでした | SSD への書き込みは始まっていません。SSD は変わっていません。 | インストールイメージの確認に失敗しました。USB の内容が正しくありません。 | サポート用の番号：archive-sha | 失敗した手順：1 イメージの確認 | Enter：最初に戻る | 電源を切る | 最初に戻る
+[7b-failed-after-write] text: Awai OS | SSD を選ぶ　✓ | 内容を確認　✓ | インストール | 完了 | Awai OS Meiji | PC に | インストール | SSD を選ぶ　✓ | 内容を確認　✓ | インストール | 完了 | インストールできませんでした | SSD への書き込みは始まっていました。SSD の中身が途中の状態になっている可能性があります。 | 区画表の検証で問題が見つかりました。 | サポート用の番号：sgdisk-verify | 失敗した手順：3 書き込んだ内容の読み戻し | Enter：電源を切る | 電源を切る

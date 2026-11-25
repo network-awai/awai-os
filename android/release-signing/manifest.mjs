@@ -5,6 +5,8 @@
 //   node manifest.mjs verify <manifest.json> <manifest.sig> <public-key-file> [image-dir]
 //   node manifest.mjs make-pc <image-file> <source-revision> <out.json>
 //   node manifest.mjs verify-pc <manifest.json> <manifest.sig> <public-key-file> <image-dir>
+//   node manifest.mjs make-ota <ota.zip> <source-revision> <out.json>
+//   node manifest.mjs verify-ota <manifest.json> <manifest.sig> <public-key-file>
 import {createHash, createPublicKey, verify} from 'node:crypto';
 import {createReadStream} from 'node:fs';
 import {lstat, readFile, readdir, stat, writeFile} from 'node:fs/promises';
@@ -19,6 +21,7 @@ const sha256 = async path => {
 const imageNames = ['kernel', 'ramdisk-all-combined.img', 'system.img', 'system_dlkm.img', 'vendor.img', 'vendor_dlkm.img', 'firmware.img'];
 const schema = 'awai.os.release-manifest.v1';
 const pcKind = 'source-built-pc-image';
+const otaKind = 'pc-ab-ota';
 const keyId = 'release-2026-11';
 const revisionPattern = /^[0-9a-f]{40}$/;
 const filenamePattern = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
@@ -54,15 +57,16 @@ async function make(dir, reportPath, revision, out) {
   console.log(out);
 }
 
-async function makePc(imagePath, revision, out) {
+async function makePc(imagePath, revision, out, kind = pcKind) {
   assert.match(revision, revisionPattern, 'full source revision required');
   const filename = basename(imagePath);
   assert.match(filename, filenamePattern, 'plain image filename required');
+  if (kind === otaKind) assert.match(filename, /\.zip$/, 'OTA ZIP required');
   const image = await lstat(imagePath);
   assert(image.isFile() && image.size > 0, 'non-empty regular image file required');
   const manifest = {
     schema,
-    kind: pcKind,
+    kind,
     target: 'pc-x86_64',
     keyId,
     sourceRevision: revision,
@@ -72,7 +76,7 @@ async function makePc(imagePath, revision, out) {
   console.log(out);
 }
 
-async function check(manifestPath, sigPath, keyPath, dir, requirePc = false) {
+async function check(manifestPath, sigPath, keyPath, dir, expectedKind) {
   const bytes = await readFile(manifestPath);
   const raw = Buffer.from((await readFile(keyPath, 'utf8')).trim(), 'base64');
   assert.equal(raw.length, 32, 'Ed25519 raw public key expected');
@@ -80,9 +84,10 @@ async function check(manifestPath, sigPath, keyPath, dir, requirePc = false) {
   const signature = Buffer.from((await readFile(sigPath, 'utf8')).trim(), 'base64');
   assert(verify(null, bytes, key, signature), 'signature does not verify');
   const manifest = JSON.parse(bytes);
-  if (requirePc) {
+  if (expectedKind) {
     assert.equal(manifest.schema, schema, 'unexpected manifest schema');
-    assert.equal(manifest.kind, pcKind, 'source-built PC manifest required');
+    assert.equal(manifest.kind, expectedKind, expectedKind === pcKind
+      ? 'source-built PC manifest required' : 'PC A/B OTA manifest required');
     assert.equal(manifest.target, 'pc-x86_64', 'unexpected PC target');
     assert.equal(manifest.keyId, keyId, 'unexpected release key id');
     assert.match(manifest.sourceRevision, revisionPattern, 'full source revision required');
@@ -91,6 +96,7 @@ async function check(manifestPath, sigPath, keyPath, dir, requirePc = false) {
     assert.equal(entries.length, 1, 'exactly one image pin required');
     const [[name, pin]] = entries;
     assert.match(name, filenamePattern, 'plain image filename required');
+    if (expectedKind === otaKind) assert.match(name, /\.zip$/, 'OTA ZIP required');
     assert(Number.isSafeInteger(pin?.bytes) && pin.bytes > 0, 'positive image byte count required');
     assert.match(pin.sha256, /^[0-9a-f]{64}$/, 'SHA-256 image digest required');
   }
@@ -99,18 +105,24 @@ async function check(manifestPath, sigPath, keyPath, dir, requirePc = false) {
     for (const [name, pin] of Object.entries(manifest.files)) {
       assert(present.has(name), `missing ${name}`);
       const path = join(dir, name);
-      const image = await (requirePc ? lstat(path) : stat(path));
-      if (requirePc) assert(image.isFile(), `regular image file required: ${name}`);
+      const image = await (expectedKind ? lstat(path) : stat(path));
+      if (expectedKind) assert(image.isFile(), `regular image file required: ${name}`);
       assert.equal(image.size, pin.bytes, `size ${name}`);
       assert.equal(await sha256(path), pin.sha256, `digest ${name}`);
     }
   }
-  console.log(JSON.stringify({signatureVerified: true, filesVerified: Boolean(dir), files: Object.keys(manifest.files).length}));
+  if (expectedKind === otaKind) {
+    console.log(JSON.stringify(manifest.files));
+  } else {
+    console.log(JSON.stringify({signatureVerified: true, filesVerified: Boolean(dir), files: Object.keys(manifest.files).length}));
+  }
 }
 
 const [command, ...args] = process.argv.slice(2);
 if (command === 'make' && args.length === 4) await make(...args);
 else if (command === 'make-pc' && args.length === 3) await makePc(...args);
 else if (command === 'verify' && (args.length === 3 || args.length === 4)) await check(...args);
-else if (command === 'verify-pc' && args.length === 4) await check(...args, true);
+else if (command === 'verify-pc' && args.length === 4) await check(...args, pcKind);
+else if (command === 'make-ota' && args.length === 3) await makePc(...args, otaKind);
+else if (command === 'verify-ota' && args.length === 3) await check(...args, undefined, otaKind);
 else { console.error('usage: make <dir> <report> <revision> <out> | verify <manifest> <sig> <pubkey> [dir] | make-pc <image> <revision> <out> | verify-pc <manifest> <sig> <pubkey> <dir>'); process.exit(2); }

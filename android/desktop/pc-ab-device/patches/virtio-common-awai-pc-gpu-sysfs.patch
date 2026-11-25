@@ -1,0 +1,25 @@
+diff --git a/sepolicy/vendor/genfs_contexts b/sepolicy/vendor/genfs_contexts
+index 482eb66..111191b 100644
+--- a/sepolicy/vendor/genfs_contexts
++++ b/sepolicy/vendor/genfs_contexts
+@@ -9,6 +9,20 @@ genfscon sysfs /devices/pci0000:00/0000:00:01.6/0000:07:00.0	u:object_r:sysfs_gp
+ genfscon sysfs /devices/pci0000:00/0000:00:01.0			u:object_r:sysfs_gpu:s0
+ ## UTM arm64
+ genfscon sysfs /devices/pci0000:00/0000:00:02.0			u:object_r:sysfs_gpu:s0
++## AWAI-4090 Awai PC, Ryzen 5 6600H iGPU (0000:05:00.0). Allow-list: only what libdrm/Mesa read.
++## Everything else in the function (edid, gpu_busy_percent, vbios_version, config, ...) stays sysfs.
++## drm/ (trailing slash) puts every drm child back to sysfs; the two nodes' uevent are labeled after it.
++## Another PC needs its own lines: readlink -f /sys/class/drm/card0/device, and its card/renderD names.
++genfscon sysfs /devices/pci0000:00/0000:00:08.1/0000:05:00.0/uevent	u:object_r:sysfs_gpu:s0
++genfscon sysfs /devices/pci0000:00/0000:00:08.1/0000:05:00.0/vendor	u:object_r:sysfs_gpu:s0
++genfscon sysfs /devices/pci0000:00/0000:00:08.1/0000:05:00.0/device	u:object_r:sysfs_gpu:s0
++genfscon sysfs /devices/pci0000:00/0000:00:08.1/0000:05:00.0/subsystem_vendor	u:object_r:sysfs_gpu:s0
++genfscon sysfs /devices/pci0000:00/0000:00:08.1/0000:05:00.0/subsystem_device	u:object_r:sysfs_gpu:s0
++genfscon sysfs /devices/pci0000:00/0000:00:08.1/0000:05:00.0/revision	u:object_r:sysfs_gpu:s0
++genfscon sysfs /devices/pci0000:00/0000:00:08.1/0000:05:00.0/drm	u:object_r:sysfs_gpu:s0
++genfscon sysfs /devices/pci0000:00/0000:00:08.1/0000:05:00.0/drm/	u:object_r:sysfs:s0
++genfscon sysfs /devices/pci0000:00/0000:00:08.1/0000:05:00.0/drm/card0/uevent	u:object_r:sysfs_gpu:s0
++genfscon sysfs /devices/pci0000:00/0000:00:08.1/0000:05:00.0/drm/renderD128/uevent	u:object_r:sysfs_gpu:s0
+ 
+ # Wakeup
+ genfscon sysfs /devices/LNXSYSTM:00/LNXPWRBN:00/wakeup/wakeup						u:object_r:sysfs_wakeup:s0

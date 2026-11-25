@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# /awai/install on the USB: what tty1 runs. Forward arguments (--text) to the installer entry.
+exec bash "$(cd "$(dirname "$0")" && pwd)/installer/start.sh" "$@"

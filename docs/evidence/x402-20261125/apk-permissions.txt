@@ -1,0 +1,3 @@
+package: network.itonami.x402
+permission: network.itonami.x402.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+uses-permission: name='network.itonami.x402.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'

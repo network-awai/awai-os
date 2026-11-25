@@ -1,0 +1,13 @@
+{
+  "schema": "awai.pc.persistent-boot-attempt.v1",
+  "date": "2026-11-23",
+  "conclusion": "NOT RUN — box unreachable; no persistent boot was attempted or achieved on the real 7735H in this session. Command evidence below.",
+  "commands": [
+    {"cmd": "ping -c2 -t2 10.77.0.2", "out": "2 packets transmitted, 0 received, 100% packet loss"},
+    {"cmd": "ifconfig | grep 'inet '", "out": "127.0.0.1, 10.10.10.1/24, 192.168.2.1/24, 100.117.208.83, 192.168.1.20/24 — no 10.77.0.1"},
+    {"cmd": "~/Library/Android/sdk/platform-tools/adb devices", "out": "List of devices attached\\n\\n (empty)"},
+    {"cmd": "curl -m3 http://10.77.0.1:18091/kernel", "out": "connection timed out, HTTP 000 (nothing listening on 10.77.0.1:18091)"}
+  ],
+  "whyNotAttemptedFurther": "The §4 fallback (persistent profile booting the pinned PC Live candidate with /data on NVMe — an NVMe write to /awai-android-2992 userdata.img) needs the box powered, the direct cable up, and artifacts served from this Mac. None was satisfiable: `ping` proves no route, `ifconfig` proves this Mac has no 10.77.0.1, and no kernel/initrd/ipxe files exist here to serve. Running it would mean flashing, keys, or blind writes — all the owner's hand by the hard rules. Instead the profile's guard logic, verify steps, and operator steps are re-stated in pxe-install/README.md so the owner can run them verbatim once the cable is back.",
+  "whatTheFallbackNeeds": ["Owner: plug the 10.77 direct cable and power the 7735H; confirm `ping 10.77.0.2` from the operator Mac.", "Operator Mac: stage kernel/initrd/ipxe.efi from the pinned candidate (pc-evaluation-pins.json / artifacts-20261116.json) + the /awai-android-2992 images already on nvme0n1p2 (verify-images.sh pins); build the persistent-initrd overlay per persistence/README.md.", "patch-ipxe.mjs <ipxe.efi> persistent <out.efi>; serve-artifacts.mjs; collect-boot-log.mjs; boot; then state-audit.mjs twice across a reboot; disk-witness against the 2026-11-17 witnesses.", "Record physical-persistence-third-20261124.json (or dated equivalent) and wire it into the same evidence table in persistence/README.md."]
+}

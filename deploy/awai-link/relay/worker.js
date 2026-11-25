@@ -3,7 +3,10 @@
 // interchangeable. Only ciphertext passes through, under a random topic, and it expires with the
 // link request. Nothing is logged, and it stores nothing else.
 
-const TOPIC = /^\/([0-9a-f]{32})(\/json)?$/;
+// AWAI-3884: /v1/<topic> is the current route shape (a literal segment, so the
+// client-runtime descriptor for it is not a generic rail). The bare routes stay
+// for clients built before the prefix; both name the same topic.
+const TOPIC = /^\/(?:v1\/)?([0-9a-f]{32})(\/json)?$/;
 const MAX_BODY = 4096;
 const MAX_MESSAGES = 8;
 const TTL_MS = 10 * 60 * 1000;

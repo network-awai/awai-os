@@ -40,7 +40,9 @@ one() { # <project path> <patch> <marker text that the patch adds>
   echo "$1: applied"
 }
 one device/virt/virtio-common virtio-common-awai-pc.patch 'AWAI-3586: label partitions by GPT name'
+one device/virt/virtio-common virtio-common-rtw89-8851be.patch 'AWAI-4092: RTL8851BE load order'
 one device/virt/virtio-common virtio-common-aw-mesa-sphal.patch 'AWAI-3686: label the Mesa Gallium and RADV DRM dependencies'
+one device/virt/virtio-common virtio-common-awai-pc-gpu-sysfs.patch 'AWAI-4090 Awai PC, Ryzen 5 6600H iGPU'
 one device/virt/virt-common virt-common-awai-pc.patch 'awai_find_part'
 one device/virt/virt-common virt-common-awai-boot-name.patch 'AWAI-3747: use the release name'
 
@@ -66,7 +68,7 @@ fi
 
 # The vendor patches apply only in the source checkout prepared for Awai PC.
 vendor="$src/vendor/lineage"
-for name in vendor-lineage-no-ota-downgrade.patch vendor-lineage-kernel-output-prefix.patch; do
+for name in vendor-lineage-no-ota-downgrade.patch vendor-lineage-kernel-output-prefix.patch vendor-lineage-stats-default-off.patch; do
   patch="$here/patches/$name"
   if git -C "$vendor" apply --reverse --check "$patch" 2>/dev/null; then
     echo "vendor/lineage $name: already applied"

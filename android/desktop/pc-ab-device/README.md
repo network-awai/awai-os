@@ -74,6 +74,57 @@ What was not checked: the revisions on the build host (they may differ, in which
 `user` image boots, finishes setup and shows no ADB at the Welcome screen; that development `userdebug`
 images still serve ADB on 5555. Those are checks V1, V2 and V7 in the design document.
 
+## GPU sysfs label (AWAI-4090)
+
+**State: source patch and host tests only. Not built, not booted.** On the 6600H, Mesa EGL falls back to
+llvmpipe because the GPU's PCI attributes keep the generic `sysfs` label, which apps may never read
+(`neverallow all_untrusted_apps sysfs:file no_rw_file_perms`).
+
+| What reads it | File (under the GPU's `/sys/devices/pci0000:00/0000:00:08.1/0000:05:00.0`, reached through `/sys/dev/char/226:N/device`) | Needed by |
+| --- | --- | --- |
+| libdrm `drmParseSubsystemType`, `realpath` | `subsystem`, `device` (symlinks; every domain may already read these, `domain.te`) | not blocked |
+| libdrm `drmParsePciBusInfo` | `uevent` (`PCI_SLOT_NAME`) | every `gpu_sphal_domain` process that loads Mesa; denied on the rig |
+| libdrm `drmParsePciDeviceInfo` (flags 0) | `vendor`, `device`, `subsystem_vendor`, `subsystem_device` (`config` only with `DRM_DEVICE_GET_PCI_REVISION`) | same, read after `uevent` succeeds |
+| libdrm `drmNodeIsDRM`, `drmGetMinorNameForFD` | `drm/` (directory read) | same; denied on the rig |
+
+`sysfs_gpu` (system/sepolicy `private/gpu_sphal_domain.te`) grants `r_dir_file` to `gpu_sphal_domain`: every
+non-isolated app, `hal_graphics_allocator`, `hal_graphics_composer`, `hal_neuralnetworks`, and the domains
+that call `gpu_sphal_use` (SurfaceFlinger, system_server, bootanim, mediaswcodec, mediacodec, cameraserver,
+gpuservice, and others). Apps may never write any `sysfs_type`. Only the generic `sysfs` is denied to them,
+so the label is the fix; no policy rule changes.
+
+Mechanism: `genfscon sysfs` lines in `sepolicy/vendor/genfs_contexts`
+(`patches/virtio-common-awai-pc-gpu-sysfs.patch`, applied by `apply.sh`) that label **only** `uevent`, `vendor`,
+`device`, `subsystem_vendor`, `subsystem_device`, `revision`, the `drm` directory and the `uevent` of
+`drm/card0` and `drm/renderD128` as `sysfs_gpu`. `config` is not needed (it is read only when `revision` is
+unreadable). Labelling the whole GPU function, which the first version did, made 648 files readable by every
+non-isolated app, among them `drm/card0/card0-*/edid` (monitor make and serial number), `gpu_busy_percent`,
+`mem_info_vram_used`, `vbios_version` and `config`. Measured on the rig.
+
+Allow-list or deny-back: genfscon is a string-prefix match and the longest prefix wins. Labelling the function and putting
+`drm/card`, `…/edid`, … back to `sysfs` fails open: the next amdgpu attribute or driver version is exposed
+without anyone noticing. Labelling the individual attributes fails closed, so that is what the patch does. `drm`
+is the one exception: its children cannot be listed, so `…/drm/` (trailing slash, which matches the children but not
+the directory) puts them all back to `sysfs`, and the two nodes' `uevent` are labelled after it. Prefix collisions:
+`device` also matches `device_x`, `vendor` matches `vendor_x`; no such file exists in an amdgpu PCI function, and a
+future one would be readable (the tests document this). The matching rule is the kernel's `strncmp` with entries ordered by
+decreasing length; the trailing-slash entry relies on that and is checked by the trial on the machine, not here.
+
+The paths of PCI devices and DRM node names differ by machine, so each PC model needs its own lines (`readlink -f
+/sys/class/drm/card0/device`; `gpu-sysfs-trial.py --gpu-path … --drm-node …` writes them). Rejected: a `file_contexts`
+regex that ueventd would restorecon, because it cannot tell a GPU from any other PCI device; a bus-wide prefix, for the same
+reason; a boot service that relabels, because it needs new relabel rights and a new domain.
+
+**The older entries have the same exposure and are unchanged here:** the lines for `0000:00:01.0`, `0000:00:02.0`,
+`0000:00:03.0`, `0000:00:1e.0`, `00:01.6/07:00.0` and the arm64 `10000.pci/…/00:01.0` label a whole device or even a bridge.
+On a physical PC a bridge-level entry also exposes every device behind it. Follow-up: replace them by the same
+allow-list, or drop the entries for hardware the Awai PC does not run on.
+
+Try it without flashing: `gpu-sysfs-trial.py --plat-cil <plat_sepolicy.cil of the image> --vendor-cil <vendor_sepolicy.cil>
+--out-dir <new dir>` writes `userdebug_plat_sepolicy.cil` (the image's plat policy plus the label) and a one-file cpio
+for the debug ramdisk. It reads files only. Host tests: `bazel test //android/desktop/pc-ab-device:gpu_sysfs_test`
+(they model the genfscon lookup; they do not build or load a policy).
+
 ## PC installer and OTA host checks
 
 With Bazelisk and Python >= 3.11 on the host, run both regression suites using the
@@ -100,9 +151,20 @@ awai-pc-install.py apply <disk or image> <verified install image> \
 ```
 
 - `plan` writes nothing and prints every sector range it would use.
+- By default (`--userdata-gib` omitted, AWAI-4091) userdata takes the largest free range minus
+  the other Awai partitions and `USERDATA_RESERVE_SECTORS` (1 GiB, in `awai-pc-install.py`)
+  kept free at the end; with `--userdata-gib N` it uses N GiB. The plan JSON carries
+  `userdataSectors` and a `userdata` breakdown (mode, reserve, non-userdata sectors,
+  free range, disk usable/total sectors and first/last usable sectors), and `apply`
+  uses the plan's userdata sectors unchanged.
+- Remaining-based sizing has a floor: **`USERDATA_MIN_SECTORS` (16 GiB)**. A disk whose
+  remaining space would give userdata less than that is refused with `not-enough-free-space` before
+  anything is written (a nearly full small SSD would otherwise get a few-MiB `/data`). The floor
+  applies only to remaining-based sizing; an explicit `--userdata-gib N` is the operator's
+  decision and is not bounded by it.
 - It copies each partition from the partition of the same name in the build's disk image. The Awai ESP
   is named `awai_esp`.
-- It requires 512-byte logical sectors on both the source and target and refuses to use the same
+- It requires 512-byte logical sectors on both the source and target (4Kn is refused) and refuses to use the same
   file or device for both. It also refuses an existing Awai partition name, insufficient contiguous
   free space, or an overlap.
 - `apply` rejects a source image that is shorter than the partitions it needs before changing the GPT.
@@ -112,6 +174,187 @@ awai-pc-install.py apply <disk or image> <verified install image> \
 
 It has only been run against an image file. Running it on a real disk is a separate, approved step
 (AWAI-3585 first reads the Desktop's partition table).
+
+## Screen installer on the USB (item 205)
+
+`installer/` is the screen version of the USB installer (the Figma design: six screens plus a failure screen). `awai/install`
+on the USB starts it: **one GTK 3 window** on a bare X server (no window manager, no browser, no listener of any kind). If X or
+GTK cannot start it says why in one line and continues with the text installer on tty1.
+
+| Path | What |
+| --- | --- |
+| `installer/core.py` | **Every guard and the install sequence** (and the detached `worker` entry). Both front ends call it; neither decides anything. |
+| `installer/controller.py` | front-end-neutral controller: list/confirm -> one-shot ticket -> one in-window confirmation -> exactly one detached worker, true install state, power-off question. Unit-tested without GTK. |
+| `installer/gui.py`, `keys.py`, `strings.py` | the GTK 3 widget tree (CSS from one design unit), the key policy, every Japanese string. |
+| `installer/fonts/`, `assets/` | bundled Noto Sans JP subset (3 static weights, OFL) and the Awai mark. |
+| `installer/text_installer.py` | the text front end (English, on `core.py`). |
+| `installer/start.sh`, `xsession.sh`, `awai-install` | tty1 entry and restart loop, the xinit session, the `/awai/install` shim. |
+| `installer/build-overlay.py` | stock SystemRescue ISO + image -> overlay -> `xorriso`. `--dry-run`; downloads nothing. |
+| `installer/700-awai-installer.yaml` | SystemRescue autorun for tty1 (unchanged content: it still runs `/awai/install`). |
+| `installer/tests/` | tests, fakes, GTK offscreen driver, screenshot and mutation tools. |
+
+How it runs: `start.sh` checks `xinit` and `python3 -c 'import gi; Gtk 3'`, then loops `xinit xsession.sh -- :0 vt1`. `xsession.sh`
+turns off blanking and DPMS (`xset s off`, `s noblank`, `-dpms`) and runs `gui.py`. The window is undecorated and as large as the
+screen; with no window manager there is nothing to switch to, and `keys.py` swallows every Ctrl/Alt/Super combination, function key
+and the menu key before any widget sees it (no accelerators, no mnemonics, no context menu). Closing or killing the window (Alt+F4 has
+no effect without a window manager; `kill -9` does) ends X, `start.sh` starts it again and it shows the true state from
+`/run/awai-pc-installer/state.json`; the install itself is the detached `core.py worker` holding the lock, so it never notices.
+Three windows that die within 20 s each mean GTK/X do not work here and `start.sh` falls back to the text installer. X VT switching
+is untouched (Ctrl+Alt+F2 gives the console shell).
+
+### Boot menu and text mode
+
+`build-overlay.py` replaces three files of the base medium's boot configuration (from SystemRescue 13.03, kept as
+`installer/tests/stock-bootcfg/` with SHA-256s): GRUB for UEFI `boot/grub/grubsrcd.cfg` and syslinux for BIOS
+`boot/syslinux/sysresccd_head.cfg` + `sysresccd_sys.cfg`; xorriso maps them with `-overwrite on`. The menu is
+**Install Awai OS** (default, first), **Install Awai OS (text)** (`awai.installer=text`, read by `start.sh`) and
+**Install Awai OS (basic display, nomodeset)**, then the stock custom hook, firmware setup, reboot and power off. Timeout 5 s;
+an unattended boot only reaches the installer screen, which still needs the confirmation (the default focus there is やめる). The kernel and initrd lines
+are the stock ones character for character (a test compares them with the stock files), and the text entry adds only
+`awai.installer=text`. Labels are English: GRUB's `font.pf2` and syslinux's menu font are not known to draw Japanese, and
+no base-distribution name appears in menu text (the `archisolabel=RESCUE1303` parameter and `/sysresccd` paths are
+parameters, not text). The stock memory test, EFI shell, copytoram, checksum, serial, nomdlvm, findroot and break entries are
+dropped from the installer medium. Other ways into text mode: `awai.installer=text` typed at the boot prompt, or tty2 and
+`/run/archiso/bootmnt/awai/install --text`. If an install is already running when the text installer starts (for example the
+screen session died and `start.sh` fell back to text) it says so, follows the install to its true end state and never offers a
+target (it also holds off while the worker's lock is held but no state exists yet). Not exercised on a real boot (QEMU run).
+
+### What `core.py` enforces (in the backend, never only in the window)
+
+Target: `/dev/nvme[0-9]+n[0-9]+`, block device, `TYPE disk`, `RO 0`, no partitions, 512-byte logical sectors, nothing
+mounted, `wipefs` signatures only `gpt`/`PMBR`, never the device the media directory is served from (resolved with
+`findmnt` plus `lsblk -s`; if it cannot be resolved every disk is refused). Every disk is listed; the ones that fail are
+`選択不可` with the reason. There is no erase operation anywhere.
+
+Order of `run_install`: `request.confirmed is True` -> target checks and identity (major:minor, size, model, serial,
+WWN; a serial or WWN appearing or vanishing counts as a change) equal to what was confirmed -> `archive.sha256` ->
+raw image sha256 == pinned value -> plan with `existing == []` and the expected number of new partitions ->
+**all target checks and identity again, plus a fresh plan, immediately before writing** ->
+`awai-pc-install.py apply --record` -> record has `sourceSha256 == pinned`, `existingUnchanged`, one readback per
+partition with a digest -> `sgdisk -v` exit 0 and "No problems found" -> `sync` -> only then `done`. Any other path ends
+in `failed`; the window shows the completion screen only for `state == "done"`.
+
+Confirmation: the review screen has no text field (owner feedback from the real 6600H: a typed device name is not for ordinary
+people; only empty SSDs can be chosen, so nothing of the user's is at stake). この SSD にインストール opens one confirmation in the same
+window (a veil over it, never a second window): size, and for several empty SSDs model and the last 4 of the serial, "do not switch
+off", やめる (focused first, Esc) and インストールする. `Controller.ask()` marks the ticket as asked; `start(confirmed=True)` refuses
+without the opened confirmation and an explicit `True`; the worker request carries `confirmed: true` and `core.run_install` refuses
+anything else (`not-confirmed`). The identity captured at the review is checked again right before writing, as before. The text
+installer still asks for `INSTALL nvme0n1` and sends `confirmed: true` to the same check.
+
+One install: the worker holds `flock` on `/run/awai-pc-installer/lock`; it is a separate, detached process (own session), so
+closing, killing or crashing the GTK window neither stops the write nor allows another. A restarted window reads the true state
+(`running` only with a live lock holder; `running` without one is reported as interrupted, never as running or done).
+`write-started` / `install-record.json` block any further start until reboot (`/run` is a tmpfs). Reboot and power off are
+refused by the controller while an install runs, and the buttons are disabled. The ticket from `内容を確認` (identity at that
+moment) is consumed by the one start, whatever happens; a start without the confirmation consumes it too.
+
+### Progress
+
+`awai-pc-install.py apply` gained an optional `progress(event, done, total)` callback (events `write-start`, `write`,
+`write-done`, `verify`). It only reports: no check was changed or reordered, `write-start` is emitted immediately before
+the first GPT change, and the existing suite is untouched and green. Step 1 is the byte progress of hashing the archive,
+unpacking and re-hashing the raw image; step 2 the bytes written; step 3 the bytes read back. `apply` itself first
+hashes the source and existing partitions without progress, so step 2 can sit at 0% for a while on a large image.
+
+### Differences between the shipped overlay copy and the repo
+
+The overlay's `awai-pc-install.py` is older: it has no vbmeta handling (`VBMETA_ROOTS`, `vbmeta_layout`, vbmeta in the
+name clash check). The repo copy is canonical and is what `build-overlay.py` ships. Consequence: the old `jq` check
+`(.new|length)==11` is wrong for an image with vbmeta slots (13 to 17 new partitions). `core.py` expects
+`len(LAYOUT) + len(vbmeta_layout(source))`, taken from the canonical script, so an image without vbmeta still needs
+exactly 11. The review screen therefore does not say "11 区画を作成します" (the image is not unpacked yet); the completion
+screen says `{n} 区画を確認` with the real count.
+
+### Font, logo, proportions
+
+**Font.** The live system has no Japanese font, so the window registers its own for this process only: `gui.py` writes a private
+fontconfig file (`FONTCONFIG_FILE`, system config included, cache under the work dir) that adds `installer/fonts/`, and CSS names only
+`"Noto Sans JP"`. It is Noto Sans JP, SIL OFL 1.1, cut into three static TTFs (Regular 400, Medium 500, Bold 700; fontconfig and Pango
+cannot load WOFF2) and subset to 678 codepoints (ASCII, Latin-1, general and CJK punctuation, kana, full-width ASCII, and every
+character in `strings.py`, `core.MESSAGES` and `core.STEPS_JA`). The OFL text ships unchanged as `fonts/OFL.txt`; the Reserved Font
+Name 'Source' is not in any name the build keeps (`font/build_font.py` refuses otherwise). Source (pinned): `google/fonts` commit
+`66a36c8c94b1a5d992ee4e7f392fccfe4945767c`, `ofl/notosansjp/NotoSansJP[wght].ttf` (sha256
+`c2f3b4d463500a2ddcd3849cded1fceeb9fd6d1c32e6cbecd568453ba50fc68f`) and `OFL.txt` (sha256
+`1c05c68c34f9708415aada51f17e1b0092d2cea709bf4a94cd38114f9e73d7d9`); URLs in `font/font-pin.json`. Rebuild (development only):
+`pip install fonttools brotli` in a venv outside the repo, then `python font/build_font.py 'NotoSansJP[wght].ttf' OFL.txt`.
+A missing glyph is a hard failure: the tests compare the screens' characters with all three fonts' cmaps (`glyphs-noto-jp.json`, tied
+to the Regular file's SHA-256), the GTK tests ask Pango which font it loads for every label and require exact coverage, and
+`build-overlay.py` refuses to build, with no override option. `android/client/assets/setup-noto-jp.woff2` is untouched.
+
+**Logo.** `assets/logo.png` is `android/client/assets/setup-logo.png` (the Awai mark) scaled to 256 px. No vector version of the mark
+exists in the repo or in PR #302 (its `awai_welcome_mark.xml` is only a rounded rectangle), so it is raster.
+
+**Design and proportions.** The screens follow the revised Figma board (`design/installer-rev2.png`, 10 screens): 1 Figma px = 1 px at
+1280x720. One unit `u = min(W/1280, H/720)` scales text, logo, cards and gaps (compact layout for width < 1000 or portrait: a
+stepper bar on top, `u = min(W/800, H/600)`). Focus is a filled control with a 5px amber ring; hover and pressed states are
+styled. Gtk CSS only, software rendering (no GL): the window uses the plain cairo paths of GTK 3.
+
+**Never cut off.** The window takes the geometry of the primary monitor (else the first), never the virtual screen, and never
+`fullscreen()`: without a window manager GDK falls back to the whole X screen, which with several outputs is larger than any one
+monitor, and that is what cut the bottom off on the real 6600H. Everything sits inside a 3% safe margin on every side (TVs and
+portable monitors overscan); the panel backgrounds still reach the edges. The natural height of the screen is measured and `u`
+is reduced until it fits (including the confirmation and the longer power question); the SSD list scrolls inside its own area, follows
+the focused card, and the action row is always visible; every label wraps. `xsession.sh` sets each connected monitor to its
+preferred mode (`xrandr --auto`, mirrored), marks one primary, and writes `xrandr --query` before and after to
+`$work/xrandr.txt`; `gui.py` writes the monitors and the chosen one to `$work/display.txt`. HiDPI: the geometry is in logical pixels
+and `u` already scales the UI, so no extra factor is applied. `tests/test_layout.py` checks 13 sizes (1024x600 ... 3840x2160,
+800x600, 1080x1920) x 1 to 8 SSDs x every screen: every button and label inside the safe area, no overlap, no clipped text.
+
+**Mouse, touch and keyboard.** The pointer is visible (no `-nocursor`; `xsetroot -cursor_name left_ptr`); a whole card or button is
+the click target. Keyboard: a sensible control has the focus when a screen opens (the one empty SSD is already chosen and 内容を確認
+has the focus; several: the first card), ↑ ↓ walk the cards and then the buttons, ← → the buttons of the row, Enter does what the hint
+above the buttons says, Esc is 戻る / やめる, Space selects, Tab/Shift+Tab work. Enter, Enter, Enter from boot ends on やめる, never
+an install. 電源を切る is never reached by plain Enter and asks once; a done or failed screen that appears by itself ignores its
+buttons for 1.2 s.
+
+**No browser, no listener.** An earlier revision showed the screen in a kiosk browser. VM runs showed that this cannot be made
+reliable (shortcuts left the installer, browser chrome and the per-boot token showed in the address bar, and the browser's own
+first-run terms dialog covered the installer; accepting that on the user's behalf is not ours to decide). The browser, its policies,
+the HTTP backend, the token and the watchdog are gone, and a test asserts that nothing in the installer imports `socket` or
+`http.server` or calls `bind`/`listen`.
+
+### Checks
+
+```sh
+python3 -m unittest discover -s android/desktop/pc-ab-device/installer/tests -p 'test_*.py'   # python >= 3.11
+python3 android/desktop/pc-ab-device/installer/tests/mutations.py --jobs 5                  # every guard removed in turn
+python3 android/desktop/pc-ab-device/installer/tests/shots.py OUTDIR                        # screenshots (needs PyGObject + Gtk 3)
+```
+
+No root, no real disk: fake `lsblk`/`blockdev`/`wipefs`/`findmnt`/`sgdisk`/`zstd`/`sync`/`systemctl` on `PATH` and sparse temp files;
+the production `Host` is replaced only in tests. The GTK tests drive the real widget tree in a `Gtk.OffscreenWindow` (nothing is shown
+on a display; keys, arrows, Esc and clicks are simulated at widget level) and skip themselves where PyGObject/Gtk 3 is missing (a runner without Gtk skips the 45
+GTK tests; all 169 ran locally in a conda env with Gtk 3.24, Python 3.13). Bazel: `:screen_installer_*_test`. Mutation list:
+`installer/tests/mutation-results.txt` (109 of 109 killed).
+Screenshots from the widget tree and the design side by side: `installer/screenshots/` (`fonts-used.txt` proves every label is drawn
+by the bundled face, `keyboard-walkthrough.txt` is the Tab/Enter sequence).
+
+### VM run (real SystemRescue 13.03, QEMU/TCG on another host, UEFI, one blank and one used virtual NVMe, keyboard + USB tablet)
+
+The revised screens (Figma rev2) from the shipped overlay; screenshots in `installer/screenshots/vm/`, harness in `installer/tests/vm/`
+(`mkiso.sh`, `runvm.sh WIDTH HEIGHT` with `-device usb-tablet`, `qmp.py` for keys, absolute pointer moves/clicks and screendumps, `cmp.py`).
+Passed on a real X server with no window manager:
+- 1024x768, 1920x1080 and 1080x1920 (portrait, stepper bar) boot straight to the screen, content inside the safe area, nothing cut off;
+  the pointer is visible, hover and click work through the tablet (a click selects a card and moves the focus to 内容を確認).
+- 1366x768 (QEMU `virtio-vga`: the std VGA's screendump is skewed for widths that are not a multiple of 8): one empty SSD preselected,
+  the used NVMe and the boot USB shown as 使えません; Enter, Enter, Enter from boot ends on the review screen (やめる had the focus in the
+  confirmation) and nothing is written; then Enter, Enter, → インストールする, Enter: a full install to 完了 (11 区画を確認),
+  `cmp.py` 8 of 8 data partitions identical to the source image, the used NVMe's sha256 unchanged.
+- The monitor geometry/`xrandr` path ran in the VM (one output); several outputs, overscan and HiDPI are covered only by the offscreen
+  tests and the fake-display unit tests, not on real hardware.
+
+Earlier rounds (previous UI, same harness): key mashing of Ctrl/Alt/F-keys changed nothing, `kill -9` of the GTK process during the write
+did not stop it and the restarted window showed the true state, the text boot entry lists both disks as not selectable.
+
+### Not tested
+
+Failure and "no SSD" screens in the VM (widget-tree screenshots only), the power-off and reboot buttons actually powering the machine
+(the first press of the question is tested, the second only against the fake `systemctl`), typing a device path in the text installer
+inside the VM (the unit tests cover it), the BIOS/syslinux boot path, real hardware (several outputs, overscan, HiDPI, touch), USB removal
+mid-install, 1366x768 on the plain VGA device, window behaviour on a GPU/KMS display (the VM used a framebuffer), and sizes other than
+those listed above in the VM (the offscreen layout test covers 13). The time left is not shown: nothing measures it. AGENTS.md prefers
+shared policy in `.cljc`; the live system has no Clojure runtime and nothing here may download one, so the guards are stdlib Python.
 
 ## KVM check (2026-11-19)
 
@@ -142,8 +385,9 @@ git -C "$ANDROID_BUILD_TOP/packages/apps/Updater" diff --check
 
 On the PC pilot, the Updater preference **Automatic PC maintenance** is off by
 default. Enabling it requires scheduled checks and streaming. The worker uses a
-fresh offer from the pilot feed and an HTTPS package under
-`ota.awai.network/v1/pc/pilot/`. UpdateEngine verifies the A/B payload.
+fresh offer from the pilot feed. It accepts GitHub release assets named by the
+ZIP SHA-256, commit-pinned raw URLs, and HTTPS package URLs under
+`ota.awai.network/v1/pc/pilot/`. UpdateEngine verifies the streamed A/B payload.
 It waits for completed setup, an inactive screen, and a validated, unmetered
 connection. It uses external power on devices with a battery. The first
 automatic reboot check is scheduled about 20 minutes after UpdateEngine accepts
@@ -211,15 +455,16 @@ these ranges, including the Updater limit for payload properties.
 The updater and Android still verify the signed package on device.
 Retain a record of feed detection, apply, reboot, recovery, and rollback on the same PC.
 
-The pilot endpoint is backed by the dedicated Cloudflare R2 bucket
-`awai-os-ota`. Publish the verified ZIP at a digest-qualified object path and
-check its public bytes and HTTP Range response before publishing the index.
-Serve the mutable index as `application/json` with `Cache-Control: no-store`.
-To stop offering updates, replace the affected index with `[]` and verify the
-public response. The pinned Awai Updater removes undownloaded cached offers
-after a successful empty response. Updates already started and saved local
-packages are retained. A failed request does not withdraw an otherwise eligible cached offer. Keep
-the signed ZIP for diagnosis and recovery.
+The pilot Worker serves the mutable index as `application/json` with
+`Cache-Control: no-store`. The ZIP is a GitHub release asset pinned by its
+signed SHA-256 and size. An Awai repository commit-pinned raw URL can serve
+a ZIP up to 100 MiB. Follow the [OTA publish runbook](../../../deploy/ota-feed/README.md)
+to verify public Range and hash the downloaded bytes before offering an update.
+
+To withdraw an offer, publish `[]` at that device/build path. Updater drops
+undownloaded cached offers after a successful empty response. It retains
+started updates and saved local packages. A failed request preserves otherwise
+eligible cached offers. Keep the signed ZIP for diagnosis and recovery.
 
 ## OTA on the shared disk (2026-11-19)
 

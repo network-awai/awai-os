@@ -135,7 +135,7 @@ public final class Catalog {
     // permission (android/local-apps.json lists the same suffixes; tests/local-apps.test.mjs checks
     // that). Each is network.itonami.<suffix>, asset packages/<suffix>.apk, 40 MiB budget.
     public static final java.util.List<String> LOCAL_APPS = java.util.Collections.unmodifiableList(java.util.Arrays.asList(
-            "ki", "hakkou", "koke", "openossekai", "otakiage", "seibutsu", "shinka", "kabi", "kinoko", "kobo", "saikin", "kiyome", "omikuji", "moldallergy", "explorer", "organismviz", "icc", "abaki", "hibiki", "wakai", "tawami", "yudane", "minori", "torifune", "hiramekietz", "umisachi", "tomoshibi", "tsumugi", "shirohan"));
+            "ki", "hakkou", "koke", "openossekai", "otakiage", "seibutsu", "shinka", "kabi", "kinoko", "kobo", "saikin", "kiyome", "omikuji", "moldallergy", "explorer", "organismviz", "icc", "abaki", "hibiki", "wakai", "tawami", "yudane", "minori", "torifune", "hiramekietz", "umisachi", "tomoshibi", "tsumugi", "shirohan", "paymentdrafts", "securitiesdrafts"));
     /**
      * Apps admitted by the signed catalog itself (AWAI-3771): any network.itonami.<one lowercase segment> that the
      * catalog lists, such as the classification-series apps (network.itonami.isco2423). The asset name, the staged
@@ -173,6 +173,17 @@ public final class Catalog {
         if ("network.itonami.kumade".equals(id)) return "packages/kumade.apk";
         if ("app.aozora".equals(id)) return "packages/aozora.apk";
         if ("network.itonami.agenttrace".equals(id)) return "packages/agent-trace.apk";
+        // AWAI-3115 creator dapps (itonami Store item 134): Tauri v3 apps carried online.
+        if ("network.itonami.mangaka".equals(id)) return "packages/mangaka.apk";
+        if ("network.itonami.dougaka".equals(id)) return "packages/dougaka.apk";
+        if ("network.itonami.animeka".equals(id)) return "packages/animeka.apk";
+        if ("network.itonami.ongakuka".equals(id)) return "packages/ongakuka.apk";
+        if ("network.itonami.gameka".equals(id)) return "packages/gameka.apk";
+        // The independent writing practice (執筆) app ships as network.itonami.isco2641:
+        // its package id, descriptor schema (itonami.series.isco2641.v1) and built APK all use
+        // that id, so the catalog follows the implementation instead of renaming the app.
+        if ("network.itonami.isco2641".equals(id)) return "packages/isco2641.apk";
+        if ("network.awai.gaka".equals(id)) return "packages/gaka.apk";
         String local = localSuffix(id);
         if (local != null) return "packages/" + local + ".apk";
         String listed = catalogSuffix(id);
@@ -194,6 +205,14 @@ public final class Catalog {
         if ("network.itonami.kumade".equals(id)) return "online-kumade.apk";
         if ("app.aozora".equals(id)) return "online-aozora.apk";
         if ("network.itonami.agenttrace".equals(id)) return "online-agent-trace.apk";
+        // AWAI-3115 creator dapps (itonami Store item 134).
+        if ("network.itonami.mangaka".equals(id)) return "online-mangaka.apk";
+        if ("network.itonami.dougaka".equals(id)) return "online-dougaka.apk";
+        if ("network.itonami.animeka".equals(id)) return "online-animeka.apk";
+        if ("network.itonami.ongakuka".equals(id)) return "online-ongakuka.apk";
+        if ("network.itonami.gameka".equals(id)) return "online-gameka.apk";
+        if ("network.itonami.isco2641".equals(id)) return "online-isco2641.apk";
+        if ("network.awai.gaka".equals(id)) return "online-gaka.apk";
         String local = localSuffix(id);
         if (local != null) return "online-" + local + ".apk";
         String listed = catalogSuffix(id);
@@ -221,6 +240,14 @@ public final class Catalog {
         if ("network.itonami.kumade".equals(id)) return 40 * 1024 * 1024;
         if ("app.aozora".equals(id)) return 64 * 1024 * 1024;
         if ("network.itonami.agenttrace".equals(id)) return 2 * 1024 * 1024;
+        // AWAI-3115 creator dapps (itonami Store item 134): single-APK Tauri v3 builds.
+        // Measured reference: the isco2641 app build on this host is 19,614,026 bytes
+        // (00.1.0, targetSdk 37), so 40 MiB leaves headroom for the debug-signing and
+        // asset variance the other Tauri v3 store apps already use (Yotei: 40 MiB).
+        if ("network.itonami.mangaka".equals(id) || "network.itonami.dougaka".equals(id)
+                || "network.itonami.animeka".equals(id) || "network.itonami.ongakuka".equals(id)
+                || "network.itonami.gameka".equals(id) || "network.itonami.isco2641".equals(id)
+                || "network.awai.gaka".equals(id)) return 40 * 1024 * 1024;
         // AWAI-3502 local apps: Tauri v3 debug builds without native debug symbols, about 19.6 MB at 0.1.0.
         if (localSuffix(id) != null) return 40 * 1024 * 1024;
         if (catalogSuffix(id) != null) return MAX_CATALOG_APP_BYTES;
