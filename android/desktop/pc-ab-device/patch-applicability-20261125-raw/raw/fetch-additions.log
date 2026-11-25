@@ -1,0 +1,24 @@
+=== FETCH device/virt/virtio-common LineageOS/android_device_virt_virtio-common 9d5c9307434bba31d19030fcc61086efcd248997 BoardConfigCommon.mk ===
++ curl -fsSL https://raw.githubusercontent.com/LineageOS/android_device_virt_virtio-common/9d5c9307434bba31d19030fcc61086efcd248997/BoardConfigCommon.mk -o /Users/node/.hermes/cache/scratch/g2-add-20261125/fetch/device/virt/virtio-common/BoardConfigCommon.mk
+FETCH_OK bytes=1916 sha256=992b74868659265699c6c56facdfd8ef1ca4fb1938c053b5969f73232462a3e4
+=== FETCH device/virt/virtio-common LineageOS/android_device_virt_virtio-common 9d5c9307434bba31d19030fcc61086efcd248997 sepolicy/vendor/genfs_contexts ===
++ curl -fsSL https://raw.githubusercontent.com/LineageOS/android_device_virt_virtio-common/9d5c9307434bba31d19030fcc61086efcd248997/sepolicy/vendor/genfs_contexts -o /Users/node/.hermes/cache/scratch/g2-add-20261125/fetch/device/virt/virtio-common/sepolicy/vendor/genfs_contexts
+FETCH_OK bytes=7761 sha256=8f2e7fea5541ba7070358b6039e0e5ce71df19bf8e9fb1b9121ea70b28ea07bb
+=== FETCH device/virt/virtio-common LineageOS/android_device_virt_virtio-common 9d5c9307434bba31d19030fcc61086efcd248997 sepolicy/vendor/file_contexts ===
++ curl -fsSL https://raw.githubusercontent.com/LineageOS/android_device_virt_virtio-common/9d5c9307434bba31d19030fcc61086efcd248997/sepolicy/vendor/file_contexts -o /Users/node/.hermes/cache/scratch/g2-add-20261125/fetch/device/virt/virtio-common/sepolicy/vendor/file_contexts
+FETCH_OK bytes=540 sha256=3d9160a22a770da4d141f504fed9c36ce148d989d2cda35916dcb86c04d95dd1
+=== FETCH device/virt/virtio-common LineageOS/android_device_virt_virtio-common 9d5c9307434bba31d19030fcc61086efcd248997 sepolicy/vendor/ab/file_contexts ===
++ curl -fsSL https://raw.githubusercontent.com/LineageOS/android_device_virt_virtio-common/9d5c9307434bba31d19030fcc61086efcd248997/sepolicy/vendor/ab/file_contexts -o /Users/node/.hermes/cache/scratch/g2-add-20261125/fetch/device/virt/virtio-common/sepolicy/vendor/ab/file_contexts
+FETCH_OK bytes=222 sha256=22e35ce739726ae507cfd253317e7a597e3eef498625db7da4f1f00c4ea2e290
+=== FETCH device/virt/virtio-common LineageOS/android_device_virt_virtio-common 9d5c9307434bba31d19030fcc61086efcd248997 configs/fstab/fstab.virtio-common ===
++ curl -fsSL https://raw.githubusercontent.com/LineageOS/android_device_virt_virtio-common/9d5c9307434bba31d19030fcc61086efcd248997/configs/fstab/fstab.virtio-common -o /Users/node/.hermes/cache/scratch/g2-add-20261125/fetch/device/virt/virtio-common/configs/fstab/fstab.virtio-common
+FETCH_OK bytes=635 sha256=b23b55582109ee5036967718c8988e7bd1963db5d0508e3e62c71f7be1abaf18
+=== FETCH vendor/lineage LineageOS/android_vendor_lineage 5a1814d916321aecb72d60d13b5e52bc719251bd overlay/common/lineage-sdk/packages/LineageSettingsProvider/res/values/defaults.xml ===
++ curl -fsSL https://raw.githubusercontent.com/LineageOS/android_vendor_lineage/5a1814d916321aecb72d60d13b5e52bc719251bd/overlay/common/lineage-sdk/packages/LineageSettingsProvider/res/values/defaults.xml -o /Users/node/.hermes/cache/scratch/g2-add-20261125/fetch/vendor/lineage/overlay/common/lineage-sdk/packages/LineageSettingsProvider/res/values/defaults.xml
+FETCH_OK bytes=846 sha256=7b8158f28cf4a27a475647838e853c52946971e35b54b527f3d267ccea573eae
+=== FETCH vendor/lineage LineageOS/android_vendor_lineage 5a1814d916321aecb72d60d13b5e52bc719251bd config/common.mk ===
++ curl -fsSL https://raw.githubusercontent.com/LineageOS/android_vendor_lineage/5a1814d916321aecb72d60d13b5e52bc719251bd/config/common.mk -o /Users/node/.hermes/cache/scratch/g2-add-20261125/fetch/vendor/lineage/config/common.mk
+FETCH_OK bytes=8310 sha256=5798ba088072a162e2df3e3327c0ebcc6678c37e2b298c5c8bc2dd4399ccf2e4
+=== FETCH vendor/lineage LineageOS/android_vendor_lineage 5a1814d916321aecb72d60d13b5e52bc719251bd build/tasks/kernel.mk ===
++ curl -fsSL https://raw.githubusercontent.com/LineageOS/android_vendor_lineage/5a1814d916321aecb72d60d13b5e52bc719251bd/build/tasks/kernel.mk -o /Users/node/.hermes/cache/scratch/g2-add-20261125/fetch/vendor/lineage/build/tasks/kernel.mk
+FETCH_OK bytes=41311 sha256=55c02c09644722f44782fce97c06edf84b7f076514f971b58da4afd69b8a9180

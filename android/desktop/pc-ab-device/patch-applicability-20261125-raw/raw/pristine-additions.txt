@@ -1,0 +1,34 @@
+### pristine + reverse-checks on pristine for the 3 additions (2026-11-25, main 043e5144)
+=== /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/virtio-common-awai-pc-gpu-sysfs.patch ===
+project=device/virt/virtio-common head=9d5c9307434bba31d19030fcc61086efcd248997 patch_sha256=4816a2857f75ef8baa38c43fb33026d6a6e25734fec76cfa36eba756d5087220 patch_bytes=1929
++ git -C /Users/node/.hermes/cache/scratch/g2-add-20261125/pristine/device/virt/virtio-common apply --check -p1 /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/virtio-common-awai-pc-gpu-sysfs.patch
+
+EXIT=0
++ git -C /Users/node/.hermes/cache/scratch/g2-add-20261125/pristine/device/virt/virtio-common apply --reverse --check /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/virtio-common-awai-pc-gpu-sysfs.patch
+error: patch failed: sepolicy/vendor/genfs_contexts:9
+error: sepolicy/vendor/genfs_contexts: patch does not apply
+EXIT=1
+
+=== /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/virtio-common-rtw89-8851be.patch ===
+project=device/virt/virtio-common head=9d5c9307434bba31d19030fcc61086efcd248997 patch_sha256=5f82849ec87015a65386fa8cd11174befccab057760e6bf717ebc662af080098 patch_bytes=1516
++ git -C /Users/node/.hermes/cache/scratch/g2-add-20261125/pristine/device/virt/virtio-common apply --check -p1 /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/virtio-common-rtw89-8851be.patch
+error: patch failed: BoardConfigCommon.mk:74
+error: BoardConfigCommon.mk: patch does not apply
+error: configs/kernel/awai-pc.config: No such file or directory
+EXIT=1
++ git -C /Users/node/.hermes/cache/scratch/g2-add-20261125/pristine/device/virt/virtio-common apply --reverse --check /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/virtio-common-rtw89-8851be.patch
+error: configs/kernel/awai-pc.config: No such file or directory
+error: patch failed: BoardConfigCommon.mk:74
+error: BoardConfigCommon.mk: patch does not apply
+EXIT=1
+
+=== /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/vendor-lineage-stats-default-off.patch ===
+project=vendor/lineage head=5a1814d916321aecb72d60d13b5e52bc719251bd patch_sha256=78aac7e852a459b558f3c25f700ed544aaef8e7867c457dd670c5ea8554ed2d5 patch_bytes=687
++ git -C /Users/node/.hermes/cache/scratch/g2-add-20261125/pristine/vendor/lineage apply --check -p1 /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/vendor-lineage-stats-default-off.patch
+
+EXIT=0
++ git -C /Users/node/.hermes/cache/scratch/g2-add-20261125/pristine/vendor/lineage apply --reverse --check /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/vendor-lineage-stats-default-off.patch
+error: patch failed: overlay/common/lineage-sdk/packages/LineageSettingsProvider/res/values/defaults.xml:18
+error: overlay/common/lineage-sdk/packages/LineageSettingsProvider/res/values/defaults.xml: patch does not apply
+EXIT=1
+
