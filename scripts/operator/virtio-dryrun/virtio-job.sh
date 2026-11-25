@@ -6,10 +6,12 @@
 # refuses (exit 2) and prints nothing. It never creates a node pool,
 # runs workload-administration commands, or calls a paid API.
 #
-# The Job command installs the toolchain FIRST (apt-get), then runs
-# build-inside.sh (which fetches the kit by KIT_URL/KIT_SHA256 with
-# SHA verification). A plain ubuntu image has no rclone pre-install,
-# so no rclone bootstrap is attempted before apt-get.
+# The Job command installs the toolchain FIRST (apt-get), then
+# fetches the kit (KIT_URL, SHA-256 verified with KIT_SHA256),
+# extracts it, and runs the extracted kit's own build-inside.sh
+# (never re-downloading over the running script). A plain ubuntu
+# image has no rclone pre-install, so no rclone bootstrap is
+# attempted before apt-get.
 #
 #   DRY_RUN=1 RELEASE_TYPE=userdebug AWAI_VKE_NODE_POOL=awai-pc-release-012345abcdef bash virtio-job.sh > job.json
 set -euo pipefail
@@ -46,8 +48,9 @@ fi
 namespace=awai-pc-release-build
 name=awai-virtio-dryrun-build
 image=ubuntu@sha256:9a04f13b3f80ef056361e30868593b1cfd2279fe19e4081cb93a90bf56819d6a
+WORK=${BUILD_WORK_DIR:-/root/build}
 
-job_command='apt-get -qq update && apt-get -qq install -y bc bison build-essential ca-certificates ccache cmake curl flex g++-multilib gcc-multilib git git-lfs gperf imagemagick lib32readline-dev lib32z1-dev libclang-18-dev libegl1 libelf-dev libglvnd-dev liblapack-dev liblz4-tool libopenblas-dev libpam-pwquality libsdl1.2-dev libssl-dev libxml2 libxml2-utils lz4 lzop ninja-build pkg-config python-is-python3 python3-dev python3-jsonschema python3-mako python3-packaging python3-pip python3-pycparser python3-ply python3-yaml rclone rsync schedtool squashfs-tools unzip xorriso xsltproc zip zstd && mkdir -p /root/build/kit && bash /root/build/virtio-dryrun/build-inside.sh'
+job_command="apt-get -qq update && apt-get -qq install -y bc bison build-essential ca-certificates ccache cmake curl flex g++-multilib gcc-multilib git git-lfs gperf imagemagick lib32readline-dev lib32z1-dev libclang-18-dev libegl1 libelf-dev libglvnd-dev liblapack-dev liblz4-tool libopenblas-dev libpam-pwquality libsdl1.2-dev libssl-dev libxml2 libxml2-utils lz4 lzop ninja-build pkg-config python-is-python3 python3-dev python3-jsonschema python3-mako python3-packaging python3-pip python3-pycparser python3-ply python3-yaml rclone rsync schedtool squashfs-tools unzip xorriso xsltproc zip zstd && mkdir -p \"\$BUILD_WORK_DIR/kit\" \"\$BUILD_WORK_DIR/bin\" \"\$BUILD_WORK_DIR/upload/v1\" && curl -fsSL \"\$KIT_URL\" -o \"\$BUILD_WORK_DIR/kit.tar.gz\" && python3 -c 'import hashlib,sys; d=hashlib.sha256(open(sys.argv[1],\"rb\").read()).hexdigest(); sys.exit(0 if d==sys.argv[2] else 1)' \"\$BUILD_WORK_DIR/kit.tar.gz\" \"\$KIT_SHA256\" && tar -xzf \"\$BUILD_WORK_DIR/kit.tar.gz\" -C \"\$BUILD_WORK_DIR/kit\" && bash \"\$BUILD_WORK_DIR/kit/scripts/operator/virtio-dryrun/build-inside.sh\""
 
 jq -n \
   --arg name "$name" --arg ns "$namespace" --arg pool "$AWAI_VKE_NODE_POOL" \
@@ -58,6 +61,7 @@ jq -n \
   --arg feed_url "${AWAI_FEED_URL:-}" \
   --arg pool_label "${AWAI_POOL_LABEL:-}" \
   --arg firmware_git "${FIRMWARE_GIT:-/root/build/firmware/src}" \
+  --arg work "$WORK" \
   --argjson deadline "$DEADLINE" \
   '{
    apiVersion: "batch/v1", kind: "Job",
@@ -96,7 +100,7 @@ jq -n \
                  { name: "AWAI_POOL_LABEL", value: $pool_label },
                  { name: "FIRMWARE_GIT", value: $firmware_git },
                  { name: "SRC", value: "/root/build/src" },
-                 { name: "KIT", value: "/root/build/kit/virtio-dryrun" }],
+                 { name: "KIT", value: "/root/build/kit" }],
            envFrom: [{ secretRef: { name: "release-artifacts-b2" } }],
            command: ["bash", "-euo", "pipefail", "-c", $command],
            resources: { requests: { cpu: "14", memory: "64Gi", "ephemeral-storage": "520Gi" } },
