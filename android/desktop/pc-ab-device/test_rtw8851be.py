@@ -81,5 +81,33 @@ class ApplyWiring(unittest.TestCase):
         )
 
 
+class FirmwareSelection(unittest.TestCase):
+    """pc-firmware.py stages rtw89 firmware from the same a2dcb924 checkout."""
+
+    def _module(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("pc_firmware", HERE / "pc-firmware.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_firmware_regex_requests_only_8851b_bin(self):
+        mod = self._module()
+        self.assertIsNotNone(mod.FIRMWARE.fullmatch("rtw89/rtw8851b_fw.bin"))
+        # Kernel FW_FORMAT_MAX is 0: fw-1 is never requested (rtw8851b.c:18, fw.h:4197).
+        self.assertIsNone(mod.FIRMWARE.fullmatch("rtw89/rtw8851b_fw-1.bin"))
+        self.assertIsNotNone(mod.FIRMWARE.fullmatch("amdgpu/vcn_3_1_2.bin"))
+        self.assertIsNotNone(mod.FIRMWARE.fullmatch("rtl_nic/rtl8168f-4.fw"))
+
+    def test_pinned_files_scans_rtw89_and_counts_27(self):
+        src = (HERE / "pc-firmware.py").read_text()
+        self.assertIn('"rtw89"', src)
+        self.assertIn("!= 27", src)
+
+    def test_notices_include_rtlwifi_licence(self):
+        mod = self._module()
+        self.assertIn("LICENSES/LICENCE.rtlwifi_firmware.txt", [str(n) for n in mod.NOTICES])
+
+
 if __name__ == "__main__":
     unittest.main()

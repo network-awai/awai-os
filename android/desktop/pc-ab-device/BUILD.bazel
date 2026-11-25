@@ -58,7 +58,7 @@ sh_test(
     tags = ["no-remote"],
 )
 
-# AWAI-4092: RTL8851BE kernel-config fragment + vendor module load order.
+# AWAI-4092: RTL8851BE kernel-config fragment + vendor module load order + firmware selection.
 sh_test(
     name = "rtw8851be_test",
     srcs = ["run-python-test.sh"],
@@ -66,6 +66,7 @@ sh_test(
     data = [
         "apply.sh",
         "patches/virtio-common-rtw89-8851be.patch",
+        "pc-firmware.py",
         "test_rtw8851be.py",
     ],
     size = "small",
