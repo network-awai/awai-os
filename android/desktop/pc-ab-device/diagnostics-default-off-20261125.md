@@ -19,6 +19,15 @@ no merge. Fetch-only survey at the pinned SHAs in
   `*.cfg`/`*contexts`/`*.mk` marker grep). Stack: independent of #504's
   record/CI files; merge order vs #504 is irrelevant except sharing `apply.sh`.
 
+## 0. Applicability census (#504 baseline, per-patch verdicts)
+
+Baseline (#504): **20 = 17 apply + 2 not applicable + 1 superseded/skipped**.
+This PR adds 2 patches: `vendor-lineage-stats-default-off.patch` and
+`setupwizard-stats-default-off.patch` — **both pristine `rc=0`** (no ordered
+predecessor touches these files). With this PR alone:
+**22 = 19 apply + 2 not applicable + 1 superseded**. With #511 (AWAI-4092,
+ordered `rc=0` after `awai-pc`) also landed: **23 = 20 + 2 + 1**.
+
 ## 1. Where the default lives (file, line, value at pinned SHAs)
 
 | # | Project / pinned SHA | File | Line | Value now |
@@ -50,8 +59,17 @@ Overlay note: `vendor/lineage` is the overlay project pinned in the manifest;
 ## 2. First-setup screen (default off; wording owned by AWAI-3563)
 
 `SetupWizard` shows a "Contribute diagnostic data" switch
-(`res/xml/lineage_settings_items.xml:8-11`, `res/values/strings.xml:92-93`
-`services_metrics_label` / `services_metrics_title`). `LineageSettingsActivity`
+(`res/xml/lineage_settings_items.xml:8-11`). Exact pinned strings
+(`res/values/strings.xml:92-93`, quoted — wording owned by AWAI-3563,
+not edited here):
+
+- title: `Contribute diagnostic data`
+- label: `%1$s by automatically sending diagnostic and usage data to %2$s.
+  This information can't be used to identify you and lends a hand to teams
+  working on things like battery life, app performance, and new %3$s
+  features.` (with `xliff:g` name substitutions).
+
+`LineageSettingsActivity`
 `onCreate` (lines 37-39) stores every toggle into
 `SetupWizardApp.settingsBundle`; `onResume` calls `updateMetricsOption()`
 (lines 73-79), which rewrites the switch from the bundle and puts the
