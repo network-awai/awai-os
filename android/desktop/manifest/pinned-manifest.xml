@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- AWAI-4088 (G1): Awai overlay manifest for the Desktop product
+     lineage_virtio_x86_64. New snapshot resolved 2026-11-25; this is NOT a
+     reproduction of the 0526 version. Every project below is pinned at a
+     full 40-hex SHA resolved with `git ls-remote ... refs/heads/lineage-24.0`
+     (see resolve.log). Base manifest repo: LineageOS/android (github),
+     branch lineage-24.0, commit 913c6baa35ffa32be9ae33368cac69dbec6ead4b.
+     All other projects in the base LineageOS manifest are pinned by that
+     manifest-repo commit, not by invented per-project SHAs.
+     This file claims only that inputs are fixed and resolvable; it does not
+     claim buildable, reproducible, or bootable. -->
+<manifest>
+  <remote name="github" fetch="https://github.com/" />
+  <remote name="themuppets" fetch="https://github.com/TheMuppets/" />
+
+  <!-- 13 projects from scripts/operator/same-build local_manifests -->
+  <project name="LineageOS/android_device_mainline_generic" path="device/mainline/generic"
+           remote="github" revision="3d402dc58aa2086a960abd076204836259387a79" />
+  <project name="LineageOS/android_device_mainline_common" path="device/mainline/common"
+           remote="github" revision="e237088ec3475c6b93e7148bdcc32218e36f782f" />
+  <project name="LineageOS/android_external_tinyhal" path="external/tinyhal"
+           remote="github" revision="e2e5a2ecdeb20b99d5f5ad4a3472c96c45faeaa5" />
+  <project name="LineageOS/android_kernel_mainline_configs" path="kernel/mainline/configs"
+           remote="github" revision="dc05b10df0b9efee05dc68f0d8166d4f2713e48f" />
+  <project name="LineageOS/android_prebuilts_bootmgr" path="prebuilts/bootmgr"
+           remote="github" revision="811ba971e891b1f3e7412dfcaac633af5517892f" />
+  <project name="LineageOS/android_external_drm_hwcomposer-upstream" path="external/drm_hwcomposer-upstream"
+           remote="github" revision="75c1e12adac7c5f2f5949afca98651fa7b42b19f" />
+  <project name="LineageOS/android_external_minigbm-upstream" path="external/minigbm-upstream"
+           remote="github" revision="0111c9e1033106dc85899eea1076e4579200d75b" />
+  <project name="LineageOS/android_external_linux-firmware-mainline" path="external/linux-firmware-mainline"
+           remote="github" revision="c0dcca3ad25e261abfbd1c0d42219c81a1f48496" />
+  <project name="LineageOS/android_external_mesa" path="external/mesa"
+           remote="github" revision="400e673cf8ba515d3aace56ed3acc3bb300869a5" />
+  <project name="LineageOS/android_hardware_mainline_common" path="hardware/mainline/common"
+           remote="github" revision="2856c8d4c52007add6f79480dba29987ec68c6b0" />
+  <project name="LineageOS/android_vendor_mainline" path="vendor/mainline"
+           remote="github" revision="a3baa61e40ab74294ca0063b81155f259c855e6b" />
+  <project name="proprietary_vendor_motorola_lamu" path="vendor/motorola/lamu"
+           remote="themuppets" revision="6ff54739b601bd8de21281d1dd7a1f8c706e141e" />
+  <project name="proprietary_vendor_motorola_mt6768-common" path="vendor/motorola/mt6768-common"
+           remote="themuppets" revision="6aa66b4fda3213a02087ffa4359da03fea3132a7" />
+
+  <!-- device/virt projects required by the lineage_virtio_x86_64 product.
+       These are not in the default lineage-24.0 manifest (same as
+       device/mainline/generic in AWAI-3850); repo names were found via the
+       GitHub API search for org:LineageOS virt repos. -->
+  <project name="LineageOS/android_device_virt_virtio_x86_64" path="device/virt/virtio_x86_64"
+           remote="github" revision="0e8571a0d7fce749856e9dea72e99a8a83f8f9b4" />
+  <project name="LineageOS/android_device_virt_virt-common" path="device/virt/virt-common"
+           remote="github" revision="5da818292d9a66cf282e909287fdab14eb80711b" />
+  <project name="LineageOS/android_device_virt_virtio-common" path="device/virt/virtio-common"
+           remote="github" revision="9d5c9307434bba31d19030fcc61086efcd248997" />
+</manifest>

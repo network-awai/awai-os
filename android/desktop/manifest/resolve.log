@@ -1,0 +1,30 @@
+# AWAI-4088 (G1) resolution log. UTC timestamps.
+# Method per project: git ls-remote <url> refs/heads/lineage-24.0 (full 40-hex SHA).
+# Base manifest repo: https://github.com/LineageOS/android.git refs/heads/lineage-24.0
+manifest-repo 2026-11-25T00:36:05Z git ls-remote https://github.com/LineageOS/android.git refs/heads/lineage-24.0 -> 913c6baa35ffa32be9ae33368cac69dbec6ead4b
+# repo init evidence (no sync): 2026-11-25T00:36:09Z repo init -u https://github.com/LineageOS/android.git -b lineage-24.0
+#   in .agent-output/g1-resolve/lineage-manifest/ (temp dir outside repo; not committed).
+#   default.xml contains no device/virt projects (same situation as device/mainline/generic in AWAI-3850).
+# device/virt repo names via GitHub API: curl -s "https://api.github.com/search/repositories?q=org:LineageOS+virtio+in:name"
+#   and q=org:LineageOS+virt-common+in:name. Wrong-name guesses recorded (all "Repository not found"):
+#   LineageOS/android_device_virtio_x86_64, LineageOS/android_device_virt_common.
+# B2 check 2026-11-25T00:36:02Z: rclone listremotes -> no remotes (no ~/.config/rclone/rclone.conf);
+#   security find-generic-password -s network.awai.release-artifacts.b2 -> item not found;
+#   rclone lsf "art:" -> "didn't find section in config file ("art")". AWAI-3850 pinned-manifest.xml not listable.
+# Re-resolution pass at 00:37Z re-ran every ls-remote against the written manifest: 16/16 MATCH, 0 unresolved.
+project device/mainline/generic https://github.com/LineageOS/android_device_mainline_generic.git refs/heads/lineage-24.0 2026-11-25T00:37:28Z git ls-remote -> 3d402dc58aa2086a960abd076204836259387a79 (MATCH)
+project device/mainline/common https://github.com/LineageOS/android_device_mainline_common.git refs/heads/lineage-24.0 2026-11-25T00:37:28Z git ls-remote -> e237088ec3475c6b93e7148bdcc32218e36f782f (MATCH)
+project external/tinyhal https://github.com/LineageOS/android_external_tinyhal.git refs/heads/lineage-24.0 2026-11-25T00:37:29Z git ls-remote -> e2e5a2ecdeb20b99d5f5ad4a3472c96c45faeaa5 (MATCH)
+project kernel/mainline/configs https://github.com/LineageOS/android_kernel_mainline_configs.git refs/heads/lineage-24.0 2026-11-25T00:37:29Z git ls-remote -> dc05b10df0b9efee05dc68f0d8166d4f2713e48f (MATCH)
+project prebuilts/bootmgr https://github.com/LineageOS/android_prebuilts_bootmgr.git refs/heads/lineage-24.0 2026-11-25T00:37:30Z git ls-remote -> 811ba971e891b1f3e7412dfcaac633af5517892f (MATCH)
+project external/drm_hwcomposer-upstream https://github.com/LineageOS/android_external_drm_hwcomposer-upstream.git refs/heads/lineage-24.0 2026-11-25T00:37:30Z git ls-remote -> 75c1e12adac7c5f2f5949afca98651fa7b42b19f (MATCH)
+project external/minigbm-upstream https://github.com/LineageOS/android_external_minigbm-upstream.git refs/heads/lineage-24.0 2026-11-25T00:37:31Z git ls-remote -> 0111c9e1033106dc85899eea1076e4579200d75b (MATCH)
+project external/linux-firmware-mainline https://github.com/LineageOS/android_external_linux-firmware-mainline.git refs/heads/lineage-24.0 2026-11-25T00:37:31Z git ls-remote -> c0dcca3ad25e261abfbd1c0d42219c81a1f48496 (MATCH)
+project external/mesa https://github.com/LineageOS/android_external_mesa.git refs/heads/lineage-24.0 2026-11-25T00:37:32Z git ls-remote -> 400e673cf8ba515d3aace56ed3acc3bb300869a5 (MATCH)
+project hardware/mainline/common https://github.com/LineageOS/android_hardware_mainline_common.git refs/heads/lineage-24.0 2026-11-25T00:37:32Z git ls-remote -> 2856c8d4c52007add6f79480dba29987ec68c6b0 (MATCH)
+project vendor/mainline https://github.com/LineageOS/android_vendor_mainline.git refs/heads/lineage-24.0 2026-11-25T00:37:32Z git ls-remote -> a3baa61e40ab74294ca0063b81155f259c855e6b (MATCH)
+project vendor/motorola/lamu https://github.com/TheMuppets/proprietary_vendor_motorola_lamu.git refs/heads/lineage-24.0 2026-11-25T00:37:33Z git ls-remote -> 6ff54739b601bd8de21281d1dd7a1f8c706e141e (MATCH)
+project vendor/motorola/mt6768-common https://github.com/TheMuppets/proprietary_vendor_motorola_mt6768-common.git refs/heads/lineage-24.0 2026-11-25T00:37:33Z git ls-remote -> 6aa66b4fda3213a02087ffa4359da03fea3132a7 (MATCH)
+project device/virt/virtio_x86_64 https://github.com/LineageOS/android_device_virt_virtio_x86_64.git refs/heads/lineage-24.0 2026-11-25T00:37:34Z git ls-remote -> 0e8571a0d7fce749856e9dea72e99a8a83f8f9b4 (MATCH)
+project device/virt/virt-common https://github.com/LineageOS/android_device_virt_virt-common.git refs/heads/lineage-24.0 2026-11-25T00:37:34Z git ls-remote -> 5da818292d9a66cf282e909287fdab14eb80711b (MATCH)
+project device/virt/virtio-common https://github.com/LineageOS/android_device_virt_virtio-common.git refs/heads/lineage-24.0 2026-11-25T00:37:35Z git ls-remote -> 9d5c9307434bba31d19030fcc61086efcd248997 (MATCH)

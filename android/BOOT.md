@@ -6,9 +6,27 @@ target architecture and the remaining release gates.
 
 ## Current status
 
-There is **no Awai OS system image yet**. No Awai-built AOSP image, signed ROM,
-OTA channel or installer exists. Today, Awai OS runs as the Awai apps (Home,
-Store, Yotei, Itonami, Murakumo) and system overlays on top of a base system:
+There is **no Awai OS release image yet**: no signed ROM with release keys,
+no real-device boot, and no `Awai OS` entry in Settings. What exists today
+is narrower:
+
+**Exists (evidence, KVM/VM only):**
+- The USB/PXE installer for the PC (installer UI and PXE install profile in
+  `desktop/pxe-install/` and the USB PC installer, including the screen
+  front end from PR #501).
+- A/B OTA behaviour evidence in KVM for the Awai PC A/B device
+  (`desktop/pc-ab-device/`, AWAI-3586/3638, PR #501), built with test keys.
+  The upstream A/B reference check is in `desktop/ota-reference-check/`.
+
+**Does not exist:**
+- A release image.
+- A signed OTA with release keys (all OTA/target-files evidence so far is
+  test-key signed).
+- A real-device boot of the Awai-built image.
+- `Awai OS` in Settings.
+
+Today, Awai OS runs as the Awai apps (Home, Store, Yotei, Itonami, Murakumo)
+and system overlays on top of a base system:
 - a pinned Google SDK emulator image
 - a pinned, unofficial PC Live image
 - the test phone's existing community ROM
