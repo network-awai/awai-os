@@ -74,7 +74,7 @@ function stubPath(work, kitTar) {
   // timeout stub logs the budget and forwards to the stubbed command
   // (in production `timeout 20m` bounds the firmware fetch).
   writeFileSync(join(dir, "timeout"),
-    `#!/bin/sh\necho "timeout $*" >> "${calls}"\nexec "$@"\n`, { mode: 0o755 });
+    `#!/bin/sh\necho "timeout $*" >> "${calls}"\nshift\nexec "$@"\n`, { mode: 0o755 });
   const up = join(work, "upload");
   writeFileSync(join(dir, "rclone"),
     `#!/bin/sh
@@ -237,11 +237,11 @@ m() { echo "m $*" >> "${fncalls}";
     "curl -fsSL https://storage.googleapis.com/git-repo-downloads/repo",
     "git config --global user.email virtio-g2@awai.network",
     "git config --global user.name",
-    "git init -q",
-    "git -C",
     "repo init -u https://github.com/LineageOS/android.git",
     "repo sync -m default.xml --no-manifest-update",
     "repo manifest -r",
+    "git init -q",
+    "git -C",
   ];
   let pos = -1;
   for (const snippet of order) {
@@ -372,7 +372,7 @@ m() { echo "m $*" >> "${fncalls}";
   ];
   let pos = -1;
   for (const snippet of order) {
-    const i = calls.indexOf(snippet);
+    const i = calls.indexOf(snippet, pos + 1);
     assert.ok(i > pos, `${snippet} out of order or missing (pos ${pos}, found ${i})\n${calls}`);
     pos = i;
   }

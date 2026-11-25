@@ -42,19 +42,27 @@ BILLING_ALLOWED=1 OWNER_APPROVED=1 RELEASE_TYPE=userdebug \
   bash scripts/operator/virtio-dryrun/build-inside.sh
 ```
 
-`KIT_URL`/`KIT_SHA256`: kit tarball (repo's `pc-ab-device/` +
-`scripts/operator/virtio-dryrun/` + pinned manifest), operator-provided;
-the kit SHA is verified before any use. `RELEASE_TYPE` is one of
-`user`/`userdebug` and has no default — see `release-type.md` for the
-userdebug-first proposal.
+`KIT_URL`/`KIT_SHA256`: kit tarball built by
+`scripts/operator/virtio-dryrun/make-kit.sh <commit>` (`git archive`).
+Contents: `scripts/operator/virtio-dryrun/`,
+`android/desktop/manifest/pinned-manifest.xml`, `pc-ab-device/patches/`
+(all repo patches) and the five apply tools (`apply.sh`,
+`apply-shipping-debug-lockdown.sh`, `pc-firmware.py`, `updater-feed.py`,
+`make-tf-disk.sh`) — evidence/installer subdirectories are excluded.
+The Job command fetches the kit, verifies its SHA-256, extracts it,
+and runs the extracted kit's `build-inside.sh` (see `virtio-job.sh`;
+the script's own fetch is a fallback for direct invocation). The kit
+SHA and the pinned manifest SHA are both verified before use.
+`RELEASE_TYPE` is one of `user`/`userdebug` and has no default — see
+`release-type.md` for the userdebug-first proposal.
 
 Patches are applied through the repository's own apply paths
 (`pc-ab-device/apply.sh`, the lockdown script, `pc-firmware.py`),
 never a hardcoded list, so patches merged to main later (e.g.
 AWAI-4092 Wi-Fi or AWAI-4093 diagnostics) are included automatically.
-At run time `AWAI4089_PATCH_COUNT` records how many patch files were
-present, for comparison against the #504 record (20 = 17 applied /
-2 not applicable / 1 superseded).
+At run time `AWAI4089_PATCH_COUNT` records how many `.patch` files the
+kit carries (no frozen head). When #510/#511 land, regenerate the kit
+from the new head and re-run the same approved test.
 
 Kernel config regeneration is NOT a separate step in this Job. The
 AOSP build merges `TARGET_KERNEL_CONFIG_EXT` (`KERNEL_DEFCONFIG_EXT`,
@@ -71,7 +79,9 @@ runs olddefconfig) → `m`. 4092's kernel config enters via
 Firmware input is the existing `FIRMWARE_GIT` (kernel.org
 linux-firmware at `a2dcb924`, the same REVISION `pc-firmware.py`
 pins); 4092's `rtw89/rtw8851b_fw` (.bin/-1.bin) enters the same input
-via `pc-firmware.py`'s `FIRMWARE` — no new input.
+via `pc-firmware.py`'s `FIRMWARE` — no new input. kernel.org serves
+no filtered clone, so the fetch is bounded by `timeout 20m` (no
+low-speed abort); the Job's 8 h deadline covers it.
 
 ## Tests
 
@@ -79,14 +89,19 @@ via `pc-firmware.py`'s `FIRMWARE` — no new input.
 node --test scripts/operator/virtio-dryrun/virtio-dryrun.test.mjs
 ```
 
-Offline: fake `repo`, `git`, `rclone`, `apt-get`, `curl`,
+Offline: fake `repo`, `git`, `timeout`, `rclone`, `apt-get`, `curl`,
 `ota_from_target_files` (plus `apply.sh`, `apply-shipping-debug-
 lockdown.sh`, `pc-firmware.py`, `updater-feed.py`, `make-tf-disk.sh`
 kit stubs, plus a fake `build/envsetup.sh` defining `breakfast`/`m` as
-shell functions) record argv to a log; both modes are driven and the full
-ordered argv list is asserted (dry-run executes nothing; approved
+shell functions) record argv to a log; both modes are driven and the
+full ordered argv list is asserted (dry-run executes nothing; approved
 executes all) together with every refusal above, `-m default.xml`,
-`path or name` + notdefault keys, and the two OTA commands.
+`path or name` + notdefault keys, and the two OTA commands. The
+kit end-to-end test builds a real kit with `make-kit.sh <commit>`
+(`git archive`), checks its trimmed contents, generates the approved
+Job, and runs the Job command itself from an empty directory
+(fetch → verify → extract → extracted `build-inside.sh` to restore),
+asserting the runtime patch count matches the kit's `.patch` files.
 
 Claim ceiling: dry-run evidence only unless the approval gate is
 explicitly met. No build has run, no OTA is claimed.
