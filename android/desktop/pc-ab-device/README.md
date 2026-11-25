@@ -43,6 +43,21 @@ formatted (`mke2fs returned 1`, the device node has no label) and `/dev/block/vd
 The stock GRUB has no search by partition name. It has `probe --part-uuid` and `regexp`, which is what
 the second patch uses. A disk without the fixed GUIDs (the stock `disk-vda.img`) keeps the stock numbers.
 
+## Default home (AWAI-4094)
+
+**State: input change only. Not built, not booted.** Preinstall Home and Store only (Yotei
+comes from the Store) and make Awai Home the home screen on a fresh `/data`.
+
+There is no `config_defaultRoleHolders` or default-home string in `framework-res` at the pinned
+revisions, and `roles.xml` gives `android.app.role.HOME` no `defaultHolders`, so a device overlay
+cannot express this. The platform falls back to the unique highest-priority HOME activity
+(`HomeRoleBehavior.getFallbackHolderAsUser`, `ComputerEngine.getDefaultHomeActivity`). The input
+is therefore `android:priority="999"` on Awai Home's HOME intent filter in
+[`android/build.py`](../../build.py) (`manifest()`, `:51`). Evidence, file digests, the rejected
+routes, the Launcher3 fallback and the unrun checks are in
+[home-default-20261125.md](home-default-20261125.md). `apply.sh` and `patches/` are unchanged;
+`Launcher3QuickStep` still comes from `build/make` `handheld_system_ext.mk:27`.
+
 ## Shipping debug lockdown (AWAI-3682)
 
 **State: patches only. Not built, not booted.** `apply.sh` does not call this; run it yourself on the
