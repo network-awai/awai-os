@@ -72,11 +72,19 @@ class InferenceClientPlugin(private val owner:Activity):Plugin(owner){
   val b=f.readBytes();val hash=digest(b);require(hash==m.getString("sha256")&&b.size==m.getInt("bytes"));return imageResponse(id,b,hash)
  }
  private fun saveImage(invoke:Invoke,id:String){
-  val f=try{imageFile(id).also{require(it.isFile&&it.length() in 1..4194304)}}catch(e:Exception){invoke.reject("unknown-image");return}
-  android.app.AlertDialog.Builder(owner).setTitle("画像を保存").setMessage("生成した画像をこの端末の Pictures/Awai に保存します。外部へ送信しません。")
+  // This dialog is the only approval point for saving on Android, so the destination, name, size and
+  // digest are fixed before it opens. The bytes shown are the bytes written, and the readback below
+  // checks them again; nothing is re-read or re-digested between approval and write.
+  val bytes:ByteArray;val hash:String;val width:Int;val height:Int
+  try{val f=imageFile(id).also{require(it.isFile&&it.length() in 1..4194304)};bytes=f.readBytes();hash=digest(bytes)
+   val bounds=android.graphics.BitmapFactory.Options().apply{inJustDecodeBounds=true};android.graphics.BitmapFactory.decodeByteArray(bytes,0,bytes.size,bounds)
+   require(bounds.outWidth==512&&bounds.outHeight==512&&bounds.outMimeType=="image/png");width=bounds.outWidth;height=bounds.outHeight
+  }catch(e:Exception){invoke.reject("unknown-image");return}
+  android.app.AlertDialog.Builder(owner).setTitle("画像を保存")
+   .setMessage("保存先: Pictures/Awai（この端末。外部へ送信しません）\nファイル名: awai-$id.png\n画像: ${width}×${height} PNG\nサイズ: %,d バイト\nSHA-256: $hash".format(bytes.size))
    .setNegativeButton("キャンセル"){_,_->invoke.reject("denied")}.setOnCancelListener{invoke.reject("denied")}.setPositiveButton("保存する"){_,_->
     var uri:Uri?=null
-    try{val bytes=f.readBytes();val hash=digest(bytes);val values=android.content.ContentValues().apply{put(android.provider.MediaStore.Images.Media.DISPLAY_NAME,"awai-$id.png");put(android.provider.MediaStore.Images.Media.MIME_TYPE,"image/png");put(android.provider.MediaStore.Images.Media.RELATIVE_PATH,"Pictures/Awai");put(android.provider.MediaStore.Images.Media.IS_PENDING,1)}
+    try{val values=android.content.ContentValues().apply{put(android.provider.MediaStore.Images.Media.DISPLAY_NAME,"awai-$id.png");put(android.provider.MediaStore.Images.Media.MIME_TYPE,"image/png");put(android.provider.MediaStore.Images.Media.RELATIVE_PATH,"Pictures/Awai");put(android.provider.MediaStore.Images.Media.IS_PENDING,1)}
      uri=owner.contentResolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,values)!!;owner.contentResolver.openOutputStream(uri!!)!!.use{it.write(bytes)}
      val read=owner.contentResolver.openInputStream(uri!!)!!.use{it.readNBytes(4194305)};require(read.size==bytes.size&&digest(read)==hash){"save-readback-mismatch"}
      owner.contentResolver.update(uri!!,android.content.ContentValues().apply{put(android.provider.MediaStore.Images.Media.IS_PENDING,0)},null,null)
