@@ -1,13 +1,18 @@
 #!/usr/bin/env node
 // AWAI-4089 (G2): offline tests for the virtio Job (PR B).
-// Fake tools record argv; dry-run executes nothing; approved mode
-// executes the same ordered command list. Full argv assertions for
-// both modes; every refusal; manifest compare keys + notdefault.
+// Stub PATH must NOT contain `m` or `breakfast`: a fake
+// build/envsetup.sh defines them as shell functions and records
+// their argv. The script sources it in the main shell, so the
+// organizer's regression (`m: command not found`, because the
+// previous revision sourced envsetup in a separate `bash -c`)
+// is covered. Fake `repo`, `git`, `apt-get`, `curl`,
+// `ota_from_target_files` and `rclone` record argv. Dry-run
+// executes nothing; approved mode executes the same list.
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtempSync, mkdirSync, readFileSync, readFile, existsSync, writeFileSync, chmodSync } from "node:fs";
-import { writeFile, copyFile, readFile as readFileP } from "node:fs/promises";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFile, readFile as readFileP } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,42 +32,78 @@ function run(cmd, args, env = {}, timeout = 60000) {
   });
 }
 
-function fakeBin(upDir = null) {
-  const dir = mkdtempSync(join(tmpdir(), "g2prbfake-"));
-  const calls = join(dir, "calls.log");
-  writeFileSync(calls, "");
+function sha256(bytes) { return createHash("sha256").update(bytes).digest("hex"); }
+
+// Build an offline approved-mode kit: real pinned manifest +
+// stub pc-ab-device helpers that record argv and create outputs.
+// The src tree carries a fake build/envsetup.sh DEFINING `breakfast`
+// and `m` as shell functions (recorded in the functions calls log).
+async function makeFixture() {
+  const base = mkdtempSync(join(tmpdir(), "g2prb2-"));
+  const src = join(base, "src");
+  const work = join(base, "work");
+  const fncalls = join(base, "fncalls.log");
+  writeFileSync(fncalls, "");
+  mkdirSync(join(src, "build"), { recursive: true });
+  writeFileSync(join(src, "build", "envsetup.sh"),
+    `breakfast() { echo "breakfast $*" >> "${fncalls}"; }
+m() { echo "m $*" >> "${fncalls}";
+  mkdir -p "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates"
+  echo tf > "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates/lineage_virtio_x86_64-target_files.zip"
+  echo stock > "$SRC/out/target/product/virtio_x86_64/disk-vda.img"
+}
+`);
+  const kit = join(work, "kit");
+  const pdb = join(kit, "pc-ab-device");
+  const kcalls = join(base, "kitcalls.log");
+  writeFileSync(kcalls, "");
+  mkdirSync(pdb, { recursive: true });
+  mkdirSync(join(kit, "android/desktop/manifest"), { recursive: true });
+  await copyFile(join(repoRoot, "android/desktop/manifest/pinned-manifest.xml"),
+    join(kit, "android/desktop/manifest/pinned-manifest.xml"));
+  for (const [name, extra] of [
+    ["apply.sh", ""],
+    ["apply-shipping-debug-lockdown.sh", ""],
+    ["pc-firmware.py", ""],
+    ["updater-feed.py", ""],
+    ["make-tf-disk.sh", `cp "$1" "$3" 2>/dev/null || echo img > "$3"\n`],
+  ]) {
+    writeFileSync(join(pdb, name), `#!/bin/sh\necho "${name} $*" >> "${kcalls}"\n${extra}exit 0\n`, { mode: 0o755 });
+  }
+  const kitTar = join(base, "kit.tar.gz");
+  const r = await run("tar", ["-czf", kitTar, "-C", kit, "pc-ab-device", "android"]);
+  assert.equal(r.code, 0, r.stderr);
+  const kitSha = sha256(await readFileP(kitTar));
+
+  const fakes = mkdtempSync(join(tmpdir(), "g2fake2-"));
+  const fcalls = join(fakes, "calls.log");
+  writeFileSync(fcalls, "");
   const mk = (name, body) => {
-    writeFileSync(join(dir, name), `#!/bin/sh\necho "${name} $*" >> "${calls}"\n${body}`, { mode: 0o755 });
+    writeFileSync(join(fakes, name),
+      `#!/bin/sh\necho "${name} $*" >> "${fcalls}"\n${body}`, { mode: 0o755 });
   };
   mk("apt-get", "exit 0\n");
   mk("git", "exit 0\n");
-  // fake m: logs and creates target-files zip + stock disk image.
-  mk("m", `mkdir -p "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates"
-echo tf > "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates/lineage_virtio_x86_64-target_files.zip"
-echo stock > "$SRC/out/target/product/virtio_x86_64/disk-vda.img"
-exit 0
-`);
-  // fake rclone: uploads (do nothing) and downloads from art: (cp the UP content)
-  const up = upDir;
-  writeFileSync(join(dir, "rclone"),
+  const up = join(work, "upload");
+  writeFileSync(join(fakes, "rclone"),
     `#!/bin/sh
-echo "rclone $*" >> "${calls}"
+echo "rclone $*" >> "${fcalls}"
 if [ "$2" != "\${2#art:}" ]; then mkdir -p "$3" && cp -R "${up}"/. "$3"/; fi
 exit 0
 `, { mode: 0o755 });
-  // fake ota_from_target_files: logs and creates the output (last arg).
-  writeFileSync(join(dir, "ota_from_target_files"),
+  writeFileSync(join(fakes, "ota_from_target_files"),
     `#!/bin/sh
-echo "ota_from_target_files $*" >> "${calls}"
+echo "ota_from_target_files $*" >> "${fcalls}"
 for last; do :; done
 [ -n "$last" ] && echo ota > "$last"
 exit 0
 `, { mode: 0o755 });
-  // fake curl: writes repo stub for download, or kit bytes for kit.
-  const repoStub = join(dir, "repo-stub.sh");
+  // repo stub, delivered by fake curl into $(BUILD_WORK_DIR)/bin/repo
+  const repoStub = join(fakes, "repo-stub.sh");
   writeFileSync(repoStub,
     `#!/bin/sh
-echo "repo $*" >> "${calls}"
+echo "repo $*" >> "${fcalls}"
+echo "cwd $(pwd)" >> "${fcalls}"
 mkdir -p "$SRC/.repo/manifests"
 if [ "$1" = "manifest" ]; then
   out=""
@@ -76,9 +117,9 @@ if [ "$1" = "manifest" ]; then
 fi
 exit 0
 `);
-  writeFileSync(join(dir, "curl"),
+  writeFileSync(join(fakes, "curl"),
     `#!/bin/sh
-echo "curl $*" >> "${calls}"
+echo "curl $*" >> "${fcalls}"
 out=""
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -89,62 +130,22 @@ done
 if [ "$(basename "$out")" = "repo" ]; then
   cp "${repoStub}" "$out"
 else
-  cp "$KIT_TARBALL_FIXTURE" "$out"
+  cp "${kitTar}" "$out"
 fi
 exit 0
 `, { mode: 0o755 });
-  return { dir, calls: () => readFileSync(calls, "utf8") };
+  return { base, src, work, kit, kcalls, fncalls, kitTar, kitSha, fakes, fcalls };
 }
 
-function sha256(bytes) { return createHash("sha256").update(bytes).digest("hex"); }
-
-// Build an offline approved-mode kit: real pinned manifest +
-// stub pc-ab-device helpers that record argv and create outputs.
-async function makeFixtures() {
-  const base = mkdtempSync(join(tmpdir(), "g2prb-"));
-  const src = join(base, "src");
-  const work = join(base, "work");
-  await import("node:fs").then((m) => { m.mkdirSync(join(src, "build"), { recursive: true }); });
-  writeFileSync(join(src, "build", "envsetup.sh"), "breakfast() { echo stub-breakfast; return 0; }\n");
-  await writeFile(join(base, "envsetup-stub.txt"), "breakfast() { echo stub-breakfast; return 0; }\n");
-  const kit = join(base, "kit");
-  const pdb = join(kit, "pc-ab-device");
-  mkdirSync(pdb, { recursive: true });
-  mkdirSync(join(kit, "virtio-dryrun"), { recursive: true });
-  // copy the pinned manifest into the kit
-  await copyFile(join(repoRoot, "android/desktop/manifest/pinned-manifest.xml"), join(kit, "pinned-manifest.xml"));
-  const calls = join(base, "calls.log");
-  writeFileSync(calls, "");
-  for (const [name, extra] of [
-    ["apply.sh", ""],
-    ["apply-shipping-debug-lockdown.sh", ""],
-    ["pc-firmware.py", ""],
-    ["updater-feed.py", ""],
-    ["make-tf-disk.sh", `cp "$1" "$3" 2>/dev/null || echo img > "$3"\n`],
-  ]) {
-    writeFileSync(join(pdb, name), `#!/bin/sh\necho "${name} $*" >> "${calls}"\n${extra}exit 0\n`, { mode: 0o755 });
-  }
-  // build kit tarball
-  const fake = fakeBin(join(work, "upload"));
-  // build kit tarball: archive the kit's CONTENTS at tar top level
-  // (pc-ab-device/, pinned-manifest.xml, ...) since extraction goes to KIT itself.
-  const kitTar = join(base, "kit.tar.gz");
-  const r = await run("tar", ["-czf", kitTar, "-C", kit, "pc-ab-device", "pinned-manifest.xml"]);
-  assert.equal(r.code, 0, r.stderr);
-  const kitSha = sha256(await readFileP(kitTar));
-  return { base, src, work, kit, pdb, calls, kitTar, kitSha, fake };
-}
-
-async function buildEnv(fix, extra = {}) {
+function envFor(fix, extra = {}) {
   return {
-    PATH: `${fix.fake.dir}:${process.env.PATH}`,
+    PATH: `${fix.fakes}:${process.env.PATH}`,
     MANIFEST_FILE: pinnedManifest,
     SRC: fix.src,
     BUILD_WORK_DIR: fix.work,
     KIT: join(fix.work, "kit"),
     KIT_URL: "https://example.invalid/kit.tar.gz",
     KIT_SHA256: fix.kitSha,
-    KIT_TARBALL_FIXTURE: fix.kitTar,
     RELEASE_TYPE: "userdebug",
     AWAI_FEED_URL: "https://feed.example/ota.json",
     AWAI_POOL_LABEL: "awai-pc-release-test000000",
@@ -154,17 +155,23 @@ async function buildEnv(fix, extra = {}) {
 
 // ---------------------------------------------------------------------------
 test("dry-run prints the exact command list and executes nothing", async () => {
-  const fake = fakeBin();
-  const r = await run("bash", [buildInside], {
-    DRY_RUN: "1", RELEASE_TYPE: "userdebug", AWAI_FEED_URL: "https://feed.example/ota.json",
-    MANIFEST_FILE: pinnedManifest,
-    PATH: `${fake.dir}:${process.env.PATH}`,
-    KIT_URL: "https://example.invalid/kit.tar.gz", KIT_SHA256: "0".repeat(64),
-  });
+  const fix = await makeFixture();
+  const r = await run("bash", [buildInside],
+    envFor(fix, { DRY_RUN: "1", PATH: `${fix.fakes}:${process.env.PATH}` }));
   assert.equal(r.code, 0, r.stderr);
   const out = r.stdout;
+  const lines = out.split("\n").filter((l) => l.startsWith("[dry-run] "));
+  assert.ok(lines.length >= 30, `expected >=30 printed commands, got ${lines.length}`);
   for (const snippet of [
     "apt-get -qq update",
+    "apt-get -qq install -y",
+    "install -y bc bison",
+    "curl -fsSL https://storage.googleapis.com/git-repo-downloads/repo",
+    "curl -fsSL https://example.invalid/kit.tar.gz",
+    "python3 -c",
+    "tar -xzf",
+    "git config --global user.email virtio-g2@awai.network",
+    "git config --global user.name",
     "repo init -u https://github.com/LineageOS/android.git -b lineage-24.0",
     "repo sync -m default.xml --no-manifest-update",
     "repo manifest -r -o",
@@ -173,6 +180,7 @@ test("dry-run prints the exact command list and executes nothing", async () => {
     "apply-shipping-debug-lockdown.sh",
     "pc-firmware.py prepare",
     "updater-feed.py configure-release",
+    "source build/envsetup.sh",
     "breakfast lineage_virtio_x86_64 userdebug",
     "m target-files-package otatools diskimage-vda",
     "make-tf-disk.sh",
@@ -180,90 +188,116 @@ test("dry-run prints the exact command list and executes nothing", async () => {
     "ota_from_target_files -k ",
     "-i ",
     "rclone copy ",
-    "sha256sum -c SHA256SUMS",
+    "sha256sum",
   ]) {
     assert.match(out, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `missing: ${snippet}`);
   }
   assert.match(out, /\bota_from_target_files -k .*-i /);
-  // no dry-run source path placeholder left as a command anyone could run
-  assert.doesNotMatch(out, /ota_from_target_files .*<target-files/);
+  assert.doesNotMatch(out, /<target-files\.zip>/);
   assert.match(out, /^\[dry-run\] /m);
-  assert.equal(fake.calls(), "");
+  // Nothing executed in dry-run (all stub logs empty).
+  assert.equal(readFileSync(fix.fncalls, "utf8"), "");
+  assert.equal(readFileSync(fix.fcalls, "utf8"), "");
+  assert.equal(readFileSync(fix.kcalls, "utf8"), "");
 });
 
-test("approved mode executes the same ordered command list (verified end to end)", async () => {
-  const fix = await makeFixtures();
-  // fixture envsetup stub for the breakfast step
-  await writeFile(join(fix.src, "build", "envsetup.sh"), "breakfast() { echo stub-breakfast; return 0; }\n");
-  const env = await buildEnv(fix, { BILLING_ALLOWED: "1", OWNER_APPROVED: "1" });
-  // fake repo must create .repo/manifests and produce the manifest file:
-  // (handled by fake curl's repo stub) — additionally stub `m` output paths are created by the fake.
+test("approved mode executes the same ordered command list end to end", async () => {
+  const fix = await makeFixture();
+  const env = envFor(fix, { BILLING_ALLOWED: "1", OWNER_APPROVED: "1" });
   const r = await run("bash", [buildInside], env, 120000);
   assert.equal(r.code, 0, r.stderr);
   assert.match(r.stderr, /AWAI4089_BILLING_MODE/);
-  const calls = readFileSync(fix.calls, "utf8") + fix.fake.calls();
-  for (const snippet of [
+
+  const fcalls = readFileSync(fix.fcalls, "utf8");
+  // fake-tool argv in order
+  const order = [
     "apt-get -qq update",
     "apt-get -qq install -y",
-    "curl ",
-    "curl ",
-    "repo init -u https://github.com/LineageOS/android.git -b lineage-24.0 --no-clone-bundle",
-    "repo sync -m default.xml --no-manifest-update -c --no-clone-bundle --optimized-fetch -j4",
-    "repo manifest -r -o ",
-    "apply.sh ",
-    "apply-shipping-debug-lockdown.sh ",
-    "pc-firmware.py prepare ",
-    "updater-feed.py configure-release ",
-    "m target-files-package otatools diskimage-vda",
-    "make-tf-disk.sh ",
-    "ota_from_target_files -k ",
-    "rclone copy ",
-  ]) {
-    assert.match(calls, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `not executed: ${snippet}`);
+    "curl -fsSL https://storage.googleapis.com/git-repo-downloads/repo",
+    "curl -fsSL https://example.invalid/kit.tar.gz",
+    "git config --global user.email virtio-g2@awai.network",
+    "git config --global user.name",
+    "repo init -u https://github.com/LineageOS/android.git",
+    "repo sync -m default.xml --no-manifest-update",
+    "repo manifest -r",
+    "git init -q",
+    "git -C",
+  ];
+  let pos = -1;
+  for (const snippet of order) {
+    const i = fcalls.indexOf(snippet);
+    assert.ok(i > pos, `${snippet} out of order or missing (pos ${pos}, found ${i})`);
+    pos = i;
   }
-  // both OTA invocations actually ran through the fake:
-  const otaLines = calls.split("\n").filter((l) => l.startsWith("ota_from_target_files "));
-  assert.equal(otaLines.length, 2, calls);
+  // repo must have run with cwd === $SRC
+  const cwdLines = fcalls.split("\n").filter((l) => l.startsWith("cwd "));
+  assert.ok(cwdLines.length >= 3, cwdLines.join("\n"));
+  for (const l of cwdLines) assert.equal(l.slice(4), fix.src);
+
+  // envsetup functions recorded: breakfast + m (NOT binaries on PATH)
+  const fncalls = readFileSync(fix.fncalls, "utf8");
+  assert.match(fncalls, /breakfast lineage_virtio_x86_64 userdebug/);
+  assert.match(fncalls, /m target-files-package otatools diskimage-vda/);
+  // `m` was not a PATH binary: no early "command not found", chain completed.
+  assert.match(r.stdout, /AWAI4089_DONE approved=1/);
+
+  // kit stub argv
+  const kcalls = readFileSync(fix.kcalls, "utf8");
+  for (const s of ["apply.sh ", "apply-shipping-debug-lockdown.sh ", "pc-firmware.py prepare ",
+    "updater-feed.py configure-release ", "make-tf-disk.sh "]) {
+    assert.ok(kcalls.includes(s), `kit stub not called: ${s}`);
+  }
+  // both OTA invocations actually ran through the fake
+  const otaLines = fcalls.split("\n").filter((l) => l.startsWith("ota_from_target_files "));
+  assert.equal(otaLines.length, 2, fcalls);
   assert.match(otaLines[0], /-k .*testkey .*virtio-full-ota\.zip$/);
   assert.match(otaLines[1], /-i .*virtio-target-files-v1\.zip .*virtio-incremental-ota\.zip$/);
-  // restore verification ran: rclone copy from B2 back, then sha256sum -c
-  assert.match(r.stdout, /AWAI4089_DONE approved=1/);
+  // restore verification ran (rclone copy back, then real sha256sum -c)
+  assert.match(r.stdout, /AWAI4089_RESTORE_VERIFY ok/);
 });
 
-test("approved mode without KIT_URL/KIT_SHA256 refuses", async () => {
-  const fix = await makeFixtures();
-  const env = await buildEnv(fix, { BILLING_ALLOWED: "1", OWNER_APPROVED: "1", KIT_URL: "", KIT_SHA256: "" });
-  const r = await run("bash", [buildInside], env);
+test("approved mode without KIT_URL/KIT_SHA256 refuses (nothing executed)", async () => {
+  const fix = await makeFixture();
+  const r = await run("bash", [buildInside],
+    envFor(fix, { BILLING_ALLOWED: "1", OWNER_APPROVED: "1", KIT_URL: "", KIT_SHA256: "" }));
   assert.equal(r.code, 2);
   assert.match(r.stderr, /KIT_URL and KIT_SHA256 are required/);
-  assert.equal(fix.fake.calls(), "");
+  assert.equal(readFileSync(fix.fcalls, "utf8"), "");
 });
 
 test("approved mode with kit SHA mismatch refuses", async () => {
-  const fix = await makeFixtures();
-  const env = await buildEnv(fix, { BILLING_ALLOWED: "1", OWNER_APPROVED: "1", KIT_SHA256: "0".repeat(64) });
-  const r = await run("bash", [buildInside], env);
+  const fix = await makeFixture();
+  const r = await run("bash", [buildInside],
+    envFor(fix, { BILLING_ALLOWED: "1", OWNER_APPROVED: "1", KIT_SHA256: "0".repeat(64) }));
   assert.notEqual(r.code, 0);
-  assert.equal(readFileSync(fix.calls, "utf8").includes("apply.sh"), false);
+  assert.equal(readFileSync(fix.kcalls, "utf8").includes("apply.sh"), false);
 });
 
 test("approved mode without feed URL refuses (before any execution)", async () => {
-  const fix = await makeFixtures();
-  const env = await buildEnv(fix, { BILLING_ALLOWED: "1", OWNER_APPROVED: "1", AWAI_FEED_URL: "" });
-  const r = await run("bash", [buildInside], env);
+  const fix = await makeFixture();
+  const r = await run("bash", [buildInside],
+    envFor(fix, { BILLING_ALLOWED: "1", OWNER_APPROVED: "1", AWAI_FEED_URL: "" }));
   assert.equal(r.code, 2);
   assert.match(r.stderr, /AWAI_FEED_URL is required/);
-  assert.equal(fix.fake.calls(), "");
+  assert.equal(readFileSync(fix.fcalls, "utf8"), "");
 });
 
-test("approval gate uses /& both flags; either flag alone refuses", async () => {
+test("approved mode without pool label refuses", async () => {
+  const fix = await makeFixture();
+  const r = await run("bash", [buildInside],
+    envFor(fix, { BILLING_ALLOWED: "1", OWNER_APPROVED: "1", AWAI_POOL_LABEL: "" }));
+  assert.equal(r.code, 2);
+  assert.match(r.stderr, /AWAI_POOL_LABEL is required/);
+  assert.equal(readFileSync(fix.fcalls, "utf8"), "");
+});
+
+test("approval gate uses AND both flags; either flag alone refuses", async () => {
   for (const env of [
-    { BILLING_ALLOWED: "1", OWNER_APPROVED: "", DRY_RUN: "" },
-    { BILLING_ALLOWED: "", OWNER_APPROVED: "1", DRY_RUN: "" },
-    { BILLING_ALLOWED: "1", OWNER_APPROVED: "1", DRY_RUN: "" },
+    { BILLING_ALLOWED: "1", OWNER_APPROVED: "" },
+    { BILLING_ALLOWED: "", OWNER_APPROVED: "1" },
   ]) {
-    if (env.BILLING_ALLOWED && env.OWNER_APPROVED) continue; // the valid pair is covered elsewhere
-    const r = await run("bash", [buildInside], { ...env, RELEASE_TYPE: "userdebug", AWAI_FEED_URL: "x" });
+    const r = await run("bash", [buildInside],
+      { ...env, RELEASE_TYPE: "userdebug", AWAI_FEED_URL: "x" });
     assert.equal(r.code, 2);
     assert.match(r.stderr, /AWAI4089_REFUSES/);
   }
@@ -278,6 +312,17 @@ test("RELEASE_TYPE required and explicit; deadline minimum 28800", async () => {
   assert.match(r.stderr, /AWAI_VIRTIO_DEADLINE_SECONDS must be >= 28800/);
 });
 
+test("pinned manifest SHA validated before anything else", async () => {
+  const fix = await makeFixture();
+  const bad = join(fix.base, "bad.xml");
+  writeFileSync(bad, "<manifest/>\n");
+  const r = await run("bash", [buildInside],
+    { DRY_RUN: "1", RELEASE_TYPE: "userdebug", AWAI_FEED_URL: "x", MANIFEST_FILE: bad });
+  assert.equal(r.code, 1);
+  assert.match(r.stderr, /AWAI4089_REFUSES: pinned manifest SHA-256 differs/);
+  assert.doesNotMatch(r.stdout, /apt-get/);
+});
+
 test("check-manifest-revisions: path or name key; notdefault excluded; mismatch fails", async () => {
   const dir = mkdtempSync(join(tmpdir(), "g2man-"));
   const a = join(dir, "a.xml"), b = join(dir, "b.xml");
@@ -290,41 +335,51 @@ test("check-manifest-revisions: path or name key; notdefault excluded; mismatch 
   let r = await run("python3", [comparePy, a, b]);
   assert.equal(r.code, 0, r.stderr);
   assert.match(r.stdout, /AWAI4089_MANIFEST_COMPARE_OK projects=2/);
-  // a notdefault project in pinned must be ignored (not synced upstream)
   const withDarwin = good.replace("</manifest>", `<project path="darwin/p" name="darwin/p" revision="${"c".repeat(40)}" groups="notdefault"/>\n</manifest>\n`);
   writeFileSync(a, withDarwin);
   r = await run("python3", [comparePy, a, b]);
   assert.equal(r.code, 0, r.stderr);
-  // a real revision mismatch fails
-  writeFileSync(b, good.replace("a".repeat(40), "1".repeat(40)));
   writeFileSync(a, good);
+  writeFileSync(b, good.replace("a".repeat(40), "1".repeat(40)));
   r = await run("python3", [comparePy, a, b]);
   assert.equal(r.code, 1);
   assert.match(r.stderr, /AWAI4089_MANIFEST_MISMATCH p1/);
 });
 
-test("job definition prints Job JSON without invoking workload tools", async () => {
-  const fake = fakeBin();
+test("job definition prints Job JSON (toolchain-first, no rclone bootstrap)", async () => {
+  const fakeDir = mkdtempSync(join(tmpdir(), "g2job-"));
+  const callsFile = join(fakeDir, "calls.log");
+  writeFileSync(callsFile, "");
+  writeFileSync(join(fakeDir, "kubectl"),
+    `#!/bin/sh\necho "kubectl $*" >> "${callsFile}"\nexit 99\n`, { mode: 0o755 });
   const r = await run("bash", [jobScript], {
     DRY_RUN: "1", RELEASE_TYPE: "userdebug", AWAI_FEED_URL: "https://feed.example/ota.json",
     AWAI_VKE_NODE_POOL: "awai-pc-release-012345abcdef",
-    PATH: `${fake.dir}:${process.env.PATH}`,
+    PATH: `${fakeDir}:${process.env.PATH}`,
+    KIT_URL: "https://example.invalid/kit.tar.gz", KIT_SHA256: "0".repeat(64),
+    AWAI_POOL_LABEL: "awai-pc-release-012345abcdef",
   });
   assert.equal(r.code, 0, r.stderr);
   const job = JSON.parse(r.stdout);
   assert.equal(job.kind, "Job");
-  const c = job.spec.template.spec.containers[0];
-  assert.deepEqual(c.env.find((e) => e.name === "RELEASE_TYPE"), { name: "RELEASE_TYPE", value: "userdebug" });
-  assert.deepEqual(c.env.find((e) => e.name === "AWAI_FEED_URL"), { name: "AWAI_FEED_URL", value: "https://feed.example/ota.json" });
+  const cmd = job.spec.template.spec.containers[0].command.join(" ");
+  assert.match(cmd, /apt-get -qq update/);
+  assert.ok(cmd.indexOf("apt-get") < cmd.indexOf("rclone"), cmd);
+  assert.match(cmd, /bash \/root\/build\/virtio-dryrun\/build-inside\.sh/);
   assert.equal(job.spec.activeDeadlineSeconds, 28800);
-  assert.equal(fake.calls(), "");
+  const env = Object.fromEntries(job.spec.template.spec.containers[0].env.map((e) => [e.name, e.value]));
+  assert.equal(env.AWAI_POOL_LABEL, "awai-pc-release-012345abcdef");
+  assert.equal(readFileSync(callsFile, "utf8"), "");
 });
 
-test("job definition refuses without approval and without RELEASE_TYPE", async () => {
+test("job definition refuses without approval, RELEASE_TYPE, or pool", async () => {
   let r = await run("bash", [jobScript], { AWAI_VKE_NODE_POOL: "x" });
   assert.equal(r.code, 2);
   assert.equal(r.stdout, "");
   r = await run("bash", [jobScript], { DRY_RUN: "1", AWAI_VKE_NODE_POOL: "x" });
   assert.equal(r.code, 2);
   assert.match(r.stderr, /RELEASE_TYPE/);
+  r = await run("bash", [jobScript], { DRY_RUN: "1", RELEASE_TYPE: "user", AWAI_FEED_URL: "x" });
+  assert.equal(r.code, 1);
+  assert.match(r.stderr, /AWAI_VKE_NODE_POOL/);
 });
