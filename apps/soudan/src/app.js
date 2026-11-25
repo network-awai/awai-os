@@ -1,3 +1,4 @@
+import {renderPoliceGuide} from './police-guide.js';
 import {bind_native} from './awai-ui/index.js';
 import {createHost} from './host.js';
 import {clientRuntimeProblems, createClientConsentHost, createClientOperationBroker} from './runtime.js';
@@ -230,12 +231,15 @@ function renderMemo() {
 }
 
 function route() {
-  const onMemo = location.hash.startsWith('#/memo');
+  const policeRoute = location.hash.match(/^#\/police(?:\/([A-Z]{3}))?$/);
+  const page = policeRoute ? 'police' : location.hash.startsWith('#/memo') ? 'memo' : 'input';
   for (const a of document.querySelectorAll('nav a')) {
-    if (a.hash.startsWith('#/memo') === onMemo) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    if (a.id === 'nav-' + page) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
   }
   say('');
-  if (onMemo) renderMemo(); else renderInput();
+  if (policeRoute) renderPoliceGuide($('view'), locale, policeRoute[1]);
+  else if (page === 'memo') renderMemo();
+  else renderInput();
 }
 function chrome() {
   document.title = t('app.title');
@@ -243,6 +247,7 @@ function chrome() {
   $('nav').setAttribute('aria-label', t('nav.label'));
   $('nav-input').textContent = t('nav.input');
   $('nav-memo').textContent = t('nav.memo');
+  $('nav-police').textContent = locale === 'ja' ? '警察への届出' : 'Police reporting';
   $('footer').textContent = t('footer');
 }
 window.addEventListener('hashchange', route);

@@ -8,7 +8,9 @@ const app = fileURLToPath(new URL('../', import.meta.url)), repo = resolve(app, 
 const sha = b => createHash('sha256').update(b).digest('hex');
 await rm(out, {recursive: true, force: true});
 await mkdir(out, {recursive: true});
-for (const name of ['style.css', 'app.js', 'model.js', 'messages.js', 'operations.js', 'send.js']) await copyFile(resolve(app, 'src', name), resolve(out, name));
+for (const name of ['style.css', 'app.js', 'model.js', 'messages.js', 'operations.js', 'police-guide.js', 'send.js']) await copyFile(resolve(app, 'src', name), resolve(out, name));
+const guide = JSON.parse(await readFile(resolve(app, 'src/police-guide.json'), 'utf8'));
+await writeFile(resolve(out, 'police-guide-data.js'), 'export default ' + JSON.stringify(guide) + ';\n');
 await copyFile(resolve(repo, 'packages/awai-shell/host.js'), resolve(out, 'host.js'));
 // The page icon is inlined: Android WebView re-requests a linked icon on every URL change.
 const icon = 'data:image/png;base64,' + (await readFile(resolve(app, 'src-tauri/icons/32x32.png'))).toString('base64');
