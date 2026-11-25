@@ -15,7 +15,7 @@ is narrower:
   `desktop/pxe-install/` and the USB PC installer, including the screen
   front end from PR #501).
 - A/B OTA behaviour evidence in KVM for the Awai PC A/B device
-  (`desktop/pc-ab-device/`, AWAI-3586/3638, PR #501), built with test keys.
+  (`desktop/pc-ab-device/`, AWAI-3586/3638: PR #312, #330), built with test keys.
   The upstream A/B reference check is in `desktop/ota-reference-check/`.
 
 **Does not exist:**
