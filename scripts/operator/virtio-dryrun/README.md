@@ -56,6 +56,18 @@ At run time `AWAI4089_PATCH_COUNT` records how many patch files were
 present, for comparison against the #504 record (20 = 17 applied /
 2 not applicable / 1 superseded).
 
+Kernel config regeneration is NOT a separate step in this Job. The
+AOSP build merges `TARGET_KERNEL_CONFIG_EXT` (`KERNEL_DEFCONFIG_EXT`,
+vendor/lineage@5a1814d9… `build/tasks/kernel.mk` line 116) and runs
+olddefconfig itself (same file, lines 309–334, via
+`internal-make-kernel-target`/`make-kernel-target`), with the
+ARCH/CROSS_COMPILE/O the build needs. A separate `make -C ...
+olddefconfig` would produce a different `.config` than the build
+uses, so the Job never runs it. Flow: patch → (`m` merges config +
+runs olddefconfig) → `m`. 4092's kernel config enters via
+`device/virt/virtio-common/configs/kernel/*.config`
+(`TARGET_KERNEL_CONFIG_EXT`), not a Job-side step.
+
 Firmware input is the existing `FIRMWARE_GIT` (kernel.org
 linux-firmware at `a2dcb924`, the same REVISION `pc-firmware.py`
 pins); 4092's `rtw89/rtw8851b_fw` (.bin/-1.bin) enters the same input

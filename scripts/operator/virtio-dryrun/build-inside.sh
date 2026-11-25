@@ -169,10 +169,14 @@ stage patches
 # 4093 diagnostics — are included automatically via these paths).
 PCNT=$(ls "$KIT"/pc-ab-device/patches/*.patch 2>/dev/null | wc -l | tr -d ' ' || true)
 printf 'AWAI4089_PATCH_COUNT=%s\n' "${PCNT:-0}"
-# Regenerate the kernel config: kernel-config patches without
-# olddefconfig produce a stale .config and fail the build otherwise
-# (Tatara estimate). In the same $SRC cwd.
-run make -C "$SRC/kernel/virt/virtio" olddefconfig
+# No standalone `make olddefconfig`: the AOSP build already merges
+# the external defconfig (vendor/lineage@5a1814d..., KERNEL_DEFCONFIG_EXT
+# line 116 in build/tasks/kernel.mk) and runs olddefconfig itself
+# (same file, lines 309-334 via internal-make-kernel-target /
+# make-kernel-target), with the ARCH/CROSS_COMPILE/O the build needs.
+# A separate `make -C ... olddefconfig` would produce a different
+# .config than the build uses. Flow: patch -> (m merges config +
+# runs olddefconfig) -> m.
 
 # Lunch + v1 build + v1 upload (BEFORE v2; failure in v2 keeps v1).
 run source build/envsetup.sh

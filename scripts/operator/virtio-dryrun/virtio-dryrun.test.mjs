@@ -89,7 +89,6 @@ m() { echo "m $*" >> "${fncalls}";
   };
   mk("apt-get", "exit 0\n");
   mk("git", "exit 0\n");
-  mk("make", "exit 0\n");
   const up = join(work, "upload");
   writeFileSync(join(fakes, "rclone"),
     `#!/bin/sh
@@ -200,6 +199,7 @@ test("dry-run prints the exact command list and executes nothing", async () => {
   }
   assert.match(out, /\bota_from_target_files -k .*-i /);
   assert.doesNotMatch(out, /<target-files\.zip>/);
+  assert.doesNotMatch(out, /olddefconfig/);
   assert.match(out, /^\[dry-run\] /m);
   // Nothing executed in dry-run (all stub logs empty).
   assert.equal(readFileSync(fix.fncalls, "utf8"), "");
@@ -240,14 +240,11 @@ test("approved mode executes the same ordered command list end to end", async ()
   assert.ok(cwdLines.length >= 3, cwdLines.join("\n"));
   for (const l of cwdLines) assert.equal(l.slice(4), fix.src);
 
-  // olddefconfig sits after the patch steps and before `m`:
-  // patch steps (apply.sh etc. in kit stubs) ran in an earlier stage,
-  // and the `m` function call must come after `make olddefconfig`.
-  const callList = fcalls.split("\n");
-  const kIndex = callList.findIndex((l) => l.startsWith("make -C "));
-  assert.ok(kIndex >= 0, callList.join("\n"));
-  assert.match(callList[kIndex], /kernel\/virt\/virtio olddefconfig/);
-  // the `m` function call (recorded after olddefconfig) is asserted below.
+  // NO standalone `make olddefconfig` step anywhere (dry-run or executed):
+  // the AOSP build merges KERNEL_DEFCONFIG_EXT and runs olddefconfig
+  // itself (vendor/lineage@5a1814d9 build/tasks/kernel.mk 309-334).
+  assert.doesNotMatch(r.stdout, /olddefconfig/);
+  assert.doesNotMatch(fcalls, /olddefconfig/);
   // envsetup functions recorded: breakfast + m (NOT binaries on PATH)
   const fncalls = readFileSync(fix.fncalls, "utf8");
   assert.match(fncalls, /breakfast lineage_virtio_x86_64 userdebug/);
