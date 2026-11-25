@@ -234,14 +234,16 @@ m() { echo "m $*" >> "${fncalls}";
   const order = [
     "apt-get -qq update",
     "apt-get -qq install -y",
-    "curl -fsSL https://storage.googleapis.com/git-repo-downloads/repo",
+    // the kit is pre-extracted for E2E (AWAI4089_KIT_PRESENT), so no
+    // kit curl attempt happens in this run; that path is covered by
+    // the dedicated kit-SHA/download tests above.
     "git config --global user.email virtio-g2@awai.network",
     "git config --global user.name",
-    "git init -q",
-    "git -C",
     "repo init -u https://github.com/LineageOS/android.git",
     "repo sync -m default.xml --no-manifest-update",
     "repo manifest -r",
+    "git init -q",
+    "git -C",
   ];
   let pos = -1;
   for (const snippet of order) {
@@ -259,12 +261,16 @@ m() { echo "m $*" >> "${fncalls}";
   assert.match(fb, /breakfast lineage_virtio_x86_64 userdebug/);
   assert.match(fb, /m target-files-package otatools diskimage-vda/);
 
-  // helper stubs (shadowed via PATH) were used
+  // helper stubs actually invoked (in the kit stubs log) OR the real
+  // apply.sh executed (visible as git calls in fcalls with the kit's
+  // real patch files under `$KIT/pc-ab-device/patches/`).
   const kcalls = stub.kcalls();
-  for (const s of ["apply.sh ", "apply-shipping-debug-lockdown.sh ", "pc-firmware.py prepare ",
+  for (const s of ["apply-shipping-debug-lockdown.sh ", "pc-firmware.py prepare ",
     "updater-feed.py configure-release ", "make-tf-disk.sh "]) {
     assert.ok(kcalls.includes(s), `helper stub not called: ${s}`);
   }
+  // real apply.sh ran from the kit: its git calls carry kit patch paths.
+  assert.match(fcalls, /\/kit\/pc-ab-device\/patches\//);
   const otaLines = fcalls.split("\n").filter((l) => l.startsWith("ota_from_target_files "));
   assert.equal(otaLines.length, 2, fcalls);
   assert.match(otaLines[0], /-k .*testkey .*virtio-full-ota\.zip$/);

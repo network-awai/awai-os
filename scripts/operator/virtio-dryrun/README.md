@@ -42,11 +42,17 @@ BILLING_ALLOWED=1 OWNER_APPROVED=1 RELEASE_TYPE=userdebug \
   bash scripts/operator/virtio-dryrun/build-inside.sh
 ```
 
-`KIT_URL`/`KIT_SHA256`: kit tarball (repo's `pc-ab-device/` +
-`scripts/operator/virtio-dryrun/` + pinned manifest), operator-provided;
-the kit SHA is verified before any use. `RELEASE_TYPE` is one of
-`user`/`userdebug` and has no default — see `release-type.md` for the
-userdebug-first proposal.
+`KIT_URL`/`KIT_SHA256`: kit tarball built by `make-kit.sh <commit>`
+(`scripts/operator/virtio-dryrun/` + `android/desktop/manifest/
+pinned-manifest.xml` + `android/desktop/pc-ab-device/`, archived with
+`git archive <commit>` and SHA-256 printed), operator-provided; the
+kit SHA is verified before any use. One kit layout only:
+`$KIT/scripts/operator/virtio-dryrun/build-inside.sh`,
+`$KIT/android/desktop/manifest/pinned-manifest.xml`,
+`$KIT/pc-ab-device/`; `MANIFEST_FILE` defaults to the kit path and the
+pinned manifest alone is used (no re-resolution). `RELEASE_TYPE` is
+one of `user`/`userdebug` and has no default — see `release-type.md`
+for the userdebug-first proposal.
 
 Patches are applied through the repository's own apply paths
 (`pc-ab-device/apply.sh`, the lockdown script, `pc-firmware.py`),
@@ -79,14 +85,19 @@ via `pc-firmware.py`'s `FIRMWARE` — no new input.
 node --test scripts/operator/virtio-dryrun/virtio-dryrun.test.mjs
 ```
 
-Offline: fake `repo`, `git`, `rclone`, `apt-get`, `curl`,
-`ota_from_target_files` (plus `apply.sh`, `apply-shipping-debug-
-lockdown.sh`, `pc-firmware.py`, `updater-feed.py`, `make-tf-disk.sh`
-kit stubs, plus a fake `build/envsetup.sh` defining `breakfast`/`m` as
-shell functions) record argv to a log; both modes are driven and the full
-ordered argv list is asserted (dry-run executes nothing; approved
-executes all) together with every refusal above, `-m default.xml`,
-`path or name` + notdefault keys, and the two OTA commands.
+Offline: the approved end-to-end test builds a REAL kit from the
+current commit via `make-kit.sh`, extracts it into an empty
+directory, and runs the kit's own `build-inside.sh` with the Job's
+command shape. Only external programs are stubbed on PATH (fake
+`repo`, `git`, `rclone`, `apt-get`, `curl`, `ota_from_target_files`,
+plus `apply-shipping-debug-lockdown.sh`, `pc-firmware.py`,
+`updater-feed.py`, `make-tf-disk.sh` stubs, plus a fake
+`build/envsetup.sh` defining `breakfast`/`m` as shell functions)
+— `m`/`breakfast` are NOT binaries. The full ordered argv list is
+asserted (dry-run executes nothing; approved executes all) together
+with every refusal above, `-m default.xml`, `path or name` +
+notdefault keys, and the two OTA commands. The real `apply.sh`
+runs from the kit against the fixture's project dirs.
 
 Claim ceiling: dry-run evidence only unless the approval gate is
 explicitly met. No build has run, no OTA is claimed.
