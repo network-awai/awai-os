@@ -74,6 +74,38 @@ What was not checked: the revisions on the build host (they may differ, in which
 `user` image boots, finishes setup and shows no ADB at the Welcome screen; that development `userdebug`
 images still serve ADB on 5555. Those are checks V1, V2 and V7 in the design document.
 
+## GPU sysfs label (AWAI-4090)
+
+**State: source patch and host tests only. Not built, not booted.** On the 6600H, Mesa EGL falls back to
+llvmpipe because the GPU's PCI attributes keep the generic `sysfs` label, which apps may never read
+(`neverallow all_untrusted_apps sysfs:file no_rw_file_perms`).
+
+| What reads it | File (under the GPU's `/sys/devices/pci0000:00/0000:00:08.1/0000:05:00.0`, reached through `/sys/dev/char/226:N/device`) | Needed by |
+| --- | --- | --- |
+| libdrm `drmParseSubsystemType`, `realpath` | `subsystem`, `device` (symlinks; every domain may already read these, `domain.te`) | not blocked |
+| libdrm `drmParsePciBusInfo` | `uevent` (`PCI_SLOT_NAME`) | every `gpu_sphal_domain` process that loads Mesa; denied on the rig |
+| libdrm `drmParsePciDeviceInfo` (flags 0) | `vendor`, `device`, `subsystem_vendor`, `subsystem_device` (`config` only with `DRM_DEVICE_GET_PCI_REVISION`) | same, read after `uevent` succeeds |
+| libdrm `drmNodeIsDRM`, `drmGetMinorNameForFD` | `drm/` (directory read) | same; denied on the rig |
+
+`sysfs_gpu` (system/sepolicy `private/gpu_sphal_domain.te`) grants `r_dir_file` to `gpu_sphal_domain`: every
+non-isolated app, `hal_graphics_allocator`, `hal_graphics_composer`, `hal_neuralnetworks`, and the domains
+that call `gpu_sphal_use` (SurfaceFlinger, system_server, bootanim, mediaswcodec, mediacodec, cameraserver,
+gpuservice, and others). Apps may never write any `sysfs_type`. Only the generic `sysfs` is denied to them,
+so the label is the fix; no policy rule changes.
+
+Mechanism: `genfscon sysfs <GPU function path> sysfs_gpu` in `sepolicy/vendor/genfs_contexts`
+(`patches/virtio-common-awai-pc-gpu-sysfs.patch`, applied by `apply.sh`). The paths of PCI devices differ by
+machine and genfscon matches prefixes only, so each PC model needs its own line (`readlink -f
+/sys/class/drm/card0/device`). Rejected: a `file_contexts` regex that ueventd would restorecon, because it cannot tell
+a GPU from any other PCI device and would expose every device's `uevent`/`vendor`/`device`; a bus-wide prefix, for
+the same reason; a boot service that relabels, because it needs new relabel rights and a new domain.
+Label the GPU function, not its bridge: a bridge prefix labels every device behind it.
+
+Try it without flashing: `gpu-sysfs-trial.py --plat-cil <plat_sepolicy.cil of the image> --vendor-cil <vendor_sepolicy.cil>
+--out-dir <new dir>` writes `userdebug_plat_sepolicy.cil` (the image's plat policy plus the label) and a one-file cpio
+for the debug ramdisk. It reads files only. Host tests: `bazel test //android/desktop/pc-ab-device:gpu_sysfs_test`
+(they model the genfscon lookup; they do not build or load a policy).
+
 ## PC installer and OTA host checks
 
 With Bazelisk and Python >= 3.11 on the host, run both regression suites using the

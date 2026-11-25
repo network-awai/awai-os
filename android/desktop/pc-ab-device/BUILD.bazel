@@ -43,9 +43,25 @@ sh_test(
     ]
 ]
 
+# AWAI-4090: GPU sysfs label patch and the no-flash trial policy builder.
+sh_test(
+    name = "gpu_sysfs_test",
+    srcs = ["run-python-test.sh"],
+    args = ["test_gpu_sysfs.py"],
+    data = [
+        "apply.sh",
+        "gpu-sysfs-trial.py",
+        "patches/virtio-common-awai-pc-gpu-sysfs.patch",
+        "test_gpu_sysfs.py",
+    ],
+    size = "small",
+    tags = ["no-remote"],
+)
+
 test_suite(
     name = "pc_verification",
     tests = [
+        ":gpu_sysfs_test",
         ":installer_test",
         ":ota_feed_test",
         ":screen_installer_core_test",
