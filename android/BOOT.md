@@ -7,8 +7,10 @@ target architecture and the remaining release gates.
 ## Current status
 
 There is **no Awai OS release image yet**: no signed ROM with release keys,
-no real-device boot, and no `Awai OS` entry in Settings. What exists today
-is narrower:
+no `Awai OS` entry in Settings, and the **persistent install is not yet
+shown to boot**. (AWAI-3060, 2026-11-19, records the source build reaching
+Android and adbd on the Desktop over netboot; that was a netboot / RAM Live
+run, not a persistent install.) What exists today is narrower:
 
 **Exists (evidence, KVM/VM only):**
 - The USB/PXE installer for the PC (installer UI and PXE install profile in
@@ -22,7 +24,8 @@ is narrower:
 - A release image.
 - A signed OTA with release keys (all OTA/target-files evidence so far is
   test-key signed).
-- A real-device boot of the Awai-built image.
+- A persistent install shown to boot (the AWAI-3060 netboot run does not
+  count as one).
 - `Awai OS` in Settings.
 
 Today, Awai OS runs as the Awai apps (Home, Store, Yotei, Itonami, Murakumo)
