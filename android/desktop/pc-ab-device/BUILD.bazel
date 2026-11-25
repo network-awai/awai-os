@@ -73,11 +73,26 @@ sh_test(
     tags = ["no-remote"],
 )
 
+# AWAI-4093: diagnostics default-off patch (vendor provider seed).
+sh_test(
+    name = "diagnostics_off_test",
+    srcs = ["run-python-test.sh"],
+    args = ["test_diagnostics_off.py"],
+    data = [
+        "apply.sh",
+        "patches/vendor-lineage-stats-default-off.patch",
+        "test_diagnostics_off.py",
+    ],
+    size = "small",
+    tags = ["no-remote"],
+)
+
 test_suite(
     name = "pc_verification",
     tests = [
         ":gpu_sysfs_test",
         ":rtw8851be_test",
+        ":diagnostics_off_test",
         ":installer_test",
         ":ota_feed_test",
         ":screen_installer_core_test",

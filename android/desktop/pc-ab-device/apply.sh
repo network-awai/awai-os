@@ -68,7 +68,7 @@ fi
 
 # The vendor patches apply only in the source checkout prepared for Awai PC.
 vendor="$src/vendor/lineage"
-for name in vendor-lineage-no-ota-downgrade.patch vendor-lineage-kernel-output-prefix.patch; do
+for name in vendor-lineage-no-ota-downgrade.patch vendor-lineage-kernel-output-prefix.patch vendor-lineage-stats-default-off.patch; do
   patch="$here/patches/$name"
   if git -C "$vendor" apply --reverse --check "$patch" 2>/dev/null; then
     echo "vendor/lineage $name: already applied"
