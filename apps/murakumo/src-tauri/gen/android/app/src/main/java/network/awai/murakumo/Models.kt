@@ -26,6 +26,12 @@ internal object Models {
  const val CONTEXT=2048
  val worker=Executors.newSingleThreadExecutor()
  val busy=AtomicBoolean(false)
+ /**
+  * The one running provider request, process-local. Another app learns about it only through
+  * InferenceStatusProvider "cancel", and only when its own requestId matches; status and usage never
+  * carry it, since busy/idle timing would tell a peer holding INTERNET when a PHI caller runs inference.
+  */
+ val running=RunningJob()
  @Volatile var loadedId:String?=null
  @Volatile var loadedSinceMs=0L
  @Volatile var loading:String?=null
@@ -73,6 +79,14 @@ internal object Models {
 
  fun generate(prompt:String,tokens:Int):String{require(prompt.isNotBlank()&&prompt.toByteArray(Charsets.UTF_8).size<=8192&&tokens in 1..256){"invalid-request"};check(loaded){"model-not-loaded"};val result=String(Engine.generate(prompt.toByteArray(Charsets.UTF_8),tokens),Charsets.UTF_8);check(result.isNotBlank()){"empty-result"};return result}
  fun release(){Engine.release();loadedId=null}
+
+ /** Only the originating caller (or Murakumo itself) can cancel the active request. */
+ fun cancelJob(requestId:String,caller:String?=null):Boolean{
+  if(!requestId.matches(Regex("[a-f0-9-]{36}")))return false
+  return running.cancel(requestId,caller){imageJob->
+   if(imageJob)ImageModels.cancel()else Engine.cancel()
+  }
+ }
 
  /**
   * awai.murakumo.device-usage.v1 for this device. Android does not let apps read device-wide CPU

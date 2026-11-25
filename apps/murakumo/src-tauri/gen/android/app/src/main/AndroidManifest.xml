@@ -31,7 +31,7 @@
         </activity>
 
         <provider android:name=".InferenceStatusProvider" android:authorities="network.awai.murakumo.engine" android:exported="true" android:permission="network.awai.permission.LOCAL_INFERENCE"/>
-        <activity android:name=".InferenceRequestActivity" android:exported="true" android:permission="network.awai.permission.LOCAL_INFERENCE" android:theme="@android:style/Theme.Material.Dialog.Alert"/>
+        <activity android:name=".InferenceRequestActivity" android:exported="true" android:permission="network.awai.permission.LOCAL_INFERENCE" android:theme="@android:style/Theme.Material.Dialog.Alert" android:enableOnBackInvokedCallback="true"/>
         <provider
           android:name="androidx.core.content.FileProvider"
           android:authorities="${applicationId}.fileprovider"

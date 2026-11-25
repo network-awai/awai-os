@@ -14,6 +14,8 @@ import android.os.Binder
  * - usage: this device's usage reading, for Murakumo Net's All devices view: fixed schema, and nothing
  *   that moves with a running job (Models.usage forOtherApp).
  * Every copy another app reads has no live job state (Models.status forOtherApp).
+ * - cancel: stops the running request, and only when arg is that request's ID (Models.cancelJob); the
+ *   answer is whether this call stopped it, so a stale or repeated cancel is a no-op.
  * - admit: Murakumo Net hands over a downloaded model file (a read grant on its own FileProvider URI).
  *   This app has no INTERNET permission. It copies the file into models/ and admits it again by size
  *   and SHA-256, exactly as for the document picker.
@@ -27,6 +29,12 @@ class InferenceStatusProvider:ContentProvider(){
    if(!self&&!net&&!Models.trustedCaller(c,pkg))throw SecurityException("caller-denied")
    if(arg!=null||extras!=null)throw IllegalArgumentException("unsupported-operation")
    return Bundle().apply{putString("status",Models.status(c,forOtherApp=!self).toString())}
+  }
+  if(method=="cancel"){
+   if(!self&&!Models.trustedCaller(c,pkg))throw SecurityException("caller-denied")
+   if(arg==null||extras!=null)throw IllegalArgumentException("unsupported-operation")
+   val caller=if(self)null else requireNotNull(pkg)
+   return Bundle().apply{putBoolean("cancelled",Models.cancelJob(arg,caller))}
   }
   if(!net)throw SecurityException("caller-denied")
   if(method=="usage"&&arg==null&&extras==null)return Bundle().apply{putString("usage",Models.usage(c,forOtherApp=true).toString())}

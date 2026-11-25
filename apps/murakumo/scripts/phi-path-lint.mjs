@@ -17,7 +17,7 @@ export const FILES=[
  'packages/awai-inference/android/network/awai/inference/InferenceClientPlugin.kt',
  'apps/murakumo/src-tauri/src/lib.rs',
  K+'ErrorCodes.kt',K+'InferencePlugin.kt',K+'InferenceRequestActivity.kt',K+'InferenceStatusProvider.kt',
- K+'Models.kt',K+'ImageModels.kt',K+'Engine.java',K+'ImageEngine.java',K+'MainActivity.kt','apps/murakumo/src-tauri/src/main.rs',
+ K+'Models.kt',K+'RunningJob.kt',K+'ImageModels.kt',K+'Engine.java',K+'ImageEngine.java',K+'MainActivity.kt','apps/murakumo/src-tauri/src/main.rs',
  'apps/murakumo/native/engine.cpp','apps/murakumo/native/image/image.cpp'];
 export const ERROR_CODES=K+'ErrorCodes.kt';
 const NK='apps/murakumo-net/src-tauri/gen/android/app/src/main/java/network/awai/murakumo/net/';

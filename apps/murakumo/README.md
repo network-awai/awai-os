@@ -32,6 +32,57 @@ Development signer is the existing Android debug identity. Production signer/all
 
 6600H is reserved by the independent AWAI-2992 persistence chat. This task stops all physical ADB/install/settings/reboot operations until that work releases the device. VM tests use only `emulator-5570`.
 
+### Image cancellation and Android measurements
+
+Murakumo verifies all three pinned image files before every generation. The SHA-256 loop checks for
+cancellation before and after each read of up to 1 MiB. A blocked read still has to return. The worker
+closes the stream on cancellation, and the next request verifies from the start.
+
+At the pinned stable-diffusion.cpp revision, `sd_ctx_create` resolves options and synchronously runs
+engine initialization, including model loader, backend and runner setup, before publishing a context.
+This call has no supported interruption API. A cancellation accepted during it waits for the call to
+return, skips generation, frees any returned context on the worker and then returns
+`inference-cancelled` to the caller. The busy slot covers the wait and cleanup. Once generation starts,
+the context can receive the engine's cooperative cancel signal. If measurements show initialization
+exceeds the issue's latency target, meeting that target requires a separately qualified upstream
+initialization cancel API or an isolated worker whose exit and resource release can be confirmed.
+[Pinned context implementation](https://github.com/leejet/stable-diffusion.cpp/blob/532d2c15c430a785a712b2d94281f04e733008a4/src/api/api.cpp#L93-L136)
+
+`ImageHashTest` exercises the hash and stream cleanup on the JVM. To run the JNI wrapper fixture, use
+`SD_SOURCE` pointing to the source archive verified against `image-pins.json`, and `JAVA_HOME` pointing
+to the host JDK.
+
+```sh
+clang++ -std=c++17 -pthread -I "$SD_SOURCE/include" -I "$JAVA_HOME/include" \
+  -I "$JAVA_HOME/include/$(uname -s | tr '[:upper:]' '[:lower:]')" \
+  apps/murakumo/native/image/image.cpp apps/murakumo/test/image-cancel-native.cpp \
+  -o /tmp/murakumo-image-cancel-test
+/tmp/murakumo-image-cancel-test
+```
+
+For [issue #519](https://github.com/network-awai/awai-os/issues/519), item 297 owns the Android run.
+Use a dedicated target, a Murakumo APK with `libawai_diffusion.so` rebuilt from the reviewed commit,
+the pinned model files, and a signature-matched allowlisted test caller. Use synthetic prompts and
+record the device, Android version, Vulkan backend, model revisions and observed cache conditions
+with each result.
+
+| Phase to confirm in the trace | Cancellation routes to run |
+| --- | --- |
+| Text decoding | Murakumo button, Android Back, caller SDK |
+| Image SHA-256 while reading the 3.34 GB encoder file on a cold run | Murakumo button, Android Back, caller SDK |
+| Cold image `sd_ctx_create` after the hashes finish | Murakumo button, Android Back, caller SDK |
+| Image generation after context publication | Murakumo button, Android Back, caller SDK |
+
+Use a local debug trace with monotonic timestamps for the cancel action, provider acceptance, hash
+read or native create boundaries, worker stop after cleanup, and caller Promise rejection. For the
+SDK route, attach the rejection handler to `startGeneration().result` and schedule `cancel(requestId)`
+on the same client after confirmation so it can execute while Murakumo is in front. Use only
+phase markers and timings in the trace. Record action-to-worker-stop and action-to-Promise-reject
+elapsed times, the rejection code, and whether the next generation of the same modality starts
+immediately after rejection and succeeds. Confirm the cancelled run returns no output. Rerun
+attempts that land outside the intended phase. For any run exceeding the issue's latency target,
+record the phase it was waiting on. All Android timing and next-generation cases are pending.
+
 ## PHI path (karute)
 
 karute passes medical text through `awai_local_inference`. The prompt and the output must not reach a log, a

@@ -797,6 +797,7 @@ Object.prototype.complete;
 
 // Existing Android/WebCrypto boundaries must retain their names in advanced builds.
 Object.prototype.generate;
+Object.prototype.startGeneration;
 Object.prototype.info;
 Object.prototype.isTrusted;
 Object.prototype.exitCode;
@@ -815,6 +816,10 @@ Object.prototype.modelSet;
 Object.prototype.dataUrl;
 Object.prototype.readbackVerified;
 Object.prototype.uri;
+
+// Caller-side inference cancel (#519): the request id that may match, and the fixed not-running answer.
+Object.prototype.cancel;
+Object.prototype.cancelled;
 
 Object.prototype.readImage;
 Object.prototype.conversation;
