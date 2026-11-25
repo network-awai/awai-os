@@ -4,7 +4,10 @@ Use linux-firmware 20261019 at revision
 `a2dcb924f0897368b0b4f305cbf9808cdda90ce0` from the existing build input.
 On the build machine, point the tool at its Git checkout and the Android
 source checkout. The x86_64 device is pinned to
-`50dc14712023705ccf477af49a27ef9109b54d19`. Run this before building the `lineage_virtio_x86_64` product.
+`0e8571a0d7fce749856e9dea72e99a8a83f8f9b4` (the pinned manifest
+revision; the earlier `50dc1471…` is not resolvable on GitHub or
+Gerrit — a host-local commit, like the old `4cc0f606…` build-input
+SHA). Run this before building the `lineage_virtio_x86_64` product.
 
 ```sh
 python3 android/desktop/pc-ab-device/pc-firmware.py prepare "$ANDROID_ROOT" "$FIRMWARE_GIT"
