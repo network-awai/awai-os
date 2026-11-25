@@ -43,6 +43,7 @@ one device/virt/virtio-common virtio-common-awai-pc.patch 'AWAI-3586: label part
 one device/virt/virtio-common virtio-common-rtw89-8851be.patch 'AWAI-4092: RTL8851BE load order'
 one device/virt/virtio-common virtio-common-aw-mesa-sphal.patch 'AWAI-3686: label the Mesa Gallium and RADV DRM dependencies'
 one device/virt/virtio-common virtio-common-awai-pc-gpu-sysfs.patch 'AWAI-4090 Awai PC, Ryzen 5 6600H iGPU'
+one device/virt/virtio-common virtio-common-awai-apps.patch 'AWAI-4094: preinstall Awai Home and Awai Store'
 one device/virt/virt-common virt-common-awai-pc.patch 'awai_find_part'
 one device/virt/virt-common virt-common-awai-boot-name.patch 'AWAI-3747: use the release name'
 

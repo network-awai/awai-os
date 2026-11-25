@@ -19,6 +19,7 @@ Apply to a synced source tree with `apply.sh <source tree root>`.
 | --- | --- | --- |
 | `patches/virtio-common-awai-pc.patch` | `device/virt/virtio-common` (`e6f2a7d2`) | SELinux labels for `/dev/block/by-name/{super,misc,userdata,persist,metadata,boot_[ab],vendor_boot_[ab]}`, kernel config fragment `awai-pc.config`, and Intel NIC modules in the boot-time load list. |
 | `patches/virtio-userdata*.patch` | `device/virt/virtio-common` | Mounts userdata by partition name while preserving the existing ext4 and f2fs mount options. |
+| `patches/virtio-common-awai-apps.patch` | `device/virt/virtio-common` (`9d5c9307`) | Prebuilt `AwaiHome` and `AwaiStore` (`BUILD_PREBUILT`, `PRESIGNED`) and their `PRODUCT_PACKAGES` entries. The product include is fail-closed: missing APK, unset expected signer or a signer mismatch stops the build. Yotei is not added. |
 | `patches/virt-common-awai-pc.patch` | `device/virt/virt-common` (`0e62edf1`) | GRUB takes the boot disk from where the `PERSIST` filesystem is, and finds `misc`, `vendor_boot_a/b` and `boot_a/b` by fixed GPT partition GUIDs. `EFI` and `BIOS` leave `AB_OTA_PARTITIONS`, and Android no longer mounts the ESP. `ro.surface_flinger.enable_frame_rate_override=false` is removed (headless mode). |
 
 | `patches/vendor-lineage-no-ota-downgrade.patch` | `vendor/lineage` | Removes LineageOS's opt-in to older A/B payloads on non-`user` builds. |
@@ -43,19 +44,39 @@ formatted (`mke2fs returned 1`, the device node has no label) and `/dev/block/vd
 The stock GRUB has no search by partition name. It has `probe --part-uuid` and `regexp`, which is what
 the second patch uses. A disk without the fixed GUIDs (the stock `disk-vda.img`) keeps the stock numbers.
 
-## Default home (AWAI-4094)
+## Default home and preinstalled apps (AWAI-4094)
 
-**State: input change only. Not built, not booted.** Preinstall Home and Store only (Yotei
-comes from the Store) and make Awai Home the home screen on a fresh `/data`.
+**State: inputs only. Not built, not booted.** Preinstall Home and Store only (Yotei comes
+from the Store) and make Awai Home the home screen on a fresh `/data`.
 
-There is no `config_defaultRoleHolders` or default-home string in `framework-res` at the pinned
-revisions, and `roles.xml` gives `android.app.role.HOME` no `defaultHolders`, so a device overlay
-cannot express this. The platform falls back to the unique highest-priority HOME activity
-(`HomeRoleBehavior.getFallbackHolderAsUser`, `ComputerEngine.getDefaultHomeActivity`). The input
-is therefore `android:priority="999"` on Awai Home's HOME intent filter in
-[`android/build.py`](../../build.py) (`manifest()`, `:51`). Evidence, file digests, the rejected
-routes, the Launcher3 fallback and the unrun checks are in
-[home-default-20261125.md](home-default-20261125.md). `apply.sh` and `patches/` are unchanged;
+**Preinstall (source build).** `patches/virtio-common-awai-apps.patch` adds
+`device/virt/virtio-common/awai-apps/`: `Android.mk` (`BUILD_PREBUILT`, `PRESIGNED`,
+`LOCAL_DEX_PREOPT := false`) for `AwaiHome` and `AwaiStore`, and `product.mk` that adds both to
+`PRODUCT_PACKAGES` under a fail-closed check. `apply.sh` applies it with the other
+`virtio-common` patches. The build stops until the operator supplies:
+
+| Input | Meaning |
+| --- | --- |
+| `device/virt/virtio-common/awai-apps/AwaiHome.apk`, `AwaiStore.apk` | operator-built APKs; they are not in this repository |
+| `AWAI_APKSIGNER` | path to a host `apksigner` |
+| `AWAI_HOME_EXPECTED_SIGNER_SHA256`, `AWAI_STORE_EXPECTED_SIGNER_SHA256` | expected certificate SHA-256 (lowercase hex) |
+
+`awai-apps/verify-apks.sh` compares `apksigner verify --print-certs` with those values. A
+missing APK, an unset expected value, a missing tool, an unsigned APK or a mismatch prints
+`AWAI_APPS_FAIL: …` and the product config stops (`$(error)`). `AWAI_ALLOW_UNVERIFIED_APKS=1`
+skips the comparison for development builds only and is refused when
+`TARGET_BUILD_VARIANT=user`. The shipping signing key is not decided, so no expected value is
+committed.
+
+**Default home.** No `config_defaultRoleHolders` or default-home string exists in
+`framework-res` at the pins, and `roles.xml` gives `android.app.role.HOME` no `defaultHolders`,
+so a device overlay cannot express this. The platform uses the unique highest-priority HOME
+activity (`HomeRoleBehavior.getFallbackHolderAsUser`, `ComputerEngine.getDefaultHomeActivity`).
+Input: `android:priority="999"` on Awai Home's HOME filter in
+[`android/build.py`](../../build.py) (`manifest()`, `:51`). Known limit: any app may declare
+`999`; a launcher installed from the Store with the same value ties and no ranking follows —
+a Store review/policy question, not a security boundary. Evidence, the Launcher3 fallback and
+the unrun checks are in [home-default-20261125.md](home-default-20261125.md).
 `Launcher3QuickStep` still comes from `build/make` `handheld_system_ext.mk:27`.
 
 ## Shipping debug lockdown (AWAI-3682)

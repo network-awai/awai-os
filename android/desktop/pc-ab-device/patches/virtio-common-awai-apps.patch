@@ -1,0 +1,140 @@
+diff --git a/device/virt/virtio-common/awai-apps/Android.mk b/device/virt/virtio-common/awai-apps/Android.mk
+new file mode 100644
+index 0000000..476c0e7
+--- /dev/null
++++ b/device/virt/virtio-common/awai-apps/Android.mk
+@@ -0,0 +1,25 @@
++# AWAI-4094: Awai Home and Awai Store as prebuilt product apps.
++#
++# The APKs are operator-supplied (see product.mk for the expected paths and the
++# fail-closed signer check). Yotei is installed from the Store, not from the image.
++LOCAL_PATH := $(call my-dir)
++
++include $(CLEAR_VARS)
++LOCAL_MODULE := AwaiHome
++LOCAL_SRC_FILES := AwaiHome.apk
++LOCAL_MODULE_CLASS := APPS
++LOCAL_MODULE_TAGS := optional
++LOCAL_MODULE_SUFFIX := $(COMMON_ANDROID_PACKAGE_SUFFIX)
++LOCAL_CERTIFICATE := PRESIGNED
++LOCAL_DEX_PREOPT := false
++include $(BUILD_PREBUILT)
++
++include $(CLEAR_VARS)
++LOCAL_MODULE := AwaiStore
++LOCAL_SRC_FILES := AwaiStore.apk
++LOCAL_MODULE_CLASS := APPS
++LOCAL_MODULE_TAGS := optional
++LOCAL_MODULE_SUFFIX := $(COMMON_ANDROID_PACKAGE_SUFFIX)
++LOCAL_CERTIFICATE := PRESIGNED
++LOCAL_DEX_PREOPT := false
++include $(BUILD_PREBUILT)
+diff --git a/device/virt/virtio-common/awai-apps/product.mk b/device/virt/virtio-common/awai-apps/product.mk
+new file mode 100644
+index 0000000..494d483
+--- /dev/null
++++ b/device/virt/virtio-common/awai-apps/product.mk
+@@ -0,0 +1,35 @@
++# AWAI-4094: preinstall Awai Home and Awai Store only; Yotei is installed from the Store.
++#
++# The APKs are not part of this project. Before building, place them at
++#   device/virt/virtio-common/awai-apps/AwaiHome.apk
++#   device/virt/virtio-common/awai-apps/AwaiStore.apk
++# The build is fail-closed: it stops unless both APKs exist and each signer matches
++#   AWAI_HOME_EXPECTED_SIGNER_SHA256 / AWAI_STORE_EXPECTED_SIGNER_SHA256
++# (lowercase hex, as printed by `apksigner verify --print-certs`), with
++#   AWAI_APKSIGNER=<path to a host apksigner>
++# AWAI_ALLOW_UNVERIFIED_APKS=1 skips the comparison for development builds only and is
++# refused on user builds. The shipping signing key is not decided yet, so no value is
++# baked in: an unset expected signer fails the build (see awai-apps/verify-apks.sh).
++#
++# Note: make modules in a device tree are included from Soong's Android.mk list
++# (build/make/core/main.mk:247-276), which is Linux-only. This device tree already
++# builds only on Linux.
++AWAI_APPS_PATH := $(COMMON_PATH)/awai-apps
++
++AWAI_APPS_ARGS := $(AWAI_APPS_PATH) "$(AWAI_APKSIGNER)" "$(AWAI_HOME_EXPECTED_SIGNER_SHA256)" "$(AWAI_STORE_EXPECTED_SIGNER_SHA256)"
++ifeq ($(strip $(AWAI_ALLOW_UNVERIFIED_APKS)),1)
++    ifeq ($(TARGET_BUILD_VARIANT),user)
++        $(error AWAI-4094: AWAI_ALLOW_UNVERIFIED_APKS=1 is refused for user builds; set AWAI_HOME_EXPECTED_SIGNER_SHA256 and AWAI_STORE_EXPECTED_SIGNER_SHA256 instead)
++    endif
++    $(warning AWAI-4094: AWAI_ALLOW_UNVERIFIED_APKS=1: unverified APKs go into the image; development builds only)
++    AWAI_APPS_ARGS += --allow-unverified
++endif
++
++AWAI_APPS_VERIFY := $(shell sh $(AWAI_APPS_PATH)/verify-apks.sh $(AWAI_APPS_ARGS) 2>&1)
++ifeq ($(filter AWAI_APPS_OK:%,$(AWAI_APPS_VERIFY)),)
++    $(error AWAI-4094: prebuilt Awai APK check failed: $(AWAI_APPS_VERIFY))
++endif
++
++PRODUCT_PACKAGES += \
++    AwaiHome \
++    AwaiStore
+diff --git a/device/virt/virtio-common/awai-apps/verify-apks.sh b/device/virt/virtio-common/awai-apps/verify-apks.sh
+new file mode 100755
+index 0000000..bee37ba
+--- /dev/null
++++ b/device/virt/virtio-common/awai-apps/verify-apks.sh
+@@ -0,0 +1,46 @@
++#!/bin/sh
++# AWAI-4094: fail-closed check for the prebuilt Awai Home and Awai Store APKs.
++#
++# Usage: verify-apks.sh <apk-dir> <apksigner> <home-sha256> <store-sha256> [--allow-unverified]
++#
++# Prints "AWAI_APPS_OK: ..." only when both APKs exist and each signer's SHA-256 matches
++# the expected value. Prints "AWAI_APPS_FAIL: <reason>" and exits 1 on a missing APK, an
++# unset expected value, a missing apksigner, an APK without a signer, or a mismatch.
++# --allow-unverified skips the signer comparison (development only; the caller refuses it
++# on user builds). The shipping signing key is not decided yet, so no value is baked in.
++set -eu
++dir=${1:-}
++signer=${2:-}
++home=${3:-}
++store=${4:-}
++mode=${5:-}
++allow_unverified=false
++if [ "$mode" = "--allow-unverified" ]; then allow_unverified=true; fi
++
++fail() { echo "AWAI_APPS_FAIL: $*"; exit 1; }
++[ -n "$dir" ] || fail "no APK directory argument"
++[ -d "$dir" ] || fail "no APK directory: $dir"
++for name in AwaiHome AwaiStore; do
++    [ -f "$dir/$name.apk" ] || fail "missing $dir/$name.apk"
++done
++
++if $allow_unverified; then
++    echo "AWAI_APPS_OK: unverified (AWAI_ALLOW_UNVERIFIED_APKS=1, development only)"
++    exit 0
++fi
++
++[ -n "$home" ] || fail "AWAI_HOME_EXPECTED_SIGNER_SHA256 is unset"
++[ -n "$store" ] || fail "AWAI_STORE_EXPECTED_SIGNER_SHA256 is unset"
++[ -n "$signer" ] || fail "AWAI_APKSIGNER is unset (path to a host apksigner)"
++[ -x "$signer" ] || fail "apksigner is not executable: $signer"
++
++check() { # <apk path> <expected sha256>
++    got=$("$signer" verify --print-certs "$1" 2>/dev/null \
++        | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n 1 | tr 'A-F' 'a-f')
++    [ -n "$got" ] || fail "no signer digest for $1 (unsigned or unreadable)"
++    [ "$got" = "$2" ] || fail "$1 signer $got != expected $2"
++}
++
++check "$dir/AwaiHome.apk" "$home"
++check "$dir/AwaiStore.apk" "$store"
++echo "AWAI_APPS_OK: signers match the expected SHA-256 values"
+diff --git a/device/virt/virtio-common/device-common.mk b/device/virt/virtio-common/device-common.mk
+index f268ca5..4b9eaec 100644
+--- a/device/virt/virtio-common/device-common.mk
++++ b/device/virt/virtio-common/device-common.mk
+@@ -35,6 +35,11 @@ PRODUCT_PACKAGES += \
+ PRODUCT_COPY_FILES += \
+     $(COMMON_PATH)/configs/input/excluded-input-devices.xml:$(TARGET_COPY_OUT_VENDOR)/etc/excluded-input-devices.xml
+ 
++# Apps
++# AWAI-4094: preinstall Awai Home and Awai Store only; Yotei is installed from the Store.
++# The include is fail-closed: see awai-apps/product.mk for the APK paths and signer check.
++include $(COMMON_PATH)/awai-apps/product.mk
++
+ # Kernel
+ TARGET_PREBUILT_KERNEL_USE ?= 6.18
+ TARGET_PREBUILT_KERNEL_DIR := device/virt/kernel-virtio/$(TARGET_PREBUILT_KERNEL_USE)/$(TARGET_PREBUILT_KERNEL_ARCH)/$(TARGET_PREBUILT_KERNEL_PAGE_SIZE)

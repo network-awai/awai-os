@@ -82,13 +82,54 @@ invalid. An RRO also cannot change another APK's `AndroidManifest.xml` intent-fi
 priority, and `roles.xml` lives in the `packages/modules/Permission` module (prebuilt
 APEX), not in the device tree. Adding a boot-time `cmd role add-role-holder` service would
 re-grant HOME on every boot and override a later user choice, so it is rejected. The
-priority input is the platform-supported one; no file under `patches/` is added or
-changed for AWAI-4094, and `apply.sh` is unchanged.
+default-home input is the priority above; the only device-tree patch AWAI-4094 adds is the
+prebuilt-apps input and its guard in the next section
+(`patches/virtio-common-awai-apps.patch`, applied by `apply.sh`).
+
+A second limit of the priority input: `android:priority` is declared by the app, so a
+launcher installed from the Store can declare `999` as well. Two HOME filters at the same
+priority tie, and `HomeRoleBehavior.getFallbackHolderAsUser` returns no default holder
+(`HomeRoleBehavior.java:105-108`). Ranking Store-installed launchers is a Store review and
+policy question; this is not a security boundary — an app that wants to become a candidate
+home screen still needs the platform HOME intent filter, and the user sees the role dialog.
 
 Launcher3 is **not** removed: it comes from `build/make`
 `target/product/handheld_system_ext.mk:24-29` (`Launcher3QuickStep`), inherited through
 `full_base.mk` → `generic_no_telephony.mk:23-26` → `handheld_system_ext.mk`, and the
 device tree does not list or remove any launcher.
+
+## Source-build preinstall input and its signing guard
+
+`patches/virtio-common-awai-apps.patch` (project `device/virt/virtio-common`, pinned
+`9d5c9307434bba31d19030fcc61086efcd248997`) adds, and `apply.sh` applies with the other
+`virtio-common` patches:
+
+- `awai-apps/Android.mk` — `AwaiHome` and `AwaiStore` as `BUILD_PREBUILT` modules
+  (`LOCAL_MODULE_CLASS := APPS`, `LOCAL_CERTIFICATE := PRESIGNED`,
+  `LOCAL_DEX_PREOPT := false`).
+- `awai-apps/product.mk` — `PRODUCT_PACKAGES += AwaiHome AwaiStore` plus the fail-closed
+  check; Yotei is not added.
+- `awai-apps/verify-apks.sh` — compares `apksigner verify --print-certs` with the expected
+  certificate SHA-256.
+- `device-common.mk` — one `include $(COMMON_PATH)/awai-apps/product.mk`.
+
+No APK is added by this change. Operator inputs and the failure matrix:
+
+| Input / state | Result |
+| --- | --- |
+| `awai-apps/AwaiHome.apk` or `AwaiStore.apk` missing | `AWAI_APPS_FAIL: missing …`, product config `$(error)` |
+| `AWAI_HOME_EXPECTED_SIGNER_SHA256` or `AWAI_STORE_EXPECTED_SIGNER_SHA256` unset | `AWAI_APPS_FAIL: … is unset`, `$(error)` |
+| `AWAI_APKSIGNER` unset or not executable | `AWAI_APPS_FAIL: …`, `$(error)` |
+| signer digest differs, or the APK has no signer | `AWAI_APPS_FAIL: … signer … != expected …`, `$(error)` |
+| both APKs present, both digests match | `AWAI_APPS_OK: …`, the modules are added |
+| `AWAI_ALLOW_UNVERIFIED_APKS=1` on a development build | warning, digests are not compared |
+| `AWAI_ALLOW_UNVERIFIED_APKS=1` with `TARGET_BUILD_VARIANT=user` | `$(error)`: refused |
+
+The expected signer values are deliberately not committed: the shipping signing key is not
+decided. Today `android/build.py` signs the APKs with the local Android debug identity by
+default (`android/build.py:15,81,237`), and `--release` refuses that identity
+(`android/build.py:114-117,239-243`). Until the key decision, a shipping build cannot pass
+this guard.
 
 ## Risk and recovery (Awai Home unusable)
 
@@ -113,11 +154,30 @@ Verified on 2026-11-25 (this change):
 - `python3 android/build.py` remains importable; the generated Home manifest now carries
   the priority on the HOME filter and leaves the LAUNCHER filter unchanged
 - `python3 android/tests/store-queries.py` and the Python tests listed in the PR
+- the apps patch applies at `device/virt/virtio-common` `9d5c9307`: `git apply --check`
+  reports clean, then applies (per-project `git init`, pristine pinned file only)
+- `sh -n` on the applied `awai-apps/verify-apks.sh`, and its six cases with a stub
+  `apksigner`: missing APK, unset expected value, digest mismatch, digest match,
+  `--allow-unverified`, missing APK again — `AWAI_APPS_FAIL`/exit 1 except the two OK cases
+- `python3 -m unittest test_home_apps` (15 checks, `android/desktop/pc-ab-device`): declares
+  vs added lines for every new-file hunk (a wrong `@@ +1,N @@` silently dropped
+  `AwaiStore` in an earlier draft), the script's fail-closed cases and unsigned APK, the
+  module and `PRODUCT_PACKAGES` content, no Yotei module/APK, and the `apply.sh` wiring.
+  The Bazel target `//android/desktop/pc-ab-device:home_apps_test` is added to
+  `pc_verification`; it was not run here (no Bazel output base, and installing one is out
+  of scope for this change).
+- the applied `awai-apps/product.mk` under GNU make with stub inputs: no APKs → `$(error)`,
+  APKs without expected values → `$(error)`, matching digests → `AwaiHome AwaiStore` added,
+  `AWAI_ALLOW_UNVERIFIED_APKS=1` on `userdebug` → warning and pass, on `user` → `$(error)`,
+  Store digest mismatch → `$(error)`
 
-Not verified (no build, VM or device was run):
+Not verified (no AOSP build, VM or device was run):
 
+- a real `lunch`/`make` of the patched tree (the applied files were exercised with GNU make
+  and a stub `apksigner`, not by kati/Soong)
 - x86_64 build and VM boot of the derived image with two apps
 - default home on a fresh `/data`, and its retention across a reboot
+- the Launcher3 fallback with the priority in place (Home absent, Home not starting)
 - Store install and launch of Yotei
 - physical Desktop boot, OTA, and the AWAI-3061 source build (signed target-files exist
   in Linear; no reproducible source build exists in this repository)
@@ -127,23 +187,47 @@ Not verified (no build, VM or device was run):
 Use the derived image (`build-images.sh` output) with tmpfs `/data`, or the AWAI-3061
 source build when a reproducible one exists; record which one.
 
-1. **Image inputs.** Rebuild the APKs (`python3 android/build.py --version <n> --skip-cljs
+1. **Signing guard (source build).** In the patched checkout, each of these must stop
+   before compiling: `lunch`/`make` with the APKs absent; with the APKs present but
+   `AWAI_HOME_EXPECTED_SIGNER_SHA256`/`AWAI_STORE_EXPECTED_SIGNER_SHA256` unset; with a
+   signer that differs from the expected value; with `AWAI_ALLOW_UNVERIFIED_APKS=1` and
+   `TARGET_BUILD_VARIANT=user`. Then supply both APKs, `AWAI_APKSIGNER` and the expected
+   digests: the include passes and `AwaiHome`/`AwaiStore` are in `PRODUCT_PACKAGES` (check
+   `out/.../installed-files.txt` or the built `system.img`). Do not build or ship with
+   `AWAI_ALLOW_UNVERIFIED_APKS=1` outside a development image.
+2. **Image inputs.** Rebuild the APKs (`python3 android/build.py --version <n> --skip-cljs
    --out <dir>`) and the derived image, then confirm the image contains
    `/system/product/app/AwaiHome` and `AwaiStore` and **no** `AwaiYotei`. Pass:
    `adb shell ls /system/product/app` shows exactly the two new directories, and
    `build-images.sh` reports no missing APK.
-2. **x86_64 boot.** Boot the image in a QEMU x86_64 VM with tmpfs `/data`. Pass:
+3. **x86_64 boot.** Boot the image in a QEMU x86_64 VM with tmpfs `/data`. Pass:
    `sys.boot_completed=1`, `pm list packages | grep network.awai` shows
    `network.awai.home` and `network.awai.store`, and no crash entries for either.
-3. **Default home.** On a fresh `/data`, read
+4. **Default home.** On a fresh `/data`, read
    `cmd role get-role-holders --user 0 android.app.role.HOME`. Pass:
    `network.awai.home`. APKs built before the priority change (e.g. v15) fail this step;
    that is the expected result, not a regression.
-4. **Reboot retention.** Reboot, unlock, and read the holder again plus
+5. **Reboot retention.** Reboot, unlock, and read the holder again plus
    `cmd package resolve-activity --brief -a android.intent.action.MAIN
    -c android.intent.category.HOME`. Pass: the holder is still `network.awai.home` and no
    `am start`/HOME key press was used.
-5. **Store to Yotei.** In Store, install Yotei, then launch it. Pass: after install
+6. **Launcher3 fallback with the priority in place (Organizer request).** Throwaway VM,
+   userdebug image, priority-bearing APK; no new APK is added for this test.
+   - *Home absent.* Use the pinned base image without the derived apps, or on a disposable
+     VM disable the installed Home (`pm disable-user --user 0 network.awai.home`), then
+     reboot. Pass: `cmd role get-role-holders --user 0 android.app.role.HOME` is
+     `com.android.launcher3`, a usable launcher3 screen appears after unlock without
+     `am start`, and a HOME press shows it again (workspace drawn, app drawer opens, an
+     app launches).
+   - *Home installed but not starting.* Keep `network.awai.home` installed and the role
+     holder. On a debuggable `userdebug` image, simulate the start failure with
+     `am crash network.awai.home` (a simulation, not a real crash) and press HOME. Record
+     what the user sees and whether the shade/Settings stay reachable. Then Settings → Apps
+     → Default apps → Home app → Launcher, press HOME. Pass: the launcher3 screen is usable
+     and the HOME press works after the switch.
+   Record both outcomes; the second row's "role holder stays on the failing app" prediction
+   is not proven until this runs.
+7. **Store to Yotei.** In Store, install Yotei, then launch it. Pass: after install
    `pm list packages` shows `network.itonami.yotei`, its signer matches the APK the Store
    shipped, the preinstall directories are still only Home and Store, and Yotei's screen
    opens. Do not read this as preinstall evidence: the app must not be in

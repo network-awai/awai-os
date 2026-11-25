@@ -88,12 +88,27 @@ sh_test(
     tags = ["no-remote"],
 )
 
+# AWAI-4094: prebuilt Home/Store input and its fail-closed APK signer guard.
+sh_test(
+    name = "home_apps_test",
+    srcs = ["run-python-test.sh"],
+    args = ["test_home_apps.py"],
+    data = [
+        "apply.sh",
+        "patches/virtio-common-awai-apps.patch",
+        "test_home_apps.py",
+    ],
+    size = "small",
+    tags = ["no-remote"],
+)
+
 test_suite(
     name = "pc_verification",
     tests = [
         ":gpu_sysfs_test",
         ":rtw8851be_test",
         ":diagnostics_off_test",
+        ":home_apps_test",
         ":installer_test",
         ":ota_feed_test",
         ":screen_installer_core_test",
