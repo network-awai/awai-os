@@ -1,18 +1,8 @@
 diff --git a/BoardConfigCommon.mk b/BoardConfigCommon.mk
-index 70eeea8..4eae1fc 100644
+index 70eeea8..02f5451 100644
 --- a/BoardConfigCommon.mk
 +++ b/BoardConfigCommon.mk
-@@ -34,7 +34,8 @@ BOARD_KERNEL_CMDLINE += \
- 
- TARGET_KERNEL_CONFIG_EXT += \
-     $(COMMON_PATH)/configs/kernel/virtio-common.config \
--    $(COMMON_PATH)/configs/kernel/awai-pc.config
-+    $(COMMON_PATH)/configs/kernel/awai-pc.config \
-+    $(COMMON_PATH)/configs/kernel/awai-pc-rtw89.config
- 
- ifneq ($(wildcard $(TARGET_KERNEL_SOURCE)/Makefile),)
- # nothing
-@@ -74,3 +75,10 @@ SYSTEM_EXT_PUBLIC_SEPOLICY_DIRS += $(COMMON_PATH)/sepolicy/public
+@@ -74,3 +74,10 @@ SYSTEM_EXT_PUBLIC_SEPOLICY_DIRS += $(COMMON_PATH)/sepolicy/public
  BOARD_VENDOR_KERNEL_MODULES_LOAD += \
      e1000e.ko \
      igc.ko
@@ -23,18 +13,20 @@ index 70eeea8..4eae1fc 100644
 +    rtw89_8851b.ko \
 +    rtw89_pci.ko \
 +    rtw89_8851be.ko
-diff --git a/configs/kernel/awai-pc-rtw89.config b/configs/kernel/awai-pc-rtw89.config
-new file mode 100644
-index 0000000..b759ecf
---- /dev/null
-+++ b/configs/kernel/awai-pc-rtw89.config
-@@ -0,0 +1,14 @@
+diff --git a/configs/kernel/awai-pc.config b/configs/kernel/awai-pc.config
+index 00fdfb2..389a9f6 100644
+--- a/configs/kernel/awai-pc.config
++++ b/configs/kernel/awai-pc.config
+@@ -16,3 +16,17 @@ CONFIG_PINCTRL_AMD=y
+ CONFIG_I2C_PIIX4=y
+ CONFIG_SENSORS_K10TEMP=m
+ CONFIG_SND_HDA_CODEC_HDMI=y
 +# AWAI-4092: Realtek RTL8851BE Wi-Fi 6 (PCI). Built as modules -> vendor image.
-+# Kconfig chain at kernel/virt/virtio 604b22fb (drivers/net/wireless/realtek/rtw89/Kconfig):
-+# WLAN_VENDOR_REALTEK gates this directory; RTW89 depends on MAC80211; MAC80211
-+# depends on CFG80211; RTW89_8851BE depends on PCI and selects RTW89_CORE,
-+# RTW89_PCI and RTW89_8851B. CFG80211/MAC80211/PCI/RFKILL already =m/=y in
-+# kernel/mainline/configs defconfigs/x86/gki_defconfig; re-asserted here.
++# Kconfig chain at kernel/virt/virtio 604b22fb (rtw89/Kconfig): WLAN_VENDOR_REALTEK
++# gates the directory; RTW89 depends on MAC80211; MAC80211 depends on CFG80211;
++# RTW89_8851BE depends on PCI and selects RTW89_CORE/RTW89_PCI/RTW89_8851B.
++# CFG80211/MAC80211/PCI/RFKILL already =m/=y in defconfigs/x86/gki_defconfig;
++# re-asserted here. Kernel olddefconfig runs on the build host (Job B).
 +CONFIG_WLAN_VENDOR_REALTEK=y
 +CONFIG_CFG80211=m
 +CONFIG_MAC80211=m

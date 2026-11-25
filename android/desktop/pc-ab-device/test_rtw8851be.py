@@ -1,8 +1,9 @@
-"""AWAI-4092: RTL8851BE kernel-config fragment and vendor module load order.
+"""AWAI-4092: RTL8851BE kernel config in awai-pc.config + vendor load order.
 
-Host-only. Parses the Awai patch and asserts it registers exactly one new
-kernel-config fragment, enables the required Kconfig chain as modules, and
-lists the rtw89 load order. It does not run olddefconfig (Linux-only) or build.
+Host-only. Parses the Awai patch and asserts it appends the required Kconfig
+chain (as modules) to the existing awai-pc.config fragment, lists the rtw89
+load order, and stays ordered after awai-pc. It does not run olddefconfig
+(Linux-only) or build.
 """
 from pathlib import Path
 import unittest
@@ -44,18 +45,18 @@ def patch_added(patch, path):
 
 
 class KernelFragment(unittest.TestCase):
-    def test_touches_boardconfig_and_new_fragment_only(self):
+    def test_touches_boardconfig_and_awai_pc_config_only(self):
         self.assertEqual(sorted(files_touched(PATCH)),
-                         ["BoardConfigCommon.mk", "configs/kernel/awai-pc-rtw89.config"])
+                         ["BoardConfigCommon.mk", "configs/kernel/awai-pc.config"])
 
     def test_required_kconfig_chain_present_as_modules(self):
-        added = patch_added(PATCH, "configs/kernel/awai-pc-rtw89.config")
+        added = patch_added(PATCH, "configs/kernel/awai-pc.config")
         for symbol in REQUIRED:
             self.assertIn(symbol, added, symbol)
 
-    def test_boardconfig_registers_fragment(self):
+    def test_boardconfig_adds_only_load_order(self):
         added = "\n".join(patch_added(PATCH, "BoardConfigCommon.mk"))
-        self.assertIn("$(COMMON_PATH)/configs/kernel/awai-pc-rtw89.config", added)
+        self.assertIn("BOARD_VENDOR_KERNEL_MODULES_LOAD", added)
 
     def test_load_order_is_core_chip_bus_driver(self):
         added = "\n".join(patch_added(PATCH, "BoardConfigCommon.mk"))
@@ -72,7 +73,7 @@ class ApplyWiring(unittest.TestCase):
         self.assertLess(
             text.index("virtio-common-awai-pc.patch"),
             text.index("virtio-common-rtw89-8851be.patch"),
-            "rtw89 patch must be ordered after awai-pc (BoardConfig context)",
+            "rtw89 patch must be ordered after awai-pc (awai-pc.config exists only after it)",
         )
         # Order vs aw-mesa-sphal is irrelevant (sepolicy only) but keep rtw89 first for determinism.
         self.assertLess(
