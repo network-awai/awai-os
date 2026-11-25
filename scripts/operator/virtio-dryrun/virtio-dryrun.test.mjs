@@ -172,6 +172,7 @@ test("dry-run prints the exact command list and executes nothing", async () => {
   for (const snippet of [
     "apt-get -qq update",
     "apt-get -qq install -y",
+    "gdisk",
     "curl -fsSL https://storage.googleapis.com/git-repo-downloads/repo",
     "curl -fsSL https://example.invalid/kit.tar.gz",
     "python3 -c",
@@ -192,6 +193,7 @@ test("dry-run prints the exact command list and executes nothing", async () => {
     "source build/envsetup.sh",
     "breakfast lineage_virtio_x86_64 userdebug",
     "m target-files-package otatools diskimage-vda",
+    "v1-tf",
     "make-tf-disk.sh",
     "ota_from_target_files -k ",
     "ota_from_target_files -k ",
@@ -392,7 +394,9 @@ m() { echo "m $*" >> "${fncalls}";
     "SetupWizard checkout 1d158e23847b5d9f9523ce6cfc51df2b0c54f6cd",
     "SetupWizard apply",
     "rclone copy",
+    "rclone copy",
     "ota_from_target_files",
+    "rclone copy",
     "rclone copy",
   ];
   let pos = -1;
@@ -402,8 +406,9 @@ m() { echo "m $*" >> "${fncalls}";
     pos = i;
   }
   const rcloneLines = calls.split("\n").filter((l) => l.startsWith("rclone copy "));
-  assert.equal(rcloneLines.length, 3, calls);
-  assert.match(rcloneLines[2], /^rclone copy art:/);
+  assert.equal(rcloneLines.length, 4, calls);
+  assert.match(rcloneLines[0], /v1-tf/);
+  assert.match(rcloneLines[3], /^rclone copy art:/);
 });
 
 test("approved mode without KIT_URL/KIT_SHA256 refuses (nothing executed)", async () => {
@@ -544,6 +549,61 @@ m() { echo "m $*" >> "${fncalls}";
   const fb = readFileSync(fncalls, "utf8");
   assert.match(fb, /breakfast lineage_virtio_x86_64 userdebug/);
   assert.match(r.stdout, /AWAI4089_PATCH_COUNT=(\d+)/);
+});
+
+test("external commands covered by apt, otatools, kit, base image", async () => {
+  // Pure text analysis (no execution, no stubs): parse the run commands
+  // in build-inside.sh plus the sgdisk call in make-tf-disk.sh, and
+  // require every apt-provided command to be in the apt package list
+  // (both lists must match: the script's and the Job command's).
+  const inside = readFileSync(buildInside, "utf8");
+  const jobText = readFileSync(jobScript, "utf8");
+  const tfDisk = readFileSync(join(repoRoot, "android/desktop/pc-ab-device/make-tf-disk.sh"), "utf8");
+  // command -> provider: apt package | base image | kit | otatools | fetched
+  // (apt-get itself comes from the image; it performs the install.)
+  const providers = {
+    "apt-get": "base", curl: "curl", python3: "python3", git: "git",
+    rclone: "rclone", sgdisk: "gdisk",
+    chmod: "base", mkdir: "base", cp: "base", ls: "base", wc: "base",
+    tr: "base", date: "base", shasum: "base", sha256sum: "base",
+    timeout: "base", tar: "base", bash: "base",
+    repo: "fetched",
+    "apply.sh": "kit", "apply-shipping-debug-lockdown.sh": "kit",
+    "pc-firmware.py": "kit", "updater-feed.py": "kit", "make-tf-disk.sh": "kit",
+    ota_from_target_files: "otatools",
+  };
+  const parseRuns = (text) => [...text.matchAll(/^\s*run\s+(\S+)/gm)]
+    .map((m) => m[1]).filter((c) => !c.includes("="));
+  const commands = new Set([...parseRuns(inside), "sgdisk"]);
+  // bash -c strings invoke sha256sum through the shell
+  for (const tok of [...inside.matchAll(/\b(sha256sum|shasum)\b/g)]) commands.add(tok[1]);
+  // functions stay functions, never binaries
+  for (const skip of ["source", "breakfast", "m", "cd", "eval"]) commands.delete(skip);
+  // every enumerated command is classified: no unreviewed externals
+  for (const cmd of commands) {
+    assert.ok(cmd in providers, `external command ${cmd} is unclassified`);
+  }
+  // otatools covers ota_from_target_files only
+  const otatoolsCmds = [...commands].filter((c) => providers[c] === "otatools");
+  assert.deepEqual(otatoolsCmds, ["ota_from_target_files"]);
+  const parseApt = (text) => {
+    const m = text.match(/apt-get -qq install -y ([^\n"]+)/);
+    assert.ok(m, "apt package list not found");
+    return new Set(m[1].trim().split(/\s+/));
+  };
+  const check = (pkgs) => [...commands]
+    .filter((c) => providers[c] !== "base" && providers[c] !== "kit"
+      && providers[c] !== "otatools" && providers[c] !== "fetched")
+    .filter((c) => !pkgs.has(providers[c]));
+  for (const pkgs of [parseApt(inside), parseApt(jobText)]) {
+    assert.deepEqual(check(pkgs), []);
+    assert.ok(pkgs.has("gdisk"), "apt list must include gdisk");
+  }
+  // negative control: without gdisk the checker must flag sgdisk
+  const broken = new Set(parseApt(inside));
+  broken.delete("gdisk");
+  assert.ok(check(broken).includes("sgdisk"), "negative control must detect missing gdisk");
+  assert.ok(tfDisk.includes("/usr/sbin/sgdisk"), "make-tf-disk.sh must call sgdisk");
 });
 
 test("job definition prints Job JSON (toolchain-first; kit fetch inside Job command)", async () => {

@@ -118,7 +118,7 @@ run() {
 
 # Toolchain (same list as same-build/workflow.sh) + repo binary.
 run apt-get -qq update
-run apt-get -qq install -y bc bison build-essential ca-certificates ccache cmake curl flex g++-multilib gcc-multilib git git-lfs gperf imagemagick lib32readline-dev lib32z1-dev libclang-18-dev libegl1 libelf-dev libglvnd-dev liblapack-dev liblz4-tool libopenblas-dev libpam-pwquality libsdl1.2-dev libssl-dev libxml2 libxml2-utils lz4 lzop ninja-build pkg-config python-is-python3 python3-dev python3-jsonschema python3-mako python3-packaging python3-pip python3-pycparser python3-ply python3-yaml rclone rsync schedtool squashfs-tools unzip xorriso xsltproc zip zstd
+run apt-get -qq install -y bc bison build-essential ca-certificates ccache cmake curl flex g++-multilib gcc-multilib gdisk git git-lfs gperf imagemagick lib32readline-dev lib32z1-dev libclang-18-dev libegl1 libelf-dev libglvnd-dev liblapack-dev liblz4-tool libopenblas-dev libpam-pwquality libsdl1.2-dev libssl-dev libxml2 libxml2-utils lz4 lzop ninja-build pkg-config python-is-python3 python3 python3-dev python3-jsonschema python3-mako python3-packaging python3-pip python3-pycparser python3-ply python3-yaml rclone rsync schedtool squashfs-tools unzip xorriso xsltproc zip zstd
 run mkdir -p "$KIT" "$BUILD_WORK_DIR/bin" "$UP/v1"
 run curl -fsSL https://storage.googleapis.com/git-repo-downloads/repo -o "$BUILD_WORK_DIR/bin/repo"
 run chmod a+x "$BUILD_WORK_DIR/bin/repo"
@@ -212,12 +212,18 @@ printf 'AWAI4089_PATCH_COUNT=%s\n' "${PCNT:-0}"
 # .config than the build uses. Flow: patch -> (m merges config +
 # runs olddefconfig) -> m.
 
-# Lunch + v1 build + v1 upload (BEFORE v2; failure in v2 keeps v1).
+# Lunch + v1 build, saved in two stages (BEFORE v2; failure in v2
+# keeps v1). The target-files go to B2 FIRST so a make-tf-disk.sh
+# failure cannot lose them; the disk image follows separately.
 run source build/envsetup.sh
 run breakfast lineage_virtio_x86_64 "$RELEASE_TYPE"
 stage breakfast
 run m target-files-package otatools diskimage-vda
 run cp "$TF_V1_SRC" "$UP/v1/virtio-target-files-v1.zip"
+run mkdir -p "$UP/v1-tf"
+run cp "$UP/v1/virtio-target-files-v1.zip" "$UP/v1-tf/virtio-target-files-v1.zip"
+run rclone copy "$UP/v1-tf" art:awai-os-release-artifacts/awai-virtio-g2/${POOL}/v1/
+stage v1-target-files-upload
 run make-tf-disk.sh "$UP/v1/virtio-target-files-v1.zip" "$PRODUCT_OUT/disk-vda.img" "$UP/v1/virtio-install-image.img"
 run rclone copy "$UP/v1" art:awai-os-release-artifacts/awai-virtio-g2/${POOL}/v1/
 stage v1-upload
