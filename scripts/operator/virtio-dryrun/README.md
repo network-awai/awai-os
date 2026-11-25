@@ -48,16 +48,30 @@ the kit SHA is verified before any use. `RELEASE_TYPE` is one of
 `user`/`userdebug` and has no default — see `release-type.md` for the
 userdebug-first proposal.
 
+Patches are applied through the repository's own apply paths
+(`pc-ab-device/apply.sh`, the lockdown script, `pc-firmware.py`),
+never a hardcoded list, so patches merged to main later (e.g.
+AWAI-4092 Wi-Fi or AWAI-4093 diagnostics) are included automatically.
+At run time `AWAI4089_PATCH_COUNT` records how many patch files were
+present, for comparison against the #504 record (20 = 17 applied /
+2 not applicable / 1 superseded).
+
+Firmware input is the existing `FIRMWARE_GIT` (kernel.org
+linux-firmware at `a2dcb924`, the same REVISION `pc-firmware.py`
+pins); 4092's `rtw89/rtw8851b_fw` (.bin/-1.bin) enters the same input
+via `pc-firmware.py`'s `FIRMWARE` — no new input.
+
 ## Tests
 
 ```sh
 node --test scripts/operator/virtio-dryrun/virtio-dryrun.test.mjs
 ```
 
-Offline: fake `repo`, `git`, `m`, `rclone`, `apt-get`, `curl`,
+Offline: fake `repo`, `git`, `rclone`, `apt-get`, `curl`,
 `ota_from_target_files` (plus `apply.sh`, `apply-shipping-debug-
 lockdown.sh`, `pc-firmware.py`, `updater-feed.py`, `make-tf-disk.sh`
-kit stubs) record argv to a log; both modes are driven and the full
+kit stubs, plus a fake `build/envsetup.sh` defining `breakfast`/`m` as
+shell functions) record argv to a log; both modes are driven and the full
 ordered argv list is asserted (dry-run executes nothing; approved
 executes all) together with every refusal above, `-m default.xml`,
 `path or name` + notdefault keys, and the two OTA commands.

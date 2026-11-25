@@ -149,7 +149,10 @@ run repo manifest -r -o "$UP/pinned-manifest.xml"
 run python3 "$here/check-manifest-revisions.py" "$MANIFEST_FILE" "$UP/pinned-manifest.xml"
 stage sync
 
-# Firmware input for pc-firmware.py prepare (shallow, pinned revision).
+# Firmware input for pc-firmware.py prepare (existing pinned input:
+# kernel.org linux-firmware at a2dcb924, the same REVISION the tool
+# pins; 4092's rtw89/rtw8851b_fw .bin/-1.bin add to this input via
+# pc-firmware.py's FIRMWARE — no NEW input is required).
 run mkdir -p "$BUILD_WORK_DIR/firmware"
 run git init -q "$FIRMWARE_GIT"
 run git -C "$FIRMWARE_GIT" fetch -q --depth 1 https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git a2dcb924f0897368b0b4f305cbf9808cdda90ce0
@@ -161,6 +164,11 @@ run apply-shipping-debug-lockdown.sh "$SRC"
 run pc-firmware.py prepare "$SRC" "$FIRMWARE_GIT"
 run updater-feed.py configure-release "$SRC/packages/apps/Updater" "$AWAI_FEED_URL"
 stage patches
+# Record how many patch files the repo provided at run time (they are
+# time-bearing: patches merged to main later — e.g. AWAI-4092 Wi-Fi or
+# 4093 diagnostics — are included automatically via these paths).
+PCNT=$(ls "$KIT"/pc-ab-device/patches/*.patch 2>/dev/null | wc -l | tr -d ' ' || true)
+printf 'AWAI4089_PATCH_COUNT=%s\n' "${PCNT:-0}"
 
 # Lunch + v1 build + v1 upload (BEFORE v2; failure in v2 keeps v1).
 run source build/envsetup.sh

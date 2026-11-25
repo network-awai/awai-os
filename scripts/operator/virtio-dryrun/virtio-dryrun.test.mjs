@@ -59,6 +59,11 @@ m() { echo "m $*" >> "${fncalls}";
   writeFileSync(kcalls, "");
   mkdirSync(pdb, { recursive: true });
   mkdirSync(join(kit, "android/desktop/manifest"), { recursive: true });
+  // the patch count recorded at run time counts real patch files;
+  // the fixture carries two placeholders so the count is observable.
+  mkdirSync(join(pdb, "patches"), { recursive: true });
+  writeFileSync(join(pdb, "patches", "dummy-a.patch"), "patch not executed in the fixture\n");
+  writeFileSync(join(pdb, "patches", "dummy-b.patch"), "patch not executed in the fixture\n");
   await copyFile(join(repoRoot, "android/desktop/manifest/pinned-manifest.xml"),
     join(kit, "android/desktop/manifest/pinned-manifest.xml"));
   for (const [name, extra] of [
@@ -253,6 +258,7 @@ test("approved mode executes the same ordered command list end to end", async ()
   assert.match(otaLines[0], /-k .*testkey .*virtio-full-ota\.zip$/);
   assert.match(otaLines[1], /-i .*virtio-target-files-v1\.zip .*virtio-incremental-ota\.zip$/);
   // restore verification ran (rclone copy back, then real sha256sum -c)
+  assert.match(r.stdout, /AWAI4089_PATCH_COUNT=2/);
   assert.match(r.stdout, /AWAI4089_RESTORE_VERIFY ok/);
 });
 
