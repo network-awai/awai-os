@@ -1,15 +1,17 @@
 """AWAI-4093: shipping default for LineageStats diagnostics is off.
 
-Host-only. Parses the two Awai patches and asserts they flip exactly the
-first-setup/provider defaults to off, touch nothing else, and are wired into
-apply.sh. It does not build, boot, or fetch upstream code.
+Host-only. Parses the Awai vendor patch and asserts it flips exactly the
+provider default to off, touches nothing else, and is wired into apply.sh.
+SetupWizard's first-setup default is owned by the existing
+scripts/operator/same-build/inputs/setupwizard-awai.patch (same
+LineageSettingsActivity.kt hunk); this suite guards that no second
+SetupWizard patch is shipped here. It does not build, boot, or fetch code.
 """
 from pathlib import Path
 import unittest
 
 HERE = Path(__file__).resolve().parent
 VENDOR_PATCH = HERE / "patches" / "vendor-lineage-stats-default-off.patch"
-SETUPWIZARD_PATCH = HERE / "patches" / "setupwizard-stats-default-off.patch"
 
 
 def files_touched(patch):
@@ -53,32 +55,22 @@ class VendorDefault(unittest.TestCase):
         self.assertIn('<bool name="def_stats_collection">true</bool>', removed)
 
 
-class SetupWizardDefault(unittest.TestCase):
-    def test_only_setupwizard_activity_changes(self):
-        self.assertEqual(files_touched(SETUPWIZARD_PATCH), [
-            "app/src/main/java/org/lineageos/setupwizard/settings/LineageSettingsActivity.kt"])
+class NoSecondSetupWizardPatch(unittest.TestCase):
+    def test_no_setupwizard_patch_shipped(self):
+        # The existing setupwizard-awai.patch owns the first-setup default;
+        # a second patch on the same hunk would collide whichever order lands.
+        self.assertFalse((HERE / "patches" / "setupwizard-stats-default-off.patch").exists())
 
-    def test_absent_key_defaults_unchecked(self):
-        added = "\n".join(patch_added(SETUPWIZARD_PATCH, files_touched(SETUPWIZARD_PATCH)[0]))
-        # && instead of the old !containsKey || form: no bundle key -> unchecked
-        self.assertIn("myPageBundle.containsKey(KEY_SEND_METRICS) && myPageBundle.getBoolean(KEY_SEND_METRICS)", added)
-
-    def test_removed_line_is_the_old_default_on(self):
-        removed = "\n".join(patch_removed(SETUPWIZARD_PATCH, files_touched(SETUPWIZARD_PATCH)[0]))
-        self.assertIn("!myPageBundle.containsKey(KEY_SEND_METRICS) || myPageBundle.getBoolean(KEY_SEND_METRICS)", removed)
-
-    def test_no_string_change(self):
-        # AWAI-3563 owns the wording; this patch only flips the checked default.
-        self.assertNotIn("@string", SETUPWIZARD_PATCH.read_text())
+    def test_apply_sh_has_no_setupwizard_block(self):
+        text = (HERE / "apply.sh").read_text()
+        self.assertNotIn("setupwizard-stats-default-off.patch", text)
+        self.assertNotIn("packages/apps/SetupWizard", text)
 
 
 class ApplyWiring(unittest.TestCase):
-    def test_apply_sh_applies_both(self):
+    def test_apply_sh_applies_vendor_patch(self):
         text = (HERE / "apply.sh").read_text()
         self.assertIn("vendor-lineage-stats-default-off.patch", text)
-        self.assertIn("setupwizard-stats-default-off.patch", text)
-        # SetupWizard block uses the reverse-check gate (one() cannot grep *.kt).
-        self.assertIn("git -C \"$setupwizard\" apply --reverse --check", text)
 
 
 if __name__ == "__main__":
