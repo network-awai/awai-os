@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
 # AWAI-4089 (G2): lineage_virtio_x86_64 Job build definition.
 #
-# Modeled on scripts/operator/same-build/build-inside.sh: runs inside
-# an ubuntu container, `cd "$SRC"`, `source build/envsetup.sh` in the
-# main shell (so `breakfast` and `m` are the build system's functions),
-# then the chain. Dry-run by default: prints the command list and
-# executes nothing. BILLING_ALLOWED=1 AND OWNER_APPROVED=1 executes
-# the same list for real. Anything else refuses.
+# Runs inside an ubuntu container, `cd "$SRC"`, `source
+# build/envsetup.sh` in the main shell (so `breakfast` and `m` are
+# the build system's functions), then the chain. Dry-run by default:
+# prints the command list and executes nothing.
+# BILLING_ALLOWED=1 AND OWNER_APPROVED=1 executes the same list for
+# real. Anything else refuses.
+#
+# The kit (scripts/operator/virtio-dryrun/, android/desktop/manifest/
+# pinned-manifest.xml, pc-ab-device/) is built with
+# scripts/operator/virtio-dryrun/make-kit.sh <commit> (git archive)
+# and fetched here with KIT_URL/KIT_SHA256; its SHA is verified before
+# use, and its manifest is validated before anything else after the
+# download (see below).
 #
 # Env:
 #   DRY_RUN=1              default: print only
@@ -35,17 +42,12 @@ SRC=${SRC:-/root/build/src}
 KIT=${KIT:-"$BUILD_WORK_DIR/kit"}
 UP=${UP:-"$BUILD_WORK_DIR/upload"}
 FIRMWARE_GIT=${FIRMWARE_GIT:-"$BUILD_WORK_DIR/firmware/src"}
-# The kit carries the manifest; fall back to the repo copy for dry-run.
-MANIFEST_FILE=${MANIFEST_FILE:-"$KIT/android/desktop/manifest/pinned-manifest.xml"}
-if [[ ! -f $MANIFEST_FILE ]]; then
-  MANIFEST_FILE="$here/../../.."//android/desktop/manifest/pinned-manifest.xml
-fi
 EXPECTED_MANIFEST_SHA256=61c11f507fa14329229c16a635890b2c6d5f2f4e5a648a77045a09f7f4194d7d
 MIN_DEADLINE_SECONDS=28800
 PRODUCT_OUT="$SRC/out/target/product/virtio_x86_64"
 TF_V1_SRC="$PRODUCT_OUT/obj/PACKAGING/target_files_intermediates/lineage_virtio_x86_64-target_files.zip"
 TESTKEY="$SRC/build/make/target/product/security/testkey"
-export SRC BUILD_WORK_DIR KIT UP
+export SRC BUILD_WORK_DIR KIT UP MANIFEST_FILE
 
 # Approval gate.
 if [[ ${DRY_RUN:-} == 1 ]]; then
@@ -93,16 +95,6 @@ if (( APPROVED )); then
 fi
 POOL=${AWAI_POOL_LABEL:-<pool>}
 
-# Validate the pinned manifest input before anything else.
-actual=$(shasum -a 256 "$MANIFEST_FILE" | awk '{print $1}')
-if [[ $actual != "$EXPECTED_MANIFEST_SHA256" ]]; then
-  echo "AWAI4089_REFUSES: pinned manifest SHA-256 differs: got $actual want $EXPECTED_MANIFEST_SHA256" >&2
-  exit 1
-fi
-printf 'AWAI4089_MANIFEST_SHA256_VALIDATED %s %s\n' "$EXPECTED_MANIFEST_SHA256" "$MANIFEST_FILE"
-printf 'AWAI4089_RELEASE_TYPE=%s AWAI4089_DEADLINE_SECONDS=%s AWAI4089_APPROVED=%s\n' \
-  "$RELEASE_TYPE" "$DEADLINE" "$APPROVED"
-
 stage() { printf 'AWAI4089_STAGE=%s %s\n' "$1" "$(date -u +%FT%TZ)"; }
 
 # run: print (dry-run with prefix, approved without) and, in approved
@@ -117,9 +109,9 @@ run() {
   fi
   if (( APPROVED )); then
     case "$first" in
-      source|breakfast|m) eval "$first $*" ;;
-      *"="*) eval "$first $*" ;;
-      *) "$first" "$@" ;;
+      source|breakfast|m) eval "$first $*";;
+      *"="*) eval "$first $*";;
+      *) "$first" "$@";;
     esac
   fi
 }
@@ -132,10 +124,33 @@ run curl -fsSL https://storage.googleapis.com/git-repo-downloads/repo -o "$BUILD
 run chmod a+x "$BUILD_WORK_DIR/bin/repo"
 
 # Kit fetch + SHA-verify BEFORE use (real python3 computes the digest).
-run curl -fsSL "${KIT_URL:-<KIT_URL>}" -o "$BUILD_WORK_DIR/kit.tar.gz"
-run python3 -c 'import hashlib,sys; d=hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest(); sys.exit(0 if d==sys.argv[2] else 1)' "$BUILD_WORK_DIR/kit.tar.gz" "${KIT_SHA256:-<KIT_SHA256>}"
-run tar -xzf "$BUILD_WORK_DIR/kit.tar.gz" -C "$KIT"
-export PATH="$KIT/pc-ab-device:$BUILD_WORK_DIR/bin:$SRC/out/host/linux-x86/bin:$PATH"
+# Skip the download if the kit is already extracted (e.g. by the Job
+# command's own fetch, which verify-then-extracts before calling this
+# script); then never overwrite the running script.
+if [[ -f "$KIT/android/desktop/manifest/pinned-manifest.xml" ]]; then
+  printf 'AWAI4089_KIT_PRESENT %s\n' "$KIT"
+else
+  run curl -fsSL "${KIT_URL:-<KIT_URL>}" -o "$BUILD_WORK_DIR/kit.tar.gz"
+  run python3 -c 'import hashlib,sys; d=hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest(); sys.exit(0 if d==sys.argv[2] else 1)' "$BUILD_WORK_DIR/kit.tar.gz" "${KIT_SHA256:-<KIT_SHA256>}"
+  run tar -xzf "$BUILD_WORK_DIR/kit.tar.gz" -C "$KIT"
+fi
+
+# The kit carries the manifest; fall back to the repo copy for dry-run
+# before a kit exists.
+MANIFEST_FILE=${MANIFEST_FILE:-"$KIT/android/desktop/manifest/pinned-manifest.xml"}
+if [[ ! -f $MANIFEST_FILE ]]; then
+  MANIFEST_FILE="$here/../../.."//android/desktop/manifest/pinned-manifest.xml
+fi
+export MANIFEST_FILE
+actual=$(shasum -a 256 "$MANIFEST_FILE" | awk '{print $1}')
+if [[ $actual != "$EXPECTED_MANIFEST_SHA256" ]]; then
+  echo "AWAI4089_REFUSES: pinned manifest SHA-256 differs: got $actual want $EXPECTED_MANIFEST_SHA256" >&2
+  exit 1
+fi
+printf 'AWAI4089_MANIFEST_SHA256_VALIDATED %s %s\n' "$EXPECTED_MANIFEST_SHA256" "$MANIFEST_FILE"
+printf 'AWAI4089_RELEASE_TYPE=%s AWAI4089_DEADLINE_SECONDS=%s AWAI4089_APPROVED=%s\n' \
+  "$RELEASE_TYPE" "$DEADLINE" "$APPROVED"
+export PATH="$PATH:$KIT/pc-ab-device:$BUILD_WORK_DIR/bin:$SRC/out/host/linux-x86/bin"
 
 # Git identity, then sync from $SRC.
 run git config --global user.email virtio-g2@awai.network
@@ -153,9 +168,11 @@ stage sync
 # kernel.org linux-firmware at a2dcb924, the same REVISION the tool
 # pins; 4092's rtw89/rtw8851b_fw .bin/-1.bin add to this input via
 # pc-firmware.py's FIRMWARE — no NEW input is required).
+# kernel.org has no server filter for kernel.org's small-repo clone;
+# allow 20 minutes for the fetch (no low-speed limit abort).
 run mkdir -p "$BUILD_WORK_DIR/firmware"
 run git init -q "$FIRMWARE_GIT"
-run git -C "$FIRMWARE_GIT" fetch -q --depth 1 https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git a2dcb924f0897368b0b4f305cbf9808cdda90ce0
+run timeout 20m git -C "$FIRMWARE_GIT" fetch -q --depth 1 https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git a2dcb924f0897368b0b4f305cbf9808cdda90ce0
 run git -C "$FIRMWARE_GIT" checkout -q FETCH_HEAD
 
 # Repo's own apply tools, in repo order. No second explicit list.
