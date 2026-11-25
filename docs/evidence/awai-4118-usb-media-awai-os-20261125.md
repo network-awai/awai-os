@@ -21,7 +21,7 @@ apex の文書は変更していない。
 
 | # | 問い | 判定 |
 | --- | --- | --- |
-| 1 | 製品 config は USB mass storage を扱うか | **一部確認済み / 実 image は未測定**。vold の source は pin されている。USB 用の fstab entry、vold を起動する init rc、USB host / usb-storage の kernel 設定は repo に無い。 |
+| 1 | 製品 config は USB mass storage を扱うか | **静的調査済み / 実 image は未測定**。調査対象の製品ファイルでは USB mass storage の明示設定は見つからなかった。vold は、disk source に一致する媒体を個別の fstab entry がなくても検出できる。上流の defconfig、実効 kernel 設定、ビルド済み image での USB の動作は未確認。 |
 | 2 | アプリ可視経路 | **未測定（設計を満たす経路は未実装）**。通常アプリの標準経路は SAF だが §21.2 が不可とする。FUSE の `/storage/<uuid>` + `MANAGE_EXTERNAL_STORAGE` は候補だが、Awai アプリは宣言しておらず、Drive の実装は別 repo。raw `/mnt/media_rw` は DAC で隔離され、raw block を開く特権 daemon も repo に無い。 |
 | 3 | ext4 USB を挿したときの挙動 | **コード経路は確認済み / image は未測定**。pin した vold は ext4 public volume を `/mnt/media_rw/<uuid>` に RW mount し、`sdcard_posix` label を付け、FUSE で `/storage/<uuid>` に出す。実際に挿して mount した記録は無い。 |
 | 4 | 特権 daemon / 特権アプリを足す場合 | **未測定（変更は未実装）**。system/priv-app + privapp-permissions + SELinux + OTA/A-B + 署名の全てが必要。`/data` の FBE とは別物。 |
@@ -102,16 +102,21 @@ share /mnt/vendor/shared 9p ...
 `android/desktop/pc-ab-device/patches/virtio-userdata.patch:6-13` が
 userdata と recovery SD の context を示している。
 
-**未測定**
-
-- AOSP の vold は fstab に載っていない removable media を uevent / blkid で
-  見つけて `PublicVolume` を作る（AOSP 一般論）。したがって fstab に USB 行が
-  無いこと自体は「USB が mount されない」証明ではない。ただし、この image で
-  uevent が届くか、vold が `PublicVolume` を作るかは未測定である。
 - repo の patch 適用記録 `patch-applicability-20261125.md:45` は、pin した
   base fstab が 635 bytes で `virtio-userdata.patch` の文脈に一致せず、
   実際には `virtio-userdata-block-checkpoint.patch` が選ばれると記録している。
   どちらも USB entry を持たない。
+
+**確認済み（pin した vold）**
+
+vold は fstab の `voldmanaged` 設定から disk source を登録する。block uevent が
+その disk source に一致すると、媒体ごとの fstab entry がなくてもパーティションを
+調べて `PublicVolume` を作成できる。
+
+**未確認**
+
+この image の実効 fstab に一致する disk source があるか、uevent が届くか、
+vold が `PublicVolume` を作るかは未確認である。
 
 ### 2.3 init rc の vold 起動
 
@@ -135,15 +140,13 @@ userdata と recovery SD の context を示している。
   framebuffer、AMD GPU、AMD platform、HDMI audio だけを持つ。
   `CONFIG_USB`、`CONFIG_USB_XHCI_HCD`、`CONFIG_USB_STORAGE`、`CONFIG_USB_UAS`
   の行は無い。
-- repo に `*defconfig*` は 0 件。`grep -rn 'CONFIG_USB'` も repo 内の
-  patch / 文書には無い。
 
-**未測定**
+**未確認**
 
 - `android/desktop/pc-ab-device/README.md:493` は、PC kernel の base を
-  `gki_defconfig` と virt fragments と書くが、その defconfig は repo に無い。
-  x86_64 の host controller（xHCI）と `usb_storage` / `uas` が実際に
-  built-in / module のどちらで入るかは未測定。
+  `gki_defconfig` と virt fragments としている。上流の defconfig と、fragment を
+  適用した実効 kernel 設定は確認していない。x86_64 の host controller（xHCI）と
+  `usb_storage` / `uas` が組み込まれるか、module として提供されるかは未確認。
 - 参考（**別物**）: `docs/otehon/pc-persistent-install-runbook-20261123.md:102`
   は、pin した **third-party base Live image** の kernel command line で
   `module_blacklist=nvme,nvme_core,ahci,sd_mod,usb_storage,uas` を使い、
@@ -162,8 +165,8 @@ userdata と recovery SD の context を示している。
 | vold の source が pin されている | 確認済み | `pinned-manifest.xml:1012` |
 | vold が AOSP 標準 product に入る | 確認済み（上流） | pinned `base_system.mk:308` |
 | この image で vold が起動する | 未測定 | repo に製品 makefile / rc が無い |
-| fstab に USB entry が無い | 確認済み | pinned fstab:1-9、`virtio-userdata.patch:6-13` |
-| USB host / usb-storage の kernel 設定 | 未測定 | `awai-pc.config:30-47` に無い。defconfig は repo に無い |
+| 調査対象の fstab に USB entry が無い | 確認済み | pinned fstab:1-9、`virtio-userdata.patch:6-13` |
+| USB host / usb-storage の kernel 設定 | 未確認 | `awai-pc.config:30-47` に明示設定なし。上流の defconfig と実効 kernel 設定は未確認 |
 | USB を挿して mount される | 未測定 | 実機 / VM の記録が無い |
 
 ## 3. アプリ可視経路
@@ -493,6 +496,7 @@ pin した上流（ローカルツリーではない。revision は
 `android/desktop/manifest/pinned-manifest.xml`）:
 
 - `LineageOS/android_system_vold` `11d8982f824d52e8122c7aa732207ba66b8f23c8`
+  - `main.cpp:241-301`、`VolumeManager.cpp:201-244`、`model/Disk.cpp:421-454`
   - `model/PublicVolume.cpp:127,134,143,148,157,178,271-276`
   - `model/Ext4.cpp:56-61,135,154-155,199`
   - `model/Ntfs.cpp:33-41`
