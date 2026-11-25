@@ -154,6 +154,8 @@ function envFor(stub, work, extra = {}) {
     KIT_SHA256: "0".repeat(64),
     RELEASE_TYPE: "userdebug",
     AWAI_FEED_URL: "https://feed.example/ota.json",
+    // #523's fail-closed apps guard: every run names a mode.
+    AWAI_WITHOUT_APPS: "1",
     AWAI_POOL_LABEL: "awai-pc-release-test000000",
     ...extra,
   };
@@ -324,6 +326,7 @@ test("Job command from empty dir runs the extracted kit to restore (real kit)", 
   const gen = await run("bash", [jobScript], {
     BUILD_WORK_DIR: work,
     BILLING_ALLOWED: "1", OWNER_APPROVED: "1", RELEASE_TYPE: "userdebug",
+    AWAI_WITHOUT_APPS: "1",
     AWAI_FEED_URL: "https://feed.example/ota.json",
     AWAI_VKE_NODE_POOL: "awai-pc-release-012345abcdef",
     KIT_URL: "https://example.invalid/kit.tar.gz", KIT_SHA256: kitInfo.kitSha,
@@ -363,7 +366,8 @@ m() { echo "m $*" >> "${fncalls}";
     PATH: `${stub.dir}:${process.env.PATH}`,
     BUILD_WORK_DIR: work, SRC: src, KIT: join(work, "kit"),
     KIT_URL: "https://example.invalid/kit.tar.gz", KIT_SHA256: kitInfo.kitSha,
-    RELEASE_TYPE: "userdebug", AWAI_FEED_URL: "https://feed.example/ota.json",
+    RELEASE_TYPE: "userdebug", AWAI_WITHOUT_APPS: "1",
+    AWAI_FEED_URL: "https://feed.example/ota.json",
     AWAI_POOL_LABEL: "awai-pc-release-012345abcdef",
     BILLING_ALLOWED: "1", OWNER_APPROVED: "1",
   };
@@ -484,11 +488,100 @@ test("RELEASE_TYPE required and explicit; deadline minimum 28800", async () => {
   assert.match(r.stderr, /AWAI_VIRTIO_DEADLINE_SECONDS must be >= 28800/);
 });
 
+test("apps mode is explicit: neither, both, or without-apps on user refuse", async () => {
+  const stub = stubPath(join(tmpdir(), "apps-"), undefined);
+  const work = join(tmpdir(), "appswork-");
+  const base = { ...envFor(stub, work), DRY_RUN: "1" };
+  let r = await run("bash", [buildInside], { ...base, AWAI_WITHOUT_APPS: "" });
+  assert.equal(r.code, 2);
+  assert.match(r.stderr, /AWAI4094_REFUSES: an explicit apps mode is required/);
+  r = await run("bash", [buildInside], { ...base, AWAI_HOME_APK: "/tmp/AwaiHome.apk" });
+  assert.equal(r.code, 2);
+  assert.match(r.stderr, /mutually exclusive/);
+  r = await run("bash", [buildInside], { ...base, RELEASE_TYPE: "user" });
+  assert.equal(r.code, 2);
+  assert.match(r.stderr, /AWAI_WITHOUT_APPS=1 is refused for RELEASE_TYPE=user/);
+  // userdebug + without-apps passes: exactly one recorded line
+  r = await run("bash", [buildInside], base);
+  assert.equal(r.code, 0, r.stderr);
+  const lines = r.stdout.split("\n").filter((l) => l.startsWith("AWAI4094_APPS: "));
+  assert.deepEqual(lines, ["AWAI4094_APPS: without-apps (evaluation)"]);
+  assert.equal(stub.calls(), "");
+});
+
+test("prebuilt apps mode requires all five values and records the expected signers", async () => {
+  const stub = stubPath(join(tmpdir(), "pre-"), undefined);
+  const work = join(tmpdir(), "prework-");
+  const home = "a".repeat(64), store = "b".repeat(64);
+  const base = {
+    ...envFor(stub, work), DRY_RUN: "1", AWAI_WITHOUT_APPS: "",
+    AWAI_HOME_APK: "/tmp/AwaiHome.apk", AWAI_STORE_APK: "/tmp/AwaiStore.apk",
+    AWAI_HOME_EXPECTED_SIGNER_SHA256: home,
+    AWAI_STORE_EXPECTED_SIGNER_SHA256: store,
+    AWAI_APKSIGNER: "/usr/bin/apksigner",
+  };
+  // four of five is not a mode
+  let r = await run("bash", [buildInside], { ...base, AWAI_APKSIGNER: "" });
+  assert.equal(r.code, 2);
+  assert.match(r.stderr, /requires all five values \(missing: AWAI_APKSIGNER\)/);
+  r = await run("bash", [buildInside], base);
+  assert.equal(r.code, 0, r.stderr);
+  assert.match(r.stdout, new RegExp(`^AWAI4094_APPS: prebuilt home=${home} store=${store}$`, "m"));
+  assert.match(r.stdout, /\[dry-run\] cp \/tmp\/AwaiHome\.apk .*\/device\/virt\/virtio-common\/awai-apps\/AwaiHome\.apk/);
+  assert.match(r.stdout, /\[dry-run\] cp \/tmp\/AwaiStore\.apk .*\/device\/virt\/virtio-common\/awai-apps\/AwaiStore\.apk/);
+  assert.equal(stub.calls(), "");
+});
+
+test("prebuilt apps mode copies the APKs into the device tree for the build", async () => {
+  const kitInfo = await extractedRealKit();
+  const work = mkdtempSync(join(tmpdir(), "g2apps-"));
+  const fncalls = join(work, "fncalls.log");
+  writeFileSync(fncalls, "");
+  const src = join(work, "src");
+  mkdirSync(join(src, "build"), { recursive: true });
+  writeFileSync(join(src, "build", "envsetup.sh"),
+    `breakfast() { local t=$1 v=\${2:-userdebug}; echo "lunch lineage_$t-ap3a-$v" >> "${fncalls}"; }
+m() { echo "m $*" >> "${fncalls}";
+  echo "home-signer=\${AWAI_HOME_EXPECTED_SIGNER_SHA256:-} store-signer=\${AWAI_STORE_EXPECTED_SIGNER_SHA256:-} apksigner=\${AWAI_APKSIGNER:-} without=\${AWAI_WITHOUT_APPS:-}" >> "${fncalls}";
+  mkdir -p "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates"
+  echo tf > "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates/lineage_virtio_x86_64-target_files.zip"
+  echo stock > "$SRC/out/target/product/virtio_x86_64/disk-vda.img"
+}
+`);
+  const apkDir = mkdtempSync(join(tmpdir(), "g2apk-"));
+  const homeApk = join(apkDir, "AwaiHome.apk");
+  const storeApk = join(apkDir, "AwaiStore.apk");
+  const signerStub = join(apkDir, "apksigner");
+  writeFileSync(homeApk, "home-apk\n");
+  writeFileSync(storeApk, "store-apk\n");
+  writeFileSync(signerStub, "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+  const stub = stubPath(work, kitInfo.kitTar);
+  const env = envFor(stub, work, {
+    SRC: src, KIT: kitInfo.kit, KIT_SHA256: kitInfo.kitSha,
+    BILLING_ALLOWED: "1", OWNER_APPROVED: "1", AWAI_WITHOUT_APPS: "",
+    AWAI_HOME_APK: homeApk, AWAI_STORE_APK: storeApk,
+    AWAI_HOME_EXPECTED_SIGNER_SHA256: "a".repeat(64),
+    AWAI_STORE_EXPECTED_SIGNER_SHA256: "b".repeat(64),
+    AWAI_APKSIGNER: signerStub,
+  });
+  const r = await run("bash", [join(kitInfo.kit, "scripts/operator/virtio-dryrun/build-inside.sh")], env, 120000);
+  assert.equal(r.code, 0, r.stderr);
+  assert.match(r.stdout, /AWAI4094_APPS: prebuilt home=a{64} store=b{64}/);
+  const appsDir = join(src, "device/virt/virtio-common/awai-apps");
+  assert.equal(readFileSync(join(appsDir, "AwaiHome.apk"), "utf8"), "home-apk\n");
+  assert.equal(readFileSync(join(appsDir, "AwaiStore.apk"), "utf8"), "store-apk\n");
+  const fb = readFileSync(fncalls, "utf8");
+  assert.match(fb, /m target-files-package otatools diskimage-vda/);
+  // the build receives the signer inputs and no without-apps escape
+  assert.match(fb, new RegExp(`home-signer=${"a".repeat(64)} store-signer=${"b".repeat(64)} apksigner=${signerStub} without=$`, "m"));
+  assert.match(r.stderr + r.stdout, /AWAI4089_DONE approved=1/);
+});
+
 test("pinned manifest SHA validated before anything else", async () => {
   const bad = join(tmpdir(), "bad.xml");
   writeFileSync(bad, "<manifest/>\n");
   const r = await run("bash", [buildInside],
-    { DRY_RUN: "1", RELEASE_TYPE: "userdebug", AWAI_FEED_URL: "x", MANIFEST_FILE: bad });
+    { DRY_RUN: "1", RELEASE_TYPE: "userdebug", AWAI_FEED_URL: "x", AWAI_WITHOUT_APPS: "1", MANIFEST_FILE: bad });
   assert.equal(r.code, 1);
   assert.match(r.stderr, /AWAI4089_REFUSES: pinned manifest SHA-256 differs/);
   // the manifest is validated from the (fetched) kit, before any
@@ -625,7 +718,8 @@ test("job definition prints Job JSON (toolchain-first; kit fetch inside Job comm
   writeFileSync(join(fakeDir, "kubectl"),
     `#!/bin/sh\necho "kubectl $*" >> "${callsFile}"\nexit 99\n`, { mode: 0o755 });
   const r = await run("bash", [jobScript], {
-    DRY_RUN: "1", RELEASE_TYPE: "userdebug", AWAI_FEED_URL: "https://feed.example/ota.json",
+    DRY_RUN: "1", RELEASE_TYPE: "userdebug", AWAI_WITHOUT_APPS: "1",
+    AWAI_FEED_URL: "https://feed.example/ota.json",
     AWAI_VKE_NODE_POOL: "awai-pc-release-012345abcdef",
     PATH: `${fakeDir}:${process.env.PATH}`,
     KIT_URL: "https://example.invalid/kit.tar.gz", KIT_SHA256: "0".repeat(64),
@@ -643,6 +737,9 @@ test("job definition prints Job JSON (toolchain-first; kit fetch inside Job comm
   assert.equal(job.spec.activeDeadlineSeconds, 28800);
   const env = Object.fromEntries(job.spec.template.spec.containers[0].env.map((e) => [e.name, e.value]));
   assert.equal(env.AWAI_POOL_LABEL, "awai-pc-release-012345abcdef");
+  // apps mode reaches the container env and the Job labels
+  assert.equal(env.AWAI_WITHOUT_APPS, "1");
+  assert.equal(job.metadata.labels["awai.network/apps-mode"], "without-apps");
   assert.equal(readFileSync(callsFile, "utf8"), "");
 });
 
@@ -656,4 +753,35 @@ test("job definition refuses without approval, RELEASE_TYPE, or pool", async () 
   r = await run("bash", [jobScript], { DRY_RUN: "1", RELEASE_TYPE: "user", AWAI_FEED_URL: "x" });
   assert.equal(r.code, 1);
   assert.match(r.stderr, /AWAI_VKE_NODE_POOL/);
+});
+
+test("job definition requires an explicit apps mode and carries it", async () => {
+  const base = {
+    DRY_RUN: "1", RELEASE_TYPE: "userdebug", AWAI_FEED_URL: "https://feed.example/ota.json",
+    AWAI_VKE_NODE_POOL: "awai-pc-release-012345abcdef",
+    AWAI_POOL_LABEL: "awai-pc-release-012345abcdef",
+  };
+  // neither mode
+  let r = await run("bash", [jobScript], base);
+  assert.equal(r.code, 2);
+  assert.equal(r.stdout, "");
+  assert.match(r.stderr, /AWAI4094_REFUSES: an explicit apps mode is required/);
+  // without-apps on user
+  r = await run("bash", [jobScript], { ...base, RELEASE_TYPE: "user", AWAI_WITHOUT_APPS: "1" });
+  assert.equal(r.code, 2);
+  assert.match(r.stderr, /AWAI_WITHOUT_APPS=1 is refused for RELEASE_TYPE=user/);
+  // prebuilt: all five values reach the container env
+  const prebuilt = {
+    AWAI_HOME_APK: "/apks/AwaiHome.apk", AWAI_STORE_APK: "/apks/AwaiStore.apk",
+    AWAI_HOME_EXPECTED_SIGNER_SHA256: "a".repeat(64),
+    AWAI_STORE_EXPECTED_SIGNER_SHA256: "b".repeat(64),
+    AWAI_APKSIGNER: "/usr/bin/apksigner",
+  };
+  r = await run("bash", [jobScript], { ...base, ...prebuilt });
+  assert.equal(r.code, 0, r.stderr);
+  const job = JSON.parse(r.stdout);
+  const env = Object.fromEntries(job.spec.template.spec.containers[0].env.map((e) => [e.name, e.value]));
+  for (const [k, v] of Object.entries(prebuilt)) assert.equal(env[k], v, k);
+  assert.equal(env.AWAI_WITHOUT_APPS, "");
+  assert.equal(job.metadata.labels["awai.network/apps-mode"], "prebuilt");
 });

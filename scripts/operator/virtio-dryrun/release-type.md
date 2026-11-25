@@ -27,3 +27,28 @@ successful boot and full+incremental OTA apply in KVM, the debug
 route is switched per the lockdown patch set, and the same Job with
 `RELEASE_TYPE=user` builds the sealing image. Until that point, no
 `user` OTA is expected or claimed.
+
+## Environment table
+
+| Variable | Required | Meaning |
+| --- | --- | --- |
+| `RELEASE_TYPE` | always | `user` or `userdebug`; no default (`build-inside.sh`, `virtio-job.sh`). |
+| `AWAI_WITHOUT_APPS` | one apps mode | `1` = evaluation build; no Awai Home/Store. Refused with `RELEASE_TYPE=user`. |
+| `AWAI_HOME_APK` | prebuilt mode | path to the Awai Home APK (not committed here). |
+| `AWAI_STORE_APK` | prebuilt mode | path to the Awai Store APK (not committed here). |
+| `AWAI_HOME_EXPECTED_SIGNER_SHA256` | prebuilt mode | expected Home signer digest (lowercase hex). |
+| `AWAI_STORE_EXPECTED_SIGNER_SHA256` | prebuilt mode | expected Store signer digest (lowercase hex). |
+| `AWAI_APKSIGNER` | prebuilt mode | host `apksigner` the #523 guard runs. |
+
+Exactly one apps mode is required. `AWAI_WITHOUT_APPS=1` and any of the
+five prebuilt values together are refused; neither is refused. The
+chosen mode is printed once per run as `AWAI4094_APPS: …`. With
+`RELEASE_TYPE=user` the only accepted mode is prebuilt: the guard
+refuses `AWAI_WITHOUT_APPS=1` on release builds, and this Job refuses
+it earlier.
+
+The same guard applies to the planned **arm64** and **TV** targets.
+No Job for them exists in this repository (**undefined; required when
+one is created**); each must select and record an apps mode the same
+way (`RELEASE_TYPE`/`AWAI4094_APPS`), or every build stops in the
+guard.
