@@ -15,15 +15,17 @@ REVISION = "a2dcb924f0897368b0b4f305cbf9808cdda90ce0"
 OVERLAY = Path("vendor/awai/pc-firmware")
 MAINLINE_REALTEK = Path("external/linux-firmware-mainline/firmware/r8168")
 DEVICE = Path("device/virt/virtio_x86_64")
-DEVICE_REVISION = "50dc14712023705ccf477af49a27ef9109b54d19"
+DEVICE_REVISION = "0e8571a0d7fce749856e9dea72e99a8a83f8f9b4"
 PRODUCT = DEVICE / "lineage_virtio_x86_64.mk"
 PATCHES = Path(__file__).resolve().parent / "patches"
 # The Radeon entry, then the factory default that selects it on an AMD GPU without a virtio GPU.
 RADEON_PATCHES = (PATCHES / "virtio-x86-64-awai-radeon.patch", PATCHES / "virtio-x86-64-awai-radeon-default.patch")
 PRODUCT_MARKER = "PRODUCT_NAME := lineage_virtio_x86_64\n"
 INCLUDE = f"$(call inherit-product, {OVERLAY}/firmware.mk)\n"
-NOTICES = ("LICENSES/LICENSE.amdgpu", "LICENSES/LICENSE.r8169", "WHENCE")
-FIRMWARE = re.compile(r"(amdgpu/(yellow_carp_[a-z0-9_]+|vcn_3_1_2)\.bin|rtl_nic/rtl8168[a-z0-9-]+\.fw)")
+NOTICES = ("LICENSES/LICENSE.amdgpu", "LICENSES/LICENSE.r8169", "LICENSES/LICENCE.rtlwifi_firmware.txt", "WHENCE")
+# AWAI-4092: rtw89/rtw8851b_fw.bin only. At kernel/virt/virtio 604b22fb,
+# RTW8851B_FW_FORMAT_MAX is 0, so the driver never requests rtw8851b_fw-1.bin.
+FIRMWARE = re.compile(r"(amdgpu/(yellow_carp_[a-z0-9_]+|vcn_3_1_2)\.bin|rtl_nic/rtl8168[a-z0-9-]+\.fw|rtw89/rtw8851b_fw\.bin)")
 
 
 def git(repository, *args):
@@ -31,9 +33,9 @@ def git(repository, *args):
 
 
 def pinned_files(repository):
-    paths = git(repository, "ls-tree", "-r", "--name-only", REVISION, "amdgpu", "rtl_nic")
+    paths = git(repository, "ls-tree", "-r", "--name-only", REVISION, "amdgpu", "rtl_nic", "rtw89")
     binaries = [path for path in paths.decode().splitlines() if FIRMWARE.fullmatch(path)]
-    if len(binaries) != 26:
+    if len(binaries) != 27:
         raise ValueError("unexpected firmware selection in the pinned tree")
     archive = git(repository, "archive", REVISION, *binaries, *NOTICES)
     with tarfile.open(fileobj=io.BytesIO(archive), mode="r:") as source:

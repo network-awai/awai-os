@@ -139,5 +139,104 @@ class InstallPreflightTest(unittest.TestCase):
 
 
 
+class UserdataSizingTest(unittest.TestCase):
+    """AWAI-4091: remaining-based userdata sizing with an explicit override."""
+
+    SRC_NAMES = ["EFI", "super", "persist", "firmware",
+                 "vendor_boot_a", "vendor_boot_b", "boot_a", "boot_b"]
+
+    def _source_parts(self):
+        parts, cur = [], 2048
+        for i, name in enumerate(self.SRC_NAMES, 1):
+            parts.append({"number": i, "start": cur, "end": cur + 7,
+                          "type": "EF00" if name == "EFI" else "8300",
+                          "name": name})
+            cur += 2048
+        return parts
+
+    def _make_plan(self, first, last, existing, userdata_gib):
+        with TemporaryDirectory() as folder:
+            source = Path(folder) / "source.img"
+            target = Path(folder) / "target.img"
+            source.touch()
+            target.touch()
+            with patch.object(installer, "table", side_effect=[
+                (existing, first, last),
+                (self._source_parts(), 34, 4095),
+            ]):
+                return installer.make_plan(target, source, userdata_gib)
+
+    def _userdata_entry(self, plan):
+        for entry in plan["new"]:
+            if entry["name"] == "userdata":
+                return entry
+        raise AssertionError("no userdata partition in plan")
+
+    def test_remaining_based_256gb_disk(self):
+        total_sectors = 256 * (1 << 30) // installer.SECTOR
+        first, last = 34, total_sectors - 34
+        plan = self._make_plan(first, last, [], None)
+        # 8 sourced parts at 8 sectors (aligned 2048 each) + misc 2048 + metadata 65536.
+        self.assertEqual(plan["userdata"],
+                         {"sectors": 534685696, "mode": "remaining",
+                          "requestedGiB": None,
+                          "reserveSectors": installer.USERDATA_RESERVE_SECTORS,
+                          "nonUserdataSectors": 83968,
+                          "freeRangeSectors": 536868831,
+                          "diskFirstUsableSector": first,
+                          "diskLastUsableSector": last,
+                          "diskUsableSectors": last - first + 1,
+                          "diskTotalSectors": last + 1})
+        self.assertEqual(plan["userdataSectors"], 534685696)
+        self.assertEqual(installer.USERDATA_RESERVE_SECTORS, 2097152)
+        self.assertEqual(plan["freeRangeUsed"], [2048, last])
+        entry = self._userdata_entry(plan)
+        self.assertEqual(entry["end"] - entry["start"] + 1, 534685696)
+        self.assertGreater(plan["userdataSectors"], 16 * (1 << 30) // installer.SECTOR)
+
+    def test_default_argument_is_remaining_based(self):
+        total_sectors = 256 * (1 << 30) // installer.SECTOR
+        first, last = 34, total_sectors - 34
+        with TemporaryDirectory() as folder:
+            source = Path(folder) / "source.img"
+            target = Path(folder) / "target.img"
+            source.touch()
+            target.touch()
+            with patch.object(installer, "table", side_effect=[
+                ([], first, last),
+                (self._source_parts(), 34, 4095),
+            ]):
+                plan = installer.make_plan(target, source)
+        self.assertEqual(plan["userdataSectors"], 534685696)
+        self.assertEqual(plan["userdata"]["mode"], "remaining")
+
+    def test_explicit_16_gib_is_preserved(self):
+        total_sectors = 256 * (1 << 30) // installer.SECTOR
+        first, last = 34, total_sectors - 34
+        plan = self._make_plan(first, last, [], 16)
+        self.assertEqual(plan["userdataSectors"], 33554432)
+        self.assertEqual(plan["userdata"]["mode"], "explicit")
+        self.assertEqual(plan["userdata"]["requestedGiB"], 16)
+        self.assertEqual(plan["userdata"]["reserveSectors"], 0)
+        entry = self._userdata_entry(plan)
+        self.assertEqual(entry["end"] - entry["start"] + 1, 33554432)
+
+    def test_refusal_paths_still_hold(self):
+        # Remaining-based on a disk smaller than system + reserve refuses.
+        with self.assertRaisesRegex(SystemExit, "not-enough-free-space"):
+            self._make_plan(34, 4095, [], None)
+        # Explicit 16 GiB on the same tiny disk refuses the same way.
+        with self.assertRaisesRegex(SystemExit, "not-enough-free-space"):
+            self._make_plan(34, 4095, [], 16)
+        # A non-positive explicit size refuses before laying out partitions.
+        with self.assertRaisesRegex(SystemExit, "userdata size must be positive"):
+            self._make_plan(34, 10 ** 9, [], 0)
+        # Name-in-use still refuses in remaining-based mode.
+        existing = [{"number": 1, "start": 2048, "end": 4095,
+                     "type": "8300", "name": "boot_a"}]
+        with self.assertRaisesRegex(SystemExit, "name-in-use"):
+            self._make_plan(34, 10 ** 9, existing, None)
+
+
 if __name__ == "__main__":
     unittest.main()
