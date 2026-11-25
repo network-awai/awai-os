@@ -252,15 +252,15 @@ m() { echo "m $*" >> "${fncalls}";
     "repo manifest -r",
     "git init -q",
     "git -C",
-    // SetupWizard patches: reverse-check (fake git must report it not
-    // yet applied, so this succeeds only if the script would apply).
-    "git -C <work>/src/packages/apps/SetupWizard apply --reverse --check <work>/kit/setupwizard-patches/setupwizard-awai.patch",
-    "git -C <work>/src/packages/apps/SetupWizard apply <work>/kit/setupwizard-patches/setupwizard-awai.patch",
+    // SetupWizard patches: reverse-check (fake git reports it not yet
+    // applied, so the script proceeds with git apply).
+    "git -C <src>/packages/apps/SetupWizard apply --reverse --check <kit>/setupwizard-patches/setupwizard-awai.patch",
+    "git -C <src>/packages/apps/SetupWizard apply <kit>/setupwizard-patches/setupwizard-awai.patch",
   ];
   let pos = -1;
   for (const snippet of order) {
     // expand path placeholders to this run's dirs
-    const expanded = snippet.replaceAll("<work>", work);
+    const expanded = snippet.replaceAll("<src>", src).replaceAll("<kit>", kitInfo.kit);
     const i = fcalls.indexOf(expanded);
     assert.ok(i > pos, `${snippet} out of order or missing (pos ${pos}, found ${i})`);
     pos = i;
