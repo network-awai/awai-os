@@ -12,15 +12,14 @@ import app.tauri.annotation.TauriPlugin
 import app.tauri.plugin.Plugin
 import app.tauri.plugin.Invoke
 import app.tauri.plugin.JSObject
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 @TauriPlugin
 class InferenceClientPlugin(private val owner:Activity):Plugin(owner){
  private val provider="network.awai.murakumo"
- private val busy=AtomicBoolean(false)
  // The request this app opened a provider Activity for. Only this exact id may reach the provider's
- // cancel, so a stale or foreign requestId cannot stop another job.
- @Volatile private var running:String?=null
+ // cancel. Its presence also holds the busy slot until the Activity returns.
+ private val running=AtomicReference<String?>(null)
  private fun available():Boolean=try{
   val pm=owner.packageManager;pm.getPackageInfo(provider,0)
   val p=pm.getPermissionInfo("network.awai.permission.LOCAL_INFERENCE",0)
@@ -41,18 +40,17 @@ class InferenceClientPlugin(private val owner:Activity):Plugin(owner){
   if(action!="generate"||a.optString("schema")!="awai.inference.request.v1"||a.optString("modality") !in setOf("text","image")){invoke.reject("unsupported-request");return}
   val prompt=a.optString("prompt");val id=a.optString("requestId");val raw=a.opt("maxTokens")
   if(prompt.isBlank()||prompt.toByteArray(Charsets.UTF_8).size>8192||!id.matches(Regex("[a-f0-9-]{36}"))||raw !is Number||raw.toDouble()%1!=0.0||raw.toInt() !in 1..256){invoke.reject("invalid-request");return}
-  if(!busy.compareAndSet(false,true)){invoke.reject("busy");return}
-  running=id
-  try{startActivityForResult(invoke,Intent().setComponent(ComponentName(provider,"$provider.InferenceRequestActivity")).putExtra("schema","awai.inference.request.v1").putExtra("modality",a.optString("modality")).putExtra("prompt",prompt).putExtra("maxTokens",raw.toInt()).putExtra("requestId",id),"generated")}catch(e:Exception){busy.set(false);running=null;invoke.reject("provider-unavailable")}
+  if(!running.compareAndSet(null,id)){invoke.reject("busy");return}
+  try{startActivityForResult(invoke,Intent().setComponent(ComponentName(provider,"$provider.InferenceRequestActivity")).putExtra("schema","awai.inference.request.v1").putExtra("modality",a.optString("modality")).putExtra("prompt",prompt).putExtra("maxTokens",raw.toInt()).putExtra("requestId",id),"generated")}catch(e:Exception){running.set(null);invoke.reject("provider-unavailable")}
  }
  /** Forward a cancel to the provider only for the request this app is running; otherwise no side effect. */
  private fun cancel(invoke:Invoke,id:String){
   if(!id.matches(Regex("[a-f0-9-]{36}"))){invoke.reject("invalid-request");return}
-  if(running!=id||!available()){invoke.resolve(JSObject().put("cancelled",false).put("reason","not-running"));return}
+  if(running.get()!=id||!available()){invoke.resolve(JSObject().put("cancelled",false).put("reason","not-running"));return}
   val cancelled=try{owner.contentResolver.call(Uri.parse("content://$provider.engine"),"cancel",id,null)?.getBoolean("cancelled")==true}catch(e:Exception){false}
   if(cancelled)invoke.resolve(JSObject().put("cancelled",true))else invoke.resolve(JSObject().put("cancelled",false).put("reason","not-running"))
  }
- @ActivityCallback fun generated(invoke:Invoke,result:ActivityResult){busy.set(false);running=null;val data=result.data
+ @ActivityCallback fun generated(invoke:Invoke,result:ActivityResult){running.set(null);val data=result.data
   if(result.resultCode!=Activity.RESULT_OK||data==null){invoke.reject(if(data?.getStringExtra("error")=="cancelled")"inference-cancelled" else "inference-denied-or-unavailable");return}
   if(invoke.getArgs().optString("modality")=="image"){try{receiveImage(invoke,data)}catch(e:Exception){invoke.reject("invalid-provider-image")};return}
   val text=data.getStringExtra("text")?:"";val id=invoke.getArgs().optString("requestId")

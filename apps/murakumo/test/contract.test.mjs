@@ -28,3 +28,40 @@ test('a cancelled generate rejects with the fixed code, a denial keeps its own',
  const denied=createInferenceClient({uuid,invoke:async()=>{throw'inference-denied-or-unavailable';}});
  await assert.rejects(denied.generate({prompt:'hi'}),e=>String(e).includes('inference-denied-or-unavailable'));
 });
+
+test('a public generation handle can cancel a pending result on the same client', async () => {
+ const ids = [uuid(), '22222222-2222-4222-a222-222222222222', '33333333-3333-4333-a333-333333333333'];
+ const [activeId, rejectedId, nextId] = ids;
+ let rejectActive;
+ const client = createInferenceClient({
+  uuid: () => ids.shift(),
+  invoke: async (command, {request}) => {
+   assert.equal(command, 'awai_local_inference');
+   if (request.action === 'cancel') {
+    if (request.requestId !== activeId || !rejectActive) return {cancelled:false, reason:'not-running'};
+    rejectActive('inference-cancelled');
+    rejectActive = undefined;
+    return {cancelled:true};
+   }
+   if (request.requestId === activeId) return new Promise((_, reject) => { rejectActive = reject; });
+   if (rejectActive) throw 'busy';
+   return {schema:'awai.inference.result.v1', requestId:request.requestId, modality:'text', engine:'llama.cpp', text:'next'};
+  }
+ });
+
+ const active = client.startGeneration({prompt:'pending'});
+ assert.equal(active.requestId, activeId);
+ let settled = false;
+ const rejected = assert.rejects(active.result, {message:'inference-cancelled'}).then(() => { settled = true; });
+ const refused = client.startGeneration({prompt:'while busy'});
+ assert.equal(refused.requestId, rejectedId);
+ await assert.rejects(refused.result, error => error === 'busy');
+ assert.deepEqual(await client.cancel(refused.requestId), {cancelled:false, reason:'not-running'});
+ assert.equal(settled, false);
+ assert.deepEqual(await client.cancel(active.requestId), {cancelled:true});
+ await rejected;
+ assert.deepEqual(await client.cancel(active.requestId), {cancelled:false, reason:'not-running'});
+ const next = await client.generate({prompt:'next'});
+ assert.equal(next.requestId, nextId);
+ assert.equal(next.text, 'next');
+});

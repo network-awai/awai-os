@@ -33,7 +33,8 @@ class InferenceStatusProvider:ContentProvider(){
   if(method=="cancel"){
    if(!self&&!Models.trustedCaller(c,pkg))throw SecurityException("caller-denied")
    if(arg==null||extras!=null)throw IllegalArgumentException("unsupported-operation")
-   return Bundle().apply{putBoolean("cancelled",Models.cancelJob(arg))}
+   val caller=if(self)null else requireNotNull(pkg)
+   return Bundle().apply{putBoolean("cancelled",Models.cancelJob(arg,caller))}
   }
   if(!net)throw SecurityException("caller-denied")
   if(method=="usage"&&arg==null&&extras==null)return Bundle().apply{putString("usage",Models.usage(c,forOtherApp=true).toString())}

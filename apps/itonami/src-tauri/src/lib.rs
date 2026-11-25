@@ -79,7 +79,17 @@ async fn awai_agent_transport(app:tauri::AppHandle)->Result<serde_json::Value,St
 #[tauri::command]
 async fn awai_local_inference(app:tauri::AppHandle,request:serde_json::Value)->Result<serde_json::Value,String>{
  if serde_json::to_vec(&request).map_err(|_|"invalid-request")?.len()>32768{return Err("request-limit".into());}
- #[cfg(target_os="android")]{use tauri::Manager;return app.state::<AndroidInferenceClient>().0.run_mobile_plugin_async("operation",request).await.map_err(|_|"local-inference-denied-or-unavailable".into());}
+ #[cfg(target_os="android")]{
+  use tauri::{Manager, plugin::mobile::PluginInvokeError};
+  let generate = request.get("action").and_then(serde_json::Value::as_str) == Some("generate");
+  return app.state::<AndroidInferenceClient>().0.run_mobile_plugin_async("operation",request).await.map_err(|error| {
+   match error {
+    PluginInvokeError::InvokeRejected(response)
+     if generate && response.message.as_deref() == Some("inference-cancelled") => "inference-cancelled".into(),
+    _ => "local-inference-denied-or-unavailable".into(),
+   }
+  });
+ }
  #[cfg(not(target_os="android"))]{let _=app;Err("android-only".into())}
 }
 #[tauri::command]

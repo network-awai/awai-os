@@ -42,24 +42,30 @@
               (.then (fn [r] (when-not (.-readbackVerified r) (throw (js/Error. "advanced-save-keys-renamed"))) (js/console.log "PASS: advanced image and save native JSON keys")))))))
         (.then (fn [_]
                  (let [requests (atom [])
+                       reject-generation (atom nil)
                        invoke (fn [_ args]
                                 (swap! requests conj (js->clj (.parse js/JSON (.stringify js/JSON (aget args "request"))) :keywordize-keys true))
                                 (if (= "cancel" (aget args "request" "action"))
-                                  (js/Promise.resolve (.parse js/JSON "{\"cancelled\":false,\"reason\":\"not-running\"}"))
-                                  (js/Promise.reject "inference-cancelled")))
-                       cancelling (createInferenceClient (js-obj "uuid" (fn [] id) "invoke" invoke))]
-                   (-> (.cancel cancelling id)
-                       (.then (fn [answer]
-                                (when-not (and (= false (.-cancelled answer)) (= "not-running" (.-reason answer)))
+                                  (do (@reject-generation "inference-cancelled")
+                                      (js/Promise.resolve (.parse js/JSON "{\"cancelled\":true}")))
+                                  (js/Promise. (fn [_ reject] (reset! reject-generation reject)))))
+                       cancelling (createInferenceClient (js-obj "uuid" (fn [] id) "invoke" invoke))
+                       handle (.startGeneration cancelling #js {:prompt "public fixture" :modality "text"})
+                       result (.then (.-result handle)
+                                     (fn [_] (throw (js/Error. "cancel-did-not-reject")))
+                                     (fn [error]
+                                       (when-not (= "inference-cancelled" (.-message error))
+                                         (throw (js/Error. "advanced-cancel-code-renamed")))))]
+                   (-> (js/Promise.all #js [result (.cancel cancelling (.-requestId handle))])
+                       (.then (fn [outcomes]
+                                (when-not (true? (.-cancelled (aget outcomes 1)))
                                   (throw (js/Error. "advanced-cancel-answer-renamed")))
-                                (when-not (= [{:action "cancel" :requestId id}] @requests)
+                                (when-not (= [{:action "generate" :schema "awai.inference.request.v1"
+                                               :requestId id :modality "text" :prompt "public fixture" :maxTokens 128}
+                                              {:action "cancel" :requestId id}]
+                                             @requests)
                                   (throw (js/Error. "advanced-cancel-request-renamed")))
-                                (.generate cancelling #js {:prompt "public fixture" :modality "text"})))
-                       (.then (fn [_] (throw (js/Error. "cancel-did-not-reject"))))
-                       (.catch (fn [error]
-                                 (when-not (= "inference-cancelled" (.-message error))
-                                   (throw (js/Error. "advanced-cancel-code-renamed")))
-                                 (js/console.log "PASS: advanced SDK cancel keeps requestId/answer keys and the fixed code")))))))
+                                (js/console.log "PASS: advanced SDK cancels a pending generation using its public request ID")))))))
         (.then (fn [_]
                  (.complete (createSetupState
                               #js {:invoke (fn [_ _] (js/Promise.resolve (.parse js/JSON "{\"schema\":\"awai.setup.state.v1\",\"complete\":true}")))

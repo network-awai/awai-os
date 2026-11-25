@@ -797,6 +797,7 @@ Object.prototype.complete;
 
 // Existing Android/WebCrypto boundaries must retain their names in advanced builds.
 Object.prototype.generate;
+Object.prototype.startGeneration;
 Object.prototype.info;
 Object.prototype.isTrusted;
 Object.prototype.exitCode;
