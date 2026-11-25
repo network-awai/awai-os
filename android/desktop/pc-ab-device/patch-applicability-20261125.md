@@ -1,5 +1,9 @@
 # Patch applicability at pinned SHAs (AWAI-4089 G2) — 2026-11-25
 
+**AWAI-4088 範囲5 / AWAI-4089 の記録** — 適用可否はこの単体の文書に記録する
+（PR 本文だけでは不可）。以下、pinned SHA・対象 project・patch ごとの
+files・コマンド・結果・不適用理由・取得ファイルの sha256 を全てこの文書に含める。
+
 No `repo sync`, no build, no VKE run, no billing, no device, no
 production keys. Only the files the patches touch were fetched, at the
 exact revisions in `android/desktop/manifest/pinned-manifest.xml`
