@@ -1,0 +1,11 @@
+# AWAI-4088 (G1) lineage.dependencies closure. Fetched via raw.githubusercontent at pinned SHAs.
+2026-11-25 device/virt/virtio_x86_64 LineageOS/android_device_virt_virtio_x86_64@0e8571a0d7fce749856e9dea72e99a8a83f8f9b4 -> dependency device/virt/virtio-common (already in overlay)
+2026-11-25 device/virt/virtio-common LineageOS/android_device_virt_virtio-common@9d5c9307434bba31d19030fcc61086efcd248997 -> dependency device/virt/virt-common (already in overlay)
+2026-11-25 device/virt/virt-common LineageOS/android_device_virt_virt-common@5da818292d9a66cf282e909287fdab14eb80711b -> dependencies:
+  device/mainline/common (already in overlay), external/mesa (already in overlay),
+  kernel/mainline/configs (already in overlay), prebuilts/bootmgr (already in overlay),
+  kernel/virt/virtio LineageOS/android_kernel_virt_virtio -> ADDED (was in neither base nor overlay);
+  resolved refs/heads/lineage-24.0 -> 604b22fb250fa279c516eb3329bb74d191e5a14e
+2026-11-25 kernel/virt/virtio LineageOS/android_kernel_virt_virtio@604b22fb250fa279c516eb3329bb74d191e5a14e ->
+  curl raw lineage.dependencies returned HTTP 404 (no lineage.dependencies file); closure stops here.
+Closure additions: 1 (kernel/virt/virtio). No further entries.

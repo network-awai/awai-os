@@ -1,39 +1,61 @@
-# Desktop source manifest snapshot (AWAI-4088, G1)
+# Desktop source manifest snapshot — complete (AWAI-4088, G1)
 
-A resolved Awai overlay manifest for the Desktop product
+A complete, fully-resolved source manifest for the Desktop product
 **`lineage_virtio_x86_64`**, so later builds start from fixed, checkable
 inputs.
 
 - **Snapshot date:** 2026-11-25. This is a **new snapshot**, not a
-  reproduction of the existing 0526 version.
+  reproduction of the 0526 version.
 - **Base manifest repo:** `https://github.com/LineageOS/android.git`, branch
   `lineage-24.0`, commit `913c6baa35ffa32be9ae33368cac69dbec6ead4b`
   (from `git ls-remote https://github.com/LineageOS/android.git
-  refs/heads/lineage-24.0`).
-- **Claim ceiling:** inputs are fixed and resolvable. No claim of
-  buildable, reproducible, or bootable.
+  refs/heads/lineage-24.0`; the committed base files under `base/` match
+  that commit byte-for-byte, see `base/SHA256SUMS`).
+- **Claim ceiling:** inputs are fixed and resolvable — for the **complete**
+  set below. No claim of buildable, reproducible, or bootable.
 
-## Individually resolved projects (16)
+## Why this output exists (Organizer rejection, PR #503)
 
-`pinned-manifest.xml` pins 16 Awai overlay projects at full 40-hex SHAs,
-each from `git ls-remote <url> refs/heads/lineage-24.0` (see `resolve.log`,
-including a second pass re-checking 16/16 MATCH):
+The first version pinned only the 16 Awai overlay projects and described
+the remaining base projects as "pinned by the manifest-repo commit". That
+was false: `default.xml` sets `<default revision="refs/heads/lineage-24.0">`
+and `snippets/lineage.xml` also uses branch names, so two syncs at the same
+manifest commit can fetch different sources. `pinned-manifest.xml` now
+contains **every** project with an explicit 40-hex `revision`; `<default>`
+carries no `revision` and no `<remote>` carries one, so no branch or tag
+can be inherited. `test_complete_manifest.py` fails otherwise.
 
-- the 13 `local_manifests` projects from
-  `scripts/operator/same-build/build-inside.sh` (AWAI-3850), and
-- the 3 `device/virt` projects needed by `lineage_virtio_x86_64`:
-  `virtio_x86_64`, `virt-common`, `virtio-common`. These are not in the
-  default `lineage-24.0` manifest (same situation as
-  `device/mainline/generic` in AWAI-3850); their upstream repo names were
-  found via the GitHub API search for `org:LineageOS` virt repos.
+## Project set: 1260
 
-## Remaining projects
+| Source | Projects |
+| --- | --- |
+| `base/default.xml` (LineageOS/android `913c6baa`) | 1067 |
+| `base/snippets/lineage.xml` | 176 |
+| `base/overlay.xml` (13 `local_manifests` from AWAI-3850 + 3 `device/virt`) | 16 |
+| `lineage.dependencies` closure additions (`kernel/virt/virtio`) | 1 |
+| **Total, no duplicates by path** | **1260** |
 
-Every other project in the base LineageOS manifest is pinned **by the
-manifest-repo commit above**, not by invented per-project SHAs.
-`test_pinned_manifest.py` enforces that every `revision` in
-`pinned-manifest.xml` is a 40-hex SHA (never a branch name) — the network
-resolution lives in `resolve.log`, not in the test.
+Resolution (per project, `resolve.log`): branches →
+`git ls-remote <url> refs/heads/<ref>`; tags → `git ls-remote <url>
+refs/tags/<ref> refs/tags/<ref>^{}` (peeled commit; a lightweight tag
+would be recorded as such — none occurred, all 941 were annotated).
+Counts: **318 branch-resolved** (301 in the base manifolds — 126 in
+`default.xml` + 175 in `lineage.xml` — plus 17 overlay/closure), **941
+tag-resolved**, **1 already 40-hex in base**, **0 unresolved**. Re-ran
+per-project resolution before generating: the 16 overlay SHAs matched the
+earlier session's pins exactly.
+
+## Dependencies closure
+
+`lineage.dependencies` (JSON) was followed recursively at the pinned SHAs
+from the product device tree (`virtio_x86_64` → `virtio-common` →
+`virt-common` → `device/mainline/common`, `external/mesa`,
+`kernel/mainline/configs`, `prebuilts/bootmgr` — all already in the
+overlay — plus `kernel/virt/virtio`). That kernel
+(`LineageOS/android_kernel_virt_virtio` → `604b22fb`) is the one addition
+(its `lineage.dependencies` is HTTP 404 at the pinned SHA, so the closure
+stops). Every step is in `deps.log`; the visited files are committed
+under `base/deps/` and the test asserts every entry is present.
 
 ## Patch applicability
 
@@ -75,10 +97,15 @@ invented. Full commands and outputs are in `resolve.log`.
 
 | File | What |
 | --- | --- |
-| `pinned-manifest.xml` | Awai overlay manifest, 16 projects at 40-hex revisions + base manifest-repo commit |
-| `resolve.log` | per-project URL, ref, resolved SHA, command, UTC timestamp; manifest-repo, repo-init, GitHub-API and B2 notes |
-| `manifest-inputs.sha256` | SHA-256 of `pinned-manifest.xml`, `resolve.log`, and every inventoried patch |
-| `test_pinned_manifest.py` | offline `unittest`: fails if any `revision` is not 40-hex or is a branch name |
+| `pinned-manifest.xml` | Complete manifest: 1260 projects, every `revision` 40-hex, no inheritable `<default>`/`<remote>` revision |
+| `base/default.xml`, `base/snippets/lineage.xml` | Base manifests verbatim at `913c6baa` |
+| `base/overlay.xml` | The 16 overlay projects (13 + 3 `device/virt`) |
+| `base/deps/*.lineage.dependencies.json` | Visited `lineage.dependencies` files at pinned SHAs |
+| `base/SHA256SUMS` | SHA-256 of every file under `base/` |
+| `resolve.log` | Method + per-project URL, ref, resolved SHA, kind, UTC timestamp (1260 lines) |
+| `deps.log` | Dependency-closure steps and closure additions |
+| `manifest-inputs.sha256` | SHA-256 of the manifest, logs, base files and every inventoried patch |
+| `test_complete_manifest.py` | Offline `unittest`: 40-hex everywhere, no inherited branch/tag, coverage vs base+overlay+closure, deps presence, and negative controls (a)-(d) |
 
 ## Not verified
 

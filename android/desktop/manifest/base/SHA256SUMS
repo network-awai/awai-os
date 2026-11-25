@@ -1,0 +1,6 @@
+9774e8b6ea9dcfa0d128e0e1e89bf8356044796724fcbe4bca3a7f00f417a2ed  android/desktop/manifest/base/default.xml
+b8ec31c3426e53e864958941a0137d298ccd471147ad1c7ebc985008df1fd26d  android/desktop/manifest/base/deps/virt-common.lineage.dependencies.json
+1f0d913070e969fe7a4c0da6a95573d725549f85da32a05c45361016e589495e  android/desktop/manifest/base/deps/virtio_x86_64.lineage.dependencies.json
+712e85bef3416688cdb50537b5473d9ab958290a7cb26edf0078acf23efa5316  android/desktop/manifest/base/deps/virtio-common.lineage.dependencies.json
+036237b907ad231876d3985cdec7dc7432b2704702b2f92e2ba93cb782eb5b3e  android/desktop/manifest/base/overlay.xml
+0990115b28a5118e54aa18acc76d8f8c620c1f4070749821119197558e92c374  android/desktop/manifest/base/snippets/lineage.xml
