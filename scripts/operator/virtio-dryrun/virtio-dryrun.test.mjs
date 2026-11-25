@@ -254,7 +254,7 @@ m() { echo "m $*" >> "${fncalls}";
   ];
   let pos = -1;
   for (const snippet of order) {
-    const i = fcalls.indexOf(snippet);
+    const i = fcalls.indexOf(snippet, pos + 1);
     assert.ok(i > pos, `${snippet} out of order or missing (pos ${pos}, found ${i})`);
     pos = i;
   }
