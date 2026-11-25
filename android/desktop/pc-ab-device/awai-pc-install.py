@@ -4,6 +4,10 @@
   awai-pc-install.py plan  <target disk or image> <source disk image> [--userdata-gib N]
   awai-pc-install.py apply <target disk or image> <source disk image> [--userdata-gib N] [--source-sha256 SHA256] --record out.json
 
+Without --userdata-gib, userdata takes the largest free range minus the other
+Awai partitions and USERDATA_RESERVE_SECTORS (AWAI-4091); with --userdata-gib N
+it uses N GiB. `apply` uses the plan's userdata sectors unchanged.
+
 The source is the disk image the build makes (disk-vda.img). Each Awai partition is copied from the
 partition of the same name in it. Nothing is written outside the new partitions and the GPT.
 `plan` writes nothing. `apply` refuses when a name is already used, when the free space is too small, or
@@ -20,6 +24,9 @@ import sys
 
 SECTOR = 512
 ALIGN = 2048
+# AWAI-4091: reserve kept free at the end of the chosen free range in remaining-based
+# sizing. Replaceable in this one place; apply() never recomputes it from the plan.
+USERDATA_RESERVE_SECTORS = (1 << 30) // SECTOR
 # name on the target, name in the source image (None: created empty), fixed partition GUID or None, type code
 LAYOUT = [
     ("awai_esp",      "EFI",           None,                                   "ef00"),
@@ -120,8 +127,10 @@ def free_ranges(parts, first, last):
     return out
 
 
-def make_plan(target, source, userdata_gib):
-    if userdata_gib <= 0:
+def make_plan(target, source, userdata_gib=None):
+    # AWAI-4091: userdata_gib=None means remaining-based sizing (default);
+    # an int (>=1) is explicit and keeps the legacy GiB value.
+    if userdata_gib is not None and userdata_gib <= 0:
         sys.exit("REFUSED userdata size must be positive")
     if os.path.samefile(target, source):
         sys.exit("REFUSED source and target identify the same file or device")
@@ -132,26 +141,57 @@ def make_plan(target, source, userdata_gib):
                    if p["name"].lower() in RESERVED or is_vbmeta_partition(p["name"].lower()))
     if clash:
         sys.exit(f"REFUSED name-in-use: {clash}")
-    need = []
     layout = LAYOUT[:-1] + vbmeta_layout(sparts) + LAYOUT[-1:]
+    need_without_userdata = []
     for name, sname, guid, code in layout:
+        if name == "userdata":
+            continue
         if sname:
             if sname not in src:
                 sys.exit(f"REFUSED source-has-no-partition: {sname}")
             sectors = src[sname]["end"] - src[sname]["start"] + 1
-        elif name == "userdata":
-            sectors = userdata_gib * (1 << 30) // SECTOR
         else:
             sectors = EMPTY_SECTORS[name]
-        need.append((name, sname, guid, code, sectors))
-    total = sum(-(-n[4] // ALIGN) * ALIGN for n in need)
-    best = None
-    for a, b in free_ranges(tparts, tfirst, tlast):
-        a2 = -(-a // ALIGN) * ALIGN
-        if b - a2 + 1 >= total and (best is None or b - a2 > best[1] - best[0]):
-            best = (a2, b)
+        need_without_userdata.append((name, sname, guid, code, sectors))
+    non_userdata_sectors = sum(-(-n[4] // ALIGN) * ALIGN for n in need_without_userdata)
+    free = free_ranges(tparts, tfirst, tlast)
+
+    def aligned_ranges():
+        out = []
+        for a, b in free:
+            a2 = -(-a // ALIGN) * ALIGN
+            if a2 <= b:
+                out.append((a2, b, b - a2 + 1))
+        return out
+
+    def pick_best(total):
+        best = None
+        for a2, b, size in aligned_ranges():
+            if size >= total and (best is None or b - a2 > best[1] - best[0]):
+                best = (a2, b)
+        return best
+
+    if userdata_gib is not None:
+        userdata_mode = "explicit"
+        userdata_sectors = userdata_gib * (1 << 30) // SECTOR
+        reserve_sectors = 0
+    else:
+        userdata_mode = "remaining"
+        reserve_sectors = USERDATA_RESERVE_SECTORS
+        candidates = aligned_ranges()
+        if not candidates:
+            sys.exit(f"REFUSED not-enough-free-space: need {non_userdata_sectors + reserve_sectors + ALIGN} sectors in one free range, free ranges {free}")
+        _, _, largest_size = max(candidates, key=lambda c: c[2])
+        candidate = largest_size - non_userdata_sectors - reserve_sectors
+        if candidate < ALIGN:
+            sys.exit(f"REFUSED not-enough-free-space: need {non_userdata_sectors + reserve_sectors + ALIGN} sectors in one free range, free ranges {free}")
+        userdata_sectors = (candidate // ALIGN) * ALIGN
+    # userdata is last in the layout, so appending preserves placement order.
+    need = need_without_userdata + [("userdata", None, None, "8300", userdata_sectors)]
+    total = non_userdata_sectors + (-(-userdata_sectors // ALIGN) * ALIGN)
+    best = pick_best(total)
     if best is None:
-        sys.exit(f"REFUSED not-enough-free-space: need {total} sectors in one free range, free ranges {free_ranges(tparts, tfirst, tlast)}")
+        sys.exit(f"REFUSED not-enough-free-space: need {total} sectors in one free range, free ranges {free}")
     used = {p["number"] for p in tparts}
     cur, num, new = best[0], 1, []
     for name, sname, guid, code, sectors in need:
@@ -165,8 +205,22 @@ def make_plan(target, source, userdata_gib):
         for p in tparts:
             if not (n["end"] < p["start"] or n["start"] > p["end"]):
                 sys.exit(f"REFUSED overlap: {n['name']} with partition {p['number']}")
+    free_range_sectors = best[1] - best[0] + 1
+    userdata = {
+        "sectors": userdata_sectors,
+        "mode": userdata_mode,
+        "requestedGiB": userdata_gib,
+        "reserveSectors": reserve_sectors,
+        "nonUserdataSectors": non_userdata_sectors,
+        "freeRangeSectors": free_range_sectors,
+        "diskFirstUsableSector": tfirst,
+        "diskLastUsableSector": tlast,
+        "diskUsableSectors": tlast - tfirst + 1,
+        "diskTotalSectors": tlast + 1,
+    }
     return {"schema": "awai.pc.ab-install.plan.v1", "target": os.path.basename(target), "source": os.path.basename(source),
-            "existing": tparts, "freeRangeUsed": list(best), "new": new}
+            "existing": tparts, "freeRangeUsed": list(best), "userdataSectors": userdata_sectors,
+            "userdata": userdata, "new": new}
 
 
 def partition_shape(row):
@@ -279,7 +333,7 @@ def main():
     a = sys.argv[1:]
     if len(a) < 3 or a[0] not in ("plan", "apply"):
         sys.exit(__doc__)
-    gib = int(a[a.index("--userdata-gib") + 1]) if "--userdata-gib" in a else 16
+    gib = int(a[a.index("--userdata-gib") + 1]) if "--userdata-gib" in a else None
     plan = make_plan(a[1], a[2], gib)
     if a[0] == "plan":
         print(json.dumps(plan, indent=2))
