@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # AWAI-4089 (G2): lineage_virtio_x86_64 Job build definition.
 #
+# WARNING: do not run this Job (approved mode) until the G2 B fix PR
+# (breakfast arg, JDK PATH, ROOMSERVICE_DRYRUN, 52Gi) has landed — the
+# original main build fails on paid runs.
+#
 # Runs inside an ubuntu container, `cd "$SRC"`, `source
 # build/envsetup.sh` in the main shell (so `breakfast` and `m` are
 # the build system's functions), then the chain. Dry-run by default:
@@ -118,7 +122,7 @@ run() {
 
 # Toolchain (same list as same-build/workflow.sh) + repo binary.
 run apt-get -qq update
-run apt-get -qq install -y bc bison build-essential ca-certificates ccache cmake curl flex g++-multilib gcc-multilib gdisk git git-lfs gperf imagemagick lib32readline-dev lib32z1-dev libclang-18-dev libegl1 libelf-dev libglvnd-dev liblapack-dev liblz4-tool libopenblas-dev libpam-pwquality libsdl1.2-dev libssl-dev libxml2 libxml2-utils lz4 lzop ninja-build pkg-config python-is-python3 python3 python3-dev python3-jsonschema python3-mako python3-packaging python3-pip python3-pycparser python3-ply python3-yaml rclone rsync schedtool squashfs-tools unzip xorriso xsltproc zip zstd
+run apt-get -qq install -y bc bison build-essential ca-certificates ccache cmake curl flex g++-multilib gcc-multilib gdisk git git-lfs gperf imagemagick lib32readline-dev lib32z1-dev libclang-18-dev libegl1 libelf-dev libglvnd-dev liblapack-dev liblz4-tool libopenblas-dev libpam-pwquality libsdl1.2-dev libssl-dev libxml2 libxml2-utils lz4 openjdk-21-jdk-headless lzop ninja-build pkg-config python-is-python3 python3 python3-dev python3-jsonschema python3-mako python3-packaging python3-pip python3-pycparser python3-ply python3-yaml rclone rsync schedtool squashfs-tools unzip xorriso xsltproc zip zstd
 run mkdir -p "$KIT" "$BUILD_WORK_DIR/bin" "$UP/v1"
 run curl -fsSL https://storage.googleapis.com/git-repo-downloads/repo -o "$BUILD_WORK_DIR/bin/repo"
 run chmod a+x "$BUILD_WORK_DIR/bin/repo"
@@ -153,8 +157,9 @@ printf 'AWAI4089_RELEASE_TYPE=%s AWAI4089_DEADLINE_SECONDS=%s AWAI4089_APPROVED=
 # $BUILD_WORK_DIR/bin comes first: it holds the pinned `repo` this
 # script fetched for itself, which must win over any preinstalled repo.
 # The kit's own tools follow (harness stubs sit ahead via the caller's
-# PATH, so they still shadow them in tests).
-export PATH="$BUILD_WORK_DIR/bin:$PATH:$KIT/pc-ab-device:$SRC/out/host/linux-x86/bin"
+# PATH, so they still shadow them in tests). The prebuilt JDK 21 is
+# needed by ota_from_target_files (ab-ota.sh).
+export PATH="$SRC/prebuilts/jdk/jdk21/linux-x86/bin:$BUILD_WORK_DIR/bin:$PATH:$KIT/pc-ab-device:$SRC/out/host/linux-x86/bin"
 
 # Git identity, then sync from $SRC.
 run git config --global user.email virtio-g2@awai.network
@@ -215,8 +220,12 @@ printf 'AWAI4089_PATCH_COUNT=%s\n' "${PCNT:-0}"
 # Lunch + v1 build, saved in two stages (BEFORE v2; failure in v2
 # keeps v1). The target-files go to B2 FIRST so a make-tf-disk.sh
 # failure cannot lose them; the disk image follows separately.
+# ROOMSERVICE_DRYRUN prevents duplicate external projects; ccache
+# matches ab-build.sh (dir is ephemeral per build).
+run export ROOMSERVICE_DRYRUN=true
+run export USE_CCACHE=1 CCACHE_EXEC=/usr/bin/ccache CCACHE_DIR="$BUILD_WORK_DIR/ccache"
 run source build/envsetup.sh
-run breakfast lineage_virtio_x86_64 "$RELEASE_TYPE"
+run breakfast virtio_x86_64 "$RELEASE_TYPE"
 stage breakfast
 run m target-files-package otatools diskimage-vda
 run cp "$TF_V1_SRC" "$UP/v1/virtio-target-files-v1.zip"

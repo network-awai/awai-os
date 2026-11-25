@@ -1,5 +1,20 @@
 # lineage_virtio_x86_64 Job (AWAI-4089 G2)
 
+> **WARNING: do not run this Job (approved mode) until the G2 B fix PR
+> (breakfast arg, JDK PATH, ROOMSERVICE_DRYRUN, 52Gi) has landed.**
+> The original main build fails on paid runs (double-`lineage_` lunch
+> name, missing JDK 21, roomservice duplication, 64Gi over the
+> vc2-16c-64gb ceiling). Dry-run execution is safe.
+
+Boundary: the **procedure** (`build-inside.sh`: breakfast, JDK,
+ROOMSERVICE_DRYRUN, ccache, patch application, target-files/disk/OTA
+chain) is runtime-agnostic and takes its knobs as environment variables
+(`BUILD_WORK_DIR`, `RELEASE_TYPE`, `AWAI_POOL_LABEL`, `MANIFEST_FILE`,
+`FIRMWARE_GIT`, …). The **VKE frame** (`virtio-job.sh` output: memory,
+CPU, ephemeral-storage, node pool, B2 paths) is the only part that must
+change to move to another execution substrate; minimum conditions live
+in `docs/otehon/g2-build-requirements.md`.
+
 Dry-run by default; executes for real only when
 `BILLING_ALLOWED=1` **and** `OWNER_APPROVED=1`.
 
@@ -91,6 +106,30 @@ pins); 4092's `rtw89/rtw8851b_fw` (.bin/-1.bin) enters the same input
 via `pc-firmware.py`'s `FIRMWARE` — no new input. kernel.org serves
 no filtered clone, so the fetch is bounded by `timeout 20m` (no
 low-speed abort); the Job's 8 h deadline covers it.
+
+Build environment (vs ab-build.sh / ab-ota.sh / same-build):
+- `breakfast virtio_x86_64 "$RELEASE_TYPE"` (Rule: pinned
+  vendor/lineage `5a1814d9` `build/envsetup.sh` maps `breakfast
+  <target> [variant]` to `lunch lineage_<target>-<release>-<variant>`
+  unless the target already ends in `-user/-userdebug/-eng`; the
+  `lineage_lineage_…` form is invalid).
+- 52Gi memory (same-build lowers 64Gi to 52Gi for vc2-16c-64gb).
+- Prebuilt JDK 21 on PATH (`$SRC/prebuilts/jdk/jdk21/linux-x86/bin`,
+  needed by ota_from_target_files; ab-ota.sh line 24) plus
+  `openjdk-21-jdk-headless` in the apt list; `ROOMSERVICE_DRYRUN=true`
+  exported before breakfast (ab-build.sh line 5); ccache enabled
+  (ab-build.sh line 4, ephemeral dir).
+- `-e` is kept: the Job has no polling loops, expected failures are
+  guarded, and breakfast/m must fail loud; the A/B scripts' `-e`-less
+  form serves their grep-polling. `/root/.cargo/bin` is not added: Rust
+  for the build comes from the source-prebuilt (pinned vendor
+  envsetup.sh reads `RUST_VERSION` from
+  `build/soong/rust/config/global.go`), not cargo.
+- The 11-19 kernel need beyond the pinned tree is only the
+  `kernel/virt/virtio` source presence (branch virtio/android17-6.18,
+  ota-reference README); the pinned manifest already pins it, and the
+  4092 kernel config enters via `TARGET_KERNEL_CONFIG_EXT`. No other
+  picked-change record exists in the repo.
 
 ## Tests
 
