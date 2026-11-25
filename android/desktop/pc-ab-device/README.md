@@ -179,7 +179,7 @@ GTK cannot start it says why in one line and continues with the text installer o
 | Path | What |
 | --- | --- |
 | `installer/core.py` | **Every guard and the install sequence** (and the detached `worker` entry). Both front ends call it; neither decides anything. |
-| `installer/controller.py` | front-end-neutral controller: list/confirm -> one-shot ticket -> typed device name -> exactly one detached worker, true install state, power-off question. Unit-tested without GTK. |
+| `installer/controller.py` | front-end-neutral controller: list/confirm -> one-shot ticket -> one in-window confirmation -> exactly one detached worker, true install state, power-off question. Unit-tested without GTK. |
 | `installer/gui.py`, `keys.py`, `strings.py` | the GTK 3 widget tree (CSS from one design unit), the key policy, every Japanese string. |
 | `installer/fonts/`, `assets/` | bundled Noto Sans JP subset (3 static weights, OFL) and the Awai mark. |
 | `installer/text_installer.py` | the text front end (English, on `core.py`). |
@@ -204,7 +204,7 @@ is untouched (Ctrl+Alt+F2 gives the console shell).
 `boot/syslinux/sysresccd_head.cfg` + `sysresccd_sys.cfg`; xorriso maps them with `-overwrite on`. The menu is
 **Install Awai OS** (default, first), **Install Awai OS (text)** (`awai.installer=text`, read by `start.sh`) and
 **Install Awai OS (basic display, nomodeset)**, then the stock custom hook, firmware setup, reboot and power off. Timeout 5 s;
-an unattended boot only reaches the installer screen, which still needs the typed device name. The kernel and initrd lines
+an unattended boot only reaches the installer screen, which still needs the confirmation (the default focus there is やめる). The kernel and initrd lines
 are the stock ones character for character (a test compares them with the stock files), and the text entry adds only
 `awai.installer=text`. Labels are English: GRUB's `font.pf2` and syslinux's menu font are not known to draw Japanese, and
 no base-distribution name appears in menu text (the `archisolabel=RESCUE1303` parameter and `/sysresccd` paths are
@@ -221,7 +221,7 @@ mounted, `wipefs` signatures only `gpt`/`PMBR`, never the device the media direc
 `findmnt` plus `lsblk -s`; if it cannot be resolved every disk is refused). Every disk is listed; the ones that fail are
 `選択不可` with the reason. There is no erase operation anywhere.
 
-Order of `run_install`: typed device name == target -> target checks and identity (major:minor, size, model, serial,
+Order of `run_install`: `request.confirmed is True` -> target checks and identity (major:minor, size, model, serial,
 WWN; a serial or WWN appearing or vanishing counts as a change) equal to what was confirmed -> `archive.sha256` ->
 raw image sha256 == pinned value -> plan with `existing == []` and the expected number of new partitions ->
 **all target checks and identity again, plus a fresh plan, immediately before writing** ->
@@ -229,15 +229,20 @@ raw image sha256 == pinned value -> plan with `existing == []` and the expected 
 partition with a digest -> `sgdisk -v` exit 0 and "No problems found" -> `sync` -> only then `done`. Any other path ends
 in `failed`; the window shows the completion screen only for `state == "done"`.
 
-Two-step confirmation: the review screen asks for the device name (`nvme0n1`); the controller checks it and the worker
-checks it again. The text installer still asks for `INSTALL nvme0n1` and hands the name to the same check.
+Confirmation: the review screen has no text field (owner feedback from the real 6600H: a typed device name is not for ordinary
+people; only empty SSDs can be chosen, so nothing of the user's is at stake). この SSD にインストール opens one confirmation in the same
+window (a veil over it, never a second window): size, and for several empty SSDs model and the last 4 of the serial, "do not switch
+off", やめる (focused first, Esc) and インストールする. `Controller.ask()` marks the ticket as asked; `start(confirmed=True)` refuses
+without the opened confirmation and an explicit `True`; the worker request carries `confirmed: true` and `core.run_install` refuses
+anything else (`not-confirmed`). The identity captured at the review is checked again right before writing, as before. The text
+installer still asks for `INSTALL nvme0n1` and sends `confirmed: true` to the same check.
 
 One install: the worker holds `flock` on `/run/awai-pc-installer/lock`; it is a separate, detached process (own session), so
 closing, killing or crashing the GTK window neither stops the write nor allows another. A restarted window reads the true state
 (`running` only with a live lock holder; `running` without one is reported as interrupted, never as running or done).
 `write-started` / `install-record.json` block any further start until reboot (`/run` is a tmpfs). Reboot and power off are
 refused by the controller while an install runs, and the buttons are disabled. The ticket from `内容を確認` (identity at that
-moment) is consumed by the one start, whatever happens; a wrong typed name consumes it too.
+moment) is consumed by the one start, whatever happens; a start without the confirmation consumes it too.
 
 ### Progress
 
@@ -275,9 +280,28 @@ to the Regular file's SHA-256), the GTK tests ask Pango which font it loads for 
 **Logo.** `assets/logo.png` is `android/client/assets/setup-logo.png` (the Awai mark) scaled to 256 px. No vector version of the mark
 exists in the repo or in PR #302 (its `awai_welcome_mark.xml` is only a rounded rectangle), so it is raster.
 
-**Proportions.** One design unit `u = min(W/740, H/440)` pixels scales text, logo, cards and gaps with the screen; the rail is 30.5% of
-the width and cards 57.7%, as in `design/installer.png`. Gtk CSS only, software rendering (no GL): the window uses the plain cairo
-paths of GTK 3.
+**Design and proportions.** The screens follow the revised Figma board (`design/installer-rev2.png`, 10 screens): 1 Figma px = 1 px at
+1280x720. One unit `u = min(W/1280, H/720)` scales text, logo, cards and gaps (compact layout for width < 1000 or portrait: a
+stepper bar on top, `u = min(W/800, H/600)`). Focus is a filled control with a 5px amber ring; hover and pressed states are
+styled. Gtk CSS only, software rendering (no GL): the window uses the plain cairo paths of GTK 3.
+
+**Never cut off.** The window takes the geometry of the primary monitor (else the first), never the virtual screen, and never
+`fullscreen()`: without a window manager GDK falls back to the whole X screen, which with several outputs is larger than any one
+monitor, and that is what cut the bottom off on the real 6600H. Everything sits inside a 3% safe margin on every side (TVs and
+portable monitors overscan); the panel backgrounds still reach the edges. The natural height of the screen is measured and `u`
+is reduced until it fits (including the confirmation and the longer power question); the SSD list scrolls inside its own area, follows
+the focused card, and the action row is always visible; every label wraps. `xsession.sh` sets each connected monitor to its
+preferred mode (`xrandr --auto`, mirrored), marks one primary, and writes `xrandr --query` before and after to
+`$work/xrandr.txt`; `gui.py` writes the monitors and the chosen one to `$work/display.txt`. HiDPI: the geometry is in logical pixels
+and `u` already scales the UI, so no extra factor is applied. `tests/test_layout.py` checks 13 sizes (1024x600 ... 3840x2160,
+800x600, 1080x1920) x 1 to 8 SSDs x every screen: every button and label inside the safe area, no overlap, no clipped text.
+
+**Mouse, touch and keyboard.** The pointer is visible (no `-nocursor`; `xsetroot -cursor_name left_ptr`); a whole card or button is
+the click target. Keyboard: a sensible control has the focus when a screen opens (the one empty SSD is already chosen and 内容を確認
+has the focus; several: the first card), ↑ ↓ walk the cards and then the buttons, ← → the buttons of the row, Enter does what the hint
+above the buttons says, Esc is 戻る / やめる, Space selects, Tab/Shift+Tab work. Enter, Enter, Enter from boot ends on やめる, never
+an install. 電源を切る is never reached by plain Enter and asks once; a done or failed screen that appears by itself ignores its
+buttons for 1.2 s.
 
 **No browser, no listener.** An earlier revision showed the screen in a kiosk browser. VM runs showed that this cannot be made
 reliable (shortcuts left the installer, browser chrome and the per-boot token showed in the address bar, and the browser's own
@@ -295,43 +319,37 @@ python3 android/desktop/pc-ab-device/installer/tests/shots.py OUTDIR            
 
 No root, no real disk: fake `lsblk`/`blockdev`/`wipefs`/`findmnt`/`sgdisk`/`zstd`/`sync`/`systemctl` on `PATH` and sparse temp files;
 the production `Host` is replaced only in tests. The GTK tests drive the real widget tree in a `Gtk.OffscreenWindow` (nothing is shown
-on a display; Tab/Enter/typing are simulated at widget level) and skip themselves where PyGObject/Gtk 3 is missing (CI runs
-117 of 133 tests there; the 16 GTK tests ran locally in a conda env with Gtk 3.24). Bazel: `:screen_installer_*_test`. Mutation list:
-`installer/tests/mutation-results.txt` (80 of 81 guards killed; the one survivor is equivalent offscreen and covered by the VM run).
+on a display; keys, arrows, Esc and clicks are simulated at widget level) and skip themselves where PyGObject/Gtk 3 is missing (a runner without Gtk skips the 45
+GTK tests; all 169 ran locally in a conda env with Gtk 3.24, Python 3.13). Bazel: `:screen_installer_*_test`. Mutation list:
+`installer/tests/mutation-results.txt` (109 of 109 killed).
 Screenshots from the widget tree and the design side by side: `installer/screenshots/` (`fonts-used.txt` proves every label is drawn
 by the bundled face, `keyboard-walkthrough.txt` is the Tab/Enter sequence).
 
-### VM run (real SystemRescue 13.03, QEMU/TCG on another host, UEFI, one blank and one used virtual NVMe)
+### VM run (real SystemRescue 13.03, QEMU/TCG on another host, UEFI, one blank and one used virtual NVMe, keyboard + USB tablet)
 
-Built with `build-overlay.py`'s `build_overlay` into the shipped ISO; screenshots in `installer/screenshots/vm/`.
-Passed: GRUB default entry starts the GTK window by itself; screens 1, 2, 3 and the wrong-name case (button stays disabled);
-Ctrl+T/N/L/W/O/Q, Ctrl+Shift+I, Alt+F4, Alt+Tab, Alt+F2, Ctrl+Alt+Backspace, F1-F12, Menu, Super, Print and Ctrl+Alt+Delete pressed on
-the review screen change nothing (typed text still there, nobody left the screen); Ctrl+Alt+F2 reaches the console and X does not take
-it back; the power-off question (first Enter asks, it stays asked across polls, Tab away disarms it); a full install to 完了 (11 区画);
-`kill -9` of the GTK process at step 2, 36.46 %, `written: started` - the write went on and the restarted window showed the true
-state (step 3) and then 完了; all 8 data partitions identical to the source image and the used NVMe byte-identical (sha256 unchanged);
-screen 6 with only the used disk; the text boot entry (`awai.installer=text`) starts the text installer and lists both disks as
-not selectable with the reasons. The VM run found one bug, fixed before this record: the power-off question disarmed itself when the
-poll redrew the screen (rebuilding destroyed the focused button, which counted as the user leaving it); two tests now pin it.
+The revised screens (Figma rev2) from the shipped overlay; screenshots in `installer/screenshots/vm/`, harness in `installer/tests/vm/`
+(`mkiso.sh`, `runvm.sh WIDTH HEIGHT` with `-device usb-tablet`, `qmp.py` for keys, absolute pointer moves/clicks and screendumps, `cmp.py`).
+Passed on a real X server with no window manager:
+- 1024x768, 1920x1080 and 1080x1920 (portrait, stepper bar) boot straight to the screen, content inside the safe area, nothing cut off;
+  the pointer is visible, hover and click work through the tablet (a click selects a card and moves the focus to 内容を確認).
+- 1366x768 (QEMU `virtio-vga`: the std VGA's screendump is skewed for widths that are not a multiple of 8): one empty SSD preselected,
+  the used NVMe and the boot USB shown as 使えません; Enter, Enter, Enter from boot ends on the review screen (やめる had the focus in the
+  confirmation) and nothing is written; then Enter, Enter, → インストールする, Enter: a full install to 完了 (11 区画を確認),
+  `cmp.py` 8 of 8 data partitions identical to the source image, the used NVMe's sha256 unchanged.
+- The monitor geometry/`xrandr` path ran in the VM (one output); several outputs, overscan and HiDPI are covered only by the offscreen
+  tests and the fake-display unit tests, not on real hardware.
 
-**Focus on a cold start (second VM round, `screenshots/vm/focus/`).** A first VM round showed that on a real X server GTK focused the
-first control silently when the window mapped, so the first Tab skipped it and landed on 電源を切る. Now the invisible heading is the
-focus anchor on every new screen and after back/refresh/dismiss (`gui.on_tab` moves straight from it to the first control and never
-stops on it, also when wrapping around). Verified on a cold boot and after key mashing: screen 1 (no ring, Enter does nothing, first
-Tab = the first selectable card, then 電源を切る while 内容を確認 is disabled, a third Tab wraps to the card), screen 3 (the typed-name
-field has the focus, mashing changes nothing, Tab goes to 戻る), screen 5 (first Tab = 再起動; the state came from a written
-`state.json`, not a real install) and screen 6 (first Tab = 一覧を更新, then 電源を切る, never power off first); the text boot entry lists
-both disks as not selectable. The offscreen test models this order and fails on the previous revision.
+Earlier rounds (previous UI, same harness): key mashing of Ctrl/Alt/F-keys changed nothing, `kill -9` of the GTK process during the write
+did not stop it and the restarted window showed the true state, the text boot entry lists both disks as not selectable.
 
 ### Not tested
 
-Failure screens in the VM (they are in the widget-tree screenshots only), the power-off and reboot buttons actually powering the machine
+Failure and "no SSD" screens in the VM (widget-tree screenshots only), the power-off and reboot buttons actually powering the machine
 (the first press of the question is tested, the second only against the fake `systemctl`), typing a device path in the text installer
-inside the VM (the harness did not deliver it; the unit tests cover it), the BIOS/syslinux boot path, 1920x1080 in the VM (VGA was
-1280x720), real hardware, USB removal mid-install, and window behaviour on a GPU/KMS display (the VM used the VGA framebuffer). The old
-text installer's `sgdisk -v` wording ("No problems found") was confirmed by the real install above. AGENTS.md prefers shared policy in
-`.cljc`; the live system has no Clojure runtime and nothing here may download one, so the guards are stdlib Python next to the existing
-Python installer.
+inside the VM (the unit tests cover it), the BIOS/syslinux boot path, real hardware (several outputs, overscan, HiDPI, touch), USB removal
+mid-install, 1366x768 on the plain VGA device, window behaviour on a GPU/KMS display (the VM used a framebuffer), and sizes other than
+those listed above in the VM (the offscreen layout test covers 13). The time left is not shown: nothing measures it. AGENTS.md prefers
+shared policy in `.cljc`; the live system has no Clojure runtime and nothing here may download one, so the guards are stdlib Python.
 
 ## KVM check (2026-11-19)
 

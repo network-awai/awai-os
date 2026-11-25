@@ -1,4 +1,5 @@
-killed       typed-name (core)  tests/test_core.py
+killed       confirmed flag (core)  tests/test_core.py
+killed       confirmed flag must be exactly True (core)  tests/test_core.py
 killed       identity before image prep  tests/test_core.py
 killed       identity immediately before writing  tests/test_core.py
 killed       target checks before image prep  tests/test_core.py
@@ -41,7 +42,14 @@ killed       ENOSPC while unpacking -> no-space  tests/test_core.py
 killed       free-space pre-check before unpacking  tests/test_core.py
 killed       ENOSPC outside unpacking -> no-space  tests/test_core.py
 killed       controller: ticket is one-shot  tests/test_controller.py
-killed       controller: typed name checked  tests/test_controller.py
+killed       controller: explicit confirmed flag required  tests/test_controller.py
+killed       controller: confirmation must have been opened  tests/test_controller.py
+killed       controller: cancel closes the confirmation for good  tests/test_controller.py
+killed       controller: request carries confirmed true  tests/test_controller.py
+killed       controller: one empty SSD is preselected  tests/test_controller.py
+killed       controller: choosing never un-chooses  tests/test_controller.py
+killed       controller: several SSDs are told apart on the card  tests/test_controller.py
+killed       controller: ask refused while busy  tests/test_controller.py
 killed       controller: busy checked at start  tests/test_controller.py
 killed       controller: busy checked at review  tests/test_controller.py
 killed       controller: power off asks once  tests/test_controller.py
@@ -54,13 +62,11 @@ killed       controller: detached worker  tests/test_controller.py
 killed       controller: running state decides the screen  tests/test_controller.py
 killed       keys: modifiers swallowed  tests/test_gui.py
 killed       keys: function keys swallowed  tests/test_gui.py
-killed       gui: primary action is the first tab stop  tests/test_gui.py
-killed       gui: power off disabled while installing  tests/test_gui.py
-killed       gui: typed-name gate  tests/test_gui.py
-SURVIVED     gui: nothing focused until the first Tab   (equivalent offscreen: GTK clears focus when the focused widget is destroyed; the real window's initial focus is verified in the VM screenshots 01-select / 01b-tab-focus)
-killed       gui: only the bundled face  tests/test_web_and_build.py
-killed       gui: rail proportion  tests/test_gui.py
-killed       gui: bundled fonts registered  tests/test_web_and_build.py
+killed       session: monitors at the preferred mode  tests/test_web_and_build.py
+killed       session: one primary monitor  tests/test_web_and_build.py
+killed       session: xrandr query is logged  tests/test_web_and_build.py
+killed       session: visible pointer  tests/test_web_and_build.py
+killed       start: pointer not hidden  tests/test_web_and_build.py
 killed       start: GTK probe before X  tests/test_web_and_build.py
 killed       start: window restarted until three quick deaths  tests/test_web_and_build.py
 killed       session: blanking off  tests/test_web_and_build.py
@@ -71,13 +77,36 @@ killed       text installer follows a running install  tests/test_web_and_build.
 killed       overlay copies canonical installer  tests/test_web_and_build.py
 killed       overlay checks stock iso sha  tests/test_web_and_build.py
 killed       overlay checks raw sha  tests/test_web_and_build.py
-killed       gui: power question survives the poll redraw  tests/test_gui.py   (added after the VM run found the label flickering back)
-killed       gui: rebuild is not a blur  tests/test_gui.py   (same)
-killed       gui: card tag centred  tests/test_gui.py   (added with the alignment fix)
-killed       gui: product title line pitch  tests/test_gui.py   (same)
-killed       gui: toplevel focus ensured  tests/test_gui.py   (same)
-killed       gui: first Tab skips the anchor  tests/test_gui.py   (cold-start focus fix)
-killed       gui: initial focus is the anchor  tests/test_gui.py   (same)
-killed       gui: anchor is not a Tab stop on wrap  tests/test_gui.py   (same)
+killed       gui: primary action is the first tab stop  tests/test_gui.py
+killed       gui: power off disabled while installing  tests/test_gui.py
+killed       gui: confirmation starts on やめる  tests/test_gui.py
+killed       gui: everything behind the confirmation is inert  tests/test_gui.py
+killed       gui: Esc is やめる / 戻る  tests/test_gui.py
+killed       gui: the chosen SSD goes forward on Enter  tests/test_gui.py
+killed       gui: boot focus is never power  tests/test_gui.py
+killed       gui: a screen that appears by itself ignores held keys  tests/test_gui.py
+killed       gui: arrows stay inside the confirmation  tests/test_gui.py
+killed       gui: arrows skip disabled controls  tests/test_gui.py
+killed       gui: back up from the buttons lands on the chosen SSD  tests/test_gui.py
+killed       gui: selecting moves on to 内容を確認  tests/test_gui.py
+killed       gui: the hint names the focused action  tests/test_gui.py
+killed       gui: focus ring is thick  tests/test_gui.py
+killed       gui: a focused button is filled  tests/test_gui.py
+killed       gui: safe margin  tests/test_layout.py
+killed       gui: the unit is reduced until it fits  tests/test_layout.py
+killed       gui: the list scrolls inside its own area  tests/test_layout.py
+killed       gui: labels wrap  tests/test_layout.py
+killed       gui: the right margin of the content  tests/test_layout.py
+killed       gui: the primary monitor, else the first  tests/test_layout.py
+killed       gui: only the bundled face  tests/test_web_and_build.py
+killed       gui: power question survives the poll redraw  tests/test_gui.py
+killed       gui: rebuild is not a blur  tests/test_gui.py
+killed       gui: card tag centred  tests/test_gui.py
+killed       gui: product title line pitch  tests/test_gui.py
+killed       gui: toplevel focus ensured  tests/test_gui.py
+killed       gui: rail proportion  tests/test_gui.py
+killed       gui: bundled fonts registered  tests/test_web_and_build.py
+killed       controller: a shared reason is said once  tests/test_controller.py
 
-80/81 killed; the 1 survivor is equivalent offscreen (see above)
+109/109 mutations killed (run in three parts: --skip 'gui: ', --only 'gui: ', --only 'shared reason'; python 3.13, Gtk 3.24).
+Equivalent mutants left out on purpose: confirmation buttons' focus-chain order (two buttons, cycle is the same either way); focused card scrolled into view (GTK's viewport already follows focus); confirmation / armed power text in the height measurement (never taller than the screen at any supported size).

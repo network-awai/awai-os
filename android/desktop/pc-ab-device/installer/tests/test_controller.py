@@ -1,4 +1,4 @@
-"""The front-end-neutral controller (no GTK): one-shot ticket, typed name, single detached worker, true state, power question.
+"""The front-end-neutral controller (no GTK): one-shot ticket, explicit confirmation, single detached worker, true state, power question.
 Ported from the old backend's tests; every refusal still comes from core.py. Fake tools, no real disk."""
 import json
 import os
@@ -38,10 +38,11 @@ class Base(unittest.TestCase):
             time.sleep(0.1)
         self.fail(f"state never reached {want}: {st}")
 
-    def go(self, device="nvme0n1", typed=None):
+    def go(self, device="nvme0n1"):
         self.c.select(device)
         self.assertTrue(self.c.review(), self.c.message)
-        return self.c.start(typed or device)
+        self.assertTrue(self.c.ask(), self.c.message)
+        return self.c.start(True)
 
 
 class Flow(Base):
@@ -55,14 +56,26 @@ class Flow(Base):
         self.assertEqual(self.c.screen, "done")
         self.assertEqual(self.c.view()["rail"], 3)
 
-    def test_selected_is_a_toggle_and_ineligible_disks_cannot_be_selected(self):
+    def test_choosing_never_un_chooses_and_ineligible_disks_cannot_be_chosen(self):
+        self.assertEqual(self.c.selected, "nvme0n1", "exactly one empty SSD: already chosen")
         self.c.select("nvme0n1")
         self.assertEqual(self.c.selected, "nvme0n1")
-        self.c.select("nvme0n1")
-        self.assertIsNone(self.c.selected)
         self.c.select("sda")
-        self.assertIsNone(self.c.selected)
+        self.assertEqual(self.c.selected, "nvme0n1")
+        self.c.selected = "sda"
         self.assertFalse(self.c.review())
+
+    def test_with_several_empty_ssds_nothing_is_chosen_until_one_is(self):
+        self.w.world["disks"]["nvme1n1"] = fakes.disk(model="Other", serial="X-9999")
+        self.w.save()
+        (self.w.dev / "nvme1n1").write_bytes(b"")
+        self.c.selected = None
+        self.c.refresh()
+        self.assertIsNone(self.c.selected)
+        self.c.select("nvme1n1")
+        self.assertEqual(self.c.selected, "nvme1n1")
+        self.c.select("nvme0n1")
+        self.assertEqual(self.c.selected, "nvme0n1")
 
     def test_review_refuses_ineligible_target_with_a_japanese_reason(self):
         self.c.selected = "sda"
@@ -74,31 +87,98 @@ class Flow(Base):
     def test_ticket_is_one_shot(self):
         self.c.select("nvme0n1")
         self.assertTrue(self.c.review())
-        self.assertTrue(self.c.start("nvme0n1"))
+        self.assertTrue(self.c.ask())
+        self.assertTrue(self.c.start(True))
         self.wait_state(("done", "failed"))
-        self.assertFalse(self.c.start("nvme0n1"))
+        self.assertFalse(self.c.start(True))
         self.assertIn("確認", self.c.message)
 
     def test_start_without_review_is_refused_and_starts_nothing(self):
-        self.assertFalse(self.c.start("nvme0n1"))
+        self.assertFalse(self.c.ask())
+        self.assertFalse(self.c.start(True))
         self.assertIsNone(self.c.proc)
         self.assertFalse((self.w.dev / "nvme0n1.gpt.json").exists())
 
-    def test_wrong_typed_name_consumes_the_ticket_and_starts_nothing(self):
+    def test_start_needs_the_confirmation_to_have_been_opened_and_an_explicit_true(self):
+        for flag in (False, None, "nvme0n1", 1):
+            self.c.selected = "nvme0n1"
+            self.c.review()
+            self.assertTrue(self.c.ask())
+            self.assertFalse(self.c.start(flag))
+            self.assertIn("確認", self.c.message)
+            self.assertIsNone(self.c.proc, f"flag {flag!r} must start nothing")
+            self.assertIsNone(self.c.ticket, "a refused start consumes the ticket")
+            self.assertEqual(self.c.screen, "pick")
+        self.c.selected = "nvme0n1"
+        self.c.review()  # review done, confirmation never opened
+        self.assertFalse(self.c.start(True))
+        self.assertIsNone(self.c.proc)
+        self.assertIn("確認", self.c.message)
+        self.assertFalse((self.w.dev / "nvme0n1.gpt.json").exists())
+
+    def test_cancelling_the_confirmation_keeps_the_review_but_a_start_without_asking_again_is_refused(self):
         self.c.select("nvme0n1")
         self.c.review()
-        self.assertFalse(self.c.typed_ok("nvme0"))
-        self.assertTrue(self.c.typed_ok("nvme0n1"))
-        self.assertFalse(self.c.start("nvme0"))
-        self.assertIn("一致しません", self.c.message)
-        self.assertFalse(self.c.start("nvme0n1"))
+        self.c.ask()
+        self.assertTrue(self.c.confirming)
+        self.c.cancel()
+        self.assertFalse(self.c.confirming)
+        self.assertEqual(self.c.screen, "review")
+        self.assertIsNotNone(self.c.ticket)
+        self.assertFalse(self.c.start(True))
         self.assertIsNone(self.c.proc)
+        self.assertEqual(self.c.view()["confirming"], False)
+
+    def test_ask_opens_nothing_started_and_only_from_the_review_screen(self):
+        self.assertFalse(self.c.ask())
+        self.assertFalse(self.c.confirming)
+        self.c.select("nvme0n1")
+        self.c.review()
+        self.assertTrue(self.c.ask())
+        self.assertTrue(self.c.view()["confirming"])
+        self.assertIsNone(self.c.proc)
+        self.assertFalse((self.w.work / "request.json").exists())
+
+    def test_the_worker_request_carries_confirmed_true_bound_to_the_captured_identity(self):
+        seen = self.w.tmp / "seen-request.json"
+        script = self.w.tmp / "copy_request.py"
+        script.write_text(f"import shutil,sys\nshutil.copy(sys.argv[1], {str(seen)!r})\n")
+        self.c.worker_cmd = [sys.executable, str(script), str(self.w.work / "request.json")]
+        self.go()
+        end = time.time() + 20
+        while time.time() < end and not seen.exists():
+            time.sleep(0.05)
+        req = json.loads(seen.read_text())
+        self.assertIs(req["confirmed"], True)
+        self.assertEqual(req["device"], "nvme0n1")
+        self.assertEqual(req["identity"]["serial"], "SN-A")
+        self.assertNotIn("typed", req)
+
+    def test_two_empty_ssds_are_told_apart_by_size_model_and_the_serial_tail(self):
+        self.w.world["disks"]["nvme1n1"] = fakes.disk(size=40 << 30, model="WDC PC SN530", serial="WD-1234567890")
+        self.w.save()
+        (self.w.dev / "nvme1n1").write_bytes(b"")
+        self.c.refresh()
+        cards = {c["name"]: c for c in self.c.cards() if c["eligible"]}
+        self.assertEqual(set(cards), {"nvme0n1", "nvme1n1"})
+        self.assertIn("KXG80ZNV256G", cards["nvme0n1"]["sub"])
+        self.assertIn("末尾 SN-A", cards["nvme0n1"]["sub"])
+        self.assertIn("WDC PC SN530", cards["nvme1n1"]["sub"])
+        self.assertIn("末尾 7890", cards["nvme1n1"]["sub"])
+        self.assertIn("40.0 GiB", cards["nvme1n1"]["sub"])
+        self.assertNotEqual(cards["nvme0n1"]["who"], cards["nvme1n1"]["who"])
+
+    def test_a_single_empty_ssd_card_stays_as_designed(self):
+        card = next(c for c in self.c.cards() if c["name"] == "nvme0n1")
+        self.assertNotIn("末尾", card["sub"])
+        self.assertIn("末尾 SN-A", card["who"], "the review and the confirmation always carry it")
 
     def test_disk_changed_between_review_and_start_is_refused_with_nothing_written(self):
         self.c.select("nvme0n1")
         self.c.review()
         self.w.edit_disk("nvme0n1", serial="SN-OTHER")
-        self.assertTrue(self.c.start("nvme0n1"))
+        self.assertTrue(self.c.ask())
+        self.assertTrue(self.c.start(True))
         st = self.wait_state(("failed", "done"))
         self.assertEqual((st["state"], st["error"]["code"], st["written"]), ("failed", "identity-changed", "none"))
         self.assertFalse((self.w.dev / "nvme0n1.gpt.json").exists())
@@ -146,14 +226,26 @@ class Flow(Base):
         self.assertIn("実行中", self.c.message)
         self.assertIsNone(self.c.proc)
 
-    def test_lock_taken_between_review_and_start_blocks_the_start(self):
+    def test_the_confirmation_does_not_open_while_another_installer_runs(self):
         import fcntl
         self.c.select("nvme0n1")
         self.c.review()
         fd = os.open(self.w.work / "lock", os.O_RDWR | os.O_CREAT, 0o600)
         fcntl.flock(fd, fcntl.LOCK_EX)
         self.addCleanup(os.close, fd)
-        self.assertFalse(self.c.start("nvme0n1"))
+        self.assertFalse(self.c.ask())
+        self.assertFalse(self.c.confirming)
+        self.assertIn("別のインストール", self.c.message)
+
+    def test_lock_taken_between_review_and_start_blocks_the_start(self):
+        import fcntl
+        self.c.select("nvme0n1")
+        self.c.review()
+        self.assertTrue(self.c.ask())
+        fd = os.open(self.w.work / "lock", os.O_RDWR | os.O_CREAT, 0o600)
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        self.addCleanup(os.close, fd)
+        self.assertFalse(self.c.start(True))
         self.assertIsNone(self.c.proc)
 
 
@@ -161,11 +253,17 @@ class CardsAndSteps(Base):
     def test_cards_show_vendor_with_model_and_only_the_boot_reason_for_the_usb(self):
         cards = {c["name"]: c for c in self.c.cards()}
         self.assertEqual(cards["nvme0n1"]["title"], "内蔵 SSD")
-        self.assertEqual(cards["nvme0n1"]["sub"], "20.0 GiB · NVMe · 空きディスク")
+        self.assertEqual(cards["nvme0n1"]["sub"], "20.0 GiB ・ 空です")
         self.assertEqual(cards["sda"]["title"], "KIOXIA TransMemory")
-        self.assertEqual(cards["sda"]["sub"], "62.0 GiB · この PC を起動した USB")
-        self.assertEqual(cards["sda"]["tag"], "選択不可")
+        self.assertEqual(cards["sda"]["sub"], "62.0 GiB ・ この PC を起動した USB")
+        self.assertEqual(cards["sda"]["tag"], "使えません")
         self.assertFalse(cards["sda"]["eligible"])
+
+    def test_a_reason_two_checks_share_is_said_once(self):
+        self.w.edit_disk("nvme0n1", children=[{}], signatures=["gpt", "PMBR", "ext4"])
+        self.c.refresh()
+        sub = self.c.cards()[0]["sub"]
+        self.assertEqual(sub.count("すでに使われています"), 1, sub)
 
     def test_vendor_is_not_repeated_when_the_model_already_has_it(self):
         self.assertEqual(ctl.disk_title({"name": "sdb", "vendor": "KIOXIA", "model": "KIOXIA TransMemory"}), "KIOXIA TransMemory")
@@ -176,8 +274,8 @@ class CardsAndSteps(Base):
         self.w.edit_disk("nvme0n1", children=[{}])
         self.c.refresh()
         self.assertEqual(self.c.screen, "none")
-        self.assertEqual([c["tag"] for c in self.c.cards()], ["選択不可", "選択不可"])
-        self.assertIn("既存の区画あり", self.c.cards()[0]["sub"])
+        self.assertEqual([c["tag"] for c in self.c.cards()], ["使えません", "使えません"])
+        self.assertIn("すでに使われています", self.c.cards()[0]["sub"])
 
     def test_rail_follows_the_screen(self):
         want = {"pick": 0, "none": 0, "review": 1, "progress": 2, "failed": 2, "done": 3}
