@@ -22,36 +22,28 @@ exact revisions in `android/desktop/manifest/pinned-manifest.xml`
   `scripts/operator/same-build/inputs/setupwizard-awai.patch`).
 - **17 applicable** at the pinned SHAs under the repo's own apply order
   (see "Ordered apply" below).
-- **3 not applicable** at the pinned SHAs:
-  - `virtio-userdata.patch` — base `configs/fstab/fstab.virtio-common`
-    (635 bytes) no longer matches; the fstab selection then chooses
-    `virtio-userdata-block-checkpoint.patch` instead (see below).
-  - `virtio-userdata-ext4-checkpoint.patch` — its
-    `git apply --check` fails after the chosen
-    `virtio-userdata-block-checkpoint.patch` is applied: the chosen
-    variant already sets `checkpoint=block` on the ext4 line, so this
-    older single-purpose patch is obsoleted by the variant selection.
-    **Consequence: `apply.sh` as written aborts at this step at the
-    pinned SHA** — after applying the chosen fstab variant it runs
-    `git apply --check virtio-userdata-ext4-checkpoint.patch`, which
-    fails (rc=1, `configs/fstab/fstab.virtio-common: patch does not
-    apply`), and `set -e` exits before the wait patch. The wait patch
-    itself (`virtio-userdata-ext4-checkpoint-wait.patch`) does apply
-    cleanly after the chosen variant, so a fixed order is
-    selectable-fstab → wait; but that ordering is *not* what
-    `apply.sh` does today.
+- **2 genuinely not applicable** at the pinned SHAs:
   - `mkbootimg-header-version.patch` — confirmed not applicable at
     `device/mainline/generic` `3d402dc5`: the fetched `BoardConfig.mk`
     contains no `BOARD_BOOT_HEADER_VERSION` (0 matches) and sets
     `AB_OTA_UPDATER := false` (line 12) — the same conclusion as the
     G1 record (`AWAI3850_GENERIC_FIX_SKIPPED` in AWAI-3850).
+  - `virtio-userdata.patch` — base `configs/fstab/fstab.virtio-common`
+    (635 bytes) no longer matches; the fstab selection then chooses
+    `virtio-userdata-block-checkpoint.patch` instead (see below).
+- **1 superseded / skipped** (not an error):
+  - `virtio-userdata-ext4-checkpoint.patch` — after the chosen block
+    variant is applied, **`apply.sh` skips it via
+    `git apply --reverse --check` (rc=0)**, then applies the wait
+    patch. A forward `git apply --check` of this patch therefore
+    returns rc=1 **only because the content is already there** — the
+    rc=1 in an earlier local replay was a forward check run *without*
+    `apply.sh`'s `--reverse --check` gate, not an `apply.sh` failure.
+    `apply.sh` exits 0 on the first and the second run at the pinned
+    SHAs (re-measured on per-project repositories below).
 - Chosen userdata-fstab variant at the pinned SHA:
-  ** `virtio-userdata-block-checkpoint.patch` **. The selection in
-  `apply.sh` (`select_fstab_patch`) was replayed: on the pinned
-  pristine fstab, `virtio-userdata.patch` fails both
-  reverse-check and forward-check, so the first candidate that
-  forward-checks is `virtio-userdata-block-checkpoint.patch`.
-  The alternative `virtio-userdata.patch` is not double-applied.
+  **`virtio-userdata-block-checkpoint.patch`** (single variant, never
+  double-applied).
 
 ## Pinned revisions of the target projects
 
@@ -77,8 +69,8 @@ project only; "Ordered apply" is the repo's own apply order
 `updater-feed.py`), where stacked patches are checked against the
 state the earlier patches in the order have already produced. Order
 was `apply.sh` canonical: virtio-common (`awai-pc` → `aw-mesa-sphal`
-→ chosen fstab → wait; checkpoint fails at this step), virt-common
-(`awai-pc` → `boot-name`, lockdown `user-no-adb-tcp` after
+→ chosen fstab → wait; the checkpoint patch is skipped via
+`--reverse --check` rc=0), virt-common (`awai-pc` → `boot-name`, lockdown `user-no-adb-tcp` after
 `awai-pc`), virtio_x86_64 (`radeon` → `radeon-default`), updater
 (`withdrawal` → `serialize` → `maintenance`, all with
 `--unidiff-zero` as in `updater-feed.py`).
@@ -89,7 +81,7 @@ was `apply.sh` canonical: virtio-common (`awai-pc` → `aw-mesa-sphal`
 | `virtio-common-aw-mesa-sphal.patch` | `device/virt/virtio-common` | `sepolicy/vendor/file_contexts` | `rc=1` (`sepolicy/vendor/file_contexts: patch does not apply`) | `rc=0` after `virtio-common-awai-pc.patch` (context differs) | applies in order |
 | `virtio-userdata.patch` | `device/virt/virtio-common` | `configs/fstab/fstab.virtio-common` | `rc=1` (`fstab.virtio-common:1`) | fstab selection skips it: forward-check fails, reverse-check fails | **not applicable** at pinned SHA; chosen variant is `virtio-userdata-block-checkpoint.patch` |
 | `virtio-userdata-block-checkpoint.patch` | `device/virt/virtio-common` | `configs/fstab/fstab.virtio-common` | `rc=0` | `rc=0` (chosen) | applies (chosen variant) |
-| `virtio-userdata-ext4-checkpoint.patch` | `device/virt/virtio-common` | `configs/fstab/fstab.virtio-common` | `rc=1` (`fstab.virtio-common:1`) | `rc=1` after chosen variant (`fstab.virtio-common:1`); reverse-check also `rc=1` | **not applicable / obsoleted by chosen variant**; makes `apply.sh` abort at pinned SHA (see above) |
+| `virtio-userdata-ext4-checkpoint.patch` | `device/virt/virtio-common` | `configs/fstab/fstab.virtio-common` | `rc=1` (`fstab.virtio-common:1`) | forward `--check` rc=1 after chosen variant (content already there); `--reverse --check` rc=0 (skipped by `apply.sh`) | **superseded / skipped** by `apply.sh` (reverse-check gate), not a failure |
 | `virtio-userdata-ext4-checkpoint-wait.patch` | `device/virt/virtio-common` | `configs/fstab/fstab.virtio-common` | `rc=1` (`fstab.virtio-common:1`) | `rc=0` after chosen variant | applies in order |
 | `virt-common-awai-pc.patch` | `device/virt/virt-common` | `BoardConfigVirtCommon.mk`, `bootmgr/grub/grub-boot.cfg`, `configs/fstab/fstab.virt-common`, `configs/properties/vendor.prop` | `rc=0` | `rc=0` first | applies |
 | `virt-common-awai-boot-name.patch` | `device/virt/virt-common` | `build/tasks/10-bootmgr-defs.mk` | `rc=0` | `rc=0` after `virt-common-awai-pc.patch` | applies |
@@ -106,21 +98,98 @@ was `apply.sh` canonical: virtio-common (`awai-pc` → `aw-mesa-sphal`
 | `mkbootimg-header-version.patch` | `device/mainline/generic` | `BoardConfig.mk` | `rc=1` (`BoardConfig.mk:13`) | `rc=1` (unchanged tree) | **not applicable** — no `BOARD_BOOT_HEADER_VERSION` at `3d402dc5` (see above) |
 | `setupwizard-awai.patch` | `packages/apps/SetupWizard` | `WelcomeActivity.kt`, `locale/LocaleActivity.kt`, `settings/LineageSettingsActivity.kt` | `rc=0` (at pinned `1d158e23`) | `rc=0` | applies at the pinned SHA. Divergence recorded: `build-inside.sh` checks out `d995f1a1949f5988850c9977658e2590efe502b4` before applying; this ticket measured at the manifest-pinned `1d158e23` as instructed |
 
+## Measured method notes
+
+Two methodological details are load-bearing:
+
+- **Every project must be its own git repository for measurement.** A
+  project directory with no `.git` of its own, nested inside another
+  repository, makes `git apply --check` exit 0 without checking
+  anything (Git only operates on the outer repository's index, and a
+  patch that trips no outer-repo path filter parses as a no-op).
+  Every command in this document ran in a per-project `git init`
+  scratch directory, and the scratch state can be
+  reproduced with the commands under "Reproduce".
+- **rc=1 origin for the checkpoint patch.** An earlier local replay
+  obtained `rc=1` for `virtio-userdata-ext4-checkpoint.patch` from a
+  forward `git apply --check` run *without* `apply.sh`'s
+  `--reverse --check` gate (`apply.sh:56-58`): the gate sees the
+  patch already applied (rc=0) and skips it. Re-running the real
+  `apply.sh` on pinned trees (per-project repositories, run 1 and run
+  2) gives rc=0 both times:
+  - run 1 applies `virtio-common-awai-pc`, `virtio-common-aw-mesa-sphal`,
+    the chosen `virtio-userdata-block-checkpoint`, then the wait patch
+    (`virtio-common ext4 userdata checkpoint device wait: enabled`);
+    the checkpoint patch is silently skipped (already satisfied),
+    then both vendor patches apply. `apply.sh` exits 0.
+  - run 2 reports everything already applied and exits 0.
+  The same `apply.sh` virtio-common / vendor/lineage results are
+  identical to the ordered table above.
+- **The Updater 17 is correct.** The three Updater patches apply
+  through `updater-feed.py configure_release` (`updater-feed.py:65`
+  `git apply --unidiff-zero`); a plain `git apply --check` returns
+  rc=1 on the pinned Updater `1445c610…` and `--unidiff-zero` gives
+  rc=0. `apply.sh` never handles Updater, so its lack of that flag is
+  not a signal. (The "13 applicable" figure in the #505 evidence
+  README counted a different set and is superseded here.)
+- **Radeon patches are applied by `pc-firmware.py prepare`, not
+  pre-applied by the Job** (one path): `prepare` applies both
+  `virtio-x86-64-awai-radeon.patch` and
+  `virtio-x86-64-awai-radeon-default.patch` after staging the
+  firmware overlay.
+- **pc-firmware pin alignment.** `pc-firmware.py` hard-checked
+  `device/virt/virtio_x86_64` HEAD against `50dc1471…`. That SHA is
+  not resolvable upstream (GitHub API 422 when resolving the commit;
+  Gerrit full-text search by SHA returned 0; no tag or branch at that
+  SHA in the upstream repository survey) — the same profile as the
+  old `4cc0f606…` build-input SHA recorded in the G1 evidence: a
+  host-local commit from the 7735HS/PC release kit era, not a
+  reproducible upstream pin. The pin was realigned to the pinned
+  manifest revision `0e8571a0d7fce749856e9dea72e99a8a83f8f9b4`.
+  Proof (scratch, sparse fetches only): device tree shallow-fetched
+  at `0e8571a0`, firmware tree shallow-fetched at `a2dcb924`
+  (kernel.org `linux-firmware`), 13 r8168 blobs cross-checked
+  byte-identical between the lineage `external/linux-firmware-mainline`
+  tree at pinned `c0dcca3a` and the firmware repository
+  (`raw.githubusercontent.com/LineageOS/android_external_linux-firmware-mainline/
+  c0dcca3ad25e261abfbd1c0d42219c81a1f48496/firmware/r8168/rtl_nic/<file>`).
+  `prepare` then ran end-to-end (exit 0, idempotent on rerun):
+  Radeon patches applied, `PRODUCT_PACKAGES`/`PRODUCT_COPY_FILES`
+  overlay created at `vendor/awai/pc-firmware` (18 entries) and the
+  firmware include injected into `lineage_virtio_x86_64.mk`.
+
+## Raw evidence provenance
+
+`patch-applicability-20261125-raw/` ports the raw measurement logs
+from the closed companion PR #505 (`com-junkawasaki/awai-4088-g2-followup`,
+branch retained) — `raw/fetch.log`, `raw/chains.txt`, `raw/pristine.txt`,
+`raw/patches.sha256`, `raw/manifest-inputs-patches.txt`,
+`SHA256SUMS` — verbatim; no counts from that PR's README are
+reproduced here (its "13 applicable" exclusions are superseded by
+this document's 17; see above). The committed Job at
+`scripts/operator/virtio-dryrun/` supersedes #505's Job definition
+rather than copying its apply step (which ran only `apply.sh` and
+dropped Radeon, lockdown and Updater): patch application in this Job
+calls the repo's own tools, never a second explicit list.
+
 ## Latent blockers for a real (non-dry-run) build at the pinned SHAs
 
-- `pc-firmware.py prepare()` hard-checks
-  `device/virt/virtio_x86_64` `HEAD == 50dc14712023705ccf477af49a27ef9109b54d19`
-  and raises `unexpected virtio_x86_64 device revision` at the
-  pinned `0e8571a0d7…`. The Radeon patches themselves apply, but the
-  firmware overlay step cannot run under the pinned manifest
-  without updating `DEVICE_REVISION` (deliberately not done in this
-  dry-run ticket).
-- The same pattern applies to the Updater overlay in
-  `updater-feed.py` (hard-coded `1445c6104…`, which *does* match the
-  pinned Updater revision — no divergence there).
+- **Resolved in this round:** the `pc-firmware.py`
+  `DEVICE_REVISION` divergence (see "pc-firmware pin alignment"
+  above; `50dc1471…` was a host-local SHA, not a reproducible
+  upstream pin). The pin is now the manifest's `0e8571a0…` and
+  `prepare` was proved to pass in a scratch tree.
+- `updater-feed.py` hard-codes the Updater revision `1445c610…`,
+  which *does* match the pinned Updater revision — no divergence.
 - `README.md` recorded baselines (e.g. `virtio-common` `e6f2a7d2`)
   predate the pinned `9d5c9307`; the table above supersedes them for
   the pinned manifest.
+- Still unverified (a run would need an approved build node):
+  `apply.sh`/lockdown runs in a real synced tree (the scratch
+  reproductions above used the fetched files only), the lockdown
+  patch set in a real build product, and OTA registration
+  end-to-end. The G2 dry-run Job records the plan; it is not
+  evidence of a build.
 
 ## Product target
 
@@ -225,8 +294,14 @@ git -C <d> apply -p1 patches/virtio-common-aw-mesa-sphal.patch
 # then for virtio-userdata.patch and virtio-userdata-block-checkpoint.patch
 # in that order: reverse-check (both fail) then check -> first that checks is
 # virtio-userdata-block-checkpoint.patch (rc=0) -> git apply it.
-# Then: git apply --check -p1 patches/virtio-userdata-ext4-checkpoint.patch  # rc=1 (obsoleted)
+# Then: git apply --check -p1 patches/virtio-userdata-ext4-checkpoint.patch  # rc=1 (content already present)
+#       git apply --reverse --check patches/virtio-userdata-ext4-checkpoint.patch  # rc=0 (apply.sh skips it)
 #       git apply --check -p1 patches/virtio-userdata-ext4-checkpoint-wait.patch  # rc=0
+
+# Full apply.sh on a tree of per-project git repositories
+# (device/virt/virtio-common + device/virt/virt-common + vendor/lineage):
+bash android/desktop/pc-ab-device/apply.sh <src>   # first run rc=0
+bash android/desktop/pc-ab-device/apply.sh <src>   # second run rc=0 (idempotent)
 ```
 
 Claim ceiling: no build, no boot, no reproducibility claim. Inputs
