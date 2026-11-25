@@ -99,6 +99,7 @@ jq -n \
                  { name: "AWAI_FEED_URL", value: $feed_url },
                  { name: "AWAI_POOL_LABEL", value: $pool_label },
                  { name: "FIRMWARE_GIT", value: $firmware_git },
+                 { name: "BUILD_WORK_DIR", value: $work },
                  { name: "SRC", value: "/root/build/src" },
                  { name: "KIT", value: "/root/build/kit" }],
            envFrom: [{ secretRef: { name: "release-artifacts-b2" } }],

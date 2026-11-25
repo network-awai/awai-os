@@ -71,6 +71,10 @@ function stubPath(work, kitTar) {
   };
   mk("apt-get", "exit 0\n");
   mk("git", "exit 0\n");
+  // timeout stub logs the budget and forwards to the stubbed command
+  // (in production `timeout 20m` bounds the firmware fetch).
+  writeFileSync(join(dir, "timeout"),
+    `#!/bin/sh\necho "timeout $*" >> "${calls}"\nexec "$@"\n`, { mode: 0o755 });
   const up = join(work, "upload");
   writeFileSync(join(dir, "rclone"),
     `#!/bin/sh
@@ -268,6 +272,113 @@ m() { echo "m $*" >> "${fncalls}";
   assert.match(r.stdout, /AWAI4089_PATCH_COUNT=/);
   assert.match(r.stdout, /AWAI4089_RESTORE_VERIFY ok/);
   assert.match(r.stdout, /AWAI4089_DONE approved=1/);
+});
+
+test("Job command from empty dir runs the extracted kit to restore (real kit)", async () => {
+  const kitInfo = await extractedRealKit();
+  // kit is trimmed to Job needs and comes from the requested commit.
+  const listing = await run("tar", ["-tzf", kitInfo.kitTar]);
+  assert.equal(listing.code, 0, listing.stderr);
+  for (const want of [
+    "scripts/operator/virtio-dryrun/build-inside.sh",
+    "android/desktop/manifest/pinned-manifest.xml",
+    "pc-ab-device/apply.sh",
+    "pc-ab-device/apply-shipping-debug-lockdown.sh",
+    "pc-ab-device/pc-firmware.py",
+    "pc-ab-device/updater-feed.py",
+    "pc-ab-device/make-tf-disk.sh",
+    "pc-ab-device/patches/virtio-common-awai-pc-gpu-sysfs.patch",
+  ]) {
+    assert.ok(listing.stdout.includes(want), `kit missing ${want}`);
+  }
+  for (const banned of ["pc-ab-device/installer/", "pc-ab-device/evidence/", "pc-ab-device/kvm/"]) {
+    assert.ok(!listing.stdout.includes(banned), `kit must not contain ${banned}`);
+  }
+  // Generate the approved Job; its command must fetch+verify+extract
+  // the kit itself before running the extracted build-inside.sh.
+  const work = mkdtempSync(join(tmpdir(), "g2jobwork-"));
+  const gen = await run("bash", [jobScript], {
+    BUILD_WORK_DIR: work,
+    BILLING_ALLOWED: "1", OWNER_APPROVED: "1", RELEASE_TYPE: "userdebug",
+    AWAI_FEED_URL: "https://feed.example/ota.json",
+    AWAI_VKE_NODE_POOL: "awai-pc-release-012345abcdef",
+    KIT_URL: "https://example.invalid/kit.tar.gz", KIT_SHA256: kitInfo.kitSha,
+    AWAI_POOL_LABEL: "awai-pc-release-012345abcdef",
+  });
+  assert.equal(gen.code, 0, gen.stderr);
+  const job = JSON.parse(gen.stdout);
+  const cmdArr = job.spec.template.spec.containers[0].command;
+  assert.equal(cmdArr[0], "bash");
+  const scriptString = cmdArr[cmdArr.length - 1];
+  assert.match(scriptString, /kit\.tar\.gz/);
+  assert.match(scriptString, /tar -xzf/);
+  assert.match(scriptString, /kit\/scripts\/operator\/virtio-dryrun\/build-inside\.sh/);
+  const jobEnv = Object.fromEntries(
+    job.spec.template.spec.containers[0].env.map((e) => [e.name, e.value]));
+  assert.equal(jobEnv.BUILD_WORK_DIR, work);
+  assert.equal(jobEnv.KIT_SHA256, kitInfo.kitSha);
+  // fixture SRC with envsetup functions (m/breakfast stay functions)
+  const fncalls = join(work, "fncalls.log");
+  writeFileSync(fncalls, "");
+  const src = join(work, "src");
+  mkdirSync(join(src, "build"), { recursive: true });
+  writeFileSync(join(src, "build", "envsetup.sh"),
+    `breakfast() { echo "breakfast $*" >> "${fncalls}"; }
+m() { echo "m $*" >> "${fncalls}";
+  mkdir -p "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates"
+  echo tf > "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates/lineage_virtio_x86_64-target_files.zip"
+  echo stock > "$SRC/out/target/product/virtio_x86_64/disk-vda.img"
+}
+`);
+  const stub = stubPath(work, kitInfo.kitTar);
+  const env = {
+    PATH: `${stub.dir}:${process.env.PATH}`,
+    BUILD_WORK_DIR: work, SRC: src, KIT: join(work, "kit"),
+    KIT_URL: "https://example.invalid/kit.tar.gz", KIT_SHA256: kitInfo.kitSha,
+    RELEASE_TYPE: "userdebug", AWAI_FEED_URL: "https://feed.example/ota.json",
+    AWAI_POOL_LABEL: "awai-pc-release-012345abcdef",
+    BILLING_ALLOWED: "1", OWNER_APPROVED: "1",
+  };
+  // the kit dir starts empty: only the Job command populates it
+  assert.ok(!existsSync(env.KIT));
+  const r = await run("bash", cmdArr.slice(1), env, 120000);
+  assert.equal(r.code, 0, r.stderr);
+  assert.ok(existsSync(join(env.KIT, "scripts/operator/virtio-dryrun/build-inside.sh")));
+  assert.match(r.stdout, /AWAI4089_KIT_PRESENT/);
+  assert.match(r.stdout, /AWAI4089_DONE approved=1/);
+  assert.match(r.stdout, /AWAI4089_RESTORE_VERIFY ok/);
+  const pcMatch = r.stdout.match(/AWAI4089_PATCH_COUNT=(\d+)/);
+  assert.ok(pcMatch, r.stdout);
+  const { readdirSync } = await import("node:fs");
+  const patchFiles = readdirSync(join(env.KIT, "pc-ab-device", "patches"))
+    .filter((n) => n.endsWith(".patch"));
+  assert.equal(Number(pcMatch[1]), patchFiles.length);
+  assert.ok(patchFiles.includes("virtio-common-awai-pc-gpu-sysfs.patch"));
+  const fb = readFileSync(fncalls, "utf8");
+  assert.match(fb, /breakfast lineage_virtio_x86_64 userdebug/);
+  assert.match(fb, /m target-files-package otatools diskimage-vda/);
+  const calls = stub.calls();
+  const order = [
+    "apt-get -qq update",
+    "apt-get -qq install -y",
+    "curl -fsSL https://example.invalid/kit.tar.gz",
+    "repo init -u https://github.com/LineageOS/android.git",
+    "repo sync -m default.xml --no-manifest-update",
+    "repo manifest -r",
+    "timeout 20m git -C",
+    "rclone copy",
+    "ota_from_target_files",
+    "rclone copy",
+  ];
+  let pos = -1;
+  for (const snippet of order) {
+    const i = calls.indexOf(snippet);
+    assert.ok(i > pos, `${snippet} out of order or missing (pos ${pos}, found ${i})\n${calls}`);
+    pos = i;
+  }
+  const rcloneLines = calls.split("\n").filter((l) => l.startsWith("rclone copy "));
+  assert.equal(rcloneLines.length, 3, calls);
+  assert.match(rcloneLines[2], /^rclone copy art:/);
 });
 
 test("approved mode without KIT_URL/KIT_SHA256 refuses (nothing executed)", async () => {
