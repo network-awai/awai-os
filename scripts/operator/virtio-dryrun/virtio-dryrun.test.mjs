@@ -190,8 +190,10 @@ test("dry-run prints the exact command list and executes nothing", async () => {
     "1d158e23847b5d9f9523ce6cfc51df2b0c54f6cd",
     "setupwizard-awai.patch",
     "awai_welcome_logo.png",
+    "ROOMSERVICE_DRYRUN=true",
+    "USE_CCACHE=1",
     "source build/envsetup.sh",
-    "breakfast lineage_virtio_x86_64 userdebug",
+    "breakfast virtio_x86_64 userdebug",
     "m target-files-package otatools diskimage-vda",
     "v1-tf",
     "make-tf-disk.sh",
@@ -219,7 +221,7 @@ test("approved mode executes the same ordered command list end to end (real kit)
   const src = join(work, "src");
   mkdirSync(join(src, "build"), { recursive: true });
   writeFileSync(join(src, "build", "envsetup.sh"),
-    `breakfast() { echo "breakfast $*" >> "${fncalls}"; }
+    `breakfast() { local t=$1 v=${2:-userdebug}; case "$t" in *-(user|userdebug|eng)) echo "lunch $t" >> "${fncalls}" ;; *) echo "lunch lineage_$t-ap3a-$v" >> "${fncalls}" ;; esac; }
 m() { echo "m $*" >> "${fncalls}";
   mkdir -p "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates"
   echo tf > "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates/lineage_virtio_x86_64-target_files.zip"
@@ -253,6 +255,8 @@ m() { echo "m $*" >> "${fncalls}";
     "SetupWizard checkout 1d158e23847b5d9f9523ce6cfc51df2b0c54f6cd",
     "SetupWizard apply --check",
     "SetupWizard apply",
+    "ROOMSERVICE_DRYRUN=true",
+    "USE_CCACHE=1",
   ];
   let pos = -1;
   for (const snippet of order) {
@@ -267,7 +271,7 @@ m() { echo "m $*" >> "${fncalls}";
 
   // envsetup functions recorded: breakfast + m (NOT binaries on PATH)
   const fb = readFileSync(fncalls, "utf8");
-  assert.match(fb, /breakfast lineage_virtio_x86_64 userdebug/);
+  assert.match(fb, /lunch lineage_virtio_x86_64-ap3a-userdebug/);
   assert.match(fb, /m target-files-package otatools diskimage-vda/);
 
   // helper stubs (shadowed via PATH) were used
@@ -337,13 +341,17 @@ test("Job command from empty dir runs the extracted kit to restore (real kit)", 
     job.spec.template.spec.containers[0].env.map((e) => [e.name, e.value]));
   assert.equal(jobEnv.BUILD_WORK_DIR, work);
   assert.equal(jobEnv.KIT_SHA256, kitInfo.kitSha);
+  // plan ceiling (vc2-16c-64gb): see same-build/workflow.sh
+  assert.equal(job.spec.template.spec.containers[0].resources.requests.memory, "52Gi");
+  assert.match(scriptString, /openjdk-21-jdk-headless/);
+  assert.match(scriptString, /gdisk/);
   // fixture SRC with envsetup functions (m/breakfast stay functions)
   const fncalls = join(work, "fncalls.log");
   writeFileSync(fncalls, "");
   const src = join(work, "src");
   mkdirSync(join(src, "build"), { recursive: true });
   writeFileSync(join(src, "build", "envsetup.sh"),
-    `breakfast() { echo "breakfast $*" >> "${fncalls}"; }
+    `breakfast() { local t=$1 v=${2:-userdebug}; case "$t" in *-(user|userdebug|eng)) echo "lunch $t" >> "${fncalls}" ;; *) echo "lunch lineage_$t-ap3a-$v" >> "${fncalls}" ;; esac; }
 m() { echo "m $*" >> "${fncalls}";
   mkdir -p "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates"
   echo tf > "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates/lineage_virtio_x86_64-target_files.zip"
@@ -380,7 +388,7 @@ m() { echo "m $*" >> "${fncalls}";
   const applySh = readFileSync(join(env.KIT, "pc-ab-device", "apply.sh"), "utf8");
   assert.ok(!applySh.includes("packages/apps/SetupWizard"), "apply.sh must not carry a SetupWizard block");
   const fb = readFileSync(fncalls, "utf8");
-  assert.match(fb, /breakfast lineage_virtio_x86_64 userdebug/);
+  assert.match(fb, /lunch lineage_virtio_x86_64-ap3a-userdebug/);
   assert.match(fb, /m target-files-package otatools diskimage-vda/);
   const calls = stub.calls();
   const order = [
@@ -393,6 +401,7 @@ m() { echo "m $*" >> "${fncalls}";
     "timeout 20m git -C",
     "SetupWizard checkout 1d158e23847b5d9f9523ce6cfc51df2b0c54f6cd",
     "SetupWizard apply",
+    "ROOMSERVICE_DRYRUN=true",
     "rclone copy",
     "rclone copy",
     "ota_from_target_files",
@@ -525,7 +534,7 @@ test("SetupWizard patches applied in order, exactly once (single awai patch)", a
   const src = join(work, "src");
   mkdirSync(join(src, "build"), { recursive: true });
   writeFileSync(join(src, "build", "envsetup.sh"),
-    `breakfast() { echo "breakfast $*" >> "${fncalls}"; }
+    `breakfast() { local t=$1 v=${2:-userdebug}; case "$t" in *-(user|userdebug|eng)) echo "lunch $t" >> "${fncalls}" ;; *) echo "lunch lineage_$t-ap3a-$v" >> "${fncalls}" ;; esac; }
 m() { echo "m $*" >> "${fncalls}";
   mkdir -p "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates"
   echo tf > "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates/lineage_virtio_x86_64-target_files.zip"
@@ -547,7 +556,7 @@ m() { echo "m $*" >> "${fncalls}";
     `git -C ${join(src, "packages/apps/SetupWizard")} apply ${join(kitInfo.kit, "scripts/operator/same-build/inputs/setupwizard-awai.patch")}`,
   ]);
   const fb = readFileSync(fncalls, "utf8");
-  assert.match(fb, /breakfast lineage_virtio_x86_64 userdebug/);
+  assert.match(fb, /lunch lineage_virtio_x86_64-ap3a-userdebug/);
   assert.match(r.stdout, /AWAI4089_PATCH_COUNT=(\d+)/);
 });
 
@@ -578,7 +587,7 @@ test("external commands covered by apt, otatools, kit, base image", async () => 
   // bash -c strings invoke sha256sum through the shell
   for (const tok of [...inside.matchAll(/\b(sha256sum|shasum)\b/g)]) commands.add(tok[1]);
   // functions stay functions, never binaries
-  for (const skip of ["source", "breakfast", "m", "cd", "eval"]) commands.delete(skip);
+  for (const skip of ["source", "breakfast", "m", "cd", "eval", "export"]) commands.delete(skip);
   // every enumerated command is classified: no unreviewed externals
   for (const cmd of commands) {
     assert.ok(cmd in providers, `external command ${cmd} is unclassified`);
