@@ -1,0 +1,34 @@
+{
+  "schema": "awai.g2-digests.v1",
+  "note": "Digest slots for the G2 lineage_virtio_x86_64 chain. Fields are empty until a Job run fills them. Never invent values: fill only from measured SHA256SUMS / manifest.json read back from B2.",
+  "manifest": {
+    "path": "android/desktop/manifest/pinned-manifest.xml",
+    "sha256": "61c11f507fa14329229c16a635890b2c6d5f2f4e5a648a77045a09f7f4194d7d",
+    "bytes": 214636,
+    "note": "Input verified before sync. sha256/bytes from manifest-inputs.sha256 / committed file."
+  },
+  "targetFiles": {
+    "path": "virtio-target-files.zip",
+    "sha256": "",
+    "bytes": null,
+    "note": "m target-files-package output (v2 build). v1 input kept as virtio-target-files-v1.zip."
+  },
+  "installImage": {
+    "path": "virtio-install-image.img",
+    "sha256": "",
+    "bytes": null,
+    "note": "diskimage-vda output from the same tree (v1 build)."
+  },
+  "fullOta": {
+    "path": "virtio-full-ota.zip",
+    "sha256": "",
+    "bytes": null,
+    "note": "ota_from_target_files -k testkey <v2 target-files>."
+  },
+  "incrementalOta": {
+    "path": "virtio-incremental-ota.zip",
+    "sha256": "",
+    "bytes": null,
+    "note": "ota_from_target_files -k testkey -i <v1 target-files> <v2 target-files>."
+  }
+}
