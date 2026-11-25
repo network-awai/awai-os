@@ -221,6 +221,44 @@ class UserdataSizingTest(unittest.TestCase):
         entry = self._userdata_entry(plan)
         self.assertEqual(entry["end"] - entry["start"] + 1, 33554432)
 
+    def _last_for_userdata(self, desired_sectors):
+        # Free range starts at aligned 2048; size = non-userdata + reserve + desired.
+        # non-userdata = 83968 for _source_parts() (see test_remaining_based_256gb_disk).
+        size = 83968 + installer.USERDATA_RESERVE_SECTORS + desired_sectors
+        return 2048 + size - 1
+
+    def test_remaining_below_min_refused(self):
+        # AWAI-4091 supplement: remaining-based userdata below 16 GiB is refused,
+        # even when it is a few MiB / 1 GiB / just under 16 GiB (previously accepted).
+        for mib in (3, 1024, 16383):
+            desired = mib * (1 << 20) // installer.SECTOR
+            with self.subTest(mib=mib), self.assertRaises(SystemExit) as ctx:
+                self._make_plan(34, self._last_for_userdata(desired), [], None)
+            message = str(ctx.exception)
+            self.assertIn("REFUSED not-enough-free-space", message)
+            self.assertIn("need", message)
+            self.assertIn("free ranges", message)
+
+    def test_remaining_min_boundary(self):
+        minimum = installer.USERDATA_MIN_SECTORS
+        self.assertEqual(minimum, (16 << 30) // installer.SECTOR)
+        # Exactly 16 GiB passes.
+        plan = self._make_plan(34, self._last_for_userdata(minimum), [], None)
+        self.assertEqual(plan["userdataSectors"], minimum)
+        self.assertEqual(plan["userdata"]["mode"], "remaining")
+        # 16 GiB - ALIGN is refused.
+        with self.assertRaisesRegex(SystemExit, "not-enough-free-space"):
+            self._make_plan(34, self._last_for_userdata(minimum - installer.ALIGN), [], None)
+
+    def test_explicit_small_value_is_accepted(self):
+        # Explicit --userdata-gib is the operator's decision: no floor applies.
+        total_sectors = 256 * (1 << 30) // installer.SECTOR
+        first, last = 34, total_sectors - 34
+        plan = self._make_plan(first, last, [], 1)
+        self.assertEqual(plan["userdataSectors"], (1 << 30) // installer.SECTOR)
+        self.assertEqual(plan["userdata"]["mode"], "explicit")
+        self.assertEqual(plan["userdata"]["requestedGiB"], 1)
+
     def test_refusal_paths_still_hold(self):
         # Remaining-based on a disk smaller than system + reserve refuses.
         with self.assertRaisesRegex(SystemExit, "not-enough-free-space"):

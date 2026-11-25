@@ -157,6 +157,11 @@ awai-pc-install.py apply <disk or image> <verified install image> \
   `userdataSectors` and a `userdata` breakdown (mode, reserve, non-userdata sectors,
   free range, disk usable/total sectors and first/last usable sectors), and `apply`
   uses the plan's userdata sectors unchanged.
+- Remaining-based sizing has a floor: **`USERDATA_MIN_SECTORS` (16 GiB)**. A disk whose
+  remaining space would give userdata less than that is refused with `not-enough-free-space` before
+  anything is written (a nearly full small SSD would otherwise get a few-MiB `/data`). The floor
+  applies only to remaining-based sizing; an explicit `--userdata-gib N` is the operator's
+  decision and is not bounded by it.
 - It copies each partition from the partition of the same name in the build's disk image. The Awai ESP
   is named `awai_esp`.
 - It requires 512-byte logical sectors on both the source and target (4Kn is refused) and refuses to use the same
