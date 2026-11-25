@@ -1,0 +1,157 @@
+### reverse-checks on pristine (already-applied detection) for the 7 failing patches
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/packages/apps/Updater apply --reverse --check /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/updater-empty-feed-withdrawal.patch  # empty-feed reverse
+error: patch failed: app/src/main/java/org/lineageos/updater/data/UpdatesRepository.kt:60
+error: app/src/main/java/org/lineageos/updater/data/UpdatesRepository.kt: patch does not apply
+  EXIT=1
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/packages/apps/Updater apply --reverse --check /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/updater-pc-maintenance.patch  # pc-maintenance reverse
+error: patch failed: app/src/main/java/org/lineageos/updater/download/SingleRangeHttpFetcher.kt:18
+error: app/src/main/java/org/lineageos/updater/download/SingleRangeHttpFetcher.kt: patch does not apply
+error: patch failed: app/src/main/java/org/lineageos/updater/download/HttpURLConnectionClient.java:248
+error: app/src/main/java/org/lineageos/updater/download/HttpURLConnectionClient.java: patch does not apply
+error: patch failed: app/src/main/java/org/lineageos/updater/controller/UpdaterController.java:263
+error: app/src/main/java/org/lineageos/updater/controller/UpdaterController.java: patch does not apply
+error: app/src/main/java/org/lineageos/updater/controller/PcPackagePolicy.java: No such file or directory
+error: patch failed: app/src/main/res/values/strings.xml:194
+error: app/src/main/res/values/strings.xml: patch does not apply
+error: patch failed: app/src/main/res/values-ja/strings.xml:133
+error: app/src/main/res/values-ja/strings.xml: patch does not apply
+error: patch failed: app/src/main/java/org/lineageos/updater/updatescheck/UpdatesCheckWorker.kt:20
+error: app/src/main/java/org/lineageos/updater/updatescheck/UpdatesCheckWorker.kt: patch does not apply
+error: patch failed: app/src/main/java/org/lineageos/updater/preferences/PreferencesScreen.kt:28
+error: app/src/main/java/org/lineageos/updater/preferences/PreferencesScreen.kt: patch does not apply
+error: patch failed: app/src/main/java/org/lineageos/updater/data/UserPreferencesRepository.kt:38
+error: app/src/main/java/org/lineageos/updater/data/UserPreferencesRepository.kt: patch does not apply
+error: patch failed: app/src/main/java/org/lineageos/updater/data/UpdatesRepository.kt:40
+error: app/src/main/java/org/lineageos/updater/data/UpdatesRepository.kt: patch does not apply
+error: app/src/main/java/org/lineageos/updater/controller/PcMaintenance.kt: No such file or directory
+error: patch failed: app/src/main/java/org/lineageos/updater/controller/ABUpdateInstaller.java:9
+error: app/src/main/java/org/lineageos/updater/controller/ABUpdateInstaller.java: patch does not apply
+  EXIT=1
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/packages/apps/Updater apply --reverse --check /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/updater-serialize-ab-preparation.patch  # serialize reverse
+error: patch failed: app/src/main/java/org/lineageos/updater/controller/ABUpdateInstaller.java:49
+error: app/src/main/java/org/lineageos/updater/controller/ABUpdateInstaller.java: patch does not apply
+  EXIT=1
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virtio-common apply --reverse --check /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virtio-common-aw-mesa-sphal.patch  # aw-mesa-sphal reverse
+error: patch failed: sepolicy/vendor/file_contexts:17
+error: sepolicy/vendor/file_contexts: patch does not apply
+  EXIT=1
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virtio-common apply --reverse --check /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virtio-userdata-ext4-checkpoint-wait.patch  # wait reverse
+error: patch failed: configs/fstab/fstab.virtio-common:1
+error: configs/fstab/fstab.virtio-common: patch does not apply
+  EXIT=1
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virtio-common apply --reverse --check /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virtio-userdata-ext4-checkpoint.patch  # ext4-checkpoint reverse
+error: patch failed: configs/fstab/fstab.virtio-common:1
+error: configs/fstab/fstab.virtio-common: patch does not apply
+  EXIT=1
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virtio-common apply --reverse --check /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virtio-userdata.patch  # virtio-userdata reverse
+error: patch failed: configs/fstab/fstab.virtio-common:1
+error: configs/fstab/fstab.virtio-common: patch does not apply
+  EXIT=1
+
+### CHAIN A: device/virt/virtio-common -- apply.sh order: awai-pc, aw-mesa-sphal, then fstab block-checkpoint, wait
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virtio-common apply --check /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virtio-common-awai-pc.patch  # awai-pc check-then-apply
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virtio-common apply /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virtio-common-awai-pc.patch
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virtio-common apply --check /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virtio-common-aw-mesa-sphal.patch  # aw-mesa-sphal after awai-pc
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virtio-common apply /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virtio-common-aw-mesa-sphal.patch
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virtio-common apply --check /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virtio-userdata-block-checkpoint.patch  # block-checkpoint check after awai-pc+aw-mesa
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virtio-common apply /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virtio-userdata-block-checkpoint.patch
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virtio-common apply --check /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virtio-userdata-ext4-checkpoint.patch  # ext4-checkpoint AFTER block-checkpoint (expect fail fwd)
+error: patch failed: configs/fstab/fstab.virtio-common:1
+error: configs/fstab/fstab.virtio-common: patch does not apply
+  EXIT=1
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virtio-common apply --reverse --check /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virtio-userdata-ext4-checkpoint.patch  # ext4-checkpoint reverse AFTER block-checkpoint (apply.sh skip logic)
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virtio-common apply --check /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virtio-userdata-ext4-checkpoint-wait.patch  # wait AFTER block-checkpoint
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virtio-common apply /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virtio-userdata-ext4-checkpoint-wait.patch
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virtio-common apply --check /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virtio-userdata.patch  # virtio-userdata AFTER block-checkpoint+wait (expect fail)
+error: patch failed: configs/fstab/fstab.virtio-common:1
+error: configs/fstab/fstab.virtio-common: patch does not apply
+  EXIT=1
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virtio-common apply --reverse --check /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virtio-userdata.patch  # virtio-userdata reverse after chain
+error: patch failed: configs/fstab/fstab.virtio-common:1
+error: configs/fstab/fstab.virtio-common: patch does not apply
+  EXIT=1
+
+### CHAIN B: Updater -- serialize then pc-maintenance; empty-feed independent
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/packages/apps/Updater apply /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/updater-serialize-ab-preparation.patch
+error: patch failed: app/src/main/java/org/lineageos/updater/controller/ABUpdateInstaller.java:175
+error: app/src/main/java/org/lineageos/updater/controller/ABUpdateInstaller.java: patch does not apply
+  EXIT=1
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/packages/apps/Updater apply --check /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/updater-empty-feed-withdrawal.patch  # empty-feed after serialize-attempt
+error: patch failed: app/src/main/java/org/lineageos/updater/data/UpdatesRepository.kt:60
+error: app/src/main/java/org/lineageos/updater/data/UpdatesRepository.kt: patch does not apply
+  EXIT=1
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/packages/apps/Updater apply --check /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/updater-pc-maintenance.patch  # pc-maintenance after serialize-attempt
+error: patch failed: app/src/main/java/org/lineageos/updater/controller/ABUpdateInstaller.java:48
+error: app/src/main/java/org/lineageos/updater/controller/ABUpdateInstaller.java: patch does not apply
+error: patch failed: app/src/main/java/org/lineageos/updater/data/UpdatesRepository.kt:40
+error: app/src/main/java/org/lineageos/updater/data/UpdatesRepository.kt: patch does not apply
+error: patch failed: app/src/main/java/org/lineageos/updater/updatescheck/UpdatesCheckWorker.kt:36
+error: app/src/main/java/org/lineageos/updater/updatescheck/UpdatesCheckWorker.kt: patch does not apply
+error: patch failed: app/src/main/java/org/lineageos/updater/controller/UpdaterController.java:263
+error: app/src/main/java/org/lineageos/updater/controller/UpdaterController.java: patch does not apply
+error: patch failed: app/src/main/java/org/lineageos/updater/download/HttpURLConnectionClient.java:248
+error: app/src/main/java/org/lineageos/updater/download/HttpURLConnectionClient.java: patch does not apply
+  EXIT=1
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/packages/apps/Updater apply --check /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/updater-pc-maintenance.patch  # pc-maintenance pristine re-check
+error: patch failed: app/src/main/java/org/lineageos/updater/controller/ABUpdateInstaller.java:48
+error: app/src/main/java/org/lineageos/updater/controller/ABUpdateInstaller.java: patch does not apply
+error: patch failed: app/src/main/java/org/lineageos/updater/data/UpdatesRepository.kt:40
+error: app/src/main/java/org/lineageos/updater/data/UpdatesRepository.kt: patch does not apply
+error: patch failed: app/src/main/java/org/lineageos/updater/updatescheck/UpdatesCheckWorker.kt:36
+error: app/src/main/java/org/lineageos/updater/updatescheck/UpdatesCheckWorker.kt: patch does not apply
+error: patch failed: app/src/main/java/org/lineageos/updater/controller/UpdaterController.java:263
+error: app/src/main/java/org/lineageos/updater/controller/UpdaterController.java: patch does not apply
+error: patch failed: app/src/main/java/org/lineageos/updater/download/HttpURLConnectionClient.java:248
+error: app/src/main/java/org/lineageos/updater/download/HttpURLConnectionClient.java: patch does not apply
+  EXIT=1
+
+### CHAIN C: device/virt/virtio_x86_64 -- radeon then default / default then radeon
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virtio_x86_64 apply --check /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virtio-x86-64-awai-radeon.patch  # radeon first
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virtio_x86_64 apply /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virtio-x86-64-awai-radeon.patch
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virtio_x86_64 apply --check /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virtio-x86-64-awai-radeon-default.patch  # radeon-default AFTER radeon
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virtio_x86_64 apply /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virtio-x86-64-awai-radeon-default.patch
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virtio_x86_64 apply --check /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virtio-x86-64-awai-radeon-default.patch  # radeon-default first
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virtio_x86_64 apply /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virtio-x86-64-awai-radeon-default.patch
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virtio_x86_64 apply --check /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virtio-x86-64-awai-radeon.patch  # radeon AFTER radeon-default
+  EXIT=0
+
+### CHAIN D: device/virt/virt-common -- all three sequential
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virt-common apply --check /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virt-common-awai-pc.patch  # virt-common awai-pc
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virt-common apply /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virt-common-awai-pc.patch
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virt-common apply --check /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virt-common-awai-boot-name.patch  # boot-name after awai-pc
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virt-common apply /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virt-common-awai-boot-name.patch
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virt-common apply --check /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virt-common-user-no-adb-tcp.patch  # no-adb-tcp after awai-pc+boot-name
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/device/virt/virt-common apply /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/virt-common-user-no-adb-tcp.patch
+  EXIT=0
+
+### CHAIN E: vendor/lineage -- both sequential (different files)
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/vendor/lineage apply --check /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/vendor-lineage-no-ota-downgrade.patch  # no-ota-downgrade
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/vendor/lineage apply /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/vendor-lineage-no-ota-downgrade.patch
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/vendor/lineage apply --check /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/vendor-lineage-kernel-output-prefix.patch  # kernel-prefix after no-ota-downgrade
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-20261125/src/vendor/lineage apply /Users/node/orca/workspaces/awai-os/amphipod-g2/android/desktop/pc-ab-device/patches/vendor-lineage-kernel-output-prefix.patch
+  EXIT=0
+
+CHAIN_DONE 2026-11-25T02:07:52Z
