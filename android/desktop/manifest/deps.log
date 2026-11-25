@@ -1,0 +1,48 @@
+# AWAI-4088 (G1) lineage.dependencies closure, traversed recursively at pinned SHAs.
+# Lineage.dependencies files (JSON) fetched via raw.githubusercontent; 404s recorded.
+# A dependency is visited whether or not it is already in the manifest.
+project device/virt/virtio_x86_64 LineageOS/android_device_virt_virtio_x86_64@0e8571a0d7fce749856e9dea72e99a8a83f8f9b4 [already present] deps=https://raw.githubusercontent.com/LineageOS/android_device_virt_virtio_x86_64/0e8571a0d7fce749856e9dea72e99a8a83f8f9b4/lineage.dependencies
+  -> device/virt/virtio-common repository=android_device_virt_virtio-common branch=lineage-24.0 [already present]
+project device/virt/virtio-common LineageOS/android_device_virt_virtio-common@9d5c9307434bba31d19030fcc61086efcd248997 [already present] deps=https://raw.githubusercontent.com/LineageOS/android_device_virt_virtio-common/9d5c9307434bba31d19030fcc61086efcd248997/lineage.dependencies
+  -> device/virt/virt-common repository=android_device_virt_virt-common branch=lineage-24.0 [already present]
+project device/virt/virt-common LineageOS/android_device_virt_virt-common@5da818292d9a66cf282e909287fdab14eb80711b [already present] deps=https://raw.githubusercontent.com/LineageOS/android_device_virt_virt-common/5da818292d9a66cf282e909287fdab14eb80711b/lineage.dependencies
+  -> device/mainline/common repository=android_device_mainline_common branch=lineage-24.0 [already present]
+  -> external/mesa repository=android_external_mesa branch=lineage-24.0 [already present]
+  -> kernel/mainline/configs repository=android_kernel_mainline_configs branch=lineage-24.0 [already present]
+  -> kernel/virt/virtio repository=android_kernel_virt_virtio branch=lineage-24.0 [ADDED]
+  -> prebuilts/bootmgr repository=android_prebuilts_bootmgr branch=lineage-24.0 [already present]
+project device/mainline/common LineageOS/android_device_mainline_common@e237088ec3475c6b93e7148bdcc32218e36f782f [already present] deps=https://raw.githubusercontent.com/LineageOS/android_device_mainline_common/e237088ec3475c6b93e7148bdcc32218e36f782f/lineage.dependencies
+  -> external/drm_hwcomposer-upstream repository=android_external_drm_hwcomposer-upstream branch=lineage-24.0 [already present]
+  -> external/minigbm-upstream repository=android_external_minigbm-upstream branch=lineage-24.0 [already present]
+  -> external/linux-firmware-mainline repository=android_external_linux-firmware-mainline branch=lineage-24.0 [already present]
+  -> external/mesa repository=android_external_mesa branch=lineage-24.0 [already present]
+  -> hardware/mainline/common repository=android_hardware_mainline_common branch=lineage-24.0 [already present]
+  -> vendor/mainline repository=android_vendor_mainline branch=lineage-24.0 [already present]
+project external/mesa LineageOS/android_external_mesa@400e673cf8ba515d3aace56ed3acc3bb300869a5 [already present] deps=https://raw.githubusercontent.com/LineageOS/android_external_mesa/400e673cf8ba515d3aace56ed3acc3bb300869a5/lineage.dependencies
+  -> prebuilts/mesa-build-dep repository=android_prebuilts_mesa-build-dep branch=lineage-24.0 [already present]
+project kernel/mainline/configs LineageOS/android_kernel_mainline_configs@dc05b10df0b9efee05dc68f0d8166d4f2713e48f [already present] deps=https://raw.githubusercontent.com/LineageOS/android_kernel_mainline_configs/dc05b10df0b9efee05dc68f0d8166d4f2713e48f/lineage.dependencies
+  -> HTTP/other error: HTTP Error 404: Not Found (closure stops here)
+project kernel/virt/virtio LineageOS/android_kernel_virt_virtio@604b22fb250fa279c516eb3329bb74d191e5a14e [ADDED] deps=https://raw.githubusercontent.com/LineageOS/android_kernel_virt_virtio/604b22fb250fa279c516eb3329bb74d191e5a14e/lineage.dependencies
+  -> HTTP/other error: HTTP Error 404: Not Found (closure stops here)
+project prebuilts/bootmgr LineageOS/android_prebuilts_bootmgr@811ba971e891b1f3e7412dfcaac633af5517892f [already present] deps=https://raw.githubusercontent.com/LineageOS/android_prebuilts_bootmgr/811ba971e891b1f3e7412dfcaac633af5517892f/lineage.dependencies
+  -> HTTP/other error: HTTP Error 404: Not Found (closure stops here)
+project external/drm_hwcomposer-upstream LineageOS/android_external_drm_hwcomposer-upstream@75c1e12adac7c5f2f5949afca98651fa7b42b19f [already present] deps=https://raw.githubusercontent.com/LineageOS/android_external_drm_hwcomposer-upstream/75c1e12adac7c5f2f5949afca98651fa7b42b19f/lineage.dependencies
+  -> external/libdisplay-info-upstream repository=android_external_libdisplay-info-upstream branch=lineage-24.0 [already present]
+project external/minigbm-upstream LineageOS/android_external_minigbm-upstream@0111c9e1033106dc85899eea1076e4579200d75b [already present] deps=https://raw.githubusercontent.com/LineageOS/android_external_minigbm-upstream/0111c9e1033106dc85899eea1076e4579200d75b/lineage.dependencies
+  -> HTTP/other error: HTTP Error 404: Not Found (closure stops here)
+project external/linux-firmware-mainline LineageOS/android_external_linux-firmware-mainline@c0dcca3ad25e261abfbd1c0d42219c81a1f48496 [already present] deps=https://raw.githubusercontent.com/LineageOS/android_external_linux-firmware-mainline/c0dcca3ad25e261abfbd1c0d42219c81a1f48496/lineage.dependencies
+  -> HTTP/other error: HTTP Error 404: Not Found (closure stops here)
+project hardware/mainline/common LineageOS/android_hardware_mainline_common@2856c8d4c52007add6f79480dba29987ec68c6b0 [already present] deps=https://raw.githubusercontent.com/LineageOS/android_hardware_mainline_common/2856c8d4c52007add6f79480dba29987ec68c6b0/lineage.dependencies
+  -> external/alsa-lib repository=android_external_alsa-lib branch=lineage-24.0 [already present]
+  -> external/alsa-ucm-conf repository=android_external_alsa-ucm-conf branch=lineage-24.0 [already present]
+project vendor/mainline LineageOS/android_vendor_mainline@a3baa61e40ab74294ca0063b81155f259c855e6b [already present] deps=https://raw.githubusercontent.com/LineageOS/android_vendor_mainline/a3baa61e40ab74294ca0063b81155f259c855e6b/lineage.dependencies
+  -> HTTP/other error: HTTP Error 404: Not Found (closure stops here)
+project prebuilts/mesa-build-dep LineageOS/android_prebuilts_mesa-build-dep@d68b27515a9298010c945f44353d5aec6c53eedd [already present] deps=https://raw.githubusercontent.com/LineageOS/android_prebuilts_mesa-build-dep/d68b27515a9298010c945f44353d5aec6c53eedd/lineage.dependencies
+  -> HTTP/other error: HTTP Error 404: Not Found (closure stops here)
+project external/libdisplay-info-upstream LineageOS/android_external_libdisplay-info-upstream@dffa9dee319f956c94a2cb4a853f9d55ff84a560 [already present] deps=https://raw.githubusercontent.com/LineageOS/android_external_libdisplay-info-upstream/dffa9dee319f956c94a2cb4a853f9d55ff84a560/lineage.dependencies
+  -> HTTP/other error: HTTP Error 404: Not Found (closure stops here)
+project external/alsa-lib LineageOS/android_external_alsa-lib@533b21f75eb2bd3fe46e9259dccf1628e318f859 [already present] deps=https://raw.githubusercontent.com/LineageOS/android_external_alsa-lib/533b21f75eb2bd3fe46e9259dccf1628e318f859/lineage.dependencies
+  -> HTTP/other error: HTTP Error 404: Not Found (closure stops here)
+project external/alsa-ucm-conf LineageOS/android_external_alsa-ucm-conf@b695e87520201d31a9207a1108648c3f83f71e11 [already present] deps=https://raw.githubusercontent.com/LineageOS/android_external_alsa-ucm-conf/b695e87520201d31a9207a1108648c3f83f71e11/lineage.dependencies
+  -> HTTP/other error: HTTP Error 404: Not Found (closure stops here)
+total reached: 17; additions: 4 (prebuilts/mesa-build-dep, external/alsa-lib, external/alsa-ucm-conf, external/libdisplay-info-upstream)
