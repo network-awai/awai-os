@@ -221,7 +221,7 @@ test("approved mode executes the same ordered command list end to end (real kit)
   const src = join(work, "src");
   mkdirSync(join(src, "build"), { recursive: true });
   writeFileSync(join(src, "build", "envsetup.sh"),
-    `breakfast() { local t=$1 v=${2:-userdebug}; case "$t" in *-(user|userdebug|eng)) echo "lunch $t" >> "${fncalls}" ;; *) echo "lunch lineage_$t-ap3a-$v" >> "${fncalls}" ;; esac; }
+    `breakfast() { local t=$1 v=\${2:-userdebug}; echo "ro-dryrun=$ROOMSERVICE_DRYRUN ccache=$USE_CCACHE" >> "${fncalls}"; case "$t" in *user|*userdebug|*eng) echo "lunch $t" >> "${fncalls}" ;; *) echo "lunch lineage_$t-ap3a-$v" >> "${fncalls}" ;; esac; }
 m() { echo "m $*" >> "${fncalls}";
   mkdir -p "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates"
   echo tf > "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates/lineage_virtio_x86_64-target_files.zip"
@@ -255,8 +255,6 @@ m() { echo "m $*" >> "${fncalls}";
     "SetupWizard checkout 1d158e23847b5d9f9523ce6cfc51df2b0c54f6cd",
     "SetupWizard apply --check",
     "SetupWizard apply",
-    "ROOMSERVICE_DRYRUN=true",
-    "USE_CCACHE=1",
   ];
   let pos = -1;
   for (const snippet of order) {
@@ -272,6 +270,8 @@ m() { echo "m $*" >> "${fncalls}";
   // envsetup functions recorded: breakfast + m (NOT binaries on PATH)
   const fb = readFileSync(fncalls, "utf8");
   assert.match(fb, /lunch lineage_virtio_x86_64-ap3a-userdebug/);
+  assert.match(fb, /ro-dryrun=true/);
+  assert.match(fb, /ccache=1/);
   assert.match(fb, /m target-files-package otatools diskimage-vda/);
 
   // helper stubs (shadowed via PATH) were used
@@ -351,7 +351,7 @@ test("Job command from empty dir runs the extracted kit to restore (real kit)", 
   const src = join(work, "src");
   mkdirSync(join(src, "build"), { recursive: true });
   writeFileSync(join(src, "build", "envsetup.sh"),
-    `breakfast() { local t=$1 v=${2:-userdebug}; case "$t" in *-(user|userdebug|eng)) echo "lunch $t" >> "${fncalls}" ;; *) echo "lunch lineage_$t-ap3a-$v" >> "${fncalls}" ;; esac; }
+    `breakfast() { local t=$1 v=\${2:-userdebug}; echo "ro-dryrun=$ROOMSERVICE_DRYRUN ccache=$USE_CCACHE" >> "${fncalls}"; case "$t" in *user|*userdebug|*eng) echo "lunch $t" >> "${fncalls}" ;; *) echo "lunch lineage_$t-ap3a-$v" >> "${fncalls}" ;; esac; }
 m() { echo "m $*" >> "${fncalls}";
   mkdir -p "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates"
   echo tf > "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates/lineage_virtio_x86_64-target_files.zip"
@@ -389,6 +389,8 @@ m() { echo "m $*" >> "${fncalls}";
   assert.ok(!applySh.includes("packages/apps/SetupWizard"), "apply.sh must not carry a SetupWizard block");
   const fb = readFileSync(fncalls, "utf8");
   assert.match(fb, /lunch lineage_virtio_x86_64-ap3a-userdebug/);
+  assert.match(fb, /ro-dryrun=true/);
+  assert.match(fb, /ccache=1/);
   assert.match(fb, /m target-files-package otatools diskimage-vda/);
   const calls = stub.calls();
   const order = [
@@ -401,7 +403,6 @@ m() { echo "m $*" >> "${fncalls}";
     "timeout 20m git -C",
     "SetupWizard checkout 1d158e23847b5d9f9523ce6cfc51df2b0c54f6cd",
     "SetupWizard apply",
-    "ROOMSERVICE_DRYRUN=true",
     "rclone copy",
     "rclone copy",
     "ota_from_target_files",
@@ -534,7 +535,7 @@ test("SetupWizard patches applied in order, exactly once (single awai patch)", a
   const src = join(work, "src");
   mkdirSync(join(src, "build"), { recursive: true });
   writeFileSync(join(src, "build", "envsetup.sh"),
-    `breakfast() { local t=$1 v=${2:-userdebug}; case "$t" in *-(user|userdebug|eng)) echo "lunch $t" >> "${fncalls}" ;; *) echo "lunch lineage_$t-ap3a-$v" >> "${fncalls}" ;; esac; }
+    `breakfast() { local t=$1 v=\${2:-userdebug}; echo "ro-dryrun=$ROOMSERVICE_DRYRUN ccache=$USE_CCACHE" >> "${fncalls}"; case "$t" in *user|*userdebug|*eng) echo "lunch $t" >> "${fncalls}" ;; *) echo "lunch lineage_$t-ap3a-$v" >> "${fncalls}" ;; esac; }
 m() { echo "m $*" >> "${fncalls}";
   mkdir -p "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates"
   echo tf > "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates/lineage_virtio_x86_64-target_files.zip"
@@ -557,6 +558,8 @@ m() { echo "m $*" >> "${fncalls}";
   ]);
   const fb = readFileSync(fncalls, "utf8");
   assert.match(fb, /lunch lineage_virtio_x86_64-ap3a-userdebug/);
+  assert.match(fb, /ro-dryrun=true/);
+  assert.match(fb, /ccache=1/);
   assert.match(r.stdout, /AWAI4089_PATCH_COUNT=(\d+)/);
 });
 
