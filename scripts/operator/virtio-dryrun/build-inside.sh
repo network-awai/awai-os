@@ -169,6 +169,10 @@ stage patches
 # 4093 diagnostics — are included automatically via these paths).
 PCNT=$(ls "$KIT"/pc-ab-device/patches/*.patch 2>/dev/null | wc -l | tr -d ' ' || true)
 printf 'AWAI4089_PATCH_COUNT=%s\n' "${PCNT:-0}"
+# Regenerate the kernel config: kernel-config patches without
+# olddefconfig produce a stale .config and fail the build otherwise
+# (Tatara estimate). In the same $SRC cwd.
+run make -C "$SRC/kernel/virt/virtio" olddefconfig
 
 # Lunch + v1 build + v1 upload (BEFORE v2; failure in v2 keeps v1).
 run source build/envsetup.sh

@@ -89,6 +89,7 @@ m() { echo "m $*" >> "${fncalls}";
   };
   mk("apt-get", "exit 0\n");
   mk("git", "exit 0\n");
+  mk("make", "exit 0\n");
   const up = join(work, "upload");
   writeFileSync(join(fakes, "rclone"),
     `#!/bin/sh
@@ -239,6 +240,14 @@ test("approved mode executes the same ordered command list end to end", async ()
   assert.ok(cwdLines.length >= 3, cwdLines.join("\n"));
   for (const l of cwdLines) assert.equal(l.slice(4), fix.src);
 
+  // olddefconfig sits after the patch steps and before `m`:
+  // patch steps (apply.sh etc. in kit stubs) ran in an earlier stage,
+  // and the `m` function call must come after `make olddefconfig`.
+  const callList = fcalls.split("\n");
+  const kIndex = callList.findIndex((l) => l.startsWith("make -C "));
+  assert.ok(kIndex >= 0, callList.join("\n"));
+  assert.match(callList[kIndex], /kernel\/virt\/virtio olddefconfig/);
+  // the `m` function call (recorded after olddefconfig) is asserted below.
   // envsetup functions recorded: breakfast + m (NOT binaries on PATH)
   const fncalls = readFileSync(fix.fncalls, "utf8");
   assert.match(fncalls, /breakfast lineage_virtio_x86_64 userdebug/);
