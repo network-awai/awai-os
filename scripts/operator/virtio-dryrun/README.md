@@ -33,24 +33,74 @@ Dry-run by default; executes for real only when
   the next estimate.
 - Refusals: no mode (exit 2); billing without owner; owner without
   billing; missing/!valid `RELEASE_TYPE`; deadline < 28800; missing
-  `AWAI_FEED_URL` (required in all modes); in approved mode: missing
-  `KIT_URL`/`KIT_SHA256`; kit tarball SHA mismatch; pinned manifest
-  SHA mismatch (exit 1).
+  `AWAI_FEED_URL` (required in all modes); no apps mode or both apps
+  modes; `AWAI_WITHOUT_APPS=1` with `RELEASE_TYPE=user`; prebuilt apps
+  mode with fewer than five values; in approved mode: missing
+  `KIT_URL`/`KIT_SHA256`; unreadable prebuilt APK; kit tarball SHA
+  mismatch; pinned manifest SHA mismatch (exit 1).
+
+## Apps mode (required; #523's fail-closed guard)
+
+[#523](https://github.com/network-awai/awai-os/pull/523) adds
+`virtio-common-awai-apps.patch`: `device/virt/virtio-common`'s product
+include stops the build (`$(error)`) when an Awai APK is missing, an
+expected signer is unset, or a signer differs. The Job therefore has no
+default apps mode and refuses without one (exit 2,
+`AWAI4094_REFUSES`). Exactly one mode is named:
+
+| Mode | Variables | Build |
+| --- | --- | --- |
+| without apps | `AWAI_WITHOUT_APPS=1` | `AWAI_WITHOUT_APPS: Home/Store are NOT preinstalled`; no Awai module. Refused for `RELEASE_TYPE=user` (the guard also refuses it on release builds). |
+| prebuilt | `AWAI_HOME_APK`, `AWAI_STORE_APK`, `AWAI_HOME_EXPECTED_SIGNER_SHA256`, `AWAI_STORE_EXPECTED_SIGNER_SHA256`, `AWAI_APKSIGNER` | both APKs are copied to `device/virt/virtio-common/awai-apps/{AwaiHome,AwaiStore}.apk` before `m`; the three signer values are exported to the build, which verifies them. |
+
+Every run prints one recorded line (`AWAI4094_APPS: without-apps
+(evaluation)` or `AWAI4094_APPS: prebuilt home=<sha256> store=<sha256>`,
+using the expected digests that were passed, not a re-read of the APK).
+The dry-run printout contains that line too, so the chosen mode is
+visible before anything executes. `virtio-job.sh` validates the same
+choice and puts it in the container env plus the
+`awai.network/apps-mode` Job label.
+
+The APK paths must resolve inside the build container; the Job neither
+fetches nor signs APKs, and no APK is committed to this repository.
+`#523` is unmerged: until it lands these variables are inert (no guard
+consumes them), and the Job still refuses without a mode — supplying
+`AWAI_WITHOUT_APPS=1` keeps today's behaviour for an evaluation build.
+
+The same guard applies to every product that includes that device tree,
+including the planned **arm64** and **TV** targets. This repository has
+no Job definition for arm64 or TV (**undefined; required when one is
+created**): each such Job must make the same explicit choice and record
+`AWAI4094_APPS` the same way.
+
+Checklist for a new target Job:
+
+- [ ] refuse without an apps mode (or a partial prebuilt set)
+- [ ] refuse `AWAI_WITHOUT_APPS=1` with a `user` build
+- [ ] pass the five prebuilt values (or `AWAI_WITHOUT_APPS=1`) into the container
+- [ ] print `AWAI4094_APPS` once per run and keep the mode in the record
 
 ## Usage
 
 ```sh
-# dry-run (prints only)
-DRY_RUN=1 RELEASE_TYPE=userdebug AWAI_FEED_URL=https://feed.example/ota.json \
+# dry-run (prints only); apps mode is required
+DRY_RUN=1 RELEASE_TYPE=userdebug AWAI_WITHOUT_APPS=1 \
+  AWAI_FEED_URL=https://feed.example/ota.json \
   bash scripts/operator/virtio-dryrun/build-inside.sh
 
 # print the Job
-DRY_RUN=1 RELEASE_TYPE=userdebug AWAI_VKE_NODE_POOL=awai-pc-release-012345abcdef \
+DRY_RUN=1 RELEASE_TYPE=userdebug AWAI_WITHOUT_APPS=1 \
+  AWAI_VKE_NODE_POOL=awai-pc-release-012345abcdef \
   bash scripts/operator/virtio-dryrun/virtio-job.sh > /tmp/job.json
 
-# approved execution (needs an owner-approved billing decision)
+# approved execution (needs an owner-approved billing decision) with
+# prebuilt Home/Store and their expected signers
 BILLING_ALLOWED=1 OWNER_APPROVED=1 RELEASE_TYPE=userdebug \
   KIT_URL=https://…/kit.tar.gz KIT_SHA256=<sha256> \
+  AWAI_HOME_APK=/apks/AwaiHome.apk AWAI_STORE_APK=/apks/AwaiStore.apk \
+  AWAI_HOME_EXPECTED_SIGNER_SHA256=<sha256> \
+  AWAI_STORE_EXPECTED_SIGNER_SHA256=<sha256> \
+  AWAI_APKSIGNER=/usr/bin/apksigner \
   AWAI_FEED_URL=https://feed.example/ota.json \
   bash scripts/operator/virtio-dryrun/build-inside.sh
 ```

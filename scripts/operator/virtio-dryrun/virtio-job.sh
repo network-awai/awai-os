@@ -13,7 +13,15 @@
 # image has no rclone pre-install, so no rclone bootstrap is
 # attempted before apt-get.
 #
-#   DRY_RUN=1 RELEASE_TYPE=userdebug AWAI_VKE_NODE_POOL=awai-pc-release-012345abcdef bash virtio-job.sh > job.json
+# An apps mode is required, exactly one of:
+#   AWAI_WITHOUT_APPS=1 (evaluation; refused for RELEASE_TYPE=user), or
+#   AWAI_HOME_APK, AWAI_STORE_APK, AWAI_HOME_EXPECTED_SIGNER_SHA256,
+#   AWAI_STORE_EXPECTED_SIGNER_SHA256, AWAI_APKSIGNER (prebuilt).
+# They are placed in the container env; build-inside.sh re-validates
+# them and copies the APKs into device/virt/virtio-common/awai-apps/.
+#
+#   DRY_RUN=1 RELEASE_TYPE=userdebug AWAI_WITHOUT_APPS=1 \
+#     AWAI_VKE_NODE_POOL=awai-pc-release-012345abcdef bash virtio-job.sh > job.json
 set -euo pipefail
 umask 077
 here=$(cd "$(dirname "$0")" && pwd)
@@ -45,6 +53,40 @@ if ! [[ $DEADLINE =~ ^[0-9]+$ ]] || (( DEADLINE < 28800 )); then
 fi
 
 : "${AWAI_VKE_NODE_POOL:?set AWAI_VKE_NODE_POOL for the Job selector}"
+
+# Apps mode — the same explicit choice build-inside.sh requires (#523's
+# fail-closed guard). The values reach the container through env below.
+apps_without=0
+apps_prebuilt=0
+[[ ${AWAI_WITHOUT_APPS:-} == 1 ]] && apps_without=1
+APPS_PREBUILT_VARS=(AWAI_HOME_APK AWAI_STORE_APK AWAI_HOME_EXPECTED_SIGNER_SHA256 \
+  AWAI_STORE_EXPECTED_SIGNER_SHA256 AWAI_APKSIGNER)
+for v in "${APPS_PREBUILT_VARS[@]}"; do
+  [[ -n ${!v:-} ]] && apps_prebuilt=1
+done
+if (( apps_without && apps_prebuilt )); then
+  echo "AWAI4094_REFUSES: AWAI_WITHOUT_APPS=1 and the prebuilt APK values are mutually exclusive; name exactly one apps mode." >&2
+  exit 2
+fi
+if (( !apps_without && !apps_prebuilt )); then
+  echo "AWAI4094_REFUSES: an explicit apps mode is required: AWAI_WITHOUT_APPS=1 (evaluation), or all of AWAI_HOME_APK AWAI_STORE_APK AWAI_HOME_EXPECTED_SIGNER_SHA256 AWAI_STORE_EXPECTED_SIGNER_SHA256 AWAI_APKSIGNER (prebuilt)." >&2
+  exit 2
+fi
+if (( apps_without )) && [[ $RELEASE_TYPE == user ]]; then
+  echo "AWAI4094_REFUSES: AWAI_WITHOUT_APPS=1 is refused for RELEASE_TYPE=user." >&2
+  exit 2
+fi
+if (( apps_prebuilt )); then
+  missing=()
+  for v in "${APPS_PREBUILT_VARS[@]}"; do
+    [[ -n ${!v:-} ]] || missing+=("$v")
+  done
+  if (( ${#missing[@]} )); then
+    echo "AWAI4094_REFUSES: prebuilt apps mode requires all five values (missing: ${missing[*]})." >&2
+    exit 2
+  fi
+fi
+
 namespace=awai-pc-release-build
 name=awai-virtio-dryrun-build
 image=ubuntu@sha256:9a04f13b3f80ef056361e30868593b1cfd2279fe19e4081cb93a90bf56819d6a
@@ -59,6 +101,11 @@ jq -n \
   --arg approved "${OWNER_APPROVED:-}" --arg release_type "$RELEASE_TYPE" \
   --arg kit_url "${KIT_URL:-}" --arg kit_sha256 "${KIT_SHA256:-}" \
   --arg feed_url "${AWAI_FEED_URL:-}" \
+  --arg without_apps "${AWAI_WITHOUT_APPS:-}" \
+  --arg home_apk "${AWAI_HOME_APK:-}" --arg store_apk "${AWAI_STORE_APK:-}" \
+  --arg home_signer "${AWAI_HOME_EXPECTED_SIGNER_SHA256:-}" \
+  --arg store_signer "${AWAI_STORE_EXPECTED_SIGNER_SHA256:-}" \
+  --arg apksigner "${AWAI_APKSIGNER:-}" \
   --arg pool_label "${AWAI_POOL_LABEL:-}" \
   --arg firmware_git "${FIRMWARE_GIT:-/root/build/firmware/src}" \
   --arg work "$WORK" \
@@ -69,6 +116,7 @@ jq -n \
      labels: {
        "awai.network/g2-dry-run": "true",
        "awai.network/release-type": $release_type,
+       "awai.network/apps-mode": (if $without_apps == "1" then "without-apps" else "prebuilt" end),
        "awai.network/billing-allowed": $billing,
        "awai.network/owner-approved": $approved
      } },
@@ -97,6 +145,12 @@ jq -n \
                  { name: "KIT_URL", value: $kit_url },
                  { name: "KIT_SHA256", value: $kit_sha256 },
                  { name: "AWAI_FEED_URL", value: $feed_url },
+                 { name: "AWAI_WITHOUT_APPS", value: $without_apps },
+                 { name: "AWAI_HOME_APK", value: $home_apk },
+                 { name: "AWAI_STORE_APK", value: $store_apk },
+                 { name: "AWAI_HOME_EXPECTED_SIGNER_SHA256", value: $home_signer },
+                 { name: "AWAI_STORE_EXPECTED_SIGNER_SHA256", value: $store_signer },
+                 { name: "AWAI_APKSIGNER", value: $apksigner },
                  { name: "AWAI_POOL_LABEL", value: $pool_label },
                  { name: "FIRMWARE_GIT", value: $firmware_git },
                  { name: "BUILD_WORK_DIR", value: $work },
