@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # AWAI-4089 (G2): lineage_virtio_x86_64 Job build definition.
 #
+# WARNING: do not run this Job (approved mode) until the G2 B fix PR
+# (breakfast arg, JDK PATH, ROOMSERVICE_DRYRUN, 52Gi) has landed — the
+# original main build fails on paid runs.
+#
 # Runs inside an ubuntu container, `cd "$SRC"`, `source
 # build/envsetup.sh` in the main shell (so `breakfast` and `m` are
 # the build system's functions), then the chain. Dry-run by default:

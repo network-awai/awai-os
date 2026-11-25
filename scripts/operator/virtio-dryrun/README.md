@@ -1,5 +1,20 @@
 # lineage_virtio_x86_64 Job (AWAI-4089 G2)
 
+> **WARNING: do not run this Job (approved mode) until the G2 B fix PR
+> (breakfast arg, JDK PATH, ROOMSERVICE_DRYRUN, 52Gi) has landed.**
+> The original main build fails on paid runs (double-`lineage_` lunch
+> name, missing JDK 21, roomservice duplication, 64Gi over the
+> vc2-16c-64gb ceiling). Dry-run execution is safe.
+
+Boundary: the **procedure** (`build-inside.sh`: breakfast, JDK,
+ROOMSERVICE_DRYRUN, ccache, patch application, target-files/disk/OTA
+chain) is runtime-agnostic and takes its knobs as environment variables
+(`BUILD_WORK_DIR`, `RELEASE_TYPE`, `AWAI_POOL_LABEL`, `MANIFEST_FILE`,
+`FIRMWARE_GIT`, …). The **VKE frame** (`virtio-job.sh` output: memory,
+CPU, ephemeral-storage, node pool, B2 paths) is the only part that must
+change to move to another execution substrate; minimum conditions live
+in `docs/otehon/g2-build-requirements.md`.
+
 Dry-run by default; executes for real only when
 `BILLING_ALLOWED=1` **and** `OWNER_APPROVED=1`.
 
