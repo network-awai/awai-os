@@ -32,13 +32,14 @@ sh_test(
         data = [
             ":awai-pc-install.py",
         ] + glob(["installer/**"], exclude = ["installer/screenshots/**"]),
-        size = "medium",
+        size = "large" if name == "layout" else "medium",
         tags = ["no-remote"],
     )
     for name, suite in [
         ("core", "core"),
         ("controller", "controller"),
         ("gui", "gui"),  # the GTK widget tests skip themselves where PyGObject / Gtk 3 is missing
+        ("layout", "layout"),  # every size: inside the safe area, nothing overlaps (skips without GTK)
         ("web_build", "web_and_build"),
     ]
 ]
@@ -52,5 +53,6 @@ test_suite(
         ":screen_installer_web_build_test",
         ":screen_installer_controller_test",
         ":screen_installer_gui_test",
+        ":screen_installer_layout_test",
     ],
 )

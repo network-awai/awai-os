@@ -122,7 +122,7 @@ GTK cannot start it says why in one line and continues with the text installer o
 | Path | What |
 | --- | --- |
 | `installer/core.py` | **Every guard and the install sequence** (and the detached `worker` entry). Both front ends call it; neither decides anything. |
-| `installer/controller.py` | front-end-neutral controller: list/confirm -> one-shot ticket -> typed device name -> exactly one detached worker, true install state, power-off question. Unit-tested without GTK. |
+| `installer/controller.py` | front-end-neutral controller: list/confirm -> one-shot ticket -> one in-window confirmation -> exactly one detached worker, true install state, power-off question. Unit-tested without GTK. |
 | `installer/gui.py`, `keys.py`, `strings.py` | the GTK 3 widget tree (CSS from one design unit), the key policy, every Japanese string. |
 | `installer/fonts/`, `assets/` | bundled Noto Sans JP subset (3 static weights, OFL) and the Awai mark. |
 | `installer/text_installer.py` | the text front end (English, on `core.py`). |
@@ -147,7 +147,7 @@ is untouched (Ctrl+Alt+F2 gives the console shell).
 `boot/syslinux/sysresccd_head.cfg` + `sysresccd_sys.cfg`; xorriso maps them with `-overwrite on`. The menu is
 **Install Awai OS** (default, first), **Install Awai OS (text)** (`awai.installer=text`, read by `start.sh`) and
 **Install Awai OS (basic display, nomodeset)**, then the stock custom hook, firmware setup, reboot and power off. Timeout 5 s;
-an unattended boot only reaches the installer screen, which still needs the typed device name. The kernel and initrd lines
+an unattended boot only reaches the installer screen, which still needs the confirmation (the default focus there is やめる). The kernel and initrd lines
 are the stock ones character for character (a test compares them with the stock files), and the text entry adds only
 `awai.installer=text`. Labels are English: GRUB's `font.pf2` and syslinux's menu font are not known to draw Japanese, and
 no base-distribution name appears in menu text (the `archisolabel=RESCUE1303` parameter and `/sysresccd` paths are
@@ -164,7 +164,7 @@ mounted, `wipefs` signatures only `gpt`/`PMBR`, never the device the media direc
 `findmnt` plus `lsblk -s`; if it cannot be resolved every disk is refused). Every disk is listed; the ones that fail are
 `選択不可` with the reason. There is no erase operation anywhere.
 
-Order of `run_install`: typed device name == target -> target checks and identity (major:minor, size, model, serial,
+Order of `run_install`: `request.confirmed is True` -> target checks and identity (major:minor, size, model, serial,
 WWN; a serial or WWN appearing or vanishing counts as a change) equal to what was confirmed -> `archive.sha256` ->
 raw image sha256 == pinned value -> plan with `existing == []` and the expected number of new partitions ->
 **all target checks and identity again, plus a fresh plan, immediately before writing** ->
@@ -172,15 +172,20 @@ raw image sha256 == pinned value -> plan with `existing == []` and the expected 
 partition with a digest -> `sgdisk -v` exit 0 and "No problems found" -> `sync` -> only then `done`. Any other path ends
 in `failed`; the window shows the completion screen only for `state == "done"`.
 
-Two-step confirmation: the review screen asks for the device name (`nvme0n1`); the controller checks it and the worker
-checks it again. The text installer still asks for `INSTALL nvme0n1` and hands the name to the same check.
+Confirmation: the review screen has no text field (owner feedback from the real 6600H: a typed device name is not for ordinary
+people; only empty SSDs can be chosen, so nothing of the user's is at stake). この SSD にインストール opens one confirmation in the same
+window (a veil over it, never a second window): size, and for several empty SSDs model and the last 4 of the serial, "do not switch
+off", やめる (focused first, Esc) and インストールする. `Controller.ask()` marks the ticket as asked; `start(confirmed=True)` refuses
+without the opened confirmation and an explicit `True`; the worker request carries `confirmed: true` and `core.run_install` refuses
+anything else (`not-confirmed`). The identity captured at the review is checked again right before writing, as before. The text
+installer still asks for `INSTALL nvme0n1` and sends `confirmed: true` to the same check.
 
 One install: the worker holds `flock` on `/run/awai-pc-installer/lock`; it is a separate, detached process (own session), so
 closing, killing or crashing the GTK window neither stops the write nor allows another. A restarted window reads the true state
 (`running` only with a live lock holder; `running` without one is reported as interrupted, never as running or done).
 `write-started` / `install-record.json` block any further start until reboot (`/run` is a tmpfs). Reboot and power off are
 refused by the controller while an install runs, and the buttons are disabled. The ticket from `内容を確認` (identity at that
-moment) is consumed by the one start, whatever happens; a wrong typed name consumes it too.
+moment) is consumed by the one start, whatever happens; a start without the confirmation consumes it too.
 
 ### Progress
 
@@ -218,9 +223,28 @@ to the Regular file's SHA-256), the GTK tests ask Pango which font it loads for 
 **Logo.** `assets/logo.png` is `android/client/assets/setup-logo.png` (the Awai mark) scaled to 256 px. No vector version of the mark
 exists in the repo or in PR #302 (its `awai_welcome_mark.xml` is only a rounded rectangle), so it is raster.
 
-**Proportions.** One design unit `u = min(W/740, H/440)` pixels scales text, logo, cards and gaps with the screen; the rail is 30.5% of
-the width and cards 57.7%, as in `design/installer.png`. Gtk CSS only, software rendering (no GL): the window uses the plain cairo
-paths of GTK 3.
+**Design and proportions.** The screens follow the revised Figma board (`design/installer-rev2.png`, 10 screens): 1 Figma px = 1 px at
+1280x720. One unit `u = min(W/1280, H/720)` scales text, logo, cards and gaps (compact layout for width < 1000 or portrait: a
+stepper bar on top, `u = min(W/800, H/600)`). Focus is a filled control with a 5px amber ring; hover and pressed states are
+styled. Gtk CSS only, software rendering (no GL): the window uses the plain cairo paths of GTK 3.
+
+**Never cut off.** The window takes the geometry of the primary monitor (else the first), never the virtual screen, and never
+`fullscreen()`: without a window manager GDK falls back to the whole X screen, which with several outputs is larger than any one
+monitor, and that is what cut the bottom off on the real 6600H. Everything sits inside a 3% safe margin on every side (TVs and
+portable monitors overscan); the panel backgrounds still reach the edges. The natural height of the screen is measured and `u`
+is reduced until it fits (including the confirmation and the longer power question); the SSD list scrolls inside its own area, follows
+the focused card, and the action row is always visible; every label wraps. `xsession.sh` sets each connected monitor to its
+preferred mode (`xrandr --auto`, mirrored), marks one primary, and writes `xrandr --query` before and after to
+`$work/xrandr.txt`; `gui.py` writes the monitors and the chosen one to `$work/display.txt`. HiDPI: the geometry is in logical pixels
+and `u` already scales the UI, so no extra factor is applied. `tests/test_layout.py` checks 13 sizes (1024x600 ... 3840x2160,
+800x600, 1080x1920) x 1 to 8 SSDs x every screen: every button and label inside the safe area, no overlap, no clipped text.
+
+**Mouse, touch and keyboard.** The pointer is visible (no `-nocursor`; `xsetroot -cursor_name left_ptr`); a whole card or button is
+the click target. Keyboard: a sensible control has the focus when a screen opens (the one empty SSD is already chosen and 内容を確認
+has the focus; several: the first card), ↑ ↓ walk the cards and then the buttons, ← → the buttons of the row, Enter does what the hint
+above the buttons says, Esc is 戻る / やめる, Space selects, Tab/Shift+Tab work. Enter, Enter, Enter from boot ends on やめる, never
+an install. 電源を切る is never reached by plain Enter and asks once; a done or failed screen that appears by itself ignores its
+buttons for 1.2 s.
 
 **No browser, no listener.** An earlier revision showed the screen in a kiosk browser. VM runs showed that this cannot be made
 reliable (shortcuts left the installer, browser chrome and the per-boot token showed in the address bar, and the browser's own
@@ -240,7 +264,7 @@ No root, no real disk: fake `lsblk`/`blockdev`/`wipefs`/`findmnt`/`sgdisk`/`zstd
 the production `Host` is replaced only in tests. The GTK tests drive the real widget tree in a `Gtk.OffscreenWindow` (nothing is shown
 on a display; Tab/Enter/typing are simulated at widget level) and skip themselves where PyGObject/Gtk 3 is missing (CI runs
 117 of 133 tests there; the 16 GTK tests ran locally in a conda env with Gtk 3.24). Bazel: `:screen_installer_*_test`. Mutation list:
-`installer/tests/mutation-results.txt` (80 of 81 guards killed; the one survivor is equivalent offscreen and covered by the VM run).
+`installer/tests/mutation-results.txt`.
 Screenshots from the widget tree and the design side by side: `installer/screenshots/` (`fonts-used.txt` proves every label is drawn
 by the bundled face, `keyboard-walkthrough.txt` is the Tab/Enter sequence).
 

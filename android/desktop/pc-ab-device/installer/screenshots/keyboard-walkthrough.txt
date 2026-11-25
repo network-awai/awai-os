@@ -1,12 +1,8 @@
-start (nothing selected, nothing focused) focus=None
-Tab                                      focus='内蔵 SSD | 20.0 GiB · NVMe · 空きディスク | 選択可能'
-Enter  -> select the SSD                 focus='内蔵 SSD | 20.0 GiB · NVMe · 空きディスク | 選択済み'
-Tab  (first stop: 内容を確認)                 focus='内容を確認'
-Enter  -> 内容を確認                          focus='typed'
-type nvme0 (button still disabled)       focus='typed'
-type n1                                  focus='typed'
-Tab  (first stop: この SSD にインストール)        focus='この SSD にインストール'
-Enter  -> この SSD にインストール                 focus=None
-done                                     focus=None
-[7a-failed-nothing-written] text: Awai OS Meiji | PC に | インストール | インストール先 | 済み | 内容の確認 | 済み | インストール | 現在 | 完了 | Tab で項目を移動 | Enter で選択 | インストールできませんでした | 失敗した手順: 1 イメージの確認 | インストールイメージの確認に失敗しました。USB の内容が正しくありません。 | 詳細: archive-sha | SSD への書き込み: 行われていません。SSD は変更されていません。 | 最初に戻る | 電源を切る
-[7b-failed-after-write] text: Awai OS Meiji | PC に | インストール | インストール先 | 済み | 内容の確認 | 済み | インストール | 現在 | 完了 | Tab で項目を移動 | Enter で選択 | インストールできませんでした | 失敗した手順: 3 書き込んだ内容の読み戻し | 区画表の検証で問題が見つかりました。 | 詳細: sgdisk-verify | SSD への書き込み: 始まっていました。SSD の内容が途中の状態になっている可能性があります。 | 電源を切る
+start (one SSD: chosen, focus on 内容を確認)  focus='内容を確認'
+Enter  -> review (focus on この SSD にインストール) focus='この SSD にインストール'
+Enter  -> confirmation (focus on やめる)    focus='やめる'
+Right  -> インストールする                       focus='インストールする'
+Enter  -> install starts                 focus=None
+done                                     focus='再起動'
+[7a-failed-nothing-written] text: Awai OS | SSD を選ぶ　✓ | 内容を確認　✓ | インストール | 完了 | Awai OS Meiji | PC に | インストール | SSD を選ぶ　✓ | 内容を確認　✓ | インストール | 完了 | インストールできませんでした | SSD への書き込みは始まっていません。SSD は変わっていません。 | インストールイメージの確認に失敗しました。USB の内容が正しくありません。 | サポート用の番号：archive-sha | 失敗した手順：1 イメージの確認 | Enter：最初に戻る | 電源を切る | 最初に戻る
+[7b-failed-after-write] text: Awai OS | SSD を選ぶ　✓ | 内容を確認　✓ | インストール | 完了 | Awai OS Meiji | PC に | インストール | SSD を選ぶ　✓ | 内容を確認　✓ | インストール | 完了 | インストールできませんでした | SSD への書き込みは始まっていました。SSD の中身が途中の状態になっている可能性があります。 | 区画表の検証で問題が見つかりました。 | サポート用の番号：sgdisk-verify | 失敗した手順：3 書き込んだ内容の読み戻し | Enter：電源を切る | 電源を切る

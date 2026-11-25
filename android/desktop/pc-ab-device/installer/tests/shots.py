@@ -14,7 +14,7 @@ import fakes  # noqa: E402
 from fakes import core  # noqa: E402
 import gtkdrive  # noqa: E402
 
-SIZES = [(1280, 720), (1920, 1080)]
+SIZES = [tuple(int(v) for v in p.split("x")) for p in os.environ.get("AWAI_SHOT_SIZES", "1280x720,1920x1080,1024x768,1366x768,1080x1920,800x600").split(",")]
 INSTALLER = Path(__file__).resolve().parent.parent
 FONT_LOG = []
 
@@ -35,10 +35,10 @@ def hold_running(d, step, fraction):
     return fd
 
 
-def pick_and_type(d, name="nvme0n1"):
-    for k in ("Tab", "Enter", "Tab", "Enter"):
+def pick_and_start(d):
+    """Keyboard only: the single SSD is already chosen. Enter -> review, Enter -> confirmation, → インストールする, Enter."""
+    for k in ("Enter", "Enter", "Right", "Enter"):
         d.key(k)
-    d.type(name)
 
 
 def main(outdir):
@@ -54,18 +54,14 @@ def main(outdir):
         first = (w, h) == SIZES[0]
         n = (lambda a: log.append(f"{a:<40} focus={d.focus_text()!r}")) if first else (lambda a: None)
         try:
-            snap(d, out / "1-select-empty.png"); n("start (nothing selected, nothing focused)")
-            d.key("Tab"); n("Tab")
-            d.key("Enter"); n("Enter  -> select the SSD")
-            snap(d, out / "2-select-chosen.png")
-            d.key("Tab"); n("Tab  (first stop: 内容を確認)")
-            d.key("Enter"); n("Enter  -> 内容を確認")
-            d.type("nvme0"); n("type nvme0 (button still disabled)")
-            snap(d, out / "3a-review-typed-partial.png")
-            d.type("n1"); n("type n1")
+            snap(d, out / "1-select-boot.png"); n("start (one SSD: chosen, focus on 内容を確認)")
+            d.key("Enter"); n("Enter  -> review (focus on この SSD にインストール)")
             snap(d, out / "3-review.png")
-            d.key("Tab"); n("Tab  (first stop: この SSD にインストール)")
-            d.key("Enter"); n("Enter  -> この SSD にインストール")
+            d.key("Enter"); n("Enter  -> confirmation (focus on やめる)")
+            snap(d, out / "3b-confirm.png")
+            d.key("Right"); n("Right  -> インストールする")
+            snap(d, out / "3c-confirm-go-focused.png")
+            d.key("Enter"); n("Enter  -> install starts")
             snap(d, out / "4a-installing-real-start.png")
             end = time.time() + 90
             while time.time() < end and "インストールが完了しました" not in d.text():
@@ -83,6 +79,33 @@ def main(outdir):
         finally:
             os.close(fd)
             d.close()
+        # 2: two empty SSDs (the board's screen 2)
+        wt = fakes.World()
+        wt.world["disks"]["nvme1n1"] = fakes.disk(size=int(953.9 * 2 ** 30), model="KBG50Z", serial="XXXX90F2")
+        wt.world["disks"]["nvme0n1"].update(model="YXF800E3", serial="XXXX4C1A", size=int(238.5 * 2 ** 30))
+        (wt.dev / "nvme1n1").write_bytes(b"")
+        wt.save()
+        d = gtkdrive.Drive(w, h, world=wt)
+        try:
+            snap(d, out / "2-select-two.png")
+        finally:
+            d.close()
+        # 2b: several SSDs (the list scrolls) and the longest names
+        import layoutcheck
+        wd = fakes.World()
+        layoutcheck.add_disks(wd, 8)
+        d = gtkdrive.Drive(w, h, world=wd)
+        try:
+            snap(d, out / "2-select-eight-ssds.png")
+            for _ in range(7):
+                d.key("Down")
+            snap(d, out / "2b-select-eight-last-focused.png")
+            d.key("Enter")
+            d.key("Enter")
+            d.key("Enter")
+            snap(d, out / "3d-confirm-long-names.png")
+        finally:
+            d.close()
         # 6: no eligible disk
         d = gtkdrive.Drive(w, h)
         try:
@@ -98,9 +121,7 @@ def main(outdir):
             d = gtkdrive.Drive(w, h)
             try:
                 setup(d)
-                pick_and_type(d)
-                d.key("Tab")
-                d.key("Enter")
+                pick_and_start(d)
                 end = time.time() + 90
                 while time.time() < end and "インストールできませんでした" not in d.text():
                     time.sleep(0.3)
@@ -116,22 +137,23 @@ def main(outdir):
 
 
 def compare(out_root):
-    """Side-by-side sheet: design crops (design/installer.png) left, the 1280x720 screens right."""
+    """Side-by-side sheet: the Figma board's screens (design/installer-rev2.png) left, the 1280x720 screens right."""
     import gi
     gi.require_version("GdkPixbuf", "2.0")
     from gi.repository import GdkPixbuf
-    design = GdkPixbuf.Pixbuf.new_from_file(str(INSTALLER / "design" / "installer.png"))
-    frames = [("1-select-empty", 39, 42), ("2-select-chosen", 852, 42), ("3-review", 1666, 42), ("4-installing", 39, 561), ("5-done", 852, 561), ("6-no-target", 1666, 561)]
-    cw = 640
-    ch = round(490 * cw / 740)
+    design = GdkPixbuf.Pixbuf.new_from_file(str(INSTALLER / "design" / "installer-rev2.png"))
+    # (our screenshot, board screen origin): board screens sit at (60 + 1360 * col, 120 + 820 * row) and are 1280x720
+    frames = [("1-select-boot", 0, 0), ("2-select-two", 1, 0), ("3-review", 2, 0), ("3b-confirm", 0, 1), ("4-installing", 1, 1),
+              ("5-done", 2, 1), ("6-no-target", 0, 2), ("7a-failed-nothing-written", 1, 2)]
+    cw, ch = 640, 360
     sheet = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, True, 8, cw * 2 + 48, len(frames) * (ch + 16) + 16)
     sheet.fill(0xFFFFFFFF)
-    for i, (name, x, y) in enumerate(frames):
-        left = GdkPixbuf.Pixbuf.new_subpixbuf(design, x, y, 740, 490).scale_simple(cw, ch, GdkPixbuf.InterpType.BILINEAR)
-        right = GdkPixbuf.Pixbuf.new_from_file(str(out_root / "1280x720" / f"{name}.png")).scale_simple(cw, round(720 * cw / 1280), GdkPixbuf.InterpType.BILINEAR)
+    for i, (name, col, row) in enumerate(frames):
+        left = GdkPixbuf.Pixbuf.new_subpixbuf(design, 60 + 1360 * col, 120 + 820 * row, 1280, 720).scale_simple(cw, ch, GdkPixbuf.InterpType.BILINEAR)
+        right = GdkPixbuf.Pixbuf.new_from_file(str(out_root / "1280x720" / f"{name}.png")).scale_simple(cw, ch, GdkPixbuf.InterpType.BILINEAR)
         top = 16 + i * (ch + 16)
         left.copy_area(0, 0, cw, ch, sheet, 16, top)
-        right.copy_area(0, 0, cw, right.get_height(), sheet, 32 + cw, top)
+        right.copy_area(0, 0, cw, ch, sheet, 32 + cw, top)
     sheet.savev(str(out_root / "compare-design-vs-implementation.png"), "png", [], [])
 
 

@@ -34,7 +34,7 @@ command -v xinit >/dev/null 2>&1 || text "screen installer unavailable (xinit no
 quick=0
 while true; do
     started=$SECONDS
-    xinit "$here/xsession.sh" "$work" "$media" -- :0 vt1 -nolisten tcp -nocursor > "$work/x.out" 2>&1
+    xinit "$here/xsession.sh" "$work" "$media" -- :0 vt1 -nolisten tcp > "$work/x.out" 2>&1
     code=$?
     if (( SECONDS - started < 20 )); then quick=$((quick + 1)); else quick=0; fi
     if (( quick >= 3 )); then

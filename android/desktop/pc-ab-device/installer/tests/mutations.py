@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Mutation check: remove one guard at a time in a scratch copy and require the test suite to fail.
-Usage: mutations.py [--jobs N] [--only SUBSTRING]   (needs python >= 3.11; browser tests are included when Chrome exists)
+Usage: mutations.py [--jobs N] [--only SUBSTRING] [--skip PREFIX]   (needs python >= 3.11; browser tests are included when Chrome exists)
 Each mutation is (id, file, [(old, new, occurrence)...], suites). A guard counts as covered when a suite fails."""
 import concurrent.futures
 import shutil
@@ -15,8 +15,10 @@ CORE, SERVER, APP, APPLY = "installer/core.py", "installer/server.py", "installe
 C, W = "tests/test_core.py", "tests/test_web_and_build.py"
 CT = "tests/test_controller.py"
 G = "tests/test_gui.py"
+L = "tests/test_layout.py"
 M = [
-    ("typed-name (core)", CORE, [('    if request.get("typed") != name:\n        raise Refusal("typed-name")', "    pass", 1)], [C]),
+    ("confirmed flag (core)", CORE, [('    if request.get("confirmed") is not True:\n        raise Refusal("not-confirmed")', "    pass", 1)], [C]),
+    ("confirmed flag must be exactly True (core)", CORE, [('    if request.get("confirmed") is not True:', '    if not request.get("confirmed"):', 1)], [C]),
     ("identity before image prep", CORE, [('    if identity(host, name) != confirmed:\n        raise Refusal("identity-changed")\n\n    archive_sha', "    archive_sha", 1)], [C]),
     ("identity immediately before writing", CORE, [('    if identity(host, name) != confirmed:\n        raise Refusal("identity-changed")\n    plan, expected', "    plan, expected", 1)], [C]),
     ("target checks before image prep", CORE, [("    require_target(host, name, boot)\n    if identity(host, name) != confirmed:\n        raise Refusal(\"identity-changed\")\n\n    archive_sha", "    if identity(host, name) != confirmed:\n        raise Refusal(\"identity-changed\")\n\n    archive_sha", 1)], [C]),
@@ -59,7 +61,15 @@ M = [
     ("free-space pre-check before unpacking", CORE, [("if shutil.disk_usage(work).free < os.path.getsize(archive):", "if False:", 1)], [C]),
     ("ENOSPC outside unpacking -> no-space", CORE, [('rep.fail(Refusal("no-space" if e.errno == errno.ENOSPC else "internal"', 'rep.fail(Refusal("internal"', 1)], [C]),
     ("controller: ticket is one-shot", "installer/controller.py", [("ticket, self.ticket = self.ticket, None", "ticket = self.ticket", 1)], [CT]),
-    ("controller: typed name checked", "installer/controller.py", [('if typed != ticket["device"]:', "if False:", 1)], [CT]),
+    ("controller: explicit confirmed flag required", "installer/controller.py", [('if confirmed is not True or not ticket.get("asked"):', 'if not ticket.get("asked"):', 1)], [CT]),
+    ("controller: confirmation must have been opened", "installer/controller.py", [('if confirmed is not True or not ticket.get("asked"):', 'if confirmed is not True:', 1)], [CT]),
+    ("controller: cancel closes the confirmation for good", "installer/controller.py", [("        self.confirming = False\n        if self.ticket:\n            self.ticket[\"asked\"] = False", "        self.confirming = False", 1)], [CT]),
+    ("controller: request carries confirmed true", "installer/controller.py", [('json.dump({"device": ticket["device"], "confirmed": True,', 'json.dump({"device": ticket["device"], "confirmed": False,', 1)], [CT]),
+    ("controller: one empty SSD is preselected", "installer/controller.py", [("if self.selected is None and len(eligible) == 1:", "if False:", 1)], [CT]),
+    ("controller: choosing never un-chooses", "installer/controller.py", [("        self.selected = name  # choosing never un-chooses", "        self.selected = None if self.selected == name else name  # choosing never un-chooses", 1)], [CT]),
+    ("controller: several SSDs are told apart on the card", "installer/controller.py", [("who = identify(d) if many and d[\"eligible\"] else \"\"", "who = \"\"", 1)], [CT]),
+    ("controller: a shared reason is said once", "installer/controller.py", [('"、".join(dict.fromkeys(T["reasons"].get(p, T["reasons"]["inspect-failed"]) for p in shown))', '"、".join(T["reasons"].get(p, T["reasons"]["inspect-failed"]) for p in shown)', 1)], [CT]),
+    ("controller: ask refused while busy", "installer/controller.py", [("            if self.busy():\n                return self._refuse(\"busy\")\n            self.ticket[\"asked\"] = True", "            self.ticket[\"asked\"] = True", 1)], [CT]),
     ("controller: busy checked at start", "installer/controller.py", [('            if self.busy():\n                return self._fail_to_pick("busy")', "", 1)], [CT]),
     ("controller: busy checked at review", "installer/controller.py", [('            if self.busy():\n                return self._refuse("busy")', "", 1)], [CT]),
     ("controller: power off asks once", "installer/controller.py", [('        if not self.armed:\n            self.armed = True\n            return "armed"\n', "", 1)], [CT]),
@@ -74,17 +84,36 @@ M = [
     ("keys: function keys swallowed", "installer/keys.py", [('if re.fullmatch(r"F\\d+", keyname) or', "if False or", 1)], [G]),
     ("gui: primary action is the first tab stop", "installer/gui.py", [("chain = [w for w in (right, left) if w is not None]", "chain = [w for w in (left, right) if w is not None]", 1)], [G]),
     ("gui: power off disabled while installing", "installer/gui.py", [('enabled=view["screen"] != "progress")', "enabled=True)", 1)], [G]),
-    ("gui: typed-name gate", "installer/gui.py", [("go.set_sensitive(self.c.typed_ok(e.get_text()))", "go.set_sensitive(True)", 1)], [G]),
-    ("gui: nothing focused until the first Tab", "installer/gui.py", [("            top.set_focus(None)  # like the heading", "            pass  # like the heading", 1)], [G]),
+    ("gui: confirmation starts on やめる", "installer/gui.py", [('else "askCancel"\n', 'else "askGo"\n', 1)], [G]),
+    ("gui: everything behind the confirmation is inert", "installer/gui.py", [("        self.base.set_sensitive(False)", "        pass", 1)], [G]),
+    ("gui: Esc is やめる / 戻る", "installer/gui.py", [("        if self.c.confirming:\n            self.on_cancel()\n            return True\n        if self.c.screen == \"review\":", "        if self.c.screen == \"review\":", 1)], [G]),
+    ("gui: the chosen SSD goes forward on Enter", "installer/gui.py", [("        if self.c.selected == name:\n            self.on_review()\n            return\n", "", 1)], [G]),
+    ("gui: boot focus is never power", "installer/gui.py", [('"pick": ("review" if view["selected"] else None, "card:first")', '"pick": ("power",)', 1)], [G]),
+    ("gui: a screen that appears by itself ignores held keys", "installer/gui.py", [('return self.c.screen in ("done", "failed") and', 'return False and', 1)], [G]),
+    ("gui: arrows stay inside the confirmation", "installer/gui.py", [('        self.nav_v = self.nav_h = ["askCancel", "askGo"]', "        pass", 1)], [G]),
+    ("gui: arrows skip disabled controls", "installer/gui.py", [("usable = lambda k: k in self.widgets and self.widgets[k].get_sensitive()", "usable = lambda k: k in self.widgets", 1)], [G]),
+    ("gui: back up from the buttons lands on the chosen SSD", "installer/gui.py", [('            target = "card:" + self.c.selected  # coming back', '            pass  # coming back', 1)], [G]),
+    ("gui: selecting moves on to 内容を確認", "installer/gui.py", [('        self.want_focus = "review"\n', "", 1)], [G]),
+    ("gui: the hint names the focused action", "installer/gui.py", [("        self.hint.set_text(self.hint_text())", '        self.hint.set_text("")', 1)], [G]),
+    ("gui: focus ring is thick", "installer/gui.py", [('ring = f"inset 0 0 0 {max(3, round(5 * u))}px #f0a000"', 'ring = "inset 0 0 0 1px #f0a000"', 1)], [G]),
+    ("gui: a focused button is filled", "installer/gui.py", [("button.btn:focus {{ background: #123a80; box-shadow: {ring}; }}", "button.btn:focus {{ box-shadow: {ring}; }}", 1)], [G]),
+    ("gui: safe margin", "installer/gui.py", [("self.sx, self.sy = round(self.safe * width), round(self.safe * height)", "self.sx, self.sy = 0, 0", 1)], [L]),
+    ("gui: the unit is reduced until it fits", "installer/gui.py", [("            u = max(floor, u * min(0.97, self.H / need))", "            break", 1)], [L]),
+    ("gui: the list scrolls inside its own area", "installer/gui.py", [("Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)", "Gtk.PolicyType.NEVER, Gtk.PolicyType.NEVER)", 1)], [L]),
+    ("gui: labels wrap", "installer/gui.py", [("    def label(self, text, cls, wrap=True, xalign=0.0):", "    def label(self, text, cls, wrap=False, xalign=0.0):", 1)], [L]),
+    ("gui: the right margin of the content", "installer/gui.py", [("            self.main.set_margin_end(max(self.sx, self.W - round(0.97 * self.W)))", "            self.main.set_margin_end(0)", 1)], [L]),
+    ("gui: the primary monitor, else the first", "installer/gui.py", [("    chosen = primary or (display.get_monitor(0) if display.get_n_monitors() else None)", "    chosen = None", 1)], [L]),
+    ("session: monitors at the preferred mode", "installer/xsession.sh", [("xrandr --auto 2>&1 ||", "true ||", 1)], [W]),
+    ("session: one primary monitor", "installer/xsession.sh", [('xrandr --output "$primary" --primary --auto', "true", 1)], [W]),
+    ("session: xrandr query is logged", "installer/xsession.sh", [('} > "$work/xrandr.txt" 2>&1', "} > /dev/null 2>&1", 1)], [W]),
+    ("session: visible pointer", "installer/xsession.sh", [("xsetroot -cursor_name left_ptr", "true", 1)], [W]),
+    ("start: pointer not hidden", "installer/start.sh", [("-nolisten tcp >", "-nolisten tcp -nocursor >", 1)], [W]),
     ("gui: only the bundled face", "installer/gui.py", [('* {{ font-family: "Noto Sans JP"; color: #1b2433; }}', '* {{ font-family: "Noto Sans JP", sans-serif; color: #1b2433; }}', 1)], [W]),
     ("gui: power question survives the poll redraw", "installer/gui.py", [('if k not in ("state", "armed")}', 'if k != "state"}', 1)], [G]),
     ("gui: rebuild is not a blur", "installer/gui.py", [('        if getattr(self, "rebuilding", False):\n            return\n', "", 1)], [G]),
-    ("gui: card tag centred", "installer/gui.py", [("        tag.set_valign(Gtk.Align.CENTER)\n", "", 1), ("        tag.set_yalign(0.5)\n", "        tag.set_yalign(0.0)\n", 1)], [G]),
-    ("gui: product title line pitch", "installer/gui.py", [("        self.line_height(prod, round(25 * u * 1024))", "        pass", 1)], [G]),
+    ("gui: card tag centred", "installer/gui.py", [("        tagl.set_valign(Gtk.Align.CENTER)\n", "", 1), ("        tagl.set_yalign(0.5)\n", "        tagl.set_yalign(0.0)\n", 1)], [G]),
+    ("gui: product title line pitch", "installer/gui.py", [("        self.line_height(self.prod, round(48 * u * 1024))", "        pass", 1)], [G]),
     ("gui: toplevel focus ensured", "installer/gui.py", [("    if not win.has_toplevel_focus() and gw is not None:", "    if False:", 1)], [G]),
-    ("gui: first Tab skips the anchor", "installer/gui.py", [("            self.anchor.set_can_focus(False)\n            try:", "            try:", 1)], [G]),
-    ("gui: initial focus is the anchor", "installer/gui.py", [("            top.set_focus(self.anchor)", "            top.set_focus(None)", 1)], [G]),
-    ("gui: anchor is not a Tab stop on wrap", "installer/gui.py", [("        if top.get_focus() is self.anchor:  # wrapped", "        if False:  # wrapped", 1)], [G]),
     ("gui: rail proportion", "installer/gui.py", [("self.rail.set_size_request(round(0.305 * width), -1)", "self.rail.set_size_request(round(0.2 * width), -1)", 1)], [G]),
     ("gui: bundled fonts registered", "installer/gui.py", [("    os.environ[\"FONTCONFIG_FILE\"] = conf\n", "", 1)], [W]),
     ("start: GTK probe before X", "installer/start.sh", [("    || text \"screen installer unavailable (Python GTK 3 bindings not available); using the text installer.\"", "    || true", 1)], [W]),
@@ -134,7 +163,8 @@ def main():
     jobs = int(sys.argv[sys.argv.index("--jobs") + 1]) if "--jobs" in sys.argv else 4
     only = sys.argv[sys.argv.index("--only") + 1] if "--only" in sys.argv else ""
     py = sys.executable
-    todo = [m for m in M if only in m[0]]
+    skip = sys.argv[sys.argv.index("--skip") + 1] if "--skip" in sys.argv else None
+    todo = [m for m in M if only in m[0] and not (skip and m[0].startswith(skip))]
     results = []
     with concurrent.futures.ThreadPoolExecutor(jobs) as ex:
         for res in ex.map(lambda m: run(m, py), todo):

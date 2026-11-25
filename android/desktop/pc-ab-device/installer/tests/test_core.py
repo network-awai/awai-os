@@ -76,7 +76,7 @@ class TargetGuards(Base):
     def refused_install(self, code):
         # the same refusal at install time, from the request a front end could still send
         ident = {"name": "nvme0n1", "majmin": "259:0", "size": fakes.TARGET_BYTES, "model": "KXG80ZNV256G", "serial": "SN-A", "wwn": "eui.0025385"}
-        state = self.w.run({"device": "nvme0n1", "typed": "nvme0n1", "identity": ident})
+        state = self.w.run({"device": "nvme0n1", "confirmed": True, "identity": ident})
         self.assertRefused(state, code)
         self.assertNothingWritten()
         self.assertFalse((self.w.work / core.IMAGE_NAME).exists(), "an ineligible target must be refused before the image is unpacked")
@@ -163,15 +163,18 @@ class TargetGuards(Base):
 
 
 class Confirmation(Base):
-    def test_wrong_typed_name_is_refused_by_the_backend(self):
-        state = self.w.run(self.w.request(typed="nvme1n1"))
-        self.assertRefused(state, "typed-name")
+    def test_a_request_without_an_explicit_confirmed_true_is_refused_by_the_backend(self):
+        for flag in (False, None, "", 0, 1, "true", "nvme0n1", "INSTALL nvme0n1", [True]):
+            self.assertRefused(self.w.run(self.w.request(confirmed=flag)), "not-confirmed")
+            self.assertNothingWritten()
+        req = self.w.request()
+        del req["confirmed"]
+        self.assertRefused(self.w.run(req), "not-confirmed")
         self.assertNothingWritten()
-        self.assertRefused(self.w.run(self.w.request(typed="")), "typed-name")
-        self.assertRefused(self.w.run(self.w.request(typed="INSTALL nvme0n1")), "typed-name")
+        self.assertEqual(self.w.run(self.w.request())["state"], "done")
 
     def test_missing_identity_ticket_is_refused(self):
-        state = self.w.run({"device": "nvme0n1", "typed": "nvme0n1"})
+        state = self.w.run({"device": "nvme0n1", "confirmed": True})
         self.assertRefused(state, "no-ticket")
 
     def test_identity_must_match_before_anything_is_prepared(self):
@@ -388,7 +391,7 @@ class SingleInstall(Base):
         self.assertEqual(self.w.run(self.w.request())["state"], "done")
         before = (self.w.work / "state.json").read_text()
         with self.assertRaises(core.Blocked):
-            self.w.run({"device": "nvme0n1", "typed": "nvme0n1", "identity": {}})
+            self.w.run({"device": "nvme0n1", "confirmed": True, "identity": {}})
         self.assertEqual((self.w.work / "state.json").read_text(), before, "a refused second start must not rewrite the done state")
 
     def test_write_marker_alone_blocks(self):
