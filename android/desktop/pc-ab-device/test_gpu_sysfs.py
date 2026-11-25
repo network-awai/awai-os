@@ -6,7 +6,9 @@ from device/virt/virtio-common (9d5c9307) and device/virt/virtio_x86_64 (0e8571a
 """
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
+import contextlib
 import gzip
+import io
 import shutil
 import subprocess
 import tempfile
@@ -37,9 +39,22 @@ VENDOR = """(genfscon sysfs "/devices/platform/10000.pci/pci0000:00/0000:00:01.0
 (genfscon sysfs "/devices/pci0000:00/0000:00:08.0/wakeup/wakeup" (u object_r sysfs_wakeup ((s0) (s0))))
 """
 
-# What libdrm (drmGetDevices2, flags 0) and Mesa's droid_open_device read for one DRM device.
-READ = ["uevent", "vendor", "device", "subsystem_vendor", "subsystem_device", "subsystem", "drm", "drm/card0",
-        "drm/renderD128", "config"]
+OLD_ONE_LINE = f'(genfscon sysfs "{GPU}" (u object_r sysfs_gpu ((s0) (s0))))\n'  # the first version of this fix
+
+# What libdrm (drmGetDevices2, flags 0), Mesa's droid_open_device and loader_get_device_name_for_fd read.
+READ = ["uevent", "vendor", "device", "subsystem_vendor", "subsystem_device", "revision",
+        "drm", "drm/card0/uevent", "drm/renderD128/uevent"]
+# Same function, never needed by a loader: they must stay `sysfs` (edid is the monitor's make and serial).
+STAY_GENERIC = [
+    "drm/card0/card0-DP-1/edid", "drm/card0/card0-DP-1/status", "drm/card0/card0-eDP-1/edid",
+    "drm/card0/device", "drm/card0/dev", "drm/card0/gt", "drm/renderD128/dev", "drm/renderD128/device",
+    "gpu_busy_percent", "mem_info_vram_used", "mem_info_vram_total", "mem_info_gtt_used", "vbios_version",
+    "product_name", "serial_number", "unique_id", "config", "class", "resource", "resource0", "rom", "irq",
+    "boot_vga", "current_link_speed", "max_link_width", "d3cold_allowed", "driver_override", "numa_node",
+    "local_cpulist", "modalias", "enable", "remove", "rescan", "power/control", "hwmon/hwmon3/temp1_input",
+    "pp_dpm_sclk", "power_dpm_force_performance_level", "pp_od_clk_voltage", "ras/features", "fw_version/vce_fw_version",
+    "drm/controlD64", "drm/card0/card0-DP-1", "drm/card1/uevent", "drm/renderD129/uevent",
+]
 # Same bus, other devices: must keep the generic label.
 NOT_GPU = [
     "/devices/pci0000:00/0000:00:08.1/0000:05:00.1/uevent",        # another function of the same slot
@@ -65,13 +80,18 @@ class SourcePatch(unittest.TestCase):
         files = [l[len("+++ b/"):] for l in PATCH.read_text().splitlines() if l.startswith("+++ ")]
         self.assertEqual(files, ["sepolicy/vendor/genfs_contexts"])
 
-    def test_added_lines_are_comments_or_one_sysfs_gpu_genfscon(self):
+    def test_added_lines_are_comments_or_genfscon_for_the_gpu_function(self):
         for line in patch_added("sepolicy/vendor/genfs_contexts"):
             if line.startswith("#") or not line.strip():
                 continue
             fields = line.split()
-            self.assertEqual((fields[0], fields[1], fields[3]), ("genfscon", "sysfs", "u:object_r:sysfs_gpu:s0"), line)
-            self.assertRegex(fields[2], trial.PCI_PATH, line)
+            self.assertEqual((fields[0], fields[1]), ("genfscon", "sysfs"), line)
+            self.assertIn(fields[3], ("u:object_r:sysfs_gpu:s0", "u:object_r:sysfs:s0"), line)
+            self.assertTrue(fields[2].startswith(GPU + "/"), f"not below the GPU function: {line}")
+
+    def test_no_line_labels_the_whole_function(self):
+        for path, label in trial.patch_entries(PATCH.read_text()):
+            self.assertNotIn(path, (GPU, GPU + "/"), "the whole function must not be labeled")
 
     def test_nothing_is_removed_and_no_rule_is_added(self):
         text = PATCH.read_text()
@@ -80,43 +100,63 @@ class SourcePatch(unittest.TestCase):
         for word in ("allow", "neverallow", "permissive", "dontaudit", "typeattribute", "genfscon sysfs / "):
             self.assertNotIn(word, "\n".join(patch_added("sepolicy/vendor/genfs_contexts")), word)
 
-    def test_patch_paths_are_the_6600h_gpu(self):
-        self.assertEqual(trial.patch_paths(PATCH.read_text()), [GPU])
+    def test_patch_is_the_6600h_gpu(self):
+        self.assertEqual(trial.patch_gpus(PATCH.read_text()), [GPU])
+
+    def test_trial_script_generates_exactly_the_patch_lines(self):
+        self.assertEqual(sorted(trial.entries_for(GPU)), sorted(trial.patch_entries(PATCH.read_text())))
 
     def test_apply_sh_applies_it(self):
         self.assertIn("virtio-common-awai-pc-gpu-sysfs.patch", (HERE / "apply.sh").read_text())
 
 
-class Resolution(unittest.TestCase):
-    """The counter-example: without the change the GPU's files stay `sysfs`, which apps may never read."""
+def patched_entries():
+    """The lookup table of the image with the patch applied: baseline vendor lines + the patch's lines."""
+    return trial.genfscon_entries(PLAT + VENDOR) + [("sysfs", p, t) for p, t in trial.patch_entries(PATCH.read_text())]
 
-    def labels(self, vendor):
-        return trial.genfscon_entries(PLAT + vendor)
+
+class Resolution(unittest.TestCase):
+    """Without the change the GPU's files stay `sysfs`, which apps may never read. With the old one-line
+    change the whole function became readable (edid, gpu_busy_percent, vbios_version, config: 648 files)."""
 
     def test_baseline_leaves_the_6600h_gpu_generic(self):
-        entries = self.labels(VENDOR)
+        entries = trial.genfscon_entries(PLAT + VENDOR)
         for name in READ:
             self.assertEqual(trial.resolve(entries, f"{GPU}/{name}"), "sysfs", name)
 
-    def test_with_the_change_the_gpu_files_are_sysfs_gpu(self):
-        added = f'(genfscon sysfs "{GPU}" (u object_r sysfs_gpu ((s0) (s0))))\n'
-        entries = self.labels(VENDOR + added)
+    def test_with_the_change_what_the_loaders_read_is_sysfs_gpu(self):
         for name in READ:
-            self.assertEqual(trial.resolve(entries, f"{GPU}/{name}"), "sysfs_gpu", name)
+            self.assertEqual(trial.resolve(patched_entries(), f"{GPU}/{name}"), "sysfs_gpu", name)
+
+    def test_edid_gpu_busy_percent_and_the_rest_stay_generic(self):
+        for name in STAY_GENERIC:
+            self.assertEqual(trial.resolve(patched_entries(), f"{GPU}/{name}"), "sysfs", name)
+
+    def test_the_old_one_line_version_exposes_them(self):
+        """Counter-example: this is what the first version did; the test above fails on it."""
+        old = trial.genfscon_entries(PLAT + VENDOR + OLD_ONE_LINE)
+        exposed = [n for n in STAY_GENERIC if trial.resolve(old, f"{GPU}/{n}") == "sysfs_gpu"]
+        self.assertIn("drm/card0/card0-DP-1/edid", exposed)
+        self.assertIn("gpu_busy_percent", exposed)
+        self.assertIn("config", exposed)
 
     def test_other_devices_keep_the_generic_label(self):
-        added = f'(genfscon sysfs "{GPU}" (u object_r sysfs_gpu ((s0) (s0))))\n'
-        entries = self.labels(VENDOR + added)
         for path in NOT_GPU:
-            self.assertEqual(trial.resolve(entries, path), "sysfs", path)
+            self.assertEqual(trial.resolve(patched_entries(), path), "sysfs", path)
 
-    def test_the_patch_line_is_the_same_label(self):
-        entries = self.labels(VENDOR)
-        for line in patch_added("sepolicy/vendor/genfs_contexts"):
-            if line.startswith("genfscon"):
-                _, fs, path, ctx = line.split()
-                entries.append((fs, path, ctx.split(":")[2]))
-        self.assertEqual(trial.resolve(entries, f"{GPU}/uevent"), "sysfs_gpu")
+    def test_prefix_collisions_are_only_the_names_that_exist(self):
+        """genfscon is a string prefix match: `device` also matches `device_x`. Names that start like an
+        allowed attribute exist only as listed here; none of them is in a PCI function directory of amdgpu."""
+        collide = [n for n in STAY_GENERIC if any(n.startswith(a) for a in trial.ATTRIBUTES)]
+        self.assertEqual(collide, [])
+        for name in ("subsystem", "vendor_x", "device_x", "revision_x", "uevent_x"):
+            # documented residual: a future attribute with such a name would be readable
+            self.assertEqual(trial.resolve(patched_entries(), f"{GPU}/{name}"),
+                             "sysfs_gpu" if name != "subsystem" else "sysfs", name)
+
+    def test_drm_children_need_their_own_allow(self):
+        self.assertEqual(trial.resolve(patched_entries(), f"{GPU}/drm/card0"), "sysfs")
+        self.assertEqual(trial.resolve(patched_entries(), f"{GPU}/drm/card0/uevent"), "sysfs_gpu")
 
 
 class PathChecks(unittest.TestCase):
@@ -133,39 +173,47 @@ class PathChecks(unittest.TestCase):
                 trial.normalize_path(path)
 
 
-class BuildCil(unittest.TestCase):
-    def test_appends_one_genfscon_and_changes_nothing_else(self):
-        out = trial.build_cil(PLAT, [GPU], VENDOR)
-        self.assertTrue(out.startswith(PLAT))
-        added = out[len(PLAT):]
-        self.assertEqual([l for l in added.splitlines() if l and not l.startswith(";")],
-                         [f'(genfscon sysfs "{GPU}" (u object_r sysfs_gpu ((s0) (s0))))'])
+ENTRIES = trial.entries_for(GPU)
 
-    def test_label_is_visible_to_the_resolver_only_after_the_build(self):
-        before = trial.genfscon_entries(PLAT + VENDOR)
-        after = trial.genfscon_entries(trial.build_cil(PLAT, [GPU], VENDOR) + VENDOR)
-        self.assertEqual(trial.resolve(before, GPU + "/uevent"), "sysfs")
-        self.assertEqual(trial.resolve(after, GPU + "/uevent"), "sysfs_gpu")
+
+class BuildCil(unittest.TestCase):
+    def test_appends_only_genfscon_lines_and_changes_nothing_else(self):
+        out = trial.build_cil(PLAT, ENTRIES, VENDOR)
+        self.assertTrue(out.startswith(PLAT))
+        added = [l for l in out[len(PLAT):].splitlines() if l and not l.startswith(";")]
+        self.assertEqual(len(added), len(ENTRIES))
+        for line in added:
+            self.assertTrue(line.startswith("(genfscon sysfs "), line)
+
+    def test_cil_gives_the_same_labels_as_the_patch(self):
+        out = trial.build_cil(PLAT, ENTRIES, VENDOR)
+        cil = trial.genfscon_entries(out + VENDOR)
+        for name in READ + STAY_GENERIC:
+            self.assertEqual(trial.resolve(cil, f"{GPU}/{name}"), trial.resolve(patched_entries(), f"{GPU}/{name}"), name)
 
     def test_idempotent_and_no_duplicate_with_the_vendor_policy(self):
-        once = trial.build_cil(PLAT, [GPU], VENDOR)
-        self.assertEqual(trial.build_cil(once, [GPU], VENDOR), once)
-        dup = "/devices/pci0000:00/0000:00:03.0"
-        self.assertEqual(trial.build_cil(PLAT, [dup], VENDOR), PLAT)
+        once = trial.build_cil(PLAT, ENTRIES, VENDOR)
+        self.assertEqual(trial.build_cil(once, ENTRIES, VENDOR), once)
+        dup = [("/devices/pci0000:00/0000:00:03.0", "sysfs_gpu")]
+        self.assertEqual(trial.build_cil(PLAT, dup, VENDOR), PLAT)
 
     def test_refuses_a_conflicting_label(self):
         other = VENDOR + '(genfscon sysfs "/devices/pci0000:00/0000:00:09.0" (u object_r sysfs_wakeup ((s0) (s0))))\n'
         with self.assertRaises(trial.TrialError):
-            trial.build_cil(PLAT, ["/devices/pci0000:00/0000:00:09.0"], other)
+            trial.build_cil(PLAT, [("/devices/pci0000:00/0000:00:09.0", "sysfs_gpu")], other)
 
-    def test_needs_the_platform_type(self):
+    def test_needs_the_platform_types(self):
         with self.assertRaises(trial.TrialError):
-            trial.build_cil("(type sysfs)\n", [GPU])
+            trial.build_cil("(type sysfs)\n", ENTRIES)
 
     def test_adds_no_rule_of_any_kind(self):
-        added = trial.build_cil(PLAT, [GPU], VENDOR)[len(PLAT):]
+        added = trial.build_cil(PLAT, ENTRIES, VENDOR)[len(PLAT):]
         for word in ("allow", "neverallow", "permissive", "typepermissive", "dontaudit", "typeattribute"):
             self.assertNotIn(word, added)
+
+    def test_drm_node_names_are_checked(self):
+        with self.assertRaises(trial.TrialError):
+            trial.entries_for(GPU, ("card0/../edid",))
 
 
 def read_newc(data):
@@ -206,13 +254,16 @@ class Cli(unittest.TestCase):
         plat.write_text(PLAT)
         vendor = Path(tmp, "vendor_sepolicy.cil")
         vendor.write_text(VENDOR)
-        return trial.main(["--plat-cil", str(plat), "--vendor-cil", str(vendor), "--out-dir", str(Path(tmp, "out")), *extra])
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            return trial.main(["--plat-cil", str(plat), "--vendor-cil", str(vendor), "--out-dir", str(Path(tmp, "out")), *extra])
 
     def test_default_paths_come_from_the_patch(self):
         with tempfile.TemporaryDirectory() as tmp:
             self.assertEqual(self.run_main(tmp), 0)
             cil = Path(tmp, "out", trial.CIL_NAME).read_text()
-            self.assertIn(f'(genfscon sysfs "{GPU}" (u object_r sysfs_gpu ((s0) (s0))))', cil)
+            self.assertIn(f'(genfscon sysfs "{GPU}/uevent" (u object_r sysfs_gpu ((s0) (s0))))', cil)
+            self.assertIn(f'(genfscon sysfs "{GPU}/drm/" (u object_r sysfs ((s0) (s0))))', cil)
+            self.assertNotIn(f'"{GPU}"', cil)
             cpio = Path(tmp, "out", trial.CPIO_NAME).read_bytes()
             self.assertEqual(read_newc(cpio)[trial.CIL_NAME][0], cil.encode())
             self.assertEqual(gzip.decompress(Path(tmp, "out", trial.CPIO_NAME + ".gz").read_bytes()), cpio)
@@ -220,7 +271,7 @@ class Cli(unittest.TestCase):
     def test_second_gpu_path_and_refuses_overwrite(self):
         with tempfile.TemporaryDirectory() as tmp:
             self.assertEqual(self.run_main(tmp, "--gpu-path", "/sys/devices/pci0000:00/0000:00:01.1/0000:03:00.0"), 0)
-            self.assertIn("0000:03:00.0", Path(tmp, "out", trial.CIL_NAME).read_text())
+            self.assertIn("0000:03:00.0/uevent", Path(tmp, "out", trial.CIL_NAME).read_text())
             self.assertEqual(self.run_main(tmp), 1)
 
     def test_wide_path_is_refused_and_writes_nothing(self):

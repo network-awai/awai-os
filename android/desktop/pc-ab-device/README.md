@@ -93,13 +93,32 @@ that call `gpu_sphal_use` (SurfaceFlinger, system_server, bootanim, mediaswcodec
 gpuservice, and others). Apps may never write any `sysfs_type`. Only the generic `sysfs` is denied to them,
 so the label is the fix; no policy rule changes.
 
-Mechanism: `genfscon sysfs <GPU function path> sysfs_gpu` in `sepolicy/vendor/genfs_contexts`
-(`patches/virtio-common-awai-pc-gpu-sysfs.patch`, applied by `apply.sh`). The paths of PCI devices differ by
-machine and genfscon matches prefixes only, so each PC model needs its own line (`readlink -f
-/sys/class/drm/card0/device`). Rejected: a `file_contexts` regex that ueventd would restorecon, because it cannot tell
-a GPU from any other PCI device and would expose every device's `uevent`/`vendor`/`device`; a bus-wide prefix, for
-the same reason; a boot service that relabels, because it needs new relabel rights and a new domain.
-Label the GPU function, not its bridge: a bridge prefix labels every device behind it.
+Mechanism: `genfscon sysfs` lines in `sepolicy/vendor/genfs_contexts`
+(`patches/virtio-common-awai-pc-gpu-sysfs.patch`, applied by `apply.sh`) that label **only** `uevent`, `vendor`,
+`device`, `subsystem_vendor`, `subsystem_device`, `revision`, the `drm` directory and the `uevent` of
+`drm/card0` and `drm/renderD128` as `sysfs_gpu`. `config` is not needed (it is read only when `revision` is
+unreadable). Labelling the whole GPU function, which the first version did, made 648 files readable by every
+non-isolated app, among them `drm/card0/card0-*/edid` (monitor make and serial number), `gpu_busy_percent`,
+`mem_info_vram_used`, `vbios_version` and `config`. Measured on the rig.
+
+Allow-list or deny-back: genfscon is a string-prefix match and the longest prefix wins. Labelling the function and putting
+`drm/card`, `…/edid`, … back to `sysfs` fails open: the next amdgpu attribute or driver version is exposed
+without anyone noticing. Labelling the individual attributes fails closed, so that is what the patch does. `drm`
+is the one exception: its children cannot be listed, so `…/drm/` (trailing slash, which matches the children but not
+the directory) puts them all back to `sysfs`, and the two nodes' `uevent` are labelled after it. Prefix collisions:
+`device` also matches `device_x`, `vendor` matches `vendor_x`; no such file exists in an amdgpu PCI function, and a
+future one would be readable (the tests document this). The matching rule is the kernel's `strncmp` with entries ordered by
+decreasing length; the trailing-slash entry relies on that and is checked by the trial on the machine, not here.
+
+The paths of PCI devices and DRM node names differ by machine, so each PC model needs its own lines (`readlink -f
+/sys/class/drm/card0/device`; `gpu-sysfs-trial.py --gpu-path … --drm-node …` writes them). Rejected: a `file_contexts`
+regex that ueventd would restorecon, because it cannot tell a GPU from any other PCI device; a bus-wide prefix, for the same
+reason; a boot service that relabels, because it needs new relabel rights and a new domain.
+
+**The older entries have the same exposure and are unchanged here:** the lines for `0000:00:01.0`, `0000:00:02.0`,
+`0000:00:03.0`, `0000:00:1e.0`, `00:01.6/07:00.0` and the arm64 `10000.pci/…/00:01.0` label a whole device or even a bridge.
+On a physical PC a bridge-level entry also exposes every device behind it. Follow-up: replace them by the same
+allow-list, or drop the entries for hardware the Awai PC does not run on.
 
 Try it without flashing: `gpu-sysfs-trial.py --plat-cil <plat_sepolicy.cil of the image> --vendor-cil <vendor_sepolicy.cil>
 --out-dir <new dir>` writes `userdebug_plat_sepolicy.cil` (the image's plat policy plus the label) and a one-file cpio

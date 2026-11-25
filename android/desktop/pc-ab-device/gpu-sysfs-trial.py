@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """AWAI-4090: try the GPU sysfs label on a booted debug ramdisk, without flashing.
 
-Writes `userdebug_plat_sepolicy.cil`: the image's own /system/etc/selinux/plat_sepolicy.cil with
-one `genfscon sysfs <GPU PCI path> sysfs_gpu` line per GPU appended. Nothing else changes: no allow,
-no neverallow, no permissive. The type `sysfs_gpu` is declared by the platform policy.
+Writes `userdebug_plat_sepolicy.cil`: the image's own /system/etc/selinux/plat_sepolicy.cil with a
+few `genfscon sysfs` lines per GPU appended. They label only the attributes libdrm/Mesa read
+(uevent, vendor, device, subsystem_vendor, subsystem_device, revision, the drm directory and the two DRM
+nodes' uevent) `sysfs_gpu`, and put the rest of drm/ back to `sysfs`. The edid, gpu_busy_percent, config
+and every other attribute keep the generic label. Nothing else changes: no allow, no neverallow, no
+permissive. The type `sysfs_gpu` is declared by the platform policy.
 
 With `/force_debuggable` in the ramdisk and an unlocked device, second-stage init compiles
 /debug_ramdisk/userdebug_plat_sepolicy.cil in place of plat_sepolicy.cil and skips the precompiled
@@ -14,9 +17,10 @@ that can be appended to the ramdisk as one more initrd.
 The script only reads the files it is given and writes into --out-dir. It never talks to a device.
 
     gpu-sysfs-trial.py --plat-cil plat_sepolicy.cil [--vendor-cil vendor_sepolicy.cil] \
-        [--gpu-path /sys/devices/pci0000:00/0000:00:08.1/0000:05:00.0 ...] --out-dir OUT
+        [--gpu-path /sys/devices/pci0000:00/0000:00:08.1/0000:05:00.0 ...] \
+        [--drm-node card0 --drm-node renderD128] --out-dir OUT
 
-Without --gpu-path the paths are the ones the source patch adds (patches/virtio-common-awai-pc-gpu-sysfs.patch).
+Without --gpu-path the GPU is the one the source patch labels (patches/virtio-common-awai-pc-gpu-sysfs.patch).
 """
 import argparse
 import gzip
@@ -53,15 +57,38 @@ def normalize_path(path):
     return path
 
 
-def patch_paths(patch_text):
-    """GPU paths the source patch adds to sepolicy/vendor/genfs_contexts."""
-    paths = []
+ATTRIBUTES = ("uevent", "vendor", "device", "subsystem_vendor", "subsystem_device", "revision")
+DRM_NODE = re.compile(r"^(card|renderD)[0-9]+$")
+DEFAULT_NODES = ("card0", "renderD128")
+
+
+def entries_for(gpu, nodes=DEFAULT_NODES):
+    """[(path, type)] for one GPU function. An allow-list: genfscon matches string prefixes and the
+    longest wins, so each attribute is its own line, and `drm/` (with the slash) puts every child of the drm
+    directory back to `sysfs` while the directory itself (`.../drm`, no slash) stays readable."""
+    for node in nodes:
+        if not DRM_NODE.match(node):
+            raise TrialError(f"not a DRM node name: {node!r}")
+    out = [(f"{gpu}/{name}", TYPE) for name in ATTRIBUTES]
+    out += [(f"{gpu}/drm", TYPE), (f"{gpu}/drm/", "sysfs")]
+    out += [(f"{gpu}/drm/{node}/uevent", TYPE) for node in nodes]
+    return out
+
+
+def patch_entries(patch_text):
+    """[(path, type)] the source patch adds to sepolicy/vendor/genfs_contexts."""
+    out = []
     for line in patch_text.splitlines():
         if line.startswith("+genfscon sysfs "):
             fields = line[1:].split()
-            if fields[3] == f"u:object_r:{TYPE}:s0":
-                paths.append(fields[2])
-    return paths
+            out.append((fields[2], fields[3].split(":")[2]))
+    return out
+
+
+def patch_gpus(patch_text):
+    """GPU function paths of the patch: the parent of every `<gpu>/uevent` that is not a drm node's."""
+    return [p[:-len("/uevent")] for p, _ in patch_entries(patch_text)
+            if p.endswith("/uevent") and "/drm/" not in p]
 
 
 def genfscon_entries(cil_text):
@@ -78,24 +105,25 @@ def resolve(entries, path, fstype="sysfs"):
     return best[1] if best else "sysfs"
 
 
-def build_cil(plat_text, paths, vendor_text=""):
-    if not re.search(rf"^\(type {TYPE}\)\s*$", plat_text, re.M):
-        raise TrialError(f"the platform policy does not declare (type {TYPE}); is this plat_sepolicy.cil?")
-    if not paths:
+def build_cil(plat_text, entries, vendor_text=""):
+    for needed in (TYPE, "sysfs"):
+        if not re.search(rf"^\(type {needed}\)\s*$", plat_text, re.M):
+            raise TrialError(f"the platform policy does not declare (type {needed}); is this plat_sepolicy.cil?")
+    if not entries:
         raise TrialError("no GPU path given")
     existing = genfscon_entries(plat_text) + genfscon_entries(vendor_text)
     lines = []
-    for path in paths:
-        for fs, prefix, label in existing:
+    for path, label in entries:
+        for fs, prefix, old in existing:
             if fs == "sysfs" and prefix == path:
-                if label == TYPE:
-                    break  # already labeled by the image; adding it again would be a duplicate genfscon
-                raise TrialError(f"{path} is already labeled {label} by the image policy")
+                if old == label:
+                    break  # already in the image; adding it again would be a duplicate genfscon
+                raise TrialError(f"{path} is already labeled {old} by the image policy")
         else:
-            lines.append(f'(genfscon sysfs "{path}" (u object_r {TYPE} ((s0) (s0))))')
+            lines.append(f'(genfscon sysfs "{path}" (u object_r {label} ((s0) (s0))))')
     out = plat_text if plat_text.endswith("\n") else plat_text + "\n"
     if lines:
-        out += "\n; AWAI-4090: GPU PCI function readable by gpu_sphal_domain (label only).\n" + "\n".join(lines) + "\n"
+        out += "\n; AWAI-4090: GPU attributes libdrm/Mesa read, readable by gpu_sphal_domain (labels only).\n" + "\n".join(lines) + "\n"
     return out
 
 
@@ -130,15 +158,17 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--plat-cil", required=True, type=Path, help="plat_sepolicy.cil pulled from the image under test")
     ap.add_argument("--vendor-cil", type=Path, help="vendor_sepolicy.cil of the same image (checks for a duplicate label)")
-    ap.add_argument("--gpu-path", action="append", help="GPU PCI path, repeatable; default: the paths the patch adds")
+    ap.add_argument("--gpu-path", action="append", help="GPU PCI path, repeatable; default: the GPU the patch labels")
+    ap.add_argument("--drm-node", action="append", help="DRM node names under drm/, default card0 renderD128")
     ap.add_argument("--out-dir", required=True, type=Path)
     args = ap.parse_args(argv)
 
     try:
-        paths = [normalize_path(p) for p in (args.gpu_path or patch_paths(PATCH.read_text()))]
+        paths = [normalize_path(p) for p in (args.gpu_path or patch_gpus(PATCH.read_text()))]
+        entries = [e for p in paths for e in entries_for(p, tuple(args.drm_node or DEFAULT_NODES))]
         plat = args.plat_cil.read_text()
         vendor = args.vendor_cil.read_text() if args.vendor_cil else ""
-        cil = build_cil(plat, paths, vendor)
+        cil = build_cil(plat, entries, vendor)
     except (TrialError, OSError) as err:
         print(f"gpu-sysfs-trial: {err}", file=sys.stderr)
         return 1
@@ -153,7 +183,7 @@ def main(argv=None):
     for name, data in targets.items():
         (args.out_dir / name).write_bytes(data)
         print(f"{sha256(data)}  {args.out_dir / name}")
-    print("labeled:", *paths, sep="\n  ")
+    print("labeled:", *(f"{label:10} {path}" for path, label in entries), sep="\n  ")
     print(NEXT_STEPS.format(cpio=CPIO_NAME, cil=CIL_NAME, path=paths[0]))
     return 0
 
@@ -165,8 +195,10 @@ Use it (the machine stays untouched until you do this yourself):
     {cil} at the ramdisk root. First-stage init copies it to /debug_ramdisk/.
  2. After boot:
       adb logcat -b all -d | grep 'Using userdebug system sepolicy'
-      adb shell ls -Z /sys{path}/uevent      # expect u:object_r:sysfs_gpu:s0
-      adb logcat -b all -d | grep 'avc: .*denied' | grep -E 'name="(uevent|drm|vendor|device)"'
+      adb shell ls -Z /sys{path}/uevent /sys{path}/vendor   # expect u:object_r:sysfs_gpu:s0
+      adb shell ls -Z /sys{path}/config /sys{path}/gpu_busy_percent   # expect u:object_r:sysfs:s0
+      adb shell ls -Z /sys{path}/drm/card0/card0-*/edid          # expect u:object_r:sysfs:s0
+      adb logcat -b all -d | grep 'avc: .*denied' | grep -E 'name="(uevent|drm|vendor|device|revision|edid)"'
       adb shell dumpsys SurfaceFlinger | grep -i -E 'GLES|renderengine'
  3. Undo: boot without the extra initrd. Nothing is written to a disk.
 """
