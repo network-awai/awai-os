@@ -67,7 +67,7 @@ fi
 
 # The vendor patches apply only in the source checkout prepared for Awai PC.
 vendor="$src/vendor/lineage"
-for name in vendor-lineage-no-ota-downgrade.patch vendor-lineage-kernel-output-prefix.patch; do
+for name in vendor-lineage-no-ota-downgrade.patch vendor-lineage-kernel-output-prefix.patch vendor-lineage-stats-default-off.patch; do
   patch="$here/patches/$name"
   if git -C "$vendor" apply --reverse --check "$patch" 2>/dev/null; then
     echo "vendor/lineage $name: already applied"
@@ -77,3 +77,16 @@ for name in vendor-lineage-no-ota-downgrade.patch vendor-lineage-kernel-output-p
     echo "vendor/lineage $name: applied"
   fi
 done
+
+# AWAI-4093: first-setup diagnostics default off. The .kt marker is not matched by
+# one()'s *.cfg/*contexts/*.mk grep, so use the vendor reverse-check gate instead.
+# Wording is owned by AWAI-3563; this only flips the checked default.
+setupwizard="$src/packages/apps/SetupWizard"
+setupwizard_patch="$here/patches/setupwizard-stats-default-off.patch"
+if git -C "$setupwizard" apply --reverse --check "$setupwizard_patch" 2>/dev/null; then
+  echo "packages/apps/SetupWizard setupwizard-stats-default-off.patch: already applied"
+else
+  git -C "$setupwizard" apply --check "$setupwizard_patch"
+  git -C "$setupwizard" apply "$setupwizard_patch"
+  echo "packages/apps/SetupWizard setupwizard-stats-default-off.patch: applied"
+fi

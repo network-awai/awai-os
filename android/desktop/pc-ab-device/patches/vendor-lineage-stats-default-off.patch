@@ -1,0 +1,11 @@
+diff --git a/overlay/common/lineage-sdk/packages/LineageSettingsProvider/res/values/defaults.xml b/overlay/common/lineage-sdk/packages/LineageSettingsProvider/res/values/defaults.xml
+--- a/overlay/common/lineage-sdk/packages/LineageSettingsProvider/res/values/defaults.xml
++++ b/overlay/common/lineage-sdk/packages/LineageSettingsProvider/res/values/defaults.xml
+@@ -18,5 +18,6 @@
+     <!-- Defaults for Secure -->
+
+     <!-- Default for LineageSettings.Secure.STATS_COLLECTION -->
+-    <bool name="def_stats_collection">true</bool>
++    <!-- AWAI-4093: shipping default is no diagnostic/upstream-statistics sending. -->
++    <bool name="def_stats_collection">false</bool>
+ </resources>

@@ -1,0 +1,15 @@
+diff --git a/app/src/main/java/org/lineageos/setupwizard/settings/LineageSettingsActivity.kt b/app/src/main/java/org/lineageos/setupwizard/settings/LineageSettingsActivity.kt
+--- a/app/src/main/java/org/lineageos/setupwizard/settings/LineageSettingsActivity.kt
++++ b/app/src/main/java/org/lineageos/setupwizard/settings/LineageSettingsActivity.kt
+@@ -73,7 +73,8 @@ class LineageSettingsActivity : BaseSetupWizardActivity() {
+
+     private fun updateMetricsOption() {
+         val myPageBundle = SetupWizardApp.settingsBundle
+-        val metricsChecked =
+-            !myPageBundle.containsKey(KEY_SEND_METRICS) || myPageBundle.getBoolean(KEY_SEND_METRICS)
++        // AWAI-4093: first-setup defaults diagnostics to off. Wording stays owned by AWAI-3563.
++        val metricsChecked =
++            myPageBundle.containsKey(KEY_SEND_METRICS) && myPageBundle.getBoolean(KEY_SEND_METRICS)
+         metricsItem.isChecked = metricsChecked
+         myPageBundle.putBoolean(KEY_SEND_METRICS, metricsChecked)
+     }
