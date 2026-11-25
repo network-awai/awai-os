@@ -25,7 +25,7 @@ apex の文書は変更していない。
 | 2 | アプリ可視経路 | **未測定（設計を満たす経路は未実装）**。通常アプリの標準経路は SAF だが §21.2 が不可とする。FUSE の `/storage/<uuid>` + `MANAGE_EXTERNAL_STORAGE` は候補だが、Awai アプリは宣言しておらず、Drive の実装は別 repo。raw `/mnt/media_rw` は DAC で隔離され、raw block を開く特権 daemon も repo に無い。 |
 | 3 | ext4 USB を挿したときの挙動 | **コード経路は確認済み / 実 image・実機は未測定**。pin した vold は `sdcard_posix` を指定して `/mnt/media_rw/<stableName>` に最初は RW で mount を試み、`EROFS` のときだけ RO で再試行する。mount 成功後、`kVisibleForWrite` がある場合は `/storage/<stableName>` のアプリ公開に向けて FUSE に進み、フラグがない場合は FUSE の前に戻る（§4.1）。 |
 | 4 | 特権 daemon / 特権アプリを足す場合 | **未測定（変更は未実装）**。system/priv-app + privapp-permissions + SELinux + OTA/A-B + 署名の全てが必要。`/data` の FBE とは別物。 |
-| 5 | VM / 実機が要る試験 | **未実施**。§6 に前提とオーナー確認の要否を列挙した。 |
+| 5 | VM / 実機が要る試験 | **未実施**。§6 に、挿入前から有効な書込み阻止を確認した読取り試験と、使い捨て媒体・オーナー確認を要する試験の条件を示す。 |
 
 APFS は、この repo の pin した manifest に実装プロジェクトが無く、Linux の
 in-kernel filesystem でもないため、**今日の構成で vold 経由の経路は存在しない**。
@@ -352,7 +352,7 @@ pin した `system/vold` revision `11d8982f...` の
 `fs/Ntfs.cpp:33-42` の `ntfs::IsSupported()` は `mkfs.ntfs` / `fsck.ntfs` /
 `mount.ntfs` の実行可能性と `IsFilesystemSupported("ntfs")` を要求する。
 `PublicVolume::doMount()` の先頭は `IsFilesystemSupported(mFsType)` を直接呼び、
-その後の NTFS 分岐が `fsck.ntfs` と `mount.ntfs` を実行する。
+その後の NTFS 分岐が `fsck.ntfs -n` と、`ro` を指定しない `mount.ntfs` を実行する（§6）。
 `Utils.cpp:1094-1105` は `/proc/filesystems` から読んだ文字列に `fuse\tntfs` を
 追加して判定する。image への `ntfs-3g` の同梱と mount の成否は未測定である。
 
@@ -444,22 +444,43 @@ pin した `system/vold` revision `11d8982f...` の
 ## 6. VM / 実機が要る試験
 
 以下は**未実施**。VM は実機の USB hotplug / OTG host / firmware を
-置き換えない。実機の試験は、書込みを伴うものにオーナー確認が要る。
-user build には shell が無いため、読み取りにも承認済みの debug route
+置き換えない。user build には shell が無いため、読み取りにも承認済みの debug route
 （AWAI-3682）が必要である。
+
+### 媒体の書込み条件
+
+- 固定版の `StorageManagerService` は public volume 作成時に `H_VOLUME_MOUNT`
+  を予約し、ポリシーが許可すると vold に mount を依頼する。USB host の列挙だけを
+  観測するための挿入でも、自動 mount が走り得る。
+  [public volume の分岐](https://github.com/LineageOS/android_frameworks_base/blob/0a607d06a1d6990fe6eaabd8e027c1f8d693a330/services/core/java/com/android/server/StorageManagerService.java#L1713-L1731)・[mount メッセージの処理](https://github.com/LineageOS/android_frameworks_base/blob/0a607d06a1d6990fe6eaabd8e027c1f8d693a330/services/core/java/com/android/server/StorageManagerService.java#L796-L805)・[vold の呼び出し](https://github.com/LineageOS/android_frameworks_base/blob/0a607d06a1d6990fe6eaabd8e027c1f8d693a330/services/core/java/com/android/server/StorageManagerService.java#L2462-L2469)
+- ext4 の check はジャーナル再生などのために `MS_RDONLY` を付けずに一時 mount を
+  試し、`e2fsck` が実行可能なら `e2fsck -y` を実行する。後続の mount が RO に
+  なっても、check の段階で媒体に書き込み得る。
+  [ext4 の check](https://github.com/LineageOS/android_system_vold/blob/11d8982f824d52e8122c7aa732207ba66b8f23c8/fs/Ext4.cpp#L64-L118)
+- NTFS の check は `fsck.ntfs -n` を実行する。続く通常の mount で `mount.ntfs`
+  に渡すオプションに `ro` 指定はない。
+  [NTFS の check](https://github.com/LineageOS/android_system_vold/blob/11d8982f824d52e8122c7aa732207ba66b8f23c8/fs/Ntfs.cpp#L33-L50)・[NTFS の mount](https://github.com/LineageOS/android_system_vold/blob/11d8982f824d52e8122c7aa732207ba66b8f23c8/fs/Ntfs.cpp#L61-L74)
+
+**読取りのみ**と扱うには、対象構成で媒体への書込みを阻止できると確認済みの手段
+（例としてハードウェアの書込みブロッカー）を挿入前から取り外しまで有効にする。
+阻止手段と確認結果を記録する。**書込み阻止が未確認の場合、または通常の挿入・mount
+経路を測る場合は、挿入前にオーナー確認を得て、使い捨て媒体を使う。**
+書込みを阻止した条件で得た結果は、その条件での挙動として記録する。
+
+### 試験一覧
 
 | # | 試験 | 前提 | 書込み / オーナー確認 | 記録するもの |
 | --- | --- | --- | --- | --- |
-| V1 | USB host の列挙 | 7735HS / 6600H の実機、USB-A host port、空き USB stick | 読取りのみ（挿すだけ） | `dmesg` の xHCI / usb-storage / uas、`lsusb`、`ls /sys/block` |
-| V2 | ext4 public volume の RW / RO と FUSE 分岐 | V1 + ext4 の使い捨て媒体。RW 試行が成功する場合、`EROFS` で失敗する場合、他のエラーで失敗する場合と、可視フラグの有無を観測できる試験条件 | format と mount は媒体に書き込み得る。オーナー確認 | vold log と mount の結果、`/proc/<vold-pid>/mountinfo` の raw mount の `rw` / `ro`、`dumpsys mount` の volume flags、`sm list-volumes`、`ls -Z /mnt/media_rw`、`ls -Z /storage` |
-| V3 | アプリから read | V2 の FUSE 経路 + 試験用 APK（`MANAGE_EXTERNAL_STORAGE` または特権配置）。実装は未着手 | read のみ | `/proc/<pid>/mountinfo`、open/read の結果、SELinux `avc: denied` |
+| V1 | USB host の列挙 | 7735HS / 6600H の実機、USB-A host port、試験媒体 | 挿入前から確認済みの手段で書込みを阻止する場合のみ読取り。阻止が未確認の場合や通常の挿入では、使い捨て媒体とオーナー確認が必要 | `dmesg` の xHCI / usb-storage / uas、`lsusb`、`ls /sys/block`、書込み阻止の条件 |
+| V2 | ext4 public volume の RW / RO と FUSE 分岐 | V1 の USB host 条件 + ext4 の使い捨て媒体。RW 試行が成功する場合、`EROFS` で失敗する場合、他のエラーで失敗する場合と、可視フラグの有無を観測できる試験条件 | format、挿入後の check、mount は媒体に書き込み得る。挿入前にオーナー確認 | vold log と mount の結果、`/proc/<vold-pid>/mountinfo` の raw mount の `rw` / `ro`、`dumpsys mount` の volume flags、`sm list-volumes`、`ls -Z /mnt/media_rw`、`ls -Z /storage` |
+| V3 | アプリから read | V2 の FUSE 経路 + 試験用 APK（`MANAGE_EXTERNAL_STORAGE` または特権配置）。実装は未着手 | アプリの試験操作は read。媒体の挿入・check・mount には V2 の書込み条件が適用される | `/proc/<pid>/mountinfo`、open/read の結果、SELinux `avc: denied` |
 | V4 | アプリから write + fsync | V3 + RW mount した使い捨て stick | **書込み。オーナー確認** | write、`FileDescriptor.sync()`、readback、`e2fsck -n` |
 | V5 | dirty unplug / 再挿入 | V4 + 使い捨て stick | **破壊試験。オーナー確認** | 挿抜の時刻、`dmesg`、`e2fsck -n`、journal recovery、再 mount の成否 |
-| V6 | SELinux denial の有無 | V2〜V5 + 承認済み debug route | 読取りのみ（policy 変更は別） | `avc: denied`、`ls -Z`、`sesearch` の結果 |
-| V7 | NTFS の可否 | V1 + NTFS stick + image に `ntfs-3g` が入っていること | mount は read-only なら読取り。write はオーナー確認 | `/proc/filesystems` の `fuse`、`/system/bin/{fsck,mount}.ntfs` の有無、check と mount の結果 |
-| V8 | APFS の負の対照 | V1 + APFS stick | 読取りのみ | mount されないこと、`vold` の log、`blkid` の結果 |
+| V6 | SELinux denial の有無 | V2〜V5 + 承認済み debug route | ログ・属性の観測は読取り。媒体操作には前提試験の書込み条件が適用される | `avc: denied`、`ls -Z`、`sesearch` の結果 |
+| V7 | NTFS の可否 | V1 の USB host 条件 + NTFS 媒体 + image に `ntfs-3g` が入っていること | 挿入前から確認済みの手段で書込みを阻止する場合のみ読取り。阻止が未確認の場合や通常の mount では、使い捨て媒体とオーナー確認が必要 | `/proc/filesystems` の `fuse`、`/system/bin/{fsck,mount}.ntfs` の有無、書込み阻止の条件、check と mount の結果 |
+| V8 | APFS の負の対照 | V1 の USB host 条件 + APFS 媒体 | 挿入には V1 の書込み条件が適用される | mount されないこと、`vold` の log、`blkid` の結果 |
 | V9 | 特権 app / daemon の OTA / A-B | source build、署名、A/B OTA 環境 | **build / flash / OTA はオーナー確認** | 両 slot の package、vbmeta、rollback、`privapp-permissions` |
-| V10 | `/data` FBE との分離 | V2 + userdata の FBE 状態 | 読取りのみ | `getprop`、`dumpsys mount`、`/data` と `/storage/<uuid>` の label / key の別 |
+| V10 | `/data` FBE との分離 | V2 + userdata の FBE 状態 | 状態の観測は読取り。媒体の挿入・check・mount には V2 の書込み条件が適用される | `getprop`、`dumpsys mount`、`/data` と `/storage/<uuid>` の label / key の別 |
 
 ### V2 の受入条件（実 image・実機では未測定）
 
@@ -479,7 +500,7 @@ user build には shell が無いため、読み取りにも承認済みの debu
   OTG host、給電、firmware の受入にはならない。
 - V2 の ext4 format は、その stick の既存データを消す。**使い捨て媒体と
   オーナー確認**が前提。
-- V4 / V5 の dirty unplug は、journal が回復するかを見る破壊試験である。
+- V5 の dirty unplug は、journal が回復するかを見る破壊試験である。
   既存の Portable-USB のデータでは行わない。
 - V9 は release key / OTA / A/B の受入であり、この調査の範囲外。鍵の生成・
   操作は別のオーナー確認が要る。
@@ -499,7 +520,7 @@ repo 内:
 - `android/desktop/pc-ab-device/patches/virtio-userdata.patch:6-13`
 - `android/desktop/pc-ab-device/patches/virtio-common-awai-pc.patch:30-47,57-74`
 - `android/desktop/pc-ab-device/patches/virt-common-awai-pc.patch:9-14`
-- `android/desktop/manifest/pinned-manifest.xml:141,315,1012,1107,1112`
+- `android/desktop/manifest/pinned-manifest.xml:141,315,611,1012,1107,1112`
 - `android/desktop/manifest/base/default.xml:1021`
 - `android/release-signing/README.md:33-43`
 - `android/release-signing/verify-selinux-policy.py:14,47,86-87`
@@ -521,6 +542,8 @@ pin した上流（ローカルツリーではない。revision は
   - `vold.rc:1-10`
 - `LineageOS/android_system_core` `65d661b1a536701e8b118be4e9728d7b5ca727c9`
   - `rootdir/init.rc:300`
+- `LineageOS/android_frameworks_base` `0a607d06a1d6990fe6eaabd8e027c1f8d693a330`
+  - `services/core/java/com/android/server/StorageManagerService.java:796-805,1713-1731,2462-2469`（§6）
 - `LineageOS/android_build` `90d006387398ae6899145e6531a304500cfa0f70`
   - `target/product/base_system.mk:308`
 - `LineageOS/android_device_virt_virtio-common`
@@ -559,7 +582,7 @@ grep -rn 'media_rw\|sdcard_posix' --exclude-dir=.git .
 grep -rn 'privapp-permissions\|priv-app' --exclude-dir=.git .
 grep -n 'system/vold' android/desktop/manifest/pinned-manifest.xml
 
-# pin した vold のファイルを行番号付きで読む（read-only）
+# pin した vold と StorageManagerService を行番号付きで読む（read-only）
 (
   set -e -o pipefail
   vold_raw=https://raw.githubusercontent.com/LineageOS/android_system_vold/11d8982f824d52e8122c7aa732207ba66b8f23c8
@@ -567,6 +590,10 @@ grep -n 'system/vold' android/desktop/manifest/pinned-manifest.xml
     printf '\n%s\n' "$source_file"
     curl -fsSL "$vold_raw/$source_file" | nl -ba
   done
+  frameworks_raw=https://raw.githubusercontent.com/LineageOS/android_frameworks_base/0a607d06a1d6990fe6eaabd8e027c1f8d693a330
+  source_file=services/core/java/com/android/server/StorageManagerService.java
+  printf '\n%s\n' "$source_file"
+  curl -fsSL "$frameworks_raw/$source_file" | nl -ba
 )
 
 # その他の pin した上流ファイル（read-only）
@@ -581,7 +608,8 @@ gh api repos/network-awai/network-awai-apex/contents/docs/awai-disk-format.md?re
 
 ## 9. 未測定の一覧（再掲）
 
-- ビルド済み Awai OS image で vold が起動し、USB の uevent を処理すること。
+- ビルド済み Awai OS image での vold の起動、USB の uevent 処理と自動 mount、
+  試験構成での媒体への書込みと書込み阻止手段の有効性。
 - 実機の xHCI / USB host / usb-storage / uas の設定。
 - ext4 USB を挿したときの RW mount、`EROFS` 時だけの RO 再試行、可視フラグに
   応じた FUSE と `/storage/<uuid>` の公開有無、`sdcard_posix` label での app access。
