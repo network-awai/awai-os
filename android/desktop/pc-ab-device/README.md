@@ -100,9 +100,15 @@ awai-pc-install.py apply <disk or image> <verified install image> \
 ```
 
 - `plan` writes nothing and prints every sector range it would use.
+- By default (`--userdata-gib` omitted, AWAI-4091) userdata takes the largest free range minus
+  the other Awai partitions and `USERDATA_RESERVE_SECTORS` (1 GiB, in `awai-pc-install.py`)
+  kept free at the end; with `--userdata-gib N` it uses N GiB. The plan JSON carries
+  `userdataSectors` and a `userdata` breakdown (mode, reserve, non-userdata sectors,
+  free range, disk usable/total sectors and first/last usable sectors), and `apply`
+  uses the plan's userdata sectors unchanged.
 - It copies each partition from the partition of the same name in the build's disk image. The Awai ESP
   is named `awai_esp`.
-- It requires 512-byte logical sectors on both the source and target and refuses to use the same
+- It requires 512-byte logical sectors on both the source and target (4Kn is refused) and refuses to use the same
   file or device for both. It also refuses an existing Awai partition name, insufficient contiguous
   free space, or an overlap.
 - `apply` rejects a source image that is shorter than the partitions it needs before changing the GPT.
