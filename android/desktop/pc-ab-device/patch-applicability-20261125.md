@@ -17,11 +17,25 @@ exact revisions in `android/desktop/manifest/pinned-manifest.xml`
 
 ## Totals
 
-- **20 patches inventoried** (18 under `pc-ab-device/patches/`, plus
+- **23 patches inventoried** (21 under `pc-ab-device/patches/`, plus
   `target-files/mkbootimg-header-version.patch`, plus
   `scripts/operator/same-build/inputs/setupwizard-awai.patch`).
-- **17 applicable** at the pinned SHAs under the repo's own apply order
-  (see "Ordered apply" below).
+  Baseline 20 + 3 additions measured in this round
+  (`virtio-common-awai-pc-gpu-sysfs.patch` #506,
+  `virtio-common-rtw89-8851be.patch` #511,
+  `vendor-lineage-stats-default-off.patch` #510).
+  None of the 3 duplicates or supersedes an inventoried patch:
+  gpu-sysfs is the only patch touching `sepolicy/vendor/genfs_contexts`;
+  rtw89 touches `BoardConfigCommon.mk`'s tail plus `configs/kernel/
+  awai-pc.config` created by `virtio-common-awai-pc.patch` (an
+  applies-in-order increment, not a second copy of that patch);
+  stats-default-off touches the vendor provider seed
+  (`defaults.xml`), a different layer/file from the SetupWizard
+  first-setup default already in `setupwizard-awai.patch`.
+- **20 applicable** at the pinned SHAs under the repo's own apply order
+  (see "Ordered apply" below): the previous 17 plus all 3 additions
+  (`rc=0` in ordered apply; pristine `rc=0`/`rc=1`/`rc=0` respectively —
+  rtw89 is ordered-only, like `virtio-common-aw-mesa-sphal.patch`).
 - **2 genuinely not applicable** at the pinned SHAs:
   - `mkbootimg-header-version.patch` — confirmed not applicable at
     `device/mainline/generic` `3d402dc5`: the fetched `BoardConfig.mk`
@@ -68,17 +82,24 @@ project only; "Ordered apply" is the repo's own apply order
 (`apply.sh`, `apply-shipping-debug-lockdown.sh`, `pc-firmware.py`,
 `updater-feed.py`), where stacked patches are checked against the
 state the earlier patches in the order have already produced. Order
-was `apply.sh` canonical: virtio-common (`awai-pc` → `aw-mesa-sphal`
-→ chosen fstab → wait; the checkpoint patch is skipped via
+was `apply.sh` canonical: virtio-common (`awai-pc` → `rtw89` →
+`aw-mesa-sphal` → `gpu-sysfs` → chosen fstab → wait; the checkpoint patch is skipped via
 `--reverse --check` rc=0), virt-common (`awai-pc` → `boot-name`, lockdown `user-no-adb-tcp` after
-`awai-pc`), virtio_x86_64 (`radeon` → `radeon-default`), updater
+`awai-pc`), virtio_x86_64 (`radeon` → `radeon-default`), vendor/lineage
+(`no-ota-downgrade` → `kernel-output-prefix` → `stats-default-off`),
+updater
 (`withdrawal` → `serialize` → `maintenance`, all with
-`--unidiff-zero` as in `updater-feed.py`).
+`--unidiff-zero` as in `updater-feed.py`). The 3 additions were
+measured at the same pinned SHAs in the same way (pristine, ordered,
+reverse); their raw logs are `raw/pristine-additions.txt`,
+`raw/chains-additions.txt` and `raw/fetch-additions.log`.
 
 | Patch | Target project | Files (fetched `a/`-side) | Pristine | Ordered apply | Verdict |
 | --- | --- | --- | --- | --- | --- |
 | `virtio-common-awai-pc.patch` | `device/virt/virtio-common` | `BoardConfigCommon.mk`, `sepolicy/vendor/ab/file_contexts`, `sepolicy/vendor/file_contexts` (+ new `configs/kernel/awai-pc.config`) | `rc=0` | `rc=0`, first in order | applies |
+| `virtio-common-rtw89-8851be.patch` | `device/virt/virtio-common` | `BoardConfigCommon.mk` (already in fetched table), `configs/kernel/awai-pc.config` (created by `virtio-common-awai-pc.patch`; not present pristine, not fetched) | `rc=1` (`BoardConfigCommon.mk:74`; `configs/kernel/awai-pc.config: No such file or directory`) | `rc=0` after `virtio-common-awai-pc.patch`; reverse-check after ordered `rc=0` | applies in order |
 | `virtio-common-aw-mesa-sphal.patch` | `device/virt/virtio-common` | `sepolicy/vendor/file_contexts` | `rc=1` (`sepolicy/vendor/file_contexts: patch does not apply`) | `rc=0` after `virtio-common-awai-pc.patch` (context differs) | applies in order |
+| `virtio-common-awai-pc-gpu-sysfs.patch` | `device/virt/virtio-common` | `sepolicy/vendor/genfs_contexts` | `rc=0` | `rc=0` after `virtio-common-awai-pc.patch` → `virtio-common-rtw89-8851be.patch` → `virtio-common-aw-mesa-sphal.patch` (apply.sh order); reverse-check after ordered `rc=0` | applies |
 | `virtio-userdata.patch` | `device/virt/virtio-common` | `configs/fstab/fstab.virtio-common` | `rc=1` (`fstab.virtio-common:1`) | fstab selection skips it: forward-check fails, reverse-check fails | **not applicable** at pinned SHA; chosen variant is `virtio-userdata-block-checkpoint.patch` |
 | `virtio-userdata-block-checkpoint.patch` | `device/virt/virtio-common` | `configs/fstab/fstab.virtio-common` | `rc=0` | `rc=0` (chosen) | applies (chosen variant) |
 | `virtio-userdata-ext4-checkpoint.patch` | `device/virt/virtio-common` | `configs/fstab/fstab.virtio-common` | `rc=1` (`fstab.virtio-common:1`) | forward `--check` rc=1 after chosen variant (content already there); `--reverse --check` rc=0 (skipped by `apply.sh`) | **superseded / skipped** by `apply.sh` (reverse-check gate), not a failure |
@@ -90,6 +111,7 @@ was `apply.sh` canonical: virtio-common (`awai-pc` → `aw-mesa-sphal`
 | `virtio-x86-64-awai-radeon-default.patch` | `device/virt/virtio_x86_64` | `bootmgr/grub/grub-boot.cfg` | `rc=0` | `rc=0` after `virtio-x86-64-awai-radeon.patch` | applies |
 | `vendor-lineage-no-ota-downgrade.patch` | `vendor/lineage` | `config/common.mk` | `rc=0` | `rc=0` | applies |
 | `vendor-lineage-kernel-output-prefix.patch` | `vendor/lineage` | `build/tasks/kernel.mk` | `rc=0` | `rc=0` | applies |
+| `vendor-lineage-stats-default-off.patch` | `vendor/lineage` | `overlay/common/lineage-sdk/packages/LineageSettingsProvider/res/values/defaults.xml` | `rc=0` | `rc=0` third in the vendor loop (after `no-ota-downgrade` → `kernel-output-prefix`); reverse-check after ordered `rc=0` | applies |
 | `build-no-trade-in-mode-trigger.patch` | `build/make` | `target/product/handheld_system.mk` | `rc=0` | `rc=0` | applies |
 | `mainline-common-user-no-insecure-debugging.patch` | `device/mainline/common` | `libraries/libinit/Android.bp`, `libraries/libinit/libinit_mainline_common.cpp` | `rc=0` | `rc=0` | applies |
 | `updater-empty-feed-withdrawal.patch` | `packages/apps/Updater` | `app/src/main/java/org/lineageos/updater/data/UpdatesRepository.kt` | `rc=0` (`--unidiff-zero`) | `rc=0` first (`updater-feed.py` order) | applies |
@@ -117,7 +139,8 @@ Two methodological details are load-bearing:
   patch already applied (rc=0) and skips it. Re-running the real
   `apply.sh` on pinned trees (per-project repositories, run 1 and run
   2) gives rc=0 both times:
-  - run 1 applies `virtio-common-awai-pc`, `virtio-common-aw-mesa-sphal`,
+  - run 1 applies `virtio-common-awai-pc`, `virtio-common-rtw89-8851be`,
+    `virtio-common-aw-mesa-sphal`, `virtio-common-awai-pc-gpu-sysfs`,
     the chosen `virtio-userdata-block-checkpoint`, then the wait patch
     (`virtio-common ext4 userdata checkpoint device wait: enabled`);
     the checkpoint patch is silently skipped (already satisfied),
@@ -133,7 +156,7 @@ Two methodological details are load-bearing:
   not a signal. (The "13 applicable" figure in the #505 evidence
   README counted a different set and is superseded here.)
 - **Radeon patches are applied by `pc-firmware.py prepare`, not
-  pre-applied by the Job (proposed in #507)** (one path): `prepare` applies both
+  pre-applied by the Job (proposed in #512)** (one path): `prepare` applies both
   `virtio-x86-64-awai-radeon.patch` and
   `virtio-x86-64-awai-radeon-default.patch` after staging the
   firmware overlay.
@@ -158,16 +181,42 @@ Two methodological details are load-bearing:
   overlay created at `vendor/awai/pc-firmware` (18 entries) and the
   firmware include injected into `lineage_virtio_x86_64.mk`.
 
+- **The 3 additions (this round).** Measured the same way, at the
+  same pinned SHAs (`device/virt/virtio-common` `9d5c9307`,
+  `vendor/lineage` `5a1814d9`), fetch-only via
+  `raw.githubusercontent.com` for the `a/`-side files, per-project
+  `git init` repositories: pristine `git apply --check -p1`, then
+  the ordered chain in `apply.sh` order (virtio-common `awai-pc` →
+  `rtw89` → `aw-mesa-sphal` → `gpu-sysfs`; vendor
+  `no-ota-downgrade` → `kernel-output-prefix` →
+  `stats-default-off`), then `git apply --reverse --check` after
+  ordered apply. Results: gpu-sysfs pristine `rc=0`, ordered
+  `rc=0`, ordered-reverse `rc=0`; rtw89 pristine `rc=1`
+  (`BoardConfigCommon.mk:74` context not at the pristine tail, and
+  `configs/kernel/awai-pc.config` does not exist until
+  `virtio-common-awai-pc.patch` creates it — an applies-in-order
+  patch, not a failure), ordered `rc=0`, ordered-reverse `rc=0`;
+  stats-default-off pristine `rc=0`, ordered `rc=0`,
+  ordered-reverse `rc=0`. Pristine reverse-checks are `rc=1` for
+  all 3 (nothing already applied). No `repo sync`, no build.
+
 ## Raw evidence provenance
 
 `patch-applicability-20261125-raw/` ports the raw measurement logs
 from the closed companion PR #505 (`com-junkawasaki/awai-4088-g2-followup`,
 branch retained) — `raw/fetch.log`, `raw/chains.txt`, `raw/pristine.txt`,
-`raw/patches.sha256`, `raw/manifest-inputs-patches.txt`,
-`SHA256SUMS` — verbatim; no counts from that PR's README are
+`raw/patches.sha256`, `raw/manifest-inputs-patches.txt` — verbatim;
+no counts from that PR's README are
 reproduced here (its "13 applicable" exclusions are superseded by
-this document's 17; see above). The Job is **not in this PR**:
-it is proposed in the separate #507, which supersedes #505's Job
+this document's 17; see above). The 3 additions in this round are
+recorded separately, in the same directory, as
+`raw/fetch-additions.log`, `raw/pristine-additions.txt` and
+`raw/chains-additions.txt` (fetch log, pristine + reverse-checks,
+and ordered chains for the 3 new patches; the previous raw files
+listed above are unchanged, and `SHA256SUMS` was regenerated in
+this round to cover them plus the 3 additions — `README.md` is not
+included, as before). The Job is **not in this PR**:
+it is proposed in the separate #512, which supersedes #505's Job
 definition rather than copying its apply step (which ran only
 `apply.sh` and dropped Radeon, lockdown and Updater).
 
@@ -187,7 +236,7 @@ definition rather than copying its apply step (which ran only
   `apply.sh`/lockdown runs in a real synced tree (the scratch
   reproductions above used the fetched files only), the lockdown
   patch set in a real build product, and OTA registration
-  end-to-end. The Job proposed in #507 records the plan; it is not
+  end-to-end. The Job proposed in #512 records the plan; it is not
   evidence of a build.
 
 ## Product target
@@ -224,6 +273,7 @@ revision; verified per file below.
 | `device/virt/virtio-common` | `configs/fstab/fstab.virtio-common` | 635 | `b23b55582109ee5036967718c8988e7bd1963db5d0508e3e62c71f7be1abaf18` |
 | `device/virt/virtio-common` | `sepolicy/vendor/ab/file_contexts` | 222 | `22e35ce739726ae507cfd253317e7a597e3eef498625db7da4f1f00c4ea2e290` |
 | `device/virt/virtio-common` | `sepolicy/vendor/file_contexts` | 540 | `3d9160a22a770da4d141f504fed9c36ce148d989d2cda35916dcb86c04d95dd1` |
+| `device/virt/virtio-common` | `sepolicy/vendor/genfs_contexts` | 7761 | `8f2e7fea5541ba7070358b6039e0e5ce71df19bf8e9fb1b9121ea70b28ea07bb` |
 | `device/virt/virtio_x86_64` | `BoardConfig.mk` | 1183 | `3ef24c4f371d87f8f09d3238dd46fed3497166f388de4a8f7e379fb31a52ec1e` |
 | `device/virt/virtio_x86_64` | `bootmgr/grub/grub-boot.cfg` | 2547 | `651eae01c80356a2c8668f0e34bee2be5576b082c6c83be4b437f189de99d4de` |
 | `device/virt/virtio_x86_64` | `configs/init/virtio_x86_64-graphics.rc` | 875 | `4aadeb69043243d783ff5a4a01b21761b6778e9d86845bddb1c23c02250b0245` |
@@ -242,6 +292,7 @@ revision; verified per file below.
 | `packages/apps/Updater` | `app/src/main/res/values-ja/strings.xml` | 14025 | `495e4787126654ee016af722d48139597723df6702e765ff73044cf7d58181c4` |
 | `vendor/lineage` | `build/tasks/kernel.mk` | 41311 | `55c02c09644722f44782fce97c06edf84b7f076514f971b58da4afd69b8a9180` |
 | `vendor/lineage` | `config/common.mk` | 8310 | `5798ba088072a162e2df3e3327c0ebcc6678c37e2b298c5c8bc2dd4399ccf2e4` |
+| `vendor/lineage` | `overlay/common/lineage-sdk/packages/LineageSettingsProvider/res/values/defaults.xml` | 846 | `7b8158f28cf4a27a475647838e853c52946971e35b54b527f3d267ccea573eae` |
 
 Patch files themselves (SHA-256, from the repo):
 
@@ -254,11 +305,14 @@ Patch files themselves (SHA-256, from the repo):
 | `updater-serialize-ab-preparation.patch` | `825a5e82ad4e09c9fd3410f2fe51f316f45c8cc13c55d5f02dfba28e3dd114e9` |
 | `vendor-lineage-kernel-output-prefix.patch` | `7e3073b68f625c1d5b596ba85e7fa9f2cdc07b92b01fee34586362aaef04a033` |
 | `vendor-lineage-no-ota-downgrade.patch` | `dc018af33da42827f1b9d21f16e44e99d5b4923009173eb7585658bea03d926d` |
+| `vendor-lineage-stats-default-off.patch` | `78aac7e852a459b558f3c25f700ed544aaef8e7867c457dd670c5ea8554ed2d5` |
 | `virt-common-awai-boot-name.patch` | `ed9eacea16b97901f32aec688cf10a404490803b551e1b06b414a27036f98d60` |
 | `virt-common-awai-pc.patch` | `4a2b4adae8aa18b131a304c33c782c8829264a2968d6a63b0609b15c58867e83` |
 | `virt-common-user-no-adb-tcp.patch` | `7bcc960ab4565d4335d5ad51957d6fb5c63173fb732d17fb04f5ad511f174c39` |
 | `virtio-common-aw-mesa-sphal.patch` | `5e825c710eb39e94eaea9da326fb00723746296d3cbe03b613dc4b367ad232d9` |
 | `virtio-common-awai-pc.patch` | `bb54d99ebf22eb3e5e2dcb8fb09e36f3845d43be84978eecbbb8a7eec9a50297` |
+| `virtio-common-awai-pc-gpu-sysfs.patch` | `4816a2857f75ef8baa38c43fb33026d6a6e25734fec76cfa36eba756d5087220` |
+| `virtio-common-rtw89-8851be.patch` | `5f82849ec87015a65386fa8cd11174befccab057760e6bf717ebc662af080098` |
 | `virtio-userdata-block-checkpoint.patch` | `36900715c29cb8e7a7b4d8c168d9900fc2ed3c7835bb0ff6b25634a49a7dde1d` |
 | `virtio-userdata-ext4-checkpoint-wait.patch` | `bbe964dd61d84e514ec0d0133b101092b4cc4b5382b2fe26b9dfed1b72b10d48` |
 | `virtio-userdata-ext4-checkpoint.patch` | `755884f70760bd87d7a5429d76cfaf33bf868658c6ed177b3758dad342bd69f3` |
@@ -288,7 +342,14 @@ git -C <scratch>/<project> apply --check -p1 android/desktop/pc-ab-device/patche
 
 # Ordered apply for virtio-common (chosen variant selection):
 git -C <d> apply -p1 patches/virtio-common-awai-pc.patch
+git -C <d> apply -p1 patches/virtio-common-rtw89-8851be.patch       # additions: after awai-pc, rc=0
 git -C <d> apply -p1 patches/virtio-common-aw-mesa-sphal.patch
+git -C <d> apply -p1 patches/virtio-common-awai-pc-gpu-sysfs.patch  # additions: after aw-mesa, rc=0
+# Ordered apply for vendor/lineage (apply.sh vendor loop):
+git -C <d> apply -p1 patches/vendor-lineage-no-ota-downgrade.patch
+git -C <d> apply -p1 patches/vendor-lineage-kernel-output-prefix.patch
+git -C <d> apply -p1 patches/vendor-lineage-stats-default-off.patch  # additions: third, rc=0
+# Reverse-checks after ordered apply (skip gate): rc=0 for all 3 additions.
 # attempt --reverse --check on virtio-userdata-ext4-checkpoint-wait.patch (fails),
 # then for virtio-userdata.patch and virtio-userdata-block-checkpoint.patch
 # in that order: reverse-check (both fail) then check -> first that checks is

@@ -1,0 +1,51 @@
+### ordered chains for the 3 additions (apply.sh order, per-project git repos)
+### CHAIN A: device/virt/virtio-common -- apply.sh: awai-pc, rtw89, aw-mesa-sphal, gpu-sysfs, then fstab block-checkpoint, wait
+  + git -C /Users/node/.hermes/cache/scratch/g2-add-20261125/ordered/device/virt/virtio-common apply --check -p1 /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/virtio-common-awai-pc.patch  # awai-pc first
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-add-20261125/ordered/device/virt/virtio-common apply /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/virtio-common-awai-pc.patch
+  EXIT=0
+
+  + git -C /Users/node/.hermes/cache/scratch/g2-add-20261125/ordered/device/virt/virtio-common apply --check -p1 /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/virtio-common-rtw89-8851be.patch  # rtw89 after awai-pc (awai-pc.config created by awai-pc)
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-add-20261125/ordered/device/virt/virtio-common apply /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/virtio-common-rtw89-8851be.patch
+  EXIT=0
+
+  + git -C /Users/node/.hermes/cache/scratch/g2-add-20261125/ordered/device/virt/virtio-common apply --check -p1 /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/virtio-common-aw-mesa-sphal.patch  # aw-mesa after awai-pc+rtw89
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-add-20261125/ordered/device/virt/virtio-common apply /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/virtio-common-aw-mesa-sphal.patch
+  EXIT=0
+
+  + git -C /Users/node/.hermes/cache/scratch/g2-add-20261125/ordered/device/virt/virtio-common apply --check -p1 /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/virtio-common-awai-pc-gpu-sysfs.patch  # gpu-sysfs after aw-mesa (apply.sh order)
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-add-20261125/ordered/device/virt/virtio-common apply /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/virtio-common-awai-pc-gpu-sysfs.patch
+  EXIT=0
+
+  + git -C /Users/node/.hermes/cache/scratch/g2-add-20261125/ordered/device/virt/virtio-common apply --check -p1 /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/virtio-userdata-block-checkpoint.patch  # chosen fstab variant
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-add-20261125/ordered/device/virt/virtio-common apply /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/virtio-userdata-block-checkpoint.patch
+  EXIT=0
+
+  + git -C /Users/node/.hermes/cache/scratch/g2-add-20261125/ordered/device/virt/virtio-common apply --reverse --check /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/virtio-common-rtw89-8851be.patch  # reverse after ordered apply
+  EXIT=0
+
+  + git -C /Users/node/.hermes/cache/scratch/g2-add-20261125/ordered/device/virt/virtio-common apply --reverse --check /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/virtio-common-awai-pc-gpu-sysfs.patch  # reverse after ordered apply
+  EXIT=0
+
+### CHAIN B: vendor/lineage -- apply.sh vendor loop: no-ota-downgrade, kernel-output-prefix, stats-default-off
+  + git -C /Users/node/.hermes/cache/scratch/g2-add-20261125/ordered/vendor/lineage apply --check -p1 /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/vendor-lineage-no-ota-downgrade.patch  # vendor 1
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-add-20261125/ordered/vendor/lineage apply /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/vendor-lineage-no-ota-downgrade.patch
+  EXIT=0
+
+  + git -C /Users/node/.hermes/cache/scratch/g2-add-20261125/ordered/vendor/lineage apply --check -p1 /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/vendor-lineage-kernel-output-prefix.patch  # vendor 2
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-add-20261125/ordered/vendor/lineage apply /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/vendor-lineage-kernel-output-prefix.patch
+  EXIT=0
+
+  + git -C /Users/node/.hermes/cache/scratch/g2-add-20261125/ordered/vendor/lineage apply --check -p1 /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/vendor-lineage-stats-default-off.patch  # stats-default-off (addition) vendor 3
+  EXIT=0
+  + git -C /Users/node/.hermes/cache/scratch/g2-add-20261125/ordered/vendor/lineage apply /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/vendor-lineage-stats-default-off.patch
+  EXIT=0
+
+  + git -C /Users/node/.hermes/cache/scratch/g2-add-20261125/ordered/vendor/lineage apply --reverse --check /Users/node/orca/workspaces/awai-os/awai-4088-census/android/desktop/pc-ab-device/patches/vendor-lineage-stats-default-off.patch  # reverse after ordered apply
+  EXIT=0
