@@ -23,15 +23,15 @@ apex の文書は変更していない。
 | --- | --- | --- |
 | 1 | 製品 config は USB mass storage を扱うか | **静的調査済み / 実 image は未測定**。調査対象の製品ファイルでは USB mass storage の明示設定は見つからなかった。vold は、disk source に一致する媒体を個別の fstab entry がなくても検出できる。上流の defconfig、実効 kernel 設定、ビルド済み image での USB の動作は未確認。 |
 | 2 | アプリ可視経路 | **未測定（設計を満たす経路は未実装）**。通常アプリの標準経路は SAF だが §21.2 が不可とする。FUSE の `/storage/<uuid>` + `MANAGE_EXTERNAL_STORAGE` は候補だが、Awai アプリは宣言しておらず、Drive の実装は別 repo。raw `/mnt/media_rw` は DAC で隔離され、raw block を開く特権 daemon も repo に無い。 |
-| 3 | ext4 USB を挿したときの挙動 | **コード経路は確認済み / image は未測定**。pin した vold は ext4 public volume を `/mnt/media_rw/<uuid>` に RW mount し、`sdcard_posix` label を付け、FUSE で `/storage/<uuid>` に出す。実際に挿して mount した記録は無い。 |
+| 3 | ext4 USB を挿したときの挙動 | **コード経路は確認済み / 実 image・実機は未測定**。pin した vold は `sdcard_posix` を指定して `/mnt/media_rw/<stableName>` に最初は RW で mount を試み、`EROFS` のときだけ RO で再試行する。mount 成功後、`kVisibleForWrite` がある場合は `/storage/<stableName>` のアプリ公開に向けて FUSE に進み、フラグがない場合は FUSE の前に戻る（§4.1）。 |
 | 4 | 特権 daemon / 特権アプリを足す場合 | **未測定（変更は未実装）**。system/priv-app + privapp-permissions + SELinux + OTA/A-B + 署名の全てが必要。`/data` の FBE とは別物。 |
 | 5 | VM / 実機が要る試験 | **未実施**。§6 に前提とオーナー確認の要否を列挙した。 |
 
 APFS は、この repo の pin した manifest に実装プロジェクトが無く、Linux の
 in-kernel filesystem でもないため、**今日の構成で vold 経由の経路は存在しない**。
 NTFS は vold に分岐があるが、`ntfs-3g` の実行ファイルが image に入るかが
-repo の product config から確認できない。**ext4 が唯一、コード経路まで確認できる
-候補**である。ただし「対応している」とは書かない。実 image では未測定である。
+repo の product config から確認できない。**ext4 は §4.1 の mount とアプリ公開の
+条件をコードで確認した候補**である。実 image・実機での受入は未測定である。
 
 ## 1. 調査環境と境界
 
@@ -223,15 +223,16 @@ test が `network-awai/app-drive` にあり、package ID は
   `fs_prepare_dir(..., 0700, AID_ROOT, AID_ROOT)` で作る。
 - `system/core` の pinned `rootdir/init.rc:300` は
   `mkdir /mnt/media_rw 0750 root external_storage` とする。
-- ext4 portable の mount では、`Ext4.cpp:135` が
-  `context=u:object_r:sdcard_posix:s0` を付け、`:154-155` で mounted root を
-  `media_rw:media_rw`、`0775` にする。
+- ext4 portable の mount では、`fs/Ext4.cpp:131-136` が
+  `context=u:object_r:sdcard_posix:s0` を付ける。最初の mount が成功した場合に
+  `:153-156` で mounted root の所有者を `media_rw:media_rw`、mode を `0775`
+  に設定する処理を実行する。RO 再試行より前の処理である（§4.1）。
 
 つまり raw path は root / `external_storage` group の DAC と SELinux の
 対象で、**通常アプリの API ではない**。`MANAGE_EXTERNAL_STORAGE` は
 shared storage の appop であり、`/mnt/media_rw` の DAC を迂回するものでは
-ない（AOSP 一般論）。`MANAGE_EXTERNAL_STORAGE` を持つアプリが見るのは
-FUSE 側の `/storage/<uuid>` である。
+ない（AOSP 一般論）。アプリ可視ボリュームで使う候補は FUSE 側の
+`/storage/<uuid>` である（§4.1）。
 
 **未測定**
 
@@ -278,7 +279,7 @@ FUSE 側の `/storage/<uuid>` である。
 | 経路 | 今日の状態 | 設計との関係 |
 | --- | --- | --- |
 | (a) `/mnt/media_rw` raw | DAC 0700 root / 0750 root:external_storage。通常アプリ不可。特権 daemon は repo に無い | 新規の特権コンポーネントが必要 |
-| (a') FUSE `/storage/<uuid>` + `MANAGE_EXTERNAL_STORAGE` | AOSP の public volume の app-visible view。Awai アプリは未宣言、Drive は別 repo、実装・実測なし | SAF ではないが、未実装・未測定 |
+| (a') FUSE `/storage/<uuid>` + `MANAGE_EXTERNAL_STORAGE` | vold が `kVisibleForWrite` のある public volume をアプリ可視にする経路。Awai アプリは未宣言、Drive は別 repo、実装・実測なし | SAF ではないが、未実装・未測定 |
 | (b) SAF / DocumentsProvider | AOSP にはあるが、§21.2 が不可とする | 設計で拒否 |
 | (c) raw block `/dev/block/*` | repo に daemon 無し。apex §17.3 で権限未決定 | 新規の特権 daemon とオーナー確認が必要 |
 
@@ -296,37 +297,40 @@ FUSE 側の `/storage/<uuid>` である。
 pin した `system/vold` revision `11d8982f...` の
 `model/PublicVolume.cpp` は次の順で動く。
 
-1. `:127` `IsFilesystemSupported(mFsType)` で `/proc/filesystems` に
-   filesystem があるか確認する。
-2. `:134` raw path を `/mnt/media_rw/<stableName>` にする。
-3. `:157` ext4 なら `ext4::Check(mDevPath, mRawPath, false)`。
-4. `:178` ext4 なら
+1. `:123-130` `isVisibleForWrite()` の結果を保持し、`IsFilesystemSupported(mFsType)`
+   で filesystem を確認する。`isVisibleForWrite()` は `kVisibleForWrite`
+   を参照する（`model/VolumeBase.h:65-73,111-114`）。
+2. `:106-113,132-151` UUID があれば UUID、なければ volume ID を `stableName`
+   とし、raw path を `/mnt/media_rw/<stableName>` にする。フラグがある場合は
+   `/storage/<stableName>` を公開先の path とし、ない場合は raw path とする。
+3. `:153-172` ext4 なら `ext4::Check(mDevPath, mRawPath, false)`。check が失敗すれば中止する。
+4. `:177-179,193-196` ext4 なら
    `ext4::Mount(mDevPath, mRawPath, false, false, true, mMntOpts, false, true)`
-   で mount する。第 1 引数の `ro=false`、最後の `portable=true`。
-5. `:271-276` で `MountUserFuse` を呼び、`/storage/<stableName>` を
-   app-visible にする。
+   を呼ぶ。第 3 引数が `ro=false`、最後が `portable=true`。mount の最終結果が失敗なら中止する。
+5. `:202-205` mount 成功後、フラグがない場合はここで `OK` を返し、sdcardfs / FUSE
+   を起動しない。フラグがある場合は `:271-294` の `MountUserFuse` と公開処理に進む。
 
-`model/Ext4.cpp`:
+`fs/Ext4.cpp`:
 
-- `:56-61` `kMkfsPath=/system/bin/mke2fs`、`kFsckPath=/system/bin/e2fsck`、
-  `IsFilesystemSupported("ext4")`。
-- `:135` portable mount に `context=u:object_r:sdcard_posix:s0` を追加。
-- `:154-155` mount 後に `chown(media_rw, media_rw)`、`chmod(0775)`。
-- `:199` format 時の options に `has_journal` を入れる（vold が format する
-  場合は journal 付き ext4）。ただし、既に存在する ext4 に journal があるか
-  は vold の mount では判定しない。journal の有無の判定は apex §4.9 の
-  FS probe 側の責務である。
+- `:56-62` `ext4::IsSupported()` は `mke2fs` と `e2fsck` の実行可能性と
+  `IsFilesystemSupported("ext4")` を確認する。
+- `:124-152` portable mount に `context=u:object_r:sdcard_posix:s0` を追加する。
+  `ro=false` のため `MS_RDONLY` を付けずに最初の mount（RW）を試みる。
+- `:153-156` 最初の mount が成功した場合に `chown(media_rw, media_rw)`、`chmod(0775)` を実行する。
+- `:158-164` 最初の mount が `EROFS` で失敗したときだけ `MS_RDONLY` を付けて RO で再試行する。
+  他のエラーでは再試行せず、mount の最終結果を返す。
+- `:199-211` format 時の options に `has_journal` を入れる。既存の ext4 媒体が
+  journal 要件を満たすかは apex §4.9 の FS probe で判定する。
 
-したがって **pin した vold のコード経路としては、ext4 の USB を
-public volume として RW mount し、`sdcard_posix` label を付け、FUSE で
-`/storage/<uuid>` に出す**。これは「実 image でそうなった」ではない。
+**RW / RO は raw mount の結果であり、FUSE に進む条件はアプリ可視フラグである。**
+実 image・実機での mount 結果、フラグの設定、アプリからのアクセスは未測定である。
 
 ### 4.2 SELinux label
 
 **確認済み（コード経路）**
 
 - ext4 portable の label は **`u:object_r:sdcard_posix:s0`** であり、
-  `media_rw_data_file` ではない（`Ext4.cpp:135`）。
+  `media_rw_data_file` ではない（`fs/Ext4.cpp:131-136`）。
 - `media_rw_data_file` は AOSP の `/data/media` 側の型で、この repo には
   定義も使用も無い（`grep` 0 件）。
 
@@ -340,24 +344,25 @@ public volume として RW mount し、`sdcard_posix` label を付け、FUSE で
 
 | FS | 今日の状態 | 根拠 |
 | --- | --- | --- |
-| ext4 | pin した vold に mount 経路あり。image は未測定 | `PublicVolume.cpp:157,178`、`Ext4.cpp:135,199` |
-| NTFS | vold に分岐あり。ただし `/system/bin/{mkfs,fsck,mount}.ntfs` が必要 | `Ntfs.cpp:33-41`。`ntfs-3g` は `pinned-manifest.xml:1112` にあるが、product への同梱は repo で未確認 |
+| ext4 | pin した vold に RW 試行と `EROFS` 時の RO 再試行あり。image は未測定 | `model/PublicVolume.cpp:177-179`、`fs/Ext4.cpp:124-164,199-211` |
+| NTFS | vold の public volume 分岐は `/system/bin/fsck.ntfs` と `/system/bin/mount.ntfs` を使う。product への同梱は未確認 | `model/PublicVolume.cpp:160-161,184-186`、`fs/Ntfs.cpp:33-74`。`ntfs-3g` の pin は `pinned-manifest.xml:1112` |
 | APFS | vold の fs type に無い。manifest に APFS 実装プロジェクトが無い | `grep -niE 'apfs' pinned-manifest.xml` 0 件。Linux の in-kernel FS ではない |
 | exFAT | vold に mount 経路あり。ただし §21.2 が不可とする | `PublicVolume.cpp:154,174`、apex §21.2 |
 
-NTFS の `IsSupported()` は `mkfs.ntfs` / `fsck.ntfs` / `mount.ntfs` の
-実行可能性と `IsFilesystemSupported("ntfs")` を要求する
-（`Ntfs.cpp:37-40`）。`Utils.cpp:1095-1104` は `/proc/filesystems` に
-`fuse\tntfs` を追加して判定する。つまり NTFS は **ntfs-3g (FUSE) の
-実行ファイルが image に入っていること**が前提で、その同梱は repo の
-product config から確認できない。
+`fs/Ntfs.cpp:33-42` の `ntfs::IsSupported()` は `mkfs.ntfs` / `fsck.ntfs` /
+`mount.ntfs` の実行可能性と `IsFilesystemSupported("ntfs")` を要求する。
+`PublicVolume::doMount()` の先頭は `IsFilesystemSupported(mFsType)` を直接呼び、
+その後の NTFS 分岐が `fsck.ntfs` と `mount.ntfs` を実行する。
+`Utils.cpp:1094-1105` は `/proc/filesystems` から読んだ文字列に `fuse\tntfs` を
+追加して判定する。image への `ntfs-3g` の同梱と mount の成否は未測定である。
 
 ### 4.4 「AOSP 一般論」と「本 image」の区別
 
 - vold のコード経路、fstab の不在、init の `/mnt/media_rw` の DAC は、
   pin した上流ファイルで確認した。
 - 「USB を挿すと uevent が届く」「vold が PublicVolume を作る」
-  「FUSE が `/storage/<uuid>` を出す」「通常アプリが read/write できる」
+  「ext4 の RW / RO mount と可視フラグに応じた FUSE 分岐が動く」
+  「通常アプリが read/write できる」
   「dirty unplug で journal が回復する」は、**すべて本 image では未測定**。
   AOSP 一般論を本 image の対応とは書かない。
 
@@ -446,17 +451,28 @@ user build には shell が無いため、読み取りにも承認済みの debu
 | # | 試験 | 前提 | 書込み / オーナー確認 | 記録するもの |
 | --- | --- | --- | --- | --- |
 | V1 | USB host の列挙 | 7735HS / 6600H の実機、USB-A host port、空き USB stick | 読取りのみ（挿すだけ） | `dmesg` の xHCI / usb-storage / uas、`lsusb`、`ls /sys/block` |
-| V2 | vold が ext4 を public volume にする | V1 + あらかじめ ext4 で format 済みの stick（format 自体が書込み） | format と mount は媒体への書込み。オーナー確認 | `dumpsys mount`、`sm list-volumes`、`ls -Z /mnt/media_rw`、`ls -Z /storage`、`getprop` |
-| V3 | アプリから read | V2 + 試験用 APK（`MANAGE_EXTERNAL_STORAGE` または特権配置）。実装は未着手 | read のみ | `/proc/<pid>/mountinfo`、open/read の結果、SELinux `avc: denied` |
-| V4 | アプリから write + fsync | V3 + 使い捨て stick | **書込み。オーナー確認** | write、`FileDescriptor.sync()`、readback、`e2fsck -n` |
+| V2 | ext4 public volume の RW / RO と FUSE 分岐 | V1 + ext4 の使い捨て媒体。RW 試行が成功する場合、`EROFS` で失敗する場合、他のエラーで失敗する場合と、可視フラグの有無を観測できる試験条件 | format と mount は媒体に書き込み得る。オーナー確認 | vold log と mount の結果、`/proc/<vold-pid>/mountinfo` の raw mount の `rw` / `ro`、`dumpsys mount` の volume flags、`sm list-volumes`、`ls -Z /mnt/media_rw`、`ls -Z /storage` |
+| V3 | アプリから read | V2 の FUSE 経路 + 試験用 APK（`MANAGE_EXTERNAL_STORAGE` または特権配置）。実装は未着手 | read のみ | `/proc/<pid>/mountinfo`、open/read の結果、SELinux `avc: denied` |
+| V4 | アプリから write + fsync | V3 + RW mount した使い捨て stick | **書込み。オーナー確認** | write、`FileDescriptor.sync()`、readback、`e2fsck -n` |
 | V5 | dirty unplug / 再挿入 | V4 + 使い捨て stick | **破壊試験。オーナー確認** | 挿抜の時刻、`dmesg`、`e2fsck -n`、journal recovery、再 mount の成否 |
 | V6 | SELinux denial の有無 | V2〜V5 + 承認済み debug route | 読取りのみ（policy 変更は別） | `avc: denied`、`ls -Z`、`sesearch` の結果 |
-| V7 | NTFS の可否 | V1 + NTFS stick + image に `ntfs-3g` が入っていること | mount は read-only なら読取り。write はオーナー確認 | `/proc/filesystems` の `fuse`/`ntfs`、`/system/bin/mount.ntfs` の有無、mount 結果 |
+| V7 | NTFS の可否 | V1 + NTFS stick + image に `ntfs-3g` が入っていること | mount は read-only なら読取り。write はオーナー確認 | `/proc/filesystems` の `fuse`、`/system/bin/{fsck,mount}.ntfs` の有無、check と mount の結果 |
 | V8 | APFS の負の対照 | V1 + APFS stick | 読取りのみ | mount されないこと、`vold` の log、`blkid` の結果 |
 | V9 | 特権 app / daemon の OTA / A-B | source build、署名、A/B OTA 環境 | **build / flash / OTA はオーナー確認** | 両 slot の package、vbmeta、rollback、`privapp-permissions` |
 | V10 | `/data` FBE との分離 | V2 + userdata の FBE 状態 | 読取りのみ | `getprop`、`dumpsys mount`、`/data` と `/storage/<uuid>` の label / key の別 |
 
-追加の前提:
+### V2 の受入条件（実 image・実機では未測定）
+
+- ext4 の filesystem check が成功した後、`ext4::Mount()` の最初の mount を
+  RW で試みる。成功時は raw mount の `rw` と
+  `sdcard_posix` label を記録する。
+- 最初の mount が `EROFS` のときだけ RO で再試行する。成功時は raw mount の
+  `ro` を記録する。`EROFS` 以外の失敗では RO 再試行がないことを確認する。
+- raw mount 成功後、`kVisibleForWrite` がある場合は FUSE の mount と
+  `/storage/<stableName>` の公開を確認する。フラグがない場合は raw mount が残り、
+  その volume の FUSE mount と `/storage/<stableName>` の公開がないことを確認する。
+
+### 追加の前提
 
 - V1〜V8 は実機の USB controller / firmware に依存する。QEMU の
   `-device usb-storage` は hotplug の試験には使えるが、実機の xHCI、
@@ -497,10 +513,11 @@ pin した上流（ローカルツリーではない。revision は
 
 - `LineageOS/android_system_vold` `11d8982f824d52e8122c7aa732207ba66b8f23c8`
   - `main.cpp:241-301`、`VolumeManager.cpp:201-244`、`model/Disk.cpp:421-454`
-  - `model/PublicVolume.cpp:127,134,143,148,157,178,271-276`
-  - `model/Ext4.cpp:56-61,135,154-155,199`
-  - `model/Ntfs.cpp:33-41`
-  - `Utils.cpp:1095-1104`
+  - `model/PublicVolume.cpp` [stable name・raw path・check（106–172 行）](https://github.com/LineageOS/android_system_vold/blob/11d8982f824d52e8122c7aa732207ba66b8f23c8/model/PublicVolume.cpp#L106-L172)、[mount 分岐と可視フラグによる早期 return（174–205 行）](https://github.com/LineageOS/android_system_vold/blob/11d8982f824d52e8122c7aa732207ba66b8f23c8/model/PublicVolume.cpp#L174-L205)、[FUSE と公開処理（271–294 行）](https://github.com/LineageOS/android_system_vold/blob/11d8982f824d52e8122c7aa732207ba66b8f23c8/model/PublicVolume.cpp#L271-L294)
+  - `model/VolumeBase.h` [可視フラグ（65–73 行）](https://github.com/LineageOS/android_system_vold/blob/11d8982f824d52e8122c7aa732207ba66b8f23c8/model/VolumeBase.h#L65-L73)、[`isVisibleForWrite()`（111–114 行）](https://github.com/LineageOS/android_system_vold/blob/11d8982f824d52e8122c7aa732207ba66b8f23c8/model/VolumeBase.h#L111-L114)
+  - `fs/Ext4.cpp` [対応判定（56–62 行）](https://github.com/LineageOS/android_system_vold/blob/11d8982f824d52e8122c7aa732207ba66b8f23c8/fs/Ext4.cpp#L56-L62)、[portable mount・RW 試行・`EROFS` 時の RO 再試行（124–165 行）](https://github.com/LineageOS/android_system_vold/blob/11d8982f824d52e8122c7aa732207ba66b8f23c8/fs/Ext4.cpp#L124-L165)、[format の `has_journal`（199–211 行）](https://github.com/LineageOS/android_system_vold/blob/11d8982f824d52e8122c7aa732207ba66b8f23c8/fs/Ext4.cpp#L199-L211)
+  - `fs/Ntfs.cpp` [実行ファイル、対応判定、check / mount（33–83 行）](https://github.com/LineageOS/android_system_vold/blob/11d8982f824d52e8122c7aa732207ba66b8f23c8/fs/Ntfs.cpp#L33-L83)
+  - `Utils.cpp` [filesystem 判定（1094–1105 行）](https://github.com/LineageOS/android_system_vold/blob/11d8982f824d52e8122c7aa732207ba66b8f23c8/Utils.cpp#L1094-L1105)
   - `vold.rc:1-10`
 - `LineageOS/android_system_core` `65d661b1a536701e8b118be4e9728d7b5ca727c9`
   - `rootdir/init.rc:300`
@@ -542,11 +559,17 @@ grep -rn 'media_rw\|sdcard_posix' --exclude-dir=.git .
 grep -rn 'privapp-permissions\|priv-app' --exclude-dir=.git .
 grep -n 'system/vold' android/desktop/manifest/pinned-manifest.xml
 
-# pin した上流ファイル（read-only）
-curl -s https://raw.githubusercontent.com/LineageOS/android_system_vold/11d8982f824d52e8122c7aa732207ba66b8f23c8/model/PublicVolume.cpp
-curl -s https://raw.githubusercontent.com/LineageOS/android_system_vold/11d8982f824d52e8122c7aa732207ba66b8f23c8/model/Ext4.cpp
-curl -s https://raw.githubusercontent.com/LineageOS/android_system_vold/11d8982f824d52e8122c7aa732207ba66b8f23c8/model/Ntfs.cpp
-curl -s https://raw.githubusercontent.com/LineageOS/android_system_vold/11d8982f824d52e8122c7aa732207ba66b8f23c8/Utils.cpp
+# pin した vold のファイルを行番号付きで読む（read-only）
+(
+  set -e -o pipefail
+  vold_raw=https://raw.githubusercontent.com/LineageOS/android_system_vold/11d8982f824d52e8122c7aa732207ba66b8f23c8
+  for source_file in model/PublicVolume.cpp model/VolumeBase.h fs/Ext4.cpp fs/Ntfs.cpp Utils.cpp; do
+    printf '\n%s\n' "$source_file"
+    curl -fsSL "$vold_raw/$source_file" | nl -ba
+  done
+)
+
+# その他の pin した上流ファイル（read-only）
 curl -s https://raw.githubusercontent.com/LineageOS/android_system_core/65d661b1a536701e8b118be4e9728d7b5ca727c9/rootdir/init.rc
 curl -s https://raw.githubusercontent.com/LineageOS/android_build/90d006387398ae6899145e6531a304500cfa0f70/target/product/base_system.mk
 curl -s https://raw.githubusercontent.com/LineageOS/android_device_virt_virtio-common/9d5c9307434bba31d19030fcc61086efcd248997/configs/fstab/fstab.virtio-common
@@ -560,8 +583,8 @@ gh api repos/network-awai/network-awai-apex/contents/docs/awai-disk-format.md?re
 
 - ビルド済み Awai OS image で vold が起動し、USB の uevent を処理すること。
 - 実機の xHCI / USB host / usb-storage / uas の設定。
-- ext4 USB を挿したときの実際の mount、`/storage/<uuid>` の生成、
-  `sdcard_posix` label での app access。
+- ext4 USB を挿したときの RW mount、`EROFS` 時だけの RO 再試行、可視フラグに
+  応じた FUSE と `/storage/<uuid>` の公開有無、`sdcard_posix` label での app access。
 - 通常アプリ（`MANAGE_EXTERNAL_STORAGE` あり / なし）の read/write、
   `FileDescriptor.sync()` の結果。
 - dirty unplug 後の journal 回復、再挿入、`volume-absent` の挙動。
