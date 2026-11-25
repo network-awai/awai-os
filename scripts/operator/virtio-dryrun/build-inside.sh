@@ -150,7 +150,7 @@ fi
 printf 'AWAI4089_MANIFEST_SHA256_VALIDATED %s %s\n' "$EXPECTED_MANIFEST_SHA256" "$MANIFEST_FILE"
 printf 'AWAI4089_RELEASE_TYPE=%s AWAI4089_DEADLINE_SECONDS=%s AWAI4089_APPROVED=%s\n' \
   "$RELEASE_TYPE" "$DEADLINE" "$APPROVED"
-export PATH="$PATH:$KIT/pc-ab-device:$BUILD_WORK_DIR/bin:$SRC/out/host/linux-x86/bin"
+export PATH="$BUILD_WORK_DIR/bin:$PATH:$KIT/pc-ab-device:$SRC/out/host/linux-x86/bin"
 
 # Git identity, then sync from $SRC.
 run git config --global user.email virtio-g2@awai.network

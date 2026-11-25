@@ -121,16 +121,16 @@ else
 fi
 exit 0
 `, { mode: 0o755 });
-  // Helper script stubs (shadowed via PATH; in production the kit's
-  // real helpers resolve from $KIT/pc-ab-device, which is appended).
   const kcalls = join(dir, "kitcalls.log");
   writeFileSync(kcalls, "");
+  // helper stubs: real apply.sh runs from the kit (PATH append puts
+  // the stub dir first); these four stay stubbed (they would need a
+  // full source tree to run for real).
   for (const [name, extra] of [
-    ["apply.sh", ""],
-    ["apply-shipping-debug-lockdown.sh", ""],
-    ["pc-firmware.py", ""],
-    ["updater-feed.py", ""],
-    ["make-tf-disk.sh", `cp "$1" "$3" 2>/dev/null || echo img > "$3"\n`],
+  ["apply-shipping-debug-lockdown.sh", ""],
+  ["pc-firmware.py", ""],
+  ["updater-feed.py", ""],
+  ["make-tf-disk.sh", `cp "$1" "$3" 2>/dev/null || echo img > "$3"\n`],
   ]) {
     writeFileSync(join(dir, name), `#!/bin/sh\necho "${name} $*" >> "${kcalls}"\n${extra}exit 0\n`, { mode: 0o755 });
   }
@@ -205,6 +205,10 @@ test("approved mode executes the same ordered command list end to end (real kit)
   const fncalls = join(work, "fncalls.log");
   writeFileSync(fncalls, "");
   const src = join(work, "src");
+  // apply.sh's project directories (real apply.sh runs from the kit).
+  for (const d of ["device/virt/virtio-common", "device/virt/virt-common", "vendor/lineage"]) {
+    mkdirSync(join(src, d), { recursive: true });
+  }
   mkdirSync(join(src, "build"), { recursive: true });
   writeFileSync(join(src, "build", "envsetup.sh"),
     `breakfast() { echo "breakfast $*" >> "${fncalls}"; }
