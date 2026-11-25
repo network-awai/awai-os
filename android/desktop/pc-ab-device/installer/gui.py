@@ -71,7 +71,7 @@ def css_for(u, sx=0, sy=0, compact=False):
 * {{ font-family: "Noto Sans JP"; color: #1b2433; }}
 window, .app {{ background: #ffffff; }}
 .rail {{ background: #f2f4f8; padding: {max(sy, round(58 * u))}px {p(16)} {max(sy, round(40 * u))}px {max(sx, round(56 * u))}px; }}
-.topbar {{ background: #f2f4f8; padding: {sy}px {max(sx, round(28 * u))}px 0 {max(sx, round(28 * u))}px; min-height: {max(round(36 * u), round(64 * u) - sy)}px; }}
+.topbar {{ background: #f2f4f8; padding: {sy}px {max(sx, round(28 * u))}px {p(14)} {max(sx, round(28 * u))}px; min-height: {max(round(36 * u), round(64 * u) - sy - round(14 * u))}px; }}
 .logo {{ border-radius: {p(8)}; }}
 .release {{ font-size: {p(20)}; font-weight: 500; }}
 .product {{ font-size: {p(36)}; font-weight: 500; }}

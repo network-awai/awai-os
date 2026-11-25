@@ -262,43 +262,37 @@ python3 android/desktop/pc-ab-device/installer/tests/shots.py OUTDIR            
 
 No root, no real disk: fake `lsblk`/`blockdev`/`wipefs`/`findmnt`/`sgdisk`/`zstd`/`sync`/`systemctl` on `PATH` and sparse temp files;
 the production `Host` is replaced only in tests. The GTK tests drive the real widget tree in a `Gtk.OffscreenWindow` (nothing is shown
-on a display; Tab/Enter/typing are simulated at widget level) and skip themselves where PyGObject/Gtk 3 is missing (CI runs
-117 of 133 tests there; the 16 GTK tests ran locally in a conda env with Gtk 3.24). Bazel: `:screen_installer_*_test`. Mutation list:
-`installer/tests/mutation-results.txt`.
+on a display; keys, arrows, Esc and clicks are simulated at widget level) and skip themselves where PyGObject/Gtk 3 is missing (a runner without Gtk skips the 45
+GTK tests; all 169 ran locally in a conda env with Gtk 3.24, Python 3.13). Bazel: `:screen_installer_*_test`. Mutation list:
+`installer/tests/mutation-results.txt` (109 of 109 killed).
 Screenshots from the widget tree and the design side by side: `installer/screenshots/` (`fonts-used.txt` proves every label is drawn
 by the bundled face, `keyboard-walkthrough.txt` is the Tab/Enter sequence).
 
-### VM run (real SystemRescue 13.03, QEMU/TCG on another host, UEFI, one blank and one used virtual NVMe)
+### VM run (real SystemRescue 13.03, QEMU/TCG on another host, UEFI, one blank and one used virtual NVMe, keyboard + USB tablet)
 
-Built with `build-overlay.py`'s `build_overlay` into the shipped ISO; screenshots in `installer/screenshots/vm/`.
-Passed: GRUB default entry starts the GTK window by itself; screens 1, 2, 3 and the wrong-name case (button stays disabled);
-Ctrl+T/N/L/W/O/Q, Ctrl+Shift+I, Alt+F4, Alt+Tab, Alt+F2, Ctrl+Alt+Backspace, F1-F12, Menu, Super, Print and Ctrl+Alt+Delete pressed on
-the review screen change nothing (typed text still there, nobody left the screen); Ctrl+Alt+F2 reaches the console and X does not take
-it back; the power-off question (first Enter asks, it stays asked across polls, Tab away disarms it); a full install to 完了 (11 区画);
-`kill -9` of the GTK process at step 2, 36.46 %, `written: started` - the write went on and the restarted window showed the true
-state (step 3) and then 完了; all 8 data partitions identical to the source image and the used NVMe byte-identical (sha256 unchanged);
-screen 6 with only the used disk; the text boot entry (`awai.installer=text`) starts the text installer and lists both disks as
-not selectable with the reasons. The VM run found one bug, fixed before this record: the power-off question disarmed itself when the
-poll redrew the screen (rebuilding destroyed the focused button, which counted as the user leaving it); two tests now pin it.
+The revised screens (Figma rev2) from the shipped overlay; screenshots in `installer/screenshots/vm/`, harness in `installer/tests/vm/`
+(`mkiso.sh`, `runvm.sh WIDTH HEIGHT` with `-device usb-tablet`, `qmp.py` for keys, absolute pointer moves/clicks and screendumps, `cmp.py`).
+Passed on a real X server with no window manager:
+- 1024x768, 1920x1080 and 1080x1920 (portrait, stepper bar) boot straight to the screen, content inside the safe area, nothing cut off;
+  the pointer is visible, hover and click work through the tablet (a click selects a card and moves the focus to 内容を確認).
+- 1366x768 (QEMU `virtio-vga`: the std VGA's screendump is skewed for widths that are not a multiple of 8): one empty SSD preselected,
+  the used NVMe and the boot USB shown as 使えません; Enter, Enter, Enter from boot ends on the review screen (やめる had the focus in the
+  confirmation) and nothing is written; then Enter, Enter, → インストールする, Enter: a full install to 完了 (11 区画を確認),
+  `cmp.py` 8 of 8 data partitions identical to the source image, the used NVMe's sha256 unchanged.
+- The monitor geometry/`xrandr` path ran in the VM (one output); several outputs, overscan and HiDPI are covered only by the offscreen
+  tests and the fake-display unit tests, not on real hardware.
 
-**Focus on a cold start (second VM round, `screenshots/vm/focus/`).** A first VM round showed that on a real X server GTK focused the
-first control silently when the window mapped, so the first Tab skipped it and landed on 電源を切る. Now the invisible heading is the
-focus anchor on every new screen and after back/refresh/dismiss (`gui.on_tab` moves straight from it to the first control and never
-stops on it, also when wrapping around). Verified on a cold boot and after key mashing: screen 1 (no ring, Enter does nothing, first
-Tab = the first selectable card, then 電源を切る while 内容を確認 is disabled, a third Tab wraps to the card), screen 3 (the typed-name
-field has the focus, mashing changes nothing, Tab goes to 戻る), screen 5 (first Tab = 再起動; the state came from a written
-`state.json`, not a real install) and screen 6 (first Tab = 一覧を更新, then 電源を切る, never power off first); the text boot entry lists
-both disks as not selectable. The offscreen test models this order and fails on the previous revision.
+Earlier rounds (previous UI, same harness): key mashing of Ctrl/Alt/F-keys changed nothing, `kill -9` of the GTK process during the write
+did not stop it and the restarted window showed the true state, the text boot entry lists both disks as not selectable.
 
 ### Not tested
 
-Failure screens in the VM (they are in the widget-tree screenshots only), the power-off and reboot buttons actually powering the machine
+Failure and "no SSD" screens in the VM (widget-tree screenshots only), the power-off and reboot buttons actually powering the machine
 (the first press of the question is tested, the second only against the fake `systemctl`), typing a device path in the text installer
-inside the VM (the harness did not deliver it; the unit tests cover it), the BIOS/syslinux boot path, 1920x1080 in the VM (VGA was
-1280x720), real hardware, USB removal mid-install, and window behaviour on a GPU/KMS display (the VM used the VGA framebuffer). The old
-text installer's `sgdisk -v` wording ("No problems found") was confirmed by the real install above. AGENTS.md prefers shared policy in
-`.cljc`; the live system has no Clojure runtime and nothing here may download one, so the guards are stdlib Python next to the existing
-Python installer.
+inside the VM (the unit tests cover it), the BIOS/syslinux boot path, real hardware (several outputs, overscan, HiDPI, touch), USB removal
+mid-install, 1366x768 on the plain VGA device, window behaviour on a GPU/KMS display (the VM used a framebuffer), and sizes other than
+those listed above in the VM (the offscreen layout test covers 13). The time left is not shown: nothing measures it. AGENTS.md prefers
+shared policy in `.cljc`; the live system has no Clojure runtime and nothing here may download one, so the guards are stdlib Python.
 
 ## KVM check (2026-11-19)
 
