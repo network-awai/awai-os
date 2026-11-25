@@ -1,10 +1,8 @@
 # lineage_virtio_x86_64 Job (AWAI-4089 G2)
 
-> **WARNING: do not run this Job (approved mode) until the G2 B fix PR
-> (breakfast arg, JDK PATH, ROOMSERVICE_DRYRUN, 52Gi) has landed.**
-> The original main build fails on paid runs (double-`lineage_` lunch
-> name, missing JDK 21, roomservice duplication, 64Gi over the
-> vc2-16c-64gb ceiling). Dry-run execution is safe.
+> **WARNING: do not start approved mode until the build location
+> (VKE vs device distribution) is decided.** The earlier "until this PR
+> lands" wording is stale (#515 is merged). Dry-run execution is safe.
 
 Boundary: the **procedure** (`build-inside.sh`: breakfast, JDK,
 ROOMSERVICE_DRYRUN, ccache, patch application, target-files/disk/OTA
@@ -121,7 +119,9 @@ Build environment (vs ab-build.sh / ab-ota.sh / same-build):
   (ab-build.sh line 4, ephemeral dir).
 - `-e` is kept: the Job has no polling loops, expected failures are
   guarded, and breakfast/m must fail loud; the A/B scripts' `-e`-less
-  form serves their grep-polling. `/root/.cargo/bin` is not added: Rust
+  form serves their grep-polling. It is unverified that
+  `source build/envsetup.sh` and `breakfast` work under `set -e` —
+  this remains unproven until a real build confirms it. `/root/.cargo/bin` is not added: Rust
   for the build comes from the source-prebuilt (pinned vendor
   envsetup.sh reads `RUST_VERSION` from
   `build/soong/rust/config/global.go`), not cargo.
