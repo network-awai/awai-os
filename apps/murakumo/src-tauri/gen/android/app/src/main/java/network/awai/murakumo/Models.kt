@@ -26,6 +26,12 @@ internal object Models {
  const val CONTEXT=2048
  val worker=Executors.newSingleThreadExecutor()
  val busy=AtomicBoolean(false)
+ /**
+  * The one running provider request, process-local. Another app learns about it only through
+  * InferenceStatusProvider "cancel", and only when its own requestId matches; status and usage never
+  * carry it, since busy/idle timing would tell a peer holding INTERNET when a PHI caller runs inference.
+  */
+ val running=RunningJob()
  @Volatile var loadedId:String?=null
  @Volatile var loadedSinceMs=0L
  @Volatile var loading:String?=null
@@ -74,6 +80,14 @@ internal object Models {
  fun generate(prompt:String,tokens:Int):String{require(prompt.isNotBlank()&&prompt.toByteArray(Charsets.UTF_8).size<=8192&&tokens in 1..256){"invalid-request"};check(loaded){"model-not-loaded"};val result=String(Engine.generate(prompt.toByteArray(Charsets.UTF_8),tokens),Charsets.UTF_8);check(result.isNotBlank()){"empty-result"};return result}
  fun release(){Engine.release();loadedId=null}
 
+ /** Cancel [requestId] only while it is the running job; false means no side effect at all. */
+ fun cancelJob(requestId:String):Boolean{
+  if(!requestId.matches(Regex("[a-f0-9-]{36}")))return false
+  val imageJob=running.take(requestId)?:return false
+  if(imageJob)ImageModels.cancel() else Engine.cancel()
+  return true
+ }
+
  /**
   * awai.murakumo.device-usage.v1 for this device. Android does not let apps read device-wide CPU
   * (/proc/stat is closed since Android 8), so cpu-percent is null (unknown) and app-cpu-percent is
@@ -115,4 +129,21 @@ internal object Models {
   val allowed=setOf("network.itonami.app","network.itonami.gaka","network.awai.gaka","network.itonami.dougaka","network.itonami.dougaka.preview","network.itonami.mangaka","network.itonami.animeka","network.itonami.ongakuka","network.itonami.rodo","network.itonami.karute")
   return caller in allowed && c.packageManager.checkSignatures(c.packageName,caller!!)==android.content.pm.PackageManager.SIGNATURE_MATCH
  }
+}
+
+/**
+ * Which request the Activity is running. Matching is exact, so a stale or foreign requestId cannot
+ * stop another job, and a match is taken once, so a repeated cancel is a no-op. Plain JVM: the Android
+ * side only reads and writes it, and test/RunningJobTest.kt exercises it without a device.
+ */
+internal class RunningJob {
+ private var id:String?=null
+ private var image=false
+ private var cancelled:String?=null
+ @Synchronized fun start(requestId:String,imageJob:Boolean){id=requestId;image=imageJob;cancelled=null}
+ @Synchronized fun finish(requestId:String){if(id==requestId)id=null}
+ /** Image modality of the running [requestId], or null when it is not the running job. A match is consumed. */
+ @Synchronized fun take(requestId:String):Boolean?{if(id==null||id!=requestId)return null;val i=image;id=null;cancelled=requestId;return i}
+ /** True when a cancel was taken for [requestId] since it started, even if generation returned anyway. */
+ @Synchronized fun wasCancelled(requestId:String):Boolean=cancelled==requestId
 }

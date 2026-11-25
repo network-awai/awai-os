@@ -41,6 +41,26 @@
               (.then (fn [r] (when-not (= id (.-imageId r)) (throw (js/Error. "advanced-image-keys-renamed"))) (.saveImage image-client (.-imageId r))))
               (.then (fn [r] (when-not (.-readbackVerified r) (throw (js/Error. "advanced-save-keys-renamed"))) (js/console.log "PASS: advanced image and save native JSON keys")))))))
         (.then (fn [_]
+                 (let [requests (atom [])
+                       invoke (fn [_ args]
+                                (swap! requests conj (js->clj (.parse js/JSON (.stringify js/JSON (aget args "request"))) :keywordize-keys true))
+                                (if (= "cancel" (aget args "request" "action"))
+                                  (js/Promise.resolve (.parse js/JSON "{\"cancelled\":false,\"reason\":\"not-running\"}"))
+                                  (js/Promise.reject "inference-cancelled")))
+                       cancelling (createInferenceClient (js-obj "uuid" (fn [] id) "invoke" invoke))]
+                   (-> (.cancel cancelling id)
+                       (.then (fn [answer]
+                                (when-not (and (= false (.-cancelled answer)) (= "not-running" (.-reason answer)))
+                                  (throw (js/Error. "advanced-cancel-answer-renamed")))
+                                (when-not (= [{:action "cancel" :requestId id}] @requests)
+                                  (throw (js/Error. "advanced-cancel-request-renamed")))
+                                (.generate cancelling #js {:prompt "public fixture" :modality "text"})))
+                       (.then (fn [_] (throw (js/Error. "cancel-did-not-reject"))))
+                       (.catch (fn [error]
+                                 (when-not (= "inference-cancelled" (.-message error))
+                                   (throw (js/Error. "advanced-cancel-code-renamed")))
+                                 (js/console.log "PASS: advanced SDK cancel keeps requestId/answer keys and the fixed code")))))))
+        (.then (fn [_]
                  (.complete (createSetupState
                               #js {:invoke (fn [_ _] (js/Promise.resolve (.parse js/JSON "{\"schema\":\"awai.setup.state.v1\",\"complete\":true}")))
                                    :storage #js {:getItem (fn [_] nil)}}))))

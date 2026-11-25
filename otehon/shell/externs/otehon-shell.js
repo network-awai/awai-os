@@ -816,6 +816,10 @@ Object.prototype.dataUrl;
 Object.prototype.readbackVerified;
 Object.prototype.uri;
 
+// Caller-side inference cancel (#519): the request id that may match, and the fixed not-running answer.
+Object.prototype.cancel;
+Object.prototype.cancelled;
+
 Object.prototype.readImage;
 Object.prototype.conversation;
 Object.prototype.chatBotsOperation;

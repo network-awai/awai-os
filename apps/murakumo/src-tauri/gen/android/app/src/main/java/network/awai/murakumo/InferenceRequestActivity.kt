@@ -10,15 +10,23 @@ import android.view.WindowManager
  * The prompt may be PHI (karute): every window this Activity shows is FLAG_SECURE and has no Recents
  * snapshot, so the confirmation text and the progress page stay out of screenshots, screen recording
  * and the Recents thumbnail. Errors leave only as fixed codes (ErrorCodes); nothing is logged.
+ *
+ * Three paths stop a running job and all end at RESULT_CANCELED + error=cancelled: the page's キャンセル
+ * button, the back key, and the caller's signature-protected "cancel" for this requestId
+ * (Models.cancelJob). A cancel that arrives before the job starts, for another requestId, or after it
+ * ended changes nothing, and only one result is ever set.
  */
 class InferenceRequestActivity:Activity(){
  private var ownsJob=false
  private var imageJob=false
+ private var requestId=""
+ private val resultSet=java.util.concurrent.atomic.AtomicBoolean(false)
  override fun onCreate(saved:Bundle?){super.onCreate(saved)
   secure(window);setRecentsScreenshotEnabled(false)
   val caller=callingPackage
   if(!Models.trustedCaller(this,caller)){finishWith("caller-denied");return}
-  val requestId=intent.getStringExtra("requestId")?:"";val prompt=intent.getStringExtra("prompt")?:"";val tokens=intent.getIntExtra("maxTokens",128);val modality=intent.getStringExtra("modality")
+  val prompt=intent.getStringExtra("prompt")?:"";val tokens=intent.getIntExtra("maxTokens",128);val modality=intent.getStringExtra("modality")
+  requestId=intent.getStringExtra("requestId")?:""
   if(!requestId.matches(Regex("[a-f0-9-]{36}"))||intent.getStringExtra("schema")!="awai.inference.request.v1"||modality !in setOf("text","image")||prompt.isBlank()||prompt.toByteArray(Charsets.UTF_8).size>8192||tokens !in 1..256){finishWith("invalid-request");return}
   val phi=caller in Models.phiCallers
   if(phi&&modality!="text"){finishWith("unsupported-modality");return}
@@ -30,17 +38,23 @@ class InferenceRequestActivity:Activity(){
    .setPositiveButton("生成する"){_,_->
     if(!Models.busy.compareAndSet(false,true)){finishWith("busy");return@setPositiveButton}
     ownsJob=true
+    // The engine flag is reset before the requestId is published, so a cancel taken from here on is not
+    // wiped by prepare().
+    if(imageJob)ImageModels.prepare()else Engine.prepare()
+    Models.running.start(requestId,imageJob)
     val page=android.widget.LinearLayout(this).apply{orientation=android.widget.LinearLayout.VERTICAL;setPadding(24,24,24,24)}
     val label=android.widget.TextView(this).apply{text="この端末で生成しています…"};page.addView(label)
-    page.addView(android.widget.Button(this).apply{text="キャンセル";setOnClickListener{if(modality=="image")ImageModels.cancel()else Engine.cancel();label.text="キャンセルしています…"}});setContentView(page)
-    if(modality=="image")ImageModels.prepare()else Engine.prepare()
-    Models.worker.execute{try{if(modality=="image"){
+    page.addView(android.widget.Button(this).apply{text="キャンセル";setOnClickListener{Models.cancelJob(requestId);label.text="キャンセルしています…"}});setContentView(page)
+    Models.worker.execute{try{if(imageJob){
       val image=ImageModels.generate(this,requestId,prompt);val uri=android.net.Uri.parse(image.getString("uri"));grantUriPermission(caller,uri,Intent.FLAG_GRANT_READ_URI_PERMISSION)
-      runOnUiThread{setResult(RESULT_OK,Intent().setData(uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION).putExtra("schema","awai.inference.result.v1").putExtra("requestId",requestId).putExtra("modality","image").putExtra("engine","stable-diffusion.cpp").putExtra("image",image.toString()));finish()}
-     }else{val text=Models.generate(prompt,tokens);val outputTokens=Engine.tokens();runOnUiThread{setResult(RESULT_OK,Intent().putExtra("schema","awai.inference.result.v1").putExtra("requestId",requestId).putExtra("modality","text").putExtra("engine","llama.cpp").putExtra("text",text).putExtra("outputTokens",outputTokens));finish()}}}catch(e:Exception){val code=ErrorCodes.of(e,"inference-unavailable");runOnUiThread{finishWith(code)}}finally{ownsJob=false;Models.busy.set(false)}}
+      runOnUiThread{if(Models.running.wasCancelled(requestId))finishWith("cancelled")else finishOk(Intent().setData(uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION).putExtra("schema","awai.inference.result.v1").putExtra("requestId",requestId).putExtra("modality","image").putExtra("engine","stable-diffusion.cpp").putExtra("image",image.toString()))}
+     }else{val text=Models.generate(prompt,tokens);val outputTokens=Engine.tokens();runOnUiThread{if(Models.running.wasCancelled(requestId))finishWith("cancelled")else finishOk(Intent().putExtra("schema","awai.inference.result.v1").putExtra("requestId",requestId).putExtra("modality","text").putExtra("engine","llama.cpp").putExtra("text",text).putExtra("outputTokens",outputTokens))}}}catch(e:Exception){val code=ErrorCodes.of(e,"inference-unavailable");runOnUiThread{finishWith(code)}}finally{ownsJob=false;Models.running.finish(requestId);Models.busy.set(false)}}
    }.create().apply{secure(window!!)}.show()
  }
+ /** The back key during a job is the same cancellation as the page's button. */
+ @Deprecated("Deprecated in Java") override fun onBackPressed(){if(ownsJob){Models.cancelJob(requestId);finishWith("cancelled")}else super.onBackPressed()}
  private fun secure(w:android.view.Window){w.setFlags(WindowManager.LayoutParams.FLAG_SECURE,WindowManager.LayoutParams.FLAG_SECURE)}
- private fun finishWith(code:String){check(code in ErrorCodes.ALL);setResult(RESULT_CANCELED,Intent().putExtra("error",code));finish()}
- override fun onDestroy(){if(ownsJob){if(imageJob)ImageModels.cancel()else Engine.cancel();};super.onDestroy()}
+ private fun finishWith(code:String){if(!resultSet.compareAndSet(false,true))return;check(code in ErrorCodes.ALL);setResult(RESULT_CANCELED,Intent().putExtra("error",code));finish()}
+ private fun finishOk(result:Intent){if(!resultSet.compareAndSet(false,true))return;setResult(RESULT_OK,result);finish()}
+ override fun onDestroy(){if(ownsJob)Models.cancelJob(requestId);super.onDestroy()}
 }
