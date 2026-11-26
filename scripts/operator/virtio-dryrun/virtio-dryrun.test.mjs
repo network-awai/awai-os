@@ -73,7 +73,13 @@ function stubPath(work, kitTar) {
       `#!/bin/sh\necho "${name} $*" >> "${calls}"\n${body}`, { mode: 0o755 });
   };
   mk("apt-get", "exit 0\n");
-  mk("git", "exit 0\n");
+  mk("git", `case "$*" in
+  *virtio-common-awai-apps.patch)
+    if [ "\${STUB_SKIP_PRODUCT_APPLY:-}" = 1 ] && [ "$#" = 4 ] && [ "$3" = apply ]; then exit 0; fi
+    exec "$REAL_FIXTURE_GIT" "$@" ;;
+esac
+exit 0
+`);
   // timeout stub logs the budget and forwards to the stubbed command
   // (in production `timeout 20m` bounds the firmware fetch).
   writeFileSync(join(dir, "timeout"),
@@ -542,6 +548,11 @@ test("local prebuilt apps mode requires both file and signer pins and records th
   assert.doesNotMatch(r.stdout, /example\.invalid\/kit\.tar\.gz/);
   assert.match(r.stdout, /\[dry-run\] cp .*\/apks\.<run>\/AwaiStore\.apk .*\/device\/virt\/virtio-common\/awai-apps\/AwaiStore\.apk/);
   assert.equal(stub.calls(), "");
+  r = await run("bash", [buildInside], { ...base, RELEASE_TYPE: "user" });
+  assert.equal(r.code, 0, r.stderr);
+  assert.match(r.stdout, /\[dry-run\] python3 [^\n]*check-home-store-integration\.py[\s\S]*\[dry-run\] repo init/);
+  assert.doesNotMatch(r.stdout, /AWAI4094_KIT_INTEGRATION_OK/);
+  assert.equal(stub.calls(), "");
 });
 
 test("prebuilt apps mode copies the APKs into the device tree for the build", async () => {
@@ -698,7 +709,7 @@ test("external commands covered by apt, otatools, kit, base image", async () => 
     rclone: "rclone", sgdisk: "gdisk",
     chmod: "base", mkdir: "base", cp: "base", ls: "base", wc: "base",
     tr: "base", date: "base", shasum: "base", sha256sum: "base",
-    timeout: "base", tar: "base", bash: "base",
+    timeout: "base", tar: "base", bash: "base", sh: "base",
     repo: "fetched",
     "apply.sh": "kit", "apply-shipping-debug-lockdown.sh": "kit",
     "pc-firmware.py": "kit", "updater-feed.py": "kit", "make-tf-disk.sh": "kit",
@@ -842,8 +853,106 @@ test("job definition requires an explicit apps mode and carries it", async () =>
   assert.equal(job.metadata.labels["awai.network/apps-mode"], "prebuilt");
 });
 
-test("staged user Job verifies before source work and builds from the verified snapshots", async (t) => {
+// Keep #523's actual files out of this branch. The default fixture is
+// generated offline. A local check can supply the reviewed apply script,
+// patches and matching device-common.mk as an overlay.
+async function addHomeStoreFixture(kitInfo) {
+  const apply = join(kitInfo.kit, "pc-ab-device/apply.sh");
+  const patch = join(kitInfo.kit, "pc-ab-device/patches/virtio-common-awai-apps.patch");
+  const overlay = process.env.AWAI_TEST_HOME_STORE_INTEGRATION_DIR;
+  if (overlay) {
+    for (const name of ["apply.sh", "patches/virtio-common-awai-apps.patch", "patches/launcher3-home-priority-fallback.patch"]) {
+      writeFileSync(join(kitInfo.kit, "pc-ab-device", name), readFileSync(join(overlay, name)));
+    }
+    return readFileSync(join(overlay, "device-common.mk"), "utf8");
+  }
+  const dir = join(kitInfo.base, "device-fixture");
+  mkdirSync(join(dir, "awai-apps"), { recursive: true });
+  const preimage = "# test device\nPRODUCT_NAME := fixture\n# test end\n";
+  const device = join(dir, "device-common.mk");
+  writeFileSync(device, preimage);
+  const git = async (...args) => {
+    const r = await run("git", ["-C", dir, "-c", "core.hooksPath=/dev/null", ...args]);
+    assert.equal(r.code, 0, r.stderr);
+    return r.stdout;
+  };
+  await git("init", "-q");
+  await git("add", "device-common.mk");
+  await git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "device fixture");
+  writeFileSync(device, preimage.replace("# test end", "include $(COMMON_PATH)/awai-apps/product.mk\n# test end"));
+  const apps = join(dir, "awai-apps");
+  writeFileSync(join(apps, "Android.mk"), ["AwaiHome", "AwaiStore"].map((app) => `include $(CLEAR_VARS)
+LOCAL_MODULE := ${app}
+LOCAL_SRC_FILES := ${app}.apk
+LOCAL_MODULE_CLASS := APPS
+LOCAL_CERTIFICATE := PRESIGNED
+include $(BUILD_PREBUILT)
+`).join("\n"));
+  writeFileSync(join(apps, "product.mk"), [
+    'AWAI_APPS_PATH := $(COMMON_PATH)/awai-apps',
+    'AWAI_APPS_ARGS := $(AWAI_APPS_PATH) "$(AWAI_APKSIGNER)" "$(AWAI_HOME_EXPECTED_SIGNER_SHA256)" "$(AWAI_STORE_EXPECTED_SIGNER_SHA256)"',
+    'AWAI_APPS_VERIFY := $(shell sh $(AWAI_APPS_PATH)/verify-apks.sh $(AWAI_APPS_ARGS) 2>&1)',
+    'ifeq ($(filter AWAI_APPS_OK:%,$(AWAI_APPS_VERIFY)),)',
+    '    $(error AWAI-4094: prebuilt Awai APK check failed: $(AWAI_APPS_VERIFY))',
+    'endif',
+    'PRODUCT_PACKAGES += \\',
+    '    AwaiHome \\',
+    '    AwaiStore',
+    '',
+  ].join("\n"));
+  writeFileSync(join(apps, "verify-apks.sh"), `#!/bin/sh
+set -eu
+dir=$1 signer=$2 home=$3 store=$4
+fail() { echo "AWAI_APPS_FAIL: $*"; exit 1; }
+check() {
+    got=$("$signer" verify --print-certs "$1" | awk '/^Signer #1 certificate SHA-256 digest: / { print $NF }')
+    [ "$got" = "$2" ] || fail "$1 signer $got != expected $2"
+}
+check "$dir/AwaiHome.apk" "$home"
+check "$dir/AwaiStore.apk" "$store"
+echo 'AWAI_APPS_OK: integration fixture'
+`, { mode: 0o755 });
+  await git("add", ".");
+  writeFileSync(patch, await git("diff", "--cached", "--no-ext-diff"));
+  const route = "one device/virt/virtio-common virtio-common-awai-apps.patch 'Home/Store fixture include'";
+  writeFileSync(apply, readFileSync(apply, "utf8").replace(/^one device\/virt\/virtio-common virtio-common-awai-apps\.patch .+$/m, "").trimEnd() + "\n" + route + "\n");
+  return preimage;
+}
+
+async function packTestKit(kitInfo, name) {
+  const kitTar = join(kitInfo.base, `${name}.tar.gz`);
+  const r = await run("tar", ["-czf", kitTar, "-C", kitInfo.kit, "."]);
+  assert.equal(r.code, 0, r.stderr);
+  return { kitTar, kitSha: sha256(readFileSync(kitTar)) };
+}
+
+test("staged user Job requires the product integration, verifies APKs, and builds from the snapshots", async (t) => {
   const kitInfo = await extractedRealKit();
+  const appPatch = join(kitInfo.kit, "pc-ab-device/patches/virtio-common-awai-apps.patch");
+  const apply = join(kitInfo.kit, "pc-ab-device/apply.sh");
+  let absent = kitInfo;
+  if (existsSync(appPatch)) {
+    unlinkSync(appPatch);
+    absent = await packTestKit(kitInfo, "without-app-integration");
+  }
+  const preimage = await addHomeStoreFixture(kitInfo);
+  const integratedApply = readFileSync(apply, "utf8");
+  const integratedPatch = readFileSync(appPatch, "utf8");
+  const integrated = await packTestKit(kitInfo, "with-app-integration");
+  writeFileSync(apply, integratedApply.replace(/^one device\/virt\/virtio-common virtio-common-awai-apps\.patch .+$/m,
+    "# one device/virt/virtio-common virtio-common-awai-apps.patch 'comment only'"));
+  const unwired = await packTestKit(kitInfo, "without-apply-route");
+  writeFileSync(apply, "#!/bin/sh\nexit 0\n");
+  const nameOnly = await packTestKit(kitInfo, "name-only-apply");
+  // Give an empty patch the correct name and a valid apply route.
+  writeFileSync(apply, integratedApply);
+  writeFileSync(appPatch, "");
+  const emptyPatch = await packTestKit(kitInfo, "empty-product-patch");
+  writeFileSync(appPatch, integratedPatch.replace(/^\+include \$\(COMMON_PATH\)\/awai-apps\/product\.mk$/m,
+    "+# include $(COMMON_PATH)/awai-apps/product.mk"));
+  const noInclude = await packTestKit(kitInfo, "without-product-include");
+  const realGit = (await run("sh", ["-c", "command -v git"])).stdout.trim();
+  assert.ok(realGit.startsWith("/"));
   const stage = join(kitInfo.base, "stage");
   const secret = join(kitInfo.base, "secret");
   mkdirSync(stage);
@@ -858,7 +967,13 @@ test("staged user Job verifies before source work and builds from the verified s
   writeFileSync(storeFile, store);
 
   const cases = [
+    ["current kit without Home/Store integration", {}, /shipping user requires the Home\/Store kit integration.*missing/, absent],
+    ["product patch without an apply route", {}, /apply\.sh must apply/, unwired],
+    ["name-only apply script", {}, /apply\.sh must apply/, nameOnly],
+    ["empty product patch", {}, /malformed patch or shell script/, emptyPatch],
+    ["product patch with a commented-out include", {}, /device-common.mk must include/, noInclude],
     ["approved pair", {}, null],
+    ["product patch skipped by the apply step", { STUB_SKIP_PRODUCT_APPLY: "1" }, /integration was not applied/],
     ["missing APK", { STUB_MISSING: "1" }, /could not fetch AwaiStore\.apk/],
     ["file hash mismatch", { AWAI_HOME_APK_SHA256: "0".repeat(64) }, /AwaiHome\.apk file SHA-256 mismatch/],
     ["wrong signer", { AWAI_STORE_EXPECTED_SIGNER_SHA256: "0".repeat(64) }, /AwaiStore\.apk signer SHA-256 mismatch/],
@@ -866,21 +981,27 @@ test("staged user Job verifies before source work and builds from the verified s
     ["additional signer", { STUB_APKSIGNER: "multiple" }, /AwaiHome\.apk signer SHA-256 mismatch/],
     ["absent stage Secret", { AWAI_APK_STAGE_SECRET_DIR: secret + ".missing" }, /APK stage Secret is unavailable/],
   ];
-  for (const [name, overrides, refusal] of cases) {
+  for (const [name, overrides, refusal, kit = integrated] of cases) {
     await t.test(name, async () => {
       const work = mkdtempSync(join(tmpdir(), "g2staged-"));
       const src = join(work, "src");
       mkdirSync(join(src, "build"), { recursive: true });
+      for (const project of ["device/virt/virtio-common", "device/virt/virt-common", "vendor/lineage", "packages/apps/Launcher3"]) {
+        mkdirSync(join(src, project), { recursive: true });
+      }
+      writeFileSync(join(src, "device/virt/virtio-common/device-common.mk"), preimage);
       writeFileSync(join(src, "build", "envsetup.sh"), `breakfast() { :; }
 m() {
   [ -z "\${AWAI_ALLOW_UNVERIFIED_APKS:-}\${AWAI_WITHOUT_APPS:-}\${RCLONE_CONFIG_APKSTAGE_KEY:-}" ] || return 99
   [ -x "$AWAI_APKSIGNER" ] || return 99
+  [ -f "$SRC/device/virt/virtio-common/awai-apps/Android.mk" ] || return 99
+  [ -f "$SRC/device/virt/virtio-common/awai-apps/product.mk" ] || return 99
   mkdir -p "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates"
   echo tf > "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates/lineage_virtio_x86_64-target_files.zip"
   echo stock > "$SRC/out/target/product/virtio_x86_64/disk-vda.img"
 }
 `);
-      const stub = stubPath(work, kitInfo.kitTar);
+      const stub = stubPath(work, kit.kitTar);
       writeFileSync(join(stub.dir, "apksigner"), `#!/bin/sh
 echo "apksigner $*" >> "${stub.callsFile}"
 [ "$1 $2" = "verify --print-certs" ] || exit 99
@@ -901,7 +1022,7 @@ if [ "\${STUB_APKSIGNER:-}" = multiple ]; then echo "Signer #2 certificate SHA-2
         BUILD_WORK_DIR: work, RELEASE_TYPE: "user", BILLING_ALLOWED: "1", OWNER_APPROVED: "1",
         AWAI_VKE_NODE_POOL: "fixture-pool", AWAI_POOL_LABEL: "fixture-run",
         AWAI_FEED_URL: "https://feed.example/ota.json", KIT_URL: "https://example.invalid/kit.tar.gz",
-        KIT_SHA256: kitInfo.kitSha, AWAI_APK_STAGE: "fixture-stage",
+        KIT_SHA256: kit.kitSha, AWAI_APK_STAGE: "fixture-stage",
         AWAI_HOME_APK_SHA256: sha256(home), AWAI_STORE_APK_SHA256: sha256(store),
         AWAI_HOME_EXPECTED_SIGNER_SHA256: homeSigner, AWAI_STORE_EXPECTED_SIGNER_SHA256: storeSigner,
         ...overrides,
@@ -911,6 +1032,7 @@ if [ "\${STUB_APKSIGNER:-}" = multiple ]; then echo "Signer #2 certificate SHA-2
       const env = Object.fromEntries(worker.env.map(({ name, value }) => [name, value]));
       const r = await run("bash", worker.command.slice(1), {
         ...env, SRC: src, KIT: join(work, "kit"), PATH: `${stub.dir}:${process.env.PATH}`,
+        REAL_FIXTURE_GIT: realGit,
         STUB_APK_STAGE: stage, AWAI_APK_STAGE_SECRET_DIR: secret,
         AWAI_ALLOW_UNVERIFIED_APKS: "1", AWAI_WITHOUT_APPS: " 1 ",
         ...overrides,
@@ -922,12 +1044,20 @@ if [ "\${STUB_APKSIGNER:-}" = multiple ]; then echo "Signer #2 certificate SHA-2
       if (refusal) {
         assert.equal(r.code, 2, r.stderr);
         assert.match(r.stderr, refusal);
+        if (overrides.STUB_SKIP_PRODUCT_APPLY) {
+          assert.match(calls, /repo sync/);
+          assert.doesNotMatch(r.stdout, /^m /m);
+          assert.equal(stub.kcalls(), "");
+          return;
+        }
         assert.doesNotMatch(calls + r.stdout, /repo (init|sync)|git config/);
         assert.equal(stub.kcalls(), "");
         return;
       }
       assert.equal(r.code, 0, r.stderr);
+      assert.match(r.stdout, /AWAI4094_KIT_INTEGRATION_OK[\s\S]*AWAI4094_APK_VERIFIED[\s\S]*repo init/);
       assert.match(calls, /apt-get -qq install -y apksigner=31\.0\.2-1ubuntu1[\s\S]*rclone --config \/dev\/null copyto[\s\S]*apksigner verify --print-certs [^\n]*AwaiHome\.apk[\s\S]*apksigner verify --print-certs [^\n]*AwaiStore\.apk[\s\S]*repo init[\s\S]*repo sync/);
+      assert.match(calls, /git -C [^\n]*\/device\/virt\/virtio-common apply --reverse --check [^\n]*virtio-common-awai-apps\.patch/);
       const appsDir = join(src, "device/virt/virtio-common/awai-apps");
       assert.equal(readFileSync(join(appsDir, "AwaiHome.apk"), "utf8"), home);
       assert.equal(readFileSync(join(appsDir, "AwaiStore.apk"), "utf8"), store);

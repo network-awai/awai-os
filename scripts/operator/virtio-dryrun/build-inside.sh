@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # AWAI-4089 (G2): lineage_virtio_x86_64 Job build definition.
 #
-# WARNING: do not start approved mode until the build location
-# (VKE vs device distribution) is decided. The earlier "until this PR
-# lands" wording is stale (#515 is merged).
+# WARNING: gad is the preferred build host for this candidate.
+# Approved execution requires the host capacity decision and procedure
+# described in README.md.
 #
 # Runs inside an ubuntu container, `cd "$SRC"`, `source
 # build/envsetup.sh` in the main shell (so `breakfast` and `m` are
@@ -184,6 +184,11 @@ printf 'AWAI4089_RELEASE_TYPE=%s AWAI4089_DEADLINE_SECONDS=%s AWAI4089_APPROVED=
   "$RELEASE_TYPE" "$DEADLINE" "$APPROVED"
 # One recorded line per run and per dry-run print, naming the chosen mode.
 printf 'AWAI4094_APPS: %s\n' "$APPS_MODE_LOG"
+# A verified APK pair alone cannot produce a shipping build. Check the
+# same kit and apply script the user build will consume before checkout.
+if [[ $RELEASE_TYPE == user ]]; then
+  run python3 "$here/check-home-store-integration.py" "$KIT" || exit 2
+fi
 if (( apps_prebuilt )); then
   # Snapshot before verification. Keep these bytes private until copying
   # them to the device tree, even when the original inputs are local files.
@@ -245,8 +250,16 @@ run git init -q "$FIRMWARE_GIT"
 run timeout 20m git -C "$FIRMWARE_GIT" fetch -q --depth 1 https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git a2dcb924f0897368b0b4f305cbf9808cdda90ce0
 run git -C "$FIRMWARE_GIT" checkout -q FETCH_HEAD
 
-# Repo's own apply tools, in repo order. No second explicit list.
-run apply.sh "$SRC"
+# Repo's own apply tools, in repo order. The shipping build uses the
+# checked script by path and confirms its product patch reached the tree.
+if [[ $RELEASE_TYPE == user ]]; then
+  run sh "$KIT/pc-ab-device/apply.sh" "$SRC"
+  run git -C "$SRC/device/virt/virtio-common" apply --reverse --check \
+    "$KIT/pc-ab-device/patches/virtio-common-awai-apps.patch" ||
+    apk_refuse "the kit's Home/Store integration was not applied to the source tree."
+else
+  run apply.sh "$SRC"
+fi
 run apply-shipping-debug-lockdown.sh "$SRC"
 run pc-firmware.py prepare "$SRC" "$FIRMWARE_GIT"
 run updater-feed.py configure-release "$SRC/packages/apps/Updater" "$AWAI_FEED_URL"

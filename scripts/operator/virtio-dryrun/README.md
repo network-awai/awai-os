@@ -1,17 +1,17 @@
 # lineage_virtio_x86_64 Job (AWAI-4089 G2)
 
-> **WARNING: do not start approved mode until the build location
-> (VKE vs device distribution) is decided.** The earlier "until this PR
-> lands" wording is stale (#515 is merged). Dry-run execution is safe.
+> **The owner selected gad first for this candidate.** Wait for the
+> gad free-space decision in Organizer item 211 and an approved build
+> procedure for that host. The VKE Job renderer is for VKE.
 
-Boundary: the **procedure** (`build-inside.sh`: breakfast, JDK,
+The **procedure** (`build-inside.sh`: breakfast, JDK,
 ROOMSERVICE_DRYRUN, ccache, patch application, target-files/disk/OTA
-chain) is runtime-agnostic and takes its knobs as environment variables
+chain) takes its inputs as environment variables
 (`BUILD_WORK_DIR`, `RELEASE_TYPE`, `AWAI_POOL_LABEL`, `MANIFEST_FILE`,
-`FIRMWARE_GIT`, …). The **VKE frame** (`virtio-job.sh` output: memory,
-CPU, ephemeral-storage, node pool, B2 paths) is the only part that must
-change to move to another execution substrate; minimum conditions live
-in `docs/otehon/g2-build-requirements.md`.
+ `FIRMWARE_GIT`, …). `virtio-job.sh` renders the VKE-specific node
+selector, resources, Secret mounts and workspace volume. A gad procedure
+must establish host tool, storage, credential and artifact handling on
+gad. See `docs/otehon/g2-build-requirements.md`.
 
 Dry-run by default; executes for real only when
 `BILLING_ALLOWED=1` **and** `OWNER_APPROVED=1`.
@@ -21,7 +21,8 @@ Dry-run by default; executes for real only when
   before installing or fetching anything.
 - Approved mode (`BILLING_ALLOWED=1 OWNER_APPROVED=1`):
   `build-inside.sh` executes the same command list (no `[dry-run]`
-  prefix): toolchain install, kit fetch (SHA-verified), `repo init` /
+  prefix): toolchain install, kit fetch (SHA-verified), kit and APK
+  preflight, `repo init` /
   `repo sync -m default.xml --no-manifest-update`, `repo manifest -r`
   full 1264-revision comparison, the repo's own apply tools
   (`apply.sh`, `apply-shipping-debug-lockdown.sh`, `pc-firmware.py
@@ -38,7 +39,9 @@ Dry-run by default; executes for real only when
   mode with missing or invalid pins; in approved mode: missing
   kit or output settings, kit digest mismatch, pinned manifest mismatch,
   missing APK or verifier, file digest mismatch, signature failure or an
-  unexpected signer. APK input failures stop before `repo init` and `repo sync`.
+  unexpected signer. Approved `user` also requires the Home/Store
+  product integration and apply path in the kit. These failures stop
+  before `repo init` and `repo sync`.
 
 ## Apps mode and APK inputs
 
@@ -77,7 +80,11 @@ Before `m`, the worker copies the verified snapshots to
 the verifier and expected signer pins to the build. The worker clears the
 unverified-APK escape. The product include and its second fail-closed guard
 are in [#523](https://github.com/network-awai/awai-os/pull/523). A shipping
-candidate requires a kit revision with the landed product integration. When
+candidate requires a kit revision with the landed product integration. The
+`user` preflight checks the kit's project-relative app patch, product include,
+presigned prebuilt modules, signer gate and `apply.sh` wiring before checkout.
+After `apply.sh`, Git checks that the product patch is present in the
+source tree before the build. When
 a new arm64 or TV Job is defined, require the same explicit choice of apps
 mode, source and pins and record the mode before building.
 
@@ -177,10 +184,12 @@ Build environment (vs ab-build.sh / ab-ota.sh / same-build):
 
 ## Before starting a user/prebuilt candidate
 
-- Obtain the owner’s execution and billing decision and select the approved
-  build host. Use `BILLING_ALLOWED=1` and `OWNER_APPROVED=1` only after the
-  decision. Check that the amd64 pool selector and taint match the rendered
-  Job, tools and sources are reachable, and the node can meet the 14 CPU,
+- For this candidate, use the gad-first route once Organizer item 211
+  confirms free space and the owner approves execution. Confirm the gad
+  host’s capacity, Linux/amd64 toolchain, storage and credentials. Use
+  `BILLING_ALLOWED=1` and `OWNER_APPROVED=1` only after approval.
+- The reference VKE Job’s amd64 pool selector and taint must match its
+  node, tools and sources must be reachable, and the node must meet the 14 CPU,
   52Gi RAM, 520Gi ephemeral-storage request and 8 h minimum deadline
   (`AWAI_VIRTIO_DEADLINE_SECONDS`, default and minimum 28800).
   The workspace has a 700Gi ephemeral volume limit.
@@ -190,8 +199,9 @@ Build environment (vs ab-build.sh / ab-ota.sh / same-build):
   Retain the resolved manifest, pinned container and firmware revisions,
   both APK file/signer pins, and the credential-free `AWAI_FEED_URL`.
   Keep a rendered Job containing a private kit URL in the operator environment.
-- Confirm access to the existing private input stage and output bucket using
-  their respective Secret scopes. Use output Secret `release-artifacts-b2`
+- Confirm access to the approved input and output storage. For the VKE
+  reference Job, confirm the existing private B2 stage and output bucket
+  using their respective Secret scopes. It uses `release-artifacts-b2`
   and a fresh `AWAI_POOL_LABEL` for
   `awai-os-release-artifacts/awai-virtio-g2/<label>/`. G2 uploads the v1
   unsigned target-files first to `v1/virtio-target-files-v1.zip`, preserves
@@ -250,6 +260,8 @@ executes all) together with every refusal above, `-m default.xml`,
 `path or name` + notdefault keys, and the two OTA commands. The staged user
 fixture checks that missing objects, wrong file SHA-256, invalid or unexpected
 signatures, additional signers and a missing Secret never reach source work.
+It also rejects kits missing the product patch or its apply route. The positive
+fixture applies the product patch to a small source tree with real Git.
 It also changes a staged file after download and verifies that the build
 receives the checked snapshot. The local-input fixture checks a missing verifier.
 Storage, apksigner and the build are stubbed. The
