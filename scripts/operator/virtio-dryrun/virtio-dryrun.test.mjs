@@ -9,7 +9,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtempSync, mkdirSync, readFileSync, existsSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, readdirSync, existsSync, unlinkSync, writeFileSync } from "node:fs";
 import { readFile as readFileP } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
@@ -82,6 +82,17 @@ function stubPath(work, kitTar) {
   writeFileSync(join(dir, "rclone"),
     `#!/bin/sh
 echo "rclone $*" >> "${calls}"
+if [ "$1" = --config ] && [ "$2" = /dev/null ] && [ "$3" = copyto ]; then
+  [ "$RCLONE_CONFIG_APKSTAGE_TYPE:$RCLONE_CONFIG_APKSTAGE_ACCOUNT:$RCLONE_CONFIG_APKSTAGE_KEY" = "b2:fixture-account:fixture-key" ] || exit 99
+  case "$4" in
+    apkstage:awai-os-release-artifacts/awai-virtio-g2-inputs/fixture-stage/AwaiHome.apk|\
+    apkstage:awai-os-release-artifacts/awai-virtio-g2-inputs/fixture-stage/AwaiStore.apk)
+      cp "$STUB_APK_STAGE/\${4##*/}" "$5" || { echo "transport error with fixture-key" >&2; exit 1; }
+      ;;
+    *) exit 99 ;;
+  esac
+  exit 0
+fi
 if [ "$2" != "\${2#art:}" ]; then mkdir -p "$3" && cp -R "${up}"/. "$3"/; fi
 exit 0
 `, { mode: 0o755 });
@@ -176,7 +187,7 @@ test("dry-run prints the exact command list and executes nothing", async () => {
     "apt-get -qq install -y",
     "gdisk",
     "curl -fsSL https://storage.googleapis.com/git-repo-downloads/repo",
-    "curl -fsSL https://example.invalid/kit.tar.gz",
+    "curl -fsSL $KIT_URL",
     "python3 -c",
     "tar -xzf",
     "git config --global user.email virtio-g2@awai.network",
@@ -509,26 +520,27 @@ test("apps mode is explicit: neither, both, or without-apps on user refuse", asy
   assert.equal(stub.calls(), "");
 });
 
-test("prebuilt apps mode requires all five values and records the expected signers", async () => {
+test("local prebuilt apps mode requires both file and signer pins and records the expected signers", async () => {
   const stub = stubPath(join(tmpdir(), "pre-"), undefined);
   const work = join(tmpdir(), "prework-");
   const home = "a".repeat(64), store = "b".repeat(64);
   const base = {
     ...envFor(stub, work), DRY_RUN: "1", AWAI_WITHOUT_APPS: "",
     AWAI_HOME_APK: "/tmp/AwaiHome.apk", AWAI_STORE_APK: "/tmp/AwaiStore.apk",
+    AWAI_HOME_APK_SHA256: "c".repeat(64), AWAI_STORE_APK_SHA256: "d".repeat(64),
     AWAI_HOME_EXPECTED_SIGNER_SHA256: home,
     AWAI_STORE_EXPECTED_SIGNER_SHA256: store,
     AWAI_APKSIGNER: "/usr/bin/apksigner",
   };
-  // four of five is not a mode
-  let r = await run("bash", [buildInside], { ...base, AWAI_APKSIGNER: "" });
+  let r = await run("bash", [buildInside], { ...base, AWAI_HOME_APK_SHA256: "" });
   assert.equal(r.code, 2);
-  assert.match(r.stderr, /requires all five values \(missing: AWAI_APKSIGNER\)/);
+  assert.match(r.stderr, /AWAI_HOME_APK_SHA256 must be a lowercase SHA-256 digest/);
   r = await run("bash", [buildInside], base);
   assert.equal(r.code, 0, r.stderr);
   assert.match(r.stdout, new RegExp(`^AWAI4094_APPS: prebuilt home=${home} store=${store}$`, "m"));
-  assert.match(r.stdout, /\[dry-run\] cp \/tmp\/AwaiHome\.apk .*\/device\/virt\/virtio-common\/awai-apps\/AwaiHome\.apk/);
-  assert.match(r.stdout, /\[dry-run\] cp \/tmp\/AwaiStore\.apk .*\/device\/virt\/virtio-common\/awai-apps\/AwaiStore\.apk/);
+  assert.match(r.stdout, /\[dry-run\] cp .*\/apks\.<run>\/AwaiHome\.apk .*\/device\/virt\/virtio-common\/awai-apps\/AwaiHome\.apk/);
+  assert.doesNotMatch(r.stdout, /example\.invalid\/kit\.tar\.gz/);
+  assert.match(r.stdout, /\[dry-run\] cp .*\/apks\.<run>\/AwaiStore\.apk .*\/device\/virt\/virtio-common\/awai-apps\/AwaiStore\.apk/);
   assert.equal(stub.calls(), "");
 });
 
@@ -554,12 +566,22 @@ m() { echo "m $*" >> "${fncalls}";
   const signerStub = join(apkDir, "apksigner");
   writeFileSync(homeApk, "home-apk\n");
   writeFileSync(storeApk, "store-apk\n");
-  writeFileSync(signerStub, "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+  writeFileSync(signerStub, `#!/bin/sh
+[ "$1 $2" = "verify --print-certs" ] || exit 99
+case "$3" in
+  */AwaiHome.apk) digest=${"a".repeat(64)} ;;
+  */AwaiStore.apk) digest=${"b".repeat(64)} ;;
+  *) exit 99 ;;
+esac
+echo "Signer #1 certificate SHA-256 digest: $digest"
+`, { mode: 0o755 });
   const stub = stubPath(work, kitInfo.kitTar);
   const env = envFor(stub, work, {
     SRC: src, KIT: kitInfo.kit, KIT_SHA256: kitInfo.kitSha,
     BILLING_ALLOWED: "1", OWNER_APPROVED: "1", AWAI_WITHOUT_APPS: "",
     AWAI_HOME_APK: homeApk, AWAI_STORE_APK: storeApk,
+    AWAI_HOME_APK_SHA256: sha256(readFileSync(homeApk)),
+    AWAI_STORE_APK_SHA256: sha256(readFileSync(storeApk)),
     AWAI_HOME_EXPECTED_SIGNER_SHA256: "a".repeat(64),
     AWAI_STORE_EXPECTED_SIGNER_SHA256: "b".repeat(64),
     AWAI_APKSIGNER: signerStub,
@@ -567,6 +589,7 @@ m() { echo "m $*" >> "${fncalls}";
   const r = await run("bash", [join(kitInfo.kit, "scripts/operator/virtio-dryrun/build-inside.sh")], env, 120000);
   assert.equal(r.code, 0, r.stderr);
   assert.match(r.stdout, /AWAI4094_APPS: prebuilt home=a{64} store=b{64}/);
+  assert.match(r.stdout, /AWAI4094_APK_VERIFIED AwaiHome\.apk[^\n]*\nAWAI4094_APK_VERIFIED AwaiStore\.apk[\s\S]*repo init/);
   const appsDir = join(src, "device/virt/virtio-common/awai-apps");
   assert.equal(readFileSync(join(appsDir, "AwaiHome.apk"), "utf8"), "home-apk\n");
   assert.equal(readFileSync(join(appsDir, "AwaiStore.apk"), "utf8"), "store-apk\n");
@@ -575,6 +598,10 @@ m() { echo "m $*" >> "${fncalls}";
   // the build receives the signer inputs and no without-apps escape
   assert.match(fb, new RegExp(`home-signer=${"a".repeat(64)} store-signer=${"b".repeat(64)} apksigner=${signerStub} without=$`, "m"));
   assert.match(r.stderr + r.stdout, /AWAI4089_DONE approved=1/);
+  const noTool = await run("bash", [buildInside], { ...env, AWAI_APKSIGNER: signerStub + ".missing" });
+  assert.equal(noTool.code, 2, noTool.stderr);
+  assert.match(noTool.stderr, /apksigner is missing or not executable/);
+  assert.doesNotMatch(noTool.stdout, /repo (init|sync)/);
 });
 
 test("pinned manifest SHA validated before anything else", async () => {
@@ -740,6 +767,13 @@ test("job definition prints Job JSON (toolchain-first; kit fetch inside Job comm
   // apps mode reaches the container env and the Job labels
   assert.equal(env.AWAI_WITHOUT_APPS, "1");
   assert.equal(job.metadata.labels["awai.network/apps-mode"], "without-apps");
+  assert.equal(job.spec.template.spec.volumes.some((v) => v.name === "apk-stage"), false);
+  const stub = stubPath(fakeDir, undefined);
+  const dry = await run("bash", job.spec.template.spec.containers[0].command.slice(1),
+    { ...env, PATH: `${stub.dir}:${process.env.PATH}` });
+  assert.equal(dry.code, 0, dry.stderr);
+  assert.match(dry.stdout, /AWAI4089_DRY_RUN/);
+  assert.equal(stub.calls(), "");
   assert.equal(readFileSync(callsFile, "utf8"), "");
 });
 
@@ -770,18 +804,134 @@ test("job definition requires an explicit apps mode and carries it", async () =>
   r = await run("bash", [jobScript], { ...base, RELEASE_TYPE: "user", AWAI_WITHOUT_APPS: "1" });
   assert.equal(r.code, 2);
   assert.match(r.stderr, /AWAI_WITHOUT_APPS=1 is refused for RELEASE_TYPE=user/);
-  // prebuilt: all five values reach the container env
+  // Staged prebuilt: only the stage ID and the four pins reach the env.
   const prebuilt = {
-    AWAI_HOME_APK: "/apks/AwaiHome.apk", AWAI_STORE_APK: "/apks/AwaiStore.apk",
+    AWAI_APK_STAGE: "fixture-stage",
+    AWAI_HOME_APK_SHA256: "c".repeat(64), AWAI_STORE_APK_SHA256: "d".repeat(64),
     AWAI_HOME_EXPECTED_SIGNER_SHA256: "a".repeat(64),
     AWAI_STORE_EXPECTED_SIGNER_SHA256: "b".repeat(64),
-    AWAI_APKSIGNER: "/usr/bin/apksigner",
   };
-  r = await run("bash", [jobScript], { ...base, ...prebuilt });
+  for (const bad of [
+    { AWAI_APK_STAGE: "https://example.invalid/secret?token=fixture" },
+    { AWAI_HOME_APK: "/apks/AwaiHome.apk" },
+    { AWAI_STORE_EXPECTED_SIGNER_SHA256: "bad" },
+  ]) {
+    r = await run("bash", [jobScript], { ...base, ...prebuilt, ...bad });
+    assert.equal(r.code, 2, r.stderr);
+    assert.equal(r.stdout, "");
+    assert.doesNotMatch(r.stderr, /token=fixture/);
+  }
+  r = await run("bash", [jobScript], { ...base, ...prebuilt, RELEASE_TYPE: "user" });
   assert.equal(r.code, 0, r.stderr);
   const job = JSON.parse(r.stdout);
-  const env = Object.fromEntries(job.spec.template.spec.containers[0].env.map((e) => [e.name, e.value]));
+  const pod = job.spec.template.spec;
+  const worker = pod.containers[0];
+  const env = Object.fromEntries(worker.env.map((e) => [e.name, e.value]));
   for (const [k, v] of Object.entries(prebuilt)) assert.equal(env[k], v, k);
   assert.equal(env.AWAI_WITHOUT_APPS, "");
+  assert.equal(env.AWAI_APKSIGNER, undefined);
+  assert.deepEqual(worker.envFrom, [{ secretRef: { name: "release-artifacts-b2" } }]);
+  assert.deepEqual(worker.volumeMounts[1], {
+    name: "apk-stage", mountPath: "/run/secrets/awai-apk-stage", readOnly: true,
+  });
+  const inputSecret = pod.volumes[1].secret;
+  assert.equal(inputSecret.secretName, "release-apk-stage-b2");
+  assert.equal(inputSecret.defaultMode, 0o400);
+  assert.deepEqual(inputSecret.items.map(({ key }) => key),
+    ["RCLONE_CONFIG_ART_TYPE", "RCLONE_CONFIG_ART_ACCOUNT", "RCLONE_CONFIG_ART_KEY"]);
   assert.equal(job.metadata.labels["awai.network/apps-mode"], "prebuilt");
+});
+
+test("staged user Job verifies before source work and builds from the verified snapshots", async (t) => {
+  const kitInfo = await extractedRealKit();
+  const stage = join(kitInfo.base, "stage");
+  const secret = join(kitInfo.base, "secret");
+  mkdirSync(stage);
+  mkdirSync(secret, { mode: 0o700 });
+  for (const [key, value] of Object.entries({ TYPE: "b2", ACCOUNT: "fixture-account", KEY: "fixture-key" })) {
+    writeFileSync(join(secret, `RCLONE_CONFIG_ART_${key}`), value, { mode: 0o400 });
+  }
+  const home = "home-apk\n", store = "store-apk\n";
+  const homeSigner = "a".repeat(64), storeSigner = "b".repeat(64);
+  const homeFile = join(stage, "AwaiHome.apk"), storeFile = join(stage, "AwaiStore.apk");
+  writeFileSync(homeFile, home);
+  writeFileSync(storeFile, store);
+
+  const cases = [
+    ["approved pair", {}, null],
+    ["missing APK", { STUB_MISSING: "1" }, /could not fetch AwaiStore\.apk/],
+    ["file hash mismatch", { AWAI_HOME_APK_SHA256: "0".repeat(64) }, /AwaiHome\.apk file SHA-256 mismatch/],
+    ["wrong signer", { AWAI_STORE_EXPECTED_SIGNER_SHA256: "0".repeat(64) }, /AwaiStore\.apk signer SHA-256 mismatch/],
+    ["apksigner rejects signature", { STUB_APKSIGNER: "reject" }, /apksigner could not verify AwaiHome\.apk/],
+    ["additional signer", { STUB_APKSIGNER: "multiple" }, /AwaiHome\.apk signer SHA-256 mismatch/],
+    ["absent stage Secret", { AWAI_APK_STAGE_SECRET_DIR: secret + ".missing" }, /APK stage Secret is unavailable/],
+  ];
+  for (const [name, overrides, refusal] of cases) {
+    await t.test(name, async () => {
+      const work = mkdtempSync(join(tmpdir(), "g2staged-"));
+      const src = join(work, "src");
+      mkdirSync(join(src, "build"), { recursive: true });
+      writeFileSync(join(src, "build", "envsetup.sh"), `breakfast() { :; }
+m() {
+  [ -z "\${AWAI_ALLOW_UNVERIFIED_APKS:-}\${AWAI_WITHOUT_APPS:-}\${RCLONE_CONFIG_APKSTAGE_KEY:-}" ] || return 99
+  [ -x "$AWAI_APKSIGNER" ] || return 99
+  mkdir -p "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates"
+  echo tf > "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates/lineage_virtio_x86_64-target_files.zip"
+  echo stock > "$SRC/out/target/product/virtio_x86_64/disk-vda.img"
+}
+`);
+      const stub = stubPath(work, kitInfo.kitTar);
+      writeFileSync(join(stub.dir, "apksigner"), `#!/bin/sh
+echo "apksigner $*" >> "${stub.callsFile}"
+[ "$1 $2" = "verify --print-certs" ] || exit 99
+[ -z "\${RCLONE_CONFIG_APKSTAGE_KEY:-}" ] || exit 99
+[ "\${STUB_APKSIGNER:-}" != reject ] || { echo "private verifier diagnostic" >&2; exit 1; }
+case "$3" in
+  "$BUILD_WORK_DIR"/apks.*/AwaiHome.apk) digest=${homeSigner}; echo "changed after download" > "${homeFile}" ;;
+  "$BUILD_WORK_DIR"/apks.*/AwaiStore.apk) digest=${storeSigner} ;;
+  *) exit 99 ;;
+esac
+echo "Signer #1 certificate SHA-256 digest: $digest"
+if [ "\${STUB_APKSIGNER:-}" = multiple ]; then echo "Signer #2 certificate SHA-256 digest: ${storeSigner}"; fi
+`, { mode: 0o755 });
+      writeFileSync(homeFile, home);
+      writeFileSync(storeFile, store);
+      if (overrides.STUB_MISSING) unlinkSync(storeFile);
+      const gen = await run("bash", [jobScript], {
+        BUILD_WORK_DIR: work, RELEASE_TYPE: "user", BILLING_ALLOWED: "1", OWNER_APPROVED: "1",
+        AWAI_VKE_NODE_POOL: "fixture-pool", AWAI_POOL_LABEL: "fixture-run",
+        AWAI_FEED_URL: "https://feed.example/ota.json", KIT_URL: "https://example.invalid/kit.tar.gz",
+        KIT_SHA256: kitInfo.kitSha, AWAI_APK_STAGE: "fixture-stage",
+        AWAI_HOME_APK_SHA256: sha256(home), AWAI_STORE_APK_SHA256: sha256(store),
+        AWAI_HOME_EXPECTED_SIGNER_SHA256: homeSigner, AWAI_STORE_EXPECTED_SIGNER_SHA256: storeSigner,
+        ...overrides,
+      });
+      assert.equal(gen.code, 0, gen.stderr);
+      const worker = JSON.parse(gen.stdout).spec.template.spec.containers[0];
+      const env = Object.fromEntries(worker.env.map(({ name, value }) => [name, value]));
+      const r = await run("bash", worker.command.slice(1), {
+        ...env, SRC: src, KIT: join(work, "kit"), PATH: `${stub.dir}:${process.env.PATH}`,
+        STUB_APK_STAGE: stage, AWAI_APK_STAGE_SECRET_DIR: secret,
+        AWAI_ALLOW_UNVERIFIED_APKS: "1", AWAI_WITHOUT_APPS: " 1 ",
+        ...overrides,
+      });
+      const calls = stub.calls();
+      assert.doesNotMatch(r.stdout + r.stderr + gen.stdout + calls,
+        /fixture-account|fixture-key|private verifier diagnostic/);
+      assert.equal(readdirSync(work).some((name) => name.startsWith("apks.")), false);
+      if (refusal) {
+        assert.equal(r.code, 2, r.stderr);
+        assert.match(r.stderr, refusal);
+        assert.doesNotMatch(calls + r.stdout, /repo (init|sync)|git config/);
+        assert.equal(stub.kcalls(), "");
+        return;
+      }
+      assert.equal(r.code, 0, r.stderr);
+      assert.match(calls, /apt-get -qq install -y apksigner=31\.0\.2-1ubuntu1[\s\S]*rclone --config \/dev\/null copyto[\s\S]*apksigner verify --print-certs [^\n]*AwaiHome\.apk[\s\S]*apksigner verify --print-certs [^\n]*AwaiStore\.apk[\s\S]*repo init[\s\S]*repo sync/);
+      const appsDir = join(src, "device/virt/virtio-common/awai-apps");
+      assert.equal(readFileSync(join(appsDir, "AwaiHome.apk"), "utf8"), home);
+      assert.equal(readFileSync(join(appsDir, "AwaiStore.apk"), "utf8"), store);
+      assert.equal(readFileSync(homeFile, "utf8"), "changed after download\n");
+    });
+  }
 });

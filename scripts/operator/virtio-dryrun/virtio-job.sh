@@ -15,10 +15,9 @@
 #
 # An apps mode is required, exactly one of:
 #   AWAI_WITHOUT_APPS=1 (evaluation; refused for RELEASE_TYPE=user), or
-#   AWAI_HOME_APK, AWAI_STORE_APK, AWAI_HOME_EXPECTED_SIGNER_SHA256,
-#   AWAI_STORE_EXPECTED_SIGNER_SHA256, AWAI_APKSIGNER (prebuilt).
-# They are placed in the container env; build-inside.sh re-validates
-# them and copies the APKs into device/virt/virtio-common/awai-apps/.
+#   AWAI_APK_STAGE, plus the file and expected signer SHA-256 for each APK.
+# build-inside.sh fetches the staged inputs through a read-only Secret,
+# verifies them, and supplies device/virt/virtio-common/awai-apps/.
 #
 #   DRY_RUN=1 RELEASE_TYPE=userdebug AWAI_WITHOUT_APPS=1 \
 #     AWAI_VKE_NODE_POOL=awai-pc-release-012345abcdef bash virtio-job.sh > job.json
@@ -54,45 +53,16 @@ fi
 
 : "${AWAI_VKE_NODE_POOL:?set AWAI_VKE_NODE_POOL for the Job selector}"
 
-# Apps mode — the same explicit choice build-inside.sh requires (#523's
-# fail-closed guard). The values reach the container through env below.
-apps_without=0
-apps_prebuilt=0
-[[ ${AWAI_WITHOUT_APPS:-} == 1 ]] && apps_without=1
-APPS_PREBUILT_VARS=(AWAI_HOME_APK AWAI_STORE_APK AWAI_HOME_EXPECTED_SIGNER_SHA256 \
-  AWAI_STORE_EXPECTED_SIGNER_SHA256 AWAI_APKSIGNER)
-for v in "${APPS_PREBUILT_VARS[@]}"; do
-  [[ -n ${!v:-} ]] && apps_prebuilt=1
-done
-if (( apps_without && apps_prebuilt )); then
-  echo "AWAI4094_REFUSES: AWAI_WITHOUT_APPS=1 and the prebuilt APK values are mutually exclusive; name exactly one apps mode." >&2
-  exit 2
-fi
-if (( !apps_without && !apps_prebuilt )); then
-  echo "AWAI4094_REFUSES: an explicit apps mode is required: AWAI_WITHOUT_APPS=1 (evaluation), or all of AWAI_HOME_APK AWAI_STORE_APK AWAI_HOME_EXPECTED_SIGNER_SHA256 AWAI_STORE_EXPECTED_SIGNER_SHA256 AWAI_APKSIGNER (prebuilt)." >&2
-  exit 2
-fi
-if (( apps_without )) && [[ $RELEASE_TYPE == user ]]; then
-  echo "AWAI4094_REFUSES: AWAI_WITHOUT_APPS=1 is refused for RELEASE_TYPE=user." >&2
-  exit 2
-fi
-if (( apps_prebuilt )); then
-  missing=()
-  for v in "${APPS_PREBUILT_VARS[@]}"; do
-    [[ -n ${!v:-} ]] || missing+=("$v")
-  done
-  if (( ${#missing[@]} )); then
-    echo "AWAI4094_REFUSES: prebuilt apps mode requires all five values (missing: ${missing[*]})." >&2
-    exit 2
-  fi
-fi
+# Shell input validation is shared with the kit worker.
+source "$here/apk-inputs.sh"
+validate_apps_mode job
 
 namespace=awai-pc-release-build
 name=awai-virtio-dryrun-build
 image=ubuntu@sha256:9a04f13b3f80ef056361e30868593b1cfd2279fe19e4081cb93a90bf56819d6a
 WORK=${BUILD_WORK_DIR:-/root/build}
 
-job_command="apt-get -qq update && apt-get -qq install -y bc bison build-essential ca-certificates ccache cmake curl flex g++-multilib gcc-multilib gdisk git git-lfs gperf imagemagick lib32readline-dev lib32z1-dev libclang-18-dev libegl1 libelf-dev libglvnd-dev liblapack-dev liblz4-tool libopenblas-dev libpam-pwquality libsdl1.2-dev libssl-dev libxml2 libxml2-utils lz4 openjdk-21-jdk-headless lzop ninja-build pkg-config python-is-python3 python3 python3-dev python3-jsonschema python3-mako python3-packaging python3-pip python3-pycparser python3-ply python3-yaml rclone rsync schedtool squashfs-tools unzip xorriso xsltproc zip zstd && mkdir -p \"\$BUILD_WORK_DIR/kit\" \"\$BUILD_WORK_DIR/bin\" \"\$BUILD_WORK_DIR/upload/v1\" && curl -fsSL \"\$KIT_URL\" -o \"\$BUILD_WORK_DIR/kit.tar.gz\" && python3 -c 'import hashlib,sys; d=hashlib.sha256(open(sys.argv[1],\"rb\").read()).hexdigest(); sys.exit(0 if d==sys.argv[2] else 1)' \"\$BUILD_WORK_DIR/kit.tar.gz\" \"\$KIT_SHA256\" && tar -xzf \"\$BUILD_WORK_DIR/kit.tar.gz\" -C \"\$BUILD_WORK_DIR/kit\" && bash \"\$BUILD_WORK_DIR/kit/scripts/operator/virtio-dryrun/build-inside.sh\""
+job_command="if [[ \"\${DRY_RUN:-}\" == 1 ]]; then printf 'AWAI4089_DRY_RUN: Job execution skipped\\n'; exit 0; fi; umask 077; apt-get -qq update && apt-get -qq install -y bc bison build-essential ca-certificates ccache cmake curl flex g++-multilib gcc-multilib gdisk git git-lfs gperf imagemagick lib32readline-dev lib32z1-dev libclang-18-dev libegl1 libelf-dev libglvnd-dev liblapack-dev liblz4-tool libopenblas-dev libpam-pwquality libsdl1.2-dev libssl-dev libxml2 libxml2-utils lz4 openjdk-21-jdk-headless lzop ninja-build pkg-config python-is-python3 python3 python3-dev python3-jsonschema python3-mako python3-packaging python3-pip python3-pycparser python3-ply python3-yaml rclone rsync schedtool squashfs-tools unzip xorriso xsltproc zip zstd && mkdir -p \"\$BUILD_WORK_DIR/kit\" \"\$BUILD_WORK_DIR/bin\" \"\$BUILD_WORK_DIR/upload/v1\" && curl -fsSL \"\$KIT_URL\" -o \"\$BUILD_WORK_DIR/kit.tar.gz\" 2>/dev/null || { echo 'AWAI4089_REFUSES: kit bootstrap failed.' >&2; exit 2; }; python3 -c 'import hashlib,sys; d=hashlib.sha256(open(sys.argv[1],\"rb\").read()).hexdigest(); sys.exit(0 if d==sys.argv[2] else 1)' \"\$BUILD_WORK_DIR/kit.tar.gz\" \"\$KIT_SHA256\" && tar -xzf \"\$BUILD_WORK_DIR/kit.tar.gz\" -C \"\$BUILD_WORK_DIR/kit\" && bash \"\$BUILD_WORK_DIR/kit/scripts/operator/virtio-dryrun/build-inside.sh\""
 
 jq -n \
   --arg name "$name" --arg ns "$namespace" --arg pool "$AWAI_VKE_NODE_POOL" \
@@ -102,10 +72,10 @@ jq -n \
   --arg kit_url "${KIT_URL:-}" --arg kit_sha256 "${KIT_SHA256:-}" \
   --arg feed_url "${AWAI_FEED_URL:-}" \
   --arg without_apps "${AWAI_WITHOUT_APPS:-}" \
-  --arg home_apk "${AWAI_HOME_APK:-}" --arg store_apk "${AWAI_STORE_APK:-}" \
+  --arg apk_stage "${AWAI_APK_STAGE:-}" \
+  --arg home_sha "${AWAI_HOME_APK_SHA256:-}" --arg store_sha "${AWAI_STORE_APK_SHA256:-}" \
   --arg home_signer "${AWAI_HOME_EXPECTED_SIGNER_SHA256:-}" \
   --arg store_signer "${AWAI_STORE_EXPECTED_SIGNER_SHA256:-}" \
-  --arg apksigner "${AWAI_APKSIGNER:-}" \
   --arg pool_label "${AWAI_POOL_LABEL:-}" \
   --arg firmware_git "${FIRMWARE_GIT:-/root/build/firmware/src}" \
   --arg work "$WORK" \
@@ -146,11 +116,11 @@ jq -n \
                  { name: "KIT_SHA256", value: $kit_sha256 },
                  { name: "AWAI_FEED_URL", value: $feed_url },
                  { name: "AWAI_WITHOUT_APPS", value: $without_apps },
-                 { name: "AWAI_HOME_APK", value: $home_apk },
-                 { name: "AWAI_STORE_APK", value: $store_apk },
+                 { name: "AWAI_APK_STAGE", value: $apk_stage },
+                 { name: "AWAI_HOME_APK_SHA256", value: $home_sha },
+                 { name: "AWAI_STORE_APK_SHA256", value: $store_sha },
                  { name: "AWAI_HOME_EXPECTED_SIGNER_SHA256", value: $home_signer },
                  { name: "AWAI_STORE_EXPECTED_SIGNER_SHA256", value: $store_signer },
-                 { name: "AWAI_APKSIGNER", value: $apksigner },
                  { name: "AWAI_POOL_LABEL", value: $pool_label },
                  { name: "FIRMWARE_GIT", value: $firmware_git },
                  { name: "BUILD_WORK_DIR", value: $work },
@@ -159,9 +129,19 @@ jq -n \
            envFrom: [{ secretRef: { name: "release-artifacts-b2" } }],
            command: ["bash", "-euo", "pipefail", "-c", $command],
            resources: { requests: { cpu: "14", memory: "52Gi", "ephemeral-storage": "520Gi" } },
-           volumeMounts: [{ name: "workspace", mountPath: "/root/build" }]
+           volumeMounts: ([{ name: "workspace", mountPath: "/root/build" }] +
+             (if $apk_stage == "" then [] else [
+               { name: "apk-stage", mountPath: "/run/secrets/awai-apk-stage", readOnly: true }
+             ] end))
          }],
-         volumes: [{ name: "workspace", emptyDir: { sizeLimit: "700Gi" } }]
+         volumes: ([{ name: "workspace", emptyDir: { sizeLimit: "700Gi" } }] +
+           (if $apk_stage == "" then [] else [
+             { name: "apk-stage", secret: {
+               secretName: "release-apk-stage-b2", defaultMode: 256,
+               items: (["RCLONE_CONFIG_ART_TYPE", "RCLONE_CONFIG_ART_ACCOUNT", "RCLONE_CONFIG_ART_KEY"]
+                 | map({key: ., path: .}))
+             } }
+           ] end))
        }
      }
    }

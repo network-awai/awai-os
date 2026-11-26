@@ -16,9 +16,9 @@ in `docs/otehon/g2-build-requirements.md`.
 Dry-run by default; executes for real only when
 `BILLING_ALLOWED=1` **and** `OWNER_APPROVED=1`.
 
-- `DRY_RUN=1` (default): `build-inside.sh` and `virtio-job.sh` print
-  the exact command list; `repo sync` is printed, never run. Nothing
-  is created against a cluster or a paid API in any mode.
+- `DRY_RUN=1`: `build-inside.sh` prints the plan and `virtio-job.sh`
+  renders Job JSON. A Job command rendered in dry-run mode exits
+  before installing or fetching anything.
 - Approved mode (`BILLING_ALLOWED=1 OWNER_APPROVED=1`):
   `build-inside.sh` executes the same command list (no `[dry-run]`
   prefix): toolchain install, kit fetch (SHA-verified), `repo init` /
@@ -35,52 +35,53 @@ Dry-run by default; executes for real only when
   billing; missing/!valid `RELEASE_TYPE`; deadline < 28800; missing
   `AWAI_FEED_URL` (required in all modes); no apps mode or both apps
   modes; `AWAI_WITHOUT_APPS=1` with `RELEASE_TYPE=user`; prebuilt apps
-  mode with fewer than five values; in approved mode: missing
-  `KIT_URL`/`KIT_SHA256`; unreadable prebuilt APK; kit tarball SHA
-  mismatch; pinned manifest SHA mismatch (exit 1).
+  mode with missing or invalid pins; in approved mode: missing
+  kit or output settings, kit digest mismatch, pinned manifest mismatch,
+  missing APK or verifier, file digest mismatch, signature failure or an
+  unexpected signer. APK input failures stop before `repo init` and `repo sync`.
 
-## Apps mode (required; #523's fail-closed guard)
+## Apps mode and APK inputs
 
-[#523](https://github.com/network-awai/awai-os/pull/523) adds
-`virtio-common-awai-apps.patch`: `device/virt/virtio-common`'s product
-include stops the build (`$(error)`) when an Awai APK is missing, an
-expected signer is unset, or a signer differs. The Job therefore has no
-default apps mode and refuses without one (exit 2,
-`AWAI4094_REFUSES`). Exactly one mode is named:
+| Mode | Job inputs |
+| --- | --- |
+| Evaluation | `AWAI_WITHOUT_APPS=1` with `RELEASE_TYPE=userdebug`. |
+| Prebuilt | `AWAI_APK_STAGE` and all four digests below, with `RELEASE_TYPE=user` or `userdebug`. |
 
-| Mode | Variables | Build |
-| --- | --- | --- |
-| without apps | `AWAI_WITHOUT_APPS=1` | `AWAI_WITHOUT_APPS: Home/Store are NOT preinstalled`; no Awai module. Refused for `RELEASE_TYPE=user` (the guard also refuses it on release builds). |
-| prebuilt | `AWAI_HOME_APK`, `AWAI_STORE_APK`, `AWAI_HOME_EXPECTED_SIGNER_SHA256`, `AWAI_STORE_EXPECTED_SIGNER_SHA256`, `AWAI_APKSIGNER` | both APKs are copied to `device/virt/virtio-common/awai-apps/{AwaiHome,AwaiStore}.apk` before `m`; the three signer values are exported to the build, which verifies them. |
+The app release producers supply signed, x86_64-compatible Home
+(`network.awai.home`) and Store (`network.awai.store`) APKs and the
+SHA-256 of the exact files. The owner or designated signing authority
+approves each expected public X.509 certificate fingerprint through a
+separate trusted channel. The operator checks app identity and version and
+records all four pins in the run inputs. Obtain the expected fingerprints
+from the trusted channel before staging the APKs.
 
-Every run prints one recorded line (`AWAI4094_APPS: without-apps
-(evaluation)` or `AWAI4094_APPS: prebuilt home=<sha256> store=<sha256>`,
-using the expected digests that were passed, not a re-read of the APK).
-The dry-run printout contains that line too, so the chosen mode is
-visible before anything executes. `virtio-job.sh` validates the same
-choice and puts it in the container env plus the
-`awai.network/apps-mode` Job label.
+| Input | Value |
+| --- | --- |
+| `AWAI_APK_STAGE` | Stage ID in the existing private B2 bucket `awai-os-release-artifacts`. The object keys are `awai-virtio-g2-inputs/<stage>/AwaiHome.apk` and `awai-virtio-g2-inputs/<stage>/AwaiStore.apk`. Use a dedicated ID with up to 63 lowercase ASCII letters, digits and hyphens, starting with a letter or digit. |
+| `AWAI_HOME_APK_SHA256`, `AWAI_STORE_APK_SHA256` | Approved file SHA-256 for Home and Store, respectively. |
+| `AWAI_HOME_EXPECTED_SIGNER_SHA256`, `AWAI_STORE_EXPECTED_SIGNER_SHA256` | Independently approved public certificate SHA-256 for Home and Store. Each pin is 64 lowercase hexadecimal characters. |
+| `release-apk-stage-b2` | Required only for staged prebuilt mode. Supply it through the approved Secret path in namespace `awai-pc-release-build`. Use the same three keys as `release-artifacts-b2`: `RCLONE_CONFIG_ART_TYPE=b2`, `RCLONE_CONFIG_ART_ACCOUNT`, and `RCLONE_CONFIG_ART_KEY`. Scope the separate credential to read/list for the input stage prefix and the bucket discovery required by rclone. The Job mounts it read-only at `/run/secrets/awai-apk-stage`. Keep credential values and any signed URL out of shared output, PRs, the source tree and the kit. |
 
-The APK paths must resolve inside the build container; the Job neither
-fetches nor signs APKs, and no APK is committed to this repository.
-`#523` is unmerged: until it lands these variables are inert (no guard
-consumes them), and the Job still refuses without a mode — supplying
-`AWAI_WITHOUT_APPS=1` keeps today's behaviour for an evaluation build.
+The worker installs Ubuntu Noble’s `apksigner=31.0.2-1ubuntu1` for staged
+inputs. It snapshots both APKs into a private directory under
+`BUILD_WORK_DIR`, checks each file SHA-256, and runs
+`apksigner verify --print-certs` to require a valid signature and exactly
+one approved signer per APK. `AWAI4094_APPS` records the mode and expected
+fingerprints. `AWAI4094_APK_VERIFIED` records each successful check. Direct
+`build-inside.sh` invocation can use absolute local `AWAI_HOME_APK`,
+`AWAI_STORE_APK`, and `AWAI_APKSIGNER` paths with the same four pins
+and no stage ID. Dry-run plans these checks without accessing the APKs.
 
-The same guard applies to every product that includes that device tree,
-including the planned **arm64** and **TV** targets. This repository has
-no Job definition for arm64 or TV (**undefined; required when one is
-created**): each such Job must make the same explicit choice and record
-`AWAI4094_APPS` the same way.
+Before `m`, the worker copies the verified snapshots to
+`device/virt/virtio-common/awai-apps/{AwaiHome,AwaiStore}.apk` and exports
+the verifier and expected signer pins to the build. The worker clears the
+unverified-APK escape. The product include and its second fail-closed guard
+are in [#523](https://github.com/network-awai/awai-os/pull/523). A shipping
+candidate requires a kit revision with the landed product integration. When
+a new arm64 or TV Job is defined, require the same explicit choice of apps
+mode, source and pins and record the mode before building.
 
-Checklist for a new target Job:
-
-- [ ] refuse without an apps mode (or a partial prebuilt set)
-- [ ] refuse `AWAI_WITHOUT_APPS=1` with a `user` build
-- [ ] pass the five prebuilt values (or `AWAI_WITHOUT_APPS=1`) into the container
-- [ ] print `AWAI4094_APPS` once per run and keep the mode in the record
-
-## Usage
+## Render the Job
 
 ```sh
 # dry-run (prints only); apps mode is required
@@ -88,21 +89,14 @@ DRY_RUN=1 RELEASE_TYPE=userdebug AWAI_WITHOUT_APPS=1 \
   AWAI_FEED_URL=https://feed.example/ota.json \
   bash scripts/operator/virtio-dryrun/build-inside.sh
 
-# print the Job
-DRY_RUN=1 RELEASE_TYPE=userdebug AWAI_WITHOUT_APPS=1 \
-  AWAI_VKE_NODE_POOL=awai-pc-release-012345abcdef \
+DRY_RUN=1 RELEASE_TYPE=user \
+  AWAI_VKE_NODE_POOL="$POOL" AWAI_POOL_LABEL="$RUN_LABEL" \
+  AWAI_FEED_URL="$FEED_URL" KIT_URL="$KIT_LOCATION" KIT_SHA256="$KIT_DIGEST" \
+  AWAI_APK_STAGE="$STAGE_ID" \
+  AWAI_HOME_APK_SHA256="$HOME_FILE_SHA256" AWAI_STORE_APK_SHA256="$STORE_FILE_SHA256" \
+  AWAI_HOME_EXPECTED_SIGNER_SHA256="$HOME_CERT_SHA256" \
+  AWAI_STORE_EXPECTED_SIGNER_SHA256="$STORE_CERT_SHA256" \
   bash scripts/operator/virtio-dryrun/virtio-job.sh > /tmp/job.json
-
-# approved execution (needs an owner-approved billing decision) with
-# prebuilt Home/Store and their expected signers
-BILLING_ALLOWED=1 OWNER_APPROVED=1 RELEASE_TYPE=userdebug \
-  KIT_URL=https://…/kit.tar.gz KIT_SHA256=<sha256> \
-  AWAI_HOME_APK=/apks/AwaiHome.apk AWAI_STORE_APK=/apks/AwaiStore.apk \
-  AWAI_HOME_EXPECTED_SIGNER_SHA256=<sha256> \
-  AWAI_STORE_EXPECTED_SIGNER_SHA256=<sha256> \
-  AWAI_APKSIGNER=/usr/bin/apksigner \
-  AWAI_FEED_URL=https://feed.example/ota.json \
-  bash scripts/operator/virtio-dryrun/build-inside.sh
 ```
 
 `KIT_URL`/`KIT_SHA256`: kit tarball built by
@@ -181,6 +175,65 @@ Build environment (vs ab-build.sh / ab-ota.sh / same-build):
   4092 kernel config enters via `TARGET_KERNEL_CONFIG_EXT`. No other
   picked-change record exists in the repo.
 
+## Before starting a user/prebuilt candidate
+
+- Obtain the owner’s execution and billing decision and select the approved
+  build host. Use `BILLING_ALLOWED=1` and `OWNER_APPROVED=1` only after the
+  decision. Check that the amd64 pool selector and taint match the rendered
+  Job, tools and sources are reachable, and the node can meet the 14 CPU,
+  52Gi RAM, 520Gi ephemeral-storage request and 8 h minimum deadline
+  (`AWAI_VIRTIO_DEADLINE_SECONDS`, default and minimum 28800).
+  The workspace has a 700Gi ephemeral volume limit.
+- Record the full Awai OS commit with the Home/Store product integration,
+  the kit SHA-256, and the manifest SHA-256 enforced by the script
+  (`61c11f507fa14329229c16a635890b2c6d5f2f4e5a648a77045a09f7f4194d7d`).
+  Retain the resolved manifest, pinned container and firmware revisions,
+  both APK file/signer pins, and the credential-free `AWAI_FEED_URL`.
+  Keep a rendered Job containing a private kit URL in the operator environment.
+- Confirm access to the existing private input stage and output bucket using
+  their respective Secret scopes. Use output Secret `release-artifacts-b2`
+  and a fresh `AWAI_POOL_LABEL` for
+  `awai-os-release-artifacts/awai-virtio-g2/<label>/`. G2 uploads the v1
+  unsigned target-files first to `v1/virtio-target-files-v1.zip`, preserves
+  v2 unsigned `virtio-target-files.zip` at the root, and restores its
+  output ledger. The G2 disk and test-key OTAs are evaluation outputs.
+- Arrange retention and independent readback of the selected version’s
+  unsigned target-files, original stock
+  `$SRC/out/target/product/virtio_x86_64/disk-vda.img` and matching Linux
+  host tools (`$SRC/out/host/linux-x86` or a verified tools archive) before
+  the workspace disappears. Collect the original stock disk and host tools
+  separately from the G2 upload. Record sizes, SHA-256 and build provenance.
+  See the [release artifact contract](../../../docs/otehon/pc-release-build-vke.md#preserve-and-restore-the-current-release).
+
+### Qualification after the build
+
+1. With the recorded unsigned SHA-256, run
+   [`prepare-target-files.py`](../../../android/release-signing/README.md#stage-the-unsigned-archive-before-local-signing)
+   on the build host. On the approved Mac, the owner checks the prepared
+   hash and runs the matching AOSP `sign_target_files_apks` workflow with
+   the approved APK/APEX/AVB key plan, preserving the Home/Store presigned
+   inputs. Run the public-certificate checks in the signing guide and
+   retain the signed target-files SHA-256 and signing receipt.
+2. On Linux, assemble a new disk using that signed ZIP, the same build’s
+   stock disk and host tools. Pass both recorded hashes to
+   [`make-tf-disk.sh`](../../../android/desktop/pc-ab-device/install-media.md).
+   Keep its readback log and the installation image hash.
+3. Qualify the verified candidate on a disposable x86_64 KVM/OVMF guest
+   with one virtual NVMe disk, fresh userdata, and the shipping debug policy.
+   Use [`pc-ab-device/kvm/nvme-kvm.sh`](../../../android/desktop/pc-ab-device/kvm/nvme-kvm.sh)
+   as a QEMU reference. Its `prepare` path enables insecure ADB for
+   userdebug evidence. Keep the shipping image’s debug policy intact.
+   Record first setup, Home as the default after setup and reboot, Store launch,
+   installed APK provenance and shipping debug lockdown. For A/B acceptance,
+   follow the [target-files and OTA verification commands](../../../android/desktop/pc-ab-device/README.md#updater-feed-in-the-release-build-awai-3064)
+   and [OTA reference sequence](../../../android/desktop/ota-reference-check/README.md)
+   for full, incremental, refusal and recovery with the exact signed input
+   versions. Record VM and physical acceptance separately.
+
+Live input and output storage access, approved Job execution, owner signing,
+media assembly, VM acceptance and physical acceptance of this candidate remain
+unmeasured.
+
 ## Tests
 
 ```sh
@@ -194,7 +247,12 @@ kit stubs, plus a fake `build/envsetup.sh` defining `breakfast`/`m` as
 shell functions) record argv to a log; both modes are driven and the
 full ordered argv list is asserted (dry-run executes nothing; approved
 executes all) together with every refusal above, `-m default.xml`,
-`path or name` + notdefault keys, and the two OTA commands. The
+`path or name` + notdefault keys, and the two OTA commands. The staged user
+fixture checks that missing objects, wrong file SHA-256, invalid or unexpected
+signatures, additional signers and a missing Secret never reach source work.
+It also changes a staged file after download and verifies that the build
+receives the checked snapshot. The local-input fixture checks a missing verifier.
+Storage, apksigner and the build are stubbed. The
 kit end-to-end test builds a real kit with `make-kit.sh <commit>`
 (`git archive`), checks its trimmed contents, generates the approved
 Job, and runs the Job command itself from an empty directory
