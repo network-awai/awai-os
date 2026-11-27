@@ -57,7 +57,7 @@ public final class SoudanBengoshiCatalogCheck {
             else System.out.println("FAIL maxApkBytes admitted " + bad);
         }
 
-        // External-inference apps must not be listed as offline-only local-apps.json entries.
+        // Dual-ABI 64 MiB restricted-wasm-v1 apps are kept outside local-apps.json (40 MiB).
         total += 2;
         if (!Catalog.LOCAL_APPS.contains("soudan")) pass++;
         else System.out.println("FAIL soudan in LOCAL_APPS");

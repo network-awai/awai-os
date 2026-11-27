@@ -26,7 +26,9 @@ Both hosts use the existing `yataverse-bytes` Worker name plane on Cloudflare ac
 - **Two-layer header requirement before public GO**:
   1. **HTML `<meta>` (mandatory in every static HTML file)**: embed `<meta http-equiv="Content-Security-Policy" ...>` and `<meta name="referrer" content="no-referrer">`.
   2. **Dev-side edge response headers (mandatory before public GO)**: add HTTP `Content-Security-Policy`, `Referrer-Policy`, `Strict-Transport-Security`, and `Permissions-Policy` at the edge before general public release.
-- **Inference posture**: keep external inference disabled (`connect-src 'none'`) until `murakumo.cloud` non-retention confirmation is completed.
+- **Per-app inference posture**:
+  - **`Soudan`**: declares external inference endpoints (`api.murakumo.cloud`), kept disabled (`connect-src 'none'`) until `murakumo.cloud` non-retention confirmation and Legal GO are completed.
+  - **`Bengoshi`**: uses `operations: []` (**no `murakumo.cloud` inference**, per Bengoshi's Legal addendum to `Dev`).
 - **Static artifact baseline**: `awai-os/apps/soudan` currently exists as static-buildable `trusted-page-v1` (`kotoba` `889239dc`); `bengoshi` has no static Web artifact yet.
 - **Name-plane limits**:
   - 40-block / ~10 MiB per-file cap.
@@ -61,7 +63,7 @@ Both hosts use the existing `yataverse-bytes` Worker name plane on Cloudflare ac
 All new/public builds of `Soudan` and `Bengoshi` in their owning app repositories must satisfy:
 
 - **Runtime & consent pin**: `restricted-wasm-v1` pinning `kotoba-lang/kotoba` `main` (`d6ff50e6`+) `kotoba-client-runtime.js` and `kotoba-client-consent.css` via `vendor/PINS.json` — no custom validator or custom consent modal.
-- **Canonical descriptor & consent**: `app-descriptor.json` in canonical `{origin, routes: [...]}` form with `consent: "each-operation"` and `special-care` disclosure confirmed with `Legal`.
+- **Canonical descriptor & consent**: `app-descriptor.json` in canonical `{origin, routes: [...]}` form with `consent: "each-operation"` and `special-care` disclosure confirmed with `Legal` (`Soudan` declares `api.murakumo.cloud` gated on non-retention confirmation & Legal GO; `Bengoshi` declares `operations: []` with no `murakumo.cloud` inference).
 - **Form submission discipline**: use `bindForm` (`type="button" data-submit`); never use native `submit` or `requestSubmit()`.
 - **Repository & release hygiene**:
   - `blueprint.edn` (single classification key, SPDX license identifier)
@@ -82,7 +84,7 @@ Awai OS distributes apps through the Itonami Store catalog (`AWAI-4094` / `awai-
 - **Catalog registration**:
   - `network.itonami.soudan` and `network.itonami.bengoshi` are explicitly registered in [Catalog.java](../../android/shared/src/network/awai/platform/Catalog.java) (`assetFor`, `onlineFileFor`, `maxApkBytes = 64 * 1024 * 1024`) and verified by [SoudanBengoshiCatalogCheck.java](../../android/test/SoudanBengoshiCatalogCheck.java).
   - `android/build.py:store_query_packages()` automatically includes both package IDs in the Store `<queries>` manifest (verified by [store-queries.py](../../android/tests/store-queries.py)) without `QUERY_ALL_PACKAGES`.
-  - Both apps use external inference endpoints (`restricted-wasm-v1` + signed `descriptor.json`) and must **not** be added to `android/local-apps.json` (`Catalog.LOCAL_APPS`).
+  - Both apps are dual-ABI (`arm64-v8a` + `x86_64`) `restricted-wasm-v1` apps kept outside `android/local-apps.json` (`Catalog.LOCAL_APPS`, 40 MiB) with a 64 MiB budget: `Soudan` declares external inference endpoints (`api.murakumo.cloud`, gated on non-retention confirmation & Legal GO), while `Bengoshi` uses `operations: []` (no `murakumo.cloud` inference).
 - **Exact Android / Awai OS build requirements**:
   - **Tauri pin**: Tauri `3.0.0-alpha.6` + pinned `tauri-runtime-wry`.
   - **SDK & ABI**: `minSdkVersion` API 33, dual-ABI (`arm64-v8a` + `x86_64`), fitting the 64 MiB Store budget.
