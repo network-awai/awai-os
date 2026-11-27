@@ -457,6 +457,13 @@ export function createSemanticStore({
         contact: sourceDraft.recipient.contact.trim(),
       };
       const addressed = addressedMemo(memo.text, to, t);
+      if (/data:image\//i.test(addressed)) {
+        if (params?.dryRun !== true) {
+          recordAudit({op, actor: normActor, outcome: 'blocked', targetKind: 'memo', gateName: 'image-bytes-forbidden'});
+        }
+        uiState = 'governor.blocked';
+        return {ok: false, sent: false, state: uiState, gateName: 'image-bytes-forbidden', disclaimer: t('disclaimer.fixed')};
+      }
       const mode = params?.mode ?? (route === 'android-share-sheet' ? 'android-share' : 'save-txt');
       const preview = {
         dryRun: true,
@@ -605,6 +612,15 @@ export function createSemanticStore({
       const userPrompt = typeof params?.prompt === 'string' && params.prompt.trim()
         ? params.prompt
         : [sourceDraft.summary ?? '', sourceDraft.wish ?? '', ...(sourceDraft.timeline ?? []).map(e => e.event)].join('\n');
+      if (/data:image\//i.test(userPrompt) || /data:image\//i.test(JSON.stringify(sourceDraft))) {
+        const prevState = cloneState(state);
+        const prevSeq = seq;
+        recordAudit({op, actor: normActor, outcome: 'blocked', targetKind: 'inference', gateName: 'image-bytes-forbidden'});
+        uiState = 'governor.blocked';
+        lastGuard = {blocked: true, state: uiState, gateName: 'image-bytes-forbidden'};
+        await persistOrRollback(prevState, prevSeq);
+        return {ok: false, state: uiState, gateName: 'image-bytes-forbidden', disclaimer: t('disclaimer.fixed')};
+      }
       const guard = evaluateGovernorGuard(userPrompt, t);
       if (guard.blocked) {
         const prevState = cloneState(state);
@@ -690,7 +706,9 @@ export function createSemanticStore({
           },
         });
         const status = typeof resp?.status === 'number' ? resp.status : 200;
-        const rawBody = typeof resp?.text === 'function' ? await resp.text() : resp;
+        const rawBody = typeof resp?.text === 'function'
+          ? await resp.text()
+          : (typeof resp?.content === 'string' ? resp.content : resp);
         if (isCapacityOrRateLimitError(status, typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody ?? ''))) {
           const local = {...organizeLocally(sourceDraft, t), targetDraftId: originDraftId};
           const prevState = cloneState(state);

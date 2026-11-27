@@ -57,6 +57,7 @@ const INFERENCE_DISCLOSURE_FACTS = Object.freeze({
     countryName: 'アメリカ合衆国（米国法人）',
     data: Object.freeze(['匿名化後の相談メモ下書きテキスト（画像バイト除く）']),
     purpose: '相談前メモの事実・経緯・質問項目を自己整理する（法的助言ではありません）',
+    withdrawal: '設定',
     specialCareKinds: Object.freeze(['誤入力され得る要配慮個人情報（病歴・犯罪歴等。入力しないでください／Legal確認中）']),
     note: '通常APIは学習・評価不使用。ただし処理国の固定やサービス全体での非保持は保証されません。実名・連絡先・要配慮個人情報は「Aさん」等に置換してください（Legal確認中）。',
   }),
@@ -65,6 +66,7 @@ const INFERENCE_DISCLOSURE_FACTS = Object.freeze({
     countryName: 'United States',
     data: Object.freeze(['anonymized consultation draft text (no image bytes)']),
     purpose: 'Organize consultation memo facts and questions (not legal advice)',
+    withdrawal: 'Settings',
     specialCareKinds: Object.freeze(['sensitive data if entered (do not enter; Legal O8 pending)']),
     note: 'Not used for model training/evaluation; fixed country-of-processing and service-wide non-retention are not guaranteed. Anonymize names/contacts/sensitive data first (Legal O8 pending).',
   }),
@@ -133,6 +135,7 @@ function inferenceOperation(locale = 'ja') {
       'special-care-kinds': facts.specialCareKinds,
       purpose: facts.purpose,
       frequency: 'one-time',
+      withdrawal: facts.withdrawal,
       note: facts.note,
     }),
   });
@@ -277,6 +280,49 @@ export function validateHostLocalContract(descriptor) {
     }
   }
 
+  return {ok: problems.length === 0, problems};
+}
+
+// Zone B-25 Z25-08 / Z25-33 disclosure contract validator: enforces that EVERY declared
+// operation carries each-operation consent, one-time frequency, non-empty disclosure.withdrawal,
+// and special-care: true with non-empty special-care-kinds.
+export function validateOperationDisclosures(descriptor) {
+  const problems = [];
+  if (!descriptor || typeof descriptor !== 'object' || Array.isArray(descriptor)) {
+    return {ok: false, problems: ['descriptor.invalid']};
+  }
+  if (!Array.isArray(descriptor.operations) || descriptor.operations.length === 0) {
+    return {ok: false, problems: ['operations.missing']};
+  }
+  descriptor.operations.forEach((op, idx) => {
+    const label = typeof op?.capability === 'string' && op.capability ? op.capability : `op[${idx}]`;
+    if (!op || typeof op !== 'object' || Array.isArray(op)) {
+      problems.push(`operation.invalid:${label}`);
+      return;
+    }
+    if (op.consent !== 'each-operation') {
+      problems.push(`operation.consent.not-each-operation:${label}`);
+    }
+    const disc = op.disclosure;
+    if (!disc || typeof disc !== 'object' || Array.isArray(disc)) {
+      problems.push(`operation.disclosure.missing:${label}`);
+      return;
+    }
+    if (disc.frequency !== 'one-time') {
+      problems.push(`operation.disclosure.frequency.not-one-time:${label}`);
+    }
+    if (typeof disc.withdrawal !== 'string' || disc.withdrawal.trim().length === 0) {
+      problems.push(`operation.disclosure.withdrawal.missing:${label}`);
+    }
+    if (disc['special-care'] !== true) {
+      problems.push(`operation.disclosure.special-care.required:${label}`);
+    }
+    if (!Array.isArray(disc['special-care-kinds'])
+      || disc['special-care-kinds'].length === 0
+      || !disc['special-care-kinds'].every(k => typeof k === 'string' && k.trim().length > 0)) {
+      problems.push(`operation.disclosure.special-care-kinds.missing:${label}`);
+    }
+  });
   return {ok: problems.length === 0, problems};
 }
 

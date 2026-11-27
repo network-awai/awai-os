@@ -1,6 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import {
   CATEGORIES, JURISDICTIONS, LIMITS, emptyDraft, newEvidence, sha256Hex, formatEvidence,
   draftProblems, recipientProblems, assembleMemo, addressedMemo, restoreDraft,
@@ -8,8 +10,9 @@ import {
 import {MESSAGES, translator} from '../src/messages.js';
 import {
   runtimeDescriptor, REQUESTED_CAPABILITIES, SEND_SELECTOR, SEND_OPERATION, INFERENCE_OPERATION,
-  validateHostLocalContract, validateHtmlSurface, validateCspPolicy,
+  validateHostLocalContract, validateOperationDisclosures, validateHtmlSurface, validateCspPolicy,
 } from '../src/operations.js';
+import {findProvisionalReleaseMarkers} from '../scripts/check-public.mjs';
 import {
   clientRuntimeProblems, clientRuntimeConnectSrc, effectiveClientOperations,
 } from '../../../otehon/shell/vendor/kotoba-client-runtime.js';
@@ -364,4 +367,85 @@ test('Zone B-25 Z25-06: validateHtmlSurface rejects remote script URLs (https://
   assert.equal(badGuestRes.ok, false);
   assert.ok(badGuestRes.problems.some(p => p.includes('guest.external-script-src')));
   assert.ok(badGuestRes.problems.some(p => p.includes('remote-script-src:https://example.com/x.js')));
+});
+
+test('Zone B-25 Z25-08: every operation in app-descriptor.json declares withdrawal, special-care, and special-care-kinds; missing withdrawal fails validation', () => {
+  const checkedIn = JSON.parse(readFileSync(new URL('../app-descriptor.json', import.meta.url), 'utf8'));
+  assert.deepEqual(validateOperationDisclosures(checkedIn), {ok: true, problems: []});
+  assert.deepEqual(validateOperationDisclosures(runtimeDescriptor('ja')), {ok: true, problems: []});
+  assert.deepEqual(validateOperationDisclosures(runtimeDescriptor('en')), {ok: true, problems: []});
+
+  // Verify both operations carry non-empty withdrawal, special-care: true, and non-empty special-care-kinds in ja and en.
+  for (const [locale, expectedWithdrawal] of [['ja', '設定'], ['en', 'Settings']]) {
+    const desc = runtimeDescriptor(locale);
+    assert.equal(desc.operations.length, 2);
+    for (const op of desc.operations) {
+      assert.equal(op.disclosure.withdrawal, expectedWithdrawal, `${locale} ${op.capability} withdrawal`);
+      assert.equal(op.disclosure['special-care'], true, `${locale} ${op.capability} special-care`);
+      assert.ok(Array.isArray(op.disclosure['special-care-kinds']) && op.disclosure['special-care-kinds'].length > 0);
+    }
+  }
+
+  // Negative control 1: operation missing withdrawal fails validation
+  const noWithdrawal = structuredClone(checkedIn);
+  delete noWithdrawal.operations[1].disclosure.withdrawal;
+  const noWRes = validateOperationDisclosures(noWithdrawal);
+  assert.equal(noWRes.ok, false, 'must reject operation missing disclosure.withdrawal');
+  assert.ok(noWRes.problems.includes('operation.disclosure.withdrawal.missing:itonami.soudan.inference'));
+
+  // Negative control 2: blank/whitespace withdrawal fails validation
+  const blankWithdrawal = structuredClone(checkedIn);
+  blankWithdrawal.operations[0].disclosure.withdrawal = '   ';
+  const blankWRes = validateOperationDisclosures(blankWithdrawal);
+  assert.equal(blankWRes.ok, false);
+  assert.ok(blankWRes.problems.includes('operation.disclosure.withdrawal.missing:itonami.soudan.send'));
+
+  // Negative control 3: missing special-care or empty special-care-kinds fails validation
+  const noSpecialCare = structuredClone(checkedIn);
+  noSpecialCare.operations[1].disclosure['special-care'] = false;
+  noSpecialCare.operations[1].disclosure['special-care-kinds'] = [];
+  const scRes = validateOperationDisclosures(noSpecialCare);
+  assert.equal(scRes.ok, false);
+  assert.ok(scRes.problems.includes('operation.disclosure.special-care.required:itonami.soudan.inference'));
+  assert.ok(scRes.problems.includes('operation.disclosure.special-care-kinds.missing:itonami.soudan.inference'));
+});
+
+test('Zone B-25 Z25-08 / Z25-37: check-public.mjs --release and SOUDAN_RELEASE_GATE=1 reject provisional pre-approval markers while default passes', () => {
+  // Pure helper checks
+  assert.deepEqual(findProvisionalReleaseMarkers('正式確定済みの開示文言。法的助言ではなく弁護士に代わるものではありません。', 'clean.html'), []);
+  for (const sample of [
+    '要配慮個人情報（Legal確認中）',
+    '送信前に確認してください（Legal O8文言確認中）',
+    '[Legal item #224 Blocker 1 確定待ち / Pending formal operator entity confirmation]',
+    'murakumo.cloud organization slot (fail-closed pending pre-launch gates)',
+  ]) {
+    const hits = findProvisionalReleaseMarkers(sample, 'sample');
+    assert.ok(hits.length > 0, `must flag provisional marker: ${sample}`);
+  }
+
+  // CLI checks against current pre-launch repository
+  const appDir = fileURLToPath(new URL('../', import.meta.url));
+  const defaultRun = spawnSync('node', ['scripts/check-public.mjs'], {
+    cwd: appDir,
+    encoding: 'utf8',
+    env: {...process.env, SOUDAN_RELEASE_GATE: ''},
+  });
+  assert.equal(defaultRun.status, 0, `default check-public.mjs must pass: ${defaultRun.stderr}`);
+
+  const releaseFlagRun = spawnSync('node', ['scripts/check-public.mjs', '--release'], {
+    cwd: appDir,
+    encoding: 'utf8',
+    env: {...process.env, SOUDAN_RELEASE_GATE: ''},
+  });
+  assert.notEqual(releaseFlagRun.status, 0, 'check-public.mjs --release must fail while provisional markers remain');
+  assert.match(releaseFlagRun.stderr, /Z25-08\/Z25-37 --release gate/);
+  assert.match(releaseFlagRun.stderr, /Legal確認中/);
+
+  const releaseEnvRun = spawnSync('node', ['scripts/check-public.mjs'], {
+    cwd: appDir,
+    encoding: 'utf8',
+    env: {...process.env, SOUDAN_RELEASE_GATE: '1'},
+  });
+  assert.notEqual(releaseEnvRun.status, 0, 'SOUDAN_RELEASE_GATE=1 must fail while provisional markers remain');
+  assert.match(releaseEnvRun.stderr, /Z25-08\/Z25-37 --release gate/);
 });

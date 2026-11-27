@@ -110,10 +110,10 @@ for (const [input, output] of [['kotoba-client-runtime.js', 'runtime.js'], ['kot
   await writeFile(resolve(out, output), bytes);
 }
 
-// Verify checked-in app-descriptor.json matches runtimeDescriptor('ja'), passes Z25-06 host-local contract, and validates cleanly.
+// Verify checked-in app-descriptor.json matches runtimeDescriptor('ja'), passes Z25-06 host-local & Z25-08 disclosure contracts, and validates cleanly.
 const {
   runtimeDescriptor, REQUESTED_CAPABILITIES, SEND_SELECTOR, INFERENCE_SELECTOR,
-  validateHostLocalContract, validateHtmlSurface, validateCspPolicy,
+  validateHostLocalContract, validateOperationDisclosures, validateHtmlSurface, validateCspPolicy,
 } = await import('../src/operations.js');
 const {clientRuntimeProblems, clientRuntimeConnectSrc} = await import('../../../otehon/shell/vendor/kotoba-client-runtime.js');
 const descriptor = runtimeDescriptor('ja');
@@ -124,6 +124,10 @@ if (JSON.stringify(checkedIn) !== JSON.stringify(descriptor)) {
 const hostLocalCheck = validateHostLocalContract(checkedIn);
 if (!hostLocalCheck.ok) {
   throw Error('Z25-06 host-local contract violation: ' + JSON.stringify(hostLocalCheck.problems));
+}
+const disclosureCheck = validateOperationDisclosures(checkedIn);
+if (!disclosureCheck.ok) {
+  throw Error('Z25-08 operation disclosure contract violation: ' + JSON.stringify(disclosureCheck.problems));
 }
 const appOrigins = ['https://soudan.itonami.app', 'http://tauri.localhost', 'https://tauri.localhost'];
 const problems = clientRuntimeProblems(descriptor, [...REQUESTED_CAPABILITIES], appOrigins);
