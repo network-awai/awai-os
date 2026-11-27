@@ -1685,6 +1685,8 @@ test('In-flight typing regression (Fix 2 — #/lawyer/profile and #/lawyer/onboa
     const storage = createMemoryStorage();
     const baseLocks = createQueuingLocks();
     let releasePendingWrite = null;
+    let notifyWriteEntered = null;
+    const pendingWriteEntered = new Promise(resolve => { notifyWriteEntered = resolve; });
     let holdNextWrite = true;
 
     const deferredLocks = {
@@ -1692,7 +1694,10 @@ test('In-flight typing regression (Fix 2 — #/lawyer/profile and #/lawyer/onboa
         return baseLocks.request(name, async () => {
           if (holdNextWrite) {
             holdNextWrite = false;
-            await new Promise(resolve => { releasePendingWrite = resolve; });
+            await new Promise(resolve => {
+              releasePendingWrite = resolve;
+              notifyWriteEntered();
+            });
           }
           return fn();
         });
@@ -1721,7 +1726,7 @@ test('In-flight typing regression (Fix 2 — #/lawyer/profile and #/lawyer/onboa
       phoneIn.value = '03-0000-1111';
 
       const firstSave = submitBtn.dispatch('click');
-      await flushMicrotasks();
+      await pendingWriteEntered;
       assert.ok(releasePendingWrite, 'Onboarding save must be pending');
 
       // User modifies phone while save is in flight
@@ -1750,6 +1755,85 @@ test('In-flight typing regression (Fix 2 — #/lawyer/profile and #/lawyer/onboa
     } finally {
       restore();
     }
+  }
+});
+
+test('Cross-tab TOCTOU regression (UI #/lawyer/inquiry/detail): Tab B invalidating conflict status or adding counterparty to conflictLedger blocks Tab A reveal & accept on rebase and purges revealed plaintext from DOM', async () => {
+  const storage = createMemoryStorage();
+  const locks = createQueuingLocks();
+
+  const { dom, restore } = await mountBuiltApp({
+    initialHash: '#/lawyer/inbox',
+    storage,
+    locks,
+  });
+
+  try {
+    const view = dom.document.getElementById('view');
+    const seedBtn = view.querySelectorAll('button').find(b => b.textContent.includes('架空QA暗号化問い合わせ'));
+    await seedBtn.dispatch('click');
+    await flushMicrotasks();
+
+    // Navigate to clear inquiry, run check, confirm clear, and reveal body in Tab A
+    dom.location.hash = '#/lawyer/inquiry/inq-qa-clear-001';
+    await flushMicrotasks();
+
+    const runBtn = view.querySelectorAll('button').find(b => b.textContent.includes('利益相反チェックを実行'));
+    await runBtn.dispatch('click');
+    await flushMicrotasks();
+
+    const confirmBox = view.querySelector('input[type="checkbox"]');
+    confirmBox.checked = true;
+    await confirmBox.dispatch('change');
+    await flushMicrotasks();
+
+    const revealBtn = view.querySelectorAll('button').find(b => b.textContent.includes('復号・閲覧'));
+    assert.equal(revealBtn.disabled, false);
+    await revealBtn.dispatch('click');
+    await flushMicrotasks();
+
+    assert.match(view.textContent, /未払い残業代/, 'Body should be visible after confirmed clear check');
+
+    // Simulate Tab B updating shared storage to add the counterparty (無関係建設株式会社) to conflictLedger
+    const latestOnDisk = JSON.parse(storage.getItem(STORAGE_KEY));
+    const tabBData = structuredClone(latestOnDisk.data);
+    tabBData.conflictLedger.push({
+      id: 'ledger-tab-b-conflict',
+      partyName: '無関係建設株式会社',
+      role: 'existing_client',
+      matterRef: 'TabB-CONFLICT',
+    });
+    storage.setItem(STORAGE_KEY, JSON.stringify({
+      schema: 'awai.shell.host.v1',
+      revision: latestOnDisk.revision + 1,
+      data: tabBData,
+    }));
+
+    // Tab A clicks Accept (still holding stale pre-conflict view) -> MUST HARD-BLOCK on rebase, NOT commit accept, and purge plaintext body from DOM!
+    const acceptBtn = view.querySelectorAll('button').find(b => b.textContent.includes('受任') || b.textContent.includes('Accept'));
+    assert.ok(acceptBtn, 'Accept button must exist before cross-tab conflict is discovered');
+    await acceptBtn.dispatch('click');
+    await flushMicrotasks();
+
+    const afterDisk = JSON.parse(storage.getItem(STORAGE_KEY));
+    const diskRec = afterDisk.data.intakeRecords.find(r => r.inquiryId === 'inq-qa-clear-001');
+    assert.equal(diskRec.decision, null, 'Persisted decision must NOT be committed as accept');
+    assert.equal(
+      afterDisk.data.auditLog.some(e => e.operation === 'intake.decide' && e.outcome === 'accept'),
+      false,
+      'No false accept audit entry may be persisted',
+    );
+    assert.ok(
+      afterDisk.data.auditLog.some(e => e.operation === 'intake.decide' && e.outcome === 'blocked'),
+      'Blocked audit entry must be persisted after rebase gate failure',
+    );
+    assert.equal(verifyAuditChain(afterDisk.data.auditLog).ok, true);
+
+    // Previously revealed plaintext body MUST be purged from DOM and replaced by conflict hard-block state
+    assert.ok(!view.textContent.includes('未払い残業代'), 'Revealed plaintext body must be purged from DOM once conflict gate fails');
+    assert.match(dom.document.getElementById('status').textContent, /conflict_gate\.conflict_detected_hard_block/);
+  } finally {
+    restore();
   }
 });
 

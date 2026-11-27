@@ -192,7 +192,12 @@ export const TOOL_SCHEMAS = Object.freeze([
 ]);
 
 export function createMcpAdapter(engineOptions = {}) {
-  const engine = engineOptions.execute ? engineOptions : createOperationsEngine(engineOptions);
+  const engine = engineOptions.execute
+    ? engineOptions
+    : createOperationsEngine({
+        serializeWrites: engineOptions.enqueueWrite ? undefined : true,
+        ...engineOptions,
+      });
 
   async function handleJsonRpc(request, { actor = 'mcp' } = {}) {
     if (!request || request.jsonrpc !== '2.0' || typeof request.method !== 'string') {

@@ -983,7 +983,7 @@ export function runLocalConflictCheck(header, ledgerEntries = [], { checkedAt = 
   });
 }
 
-export function canRevealInquiryBody(intakeRecord) {
+export function canRevealInquiryBody(intakeRecord, conflictLedger = null) {
   const cc = intakeRecord?.conflictCheck;
   if (!cc || typeof cc !== 'object') {
     return { allowed: false, reason: 'conflict_gate.check_required' };
@@ -994,8 +994,28 @@ export function canRevealInquiryBody(intakeRecord) {
   if (cc.result !== 'clear') {
     return { allowed: false, reason: 'conflict_gate.invalid_status' };
   }
-  if (cc.confirmedByLawyer !== true || !cc.receiptDigest) {
+  if (cc.confirmedByLawyer !== true || typeof cc.receiptDigest !== 'string' || !cc.receiptDigest.trim()) {
     return { allowed: false, reason: 'conflict_gate.lawyer_confirmation_required' };
+  }
+  let header;
+  try {
+    header = extractConflictHeader(intakeRecord);
+  } catch {
+    return { allowed: false, reason: 'conflict_gate.invalid_status' };
+  }
+  if (cc.inquiryId && header.inquiryId && cc.inquiryId !== header.inquiryId) {
+    return { allowed: false, reason: 'conflict_gate.invalid_status' };
+  }
+  if (Array.isArray(conflictLedger)) {
+    const liveCheck = runLocalConflictCheck(header, conflictLedger, { checkedAt: cc.checkedAt || '' });
+    if (liveCheck.result !== 'clear') {
+      return {
+        allowed: false,
+        reason: 'conflict_gate.conflict_detected_hard_block',
+        matches: liveCheck.matches,
+        ledgerConflict: true,
+      };
+    }
   }
   return { allowed: true, reason: 'conflict_gate.cleared_and_confirmed' };
 }

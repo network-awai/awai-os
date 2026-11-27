@@ -103,11 +103,11 @@ export function createOperationsEngine({
   let committedRevision = 0;
   let committedVersion = 0;
 
-  function runWrite(fn) {
+  function runWrite(fn, { forceSerialize = false } = {}) {
     if (typeof enqueueWrite === 'function') {
       return enqueueWrite(fn);
     }
-    if (serializeWrites) {
+    if (serializeWrites || forceSerialize) {
       const next = internalWriteQueue.then(fn, fn);
       internalWriteQueue = next.then(() => {}, () => {});
       return next;
@@ -299,10 +299,11 @@ export function createOperationsEngine({
 
       case 'contact.format_manual': {
         return runWrite(async () => {
+          const opNowIso = now();
           const candidate = structuredClone(state);
           const lawyer = findLawyer(params.lawyerId ?? params.id, candidate);
           if (!lawyer) throw Object.assign(new Error('lawyer-not-found'), { code: 'lawyer-not-found' });
-          const text = formatManualContactText(lawyer, { nowIso });
+          const text = formatManualContactText(lawyer, { nowIso: opNowIso });
           auditOn(candidate, actor, 'contact.format_manual', 'ok', 'Formatted 7-line Method A manual contact text locally', {
             lawyerId: lawyer.id,
             method: 'method_a_direct',
@@ -318,7 +319,7 @@ export function createOperationsEngine({
             mailto: lawyer.email ? `mailto:${lawyer.email}` : '',
             tel: lawyer.phone ? `tel:${lawyer.phone}` : '',
           };
-        });
+        }, { forceSerialize: true });
       }
 
       case 'inquiry.import_memo': {
@@ -361,71 +362,79 @@ export function createOperationsEngine({
             const candidate = structuredClone(state);
             auditOn(candidate, actor, 'inquiry.send', 'blocked', 'Server relay disabled: Method A direct contact only');
             await commitCandidate(candidate, { throwOnFailure: false });
-          });
+          }, { forceSerialize: true });
           throw Object.assign(new Error('relay-disabled-method-a-only'), { code: 'relay-disabled-method-a-only' });
         }
 
-        const draft = params.draft ?? state.draft;
-        const problems = validateInquiryDraft(draft);
-        if (problems.length) {
-          throw Object.assign(new Error('draft-invalid'), { code: 'draft-invalid', problems });
-        }
-        const lawyer = findLawyer(draft.lawyerId);
-        if (!lawyer) throw Object.assign(new Error('lawyer-not-found'), { code: 'lawyer-not-found' });
-
-        // O4 verification & HARD hold gate
-        const demoMode = Boolean(params.syntheticDemoMode ?? state.settings.syntheticDemoMode);
-        const gate = canSendToLawyer(lawyer, { syntheticDemoMode: demoMode, nowIso });
-        if (!gate.allowed) {
-          await runWrite(async () => {
-            const candidate = structuredClone(state);
-            auditOn(candidate, actor, 'inquiry.send', 'blocked', `Blocked by O4 gate: ${gate.reason}`, {
-              lawyerId: lawyer.id,
-              effectiveStatus: gate.status.effectiveStatus,
-              hardHold: gate.hardHold,
-            });
-            await commitCandidate(candidate, { throwOnFailure: false });
-          });
-          throw Object.assign(new Error(gate.reason), { code: gate.reason, hardHold: gate.hardHold, status: gate.status });
-        }
-
-        if (!lawyer.e2ee_public_key_jwk) {
-          throw Object.assign(new Error('lawyer-e2ee-key-missing'), { code: 'lawyer-e2ee-key-missing' });
-        }
-
-        // O8 E2EE encryption strictly on client (offline preview envelope; zero external transmission)
-        const inquiryId = params.inquiryId || `inq-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
-        const conflictHeader = {
-          inquiryId,
-          clientName: draft.clientName.trim(),
-          counterpartyName: draft.counterpartyName.trim(),
-          category: draft.category,
-          receivedAt: nowIso,
-        };
-        const envelope = await encryptEnvelope({
-          recipientLawyerId: lawyer.id,
-          recipientPublicKeyJwk: lawyer.e2ee_public_key_jwk,
-          conflictHeader,
-          plaintext: {
-            summary: draft.summary.trim(),
-            clientContact: draft.clientContact.trim(),
-            wish: (draft.wish || '').trim(),
-            deadline: (draft.deadline || '').trim(),
-            timeline: draft.timeline || [],
-            documents: draft.documents || [],
-            evidenceManifest: draft.evidenceManifest || [],
-          },
-        });
+        const suppliedDraft = params.draft ? structuredClone(params.draft) : null;
 
         return runWrite(async () => {
+          async function evaluateSendGate(targetState, opNowIso) {
+            const draft = suppliedDraft ? structuredClone(suppliedDraft) : targetState.draft;
+            const problems = validateInquiryDraft(draft);
+            if (problems.length) {
+              throw Object.assign(new Error('draft-invalid'), { code: 'draft-invalid', problems });
+            }
+            const lawyer = findLawyer(draft.lawyerId, targetState);
+            if (!lawyer) throw Object.assign(new Error('lawyer-not-found'), { code: 'lawyer-not-found' });
+
+            // O4 verification & HARD hold gate evaluated inside the serialized queue boundary
+            const demoMode = Boolean(params.syntheticDemoMode ?? targetState.settings.syntheticDemoMode);
+            const gate = canSendToLawyer(lawyer, { syntheticDemoMode: demoMode, nowIso: opNowIso });
+            if (!gate.allowed) {
+              auditOn(targetState, actor, 'inquiry.send', 'blocked', `Blocked by O4 gate: ${gate.reason}`, {
+                lawyerId: lawyer.id,
+                effectiveStatus: gate.status.effectiveStatus,
+                hardHold: gate.hardHold,
+              });
+              await commitCandidate(targetState, { throwOnFailure: false });
+              throw Object.assign(new Error(gate.reason), { code: gate.reason, hardHold: gate.hardHold, status: gate.status });
+            }
+            if (!lawyer.e2ee_public_key_jwk) {
+              throw Object.assign(new Error('lawyer-e2ee-key-missing'), { code: 'lawyer-e2ee-key-missing' });
+            }
+            return { draft, lawyer, gate };
+          }
+
+          const opNowIso = now();
+          const preCheckCandidate = structuredClone(state);
+          const { draft, lawyer } = await evaluateSendGate(preCheckCandidate, opNowIso);
+
+          // O8 E2EE encryption strictly on client (offline preview envelope; zero external transmission)
+          const inquiryId = params.inquiryId || `inq-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+          const conflictHeader = {
+            inquiryId,
+            clientName: draft.clientName.trim(),
+            counterpartyName: draft.counterpartyName.trim(),
+            category: draft.category,
+            receivedAt: opNowIso,
+          };
+          const envelope = await encryptEnvelope({
+            recipientLawyerId: lawyer.id,
+            recipientPublicKeyJwk: lawyer.e2ee_public_key_jwk,
+            conflictHeader,
+            plaintext: {
+              summary: draft.summary.trim(),
+              clientContact: draft.clientContact.trim(),
+              wish: (draft.wish || '').trim(),
+              deadline: (draft.deadline || '').trim(),
+              timeline: draft.timeline || [],
+              documents: draft.documents || [],
+              evidenceManifest: draft.evidenceManifest || [],
+            },
+          });
+
+          // Re-verify O4 gate against latest committed state after async encryption
+          const commitNowIso = now();
           const candidate = structuredClone(state);
+          const { lawyer: latestLawyer, gate: latestGate } = await evaluateSendGate(candidate, commitNowIso);
           const record = {
             inquiryId,
-            lawyerId: lawyer.id,
-            lawyerName: lawyer.name,
-            barAssociation: lawyer.bar_association,
-            verificationStatus: gate.status.effectiveStatus,
-            sentAt: nowIso,
+            lawyerId: latestLawyer.id,
+            lawyerName: latestLawyer.name,
+            barAssociation: latestLawyer.bar_association,
+            verificationStatus: latestGate.status.effectiveStatus,
+            sentAt: commitNowIso,
             dryRun: true,
             serverRelayUsed: false,
             relayStatus: 'offline_local_preview_only',
@@ -437,13 +446,21 @@ export function createOperationsEngine({
           candidate.sentInquiries = [record, ...candidate.sentInquiries];
           auditOn(candidate, actor, 'inquiry.send', 'ok', 'Created offline local E2EE preview envelope (0 bytes external)', {
             inquiryId,
-            lawyerId: lawyer.id,
+            lawyerId: latestLawyer.id,
             serverRelayUsed: false,
             aadSha256: envelope.aadSha256,
           });
-          await commitCandidate(candidate);
+          try {
+            await commitCandidate(candidate);
+          } catch (err) {
+            if (err?.code === 'storage-persist-failed' && err.causeCode === 'state-conflict' && err.persistResult?.refreshedState) {
+              const rebasedCandidate = structuredClone(state);
+              await evaluateSendGate(rebasedCandidate, now());
+            }
+            throw err;
+          }
           return { record, serverRelayUsed: false };
-        });
+        }, { forceSerialize: true });
       }
 
       case 'inquiry.list': {
@@ -474,26 +491,23 @@ export function createOperationsEngine({
       }
 
       case 'lawyer.profile.update': {
-        const profileCandidate = params.profile;
-        const problems = validateLawyerRecord(profileCandidate);
-        if (problems.length) {
-          await runWrite(async () => {
-            const candidate = structuredClone(state);
+        const savedProfile = structuredClone(params.profile);
+        return runWrite(async () => {
+          const opNowIso = now();
+          const candidate = structuredClone(state);
+          const problems = validateLawyerRecord(savedProfile);
+          if (problems.length) {
             auditOn(candidate, actor, 'lawyer.profile.update', 'rejected', `Rejected by O9/O4 validator (${problems.length} problems)`, {
               codes: problems.map(p => p.code),
             });
             await commitCandidate(candidate, { throwOnFailure: false });
-          });
-          throw Object.assign(new Error('lawyer-profile-invalid'), { code: 'lawyer-profile-invalid', problems });
-        }
-        const savedProfile = structuredClone(profileCandidate);
-        return runWrite(async () => {
-          const candidate = structuredClone(state);
+            throw Object.assign(new Error('lawyer-profile-invalid'), { code: 'lawyer-profile-invalid', problems });
+          }
           candidate.lawyerProfile = structuredClone(savedProfile);
           if (!Array.isArray(candidate.lawyerEditHistory)) candidate.lawyerEditHistory = [];
           const snapHash = sha256Hex(JSON.stringify(candidate.lawyerProfile));
           candidate.lawyerEditHistory.push({
-            timestamp: nowIso,
+            timestamp: opNowIso,
             action: params.action || 'profile_update',
             lawyer_id: savedProfile.id,
             snapshot_sha256: snapHash,
@@ -505,16 +519,17 @@ export function createOperationsEngine({
           });
           await commitCandidate(candidate);
           return { savedLocally: true, profile: structuredClone(savedProfile), historyCount: candidate.lawyerEditHistory.length };
-        });
+        }, { forceSerialize: true });
       }
 
       case 'lawyer.export_art11_record': {
         return runWrite(async () => {
+          const opNowIso = now();
           const candidate = structuredClone(state);
           const target = params.profile || candidate.lawyerProfile || findLawyer(params.lawyerId, candidate) || catalog[0];
           if (!target) throw Object.assign(new Error('lawyer-not-found'), { code: 'lawyer-not-found' });
           const history = Array.isArray(params.editHistory) ? params.editHistory : (candidate.lawyerEditHistory || []);
-          const record = exportArt11Record(target, history, { nowIso });
+          const record = exportArt11Record(target, history, { nowIso: opNowIso });
           auditOn(candidate, actor, 'lawyer.export_art11_record', 'ok', 'Exported Art. 11 3-year preservation record locally', {
             lawyerId: target.id,
             retentionYears: record.retention_years,
@@ -523,35 +538,38 @@ export function createOperationsEngine({
           });
           await commitCandidate(candidate);
           return { localOnly: true, record };
-        });
+        }, { forceSerialize: true });
       }
 
       case 'intake.list': {
-        // AWAI-3235: expose ONLY minimal conflict-check headers & gate state, NEVER plaintext body!
-        const items = state.intakeRecords.map(rec => ({
-          inquiryId: rec.inquiryId,
-          receivedAt: rec.receivedAt,
-          conflictHeader: extractConflictHeader(rec),
-          conflictCheck: rec.conflictCheck,
-          revealGate: canRevealInquiryBody(rec),
-          decision: rec.decision,
-          replySentAt: rec.replySentAt,
-        }));
-        return { items, localOnly: true, serverRelayUsed: false };
+        return runWrite(async () => {
+          // AWAI-3235: expose ONLY minimal conflict-check headers & gate state, NEVER plaintext body!
+          const items = state.intakeRecords.map(rec => ({
+            inquiryId: rec.inquiryId,
+            receivedAt: rec.receivedAt,
+            conflictHeader: extractConflictHeader(rec),
+            conflictCheck: rec.conflictCheck,
+            revealGate: canRevealInquiryBody(rec, state.conflictLedger),
+            decision: rec.decision,
+            replySentAt: rec.replySentAt,
+          }));
+          return { items, localOnly: true, serverRelayUsed: false };
+        }, { forceSerialize: true });
       }
 
       case 'intake.conflict_check': {
         return runWrite(async () => {
+          const opNowIso = now();
           const candidate = structuredClone(state);
           const rec = candidate.intakeRecords.find(r => r.inquiryId === params.inquiryId);
           if (!rec) throw Object.assign(new Error('intake-not-found'), { code: 'intake-not-found' });
           const header = extractConflictHeader(rec);
-          const check = runLocalConflictCheck(header, candidate.conflictLedger, { checkedAt: nowIso });
+          const check = runLocalConflictCheck(header, candidate.conflictLedger, { checkedAt: opNowIso });
           const confirmed = Boolean(params.confirmClear === true && check.result === 'clear');
           rec.conflictCheck = Object.freeze({
             ...check,
             confirmedByLawyer: confirmed,
-            confirmedAt: confirmed ? nowIso : null,
+            confirmedAt: confirmed ? opNowIso : null,
           });
           auditOn(candidate, actor, 'intake.conflict_check', check.result, `Conflict check ${check.result} (confirmed=${confirmed})`, {
             inquiryId: rec.inquiryId,
@@ -564,9 +582,9 @@ export function createOperationsEngine({
             inquiryId: rec.inquiryId,
             conflictHeader: header,
             conflictCheck: rec.conflictCheck,
-            revealGate: canRevealInquiryBody(rec),
+            revealGate: canRevealInquiryBody(rec, candidate.conflictLedger),
           };
-        });
+        }, { forceSerialize: true });
       }
 
       case 'intake.decide': {
@@ -575,82 +593,115 @@ export function createOperationsEngine({
             const candidate = structuredClone(state);
             auditOn(candidate, actor, 'intake.decide', 'rejected', 'Firm-to-firm forwarding is prohibited (O8)');
             await commitCandidate(candidate, { throwOnFailure: false });
-          });
+          }, { forceSerialize: true });
           throw Object.assign(new Error('o8.firm_to_firm_forwarding_prohibited'), { code: 'o8.firm_to_firm_forwarding_prohibited' });
         }
 
-        const existingRec = state.intakeRecords.find(r => r.inquiryId === params.inquiryId);
-        if (!existingRec) throw Object.assign(new Error('intake-not-found'), { code: 'intake-not-found' });
-
-        // AWAI-3235 HARD gate: block body reveal/decrypt or acceptance if conflict check is not cleared & confirmed
         const action = params.action || 'reveal';
-        if (action === 'decline_conflict') {
-          return runWrite(async () => {
+        if (!['reveal', 'accept', 'decline', 'decline_conflict'].includes(action)) {
+          throw Object.assign(new Error('invalid-intake-action'), { code: 'invalid-intake-action' });
+        }
+
+        const replyText = typeof params.replyText === 'string' ? params.replyText.trim() : '';
+
+        // AWAI-3235 HARD gate: check-and-act inside the EXACT SAME serialized queue boundary
+        // (including re-evaluation against the latest conflictLedger and any state-conflict rebase).
+        return runWrite(async () => {
+          async function enforceConflictGate(targetState) {
+            const rec = targetState.intakeRecords.find(r => r.inquiryId === params.inquiryId);
+            if (!rec) throw Object.assign(new Error('intake-not-found'), { code: 'intake-not-found' });
+
+            const gate = canRevealInquiryBody(rec, targetState.conflictLedger);
+            if (!gate.allowed) {
+              auditOn(targetState, actor, 'intake.decide', 'blocked', `Blocked by conflict-check HARD gate: ${gate.reason}`, {
+                inquiryId: rec.inquiryId,
+                action,
+                reason: gate.reason,
+                ledgerConflict: Boolean(gate.ledgerConflict),
+              });
+              await commitCandidate(targetState, { throwOnFailure: false });
+              throw Object.assign(new Error(gate.reason), {
+                code: gate.reason,
+                hardGate: true,
+                blocked: true,
+                ledgerConflict: Boolean(gate.ledgerConflict),
+              });
+            }
+            return { rec, gate };
+          }
+
+          async function commitWithRebaseGateCheck(targetState) {
+            try {
+              await commitCandidate(targetState);
+            } catch (err) {
+              if (err?.code === 'storage-persist-failed' && err.causeCode === 'state-conflict' && err.persistResult?.refreshedState) {
+                // Storage changed before commit (e.g. another tab invalidated conflict status or added a
+                // conflicting counterparty to conflictLedger). Re-evaluate the HARD gate against the
+                // freshly loaded state so rebase immediately blocks rather than leaking or accepting.
+                const rebasedState = structuredClone(state);
+                await enforceConflictGate(rebasedState);
+              }
+              throw err;
+            }
+          }
+
+          const opNowIso = now();
+
+          if (action === 'decline_conflict') {
             const candidate = structuredClone(state);
             const rec = candidate.intakeRecords.find(r => r.inquiryId === params.inquiryId);
             if (!rec) throw Object.assign(new Error('intake-not-found'), { code: 'intake-not-found' });
-            rec.decision = { status: 'declined_conflict', decidedAt: nowIso, note: 'Declined due to conflict check without viewing inquiry body.' };
+            rec.decision = { status: 'declined_conflict', decidedAt: opNowIso, note: 'Declined due to conflict check without viewing inquiry body.' };
             auditOn(candidate, actor, 'intake.decide', 'declined_conflict', 'Declined inquiry at conflict gate without decrypting body', {
               inquiryId: rec.inquiryId,
             });
             await commitCandidate(candidate);
             return { inquiryId: rec.inquiryId, revealed: false, decision: rec.decision };
-          });
-        }
+          }
 
-        const gate = canRevealInquiryBody(existingRec);
-        if (!gate.allowed) {
-          await runWrite(async () => {
-            const candidate = structuredClone(state);
-            auditOn(candidate, actor, 'intake.decide', 'blocked', `Blocked by conflict-check HARD gate: ${gate.reason}`, {
-              inquiryId: existingRec.inquiryId,
+          if (action === 'reveal') {
+            const preCheckState = structuredClone(state);
+            await enforceConflictGate(preCheckState);
+
+            const privKey = params.recipientPrivateKeyJwk || (typeof getPrivateKeyJwk === 'function' ? await getPrivateKeyJwk() : null);
+            if (!privKey) throw Object.assign(new Error('lawyer-private-key-unavailable'), { code: 'lawyer-private-key-unavailable' });
+
+            // Re-validate gate against latest committed state after async key lookup and BEFORE decryption
+            const decryptCheckState = structuredClone(state);
+            const { rec: decryptRec } = await enforceConflictGate(decryptCheckState);
+
+            const decrypted = await decryptEnvelope({ envelope: decryptRec.envelope, recipientPrivateKeyJwk: privKey });
+
+            // Re-validate gate AGAIN after async decryption and BEFORE auditing/committing/returning plaintext
+            const commitState = structuredClone(state);
+            const { rec: commitRec } = await enforceConflictGate(commitState);
+            auditOn(commitState, actor, 'intake.decide', 'revealed', 'Decrypted inquiry body on device after confirmed clear conflict check', {
+              inquiryId: commitRec.inquiryId,
+              receiptDigest: commitRec.conflictCheck.receiptDigest,
             });
-            await commitCandidate(candidate, { throwOnFailure: false });
-          });
-          throw Object.assign(new Error(gate.reason), { code: gate.reason, hardGate: true });
-        }
+            await commitWithRebaseGateCheck(commitState);
+            return { inquiryId: commitRec.inquiryId, revealed: true, plaintext: decrypted, conflictCheck: commitRec.conflictCheck };
+          }
 
-        if (action === 'reveal') {
-          const privKey = params.recipientPrivateKeyJwk || (typeof getPrivateKeyJwk === 'function' ? await getPrivateKeyJwk() : null);
-          if (!privKey) throw Object.assign(new Error('lawyer-private-key-unavailable'), { code: 'lawyer-private-key-unavailable' });
-          const decrypted = await decryptEnvelope({ envelope: existingRec.envelope, recipientPrivateKeyJwk: privKey });
-          return runWrite(async () => {
-            const candidate = structuredClone(state);
-            const rec = candidate.intakeRecords.find(r => r.inquiryId === params.inquiryId);
-            if (!rec) throw Object.assign(new Error('intake-not-found'), { code: 'intake-not-found' });
-            auditOn(candidate, actor, 'intake.decide', 'revealed', 'Decrypted inquiry body on device after confirmed clear conflict check', {
-              inquiryId: rec.inquiryId,
-              receiptDigest: rec.conflictCheck.receiptDigest,
-            });
-            await commitCandidate(candidate);
-            return { inquiryId: rec.inquiryId, revealed: true, plaintext: decrypted, conflictCheck: rec.conflictCheck };
+          // action === 'accept' || action === 'decline'
+          const candidate = structuredClone(state);
+          const { rec } = await enforceConflictGate(candidate);
+          rec.decision = {
+            status: action,
+            decidedAt: opNowIso,
+            replyNote: replyText,
+            localPreviewOnly: true,
+            serverRelayUsed: false,
+          };
+          rec.replySentAt = opNowIso;
+          auditOn(candidate, actor, 'intake.decide', action, `Recorded local intake decision (${action}; zero server relay)`, {
+            inquiryId: rec.inquiryId,
+            receiptDigest: rec.conflictCheck.receiptDigest,
+            serverRelayUsed: false,
           });
-        }
-
-        if (action === 'accept' || action === 'decline') {
-          const replyText = typeof params.replyText === 'string' ? params.replyText.trim() : '';
-          return runWrite(async () => {
-            const candidate = structuredClone(state);
-            const rec = candidate.intakeRecords.find(r => r.inquiryId === params.inquiryId);
-            if (!rec) throw Object.assign(new Error('intake-not-found'), { code: 'intake-not-found' });
-            rec.decision = {
-              status: action,
-              decidedAt: nowIso,
-              replyNote: replyText,
-              localPreviewOnly: true,
-              serverRelayUsed: false,
-            };
-            rec.replySentAt = nowIso;
-            auditOn(candidate, actor, 'intake.decide', action, `Recorded local intake decision (${action}; zero server relay)`, {
-              inquiryId: rec.inquiryId,
-              serverRelayUsed: false,
-            });
-            await commitCandidate(candidate);
-            return { inquiryId: rec.inquiryId, decision: rec.decision, serverRelayUsed: false };
-          });
-        }
-
-        throw Object.assign(new Error('invalid-intake-action'), { code: 'invalid-intake-action' });
+          await commitWithRebaseGateCheck(candidate);
+          return { inquiryId: rec.inquiryId, decision: rec.decision, serverRelayUsed: false };
+        }, { forceSerialize: true });
       }
 
       case 'audit.list': {

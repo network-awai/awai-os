@@ -130,10 +130,24 @@ function normalizeLocalState(rawData) {
   return normalized;
 }
 
+// Ephemeral device-only QA private key & revealed body cache (kept in memory only; never persisted outside session)
+let sessionLawyerKeyPair = null;
+let revealedBodies = new Map();
+
+function pruneInvalidRevealedBodies() {
+  for (const id of [...revealedBodies.keys()]) {
+    const rec = state.intakeRecords.find(r => r.inquiryId === id);
+    if (!rec || !canRevealInquiryBody(rec, state.conflictLedger).allowed) {
+      revealedBodies.delete(id);
+    }
+  }
+}
+
 function replaceInMemoryState(nextData) {
   const normalized = normalizeLocalState(nextData);
   for (const key of Object.keys(state)) delete state[key];
   Object.assign(state, normalized);
+  pruneInvalidRevealedBodies();
 }
 
 function diffStateSections(prevState, nextState) {
@@ -154,9 +168,6 @@ function valuesEqual(a, b) {
   return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 }
 
-// Ephemeral device-only QA private key (kept in memory only; never persisted outside session)
-let sessionLawyerKeyPair = null;
-let revealedBodies = new Map();
 let activeMode = 'user'; // user | lawyer | shared
 let selectedLawyerId = SYNTHETIC_CATALOG_BUNDLE.lawyers[0].id;
 let pendingComposeLawyerId = '';
@@ -2044,11 +2055,14 @@ async function renderLawyerInbox() {
   } else {
     for (const item of items) {
       const card = el('article', null, 'card');
+      const hasConflict =
+        item.conflictCheck?.result === 'conflict_detected' ||
+        item.revealGate?.reason === 'conflict_gate.conflict_detected_hard_block';
       const gateCls =
-        item.conflictCheck?.result === 'conflict_detected' ? 'badge danger' :
+        hasConflict ? 'badge danger' :
         item.revealGate.allowed ? 'badge ok' : 'badge warn';
       const gateLabel =
-        item.conflictCheck?.result === 'conflict_detected' ? '⛔ 利益相反検出 (HARD BLOCK)' :
+        hasConflict ? '⛔ 利益相反検出 (HARD BLOCK)' :
         item.revealGate.allowed ? '✓ 利益相反なし確認済み' : '🔒 未確認（本文暗号化ロック）';
       card.append(
         el('span', gateLabel, gateCls),
@@ -2118,7 +2132,8 @@ async function renderLawyerInquiryDetail(inquiryId) {
     return;
   }
   selectedInquiryId = rec.inquiryId;
-  const gate = canRevealInquiryBody(rec);
+  pruneInvalidRevealedBodies();
+  const gate = canRevealInquiryBody(rec, state.conflictLedger);
 
   const hCard = el('section', null, 'card');
   hCard.append(el('h3', t('inquiryDetail.headerTitle')));
@@ -2137,9 +2152,11 @@ async function renderLawyerInquiryDetail(inquiryId) {
   checkBtn.addEventListener('click', async () => {
     try {
       await engine.execute('intake.conflict_check', { inquiryId: rec.inquiryId, confirmClear: false }, { actor: 'ui' });
+      pruneInvalidRevealedBodies();
       clearStorageError(storageAlert);
       renderLawyerInquiryDetail(rec.inquiryId);
     } catch (err) {
+      pruneInvalidRevealedBodies();
       if (isStoragePersistError(err)) {
         showStorageError(err.persistResult || err, storageAlert);
         return;
@@ -2152,23 +2169,27 @@ async function renderLawyerInquiryDetail(inquiryId) {
   hCard.append(checkActions);
   view.append(hCard);
 
-  if (rec.conflictCheck) {
-    const cc = rec.conflictCheck;
+  if (rec.conflictCheck || gate.ledgerConflict) {
+    const cc = rec.conflictCheck || { result: 'conflict_detected', matches: gate.matches || [], receiptDigest: '—' };
+    const isConflictDetected = cc.result === 'conflict_detected' || Boolean(gate.ledgerConflict);
+    const conflictMatches = gate.ledgerConflict ? (gate.matches || []) : (cc.matches || []);
     const resCard = el('section', null, 'card');
-    if (cc.result === 'conflict_detected') {
+    if (isConflictDetected) {
       resCard.append(el('p', t('inquiryDetail.conflictDetected'), 'banner danger'));
       const ul = el('ul');
-      for (const m of cc.matches) ul.append(el('li', `一致: ${m.partyName}（${m.role} / ${m.matterRef}）`));
+      for (const m of conflictMatches) ul.append(el('li', `一致: ${m.partyName}（${m.role} / ${m.matterRef}）`));
       resCard.append(ul, el('p', `確認ダイジェスト: ${cc.receiptDigest}`, 'mono muted'));
       const decBtn = el('button', t('inquiryDetail.declineConflict'), 'danger');
       decBtn.type = 'button';
       decBtn.addEventListener('click', async () => {
         try {
           await engine.execute('intake.decide', { inquiryId: rec.inquiryId, action: 'decline_conflict' }, { actor: 'ui' });
+          pruneInvalidRevealedBodies();
           clearStorageError(storageAlert);
           say('利益相反による辞退を記録しました（本文は復号されていません）。');
           renderLawyerInquiryDetail(rec.inquiryId);
         } catch (err) {
+          pruneInvalidRevealedBodies();
           if (isStoragePersistError(err)) {
             showStorageError(err.persistResult || err, storageAlert);
             return;
@@ -2190,9 +2211,11 @@ async function renderLawyerInquiryDetail(inquiryId) {
       confirmBox.addEventListener('change', async () => {
         try {
           await engine.execute('intake.conflict_check', { inquiryId: rec.inquiryId, confirmClear: confirmBox.checked }, { actor: 'ui' });
+          pruneInvalidRevealedBodies();
           clearStorageError(storageAlert);
           renderLawyerInquiryDetail(rec.inquiryId);
         } catch (err) {
+          pruneInvalidRevealedBodies();
           confirmBox.checked = Boolean(currentRec()?.conflictCheck?.confirmedByLawyer);
           if (isStoragePersistError(err)) {
             showStorageError(err.persistResult || err, storageAlert, { activeSection: 'intakeRecords' });
@@ -2212,13 +2235,25 @@ async function renderLawyerInquiryDetail(inquiryId) {
         try {
           const out = await engine.execute('intake.decide', { inquiryId: rec.inquiryId, action: 'reveal' }, { actor: 'ui' });
           clearStorageError(storageAlert);
-          revealedBodies.set(rec.inquiryId, out.plaintext);
+          if (out?.revealed && out.plaintext) {
+            revealedBodies.set(rec.inquiryId, out.plaintext);
+          }
           renderLawyerInquiryDetail(rec.inquiryId);
         } catch (err) {
+          pruneInvalidRevealedBodies();
           if (isStoragePersistError(err)) {
-            showStorageError(err.persistResult || err, storageAlert);
+            const res = err.persistResult || err;
+            if (res?.code === 'state-conflict' && res?.refreshed && !canRevealInquiryBody(currentRec(), state.conflictLedger).allowed) {
+              revealedBodies.delete(rec.inquiryId);
+              await renderLawyerInquiryDetail(rec.inquiryId);
+              showStorageError(res, null, { activeSection: 'intakeRecords' });
+              return;
+            }
+            showStorageError(res, storageAlert, { activeSection: 'intakeRecords' });
             return;
           }
+          revealedBodies.delete(rec.inquiryId);
+          await renderLawyerInquiryDetail(rec.inquiryId);
           say(err?.code || err?.message || 'reveal-blocked');
         }
       });
@@ -2247,11 +2282,21 @@ async function renderLawyerInquiryDetail(inquiryId) {
         say('受任検討・面談案内をローカル記録しました（外部通信 0 バイト）。');
         renderLawyerInquiryDetail(rec.inquiryId);
       } catch (err) {
+        pruneInvalidRevealedBodies();
         if (isStoragePersistError(err)) {
-          showStorageError(err.persistResult || err, storageAlert);
+          const res = err.persistResult || err;
+          if (res?.code === 'state-conflict' && res?.refreshed && !canRevealInquiryBody(currentRec(), state.conflictLedger).allowed) {
+            revealedBodies.delete(rec.inquiryId);
+            await renderLawyerInquiryDetail(rec.inquiryId);
+            showStorageError(res, null, { activeSection: 'intakeRecords' });
+            return;
+          }
+          showStorageError(res, storageAlert, { activeSection: 'intakeRecords' });
           return;
         }
-        say(err?.message || 'blocked');
+        revealedBodies.delete(rec.inquiryId);
+        await renderLawyerInquiryDetail(rec.inquiryId);
+        say(err?.code || err?.message || 'blocked');
       }
     });
     const declineBtn = el('button', t('inquiryDetail.declineBtn'), 'secondary');
@@ -2263,11 +2308,21 @@ async function renderLawyerInquiryDetail(inquiryId) {
         say('辞退をローカル記録しました（外部通信 0 バイト）。');
         renderLawyerInquiryDetail(rec.inquiryId);
       } catch (err) {
+        pruneInvalidRevealedBodies();
         if (isStoragePersistError(err)) {
-          showStorageError(err.persistResult || err, storageAlert);
+          const res = err.persistResult || err;
+          if (res?.code === 'state-conflict' && res?.refreshed && !canRevealInquiryBody(currentRec(), state.conflictLedger).allowed) {
+            revealedBodies.delete(rec.inquiryId);
+            await renderLawyerInquiryDetail(rec.inquiryId);
+            showStorageError(res, null, { activeSection: 'intakeRecords' });
+            return;
+          }
+          showStorageError(res, storageAlert, { activeSection: 'intakeRecords' });
           return;
         }
-        say(err?.message || 'blocked');
+        revealedBodies.delete(rec.inquiryId);
+        await renderLawyerInquiryDetail(rec.inquiryId);
+        say(err?.code || err?.message || 'blocked');
       }
     });
     const replyActions = el('div', null, 'actions');
