@@ -1,89 +1,88 @@
-# Soudan (法律相談) — consultation memo for a lawyer you chose
+# Soudan — 自己整理メモツール (Self-organization consultation memo tool)
 
-Write down a legal problem in your own words and turn it into a memo to hand to a lawyer you chose yourself. Everything runs and is stored on the device. Built as static Web files or a Tauri **3.0.0-alpha.6** app (explicit `tauri-runtime-wry` v3, OS WebView), from the same layout as `apps/horei`. Tracking: [AWAI-3321](https://linear.app/kotobalabs/issue/AWAI-3321) (parent [AWAI-3236](https://linear.app/kotobalabs/issue/AWAI-3236)).
+Write down a legal consultation's facts, timeline, questions, and post evidence list in your own words before meeting a lawyer you chose yourself. Everything runs on the device with zero server-side consultation storage, zero ads, and zero fees. Built for static Web (`https://soudan.itonami.app`) and Android / Awai OS via Tauri **3.0.0-alpha.6** (`tauri-runtime-wry` v3, OS WebView).
 
-## Scope (ADR 0001)
+- Package ID: `network.itonami.soudan`
+- Runtime profile: `restricted-wasm-v1` (canonical `kotoba-client-runtime.js` pinned in `otehon/shell/vendor/PINS.json`; self-contained guest entry `guest.html` for `mountRestrictedClientApp` + standalone Web `index.html` / Tauri `dist-tauri/index.html`)
+- Tracking: Soudan item #223, [AWAI-3321](https://linear.app/kotobalabs/issue/AWAI-3321), [AWAI-3236](https://linear.app/kotobalabs/issue/AWAI-3236)
 
-The scope comes from ADR 0001 in `kotoba-lang/app-itonami-cloud-itonami-isic-6910-legalsupport` (`docs/adr/0001-awai-legal-matching-scope.md`):
+> Not legal advice and not a substitute for a lawyer. Consult a lawyer for specific legal judgment.
+>
+> 法的助言ではなく弁護士に代わるものではありません。具体的判断は弁護士へ相談してください。
 
-- **Template selection and document assembly only (D1).** The memo repeats what the user typed under fixed headings and adds a fixed notice. It does not analyse the matter, rate a risk or propose wording. A test checks that no line is added beyond the title, headings and notice.
-- **The lawyer is whoever the user names (D9, owner decision O1 of 2026-11-18).** The app holds no list of lawyers and never suggests, ranks or recommends one. It checks only that the name and contact fields are filled in.
-- **No default jurisdiction (O7 open).** The user must choose one. Only Japan has a template, so Japan is the only choice.
-- No referral fee or other payment path exists (D2).
+## Scope & Legal 7-Barrier Model (ADR 0001 + Legal item #224)
 
-## Evidence list for a lawyer (AWAI-3505 scope 3, owner answer O11 of 2026-11-22)
+1. **Template selection and self-organization only (ADR 0001 D1, Judicial Scrivener Act Art. 73).** Assembles user-entered text under fixed headings with a fixed legal disclaimer. Never judges infringement or legal merit, never counts remaining days, and never drafts court filings (petitions, complaints, registration filings).
+2. **User-typed lawyer recipient only (ADR 0001 D9 / O1).** Holds no lawyer list and never selects, ranks, or endorses any lawyer. An optional manual paste helper parses user-pasted `bengoshi.lawyer.card.v1` JSON or Bengoshi's 7-line manual copy text (`氏名:` / `所属弁護士会:` / `登録番号:` / `事務所名:` / `連絡先:` / `資格確認状態:` / `日弁連検索:`) into the editable recipient fields (`name`, `office`, `contact`) with zero lookup and zero auto-send.
+3. **2-app technical firewall.** Never auto-passes Soudan memo, other-party, or category fields into Bengoshi URLs or MCP tool arguments.
+4. **7 indirect-benefit barriers.** Zero ads/PR/sponsors, zero paid SaaS/Store/Murakumo upsell links, zero payment/escrow/donations, zero paid-member or hardware gating (full Web + Android parity), zero Awai token/point/Saifu/x402 adapters, zero algorithmic lawyer selection, and zero server-side log collection or AI training on consultation inputs.
+5. **No default jurisdiction (O7 open).** Only Japan (`JPN`, `consultation-memo.jpn.v1`) has a template so far.
+6. **Evidence list for a lawyer (AWAI-3505 / O11).** Records user-typed URL, date-time, poster display name/ID, plus screenshot file name, size, capture time, and SHA-256 on device. Raw screenshot bytes are never persisted or transmitted. Only the 6 official user-facing routes are shown (zero Government Request Portals).
 
-The input screen adds post records the user types themselves (post URL, date-time, poster display
-name and ID) plus a screenshot image they pick. Picking an image records the file name, size,
-capture time and SHA-256 next to the row; the image bytes are never persisted or sent. The memo
-gains one section titled 弁護士に見せるための一覧 / List for your lawyer that repeats those rows
-under fixed labels. Rows live in the same on-device draft and the user can delete them.
+## 3-Surface Parity (`https://soudan.itonami.app`, Android, Awai OS)
 
-What the app does **not** do (O11):
+All three surfaces share the same on-device multi-draft state (`itonami.soudan.state.v2`), minimized local audit log (`actor.kind: human | agent`, zero consultation text/PII), and canonical `kotoba-client-runtime.js` `each-operation` consent gate:
 
-- It never judges whether anything is infringing or meets any disclosure condition, and never
-  writes petition or claim text. It only points at the official forms (Tokyo District Court Civil
-  Division 9 page for disclosure-order petitions).
-- The retention note is a general guide with sources and dates only ("often disappears within
-  months" as a rough guide that varies by company; exact periods go to each company or a lawyer).
-  It never counts remaining days or names a filing date. Sources: the Information Platform Act
-  (e-Gov law API `lawId 413AC0000000137`, retrieved 2026-11-22), the Tokyo District Court petition
-  page (retrieved 2026-11-22), and the MIC White Paper 2025 edition (retrieved 2026-11-22).
-- Evidence records stay inside this device (app-private storage protected by device encryption);
-  nothing is uploaded or synced, images are not edited, published or shared, and no
-  Government Request Portal is shown. The user-facing routes are: each company's removal and
-  disclosure request forms, requests to prevent transmission, a court disclosure-order petition
-  (consult a lawyer), Legal Affairs Bureau human-rights consultation, the Illegal and Harmful
-  Information Consultation Center, and the police (#9110 and the prefectural cybercrime desks).
+| Capability | Static Web (`https://soudan.itonami.app`) | Android / Awai OS (Itonami Store APK) |
+| --- | --- | --- |
+| Multi-draft local storage (`drafts[]`, `activeDraftId`) | Yes (`localStorage`, device-local, zero sync) | Yes (`localStorage`, `android:allowBackup="false"`) |
+| Evidence hashing (filename, size, timestamp, SHA-256) | Yes (zero image bytes saved/sent) | Yes (zero image bytes saved/sent) |
+| X1 Hand-off / Export (canonical `each-operation` consent) | Web Share API (`navigator.share`), `device.save` (`.txt`, `.md`, `soudan.memo.export.v1` `.json`), clipboard copy | Tauri `soudan_share` → Android `ACTION_SEND` share sheet |
+| Optional manual paste (`bengoshi.lawyer.card.v1` / 7-line text) | Yes (user-pasted only) | Yes (user-pasted only) |
+| Optional `murakumo.cloud` organization slot | Default OFF / fail-closed; graceful local fallback | Default OFF / fail-closed; graceful local fallback |
+| App-origin network requests | **0** (100% static via `yataverse-bytes`) | **0** |
 
-Sending still hands over only the memo text (one approval, one share-sheet hand-off); screenshot
-bytes never cross the send gate. UI text stays keyed in `src/messages.js` (ja, en).
+## PR #29 Semantic Operations & AWAI-4143 MCP Apps (Draft Alignment)
 
-## Sending (X1, ADR 0001 D9 / owner decision O1)
+- Shared `noun.verb` contract in `src/semantic.js`:
+  `soudan.draft.create`, `soudan.draft.select`, `soudan.draft.update`, `soudan.draft.delete` (irreversible: dry-run + explicit confirmation + audit), `soudan.evidence.add`, `soudan.evidence.remove`, `soudan.memo.assemble`, `soudan.memo.send` (X1, irreversible: dry-run + canonical consent + audit), `soudan.inference.organize`, `soudan.audit.list`.
+- Machine-readable UI states (product UI / MCP Apps only; never IDE ACP): `idle` | `proposal.ready` | `governor.blocked` | `consent.required` | `audit.recorded`.
+- MCP Apps embed (`src/embed.html` + `src/mcp-app.js`): `ui://soudan/app` (`text/html;profile=mcp-app`), JSON-RPC `postMessage` (`ui/initialize`, `ui/notifications/initialized`, origin + session validation), `content` + `structuredContent` text fallback always carrying the fixed legal disclaimer. Direct external X1 send and external inference are blocked inside the sandboxed iframe (`connect-src 'none'`).
+- Status: **draft alignment** (formal AWAI-4143 conformance waits on spec PR + `catalog.list` POC gate).
 
-The descriptor declares **one operation**: handing the memo to the lawyer the user chose, through the Android share sheet (`browser-action: share`, recipient `user-selected-app`; no service origin is fabricated). Scope is the O1/D9 range only: the memo the user assembled, to the lawyer the user named. The app holds no lawyer list and never suggests one (a test checks this). The operation also declares the finding-9 disclosure the canonical broker shows (recipient, country JP, data, purpose, `one-time` frequency, withdrawal slot); the canonical `kotoba-client-runtime.js` pin is recorded in `otehon/shell/vendor/PINS.json`.
+## `murakumo.cloud` Inference Slot (Route B Honest Disclosure & Suiron Contract)
 
-Two gates, both fail closed:
+- **Endpoint & pinned model contract**:
+  - Readiness: `GET https://api.murakumo.cloud/ready?model=mishima` (`503` = unavailable)
+  - Completion: `POST https://api.murakumo.cloud/v1/chat/completions`, model pinned strictly to **`"mishima"`** (no external fallback)
+  - Hard-rejected in code & tests: forbidden models (`murakumo/free`, `murakumo-main`, `qwen3.8-27b-uncensored`, any free-tier/unpinned model) and forbidden endpoints (`/api/v1/preview/*`, `/api/v1/free/*`, `openrouter.ai`)
+  - Request headers: `content-type: application/json` ONLY by default (no auth header by default; no custom headers like `x-murakumo-app` or `x-request-id` that break CORS preflight; optional runtime-only `authorization` / `x-api-key` hook with zero embedded secrets)
+  - Mandatory body params: `model: "mishima"`, `stream: true`, `max_tokens: 1024` (hard cap `1536`), `chat_template_kwargs: { enable_thinking: false }`
+  - Client-side guards: request body `<= 64 KiB`, input+history `<= 8192` tokens, max concurrency `1 req / tab`, soft daily client limit `20 turns / day`, and safe local offline fallback on `429` / `503` (`fleet_capacity_unavailable` / `no_ready_capacity`)
+- **Default OFF (`端末内のみ`) & fail-closed**: disabled in this initial static release (`dist/*.html` uses `connect-src 'none'`; `tauri.conf.json` uses `connect-src ipc: http://ipc.localhost;`) while Legal item #224 pre-launch blockers and `mishima` fleet readiness remain pending.
+- **Route B honest disclosure** (`src/foreign-info.html#murakumo`, `app-descriptor.json`): names `Awai Network LLC` (US legal entity), notes Cloudflare gateway and possible Hugging Face / Modal / OpenRouter routing, states that standard API calls are not used for training/evaluation while honestly noting that fixed country-of-processing and service-wide non-retention are not guaranteed, and displays an explicit anonymization warning and MOJ 2026 §3-2(2)エ disclaimer before input and on output.
+- Pre-flight governor guard blocks legal verdicts, infringement judgments, court/agency filing drafting, lawyer selection/endorsement, and monetization requests (`governor.blocked` + 6 official routes). Proposals never auto-overwrite user drafts without explicit human accept.
 
-- Governor review: the operation runs only when it is in the broker's eligible operations (`approvedOperations` intersected with `hostSupportedOperations`). Otherwise the send button stays disabled and `invoke` refuses before consent is even shown.
-- User approval: every send shows the canonical per-operation consent dialog (`consent: each-operation`). The device language picks the wording (Japanese on a Japanese device, English otherwise): the broker's labels as well as the declared facts — app name (`app.title`: 法律相談 / Legal consultation), recipient, information, purpose and the withdrawal slot (設定 / Settings) — while country (`JP`, shown as 日本 / Japan) and the `one-time` frequency are localized by the broker. The first screen shows these declared facts (送り先/Recipient, 送る情報/Information, 目的/Purpose, 送る回数/Frequency); the technical scope (Service, Operation, Receiver "the app you pick next", Data categories `legal.consultation-memo`) stays behind 詳細を見る/View details. Denial throws and nothing leaves the device. Starting a new send clears the previous result line first, so a stale notice is not left showing behind the chooser.
-
-The sent body heads with a 宛先 line built only from what the user typed (name / office / contact, `model.js addressedMemo`): no candidates, no lookup, no recommendation (ADR D9, tested). The memo preview itself is unchanged.
-
-Wiring: the page's browser adapter calls the Tauri `soudan_share` command (Android only; other platforms fail closed with `android-only`), which fires `ACTION_SEND` through `SharePlugin` (no chooser result is read back: resolving means the chooser opened). Tests prove approval hands the memo over exactly once and denial hands nothing over, through the real broker and consent host.
-
-- The Android manifest has no `INTERNET` permission: the share sheet needs none.
-
-## Build
+## Build, Verification & Packaging
 
 ```sh
 (cd ../../packages/awai-ui && npm ci && npm run build)   # shared UI, once per checkout
 npm ci
-npm test
-npm run build                  # dist/: static files, each pinned in release.json
-npm run build:android          # arm64 APK; JDK21, SDK, NDK 27.0.12077973
+npm test                                                 # check-public.mjs + node --test suite
+npm run build                                            # dist/: Web static files (connect-src 'none') + dist/release.json (< 10 MiB/file, zero symlinks)
+npm run build:tauri                                      # dist-tauri/: Tauri frontend (connect-src ipc: http://ipc.localhost;)
 ```
 
-Debug APK for an emulator: `npx tauri android build --debug --apk --target aarch64`.
+### Dual-ABI Android / Awai OS APK (Itonami Store)
 
-## Boundaries
+Requirements: JDK 21, Android SDK (API 33+ `minSdkVersion`, `compileSdk 37`), NDK `27.0.12077973`, 16 KiB ELF alignment (`-Wl,-z,max-page-size=16384` + `zipalign -P 16`), system-bar insets (`packages/awai-system-bars`), `android:allowBackup="false"`, **no `android.permission.INTERNET`** for this initial offline-default release, target `< 40 MiB` (64 MiB Store ceiling).
 
-- `kotoba.app.client-runtime.v1` descriptor:
-  - one operation (`itonami.soudan.send` / `user-chosen-lawyer` / `send-consultation-memo`, consent `each-operation`, share-sheet endpoint);
-  - local state in `localstorage` through `awai.shell.host.v1`, with revision-checked writes.
-- The page and Tauri CSPs allow only the Tauri IPC for `connect-src`. The build fails if either CSP or the descriptor says otherwise.
-- The Tauri host exposes `awai_host_info` and the Android-only `soudan_share`. It has no network, filesystem, installer or shell permissions.
-- UI text is keyed in `src/messages.js` (ja, en). Text the user types is never translated or rewritten.
+- **Future opt-in inference permission delta**: when Legal #224 + `mishima` readiness allow turning opt-in inference on, Android will require adding `<uses-permission android:name="android.permission.INTERNET" />` to `AndroidManifest.xml` and widening `connect-src` to include `https://api.murakumo.cloud` (matching `clientRuntimeConnectSrc(descriptor)`).
 
-## Not yet qualified
+```sh
+# Dual-ABI release APK (arm64-v8a + x86_64, no --split-per-abi)
+npx tauri android build --apk --target aarch64 x86_64
+```
+
+Static Web delivery (`https://soudan.itonami.app`) serves `dist/` via `yataverse-bytes` with real static files for `/`, `/foreign-info.html`, and `/embed.html` (no SPA fallback), embedded `<meta http-equiv="Content-Security-Policy" ... connect-src 'none' ...>` and `<meta name="referrer" content="no-referrer">` on every HTML page, and every file strictly `< 10 MiB`.
+
+## Pre-Launch Gates (Not Yet Qualified)
 
 | Item | Waiting on |
-|---|---|
-| The lawyer's return path (X3) | — |
-| The lawyer-side screens | X3 |
-| Store distribution | [AWAI-3238](https://linear.app/kotobalabs/issue/AWAI-3238) |
-| Physical devices | — |
-| Release signing | — |
-| Figma design review | — |
-| TalkBack testing | — |
-| Owner decisions O2–O10 | The owner |
+| --- | --- |
+| Formal operator entity details (`foreign-info.html`) | Legal item #224 Blocker 1 |
+| Final O8 / `special-care` consent wording & Route B sign-off | Legal item #224 |
+| In-house `mishima` endpoint readiness (currently fail-closed) | Dev / Ops |
+| Formal AWAI-4143 conformance | Spec PR + `catalog.list` POC gate |
+| Owner DNS (`_dnslink.soudan.itonami.app`) & production signing key rotation | Owner approval |
+| Physical Android / Awai OS device & TalkBack qualification | Device run |

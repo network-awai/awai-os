@@ -1,0 +1,126 @@
+{
+  "schema": "kotoba.app.client-runtime.v1",
+  "target": "browser",
+  "profile": "restricted-wasm-v1",
+  "entry": "guest.html",
+  "local-state": {
+    "adapter": "localstorage",
+    "schema": "itonami.soudan.state.v2",
+    "version": 2
+  },
+  "host-local": {
+    "schema": "kotoba.host-local.v1",
+    "app-id": "network.itonami.soudan",
+    "calls": [
+      "storage.get",
+      "storage.put",
+      "storage.delete",
+      "device.save"
+    ],
+    "storage": {
+      "class": "device-only",
+      "backup": "excluded",
+      "at-rest": "encrypted",
+      "erasable": true,
+      "quota-bytes": 1048576,
+      "max-entries": 64,
+      "max-value-bytes": 262144
+    },
+    "stores": [
+      "soudan-state"
+    ],
+    "save": {
+      "max-bytes": 262144,
+      "mime-types": [
+        "text/plain",
+        "application/json",
+        "application/octet-stream"
+      ],
+      "octet-stream-extensions": [
+        "md"
+      ]
+    }
+  },
+  "workers": [],
+  "operations": [
+    {
+      "capability": "itonami.soudan.send",
+      "service": "user-chosen-lawyer",
+      "operation": "send-consultation-memo",
+      "consent": "each-operation",
+      "data-categories": [
+        "legal.consultation-memo"
+      ],
+      "endpoint": {
+        "browser-action": "share",
+        "recipient": "user-selected-app"
+      },
+      "disclosure": {
+        "recipient": "利用者がこの端末で選ぶアプリ",
+        "country": "JP",
+        "data": [
+          "相談メモ（氏名、連絡先、相談内容）"
+        ],
+        "special-care": true,
+        "special-care-kinds": [
+          "相談メモに含まれ得る要配慮個人情報（病歴・犯罪歴等。Legal確認中）"
+        ],
+        "purpose": "利用者が選んだ弁護士に相談メモを送る",
+        "frequency": "one-time",
+        "withdrawal": "設定",
+        "note": "画像原本は送信されません。送信前に実名・要配慮個人情報の要否を確認してください（Legal O8文言確認中）。"
+      }
+    },
+    {
+      "capability": "itonami.soudan.inference",
+      "service": "murakumo-cloud",
+      "operation": "organize-consultation-draft",
+      "consent": "each-operation",
+      "data-categories": [
+        "consultation-draft-text"
+      ],
+      "endpoint": {
+        "origin": "https://api.murakumo.cloud",
+        "routes": [
+          {
+            "method": "POST",
+            "path": "/v1/chat/completions",
+            "query-params": []
+          },
+          {
+            "method": "GET",
+            "path": "/ready",
+            "query-params": [
+              "model"
+            ],
+            "query-values": {
+              "model": "mishima"
+            }
+          }
+        ]
+      },
+      "request-body": "text",
+      "max-request-bytes": 65536,
+      "content-type": "application/json",
+      "response-body": "text",
+      "max-response-bytes": 65536,
+      "timeout-ms": 30000,
+      "disclosure": {
+        "recipient": "Awai Network LLC",
+        "country": "US",
+        "country-name": "アメリカ合衆国（米国法人）",
+        "foreign-info-url": "https://soudan.itonami.app/foreign-info.html#murakumo",
+        "data": [
+          "匿名化後の相談メモ下書きテキスト（画像バイト除く）"
+        ],
+        "special-care": true,
+        "special-care-kinds": [
+          "誤入力され得る要配慮個人情報（病歴・犯罪歴等。入力しないでください／Legal確認中）"
+        ],
+        "purpose": "相談前メモの事実・経緯・質問項目を自己整理する（法的助言ではありません）",
+        "frequency": "one-time",
+        "note": "通常APIは学習・評価不使用。ただし処理国の固定やサービス全体での非保持は保証されません。実名・連絡先・要配慮個人情報は「Aさん」等に置換してください（Legal確認中）。"
+      }
+    }
+  ]
+}

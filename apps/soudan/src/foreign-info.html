@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Soudan — 越境移転・外部送信・プライバシー開示</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Soudan — 越境移転・外部送信・プライバシー開示</h1>
+      <p class="muted">Foreign Transfer, External Transmission &amp; Privacy Disclosure (Static Page)</p>
+      <p><a class="link" href="index.html">← Soudan（自己整理メモツール）へ戻る / Back to Soudan</a></p>
+    </header>
+
+    <section class="card" id="operator">
+      <h2>1. 運営者情報（<code>soudan.itonami.app</code>） / Operator Information</h2>
+      <p class="warn-banner">【Legal item #224 Blocker 1 確認待ち】正式な運営者法人名・代表者氏名・所在地・連絡先窓口は法務最終確認後に確定・反映されます。</p>
+      <dl>
+        <dt>運営者名 / Operator</dt>
+        <dd>[Legal item #224 Blocker 1 確定待ち / Pending formal operator entity confirmation]</dd>
+        <dt>代表者 / Representative</dt>
+        <dd>[Legal item #224 Blocker 1 確定待ち / Pending]</dd>
+        <dt>所在地 / Address</dt>
+        <dd>[Legal item #224 Blocker 1 確定待ち / Pending]</dd>
+        <dt>問い合わせ窓口 / Contact</dt>
+        <dd>[Legal item #224 Blocker 1 確定待ち / Pending]</dd>
+      </dl>
+      <p class="muted">本ツールは完全無料・広告なし・端末内保存の自己整理メモツールです。法的助言ではなく弁護士に代わるものではありません。具体的判断は弁護士へ相談してください。</p>
+    </section>
+
+    <section class="card" id="murakumo">
+      <h2>2. 外部推論スロット（<code>murakumo.cloud</code>）に関する越境移転・外部送信の開示（Route B）</h2>
+      <p class="notice-banner">既定設定は <strong>OFF（端末内のみ）</strong> です。下書き作成・保存・証拠ハッシュ一覧・書き出し（X1）はすべて外部送信なしで 100% 利用できます。事前確認（Legal item #224）が完了するまで外部推論スロットは無効（フェイルクローズ）です。</p>
+      <dl>
+        <dt>提供先・委託先（法人名） / Recipient</dt>
+        <dd>Awai Network LLC（アメリカ合衆国法人 / United States）</dd>
+        <dt>送信先エンドポイント / Endpoint</dt>
+        <dd class="mono">POST https://api.murakumo.cloud/v1/chat/completions（同期 API のみ。無料外部プロキシ枠は使用しません）</dd>
+        <dt>経由・処理基盤 / Routing &amp; Sub-processors</dt>
+        <dd>経路・選択モデルにより、Cloudflare ゲートウェイおよび Hugging Face / Modal / OpenRouter 等を経由する場合があります。</dd>
+        <dt>送信する情報 / Data Sent</dt>
+        <dd>利用者が入力・匿名化した相談前メモの下書きテキストのみ（スクリーンショット画像の原本バイトは送信しません）。</dd>
+        <dt>利用目的 / Purpose</dt>
+        <dd>相談前メモの事実・時系列・弁護士へ聞く質問項目の自己整理（法的助言・判断は行いません）。</dd>
+        <dt>保存・学習に関する誠実な開示 / Honest Retention &amp; Training Notice</dt>
+        <dd>通常の API 呼び出しはモデル学習・評価には使用しません。ただし、<strong>処理国の固定、サービス全体での非保持、またはリプレイ保護用のメタデータ・ハッシュ等の自動削除は保証されません</strong>。</dd>
+        <dt>匿名化のお願い / Anonymization Warning</dt>
+        <dd>実名、連絡先、住所、相手方を特定できる情報、病歴・犯罪歴などの要配慮個人情報は入力せず、「Aさん」「相手方」などに置き換えてから送信してください。</dd>
+        <dt>同意と取り消し / Consent</dt>
+        <dd>送信のたびに確認ダイアログを表示します（1 回ごとの同意）。同意しない場合は送信されず、端末内のみで継続利用できます。</dd>
+      </dl>
+
+      <h3>個人情報保護法 第 28 条・施行規則 第 17 条第 2 項に基づく外国制度・安全管理措置の概要</h3>
+      <ul>
+        <li><strong>当該外国の名称:</strong> アメリカ合衆国（連邦および州法制）。</li>
+        <li><strong>当該外国における個人情報の保護に関する制度:</strong> 連邦レベルでは分野別法制および連邦取引委員会（FTC）法第 5 条による不公正・欺瞞的取引慣行の規制があり、州レベルではカリフォルニア州消費者プライバシー法（CCPA/CPRA）等の包括的法制が存在します（個人情報保護委員会「外国における個人情報の保護に関する制度等の調査」参照）。日本法と同一水準の保護が常に受けられるとは限りません。</li>
+        <li><strong>提供先が講ずる個人情報の保護のための措置:</strong> 送信時の TLS 暗号化、通常の API リクエストをモデル学習・評価に利用しない運用方針、最小限データ送信（画像バイト除外・匿名化注意喚起）を講じています。利用規約・プライバシー方針の最終確定状況は Legal item #224 の確認対象です。</li>
+      </ul>
+    </section>
+
+    <section class="card" id="local-only">
+      <h2>3. 端末内処理とアプリオリジン通信ゼロの原則 / On-Device &amp; Zero App-Origin Calls</h2>
+      <ul>
+        <li><code>https://soudan.itonami.app</code> は完全静的配信であり、相談内容のサーバー保存・アクセス解析・広告配信・行動追跡を行いません。</li>
+        <li>下書き・証拠メタデータ（URL・日時・SHA-256 等）・ローカル操作履歴は利用者の端末内のみに保存され、外部へ自動同期しません。</li>
+        <li>スクリーンショット画像の原本バイトは端末外へ送信・保存されません。</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

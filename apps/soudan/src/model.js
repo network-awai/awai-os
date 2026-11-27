@@ -1,20 +1,28 @@
-// Soudan: put a user's own consultation into a fixed memo template, on the device (AWAI-3321, parent AWAI-3236).
+// Soudan: self-organization consultation memo tool on the device (AWAI-3321, parent AWAI-3236, item #223).
 // ADR 0001 (cloud-itonami-isic-6910-legalsupport) D1 and D9 bound this module:
 // - template-selection and document-assembly only. The memo repeats what the user typed under fixed headings.
 //   Nothing here analyses the matter, rates a risk or proposes wording.
 // - The lawyer the memo goes to is typed by the user. This module holds no list of lawyers and never suggests one.
 // - No default jurisdiction (owner decision O7 is open). Only jurisdictions with a template can be chosen.
 
+export const STATE_SCHEMA = 'itonami.soudan.state.v2';
+export const EXPORT_SCHEMA = 'soudan.memo.export.v1';
+export const LAWYER_CARD_SCHEMA = 'bengoshi.lawyer.card.v1';
 export const JURISDICTIONS = Object.freeze({JPN: Object.freeze({template: 'consultation-memo.jpn.v1'})});
 // Categories only pick the memo's heading wording (template selection). They do not change what is said about the matter.
 export const CATEGORIES = Object.freeze(['money', 'contract', 'work', 'family', 'housing', 'traffic', 'other']);
-export const LIMITS = Object.freeze({summary: 2000, wish: 1000, deadline: 500, otherParty: 200, name: 100, contact: 200,
+export const LIMITS = Object.freeze({
+  summary: 2000, wish: 1000, deadline: 500, otherParty: 200, name: 100, contact: 200,
   event: 300, document: 200, timeline: 20, documents: 20, office: 200,
-  evidence: 30, evidenceUrl: 2000, evidenceField: 200, evidenceFile: 20971520});
+  evidence: 30, evidenceUrl: 2000, evidenceField: 200, evidenceFile: 20971520,
+  drafts: 20, draftTitle: 80, audit: 100,
+});
 
 export function emptyDraft() {
-  return {jurisdiction: null, category: null, summary: '', timeline: [], otherParty: '', wish: '', deadline: '', documents: [],
-    evidence: [], name: '', contact: '', recipient: {name: '', office: '', contact: ''}};
+  return {
+    jurisdiction: null, category: null, summary: '', timeline: [], otherParty: '', wish: '', deadline: '', documents: [],
+    evidence: [], name: '', contact: '', recipient: {name: '', office: '', contact: ''},
+  };
 }
 
 // One evidence row: only what the user typed or picked (O11 scope 3). The app never judges
@@ -24,6 +32,83 @@ export function emptyDraft() {
 // permission), so the original stays in the user's own device storage.
 export function newEvidence() {
   return {url: '', postedAt: '', authorName: '', authorId: '', shotName: '', shotSize: 0, sha256: '', capturedAt: ''};
+}
+
+export function createDraftRecord({id = 'draft-1', title = '', draft = emptyDraft(), now = new Date().toISOString()} = {}) {
+  return {id: String(id), title: typeof title === 'string' ? [...title].slice(0, LIMITS.draftTitle).join('') : '', createdAt: now, updatedAt: now, draft: restoreDraft(draft)};
+}
+
+export function emptyAppState(now = new Date().toISOString()) {
+  const first = createDraftRecord({id: 'draft-1', now});
+  return {schema: STATE_SCHEMA, activeDraftId: first.id, drafts: [first], audit: []};
+}
+
+export function activeDraftRecord(state) {
+  if (!state || !Array.isArray(state.drafts) || state.drafts.length === 0) return null;
+  return state.drafts.find(r => r.id === state.activeDraftId) ?? state.drafts[0];
+}
+
+export function draftDisplayTitle(record, index, t) {
+  const explicit = typeof record?.title === 'string' ? record.title.trim() : '';
+  if (explicit) return explicit;
+  const cat = record?.draft?.category && CATEGORIES.includes(record.draft.category) ? t('category.' + record.draft.category) : '';
+  const summaryHead = typeof record?.draft?.summary === 'string' ? [...record.draft.summary.trim()].slice(0, 18).join('') : '';
+  if (cat && summaryHead) return `${cat}: ${summaryHead}`;
+  if (cat) return cat;
+  if (summaryHead) return summaryHead;
+  return t('drafts.untitled', {n: String(index + 1)});
+}
+
+const AUDIT_ACTORS = new Set(['human', 'agent']);
+const AUDIT_OUTCOMES = new Set(['ok', 'dry-run', 'denied', 'blocked', 'fallback', 'error']);
+const AUDIT_TARGETS = new Set(['draft', 'evidence', 'memo', 'inference', 'audit']);
+const SAFE_CODE = /^[a-z0-9._-]{1,64}$/;
+
+export function sanitizeAuditEntry(entry) {
+  if (!entry || typeof entry !== 'object') return null;
+  if (typeof entry.id !== 'string' || !entry.id || entry.id.length > 64) return null;
+  if (typeof entry.timestamp !== 'string' || Number.isNaN(Date.parse(entry.timestamp))) return null;
+  if (typeof entry.op !== 'string' || !SAFE_CODE.test(entry.op)) return null;
+  const kind = entry.actor?.kind;
+  if (!AUDIT_ACTORS.has(kind)) return null;
+  if (!AUDIT_OUTCOMES.has(entry.outcome)) return null;
+  if (!AUDIT_TARGETS.has(entry.targetKind)) return null;
+  const out = {id: entry.id, timestamp: entry.timestamp, op: entry.op, actor: {kind}, outcome: entry.outcome, targetKind: entry.targetKind};
+  if (typeof entry.gateName === 'string' && SAFE_CODE.test(entry.gateName)) out.gateName = entry.gateName;
+  return out;
+}
+
+// Cleanly restore v2 multi-draft state or migrate legacy v1 single-draft storage.
+export function restoreAppState(data, now = new Date().toISOString()) {
+  if (!data || typeof data !== 'object') return emptyAppState(now);
+  if (data.schema === STATE_SCHEMA && Array.isArray(data.drafts) && data.drafts.length > 0) {
+    const seen = new Set();
+    const drafts = [];
+    for (const raw of data.drafts.slice(0, LIMITS.drafts)) {
+      if (!raw || typeof raw !== 'object') continue;
+      const id = typeof raw.id === 'string' && /^[a-z0-9_-]{1,40}$/.test(raw.id) && !seen.has(raw.id)
+        ? raw.id : `draft-${drafts.length + 1}`;
+      seen.add(id);
+      const createdAt = typeof raw.createdAt === 'string' && !Number.isNaN(Date.parse(raw.createdAt)) ? raw.createdAt : now;
+      const updatedAt = typeof raw.updatedAt === 'string' && !Number.isNaN(Date.parse(raw.updatedAt)) ? raw.updatedAt : createdAt;
+      drafts.push({
+        id,
+        title: typeof raw.title === 'string' ? [...raw.title].slice(0, LIMITS.draftTitle).join('') : '',
+        createdAt,
+        updatedAt,
+        draft: restoreDraft(raw.draft),
+      });
+    }
+    if (drafts.length === 0) return emptyAppState(now);
+    const activeDraftId = drafts.some(d => d.id === data.activeDraftId) ? data.activeDraftId : drafts[0].id;
+    const audit = Array.isArray(data.audit)
+      ? data.audit.map(sanitizeAuditEntry).filter(Boolean).slice(-LIMITS.audit)
+      : [];
+    return {schema: STATE_SCHEMA, activeDraftId, drafts, audit};
+  }
+  // Legacy v1 single-draft shape -> wrap into a single draft record cleanly.
+  const migrated = createDraftRecord({id: 'draft-1', draft: restoreDraft(data), now});
+  return {schema: STATE_SCHEMA, activeDraftId: migrated.id, drafts: [migrated], audit: []};
 }
 
 const text = (v, max) => typeof v === 'string' && [...v].length <= max;
@@ -110,6 +195,40 @@ export function recipientProblems(r) {
   return p;
 }
 
+// Optional manual-only paste helper: parses bengoshi.lawyer.card.v1 JSON or Bengoshi's 7-line manual
+// copy text into user-editable {name, office, contact} ONLY when explicitly pasted by the user.
+// Never looks up, ranks, stores a list, or auto-sends.
+const clamp = (v, max) => [...String(v ?? '').trim()].slice(0, max).join('');
+export function parseLawyerCardPaste(raw) {
+  if (typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed.length > 8192) return null;
+  if (trimmed.startsWith('{')) {
+    try {
+      const obj = JSON.parse(trimmed);
+      if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return null;
+      if (obj.schema && obj.schema !== LAWYER_CARD_SCHEMA) return null;
+      const name = clamp(obj.name ?? obj.lawyerName ?? '', LIMITS.name);
+      const office = clamp(obj.office ?? obj.firmName ?? '', LIMITS.office);
+      const contact = clamp(obj.contact ?? obj.email ?? obj.phone ?? obj.url ?? '', LIMITS.contact);
+      if (!name && !office && !contact) return null;
+      return {name, office, contact};
+    } catch {
+      return null;
+    }
+  }
+  const map = {};
+  for (const line of trimmed.split(/\r?\n/)) {
+    const m = /^\s*(氏名|所属弁護士会|登録番号|事務所名|連絡先|資格確認状態|日弁連検索)\s*[:：]\s*(.*)\s*$/.exec(line);
+    if (m) map[m[1]] = m[2].trim();
+  }
+  const name = clamp(map['氏名'] ?? '', LIMITS.name);
+  const office = clamp(map['事務所名'] ?? '', LIMITS.office);
+  const contact = clamp(map['連絡先'] ?? '', LIMITS.contact);
+  if (!name && !office && !contact) return null;
+  return {name, office, contact};
+}
+
 // One evidence row as memo lines: fixed labels plus the user's own words. No judgment
 // wording is added here: whether anything is infringing or meets any disclosure condition
 // is never stated, and no petition text is produced.
@@ -159,6 +278,38 @@ export function addressedMemo(memoText, recipient, t) {
   return t('memo.to') + ': ' + parts.join(' / ') + '\n' + memoText;
 }
 
+export function formatMemoMarkdown(memo, recipient, t) {
+  const parts = [recipient?.name, recipient?.office, recipient?.contact]
+    .map(v => (typeof v === 'string' ? v.trim() : '')).filter(v => v.length > 0);
+  const lines = [];
+  if (parts.length) lines.push(`> ${t('memo.to')}: ${parts.join(' / ')}`, '');
+  lines.push(`# ${memo.title}`, '');
+  for (const s of memo.sections) {
+    lines.push(`## ${s.heading}`, '', s.body, '');
+  }
+  lines.push('---', '', memo.notice);
+  return lines.join('\n');
+}
+
+export function buildMemoExportV1(memo, recipient, draft, t, exportedAt = new Date().toISOString()) {
+  return {
+    schema: EXPORT_SCHEMA,
+    exportedAt,
+    template: memo.template,
+    title: memo.title,
+    recipient: {
+      name: (recipient?.name ?? '').trim(),
+      office: (recipient?.office ?? '').trim(),
+      contact: (recipient?.contact ?? '').trim(),
+    },
+    sections: memo.sections.map(s => ({heading: s.heading, body: s.body})),
+    evidenceHashesOnly: true,
+    evidenceCount: Array.isArray(draft?.evidence) ? draft.evidence.length : 0,
+    notice: memo.notice,
+    disclaimer: t('disclaimer.fixed'),
+  };
+}
+
 // Restore a stored draft, keeping only known fields of the right type. Anything else starts empty.
 export function restoreDraft(data) {
   const d = emptyDraft();
@@ -171,10 +322,16 @@ export function restoreDraft(data) {
   if (Array.isArray(data.documents)) d.documents = data.documents.slice(0, LIMITS.documents).filter(x => typeof x === 'string');
   if (Array.isArray(data.evidence)) d.evidence = data.evidence.slice(0, LIMITS.evidence)
     .filter(e => e && typeof e === 'object')
-    .map(e => ({url: typeof e.url === 'string' ? e.url : '', postedAt: typeof e.postedAt === 'string' ? e.postedAt : '',
-      authorName: typeof e.authorName === 'string' ? e.authorName : '', authorId: typeof e.authorId === 'string' ? e.authorId : '',
-      shotName: typeof e.shotName === 'string' ? e.shotName : '', shotSize: Number.isSafeInteger(e.shotSize) && e.shotSize >= 0 ? e.shotSize : 0,
-      sha256: typeof e.sha256 === 'string' ? e.sha256 : '', capturedAt: typeof e.capturedAt === 'string' ? e.capturedAt : ''}));
+    .map(e => ({
+      url: typeof e.url === 'string' ? e.url : '',
+      postedAt: typeof e.postedAt === 'string' ? e.postedAt : '',
+      authorName: typeof e.authorName === 'string' ? e.authorName : '',
+      authorId: typeof e.authorId === 'string' ? e.authorId : '',
+      shotName: typeof e.shotName === 'string' ? e.shotName : '',
+      shotSize: Number.isSafeInteger(e.shotSize) && e.shotSize >= 0 ? e.shotSize : 0,
+      sha256: typeof e.sha256 === 'string' ? e.sha256 : '',
+      capturedAt: typeof e.capturedAt === 'string' ? e.capturedAt : '',
+    }));
   if (data.recipient && typeof data.recipient === 'object') for (const k of ['name', 'office', 'contact'])
     if (typeof data.recipient[k] === 'string') d.recipient[k] = data.recipient[k];
   return d;

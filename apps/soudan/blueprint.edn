@@ -1,0 +1,10 @@
+{:itonami.blueprint/schema "itonami.blueprint.v1"
+ :itonami.blueprint/id "network.itonami.soudan"
+ :itonami.blueprint/slug "soudan"
+ :itonami.blueprint/name "Soudan — 自己整理メモツール"
+ :itonami.blueprint/name-en "Soudan — Self-organization consultation memo tool"
+ :itonami.blueprint/description "相談前メモ・証拠整理ツール。完全無料・広告なし・端末内保存。法的助言や弁護士の選定・推薦・あっせんは行いません。"
+ :itonami.blueprint/isic-rev5 "6910"
+ :itonami.blueprint/license "Apache-2.0"
+ :itonami.blueprint/runtime-profile "restricted-wasm-v1"
+ :itonami.blueprint/static-host "https://soudan.itonami.app"}
