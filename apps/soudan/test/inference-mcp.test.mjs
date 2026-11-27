@@ -253,6 +253,24 @@ test('MCP Apps bridge (AWAI-4143 draft alignment) validates origin/session, enfo
   assert.equal(fw.result.isError, true);
   assert.equal(fw.result.structuredContent.gateName, 'two-app-firewall');
   assert.ok(fw.result.content[0].text.includes('法的助言ではなく'));
+
+  // P1 #2: MCP/agent soudan.draft.delete with confirm:true & confirmed:true MUST require human approval and NEVER delete.
+  const delCall = await bridge.handleMessage({
+    origin: 'https://host.itonami.app',
+    data: {
+      jsonrpc: '2.0', id: 7, method: 'tools/call',
+      params: {
+        sessionId: 'sess-12345678',
+        name: 'soudan.draft.delete',
+        arguments: {id: 'draft-2', confirmed: true, confirm: true},
+      },
+    },
+  });
+  assert.equal(delCall.result.isError, true);
+  assert.equal(delCall.result.structuredContent.state, 'consent.required');
+  assert.equal(delCall.result.structuredContent.requiresHumanApproval, true);
+  assert.equal(delCall.result.structuredContent.gateName, 'human-approval-required');
+  assert.ok(delCall.result.content[0].text.includes('法的助言ではなく'));
 });
 
 test('sandbox="allow-scripts" compliance and Route B anti-false-disclosure invariants hold across source files', () => {

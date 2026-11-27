@@ -3,7 +3,7 @@
 // - soudan.draft.create
 // - soudan.draft.select
 // - soudan.draft.update
-// - soudan.draft.delete       (irreversible: dry-run + explicit confirmation + audit)
+// - soudan.draft.delete       (irreversible: agent/MCP can ONLY request human approval; only human may finalize)
 // - soudan.evidence.add
 // - soudan.evidence.remove
 // - soudan.memo.assemble
@@ -52,6 +52,10 @@ function normalizeActor(actor) {
   return {kind};
 }
 
+function cloneState(s) {
+  return typeof structuredClone === 'function' ? structuredClone(s) : JSON.parse(JSON.stringify(s));
+}
+
 export function createSemanticStore({
   initialState = null,
   locale = 'ja',
@@ -66,11 +70,12 @@ export function createSemanticStore({
   const t = translator(locale);
   let state = restoreAppState(initialState, now());
   let uiState = 'idle';
-  let lastProposal = null;
+  let lastProposal = null; // Always bound to { ..., targetDraftId }
   let lastGuard = null;
   let seq = state.audit.length;
   let inferenceInFlight = 0;
   let dailyBucket = {day: '', count: 0};
+  const pendingDeletions = new Map();
 
   function todayKey() {
     return String(now()).slice(0, 10);
@@ -92,8 +97,33 @@ export function createSemanticStore({
     return entry;
   }
 
-  async function persist() {
-    if (typeof onPersist === 'function') await onPersist(state);
+  async function persistOrRollback(prevState, prevSeq) {
+    if (typeof onPersist !== 'function') return {ok: true};
+    let result;
+    try {
+      const raw = await onPersist(state);
+      result = raw === undefined ? {ok: true} : raw;
+    } catch (err) {
+      result = {ok: false, conflict: err?.code === 'state-conflict', code: err?.code ?? 'storage-unavailable'};
+    }
+    if (result && result.ok === true) return {ok: true};
+    // Roll back to reloaded authoritative state (on conflict) or pre-mutation snapshot.
+    if (result?.reloadedState !== undefined) {
+      state = restoreAppState(result.reloadedState, now());
+      seq = Math.max(prevSeq, state.audit.length);
+    } else {
+      state = prevState;
+      seq = prevSeq;
+    }
+    uiState = result?.conflict ? 'idle' : 'governor.blocked';
+    return {
+      ok: false,
+      persisted: false,
+      conflict: Boolean(result?.conflict),
+      error: result?.code ?? 'persist-failed',
+      state: uiState,
+      disclaimer: t('disclaimer.fixed'),
+    };
   }
 
   function nextDraftId() {
@@ -124,13 +154,17 @@ export function createSemanticStore({
         recordAudit({op, actor: normActor, outcome: 'blocked', targetKind: 'draft', gateName: 'draft-limit'});
         return {ok: false, state: 'governor.blocked', gateName: 'draft-limit', disclaimer: t('disclaimer.fixed')};
       }
+      const prevState = cloneState(state);
+      const prevSeq = seq;
       const id = nextDraftId();
       const rec = createDraftRecord({id, title: typeof params?.title === 'string' ? params.title : '', draft: params?.draft ?? emptyDraft(), now: now()});
       state.drafts.push(rec);
       state.activeDraftId = rec.id;
       recordAudit({op, actor: normActor, outcome: 'ok', targetKind: 'draft'});
       uiState = 'audit.recorded';
-      await persist();
+      const p = await persistOrRollback(prevState, prevSeq);
+      if (!p.ok) return p;
+      lastProposal = null;
       return {ok: true, state: uiState, activeDraftId: rec.id, draftCount: state.drafts.length, disclaimer: t('disclaimer.fixed')};
     }
 
@@ -140,10 +174,15 @@ export function createSemanticStore({
         recordAudit({op, actor: normActor, outcome: 'error', targetKind: 'draft'});
         return {ok: false, state: uiState, error: 'draft-not-found', disclaimer: t('disclaimer.fixed')};
       }
+      const prevState = cloneState(state);
+      const prevSeq = seq;
       state.activeDraftId = target.id;
       recordAudit({op, actor: normActor, outcome: 'ok', targetKind: 'draft'});
       uiState = 'audit.recorded';
-      await persist();
+      const p = await persistOrRollback(prevState, prevSeq);
+      if (!p.ok) return p;
+      // Scope proposals strictly to their originating draftId: never carry across switches.
+      if (lastProposal && lastProposal.targetDraftId !== target.id) lastProposal = null;
       return {ok: true, state: uiState, activeDraftId: target.id, disclaimer: t('disclaimer.fixed')};
     }
 
@@ -153,6 +192,23 @@ export function createSemanticStore({
         recordAudit({op, actor: normActor, outcome: 'error', targetKind: 'draft'});
         return {ok: false, state: uiState, error: 'draft-not-found', disclaimer: t('disclaimer.fixed')};
       }
+      // P1 #4: if applying an organization proposal, enforce exact draftId binding against active draft.
+      if (params?.proposalDraftId !== undefined) {
+        if (params.proposalDraftId !== target.id || params.proposalDraftId !== state.activeDraftId
+          || (lastProposal && lastProposal.targetDraftId !== target.id)) {
+          recordAudit({op, actor: normActor, outcome: 'blocked', targetKind: 'draft', gateName: 'proposal-draft-mismatch'});
+          uiState = 'governor.blocked';
+          return {
+            ok: false,
+            state: uiState,
+            gateName: 'proposal-draft-mismatch',
+            error: 'proposal-draft-mismatch',
+            disclaimer: t('disclaimer.fixed'),
+          };
+        }
+      }
+      const prevState = cloneState(state);
+      const prevSeq = seq;
       const patch = params?.patch && typeof params.patch === 'object' ? params.patch : {};
       const merged = restoreDraft({...target.draft, ...patch, recipient: patch.recipient ? {...target.draft.recipient, ...patch.recipient} : target.draft.recipient});
       target.draft = merged;
@@ -160,7 +216,9 @@ export function createSemanticStore({
       target.updatedAt = now();
       recordAudit({op, actor: normActor, outcome: 'ok', targetKind: 'draft'});
       uiState = 'audit.recorded';
-      await persist();
+      const p = await persistOrRollback(prevState, prevSeq);
+      if (!p.ok) return p;
+      if (params?.proposalDraftId === target.id) lastProposal = null;
       return {ok: true, state: uiState, id: target.id, problems: draftProblems(target.draft), disclaimer: t('disclaimer.fixed')};
     }
 
@@ -180,11 +238,29 @@ export function createSemanticStore({
         evidenceCount: target.draft.evidence.length,
         confirmationRequired: true,
       };
+      // P1 #2: Non-human actors (MCP / agent) MUST NEVER finalize irreversible draft deletion,
+      // even if confirm:true / confirmed:true is supplied. Record a pending human-approval request instead.
+      if (normActor.kind !== 'human') {
+        pendingDeletions.set(target.id, {...preview, requestedAt: now(), requestedBy: normActor.kind});
+        recordAudit({op, actor: normActor, outcome: 'dry-run', targetKind: 'draft', gateName: 'human-approval-required'});
+        uiState = 'consent.required';
+        return {
+          ok: false,
+          state: uiState,
+          requiresHumanApproval: true,
+          gateName: 'human-approval-required',
+          preview,
+          disclaimer: t('disclaimer.fixed'),
+        };
+      }
       if (params?.dryRun === true || params?.confirmed !== true) {
+        pendingDeletions.set(target.id, {...preview, requestedAt: now(), requestedBy: 'human'});
         recordAudit({op, actor: normActor, outcome: 'dry-run', targetKind: 'draft'});
         uiState = 'consent.required';
         return {ok: true, state: uiState, preview, disclaimer: t('disclaimer.fixed')};
       }
+      const prevState = cloneState(state);
+      const prevSeq = seq;
       state.drafts.splice(idx, 1);
       if (state.drafts.length === 0) {
         const fresh = createDraftRecord({id: 'draft-1', now: now()});
@@ -193,7 +269,10 @@ export function createSemanticStore({
       if (state.activeDraftId === targetId) state.activeDraftId = state.drafts[0].id;
       recordAudit({op, actor: normActor, outcome: 'ok', targetKind: 'draft'});
       uiState = 'audit.recorded';
-      await persist();
+      const p = await persistOrRollback(prevState, prevSeq);
+      if (!p.ok) return p;
+      pendingDeletions.delete(targetId);
+      if (lastProposal && lastProposal.targetDraftId === targetId) lastProposal = null;
       return {ok: true, state: uiState, deletedId: targetId, activeDraftId: state.activeDraftId, draftCount: state.drafts.length, disclaimer: t('disclaimer.fixed')};
     }
 
@@ -212,6 +291,8 @@ export function createSemanticStore({
         uiState = 'governor.blocked';
         return {ok: false, state: uiState, gateName: 'image-bytes-forbidden', disclaimer: t('disclaimer.fixed')};
       }
+      const prevState = cloneState(state);
+      const prevSeq = seq;
       const row = {
         ...newEvidence(),
         url: typeof raw.url === 'string' ? raw.url : '',
@@ -227,7 +308,8 @@ export function createSemanticStore({
       rec.updatedAt = now();
       recordAudit({op, actor: normActor, outcome: 'ok', targetKind: 'evidence'});
       uiState = 'audit.recorded';
-      await persist();
+      const p = await persistOrRollback(prevState, prevSeq);
+      if (!p.ok) return p;
       return {ok: true, state: uiState, index: rec.draft.evidence.length - 1, evidenceCount: rec.draft.evidence.length, disclaimer: t('disclaimer.fixed')};
     }
 
@@ -238,11 +320,14 @@ export function createSemanticStore({
         recordAudit({op, actor: normActor, outcome: 'error', targetKind: 'evidence'});
         return {ok: false, state: uiState, error: 'evidence-not-found', disclaimer: t('disclaimer.fixed')};
       }
+      const prevState = cloneState(state);
+      const prevSeq = seq;
       rec.draft.evidence.splice(index, 1);
       rec.updatedAt = now();
       recordAudit({op, actor: normActor, outcome: 'ok', targetKind: 'evidence'});
       uiState = 'audit.recorded';
-      await persist();
+      const p = await persistOrRollback(prevState, prevSeq);
+      if (!p.ok) return p;
       return {ok: true, state: uiState, evidenceCount: rec.draft.evidence.length, disclaimer: t('disclaimer.fixed')};
     }
 
@@ -253,10 +338,13 @@ export function createSemanticStore({
         recordAudit({op, actor: normActor, outcome: 'error', targetKind: 'memo'});
         return {ok: false, state: uiState, problems, disclaimer: t('disclaimer.fixed')};
       }
+      const prevState = cloneState(state);
+      const prevSeq = seq;
       const memo = assembleMemo(rec.draft, t);
       recordAudit({op, actor: normActor, outcome: 'ok', targetKind: 'memo'});
       uiState = 'audit.recorded';
-      await persist();
+      const p = await persistOrRollback(prevState, prevSeq);
+      if (!p.ok) return p;
       return {ok: true, state: uiState, memo, disclaimer: t('disclaimer.fixed')};
     }
 
@@ -315,15 +403,19 @@ export function createSemanticStore({
       };
       try {
         const result = await broker.invoke(SEND_SELECTOR, payload);
+        const prevState = cloneState(state);
+        const prevSeq = seq;
         recordAudit({op, actor: normActor, outcome: 'ok', targetKind: 'memo'});
         uiState = 'audit.recorded';
-        await persist();
+        await persistOrRollback(prevState, prevSeq);
         return {ok: true, state: uiState, result, disclaimer: t('disclaimer.fixed')};
       } catch (err) {
         const denied = /not approved/i.test(err?.message ?? '');
+        const prevState = cloneState(state);
+        const prevSeq = seq;
         recordAudit({op, actor: normActor, outcome: denied ? 'denied' : 'blocked', targetKind: 'memo', gateName: denied ? 'user-consent-denied' : 'broker-refused'});
         uiState = denied ? 'idle' : 'governor.blocked';
-        await persist();
+        await persistOrRollback(prevState, prevSeq);
         return {ok: false, state: uiState, error: err?.message ?? 'send-blocked', disclaimer: t('disclaimer.fixed')};
       }
     }
@@ -336,58 +428,67 @@ export function createSemanticStore({
         return {ok: false, state: uiState, gateName: 'iframe-no-direct-external-egress', disclaimer: t('disclaimer.fixed')};
       }
       const rec = activeDraftRecord(state);
+      const originDraftId = rec?.id ?? state.activeDraftId;
       const userPrompt = typeof params?.prompt === 'string' && params.prompt.trim()
         ? params.prompt
         : [rec?.draft?.summary ?? '', rec?.draft?.wish ?? '', ...(rec?.draft?.timeline ?? []).map(e => e.event)].join('\n');
       const guard = evaluateGovernorGuard(userPrompt, t);
       if (guard.blocked) {
+        const prevState = cloneState(state);
+        const prevSeq = seq;
         recordAudit({op, actor: normActor, outcome: 'blocked', targetKind: 'inference', gateName: guard.gateName});
         uiState = 'governor.blocked';
         lastGuard = guard;
-        await persist();
+        await persistOrRollback(prevState, prevSeq);
         return {ok: false, state: uiState, gateName: guard.gateName, routes: guard.routes, disclaimer: t('disclaimer.fixed')};
       }
       const cfg = params?.config ?? inferenceConfig;
       const cfgCheck = validateInferenceConfig(cfg);
       if (!cfgCheck.ok) {
         if (['murakumo-free-forbidden', 'forbidden-model', 'forbidden-endpoint', 'endpoint-not-allowed', 'model-not-inhouse-allowlisted', 'max-tokens-out-of-bounds'].includes(cfgCheck.reason)) {
+          const prevState = cloneState(state);
+          const prevSeq = seq;
           recordAudit({op, actor: normActor, outcome: 'blocked', targetKind: 'inference', gateName: cfgCheck.reason});
           uiState = 'governor.blocked';
           lastGuard = {blocked: true, state: uiState, gateName: cfgCheck.reason};
-          await persist();
+          await persistOrRollback(prevState, prevSeq);
           return {ok: false, state: uiState, gateName: cfgCheck.reason, disclaimer: t('disclaimer.fixed')};
         }
-        // Fail-closed disabled/unconfigured -> graceful 100% local offline fallback.
-        const local = organizeLocally(rec?.draft ?? emptyDraft(), t);
+        // Fail-closed disabled/unconfigured -> graceful 100% local offline fallback bound to originDraftId.
+        const local = {...organizeLocally(rec?.draft ?? emptyDraft(), t), targetDraftId: originDraftId};
+        const prevState = cloneState(state);
+        const prevSeq = seq;
         lastProposal = local;
         uiState = 'proposal.ready';
         recordAudit({op, actor: normActor, outcome: 'fallback', targetKind: 'inference', gateName: cfgCheck.reason});
-        await persist();
+        await persistOrRollback(prevState, prevSeq);
         return {ok: true, state: uiState, fallback: 'local', reason: cfgCheck.reason, proposal: local, disclaimer: t('disclaimer.fixed')};
       }
       if (params?.localOnly === true || !broker) {
-        const local = organizeLocally(rec?.draft ?? emptyDraft(), t);
+        const local = {...organizeLocally(rec?.draft ?? emptyDraft(), t), targetDraftId: originDraftId};
+        const prevState = cloneState(state);
+        const prevSeq = seq;
         lastProposal = local;
         uiState = 'proposal.ready';
         recordAudit({op, actor: normActor, outcome: 'fallback', targetKind: 'inference', gateName: 'local-only-selected'});
-        await persist();
+        await persistOrRollback(prevState, prevSeq);
         return {ok: true, state: uiState, fallback: 'local', proposal: local, disclaimer: t('disclaimer.fixed')};
       }
-      // Concurrency guard: max 1 in-flight request per tab.
       if (inferenceInFlight >= INFERENCE_LIMITS.maxConcurrencyPerTab) {
         recordAudit({op, actor: normActor, outcome: 'blocked', targetKind: 'inference', gateName: 'concurrency-limit-exceeded'});
         uiState = 'governor.blocked';
         return {ok: false, state: uiState, gateName: 'concurrency-limit-exceeded', disclaimer: t('disclaimer.fixed')};
       }
-      // Soft daily client limit: 20 turns/day -> graceful local fallback.
       const day = todayKey();
       if (dailyBucket.day !== day) dailyBucket = {day, count: 0};
       if (dailyBucket.count >= INFERENCE_LIMITS.softDailyTurns) {
-        const local = organizeLocally(rec?.draft ?? emptyDraft(), t);
+        const local = {...organizeLocally(rec?.draft ?? emptyDraft(), t), targetDraftId: originDraftId};
+        const prevState = cloneState(state);
+        const prevSeq = seq;
         lastProposal = local;
         uiState = 'proposal.ready';
         recordAudit({op, actor: normActor, outcome: 'fallback', targetKind: 'inference', gateName: 'daily-limit-reached'});
-        await persist();
+        await persistOrRollback(prevState, prevSeq);
         return {ok: true, state: uiState, fallback: 'local', reason: 'daily-limit-reached', proposal: local, disclaimer: t('disclaimer.fixed')};
       }
 
@@ -414,34 +515,43 @@ export function createSemanticStore({
         const status = typeof resp?.status === 'number' ? resp.status : 200;
         const rawBody = typeof resp?.text === 'function' ? await resp.text() : resp;
         if (isCapacityOrRateLimitError(status, typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody ?? ''))) {
-          const local = organizeLocally(rec?.draft ?? emptyDraft(), t);
+          const local = {...organizeLocally(rec?.draft ?? emptyDraft(), t), targetDraftId: originDraftId};
+          const prevState = cloneState(state);
+          const prevSeq = seq;
           lastProposal = local;
           uiState = 'proposal.ready';
           recordAudit({op, actor: normActor, outcome: 'fallback', targetKind: 'inference', gateName: `capacity-or-rate-limit-${status}`});
-          await persist();
+          await persistOrRollback(prevState, prevSeq);
           return {ok: true, state: uiState, fallback: 'local', reason: 'capacity-or-rate-limit', status, proposal: local, disclaimer: t('disclaimer.fixed')};
         }
         const proposal = buildProposalFromCompletion(rawBody, t);
         if (proposal.blocked) {
+          const prevState = cloneState(state);
+          const prevSeq = seq;
           recordAudit({op, actor: normActor, outcome: 'blocked', targetKind: 'inference', gateName: proposal.gateName});
           uiState = 'governor.blocked';
           lastGuard = proposal;
-          await persist();
+          await persistOrRollback(prevState, prevSeq);
           return {ok: false, state: uiState, gateName: proposal.gateName, routes: proposal.routes, disclaimer: t('disclaimer.fixed')};
         }
+        const bound = {...proposal, targetDraftId: originDraftId};
+        const prevState = cloneState(state);
+        const prevSeq = seq;
         dailyBucket.count += 1;
-        lastProposal = proposal;
+        lastProposal = bound;
         uiState = 'proposal.ready';
         recordAudit({op, actor: normActor, outcome: 'ok', targetKind: 'inference'});
-        await persist();
-        return {ok: true, state: uiState, proposal, disclaimer: t('disclaimer.fixed')};
+        await persistOrRollback(prevState, prevSeq);
+        return {ok: true, state: uiState, proposal: bound, disclaimer: t('disclaimer.fixed')};
       } catch (err) {
         const denied = /not approved/i.test(err?.message ?? '');
-        const local = organizeLocally(rec?.draft ?? emptyDraft(), t);
+        const local = {...organizeLocally(rec?.draft ?? emptyDraft(), t), targetDraftId: originDraftId};
+        const prevState = cloneState(state);
+        const prevSeq = seq;
         lastProposal = local;
         uiState = 'proposal.ready';
         recordAudit({op, actor: normActor, outcome: denied ? 'denied' : 'fallback', targetKind: 'inference', gateName: denied ? 'user-consent-denied' : 'inference-unavailable'});
-        await persist();
+        await persistOrRollback(prevState, prevSeq);
         return {ok: true, state: uiState, fallback: 'local', reason: denied ? 'consent-denied' : 'inference-unavailable', proposal: local, disclaimer: t('disclaimer.fixed')};
       } finally {
         inferenceInFlight -= 1;
@@ -453,12 +563,18 @@ export function createSemanticStore({
 
   return Object.freeze({
     getState: () => state,
-    setState: next => { state = restoreAppState(next, now()); },
+    setState: next => {
+      state = restoreAppState(next, now());
+      if (lastProposal && lastProposal.targetDraftId !== state.activeDraftId) lastProposal = null;
+    },
     getActiveDraft: () => activeDraftRecord(state),
     getUiState: () => uiState,
     setUiState: next => { if (SEMANTIC_STATES.includes(next)) uiState = next; },
-    getLastProposal: () => lastProposal,
+    getLastProposal: (draftId = state.activeDraftId) => (
+      lastProposal && lastProposal.targetDraftId === draftId ? lastProposal : null
+    ),
     clearProposal: () => { lastProposal = null; uiState = 'idle'; },
+    getPendingDeletions: () => [...pendingDeletions.values()],
     getLastGuard: () => lastGuard,
     execute,
   });

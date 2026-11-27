@@ -1,5 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {
   STATE_SCHEMA, EXPORT_SCHEMA, emptyDraft, restoreAppState, parseLawyerCardPaste,
   assembleMemo, formatMemoMarkdown, buildMemoExportV1,
@@ -168,4 +169,125 @@ test('Web parity Markdown and soudan.memo.export.v1 JSON preserve fixed disclaim
   assert.equal(exp.evidenceHashesOnly, true);
   assert.equal(exp.disclaimer, t('disclaimer.fixed'));
   assert.ok(!JSON.stringify(exp).includes('data:image'));
+});
+
+test('P1 #2: agent/MCP soudan.draft.delete NEVER deletes even with confirmed:true/confirm:true; only human confirmation finalizes', async () => {
+  const store = createSemanticStore({locale: 'ja'});
+  await store.execute('soudan.draft.create', {title: '残すべき下書き'}, {actor: {kind: 'human'}});
+  assert.equal(store.getState().drafts.length, 2);
+
+  // Agent/MCP passes both confirm:true and confirmed:true -> MUST NOT delete!
+  const blocked = await store.execute('soudan.draft.delete', {id: 'draft-2', confirmed: true, confirm: true}, {actor: {kind: 'agent'}});
+  assert.equal(blocked.ok, false);
+  assert.equal(blocked.state, 'consent.required');
+  assert.equal(blocked.requiresHumanApproval, true);
+  assert.equal(blocked.gateName, 'human-approval-required');
+  assert.equal(store.getState().drafts.length, 2, 'draft MUST remain intact after agent delete call');
+  assert.equal(store.getPendingDeletions().length, 1);
+  assert.equal(store.getPendingDeletions()[0].targetId, 'draft-2');
+
+  // Human explicit confirmation for the same target draft finalizes deletion.
+  const humanDone = await store.execute('soudan.draft.delete', {id: 'draft-2', confirmed: true}, {actor: {kind: 'human'}});
+  assert.equal(humanDone.ok, true);
+  assert.equal(store.getState().drafts.length, 1);
+  assert.equal(store.getPendingDeletions().length, 0);
+});
+
+test('P1 #3: persist failures (state-conflict and storage rejection) propagate ok:false, roll back state, and never report success', async () => {
+  // Case A: revision conflict reloads authoritative state and returns ok:false, conflict:true.
+  const remoteState = restoreAppState({
+    schema: STATE_SCHEMA,
+    activeDraftId: 'draft-1',
+    drafts: [{id: 'draft-1', title: '別タブの最新', createdAt: '2026-11-27T00:00:00.000Z', updatedAt: '2026-11-27T00:00:00.000Z', draft: {...emptyDraft(), summary: '最新データ'}}],
+    audit: [],
+  });
+  let failMode = null;
+  const store = createSemanticStore({
+    locale: 'ja',
+    onPersist: async () => {
+      if (failMode === 'conflict') return {ok: false, conflict: true, code: 'state-conflict', reloadedState: remoteState};
+      if (failMode === 'quota') return {ok: false, conflict: false, code: 'data-too-large'};
+      return {ok: true};
+    },
+  });
+
+  await store.execute('soudan.draft.create', {title: '2件目'}, {actor: {kind: 'human'}});
+  assert.equal(store.getState().drafts.length, 2);
+
+  // Storage write rejection on delete -> returns ok:false and rolls back deletion!
+  failMode = 'quota';
+  const delQuota = await store.execute('soudan.draft.delete', {id: 'draft-2', confirmed: true}, {actor: {kind: 'human'}});
+  assert.equal(delQuota.ok, false);
+  assert.equal(delQuota.persisted, false);
+  assert.equal(delQuota.error, 'data-too-large');
+  assert.equal(store.getState().drafts.length, 2, 'deleted draft was rolled back on storage failure');
+
+  // Storage write rejection on create -> returns ok:false and rolls back creation!
+  const createQuota = await store.execute('soudan.draft.create', {title: '保存失敗'}, {actor: {kind: 'human'}});
+  assert.equal(createQuota.ok, false);
+  assert.equal(createQuota.error, 'data-too-large');
+  assert.equal(store.getState().drafts.length, 2, 'created draft was rolled back on storage failure');
+
+  // Revision conflict on update -> returns ok:false, conflict:true and reloads authoritative remote state!
+  failMode = 'conflict';
+  const updConflict = await store.execute('soudan.draft.update', {patch: {summary: '古い編集'}}, {actor: {kind: 'human'}});
+  assert.equal(updConflict.ok, false);
+  assert.equal(updConflict.conflict, true);
+  assert.equal(updConflict.error, 'state-conflict');
+  assert.equal(store.getState().drafts.length, 1);
+  assert.equal(store.getActiveDraft().draft.summary, '最新データ');
+
+  // Verify app.js routes mutation feedback through statusMessageForMutation (never unconditional success).
+  const appSrc = readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
+  assert.ok(appSrc.includes("statusMessageForMutation(res, 'drafts.deleted', t)"));
+  assert.ok(appSrc.includes("statusMessageForMutation(res, 'drafts.created', t)"));
+  assert.ok(appSrc.includes("statusMessageForMutation(res, 'saved', t)"));
+});
+
+test('P1 #4: organization proposal is bound to originating draftId and cannot overwrite another draft after switching', async () => {
+  const store = createSemanticStore({locale: 'ja'});
+  await store.execute('soudan.draft.update', {patch: {summary: '相談Aの元の内容'}}, {actor: {kind: 'human'}});
+  await store.execute('soudan.draft.create', {title: '相談B'}, {actor: {kind: 'human'}});
+  await store.execute('soudan.draft.update', {patch: {summary: '相談Bの元の内容'}}, {actor: {kind: 'human'}});
+
+  // Switch back to draft-1 and generate a proposal.
+  await store.execute('soudan.draft.select', {id: 'draft-1'}, {actor: {kind: 'human'}});
+  const org = await store.execute('soudan.inference.organize', {localOnly: true}, {actor: {kind: 'human'}});
+  assert.equal(org.ok, true);
+  assert.equal(org.proposal.targetDraftId, 'draft-1');
+  assert.equal(store.getLastProposal('draft-1')?.targetDraftId, 'draft-1');
+  assert.equal(store.getLastProposal('draft-2'), null);
+
+  // Switch to draft-2 -> proposal from draft-1 is cleared/hidden and cannot be applied to draft-2!
+  await store.execute('soudan.draft.select', {id: 'draft-2'}, {actor: {kind: 'human'}});
+  assert.equal(store.getLastProposal(), null);
+  const crossApply = await store.execute('soudan.draft.update', {
+    id: 'draft-2',
+    proposalDraftId: org.proposal.targetDraftId,
+    patch: {summary: org.proposal.suggestedSummary},
+  }, {actor: {kind: 'human'}});
+  assert.equal(crossApply.ok, false);
+  assert.equal(crossApply.state, 'governor.blocked');
+  assert.equal(crossApply.gateName, 'proposal-draft-mismatch');
+  assert.equal(store.getActiveDraft().draft.summary, '相談Bの元の内容', 'draft-2 MUST remain untouched');
+});
+
+test('P2 #5: normal Save in app.js routes through soudan.draft.update with human actor and O8-minimized audit', async () => {
+  const appSrc = readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
+  const saveBlock = appSrc.slice(appSrc.indexOf('async function save()'), appSrc.indexOf('function field('));
+  assert.ok(saveBlock.includes("store.execute('soudan.draft.update'"), 'save() must invoke soudan.draft.update');
+  assert.ok(saveBlock.includes("actor: {kind: 'human'}"), 'save() must pass human actor');
+  assert.ok(!saveBlock.includes('host.write('), 'save() must not bypass semantic store by calling host.write directly');
+
+  const store = createSemanticStore({locale: 'ja'});
+  const res = await store.execute('soudan.draft.update', {
+    id: 'draft-1',
+    patch: {...emptyDraft(), summary: '秘密の相談テキスト999', name: '秘密氏名'},
+  }, {actor: {kind: 'human'}});
+  assert.equal(res.ok, true);
+  const entries = (await store.execute('soudan.audit.list', {}, {actor: {kind: 'human'}})).entries;
+  assert.equal(entries.at(-1).op, 'soudan.draft.update');
+  assert.equal(entries.at(-1).actor.kind, 'human');
+  assert.ok(!JSON.stringify(entries).includes('秘密の相談テキスト999'));
+  assert.ok(!JSON.stringify(entries).includes('秘密氏名'));
 });

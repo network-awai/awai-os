@@ -1,7 +1,8 @@
 // Static build:
 // - Default (`npm run build` / `--target web`): outputs Web static `dist/` for https://soudan.itonami.app
-//   with `connect-src 'none';` in ALL HTML files (index.html, foreign-info.html, embed.html), zero symlinks,
-//   strictly < 10 MiB per file (NAME_PLANE_MAX_FILE_BLOCKS=40), and dist/release.json.
+//   with `connect-src 'none';` in ALL standalone HTML files (index.html, foreign-info.html, embed.html),
+//   plus self-contained single-file `guest.html` for canonical `mountRestrictedClientApp` (restricted-wasm-v1),
+//   zero symlinks, strictly < 10 MiB per file (NAME_PLANE_MAX_FILE_BLOCKS=40), and dist/release.json.
 // - Tauri (`npm run build:tauri` / `--target tauri`): outputs Tauri frontend `dist-tauri/` where
 //   index.html carries `connect-src ipc: http://ipc.localhost;` (required because WebView intersects HTML
 //   <meta CSP> with tauri.conf.json app.security.csp) while foreign-info.html & embed.html keep `connect-src 'none';`.
@@ -13,6 +14,7 @@ import {resolve} from 'node:path';
 import {createHash} from 'node:crypto';
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // strictly < 10 MiB (yataverse-bytes 40-block cap)
+const MAX_GUEST_HTML_BYTES = 8 * 1024 * 1024; // mountRestrictedClientApp 8388608 char budget
 const args = process.argv.slice(2);
 const targetIdx = args.indexOf('--target');
 const target = targetIdx >= 0 ? args[targetIdx + 1] : 'web';
@@ -31,6 +33,7 @@ await mkdir(out, {recursive: true});
 const srcModules = [
   'style.css', 'app.js', 'embed.js', 'model.js', 'messages.js',
   'operations.js', 'send.js', 'inference.js', 'semantic.js', 'mcp-app.js',
+  'storage.js', 'guest-entry.js',
 ];
 for (const name of srcModules) {
   await copyFile(resolve(app, 'src', name), resolve(out, name));
@@ -52,6 +55,53 @@ for (const htmlFile of ['foreign-info.html', 'embed.html']) {
   await copyFile(resolve(app, 'src', htmlFile), resolve(out, htmlFile));
 }
 
+// Build genuinely self-contained single-file restricted-wasm-v1 guest entry (`guest.html`) with
+// zero external <script src> / <link href> and zero direct localStorage startup dependency.
+function stripModuleSyntax(code) {
+  return code
+    .replace(/^import\s+[\s\S]*?from\s+['"][^'"]+['"];\s*$/gm, '')
+    .replace(/^export\s+\{[^}]+\};\s*$/gm, '')
+    .replace(/^export\s+(?=(?:const|let|var|async\s+function|function|class)\b)/gm, '');
+}
+const guestOrder = ['messages.js', 'model.js', 'operations.js', 'send.js', 'inference.js', 'semantic.js', 'storage.js', 'guest-entry.js'];
+const guestParts = [];
+for (const name of guestOrder) {
+  guestParts.push(`// --- ${name} ---\n` + stripModuleSyntax(await readFile(resolve(app, 'src', name), 'utf8')));
+}
+const guestScript = `(function(){\n'use strict';\n${guestParts.join('\n')}\n})();`;
+// Validate bundled JS syntax at build time.
+new Function(guestScript);
+const styleCss = await readFile(resolve(app, 'src/style.css'), 'utf8');
+const guestHtml = [
+  '<!doctype html>',
+  '<html lang="ja">',
+  '<head>',
+  '  <meta charset="utf-8">',
+  '  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">',
+  '  <meta name="color-scheme" content="light dark">',
+  '  <meta name="referrer" content="no-referrer">',
+  '  <title>Soudan — 自己整理メモツール (restricted-wasm-v1)</title>',
+  `  <style>${styleCss.replace(/<\/style/gi, '<\\/style')}</style>`,
+  '</head>',
+  '<body>',
+  '  <main id="guest-root" data-semantic-state="idle">',
+  '    <header class="app-header"><h1>Soudan — 自己整理メモツール</h1></header>',
+  '    <div id="view"></div>',
+  '    <p id="status" role="status" aria-live="polite"></p>',
+  '  </main>',
+  `  <script>${guestScript.replace(/<\/script/gi, '<\\/script')}</script>`,
+  '</body>',
+  '</html>',
+  '',
+].join('\n');
+if (/<script[^>]+src=|<link[^>]+rel=['"]stylesheet['"]/i.test(guestHtml)) {
+  throw Error('guest.html must be self-contained with zero external script/stylesheet links');
+}
+if (Buffer.byteLength(guestHtml, 'utf8') > MAX_GUEST_HTML_BYTES) {
+  throw Error('guest.html exceeds mountRestrictedClientApp 8 MiB budget');
+}
+await writeFile(resolve(out, 'guest.html'), guestHtml);
+
 // Pin canonical kotoba-client-runtime.js + kotoba-client-consent.css against otehon/shell/vendor/PINS.json.
 const pins = JSON.parse(await readFile(resolve(repo, 'otehon/shell/vendor/PINS.json'), 'utf8'));
 for (const [input, output] of [['kotoba-client-runtime.js', 'runtime.js'], ['kotoba-client-consent.css', 'runtime-consent.css']]) {
@@ -72,6 +122,7 @@ const appOrigins = ['https://soudan.itonami.app', 'http://tauri.localhost', 'htt
 const problems = clientRuntimeProblems(descriptor, [...REQUESTED_CAPABILITIES], appOrigins);
 if (problems.length) throw Error('invalid runtime descriptor: ' + JSON.stringify(problems));
 if (descriptor.profile !== 'restricted-wasm-v1') throw Error('descriptor profile must be restricted-wasm-v1');
+if (descriptor.entry !== 'guest.html') throw Error('descriptor entry must point to self-contained guest.html');
 if (descriptor.operations.length !== 2
   || descriptor.operations[0].capability !== SEND_SELECTOR.capability
   || descriptor.operations[1].capability !== INFERENCE_SELECTOR.capability) {
@@ -84,8 +135,8 @@ if (declaredConnect !== 'connect-src https://api.murakumo.cloud') {
 }
 
 // Independent CSP checks (Dev #220 + Itonami):
-// - Web static HTML (dist/*.html) MUST use connect-src 'none' (zero network destinations, no ipc:, no api.murakumo.cloud)
-// - Tauri CSP (tauri.conf.json & dist-tauri/index.html) MUST use connect-src ipc: http://ipc.localhost; (IPC only)
+// - Web static HTML (dist/index.html, embed.html, foreign-info.html) MUST use connect-src 'none'
+// - Tauri CSP (tauri.conf.json & dist-tauri/index.html) MUST use connect-src ipc: http://ipc.localhost;
 const tauriConf = JSON.parse(await readFile(resolve(app, 'src-tauri/tauri.conf.json'), 'utf8'));
 const tauriCsp = tauriConf.app.security.csp;
 if (!tauriCsp.includes('connect-src ipc: http://ipc.localhost;')) {
@@ -100,7 +151,7 @@ if (tauriConf.build.frontendDist !== '../dist-tauri') {
 await writeFile(resolve(out, 'descriptor.json'), JSON.stringify(descriptor, null, 2) + '\n');
 await distributeUi(out);
 
-// Verify every HTML entry in output directory has mandatory <meta> CSP + referrer=no-referrer.
+// Verify every standalone HTML entry in output directory has mandatory <meta> CSP + referrer=no-referrer.
 for (const htmlFile of ['index.html', 'foreign-info.html', 'embed.html']) {
   const body = await readFile(resolve(out, htmlFile), 'utf8');
   if (!body.includes('http-equiv="Content-Security-Policy"')) throw Error('missing meta CSP in ' + htmlFile);

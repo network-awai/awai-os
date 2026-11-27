@@ -3,10 +3,11 @@
 Write down a legal consultation's facts, timeline, questions, and post evidence list in your own words before meeting a lawyer you chose yourself. Everything runs on the device with zero server-side consultation storage, zero ads, and zero fees. Built for static Web (`https://soudan.itonami.app`) and Android / Awai OS via Tauri **3.0.0-alpha.6** (`tauri-runtime-wry` v3, OS WebView).
 
 - Package ID: `network.itonami.soudan`
-- Runtime profile: `restricted-wasm-v1` (canonical `kotoba-client-runtime.js` pinned in `otehon/shell/vendor/PINS.json`)
+- Runtime profile: `restricted-wasm-v1` (canonical `kotoba-client-runtime.js` pinned in `otehon/shell/vendor/PINS.json`; self-contained guest entry `guest.html` for `mountRestrictedClientApp` + standalone Web `index.html` / Tauri `dist-tauri/index.html`)
 - Tracking: Soudan item #223, [AWAI-3321](https://linear.app/kotobalabs/issue/AWAI-3321), [AWAI-3236](https://linear.app/kotobalabs/issue/AWAI-3236)
 
-> Not legal advice and not a substitute for a lawyer. Consult a lawyer for specific legal judgment.  
+> Not legal advice and not a substitute for a lawyer. Consult a lawyer for specific legal judgment.
+>
 > 法的助言ではなく弁護士に代わるものではありません。具体的判断は弁護士へ相談してください。
 
 ## Scope & Legal 7-Barrier Model (ADR 0001 + Legal item #224)

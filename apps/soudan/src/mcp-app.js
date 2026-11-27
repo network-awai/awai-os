@@ -15,7 +15,7 @@ export const MCP_TOOLS = Object.freeze([
   Object.freeze({name: 'soudan.draft.create', description: 'Create a new on-device consultation memo draft.'}),
   Object.freeze({name: 'soudan.draft.select', description: 'Select an existing on-device consultation memo draft.'}),
   Object.freeze({name: 'soudan.draft.update', description: 'Update fields of the active on-device consultation memo draft.'}),
-  Object.freeze({name: 'soudan.draft.delete', description: 'Dry-run or confirmed deletion of an on-device draft (irreversible).'}),
+  Object.freeze({name: 'soudan.draft.delete', description: 'Request human-approved deletion of an on-device draft (always returns consent.required; agent calls cannot finalize deletion).'}),
   Object.freeze({name: 'soudan.evidence.add', description: 'Add a post evidence metadata row (URL/date/author/SHA-256 only; no raw image bytes).'}),
   Object.freeze({name: 'soudan.evidence.remove', description: 'Remove an evidence metadata row by index.'}),
   Object.freeze({name: 'soudan.memo.assemble', description: 'Assemble the fixed-template consultation memo with mandatory legal disclaimer.'}),

@@ -6,7 +6,7 @@ import {
 } from './runtime.js';
 import {
   CATEGORIES, JURISDICTIONS, LIMITS, assembleMemo, draftDisplayTitle, draftProblems,
-  newEvidence, parseLawyerCardPaste, recipientProblems, sha256Hex,
+  newEvidence, parseLawyerCardPaste, recipientProblems, restoreDraft, sha256Hex,
 } from './model.js';
 import {pickLocale, translator} from './messages.js';
 import {
@@ -15,6 +15,7 @@ import {
 import {createShareHandler, createWebParityHandler, detectExecutionRoute} from './send.js';
 import {DEFAULT_INFERENCE_CONFIG, OFFICIAL_ROUTE_KEYS} from './inference.js';
 import {createSemanticStore} from './semantic.js';
+import {createStandaloneSafeHost} from './storage.js';
 
 bind_native(document.documentElement, {tonal: '.tonal', text: '.link'});
 
@@ -32,6 +33,14 @@ export function bindForm(container, onSubmit) {
       e.preventDefault();
     }
   });
+}
+
+// Pure helper for status feedback on mutating semantic operations (P1 #3):
+// NEVER reports success when persist failed or conflicted.
+export function statusMessageForMutation(res, successKey, t) {
+  if (res?.ok) return t(successKey);
+  if (res?.conflict) return t('conflict');
+  return t('saveFailed', {code: res?.error ?? res?.gateName ?? 'unknown'});
 }
 
 const tauriInvoke = window.__TAURI__?.core?.invoke;
@@ -64,7 +73,6 @@ const sendAdapter = tauriInvoke
     copyText: navigator.clipboard?.writeText ? text => navigator.clipboard.writeText(text) : null,
   });
 
-// Inference stays fail-closed (not in hostSupportedOperations while DEFAULT_INFERENCE_CONFIG.enabled === false).
 const hostSupportedOperations = [SEND_HOST, ...(DEFAULT_INFERENCE_CONFIG.enabled ? [INFERENCE_HOST] : [])];
 
 const broker = createClientOperationBroker({
@@ -78,7 +86,8 @@ const broker = createClientOperationBroker({
 });
 
 document.documentElement.lang = locale;
-const host = createHost({appId: 'network.itonami.soudan'});
+// P1 #1: opaque-origin safe host creation (never throws if localStorage is inaccessible).
+const host = createStandaloneSafeHost({createHostFn: createHost, appId: 'network.itonami.soudan', win: window});
 const $ = id => document.getElementById(id);
 const say = text => { $('status').textContent = text; };
 function el(tag, text, cls) {
@@ -93,6 +102,21 @@ const problemText = key => t(key, PARAMS[key] ?? {});
 let revision = 0;
 let pendingDeletePreview = null;
 let lastDryRunText = '';
+// Working form buffer (P2 #5): edits accumulate here and commit exclusively through soudan.draft.update.
+let formDraftId = null;
+let formDraft = null;
+
+function syncFormDraft() {
+  const rec = store.getActiveDraft();
+  formDraftId = rec.id;
+  formDraft = restoreDraft(rec.draft);
+}
+
+function workingDraft() {
+  const rec = store.getActiveDraft();
+  if (!formDraft || formDraftId !== rec.id) syncFormDraft();
+  return formDraft;
+}
 
 const store = createSemanticStore({
   locale,
@@ -103,12 +127,18 @@ const store = createSemanticStore({
     try {
       const saved = await host.write({expectedRevision: revision, data: nextState});
       revision = saved.revision;
+      return {ok: true};
     } catch (e) {
-      if (e.code === 'state-conflict') {
-        await load();
-        say(t('conflict'));
-        route();
+      if (e?.code === 'state-conflict') {
+        try {
+          const latest = await host.read();
+          revision = latest.revision;
+          return {ok: false, conflict: true, code: 'state-conflict', reloadedState: latest.data};
+        } catch {
+          return {ok: false, conflict: true, code: 'state-conflict'};
+        }
       }
+      return {ok: false, conflict: false, code: e?.code ?? 'storage-unavailable'};
     }
   },
 });
@@ -137,23 +167,23 @@ async function load() {
     const s = await host.read();
     revision = s.revision;
     store.setState(s.data);
+    syncFormDraft();
   } catch (e) {
-    say(t('saveFailed', {code: e.code ?? 'unknown'}));
+    say(t('saveFailed', {code: e?.code ?? 'unknown'}));
   }
 }
 
+// P2 #5 + P1 #3: All normal saves route through soudan.draft.update (recording human audit)
+// and propagate conflict / storage errors cleanly without ever showing false success.
 async function save() {
-  try {
-    const next = await host.write({expectedRevision: revision, data: store.getState()});
-    revision = next.revision;
-    say(t('saved'));
-    updateStateBadge();
-    return true;
-  } catch (e) {
-    if (e.code === 'state-conflict') { await load(); say(t('conflict')); route(); return false; }
-    say(t('saveFailed', {code: e.code ?? 'unknown'}));
-    return false;
-  }
+  const rec = store.getActiveDraft();
+  const patch = workingDraft();
+  const res = await store.execute('soudan.draft.update', {id: rec.id, patch}, {actor: {kind: 'human'}});
+  syncFormDraft();
+  say(statusMessageForMutation(res, 'saved', t));
+  updateStateBadge();
+  if (res.conflict) route();
+  return res.ok;
 }
 
 function field(label, id, control, hint) {
@@ -184,10 +214,6 @@ function problemList(keys) {
   const ul = el('ul'); for (const k of keys) ul.append(el('li', problemText(k))); box.append(ul); return box;
 }
 
-function activeDraft() {
-  return store.getActiveDraft().draft;
-}
-
 // ---- multi-draft switcher ----
 function draftBar() {
   const state = store.getState();
@@ -207,7 +233,9 @@ function draftBar() {
     btn.setAttribute('aria-pressed', String(active));
     btn.addEventListener('click', async () => {
       pendingDeletePreview = null;
-      await store.execute('soudan.draft.select', {id: rec.id}, {actor: {kind: 'human'}});
+      const res = await store.execute('soudan.draft.select', {id: rec.id}, {actor: {kind: 'human'}});
+      syncFormDraft();
+      if (!res.ok) say(statusMessageForMutation(res, 'saved', t));
       updateStateBadge();
       renderInput();
     });
@@ -219,8 +247,9 @@ function draftBar() {
   const createBtn = el('button', t('drafts.create'), 'tonal'); createBtn.type = 'button';
   createBtn.addEventListener('click', async () => {
     pendingDeletePreview = null;
-    await store.execute('soudan.draft.create', {}, {actor: {kind: 'human'}});
-    say(t('drafts.created'));
+    const res = await store.execute('soudan.draft.create', {}, {actor: {kind: 'human'}});
+    syncFormDraft();
+    say(statusMessageForMutation(res, 'drafts.created', t));
     updateStateBadge();
     renderInput();
   });
@@ -248,8 +277,9 @@ function draftBar() {
     confirm.addEventListener('click', async () => {
       const targetId = pendingDeletePreview.targetId;
       pendingDeletePreview = null;
-      await store.execute('soudan.draft.delete', {id: targetId, confirmed: true}, {actor: {kind: 'human'}});
-      say(t('drafts.deleted'));
+      const res = await store.execute('soudan.draft.delete', {id: targetId, confirmed: true}, {actor: {kind: 'human'}});
+      syncFormDraft();
+      say(statusMessageForMutation(res, 'drafts.deleted', t));
       updateStateBadge();
       renderInput();
     });
@@ -262,7 +292,8 @@ function draftBar() {
 
 // ---- inference slot (murakumo.cloud Route B, default OFF / fail-closed) ----
 function inferenceBlock() {
-  const draft = activeDraft();
+  const rec = store.getActiveDraft();
+  const draft = workingDraft();
   const sec = el('section', null, 'card inference-card');
   sec.setAttribute('aria-labelledby', 'inf-h');
   const h = el('h3', t('inference.heading')); h.id = 'inf-h';
@@ -293,14 +324,14 @@ function inferenceBlock() {
   const choices = el('div', null, 'equal-choices');
   const declineBtn = el('button', t('inference.decline'), 'equal-choice'); declineBtn.type = 'button';
   declineBtn.addEventListener('click', async () => {
-    const res = await store.execute('soudan.inference.organize', {localOnly: true}, {actor: {kind: 'human'}});
+    const res = await store.execute('soudan.inference.organize', {localOnly: true, prompt: draft.summary}, {actor: {kind: 'human'}});
     updateStateBadge();
     if (res.ok) say(t('inference.localFallback'));
     renderInput();
   });
   const acceptBtn = el('button', t('inference.accept'), 'equal-choice'); acceptBtn.type = 'button';
   acceptBtn.addEventListener('click', async () => {
-    const res = await store.execute('soudan.inference.organize', {localOnly: false}, {actor: {kind: 'human'}});
+    const res = await store.execute('soudan.inference.organize', {localOnly: false, prompt: draft.summary}, {actor: {kind: 'human'}});
     updateStateBadge();
     if (res.ok && res.fallback === 'local') say(t('inference.localFallback'));
     renderInput();
@@ -319,7 +350,8 @@ function inferenceBlock() {
     sec.append(box);
   }
 
-  const proposal = store.getLastProposal();
+  // P1 #4: only render proposal bound to the currently active draftId.
+  const proposal = store.getLastProposal(rec.id);
   if (proposal) {
     const pbox = el('div', null, 'proposal-box');
     pbox.append(
@@ -337,9 +369,13 @@ function inferenceBlock() {
     });
     const apply = el('button', t('inference.applyProposal'), 'equal-choice'); apply.type = 'button';
     apply.addEventListener('click', async () => {
-      await store.execute('soudan.draft.update', {patch: {summary: proposal.suggestedSummary}}, {actor: {kind: 'human'}});
-      store.clearProposal();
-      say(t('inference.applied'));
+      const res = await store.execute('soudan.draft.update', {
+        id: proposal.targetDraftId,
+        proposalDraftId: proposal.targetDraftId,
+        patch: {...workingDraft(), summary: proposal.suggestedSummary},
+      }, {actor: {kind: 'human'}});
+      syncFormDraft();
+      say(statusMessageForMutation(res, 'inference.applied', t));
       updateStateBadge();
       renderInput();
     });
@@ -407,7 +443,9 @@ function evidenceEditor(draft) {
     box.append(shot);
     const rm = el('button', t('evidence.remove'), 'link'); rm.type = 'button';
     rm.addEventListener('click', async () => {
-      await store.execute('soudan.evidence.remove', {index: i}, {actor: {kind: 'human'}});
+      const res = await store.execute('soudan.evidence.remove', {index: i}, {actor: {kind: 'human'}});
+      syncFormDraft();
+      if (!res.ok) say(statusMessageForMutation(res, 'saved', t));
       updateStateBadge();
       renderInput();
     });
@@ -416,7 +454,9 @@ function evidenceEditor(draft) {
   if (draft.evidence.length < LIMITS.evidence) {
     const add = el('button', t('evidence.add'), 'tonal'); add.type = 'button';
     add.addEventListener('click', async () => {
-      await store.execute('soudan.evidence.add', {row: newEvidence()}, {actor: {kind: 'human'}});
+      const res = await store.execute('soudan.evidence.add', {row: newEvidence()}, {actor: {kind: 'human'}});
+      syncFormDraft();
+      if (!res.ok) say(statusMessageForMutation(res, 'saved', t));
       updateStateBadge();
       renderInput();
     });
@@ -440,7 +480,7 @@ function guideBlock() {
 }
 
 function renderInput(problems = []) {
-  const draft = activeDraft();
+  const draft = workingDraft();
   const view = $('view'); view.replaceChildren();
   view.append(el('p', t('intro'), 'muted'), draftBar());
   if (problems.length) view.append(problemList(problems));
@@ -478,9 +518,11 @@ function renderInput(problems = []) {
   bindForm(form, async () => {
     const p = draftProblems(draft);
     if (p.length) { renderInput(p); $('view').querySelector('.problems')?.focus?.(); say(t('problems')); return; }
-    await store.execute('soudan.memo.assemble', {}, {actor: {kind: 'human'}});
+    if (!await save()) return;
+    const res = await store.execute('soudan.memo.assemble', {}, {actor: {kind: 'human'}});
     updateStateBadge();
-    if (await save()) location.hash = '#/memo';
+    if (res.ok) location.hash = '#/memo';
+    else say(statusMessageForMutation(res, 'saved', t));
   });
   view.append(form);
   updateStateBadge();
@@ -494,7 +536,7 @@ function routeLabel() {
 
 // ---- memo, recipient, 3-surface X1 send/export ----
 function renderMemo() {
-  const draft = activeDraft();
+  const draft = workingDraft();
   const view = $('view'); view.replaceChildren();
   const h = el('h2', t('memo.heading')); h.tabIndex = -1; view.append(h);
   if (draftProblems(draft).length) { view.append(el('p', t('memo.incomplete'))); h.focus(); return; }
@@ -508,7 +550,6 @@ function renderMemo() {
   const r = el('section', null, 'card'); r.setAttribute('aria-labelledby', 'recipient-h');
   const rh = el('h3', t('recipient.heading')); rh.id = 'recipient-h';
 
-  // Optional manual-only bengoshi.lawyer.card.v1 / 7-line paste helper.
   const pasteDet = el('details', null, 'paste-helper');
   pasteDet.append(el('summary', t('paste.heading')), el('p', t('paste.hint'), 'muted hint'));
   let pasteRaw = '';
@@ -540,7 +581,6 @@ function renderMemo() {
     field(t('recipient.contact'), 'r-contact', contactIn),
   );
 
-  // Explicit O8 disclosure + execution route badge.
   const badgeRow = el('div', null, 'chips');
   badgeRow.append(el('span', `▸ ${t('route.label')}: ${routeLabel()}`, 'chip current'));
   r.append(badgeRow, el('p', t('o8.notice'), 'notice-banner'));
@@ -556,6 +596,7 @@ function renderMemo() {
       if (recipientProblems(draft.recipient).length || broker.operations.length === 0) { say(t('send.blocked')); return; }
       // A new send starts here: clear the previous result line before consent/chooser.
       say('');
+      if (!await save()) return;
       const res = await store.execute('soudan.memo.send', {mode}, {actor: {kind: 'human'}});
       updateStateBadge();
       if (res.ok) {
@@ -573,6 +614,7 @@ function renderMemo() {
   const dryRunBtn = el('button', t('send.dryRun'), 'tonal'); dryRunBtn.type = 'button';
   dryRunBtn.addEventListener('click', async () => {
     if (recipientProblems(draft.recipient).length) { say(t('send.blocked')); return; }
+    if (!await save()) return;
     const mode = execRoute === 'android-share-sheet' ? 'android-share' : 'save-txt';
     const res = await store.execute('soudan.memo.send', {mode, dryRun: true}, {actor: {kind: 'human'}});
     updateStateBadge();
