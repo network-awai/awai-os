@@ -77,6 +77,7 @@ export function createSemanticStore({
   let inferenceInFlight = 0;
   let dailyBucket = {day: '', count: 0};
   // FIFO queue of unpersisted post-share audit entries (deduplicated by collision-free entry id).
+  const MAX_AUDIT_ENTRIES = LIMITS.audit;
   let pendingAuditEntries = [];
   const pendingDeletions = new Map();
 
@@ -105,7 +106,7 @@ export function createSemanticStore({
     const existingIds = new Set(state.audit.map(e => e.id));
     const missing = entries.filter(e => e && !existingIds.has(e.id));
     if (missing.length) {
-      state.audit = [...state.audit, ...missing].slice(-LIMITS.audit);
+      state.audit = [...state.audit, ...missing].slice(-MAX_AUDIT_ENTRIES);
       seq = Math.max(seq, state.audit.length);
     }
     return missing;
@@ -127,7 +128,7 @@ export function createSemanticStore({
       targetKind,
       ...(gateName ? {gateName} : {}),
     };
-    state.audit = [...state.audit, entry].slice(-LIMITS.audit);
+    state.audit = [...state.audit, entry].slice(-MAX_AUDIT_ENTRIES);
     return entry;
   }
 
@@ -423,6 +424,21 @@ export function createSemanticStore({
         uiState = 'consent.required';
         return {ok: true, sent: false, state: uiState, preview, disclaimer: t('disclaimer.fixed')};
       }
+      // Pre-share backlog guard: fail closed at MAX_AUDIT_ENTRIES (100) unrecorded share audits
+      // without invoking external share so recovery must flush pending audits first.
+      if (pendingAuditEntries.length >= MAX_AUDIT_ENTRIES) {
+        uiState = 'governor.blocked';
+        return {
+          ok: false,
+          sent: false,
+          auditPersisted: false,
+          pendingAuditCount: pendingAuditEntries.length,
+          gateName: 'audit-recovery-required',
+          error: 'audit-recovery-required',
+          state: uiState,
+          disclaimer: t('disclaimer.fixed'),
+        };
+      }
       if (!broker) {
         recordAudit({op, actor: normActor, outcome: 'blocked', targetKind: 'memo', gateName: 'broker-unavailable'});
         uiState = 'governor.blocked';
@@ -442,14 +458,15 @@ export function createSemanticStore({
       try {
         const result = await broker.invoke(SEND_SELECTOR, payload);
         // External share ALREADY succeeded here. Snapshot exact queued entries to flush alongside
-        // this share's audit record, and remove ONLY those exact flushed IDs after persist confirms ok:true.
+        // this share's audit record, and after persist confirms ok:true remove ONLY IDs actually
+        // present in the persisted post-truncation snapshot.
         const prevState = cloneState(state);
         const prevSeq = seq;
         const queuedSnapshot = [...pendingAuditEntries];
-        const mergedQueued = mergeAuditsIntoState(queuedSnapshot);
+        mergeAuditsIntoState(queuedSnapshot);
         const auditEntry = recordAudit({op, actor: normActor, outcome: 'ok', targetKind: 'memo'});
         const entriesToFlush = [...queuedSnapshot, auditEntry];
-        const flushedIds = new Set(entriesToFlush.map(e => e.id));
+        const persistedIds = new Set(state.audit.map(e => e.id));
         uiState = 'audit.recorded';
         const p = await persistOrRollback(prevState, prevSeq);
         if (!p.ok) {
@@ -469,13 +486,37 @@ export function createSemanticStore({
             disclaimer: t('disclaimer.fixed'),
           };
         }
-        mergeAuditsIntoState(entriesToFlush);
+        const flushedEntries = entriesToFlush.filter(e => persistedIds.has(e.id));
+        const flushedIds = new Set(flushedEntries.map(e => e.id));
+        const flushedQueuedCount = queuedSnapshot.filter(e => flushedIds.has(e.id)).length;
+        mergeAuditsIntoState(flushedEntries);
         pendingAuditEntries = pendingAuditEntries.filter(e => !flushedIds.has(e.id));
+        if (!flushedIds.has(auditEntry.id)) enqueuePendingAudit(auditEntry);
+        const allFlushed = flushedIds.size === entriesToFlush.length;
+        if (!allFlushed) {
+          uiState = 'governor.blocked';
+          return {
+            ok: false,
+            sent: true,
+            auditPersisted: false,
+            auditError: 'audit-retention-cap-exceeded',
+            error: 'audit-retention-cap-exceeded',
+            flushedCount: flushedIds.size,
+            flushedPendingCount: flushedQueuedCount,
+            pendingAuditEntry: pendingAuditEntries[0] ?? auditEntry,
+            pendingAuditEntries: [...pendingAuditEntries],
+            pendingAuditCount: pendingAuditEntries.length,
+            state: uiState,
+            result,
+            disclaimer: t('disclaimer.fixed'),
+          };
+        }
         return {
           ok: true,
           sent: true,
           auditPersisted: true,
-          flushedPendingCount: mergedQueued.length,
+          flushedCount: flushedIds.size,
+          flushedPendingCount: flushedQueuedCount,
           pendingAuditCount: pendingAuditEntries.length,
           state: uiState,
           result,
@@ -653,17 +694,18 @@ export function createSemanticStore({
     getPendingAudits: () => [...pendingAuditEntries],
     getPendingAuditCount: () => pendingAuditEntries.length,
     // Retry persisting queued post-share audit entries in FIFO order WITHOUT ever repeating external share.
-    // Snapshots exact IDs included in this write and removes ONLY those flushed IDs on ok:true so any
-    // newly arrived pending entry from a concurrent share stays safely queued.
+    // After persist confirms ok:true, inspects the actual persisted post-truncation snapshot and removes
+    // ONLY those persisted IDs from pendingAuditEntries; any entry truncated by MAX_AUDIT_ENTRIES remains
+    // queued with auditPersisted:false and auditError:'audit-retention-cap-exceeded' for follow-up retry.
     async retryPendingAudit() {
       if (pendingAuditEntries.length === 0) {
-        return {ok: true, auditPersisted: true, pendingAuditCount: 0, state: uiState, disclaimer: t('disclaimer.fixed')};
+        return {ok: true, auditPersisted: true, flushedCount: 0, pendingAuditCount: 0, state: uiState, disclaimer: t('disclaimer.fixed')};
       }
       const prevState = cloneState(state);
       const prevSeq = seq;
       const entriesToFlush = [...pendingAuditEntries];
-      const flushedIds = new Set(entriesToFlush.map(e => e.id));
       mergeAuditsIntoState(entriesToFlush);
+      const persistedIds = new Set(state.audit.map(e => e.id));
       uiState = 'audit.recorded';
       const p = await persistOrRollback(prevState, prevSeq);
       if (!p.ok) {
@@ -678,8 +720,24 @@ export function createSemanticStore({
           disclaimer: t('disclaimer.fixed'),
         };
       }
-      mergeAuditsIntoState(entriesToFlush);
+      const flushedEntries = entriesToFlush.filter(e => persistedIds.has(e.id));
+      const flushedIds = new Set(flushedEntries.map(e => e.id));
+      mergeAuditsIntoState(flushedEntries);
       pendingAuditEntries = pendingAuditEntries.filter(e => !flushedIds.has(e.id));
+      const allFlushed = flushedIds.size === entriesToFlush.length;
+      if (!allFlushed) {
+        uiState = 'governor.blocked';
+        return {
+          ok: false,
+          auditPersisted: false,
+          flushedCount: flushedIds.size,
+          pendingAuditCount: pendingAuditEntries.length,
+          auditError: 'audit-retention-cap-exceeded',
+          error: 'audit-retention-cap-exceeded',
+          state: uiState,
+          disclaimer: t('disclaimer.fixed'),
+        };
+      }
       return {
         ok: true,
         auditPersisted: true,

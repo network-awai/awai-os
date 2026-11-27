@@ -617,3 +617,141 @@ test('Round-4 Regression B: Share #2 failing audit while retryPendingAudit() for
   assert.ok(sendAudits.some(e => e.id === s1.pendingAuditEntry.id));
   assert.ok(sendAudits.some(e => e.id === s2.pendingAuditEntry.id));
 });
+
+test('Round-5 Regression A: 101 pending entries retry persists 100, reports audit-retention-cap-exceeded, keeps exact 1 unpersisted entry, and second retry flushes it', async () => {
+  let shareCalls = 0;
+  const fakeBroker = {
+    async invoke() {
+      await Promise.resolve();
+      shareCalls += 1;
+      return {shared: true, route: 'android-share-sheet'};
+    },
+  };
+
+  let failPersist = false;
+  let lastPersistedAudit = [];
+  const store = createSemanticStore({
+    locale: 'ja',
+    broker: fakeBroker,
+    onPersist: async next => {
+      if (failPersist) return {ok: false, conflict: false, code: 'data-too-large'};
+      lastPersistedAudit = next.audit.map(e => ({...e}));
+      return {ok: true};
+    },
+  });
+
+  await store.execute('soudan.draft.update', {patch: completePatch()}, {actor: {kind: 'human'}});
+
+  // Queue 99 sequential failed-audit shares, then 2 concurrent shares while backlog is 99 -> 101 pending entries.
+  failPersist = true;
+  for (let i = 0; i < 99; i += 1) {
+    const r = await store.execute('soudan.memo.send', {mode: 'android-share'}, {actor: {kind: 'human'}});
+    assert.equal(r.sent, true);
+    assert.equal(r.auditPersisted, false);
+  }
+  assert.equal(store.getPendingAuditCount(), 99);
+
+  const [c1, c2] = await Promise.all([
+    store.execute('soudan.memo.send', {mode: 'android-share'}, {actor: {kind: 'human'}}),
+    store.execute('soudan.memo.send', {mode: 'android-share'}, {actor: {kind: 'human'}}),
+  ]);
+  assert.equal(c1.sent, true);
+  assert.equal(c2.sent, true);
+  assert.equal(c1.auditPersisted, false);
+  assert.equal(c2.auditPersisted, false);
+  assert.equal(shareCalls, 101);
+  assert.equal(store.getPendingAuditCount(), 101);
+
+  const queuedBeforeRetry = store.getPendingAudits().map(e => e.id);
+  assert.equal(new Set(queuedBeforeRetry).size, 101);
+
+  // First retryPendingAudit(): only 100 fit under MAX_AUDIT_ENTRIES; exact 1 unpersisted entry stays queued!
+  failPersist = false;
+  const retry1 = await store.retryPendingAudit();
+  assert.equal(retry1.ok, false);
+  assert.equal(retry1.auditPersisted, false);
+  assert.equal(retry1.flushedCount, 100);
+  assert.equal(retry1.pendingAuditCount, 1);
+  assert.equal(retry1.auditError, 'audit-retention-cap-exceeded');
+  assert.equal(lastPersistedAudit.length, 100, 'written state.audit contains 100 records');
+  assert.equal(store.getState().audit.length, 100);
+  assert.equal(store.getPendingAuditCount(), 1);
+
+  const remaining = store.getPendingAudits();
+  assert.equal(remaining.length, 1);
+  const remainingId = remaining[0].id;
+  assert.equal(remainingId, queuedBeforeRetry[0], 'oldest entry truncated by cap remains queued');
+  assert.ok(!lastPersistedAudit.some(e => e.id === remainingId), 'remaining entry was not in persisted snapshot');
+  const persistedSet = new Set(lastPersistedAudit.map(e => e.id));
+  for (const id of queuedBeforeRetry.slice(1)) {
+    assert.ok(persistedSet.has(id), `persisted snapshot contains flushed entry ${id}`);
+  }
+
+  // Second retryPendingAudit(): persists the remaining 1 entry cleanly without repeating external share.
+  const retry2 = await store.retryPendingAudit();
+  assert.equal(retry2.ok, true);
+  assert.equal(retry2.auditPersisted, true);
+  assert.equal(retry2.flushedCount, 1);
+  assert.equal(retry2.pendingAuditCount, 0);
+  assert.equal(store.getPendingAuditCount(), 0);
+  assert.equal(lastPersistedAudit.length, 100);
+  assert.ok(lastPersistedAudit.some(e => e.id === remainingId), 'remaining entry is now persisted');
+  assert.ok(store.getState().audit.some(e => e.id === remainingId));
+  assert.equal(shareCalls, 101, 'retryPendingAudit NEVER repeats external share');
+});
+
+test('Round-5 Regression B: 100 pending entries blocks 101st share fail-closed without invoking share adapter and preserves all 100 for recovery', async () => {
+  let shareCalls = 0;
+  const fakeBroker = {
+    async invoke() {
+      shareCalls += 1;
+      return {shared: true, route: 'android-share-sheet'};
+    },
+  };
+
+  let failPersist = false;
+  const store = createSemanticStore({
+    locale: 'ja',
+    broker: fakeBroker,
+    onPersist: async () => (failPersist ? {ok: false, conflict: false, code: 'data-too-large'} : {ok: true}),
+  });
+
+  await store.execute('soudan.draft.update', {patch: completePatch()}, {actor: {kind: 'human'}});
+
+  // Fill pending audit backlog to exactly MAX_AUDIT_ENTRIES (100).
+  failPersist = true;
+  for (let i = 0; i < 100; i += 1) {
+    const r = await store.execute('soudan.memo.send', {mode: 'android-share'}, {actor: {kind: 'human'}});
+    assert.equal(r.sent, true);
+    assert.equal(r.auditPersisted, false);
+  }
+  assert.equal(store.getPendingAuditCount(), 100);
+  const queuedIds = store.getPendingAudits().map(e => e.id);
+  assert.equal(queuedIds.length, 100);
+
+  // Reset share counter and attempt a 101st share -> MUST fail closed with zero external share calls.
+  shareCalls = 0;
+  const blocked = await store.execute('soudan.memo.send', {mode: 'android-share'}, {actor: {kind: 'human'}});
+  assert.equal(shareCalls, 0, 'external share adapter MUST NOT be invoked at 100-entry backlog');
+  assert.equal(blocked.ok, false);
+  assert.equal(blocked.sent, false);
+  assert.equal(blocked.auditPersisted, false);
+  assert.equal(blocked.error, 'audit-recovery-required');
+  assert.equal(blocked.pendingAuditCount, 100);
+  assert.deepEqual(store.getPendingAudits().map(e => e.id), queuedIds, 'all 100 pending entries remain intact');
+
+  // Recover via retryPendingAudit() -> all 100 entries persist cleanly.
+  failPersist = false;
+  const recovered = await store.retryPendingAudit();
+  assert.equal(recovered.ok, true);
+  assert.equal(recovered.auditPersisted, true);
+  assert.equal(recovered.flushedCount, 100);
+  assert.equal(recovered.pendingAuditCount, 0);
+  assert.equal(store.getPendingAuditCount(), 0);
+  assert.equal(shareCalls, 0, 'recovery NEVER repeats external share');
+  assert.equal(store.getState().audit.length, 100);
+  const persistedIds = new Set(store.getState().audit.map(e => e.id));
+  for (const id of queuedIds) {
+    assert.ok(persistedIds.has(id), `recovered audit log contains ${id}`);
+  }
+});
