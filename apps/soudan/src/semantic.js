@@ -47,6 +47,74 @@ export const SEMANTIC_OPERATIONS = Object.freeze([
   'soudan.audit.list',
 ]);
 
+// Merged app-itonami-gamen-sekkei#31 (1faaabc6) §3.2:
+// Remote inference (`soudan.inference.organize`) is active ONLY on allowed non-Android surfaces
+// ('web' | 'awai-pc') when explicitly opt-in enabled with valid in-house `mishima` config.
+export const ALLOWED_INFERENCE_SURFACES = Object.freeze(['web', 'awai-pc']);
+export const DISABLED_REASON_ANDROID_OR_LOCAL_ONLY = 'android-no-internet-or-local-only';
+export const DISABLED_REASON_BROKER_UNAVAILABLE = 'broker-unavailable';
+
+export function resolveSurface({surface = null, route = 'web-device-save'} = {}) {
+  if (typeof surface === 'string' && surface.trim()) return surface.trim();
+  return route === 'android-share-sheet' ? 'android' : 'web';
+}
+
+export function brokerSupportsOperation(broker, selector) {
+  if (!broker || typeof broker.invoke !== 'function') return false;
+  if (typeof broker.isEligible === 'function') return Boolean(broker.isEligible(selector));
+  const ops = Array.isArray(broker.operations)
+    ? broker.operations
+    : (Array.isArray(broker.eligibleOperations) ? broker.eligibleOperations : null);
+  if (!ops) return true;
+  return ops.some(op =>
+    op?.capability === selector.capability
+    && op?.service === selector.service
+    && op?.operation === selector.operation
+  );
+}
+
+export function computeSemanticOps({
+  surface = 'web',
+  inferenceConfig = DEFAULT_INFERENCE_CONFIG,
+  sandboxedIframe = false,
+  broker = null,
+} = {}) {
+  const cfgCheck = validateInferenceConfig(inferenceConfig);
+  const allowedSurface = ALLOWED_INFERENCE_SURFACES.includes(surface);
+  const sendBrokerReady = brokerSupportsOperation(broker, SEND_SELECTOR);
+  const inferenceBrokerReady = brokerSupportsOperation(broker, INFERENCE_SELECTOR);
+  const inferenceRemoteEnabled = !sandboxedIframe && allowedSurface && cfgCheck.ok && inferenceBrokerReady;
+  const activeOps = [];
+  const disabledOps = [];
+  for (const op of SEMANTIC_OPERATIONS) {
+    if (op === 'soudan.memo.send') {
+      if (sandboxedIframe) {
+        disabledOps.push({op, disabledReason: 'iframe-no-direct-external-egress'});
+        continue;
+      }
+      if (!sendBrokerReady) {
+        disabledOps.push({op, disabledReason: DISABLED_REASON_BROKER_UNAVAILABLE});
+        continue;
+      }
+    }
+    if (op === 'soudan.inference.organize' && !inferenceRemoteEnabled) {
+      const disabledReason = (sandboxedIframe && allowedSurface && cfgCheck.ok && inferenceBrokerReady)
+        ? 'iframe-no-direct-external-egress'
+        : DISABLED_REASON_ANDROID_OR_LOCAL_ONLY;
+      disabledOps.push({op, disabledReason});
+      continue;
+    }
+    activeOps.push(op);
+  }
+  return {
+    surface,
+    inferenceMode: inferenceRemoteEnabled ? 'opt-in-route-b' : 'local-only',
+    inferenceEnabled: inferenceRemoteEnabled,
+    activeOps,
+    disabledOps,
+  };
+}
+
 function normalizeActor(actor) {
   const kind = actor?.kind === 'agent' ? 'agent' : 'human';
   return {kind};
@@ -63,11 +131,13 @@ export function createSemanticStore({
   inferenceConfig = DEFAULT_INFERENCE_CONFIG,
   authHeaderProvider = null,
   route = 'web-device-save',
+  surface = null,
   sandboxedIframe = false,
   now = () => new Date().toISOString(),
   onPersist = null,
 } = {}) {
   const t = translator(locale);
+  const resolvedSurface = resolveSurface({surface, route});
   let state = restoreAppState(initialState, now());
   let uiState = 'idle';
   let lastProposal = null; // Always bound to { ..., targetDraftId }
@@ -409,6 +479,13 @@ export function createSemanticStore({
         contact: sourceDraft.recipient.contact.trim(),
       };
       const addressed = addressedMemo(memo.text, to, t);
+      if (/data:image\//i.test(addressed)) {
+        if (params?.dryRun !== true) {
+          recordAudit({op, actor: normActor, outcome: 'blocked', targetKind: 'memo', gateName: 'image-bytes-forbidden'});
+        }
+        uiState = 'governor.blocked';
+        return {ok: false, sent: false, state: uiState, gateName: 'image-bytes-forbidden', disclaimer: t('disclaimer.fixed')};
+      }
       const mode = params?.mode ?? (route === 'android-share-sheet' ? 'android-share' : 'save-txt');
       const preview = {
         dryRun: true,
@@ -439,7 +516,7 @@ export function createSemanticStore({
           disclaimer: t('disclaimer.fixed'),
         };
       }
-      if (!broker) {
+      if (!brokerSupportsOperation(broker, SEND_SELECTOR)) {
         recordAudit({op, actor: normActor, outcome: 'blocked', targetKind: 'memo', gateName: 'broker-unavailable'});
         uiState = 'governor.blocked';
         return {ok: false, sent: false, state: uiState, gateName: 'broker-unavailable', disclaimer: t('disclaimer.fixed')};
@@ -557,6 +634,15 @@ export function createSemanticStore({
       const userPrompt = typeof params?.prompt === 'string' && params.prompt.trim()
         ? params.prompt
         : [sourceDraft.summary ?? '', sourceDraft.wish ?? '', ...(sourceDraft.timeline ?? []).map(e => e.event)].join('\n');
+      if (/data:image\//i.test(userPrompt) || /data:image\//i.test(JSON.stringify(sourceDraft))) {
+        const prevState = cloneState(state);
+        const prevSeq = seq;
+        recordAudit({op, actor: normActor, outcome: 'blocked', targetKind: 'inference', gateName: 'image-bytes-forbidden'});
+        uiState = 'governor.blocked';
+        lastGuard = {blocked: true, state: uiState, gateName: 'image-bytes-forbidden'};
+        await persistOrRollback(prevState, prevSeq);
+        return {ok: false, state: uiState, gateName: 'image-bytes-forbidden', disclaimer: t('disclaimer.fixed')};
+      }
       const guard = evaluateGovernorGuard(userPrompt, t);
       if (guard.blocked) {
         const prevState = cloneState(state);
@@ -586,12 +672,33 @@ export function createSemanticStore({
         uiState = 'proposal.ready';
         return {ok: true, state: uiState, fallback: 'local', reason: cfgCheck.reason, proposal: local, disclaimer: t('disclaimer.fixed')};
       }
-      if (params?.localOnly === true || !broker) {
+      if (!ALLOWED_INFERENCE_SURFACES.includes(resolvedSurface)) {
+        // Android (no-INTERNET) or non-allowed surface remains strictly fail-closed (:local-only).
+        const local = {...organizeLocally(sourceDraft, t), targetDraftId: originDraftId};
+        lastProposal = local;
+        uiState = 'proposal.ready';
+        return {
+          ok: true,
+          state: uiState,
+          fallback: 'local',
+          reason: DISABLED_REASON_ANDROID_OR_LOCAL_ONLY,
+          proposal: local,
+          disclaimer: t('disclaimer.fixed'),
+        };
+      }
+      if (params?.localOnly === true || !brokerSupportsOperation(broker, INFERENCE_SELECTOR)) {
         // Pure local-only organization: builds proposal from live unsaved sourceDraft without persisting.
         const local = {...organizeLocally(sourceDraft, t), targetDraftId: originDraftId};
         lastProposal = local;
         uiState = 'proposal.ready';
-        return {ok: true, state: uiState, fallback: 'local', proposal: local, disclaimer: t('disclaimer.fixed')};
+        return {
+          ok: true,
+          state: uiState,
+          fallback: 'local',
+          ...(params?.localOnly === true ? {} : {reason: DISABLED_REASON_BROKER_UNAVAILABLE}),
+          proposal: local,
+          disclaimer: t('disclaimer.fixed'),
+        };
       }
       if (inferenceInFlight >= INFERENCE_LIMITS.maxConcurrencyPerTab) {
         recordAudit({op, actor: normActor, outcome: 'blocked', targetKind: 'inference', gateName: 'concurrency-limit-exceeded'});
@@ -628,7 +735,9 @@ export function createSemanticStore({
           },
         });
         const status = typeof resp?.status === 'number' ? resp.status : 200;
-        const rawBody = typeof resp?.text === 'function' ? await resp.text() : resp;
+        const rawBody = typeof resp?.text === 'function'
+          ? await resp.text()
+          : (typeof resp?.content === 'string' ? resp.content : resp);
         if (isCapacityOrRateLimitError(status, typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody ?? ''))) {
           const local = {...organizeLocally(sourceDraft, t), targetDraftId: originDraftId};
           const prevState = cloneState(state);
@@ -676,8 +785,42 @@ export function createSemanticStore({
     return {ok: false, state: uiState, error: 'unhandled-operation', disclaimer: t('disclaimer.fixed')};
   }
 
+  function getOpCapabilities() {
+    return computeSemanticOps({
+      surface: resolvedSurface,
+      inferenceConfig,
+      sandboxedIframe,
+      broker,
+    });
+  }
+
+  function getSnapshot() {
+    const caps = getOpCapabilities();
+    const active = activeDraftRecord(state);
+    return {
+      schema: state.schema,
+      uiState,
+      surface: caps.surface,
+      route,
+      inferenceMode: caps.inferenceMode,
+      activeDraftId: state.activeDraftId,
+      draftCount: state.drafts.length,
+      activeDraft: active ? cloneState(active) : null,
+      auditCount: state.audit.length,
+      pendingAuditCount: pendingAuditEntries.length,
+      pendingDeletionCount: pendingDeletions.size,
+      activeOps: caps.activeOps,
+      disabledOps: caps.disabledOps,
+      disclaimer: t('disclaimer.fixed'),
+    };
+  }
+
   return Object.freeze({
     getState: () => state,
+    getSnapshot,
+    getSurface: () => resolvedSurface,
+    getActiveOps: () => getOpCapabilities().activeOps,
+    getDisabledOps: () => getOpCapabilities().disabledOps,
     setState: next => {
       state = restoreAppState(next, now());
       if (lastProposal && lastProposal.targetDraftId !== state.activeDraftId) lastProposal = null;

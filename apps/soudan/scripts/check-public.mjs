@@ -11,6 +11,35 @@ const app = fileURLToPath(new URL('../', import.meta.url));
 const repo = resolve(app, '../..');
 const sha = b => createHash('sha256').update(b).digest('hex');
 
+// Zone B-25 Z25-08 / Z25-37 strict --release provisional-marker patterns.
+// Only enforced when --release or SOUDAN_RELEASE_GATE=1 is passed so pre-launch staging stays honest.
+export const RELEASE_GATE_FILES = Object.freeze([
+  'app-descriptor.json',
+  'src/operations.js',
+  'src/messages.js',
+  'src/foreign-info.html',
+]);
+
+export const PROVISIONAL_RELEASE_RE = Object.freeze([
+  ['Legal確認中', /Legal確認中/u],
+  ['Legal O8文言確認中', /Legal O8文言確認中/u],
+  ['Legal TBD / O8 pending', /Legal\s+(?:TBD|O8\s+(?:wording\s+)?pending)/i],
+  ['unresolved operator placeholder (Blocker 1)', /Legal item #224 Blocker 1|確定待ち|Pending formal operator entity confirmation|\[Legal item #224[^\]]*\]/iu],
+  ['pre-launch confirmation pending', /事前確認待ち|pending pre-launch gates|事前確認（Legal item #224）が完了するまで|Legal item #224 の確認対象/iu],
+]);
+
+export function findProvisionalReleaseMarkers(content, fileLabel = 'file') {
+  const hits = [];
+  if (typeof content !== 'string') return hits;
+  for (const [label, re] of PROVISIONAL_RELEASE_RE) {
+    if (re.test(content)) hits.push(`provisional release marker (${label}) in ${fileLabel}`);
+  }
+  return hits;
+}
+
+export async function runPublicChecks({
+  releaseGate = process.argv.includes('--release') || process.env.SOUDAN_RELEASE_GATE === '1',
+} = {}) {
 const failures = [];
 const fail = msg => failures.push(msg);
 
@@ -112,17 +141,31 @@ for (const rel of SRC_FILES) {
   }
 }
 
-// 5. Mandatory HTML <meta> CSP (connect-src 'none') & referrer=no-referrer in every HTML file,
+// 5. Mandatory HTML <meta> CSP (connect-src 'none', zero remote scripts) & referrer=no-referrer in every HTML file,
 //    kept separate from Tauri CSP (connect-src ipc: http://ipc.localhost;).
+const {
+  runtimeDescriptor, REQUESTED_CAPABILITIES, validateHostLocalContract,
+  validateOperationDisclosures, validateHtmlSurface, validateCspPolicy,
+} = await import('../src/operations.js');
+
 for (const rel of ['src/index.html', 'src/embed.html', 'src/foreign-info.html']) {
   const content = await readFile(resolve(app, rel), 'utf8');
-  if (!content.includes('http-equiv="Content-Security-Policy"')) fail(`missing meta CSP in ${rel}`);
-  if (!content.includes("connect-src 'none';")) fail(`Web HTML must use connect-src 'none' in ${rel}`);
-  if (!content.includes('name="referrer" content="no-referrer"')) fail(`missing meta no-referrer in ${rel}`);
+  const htmlCheck = validateHtmlSurface(content, {
+    name: rel,
+    expectedConnectSrc: 'none',
+    allowScriptless: rel === 'src/foreign-info.html',
+  });
+  if (!htmlCheck.ok) {
+    for (const p of htmlCheck.problems) fail(`Z25-06 HTML surface check failed (${p})`);
+  }
 }
 const tauriConf = JSON.parse(await readFile(resolve(app, 'src-tauri/tauri.conf.json'), 'utf8'));
-if (!tauriConf.app.security.csp.includes('connect-src ipc: http://ipc.localhost;')) {
-  fail('src-tauri/tauri.conf.json CSP must keep connect-src ipc: http://ipc.localhost;');
+const tauriCspCheck = validateCspPolicy(tauriConf.app.security.csp, {
+  expectedConnectSrc: 'tauri-ipc',
+  allowScriptless: false,
+});
+if (!tauriCspCheck.ok) {
+  fail(`src-tauri/tauri.conf.json CSP check failed: ${tauriCspCheck.problems.join(', ')}`);
 }
 
 // 6. blueprint.edn single classification key & SPDX + NOTICE presence.
@@ -133,17 +176,24 @@ if (!blueprint.includes(':itonami.blueprint/license "Apache-2.0"')) fail('bluepr
 const notice = await readFile(resolve(app, 'NOTICE'), 'utf8');
 if (!notice.includes('Apache License, Version 2.0')) fail('NOTICE missing Apache-2.0 text');
 
-// 7. Canonical runtime pin & descriptor validation.
+// 7. Canonical runtime pin, descriptor validation & Zone B-25 Z25-06 host-local contract.
 const pins = JSON.parse(await readFile(resolve(repo, 'otehon/shell/vendor/PINS.json'), 'utf8'));
 for (const name of ['kotoba-client-runtime.js', 'kotoba-client-consent.css']) {
   const bytes = await readFile(resolve(repo, 'otehon/shell/vendor', name));
   if (sha(bytes) !== pins.files[name]) fail(`canonical runtime pin mismatch: ${name}`);
 }
-const {runtimeDescriptor, REQUESTED_CAPABILITIES} = await import('../src/operations.js');
 const {clientRuntimeProblems} = await import('../../../otehon/shell/vendor/kotoba-client-runtime.js');
 const descriptor = JSON.parse(await readFile(resolve(app, 'app-descriptor.json'), 'utf8'));
 if (JSON.stringify(descriptor) !== JSON.stringify(runtimeDescriptor('ja'))) {
   fail('app-descriptor.json differs from runtimeDescriptor("ja")');
+}
+const hostLocalCheck = validateHostLocalContract(descriptor);
+if (!hostLocalCheck.ok) {
+  fail('Z25-06 host-local contract check failed: ' + JSON.stringify(hostLocalCheck.problems));
+}
+const disclosureCheck = validateOperationDisclosures(descriptor);
+if (!disclosureCheck.ok) {
+  fail('Z25-08 operation disclosure check failed: ' + JSON.stringify(disclosureCheck.problems));
 }
 const probs = clientRuntimeProblems(descriptor, [...REQUESTED_CAPABILITIES], [
   'https://soudan.itonami.app', 'http://tauri.localhost', 'https://tauri.localhost',
@@ -159,9 +209,25 @@ if (!/minSdk\s*=\s*33/.test(gradle)) fail('build.gradle.kts must set minSdk = 33
 const buildRs = await readFile(resolve(app, 'src-tauri/build.rs'), 'utf8');
 if (!buildRs.includes('max-page-size=16384')) fail('src-tauri/build.rs missing 16KB page-size alignment');
 
-if (failures.length) {
-  console.error('Soudan public hygiene check FAILED:');
-  for (const f of failures) console.error('  - ' + f);
-  process.exit(1);
+// 9. Strict --release provisional-marker gate (Zone B-25 Z25-08 / Z25-37).
+if (releaseGate) {
+  for (const rel of RELEASE_GATE_FILES) {
+    const content = await readFile(resolve(app, rel), 'utf8');
+    for (const hit of findProvisionalReleaseMarkers(content, rel)) {
+      fail(`Z25-08/Z25-37 --release gate: ${hit}`);
+    }
+  }
 }
-console.log('Soudan public hygiene check OK (Attorney Act, Route B honest disclosure, 7-barriers, sandbox allow-scripts, runtime pin, Android hardening)');
+
+return {ok: failures.length === 0, failures, releaseGate};
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const {ok, failures, releaseGate} = await runPublicChecks();
+  if (!ok) {
+    console.error(`Soudan public hygiene check FAILED${releaseGate ? ' (--release gate)' : ''}:`);
+    for (const f of failures) console.error('  - ' + f);
+    process.exit(1);
+  }
+  console.log(`Soudan public hygiene check OK${releaseGate ? ' (--release gate)' : ''} (Attorney Act, Route B honest disclosure, 7-barriers, sandbox allow-scripts, runtime pin, Android hardening)`);
+}

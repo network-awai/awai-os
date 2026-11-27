@@ -110,13 +110,24 @@ for (const [input, output] of [['kotoba-client-runtime.js', 'runtime.js'], ['kot
   await writeFile(resolve(out, output), bytes);
 }
 
-// Verify checked-in app-descriptor.json matches runtimeDescriptor('ja') and validates cleanly.
-const {runtimeDescriptor, REQUESTED_CAPABILITIES, SEND_SELECTOR, INFERENCE_SELECTOR} = await import('../src/operations.js');
+// Verify checked-in app-descriptor.json matches runtimeDescriptor('ja'), passes Z25-06 host-local & Z25-08 disclosure contracts, and validates cleanly.
+const {
+  runtimeDescriptor, REQUESTED_CAPABILITIES, SEND_SELECTOR, INFERENCE_SELECTOR,
+  validateHostLocalContract, validateOperationDisclosures, validateHtmlSurface, validateCspPolicy,
+} = await import('../src/operations.js');
 const {clientRuntimeProblems, clientRuntimeConnectSrc} = await import('../../../otehon/shell/vendor/kotoba-client-runtime.js');
 const descriptor = runtimeDescriptor('ja');
 const checkedIn = JSON.parse(await readFile(resolve(app, 'app-descriptor.json'), 'utf8'));
 if (JSON.stringify(checkedIn) !== JSON.stringify(descriptor)) {
   throw Error('app-descriptor.json drifted from src/operations.js runtimeDescriptor("ja")');
+}
+const hostLocalCheck = validateHostLocalContract(checkedIn);
+if (!hostLocalCheck.ok) {
+  throw Error('Z25-06 host-local contract violation: ' + JSON.stringify(hostLocalCheck.problems));
+}
+const disclosureCheck = validateOperationDisclosures(checkedIn);
+if (!disclosureCheck.ok) {
+  throw Error('Z25-08 operation disclosure contract violation: ' + JSON.stringify(disclosureCheck.problems));
 }
 const appOrigins = ['https://soudan.itonami.app', 'http://tauri.localhost', 'https://tauri.localhost'];
 const problems = clientRuntimeProblems(descriptor, [...REQUESTED_CAPABILITIES], appOrigins);
@@ -134,13 +145,15 @@ if (declaredConnect !== 'connect-src https://api.murakumo.cloud') {
   throw Error('unexpected connect-src from descriptor: ' + declaredConnect);
 }
 
-// Independent CSP checks (Dev #220 + Itonami):
+// Independent CSP checks (Dev #220 + Itonami + Zone B-25 Z25-06):
 // - Web static HTML (dist/index.html, embed.html, foreign-info.html) MUST use connect-src 'none'
 // - Tauri CSP (tauri.conf.json & dist-tauri/index.html) MUST use connect-src ipc: http://ipc.localhost;
+// - ZERO remote <script> URLs across ALL built HTML surfaces including guest.html.
 const tauriConf = JSON.parse(await readFile(resolve(app, 'src-tauri/tauri.conf.json'), 'utf8'));
 const tauriCsp = tauriConf.app.security.csp;
-if (!tauriCsp.includes('connect-src ipc: http://ipc.localhost;')) {
-  throw Error('tauri.conf.json CSP connect-src must be IPC only');
+const tauriCspCheck = validateCspPolicy(tauriCsp, {expectedConnectSrc: 'tauri-ipc', allowScriptless: false});
+if (!tauriCspCheck.ok) {
+  throw Error('tauri.conf.json CSP check failed: ' + JSON.stringify(tauriCspCheck.problems));
 }
 if (/https?:\/\/api\.murakumo\.cloud/i.test(tauriCsp)) {
   throw Error('tauri.conf.json CSP must not allow external origins for offline-default build');
@@ -151,26 +164,29 @@ if (tauriConf.build.frontendDist !== '../dist-tauri') {
 await writeFile(resolve(out, 'descriptor.json'), JSON.stringify(descriptor, null, 2) + '\n');
 await distributeUi(out);
 
-// Verify every standalone HTML entry in output directory has mandatory <meta> CSP + referrer=no-referrer.
+// Verify every built HTML entry in output directory (including guest.html) satisfies Z25-06 remote-script & CSP gates.
+const builtGuestHtml = await readFile(resolve(out, 'guest.html'), 'utf8');
+const guestSurfaceCheck = validateHtmlSurface(builtGuestHtml, {
+  name: `${target}/guest.html`,
+  expectedConnectSrc: 'guest-srcdoc',
+});
+if (!guestSurfaceCheck.ok) {
+  throw Error('Z25-06 guest.html surface check failed: ' + JSON.stringify(guestSurfaceCheck.problems));
+}
+
 for (const htmlFile of ['index.html', 'foreign-info.html', 'embed.html']) {
   const body = await readFile(resolve(out, htmlFile), 'utf8');
-  if (!body.includes('http-equiv="Content-Security-Policy"')) throw Error('missing meta CSP in ' + htmlFile);
-  if (!body.includes('name="referrer" content="no-referrer"')) throw Error('missing meta no-referrer in ' + htmlFile);
   if (body.includes('https://soudan.itonami.app/api')) throw Error('app-origin API reference in ' + htmlFile);
   if (/https?:\/\/api\.murakumo\.cloud/i.test(body.match(/Content-Security-Policy" content="([^"]+)"/)?.[1] ?? '')) {
     throw Error('HTML meta CSP must not widen to api.murakumo.cloud while inference is fail-closed: ' + htmlFile);
   }
-  if (target === 'tauri' && htmlFile === 'index.html') {
-    if (!body.includes('connect-src ipc: http://ipc.localhost;')) {
-      throw Error('Tauri dist-tauri/index.html must allow Tauri IPC connect-src');
-    }
-  } else {
-    if (!body.includes("connect-src 'none';")) {
-      throw Error(`HTML must use connect-src 'none' for target=${target}: ${htmlFile}`);
-    }
-    if (/connect-src[^"]*ipc:/i.test(body)) {
-      throw Error(`Web HTML must not include ipc: in connect-src: ${htmlFile}`);
-    }
+  const htmlCheck = validateHtmlSurface(body, {
+    name: `${target}/${htmlFile}`,
+    expectedConnectSrc: target === 'tauri' && htmlFile === 'index.html' ? 'tauri-ipc' : 'none',
+    allowScriptless: htmlFile === 'foreign-info.html',
+  });
+  if (!htmlCheck.ok) {
+    throw Error(`Z25-06 built HTML check failed for ${target}/${htmlFile}: ${JSON.stringify(htmlCheck.problems)}`);
   }
 }
 

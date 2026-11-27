@@ -1,6 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import {
   CATEGORIES, JURISDICTIONS, LIMITS, emptyDraft, newEvidence, sha256Hex, formatEvidence,
   draftProblems, recipientProblems, assembleMemo, addressedMemo, restoreDraft,
@@ -8,7 +10,9 @@ import {
 import {MESSAGES, translator} from '../src/messages.js';
 import {
   runtimeDescriptor, REQUESTED_CAPABILITIES, SEND_SELECTOR, SEND_OPERATION, INFERENCE_OPERATION,
+  validateHostLocalContract, validateOperationDisclosures, validateHtmlSurface, validateCspPolicy,
 } from '../src/operations.js';
+import {findProvisionalReleaseMarkers} from '../scripts/check-public.mjs';
 import {
   clientRuntimeProblems, clientRuntimeConnectSrc, effectiveClientOperations,
 } from '../../../otehon/shell/vendor/kotoba-client-runtime.js';
@@ -261,4 +265,187 @@ test('Web static HTML CSPs (connect-src none) and Tauri CSP (IPC only) are verif
 
   const caps = JSON.parse(readFileSync(new URL('../src-tauri/capabilities/main.json', import.meta.url), 'utf8'));
   assert.deepEqual(caps.permissions, ['allow-awai-host-info', 'allow-soudan-share']);
+});
+
+test('Zone B-25 Z25-06: validateHostLocalContract accepts exact descriptor and rejects widened calls, storage drift, or undeclared MIME types', () => {
+  const valid = runtimeDescriptor('ja');
+  assert.deepEqual(validateHostLocalContract(valid), {ok: true, problems: []});
+  const checkedIn = JSON.parse(readFileSync(new URL('../app-descriptor.json', import.meta.url), 'utf8'));
+  assert.deepEqual(validateHostLocalContract(checkedIn), {ok: true, problems: []});
+
+  // Negative control 1: widened host-local.calls (network.fetch / clipboard.read)
+  for (const extraCall of ['network.fetch', 'clipboard.read']) {
+    const widened = structuredClone(valid);
+    widened['host-local'].calls.push(extraCall);
+    const res = validateHostLocalContract(widened);
+    assert.equal(res.ok, false, `must reject widened call ${extraCall}`);
+    assert.ok(res.problems.some(p => p === `host-local.calls.widened:${extraCall}`), JSON.stringify(res.problems));
+  }
+
+  // Negative control 2: missing required host-local call
+  const missingCall = structuredClone(valid);
+  missingCall['host-local'].calls = ['storage.get', 'storage.put', 'storage.delete'];
+  const missingRes = validateHostLocalContract(missingCall);
+  assert.equal(missingRes.ok, false);
+  assert.ok(missingRes.problems.includes('host-local.calls.missing:device.save'));
+
+  // Negative control 3: undeclared MIME type (text/markdown) & extra octet-stream extension
+  const badMime = structuredClone(valid);
+  badMime['host-local'].save['mime-types'].push('text/markdown');
+  const mimeRes = validateHostLocalContract(badMime);
+  assert.equal(mimeRes.ok, false, 'must reject undeclared MIME type text/markdown');
+  assert.ok(mimeRes.problems.includes('host-local.save.mime-type-undeclared:text/markdown'));
+
+  const badExt = structuredClone(valid);
+  badExt['host-local'].save['octet-stream-extensions'].push('html');
+  const extRes = validateHostLocalContract(badExt);
+  assert.equal(extRes.ok, false);
+  assert.ok(extRes.problems.includes('host-local.save.octet-stream-extension-undeclared:html'));
+
+  // Negative control 4: host-local.storage invariant violations
+  for (const [field, badVal] of [
+    ['class', 'synced'],
+    ['backup', 'included'],
+    ['at-rest', 'plaintext'],
+    ['erasable', false],
+    ['quota-bytes', 2097152],
+    ['max-entries', 128],
+  ]) {
+    const badStorage = structuredClone(valid);
+    badStorage['host-local'].storage[field] = badVal;
+    const sRes = validateHostLocalContract(badStorage);
+    assert.equal(sRes.ok, false, `must reject storage.${field}=${badVal}`);
+    assert.ok(sRes.problems.includes(`host-local.storage.${field}`));
+  }
+});
+
+test('Zone B-25 Z25-06: validateHtmlSurface rejects remote script URLs (https://, //, http://) and widened CSP across surfaces', () => {
+  // Positive control: all checked-in source HTML surfaces and Tauri CSP pass cleanly.
+  const indexHtml = readFileSync(new URL('../src/index.html', import.meta.url), 'utf8');
+  const embedHtml = readFileSync(new URL('../src/embed.html', import.meta.url), 'utf8');
+  const foreignHtml = readFileSync(new URL('../src/foreign-info.html', import.meta.url), 'utf8');
+  assert.deepEqual(validateHtmlSurface(indexHtml, {name: 'src/index.html', expectedConnectSrc: 'none', allowScriptless: false}), {ok: true, problems: []});
+  assert.deepEqual(validateHtmlSurface(embedHtml, {name: 'src/embed.html', expectedConnectSrc: 'none', allowScriptless: false}), {ok: true, problems: []});
+  assert.deepEqual(validateHtmlSurface(foreignHtml, {name: 'src/foreign-info.html', expectedConnectSrc: 'none', allowScriptless: true}), {ok: true, problems: []});
+
+  const tauriConf = JSON.parse(readFileSync(new URL('../src-tauri/tauri.conf.json', import.meta.url), 'utf8'));
+  assert.deepEqual(validateCspPolicy(tauriConf.app.security.csp, {expectedConnectSrc: 'tauri-ipc', allowScriptless: false}), {ok: true, problems: []});
+
+  // Negative control 1: remote https:// script tag
+  const remoteHttpsHtml = indexHtml.replace(
+    '<script type="module" src="app.js"></script>',
+    '<script src="https://example.com/x.js"></script>',
+  );
+  const httpsRes = validateHtmlSurface(remoteHttpsHtml, {name: 'neg-https', expectedConnectSrc: 'none', allowScriptless: false});
+  assert.equal(httpsRes.ok, false, 'must reject remote https:// script tag');
+  assert.ok(httpsRes.problems.some(p => p.includes('remote-script-src:https://example.com/x.js')), JSON.stringify(httpsRes.problems));
+
+  // Negative control 2: protocol-relative //example.com/x.js script tag
+  const protoRelHtml = indexHtml.replace(
+    '<script type="module" src="app.js"></script>',
+    '<script src="//example.com/x.js"></script>',
+  );
+  const protoRelRes = validateHtmlSurface(protoRelHtml, {name: 'neg-proto-rel', expectedConnectSrc: 'none', allowScriptless: false});
+  assert.equal(protoRelRes.ok, false, 'must reject protocol-relative // script tag');
+  assert.ok(protoRelRes.problems.some(p => p.includes('remote-script-src://example.com/x.js')), JSON.stringify(protoRelRes.problems));
+
+  // Negative control 3: widened CSP script-src with remote origin
+  const widenedCspHtml = indexHtml.replace("script-src 'self';", "script-src 'self' https://example.com;");
+  const widenedCspRes = validateHtmlSurface(widenedCspHtml, {name: 'neg-csp', expectedConnectSrc: 'none', allowScriptless: false});
+  assert.equal(widenedCspRes.ok, false);
+  assert.ok(widenedCspRes.problems.some(p => p.includes('csp.script-src-widened')), JSON.stringify(widenedCspRes.problems));
+
+  // Negative control 4: script tag injected into scriptless foreign-info.html
+  const injectedForeign = foreignHtml.replace('</head>', '  <script src="app.js"></script>\n</head>');
+  const injectedForeignRes = validateHtmlSurface(injectedForeign, {name: 'neg-foreign', expectedConnectSrc: 'none', allowScriptless: true});
+  assert.equal(injectedForeignRes.ok, false);
+  assert.ok(injectedForeignRes.problems.some(p => p.includes('csp.script-tag-in-scriptless-surface')));
+
+  // Negative control 5: guest-srcdoc with external or remote script src
+  const badGuest = '<!doctype html><html><head><meta name="referrer" content="no-referrer"></head><body><script src="https://example.com/x.js"></script></body></html>';
+  const badGuestRes = validateHtmlSurface(badGuest, {name: 'neg-guest', expectedConnectSrc: 'guest-srcdoc'});
+  assert.equal(badGuestRes.ok, false);
+  assert.ok(badGuestRes.problems.some(p => p.includes('guest.external-script-src')));
+  assert.ok(badGuestRes.problems.some(p => p.includes('remote-script-src:https://example.com/x.js')));
+});
+
+test('Zone B-25 Z25-08: every operation in app-descriptor.json declares withdrawal, special-care, and special-care-kinds; missing withdrawal fails validation', () => {
+  const checkedIn = JSON.parse(readFileSync(new URL('../app-descriptor.json', import.meta.url), 'utf8'));
+  assert.deepEqual(validateOperationDisclosures(checkedIn), {ok: true, problems: []});
+  assert.deepEqual(validateOperationDisclosures(runtimeDescriptor('ja')), {ok: true, problems: []});
+  assert.deepEqual(validateOperationDisclosures(runtimeDescriptor('en')), {ok: true, problems: []});
+
+  // Verify both operations carry non-empty withdrawal, special-care: true, and non-empty special-care-kinds in ja and en.
+  for (const [locale, expectedWithdrawal] of [['ja', '設定'], ['en', 'Settings']]) {
+    const desc = runtimeDescriptor(locale);
+    assert.equal(desc.operations.length, 2);
+    for (const op of desc.operations) {
+      assert.equal(op.disclosure.withdrawal, expectedWithdrawal, `${locale} ${op.capability} withdrawal`);
+      assert.equal(op.disclosure['special-care'], true, `${locale} ${op.capability} special-care`);
+      assert.ok(Array.isArray(op.disclosure['special-care-kinds']) && op.disclosure['special-care-kinds'].length > 0);
+    }
+  }
+
+  // Negative control 1: operation missing withdrawal fails validation
+  const noWithdrawal = structuredClone(checkedIn);
+  delete noWithdrawal.operations[1].disclosure.withdrawal;
+  const noWRes = validateOperationDisclosures(noWithdrawal);
+  assert.equal(noWRes.ok, false, 'must reject operation missing disclosure.withdrawal');
+  assert.ok(noWRes.problems.includes('operation.disclosure.withdrawal.missing:itonami.soudan.inference'));
+
+  // Negative control 2: blank/whitespace withdrawal fails validation
+  const blankWithdrawal = structuredClone(checkedIn);
+  blankWithdrawal.operations[0].disclosure.withdrawal = '   ';
+  const blankWRes = validateOperationDisclosures(blankWithdrawal);
+  assert.equal(blankWRes.ok, false);
+  assert.ok(blankWRes.problems.includes('operation.disclosure.withdrawal.missing:itonami.soudan.send'));
+
+  // Negative control 3: missing special-care or empty special-care-kinds fails validation
+  const noSpecialCare = structuredClone(checkedIn);
+  noSpecialCare.operations[1].disclosure['special-care'] = false;
+  noSpecialCare.operations[1].disclosure['special-care-kinds'] = [];
+  const scRes = validateOperationDisclosures(noSpecialCare);
+  assert.equal(scRes.ok, false);
+  assert.ok(scRes.problems.includes('operation.disclosure.special-care.required:itonami.soudan.inference'));
+  assert.ok(scRes.problems.includes('operation.disclosure.special-care-kinds.missing:itonami.soudan.inference'));
+});
+
+test('Zone B-25 Z25-08 / Z25-37: check-public.mjs --release and SOUDAN_RELEASE_GATE=1 reject provisional pre-approval markers while default passes', () => {
+  // Pure helper checks
+  assert.deepEqual(findProvisionalReleaseMarkers('正式確定済みの開示文言。法的助言ではなく弁護士に代わるものではありません。', 'clean.html'), []);
+  for (const sample of [
+    '要配慮個人情報（Legal確認中）',
+    '送信前に確認してください（Legal O8文言確認中）',
+    '[Legal item #224 Blocker 1 確定待ち / Pending formal operator entity confirmation]',
+    'murakumo.cloud organization slot (fail-closed pending pre-launch gates)',
+  ]) {
+    const hits = findProvisionalReleaseMarkers(sample, 'sample');
+    assert.ok(hits.length > 0, `must flag provisional marker: ${sample}`);
+  }
+
+  // CLI checks against current pre-launch repository
+  const appDir = fileURLToPath(new URL('../', import.meta.url));
+  const defaultRun = spawnSync('node', ['scripts/check-public.mjs'], {
+    cwd: appDir,
+    encoding: 'utf8',
+    env: {...process.env, SOUDAN_RELEASE_GATE: ''},
+  });
+  assert.equal(defaultRun.status, 0, `default check-public.mjs must pass: ${defaultRun.stderr}`);
+
+  const releaseFlagRun = spawnSync('node', ['scripts/check-public.mjs', '--release'], {
+    cwd: appDir,
+    encoding: 'utf8',
+    env: {...process.env, SOUDAN_RELEASE_GATE: ''},
+  });
+  assert.notEqual(releaseFlagRun.status, 0, 'check-public.mjs --release must fail while provisional markers remain');
+  assert.match(releaseFlagRun.stderr, /Z25-08\/Z25-37 --release gate/);
+  assert.match(releaseFlagRun.stderr, /Legal確認中/);
+
+  const releaseEnvRun = spawnSync('node', ['scripts/check-public.mjs'], {
+    cwd: appDir,
+    encoding: 'utf8',
+    env: {...process.env, SOUDAN_RELEASE_GATE: '1'},
+  });
+  assert.notEqual(releaseEnvRun.status, 0, 'SOUDAN_RELEASE_GATE=1 must fail while provisional markers remain');
+  assert.match(releaseEnvRun.stderr, /Z25-08\/Z25-37 --release gate/);
 });
