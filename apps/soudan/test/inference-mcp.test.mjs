@@ -57,16 +57,17 @@ test('Suiron request shape: stream:true, max_tokens:1024, enable_thinking:false,
   assert.equal(body.max_tokens, 1024);
   assert.deepEqual(body.chat_template_kwargs, {enable_thinking: false});
 
-  // Forbidden model / raw image bytes / token budget / 64 KiB cap
+  // Forbidden model / raw image bytes / token budget / explicit > 64 KiB cap
   assert.throws(() => buildInferenceRequestBody({draft: {summary: 'test'}, model: 'murakumo/free'}), /murakumo-free-forbidden/);
   assert.throws(() => buildInferenceRequestBody({draft: {summary: 'test'}, model: 'murakumo-main'}), /forbidden-model/);
   assert.throws(() => buildInferenceRequestBody({draft: {summary: 'data:image/png;base64,AAA'}, model: 'mishima'}), /image-bytes-forbidden/);
+  // 9000 CJK chars (~27 KiB <= 64 KiB, > 8192 tokens) -> input-token-limit-exceeded
   assert.throws(() => buildInferenceRequestBody({draft: {summary: 'あ'.repeat(9000)}, model: 'mishima'}), /input-token-limit-exceeded/);
+  // > 64 KiB payload -> request-body-too-large
   assert.throws(() => buildInferenceRequestBody({
-    draft: {summary: 'x'},
-    history: Array.from({length: 40}, () => ({role: 'user', content: 'a'.repeat(2000)})),
+    draft: {summary: 'a'.repeat(70000)},
     model: 'mishima',
-  }), /input-token-limit-exceeded|request-body-too-large/);
+  }), /request-body-too-large/);
 
   // SSE stream parsing and 429/503 capacity detection
   const sse = [

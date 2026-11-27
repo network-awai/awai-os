@@ -6,11 +6,12 @@
   "scripts": {
     "check:public": "node scripts/check-public.mjs",
     "build": "node scripts/check-public.mjs && node scripts/build.mjs",
+    "build:tauri": "node scripts/check-public.mjs && node scripts/build.mjs --target tauri",
     "test": "node scripts/check-public.mjs && node --test ../../packages/awai-shell/test/*.test.mjs test/*.test.mjs",
     "tauri": "tauri",
-    "build:desktop": "npm run build && tauri build --no-bundle",
-    "build:android": "npm run build && tauri android build --apk --target aarch64",
-    "build:android:dual": "npm run build && npx tauri android build --apk --target aarch64 x86_64"
+    "build:desktop": "npm run build:tauri && tauri build --no-bundle",
+    "build:android": "npm run build:tauri && tauri android build --apk --target aarch64",
+    "build:android:dual": "npm run build:tauri && npx tauri android build --apk --target aarch64 x86_64"
   },
   "devDependencies": {
     "@tauri-apps/cli": "3.0.0-alpha.6"

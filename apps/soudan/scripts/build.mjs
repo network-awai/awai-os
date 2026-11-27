@@ -1,9 +1,10 @@
-// Static build: dist/ holds every file the app needs, each pinned in release.json.
-// Enforces yataverse-bytes static delivery constraints:
-// - Mandatory HTML <meta> CSP + referrer=no-referrer on every HTML route
-// - No SPA fallback: index.html, foreign-info.html, embed.html exist as real static files (zero symlinks)
-// - Every file strictly < 10 MiB (NAME_PLANE_MAX_FILE_BLOCKS=40)
-// - Canonical runtime pin verification + restricted-wasm-v1 descriptor verification
+// Static build:
+// - Default (`npm run build` / `--target web`): outputs Web static `dist/` for https://soudan.itonami.app
+//   with `connect-src 'none';` in ALL HTML files (index.html, foreign-info.html, embed.html), zero symlinks,
+//   strictly < 10 MiB per file (NAME_PLANE_MAX_FILE_BLOCKS=40), and dist/release.json.
+// - Tauri (`npm run build:tauri` / `--target tauri`): outputs Tauri frontend `dist-tauri/` where
+//   index.html carries `connect-src ipc: http://ipc.localhost;` (required because WebView intersects HTML
+//   <meta CSP> with tauri.conf.json app.security.csp) while foreign-info.html & embed.html keep `connect-src 'none';`.
 import {distributeUi} from '../../../packages/awai-ui/distribute.mjs';
 import {mkdir, copyFile, readFile, writeFile, readdir, lstat, rm} from 'node:fs/promises';
 import {execFileSync} from 'node:child_process';
@@ -12,9 +13,16 @@ import {resolve} from 'node:path';
 import {createHash} from 'node:crypto';
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // strictly < 10 MiB (yataverse-bytes 40-block cap)
+const args = process.argv.slice(2);
+const targetIdx = args.indexOf('--target');
+const target = targetIdx >= 0 ? args[targetIdx + 1] : 'web';
+if (!['web', 'tauri'].includes(target)) {
+  throw Error(`unsupported build target: ${target} (expected web or tauri)`);
+}
+
 const app = fileURLToPath(new URL('../', import.meta.url));
 const repo = resolve(app, '../..');
-const out = resolve(app, 'dist');
+const out = resolve(app, target === 'tauri' ? 'dist-tauri' : 'dist');
 const sha = b => createHash('sha256').update(b).digest('hex');
 
 await rm(out, {recursive: true, force: true});
@@ -31,11 +39,15 @@ await copyFile(resolve(repo, 'packages/awai-shell/host.js'), resolve(out, 'host.
 
 // Inline icon into index.html (Android WebView re-requests linked icons on URL/hash changes).
 const icon = 'data:image/png;base64,' + (await readFile(resolve(app, 'src-tauri/icons/32x32.png'))).toString('base64');
-const indexHtml = await readFile(resolve(app, 'src/index.html'), 'utf8');
-if (!indexHtml.includes('href="icon.png"')) throw Error('index.html icon link missing');
+const rawIndexHtml = await readFile(resolve(app, 'src/index.html'), 'utf8');
+if (!rawIndexHtml.includes('href="icon.png"')) throw Error('index.html icon link missing');
+if (!rawIndexHtml.includes("connect-src 'none';")) throw Error("src/index.html must default to connect-src 'none';");
+const indexHtml = target === 'tauri'
+  ? rawIndexHtml.replace("connect-src 'none';", 'connect-src ipc: http://ipc.localhost;')
+  : rawIndexHtml;
 await writeFile(resolve(out, 'index.html'), indexHtml.replace('href="icon.png"', `href="${icon}"`));
 
-// Copy static routes (no SPA fallback).
+// Copy static routes (no SPA fallback). Both foreign-info.html and embed.html always keep connect-src 'none'.
 for (const htmlFile of ['foreign-info.html', 'embed.html']) {
   await copyFile(resolve(app, 'src', htmlFile), resolve(out, htmlFile));
 }
@@ -70,36 +82,55 @@ const declaredConnect = clientRuntimeConnectSrc(descriptor, [...REQUESTED_CAPABI
 if (declaredConnect !== 'connect-src https://api.murakumo.cloud') {
   throw Error('unexpected connect-src from descriptor: ' + declaredConnect);
 }
+
 // Independent CSP checks (Dev #220 + Itonami):
-// - Web static HTML (dist/*.html) MUST use connect-src 'none' (zero network destinations while inference is fail-closed)
-// - Tauri CSP (tauri.conf.json) keeps Tauri IPC only (connect-src ipc: http://ipc.localhost;)
-const tauriCsp = JSON.parse(await readFile(resolve(app, 'src-tauri/tauri.conf.json'), 'utf8')).app.security.csp;
+// - Web static HTML (dist/*.html) MUST use connect-src 'none' (zero network destinations, no ipc:, no api.murakumo.cloud)
+// - Tauri CSP (tauri.conf.json & dist-tauri/index.html) MUST use connect-src ipc: http://ipc.localhost; (IPC only)
+const tauriConf = JSON.parse(await readFile(resolve(app, 'src-tauri/tauri.conf.json'), 'utf8'));
+const tauriCsp = tauriConf.app.security.csp;
 if (!tauriCsp.includes('connect-src ipc: http://ipc.localhost;')) {
   throw Error('tauri.conf.json CSP connect-src must be IPC only');
 }
 if (/https?:\/\/api\.murakumo\.cloud/i.test(tauriCsp)) {
   throw Error('tauri.conf.json CSP must not allow external origins for offline-default build');
 }
+if (tauriConf.build.frontendDist !== '../dist-tauri') {
+  throw Error('tauri.conf.json frontendDist must point to ../dist-tauri');
+}
 await writeFile(resolve(out, 'descriptor.json'), JSON.stringify(descriptor, null, 2) + '\n');
 await distributeUi(out);
 
-// Verify every HTML entry in dist/ has mandatory <meta> CSP with connect-src 'none' + referrer=no-referrer.
+// Verify every HTML entry in output directory has mandatory <meta> CSP + referrer=no-referrer.
 for (const htmlFile of ['index.html', 'foreign-info.html', 'embed.html']) {
   const body = await readFile(resolve(out, htmlFile), 'utf8');
   if (!body.includes('http-equiv="Content-Security-Policy"')) throw Error('missing meta CSP in ' + htmlFile);
-  if (!body.includes("connect-src 'none';")) throw Error("Web static HTML must use connect-src 'none': " + htmlFile);
   if (!body.includes('name="referrer" content="no-referrer"')) throw Error('missing meta no-referrer in ' + htmlFile);
   if (body.includes('https://soudan.itonami.app/api')) throw Error('app-origin API reference in ' + htmlFile);
+  if (/https?:\/\/api\.murakumo\.cloud/i.test(body.match(/Content-Security-Policy" content="([^"]+)"/)?.[1] ?? '')) {
+    throw Error('HTML meta CSP must not widen to api.murakumo.cloud while inference is fail-closed: ' + htmlFile);
+  }
+  if (target === 'tauri' && htmlFile === 'index.html') {
+    if (!body.includes('connect-src ipc: http://ipc.localhost;')) {
+      throw Error('Tauri dist-tauri/index.html must allow Tauri IPC connect-src');
+    }
+  } else {
+    if (!body.includes("connect-src 'none';")) {
+      throw Error(`HTML must use connect-src 'none' for target=${target}: ${htmlFile}`);
+    }
+    if (/connect-src[^"]*ipc:/i.test(body)) {
+      throw Error(`Web HTML must not include ipc: in connect-src: ${htmlFile}`);
+    }
+  }
 }
 
-// Walk dist/, refuse symlinks, enforce < 10 MiB per file cap, compute per-file SHA-256.
+// Walk output dir, refuse symlinks, enforce < 10 MiB per file cap, compute per-file SHA-256.
 async function list(dir, rel = '') {
   const result = [];
   for (const e of await readdir(resolve(dir, rel), {withFileTypes: true})) {
     const n = rel ? rel + '/' + e.name : e.name;
     const full = resolve(dir, n);
     const st = await lstat(full);
-    if (st.isSymbolicLink()) throw Error('symlink forbidden in dist/: ' + n);
+    if (st.isSymbolicLink()) throw Error('symlink forbidden in output: ' + n);
     if (st.isDirectory()) result.push(...await list(dir, n));
     else if (st.isFile() && n !== 'release.json') {
       if (st.size >= MAX_FILE_BYTES) throw Error(`file exceeds 10 MiB cap (${st.size} bytes): ${n}`);
@@ -124,6 +155,7 @@ await writeFile(resolve(out, 'release.json'), JSON.stringify({
   schema: 'awai.app.artifact.v1',
   id: 'network.itonami.soudan',
   version: '0.1.0',
+  target,
   profile: 'restricted-wasm-v1',
   host: 'awai.shell.host.v1',
   tauri: '3.0.0-alpha.6',
@@ -132,4 +164,4 @@ await writeFile(resolve(out, 'release.json'), JSON.stringify({
   files,
 }, null, 2) + '\n');
 
-console.log(`Soudan static build: ${Object.keys(files).length} pinned files (profile=restricted-wasm-v1, dirty=${dirty})`);
+console.log(`Soudan ${target} build (${target === 'tauri' ? 'dist-tauri/' : 'dist/'}): ${Object.keys(files).length} pinned files (profile=restricted-wasm-v1, dirty=${dirty})`);

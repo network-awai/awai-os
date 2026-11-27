@@ -196,10 +196,6 @@ export function buildInferenceRequestBody({
     ...safeHistory,
     {role: 'user', content: textPayload},
   ];
-  const totalTokens = messages.reduce((sum, m) => sum + estimateTokens(m.content), 0);
-  if (totalTokens > INFERENCE_LIMITS.maxInputTokens) {
-    throw Object.assign(Error('input-token-limit-exceeded'), {code: 'input-token-limit-exceeded'});
-  }
   const body = {
     model: PINNED_INHOUSE_MODEL,
     stream: true,
@@ -211,6 +207,10 @@ export function buildInferenceRequestBody({
   const byteLen = new TextEncoder().encode(JSON.stringify(body)).length;
   if (byteLen > INFERENCE_LIMITS.maxRequestBytes) {
     throw Object.assign(Error('request-body-too-large'), {code: 'request-body-too-large'});
+  }
+  const totalTokens = messages.reduce((sum, m) => sum + estimateTokens(m.content), 0);
+  if (totalTokens > INFERENCE_LIMITS.maxInputTokens) {
+    throw Object.assign(Error('input-token-limit-exceeded'), {code: 'input-token-limit-exceeded'});
   }
   return body;
 }

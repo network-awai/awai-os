@@ -249,9 +249,11 @@ test('Web static HTML CSPs (connect-src none) and Tauri CSP (IPC only) are verif
     assert.doesNotMatch(csp, /unsafe-eval|unsafe-inline|ipc:|https:/);
     assert.match(page, /name="referrer" content="no-referrer"/);
   }
-  // Tauri CSP stays separate and allows Tauri IPC only.
+  // Tauri CSP stays separate and allows Tauri IPC only, pointing frontendDist at ../dist-tauri.
   assert.match(conf.app.security.csp, /connect-src ipc: http:\/\/ipc\.localhost;/);
   assert.doesNotMatch(conf.app.security.csp, /unsafe-eval|unsafe-inline|https:/);
+  assert.equal(conf.build.frontendDist, '../dist-tauri');
+  assert.equal(conf.build.beforeBuildCommand, 'npm run build:tauri');
 
   // Android manifest stays offline-default (no INTERNET permission, allowBackup="false").
   assert.ok(manifest.includes('android:allowBackup="false"'));

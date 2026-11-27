@@ -58,7 +58,8 @@ All three surfaces share the same on-device multi-draft state (`itonami.soudan.s
 (cd ../../packages/awai-ui && npm ci && npm run build)   # shared UI, once per checkout
 npm ci
 npm test                                                 # check-public.mjs + node --test suite
-npm run build                                            # dist/: static files + release.json (< 10 MiB/file, zero symlinks)
+npm run build                                            # dist/: Web static files (connect-src 'none') + dist/release.json (< 10 MiB/file, zero symlinks)
+npm run build:tauri                                      # dist-tauri/: Tauri frontend (connect-src ipc: http://ipc.localhost;)
 ```
 
 ### Dual-ABI Android / Awai OS APK (Itonami Store)

@@ -4,7 +4,8 @@
   "version": "0.1.0",
   "identifier": "network.itonami.soudan",
   "build": {
-    "frontendDist": "../dist"
+    "beforeBuildCommand": "npm run build:tauri",
+    "frontendDist": "../dist-tauri"
   },
   "app": {
     "withGlobalTauri": true,
