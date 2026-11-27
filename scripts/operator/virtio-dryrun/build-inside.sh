@@ -49,10 +49,13 @@
 #                          (integer 1..64); requires AWAI_RUST_PREPASS_TARGETS.
 #                          Unset means no pre-pass (current single-shot build).
 #   AWAI_RUST_PREPASS_TARGETS
-#                          target list for the pre-pass, confirmed in the
-#                          source tree on the build host (the crosvm Rust
-#                          scope). Example values stay desk-level until the
-#                          host confirms them against the tree.
+#                          whitespace-separated Soong module/goal names for
+#                          the pre-pass, confirmed in the source tree on the
+#                          build host (the crosvm Rust scope). Leading `-`
+#                          (options) and shell metacharacters are refused;
+#                          the array reaches `m` without reinterpretation.
+#                          Example values stay desk-level until the host
+#                          confirms them against the tree.
 #   AWAI_CCACHE_STATS=1    print `ccache -s` after the v1 and v2 builds for
 #                          cold/warm hit-rate measurement (default off).
 #   FIRMWARE_GIT           firmware checkout (default <work>/firmware/src)
@@ -109,6 +112,13 @@ if [[ -z ${AWAI_FEED_URL:-} ]]; then
   exit 2
 fi
 
+# Integer 1..64 without depending on arithmetic overflow: at most two
+# digits first (three or more can never be in range), then a bounded
+# range check on the base-10 value.
+valid_jobs() {
+  [[ ${1:-} =~ ^[0-9]{1,2}$ ]] && (( 10#$1 >= 1 && 10#$1 <= 64 ))
+}
+
 # Build parallelism: unset preserves the current bare `m` (Soong
 # default). An explicit integer caps every `m` invocation below and is
 # validated here, before anything executes. The gad 34GiB frame starts
@@ -118,7 +128,7 @@ fi
 # "$*") prints and executes the identical command list.
 M_JOBS_FLAG=""
 if [[ -n ${AWAI_M_JOBS:-} ]]; then
-  [[ ${AWAI_M_JOBS} =~ ^[0-9]+$ ]] && (( 10#$AWAI_M_JOBS >= 1 && 10#$AWAI_M_JOBS <= 64 )) ||
+  valid_jobs "$AWAI_M_JOBS" ||
     { echo "AWAI4089_REFUSES: AWAI_M_JOBS must be an integer 1..64 (got '${AWAI_M_JOBS:-<unset>}')." >&2; exit 2; }
   M_JOBS_FLAG="-j$AWAI_M_JOBS"
 fi
@@ -129,11 +139,22 @@ fi
 # build, keeping their rustc peak out of the full-parallel link storm.
 # Kept separate from the C/C++ ccache cold/warm measurement, which
 # varies only the cache state, never this scope.
+PREPASS_TARGETS=()
 if [[ -n ${AWAI_RUST_PREPASS_JOBS:-} ]]; then
-  [[ ${AWAI_RUST_PREPASS_JOBS} =~ ^[0-9]+$ ]] && (( 10#$AWAI_RUST_PREPASS_JOBS >= 1 && 10#$AWAI_RUST_PREPASS_JOBS <= 64 )) ||
+  valid_jobs "$AWAI_RUST_PREPASS_JOBS" ||
     { echo "AWAI4089_REFUSES: AWAI_RUST_PREPASS_JOBS must be an integer 1..64 (got '${AWAI_RUST_PREPASS_JOBS:-<unset>}')." >&2; exit 2; }
-  [[ -n ${AWAI_RUST_PREPASS_TARGETS:-} ]] ||
+  # Soong module/goal form only: multiple whitespace-separated targets
+  # are allowed, but nothing starting with `-` (an option) and nothing
+  # carrying shell metacharacters. A whitespace-only value counts as
+  # missing. `read` may report failure on empty input under `set -e`,
+  # so its status is ignored and the array length decides.
+  read -ra PREPASS_TARGETS <<< "${AWAI_RUST_PREPASS_TARGETS:-}" || true
+  (( ${#PREPASS_TARGETS[@]} > 0 )) ||
     { echo "AWAI4089_REFUSES: AWAI_RUST_PREPASS_TARGETS is required when AWAI_RUST_PREPASS_JOBS is set." >&2; exit 2; }
+  for t in "${PREPASS_TARGETS[@]}"; do
+    [[ $t =~ ^[A-Za-z0-9_][A-Za-z0-9_.:/-]*$ ]] ||
+      { echo "AWAI4089_REFUSES: AWAI_RUST_PREPASS_TARGETS must be whitespace-separated Soong module/goal names (got '$t')." >&2; exit 2; }
+  done
 fi
 
 # Validate the explicit apps mode again inside the worker.
@@ -351,12 +372,20 @@ run export USE_CCACHE=1 CCACHE_EXEC=/usr/bin/ccache CCACHE_DIR="$BUILD_WORK_DIR/
 run source build/envsetup.sh
 run breakfast virtio_x86_64 "$RELEASE_TYPE"
 stage breakfast
-if [[ -n ${AWAI_RUST_PREPASS_JOBS:-} ]]; then
+if (( ${#PREPASS_TARGETS[@]} > 0 )); then
   stage rust-prepass
-  # Intentional word-split: validated integer flag plus the host-confirmed
-  # target list (one or more Soong modules).
-  # shellcheck disable=SC2086
-  run m -j"$AWAI_RUST_PREPASS_JOBS" $AWAI_RUST_PREPASS_TARGETS
+  # Argument array straight into the `m` function: the targets were
+  # validated above, and the shell never re-splits or re-evaluates them
+  # (unlike `run`, which evals `m` with "$*"). The printed line keeps the
+  # same `[dry-run] m ...` shape as every other step.
+  if (( APPROVED )); then
+    printf 'm -j%s %s\n' "$AWAI_RUST_PREPASS_JOBS" "${PREPASS_TARGETS[*]}"
+  else
+    printf '[dry-run] m -j%s %s\n' "$AWAI_RUST_PREPASS_JOBS" "${PREPASS_TARGETS[*]}"
+  fi
+  if (( APPROVED )); then
+    m -j"$AWAI_RUST_PREPASS_JOBS" "${PREPASS_TARGETS[@]}"
+  fi
 fi
 # shellcheck disable=SC2086
 run m $M_JOBS_FLAG target-files-package otatools diskimage-vda

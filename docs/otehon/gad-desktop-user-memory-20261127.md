@@ -19,6 +19,11 @@ Desktop user の実ビルド入口は
   gad 側 launcher 設定は repo 管理外である。架空の入口ファイルは足さず、
   本 PR では入口側が任意の明示値を検証付きで受け取れるようにした
   （§3）。gad 側の最小変更案は §5。
+  read-only 照合の受領値（repo 外、机上）：現候補の host 管理入口
+  `inside-product.sh:41` は実際に `m -j8` と明示し、
+  `inside-product-resume.sh:62/68` は `-j1` の後に `-j4` と明示している。
+  よっていずれの repo 側変更も当該独立 launcher には自動反映されず、
+  次回反映には §5 の host 側差分が別途必要である。
 - 参考：`scripts/operator/same-build/build-inside.sh` は
   `JOBS=min(nproc, mem_GiB/4)` のメモリ bounded 式を持つが、対象が
   lamu/Generic 系であり、virtio Desktop user の crosvm rustc ピークとは
@@ -34,6 +39,7 @@ Desktop user の実ビルド入口は
 | 既存 out から `-j4` 再開：20:22 JST 時点 48%、OOM 0、peak 34 GiB | 受領値 | 実測（gad、repo 外）。完走は未確認 |
 | `-j20`（既存 `gad-fast-build-profile.env`）は Desktop user 枠で使用不可 | 受領値 | 実測扱い（OOM 経験則、repo 外） |
 | 次回既定：現行 34 GiB 枠は `-j4` から（明示値） | 本 PR の提案 | 机上 + 上記実測に整合。完走による裏付けは次回 |
+| OOM の原因帰属 | `-j8` での 34 GiB cgroup OOM | 実測（host 側 `inside-product.sh:41` の明示 `-j8` と対応）。repo の通常起動経路（素の `m`）の問題ではない |
 | `same-build` 式 `mem/4`（34 GiB → 8）は crosvm rustc には適用しない | 本 PR の判断 | 机上（peak 34 GiB @ -j4 は job 当たり約 8 GiB を示唆） |
 
 ## 3. repo 側の変更（本 PR、実測：局所 dry-run + 単体 40/40）
@@ -45,7 +51,11 @@ Desktop user の実ビルド入口は
   exit 2 で拒否。次回 gad は `AWAI_M_JOBS=4` を明示する。
 - `AWAI_RUST_PREPASS_JOBS=1` + `AWAI_RUST_PREPASS_TARGETS=<host で確定した scope>`：
   v1 前に一度だけ低並列で先行ビルドし、rustc ピークを全並列のリンク
-  ストームから切り離す。`TARGETS` 未確定のまま jobs だけ渡すと拒否する。
+  ストームから切り離す。`TARGETS` は空白区切りの Soong module/goal 名のみ
+  を受け、先頭 `-`（option）や shell メタ文字は拒否し、引数配列のまま
+  `m` に渡す（`run` の文字列再解釈を経由しない）。`TARGETS` 未確定のまま
+  jobs だけ渡すと拒否する。並列度の 1..64 検証は桁数制限（最大 2 桁）＋
+  範囲検査であり、整数の桁あふれに依存しない。
   目標名はソースツリーを持つ host 側で確定させる（repo 内に crosvm
   モジュール名の実体は無く、例示値は机上）。
 - `AWAI_CCACHE_STATS=1`：v1・v2 の各 `m` 直後に `ccache -s` を出す。
@@ -64,7 +74,20 @@ pre-pass なし）に戻る。ビルド内容自体の変更は無い。
 次回も維持する：34 GiB 枠、memory+swap 60 GiB、PSI、空き 35 GiB、排他。
 `AWAI_VIRTIO_DEADLINE_SECONDS`（最低 28800）の guard も変更なし。
 
-## 5. 次回ジョブ用最小変更案（gad 側、repo 外。PR 本文の差分案）
+## 5. 次回ジョブ用最小変更案（gad 側、repo 外。概念ではなくファイル/引数の境界）
+
+本 PR は repo の通常起動経路（`build-inside.sh`）に env の受け口を用意
+するのみであり、host 管理の独立 launcher には何も反映しない。次回反映は
+以下の host 側差分が別途必要である（gad 操作は本作業の範囲外）：
+
+- `inside-product.sh:41` の `m -j8 ...` → `m -j4 ...`（または当該行の
+  `-j8` を削り、同一起動の env に `AWAI_M_JOBS=4` を渡して repo 経路に
+  委ねる。どちらかに統一し、二重指定はしない）。
+- `inside-product-resume.sh:62/68` の `-j1` → pre-pass 採用時のみ
+  `AWAI_RUST_PREPASS_JOBS=1` + host ツリー確定の
+  `AWAI_RUST_PREPASS_TARGETS="<module...>"` に置き換え、`-j4` 継続行は
+  `AWAI_M_JOBS=4` に寄せる。pre-pass 目標未確定の間は当該 2 行を変更しない。
+- 追加する env（いずれも既存行の置換であり新規ファイルは作らない）：
 
 ```sh
 export AWAI_M_JOBS=4

@@ -251,12 +251,17 @@ test("AWAI_M_JOBS unset keeps bare m; =4 caps v1 and v2 (dry-run)", async () => 
 test("AWAI_M_JOBS invalid values refuse before execution", async () => {
   const stub = stubPath(join(tmpdir(), "mjbad-"), undefined);
   const work = join(tmpdir(), "mjbadwork-");
-  for (const bad of ["0", "65", "abc", "-4", "4.5"]) {
+  for (const bad of ["0", "00", "65", "abc", "-4", "4.5", "99999999999999999999999"]) {
     const r = await run("bash", [buildInside],
       { ...envFor(stub, work), DRY_RUN: "1", AWAI_M_JOBS: bad });
     assert.equal(r.code, 2, bad);
     assert.match(r.stderr, /AWAI_M_JOBS must be an integer 1\.\.64/, bad);
   }
+  // boundary without overflow dependence: 64 is accepted as-is
+  const ok = await run("bash", [buildInside],
+    { ...envFor(stub, work), DRY_RUN: "1", AWAI_M_JOBS: "64" });
+  assert.equal(ok.code, 0, ok.stderr);
+  assert.match(ok.stdout, /\[dry-run\] m -j64 target-files-package/);
   assert.equal(stub.calls(), "");
 });
 
@@ -278,6 +283,73 @@ test("Rust pre-pass runs at low parallelism before v1; targets required (dry-run
   assert.equal(r.code, 2);
   assert.match(r.stderr, /AWAI_RUST_PREPASS_TARGETS is required/);
   assert.equal(stub.calls(), "");
+});
+
+test("Rust pre-pass accepts multiple module targets; options and separators refuse", async () => {
+  const stub = stubPath(join(tmpdir(), "rpm-"), undefined);
+  const work = join(tmpdir(), "rpmwork-");
+  const base = { ...envFor(stub, work), DRY_RUN: "1", PATH: `${stub.dir}:${process.env.PATH}` };
+  const ok = await run("bash", [buildInside],
+    { ...base, AWAI_RUST_PREPASS_JOBS: "1", AWAI_RUST_PREPASS_TARGETS: "crosvm libdevices" });
+  assert.equal(ok.code, 0, ok.stderr);
+  const pre = ok.stdout.indexOf("[dry-run] m -j1 crosvm libdevices");
+  const v1 = ok.stdout.indexOf("[dry-run] m target-files-package otatools diskimage-vda");
+  assert.ok(pre !== -1 && v1 !== -1 && pre < v1, ok.stdout);
+  for (const bad of ["-j8", "--help", "crosvm;rm", "a|b", "a&b", "$HOME",
+    "`id`", "$(touch pwned)", "crosvm*foo", "a b/c/../d e>f", "  "]) {
+    const r = await run("bash", [buildInside],
+      { ...base, AWAI_RUST_PREPASS_JOBS: "1", AWAI_RUST_PREPASS_TARGETS: bad });
+    assert.equal(r.code, 2, bad);
+    assert.match(r.stderr, /AWAI_RUST_PREPASS_TARGETS/, bad);
+  }
+  // overflow-length jobs value refuses the same way, without arithmetic
+  const over = await run("bash", [buildInside],
+    { ...base, AWAI_RUST_PREPASS_JOBS: "99999999999999999999999", AWAI_RUST_PREPASS_TARGETS: "crosvm" });
+  assert.equal(over.code, 2);
+  assert.match(over.stderr, /AWAI_RUST_PREPASS_JOBS must be an integer 1\.\.64/);
+  assert.equal(stub.calls(), "");
+});
+
+test("approved pre-pass reaches m as an argument array; metacharacters never execute", async () => {
+  const kitInfo = await extractedRealKit();
+  const work = mkdtempSync(join(tmpdir(), "g2pre-"));
+  const fncalls = join(work, "fncalls.log");
+  writeFileSync(fncalls, "");
+  const src = join(work, "src");
+  mkdirSync(join(src, "build"), { recursive: true });
+  writeFileSync(join(src, "build", "envsetup.sh"),
+    `breakfast() { local t=$1 v=\${2:-userdebug}; echo "lunch lineage_$t-ap3a-$v" >> "${fncalls}"; }
+m() { echo "m $*" >> "${fncalls}";
+  mkdir -p "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates"
+  echo tf > "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates/lineage_virtio_x86_64-target_files.zip"
+  echo stock > "$SRC/out/target/product/virtio_x86_64/disk-vda.img"
+}
+`);
+  const stub = stubPath(work, kitInfo.kitTar);
+  const env = envFor(stub, work, {
+    SRC: src, KIT: kitInfo.kit, KIT_SHA256: kitInfo.kitSha,
+    BILLING_ALLOWED: "1", OWNER_APPROVED: "1",
+    AWAI_RUST_PREPASS_JOBS: "1", AWAI_RUST_PREPASS_TARGETS: "crosvm libdevices",
+  });
+  const r = await run("bash", [join(kitInfo.kit, "scripts/operator/virtio-dryrun/build-inside.sh")], env, 120000);
+  assert.equal(r.code, 0, r.stderr);
+  const fb = readFileSync(fncalls, "utf8");
+  const pre = fb.indexOf("m -j1 crosvm libdevices");
+  const v1 = fb.indexOf("m target-files-package otatools diskimage-vda");
+  assert.ok(pre !== -1 && v1 !== -1 && pre < v1, fb);
+  // a command substitution in the targets is refused in approved mode
+  // before anything executes: no stub call runs and the payload file
+  // never appears (the old `run`-eval path would have re-evaluated it)
+  const mark = join(work, "pwned");
+  const stub2 = stubPath(join(tmpdir(), "prebad-"), undefined);
+  const bad = await run("bash", [buildInside],
+    { ...envFor(stub2, join(tmpdir(), "prebadwork-")),
+      BILLING_ALLOWED: "1", OWNER_APPROVED: "1",
+      AWAI_RUST_PREPASS_JOBS: "1", AWAI_RUST_PREPASS_TARGETS: `crosvm $(touch ${mark})` });
+  assert.equal(bad.code, 2);
+  assert.match(bad.stderr, /Soong module\/goal names/);
+  assert.ok(!existsSync(mark));
+  assert.equal(stub2.calls(), "");
 });
 
 test("AWAI_CCACHE_STATS=1 prints ccache -s after each m (dry-run)", async () => {
