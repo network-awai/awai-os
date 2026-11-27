@@ -213,7 +213,7 @@ test('online-csp.mjs and validatePins enforce OnlinePins.java parity: exact inte
   assert.equal(exactRes.status,0,`exact 32768-byte 64-APK pins accepted: ${exactRes.stderr}`);
   assert.equal(exactRes.stdout.trim(),'connect-src https://raw.githubusercontent.com');
 
-  // Kougi P1 #1: decimal / exponent / boolean / string / out-of-range maxBytes must be rejected.
+  // Kougi P1 #1/#2/#3: decimal/exponent/bool maxBytes, extra keys, int64-overflow metadata, non-finite floats, surrogates, etc.
   const goodSingle=JSON.stringify(pins);
   for(const [label,mutated] of [
    ['decimal 1024.0', goodSingle.replace('2097152','1024.0')],
@@ -228,10 +228,22 @@ test('online-csp.mjs and validatePins enforce OnlinePins.java parity: exact inte
    ['unadmitted app id', JSON.stringify({...pins,apks:{'network.other.evil':yotei}})],
    ['explicit :443 port', goodSingle.replace('https://raw.githubusercontent.com/','https://raw.githubusercontent.com:443/')],
    ['trailing /..', goodSingle.replace('yotei.apk','dir/..')],
+   ['extra root metadata (benign)', devRaw.replace('{','{"extra":"note",')],
+   ['extra root metadata (int64 max+1: 9223372036854775808)', devRaw.replace('{','{"externalId":9223372036854775808,')],
+   ['extra root metadata (int64 min-1: -9223372036854775809)', devRaw.replace('{','{"externalId":-9223372036854775809,')],
+   ['extra root metadata (huge 10^25)', devRaw.replace('{','{"externalId":10000000000000000000000000,')],
+   ['extra root metadata (int64 max: 9223372036854775807)', devRaw.replace('{','{"externalId":9223372036854775807,')],
+   ['extra root metadata (non-finite 1e400)', devRaw.replace('{','{"externalId":1e400,')],
+   ['extra pin metadata', goodSingle.replace('"maxBytes":2097152','"maxBytes":2097152,"extra":1')],
   ]){
    const r=runCsp(payloadStr(mutated));
    assert.notEqual(r.status,0,`online-csp.mjs must reject ${label}`);
   }
+
+  // validatePins itself rejects extra root/pin metadata keys.
+  assert.throws(()=>validatePins({...pins,extra:1}),'validatePins rejects extra root key');
+  assert.throws(()=>validatePins({...pins,catalog:{...pins.catalog,extra:1}}),'validatePins rejects extra catalog key');
+  assert.throws(()=>validatePins({...pins,apks:{'network.itonami.yotei':{...yotei,extra:1}}}),'validatePins rejects extra APK key');
 
   // Kougi P1 #2: 64-APK pin JSON exceeding 32,768 bytes must be rejected.
   const overRes=runCsp(payloadStr(JSON.stringify(over64)));
@@ -239,5 +251,25 @@ test('online-csp.mjs and validatePins enforce OnlinePins.java parity: exact inte
   assert.match(overRes.stderr,/size-limit/);
  }finally{
   rmSync(stage,{recursive:true,force:true});
+ }
+});
+
+test('online-csp.mjs parseStrictJson enforces exact int64 bounds (BigInt), finite doubles, surrogates, and depth 16 (AWAI-3729)',async()=>{
+ const {parseStrictJson}=await import('../online-csp.mjs');
+ assert.ok(parseStrictJson('{"a":9223372036854775807,"b":-9223372036854775808}',{strictRoot:true}));
+ assert.ok(parseStrictJson('{"v":"\\uD83D\\uDE00"}',{strictRoot:true}));
+ assert.ok(parseStrictJson('['.repeat(16)+'1'+']'.repeat(16),{strictRoot:true}));
+ for(const [label,raw] of [
+  ['int64 max + 1', '{"v":9223372036854775808}'],
+  ['int64 min - 1', '{"v":-9223372036854775809}'],
+  ['10^25', '{"v":10000000000000000000000000}'],
+  ['1e400', '{"v":1e400}'],
+  ['-1e400', '{"v":-1e400}'],
+  ['lone high surrogate', '{"v":"\\uD800"}'],
+  ['lone low surrogate', '{"v":"\\uDC00"}'],
+  ['non-RFC NUL whitespace', '\u0000{"v":1}'],
+  ['depth 17 empty arrays', '['.repeat(17)+']'.repeat(17)],
+ ]){
+  assert.throws(()=>parseStrictJson(raw,{strictRoot:true}),`parseStrictJson must reject ${label}`);
  }
 });

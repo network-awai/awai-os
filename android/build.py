@@ -3,7 +3,7 @@
 Shared UI/domain and a development-signed, bundled catalog are also staged for NixOS.
 Never installs on a device. Outputs stay in the task's .agent-output directory by default.
 """
-import argparse, base64, hashlib, json, os, pathlib, shutil, subprocess, time, zipfile, re, urllib.parse
+import argparse, base64, hashlib, json, math, os, pathlib, shutil, subprocess, time, zipfile, re, urllib.parse
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 # AWAI-3882: the publisher is defined once in store/catalog-source/series-apps.json and
@@ -22,10 +22,15 @@ MAX_ONLINE_PIN_APPS = 64
 MAX_ONLINE_PIN_BYTES = 32768
 MAX_ONLINE_CATALOG_BYTES = 131072
 MAX_ONLINE_APK_BYTES = 64 * 1024 * 1024
+INT64_MIN = -(1 << 63)
+INT64_MAX = (1 << 63) - 1
 ONLINE_PIN_PREFIX = 'https://raw.githubusercontent.com/network-awai/awai-os/'
 _CATALOG_APP_RE = re.compile(r'network\.itonami\.[a-z][a-z0-9]{1,62}')
 _ONLINE_PIN_REV_RE = re.compile(r'[0-9a-f]{40}')
 _ONLINE_PIN_SHA_RE = re.compile(r'[0-9a-f]{64}')
+_ONLINE_PIN_REL_PATH_RE = re.compile(r'[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*')
+_ONLINE_PIN_ROOT_KEYS = frozenset(('revision', 'catalog', 'apks'))
+_ONLINE_PIN_ENTRY_KEYS = frozenset(('url', 'sha256', 'maxBytes'))
 
 def _catalog_online_app_ids(catalog_java=None):
     src = (catalog_java or (ROOT / 'android/shared/src/network/awai/platform/Catalog.java')).read_text(encoding='utf-8')
@@ -49,24 +54,65 @@ def _no_duplicate_keys(pairs):
 def _reject_json_constant(token):
     raise ValueError(f'pins-json: unsupported constant {token}')
 
-def _check_json_depth(value, depth=0):
-    if depth > 16:
-        raise ValueError('pins-json: nesting depth exceeded')
-    if isinstance(value, dict):
-        for v in value.values():
-            _check_json_depth(v, depth + 1)
+def _parse_json_int64(token):
+    value = int(token)
+    if value < INT64_MIN or value > INT64_MAX:
+        raise ValueError('pins-json: integer out of int64 range')
+    return value
+
+def _parse_json_finite_float(token):
+    value = float(token)
+    if not math.isfinite(value):
+        raise ValueError('pins-json: non-finite float')
+    return value
+
+def _check_json_tree(value, depth=0):
+    if isinstance(value, str):
+        try:
+            value.encode('utf-8')
+        except UnicodeEncodeError as e:
+            raise ValueError('pins-json: lone surrogate') from e
+    elif isinstance(value, dict):
+        if depth >= 16:
+            raise ValueError('pins-json: nesting depth exceeded')
+        for k, v in value.items():
+            _check_json_tree(k, depth + 1)
+            _check_json_tree(v, depth + 1)
     elif isinstance(value, list):
+        if depth >= 16:
+            raise ValueError('pins-json: nesting depth exceeded')
         for v in value:
-            _check_json_depth(v, depth + 1)
+            _check_json_tree(v, depth + 1)
+
+def parse_strict_pins_json(raw_text):
+    """Parse RFC 8259 JSON matching OnlinePins.java: int64 integers, finite doubles, no duplicate keys,
+    no lone UTF-16 surrogates, and max container nesting depth 16."""
+    if not isinstance(raw_text, str) or not raw_text.strip(' \t\r\n'):
+        raise ValueError('pins-empty')
+    try:
+        parsed = json.loads(
+            raw_text,
+            object_pairs_hook=_no_duplicate_keys,
+            parse_constant=_reject_json_constant,
+            parse_int=_parse_json_int64,
+            parse_float=_parse_json_finite_float,
+        )
+    except ValueError:
+        raise
+    except Exception as e:
+        raise ValueError(f'pins-json: {e}') from e
+    _check_json_tree(parsed)
+    return parsed
 
 def _check_online_pin_entry(entry, rev, ceiling, label):
-    if type(entry) is not dict:
-        raise ValueError(f'pins-{label}: expected object')
+    if type(entry) is not dict or set(entry.keys()) != _ONLINE_PIN_ENTRY_KEYS:
+        raise ValueError(f'pins-shape ({label})')
     url = entry.get('url')
     prefix = ONLINE_PIN_PREFIX + rev + '/store/distribution/'
-    if (type(url) is not str or not url.startswith(prefix) or len(url) <= len(prefix) or url.endswith('/')
-            or '/../' in url or '/./' in url or url.endswith('/..') or url.endswith('/.')
-            or '%' in url or '\\' in url or '?' in url or '#' in url):
+    if type(url) is not str or not url.startswith(prefix) or len(url) <= len(prefix):
+        raise ValueError(f'pins-url ({label})')
+    rel = url[len(prefix):]
+    if not _ONLINE_PIN_REL_PATH_RE.fullmatch(rel) or any(seg in ('.', '..') for seg in rel.split('/')):
         raise ValueError(f'pins-url ({label})')
     u = urllib.parse.urlsplit(url)
     if u.scheme != 'https' or u.netloc != 'raw.githubusercontent.com' or u.query or u.fragment:
@@ -89,17 +135,9 @@ def validate_online_pins_bytes(raw_bytes, catalog_java=None):
         raw_text = bytes(raw_bytes).decode('utf-8')
     except UnicodeDecodeError as e:
         raise ValueError('pins-json: invalid UTF-8') from e
-    if not raw_text.strip():
-        raise ValueError('pins-empty')
-    try:
-        pins = json.loads(raw_text, object_pairs_hook=_no_duplicate_keys, parse_constant=_reject_json_constant)
-    except ValueError:
-        raise
-    except Exception as e:
-        raise ValueError(f'pins-json: {e}') from e
-    _check_json_depth(pins)
-    if type(pins) is not dict:
-        raise ValueError('pins-shape: expected JSON object')
+    pins = parse_strict_pins_json(raw_text)
+    if type(pins) is not dict or set(pins.keys()) != _ONLINE_PIN_ROOT_KEYS:
+        raise ValueError('pins-shape: expected JSON object with exact keys revision, catalog, apks')
     rev = pins.get('revision')
     if type(rev) is not str or not _ONLINE_PIN_REV_RE.fullmatch(rev):
         raise ValueError('pins-revision')

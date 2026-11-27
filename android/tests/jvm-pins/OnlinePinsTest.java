@@ -186,6 +186,53 @@ public final class OnlinePinsTest {
         ok("trailing /.. in URL fails closed with pins-url",
                 trailingDotDotUrl.allowedUrls.isEmpty() && "SecurityException: pins-url".equals(trailingDotDotUrl.error));
 
+        OnlinePins.LoadResult spaceUrl = OnlinePins.loadAllowlist(
+                buildPinsJson(1).replace("app0.apk", "app 0.apk"), acceptAll());
+        ok("space in URL fails closed with pins-url",
+                spaceUrl.allowedUrls.isEmpty() && "SecurityException: pins-url".equals(spaceUrl.error));
+
+        // Closed schema: extra root or pin metadata keys are refused with pins-shape.
+        OnlinePins.LoadResult extraRootKey = OnlinePins.loadAllowlist(
+                buildPinsJson(1).replaceFirst("\\{", "{\"extra\":1,"), acceptAll());
+        ok("extra root metadata key fails closed with pins-shape",
+                extraRootKey.allowedUrls.isEmpty() && "SecurityException: pins-shape".equals(extraRootKey.error));
+
+        OnlinePins.LoadResult extraPinKey = OnlinePins.loadAllowlist(
+                buildPinsJson(1).replace("\"maxBytes\":1048576", "\"maxBytes\":1048576,\"extra\":1"), acceptAll());
+        ok("extra pin metadata key fails closed with pins-shape",
+                extraPinKey.allowedUrls.isEmpty() && "SecurityException: pins-shape".equals(extraPinKey.error));
+
+        OnlinePins.LoadResult bigIntMeta = OnlinePins.loadAllowlist(
+                devJson.replaceFirst("\\{", "{\"externalId\":9223372036854775808,"), acceptAll());
+        ok("17-APK dev fixture with int64-overflow metadata fails closed",
+                bigIntMeta.allowedUrls.isEmpty() && "SecurityException: pins-json".equals(bigIntMeta.error));
+
+        // Strict JSON parser parity checks: int64 bounds, non-finite double, lone surrogates, depth 16 vs 17, non-RFC ws.
+        ok("parseJson accepts Long.MAX_VALUE and Long.MIN_VALUE",
+                OnlinePins.parseJson("{\"a\":9223372036854775807,\"b\":-9223372036854775808}") != null);
+        for (String[] badParserCase : new String[][]{
+            {"int64 max + 1 (2^63)", "{\"v\":9223372036854775808}"},
+            {"int64 min - 1 (-2^63 - 1)", "{\"v\":-9223372036854775809}"},
+            {"huge integer (10^25)", "{\"v\":10000000000000000000000000}"},
+            {"non-finite float (1e400)", "{\"v\":1e400}"},
+            {"non-finite negative float (-1e400)", "{\"v\":-1e400}"},
+            {"lone high surrogate (\\uD800)", "{\"v\":\"\\uD800\"}"},
+            {"lone low surrogate (\\uDC00)", "{\"v\":\"\\uDC00\"}"},
+            {"non-RFC NUL leading whitespace", "\u0000{\"v\":1}"},
+            {"depth 17 empty nested objects", repeat('{', 17).replace("{", "{\"a\":").substring(0, 16 * 5) + "{}" + repeat('}', 16)},
+        }) {
+            boolean failed = false;
+            try { OnlinePins.parseJson(badParserCase[1]); } catch (SecurityException expected) { failed = true; }
+            ok("parseJson rejects " + badParserCase[0], failed);
+        }
+        String depth16 = repeat('[', 16) + "1" + repeat(']', 16);
+        String depth17 = repeat('[', 17) + repeat(']', 17);
+        ok("parseJson accepts depth 16 and valid surrogate pair",
+                OnlinePins.parseJson(depth16) != null && OnlinePins.parseJson("{\"v\":\"\\uD83D\\uDE00\"}") != null);
+        boolean d17Failed = false;
+        try { OnlinePins.parseJson(depth17); } catch (SecurityException expected) { d17Failed = true; }
+        ok("parseJson rejects depth 17 empty arrays", d17Failed);
+
         // Exact byte-limit boundary for 64 APKs: 32,768 bytes accepted; 32,769 bytes refused by Integrity.read.
         String exactMaxBytesJson = buildPinsJsonExactBytes(OnlinePins.MAX_APPS, OnlinePins.MAX_BYTES);
         byte[] exactMaxBytesBuf = exactMaxBytesJson.getBytes(StandardCharsets.UTF_8);

@@ -9,13 +9,15 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * Commit-pinned online distribution allowlist ({@code online-pins.json}, AWAI-3729).
  *
  * <p>Pure Java (no Android framework or {@code org.json} dependency) so the same parser and bounds
  * enforced by {@link HostActivity} run directly in plain JVM regression tests. Keep {@link #MAX_APPS}
- * aligned with {@link LatestPointer#MAX_APPS} and {@code android/client/online.js} ({@code MAX_PINNED_APPS}).
+ * and {@link #MAX_BYTES} aligned with {@link LatestPointer#MAX_APPS}, {@code android/build.py},
+ * {@code android/online-csp.mjs}, and {@code android/client/online.js}.
  */
 public final class OnlinePins {
     public static final int MAX_APPS = 64;
@@ -24,6 +26,7 @@ public final class OnlinePins {
     public static final int MAX_CATALOG_BYTES = 131072;
     public static final int MAX_APK_BYTES = 64 * 1024 * 1024;
     public static final String DISTRIBUTION_PREFIX = "https://raw.githubusercontent.com/network-awai/awai-os/";
+    private static final Pattern SAFE_REL_PATH = Pattern.compile("[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*");
 
     public interface AppValidator {
         void checkAdmitted(String appId);
@@ -63,24 +66,32 @@ public final class OnlinePins {
         this.allowedUrls = allowedUrls;
     }
 
+    /** Parses raw RFC 8259 JSON with int64 integers, finite doubles, no duplicate keys, no lone surrogates, and max depth 16. */
+    public static Object parseJson(String json) {
+        if (json == null || trimJsonWs(json).isEmpty()) throw new SecurityException("pins-empty");
+        return new JsonParser(json).parse();
+    }
+
     /**
      * Parses {@code online-pins.json} text. Returns {@code null} when the asset is the literal
      * JSON {@code null} written by offline builds; throws {@link SecurityException} on any
-     * malformed, invalid, unknown-app, or out-of-bounds pin document.
+     * malformed, invalid, unknown-app, extra-key, or out-of-bounds pin document.
      */
     public static OnlinePins parseOrNull(String json, AppValidator validator) {
         if (json == null) throw new SecurityException("pins-empty");
-        String trimmed = json.trim();
+        String trimmed = trimJsonWs(json);
         if (trimmed.isEmpty()) throw new SecurityException("pins-empty");
         if ("null".equals(trimmed)) return null;
-        return parse(trimmed, validator);
+        return parse(json, validator);
     }
 
     /** Parses and validates a non-null {@code online-pins.json} document. */
     public static OnlinePins parse(String json, AppValidator validator) {
-        if (json == null || json.trim().isEmpty()) throw new SecurityException("pins-empty");
-        Object rootObj = new JsonParser(json).parse();
+        Object rootObj = parseJson(json);
         Map<String, Object> root = asObject(rootObj, "pins-shape");
+        if (root.size() != 3 || !root.containsKey("revision") || !root.containsKey("catalog") || !root.containsKey("apks")) {
+            throw new SecurityException("pins-shape");
+        }
         String rev = asString(root.get("revision"), "pins-revision");
         if (!rev.matches("[0-9a-f]{40}")) throw new SecurityException("pins-revision");
 
@@ -132,6 +143,9 @@ public final class OnlinePins {
     }
 
     private static Pin parsePin(Map<String, Object> obj, String rev, long ceiling) {
+        if (obj.size() != 3 || !obj.containsKey("url") || !obj.containsKey("sha256") || !obj.containsKey("maxBytes")) {
+            throw new SecurityException("pins-shape");
+        }
         String url = asString(obj.get("url"), "pins-url");
         if (!validPinnedUrl(url, rev)) throw new SecurityException("pins-url");
         String sha = asString(obj.get("sha256"), "pins-digest");
@@ -143,8 +157,12 @@ public final class OnlinePins {
 
     private static boolean validPinnedUrl(String url, String rev) {
         String prefix = DISTRIBUTION_PREFIX + rev + "/store/distribution/";
-        if (!url.startsWith(prefix) || url.length() <= prefix.length() || url.endsWith("/")) return false;
-        if (url.contains("/../") || url.contains("/./") || url.endsWith("/..") || url.endsWith("/.") || url.contains("%") || url.contains("\\")) return false;
+        if (!url.startsWith(prefix) || url.length() <= prefix.length()) return false;
+        String rel = url.substring(prefix.length());
+        if (!SAFE_REL_PATH.matcher(rel).matches()) return false;
+        for (String seg : rel.split("/")) {
+            if (".".equals(seg) || "..".equals(seg)) return false;
+        }
         try {
             URI u = new URI(url);
             return "https".equals(u.getScheme())
@@ -156,6 +174,18 @@ public final class OnlinePins {
         } catch (Exception badUri) {
             return false;
         }
+    }
+
+    /** Trims only RFC 8259 JSON whitespace (SP, HTAB, LF, CR), unlike {@link String#trim()}. */
+    private static String trimJsonWs(String s) {
+        int start = 0, end = s.length();
+        while (start < end && isJsonWs(s.charAt(start))) start++;
+        while (end > start && isJsonWs(s.charAt(end - 1))) end--;
+        return s.substring(start, end);
+    }
+
+    private static boolean isJsonWs(char c) {
+        return c == ' ' || c == '\t' || c == '\r' || c == '\n';
     }
 
     @SuppressWarnings("unchecked")
@@ -174,7 +204,12 @@ public final class OnlinePins {
         return ((Long) value).longValue();
     }
 
-    /** Minimal strict RFC 8259 JSON parser (rejects duplicate object keys, trailing garbage, and deep nesting). */
+    /**
+     * Minimal strict RFC 8259 JSON parser aligned with {@code android/build.py} and
+     * {@code android/online-csp.mjs}: rejects duplicate object keys, trailing data, container depth
+     * > 16, out-of-range int64 integers, non-finite doubles, unescaped control chars, and lone
+     * UTF-16 surrogates.
+     */
     private static final class JsonParser {
         private static final int MAX_DEPTH = 16;
         private final String s;
@@ -193,7 +228,6 @@ public final class OnlinePins {
         }
 
         private Object parseValue(int depth) {
-            if (depth > MAX_DEPTH) throw new SecurityException("pins-json");
             skipWs();
             if (pos >= s.length()) throw new SecurityException("pins-json");
             char c = s.charAt(pos);
@@ -208,6 +242,7 @@ public final class OnlinePins {
         }
 
         private Map<String, Object> parseObject(int depth) {
+            if (depth > MAX_DEPTH) throw new SecurityException("pins-json");
             pos++; // '{'
             skipWs();
             Map<String, Object> map = new LinkedHashMap<>();
@@ -234,6 +269,7 @@ public final class OnlinePins {
         }
 
         private List<Object> parseArray(int depth) {
+            if (depth > MAX_DEPTH) throw new SecurityException("pins-json");
             pos++; // '['
             skipWs();
             List<Object> list = new ArrayList<>();
@@ -249,6 +285,14 @@ public final class OnlinePins {
                 if (sep == ']') return list;
                 if (sep != ',') throw new SecurityException("pins-json");
             }
+        }
+
+        private char readUnicodeEscape() {
+            if (pos + 4 > s.length()) throw new SecurityException("pins-json");
+            String hex = s.substring(pos, pos + 4);
+            if (!hex.matches("[0-9a-fA-F]{4}")) throw new SecurityException("pins-json");
+            pos += 4;
+            return (char) Integer.parseInt(hex, 16);
         }
 
         private String parseString() {
@@ -271,15 +315,31 @@ public final class OnlinePins {
                         case 'r': out.append('\r'); break;
                         case 't': out.append('\t'); break;
                         case 'u':
-                            if (pos + 4 > s.length()) throw new SecurityException("pins-json");
-                            String hex = s.substring(pos, pos + 4);
-                            if (!hex.matches("[0-9a-fA-F]{4}")) throw new SecurityException("pins-json");
-                            out.append((char) Integer.parseInt(hex, 16));
-                            pos += 4;
+                            char u = readUnicodeEscape();
+                            if (Character.isHighSurrogate(u)) {
+                                if (pos + 2 > s.length() || s.charAt(pos) != '\\' || s.charAt(pos + 1) != 'u') {
+                                    throw new SecurityException("pins-json");
+                                }
+                                pos += 2;
+                                char low = readUnicodeEscape();
+                                if (!Character.isLowSurrogate(low)) throw new SecurityException("pins-json");
+                                out.append(u).append(low);
+                            } else if (Character.isLowSurrogate(u)) {
+                                throw new SecurityException("pins-json");
+                            } else {
+                                out.append(u);
+                            }
                             break;
                         default:
                             throw new SecurityException("pins-json");
                     }
+                } else if (Character.isHighSurrogate(c)) {
+                    if (pos >= s.length() || !Character.isLowSurrogate(s.charAt(pos))) {
+                        throw new SecurityException("pins-json");
+                    }
+                    out.append(c).append(s.charAt(pos++));
+                } else if (Character.isLowSurrogate(c)) {
+                    throw new SecurityException("pins-json");
                 } else {
                     out.append(c);
                 }
@@ -317,7 +377,11 @@ public final class OnlinePins {
             }
             String num = s.substring(start, pos);
             try {
-                if (decimal) return Double.valueOf(num);
+                if (decimal) {
+                    Double d = Double.valueOf(num);
+                    if (d.isInfinite() || d.isNaN()) throw new SecurityException("pins-json");
+                    return d;
+                }
                 return Long.valueOf(num);
             } catch (NumberFormatException bad) {
                 throw new SecurityException("pins-json");
@@ -330,11 +394,7 @@ public final class OnlinePins {
         }
 
         private void skipWs() {
-            while (pos < s.length()) {
-                char c = s.charAt(pos);
-                if (c == ' ' || c == '\t' || c == '\r' || c == '\n') pos++;
-                else break;
-            }
+            while (pos < s.length() && isJsonWs(s.charAt(pos))) pos++;
         }
     }
 }

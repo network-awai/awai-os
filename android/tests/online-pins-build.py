@@ -117,28 +117,11 @@ def main():
     dev_pins, dev_serialized = build.validate_online_pins_bytes(dev_bytes)
     check('checked-in online-pins.dev.json validates cleanly', len(dev_pins['apks']) >= 17 and len(dev_serialized.encode('utf-8')) <= build.MAX_ONLINE_PIN_BYTES)
 
-    # 4. End-to-end build.py CLI rejection BEFORE any APK is generated.
+    # 4. End-to-end build.py CLI rejection BEFORE any APK is generated, plus 3-layer exact-byte parity
+    # on Kougi's P1 reproduction (17-APK dev fixture + extra metadata with out-of-range int64 / boundary values / 1e400).
+    dev_text = dev_bytes.decode('utf-8')
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = pathlib.Path(tmp)
-        for label, bad_raw in [
-            ('decimal maxBytes (1024.0)', good_one.replace('1048576', '1024.0').encode('utf-8')),
-            ('64 APKs over 32,768 bytes', over64_bytes),
-        ]:
-            pin_file = tmp_path / (label.replace(' ', '_').replace('(', '').replace(')', '').replace(',', '') + '.json')
-            out_dir = tmp_path / ('out_' + pin_file.stem)
-            pin_file.write_bytes(bad_raw)
-            r = subprocess.run(
-                [sys.executable, str(ROOT / 'android/build.py'), '--store-only', '--skip-cljs',
-                 '--online-pins', str(pin_file), '--out', str(out_dir)],
-                capture_output=True, text=True,
-            )
-            apks_created = list(out_dir.rglob('*.apk')) if out_dir.exists() else []
-            check(f'build.py CLI rejects {label} before generating any APK',
-                  r.returncode != 0 and len(apks_created) == 0,
-                  f'rc={r.returncode} apks={apks_created} stderr={r.stderr.strip()}')
-
-        # 5. Round-trip: exact bytes emitted by build.py for both online-pins.dev.json and exact 32,768-byte
-        # 64-APK pins pass BOTH online-csp.mjs AND Java OnlinePins + Integrity.read + Catalog.
         stage = tmp_path / 'web'
         stage.mkdir()
         shutil.copyfile(ROOT / 'android/client/online.js', stage / 'online.js')
@@ -166,6 +149,91 @@ def main():
                 str(ROOT / 'android/tests/jvm-pins/CatalogOnlinePinsCheck.java'),
             ], check=True)
 
+        # CLI rejection before APK generation for all P1 cases.
+        cli_reject_cases = [
+            ('decimal_maxBytes_1024_0', good_one.replace('1048576', '1024.0').encode('utf-8')),
+            ('64_APKs_over_32768_bytes', over64_bytes),
+            ('dev17_int64_max_plus_1', dev_text.replace('{', '{"externalId":9223372036854775808,', 1).encode('utf-8')),
+            ('dev17_int64_min_minus_1', dev_text.replace('{', '{"externalId":-9223372036854775809,', 1).encode('utf-8')),
+            ('dev17_huge_10_pow_25', dev_text.replace('{', '{"externalId":10000000000000000000000000,', 1).encode('utf-8')),
+            ('dev17_int64_max_extra', dev_text.replace('{', '{"externalId":9223372036854775807,', 1).encode('utf-8')),
+            ('dev17_int64_min_extra', dev_text.replace('{', '{"externalId":-9223372036854775808,', 1).encode('utf-8')),
+            ('dev17_nonfinite_1e400', dev_text.replace('{', '{"externalId":1e400,', 1).encode('utf-8')),
+            ('dev17_benign_extra_meta', dev_text.replace('{', '{"note":"extra",', 1).encode('utf-8')),
+            ('dev17_extra_pin_field', dev_text.replace('"maxBytes": 16965', '"maxBytes": 16965, "extra": 1', 1).encode('utf-8')),
+        ]
+        for label, bad_raw in cli_reject_cases:
+            pin_file = tmp_path / f'{label}.json'
+            out_dir = tmp_path / f'out_{label}'
+            pin_file.write_bytes(bad_raw)
+            r = subprocess.run(
+                [sys.executable, str(ROOT / 'android/build.py'), '--store-only', '--skip-cljs',
+                 '--online-pins', str(pin_file), '--out', str(out_dir)],
+                capture_output=True, text=True,
+            )
+            apks_created = list(out_dir.rglob('*.apk')) if out_dir.exists() else []
+            check(f'build.py CLI rejects {label} before generating any APK',
+                  r.returncode != 0 and len(apks_created) == 0,
+                  f'rc={r.returncode} apks={apks_created} stderr={r.stderr.strip()}')
+
+            # Feed the exact same bytes to online-csp.mjs and JVM OnlinePins+Catalog.
+            csp_stdin = '{"assets":' + json.dumps(str(stage)) + ',"pins":' + bad_raw.decode('utf-8') + ',"descriptor":' + json.dumps(descriptor) + '}'
+            csp = subprocess.run(['node', str(ROOT / 'android/online-csp.mjs')], input=csp_stdin, capture_output=True, text=True)
+            check(f'same-bytes online-csp.mjs rejects {label}', csp.returncode != 0, f'rc={csp.returncode} out={csp.stdout.strip()}')
+
+            if jvm_classes is not None:
+                jvm = subprocess.run([
+                    str(java_bin / 'java'), '-cp', f'{jvm_classes}:{android_jar}',
+                    'CatalogOnlinePinsCheck', '--reject-pins-file', str(pin_file),
+                ], capture_output=True, text=True)
+                check(f'same-bytes JVM OnlinePins+Catalog rejects {label}', jvm.returncode == 0,
+                      f'rc={jvm.returncode} out={jvm.stdout.strip()} err={jvm.stderr.strip()}')
+
+        # 5. Exact-byte parser-layer parity across Python build.parse_strict_pins_json,
+        # Node online-csp.mjs parseStrictJson, and Java OnlinePins.parseJson.
+        parser_cases = [
+            ('int64_max', b'{"v":9223372036854775807}', True),
+            ('int64_min', b'{"v":-9223372036854775808}', True),
+            ('int64_max_plus_1', b'{"v":9223372036854775808}', False),
+            ('int64_min_minus_1', b'{"v":-9223372036854775809}', False),
+            ('huge_10_pow_25', b'{"v":10000000000000000000000000}', False),
+            ('nonfinite_1e400', b'{"v":1e400}', False),
+            ('nonfinite_neg_1e400', b'{"v":-1e400}', False),
+            ('lone_high_surrogate', b'{"v":"\\uD800"}', False),
+            ('lone_low_surrogate', b'{"v":"\\uDC00"}', False),
+            ('valid_surrogate_pair', b'{"v":"\\uD83D\\uDE00"}', True),
+            ('depth_16_ok', (b'[' * 16) + b'1' + (b']' * 16), True),
+            ('depth_17_empty_reject', (b'[' * 17) + (b']' * 17), False),
+            ('nul_ws_reject', b'\x00{"v":1}', False),
+        ]
+        for label, raw_bytes, expect_accept in parser_cases:
+            raw_file = tmp_path / f'parser_{label}.json'
+            raw_file.write_bytes(raw_bytes)
+            try:
+                build.parse_strict_pins_json(raw_bytes.decode('utf-8'))
+                py_ok = True
+            except ValueError:
+                py_ok = False
+            check(f'same-bytes Python parse_strict_pins_json {label} == {expect_accept}', py_ok == expect_accept)
+
+            js_probe = (
+                "import {readFileSync} from 'node:fs';"
+                f"import {{parseStrictJson}} from {json.dumps((ROOT / 'android/online-csp.mjs').as_uri())};"
+                f"parseStrictJson(readFileSync({json.dumps(str(raw_file))},'utf8'),{{strictRoot:true}});"
+            )
+            js_r = subprocess.run(['node', '--input-type=module', '-e', js_probe], capture_output=True, text=True)
+            check(f'same-bytes Node parseStrictJson {label} == {expect_accept}', (js_r.returncode == 0) == expect_accept, js_r.stderr.strip())
+
+            if jvm_classes is not None:
+                jvm_r = subprocess.run([
+                    str(java_bin / 'java'), '-cp', f'{jvm_classes}:{android_jar}',
+                    'CatalogOnlinePinsCheck', '--parse-json', str(raw_file), 'accept' if expect_accept else 'reject',
+                ], capture_output=True, text=True)
+                check(f'same-bytes JVM OnlinePins.parseJson {label} == {expect_accept}', jvm_r.returncode == 0,
+                      f'rc={jvm_r.returncode} out={jvm_r.stdout.strip()} err={jvm_r.stderr.strip()}')
+
+        # 6. Round-trip: exact bytes emitted by build.py for both online-pins.dev.json and exact 32,768-byte
+        # 64-APK pins pass BOTH online-csp.mjs AND Java OnlinePins + Integrity.read + Catalog.
         for label, serialized, expected_count in [
             ('online-pins.dev.json', dev_serialized, len(dev_pins['apks'])),
             ('exact 32,768-byte 64-APK pins', exact64_serialized, 64),

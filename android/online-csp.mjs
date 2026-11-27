@@ -1,15 +1,19 @@
 // Build-time only: enforce OnlinePins.java / HostActivity.java parity (AWAI-3729),
 // then use the same pinned canonical validator and online declaration as the client.
-import {readFileSync} from 'node:fs';
+import {readFileSync, realpathSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 
 const MAX_PIN_APPS = 64;
 const MAX_PIN_BYTES = 32768;
 const MAX_CATALOG_BYTES = 131072;
 const MAX_APK_BYTES = 64 * 1024 * 1024;
+const INT64_MIN = -(1n << 63n);
+const INT64_MAX = (1n << 63n) - 1n;
 const DISTRIBUTION_PREFIX = 'https://raw.githubusercontent.com/network-awai/awai-os/';
 const CATALOG_APP_RE = /^network\.itonami\.[a-z][a-z0-9]{1,62}$/;
+const SAFE_REL_PATH_RE = /^[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/;
 const NON_INT_NUMBER = Symbol('non-int-number');
+const INT64_NUMBER = Symbol('int64-number');
 
 function loadCatalogOnlineIds() {
   const src = readFileSync(new URL('./shared/src/network/awai/platform/Catalog.java', import.meta.url), 'utf8');
@@ -25,11 +29,12 @@ function loadCatalogOnlineIds() {
 }
 
 /**
- * Minimal strict RFC 8259 JSON parser used to preserve exact integer vs decimal/exponent tokens
- * (rejecting 1024.0 / 1e3) and reject duplicate object keys inside the pins subtree, matching
- * OnlinePins.java before JS JSON.parse collapses numeric representations.
+ * Minimal strict RFC 8259 JSON parser aligned with OnlinePins.java and android/build.py:
+ * inside the strict pins subtree, enforces exact signed int64 bounds via BigInt, finite doubles,
+ * exact integer vs decimal/exponent tokens, no duplicate keys, no lone UTF-16 surrogates, and
+ * max container nesting depth 16.
  */
-function parseStrictJson(text, {strictRoot = false, strictKey = null} = {}) {
+export function parseStrictJson(text, {strictRoot = false, strictKey = null} = {}) {
   let pos = 0;
   const len = text.length;
   function skipWs() {
@@ -40,14 +45,12 @@ function parseStrictJson(text, {strictRoot = false, strictKey = null} = {}) {
     }
   }
   function parseValue(depth, strict) {
-    if (strict && depth > 16) throw Error('pins-json: nesting depth exceeded');
-    if (depth > 64) throw Error('json: nesting depth exceeded');
     skipWs();
     if (pos >= len) throw Error('pins-json: unexpected end');
     const c = text[pos];
     if (c === '{') return parseObject(depth + 1, strict);
     if (c === '[') return parseArray(depth + 1, strict);
-    if (c === '"') return parseString();
+    if (c === '"') return parseString(strict);
     if (c === 't') { expect('true'); return true; }
     if (c === 'f') { expect('false'); return false; }
     if (c === 'n') { expect('null'); return null; }
@@ -55,6 +58,8 @@ function parseStrictJson(text, {strictRoot = false, strictKey = null} = {}) {
     throw Error('pins-json: unexpected token');
   }
   function parseObject(depth, strict) {
+    if (strict && depth > 16) throw Error('pins-json: nesting depth exceeded');
+    if (depth > 64) throw Error('json: nesting depth exceeded');
     pos++; // '{'
     skipWs();
     const obj = Object.create(null);
@@ -62,7 +67,7 @@ function parseStrictJson(text, {strictRoot = false, strictKey = null} = {}) {
     while (true) {
       skipWs();
       if (pos >= len || text[pos] !== '"') throw Error('pins-json: expected key');
-      const key = parseString();
+      const key = parseString(strict);
       if (strict && Object.hasOwn(obj, key)) throw Error('pins-duplicate-key');
       skipWs();
       if (pos >= len || text[pos] !== ':') throw Error('pins-json: expected colon');
@@ -78,6 +83,8 @@ function parseStrictJson(text, {strictRoot = false, strictKey = null} = {}) {
     }
   }
   function parseArray(depth, strict) {
+    if (strict && depth > 16) throw Error('pins-json: nesting depth exceeded');
+    if (depth > 64) throw Error('json: nesting depth exceeded');
     pos++; // '['
     skipWs();
     const arr = [];
@@ -91,13 +98,20 @@ function parseStrictJson(text, {strictRoot = false, strictKey = null} = {}) {
       if (sep !== ',') throw Error('pins-json: expected comma');
     }
   }
-  function parseString() {
+  function readUnicodeEscape() {
+    const hex = text.slice(pos, pos + 4);
+    if (!/^[0-9a-fA-F]{4}$/.test(hex)) throw Error('pins-json: bad unicode escape');
+    pos += 4;
+    return parseInt(hex, 16);
+  }
+  function parseString(strict) {
     pos++; // '"'
     let out = '';
     while (pos < len) {
       const ch = text[pos++];
       if (ch === '"') return out;
-      if (ch.charCodeAt(0) < 0x20) throw Error('pins-json: control char');
+      const code = ch.charCodeAt(0);
+      if (code < 0x20) throw Error('pins-json: control char');
       if (ch === '\\') {
         if (pos >= len) throw Error('pins-json: unterminated escape');
         const esc = text[pos++];
@@ -108,11 +122,25 @@ function parseStrictJson(text, {strictRoot = false, strictKey = null} = {}) {
         else if (esc === 'r') out += '\r';
         else if (esc === 't') out += '\t';
         else if (esc === 'u') {
-          const hex = text.slice(pos, pos + 4);
-          if (!/^[0-9a-fA-F]{4}$/.test(hex)) throw Error('pins-json: bad unicode escape');
-          out += String.fromCharCode(parseInt(hex, 16));
-          pos += 4;
+          const u = readUnicodeEscape();
+          if (strict && u >= 0xd800 && u <= 0xdbff) {
+            if (text[pos] !== '\\' || text[pos + 1] !== 'u') throw Error('pins-json: lone surrogate');
+            pos += 2;
+            const low = readUnicodeEscape();
+            if (low < 0xdc00 || low > 0xdfff) throw Error('pins-json: lone surrogate');
+            out += String.fromCharCode(u, low);
+          } else if (strict && u >= 0xdc00 && u <= 0xdfff) {
+            throw Error('pins-json: lone surrogate');
+          } else {
+            out += String.fromCharCode(u);
+          }
         } else throw Error('pins-json: bad escape');
+      } else if (strict && code >= 0xd800 && code <= 0xdbff) {
+        const next = pos < len ? text.charCodeAt(pos) : -1;
+        if (next < 0xdc00 || next > 0xdfff) throw Error('pins-json: lone surrogate');
+        out += ch + text[pos++];
+      } else if (strict && code >= 0xdc00 && code <= 0xdfff) {
+        throw Error('pins-json: lone surrogate');
       } else out += ch;
     }
     throw Error('pins-json: unterminated string');
@@ -142,7 +170,17 @@ function parseStrictJson(text, {strictRoot = false, strictKey = null} = {}) {
       if (pos === expStart) throw Error('pins-json: bad exponent');
     }
     const raw = text.slice(start, pos);
-    if (strict && decimal) return {[NON_INT_NUMBER]: raw};
+    if (strict) {
+      if (decimal) {
+        const num = Number(raw);
+        if (!Number.isFinite(num)) throw Error('pins-json: non-finite number');
+        return {[NON_INT_NUMBER]: raw};
+      }
+      const big = BigInt(raw);
+      if (big < INT64_MIN || big > INT64_MAX) throw Error('pins-json: integer out of int64 range');
+      const num = Number(raw);
+      return Number.isSafeInteger(num) ? num : {[INT64_NUMBER]: big};
+    }
     const num = Number(raw);
     if (!Number.isFinite(num)) throw Error('pins-json: non-finite number');
     return num;
@@ -159,15 +197,23 @@ function parseStrictJson(text, {strictRoot = false, strictKey = null} = {}) {
 }
 
 function isPlainObject(v) {
-  return v !== null && typeof v === 'object' && !Array.isArray(v) && !Object.hasOwn(v, NON_INT_NUMBER);
+  return v !== null && typeof v === 'object' && !Array.isArray(v)
+    && !Object.hasOwn(v, NON_INT_NUMBER) && !Object.hasOwn(v, INT64_NUMBER);
 }
 
 function checkPinEntry(entry, rev, ceiling, label) {
-  if (!isPlainObject(entry)) throw Error(`pins-${label}: expected object`);
+  if (!isPlainObject(entry)) throw Error(`pins-shape (${label})`);
+  const keys = Object.keys(entry);
+  if (keys.length !== 3 || !Object.hasOwn(entry, 'url') || !Object.hasOwn(entry, 'sha256') || !Object.hasOwn(entry, 'maxBytes')) {
+    throw Error(`pins-shape (${label})`);
+  }
   const url = entry.url;
   const prefix = `${DISTRIBUTION_PREFIX}${rev}/store/distribution/`;
-  if (typeof url !== 'string' || !url.startsWith(prefix) || url.length <= prefix.length || url.endsWith('/')
-      || /\/\.{1,2}(?:\/|$)|%|\\/.test(url)) {
+  if (typeof url !== 'string' || !url.startsWith(prefix) || url.length <= prefix.length) {
+    throw Error(`pins-url (${label})`);
+  }
+  const rel = url.slice(prefix.length);
+  if (!SAFE_REL_PATH_RE.test(rel) || rel.split('/').some((seg) => seg === '.' || seg === '..')) {
     throw Error(`pins-url (${label})`);
   }
   let u;
@@ -186,8 +232,12 @@ function checkPinEntry(entry, rev, ceiling, label) {
   }
 }
 
-function validateStrictPins(pins, catalogIds) {
+export function validateStrictPins(pins, catalogIds = loadCatalogOnlineIds()) {
   if (!isPlainObject(pins)) throw Error('pins-shape: expected object');
+  const rootKeys = Object.keys(pins);
+  if (rootKeys.length !== 3 || !Object.hasOwn(pins, 'revision') || !Object.hasOwn(pins, 'catalog') || !Object.hasOwn(pins, 'apks')) {
+    throw Error('pins-shape: expected exact keys revision, catalog, apks');
+  }
   const rev = pins.revision;
   if (typeof rev !== 'string' || !/^[0-9a-f]{40}$/.test(rev)) throw Error('pins-revision');
   checkPinEntry(pins.catalog, rev, MAX_CATALOG_BYTES, 'catalog');
@@ -208,27 +258,30 @@ function validateStrictPins(pins, catalogIds) {
 function toPlain(value) {
   if (value === null || typeof value !== 'object') return value;
   if (Object.hasOwn(value, NON_INT_NUMBER)) return Number(value[NON_INT_NUMBER]);
+  if (Object.hasOwn(value, INT64_NUMBER)) return Number(value[INT64_NUMBER]);
   if (Array.isArray(value)) return value.map(toPlain);
   const out = {};
   for (const k of Object.keys(value)) out[k] = toPlain(value[k]);
   return out;
 }
 
-let text = '';
-for await (const chunk of process.stdin) text += chunk;
-const payload = parseStrictJson(text, {strictKey: 'pins'});
-if (!isPlainObject(payload)) throw Error('online-csp: expected JSON object payload');
-const catalogIds = loadCatalogOnlineIds();
-validateStrictPins(payload.pins, catalogIds);
-if (typeof payload.pinsJson === 'string') {
-  const rawBytes = Buffer.byteLength(payload.pinsJson, 'utf8');
-  if (rawBytes > MAX_PIN_BYTES) {
-    throw Error(`size-limit: pinsJson exceeds ${MAX_PIN_BYTES} bytes (${rawBytes})`);
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
+  let text = '';
+  for await (const chunk of process.stdin) text += chunk;
+  const payload = parseStrictJson(text, {strictKey: 'pins'});
+  if (!isPlainObject(payload)) throw Error('online-csp: expected JSON object payload');
+  const catalogIds = loadCatalogOnlineIds();
+  validateStrictPins(payload.pins, catalogIds);
+  if (typeof payload.pinsJson === 'string') {
+    const rawBytes = Buffer.byteLength(payload.pinsJson, 'utf8');
+    if (rawBytes > MAX_PIN_BYTES) {
+      throw Error(`size-limit: pinsJson exceeds ${MAX_PIN_BYTES} bytes (${rawBytes})`);
+    }
+    validateStrictPins(parseStrictJson(payload.pinsJson, {strictRoot: true}), catalogIds);
   }
-  validateStrictPins(parseStrictJson(payload.pinsJson, {strictRoot: true}), catalogIds);
+  const {assets, descriptor} = toPlain(payload);
+  const pins = toPlain(payload.pins);
+  const {onlineRuntime} = await import(pathToFileURL(assets + '/online.js'));
+  const {clientRuntimeConnectSrc} = await import(pathToFileURL(assets + '/runtime.js'));
+  process.stdout.write(clientRuntimeConnectSrc(onlineRuntime(descriptor, pins), ['store-download'], [], 'https://appassets.androidplatform.net'));
 }
-const {assets, descriptor} = toPlain(payload);
-const pins = toPlain(payload.pins);
-const {onlineRuntime} = await import(pathToFileURL(assets + '/online.js'));
-const {clientRuntimeConnectSrc} = await import(pathToFileURL(assets + '/runtime.js'));
-process.stdout.write(clientRuntimeConnectSrc(onlineRuntime(descriptor, pins), ['store-download'], [], 'https://appassets.androidplatform.net'));
