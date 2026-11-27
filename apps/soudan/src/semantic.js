@@ -52,34 +52,57 @@ export const SEMANTIC_OPERATIONS = Object.freeze([
 // ('web' | 'awai-pc') when explicitly opt-in enabled with valid in-house `mishima` config.
 export const ALLOWED_INFERENCE_SURFACES = Object.freeze(['web', 'awai-pc']);
 export const DISABLED_REASON_ANDROID_OR_LOCAL_ONLY = 'android-no-internet-or-local-only';
+export const DISABLED_REASON_BROKER_UNAVAILABLE = 'broker-unavailable';
 
 export function resolveSurface({surface = null, route = 'web-device-save'} = {}) {
   if (typeof surface === 'string' && surface.trim()) return surface.trim();
   return route === 'android-share-sheet' ? 'android' : 'web';
 }
 
+export function brokerSupportsOperation(broker, selector) {
+  if (!broker || typeof broker.invoke !== 'function') return false;
+  if (!Array.isArray(broker.operations)) return true;
+  return broker.operations.some(op =>
+    op?.capability === selector.capability
+    && op?.service === selector.service
+    && op?.operation === selector.operation
+  );
+}
+
 export function computeSemanticOps({
   surface = 'web',
   inferenceConfig = DEFAULT_INFERENCE_CONFIG,
   sandboxedIframe = false,
+  broker = null,
 } = {}) {
   const cfgCheck = validateInferenceConfig(inferenceConfig);
   const allowedSurface = ALLOWED_INFERENCE_SURFACES.includes(surface);
-  const inferenceRemoteEnabled = !sandboxedIframe && allowedSurface && cfgCheck.ok;
+  const sendBrokerReady = brokerSupportsOperation(broker, SEND_SELECTOR);
+  const inferenceBrokerReady = brokerSupportsOperation(broker, INFERENCE_SELECTOR);
+  const inferenceRemoteEnabled = !sandboxedIframe && allowedSurface && cfgCheck.ok && inferenceBrokerReady;
   const activeOps = [];
   const disabledOps = [];
   for (const op of SEMANTIC_OPERATIONS) {
-    if (op === 'soudan.memo.send' && sandboxedIframe) {
-      disabledOps.push({op, disabledReason: 'iframe-no-direct-external-egress'});
-      continue;
+    if (op === 'soudan.memo.send') {
+      if (sandboxedIframe) {
+        disabledOps.push({op, disabledReason: 'iframe-no-direct-external-egress'});
+        continue;
+      }
+      if (!sendBrokerReady) {
+        disabledOps.push({op, disabledReason: DISABLED_REASON_BROKER_UNAVAILABLE});
+        continue;
+      }
     }
     if (op === 'soudan.inference.organize' && !inferenceRemoteEnabled) {
-      disabledOps.push({
-        op,
-        disabledReason: (!allowedSurface || !cfgCheck.ok)
-          ? DISABLED_REASON_ANDROID_OR_LOCAL_ONLY
-          : 'iframe-no-direct-external-egress',
-      });
+      let disabledReason;
+      if (!allowedSurface || !cfgCheck.ok) {
+        disabledReason = DISABLED_REASON_ANDROID_OR_LOCAL_ONLY;
+      } else if (sandboxedIframe) {
+        disabledReason = 'iframe-no-direct-external-egress';
+      } else {
+        disabledReason = DISABLED_REASON_BROKER_UNAVAILABLE;
+      }
+      disabledOps.push({op, disabledReason});
       continue;
     }
     activeOps.push(op);
@@ -494,7 +517,7 @@ export function createSemanticStore({
           disclaimer: t('disclaimer.fixed'),
         };
       }
-      if (!broker) {
+      if (!brokerSupportsOperation(broker, SEND_SELECTOR)) {
         recordAudit({op, actor: normActor, outcome: 'blocked', targetKind: 'memo', gateName: 'broker-unavailable'});
         uiState = 'governor.blocked';
         return {ok: false, sent: false, state: uiState, gateName: 'broker-unavailable', disclaimer: t('disclaimer.fixed')};
@@ -664,12 +687,19 @@ export function createSemanticStore({
           disclaimer: t('disclaimer.fixed'),
         };
       }
-      if (params?.localOnly === true || !broker) {
+      if (params?.localOnly === true || !brokerSupportsOperation(broker, INFERENCE_SELECTOR)) {
         // Pure local-only organization: builds proposal from live unsaved sourceDraft without persisting.
         const local = {...organizeLocally(sourceDraft, t), targetDraftId: originDraftId};
         lastProposal = local;
         uiState = 'proposal.ready';
-        return {ok: true, state: uiState, fallback: 'local', proposal: local, disclaimer: t('disclaimer.fixed')};
+        return {
+          ok: true,
+          state: uiState,
+          fallback: 'local',
+          ...(params?.localOnly === true ? {} : {reason: DISABLED_REASON_BROKER_UNAVAILABLE}),
+          proposal: local,
+          disclaimer: t('disclaimer.fixed'),
+        };
       }
       if (inferenceInFlight >= INFERENCE_LIMITS.maxConcurrencyPerTab) {
         recordAudit({op, actor: normActor, outcome: 'blocked', targetKind: 'inference', gateName: 'concurrency-limit-exceeded'});
@@ -761,6 +791,7 @@ export function createSemanticStore({
       surface: resolvedSurface,
       inferenceConfig,
       sandboxedIframe,
+      broker,
     });
   }
 

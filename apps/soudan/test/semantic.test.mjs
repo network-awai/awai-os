@@ -7,8 +7,10 @@ import {
 } from '../src/model.js';
 import {translator} from '../src/messages.js';
 import {
-  SEMANTIC_OPERATIONS, SEMANTIC_STATES, DISABLED_REASON_ANDROID_OR_LOCAL_ONLY, createSemanticStore,
+  SEMANTIC_OPERATIONS, SEMANTIC_STATES, DISABLED_REASON_ANDROID_OR_LOCAL_ONLY,
+  DISABLED_REASON_BROKER_UNAVAILABLE, createSemanticStore,
 } from '../src/semantic.js';
+import {SEND_SELECTOR} from '../src/operations.js';
 import {MURAKUMO_ENDPOINT_URL} from '../src/inference.js';
 import {createFormSession} from '../src/form-session.js';
 
@@ -759,19 +761,24 @@ test('Round-5 Regression B: 100 pending entries blocks 101st share fail-closed w
   }
 });
 
-test('PR #31 (1faaabc6 §3.2): getSnapshot() exposes activeOps & disabledOps for :local-only / android vs opt-in web / awai-pc', async () => {
+test('PR #31 (1faaabc6 §3.2): getSnapshot() exposes activeOps & disabledOps aligned with surface, config, and broker availability', async () => {
   const validMishimaCfg = {
     enabled: true,
     endpoint: MURAKUMO_ENDPOINT_URL,
     model: 'mishima',
     maxTokens: 1024,
   };
+  const sendOnlyBroker = {
+    operations: [SEND_SELECTOR],
+    async invoke() { return {shared: true}; },
+  };
 
-  // 1. Default (:local-only) on web surface -> excludes soudan.inference.organize from activeOps and records disabledOps.
-  const localWeb = createSemanticStore({locale: 'ja', surface: 'web'});
+  // 1. Default (:local-only) on web surface with send-capable broker -> excludes soudan.inference.organize from activeOps and records disabledOps.
+  const localWeb = createSemanticStore({locale: 'ja', surface: 'web', broker: sendOnlyBroker});
   const snapLocalWeb = localWeb.getSnapshot();
   assert.equal(snapLocalWeb.surface, 'web');
   assert.equal(snapLocalWeb.inferenceMode, 'local-only');
+  assert.ok(snapLocalWeb.activeOps.includes('soudan.memo.send'));
   assert.ok(!snapLocalWeb.activeOps.includes('soudan.inference.organize'));
   assert.deepEqual(snapLocalWeb.disabledOps, [
     {op: 'soudan.inference.organize', disabledReason: DISABLED_REASON_ANDROID_OR_LOCAL_ONLY},
@@ -815,7 +822,7 @@ test('PR #31 (1faaabc6 §3.2): getSnapshot() exposes activeOps & disabledOps for
   }
   assert.equal(brokerCalls, 0, 'Android no-INTERNET surface must never invoke remote inference broker');
 
-  // 3. Allowed non-Android surfaces ('web' and 'awai-pc') with valid opt-in mishima config ->
+  // 3. Allowed non-Android surfaces ('web' and 'awai-pc') with valid opt-in mishima config AND usable broker ->
   //    include soudan.inference.organize in activeOps and omit it from disabledOps.
   for (const surface of ['web', 'awai-pc']) {
     const enabledStore = createSemanticStore({
@@ -832,10 +839,59 @@ test('PR #31 (1faaabc6 §3.2): getSnapshot() exposes activeOps & disabledOps for
     assert.equal(snap.activeOps.length, SEMANTIC_OPERATIONS.length);
   }
 
-  // 4. Forbidden model on web surface -> remains excluded from activeOps and listed in disabledOps.
+  // 4. Broker parity negative controls (PR #537 review):
+  //    (a) Valid opt-in mishima config on 'web' with NO broker -> remote ops are disabled (broker-unavailable),
+  //        inferenceMode is 'local-only', and execution matches state (fallback:'local' / gateName:'broker-unavailable').
+  const noBrokerStore = createSemanticStore({
+    locale: 'ja',
+    surface: 'web',
+    inferenceConfig: validMishimaCfg,
+    broker: null,
+  });
+  const snapNoBroker = noBrokerStore.getSnapshot();
+  assert.equal(snapNoBroker.inferenceMode, 'local-only');
+  assert.ok(!snapNoBroker.activeOps.includes('soudan.inference.organize'));
+  assert.ok(!snapNoBroker.activeOps.includes('soudan.memo.send'));
+  assert.deepEqual(snapNoBroker.disabledOps, [
+    {op: 'soudan.memo.send', disabledReason: DISABLED_REASON_BROKER_UNAVAILABLE},
+    {op: 'soudan.inference.organize', disabledReason: DISABLED_REASON_BROKER_UNAVAILABLE},
+  ]);
+  await noBrokerStore.execute('soudan.draft.update', {patch: completePatch()}, {actor: {kind: 'human'}});
+  const noBrokerInf = await noBrokerStore.execute('soudan.inference.organize', {localOnly: false}, {actor: {kind: 'human'}});
+  assert.equal(noBrokerInf.ok, true);
+  assert.equal(noBrokerInf.fallback, 'local');
+  assert.equal(noBrokerInf.reason, DISABLED_REASON_BROKER_UNAVAILABLE);
+  const noBrokerSend = await noBrokerStore.execute('soudan.memo.send', {mode: 'save-txt'}, {actor: {kind: 'human'}});
+  assert.equal(noBrokerSend.ok, false);
+  assert.equal(noBrokerSend.sent, false);
+  assert.equal(noBrokerSend.gateName, DISABLED_REASON_BROKER_UNAVAILABLE);
+
+  //    (b) Valid opt-in mishima config on 'web' with a send-only broker (broker.operations omits inference) ->
+  //        soudan.memo.send stays active while soudan.inference.organize is disabled (broker-unavailable) and falls back locally.
+  const sendOnlyOptInStore = createSemanticStore({
+    locale: 'ja',
+    surface: 'web',
+    inferenceConfig: validMishimaCfg,
+    broker: sendOnlyBroker,
+  });
+  const snapSendOnly = sendOnlyOptInStore.getSnapshot();
+  assert.equal(snapSendOnly.inferenceMode, 'local-only');
+  assert.ok(snapSendOnly.activeOps.includes('soudan.memo.send'));
+  assert.ok(!snapSendOnly.activeOps.includes('soudan.inference.organize'));
+  assert.deepEqual(snapSendOnly.disabledOps, [
+    {op: 'soudan.inference.organize', disabledReason: DISABLED_REASON_BROKER_UNAVAILABLE},
+  ]);
+  await sendOnlyOptInStore.execute('soudan.draft.update', {patch: {summary: 'broker非対応対照'}}, {actor: {kind: 'human'}});
+  const sendOnlyInf = await sendOnlyOptInStore.execute('soudan.inference.organize', {localOnly: false}, {actor: {kind: 'human'}});
+  assert.equal(sendOnlyInf.ok, true);
+  assert.equal(sendOnlyInf.fallback, 'local');
+  assert.equal(sendOnlyInf.reason, DISABLED_REASON_BROKER_UNAVAILABLE);
+
+  // 5. Forbidden model on web surface -> remains excluded from activeOps and listed in disabledOps.
   const forbiddenStore = createSemanticStore({
     locale: 'ja',
     surface: 'web',
+    broker: sendOnlyBroker,
     inferenceConfig: {enabled: true, endpoint: MURAKUMO_ENDPOINT_URL, model: 'murakumo/free'},
   });
   const snapForbidden = forbiddenStore.getSnapshot();
@@ -845,7 +901,7 @@ test('PR #31 (1faaabc6 §3.2): getSnapshot() exposes activeOps & disabledOps for
     {op: 'soudan.inference.organize', disabledReason: 'android-no-internet-or-local-only'},
   ]);
 
-  // 5. Verify app.js wires getSnapshot() activeOps/disabledOps to UI attributes cleanly.
+  // 6. Verify app.js wires getSnapshot() activeOps/disabledOps to UI attributes cleanly.
   const appSrc = readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
   assert.ok(appSrc.includes('store.getSnapshot()'));
   assert.ok(appSrc.includes('main.dataset.activeOps'));
