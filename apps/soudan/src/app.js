@@ -46,6 +46,13 @@ export function statusMessageForMutation(res, successKey, t) {
 
 const tauriInvoke = window.__TAURI__?.core?.invoke;
 const execRoute = detectExecutionRoute({tauriInvoke, nav: navigator});
+export function detectSurface({tauriInvoke: invoke = null, nav = globalThis.navigator} = {}) {
+  if (typeof invoke === 'function') {
+    return /Android/i.test(nav?.userAgent ?? '') ? 'android' : 'awai-pc';
+  }
+  return 'web';
+}
+const execSurface = detectSurface({tauriInvoke, nav: navigator});
 const SEND_HOST = [SEND_SELECTOR.capability, SEND_SELECTOR.service, SEND_SELECTOR.operation];
 const INFERENCE_HOST = [INFERENCE_SELECTOR.capability, INFERENCE_SELECTOR.service, INFERENCE_SELECTOR.operation];
 
@@ -108,6 +115,7 @@ const store = createSemanticStore({
   broker,
   inferenceConfig: DEFAULT_INFERENCE_CONFIG,
   route: execRoute,
+  surface: execSurface,
   onPersist: async nextState => {
     try {
       const saved = await host.write({expectedRevision: revision, data: nextState});
@@ -141,9 +149,16 @@ const STATE_SYMBOLS = Object.freeze({
 });
 
 function updateStateBadge() {
-  const s = store.getUiState();
+  const snap = store.getSnapshot();
+  const s = snap.uiState;
   const main = document.querySelector('main');
-  if (main) main.dataset.semanticState = s;
+  if (main) {
+    main.dataset.semanticState = s;
+    main.dataset.surface = snap.surface;
+    main.dataset.inferenceMode = snap.inferenceMode;
+    main.dataset.activeOps = snap.activeOps.join(',');
+    main.dataset.disabledOps = JSON.stringify(snap.disabledOps);
+  }
   const badge = $('semantic-state');
   if (badge) {
     badge.textContent = `${STATE_SYMBOLS[s] ?? '○'} ${t('state.label')}: ${t('state.' + s)}`;
@@ -280,12 +295,18 @@ function draftBar() {
 function inferenceBlock() {
   const rec = store.getActiveDraft();
   const draft = session.draft();
+  const snap = store.getSnapshot();
+  const inferenceActive = snap.activeOps.includes('soudan.inference.organize');
+  const inferenceDisabled = snap.disabledOps.find(d => d.op === 'soudan.inference.organize') ?? null;
   const sec = el('section', null, 'card inference-card');
   sec.setAttribute('aria-labelledby', 'inf-h');
+  sec.dataset.inferenceActive = String(inferenceActive);
+  sec.dataset.inferenceMode = snap.inferenceMode;
+  if (inferenceDisabled) sec.dataset.disabledReason = inferenceDisabled.disabledReason;
   const h = el('h3', t('inference.heading')); h.id = 'inf-h';
   sec.append(
     h,
-    el('p', `${t('inference.modeLabel')}: ${t('inference.modeOff')}`, 'chip'),
+    el('p', `${t('inference.modeLabel')}: ${inferenceActive ? t('inference.modeSlot') : t('inference.modeOff')}`, 'chip'),
     el('p', t('inference.statusDisabled'), 'muted'),
     el('p', t('inference.disclaimer'), 'notice-banner'),
     el('p', t('inference.anonymizeWarning'), 'warn-banner'),
@@ -295,8 +316,12 @@ function inferenceBlock() {
   const det = el('details');
   det.append(el('summary', t('inference.detailsSummary')));
   const pre = el('pre', JSON.stringify({
+    surface: snap.surface,
+    inferenceMode: snap.inferenceMode,
     endpoint: DEFAULT_INFERENCE_CONFIG.endpoint,
-    enabled: DEFAULT_INFERENCE_CONFIG.enabled,
+    enabled: inferenceActive,
+    activeOps: snap.activeOps,
+    disabledOps: snap.disabledOps,
     dataCategories: ['consultation-draft-text'],
     imageBytesIncluded: false,
     summaryChars: draft.summary.length,
@@ -307,6 +332,7 @@ function inferenceBlock() {
   sec.append(det);
 
   // Equal visual weight for decline vs consent (zero pre-checked checkboxes).
+  // Offline local self-organization remains 100% functional even when remote inference is in disabledOps.
   const choices = el('div', null, 'equal-choices');
   const declineBtn = el('button', t('inference.decline'), 'equal-choice'); declineBtn.type = 'button';
   declineBtn.addEventListener('click', async () => {
@@ -316,6 +342,10 @@ function inferenceBlock() {
     renderInput();
   });
   const acceptBtn = el('button', t('inference.accept'), 'equal-choice'); acceptBtn.type = 'button';
+  acceptBtn.dataset.op = 'soudan.inference.organize';
+  acceptBtn.disabled = !inferenceActive;
+  acceptBtn.setAttribute('aria-disabled', String(!inferenceActive));
+  if (inferenceDisabled) acceptBtn.dataset.disabledReason = inferenceDisabled.disabledReason;
   acceptBtn.addEventListener('click', async () => {
     const res = await session.organize({localOnly: false, actor: {kind: 'human'}});
     updateStateBadge();

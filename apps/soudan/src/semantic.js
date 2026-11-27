@@ -47,6 +47,52 @@ export const SEMANTIC_OPERATIONS = Object.freeze([
   'soudan.audit.list',
 ]);
 
+// Merged app-itonami-gamen-sekkei#31 (1faaabc6) §3.2:
+// Remote inference (`soudan.inference.organize`) is active ONLY on allowed non-Android surfaces
+// ('web' | 'awai-pc') when explicitly opt-in enabled with valid in-house `mishima` config.
+export const ALLOWED_INFERENCE_SURFACES = Object.freeze(['web', 'awai-pc']);
+export const DISABLED_REASON_ANDROID_OR_LOCAL_ONLY = 'android-no-internet-or-local-only';
+
+export function resolveSurface({surface = null, route = 'web-device-save'} = {}) {
+  if (typeof surface === 'string' && surface.trim()) return surface.trim();
+  return route === 'android-share-sheet' ? 'android' : 'web';
+}
+
+export function computeSemanticOps({
+  surface = 'web',
+  inferenceConfig = DEFAULT_INFERENCE_CONFIG,
+  sandboxedIframe = false,
+} = {}) {
+  const cfgCheck = validateInferenceConfig(inferenceConfig);
+  const allowedSurface = ALLOWED_INFERENCE_SURFACES.includes(surface);
+  const inferenceRemoteEnabled = !sandboxedIframe && allowedSurface && cfgCheck.ok;
+  const activeOps = [];
+  const disabledOps = [];
+  for (const op of SEMANTIC_OPERATIONS) {
+    if (op === 'soudan.memo.send' && sandboxedIframe) {
+      disabledOps.push({op, disabledReason: 'iframe-no-direct-external-egress'});
+      continue;
+    }
+    if (op === 'soudan.inference.organize' && !inferenceRemoteEnabled) {
+      disabledOps.push({
+        op,
+        disabledReason: (!allowedSurface || !cfgCheck.ok)
+          ? DISABLED_REASON_ANDROID_OR_LOCAL_ONLY
+          : 'iframe-no-direct-external-egress',
+      });
+      continue;
+    }
+    activeOps.push(op);
+  }
+  return {
+    surface,
+    inferenceMode: inferenceRemoteEnabled ? 'opt-in-route-b' : 'local-only',
+    inferenceEnabled: inferenceRemoteEnabled,
+    activeOps,
+    disabledOps,
+  };
+}
+
 function normalizeActor(actor) {
   const kind = actor?.kind === 'agent' ? 'agent' : 'human';
   return {kind};
@@ -63,11 +109,13 @@ export function createSemanticStore({
   inferenceConfig = DEFAULT_INFERENCE_CONFIG,
   authHeaderProvider = null,
   route = 'web-device-save',
+  surface = null,
   sandboxedIframe = false,
   now = () => new Date().toISOString(),
   onPersist = null,
 } = {}) {
   const t = translator(locale);
+  const resolvedSurface = resolveSurface({surface, route});
   let state = restoreAppState(initialState, now());
   let uiState = 'idle';
   let lastProposal = null; // Always bound to { ..., targetDraftId }
@@ -586,6 +634,20 @@ export function createSemanticStore({
         uiState = 'proposal.ready';
         return {ok: true, state: uiState, fallback: 'local', reason: cfgCheck.reason, proposal: local, disclaimer: t('disclaimer.fixed')};
       }
+      if (!ALLOWED_INFERENCE_SURFACES.includes(resolvedSurface)) {
+        // Android (no-INTERNET) or non-allowed surface remains strictly fail-closed (:local-only).
+        const local = {...organizeLocally(sourceDraft, t), targetDraftId: originDraftId};
+        lastProposal = local;
+        uiState = 'proposal.ready';
+        return {
+          ok: true,
+          state: uiState,
+          fallback: 'local',
+          reason: DISABLED_REASON_ANDROID_OR_LOCAL_ONLY,
+          proposal: local,
+          disclaimer: t('disclaimer.fixed'),
+        };
+      }
       if (params?.localOnly === true || !broker) {
         // Pure local-only organization: builds proposal from live unsaved sourceDraft without persisting.
         const local = {...organizeLocally(sourceDraft, t), targetDraftId: originDraftId};
@@ -676,8 +738,41 @@ export function createSemanticStore({
     return {ok: false, state: uiState, error: 'unhandled-operation', disclaimer: t('disclaimer.fixed')};
   }
 
+  function getOpCapabilities() {
+    return computeSemanticOps({
+      surface: resolvedSurface,
+      inferenceConfig,
+      sandboxedIframe,
+    });
+  }
+
+  function getSnapshot() {
+    const caps = getOpCapabilities();
+    const active = activeDraftRecord(state);
+    return {
+      schema: state.schema,
+      uiState,
+      surface: caps.surface,
+      route,
+      inferenceMode: caps.inferenceMode,
+      activeDraftId: state.activeDraftId,
+      draftCount: state.drafts.length,
+      activeDraft: active ? cloneState(active) : null,
+      auditCount: state.audit.length,
+      pendingAuditCount: pendingAuditEntries.length,
+      pendingDeletionCount: pendingDeletions.size,
+      activeOps: caps.activeOps,
+      disabledOps: caps.disabledOps,
+      disclaimer: t('disclaimer.fixed'),
+    };
+  }
+
   return Object.freeze({
     getState: () => state,
+    getSnapshot,
+    getSurface: () => resolvedSurface,
+    getActiveOps: () => getOpCapabilities().activeOps,
+    getDisabledOps: () => getOpCapabilities().disabledOps,
     setState: next => {
       state = restoreAppState(next, now());
       if (lastProposal && lastProposal.targetDraftId !== state.activeDraftId) lastProposal = null;

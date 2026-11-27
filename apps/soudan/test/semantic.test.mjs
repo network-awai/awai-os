@@ -6,7 +6,10 @@ import {
   assembleMemo, formatMemoMarkdown, buildMemoExportV1,
 } from '../src/model.js';
 import {translator} from '../src/messages.js';
-import {SEMANTIC_OPERATIONS, SEMANTIC_STATES, createSemanticStore} from '../src/semantic.js';
+import {
+  SEMANTIC_OPERATIONS, SEMANTIC_STATES, DISABLED_REASON_ANDROID_OR_LOCAL_ONLY, createSemanticStore,
+} from '../src/semantic.js';
+import {MURAKUMO_ENDPOINT_URL} from '../src/inference.js';
 import {createFormSession} from '../src/form-session.js';
 
 const t = translator('ja');
@@ -754,4 +757,98 @@ test('Round-5 Regression B: 100 pending entries blocks 101st share fail-closed w
   for (const id of queuedIds) {
     assert.ok(persistedIds.has(id), `recovered audit log contains ${id}`);
   }
+});
+
+test('PR #31 (1faaabc6 §3.2): getSnapshot() exposes activeOps & disabledOps for :local-only / android vs opt-in web / awai-pc', async () => {
+  const validMishimaCfg = {
+    enabled: true,
+    endpoint: MURAKUMO_ENDPOINT_URL,
+    model: 'mishima',
+    maxTokens: 1024,
+  };
+
+  // 1. Default (:local-only) on web surface -> excludes soudan.inference.organize from activeOps and records disabledOps.
+  const localWeb = createSemanticStore({locale: 'ja', surface: 'web'});
+  const snapLocalWeb = localWeb.getSnapshot();
+  assert.equal(snapLocalWeb.surface, 'web');
+  assert.equal(snapLocalWeb.inferenceMode, 'local-only');
+  assert.ok(!snapLocalWeb.activeOps.includes('soudan.inference.organize'));
+  assert.deepEqual(snapLocalWeb.disabledOps, [
+    {op: 'soudan.inference.organize', disabledReason: DISABLED_REASON_ANDROID_OR_LOCAL_ONLY},
+  ]);
+  assert.deepEqual(localWeb.getActiveOps(), snapLocalWeb.activeOps);
+  assert.deepEqual(localWeb.getDisabledOps(), snapLocalWeb.disabledOps);
+
+  // Offline local self-organization remains 100% functional while inference is disabled.
+  await localWeb.execute('soudan.draft.update', {patch: {summary: 'ローカル自己整理テスト'}}, {actor: {kind: 'human'}});
+  const localOrg = await localWeb.execute('soudan.inference.organize', {localOnly: true}, {actor: {kind: 'human'}});
+  assert.equal(localOrg.ok, true);
+  assert.equal(localOrg.fallback, 'local');
+  assert.equal(localOrg.state, 'proposal.ready');
+
+  // 2. Android (no-INTERNET) surface — BOTH explicit surface:'android' AND inferred via route:'android-share-sheet' —
+  //    MUST exclude soudan.inference.organize from activeOps even if enabled mishima config is passed, and NEVER call broker.
+  let brokerCalls = 0;
+  const spyBroker = {
+    async invoke() {
+      brokerCalls += 1;
+      return {status: 200, async text() { return 'data: {"choices":[{"delta":{"content":"remote"}}]}\n\ndata: [DONE]'; }};
+    },
+  };
+  for (const opts of [
+    {surface: 'android', inferenceConfig: validMishimaCfg, broker: spyBroker},
+    {route: 'android-share-sheet', inferenceConfig: validMishimaCfg, broker: spyBroker},
+  ]) {
+    const androidStore = createSemanticStore({locale: 'ja', ...opts});
+    const snap = androidStore.getSnapshot();
+    assert.equal(snap.surface, 'android');
+    assert.equal(snap.inferenceMode, 'local-only');
+    assert.ok(!snap.activeOps.includes('soudan.inference.organize'));
+    assert.deepEqual(snap.disabledOps, [
+      {op: 'soudan.inference.organize', disabledReason: 'android-no-internet-or-local-only'},
+    ]);
+    await androidStore.execute('soudan.draft.update', {patch: {summary: 'Android ローカル整理'}}, {actor: {kind: 'human'}});
+    const res = await androidStore.execute('soudan.inference.organize', {localOnly: false}, {actor: {kind: 'human'}});
+    assert.equal(res.ok, true);
+    assert.equal(res.fallback, 'local');
+    assert.equal(res.reason, 'android-no-internet-or-local-only');
+  }
+  assert.equal(brokerCalls, 0, 'Android no-INTERNET surface must never invoke remote inference broker');
+
+  // 3. Allowed non-Android surfaces ('web' and 'awai-pc') with valid opt-in mishima config ->
+  //    include soudan.inference.organize in activeOps and omit it from disabledOps.
+  for (const surface of ['web', 'awai-pc']) {
+    const enabledStore = createSemanticStore({
+      locale: 'ja',
+      surface,
+      inferenceConfig: validMishimaCfg,
+      broker: spyBroker,
+    });
+    const snap = enabledStore.getSnapshot();
+    assert.equal(snap.surface, surface);
+    assert.equal(snap.inferenceMode, 'opt-in-route-b');
+    assert.ok(snap.activeOps.includes('soudan.inference.organize'), `${surface} opt-in includes soudan.inference.organize`);
+    assert.deepEqual(snap.disabledOps, []);
+    assert.equal(snap.activeOps.length, SEMANTIC_OPERATIONS.length);
+  }
+
+  // 4. Forbidden model on web surface -> remains excluded from activeOps and listed in disabledOps.
+  const forbiddenStore = createSemanticStore({
+    locale: 'ja',
+    surface: 'web',
+    inferenceConfig: {enabled: true, endpoint: MURAKUMO_ENDPOINT_URL, model: 'murakumo/free'},
+  });
+  const snapForbidden = forbiddenStore.getSnapshot();
+  assert.equal(snapForbidden.inferenceMode, 'local-only');
+  assert.ok(!snapForbidden.activeOps.includes('soudan.inference.organize'));
+  assert.deepEqual(snapForbidden.disabledOps, [
+    {op: 'soudan.inference.organize', disabledReason: 'android-no-internet-or-local-only'},
+  ]);
+
+  // 5. Verify app.js wires getSnapshot() activeOps/disabledOps to UI attributes cleanly.
+  const appSrc = readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
+  assert.ok(appSrc.includes('store.getSnapshot()'));
+  assert.ok(appSrc.includes('main.dataset.activeOps'));
+  assert.ok(appSrc.includes('main.dataset.disabledOps'));
+  assert.ok(appSrc.includes("snap.disabledOps.find(d => d.op === 'soudan.inference.organize')"));
 });

@@ -112,17 +112,31 @@ for (const rel of SRC_FILES) {
   }
 }
 
-// 5. Mandatory HTML <meta> CSP (connect-src 'none') & referrer=no-referrer in every HTML file,
+// 5. Mandatory HTML <meta> CSP (connect-src 'none', zero remote scripts) & referrer=no-referrer in every HTML file,
 //    kept separate from Tauri CSP (connect-src ipc: http://ipc.localhost;).
+const {
+  runtimeDescriptor, REQUESTED_CAPABILITIES, validateHostLocalContract,
+  validateHtmlSurface, validateCspPolicy,
+} = await import('../src/operations.js');
+
 for (const rel of ['src/index.html', 'src/embed.html', 'src/foreign-info.html']) {
   const content = await readFile(resolve(app, rel), 'utf8');
-  if (!content.includes('http-equiv="Content-Security-Policy"')) fail(`missing meta CSP in ${rel}`);
-  if (!content.includes("connect-src 'none';")) fail(`Web HTML must use connect-src 'none' in ${rel}`);
-  if (!content.includes('name="referrer" content="no-referrer"')) fail(`missing meta no-referrer in ${rel}`);
+  const htmlCheck = validateHtmlSurface(content, {
+    name: rel,
+    expectedConnectSrc: 'none',
+    allowScriptless: rel === 'src/foreign-info.html',
+  });
+  if (!htmlCheck.ok) {
+    for (const p of htmlCheck.problems) fail(`Z25-06 HTML surface check failed (${p})`);
+  }
 }
 const tauriConf = JSON.parse(await readFile(resolve(app, 'src-tauri/tauri.conf.json'), 'utf8'));
-if (!tauriConf.app.security.csp.includes('connect-src ipc: http://ipc.localhost;')) {
-  fail('src-tauri/tauri.conf.json CSP must keep connect-src ipc: http://ipc.localhost;');
+const tauriCspCheck = validateCspPolicy(tauriConf.app.security.csp, {
+  expectedConnectSrc: 'tauri-ipc',
+  allowScriptless: false,
+});
+if (!tauriCspCheck.ok) {
+  fail(`src-tauri/tauri.conf.json CSP check failed: ${tauriCspCheck.problems.join(', ')}`);
 }
 
 // 6. blueprint.edn single classification key & SPDX + NOTICE presence.
@@ -133,17 +147,20 @@ if (!blueprint.includes(':itonami.blueprint/license "Apache-2.0"')) fail('bluepr
 const notice = await readFile(resolve(app, 'NOTICE'), 'utf8');
 if (!notice.includes('Apache License, Version 2.0')) fail('NOTICE missing Apache-2.0 text');
 
-// 7. Canonical runtime pin & descriptor validation.
+// 7. Canonical runtime pin, descriptor validation & Zone B-25 Z25-06 host-local contract.
 const pins = JSON.parse(await readFile(resolve(repo, 'otehon/shell/vendor/PINS.json'), 'utf8'));
 for (const name of ['kotoba-client-runtime.js', 'kotoba-client-consent.css']) {
   const bytes = await readFile(resolve(repo, 'otehon/shell/vendor', name));
   if (sha(bytes) !== pins.files[name]) fail(`canonical runtime pin mismatch: ${name}`);
 }
-const {runtimeDescriptor, REQUESTED_CAPABILITIES} = await import('../src/operations.js');
 const {clientRuntimeProblems} = await import('../../../otehon/shell/vendor/kotoba-client-runtime.js');
 const descriptor = JSON.parse(await readFile(resolve(app, 'app-descriptor.json'), 'utf8'));
 if (JSON.stringify(descriptor) !== JSON.stringify(runtimeDescriptor('ja'))) {
   fail('app-descriptor.json differs from runtimeDescriptor("ja")');
+}
+const hostLocalCheck = validateHostLocalContract(descriptor);
+if (!hostLocalCheck.ok) {
+  fail('Z25-06 host-local contract check failed: ' + JSON.stringify(hostLocalCheck.problems));
 }
 const probs = clientRuntimeProblems(descriptor, [...REQUESTED_CAPABILITIES], [
   'https://soudan.itonami.app', 'http://tauri.localhost', 'https://tauri.localhost',

@@ -8,6 +8,7 @@ import {
 import {MESSAGES, translator} from '../src/messages.js';
 import {
   runtimeDescriptor, REQUESTED_CAPABILITIES, SEND_SELECTOR, SEND_OPERATION, INFERENCE_OPERATION,
+  validateHostLocalContract, validateHtmlSurface, validateCspPolicy,
 } from '../src/operations.js';
 import {
   clientRuntimeProblems, clientRuntimeConnectSrc, effectiveClientOperations,
@@ -261,4 +262,106 @@ test('Web static HTML CSPs (connect-src none) and Tauri CSP (IPC only) are verif
 
   const caps = JSON.parse(readFileSync(new URL('../src-tauri/capabilities/main.json', import.meta.url), 'utf8'));
   assert.deepEqual(caps.permissions, ['allow-awai-host-info', 'allow-soudan-share']);
+});
+
+test('Zone B-25 Z25-06: validateHostLocalContract accepts exact descriptor and rejects widened calls, storage drift, or undeclared MIME types', () => {
+  const valid = runtimeDescriptor('ja');
+  assert.deepEqual(validateHostLocalContract(valid), {ok: true, problems: []});
+  const checkedIn = JSON.parse(readFileSync(new URL('../app-descriptor.json', import.meta.url), 'utf8'));
+  assert.deepEqual(validateHostLocalContract(checkedIn), {ok: true, problems: []});
+
+  // Negative control 1: widened host-local.calls (network.fetch / clipboard.read)
+  for (const extraCall of ['network.fetch', 'clipboard.read']) {
+    const widened = structuredClone(valid);
+    widened['host-local'].calls.push(extraCall);
+    const res = validateHostLocalContract(widened);
+    assert.equal(res.ok, false, `must reject widened call ${extraCall}`);
+    assert.ok(res.problems.some(p => p === `host-local.calls.widened:${extraCall}`), JSON.stringify(res.problems));
+  }
+
+  // Negative control 2: missing required host-local call
+  const missingCall = structuredClone(valid);
+  missingCall['host-local'].calls = ['storage.get', 'storage.put', 'storage.delete'];
+  const missingRes = validateHostLocalContract(missingCall);
+  assert.equal(missingRes.ok, false);
+  assert.ok(missingRes.problems.includes('host-local.calls.missing:device.save'));
+
+  // Negative control 3: undeclared MIME type (text/markdown) & extra octet-stream extension
+  const badMime = structuredClone(valid);
+  badMime['host-local'].save['mime-types'].push('text/markdown');
+  const mimeRes = validateHostLocalContract(badMime);
+  assert.equal(mimeRes.ok, false, 'must reject undeclared MIME type text/markdown');
+  assert.ok(mimeRes.problems.includes('host-local.save.mime-type-undeclared:text/markdown'));
+
+  const badExt = structuredClone(valid);
+  badExt['host-local'].save['octet-stream-extensions'].push('html');
+  const extRes = validateHostLocalContract(badExt);
+  assert.equal(extRes.ok, false);
+  assert.ok(extRes.problems.includes('host-local.save.octet-stream-extension-undeclared:html'));
+
+  // Negative control 4: host-local.storage invariant violations
+  for (const [field, badVal] of [
+    ['class', 'synced'],
+    ['backup', 'included'],
+    ['at-rest', 'plaintext'],
+    ['erasable', false],
+    ['quota-bytes', 2097152],
+    ['max-entries', 128],
+  ]) {
+    const badStorage = structuredClone(valid);
+    badStorage['host-local'].storage[field] = badVal;
+    const sRes = validateHostLocalContract(badStorage);
+    assert.equal(sRes.ok, false, `must reject storage.${field}=${badVal}`);
+    assert.ok(sRes.problems.includes(`host-local.storage.${field}`));
+  }
+});
+
+test('Zone B-25 Z25-06: validateHtmlSurface rejects remote script URLs (https://, //, http://) and widened CSP across surfaces', () => {
+  // Positive control: all checked-in source HTML surfaces and Tauri CSP pass cleanly.
+  const indexHtml = readFileSync(new URL('../src/index.html', import.meta.url), 'utf8');
+  const embedHtml = readFileSync(new URL('../src/embed.html', import.meta.url), 'utf8');
+  const foreignHtml = readFileSync(new URL('../src/foreign-info.html', import.meta.url), 'utf8');
+  assert.deepEqual(validateHtmlSurface(indexHtml, {name: 'src/index.html', expectedConnectSrc: 'none', allowScriptless: false}), {ok: true, problems: []});
+  assert.deepEqual(validateHtmlSurface(embedHtml, {name: 'src/embed.html', expectedConnectSrc: 'none', allowScriptless: false}), {ok: true, problems: []});
+  assert.deepEqual(validateHtmlSurface(foreignHtml, {name: 'src/foreign-info.html', expectedConnectSrc: 'none', allowScriptless: true}), {ok: true, problems: []});
+
+  const tauriConf = JSON.parse(readFileSync(new URL('../src-tauri/tauri.conf.json', import.meta.url), 'utf8'));
+  assert.deepEqual(validateCspPolicy(tauriConf.app.security.csp, {expectedConnectSrc: 'tauri-ipc', allowScriptless: false}), {ok: true, problems: []});
+
+  // Negative control 1: remote https:// script tag
+  const remoteHttpsHtml = indexHtml.replace(
+    '<script type="module" src="app.js"></script>',
+    '<script src="https://example.com/x.js"></script>',
+  );
+  const httpsRes = validateHtmlSurface(remoteHttpsHtml, {name: 'neg-https', expectedConnectSrc: 'none', allowScriptless: false});
+  assert.equal(httpsRes.ok, false, 'must reject remote https:// script tag');
+  assert.ok(httpsRes.problems.some(p => p.includes('remote-script-src:https://example.com/x.js')), JSON.stringify(httpsRes.problems));
+
+  // Negative control 2: protocol-relative //example.com/x.js script tag
+  const protoRelHtml = indexHtml.replace(
+    '<script type="module" src="app.js"></script>',
+    '<script src="//example.com/x.js"></script>',
+  );
+  const protoRelRes = validateHtmlSurface(protoRelHtml, {name: 'neg-proto-rel', expectedConnectSrc: 'none', allowScriptless: false});
+  assert.equal(protoRelRes.ok, false, 'must reject protocol-relative // script tag');
+  assert.ok(protoRelRes.problems.some(p => p.includes('remote-script-src://example.com/x.js')), JSON.stringify(protoRelRes.problems));
+
+  // Negative control 3: widened CSP script-src with remote origin
+  const widenedCspHtml = indexHtml.replace("script-src 'self';", "script-src 'self' https://example.com;");
+  const widenedCspRes = validateHtmlSurface(widenedCspHtml, {name: 'neg-csp', expectedConnectSrc: 'none', allowScriptless: false});
+  assert.equal(widenedCspRes.ok, false);
+  assert.ok(widenedCspRes.problems.some(p => p.includes('csp.script-src-widened')), JSON.stringify(widenedCspRes.problems));
+
+  // Negative control 4: script tag injected into scriptless foreign-info.html
+  const injectedForeign = foreignHtml.replace('</head>', '  <script src="app.js"></script>\n</head>');
+  const injectedForeignRes = validateHtmlSurface(injectedForeign, {name: 'neg-foreign', expectedConnectSrc: 'none', allowScriptless: true});
+  assert.equal(injectedForeignRes.ok, false);
+  assert.ok(injectedForeignRes.problems.some(p => p.includes('csp.script-tag-in-scriptless-surface')));
+
+  // Negative control 5: guest-srcdoc with external or remote script src
+  const badGuest = '<!doctype html><html><head><meta name="referrer" content="no-referrer"></head><body><script src="https://example.com/x.js"></script></body></html>';
+  const badGuestRes = validateHtmlSurface(badGuest, {name: 'neg-guest', expectedConnectSrc: 'guest-srcdoc'});
+  assert.equal(badGuestRes.ok, false);
+  assert.ok(badGuestRes.problems.some(p => p.includes('guest.external-script-src')));
+  assert.ok(badGuestRes.problems.some(p => p.includes('remote-script-src:https://example.com/x.js')));
 });
