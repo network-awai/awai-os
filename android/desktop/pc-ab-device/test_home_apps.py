@@ -251,7 +251,7 @@ class GuardBehaviour(unittest.TestCase):
         self.stub.write_text("#!/bin/sh\nexit 1\n")
         r = self.run_guard(str(self.dir), str(self.stub), self.HOME, self.STORE)
         self.assertEqual(r.returncode, 1)
-        self.assertIn("no signer digest", r.stdout)
+        self.assertIn("apksigner verification failed", r.stdout)
 
     def test_development_flag_skips_the_comparison(self):
         (self.dir / "AwaiHome.apk").write_text("x")
@@ -365,6 +365,16 @@ class MakeBehaviour(unittest.TestCase):
                                "AWAI_HOME_EXPECTED_SIGNER_SHA256=")
         self.assertNotEqual(r.returncode, 0, out)
         self.assertIn("AWAI_HOME_EXPECTED_SIGNER_SHA256 is unset", out)
+
+    def test_release_rejects_failed_verification_even_with_matching_digest(self):
+        self.add_apks()
+        self.stub.write_text(self.stub.read_text() + "exit 1\n")
+        r, out = self.run_make(f"AWAI_HOME_EXPECTED_SIGNER_SHA256={self.HOME}",
+                               f"AWAI_STORE_EXPECTED_SIGNER_SHA256={self.STORE}",
+                               "TARGET_BUILD_VARIANT=userdebug", "LINEAGE_BUILDTYPE=RELEASE")
+        self.assertNotEqual(r.returncode, 0, out)
+        self.assertIn("AWAI_APPS_FAIL: apksigner verification failed", out)
+        self.assertNotIn("PRODUCT_PACKAGES=", out)
 
     def test_verified_apks_are_added(self):
         self.add_apks()

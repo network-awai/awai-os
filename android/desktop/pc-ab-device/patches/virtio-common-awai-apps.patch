@@ -86,18 +86,17 @@ index 0000000..32960ba
 +endif
 diff --git a/awai-apps/verify-apks.sh b/awai-apps/verify-apks.sh
 new file mode 100755
-index 0000000..9dd8946
+index 0000000..acc573f
 --- /dev/null
 +++ b/awai-apps/verify-apks.sh
-@@ -0,0 +1,46 @@
+@@ -0,0 +1,47 @@
 +#!/bin/sh
 +# AWAI-4094: fail-closed check for the prebuilt Awai Home and Awai Store APKs.
 +#
 +# Usage: verify-apks.sh <apk-dir> <apksigner> <home-sha256> <store-sha256> [--allow-unverified]
 +#
-+# Prints "AWAI_APPS_OK: ..." only when both APKs exist and each signer's SHA-256 matches
-+# the expected value. Prints "AWAI_APPS_FAIL: <reason>" and exits 1 on a missing APK, an
-+# unset expected value, a missing apksigner, an APK without a signer, or a mismatch.
++# In verified mode, prints "AWAI_APPS_OK: ..." only when both APKs pass verification
++# and their signer SHA-256 digests match. Failed checks print "AWAI_APPS_FAIL" and exit 1.
 +# --allow-unverified skips the signer comparison (development only; the caller refuses it
 +# on release builds). The shipping signing key is not decided yet, so no value is baked in.
 +set -eu
@@ -127,7 +126,9 @@ index 0000000..9dd8946
 +[ -x "$signer" ] || fail "apksigner is not executable: $signer"
 +
 +check() { # <apk path> <expected sha256>
-+    got=$("$signer" verify --print-certs "$1" 2>/dev/null \
++    certs=$("$signer" verify --print-certs "$1" 2>/dev/null) ||
++        fail "apksigner verification failed for $1"
++    got=$(printf '%s\n' "$certs" \
 +        | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n 1 | tr 'A-F' 'a-f')
 +    [ -n "$got" ] || fail "no signer digest for $1 (unsigned or unreadable)"
 +    [ "$got" = "$2" ] || fail "$1 signer $got != expected $2"
