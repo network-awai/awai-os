@@ -53,6 +53,14 @@ android {
     buildFeatures {
         buildConfig = true
     }
+    packaging {
+        dex {
+            useLegacyPackaging = true
+        }
+        jniLibs {
+            useLegacyPackaging = false
+        }
+    }
 }
 
 kotlin {
