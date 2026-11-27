@@ -853,72 +853,6 @@ test("job definition requires an explicit apps mode and carries it", async () =>
   assert.equal(job.metadata.labels["awai.network/apps-mode"], "prebuilt");
 });
 
-// Keep #523's actual files out of this branch. The default fixture is
-// generated offline. A local check can supply the reviewed apply script,
-// patches and matching device-common.mk as an overlay.
-async function addHomeStoreFixture(kitInfo) {
-  const apply = join(kitInfo.kit, "pc-ab-device/apply.sh");
-  const patch = join(kitInfo.kit, "pc-ab-device/patches/virtio-common-awai-apps.patch");
-  const overlay = process.env.AWAI_TEST_HOME_STORE_INTEGRATION_DIR;
-  if (overlay) {
-    for (const name of ["apply.sh", "patches/virtio-common-awai-apps.patch", "patches/launcher3-home-priority-fallback.patch"]) {
-      writeFileSync(join(kitInfo.kit, "pc-ab-device", name), readFileSync(join(overlay, name)));
-    }
-    return readFileSync(join(overlay, "device-common.mk"), "utf8");
-  }
-  const dir = join(kitInfo.base, "device-fixture");
-  mkdirSync(join(dir, "awai-apps"), { recursive: true });
-  const preimage = "# test device\nPRODUCT_NAME := fixture\n# test end\n";
-  const device = join(dir, "device-common.mk");
-  writeFileSync(device, preimage);
-  const git = async (...args) => {
-    const r = await run("git", ["-C", dir, "-c", "core.hooksPath=/dev/null", ...args]);
-    assert.equal(r.code, 0, r.stderr);
-    return r.stdout;
-  };
-  await git("init", "-q");
-  await git("add", "device-common.mk");
-  await git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "device fixture");
-  writeFileSync(device, preimage.replace("# test end", "include $(COMMON_PATH)/awai-apps/product.mk\n# test end"));
-  const apps = join(dir, "awai-apps");
-  writeFileSync(join(apps, "Android.mk"), ["AwaiHome", "AwaiStore"].map((app) => `include $(CLEAR_VARS)
-LOCAL_MODULE := ${app}
-LOCAL_SRC_FILES := ${app}.apk
-LOCAL_MODULE_CLASS := APPS
-LOCAL_CERTIFICATE := PRESIGNED
-include $(BUILD_PREBUILT)
-`).join("\n"));
-  writeFileSync(join(apps, "product.mk"), [
-    'AWAI_APPS_PATH := $(COMMON_PATH)/awai-apps',
-    'AWAI_APPS_ARGS := $(AWAI_APPS_PATH) "$(AWAI_APKSIGNER)" "$(AWAI_HOME_EXPECTED_SIGNER_SHA256)" "$(AWAI_STORE_EXPECTED_SIGNER_SHA256)"',
-    'AWAI_APPS_VERIFY := $(shell sh $(AWAI_APPS_PATH)/verify-apks.sh $(AWAI_APPS_ARGS) 2>&1)',
-    'ifeq ($(filter AWAI_APPS_OK:%,$(AWAI_APPS_VERIFY)),)',
-    '    $(error AWAI-4094: prebuilt Awai APK check failed: $(AWAI_APPS_VERIFY))',
-    'endif',
-    'PRODUCT_PACKAGES += \\',
-    '    AwaiHome \\',
-    '    AwaiStore',
-    '',
-  ].join("\n"));
-  writeFileSync(join(apps, "verify-apks.sh"), `#!/bin/sh
-set -eu
-dir=$1 signer=$2 home=$3 store=$4
-fail() { echo "AWAI_APPS_FAIL: $*"; exit 1; }
-check() {
-    got=$("$signer" verify --print-certs "$1" | awk '/^Signer #1 certificate SHA-256 digest: / { print $NF }')
-    [ "$got" = "$2" ] || fail "$1 signer $got != expected $2"
-}
-check "$dir/AwaiHome.apk" "$home"
-check "$dir/AwaiStore.apk" "$store"
-echo 'AWAI_APPS_OK: integration fixture'
-`, { mode: 0o755 });
-  await git("add", ".");
-  writeFileSync(patch, await git("diff", "--cached", "--no-ext-diff"));
-  const route = "one device/virt/virtio-common virtio-common-awai-apps.patch 'Home/Store fixture include'";
-  writeFileSync(apply, readFileSync(apply, "utf8").replace(/^one device\/virt\/virtio-common virtio-common-awai-apps\.patch .+$/m, "").trimEnd() + "\n" + route + "\n");
-  return preimage;
-}
-
 async function packTestKit(kitInfo, name) {
   const kitTar = join(kitInfo.base, `${name}.tar.gz`);
   const r = await run("tar", ["-czf", kitTar, "-C", kitInfo.kit, "."]);
@@ -930,15 +864,19 @@ test("staged user Job requires the product integration, verifies APKs, and build
   const kitInfo = await extractedRealKit();
   const appPatch = join(kitInfo.kit, "pc-ab-device/patches/virtio-common-awai-apps.patch");
   const apply = join(kitInfo.kit, "pc-ab-device/apply.sh");
-  let absent = kitInfo;
-  if (existsSync(appPatch)) {
-    unlinkSync(appPatch);
-    absent = await packTestKit(kitInfo, "without-app-integration");
-  }
-  const preimage = await addHomeStoreFixture(kitInfo);
+  // Keep the actual commit kit for the positive case. Build only the
+  // smallest source fixture needed by the real device-common.mk hunk.
+  const integrated = kitInfo;
   const integratedApply = readFileSync(apply, "utf8");
   const integratedPatch = readFileSync(appPatch, "utf8");
-  const integrated = await packTestKit(kitInfo, "with-app-integration");
+  const deviceHunk = integratedPatch.split("+++ b/device-common.mk\n")[1];
+  assert.ok(deviceHunk, "the kit must patch device-common.mk");
+  const preimage = deviceHunk.split("\n")
+    .filter((line) => line.startsWith(" ") || line.startsWith("-"))
+    .map((line) => line.slice(1)).join("\n") + "\n";
+  unlinkSync(appPatch);
+  const absent = await packTestKit(kitInfo, "without-app-integration");
+  writeFileSync(appPatch, integratedPatch);
   writeFileSync(apply, integratedApply.replace(/^one device\/virt\/virtio-common virtio-common-awai-apps\.patch .+$/m,
     "# one device/virt/virtio-common virtio-common-awai-apps.patch 'comment only'"));
   const unwired = await packTestKit(kitInfo, "without-apply-route");
@@ -951,6 +889,12 @@ test("staged user Job requires the product integration, verifies APKs, and build
   writeFileSync(appPatch, integratedPatch.replace(/^\+include \$\(COMMON_PATH\)\/awai-apps\/product\.mk$/m,
     "+# include $(COMMON_PATH)/awai-apps/product.mk"));
   const noInclude = await packTestKit(kitInfo, "without-product-include");
+  const missingExitGate = integratedPatch.replace(
+    /^(\+ +)certs=(.*) \|\|\n\+ +fail "apksigner verification failed for \$1"$/m,
+    "$1certs=$2 || :\n$1:");
+  assert.notEqual(missingExitGate, integratedPatch);
+  writeFileSync(appPatch, missingExitGate);
+  const noExitGate = await packTestKit(kitInfo, "without-apksigner-exit-gate");
   const realGit = (await run("sh", ["-c", "command -v git"])).stdout.trim();
   assert.ok(realGit.startsWith("/"));
   const stage = join(kitInfo.base, "stage");
@@ -972,12 +916,15 @@ test("staged user Job requires the product integration, verifies APKs, and build
     ["name-only apply script", {}, /apply\.sh must apply/, nameOnly],
     ["empty product patch", {}, /malformed patch or shell script/, emptyPatch],
     ["product patch with a commented-out include", {}, /device-common.mk must include/, noInclude],
+    ["product verifier discards the apksigner exit status", {}, /must check apksigner's exit status/, noExitGate],
     ["approved pair", {}, null],
     ["product patch skipped by the apply step", { STUB_SKIP_PRODUCT_APPLY: "1" }, /integration was not applied/],
     ["missing APK", { STUB_MISSING: "1" }, /could not fetch AwaiStore\.apk/],
-    ["file hash mismatch", { AWAI_HOME_APK_SHA256: "0".repeat(64) }, /AwaiHome\.apk file SHA-256 mismatch/],
-    ["wrong signer", { AWAI_STORE_EXPECTED_SIGNER_SHA256: "0".repeat(64) }, /AwaiStore\.apk signer SHA-256 mismatch/],
-    ["apksigner rejects signature", { STUB_APKSIGNER: "reject" }, /apksigner could not verify AwaiHome\.apk/],
+    ["wrong Home file hash", { AWAI_HOME_APK_SHA256: "0".repeat(64) }, /AwaiHome\.apk file SHA-256 mismatch/],
+    ["wrong Store file hash", { AWAI_STORE_APK_SHA256: "0".repeat(64) }, /AwaiStore\.apk file SHA-256 mismatch/],
+    ["wrong Home signer", { AWAI_HOME_EXPECTED_SIGNER_SHA256: "0".repeat(64) }, /AwaiHome\.apk signer SHA-256 mismatch/],
+    ["wrong Store signer", { AWAI_STORE_EXPECTED_SIGNER_SHA256: "0".repeat(64) }, /AwaiStore\.apk signer SHA-256 mismatch/],
+    ["apksigner fails even though it prints the expected digest", { STUB_APKSIGNER: "reject" }, /apksigner could not verify AwaiHome\.apk/],
     ["additional signer", { STUB_APKSIGNER: "multiple" }, /AwaiHome\.apk signer SHA-256 mismatch/],
     ["absent stage Secret", { AWAI_APK_STAGE_SECRET_DIR: secret + ".missing" }, /APK stage Secret is unavailable/],
   ];
@@ -994,8 +941,10 @@ test("staged user Job requires the product integration, verifies APKs, and build
 m() {
   [ -z "\${AWAI_ALLOW_UNVERIFIED_APKS:-}\${AWAI_WITHOUT_APPS:-}\${RCLONE_CONFIG_APKSTAGE_KEY:-}" ] || return 99
   [ -x "$AWAI_APKSIGNER" ] || return 99
-  [ -f "$SRC/device/virt/virtio-common/awai-apps/Android.mk" ] || return 99
-  [ -f "$SRC/device/virt/virtio-common/awai-apps/product.mk" ] || return 99
+  local apps="$SRC/device/virt/virtio-common/awai-apps"
+  [ -f "$apps/Android.mk" ] && [ -f "$apps/product.mk" ] || return 99
+  sh "$apps/verify-apks.sh" "$apps" "$AWAI_APKSIGNER" \
+    "$AWAI_HOME_EXPECTED_SIGNER_SHA256" "$AWAI_STORE_EXPECTED_SIGNER_SHA256" || return 99
   mkdir -p "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates"
   echo tf > "$SRC/out/target/product/virtio_x86_64/obj/PACKAGING/target_files_intermediates/lineage_virtio_x86_64-target_files.zip"
   echo stock > "$SRC/out/target/product/virtio_x86_64/disk-vda.img"
@@ -1006,13 +955,15 @@ m() {
 echo "apksigner $*" >> "${stub.callsFile}"
 [ "$1 $2" = "verify --print-certs" ] || exit 99
 [ -z "\${RCLONE_CONFIG_APKSTAGE_KEY:-}" ] || exit 99
-[ "\${STUB_APKSIGNER:-}" != reject ] || { echo "private verifier diagnostic" >&2; exit 1; }
 case "$3" in
   "$BUILD_WORK_DIR"/apks.*/AwaiHome.apk) digest=${homeSigner}; echo "changed after download" > "${homeFile}" ;;
   "$BUILD_WORK_DIR"/apks.*/AwaiStore.apk) digest=${storeSigner} ;;
+  "$SRC"/device/virt/virtio-common/awai-apps/AwaiHome.apk) digest=${homeSigner} ;;
+  "$SRC"/device/virt/virtio-common/awai-apps/AwaiStore.apk) digest=${storeSigner} ;;
   *) exit 99 ;;
 esac
 echo "Signer #1 certificate SHA-256 digest: $digest"
+[ "\${STUB_APKSIGNER:-}" != reject ] || { echo "private verifier diagnostic" >&2; exit 1; }
 if [ "\${STUB_APKSIGNER:-}" = multiple ]; then echo "Signer #2 certificate SHA-256 digest: ${storeSigner}"; fi
 `, { mode: 0o755 });
       writeFileSync(homeFile, home);
@@ -1056,6 +1007,7 @@ if [ "\${STUB_APKSIGNER:-}" = multiple ]; then echo "Signer #2 certificate SHA-2
       }
       assert.equal(r.code, 0, r.stderr);
       assert.match(r.stdout, /AWAI4094_KIT_INTEGRATION_OK[\s\S]*AWAI4094_APK_VERIFIED[\s\S]*repo init/);
+      assert.match(r.stdout, /AWAI_APPS_OK: signers match the expected SHA-256 values/);
       assert.match(calls, /apt-get -qq install -y apksigner=31\.0\.2-1ubuntu1[\s\S]*rclone --config \/dev\/null copyto[\s\S]*apksigner verify --print-certs [^\n]*AwaiHome\.apk[\s\S]*apksigner verify --print-certs [^\n]*AwaiStore\.apk[\s\S]*repo init[\s\S]*repo sync/);
       assert.match(calls, /git -C [^\n]*\/device\/virt\/virtio-common apply --reverse --check [^\n]*virtio-common-awai-apps\.patch/);
       const appsDir = join(src, "device/virt/virtio-common/awai-apps");

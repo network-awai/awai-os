@@ -258,10 +258,12 @@ shell functions) record argv to a log; both modes are driven and the
 full ordered argv list is asserted (dry-run executes nothing; approved
 executes all) together with every refusal above, `-m default.xml`,
 `path or name` + notdefault keys, and the two OTA commands. The staged user
-fixture checks that missing objects, wrong file SHA-256, invalid or unexpected
-signatures, additional signers and a missing Secret never reach source work.
-It also rejects kits missing the product patch or its apply route. The positive
-fixture applies the product patch to a small source tree with real Git.
+fixture checks that missing objects, a mismatch in any of the four pins,
+invalid signatures, additional signers and a missing Secret never reach
+source work. It also rejects missing product wiring and a product verifier
+that discards the verifier exit status. The positive case uses the commit kit,
+applies its product patch to a small source fixture with Git, and runs the
+product verifier on the APKs delivered to the build tree.
 It also changes a staged file after download and verifies that the build
 receives the checked snapshot. The local-input fixture checks a missing verifier.
 Storage, apksigner and the build are stubbed. The

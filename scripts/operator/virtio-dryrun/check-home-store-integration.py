@@ -76,12 +76,17 @@ def check(kit):
     verifier = additions["awai-apps/verify-apks.sh"]
     subprocess.run(["sh", "-n"], input=verifier, text=True, check=True, capture_output=True)
     verifier_lines = {line.strip() for line in verifier.splitlines()}
-    require(re.search(r'^\s*got=\$\("\$signer" verify --print-certs "\$1" ', verifier, re.M)
+    verify_exit_gate = (
+        r'^[ \t]*certs=\$\("\$signer" verify --print-certs "\$1" 2>/dev/null\) \|\|\n'
+        r'[ \t]+fail "apksigner verification failed for \$1"$'
+    )
+    require(re.search(verify_exit_gate, verifier, re.M)
             and all(line in verifier_lines for line in (
+                'got=$(printf \'%s\\n\' "$certs" \\',
                 '[ "$got" = "$2" ] || fail "$1 signer $got != expected $2"',
                 'check "$dir/AwaiHome.apk" "$home"',
                 'check "$dir/AwaiStore.apk" "$store"',
-            )), "verify-apks.sh must verify and compare the signer of both APKs")
+            )), "verify-apks.sh must check apksigner's exit status and both signer pins")
 
 
 if __name__ == "__main__":
