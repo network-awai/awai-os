@@ -55,6 +55,21 @@ model execution remains separate AWAI-3001 work. Existing wallet/account state
 is not copied from Nix, and no owner's signature is automated. A fresh app
 starts the existing setup/sign-in flow.
 
+## Offline capability report (AWAI-3001)
+
+`src/offline-capabilities.mjs` is the app-owned machine-readable contract
+`awai.itonami.offline-capabilities.v1`, packaged into `dist/` as a pinned
+static asset. `offlineCapabilityReport({host, web})` classifies only existing
+capability values — the `awai_host_info` response (`awai.shell.host.v1`) and
+the shell host capabilities — into `offline-available`, `network-required`,
+`unavailable` or `unverified`. Unavailable and unverified values are never
+reported as available; external operations stay `network-required` through the
+canonical Kotoba broker with per-operation consent, with no hidden network or
+remote-inference fallback. Boundary tests live in `test/` (`npm test`). The
+human-facing per-dapp Offline/Network-operations display remains the owning
+shell's existing UI; wiring this report into that shared screen is shell-owner
+scope, not this app's.
+
 ## Observed development delivery — 2026-11-16
 
 x86_64 APK0.1.0/versionCode1000, minSdk35/targetSdk37, Tauri3 alpha6 built;
