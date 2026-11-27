@@ -24,7 +24,8 @@ local = ['network.itonami.' + a['suffix'] for a in json.loads((ROOT / 'android/l
 check('every series table app is named', all(i in ids for i in series), str([i for i in series if i not in ids]))
 check('every local app is named', all(i in ids for i in local))
 check('the apps named in Catalog.java are named', all(i in ids for i in ['network.itonami.app', 'network.itonami.registry.assoc',
-                                                                         'network.itonami.torihiki.bot', 'network.itonami.dougaka.preview']))
+                                                                         'network.itonami.torihiki.bot', 'network.itonami.dougaka.preview',
+                                                                         'network.itonami.soudan', 'network.itonami.bengoshi']))
 check('only whole package ids (no prefix such as network.itonami.)', 'network.itonami.' not in ids and all(re.fullmatch(r'[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)+', i) for i in ids))
 pins = {'apks': {'network.itonami.pinnedonly': {}}}
 check('a package only in the online pins is named too', 'network.itonami.pinnedonly' in build.store_query_packages(pins))
