@@ -23,6 +23,8 @@ import java.util.*;
 /** Narrow native adapter for a bundled, shared browser client. No remote UI or arbitrary commands. */
 public abstract class HostActivity extends Activity {
     public static final String ORIGIN = "https://appassets.androidplatform.net";
+    /** Shared upper bound for pinned APK count (matches OnlinePins.MAX_APPS, LatestPointer.MAX_APPS, and online.js). */
+    public static final int MAX_ONLINE_PIN_APPS = OnlinePins.MAX_APPS;
     /** Torihiki devnet: one fixed host. Reads are exact GET routes (the account id is the only variable value);
      *  the only write is POST /tx with no query (mirrors torihiki.js, AWAI-491). */
     static final String TORIHIKI_HOST = "torihiki-node.04-feasts-minded.workers.dev";
@@ -65,19 +67,23 @@ public abstract class HostActivity extends Activity {
         setContentView(frame);
         try { assets = new HashSet<>(Arrays.asList(new String(Integrity.read(getAssets().open("assets.list"),65536),StandardCharsets.UTF_8).split("\n"))); }
         catch (Exception e) { fail("画面のファイルを確認できません。"); return; }
-        if("store".equals(mode()))try{
-            JSONObject pins=new JSONObject(new String(Integrity.read(getAssets().open("online-pins.json"),16384),StandardCharsets.UTF_8));
-            String rev=pins.getString("revision");if(!rev.matches("[0-9a-f]{40}"))throw new SecurityException();
-            // One catalog pin plus one APK pin per admitted app id; an unknown id refuses every online URL.
-            JSONObject apks=pins.getJSONObject("apks");if(apks.length()<1||apks.length()>16)throw new SecurityException();
-            java.util.List<String> urls=new java.util.ArrayList<>();urls.add(pins.getJSONObject("catalog").getString("url"));
-            for(java.util.Iterator<String> ids=apks.keys();ids.hasNext();){String id=ids.next();Catalog.assetFor(id);urls.add(apks.getJSONObject(id).getString("url"));}
-            for(String url:urls){
-                Uri parsed=Uri.parse(url);
-                if(!url.startsWith("https://raw.githubusercontent.com/network-awai/awai-os/"+rev+"/store/distribution/")||parsed.getEncodedQuery()!=null||parsed.getEncodedFragment()!=null)throw new SecurityException();
-                onlineUrls.add(url);
+        if("store".equals(mode())){
+            try(InputStream pinsStream=getAssets().open("online-pins.json")){
+                String pinsJson=new String(Integrity.read(pinsStream,OnlinePins.MAX_BYTES),StandardCharsets.UTF_8);
+                OnlinePins.LoadResult loaded=OnlinePins.loadAllowlist(pinsJson,id->{Catalog.assetFor(id);Catalog.onlineFileFor(id);});
+                if(loaded.error!=null){
+                    onlineUrls.clear();
+                    android.util.Log.e("AwaiStore","online pins rejected: "+loaded.error);
+                }else{
+                    onlineUrls.addAll(loaded.allowedUrls);
+                }
+            }catch(FileNotFoundException absent){
+                // Offline build without online-pins.json asset: remain fail-closed without logging an error.
+            }catch(Exception invalid){
+                onlineUrls.clear();
+                android.util.Log.e("AwaiStore","online pins rejected: "+OnlinePins.errorSummary(invalid));
             }
-        }catch(Exception absent){onlineUrls.clear();}
+        }
         WebSettings s = web.getSettings(); s.setBlockNetworkLoads(onlineUrls.isEmpty()&&!"home".equals(mode())&&!"torihiki".equals(mode())); s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true);
         s.setAllowFileAccess(false); s.setAllowContentAccess(false); s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         s.setSupportMultipleWindows(false); s.setBuiltInZoomControls(true); s.setDisplayZoomControls(false);
@@ -285,16 +291,18 @@ public abstract class HostActivity extends Activity {
                 Catalog.checkOnline(candidate);
                 Catalog current=trustedCatalog();long revision=candidate.getLong("revision");
                 if(revision<current.valueRevision())throw new SecurityException("catalog-rollback");
-                JSONObject pins=new JSONObject(new String(Integrity.read(getAssets().open("online-pins.json"),16384),StandardCharsets.UTF_8));
-                JSONObject envelope=new JSONObject();envelope.put("raw",raw);envelope.put("signature",signature);
+                OnlinePins pins;
+                try(InputStream pinsStream=getAssets().open("online-pins.json")){
+                    pins=OnlinePins.parse(new String(Integrity.read(pinsStream,OnlinePins.MAX_BYTES),StandardCharsets.UTF_8),id->{Catalog.assetFor(id);Catalog.onlineFileFor(id);});
+                }
                 // The exact release envelope is digest-pinned by the browser; host independently pins APK bytes and metadata signer.
                 // Pin-driven lookup across admitted apps: catalog order never grants admission.
                 // Every pinned app must be listed with exactly the pinned android artifact digest.
-                JSONObject apks=pins.getJSONObject("apks");JSONArray listed=candidate.getJSONArray("apps");
-                for(java.util.Iterator<String> ids=apks.keys();ids.hasNext();){String id=ids.next();Catalog.assetFor(id);String digest=null;
+                JSONArray listed=candidate.getJSONArray("apps");
+                for(Map.Entry<String,OnlinePins.Pin> entry:pins.apks.entrySet()){String id=entry.getKey();String digest=null;
                     for(int j=0;j<listed.length();j++)if(id.equals(listed.getJSONObject(j).getString("id"))){JSONArray entries=listed.getJSONObject(j).getJSONArray("artifacts");
                         for(int i=0;i<entries.length();i++)if("android".equals(entries.getJSONObject(i).getString("platform")))digest=entries.getJSONObject(i).getString("sha256");}
-                    if(digest==null||!digest.equals(apks.getJSONObject(id).getString("sha256")))throw new SecurityException("unpinned-artifact");}
+                    if(digest==null||!digest.equals(entry.getValue().sha256))throw new SecurityException("unpinned-artifact");}
                 return Catalog.saveOnline(HostActivity.this,raw,signature,revision)?"ok":refusedCatalog("catalog-store");
             }catch(Exception invalid){return refusedCatalog(invalid instanceof SecurityException&&invalid.getMessage()!=null&&invalid.getMessage().matches("[a-z0-9-]{1,40}")?invalid.getMessage():invalid.getClass().getSimpleName());}
         }

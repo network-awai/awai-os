@@ -27,7 +27,7 @@ public final class LatestPointer {
     public static final long MAX_LIFETIME_SECONDS = 31L * 24 * 60 * 60;
     public static final long CLOCK_SKEW_SECONDS = 300;
     public static final int MAX_CATALOG_BYTES = 131072;
-    public static final int MAX_APPS = 64;
+    public static final int MAX_APPS = OnlinePins.MAX_APPS;
 
     public static final class Pin {
         public final String url;
