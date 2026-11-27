@@ -1289,6 +1289,470 @@ test('Cross-tab state-conflict regression (#/lawyer/onboarding): rebases touched
   }
 });
 
+test('Overlapping saves regression (Fix 1 — operations engine): earlier failed op NEVER rolls back later succeeded op in memory (both before and after B succeeds)', async () => {
+  const lawyerId = SYNTHETIC_CATALOG_BUNDLE.lawyers[0].id;
+  const draftA = {
+    lawyerId,
+    category: 'work',
+    clientName: '相談者A',
+    clientContact: 'a@example.invalid',
+    counterpartyName: '相手方A株式会社',
+    summary: '先に開始して失敗する下書きA',
+  };
+  const draftB = {
+    lawyerId,
+    category: 'work',
+    clientName: '相談者B',
+    clientContact: 'b@example.invalid',
+    counterpartyName: '相手方B株式会社',
+    summary: '後から開始して成功する下書きB',
+  };
+
+  // Scenario 1: Op A fails AFTER Op B has already succeeded (exact Kougi out-of-order failure scenario)
+  {
+    const state = createInitialLocalState();
+    let persisted = null;
+    let settleOpA = null;
+    let callCount = 0;
+
+    const engine = createOperationsEngine({
+      state,
+      now: () => NOW,
+      onStateChange: async (candidate) => {
+        callCount += 1;
+        if (callCount === 1) {
+          return new Promise((resolve) => {
+            settleOpA = () => resolve({
+              ok: false,
+              code: 'quota-exceeded',
+              message: 'The quota has been exceeded.',
+              error: makeQuotaError(),
+            });
+          });
+        }
+        persisted = structuredClone(candidate);
+        return { ok: true, revision: 1 };
+      },
+    });
+
+    const opA = engine.execute('inquiry.draft', { draft: draftA });
+    const opB = engine.execute('inquiry.draft', { draft: draftB });
+
+    // Op B completes and commits first
+    const resB = await opB;
+    assert.equal(resB.savedLocally, true);
+    assert.equal(persisted.draft.summary, draftB.summary);
+    assert.equal(state.draft.summary, draftB.summary);
+    assert.equal(state.auditLog.length, 1);
+
+    // Now earlier Op A fails AFTER Op B succeeded — MUST NOT roll back state.draft to null or auditLog to 0!
+    settleOpA();
+    await assert.rejects(opA, err => err.code === 'storage-persist-failed' && err.persistResult?.code === 'quota-exceeded');
+
+    assert.equal(persisted.draft.summary, draftB.summary);
+    assert.notEqual(state.draft, null, 'In-memory draft must NOT be rolled back to null');
+    assert.equal(state.draft.summary, draftB.summary);
+    assert.equal(state.auditLog.length, 1, 'In-memory auditLog must NOT be rolled back to 0');
+    assert.equal(state.auditLog[0].operation, 'inquiry.draft');
+    assert.equal(verifyAuditChain(state.auditLog).ok, true);
+  }
+
+  // Scenario 2: Op A rejects (thrown error) AFTER Op B succeeded
+  {
+    const state = createInitialLocalState();
+    let persisted = null;
+    let rejectOpA = null;
+    let callCount = 0;
+
+    const engine = createOperationsEngine({
+      state,
+      now: () => NOW,
+      onStateChange: async (candidate) => {
+        callCount += 1;
+        if (callCount === 1) {
+          return new Promise((_, reject) => { rejectOpA = reject; });
+        }
+        persisted = structuredClone(candidate);
+        return { ok: true, revision: 1 };
+      },
+    });
+
+    const opA = engine.execute('inquiry.draft', { draft: draftA });
+    const opB = engine.execute('inquiry.draft', { draft: draftB });
+
+    await opB;
+    rejectOpA(makeQuotaError());
+    await assert.rejects(opA, err => err.code === 'storage-persist-failed');
+
+    assert.equal(persisted.draft.summary, draftB.summary);
+    assert.equal(state.draft.summary, draftB.summary);
+    assert.equal(state.auditLog.length, 1);
+    assert.equal(verifyAuditChain(state.auditLog).ok, true);
+  }
+
+  // Scenario 3: Op A fails BEFORE Op B succeeds (serialized and non-serialized)
+  for (const serializeWrites of [false, true]) {
+    const state = createInitialLocalState();
+    let persisted = null;
+    let callCount = 0;
+
+    const engine = createOperationsEngine({
+      state,
+      now: () => NOW,
+      serializeWrites,
+      onStateChange: async (candidate) => {
+        callCount += 1;
+        if (callCount === 1) {
+          await new Promise(r => setTimeout(r, 10));
+          return { ok: false, code: 'storage-write-failed', message: 'write-1-failed' };
+        }
+        await new Promise(r => setTimeout(r, 20));
+        persisted = structuredClone(candidate);
+        return { ok: true, revision: 1 };
+      },
+    });
+
+    const opA = engine.execute('inquiry.draft', { draft: draftA });
+    const opB = engine.execute('inquiry.draft', { draft: draftB });
+
+    const [rA, rB] = await Promise.allSettled([opA, opB]);
+    assert.equal(rA.status, 'rejected');
+    assert.equal(rB.status, 'fulfilled');
+
+    assert.equal(persisted.draft.summary, draftB.summary);
+    assert.equal(state.draft.summary, draftB.summary);
+    assert.equal(state.auditLog.length, 1);
+    assert.equal(verifyAuditChain(state.auditLog).ok, true);
+  }
+
+  // Scenario 4: Stale earlier Op A resolving late with older revision NEVER overwrites newer committed Op B
+  {
+    const state = createInitialLocalState();
+    let resolveOpA = null;
+    let callCount = 0;
+
+    const engine = createOperationsEngine({
+      state,
+      now: () => NOW,
+      onStateChange: async () => {
+        callCount += 1;
+        if (callCount === 1) {
+          return new Promise(resolve => { resolveOpA = () => resolve({ ok: true, revision: 1 }); });
+        }
+        return { ok: true, revision: 2 };
+      },
+    });
+
+    const opA = engine.execute('inquiry.draft', { draft: draftA });
+    const opB = engine.execute('inquiry.draft', { draft: draftB });
+
+    await opB;
+    assert.equal(state.draft.summary, draftB.summary);
+
+    resolveOpA();
+    await opA;
+    assert.equal(state.draft.summary, draftB.summary, 'Older op revision must never overwrite newer committed revision');
+  }
+});
+
+test('Overlapping saves regression (Fix 1 — UI #/contact/compose): earlier failed save overlapping with later succeeded save keeps storage, in-memory draft, and audit log on B', async () => {
+  const storage = createMemoryStorage();
+  const baseLocks = createQueuingLocks();
+  let releaseFirstLock = null;
+  let lockCalls = 0;
+
+  const deferredLocks = {
+    request(name, fn) {
+      lockCalls += 1;
+      const callNum = lockCalls;
+      return baseLocks.request(name, async () => {
+        if (callNum === 1) {
+          await new Promise(resolve => { releaseFirstLock = resolve; });
+        }
+        return fn();
+      });
+    },
+  };
+
+  const { dom, restore } = await mountBuiltApp({
+    initialHash: '#/contact/compose',
+    storage,
+    locks: deferredLocks,
+  });
+
+  try {
+    const view = dom.document.getElementById('view');
+    const nameIn = dom.document.getElementById('c-name');
+    const contactIn = dom.document.getElementById('c-contact');
+    const counterIn = dom.document.getElementById('c-counter');
+    const sumArea = dom.document.getElementById('c-summary');
+    const saveBtn = view.querySelectorAll('button').find(b => b.textContent.includes('下書き保存'));
+
+    nameIn.value = '重複保存テスト依頼者';
+    contactIn.value = 'overlap@example.invalid';
+    counterIn.value = '相手方株式会社';
+    sumArea.value = '下書きA（失敗予定）';
+    await sumArea.dispatch('input');
+
+    // Start Save A (write #1 will fail once lock releases)
+    storage.failWritesWith(makeQuotaError());
+    const clickA = saveBtn.dispatch('click');
+    await flushMicrotasks();
+    assert.ok(releaseFirstLock, 'First save must be awaiting its lock');
+
+    // While Save A is still in flight, user edits to B and clicks Save B
+    sumArea.value = '下書きB（成功予定）';
+    await sumArea.dispatch('input');
+    const clickB = saveBtn.dispatch('click');
+
+    // Allow Save A to hit QuotaExceededError, then clear storage error so Save B succeeds
+    const origSetItem = storage.setItem.bind(storage);
+    let attempts = 0;
+    storage.setItem = (k, v) => {
+      attempts += 1;
+      if (attempts === 1) {
+        storage.failWritesWith(null);
+        throw makeQuotaError();
+      }
+      return origSetItem(k, v);
+    };
+
+    releaseFirstLock();
+    await Promise.all([clickA, clickB]);
+    await flushMicrotasks();
+
+    // Verify storage holds B with 1 valid audit entry
+    const persisted = JSON.parse(storage.getItem(STORAGE_KEY));
+    assert.equal(persisted.revision, 1);
+    assert.equal(persisted.data.draft.summary, '下書きB（成功予定）');
+    assert.equal(persisted.data.auditLog.length, 1);
+    assert.equal(verifyAuditChain(persisted.data.auditLog).ok, true);
+
+    // Verify in-memory state in app (NOT rolled back to null / 0) by re-visiting #/audit and #/contact/compose
+    dom.location.hash = '#/audit';
+    await flushMicrotasks();
+    const auditViewText = dom.document.getElementById('view').textContent;
+    assert.match(auditViewText, /inquiry\.draft/);
+    assert.match(auditViewText, /1\s*件|1\s*entries/);
+
+    dom.location.hash = '#/contact/compose';
+    await flushMicrotasks();
+    assert.equal(dom.document.getElementById('c-summary').value, '下書きB（成功予定）');
+  } finally {
+    restore();
+  }
+});
+
+test('In-flight typing regression (Fix 2 — #/contact/compose): edits typed while save is pending are preserved as unsaved input after save resolves and persisted on next save', async () => {
+  const storage = createMemoryStorage();
+  const baseLocks = createQueuingLocks();
+  let releasePendingWrite = null;
+  let holdNextWrite = true;
+
+  const deferredLocks = {
+    request(name, fn) {
+      return baseLocks.request(name, async () => {
+        if (holdNextWrite) {
+          holdNextWrite = false;
+          await new Promise(resolve => { releasePendingWrite = resolve; });
+        }
+        return fn();
+      });
+    },
+  };
+
+  const { dom, restore } = await mountBuiltApp({
+    initialHash: '#/contact/compose',
+    storage,
+    locks: deferredLocks,
+  });
+
+  try {
+    const view = dom.document.getElementById('view');
+    const nameIn = dom.document.getElementById('c-name');
+    const contactIn = dom.document.getElementById('c-contact');
+    const counterIn = dom.document.getElementById('c-counter');
+    const sumArea = dom.document.getElementById('c-summary');
+    const saveBtn = view.querySelectorAll('button').find(b => b.textContent.includes('下書き保存'));
+
+    nameIn.value = '保存中追記テスト相談者';
+    contactIn.value = 'inflight@example.invalid';
+    counterIn.value = '相手方株式会社';
+    sumArea.value = '初稿';
+    await nameIn.dispatch('input');
+    await contactIn.dispatch('input');
+    await counterIn.dispatch('input');
+    await sumArea.dispatch('input');
+
+    // Start saving "初稿" — write stays pending
+    const firstSave = saveBtn.dispatch('click');
+    await flushMicrotasks();
+    assert.ok(releasePendingWrite, 'First save must be pending');
+
+    // While write is pending, user appends text in DOM input
+    sumArea.value = '初稿＋保存中追記';
+    await sumArea.dispatch('input');
+
+    // Resolve deferred write (having saved "初稿")
+    releasePendingWrite();
+    await firstSave;
+    await flushMicrotasks();
+
+    // Storage holds "初稿" (rev 1), while DOM input STILL preserves "初稿＋保存中追記"
+    const v1 = JSON.parse(storage.getItem(STORAGE_KEY));
+    assert.equal(v1.revision, 1);
+    assert.equal(v1.data.draft.summary, '初稿');
+    assert.equal(sumArea.value, '初稿＋保存中追記', 'In-flight summary edit must NOT be wiped by applyDraftToForm');
+    assert.equal(nameIn.value, '保存中追記テスト相談者');
+
+    // Subsequent save cleanly persists "初稿＋保存中追記" as rev 2
+    await saveBtn.dispatch('click');
+    await flushMicrotasks();
+
+    const v2 = JSON.parse(storage.getItem(STORAGE_KEY));
+    assert.equal(v2.revision, 2);
+    assert.equal(v2.data.draft.summary, '初稿＋保存中追記');
+    assert.equal(sumArea.value, '初稿＋保存中追記');
+    assert.equal(verifyAuditChain(v2.data.auditLog).ok, true);
+  } finally {
+    restore();
+  }
+});
+
+test('In-flight typing regression (Fix 2 — #/lawyer/profile and #/lawyer/onboarding): preserves in-flight edits and blocks onboarding navigation until edits are saved', async () => {
+  // Part 1: #/lawyer/profile
+  {
+    const storage = createMemoryStorage();
+    const baseLocks = createQueuingLocks();
+    let releasePendingWrite = null;
+    let holdNextWrite = true;
+
+    const deferredLocks = {
+      request(name, fn) {
+        return baseLocks.request(name, async () => {
+          if (holdNextWrite) {
+            holdNextWrite = false;
+            await new Promise(resolve => { releasePendingWrite = resolve; });
+          }
+          return fn();
+        });
+      },
+    };
+
+    const { dom, restore } = await mountBuiltApp({
+      initialHash: '#/lawyer/profile',
+      storage,
+      locks: deferredLocks,
+    });
+
+    try {
+      const view = dom.document.getElementById('view');
+      const officeIn = dom.document.getElementById('pe-office');
+      const saveBtn = view.querySelector('button[type="button"][data-submit]');
+
+      officeIn.value = '初稿法律事務所';
+      await officeIn.dispatch('input');
+
+      const firstSave = saveBtn.dispatch('click');
+      await flushMicrotasks();
+      assert.ok(releasePendingWrite, 'Profile save must be pending');
+
+      officeIn.value = '初稿法律事務所・保存中追記';
+      await officeIn.dispatch('input');
+
+      releasePendingWrite();
+      await firstSave;
+      await flushMicrotasks();
+
+      const v1 = JSON.parse(storage.getItem(STORAGE_KEY));
+      assert.equal(v1.revision, 1);
+      assert.equal(v1.data.lawyerProfile.office_name, '初稿法律事務所');
+      assert.equal(officeIn.value, '初稿法律事務所・保存中追記', 'In-flight office_name edit must NOT be wiped by applyProfileToForm');
+
+      await saveBtn.dispatch('click');
+      await flushMicrotasks();
+
+      const v2 = JSON.parse(storage.getItem(STORAGE_KEY));
+      assert.equal(v2.revision, 2);
+      assert.equal(v2.data.lawyerProfile.office_name, '初稿法律事務所・保存中追記');
+    } finally {
+      restore();
+    }
+  }
+
+  // Part 2: #/lawyer/onboarding (must NOT navigate away and wipe unsaved in-flight edits)
+  {
+    const storage = createMemoryStorage();
+    const baseLocks = createQueuingLocks();
+    let releasePendingWrite = null;
+    let holdNextWrite = true;
+
+    const deferredLocks = {
+      request(name, fn) {
+        return baseLocks.request(name, async () => {
+          if (holdNextWrite) {
+            holdNextWrite = false;
+            await new Promise(resolve => { releasePendingWrite = resolve; });
+          }
+          return fn();
+        });
+      },
+    };
+
+    const { dom, restore } = await mountBuiltApp({
+      initialHash: '#/lawyer/onboarding',
+      storage,
+      locks: deferredLocks,
+    });
+
+    try {
+      const view = dom.document.getElementById('view');
+      const nameIn = dom.document.getElementById('ob-name');
+      const barIn = dom.document.getElementById('ob-bar');
+      const regIn = dom.document.getElementById('ob-reg');
+      const officeIn = dom.document.getElementById('ob-office');
+      const phoneIn = dom.document.getElementById('ob-phone');
+      const submitBtn = view.querySelector('button[type="button"][data-submit]');
+
+      nameIn.value = '佐藤 追記確認（架空サンプル）';
+      barIn.value = '東京弁護士会';
+      regIn.value = '995555';
+      officeIn.value = '追記確認法律事務所';
+      phoneIn.value = '03-0000-1111';
+
+      const firstSave = submitBtn.dispatch('click');
+      await flushMicrotasks();
+      assert.ok(releasePendingWrite, 'Onboarding save must be pending');
+
+      // User modifies phone while save is in flight
+      phoneIn.value = '03-0000-2222';
+      await phoneIn.dispatch('input');
+
+      releasePendingWrite();
+      await firstSave;
+      await flushMicrotasks();
+
+      // Must remain on #/lawyer/onboarding and preserve in-flight phone edit
+      assert.equal(dom.location.hash, '#/lawyer/onboarding', 'Must NOT navigate away when unsaved in-flight edits exist');
+      assert.equal(phoneIn.value, '03-0000-2222');
+      const v1 = JSON.parse(storage.getItem(STORAGE_KEY));
+      assert.equal(v1.revision, 1);
+      assert.equal(v1.data.lawyerProfile.phone, '03-0000-1111');
+
+      // Subsequent submit persists "03-0000-2222" and navigates to #/lawyer/profile
+      await submitBtn.dispatch('click');
+      await flushMicrotasks();
+
+      assert.equal(dom.location.hash, '#/lawyer/profile');
+      const v2 = JSON.parse(storage.getItem(STORAGE_KEY));
+      assert.equal(v2.revision, 2);
+      assert.equal(v2.data.lawyerProfile.phone, '03-0000-2222');
+    } finally {
+      restore();
+    }
+  }
+});
+
 test('dist/app.js no longer swallows persistState errors with empty catch and dist/storage.js has no unguarded localStorage.setItem fallback', () => {
   const srcApp = readFileSync(resolve(appRoot, 'src/app.js'), 'utf8');
   assert.ok(!/catch\s*\{\s*\/\*\s*ignore\s*\*\/\s*\}/.test(srcApp), 'src/app.js must not silently ignore storage errors');

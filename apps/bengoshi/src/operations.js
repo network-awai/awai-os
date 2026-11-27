@@ -91,27 +91,47 @@ export function createOperationsEngine({
   getPrivateKeyJwk = null,
   now = () => new Date().toISOString(),
   onStateChange = null,
+  enqueueWrite = null,
+  serializeWrites = false,
 } = {}) {
   const catalogById = new Map();
   for (const l of catalog) catalogById.set(l.id, l);
 
-  function allLawyers() {
+  let internalWriteQueue = Promise.resolve();
+  let nextOpSeq = 0;
+  let committedOpSeq = 0;
+  let committedRevision = 0;
+  let committedVersion = 0;
+
+  function runWrite(fn) {
+    if (typeof enqueueWrite === 'function') {
+      return enqueueWrite(fn);
+    }
+    if (serializeWrites) {
+      const next = internalWriteQueue.then(fn, fn);
+      internalWriteQueue = next.then(() => {}, () => {});
+      return next;
+    }
+    return fn();
+  }
+
+  function allLawyers(targetState = state) {
     const list = [...catalog];
-    if (state.lawyerProfile && state.lawyerProfile.id) {
-      const idx = list.findIndex(x => x.id === state.lawyerProfile.id);
-      if (idx >= 0) list[idx] = state.lawyerProfile;
-      else list.push(state.lawyerProfile);
+    if (targetState.lawyerProfile && targetState.lawyerProfile.id) {
+      const idx = list.findIndex(x => x.id === targetState.lawyerProfile.id);
+      if (idx >= 0) list[idx] = targetState.lawyerProfile;
+      else list.push(targetState.lawyerProfile);
     }
     return list;
   }
 
-  function findLawyer(lawyerId) {
-    if (state.lawyerProfile && state.lawyerProfile.id === lawyerId) return state.lawyerProfile;
+  function findLawyer(lawyerId, targetState = state) {
+    if (targetState.lawyerProfile && targetState.lawyerProfile.id === lawyerId) return targetState.lawyerProfile;
     return catalogById.get(lawyerId) || null;
   }
 
-  function audit(actor, operation, outcome, summary, details = {}) {
-    const next = appendAuditEntry(state.auditLog, {
+  function auditOn(targetState, actor, operation, outcome, summary, details = {}) {
+    const next = appendAuditEntry(targetState.auditLog, {
       actor,
       operation,
       outcome,
@@ -119,24 +139,48 @@ export function createOperationsEngine({
       details,
       timestamp: now(),
     });
-    state.auditLog = next.log;
+    targetState.auditLog = next.log;
     return next.entry;
   }
 
-  function restoreState(snapshot) {
+  function replaceCommittedState(nextState) {
     for (const key of Object.keys(state)) delete state[key];
-    Object.assign(state, snapshot);
+    Object.assign(state, nextState);
   }
 
-  async function commitOrRollback(snapshot, { throwOnFailure = true } = {}) {
-    if (typeof onStateChange !== 'function') return { ok: true };
+  // Clone-then-commit: never mutates live committed `state` before persistence succeeds,
+  // never rolls back committed `state` on failure, and never overwrites a newer committed
+  // revision/operation with an older operation's state.
+  async function commitCandidate(candidateState, { throwOnFailure = true } = {}) {
+    const opSeq = ++nextOpSeq;
+    const baseVersion = committedVersion;
+
+    if (typeof onStateChange !== 'function') {
+      if (opSeq >= committedOpSeq) {
+        replaceCommittedState(candidateState);
+        committedOpSeq = opSeq;
+        committedVersion++;
+      }
+      return { ok: true };
+    }
+
     try {
-      const result = await onStateChange(state);
+      const result = await onStateChange(candidateState);
       if (result && result.ok === false) {
         if (result.refreshedState && typeof result.refreshedState === 'object') {
-          restoreState(structuredClone(result.refreshedState));
-        } else {
-          restoreState(snapshot);
+          const refreshedRev = Number.isSafeInteger(result.latestRevision)
+            ? result.latestRevision
+            : Number.isSafeInteger(result.refreshedRevision)
+              ? result.refreshedRevision
+              : null;
+          const shouldRefresh = refreshedRev !== null
+            ? refreshedRev > committedRevision
+            : committedVersion === baseVersion;
+          if (shouldRefresh) {
+            replaceCommittedState(structuredClone(result.refreshedState));
+            committedVersion++;
+            if (refreshedRev !== null) committedRevision = refreshedRev;
+          }
         }
         if (!throwOnFailure) return result;
         throw Object.assign(new Error(result.message || 'storage-persist-failed'), {
@@ -146,10 +190,20 @@ export function createOperationsEngine({
           persistResult: result,
         });
       }
+
+      const resultRev = Number.isSafeInteger(result?.revision) ? result.revision : null;
+      const shouldCommit = resultRev !== null
+        ? (resultRev > committedRevision || (resultRev === committedRevision && opSeq >= committedOpSeq))
+        : opSeq >= committedOpSeq;
+      if (shouldCommit) {
+        replaceCommittedState(candidateState);
+        committedVersion++;
+        if (opSeq > committedOpSeq) committedOpSeq = opSeq;
+        if (resultRev !== null && resultRev > committedRevision) committedRevision = resultRev;
+      }
       return result || { ok: true };
     } catch (err) {
       if (err?.code === 'storage-persist-failed') throw err;
-      restoreState(snapshot);
       const persistResult = {
         ok: false,
         error: err,
@@ -168,9 +222,11 @@ export function createOperationsEngine({
 
   async function execute(operationName, params = {}, { actor = 'ui' } = {}) {
     if (PROHIBITED_OPERATIONS.includes(operationName)) {
-      const snapshot = structuredClone(state);
-      audit(actor, operationName, 'rejected', 'Prohibited by Legal addendum / O2 / O8 / O9 structural invariant');
-      await commitOrRollback(snapshot, { throwOnFailure: false });
+      await runWrite(async () => {
+        const candidate = structuredClone(state);
+        auditOn(candidate, actor, operationName, 'rejected', 'Prohibited by Legal addendum / O2 / O8 / O9 structural invariant');
+        await commitCandidate(candidate, { throwOnFailure: false });
+      });
       throw Object.assign(new Error('operation-prohibited-by-invariant'), { code: 'operation-prohibited-by-invariant', operation: operationName });
     }
     if (!CANONICAL_OPERATIONS.includes(operationName)) {
@@ -181,35 +237,37 @@ export function createOperationsEngine({
 
     switch (operationName) {
       case 'directory.search': {
-        const snapshot = structuredClone(state);
-        const results = filterAndSortLawyers(allLawyers(), {
-          query: params.query ?? '',
-          prefectureCode: params.prefectureCode ?? params.prefecture_code ?? '',
-          practiceArea: params.practiceArea ?? params.practice_area ?? '',
-          language: params.language ?? '',
-          legalAidHouterasu: params.legalAidHouterasu ?? params.legal_aid_houterasu ?? null,
-          verificationStatus: params.verificationStatus ?? params.verification_status ?? '',
-          sort: params.sort ?? 'kana_asc',
-          directoryScope: params.directoryScope ?? params.directory_scope ?? state.settings.directoryScope,
-          tenantId: params.tenantId ?? state.settings.tenantId,
-          nowIso,
+        return runWrite(async () => {
+          const candidate = structuredClone(state);
+          const results = filterAndSortLawyers(allLawyers(candidate), {
+            query: params.query ?? '',
+            prefectureCode: params.prefectureCode ?? params.prefecture_code ?? '',
+            practiceArea: params.practiceArea ?? params.practice_area ?? '',
+            language: params.language ?? '',
+            legalAidHouterasu: params.legalAidHouterasu ?? params.legal_aid_houterasu ?? null,
+            verificationStatus: params.verificationStatus ?? params.verification_status ?? '',
+            sort: params.sort ?? 'kana_asc',
+            directoryScope: params.directoryScope ?? params.directory_scope ?? candidate.settings.directoryScope,
+            tenantId: params.tenantId ?? candidate.settings.tenantId,
+            nowIso,
+          });
+          auditOn(candidate, actor, 'directory.search', 'ok', `Local neutral search (${results.length} synthetic results)`, {
+            sort: params.sort ?? 'kana_asc',
+            directoryScope: params.directoryScope ?? candidate.settings.directoryScope,
+            localOnly: true,
+          });
+          const persistResult = await commitCandidate(candidate, { throwOnFailure: false });
+          return {
+            policy: ZERO_FEE_POLICY,
+            localOnly: true,
+            syntheticOnly: results.every(l => l.synthetic === true),
+            directoryScope: params.directoryScope ?? candidate.settings.directoryScope,
+            sort: params.sort ?? 'kana_asc',
+            total: results.length,
+            lawyers: results,
+            persistResult,
+          };
         });
-        audit(actor, 'directory.search', 'ok', `Local neutral search (${results.length} synthetic results)`, {
-          sort: params.sort ?? 'kana_asc',
-          directoryScope: params.directoryScope ?? state.settings.directoryScope,
-          localOnly: true,
-        });
-        const persistResult = await commitOrRollback(snapshot, { throwOnFailure: false });
-        return {
-          policy: ZERO_FEE_POLICY,
-          localOnly: true,
-          syntheticOnly: results.every(l => l.synthetic === true),
-          directoryScope: params.directoryScope ?? state.settings.directoryScope,
-          sort: params.sort ?? 'kana_asc',
-          total: results.length,
-          lawyers: results,
-          persistResult,
-        };
       }
 
       case 'lawyer.get': {
@@ -240,51 +298,58 @@ export function createOperationsEngine({
       }
 
       case 'contact.format_manual': {
-        const lawyer = findLawyer(params.lawyerId ?? params.id);
-        if (!lawyer) throw Object.assign(new Error('lawyer-not-found'), { code: 'lawyer-not-found' });
-        const text = formatManualContactText(lawyer, { nowIso });
-        const snapshot = structuredClone(state);
-        audit(actor, 'contact.format_manual', 'ok', 'Formatted 7-line Method A manual contact text locally', {
-          lawyerId: lawyer.id,
-          method: 'method_a_direct',
+        return runWrite(async () => {
+          const candidate = structuredClone(state);
+          const lawyer = findLawyer(params.lawyerId ?? params.id, candidate);
+          if (!lawyer) throw Object.assign(new Error('lawyer-not-found'), { code: 'lawyer-not-found' });
+          const text = formatManualContactText(lawyer, { nowIso });
+          auditOn(candidate, actor, 'contact.format_manual', 'ok', 'Formatted 7-line Method A manual contact text locally', {
+            lawyerId: lawyer.id,
+            method: 'method_a_direct',
+          });
+          await commitCandidate(candidate);
+          return {
+            method: 'method_a_direct',
+            serverRelayUsed: false,
+            lawyerId: lawyer.id,
+            lineCount: text.split('\n').length,
+            text,
+            websiteUrl: lawyer.website_url || '',
+            mailto: lawyer.email ? `mailto:${lawyer.email}` : '',
+            tel: lawyer.phone ? `tel:${lawyer.phone}` : '',
+          };
         });
-        await commitOrRollback(snapshot);
-        return {
-          method: 'method_a_direct',
-          serverRelayUsed: false,
-          lawyerId: lawyer.id,
-          lineCount: text.split('\n').length,
-          text,
-          websiteUrl: lawyer.website_url || '',
-          mailto: lawyer.email ? `mailto:${lawyer.email}` : '',
-          tel: lawyer.phone ? `tel:${lawyer.phone}` : '',
-        };
       }
 
       case 'inquiry.import_memo': {
         const imported = parseSoudanMemoExport(params.json ?? params.memo);
         if (params.lawyerId) imported.lawyerId = params.lawyerId;
-        const snapshot = structuredClone(state);
-        state.draft = imported;
-        audit(actor, 'inquiry.import_memo', 'ok', 'Imported soudan.memo.export.v1 locally', {
-          template: imported.template,
-          category: imported.category,
-          evidenceCount: imported.evidenceManifest.length,
+        return runWrite(async () => {
+          const candidate = structuredClone(state);
+          candidate.draft = structuredClone(imported);
+          auditOn(candidate, actor, 'inquiry.import_memo', 'ok', 'Imported soudan.memo.export.v1 locally', {
+            template: imported.template,
+            category: imported.category,
+            evidenceCount: imported.evidenceManifest.length,
+          });
+          await commitCandidate(candidate);
+          return { draft: structuredClone(imported) };
         });
-        await commitOrRollback(snapshot);
-        return { draft: imported };
       }
 
       case 'inquiry.draft': {
         const draft = params.draft;
         const problems = validateInquiryDraft(draft);
-        const snapshot = structuredClone(state);
-        state.draft = structuredClone(draft);
-        audit(actor, 'inquiry.draft', problems.length ? 'validation_warning' : 'ok', 'Saved inquiry draft locally', {
-          problemCount: problems.length,
+        const nextDraft = structuredClone(draft);
+        return runWrite(async () => {
+          const candidate = structuredClone(state);
+          candidate.draft = structuredClone(nextDraft);
+          auditOn(candidate, actor, 'inquiry.draft', problems.length ? 'validation_warning' : 'ok', 'Saved inquiry draft locally', {
+            problemCount: problems.length,
+          });
+          await commitCandidate(candidate);
+          return { savedLocally: true, problems, draft: structuredClone(nextDraft) };
         });
-        await commitOrRollback(snapshot);
-        return { savedLocally: true, problems, draft: state.draft };
       }
 
       case 'inquiry.send': {
@@ -292,9 +357,11 @@ export function createOperationsEngine({
         // Live relay is structurally disabled (`relay-disabled-method-a-only`);
         // offline local E2EE envelope creation is available strictly on-device for local preview.
         if (params.requireLiveRelay === true) {
-          const snapshot = structuredClone(state);
-          audit(actor, 'inquiry.send', 'blocked', 'Server relay disabled: Method A direct contact only');
-          await commitOrRollback(snapshot, { throwOnFailure: false });
+          await runWrite(async () => {
+            const candidate = structuredClone(state);
+            auditOn(candidate, actor, 'inquiry.send', 'blocked', 'Server relay disabled: Method A direct contact only');
+            await commitCandidate(candidate, { throwOnFailure: false });
+          });
           throw Object.assign(new Error('relay-disabled-method-a-only'), { code: 'relay-disabled-method-a-only' });
         }
 
@@ -310,13 +377,15 @@ export function createOperationsEngine({
         const demoMode = Boolean(params.syntheticDemoMode ?? state.settings.syntheticDemoMode);
         const gate = canSendToLawyer(lawyer, { syntheticDemoMode: demoMode, nowIso });
         if (!gate.allowed) {
-          const snapshot = structuredClone(state);
-          audit(actor, 'inquiry.send', 'blocked', `Blocked by O4 gate: ${gate.reason}`, {
-            lawyerId: lawyer.id,
-            effectiveStatus: gate.status.effectiveStatus,
-            hardHold: gate.hardHold,
+          await runWrite(async () => {
+            const candidate = structuredClone(state);
+            auditOn(candidate, actor, 'inquiry.send', 'blocked', `Blocked by O4 gate: ${gate.reason}`, {
+              lawyerId: lawyer.id,
+              effectiveStatus: gate.status.effectiveStatus,
+              hardHold: gate.hardHold,
+            });
+            await commitCandidate(candidate, { throwOnFailure: false });
           });
-          await commitOrRollback(snapshot, { throwOnFailure: false });
           throw Object.assign(new Error(gate.reason), { code: gate.reason, hardHold: gate.hardHold, status: gate.status });
         }
 
@@ -348,45 +417,54 @@ export function createOperationsEngine({
           },
         });
 
-        const record = {
-          inquiryId,
-          lawyerId: lawyer.id,
-          lawyerName: lawyer.name,
-          barAssociation: lawyer.bar_association,
-          verificationStatus: gate.status.effectiveStatus,
-          sentAt: nowIso,
-          dryRun: true,
-          serverRelayUsed: false,
-          relayStatus: 'offline_local_preview_only',
-          conflictHeader,
-          envelope,
-          replies: [],
-          copyRetentionNotice: getLegalNotices(state.settings.locale).lawyerCopyRetention,
-        };
-        const snapshot = structuredClone(state);
-        state.sentInquiries = [record, ...state.sentInquiries];
-        audit(actor, 'inquiry.send', 'ok', 'Created offline local E2EE preview envelope (0 bytes external)', {
-          inquiryId,
-          lawyerId: lawyer.id,
-          serverRelayUsed: false,
-          aadSha256: envelope.aadSha256,
+        return runWrite(async () => {
+          const candidate = structuredClone(state);
+          const record = {
+            inquiryId,
+            lawyerId: lawyer.id,
+            lawyerName: lawyer.name,
+            barAssociation: lawyer.bar_association,
+            verificationStatus: gate.status.effectiveStatus,
+            sentAt: nowIso,
+            dryRun: true,
+            serverRelayUsed: false,
+            relayStatus: 'offline_local_preview_only',
+            conflictHeader,
+            envelope,
+            replies: [],
+            copyRetentionNotice: getLegalNotices(candidate.settings.locale).lawyerCopyRetention,
+          };
+          candidate.sentInquiries = [record, ...candidate.sentInquiries];
+          auditOn(candidate, actor, 'inquiry.send', 'ok', 'Created offline local E2EE preview envelope (0 bytes external)', {
+            inquiryId,
+            lawyerId: lawyer.id,
+            serverRelayUsed: false,
+            aadSha256: envelope.aadSha256,
+          });
+          await commitCandidate(candidate);
+          return { record, serverRelayUsed: false };
         });
-        await commitOrRollback(snapshot);
-        return { record, serverRelayUsed: false };
       }
 
       case 'inquiry.list': {
         if (params.deleteInquiryId) {
-          const before = state.sentInquiries.length;
-          const nextInquiries = state.sentInquiries.filter(r => r.inquiryId !== params.deleteInquiryId);
-          if (nextInquiries.length !== before) {
-            const snapshot = structuredClone(state);
-            state.sentInquiries = nextInquiries;
-            audit(actor, 'inquiry.list', 'deleted_local', 'Deleted local record copy', {
-              inquiryId: params.deleteInquiryId,
-            });
-            await commitOrRollback(snapshot);
-          }
+          return runWrite(async () => {
+            const candidate = structuredClone(state);
+            const before = candidate.sentInquiries.length;
+            const nextInquiries = candidate.sentInquiries.filter(r => r.inquiryId !== params.deleteInquiryId);
+            if (nextInquiries.length !== before) {
+              candidate.sentInquiries = nextInquiries;
+              auditOn(candidate, actor, 'inquiry.list', 'deleted_local', 'Deleted local record copy', {
+                inquiryId: params.deleteInquiryId,
+              });
+              await commitCandidate(candidate);
+            }
+            return {
+              inquiries: [...candidate.sentInquiries],
+              localOnly: true,
+              lawyerCopyRetentionNotice: getLegalNotices(candidate.settings.locale).lawyerCopyRetention,
+            };
+          });
         }
         return {
           inquiries: [...state.sentInquiries],
@@ -396,49 +474,56 @@ export function createOperationsEngine({
       }
 
       case 'lawyer.profile.update': {
-        const candidate = params.profile;
-        const problems = validateLawyerRecord(candidate);
+        const profileCandidate = params.profile;
+        const problems = validateLawyerRecord(profileCandidate);
         if (problems.length) {
-          const snapshot = structuredClone(state);
-          audit(actor, 'lawyer.profile.update', 'rejected', `Rejected by O9/O4 validator (${problems.length} problems)`, {
-            codes: problems.map(p => p.code),
+          await runWrite(async () => {
+            const candidate = structuredClone(state);
+            auditOn(candidate, actor, 'lawyer.profile.update', 'rejected', `Rejected by O9/O4 validator (${problems.length} problems)`, {
+              codes: problems.map(p => p.code),
+            });
+            await commitCandidate(candidate, { throwOnFailure: false });
           });
-          await commitOrRollback(snapshot, { throwOnFailure: false });
           throw Object.assign(new Error('lawyer-profile-invalid'), { code: 'lawyer-profile-invalid', problems });
         }
-        const snapshot = structuredClone(state);
-        state.lawyerProfile = structuredClone(candidate);
-        if (!Array.isArray(state.lawyerEditHistory)) state.lawyerEditHistory = [];
-        const snapHash = sha256Hex(JSON.stringify(state.lawyerProfile));
-        state.lawyerEditHistory.push({
-          timestamp: nowIso,
-          action: params.action || 'profile_update',
-          lawyer_id: candidate.id,
-          snapshot_sha256: snapHash,
-          changed_fields: Object.keys(candidate),
+        const savedProfile = structuredClone(profileCandidate);
+        return runWrite(async () => {
+          const candidate = structuredClone(state);
+          candidate.lawyerProfile = structuredClone(savedProfile);
+          if (!Array.isArray(candidate.lawyerEditHistory)) candidate.lawyerEditHistory = [];
+          const snapHash = sha256Hex(JSON.stringify(candidate.lawyerProfile));
+          candidate.lawyerEditHistory.push({
+            timestamp: nowIso,
+            action: params.action || 'profile_update',
+            lawyer_id: savedProfile.id,
+            snapshot_sha256: snapHash,
+            changed_fields: Object.keys(savedProfile),
+          });
+          auditOn(candidate, actor, 'lawyer.profile.update', 'ok', 'Updated local factual lawyer profile (O9 validated)', {
+            lawyerId: savedProfile.id,
+            snapshotSha256: snapHash,
+          });
+          await commitCandidate(candidate);
+          return { savedLocally: true, profile: structuredClone(savedProfile), historyCount: candidate.lawyerEditHistory.length };
         });
-        audit(actor, 'lawyer.profile.update', 'ok', 'Updated local factual lawyer profile (O9 validated)', {
-          lawyerId: candidate.id,
-          snapshotSha256: snapHash,
-        });
-        await commitOrRollback(snapshot);
-        return { savedLocally: true, profile: state.lawyerProfile, historyCount: state.lawyerEditHistory.length };
       }
 
       case 'lawyer.export_art11_record': {
-        const target = params.profile || state.lawyerProfile || findLawyer(params.lawyerId) || catalog[0];
-        if (!target) throw Object.assign(new Error('lawyer-not-found'), { code: 'lawyer-not-found' });
-        const history = Array.isArray(params.editHistory) ? params.editHistory : (state.lawyerEditHistory || []);
-        const record = exportArt11Record(target, history, { nowIso });
-        const snapshot = structuredClone(state);
-        audit(actor, 'lawyer.export_art11_record', 'ok', 'Exported Art. 11 3-year preservation record locally', {
-          lawyerId: target.id,
-          retentionYears: record.retention_years,
-          feeJpy: record.free_participation_terms.fee_jpy,
-          recordSha256: record.record_sha256,
+        return runWrite(async () => {
+          const candidate = structuredClone(state);
+          const target = params.profile || candidate.lawyerProfile || findLawyer(params.lawyerId, candidate) || catalog[0];
+          if (!target) throw Object.assign(new Error('lawyer-not-found'), { code: 'lawyer-not-found' });
+          const history = Array.isArray(params.editHistory) ? params.editHistory : (candidate.lawyerEditHistory || []);
+          const record = exportArt11Record(target, history, { nowIso });
+          auditOn(candidate, actor, 'lawyer.export_art11_record', 'ok', 'Exported Art. 11 3-year preservation record locally', {
+            lawyerId: target.id,
+            retentionYears: record.retention_years,
+            feeJpy: record.free_participation_terms.fee_jpy,
+            recordSha256: record.record_sha256,
+          });
+          await commitCandidate(candidate);
+          return { localOnly: true, record };
         });
-        await commitOrRollback(snapshot);
-        return { localOnly: true, record };
       }
 
       case 'intake.list': {
@@ -456,95 +541,113 @@ export function createOperationsEngine({
       }
 
       case 'intake.conflict_check': {
-        const rec = state.intakeRecords.find(r => r.inquiryId === params.inquiryId);
-        if (!rec) throw Object.assign(new Error('intake-not-found'), { code: 'intake-not-found' });
-        const header = extractConflictHeader(rec);
-        const check = runLocalConflictCheck(header, state.conflictLedger, { checkedAt: nowIso });
-        const confirmed = Boolean(params.confirmClear === true && check.result === 'clear');
-        const snapshot = structuredClone(state);
-        rec.conflictCheck = Object.freeze({
-          ...check,
-          confirmedByLawyer: confirmed,
-          confirmedAt: confirmed ? nowIso : null,
+        return runWrite(async () => {
+          const candidate = structuredClone(state);
+          const rec = candidate.intakeRecords.find(r => r.inquiryId === params.inquiryId);
+          if (!rec) throw Object.assign(new Error('intake-not-found'), { code: 'intake-not-found' });
+          const header = extractConflictHeader(rec);
+          const check = runLocalConflictCheck(header, candidate.conflictLedger, { checkedAt: nowIso });
+          const confirmed = Boolean(params.confirmClear === true && check.result === 'clear');
+          rec.conflictCheck = Object.freeze({
+            ...check,
+            confirmedByLawyer: confirmed,
+            confirmedAt: confirmed ? nowIso : null,
+          });
+          auditOn(candidate, actor, 'intake.conflict_check', check.result, `Conflict check ${check.result} (confirmed=${confirmed})`, {
+            inquiryId: rec.inquiryId,
+            result: check.result,
+            matchCount: check.matches.length,
+            receiptDigest: check.receiptDigest,
+          });
+          await commitCandidate(candidate);
+          return {
+            inquiryId: rec.inquiryId,
+            conflictHeader: header,
+            conflictCheck: rec.conflictCheck,
+            revealGate: canRevealInquiryBody(rec),
+          };
         });
-        audit(actor, 'intake.conflict_check', check.result, `Conflict check ${check.result} (confirmed=${confirmed})`, {
-          inquiryId: rec.inquiryId,
-          result: check.result,
-          matchCount: check.matches.length,
-          receiptDigest: check.receiptDigest,
-        });
-        await commitOrRollback(snapshot);
-        return {
-          inquiryId: rec.inquiryId,
-          conflictHeader: header,
-          conflictCheck: rec.conflictCheck,
-          revealGate: canRevealInquiryBody(rec),
-        };
       }
 
       case 'intake.decide': {
         if (params.action === 'forward_to_firm' || params.forwardToFirmId) {
-          const snapshot = structuredClone(state);
-          audit(actor, 'intake.decide', 'rejected', 'Firm-to-firm forwarding is prohibited (O8)');
-          await commitOrRollback(snapshot, { throwOnFailure: false });
+          await runWrite(async () => {
+            const candidate = structuredClone(state);
+            auditOn(candidate, actor, 'intake.decide', 'rejected', 'Firm-to-firm forwarding is prohibited (O8)');
+            await commitCandidate(candidate, { throwOnFailure: false });
+          });
           throw Object.assign(new Error('o8.firm_to_firm_forwarding_prohibited'), { code: 'o8.firm_to_firm_forwarding_prohibited' });
         }
 
-        const rec = state.intakeRecords.find(r => r.inquiryId === params.inquiryId);
-        if (!rec) throw Object.assign(new Error('intake-not-found'), { code: 'intake-not-found' });
+        const existingRec = state.intakeRecords.find(r => r.inquiryId === params.inquiryId);
+        if (!existingRec) throw Object.assign(new Error('intake-not-found'), { code: 'intake-not-found' });
 
         // AWAI-3235 HARD gate: block body reveal/decrypt or acceptance if conflict check is not cleared & confirmed
         const action = params.action || 'reveal';
         if (action === 'decline_conflict') {
-          const snapshot = structuredClone(state);
-          rec.decision = { status: 'declined_conflict', decidedAt: nowIso, note: 'Declined due to conflict check without viewing inquiry body.' };
-          audit(actor, 'intake.decide', 'declined_conflict', 'Declined inquiry at conflict gate without decrypting body', {
-            inquiryId: rec.inquiryId,
+          return runWrite(async () => {
+            const candidate = structuredClone(state);
+            const rec = candidate.intakeRecords.find(r => r.inquiryId === params.inquiryId);
+            if (!rec) throw Object.assign(new Error('intake-not-found'), { code: 'intake-not-found' });
+            rec.decision = { status: 'declined_conflict', decidedAt: nowIso, note: 'Declined due to conflict check without viewing inquiry body.' };
+            auditOn(candidate, actor, 'intake.decide', 'declined_conflict', 'Declined inquiry at conflict gate without decrypting body', {
+              inquiryId: rec.inquiryId,
+            });
+            await commitCandidate(candidate);
+            return { inquiryId: rec.inquiryId, revealed: false, decision: rec.decision };
           });
-          await commitOrRollback(snapshot);
-          return { inquiryId: rec.inquiryId, revealed: false, decision: rec.decision };
         }
 
-        const gate = canRevealInquiryBody(rec);
+        const gate = canRevealInquiryBody(existingRec);
         if (!gate.allowed) {
-          const snapshot = structuredClone(state);
-          audit(actor, 'intake.decide', 'blocked', `Blocked by conflict-check HARD gate: ${gate.reason}`, {
-            inquiryId: rec.inquiryId,
+          await runWrite(async () => {
+            const candidate = structuredClone(state);
+            auditOn(candidate, actor, 'intake.decide', 'blocked', `Blocked by conflict-check HARD gate: ${gate.reason}`, {
+              inquiryId: existingRec.inquiryId,
+            });
+            await commitCandidate(candidate, { throwOnFailure: false });
           });
-          await commitOrRollback(snapshot, { throwOnFailure: false });
           throw Object.assign(new Error(gate.reason), { code: gate.reason, hardGate: true });
         }
 
         if (action === 'reveal') {
           const privKey = params.recipientPrivateKeyJwk || (typeof getPrivateKeyJwk === 'function' ? await getPrivateKeyJwk() : null);
           if (!privKey) throw Object.assign(new Error('lawyer-private-key-unavailable'), { code: 'lawyer-private-key-unavailable' });
-          const decrypted = await decryptEnvelope({ envelope: rec.envelope, recipientPrivateKeyJwk: privKey });
-          const snapshot = structuredClone(state);
-          audit(actor, 'intake.decide', 'revealed', 'Decrypted inquiry body on device after confirmed clear conflict check', {
-            inquiryId: rec.inquiryId,
-            receiptDigest: rec.conflictCheck.receiptDigest,
+          const decrypted = await decryptEnvelope({ envelope: existingRec.envelope, recipientPrivateKeyJwk: privKey });
+          return runWrite(async () => {
+            const candidate = structuredClone(state);
+            const rec = candidate.intakeRecords.find(r => r.inquiryId === params.inquiryId);
+            if (!rec) throw Object.assign(new Error('intake-not-found'), { code: 'intake-not-found' });
+            auditOn(candidate, actor, 'intake.decide', 'revealed', 'Decrypted inquiry body on device after confirmed clear conflict check', {
+              inquiryId: rec.inquiryId,
+              receiptDigest: rec.conflictCheck.receiptDigest,
+            });
+            await commitCandidate(candidate);
+            return { inquiryId: rec.inquiryId, revealed: true, plaintext: decrypted, conflictCheck: rec.conflictCheck };
           });
-          await commitOrRollback(snapshot);
-          return { inquiryId: rec.inquiryId, revealed: true, plaintext: decrypted, conflictCheck: rec.conflictCheck };
         }
 
         if (action === 'accept' || action === 'decline') {
           const replyText = typeof params.replyText === 'string' ? params.replyText.trim() : '';
-          const snapshot = structuredClone(state);
-          rec.decision = {
-            status: action,
-            decidedAt: nowIso,
-            replyNote: replyText,
-            localPreviewOnly: true,
-            serverRelayUsed: false,
-          };
-          rec.replySentAt = nowIso;
-          audit(actor, 'intake.decide', action, `Recorded local intake decision (${action}; zero server relay)`, {
-            inquiryId: rec.inquiryId,
-            serverRelayUsed: false,
+          return runWrite(async () => {
+            const candidate = structuredClone(state);
+            const rec = candidate.intakeRecords.find(r => r.inquiryId === params.inquiryId);
+            if (!rec) throw Object.assign(new Error('intake-not-found'), { code: 'intake-not-found' });
+            rec.decision = {
+              status: action,
+              decidedAt: nowIso,
+              replyNote: replyText,
+              localPreviewOnly: true,
+              serverRelayUsed: false,
+            };
+            rec.replySentAt = nowIso;
+            auditOn(candidate, actor, 'intake.decide', action, `Recorded local intake decision (${action}; zero server relay)`, {
+              inquiryId: rec.inquiryId,
+              serverRelayUsed: false,
+            });
+            await commitCandidate(candidate);
+            return { inquiryId: rec.inquiryId, decision: rec.decision, serverRelayUsed: false };
           });
-          await commitOrRollback(snapshot);
-          return { inquiryId: rec.inquiryId, decision: rec.decision, serverRelayUsed: false };
         }
 
         throw Object.assign(new Error('invalid-intake-action'), { code: 'invalid-intake-action' });

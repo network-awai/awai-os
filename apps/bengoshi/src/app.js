@@ -245,6 +245,13 @@ function clearStorageError(localAlertEl = null) {
   }
 }
 
+let storeWriteQueue = Promise.resolve();
+function enqueueStoreWrite(fn) {
+  const next = storeWriteQueue.then(fn, fn);
+  storeWriteQueue = next.then(() => {}, () => {});
+  return next;
+}
+
 function buildEngine() {
   const descriptor = runtimeDescriptor();
   const problems = clientRuntimeProblems(descriptor, [...REQUESTED_CAPABILITIES], location.origin);
@@ -255,18 +262,21 @@ function buildEngine() {
     state,
     getPrivateKeyJwk: async () => sessionLawyerKeyPair?.privateKeyJwk || null,
     onStateChange: persistState,
+    enqueueWrite: enqueueStoreWrite,
   });
 }
 
-export async function persistState() {
+export async function persistState(candidateState = state) {
   const result = await persistLocalState({
     host,
     revision,
-    state,
+    state: candidateState,
   });
   if (result.ok) {
-    revision = result.revision;
-    lastCommittedState = structuredClone(state);
+    if (result.revision > revision) {
+      revision = result.revision;
+      lastCommittedState = structuredClone(candidateState);
+    }
     return result;
   }
   if (result.code === 'state-conflict' && typeof host.read === 'function') {
@@ -276,9 +286,11 @@ export async function persistState() {
         const previousRevision = revision;
         const latestState = normalizeLocalState(latest.data);
         const changedSections = diffStateSections(lastCommittedState, latestState);
-        revision = latest.revision;
-        lastCommittedState = structuredClone(latestState);
-        replaceInMemoryState(latestState);
+        if (latest.revision >= revision) {
+          revision = latest.revision;
+          lastCommittedState = structuredClone(latestState);
+          replaceInMemoryState(latestState);
+        }
         return {
           ...result,
           refreshed: true,
@@ -297,18 +309,19 @@ export async function persistState() {
 }
 
 async function mutateAndPersist(mutator) {
-  const snapshot = structuredClone(state);
-  mutator(state);
-  const res = await persistState();
-  if (!res.ok) {
+  return enqueueStoreWrite(async () => {
+    const candidate = structuredClone(state);
+    mutator(candidate);
+    const res = await persistState(candidate);
+    if (res.ok) {
+      replaceInMemoryState(candidate);
+      return res;
+    }
     if (res.refreshedState && typeof res.refreshedState === 'object') {
       replaceInMemoryState(res.refreshedState);
-    } else {
-      replaceInMemoryState(snapshot);
     }
     return res;
-  }
-  return res;
+  });
 }
 
 async function loadState() {
@@ -907,6 +920,19 @@ async function renderContactCompose() {
   evArea.readOnly = true;
   evArea.value = JSON.stringify(draft.evidenceManifest || [], null, 2);
 
+  function readDraftRawValues() {
+    return {
+      category: catSel.value || 'other',
+      clientName: nameIn.value,
+      clientContact: contactIn.value,
+      counterpartyName: counterIn.value,
+      summary: sumArea.value,
+      wish: wishArea.value,
+      deadline: deadIn.value,
+      documents: docsArea.value,
+    };
+  }
+
   function readDraftFormValues() {
     return {
       category: catSel.value || 'other',
@@ -917,6 +943,27 @@ async function renderContactCompose() {
       wish: wishArea.value,
       deadline: deadIn.value,
       documents: docsArea.value.split('\n').map(l => l.trim()).filter(Boolean),
+    };
+  }
+
+  function draftToFormValues(targetDraft) {
+    return {
+      category: typeof targetDraft?.category === 'string' && targetDraft.category ? targetDraft.category : 'other',
+      clientName: typeof targetDraft?.clientName === 'string' ? targetDraft.clientName : '',
+      clientContact: typeof targetDraft?.clientContact === 'string' ? targetDraft.clientContact : '',
+      counterpartyName: typeof targetDraft?.counterpartyName === 'string' ? targetDraft.counterpartyName : '',
+      summary: typeof targetDraft?.summary === 'string' ? targetDraft.summary : '',
+      wish: typeof targetDraft?.wish === 'string' ? targetDraft.wish : '',
+      deadline: typeof targetDraft?.deadline === 'string' ? targetDraft.deadline : '',
+      documents: Array.isArray(targetDraft?.documents) ? [...targetDraft.documents] : [],
+    };
+  }
+
+  function captureDraftSubmission() {
+    return {
+      raw: readDraftRawValues(),
+      values: readDraftFormValues(),
+      lawyerId: draft.lawyerId,
     };
   }
 
@@ -1002,16 +1049,7 @@ async function renderContactCompose() {
     }
     draft = nextDraft;
     baseDraft = nextBase;
-    baseFormValues = {
-      category: typeof nextBase.category === 'string' && nextBase.category ? nextBase.category : 'other',
-      clientName: typeof nextBase.clientName === 'string' ? nextBase.clientName : '',
-      clientContact: typeof nextBase.clientContact === 'string' ? nextBase.clientContact : '',
-      counterpartyName: typeof nextBase.counterpartyName === 'string' ? nextBase.counterpartyName : '',
-      summary: typeof nextBase.summary === 'string' ? nextBase.summary : '',
-      wish: typeof nextBase.wish === 'string' ? nextBase.wish : '',
-      deadline: typeof nextBase.deadline === 'string' ? nextBase.deadline : '',
-      documents: Array.isArray(nextBase.documents) ? [...nextBase.documents] : [],
-    };
+    baseFormValues = draftToFormValues(nextBase);
   }
 
   function buildDraftCandidate() {
@@ -1040,14 +1078,45 @@ async function renderContactCompose() {
     return candidate;
   }
 
-  function resetDraftBaselineAfterSave(savedDraft) {
-    if (!savedDraft || typeof savedDraft !== 'object') return;
-    dirtyFields.clear();
-    lawyerIdDirty = false;
-    draft = structuredClone(savedDraft);
+  function resetDraftBaselineAfterSave(savedDraft, submitted = null) {
+    if (!savedDraft || typeof savedDraft !== 'object') return false;
+    const liveRaw = readDraftRawValues();
+    const liveVals = readDraftFormValues();
+    const inFlightFields = new Set();
+
+    if (submitted) {
+      for (const key of EDITABLE_DRAFT_FIELDS) {
+        if (
+          liveRaw[key] !== submitted.raw[key] ||
+          !valuesEqual(liveVals[key], submitted.values[key])
+        ) {
+          inFlightFields.add(key);
+        }
+      }
+    }
+
     baseDraft = structuredClone(savedDraft);
-    applyDraftToForm(baseDraft);
-    baseFormValues = readDraftFormValues();
+    baseFormValues = draftToFormValues(baseDraft);
+    applyDraftToForm(baseDraft, inFlightFields);
+
+    dirtyFields.clear();
+    const nextDraft = structuredClone(savedDraft);
+    for (const key of inFlightFields) {
+      nextDraft[key] = structuredClone(liveVals[key]);
+      if (!valuesEqual(liveVals[key], baseFormValues[key])) {
+        dirtyFields.add(key);
+      }
+    }
+
+    if (submitted && draft.lawyerId !== submitted.lawyerId) {
+      nextDraft.lawyerId = draft.lawyerId;
+      lawyerIdDirty = draft.lawyerId !== savedDraft.lawyerId;
+    } else {
+      lawyerIdDirty = false;
+    }
+    draft = nextDraft;
+
+    return dirtyFields.size > 0 || lawyerIdDirty;
   }
 
   form.append(
@@ -1067,9 +1136,10 @@ async function renderContactCompose() {
   const saveBtn = el('button', t('compose.saveDraft'), 'tonal');
   saveBtn.type = 'button';
   saveBtn.addEventListener('click', async () => {
+    const submitted = captureDraftSubmission();
     try {
       const res = await engine.execute('inquiry.draft', { draft: buildDraftCandidate() }, { actor: 'ui' });
-      resetDraftBaselineAfterSave(res.draft);
+      resetDraftBaselineAfterSave(res.draft, submitted);
       clearStorageError(storageAlert);
       say(t('compose.draftSaved'));
     } catch (err) {
@@ -1116,10 +1186,15 @@ async function renderContactCompose() {
   form.append(storageAlert, actions);
 
   bindForm(form, async () => {
+    const submitted = captureDraftSubmission();
     try {
       const res = await engine.execute('inquiry.draft', { draft: buildDraftCandidate() }, { actor: 'ui' });
-      resetDraftBaselineAfterSave(res.draft);
+      const hasInFlightEdits = resetDraftBaselineAfterSave(res.draft, submitted);
       clearStorageError(storageAlert);
+      if (hasInFlightEdits) {
+        say(t('compose.draftSaved'));
+        return;
+      }
       if (res.problems.length) {
         say('入力不足: ' + res.problems.join(', '));
         return;
@@ -1365,6 +1440,17 @@ function renderLawyerOnboarding() {
   fields.bar_association.placeholder = '東京弁護士会';
   fields.registration_number.placeholder = '990101';
 
+  function readOnboardingRawValues() {
+    return {
+      name: fields.name.value,
+      name_kana: fields.name_kana.value,
+      bar_association: fields.bar_association.value,
+      registration_number: fields.registration_number.value,
+      office_name: fields.office_name.value,
+      phone: fields.phone.value,
+    };
+  }
+
   function readOnboardingFormValues() {
     return {
       name: fields.name.value.trim(),
@@ -1376,6 +1462,18 @@ function renderLawyerOnboarding() {
     };
   }
 
+  function onboardingToFormValues(targetProfile) {
+    return {
+      name: typeof targetProfile?.name === 'string' ? targetProfile.name.trim() : '',
+      name_kana: typeof targetProfile?.name_kana === 'string' ? targetProfile.name_kana.trim() : '',
+      bar_association: typeof targetProfile?.bar_association === 'string' ? targetProfile.bar_association.trim() : '',
+      registration_number: typeof targetProfile?.registration_number === 'string' ? targetProfile.registration_number.trim() : '',
+      office_name: typeof targetProfile?.office_name === 'string' ? targetProfile.office_name.trim() : '',
+      phone: typeof targetProfile?.phone === 'string' ? targetProfile.phone.trim() : '',
+    };
+  }
+
+  let baseOnboarding = existingProfile ? structuredClone(existingProfile) : null;
   let baseFormValues = readOnboardingFormValues();
 
   function getModifiedOnboardingFields(formVals = readOnboardingFormValues()) {
@@ -1403,14 +1501,45 @@ function renderLawyerOnboarding() {
     const modified = getModifiedOnboardingFields(formVals);
     for (const key of modified) dirtyFields.add(key);
     applyOnboardingToForm(latest, modified);
-    baseFormValues = {
-      name: typeof latest.name === 'string' ? latest.name.trim() : '',
-      name_kana: typeof latest.name_kana === 'string' ? latest.name_kana.trim() : '',
-      bar_association: typeof latest.bar_association === 'string' ? latest.bar_association.trim() : '',
-      registration_number: typeof latest.registration_number === 'string' ? latest.registration_number.trim() : '',
-      office_name: typeof latest.office_name === 'string' ? latest.office_name.trim() : '',
-      phone: typeof latest.phone === 'string' ? latest.phone.trim() : '',
-    };
+    baseOnboarding = structuredClone(latest);
+    baseFormValues = onboardingToFormValues(baseOnboarding);
+  }
+
+  function resetOnboardingBaselineAfterSave(savedProfile, submitted = null) {
+    if (!savedProfile || typeof savedProfile !== 'object') return false;
+    const liveRaw = readOnboardingRawValues();
+    const liveVals = readOnboardingFormValues();
+    const inFlightFields = new Set();
+
+    if (submitted) {
+      for (const key of EDITABLE_ONBOARDING_FIELDS) {
+        if (
+          liveRaw[key] !== submitted.raw[key] ||
+          !valuesEqual(liveVals[key], submitted.values[key])
+        ) {
+          inFlightFields.add(key);
+        }
+      }
+    }
+
+    baseOnboarding = structuredClone(savedProfile);
+    baseFormValues = onboardingToFormValues(baseOnboarding);
+    applyOnboardingToForm(baseOnboarding, inFlightFields);
+
+    dirtyFields.clear();
+    for (const key of inFlightFields) {
+      if (!valuesEqual(liveVals[key], baseFormValues[key])) {
+        dirtyFields.add(key);
+      }
+    }
+
+    if (submitted && sessionLawyerKeyPair !== submitted.keyPair) {
+      keyPairDirty = true;
+    } else {
+      keyPairDirty = false;
+    }
+
+    return dirtyFields.size > 0 || keyPairDirty || inFlightFields.size > 0;
   }
 
   for (const key of EDITABLE_ONBOARDING_FIELDS) {
@@ -1472,6 +1601,7 @@ function renderLawyerOnboarding() {
   form.append(keyInfo, storageAlert, actions, art11Box, nichibenrenLink());
 
   bindForm(form, async () => {
+    const submittedRaw = readOnboardingRawValues();
     const formVals = readOnboardingFormValues();
     const modified = getModifiedOnboardingFields(formVals);
     const latest = state.lawyerProfile && typeof state.lawyerProfile === 'object'
@@ -1563,13 +1693,19 @@ function renderLawyerOnboarding() {
         e2ee_key_fingerprint: sessionLawyerKeyPair.keyFingerprint,
       };
     }
+    const submittedKeyPair = sessionLawyerKeyPair;
     try {
-      await engine.execute('lawyer.profile.update', { profile, action: 'onboarding_preview' }, { actor: 'ui' });
-      dirtyFields.clear();
-      keyPairDirty = false;
+      const res = await engine.execute('lawyer.profile.update', { profile, action: 'onboarding_preview' }, { actor: 'ui' });
+      const hasInFlightEdits = resetOnboardingBaselineAfterSave(res.profile || profile, {
+        raw: submittedRaw,
+        values: formVals,
+        keyPair: submittedKeyPair,
+      });
       clearStorageError(storageAlert);
       say(t('onboarding.submitted'));
-      location.hash = '#/lawyer/profile';
+      if (!hasInFlightEdits) {
+        location.hash = '#/lawyer/profile';
+      }
     } catch (err) {
       if (isStoragePersistError(err)) {
         const res = err.persistResult || err;
@@ -1613,6 +1749,17 @@ function renderLawyerProfileEdit() {
   const careerIn = Object.assign(el('textarea'), { value: (current.career_facts || []).join('\n') });
   const feeIn = Object.assign(el('input'), { value: current.initial_consultation_fee_note || '' });
 
+  function readProfileRawValues() {
+    return {
+      name: nameIn.value,
+      bar_association: barIn.value,
+      office_name: officeIn.value,
+      practice_areas: areasIn.value,
+      career_facts: careerIn.value,
+      initial_consultation_fee_note: feeIn.value,
+    };
+  }
+
   function readProfileFormValues() {
     return {
       name: nameIn.value.trim(),
@@ -1624,6 +1771,25 @@ function renderLawyerProfileEdit() {
     };
   }
 
+  function profileToFormValues(targetProfile) {
+    return {
+      name: typeof targetProfile?.name === 'string' ? targetProfile.name.trim() : '',
+      bar_association: typeof targetProfile?.bar_association === 'string' ? targetProfile.bar_association.trim() : '',
+      office_name: typeof targetProfile?.office_name === 'string' ? targetProfile.office_name.trim() : '',
+      practice_areas: Array.isArray(targetProfile?.practice_areas) ? targetProfile.practice_areas.map(x => String(x).trim()).filter(Boolean) : [],
+      career_facts: Array.isArray(targetProfile?.career_facts) ? targetProfile.career_facts.map(x => String(x).trim()).filter(Boolean) : [],
+      initial_consultation_fee_note: typeof targetProfile?.initial_consultation_fee_note === 'string' ? targetProfile.initial_consultation_fee_note.trim() : '',
+    };
+  }
+
+  function captureProfileSubmission() {
+    return {
+      raw: readProfileRawValues(),
+      values: readProfileFormValues(),
+    };
+  }
+
+  let baseProfile = structuredClone(current);
   let baseFormValues = readProfileFormValues();
 
   function getModifiedProfileFields(formVals = readProfileFormValues()) {
@@ -1654,14 +1820,8 @@ function renderLawyerProfileEdit() {
     const modified = getModifiedProfileFields(formVals);
     for (const key of modified) dirtyFields.add(key);
     applyProfileToForm(latest, modified);
-    baseFormValues = {
-      name: typeof latest.name === 'string' ? latest.name.trim() : '',
-      bar_association: typeof latest.bar_association === 'string' ? latest.bar_association.trim() : '',
-      office_name: typeof latest.office_name === 'string' ? latest.office_name.trim() : '',
-      practice_areas: Array.isArray(latest.practice_areas) ? latest.practice_areas.map(x => String(x).trim()).filter(Boolean) : [],
-      career_facts: Array.isArray(latest.career_facts) ? latest.career_facts.map(x => String(x).trim()).filter(Boolean) : [],
-      initial_consultation_fee_note: typeof latest.initial_consultation_fee_note === 'string' ? latest.initial_consultation_fee_note.trim() : '',
-    };
+    baseProfile = structuredClone(latest);
+    baseFormValues = profileToFormValues(baseProfile);
     validateLive();
   }
 
@@ -1682,12 +1842,35 @@ function renderLawyerProfileEdit() {
     return candidate;
   }
 
-  function resetProfileBaselineAfterSave(savedProfile) {
-    if (!savedProfile || typeof savedProfile !== 'object') return;
+  function resetProfileBaselineAfterSave(savedProfile, submitted = null) {
+    if (!savedProfile || typeof savedProfile !== 'object') return false;
+    const liveRaw = readProfileRawValues();
+    const liveVals = readProfileFormValues();
+    const inFlightFields = new Set();
+
+    if (submitted) {
+      for (const key of EDITABLE_PROFILE_FIELDS) {
+        if (
+          liveRaw[key] !== submitted.raw[key] ||
+          !valuesEqual(liveVals[key], submitted.values[key])
+        ) {
+          inFlightFields.add(key);
+        }
+      }
+    }
+
+    baseProfile = structuredClone(savedProfile);
+    baseFormValues = profileToFormValues(baseProfile);
+    applyProfileToForm(baseProfile, inFlightFields);
+
     dirtyFields.clear();
-    applyProfileToForm(savedProfile);
-    baseFormValues = readProfileFormValues();
+    for (const key of inFlightFields) {
+      if (!valuesEqual(liveVals[key], baseFormValues[key])) {
+        dirtyFields.add(key);
+      }
+    }
     validateLive();
+    return dirtyFields.size > 0;
   }
 
   const saveBtn = el('button', t('profileEdit.save'));
@@ -1763,9 +1946,10 @@ function renderLawyerProfileEdit() {
   );
 
   bindForm(form, async () => {
+    const submitted = captureProfileSubmission();
     try {
       const res = await engine.execute('lawyer.profile.update', { profile: buildCandidate() }, { actor: 'ui' });
-      resetProfileBaselineAfterSave(res.profile);
+      resetProfileBaselineAfterSave(res.profile, submitted);
       clearStorageError(storageAlert);
       say(t('profileEdit.saved'));
     } catch (e) {
