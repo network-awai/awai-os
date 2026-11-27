@@ -1,11 +1,11 @@
 # Soudan / Bengoshi Distribution & Onboarding Pipeline (2026-11-27, Kanji #218)
 
-Pre-GO preparation runbook for two completely-free Itonami apps:
+Pre-GO preparation runbook for two completely-free Itonami apps (synced with AwaiSpec `msg_5a9758515318` and Dev #220 `msg_545421bb0e46`):
 
-| App | Package ID | Static Host | Bundled Asset | Staged Online File | APK Budget |
-| --- | --- | --- | --- | --- | --- |
-| Soudan | `network.itonami.soudan` | `https://soudan.itonami.app` | `packages/soudan.apk` | `online-soudan.apk` | 64 MiB |
-| Bengoshi | `network.itonami.bengoshi` | `https://bengoshi.itonami.app` | `packages/bengoshi.apk` | `online-bengoshi.apk` | 64 MiB |
+| App | Package ID | Static Host | Bundled Asset | Staged Online File | APK Budget | Current Static Baseline |
+| --- | --- | --- | --- | --- | --- | --- |
+| Soudan | `network.itonami.soudan` | `https://soudan.itonami.app` | `packages/soudan.apk` | `online-soudan.apk` | 64 MiB | [apps/soudan](../../apps/soudan) (`trusted-page-v1`, `kotoba` `889239dc`) |
+| Bengoshi | `network.itonami.bengoshi` | `https://bengoshi.itonami.app` | `packages/bengoshi.apk` | `online-bengoshi.apk` | 64 MiB | No static Web artifact yet |
 
 References:
 - [store/README.md](../../store/README.md) — publisher single-source rule (AWAI-3882), signing key custody, Store-then-Play order, `rel-YYYYMMDD-rNNN/release.json` record
@@ -19,24 +19,30 @@ References:
 
 ## 1. Static Publication (`soudan.itonami.app`, `bengoshi.itonami.app`)
 
-Both hosts use the existing `yataverse-bytes` Worker name plane on Cloudflare account `cloud-kotoba` (route `*.itonami.app/*`). No new Worker, route, or request-time handler is added.
+Both hosts use the existing `yataverse-bytes` Worker name plane on Cloudflare account `cloud-kotoba` (route `*.itonami.app/*`, B2 bucket prefix `yataverse-blocks/ipld/`, single CIDv1 per `_dnslink` TXT record). No new Worker, route, or request-time handler is added.
 
-### Static-site constraints
-- **Mandatory HTML `<meta>` headers**: `names.mjs` sets no `Content-Security-Policy` HTTP response header. Every HTML document must embed `<meta http-equiv="Content-Security-Policy" ...>` and `<meta name="referrer" content="no-referrer">`.
-- **Size ceiling**: 40-block / ~10 MiB per-file cap enforced by the name plane.
-- **No SPA fallback**: every route must resolve to a real static file in the packed UnixFS directory (unknown paths return `404`).
-- **No app-origin processing**: static content only — no request-time server processing, proxy, or server-held business state on `*.itonami.app`.
+### Static HTTP headers, CSP & inference posture
+- **Current `yataverse-bytes` (`worker/src/names.mjs`) gap**: `names.mjs` emits **none** of HTTP `Content-Security-Policy`, `Referrer-Policy`, `Strict-Transport-Security`, or `Permissions-Policy`.
+- **Two-layer header requirement before public GO**:
+  1. **HTML `<meta>` (mandatory in every static HTML file)**: embed `<meta http-equiv="Content-Security-Policy" ...>` and `<meta name="referrer" content="no-referrer">`.
+  2. **Dev-side edge response headers (mandatory before public GO)**: add HTTP `Content-Security-Policy`, `Referrer-Policy`, `Strict-Transport-Security`, and `Permissions-Policy` at the edge before general public release.
+- **Inference posture**: keep external inference disabled (`connect-src 'none'`) until `murakumo.cloud` non-retention confirmation is completed.
+- **Static artifact baseline**: `awai-os/apps/soudan` currently exists as static-buildable `trusted-page-v1` (`kotoba` `889239dc`); `bengoshi` has no static Web artifact yet.
+- **Name-plane limits**:
+  - 40-block / ~10 MiB per-file cap.
+  - No SPA fallback (every route must map to an actual file in the packed UnixFS directory; unknown paths return `404`).
+  - No app-origin processing (static files only; no server-side request processing, proxy, or server-held business state).
 
 ### Publication steps (per host, after Legal GO + owner DNS approval)
-1. Pack the built static directory locally and record the printed UnixFS root CID:
+1. Pack the built static directory locally and record the printed UnixFS CIDv1 root:
    ```sh
    yataverse site-pack <site-dir> -o <car-dir>
    ```
-2. Upload the CAR blocks and confirm `verified: true` and `receiptVerified: true`:
+2. Upload the CAR blocks (stored under B2 `yataverse-blocks/ipld/`) and confirm `verified: true` and `receiptVerified: true`:
    ```sh
    yataverse car-put <car-dir>/site-001.car
    ```
-3. In the Cloudflare dashboard (`cloud-kotoba`), create/update **exactly one** DNS-only TXT record (TTL Auto):
+3. In the Cloudflare dashboard (`cloud-kotoba`), create/update **exactly one** DNS-only TXT record (TTL Auto, single CIDv1):
    - `_dnslink.soudan.itonami.app` = `dnslink=/ipfs/<root>`
    - `_dnslink.bengoshi.itonami.app` = `dnslink=/ipfs/<root>`
    (Local `wrangler` login cannot edit DNS.)
@@ -50,21 +56,43 @@ Both hosts use the existing `yataverse-bytes` Worker name plane on Cloudflare ac
 
 ---
 
-## 2. Android Itonami Store & Awai OS Onboarding
+## 2. AwaiSpec `restricted-wasm-v1` & MCP/ACP Boundary Requirements
 
-Awai OS distributes apps through the Itonami Store catalog (AWAI-4094), so Android Itonami Store onboarding covers both Android devices and Awai OS.
+All new/public builds of `Soudan` and `Bengoshi` in their owning app repositories must satisfy:
+
+- **Runtime & consent pin**: `restricted-wasm-v1` pinning `kotoba-lang/kotoba` `main` (`d6ff50e6`+) `kotoba-client-runtime.js` and `kotoba-client-consent.css` via `vendor/PINS.json` — no custom validator or custom consent modal.
+- **Canonical descriptor & consent**: `app-descriptor.json` in canonical `{origin, routes: [...]}` form with `consent: "each-operation"` and `special-care` disclosure confirmed with `Legal`.
+- **Form submission discipline**: use `bindForm` (`type="button" data-submit`); never use native `submit` or `requestSubmit()`.
+- **Repository & release hygiene**:
+  - `blueprint.edn` (single classification key, SPDX license identifier)
+  - `NOTICE`
+  - `dist/release.json` (`awai.app.artifact.v1`)
+  - `check-public.mjs`-equivalent public-hygiene check passing cleanly
+- **Web parity table**: explicitly document Web fallbacks wherever Android platform features such as the Android share sheet are unavailable (e.g. `device.save`).
+- **Protocol boundary**:
+  - Product UI uses **MCP + MCP Apps (SEP-1865) + Agent Plugins v1.0.0 + Agent Skills** (`AWAI-4143` formal conformance is gated on the spec PR + `catalog.list` POC).
+  - **IDE ACP (`AWAI-4003` #07)** is restricted strictly to IDE <-> coding agent interactions and is **never** used in product UI.
+
+---
+
+## 3. Android Itonami Store & Awai OS Onboarding
+
+Awai OS distributes apps through the Itonami Store catalog (`AWAI-4094` / `awai-os#523`), so Android Itonami Store onboarding covers both Android devices and Awai OS.
 
 - **Catalog registration**:
-  - `network.itonami.soudan` and `network.itonami.bengoshi` are explicitly registered in [Catalog.java](../../android/shared/src/network/awai/platform/Catalog.java) (`assetFor`, `onlineFileFor`, `maxApkBytes = 64 * 1024 * 1024`) and checked by [SoudanBengoshiCatalogCheck.java](../../android/test/SoudanBengoshiCatalogCheck.java).
+  - `network.itonami.soudan` and `network.itonami.bengoshi` are explicitly registered in [Catalog.java](../../android/shared/src/network/awai/platform/Catalog.java) (`assetFor`, `onlineFileFor`, `maxApkBytes = 64 * 1024 * 1024`) and verified by [SoudanBengoshiCatalogCheck.java](../../android/test/SoudanBengoshiCatalogCheck.java).
   - `android/build.py:store_query_packages()` automatically includes both package IDs in the Store `<queries>` manifest (verified by [store-queries.py](../../android/tests/store-queries.py)) without `QUERY_ALL_PACKAGES`.
-- **APK & runtime profile**:
-  - **Dual-ABI Tauri v3 APK**: `arm64-v8a` + `x86_64` (AWAI-4094), fitting the 64 MiB Store budget.
-  - **External inference boundary**: both apps call external inference endpoints, so they use `restricted-wasm-v1` + a signed `descriptor.json` with fresh per-operation consent. They are **not** offline-only local apps and must **not** be added to `android/local-apps.json` (`Catalog.LOCAL_APPS`).
-  - **Android hardening**: 16 KB page-size ELF alignment, system-bar insets (`packages/awai-system-bars`), `android:allowBackup="false"`, and `android:usesCleartextTraffic="false"`.
+  - Both apps use external inference endpoints (`restricted-wasm-v1` + signed `descriptor.json`) and must **not** be added to `android/local-apps.json` (`Catalog.LOCAL_APPS`).
+- **Exact Android / Awai OS build requirements**:
+  - **Tauri pin**: Tauri `3.0.0-alpha.6` + pinned `tauri-runtime-wry`.
+  - **SDK & ABI**: `minSdkVersion` API 33, dual-ABI (`arm64-v8a` + `x86_64`), fitting the 64 MiB Store budget.
+  - **16 KB page-size alignment**: ELF `Align 0x4000` + `zipalign -P 16`.
+  - **UI & manifest hardening**: system-bar insets (`packages/awai-system-bars`), `android:allowBackup="false"`, and `android:usesCleartextTraffic="false"`.
 - **Publisher metadata**:
   - `Awai Network LLC` is defined once in [series-apps.json](../../store/catalog-source/series-apps.json) (`publisher` field, AWAI-3882) and referenced by the catalog builder and release record; never duplicate the literal per app entry.
-- **Release record (`store/distribution/rel-YYYYMMDD-rNNN/release.json`)**:
-  - Every production release adds a monotonic `store/distribution/rel-YYYYMMDD-rNNN/` directory (existing `dev-*` directories are immutable history) containing the signed catalog envelope, APK bytes, and one `release.json` recording `publisher`, `app.{name, versionName, versionCode}`, `apkSha256`, `signerPublicKeySha256` (public fingerprint only), and `commitSha`. See [store/README.md](../../store/README.md).
+- **Debug vs production separation & release record**:
+  - Maintain strict separation between debug-signed development builds (`store/distribution/dev-*`, immutable history) and production releases (`store/distribution/rel-YYYYMMDD-rNNN/`).
+  - Each production release directory holds the signed catalog envelope, APK bytes, and one `release.json` recording `publisher`, `app.{name, versionName, versionCode}`, `apkSha256`, `signerPublicKeySha256` (public fingerprint only), and `commitSha`. See [store/README.md](../../store/README.md).
 - **Distribution order**:
   - **Store first, then Play**: publish and verify on the Itonami Store catalog and `store.itonami.app` before submitting to Google Play.
 - **Signing key custody & rotation**:
@@ -73,7 +101,7 @@ Awai OS distributes apps through the Itonami Store catalog (AWAI-4094), so Andro
 
 ---
 
-## 3. `store.itonami.app` Rebuild & Republish Procedure
+## 4. `store.itonami.app` Rebuild & Republish Procedure
 
 After a new signed catalog and `store/latest/pointer-envelope.json` land on `main`:
 
@@ -96,11 +124,21 @@ yataverse car-put <car-dir>/site-001.car
 
 ---
 
-## 4. Explicit Pre-GO Gates
+## 5. Explicit Pre-GO Gates
 
-Public launch and production merge remain **blocked** until all four gates are satisfied:
+Public launch and production merge remain **blocked** until all gates below are satisfied:
 
-1. **Legal GO**: mandatory legal disclosures, disclaimers, and finding-9 external-operation consent disclosures reviewed and approved by Legal for both `Soudan` and `Bengoshi`.
-2. **Owner DNS approval**: explicit owner approval before creating or editing `_dnslink.soudan.itonami.app`, `_dnslink.bengoshi.itonami.app`, or `_dnslink.store.itonami.app` in Cloudflare (`cloud-kotoba`).
-3. **Owner signing-key approval**: owner-controlled production signing keys and the 2026-11-29 production key rotation (no keys are generated, rotated, or stored by this prep change).
-4. **Release artifacts**: signed dual-ABI (`arm64-v8a` + `x86_64`) APKs and signed `descriptor.json` artifacts produced from the owning app repositories and recorded under `store/distribution/rel-YYYYMMDD-rNNN/`.
+1. **Legal GO gates**:
+   - `kotoba-client-runtime.js` consent wording replacement completed.
+   - ADR 0001 (`AWAI-3232`) revised to the completely-free premise.
+   - Mandatory conditions from `Legal` response (`msg_ce3b129002e9`) — including `special-care` and finding-9 external-operation consent disclosures — reflected in both apps.
+   - O10 external lawyer review gate passed.
+2. **Edge security & inference gates (Dev)**:
+   - Dev-side HTTP edge security headers (`Content-Security-Policy`, `Referrer-Policy`, `Strict-Transport-Security`, `Permissions-Policy`) deployed on `*.itonami.app`.
+   - `murakumo.cloud` non-retention confirmation completed (keep `connect-src 'none'` / external inference disabled until confirmed).
+3. **Owner DNS approval**:
+   - Explicit owner approval before creating or editing `_dnslink.soudan.itonami.app`, `_dnslink.bengoshi.itonami.app`, or `_dnslink.store.itonami.app` in Cloudflare (`cloud-kotoba`).
+4. **Owner signing-key approval**:
+   - Owner-controlled production signing keys and the 2026-11-29 production key rotation (no keys are generated, rotated, or stored by this prep change).
+5. **Release artifacts**:
+   - Static Web artifacts built for both apps (including new `bengoshi` static build) plus signed dual-ABI (`arm64-v8a` + `x86_64`) Tauri `3.0.0-alpha.6` APKs, signed `app-descriptor.json`, `dist/release.json` (`awai.app.artifact.v1`), and `store/distribution/rel-YYYYMMDD-rNNN/release.json` records.
