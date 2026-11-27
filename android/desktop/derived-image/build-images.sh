@@ -16,7 +16,8 @@ check "$base/system.img" 4c95555125385e1091183d4d8a8b4bdbd8c2a83b34ab56c4a180d91
 check "$base/vendor.img" de90b3edef88f547e2eab90821764a9eee8c1f528da622284220544d6235b2ca
 
 # App name, APK file name in $apks. Placed under /system/product/app like the base's own apps.
-apps="AwaiHome:home-v15.apk AwaiStore:store-v15.apk AwaiYotei:yotei-v15.apk"
+# AWAI-4094: preinstall Home and Store only; Yotei and every other app come from the Store.
+apps="AwaiHome:home-v15.apk AwaiStore:store-v15.apk"
 for spec in $apps; do [ -f "$apks/${spec#*:}" ] || { echo "missing APK ${spec#*:}" >&2; exit 3; }; done
 
 mkdir -m 700 "$out"; work=$(mktemp -d /var/tmp/awai-derived.XXXXXX)

@@ -367,3 +367,28 @@ bash android/desktop/pc-ab-device/apply.sh <src>   # second run rc=0 (idempotent
 Claim ceiling: no build, no boot, no reproducibility claim. Inputs
 are fixed; patches are checked for applicability at the pinned
 revisions only. No VKE/billing/device action taken.
+
+## Amendment (AWAI-4094, 2026-11-25)
+
+`patches/virtio-common-awai-apps.patch` was added after the measurement round above
+(so the table's 23 do not include it). Project `device/virt/virtio-common`, pinned
+`9d5c9307434bba31d19030fcc61086efcd248997`: `git apply --check -p1` rc=0 and apply rc=0
+in a per-project `git init` scratch whose only pre-existing file is the pristine
+`device-common.mk` (sha256 `3558c598f9c3d44f610fa3c9a8d86ce249a7b5a4ac4e25977e21d3bfd546d5c7`).
+It adds `awai-apps/{Android.mk,product.mk,verify-apks.sh}` and one include line in
+`device-common.mk`. Its fail-closed guard was exercised with a stub `apksigner` and GNU
+make; no kati/Soong build ran. See `home-default-20261125.md` ("Source-build preinstall
+input and its signing guard").
+
+## Correction (AWAI-4094, 2026-11-25, same day)
+
+The paragraph above is wrong about where the patch applies. Its paths carried the
+`device/virt/virtio-common/` project prefix, but `apply.sh` runs
+`git -C <src>/device/virt/virtio-common apply`; with the repository root at the project,
+the patch looked for `device/virt/virtio-common/device-common.mk` inside it and `git apply
+--check` failed (`error: device/virt/virtio-common/device-common.mk: No such file or
+directory`, reproduced on a scratch repository whose only file is the pristine
+`device-common.mk`). The patch now uses project-relative paths (`awai-apps/…`,
+`device-common.mk`), like the other `virtio-common` patches; `git apply --check`, apply
+and `git apply --reverse --check` pass in that scratch. The scratch was not a full source
+tree, and no kati/Soong build ran.
