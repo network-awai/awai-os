@@ -1,0 +1,67 @@
+{:awai/schema "awai.app.blueprint.v1"
+ :app/id "network.itonami.bengoshi"
+ :app/name "Bengoshi"
+ :app/title {:ja "弁護士ディレクトリ（中立・無料）" :en "Bengoshi Neutral Directory"}
+ :app/kind :itonami-dapp
+ :app/version "0.1.0"
+ :app/web-origin "https://bengoshi.itonami.app"
+ :app/release-gate {:status :gated-on-legal-and-o10
+                    :synthetic-fixtures-only true}
+
+ :invariants
+ {:o2-zero-fee {:model :none
+                :free-for-users true
+                :free-for-lawyers true
+                :referral-fee false
+                :fee-splitting false
+                :ads false
+                :sponsored-placement false
+                :paid-tier false
+                :token-reward false}
+  :o4-verification {:method :manual-a2
+                    :ttl-days 30
+                    :scraping-prohibited true
+                    :id-photo-only-prohibited true
+                    :hard-hold-states [:expired :suspended_or_revoked]
+                    :nichibenren-url "https://member.nichibenren.or.jp/general_search"}
+  :o8-residency {:app-origin-requests :zero
+                 :e2ee-client-side true
+                 :relay-status :staged-fail-closed
+                 :firm-to-firm-forwarding false
+                 :inference-origin "https://murakumo.cloud"
+                 :inference-non-retention true}
+  :o9-neutrality {:reviews false
+                  :ratings false
+                  :win-rates false
+                  :case-counts false
+                  :ai-recommendation false
+                  :specialist-claim-rejected true
+                  :allowed-sorts [:kana_asc :reg_no_asc :prefecture_asc]
+                  :directory-scopes [:tenant_only :neutral_cross_firm]}
+  :awai-3235-conflict-gate {:hard-gate true
+                            :header-only-before-clear true
+                            :local-ledger-only true}}
+
+ :operations
+ ["directory.search"
+  "lawyer.get"
+  "qualification.verify_status"
+  "inquiry.import_memo"
+  "inquiry.draft"
+  "inquiry.send"
+  "inquiry.list"
+  "lawyer.profile.update"
+  "intake.list"
+  "intake.conflict_check"
+  "intake.decide"
+  "inference.assist"
+  "audit.list"]
+
+ :surfaces
+ {:web {:entry "dist/index.html" :descriptor "app-descriptor.json"}
+  :tauri-v3 {:crate "src-tauri" :tauri-version "3.0.0-alpha.6" :android-page-size 16384}
+  :mcp-apps {:protocol "SEP-1865" :resource "ui://bengoshi/embed.mcp" :read-only-tools ["directory.search" "lawyer.get"]}
+  :agent-plugin {:manifest "agent-plugin/plugin.json" :mcp "agent-plugin/mcp.json" :skill "agent-plugin/skills/bengoshi/SKILL.md"}
+  :acp {:adapter "src/mcp-acp-adapter.js"}
+  :bot-profiles ["profiles/bengoshi-directory/itonami.edn"
+                 "profiles/bengoshi-lawyer-intake/itonami.edn"]}}

@@ -1,0 +1,52 @@
+{
+  "schema": "agent-plugins.v1",
+  "specVersion": "1.0.0",
+  "id": "network.itonami.bengoshi",
+  "name": "bengoshi",
+  "version": "0.1.0",
+  "description": "Completely free, strictly neutral lawyer-matching directory and E2EE consultation intake plugin (O2=none, O4=manual-a2, O8=local-residency/E2EE, O9=strict-neutrality, AWAI-3235 conflict HARD gate).",
+  "license": "Apache-2.0",
+  "skills": [
+    "skills/bengoshi/SKILL.md"
+  ],
+  "mcp": "mcp.json",
+  "acp": {
+    "adapter": "../src/mcp-acp-adapter.js",
+    "operations": [
+      "directory.search",
+      "lawyer.get",
+      "qualification.verify_status",
+      "inquiry.import_memo",
+      "inquiry.draft",
+      "inquiry.send",
+      "inquiry.list",
+      "lawyer.profile.update",
+      "intake.list",
+      "intake.conflict_check",
+      "intake.decide",
+      "inference.assist",
+      "audit.list"
+    ]
+  },
+  "invariants": {
+    "zeroFeeModel": "none",
+    "strictNeutralityO9": true,
+    "manualVerificationO4": true,
+    "e2eeLocalResidencyO8": true,
+    "conflictCheckHardGate": "AWAI-3235",
+    "prohibited": [
+      "referral_fees",
+      "fee_splitting",
+      "ads",
+      "sponsored_placement",
+      "reviews",
+      "ratings",
+      "win_rates",
+      "ai_lawyer_recommendations",
+      "legal_advice_or_verdict",
+      "nichibenren_scraping",
+      "id_photo_only_verification",
+      "firm_to_firm_forwarding"
+    ]
+  }
+}

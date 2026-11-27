@@ -1,0 +1,18 @@
+{
+  "name": "@itonami/bengoshi",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Completely free, strictly neutral lawyer-matching itonami dapp and Tauri v3 app (network.itonami.bengoshi)",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test test/*.test.mjs",
+    "mcp": "node scripts/mcp-server.mjs",
+    "tauri": "tauri",
+    "build:desktop": "npm run build && tauri build --no-bundle",
+    "build:android": "npm run build && tauri android build --apk --target aarch64"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "3.0.0-alpha.6"
+  }
+}

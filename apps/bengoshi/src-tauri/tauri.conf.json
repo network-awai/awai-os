@@ -1,0 +1,28 @@
+{
+  "$schema": "https://schema.tauri.app/config/3",
+  "productName": "Bengoshi",
+  "version": "0.1.0",
+  "identifier": "network.itonami.bengoshi",
+  "build": {
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "弁護士ディレクトリ（Bengoshi）",
+        "width": 520,
+        "height": 860,
+        "minWidth": 320,
+        "minHeight": 420
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src ipc: http://ipc.localhost https://murakumo.cloud; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'"
+    }
+  },
+  "bundle": {
+    "active": false
+  }
+}

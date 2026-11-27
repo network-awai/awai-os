@@ -1,0 +1,27 @@
+{
+  "mcpServers": {
+    "bengoshi": {
+      "command": "node",
+      "args": [
+        "../scripts/mcp-server.mjs"
+      ],
+      "transport": "stdio",
+      "env": {
+        "BENGOSHI_DIRECTORY_SCOPE": "tenant_only"
+      }
+    }
+  },
+  "mcpApps": [
+    {
+      "protocol": "SEP-1865",
+      "resourceUri": "ui://bengoshi/embed.mcp",
+      "entry": "../dist/index.html#/embed/mcp",
+      "readOnly": true,
+      "allowedTools": [
+        "directory.search",
+        "lawyer.get"
+      ],
+      "syntheticFixturesOnly": true
+    }
+  ]
+}
