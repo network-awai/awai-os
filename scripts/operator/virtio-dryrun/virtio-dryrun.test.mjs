@@ -307,6 +307,14 @@ test("Rust pre-pass accepts multiple module targets; options and separators refu
     { ...base, AWAI_RUST_PREPASS_JOBS: "99999999999999999999999", AWAI_RUST_PREPASS_TARGETS: "crosvm" });
   assert.equal(over.code, 2);
   assert.match(over.stderr, /AWAI_RUST_PREPASS_JOBS must be an integer 1\.\.64/);
+  // multi-line input refuses even when every line looks harmless:
+  // read -ra would otherwise split on LF and silently accept the rest
+  for (const multi of ["crosvm\nlibdevices", "crosvm\n", "\ncrosvm"]) {
+    const r = await run("bash", [buildInside],
+      { ...base, AWAI_RUST_PREPASS_JOBS: "1", AWAI_RUST_PREPASS_TARGETS: multi });
+    assert.equal(r.code, 2, JSON.stringify(multi));
+    assert.match(r.stderr, /must be a single line/, JSON.stringify(multi));
+  }
   assert.equal(stub.calls(), "");
 });
 

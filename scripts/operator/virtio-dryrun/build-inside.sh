@@ -145,9 +145,14 @@ if [[ -n ${AWAI_RUST_PREPASS_JOBS:-} ]]; then
     { echo "AWAI4089_REFUSES: AWAI_RUST_PREPASS_JOBS must be an integer 1..64 (got '${AWAI_RUST_PREPASS_JOBS:-<unset>}')." >&2; exit 2; }
   # Soong module/goal form only: multiple whitespace-separated targets
   # are allowed, but nothing starting with `-` (an option) and nothing
-  # carrying shell metacharacters. A whitespace-only value counts as
+  # carrying shell metacharacters. The input is defined as a single
+  # line: `read` splits on LF, so a multi-line value would otherwise
+  # gain extra targets while looking harmless — newlines (and carriage
+  # returns) are refused outright. A whitespace-only value counts as
   # missing. `read` may report failure on empty input under `set -e`,
   # so its status is ignored and the array length decides.
+  [[ ${AWAI_RUST_PREPASS_TARGETS:-} != *$'\n'* && ${AWAI_RUST_PREPASS_TARGETS:-} != *$'\r'* ]] ||
+    { echo "AWAI4089_REFUSES: AWAI_RUST_PREPASS_TARGETS must be a single line." >&2; exit 2; }
   read -ra PREPASS_TARGETS <<< "${AWAI_RUST_PREPASS_TARGETS:-}" || true
   (( ${#PREPASS_TARGETS[@]} > 0 )) ||
     { echo "AWAI4089_REFUSES: AWAI_RUST_PREPASS_TARGETS is required when AWAI_RUST_PREPASS_JOBS is set." >&2; exit 2; }
