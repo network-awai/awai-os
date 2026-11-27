@@ -1,0 +1,4 @@
+# AWAI-4094: android/build.py generates the Home manifest; expose it to the
+# //android/desktop/pc-ab-device:home_apps_test runfiles.
+
+exports_files(["build.py"])

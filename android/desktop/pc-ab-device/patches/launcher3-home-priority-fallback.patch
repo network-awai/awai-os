@@ -1,0 +1,60 @@
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index 8918567..e7b33fc 100644
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -60,21 +60,24 @@
+             android:clearTaskOnLaunch="true"
+             android:stateNotNeeded="true"
+             android:windowSoftInputMode="adjustPan"
+             android:screenOrientation="unspecified"
+             android:configChanges="keyboard|keyboardHidden|mcc|mnc|navigation|orientation|screenSize|screenLayout|smallestScreenSize"
+             android:resizeableActivity="true"
+             android:resumeWhilePausing="true"
+             android:taskAffinity=""
+             android:exported="true"
+             android:enabled="true">
+-            <intent-filter>
++            <!-- AWAI-4094: the HOME role fallback picks the unique highest-priority HOME
++                 activity; -1 keeps Launcher3 below Awai Home (0, non-privileged) and above
++                 the Settings FallbackHome (-1000) when the user has not chosen a home. -->
++            <intent-filter android:priority="-1">
+                 <action android:name="android.intent.action.MAIN" />
+                 <action android:name="android.intent.action.SHOW_WORK_APPS" />
+                 <action android:name="android.intent.action.ALL_APPS" />
+                 <category android:name="android.intent.category.HOME" />
+                 <category android:name="android.intent.category.DEFAULT" />
+                 <category android:name="android.intent.category.MONKEY"/>
+                 <category android:name="android.intent.category.LAUNCHER_APP" />
+             </intent-filter>
+             <meta-data
+                 android:name="com.android.launcher3.grid.control"
+diff --git a/quickstep/AndroidManifest-launcher.xml b/quickstep/AndroidManifest-launcher.xml
+index 88de67f..92d7889 100644
+--- a/quickstep/AndroidManifest-launcher.xml
++++ b/quickstep/AndroidManifest-launcher.xml
+@@ -47,21 +47,24 @@
+             android:clearTaskOnLaunch="true"
+             android:stateNotNeeded="true"
+             android:windowSoftInputMode="adjustPan"
+             android:screenOrientation="unspecified"
+             android:configChanges="keyboard|keyboardHidden|mcc|mnc|navigation|orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
+             android:resizeableActivity="true"
+             android:resumeWhilePausing="true"
+             android:taskAffinity=""
+             android:exported="true"
+             android:enabled="true">
+-            <intent-filter>
++            <!-- AWAI-4094: the HOME role fallback picks the unique highest-priority HOME
++                 activity; -1 keeps Launcher3 below Awai Home (0, non-privileged) and above
++                 the Settings FallbackHome (-1000) when the user has not chosen a home. -->
++            <intent-filter android:priority="-1">
+                 <action android:name="android.intent.action.MAIN" />
+                 <action android:name="android.intent.action.SHOW_WORK_APPS" />
+                 <action android:name="android.intent.action.ALL_APPS" />
+                 <category android:name="android.intent.category.HOME" />
+                 <category android:name="android.intent.category.DEFAULT" />
+                 <category android:name="android.intent.category.MONKEY"/>
+                 <category android:name="android.intent.category.LAUNCHER_APP" />
+             </intent-filter>
+             <meta-data
+                 android:name="com.android.launcher3.grid.control"
