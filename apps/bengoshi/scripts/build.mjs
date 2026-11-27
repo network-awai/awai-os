@@ -28,6 +28,7 @@ export const TAURI_CSP = "default-src 'none'; script-src 'self'; style-src 'self
 const SRC_FILES = [
   'style.css',
   'app.js',
+  'storage.js',
   'model.js',
   'crypto.js',
   'legal-notices.js',

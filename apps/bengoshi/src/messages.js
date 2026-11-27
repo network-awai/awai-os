@@ -204,6 +204,12 @@ const MESSAGES = Object.freeze({
     'embed.simWrite': '3. 負例テスト: 禁止された inquiry.send を試行（拒否確認）',
     'embed.simPreInit': '負例テスト: 初期化前に tools/call を試行（拒否確認）',
 
+    'storage.saveFailed': '端末ストレージへの保存に失敗しました（{reason}）。入力内容は画面に保持されています。空き容量やブラウザの保存設定を確認のうえ、もう一度お試しください。',
+    'storage.reason.quota': '保存容量の上限超過（ストレージ満杯）',
+    'storage.reason.unavailable': 'ストレージが利用不可または書き込み拒否（容量不足・プライベートブラウズ等の可能性）',
+    'storage.reason.conflict': '別タブ等で更新が競合しました',
+    'storage.reason.generic': '書き込みエラー（{detail}）',
+
     'category.money': '金銭・債権',
     'category.contract': '契約・取引',
     'category.work': '労働',
@@ -416,6 +422,12 @@ const MESSAGES = Object.freeze({
     'embed.simSearch': '2. Run read-only directory.search (inspect content + structuredContent)',
     'embed.simWrite': '3. Negative test: attempt forbidden inquiry.send',
     'embed.simPreInit': 'Negative test: call tools/call before init',
+
+    'storage.saveFailed': 'Failed to save to device storage ({reason}). Your entered values are still preserved on this screen. Check available storage or browser storage settings and try again.',
+    'storage.reason.quota': 'storage quota exceeded / storage full',
+    'storage.reason.unavailable': 'storage unavailable or write rejected (possibly full or restricted mode)',
+    'storage.reason.conflict': 'concurrent update conflict in another tab',
+    'storage.reason.generic': 'write error ({detail})',
 
     'category.money': 'Money & Debt',
     'category.contract': 'Contracts',

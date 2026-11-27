@@ -7,6 +7,7 @@
 // Forms strictly use `type="button" data-submit` + `bindForm` (no native form submission).
 
 import { createHost } from './host.js';
+import { persistLocalState, isStoragePersistError } from './storage.js';
 import { clientRuntimeProblems } from './runtime.js';
 import {
   PREFECTURES,
@@ -104,6 +105,7 @@ let sessionLawyerKeyPair = null;
 let revealedBodies = new Map();
 let activeMode = 'user'; // user | lawyer | shared
 let selectedLawyerId = SYNTHETIC_CATALOG_BUNDLE.lawyers[0].id;
+let pendingComposeLawyerId = '';
 let selectedInquiryId = '';
 let firewallRejectedParams = [];
 let searchFilter = {
@@ -119,7 +121,53 @@ let searchFilter = {
 let engine = null;
 
 function say(msg) {
-  $('status').textContent = msg || '';
+  const elStatus = $('status');
+  if (elStatus) elStatus.textContent = msg || '';
+}
+
+function formatStorageError(result) {
+  const code = result?.code || result?.causeCode || result?.error?.code || result?.error?.name || 'storage-write-failed';
+  let reason;
+  if (code === 'quota-exceeded' || code === 'QuotaExceededError' || code === 'data-too-large') {
+    reason = t('storage.reason.quota');
+  } else if (code === 'storage-unavailable' || code === 'SecurityError') {
+    reason = t('storage.reason.unavailable');
+  } else if (code === 'state-conflict') {
+    reason = t('storage.reason.conflict');
+  } else {
+    reason = t('storage.reason.generic', { detail: result?.message || code });
+  }
+  return t('storage.saveFailed', { reason });
+}
+
+function createStorageAlert() {
+  const box = el('div', '', 'banner danger');
+  box.setAttribute('role', 'alert');
+  box.dataset.storageAlert = 'true';
+  box.hidden = true;
+  return box;
+}
+
+function showStorageError(result, localAlertEl = null) {
+  say('');
+  const msg = formatStorageError(result);
+  const target = localAlertEl || $('storage-alert');
+  if (target) {
+    target.textContent = msg;
+    target.hidden = false;
+  }
+}
+
+function clearStorageError(localAlertEl = null) {
+  if (localAlertEl) {
+    localAlertEl.textContent = '';
+    localAlertEl.hidden = true;
+  }
+  const globalAlert = $('storage-alert');
+  if (globalAlert) {
+    globalAlert.textContent = '';
+    globalAlert.hidden = true;
+  }
 }
 
 function buildEngine() {
@@ -135,22 +183,17 @@ function buildEngine() {
   });
 }
 
-async function persistState() {
-  try {
-    const next = await host.write({ expectedRevision: revision, data: state });
-    revision = next.revision;
-  } catch (e) {
-    if (e?.code === 'atomic-write-unavailable') {
-      try {
-        localStorage.setItem('awai.shell.host.v1:network.itonami.bengoshi', JSON.stringify({
-          schema: 'awai.shell.host.v1',
-          revision: revision + 1,
-          data: state,
-        }));
-        revision += 1;
-      } catch { /* ignore */ }
-    }
+export async function persistState() {
+  const result = await persistLocalState({
+    host,
+    storage: globalThis.localStorage,
+    revision,
+    state,
+  });
+  if (result.ok) {
+    revision = result.revision;
   }
+  return result;
 }
 
 async function loadState() {
@@ -221,8 +264,16 @@ function renderSettingsPanel() {
     scopeSel.append(o);
   }
   scopeSel.addEventListener('change', async () => {
+    const prev = state.settings.directoryScope;
     state.settings.directoryScope = scopeSel.value;
-    await persistState();
+    const res = await persistState();
+    if (!res.ok) {
+      state.settings.directoryScope = prev;
+      scopeSel.value = prev;
+      showStorageError(res);
+      return;
+    }
+    clearStorageError();
     route();
   });
 
@@ -230,8 +281,16 @@ function renderSettingsPanel() {
   demoCheck.type = 'checkbox';
   demoCheck.checked = Boolean(state.settings.syntheticDemoMode);
   demoCheck.addEventListener('change', async () => {
+    const prev = state.settings.syntheticDemoMode;
     state.settings.syntheticDemoMode = demoCheck.checked;
-    await persistState();
+    const res = await persistState();
+    if (!res.ok) {
+      state.settings.syntheticDemoMode = prev;
+      demoCheck.checked = prev;
+      showStorageError(res);
+      return;
+    }
+    clearStorageError();
     route();
   });
   const demoLabel = el('label', t('settings.demoMode'), 'check');
@@ -470,12 +529,18 @@ async function renderSearch() {
   );
   view.append(filterCard);
 
+  const storageAlert = createStorageAlert();
   const countEl = el('p', '', 'muted');
   const resultsWrap = el('div', null, 'grid');
-  view.append(countEl, resultsWrap);
+  view.append(storageAlert, countEl, resultsWrap);
 
   async function renderResults() {
     const res = await engine.execute('directory.search', searchFilter, { actor: 'ui' });
+    if (res.persistResult && res.persistResult.ok === false) {
+      showStorageError(res.persistResult, storageAlert);
+    } else {
+      clearStorageError(storageAlert);
+    }
     countEl.textContent = t('search.count', { count: res.total });
     resultsWrap.replaceChildren();
     if (!res.lawyers.length) {
@@ -571,6 +636,7 @@ async function renderProfileDetail(lawyerId) {
   vCard.append(vdl, nichibenrenLink());
   view.append(vCard);
 
+  const storageAlert = createStorageAlert();
   const exportBox = el('pre', '', 'code-box');
   exportBox.hidden = true;
 
@@ -585,10 +651,15 @@ async function renderProfileDetail(lawyerId) {
   copyContactBtn.addEventListener('click', async () => {
     try {
       const res = await engine.execute('contact.format_manual', { lawyerId: lawyer.id }, { actor: 'ui' });
+      clearStorageError(storageAlert);
       exportBox.textContent = res.text;
       exportBox.hidden = false;
       await copyText(res.text, t('profile.contactCopied'));
-    } catch {
+    } catch (err) {
+      if (isStoragePersistError(err)) {
+        showStorageError(err.persistResult || err, storageAlert);
+        return;
+      }
       say(t('profile.contactBlocked'));
     }
   });
@@ -606,13 +677,12 @@ async function renderProfileDetail(lawyerId) {
   composeBtn.type = 'button';
   composeBtn.disabled = hardHold;
   composeBtn.addEventListener('click', () => {
-    if (!state.draft) state.draft = emptyInquiryDraft(lawyer.id);
-    else state.draft.lawyerId = lawyer.id;
+    pendingComposeLawyerId = lawyer.id;
     location.hash = '#/contact/compose';
   });
 
   actions.append(backBtn, copyContactBtn, exportBtn, composeBtn);
-  view.append(actions, exportBox);
+  view.append(storageAlert, actions, exportBox);
 }
 
 // ---- View: contact.compose (Method A primary + Soudan Memo Import) ----
@@ -624,9 +694,14 @@ async function renderContactCompose() {
     el('p', t('compose.methodANote'), 'banner'),
   );
 
-  if (!state.draft) state.draft = emptyInquiryDraft(selectedLawyerId);
-  if (!state.draft.lawyerId) state.draft.lawyerId = selectedLawyerId;
-  const draft = state.draft;
+  const draft = state.draft
+    ? structuredClone(state.draft)
+    : emptyInquiryDraft(pendingComposeLawyerId || selectedLawyerId);
+  if (pendingComposeLawyerId) {
+    draft.lawyerId = pendingComposeLawyerId;
+    pendingComposeLawyerId = '';
+  }
+  if (!draft.lawyerId) draft.lawyerId = selectedLawyerId;
 
   let targetLawyer = null;
   try {
@@ -649,6 +724,7 @@ async function renderContactCompose() {
 
   // Soudan memo import block (exact soudan.memo.export.v1)
   const importCard = el('details', null, 'panel');
+  const importAlert = createStorageAlert();
   importCard.append(el('summary', t('compose.importTitle')), el('p', t('compose.importHint'), 'muted'));
   const jsonArea = el('textarea');
   jsonArea.placeholder = '{"schema":"soudan.memo.export.v1","template":"consultation-memo.jpn.v1","memo":{"category":"work","name":"...","otherParty":"...","summary":"...","wish":"...","deadline":"...","documents":[],"evidence_manifest":[]}}';
@@ -657,13 +733,18 @@ async function renderContactCompose() {
   importBtn.dataset.submit = '';
   const importActions = el('div', null, 'actions');
   importActions.append(importBtn);
-  importCard.append(jsonArea, importActions);
+  importCard.append(importAlert, jsonArea, importActions);
   bindForm(importCard, async () => {
     try {
       await engine.execute('inquiry.import_memo', { json: jsonArea.value, lawyerId: draft.lawyerId }, { actor: 'ui' });
+      clearStorageError(importAlert);
       say(t('compose.importOk'));
       renderContactCompose();
     } catch (e) {
+      if (isStoragePersistError(e)) {
+        showStorageError(e.persistResult || e, importAlert);
+        return;
+      }
       say(t('compose.importFail', { code: e?.code || 'invalid' }));
     }
   });
@@ -719,12 +800,22 @@ async function renderContactCompose() {
     fieldWrap(t('compose.evidence'), 'c-evidence', evArea),
   );
 
+  const storageAlert = createStorageAlert();
   const actions = el('div', null, 'actions');
   const saveBtn = el('button', t('compose.saveDraft'), 'tonal');
   saveBtn.type = 'button';
   saveBtn.addEventListener('click', async () => {
-    await engine.execute('inquiry.draft', { draft }, { actor: 'ui' });
-    say(t('compose.draftSaved'));
+    try {
+      await engine.execute('inquiry.draft', { draft }, { actor: 'ui' });
+      clearStorageError(storageAlert);
+      say(t('compose.draftSaved'));
+    } catch (err) {
+      if (isStoragePersistError(err)) {
+        showStorageError(err.persistResult || err, storageAlert);
+        return;
+      }
+      say(err?.message || 'save-failed');
+    }
   });
 
   const copyContactBtn = el('button', t('compose.copyContact'), 'secondary');
@@ -733,8 +824,13 @@ async function renderContactCompose() {
   copyContactBtn.addEventListener('click', async () => {
     try {
       const res = await engine.execute('contact.format_manual', { lawyerId: targetLawyer.id }, { actor: 'ui' });
+      clearStorageError(storageAlert);
       await copyText(res.text, t('profile.contactCopied'));
-    } catch {
+    } catch (err) {
+      if (isStoragePersistError(err)) {
+        showStorageError(err.persistResult || err, storageAlert);
+        return;
+      }
       say(t('profile.contactBlocked'));
     }
   });
@@ -750,15 +846,24 @@ async function renderContactCompose() {
   nextBtn.dataset.submit = '';
 
   actions.append(saveBtn, copyContactBtn, copyDraftBtn, nextBtn);
-  form.append(actions);
+  form.append(storageAlert, actions);
 
   bindForm(form, async () => {
-    const res = await engine.execute('inquiry.draft', { draft }, { actor: 'ui' });
-    if (res.problems.length) {
-      say('入力不足: ' + res.problems.join(', '));
-      return;
+    try {
+      const res = await engine.execute('inquiry.draft', { draft }, { actor: 'ui' });
+      clearStorageError(storageAlert);
+      if (res.problems.length) {
+        say('入力不足: ' + res.problems.join(', '));
+        return;
+      }
+      location.hash = '#/contact/consent';
+    } catch (err) {
+      if (isStoragePersistError(err)) {
+        showStorageError(err.persistResult || err, storageAlert);
+        return;
+      }
+      say(err?.message || 'save-failed');
     }
-    location.hash = '#/contact/consent';
   });
 
   view.append(form);
@@ -770,7 +875,7 @@ async function renderContactConsent() {
   view.replaceChildren();
   view.append(el('h2', t('consent.heading')));
 
-  const draft = state.draft;
+  const draft = state.draft ? structuredClone(state.draft) : null;
   const problems = validateInquiryDraft(draft);
   if (problems.length) {
     view.append(el('p', t('consent.noDraft'), 'banner warn'));
@@ -781,6 +886,7 @@ async function renderContactConsent() {
   const ev = lawyer.evaluatedVerification;
   const hardHold = ev.hardHold;
   const gate = canSendToLawyer(lawyer, { syntheticDemoMode: state.settings.syntheticDemoMode });
+  const storageAlert = createStorageAlert();
 
   const card = el('section', null, 'card');
   const badges = el('div', null, 'chips');
@@ -833,8 +939,13 @@ async function renderContactConsent() {
   copyContactBtn.addEventListener('click', async () => {
     try {
       const res = await engine.execute('contact.format_manual', { lawyerId: lawyer.id }, { actor: 'ui' });
+      clearStorageError(storageAlert);
       await copyText(res.text, t('profile.contactCopied'));
-    } catch {
+    } catch (err) {
+      if (isStoragePersistError(err)) {
+        showStorageError(err.persistResult || err, storageAlert);
+        return;
+      }
       say(t('profile.contactBlocked'));
     }
   });
@@ -876,23 +987,30 @@ async function renderContactConsent() {
     say('');
     try {
       await engine.execute('inquiry.send', { draft }, { actor: 'ui' });
+      clearStorageError(storageAlert);
       say(t('consent.sentDryRun'));
       location.hash = '#/requests';
     } catch (err) {
+      if (isStoragePersistError(err)) {
+        showStorageError(err.persistResult || err, storageAlert);
+        return;
+      }
       say(t('consent.blocked', { code: err?.code || err?.message || 'blocked' }));
     }
   });
 
   actions.append(cancelBtn, recordBtn);
-  view.append(card, methodACard, discCard, actions);
+  view.append(card, methodACard, discCard, storageAlert, actions);
 }
 
 // ---- View: requests (Local records) ----
 async function renderRequests() {
   const view = $('view');
   view.replaceChildren();
+  const storageAlert = createStorageAlert();
   view.append(el('h2', t('requests.heading')));
   view.append(el('p', getLegalNotices(locale).lawyerCopyRetention, 'banner warn'));
+  view.append(storageAlert);
 
   const res = await engine.execute('inquiry.list', {}, { actor: 'ui' });
   if (!res.inquiries.length) {
@@ -917,9 +1035,18 @@ async function renderRequests() {
     const delBtn = el('button', t('requests.deleteLocal'), 'danger');
     delBtn.type = 'button';
     delBtn.addEventListener('click', async () => {
-      await engine.execute('inquiry.list', { deleteInquiryId: item.inquiryId }, { actor: 'ui' });
-      say(t('requests.deleted'));
-      renderRequests();
+      try {
+        await engine.execute('inquiry.list', { deleteInquiryId: item.inquiryId }, { actor: 'ui' });
+        clearStorageError(storageAlert);
+        say(t('requests.deleted'));
+        renderRequests();
+      } catch (err) {
+        if (isStoragePersistError(err)) {
+          showStorageError(err.persistResult || err, storageAlert);
+          return;
+        }
+        say(err?.message || 'delete-failed');
+      }
     });
 
     const actions = el('div', null, 'actions');
@@ -975,20 +1102,30 @@ function renderLawyerOnboarding() {
   submitBtn.type = 'button';
   submitBtn.dataset.submit = '';
 
+  const storageAlert = createStorageAlert();
   const art11Box = el('pre', '', 'code-box');
   art11Box.hidden = true;
   const art11Btn = el('button', t('onboarding.exportArt11'), 'secondary');
   art11Btn.type = 'button';
   art11Btn.addEventListener('click', async () => {
-    const out = await engine.execute('lawyer.export_art11_record', {}, { actor: 'ui' });
-    art11Box.textContent = JSON.stringify(out.record, null, 2);
-    art11Box.hidden = false;
-    say(t('onboarding.art11Exported'));
+    try {
+      const out = await engine.execute('lawyer.export_art11_record', {}, { actor: 'ui' });
+      clearStorageError(storageAlert);
+      art11Box.textContent = JSON.stringify(out.record, null, 2);
+      art11Box.hidden = false;
+      say(t('onboarding.art11Exported'));
+    } catch (err) {
+      if (isStoragePersistError(err)) {
+        showStorageError(err.persistResult || err, storageAlert);
+        return;
+      }
+      say(err?.message || 'export-failed');
+    }
   });
 
   const actions = el('div', null, 'actions');
   actions.append(genBtn, submitBtn, art11Btn);
-  form.append(keyInfo, actions, art11Box, nichibenrenLink());
+  form.append(keyInfo, storageAlert, actions, art11Box, nichibenrenLink());
 
   bindForm(form, async () => {
     const submission = {
@@ -1004,7 +1141,10 @@ function renderLawyerOnboarding() {
       say(t('profileEdit.rejected', { reasons: probs.map(p => `${p.field}:${p.code}`).join(', ') }));
       return;
     }
-    if (!sessionLawyerKeyPair) sessionLawyerKeyPair = await generateLawyerKeyPair();
+    if (!sessionLawyerKeyPair) {
+      sessionLawyerKeyPair = await generateLawyerKeyPair();
+      keyInfo.textContent = `鍵指紋: ${sessionLawyerKeyPair.keyFingerprint}`;
+    }
     const profile = {
       id: 'local-lawyer-' + submission.registration_number,
       synthetic: true,
@@ -1036,9 +1176,18 @@ function renderLawyerOnboarding() {
       e2ee_public_key_jwk: sessionLawyerKeyPair.publicKeyJwk,
       e2ee_key_fingerprint: sessionLawyerKeyPair.keyFingerprint,
     };
-    await engine.execute('lawyer.profile.update', { profile, action: 'onboarding_preview' }, { actor: 'ui' });
-    say(t('onboarding.submitted'));
-    location.hash = '#/lawyer/profile';
+    try {
+      await engine.execute('lawyer.profile.update', { profile, action: 'onboarding_preview' }, { actor: 'ui' });
+      clearStorageError(storageAlert);
+      say(t('onboarding.submitted'));
+      location.hash = '#/lawyer/profile';
+    } catch (err) {
+      if (isStoragePersistError(err)) {
+        showStorageError(err.persistResult || err, storageAlert);
+        return;
+      }
+      say(t('profileEdit.rejected', { reasons: (err.problems || []).map(p => p.code).join(', ') || err?.message || 'error' }));
+    }
   });
 
   view.append(form);
@@ -1050,9 +1199,10 @@ function renderLawyerProfileEdit() {
   view.replaceChildren();
   view.append(el('h2', t('profileEdit.heading')), el('p', t('profileEdit.note'), 'banner'));
 
-  const current = state.lawyerProfile || structuredClone(SYNTHETIC_CATALOG_BUNDLE.lawyers[0]);
+  const current = structuredClone(state.lawyerProfile || SYNTHETIC_CATALOG_BUNDLE.lawyers[0]);
   const liveAlert = el('div', '', 'banner danger');
   liveAlert.hidden = true;
+  const storageAlert = createStorageAlert();
 
   const form = el('section', null, 'card grid');
   const nameIn = Object.assign(el('input'), { value: current.name || '' });
@@ -1103,10 +1253,15 @@ function renderLawyerProfileEdit() {
   art11Btn.addEventListener('click', async () => {
     try {
       const out = await engine.execute('lawyer.export_art11_record', { profile: buildCandidate() }, { actor: 'ui' });
+      clearStorageError(storageAlert);
       art11Box.textContent = JSON.stringify(out.record, null, 2);
       art11Box.hidden = false;
       say(t('onboarding.art11Exported'));
     } catch (e) {
+      if (isStoragePersistError(e)) {
+        showStorageError(e.persistResult || e, storageAlert);
+        return;
+      }
       say(t('profileEdit.rejected', { reasons: (e.problems || []).map(p => p.code).join(', ') }));
     }
   });
@@ -1122,6 +1277,7 @@ function renderLawyerProfileEdit() {
     fieldWrap('取扱分野（カンマ区切り・事実項目のみ）', 'pe-areas', areasIn),
     fieldWrap('経歴（事実のみ・1行1件）', 'pe-career', careerIn),
     fieldWrap('初回相談条件（事実のみ）', 'pe-fee', feeIn),
+    storageAlert,
     actions,
     art11Box,
   );
@@ -1129,8 +1285,13 @@ function renderLawyerProfileEdit() {
   bindForm(form, async () => {
     try {
       await engine.execute('lawyer.profile.update', { profile: buildCandidate() }, { actor: 'ui' });
+      clearStorageError(storageAlert);
       say(t('profileEdit.saved'));
     } catch (e) {
+      if (isStoragePersistError(e)) {
+        showStorageError(e.persistResult || e, storageAlert);
+        return;
+      }
       say(t('profileEdit.rejected', { reasons: (e.problems || []).map(p => p.code).join(', ') }));
     }
   });
@@ -1143,18 +1304,28 @@ function renderLawyerProfileEdit() {
 async function renderLawyerInbox() {
   const view = $('view');
   view.replaceChildren();
-  view.append(el('h2', t('inbox.heading')), el('p', t('inbox.note'), 'banner'));
+  const storageAlert = createStorageAlert();
+  view.append(el('h2', t('inbox.heading')), el('p', t('inbox.note'), 'banner'), storageAlert);
 
   const seedBtn = el('button', t('inbox.seedQa'), 'tonal');
   seedBtn.type = 'button';
   seedBtn.addEventListener('click', async () => {
-    sessionLawyerKeyPair = await generateLawyerKeyPair();
-    revealedBodies.clear();
-    state.intakeRecords = await buildSyntheticQaIntakeRecords(
+    const nextKeyPair = await generateLawyerKeyPair();
+    const nextRecords = await buildSyntheticQaIntakeRecords(
       state.lawyerProfile?.id || SYNTHETIC_CATALOG_BUNDLE.lawyers[0].id,
-      sessionLawyerKeyPair.publicKeyJwk,
+      nextKeyPair.publicKeyJwk,
     );
-    await persistState();
+    const prevRecords = state.intakeRecords;
+    state.intakeRecords = nextRecords;
+    const res = await persistState();
+    if (!res.ok) {
+      state.intakeRecords = prevRecords;
+      showStorageError(res, storageAlert);
+      return;
+    }
+    sessionLawyerKeyPair = nextKeyPair;
+    revealedBodies.clear();
+    clearStorageError(storageAlert);
     say(t('inbox.seeded'));
     renderLawyerInbox();
   });
@@ -1164,6 +1335,7 @@ async function renderLawyerInbox() {
 
   // Offline E2EE envelope JSON import (zero server relay)
   const offlineImport = el('details', null, 'panel');
+  const importAlert = createStorageAlert();
   offlineImport.append(el('summary', t('inbox.importEnvelopeTitle')));
   const envArea = el('textarea');
   envArea.placeholder = '{"schema":"bengoshi.e2ee.envelope.v1","conflictHeader":{...},...}';
@@ -1172,13 +1344,14 @@ async function renderLawyerInbox() {
   envBtn.dataset.submit = '';
   const envActions = el('div', null, 'actions');
   envActions.append(envBtn);
-  offlineImport.append(envArea, envActions);
+  offlineImport.append(importAlert, envArea, envActions);
   bindForm(offlineImport, async () => {
     try {
       const parsed = JSON.parse(envArea.value);
       if (parsed?.schema !== 'bengoshi.e2ee.envelope.v1' || !parsed.conflictHeader) {
         throw new Error('invalid-e2ee-envelope');
       }
+      const prevRecords = [...state.intakeRecords];
       state.intakeRecords.unshift({
         inquiryId: parsed.conflictHeader.inquiryId || 'inq-offline-' + Date.now(),
         receivedAt: parsed.conflictHeader.receivedAt || new Date().toISOString(),
@@ -1188,7 +1361,13 @@ async function renderLawyerInbox() {
         decision: null,
         replySentAt: null,
       });
-      await persistState();
+      const res = await persistState();
+      if (!res.ok) {
+        state.intakeRecords = prevRecords;
+        showStorageError(res, importAlert);
+        return;
+      }
+      clearStorageError(importAlert);
       say(t('inbox.importEnvelopeOk'));
       renderLawyerInbox();
     } catch (e) {
@@ -1229,6 +1408,7 @@ async function renderLawyerInbox() {
 
   // Local conflict ledger management (uses bindForm + data-submit)
   const ledgerCard = el('section', null, 'card');
+  const ledgerAlert = createStorageAlert();
   ledgerCard.append(el('h3', t('inbox.ledgerTitle')));
   const ul = el('ul');
   for (const row of state.conflictLedger) {
@@ -1241,16 +1421,23 @@ async function renderLawyerInbox() {
   addBtn.dataset.submit = '';
   const ledgerActions = el('div', null, 'actions');
   ledgerActions.append(addBtn);
-  ledgerCard.append(ul, addIn, ledgerActions);
+  ledgerCard.append(ul, ledgerAlert, addIn, ledgerActions);
   bindForm(ledgerCard, async () => {
     if (!addIn.value.trim()) return;
+    const prevLedger = [...state.conflictLedger];
     state.conflictLedger.push({
       id: 'ledger-' + Date.now(),
       partyName: addIn.value.trim(),
       role: 'existing_client',
       matterRef: 'ローカル追加',
     });
-    await persistState();
+    const res = await persistState();
+    if (!res.ok) {
+      state.conflictLedger = prevLedger;
+      showStorageError(res, ledgerAlert);
+      return;
+    }
+    clearStorageError(ledgerAlert);
     renderLawyerInbox();
   });
   view.append(ledgerCard);
@@ -1260,9 +1447,11 @@ async function renderLawyerInbox() {
 async function renderLawyerInquiryDetail(inquiryId) {
   const view = $('view');
   view.replaceChildren();
-  view.append(el('h2', t('inquiryDetail.heading')), el('p', getLegalNotices(locale).conflictHardGate, 'banner'));
+  const storageAlert = createStorageAlert();
+  view.append(el('h2', t('inquiryDetail.heading')), el('p', getLegalNotices(locale).conflictHardGate, 'banner'), storageAlert);
 
-  const rec = state.intakeRecords.find(r => r.inquiryId === inquiryId);
+  const currentRec = () => state.intakeRecords.find(r => r.inquiryId === inquiryId);
+  const rec = currentRec();
   if (!rec) {
     view.append(el('p', t('inbox.empty'), 'card'));
     return;
@@ -1285,8 +1474,17 @@ async function renderLawyerInquiryDetail(inquiryId) {
   const checkBtn = el('button', t('inquiryDetail.runCheck'), 'tonal');
   checkBtn.type = 'button';
   checkBtn.addEventListener('click', async () => {
-    await engine.execute('intake.conflict_check', { inquiryId: rec.inquiryId, confirmClear: false }, { actor: 'ui' });
-    renderLawyerInquiryDetail(rec.inquiryId);
+    try {
+      await engine.execute('intake.conflict_check', { inquiryId: rec.inquiryId, confirmClear: false }, { actor: 'ui' });
+      clearStorageError(storageAlert);
+      renderLawyerInquiryDetail(rec.inquiryId);
+    } catch (err) {
+      if (isStoragePersistError(err)) {
+        showStorageError(err.persistResult || err, storageAlert);
+        return;
+      }
+      say(err?.code || err?.message || 'conflict-check-failed');
+    }
   });
   const checkActions = el('div', null, 'actions');
   checkActions.append(checkBtn);
@@ -1304,9 +1502,18 @@ async function renderLawyerInquiryDetail(inquiryId) {
       const decBtn = el('button', t('inquiryDetail.declineConflict'), 'danger');
       decBtn.type = 'button';
       decBtn.addEventListener('click', async () => {
-        await engine.execute('intake.decide', { inquiryId: rec.inquiryId, action: 'decline_conflict' }, { actor: 'ui' });
-        say('利益相反による辞退を記録しました（本文は復号されていません）。');
-        renderLawyerInquiryDetail(rec.inquiryId);
+        try {
+          await engine.execute('intake.decide', { inquiryId: rec.inquiryId, action: 'decline_conflict' }, { actor: 'ui' });
+          clearStorageError(storageAlert);
+          say('利益相反による辞退を記録しました（本文は復号されていません）。');
+          renderLawyerInquiryDetail(rec.inquiryId);
+        } catch (err) {
+          if (isStoragePersistError(err)) {
+            showStorageError(err.persistResult || err, storageAlert);
+            return;
+          }
+          say(err?.code || err?.message || 'blocked');
+        }
       });
       const decActions = el('div', null, 'actions');
       decActions.append(decBtn);
@@ -1320,8 +1527,18 @@ async function renderLawyerInquiryDetail(inquiryId) {
       confirmBox.type = 'checkbox';
       confirmBox.checked = Boolean(cc.confirmedByLawyer);
       confirmBox.addEventListener('change', async () => {
-        await engine.execute('intake.conflict_check', { inquiryId: rec.inquiryId, confirmClear: confirmBox.checked }, { actor: 'ui' });
-        renderLawyerInquiryDetail(rec.inquiryId);
+        try {
+          await engine.execute('intake.conflict_check', { inquiryId: rec.inquiryId, confirmClear: confirmBox.checked }, { actor: 'ui' });
+          clearStorageError(storageAlert);
+          renderLawyerInquiryDetail(rec.inquiryId);
+        } catch (err) {
+          confirmBox.checked = Boolean(currentRec()?.conflictCheck?.confirmedByLawyer);
+          if (isStoragePersistError(err)) {
+            showStorageError(err.persistResult || err, storageAlert);
+            return;
+          }
+          say(err?.code || err?.message || 'conflict-confirm-failed');
+        }
       });
       const lab = el('label', t('inquiryDetail.confirmLabel'), 'check');
       lab.prepend(confirmBox);
@@ -1333,9 +1550,14 @@ async function renderLawyerInquiryDetail(inquiryId) {
       revealBtn.addEventListener('click', async () => {
         try {
           const out = await engine.execute('intake.decide', { inquiryId: rec.inquiryId, action: 'reveal' }, { actor: 'ui' });
+          clearStorageError(storageAlert);
           revealedBodies.set(rec.inquiryId, out.plaintext);
           renderLawyerInquiryDetail(rec.inquiryId);
         } catch (err) {
+          if (isStoragePersistError(err)) {
+            showStorageError(err.persistResult || err, storageAlert);
+            return;
+          }
           say(err?.code || err?.message || 'reveal-blocked');
         }
       });
@@ -1360,18 +1582,32 @@ async function renderLawyerInquiryDetail(inquiryId) {
     acceptBtn.addEventListener('click', async () => {
       try {
         await engine.execute('intake.decide', { inquiryId: rec.inquiryId, action: 'accept', replyText: replyArea.value || '初回面談の日程候補（ローカル記録）' }, { actor: 'ui' });
+        clearStorageError(storageAlert);
         say('受任検討・面談案内をローカル記録しました（外部通信 0 バイト）。');
         renderLawyerInquiryDetail(rec.inquiryId);
-      } catch (err) { say(err?.message || 'blocked'); }
+      } catch (err) {
+        if (isStoragePersistError(err)) {
+          showStorageError(err.persistResult || err, storageAlert);
+          return;
+        }
+        say(err?.message || 'blocked');
+      }
     });
     const declineBtn = el('button', t('inquiryDetail.declineBtn'), 'secondary');
     declineBtn.type = 'button';
     declineBtn.addEventListener('click', async () => {
       try {
         await engine.execute('intake.decide', { inquiryId: rec.inquiryId, action: 'decline', replyText: replyArea.value || '辞退（ローカル記録）' }, { actor: 'ui' });
+        clearStorageError(storageAlert);
         say('辞退をローカル記録しました（外部通信 0 バイト）。');
         renderLawyerInquiryDetail(rec.inquiryId);
-      } catch (err) { say(err?.message || 'blocked'); }
+      } catch (err) {
+        if (isStoragePersistError(err)) {
+          showStorageError(err.persistResult || err, storageAlert);
+          return;
+        }
+        say(err?.message || 'blocked');
+      }
     });
     const replyActions = el('div', null, 'actions');
     replyActions.append(acceptBtn, declineBtn);
@@ -1473,6 +1709,7 @@ function renderEmbedMcp() {
 }
 
 async function route() {
+  clearStorageError();
   // Soudan -> Bengoshi URL query parameter firewall
   const sanitized = sanitizeEntryLocation(location.search, location.hash);
   if (sanitized.rejected) {
@@ -1517,7 +1754,7 @@ async function route() {
   }
 }
 
-async function start() {
+export async function start() {
   const integrity = verifySyntheticCatalogIntegrity();
   if (!integrity.ok) throw new Error('synthetic-catalog-integrity-failed');
   try { await host.initialize(); } catch { /* web runtime */ }
@@ -1525,10 +1762,18 @@ async function start() {
   buildEngine();
 
   $('lang-toggle').addEventListener('click', async () => {
-    locale = locale === 'ja' ? 'en' : 'ja';
+    const prevLocale = locale;
+    const nextLocale = locale === 'ja' ? 'en' : 'ja';
+    state.settings.locale = nextLocale;
+    const res = await persistState();
+    if (!res.ok) {
+      state.settings.locale = prevLocale;
+      showStorageError(res);
+      return;
+    }
+    locale = nextLocale;
     t = translator(locale);
-    state.settings.locale = locale;
-    await persistState();
+    clearStorageError();
     route();
   });
 
@@ -1536,4 +1781,6 @@ async function start() {
   await route();
 }
 
-start();
+if (typeof document !== 'undefined' && typeof window !== 'undefined' && !globalThis.__BENGOSHI_DISABLE_AUTOSTART__) {
+  start();
+}

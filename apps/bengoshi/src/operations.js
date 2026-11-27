@@ -123,14 +123,50 @@ export function createOperationsEngine({
     return next.entry;
   }
 
-  async function notifyChange() {
-    if (typeof onStateChange === 'function') await onStateChange(state);
+  function restoreState(snapshot) {
+    for (const key of Object.keys(state)) delete state[key];
+    Object.assign(state, snapshot);
+  }
+
+  async function commitOrRollback(snapshot, { throwOnFailure = true } = {}) {
+    if (typeof onStateChange !== 'function') return { ok: true };
+    try {
+      const result = await onStateChange(state);
+      if (result && result.ok === false) {
+        restoreState(snapshot);
+        if (!throwOnFailure) return result;
+        throw Object.assign(new Error(result.message || 'storage-persist-failed'), {
+          code: 'storage-persist-failed',
+          causeCode: result.code || result.error?.code || result.error?.name || 'storage-write-failed',
+          error: result.error,
+          persistResult: result,
+        });
+      }
+      return result || { ok: true };
+    } catch (err) {
+      if (err?.code === 'storage-persist-failed') throw err;
+      restoreState(snapshot);
+      const persistResult = {
+        ok: false,
+        error: err,
+        code: err?.code || err?.name || 'storage-write-failed',
+        message: err?.message || String(err),
+      };
+      if (!throwOnFailure) return persistResult;
+      throw Object.assign(new Error(persistResult.message || 'storage-persist-failed'), {
+        code: 'storage-persist-failed',
+        causeCode: persistResult.code,
+        error: err,
+        persistResult,
+      });
+    }
   }
 
   async function execute(operationName, params = {}, { actor = 'ui' } = {}) {
     if (PROHIBITED_OPERATIONS.includes(operationName)) {
+      const snapshot = structuredClone(state);
       audit(actor, operationName, 'rejected', 'Prohibited by Legal addendum / O2 / O8 / O9 structural invariant');
-      await notifyChange();
+      await commitOrRollback(snapshot, { throwOnFailure: false });
       throw Object.assign(new Error('operation-prohibited-by-invariant'), { code: 'operation-prohibited-by-invariant', operation: operationName });
     }
     if (!CANONICAL_OPERATIONS.includes(operationName)) {
@@ -141,6 +177,7 @@ export function createOperationsEngine({
 
     switch (operationName) {
       case 'directory.search': {
+        const snapshot = structuredClone(state);
         const results = filterAndSortLawyers(allLawyers(), {
           query: params.query ?? '',
           prefectureCode: params.prefectureCode ?? params.prefecture_code ?? '',
@@ -158,7 +195,7 @@ export function createOperationsEngine({
           directoryScope: params.directoryScope ?? state.settings.directoryScope,
           localOnly: true,
         });
-        await notifyChange();
+        const persistResult = await commitOrRollback(snapshot, { throwOnFailure: false });
         return {
           policy: ZERO_FEE_POLICY,
           localOnly: true,
@@ -167,6 +204,7 @@ export function createOperationsEngine({
           sort: params.sort ?? 'kana_asc',
           total: results.length,
           lawyers: results,
+          persistResult,
         };
       }
 
@@ -201,11 +239,12 @@ export function createOperationsEngine({
         const lawyer = findLawyer(params.lawyerId ?? params.id);
         if (!lawyer) throw Object.assign(new Error('lawyer-not-found'), { code: 'lawyer-not-found' });
         const text = formatManualContactText(lawyer, { nowIso });
+        const snapshot = structuredClone(state);
         audit(actor, 'contact.format_manual', 'ok', 'Formatted 7-line Method A manual contact text locally', {
           lawyerId: lawyer.id,
           method: 'method_a_direct',
         });
-        await notifyChange();
+        await commitOrRollback(snapshot);
         return {
           method: 'method_a_direct',
           serverRelayUsed: false,
@@ -221,24 +260,26 @@ export function createOperationsEngine({
       case 'inquiry.import_memo': {
         const imported = parseSoudanMemoExport(params.json ?? params.memo);
         if (params.lawyerId) imported.lawyerId = params.lawyerId;
+        const snapshot = structuredClone(state);
         state.draft = imported;
         audit(actor, 'inquiry.import_memo', 'ok', 'Imported soudan.memo.export.v1 locally', {
           template: imported.template,
           category: imported.category,
           evidenceCount: imported.evidenceManifest.length,
         });
-        await notifyChange();
+        await commitOrRollback(snapshot);
         return { draft: imported };
       }
 
       case 'inquiry.draft': {
         const draft = params.draft;
         const problems = validateInquiryDraft(draft);
-        state.draft = { ...draft };
+        const snapshot = structuredClone(state);
+        state.draft = structuredClone(draft);
         audit(actor, 'inquiry.draft', problems.length ? 'validation_warning' : 'ok', 'Saved inquiry draft locally', {
           problemCount: problems.length,
         });
-        await notifyChange();
+        await commitOrRollback(snapshot);
         return { savedLocally: true, problems, draft: state.draft };
       }
 
@@ -247,8 +288,9 @@ export function createOperationsEngine({
         // Live relay is structurally disabled (`relay-disabled-method-a-only`);
         // offline local E2EE envelope creation is available strictly on-device for local preview.
         if (params.requireLiveRelay === true) {
+          const snapshot = structuredClone(state);
           audit(actor, 'inquiry.send', 'blocked', 'Server relay disabled: Method A direct contact only');
-          await notifyChange();
+          await commitOrRollback(snapshot, { throwOnFailure: false });
           throw Object.assign(new Error('relay-disabled-method-a-only'), { code: 'relay-disabled-method-a-only' });
         }
 
@@ -264,12 +306,13 @@ export function createOperationsEngine({
         const demoMode = Boolean(params.syntheticDemoMode ?? state.settings.syntheticDemoMode);
         const gate = canSendToLawyer(lawyer, { syntheticDemoMode: demoMode, nowIso });
         if (!gate.allowed) {
+          const snapshot = structuredClone(state);
           audit(actor, 'inquiry.send', 'blocked', `Blocked by O4 gate: ${gate.reason}`, {
             lawyerId: lawyer.id,
             effectiveStatus: gate.status.effectiveStatus,
             hardHold: gate.hardHold,
           });
-          await notifyChange();
+          await commitOrRollback(snapshot, { throwOnFailure: false });
           throw Object.assign(new Error(gate.reason), { code: gate.reason, hardHold: gate.hardHold, status: gate.status });
         }
 
@@ -316,6 +359,7 @@ export function createOperationsEngine({
           replies: [],
           copyRetentionNotice: getLegalNotices(state.settings.locale).lawyerCopyRetention,
         };
+        const snapshot = structuredClone(state);
         state.sentInquiries = [record, ...state.sentInquiries];
         audit(actor, 'inquiry.send', 'ok', 'Created offline local E2EE preview envelope (0 bytes external)', {
           inquiryId,
@@ -323,19 +367,21 @@ export function createOperationsEngine({
           serverRelayUsed: false,
           aadSha256: envelope.aadSha256,
         });
-        await notifyChange();
+        await commitOrRollback(snapshot);
         return { record, serverRelayUsed: false };
       }
 
       case 'inquiry.list': {
         if (params.deleteInquiryId) {
           const before = state.sentInquiries.length;
-          state.sentInquiries = state.sentInquiries.filter(r => r.inquiryId !== params.deleteInquiryId);
-          if (state.sentInquiries.length !== before) {
+          const nextInquiries = state.sentInquiries.filter(r => r.inquiryId !== params.deleteInquiryId);
+          if (nextInquiries.length !== before) {
+            const snapshot = structuredClone(state);
+            state.sentInquiries = nextInquiries;
             audit(actor, 'inquiry.list', 'deleted_local', 'Deleted local record copy', {
               inquiryId: params.deleteInquiryId,
             });
-            await notifyChange();
+            await commitOrRollback(snapshot);
           }
         }
         return {
@@ -349,12 +395,14 @@ export function createOperationsEngine({
         const candidate = params.profile;
         const problems = validateLawyerRecord(candidate);
         if (problems.length) {
+          const snapshot = structuredClone(state);
           audit(actor, 'lawyer.profile.update', 'rejected', `Rejected by O9/O4 validator (${problems.length} problems)`, {
             codes: problems.map(p => p.code),
           });
-          await notifyChange();
+          await commitOrRollback(snapshot, { throwOnFailure: false });
           throw Object.assign(new Error('lawyer-profile-invalid'), { code: 'lawyer-profile-invalid', problems });
         }
+        const snapshot = structuredClone(state);
         state.lawyerProfile = structuredClone(candidate);
         if (!Array.isArray(state.lawyerEditHistory)) state.lawyerEditHistory = [];
         const snapHash = sha256Hex(JSON.stringify(state.lawyerProfile));
@@ -369,7 +417,7 @@ export function createOperationsEngine({
           lawyerId: candidate.id,
           snapshotSha256: snapHash,
         });
-        await notifyChange();
+        await commitOrRollback(snapshot);
         return { savedLocally: true, profile: state.lawyerProfile, historyCount: state.lawyerEditHistory.length };
       }
 
@@ -378,13 +426,14 @@ export function createOperationsEngine({
         if (!target) throw Object.assign(new Error('lawyer-not-found'), { code: 'lawyer-not-found' });
         const history = Array.isArray(params.editHistory) ? params.editHistory : (state.lawyerEditHistory || []);
         const record = exportArt11Record(target, history, { nowIso });
+        const snapshot = structuredClone(state);
         audit(actor, 'lawyer.export_art11_record', 'ok', 'Exported Art. 11 3-year preservation record locally', {
           lawyerId: target.id,
           retentionYears: record.retention_years,
           feeJpy: record.free_participation_terms.fee_jpy,
           recordSha256: record.record_sha256,
         });
-        await notifyChange();
+        await commitOrRollback(snapshot);
         return { localOnly: true, record };
       }
 
@@ -408,6 +457,7 @@ export function createOperationsEngine({
         const header = extractConflictHeader(rec);
         const check = runLocalConflictCheck(header, state.conflictLedger, { checkedAt: nowIso });
         const confirmed = Boolean(params.confirmClear === true && check.result === 'clear');
+        const snapshot = structuredClone(state);
         rec.conflictCheck = Object.freeze({
           ...check,
           confirmedByLawyer: confirmed,
@@ -419,7 +469,7 @@ export function createOperationsEngine({
           matchCount: check.matches.length,
           receiptDigest: check.receiptDigest,
         });
-        await notifyChange();
+        await commitOrRollback(snapshot);
         return {
           inquiryId: rec.inquiryId,
           conflictHeader: header,
@@ -430,8 +480,9 @@ export function createOperationsEngine({
 
       case 'intake.decide': {
         if (params.action === 'forward_to_firm' || params.forwardToFirmId) {
+          const snapshot = structuredClone(state);
           audit(actor, 'intake.decide', 'rejected', 'Firm-to-firm forwarding is prohibited (O8)');
-          await notifyChange();
+          await commitOrRollback(snapshot, { throwOnFailure: false });
           throw Object.assign(new Error('o8.firm_to_firm_forwarding_prohibited'), { code: 'o8.firm_to_firm_forwarding_prohibited' });
         }
 
@@ -441,20 +492,22 @@ export function createOperationsEngine({
         // AWAI-3235 HARD gate: block body reveal/decrypt or acceptance if conflict check is not cleared & confirmed
         const action = params.action || 'reveal';
         if (action === 'decline_conflict') {
+          const snapshot = structuredClone(state);
           rec.decision = { status: 'declined_conflict', decidedAt: nowIso, note: 'Declined due to conflict check without viewing inquiry body.' };
           audit(actor, 'intake.decide', 'declined_conflict', 'Declined inquiry at conflict gate without decrypting body', {
             inquiryId: rec.inquiryId,
           });
-          await notifyChange();
+          await commitOrRollback(snapshot);
           return { inquiryId: rec.inquiryId, revealed: false, decision: rec.decision };
         }
 
         const gate = canRevealInquiryBody(rec);
         if (!gate.allowed) {
+          const snapshot = structuredClone(state);
           audit(actor, 'intake.decide', 'blocked', `Blocked by conflict-check HARD gate: ${gate.reason}`, {
             inquiryId: rec.inquiryId,
           });
-          await notifyChange();
+          await commitOrRollback(snapshot, { throwOnFailure: false });
           throw Object.assign(new Error(gate.reason), { code: gate.reason, hardGate: true });
         }
 
@@ -462,16 +515,18 @@ export function createOperationsEngine({
           const privKey = params.recipientPrivateKeyJwk || (typeof getPrivateKeyJwk === 'function' ? await getPrivateKeyJwk() : null);
           if (!privKey) throw Object.assign(new Error('lawyer-private-key-unavailable'), { code: 'lawyer-private-key-unavailable' });
           const decrypted = await decryptEnvelope({ envelope: rec.envelope, recipientPrivateKeyJwk: privKey });
+          const snapshot = structuredClone(state);
           audit(actor, 'intake.decide', 'revealed', 'Decrypted inquiry body on device after confirmed clear conflict check', {
             inquiryId: rec.inquiryId,
             receiptDigest: rec.conflictCheck.receiptDigest,
           });
-          await notifyChange();
+          await commitOrRollback(snapshot);
           return { inquiryId: rec.inquiryId, revealed: true, plaintext: decrypted, conflictCheck: rec.conflictCheck };
         }
 
         if (action === 'accept' || action === 'decline') {
           const replyText = typeof params.replyText === 'string' ? params.replyText.trim() : '';
+          const snapshot = structuredClone(state);
           rec.decision = {
             status: action,
             decidedAt: nowIso,
@@ -484,7 +539,7 @@ export function createOperationsEngine({
             inquiryId: rec.inquiryId,
             serverRelayUsed: false,
           });
-          await notifyChange();
+          await commitOrRollback(snapshot);
           return { inquiryId: rec.inquiryId, decision: rec.decision, serverRelayUsed: false };
         }
 
