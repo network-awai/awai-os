@@ -45,8 +45,8 @@ IGNORED_PARTS = ("node_modules", "/build/", "dist/", ".git/")
 
 # Tauri apps whose MainActivity must call the library.
 TAURI_APPS = [
-    "apps/data-contribution", "apps/horei", "apps/isekai", "apps/itonami",
-    "apps/murakumo", "apps/murakumo-net", "apps/payment-drafts",
+    "apps/bengoshi", "apps/data-contribution", "apps/horei", "apps/isekai",
+    "apps/itonami", "apps/murakumo", "apps/murakumo-net", "apps/payment-drafts",
     "apps/public-funds", "apps/securities-drafts", "apps/soudan",
     "apps/x402", "apps/yotei", "tests/android-webgpu-probe",
 ]

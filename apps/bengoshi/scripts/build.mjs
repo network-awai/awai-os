@@ -154,7 +154,7 @@ await writeFile(
       id: 'network.itonami.bengoshi',
       version: pkg.version,
       versionName: pkg.version,
-      versionCode: 100,
+      versionCode: 1000,
       source_commit: git.source_commit,
       dirty: git.dirty,
       target: isTauriTarget ? 'tauri' : 'web',
