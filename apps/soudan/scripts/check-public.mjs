@@ -69,6 +69,7 @@ const ALL_PUBLIC_FILES = [
   'src/semantic.js',
   'src/mcp-app.js',
   'src/storage.js',
+  'src/form-session.js',
   'src/guest-entry.js',
   'src/style.css',
 ];
@@ -93,7 +94,7 @@ const SRC_FILES = [
   'src/index.html', 'src/embed.html', 'src/foreign-info.html', 'src/style.css',
   'src/app.js', 'src/embed.js', 'src/model.js', 'src/messages.js',
   'src/operations.js', 'src/send.js', 'src/inference.js', 'src/semantic.js',
-  'src/mcp-app.js', 'src/storage.js', 'src/guest-entry.js',
+  'src/mcp-app.js', 'src/storage.js', 'src/form-session.js', 'src/guest-entry.js',
 ];
 
 for (const rel of SRC_FILES) {

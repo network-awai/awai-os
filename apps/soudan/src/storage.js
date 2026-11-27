@@ -1,7 +1,8 @@
 // Opaque-origin safe storage and restricted-wasm-v1 host bridge for Soudan.
 // - Inside canonical mountRestrictedClientApp (srcdoc, sandbox="allow-scripts", opaque origin):
 //   communicates strictly over the host-provided MessagePort using kotoba.client.local.v1
-//   (storage.get / storage.put / device.save) and kotoba.client.operation.v1 (broker ops).
+//   (storage.get / conditional versioned storage.put / device.save) and kotoba.client.operation.v1.
+//   Uses host-enforced CAS (ifAbsent / ifVersion) so concurrent writes never silently lose updates.
 //   Never touches window.localStorage.
 // - Standalone Web / Tauri: wraps awai.shell.host.v1 while safely guarding localStorage
 //   access so opaque-origin environments never throw during startup.
@@ -72,7 +73,6 @@ export function createRestrictedPortClient(port) {
     });
   }
 
-  let revision = 0;
   return Object.freeze({
     info: () => Object.freeze({schema: 'kotoba.client.local.v1', runtime: 'restricted-wasm-v1'}),
     async initialize() {},
@@ -83,19 +83,32 @@ export function createRestrictedPortClient(port) {
         ? new TextDecoder().decode(res.value)
         : typeof res.value === 'string' ? res.value : JSON.stringify(res.value);
       const parsed = JSON.parse(raw);
-      revision = Number.isSafeInteger(parsed?.revision) ? parsed.revision : 1;
-      return {schema: 'awai.shell.host.v1', revision, data: parsed?.data ?? parsed};
+      // Authoritative revision comes from the canonical host's monotonic storage version.
+      const hostVersion = Number.isSafeInteger(res.version) && res.version >= 1
+        ? res.version
+        : (Number.isSafeInteger(parsed?.revision) ? parsed.revision : 1);
+      return {schema: 'awai.shell.host.v1', revision: hostVersion, data: parsed?.data ?? parsed};
     },
     async write({expectedRevision, data}) {
-      const current = await this.read();
-      if (current.revision !== expectedRevision) {
-        throw Object.assign(Error('state-conflict'), {code: 'state-conflict'});
+      if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0) {
+        throw Object.assign(Error('invalid-revision'), {code: 'invalid-revision'});
       }
       const next = {schema: 'awai.shell.host.v1', revision: expectedRevision + 1, data};
       const bytes = new TextEncoder().encode(JSON.stringify(next));
-      await callLocal('storage.put', {store: HOST_STATE_STORE, key: HOST_STATE_KEY, value: bytes});
-      revision = next.revision;
-      return next;
+      // P1 #3: Single atomic conditional write enforced by canonical host (ifAbsent / ifVersion).
+      const putArgs = expectedRevision === 0
+        ? {store: HOST_STATE_STORE, key: HOST_STATE_KEY, value: bytes, ifAbsent: true}
+        : {store: HOST_STATE_STORE, key: HOST_STATE_KEY, value: bytes, ifVersion: expectedRevision};
+      try {
+        const putRes = await callLocal('storage.put', putArgs);
+        const committedVersion = Number.isSafeInteger(putRes?.version) ? putRes.version : expectedRevision + 1;
+        return {schema: 'awai.shell.host.v1', revision: committedVersion, data};
+      } catch (err) {
+        if (err?.code === 'version-conflict' || err?.code === 'key-exists') {
+          throw Object.assign(Error('state-conflict'), {code: 'state-conflict'});
+        }
+        throw err;
+      }
     },
     async saveFile({name, type, bytes}) {
       return callLocal('device.save', {name, type, value: bytes});

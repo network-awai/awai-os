@@ -201,6 +201,38 @@ test('P1 #1: canonical mountRestrictedClientApp mounts self-contained guest.html
     const readBack = await guest.getClient().read();
     assert.equal(readBack.revision, 1);
     assert.equal(readBack.data.drafts[0].draft.summary, 'opaque-origin host storage round-trip');
+
+    // Round-2 P1 #3: Two concurrent MessagePort guests racing at revision 1 -> only ONE succeeds,
+    // the second receives state-conflict (zero silent lost update).
+    const mountedB = await mountRestrictedClientApp({artifact, container, broker, hostLocal});
+    assert.equal(frames.length, 2);
+    const frameB = frames[1];
+    for (const fn of frameB._listeners.get('load') ?? []) fn({});
+    const guestPortB = frameB._posted[0].transfer[0];
+    const guestB = bootRestrictedGuest({win: opaqueWin, doc: null});
+    await guestB.attachPort(guestPortB);
+
+    const clientA = guest.getClient();
+    const clientB = guestB.getClient();
+    assert.equal((await clientA.read()).revision, 1);
+    assert.equal((await clientB.read()).revision, 1);
+
+    const [resA, resB] = await Promise.allSettled([
+      clientA.write({expectedRevision: 1, data: {winner: 'client-A'}}),
+      clientB.write({expectedRevision: 1, data: {winner: 'client-B'}}),
+    ]);
+    const fulfilled = [resA, resB].filter(r => r.status === 'fulfilled');
+    const rejected = [resA, resB].filter(r => r.status === 'rejected');
+    assert.equal(fulfilled.length, 1, 'exactly one concurrent guest write succeeds');
+    assert.equal(rejected.length, 1, 'second concurrent guest write fails with conflict');
+    assert.equal(fulfilled[0].value.revision, 2);
+    assert.equal(rejected[0].reason.code, 'state-conflict');
+
+    const finalRead = await clientA.read();
+    assert.equal(finalRead.revision, 2);
+    assert.deepEqual(finalRead.data, fulfilled[0].value.data, 'stored value matches winning client');
+
+    mountedB.close();
     mounted.close();
   } finally {
     globalThis.document = prevDoc;

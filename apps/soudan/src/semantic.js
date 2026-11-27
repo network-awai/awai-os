@@ -75,6 +75,7 @@ export function createSemanticStore({
   let seq = state.audit.length;
   let inferenceInFlight = 0;
   let dailyBucket = {day: '', count: 0};
+  let pendingAuditEntry = null;
   const pendingDeletions = new Map();
 
   function todayKey() {
@@ -353,20 +354,25 @@ export function createSemanticStore({
         recordAudit({op, actor: normActor, outcome: 'blocked', targetKind: 'memo', gateName: 'iframe-no-direct-external-egress'});
         uiState = 'governor.blocked';
         lastGuard = {blocked: true, state: uiState, gateName: 'iframe-no-direct-external-egress'};
-        return {ok: false, state: uiState, gateName: 'iframe-no-direct-external-egress', disclaimer: t('disclaimer.fixed')};
+        return {ok: false, sent: false, state: uiState, gateName: 'iframe-no-direct-external-egress', disclaimer: t('disclaimer.fixed')};
       }
       const rec = activeDraftRecord(state);
-      const dProblems = draftProblems(rec?.draft);
-      const rProblems = recipientProblems(rec?.draft?.recipient);
+      // P1 #2: Dry-run may inspect an in-memory editing snapshot (params.draft) WITHOUT persisting
+      // or mutating stored drafts, revision, or audit history.
+      const sourceDraft = (params?.dryRun === true && params?.draft && typeof params.draft === 'object')
+        ? restoreDraft(params.draft)
+        : rec?.draft;
+      const dProblems = draftProblems(sourceDraft);
+      const rProblems = recipientProblems(sourceDraft?.recipient);
       if (dProblems.length || rProblems.length) {
-        recordAudit({op, actor: normActor, outcome: 'error', targetKind: 'memo'});
-        return {ok: false, state: uiState, problems: [...dProblems, ...rProblems], disclaimer: t('disclaimer.fixed')};
+        if (params?.dryRun !== true) recordAudit({op, actor: normActor, outcome: 'error', targetKind: 'memo'});
+        return {ok: false, sent: false, state: uiState, problems: [...dProblems, ...rProblems], disclaimer: t('disclaimer.fixed')};
       }
-      const memo = assembleMemo(rec.draft, t);
+      const memo = assembleMemo(sourceDraft, t);
       const to = {
-        name: rec.draft.recipient.name.trim(),
-        office: (rec.draft.recipient.office ?? '').trim(),
-        contact: rec.draft.recipient.contact.trim(),
+        name: sourceDraft.recipient.name.trim(),
+        office: (sourceDraft.recipient.office ?? '').trim(),
+        contact: sourceDraft.recipient.contact.trim(),
       };
       const addressed = addressedMemo(memo.text, to, t);
       const mode = params?.mode ?? (route === 'android-share-sheet' ? 'android-share' : 'save-txt');
@@ -381,14 +387,13 @@ export function createSemanticStore({
         consentRequired: true,
       };
       if (params?.dryRun === true) {
-        recordAudit({op, actor: normActor, outcome: 'dry-run', targetKind: 'memo'});
         uiState = 'consent.required';
-        return {ok: true, state: uiState, preview, disclaimer: t('disclaimer.fixed')};
+        return {ok: true, sent: false, state: uiState, preview, disclaimer: t('disclaimer.fixed')};
       }
       if (!broker) {
         recordAudit({op, actor: normActor, outcome: 'blocked', targetKind: 'memo', gateName: 'broker-unavailable'});
         uiState = 'governor.blocked';
-        return {ok: false, state: uiState, gateName: 'broker-unavailable', disclaimer: t('disclaimer.fixed')};
+        return {ok: false, sent: false, state: uiState, gateName: 'broker-unavailable', disclaimer: t('disclaimer.fixed')};
       }
       uiState = 'consent.required';
       const payload = {
@@ -398,25 +403,50 @@ export function createSemanticStore({
           mode,
           title: memo.title,
           markdown: formatMemoMarkdown(memo, to, t),
-          exportJson: JSON.stringify(buildMemoExportV1(memo, to, rec.draft, t, now()), null, 2),
+          exportJson: JSON.stringify(buildMemoExportV1(memo, to, sourceDraft, t, now()), null, 2),
         } : {}),
       };
       try {
         const result = await broker.invoke(SEND_SELECTOR, payload);
+        // External share ALREADY succeeded here. Distinguish share success from audit persistence failure (P1 #4).
         const prevState = cloneState(state);
         const prevSeq = seq;
-        recordAudit({op, actor: normActor, outcome: 'ok', targetKind: 'memo'});
+        const auditEntry = recordAudit({op, actor: normActor, outcome: 'ok', targetKind: 'memo'});
         uiState = 'audit.recorded';
-        await persistOrRollback(prevState, prevSeq);
-        return {ok: true, state: uiState, result, disclaimer: t('disclaimer.fixed')};
+        const p = await persistOrRollback(prevState, prevSeq);
+        if (!p.ok) {
+          pendingAuditEntry = auditEntry;
+          return {
+            ok: false,
+            sent: true,
+            auditPersisted: false,
+            conflict: Boolean(p.conflict),
+            auditError: p.error,
+            error: p.error,
+            pendingAuditEntry: auditEntry,
+            state: uiState,
+            result,
+            disclaimer: t('disclaimer.fixed'),
+          };
+        }
+        pendingAuditEntry = null;
+        return {ok: true, sent: true, auditPersisted: true, state: uiState, result, disclaimer: t('disclaimer.fixed')};
       } catch (err) {
         const denied = /not approved/i.test(err?.message ?? '');
         const prevState = cloneState(state);
         const prevSeq = seq;
         recordAudit({op, actor: normActor, outcome: denied ? 'denied' : 'blocked', targetKind: 'memo', gateName: denied ? 'user-consent-denied' : 'broker-refused'});
         uiState = denied ? 'idle' : 'governor.blocked';
-        await persistOrRollback(prevState, prevSeq);
-        return {ok: false, state: uiState, error: err?.message ?? 'send-blocked', disclaimer: t('disclaimer.fixed')};
+        const p = await persistOrRollback(prevState, prevSeq);
+        return {
+          ok: false,
+          sent: false,
+          auditPersisted: p.ok,
+          ...(p.ok ? {} : {auditError: p.error}),
+          state: uiState,
+          error: err?.message ?? 'send-blocked',
+          disclaimer: t('disclaimer.fixed'),
+        };
       }
     }
 
@@ -575,6 +605,22 @@ export function createSemanticStore({
     ),
     clearProposal: () => { lastProposal = null; uiState = 'idle'; },
     getPendingDeletions: () => [...pendingDeletions.values()],
+    getPendingAudit: () => pendingAuditEntry,
+    // Retry persisting an unpersisted post-share audit entry WITHOUT ever repeating the external share.
+    async retryPendingAudit() {
+      if (!pendingAuditEntry) return {ok: true, auditPersisted: true, state: uiState, disclaimer: t('disclaimer.fixed')};
+      const prevState = cloneState(state);
+      const prevSeq = seq;
+      state.audit = [...state.audit, pendingAuditEntry].slice(-LIMITS.audit);
+      seq = Math.max(seq, state.audit.length);
+      uiState = 'audit.recorded';
+      const p = await persistOrRollback(prevState, prevSeq);
+      if (!p.ok) {
+        return {ok: false, auditPersisted: false, conflict: Boolean(p.conflict), auditError: p.error, error: p.error, state: uiState, disclaimer: t('disclaimer.fixed')};
+      }
+      pendingAuditEntry = null;
+      return {ok: true, auditPersisted: true, state: uiState, disclaimer: t('disclaimer.fixed')};
+    },
     getLastGuard: () => lastGuard,
     execute,
   });

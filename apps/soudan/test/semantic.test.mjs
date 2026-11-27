@@ -7,6 +7,7 @@ import {
 } from '../src/model.js';
 import {translator} from '../src/messages.js';
 import {SEMANTIC_OPERATIONS, SEMANTIC_STATES, createSemanticStore} from '../src/semantic.js';
+import {createFormSession} from '../src/form-session.js';
 
 const t = translator('ja');
 
@@ -275,19 +276,145 @@ test('P1 #4: organization proposal is bound to originating draftId and cannot ov
 test('P2 #5: normal Save in app.js routes through soudan.draft.update with human actor and O8-minimized audit', async () => {
   const appSrc = readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
   const saveBlock = appSrc.slice(appSrc.indexOf('async function save()'), appSrc.indexOf('function field('));
-  assert.ok(saveBlock.includes("store.execute('soudan.draft.update'"), 'save() must invoke soudan.draft.update');
-  assert.ok(saveBlock.includes("actor: {kind: 'human'}"), 'save() must pass human actor');
+  assert.ok(saveBlock.includes("session.save({actor: {kind: 'human'}})"), 'save() must invoke session.save with human actor');
   assert.ok(!saveBlock.includes('host.write('), 'save() must not bypass semantic store by calling host.write directly');
 
   const store = createSemanticStore({locale: 'ja'});
-  const res = await store.execute('soudan.draft.update', {
-    id: 'draft-1',
-    patch: {...emptyDraft(), summary: '秘密の相談テキスト999', name: '秘密氏名'},
-  }, {actor: {kind: 'human'}});
+  const session = createFormSession(store);
+  session.draft().summary = '秘密の相談テキスト999';
+  session.draft().name = '秘密氏名';
+  const res = await session.save({actor: {kind: 'human'}});
   assert.equal(res.ok, true);
   const entries = (await store.execute('soudan.audit.list', {}, {actor: {kind: 'human'}})).entries;
   assert.equal(entries.at(-1).op, 'soudan.draft.update');
   assert.equal(entries.at(-1).actor.kind, 'human');
   assert.ok(!JSON.stringify(entries).includes('秘密の相談テキスト999'));
   assert.ok(!JSON.stringify(entries).includes('秘密氏名'));
+});
+
+test('Round-2 P1 #1: Save -> re-edit -> Save keeps new edits, and evidence add/remove preserves unsaved fields', async () => {
+  let persistedSnapshots = [];
+  const store = createSemanticStore({
+    locale: 'ja',
+    onPersist: async next => { persistedSnapshots.push(structuredClone(next)); return {ok: true}; },
+  });
+  const session = createFormSession(store);
+
+  // (a) Simulate DOM listener holding live buffer across Save -> re-edit -> Save
+  const liveRef = session.draft();
+  liveRef.summary = '最初の入力';
+  assert.equal((await session.save()).ok, true);
+  assert.equal(store.getActiveDraft().draft.summary, '最初の入力');
+
+  // Edit via the SAME reference that was active before Save (as rendered DOM handlers do) and save again!
+  liveRef.summary = '最初の入力＋追記';
+  assert.equal((await session.save()).ok, true);
+  assert.equal(store.getActiveDraft().draft.summary, '最初の入力＋追記');
+  assert.equal(persistedSnapshots.at(-1).drafts[0].draft.summary, '最初の入力＋追記');
+
+  // (b) Type unsaved summary AND unsaved evidence URL, then add & remove evidence rows -> unsaved edits survive!
+  session.draft().summary = 'まだ保存していない重要メモ';
+  assert.equal((await session.addEvidence()).ok, true);
+  assert.equal(session.draft().summary, 'まだ保存していない重要メモ');
+  assert.equal(session.draft().evidence.length, 1);
+
+  session.draft().evidence[0].url = 'https://example.com/unsaved-post-1';
+  assert.equal((await session.addEvidence()).ok, true);
+  assert.equal(session.draft().summary, 'まだ保存していない重要メモ');
+  assert.equal(session.draft().evidence[0].url, 'https://example.com/unsaved-post-1');
+  assert.equal(session.draft().evidence.length, 2);
+
+  // Remove row 1 -> unsaved summary AND unsaved row 0 URL remain intact!
+  assert.equal((await session.removeEvidence(1)).ok, true);
+  assert.equal(session.draft().summary, 'まだ保存していない重要メモ');
+  assert.equal(session.draft().evidence.length, 1);
+  assert.equal(session.draft().evidence[0].url, 'https://example.com/unsaved-post-1');
+});
+
+test('Round-2 P1 #2: Send dry-run preview reads live editing snapshot WITHOUT persisting, bumping revision, or adding audit entries', async () => {
+  let persistCalls = 0;
+  let revision = 0;
+  const store = createSemanticStore({
+    locale: 'ja',
+    onPersist: async () => { persistCalls += 1; revision += 1; return {ok: true}; },
+  });
+  const session = createFormSession(store);
+
+  // Populate unsaved fields + unsaved recipient in memory only (never saved yet)
+  Object.assign(session.draft(), completePatch());
+  assert.equal(persistCalls, 0);
+  assert.equal(revision, 0);
+  assert.equal(store.getState().audit.length, 0);
+
+  const dry = await session.dryRunSend({mode: 'save-txt'});
+  assert.equal(dry.ok, true);
+  assert.equal(dry.sent, false);
+  assert.equal(dry.state, 'consent.required');
+  assert.equal(dry.preview.dryRun, true);
+  assert.equal(dry.preview.recipientFilled, true);
+  assert.ok(dry.preview.charCount > 0);
+
+  // Zero persistence, zero revision bump, zero audit mutation, stored draft still empty!
+  assert.equal(persistCalls, 0, 'dry-run MUST NOT call onPersist');
+  assert.equal(revision, 0, 'dry-run MUST NOT bump revision');
+  assert.equal(store.getState().audit.length, 0, 'dry-run MUST NOT write any audit entry');
+  assert.equal(store.getActiveDraft().draft.summary, '', 'dry-run MUST NOT persist unsaved summary');
+  assert.equal(store.getActiveDraft().draft.recipient.name, '', 'dry-run MUST NOT persist unsaved recipient');
+
+  // Verify app.js dryRunBtn does not call save()
+  const appSrc = readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
+  const dryBlock = appSrc.slice(appSrc.indexOf("dryRunBtn.addEventListener('click'"), appSrc.indexOf("const actions = el('div', null, 'actions');\n  const saveButton"));
+  assert.ok(!dryBlock.includes('save('), 'dryRunBtn click handler must not call save()');
+});
+
+test('Round-2 P1 #4: external share success + audit persist failure returns sent:true, auditPersisted:false and retries audit without repeating share', async () => {
+  let shareCalls = 0;
+  const fakeBroker = {
+    async invoke() {
+      shareCalls += 1;
+      return {shared: true, route: 'android-share-sheet'};
+    },
+  };
+  let failAudit = null;
+  const store = createSemanticStore({
+    locale: 'ja',
+    broker: fakeBroker,
+    onPersist: async () => {
+      if (failAudit === 'quota') return {ok: false, conflict: false, code: 'data-too-large'};
+      if (failAudit === 'conflict') return {ok: false, conflict: true, code: 'state-conflict'};
+      return {ok: true};
+    },
+  });
+
+  await store.execute('soudan.draft.update', {patch: completePatch()}, {actor: {kind: 'human'}});
+
+  // Case A: quota failure on post-share audit persistence
+  failAudit = 'quota';
+  const resQuota = await store.execute('soudan.memo.send', {mode: 'android-share'}, {actor: {kind: 'human'}});
+  assert.equal(shareCalls, 1, 'external share ran once');
+  assert.equal(resQuota.ok, false, 'overall result is not plain ok when audit failed');
+  assert.equal(resQuota.sent, true, 'clearly distinguishes that external share ALREADY succeeded');
+  assert.equal(resQuota.auditPersisted, false);
+  assert.equal(resQuota.auditError, 'data-too-large');
+  assert.equal(resQuota.pendingAuditEntry.op, 'soudan.memo.send');
+  assert.ok(store.getPendingAudit());
+
+  // Retrying audit persistence succeeds WITHOUT repeating external share!
+  failAudit = null;
+  const retried = await store.retryPendingAudit();
+  assert.equal(retried.ok, true);
+  assert.equal(retried.auditPersisted, true);
+  assert.equal(shareCalls, 1, 'retryPendingAudit MUST NOT repeat external share');
+  assert.equal(store.getPendingAudit(), null);
+  assert.equal(store.getState().audit.at(-1).op, 'soudan.memo.send');
+
+  // Case B: conflict failure on post-share audit persistence
+  failAudit = 'conflict';
+  const resConflict = await store.execute('soudan.memo.send', {mode: 'android-share'}, {actor: {kind: 'human'}});
+  assert.equal(shareCalls, 2);
+  assert.equal(resConflict.ok, false);
+  assert.equal(resConflict.sent, true);
+  assert.equal(resConflict.auditPersisted, false);
+  assert.equal(resConflict.conflict, true);
+  assert.equal(resConflict.auditError, 'state-conflict');
 });

@@ -33,7 +33,7 @@ await mkdir(out, {recursive: true});
 const srcModules = [
   'style.css', 'app.js', 'embed.js', 'model.js', 'messages.js',
   'operations.js', 'send.js', 'inference.js', 'semantic.js', 'mcp-app.js',
-  'storage.js', 'guest-entry.js',
+  'storage.js', 'form-session.js', 'guest-entry.js',
 ];
 for (const name of srcModules) {
   await copyFile(resolve(app, 'src', name), resolve(out, name));
