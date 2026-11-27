@@ -76,9 +76,23 @@ export function createSemanticStore({
   let monotonicAuditId = state.audit.length;
   let inferenceInFlight = 0;
   let dailyBucket = {day: '', count: 0};
-  // FIFO queue of unpersisted post-share audit entries (deduplicated by entry id).
+  // FIFO queue of unpersisted post-share audit entries (deduplicated by collision-free entry id).
   let pendingAuditEntries = [];
   const pendingDeletions = new Map();
+
+  function generateAuditId() {
+    monotonicAuditId += 1;
+    if (typeof globalThis.crypto?.randomUUID === 'function') {
+      return `aud-${globalThis.crypto.randomUUID()}`;
+    }
+    if (typeof globalThis.crypto?.getRandomValues === 'function') {
+      const bytes = new Uint8Array(12);
+      globalThis.crypto.getRandomValues(bytes);
+      const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+      return `aud-${hex}-${monotonicAuditId}`;
+    }
+    return `aud-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}-${monotonicAuditId}`;
+  }
 
   function enqueuePendingAudit(entry) {
     if (entry && !pendingAuditEntries.some(e => e.id === entry.id)) {
@@ -86,15 +100,15 @@ export function createSemanticStore({
     }
   }
 
-  function mergePendingAuditsIntoState() {
-    if (!pendingAuditEntries.length) return 0;
+  function mergeAuditsIntoState(entries) {
+    if (!entries.length) return [];
     const existingIds = new Set(state.audit.map(e => e.id));
-    const missing = pendingAuditEntries.filter(e => !existingIds.has(e.id));
+    const missing = entries.filter(e => e && !existingIds.has(e.id));
     if (missing.length) {
       state.audit = [...state.audit, ...missing].slice(-LIMITS.audit);
       seq = Math.max(seq, state.audit.length);
     }
-    return missing.length;
+    return missing;
   }
 
   function todayKey() {
@@ -103,10 +117,9 @@ export function createSemanticStore({
 
   function recordAudit({op, actor, outcome, targetKind, gateName = null}) {
     seq += 1;
-    monotonicAuditId += 1;
     // O8 minimization: NEVER store consultation text, names, contacts, URLs, or PII.
     const entry = {
-      id: `aud-${monotonicAuditId}`,
+      id: generateAuditId(),
       timestamp: now(),
       op,
       actor: normalizeActor(actor),
@@ -428,12 +441,15 @@ export function createSemanticStore({
       };
       try {
         const result = await broker.invoke(SEND_SELECTOR, payload);
-        // External share ALREADY succeeded here. Flush any earlier queued pending audit entries
-        // together with this share's audit entry so no earlier completed share is ever dropped.
+        // External share ALREADY succeeded here. Snapshot exact queued entries to flush alongside
+        // this share's audit record, and remove ONLY those exact flushed IDs after persist confirms ok:true.
         const prevState = cloneState(state);
         const prevSeq = seq;
-        const flushedPendingCount = mergePendingAuditsIntoState();
+        const queuedSnapshot = [...pendingAuditEntries];
+        const mergedQueued = mergeAuditsIntoState(queuedSnapshot);
         const auditEntry = recordAudit({op, actor: normActor, outcome: 'ok', targetKind: 'memo'});
+        const entriesToFlush = [...queuedSnapshot, auditEntry];
+        const flushedIds = new Set(entriesToFlush.map(e => e.id));
         uiState = 'audit.recorded';
         const p = await persistOrRollback(prevState, prevSeq);
         if (!p.ok) {
@@ -453,13 +469,14 @@ export function createSemanticStore({
             disclaimer: t('disclaimer.fixed'),
           };
         }
-        pendingAuditEntries = [];
+        mergeAuditsIntoState(entriesToFlush);
+        pendingAuditEntries = pendingAuditEntries.filter(e => !flushedIds.has(e.id));
         return {
           ok: true,
           sent: true,
           auditPersisted: true,
-          flushedPendingCount,
-          pendingAuditCount: 0,
+          flushedPendingCount: mergedQueued.length,
+          pendingAuditCount: pendingAuditEntries.length,
           state: uiState,
           result,
           disclaimer: t('disclaimer.fixed'),
@@ -635,14 +652,18 @@ export function createSemanticStore({
     getPendingAudit: () => pendingAuditEntries[0] ?? null,
     getPendingAudits: () => [...pendingAuditEntries],
     getPendingAuditCount: () => pendingAuditEntries.length,
-    // Retry persisting ALL queued post-share audit entries in FIFO order WITHOUT ever repeating external share.
+    // Retry persisting queued post-share audit entries in FIFO order WITHOUT ever repeating external share.
+    // Snapshots exact IDs included in this write and removes ONLY those flushed IDs on ok:true so any
+    // newly arrived pending entry from a concurrent share stays safely queued.
     async retryPendingAudit() {
       if (pendingAuditEntries.length === 0) {
         return {ok: true, auditPersisted: true, pendingAuditCount: 0, state: uiState, disclaimer: t('disclaimer.fixed')};
       }
       const prevState = cloneState(state);
       const prevSeq = seq;
-      mergePendingAuditsIntoState();
+      const entriesToFlush = [...pendingAuditEntries];
+      const flushedIds = new Set(entriesToFlush.map(e => e.id));
+      mergeAuditsIntoState(entriesToFlush);
       uiState = 'audit.recorded';
       const p = await persistOrRollback(prevState, prevSeq);
       if (!p.ok) {
@@ -657,8 +678,16 @@ export function createSemanticStore({
           disclaimer: t('disclaimer.fixed'),
         };
       }
-      pendingAuditEntries = [];
-      return {ok: true, auditPersisted: true, pendingAuditCount: 0, state: uiState, disclaimer: t('disclaimer.fixed')};
+      mergeAuditsIntoState(entriesToFlush);
+      pendingAuditEntries = pendingAuditEntries.filter(e => !flushedIds.has(e.id));
+      return {
+        ok: true,
+        auditPersisted: true,
+        flushedCount: flushedIds.size,
+        pendingAuditCount: pendingAuditEntries.length,
+        state: uiState,
+        disclaimer: t('disclaimer.fixed'),
+      };
     },
     getLastGuard: () => lastGuard,
     execute,

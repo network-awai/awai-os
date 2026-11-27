@@ -504,3 +504,116 @@ test('Round-3 P2 #2: local-only organize uses live unsaved editing snapshot with
   assert.equal(revision, 1, 'local-only organize MUST NOT bump revision');
   assert.equal(store.getActiveDraft().draft.summary, '古い保存済みテキスト', 'persisted draft remains unchanged until explicit Save or Apply');
 });
+
+test('Round-4 Regression A: reloaded store via setState() with existing aud-1/aud-2 never collides with new share audit ID', async () => {
+  const fakeBroker = {async invoke() { return {shared: true, route: 'android-share-sheet'}; }};
+  let failPersist = true;
+  const store = createSemanticStore({
+    locale: 'ja',
+    broker: fakeBroker,
+    onPersist: async () => (failPersist ? {ok: false, conflict: false, code: 'data-too-large'} : {ok: true}),
+  });
+
+  // Load persisted state via setState() containing existing aud-1 and aud-2.
+  store.setState({
+    schema: STATE_SCHEMA,
+    activeDraftId: 'draft-1',
+    drafts: [{
+      id: 'draft-1',
+      title: '既存下書き',
+      createdAt: '2026-11-27T00:00:00.000Z',
+      updatedAt: '2026-11-27T00:00:00.000Z',
+      draft: {...emptyDraft(), ...completePatch()},
+    }],
+    audit: [
+      {id: 'aud-1', timestamp: '2026-11-27T00:00:00.000Z', op: 'soudan.draft.update', actor: {kind: 'human'}, outcome: 'ok', targetKind: 'draft'},
+      {id: 'aud-2', timestamp: '2026-11-27T00:01:00.000Z', op: 'soudan.memo.send', actor: {kind: 'human'}, outcome: 'ok', targetKind: 'memo'},
+    ],
+  });
+
+  // Run a new share whose audit persist fails -> queued with collision-free ID.
+  const s = await store.execute('soudan.memo.send', {mode: 'android-share'}, {actor: {kind: 'human'}});
+  assert.equal(s.ok, false);
+  assert.equal(s.sent, true);
+  assert.equal(s.auditPersisted, false);
+  assert.notEqual(s.pendingAuditEntry.id, 'aud-1');
+  assert.notEqual(s.pendingAuditEntry.id, 'aud-2');
+
+  // Retry audit persistence -> MUST genuinely persist the 3rd record (not silently deduped away!).
+  failPersist = false;
+  const retried = await store.retryPendingAudit();
+  assert.equal(retried.ok, true);
+  assert.equal(retried.auditPersisted, true);
+  assert.equal(retried.pendingAuditCount, 0);
+  const allAudits = store.getState().audit;
+  assert.equal(allAudits.length, 3, 'all 3 audit entries (aud-1, aud-2, plus new share) must be present');
+  assert.equal(new Set(allAudits.map(e => e.id)).size, 3, 'all audit IDs are unique');
+  assert.ok(allAudits.some(e => e.id === s.pendingAuditEntry.id), 'new share audit entry is genuinely present in state.audit');
+});
+
+test('Round-4 Regression B: Share #2 failing audit while retryPendingAudit() for Share #1 is in-flight is never wiped', async () => {
+  let shareCalls = 0;
+  const fakeBroker = {
+    async invoke() {
+      shareCalls += 1;
+      return {shared: true, route: 'android-share-sheet'};
+    },
+  };
+
+  let persistMode = 'ok';
+  let releaseRetry1;
+  const store = createSemanticStore({
+    locale: 'ja',
+    broker: fakeBroker,
+    onPersist: async () => {
+      if (persistMode === 'fail') return {ok: false, conflict: false, code: 'data-too-large'};
+      if (persistMode === 'defer-once') {
+        persistMode = 'fail'; // Concurrent Share #2 during in-flight retry will fail persist!
+        return new Promise(resolve => { releaseRetry1 = () => resolve({ok: true}); });
+      }
+      return {ok: true};
+    },
+  });
+
+  await store.execute('soudan.draft.update', {patch: completePatch()}, {actor: {kind: 'human'}});
+
+  // Share #1 succeeds externally, fails audit persist -> queued as pending entry #1.
+  persistMode = 'fail';
+  const s1 = await store.execute('soudan.memo.send', {mode: 'android-share'}, {actor: {kind: 'human'}});
+  assert.equal(s1.sent, true);
+  assert.equal(s1.auditPersisted, false);
+  assert.equal(store.getPendingAuditCount(), 1);
+
+  // Kick off retryPendingAudit() for Share #1 with deferred in-flight onPersist.
+  persistMode = 'defer-once';
+  const retry1Promise = store.retryPendingAudit();
+
+  // While retry1 is still in-flight, Share #2 completes and fails its audit persist!
+  const s2 = await store.execute('soudan.memo.send', {mode: 'android-share'}, {actor: {kind: 'human'}});
+  assert.equal(s2.sent, true);
+  assert.equal(s2.auditPersisted, false);
+  assert.equal(shareCalls, 2);
+  assert.equal(store.getPendingAuditCount(), 2, 'both Share #1 and Share #2 are queued before retry1 settles');
+
+  // Now resolve Share #1's in-flight retry as ok:true -> ONLY Share #1 is removed; Share #2 MUST remain queued!
+  releaseRetry1();
+  const retry1Res = await retry1Promise;
+  assert.equal(retry1Res.ok, true);
+  assert.equal(retry1Res.flushedCount, 1);
+  assert.equal(retry1Res.pendingAuditCount, 1, 'Share #2 must still remain queued');
+  assert.equal(store.getPendingAuditCount(), 1);
+  assert.equal(store.getPendingAudits()[0].id, s2.pendingAuditEntry.id);
+  assert.ok(store.getState().audit.some(e => e.id === s1.pendingAuditEntry.id), 'Share #1 audit is persisted');
+
+  // Second retryPendingAudit() persists Share #2 cleanly without repeating any share!
+  persistMode = 'ok';
+  const retry2Res = await store.retryPendingAudit();
+  assert.equal(retry2Res.ok, true);
+  assert.equal(retry2Res.pendingAuditCount, 0);
+  assert.equal(store.getPendingAuditCount(), 0);
+  assert.equal(shareCalls, 2, 'zero repeated shares');
+  const sendAudits = store.getState().audit.filter(e => e.op === 'soudan.memo.send' && e.outcome === 'ok');
+  assert.equal(sendAudits.length, 2, 'both Share #1 and Share #2 are recorded in state.audit');
+  assert.ok(sendAudits.some(e => e.id === s1.pendingAuditEntry.id));
+  assert.ok(sendAudits.some(e => e.id === s2.pendingAuditEntry.id));
+});
