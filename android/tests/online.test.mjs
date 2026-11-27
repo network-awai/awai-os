@@ -5,8 +5,8 @@ import {generateKeyPairSync,sign} from 'node:crypto';
 import vm from 'node:vm';
 const runtime=new URL('../../otehon/shell/vendor/kotoba-client-runtime.js',import.meta.url);
 const text=readFileSync(new URL('../client/online.js',import.meta.url),'utf8').replace("'./runtime.js'",JSON.stringify(runtime.href)).replace("'./key-list.js'",JSON.stringify(new URL('../client/key-list.js',import.meta.url).href));
-const {validatePins,onlineRuntime,authenticateCatalog}=await import('data:text/javascript;base64,'+Buffer.from(text).toString('base64'));
-const {clientRuntimeProblems,clientEndpointAllowsRequest}=await import(runtime.href);
+const {MAX_PINNED_APPS,validatePins,disclosureFor,onlineRuntime,authenticateCatalog}=await import('data:text/javascript;base64,'+Buffer.from(text).toString('base64'));
+const {clientRuntimeProblems,clientDisclosureProblems,clientEndpointAllowsRequest}=await import(runtime.href);
 const ctx=vm.createContext({window:{}});vm.runInContext(readFileSync(new URL('../client/generated/domain.js',import.meta.url),'utf8'),ctx);
 const domain=ctx.window.ItonamiDomain, rev='a'.repeat(40);
 const base=`https://raw.githubusercontent.com/network-awai/awai-os/${rev}/store/distribution/dev/`;
@@ -76,4 +76,75 @@ test('catalog signature through the root-signed key list (AWAI-3775)',async()=>{
  await assert.rejects(authenticateCatalog(by(cat),{...trust,root:b64(rsa())},domain),/keys-signature/,'list from another root');
  await assert.rejects(authenticateCatalog(by(cat),{...trust,signature:sign('sha256',Buffer.from(list),cat.privateKey).toString('base64')},domain),/keys-signature/,'list not signed by the root');
  await assert.rejects(authenticateCatalog(by(cat),undefined,domain),/鍵の一覧/,'no trust at all');
+});
+
+test('pin APK limit boundaries and alignment across online.js, OnlinePins.java, HostActivity.java, LatestPointer.java, and dev pins (AWAI-3729)',()=>{
+ const makePins=count=>{
+  const apks={};
+  for(let i=0;i<count;i++)apks[`network.itonami.app${i}`]={url:`${base}app${i}.apk`,sha256:'c'.repeat(64),maxBytes:1048576};
+  return {revision:rev,catalog:pins.catalog,apks};
+ };
+ assert.equal(MAX_PINNED_APPS,64);
+ assert.throws(()=>validatePins(makePins(0)),'0 APKs rejected');
+ assert.doesNotThrow(()=>validatePins(makePins(MAX_PINNED_APPS)),'exact max APKs accepted');
+ assert.throws(()=>validatePins(makePins(MAX_PINNED_APPS+1)),'max + 1 APKs rejected');
+
+ const dev=JSON.parse(readFileSync(new URL('../online-pins.dev.json',import.meta.url),'utf8'));
+ const devCount=Object.keys(dev.apks).length;
+ assert(devCount>=17&&devCount<=MAX_PINNED_APPS,`dev pins count ${devCount} within [17, ${MAX_PINNED_APPS}]`);
+
+ const onlinePinsJava=readFileSync(new URL('../shared/src/network/awai/platform/OnlinePins.java',import.meta.url),'utf8');
+ const hostJava=readFileSync(new URL('../shared/src/network/awai/platform/HostActivity.java',import.meta.url),'utf8');
+ const pointerJava=readFileSync(new URL('../shared/src/network/awai/platform/LatestPointer.java',import.meta.url),'utf8');
+ const m=onlinePinsJava.match(/public\s+static\s+final\s+int\s+MAX_APPS\s*=\s*(\d+)/);
+ assert(m,'OnlinePins.MAX_APPS declared');
+ assert.equal(Number(m[1]),MAX_PINNED_APPS,'OnlinePins.MAX_APPS matches online.js MAX_PINNED_APPS');
+ assert(hostJava.includes('OnlinePins.MAX_APPS')&&hostJava.includes('OnlinePins.loadAllowlist'),'HostActivity delegates to OnlinePins');
+ assert(!hostJava.includes('apks.length()>16'),'HostActivity no longer hardcodes 16-app limit');
+ assert(pointerJava.includes('MAX_APPS = OnlinePins.MAX_APPS'),'LatestPointer.MAX_APPS stays aligned with OnlinePins.MAX_APPS');
+});
+
+test('download disclosures localize to Japanese by default and support English fallback (AWAI-3729)',()=>{
+ const jaRuntime=onlineRuntime(domain.descriptor,pins);
+ assert.deepEqual(clientRuntimeProblems(jaRuntime,['store-download'],'http://127.0.0.1:8791'),[]);
+ const jaCat=jaRuntime.operations.find(o=>o.operation==='download-catalog').disclosure;
+ const jaApk=jaRuntime.operations.find(o=>o.operation==='download-apk-network.itonami.yotei').disclosure;
+ assert.deepEqual(clientDisclosureProblems(jaCat),[]);
+ assert.deepEqual(clientDisclosureProblems(jaApk),[]);
+ assert.equal(jaCat.recipient,'GitHub, Inc.');
+ assert.equal(jaCat.country,'US');
+ assert.equal(jaCat['country-name'],'アメリカ合衆国');
+ assert.equal(jaCat.frequency,'one-time');
+ assert.equal(jaCat['special-care'],false);
+ assert.match(jaCat.purpose,/カタログ/);
+ assert.match(jaApk.purpose,/アプリ配布物/);
+ assert(jaCat.data.every(d=>/[^\x00-\x7f]/.test(d)),'Japanese catalog data entries are localized');
+ assert(jaApk.data.every(d=>/[^\x00-\x7f]/.test(d)),'Japanese APK data entries are localized');
+ assert.match(jaCat.note,/IP アドレス/);
+ assert.match(jaCat.withdrawal,/中止/);
+
+ // Explicit 'en' and BCP-47 'en-US' produce valid English disclosures.
+ for(const loc of ['en','en-US']){
+  const enRuntime=onlineRuntime(domain.descriptor,pins,loc);
+  assert.deepEqual(clientRuntimeProblems(enRuntime,['store-download'],'http://127.0.0.1:8791'),[]);
+  const enCat=enRuntime.operations.find(o=>o.operation==='download-catalog').disclosure;
+  const enApk=enRuntime.operations.find(o=>o.operation==='download-apk-network.itonami.yotei').disclosure;
+  assert.deepEqual(clientDisclosureProblems(enCat),[]);
+  assert.deepEqual(clientDisclosureProblems(enApk),[]);
+  assert.equal(enCat['country-name'],'United States');
+  assert.equal(enCat.purpose,'download the pinned store catalog');
+  assert.equal(enApk.purpose,'download a pinned app package from the store catalog');
+  assert.deepEqual(enCat.data,['request IP address','app version','store catalog request']);
+  assert.deepEqual(enApk.data,['request IP address','app version','pinned app package request']);
+ }
+
+ // Unknown/empty locales default safely to Japanese (matching kotoba-client-runtime.js).
+ assert.deepEqual(disclosureFor('catalog','fr'),jaCat);
+ assert.deepEqual(disclosureFor('catalog',undefined),jaCat);
+});
+
+test('client.js non-Android bootstrap uses catalogTrust() and has no stale ItonamiPublicKey reference (AWAI-3729)',()=>{
+ const clientSrc=readFileSync(new URL('../client/client.js',import.meta.url),'utf8');
+ assert(!clientSrc.includes('ItonamiPublicKey'),'removed global window.ItonamiPublicKey must not appear in client.js');
+ assert(clientSrc.includes('authenticateCatalog(envelope,catalogTrust(),domain,floor)'),'non-Android bootstrap uses catalogTrust()');
 });

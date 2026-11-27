@@ -196,7 +196,7 @@ async function bootstrap(){
       const stored=localStorage.getItem('itonami.catalog.envelope.v1');
       const envelope=stored?JSON.parse(stored):{raw:window.ItonamiCatalogRaw,signature:window.ItonamiCatalogSignature};
       const floor=Number(localStorage.getItem('itonami.catalog.highest.v1')||1);
-      catalog=await authenticateCatalog(envelope,window.ItonamiPublicKey,domain,floor);
+      catalog=await authenticateCatalog(envelope,catalogTrust(),domain,floor);
       if(stored)onlineEnvelope=envelope;
     }catch{catalog={};}
   }
