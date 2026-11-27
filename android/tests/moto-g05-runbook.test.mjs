@@ -1,7 +1,8 @@
 // Drift guard for the moto g05 Store key-list & auto-update runbook (AWAI-3653, AWAI-3775, AWAI-3184).
 // Keeps the active runbook instructions aligned with the committed key-list root, sequence-2 role keys,
-// r114 catalog, sequence-5 pointer, and PR #532 17-APK pin requirement while preserving the 2026-11-22
-// emulator rehearsal as clearly labeled history.
+// r114 catalog, sequence-5 pointer, PR #532 17-APK pin requirement, bundled vs online catalog separation,
+// highest > 114 rollback handling, and InstallReceiver/AutoUpdater log evidence while preserving the
+// 2026-11-22 emulator rehearsal as clearly labeled history.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -40,6 +41,16 @@ function parseKeyListRaw(rawText) {
   };
 }
 
+function sliceSection(text, startPattern, endPattern, label) {
+  const startMatch = text.match(startPattern);
+  assert(startMatch, `runbook missing section start: ${label}`);
+  const rest = text.slice(startMatch.index);
+  if (!endPattern) return rest;
+  const endMatch = rest.slice(startMatch[0].length).match(endPattern);
+  assert(endMatch, `runbook missing section end: ${label}`);
+  return rest.slice(0, startMatch[0].length + endMatch.index);
+}
+
 function splitRunbook(text) {
   const rehearsalMarker = /^## emulator での予行/m;
   const rehearsalMatch = text.match(rehearsalMarker);
@@ -53,11 +64,29 @@ function splitRunbook(text) {
   const preambleSection = activeSection.slice(0, stepsMatch.index);
   const activeInstructions = activeSection.slice(stepsMatch.index);
 
-  return {activeSection, preambleSection, activeInstructions, historicalSection};
+  const section0 = sliceSection(activeInstructions, /^## 0\. 用意（Mac）/m, /^## 1\. /m, 'section 0');
+  const section3 = sliceSection(activeInstructions, /^## 3\. 作業後の記録と確認/m, /^## 4\. /m, 'section 3');
+  const section4 = sliceSection(activeInstructions, /^## 4\. AWAI-3653 /m, /^## 失敗したとき・戻し方/m, 'section 4');
+
+  return {activeSection, preambleSection, activeInstructions, section0, section3, section4, historicalSection};
+}
+
+function tableRows(sectionText) {
+  return sectionText
+    .split('\n')
+    .filter(line => line.startsWith('|') && !line.startsWith('|---') && !line.startsWith('| 項目 |'));
 }
 
 const runbookText = readFileSync(RUNBOOK_PATH, 'utf8');
-const {activeSection, preambleSection, activeInstructions, historicalSection} = splitRunbook(runbookText);
+const {
+  activeSection,
+  preambleSection,
+  activeInstructions,
+  section0,
+  section3,
+  section4,
+  historicalSection,
+} = splitRunbook(runbookText);
 
 const rootDer = readFileSync(path.join(root, 'store/keys/store-root.der'));
 const rootPrefix = sha256Hex(rootDer).slice(0, 8);
@@ -99,19 +128,66 @@ test('active moto g05 runbook matches live root, key list sequence 2, r114 catal
   assert(activeSection.includes(`${catalog.apps.length} APK`), `active runbook must note ${catalog.apps.length} APK pins`);
 
   // Active build & verification steps specifically cite current live targets
-  assert(activeInstructions.includes(`--catalog-revision ${catalog.revision}`));
-  assert(activeInstructions.includes(rootPrefix));
-  assert(activeInstructions.includes(catalogKeyPrefix));
-  assert(activeInstructions.includes(pointerKeyPrefix));
-  assert(activeInstructions.includes('`highest` が `2`'));
-  assert(activeInstructions.includes('`highest` `114`'));
-  assert(activeInstructions.includes(`sequence ${pointer.sequence}`));
+  assert(section0.includes(`--catalog-revision ${catalog.revision}`));
+  assert(section0.includes(rootPrefix));
+  assert(section0.includes(catalogKeyPrefix));
+  assert(section0.includes(pointerKeyPrefix));
+  assert(section3.includes('`highest` が `2`'));
+  assert(section3.includes('`highest` `114`'));
+  assert(section3.includes(`sequence ${pointer.sequence}`));
+});
 
-  // AWAI-3653 standing-update-approval verification checklist is present
-  assert(activeInstructions.includes('AWAI-3653'));
-  assert(activeInstructions.includes('サイレント更新'));
-  assert(activeInstructions.includes('再起動'));
-  assert(activeInstructions.includes('バックグラウンド'));
+test('§0 and §3 separate bundled 2-app catalog (Yotei/Torihiki) from post-admission online r114 (17 apps)', () => {
+  // §0 explains that the standard build bundles Yotei + Torihiki (2 apps) while --online-pins pins online r114 (17 APK)
+  assert(section0.includes('Yotei') && section0.includes('Torihiki') && section0.includes('2 件'));
+  assert(section0.includes(`${catalog.apps.length} APK`));
+
+  const rows = tableRows(section3);
+  const initialScreenRow = rows.find(row => row.includes('Store の画面'));
+  assert(initialScreenRow, '§3 table must have an initial Store screen verification row');
+  assert(initialScreenRow.includes('Yotei') && initialScreenRow.includes('Torihiki') && initialScreenRow.includes('2 件'),
+    'initial Store screen row must expect the bundled Yotei/Torihiki (2 apps) catalog');
+  assert(!initialScreenRow.includes(`${catalog.apps.length} APK`) && !initialScreenRow.includes(`${catalog.apps.length} 件`),
+    'initial Store screen row must not expect the 17-app online r114 catalog before online admission');
+
+  const onlineAdmitRow = rows.find(row => row.includes('オンラインカタログを確認') && row.includes('highest <= 114'));
+  assert(onlineAdmitRow, '§3 table must have a post-admission manual online check row for highest <= 114');
+  assert(onlineAdmitRow.includes(`r${catalog.revision}`) && onlineAdmitRow.includes(`${catalog.apps.length} APK`),
+    'post-admission online check row must expect the 17-app r114 catalog');
+  assert(onlineAdmitRow.includes('`raw64`') && onlineAdmitRow.includes('`highest` `114`'));
+});
+
+test('§3 branches manual and daily online verification on terminal floor highest <= 114 vs highest > 114 (catalog-rollback)', () => {
+  const rows = tableRows(section3);
+
+  const manualHighFloor = rows.find(row => row.includes('オンラインカタログを確認') && row.includes('highest > 114'));
+  assert(manualHighFloor, '§3 must cover manual online check when terminal floor highest > 114');
+  assert(manualHighFloor.includes('catalog-rollback'), 'highest > 114 manual check must expect catalog-rollback');
+  assert(manualHighFloor.includes('revision >= highest'), 'highest > 114 manual check must hold until revision >= highest is published');
+
+  const dailyLowFloor = rows.find(row => row.includes('自動更新') && row.includes('highest <= 114'));
+  assert(dailyLowFloor, '§3 must cover daily auto-update when terminal floor highest <= 114');
+  assert(dailyLowFloor.includes('`catalog`') && dailyLowFloor.includes(`sequence ${pointer.sequence}`));
+
+  const dailyHighFloor = rows.find(row => row.includes('自動更新') && row.includes('highest > 114'));
+  assert(dailyHighFloor, '§3 must cover daily auto-update when terminal floor highest > 114');
+  assert(dailyHighFloor.includes('catalog-rollback'), 'highest > 114 daily auto-update must expect catalog-rollback');
+  assert(dailyHighFloor.includes('revision >= highest'), 'highest > 114 daily auto-update must wait for revision >= highest');
+});
+
+test('§4 aligns AWAI-3653 standing-update-approval checks with InstallReceiver/AutoUpdater logs and separate versionCode comparison', () => {
+  assert(section4.includes('AWAI-3653'));
+  assert(section4.includes('サイレント更新'));
+  assert(section4.includes('`installing`') && section4.includes('`versionName`'),
+    '§4 must check installing log detail against versionName');
+  assert(section4.includes('`installed`') && section4.includes('対象 app ID'),
+    '§4 must check installed log for the target package ID');
+  assert(section4.includes('dumpsys package') && section4.includes('versionCode') && section4.includes('署名済みカタログ'),
+    '§4 must compare device package versionCode separately against the signed catalog expected versionCode');
+  assert(!section4.includes('ログと対象 app の `versionCode` が一致'),
+    '§4 must not claim auto-update logs record versionCode');
+  assert(section4.includes('再起動') && section4.includes('3668'));
+  assert(section4.includes('バックグラウンド') && section4.includes('0 件'));
 });
 
 test('active runbook instructions do not cite retired keys or r110 build/pointer values', () => {

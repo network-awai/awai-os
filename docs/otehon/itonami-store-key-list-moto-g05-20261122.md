@@ -22,6 +22,7 @@
    python3 android/build.py --version 1 --skip-cljs --online-pins android/online-pins.dev.json --catalog-revision 114 --out <空の directory>
    ```
 
+   - 標準のこのコマンドが同梱カタログ（`assets/catalog.json`）に入れるのは `Yotei` と `Torihiki` の 2 件である。`--online-pins android/online-pins.dev.json` は公開オンラインカタログ（`r114`、17 APK）とその APK 取得先を固定する指定であり、初回起動時の同梱件数は 2 件のままになる。
    - 開発用のカタログ鍵（`~/.android/awai-store-dev/`）が要る。無い Mac では止まる。その場合は、鍵のある Mac で作った APK と、その SHA-256 を受け取る。
    - 報告（`build-v1.json`）の `trust` が `mode`: `key-list`、`sequence`: `2`、`root`: `8707b4bb…`、`catalogKey`: `73e8cf0d…`、`pointerKeys` に `c1587368…` を含むこと。
 3. 作った `store-v1.apk` の SHA-256 と、`apksigner verify --print-certs` の署名者を記録する。署名者は、いま端末に入っている Store と同じ `2507930b…`（Android Debug）でなければならない。違うと上書きできない。
@@ -66,19 +67,23 @@ adb shell run-as network.awai.store cat shared_prefs/store-keys.xml > after-stor
 |---|---|
 | `diff before-packages.txt after-packages.txt` | 差分なし |
 | `after-store.txt` | 署名者が作業前と同じ（`2507930b…`）。`lastUpdateTime` が新しい |
-| `after-online.xml`（Store を開いた直後） | `highest` は作業前と同じ値以上。検証できない旧保存カタログの `raw` / `raw64` は消えている |
+| `after-online.xml`（Store を開いた直後） | `highest` は作業前と同じ値以上。検証できない旧保存カタログの `raw` / `raw64` は消え、同梱カタログに戻る |
 | `after-store-keys.xml` | `highest` が `2`（鍵の一覧 `sequence 2`） |
-| Store の画面 | 「見つける」に同梱のカタログ（17 APK、`r114`）が出る。「追加を停止しました」にならない |
-| 「オンラインカタログを確認」→ 許可 | 「署名済みオンラインカタログを確認しました。」。再取得した `after-online.xml` に `raw64` と `highest` `114`（`r114`、有効期限 `2026-12-23`） |
-| 自動更新（「更新」の画面で有効にしていた場合） | 次の日次の確認で、log に `keys`（より新しい鍵一覧を取った場合）と `catalog`（pointer `sequence 5`、`r114`、有効期限 `2026-12-23`）が出る |
+| Store の画面（初回起動・オンライン確認前） | 「見つける」に手順 0 で同梱したカタログの app（標準ビルドでは `Yotei` と `Torihiki` の 2 件）が出る。「追加を停止しました」にならない |
+| 「オンラインカタログを確認」→ 許可（`before-online.xml` の `highest <= 114` の場合） | 「署名済みオンラインカタログを確認しました。」。再取得した `after-online.xml` に `raw64` と `highest` `114` が入り、「見つける」に公開 `r114` の 17 APK（有効期限 `2026-12-23`）が出る |
+| 「オンラインカタログを確認」→ 許可（`before-online.xml` の `highest > 114`、例: `115` の場合） | 公開 `r114` は `catalog-rollback` で拒否され、`after-online.xml` の `highest` は元の値のまま変わらない（負の対照）。オンラインカタログの受入確認は `revision >= highest` の署名済みカタログと対応する pin / pointer が公開されるまで保留する |
+| 自動更新・日次の確認（「更新」で有効、`highest <= 114` の場合） | 次の日次の確認で、log に `keys`（より新しい鍵一覧を取った場合）と `catalog`（pointer `sequence 5`、`r114`、有効期限 `2026-12-23`）が出る |
+| 自動更新・日次の確認（「更新」で有効、`highest > 114`、例: `115` の場合） | 公開 `r114` は `catalog-rollback` で拒否され（log に `error` / `catalog-rollback`）、`highest` は元の値のまま維持される。`revision >= highest` の署名済みカタログと対応する pin / pointer が公開された後に再確認する |
 
-AWAI-3184 の Deai の確認は、このあと Store から行う。
+AWAI-3184 の Deai の確認は、このあと（`highest <= 114` で公開 `r114` を受け入れた後）Store から行う。
 
 ## 4. AWAI-3653 自動更新（常設承認）の実機確認（moto g05）
 
 owner 承認済みの署名で適格な高 `versionCode` 更新（同一署名者・権限増加なし・Store がインストール元の app 向け）が公開されたあと、moto g05 で以下を確かめる（`r114` は `r113` と 17 APK 同一のため、実更新の確認は適格な新 `versionCode` 公開後に実施する）。
 
-- [ ] **確認なしのサイレント更新:** 「更新」画面で自動更新（常設承認）を有効にした状態で適格更新を適用したとき、確認ダイアログを出さずに更新が完了し、`shared_prefs/auto-update.xml` のログと対象 app の `versionCode` が一致すること。
+- [ ] **確認なしのサイレント更新:** 「更新」画面で自動更新（常設承認）を有効にした状態で適格更新を適用したとき、確認ダイアログを出さずに更新が完了し、次の 2 点を別々に確かめること:
+  1. `shared_prefs/auto-update.xml` のログに対象 app ID の `installing`（`detail` が期待する `versionName`）と `installed`（対象 app ID。`installed` ログに `versionCode` は記録されない）が出ていること。
+  2. 別途取得した端末側の対象 app の `versionCode`（`adb shell dumpsys package <対象 app ID> | grep versionCode`）が、署名済みカタログに記載された期待 `versionCode` と一致すること。
 - [ ] **再起動をまたぐ永続性:** 端末を再起動しても、常設承認（`shared_prefs/auto-update.xml` の `approval`）、定期ジョブ（`JobScheduler` ID `3668`、`setPersisted(true)`）、および更新済み app の `versionCode` が維持されること。
 - [ ] **自動更新 OFF 時のバックグラウンド通信ゼロ:** 「更新」画面で自動更新を OFF（取り消し）にした後、定期ジョブ `3668` がキャンセルされ（`adb shell dumpsys jobscheduler` に残らない）、バックグラウンドでのネットワーク取得リクエストが 0 件であること。
 
