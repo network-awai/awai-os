@@ -840,7 +840,7 @@ test('PR #31 (1faaabc6 §3.2): getSnapshot() exposes activeOps & disabledOps ali
   }
 
   // 4. Broker parity negative controls (PR #537 review):
-  //    (a) Valid opt-in mishima config on 'web' with NO broker -> remote ops are disabled (broker-unavailable),
+  //    (a) Valid opt-in mishima config on 'web' with NO broker -> remote ops are disabled,
   //        inferenceMode is 'local-only', and execution matches state (fallback:'local' / gateName:'broker-unavailable').
   const noBrokerStore = createSemanticStore({
     locale: 'ja',
@@ -854,7 +854,7 @@ test('PR #31 (1faaabc6 §3.2): getSnapshot() exposes activeOps & disabledOps ali
   assert.ok(!snapNoBroker.activeOps.includes('soudan.memo.send'));
   assert.deepEqual(snapNoBroker.disabledOps, [
     {op: 'soudan.memo.send', disabledReason: DISABLED_REASON_BROKER_UNAVAILABLE},
-    {op: 'soudan.inference.organize', disabledReason: DISABLED_REASON_BROKER_UNAVAILABLE},
+    {op: 'soudan.inference.organize', disabledReason: DISABLED_REASON_ANDROID_OR_LOCAL_ONLY},
   ]);
   await noBrokerStore.execute('soudan.draft.update', {patch: completePatch()}, {actor: {kind: 'human'}});
   const noBrokerInf = await noBrokerStore.execute('soudan.inference.organize', {localOnly: false}, {actor: {kind: 'human'}});
@@ -867,7 +867,7 @@ test('PR #31 (1faaabc6 §3.2): getSnapshot() exposes activeOps & disabledOps ali
   assert.equal(noBrokerSend.gateName, DISABLED_REASON_BROKER_UNAVAILABLE);
 
   //    (b) Valid opt-in mishima config on 'web' with a send-only broker (broker.operations omits inference) ->
-  //        soudan.memo.send stays active while soudan.inference.organize is disabled (broker-unavailable) and falls back locally.
+  //        soudan.memo.send stays active while soudan.inference.organize is disabled (:local-only) and falls back locally.
   const sendOnlyOptInStore = createSemanticStore({
     locale: 'ja',
     surface: 'web',
@@ -879,7 +879,7 @@ test('PR #31 (1faaabc6 §3.2): getSnapshot() exposes activeOps & disabledOps ali
   assert.ok(snapSendOnly.activeOps.includes('soudan.memo.send'));
   assert.ok(!snapSendOnly.activeOps.includes('soudan.inference.organize'));
   assert.deepEqual(snapSendOnly.disabledOps, [
-    {op: 'soudan.inference.organize', disabledReason: DISABLED_REASON_BROKER_UNAVAILABLE},
+    {op: 'soudan.inference.organize', disabledReason: DISABLED_REASON_ANDROID_OR_LOCAL_ONLY},
   ]);
   await sendOnlyOptInStore.execute('soudan.draft.update', {patch: {summary: 'broker非対応対照'}}, {actor: {kind: 'human'}});
   const sendOnlyInf = await sendOnlyOptInStore.execute('soudan.inference.organize', {localOnly: false}, {actor: {kind: 'human'}});

@@ -61,8 +61,12 @@ export function resolveSurface({surface = null, route = 'web-device-save'} = {})
 
 export function brokerSupportsOperation(broker, selector) {
   if (!broker || typeof broker.invoke !== 'function') return false;
-  if (!Array.isArray(broker.operations)) return true;
-  return broker.operations.some(op =>
+  if (typeof broker.isEligible === 'function') return Boolean(broker.isEligible(selector));
+  const ops = Array.isArray(broker.operations)
+    ? broker.operations
+    : (Array.isArray(broker.eligibleOperations) ? broker.eligibleOperations : null);
+  if (!ops) return true;
+  return ops.some(op =>
     op?.capability === selector.capability
     && op?.service === selector.service
     && op?.operation === selector.operation
@@ -94,14 +98,9 @@ export function computeSemanticOps({
       }
     }
     if (op === 'soudan.inference.organize' && !inferenceRemoteEnabled) {
-      let disabledReason;
-      if (!allowedSurface || !cfgCheck.ok) {
-        disabledReason = DISABLED_REASON_ANDROID_OR_LOCAL_ONLY;
-      } else if (sandboxedIframe) {
-        disabledReason = 'iframe-no-direct-external-egress';
-      } else {
-        disabledReason = DISABLED_REASON_BROKER_UNAVAILABLE;
-      }
+      const disabledReason = (sandboxedIframe && allowedSurface && cfgCheck.ok && inferenceBrokerReady)
+        ? 'iframe-no-direct-external-egress'
+        : DISABLED_REASON_ANDROID_OR_LOCAL_ONLY;
       disabledOps.push({op, disabledReason});
       continue;
     }
