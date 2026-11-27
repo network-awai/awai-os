@@ -144,7 +144,7 @@ public final class OnlinePins {
     private static boolean validPinnedUrl(String url, String rev) {
         String prefix = DISTRIBUTION_PREFIX + rev + "/store/distribution/";
         if (!url.startsWith(prefix) || url.length() <= prefix.length() || url.endsWith("/")) return false;
-        if (url.contains("/../") || url.contains("/./") || url.contains("%") || url.contains("\\")) return false;
+        if (url.contains("/../") || url.contains("/./") || url.endsWith("/..") || url.endsWith("/.") || url.contains("%") || url.contains("\\")) return false;
         try {
             URI u = new URI(url);
             return "https".equals(u.getScheme())

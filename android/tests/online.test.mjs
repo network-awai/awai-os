@@ -1,11 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync,mkdtempSync,copyFileSync,rmSync} from 'node:fs';
+import {spawnSync} from 'node:child_process';
+import {tmpdir} from 'node:os';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {generateKeyPairSync,sign} from 'node:crypto';
 import vm from 'node:vm';
 const runtime=new URL('../../otehon/shell/vendor/kotoba-client-runtime.js',import.meta.url);
 const text=readFileSync(new URL('../client/online.js',import.meta.url),'utf8').replace("'./runtime.js'",JSON.stringify(runtime.href)).replace("'./key-list.js'",JSON.stringify(new URL('../client/key-list.js',import.meta.url).href));
-const {MAX_PINNED_APPS,validatePins,disclosureFor,onlineRuntime,authenticateCatalog}=await import('data:text/javascript;base64,'+Buffer.from(text).toString('base64'));
+const {MAX_PINNED_APPS,MAX_PIN_BYTES,validatePins,disclosureFor,onlineRuntime,authenticateCatalog}=await import('data:text/javascript;base64,'+Buffer.from(text).toString('base64'));
 const {clientRuntimeProblems,clientDisclosureProblems,clientEndpointAllowsRequest}=await import(runtime.href);
 const ctx=vm.createContext({window:{}});vm.runInContext(readFileSync(new URL('../client/generated/domain.js',import.meta.url),'utf8'),ctx);
 const domain=ctx.window.ItonamiDomain, rev='a'.repeat(40);
@@ -147,4 +151,93 @@ test('client.js non-Android bootstrap uses catalogTrust() and has no stale Itona
  const clientSrc=readFileSync(new URL('../client/client.js',import.meta.url),'utf8');
  assert(!clientSrc.includes('ItonamiPublicKey'),'removed global window.ItonamiPublicKey must not appear in client.js');
  assert(clientSrc.includes('authenticateCatalog(envelope,catalogTrust(),domain,floor)'),'non-Android bootstrap uses catalogTrust()');
+});
+
+test('online-csp.mjs and validatePins enforce OnlinePins.java parity: exact integer maxBytes, 32768-byte cap, strict URLs, and Catalog admission (AWAI-3729)',()=>{
+ assert.equal(MAX_PIN_BYTES,32768);
+ const onlinePinsJava=readFileSync(new URL('../shared/src/network/awai/platform/OnlinePins.java',import.meta.url),'utf8');
+ const buildPy=readFileSync(new URL('../build.py',import.meta.url),'utf8');
+ const cspScript=fileURLToPath(new URL('../online-csp.mjs',import.meta.url));
+ const cspSrc=readFileSync(cspScript,'utf8');
+ assert.equal(Number(onlinePinsJava.match(/MAX_BYTES\s*=\s*(\d+)/)[1]),MAX_PIN_BYTES);
+ assert.equal(Number(buildPy.match(/MAX_ONLINE_PIN_BYTES\s*=(\s*)(\d+)/)[2]),MAX_PIN_BYTES);
+ assert.equal(Number(cspSrc.match(/MAX_PIN_BYTES\s*=\s*(\d+)/)[1]),MAX_PIN_BYTES);
+
+ const makeSizedPins=(count,targetBytes)=>{
+  const apks={};
+  for(let i=0;i<count;i++)apks[`network.itonami.app${i}`]={url:`${base}app${i}.apk`,sha256:'c'.repeat(64),maxBytes:1048576};
+  const doc={revision:rev,catalog:pins.catalog,apks};
+  const current=Buffer.byteLength(JSON.stringify(doc),'utf8');
+  if(targetBytes!==undefined){
+   const extra=targetBytes-current;
+   assert(extra>=0,`targetBytes ${targetBytes} >= base ${current}`);
+   const basePad=Math.floor(extra/count), rem=extra%count;
+   for(let i=0;i<count;i++){
+    const add=basePad+(i<rem?1:0);
+    if(add>0)apks[`network.itonami.app${i}`].url=`${base}app${i}-${'p'.repeat(add-1)}.apk`;
+   }
+  }
+  return doc;
+ };
+
+ // validatePins enforces 32,768-byte cap and strict URL rules (explicit :443, traversal, % encoding).
+ const exact64=makeSizedPins(MAX_PINNED_APPS,MAX_PIN_BYTES);
+ assert.equal(Buffer.byteLength(JSON.stringify(exact64),'utf8'),MAX_PIN_BYTES);
+ assert.doesNotThrow(()=>validatePins(exact64),'64 APKs at exact 32768 bytes accepted');
+ const over64=makeSizedPins(MAX_PINNED_APPS,MAX_PIN_BYTES+1);
+ assert.equal(Buffer.byteLength(JSON.stringify(over64),'utf8'),MAX_PIN_BYTES+1);
+ assert.throws(()=>validatePins(over64),'64 APKs at 32769 bytes rejected');
+ for(const badUrl of [
+  yotei.url.replace('https://raw.githubusercontent.com/','https://raw.githubusercontent.com:443/'),
+  `${base}../evil.apk`, `${base}dir/..`, `${base}%2e%2e/evil.apk`, `${base}dir/`
+ ]){
+  assert.throws(()=>validatePins({...pins,apks:{'network.itonami.yotei':{...yotei,url:badUrl}}}),`bad URL rejected: ${badUrl}`);
+ }
+
+ // Stage minimal assets dir so online-csp.mjs imports online.js + runtime.js cleanly.
+ const stage=mkdtempSync(path.join(tmpdir(),'awai-csp-test-'));
+ try{
+  copyFileSync(fileURLToPath(new URL('../client/online.js',import.meta.url)),path.join(stage,'online.js'));
+  copyFileSync(fileURLToPath(new URL('../client/key-list.js',import.meta.url)),path.join(stage,'key-list.js'));
+  copyFileSync(fileURLToPath(runtime),path.join(stage,'runtime.js'));
+  const runCsp=rawStdin=>spawnSync(process.execPath,[cspScript],{input:rawStdin,encoding:'utf8'});
+  const payloadStr=pinsJsonText=>`{"assets":${JSON.stringify(stage)},"pins":${pinsJsonText},"descriptor":${JSON.stringify(domain.descriptor)}}`;
+
+  // Valid fixtures: real online-pins.dev.json and exact 32,768-byte 64-APK document pass.
+  const devRaw=readFileSync(new URL('../online-pins.dev.json',import.meta.url),'utf8');
+  const devRes=runCsp(payloadStr(devRaw));
+  assert.equal(devRes.status,0,`dev pins accepted: ${devRes.stderr}`);
+  assert.equal(devRes.stdout.trim(),'connect-src https://raw.githubusercontent.com');
+
+  const exactRes=runCsp(payloadStr(JSON.stringify(exact64)));
+  assert.equal(exactRes.status,0,`exact 32768-byte 64-APK pins accepted: ${exactRes.stderr}`);
+  assert.equal(exactRes.stdout.trim(),'connect-src https://raw.githubusercontent.com');
+
+  // Kougi P1 #1: decimal / exponent / boolean / string / out-of-range maxBytes must be rejected.
+  const goodSingle=JSON.stringify(pins);
+  for(const [label,mutated] of [
+   ['decimal 1024.0', goodSingle.replace('2097152','1024.0')],
+   ['catalog decimal 1024.0', goodSingle.replace('131072','1024.0')],
+   ['exponent 1e3', goodSingle.replace('2097152','1e3')],
+   ['boolean true', goodSingle.replace('2097152','true')],
+   ['string "1024"', goodSingle.replace('2097152','"1024"')],
+   ['zero maxBytes', goodSingle.replace('2097152','0')],
+   ['over APK budget', goodSingle.replace('2097152',String(64*1024*1024+1))],
+   ['duplicate APK key', goodSingle.replace('}}}',`},"network.itonami.yotei":${JSON.stringify(yotei)}}}`)],
+   ['offline-only preview app', JSON.stringify({...pins,apks:{'network.itonami.client.preview':yotei}})],
+   ['unadmitted app id', JSON.stringify({...pins,apks:{'network.other.evil':yotei}})],
+   ['explicit :443 port', goodSingle.replace('https://raw.githubusercontent.com/','https://raw.githubusercontent.com:443/')],
+   ['trailing /..', goodSingle.replace('yotei.apk','dir/..')],
+  ]){
+   const r=runCsp(payloadStr(mutated));
+   assert.notEqual(r.status,0,`online-csp.mjs must reject ${label}`);
+  }
+
+  // Kougi P1 #2: 64-APK pin JSON exceeding 32,768 bytes must be rejected.
+  const overRes=runCsp(payloadStr(JSON.stringify(over64)));
+  assert.notEqual(overRes.status,0,'online-csp.mjs must reject 32769-byte 64-APK pins');
+  assert.match(overRes.stderr,/size-limit/);
+ }finally{
+  rmSync(stage,{recursive:true,force:true});
+ }
 });

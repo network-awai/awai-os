@@ -3,12 +3,16 @@ import { verifyKeyList, authentic, base64Bytes, CATALOG } from './key-list.js';
 
 // Pins: one catalog envelope plus one APK pin per app id. Each pin is an exact immutable URL under
 // this repository's pinned revision; per-app byte budgets are enforced again by the host Catalog.
-// Shared upper bound with OnlinePins.MAX_APPS / LatestPointer.MAX_APPS / HostActivity.MAX_ONLINE_PIN_APPS (AWAI-3729).
+// Shared upper bounds with OnlinePins.MAX_APPS / OnlinePins.MAX_BYTES / LatestPointer.MAX_APPS / HostActivity.MAX_ONLINE_PIN_APPS (AWAI-3729).
 export const MAX_PINNED_APPS = 64;
+export const MAX_PIN_BYTES = 32768;
 const APP_ID=/^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*){1,5}$/;
 function validPin(entry,revision,ceiling){
+  if(!entry||typeof entry!=='object'||Array.isArray(entry)||typeof entry.url!=='string')throw Error('配信先の固定情報を確認できません。');
+  const prefix=`https://raw.githubusercontent.com/network-awai/awai-os/${revision}/store/distribution/`;
+  if(!entry.url.startsWith(prefix)||entry.url.length<=prefix.length||entry.url.endsWith('/')||/\/\.{1,2}(?:\/|$)|%|\\/.test(entry.url))throw Error('配信先の固定情報を確認できません。');
   const u=new URL(entry.url);
-  if(u.origin!=='https://raw.githubusercontent.com'||u.search||u.hash||u.username||u.password||!u.pathname.startsWith(`/network-awai/awai-os/${revision}/store/distribution/`)||!entry.sha256?.match(/^[0-9a-f]{64}$/)||!Number.isSafeInteger(entry.maxBytes)||entry.maxBytes<1||entry.maxBytes>ceiling)throw Error('配信先の固定情報を確認できません。');
+  if(u.origin!=='https://raw.githubusercontent.com'||u.port||u.search||u.hash||u.username||u.password||u.href!==entry.url||!entry.sha256?.match(/^[0-9a-f]{64}$/)||!Number.isSafeInteger(entry.maxBytes)||entry.maxBytes<1||entry.maxBytes>ceiling)throw Error('配信先の固定情報を確認できません。');
 }
 export function validatePins(pins) {
   if (!pins || !/^[0-9a-f]{40}$/.test(pins.revision) || !pins.catalog || !pins.apks || typeof pins.apks!=='object' || Array.isArray(pins.apks)) throw Error('配信情報が未設定です。');
@@ -16,6 +20,7 @@ export function validatePins(pins) {
   if(ids.length<1||ids.length>MAX_PINNED_APPS||!ids.every(id=>APP_ID.test(id)))throw Error('配信先の固定情報を確認できません。');
   validPin(pins.catalog,pins.revision,131072);
   for(const id of ids)validPin(pins.apks[id],pins.revision,64*1024*1024);
+  if(new TextEncoder().encode(JSON.stringify(pins)).length>MAX_PIN_BYTES)throw Error('配信先の固定情報を確認できません。');
   return pins;
 }
 const pinFor=(pins,kind)=>kind==='catalog'?pins.catalog:Object.hasOwn(pins.apks,kind)?pins.apks[kind]:null;

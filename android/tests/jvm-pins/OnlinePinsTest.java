@@ -44,6 +44,28 @@ public final class OnlinePinsTest {
         return sb.toString();
     }
 
+    static String buildPinsJsonExactBytes(int appCount, int targetBytes) {
+        String baseJson = buildPinsJson(appCount);
+        int extra = targetBytes - baseJson.getBytes(StandardCharsets.UTF_8).length;
+        if (extra < 0) throw new IllegalArgumentException("target too small");
+        int basePad = extra / appCount, rem = extra % appCount;
+        StringBuilder sb = new StringBuilder();
+        sb.append("{\"revision\":\"").append(REV).append("\",\"catalog\":{\"url\":\"")
+          .append(BASE).append("catalog-envelope.json\",\"sha256\":\"").append(SHA)
+          .append("\",\"maxBytes\":16965},\"apks\":{");
+        for (int i = 0; i < appCount; i++) {
+            if (i > 0) sb.append(',');
+            int add = basePad + (i < rem ? 1 : 0);
+            String suffix = "app" + i;
+            String file = add > 0 ? suffix + "-" + repeat('p', add - 1) + ".apk" : suffix + ".apk";
+            sb.append("\"network.itonami.").append(suffix).append("\":{\"url\":\"")
+              .append(BASE).append(file).append("\",\"sha256\":\"").append(SHA)
+              .append("\",\"maxBytes\":1048576}");
+        }
+        sb.append("}}");
+        return sb.toString();
+    }
+
     static OnlinePins.AppValidator acceptAll() {
         return id -> {};
     }
@@ -139,14 +161,60 @@ public final class OnlinePinsTest {
         ok("APK maxBytes over ceiling fails closed with pins-budget",
                 overBudget.allowedUrls.isEmpty() && "SecurityException: pins-budget".equals(overBudget.error));
 
+        OnlinePins.LoadResult decimalBudget = OnlinePins.loadAllowlist(
+                buildPinsJson(1).replace("1048576", "1024.0"), acceptAll());
+        ok("decimal maxBytes (1024.0) fails closed with pins-budget",
+                decimalBudget.allowedUrls.isEmpty() && "SecurityException: pins-budget".equals(decimalBudget.error));
+
+        OnlinePins.LoadResult expBudget = OnlinePins.loadAllowlist(
+                buildPinsJson(1).replace("1048576", "1e3"), acceptAll());
+        ok("exponent maxBytes (1e3) fails closed with pins-budget",
+                expBudget.allowedUrls.isEmpty() && "SecurityException: pins-budget".equals(expBudget.error));
+
+        OnlinePins.LoadResult boolBudget = OnlinePins.loadAllowlist(
+                buildPinsJson(1).replace("1048576", "true"), acceptAll());
+        ok("boolean maxBytes fails closed with pins-budget",
+                boolBudget.allowedUrls.isEmpty() && "SecurityException: pins-budget".equals(boolBudget.error));
+
+        OnlinePins.LoadResult explicitPortUrl = OnlinePins.loadAllowlist(
+                buildPinsJson(1).replace("https://raw.githubusercontent.com/", "https://raw.githubusercontent.com:443/"), acceptAll());
+        ok("explicit :443 port in URL fails closed with pins-url",
+                explicitPortUrl.allowedUrls.isEmpty() && "SecurityException: pins-url".equals(explicitPortUrl.error));
+
+        OnlinePins.LoadResult trailingDotDotUrl = OnlinePins.loadAllowlist(
+                buildPinsJson(1).replace("app0.apk", "dir/.."), acceptAll());
+        ok("trailing /.. in URL fails closed with pins-url",
+                trailingDotDotUrl.allowedUrls.isEmpty() && "SecurityException: pins-url".equals(trailingDotDotUrl.error));
+
+        // Exact byte-limit boundary for 64 APKs: 32,768 bytes accepted; 32,769 bytes refused by Integrity.read.
+        String exactMaxBytesJson = buildPinsJsonExactBytes(OnlinePins.MAX_APPS, OnlinePins.MAX_BYTES);
+        byte[] exactMaxBytesBuf = exactMaxBytesJson.getBytes(StandardCharsets.UTF_8);
+        ok("64-APK JSON at exact MAX_BYTES (" + OnlinePins.MAX_BYTES + ") passes Integrity.read and OnlinePins",
+                exactMaxBytesBuf.length == OnlinePins.MAX_BYTES
+                        && Integrity.read(new ByteArrayInputStream(exactMaxBytesBuf), OnlinePins.MAX_BYTES).length == OnlinePins.MAX_BYTES
+                        && OnlinePins.loadAllowlist(exactMaxBytesJson, acceptAll()).allowedUrls.size() == 1 + OnlinePins.MAX_APPS);
+
+        String overMaxBytesJson = buildPinsJsonExactBytes(OnlinePins.MAX_APPS, OnlinePins.MAX_BYTES + 1);
+        byte[] overMaxBytesBuf = overMaxBytesJson.getBytes(StandardCharsets.UTF_8);
+        String overErr = null;
+        try {
+            Integrity.read(new ByteArrayInputStream(overMaxBytesBuf), OnlinePins.MAX_BYTES);
+        } catch (Exception expected) {
+            overErr = OnlinePins.errorSummary(expected);
+        }
+        ok("64-APK JSON at MAX_BYTES + 1 (" + (OnlinePins.MAX_BYTES + 1) + ") fails Integrity.read with IOException: size-limit",
+                overMaxBytesBuf.length == OnlinePins.MAX_BYTES + 1 && "IOException: size-limit".equals(overErr));
+
         ok("errorSummary strips arbitrary exception messages (no secret leak)",
                 "RuntimeException".equals(OnlinePins.errorSummary(new RuntimeException("secret-token=12345")))
                         && "IOException: size-limit".equals(OnlinePins.errorSummary(new IOException("size-limit"))));
 
-        // 5. Cross-file consistency: HostActivity.java, LatestPointer.java, OnlinePins.java, and android/client/online.js agree.
+        // 5. Cross-file consistency: HostActivity.java, LatestPointer.java, OnlinePins.java, build.py, online-csp.mjs, and online.js agree.
         String hostSrc = new String(Files.readAllBytes(root.resolve("android/shared/src/network/awai/platform/HostActivity.java")), StandardCharsets.UTF_8);
         String pointerSrc = new String(Files.readAllBytes(root.resolve("android/shared/src/network/awai/platform/LatestPointer.java")), StandardCharsets.UTF_8);
         String onlineJs = new String(Files.readAllBytes(root.resolve("android/client/online.js")), StandardCharsets.UTF_8);
+        String buildPy = new String(Files.readAllBytes(root.resolve("android/build.py")), StandardCharsets.UTF_8);
+        String cspMjs = new String(Files.readAllBytes(root.resolve("android/online-csp.mjs")), StandardCharsets.UTF_8);
 
         ok("HostActivity delegates pin loading to OnlinePins (no hardcoded >16 limit)",
                 hostSrc.contains("OnlinePins.loadAllowlist")
@@ -161,6 +229,19 @@ public final class OnlinePinsTest {
         Matcher jsMax = Pattern.compile("export\\s+const\\s+MAX_PINNED_APPS\\s*=\\s*(\\d+)").matcher(onlineJs);
         ok("android/client/online.js MAX_PINNED_APPS matches OnlinePins.MAX_APPS (" + OnlinePins.MAX_APPS + ")",
                 jsMax.find() && Integer.parseInt(jsMax.group(1)) == OnlinePins.MAX_APPS);
+        Matcher jsBytes = Pattern.compile("export\\s+const\\s+MAX_PIN_BYTES\\s*=\\s*(\\d+)").matcher(onlineJs);
+        ok("android/client/online.js MAX_PIN_BYTES matches OnlinePins.MAX_BYTES (" + OnlinePins.MAX_BYTES + ")",
+                jsBytes.find() && Integer.parseInt(jsBytes.group(1)) == OnlinePins.MAX_BYTES);
+        Matcher pyApps = Pattern.compile("MAX_ONLINE_PIN_APPS\\s*=\\s*(\\d+)").matcher(buildPy);
+        Matcher pyBytes = Pattern.compile("MAX_ONLINE_PIN_BYTES\\s*=\\s*(\\d+)").matcher(buildPy);
+        ok("android/build.py limits match OnlinePins (" + OnlinePins.MAX_APPS + " apps, " + OnlinePins.MAX_BYTES + " bytes)",
+                pyApps.find() && Integer.parseInt(pyApps.group(1)) == OnlinePins.MAX_APPS
+                        && pyBytes.find() && Integer.parseInt(pyBytes.group(1)) == OnlinePins.MAX_BYTES);
+        Matcher cspApps = Pattern.compile("MAX_PIN_APPS\\s*=\\s*(\\d+)").matcher(cspMjs);
+        Matcher cspBytes = Pattern.compile("MAX_PIN_BYTES\\s*=\\s*(\\d+)").matcher(cspMjs);
+        ok("android/online-csp.mjs limits match OnlinePins (" + OnlinePins.MAX_APPS + " apps, " + OnlinePins.MAX_BYTES + " bytes)",
+                cspApps.find() && Integer.parseInt(cspApps.group(1)) == OnlinePins.MAX_APPS
+                        && cspBytes.find() && Integer.parseInt(cspBytes.group(1)) == OnlinePins.MAX_BYTES);
 
         System.out.println(checks + " checks, " + failures + " failures");
         if (failures > 0) System.exit(1);
