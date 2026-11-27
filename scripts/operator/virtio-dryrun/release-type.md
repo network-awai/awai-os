@@ -34,18 +34,11 @@ route is switched per the lockdown patch set, and the same Job with
 | --- | --- | --- |
 | `RELEASE_TYPE` | always | `user` or `userdebug`; no default (`build-inside.sh`, `virtio-job.sh`). |
 | `AWAI_WITHOUT_APPS` | one apps mode | `1` = evaluation build; no Awai Home/Store. Refused with `RELEASE_TYPE=user`. |
-| `AWAI_HOME_APK` | prebuilt mode | path to the Awai Home APK (not committed here). |
-| `AWAI_STORE_APK` | prebuilt mode | path to the Awai Store APK (not committed here). |
-| `AWAI_HOME_EXPECTED_SIGNER_SHA256` | prebuilt mode | expected Home signer digest (lowercase hex). |
-| `AWAI_STORE_EXPECTED_SIGNER_SHA256` | prebuilt mode | expected Store signer digest (lowercase hex). |
-| `AWAI_APKSIGNER` | prebuilt mode | host `apksigner` the #523 guard runs. |
+| `AWAI_APK_STAGE` and four SHA-256 pins | staged prebuilt mode | Private Home/Store stage, each APK file digest, and each independently approved signer fingerprint. See [APK inputs](README.md#apps-mode-and-apk-inputs). |
+| `AWAI_HOME_APK`, `AWAI_STORE_APK`, `AWAI_APKSIGNER` and the same pins | local prebuilt mode | Absolute paths for direct `build-inside.sh` invocation. |
 
-Exactly one apps mode is required. `AWAI_WITHOUT_APPS=1` and any of the
-five prebuilt values together are refused; neither is refused. The
-chosen mode is printed once per run as `AWAI4094_APPS: …`. With
-`RELEASE_TYPE=user` the only accepted mode is prebuilt: the guard
-refuses `AWAI_WITHOUT_APPS=1` on release builds, and this Job refuses
-it earlier.
+Choose exactly one apps mode. The chosen mode is printed once per run
+as `AWAI4094_APPS: …`. A `RELEASE_TYPE=user` Job requires prebuilt mode.
 
 The same guard applies to the planned **arm64** and **TV** targets.
 No Job for them exists in this repository (**undefined; required when

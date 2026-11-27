@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # AWAI-4089 (G2): lineage_virtio_x86_64 Job build definition.
 #
-# WARNING: do not start approved mode until the build location
-# (VKE vs device distribution) is decided. The earlier "until this PR
-# lands" wording is stale (#515 is merged).
+# WARNING: gad is the preferred build host for this candidate.
+# Approved execution requires the host capacity decision and procedure
+# described in README.md.
 #
 # Runs inside an ubuntu container, `cd "$SRC"`, `source
 # build/envsetup.sh` in the main shell (so `breakfast` and `m` are
@@ -27,13 +27,14 @@
 #   OWNER_APPROVED=1       only with BILLING_ALLOWED=1 executes
 #   RELEASE_TYPE           REQUIRED: user | userdebug (no silent default)
 #   AWAI_WITHOUT_APPS=1    apps mode: evaluation only; refused for user
-#   AWAI_HOME_APK          apps mode (prebuilt): Awai Home APK path
-#   AWAI_STORE_APK         apps mode (prebuilt): Awai Store APK path
-#   AWAI_HOME_EXPECTED_SIGNER_SHA256   expected Home signer (lowercase hex)
-#   AWAI_STORE_EXPECTED_SIGNER_SHA256  expected Store signer (lowercase hex)
-#   AWAI_APKSIGNER         apksigner used by the #523 signer guard
-#                          (an apps mode is REQUIRED: exactly one of
-#                          AWAI_WITHOUT_APPS=1 or the five values above)
+#   AWAI_APK_STAGE         prebuilt mode: private B2 stage ID
+#   AWAI_HOME_APK          direct build only: local Awai Home APK path
+#   AWAI_STORE_APK         direct build only: local Awai Store APK path
+#   AWAI_APKSIGNER         direct build only: local Android apksigner path
+#   AWAI_HOME_APK_SHA256               approved Home file SHA-256
+#   AWAI_STORE_APK_SHA256              approved Store file SHA-256
+#   AWAI_HOME_EXPECTED_SIGNER_SHA256   approved Home signer SHA-256
+#   AWAI_STORE_EXPECTED_SIGNER_SHA256  approved Store signer SHA-256
 #   AWAI_VIRTIO_DEADLINE_SECONDS  minimum 28800 (8h per Job)
 #   MANIFEST_FILE          pinned-manifest.xml (default: from the kit)
 #   SRC                    source root (default /root/build/src)
@@ -47,9 +48,6 @@
 #
 # Usage:
 #   DRY_RUN=1 RELEASE_TYPE=userdebug AWAI_FEED_URL=.. AWAI_WITHOUT_APPS=1 bash build-inside.sh
-#   BILLING_ALLOWED=1 OWNER_APPROVED=1 RELEASE_TYPE=userdebug AWAI_HOME_APK=.. \
-#     AWAI_STORE_APK=.. AWAI_HOME_EXPECTED_SIGNER_SHA256=.. \
-#     AWAI_STORE_EXPECTED_SIGNER_SHA256=.. AWAI_APKSIGNER=.. ... bash build-inside.sh
 set -euo pipefail
 umask 077
 here=$(cd "$(dirname "$0")" && pwd)
@@ -98,57 +96,16 @@ if [[ -z ${AWAI_FEED_URL:-} ]]; then
   exit 2
 fi
 
-# Apps mode: explicit, no default. #523's device/virt/virtio-common
-# product include is fail-closed (missing APK, unset expected signer or a
-# signer mismatch is $(error)), so this Job must name its mode:
-#   AWAI_WITHOUT_APPS=1  evaluation only; refused for RELEASE_TYPE=user
-#   prebuilt             all five values below; APKs are copied to
-#                        device/virt/virtio-common/awai-apps/ before `m`
-apps_without=0
-apps_prebuilt=0
-[[ ${AWAI_WITHOUT_APPS:-} == 1 ]] && apps_without=1
-APPS_PREBUILT_VARS=(AWAI_HOME_APK AWAI_STORE_APK AWAI_HOME_EXPECTED_SIGNER_SHA256 \
-  AWAI_STORE_EXPECTED_SIGNER_SHA256 AWAI_APKSIGNER)
-for v in "${APPS_PREBUILT_VARS[@]}"; do
-  [[ -n ${!v:-} ]] && apps_prebuilt=1
-done
-if (( apps_without && apps_prebuilt )); then
-  echo "AWAI4094_REFUSES: AWAI_WITHOUT_APPS=1 and the prebuilt APK values are mutually exclusive; name exactly one apps mode." >&2
-  exit 2
-fi
-if (( !apps_without && !apps_prebuilt )); then
-  echo "AWAI4094_REFUSES: an explicit apps mode is required: AWAI_WITHOUT_APPS=1 (evaluation), or all of AWAI_HOME_APK AWAI_STORE_APK AWAI_HOME_EXPECTED_SIGNER_SHA256 AWAI_STORE_EXPECTED_SIGNER_SHA256 AWAI_APKSIGNER (prebuilt)." >&2
-  exit 2
-fi
-if (( apps_without )); then
-  if [[ $RELEASE_TYPE == user ]]; then
-    echo "AWAI4094_REFUSES: AWAI_WITHOUT_APPS=1 is refused for RELEASE_TYPE=user (the #523 guard refuses it on release builds)." >&2
-    exit 2
-  fi
-  export AWAI_WITHOUT_APPS=1
-  APPS_MODE_LOG='without-apps (evaluation)'
-else
-  missing=()
-  for v in "${APPS_PREBUILT_VARS[@]}"; do
-    [[ -n ${!v:-} ]] || missing+=("$v")
-  done
-  if (( ${#missing[@]} )); then
-    echo "AWAI4094_REFUSES: prebuilt apps mode requires all five values (missing: ${missing[*]})." >&2
-    exit 2
-  fi
-  export AWAI_HOME_APK AWAI_STORE_APK AWAI_HOME_EXPECTED_SIGNER_SHA256 \
-    AWAI_STORE_EXPECTED_SIGNER_SHA256 AWAI_APKSIGNER
+# Validate the explicit apps mode again inside the worker.
+source "$here/apk-inputs.sh"
+validate_apps_mode build
+unset AWAI_ALLOW_UNVERIFIED_APKS
+if (( apps_prebuilt )); then
+  unset AWAI_WITHOUT_APPS
   APPS_MODE_LOG="prebuilt home=$AWAI_HOME_EXPECTED_SIGNER_SHA256 store=$AWAI_STORE_EXPECTED_SIGNER_SHA256"
-fi
-# Approved mode copies the operator-supplied APKs: fail before any
-# build work if they are not readable.
-if (( APPROVED && apps_prebuilt )); then
-  for f in "$AWAI_HOME_APK" "$AWAI_STORE_APK"; do
-    if [[ ! -f $f ]]; then
-      echo "AWAI4094_REFUSES: prebuilt APK not readable: $f" >&2
-      exit 2
-    fi
-  done
+else
+  export AWAI_WITHOUT_APPS=1
+  APPS_MODE_LOG="without-apps (evaluation)"
 fi
 
 # Executing requires kit + pool env.
@@ -188,9 +145,10 @@ run() {
 # Toolchain (same list as same-build/workflow.sh) + repo binary.
 run apt-get -qq update
 run apt-get -qq install -y bc bison build-essential ca-certificates ccache cmake curl flex g++-multilib gcc-multilib gdisk git git-lfs gperf imagemagick lib32readline-dev lib32z1-dev libclang-18-dev libegl1 libelf-dev libglvnd-dev liblapack-dev liblz4-tool libopenblas-dev libpam-pwquality libsdl1.2-dev libssl-dev libxml2 libxml2-utils lz4 openjdk-21-jdk-headless lzop ninja-build pkg-config python-is-python3 python3 python3-dev python3-jsonschema python3-mako python3-packaging python3-pip python3-pycparser python3-ply python3-yaml rclone rsync schedtool squashfs-tools unzip xorriso xsltproc zip zstd
+if [[ -n ${AWAI_APK_STAGE:-} ]]; then
+  run apt-get -qq install -y apksigner=31.0.2-1ubuntu1
+fi
 run mkdir -p "$KIT" "$BUILD_WORK_DIR/bin" "$UP/v1"
-run curl -fsSL https://storage.googleapis.com/git-repo-downloads/repo -o "$BUILD_WORK_DIR/bin/repo"
-run chmod a+x "$BUILD_WORK_DIR/bin/repo"
 
 # Kit fetch + SHA-verify BEFORE use (real python3 computes the digest).
 # Skip the download if the kit is already extracted (e.g. by the Job
@@ -199,7 +157,12 @@ run chmod a+x "$BUILD_WORK_DIR/bin/repo"
 if [[ -f "$KIT/android/desktop/manifest/pinned-manifest.xml" ]]; then
   printf 'AWAI4089_KIT_PRESENT %s\n' "$KIT"
 else
-  run curl -fsSL "${KIT_URL:-<KIT_URL>}" -o "$BUILD_WORK_DIR/kit.tar.gz"
+  if (( APPROVED )); then
+    curl -fsSL "$KIT_URL" -o "$BUILD_WORK_DIR/kit.tar.gz" 2>/dev/null ||
+      { echo "AWAI4089_REFUSES: kit download failed." >&2; exit 2; }
+  else
+    printf "[dry-run] curl -fsSL \$KIT_URL -o %s/kit.tar.gz\n" "$BUILD_WORK_DIR"
+  fi
   run python3 -c 'import hashlib,sys; d=hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest(); sys.exit(0 if d==sys.argv[2] else 1)' "$BUILD_WORK_DIR/kit.tar.gz" "${KIT_SHA256:-<KIT_SHA256>}"
   run tar -xzf "$BUILD_WORK_DIR/kit.tar.gz" -C "$KIT"
 fi
@@ -221,6 +184,42 @@ printf 'AWAI4089_RELEASE_TYPE=%s AWAI4089_DEADLINE_SECONDS=%s AWAI4089_APPROVED=
   "$RELEASE_TYPE" "$DEADLINE" "$APPROVED"
 # One recorded line per run and per dry-run print, naming the chosen mode.
 printf 'AWAI4094_APPS: %s\n' "$APPS_MODE_LOG"
+# A verified APK pair alone cannot produce a shipping build. Check the
+# same kit and apply script the user build will consume before checkout.
+if [[ $RELEASE_TYPE == user ]]; then
+  run python3 "$here/check-home-store-integration.py" "$KIT" || exit 2
+fi
+if (( apps_prebuilt )); then
+  # Snapshot before verification. Keep these bytes private until copying
+  # them to the device tree, even when the original inputs are local files.
+  if (( APPROVED )); then
+    if [[ -n ${AWAI_APK_STAGE:-} ]]; then
+      AWAI_APKSIGNER=$(command -v apksigner) || apk_refuse "apksigner is missing after installation."
+    fi
+    [[ -f $AWAI_APKSIGNER && -x $AWAI_APKSIGNER ]] || apk_refuse "apksigner is missing or not executable."
+    apk_dir=$(mktemp -d "$BUILD_WORK_DIR/apks.XXXXXXXX")
+    trap 'rm -rf -- "$apk_dir"' EXIT
+    if [[ -n ${AWAI_APK_STAGE:-} ]]; then
+      fetch_staged_apk AwaiHome.apk "$apk_dir/AwaiHome.apk"
+      fetch_staged_apk AwaiStore.apk "$apk_dir/AwaiStore.apk"
+    else
+      snapshot_local_apk "$AWAI_HOME_APK" "$apk_dir/AwaiHome.apk"
+      snapshot_local_apk "$AWAI_STORE_APK" "$apk_dir/AwaiStore.apk"
+    fi
+    verify_apk "$apk_dir/AwaiHome.apk" "$AWAI_HOME_APK_SHA256" "$AWAI_HOME_EXPECTED_SIGNER_SHA256"
+    verify_apk "$apk_dir/AwaiStore.apk" "$AWAI_STORE_APK_SHA256" "$AWAI_STORE_EXPECTED_SIGNER_SHA256"
+    chmod a-w "$apk_dir/AwaiHome.apk" "$apk_dir/AwaiStore.apk"
+  else
+    apk_dir="$BUILD_WORK_DIR/apks.<run>"
+    printf "[dry-run] stage Home and Store privately, then verify each file SHA-256 and apksigner signer SHA-256\n"
+  fi
+  export AWAI_HOME_EXPECTED_SIGNER_SHA256 AWAI_STORE_EXPECTED_SIGNER_SHA256 AWAI_APKSIGNER
+fi
+
+# Tool download follows APK preflight and precedes any source work.
+run curl -fsSL https://storage.googleapis.com/git-repo-downloads/repo -o "$BUILD_WORK_DIR/bin/repo"
+run chmod a+x "$BUILD_WORK_DIR/bin/repo"
+
 # $BUILD_WORK_DIR/bin comes first: it holds the pinned `repo` this
 # script fetched for itself, which must win over any preinstalled repo.
 # The kit's own tools follow (harness stubs sit ahead via the caller's
@@ -251,8 +250,16 @@ run git init -q "$FIRMWARE_GIT"
 run timeout 20m git -C "$FIRMWARE_GIT" fetch -q --depth 1 https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git a2dcb924f0897368b0b4f305cbf9808cdda90ce0
 run git -C "$FIRMWARE_GIT" checkout -q FETCH_HEAD
 
-# Repo's own apply tools, in repo order. No second explicit list.
-run apply.sh "$SRC"
+# Repo's own apply tools, in repo order. The shipping build uses the
+# checked script by path and confirms its product patch reached the tree.
+if [[ $RELEASE_TYPE == user ]]; then
+  run sh "$KIT/pc-ab-device/apply.sh" "$SRC"
+  run git -C "$SRC/device/virt/virtio-common" apply --reverse --check \
+    "$KIT/pc-ab-device/patches/virtio-common-awai-apps.patch" ||
+    apk_refuse "the kit's Home/Store integration was not applied to the source tree."
+else
+  run apply.sh "$SRC"
+fi
 run apply-shipping-debug-lockdown.sh "$SRC"
 run pc-firmware.py prepare "$SRC" "$FIRMWARE_GIT"
 run updater-feed.py configure-release "$SRC/packages/apps/Updater" "$AWAI_FEED_URL"
@@ -289,14 +296,13 @@ printf 'AWAI4089_PATCH_COUNT=%s\n' "${PCNT:-0}"
 # failure cannot lose them; the disk image follows separately.
 # ROOMSERVICE_DRYRUN prevents duplicate external projects; ccache
 # matches ab-build.sh (dir is ephemeral per build).
-# #523's guard reads device/virt/virtio-common/awai-apps/{AwaiHome,
-# AwaiStore}.apk; the operator supplies those two paths, so place them
-# where the included awai-apps/product.mk looks before `m`.
+# #523's guard reads these filenames before `m`. Copy from the private
+# snapshot checked before repo init.
 if (( apps_prebuilt )); then
   AWAI_APPS_DIR="$SRC/device/virt/virtio-common/awai-apps"
   run mkdir -p "$AWAI_APPS_DIR"
-  run cp "$AWAI_HOME_APK" "$AWAI_APPS_DIR/AwaiHome.apk"
-  run cp "$AWAI_STORE_APK" "$AWAI_APPS_DIR/AwaiStore.apk"
+  run cp "$apk_dir/AwaiHome.apk" "$AWAI_APPS_DIR/AwaiHome.apk"
+  run cp "$apk_dir/AwaiStore.apk" "$AWAI_APPS_DIR/AwaiStore.apk"
 fi
 run export ROOMSERVICE_DRYRUN=true
 run export USE_CCACHE=1 CCACHE_EXEC=/usr/bin/ccache CCACHE_DIR="$BUILD_WORK_DIR/ccache"
