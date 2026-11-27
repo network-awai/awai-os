@@ -15,12 +15,13 @@
 
 import {
   LIMITS, activeDraftRecord, addressedMemo, assembleMemo, buildMemoExportV1, createDraftRecord,
-  draftDisplayTitle, draftProblems, emptyAppState, emptyDraft, formatMemoMarkdown, newEvidence,
+  draftDisplayTitle, draftProblems, emptyDraft, formatMemoMarkdown, newEvidence,
   recipientProblems, restoreAppState, restoreDraft,
 } from './model.js';
 import {
-  DEFAULT_INFERENCE_CONFIG, MURAKUMO_ENDPOINT_URL, buildInferenceRequestBody,
-  buildProposalFromCompletion, evaluateGovernorGuard, organizeLocally, validateInferenceConfig,
+  DEFAULT_INFERENCE_CONFIG, INFERENCE_LIMITS, MURAKUMO_ENDPOINT_URL, buildInferenceHeaders,
+  buildInferenceRequestBody, buildProposalFromCompletion, evaluateGovernorGuard,
+  isCapacityOrRateLimitError, organizeLocally, validateInferenceConfig,
 } from './inference.js';
 import {INFERENCE_SELECTOR, SEND_SELECTOR} from './operations.js';
 import {translator} from './messages.js';
@@ -56,6 +57,7 @@ export function createSemanticStore({
   locale = 'ja',
   broker = null,
   inferenceConfig = DEFAULT_INFERENCE_CONFIG,
+  authHeaderProvider = null,
   route = 'web-device-save',
   sandboxedIframe = false,
   now = () => new Date().toISOString(),
@@ -67,6 +69,12 @@ export function createSemanticStore({
   let lastProposal = null;
   let lastGuard = null;
   let seq = state.audit.length;
+  let inferenceInFlight = 0;
+  let dailyBucket = {day: '', count: 0};
+
+  function todayKey() {
+    return String(now()).slice(0, 10);
+  }
 
   function recordAudit({op, actor, outcome, targetKind, gateName = null}) {
     seq += 1;
@@ -342,7 +350,7 @@ export function createSemanticStore({
       const cfg = params?.config ?? inferenceConfig;
       const cfgCheck = validateInferenceConfig(cfg);
       if (!cfgCheck.ok) {
-        if (cfgCheck.reason === 'murakumo-free-forbidden' || cfgCheck.reason === 'endpoint-not-allowed' || cfgCheck.reason === 'model-not-inhouse-allowlisted') {
+        if (['murakumo-free-forbidden', 'forbidden-model', 'forbidden-endpoint', 'endpoint-not-allowed', 'model-not-inhouse-allowlisted', 'max-tokens-out-of-bounds'].includes(cfgCheck.reason)) {
           recordAudit({op, actor: normActor, outcome: 'blocked', targetKind: 'inference', gateName: cfgCheck.reason});
           uiState = 'governor.blocked';
           lastGuard = {blocked: true, state: uiState, gateName: cfgCheck.reason};
@@ -365,19 +373,55 @@ export function createSemanticStore({
         await persist();
         return {ok: true, state: uiState, fallback: 'local', proposal: local, disclaimer: t('disclaimer.fixed')};
       }
+      // Concurrency guard: max 1 in-flight request per tab.
+      if (inferenceInFlight >= INFERENCE_LIMITS.maxConcurrencyPerTab) {
+        recordAudit({op, actor: normActor, outcome: 'blocked', targetKind: 'inference', gateName: 'concurrency-limit-exceeded'});
+        uiState = 'governor.blocked';
+        return {ok: false, state: uiState, gateName: 'concurrency-limit-exceeded', disclaimer: t('disclaimer.fixed')};
+      }
+      // Soft daily client limit: 20 turns/day -> graceful local fallback.
+      const day = todayKey();
+      if (dailyBucket.day !== day) dailyBucket = {day, count: 0};
+      if (dailyBucket.count >= INFERENCE_LIMITS.softDailyTurns) {
+        const local = organizeLocally(rec?.draft ?? emptyDraft(), t);
+        lastProposal = local;
+        uiState = 'proposal.ready';
+        recordAudit({op, actor: normActor, outcome: 'fallback', targetKind: 'inference', gateName: 'daily-limit-reached'});
+        await persist();
+        return {ok: true, state: uiState, fallback: 'local', reason: 'daily-limit-reached', proposal: local, disclaimer: t('disclaimer.fixed')};
+      }
+
       uiState = 'consent.required';
-      const bodyObj = buildInferenceRequestBody({draft: rec?.draft ?? emptyDraft(), model: cfg.model, locale});
+      const extraHeaders = typeof authHeaderProvider === 'function' ? await authHeaderProvider() : null;
+      const headers = buildInferenceHeaders({extraHeaders});
+      const bodyObj = buildInferenceRequestBody({
+        draft: rec?.draft ?? emptyDraft(),
+        model: cfg.model,
+        maxTokens: cfg.maxTokens ?? INFERENCE_LIMITS.defaultMaxTokens,
+        history: params?.history ?? [],
+        locale,
+      });
+      inferenceInFlight += 1;
       try {
         const resp = await broker.invoke(INFERENCE_SELECTOR, {
           input: MURAKUMO_ENDPOINT_URL,
           init: {
             method: 'POST',
-            headers: {'content-type': 'application/json'},
+            headers,
             body: JSON.stringify(bodyObj),
           },
         });
-        const json = typeof resp?.json === 'function' ? await resp.json() : resp;
-        const proposal = buildProposalFromCompletion(json, t);
+        const status = typeof resp?.status === 'number' ? resp.status : 200;
+        const rawBody = typeof resp?.text === 'function' ? await resp.text() : resp;
+        if (isCapacityOrRateLimitError(status, typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody ?? ''))) {
+          const local = organizeLocally(rec?.draft ?? emptyDraft(), t);
+          lastProposal = local;
+          uiState = 'proposal.ready';
+          recordAudit({op, actor: normActor, outcome: 'fallback', targetKind: 'inference', gateName: `capacity-or-rate-limit-${status}`});
+          await persist();
+          return {ok: true, state: uiState, fallback: 'local', reason: 'capacity-or-rate-limit', status, proposal: local, disclaimer: t('disclaimer.fixed')};
+        }
+        const proposal = buildProposalFromCompletion(rawBody, t);
         if (proposal.blocked) {
           recordAudit({op, actor: normActor, outcome: 'blocked', targetKind: 'inference', gateName: proposal.gateName});
           uiState = 'governor.blocked';
@@ -385,6 +429,7 @@ export function createSemanticStore({
           await persist();
           return {ok: false, state: uiState, gateName: proposal.gateName, routes: proposal.routes, disclaimer: t('disclaimer.fixed')};
         }
+        dailyBucket.count += 1;
         lastProposal = proposal;
         uiState = 'proposal.ready';
         recordAudit({op, actor: normActor, outcome: 'ok', targetKind: 'inference'});
@@ -398,6 +443,8 @@ export function createSemanticStore({
         recordAudit({op, actor: normActor, outcome: denied ? 'denied' : 'fallback', targetKind: 'inference', gateName: denied ? 'user-consent-denied' : 'inference-unavailable'});
         await persist();
         return {ok: true, state: uiState, fallback: 'local', reason: denied ? 'consent-denied' : 'inference-unavailable', proposal: local, disclaimer: t('disclaimer.fixed')};
+      } finally {
+        inferenceInFlight -= 1;
       }
     }
 

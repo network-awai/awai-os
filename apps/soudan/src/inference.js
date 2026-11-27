@@ -1,26 +1,48 @@
-// Soudan murakumo.cloud inference slot (soudan.inference.organize) — Legal Addendum Route B.
+// Soudan murakumo.cloud inference slot (soudan.inference.organize) — Legal Addendum Route B + Suiron Contract.
 // Hard rules:
-// - Synchronous POST https://api.murakumo.cloud/v1/chat/completions ONLY.
-// - NEVER target murakumo/free or any free-tier/external logging model (Dev #219/#220).
-// - Fail-closed (disabled) by default while in-house mishima is 503 & Legal item #224 blockers await approval.
-// - Client-side pre-flight governor guard blocks legal verdicts, court filing drafting,
-//   lawyer selection/endorsement, and monetization/referral requests -> state 'governor.blocked' + 6 official routes.
+// - Synchronous POST https://api.murakumo.cloud/v1/chat/completions ONLY; readiness GET https://api.murakumo.cloud/ready?model=mishima.
+// - Model pinned to "mishima" ONLY (no external fallback).
+// - Hard-rejects forbidden models (murakumo/free, murakumo-main, qwen3.8-27b-uncensored, any free-tier/unpinned model)
+//   and forbidden endpoints (/api/v1/preview/*, /api/v1/free/*, openrouter.ai).
+// - Headers: content-type: application/json ONLY by default (no custom headers like x-murakumo-app / x-request-id
+//   that fail CORS preflight; optional runtime-only authorization / x-api-key hook with zero embedded secrets).
+// - Mandatory body params: model="mishima", stream=true, max_tokens=1024 (hard cap 1536),
+//   chat_template_kwargs: { enable_thinking: false }.
+// - Client-side guards: body <= 64 KiB, input+history <= 8192 estimated tokens, max concurrency 1 req/tab,
+//   soft daily client limit 20 turns/day, safe offline local fallback on 429/503 (fleet_capacity_unavailable / no_ready_capacity).
+// - Fail-closed (disabled) by default while in-house mishima & Legal item #224 blockers await approval.
 // - Proposals NEVER auto-overwrite user drafts; human must explicitly accept or discard.
-// - Raw screenshot image bytes are strictly rejected.
 
-import {MURAKUMO_ORIGIN, MURAKUMO_PATH} from './operations.js';
+import {MURAKUMO_ORIGIN, MURAKUMO_PATH, MURAKUMO_PINNED_MODEL, MURAKUMO_READY_PATH} from './operations.js';
 
 export const MURAKUMO_ENDPOINT_URL = MURAKUMO_ORIGIN + MURAKUMO_PATH;
-export const INHOUSE_MODEL_ALLOWLIST = Object.freeze([
-  'mishima',
-  'murakumo/mishima',
-  'kotoba/mishima',
+export const MURAKUMO_READY_URL = `${MURAKUMO_ORIGIN}${MURAKUMO_READY_PATH}?model=${MURAKUMO_PINNED_MODEL}`;
+export const PINNED_INHOUSE_MODEL = MURAKUMO_PINNED_MODEL;
+export const INHOUSE_MODEL_ALLOWLIST = Object.freeze([PINNED_INHOUSE_MODEL]);
+
+export const INFERENCE_LIMITS = Object.freeze({
+  defaultMaxTokens: 1024,
+  hardMaxTokens: 1536,
+  maxRequestBytes: 65536, // 64 KiB
+  maxInputTokens: 8192,
+  maxConcurrencyPerTab: 1,
+  softDailyTurns: 20,
+});
+
+const FORBIDDEN_MODELS = Object.freeze([
+  'murakumo/free',
+  'murakumo-main',
+  'qwen3.8-27b-uncensored',
 ]);
+
+const ALLOWED_REQUEST_HEADERS = new Set(['content-type', 'authorization', 'x-api-key']);
 
 export const DEFAULT_INFERENCE_CONFIG = Object.freeze({
   enabled: false,
   endpoint: MURAKUMO_ENDPOINT_URL,
-  model: null,
+  readyEndpoint: MURAKUMO_READY_URL,
+  model: PINNED_INHOUSE_MODEL,
+  maxTokens: INFERENCE_LIMITS.defaultMaxTokens,
   status: 'fail-closed-pending-prelaunch-blockers',
 });
 
@@ -80,17 +102,44 @@ export function evaluateGovernorGuard(inputText, t = null) {
   return {blocked: false, state: 'idle', gateName: null, routes: []};
 }
 
-// Hard-reject murakumo/free, any free-tier model, non-allowlisted models, or unverified endpoints.
+// Conservative token estimator (CJK ~1 char/token, ASCII ~3.5 chars/token -> upper bound safe).
+export function estimateTokens(text) {
+  if (typeof text !== 'string' || !text) return 0;
+  let cjk = 0, ascii = 0;
+  for (const ch of text) {
+    if (ch.codePointAt(0) > 0x7f) cjk += 1;
+    else ascii += 1;
+  }
+  return cjk + Math.ceil(ascii / 3.5);
+}
+
+// Hard-reject forbidden endpoints (/api/v1/preview/*, /api/v1/free/*, openrouter.ai, any non-pinned URL)
+// and forbidden models (murakumo/free, murakumo-main, qwen3.8-27b-uncensored, any free/non-mishima model).
 export function validateInferenceConfig(config) {
   if (!config || typeof config !== 'object') return {ok: false, reason: 'config-missing'};
-  if (config.endpoint !== MURAKUMO_ENDPOINT_URL) return {ok: false, reason: 'endpoint-not-allowed'};
+  const endpoint = typeof config.endpoint === 'string' ? config.endpoint.trim() : '';
+  if (/openrouter\.ai|\/api\/v1\/preview\/|\/api\/v1\/free\//i.test(endpoint)) {
+    return {ok: false, reason: 'forbidden-endpoint'};
+  }
+  if (endpoint !== MURAKUMO_ENDPOINT_URL) {
+    return {ok: false, reason: 'endpoint-not-allowed'};
+  }
   const model = typeof config.model === 'string' ? config.model.trim() : '';
   if (!model) return {ok: false, reason: 'model-unconfigured'};
-  if (/(?:^|\/)free(?:$|:|-)/i.test(model) || model.toLowerCase() === 'murakumo/free' || /free/i.test(model)) {
+  const lower = model.toLowerCase();
+  if (lower === 'murakumo/free' || /(?:^|\/)free(?:$|:|-)/i.test(model) || /free/i.test(model)) {
     return {ok: false, reason: 'murakumo-free-forbidden'};
+  }
+  if (FORBIDDEN_MODELS.includes(lower)) {
+    return {ok: false, reason: 'forbidden-model'};
   }
   if (!INHOUSE_MODEL_ALLOWLIST.includes(model)) {
     return {ok: false, reason: 'model-not-inhouse-allowlisted'};
+  }
+  if (config.maxTokens !== undefined) {
+    if (!Number.isSafeInteger(config.maxTokens) || config.maxTokens < 1 || config.maxTokens > INFERENCE_LIMITS.hardMaxTokens) {
+      return {ok: false, reason: 'max-tokens-out-of-bounds'};
+    }
   }
   if (config.enabled !== true) {
     return {ok: false, reason: 'inference-disabled-fail-closed'};
@@ -98,8 +147,32 @@ export function validateInferenceConfig(config) {
   return {ok: true, reason: null};
 }
 
-export function buildInferenceRequestBody({draft, model, locale = 'ja'}) {
-  const check = validateInferenceConfig({enabled: true, endpoint: MURAKUMO_ENDPOINT_URL, model});
+// CORS-safe headers: content-type: application/json ONLY by default.
+// Optional runtime auth hook may supply authorization OR x-api-key (never embedded in bundle).
+// Rejects custom headers (x-murakumo-app, x-request-id, etc.) that fail CORS preflight.
+export function buildInferenceHeaders({extraHeaders = null} = {}) {
+  const headers = {'content-type': 'application/json'};
+  if (extraHeaders && typeof extraHeaders === 'object') {
+    for (const [k, v] of Object.entries(extraHeaders)) {
+      const lower = k.toLowerCase();
+      if (!ALLOWED_REQUEST_HEADERS.has(lower)) {
+        throw Object.assign(Error(`forbidden-header:${lower}`), {code: 'forbidden-header'});
+      }
+      if (lower === 'content-type') continue;
+      if (typeof v === 'string' && v.trim()) headers[lower] = v.trim();
+    }
+  }
+  return headers;
+}
+
+export function buildInferenceRequestBody({
+  draft,
+  model = PINNED_INHOUSE_MODEL,
+  maxTokens = INFERENCE_LIMITS.defaultMaxTokens,
+  history = [],
+  locale = 'ja',
+}) {
+  const check = validateInferenceConfig({enabled: true, endpoint: MURAKUMO_ENDPOINT_URL, model, maxTokens});
   if (!check.ok) throw Object.assign(Error(check.reason), {code: check.reason});
   const textPayload = JSON.stringify({
     category: draft?.category ?? null,
@@ -114,18 +187,73 @@ export function buildInferenceRequestBody({draft, model, locale = 'ja'}) {
   const systemPrompt = locale === 'en'
     ? 'Organize the user memo into factual bullet points, timeline gaps, and questions to ask a lawyer. Never give legal advice, legal verdicts, infringement judgments, court filings, or lawyer suggestions.'
     : '相談前メモを事実の整理・時系列の抜け漏れ確認・弁護士へ聞く質問項目に整理してください。法的助言、権利侵害や勝訴の判断、申立書等の起案、弁護士の選定・推薦は一切行わないでください。';
-  return {
-    model,
+  const safeHistory = Array.isArray(history)
+    ? history.filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+      .map(m => ({role: m.role, content: m.content}))
+    : [];
+  const messages = [
+    {role: 'system', content: systemPrompt},
+    ...safeHistory,
+    {role: 'user', content: textPayload},
+  ];
+  const totalTokens = messages.reduce((sum, m) => sum + estimateTokens(m.content), 0);
+  if (totalTokens > INFERENCE_LIMITS.maxInputTokens) {
+    throw Object.assign(Error('input-token-limit-exceeded'), {code: 'input-token-limit-exceeded'});
+  }
+  const body = {
+    model: PINNED_INHOUSE_MODEL,
+    stream: true,
+    max_tokens: maxTokens,
     temperature: 0,
-    stream: false,
-    messages: [
-      {role: 'system', content: systemPrompt},
-      {role: 'user', content: textPayload},
-    ],
+    chat_template_kwargs: {enable_thinking: false},
+    messages,
   };
+  const byteLen = new TextEncoder().encode(JSON.stringify(body)).length;
+  if (byteLen > INFERENCE_LIMITS.maxRequestBytes) {
+    throw Object.assign(Error('request-body-too-large'), {code: 'request-body-too-large'});
+  }
+  return body;
 }
 
-// 100% offline/local self-organization fallback (when inference is disabled, offline, or consent declined).
+export function isCapacityOrRateLimitError(status, bodyText = '') {
+  if (status === 429 || status === 503) return true;
+  if (typeof bodyText === 'string' && /fleet_capacity_unavailable|no_ready_capacity/i.test(bodyText)) return true;
+  return false;
+}
+
+// Parse either an OpenAI-compatible SSE stream (stream: true) or a single JSON completion object.
+export function parseCompletionText(raw) {
+  if (raw && typeof raw === 'object') {
+    const content = raw?.choices?.[0]?.message?.content;
+    return typeof content === 'string' ? content : '';
+  }
+  if (typeof raw !== 'string') return '';
+  const trimmed = raw.trim();
+  if (!trimmed) return '';
+  if (trimmed.startsWith('{')) {
+    try {
+      const obj = JSON.parse(trimmed);
+      return typeof obj?.choices?.[0]?.message?.content === 'string' ? obj.choices[0].message.content : '';
+    } catch {
+      return '';
+    }
+  }
+  // SSE data: lines
+  const parts = [];
+  for (const line of trimmed.split(/\r?\n/)) {
+    if (!line.startsWith('data:')) continue;
+    const payload = line.slice(5).trim();
+    if (!payload || payload === '[DONE]') continue;
+    try {
+      const chunk = JSON.parse(payload);
+      const delta = chunk?.choices?.[0]?.delta?.content ?? chunk?.choices?.[0]?.message?.content;
+      if (typeof delta === 'string') parts.push(delta);
+    } catch {}
+  }
+  return parts.join('');
+}
+
+// 100% offline/local self-organization fallback (when inference is disabled, offline, 429/503, daily limit, or consent declined).
 export function organizeLocally(draft, t) {
   const summary = String(draft?.summary ?? '').trim();
   const timeline = Array.isArray(draft?.timeline) ? draft.timeline.filter(e => e?.event?.trim()) : [];
@@ -149,8 +277,8 @@ export function organizeLocally(draft, t) {
   };
 }
 
-export function buildProposalFromCompletion(responseJson, t) {
-  const content = responseJson?.choices?.[0]?.message?.content;
+export function buildProposalFromCompletion(rawResponse, t) {
+  const content = parseCompletionText(rawResponse);
   if (typeof content !== 'string' || !content.trim()) {
     throw Object.assign(Error('empty-inference-response'), {code: 'empty-inference-response'});
   }

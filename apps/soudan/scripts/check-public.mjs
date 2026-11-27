@@ -78,10 +78,12 @@ for (const rel of ALL_PUBLIC_FILES) {
   }
 }
 
-// 3. No murakumo/free anywhere in runtime/descriptor/HTML/UI (only inference.js guard tests/rejects it).
+// 3. No forbidden inference models/endpoints anywhere in runtime/descriptor/HTML/UI (only inference.js guard rejects them).
 for (const rel of ['app-descriptor.json', 'src/operations.js', 'src/app.js', 'src/index.html', 'src/embed.html', 'src/foreign-info.html']) {
   const content = await readFile(resolve(app, rel), 'utf8');
-  if (/murakumo\/free/i.test(content)) fail(`forbidden murakumo/free reference in ${rel}`);
+  if (/murakumo\/free|murakumo-main|qwen3\.8-27b-uncensored|openrouter\.ai|\/api\/v1\/preview\/|\/api\/v1\/free\//i.test(content)) {
+    fail(`forbidden inference model/endpoint reference in ${rel}`);
+  }
 }
 
 // 4. Sandbox allow-scripts compliance, no jp-go-dds, no window.openai, no IDE ACP, no 7-barrier links, no Government Request Portals.
@@ -106,11 +108,17 @@ for (const rel of SRC_FILES) {
   }
 }
 
-// 5. Mandatory HTML <meta> CSP & referrer=no-referrer in every HTML file.
+// 5. Mandatory HTML <meta> CSP (connect-src 'none') & referrer=no-referrer in every HTML file,
+//    kept separate from Tauri CSP (connect-src ipc: http://ipc.localhost;).
 for (const rel of ['src/index.html', 'src/embed.html', 'src/foreign-info.html']) {
   const content = await readFile(resolve(app, rel), 'utf8');
   if (!content.includes('http-equiv="Content-Security-Policy"')) fail(`missing meta CSP in ${rel}`);
+  if (!content.includes("connect-src 'none';")) fail(`Web HTML must use connect-src 'none' in ${rel}`);
   if (!content.includes('name="referrer" content="no-referrer"')) fail(`missing meta no-referrer in ${rel}`);
+}
+const tauriConf = JSON.parse(await readFile(resolve(app, 'src-tauri/tauri.conf.json'), 'utf8'));
+if (!tauriConf.app.security.csp.includes('connect-src ipc: http://ipc.localhost;')) {
+  fail('src-tauri/tauri.conf.json CSP must keep connect-src ipc: http://ipc.localhost;');
 }
 
 // 6. blueprint.edn single classification key & SPDX + NOTICE presence.
@@ -138,9 +146,10 @@ const probs = clientRuntimeProblems(descriptor, [...REQUESTED_CAPABILITIES], [
 ]);
 if (probs.length) fail('app-descriptor.json validation failed: ' + JSON.stringify(probs));
 
-// 8. Android hardening & system-bar invariants.
+// 8. Android hardening & system-bar invariants (no INTERNET permission in offline-default build).
 const manifest = await readFile(resolve(app, 'src-tauri/gen/android/app/src/main/AndroidManifest.xml'), 'utf8');
 if (!manifest.includes('android:allowBackup="false"')) fail('AndroidManifest.xml missing android:allowBackup="false"');
+if (/android\.permission\.INTERNET/.test(manifest)) fail('AndroidManifest.xml must not declare INTERNET permission in offline-default build');
 const gradle = await readFile(resolve(app, 'src-tauri/gen/android/app/build.gradle.kts'), 'utf8');
 if (!/minSdk\s*=\s*33/.test(gradle)) fail('build.gradle.kts must set minSdk = 33');
 const buildRs = await readFile(resolve(app, 'src-tauri/build.rs'), 'utf8');

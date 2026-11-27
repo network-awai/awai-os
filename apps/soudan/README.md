@@ -39,10 +39,16 @@ All three surfaces share the same on-device multi-draft state (`itonami.soudan.s
 - MCP Apps embed (`src/embed.html` + `src/mcp-app.js`): `ui://soudan/app` (`text/html;profile=mcp-app`), JSON-RPC `postMessage` (`ui/initialize`, `ui/notifications/initialized`, origin + session validation), `content` + `structuredContent` text fallback always carrying the fixed legal disclaimer. Direct external X1 send and external inference are blocked inside the sandboxed iframe (`connect-src 'none'`).
 - Status: **draft alignment** (formal AWAI-4143 conformance waits on spec PR + `catalog.list` POC gate).
 
-## `murakumo.cloud` Inference Slot (Route B Honest Disclosure)
+## `murakumo.cloud` Inference Slot (Route B Honest Disclosure & Suiron Contract)
 
-- Endpoint contract: synchronous `POST https://api.murakumo.cloud/v1/chat/completions` only. Any free-tier/external logging route is hard-rejected in code and tests.
-- **Default OFF (`端末内のみ`) & fail-closed**: disabled until in-house `mishima` availability and Legal item #224 pre-launch blockers are resolved.
+- **Endpoint & pinned model contract**:
+  - Readiness: `GET https://api.murakumo.cloud/ready?model=mishima` (`503` = unavailable)
+  - Completion: `POST https://api.murakumo.cloud/v1/chat/completions`, model pinned strictly to **`"mishima"`** (no external fallback)
+  - Hard-rejected in code & tests: forbidden models (`murakumo/free`, `murakumo-main`, `qwen3.8-27b-uncensored`, any free-tier/unpinned model) and forbidden endpoints (`/api/v1/preview/*`, `/api/v1/free/*`, `openrouter.ai`)
+  - Request headers: `content-type: application/json` ONLY by default (no auth header by default; no custom headers like `x-murakumo-app` or `x-request-id` that break CORS preflight; optional runtime-only `authorization` / `x-api-key` hook with zero embedded secrets)
+  - Mandatory body params: `model: "mishima"`, `stream: true`, `max_tokens: 1024` (hard cap `1536`), `chat_template_kwargs: { enable_thinking: false }`
+  - Client-side guards: request body `<= 64 KiB`, input+history `<= 8192` tokens, max concurrency `1 req / tab`, soft daily client limit `20 turns / day`, and safe local offline fallback on `429` / `503` (`fleet_capacity_unavailable` / `no_ready_capacity`)
+- **Default OFF (`端末内のみ`) & fail-closed**: disabled in this initial static release (`dist/*.html` uses `connect-src 'none'`; `tauri.conf.json` uses `connect-src ipc: http://ipc.localhost;`) while Legal item #224 pre-launch blockers and `mishima` fleet readiness remain pending.
 - **Route B honest disclosure** (`src/foreign-info.html#murakumo`, `app-descriptor.json`): names `Awai Network LLC` (US legal entity), notes Cloudflare gateway and possible Hugging Face / Modal / OpenRouter routing, states that standard API calls are not used for training/evaluation while honestly noting that fixed country-of-processing and service-wide non-retention are not guaranteed, and displays an explicit anonymization warning and MOJ 2026 §3-2(2)エ disclaimer before input and on output.
 - Pre-flight governor guard blocks legal verdicts, infringement judgments, court/agency filing drafting, lawyer selection/endorsement, and monetization requests (`governor.blocked` + 6 official routes). Proposals never auto-overwrite user drafts without explicit human accept.
 
@@ -57,14 +63,16 @@ npm run build                                            # dist/: static files +
 
 ### Dual-ABI Android / Awai OS APK (Itonami Store)
 
-Requirements: JDK 21, Android SDK (API 33+ `minSdkVersion`, `compileSdk 37`), NDK `27.0.12077973`, 16 KiB ELF alignment (`-Wl,-z,max-page-size=16384` + `zipalign -P 16`), system-bar insets (`packages/awai-system-bars`), `android:allowBackup="false"`, target `< 40 MiB` (64 MiB Store ceiling).
+Requirements: JDK 21, Android SDK (API 33+ `minSdkVersion`, `compileSdk 37`), NDK `27.0.12077973`, 16 KiB ELF alignment (`-Wl,-z,max-page-size=16384` + `zipalign -P 16`), system-bar insets (`packages/awai-system-bars`), `android:allowBackup="false"`, **no `android.permission.INTERNET`** for this initial offline-default release, target `< 40 MiB` (64 MiB Store ceiling).
+
+- **Future opt-in inference permission delta**: when Legal #224 + `mishima` readiness allow turning opt-in inference on, Android will require adding `<uses-permission android:name="android.permission.INTERNET" />` to `AndroidManifest.xml` and widening `connect-src` to include `https://api.murakumo.cloud` (matching `clientRuntimeConnectSrc(descriptor)`).
 
 ```sh
 # Dual-ABI release APK (arm64-v8a + x86_64, no --split-per-abi)
 npx tauri android build --apk --target aarch64 x86_64
 ```
 
-Static Web delivery (`https://soudan.itonami.app`) serves `dist/` via `yataverse-bytes` with real static files for `/`, `/foreign-info.html`, and `/embed.html` (no SPA fallback), embedded `<meta>` CSP and `no-referrer` on every HTML page, and every file strictly `< 10 MiB`.
+Static Web delivery (`https://soudan.itonami.app`) serves `dist/` via `yataverse-bytes` with real static files for `/`, `/foreign-info.html`, and `/embed.html` (no SPA fallback), embedded `<meta http-equiv="Content-Security-Policy" ... connect-src 'none' ...>` and `<meta name="referrer" content="no-referrer">` on every HTML page, and every file strictly `< 10 MiB`.
 
 ## Pre-Launch Gates (Not Yet Qualified)
 

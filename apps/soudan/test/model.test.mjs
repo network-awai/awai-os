@@ -235,23 +235,28 @@ test('the send is eligible only when governor-approved and host-supported; a fab
   assert.deepEqual(effectiveClientOperations(d, {requestedCapabilities: [...REQUESTED_CAPABILITIES], approvedOperations: [forged], hostSupportedOperations: host}), []);
 });
 
-test('page, embed, foreign-info, and Tauri CSPs enforce strict boundaries with zero app-origin API calls', () => {
+test('Web static HTML CSPs (connect-src none) and Tauri CSP (IPC only) are verified independently; no INTERNET permission', () => {
   const html = readFileSync(new URL('../src/index.html', import.meta.url), 'utf8');
   const embedHtml = readFileSync(new URL('../src/embed.html', import.meta.url), 'utf8');
   const foreignHtml = readFileSync(new URL('../src/foreign-info.html', import.meta.url), 'utf8');
   const conf = JSON.parse(readFileSync(new URL('../src-tauri/tauri.conf.json', import.meta.url), 'utf8'));
-  for (const csp of [html.match(/Content-Security-Policy" content="([^"]+)"/)[1], conf.app.security.csp]) {
-    assert.match(csp, /connect-src ipc: http:\/\/ipc\.localhost https:\/\/api\.murakumo\.cloud;/);
-    assert.doesNotMatch(csp, /unsafe-eval|unsafe-inline|soudan\.itonami\.app/);
-  }
-  for (const page of [embedHtml, foreignHtml]) {
+  const manifest = readFileSync(new URL('../src-tauri/gen/android/app/src/main/AndroidManifest.xml', import.meta.url), 'utf8');
+
+  // Web static HTML files MUST use connect-src 'none' (Dev #220) + no-referrer.
+  for (const page of [html, embedHtml, foreignHtml]) {
     const csp = page.match(/Content-Security-Policy" content="([^"]+)"/)[1];
     assert.match(csp, /connect-src 'none';/);
-    assert.doesNotMatch(csp, /unsafe-eval|unsafe-inline/);
-  }
-  for (const page of [html, embedHtml, foreignHtml]) {
+    assert.doesNotMatch(csp, /unsafe-eval|unsafe-inline|ipc:|https:/);
     assert.match(page, /name="referrer" content="no-referrer"/);
   }
+  // Tauri CSP stays separate and allows Tauri IPC only.
+  assert.match(conf.app.security.csp, /connect-src ipc: http:\/\/ipc\.localhost;/);
+  assert.doesNotMatch(conf.app.security.csp, /unsafe-eval|unsafe-inline|https:/);
+
+  // Android manifest stays offline-default (no INTERNET permission, allowBackup="false").
+  assert.ok(manifest.includes('android:allowBackup="false"'));
+  assert.doesNotMatch(manifest, /android\.permission\.INTERNET/);
+
   const caps = JSON.parse(readFileSync(new URL('../src-tauri/capabilities/main.json', import.meta.url), 'utf8'));
   assert.deepEqual(caps.permissions, ['allow-awai-host-info', 'allow-soudan-share']);
 });

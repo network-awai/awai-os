@@ -22,6 +22,8 @@ export const INFERENCE_SELECTOR = Object.freeze({
 
 export const MURAKUMO_ORIGIN = 'https://api.murakumo.cloud';
 export const MURAKUMO_PATH = '/v1/chat/completions';
+export const MURAKUMO_READY_PATH = '/ready';
+export const MURAKUMO_PINNED_MODEL = 'mishima';
 export const FOREIGN_INFO_URL = 'https://soudan.itonami.app/foreign-info.html#murakumo';
 
 // First-screen disclosure facts (KOTOBA-159 finding 9) follow the dialog language:
@@ -107,10 +109,16 @@ function inferenceOperation(locale = 'ja') {
       origin: MURAKUMO_ORIGIN,
       routes: Object.freeze([
         Object.freeze({method: 'POST', path: MURAKUMO_PATH, 'query-params': Object.freeze([])}),
+        Object.freeze({
+          method: 'GET',
+          path: MURAKUMO_READY_PATH,
+          'query-params': Object.freeze(['model']),
+          'query-values': Object.freeze({model: MURAKUMO_PINNED_MODEL}),
+        }),
       ]),
     }),
     'request-body': 'text',
-    'max-request-bytes': 32768,
+    'max-request-bytes': 65536,
     'content-type': 'application/json',
     'response-body': 'text',
     'max-response-bytes': 65536,

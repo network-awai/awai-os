@@ -71,11 +71,21 @@
             "method": "POST",
             "path": "/v1/chat/completions",
             "query-params": []
+          },
+          {
+            "method": "GET",
+            "path": "/ready",
+            "query-params": [
+              "model"
+            ],
+            "query-values": {
+              "model": "mishima"
+            }
           }
         ]
       },
       "request-body": "text",
-      "max-request-bytes": 32768,
+      "max-request-bytes": 65536,
       "content-type": "application/json",
       "response-body": "text",
       "max-response-bytes": 65536,

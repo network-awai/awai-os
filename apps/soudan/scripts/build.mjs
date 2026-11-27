@@ -70,18 +70,24 @@ const declaredConnect = clientRuntimeConnectSrc(descriptor, [...REQUESTED_CAPABI
 if (declaredConnect !== 'connect-src https://api.murakumo.cloud') {
   throw Error('unexpected connect-src from descriptor: ' + declaredConnect);
 }
-const expectedAppConnect = 'connect-src ipc: http://ipc.localhost https://api.murakumo.cloud;';
+// Independent CSP checks (Dev #220 + Itonami):
+// - Web static HTML (dist/*.html) MUST use connect-src 'none' (zero network destinations while inference is fail-closed)
+// - Tauri CSP (tauri.conf.json) keeps Tauri IPC only (connect-src ipc: http://ipc.localhost;)
 const tauriCsp = JSON.parse(await readFile(resolve(app, 'src-tauri/tauri.conf.json'), 'utf8')).app.security.csp;
-for (const [name, csp] of [['index.html', indexHtml], ['tauri.conf.json', tauriCsp]]) {
-  if (!csp.includes(expectedAppConnect)) throw Error('CSP connect-src mismatch: ' + name);
+if (!tauriCsp.includes('connect-src ipc: http://ipc.localhost;')) {
+  throw Error('tauri.conf.json CSP connect-src must be IPC only');
+}
+if (/https?:\/\/api\.murakumo\.cloud/i.test(tauriCsp)) {
+  throw Error('tauri.conf.json CSP must not allow external origins for offline-default build');
 }
 await writeFile(resolve(out, 'descriptor.json'), JSON.stringify(descriptor, null, 2) + '\n');
 await distributeUi(out);
 
-// Verify every HTML entry in dist/ has mandatory <meta> CSP + referrer=no-referrer.
+// Verify every HTML entry in dist/ has mandatory <meta> CSP with connect-src 'none' + referrer=no-referrer.
 for (const htmlFile of ['index.html', 'foreign-info.html', 'embed.html']) {
   const body = await readFile(resolve(out, htmlFile), 'utf8');
   if (!body.includes('http-equiv="Content-Security-Policy"')) throw Error('missing meta CSP in ' + htmlFile);
+  if (!body.includes("connect-src 'none';")) throw Error("Web static HTML must use connect-src 'none': " + htmlFile);
   if (!body.includes('name="referrer" content="no-referrer"')) throw Error('missing meta no-referrer in ' + htmlFile);
   if (body.includes('https://soudan.itonami.app/api')) throw Error('app-origin API reference in ' + htmlFile);
 }
