@@ -157,22 +157,54 @@ test('§0 and §3 separate bundled 2-app catalog (Yotei/Torihiki) from post-admi
   assert(onlineAdmitRow.includes('`raw64`') && onlineAdmitRow.includes('`highest` `114`'));
 });
 
-test('§3 branches manual and daily online verification on terminal floor highest <= 114 vs highest > 114 (catalog-rollback)', () => {
+test('§3 branches manual and daily online verification on terminal floor highest <= 114 vs highest > 114', () => {
   const rows = tableRows(section3);
 
+  const clientJs = readFileSync(path.join(root, 'android/client/client.js'), 'utf8');
+  const onlineJs = readFileSync(path.join(root, 'android/client/online.js'), 'utf8');
+  const autoUpdaterJava = readFileSync(path.join(root, 'android/shared/src/network/awai/platform/AutoUpdater.java'), 'utf8');
+  const latestPointerJava = readFileSync(path.join(root, 'android/shared/src/network/awai/platform/LatestPointer.java'), 'utf8');
+
+  const manualPrefix = '取得を完了できません。';
+  const manualReason = '有効期限またはカタログの巻き戻しを検出しました。';
+  assert(clientJs.includes(manualPrefix), 'client.js must contain the manual failure notification prefix');
+  assert(onlineJs.includes(manualReason), 'online.js must contain the WebView rollback/expiry refusal message');
+  assert(autoUpdaterJava.includes('"catalog-rollback"'), 'AutoUpdater.java must emit catalog-rollback');
+  assert(latestPointerJava.includes('"pointer-rollback"'), 'LatestPointer.java must emit pointer-rollback');
+
+  // Manual highest > 114: stops in WebView before native admitOnlineCatalog, never prints native catalog-rollback,
+  // verifies highest unchanged, and requires rebuilding/reinstalling the APK with updated --online-pins for manual re-test.
   const manualHighFloor = rows.find(row => row.includes('オンラインカタログを確認') && row.includes('highest > 114'));
   assert(manualHighFloor, '§3 must cover manual online check when terminal floor highest > 114');
-  assert(manualHighFloor.includes('catalog-rollback'), 'highest > 114 manual check must expect catalog-rollback');
-  assert(manualHighFloor.includes('revision >= highest'), 'highest > 114 manual check must hold until revision >= highest is published');
+  assert(manualHighFloor.includes(manualPrefix + manualReason),
+    'highest > 114 manual row must cite the exact WebView refusal notification from client.js + online.js');
+  assert(!manualHighFloor.includes('catalog-rollback'),
+    'highest > 114 manual row must not expect native catalog-rollback on the manual UI path');
+  assert(manualHighFloor.includes('highest') && manualHighFloor.includes('変わらない'),
+    'highest > 114 manual row must verify highest stays unchanged');
+  assert(manualHighFloor.includes('--online-pins') && manualHighFloor.includes('再ビルド') && manualHighFloor.includes('adb install -r'),
+    'highest > 114 manual row must instruct rebuilding and reinstalling with updated --online-pins for manual re-test');
 
+  // Daily highest <= 114: separates catalog log detail ("sequence 5" only) from admitted catalog revision/expiry check.
   const dailyLowFloor = rows.find(row => row.includes('自動更新') && row.includes('highest <= 114'));
   assert(dailyLowFloor, '§3 must cover daily auto-update when terminal floor highest <= 114');
-  assert(dailyLowFloor.includes('`catalog`') && dailyLowFloor.includes(`sequence ${pointer.sequence}`));
+  assert(dailyLowFloor.includes('`catalog`') && dailyLowFloor.includes(`\`sequence ${pointer.sequence}\` のみ`),
+    'daily highest <= 114 row must note that catalog log detail records only sequence 5');
+  assert(!dailyLowFloor.includes(`catalog\`（pointer \`sequence ${pointer.sequence}\`、\`r${catalog.revision}\``),
+    'daily highest <= 114 row must not claim r114 or expiry appear in the catalog log detail');
+  assert(dailyLowFloor.includes('after-online.xml') && dailyLowFloor.includes('raw64') &&
+    dailyLowFloor.includes(String(catalog.revision)) && dailyLowFloor.includes(utcDate(catalog.expiresAt)),
+    'daily highest <= 114 row must verify revision 114 and expiry separately from admitted after-online.xml raw64');
 
+  // Daily highest > 114: covers both pointer-sequence <= 5 (catalog-rollback) and pointer-sequence > 5 (pointer-rollback).
   const dailyHighFloor = rows.find(row => row.includes('自動更新') && row.includes('highest > 114'));
   assert(dailyHighFloor, '§3 must cover daily auto-update when terminal floor highest > 114');
-  assert(dailyHighFloor.includes('catalog-rollback'), 'highest > 114 daily auto-update must expect catalog-rollback');
-  assert(dailyHighFloor.includes('revision >= highest'), 'highest > 114 daily auto-update must wait for revision >= highest');
+  assert(dailyHighFloor.includes(`pointer-sequence <= ${pointer.sequence}`) && dailyHighFloor.includes('catalog-rollback'),
+    'daily highest > 114 row must expect catalog-rollback when device pointer-sequence <= 5');
+  assert(dailyHighFloor.includes(`pointer-sequence > ${pointer.sequence}`) && dailyHighFloor.includes('pointer-rollback'),
+    'daily highest > 114 row must expect pointer-rollback when device pointer-sequence > 5');
+  assert(dailyHighFloor.includes('revision >= highest') && dailyHighFloor.includes('直接取得'),
+    'daily highest > 114 row must explain daily re-testing fetches the new signed pointer directly');
 });
 
 test('§4 aligns AWAI-3653 standing-update-approval checks with InstallReceiver/AutoUpdater logs and separate versionCode comparison', () => {

@@ -71,9 +71,9 @@ adb shell run-as network.awai.store cat shared_prefs/store-keys.xml > after-stor
 | `after-store-keys.xml` | `highest` が `2`（鍵の一覧 `sequence 2`） |
 | Store の画面（初回起動・オンライン確認前） | 「見つける」に手順 0 で同梱したカタログの app（標準ビルドでは `Yotei` と `Torihiki` の 2 件）が出る。「追加を停止しました」にならない |
 | 「オンラインカタログを確認」→ 許可（`before-online.xml` の `highest <= 114` の場合） | 「署名済みオンラインカタログを確認しました。」。再取得した `after-online.xml` に `raw64` と `highest` `114` が入り、「見つける」に公開 `r114` の 17 APK（有効期限 `2026-12-23`）が出る |
-| 「オンラインカタログを確認」→ 許可（`before-online.xml` の `highest > 114`、例: `115` の場合） | 公開 `r114` は `catalog-rollback` で拒否され、`after-online.xml` の `highest` は元の値のまま変わらない（負の対照）。オンラインカタログの受入確認は `revision >= highest` の署名済みカタログと対応する pin / pointer が公開されるまで保留する |
-| 自動更新・日次の確認（「更新」で有効、`highest <= 114` の場合） | 次の日次の確認で、log に `keys`（より新しい鍵一覧を取った場合）と `catalog`（pointer `sequence 5`、`r114`、有効期限 `2026-12-23`）が出る |
-| 自動更新・日次の確認（「更新」で有効、`highest > 114`、例: `115` の場合） | 公開 `r114` は `catalog-rollback` で拒否され（log に `error` / `catalog-rollback`）、`highest` は元の値のまま維持される。`revision >= highest` の署名済みカタログと対応する pin / pointer が公開された後に再確認する |
+| 「オンラインカタログを確認」→ 許可（`before-online.xml` の `highest > 114`、例: `115` の場合） | ネイティブ検証の前に WebView で停止し、画面通知「取得を完了できません。有効期限またはカタログの巻き戻しを検出しました。」が出る（ネイティブの拒否コードは出ない）。確認前後で `after-online.xml` の `highest` が元の値のまま変わらないことを照合する（負の対照）。手動確認は APK に同梱した `--online-pins` を参照し続けるため、`revision >= highest` の署名済みカタログ公開後に手動再試験するときは、そのカタログを指す更新済み `--online-pins` で Store APK を再ビルドして `adb install -r` し直す |
+| 自動更新・日次の確認（「更新」で有効、`highest <= 114` の場合） | 次の日次の確認で、`auto-update.xml` の log に `keys`（より新しい鍵一覧を取った場合）と `catalog`（detail は `sequence 5` のみ）が出る。受け入れた `revision`（`114`）と有効期限（`2026-12-23`）はログには載らないため、再取得した `after-online.xml` の `highest` と `raw64`（署名済みカタログ本文）から別途確かめる |
+| 自動更新・日次の確認（「更新」で有効、`highest > 114`、例: `115` の場合） | 端末の `pointer-sequence <= 5` で公開 pointer（`sequence 5`）が先に受理される条件では、公開 `r114` は log の `error` / `catalog-rollback` で拒否され `highest` は元の値のまま維持される。端末の `pointer-sequence > 5` の場合はカタログ検証の前に `error` / `pointer-rollback` で停止する。`revision >= highest` の署名済みカタログとより大きい sequence の pointer が同じ信頼 root の下で公開された後は、日次確認はその新 pointer を直接取得して再確認できる |
 
 AWAI-3184 の Deai の確認は、このあと（`highest <= 114` で公開 `r114` を受け入れた後）Store から行う。
 
