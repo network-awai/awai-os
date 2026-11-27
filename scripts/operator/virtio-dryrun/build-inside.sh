@@ -42,6 +42,19 @@
 #   KIT_URL                kit tarball URL (required in approved mode)
 #   KIT_SHA256             kit tarball sha256 (required in approved mode)
 #   AWAI_FEED_URL          feed URL (required in every mode; no default)
+#   AWAI_M_JOBS            optional `m -jN` cap (integer 1..64). Unset keeps
+#                          the current bare `m` (Soong default). The gad
+#                          34GiB frame starts at 4; validated before use.
+#   AWAI_RUST_PREPASS_JOBS optional low-parallel Rust pre-pass `-jN`
+#                          (integer 1..64); requires AWAI_RUST_PREPASS_TARGETS.
+#                          Unset means no pre-pass (current single-shot build).
+#   AWAI_RUST_PREPASS_TARGETS
+#                          target list for the pre-pass, confirmed in the
+#                          source tree on the build host (the crosvm Rust
+#                          scope). Example values stay desk-level until the
+#                          host confirms them against the tree.
+#   AWAI_CCACHE_STATS=1    print `ccache -s` after the v1 and v2 builds for
+#                          cold/warm hit-rate measurement (default off).
 #   FIRMWARE_GIT           firmware checkout (default <work>/firmware/src)
 #   AWAI_POOL_LABEL        B2 pool label (required in approved mode)
 #   BUILD_WORK_DIR         workspace root (default /root/build)
@@ -96,6 +109,33 @@ if [[ -z ${AWAI_FEED_URL:-} ]]; then
   exit 2
 fi
 
+# Build parallelism: unset preserves the current bare `m` (Soong
+# default). An explicit integer caps every `m` invocation below and is
+# validated here, before anything executes. The gad 34GiB frame starts
+# at 4 (measured: -j8 cgroup-OOM at Ninja 74%; -j4 resumed to 48%
+# OOM-free with peak 34GiB); other frames keep the default. The value
+# travels as one optional flag word so `run` (which evals `m` with
+# "$*") prints and executes the identical command list.
+M_JOBS_FLAG=""
+if [[ -n ${AWAI_M_JOBS:-} ]]; then
+  [[ ${AWAI_M_JOBS} =~ ^[0-9]+$ ]] && (( 10#$AWAI_M_JOBS >= 1 && 10#$AWAI_M_JOBS <= 64 )) ||
+    { echo "AWAI4089_REFUSES: AWAI_M_JOBS must be an integer 1..64 (got '${AWAI_M_JOBS:-<unset>}')." >&2; exit 2; }
+  M_JOBS_FLAG="-j$AWAI_M_JOBS"
+fi
+
+# crosvm Rust pre-pass: unset means no pre-pass (current single-shot
+# build). When set, the named targets — confirmed in the source tree on
+# the build host — build once at low parallelism before the full v1
+# build, keeping their rustc peak out of the full-parallel link storm.
+# Kept separate from the C/C++ ccache cold/warm measurement, which
+# varies only the cache state, never this scope.
+if [[ -n ${AWAI_RUST_PREPASS_JOBS:-} ]]; then
+  [[ ${AWAI_RUST_PREPASS_JOBS} =~ ^[0-9]+$ ]] && (( 10#$AWAI_RUST_PREPASS_JOBS >= 1 && 10#$AWAI_RUST_PREPASS_JOBS <= 64 )) ||
+    { echo "AWAI4089_REFUSES: AWAI_RUST_PREPASS_JOBS must be an integer 1..64 (got '${AWAI_RUST_PREPASS_JOBS:-<unset>}')." >&2; exit 2; }
+  [[ -n ${AWAI_RUST_PREPASS_TARGETS:-} ]] ||
+    { echo "AWAI4089_REFUSES: AWAI_RUST_PREPASS_TARGETS is required when AWAI_RUST_PREPASS_JOBS is set." >&2; exit 2; }
+fi
+
 # Validate the explicit apps mode again inside the worker.
 source "$here/apk-inputs.sh"
 validate_apps_mode build
@@ -121,7 +161,7 @@ if (( APPROVED )); then
 fi
 POOL=${AWAI_POOL_LABEL:-<pool>}
 
-stage() { printf 'AWAI4089_STAGE=%s %s\n' "$1" "$(date -u +%FT%TZ)"; }
+stage() { printf 'AWAI4089_STAGE=%s %s epoch=%s\n' "$1" "$(date -u +%FT%TZ)" "$(date +%s)"; }
 
 # run: print (dry-run with prefix, approved without) and, in approved
 # mode, execute. Steps that must persist in the current shell
@@ -182,6 +222,8 @@ fi
 printf 'AWAI4089_MANIFEST_SHA256_VALIDATED %s %s\n' "$EXPECTED_MANIFEST_SHA256" "$MANIFEST_FILE"
 printf 'AWAI4089_RELEASE_TYPE=%s AWAI4089_DEADLINE_SECONDS=%s AWAI4089_APPROVED=%s\n' \
   "$RELEASE_TYPE" "$DEADLINE" "$APPROVED"
+printf 'AWAI4089_M_JOBS=%s RUST_PREPASS_JOBS=%s CCACHE_STATS=%s\n' \
+  "${AWAI_M_JOBS:-default}" "${AWAI_RUST_PREPASS_JOBS:-off}" "${AWAI_CCACHE_STATS:-0}"
 # One recorded line per run and per dry-run print, naming the chosen mode.
 printf 'AWAI4094_APPS: %s\n' "$APPS_MODE_LOG"
 # A verified APK pair alone cannot produce a shipping build. Check the
@@ -309,7 +351,18 @@ run export USE_CCACHE=1 CCACHE_EXEC=/usr/bin/ccache CCACHE_DIR="$BUILD_WORK_DIR/
 run source build/envsetup.sh
 run breakfast virtio_x86_64 "$RELEASE_TYPE"
 stage breakfast
-run m target-files-package otatools diskimage-vda
+if [[ -n ${AWAI_RUST_PREPASS_JOBS:-} ]]; then
+  stage rust-prepass
+  # Intentional word-split: validated integer flag plus the host-confirmed
+  # target list (one or more Soong modules).
+  # shellcheck disable=SC2086
+  run m -j"$AWAI_RUST_PREPASS_JOBS" $AWAI_RUST_PREPASS_TARGETS
+fi
+# shellcheck disable=SC2086
+run m $M_JOBS_FLAG target-files-package otatools diskimage-vda
+if [[ ${AWAI_CCACHE_STATS:-} == 1 ]]; then
+  run ccache -s
+fi
 run cp "$TF_V1_SRC" "$UP/v1/virtio-target-files-v1.zip"
 run mkdir -p "$UP/v1-tf"
 run cp "$UP/v1/virtio-target-files-v1.zip" "$UP/v1-tf/virtio-target-files-v1.zip"
@@ -322,7 +375,11 @@ stage v1-upload
 # v2 rebuild (BUILD_NUMBER change; precedent ~336s) + real OTA.
 # `env BUILD_NUMBER=... m ...` would NOT work: `env` only finds
 # executables, not the shell function `m`.
-run BUILD_NUMBER=awai-g2-v2 BUILD_DATETIME="$(date +%s)" m target-files-package
+# shellcheck disable=SC2086
+run BUILD_NUMBER=awai-g2-v2 BUILD_DATETIME="$(date +%s)" m $M_JOBS_FLAG target-files-package
+if [[ ${AWAI_CCACHE_STATS:-} == 1 ]]; then
+  run ccache -s
+fi
 stage v2-build
 run cp "$TF_V1_SRC" "$UP/virtio-target-files.zip"
 run ota_from_target_files -k "$TESTKEY" "$TF_V1_SRC" "$UP/virtio-full-ota.zip"

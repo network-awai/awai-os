@@ -231,6 +231,65 @@ test("dry-run prints the exact command list and executes nothing", async () => {
   assert.equal(stub.kcalls(), "");
 });
 
+test("AWAI_M_JOBS unset keeps bare m; =4 caps v1 and v2 (dry-run)", async () => {
+  const stub = stubPath(join(tmpdir(), "mj-"), undefined);
+  const work = join(tmpdir(), "mjwork-");
+  const base = { ...envFor(stub, work), DRY_RUN: "1", PATH: `${stub.dir}:${process.env.PATH}` };
+  let r = await run("bash", [buildInside], base);
+  assert.equal(r.code, 0, r.stderr);
+  assert.match(r.stdout, /\[dry-run\] m target-files-package otatools diskimage-vda/);
+  assert.doesNotMatch(r.stdout, /\[dry-run\] m -j/);
+  assert.match(r.stdout, /^AWAI4089_M_JOBS=default RUST_PREPASS_JOBS=off CCACHE_STATS=0$/m);
+  r = await run("bash", [buildInside], { ...base, AWAI_M_JOBS: "4" });
+  assert.equal(r.code, 0, r.stderr);
+  assert.match(r.stdout, /\[dry-run\] m -j4 target-files-package otatools diskimage-vda/);
+  assert.match(r.stdout, /\[dry-run\] BUILD_NUMBER=awai-g2-v2 .* m -j4 target-files-package/);
+  assert.match(r.stdout, /^AWAI4089_M_JOBS=4 RUST_PREPASS_JOBS=off CCACHE_STATS=0$/m);
+  assert.equal(stub.calls(), "");
+});
+
+test("AWAI_M_JOBS invalid values refuse before execution", async () => {
+  const stub = stubPath(join(tmpdir(), "mjbad-"), undefined);
+  const work = join(tmpdir(), "mjbadwork-");
+  for (const bad of ["0", "65", "abc", "-4", "4.5"]) {
+    const r = await run("bash", [buildInside],
+      { ...envFor(stub, work), DRY_RUN: "1", AWAI_M_JOBS: bad });
+    assert.equal(r.code, 2, bad);
+    assert.match(r.stderr, /AWAI_M_JOBS must be an integer 1\.\.64/, bad);
+  }
+  assert.equal(stub.calls(), "");
+});
+
+test("Rust pre-pass runs at low parallelism before v1; targets required (dry-run)", async () => {
+  const stub = stubPath(join(tmpdir(), "rp-"), undefined);
+  const work = join(tmpdir(), "rpwork-");
+  const base = { ...envFor(stub, work), DRY_RUN: "1", PATH: `${stub.dir}:${process.env.PATH}` };
+  let r = await run("bash", [buildInside],
+    { ...base, AWAI_RUST_PREPASS_JOBS: "1", AWAI_RUST_PREPASS_TARGETS: "crosvm" });
+  assert.equal(r.code, 0, r.stderr);
+  const pre = r.stdout.indexOf("[dry-run] m -j1 crosvm");
+  const v1 = r.stdout.indexOf("[dry-run] m target-files-package otatools diskimage-vda");
+  assert.ok(pre !== -1 && v1 !== -1 && pre < v1, r.stdout);
+  assert.match(r.stdout, /AWAI4089_STAGE=rust-prepass /);
+  assert.match(r.stdout, /^AWAI4089_M_JOBS=default RUST_PREPASS_JOBS=1 CCACHE_STATS=0$/m);
+  // v2 still uses the uncapped default when AWAI_M_JOBS is unset
+  assert.match(r.stdout, /\[dry-run\] BUILD_NUMBER=awai-g2-v2 .* m target-files-package\n/);
+  r = await run("bash", [buildInside], { ...base, AWAI_RUST_PREPASS_JOBS: "2" });
+  assert.equal(r.code, 2);
+  assert.match(r.stderr, /AWAI_RUST_PREPASS_TARGETS is required/);
+  assert.equal(stub.calls(), "");
+});
+
+test("AWAI_CCACHE_STATS=1 prints ccache -s after each m (dry-run)", async () => {
+  const stub = stubPath(join(tmpdir(), "cc-"), undefined);
+  const work = join(tmpdir(), "ccwork-");
+  const r = await run("bash", [buildInside],
+    { ...envFor(stub, work), DRY_RUN: "1", AWAI_CCACHE_STATS: "1" });
+  assert.equal(r.code, 0, r.stderr);
+  const hits = r.stdout.split("\n").filter((l) => l === "[dry-run] ccache -s");
+  assert.equal(hits.length, 2, r.stdout);
+});
+
 test("approved mode executes the same ordered command list end to end (real kit)", async () => {
   const kitInfo = await extractedRealKit();
   const work = mkdtempSync(join(tmpdir(), "g2work-"));
@@ -706,7 +765,7 @@ test("external commands covered by apt, otatools, kit, base image", async () => 
   // (apt-get itself comes from the image; it performs the install.)
   const providers = {
     "apt-get": "base", curl: "curl", python3: "python3", git: "git",
-    rclone: "rclone", sgdisk: "gdisk",
+    rclone: "rclone", sgdisk: "gdisk", ccache: "ccache",
     chmod: "base", mkdir: "base", cp: "base", ls: "base", wc: "base",
     tr: "base", date: "base", shasum: "base", sha256sum: "base",
     timeout: "base", tar: "base", bash: "base", sh: "base",
