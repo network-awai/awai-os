@@ -4,6 +4,7 @@ import {
   evaluateVerificationStatus,
   canSendToLawyer,
   validateOnboardingSubmission,
+  formatManualContactText,
   VERIFICATION_METHOD_A2,
 } from '../src/model.js';
 import { SYNTHETIC_CATALOG_BUNDLE } from '../src/fixtures.js';
@@ -19,7 +20,7 @@ function validDraftFor(lawyerId) {
     clientContact: 'client@example.invalid',
     counterpartyName: '相手方株式会社',
     summary: '未払い賃金についての初回相談です。',
-    evidenceHashes: [],
+    evidenceManifest: [],
   };
 }
 
@@ -40,12 +41,35 @@ test('O4 30-day TTL automatically transitions verified_manual_a2 to expired HARD
   assert.equal(afterExpiry.hardHold, true);
   assert.equal(afterExpiry.liveSendAllowed, false);
   assert.equal(afterExpiry.demoSendAllowed, false);
+  assert.equal(afterExpiry.manualContactAllowed, false);
+});
+
+test('Method A exact 7-line manual Copy Contact works for active lawyer and is HARD-blocked on expired / suspended_or_revoked', async () => {
+  const active = SYNTHETIC_CATALOG_BUNDLE.lawyers.find(l => l.registration_number === '990001');
+  const text = formatManualContactText(active, { nowIso: NOW });
+  const lines = text.split('\n');
+  assert.equal(lines.length, 7, 'Manual Copy Contact text must have exactly 7 lines');
+  assert.match(lines[0], /^氏名: 佐藤 遥/);
+  assert.match(lines[1], /^所属弁護士会: 大阪弁護士会/);
+  assert.match(lines[2], /^登録番号: 990001/);
+  assert.match(lines[6], /https:\/\/member\.nichibenren\.or\.jp\/general_search/);
+
+  const engine = createOperationsEngine({ now: () => NOW });
+  const opRes = await engine.execute('contact.format_manual', { lawyerId: active.id });
+  assert.equal(opRes.method, 'method_a_direct');
+  assert.equal(opRes.serverRelayUsed, false);
+  assert.equal(opRes.lineCount, 7);
+  assert.equal(opRes.text, text);
+
+  for (const regNo of ['990005', '990006']) {
+    const blocked = SYNTHETIC_CATALOG_BUNDLE.lawyers.find(l => l.registration_number === regNo);
+    assert.throws(() => formatManualContactText(blocked, { nowIso: NOW }), /o4\.hard_hold_/);
+    await assert.rejects(() => engine.execute('contact.format_manual', { lawyerId: blocked.id }), /o4\.hard_hold_/);
+  }
 });
 
 test('O4 HARD hold blocks expired and suspended_or_revoked even when syntheticDemoMode is enabled', async () => {
-  let brokerCalled = 0;
-  const fakeBroker = { invoke: async () => { brokerCalled += 1; return { accepted: true }; } };
-  const engine = createOperationsEngine({ broker: fakeBroker, now: () => NOW });
+  const engine = createOperationsEngine({ now: () => NOW });
 
   for (const regNo of ['990005', '990006']) {
     const lawyer = SYNTHETIC_CATALOG_BUNDLE.lawyers.find(l => l.registration_number === regNo);
@@ -58,24 +82,20 @@ test('O4 HARD hold blocks expired and suspended_or_revoked even when syntheticDe
       /o4\.hard_hold_/,
     );
   }
-  assert.equal(brokerCalled, 0, 'HARD hold must block before consent broker is ever reached');
 });
 
-test('O4 unverified_self_declared blocks live send and permits only explicit syntheticDemoMode dry-run', async () => {
+test('O4 unverified_self_declared blocks default send and permits only explicit syntheticDemoMode offline preview', async () => {
   const unverified = SYNTHETIC_CATALOG_BUNDLE.lawyers.find(l => l.registration_number === '990004');
-  let brokerCalled = 0;
-  const fakeBroker = { invoke: async () => { brokerCalled += 1; return { accepted: true }; } };
-  const engine = createOperationsEngine({ broker: fakeBroker, now: () => NOW });
+  const engine = createOperationsEngine({ now: () => NOW });
 
   await assert.rejects(
     () => engine.execute('inquiry.send', { draft: validDraftFor(unverified.id), syntheticDemoMode: false }),
     /o4\.unverified_self_declared_blocks_live_send/,
   );
-  assert.equal(brokerCalled, 0);
 
-  const demoOut = await engine.execute('inquiry.send', { draft: validDraftFor(unverified.id), syntheticDemoMode: true, dryRun: true });
-  assert.equal(brokerCalled, 1);
-  assert.equal(demoOut.record.dryRun, true);
+  const demoOut = await engine.execute('inquiry.send', { draft: validDraftFor(unverified.id), syntheticDemoMode: true });
+  assert.equal(demoOut.serverRelayUsed, false);
+  assert.equal(demoOut.record.relayStatus, 'offline_local_preview_only');
 });
 
 test('O4 onboarding validator rejects ID-photo-only verification and Nichibenren/Kanpo scraping', () => {

@@ -1,10 +1,13 @@
-// Bengoshi SPA (network.itonami.bengoshi) — 11 views matching Gamen designs/bengoshi/ plan:
-// User (5): search, profile.detail, contact.compose, contact.consent, requests
-// Lawyer (4): lawyer.onboarding, lawyer.profile.edit, lawyer.inbox, lawyer.inquiry.detail
-// Shared / Embedded (2): audit, embed.mcp
+// Bengoshi SPA (network.itonami.bengoshi) — Static-first, zero external network calls (`operations: []`).
+// Default landing: Official Lawyer Search Guide (MOJ 2026 注 20 compliant) + Lawyer Participation Policy preview.
+// Preview screens (synthetic samples only, Method A primary contact, Art. 11 3-year export, local AWAI-3235 conflict gate):
+// - Guide & User Preview: guide (default), search, profile.detail, contact.compose, contact.consent, requests
+// - Lawyer Preview: lawyer.onboarding, lawyer.profile.edit, lawyer.inbox, lawyer.inquiry.detail
+// - Audit & MCP POC: audit, embed.mcp
+// Forms strictly use `type="button" data-submit` + `bindForm` (no native form submission).
 
 import { createHost } from './host.js';
-import { clientRuntimeProblems, createClientConsentHost, createClientOperationBroker } from './runtime.js';
+import { clientRuntimeProblems } from './runtime.js';
 import {
   PREFECTURES,
   PREFECTURE_MAP,
@@ -19,18 +22,22 @@ import {
   evaluateVerificationStatus,
   canSendToLawyer,
   exportLawyerCard,
+  formatManualContactText,
+  formatDraftCopyText,
   canRevealInquiryBody,
+  sanitizeEntryLocation,
 } from './model.js';
 import { generateLawyerKeyPair } from './crypto.js';
-import { getLegalNotices, requiredConsentDisclosures, NICHIBENREN_SEARCH_URL } from './legal-notices.js';
-import { pickLocale, translator } from './messages.js';
 import {
-  runtimeDescriptor,
-  REQUESTED_CAPABILITIES,
-  INFERENCE_SELECTOR,
-  INQUIRY_SEND_SELECTOR,
-  INQUIRY_REPLY_SELECTOR,
-} from './runtime-descriptor.js';
+  PUBLIC_SEARCH_GUIDE_LINKS,
+  getLegalNotices,
+  getParticipationPolicy,
+  requiredConsentDisclosures,
+  NICHIBENREN_SEARCH_URL,
+} from './legal-notices.js';
+import { getOperatorDisclosure } from './operator-disclosure.js';
+import { pickLocale, translator } from './messages.js';
+import { runtimeDescriptor, REQUESTED_CAPABILITIES } from './runtime-descriptor.js';
 import { createInitialLocalState, createOperationsEngine } from './operations.js';
 import { SYNTHETIC_CATALOG_BUNDLE, verifySyntheticCatalogIntegrity, buildSyntheticQaIntakeRecords } from './fixtures.js';
 import { createMcpEmbedBridge } from './mcp-embed.js';
@@ -43,6 +50,48 @@ const el = (tag, text, cls) => {
   return n;
 };
 
+// AwaiSpec form helper: binds `type="button" data-submit` inside a plain container.
+// Uses explicit button clicks and Enter-key handling instead of native form submission.
+export function bindForm(container, onSubmit) {
+  if (!container || typeof onSubmit !== 'function') return;
+  const trigger = async (ev) => {
+    await onSubmit(ev);
+  };
+  for (const btn of container.querySelectorAll('button[type="button"][data-submit]')) {
+    btn.addEventListener('click', trigger);
+  }
+  container.addEventListener('keydown', ev => {
+    if (ev.key === 'Enter' && ev.target && ev.target.tagName === 'INPUT' && ev.target.type !== 'checkbox') {
+      const btn = container.querySelector('button[type="button"][data-submit]');
+      if (btn && !btn.disabled) {
+        ev.preventDefault();
+        trigger(ev);
+      }
+    }
+  });
+}
+
+async function copyText(text, successMsg) {
+  try {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = el('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.append(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+    say(successMsg);
+  } catch {
+    say(successMsg);
+  }
+}
+
 let locale = pickLocale(navigator.languages);
 let t = translator(locale);
 const host = createHost({ appId: 'network.itonami.bengoshi' });
@@ -50,12 +99,13 @@ let revision = 0;
 let state = createInitialLocalState();
 state.settings.locale = locale;
 
-// Ephemeral device-only QA private key (kept in memory only; never persisted in plaintext outside session)
+// Ephemeral device-only QA private key (kept in memory only; never persisted outside session)
 let sessionLawyerKeyPair = null;
 let revealedBodies = new Map();
 let activeMode = 'user'; // user | lawyer | shared
 let selectedLawyerId = SYNTHETIC_CATALOG_BUNDLE.lawyers[0].id;
 let selectedInquiryId = '';
+let firewallRejectedParams = [];
 let searchFilter = {
   query: '',
   prefectureCode: '',
@@ -66,55 +116,20 @@ let searchFilter = {
   sort: 'kana_asc',
 };
 
-let consentHost = null;
-let broker = null;
 let engine = null;
 
 function say(msg) {
   $('status').textContent = msg || '';
 }
 
-function buildBroker() {
-  if (consentHost) consentHost.destroy();
-  const descriptor = runtimeDescriptor(locale, { murakumoPath: state.settings.murakumoPath });
+function buildEngine() {
+  const descriptor = runtimeDescriptor();
   const problems = clientRuntimeProblems(descriptor, [...REQUESTED_CAPABILITIES], location.origin);
   if (problems.length) throw new Error('invalid-runtime-descriptor: ' + JSON.stringify(problems));
-
-  consentHost = createClientConsentHost({ locale });
-  const hostSupported = [
-    [INFERENCE_SELECTOR.capability, INFERENCE_SELECTOR.service, INFERENCE_SELECTOR.operation],
-    [INQUIRY_SEND_SELECTOR.capability, INQUIRY_SEND_SELECTOR.service, INQUIRY_SEND_SELECTOR.operation],
-    [INQUIRY_REPLY_SELECTOR.capability, INQUIRY_REPLY_SELECTOR.service, INQUIRY_REPLY_SELECTOR.operation],
-  ];
-
-  // Staged / fail-closed E2EE dispatch adapters (local dry-run envelope verification; never leaks plaintext)
-  const dispatchAdapter = async ({ payload }) => ({
-    accepted: true,
-    relayStatus: payload?.relayStatus || 'staged_dry_run_only',
-    dryRun: payload?.dryRun !== false,
-    aadSha256: payload?.envelope?.aadSha256 || null,
-    timestamp: new Date().toISOString(),
-  });
-
-  broker = createClientOperationBroker({
-    runtime: descriptor,
-    requestedCapabilities: [...REQUESTED_CAPABILITIES],
-    approvedOperations: descriptor.operations,
-    hostSupportedOperations: hostSupported,
-    browserAdapters: {
-      [INQUIRY_SEND_SELECTOR.service]: {
-        [INQUIRY_SEND_SELECTOR.operation]: dispatchAdapter,
-        [INQUIRY_REPLY_SELECTOR.operation]: dispatchAdapter,
-      },
-    },
-    consentHost,
-    app: { name: t('app.title') },
-  });
 
   engine = createOperationsEngine({
     catalog: SYNTHETIC_CATALOG_BUNDLE.lawyers,
     state,
-    broker,
     getPrivateKeyJwk: async () => sessionLawyerKeyPair?.privateKeyJwk || null,
     onStateChange: persistState,
   });
@@ -125,7 +140,6 @@ async function persistState() {
     const next = await host.write({ expectedRevision: revision, data: state });
     revision = next.revision;
   } catch (e) {
-    // Fallback when navigator.locks is unavailable in non-secure file contexts
     if (e?.code === 'atomic-write-unavailable') {
       try {
         localStorage.setItem('awai.shell.host.v1:network.itonami.bengoshi', JSON.stringify({
@@ -182,6 +196,17 @@ function nichibenrenLink() {
   return a;
 }
 
+function participationPolicyCard() {
+  const sec = el('section', null, 'card');
+  sec.append(el('h3', t('guide.policyHeading')));
+  const ul = el('ul');
+  for (const item of getParticipationPolicy(locale)) {
+    ul.append(el('li', item));
+  }
+  sec.append(ul);
+  return sec;
+}
+
 function renderSettingsPanel() {
   const panel = $('settings-panel');
   panel.replaceChildren();
@@ -212,22 +237,9 @@ function renderSettingsPanel() {
   const demoLabel = el('label', t('settings.demoMode'), 'check');
   demoLabel.prepend(demoCheck);
 
-  const pathInput = el('input');
-  pathInput.type = 'text';
-  pathInput.value = state.settings.murakumoPath;
-  pathInput.addEventListener('change', async () => {
-    const val = pathInput.value.trim();
-    if (val.startsWith('/') && !val.includes('..') && !val.includes('?')) {
-      state.settings.murakumoPath = val;
-      buildBroker();
-      await persistState();
-    }
-  });
-
   body.append(
     fieldWrap(t('settings.scope'), 'set-scope', scopeSel),
     demoLabel,
-    fieldWrap(t('settings.murakumoPath'), 'set-murakumo-path', pathInput),
     el('p', t('settings.relayStatus'), 'muted mono'),
   );
   panel.append(body);
@@ -240,6 +252,7 @@ function renderChrome() {
   $('subtitle').textContent = t('app.subtitle');
   $('badge-zero-fee').textContent = t('badge.zeroFee');
   $('lang-toggle').textContent = t('lang.toggle');
+  $('preview-banner').textContent = getLegalNotices(locale).previewBanner;
   $('environment').textContent = t('env.line', {
     runtime: t(host.info().runtime === 'web' ? 'env.web' : 'env.tauri'),
   });
@@ -247,8 +260,8 @@ function renderChrome() {
   const modeBar = $('mode-bar');
   modeBar.replaceChildren();
   for (const [m, key, defaultHash] of [
-    ['user', 'mode.user', '#/search'],
-    ['lawyer', 'mode.lawyer', '#/lawyer/inbox'],
+    ['user', 'mode.user', '#/guide'],
+    ['lawyer', 'mode.lawyer', '#/lawyer/onboarding'],
     ['shared', 'mode.shared', '#/audit'],
   ]) {
     const b = el('button', t(key));
@@ -267,6 +280,7 @@ function renderChrome() {
   const links =
     activeMode === 'user'
       ? [
+          ['#/guide', t('nav.guide')],
           ['#/search', t('nav.search')],
           ['#/profile/' + selectedLawyerId, t('nav.profile')],
           ['#/contact/compose', t('nav.compose')],
@@ -285,12 +299,17 @@ function renderChrome() {
             ['#/embed/mcp', t('nav.embedMcp')],
           ];
 
-  const currentHash = location.hash || '#/search';
+  const currentHash = sanitizeEntryLocation('', location.hash || '#/guide').cleanHash;
   for (const [href, label] of links) {
     const a = el('a', label);
     a.href = href;
     const base = href.split('/').slice(0, 2).join('/');
-    if (currentHash === href || (href.includes('/profile/') && currentHash.startsWith('#/profile/')) || (href.includes('/lawyer/inquiry/') && currentHash.startsWith('#/lawyer/inquiry/'))) {
+    if (
+      currentHash === href ||
+      (href === '#/guide' && (currentHash === '#/' || currentHash === '')) ||
+      (href.includes('/profile/') && currentHash.startsWith('#/profile/')) ||
+      (href.includes('/lawyer/inquiry/') && currentHash.startsWith('#/lawyer/inquiry/'))
+    ) {
       a.setAttribute('aria-current', 'page');
     } else if (base === '#/contact' && currentHash === href) {
       a.setAttribute('aria-current', 'page');
@@ -302,13 +321,72 @@ function renderChrome() {
 
   const footer = $('footer');
   footer.replaceChildren();
+  const opDisc = getOperatorDisclosure(locale);
+  const opBox = el('section', null, 'card');
+  opBox.setAttribute('data-operator-disclosure', opDisc.status);
+  opBox.append(
+    el('p', opDisc.entityName, 'mono'),
+    el('p', opDisc.domesticContact),
+    el('p', opDisc.feePolicy),
+    el('p', opDisc.legalBasisNote, 'muted'),
+  );
+
   const ul = el('ul');
   for (const line of requiredConsentDisclosures(locale)) ul.append(el('li', line));
+  ul.append(el('li', getLegalNotices(locale).soudanFirewall));
   ul.append(el('li', getLegalNotices(locale).publicReleaseGate));
-  footer.append(ul, nichibenrenLink());
+  footer.append(opBox, ul, nichibenrenLink());
 }
 
-// ---- View 1: search ----
+// ---- Default Landing View: Public Lawyer Search Guide (MOJ 2026 注 20) ----
+function renderPublicGuide() {
+  const view = $('view');
+  view.replaceChildren();
+
+  if (firewallRejectedParams.length) {
+    view.append(el('p', t('guide.firewallNotice', { params: firewallRejectedParams.join(', ') }), 'banner warn'));
+  }
+
+  view.append(
+    el('h2', t('guide.heading')),
+    el('p', t('guide.intro'), 'muted'),
+  );
+
+  const grid = el('div', null, 'grid');
+  for (const item of PUBLIC_SEARCH_GUIDE_LINKS) {
+    const card = el('article', null, 'card');
+    card.append(
+      el('h3', item.title[locale]),
+      el('p', item.summary[locale]),
+    );
+    const stepsUl = el('ul');
+    for (const s of item.usageSteps[locale]) stepsUl.append(el('li', s));
+    const link = el('a', `${t('guide.openOfficial')}: ${item.url}`, 'ext-link');
+    link.href = item.url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    card.append(stepsUl, link);
+    grid.append(card);
+  }
+  view.append(grid);
+
+  // Lawyer Participation Policy preview section
+  view.append(participationPolicyCard());
+
+  const actions = el('div', null, 'actions');
+  const previewBtn = el('button', t('guide.previewCta'), 'tonal');
+  previewBtn.type = 'button';
+  previewBtn.addEventListener('click', () => { location.hash = '#/search'; });
+
+  const composeBtn = el('button', t('guide.composeCta'), 'secondary');
+  composeBtn.type = 'button';
+  composeBtn.addEventListener('click', () => { location.hash = '#/contact/compose'; });
+
+  actions.append(previewBtn, composeBtn);
+  view.append(actions);
+}
+
+// ---- View: search (Synthetic Directory Preview) ----
 async function renderSearch() {
   const view = $('view');
   view.replaceChildren();
@@ -407,8 +485,8 @@ async function renderSearch() {
     for (const lawyer of res.lawyers) {
       const card = el('article', null, 'card');
       const head = el('div', null, 'chips');
+      if (lawyer.synthetic) head.append(el('span', t('badge.synthetic'), 'badge warn'));
       head.append(verificationBadge(lawyer.evaluatedVerification.effectiveStatus));
-      if (lawyer.synthetic) head.append(el('span', t('badge.synthetic'), 'badge'));
       card.append(head);
       card.append(el('h3', `${lawyer.name}（${lawyer.bar_association}）`));
       card.append(el('p', `${lawyer.office_name || ''} ／ ${PREFECTURE_MAP[lawyer.prefecture_code] || ''} ／ 登録番号 ${lawyer.registration_number || '-'}`, 'muted'));
@@ -423,8 +501,9 @@ async function renderSearch() {
         selectedLawyerId = lawyer.id;
         location.hash = '#/profile/' + encodeURIComponent(lawyer.id);
       });
-      card.append(el('div', null, 'actions'));
-      card.lastChild.append(btn);
+      const actions = el('div', null, 'actions');
+      actions.append(btn);
+      card.append(actions);
       resultsWrap.append(card);
     }
   }
@@ -432,7 +511,7 @@ async function renderSearch() {
   await renderResults();
 }
 
-// ---- View 2: profile.detail ----
+// ---- View: profile.detail ----
 async function renderProfileDetail(lawyerId) {
   const view = $('view');
   view.replaceChildren();
@@ -448,12 +527,12 @@ async function renderProfileDetail(lawyerId) {
 
   const notices = getLegalNotices(locale);
   const ev = lawyer.evaluatedVerification;
-  const gate = canSendToLawyer(lawyer, { syntheticDemoMode: state.settings.syntheticDemoMode });
+  const hardHold = ev.hardHold;
 
   view.append(el('h2', `${lawyer.name}（${lawyer.name_kana || ''}）`));
   const badges = el('div', null, 'chips');
+  if (lawyer.synthetic) badges.append(el('span', t('badge.synthetic'), 'badge warn'));
   badges.append(verificationBadge(ev.effectiveStatus));
-  if (lawyer.synthetic) badges.append(el('span', t('badge.synthetic'), 'badge'));
   view.append(badges);
 
   if (ev.effectiveStatus === 'unverified_self_declared') view.append(el('p', notices.unverifiedWarning, 'banner warn'));
@@ -470,6 +549,7 @@ async function renderProfileDetail(lawyerId) {
   addFact(t('profile.address'), lawyer.address);
   addFact(t('profile.phone'), lawyer.phone);
   addFact(t('profile.fax'), lawyer.fax);
+  addFact(t('profile.email'), lawyer.email);
   addFact(t('profile.website'), lawyer.website_url);
   addFact(t('profile.areas'), (lawyer.practice_areas || []).join(' / '));
   addFact(t('profile.career'), (lawyer.career_facts || []).join('\n'));
@@ -499,7 +579,21 @@ async function renderProfileDetail(lawyerId) {
   backBtn.type = 'button';
   backBtn.addEventListener('click', () => { location.hash = '#/search'; });
 
-  const exportBtn = el('button', t('profile.exportCard'), 'tonal');
+  const copyContactBtn = el('button', t('profile.copyContact'), 'tonal');
+  copyContactBtn.type = 'button';
+  copyContactBtn.disabled = hardHold;
+  copyContactBtn.addEventListener('click', async () => {
+    try {
+      const res = await engine.execute('contact.format_manual', { lawyerId: lawyer.id }, { actor: 'ui' });
+      exportBox.textContent = res.text;
+      exportBox.hidden = false;
+      await copyText(res.text, t('profile.contactCopied'));
+    } catch {
+      say(t('profile.contactBlocked'));
+    }
+  });
+
+  const exportBtn = el('button', t('profile.exportCard'), 'secondary');
   exportBtn.type = 'button';
   exportBtn.addEventListener('click', () => {
     const cardJson = exportLawyerCard(lawyer);
@@ -508,24 +602,27 @@ async function renderProfileDetail(lawyerId) {
     say(t('profile.cardExported'));
   });
 
-  const composeBtn = el('button', gate.allowed ? t('profile.composeCta') : t('profile.blockedCta'));
+  const composeBtn = el('button', hardHold ? t('profile.blockedCta') : t('profile.composeCta'));
   composeBtn.type = 'button';
-  composeBtn.disabled = !gate.allowed;
+  composeBtn.disabled = hardHold;
   composeBtn.addEventListener('click', () => {
     if (!state.draft) state.draft = emptyInquiryDraft(lawyer.id);
     else state.draft.lawyerId = lawyer.id;
     location.hash = '#/contact/compose';
   });
 
-  actions.append(backBtn, exportBtn, composeBtn);
+  actions.append(backBtn, copyContactBtn, exportBtn, composeBtn);
   view.append(actions, exportBox);
 }
 
-// ---- View 3: contact.compose ----
+// ---- View: contact.compose (Method A primary + Soudan Memo Import) ----
 async function renderContactCompose() {
   const view = $('view');
   view.replaceChildren();
-  view.append(el('h2', t('compose.heading')));
+  view.append(
+    el('h2', t('compose.heading')),
+    el('p', t('compose.methodANote'), 'banner'),
+  );
 
   if (!state.draft) state.draft = emptyInquiryDraft(selectedLawyerId);
   if (!state.draft.lawyerId) state.draft.lawyerId = selectedLawyerId;
@@ -540,21 +637,28 @@ async function renderContactCompose() {
     view.append(el('p', t('compose.selectTarget'), 'banner warn'));
   } else {
     const info = el('div', null, 'card');
+    const chips = el('div', null, 'chips');
+    if (targetLawyer.synthetic) chips.append(el('span', t('badge.synthetic'), 'badge warn'));
+    chips.append(verificationBadge(targetLawyer.evaluatedVerification.effectiveStatus));
     info.append(
-      el('p', `${t('compose.target')}: ${targetLawyer.name}（${targetLawyer.bar_association}）`),
-      verificationBadge(targetLawyer.evaluatedVerification.effectiveStatus),
+      chips,
+      el('p', `${t('compose.target')}: ${targetLawyer.name}（${targetLawyer.bar_association}） / ${targetLawyer.office_name || '—'}`),
     );
     view.append(info);
   }
 
-  // Soudan memo import block
+  // Soudan memo import block (exact soudan.memo.export.v1)
   const importCard = el('details', null, 'panel');
   importCard.append(el('summary', t('compose.importTitle')), el('p', t('compose.importHint'), 'muted'));
   const jsonArea = el('textarea');
-  jsonArea.placeholder = '{"schema":"soudan.memo.export.v1","memo":{"category":"work","name":"...","otherParty":"...","summary":"..."}}';
+  jsonArea.placeholder = '{"schema":"soudan.memo.export.v1","template":"consultation-memo.jpn.v1","memo":{"category":"work","name":"...","otherParty":"...","summary":"...","wish":"...","deadline":"...","documents":[],"evidence_manifest":[]}}';
   const importBtn = el('button', t('compose.importBtn'), 'tonal');
   importBtn.type = 'button';
-  importBtn.addEventListener('click', async () => {
+  importBtn.dataset.submit = '';
+  const importActions = el('div', null, 'actions');
+  importActions.append(importBtn);
+  importCard.append(jsonArea, importActions);
+  bindForm(importCard, async () => {
     try {
       await engine.execute('inquiry.import_memo', { json: jsonArea.value, lawyerId: draft.lawyerId }, { actor: 'ui' });
       say(t('compose.importOk'));
@@ -563,11 +667,9 @@ async function renderContactCompose() {
       say(t('compose.importFail', { code: e?.code || 'invalid' }));
     }
   });
-  importCard.append(jsonArea, el('div', null, 'actions'));
-  importCard.lastChild.append(importBtn);
   view.append(importCard);
 
-  // Main form
+  // Main input container (uses type="button" data-submit + bindForm)
   const form = el('section', null, 'card grid');
   const catSel = el('select');
   for (const c of INQUIRY_CATEGORIES) {
@@ -596,18 +698,14 @@ async function renderContactCompose() {
   const deadIn = Object.assign(el('input'), { value: draft.deadline || '' });
   deadIn.addEventListener('input', () => { draft.deadline = deadIn.value; });
 
-  const evArea = el('textarea');
-  evArea.value = (draft.evidenceHashes || []).map(e => `${e.url || ''} | ${e.shotName || ''} | ${e.sha256 || ''}`).join('\n');
-  evArea.addEventListener('input', () => {
-    draft.evidenceHashes = evArea.value
-      .split('\n')
-      .map(l => l.trim())
-      .filter(Boolean)
-      .map(l => {
-        const [url = '', shotName = '', sha256 = ''] = l.split('|').map(x => x.trim());
-        return { url, shotName, sha256 };
-      });
+  const docsArea = Object.assign(el('textarea'), { value: (draft.documents || []).join('\n') });
+  docsArea.addEventListener('input', () => {
+    draft.documents = docsArea.value.split('\n').map(l => l.trim()).filter(Boolean);
   });
+
+  const evArea = el('textarea');
+  evArea.readOnly = true;
+  evArea.value = JSON.stringify(draft.evidenceManifest || [], null, 2);
 
   form.append(
     fieldWrap(t('compose.category'), 'c-cat', catSel),
@@ -617,26 +715,9 @@ async function renderContactCompose() {
     fieldWrap(t('compose.summary'), 'c-summary', sumArea),
     fieldWrap(t('compose.wish'), 'c-wish', wishArea),
     fieldWrap(t('compose.deadline'), 'c-deadline', deadIn),
+    fieldWrap(t('compose.documents'), 'c-docs', docsArea),
     fieldWrap(t('compose.evidence'), 'c-evidence', evArea),
   );
-
-  // Optional murakumo.cloud neutral structuring assist
-  const assistOut = el('pre', '', 'code-box');
-  assistOut.hidden = true;
-  const assistBtn = el('button', t('compose.assistBtn'), 'secondary');
-  assistBtn.type = 'button';
-  assistBtn.addEventListener('click', async () => {
-    say('');
-    try {
-      const res = await engine.execute('inference.assist', { rawText: draft.summary || '' }, { actor: 'ui' });
-      assistOut.textContent = res.structuredDraft;
-      assistOut.hidden = false;
-      say(t('compose.assistOk'));
-    } catch (e) {
-      if (String(e?.message || '').includes('not approved')) say(t('compose.assistDenied'));
-      else say(t('compose.assistError', { code: e?.code || e?.message || 'error' }));
-    }
-  });
 
   const actions = el('div', null, 'actions');
   const saveBtn = el('button', t('compose.saveDraft'), 'tonal');
@@ -646,9 +727,32 @@ async function renderContactCompose() {
     say(t('compose.draftSaved'));
   });
 
+  const copyContactBtn = el('button', t('compose.copyContact'), 'secondary');
+  copyContactBtn.type = 'button';
+  copyContactBtn.disabled = !targetLawyer || targetLawyer.evaluatedVerification.hardHold;
+  copyContactBtn.addEventListener('click', async () => {
+    try {
+      const res = await engine.execute('contact.format_manual', { lawyerId: targetLawyer.id }, { actor: 'ui' });
+      await copyText(res.text, t('profile.contactCopied'));
+    } catch {
+      say(t('profile.contactBlocked'));
+    }
+  });
+
+  const copyDraftBtn = el('button', t('compose.copyDraft'), 'secondary');
+  copyDraftBtn.type = 'button';
+  copyDraftBtn.addEventListener('click', async () => {
+    await copyText(formatDraftCopyText(draft, targetLawyer), t('compose.draftCopied'));
+  });
+
   const nextBtn = el('button', t('compose.toConsent'));
   nextBtn.type = 'button';
-  nextBtn.addEventListener('click', async () => {
+  nextBtn.dataset.submit = '';
+
+  actions.append(saveBtn, copyContactBtn, copyDraftBtn, nextBtn);
+  form.append(actions);
+
+  bindForm(form, async () => {
     const res = await engine.execute('inquiry.draft', { draft }, { actor: 'ui' });
     if (res.problems.length) {
       say('入力不足: ' + res.problems.join(', '));
@@ -657,12 +761,10 @@ async function renderContactCompose() {
     location.hash = '#/contact/consent';
   });
 
-  actions.append(saveBtn, assistBtn, nextBtn);
-  form.append(el('p', t('compose.assistNote'), 'muted'), actions, assistOut);
   view.append(form);
 }
 
-// ---- View 4: contact.consent ----
+// ---- View: contact.consent (Method A Direct Contact Primary Flow) ----
 async function renderContactConsent() {
   const view = $('view');
   view.replaceChildren();
@@ -676,29 +778,81 @@ async function renderContactConsent() {
   }
 
   const { lawyer } = await engine.execute('lawyer.get', { lawyerId: draft.lawyerId }, { actor: 'ui' });
+  const ev = lawyer.evaluatedVerification;
+  const hardHold = ev.hardHold;
   const gate = canSendToLawyer(lawyer, { syntheticDemoMode: state.settings.syntheticDemoMode });
 
   const card = el('section', null, 'card');
+  const badges = el('div', null, 'chips');
+  if (lawyer.synthetic) badges.append(el('span', t('badge.synthetic'), 'badge warn'));
+  badges.append(verificationBadge(ev.effectiveStatus));
+
   card.append(
     el('h3', t('consent.recipient')),
+    badges,
     el('p', `${lawyer.name}（${lawyer.bar_association} ／ 登録番号 ${lawyer.registration_number || '-'}）`),
-    verificationBadge(lawyer.evaluatedVerification.effectiveStatus),
-    el('h3', t('consent.e2ee')),
-    el('p', t('consent.e2eeDetail'), 'muted'),
-    el('h3', t('consent.preview')),
-    el('pre', JSON.stringify({
-      recipientLawyerId: lawyer.id,
-      verificationStatus: lawyer.evaluatedVerification.effectiveStatus,
-      e2eeKeyFingerprint: lawyer.e2ee_key_fingerprint,
-      conflictHeader: {
-        clientName: draft.clientName,
-        counterpartyName: draft.counterpartyName,
-        category: draft.category,
-      },
-      plaintextSummaryLength: [...draft.summary].length,
-      evidenceHashCount: (draft.evidenceHashes || []).length,
-      relayMode: state.settings.relayEndpoint ? 'configured' : 'staged_local_dry_run',
-    }, null, 2), 'code-box'),
+  );
+
+  if (hardHold) {
+    card.append(el('p', ev.effectiveStatus === 'expired' ? getLegalNotices(locale).expiredHardHold : getLegalNotices(locale).revokedHardHold, 'banner danger'));
+  }
+
+  // Method A Direct Transition Links & Copy Controls (Primary Flow — ZERO server relay)
+  const methodACard = el('section', null, 'card');
+  methodACard.append(el('h3', t('consent.directTitle')));
+
+  const directLinks = el('div', null, 'actions');
+  if (!hardHold && lawyer.website_url) {
+    const webA = el('a', `${t('consent.openWebsite')}: ${lawyer.website_url}`, 'ext-link');
+    webA.href = lawyer.website_url;
+    webA.target = '_blank';
+    webA.rel = 'noopener noreferrer';
+    directLinks.append(webA);
+  }
+  if (!hardHold && lawyer.email) {
+    const mailA = el('a', `${t('consent.openMailto')}: ${lawyer.email}`, 'ext-link');
+    mailA.href = `mailto:${encodeURIComponent(lawyer.email)}`;
+    directLinks.append(mailA);
+  }
+  if (!hardHold && lawyer.phone) {
+    const telA = el('a', `${t('consent.openTel')}: ${lawyer.phone}`, 'ext-link');
+    telA.href = `tel:${lawyer.phone}`;
+    directLinks.append(telA);
+  }
+
+  let contactText = t('profile.contactBlocked');
+  if (!hardHold) {
+    contactText = formatManualContactText(lawyer);
+  }
+  const draftText = formatDraftCopyText(draft, lawyer);
+
+  const copyActions = el('div', null, 'actions');
+  const copyContactBtn = el('button', t('consent.copyContact'));
+  copyContactBtn.type = 'button';
+  copyContactBtn.disabled = hardHold;
+  copyContactBtn.addEventListener('click', async () => {
+    try {
+      const res = await engine.execute('contact.format_manual', { lawyerId: lawyer.id }, { actor: 'ui' });
+      await copyText(res.text, t('profile.contactCopied'));
+    } catch {
+      say(t('profile.contactBlocked'));
+    }
+  });
+
+  const copyDraftBtn = el('button', t('consent.copyDraft'), 'tonal');
+  copyDraftBtn.type = 'button';
+  copyDraftBtn.addEventListener('click', async () => {
+    await copyText(draftText, t('compose.draftCopied'));
+  });
+
+  copyActions.append(copyContactBtn, copyDraftBtn);
+  methodACard.append(
+    directLinks,
+    copyActions,
+    el('h4', t('consent.preview')),
+    el('pre', contactText, 'code-box'),
+    el('h4', t('consent.draftPreview')),
+    el('pre', draftText, 'code-box'),
   );
 
   const discCard = el('section', null, 'card');
@@ -715,26 +869,25 @@ async function renderContactConsent() {
     location.hash = '#/contact/compose';
   });
 
-  const approveBtn = el('button', t('consent.approve'));
-  approveBtn.type = 'button';
-  approveBtn.disabled = !gate.allowed;
-  approveBtn.addEventListener('click', async e => {
-    if (!e.isTrusted) return;
+  const recordBtn = el('button', t('consent.recordLocal'), 'secondary');
+  recordBtn.type = 'button';
+  recordBtn.disabled = !gate.allowed;
+  recordBtn.addEventListener('click', async () => {
     say('');
     try {
-      await engine.execute('inquiry.send', { draft, dryRun: !state.settings.relayEndpoint }, { actor: 'ui' });
+      await engine.execute('inquiry.send', { draft }, { actor: 'ui' });
       say(t('consent.sentDryRun'));
       location.hash = '#/requests';
     } catch (err) {
-      say(t('consent.blocked', { code: err?.code || err?.message || 'denied' }));
+      say(t('consent.blocked', { code: err?.code || err?.message || 'blocked' }));
     }
   });
 
-  actions.append(cancelBtn, approveBtn);
-  view.append(card, discCard, actions);
+  actions.append(cancelBtn, recordBtn);
+  view.append(card, methodACard, discCard, actions);
 }
 
-// ---- View 5: requests ----
+// ---- View: requests (Local records) ----
 async function renderRequests() {
   const view = $('view');
   view.replaceChildren();
@@ -769,18 +922,21 @@ async function renderRequests() {
       renderRequests();
     });
 
-    card.append(envDetails, el('div', null, 'actions'));
-    card.lastChild.append(delBtn);
+    const actions = el('div', null, 'actions');
+    actions.append(delBtn);
+    card.append(envDetails, actions);
     view.append(card);
   }
 }
 
-// ---- View 6: lawyer.onboarding ----
+// ---- View: lawyer.onboarding (Participation policy + O4 preview + Art. 11 export) ----
 function renderLawyerOnboarding() {
   const view = $('view');
   view.replaceChildren();
   view.append(
     el('h2', t('onboarding.heading')),
+    el('p', t('onboarding.closedBanner'), 'banner warn'),
+    participationPolicyCard(),
     el('p', t('onboarding.guide'), 'banner'),
     el('p', t('onboarding.noIdPhoto'), 'banner warn'),
   );
@@ -798,7 +954,7 @@ function renderLawyerOnboarding() {
   fields.registration_number.placeholder = '990101';
 
   form.append(
-    fieldWrap('氏名（規程9条必須）', 'ob-name', fields.name),
+    fieldWrap('氏名（規程9条必須・架空入力のみ）', 'ob-name', fields.name),
     fieldWrap('ふりがな', 'ob-kana', fields.name_kana),
     fieldWrap('所属弁護士会（規程9条必須）', 'ob-bar', fields.bar_association),
     fieldWrap('登録番号（4〜7桁数字）', 'ob-reg', fields.registration_number),
@@ -817,7 +973,24 @@ function renderLawyerOnboarding() {
 
   const submitBtn = el('button', t('onboarding.submit'));
   submitBtn.type = 'button';
-  submitBtn.addEventListener('click', async () => {
+  submitBtn.dataset.submit = '';
+
+  const art11Box = el('pre', '', 'code-box');
+  art11Box.hidden = true;
+  const art11Btn = el('button', t('onboarding.exportArt11'), 'secondary');
+  art11Btn.type = 'button';
+  art11Btn.addEventListener('click', async () => {
+    const out = await engine.execute('lawyer.export_art11_record', {}, { actor: 'ui' });
+    art11Box.textContent = JSON.stringify(out.record, null, 2);
+    art11Box.hidden = false;
+    say(t('onboarding.art11Exported'));
+  });
+
+  const actions = el('div', null, 'actions');
+  actions.append(genBtn, submitBtn, art11Btn);
+  form.append(keyInfo, actions, art11Box, nichibenrenLink());
+
+  bindForm(form, async () => {
     const submission = {
       name: fields.name.value.trim(),
       bar_association: fields.bar_association.value.trim(),
@@ -845,7 +1018,8 @@ function renderLawyerOnboarding() {
       address: '',
       phone: submission.phone,
       fax: '',
-      website_url: '',
+      email: `sample-${submission.registration_number}@office.example.invalid`,
+      website_url: `https://office-${submission.registration_number}.example.invalid/`,
       practice_areas: ['民事一般'],
       career_facts: [],
       languages: ['日本語'],
@@ -862,18 +1036,15 @@ function renderLawyerOnboarding() {
       e2ee_public_key_jwk: sessionLawyerKeyPair.publicKeyJwk,
       e2ee_key_fingerprint: sessionLawyerKeyPair.keyFingerprint,
     };
-    await engine.execute('lawyer.profile.update', { profile }, { actor: 'ui' });
+    await engine.execute('lawyer.profile.update', { profile, action: 'onboarding_preview' }, { actor: 'ui' });
     say(t('onboarding.submitted'));
     location.hash = '#/lawyer/profile';
   });
 
-  const actions = el('div', null, 'actions');
-  actions.append(genBtn, submitBtn);
-  form.append(keyInfo, actions, nichibenrenLink());
   view.append(form);
 }
 
-// ---- View 7: lawyer.profile.edit ----
+// ---- View: lawyer.profile.edit (Expanded O9 Validator + Art. 11 3-year export) ----
 function renderLawyerProfileEdit() {
   const view = $('view');
   view.replaceChildren();
@@ -903,6 +1074,10 @@ function renderLawyerProfileEdit() {
     };
   }
 
+  const saveBtn = el('button', t('profileEdit.save'));
+  saveBtn.type = 'button';
+  saveBtn.dataset.submit = '';
+
   function validateLive() {
     const probs = validateLawyerRecord(buildCandidate());
     if (probs.length) {
@@ -921,9 +1096,37 @@ function renderLawyerProfileEdit() {
     ctrl.addEventListener('input', validateLive);
   }
 
-  const saveBtn = el('button', t('profileEdit.save'));
-  saveBtn.type = 'button';
-  saveBtn.addEventListener('click', async () => {
+  const art11Box = el('pre', '', 'code-box');
+  art11Box.hidden = true;
+  const art11Btn = el('button', t('profileEdit.exportArt11'), 'tonal');
+  art11Btn.type = 'button';
+  art11Btn.addEventListener('click', async () => {
+    try {
+      const out = await engine.execute('lawyer.export_art11_record', { profile: buildCandidate() }, { actor: 'ui' });
+      art11Box.textContent = JSON.stringify(out.record, null, 2);
+      art11Box.hidden = false;
+      say(t('onboarding.art11Exported'));
+    } catch (e) {
+      say(t('profileEdit.rejected', { reasons: (e.problems || []).map(p => p.code).join(', ') }));
+    }
+  });
+
+  const actions = el('div', null, 'actions');
+  actions.append(saveBtn, art11Btn);
+
+  form.append(
+    liveAlert,
+    fieldWrap('氏名（必須）', 'pe-name', nameIn),
+    fieldWrap('所属弁護士会（必須）', 'pe-bar', barIn),
+    fieldWrap('法律事務所名', 'pe-office', officeIn),
+    fieldWrap('取扱分野（カンマ区切り・事実項目のみ）', 'pe-areas', areasIn),
+    fieldWrap('経歴（事実のみ・1行1件）', 'pe-career', careerIn),
+    fieldWrap('初回相談条件（事実のみ）', 'pe-fee', feeIn),
+    actions,
+    art11Box,
+  );
+
+  bindForm(form, async () => {
     try {
       await engine.execute('lawyer.profile.update', { profile: buildCandidate() }, { actor: 'ui' });
       say(t('profileEdit.saved'));
@@ -932,22 +1135,11 @@ function renderLawyerProfileEdit() {
     }
   });
 
-  form.append(
-    liveAlert,
-    fieldWrap('氏名（必須）', 'pe-name', nameIn),
-    fieldWrap('所属弁護士会（必須）', 'pe-bar', barIn),
-    fieldWrap('法律事務所名', 'pe-office', officeIn),
-    fieldWrap('取扱分野（カンマ区切り・専門表記は自動拒否）', 'pe-areas', areasIn),
-    fieldWrap('経歴（事実のみ・1行1件）', 'pe-career', careerIn),
-    fieldWrap('初回相談条件（事実のみ）', 'pe-fee', feeIn),
-    el('div', null, 'actions'),
-  );
-  form.lastChild.append(saveBtn);
   view.append(form);
   validateLive();
 }
 
-// ---- View 8: lawyer.inbox ----
+// ---- View: lawyer.inbox (Strictly Local Preview / Offline Import — NO server relay) ----
 async function renderLawyerInbox() {
   const view = $('view');
   view.replaceChildren();
@@ -969,6 +1161,41 @@ async function renderLawyerInbox() {
   const topActions = el('div', null, 'actions');
   topActions.append(seedBtn);
   view.append(topActions);
+
+  // Offline E2EE envelope JSON import (zero server relay)
+  const offlineImport = el('details', null, 'panel');
+  offlineImport.append(el('summary', t('inbox.importEnvelopeTitle')));
+  const envArea = el('textarea');
+  envArea.placeholder = '{"schema":"bengoshi.e2ee.envelope.v1","conflictHeader":{...},...}';
+  const envBtn = el('button', t('inbox.importEnvelopeBtn'), 'secondary');
+  envBtn.type = 'button';
+  envBtn.dataset.submit = '';
+  const envActions = el('div', null, 'actions');
+  envActions.append(envBtn);
+  offlineImport.append(envArea, envActions);
+  bindForm(offlineImport, async () => {
+    try {
+      const parsed = JSON.parse(envArea.value);
+      if (parsed?.schema !== 'bengoshi.e2ee.envelope.v1' || !parsed.conflictHeader) {
+        throw new Error('invalid-e2ee-envelope');
+      }
+      state.intakeRecords.unshift({
+        inquiryId: parsed.conflictHeader.inquiryId || 'inq-offline-' + Date.now(),
+        receivedAt: parsed.conflictHeader.receivedAt || new Date().toISOString(),
+        conflictHeader: parsed.conflictHeader,
+        envelope: parsed,
+        conflictCheck: null,
+        decision: null,
+        replySentAt: null,
+      });
+      await persistState();
+      say(t('inbox.importEnvelopeOk'));
+      renderLawyerInbox();
+    } catch (e) {
+      say(t('inbox.importEnvelopeFail', { code: e?.message || 'invalid' }));
+    }
+  });
+  view.append(offlineImport);
 
   const { items } = await engine.execute('intake.list', {}, { actor: 'ui' });
   if (!items.length) {
@@ -993,13 +1220,14 @@ async function renderLawyerInbox() {
         selectedInquiryId = item.inquiryId;
         location.hash = '#/lawyer/inquiry/' + encodeURIComponent(item.inquiryId);
       });
-      card.append(el('div', null, 'actions'));
-      card.lastChild.append(openBtn);
+      const actions = el('div', null, 'actions');
+      actions.append(openBtn);
+      card.append(actions);
       view.append(card);
     }
   }
 
-  // Local conflict ledger management
+  // Local conflict ledger management (uses bindForm + data-submit)
   const ledgerCard = el('section', null, 'card');
   ledgerCard.append(el('h3', t('inbox.ledgerTitle')));
   const ul = el('ul');
@@ -1010,7 +1238,11 @@ async function renderLawyerInbox() {
   addIn.placeholder = '追加する依頼者・相手方名（例: ○○株式会社）';
   const addBtn = el('button', t('inbox.ledgerAdd'), 'secondary');
   addBtn.type = 'button';
-  addBtn.addEventListener('click', async () => {
+  addBtn.dataset.submit = '';
+  const ledgerActions = el('div', null, 'actions');
+  ledgerActions.append(addBtn);
+  ledgerCard.append(ul, addIn, ledgerActions);
+  bindForm(ledgerCard, async () => {
     if (!addIn.value.trim()) return;
     state.conflictLedger.push({
       id: 'ledger-' + Date.now(),
@@ -1021,12 +1253,10 @@ async function renderLawyerInbox() {
     await persistState();
     renderLawyerInbox();
   });
-  ledgerCard.append(ul, addIn, el('div', null, 'actions'));
-  ledgerCard.lastChild.append(addBtn);
   view.append(ledgerCard);
 }
 
-// ---- View 9: lawyer.inquiry.detail (AWAI-3235 HARD conflict-check gate) ----
+// ---- View: lawyer.inquiry.detail (AWAI-3235 HARD conflict-check gate — local only) ----
 async function renderLawyerInquiryDetail(inquiryId) {
   const view = $('view');
   view.replaceChildren();
@@ -1040,7 +1270,6 @@ async function renderLawyerInquiryDetail(inquiryId) {
   selectedInquiryId = rec.inquiryId;
   const gate = canRevealInquiryBody(rec);
 
-  // Minimal conflict-check header ONLY
   const hCard = el('section', null, 'card');
   hCard.append(el('h3', t('inquiryDetail.headerTitle')));
   const dl = el('dl', null, 'facts');
@@ -1059,8 +1288,9 @@ async function renderLawyerInquiryDetail(inquiryId) {
     await engine.execute('intake.conflict_check', { inquiryId: rec.inquiryId, confirmClear: false }, { actor: 'ui' });
     renderLawyerInquiryDetail(rec.inquiryId);
   });
-  hCard.append(el('div', null, 'actions'));
-  hCard.lastChild.append(checkBtn);
+  const checkActions = el('div', null, 'actions');
+  checkActions.append(checkBtn);
+  hCard.append(checkActions);
   view.append(hCard);
 
   if (rec.conflictCheck) {
@@ -1078,11 +1308,12 @@ async function renderLawyerInquiryDetail(inquiryId) {
         say('利益相反による辞退を記録しました（本文は復号されていません）。');
         renderLawyerInquiryDetail(rec.inquiryId);
       });
-      resCard.append(el('div', null, 'actions'));
-      resCard.lastChild.append(decBtn);
+      const decActions = el('div', null, 'actions');
+      decActions.append(decBtn);
+      resCard.append(decActions);
     } else {
       resCard.append(
-        el('p', `ローカル台帳照合結果: 利益相反なし（一致0件）`, 'banner ok'),
+        el('p', 'ローカル台帳照合結果: 利益相反なし（一致0件）', 'banner ok'),
         el('p', `確認ダイジェスト: ${cc.receiptDigest}`, 'mono muted'),
       );
       const confirmBox = el('input');
@@ -1108,13 +1339,13 @@ async function renderLawyerInquiryDetail(inquiryId) {
           say(err?.code || err?.message || 'reveal-blocked');
         }
       });
-      resCard.append(el('div', null, 'actions'));
-      resCard.lastChild.append(revealBtn);
+      const revActions = el('div', null, 'actions');
+      revActions.append(revealBtn);
+      resCard.append(revActions);
     }
     view.append(resCard);
   }
 
-  // Revealed body & encrypted reply (ONLY when conflict gate cleared & decrypted locally)
   const decrypted = revealedBodies.get(rec.inquiryId);
   if (gate.allowed && decrypted) {
     const bodyCard = el('section', null, 'card');
@@ -1126,31 +1357,30 @@ async function renderLawyerInquiryDetail(inquiryId) {
     replyArea.placeholder = t('inquiryDetail.replyPlaceholder');
     const acceptBtn = el('button', t('inquiryDetail.acceptBtn'));
     acceptBtn.type = 'button';
-    acceptBtn.addEventListener('click', async e => {
-      if (!e.isTrusted) return;
+    acceptBtn.addEventListener('click', async () => {
       try {
-        await engine.execute('intake.decide', { inquiryId: rec.inquiryId, action: 'accept', replyText: replyArea.value || '初回面談の日程候補をお送りします。' }, { actor: 'ui' });
-        say('暗号化応答を記録しました。');
+        await engine.execute('intake.decide', { inquiryId: rec.inquiryId, action: 'accept', replyText: replyArea.value || '初回面談の日程候補（ローカル記録）' }, { actor: 'ui' });
+        say('受任検討・面談案内をローカル記録しました（外部通信 0 バイト）。');
         renderLawyerInquiryDetail(rec.inquiryId);
       } catch (err) { say(err?.message || 'blocked'); }
     });
     const declineBtn = el('button', t('inquiryDetail.declineBtn'), 'secondary');
     declineBtn.type = 'button';
-    declineBtn.addEventListener('click', async e => {
-      if (!e.isTrusted) return;
+    declineBtn.addEventListener('click', async () => {
       try {
-        await engine.execute('intake.decide', { inquiryId: rec.inquiryId, action: 'decline', replyText: replyArea.value || '誠に恐れ入りますが受任を見送らせていただきます。' }, { actor: 'ui' });
-        say('辞退応答を記録しました。');
+        await engine.execute('intake.decide', { inquiryId: rec.inquiryId, action: 'decline', replyText: replyArea.value || '辞退（ローカル記録）' }, { actor: 'ui' });
+        say('辞退をローカル記録しました（外部通信 0 バイト）。');
         renderLawyerInquiryDetail(rec.inquiryId);
       } catch (err) { say(err?.message || 'blocked'); }
     });
-    bodyCard.append(replyArea, el('div', null, 'actions'), el('p', t('inquiryDetail.noForward'), 'muted'));
-    bodyCard.querySelector('.actions').append(acceptBtn, declineBtn);
+    const replyActions = el('div', null, 'actions');
+    replyActions.append(acceptBtn, declineBtn);
+    bodyCard.append(replyArea, replyActions, el('p', t('inquiryDetail.noForward'), 'muted'));
     view.append(bodyCard);
   }
 }
 
-// ---- View 10: audit ----
+// ---- View: audit ----
 async function renderAudit() {
   const view = $('view');
   view.replaceChildren();
@@ -1172,7 +1402,7 @@ async function renderAudit() {
   }
 }
 
-// ---- View 11: embed.mcp (SEP-1865 APP-01..APP-04) ----
+// ---- View: embed.mcp (POC / Draft — SEP-1865 APP-01..APP-04) ----
 function renderEmbedMcp() {
   const view = $('view');
   view.replaceChildren();
@@ -1181,7 +1411,7 @@ function renderEmbedMcp() {
   const origin = location.origin && location.origin !== 'null' ? location.origin : 'https://bengoshi.itonami.app';
   const sessionToken = 'sep1865-local-qa-session';
   const bridge = createMcpEmbedBridge({ allowedOrigin: origin, expectedSessionToken: sessionToken });
-  const logBox = el('pre', 'Ready. Phase: ' + bridge.getPhase(), 'code-box');
+  const logBox = el('pre', 'Ready (POC/Draft). Phase: ' + bridge.getPhase(), 'code-box');
 
   const logReply = (label, msg) => {
     logBox.textContent = `${label}\nPhase: ${bridge.getPhase()}\n${JSON.stringify(msg, null, 2)}`;
@@ -1212,7 +1442,7 @@ function renderEmbedMcp() {
       origin,
       data: { jsonrpc: '2.0', id: 2, method: 'tools/call', params: { sessionToken, name: 'directory.search', arguments: { sort: 'kana_asc' } } },
     });
-    logReply('Read-only directory.search (APP-03/04):', out);
+    logReply('Read-only directory.search (APP-01 non-UI fallback + APP-03/04):', out);
   });
 
   const bWrite = el('button', t('embed.simWrite'), 'danger');
@@ -1229,7 +1459,6 @@ function renderEmbedMcp() {
   actions.append(bPre, bInit, bSearch, bWrite);
   view.append(actions, logBox);
 
-  // Live host iframe postMessage listener when embedded with explicit allowed parent origin
   if (window.parent && window.parent !== window) {
     const allowedParent = new URLSearchParams(location.search).get('parentOrigin');
     if (allowedParent && /^https:\/\/[^*\s]+$/.test(allowedParent)) {
@@ -1244,14 +1473,26 @@ function renderEmbedMcp() {
 }
 
 async function route() {
-  const hash = location.hash || '#/search';
+  // Soudan -> Bengoshi URL query parameter firewall
+  const sanitized = sanitizeEntryLocation(location.search, location.hash);
+  if (sanitized.rejected) {
+    firewallRejectedParams = [...sanitized.rejectedParams];
+    say(t('guide.firewallNotice', { params: firewallRejectedParams.join(', ') }));
+    if (location.hash !== sanitized.cleanHash) {
+      history.replaceState(null, '', location.pathname + sanitized.cleanHash);
+    }
+  }
+  const hash = sanitized.cleanHash || '#/guide';
+
   if (hash.startsWith('#/lawyer/')) activeMode = 'lawyer';
   else if (hash === '#/audit' || hash === '#/embed/mcp') activeMode = 'shared';
   else activeMode = 'user';
 
   renderChrome();
 
-  if (hash.startsWith('#/profile/')) {
+  if (hash === '#/search') {
+    await renderSearch();
+  } else if (hash.startsWith('#/profile/')) {
     await renderProfileDetail(decodeURIComponent(hash.slice('#/profile/'.length)));
   } else if (hash === '#/contact/compose') {
     await renderContactCompose();
@@ -1272,7 +1513,7 @@ async function route() {
   } else if (hash === '#/embed/mcp') {
     renderEmbedMcp();
   } else {
-    await renderSearch();
+    renderPublicGuide();
   }
 }
 
@@ -1281,13 +1522,12 @@ async function start() {
   if (!integrity.ok) throw new Error('synthetic-catalog-integrity-failed');
   try { await host.initialize(); } catch { /* web runtime */ }
   await loadState();
-  buildBroker();
+  buildEngine();
 
   $('lang-toggle').addEventListener('click', async () => {
     locale = locale === 'ja' ? 'en' : 'ja';
     t = translator(locale);
     state.settings.locale = locale;
-    buildBroker();
     await persistState();
     route();
   });

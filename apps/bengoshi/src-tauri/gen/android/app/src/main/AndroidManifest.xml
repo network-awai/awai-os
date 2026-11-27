@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- INTERNET is used only for optional user-consented https://murakumo.cloud structuring assist (CSP-pinned). Zero app-origin requests. -->
-    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- ZERO network permissions: app-descriptor.json declares operations: [] (100% local / Method A external links only). -->
     <!-- AndroidTV support -->
     <uses-feature android:name="android.software.leanback" android:required="false" />
 

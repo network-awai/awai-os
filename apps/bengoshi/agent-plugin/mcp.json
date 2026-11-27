@@ -1,4 +1,6 @@
 {
+  "status": "poc-draft",
+  "formalAwai4143Claim": false,
   "mcpServers": {
     "bengoshi": {
       "command": "node",
@@ -13,6 +15,8 @@
   },
   "mcpApps": [
     {
+      "status": "poc-draft",
+      "formalAwai4143Claim": false,
       "protocol": "SEP-1865",
       "resourceUri": "ui://bengoshi/embed.mcp",
       "entry": "../dist/index.html#/embed/mcp",

@@ -1,5 +1,5 @@
 {
-  "description": "Bengoshi neutral lawyer-matching app on device; exposes only awai_host_info. No native network, filesystem, installer, or shell permissions.",
+  "description": "Bengoshi — neutral lawyer search guide & directory on device; exposes only awai_host_info. No native network, filesystem, installer, or shell permissions.",
   "identifier": "bengoshi-local",
   "permissions": [
     "allow-awai-host-info"

@@ -1,0 +1,21 @@
+{:yakuwari/capabilities
+ [{:capability :directory.search :decision :autonomous :note "100% local signed synthetic catalog search; neutral sorts only"}
+  {:capability :lawyer.get :decision :autonomous :note "Local factual profile lookup with Art. 9 fields"}
+  {:capability :qualification.verify_status :decision :autonomous :note "Evaluate O4 state machine locally; zero scraping"}
+  {:capability :contact.format_manual :decision :autonomous :note "Format exact 7-line Method A manual contact text; blocked on HARD hold"}
+  {:capability :inquiry.import_memo :decision :autonomous :note "Import user-supplied soudan.memo.export.v1 locally"}
+  {:capability :inquiry.draft :decision :autonomous :note "Save consultation draft in device-local storage only"}
+  {:capability :inquiry.list :decision :autonomous :note "Read local records"}
+  {:capability :audit.list :decision :autonomous :note "Read local append-only audit log"}
+  {:capability :inquiry.send :decision :approval-required :note "Offline local E2EE preview envelope only; zero server relay"}
+  {:capability :legal_advice_or_verdict :decision :blocked :note "Strictly prohibited (Attorneys Act Art. 72)"}
+  {:capability :lawyer_recommendation_or_ranking :decision :blocked :note "Strictly prohibited (O9 neutrality)"}
+  {:capability :referral_fee_or_ad_placement :decision :blocked :note "Strictly prohibited (O2=none / Art. 27)"}
+  {:capability :scout_or_reverse_offer :decision :blocked :note "Strictly prohibited (O9)"}
+  {:capability :online_retainer_signing :decision :blocked :note "Strictly prohibited (O9)"}
+  {:capability :scrape_nichibenren_or_kanpo :decision :blocked :note "Strictly prohibited (O4)"}
+  {:capability :firm_to_firm_forwarding :decision :blocked :note "Strictly prohibited (O8)"}
+  {:capability :spend :decision :blocked}
+  {:capability :transfer_funds :decision :blocked}
+  {:capability :export_private_keys :decision :blocked}]
+ :yakuwari/runners [{:runner :itonami-agent :weight 1}]}

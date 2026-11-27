@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// Minimal zero-dependency stdio JSON-RPC 2.0 MCP server for Bengoshi (network.itonami.bengoshi).
-// Backed directly by src/mcp-acp-adapter.js and src/operations.js.
+// Minimal zero-dependency stdio JSON-RPC 2.0 MCP server (POC / Draft) for Bengoshi (network.itonami.bengoshi).
+// Backed directly by src/mcp-adapter.js and src/operations.js (100% local, zero external network calls).
 
 import { createInterface } from 'node:readline';
-import { createMcpAcpAdapter } from '../src/mcp-acp-adapter.js';
+import { createMcpAdapter } from '../src/mcp-adapter.js';
 import { createInitialLocalState } from '../src/operations.js';
 
 const state = createInitialLocalState();
@@ -11,7 +11,7 @@ if (process.env.BENGOSHI_DIRECTORY_SCOPE === 'neutral_cross_firm') {
   state.settings.directoryScope = 'neutral_cross_firm';
 }
 
-const adapter = createMcpAcpAdapter({ state });
+const adapter = createMcpAdapter({ state });
 const rl = createInterface({ input: process.stdin, crlfDelay: Infinity });
 
 rl.on('line', async line => {

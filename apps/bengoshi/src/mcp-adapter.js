@@ -1,13 +1,26 @@
-// Shared MCP & ACP (Agent Client Protocol) adapter for Bengoshi (network.itonami.bengoshi).
-// Wraps the exact same `noun.verb` operations engine used by the Web/Tauri UI.
+// MCP adapter (POC / Draft) for Bengoshi (network.itonami.bengoshi).
+// Wraps the exact same device-local `noun.verb` operations engine used by the Web/Tauri UI.
+// - ZERO external inference (`inference.assist` removed)
+// - ZERO ACP surface in product UI (`AWAI-4003` #07)
+// - POC / Draft status (does not claim formal AWAI-4143 conformance yet)
+// - APP-01 non-UI fallback (`content` + `structuredContent`) ALWAYS includes Art. 9 (`氏名`, `所属弁護士会`),
+//   neutral disclaimer, and agent non-recommendation guard.
 
 import { CANONICAL_OPERATIONS, createOperationsEngine } from './operations.js';
 import { ZERO_FEE_POLICY, NEUTRAL_SORTS, DIRECTORY_SCOPES } from './model.js';
+import { formatArt9FallbackText } from './mcp-embed.js';
+import {
+  NICHIBENREN_SEARCH_URL,
+  PREVIEW_BANNER_JA,
+  AGENT_NON_RECOMMENDATION_GUARD_JA,
+} from './legal-notices.js';
+
+export const MCP_ADAPTER_STATUS = 'poc-draft';
 
 export const TOOL_SCHEMAS = Object.freeze([
   {
     name: 'directory.search',
-    description: 'Search the local signed lawyer directory with neutral filters and neutral sorting only (O9). Zero tracking.',
+    description: 'Search the local synthetic lawyer directory with neutral filters and neutral sorting only (O9, POC/Draft). Zero external calls.',
     readOnly: true,
     consentRequired: false,
     inputSchema: {
@@ -27,7 +40,7 @@ export const TOOL_SCHEMAS = Object.freeze([
   },
   {
     name: 'lawyer.get',
-    description: 'Retrieve factual lawyer profile and evaluated O4 qualification status.',
+    description: 'Retrieve factual lawyer profile (Art. 9 mandatory fields) and evaluated O4 qualification status.',
     readOnly: true,
     consentRequired: false,
     inputSchema: {
@@ -50,8 +63,20 @@ export const TOOL_SCHEMAS = Object.freeze([
     },
   },
   {
+    name: 'contact.format_manual',
+    description: 'Format exact 7-line Method A manual Copy Contact text locally (blocked on expired / suspended_or_revoked).',
+    readOnly: true,
+    consentRequired: false,
+    inputSchema: {
+      type: 'object',
+      required: ['lawyerId'],
+      properties: { lawyerId: { type: 'string' } },
+      additionalProperties: false,
+    },
+  },
+  {
     name: 'inquiry.import_memo',
-    description: 'Import a user-supplied soudan.memo.export.v1 JSON document into a local editable inquiry draft.',
+    description: 'Import a user-supplied soudan.memo.export.v1 (consultation-memo.jpn.v1) JSON document into a local editable draft.',
     readOnly: false,
     consentRequired: false,
     inputSchema: {
@@ -63,7 +88,7 @@ export const TOOL_SCHEMAS = Object.freeze([
   },
   {
     name: 'inquiry.draft',
-    description: 'Validate and store an inquiry draft strictly in local device storage.',
+    description: 'Validate and store a consultation draft strictly in local device storage.',
     readOnly: false,
     consentRequired: false,
     inputSchema: {
@@ -75,18 +100,18 @@ export const TOOL_SCHEMAS = Object.freeze([
   },
   {
     name: 'inquiry.send',
-    description: 'Encrypt inquiry into an E2EE envelope and dispatch via canonical each-operation consent broker (respects O4 HARD holds).',
+    description: 'Create an offline local E2EE preview envelope on device (zero server relay; Method A is primary; respects O4 HARD holds).',
     readOnly: false,
-    consentRequired: true,
+    consentRequired: false,
     inputSchema: {
       type: 'object',
-      properties: { draft: { type: 'object' }, dryRun: { type: 'boolean' }, syntheticDemoMode: { type: 'boolean' } },
+      properties: { draft: { type: 'object' }, syntheticDemoMode: { type: 'boolean' } },
       additionalProperties: false,
     },
   },
   {
     name: 'inquiry.list',
-    description: 'List local sent inquiries and optionally delete a local copy (lawyer copy unaffected).',
+    description: 'List local records and optionally delete a local copy.',
     readOnly: true,
     consentRequired: false,
     inputSchema: {
@@ -97,7 +122,7 @@ export const TOOL_SCHEMAS = Object.freeze([
   },
   {
     name: 'lawyer.profile.update',
-    description: 'Validate factual lawyer fields against O9 neutrality rules (rejecting 専門/win rates/reviews/fees) and save locally.',
+    description: 'Validate factual lawyer fields against expanded O9 neutrality rules and save locally.',
     readOnly: false,
     consentRequired: false,
     inputSchema: {
@@ -108,8 +133,19 @@ export const TOOL_SCHEMAS = Object.freeze([
     },
   },
   {
+    name: 'lawyer.export_art11_record',
+    description: 'Export timestamped listing snapshot, edit history, and zero-fee terms (fee_jpy: 0) for Advertising Rules Art. 11 3-year preservation.',
+    readOnly: true,
+    consentRequired: false,
+    inputSchema: {
+      type: 'object',
+      properties: { lawyerId: { type: 'string' }, profile: { type: 'object' } },
+      additionalProperties: false,
+    },
+  },
+  {
     name: 'intake.list',
-    description: 'List incoming encrypted inquiries exposing only minimal conflict-check headers (AWAI-3235).',
+    description: 'List local offline preview encrypted inquiries exposing only minimal conflict-check headers (AWAI-3235).',
     readOnly: true,
     consentRequired: false,
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
@@ -128,9 +164,9 @@ export const TOOL_SCHEMAS = Object.freeze([
   },
   {
     name: 'intake.decide',
-    description: 'Reveal/decrypt inquiry body or record accept/decline decision after confirmed clear conflict check (HARD gate).',
+    description: 'Reveal/decrypt local inquiry body or record local accept/decline decision after confirmed clear conflict check (HARD gate).',
     readOnly: false,
-    consentRequired: true,
+    consentRequired: false,
     inputSchema: {
       type: 'object',
       required: ['inquiryId', 'action'],
@@ -143,20 +179,8 @@ export const TOOL_SCHEMAS = Object.freeze([
     },
   },
   {
-    name: 'inference.assist',
-    description: 'Optional neutral intake structuring via murakumo.cloud with each-operation consent and non-retention disclosure (no legal advice).',
-    readOnly: false,
-    consentRequired: true,
-    inputSchema: {
-      type: 'object',
-      required: ['rawText'],
-      properties: { rawText: { type: 'string' }, model: { type: 'string' } },
-      additionalProperties: false,
-    },
-  },
-  {
     name: 'audit.list',
-    description: 'List append-only hash-chained local audit entries for UI and agent operations.',
+    description: 'List append-only hash-chained local audit entries.',
     readOnly: true,
     consentRequired: false,
     inputSchema: {
@@ -167,7 +191,7 @@ export const TOOL_SCHEMAS = Object.freeze([
   },
 ]);
 
-export function createMcpAcpAdapter(engineOptions = {}) {
+export function createMcpAdapter(engineOptions = {}) {
   const engine = engineOptions.execute ? engineOptions : createOperationsEngine(engineOptions);
 
   async function handleJsonRpc(request, { actor = 'mcp' } = {}) {
@@ -182,9 +206,18 @@ export function createMcpAcpAdapter(engineOptions = {}) {
         id,
         result: {
           protocolVersion: '2025-03-26',
-          serverInfo: { name: 'bengoshi', version: '0.1.0', appId: 'network.itonami.bengoshi' },
+          status: MCP_ADAPTER_STATUS,
+          formalAwai4143Claim: false,
+          serverInfo: {
+            name: 'bengoshi',
+            version: '0.1.0',
+            appId: 'network.itonami.bengoshi',
+            title: 'Bengoshi — 弁護士検索ガイド・中立ディレクトリ（準備中）',
+          },
           capabilities: { tools: { listChanged: false }, resources: { listChanged: false } },
           policy: ZERO_FEE_POLICY,
+          neutralDisclaimer: PREVIEW_BANNER_JA,
+          agentNonRecommendationGuard: AGENT_NON_RECOMMENDATION_GUARD_JA,
         },
       };
     }
@@ -194,6 +227,7 @@ export function createMcpAcpAdapter(engineOptions = {}) {
         jsonrpc: '2.0',
         id,
         result: {
+          status: MCP_ADAPTER_STATUS,
           tools: TOOL_SCHEMAS.map(t => ({
             name: t.name,
             description: t.description,
@@ -201,7 +235,7 @@ export function createMcpAcpAdapter(engineOptions = {}) {
             annotations: {
               readOnlyHint: t.readOnly,
               destructiveHint: false,
-              openWorldHint: t.name === 'inference.assist',
+              openWorldHint: false,
             },
           })),
         },
@@ -216,9 +250,9 @@ export function createMcpAcpAdapter(engineOptions = {}) {
           resources: [
             {
               uri: 'ui://bengoshi/embed.mcp',
-              name: 'Bengoshi Neutral Directory Embed (SEP-1865)',
+              name: 'Bengoshi — 弁護士検索ガイド・中立ディレクトリ Embed (POC/Draft)',
               mimeType: 'text/html',
-              description: 'Read-only neutral lawyer directory embed (synthetic fixtures, SEP-1865 APP-01..APP-04).',
+              description: 'POC/Draft read-only neutral directory embed (synthetic samples only, SEP-1865 APP-01..APP-04).',
             },
           ],
         },
@@ -230,6 +264,29 @@ export function createMcpAcpAdapter(engineOptions = {}) {
       const args = request.params?.arguments || {};
       try {
         const data = await engine.execute(name, args, { actor });
+
+        // APP-01 non-UI fallback: directory.search & lawyer.get ALWAYS carry Art. 9 fields + neutral disclaimer + agent guard
+        if (name === 'directory.search' || name === 'lawyer.get') {
+          const list = name === 'directory.search' ? data.lawyers : [data.lawyer];
+          const enriched = {
+            ...data,
+            status: MCP_ADAPTER_STATUS,
+            neutralDisclaimer: PREVIEW_BANNER_JA,
+            agentNonRecommendationGuard: AGENT_NON_RECOMMENDATION_GUARD_JA,
+            nichibenrenSearchUrl: NICHIBENREN_SEARCH_URL,
+            art9FieldsPresent: list.every(l => Boolean(l?.name && l?.bar_association)),
+          };
+          return {
+            jsonrpc: '2.0',
+            id,
+            result: {
+              content: [{ type: 'text', text: formatArt9FallbackText(list) }],
+              structuredContent: enriched,
+              isError: false,
+            },
+          };
+        }
+
         return {
           jsonrpc: '2.0',
           id,
@@ -251,26 +308,11 @@ export function createMcpAcpAdapter(engineOptions = {}) {
       }
     }
 
-    // ACP (Agent Client Protocol) direct action dispatch
-    if (request.method === 'acp/action') {
-      const action = request.params?.action;
-      const input = request.params?.input || {};
-      try {
-        const output = await engine.execute(action, input, { actor: 'acp' });
-        return { jsonrpc: '2.0', id, result: { ok: true, action, output } };
-      } catch (err) {
-        return {
-          jsonrpc: '2.0',
-          id,
-          error: { code: -32000, message: err?.code || err?.message || 'acp-action-failed', data: { problems: err?.problems } },
-        };
-      }
-    }
-
     return { jsonrpc: '2.0', id, error: { code: -32601, message: 'method-not-found' } };
   }
 
   return Object.freeze({
+    status: MCP_ADAPTER_STATUS,
     operations: CANONICAL_OPERATIONS,
     tools: TOOL_SCHEMAS,
     handleJsonRpc,

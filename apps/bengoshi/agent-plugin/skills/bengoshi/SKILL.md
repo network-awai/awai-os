@@ -1,46 +1,47 @@
 ---
 name: bengoshi
-description: Completely free, strictly neutral lawyer-matching directory and E2EE intake operations (network.itonami.bengoshi). Enforces O2=none, O4 manual verification HARD holds, O8 local residency & E2EE, O9 strict neutrality, and AWAI-3235 conflict-check HARD gate.
+description: POC/Draft skill for Bengoshi — 弁護士検索ガイド・中立ディレクトリ（準備中） (network.itonami.bengoshi). Enforces O2=none (fee_jpy=0), O4 manual verification HARD holds, O8 zero-external-calls & Method A direct handoff, expanded O9 strict neutrality, Art. 11 3-year export, and AWAI-3235 conflict-check HARD gate.
 ---
 
-# Bengoshi Agent Skill (`network.itonami.bengoshi`)
+# Bengoshi Agent Skill — POC / Draft (`network.itonami.bengoshi`)
 
-Use this skill whenever helping a user search the neutral lawyer directory, verify O4 qualification status, import a `soudan.memo.export.v1` memo, prepare an E2EE inquiry, or helping a lawyer manage factual profiles and AWAI-3235 conflict-checked intake.
+> **Status**: POC / Draft (does not claim formal `AWAI-4143` conformance yet). All bundled directory records are synthetic samples (`synthetic: true`, `.invalid` domains). For real lawyers, direct users to official public search resources (Nichibenren, Himawari Search, Houterasu, Bar Association Consultation Centers).
 
 ## Non-Negotiable Structural Invariants
 
-1. **Zero-Fee / Non-Profit (`O2 = none`)**: Never suggest, calculate, or invoke referral fees, fee-splitting, ad slots, sponsored placements, paid tiers, or Awai token/point rewards.
-2. **Strict Neutrality (`O9` — 日弁連 業務広告規程 会規44号・指針準拠)**:
-   - Never rank, score, or recommend a lawyer.
-   - Only sort by `kana_asc`, `reg_no_asc`, or `prefecture_asc`.
-   - Reject `専門` / `専門家`, win rates (`勝訴率`), case counts (`解決件数`), comparative claims (`No.1`, `実績豊富`), reviews, and ratings.
-   - Never provide legal advice, legal verdicts, or case outcome predictions (弁護士法第72条・第27条).
-3. **Qualification Verification (`O4` / `AWAI-344`)**:
-   - Never scrape Nichibenren or Kanpo; never accept ID-photo-only verification.
-   - Respect HARD holds on `expired` and `suspended_or_revoked`.
-   - Block live sends to `unverified_self_declared` lawyers and always provide the official Nichibenren search link (`https://member.nichibenren.or.jp/general_search`).
-4. **Data Residency & E2EE (`O8`)**:
-   - Search runs 100% locally; never send search queries off-device.
-   - Every external operation (`inference.assist` to `https://murakumo.cloud`, `inquiry.send`, `inquiry.reply`) requires canonical `each-operation` user consent with non-retention and copy-retention disclosures.
-   - Never forward an inquiry firm-to-firm.
-5. **Conflict-Check HARD Gate (`AWAI-3235`)**:
-   - In lawyer intake, inspect ONLY the minimal conflict header (`clientName`, `counterpartyName`, `category`) first.
-   - Run `intake.conflict_check` against the local ledger and obtain explicit lawyer confirmation before `intake.decide` (`reveal`). If conflict is detected, HARD-block body decryption.
+1. **Zero External Network Calls (`app-descriptor.json` `"operations": []`)**:
+   - Zero external inference calls from the app or MCP tools.
+   - Primary contact flow is **Method A** (direct transition to lawyer's public office URL / `mailto:` / `tel:` + 7-line `contact.format_manual` Copy Contact + Copy Draft; zero platform server relay).
+2. **Zero-Fee / Non-Profit (`O2 = none`, `fee_jpy: 0`)**:
+   - Free for users and free for lawyers; zero ads, paid tiers, fee-splitting, or token rewards.
+3. **Expanded Strict Neutrality (`O9` — 日弁連 業務広告規程 会規44号・指針準拠)**:
+   - Never rank, score, or pick a lawyer. Only sort by `kana_asc`, `reg_no_asc`, or `prefecture_asc`.
+   - Always preserve Art. 9 mandatory fields (`name`, `bar_association`), neutral disclaimer, and the agent non-recommendation guard in non-UI fallbacks.
+   - Reject prohibited promotional wording, reviews/stars, scout/reverse-offer, and online retainer signing.
+   - Never provide legal advice, legal verdicts, or outcome predictions (Attorneys Act Art. 72 & 27).
+4. **Qualification Verification (`O4`) & Art. 11 Preservation**:
+   - Zero Nichibenren/Kanpo scraping; zero ID-photo-only verification.
+   - Respect HARD holds on `expired` and `suspended_or_revoked` (blocks `contact.format_manual` and inquiry actions).
+   - Provide `lawyer.export_art11_record` for 3-year preservation under Advertising Rules Art. 11 (enforced 2026-07-01).
+5. **Conflict-Check HARD Gate (`AWAI-3235`, local preview / offline import only)**:
+   - Inspect only minimal conflict headers (`clientName`, `counterpartyName`, `category`) first.
+   - Require `intake.conflict_check` + explicit lawyer confirmation before `intake.decide` (`reveal`). Detected conflicts HARD-block decryption.
 
-## Canonical `noun.verb` Operations
+## Canonical `noun.verb` Operations (100% Local)
 
-| Operation | Read/Write | Consent | Purpose |
-| --- | --- | --- | --- |
-| `directory.search` | Read | Local | Neutral filter + neutral sort (`kana_asc` / `reg_no_asc` / `prefecture_asc`) |
-| `lawyer.get` | Read | Local | Factual lawyer profile + evaluated O4 status |
-| `qualification.verify_status` | Read | Local | O4 state machine check (30-day TTL, HARD holds) |
-| `inquiry.import_memo` | Write (local) | Local | Import `soudan.memo.export.v1` JSON into editable draft |
-| `inquiry.draft` | Write (local) | Local | Validate & save inquiry draft locally |
-| `inquiry.send` | Write (external E2EE) | Each-op | Encrypt E2EE envelope + canonical consent dispatch |
-| `inquiry.list` | Read / local delete | Local | View local sent history & delete local copy |
-| `lawyer.profile.update` | Write (local) | Local | O9-validated factual profile update |
-| `intake.list` | Read | Local | List incoming inquiries (minimal conflict headers only) |
-| `intake.conflict_check` | Write (local) | Local | Run local ledger check + record receipt digest |
-| `intake.decide` | Write | Each-op (reply) | Reveal after clear receipt / accept / decline / decline_conflict |
-| `inference.assist` | External inference | Each-op | Optional `murakumo.cloud` neutral structuring (non-retention) |
-| `audit.list` | Read | Local | Inspect append-only hash-chained local audit log |
+| Operation | Read/Write | Purpose |
+| --- | --- | --- |
+| `directory.search` | Read | Neutral local search (`kana_asc` / `reg_no_asc` / `prefecture_asc`) |
+| `lawyer.get` | Read | Factual lawyer profile (Art. 9) + evaluated O4 status |
+| `qualification.verify_status` | Read | O4 state machine check (30-day TTL, HARD holds) |
+| `contact.format_manual` | Read | Format exact 7-line Method A manual Copy Contact (blocked on HARD hold) |
+| `inquiry.import_memo` | Write (local) | Import `soudan.memo.export.v1` (`consultation-memo.jpn.v1`) JSON locally |
+| `inquiry.draft` | Write (local) | Validate & save consultation draft locally |
+| `inquiry.send` | Write (local) | Offline local E2EE preview envelope (zero server relay) |
+| `inquiry.list` | Read / local delete | List or delete local records |
+| `lawyer.profile.update` | Write (local) | Expanded O9-validated factual profile update + edit history |
+| `lawyer.export_art11_record` | Read | Export Art. 11 3-year preservation snapshot + history (`fee_jpy: 0`) |
+| `intake.list` | Read | List local offline preview inquiries (minimal headers only) |
+| `intake.conflict_check` | Write (local) | Run local ledger check + record receipt digest |
+| `intake.decide` | Write (local) | Reveal after clear receipt / record local accept or decline |
+| `audit.list` | Read | Inspect append-only hash-chained local audit log |

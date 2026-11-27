@@ -1,58 +1,61 @@
-# Bengoshi (`network.itonami.bengoshi`) — Free, Strictly Neutral Lawyer-Matching Itonami Dapp
+# Bengoshi — 弁護士検索ガイド・中立ディレクトリ（準備中）
 
-Completely free, non-profit, strictly neutral lawyer-matching itonami dapp + Tauri v3 app + bot profiles + MCP Apps / Agent Plugin / ACP surface.
+`network.itonami.bengoshi` — 公的弁護士検索ガイド（MOJ 2026 注 20 準拠）および完全無料（対価 ¥0）・厳格中立ディレクトリ構造のプレビュー実装です。
 
-> **Release Gate**: This implementation uses clearly marked synthetic sample lawyers (`990001`–`990006`) and staged/fail-closed relay dispatch. **Public release remains gated on Legal review and owner decision O10.**
+> **プレビュー版（架空サンプル表示）**: 実在する弁護士・法律事務所の掲載・登録受付・連絡取次は外部弁護士確認（O10）の完了後に開始します。本ビルド内のサンプル弁護士（`990001`–`990006`）はすべて `synthetic: true`・`.invalid` ドメインの架空データです。
 
-## Structural Invariants (Enforced in Code, Schema, UI & Negative-Control Tests)
+## 最小安全公開スコープ（Today's Minimum Safe Scope）
 
-1. **Zero-Fee / Non-Profit (`O2 = none`)**:
-   - Free for users, free for lawyers.
-   - Zero referral fees, fee-splitting, ad slots, sponsored placement, paid tiers, or Awai token/point rewards.
-2. **Strict Neutrality (`O9` — 日弁連 業務広告規程 会規44号・指針準拠)**:
-   - Zero reviews, star ratings, win rates (`勝訴率`), case counts (`解決件数`), comparative claims (`No.1`, `実績豊富`), AI recommendations, or response-speed sorting.
-   - Neutral sorting only: 五十音順 (`kana_asc`), 登録番号順 (`reg_no_asc`), 地域コード順 (`prefecture_asc`).
-   - Factual fields only (mandatory Art. 9 `name` and `bar_association`); real-time validator rejects `専門` / `専門家` per 指針第3-12.
-   - Runtime `directory_scope` switch (`tenant_only` safe default | `neutral_cross_firm`).
-3. **Qualification Verification State Machine (`O4` / `AWAI-344`)**:
-   - Zero scraping of Nichibenren or Kanpo; ID-photo-only verification is rejected.
-   - Explicit 4-state `verification` machine: `unverified_self_declared`, `verified_manual_a2` (30-day TTL, `method: "manual_nichibenren_and_office_contact"`, `attestation_digest`), `expired` (**HARD hold**), `suspended_or_revoked` (**HARD hold**).
-4. **Data Residency, E2EE & Zero `app origin` (`O8`)**:
-   - All drafts, sent history, lawyer profiles, conflict ledgers, and audit logs live strictly in local device storage (`awai.shell.host.v1`). **Zero requests to `app origin`.**
-   - Directory search runs 100% locally over the signed read-only synthetic fixture catalog.
-   - Client-side E2EE (`RSA-OAEP-256` + `AES-256-GCM`, `bengoshi.e2ee.envelope.v1`) encrypts inquiries and replies before consent/dispatch. Relay is staged/fail-closed until an independently verified endpoint is configured.
-   - Optional `inference.assist` (`https://murakumo.cloud`, configurable path `/v1/chat/completions`) uses canonical `kotoba-client-runtime.js` `each-operation` consent with explicit non-retention / no-training disclosure and `countryStatus: "pending"` (AWAI-3883). Declining keeps the app 100% functional offline.
-   - Firm-to-firm forwarding (`O8` option C) is prohibited and rejected.
-5. **Lawyer Conflict-Check HARD Gate (`AWAI-3235`)**:
-   - Incoming encrypted inquiries expose ONLY minimal conflict-check headers (`clientName`, `counterpartyName`, `category`).
-   - Local ledger conflict check + explicit lawyer confirmation receipt digest are required before body decryption/reveal. Detected conflicts HARD-block body reveal.
+1. **既定ランディング画面 — 公的弁護士検索ガイド（MOJ 2026 注 20 準拠）**:
+   - 日弁連「弁護士情報検索」(`https://member.nichibenren.or.jp/general_search`)
+   - ひまわりサーチ (`https://www.bengoshikai.jp/`)
+   - 法テラス (`https://www.houterasu.or.jp/`)
+   - 全国弁護士会 法律相談センター案内 (`https://www.nichibenren.or.jp/legal_advice/search/center.html`)
+2. **弁護士掲載ポリシー（プレビュー）**:
+   - 完全無料・対価 ¥0、7 遮断境界、O4 手動確認、日弁連 業務広告規程 11 条 3 年保存エクスポート対応予定、O10 完了後に受付開始。
+3. **フッター運営者開示スロット (`src/operator-disclosure.js`)**:
+   - `PENDING_OWNER_CONFIRMATION_LEGAL_224` マーカー付きで Legal #224 確定情報を安全に差し込める構造。
 
-## 11 Views (`src/app.js`)
+## 構造的不変条件（コード・スキーマ・UI・負例テストで強制）
 
-- **User-side (5)**: `search`, `profile.detail`, `contact.compose` (supports `soudan.memo.export.v1` import), `contact.consent`, `requests`
-- **Lawyer-side (4)**: `lawyer.onboarding`, `lawyer.profile.edit`, `lawyer.inbox`, `lawyer.inquiry.detail`
-- **Shared / Embedded (2)**: `audit`, `embed.mcp` (SEP-1865 `APP-01`–`APP-04` read-only sandboxed view)
+1. **外部通信ゼロ（`app-descriptor.json`: `"operations": []`）**:
+   - Web / Tauri アプリから外部 API への通信は一切行いません。Android Manifest にも `android.permission.INTERNET` を付与しません（`android:allowBackup="false"`）。
+   - Web `dist/index.html` の `<meta CSP>` は `connect-src 'none'` + `<meta name="referrer" content="no-referrer">` を強制します。
+2. **完全無料・対価 ¥0（`O2 = none`）**:
+   - 利用者・弁護士双方に完全無料（`fee_jpy: 0`）。広告枠、報酬分配、有料枠、トークン報酬は存在しません。
+3. **厳格中立（`O9` — 日弁連 業務広告規程 会規44号・指針第3-12 準拠）**:
+   - 専門標榜・誇大比較・勝訴率・解決件数・口コミ星評価・順位付け・スカウト／逆オファー・オンライン委任契約締結をバリデータおよび操作層で拒否します。
+   - 中立並び替えのみ: 五十音順 (`kana_asc`)、登録番号順 (`reg_no_asc`)、地域コード順 (`prefecture_asc`)。
+   - 日弁連 業務広告規程 11 条（令和 8 年 7 月 1 日施行済み）の 3 年保存向けエクスポート操作 `lawyer.export_art11_record` を提供します。
+4. **方式 A 直接連絡（サーバ中継なし）＋ O4 資格照合状態機械**:
+   - 弁護士の公開事務所 URL・`mailto:`・`tel:` への直接遷移と、7 行の「連絡先をコピー」＋「下書きをコピー」を主導線とします。
+   - `expired` / `suspended_or_revoked` は HARD HOLD として手動連絡先コピーおよび連絡操作をブロックします。
+5. **Soudan 連携（`soudan.memo.export.v1`）と URL クエリ遮断**:
+   - `template: "consultation-memo.jpn.v1"`、`category`、`wish`、`deadline`（カウントダウン計算なし）、`documents`、`evidence_manifest` 全項目を端末内ローカルで取り込みます。
+   - URL クエリ経由の相談本文・タグ注入（`Soudan` → `Bengoshi` 境界）は無視・拒否します。
+6. **弁護士利益相反確認 HARD ゲート（`AWAI-3235`・ローカルプレビュー／オフライン読込専用）**:
+   - 受信一覧は最小ヘッダ（依頼者名・相手方名・分野）のみ表示し、ローカル台帳照合＋確認記録まで本文復号をブロックします（サーバ中継なし）。
 
-## Shared `noun.verb` Operations, Agent Plugin, ACP & Bot Profiles
+## MCP Apps / Agent Plugin（POC / Draft）
 
-- Shared operations (`src/operations.js`): `directory.search`, `lawyer.get`, `qualification.verify_status`, `inquiry.import_memo`, `inquiry.draft`, `inquiry.send`, `inquiry.list`, `lawyer.profile.update`, `intake.list`, `intake.conflict_check`, `intake.decide`, `inference.assist`, `audit.list`.
-- Agent Plugins v1.0.0: `agent-plugin/plugin.json`, `agent-plugin/mcp.json`, `agent-plugin/skills/bengoshi/SKILL.md`.
-- Stdio MCP server: `scripts/mcp-server.mjs` (backed by `src/mcp-acp-adapter.js`).
-- Bot profiles: `profiles/bengoshi-directory/itonami.edn`, `profiles/bengoshi-lawyer-intake/itonami.edn`.
+- `agent-plugin/`（`plugin.json`, `mcp.json`, `skills/bengoshi/SKILL.md`）および `embed.mcp` は **POC / Draft** です（正式な `AWAI-4143` 適合主張は未確定）。
+- 製品 UI に ACP は含みません（`AWAI-4003` #07）。
+- `directory.search` / `lawyer.get` の非 UI フォールバック（`content` + `structuredContent`）は常に規程 9 条必須項目（氏名・所属弁護士会）、中立注記、エージェント非推奨ガードを含みます。
 
 ## Build & Verification
 
 ```sh
 cd apps/bengoshi
-npm test                 # Unit & negative-control test suite
 npm run build            # Produces self-contained static Web bundle in dist/ with pinned release.json
+npm test                 # Runs node --test test/*.test.mjs && node scripts/check-public.mjs
 cd src-tauri && cargo check   # Verifies Tauri v3 host compilation & Android 16 KB build script
 ```
 
 ## Paths for Downstream Teams
 
-- **Static Web bundle (for `https://bengoshi.itonami.app`)**: `apps/bengoshi/dist/`
+- **Static Web bundle (`https://bengoshi.itonami.app`)**: `apps/bengoshi/dist/`
+- **Public safety gate script**: `apps/bengoshi/scripts/check-public.mjs`
 - **Tauri v3 native host & Android 16 KB project**: `apps/bengoshi/src-tauri/`
-- **Runtime descriptor**: `apps/bengoshi/app-descriptor.json`
-- **Agent Plugin v1.0.0**: `apps/bengoshi/agent-plugin/`
-- **Itonami bot profiles**: `apps/bengoshi/profiles/`
+- **Runtime descriptor (`operations: []`)**: `apps/bengoshi/app-descriptor.json`
+- **Agent Plugin (POC / Draft)**: `apps/bengoshi/agent-plugin/`
+- **Itonami bot profiles (`cloud.itonami.profile.v2`)**: `apps/bengoshi/profiles/`

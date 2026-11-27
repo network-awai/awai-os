@@ -1,10 +1,12 @@
-// Bengoshi domain model, structural invariants (O2, O4, O8, O9, AWAI-3235),
-// Soudan interchange (soudan.memo.export.v1), and lawyer card export (bengoshi.lawyer.card.v1).
+// Bengoshi domain model, structural invariants (O2, O4, O8, O9, AWAI-3235, Art. 11),
+// Method A 7-line manual Copy Contact, Soudan interchange (soudan.memo.export.v1),
+// Soudan -> Bengoshi URL query firewall, and lawyer card export (bengoshi.lawyer.card.v1).
 
 import { NICHIBENREN_SEARCH_URL } from './legal-notices.js';
 
 export const ZERO_FEE_POLICY = Object.freeze({
   model: 'none',
+  fee_jpy: 0,
   freeForUsers: true,
   freeForLawyers: true,
   referralFee: false,
@@ -13,6 +15,8 @@ export const ZERO_FEE_POLICY = Object.freeze({
   sponsoredPlacement: false,
   paidTier: false,
   tokenIntegration: false,
+  scoutOrReverseOffer: false,
+  onlineRetainerSigning: false,
 });
 
 export const NEUTRAL_SORTS = Object.freeze(['kana_asc', 'reg_no_asc', 'prefecture_asc']);
@@ -25,6 +29,8 @@ export const VERIFICATION_STATUSES = Object.freeze([
 ]);
 export const VERIFICATION_TTL_DAYS = 30;
 export const VERIFICATION_METHOD_A2 = 'manual_nichibenren_and_office_contact';
+export const ART11_RETENTION_YEARS = 3;
+export const SOUDAN_TEMPLATE_ID = 'consultation-memo.jpn.v1';
 
 export const INQUIRY_CATEGORIES = Object.freeze([
   'money',
@@ -39,7 +45,7 @@ export const INQUIRY_CATEGORIES = Object.freeze([
   'other',
 ]);
 
-// Factual practice areas ONLY — strictly free of "専門" / "専門家" per 日弁連 業務広告指針 第3-12.
+// Factual practice areas ONLY — strictly free of prohibited specialist/promotional wording per 日弁連 業務広告指針 第3-12.
 export const PRACTICE_AREAS = Object.freeze([
   '民事一般',
   '家事・相続',
@@ -83,6 +89,7 @@ export const ALLOWED_LAWYER_FACTUAL_FIELDS = Object.freeze([
   'address',
   'phone',
   'fax',
+  'email',
   'website_url',
   'practice_areas',
   'career_facts',
@@ -95,7 +102,7 @@ export const ALLOWED_LAWYER_FACTUAL_FIELDS = Object.freeze([
   'e2ee_key_fingerprint',
 ]);
 
-// Fields strictly prohibited under O2 (zero-fee) and O9 (strict neutrality).
+// Fields strictly prohibited under O2 (zero-fee) and O9 (strict neutrality / anti-scout / no online retainer).
 export const FORBIDDEN_LAWYER_FIELDS = Object.freeze([
   'reviews',
   'review_count',
@@ -108,6 +115,8 @@ export const FORBIDDEN_LAWYER_FIELDS = Object.freeze([
   'rank',
   'ranking',
   'score',
+  'match_score',
+  'popularity',
   'ai_recommendation',
   'recommended',
   'response_speed',
@@ -122,17 +131,26 @@ export const FORBIDDEN_LAWYER_FIELDS = Object.freeze([
   'subscription_plan',
   'awai_token',
   'reward_points',
+  'scout_enabled',
+  'reverse_offer',
+  'online_retainer',
 ]);
 
-// Forbidden claims / expressions per 日弁連 業務広告規程 会規44号 & 指針第3-12, plus O2/O9 invariants.
+// Expanded O9 validator patterns per 日弁連 業務広告規程 会規44号・指針第3-12 & Legal Addendum:
+// Rejects ALL of: 専門, 専門家, 専門分野, スペシャリスト, プロ, エキスパート, 勝訴率, 解決件数,
+// No.1, 日本一, おすすめ, 人気順, マッチ度, 必ず解決, すぐ解決, マッチング, 紹介, reviews/stars,
+// scout/reverse-offer, online retainer signing, and fee/ad claims.
 export const FORBIDDEN_O9_PATTERNS = Object.freeze([
-  { code: 'o9.forbidden_specialist_claim', pattern: /専門家|専門(?!校|職大学院)/u },
-  { code: 'o9.forbidden_specialist_claim', pattern: /\bspecialist\b|\bcertified\s+expert\b/i },
+  { code: 'o9.forbidden_specialist_claim', pattern: /専門分野|専門家|専門(?!校|職大学院)|スペシャリスト|エキスパート|プロ(?!フィール|グラム|ジェクト|トコル)/u },
+  { code: 'o9.forbidden_specialist_claim', pattern: /\bspecialist\b|\bexpert\b|\bpro\b|\bcertified\s+expert\b/i },
   { code: 'o9.forbidden_win_rate', pattern: /勝訴率|勝率|成功確率|win\s*rate/i },
   { code: 'o9.forbidden_case_count', pattern: /解決件数|解決実績\s*\d|受任件数|相談実績\s*\d|cases?\s+won/i },
-  { code: 'o9.forbidden_comparative_claim', pattern: /No\.?\s*1|ナンバーワン|日本一|地域一番|業界トップ|実績豊富|圧倒的|最強|最高水準|必ず勝てる|100%解決|おすすめ弁護士|ランキング/iu },
-  { code: 'o9.forbidden_review_or_rating', pattern: /口コミ|★|☆|星評価|レビュー評価|\bstar\s*rating\b/i },
-  { code: 'o2.forbidden_fee_or_ad', pattern: /紹介料|報酬分配|広告枠|スポンサー掲載|有料プラン|ポイント付与|トークン報酬|referral\s*fee|sponsored\s*placement/i },
+  { code: 'o9.forbidden_comparative_claim', pattern: /No\.?\s*1|ナンバーワン|日本一|地域一番|業界トップ|実績豊富|圧倒的|最強|最高水準|おすすめ|人気順|マッチ度|ランキング/iu },
+  { code: 'o9.forbidden_result_guarantee', pattern: /必ず解決|すぐ解決|必ず勝てる|100%解決|確実解決/u },
+  { code: 'o9.forbidden_matching_or_referral', pattern: /マッチング|紹介|lawyer[- ]matching/iu },
+  { code: 'o9.forbidden_review_or_rating', pattern: /口コミ|★|☆|星評価|レビュー|\bstar\s*rating\b|\breviews?\b/i },
+  { code: 'o9.forbidden_scout_or_retainer', pattern: /スカウト|逆オファー|オンライン委任契約|電子委任契約締結|\bscout\b|\breverse[- ]offer\b/i },
+  { code: 'o2.forbidden_fee_or_ad', pattern: /報酬分配|広告枠|スポンサー掲載|有料プラン|ポイント付与|トークン報酬|referral\s*fee|sponsored\s*placement/i },
 ]);
 
 export const FORBIDDEN_ONBOARDING_FIELDS = Object.freeze([
@@ -145,7 +163,34 @@ export const FORBIDDEN_ONBOARDING_FIELDS = Object.freeze([
   'scrape_kanpo',
 ]);
 
-// ---- Dependency-free SHA-256 (matching apps/soudan/src/model.js) ----
+// URL query parameter names carrying consultation text or tags (Soudan -> Bengoshi firewall)
+export const BLOCKED_QUERY_PARAM_KEYS = Object.freeze([
+  'summary',
+  'memo',
+  'text',
+  'body',
+  'consultation',
+  'consult',
+  'draft',
+  'category',
+  'tag',
+  'tags',
+  'wish',
+  'deadline',
+  'client',
+  'clientName',
+  'client_name',
+  'counterparty',
+  'otherParty',
+  'other_party',
+  'evidence',
+  'evidence_manifest',
+  'q',
+  'query',
+  'soudan',
+]);
+
+// ---- Dependency-free SHA-256 ----
 const K256 = [
   0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
   0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
@@ -196,6 +241,43 @@ export function sha256Hex(input) {
   return [h0, h1, h2, h3, h4, h5, h6, h7].map(x => (x >>> 0).toString(16).padStart(8, '0')).join('');
 }
 
+// ---- Soudan -> Bengoshi URL Query Firewall ----
+// Rejects/ignores any URL query parameters carrying consultation text, tags, or draft fields.
+// Only allows clean hash routes (`#/...`) without query payload injection.
+export function sanitizeEntryLocation(search = '', hash = '') {
+  const rejectedParams = [];
+  const checkSearchParams = (raw) => {
+    if (!raw) return;
+    const qs = raw.startsWith('?') ? raw.slice(1) : raw;
+    if (!qs) return;
+    const params = new URLSearchParams(qs);
+    for (const key of params.keys()) {
+      const lower = key.toLowerCase();
+      // Only allow MCP embed explicit parentOrigin/sessionToken when on #/embed/mcp
+      const isEmbedRoute = String(hash || '').split('?')[0] === '#/embed/mcp';
+      if (isEmbedRoute && (key === 'parentOrigin' || key === 'sessionToken')) continue;
+      if (BLOCKED_QUERY_PARAM_KEYS.some(b => b.toLowerCase() === lower) || key.length > 0) {
+        rejectedParams.push(key);
+      }
+    }
+  };
+
+  checkSearchParams(String(search || ''));
+
+  let cleanHash = String(hash || '#/guide');
+  const qIndex = cleanHash.indexOf('?');
+  if (qIndex >= 0) {
+    checkSearchParams(cleanHash.slice(qIndex));
+    cleanHash = cleanHash.slice(0, qIndex) || '#/guide';
+  }
+
+  return Object.freeze({
+    cleanHash: cleanHash || '#/guide',
+    rejected: rejectedParams.length > 0,
+    rejectedParams: Object.freeze([...new Set(rejectedParams)]),
+  });
+}
+
 // ---- O9 Strict Neutrality Validators ----
 export function validateNeutralText(text, fieldName = 'text') {
   const problems = [];
@@ -228,7 +310,6 @@ export function validateLawyerRecord(record) {
     return [{ field: 'record', code: 'record.invalid' }];
   }
 
-  // Reject any forbidden O2/O9 keys immediately
   for (const key of Object.keys(record)) {
     if (FORBIDDEN_LAWYER_FIELDS.includes(key)) {
       problems.push({ field: key, code: 'o9.forbidden_field' });
@@ -245,21 +326,24 @@ export function validateLawyerRecord(record) {
     problems.push({ field: 'bar_association', code: 'lawyer.bar_association_required' });
   }
 
-  // Validate registration number shape if provided
   if (record.registration_number !== undefined && record.registration_number !== '') {
     if (typeof record.registration_number !== 'string' || !/^\d{4,7}$/.test(record.registration_number.trim())) {
       problems.push({ field: 'registration_number', code: 'lawyer.registration_number_invalid' });
     }
   }
 
-  // Validate prefecture code if provided
   if (record.prefecture_code !== undefined && record.prefecture_code !== '') {
     if (!Object.hasOwn(PREFECTURE_MAP, record.prefecture_code)) {
       problems.push({ field: 'prefecture_code', code: 'lawyer.prefecture_invalid' });
     }
   }
 
-  // Validate website URL if provided
+  if (record.email !== undefined && record.email !== '') {
+    if (typeof record.email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(record.email.trim())) {
+      problems.push({ field: 'email', code: 'lawyer.email_invalid' });
+    }
+  }
+
   if (record.website_url !== undefined && record.website_url !== '') {
     try {
       const u = new URL(record.website_url);
@@ -271,12 +355,10 @@ export function validateLawyerRecord(record) {
     }
   }
 
-  // Nichibenren URL must stay fixed when provided
   if (record.nichibenren_search_url !== undefined && record.nichibenren_search_url !== NICHIBENREN_SEARCH_URL) {
     problems.push({ field: 'nichibenren_search_url', code: 'o4.nichibenren_url_fixed' });
   }
 
-  // O9 text checks on all factual text fields & practice areas
   for (const field of ['name', 'office_name', 'address', 'initial_consultation_fee_note']) {
     if (typeof record[field] === 'string') {
       problems.push(...validateNeutralText(record[field], field));
@@ -308,7 +390,6 @@ export function validateLawyerRecord(record) {
     });
   }
 
-  // O4 verification object required on full records
   if (!record.verification || typeof record.verification !== 'object') {
     problems.push({ field: 'verification', code: 'o4.verification_required' });
   } else {
@@ -343,6 +424,7 @@ export function evaluateVerificationStatus(verification, nowIso = new Date().toI
       hardHold: true,
       liveSendAllowed: false,
       demoSendAllowed: false,
+      manualContactAllowed: false,
       reason: 'o4.verification_invalid',
       nichibenrenSearchUrl: NICHIBENREN_SEARCH_URL,
     });
@@ -375,6 +457,7 @@ export function evaluateVerificationStatus(verification, nowIso = new Date().toI
       hardHold: true,
       liveSendAllowed: false,
       demoSendAllowed: false,
+      manualContactAllowed: false,
       reason: 'o4.hard_hold_suspended_or_revoked',
       verifiedAt: verification.verified_at ?? null,
       expiresAt: verification.expires_at ?? null,
@@ -391,6 +474,7 @@ export function evaluateVerificationStatus(verification, nowIso = new Date().toI
       hardHold: true,
       liveSendAllowed: false,
       demoSendAllowed: false,
+      manualContactAllowed: false,
       reason: ttlExpired ? 'o4.hard_hold_ttl_expired' : 'o4.hard_hold_expired',
       verifiedAt: verification.verified_at ?? null,
       expiresAt: verification.expires_at ?? null,
@@ -407,6 +491,7 @@ export function evaluateVerificationStatus(verification, nowIso = new Date().toI
       hardHold: false,
       liveSendAllowed: false,
       demoSendAllowed: true,
+      manualContactAllowed: true,
       reason: 'o4.unverified_self_declared_blocks_live_send',
       verifiedAt: null,
       expiresAt: null,
@@ -422,6 +507,7 @@ export function evaluateVerificationStatus(verification, nowIso = new Date().toI
     hardHold: false,
     liveSendAllowed: true,
     demoSendAllowed: true,
+    manualContactAllowed: true,
     reason: 'o4.verified_manual_a2_active',
     verifiedAt: verification.verified_at,
     expiresAt: verification.expires_at,
@@ -443,6 +529,123 @@ export function canSendToLawyer(lawyer, { syntheticDemoMode = false, nowIso = ne
     return { allowed: false, hardHold: false, reason: status.reason, status };
   }
   return { allowed: true, hardHold: false, demoOnly: false, reason: status.reason, status };
+}
+
+// ---- Method A: Exact 7-line Manual Copy Contact (blocked on expired / suspended_or_revoked) ----
+export function formatManualContactText(lawyer, { nowIso = new Date().toISOString() } = {}) {
+  if (!lawyer || typeof lawyer !== 'object') {
+    throw Object.assign(new Error('lawyer-not-found'), { code: 'lawyer-not-found' });
+  }
+  const status = evaluateVerificationStatus(lawyer.verification, nowIso);
+  if (status.hardHold) {
+    throw Object.assign(new Error(status.reason), { code: status.reason, hardHold: true, status });
+  }
+  const lines = [
+    `氏名: ${lawyer.name || '—'}`,
+    `所属弁護士会: ${lawyer.bar_association || '—'}`,
+    `登録番号: ${lawyer.registration_number || '—'}`,
+    `法律事務所: ${lawyer.office_name || '—'}`,
+    `所在地: ${lawyer.address || '—'}`,
+    `連絡先: TEL ${lawyer.phone || '—'} / Email ${lawyer.email || '—'}`,
+    `公式URL・日弁連検索: ${lawyer.website_url || '—'} | ${NICHIBENREN_SEARCH_URL}`,
+  ];
+  return lines.join('\n');
+}
+
+export function formatDraftCopyText(draft, lawyer = null) {
+  const lines = [];
+  if (lawyer) {
+    lines.push(`宛先: ${lawyer.name}（${lawyer.bar_association}） / ${lawyer.office_name || '—'}`);
+  }
+  lines.push(`相談分野: ${draft?.category || 'other'}`);
+  lines.push(`相談者氏名: ${draft?.clientName || ''}`);
+  lines.push(`相談者連絡先: ${draft?.clientContact || ''}`);
+  lines.push(`相手方（利益相反確認用）: ${draft?.counterpartyName || ''}`);
+  lines.push(`相談の概要:\n${draft?.summary || ''}`);
+  if (draft?.wish) lines.push(`希望する対応:\n${draft.wish}`);
+  // Deadline is reproduced verbatim as user text — NEVER a countdown or remaining-days calculation.
+  if (draft?.deadline) lines.push(`期限・期日（記載そのまま）: ${draft.deadline}`);
+  if (Array.isArray(draft?.timeline) && draft.timeline.length) {
+    lines.push('時系列:\n' + draft.timeline.map(t => `- ${t.date ? `${t.date} ` : ''}${t.event}`).join('\n'));
+  }
+  if (Array.isArray(draft?.documents) && draft.documents.length) {
+    lines.push('関連書類:\n' + draft.documents.map(d => `- ${d}`).join('\n'));
+  }
+  if (Array.isArray(draft?.evidenceManifest) && draft.evidenceManifest.length) {
+    lines.push('証拠一覧（evidence_manifest）:\n' + draft.evidenceManifest.map((e, i) =>
+      `(${i + 1}) URL: ${e.url || '—'} | 投稿日時: ${e.posted_at || '—'} | 投稿者: ${e.author_name || '—'} (${e.author_id || '—'}) | 画像: ${e.shot_name || '—'} (${e.shot_size || 0} bytes) | 取得日時: ${e.captured_at || '—'} | SHA-256: ${e.sha256 || '—'}`
+    ).join('\n'));
+  }
+  return lines.join('\n\n');
+}
+
+// ---- 日弁連 業務広告規程 第11条（令和8年7月1日施行済み）3年保存エクスポート ----
+export function exportArt11Record(lawyer, editHistory = [], { nowIso = new Date().toISOString() } = {}) {
+  const problems = validateLawyerRecord(lawyer);
+  if (problems.length) {
+    throw Object.assign(new Error('invalid-lawyer-record'), { code: 'invalid-lawyer-record', problems });
+  }
+  const exportedDate = new Date(nowIso);
+  const retainUntilDate = new Date(exportedDate.getTime());
+  retainUntilDate.setUTCFullYear(retainUntilDate.getUTCFullYear() + ART11_RETENTION_YEARS);
+
+  const listingSnapshot = Object.freeze({
+    id: lawyer.id,
+    synthetic: Boolean(lawyer.synthetic),
+    name: lawyer.name,
+    name_kana: lawyer.name_kana || '',
+    bar_association: lawyer.bar_association,
+    registration_number: lawyer.registration_number || '',
+    office_name: lawyer.office_name || '',
+    prefecture_code: lawyer.prefecture_code || '',
+    address: lawyer.address || '',
+    phone: lawyer.phone || '',
+    fax: lawyer.fax || '',
+    email: lawyer.email || '',
+    website_url: lawyer.website_url || '',
+    practice_areas: [...(lawyer.practice_areas || [])],
+    career_facts: [...(lawyer.career_facts || [])],
+    languages: [...(lawyer.languages || [])],
+    legal_aid_houterasu: Boolean(lawyer.legal_aid_houterasu),
+    initial_consultation_fee_note: lawyer.initial_consultation_fee_note || '',
+    nichibenren_search_url: NICHIBENREN_SEARCH_URL,
+    verification: evaluateVerificationStatus(lawyer.verification, nowIso),
+  });
+
+  const snapshotSha256 = sha256Hex(JSON.stringify(listingSnapshot));
+  const normalizedHistory = Array.isArray(editHistory) && editHistory.length > 0
+    ? editHistory.map(h => Object.freeze({ ...h }))
+    : [Object.freeze({ timestamp: nowIso, action: 'initial_snapshot', snapshot_sha256: snapshotSha256 })];
+
+  const body = {
+    schema: 'bengoshi.art11.record.v1',
+    regulation: '日弁連 業務広告規程 第11条（令和8年7月1日施行）',
+    retention_years: ART11_RETENTION_YEARS,
+    exported_at: nowIso,
+    retain_until: retainUntilDate.toISOString(),
+    free_participation_terms: Object.freeze({
+      fee_jpy: 0,
+      model: 'none',
+      free_for_users: true,
+      free_for_lawyers: true,
+      referral_fee: false,
+      fee_splitting: false,
+      ads: false,
+      sponsored_placement: false,
+      paid_tier: false,
+      token_reward: false,
+      scout_or_reverse_offer: false,
+      online_retainer_signing: false,
+    }),
+    listing_snapshot: listingSnapshot,
+    snapshot_sha256: snapshotSha256,
+    edit_history: Object.freeze(normalizedHistory),
+  };
+
+  return Object.freeze({
+    ...body,
+    record_sha256: sha256Hex(JSON.stringify(body)),
+  });
 }
 
 export function validateOnboardingSubmission(submission) {
@@ -473,6 +676,7 @@ export function validateOnboardingSubmission(submission) {
   if (typeof submission.phone !== 'string' || !submission.phone.trim()) {
     problems.push({ field: 'phone', code: 'onboarding.office_contact_required' });
   }
+  problems.push(...validateNeutralText(submission.name || '', 'name'));
   problems.push(...validateNeutralText(submission.office_name || '', 'office_name'));
   return problems;
 }
@@ -556,10 +760,11 @@ export function filterAndSortLawyers(lawyers, {
   }));
 }
 
-// ---- Inquiry Draft & Soudan Memo Import (soudan.memo.export.v1) ----
+// ---- Inquiry Draft & Exact Soudan Memo Import (soudan.memo.export.v1) ----
 export function emptyInquiryDraft(lawyerId = '') {
   return {
     lawyerId,
+    template: SOUDAN_TEMPLATE_ID,
     category: 'other',
     clientName: '',
     clientContact: '',
@@ -569,6 +774,7 @@ export function emptyInquiryDraft(lawyerId = '') {
     wish: '',
     deadline: '',
     documents: [],
+    evidenceManifest: [],
     evidenceHashes: [],
     importedFromSoudan: false,
     importedAt: null,
@@ -584,15 +790,33 @@ export function validateInquiryDraft(draft) {
   if (typeof draft.clientContact !== 'string' || !draft.clientContact.trim()) problems.push('draft.client_contact_required');
   if (typeof draft.counterpartyName !== 'string' || !draft.counterpartyName.trim()) problems.push('draft.counterparty_required');
   if (typeof draft.summary !== 'string' || !draft.summary.trim() || [...draft.summary].length > 4000) problems.push('draft.summary_required');
-  if (Array.isArray(draft.evidenceHashes)) {
-    for (const item of draft.evidenceHashes) {
-      if (!item || typeof item !== 'object' || (item.sha256 && !/^[0-9a-f]{64}$/.test(item.sha256))) {
-        problems.push('draft.evidence_hash_invalid');
-        break;
-      }
+
+  const manifest = Array.isArray(draft.evidenceManifest)
+    ? draft.evidenceManifest
+    : Array.isArray(draft.evidenceHashes) ? draft.evidenceHashes : [];
+  for (const item of manifest) {
+    if (!item || typeof item !== 'object' || (item.sha256 && !/^[0-9a-f]{64}$/.test(item.sha256))) {
+      problems.push('draft.evidence_hash_invalid');
+      break;
     }
   }
   return problems;
+}
+
+export function normalizeEvidenceManifestRow(e) {
+  const rawSize = e.shot_size ?? e.shotSize ?? 0;
+  const shotSize = Number.isSafeInteger(rawSize) && rawSize >= 0 ? rawSize : 0;
+  const rawSha = typeof e.sha256 === 'string' ? e.sha256.trim() : '';
+  return {
+    url: typeof e.url === 'string' ? e.url.trim() : '',
+    posted_at: typeof (e.posted_at ?? e.postedAt) === 'string' ? (e.posted_at ?? e.postedAt).trim() : '',
+    author_name: typeof (e.author_name ?? e.authorName) === 'string' ? (e.author_name ?? e.authorName).trim() : '',
+    author_id: typeof (e.author_id ?? e.authorId) === 'string' ? (e.author_id ?? e.authorId).trim() : '',
+    shot_name: typeof (e.shot_name ?? e.shotName) === 'string' ? (e.shot_name ?? e.shotName).trim() : '',
+    shot_size: shotSize,
+    captured_at: typeof (e.captured_at ?? e.capturedAt) === 'string' ? (e.captured_at ?? e.capturedAt).trim() : '',
+    sha256: /^[0-9a-f]{64}$/.test(rawSha) ? rawSha : '',
+  };
 }
 
 export function parseSoudanMemoExport(input) {
@@ -608,13 +832,20 @@ export function parseSoudanMemoExport(input) {
     throw Object.assign(new Error('soudan.unsupported_schema'), { code: 'soudan.unsupported_schema' });
   }
   const src = obj.memo && typeof obj.memo === 'object' ? obj.memo : obj;
+  const template = obj.template ?? src.template ?? SOUDAN_TEMPLATE_ID;
+  if (template !== SOUDAN_TEMPLATE_ID) {
+    throw Object.assign(new Error('soudan.unsupported_template'), { code: 'soudan.unsupported_template' });
+  }
+
   const draft = emptyInquiryDraft('');
+  draft.template = template;
   draft.category = INQUIRY_CATEGORIES.includes(src.category) ? src.category : 'other';
-  draft.clientName = typeof src.name === 'string' ? src.name.trim() : '';
-  draft.clientContact = typeof src.contact === 'string' ? src.contact.trim() : '';
-  draft.counterpartyName = typeof src.otherParty === 'string' ? src.otherParty.trim() : '';
+  draft.clientName = typeof (src.name ?? src.client_name) === 'string' ? (src.name ?? src.client_name).trim() : '';
+  draft.clientContact = typeof (src.contact ?? src.client_contact) === 'string' ? (src.contact ?? src.client_contact).trim() : '';
+  draft.counterpartyName = typeof (src.otherParty ?? src.other_party) === 'string' ? (src.otherParty ?? src.other_party).trim() : '';
   draft.summary = typeof src.summary === 'string' ? src.summary.trim() : '';
   draft.wish = typeof src.wish === 'string' ? src.wish.trim() : '';
+  // Deadline kept strictly verbatim — zero countdown or remaining-days computation.
   draft.deadline = typeof src.deadline === 'string' ? src.deadline.trim() : '';
   draft.timeline = Array.isArray(src.timeline)
     ? src.timeline
@@ -625,17 +856,24 @@ export function parseSoudanMemoExport(input) {
   draft.documents = Array.isArray(src.documents)
     ? src.documents.filter(d => typeof d === 'string' && d.trim()).slice(0, 30).map(d => d.trim())
     : [];
-  draft.evidenceHashes = Array.isArray(src.evidence)
-    ? src.evidence
-        .filter(e => e && typeof e === 'object')
-        .slice(0, 30)
-        .map(e => ({
-          url: typeof e.url === 'string' ? e.url.trim() : '',
-          shotName: typeof e.shotName === 'string' ? e.shotName.trim() : '',
-          sha256: typeof e.sha256 === 'string' && /^[0-9a-f]{64}$/.test(e.sha256) ? e.sha256 : '',
-          capturedAt: typeof e.capturedAt === 'string' ? e.capturedAt.trim() : '',
-        }))
-    : [];
+
+  const rawManifest = Array.isArray(obj.evidence_manifest)
+    ? obj.evidence_manifest
+    : Array.isArray(src.evidence_manifest)
+      ? src.evidence_manifest
+      : Array.isArray(src.evidence)
+        ? src.evidence
+        : [];
+  draft.evidenceManifest = rawManifest
+    .filter(e => e && typeof e === 'object')
+    .slice(0, 30)
+    .map(normalizeEvidenceManifestRow);
+  draft.evidenceHashes = draft.evidenceManifest.map(e => ({
+    url: e.url,
+    shotName: e.shot_name,
+    sha256: e.sha256,
+    capturedAt: e.captured_at,
+  }));
   draft.importedFromSoudan = true;
   draft.importedAt = new Date().toISOString();
   return draft;
@@ -648,6 +886,10 @@ export function exportLawyerCard(lawyer, nowIso = new Date().toISOString()) {
     throw Object.assign(new Error('invalid-lawyer-record'), { code: 'invalid-lawyer-record', problems });
   }
   const evaluated = evaluateVerificationStatus(lawyer.verification, nowIso);
+  let manualContactText = null;
+  if (!evaluated.hardHold) {
+    manualContactText = formatManualContactText(lawyer, { nowIso });
+  }
   return Object.freeze({
     schema: 'bengoshi.lawyer.card.v1',
     exportedAt: nowIso,
@@ -665,6 +907,7 @@ export function exportLawyerCard(lawyer, nowIso = new Date().toISOString()) {
       address: lawyer.address || '',
       phone: lawyer.phone || '',
       fax: lawyer.fax || '',
+      email: lawyer.email || '',
       website_url: lawyer.website_url || '',
       practice_areas: [...(lawyer.practice_areas || [])],
       career_facts: [...(lawyer.career_facts || [])],
@@ -674,10 +917,11 @@ export function exportLawyerCard(lawyer, nowIso = new Date().toISOString()) {
       nichibenren_search_url: NICHIBENREN_SEARCH_URL,
     }),
     verification: evaluated,
+    manualContactText,
   });
 }
 
-// ---- Lawyer Conflict-Check HARD Gate (AWAI-3235) ----
+// ---- Lawyer Conflict-Check HARD Gate (AWAI-3235, strictly local preview / offline import) ----
 function normalizePartyName(name) {
   return String(name || '')
     .normalize('NFKC')

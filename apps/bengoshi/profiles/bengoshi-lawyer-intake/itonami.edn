@@ -1,44 +1,42 @@
 {:itonami/schema "cloud.itonami.profile.v2"
  :profile/id "bengoshi-lawyer-intake"
- :profile/description "Lawyer-side factual profile manager and AWAI-3235 conflict-checked E2EE intake assistant (network.itonami.bengoshi)"
+ :profile/description "Bengoshi — lawyer-side factual profile validator, Art. 11 exporter, and local AWAI-3235 conflict-checked intake preview (network.itonami.bengoshi)"
  :profile/hermes-compatible true
  :agent/kind :dapp-bot
  :org/world :awai :org/path [:etzhayyim :awai :network-awai]
  :org/github "network-awai" :org/unit :apps :awai/business :non-profit-zero-fee
  :invocation :on-demand
  :runtime {:engine :itonami-agent :scheduler :itonami}
- :placement {:mode :local :order [:local] :inference-rail :murakumo}
- :inference {:rails [:murakumo]
-             :authorities ["murakumo.cloud"]
-             :endpoint "https://murakumo.cloud/v1/chat/completions"
-             :non-retention true
-             :no-training true
-             :consent :each-operation
+ :placement {:mode :local :order [:local] :inference-rail :mishima}
+ :inference {:rails [:mishima]
+             :authorities ["api.murakumo.cloud"]
              :deny-hosts ["openrouter.ai"]}
  :state {:workspace :device-local :conflict-ledger :device-local-only :secrets :never-leave-device}
- :ids {:app-id "network.itonami.bengoshi" :repo "network-awai/awai-os"}
+ :ids {:app-id "network.itonami.bengoshi" :repo "network-awai/awai-os" :yakuwari/id "bengoshi-lawyer-intake"}
  :policy
- {:o2-zero-fee {:model :none :referral-fee false :fee-splitting false :ads false :token-reward false}
+ {:o2-zero-fee {:model :none :fee-jpy 0 :referral-fee false :fee-splitting false :ads false :token-reward false}
   :o4-verification {:method :manual-a2 :ttl-days 30 :id-photo-only false :scraping false}
-  :o8-residency {:firm-to-firm-forwarding false :e2ee-on-device true}
-  :o9-neutrality {:forbid-terms ["専門" "専門家" "勝訴率" "解決件数" "No.1" "実績豊富" "口コミ" "紹介料"]}
+  :o8-residency {:firm-to-firm-forwarding false :server-relay false :offline-preview-only true}
+  :art11-preservation {:retention-years 3 :fee-jpy 0}
   :awai-3235-conflict-gate {:hard-gate true
                             :header-only-before-clear true
                             :require-local-ledger-check true
                             :require-lawyer-confirmation-receipt true
                             :block-decryption-on-conflict true}}
- :authority {:default-decision :blocked}
+ :authority {:default-decision :blocked :source :yakuwari :ref "yakuwari.edn"}
  :capabilities
- [{:capability :lawyer.profile.update :decision :autonomous :note "Local factual profile update; O9 validator hard-blocks prohibited terms"}
+ [{:capability :lawyer.profile.update :decision :autonomous :note "Local factual profile update; expanded O9 validator hard-blocks prohibited wording"}
+  {:capability :lawyer.export_art11_record :decision :autonomous :note "Export Art. 11 3-year preservation snapshot + history + fee_jpy=0 locally"}
   {:capability :intake.list :decision :autonomous :note "Exposes minimal conflict-check headers only; never plaintext body"}
   {:capability :intake.conflict_check :decision :autonomous :note "Runs local ledger check and records receipt digest"}
-  {:capability :intake.decide :decision :each-operation-consent :note "HARD conflict-check gate required before reveal; E2EE reply requires per-op consent"}
+  {:capability :intake.decide :decision :approval-required :note "HARD conflict-check gate required before local reveal; zero server relay"}
   {:capability :audit.list :decision :autonomous :note "Read local append-only audit log"}
-  {:capability :inference.assist :decision :each-operation-consent :note "Optional murakumo.cloud clerical structuring only; never sent prior to conflict clearance"}
   {:capability :decrypt_before_conflict_clear :decision :blocked :note "HARD gate AWAI-3235"}
-  {:capability :firm_to_firm_forwarding :decision :blocked :note "Strictly prohibited (O8 option C)"}
+  {:capability :firm_to_firm_forwarding :decision :blocked :note "Strictly prohibited (O8)"}
   {:capability :id_photo_only_onboarding :decision :blocked :note "Strictly prohibited (O4)"}
   {:capability :referral_fee_or_ad_placement :decision :blocked :note "Strictly prohibited (O2=none)"}
+  {:capability :scout_or_reverse_offer :decision :blocked :note "Strictly prohibited (O9)"}
+  {:capability :online_retainer_signing :decision :blocked :note "Strictly prohibited (O9)"}
   {:capability :spend :decision :blocked}
   {:capability :transfer_funds :decision :blocked}
   {:capability :export_private_keys :decision :blocked}]

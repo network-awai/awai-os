@@ -7,7 +7,7 @@ const ORIGIN = 'https://host.itonami.app';
 const TOKEN = 'sep1865-test-session-token';
 const NOW = '2026-11-27T09:00:00Z';
 
-test('APP-01: rejects tools/list and tools/call prior to ui/initialize + ui/notifications/initialized', () => {
+test('APP-01: rejects tools/list and tools/call prior to ui/initialize + ui/notifications/initialized and marks POC/Draft', () => {
   const bridge = createMcpEmbedBridge({ allowedOrigin: ORIGIN, expectedSessionToken: TOKEN, now: () => NOW });
 
   const preCall = bridge.handleMessage({
@@ -17,12 +17,13 @@ test('APP-01: rejects tools/list and tools/call prior to ui/initialize + ui/noti
   assert.equal(preCall.error.code, -32000);
   assert.equal(preCall.error.message, 'not-initialized');
 
-  // After ui/initialize but BEFORE ui/notifications/initialized -> still rejected
   const initResp = bridge.handleMessage({
     origin: ORIGIN,
     data: { jsonrpc: '2.0', id: 2, method: 'ui/initialize', params: { sessionToken: TOKEN } },
   });
   assert.equal(initResp.result.readOnly, true);
+  assert.equal(initResp.result.status, 'poc-draft');
+  assert.equal(initResp.result.formalAwai4143Claim, false);
   assert.equal(bridge.getPhase(), 'initializing');
 
   const midCall = bridge.handleMessage({
@@ -54,7 +55,7 @@ test('APP-02: rejects wildcard origin configuration, untrusted origin, invalid J
   assert.equal(badMsg.error.code, -32600);
 });
 
-test('APP-03 & APP-04: allows ONLY read-only directory.search and lawyer.get on synthetic fixtures and rejects all write ops', () => {
+test('APP-01 fallback + APP-03 & APP-04: non-UI content & structuredContent include Art. 9 + neutral disclaimer + agent guard, synthetic only, read-only', () => {
   const replies = [];
   const bridge = createMcpEmbedBridge({
     allowedOrigin: ORIGIN,
@@ -71,22 +72,30 @@ test('APP-03 & APP-04: allows ONLY read-only directory.search and lawyer.get on 
   bridge.handleMessage({ origin: ORIGIN, data: { jsonrpc: '2.0', method: 'ui/notifications/initialized', params: { sessionToken: TOKEN } } });
   assert.equal(bridge.getPhase(), 'ready');
 
-  // Read-only directory.search works and excludes non-synthetic records & private keys
   const search = bridge.handleMessage({
     origin: ORIGIN,
     data: { jsonrpc: '2.0', id: 2, method: 'tools/call', params: { sessionToken: TOKEN, name: 'directory.search', arguments: { sort: 'kana_asc' } } },
   });
   assert.equal(search.result.syntheticOnly, true);
   assert.equal(search.result.total, 6);
+  assert.equal(search.result.structuredContent.art9FieldsPresent, true);
+  assert.ok(Array.isArray(search.result.content) && search.result.content[0].type === 'text');
+  assert.match(search.result.content[0].text, /氏名:/);
+  assert.match(search.result.content[0].text, /所属弁護士会:/);
+  assert.match(search.result.content[0].text, /プレビュー版/);
+  assert.match(search.result.content[0].text, /\[AGENT_GUARD\]/);
   assert.ok(!search.result.lawyers.some(l => l.id === 'real-non-synthetic'));
   assert.ok(!JSON.stringify(search).includes('SECRET'));
 
-  // Read-only lawyer.get works on synthetic fixture and rejects non-synthetic
   const got = bridge.handleMessage({
     origin: ORIGIN,
     data: { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { sessionToken: TOKEN, name: 'lawyer.get', arguments: { lawyerId: 'syn-lawyer-990001' } } },
   });
   assert.equal(got.result.lawyer.registration_number, '990001');
+  assert.equal(got.result.structuredContent.art9FieldsPresent, true);
+  assert.match(got.result.content[0].text, /佐藤 遥/);
+  assert.match(got.result.content[0].text, /大阪弁護士会/);
+  assert.match(got.result.content[0].text, /\[AGENT_GUARD\]/);
 
   const nonSyn = bridge.handleMessage({
     origin: ORIGIN,
@@ -94,7 +103,6 @@ test('APP-03 & APP-04: allows ONLY read-only directory.search and lawyer.get on 
   });
   assert.equal(nonSyn.error.code, -32004);
 
-  // Every write / external / intake operation MUST be rejected
   assert.deepEqual(MCP_EMBED_READ_ONLY_TOOLS, ['directory.search', 'lawyer.get']);
   for (const forbidden of ['inquiry.send', 'inquiry.draft', 'lawyer.profile.update', 'intake.list', 'intake.decide', 'inference.assist', 'audit.list']) {
     const res = bridge.handleMessage({
@@ -105,7 +113,6 @@ test('APP-03 & APP-04: allows ONLY read-only directory.search and lawyer.get on 
     assert.equal(res.error.message, 'unauthorized-write-or-disallowed-operation');
   }
 
-  // Every postReply targetOrigin must equal explicit ORIGIN, never '*'
   assert.ok(replies.length > 0);
   assert.ok(replies.every(x => x.target === ORIGIN));
 });

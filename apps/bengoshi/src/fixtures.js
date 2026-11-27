@@ -1,7 +1,7 @@
 // Signed read-only local synthetic fixture catalog for Bengoshi (network.itonami.bengoshi).
-// Clearly marked synthetic sample lawyers (fictional names & registration numbers 990001..990006)
+// 100% synthetic sample lawyers (`synthetic: true`, `.invalid` domains, fictional registration numbers 990001..990006)
 // covering all 4 O4 verification states so QA and automated tests can exercise every state & HARD hold.
-// Zero real personal data; zero private keys committed to source.
+// Zero real lawyers; zero real personal data; zero private keys committed to source.
 
 import { NICHIBENREN_SEARCH_URL } from './legal-notices.js';
 import { sha256Hex, VERIFICATION_METHOD_A2 } from './model.js';
@@ -28,7 +28,7 @@ const RAW_SYNTHETIC_LAWYERS = [
     id: 'syn-lawyer-990001',
     synthetic: true,
     tenant_id: 'default-tenant',
-    name: '佐藤 遥（合成サンプル）',
+    name: '佐藤 遥（架空サンプル）',
     name_kana: 'さとう はるか',
     bar_association: '大阪弁護士会',
     registration_number: '990001',
@@ -37,9 +37,10 @@ const RAW_SYNTHETIC_LAWYERS = [
     address: '大阪府大阪市北区中之島0-0-0（架空住所）',
     phone: '06-0000-0001',
     fax: '06-0000-0011',
-    website_url: 'https://example.invalid/lawyer-990001',
+    email: 'sample-990001@office-990001.example.invalid',
+    website_url: 'https://office-990001.example.invalid/',
     practice_areas: ['民事一般', '労働', '消費者問題'],
-    career_facts: ['2018年 司法修習修了・弁護士登録（合成データ）', '2022年 サンプル中之島法律事務所開設（合成データ）'],
+    career_facts: ['2018年 司法修習修了・弁護士登録（架空データ）', '2022年 サンプル中之島法律事務所開設（架空データ）'],
     languages: ['日本語', 'English'],
     legal_aid_houterasu: true,
     initial_consultation_fee_note: '初回30分5,500円（法テラス利用要件を満たす場合は無料相談制度あり）',
@@ -58,7 +59,7 @@ const RAW_SYNTHETIC_LAWYERS = [
     id: 'syn-lawyer-990002',
     synthetic: true,
     tenant_id: 'default-tenant',
-    name: '青木 匠（合成サンプル）',
+    name: '青木 匠（架空サンプル）',
     name_kana: 'あおき たくみ',
     bar_association: '東京弁護士会',
     registration_number: '990002',
@@ -67,9 +68,10 @@ const RAW_SYNTHETIC_LAWYERS = [
     address: '東京都千代田区霞が関0-0-0（架空住所）',
     phone: '03-0000-0002',
     fax: '03-0000-0012',
-    website_url: 'https://example.invalid/lawyer-990002',
+    email: 'sample-990002@office-990002.example.invalid',
+    website_url: 'https://office-990002.example.invalid/',
     practice_areas: ['家事・相続', '不動産・建築', 'インターネット関係'],
-    career_facts: ['2015年 弁護士登録（合成データ）', '2020年 東京弁護士会 民事関係委員会委員（合成データ）'],
+    career_facts: ['2015年 弁護士登録（架空データ）', '2020年 東京弁護士会 民事関係委員会委員（架空データ）'],
     languages: ['日本語'],
     legal_aid_houterasu: true,
     initial_consultation_fee_note: '初回相談30分無料（平日10:00-17:00・要予約）',
@@ -88,7 +90,7 @@ const RAW_SYNTHETIC_LAWYERS = [
     id: 'syn-lawyer-990003',
     synthetic: true,
     tenant_id: 'cross-firm-tenant',
-    name: '渡辺 裕子（合成サンプル）',
+    name: '渡辺 裕子（架空サンプル）',
     name_kana: 'わたなべ ゆうこ',
     bar_association: '札幌弁護士会',
     registration_number: '990003',
@@ -97,9 +99,10 @@ const RAW_SYNTHETIC_LAWYERS = [
     address: '北海道札幌市中央区大通西0-0-0（架空住所）',
     phone: '011-000-0003',
     fax: '011-000-0013',
-    website_url: 'https://example.invalid/lawyer-990003',
+    email: 'sample-990003@office-990003.example.invalid',
+    website_url: 'https://office-990003.example.invalid/',
     practice_areas: ['企業法務・契約', '知的財産', '民事一般'],
-    career_facts: ['2012年 弁護士登録（合成データ）', '2019年 サンプル大通法律事務所パートナー（合成データ）'],
+    career_facts: ['2012年 弁護士登録（架空データ）', '2019年 サンプル大通法律事務所パートナー（架空データ）'],
     languages: ['日本語', 'English', '中文'],
     legal_aid_houterasu: false,
     initial_consultation_fee_note: '初回60分11,000円（税込）',
@@ -118,7 +121,7 @@ const RAW_SYNTHETIC_LAWYERS = [
     id: 'syn-lawyer-990004',
     synthetic: true,
     tenant_id: 'default-tenant',
-    name: '高橋 健一（合成サンプル・未照合）',
+    name: '高橋 健一（架空サンプル・未照合）',
     name_kana: 'たかはし けんいち',
     bar_association: '福岡県弁護士会',
     registration_number: '990004',
@@ -127,9 +130,10 @@ const RAW_SYNTHETIC_LAWYERS = [
     address: '福岡県福岡市中央区天神0-0-0（架空住所）',
     phone: '092-000-0004',
     fax: '',
-    website_url: '',
+    email: 'sample-990004@office-990004.example.invalid',
+    website_url: 'https://office-990004.example.invalid/',
     practice_areas: ['債務整理', '交通事故'],
-    career_facts: ['2024年 自己申告登録（手動照合未完了・合成データ）'],
+    career_facts: ['2024年 自己申告登録（手動照合未完了・架空データ）'],
     languages: ['日本語'],
     legal_aid_houterasu: true,
     initial_consultation_fee_note: '初回30分5,500円（自己申告）',
@@ -148,7 +152,7 @@ const RAW_SYNTHETIC_LAWYERS = [
     id: 'syn-lawyer-990005',
     synthetic: true,
     tenant_id: 'default-tenant',
-    name: '中村 美咲（合成サンプル・期限切れ）',
+    name: '中村 美咲（架空サンプル・期限切れ）',
     name_kana: 'なかむら みさき',
     bar_association: '愛知県弁護士会',
     registration_number: '990005',
@@ -157,9 +161,10 @@ const RAW_SYNTHETIC_LAWYERS = [
     address: '愛知県名古屋市中区栄0-0-0（架空住所）',
     phone: '052-000-0005',
     fax: '',
-    website_url: '',
+    email: 'sample-990005@office-990005.example.invalid',
+    website_url: 'https://office-990005.example.invalid/',
     practice_areas: ['家事・相続', '民事一般'],
-    career_facts: ['2016年 弁護士登録（合成データ・手動照合有効期限切れテスト用）'],
+    career_facts: ['2016年 弁護士登録（架空データ・手動照合有効期限切れテスト用）'],
     languages: ['日本語'],
     legal_aid_houterasu: false,
     initial_consultation_fee_note: '初回30分5,500円',
@@ -178,7 +183,7 @@ const RAW_SYNTHETIC_LAWYERS = [
     id: 'syn-lawyer-990006',
     synthetic: true,
     tenant_id: 'default-tenant',
-    name: '小林 誠（合成サンプル・業務停止）',
+    name: '小林 誠（架空サンプル・業務停止）',
     name_kana: 'こばやし まこと',
     bar_association: '神奈川県弁護士会',
     registration_number: '990006',
@@ -187,9 +192,10 @@ const RAW_SYNTHETIC_LAWYERS = [
     address: '神奈川県横浜市中区尾上町0-0-0（架空住所）',
     phone: '045-000-0006',
     fax: '',
-    website_url: '',
+    email: 'sample-990006@office-990006.example.invalid',
+    website_url: 'https://office-990006.example.invalid/',
     practice_areas: ['刑事弁護', '民事一般'],
-    career_facts: ['2014年 弁護士登録（合成データ・業務停止/退会HARD HOLDテスト用）'],
+    career_facts: ['2014年 弁護士登録（架空データ・業務停止/退会HARD HOLDテスト用）'],
     languages: ['日本語'],
     legal_aid_houterasu: false,
     initial_consultation_fee_note: '現在受付停止中（テスト用）',
@@ -217,10 +223,18 @@ export const SYNTHETIC_CATALOG_BUNDLE = Object.freeze({
 
 export function verifySyntheticCatalogIntegrity(bundle = SYNTHETIC_CATALOG_BUNDLE) {
   const actual = sha256Hex(JSON.stringify(bundle.lawyers));
+  const allSynthetic = Array.isArray(bundle.lawyers) && bundle.lawyers.every(l => l.synthetic === true);
+  const allInvalidDomains = Array.isArray(bundle.lawyers) && bundle.lawyers.every(l => {
+    const webOk = !l.website_url || new URL(l.website_url).hostname.endsWith('.invalid');
+    const mailOk = !l.email || l.email.endsWith('.invalid');
+    return webOk && mailOk;
+  });
   return {
-    ok: actual === bundle.digestSha256 && bundle.synthetic === true,
+    ok: actual === bundle.digestSha256 && bundle.synthetic === true && allSynthetic && allInvalidDomains,
     expected: bundle.digestSha256,
     actual,
+    allSynthetic,
+    allInvalidDomains,
   };
 }
 
@@ -230,23 +244,23 @@ export const DEFAULT_LOCAL_CONFLICT_LEDGER = Object.freeze([
     id: 'ledger-001',
     partyName: 'サンプル商事株式会社',
     role: 'existing_client',
-    matterRef: '2026-C-0012（顧問先・合成データ）',
+    matterRef: '2026-C-0012（顧問先・架空データ）',
   }),
   Object.freeze({
     id: 'ledger-002',
     partyName: '架空不動産株式会社',
     role: 'adverse_party',
-    matterRef: '2025-L-0048（係争相手方・合成データ）',
+    matterRef: '2025-L-0048（係争相手方・架空データ）',
   }),
 ]);
 
 // Build encrypted QA inbox items on-device using a runtime-generated ephemeral keypair.
-// Zero private keys are stored in source code.
+// Strictly local preview / offline import — ZERO platform server relay.
 export async function buildSyntheticQaIntakeRecords(lawyerId, recipientPublicKeyJwk) {
   const clearHeader = {
     inquiryId: 'inq-qa-clear-001',
-    clientName: '山田 花子（合成相談者）',
-    counterpartyName: '無関係建設株式会社（合成相手方）',
+    clientName: '山田 花子（架空相談者）',
+    counterpartyName: '無関係建設株式会社（架空相手方）',
     category: 'work',
     receivedAt: '2026-11-27T01:00:00Z',
   };
@@ -255,19 +269,19 @@ export async function buildSyntheticQaIntakeRecords(lawyerId, recipientPublicKey
     recipientPublicKeyJwk,
     conflictHeader: clearHeader,
     plaintext: {
-      summary: '未払い残業代の請求方法について初回相談を希望します（合成QAデータ）。',
+      summary: '未払い残業代の請求方法について初回相談を希望します（架空QAデータ）。',
       clientContact: 'hanako.sample@example.invalid',
       wish: '法的手続の見通しと必要書類を確認したい。',
       deadline: '2026-12-15',
-      timeline: [{ date: '2026-10-31', event: '退職（合成データ）' }],
+      timeline: [{ date: '2026-10-31', event: '退職（架空データ）' }],
       documents: ['雇用契約書写し', '勤怠記録'],
-      evidenceHashes: [],
+      evidenceManifest: [],
     },
   });
 
   const conflictHeader = {
     inquiryId: 'inq-qa-conflict-002',
-    clientName: '鈴木 一郎（合成相談者）',
+    clientName: '鈴木 一郎（架空相談者）',
     counterpartyName: 'サンプル商事株式会社',
     category: 'contract',
     receivedAt: '2026-11-27T02:00:00Z',
@@ -277,13 +291,13 @@ export async function buildSyntheticQaIntakeRecords(lawyerId, recipientPublicKey
     recipientPublicKeyJwk,
     conflictHeader,
     plaintext: {
-      summary: '機密本文：利益相反がある場合は復号・閲覧されてはならない本文（合成QAデータ）。',
+      summary: '機密本文：利益相反がある場合は復号・閲覧されてはならない本文（架空QAデータ）。',
       clientContact: 'ichiro.sample@example.invalid',
       wish: '取引契約の解除を相談したい。',
       deadline: '',
       timeline: [],
       documents: ['業務委託契約書'],
-      evidenceHashes: [],
+      evidenceManifest: [],
     },
   });
 

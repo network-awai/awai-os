@@ -1,7 +1,12 @@
 // Canonical shared `noun.verb` operations for Bengoshi (network.itonami.bengoshi).
-// Used identically by UI, MCP server/adapter, and ACP adapter.
-// Enforces O2 (zero-fee), O4 (verification HARD hold), O8 (local residency & E2EE & each-operation consent),
-// O9 (strict neutrality), and AWAI-3235 (lawyer conflict-check HARD gate).
+// Used identically by UI and MCP POC server/adapter.
+// Enforces:
+// - O2 (zero-fee, fee_jpy: 0)
+// - O4 (verification HARD holds on expired / suspended_or_revoked)
+// - O8 (100% device-local, zero external network calls, zero server relay, Method A primary)
+// - O9 (expanded strict neutrality, anti-scout, no online retainer signing)
+// - Art. 11 3-year preservation export (`lawyer.export_art11_record`)
+// - AWAI-3235 (lawyer conflict-check HARD gate, strictly local preview / offline import)
 
 import {
   ZERO_FEE_POLICY,
@@ -11,20 +16,16 @@ import {
   validateLawyerRecord,
   validateInquiryDraft,
   parseSoudanMemoExport,
+  formatManualContactText,
+  exportArt11Record,
   extractConflictHeader,
   runLocalConflictCheck,
   canRevealInquiryBody,
   appendAuditEntry,
   verifyAuditChain,
+  sha256Hex,
 } from './model.js';
 import { encryptEnvelope, decryptEnvelope } from './crypto.js';
-import {
-  MURAKUMO_ORIGIN,
-  DEFAULT_MURAKUMO_PATH,
-  INFERENCE_SELECTOR,
-  INQUIRY_SEND_SELECTOR,
-  INQUIRY_REPLY_SELECTOR,
-} from './runtime-descriptor.js';
 import { SYNTHETIC_CATALOG_BUNDLE, DEFAULT_LOCAL_CONFLICT_LEDGER } from './fixtures.js';
 import { getLegalNotices } from './legal-notices.js';
 
@@ -32,19 +33,21 @@ export const CANONICAL_OPERATIONS = Object.freeze([
   'directory.search',
   'lawyer.get',
   'qualification.verify_status',
+  'contact.format_manual',
   'inquiry.import_memo',
   'inquiry.draft',
   'inquiry.send',
   'inquiry.list',
   'lawyer.profile.update',
+  'lawyer.export_art11_record',
   'intake.list',
   'intake.conflict_check',
   'intake.decide',
-  'inference.assist',
   'audit.list',
 ]);
 
 export const PROHIBITED_OPERATIONS = Object.freeze([
+  'inference.assist',
   'referral.fee',
   'referral.commission',
   'fee.split',
@@ -54,6 +57,10 @@ export const PROHIBITED_OPERATIONS = Object.freeze([
   'lawyer.recommend',
   'review.submit',
   'rating.submit',
+  'scout.send',
+  'offer.reverse',
+  'retainer.sign_online',
+  'contract.sign_online',
   'forward.firm_to_firm',
   'inquiry.forward_to_firm',
   'token.reward',
@@ -66,14 +73,12 @@ export function createInitialLocalState() {
       directoryScope: 'tenant_only',
       tenantId: 'default-tenant',
       syntheticDemoMode: false,
-      murakumoPath: DEFAULT_MURAKUMO_PATH,
-      // Relay is staged/fail-closed by default until an independently verified endpoint is configured.
-      relayEndpoint: null,
       locale: 'ja',
     },
     draft: null,
     sentInquiries: [],
     lawyerProfile: null,
+    lawyerEditHistory: [],
     conflictLedger: [...DEFAULT_LOCAL_CONFLICT_LEDGER],
     intakeRecords: [],
     auditLog: [],
@@ -83,7 +88,6 @@ export function createInitialLocalState() {
 export function createOperationsEngine({
   catalog = SYNTHETIC_CATALOG_BUNDLE.lawyers,
   state = createInitialLocalState(),
-  broker = null,
   getPrivateKeyJwk = null,
   now = () => new Date().toISOString(),
   onStateChange = null,
@@ -125,7 +129,7 @@ export function createOperationsEngine({
 
   async function execute(operationName, params = {}, { actor = 'ui' } = {}) {
     if (PROHIBITED_OPERATIONS.includes(operationName)) {
-      audit(actor, operationName, 'rejected', 'Prohibited by O2/O8/O9 structural invariant');
+      audit(actor, operationName, 'rejected', 'Prohibited by Legal addendum / O2 / O8 / O9 structural invariant');
       await notifyChange();
       throw Object.assign(new Error('operation-prohibited-by-invariant'), { code: 'operation-prohibited-by-invariant', operation: operationName });
     }
@@ -149,7 +153,7 @@ export function createOperationsEngine({
           tenantId: params.tenantId ?? state.settings.tenantId,
           nowIso,
         });
-        audit(actor, 'directory.search', 'ok', `Local neutral search (${results.length} results)`, {
+        audit(actor, 'directory.search', 'ok', `Local neutral search (${results.length} synthetic results)`, {
           sort: params.sort ?? 'kana_asc',
           directoryScope: params.directoryScope ?? state.settings.directoryScope,
           localOnly: true,
@@ -158,6 +162,7 @@ export function createOperationsEngine({
         return {
           policy: ZERO_FEE_POLICY,
           localOnly: true,
+          syntheticOnly: results.every(l => l.synthetic === true),
           directoryScope: params.directoryScope ?? state.settings.directoryScope,
           sort: params.sort ?? 'kana_asc',
           total: results.length,
@@ -192,13 +197,35 @@ export function createOperationsEngine({
         };
       }
 
+      case 'contact.format_manual': {
+        const lawyer = findLawyer(params.lawyerId ?? params.id);
+        if (!lawyer) throw Object.assign(new Error('lawyer-not-found'), { code: 'lawyer-not-found' });
+        const text = formatManualContactText(lawyer, { nowIso });
+        audit(actor, 'contact.format_manual', 'ok', 'Formatted 7-line Method A manual contact text locally', {
+          lawyerId: lawyer.id,
+          method: 'method_a_direct',
+        });
+        await notifyChange();
+        return {
+          method: 'method_a_direct',
+          serverRelayUsed: false,
+          lawyerId: lawyer.id,
+          lineCount: text.split('\n').length,
+          text,
+          websiteUrl: lawyer.website_url || '',
+          mailto: lawyer.email ? `mailto:${lawyer.email}` : '',
+          tel: lawyer.phone ? `tel:${lawyer.phone}` : '',
+        };
+      }
+
       case 'inquiry.import_memo': {
         const imported = parseSoudanMemoExport(params.json ?? params.memo);
         if (params.lawyerId) imported.lawyerId = params.lawyerId;
         state.draft = imported;
         audit(actor, 'inquiry.import_memo', 'ok', 'Imported soudan.memo.export.v1 locally', {
+          template: imported.template,
           category: imported.category,
-          evidenceCount: imported.evidenceHashes.length,
+          evidenceCount: imported.evidenceManifest.length,
         });
         await notifyChange();
         return { draft: imported };
@@ -216,6 +243,15 @@ export function createOperationsEngine({
       }
 
       case 'inquiry.send': {
+        // Method A is primary (zero platform server relay).
+        // Live relay is structurally disabled (`relay-disabled-method-a-only`);
+        // offline local E2EE envelope creation is available strictly on-device for local preview.
+        if (params.requireLiveRelay === true) {
+          audit(actor, 'inquiry.send', 'blocked', 'Server relay disabled: Method A direct contact only');
+          await notifyChange();
+          throw Object.assign(new Error('relay-disabled-method-a-only'), { code: 'relay-disabled-method-a-only' });
+        }
+
         const draft = params.draft ?? state.draft;
         const problems = validateInquiryDraft(draft);
         if (problems.length) {
@@ -224,7 +260,7 @@ export function createOperationsEngine({
         const lawyer = findLawyer(draft.lawyerId);
         if (!lawyer) throw Object.assign(new Error('lawyer-not-found'), { code: 'lawyer-not-found' });
 
-        // O4 verification & HARD hold gate (enforced BEFORE consent or crypto)
+        // O4 verification & HARD hold gate
         const demoMode = Boolean(params.syntheticDemoMode ?? state.settings.syntheticDemoMode);
         const gate = canSendToLawyer(lawyer, { syntheticDemoMode: demoMode, nowIso });
         if (!gate.allowed) {
@@ -241,7 +277,7 @@ export function createOperationsEngine({
           throw Object.assign(new Error('lawyer-e2ee-key-missing'), { code: 'lawyer-e2ee-key-missing' });
         }
 
-        // O8 E2EE encryption strictly on client BEFORE consent/dispatch
+        // O8 E2EE encryption strictly on client (offline preview envelope; zero external transmission)
         const inquiryId = params.inquiryId || `inq-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
         const conflictHeader = {
           inquiryId,
@@ -261,43 +297,9 @@ export function createOperationsEngine({
             deadline: (draft.deadline || '').trim(),
             timeline: draft.timeline || [],
             documents: draft.documents || [],
-            evidenceHashes: draft.evidenceHashes || [],
+            evidenceManifest: draft.evidenceManifest || [],
           },
         });
-
-        // Relay staged / fail-closed check: live relay fails closed unless verified endpoint configured
-        const relayConfigured = Boolean(state.settings.relayEndpoint);
-        const dryRun = params.dryRun !== false || !relayConfigured;
-        if (params.requireLiveRelay === true && !relayConfigured) {
-          audit(actor, 'inquiry.send', 'blocked', 'Relay staged/disabled (fail-closed)', { lawyerId: lawyer.id });
-          await notifyChange();
-          throw Object.assign(new Error('relay-staged-disabled'), { code: 'relay-staged-disabled' });
-        }
-
-        // Canonical broker each-operation consent gate
-        if (!broker) {
-          throw Object.assign(new Error('canonical-broker-required'), { code: 'canonical-broker-required' });
-        }
-
-        let dispatchResult;
-        try {
-          dispatchResult = await broker.invoke(INQUIRY_SEND_SELECTOR, {
-            inquiryId,
-            recipientLawyerId: lawyer.id,
-            recipientName: lawyer.name,
-            verificationStatus: gate.status.effectiveStatus,
-            relayStatus: relayConfigured ? 'configured' : 'staged_dry_run_only',
-            dryRun,
-            envelope,
-          });
-        } catch (err) {
-          audit(actor, 'inquiry.send', 'denied', 'Consent denied or broker blocked; 0 bytes sent', {
-            lawyerId: lawyer.id,
-            error: err?.message || 'denied',
-          });
-          await notifyChange();
-          throw err;
-        }
 
         const record = {
           inquiryId,
@@ -306,22 +308,23 @@ export function createOperationsEngine({
           barAssociation: lawyer.bar_association,
           verificationStatus: gate.status.effectiveStatus,
           sentAt: nowIso,
-          dryRun,
-          relayStatus: relayConfigured ? 'dispatched' : 'staged_local_dry_run',
+          dryRun: true,
+          serverRelayUsed: false,
+          relayStatus: 'offline_local_preview_only',
           conflictHeader,
           envelope,
           replies: [],
           copyRetentionNotice: getLegalNotices(state.settings.locale).lawyerCopyRetention,
         };
         state.sentInquiries = [record, ...state.sentInquiries];
-        audit(actor, 'inquiry.send', 'ok', dryRun ? 'E2EE inquiry dry-run envelope recorded after consent' : 'E2EE inquiry dispatched after consent', {
+        audit(actor, 'inquiry.send', 'ok', 'Created offline local E2EE preview envelope (0 bytes external)', {
           inquiryId,
           lawyerId: lawyer.id,
-          dryRun,
+          serverRelayUsed: false,
           aadSha256: envelope.aadSha256,
         });
         await notifyChange();
-        return { record, dispatchResult };
+        return { record, serverRelayUsed: false };
       }
 
       case 'inquiry.list': {
@@ -329,7 +332,7 @@ export function createOperationsEngine({
           const before = state.sentInquiries.length;
           state.sentInquiries = state.sentInquiries.filter(r => r.inquiryId !== params.deleteInquiryId);
           if (state.sentInquiries.length !== before) {
-            audit(actor, 'inquiry.list', 'deleted_local', 'Deleted local inquiry copy (lawyer copy unaffected)', {
+            audit(actor, 'inquiry.list', 'deleted_local', 'Deleted local record copy', {
               inquiryId: params.deleteInquiryId,
             });
             await notifyChange();
@@ -353,11 +356,36 @@ export function createOperationsEngine({
           throw Object.assign(new Error('lawyer-profile-invalid'), { code: 'lawyer-profile-invalid', problems });
         }
         state.lawyerProfile = structuredClone(candidate);
-        audit(actor, 'lawyer.profile.update', 'ok', 'Updated local factual lawyer profile', {
+        if (!Array.isArray(state.lawyerEditHistory)) state.lawyerEditHistory = [];
+        const snapHash = sha256Hex(JSON.stringify(state.lawyerProfile));
+        state.lawyerEditHistory.push({
+          timestamp: nowIso,
+          action: params.action || 'profile_update',
+          lawyer_id: candidate.id,
+          snapshot_sha256: snapHash,
+          changed_fields: Object.keys(candidate),
+        });
+        audit(actor, 'lawyer.profile.update', 'ok', 'Updated local factual lawyer profile (O9 validated)', {
           lawyerId: candidate.id,
+          snapshotSha256: snapHash,
         });
         await notifyChange();
-        return { savedLocally: true, profile: state.lawyerProfile };
+        return { savedLocally: true, profile: state.lawyerProfile, historyCount: state.lawyerEditHistory.length };
+      }
+
+      case 'lawyer.export_art11_record': {
+        const target = params.profile || state.lawyerProfile || findLawyer(params.lawyerId) || catalog[0];
+        if (!target) throw Object.assign(new Error('lawyer-not-found'), { code: 'lawyer-not-found' });
+        const history = Array.isArray(params.editHistory) ? params.editHistory : (state.lawyerEditHistory || []);
+        const record = exportArt11Record(target, history, { nowIso });
+        audit(actor, 'lawyer.export_art11_record', 'ok', 'Exported Art. 11 3-year preservation record locally', {
+          lawyerId: target.id,
+          retentionYears: record.retention_years,
+          feeJpy: record.free_participation_terms.fee_jpy,
+          recordSha256: record.record_sha256,
+        });
+        await notifyChange();
+        return { localOnly: true, record };
       }
 
       case 'intake.list': {
@@ -371,7 +399,7 @@ export function createOperationsEngine({
           decision: rec.decision,
           replySentAt: rec.replySentAt,
         }));
-        return { items, localOnly: true };
+        return { items, localOnly: true, serverRelayUsed: false };
       }
 
       case 'intake.conflict_check': {
@@ -444,117 +472,23 @@ export function createOperationsEngine({
 
         if (action === 'accept' || action === 'decline') {
           const replyText = typeof params.replyText === 'string' ? params.replyText.trim() : '';
-          let replyDispatch = null;
-          if (replyText && params.sendEncryptedReply !== false) {
-            if (!broker) throw Object.assign(new Error('canonical-broker-required'), { code: 'canonical-broker-required' });
-            const recipientPub = params.clientPublicKeyJwk || SYNTHETIC_CATALOG_BUNDLE.lawyers[0].e2ee_public_key_jwk;
-            const replyEnvelope = await encryptEnvelope({
-              recipientLawyerId: rec.inquiryId,
-              recipientPublicKeyJwk: recipientPub,
-              conflictHeader: rec.conflictHeader,
-              plaintext: { decision: action, replyText, decidedAt: nowIso },
-            });
-            replyDispatch = await broker.invoke(INQUIRY_REPLY_SELECTOR, {
-              inquiryId: rec.inquiryId,
-              decision: action,
-              dryRun: !state.settings.relayEndpoint,
-              envelope: replyEnvelope,
-            });
-            rec.replySentAt = nowIso;
-          }
-          rec.decision = { status: action, decidedAt: nowIso, replySent: Boolean(replyDispatch) };
-          audit(actor, 'intake.decide', action, `Recorded intake decision (${action})`, {
+          rec.decision = {
+            status: action,
+            decidedAt: nowIso,
+            replyNote: replyText,
+            localPreviewOnly: true,
+            serverRelayUsed: false,
+          };
+          rec.replySentAt = nowIso;
+          audit(actor, 'intake.decide', action, `Recorded local intake decision (${action}; zero server relay)`, {
             inquiryId: rec.inquiryId,
-            replySent: Boolean(replyDispatch),
+            serverRelayUsed: false,
           });
           await notifyChange();
-          return { inquiryId: rec.inquiryId, decision: rec.decision, replyDispatch };
+          return { inquiryId: rec.inquiryId, decision: rec.decision, serverRelayUsed: false };
         }
 
         throw Object.assign(new Error('invalid-intake-action'), { code: 'invalid-intake-action' });
-      }
-
-      case 'inference.assist': {
-        const rawText = typeof params.rawText === 'string' ? params.rawText.trim() : '';
-        if (!rawText) throw Object.assign(new Error('inference.empty_input'), { code: 'inference.empty_input' });
-        if (!broker) throw Object.assign(new Error('canonical-broker-required'), { code: 'canonical-broker-required' });
-
-        const path = state.settings.murakumoPath || DEFAULT_MURAKUMO_PATH;
-        const url = `${MURAKUMO_ORIGIN}${path}`;
-        const requestBody = JSON.stringify({
-          model: params.model || 'murakumo-neutral-intake-v1',
-          temperature: 0,
-          metadata: {
-            non_retention: true,
-            no_training: true,
-            purpose: 'neutral_intake_structuring_only',
-          },
-          messages: [
-            {
-              role: 'system',
-              content:
-                'You are a neutral clerical intake formatter. Organize the user-provided facts into factual headings (summary, timeline, documents, counterparty). ' +
-                'STRICTLY PROHIBITED: legal advice, legal judgment/verdict (法的判断・鑑定), probability of winning, recommending or ranking any lawyer, or inventing facts.',
-            },
-            {
-              role: 'user',
-              content: rawText.slice(0, 8000),
-            },
-          ],
-        });
-
-        let response;
-        try {
-          response = await broker.invoke(INFERENCE_SELECTOR, {
-            input: url,
-            init: {
-              method: 'POST',
-              headers: { 'content-type': 'application/json' },
-              body: requestBody,
-            },
-          });
-        } catch (err) {
-          audit(actor, 'inference.assist', 'denied', 'User declined or broker blocked murakumo.cloud inference; 0 bytes sent', {
-            error: err?.message || 'denied',
-          });
-          await notifyChange();
-          throw err;
-        }
-
-        // Canonical broker returns { status, ok, headers, content } when response-body: 'text'.
-        if (response && typeof response === 'object' && response.ok === false) {
-          throw Object.assign(new Error('inference.http_error'), { code: 'inference.http_error', status: response.status });
-        }
-        let structuredText = '';
-        if (typeof response === 'string') {
-          structuredText = response;
-        } else if (response && typeof response.content === 'string') {
-          structuredText = response.content;
-        } else if (response && typeof response.text === 'function') {
-          structuredText = await response.text();
-        } else if (response && typeof response.body === 'string') {
-          structuredText = response.body;
-        }
-
-        let parsed = null;
-        try {
-          parsed = JSON.parse(structuredText);
-        } catch {
-          parsed = { raw: structuredText };
-        }
-        const assistantContent = parsed?.choices?.[0]?.message?.content ?? parsed?.content ?? structuredText;
-
-        audit(actor, 'inference.assist', 'ok', 'Completed murakumo.cloud neutral structuring assist after consent', {
-          origin: MURAKUMO_ORIGIN,
-          nonRetentionDisclosed: true,
-        });
-        await notifyChange();
-        return {
-          origin: MURAKUMO_ORIGIN,
-          nonRetention: true,
-          noLegalAdvice: true,
-          structuredDraft: assistantContent,
-        };
       }
 
       case 'audit.list': {

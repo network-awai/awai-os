@@ -1,15 +1,20 @@
 {:awai/schema "awai.app.blueprint.v1"
  :app/id "network.itonami.bengoshi"
  :app/name "Bengoshi"
- :app/title {:ja "弁護士ディレクトリ（中立・無料）" :en "Bengoshi Neutral Directory"}
+ :app/title {:ja "Bengoshi — 弁護士検索ガイド・中立ディレクトリ（準備中）"
+             :en "Bengoshi — Lawyer Search Guide & Neutral Directory (Preview)"}
  :app/kind :itonami-dapp
+ :app/license "Apache-2.0"
  :app/version "0.1.0"
  :app/web-origin "https://bengoshi.itonami.app"
  :app/release-gate {:status :gated-on-legal-and-o10
-                    :synthetic-fixtures-only true}
+                    :public-search-guide-default true
+                    :synthetic-fixtures-only true
+                    :operator-disclosure-status "PENDING_OWNER_CONFIRMATION_LEGAL_224"}
 
  :invariants
  {:o2-zero-fee {:model :none
+                :fee-jpy 0
                 :free-for-users true
                 :free-for-lawyers true
                 :referral-fee false
@@ -25,43 +30,51 @@
                     :hard-hold-states [:expired :suspended_or_revoked]
                     :nichibenren-url "https://member.nichibenren.or.jp/general_search"}
   :o8-residency {:app-origin-requests :zero
-                 :e2ee-client-side true
-                 :relay-status :staged-fail-closed
+                 :external-operations []
+                 :contact-method :method-a-direct
+                 :server-relay false
                  :firm-to-firm-forwarding false
-                 :inference-origin "https://murakumo.cloud"
-                 :inference-non-retention true}
+                 :soudan-query-firewall true}
   :o9-neutrality {:reviews false
                   :ratings false
                   :win-rates false
                   :case-counts false
                   :ai-recommendation false
+                  :scout-or-reverse-offer false
+                  :online-retainer-signing false
                   :specialist-claim-rejected true
                   :allowed-sorts [:kana_asc :reg_no_asc :prefecture_asc]
                   :directory-scopes [:tenant_only :neutral_cross_firm]}
+  :art11-preservation {:regulation "日弁連 業務広告規程 第11条（令和8年7月1日施行）"
+                       :retention-years 3
+                       :export-operation "lawyer.export_art11_record"}
   :awai-3235-conflict-gate {:hard-gate true
                             :header-only-before-clear true
-                            :local-ledger-only true}}
+                            :local-ledger-only true
+                            :offline-preview-only true}}
 
  :operations
  ["directory.search"
   "lawyer.get"
   "qualification.verify_status"
+  "contact.format_manual"
   "inquiry.import_memo"
   "inquiry.draft"
   "inquiry.send"
   "inquiry.list"
   "lawyer.profile.update"
+  "lawyer.export_art11_record"
   "intake.list"
   "intake.conflict_check"
   "intake.decide"
-  "inference.assist"
   "audit.list"]
 
  :surfaces
- {:web {:entry "dist/index.html" :descriptor "app-descriptor.json"}
-  :tauri-v3 {:crate "src-tauri" :tauri-version "3.0.0-alpha.6" :android-page-size 16384}
-  :mcp-apps {:protocol "SEP-1865" :resource "ui://bengoshi/embed.mcp" :read-only-tools ["directory.search" "lawyer.get"]}
-  :agent-plugin {:manifest "agent-plugin/plugin.json" :mcp "agent-plugin/mcp.json" :skill "agent-plugin/skills/bengoshi/SKILL.md"}
-  :acp {:adapter "src/mcp-acp-adapter.js"}
+ {:web {:entry "dist/index.html" :descriptor "app-descriptor.json" :external-operations []}
+  :tauri-v3 {:crate "src-tauri" :tauri-version "3.0.0-alpha.6" :android-page-size 16384 :android-internet-permission false}
+  :mcp-apps {:status :poc-draft :formal-awai-4143-claim false :protocol "SEP-1865" :resource "ui://bengoshi/embed.mcp" :read-only-tools ["directory.search" "lawyer.get"]}
+  :agent-plugin {:status :poc-draft :formal-awai-4143-claim false :manifest "agent-plugin/plugin.json" :mcp "agent-plugin/mcp.json" :skill "agent-plugin/skills/bengoshi/SKILL.md"}
   :bot-profiles ["profiles/bengoshi-directory/itonami.edn"
-                 "profiles/bengoshi-lawyer-intake/itonami.edn"]}}
+                 "profiles/bengoshi-directory/yakuwari.edn"
+                 "profiles/bengoshi-lawyer-intake/itonami.edn"
+                 "profiles/bengoshi-lawyer-intake/yakuwari.edn"]}}

@@ -1,40 +1,28 @@
 {
   "schema": "agent-plugins.v1",
   "specVersion": "1.0.0",
+  "status": "poc-draft",
+  "formalAwai4143Claim": false,
   "id": "network.itonami.bengoshi",
   "name": "bengoshi",
   "version": "0.1.0",
-  "description": "Completely free, strictly neutral lawyer-matching directory and E2EE consultation intake plugin (O2=none, O4=manual-a2, O8=local-residency/E2EE, O9=strict-neutrality, AWAI-3235 conflict HARD gate).",
+  "description": "POC/Draft plugin for Bengoshi — 弁護士検索ガイド・中立ディレクトリ（準備中） (O2=none/fee_jpy=0, O4=manual-a2, O8=zero-external-calls/Method-A, O9=strict-neutrality, Art.11 3-year export, AWAI-3235 conflict HARD gate).",
   "license": "Apache-2.0",
   "skills": [
     "skills/bengoshi/SKILL.md"
   ],
   "mcp": "mcp.json",
-  "acp": {
-    "adapter": "../src/mcp-acp-adapter.js",
-    "operations": [
-      "directory.search",
-      "lawyer.get",
-      "qualification.verify_status",
-      "inquiry.import_memo",
-      "inquiry.draft",
-      "inquiry.send",
-      "inquiry.list",
-      "lawyer.profile.update",
-      "intake.list",
-      "intake.conflict_check",
-      "intake.decide",
-      "inference.assist",
-      "audit.list"
-    ]
-  },
   "invariants": {
     "zeroFeeModel": "none",
+    "feeJpy": 0,
+    "externalOperations": [],
+    "contactMethod": "method_a_direct",
     "strictNeutralityO9": true,
     "manualVerificationO4": true,
-    "e2eeLocalResidencyO8": true,
+    "art11PreservationYears": 3,
     "conflictCheckHardGate": "AWAI-3235",
     "prohibited": [
+      "external_inference_calls",
       "referral_fees",
       "fee_splitting",
       "ads",
@@ -43,10 +31,13 @@
       "ratings",
       "win_rates",
       "ai_lawyer_recommendations",
+      "scout_or_reverse_offer",
+      "online_retainer_signing",
       "legal_advice_or_verdict",
       "nichibenren_scraping",
       "id_photo_only_verification",
-      "firm_to_firm_forwarding"
+      "firm_to_firm_forwarding",
+      "platform_server_relay"
     ]
   }
 }

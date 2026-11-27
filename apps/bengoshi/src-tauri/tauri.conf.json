@@ -11,7 +11,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "弁護士ディレクトリ（Bengoshi）",
+        "title": "Bengoshi — 弁護士検索ガイド・中立ディレクトリ（準備中）",
         "width": 520,
         "height": 860,
         "minWidth": 320,
@@ -19,7 +19,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src ipc: http://ipc.localhost https://murakumo.cloud; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'"
+      "csp": "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src ipc: http://ipc.localhost; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
     }
   },
   "bundle": {
