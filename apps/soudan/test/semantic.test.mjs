@@ -418,3 +418,89 @@ test('Round-2 P1 #4: external share success + audit persist failure returns sent
   assert.equal(resConflict.conflict, true);
   assert.equal(resConflict.auditError, 'state-conflict');
 });
+
+test('Round-3 P1 #1: FIFO pending audit queue preserves Share #1 audit when Share #2 succeeds or when both fail then retry', async () => {
+  let shareCalls = 0;
+  const fakeBroker = {
+    async invoke() {
+      shareCalls += 1;
+      return {shared: true, route: 'android-share-sheet'};
+    },
+  };
+  let failAudit = false;
+  const store = createSemanticStore({
+    locale: 'ja',
+    broker: fakeBroker,
+    onPersist: async () => (failAudit ? {ok: false, conflict: false, code: 'data-too-large'} : {ok: true}),
+  });
+  await store.execute('soudan.draft.update', {patch: completePatch()}, {actor: {kind: 'human'}});
+
+  // Sequence 1 (Kougi exact repro): Share #1 succeeds (audit fails) -> Share #2 succeeds (audit succeeds)
+  // => BOTH Share #1 and Share #2 audit records MUST be persisted, queue empty, zero repeated shares!
+  failAudit = true;
+  const s1 = await store.execute('soudan.memo.send', {mode: 'android-share'}, {actor: {kind: 'human'}});
+  assert.equal(s1.ok, false);
+  assert.equal(s1.sent, true);
+  assert.equal(s1.auditPersisted, false);
+  assert.equal(store.getPendingAuditCount(), 1);
+
+  failAudit = false;
+  const s2 = await store.execute('soudan.memo.send', {mode: 'android-share'}, {actor: {kind: 'human'}});
+  assert.equal(s2.ok, true);
+  assert.equal(s2.sent, true);
+  assert.equal(s2.auditPersisted, true);
+  assert.equal(s2.flushedPendingCount, 1);
+  assert.equal(store.getPendingAuditCount(), 0);
+  assert.equal(shareCalls, 2, 'zero repeated shares');
+  const sendAuditsAfterSeq1 = store.getState().audit.filter(e => e.op === 'soudan.memo.send' && e.outcome === 'ok');
+  assert.equal(sendAuditsAfterSeq1.length, 2, '2 completed shares MUST produce 2 distinct persisted audit records');
+  assert.notEqual(sendAuditsAfterSeq1[0].id, sendAuditsAfterSeq1[1].id);
+
+  // Sequence 2: Share #3 fails audit -> Share #4 fails audit -> retryPendingAudit() succeeds -> 2 more audit entries!
+  failAudit = true;
+  const s3 = await store.execute('soudan.memo.send', {mode: 'android-share'}, {actor: {kind: 'human'}});
+  const s4 = await store.execute('soudan.memo.send', {mode: 'android-share'}, {actor: {kind: 'human'}});
+  assert.equal(s3.sent, true);
+  assert.equal(s4.sent, true);
+  assert.equal(store.getPendingAuditCount(), 2);
+  assert.equal(shareCalls, 4);
+
+  failAudit = false;
+  const flushed = await store.retryPendingAudit();
+  assert.equal(flushed.ok, true);
+  assert.equal(flushed.auditPersisted, true);
+  assert.equal(flushed.pendingAuditCount, 0);
+  assert.equal(store.getPendingAuditCount(), 0);
+  assert.equal(shareCalls, 4, 'retryPendingAudit NEVER repeats external share');
+  const sendAuditsAfterSeq2 = store.getState().audit.filter(e => e.op === 'soudan.memo.send' && e.outcome === 'ok');
+  assert.equal(sendAuditsAfterSeq2.length, 4, 'all 4 completed shares have persisted audit records');
+});
+
+test('Round-3 P2 #2: local-only organize uses live unsaved editing snapshot without persisting or bumping revision', async () => {
+  let persistCalls = 0;
+  let revision = 0;
+  const store = createSemanticStore({
+    locale: 'ja',
+    onPersist: async () => { persistCalls += 1; revision += 1; return {ok: true}; },
+  });
+  const session = createFormSession(store);
+
+  // Save initial summary (revision becomes 1)
+  session.draft().summary = '古い保存済みテキスト';
+  assert.equal((await session.save()).ok, true);
+  assert.equal(persistCalls, 1);
+  assert.equal(revision, 1);
+
+  // Edit summary WITHOUT saving -> run local-only organize -> proposal MUST reflect NEW unsaved text
+  // AND persisted storage / revision MUST stay completely unchanged!
+  session.draft().summary = '新しい未保存の追記内容XYZ';
+  const org = await session.organize({localOnly: true});
+  assert.equal(org.ok, true);
+  assert.equal(org.fallback, 'local');
+  assert.equal(org.state, 'proposal.ready');
+  assert.ok(org.proposal.suggestedSummary.includes('新しい未保存の追記内容XYZ'), 'proposal uses live unsaved edits');
+  assert.ok(!org.proposal.suggestedSummary.includes('古い保存済みテキスト'), 'proposal does not use stale persisted text');
+  assert.equal(persistCalls, 1, 'local-only organize MUST NOT write to storage');
+  assert.equal(revision, 1, 'local-only organize MUST NOT bump revision');
+  assert.equal(store.getActiveDraft().draft.summary, '古い保存済みテキスト', 'persisted draft remains unchanged until explicit Save or Apply');
+});

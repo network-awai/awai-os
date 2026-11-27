@@ -310,14 +310,14 @@ function inferenceBlock() {
   const choices = el('div', null, 'equal-choices');
   const declineBtn = el('button', t('inference.decline'), 'equal-choice'); declineBtn.type = 'button';
   declineBtn.addEventListener('click', async () => {
-    const res = await store.execute('soudan.inference.organize', {localOnly: true, prompt: session.draft().summary}, {actor: {kind: 'human'}});
+    const res = await session.organize({localOnly: true, actor: {kind: 'human'}});
     updateStateBadge();
     if (res.ok) say(t('inference.localFallback'));
     renderInput();
   });
   const acceptBtn = el('button', t('inference.accept'), 'equal-choice'); acceptBtn.type = 'button';
   acceptBtn.addEventListener('click', async () => {
-    const res = await store.execute('soudan.inference.organize', {localOnly: false, prompt: session.draft().summary}, {actor: {kind: 'human'}});
+    const res = await session.organize({localOnly: false, actor: {kind: 'human'}});
     updateStateBadge();
     if (res.ok && res.fallback === 'local') say(t('inference.localFallback'));
     renderInput();

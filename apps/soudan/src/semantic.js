@@ -73,10 +73,29 @@ export function createSemanticStore({
   let lastProposal = null; // Always bound to { ..., targetDraftId }
   let lastGuard = null;
   let seq = state.audit.length;
+  let monotonicAuditId = state.audit.length;
   let inferenceInFlight = 0;
   let dailyBucket = {day: '', count: 0};
-  let pendingAuditEntry = null;
+  // FIFO queue of unpersisted post-share audit entries (deduplicated by entry id).
+  let pendingAuditEntries = [];
   const pendingDeletions = new Map();
+
+  function enqueuePendingAudit(entry) {
+    if (entry && !pendingAuditEntries.some(e => e.id === entry.id)) {
+      pendingAuditEntries.push(entry);
+    }
+  }
+
+  function mergePendingAuditsIntoState() {
+    if (!pendingAuditEntries.length) return 0;
+    const existingIds = new Set(state.audit.map(e => e.id));
+    const missing = pendingAuditEntries.filter(e => !existingIds.has(e.id));
+    if (missing.length) {
+      state.audit = [...state.audit, ...missing].slice(-LIMITS.audit);
+      seq = Math.max(seq, state.audit.length);
+    }
+    return missing.length;
+  }
 
   function todayKey() {
     return String(now()).slice(0, 10);
@@ -84,9 +103,10 @@ export function createSemanticStore({
 
   function recordAudit({op, actor, outcome, targetKind, gateName = null}) {
     seq += 1;
+    monotonicAuditId += 1;
     // O8 minimization: NEVER store consultation text, names, contacts, URLs, or PII.
     const entry = {
-      id: `aud-${seq}`,
+      id: `aud-${monotonicAuditId}`,
       timestamp: now(),
       op,
       actor: normalizeActor(actor),
@@ -408,14 +428,16 @@ export function createSemanticStore({
       };
       try {
         const result = await broker.invoke(SEND_SELECTOR, payload);
-        // External share ALREADY succeeded here. Distinguish share success from audit persistence failure (P1 #4).
+        // External share ALREADY succeeded here. Flush any earlier queued pending audit entries
+        // together with this share's audit entry so no earlier completed share is ever dropped.
         const prevState = cloneState(state);
         const prevSeq = seq;
+        const flushedPendingCount = mergePendingAuditsIntoState();
         const auditEntry = recordAudit({op, actor: normActor, outcome: 'ok', targetKind: 'memo'});
         uiState = 'audit.recorded';
         const p = await persistOrRollback(prevState, prevSeq);
         if (!p.ok) {
-          pendingAuditEntry = auditEntry;
+          enqueuePendingAudit(auditEntry);
           return {
             ok: false,
             sent: true,
@@ -424,13 +446,24 @@ export function createSemanticStore({
             auditError: p.error,
             error: p.error,
             pendingAuditEntry: auditEntry,
+            pendingAuditEntries: [...pendingAuditEntries],
+            pendingAuditCount: pendingAuditEntries.length,
             state: uiState,
             result,
             disclaimer: t('disclaimer.fixed'),
           };
         }
-        pendingAuditEntry = null;
-        return {ok: true, sent: true, auditPersisted: true, state: uiState, result, disclaimer: t('disclaimer.fixed')};
+        pendingAuditEntries = [];
+        return {
+          ok: true,
+          sent: true,
+          auditPersisted: true,
+          flushedPendingCount,
+          pendingAuditCount: 0,
+          state: uiState,
+          result,
+          disclaimer: t('disclaimer.fixed'),
+        };
       } catch (err) {
         const denied = /not approved/i.test(err?.message ?? '');
         const prevState = cloneState(state);
@@ -459,9 +492,13 @@ export function createSemanticStore({
       }
       const rec = activeDraftRecord(state);
       const originDraftId = rec?.id ?? state.activeDraftId;
+      // P2 #2: Use the live unsaved editing snapshot when provided, without writing it to storage.
+      const sourceDraft = (params?.draftSnapshot && typeof params.draftSnapshot === 'object')
+        ? restoreDraft(params.draftSnapshot)
+        : (rec?.draft ?? emptyDraft());
       const userPrompt = typeof params?.prompt === 'string' && params.prompt.trim()
         ? params.prompt
-        : [rec?.draft?.summary ?? '', rec?.draft?.wish ?? '', ...(rec?.draft?.timeline ?? []).map(e => e.event)].join('\n');
+        : [sourceDraft.summary ?? '', sourceDraft.wish ?? '', ...(sourceDraft.timeline ?? []).map(e => e.event)].join('\n');
       const guard = evaluateGovernorGuard(userPrompt, t);
       if (guard.blocked) {
         const prevState = cloneState(state);
@@ -484,24 +521,18 @@ export function createSemanticStore({
           await persistOrRollback(prevState, prevSeq);
           return {ok: false, state: uiState, gateName: cfgCheck.reason, disclaimer: t('disclaimer.fixed')};
         }
-        // Fail-closed disabled/unconfigured -> graceful 100% local offline fallback bound to originDraftId.
-        const local = {...organizeLocally(rec?.draft ?? emptyDraft(), t), targetDraftId: originDraftId};
-        const prevState = cloneState(state);
-        const prevSeq = seq;
+        // Fail-closed disabled/unconfigured -> pure in-memory local offline fallback bound to originDraftId
+        // (does NOT write unsaved draftSnapshot to storage or bump revision).
+        const local = {...organizeLocally(sourceDraft, t), targetDraftId: originDraftId};
         lastProposal = local;
         uiState = 'proposal.ready';
-        recordAudit({op, actor: normActor, outcome: 'fallback', targetKind: 'inference', gateName: cfgCheck.reason});
-        await persistOrRollback(prevState, prevSeq);
         return {ok: true, state: uiState, fallback: 'local', reason: cfgCheck.reason, proposal: local, disclaimer: t('disclaimer.fixed')};
       }
       if (params?.localOnly === true || !broker) {
-        const local = {...organizeLocally(rec?.draft ?? emptyDraft(), t), targetDraftId: originDraftId};
-        const prevState = cloneState(state);
-        const prevSeq = seq;
+        // Pure local-only organization: builds proposal from live unsaved sourceDraft without persisting.
+        const local = {...organizeLocally(sourceDraft, t), targetDraftId: originDraftId};
         lastProposal = local;
         uiState = 'proposal.ready';
-        recordAudit({op, actor: normActor, outcome: 'fallback', targetKind: 'inference', gateName: 'local-only-selected'});
-        await persistOrRollback(prevState, prevSeq);
         return {ok: true, state: uiState, fallback: 'local', proposal: local, disclaimer: t('disclaimer.fixed')};
       }
       if (inferenceInFlight >= INFERENCE_LIMITS.maxConcurrencyPerTab) {
@@ -512,13 +543,9 @@ export function createSemanticStore({
       const day = todayKey();
       if (dailyBucket.day !== day) dailyBucket = {day, count: 0};
       if (dailyBucket.count >= INFERENCE_LIMITS.softDailyTurns) {
-        const local = {...organizeLocally(rec?.draft ?? emptyDraft(), t), targetDraftId: originDraftId};
-        const prevState = cloneState(state);
-        const prevSeq = seq;
+        const local = {...organizeLocally(sourceDraft, t), targetDraftId: originDraftId};
         lastProposal = local;
         uiState = 'proposal.ready';
-        recordAudit({op, actor: normActor, outcome: 'fallback', targetKind: 'inference', gateName: 'daily-limit-reached'});
-        await persistOrRollback(prevState, prevSeq);
         return {ok: true, state: uiState, fallback: 'local', reason: 'daily-limit-reached', proposal: local, disclaimer: t('disclaimer.fixed')};
       }
 
@@ -526,7 +553,7 @@ export function createSemanticStore({
       const extraHeaders = typeof authHeaderProvider === 'function' ? await authHeaderProvider() : null;
       const headers = buildInferenceHeaders({extraHeaders});
       const bodyObj = buildInferenceRequestBody({
-        draft: rec?.draft ?? emptyDraft(),
+        draft: sourceDraft,
         model: cfg.model,
         maxTokens: cfg.maxTokens ?? INFERENCE_LIMITS.defaultMaxTokens,
         history: params?.history ?? [],
@@ -545,7 +572,7 @@ export function createSemanticStore({
         const status = typeof resp?.status === 'number' ? resp.status : 200;
         const rawBody = typeof resp?.text === 'function' ? await resp.text() : resp;
         if (isCapacityOrRateLimitError(status, typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody ?? ''))) {
-          const local = {...organizeLocally(rec?.draft ?? emptyDraft(), t), targetDraftId: originDraftId};
+          const local = {...organizeLocally(sourceDraft, t), targetDraftId: originDraftId};
           const prevState = cloneState(state);
           const prevSeq = seq;
           lastProposal = local;
@@ -575,7 +602,7 @@ export function createSemanticStore({
         return {ok: true, state: uiState, proposal: bound, disclaimer: t('disclaimer.fixed')};
       } catch (err) {
         const denied = /not approved/i.test(err?.message ?? '');
-        const local = {...organizeLocally(rec?.draft ?? emptyDraft(), t), targetDraftId: originDraftId};
+        const local = {...organizeLocally(sourceDraft, t), targetDraftId: originDraftId};
         const prevState = cloneState(state);
         const prevSeq = seq;
         lastProposal = local;
@@ -605,21 +632,33 @@ export function createSemanticStore({
     ),
     clearProposal: () => { lastProposal = null; uiState = 'idle'; },
     getPendingDeletions: () => [...pendingDeletions.values()],
-    getPendingAudit: () => pendingAuditEntry,
-    // Retry persisting an unpersisted post-share audit entry WITHOUT ever repeating the external share.
+    getPendingAudit: () => pendingAuditEntries[0] ?? null,
+    getPendingAudits: () => [...pendingAuditEntries],
+    getPendingAuditCount: () => pendingAuditEntries.length,
+    // Retry persisting ALL queued post-share audit entries in FIFO order WITHOUT ever repeating external share.
     async retryPendingAudit() {
-      if (!pendingAuditEntry) return {ok: true, auditPersisted: true, state: uiState, disclaimer: t('disclaimer.fixed')};
+      if (pendingAuditEntries.length === 0) {
+        return {ok: true, auditPersisted: true, pendingAuditCount: 0, state: uiState, disclaimer: t('disclaimer.fixed')};
+      }
       const prevState = cloneState(state);
       const prevSeq = seq;
-      state.audit = [...state.audit, pendingAuditEntry].slice(-LIMITS.audit);
-      seq = Math.max(seq, state.audit.length);
+      mergePendingAuditsIntoState();
       uiState = 'audit.recorded';
       const p = await persistOrRollback(prevState, prevSeq);
       if (!p.ok) {
-        return {ok: false, auditPersisted: false, conflict: Boolean(p.conflict), auditError: p.error, error: p.error, state: uiState, disclaimer: t('disclaimer.fixed')};
+        return {
+          ok: false,
+          auditPersisted: false,
+          conflict: Boolean(p.conflict),
+          auditError: p.error,
+          error: p.error,
+          pendingAuditCount: pendingAuditEntries.length,
+          state: uiState,
+          disclaimer: t('disclaimer.fixed'),
+        };
       }
-      pendingAuditEntry = null;
-      return {ok: true, auditPersisted: true, state: uiState, disclaimer: t('disclaimer.fixed')};
+      pendingAuditEntries = [];
+      return {ok: true, auditPersisted: true, pendingAuditCount: 0, state: uiState, disclaimer: t('disclaimer.fixed')};
     },
     getLastGuard: () => lastGuard,
     execute,

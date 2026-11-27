@@ -65,6 +65,16 @@ export function createFormSession(store) {
     return store.execute('soudan.memo.send', {mode, dryRun: true, draft: draft()}, {actor});
   }
 
+  // Organize from the live unsaved editing snapshot without persisting the draft to storage.
+  async function organize({localOnly = true, actor = {kind: 'human'}} = {}) {
+    const current = draft();
+    return store.execute('soudan.inference.organize', {
+      localOnly,
+      draftSnapshot: current,
+      prompt: [current.summary ?? '', current.wish ?? '', ...(current.timeline ?? []).map(e => e.event)].join('\n'),
+    }, {actor});
+  }
+
   return Object.freeze({
     draft,
     syncFromStore,
@@ -72,5 +82,6 @@ export function createFormSession(store) {
     addEvidence,
     removeEvidence,
     dryRunSend,
+    organize,
   });
 }
