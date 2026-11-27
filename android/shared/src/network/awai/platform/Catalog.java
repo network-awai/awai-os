@@ -184,11 +184,12 @@ public final class Catalog {
         // that id, so the catalog follows the implementation instead of renaming the app.
         if ("network.itonami.isco2641".equals(id)) return "packages/isco2641.apk";
         if ("network.awai.gaka".equals(id)) return "packages/gaka.apk";
-        // Kanji #218: Soudan and Bengoshi dual-ABI (arm64-v8a + x86_64) Tauri v3 apps
+        // Kanji #218: Soudan (self-organization memo tool) and Bengoshi (neutral lawyer
+        // search guide/preview) dual-ABI (arm64-v8a + x86_64) Tauri v3 apps
         // (restricted-wasm-v1, kept outside local-apps.json with a 64 MiB budget, AWAI-4094).
-        // Soudan declares external inference endpoints (api.murakumo.cloud, gated on
-        // non-retention confirmation & Legal GO); Bengoshi uses operations: [] (no
-        // murakumo.cloud inference).
+        // Soudan keeps api.murakumo.cloud inference default OFF (opt-in sync
+        // /v1/chat/completions gated on Route B honest disclosure or Route A & Legal GO);
+        // Bengoshi prohibits inference (operations: []).
         if ("network.itonami.soudan".equals(id)) return "packages/soudan.apk";
         if ("network.itonami.bengoshi".equals(id)) return "packages/bengoshi.apk";
         String local = localSuffix(id);
@@ -259,9 +260,9 @@ public final class Catalog {
                 || "network.itonami.gameka".equals(id) || "network.itonami.isco2641".equals(id)
                 || "network.awai.gaka".equals(id)) return 40 * 1024 * 1024;
         // Kanji #218: dual-ABI (arm64-v8a + x86_64) Tauri v3 apps (restricted-wasm-v1,
-        // kept outside local-apps.json with a 64 MiB budget, AWAI-4094). Soudan declares
-        // external inference endpoints (api.murakumo.cloud, gated on non-retention
-        // confirmation & Legal GO); Bengoshi uses operations: [] (no murakumo.cloud inference).
+        // kept outside local-apps.json with a 64 MiB budget, AWAI-4094). Soudan keeps
+        // api.murakumo.cloud inference default OFF (opt-in gated on Route B honest
+        // disclosure or Route A & Legal GO); Bengoshi prohibits inference (operations: []).
         if ("network.itonami.soudan".equals(id) || "network.itonami.bengoshi".equals(id))
             return 64 * 1024 * 1024;
         // AWAI-3502 local apps: Tauri v3 debug builds without native debug symbols, about 19.6 MB at 0.1.0.
