@@ -133,7 +133,11 @@ export function createOperationsEngine({
     try {
       const result = await onStateChange(state);
       if (result && result.ok === false) {
-        restoreState(snapshot);
+        if (result.refreshedState && typeof result.refreshedState === 'object') {
+          restoreState(structuredClone(result.refreshedState));
+        } else {
+          restoreState(snapshot);
+        }
         if (!throwOnFailure) return result;
         throw Object.assign(new Error(result.message || 'storage-persist-failed'), {
           code: 'storage-persist-failed',

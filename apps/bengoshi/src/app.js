@@ -99,6 +99,52 @@ const host = createHost({ appId: 'network.itonami.bengoshi' });
 let revision = 0;
 let state = createInitialLocalState();
 state.settings.locale = locale;
+let lastCommittedState = structuredClone(state);
+
+const TRACKED_STATE_SECTIONS = Object.freeze([
+  'draft',
+  'lawyerProfile',
+  'sentInquiries',
+  'intakeRecords',
+  'conflictLedger',
+  'settings',
+  'auditLog',
+]);
+
+function normalizeLocalState(rawData) {
+  const base = createInitialLocalState();
+  if (!rawData || typeof rawData !== 'object') {
+    base.settings.locale = locale;
+    return base;
+  }
+  const normalized = {
+    ...base,
+    ...structuredClone(rawData),
+    settings: { ...base.settings, ...(rawData.settings && typeof rawData.settings === 'object' ? structuredClone(rawData.settings) : {}) },
+  };
+  if (!Array.isArray(normalized.sentInquiries)) normalized.sentInquiries = [];
+  if (!Array.isArray(normalized.lawyerEditHistory)) normalized.lawyerEditHistory = [];
+  if (!Array.isArray(normalized.conflictLedger)) normalized.conflictLedger = [...base.conflictLedger];
+  if (!Array.isArray(normalized.intakeRecords)) normalized.intakeRecords = [];
+  if (!Array.isArray(normalized.auditLog)) normalized.auditLog = [];
+  return normalized;
+}
+
+function replaceInMemoryState(nextData) {
+  const normalized = normalizeLocalState(nextData);
+  for (const key of Object.keys(state)) delete state[key];
+  Object.assign(state, normalized);
+}
+
+function diffStateSections(prevState, nextState) {
+  const changed = [];
+  for (const key of TRACKED_STATE_SECTIONS) {
+    if (JSON.stringify(prevState?.[key] ?? null) !== JSON.stringify(nextState?.[key] ?? null)) {
+      changed.push(key);
+    }
+  }
+  return changed;
+}
 
 // Ephemeral device-only QA private key (kept in memory only; never persisted outside session)
 let sessionLawyerKeyPair = null;
@@ -125,10 +171,31 @@ function say(msg) {
   if (elStatus) elStatus.textContent = msg || '';
 }
 
-function formatStorageError(result) {
+function formatStorageError(result, { activeSection = null } = {}) {
   const code = result?.code || result?.causeCode || result?.error?.code || result?.error?.name || 'storage-write-failed';
+  if (code === 'state-conflict' && result?.refreshed) {
+    const from = Number.isSafeInteger(result.previousRevision) ? result.previousRevision : 0;
+    const to = Number.isSafeInteger(result.latestRevision) ? result.latestRevision : revision;
+    const sections = Array.isArray(result.changedSections) ? result.changedSections : [];
+    const displaySections = sections.filter(s => s !== 'auditLog');
+    const sectionLabels = (displaySections.length ? displaySections : sections)
+      .map(s => t('storage.section.' + s))
+      .join(' / ');
+    let msg = sectionLabels
+      ? t('storage.conflictRefreshedWithSections', { from, to, sections: sectionLabels })
+      : t('storage.conflictRefreshed', { from, to });
+    if (activeSection && sections.includes(activeSection)) {
+      msg += ' ' + t('storage.conflictSameEntityNote', { section: t('storage.section.' + activeSection) });
+    }
+    return msg;
+  }
+
   let reason;
-  if (code === 'quota-exceeded' || code === 'QuotaExceededError' || code === 'data-too-large') {
+  if (code === 'atomic-write-unavailable' || code === 'lock-unavailable') {
+    reason = t('storage.reason.atomicUnavailable');
+  } else if (code === 'unreadable-state') {
+    reason = t('storage.reason.unreadable');
+  } else if (code === 'quota-exceeded' || code === 'QuotaExceededError' || code === 'data-too-large') {
     reason = t('storage.reason.quota');
   } else if (code === 'storage-unavailable' || code === 'SecurityError') {
     reason = t('storage.reason.unavailable');
@@ -148,9 +215,9 @@ function createStorageAlert() {
   return box;
 }
 
-function showStorageError(result, localAlertEl = null) {
+function showStorageError(result, localAlertEl = null, opts = {}) {
   say('');
-  const msg = formatStorageError(result);
+  const msg = formatStorageError(result, opts);
   const target = localAlertEl || $('storage-alert');
   if (target) {
     target.textContent = msg;
@@ -186,14 +253,54 @@ function buildEngine() {
 export async function persistState() {
   const result = await persistLocalState({
     host,
-    storage: globalThis.localStorage,
     revision,
     state,
   });
   if (result.ok) {
     revision = result.revision;
+    lastCommittedState = structuredClone(state);
+    return result;
+  }
+  if (result.code === 'state-conflict' && typeof host.read === 'function') {
+    try {
+      const latest = await host.read();
+      if (latest && Number.isSafeInteger(latest.revision)) {
+        const previousRevision = revision;
+        const latestState = normalizeLocalState(latest.data);
+        const changedSections = diffStateSections(lastCommittedState, latestState);
+        revision = latest.revision;
+        lastCommittedState = structuredClone(latestState);
+        replaceInMemoryState(latestState);
+        return {
+          ...result,
+          refreshed: true,
+          previousRevision,
+          latestRevision: latest.revision,
+          refreshedRevision: latest.revision,
+          refreshedState: latestState,
+          changedSections,
+        };
+      }
+    } catch {
+      // Return original state-conflict result if latest state cannot be read
+    }
   }
   return result;
+}
+
+async function mutateAndPersist(mutator) {
+  const snapshot = structuredClone(state);
+  mutator(state);
+  const res = await persistState();
+  if (!res.ok) {
+    if (res.refreshedState && typeof res.refreshedState === 'object') {
+      replaceInMemoryState(res.refreshedState);
+    } else {
+      replaceInMemoryState(snapshot);
+    }
+    return res;
+  }
+  return res;
 }
 
 async function loadState() {
@@ -201,17 +308,16 @@ async function loadState() {
     const stored = await host.read();
     revision = stored.revision;
     if (stored.data && typeof stored.data === 'object') {
-      state = {
-        ...createInitialLocalState(),
-        ...stored.data,
-        settings: { ...createInitialLocalState().settings, ...(stored.data.settings || {}) },
-      };
+      replaceInMemoryState(stored.data);
       if (state.settings.locale === 'ja' || state.settings.locale === 'en') {
         locale = state.settings.locale;
         t = translator(locale);
       }
     }
-  } catch { /* start fresh local state */ }
+    lastCommittedState = structuredClone(state);
+  } catch {
+    lastCommittedState = structuredClone(state);
+  }
 }
 
 function verificationBadge(effectiveStatus) {
@@ -264,13 +370,11 @@ function renderSettingsPanel() {
     scopeSel.append(o);
   }
   scopeSel.addEventListener('change', async () => {
-    const prev = state.settings.directoryScope;
-    state.settings.directoryScope = scopeSel.value;
-    const res = await persistState();
+    const nextScope = scopeSel.value;
+    const res = await mutateAndPersist(s => { s.settings.directoryScope = nextScope; });
     if (!res.ok) {
-      state.settings.directoryScope = prev;
-      scopeSel.value = prev;
-      showStorageError(res);
+      scopeSel.value = state.settings.directoryScope;
+      showStorageError(res, null, { activeSection: 'settings' });
       return;
     }
     clearStorageError();
@@ -281,13 +385,11 @@ function renderSettingsPanel() {
   demoCheck.type = 'checkbox';
   demoCheck.checked = Boolean(state.settings.syntheticDemoMode);
   demoCheck.addEventListener('change', async () => {
-    const prev = state.settings.syntheticDemoMode;
-    state.settings.syntheticDemoMode = demoCheck.checked;
-    const res = await persistState();
+    const nextChecked = demoCheck.checked;
+    const res = await mutateAndPersist(s => { s.settings.syntheticDemoMode = nextChecked; });
     if (!res.ok) {
-      state.settings.syntheticDemoMode = prev;
-      demoCheck.checked = prev;
-      showStorageError(res);
+      demoCheck.checked = Boolean(state.settings.syntheticDemoMode);
+      showStorageError(res, null, { activeSection: 'settings' });
       return;
     }
     clearStorageError();
@@ -742,7 +844,7 @@ async function renderContactCompose() {
       renderContactCompose();
     } catch (e) {
       if (isStoragePersistError(e)) {
-        showStorageError(e.persistResult || e, importAlert);
+        showStorageError(e.persistResult || e, importAlert, { activeSection: 'draft' });
         return;
       }
       say(t('compose.importFail', { code: e?.code || 'invalid' }));
@@ -752,6 +854,8 @@ async function renderContactCompose() {
 
   // Main input container (uses type="button" data-submit + bindForm)
   const form = el('section', null, 'card grid');
+  const dirtyFields = new Set();
+
   const catSel = el('select');
   for (const c of INQUIRY_CATEGORIES) {
     const o = el('option', t('category.' + c));
@@ -759,34 +863,96 @@ async function renderContactCompose() {
     o.selected = draft.category === c;
     catSel.append(o);
   }
-  catSel.addEventListener('change', () => { draft.category = catSel.value; });
+  catSel.addEventListener('change', () => { dirtyFields.add('category'); draft.category = catSel.value; });
 
   const nameIn = Object.assign(el('input'), { value: draft.clientName || '' });
-  nameIn.addEventListener('input', () => { draft.clientName = nameIn.value; });
+  nameIn.addEventListener('input', () => { dirtyFields.add('clientName'); draft.clientName = nameIn.value; });
 
   const contactIn = Object.assign(el('input'), { value: draft.clientContact || '' });
-  contactIn.addEventListener('input', () => { draft.clientContact = contactIn.value; });
+  contactIn.addEventListener('input', () => { dirtyFields.add('clientContact'); draft.clientContact = contactIn.value; });
 
   const counterIn = Object.assign(el('input'), { value: draft.counterpartyName || '' });
-  counterIn.addEventListener('input', () => { draft.counterpartyName = counterIn.value; });
+  counterIn.addEventListener('input', () => { dirtyFields.add('counterpartyName'); draft.counterpartyName = counterIn.value; });
 
   const sumArea = Object.assign(el('textarea'), { value: draft.summary || '' });
-  sumArea.addEventListener('input', () => { draft.summary = sumArea.value; });
+  sumArea.addEventListener('input', () => { dirtyFields.add('summary'); draft.summary = sumArea.value; });
 
   const wishArea = Object.assign(el('textarea'), { value: draft.wish || '' });
-  wishArea.addEventListener('input', () => { draft.wish = wishArea.value; });
+  wishArea.addEventListener('input', () => { dirtyFields.add('wish'); draft.wish = wishArea.value; });
 
   const deadIn = Object.assign(el('input'), { value: draft.deadline || '' });
-  deadIn.addEventListener('input', () => { draft.deadline = deadIn.value; });
+  deadIn.addEventListener('input', () => { dirtyFields.add('deadline'); draft.deadline = deadIn.value; });
 
   const docsArea = Object.assign(el('textarea'), { value: (draft.documents || []).join('\n') });
   docsArea.addEventListener('input', () => {
+    dirtyFields.add('documents');
     draft.documents = docsArea.value.split('\n').map(l => l.trim()).filter(Boolean);
   });
 
   const evArea = el('textarea');
   evArea.readOnly = true;
   evArea.value = JSON.stringify(draft.evidenceManifest || [], null, 2);
+
+  function syncUntouchedDraftFromLatest() {
+    const latestDraft = state.draft;
+    if (!latestDraft || typeof latestDraft !== 'object') return;
+    if (!dirtyFields.has('category') && latestDraft.category) {
+      draft.category = latestDraft.category;
+      catSel.value = latestDraft.category;
+    }
+    if (!dirtyFields.has('clientName') && typeof latestDraft.clientName === 'string') {
+      draft.clientName = latestDraft.clientName;
+      nameIn.value = latestDraft.clientName;
+    }
+    if (!dirtyFields.has('clientContact') && typeof latestDraft.clientContact === 'string') {
+      draft.clientContact = latestDraft.clientContact;
+      contactIn.value = latestDraft.clientContact;
+    }
+    if (!dirtyFields.has('counterpartyName') && typeof latestDraft.counterpartyName === 'string') {
+      draft.counterpartyName = latestDraft.counterpartyName;
+      counterIn.value = latestDraft.counterpartyName;
+    }
+    if (!dirtyFields.has('summary') && typeof latestDraft.summary === 'string') {
+      draft.summary = latestDraft.summary;
+      sumArea.value = latestDraft.summary;
+    }
+    if (!dirtyFields.has('wish') && typeof latestDraft.wish === 'string') {
+      draft.wish = latestDraft.wish;
+      wishArea.value = latestDraft.wish;
+    }
+    if (!dirtyFields.has('deadline') && typeof latestDraft.deadline === 'string') {
+      draft.deadline = latestDraft.deadline;
+      deadIn.value = latestDraft.deadline;
+    }
+    if (!dirtyFields.has('documents') && Array.isArray(latestDraft.documents)) {
+      draft.documents = [...latestDraft.documents];
+      docsArea.value = draft.documents.join('\n');
+    }
+    if (Array.isArray(latestDraft.timeline) && !draft.timeline?.length) {
+      draft.timeline = structuredClone(latestDraft.timeline);
+    }
+    if (Array.isArray(latestDraft.evidenceManifest) && !draft.evidenceManifest?.length) {
+      draft.evidenceManifest = structuredClone(latestDraft.evidenceManifest);
+      evArea.value = JSON.stringify(draft.evidenceManifest, null, 2);
+    }
+  }
+
+  function buildDraftCandidate() {
+    const base = state.draft && typeof state.draft === 'object' ? structuredClone(state.draft) : {};
+    return {
+      ...base,
+      ...structuredClone(draft),
+      lawyerId: draft.lawyerId || base.lawyerId || selectedLawyerId,
+      category: dirtyFields.has('category') ? catSel.value : (catSel.value || draft.category || base.category),
+      clientName: nameIn.value,
+      clientContact: contactIn.value,
+      counterpartyName: counterIn.value,
+      summary: sumArea.value,
+      wish: wishArea.value,
+      deadline: deadIn.value,
+      documents: docsArea.value.split('\n').map(l => l.trim()).filter(Boolean),
+    };
+  }
 
   form.append(
     fieldWrap(t('compose.category'), 'c-cat', catSel),
@@ -806,12 +972,14 @@ async function renderContactCompose() {
   saveBtn.type = 'button';
   saveBtn.addEventListener('click', async () => {
     try {
-      await engine.execute('inquiry.draft', { draft }, { actor: 'ui' });
+      await engine.execute('inquiry.draft', { draft: buildDraftCandidate() }, { actor: 'ui' });
       clearStorageError(storageAlert);
       say(t('compose.draftSaved'));
     } catch (err) {
       if (isStoragePersistError(err)) {
-        showStorageError(err.persistResult || err, storageAlert);
+        const res = err.persistResult || err;
+        if (res?.code === 'state-conflict' && res?.refreshed) syncUntouchedDraftFromLatest();
+        showStorageError(res, storageAlert, { activeSection: 'draft' });
         return;
       }
       say(err?.message || 'save-failed');
@@ -838,7 +1006,7 @@ async function renderContactCompose() {
   const copyDraftBtn = el('button', t('compose.copyDraft'), 'secondary');
   copyDraftBtn.type = 'button';
   copyDraftBtn.addEventListener('click', async () => {
-    await copyText(formatDraftCopyText(draft, targetLawyer), t('compose.draftCopied'));
+    await copyText(formatDraftCopyText(buildDraftCandidate(), targetLawyer), t('compose.draftCopied'));
   });
 
   const nextBtn = el('button', t('compose.toConsent'));
@@ -850,7 +1018,7 @@ async function renderContactCompose() {
 
   bindForm(form, async () => {
     try {
-      const res = await engine.execute('inquiry.draft', { draft }, { actor: 'ui' });
+      const res = await engine.execute('inquiry.draft', { draft: buildDraftCandidate() }, { actor: 'ui' });
       clearStorageError(storageAlert);
       if (res.problems.length) {
         say('入力不足: ' + res.problems.join(', '));
@@ -859,7 +1027,9 @@ async function renderContactCompose() {
       location.hash = '#/contact/consent';
     } catch (err) {
       if (isStoragePersistError(err)) {
-        showStorageError(err.persistResult || err, storageAlert);
+        const res = err.persistResult || err;
+        if (res?.code === 'state-conflict' && res?.refreshed) syncUntouchedDraftFromLatest();
+        showStorageError(res, storageAlert, { activeSection: 'draft' });
         return;
       }
       say(err?.message || 'save-failed');
@@ -992,7 +1162,7 @@ async function renderContactConsent() {
       location.hash = '#/requests';
     } catch (err) {
       if (isStoragePersistError(err)) {
-        showStorageError(err.persistResult || err, storageAlert);
+        showStorageError(err.persistResult || err, storageAlert, { activeSection: 'sentInquiries' });
         return;
       }
       say(t('consent.blocked', { code: err?.code || err?.message || 'blocked' }));
@@ -1042,7 +1212,7 @@ async function renderRequests() {
         renderRequests();
       } catch (err) {
         if (isStoragePersistError(err)) {
-          showStorageError(err.persistResult || err, storageAlert);
+          showStorageError(err.persistResult || err, storageAlert, { activeSection: 'sentInquiries' });
           return;
         }
         say(err?.message || 'delete-failed');
@@ -1183,7 +1353,7 @@ function renderLawyerOnboarding() {
       location.hash = '#/lawyer/profile';
     } catch (err) {
       if (isStoragePersistError(err)) {
-        showStorageError(err.persistResult || err, storageAlert);
+        showStorageError(err.persistResult || err, storageAlert, { activeSection: 'lawyerProfile' });
         return;
       }
       say(t('profileEdit.rejected', { reasons: (err.problems || []).map(p => p.code).join(', ') || err?.message || 'error' }));
@@ -1200,6 +1370,7 @@ function renderLawyerProfileEdit() {
   view.append(el('h2', t('profileEdit.heading')), el('p', t('profileEdit.note'), 'banner'));
 
   const current = structuredClone(state.lawyerProfile || SYNTHETIC_CATALOG_BUNDLE.lawyers[0]);
+  const dirtyFields = new Set();
   const liveAlert = el('div', '', 'banner danger');
   liveAlert.hidden = true;
   const storageAlert = createStorageAlert();
@@ -1212,9 +1383,24 @@ function renderLawyerProfileEdit() {
   const careerIn = Object.assign(el('textarea'), { value: (current.career_facts || []).join('\n') });
   const feeIn = Object.assign(el('input'), { value: current.initial_consultation_fee_note || '' });
 
+  function syncUntouchedProfileFromLatest() {
+    const latest = state.lawyerProfile;
+    if (!latest || typeof latest !== 'object') return;
+    if (!dirtyFields.has('name') && typeof latest.name === 'string') nameIn.value = latest.name;
+    if (!dirtyFields.has('bar_association') && typeof latest.bar_association === 'string') barIn.value = latest.bar_association;
+    if (!dirtyFields.has('office_name') && typeof latest.office_name === 'string') officeIn.value = latest.office_name;
+    if (!dirtyFields.has('practice_areas') && Array.isArray(latest.practice_areas)) areasIn.value = latest.practice_areas.join(', ');
+    if (!dirtyFields.has('career_facts') && Array.isArray(latest.career_facts)) careerIn.value = latest.career_facts.join('\n');
+    if (!dirtyFields.has('initial_consultation_fee_note') && typeof latest.initial_consultation_fee_note === 'string') {
+      feeIn.value = latest.initial_consultation_fee_note;
+    }
+    validateLive();
+  }
+
   function buildCandidate() {
+    const base = structuredClone(state.lawyerProfile || current);
     return {
-      ...current,
+      ...base,
       name: nameIn.value.trim(),
       bar_association: barIn.value.trim(),
       office_name: officeIn.value.trim(),
@@ -1242,8 +1428,18 @@ function renderLawyerProfileEdit() {
     saveBtn.disabled = probs.length > 0;
   }
 
-  for (const ctrl of [nameIn, barIn, officeIn, areasIn, careerIn, feeIn]) {
-    ctrl.addEventListener('input', validateLive);
+  for (const [fieldKey, ctrl] of [
+    ['name', nameIn],
+    ['bar_association', barIn],
+    ['office_name', officeIn],
+    ['practice_areas', areasIn],
+    ['career_facts', careerIn],
+    ['initial_consultation_fee_note', feeIn],
+  ]) {
+    ctrl.addEventListener('input', () => {
+      dirtyFields.add(fieldKey);
+      validateLive();
+    });
   }
 
   const art11Box = el('pre', '', 'code-box');
@@ -1259,7 +1455,7 @@ function renderLawyerProfileEdit() {
       say(t('onboarding.art11Exported'));
     } catch (e) {
       if (isStoragePersistError(e)) {
-        showStorageError(e.persistResult || e, storageAlert);
+        showStorageError(e.persistResult || e, storageAlert, { activeSection: 'lawyerProfile' });
         return;
       }
       say(t('profileEdit.rejected', { reasons: (e.problems || []).map(p => p.code).join(', ') }));
@@ -1289,7 +1485,9 @@ function renderLawyerProfileEdit() {
       say(t('profileEdit.saved'));
     } catch (e) {
       if (isStoragePersistError(e)) {
-        showStorageError(e.persistResult || e, storageAlert);
+        const res = e.persistResult || e;
+        if (res?.code === 'state-conflict' && res?.refreshed) syncUntouchedProfileFromLatest();
+        showStorageError(res, storageAlert, { activeSection: 'lawyerProfile' });
         return;
       }
       say(t('profileEdit.rejected', { reasons: (e.problems || []).map(p => p.code).join(', ') }));
@@ -1315,12 +1513,9 @@ async function renderLawyerInbox() {
       state.lawyerProfile?.id || SYNTHETIC_CATALOG_BUNDLE.lawyers[0].id,
       nextKeyPair.publicKeyJwk,
     );
-    const prevRecords = state.intakeRecords;
-    state.intakeRecords = nextRecords;
-    const res = await persistState();
+    const res = await mutateAndPersist(s => { s.intakeRecords = nextRecords; });
     if (!res.ok) {
-      state.intakeRecords = prevRecords;
-      showStorageError(res, storageAlert);
+      showStorageError(res, storageAlert, { activeSection: 'intakeRecords' });
       return;
     }
     sessionLawyerKeyPair = nextKeyPair;
@@ -1351,8 +1546,7 @@ async function renderLawyerInbox() {
       if (parsed?.schema !== 'bengoshi.e2ee.envelope.v1' || !parsed.conflictHeader) {
         throw new Error('invalid-e2ee-envelope');
       }
-      const prevRecords = [...state.intakeRecords];
-      state.intakeRecords.unshift({
+      const entry = {
         inquiryId: parsed.conflictHeader.inquiryId || 'inq-offline-' + Date.now(),
         receivedAt: parsed.conflictHeader.receivedAt || new Date().toISOString(),
         conflictHeader: parsed.conflictHeader,
@@ -1360,11 +1554,10 @@ async function renderLawyerInbox() {
         conflictCheck: null,
         decision: null,
         replySentAt: null,
-      });
-      const res = await persistState();
+      };
+      const res = await mutateAndPersist(s => { s.intakeRecords.unshift(entry); });
       if (!res.ok) {
-        state.intakeRecords = prevRecords;
-        showStorageError(res, importAlert);
+        showStorageError(res, importAlert, { activeSection: 'intakeRecords' });
         return;
       }
       clearStorageError(importAlert);
@@ -1423,18 +1616,17 @@ async function renderLawyerInbox() {
   ledgerActions.append(addBtn);
   ledgerCard.append(ul, ledgerAlert, addIn, ledgerActions);
   bindForm(ledgerCard, async () => {
-    if (!addIn.value.trim()) return;
-    const prevLedger = [...state.conflictLedger];
-    state.conflictLedger.push({
+    const partyName = addIn.value.trim();
+    if (!partyName) return;
+    const entry = {
       id: 'ledger-' + Date.now(),
-      partyName: addIn.value.trim(),
+      partyName,
       role: 'existing_client',
       matterRef: 'ローカル追加',
-    });
-    const res = await persistState();
+    };
+    const res = await mutateAndPersist(s => { s.conflictLedger.push(entry); });
     if (!res.ok) {
-      state.conflictLedger = prevLedger;
-      showStorageError(res, ledgerAlert);
+      showStorageError(res, ledgerAlert, { activeSection: 'conflictLedger' });
       return;
     }
     clearStorageError(ledgerAlert);
@@ -1534,7 +1726,7 @@ async function renderLawyerInquiryDetail(inquiryId) {
         } catch (err) {
           confirmBox.checked = Boolean(currentRec()?.conflictCheck?.confirmedByLawyer);
           if (isStoragePersistError(err)) {
-            showStorageError(err.persistResult || err, storageAlert);
+            showStorageError(err.persistResult || err, storageAlert, { activeSection: 'intakeRecords' });
             return;
           }
           say(err?.code || err?.message || 'conflict-confirm-failed');
@@ -1762,13 +1954,10 @@ export async function start() {
   buildEngine();
 
   $('lang-toggle').addEventListener('click', async () => {
-    const prevLocale = locale;
     const nextLocale = locale === 'ja' ? 'en' : 'ja';
-    state.settings.locale = nextLocale;
-    const res = await persistState();
+    const res = await mutateAndPersist(s => { s.settings.locale = nextLocale; });
     if (!res.ok) {
-      state.settings.locale = prevLocale;
-      showStorageError(res);
+      showStorageError(res, null, { activeSection: 'settings' });
       return;
     }
     locale = nextLocale;
