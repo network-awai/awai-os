@@ -66,29 +66,105 @@ test('a public generation handle can cancel a pending result on the same client'
  assert.equal(next.text, 'next');
 });
 
-test('an unloaded model refuses generation; the refusal is a rejection, never a result',async()=>{
- // Boundary: with no admitted model loaded, execution must be impossible. The provider's fixed
- // 'model-not-loaded' code reaches the caller verbatim for text and image, the readiness state an
- // agent reads agrees, and a later admitted request on the same client still succeeds.
- let loaded=false;const actions=[];
- const c=createInferenceClient({uuid,invoke:async(cmd,{request})=>{actions.push(request.action);
-  if(request.action==='info')return{schema:'awai.inference.local.v1',engine:'llama.cpp',loaded,loadedModel:loaded?'qwen3-0.6b-q8_0':null,remote:false};
-  if(request.action==='generate'){if(!loaded)throw'model-not-loaded';return{schema:'awai.inference.result.v1',requestId:request.requestId,modality:'text',engine:'llama.cpp',text:'ok',outputTokens:1};}}});
- assert.equal((await c.info()).loaded,false,'readiness reports no loaded model');
- for(const args of [{prompt:'hi'},{modality:'image',prompt:'a cup'},{prompt:'hi'}])await assert.rejects(c.generate(args),e=>String(e)==='model-not-loaded');
- const pending=c.startGeneration({prompt:'hi'});await assert.rejects(pending.result,e=>String(e)==='model-not-loaded');
+test('an unloaded or absent model rejects at the JS caller boundary with inference-denied-or-unavailable, never a result',async()=>{
+ // Caller-observable JS boundary (createInferenceClient -> InferenceClientPlugin.kt):
+ // Murakumo's confirmation Activity ends provider-side refusals (text 'model-not-loaded', image
+ // 'image-model-missing' / 'release-text-model-required') as RESULT_CANCELED + extra "error", and
+ // InferenceClientPlugin.kt translates every non-RESULT_OK result other than "cancelled" into the
+ // caller-observable rejection 'inference-denied-or-unavailable'. client.js re-throws it verbatim.
+ // Readiness comes from info().status (loaded / image.imported). Android runtime and real-model
+ // execution are not verified by this JS/source fixture.
+ const plugin=fs.readFileSync(new URL('../../../packages/awai-inference/android/network/awai/inference/InferenceClientPlugin.kt',import.meta.url),'utf8');
+ assert.match(plugin,/if\(result\.resultCode!=Activity\.RESULT_OK\|\|data==null\)\{invoke\.reject\(if\(data\?\.getStringExtra\("error"\)=="cancelled"\)"inference-cancelled" else "inference-denied-or-unavailable"\);return\}/,'Android plugin maps every non-OK Activity result other than cancelled to inference-denied-or-unavailable');
+ assert.match(plugin,/info\.put\("status",st\)/,'Android plugin exposes provider readiness under info.status');
+ const clientSrc=fs.readFileSync(new URL('../../../packages/awai-inference/client.js',import.meta.url),'utf8');
+ assert.match(clientSrc,/if\(String\(e\)==='inference-cancelled'\)throw Error\('inference-cancelled'\);throw e;/,'client.js passes non-cancelled plugin rejections through verbatim');
+
+ let loaded=false,imageImported=false;const actions=[],providerCodes=[];
+ const imageOk=requestId=>({schema:'awai.inference.result.v1',requestId,modality:'image',engine:'stable-diffusion.cpp',imageId:requestId,modelSet:'qwen-image-2.1-turbo-uncensored-ad-q2-k',width:512,height:512,bytes:3,sha256:'a'.repeat(64),dataUrl:'data:image/png;base64,YWJj'});
+ const c=createInferenceClient({uuid,invoke:async(cmd,{request})=>{
+  assert.equal(cmd,'awai_local_inference');actions.push(request.action);
+  if(request.action==='info')return{schema:'awai.inference.client.v1',installed:true,provider:'network.awai.murakumo',modalities:imageImported?['text','image']:['text'],remote:false,status:{schema:'awai.inference.local.v1',engine:'llama.cpp',loaded,loadedModel:loaded?'qwen3-0.6b-q8_0':null,remote:false,image:{imported:imageImported,loaded:false}}};
+  if(request.action==='generate'){
+   // Simulate InferenceRequestActivity RESULT_CANCELED -> InferenceClientPlugin.generated mapping.
+   const refusal=request.modality==='image'?(loaded?'release-text-model-required':(!imageImported?'image-model-missing':null)):(!loaded?'model-not-loaded':null);
+   if(refusal){providerCodes.push(refusal);throw refusal==='cancelled'?'inference-cancelled':'inference-denied-or-unavailable';}
+   return request.modality==='image'?imageOk(request.requestId):{schema:'awai.inference.result.v1',requestId:request.requestId,modality:'text',engine:'llama.cpp',text:'ok',outputTokens:1};
+  }
+ }});
+
+ const readiness=await c.info();
+ assert.equal(readiness.schema,'awai.inference.client.v1');
+ assert.equal(readiness.remote,false);
+ assert.equal(readiness.status.loaded,false,'readiness reports no text model loaded');
+ assert.equal(readiness.status.image.imported,false,'readiness reports no image model imported');
+ assert.deepEqual(readiness.modalities,['text']);
+
+ for(const args of [{prompt:'hi'},{modality:'image',prompt:'a cup'},{prompt:'hi'}])await assert.rejects(c.generate(args),e=>e==='inference-denied-or-unavailable');
+ const pending=c.startGeneration({prompt:'hi'});await assert.rejects(pending.result,e=>e==='inference-denied-or-unavailable');
  assert.equal(actions.filter(a=>a==='generate').length,4,'every attempt reached the provider; none was answered with a result');
- loaded=true;const ok=await c.generate({prompt:'hi'});assert.equal(ok.text,'ok');
- // The provider side is source-verified: Models.generate refuses before Engine.generate runs, the
- // native engine refuses a null model, and the confirmation Activity can only end a failure as
- // RESULT_CANCELED — a refusal can never arrive as RESULT_OK.
+ assert.deepEqual(providerCodes,['model-not-loaded','image-model-missing','model-not-loaded','model-not-loaded'],'provider refusal codes stay distinct internally before the plugin collapses non-OK results');
+
+ // Once a text model is loaded, text generation succeeds on the same client while image generation
+ // still refuses until the text model is released (ImageModels.kt:44).
+ loaded=true;
+ assert.equal((await c.info()).status.loaded,true);
+ assert.equal((await c.generate({prompt:'hi'})).text,'ok');
+ imageImported=true;
+ await assert.rejects(c.generate({modality:'image',prompt:'a cup'}),e=>e==='inference-denied-or-unavailable');
+ assert.equal(providerCodes.at(-1),'release-text-model-required');
+
+ // Releasing the text model with an imported image model set lets image generation succeed.
+ loaded=false;
+ const imageReady=await c.info();
+ assert.equal(imageReady.status.loaded,false);
+ assert.equal(imageReady.status.image.imported,true);
+ assert.deepEqual(imageReady.modalities,['text','image']);
+ assert.equal((await c.generate({modality:'image',prompt:'a cup'})).imageId,uuid());
+});
+
+test('provider-side text and image refusal conditions map to RESULT_CANCELED with fixed error codes',()=>{
+ // Provider-side refusal boundaries (source-pinned separately from the JS plugin boundary):
+ // - Text: Models.generate checks loaded ("model-not-loaded") before Engine.generate, and
+ //   native/engine.cpp refuses a null model ("invalid-request").
+ // - Image: ImageModels.generate checks !Models.loaded ("release-text-model-required"),
+ //   present(c) ("image-model-missing"), and ImageEngine.prepare() ("image-engine-unavailable")
+ //   before ImageEngine.generate, and native/image/image.cpp refuses failed context/model load
+ //   ("image-model-load-failed") before sd_generate_image.
+ // - Activity: InferenceRequestActivity routes both modalities through runCatching -> ErrorCodes.of
+ //   -> finishWith (RESULT_CANCELED + fixed error code); RESULT_OK exists only in finishOk.
+ // Android runtime and real-model execution are not verified here.
  const K=n=>fs.readFileSync(new URL('../src-tauri/gen/android/app/src/main/java/network/awai/murakumo/'+n,import.meta.url),'utf8');
- const generate=K('Models.kt').split('\n').find(l=>l.includes('fun generate('));
- const at=generate.indexOf('check(loaded){"model-not-loaded"}');
- assert.ok(at>=0&&at<generate.indexOf('Engine.generate'),'Models.generate refuses model-not-loaded before the engine runs');
- assert.match(fs.readFileSync(new URL('../native/engine.cpp',import.meta.url),'utf8'),/if\(!model\|\|bytes<1\|\|bytes>8192/,'the native engine refuses when no model is loaded');
+
+ // Text provider boundary
+ const textGen=K('Models.kt').split('\n').find(l=>l.includes('fun generate('));
+ const textNotLoadedAt=textGen.indexOf('check(loaded){"model-not-loaded"}');
+ assert.ok(textNotLoadedAt>=0&&textNotLoadedAt<textGen.indexOf('Engine.generate'),'Models.generate refuses model-not-loaded before the text engine runs');
+ assert.match(fs.readFileSync(new URL('../native/engine.cpp',import.meta.url),'utf8'),/if\(!model\|\|bytes<1\|\|bytes>8192\|\|count<1\|\|count>256\)\{fail\(env,"invalid-request"\);return nullptr;\}/,'native/engine.cpp refuses when no text model is loaded');
+
+ // Image provider boundary
+ const imageModels=K('ImageModels.kt');
+ assert.match(imageModels,/fun present\(c:Context\):Boolean=[\s\S]*?f\.isFile&&f\.length\(\)==p\.getLong\("bytes"\)/,'ImageModels.present verifies all pinned image model files exist with exact byte lengths');
+ const imageGen=imageModels.slice(imageModels.indexOf('fun generate('));
+ const releaseReqAt=imageGen.indexOf('check(!Models.loaded){"release-text-model-required"}');
+ const imageMissingAt=imageGen.indexOf('check(present(c)){"image-model-missing"}');
+ const imagePrepAt=imageGen.indexOf('try{ImageEngine.prepare()}catch(e:LinkageError){throw IllegalStateException("image-engine-unavailable")}');
+ const imageRunAt=imageGen.indexOf('ImageEngine.generate(');
+ assert.ok(releaseReqAt>=0&&imageMissingAt>releaseReqAt&&imagePrepAt>imageMissingAt&&imageRunAt>imagePrepAt,'ImageModels.generate enforces text-model release, pinned image-model presence, and engine availability before ImageEngine.generate');
+ const imageNative=fs.readFileSync(new URL('../native/image/image.cpp',import.meta.url),'utf8');
+ const loadFailAt=imageNative.indexOf('if(!ok(loadStatus)){fail(e,"image-model-load-failed");return nullptr;}');
+ assert.ok(loadFailAt>=0&&loadFailAt<imageNative.indexOf('sd_generate_image('),'native/image/image.cpp refuses failed model load before sd_generate_image');
+
+ // Fixed error-code allowlist covers both text and image refusal codes
+ const errorCodes=K('ErrorCodes.kt');
+ for(const code of ['model-not-loaded','invalid-request','release-text-model-required','image-model-missing','image-engine-unavailable','image-model-load-failed'])assert.ok(errorCodes.includes(`"${code}"`),`ErrorCodes.ALL lists ${code}`);
+
+ // Confirmation Activity routes both modalities through ErrorCodes.of -> finishWith (RESULT_CANCELED)
  const activity=K('InferenceRequestActivity.kt');
- assert.match(activity,/onFailure=\{finishWith\(ErrorCodes\.of\(it,"inference-unavailable"\)\)\}/,'a failed job finishes as a fixed code');
- assert.match(activity,/private fun finishWith\(code:String\)\{[^}]*setResult\(RESULT_CANCELED/,'finishWith always cancels');
+ assert.match(activity,/if\(imageJob\)\{\s*val image=ImageModels\.generate\(this,requestId,prompt\)/,'InferenceRequestActivity dispatches image requests to ImageModels.generate');
+ assert.match(activity,/\}else\{\s*val text=Models\.generate\(prompt,tokens\)/,'InferenceRequestActivity dispatches text requests to Models.generate');
+ assert.match(activity,/onFailure=\{finishWith\(ErrorCodes\.of\(it,"inference-unavailable"\)\)\}/,'failed text and image jobs map through ErrorCodes.of into finishWith');
+ assert.match(activity,/private fun finishWith\(code:String\)\{[^}]*check\(code in ErrorCodes\.ALL\);setResult\(RESULT_CANCELED,Intent\(\)\.putExtra\("error",code\)\)/,'finishWith always checks ErrorCodes.ALL and returns RESULT_CANCELED with the fixed error code');
  assert.equal(activity.match(/setResult\(RESULT_OK/g).length,1,'RESULT_OK is set only by finishOk');
+ assert.match(activity,/private fun finishOk\(result:Intent\)\{[^}]*setResult\(RESULT_OK,result\)/,'only finishOk emits RESULT_OK');
 });
