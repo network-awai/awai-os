@@ -65,3 +65,30 @@ test('a public generation handle can cancel a pending result on the same client'
  assert.equal(next.requestId, nextId);
  assert.equal(next.text, 'next');
 });
+
+test('an unloaded model refuses generation; the refusal is a rejection, never a result',async()=>{
+ // Boundary: with no admitted model loaded, execution must be impossible. The provider's fixed
+ // 'model-not-loaded' code reaches the caller verbatim for text and image, the readiness state an
+ // agent reads agrees, and a later admitted request on the same client still succeeds.
+ let loaded=false;const actions=[];
+ const c=createInferenceClient({uuid,invoke:async(cmd,{request})=>{actions.push(request.action);
+  if(request.action==='info')return{schema:'awai.inference.local.v1',engine:'llama.cpp',loaded,loadedModel:loaded?'qwen3-0.6b-q8_0':null,remote:false};
+  if(request.action==='generate'){if(!loaded)throw'model-not-loaded';return{schema:'awai.inference.result.v1',requestId:request.requestId,modality:'text',engine:'llama.cpp',text:'ok',outputTokens:1};}}});
+ assert.equal((await c.info()).loaded,false,'readiness reports no loaded model');
+ for(const args of [{prompt:'hi'},{modality:'image',prompt:'a cup'},{prompt:'hi'}])await assert.rejects(c.generate(args),e=>String(e)==='model-not-loaded');
+ const pending=c.startGeneration({prompt:'hi'});await assert.rejects(pending.result,e=>String(e)==='model-not-loaded');
+ assert.equal(actions.filter(a=>a==='generate').length,4,'every attempt reached the provider; none was answered with a result');
+ loaded=true;const ok=await c.generate({prompt:'hi'});assert.equal(ok.text,'ok');
+ // The provider side is source-verified: Models.generate refuses before Engine.generate runs, the
+ // native engine refuses a null model, and the confirmation Activity can only end a failure as
+ // RESULT_CANCELED — a refusal can never arrive as RESULT_OK.
+ const K=n=>fs.readFileSync(new URL('../src-tauri/gen/android/app/src/main/java/network/awai/murakumo/'+n,import.meta.url),'utf8');
+ const generate=K('Models.kt').split('\n').find(l=>l.includes('fun generate('));
+ const at=generate.indexOf('check(loaded){"model-not-loaded"}');
+ assert.ok(at>=0&&at<generate.indexOf('Engine.generate'),'Models.generate refuses model-not-loaded before the engine runs');
+ assert.match(fs.readFileSync(new URL('../native/engine.cpp',import.meta.url),'utf8'),/if\(!model\|\|bytes<1\|\|bytes>8192/,'the native engine refuses when no model is loaded');
+ const activity=K('InferenceRequestActivity.kt');
+ assert.match(activity,/onFailure=\{finishWith\(ErrorCodes\.of\(it,"inference-unavailable"\)\)\}/,'a failed job finishes as a fixed code');
+ assert.match(activity,/private fun finishWith\(code:String\)\{[^}]*setResult\(RESULT_CANCELED/,'finishWith always cancels');
+ assert.equal(activity.match(/setResult\(RESULT_OK/g).length,1,'RESULT_OK is set only by finishOk');
+});
