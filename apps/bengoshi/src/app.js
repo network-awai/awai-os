@@ -146,6 +146,14 @@ function diffStateSections(prevState, nextState) {
   return changed;
 }
 
+function valuesEqual(a, b) {
+  if (a === b) return true;
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return a.length === b.length && a.every((v, i) => valuesEqual(v, b[i]));
+  }
+  return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+}
+
 // Ephemeral device-only QA private key (kept in memory only; never persisted outside session)
 let sessionLawyerKeyPair = null;
 let revealedBodies = new Map();
@@ -788,6 +796,17 @@ async function renderProfileDetail(lawyerId) {
 }
 
 // ---- View: contact.compose (Method A primary + Soudan Memo Import) ----
+const EDITABLE_DRAFT_FIELDS = Object.freeze([
+  'category',
+  'clientName',
+  'clientContact',
+  'counterpartyName',
+  'summary',
+  'wish',
+  'deadline',
+  'documents',
+]);
+
 async function renderContactCompose() {
   const view = $('view');
   view.replaceChildren();
@@ -796,10 +815,15 @@ async function renderContactCompose() {
     el('p', t('compose.methodANote'), 'banner'),
   );
 
-  const draft = state.draft
-    ? structuredClone(state.draft)
+  const initialPersistedDraft = state.draft ? structuredClone(state.draft) : null;
+  let draft = initialPersistedDraft
+    ? structuredClone(initialPersistedDraft)
     : emptyInquiryDraft(pendingComposeLawyerId || selectedLawyerId);
+  let lawyerIdDirty = false;
   if (pendingComposeLawyerId) {
+    if (!initialPersistedDraft || initialPersistedDraft.lawyerId !== pendingComposeLawyerId) {
+      lawyerIdDirty = true;
+    }
     draft.lawyerId = pendingComposeLawyerId;
     pendingComposeLawyerId = '';
   }
@@ -838,13 +862,19 @@ async function renderContactCompose() {
   importCard.append(importAlert, jsonArea, importActions);
   bindForm(importCard, async () => {
     try {
-      await engine.execute('inquiry.import_memo', { json: jsonArea.value, lawyerId: draft.lawyerId }, { actor: 'ui' });
+      await engine.execute(
+        'inquiry.import_memo',
+        { json: jsonArea.value, lawyerId: draft.lawyerId || state.draft?.lawyerId || selectedLawyerId },
+        { actor: 'ui' },
+      );
       clearStorageError(importAlert);
       say(t('compose.importOk'));
       renderContactCompose();
     } catch (e) {
       if (isStoragePersistError(e)) {
-        showStorageError(e.persistResult || e, importAlert, { activeSection: 'draft' });
+        const res = e.persistResult || e;
+        if (res?.code === 'state-conflict' && res?.refreshed) syncUntouchedDraftFromLatest();
+        showStorageError(res, importAlert, { activeSection: 'draft' });
         return;
       }
       say(t('compose.importFail', { code: e?.code || 'invalid' }));
@@ -863,87 +893,23 @@ async function renderContactCompose() {
     o.selected = draft.category === c;
     catSel.append(o);
   }
-  catSel.addEventListener('change', () => { dirtyFields.add('category'); draft.category = catSel.value; });
+  catSel.value = draft.category || 'other';
 
   const nameIn = Object.assign(el('input'), { value: draft.clientName || '' });
-  nameIn.addEventListener('input', () => { dirtyFields.add('clientName'); draft.clientName = nameIn.value; });
-
   const contactIn = Object.assign(el('input'), { value: draft.clientContact || '' });
-  contactIn.addEventListener('input', () => { dirtyFields.add('clientContact'); draft.clientContact = contactIn.value; });
-
   const counterIn = Object.assign(el('input'), { value: draft.counterpartyName || '' });
-  counterIn.addEventListener('input', () => { dirtyFields.add('counterpartyName'); draft.counterpartyName = counterIn.value; });
-
   const sumArea = Object.assign(el('textarea'), { value: draft.summary || '' });
-  sumArea.addEventListener('input', () => { dirtyFields.add('summary'); draft.summary = sumArea.value; });
-
   const wishArea = Object.assign(el('textarea'), { value: draft.wish || '' });
-  wishArea.addEventListener('input', () => { dirtyFields.add('wish'); draft.wish = wishArea.value; });
-
   const deadIn = Object.assign(el('input'), { value: draft.deadline || '' });
-  deadIn.addEventListener('input', () => { dirtyFields.add('deadline'); draft.deadline = deadIn.value; });
-
   const docsArea = Object.assign(el('textarea'), { value: (draft.documents || []).join('\n') });
-  docsArea.addEventListener('input', () => {
-    dirtyFields.add('documents');
-    draft.documents = docsArea.value.split('\n').map(l => l.trim()).filter(Boolean);
-  });
 
   const evArea = el('textarea');
   evArea.readOnly = true;
   evArea.value = JSON.stringify(draft.evidenceManifest || [], null, 2);
 
-  function syncUntouchedDraftFromLatest() {
-    const latestDraft = state.draft;
-    if (!latestDraft || typeof latestDraft !== 'object') return;
-    if (!dirtyFields.has('category') && latestDraft.category) {
-      draft.category = latestDraft.category;
-      catSel.value = latestDraft.category;
-    }
-    if (!dirtyFields.has('clientName') && typeof latestDraft.clientName === 'string') {
-      draft.clientName = latestDraft.clientName;
-      nameIn.value = latestDraft.clientName;
-    }
-    if (!dirtyFields.has('clientContact') && typeof latestDraft.clientContact === 'string') {
-      draft.clientContact = latestDraft.clientContact;
-      contactIn.value = latestDraft.clientContact;
-    }
-    if (!dirtyFields.has('counterpartyName') && typeof latestDraft.counterpartyName === 'string') {
-      draft.counterpartyName = latestDraft.counterpartyName;
-      counterIn.value = latestDraft.counterpartyName;
-    }
-    if (!dirtyFields.has('summary') && typeof latestDraft.summary === 'string') {
-      draft.summary = latestDraft.summary;
-      sumArea.value = latestDraft.summary;
-    }
-    if (!dirtyFields.has('wish') && typeof latestDraft.wish === 'string') {
-      draft.wish = latestDraft.wish;
-      wishArea.value = latestDraft.wish;
-    }
-    if (!dirtyFields.has('deadline') && typeof latestDraft.deadline === 'string') {
-      draft.deadline = latestDraft.deadline;
-      deadIn.value = latestDraft.deadline;
-    }
-    if (!dirtyFields.has('documents') && Array.isArray(latestDraft.documents)) {
-      draft.documents = [...latestDraft.documents];
-      docsArea.value = draft.documents.join('\n');
-    }
-    if (Array.isArray(latestDraft.timeline) && !draft.timeline?.length) {
-      draft.timeline = structuredClone(latestDraft.timeline);
-    }
-    if (Array.isArray(latestDraft.evidenceManifest) && !draft.evidenceManifest?.length) {
-      draft.evidenceManifest = structuredClone(latestDraft.evidenceManifest);
-      evArea.value = JSON.stringify(draft.evidenceManifest, null, 2);
-    }
-  }
-
-  function buildDraftCandidate() {
-    const base = state.draft && typeof state.draft === 'object' ? structuredClone(state.draft) : {};
+  function readDraftFormValues() {
     return {
-      ...base,
-      ...structuredClone(draft),
-      lawyerId: draft.lawyerId || base.lawyerId || selectedLawyerId,
-      category: dirtyFields.has('category') ? catSel.value : (catSel.value || draft.category || base.category),
+      category: catSel.value || 'other',
       clientName: nameIn.value,
       clientContact: contactIn.value,
       counterpartyName: counterIn.value,
@@ -952,6 +918,136 @@ async function renderContactCompose() {
       deadline: deadIn.value,
       documents: docsArea.value.split('\n').map(l => l.trim()).filter(Boolean),
     };
+  }
+
+  let baseDraft = structuredClone(draft);
+  let baseFormValues = readDraftFormValues();
+
+  function trackDraftField(key, value) {
+    if (valuesEqual(value, baseFormValues[key])) dirtyFields.delete(key);
+    else dirtyFields.add(key);
+    draft[key] = Array.isArray(value) ? [...value] : value;
+  }
+
+  catSel.addEventListener('change', () => { trackDraftField('category', catSel.value || 'other'); });
+  nameIn.addEventListener('input', () => { trackDraftField('clientName', nameIn.value); });
+  contactIn.addEventListener('input', () => { trackDraftField('clientContact', contactIn.value); });
+  counterIn.addEventListener('input', () => { trackDraftField('counterpartyName', counterIn.value); });
+  sumArea.addEventListener('input', () => { trackDraftField('summary', sumArea.value); });
+  wishArea.addEventListener('input', () => { trackDraftField('wish', wishArea.value); });
+  deadIn.addEventListener('input', () => { trackDraftField('deadline', deadIn.value); });
+  docsArea.addEventListener('input', () => {
+    trackDraftField('documents', docsArea.value.split('\n').map(l => l.trim()).filter(Boolean));
+  });
+
+  function getModifiedDraftFields(formVals = readDraftFormValues()) {
+    const modified = new Set(dirtyFields);
+    for (const key of EDITABLE_DRAFT_FIELDS) {
+      if (!valuesEqual(formVals[key], baseFormValues[key])) {
+        modified.add(key);
+      }
+    }
+    return modified;
+  }
+
+  function applyDraftToForm(targetDraft, preserveFields = new Set()) {
+    if (!preserveFields.has('category') && typeof targetDraft.category === 'string' && targetDraft.category) {
+      catSel.value = targetDraft.category;
+    }
+    if (!preserveFields.has('clientName') && typeof targetDraft.clientName === 'string') {
+      nameIn.value = targetDraft.clientName;
+    }
+    if (!preserveFields.has('clientContact') && typeof targetDraft.clientContact === 'string') {
+      contactIn.value = targetDraft.clientContact;
+    }
+    if (!preserveFields.has('counterpartyName') && typeof targetDraft.counterpartyName === 'string') {
+      counterIn.value = targetDraft.counterpartyName;
+    }
+    if (!preserveFields.has('summary') && typeof targetDraft.summary === 'string') {
+      sumArea.value = targetDraft.summary;
+    }
+    if (!preserveFields.has('wish') && typeof targetDraft.wish === 'string') {
+      wishArea.value = targetDraft.wish;
+    }
+    if (!preserveFields.has('deadline') && typeof targetDraft.deadline === 'string') {
+      deadIn.value = targetDraft.deadline;
+    }
+    if (!preserveFields.has('documents') && Array.isArray(targetDraft.documents)) {
+      docsArea.value = targetDraft.documents.join('\n');
+    }
+    const manifest = Array.isArray(targetDraft.evidenceManifest)
+      ? targetDraft.evidenceManifest
+      : Array.isArray(targetDraft.evidence_manifest)
+        ? targetDraft.evidence_manifest
+        : [];
+    evArea.value = JSON.stringify(manifest, null, 2);
+  }
+
+  function syncUntouchedDraftFromLatest() {
+    const latestDraft = state.draft;
+    if (!latestDraft || typeof latestDraft !== 'object') return;
+    const formVals = readDraftFormValues();
+    const modified = getModifiedDraftFields(formVals);
+    for (const key of modified) dirtyFields.add(key);
+
+    const nextBase = structuredClone(latestDraft);
+    applyDraftToForm(nextBase, modified);
+
+    const nextDraft = structuredClone(latestDraft);
+    if (lawyerIdDirty && draft.lawyerId) {
+      nextDraft.lawyerId = draft.lawyerId;
+    }
+    for (const key of modified) {
+      nextDraft[key] = structuredClone(formVals[key]);
+    }
+    draft = nextDraft;
+    baseDraft = nextBase;
+    baseFormValues = {
+      category: typeof nextBase.category === 'string' && nextBase.category ? nextBase.category : 'other',
+      clientName: typeof nextBase.clientName === 'string' ? nextBase.clientName : '',
+      clientContact: typeof nextBase.clientContact === 'string' ? nextBase.clientContact : '',
+      counterpartyName: typeof nextBase.counterpartyName === 'string' ? nextBase.counterpartyName : '',
+      summary: typeof nextBase.summary === 'string' ? nextBase.summary : '',
+      wish: typeof nextBase.wish === 'string' ? nextBase.wish : '',
+      deadline: typeof nextBase.deadline === 'string' ? nextBase.deadline : '',
+      documents: Array.isArray(nextBase.documents) ? [...nextBase.documents] : [],
+    };
+  }
+
+  function buildDraftCandidate() {
+    const formVals = readDraftFormValues();
+    const modified = getModifiedDraftFields(formVals);
+    const hasLatest = Boolean(state.draft && typeof state.draft === 'object');
+    const candidate = hasLatest
+      ? structuredClone(state.draft)
+      : emptyInquiryDraft(draft.lawyerId || selectedLawyerId);
+
+    if (lawyerIdDirty && draft.lawyerId) {
+      candidate.lawyerId = draft.lawyerId;
+    } else if (!candidate.lawyerId) {
+      candidate.lawyerId = draft.lawyerId || selectedLawyerId;
+    }
+
+    if (hasLatest) {
+      for (const key of modified) {
+        candidate[key] = structuredClone(formVals[key]);
+      }
+    } else {
+      for (const key of EDITABLE_DRAFT_FIELDS) {
+        candidate[key] = structuredClone(formVals[key]);
+      }
+    }
+    return candidate;
+  }
+
+  function resetDraftBaselineAfterSave(savedDraft) {
+    if (!savedDraft || typeof savedDraft !== 'object') return;
+    dirtyFields.clear();
+    lawyerIdDirty = false;
+    draft = structuredClone(savedDraft);
+    baseDraft = structuredClone(savedDraft);
+    applyDraftToForm(baseDraft);
+    baseFormValues = readDraftFormValues();
   }
 
   form.append(
@@ -972,7 +1068,8 @@ async function renderContactCompose() {
   saveBtn.type = 'button';
   saveBtn.addEventListener('click', async () => {
     try {
-      await engine.execute('inquiry.draft', { draft: buildDraftCandidate() }, { actor: 'ui' });
+      const res = await engine.execute('inquiry.draft', { draft: buildDraftCandidate() }, { actor: 'ui' });
+      resetDraftBaselineAfterSave(res.draft);
       clearStorageError(storageAlert);
       say(t('compose.draftSaved'));
     } catch (err) {
@@ -996,7 +1093,9 @@ async function renderContactCompose() {
       await copyText(res.text, t('profile.contactCopied'));
     } catch (err) {
       if (isStoragePersistError(err)) {
-        showStorageError(err.persistResult || err, storageAlert);
+        const res = err.persistResult || err;
+        if (res?.code === 'state-conflict' && res?.refreshed) syncUntouchedDraftFromLatest();
+        showStorageError(res, storageAlert);
         return;
       }
       say(t('profile.contactBlocked'));
@@ -1019,6 +1118,7 @@ async function renderContactCompose() {
   bindForm(form, async () => {
     try {
       const res = await engine.execute('inquiry.draft', { draft: buildDraftCandidate() }, { actor: 'ui' });
+      resetDraftBaselineAfterSave(res.draft);
       clearStorageError(storageAlert);
       if (res.problems.length) {
         say('入力不足: ' + res.problems.join(', '));
@@ -1227,6 +1327,15 @@ async function renderRequests() {
 }
 
 // ---- View: lawyer.onboarding (Participation policy + O4 preview + Art. 11 export) ----
+const EDITABLE_ONBOARDING_FIELDS = Object.freeze([
+  'name',
+  'name_kana',
+  'bar_association',
+  'registration_number',
+  'office_name',
+  'phone',
+]);
+
 function renderLawyerOnboarding() {
   const view = $('view');
   view.replaceChildren();
@@ -1238,17 +1347,79 @@ function renderLawyerOnboarding() {
     el('p', t('onboarding.noIdPhoto'), 'banner warn'),
   );
 
+  const existingProfile = state.lawyerProfile && typeof state.lawyerProfile === 'object'
+    ? structuredClone(state.lawyerProfile)
+    : null;
+  const dirtyFields = new Set();
+  let keyPairDirty = false;
+
   const form = el('section', null, 'card grid');
   const fields = {
-    name: el('input'),
-    name_kana: el('input'),
-    bar_association: el('input'),
-    registration_number: el('input'),
-    office_name: el('input'),
-    phone: el('input'),
+    name: Object.assign(el('input'), { value: existingProfile?.name || '' }),
+    name_kana: Object.assign(el('input'), { value: existingProfile?.name_kana || '' }),
+    bar_association: Object.assign(el('input'), { value: existingProfile?.bar_association || '' }),
+    registration_number: Object.assign(el('input'), { value: existingProfile?.registration_number || '' }),
+    office_name: Object.assign(el('input'), { value: existingProfile?.office_name || '' }),
+    phone: Object.assign(el('input'), { value: existingProfile?.phone || '' }),
   };
   fields.bar_association.placeholder = '東京弁護士会';
   fields.registration_number.placeholder = '990101';
+
+  function readOnboardingFormValues() {
+    return {
+      name: fields.name.value.trim(),
+      name_kana: fields.name_kana.value.trim(),
+      bar_association: fields.bar_association.value.trim(),
+      registration_number: fields.registration_number.value.trim(),
+      office_name: fields.office_name.value.trim(),
+      phone: fields.phone.value.trim(),
+    };
+  }
+
+  let baseFormValues = readOnboardingFormValues();
+
+  function getModifiedOnboardingFields(formVals = readOnboardingFormValues()) {
+    const modified = new Set(dirtyFields);
+    for (const key of EDITABLE_ONBOARDING_FIELDS) {
+      if (!valuesEqual(formVals[key], baseFormValues[key])) {
+        modified.add(key);
+      }
+    }
+    return modified;
+  }
+
+  function applyOnboardingToForm(targetProfile, preserveFields = new Set()) {
+    for (const key of EDITABLE_ONBOARDING_FIELDS) {
+      if (!preserveFields.has(key) && typeof targetProfile[key] === 'string') {
+        fields[key].value = targetProfile[key];
+      }
+    }
+  }
+
+  function syncUntouchedOnboardingFromLatest() {
+    const latest = state.lawyerProfile;
+    if (!latest || typeof latest !== 'object') return;
+    const formVals = readOnboardingFormValues();
+    const modified = getModifiedOnboardingFields(formVals);
+    for (const key of modified) dirtyFields.add(key);
+    applyOnboardingToForm(latest, modified);
+    baseFormValues = {
+      name: typeof latest.name === 'string' ? latest.name.trim() : '',
+      name_kana: typeof latest.name_kana === 'string' ? latest.name_kana.trim() : '',
+      bar_association: typeof latest.bar_association === 'string' ? latest.bar_association.trim() : '',
+      registration_number: typeof latest.registration_number === 'string' ? latest.registration_number.trim() : '',
+      office_name: typeof latest.office_name === 'string' ? latest.office_name.trim() : '',
+      phone: typeof latest.phone === 'string' ? latest.phone.trim() : '',
+    };
+  }
+
+  for (const key of EDITABLE_ONBOARDING_FIELDS) {
+    fields[key].addEventListener('input', () => {
+      const val = fields[key].value.trim();
+      if (valuesEqual(val, baseFormValues[key])) dirtyFields.delete(key);
+      else dirtyFields.add(key);
+    });
+  }
 
   form.append(
     fieldWrap('氏名（規程9条必須・架空入力のみ）', 'ob-name', fields.name),
@@ -1264,6 +1435,7 @@ function renderLawyerOnboarding() {
   genBtn.type = 'button';
   genBtn.addEventListener('click', async () => {
     sessionLawyerKeyPair = await generateLawyerKeyPair();
+    keyPairDirty = true;
     keyInfo.textContent = `鍵指紋: ${sessionLawyerKeyPair.keyFingerprint}`;
     say(t('onboarding.keysGenerated', { fp: sessionLawyerKeyPair.keyFingerprint.slice(0, 16) + '...' }));
   });
@@ -1286,7 +1458,9 @@ function renderLawyerOnboarding() {
       say(t('onboarding.art11Exported'));
     } catch (err) {
       if (isStoragePersistError(err)) {
-        showStorageError(err.persistResult || err, storageAlert);
+        const res = err.persistResult || err;
+        if (res?.code === 'state-conflict' && res?.refreshed) syncUntouchedOnboardingFromLatest();
+        showStorageError(res, storageAlert, { activeSection: 'lawyerProfile' });
         return;
       }
       say(err?.message || 'export-failed');
@@ -1298,12 +1472,27 @@ function renderLawyerOnboarding() {
   form.append(keyInfo, storageAlert, actions, art11Box, nichibenrenLink());
 
   bindForm(form, async () => {
+    const formVals = readOnboardingFormValues();
+    const modified = getModifiedOnboardingFields(formVals);
+    const latest = state.lawyerProfile && typeof state.lawyerProfile === 'object'
+      ? structuredClone(state.lawyerProfile)
+      : null;
+
+    const effective = {
+      name: latest && !modified.has('name') ? (latest.name || '') : formVals.name,
+      name_kana: latest && !modified.has('name_kana') ? (latest.name_kana || '') : formVals.name_kana,
+      bar_association: latest && !modified.has('bar_association') ? (latest.bar_association || '') : formVals.bar_association,
+      registration_number: latest && !modified.has('registration_number') ? (latest.registration_number || '') : formVals.registration_number,
+      office_name: latest && !modified.has('office_name') ? (latest.office_name || '') : formVals.office_name,
+      phone: latest && !modified.has('phone') ? (latest.phone || '') : formVals.phone,
+    };
+
     const submission = {
-      name: fields.name.value.trim(),
-      bar_association: fields.bar_association.value.trim(),
-      registration_number: fields.registration_number.value.trim(),
-      office_name: fields.office_name.value.trim(),
-      phone: fields.phone.value.trim(),
+      name: effective.name,
+      bar_association: effective.bar_association,
+      registration_number: effective.registration_number,
+      office_name: effective.office_name,
+      phone: effective.phone,
       verification_method: 'self_declared',
     };
     const probs = validateOnboardingSubmission(submission);
@@ -1311,49 +1500,81 @@ function renderLawyerOnboarding() {
       say(t('profileEdit.rejected', { reasons: probs.map(p => `${p.field}:${p.code}`).join(', ') }));
       return;
     }
-    if (!sessionLawyerKeyPair) {
-      sessionLawyerKeyPair = await generateLawyerKeyPair();
-      keyInfo.textContent = `鍵指紋: ${sessionLawyerKeyPair.keyFingerprint}`;
+
+    let profile;
+    if (latest) {
+      profile = structuredClone(latest);
+      if (modified.has('name')) profile.name = formVals.name;
+      if (modified.has('name_kana')) profile.name_kana = formVals.name_kana || profile.name;
+      if (modified.has('bar_association')) profile.bar_association = formVals.bar_association;
+      if (modified.has('registration_number')) {
+        profile.registration_number = formVals.registration_number;
+        if (!profile.id || profile.id.startsWith('local-lawyer-')) {
+          profile.id = 'local-lawyer-' + formVals.registration_number;
+        }
+      }
+      if (modified.has('office_name')) profile.office_name = formVals.office_name;
+      if (modified.has('phone')) profile.phone = formVals.phone;
+      if (keyPairDirty && sessionLawyerKeyPair) {
+        profile.e2ee_public_key_jwk = sessionLawyerKeyPair.publicKeyJwk;
+        profile.e2ee_key_fingerprint = sessionLawyerKeyPair.keyFingerprint;
+      } else if (!profile.e2ee_public_key_jwk) {
+        if (!sessionLawyerKeyPair) {
+          sessionLawyerKeyPair = await generateLawyerKeyPair();
+          keyInfo.textContent = `鍵指紋: ${sessionLawyerKeyPair.keyFingerprint}`;
+        }
+        profile.e2ee_public_key_jwk = sessionLawyerKeyPair.publicKeyJwk;
+        profile.e2ee_key_fingerprint = sessionLawyerKeyPair.keyFingerprint;
+      }
+    } else {
+      if (!sessionLawyerKeyPair) {
+        sessionLawyerKeyPair = await generateLawyerKeyPair();
+        keyInfo.textContent = `鍵指紋: ${sessionLawyerKeyPair.keyFingerprint}`;
+      }
+      profile = {
+        id: 'local-lawyer-' + submission.registration_number,
+        synthetic: true,
+        tenant_id: state.settings.tenantId,
+        name: submission.name,
+        name_kana: effective.name_kana || submission.name,
+        bar_association: submission.bar_association,
+        registration_number: submission.registration_number,
+        office_name: submission.office_name,
+        prefecture_code: '13',
+        address: '',
+        phone: submission.phone,
+        fax: '',
+        email: `sample-${submission.registration_number}@office.example.invalid`,
+        website_url: `https://office-${submission.registration_number}.example.invalid/`,
+        practice_areas: ['民事一般'],
+        career_facts: [],
+        languages: ['日本語'],
+        legal_aid_houterasu: false,
+        initial_consultation_fee_note: '',
+        nichibenren_search_url: NICHIBENREN_SEARCH_URL,
+        verification: {
+          status: 'unverified_self_declared',
+          verified_at: null,
+          expires_at: null,
+          method: 'self_declared',
+          attestation_digest: null,
+        },
+        e2ee_public_key_jwk: sessionLawyerKeyPair.publicKeyJwk,
+        e2ee_key_fingerprint: sessionLawyerKeyPair.keyFingerprint,
+      };
     }
-    const profile = {
-      id: 'local-lawyer-' + submission.registration_number,
-      synthetic: true,
-      tenant_id: state.settings.tenantId,
-      name: submission.name,
-      name_kana: fields.name_kana.value.trim() || submission.name,
-      bar_association: submission.bar_association,
-      registration_number: submission.registration_number,
-      office_name: submission.office_name,
-      prefecture_code: '13',
-      address: '',
-      phone: submission.phone,
-      fax: '',
-      email: `sample-${submission.registration_number}@office.example.invalid`,
-      website_url: `https://office-${submission.registration_number}.example.invalid/`,
-      practice_areas: ['民事一般'],
-      career_facts: [],
-      languages: ['日本語'],
-      legal_aid_houterasu: false,
-      initial_consultation_fee_note: '',
-      nichibenren_search_url: NICHIBENREN_SEARCH_URL,
-      verification: {
-        status: 'unverified_self_declared',
-        verified_at: null,
-        expires_at: null,
-        method: 'self_declared',
-        attestation_digest: null,
-      },
-      e2ee_public_key_jwk: sessionLawyerKeyPair.publicKeyJwk,
-      e2ee_key_fingerprint: sessionLawyerKeyPair.keyFingerprint,
-    };
     try {
       await engine.execute('lawyer.profile.update', { profile, action: 'onboarding_preview' }, { actor: 'ui' });
+      dirtyFields.clear();
+      keyPairDirty = false;
       clearStorageError(storageAlert);
       say(t('onboarding.submitted'));
       location.hash = '#/lawyer/profile';
     } catch (err) {
       if (isStoragePersistError(err)) {
-        showStorageError(err.persistResult || err, storageAlert, { activeSection: 'lawyerProfile' });
+        const res = err.persistResult || err;
+        if (res?.code === 'state-conflict' && res?.refreshed) syncUntouchedOnboardingFromLatest();
+        showStorageError(res, storageAlert, { activeSection: 'lawyerProfile' });
         return;
       }
       say(t('profileEdit.rejected', { reasons: (err.problems || []).map(p => p.code).join(', ') || err?.message || 'error' }));
@@ -1364,6 +1585,15 @@ function renderLawyerOnboarding() {
 }
 
 // ---- View: lawyer.profile.edit (Expanded O9 Validator + Art. 11 3-year export) ----
+const EDITABLE_PROFILE_FIELDS = Object.freeze([
+  'name',
+  'bar_association',
+  'office_name',
+  'practice_areas',
+  'career_facts',
+  'initial_consultation_fee_note',
+]);
+
 function renderLawyerProfileEdit() {
   const view = $('view');
   view.replaceChildren();
@@ -1383,24 +1613,8 @@ function renderLawyerProfileEdit() {
   const careerIn = Object.assign(el('textarea'), { value: (current.career_facts || []).join('\n') });
   const feeIn = Object.assign(el('input'), { value: current.initial_consultation_fee_note || '' });
 
-  function syncUntouchedProfileFromLatest() {
-    const latest = state.lawyerProfile;
-    if (!latest || typeof latest !== 'object') return;
-    if (!dirtyFields.has('name') && typeof latest.name === 'string') nameIn.value = latest.name;
-    if (!dirtyFields.has('bar_association') && typeof latest.bar_association === 'string') barIn.value = latest.bar_association;
-    if (!dirtyFields.has('office_name') && typeof latest.office_name === 'string') officeIn.value = latest.office_name;
-    if (!dirtyFields.has('practice_areas') && Array.isArray(latest.practice_areas)) areasIn.value = latest.practice_areas.join(', ');
-    if (!dirtyFields.has('career_facts') && Array.isArray(latest.career_facts)) careerIn.value = latest.career_facts.join('\n');
-    if (!dirtyFields.has('initial_consultation_fee_note') && typeof latest.initial_consultation_fee_note === 'string') {
-      feeIn.value = latest.initial_consultation_fee_note;
-    }
-    validateLive();
-  }
-
-  function buildCandidate() {
-    const base = structuredClone(state.lawyerProfile || current);
+  function readProfileFormValues() {
     return {
-      ...base,
       name: nameIn.value.trim(),
       bar_association: barIn.value.trim(),
       office_name: officeIn.value.trim(),
@@ -1408,6 +1622,72 @@ function renderLawyerProfileEdit() {
       career_facts: careerIn.value.split('\n').map(x => x.trim()).filter(Boolean),
       initial_consultation_fee_note: feeIn.value.trim(),
     };
+  }
+
+  let baseFormValues = readProfileFormValues();
+
+  function getModifiedProfileFields(formVals = readProfileFormValues()) {
+    const modified = new Set(dirtyFields);
+    for (const key of EDITABLE_PROFILE_FIELDS) {
+      if (!valuesEqual(formVals[key], baseFormValues[key])) {
+        modified.add(key);
+      }
+    }
+    return modified;
+  }
+
+  function applyProfileToForm(targetProfile, preserveFields = new Set()) {
+    if (!preserveFields.has('name') && typeof targetProfile.name === 'string') nameIn.value = targetProfile.name;
+    if (!preserveFields.has('bar_association') && typeof targetProfile.bar_association === 'string') barIn.value = targetProfile.bar_association;
+    if (!preserveFields.has('office_name') && typeof targetProfile.office_name === 'string') officeIn.value = targetProfile.office_name;
+    if (!preserveFields.has('practice_areas') && Array.isArray(targetProfile.practice_areas)) areasIn.value = targetProfile.practice_areas.join(', ');
+    if (!preserveFields.has('career_facts') && Array.isArray(targetProfile.career_facts)) careerIn.value = targetProfile.career_facts.join('\n');
+    if (!preserveFields.has('initial_consultation_fee_note') && typeof targetProfile.initial_consultation_fee_note === 'string') {
+      feeIn.value = targetProfile.initial_consultation_fee_note;
+    }
+  }
+
+  function syncUntouchedProfileFromLatest() {
+    const latest = state.lawyerProfile;
+    if (!latest || typeof latest !== 'object') return;
+    const formVals = readProfileFormValues();
+    const modified = getModifiedProfileFields(formVals);
+    for (const key of modified) dirtyFields.add(key);
+    applyProfileToForm(latest, modified);
+    baseFormValues = {
+      name: typeof latest.name === 'string' ? latest.name.trim() : '',
+      bar_association: typeof latest.bar_association === 'string' ? latest.bar_association.trim() : '',
+      office_name: typeof latest.office_name === 'string' ? latest.office_name.trim() : '',
+      practice_areas: Array.isArray(latest.practice_areas) ? latest.practice_areas.map(x => String(x).trim()).filter(Boolean) : [],
+      career_facts: Array.isArray(latest.career_facts) ? latest.career_facts.map(x => String(x).trim()).filter(Boolean) : [],
+      initial_consultation_fee_note: typeof latest.initial_consultation_fee_note === 'string' ? latest.initial_consultation_fee_note.trim() : '',
+    };
+    validateLive();
+  }
+
+  function buildCandidate() {
+    const formVals = readProfileFormValues();
+    const modified = getModifiedProfileFields(formVals);
+    const hasLatest = Boolean(state.lawyerProfile && typeof state.lawyerProfile === 'object');
+    const candidate = structuredClone(hasLatest ? state.lawyerProfile : current);
+    if (hasLatest) {
+      for (const key of modified) {
+        candidate[key] = structuredClone(formVals[key]);
+      }
+    } else {
+      for (const key of EDITABLE_PROFILE_FIELDS) {
+        candidate[key] = structuredClone(formVals[key]);
+      }
+    }
+    return candidate;
+  }
+
+  function resetProfileBaselineAfterSave(savedProfile) {
+    if (!savedProfile || typeof savedProfile !== 'object') return;
+    dirtyFields.clear();
+    applyProfileToForm(savedProfile);
+    baseFormValues = readProfileFormValues();
+    validateLive();
   }
 
   const saveBtn = el('button', t('profileEdit.save'));
@@ -1437,7 +1717,9 @@ function renderLawyerProfileEdit() {
     ['initial_consultation_fee_note', feeIn],
   ]) {
     ctrl.addEventListener('input', () => {
-      dirtyFields.add(fieldKey);
+      const formVals = readProfileFormValues();
+      if (valuesEqual(formVals[fieldKey], baseFormValues[fieldKey])) dirtyFields.delete(fieldKey);
+      else dirtyFields.add(fieldKey);
       validateLive();
     });
   }
@@ -1455,7 +1737,9 @@ function renderLawyerProfileEdit() {
       say(t('onboarding.art11Exported'));
     } catch (e) {
       if (isStoragePersistError(e)) {
-        showStorageError(e.persistResult || e, storageAlert, { activeSection: 'lawyerProfile' });
+        const res = e.persistResult || e;
+        if (res?.code === 'state-conflict' && res?.refreshed) syncUntouchedProfileFromLatest();
+        showStorageError(res, storageAlert, { activeSection: 'lawyerProfile' });
         return;
       }
       say(t('profileEdit.rejected', { reasons: (e.problems || []).map(p => p.code).join(', ') }));
@@ -1480,7 +1764,8 @@ function renderLawyerProfileEdit() {
 
   bindForm(form, async () => {
     try {
-      await engine.execute('lawyer.profile.update', { profile: buildCandidate() }, { actor: 'ui' });
+      const res = await engine.execute('lawyer.profile.update', { profile: buildCandidate() }, { actor: 'ui' });
+      resetProfileBaselineAfterSave(res.profile);
       clearStorageError(storageAlert);
       say(t('profileEdit.saved'));
     } catch (e) {

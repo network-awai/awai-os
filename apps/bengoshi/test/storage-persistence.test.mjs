@@ -1042,6 +1042,253 @@ test('Cross-tab state-conflict regression (#/lawyer/inbox ledger direct mutation
   }
 });
 
+test('Cross-tab state-conflict regression (#/contact/compose): retry after Tab B re-imports soudan.memo.export.v1 keeps Tab A summary edit AND Tab B updated timeline, evidenceManifest, and evidenceHashes', async () => {
+  const storage = createMemoryStorage();
+  const locks = createQueuingLocks();
+  const v1Hash = '1'.repeat(64);
+  const v2HashA = 'a'.repeat(64);
+  const v2HashB = 'b'.repeat(64);
+
+  const seed = createInitialLocalState();
+  seed.draft = {
+    lawyerId: SYNTHETIC_CATALOG_BUNDLE.lawyers[0].id,
+    template: 'consultation-memo.jpn.v1',
+    category: 'work',
+    clientName: '初期相談者',
+    clientContact: 'v1@example.invalid',
+    counterpartyName: '初期相手方株式会社',
+    summary: 'v1の相談概要',
+    timeline: [{ date: '2026-10-01', event: 'v1の出来事' }],
+    wish: 'v1の希望対応',
+    deadline: '2026-12-01',
+    documents: ['v1給与明細.pdf'],
+    evidenceManifest: [
+      {
+        url: 'https://v1.example.invalid/post/1',
+        posted_at: '2026-10-01T10:00:00Z',
+        author_name: '投稿者v1',
+        author_id: '@v1_author',
+        shot_name: 'v1-shot.png',
+        shot_size: 1024,
+        captured_at: '2026-10-02T00:00:00Z',
+        sha256: v1Hash,
+      },
+    ],
+    evidenceHashes: [
+      {
+        url: 'https://v1.example.invalid/post/1',
+        shotName: 'v1-shot.png',
+        sha256: v1Hash,
+        capturedAt: '2026-10-02T00:00:00Z',
+      },
+    ],
+    importedFromSoudan: true,
+    importedAt: '2026-10-02T00:00:00Z',
+  };
+  storage.setItem(STORAGE_KEY, JSON.stringify({ schema: 'awai.shell.host.v1', revision: 1, data: seed }));
+
+  // Tab A opens the existing v1 draft and edits ONLY summary
+  const { dom, restore } = await mountBuiltApp({ initialHash: '#/contact/compose', storage, locks });
+  try {
+    const view = dom.document.getElementById('view');
+    const catSel = dom.document.getElementById('c-cat');
+    const nameIn = dom.document.getElementById('c-name');
+    const contactIn = dom.document.getElementById('c-contact');
+    const counterIn = dom.document.getElementById('c-counter');
+    const sumArea = dom.document.getElementById('c-summary');
+    const wishArea = dom.document.getElementById('c-wish');
+    const deadIn = dom.document.getElementById('c-deadline');
+    const docsArea = dom.document.getElementById('c-docs');
+    const evArea = dom.document.getElementById('c-evidence');
+
+    assert.equal(sumArea.value, 'v1の相談概要');
+    assert.equal(JSON.parse(evArea.value)[0].sha256, v1Hash);
+
+    sumArea.value = 'タブAで編集した最新概要';
+    await sumArea.dispatch('input');
+
+    // Tab B re-imports a different soudan.memo.export.v1 into the same draft -> revision 2
+    const v2Memo = {
+      schema: 'soudan.memo.export.v1',
+      template: 'consultation-memo.jpn.v1',
+      memo: {
+        category: 'contract',
+        name: '再取込相談者B',
+        contact: 'v2@example.invalid',
+        otherParty: '再取込相手方株式会社',
+        summary: 'タブBで再取り込みした概要',
+        wish: 'タブBで更新した希望対応',
+        deadline: '2027-01-31',
+        timeline: [
+          { date: '2026-11-01', event: 'v2の出来事1（契約締結）' },
+          { date: '2026-11-15', event: 'v2の出来事2（催告書送付）' },
+        ],
+        documents: ['v2契約書.pdf', 'v2通知書.pdf'],
+      },
+      evidence_manifest: [
+        {
+          url: 'https://v2.example.invalid/post/101',
+          posted_at: '2026-11-01T12:00:00Z',
+          author_name: '投稿者v2A',
+          author_id: '@v2_author_a',
+          shot_name: 'v2-shot-a.png',
+          shot_size: 2048,
+          captured_at: '2026-11-16T09:00:00Z',
+          sha256: v2HashA,
+        },
+        {
+          url: 'https://v2.example.invalid/post/102',
+          posted_at: '2026-11-15T15:30:00Z',
+          author_name: '投稿者v2B',
+          author_id: '@v2_author_b',
+          shot_name: 'v2-shot-b.png',
+          shot_size: 4096,
+          captured_at: '2026-11-16T09:05:00Z',
+          sha256: v2HashB,
+        },
+      ],
+    };
+    const v2Rev = await runOtherTabOperation({
+      storage,
+      locks,
+      op: 'inquiry.import_memo',
+      params: { json: JSON.stringify(v2Memo), lawyerId: SYNTHETIC_CATALOG_BUNDLE.lawyers[0].id },
+    });
+    assert.equal(v2Rev, 2);
+
+    // Tab A clicks Save Draft -> hits state-conflict
+    const saveBtn = view.querySelectorAll('button').find(b => b.textContent.includes('下書き保存'));
+    assert.ok(saveBtn, 'Save draft button must exist');
+    await saveBtn.dispatch('click');
+    await flushMicrotasks();
+
+    // Tab A retains its dirty summary while untouched controls & read-only evidence refresh to Tab B's v2 values
+    assert.equal(sumArea.value, 'タブAで編集した最新概要');
+    assert.equal(catSel.value, 'contract');
+    assert.equal(nameIn.value, '再取込相談者B');
+    assert.equal(contactIn.value, 'v2@example.invalid');
+    assert.equal(counterIn.value, '再取込相手方株式会社');
+    assert.equal(wishArea.value, 'タブBで更新した希望対応');
+    assert.equal(deadIn.value, '2027-01-31');
+    assert.equal(docsArea.value, 'v2契約書.pdf\nv2通知書.pdf');
+    const refreshedEvPreview = JSON.parse(evArea.value);
+    assert.equal(refreshedEvPreview.length, 2);
+    assert.deepEqual(refreshedEvPreview.map(e => e.sha256), [v2HashA, v2HashB]);
+
+    const alerts = view.querySelectorAll('[role="alert"]').filter(n => !n.hidden);
+    assert.equal(alerts.length, 1);
+    assert.match(alerts[0].textContent, /別タブ/);
+    assert.match(alerts[0].textContent, /1\s*→\s*2/);
+    assert.match(alerts[0].textContent, /同じ項目/);
+    assert.equal(JSON.parse(storage.getItem(STORAGE_KEY)).revision, 2);
+
+    // Tab A retries Save Draft -> succeeds as v3 keeping Tab A's summary AND Tab B's timeline, evidenceManifest, and evidenceHashes
+    await saveBtn.dispatch('click');
+    await flushMicrotasks();
+
+    assert.equal(view.querySelectorAll('[role="alert"]').filter(n => !n.hidden).length, 0);
+    assert.match(dom.document.getElementById('status').textContent, /保存しました/);
+
+    const v3 = JSON.parse(storage.getItem(STORAGE_KEY));
+    assert.equal(v3.revision, 3);
+    assert.equal(v3.data.draft.summary, 'タブAで編集した最新概要');
+    assert.equal(v3.data.draft.category, 'contract');
+    assert.equal(v3.data.draft.clientName, '再取込相談者B');
+    assert.equal(v3.data.draft.clientContact, 'v2@example.invalid');
+    assert.equal(v3.data.draft.counterpartyName, '再取込相手方株式会社');
+    assert.equal(v3.data.draft.wish, 'タブBで更新した希望対応');
+    assert.equal(v3.data.draft.deadline, '2027-01-31');
+    assert.deepEqual(v3.data.draft.documents, ['v2契約書.pdf', 'v2通知書.pdf']);
+    assert.deepEqual(v3.data.draft.timeline, [
+      { date: '2026-11-01', event: 'v2の出来事1（契約締結）' },
+      { date: '2026-11-15', event: 'v2の出来事2（催告書送付）' },
+    ]);
+    assert.equal(v3.data.draft.evidenceManifest.length, 2);
+    assert.deepEqual(v3.data.draft.evidenceManifest.map(e => e.sha256), [v2HashA, v2HashB]);
+    assert.deepEqual(v3.data.draft.evidenceManifest.map(e => e.url), [
+      'https://v2.example.invalid/post/101',
+      'https://v2.example.invalid/post/102',
+    ]);
+    assert.equal(v3.data.draft.evidenceHashes.length, 2);
+    assert.deepEqual(v3.data.draft.evidenceHashes.map(e => e.sha256), [v2HashA, v2HashB]);
+    for (let i = 0; i < v3.data.draft.evidenceManifest.length; i++) {
+      assert.equal(v3.data.draft.evidenceHashes[i].url, v3.data.draft.evidenceManifest[i].url);
+      assert.equal(v3.data.draft.evidenceHashes[i].shotName, v3.data.draft.evidenceManifest[i].shot_name);
+      assert.equal(v3.data.draft.evidenceHashes[i].sha256, v3.data.draft.evidenceManifest[i].sha256);
+      assert.equal(v3.data.draft.evidenceHashes[i].capturedAt, v3.data.draft.evidenceManifest[i].captured_at);
+    }
+    assert.equal(verifyAuditChain(v3.data.auditLog).ok, true);
+  } finally {
+    restore();
+  }
+});
+
+test('Cross-tab state-conflict regression (#/lawyer/onboarding): rebases touched phone edit onto existing profile without clobbering Tab B office/fee/areas updates', async () => {
+  const storage = createMemoryStorage();
+  const locks = createQueuingLocks();
+  const seed = createInitialLocalState();
+  seed.lawyerProfile = structuredClone(SYNTHETIC_CATALOG_BUNDLE.lawyers[0]);
+  seed.lawyerProfile.office_name = 'v1サンプル法律事務所';
+  seed.lawyerProfile.phone = '03-0000-1111';
+  seed.lawyerProfile.practice_areas = ['労働', '消費者問題'];
+  seed.lawyerProfile.career_facts = ['2020年 弁護士登録'];
+  seed.lawyerProfile.initial_consultation_fee_note = '初回30分無料';
+  storage.setItem(STORAGE_KEY, JSON.stringify({ schema: 'awai.shell.host.v1', revision: 1, data: seed }));
+
+  const { dom, restore } = await mountBuiltApp({ initialHash: '#/lawyer/onboarding', storage, locks });
+  try {
+    const view = dom.document.getElementById('view');
+    const officeIn = dom.document.getElementById('ob-office');
+    const phoneIn = dom.document.getElementById('ob-phone');
+    assert.equal(officeIn.value, 'v1サンプル法律事務所');
+    assert.equal(phoneIn.value, '03-0000-1111');
+
+    // Tab A edits ONLY phone
+    phoneIn.value = '03-0000-9999';
+    await phoneIn.dispatch('input');
+
+    // Tab B updates office_name & initial_consultation_fee_note on the same profile -> v2
+    const updatedByTabB = structuredClone(seed.lawyerProfile);
+    updatedByTabB.office_name = 'v2別タブ更新法律事務所';
+    updatedByTabB.initial_consultation_fee_note = '初回60分5,500円（税込）';
+    const v2Rev = await runOtherTabOperation({
+      storage,
+      locks,
+      op: 'lawyer.profile.update',
+      params: { profile: updatedByTabB, action: 'profile_update' },
+    });
+    assert.equal(v2Rev, 2);
+
+    const submitBtn = view.querySelector('button[type="button"][data-submit]');
+    await submitBtn.dispatch('click');
+    await flushMicrotasks();
+
+    // Conflict keeps Tab A phone edit and refreshes untouched office_name to Tab B's v2
+    assert.equal(dom.location.hash, '#/lawyer/onboarding');
+    assert.equal(phoneIn.value, '03-0000-9999');
+    assert.equal(officeIn.value, 'v2別タブ更新法律事務所');
+    const alerts = view.querySelectorAll('[role="alert"]').filter(n => !n.hidden);
+    assert.equal(alerts.length, 1);
+    assert.match(alerts[0].textContent, /別タブ/);
+
+    // Retry succeeds as v3 keeping Tab A's phone AND Tab B's office_name, fee note, practice_areas, career_facts
+    await submitBtn.dispatch('click');
+    await flushMicrotasks();
+
+    assert.equal(dom.location.hash, '#/lawyer/profile');
+    const v3 = JSON.parse(storage.getItem(STORAGE_KEY));
+    assert.equal(v3.revision, 3);
+    assert.equal(v3.data.lawyerProfile.phone, '03-0000-9999');
+    assert.equal(v3.data.lawyerProfile.office_name, 'v2別タブ更新法律事務所');
+    assert.equal(v3.data.lawyerProfile.initial_consultation_fee_note, '初回60分5,500円（税込）');
+    assert.deepEqual(v3.data.lawyerProfile.practice_areas, ['労働', '消費者問題']);
+    assert.deepEqual(v3.data.lawyerProfile.career_facts, ['2020年 弁護士登録']);
+    assert.equal(verifyAuditChain(v3.data.auditLog).ok, true);
+  } finally {
+    restore();
+  }
+});
+
 test('dist/app.js no longer swallows persistState errors with empty catch and dist/storage.js has no unguarded localStorage.setItem fallback', () => {
   const srcApp = readFileSync(resolve(appRoot, 'src/app.js'), 'utf8');
   assert.ok(!/catch\s*\{\s*\/\*\s*ignore\s*\*\/\s*\}/.test(srcApp), 'src/app.js must not silently ignore storage errors');
