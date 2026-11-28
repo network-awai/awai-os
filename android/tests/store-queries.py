@@ -38,6 +38,8 @@ check('the Store does not ask for QUERY_ALL_PACKAGES', 'QUERY_ALL_PACKAGES' not 
 home = build.manifest('network.awai.home', 'network.awai.home.HomeActivity', 1, 'home')
 check('other hosts are unchanged (no series packages)', 'network.itonami.isco2423' not in home)
 
+check('the exact two-component Aozora package is visible without a launcher or pins', 'app.aozora' in ids)
+
 failed = [r for r in results if not r['ok']]
 print(json.dumps({'checks': len(results), 'failed': len(failed), 'packages': len(ids), 'results': results}, indent=1))
 sys.exit(1 if failed else 0)

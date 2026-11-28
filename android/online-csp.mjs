@@ -15,17 +15,35 @@ const SAFE_REL_PATH_RE = /^[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/;
 const NON_INT_NUMBER = Symbol('non-int-number');
 const INT64_NUMBER = Symbol('int64-number');
 
+function readCatalogSource() {
+  return readFileSync(new URL('./shared/src/network/awai/platform/Catalog.java', import.meta.url), 'utf8');
+}
+
 function loadCatalogOnlineIds() {
-  const src = readFileSync(new URL('./shared/src/network/awai/platform/Catalog.java', import.meta.url), 'utf8');
+  const src = readCatalogSource();
   const m = src.match(/public static String onlineFileFor\(String id\)[\s\S]*?^\s*\}/m);
   if (!m) throw Error('online-pins: unable to read Catalog.onlineFileFor');
   const body = m[0];
   const ids = new Set();
-  for (const match of body.matchAll(/"((?:network|app)\.[a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*)+)"/g)) {
+  for (const match of body.matchAll(/"((?:network|app)\.[a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*)*)"/g)) {
     ids.add(match[1]);
   }
   if (body.includes('REGISTRY_ASSOC')) ids.add('network.itonami.registry.assoc');
   return ids;
+}
+
+// The Android Store requires the exact Catalog.assetFor path in the signed artifact.
+export function loadOnlineCatalogAssets() {
+  const src = readCatalogSource();
+  const body = src.match(/public static String assetFor\(String id\)[\s\S]*?^\s*\}/m)?.[0];
+  if (!body) throw Error('online-pins: unable to read Catalog.assetFor');
+  const assets = new Map([...body.matchAll(/if \("([^"]+)"\.equals\(id\)\) return "(packages\/[a-z0-9-]+\.apk)";/g)]
+    .map(match => [match[1], match[2]]));
+  const registry = src.match(/String REGISTRY_ASSOC = "([^"]+)";/)?.[1];
+  const registryAsset = body.match(/REGISTRY_ASSOC\.equals\(id\)\) return "([^"]+)";/)?.[1];
+  if (!registry || !registryAsset) throw Error('online-pins: missing Registry Assoc artifact');
+  assets.set(registry, registryAsset);
+  return id => assets.get(id) ?? (CATALOG_APP_RE.test(id) ? `packages/${id.slice('network.itonami.'.length)}.apk` : null);
 }
 
 /**
