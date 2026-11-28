@@ -17,6 +17,8 @@ DEBUG_KEYSTORE=pathlib.Path.home()/'.android/debug.keystore'
 DEV_KEY_DIR=pathlib.Path.home()/'.android/awai-store-dev'
 DEV_CATALOG_KEYSTORE=DEV_KEY_DIR/'catalog.p12'
 DEV_KEY_PASSWORD=DEV_KEY_DIR/'password'
+DEFAULT_OUTPUT=ROOT/'.agent-output/android'
+ITONAMI_PACKAGE='network.itonami.app'
 # AWAI-3729: keep build-time pin validation aligned with OnlinePins.java / HostActivity.java / online.js.
 MAX_ONLINE_PIN_APPS = 64
 MAX_ONLINE_PIN_BYTES = 32768
@@ -216,6 +218,26 @@ def manifest(pkg, activity, version, kind, online=False, debuggable=True, query_
       <activity android:name="{activity}" android:exported="true" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize">
       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>{home}</activity>{extra}</application></manifest>'''
 
+def validate_itonami_qa_args(ap, args):
+    if not (args.store_only and args.itonami_apk and args.store_package=='network.awai.store'):
+        ap.error('--qa-itonami-only requires --store-only, --itonami-apk and network.awai.store')
+    if not re.fullmatch(r'[a-f0-9]{64}',args.qa_itonami_sha256 or ''):
+        ap.error('--qa-itonami-only requires --qa-itonami-sha256 for the signed Itonami input')
+    extra_inputs=('release', 'home_only', 'unsigned_home', 'online_pins', 'dapp_distribution',
+                  'bundle_registry_assoc', 'local_apps_dir', 'torihiki_bot_apk', 'tabi_mikake_apk',
+                  'deai_apk', 'hiring_apk', 'kumade_apk', 'payment_drafts_apk', 'securities_drafts_apk',
+                  'agent_trace_apk', 'agent_trace_online', 'agent_trace_sha256')
+    if any(getattr(args, name) for name in extra_inputs):
+        ap.error('--qa-itonami-only accepts only an offline Store with the Itonami APK')
+    if not (args.keystore_pass_env and args.catalog_keystore and args.catalog_key_alias and args.catalog_pass_env and args.key_list):
+        ap.error('--qa-itonami-only requires explicit QA APK and catalog signing inputs and --key-list')
+    if (args.keystore.resolve()==DEBUG_KEYSTORE.resolve()
+            or any(path.resolve().is_relative_to(DEV_KEY_DIR.resolve()) for path in (args.keystore,args.catalog_keystore))):
+        ap.error('--qa-itonami-only requires dedicated QA signing inputs')
+    if args.out.resolve()==DEFAULT_OUTPUT.resolve() or (args.out.exists() and any(args.out.iterdir())):
+        ap.error('--qa-itonami-only requires a separate empty --out')
+
+
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('--version',type=int,default=1);ap.add_argument('--sdk',type=pathlib.Path,default=pathlib.Path.home()/'Library/Android/sdk');ap.add_argument('--java',type=pathlib.Path,default=pathlib.Path('/opt/homebrew/opt/openjdk/bin'));ap.add_argument('--out',type=pathlib.Path,default=ROOT/'.agent-output/android');ap.add_argument('--skip-cljs',action='store_true');ap.add_argument('--online-pins',type=pathlib.Path);ap.add_argument('--catalog-revision',type=int,default=None);ap.add_argument('--itonami-apk',type=pathlib.Path,default=None);ap.add_argument('--torihiki-bot-apk',type=pathlib.Path,default=None);ap.add_argument('--tabi-mikake-apk',type=pathlib.Path,default=None);ap.add_argument('--deai-apk',type=pathlib.Path,default=None);ap.add_argument('--hiring-apk',type=pathlib.Path,default=None);ap.add_argument('--kumade-apk',type=pathlib.Path,default=None);ap.add_argument('--payment-drafts-apk',type=pathlib.Path,default=None, help='Development-signed Tauri APK from apps/payment-drafts (AWAI-3157/3159)');ap.add_argument('--securities-drafts-apk',type=pathlib.Path,default=None, help='Development-signed Tauri APK from apps/securities-drafts (AWAI-3158/3159)');ap.add_argument('--local-apps-dir',type=pathlib.Path,default=None);ap.add_argument('--home-only',action='store_true')
     ap.add_argument('--agent-trace-apk', type=pathlib.Path, help='Development-signed APK from app-itonami-agent-trace')
@@ -226,6 +248,8 @@ def main():
     ap.add_argument('--dapp-distribution', type=pathlib.Path)
     ap.add_argument('--store-package', choices=['network.awai.store','network.awai.store.p2p.preview'], default='network.awai.store')
     ap.add_argument('--store-only', action='store_true')
+    ap.add_argument('--qa-itonami-only', action='store_true', help='offline QA Store bundling only signed Itonami v1000 or v1002')
+    ap.add_argument('--qa-itonami-sha256', help='expected SHA-256 of the signed QA Itonami APK')
     # AWAI-3761: the signing identity. The defaults are the local Android debug identity, as before.
     ap.add_argument('--keystore', type=pathlib.Path, default=DEBUG_KEYSTORE, help='JKS or PKCS12 keystore that signs the APKs and the catalog')
     ap.add_argument('--key-alias', default='androiddebugkey')
@@ -238,6 +262,10 @@ def main():
     ap.add_argument('--catalog-key-alias')
     ap.add_argument('--catalog-pass-env', help='name of the environment variable that holds the catalog keystore password')
     args=ap.parse_args()
+    if args.qa_itonami_only:
+        validate_itonami_qa_args(ap,args)
+    elif args.qa_itonami_sha256 is not None:
+        ap.error('--qa-itonami-sha256 requires --qa-itonami-only')
     if args.dapp_distribution and (args.online_pins or args.store_package != 'network.awai.store.p2p.preview'):
         ap.error('dapp bundle requires the isolated offline preview Store')
     if args.store_only and (args.home_only or args.unsigned_home):
@@ -348,9 +376,22 @@ def main():
     fp=None
     if not args.unsigned_home:
         run([args.java/'javac','-d',out,ROOT/'android/SignCatalog.java'])
-        # SignCatalog emits only a public certificate fingerprint.
-        probe=out/'probe';probe.write_bytes(b'fingerprint')
-        fp=apk_key_sign(probe,out/'apk-key.der',out/'probe.sig',capture_output=True).stdout.strip()
+        if args.qa_itonami_only:
+            if key_list['root']==digest(ROOT/'store/keys/store-root.der'):
+                raise SystemExit('--qa-itonami-only requires a dedicated QA trust root')
+            def inspect_certificate(keystore,alias,pass_env):
+                result=run([args.java/'java','-cp',out,'SignCatalog','--inspect',keystore,alias,pass_env],
+                           capture_output=True).stdout
+                cert_sha,spki_sha=result.splitlines()
+                return cert_sha,spki_sha
+            fp,apk_spki=inspect_certificate(key,args.key_alias,args.keystore_pass_env)
+            _,catalog_spki=inspect_certificate(args.catalog_keystore,args.catalog_key_alias,args.catalog_pass_env)
+            if catalog_spki not in key_list['catalogKeys'] or catalog_spki==apk_spki:
+                raise SystemExit('--qa-itonami-only requires a separate key listed for the catalog role')
+        else:
+            # Existing build path uses a signed probe to read the certificate fingerprint.
+            probe=out/'probe';probe.write_bytes(b'fingerprint')
+            fp=apk_key_sign(probe,out/'apk-key.der',out/'probe.sig',capture_output=True).stdout.strip()
         if not re.fullmatch(r'[a-f0-9]{64}',fp):raise SystemExit('signing key could not be read')
     def build(kind,pkg,activity):
         stage=out/f'{kind}-v{args.version}';stage.mkdir(exist_ok=True);classes=stage/'classes';classes.mkdir(exist_ok=True);gen=stage/'gen';gen.mkdir(exist_ok=True);dex=stage/'dex';dex.mkdir(exist_ok=True)
@@ -390,10 +431,11 @@ def main():
         apk=out/f'{kind}-v{args.version}.apk'
         run([tools/'apksigner','sign','--ks',key,'--ks-key-alias',args.key_alias,'--ks-pass',*ks_pass,'--key-pass',*ks_pass,'--out',apk,stage/'aligned.apk'])
         run([tools/'apksigner','verify','--verbose',apk],stdout=subprocess.DEVNULL)
-        if args.release:
-            # A release build must carry exactly the given key, must not be the debug identity and must not be debuggable.
+        if args.release or args.qa_itonami_only:
             certs=run([tools/'apksigner','verify','--print-certs',apk],capture_output=True).stdout
             if re.findall(r'certificate SHA-256 digest: ([a-f0-9]{64})',certs)!=[fp]:raise SystemExit(f'{kind} APK signer is not the given key')
+        if args.release:
+            # A release build must not be the debug identity and must not be debuggable.
             if 'CN=Android Debug' in certs:raise SystemExit('--release refuses the Android debug identity')
             if 'application-debuggable' in run([tools/'aapt2','dump','badging',apk],capture_output=True).stdout:raise SystemExit(f'{kind} APK is debuggable')
         return apk
@@ -401,17 +443,22 @@ def main():
         home=build('home','network.awai.home','network.awai.home.HomeActivity')
         report={'schema':'awai.android.home-build.v1','version':args.version,'publicSignerSha256':fp,'runtime':pins,'artifacts':{home.name:{'sha256':digest(home),'bytes':home.stat().st_size}},'identitySourceSha256':digest(ROOT/'android/client/identity-entry.js'),'identityVerifierSha256':digest(ROOT/'otehon/shell/src/identity/link.js'),'deviceSourceSha256':digest(ROOT/'otehon/shell/src/identity/device.js')}
         (out/f'home-build-v{args.version}.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2));return
-    # --store-only reuses the Yotei APK of an earlier full build in the same output directory, and builds it when there is none.
-    previous_yotei=out/f'yotei-v{args.version}.apk'
-    yotei=previous_yotei if args.store_only and previous_yotei.is_file() else build('yotei','network.itonami.yotei','network.itonami.yotei.YoteiActivity')
-    run([tools/'apksigner','verify',yotei],stdout=subprocess.DEVNULL)
-    torihiki=build('torihiki','network.itonami.torihiki','network.itonami.torihiki.TorihikiActivity')
-    packages=assets/'packages';packages.mkdir(exist_ok=True);shutil.copyfile(yotei,packages/'yotei.apk');shutil.copyfile(torihiki,packages/'torihiki.apk')
+    packages=assets/'packages';packages.mkdir(exist_ok=True)
     revision=args.catalog_revision if args.catalog_revision is not None else args.version
-    listed=[{'id':'network.itonami.yotei','name':'Yotei','description':'予定をこの端末に保存します。外部への送信や同期、通知配信は行いません。','publisher':PUBLISHER,'versionCode':args.version,'versionName':f'0.1.{args.version-1}','artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/yotei.apk','bytes':yotei.stat().st_size,'sha256':digest(yotei),'signerSha256':fp},{'platform':'nixos','runtime':'browser','kind':'bundled-web','asset':'bundled:yotei','bytes':(assets/'client.js').stat().st_size,'sha256':digest(assets/'client.js')}]},
-            {'id':'network.itonami.torihiki','name':'Torihiki','description':'取引所 devnet の価格・板・ノード状態を表示し、端末の鍵で署名して devnet に発注できます。devnet・デモ専用で、実際の資産は扱いません。通信は毎回確認します。','publisher':PUBLISHER,'versionCode':args.version,'versionName':f'0.1.{args.version-1}','artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/torihiki.apk','bytes':torihiki.stat().st_size,'sha256':digest(torihiki),'signerSha256':fp}]}]
+    listed=[]
+    if not args.qa_itonami_only:
+        # --store-only reuses Yotei from an earlier full build in this output directory if available.
+        previous_yotei=out/f'yotei-v{args.version}.apk'
+        yotei=previous_yotei if args.store_only and previous_yotei.is_file() else build('yotei','network.itonami.yotei','network.itonami.yotei.YoteiActivity')
+        run([tools/'apksigner','verify',yotei],stdout=subprocess.DEVNULL)
+        torihiki=build('torihiki','network.itonami.torihiki','network.itonami.torihiki.TorihikiActivity')
+        shutil.copyfile(yotei,packages/'yotei.apk');shutil.copyfile(torihiki,packages/'torihiki.apk')
+        listed=[{'id':'network.itonami.yotei','name':'Yotei','description':'予定をこの端末に保存します。外部への送信や同期、通知配信は行いません。','publisher':PUBLISHER,'versionCode':args.version,'versionName':f'0.1.{args.version-1}','artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/yotei.apk','bytes':yotei.stat().st_size,'sha256':digest(yotei),'signerSha256':fp},{'platform':'nixos','runtime':'browser','kind':'bundled-web','asset':'bundled:yotei','bytes':(assets/'client.js').stat().st_size,'sha256':digest(assets/'client.js')}]},
+                {'id':'network.itonami.torihiki','name':'Torihiki','description':'取引所 devnet の価格・板・ノード状態を表示し、端末の鍵で署名して devnet に発注できます。devnet・デモ専用で、実際の資産は扱いません。通信は毎回確認します。','publisher':PUBLISHER,'versionCode':args.version,'versionName':f'0.1.{args.version-1}','artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/torihiki.apk','bytes':torihiki.stat().st_size,'sha256':digest(torihiki),'signerSha256':fp}]}]
     if args.itonami_apk is not None:
         staged=packages/'itonami.apk';shutil.copyfile(args.itonami_apk,staged)
+        if args.qa_itonami_only and digest(staged)!=args.qa_itonami_sha256:
+            raise SystemExit('--qa-itonami-only input APK SHA-256 mismatch')
         signer=run([tools/'apksigner','verify','--print-certs',staged],capture_output=True).stdout
         if re.findall(r'certificate SHA-256 digest: ([a-f0-9]{64})', signer) != [fp]:
             raise SystemExit('itonami APK signer does not match the development identity')
@@ -419,6 +466,10 @@ def main():
         info = re.search(r"^package: name='network\.itonami\.app' versionCode='([0-9]+)' versionName='([^']+)'",badging,re.M)
         if not info or int(info[1]) < 1:
             raise SystemExit('itonami APK package/version mismatch')
+        if args.qa_itonami_only and (int(info[1]) not in (1000,1002)
+                                    or not any(line.startswith('native-code:') and "'x86_64'" in line.split()
+                                               for line in badging.splitlines())):
+            raise SystemExit('--qa-itonami-only requires Itonami v1000 or v1002 with x86_64')
         listed.append({'id':'network.itonami.app','name':'Itonami','description':'NixOS 版 Itonami UI を一つの Tauri v3 アプリにまとめた開発版。既存 Home・Store・Yotei は保持し別アプリ ID で追加。Nix 専用サービスは未移植で機能表示しない。Android development debug 署名（本番鍵ではない）。','publisher':PUBLISHER,'versionCode':int(info[1]),'versionName':info[2],'artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/itonami.apk','bytes':staged.stat().st_size,'sha256':digest(staged),'signerSha256':fp}]})
     if args.torihiki_bot_apk is not None:
         # Tauri v3 APK built from network-awai/app-itonami-torihiki app/. The listed id, version and signer are read from
@@ -598,6 +649,9 @@ def main():
             target_asset = 'packages/itonami-preview.apk' if name == 'itonami' else a['asset']
             shutil.copyfile(source, assets / target_asset)
             listed.append({'id':profile['id'],'name':profile['name'],'description':descriptions[name],'publisher':PUBLISHER,'versionCode':a['versionCode'],'versionName':a['versionName'],'artifacts':[{k:a[k] for k in ['bytes','sha256','signerSha256']}|{'asset':target_asset,'platform':'android','runtime':'android','kind':'apk'}]})
+    if args.qa_itonami_only and ([entry['id'] for entry in listed]!=[ITONAMI_PACKAGE]
+                                or {file.name for file in packages.iterdir()}!={'itonami.apk'}):
+        raise SystemExit('--qa-itonami-only refuses additional catalog entries or bundled files')
     catalog={'schema':'itonami.store.bundled.v1','revision':revision,'expiresAt':int(time.time())+30*86400,'apps':listed}
     raw=json.dumps(catalog,ensure_ascii=False,separators=(',',':'));(assets/'catalog.json').write_text(raw)
     if key_list:
@@ -617,5 +671,6 @@ def main():
     signing='release-key' if args.release else 'local-android-debug-only' if key.resolve()==DEBUG_KEYSTORE.resolve() and args.key_alias=='androiddebugkey' else 'custom-key-debuggable'
     report={'schema':'awai.android.build.v1','version':args.version,'sdk':37,'buildTools':'36.1.0','signing':signing,'publicSignerSha256':fp,'trust':trust,'runtime':pins,'artifacts':{p.name:{'sha256':digest(p),'bytes':p.stat().st_size}for p in built},'storePackage':args.store_package,'sharedDomainSha256':digest(ROOT/'android/contracts/src/itonami/store/domain.cljc'),'sharedClientSha256':digest(assets/'client.js')}
     if args.release:report['debuggable']=False
+    if args.qa_itonami_only:report['profile']='qa-itonami-only'
     (out/f'build-v{args.version}.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2))
 if __name__=='__main__':main()
