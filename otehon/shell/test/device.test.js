@@ -16,18 +16,50 @@ test("restored identity requires possession of the matching non-exportable devic
   await assert.rejects(verifyDeviceKeyPair(exportable),/device-key-unavailable/);
 });
 
-function storage(t, protection) {
+function storage(t, protection, transactions = {}) {
   const previousStorage = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
   const previousNavigator = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+  const previousDatabase = Object.getOwnPropertyDescriptor(globalThis, "indexedDB");
   const data = new Map();
+  const records = new Map();
   Object.defineProperty(globalThis, "localStorage", { configurable: true, value: {
     getItem: key => data.get(key) ?? null,
     setItem: (key, value) => data.set(key, value),
     removeItem: key => data.delete(key),
   } });
   Object.defineProperty(globalThis, "navigator", { configurable: true, value: { storage: protection } });
+  Object.defineProperty(globalThis, "indexedDB", { configurable: true, value: {
+    open: () => {
+      const open = { result: {
+        close() {},
+        transaction(_store, _mode, options) {
+          const transaction = { objectStore: () => ({
+            get: key => request(key),
+            put: (value, key) => request(key, value),
+          }) };
+          function request(key, value) {
+            const request = {};
+            queueMicrotask(() => {
+              if (value === undefined) request.result = records.get(key);
+              else {
+                assert.equal(options.durability, "strict");
+                if (transactions.abortWrite) { transaction.onabort(); return; }
+                records.set(key, structuredClone(value));
+              }
+              transaction.oncomplete();
+            });
+            return request;
+          }
+          return transaction;
+        },
+      } };
+      queueMicrotask(() => open.onsuccess());
+      return open;
+    },
+  } });
   t.after(() => {
-    for (const [key, previous] of [["localStorage", previousStorage], ["navigator", previousNavigator]]) {
+    for (const [key, previous] of [["localStorage", previousStorage], ["navigator", previousNavigator],
+      ["indexedDB", previousDatabase]]) {
       if (previous) Object.defineProperty(globalThis, key, previous);
       else delete globalThis[key];
     }
@@ -41,16 +73,16 @@ test("saved passkey proof restores after QR expiry but refuses session expiry an
   const did = p256Did(p256.getPublicKey(p256.utils.randomSecretKey()));
   const { request } = await createLinkRequest(did, now);
   const response = passkeyResponse(p256.utils.randomSecretKey(), request, now);
-  saveSession(request, response);
+  data.set("otehon.account.v1", JSON.stringify({ request, response }));
   const saved = data.get("otehon.account.v1");
-  assert.equal(loadSession(did, now + SESSION_MS - 1).method, "passkey");
-  assert.equal(loadSession(did, now + SESSION_MS + 1), null);
+  assert.equal((await loadSession(did, now + SESSION_MS - 1)).method, "passkey");
+  assert.equal(await loadSession(did, now + SESSION_MS + 1), null);
   assert.equal(data.get("otehon.account.v1"), saved);
   data.set("otehon.account.v1", saved);
   const modified = JSON.parse(saved);
   modified.response.expiresAt = new Date(now + SESSION_MS * 2).toISOString();
   data.set("otehon.account.v1", JSON.stringify(modified));
-  assert.equal(loadSession(did, now), null);
+  assert.equal(await loadSession(did, now), null);
 });
 
 test("storage protection is requested explicitly and never extends the stored proof", async t => {
@@ -72,42 +104,40 @@ test("unsupported and refused storage protection stay visible", async t => {
   assert.deepEqual(await sessionRetention(true), { saved: false, persistent: null });
 });
 
-test("loading a link never destroys account state; only explicit logout clears it", async () => {
-  const previous = globalThis.localStorage;
-  const values = new Map();
-  globalThis.localStorage = {
-    getItem: key => values.get(key) ?? null,
-    setItem: (key, value) => values.set(key, value),
-    removeItem: key => values.delete(key),
-  };
-  try {
-    const now = Date.now();
-    const did = p256Did(p256.getPublicKey(p256.utils.randomSecretKey()));
-    const other = p256Did(p256.getPublicKey(p256.utils.randomSecretKey()));
-    const { request } = await createLinkRequest(did, now);
-    const response = walletResponse(randomWallet(), request, now);
-    saveSession(request, response);
-    const saved = values.get("otehon.account.v1");
-    values.set("otehon.proofs.v1", '{"fixture":"retained"}');
+test("session storage waits for writes and sign-out supersedes stale legacy data", async t => {
+  const transactions = {};
+  const values = storage(t, undefined, transactions);
+  const now = Date.now();
+  const did = p256Did(p256.getPublicKey(p256.utils.randomSecretKey()));
+  const other = p256Did(p256.getPublicKey(p256.utils.randomSecretKey()));
+  const { request } = await createLinkRequest(did, now);
+  const response = walletResponse(randomWallet(), request, now);
+  const saved = JSON.stringify({ request, response });
+  values.set("otehon.account.v1", "malformed fixture");
+  assert.equal(await loadSession(did, now), null);
+  assert.equal(values.get("otehon.account.v1"), "malformed fixture");
 
-    assert.ok(loadSession(did, now)?.accountDid);
-    assert.equal(loadSession(other, now), null);
-    assert.equal(values.get("otehon.account.v1"), saved);
-    assert.equal(values.get("otehon.proofs.v1"), '{"fixture":"retained"}');
-    assert.ok(loadSession(did, now)?.accountDid);
-    assert.equal(loadSession(did, now + SESSION_MS + 1), null);
-    assert.equal(values.get("otehon.account.v1"), saved);
+  transactions.abortWrite = true;
+  await assert.rejects(saveSession(request, response), /account-session-transaction-aborted/);
+  assert.equal(values.get("otehon.account.v1"), "malformed fixture");
+  transactions.abortWrite = false;
+  await saveSession(request, response);
+  assert.equal(values.has("otehon.account.v1"), false);
+  values.set("otehon.proofs.v1", '{"fixture":"retained"}');
+  assert.ok((await loadSession(did, now))?.accountDid);
+  assert.equal(await loadSession(other, now), null);
+  assert.equal(await loadSession(did, now + SESSION_MS + 1), null);
+  assert.equal(values.get("otehon.proofs.v1"), '{"fixture":"retained"}');
+  assert.ok((await loadSession(did, now))?.accountDid);
 
-    values.set("otehon.account.v1", "malformed fixture");
-    assert.equal(loadSession(did, now), null);
-    assert.equal(values.get("otehon.account.v1"), "malformed fixture");
-    clearSession();
-    assert.equal(values.has("otehon.account.v1"), false);
-    assert.equal(values.has("otehon.proofs.v1"), false);
-  } finally {
-    if (previous === undefined) delete globalThis.localStorage;
-    else globalThis.localStorage = previous;
-  }
+  transactions.abortWrite = true;
+  await assert.rejects(clearSession(), /account-session-transaction-aborted/);
+  assert.ok((await loadSession(did, now))?.accountDid);
+  transactions.abortWrite = false;
+  await clearSession();
+  assert.equal(values.has("otehon.proofs.v1"), false);
+  values.set("otehon.account.v1", saved);
+  assert.equal(await loadSession(did, now), null);
 });
 
 

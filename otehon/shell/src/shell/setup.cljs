@@ -124,6 +124,7 @@
   (let [[request set-request] (useState nil)
         [address set-address] (useState "")
         [signature set-signature] (useState "")
+        [saving set-saving] (useState false)
         [refusal set-refusal] (useState nil)]
     (useEffect
      (fn []
@@ -142,18 +143,22 @@
                             :expiresAt (.toISOString (js/Date. (+ now SESSION_MS)))})))
                  #js [request valid address])
           finish (fn [response]
-                   (try
-                     (let [account (verifyLink #js {:request request :response response :deviceDid did})]
-                       (saveSession request response)
-                       (on-linked account))
-                     (catch :default error
-                       (set-refusal (.-message error)))))]
+                   (when-not saving
+                     (try
+                       (let [account (verifyLink #js {:request request :response response :deviceDid did})]
+                         (set-saving true)
+                         (-> (saveSession request response)
+                             (.then (fn [_] (on-linked account)))
+                             (.catch (fn [error] (set-refusal (.-message error))))
+                             (.finally (fn [] (set-saving false)))))
+                       (catch :default error
+                         (set-refusal (.-message error))))))]
       [:<>
        [:h1 (:localStart t)]
        (when-not (.-ethereum js/window)
          [:p {:data-wallet-state "unavailable"} (:noWallet t)])
        (when (.-ethereum js/window)
-         [:button.primary {:type "button" :id "local-provider" :disabled (not request)
+         [:button.primary {:type "button" :id "local-provider" :disabled (or saving (not request))
                             :on-click (fn []
                                         (set-refusal nil)
                                         (-> (signWithProvider (.-ethereum js/window) request)
@@ -179,7 +184,7 @@
            [:span (:signatureLabel t)]
            [:input {:id "local-signature" :value signature :spell-check false :auto-complete "off"
                      :placeholder "0x…" :on-change #(set-signature (.. % -target -value))}]]
-          [:button.primary {:type "button" :id "local-verify" :disabled (empty? (.trim signature))
+          [:button.primary {:type "button" :id "local-verify" :disabled (or saving (empty? (.trim signature)))
                              :on-click (fn []
                                          (set-refusal nil)
                                          (finish (js/Object.assign #js {} draft
@@ -187,7 +192,7 @@
            (:verify t)]])
        (when refusal
          [:p.problem {:data-link-error refusal} (str (:refused t) ": " refusal)])
-       [:button.secondary {:type "button" :on-click on-back} (:chooseOther t)]])))
+       [:button.secondary {:type "button" :disabled saving :on-click on-back} (:chooseOther t)]])))
 
 (defn sign-in [t returning broker relay-origin did on-linked]
   (let [[local set-local] (useState false)
@@ -209,8 +214,12 @@
                                           (let [account (verifyLink #js {:request request
                                                                           :response response
                                                                           :deviceDid did})]
-                                            (saveSession request response)
-                                            (on-linked account))))
+                                            (-> (saveSession request response)
+                                                (.then (fn [_] (on-linked account)))
+                                                (.catch (fn [error]
+                                                          (set-state "failed")
+                                                          (set-pending nil)
+                                                          (set-refusal (.-message error))))))))
                                  (.catch (fn [error]
                                            ;; Anyone with the topic can post. Keep waiting.
                                            (set-refusal (.-message error))
