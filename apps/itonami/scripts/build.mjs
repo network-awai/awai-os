@@ -43,6 +43,9 @@ if(!input.includes('index.html') || !input.includes('assets/main.js'))throw Erro
 await rm(dest,{recursive:true,force:true});
 await mkdir(dest,{recursive:true});
 await cp(source,dest,{recursive:true});
+// App-owned offline capability contract (awai.itonami.offline-capabilities.v1),
+// shipped as a pinned static asset next to the unchanged shell bundle.
+await cp(path.join(app,'src','offline-capabilities.mjs'),path.join(dest,'offline-capabilities.mjs'));
 const original=await readFile(path.join(dest,'index.html'),'utf8');
 if(/__(CONNECT_SRC|SCRIPT_SRC|STYLE_SRC|IMAGE_SRC|DAPPS_JSON|RELAY_ORIGIN)__/.test(original))throw Error('unresolved shell template');
 const html=original.replace("<head>", '<head>\n    <meta name="viewport" content="width=device-width, initial-scale=1">').replace(/(connect-src[^;"\n]*)/, '$1 ipc: http://ipc.localhost').replace(/(img-src[^;"\n]*)/, '$1 data:');
