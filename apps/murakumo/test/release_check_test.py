@@ -41,10 +41,10 @@ class Source(unittest.TestCase):
 
 @need_sdk
 class Apk(unittest.TestCase):
- def apk(self,attrs='',libs=None):
+ def apk(self,attrs='',libs=None,package='network.awai.murakumo'):
   self.assertIsNotNone(AAPT2,'REQUIRE_ANDROID_SDK=1 but aapt2/android.jar missing')
   d=pathlib.Path(tempfile.mkdtemp());self.addCleanup(shutil.rmtree,d);attrs=attrs or 'android:allowBackup="false"'
-  (d/'M.xml').write_text(f'<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="network.awai.murakumo"><application android:label="Synthetic" {attrs}/></manifest>')
+  (d/'M.xml').write_text(f'<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="{package}"><application android:label="Synthetic" {attrs}/></manifest>')
   subprocess.run([str(AAPT2),'link','--manifest',str(d/'M.xml'),'-I',str(ANDROID_JAR),'-o',str(d/'a.apk')],check=True)
   with zipfile.ZipFile(d/'a.apk','a') as z:
    for name,data in (libs or {}).items():z.writestr(name,data)
@@ -58,6 +58,26 @@ class Apk(unittest.TestCase):
    with self.subTest(word=word):f=release.apk_failures(self.apk(attrs,libs),check_pins=False);self.assertTrue(any(word in x for x in f),f)
  def test_apk_without_pinned_native_libraries_fails(self):
   f=release.apk_failures(self.apk());self.assertTrue(any('native pins' in x or 'pinned ABI' in x for x in f),f)
+ def test_desktop_requires_both_architectures_and_app_libraries(self):
+  def elf_header(machine):
+   return b'\x7fELF\x02\x01' + bytes(12) + machine.to_bytes(2,'little')
+  arm='lib/arm64-v8a/libmurakumo_app_lib.so'
+  x86='lib/x86_64/libmurakumo_app_lib.so'
+  both={arm:elf_header(183),x86:elf_header(62)}
+  def check(libraries,**kwargs):
+   return release.apk_failures(self.apk(libs=libraries,**kwargs),check_pins=False,
+                               expected_package=release.INFERENCE_PACKAGE,require_desktop=True)
+  self.assertEqual(check(both),[])
+  cases=[
+   ({arm:both[arm]},'exactly arm64-v8a and x86_64'),
+   ({arm:both[arm],x86:both[arm]},'incorrect 64-bit ELF architecture'),
+   ({arm:both[arm],'lib/x86_64/libllama.so':both[x86]},'missing libmurakumo_app_lib.so'),
+   ({**both,'lib/armeabi-v7a/libother.so':both[arm]},'exactly arm64-v8a and x86_64'),
+  ]
+  for libraries,error in cases:
+   with self.subTest(error=error):
+    self.assertTrue(any(error in failure for failure in check(libraries)))
+  self.assertTrue(any('does not match' in f for f in check(both,package=release.NET_PACKAGE)))
  def test_catalog_with_medical_debug_apk_fails(self):
   d=pathlib.Path(tempfile.mkdtemp());self.addCleanup(shutil.rmtree,d);(d/'packages').mkdir()
   shutil.copyfile(self.apk('android:debuggable="true"'),d/'packages/karute.apk');shutil.copyfile(self.apk('android:debuggable="true"'),d/'packages/yotei.apk')
@@ -66,6 +86,10 @@ class Apk(unittest.TestCase):
   f=release.catalog_failures(raw,d);self.assertTrue(f and all(x.startswith('network.itonami.karute') for x in f),f)
   raw.write_text(json.dumps({'apps':[{'id':'network.awai.murakumo','artifacts':art('packages/missing.apk')}]}))
   self.assertTrue(any('not found' in x for x in release.catalog_failures(raw,d)),'a missing medical APK fails closed')
+  raw.write_text(json.dumps({'apps':[{'id':release.NET_PACKAGE,'artifacts':art('packages/karute.apk')}]}))
+  self.assertTrue(any('does not match' in x for x in release.catalog_failures(raw,d)))
+  raw.write_text(json.dumps({'apps':[{'id':release.NET_PACKAGE,'artifacts':[{'platform':'android','asset':'packages/karute.apk'}]}]}))
+  self.assertTrue(any('Android artifact must be an APK' in x for x in release.catalog_failures(raw,d)))
 
 class NetRelease(unittest.TestCase):
  """Murakumo Net is release-only too (Dev review #430), and carries no native library but its Rust one."""

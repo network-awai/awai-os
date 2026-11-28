@@ -8,6 +8,8 @@ release build may be handed to karute or any other medical caller.
   check-release.py --source                       the release configuration in this checkout
   check-release.py --apk APK                       a built APK: not debuggable, not testOnly, no devtools
                                                    code in the Rust library, native libraries as pinned
+  check-release.py --desktop-apk APK               the inference release APK for ARM64 and x86_64,
+                                                   with both ABI libraries and a Store size/SHA receipt
   check-release.py --no-internet APK               the inference app's merged manifest (any build type)
                                                    requests no INTERNET
   check-release.py --merged-manifest XML           the same on Gradle's merged AndroidManifest.xml
@@ -16,7 +18,7 @@ release build may be handed to karute or any other medical caller.
 
 Exit status 1 on any failure. Nothing is installed, signed or published.
 """
-import json,pathlib,re,struct,subprocess,sys,zipfile
+import hashlib,json,pathlib,re,struct,subprocess,sys,zipfile
 app=pathlib.Path(__file__).resolve().parents[1]
 NET_PACKAGE='network.awai.murakumo.net'
 net_app=app.parent/'murakumo-net'
@@ -27,6 +29,9 @@ DEBUGGABLE,TEST_ONLY,ALLOW_BACKUP,NAME=0x0101000f,0x01010272,0x01010280,0x010100
 # The inference app (prompts, possibly PHI) must not hold these: Android then refuses its sockets.
 INFERENCE_PACKAGE='network.awai.murakumo'
 NETWORK_PERMISSIONS={'android.permission.INTERNET'}
+DESKTOP_ABI_MACHINES={'arm64-v8a':183,'x86_64':62}
+INFERENCE_LIBRARY='libmurakumo_app_lib.so'
+MAX_STORE_APK_BYTES=64 * 1024 * 1024
 
 def source_failures(base=app,inference=True)->list:
  f=[]
@@ -119,12 +124,35 @@ def merged_manifest_failures(xml_path:pathlib.Path)->list:
  if app is None or app.get(A+'allowBackup')!='false':f.append('merged manifest: allowBackup is not false (generated images and models must stay out of backup)')
  return f
 
-def apk_failures(apk:pathlib.Path,check_pins=True)->list:
+def desktop_native_failures(apk, archive, libraries):
+    failures = []
+    if apk.stat().st_size > MAX_STORE_APK_BYTES:
+        failures.append('APK exceeds the 64 MiB Store limit')
+    if len(libraries) != len(set(libraries)):
+        failures.append('APK has duplicate native libraries')
+    if {name.split('/')[1] for name in libraries} != set(DESKTOP_ABI_MACHINES):
+        failures.append('APK must contain exactly arm64-v8a and x86_64 libraries')
+    for abi, machine in DESKTOP_ABI_MACHINES.items():
+        if f'lib/{abi}/{INFERENCE_LIBRARY}' not in libraries:
+            failures.append(f'{abi}: missing {INFERENCE_LIBRARY}')
+        for name in libraries:
+            if not name.startswith(f'lib/{abi}/'):
+                continue
+            with archive.open(name) as library:
+                header = library.read(20)
+            if (len(header) != 20 or header[:6] != b'\x7fELF\x02\x01'
+                    or struct.unpack_from('<H', header, 18)[0] != machine):
+                failures.append(f'{name}: incorrect 64-bit ELF architecture')
+    return failures
+
+def apk_failures(apk:pathlib.Path,check_pins=True,*,expected_package=None,require_desktop=False)->list:
  f=[]
  with zipfile.ZipFile(apk) as z:
   manifest=z.read('AndroidManifest.xml');flags=axml_application_flags(manifest);pkg,_=axml_package_and_permissions(manifest)
+  if expected_package is not None and pkg!=expected_package:f.append(f'APK package {pkg} does not match {expected_package}')
   f+=no_network_failures(manifest)
   libs=[n for n in z.namelist() if re.fullmatch(r'lib/[^/]+/[^/]+\.so',n)]
+  if require_desktop:f+=desktop_native_failures(apk,z,libs)
   if pkg==NET_PACKAGE:
    check_pins=False  # no native engine: only its Rust app library
    f+=[f'{n}: Murakumo Net carries no native library but its Rust app library' for n in libs if not n.endswith('/libmurakumo_net_app_lib.so')]
@@ -143,16 +171,26 @@ def catalog_failures(raw,assets=None)->list:
  f=[];catalog=json.loads(raw.read_text())
  for entry in catalog.get('apps',[]):
   if entry.get('id') not in MEDICAL:continue
-  for art in entry.get('artifacts',[]):
-   if art.get('kind')!='apk':continue
+  android=[a for a in entry.get('artifacts',[]) if a.get('platform')=='android' or a.get('kind')=='apk']
+  if not android:f.append(f"{entry['id']}: missing Android APK")
+  for art in android:
+   if art.get('platform')!='android' or art.get('kind')!='apk':
+    f.append(f"{entry['id']}: Android artifact must be an APK");continue
    apk=(assets or raw.parent)/art['asset']
    if not apk.is_file():f.append(f"{entry['id']}: {art['asset']} not found, cannot prove it is a release build");continue
-   f+=[f"{entry['id']}: {x}" for x in apk_failures(apk)]
+   f+=[f"{entry['id']}: {x}" for x in apk_failures(apk,expected_package=entry['id'])]
  return f
 
 def main(argv):
  if argv==['--source']:failures=source_failures()+[f'murakumo-net: {x}' for x in source_failures(net_app,inference=False)]
  elif len(argv)==2 and argv[0]=='--apk':failures=apk_failures(pathlib.Path(argv[1]))
+ elif len(argv)==2 and argv[0]=='--desktop-apk':
+  apk=pathlib.Path(argv[1])
+  failures=apk_failures(apk,expected_package=INFERENCE_PACKAGE,require_desktop=True)
+  if not failures:
+   print(json.dumps({'package':INFERENCE_PACKAGE,'abis':sorted(DESKTOP_ABI_MACHINES),
+                     'bytes':apk.stat().st_size,'sha256':hashlib.sha256(apk.read_bytes()).hexdigest()}))
+   return 0
  elif len(argv)==2 and argv[0]=='--no-internet':
   # Any build type (the operator lane builds debug): only the network permission check.
   with zipfile.ZipFile(argv[1]) as z:m=z.read('AndroidManifest.xml')

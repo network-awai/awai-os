@@ -17,8 +17,11 @@ npm ci --prefix apps/murakumo
 npm run build --prefix apps/murakumo
 npm test --prefix apps/murakumo
 # Configure JAVA_HOME / ANDROID_HOME / ANDROID_NDK_HOME for this host.
-npm run tauri --prefix apps/murakumo -- android build --apk --target aarch64 --debug
+npm run build:android --prefix apps/murakumo
+npm run check:android --prefix apps/murakumo -- src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk
 ```
+
+The Android release command checks the pinned text-engine files for both ARM64 and x86_64 before packaging. The APK check verifies both ABIs, the release-only and offline constraints, and the pinned libraries, then prints the exact size and SHA-256 for the Store handoff. Repeat the check on the signed APK. Launch and inference on a Desktop evaluation device require separate evidence.
 
 Shared `.cljc` admission is actually compiled to CLJS. The Java/Kotlin and C++ adapters independently enforce request, context/output, model digest, memory-residency and concurrency limits. One model, four CPU threads, context2048, prompt8192 UTF-8 bytes, output256 tokens, CPU abort callback/deadline90s. Model loading itself is bounded by the admitted639,446,688-byte artifact, not claimed to obey the generation deadline. Cancel produces no completed output. Release frees the model; process death requires a new explicit load.
 

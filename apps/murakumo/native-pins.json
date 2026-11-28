@@ -1,24 +1,24 @@
 {
   "schema": "awai.murakumo.native-pins.v1",
-  "note": "SHA-256 of the text engine's shared libraries as scripts/build-native.py builds them from pins.json (engine) with NDK 27.0.12077973. CI rebuilds them on Linux and compares. libc++_shared.so is the NDK's own file. The image engine (libawai_diffusion.so) is not pinned yet.",
+  "note": "SHA-256 of the text engine's shared libraries built on Linux with scripts/build-native.py, CMake 3.31.6, and Android NDK 27.0.12077973. Build IDs are identical across different checkout and NDK paths after DWARF prefix mapping. libc++_shared.so is the NDK's own file. The image engine (libawai_diffusion.so) is not pinned.",
   "ndk": "27.0.12077973",
   "engine": "9581154a2250cc9e6948e4c2a2fc4b4e19d1a57e",
   "abis": {
     "arm64-v8a": {
-      "libawai_llama.so": "d760817957bf5fd3ed0a4d1a1877ab9600216eeb3adbf08fa19133851fce0d94",
+      "libawai_llama.so": "d40c2b398e1ad8cdf3f6ede7d3ed6c69fb7fc4e99d48af4538e7f6a8cc7eabb9",
       "libc++_shared.so": "46b51d661454b9cfaf42c1dc90893b5ad601b7a7ffc2e09d44bb3cc9d20e7ae2",
-      "libggml-base.so": "27f466eb47b9aef8c460df93dc86db52ce7949d435213dd17a438aa2128339ae",
-      "libggml-cpu.so": "08aa4f42d362a10f7a77c019046bb117be179bba0a938352f69969cbf1a1b0f0",
-      "libggml.so": "ff7a546c1abbd4352103c3a03bae6874eab52b5a7aa3a3df3162b9d21f72fdd4",
-      "libllama.so": "35ed8c361b734f6b45e139d21f2f8cbc219b59a50f42091422dd3c247ab2a721"
+      "libggml-base.so": "b5b3fd316c36537a17681bbcbb12811d7641adde4a7b0e2c18bb892bd5a3bda3",
+      "libggml-cpu.so": "e7dd93edfd724ca1851b4d0467044cd686ad7345c1f84f82d6652ef865d07229",
+      "libggml.so": "559f843c66eb2ee93744aeb96f3dae9bb6e96336f1fd57fe4bd2bcca1159807e",
+      "libllama.so": "dafb14e93ab2526fa7c0998d7125bb46131195975ddb41652a649660d08974dc"
     },
     "x86_64": {
-      "libawai_llama.so": "ccc904d7207612b8845cb3d7127470831e2bcb8632e3eaee74ecadabd95ee67c",
+      "libawai_llama.so": "c72bf58fd1ea97b48078cba66cb139189447f43da96fbec0044cd70c14991b7d",
       "libc++_shared.so": "936e1150309bdae86216f14e493f478d39e588095f1577105856da6d0f24f149",
-      "libggml-base.so": "f693e1dd6ee2a44e5f9ad8e933be775cd44f2433737bbeaaf6e09e8f6c285370",
-      "libggml-cpu.so": "d62c3970df522ee9ab56ef2712cd22e321623eda1cf782a01410a4fe74cbd92f",
-      "libggml.so": "2311b6f709add3a9dc91606e4b10df3bb376b1d694726b50e5c8c364e73f837e",
-      "libllama.so": "632436e0ebe5dce1a2d5a49a61feefac4adf2eccbceb51c62ebb8914f28cd9aa"
+      "libggml-base.so": "4c655e08f613e35be512c4fb27bb7628c5376584cf0c1f8fb7f2d16f033daa68",
+      "libggml-cpu.so": "df984432312ea8e741d5c5a7e30610020aa349f909321b0bb73c334f6eae62d3",
+      "libggml.so": "3914190dec85abcf7b60797e7d6b9950a168a9be7adfb3509af70c4b739c8f66",
+      "libllama.so": "4cce76fe5cc3bda252ff726f8a5748c7a02c87d7d37e8e6f9b6bd0f02425f81d"
     }
   }
 }
