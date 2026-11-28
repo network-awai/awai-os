@@ -59,6 +59,23 @@ The build generates tokens/CSS/resources from one shared palette, compiles share
 
 The launcher remains an ordinary app. Before default-HOME selection, record the previous component/role. Use Android's role selection UI to opt in; keep the existing launcher installed as rollback. Never assume adb selects the right phone: all device commands require an explicit serial.
 
+### Closed QA feed (AWAI-3653)
+
+The Store-only build can target the debuggable `network.awai.store.qa` package with its own trust material. It uses the fixed `https://awai-store-qa.invalid` origin for the background updater. Keep the guest in the approved closed network and resolve that name only there. Use a leaf certificate for that name issued by the supplied QA CA. The package trusts that CA for the closed domain. Public Store packages keep their existing feed.
+
+Build into an empty output directory with the approved QA APK signer, catalog signer, verified key-list directory, independent QA root SPKI SHA-256 and DER HTTPS CA certificate. The feed uses the same `/network-awai/awai-os/main/store/latest/` key-list and pointer paths and revision-pinned `/network-awai/awai-os/<revision>/store/distribution/` layout as the regular verifier.
+
+```sh
+python3 android/build.py --store-only --store-package network.awai.store.qa \
+  --out "$QA_OUT" --version 16 \
+  --keystore "$QA_APK_KEYSTORE" --key-alias "$QA_APK_ALIAS" --keystore-pass-env QA_APK_PASS \
+  --key-list "$QA_KEY_LIST" --catalog-keystore "$QA_CATALOG_KEYSTORE" \
+  --catalog-key-alias "$QA_CATALOG_ALIAS" --catalog-pass-env QA_CATALOG_PASS \
+  --closed-qa-root-sha256 "$QA_ROOT_SHA256" --closed-qa-tls-ca "$QA_TLS_CA_DER"
+```
+
+The bundle contains Yotei as the update fixture. Supply a higher-version Yotei APK signed by the same QA APK signer. Sign the key list, latest pointer and catalog with their QA keys. For `publish-latest-pointer.py`, pass explicit QA pins, key list, pointer signer and the output path inside the closed feed tree. Use QA URLs in every pin. The WebView's manual online pins remain disabled. A mismatched key, signature, origin, expired pointer or rollback fails the updater checks. The build receipt records the closed origin and HTTPS CA digest.
+
 ## Qualification boundary
 
 Initial source unit:4 shared tests/20 assertions,3 compiled-browser tests, APK compilation/signature verification and instrumentation APK compilation. On-device integrity, UI, app acquisition/update/restart and NixOS packaging evidence are subsequent units; source/build alone do not prove these.
