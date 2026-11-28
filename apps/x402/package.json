@@ -1,1 +1,17 @@
-{"name":"@itonami/x402","version":"0.1.0","private":true,"type":"module","scripts":{"build":"node scripts/build.mjs","test":"node --test ../../packages/awai-shell/test/*.test.mjs test/*.test.mjs","tauri":"tauri","build:desktop":"npm run build && tauri build --no-bundle","build:android":"npm run build && tauri android build --apk --target aarch64"},"devDependencies":{"@tauri-apps/cli":"3.0.0-alpha.6"}}
+{
+  "name": "@itonami/x402",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test ../../packages/awai-shell/test/*.test.mjs test/*.test.mjs",
+    "tauri": "tauri",
+    "build:desktop": "npm run build && tauri build --no-bundle",
+    "build:android": "npm run build && tauri android build --apk --target aarch64 x86_64",
+    "check:android": "python3 -I scripts/check-android-apk.py"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "3.0.0-alpha.6"
+  }
+}

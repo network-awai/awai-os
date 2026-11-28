@@ -27,6 +27,9 @@ android {
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
     }
     sourceSets.getByName("main").java.srcDir("../../../../../../packages/awai-system-bars/android")
+    packaging {
+        jniLibs.useLegacyPackaging = true
+    }
     buildTypes {
         getByName("debug") {
             manifestPlaceholders["usesCleartextTraffic"] = "true"
