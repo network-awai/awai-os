@@ -7,7 +7,8 @@ out=$(mktemp -d)
 trap 'rm -rf "$out"' EXIT
 src="$root/android/shared/src/network/awai/platform"
 javac --release 8 -Xlint:-options -encoding UTF-8 -d "$out" \
-  "$src/UpdatePolicy.java" "$src/UpdateApprovalRecord.java" "$src/AutoUpdateRun.java" "$root"/android/tests/jvm/*.java
+  "$src/UpdatePolicy.java" "$src/UpdateApprovalRecord.java" "$src/UpdateHttpTransport.java" "$src/AutoUpdateRun.java" \
+  "$root"/android/tests/jvm/*.java
 java -cp "$out" UpdatePolicyTest
 java -cp "$out" UpdateApprovalRecordTest
 java -cp "$out" network.awai.platform.AutoUpdateRunTest

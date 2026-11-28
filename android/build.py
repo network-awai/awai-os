@@ -168,6 +168,15 @@ def store_query_packages(pins=None):
     for i in ids:
         if not re.fullmatch(r'[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)+', i): raise SystemExit(f'not a package id for <queries>: {i}')
     return sorted(ids)
+def store_http_libraries():
+    vendor = ROOT / 'android/store/http-libs'
+    pins = json.loads((vendor / 'SHA256.json').read_text(encoding='utf-8'))
+    jars = [vendor / filename for filename in pins]
+    for library in jars:
+        if not library.is_file() or digest(library) != pins[library.name]:
+            raise SystemExit(f'online Store HTTP library missing or changed: {library.name}')
+    return jars
+
 def manifest(pkg, activity, version, kind, online=False, debuggable=True, query_packages=()):
     perms = ''
     extra = ''
@@ -206,13 +215,14 @@ def manifest(pkg, activity, version, kind, online=False, debuggable=True, query_
     title={'home':'Awai Home','store':'itonami Store','yotei':'Yotei','torihiki':'Torihiki'}[kind]
     known={'network.awai.drive','network.awai.yataverse','network.itonami.yotei','network.itonami.torihiki','network.awai.store'}
     listed=''.join(f'<package android:name="{p}"/>' for p in query_packages if p not in known)
+    application = ' android:name="network.awai.platform.StoreOnlineApplication"' if kind == 'store' and online else ''
     return f'''<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="{pkg}" android:versionCode="{version}" android:versionName="0.1.{version-1}">
       <uses-sdk android:minSdkVersion="33" android:targetSdkVersion="37"/>{perms}
       <queries><intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent>
       <intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.APP_BROWSER"/></intent>
       <intent><action android:name="android.intent.action.DIAL"/></intent><intent><action android:name="android.media.action.STILL_IMAGE_CAMERA"/></intent>
       <package android:name="network.awai.drive"/><package android:name="network.awai.yataverse"/><package android:name="network.itonami.yotei"/><package android:name="network.itonami.torihiki"/><package android:name="network.awai.store"/>{listed}<provider android:authorities="network.itonami.yotei.agenda"/></queries>
-      <application android:theme="@style/{theme}" android:label="{title}" android:icon="{appicon}"{round_icon} android:allowBackup="false" android:usesCleartextTraffic="false" android:debuggable="{str(debuggable).lower()}" android:enableOnBackInvokedCallback="true">
+      <application{application} android:theme="@style/{theme}" android:label="{title}" android:icon="{appicon}"{round_icon} android:allowBackup="false" android:usesCleartextTraffic="false" android:debuggable="{str(debuggable).lower()}" android:enableOnBackInvokedCallback="true">
       <activity android:name="{activity}" android:exported="true" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize">
       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>{home}</activity>{extra}</application></manifest>'''
 
@@ -353,7 +363,14 @@ def main():
         fp=apk_key_sign(probe,out/'apk-key.der',out/'probe.sig',capture_output=True).stdout.strip()
         if not re.fullmatch(r'[a-f0-9]{64}',fp):raise SystemExit('signing key could not be read')
     def build(kind,pkg,activity):
-        stage=out/f'{kind}-v{args.version}';stage.mkdir(exist_ok=True);classes=stage/'classes';classes.mkdir(exist_ok=True);gen=stage/'gen';gen.mkdir(exist_ok=True);dex=stage/'dex';dex.mkdir(exist_ok=True)
+        online_store = kind == 'store' and bool(pins_online)
+        stage = out / f'{kind}-v{args.version}'
+        stage.mkdir(exist_ok=True)
+        classes = stage / ('classes-online' if online_store else 'classes')
+        dex = stage / ('dex-online' if online_store else 'dex')
+        gen = stage / 'gen'
+        for directory in (classes, dex, gen):
+            directory.mkdir(exist_ok=True)
         # Explicitly rebuild only this task's generated outputs; unrelated workspace data is untouched.
         xml=stage/'AndroidManifest.xml';xml.write_text(manifest(pkg,activity,args.version,kind,bool(pins_online),debuggable=not (args.unsigned_home or args.release),
                                                                 query_packages=store_query_packages(pins_online) if kind=='store' else ()))
@@ -377,11 +394,25 @@ def main():
         run([tools/'aapt2','compile','--dir',resources,'-o',stage/'resources.zip'])
         run([tools/'aapt2','link','-o',stage/'resources.apk','--manifest',xml,'-I',jar,'--java',gen,'-R',stage/'resources.zip','-A',staged_assets,'--auto-add-overlay'])
         sources=list((ROOT/'android/shared/src').rglob('*.java'))+list((ROOT/'android'/kind/'src').rglob('*.java'))+list((ROOT/'packages/awai-system-bars/android').rglob('*.java'))+list(gen.rglob('*.java'))
-        run([args.java/'javac','--release','8','-encoding','UTF-8','-cp',jar,'-d',classes,*sources])
-        run([tools/'d8','--min-api','33','--lib',jar,'--output',dex,*classes.rglob('*.class')])
+        libraries = []
+        if online_store:
+            libraries = store_http_libraries()
+            sources += list((ROOT/'android/store/online-src').rglob('*.java'))
+        classpath = os.pathsep.join(str(entry) for entry in [jar, *libraries])
+        run([args.java/'javac','--release','8','-encoding','UTF-8','-cp',classpath,'-d',classes,*sources])
+        run([tools/'d8','--min-api','33','--lib',jar,'--output',dex,*classes.rglob('*.class'),*libraries])
         unsigned=stage/'unsigned.apk';shutil.copyfile(stage/'resources.apk',unsigned)
         with zipfile.ZipFile(unsigned,'a',compression=zipfile.ZIP_DEFLATED)as z:
             for f in dex.glob('*.dex'):z.write(f,f.name)
+            if libraries:
+                vendor = ROOT/'android/store/http-libs'
+                for name in ('LICENSE', 'NOTICE'):
+                    z.write(vendor/name, f'assets/licenses/store-http/{name}')
+                for library in libraries:
+                    with zipfile.ZipFile(library) as source:
+                        for entry in source.namelist():
+                            if entry.endswith('.kotlin_builtins') or entry == 'okhttp3/internal/publicsuffix/publicsuffixes.gz':
+                                z.writestr(entry, source.read(entry))
         run([tools/'zipalign','-f','4',unsigned,stage/'aligned.apk'])
         if args.unsigned_home:
             apk=out/f'{kind}-v{args.version}-unsigned.apk'

@@ -1,11 +1,13 @@
 package network.awai.platform;
 
-import java.net.HttpURLConnection;
+import java.util.HashSet;
+import java.util.Set;
 
 /** Cancellation shared between one JobService invocation and its request worker. */
 final class AutoUpdateRun {
     // Orders approval changes, job stops and durable effects of a background update.
     static final Object EFFECTS = new Object();
+    private static final Set<AutoUpdateRun> REQUESTS = new HashSet<>();
     private static long approvalRevision;
 
     static final class Stopped extends SecurityException {
@@ -18,7 +20,7 @@ final class AutoUpdateRun {
 
     private boolean stopped;
     private final long revision;
-    private HttpURLConnection connection;
+    private UpdateHttpTransport.Request activeRequest;
 
     AutoUpdateRun() {
         synchronized (EFFECTS) {
@@ -29,6 +31,7 @@ final class AutoUpdateRun {
     static void approvalChanged() {
         synchronized (EFFECTS) {
             approvalRevision++;
+            for (AutoUpdateRun run : REQUESTS) run.activeRequest.cancel();
         }
     }
 
@@ -38,25 +41,30 @@ final class AutoUpdateRun {
         }
     }
 
-    void attach(HttpURLConnection request) {
+    void start(UpdateHttpTransport.Request request) {
         synchronized (EFFECTS) {
             check();
-            connection = request;
+            if (activeRequest != null) throw new IllegalStateException("update request already active");
+            activeRequest = request;
+            REQUESTS.add(this);
+            request.start();
         }
     }
 
-    void detach(HttpURLConnection request) {
+    void detach(UpdateHttpTransport.Request request) {
         synchronized (EFFECTS) {
-            if (connection == request) connection = null;
+            if (activeRequest != request) return;
+            activeRequest = null;
+            REQUESTS.remove(this);
         }
     }
 
-    HttpURLConnection stop() {
+    void stop() {
         synchronized (EFFECTS) {
             stopped = true;
-            HttpURLConnection request = connection;
-            connection = null;
-            return request;
+            if (activeRequest != null) activeRequest.cancel();
+            activeRequest = null;
+            REQUESTS.remove(this);
         }
     }
 }

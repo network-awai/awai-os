@@ -14,9 +14,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +33,11 @@ public final class AutoUpdater {
     static final int MAX_LOG = 50;
     static final String CHANNEL = "auto-update";
     private static final String CHECK_OPERATION = "network.awai.store.check";
+    private static volatile UpdateHttpTransport transport;
+
+    static void configureTransport(UpdateHttpTransport updateTransport) {
+        transport = updateTransport;
+    }
 
     /** Keeps the scheduled job in line with the approval: scheduled while active, cancelled otherwise. */
     public static void sync(Context c) {
@@ -202,35 +205,31 @@ public final class AutoUpdater {
 
     private static byte[] fetch(Context c, AutoUpdateRun run, String url, int limit, String id) throws Exception {
         requireApproval(c, run, id);
-        URL u = new URL(url);
-        if (!"https".equals(u.getProtocol()) || !"raw.githubusercontent.com".equals(u.getHost()) || u.getPort() != -1)
+        URI u = new URI(url);
+        if (!"https".equals(u.getScheme()) || !"raw.githubusercontent.com".equals(u.getHost()) || u.getPort() != -1
+                || u.getRawUserInfo() != null || u.getRawFragment() != null)
             throw new SecurityException("fetch-origin");
-        HttpURLConnection h = (HttpURLConnection) u.openConnection();
-        h.setInstanceFollowRedirects(false);
-        h.setConnectTimeout(15000);
-        h.setReadTimeout(30000);
-        h.setUseCaches(false);
-        h.setRequestProperty("Accept-Encoding", "identity");
+        UpdateHttpTransport activeTransport = transport;
+        if (activeTransport == null) throw new SecurityException("fetch-unavailable");
+        UpdateHttpTransport.Request request = activeTransport.prepare(url, limit);
+        boolean complete = false;
         try {
             synchronized (AutoUpdateRun.EFFECTS) {
                 requireApproval(c, run, id);
-                run.attach(h);
+                run.start(request); // Enqueue and cancellation are ordered by the same gate.
             }
-            if (h.getResponseCode() != 200) throw new SecurityException("fetch-status");
-            if (!"raw.githubusercontent.com".equals(h.getURL().getHost())) throw new SecurityException("fetch-origin");
-            long declared = h.getContentLengthLong();
-            if (declared > limit) throw new SecurityException("fetch-size");
-            try (InputStream in = h.getInputStream()) {
-                byte[] bytes = Integrity.read(in, limit);
-                requireApproval(c, run, id);
-                return bytes;
-            }
+            byte[] bytes = request.receive();
+            requireApproval(c, run, id);
+            complete = true;
+            return bytes;
         } catch (Exception e) {
             requireApproval(c, run, id);
             throw e;
         } finally {
-            run.detach(h);
-            h.disconnect();
+            synchronized (AutoUpdateRun.EFFECTS) {
+                run.detach(request);
+                if (!complete) request.cancel();
+            }
         }
     }
 
