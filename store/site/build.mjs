@@ -4,7 +4,7 @@
 // The page is a document: HTML, CSS and one logo image, no script, no request-time handler. Every listed
 // download is a commit-pinned URL with its SHA-256, taken from the signed pointer and catalog.
 // Nothing is listed unless the pointer signature, the catalog signature, the pins and the
-// local bytes all agree. Development signer only: there is no production key yet.
+// local bytes all agree. Production additionally uses independently supplied public signing approvals.
 //
 // Trust (AWAI-3775): the root public key (store/keys/store-root.der) and the root-signed key list
 // (store/latest/keys-envelope.json). The pointer must be signed by a listed pointer key and the catalog by a
@@ -16,10 +16,12 @@ import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {dirname, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {verifyKeyList, authentic, CATALOG, POINTER} from '../../android/client/key-list.js';
+import {releaseFiles, releaseSigners, requireReleasePath, verifyReleaseApk} from './release-input.mjs';
 
 export const DEV_SIGNER = '2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29';
 const PIN_URL = /^https:\/\/raw\.githubusercontent\.com\/network-awai\/awai-os\/([0-9a-f]{40})\/(store\/distribution\/[A-Za-z0-9._\/-]+)$/;
 const MAX_LIFETIME = 31 * 24 * 60 * 60;
+const DEV_ROOT_SHA256 = '8707b4bbca6d14338f6ef29e816a2141594b7f9a9e70f338258b00682bec0e5b';
 
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const fail = code => { throw new Error(code); };
@@ -72,18 +74,22 @@ function date(seconds) {
 // Verify everything and return the facts the page shows. `read(path)` returns the bytes of a
 // repository path, or null when the file is not present locally.
 // `signer` is the development APK signer; it only labels APKs, it does not sign the catalog or the pointer.
-export async function verifyStore({pointerBytes, rootDer, keysBytes, read, now, signer = DEV_SIGNER}) {
+export async function verifyStore({pointerBytes, rootDer, keysBytes, read, now, signer = DEV_SIGNER, release}) {
   const trust = await trustOf({rootDer, keysBytes, now});
+  const approved = release ? releaseSigners(release, trust.rootSha256, DEV_ROOT_SHA256) : null;
   const pointer = await openEnvelope(pointerBytes, trust, POINTER, 'pointer');
   if (pointer.schema !== 'itonami.store.latest.v1') fail('pointer-schema');
   if (!Number.isSafeInteger(pointer.sequence) || pointer.sequence < 1) fail('pointer-sequence');
   if (!Number.isSafeInteger(pointer.issuedAt) || !Number.isSafeInteger(pointer.expiresAt)) fail('pointer-time');
   if (pointer.expiresAt <= pointer.issuedAt || pointer.expiresAt - pointer.issuedAt > MAX_LIFETIME) fail('pointer-time');
   if (now >= pointer.expiresAt) fail('pointer-expired');
+  if (approved && pointer.issuedAt > now + 300) fail('pointer-time');
   const pins = pointer.pins;
   if (!pins || !/^[0-9a-f]{40}$/.test(pins.revision) || !pins.apks || typeof pins.apks !== 'object') fail('pins-shape');
 
-  const catalogBytes = read(pinPath(pins.catalog, 'catalog-pin'));
+  const catalogPath = pinPath(pins.catalog, 'catalog-pin');
+  if (approved) requireReleasePath(pins.catalog.url, catalogPath, pins.revision);
+  const catalogBytes = read(catalogPath);
   if (!catalogBytes) fail('catalog-missing');
   if (catalogBytes.length > pins.catalog.maxBytes || sha256(catalogBytes) !== pins.catalog.sha256) fail('catalog-digest');
   const catalog = await openEnvelope(catalogBytes, trust, CATALOG, 'catalog');
@@ -104,18 +110,23 @@ export async function verifyStore({pointerBytes, rootDer, keysBytes, read, now, 
     let download = null;
     if (apk && pin) {
       const path = pinPath(pin, 'apk-pin');
+      if (approved) requireReleasePath(pin.url, path, pins.revision);
       if (pin.sha256 !== apk.sha256 || apk.bytes > pin.maxBytes || !/^[0-9a-f]{64}$/.test(apk.signerSha256 || '')) fail('apk-pin-mismatch');
       const bytes = read(path);
       if (bytes && (bytes.length !== apk.bytes || sha256(bytes) !== apk.sha256)) fail('apk-digest');
+      if (approved) verifyReleaseApk(app, apk, bytes, Object.hasOwn(approved, app.id) ? approved[app.id] : null,
+        release.inspectApk, DEV_SIGNER);
       download = {url: pin.url, sha256: apk.sha256, bytes: apk.bytes, signerSha256: apk.signerSha256,
-        developmentSigner: apk.signerSha256 === signer, bytesChecked: Boolean(bytes)};
+        developmentSigner: !approved && apk.signerSha256 === signer, bytesChecked: Boolean(bytes)};
     } else if (pin) fail('apk-pin-mismatch');
+    else if (approved) fail('release-apk-missing');
     return {id: app.id, name: String(app.name), description: String(app.description || ''), publisher: app.publisher,
       versionName: String(app.versionName), versionCode: app.versionCode,
       operations: Array.isArray(app.operations) ? app.operations.length : null, download};
   });
   for (const id of Object.keys(pins.apks)) if (!listed.has(id)) fail('apk-pin-unlisted');
-  return {sequence: pointer.sequence, pointerExpiresAt: pointer.expiresAt, revision: catalog.revision,
+  if (approved && Object.keys(approved).some(id => !listed.has(id))) fail('release-app-set');
+  return {development: !approved, sequence: pointer.sequence, pointerExpiresAt: pointer.expiresAt, revision: catalog.revision,
     catalogExpiresAt: catalog.expiresAt, sourceRevision: pins.revision, signer, apps,
     trust: trust.mode === 'key-list' ? {mode: trust.mode, sequence: trust.sequence, expiresAt: trust.expiresAt, rootSha256: trust.rootSha256,
       catalogKeys: trust.catalogKeys, pointerKeys: trust.pointerKeys} : {mode: trust.mode}};
@@ -151,6 +162,8 @@ function featuredHtml(app) {
 
 // Composition follows the Figma proposal (AWAI-3735): file umqCqP5KSjLWh9fhCI1HaN, page 903:2.
 export function renderHtml(store) {
+  const production = store.development === false;
+  const keyLabel = production ? '本番用' : '開発用';
   return `<!doctype html>
 <html lang="ja">
 <head>
@@ -178,8 +191,10 @@ export function renderHtml(store) {
 <a href="#record">このページの根拠</a>
 </nav>
 <section class="card notice" aria-labelledby="status">
-<h2 id="status">開発版です</h2>
-<p>ここに載っているアプリとカタログは、開発用の鍵で署名した開発版です。正式なリリースではありません。${store.trust?.mode === 'key-list' ? '本番の署名鍵はまだありません。' : '本番の署名鍵と、鍵の更新・失効の仕組みはまだありません。'}</p>
+${production
+  ? '<h2 id="status">正式リリース</h2>\n<p>一覧の APK は、カタログの署名、承認済みの APK 署名者、実ファイルの SHA-256 の照合を通過しています。</p>'
+  : `<h2 id="status">開発版です</h2>
+<p>ここに載っているアプリとカタログは、開発用の鍵で署名した開発版です。正式なリリースではありません。${store.trust?.mode === 'key-list' ? '本番の署名鍵はまだありません。' : '本番の署名鍵と、鍵の更新・失効の仕組みはまだありません。'}</p>`}
 </section>
 <div class="columns">
 <section class="card how" aria-labelledby="how">
@@ -209,8 +224,8 @@ apksigner verify --print-certs 取得したファイル.apk</code></pre>
 <div><dt>署名つきカタログ</dt><dd>revision ${esc(store.revision)}</dd></div>
 <div><dt>固定した commit</dt><dd>${esc(store.sourceRevision)}</dd></div>
 ${store.trust?.mode === 'key-list'
-  ? `<div><dt>鍵の一覧</dt><dd>sequence ${esc(store.trust.sequence)}、${esc(date(store.trust.expiresAt))} まで有効（root ${esc(store.trust.rootSha256.slice(0, 8))}…、開発用）</dd></div>
-<div><dt>カタログの署名鍵</dt><dd>${store.trust.catalogKeys.map(k => esc(k.slice(0, 8)) + '…').join('、')}（開発用）</dd></div>`
+  ? `<div><dt>鍵の一覧</dt><dd>sequence ${esc(store.trust.sequence)}、${esc(date(store.trust.expiresAt))} まで有効（root ${esc(store.trust.rootSha256.slice(0, 8))}…、${keyLabel}）</dd></div>
+<div><dt>カタログの署名鍵</dt><dd>${store.trust.catalogKeys.map(k => esc(k.slice(0, 8)) + '…').join('、')}（${keyLabel}）</dd></div>`
   : `<div><dt>カタログの署名者</dt><dd>${esc(store.signer.slice(0, 8))}…（開発用の鍵）</dd></div>`}
 </dl>
 </section>
@@ -227,18 +242,23 @@ export async function buildSite(input) {
   const store = await verifyStore(input);
   const files = {'index.html': Buffer.from(renderHtml(store), 'utf8'), 'style.css': input.css, 'logo.png': input.logo};
   const manifest = {schema: 'awai.store-site.v1', pointerSequence: store.sequence, catalogRevision: store.revision,
-    sourceRevision: store.sourceRevision, signer: store.signer, trust: store.trust, development: true,
-    apps: store.apps.map(a => ({id: a.id, publisher: a.publisher, versionCode: a.versionCode, sha256: a.download?.sha256 ?? null, url: a.download?.url ?? null})),
+    sourceRevision: store.sourceRevision, ...(store.development ? {signer: store.signer} : {}),
+    trust: store.trust, development: store.development,
+    apps: store.apps.map(a => ({id: a.id, publisher: a.publisher, versionCode: a.versionCode,
+      sha256: a.download?.sha256 ?? null, url: a.download?.url ?? null,
+      ...(store.development ? {} : {versionName: a.versionName, bytes: a.download.bytes, signerSha256: a.download.signerSha256})})),
     files: Object.fromEntries(Object.entries(files).map(([name, bytes]) => [name, sha256(bytes)]))};
   files['site-manifest.json'] = Buffer.from(JSON.stringify(manifest, null, 2) + '\n', 'utf8');
   return {store, files};
 }
 
-export function repositoryInput(root, now) {
+export function repositoryInput(root, now, signedInputs = null) {
   return {
-    pointerBytes: readFileSync(join(root, 'store/latest/pointer-envelope.json')),
-    rootDer: readFileSync(join(root, 'store/keys/store-root.der')),
-    keysBytes: readFileSync(join(root, 'store/latest/keys-envelope.json')),
+    ...(signedInputs ?? {
+      pointerBytes: readFileSync(join(root, 'store/latest/pointer-envelope.json')),
+      rootDer: readFileSync(join(root, 'store/keys/store-root.der')),
+      keysBytes: readFileSync(join(root, 'store/latest/keys-envelope.json')),
+    }),
     css: readFileSync(join(root, 'store/site/style.css')),
     logo: readFileSync(join(root, 'store/site/logo.png')),
     read: path => existsSync(join(root, path)) ? readFileSync(join(root, path)) : null,
@@ -250,11 +270,21 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const args = process.argv.slice(2);
   const value = name => { const i = args.indexOf(name); return i < 0 ? null : args[i + 1]; };
   const out = value('--out');
-  if (!out) { console.error('usage: node store/site/build.mjs --out <new dir> [--now <epoch seconds>]'); process.exit(2); }
+  if (!out) {
+    console.error('usage: node store/site/build.mjs --out <new dir> [--now <epoch seconds> | --release-dir <signed inputs> --release-approvals <json> --build-tools <dir>]');
+    process.exit(2);
+  }
   if (existsSync(out)) { console.error('destination must be new'); process.exit(2); }
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
   const now = value('--now') ? Number(value('--now')) : Math.floor(Date.now() / 1000);
-  const {store, files} = await buildSite(repositoryInput(root, now));
+  const releaseOptions = ['--release-dir', '--release-approvals', '--build-tools'];
+  const releaseMode = releaseOptions.some(name => args.includes(name));
+  if (releaseMode && (releaseOptions.some(name => !value(name) || value(name).startsWith('--')) || args.includes('--now'))) {
+    fail('production takes --release-dir, --release-approvals and --build-tools together, with the current clock');
+  }
+  const signedInputs = releaseMode ? releaseFiles(...releaseOptions.map(value)) : null;
+  const input = repositoryInput(root, now, signedInputs);
+  const {store, files} = await buildSite(input);
   mkdirSync(out, {recursive: true});
   for (const [name, bytes] of Object.entries(files)) writeFileSync(join(out, name), bytes);
   console.log(JSON.stringify({out, sequence: store.sequence, revision: store.revision, apps: store.apps.length,

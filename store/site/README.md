@@ -47,13 +47,49 @@ An app is listed with a download link only when all of these hold. Any failure s
 - `logo.png` is the Figma component `Awai / Site logo 02 master` exported at 128 px.
 - The page sends nothing until the person follows a link. Each download link names its host and
   shows the SHA-256 and signer next to it. There is no request-time handler, per-user state or proxy.
-- It says that this is a development build. The catalog and most APKs are signed with the Android
-  debug identity; there is no production publisher key, rotation or revocation yet (AWAI-2982, AWAI-3732).
+- The default build displays the development channel. The production build uses separate signed inputs
+  and checks the APKs against their approved signers before showing a release download.
 - It does not offer the Store APK itself, an iOS build or a desktop build. None is published.
 - It shows each app's publisher from the signed catalog as 配布元 and writes the same value
   into `site-manifest.json`. Production catalogs carry `Awai Network LLC`, defined once in
   `store/catalog-source/series-apps.json` (see `store/README.md`); signed development catalogs
   keep the publisher they were signed with. The page never invents a publisher string.
+
+## Build a production candidate
+
+Use a clean checkout containing the release catalog and APKs named by the signed pointer.
+Use the owner-approved public root and the owner-approved APK certificate fingerprints from the
+release records. Keep the approvals file separate from the signed feed so neither the display
+mode nor its trust anchors come from the feed being checked. This build uses public material only.
+
+```sh
+node store/site/build.mjs --out <new-output-directory> \
+  --release-dir <signed-input-directory> \
+  --release-approvals <approved-public-pins.json> \
+  --build-tools <Android-SDK-build-tools-version-directory>
+```
+
+The inputs directory contains `store-root.der`, `keys-envelope.json` and `pointer-envelope.json`.
+The approvals JSON contains the pinned public root SHA-256 and a map from each package ID to its
+approved APK signing certificate SHA-256:
+
+```json
+{
+  "schema": "awai.store-site.approvals.v1",
+  "rootSha256": "<64 lowercase hex characters>",
+  "apkSigners": {
+    "network.itonami.app": "<64 lowercase hex characters>"
+  }
+}
+```
+
+The signed catalog and APK downloads must use the declared commit and release paths under
+`store/distribution/rel-YYYYMMDD-rNNN/`. The build checks that every approved app has a signed
+catalog entry, a pin and a local APK with matching size and digest. Android build tools verify the
+APK signature, package, version code and non-debuggable manifest. The checked-in development root
+and development APK identity are refused in this mode. A failed check prevents output generation.
+The production manifest sets `development: false` and includes each APK’s version, bytes, hash and
+verified signer. Build output does not upload or change the public site. The production publishing and device acceptance steps remain in the release procedure.
 
 ## Publishing
 

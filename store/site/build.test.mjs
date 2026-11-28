@@ -145,6 +145,7 @@ rejects('no key list', input => ({...input, keysBytes: null}), 'keys-missing');
 const keyListInput = ({
   signPointer, signCatalog, signList, listRoot, publisher = 'Awai Network LLC',
   appId = 'network.itonami.yotei', apkBytes = null,
+  distribution = 'dev-test', apkSigner = DEV_SIGNER, apkRevision = 'a'.repeat(40),
 } = {}) => {
   const rsa = () => generateKeyPairSync('rsa', {modulusLength: 2048});
   const root = rsa(), cat = rsa(), ptr = rsa(), other = rsa();
@@ -153,23 +154,24 @@ const keyListInput = ({
   const now = 1_800_000_000;
   const list = `itonami.store.keys.v1\nsequence 2\nissued ${now - 60}\nexpires ${now + 90 * 86400}\nkey catalog ${spki(cat).toString('base64')}\nkey pointer ${spki(ptr).toString('base64')}\n`;
   const env = (raw, key) => Buffer.from(JSON.stringify({raw, signature: sign('sha256', Buffer.from(raw), key.privateKey).toString('base64')}));
-  const rev = 'a'.repeat(40), base = `https://raw.githubusercontent.com/network-awai/awai-os/${rev}/store/distribution/dev-test/`;
+  const rev = 'a'.repeat(40), path = `store/distribution/${distribution}/`;
+  const github = 'https://raw.githubusercontent.com/network-awai/awai-os/';
   const app = {id: appId, name: 'Fixture app', versionName: '1', versionCode: 1, artifacts: []};
   if (publisher !== null) app.publisher = publisher;
-  const apkPath = 'store/distribution/dev-test/fixture.apk';
+  const apkPath = path + 'fixture.apk';
   const apks = {};
   if (apkBytes) {
     const digest = sha256(apkBytes);
-    app.artifacts.push({platform: 'android', kind: 'apk', sha256: digest,
-      bytes: apkBytes.length, signerSha256: DEV_SIGNER});
-    apks[appId] = {url: base + 'fixture.apk', sha256: digest, maxBytes: apkBytes.length};
+    app.artifacts.push({platform: 'android', runtime: 'android', kind: 'apk', sha256: digest,
+      bytes: apkBytes.length, signerSha256: apkSigner});
+    apks[appId] = {url: github + apkRevision + '/' + apkPath, sha256: digest, maxBytes: apkBytes.length};
   }
   const catalog = env(JSON.stringify({schema: 'itonami.store.bundled.v1', revision: 110, expiresAt: now + 86400,
     apps: [app]}), k[signCatalog ?? 'cat']);
   const pointer = env(JSON.stringify({schema: 'itonami.store.latest.v1', sequence: 4, issuedAt: now - 60, expiresAt: now + 86400,
-    pins: {revision: rev, catalog: {url: base + 'catalog-envelope.json', sha256: sha256(catalog), maxBytes: 131072}, apks}}), k[signPointer ?? 'ptr']);
+    pins: {revision: rev, catalog: {url: github + rev + '/' + path + 'catalog-envelope.json', sha256: sha256(catalog), maxBytes: 131072}, apks}}), k[signPointer ?? 'ptr']);
   const published = published0();
-  const files = new Map([['store/distribution/dev-test/catalog-envelope.json', catalog], [apkPath, apkBytes]]);
+  const files = new Map([[path + 'catalog-envelope.json', catalog], [apkPath, apkBytes]]);
   return {...published, now, pointerBytes: pointer, rootDer: spki(k[listRoot ?? 'root']), keysBytes: env(list, k[signList ?? 'root']),
     read: path => files.get(path) ?? null,
     keys: {cat: spki(cat), root: spki(root)}};
@@ -232,4 +234,78 @@ test('publisher: a catalog entry without a publisher fails closed', async () => 
 });
 test('publisher: a catalog entry with a blank publisher fails closed', async () => {
   await assert.rejects(verifyStore(keyListInput({publisher: '   '})), {message: 'publisher'});
+});
+
+const releaseFixture = (options = {}) => {
+  const signer = 'b'.repeat(64), appId = options.appId ?? 'network.itonami.yotei';
+  const input = keyListInput({distribution: 'rel-20261129-r110', apkSigner: signer,
+    apkBytes: Buffer.from('closed APK test fixture'), ...options});
+  const approvals = {schema: 'awai.store-site.approvals.v1', rootSha256: sha256(input.rootDer),
+    apkSigners: {[appId]: signer}};
+  return {...input, release: {approvals, inspectApk: () =>
+    ({packageId: appId, versionCode: 1, signerSha256: signer, debuggable: false})}};
+};
+
+test('production page and manifest require an independent root, approved signer and inspected APK', async () => {
+  const {store, files} = await buildSite(releaseFixture());
+  const html = files['index.html'].toString();
+  assert.equal(store.development, false);
+  assert.equal(store.apps[0].download.bytesChecked, true);
+  assert.match(html, /正式リリース/);
+  assert.doesNotMatch(html, /開発版です|本番の署名鍵はまだありません/);
+  const manifest = JSON.parse(files['site-manifest.json']);
+  assert.equal(manifest.development, false);
+  assert.equal(Object.hasOwn(manifest, 'signer'), false);
+  assert.equal(manifest.apps[0].signerSha256, store.apps[0].download.signerSha256);
+  assert.equal(manifest.apps[0].bytes, store.apps[0].download.bytes);
+  assert.equal(manifest.apps[0].versionName, store.apps[0].versionName);
+});
+
+test('production refuses the checked-in development root even when listed as approved', async () => {
+  const input = published();
+  input.release = releaseFixture().release;
+  input.release.approvals.rootSha256 = sha256(input.rootDer);
+  await assert.rejects(buildSite(input), {message: 'release-root'});
+});
+
+test('production refuses a different root fingerprint', async () => {
+  const input = releaseFixture();
+  input.release.approvals.rootSha256 = 'd'.repeat(64);
+  await assert.rejects(buildSite(input), {message: 'release-root'});
+});
+
+test('production requires release artifact paths and the signed revision on every pin', async () => {
+  await assert.rejects(buildSite(releaseFixture({distribution: 'dev-test'})), {message: 'release-pin-path'});
+  await assert.rejects(buildSite(releaseFixture({apkRevision: 'c'.repeat(40)})), {message: 'release-pin-path'});
+});
+
+test('production requires every APK file and refuses changed bytes', async () => {
+  const input = releaseFixture();
+  const name = 'store/distribution/rel-20261129-r110/fixture.apk';
+  await assert.rejects(buildSite(withFile(input, name, null)), {message: 'release-apk-missing'});
+  await assert.rejects(buildSite(withFile(input, name, Buffer.from('different APK'))), {message: 'apk-digest'});
+});
+
+test('production does not make an APK link for a mismatched or known development signer', async () => {
+  const input = releaseFixture();
+  input.release.approvals.apkSigners['network.itonami.yotei'] = 'c'.repeat(64);
+  await assert.rejects(buildSite(input), {message: 'release-apk-approval'});
+  const dev = releaseFixture({apkSigner: DEV_SIGNER});
+  dev.release.approvals.apkSigners['network.itonami.yotei'] = DEV_SIGNER;
+  await assert.rejects(buildSite(dev), {message: 'release-apk-approval'});
+});
+
+test('production refuses approvals with no corresponding catalog app', async () => {
+  const input = releaseFixture();
+  input.release.approvals.apkSigners['network.itonami.absent'] = 'b'.repeat(64);
+  await assert.rejects(buildSite(input), {message: 'release-app-set'});
+});
+
+test('production compares verified archive identity, version, signer and debuggability', async () => {
+  for (const mismatch of [{packageId: 'app.aozora'}, {versionCode: 2}, {signerSha256: 'c'.repeat(64)}, {debuggable: true}]) {
+    const input = releaseFixture();
+    const good = input.release.inspectApk();
+    input.release.inspectApk = () => ({...good, ...mismatch});
+    await assert.rejects(buildSite(input), {message: 'release-apk-identity'});
+  }
 });
