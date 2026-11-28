@@ -19,10 +19,13 @@ The app lives here, next to the other Awai OS apps, rather than in nexus-x402: i
 npm ci
 npm test
 npm run build                  # dist/: static files, each pinned in release.json
-npm run build:android          # arm64 APK; JDK21, SDK 37, NDK 27.0.12077973
+npm run build:android          # universal ARM64 + x86_64 APK; JDK 21, SDK 37, NDK 27.0.12077973
+npm run check:android -- src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk
 ```
 
 Debug APK for an emulator: `npx tauri android build --debug --apk --target aarch64`.
+
+Run the APK check on the release artifact before handing it to the signer and again on the signed output. It records the size, SHA-256, package, version and both ABIs. It also checks the 16 KiB ELF and ZIP alignment, release manifest, and absence of the Android INTERNET permission. The signer identity and install/update behavior have their own QA steps.
 
 ## Boundaries
 
@@ -33,4 +36,4 @@ Debug APK for an emulator: `npx tauri android build --debug --apk --target aarch
 
 ## Not yet qualified
 
-AWAI-3252 built the debug APK and checked it on an API 35 VM (`docs/evidence/x402-awai3252-20261118`). The review fixes of [AWAI-3284](https://linear.app/kotobalabs/issue/AWAI-3284), ported from `apps/isekai`, were checked with unit tests and in a browser (`docs/evidence/x402-awai3284-20261118`); the system-bar and locale changes in the Android shell were not re-run on a VM (host load over 40). Release signing, Itonami Store distribution, physical devices, Figma design review and TalkBack testing remain open. Icons in `src-tauri/icons` and the Android launcher mipmaps were generated from `icon.svg` with `npx tauri icon icon.svg`.
+AWAI-3252 checked a debug APK on an API 35 VM (`docs/evidence/x402-awai3252-20261118`). AWAI-3890 recorded launch, draft retention, limit feedback and system bars on the ARM64 moto g05 (`docs/evidence/x402-20261125`). The release APK still needs x86_64 device or VM qualification, release signing and signed Store delivery. Figma review and TalkBack testing remain open. Icons in `src-tauri/icons` and the Android launcher mipmaps were generated from `icon.svg` with `npx tauri icon icon.svg`.
