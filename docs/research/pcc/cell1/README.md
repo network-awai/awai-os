@@ -96,10 +96,29 @@ agreement is discriminating rather than constant.
   `amu definition-cids` → usage, exit 2. The command exists only as an Amu seed
   entry (`seed/99-definition-cids-entry.kotoba`, `seed/DEFINITION-CIDS-MANIFEST`)
   and needs an Amu selfhost build.
-- Amu's doc records `app` / `lam` / `ref` as refused natively (item A1); both
-  corpus pairs that carry CIDs use exactly those forms.
+- ~~Amu's doc records `app` / `lam` / `ref` as refused natively (item A1); both
+  corpus pairs that carry CIDs use exactly those forms.~~ *(Corrected below —
+  2026-11-27 erratum.)*
 - The corpus is not internally uniform (the 7/8 mismatch above) and 2 pairs have
   no `:pure`.
+
+**2026-11-27 erratum (`app`/`lam`/`ref` on `kotoba-lang/amu` HEAD `87ec570a`):**
+The 2026-11-24 bullet above relied on stale prose in
+`kotoba-lang/amu docs/definition-cids-native.md:90-91` (2026-10-31). On
+2026-11-07, ADR 0411 (`docs/adr/0411-the-pure-heads-lower-in-names.md`,
+`seed/20-names.kotoba:1217-1333` `nm-pure-norm`) enabled native `app`/`lam`/`ref`
+lowering: on `amu` HEAD `87ec570a` (reported by `AmuSpec`, 2026-11-27, and
+independently reproduced via `bin/amu check` and
+`seed/bootstrap/aarch64-macos/amu-full-root.macho definition-cids`),
+`(def inc1 (lam [n :i64] :i64 (+ n 1))) (def main (lam [] :i64 (app (ref inc1) 41)))`
+passes `bin/amu check` (`ok`) and `definition-cids` (`SCANNED 2/2`, matching the
+surface `defn` CIDs). By contrast, `(app (lam [x] (+ x 1)) 41)` still reports
+`REFUSED:unbridged-source` (`SCANNED 0/1`, `:let-fn-vs-beta-redex`), and
+`(ref "bafy...")` still fails with `E2101`. This erratum narrows the gap
+description only: the **profile 4 / desugar 1** vs **profile 6 / desugar 2**
+mismatch (and `definition-cids` remaining absent from `bin/kotoba` and the
+`bin/amu` CLI) still keeps CID equality against the recorded corpus values out
+of scope for this cell.
 
 Organizer decision for this cell: **(iii) CID equality out of scope**, with a
 profile-6 re-measurement of the corpus requested as a separate Amu-side task.

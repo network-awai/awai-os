@@ -116,6 +116,47 @@ see binding structure or position kinds.** No number of rule theorems removes th
 four, and the earlier "prove soundness for the proved rules only" plan would not have
 either — which is why cell 3 ends here rather than continuing.
 
+### 2026-11-27 addendum: empirical triage on kotoba-lang/amu HEAD 87ec570a (AmuSpec)
+
+`AmuSpec` triaged the four context-level counterexamples above against the live
+native compiler (`kotoba-lang/amu` HEAD `87ec570a`); all source citations and
+read-only `bin/amu check` / `seed/bootstrap/aarch64-macos/amu-full-root.macho definition-cids`
+outputs below were independently reproduced on `87ec570a` on 2026-11-27:
+
+- **`neg-xv-args-position` — defended in `amu`.** `ck-ds-multi`
+  (`seed/21-check.kotoba:4749`) requires each signature clause to begin with a
+  vector (`ND-VEC`), rejecting `(defn f (if-not a b c) :i64 1)` with `E2119`
+  (`malformed signature of 'f'`).
+- **`neg-xvi-let-binding-position` — confirmed real compiler bug.**
+  `ck-ds-walk` (`seed/21-check.kotoba:1823`) recursively desugars the `let`
+  binding slot before `let` syntax checking: `(let (vector-i64 x 1) x)` passes
+  `bin/amu check` (`ok`) and produces the exact same Definition CID as
+  `(let [x 1] x)` (`bafyreiag4t37eamhtxuufux6a6u3i3e3ifohhjnhevojzd5lvi456vbope`),
+  while `(let (if-not true 1) 1)` emits `E2110` (`if needs exactly a test, a then and an else`)
+  instead of `E2111` (`malformed binding vector in 'let'`).
+- **`neg-xvii-cond-arity` — defended in `amu`.** Both `ck-cond`
+  (`seed/21-check.kotoba:2515-2516`) and `dsb-cond`
+  (`seed/05-checked-source.kotoba:228-239`) require even clause arity with a
+  final `:else`, rejecting `(cond a 1 b)` with `E2109`
+  (`cond needs a final :else clause`).
+- **`neg-xviii-not-shadowed` — defended in `amu`, with an open spec contradiction.**
+  With parentheses, `(defn f (not :i64) :i64 (if-not ...))` fails with `E2119`.
+  With brackets (`[not :i64 ...]`), `amu` desugars `(if-not a b c)` via branch
+  swap (`(if a c b)`, `ck-ds-ifnot` at `seed/21-check.kotoba:554-562`) with a
+  hygienic synthetic head (`nm-gensym`, `seed/20-names.kotoba:1352-1361`),
+  preserving the Definition CID regardless of whether a parameter is named `not`.
+  However, `seed/tests/checked-definition-authority/guest-grammar.edn:476-477`
+  still specifies `:if-not {:desugars-to "if + not"}`, contradicting
+  `docs/adr/0191-language-profile-5-bool-typed-predicates.md` and `amu`'s branch
+  swap; the two spellings mint distinct Definition CIDs on
+  `(defn f [a :bool b :i64 c :i64] :i64 ...)` (`bafyreiaxhpo6y...` for `if-not`
+  vs `bafyreihh3lr4k...` for `(if (not a) b c)`). This spec contradiction is
+  tracked for owner semantics decision in `AmuSpec` Item #569.
+
+This triage locates which of the four counterexamples also hit the live compiler;
+it does not change the cell 3 checker verdict (**FAILED**) or `SEC-PCC-SURFACE`
+(**UNVERIFIED**).
+
 ## 6. Not started: a checker that knows positions and bindings
 
 The next stage would give the checker (a) a *position predicate* saying which child
