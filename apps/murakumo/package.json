@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
+    "build:android": "python3 scripts/verify-native-pins.py && npm run build && tauri android build --apk --target aarch64 x86_64",
+    "check:android": "python3 scripts/check-release.py --desktop-apk",
     "tauri": "tauri",
     "test": "node --test test/*.test.mjs"
   },

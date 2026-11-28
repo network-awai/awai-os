@@ -59,6 +59,7 @@ android {
     // (scripts/verify-native-pins.py --apk).
     packaging {
         jniLibs {
+            useLegacyPackaging = true
             keepDebugSymbols += listOf("**/libawai_llama.so", "**/libllama.so", "**/libggml.so", "**/libggml-base.so", "**/libggml-cpu.so", "**/libc++_shared.so")
         }
     }
