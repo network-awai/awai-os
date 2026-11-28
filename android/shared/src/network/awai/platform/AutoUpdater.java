@@ -69,14 +69,17 @@ public final class AutoUpdater {
         SharedPreferences prefs = c.getSharedPreferences(AutoInstall.PREFS, 0);
         try {
             requireApproval(c, run);
-            KeyList key = StoreTrust.load(c);
+            KeyList key = StoreTrust.inspect(c);
+            synchronized (AutoUpdateRun.EFFECTS) {
+                StoreTrust.remember(c, key, () -> requireApproval(c, run));
+            }
             // A newer key list replaces or withdraws role keys. A refused or unreachable list keeps the one in use.
             try {
                 byte[] keysEnvelope = fetch(c, run, StoreTrust.URL, StoreTrust.MAX_ENVELOPE_BYTES);
                 KeyList fetched;
                 synchronized (AutoUpdateRun.EFFECTS) {
                     requireApproval(c, run);
-                    fetched = StoreTrust.admit(c, keysEnvelope);
+                    fetched = StoreTrust.admit(c, keysEnvelope, () -> requireApproval(c, run));
                 }
                 if (fetched.sequence > key.sequence) log(c, "keys", null, "sequence " + fetched.sequence);
                 key = fetched;
@@ -94,11 +97,11 @@ public final class AutoUpdater {
             p.checkCatalog(envelope);
             synchronized (AutoUpdateRun.EFFECTS) {
                 requireApproval(c, run);
-                admitCatalog(c, envelope, key, now, p);
+                admitCatalog(c, run, envelope, key, now, p);
             }
             log(c, "catalog", null, "sequence " + p.sequence);
 
-            Catalog catalog = new Catalog(c);
+            Catalog catalog = new Catalog(c, true);
             JSONArray apps = new JSONObject(catalog.json()).getJSONArray("apps");
             int installed = 0, refused = 0;
             for (int n = 0; n < apps.length(); n++) {
@@ -127,7 +130,7 @@ public final class AutoUpdater {
             synchronized (AutoUpdateRun.EFFECTS) {
                 requireApproval(c, run);
                 if (installed + refused == 0) log(c, "current", null, "no updates");
-                if (refused > 0) notify(c, "更新の確認が必要です", refused + " 件の更新は自動では入れられません。Store の「更新」で確認してください。");
+                if (refused > 0) notify(c, run, "更新の確認が必要です", refused + " 件の更新は自動では入れられません。Store の「更新」で確認してください。");
             }
         } catch (AutoUpdateRun.Stopped stopped) {
             if (!"job-stopped".equals(stopped.getMessage())) {
@@ -145,14 +148,14 @@ public final class AutoUpdater {
     }
 
     /** Admits the pointer's catalog as the Store's online catalog after the same checks as a manual check. */
-    private static void admitCatalog(Context c, byte[] envelope, KeyList key, long now, LatestPointer p) throws Exception {
+    private static void admitCatalog(Context c, AutoUpdateRun run, byte[] envelope, KeyList key, long now, LatestPointer p) throws Exception {
         JSONObject e = new JSONObject(new String(envelope, StandardCharsets.UTF_8));
         String raw = e.getString("raw"), signature = e.getString("signature");
         JSONObject candidate = Catalog.verifyMetadata(raw.getBytes(StandardCharsets.UTF_8),
                 android.util.Base64.decode(signature, android.util.Base64.DEFAULT), key, now);
         Catalog.checkOnline(candidate);
         long revision = candidate.getLong("revision");
-        if (revision < new Catalog(c).valueRevision()) throw new SecurityException("catalog-rollback");
+        if (revision < new Catalog(c, true).valueRevision()) throw new SecurityException("catalog-rollback");
         JSONArray listed = candidate.getJSONArray("apps");
         for (Map.Entry<String, LatestPointer.Pin> pin : p.apks.entrySet()) {
             String digest = null;
@@ -164,6 +167,7 @@ public final class AutoUpdater {
             }
             if (digest == null || !digest.equals(pin.getValue().sha256)) throw new SecurityException("unpinned-artifact");
         }
+        requireApproval(c, run);
         if (!Catalog.saveOnline(c, raw, signature, revision)) throw new SecurityException("catalog-store");
     }
 
@@ -191,6 +195,7 @@ public final class AutoUpdater {
                 long now = System.currentTimeMillis() / 1000;
                 prefs.edit().putLong("download-day", now / 86400)
                         .putLong("download-bytes", bytesToday(prefs, now) + bytes.length).commit();
+                run.check();
                 if (!temporary.renameTo(target)) throw new SecurityException("stage");
             }
         } finally {
@@ -216,7 +221,7 @@ public final class AutoUpdater {
         try {
             synchronized (AutoUpdateRun.EFFECTS) {
                 requireApproval(c, run, id);
-                run.start(request); // Enqueue and cancellation are ordered by the same gate.
+                run.start(request);
             }
             byte[] bytes = request.receive();
             requireApproval(c, run, id);
@@ -283,7 +288,7 @@ public final class AutoUpdater {
 
     static String logJson(Context c) { return c.getSharedPreferences(AutoInstall.PREFS, 0).getString("log", "[]"); }
 
-    static void notify(Context c, String title, String text) {
+    static void notify(Context c, AutoUpdateRun run, String title, String text) {
         if (c.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return;
         NotificationManager nm = c.getSystemService(NotificationManager.class);
         if (nm == null) return;
@@ -292,7 +297,9 @@ public final class AutoUpdater {
         Notification.Builder b = new Notification.Builder(c, CHANNEL).setSmallIcon(android.R.drawable.stat_sys_download_done)
                 .setContentTitle(title).setContentText(text).setAutoCancel(true);
         if (open != null) b.setContentIntent(android.app.PendingIntent.getActivity(c, 0, open, android.app.PendingIntent.FLAG_IMMUTABLE));
-        nm.notify(JOB_ID, b.build());
+        Notification notification = b.build();
+        run.check();
+        nm.notify(JOB_ID, notification);
     }
 
     private static String join(List<String> xs) {

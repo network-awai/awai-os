@@ -30,9 +30,13 @@ public final class Catalog {
     public final boolean online;
     private final boolean bundledAssoc;
     public Catalog(Context context) throws Exception {
+        this(context, false);
+    }
+
+    Catalog(Context context, boolean readOnly) throws Exception {
         byte[] bytes = Integrity.read(context.getAssets().open("catalog.json"), 131072);
         byte[] sig = Integrity.read(context.getAssets().open("catalog.sig"), 4096);
-        KeyList keys = StoreTrust.load(context);
+        KeyList keys = readOnly ? StoreTrust.inspect(context) : StoreTrust.load(context);
         JSONObject bundled=verifyMetadata(bytes,sig,keys,System.currentTimeMillis()/1000);
         android.content.SharedPreferences saved=context.getSharedPreferences("online",0);
         JSONObject admitted=null;
@@ -45,7 +49,7 @@ public final class Catalog {
                 // before AWAI-3775) is dropped, not trusted. The revision floor is kept, so the bundled catalog
                 // must still be at least as new as anything admitted before.
                 if(!"catalog-signature".equals(e.getMessage()))throw e;
-                saved.edit().remove("raw").remove("raw64").remove("signature").commit();
+                if (!readOnly) saved.edit().remove("raw").remove("raw64").remove("signature").commit();
             }
         }
         online=admitted!=null;

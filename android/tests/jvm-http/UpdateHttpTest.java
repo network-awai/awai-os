@@ -16,6 +16,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BooleanSupplier;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
@@ -50,6 +51,8 @@ public final class UpdateHttpTest {
         CountDownLatch releaseFirstRequest = new CountDownLatch(1);
         CountDownLatch slowBodyStarted = new CountDownLatch(1);
         CountDownLatch releaseSlowBody = new CountDownLatch(1);
+        CountDownLatch cancelThreadOccupied = new CountDownLatch(1);
+        CountDownLatch releaseCancelThread = new CountDownLatch(1);
         server.createContext("/hold", exchange -> {
             firstRequestArrived.countDown();
             await(releaseFirstRequest, "first request release");
@@ -101,8 +104,22 @@ public final class UpdateHttpTest {
             if (dispatcher.queuedCallsCount() != 0 || dispatcher.runningCallsCount() != 0)
                 throw new AssertionError("Stop before enqueue left a call");
 
+            AutoUpdateRun blockingCancel = new AutoUpdateRun();
+            UpdateHttpTransport.Request blockedRequest = new UpdateHttpTransport.Request() {
+                @Override public void start(BooleanSupplier stopped) { }
+                @Override public byte[] receive() { throw new AssertionError("Synthetic cancellation only"); }
+                @Override public void cancel() {
+                    cancelThreadOccupied.countDown();
+                    await(releaseCancelThread, "unblock cancellation executor");
+                }
+            };
+            blockingCancel.start(blockedRequest);
+            blockingCancel.stop();
+            await(cancelThreadOccupied, "cancellation executor to block");
+            blockingCancel.detach(blockedRequest);
+
             UpdateHttpTransport.Request occupying = transport.prepare(base + "/hold", 32);
-            occupying.start();
+            occupying.start(() -> false);
             await(firstRequestArrived, "first request to occupy dispatcher");
             AutoUpdateRun revoked = new AutoUpdateRun();
             UpdateHttpTransport.Request pending = transport.prepare(base + "/denied", 32);
@@ -110,14 +127,17 @@ public final class UpdateHttpTest {
             if (dispatcher.queuedCallsCount() != 1)
                 throw new AssertionError("Cancellation fixture did not queue the call");
             AutoUpdateRun.approvalChanged();
-            expectFailure(pending, IOException.class);
-            revoked.detach(pending);
             releaseFirstRequest.countDown();
             if (!"ok".equals(new String(occupying.receive(), StandardCharsets.US_ASCII)))
                 throw new AssertionError("Wrong positive control body");
+            // The queued call must refuse at the transport entry even if Call.cancel()
+            // has not yet executed on the occupied cancellation thread.
+            expectFailure(pending, IOException.class);
+            revoked.detach(pending);
             awaitIdle(dispatcher);
             if (deniedRequests.get() != 0) throw new AssertionError("Canceled queued request reached the server");
             if (deniedConnections.get() != 0) throw new AssertionError("Canceled queued request attempted a connection");
+            releaseCancelThread.countDown();
 
             AutoUpdateRun active = new AutoUpdateRun();
             UpdateHttpTransport.Request slow = transport.prepare(base + "/slow", 32);
@@ -130,16 +150,17 @@ public final class UpdateHttpTest {
 
             // The same redirect and size rules apply to the online transport itself.
             UpdateHttpTransport.Request redirect = transport.prepare(base + "/redirect", 32);
-            redirect.start();
+            redirect.start(() -> false);
             expectFailure(redirect, SecurityException.class);
             if (deniedRequests.get() != 0) throw new AssertionError("Redirect reached the wrong path");
             UpdateHttpTransport.Request oversized = transport.prepare(base + "/large", 4);
-            oversized.start();
+            oversized.start(() -> false);
             expectFailure(oversized, SecurityException.class);
-            System.out.println("6 checks passed: stop before enqueue, cancel while queued, normal fetch, stop during body, redirect, byte limit");
+            System.out.println("6 checks passed: stop before enqueue, refuse queued request with cancellation thread blocked, normal fetch, stop during body, redirect, byte limit");
         } finally {
             releaseFirstRequest.countDown();
             releaseSlowBody.countDown();
+            releaseCancelThread.countDown();
             dispatcher.cancelAll();
             dispatcher.executorService().shutdownNow();
             client.connectionPool().evictAll();

@@ -1,8 +1,10 @@
 package network.awai.platform;
 
+import java.util.function.BooleanSupplier;
+
 interface UpdateHttpTransport {
     interface Request {
-        void start();
+        void start(BooleanSupplier stopped);
         byte[] receive() throws Exception;
         void cancel();
     }
