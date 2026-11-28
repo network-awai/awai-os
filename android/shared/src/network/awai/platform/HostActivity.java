@@ -384,8 +384,10 @@ public abstract class HostActivity extends Activity {
     private void confirmAutoUpdate(boolean unmeteredOnly){
         long now=System.currentTimeMillis()/1000;
         String until=java.text.DateFormat.getDateInstance(java.text.DateFormat.LONG,Locale.JAPAN).format(new Date((now+UpdatePolicy.MAX_APPROVAL_SECONDS)*1000));
+        LatestPointer.Feed feed=LatestPointer.Feed.forPackage(getPackageName());
+        String feedDescription=feed==LatestPointer.Feed.CLOSED_QA?"（閉域 QA の署名済み配布ファイル）":"（network-awai/awai-os の署名済み配布ファイル）";
         String body="対象: この Store で追加したアプリの更新\n"
-            +"取得先: raw.githubusercontent.com（network-awai/awai-os の署名済み配布ファイル）\n"
+            +"取得先: "+feed.host+feedDescription+"\n"
             +"操作: 署名済みの鍵の一覧とカタログの読み取り（1 日 1 回まで）と、更新ファイルの取得・インストール\n"
             +"伝わる情報: IP アドレス、確認の時刻、追加済みのアプリ\n"
             +"条件: 同じ配布元の署名で、より新しい版で、新しい権限や通信先を追加しない更新だけ。それ以外の更新は、これまでどおり毎回確認します。\n"

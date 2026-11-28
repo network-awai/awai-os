@@ -9,12 +9,12 @@ import android.app.job.JobScheduler;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
@@ -46,7 +46,7 @@ public final class AutoUpdater {
         UpdatePolicy.Approval a = approval(c);
         long now = System.currentTimeMillis() / 1000;
         boolean hasInternet = c.checkSelfPermission(Manifest.permission.INTERNET) == PackageManager.PERMISSION_GRANTED;
-        if (!hasInternet || !UpdatePolicy.approvalRefusals(a, CHECK_OPERATION, now).isEmpty()) {
+        if (!hasInternet || !isAllowedFeed(c) || !UpdatePolicy.approvalRefusals(a, CHECK_OPERATION, now).isEmpty()) {
             js.cancel(JOB_ID);
             return;
         }
@@ -67,6 +67,7 @@ public final class AutoUpdater {
     static void run(Context c, AutoUpdateRun run) {
         long now = System.currentTimeMillis() / 1000;
         SharedPreferences prefs = c.getSharedPreferences(AutoInstall.PREFS, 0);
+        LatestPointer.Feed feed = LatestPointer.Feed.forPackage(c.getPackageName());
         try {
             requireApproval(c, run);
             Runnable authorizeKeyWrite = () -> requireApprovedEffect(c, run, null);
@@ -76,7 +77,7 @@ public final class AutoUpdater {
             }
             // A newer key list replaces or withdraws role keys. A refused or unreachable list keeps the one in use.
             try {
-                byte[] keysEnvelope = fetch(c, run, StoreTrust.URL, StoreTrust.MAX_ENVELOPE_BYTES);
+                byte[] keysEnvelope = fetch(c, run, feed.keysUrl(), StoreTrust.MAX_ENVELOPE_BYTES);
                 KeyList fetched;
                 synchronized (AutoUpdateRun.EFFECTS) {
                     requireApproval(c, run);
@@ -88,7 +89,8 @@ public final class AutoUpdater {
             catch (AutoUpdateRun.Stopped stopped) { throw stopped; }
             catch (Exception notAdopted) { log(c, notAdopted instanceof SecurityException ? "keys-refused" : "keys-unreachable", null, code(notAdopted)); }
             long floor = prefs.getLong("pointer-sequence", 0);
-            LatestPointer p = LatestPointer.verifyEnvelope(fetch(c, run, LatestPointer.URL, LatestPointer.MAX_ENVELOPE_BYTES), key, now, floor);
+            byte[] pointer = fetch(c, run, feed.pointerUrl(), LatestPointer.MAX_ENVELOPE_BYTES);
+            LatestPointer p = LatestPointer.verifyEnvelope(pointer, key, now, floor, feed);
             synchronized (AutoUpdateRun.EFFECTS) {
                 requireApproval(c, run);
                 SharedPreferences.Editor edit = prefs.edit().putLong("pointer-sequence", p.sequence);
@@ -208,16 +210,14 @@ public final class AutoUpdater {
         }
     }
 
-    /** GET over HTTPS to raw.githubusercontent.com only, no redirects, bounded body. */
+    /** GET from the installed package's fixed HTTPS feed, no redirects, bounded body. */
     private static byte[] fetch(Context c, AutoUpdateRun run, String url, int limit) throws Exception {
         return fetch(c, run, url, limit, null);
     }
 
     private static byte[] fetch(Context c, AutoUpdateRun run, String url, int limit, String id) throws Exception {
         requireApproval(c, run, id);
-        URI u = new URI(url);
-        if (!"https".equals(u.getScheme()) || !"raw.githubusercontent.com".equals(u.getHost()) || u.getPort() != -1
-                || u.getRawUserInfo() != null || u.getRawFragment() != null)
+        if (!LatestPointer.Feed.forPackage(c.getPackageName()).sameOrigin(url))
             throw new SecurityException("fetch-origin");
         UpdateHttpTransport activeTransport = transport;
         if (activeTransport == null) throw new SecurityException("fetch-unavailable");
@@ -256,6 +256,7 @@ public final class AutoUpdater {
         run.check();
         if (c.checkSelfPermission(Manifest.permission.INTERNET) != PackageManager.PERMISSION_GRANTED)
             throw new AutoUpdateRun.Stopped("internet-permission");
+        if (!isAllowedFeed(c)) throw new AutoUpdateRun.Stopped("qa-feed-disabled");
         UpdatePolicy.Approval a = approval(c);
         List<String> refusals = UpdatePolicy.approvalRefusals(a, CHECK_OPERATION, System.currentTimeMillis() / 1000);
         if (!refusals.isEmpty()) throw new AutoUpdateRun.Stopped(refusals.get(0));
@@ -263,6 +264,11 @@ public final class AutoUpdater {
         if (id != null && a.excludedApps.contains(id)) throw new AutoUpdateRun.Excluded();
         run.check();
         return a;
+    }
+
+    private static boolean isAllowedFeed(Context c) {
+        return LatestPointer.Feed.forPackage(c.getPackageName()) != LatestPointer.Feed.CLOSED_QA
+                || (c.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
     }
 
     private static long bytesToday(SharedPreferences prefs, long now) {

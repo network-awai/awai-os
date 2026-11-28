@@ -179,6 +179,7 @@ public final class StoreInstrumentation extends Instrumentation {
         check("app-private".equals(StorageProfile.kind("/data/user/0/app/files","tmpfs /data tmpfs rw 0 0\n/dev/block /data/user/0/app ext4 rw 0 0\n")),"longest nested mount wins");
         check("unknown".equals(StorageProfile.kind("/data/user/0/app/files","invalid")),"unknown storage is not durability");
         latestPointer();
+        assertions += network.awai.platform.ClosedStoreFeedChecks.run();
         roles();
         catalogRule();
         result.putString("stream","Awai Android store integrity: "+assertions+" assertions passed\n");finish(-1,result);

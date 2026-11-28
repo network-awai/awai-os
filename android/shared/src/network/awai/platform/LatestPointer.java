@@ -20,14 +20,48 @@ import java.util.Map;
  */
 public final class LatestPointer {
     public static final String SCHEMA = "itonami.store.latest.v1";
+    private static final String PUBLIC_HOST = "raw.githubusercontent.com";
+    private static final String STORE_REPOSITORY = "/network-awai/awai-os/";
     public static final String URL =
-            "https://raw.githubusercontent.com/network-awai/awai-os/main/store/latest/pointer-envelope.json";
+            "https://" + PUBLIC_HOST + STORE_REPOSITORY + "main/store/latest/pointer-envelope.json";
     public static final int MAX_ENVELOPE_BYTES = 16384;
     public static final int MAX_RAW_CHARS = 12288;
     public static final long MAX_LIFETIME_SECONDS = 31L * 24 * 60 * 60;
     public static final long CLOCK_SKEW_SECONDS = 300;
     public static final int MAX_CATALOG_BYTES = 131072;
     public static final int MAX_APPS = OnlinePins.MAX_APPS;
+
+    /** Background feed selected by the installed app identity, outside the signed input. */
+    enum Feed {
+        PUBLIC(PUBLIC_HOST),
+        CLOSED_QA("awai-store-qa.invalid");
+
+        static final String QA_PACKAGE = "network.awai.store.qa";
+        final String host;
+        private final String repository;
+
+        Feed(String host) {
+            this.host = host;
+            repository = "https://" + host + STORE_REPOSITORY;
+        }
+
+        static Feed forPackage(String packageName) {
+            return QA_PACKAGE.equals(packageName) ? CLOSED_QA : PUBLIC;
+        }
+
+        String pointerUrl() { return repository + "main/store/latest/pointer-envelope.json"; }
+        String keysUrl() { return repository + "main/store/latest/keys-envelope.json"; }
+
+        String distribution(String revision) {
+            return repository + revision + "/store/distribution/";
+        }
+
+        boolean sameOrigin(String url) throws Exception {
+            URI uri = new URI(url);
+            return "https".equals(uri.getScheme()) && host.equals(uri.getHost()) && uri.getPort() == -1
+                    && uri.getRawUserInfo() == null && uri.getRawQuery() == null && uri.getRawFragment() == null;
+        }
+    }
 
     public static final class Pin {
         public final String url;
@@ -50,15 +84,25 @@ public final class LatestPointer {
 
     /** Verifies the envelope bytes as fetched from {@link #URL}. */
     public static LatestPointer verifyEnvelope(byte[] envelope, KeyList keys, long now, long sequenceFloor) throws Exception {
+        return verifyEnvelope(envelope, keys, now, sequenceFloor, Feed.PUBLIC);
+    }
+
+    static LatestPointer verifyEnvelope(byte[] envelope, KeyList keys, long now, long sequenceFloor, Feed feed) throws Exception {
         if (envelope == null || envelope.length > MAX_ENVELOPE_BYTES) throw new SecurityException("pointer-size");
         JSONObject e = new JSONObject(new String(envelope, StandardCharsets.UTF_8));
         if (e.length() != 2) throw new SecurityException("pointer-shape");
         String raw = e.getString("raw"), signature = e.getString("signature");
         if (raw.length() > MAX_RAW_CHARS || signature.length() > 8192) throw new SecurityException("pointer-size");
-        return verify(raw.getBytes(StandardCharsets.UTF_8), java.util.Base64.getMimeDecoder().decode(signature), keys, now, sequenceFloor);
+        return verify(raw.getBytes(StandardCharsets.UTF_8), java.util.Base64.getMimeDecoder().decode(signature),
+                keys, now, sequenceFloor, feed);
     }
 
     public static LatestPointer verify(byte[] raw, byte[] signature, KeyList keys, long now, long sequenceFloor) throws Exception {
+        return verify(raw, signature, keys, now, sequenceFloor, Feed.PUBLIC);
+    }
+
+    private static LatestPointer verify(byte[] raw, byte[] signature, KeyList keys, long now, long sequenceFloor,
+            Feed feed) throws Exception {
         if (raw == null || raw.length > MAX_RAW_CHARS * 4) throw new SecurityException("pointer-size");
         if (!keys.authentic(KeyList.POINTER, raw, signature)) throw new SecurityException("pointer-signature");
         JSONObject v = new JSONObject(new String(raw, StandardCharsets.UTF_8));
@@ -71,14 +115,14 @@ public final class LatestPointer {
         JSONObject pins = v.getJSONObject("pins");
         String revision = pins.getString("revision");
         if (!revision.matches("[0-9a-f]{40}")) throw new SecurityException("pointer-revision");
-        Pin catalog = pin(pins.getJSONObject("catalog"), revision, MAX_CATALOG_BYTES);
+        Pin catalog = pin(pins.getJSONObject("catalog"), revision, MAX_CATALOG_BYTES, feed);
         JSONObject apkPins = pins.getJSONObject("apks");
         if (apkPins.length() < 1 || apkPins.length() > MAX_APPS) throw new SecurityException("pointer-apps");
         Map<String, Pin> apks = new LinkedHashMap<>();
         for (Iterator<String> ids = apkPins.keys(); ids.hasNext(); ) {
             String id = ids.next();
             int budget = Catalog.maxApkBytes(id); // unknown ids refuse
-            apks.put(id, pin(apkPins.getJSONObject(id), revision, budget));
+            apks.put(id, pin(apkPins.getJSONObject(id), revision, budget, feed));
         }
         return new LatestPointer(sequence, issuedAt, expiresAt, revision, catalog, Collections.unmodifiableMap(apks));
     }
@@ -98,13 +142,10 @@ public final class LatestPointer {
             throw new SecurityException(code);
     }
 
-    private static Pin pin(JSONObject p, String revision, long ceiling) throws Exception {
+    private static Pin pin(JSONObject p, String revision, long ceiling, Feed feed) throws Exception {
         String url = p.getString("url"), sha = p.getString("sha256");
         long maxBytes = exactLong(p, "maxBytes");
-        URI u = new URI(url);
-        if (!"https".equals(u.getScheme()) || !"raw.githubusercontent.com".equals(u.getHost()) || u.getPort() != -1
-                || u.getRawUserInfo() != null || u.getRawQuery() != null || u.getRawFragment() != null
-                || !url.startsWith("https://raw.githubusercontent.com/network-awai/awai-os/" + revision + "/store/distribution/")
+        if (!feed.sameOrigin(url) || !url.startsWith(feed.distribution(revision))
                 || url.contains("/../") || url.contains("/./") || url.contains("%") || url.contains("\\"))
             throw new SecurityException("pointer-url");
         if (!sha.matches("[0-9a-f]{64}")) throw new SecurityException("pointer-digest");

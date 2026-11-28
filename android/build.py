@@ -13,6 +13,10 @@ def run(args, **kw):
     return subprocess.run([str(x) for x in args], check=True, text=True, **kw)
 def digest(path): return hashlib.sha256(path.read_bytes()).hexdigest()
 DEBUG_KEYSTORE=pathlib.Path.home()/'.android/debug.keystore'
+CLOSED_QA_PACKAGE = 'network.awai.store.qa'
+CLOSED_QA_HOST = 'awai-store-qa.invalid'
+# Public certificate fingerprint from the approved Store v16 release receipt.
+PRODUCTION_STORE_ROOT = 'a67d9d2cdadf353524d8b16c8f36d666a8d4004772d835994d1031ee2e347d6f'
 # AWAI-3775: development root and role keys, outside any repository (see store/keys/README.md).
 DEV_KEY_DIR=pathlib.Path.home()/'.android/awai-store-dev'
 DEV_CATALOG_KEYSTORE=DEV_KEY_DIR/'catalog.p12'
@@ -177,6 +181,16 @@ def store_http_libraries():
             raise SystemExit(f'online Store HTTP library missing or changed: {library.name}')
     return jars
 
+def write_closed_qa_network_config(resources, tls_ca):
+    (resources/'xml').mkdir()
+    (resources/'raw').mkdir()
+    shutil.copyfile(tls_ca, resources/'raw/closed_store_qa_ca.der')
+    (resources/'xml/closed_store_qa.xml').write_text(
+        '<network-security-config><domain-config cleartextTrafficPermitted="false">'
+        f'<domain includeSubdomains="false">{CLOSED_QA_HOST}</domain>'
+        '<trust-anchors><certificates src="@raw/closed_store_qa_ca"/></trust-anchors>'
+        '</domain-config></network-security-config>', encoding='utf-8')
+
 def manifest(pkg, activity, version, kind, online=False, debuggable=True, query_packages=()):
     perms = ''
     extra = ''
@@ -216,6 +230,11 @@ def manifest(pkg, activity, version, kind, online=False, debuggable=True, query_
     known={'network.awai.drive','network.awai.yataverse','network.itonami.yotei','network.itonami.torihiki','network.awai.store'}
     listed=''.join(f'<package android:name="{p}"/>' for p in query_packages if p not in known)
     application = ' android:name="network.awai.platform.StoreOnlineApplication"' if kind == 'store' and online else ''
+    if pkg == CLOSED_QA_PACKAGE:
+        if kind != 'store' or not online or not debuggable:
+            raise ValueError('the closed QA Store must be debuggable and online')
+        application += ' android:networkSecurityConfig="@xml/closed_store_qa"'
+        title += '（閉域 QA）'
     return f'''<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="{pkg}" android:versionCode="{version}" android:versionName="0.1.{version-1}">
       <uses-sdk android:minSdkVersion="33" android:targetSdkVersion="37"/>{perms}
       <queries><intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent>
@@ -234,8 +253,10 @@ def main():
     ap.add_argument('--bundle-registry-assoc', action='store_true', help='Bundle the pinned release-signed Registry Assoc APK')
     ap.add_argument('--unsigned-home', action='store_true', help='Build a non-debuggable Home APK for a separate APK signing service')
     ap.add_argument('--dapp-distribution', type=pathlib.Path)
-    ap.add_argument('--store-package', choices=['network.awai.store','network.awai.store.p2p.preview'], default='network.awai.store')
+    ap.add_argument('--store-package', choices=['network.awai.store','network.awai.store.p2p.preview',CLOSED_QA_PACKAGE], default='network.awai.store')
     ap.add_argument('--store-only', action='store_true')
+    ap.add_argument('--closed-qa-tls-ca', type=pathlib.Path, help='approved DER HTTPS CA certificate for the closed QA Store')
+    ap.add_argument('--closed-qa-root-sha256', help='approved SHA-256 of the closed QA Store key-list root SPKI')
     # AWAI-3761: the signing identity. The defaults are the local Android debug identity, as before.
     ap.add_argument('--keystore', type=pathlib.Path, default=DEBUG_KEYSTORE, help='JKS or PKCS12 keystore that signs the APKs and the catalog')
     ap.add_argument('--key-alias', default='androiddebugkey')
@@ -248,6 +269,34 @@ def main():
     ap.add_argument('--catalog-key-alias')
     ap.add_argument('--catalog-pass-env', help='name of the environment variable that holds the catalog keystore password')
     args=ap.parse_args()
+    closed_qa = args.store_package == CLOSED_QA_PACKAGE
+    if closed_qa:
+        if not args.store_only or args.release or args.online_pins:
+            ap.error('closed QA requires --store-only with no --release or public --online-pins')
+        if any((args.itonami_apk, args.torihiki_bot_apk, args.tabi_mikake_apk, args.deai_apk, args.hiring_apk,
+                args.kumade_apk, args.payment_drafts_apk, args.securities_drafts_apk, args.local_apps_dir,
+                args.agent_trace_apk, args.bundle_registry_assoc, args.dapp_distribution)):
+            ap.error('closed QA bundles only its Yotei fixture')
+        if not (args.key_list and args.catalog_keystore and args.keystore_pass_env
+                and args.keystore.resolve() != DEBUG_KEYSTORE.resolve()):
+            ap.error('closed QA requires explicit, dedicated APK, catalog and key-list inputs')
+        if not (args.closed_qa_tls_ca and re.fullmatch(r'[a-f0-9]{64}', args.closed_qa_root_sha256 or '')):
+            ap.error('closed QA requires --closed-qa-tls-ca and --closed-qa-root-sha256')
+        if args.out.exists() and any(args.out.iterdir()):
+            ap.error('closed QA requires an empty output directory')
+        if not args.closed_qa_tls_ca.is_file() or not 0 < args.closed_qa_tls_ca.stat().st_size <= 16384:
+            ap.error('closed QA TLS CA must be a DER certificate of at most 16384 bytes')
+        details = run(['openssl', 'x509', '-inform', 'DER', '-in', args.closed_qa_tls_ca, '-noout', '-text'],
+                      capture_output=True).stdout
+        if not re.search(r'X509v3 Basic Constraints:(?: critical)?\s+CA:TRUE\b', details):
+            ap.error('closed QA TLS certificate is not a CA')
+        tls_public_key = run(['openssl', 'x509', '-inform', 'DER', '-in', args.closed_qa_tls_ca,
+                              '-noout', '-pubkey'], capture_output=True).stdout
+        tls_spki = base64.b64decode(''.join(tls_public_key.strip().splitlines()[1:-1]), validate=True)
+        if hashlib.sha256(tls_spki).hexdigest() == args.closed_qa_root_sha256:
+            ap.error('closed QA HTTPS CA and Store root must use different keys')
+    elif args.closed_qa_tls_ca or args.closed_qa_root_sha256:
+        ap.error('closed QA trust inputs require the closed QA Store package')
     if args.dapp_distribution and (args.online_pins or args.store_package != 'network.awai.store.p2p.preview'):
         ap.error('dapp bundle requires the isolated offline preview Store')
     if args.store_only and (args.home_only or args.unsigned_home):
@@ -308,6 +357,10 @@ def main():
     if args.catalog_keystore.resolve()==key.resolve() and args.catalog_key_alias==args.key_alias:
         ap.error('the catalog key must not be the APK signing key')
     key_list=json.loads(run(['python3',ROOT/'android/key-list.py','verify','--dir',args.key_list],capture_output=True).stdout)
+    if closed_qa:
+        development_root = digest(ROOT/'store/keys/store-root.der')
+        if key_list['root'] != args.closed_qa_root_sha256 or key_list['root'] in (development_root, PRODUCTION_STORE_ROOT):
+            ap.error('closed QA requires its pinned root, distinct from development and production')
     def catalog_sign(data,key_out,sig_out,**kw):
         return run([args.java/'java','-cp',out,'SignCatalog',args.catalog_keystore,data,key_out,sig_out,args.catalog_key_alias,args.catalog_pass_env],**kw)
     required=[jar,tools/'aapt2',tools/'d8',tools/'zipalign',args.java/'javac']
@@ -363,7 +416,7 @@ def main():
         fp=apk_key_sign(probe,out/'apk-key.der',out/'probe.sig',capture_output=True).stdout.strip()
         if not re.fullmatch(r'[a-f0-9]{64}',fp):raise SystemExit('signing key could not be read')
     def build(kind,pkg,activity):
-        online_store = kind == 'store' and bool(pins_online)
+        online_store = kind == 'store' and (bool(pins_online) or closed_qa)
         stage = out / f'{kind}-v{args.version}'
         stage.mkdir(exist_ok=True)
         classes = stage / ('classes-online' if online_store else 'classes')
@@ -372,7 +425,7 @@ def main():
         for directory in (classes, dex, gen):
             directory.mkdir(exist_ok=True)
         # Explicitly rebuild only this task's generated outputs; unrelated workspace data is untouched.
-        xml=stage/'AndroidManifest.xml';xml.write_text(manifest(pkg,activity,args.version,kind,bool(pins_online),debuggable=not (args.unsigned_home or args.release),
+        xml=stage/'AndroidManifest.xml';xml.write_text(manifest(pkg,activity,args.version,kind,online_store,debuggable=not (args.unsigned_home or args.release),
                                                                 query_packages=store_query_packages(pins_online) if kind=='store' else ()))
         staged_assets=stage/'assets'
         shutil.copytree(assets,staged_assets,dirs_exist_ok=True,
@@ -391,7 +444,12 @@ def main():
             (staged_assets/'index.html').write_text(html)
         files=sorted(str(p.relative_to(staged_assets)).replace(os.sep,'/')for p in staged_assets.rglob('*')if p.is_file()and p.name not in ['assets.list','catalog.json','catalog.sig','catalog-key.der','store-root.der','keys.txt','keys.sig']and not str(p.relative_to(staged_assets)).startswith('packages/'))
         (staged_assets/'assets.list').write_text('\n'.join(files)+'\n')
-        run([tools/'aapt2','compile','--dir',resources,'-o',stage/'resources.zip'])
+        package_resources = resources
+        if pkg == CLOSED_QA_PACKAGE:
+            package_resources = stage/'qa-res'
+            shutil.copytree(resources, package_resources)
+            write_closed_qa_network_config(package_resources, args.closed_qa_tls_ca)
+        run([tools/'aapt2','compile','--dir',package_resources,'-o',stage/'resources.zip'])
         run([tools/'aapt2','link','-o',stage/'resources.apk','--manifest',xml,'-I',jar,'--java',gen,'-R',stage/'resources.zip','-A',staged_assets,'--auto-add-overlay'])
         sources=list((ROOT/'android/shared/src').rglob('*.java'))+list((ROOT/'android'/kind/'src').rglob('*.java'))+list((ROOT/'packages/awai-system-bars/android').rglob('*.java'))+list(gen.rglob('*.java'))
         libraries = []
@@ -436,11 +494,13 @@ def main():
     previous_yotei=out/f'yotei-v{args.version}.apk'
     yotei=previous_yotei if args.store_only and previous_yotei.is_file() else build('yotei','network.itonami.yotei','network.itonami.yotei.YoteiActivity')
     run([tools/'apksigner','verify',yotei],stdout=subprocess.DEVNULL)
-    torihiki=build('torihiki','network.itonami.torihiki','network.itonami.torihiki.TorihikiActivity')
-    packages=assets/'packages';packages.mkdir(exist_ok=True);shutil.copyfile(yotei,packages/'yotei.apk');shutil.copyfile(torihiki,packages/'torihiki.apk')
+    packages=assets/'packages';packages.mkdir(exist_ok=True);shutil.copyfile(yotei,packages/'yotei.apk')
     revision=args.catalog_revision if args.catalog_revision is not None else args.version
-    listed=[{'id':'network.itonami.yotei','name':'Yotei','description':'予定をこの端末に保存します。外部への送信や同期、通知配信は行いません。','publisher':PUBLISHER,'versionCode':args.version,'versionName':f'0.1.{args.version-1}','artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/yotei.apk','bytes':yotei.stat().st_size,'sha256':digest(yotei),'signerSha256':fp},{'platform':'nixos','runtime':'browser','kind':'bundled-web','asset':'bundled:yotei','bytes':(assets/'client.js').stat().st_size,'sha256':digest(assets/'client.js')}]},
-            {'id':'network.itonami.torihiki','name':'Torihiki','description':'取引所 devnet の価格・板・ノード状態を表示し、端末の鍵で署名して devnet に発注できます。devnet・デモ専用で、実際の資産は扱いません。通信は毎回確認します。','publisher':PUBLISHER,'versionCode':args.version,'versionName':f'0.1.{args.version-1}','artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/torihiki.apk','bytes':torihiki.stat().st_size,'sha256':digest(torihiki),'signerSha256':fp}]}]
+    listed=[{'id':'network.itonami.yotei','name':'Yotei','description':'予定をこの端末に保存します。外部への送信や同期、通知配信は行いません。','publisher':PUBLISHER,'versionCode':args.version,'versionName':f'0.1.{args.version-1}','artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/yotei.apk','bytes':yotei.stat().st_size,'sha256':digest(yotei),'signerSha256':fp},{'platform':'nixos','runtime':'browser','kind':'bundled-web','asset':'bundled:yotei','bytes':(assets/'client.js').stat().st_size,'sha256':digest(assets/'client.js')}]}]
+    if not closed_qa:
+        torihiki=build('torihiki','network.itonami.torihiki','network.itonami.torihiki.TorihikiActivity')
+        shutil.copyfile(torihiki,packages/'torihiki.apk')
+        listed.append({'id':'network.itonami.torihiki','name':'Torihiki','description':'取引所 devnet の価格・板・ノード状態を表示し、端末の鍵で署名して devnet に発注できます。devnet・デモ専用で、実際の資産は扱いません。通信は毎回確認します。','publisher':PUBLISHER,'versionCode':args.version,'versionName':f'0.1.{args.version-1}','artifacts':[{'platform':'android','runtime':'android','kind':'apk','asset':'packages/torihiki.apk','bytes':torihiki.stat().st_size,'sha256':digest(torihiki),'signerSha256':fp}]})
     if args.itonami_apk is not None:
         staged=packages/'itonami.apk';shutil.copyfile(args.itonami_apk,staged)
         signer=run([tools/'apksigner','verify','--print-certs',staged],capture_output=True).stdout
@@ -648,5 +708,8 @@ def main():
     signing='release-key' if args.release else 'local-android-debug-only' if key.resolve()==DEBUG_KEYSTORE.resolve() and args.key_alias=='androiddebugkey' else 'custom-key-debuggable'
     report={'schema':'awai.android.build.v1','version':args.version,'sdk':37,'buildTools':'36.1.0','signing':signing,'publicSignerSha256':fp,'trust':trust,'runtime':pins,'artifacts':{p.name:{'sha256':digest(p),'bytes':p.stat().st_size}for p in built},'storePackage':args.store_package,'sharedDomainSha256':digest(ROOT/'android/contracts/src/itonami/store/domain.cljc'),'sharedClientSha256':digest(assets/'client.js')}
     if args.release:report['debuggable']=False
+    if closed_qa:
+        report['signing'] = 'closed-qa'
+        report['closedQa'] = {'origin': 'https://' + CLOSED_QA_HOST, 'httpsCaSha256': digest(args.closed_qa_tls_ca)}
     (out/f'build-v{args.version}.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2))
 if __name__=='__main__':main()
