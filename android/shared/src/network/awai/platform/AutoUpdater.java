@@ -69,10 +69,10 @@ public final class AutoUpdater {
         SharedPreferences prefs = c.getSharedPreferences(AutoInstall.PREFS, 0);
         try {
             requireApproval(c, run);
+            Runnable authorizeKeyWrite = () -> requireApprovedEffect(c, run, null);
             KeyList key = StoreTrust.inspect(c);
             synchronized (AutoUpdateRun.EFFECTS) {
-                requireApproval(c, run);
-                StoreTrust.remember(c, key, run::requireEffect);
+                StoreTrust.remember(c, key, authorizeKeyWrite);
             }
             // A newer key list replaces or withdraws role keys. A refused or unreachable list keeps the one in use.
             try {
@@ -80,7 +80,7 @@ public final class AutoUpdater {
                 KeyList fetched;
                 synchronized (AutoUpdateRun.EFFECTS) {
                     requireApproval(c, run);
-                    fetched = StoreTrust.admit(c, keysEnvelope, run::requireEffect);
+                    fetched = StoreTrust.admit(c, keysEnvelope, authorizeKeyWrite);
                 }
                 if (fetched.sequence > key.sequence) log(c, "keys", null, "sequence " + fetched.sequence);
                 key = fetched;
@@ -245,6 +245,11 @@ public final class AutoUpdater {
 
     private static UpdatePolicy.Approval requireApproval(Context c, AutoUpdateRun run) {
         return requireApproval(c, run, null);
+    }
+
+    static void requireApprovedEffect(Context c, AutoUpdateRun run, String id) {
+        requireApproval(c, run, id);
+        run.requireEffect();
     }
 
     static UpdatePolicy.Approval requireApproval(Context c, AutoUpdateRun run, String id) {

@@ -121,8 +121,16 @@ public final class AutoInstall {
         Completion(AutoUpdateRun run, int status) { this.run = run; this.status = status; }
     }
 
-    /** Keep the received status on disk before consuming the original install request. */
-    static synchronized Completion finishAutomatic(Context c, int session, Integer reportedStatus, String id) throws IOException {
+    /** Keep the received status on disk until both cleanup and result bookkeeping have finished. */
+    static Completion finishAutomatic(Context c, int session, Integer reportedStatus, String id) throws IOException {
+        Integer status = rememberAutomaticResult(c, session, reportedStatus, id);
+        if (status == null) return null;
+        if (status == PackageInstaller.STATUS_PENDING_USER_ACTION) abandonPendingConfirmation(c, session);
+        return consumeAutomaticResult(c, session, id, status);
+    }
+
+    private static synchronized Integer rememberAutomaticResult(Context c, int session, Integer reportedStatus,
+            String id) throws IOException {
         if (session < 0 || id == null) return null;
         SharedPreferences prefs = c.getSharedPreferences(PREFS, 0);
         String resultPackage = prefs.getString(RESULT_ID + session, null);
@@ -140,10 +148,29 @@ public final class AutoInstall {
                 prefs.edit().remove(RESULT_ID + session).remove(RESULT_STATUS + session).apply();
                 throw new IOException("install-result-write");
             }
-        } else {
-            status = prefs.getInt(RESULT_STATUS + session, PackageInstaller.STATUS_FAILURE);
-        }
+        } else status = prefs.getInt(RESULT_STATUS + session, PackageInstaller.STATUS_FAILURE);
+        return status;
+    }
 
+    // Android must never wait for someone to approve an installation started in the background.
+    // If Binder fails or removal is still underway, the saved result remains eligible for replay.
+    private static void abandonPendingConfirmation(Context c, int session) throws IOException {
+        try {
+            PackageInstaller installer = c.getPackageManager().getPackageInstaller();
+            if (installer.getSessionInfo(session) == null) return;
+            installer.abandonSession(session);
+            if (installer.getSessionInfo(session) != null) throw new IOException("install-abandon-pending");
+        } catch (RuntimeException unavailable) {
+            throw new IOException("install-abandon", unavailable);
+        }
+    }
+
+    private static synchronized Completion consumeAutomaticResult(Context c, int session, String id,
+            int status) throws IOException {
+        SharedPreferences prefs = c.getSharedPreferences(PREFS, 0);
+        if (!id.equals(prefs.getString(RESULT_ID + session, null))) return null;
+        String recordedId = prefs.getString("pending-auto-package-" + session, null);
+        boolean legacy = recordedId == null && prefs.getInt("auto-session", -2) == session;
         long expectedVersion = prefs.getLong("pending-auto-version-" + session, -1);
         String ops = prefs.getString("pending-ops-" + session, null);
         String history = prefs.getString(RESULTS, "");
@@ -248,8 +275,7 @@ public final class AutoInstall {
         params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
         int sessionId;
         synchronized (AutoUpdateRun.EFFECTS) {
-            AutoUpdater.requireApproval(c, run, id);
-            run.requireEffect();
+            AutoUpdater.requireApprovedEffect(c, run, id);
             sessionId = installer.createSession(params);
         }
         boolean submitted = false;
@@ -272,8 +298,7 @@ public final class AutoInstall {
             synchronized (AutoUpdateRun.EFFECTS) {
                 AutoUpdater.requireApproval(c, run, id);
                 recordAutomatic(c, sessionId, id, version, ops, run);
-                AutoUpdater.requireApproval(c, run, id);
-                run.requireEffect();
+                AutoUpdater.requireApprovedEffect(c, run, id);
                 session.commit(sender);
                 submitted = true;
             }

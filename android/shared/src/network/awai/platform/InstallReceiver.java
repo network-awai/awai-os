@@ -46,8 +46,6 @@ public final class InstallReceiver extends BroadcastReceiver {
         boolean installed = completion.status == PackageInstaller.STATUS_SUCCESS;
         if (needsApproval) {
             // AWAI-3663: never open the installer screen from the background.
-            try { context.getPackageManager().getPackageInstaller().abandonSession(session); }
-            catch (RuntimeException ignored) { /* Android already discarded the session. */ }
             AutoUpdater.log(context, "needs-approval", id, "android-asked");
         } else {
             AutoUpdater.log(context, installed ? "installed" : "failed", id, installed ? "" : "status-" + completion.status);
