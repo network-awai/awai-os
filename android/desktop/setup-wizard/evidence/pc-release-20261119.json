@@ -1,0 +1,77 @@
+{
+  "schema": "awai.os.setupwizard-release-qualification.v1",
+  "issue": "AWAI-3563",
+  "date": "2026-11-19",
+  "source": {
+    "welcomeSourceCommit": "7dcc9069082cb149ab0a834df3993b009a10865a",
+    "wizardUpstreamRevision": "d995f1a1949f5988850c9977658e2590efe502b4",
+    "buildTarget": "lineage_Generic_x86_64-userdebug",
+    "buildCompletedUtc": "2026-11-19T08:17:15Z",
+    "reappliedPatchFilesByteMatched": 11,
+    "sourceTargetFilesSha256": "d678ab4beae7564fbfa2891a38b2a9f1df38f707ee34cff2f0c615c4d683a061",
+    "signingInputTargetFilesSha256": "ac50bb8c5235c04b034c41f1eb7cb10f25bf3ea714bdf019f4fa28c052ebcd6c",
+    "normalizedToolLocatorOnly": "META/misc_info.txt: avb_avbtool=avbtool",
+    "unmodifiedArchiveEntriesByteMatched": 14276
+  },
+  "signing": {
+    "profile": "AWAI-3061 Android PC release keys",
+    "signedTargetFilesSha256": "9218dbbc09849b26a94911dacc43569a8e6e97ed278831269d7ebb5556af1921",
+    "wizardCertificateSha256": "f0a48a4f17c65d7ef757fc6a0e8676d0af07743da562657727f1b94e0ce61e2d",
+    "verifiedUtc": "2026-11-19T10:21:39Z",
+    "checks": {
+      "apkVerified": 144,
+      "nestedApkVerified": 31,
+      "apexContainerAndPayloadVerified": 58,
+      "presignedApexUnchanged": 1
+    },
+    "pcPartitionAvbConfigured": false,
+    "otaInstallTested": false
+  },
+  "liveMedia": {
+    "sha256": {
+      "kernel": "be6e929579fb0ffefb3af9b081a2553224423fca446f72352c419c943c98c5b5",
+      "initrd": "8ebfaf73cb599af7445720e4dd72a394876acf9c0dfbef3eb14d292559667e10",
+      "ipxe.efi": "bfa3084d964bceae16299f36874db15530d3b100c6066614f39aa4a8340a5d54",
+      "cmdline.txt": "9b0589208e89a81c559cd94be549697425eeda7bcfa6f73a41fb762495e647f8",
+      "live.iso": "754fe8f3fd9eab432dc056b7d5e233e73f56101a7cce05019040407e3a2fcf53",
+      "LineageSetupWizard.apk": "ab3dd4dcb750ef7009547e459d31672bf7a04b23cdd5c9e2ee34753e8a29267e"
+    },
+    "isoFilesReadBackAndByteMatched": {
+      "system.img": "4f36432a80bb2b9549a4de22686bc3b371e069de0d8906f32434d6773c7c0ddd",
+      "system_dlkm.img": "f486e2252643f1a1f1921d12f59faf3d3e8c1cc024a4947501d265be26c7a229",
+      "vendor.img": "bd320cd609bd13bea26902c3c82eecf9177c95de775edffe4199348e593b2afd",
+      "vendor_dlkm.img": "2eb93197574a4689b5c3ce78d65fd350a65c95161b8bbd1d6d65b67a5b44f5ee",
+      "ramdisk-all-combined.img": "7a829907ebb6e4f5719f806013eaeef551b341b8b632032b620d58ef0feccf70",
+      "kernel": "be6e929579fb0ffefb3af9b081a2553224423fca446f72352c419c943c98c5b5",
+      "firmware.img": "91c5849a363f2c2a2e52389d77c0baa38ebf1b4c4e6fcbe583aa3e1df2b94a8f"
+    }
+  },
+  "vm": {
+    "mode": "diskless QEMU x86_64 TCG, restricted user network, Live CD-ROM",
+    "bootStartUtc": "2026-11-19T10:24:07Z",
+    "liveIsoSha256": "754fe8f3fd9eab432dc056b7d5e233e73f56101a7cce05019040407e3a2fcf53",
+    "sysBootCompleted": true,
+    "buildTags": "release-keys",
+    "welcomeVisible": true,
+    "welcomeScreenshotSha256": "d8aea1d8a32b9709ae7e0c8736335899f25c14a3008a1e3ef30b81056fea9f47",
+    "startResult": "Setup Wizard ANR, input dispatch timed out waiting 5574 ms for MotionEvent",
+    "anrScreenshotSha256": "927136c0e1a94af5ee48e634285836c346d37d05a7905f7120532584d3a83517",
+    "setupComplete": false
+  },
+  "physicalPreparation": {
+    "device": "AMD Ryzen 7 7735HS",
+    "mode": "UEFI PXE, read-only NBD, RAM Live and temporary userdata",
+    "tftpReadbackVerifiedUtc": "2026-11-19T10:37:52Z",
+    "tftpIpxeSha256": "bfa3084d964bceae16299f36874db15530d3b100c6066614f39aa4a8340a5d54"
+  },
+  "physical": {
+    "releaseIsoFetchObserved": false,
+    "releaseIsoNbdConnectionObserved": false,
+    "releaseIsoSetupAccepted": false,
+    "observedBuildTags": "awai-eval-keys",
+    "observedWizardApkSha256": "a849b8216732850901a1be6adbbfa4b9e459e8d964d9392b5afbe02e8414e142",
+    "observedSetupComplete": false,
+    "pauseReason": "Other work on the same physical device; reboot pending operator handoff",
+    "defaultPxeRestoredUtc": "2026-11-19T10:48:38Z"
+  }
+}

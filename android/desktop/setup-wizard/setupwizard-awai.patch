@@ -1,0 +1,229 @@
+diff --git a/app/src/main/java/org/lineageos/setupwizard/WelcomeActivity.kt b/app/src/main/java/org/lineageos/setupwizard/WelcomeActivity.kt
+index 9b80d62..2bb2de5 100644
+--- a/app/src/main/java/org/lineageos/setupwizard/WelcomeActivity.kt
++++ b/app/src/main/java/org/lineageos/setupwizard/WelcomeActivity.kt
+@@ -5,6 +5,7 @@
+  */
+ package org.lineageos.setupwizard
+ 
++import android.animation.ValueAnimator
+ import android.content.Intent
+ import android.os.Build
+ import android.os.Bundle
+@@ -12,6 +13,7 @@ import android.util.TypedValue
+ import android.view.View
+ import android.view.ViewGroup
+ import android.view.ViewGroup.MarginLayoutParams
++import android.view.animation.PathInterpolator
+ import android.widget.TextView
+ import androidx.activity.OnBackPressedCallback
+ import androidx.core.view.updateLayoutParams
+@@ -22,6 +24,7 @@ import com.google.android.setupdesign.template.FloatingActionButtonMixin
+ import com.google.android.setupdesign.template.FloatingBackButtonMixin
+ import org.lineageos.setupwizard.base.GlifTemplate
+ import org.lineageos.setupwizard.base.SubBaseActivity
++import org.lineageos.setupwizard.locale.LocaleActivity
+ import org.lineageos.setupwizard.system.DeviceInfoActivity
+ import org.lineageos.setupwizard.util.SetupWizardUtils
+ 
+@@ -57,12 +60,32 @@ class WelcomeActivity : SubBaseActivity() {
+             startSubactivity(Intent(ACTION_ACCESSIBILITY_SETTINGS))
+         }
+ 
++        findViewById<View>(R.id.awai_welcome_language)?.setOnClickListener {
++            startActivity(
++                Intent(this, LocaleActivity::class.java)
++                    .putExtra(LocaleActivity.EXTRA_WELCOME_SHORTCUT, true)
++            )
++        }
++        if (savedInstanceState == null && ValueAnimator.areAnimatorsEnabled()) {
++            findViewById<View>(R.id.awai_welcome_brand)?.let { brand ->
++                brand.alpha = 0f
++                brand.translationY = 16f * resources.displayMetrics.density
++                brand.animate()
++                    .alpha(1f)
++                    .translationY(0f)
++                    .setDuration(600)
++                    .setInterpolator(PathInterpolator(0f, 0f, 0.58f, 1f))
++                    .start()
++            }
++        }
++
+         val welcomeTitle: TextView = findViewById(R.id.welcome_title)
+         welcomeTitle.text =
+             if (SetupWizardUtils.isManagedProfile(this)) {
+                 getString(R.string.setup_managed_profile_welcome_message)
+             } else {
+-                getString(R.string.setup_welcome_message, getString(R.string.os_name))
++                val productName = if (usesAwaiWelcome()) R.string.awai_welcome_name else R.string.os_name
++                getString(R.string.setup_welcome_message, getString(productName))
+             }
+     }
+ 
+@@ -144,7 +167,11 @@ class WelcomeActivity : SubBaseActivity() {
+         }
+     }
+ 
+-    override val layoutResId = R.layout.welcome_activity
++    private fun usesAwaiWelcome() =
++        resources.configuration.screenWidthDp >= 600 && !SetupWizardUtils.isManagedProfile(this)
++
++    override val layoutResId
++        get() = if (usesAwaiWelcome()) R.layout.awai_welcome_activity else R.layout.welcome_activity
+ 
+     override val titleResId = -1
+ 
+diff --git a/app/src/main/java/org/lineageos/setupwizard/backup/RestoreIntroActivity.kt b/app/src/main/java/org/lineageos/setupwizard/backup/RestoreIntroActivity.kt
+index e496ace..5f1d678 100644
+--- a/app/src/main/java/org/lineageos/setupwizard/backup/RestoreIntroActivity.kt
++++ b/app/src/main/java/org/lineageos/setupwizard/backup/RestoreIntroActivity.kt
+@@ -13,12 +13,20 @@ import com.google.android.setupcompat.util.ResultCodes.RESULT_ACTIVITY_NOT_FOUND
+ import org.lineageos.setupwizard.ACTION_RESTORE_FROM_BACKUP
+ import org.lineageos.setupwizard.R
+ import org.lineageos.setupwizard.base.SubBaseActivity
++import org.lineageos.setupwizard.util.SetupWizardUtils
+ 
+ class RestoreIntroActivity : SubBaseActivity() {
+ 
+     override fun onCreate(savedInstanceState: Bundle?) {
+         super.onCreate(savedInstanceState)
+-        setDescriptionText(getString(R.string.intro_restore_subtitle, getString(R.string.os_name)))
++        val usesAwaiText = resources.configuration.screenWidthDp >= 600 && !SetupWizardUtils.isManagedProfile(this)
++        setDescriptionText(
++            if (usesAwaiText) {
++                getString(R.string.awai_intro_restore_subtitle)
++            } else {
++                getString(R.string.intro_restore_subtitle, getString(R.string.os_name))
++            }
++        )
+         setNextText(R.string.intro_restore_button)
+     }
+ 
+diff --git a/app/src/main/java/org/lineageos/setupwizard/locale/LocaleActivity.kt b/app/src/main/java/org/lineageos/setupwizard/locale/LocaleActivity.kt
+index 1b72197..1a0c600 100644
+--- a/app/src/main/java/org/lineageos/setupwizard/locale/LocaleActivity.kt
++++ b/app/src/main/java/org/lineageos/setupwizard/locale/LocaleActivity.kt
+@@ -222,7 +222,11 @@ open class LocaleActivity : BaseSetupWizardActivity() {
+ 
+     private fun applyLocale(locale: Locale) {
+         com.android.internal.app.LocalePicker.updateLocale(locale)
+-        nextAction(RESULT_OK)
++        if (intent.getBooleanExtra(EXTRA_WELCOME_SHORTCUT, false)) {
++            finish()
++        } else {
++            nextAction(RESULT_OK)
++        }
+     }
+ 
+     private fun fetchAndUpdateSimLocale() {
+@@ -297,6 +301,7 @@ open class LocaleActivity : BaseSetupWizardActivity() {
+     }
+ 
+     companion object {
++        internal const val EXTRA_WELCOME_SHORTCUT = "network.awai.setupwizard.WELCOME_SHORTCUT"
+         private const val TAG = "LocaleActivity"
+     }
+ }
+diff --git a/app/src/main/java/org/lineageos/setupwizard/settings/LineageSettingsActivity.kt b/app/src/main/java/org/lineageos/setupwizard/settings/LineageSettingsActivity.kt
+index 7e68e96..5d02b38 100644
+--- a/app/src/main/java/org/lineageos/setupwizard/settings/LineageSettingsActivity.kt
++++ b/app/src/main/java/org/lineageos/setupwizard/settings/LineageSettingsActivity.kt
+@@ -17,6 +17,7 @@ import org.lineageos.setupwizard.KEY_SEND_METRICS
+ import org.lineageos.setupwizard.R
+ import org.lineageos.setupwizard.SetupWizardApp
+ import org.lineageos.setupwizard.base.BaseSetupWizardActivity
++import org.lineageos.setupwizard.util.SetupWizardUtils
+ 
+ class LineageSettingsActivity : BaseSetupWizardActivity() {
+ 
+@@ -28,12 +29,20 @@ class LineageSettingsActivity : BaseSetupWizardActivity() {
+     override fun onCreate(savedInstanceState: Bundle?) {
+         super.onCreate(savedInstanceState)
+ 
+-        val osName = getString(R.string.os_name)
++        val usesAwaiText = usesAwaiServices()
++        val osName = getString(if (usesAwaiText) R.string.awai_welcome_name else R.string.os_name)
+         setDescriptionText(buildDescription(osName))
+ 
+-        val metricsHelpImproveLineage = getString(R.string.services_help_improve_cm, osName)
++        val metricsHelpImproveLineage =
++            getString(
++                if (usesAwaiText) R.string.awai_services_help_improve else R.string.services_help_improve_cm,
++                osName,
++            )
+         metricsItem.summary =
+-            getString(R.string.services_metrics_label, metricsHelpImproveLineage, osName, osName)
++            getString(
++                if (usesAwaiText) R.string.awai_services_metrics_label else R.string.services_metrics_label,
++                metricsHelpImproveLineage, osName, osName,
++            )
+         metricsItem.setOnCheckedChangeListener { isChecked ->
+             SetupWizardApp.settingsBundle.putBoolean(KEY_SEND_METRICS, isChecked)
+         }
+@@ -53,9 +62,14 @@ class LineageSettingsActivity : BaseSetupWizardActivity() {
+ 
+     override val layoutResId = R.layout.setup_lineage_settings
+ 
+-    override val titleResId = R.string.setup_services
++    override val titleResId
++        get() = if (usesAwaiServices()) R.string.awai_setup_services else R.string.setup_services
++
++    override val iconResId
++        get() = if (usesAwaiServices()) R.drawable.awai_welcome_logo else R.drawable.logo
+ 
+-    override val iconResId = R.drawable.logo
++    private fun usesAwaiServices() =
++        resources.configuration.screenWidthDp >= 600 && !SetupWizardUtils.isManagedProfile(this)
+ 
+     override val itemEntriesResId = R.xml.lineage_settings_items
+ 
+@@ -72,8 +86,7 @@ class LineageSettingsActivity : BaseSetupWizardActivity() {
+ 
+     private fun updateMetricsOption() {
+         val myPageBundle = SetupWizardApp.settingsBundle
+-        val metricsChecked =
+-            !myPageBundle.containsKey(KEY_SEND_METRICS) || myPageBundle.getBoolean(KEY_SEND_METRICS)
++        val metricsChecked = myPageBundle.getBoolean(KEY_SEND_METRICS, false)
+         metricsItem.isChecked = metricsChecked
+         myPageBundle.putBoolean(KEY_SEND_METRICS, metricsChecked)
+     }
+diff --git a/app/src/main/java/org/lineageos/setupwizard/user/ScreenLockActivity.kt b/app/src/main/java/org/lineageos/setupwizard/user/ScreenLockActivity.kt
+index e1c8a92..9d00461 100644
+--- a/app/src/main/java/org/lineageos/setupwizard/user/ScreenLockActivity.kt
++++ b/app/src/main/java/org/lineageos/setupwizard/user/ScreenLockActivity.kt
+@@ -7,10 +7,22 @@
+ package org.lineageos.setupwizard.user
+ 
+ import android.content.Intent
++import org.lineageos.setupwizard.R
+ import org.lineageos.setupwizard.base.SubBaseActivity
++import org.lineageos.setupwizard.util.SetupWizardUtils
+ 
+ class ScreenLockActivity : SubBaseActivity() {
+ 
++    // Settings owns the picker header (setup_lock_settings_picker_title); this host
++    // title is the closest SetupWizard-side fix and keeps phone wording on narrow screens.
++    override val titleResId
++        get() =
++            if (resources.configuration.screenWidthDp >= 600 && !SetupWizardUtils.isManagedProfile(this)) {
++                R.string.awai_screen_lock_title
++            } else {
++                R.string.loading
++            }
++
+     override fun onStartSubactivity() {
+         startSubactivity(Intent(ACTION_SETUP_LOCKSCREEN))
+     }
+diff --git a/app/src/main/res/layout/finish_activity.xml b/app/src/main/res/layout/finish_activity.xml
+index 648960e..6fd784e 100644
+--- a/app/src/main/res/layout/finish_activity.xml
++++ b/app/src/main/res/layout/finish_activity.xml
+@@ -32,7 +32,7 @@
+             android:gravity="center"
+             android:padding="@dimen/content_margin_left"
+             android:scaleType="fitCenter"
+-            android:src="@drawable/logo" />
++            android:src="@drawable/awai_welcome_logo" />
+ 
+         <LinearLayout
+             android:id="@+id/swipe_hint"

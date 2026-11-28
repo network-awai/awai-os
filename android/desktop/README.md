@@ -15,6 +15,12 @@ The proposal includes an Itonami shortcut from the design inventory. This build
 exposes only actually implemented shortcuts (Store, Yotei, Settings, Apps).
 SystemUI, Keyguard and the default Android launcher remain installed.
 
+## First-boot SetupWizard
+
+The [Awai OS Welcome integration](setup-wizard/README.md) is applied to the
+pinned PC Android source build before building SetupWizard and signing the OS
+image. It runs in Android's provisioning flow before the Awai Home launcher.
+
 ## What was qualified on 2026-11-16
 
 - Google Android 15/API 35 x86_64 VM on the physical Ryzen 6600H's KVM.
