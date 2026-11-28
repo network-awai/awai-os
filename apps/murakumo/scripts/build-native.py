@@ -40,7 +40,7 @@ if actual!=expected:raise SystemExit('source-tree-extra-or-missing')
 if args==['--verify-only']:
  print('Verified immutable engine archive and extracted tree');raise SystemExit(0)
 default_ndk=pathlib.Path.home()/('Library/Android/sdk/ndk/' if platform.system()=='Darwin' else 'Android/Sdk/ndk/')/NDK_VERSION
-ndk=pathlib.Path(os.environ.get('ANDROID_NDK_HOME') or os.environ.get('ANDROID_NDK_ROOT') or default_ndk)
+ndk=pathlib.Path(os.environ.get('ANDROID_NDK_HOME') or os.environ.get('ANDROID_NDK_ROOT') or default_ndk).resolve()
 props=(ndk/'source.properties').read_text() if (ndk/'source.properties').is_file() else ''
 if 'Pkg.Revision = '+NDK_VERSION not in props:raise SystemExit(f'ndk-{NDK_VERSION}-required: {ndk}')
 host={'Darwin':'darwin-x86_64','Linux':'linux-x86_64'}.get(platform.system()) or sys.exit('unsupported-host')
@@ -53,6 +53,9 @@ for abi in args or ABIS:
  # Host paths (source, app, build directory) must not reach the binaries: __FILE__ in GGML_ASSERT and
  # the debug info would otherwise differ per checkout. The libraries are stripped below as well.
  maps=' '.join(f'-ffile-prefix-map={p}={n}' for p,n in [(source,'llama'),(app/'native','native'),(build,'build')])
+ # LLD computes the Build ID before stripping DWARF. Map NDK header paths
+ # as well, so moving the same toolchain cannot change the shipped Build ID.
+ maps += f' -fdebug-prefix-map={ndk}=android-ndk'
  cmake=['cmake','-S',str(app/'native'),'-B',str(build),'-G','Unix Makefiles','-DCMAKE_MAKE_PROGRAM='+make,'-DCMAKE_BUILD_TYPE=Release','-DCMAKE_TOOLCHAIN_FILE='+str(ndk/'build/cmake/android.toolchain.cmake'),'-DANDROID_ABI='+abi,'-DANDROID_PLATFORM=android-35','-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON','-DLLAMA_SOURCE='+str(source),'-DCMAKE_C_FLAGS='+maps,'-DCMAKE_CXX_FLAGS='+maps,'-DLLAMA_BUILD_NUMBER=0','-DLLAMA_BUILD_COMMIT='+pins['engine']['revision'][:7]]
  if abi=='x86_64':cmake+=['-DGGML_AVX=OFF','-DGGML_AVX2=OFF','-DGGML_FMA=OFF','-DGGML_F16C=OFF']
  env={**os.environ,'SOURCE_DATE_EPOCH':'0','LC_ALL':'C','TZ':'UTC'}
