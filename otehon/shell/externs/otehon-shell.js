@@ -138,6 +138,9 @@ Object.prototype.parse;
 Object.prototype.passport;
 Object.prototype.paused;
 Object.prototype.people;
+// The pinned consent runtime indexes its translation table by locale at runtime.
+Object.prototype.ja;
+Object.prototype.en;
 Object.prototype.port;
 Object.prototype.powered;
 Object.prototype.preventDefault;
