@@ -114,6 +114,22 @@ public final class CatalogOnlinePinsCheck {
         ok("offline-only preview app refused by Catalog.onlineFileFor",
                 preview.allowedUrls.isEmpty() && "SecurityException: unknown-app".equals(preview.error));
 
+        String[][] coreApps = {
+            {"network.awai.drive", "awai-drive"}, {"network.awai.murakumo", "awai-murakumo"},
+            {"network.awai.murakumo.net", "awai-murakumo-net"}, {"network.awai.yataverse", "awai-yataverse"},
+            {"network.awai.kagitaba", "awai-kagitaba"}, {"network.awai.kekkai", "awai-kekkai"},
+            {"network.itonami.browser", "browser"}, {"network.itonami.x402", "x402"},
+        };
+        for (String[] app : coreApps) {
+            ok("bundled asset and staged filename are fixed for " + app[0],
+                    Catalog.assetFor(app[0]).equals("packages/" + app[1] + ".apk")
+                    && Catalog.onlineFileFor(app[0]).equals("online-" + app[1] + ".apk"));
+            ok("APK byte ceiling is bounded for " + app[0],
+                    Catalog.maxApkBytes(app[0]) > 0 && Catalog.maxApkBytes(app[0]) <= OnlinePins.MAX_APK_BYTES);
+        }
+        ok("similarly named classification apps do not share a staged file",
+                !Catalog.onlineFileFor("network.itonami.drive").equals(Catalog.onlineFileFor("network.awai.drive")));
+
         System.out.println(checks + " checks, " + failures + " failures");
         if (failures > 0) System.exit(1);
     }

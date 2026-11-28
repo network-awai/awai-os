@@ -117,6 +117,22 @@ def main():
     dev_pins, dev_serialized = build.validate_online_pins_bytes(dev_bytes)
     check('checked-in online-pins.dev.json validates cleanly', len(dev_pins['apks']) >= 17 and len(dev_serialized.encode('utf-8')) <= build.MAX_ONLINE_PIN_BYTES)
 
+    core_names = {
+        'network.awai.drive': 'awai-drive', 'network.awai.murakumo': 'awai-murakumo',
+        'network.awai.murakumo.net': 'awai-murakumo-net', 'network.awai.yataverse': 'awai-yataverse',
+        'network.awai.kagitaba': 'awai-kagitaba', 'network.awai.kekkai': 'awai-kekkai',
+        'network.itonami.browser': 'browser', 'network.itonami.x402': 'x402',
+    }
+    core_pins = make_pins_dict(1)
+    core_pins['apks'] = {
+        app_id: {'url': f'{BASE}{name}.apk', 'sha256': SHA, 'maxBytes': 1024}
+        for app_id, name in core_names.items()
+    }
+    core_bytes = json.dumps(core_pins).encode('utf-8')
+    _, core_serialized = build.validate_online_pins_bytes(core_bytes)
+    similar_id = core_bytes.replace(b'"network.awai.drive"', b'"network.awai.drive.preview"')
+    rejects_bytes('unlisted preview with a core app prefix', similar_id)
+
     # 4. End-to-end build.py CLI rejection BEFORE any APK is generated, plus 3-layer exact-byte parity
     # on Kougi's P1 reproduction (17-APK dev fixture + extra metadata with out-of-range int64 / boundary values / 1e400).
     dev_text = dev_bytes.decode('utf-8')
@@ -161,6 +177,7 @@ def main():
             ('dev17_nonfinite_1e400', dev_text.replace('{', '{"externalId":1e400,', 1).encode('utf-8')),
             ('dev17_benign_extra_meta', dev_text.replace('{', '{"note":"extra",', 1).encode('utf-8')),
             ('dev17_extra_pin_field', dev_text.replace('"maxBytes": 16965', '"maxBytes": 16965, "extra": 1', 1).encode('utf-8')),
+            ('unlisted_core_preview', similar_id),
         ]
         for label, bad_raw in cli_reject_cases:
             pin_file = tmp_path / f'{label}.json'
@@ -237,6 +254,7 @@ def main():
         for label, serialized, expected_count in [
             ('online-pins.dev.json', dev_serialized, len(dev_pins['apks'])),
             ('exact 32,768-byte 64-APK pins', exact64_serialized, 64),
+            ('core app identities', core_serialized, len(core_names)),
         ]:
             csp_in = json.dumps({
                 'assets': str(stage),

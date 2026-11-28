@@ -184,6 +184,13 @@ public final class Catalog {
         // that id, so the catalog follows the implementation instead of renaming the app.
         if ("network.itonami.isco2641".equals(id)) return "packages/isco2641.apk";
         if ("network.awai.gaka".equals(id)) return "packages/gaka.apk";
+        // Keep Awai package filenames distinct from similarly named network.itonami catalog entries.
+        if ("network.awai.drive".equals(id)) return "packages/awai-drive.apk";
+        if ("network.awai.murakumo".equals(id)) return "packages/awai-murakumo.apk";
+        if ("network.awai.murakumo.net".equals(id)) return "packages/awai-murakumo-net.apk";
+        if ("network.awai.yataverse".equals(id)) return "packages/awai-yataverse.apk";
+        if ("network.awai.kagitaba".equals(id)) return "packages/awai-kagitaba.apk";
+        if ("network.awai.kekkai".equals(id)) return "packages/awai-kekkai.apk";
         String local = localSuffix(id);
         if (local != null) return "packages/" + local + ".apk";
         String listed = catalogSuffix(id);
@@ -213,6 +220,15 @@ public final class Catalog {
         if ("network.itonami.gameka".equals(id)) return "online-gameka.apk";
         if ("network.itonami.isco2641".equals(id)) return "online-isco2641.apk";
         if ("network.awai.gaka".equals(id)) return "online-gaka.apk";
+        if ("network.awai.drive".equals(id)) return "online-awai-drive.apk";
+        if ("network.awai.murakumo".equals(id)) return "online-awai-murakumo.apk";
+        if ("network.awai.murakumo.net".equals(id)) return "online-awai-murakumo-net.apk";
+        if ("network.awai.yataverse".equals(id)) return "online-awai-yataverse.apk";
+        if ("network.awai.kagitaba".equals(id)) return "online-awai-kagitaba.apk";
+        if ("network.awai.kekkai".equals(id)) return "online-awai-kekkai.apk";
+        // Also include these signed-catalog IDs in the build-time Android package queries.
+        if ("network.itonami.browser".equals(id)) return "online-browser.apk";
+        if ("network.itonami.x402".equals(id)) return "online-x402.apk";
         String local = localSuffix(id);
         if (local != null) return "online-" + local + ".apk";
         String listed = catalogSuffix(id);
@@ -250,6 +266,10 @@ public final class Catalog {
                 || "network.awai.gaka".equals(id)) return 40 * 1024 * 1024;
         // AWAI-3502 local apps: Tauri v3 debug builds without native debug symbols, about 19.6 MB at 0.1.0.
         if (localSuffix(id) != null) return 40 * 1024 * 1024;
+        if ("network.awai.drive".equals(id) || "network.awai.murakumo".equals(id)
+                || "network.awai.murakumo.net".equals(id) || "network.awai.yataverse".equals(id)
+                || "network.awai.kagitaba".equals(id) || "network.awai.kekkai".equals(id))
+            return MAX_CATALOG_APP_BYTES;
         if (catalogSuffix(id) != null) return MAX_CATALOG_APP_BYTES;
         throw new SecurityException("unknown-app");
     }
