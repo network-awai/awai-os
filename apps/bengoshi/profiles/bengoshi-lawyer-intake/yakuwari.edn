@@ -1,0 +1,17 @@
+{:yakuwari/capabilities
+ [{:capability :lawyer.profile.update :decision :autonomous :note "Local factual profile update; expanded O9 validator hard-blocks prohibited wording"}
+  {:capability :lawyer.export_art11_record :decision :autonomous :note "Export Art. 11 3-year preservation snapshot + history + fee_jpy=0 locally"}
+  {:capability :intake.list :decision :autonomous :note "Exposes minimal conflict-check headers only; never plaintext body"}
+  {:capability :intake.conflict_check :decision :autonomous :note "Runs local ledger check and records receipt digest"}
+  {:capability :intake.decide :decision :approval-required :note "HARD conflict-check gate required before local reveal; zero server relay"}
+  {:capability :audit.list :decision :autonomous :note "Read local append-only audit log"}
+  {:capability :decrypt_before_conflict_clear :decision :blocked :note "HARD gate AWAI-3235"}
+  {:capability :firm_to_firm_forwarding :decision :blocked :note "Strictly prohibited (O8)"}
+  {:capability :id_photo_only_onboarding :decision :blocked :note "Strictly prohibited (O4)"}
+  {:capability :referral_fee_or_ad_placement :decision :blocked :note "Strictly prohibited (O2=none)"}
+  {:capability :scout_or_reverse_offer :decision :blocked :note "Strictly prohibited (O9)"}
+  {:capability :online_retainer_signing :decision :blocked :note "Strictly prohibited (O9)"}
+  {:capability :spend :decision :blocked}
+  {:capability :transfer_funds :decision :blocked}
+  {:capability :export_private_keys :decision :blocked}]
+ :yakuwari/runners [{:runner :itonami-agent :weight 1}]}

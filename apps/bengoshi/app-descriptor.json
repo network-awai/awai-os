@@ -1,0 +1,13 @@
+{
+  "schema": "kotoba.app.client-runtime.v1",
+  "target": "browser",
+  "profile": "trusted-page-v1",
+  "entry": "index.html",
+  "local-state": {
+    "adapter": "localstorage",
+    "schema": "itonami.bengoshi.state.v1",
+    "version": 1
+  },
+  "workers": [],
+  "operations": []
+}

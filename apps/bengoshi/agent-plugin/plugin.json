@@ -1,0 +1,43 @@
+{
+  "schema": "agent-plugins.v1",
+  "specVersion": "1.0.0",
+  "status": "poc-draft",
+  "formalAwai4143Claim": false,
+  "id": "network.itonami.bengoshi",
+  "name": "bengoshi",
+  "version": "0.1.0",
+  "description": "POC/Draft plugin for Bengoshi — 弁護士検索ガイド・中立ディレクトリ（準備中） (O2=none/fee_jpy=0, O4=manual-a2, O8=zero-external-calls/Method-A, O9=strict-neutrality, Art.11 3-year export, AWAI-3235 conflict HARD gate).",
+  "license": "Apache-2.0",
+  "skills": [
+    "skills/bengoshi/SKILL.md"
+  ],
+  "mcp": "mcp.json",
+  "invariants": {
+    "zeroFeeModel": "none",
+    "feeJpy": 0,
+    "externalOperations": [],
+    "contactMethod": "method_a_direct",
+    "strictNeutralityO9": true,
+    "manualVerificationO4": true,
+    "art11PreservationYears": 3,
+    "conflictCheckHardGate": "AWAI-3235",
+    "prohibited": [
+      "external_inference_calls",
+      "referral_fees",
+      "fee_splitting",
+      "ads",
+      "sponsored_placement",
+      "reviews",
+      "ratings",
+      "win_rates",
+      "ai_lawyer_recommendations",
+      "scout_or_reverse_offer",
+      "online_retainer_signing",
+      "legal_advice_or_verdict",
+      "nichibenren_scraping",
+      "id_photo_only_verification",
+      "firm_to_firm_forwarding",
+      "platform_server_relay"
+    ]
+  }
+}

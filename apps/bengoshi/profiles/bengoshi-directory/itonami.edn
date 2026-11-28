@@ -1,0 +1,47 @@
+{:itonami/schema "cloud.itonami.profile.v2"
+ :profile/id "bengoshi-directory"
+ :profile/description "Bengoshi — 弁護士検索ガイド・中立ディレクトリ（準備中） read-only neutral guide & local draft helper (network.itonami.bengoshi)"
+ :profile/hermes-compatible true
+ :agent/kind :dapp-bot
+ :org/world :awai :org/path [:etzhayyim :awai :network-awai]
+ :org/github "network-awai" :org/unit :apps :awai/business :non-profit-zero-fee
+ :invocation :on-demand
+ :runtime {:engine :itonami-agent :scheduler :itonami}
+ :placement {:mode :local :order [:local] :inference-rail :mishima}
+ :inference {:rails [:mishima]
+             :authorities ["api.murakumo.cloud"]
+             :deny-hosts ["openrouter.ai"]}
+ :state {:workspace :device-local :app-origin-requests :zero :secrets :never-leave-device}
+ :ids {:app-id "network.itonami.bengoshi" :repo "network-awai/awai-os" :yakuwari/id "bengoshi-directory"}
+ :policy
+ {:o2-zero-fee {:model :none :fee-jpy 0 :referral-fee false :fee-splitting false :ads false :token-reward false}
+  :o4-verification {:method :manual-a2 :ttl-days 30 :scraping false :id-photo-only false
+                    :hard-hold-states [:expired :suspended_or_revoked]}
+  :o8-contact {:method :method-a-direct :server-relay false :soudan-query-firewall true}
+  :o9-neutrality {:allowed-sorts [:kana_asc :reg_no_asc :prefecture_asc]
+                  :forbid-legal-advice true
+                  :forbid-lawyer-recommendation true
+                  :forbid-scout-or-reverse-offer true
+                  :forbid-online-retainer-signing true}}
+ :authority {:default-decision :blocked :source :yakuwari :ref "yakuwari.edn"}
+ :capabilities
+ [{:capability :directory.search :decision :autonomous :note "100% local signed synthetic catalog search; neutral sorts only"}
+  {:capability :lawyer.get :decision :autonomous :note "Local factual profile lookup with Art. 9 fields"}
+  {:capability :qualification.verify_status :decision :autonomous :note "Evaluate O4 state machine locally; zero scraping"}
+  {:capability :contact.format_manual :decision :autonomous :note "Format exact 7-line Method A manual contact text; blocked on HARD hold"}
+  {:capability :inquiry.import_memo :decision :autonomous :note "Import user-supplied soudan.memo.export.v1 locally"}
+  {:capability :inquiry.draft :decision :autonomous :note "Save consultation draft in device-local storage only"}
+  {:capability :inquiry.list :decision :autonomous :note "Read local records"}
+  {:capability :audit.list :decision :autonomous :note "Read local append-only audit log"}
+  {:capability :inquiry.send :decision :approval-required :note "Offline local E2EE preview envelope only; zero server relay"}
+  {:capability :legal_advice_or_verdict :decision :blocked :note "Strictly prohibited (Attorneys Act Art. 72)"}
+  {:capability :lawyer_recommendation_or_ranking :decision :blocked :note "Strictly prohibited (O9 neutrality)"}
+  {:capability :referral_fee_or_ad_placement :decision :blocked :note "Strictly prohibited (O2=none / Art. 27)"}
+  {:capability :scout_or_reverse_offer :decision :blocked :note "Strictly prohibited (O9)"}
+  {:capability :online_retainer_signing :decision :blocked :note "Strictly prohibited (O9)"}
+  {:capability :scrape_nichibenren_or_kanpo :decision :blocked :note "Strictly prohibited (O4)"}
+  {:capability :firm_to_firm_forwarding :decision :blocked :note "Strictly prohibited (O8)"}
+  {:capability :spend :decision :blocked}
+  {:capability :transfer_funds :decision :blocked}
+  {:capability :export_private_keys :decision :blocked}]
+ :cron? false}

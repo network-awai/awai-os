@@ -1,0 +1,19 @@
+{
+  "name": "@itonami/bengoshi",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Bengoshi — 弁護士検索ガイド・中立ディレクトリ（準備中） (network.itonami.bengoshi)",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check:public": "node scripts/check-public.mjs",
+    "test": "node --test test/*.test.mjs && node scripts/check-public.mjs",
+    "mcp": "node scripts/mcp-server.mjs",
+    "tauri": "tauri",
+    "build:desktop": "node scripts/build.mjs --target tauri && tauri build --no-bundle",
+    "build:android": "node scripts/build.mjs --target tauri && tauri android build --apk --target aarch64"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "3.0.0-alpha.6"
+  }
+}
