@@ -347,10 +347,13 @@ public abstract class HostActivity extends Activity {
             }catch(Exception e){return "{}";}
         }
         @JavascriptInterface public void requestAutoUpdate(boolean unmeteredOnly){if(!"store".equals(mode()))return;runOnUiThread(()->confirmAutoUpdate(unmeteredOnly));}
-        @JavascriptInterface public void revokeAutoUpdate(){if(!"store".equals(mode()))return;saveApproval(UpdateApprovalRecord.revoke(loadApproval()));AutoUpdater.sync(HostActivity.this);message("自動更新を止めました。更新はこれまでどおり毎回確認します。");}
+        @JavascriptInterface public void revokeAutoUpdate(){if(!"store".equals(mode()))return;
+            if(!changeAutoUpdateApproval(UpdateApprovalRecord::revoke))return;
+            AutoUpdater.sync(HostActivity.this);message("自動更新を止めました。更新はこれまでどおり毎回確認します。");}
         @JavascriptInterface public void excludeFromAutoUpdate(String id){if(!"store".equals(mode()))return;
             try{Catalog.assetFor(id);}catch(SecurityException unknown){return;}
-            saveApproval(UpdateApprovalRecord.exclude(loadApproval(),id));message("このアプリは自動更新の対象外にしました。");}
+            if(changeAutoUpdateApproval(a->UpdateApprovalRecord.exclude(a,id)))
+                message("このアプリは自動更新の対象外にしました。");}
         @JavascriptInterface public void requestAutoUpdateFor(String id){if(!"store".equals(mode()))return;runOnUiThread(()->confirmAutoUpdateFor(id));}
         @JavascriptInterface public void prepareInstall(String id){if(!"store".equals(mode()))return;runOnUiThread(()->confirmInstall(id));}
         @JavascriptInterface public void persistEvents(String json){if(!"yotei".equals(mode())||json==null||json.length()>131072)return;
@@ -365,8 +368,12 @@ public abstract class HostActivity extends Activity {
         File file = catalog.verifiedApkFile(this, id);
         if (!file.delete()) file.deleteOnExit();
     }
-    private UpdatePolicy.Approval loadApproval(){return UpdateApprovalRecord.decode(getSharedPreferences("auto-update",0).getString("approval",null));}
-    private void saveApproval(UpdatePolicy.Approval a){getSharedPreferences("auto-update",0).edit().putString("approval",UpdateApprovalRecord.encode(a)).commit();}
+    private UpdatePolicy.Approval loadApproval(){return AutoUpdater.approval(this);}
+    private boolean changeAutoUpdateApproval(java.util.function.UnaryOperator<UpdatePolicy.Approval> change){
+        if(AutoUpdater.changeApproval(this,change))return true;
+        message("自動更新の設定を保存できませんでした。");
+        return false;
+    }
     /** Native, outside page control. Allow is armed after 600 ms, as in the consent dialog. */
     private void confirmNative(String title,String body,String allow,Runnable onAllow){
         AlertDialog d=new AlertDialog.Builder(this).setTitle(title).setMessage(body)
@@ -386,7 +393,7 @@ public abstract class HostActivity extends Activity {
             +"期限: "+until+" まで（90 日）。Store の「更新」からいつでも止められます。\n\n"
             +"この版の配布は開発用の署名鍵です。本番の鍵はまだありません。";
         confirmNative("自動更新を有効にしますか？",body,"自動更新を有効にする",()->{
-            saveApproval(UpdateApprovalRecord.grant(System.currentTimeMillis()/1000,unmeteredOnly,loadApproval().excludedApps));
+            if(!changeAutoUpdateApproval(a->UpdateApprovalRecord.grant(System.currentTimeMillis()/1000,unmeteredOnly,a.excludedApps)))return;
             AutoUpdater.sync(this);
             if(checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)
                 requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS},11);
@@ -398,7 +405,8 @@ public abstract class HostActivity extends Activity {
         try{name=trustedCatalog().app(id).getString("name");}catch(Exception unknown){return;}
         UpdatePolicy.Approval a=loadApproval();if(!a.enabled||!a.excludedApps.contains(id))return;
         confirmNative(name+" を自動更新の対象に戻しますか？","有効な自動更新の範囲に "+name+" の更新を加えます。条件と取得先は自動更新の設定と同じです。","対象に戻す",()->{
-            saveApproval(UpdateApprovalRecord.include(loadApproval(),id));message("自動更新の対象に戻しました。");
+            if(changeAutoUpdateApproval(current->UpdateApprovalRecord.include(current,id)))
+                message("自動更新の対象に戻しました。");
         });
     }
     private void confirmInstall(String id){

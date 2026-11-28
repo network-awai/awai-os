@@ -3,6 +3,7 @@ package network.awai.platform;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentSender;
 import android.content.SharedPreferences;
 import android.content.pm.InstallSourceInfo;
 import android.content.pm.PackageInfo;
@@ -14,6 +15,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.*;
@@ -34,6 +36,10 @@ public final class AutoInstall {
     public static final long DAILY_BYTE_BUDGET = 200L * 1024 * 1024;
     static final String PREFS = "auto-update";
     static final String INTERNET = "android.permission.INTERNET";
+    private static final Map<Integer, AutoUpdateRun> AUTOMATIC_RUNS = new HashMap<>();
+    private static final String RESULT_ID = "auto-result-package-";
+    private static final String RESULT_STATUS = "auto-result-status-";
+    private static final String RESULTS = "auto-result-history";
 
     /** The outcome of one attempt; {@code refusals} is empty when an install session was committed. */
     public static final class Result {
@@ -43,9 +49,14 @@ public final class AutoInstall {
     }
 
     public static Result attempt(Context c, String id) {
+        return attempt(c, id, new AutoUpdateRun());
+    }
+
+    static Result attempt(Context c, String id, AutoUpdateRun run) {
         File verified = null;
         try {
-            Catalog catalog = new Catalog(c);
+            AutoUpdater.requireApproval(c, run, id);
+            Catalog catalog = new Catalog(c, true);
             JSONObject entry = catalog.app(id);
             verified = catalog.verifiedApkFile(c, id); // size, SHA-256, package, version, signer, no downgrade
             PackageManager pm = c.getPackageManager();
@@ -76,11 +87,12 @@ public final class AutoInstall {
             List<String> refusals = UpdatePolicy.refusals(approval, i, k, d);
             if (!refusals.isEmpty()) return new Result(refusals, -1);
 
-            Set<String> ops = k.operations;
-            int session = commit(c, id, verified);
+            int session = commit(c, id, verified, candidate.getLongVersionCode(), k.operations, run);
             prefs.edit().putLong("bytes-day", now / 86400).putLong("bytes-used", bytesToday(prefs, now) + verified.length())
-                    .putString("pending-ops-" + session, encodeOps(ops)).putInt("auto-session", session).commit();
+                    .commit();
             return new Result(Collections.<String>emptyList(), session);
+        } catch (AutoUpdateRun.Stopped | AutoUpdateRun.Excluded e) {
+            throw e;
         } catch (Exception e) {
             String m = e.getMessage();
             if (e instanceof SecurityException && m != null && m.matches("[a-z0-9-]{1,40}")) return refused(m);
@@ -91,15 +103,154 @@ public final class AutoInstall {
         }
     }
 
-    /** Called by {@link InstallReceiver} with a session's final status (automatic or person-confirmed). */
-    static void finished(Context c, int session, boolean success, String id) {
+    /** Called by {@link InstallReceiver} with a person-confirmed session's final status. */
+    static synchronized void finished(Context c, int session, boolean success, String id) {
         SharedPreferences prefs = c.getSharedPreferences(PREFS, 0);
         SharedPreferences.Editor e = prefs.edit();
-        if (prefs.getInt("auto-session", -2) == session) e.remove("auto-session");
         String ops = prefs.getString("pending-ops-" + session, null);
         e.remove("pending-ops-" + session);
-        if (success && id != null) { if (ops != null) e.putString("installed-ops-" + id, ops); else e.remove("installed-ops-" + id); }
+        if (success && id != null) {
+            e.putString("installed-ops-" + id, ops).remove("installed-ops-version-" + id);
+        }
         e.commit();
+    }
+
+    static final class Completion {
+        final AutoUpdateRun run;
+        final int status;
+        Completion(AutoUpdateRun run, int status) { this.run = run; this.status = status; }
+    }
+
+    /** Keep the received status on disk until both cleanup and result bookkeeping have finished. */
+    static Completion finishAutomatic(Context c, int session, Integer reportedStatus, String id) throws IOException {
+        Integer status = rememberAutomaticResult(c, session, reportedStatus, id);
+        if (status == null) return null;
+        if (status == PackageInstaller.STATUS_PENDING_USER_ACTION) abandonPendingConfirmation(c, session);
+        return consumeAutomaticResult(c, session, id, status);
+    }
+
+    private static synchronized Integer rememberAutomaticResult(Context c, int session, Integer reportedStatus,
+            String id) throws IOException {
+        if (session < 0 || id == null) return null;
+        SharedPreferences prefs = c.getSharedPreferences(PREFS, 0);
+        String resultPackage = prefs.getString(RESULT_ID + session, null);
+        if (resultPackage != null && !id.equals(resultPackage)) return null;
+        String recordedId = prefs.getString("pending-auto-package-" + session, null);
+        boolean legacy = recordedId == null && prefs.getInt("auto-session", -2) == session;
+        if (!legacy && !id.equals(recordedId)) return null;
+        int status;
+        if (resultPackage == null) {
+            if (reportedStatus == null) return null;
+            status = reportedStatus;
+            if (!prefs.edit().putString(RESULT_ID + session, id).putInt(RESULT_STATUS + session, status).commit()) {
+                // A failed SharedPreferences commit still changes that instance's
+                // cache. Restore the in-memory state before a retry or redelivery.
+                prefs.edit().remove(RESULT_ID + session).remove(RESULT_STATUS + session).apply();
+                throw new IOException("install-result-write");
+            }
+        } else status = prefs.getInt(RESULT_STATUS + session, PackageInstaller.STATUS_FAILURE);
+        return status;
+    }
+
+    // Android must never wait for someone to approve an installation started in the background.
+    // If Binder fails or removal is still underway, the saved result remains eligible for replay.
+    private static void abandonPendingConfirmation(Context c, int session) throws IOException {
+        try {
+            PackageInstaller installer = c.getPackageManager().getPackageInstaller();
+            if (installer.getSessionInfo(session) == null) return;
+            installer.abandonSession(session);
+            if (installer.getSessionInfo(session) != null) throw new IOException("install-abandon-pending");
+        } catch (RuntimeException unavailable) {
+            throw new IOException("install-abandon", unavailable);
+        }
+    }
+
+    private static synchronized Completion consumeAutomaticResult(Context c, int session, String id,
+            int status) throws IOException {
+        SharedPreferences prefs = c.getSharedPreferences(PREFS, 0);
+        if (!id.equals(prefs.getString(RESULT_ID + session, null))) return null;
+        String recordedId = prefs.getString("pending-auto-package-" + session, null);
+        boolean legacy = recordedId == null && prefs.getInt("auto-session", -2) == session;
+        long expectedVersion = prefs.getLong("pending-auto-version-" + session, -1);
+        String ops = prefs.getString("pending-ops-" + session, null);
+        String history = prefs.getString(RESULTS, "");
+        SharedPreferences.Editor edit = removeAutomaticRecord(prefs, session)
+                .remove(RESULT_ID + session).remove(RESULT_STATUS + session)
+                .putString(RESULTS, addResult(history, session, id, status));
+        if (legacy) edit.remove("auto-session");
+        String installedOps = "installed-ops-" + id;
+        String installedVersion = "installed-ops-version-" + id;
+        String priorOps = prefs.getString(installedOps, null);
+        long priorVersion = prefs.getLong(installedVersion, -1);
+        boolean updateOps = status == PackageInstaller.STATUS_SUCCESS && (legacy || isInstalledVersion(c, id, expectedVersion));
+        if (updateOps) {
+            edit.putString(installedOps, ops);
+            if (legacy || ops == null) edit.remove(installedVersion);
+            else edit.putLong(installedVersion, expectedVersion);
+        }
+        if (!edit.commit()) {
+            SharedPreferences.Editor restore = prefs.edit().putString(RESULTS, history)
+                    .putString(RESULT_ID + session, id).putInt(RESULT_STATUS + session, status)
+                    .putString("pending-ops-" + session, ops);
+            if (legacy) restore.putInt("auto-session", session);
+            else restore.putString("pending-auto-package-" + session, recordedId).putLong("pending-auto-version-" + session, expectedVersion);
+            if (updateOps) {
+                restore.putString(installedOps, priorOps);
+                if (priorVersion == -1) restore.remove(installedVersion);
+                else restore.putLong(installedVersion, priorVersion);
+            }
+            restore.apply();
+            throw new IOException("install-result-commit");
+        }
+        return new Completion(AUTOMATIC_RUNS.remove(session), status);
+    }
+
+    /** Reload durable results on app restart without requesting a second installation. */
+    static Map<Integer, String> pendingAutomaticResults(Context c) {
+        Map<Integer, String> received = new HashMap<>();
+        for (Map.Entry<String, ?> entry : c.getSharedPreferences(PREFS, 0).getAll().entrySet()) {
+            if (!entry.getKey().startsWith(RESULT_ID) || !(entry.getValue() instanceof String)) continue;
+            try {
+                received.put(Integer.parseInt(entry.getKey().substring(RESULT_ID.length())), (String) entry.getValue());
+            } catch (NumberFormatException ignored) { }
+        }
+        return received;
+    }
+
+    private static String addResult(String history, int session, String id, int status) {
+        String[] previous = history.isEmpty() ? new String[0] : history.split("\n");
+        StringBuilder next = new StringBuilder();
+        for (int n = Math.max(0, previous.length - 49); n < previous.length; n++) next.append(previous[n]).append('\n');
+        return next.append(session).append(' ').append(id).append(' ').append(status).toString();
+    }
+
+    private static boolean isInstalledVersion(Context c, String id, long expected) {
+        try {
+            return c.getPackageManager().getPackageInfo(id, 0).getLongVersionCode() == expected;
+        } catch (PackageManager.NameNotFoundException unavailable) {
+            return false;
+        }
+    }
+
+    private static synchronized void recordAutomatic(Context c, int session, String id, long version,
+            Set<String> ops, AutoUpdateRun run) {
+        SharedPreferences prefs = c.getSharedPreferences(PREFS, 0);
+        SharedPreferences.Editor edit = prefs.edit().putString("pending-auto-package-" + session, id)
+                .putLong("pending-auto-version-" + session, version)
+                .putString("pending-ops-" + session, encodeOps(ops));
+        run.requireEffect();
+        if (!edit.commit()) throw new SecurityException("session-record");
+        AUTOMATIC_RUNS.put(session, run);
+    }
+
+    private static synchronized void discardAutomatic(Context c, int session) {
+        AUTOMATIC_RUNS.remove(session);
+        removeAutomaticRecord(c.getSharedPreferences(PREFS, 0), session).commit();
+    }
+
+    private static SharedPreferences.Editor removeAutomaticRecord(SharedPreferences prefs, int session) {
+        return prefs.edit().remove("pending-auto-package-" + session)
+                .remove("pending-auto-version-" + session).remove("pending-ops-" + session);
     }
 
     /**
@@ -116,27 +267,49 @@ public final class AutoInstall {
         } catch (Exception ignored) { /* unknown stays unknown */ }
     }
 
-    private static int commit(Context c, String id, File verified) throws Exception {
+    private static int commit(Context c, String id, File verified, long version, Set<String> ops, AutoUpdateRun run) throws Exception {
         PackageInstaller installer = c.getPackageManager().getPackageInstaller();
         PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
         params.setAppPackageName(id);
         params.setSize(verified.length());
         params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
-        int sessionId = installer.createSession(params);
+        int sessionId;
+        synchronized (AutoUpdateRun.EFFECTS) {
+            AutoUpdater.requireApprovedEffect(c, run, id);
+            sessionId = installer.createSession(params);
+        }
+        boolean submitted = false;
         try (PackageInstaller.Session session = installer.openSession(sessionId)) {
+            run.check();
             try (InputStream in = new FileInputStream(verified); OutputStream out = session.openWrite("base.apk", 0, verified.length())) {
                 byte[] buffer = new byte[65536];
                 int n;
-                while ((n = in.read(buffer)) != -1) out.write(buffer, 0, n);
+                while ((n = in.read(buffer)) != -1) {
+                    run.check();
+                    out.write(buffer, 0, n);
+                }
+                run.check();
                 session.fsync(out);
             }
             Intent callback = new Intent(c, InstallReceiver.class).setAction(c.getPackageName() + ".AUTO_INSTALL_RESULT")
                     .putExtra("auto", true).putExtra("package", id);
             PendingIntent status = PendingIntent.getBroadcast(c, sessionId, callback, PendingIntent.FLAG_MUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-            session.commit(status.getIntentSender());
+            IntentSender sender = status.getIntentSender();
+            synchronized (AutoUpdateRun.EFFECTS) {
+                AutoUpdater.requireApproval(c, run, id);
+                recordAutomatic(c, sessionId, id, version, ops, run);
+                AutoUpdater.requireApprovedEffect(c, run, id);
+                session.commit(sender);
+                submitted = true;
+            }
         } catch (Exception e) {
-            installer.abandonSession(sessionId);
-            throw e;
+            if (!submitted) {
+                discardAutomatic(c, sessionId);
+                try { installer.abandonSession(sessionId); }
+                catch (RuntimeException cleanup) { e.addSuppressed(cleanup); }
+                throw e;
+            }
+            android.util.Log.w("AwaiAutoInstall", "session close failed after submission", e);
         }
         return sessionId;
     }
@@ -168,8 +341,10 @@ public final class AutoInstall {
         return out;
     }
 
-    private static Set<String> installedOperations(SharedPreferences prefs, String id, PackageInfo installed) {
+    private static synchronized Set<String> installedOperations(SharedPreferences prefs, String id, PackageInfo installed) {
         if (!permissions(installed).contains(INTERNET)) return new HashSet<>();
+        long recordedVersion = prefs.getLong("installed-ops-version-" + id, -1);
+        if (recordedVersion != -1 && recordedVersion != installed.getLongVersionCode()) return null;
         String s = prefs.getString("installed-ops-" + id, null);
         return s == null ? null : decodeOps(s);
     }
@@ -194,7 +369,7 @@ public final class AutoInstall {
     }
 
     /** Unknown (no network permission in an offline build, no active network) counts as metered. */
-    private static boolean unmetered(Context c) {
+    static boolean unmetered(Context c) {
         try {
             ConnectivityManager cm = c.getSystemService(ConnectivityManager.class);
             NetworkCapabilities caps = cm == null ? null : cm.getNetworkCapabilities(cm.getActiveNetwork());
