@@ -170,6 +170,12 @@ node otehon/dev-bots/queue-sync.mjs --queue <remote-queue-dir> --state <local-di
   forgotten so the caller can push again (`not-submitted <name>`).
   `--dry-run` still sends only the snapshot and never changes
   `pending.json` or `task.json`.
+- The snapshot also reports leftover `stage/` dirs with digests. A stage dir
+  holding exactly this state's entry bytes (a push cut between `mkdir` and
+  `mv`) is replaced in place by the next push (`takeover-stage <name>`, the
+  entry reaches `inbox/`); any other stage content keeps the historic
+  `exists-stage` refusal and stays untouched. A stage dir with no local
+  `pending.json` is refused the same way.
 - Everything the queue host prints is data. Names are checked before they
   become local paths. A record is posted only when this state directory
   pushed that entry and the record's issue is the entry's issue; anything

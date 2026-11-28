@@ -61,7 +61,7 @@ export function validateQueuePath(path) {
   return typeof path === "string" && /^\/[A-Za-z0-9._/-]{1,200}$/.test(path) && !path.includes("..");
 }
 
-const HEADER = (queue) => `set -u\nQ=${shq(queue)}\nif [ ! -d "$Q/inbox" ]; then echo "ERR no-queue"; echo END; exit 0; fi\n`;
+const HEADER = (queue) => `set -u\nQ=${shq(queue)}\nhash_file() {\n  f="$1"\n  if [ ! -f "$f" ]; then echo missing; return; fi\n  if command -v sha256sum >/dev/null 2>&1; then\n    sha256sum "$f" | cut -d ' ' -f 1\n  else\n    shasum -a 256 "$f" | cut -d ' ' -f 1\n  fi\n}\nif [ ! -d "$Q/inbox" ]; then echo "ERR no-queue"; echo END; exit 0; fi\n`;
 
 /** Script that writes entries into the remote inbox. */
 export function pushScript(queue, entries) {
@@ -69,10 +69,21 @@ export function pushScript(queue, entries) {
     HEADER(queue),
     "put() {",
     "  n=$1",
-    "  for d in stage inbox running done failed work; do",
+    "  for d in inbox running done failed work; do",
     '    if [ -e "$Q/$d/$n" ]; then echo "PUSH $n exists-$d"; return; fi',
     "  done",
     '  s="$Q/stage/$n"',
+    "  if [ -e \"$s\" ]; then",
+    "    # A leftover stage dir is taken over only when it holds exactly this",
+    "    # entry's bytes (a push cut between mkdir and mv). Anything else keeps",
+    "    # the historic refusal: the dir stays untouched.",
+    "    if [ -f \"$s/task.json\" ] && [ -f \"$s/muse-prompt.md\" ] \\",
+    '       && [ "$4" = "$(hash_file "$s/task.json")" ] && [ "$5" = "$(hash_file "$s/muse-prompt.md")" ]; then',
+    '      rm -rf "$s" || { echo "PUSH $n write-failed"; return; }',
+    "    else",
+    '      echo "PUSH $n exists-stage"; return',
+    "    fi",
+    "  fi",
     '  if ! mkdir -p "$Q/stage" || ! mkdir "$s"; then echo "PUSH $n write-failed"; return; fi',
     '  if printf %s "$2" | base64 -d > "$s/task.json" && printf %s "$3" | base64 -d > "$s/muse-prompt.md" \\',
     '     && : > "$s/ready" && mv "$s" "$Q/inbox/$n"; then',
@@ -84,7 +95,7 @@ export function pushScript(queue, entries) {
     "}",
   ];
   for (const e of entries) {
-    lines.push(`put ${shq(e.name)} ${shq(b64(e.taskText))} ${shq(b64(e.promptText))}`);
+    lines.push(`put ${shq(e.name)} ${shq(b64(e.taskText))} ${shq(b64(e.promptText))} ${shq(sha256hex(e.taskText))} ${shq(sha256hex(e.promptText))}`);
   }
   lines.push("echo END", "");
   return lines.join("\n");
@@ -94,15 +105,6 @@ export function pushScript(queue, entries) {
 export function snapshotScript(queue) {
   return [
     HEADER(queue),
-    "hash_file() {",
-    '  f="$1"',
-    '  if [ ! -f "$f" ]; then echo missing; return; fi',
-    "  if command -v sha256sum >/dev/null 2>&1; then",
-    '    sha256sum "$f" | cut -d \' \' -f 1',
-    "  else",
-    '    shasum -a 256 "$f" | cut -d \' \' -f 1',
-    "  fi",
-    "}",
     'pid=$(cat "$Q/runner.lock" 2>/dev/null || true)',
     "case $pid in",
     "  ''|*[!0-9]*) echo \"RUNNER none 0\";;",
@@ -121,6 +123,17 @@ export function snapshotScript(queue) {
     '      echo "RESULT $d $n $(base64 < "$e/result.json" | tr -d \'\\n\')"',
     "    fi",
     "  done",
+    "done",
+    // Leftover stage dirs (a push cut between mkdir and mv) are reported with
+    // digests so the next push can take over its own bytes. No result.json is
+    // read here: stage never holds results.
+    'for e in "$Q"/stage/*/; do',
+    '  [ -d "$e" ] || continue',
+    '  n=$(basename "$e")',
+    '  echo "ENTRY stage $n"',
+    '  th=$(hash_file "$e/task.json")',
+    '  ph=$(hash_file "$e/muse-prompt.md")',
+    '  echo "DIGEST stage $n $th $ph"',
     "done",
     'for f in "$Q"/work/*/.agent-output/linear-outbox/*.json; do',
     '  [ -f "$f" ] || continue',
@@ -183,9 +196,9 @@ export function parseRemote(stdout) {
     else if (f[0] === "RUNNER" && f.length === 3 && /^(alive|dead|none)$/.test(f[1]) && /^[0-9]{1,10}$/.test(f[2])) {
       out.runner = { state: f[1], pid: Number(f[2]) };
     } else if (line === "STOP") out.stop = true;
-    else if (f[0] === "ENTRY" && f.length === 3 && STATES.includes(f[1]) && okName(f[2])) {
+    else if (f[0] === "ENTRY" && f.length === 3 && (STATES.includes(f[1]) || f[1] === "stage") && okName(f[2])) {
       out.entries.push({ state: f[1], name: f[2] });
-    } else if (f[0] === "DIGEST" && f.length === 5 && STATES.includes(f[1]) && okName(f[2])) {
+    } else if (f[0] === "DIGEST" && f.length === 5 && (STATES.includes(f[1]) || f[1] === "stage") && okName(f[2])) {
       const taskHex = HEX_RE.test(f[3]) ? f[3] : null;
       const promptHex = HEX_RE.test(f[4]) ? f[4] : null;
       out.digests.push({ state: f[1], name: f[2], taskSha256: taskHex, promptSha256: promptHex });
@@ -311,6 +324,8 @@ export function sync({ queue, stateDir, entryDirs = [], owners = [], dryRun = fa
   // Reconcile local pending.json files against one snapshot. When mutate is
   // false nothing under pending.json/task.json changes; held entries are still
   // reported (keeping them held needs no write). Returns recovered/blocked names.
+  // A pending whose bytes sit only in stage/ is neither: pending.json stays and
+  // the push takes the stale dir over in place (`takeover-stage`).
   const reconcile = (parsed, { mutate }) => {
     const entryNames = new Set(parsed.entries.map((e) => e.name));
     const byName = new Map();
@@ -337,9 +352,9 @@ export function sync({ queue, stateDir, entryDirs = [], owners = [], dryRun = fa
         continue;
       }
       const list = byName.get(name) ?? [];
-      const match = list.some((d) => d.taskSha256 !== null && d.promptSha256 !== null
-        && d.taskSha256 === pending.taskSha256 && d.promptSha256 === pending.promptSha256);
-      if (match) {
+      const sameBytes = (d) => d.taskSha256 !== null && d.promptSha256 !== null
+        && d.taskSha256 === pending.taskSha256 && d.promptSha256 === pending.promptSha256;
+      if (list.some((d) => d.state !== "stage" && sameBytes(d))) {
         if (mutate) {
           mkdirp(join(stateDir, name));
           writeFile(taskPath(name), pending.taskText);
@@ -350,6 +365,10 @@ export function sync({ queue, stateDir, entryDirs = [], owners = [], dryRun = fa
           log(`would-recover ${name}`);
         }
         recovered.add(name);
+      } else if (list.some((d) => d.state === "stage" && sameBytes(d))) {
+        // The entry never reached the inbox, but its own bytes sit in stage/.
+        // pending.json stays; the push below replaces the stale dir in place.
+        log(mutate ? `takeover-stage ${name}` : `would-takeover-stage ${name}`);
       } else {
         summary.held += 1;
         log(`held ${name} pending-mismatch`);

@@ -785,3 +785,201 @@ test("sync: a complete answer without this entry's PUSH line keeps the intent an
   assert.equal(fs.store.get("/s/n/task.json"), taskText);
   assert.equal(r2.exitCode, 0);
 });
+
+// ---- stale stage takeover (AWAI-3615) ----
+
+test("parseRemote accepts stage entries and digests, never stage results", () => {
+  const good = "b".repeat(64);
+  const p = parseRemote([
+    "RUNNER none 0",
+    "ENTRY stage n",
+    `DIGEST stage n ${good} ${good}`,
+    `RESULT stage n ${b64("{}")}`,
+    "END",
+  ].join("\n"));
+  assert.deepEqual(p.entries, [{ state: "stage", name: "n" }]);
+  assert.deepEqual(p.digests, [{ state: "stage", name: "n", taskSha256: good, promptSha256: good }]);
+  assert.equal(p.results.length, 0);
+  assert.equal(p.malformed, 1);
+});
+
+test("sync: a stale stage with this state's own bytes is taken over by the next push", () => {
+  const taskText = JSON.stringify(TASK);
+  const prompt = "do it";
+  const th = sha256hex(taskText);
+  const ph = sha256hex(prompt);
+  const fs = fakeFsPending({
+    "/s/n/pending.json": JSON.stringify({ name: "n", taskText, taskSha256: th, promptSha256: ph }),
+    "/e/n/task.json": taskText,
+    "/e/n/muse-prompt.md": prompt,
+  });
+  const logs = [];
+  const kinds = [];
+  const r = sync({ queue: "/q", stateDir: "/s", entryDirs: ["/e/n"], owners: ["testowner"] }, {
+    ...fs,
+    remote: (script) => {
+      kinds.push(script.includes("\nput ") ? "push" : "snap");
+      if (script.includes("\nput ")) return snapshot(["PUSH n ok"]);
+      return snapshot(["RUNNER none 0", "ENTRY stage n", `DIGEST stage n ${th} ${ph}`]);
+    },
+    drain: () => 0,
+    log: (l) => logs.push(l),
+  });
+  assert.ok(logs.includes("takeover-stage n"));
+  assert.equal(r.summary.pushed, 1);
+  assert.equal(r.summary.recovered, 0);
+  assert.equal(fs.store.get("/s/n/task.json"), taskText);
+  assert.equal(fs.store.has("/s/n/pending.json"), false);
+  assert.equal(r.exitCode, 0);
+});
+
+test("sync: a stage with other bytes stays untouched and is held", () => {
+  const taskText = JSON.stringify(TASK);
+  const fs = fakeFsPending({
+    "/s/n/pending.json": JSON.stringify({
+      name: "n", taskText,
+      taskSha256: sha256hex(taskText), promptSha256: sha256hex("mine"),
+    }),
+  });
+  const logs = [];
+  let pushes = 0;
+  const r = sync({ queue: "/q", stateDir: "/s", owners: ["testowner"] }, {
+    ...fs,
+    remote: (script) => {
+      if (script.includes("\nput ")) pushes += 1;
+      return snapshot(["RUNNER none 0", "ENTRY stage n", `DIGEST stage n ${sha256hex(taskText)} ${sha256hex("theirs")}`]);
+    },
+    drain: () => 0,
+    log: (l) => logs.push(l),
+  });
+  assert.ok(logs.includes("held n pending-mismatch"));
+  assert.equal(pushes, 0);
+  assert.ok(fs.store.has("/s/n/pending.json"));
+  assert.equal(r.exitCode, 1);
+});
+
+test("sync: a stage with no local pending is refused and stays untouched", () => {
+  const taskText = JSON.stringify(TASK);
+  const fs = fakeFsPending({ "/e/n/task.json": taskText, "/e/n/muse-prompt.md": "do it" });
+  const logs = [];
+  const r = sync({ queue: "/q", stateDir: "/s", entryDirs: ["/e/n"], owners: ["testowner"] }, {
+    ...fs,
+    remote: () => snapshot(["RUNNER none 0", "ENTRY stage n", `DIGEST stage n ${sha256hex(taskText)} ${sha256hex("theirs")}`]),
+    drain: () => 0,
+    log: (l) => logs.push(l),
+  });
+  // No pending.json here, so nothing is held for n; the remote refuses the name.
+  const r2 = sync({ queue: "/q", stateDir: "/s", entryDirs: ["/e/n"], owners: ["testowner"] }, {
+    ...fs,
+    remote: (script) => (script.includes("\nput ") ? snapshot(["PUSH n exists-stage"]) : snapshot(["RUNNER none 0"])),
+    drain: () => 0,
+    log: (l) => logs.push(l),
+  });
+  assert.equal(r2.summary.rejected, 1);
+  assert.ok(logs.some((l) => l === "rejected n exists-stage"));
+  assert.equal(r2.exitCode, 1);
+});
+
+test("scripts: push replaces a matching stale stage and refuses a foreign one", () => {
+  for (const sh of ["/bin/bash", "/opt/homebrew/bin/bash"].filter((p) => existsSync(p))) {
+    const root = mkdtempSync(join(tmpdir(), "stage-takeover-"));
+    try {
+      const q = join(root, "q");
+      mkdirSync(join(q, "inbox"), { recursive: true });
+      const taskText = '{"issue":"AWAI-1"}';
+      const promptText = "do it";
+      // foreign stage: must stay byte-identical
+      mkdirSync(join(q, "stage", "foreign"), { recursive: true });
+      writeFileSync(join(q, "stage", "foreign", "task.json"), "theirs");
+      writeFileSync(join(q, "stage", "foreign", "muse-prompt.md"), "theirs");
+      const script = pushScript(q, [{ name: "mine", taskText, promptText }, { name: "foreign", taskText: "theirs", promptText: "theirs-x" }]);
+      const r = spawnSync(sh, ["-s"], { input: script, encoding: "utf8" });
+      assert.equal(r.status, 0, `${sh}: ${r.stderr}`);
+      assert.match(r.stdout, /^PUSH mine ok$/m, sh);
+      assert.match(r.stdout, /^PUSH foreign exists-stage$/m, sh);
+      assert.deepEqual(readdirSync(join(q, "inbox", "mine")).sort(), ["muse-prompt.md", "ready", "task.json"]);
+      assert.equal(readFileSync(join(q, "stage", "foreign", "task.json"), "utf8"), "theirs");
+      assert.equal(readFileSync(join(q, "stage", "foreign", "muse-prompt.md"), "utf8"), "theirs");
+      // matching stale stage: replaced in place, entry reaches the inbox
+      mkdirSync(join(q, "stage", "mine2"), { recursive: true });
+      writeFileSync(join(q, "stage", "mine2", "task.json"), taskText);
+      writeFileSync(join(q, "stage", "mine2", "muse-prompt.md"), promptText);
+      const script2 = pushScript(q, [{ name: "mine2", taskText, promptText }]);
+      const r2 = spawnSync(sh, ["-s"], { input: script2, encoding: "utf8" });
+      assert.equal(r2.status, 0, `${sh}: ${r2.stderr}`);
+      assert.match(r2.stdout, /^PUSH mine2 ok$/m, sh);
+      assert.deepEqual(readdirSync(join(q, "inbox", "mine2")).sort(), ["muse-prompt.md", "ready", "task.json"]);
+      assert.equal(existsSync(join(q, "stage", "mine2")), false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }
+});
+
+test("scripts: push, snapshot and mark are plain bash that parses under bash 3.2 and 5", () => {
+  const shells = ["/bin/bash", "/opt/homebrew/bin/bash"].filter((p) => existsSync(p));
+  assert.ok(shells.length > 0, "no bash found");
+  for (const sh of shells) {
+    for (const script of [pushScript("/q", [{ name: "n", taskText: "{}", promptText: "p" }]), snapshotScript("/q"), markScript("/q", [{ name: "n", file: REC }])]) {
+      const r = spawnSync(sh, ["-n"], { input: script, encoding: "utf8" });
+      assert.equal(r.status, 0, `${sh}: ${r.stderr}`);
+    }
+  }
+});
+
+for (const sh of ["/bin/bash", "/opt/homebrew/bin/bash"].filter((p) => existsSync(p))) {
+  test(`e2e (${sh}): a stale stage with this state's own bytes is replaced and reaches the inbox`, (t) => {
+    const s = sandbox(t);
+    const dir = s.entry("30-c");
+    const taskText = readFileSync(join(dir, "task.json"), "utf8");
+    const promptText = readFileSync(join(dir, "muse-prompt.md"), "utf8");
+    mkdirSync(join(s.state, "30-c"), { recursive: true });
+    writeFileSync(join(s.state, "30-c", "pending.json"), JSON.stringify({
+      name: "30-c", taskText,
+      taskSha256: sha256hex(taskText), promptSha256: sha256hex(promptText),
+    }));
+    mkdirSync(join(s.q, "stage", "30-c"), { recursive: true });
+    writeFileSync(join(s.q, "stage", "30-c", "task.json"), taskText);
+    writeFileSync(join(s.q, "stage", "30-c", "muse-prompt.md"), promptText);
+    const r = s.run([dir], { DEV_BOTS_REMOTE_SHELL: `${sh} -s` });
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.match(r.stdout, /^takeover-stage 30-c$/m);
+    assert.match(r.stdout, /^pushed 30-c /m);
+    assert.deepEqual(readdirSync(join(s.q, "inbox", "30-c")).sort(), ["muse-prompt.md", "ready", "task.json"]);
+    assert.equal(existsSync(join(s.q, "stage", "30-c")), false);
+    assert.equal(existsSync(join(s.state, "30-c", "pending.json")), false);
+  });
+
+  test(`e2e (${sh}): a stage with other bytes stays untouched and the run is held`, (t) => {
+    const s = sandbox(t);
+    const dir = s.entry("30-c");
+    const taskText = readFileSync(join(dir, "task.json"), "utf8");
+    mkdirSync(join(s.state, "30-c"), { recursive: true });
+    writeFileSync(join(s.state, "30-c", "pending.json"), JSON.stringify({
+      name: "30-c", taskText,
+      taskSha256: sha256hex(taskText), promptSha256: sha256hex("# prompt with 'quotes' and $(nothing)\n"),
+    }));
+    mkdirSync(join(s.q, "stage", "30-c"), { recursive: true });
+    writeFileSync(join(s.q, "stage", "30-c", "task.json"), taskText);
+    writeFileSync(join(s.q, "stage", "30-c", "muse-prompt.md"), "someone else");
+    const before = readdirSync(join(s.q, "stage", "30-c")).sort();
+    const r = s.run([], { DEV_BOTS_REMOTE_SHELL: `${sh} -s` });
+    assert.equal(r.status, 1, r.stdout + r.stderr);
+    assert.match(r.stdout, /^held 30-c pending-mismatch$/m);
+    assert.deepEqual(readdirSync(join(s.q, "stage", "30-c")).sort(), before);
+    assert.equal(readFileSync(join(s.q, "stage", "30-c", "muse-prompt.md"), "utf8"), "someone else");
+    assert.ok(existsSync(join(s.state, "30-c", "pending.json")));
+  });
+
+  test(`e2e (${sh}): a stage with no local pending is refused and stays untouched`, (t) => {
+    const s = sandbox(t);
+    const dir = s.entry("30-c");
+    mkdirSync(join(s.q, "stage", "30-c"), { recursive: true });
+    writeFileSync(join(s.q, "stage", "30-c", "task.json"), "stale");
+    const r = s.run([dir], { DEV_BOTS_REMOTE_SHELL: `${sh} -s` });
+    assert.equal(r.status, 1, r.stdout + r.stderr);
+    assert.match(r.stdout, /^rejected 30-c exists-stage$/m);
+    assert.equal(readFileSync(join(s.q, "stage", "30-c", "task.json"), "utf8"), "stale");
+    assert.equal(existsSync(join(s.q, "inbox", "30-c")), false);
+  });
+}
