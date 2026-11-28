@@ -28,6 +28,8 @@ const CONTRACT_KEYS = [
   // The guest's kotoba.client.operation.v1 message {protocol, id, selector, payload}
   // is a structured clone; the runtime reads data.selector by name.
   "protocol", "id", "selector", "payload",
+  // createClientConsentHost reads CLIENT_CONSENT_TEXT[locale] by string key.
+  "ja", "en",
 ];
 
 function cljsProps(src) {
