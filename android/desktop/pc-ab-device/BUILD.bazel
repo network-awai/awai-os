@@ -22,6 +22,19 @@ sh_test(
     tags = ["no-remote"],
 )
 
+sh_test(
+    name = "ota_source_parity_test",
+    srcs = ["run-python-test.sh"],
+    args = ["test_check_ota_source.py"],
+    data = [
+        ":awai-pc-install.py",
+        ":check-ota-source.py",
+        ":test_check_ota_source.py",
+    ],
+    size = "small",
+    tags = ["no-remote"],
+)
+
 # Screen installer (AWAI item 205): guards, backend, page text, overlay build. The browser suite skips
 # itself where Chrome is not installed.
 [
