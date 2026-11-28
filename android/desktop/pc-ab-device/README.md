@@ -685,3 +685,8 @@ record them as not observed.
 - OVMF skipped the first ESP, which had no loader, and started GRUB from `awai_esp`. Real firmware may
   need a boot entry, or the PXE route may have to chain-load it.
 - No picture without a virtio GPU (headless only), no firmware files in the image, and no release keys.
+- No explicit USB mass-storage settings were found in the inspected product files. `vold` can
+  discover removable media through block uevents when a disk source matches, without a per-device
+  fstab entry. The upstream kernel defconfig, effective kernel configuration, and USB behavior in
+  a built Awai OS image remain unverified. See the
+  [AWAI-4118 static assessment](../../../docs/evidence/awai-4118-usb-media-awai-os-20261125.md).
