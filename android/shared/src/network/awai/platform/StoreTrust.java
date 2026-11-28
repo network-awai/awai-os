@@ -37,8 +37,9 @@ public final class StoreTrust {
             long floor = prefs.getLong("highest", 0);
             if (key.sequence < floor) throw new SecurityException("keys-rollback");
             if (key.sequence > floor) {
+                SharedPreferences.Editor edit = prefs.edit().putLong("highest", key.sequence);
                 beforeWrite.run();
-                if (!prefs.edit().putLong("highest", key.sequence).commit())
+                if (!edit.commit())
                     throw new SecurityException("keys-store");
             }
         }
@@ -83,9 +84,10 @@ public final class StoreTrust {
                 remember(c, current, beforeWrite);
                 return current;
             }
+            SharedPreferences.Editor edit = p.edit().putString("raw", encode(fetched.raw()))
+                    .putString("signature", encode(fetched.signature())).putLong("highest", fetched.sequence);
             beforeWrite.run();
-            if (!p.edit().putString("raw", encode(fetched.raw())).putString("signature", encode(fetched.signature()))
-                    .putLong("highest", fetched.sequence).commit()) throw new SecurityException("keys-store");
+            if (!edit.commit()) throw new SecurityException("keys-store");
             return fetched;
         }
     }

@@ -4,24 +4,26 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsServer;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.security.KeyStore;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
 import okhttp3.Call;
+import okhttp3.Connection;
 import okhttp3.Dispatcher;
 import okhttp3.EventListener;
 import okhttp3.OkHttpClient;
@@ -30,9 +32,7 @@ public final class UpdateHttpTest {
     public static void main(String[] args) throws Exception {
         char[] password = "store-test-only".toCharArray();
         KeyStore keys = KeyStore.getInstance("PKCS12");
-        try (InputStream input = Files.newInputStream(Paths.get(args[0]))) {
-            keys.load(input, password);
-        }
+        keys.load(System.in, password);
         KeyManagerFactory keyManagers = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
         keyManagers.init(keys, password);
         TrustManagerFactory trustManagers = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
@@ -47,6 +47,8 @@ public final class UpdateHttpTest {
         server.setExecutor(serverExecutor);
         AtomicInteger deniedRequests = new AtomicInteger();
         AtomicInteger deniedConnections = new AtomicInteger();
+        AtomicInteger deniedHttpRequests = new AtomicInteger();
+        AtomicReference<AutoUpdateRun> stoppingPhase = new AtomicReference<>();
         CountDownLatch firstRequestArrived = new CountDownLatch(1);
         CountDownLatch releaseFirstRequest = new CountDownLatch(1);
         CountDownLatch slowBodyStarted = new CountDownLatch(1);
@@ -65,6 +67,10 @@ public final class UpdateHttpTest {
         server.createContext("/redirect", exchange -> {
             exchange.getResponseHeaders().set("Location", "/denied");
             send(exchange, 302, "redirect");
+        });
+        server.createContext("/stop-http", exchange -> {
+            deniedHttpRequests.incrementAndGet();
+            send(exchange, 200, "must not be requested");
         });
         server.createContext("/slow", exchange -> {
             try (HttpExchange managed = exchange) {
@@ -90,6 +96,13 @@ public final class UpdateHttpTest {
                 .eventListener(new EventListener() {
                     @Override public void connectStart(Call call, InetSocketAddress address, Proxy proxy) {
                         if ("/denied".equals(call.request().url().encodedPath())) deniedConnections.incrementAndGet();
+                        if ("/stop-tcp".equals(call.request().url().encodedPath())) stoppingPhase.get().stop();
+                    }
+                    @Override public void secureConnectStart(Call call) {
+                        if ("/stop-tls".equals(call.request().url().encodedPath())) stoppingPhase.get().stop();
+                    }
+                    @Override public void connectionAcquired(Call call, Connection connection) {
+                        if ("/stop-http".equals(call.request().url().encodedPath())) stoppingPhase.get().stop();
                     }
                 })
                 .followRedirects(false).retryOnConnectionFailure(false).build();
@@ -119,7 +132,7 @@ public final class UpdateHttpTest {
             blockingCancel.detach(blockedRequest);
 
             UpdateHttpTransport.Request occupying = transport.prepare(base + "/hold", 32);
-            occupying.start(() -> false);
+            occupying.start(() -> true);
             await(firstRequestArrived, "first request to occupy dispatcher");
             AutoUpdateRun revoked = new AutoUpdateRun();
             UpdateHttpTransport.Request pending = transport.prepare(base + "/denied", 32);
@@ -137,6 +150,37 @@ public final class UpdateHttpTest {
             awaitIdle(dispatcher);
             if (deniedRequests.get() != 0) throw new AssertionError("Canceled queued request reached the server");
             if (deniedConnections.get() != 0) throw new AssertionError("Canceled queued request attempted a connection");
+
+            try (ServerSocket tcp = rawLoopback()) {
+                AutoUpdateRun run = new AutoUpdateRun();
+                stoppingPhase.set(run);
+                UpdateHttpTransport.Request stoppedTcp = transport.prepare(loopbackUrl(tcp, "/stop-tcp"), 32);
+                run.start(stoppedTcp);
+                expectFailure(stoppedTcp, IOException.class);
+                run.detach(stoppedTcp);
+                try (Socket unexpected = tcp.accept()) {
+                    throw new AssertionError("TCP reached the receiver after stop");
+                } catch (SocketTimeoutException expected) { }
+            }
+            try (ServerSocket tlsSocket = rawLoopback()) {
+                AutoUpdateRun run = new AutoUpdateRun();
+                stoppingPhase.set(run);
+                UpdateHttpTransport.Request stoppedTls = transport.prepare(loopbackUrl(tlsSocket, "/stop-tls"), 32);
+                run.start(stoppedTls);
+                expectFailure(stoppedTls, IOException.class);
+                run.detach(stoppedTls);
+                try (Socket established = tlsSocket.accept()) {
+                    established.setSoTimeout(1000);
+                    if (established.getInputStream().read() != -1) throw new AssertionError("TLS sent bytes after stop");
+                }
+            }
+            AutoUpdateRun beforeHttp = new AutoUpdateRun();
+            stoppingPhase.set(beforeHttp);
+            UpdateHttpTransport.Request stoppedHttp = transport.prepare(base + "/stop-http", 32);
+            beforeHttp.start(stoppedHttp);
+            expectFailure(stoppedHttp, IOException.class);
+            beforeHttp.detach(stoppedHttp);
+            if (deniedHttpRequests.get() != 0) throw new AssertionError("Application request reached the receiver after stop");
             releaseCancelThread.countDown();
 
             AutoUpdateRun active = new AutoUpdateRun();
@@ -150,13 +194,13 @@ public final class UpdateHttpTest {
 
             // The same redirect and size rules apply to the online transport itself.
             UpdateHttpTransport.Request redirect = transport.prepare(base + "/redirect", 32);
-            redirect.start(() -> false);
+            redirect.start(() -> true);
             expectFailure(redirect, SecurityException.class);
             if (deniedRequests.get() != 0) throw new AssertionError("Redirect reached the wrong path");
             UpdateHttpTransport.Request oversized = transport.prepare(base + "/large", 4);
-            oversized.start(() -> false);
+            oversized.start(() -> true);
             expectFailure(oversized, SecurityException.class);
-            System.out.println("6 checks passed: stop before enqueue, refuse queued request with cancellation thread blocked, normal fetch, stop during body, redirect, byte limit");
+            System.out.println("9 checks passed: stop before enqueue, queued cancellation, TCP/TLS/HTTP boundaries with cancellation thread blocked, normal fetch, stop during body, redirect, byte limit");
         } finally {
             releaseFirstRequest.countDown();
             releaseSlowBody.countDown();
@@ -167,6 +211,17 @@ public final class UpdateHttpTest {
             server.stop(0);
             serverExecutor.shutdownNow();
         }
+    }
+
+    private static ServerSocket rawLoopback() throws IOException {
+        ServerSocket server = new ServerSocket();
+        server.bind(new InetSocketAddress("127.0.0.1", 0));
+        server.setSoTimeout(500);
+        return server;
+    }
+
+    private static String loopbackUrl(ServerSocket server, String path) {
+        return "https://127.0.0.1:" + server.getLocalPort() + path;
     }
 
     private static void send(HttpExchange exchange, int status, String text) throws IOException {

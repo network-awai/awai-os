@@ -2,12 +2,18 @@ package network.awai.platform;
 import android.content.*;
 import android.content.pm.PackageInstaller;
 import android.content.pm.PackageManager;
+import java.io.IOException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 /** Private explicit PendingIntent callback, bound to a recorded install session. */
 public final class InstallReceiver extends BroadcastReceiver {
     private static final Executor AUTOMATIC_RESULTS = Executors.newSingleThreadExecutor();
+
+    static void resumeAutomaticResults(Context context) {
+        AUTOMATIC_RESULTS.execute(() -> AutoInstall.pendingAutomaticResults(context).forEach(
+                (session, id) -> automaticResult(context, session, null, id)));
+    }
 
     @Override public void onReceive(Context context,Intent intent){
         int session=intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID,-1);
@@ -33,18 +39,18 @@ public final class InstallReceiver extends BroadcastReceiver {
         }
     }
 
-    private static void automaticResult(Context context, int session, int result, String id) {
-        boolean needsApproval = result == PackageInstaller.STATUS_PENDING_USER_ACTION;
-        boolean installed = result == PackageInstaller.STATUS_SUCCESS;
-        AutoInstall.Completion completion = AutoInstall.finishAutomatic(context, session, installed, id);
+    private static void automaticResult(Context context, int session, Integer result, String id) {
+        AutoInstall.Completion completion = persistAutomaticResult(context, session, result, id);
         if (completion == null) return;
+        boolean needsApproval = completion.status == PackageInstaller.STATUS_PENDING_USER_ACTION;
+        boolean installed = completion.status == PackageInstaller.STATUS_SUCCESS;
         if (needsApproval) {
             // AWAI-3663: never open the installer screen from the background.
             try { context.getPackageManager().getPackageInstaller().abandonSession(session); }
             catch (RuntimeException ignored) { /* Android already discarded the session. */ }
             AutoUpdater.log(context, "needs-approval", id, "android-asked");
         } else {
-            AutoUpdater.log(context, installed ? "installed" : "failed", id, installed ? "" : "status-" + result);
+            AutoUpdater.log(context, installed ? "installed" : "failed", id, installed ? "" : "status-" + completion.status);
         }
 
         // Record already-committed outcomes even if the job was stopped or the app process
@@ -55,9 +61,10 @@ public final class InstallReceiver extends BroadcastReceiver {
                 AutoUpdater.requireApproval(context, completion.run, id);
                 if (needsApproval) {
                     AutoUpdater.notify(context, completion.run, "更新の確認が必要です", "Android が確認を求めました。Store の「更新」から確認してください。");
-                    completion.run.check();
-                    context.getSharedPreferences("host", 0).edit()
-                            .putString("message", "更新には確認が必要です。「更新」から確認してください。").apply();
+                    SharedPreferences.Editor edit = context.getSharedPreferences("host", 0).edit()
+                            .putString("message", "更新には確認が必要です。「更新」から確認してください。");
+                    completion.run.requireEffect();
+                    edit.apply();
                 } else {
                     String name = id;
                     try {
@@ -69,5 +76,16 @@ public final class InstallReceiver extends BroadcastReceiver {
                 }
             } catch (AutoUpdateRun.Stopped | AutoUpdateRun.Excluded ignored) { }
         }
+    }
+
+    private static AutoInstall.Completion persistAutomaticResult(Context context, int session, Integer result, String id) {
+        for (int attempt = 0; attempt < 3; attempt++) {
+            try {
+                return AutoInstall.finishAutomatic(context, session, result, id);
+            } catch (IOException failure) {
+                android.util.Log.w("AwaiAutoInstall", "Could not persist automatic result for session " + session, failure);
+            }
+        }
+        return null;
     }
 }

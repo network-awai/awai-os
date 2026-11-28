@@ -7,5 +7,6 @@ public final class StoreOnlineApplication extends Application {
     @Override public void onCreate() {
         super.onCreate();
         AutoUpdater.configureTransport(new OkHttpUpdateTransport());
+        InstallReceiver.resumeAutomaticResults(this);
     }
 }

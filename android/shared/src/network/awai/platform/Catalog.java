@@ -81,9 +81,14 @@ public final class Catalog {
      * longer verifies.
      */
     public static boolean saveOnline(Context context, String raw, String signature, long revision) {
-        return context.getSharedPreferences("online", 0).edit().remove("raw")
+        return saveOnline(context, raw, signature, revision, () -> {});
+    }
+    static boolean saveOnline(Context context, String raw, String signature, long revision, Runnable beforeWrite) {
+        android.content.SharedPreferences.Editor edit = context.getSharedPreferences("online", 0).edit().remove("raw")
                 .putString("raw64", android.util.Base64.encodeToString(raw.getBytes(StandardCharsets.UTF_8), android.util.Base64.NO_WRAP))
-                .putString("signature", signature).putLong("highest", revision).commit();
+                .putString("signature", signature).putLong("highest", revision);
+        beforeWrite.run();
+        return edit.commit();
     }
     public static boolean hasOnline(Context context) {
         android.content.SharedPreferences s = context.getSharedPreferences("online", 0);

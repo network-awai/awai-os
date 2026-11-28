@@ -71,7 +71,8 @@ public final class AutoUpdater {
             requireApproval(c, run);
             KeyList key = StoreTrust.inspect(c);
             synchronized (AutoUpdateRun.EFFECTS) {
-                StoreTrust.remember(c, key, () -> requireApproval(c, run));
+                requireApproval(c, run);
+                StoreTrust.remember(c, key, run::requireEffect);
             }
             // A newer key list replaces or withdraws role keys. A refused or unreachable list keeps the one in use.
             try {
@@ -79,7 +80,7 @@ public final class AutoUpdater {
                 KeyList fetched;
                 synchronized (AutoUpdateRun.EFFECTS) {
                     requireApproval(c, run);
-                    fetched = StoreTrust.admit(c, keysEnvelope, () -> requireApproval(c, run));
+                    fetched = StoreTrust.admit(c, keysEnvelope, run::requireEffect);
                 }
                 if (fetched.sequence > key.sequence) log(c, "keys", null, "sequence " + fetched.sequence);
                 key = fetched;
@@ -90,7 +91,9 @@ public final class AutoUpdater {
             LatestPointer p = LatestPointer.verifyEnvelope(fetch(c, run, LatestPointer.URL, LatestPointer.MAX_ENVELOPE_BYTES), key, now, floor);
             synchronized (AutoUpdateRun.EFFECTS) {
                 requireApproval(c, run);
-                prefs.edit().putLong("pointer-sequence", p.sequence).commit();
+                SharedPreferences.Editor edit = prefs.edit().putLong("pointer-sequence", p.sequence);
+                run.requireEffect();
+                if (!edit.commit()) throw new SecurityException("pointer-store");
             }
 
             byte[] envelope = fetch(c, run, p.catalog.url, (int) p.catalog.maxBytes);
@@ -168,7 +171,7 @@ public final class AutoUpdater {
             if (digest == null || !digest.equals(pin.getValue().sha256)) throw new SecurityException("unpinned-artifact");
         }
         requireApproval(c, run);
-        if (!Catalog.saveOnline(c, raw, signature, revision)) throw new SecurityException("catalog-store");
+        if (!Catalog.saveOnline(c, raw, signature, revision, run::requireEffect)) throw new SecurityException("catalog-store");
     }
 
     private static void stage(Context c, AutoUpdateRun run, LatestPointer p, String id, LatestPointer.Pin pin) throws Exception {
@@ -193,9 +196,11 @@ public final class AutoUpdater {
             synchronized (AutoUpdateRun.EFFECTS) {
                 requireApproval(c, run, id);
                 long now = System.currentTimeMillis() / 1000;
-                prefs.edit().putLong("download-day", now / 86400)
-                        .putLong("download-bytes", bytesToday(prefs, now) + bytes.length).commit();
-                run.check();
+                SharedPreferences.Editor edit = prefs.edit().putLong("download-day", now / 86400)
+                        .putLong("download-bytes", bytesToday(prefs, now) + bytes.length);
+                run.requireEffect();
+                if (!edit.commit()) throw new SecurityException("stage-budget");
+                run.requireEffect();
                 if (!temporary.renameTo(target)) throw new SecurityException("stage");
             }
         } finally {
@@ -292,13 +297,15 @@ public final class AutoUpdater {
         if (c.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return;
         NotificationManager nm = c.getSystemService(NotificationManager.class);
         if (nm == null) return;
-        nm.createNotificationChannel(new NotificationChannel(CHANNEL, "自動更新", NotificationManager.IMPORTANCE_LOW));
+        NotificationChannel channel = new NotificationChannel(CHANNEL, "自動更新", NotificationManager.IMPORTANCE_LOW);
+        run.requireEffect();
+        nm.createNotificationChannel(channel);
         android.content.Intent open = c.getPackageManager().getLaunchIntentForPackage(c.getPackageName());
         Notification.Builder b = new Notification.Builder(c, CHANNEL).setSmallIcon(android.R.drawable.stat_sys_download_done)
                 .setContentTitle(title).setContentText(text).setAutoCancel(true);
         if (open != null) b.setContentIntent(android.app.PendingIntent.getActivity(c, 0, open, android.app.PendingIntent.FLAG_IMMUTABLE));
         Notification notification = b.build();
-        run.check();
+        run.requireEffect();
         nm.notify(JOB_ID, notification);
     }
 

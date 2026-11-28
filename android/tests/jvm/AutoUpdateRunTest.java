@@ -68,13 +68,18 @@ public final class AutoUpdateRunTest {
             await(returned, "stop while disk and transport cancellation are blocked");
             await(cancelStarted, "asynchronous transport cancellation");
             assertStopped(blocked::check);
+            assertStopped(blocked::requireEffect);
+            AutoUpdateRun ordered = new AutoUpdateRun();
+            ordered.requireEffect();
+            ordered.stop();
+            assertStopped(ordered::requireEffect);
         } finally {
             releaseLock.countDown();
             releaseCancel.countDown();
             disk.join();
             stop.join();
         }
-        System.out.println("AutoUpdateRunTest: 11 passed");
+        System.out.println("AutoUpdateRunTest: 12 passed");
     }
 
     private static class Request implements UpdateHttpTransport.Request {

@@ -4,6 +4,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** Cancellation shared between one JobService invocation and its request worker. */
 final class AutoUpdateRun {
@@ -25,7 +26,8 @@ final class AutoUpdateRun {
         Excluded() { super("app-excluded"); }
     }
 
-    private volatile boolean stopped;
+    private static final long STOPPED = -1;
+    private final AtomicLong effects = new AtomicLong();
     private final long revision = approvalRevision;
     private volatile UpdateHttpTransport.Request activeRequest;
 
@@ -37,11 +39,19 @@ final class AutoUpdateRun {
     }
 
     void check() {
-        if (isStopped()) throw new Stopped("job-stopped");
+        if (effects.get() == STOPPED || revision != approvalRevision) throw new Stopped("job-stopped");
     }
 
-    private boolean isStopped() {
-        return stopped || revision != approvalRevision;
+    // Admission and stop are ordered on the same atomic state. An already admitted
+    // operation can finish; any subsequent operation needs its own admission.
+    boolean beginEffect() {
+        return revision == approvalRevision
+                && effects.getAndUpdate(previous -> previous == STOPPED ? STOPPED : previous + 1) != STOPPED
+                && revision == approvalRevision;
+    }
+
+    void requireEffect() {
+        if (!beginEffect()) throw new Stopped("job-stopped");
     }
 
     void start(UpdateHttpTransport.Request request) {
@@ -51,8 +61,8 @@ final class AutoUpdateRun {
             activeRequest = request;
             REQUESTS.add(this);
             try {
-                check();
-                request.start(this::isStopped);
+                requireEffect();
+                request.start(this::beginEffect);
             } catch (RuntimeException failure) {
                 detach(request);
                 throw failure;
@@ -69,8 +79,7 @@ final class AutoUpdateRun {
     }
 
     void stop() {
-        if (stopped) return;
-        stopped = true;
+        if (effects.getAndSet(STOPPED) == STOPPED) return;
         // JobService callbacks run on Android's main thread. Publish the stop without
         // taking EFFECTS or calling into the transport, even during a disk or Binder wait.
         cancel(activeRequest);
