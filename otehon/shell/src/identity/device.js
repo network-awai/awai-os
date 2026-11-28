@@ -19,11 +19,22 @@ function open() {
   });
 }
 
-function run(db, mode, action) {
+function readDeviceKey(db, candidate) {
   return new Promise((resolve, reject) => {
-    const request = action(db.transaction(STORE, mode).objectStore(STORE));
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    const transaction = db.transaction(STORE, candidate ? "readwrite" : "readonly");
+    const store = transaction.objectStore(STORE);
+    const request = store.get(KEY_ID);
+    let pair;
+    request.onsuccess = () => {
+      pair = request.result;
+      if (pair === undefined && candidate) {
+        // The lookup and insert share a transaction across WebViews or tabs.
+        store.add(candidate, KEY_ID);
+        pair = candidate;
+      }
+    };
+    transaction.oncomplete = () => resolve(pair);
+    transaction.onabort = () => reject(transaction.error ?? new Error("device-key-transaction-aborted"));
   });
 }
 
@@ -41,15 +52,18 @@ export async function verifyDeviceKeyPair(pair) {
 
 export async function deviceDid() {
   const db = await open();
-  let pair = await run(db, "readonly", (store) => store.get(KEY_ID));
-  if (!pair) {
-    pair = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
-    await run(db, "readwrite", (store) => store.put(pair, KEY_ID));
+  try {
+    let pair = await readDeviceKey(db);
+    if (pair === undefined) {
+      const candidate = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+      pair = await readDeviceKey(db, candidate);
+    }
+    // A copied public link proof is not evidence that this device holds its key.
+    await verifyDeviceKeyPair(pair);
+    return p256Did(compressP256(new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey))));
+  } finally {
+    db.close();
   }
-  // A copied public link proof is not evidence that this device holds its key.
-  await verifyDeviceKeyPair(pair);
-  db.close();
-  return p256Did(compressP256(new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey))));
 }
 
 function read(key) {
@@ -84,7 +98,7 @@ export async function signWnfsAccountAction(app, action) {
   const db = await open();
   try {
     // A broker request cannot create a key or repair a missing link.
-    const pair = await run(db, "readonly", (store) => store.get(KEY_ID));
+    const pair = await readDeviceKey(db);
     await verifyDeviceKeyPair(pair);
     const saved = read(SESSION_KEY);
     const proof = await issueWnfsAccountProof(pair, saved, app, action);
@@ -98,7 +112,7 @@ export async function signWnfsAccountAction(app, action) {
 export async function signHostAccount(request) {
   const db = await open();
   try {
-    const pair = await run(db, "readonly", (store) => store.get(KEY_ID));
+    const pair = await readDeviceKey(db);
     await verifyDeviceKeyPair(pair);
     const raw = new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey));
     const did = p256Did(compressP256(raw));
