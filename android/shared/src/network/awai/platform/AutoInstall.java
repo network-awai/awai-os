@@ -43,13 +43,13 @@ public final class AutoInstall {
     }
 
     public static Result attempt(Context c, String id) {
-        return attempt(c, id, () -> {});
+        return attempt(c, id, new AutoUpdateRun());
     }
 
-    static Result attempt(Context c, String id, Runnable checkStillAllowed) {
+    static Result attempt(Context c, String id, AutoUpdateRun run) {
         File verified = null;
         try {
-            checkStillAllowed.run();
+            AutoUpdater.requireApproval(c, run, id);
             Catalog catalog = new Catalog(c);
             JSONObject entry = catalog.app(id);
             verified = catalog.verifiedApkFile(c, id); // size, SHA-256, package, version, signer, no downgrade
@@ -82,10 +82,12 @@ public final class AutoInstall {
             if (!refusals.isEmpty()) return new Result(refusals, -1);
 
             Set<String> ops = k.operations;
-            int session = commit(c, id, verified, checkStillAllowed);
+            int session = commit(c, id, verified, run);
             prefs.edit().putLong("bytes-day", now / 86400).putLong("bytes-used", bytesToday(prefs, now) + verified.length())
                     .putString("pending-ops-" + session, encodeOps(ops)).putInt("auto-session", session).commit();
             return new Result(Collections.<String>emptyList(), session);
+        } catch (AutoUpdateRun.Stopped | AutoUpdateRun.Excluded e) {
+            throw e;
         } catch (Exception e) {
             String m = e.getMessage();
             if (e instanceof SecurityException && m != null && m.matches("[a-z0-9-]{1,40}")) return refused(m);
@@ -121,14 +123,17 @@ public final class AutoInstall {
         } catch (Exception ignored) { /* unknown stays unknown */ }
     }
 
-    private static int commit(Context c, String id, File verified, Runnable checkStillAllowed) throws Exception {
+    private static int commit(Context c, String id, File verified, AutoUpdateRun run) throws Exception {
         PackageInstaller installer = c.getPackageManager().getPackageInstaller();
         PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
         params.setAppPackageName(id);
         params.setSize(verified.length());
         params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
-        checkStillAllowed.run();
-        int sessionId = installer.createSession(params);
+        int sessionId;
+        synchronized (AutoUpdateRun.EFFECTS) {
+            AutoUpdater.requireApproval(c, run, id);
+            sessionId = installer.createSession(params);
+        }
         try (PackageInstaller.Session session = installer.openSession(sessionId)) {
             try (InputStream in = new FileInputStream(verified); OutputStream out = session.openWrite("base.apk", 0, verified.length())) {
                 byte[] buffer = new byte[65536];
@@ -139,8 +144,10 @@ public final class AutoInstall {
             Intent callback = new Intent(c, InstallReceiver.class).setAction(c.getPackageName() + ".AUTO_INSTALL_RESULT")
                     .putExtra("auto", true).putExtra("package", id);
             PendingIntent status = PendingIntent.getBroadcast(c, sessionId, callback, PendingIntent.FLAG_MUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-            checkStillAllowed.run();
-            session.commit(status.getIntentSender());
+            synchronized (AutoUpdateRun.EFFECTS) {
+                AutoUpdater.requireApproval(c, run, id);
+                session.commit(status.getIntentSender());
+            }
         } catch (Exception e) {
             installer.abandonSession(sessionId);
             throw e;

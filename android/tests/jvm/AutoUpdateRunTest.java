@@ -25,7 +25,14 @@ public final class AutoUpdateRunTest {
         nextRun.check();
         nextRun.attach(second);
         if (nextRun.stop() != second) throw new AssertionError("A later job can run independently");
-        System.out.println("AutoUpdateRunTest: 6 passed");
+
+        AutoUpdateRun superseded = new AutoUpdateRun();
+        AutoUpdateRun.approvalChanged();
+        AutoUpdateRun.approvalChanged(); // Reapproval must not wake a job with a superseded grant.
+        assertStopped(superseded::check);
+        assertStopped(() -> superseded.attach(first));
+        new AutoUpdateRun().check();
+        System.out.println("AutoUpdateRunTest: 9 passed");
     }
 
     private static HttpURLConnection connection() throws Exception {

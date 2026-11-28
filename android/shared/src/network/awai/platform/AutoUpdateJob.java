@@ -3,16 +3,21 @@ package network.awai.platform;
 import android.app.job.JobParameters;
 import android.app.job.JobService;
 import java.net.HttpURLConnection;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /** The daily automatic-update check (AWAI-3668). Scheduled only while the approval is in force. */
 public final class AutoUpdateJob extends JobService {
+    private static final ExecutorService WORKER =
+            Executors.newSingleThreadExecutor(task -> new Thread(task, "awai-auto-update"));
+
     private AutoUpdateRun running;
 
     @Override public boolean onStartJob(JobParameters params) {
         stopRunning();
         AutoUpdateRun run = new AutoUpdateRun();
         running = run;
-        new Thread(() -> {
+        WORKER.execute(() -> {
             try {
                 AutoUpdater.run(getApplicationContext(), run);
             } finally {
@@ -22,7 +27,7 @@ public final class AutoUpdateJob extends JobService {
                     jobFinished(params, false);
                 });
             }
-        }, "awai-auto-update").start();
+        });
         return true;
     }
 
