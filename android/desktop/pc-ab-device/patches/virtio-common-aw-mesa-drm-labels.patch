@@ -1,0 +1,9 @@
+diff --git a/sepolicy/vendor/file_contexts b/sepolicy/vendor/file_contexts
+--- a/sepolicy/vendor/file_contexts
++++ b/sepolicy/vendor/file_contexts
+@@ -20,2 +20,5 @@
+ # AWAI-3686: label the Mesa Gallium and RADV DRM dependencies.
+ /vendor/lib64/libdrm_upstream_(amdgpu|radeon)\.so    u:object_r:same_process_hal_file:s0
++
++# AWAI-3600: label current Mesa DRM dependencies.
++/vendor/lib64/libdrm_(amdgpu|radeon)\.so    u:object_r:same_process_hal_file:s0
