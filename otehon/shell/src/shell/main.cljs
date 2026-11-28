@@ -302,7 +302,7 @@
      [:p (if (some-> status .-saved)
            "認証情報はこのブラウザーに保存済みです。同じブラウザーで http://127.0.0.1:8906/ を開くと、有効期限内は再認証なしで復元します。"
            "認証情報の保存を確認しています。")]
-     [:p "端末鍵はIndexedDB、署名済みセッションはローカルストレージに保存します。ブラウザーのデータ削除・別プロファイル・別アドレスには引き継がれません。"]
+     [:p "端末鍵と署名済みセッションはこのブラウザーに保存します。保存データを削除すると再認証が必要です。別のプロファイルやアドレスには引き継がれません。"]
      [:p {:role "status"}
       (cond
         (true? (some-> status .-persistent)) "ストレージの自動削除からの保護: 有効"
@@ -507,10 +507,13 @@
        (-> (deviceDid)
            (.catch (fn [_] (set-setup-error "このアプリの端末鍵を確認できません。") nil))
            (.then (fn [value]
-                    (when value (set-account (loadSession value)))
-                    (-> (.read setupState)
-                        (.then (fn [done] (set-finished done) (set-did value)))
-                        (.catch (fn [_] (set-setup-error "設定の保存状態を確認できません。もう一度お試しください。") (set-did value))))))) js/undefined)
+                    (-> (if value (loadSession value) (js/Promise.resolve nil))
+                        (.then set-account)
+                        (.catch (fn [_] (set-setup-error "アカウントの保存状態を確認できません。")))
+                        (.then (fn [_]
+                                 (-> (.read setupState)
+                                     (.then (fn [done] (set-finished done) (set-did value)))
+                                     (.catch (fn [_] (set-setup-error "設定の保存状態を確認できません。もう一度お試しください。") (set-did value)))))))))) js/undefined)
      #js [])
     (useEffect
      (fn []
@@ -522,6 +525,7 @@
                     " dapps=" dapps))) js/undefined)
      #js [zenoh matter open did])
     [:<>
+     (when (and open setup-error) [:p.problem {:role "alert"} setup-error])
      (when (and android? host-checking (nil? route) (not open))
       [:main.chat.net-view.android-entry [:div.net-body [:p {:role "status"} "Awai OS のアカウントを確認しています。"]]])
      (when android?
@@ -558,9 +562,13 @@
         (fn []
          (if host-account
            (do (set-host-paused true)
-               (try (.setItem js/localStorage host-account-paused-key "true") (catch :default _ nil)))
-           (do (clearSession) (set-proofs #js {}) (set-account nil)))
-         (when android? (go-local)))
+               (try (.setItem js/localStorage host-account-paused-key "true") (catch :default _ nil))
+               (when android? (go-local)))
+           (-> (clearSession)
+               (.then (fn [_]
+                        (set-setup-error nil) (set-proofs #js {}) (set-account nil)
+                        (when android? (go-local))))
+               (.catch (fn [_] (set-setup-error "サインアウトを保存できませんでした。もう一度お試しください。"))))))
         (when android? go-local)]))]))
 
 (defn network-indicator []

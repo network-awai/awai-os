@@ -65,12 +65,35 @@ test("the shared broker accepts both descriptors", () => {
   const relay = "https://relay.awai.network";
   const os = runtimeDescriptor("index.html", osOperations(relay));
   const phone = runtimeDescriptor("index.html", phoneOperations(relay));
-  assert.deepEqual(clientRuntimeProblems(os, ["awai-egov", "awai-link", "awai-trust", "awai-wallet", "itonami-bot-chat", "itonami-bot-voice", "itonami-mail-aliases"], []), []);
-  assert.deepEqual(clientRuntimeProblems(phone, ["awai-link"], ["https://awai.network"]), []);
+  const osCapabilities = ["awai-egov", "awai-link", "awai-handover", "awai-trust", "awai-wallet",
+    "itonami-bot-chat", "itonami-bot-voice", "itonami-mail-aliases"];
+  const phoneCapabilities = ["awai-link", "awai-handover"];
+  const phoneOrigins = ["https://awai.network"];
+  assert.deepEqual(clientRuntimeProblems(os, osCapabilities, []), []);
+  assert.deepEqual(clientRuntimeProblems(phone, phoneCapabilities, phoneOrigins), []);
   assert.equal(
-    clientRuntimeConnectSrc(os, ["awai-egov", "awai-link", "awai-trust", "awai-wallet", "itonami-bot-chat", "itonami-bot-voice", "itonami-mail-aliases"], [], []),
+    clientRuntimeConnectSrc(os, osCapabilities, [], []),
     "connect-src " + [CHAT_ORIGIN,"https://laws.e-gov.go.jp","https://mainnet.optimism.io","https://relay.awai.network"].sort().join(" "),
   );
+  assert.equal(clientRuntimeConnectSrc(phone, phoneCapabilities, [], phoneOrigins),
+    "connect-src https://relay.awai.network");
+
+  const handover = (descriptor) => descriptor.operations.filter(operation => operation.capability === "awai-handover");
+  const inspect = ({ operation, consent, endpoint }) => [operation, consent, endpoint.origin, endpoint.routes];
+  const deliver = ["deliver-handover-envelope", "each-operation", relay,
+    [{ method: "POST", path: "/v1/:topic", "query-params": [] }]];
+  assert.deepEqual(handover(os).map(inspect), [
+    ["await-handover-approval", "each-operation", relay,
+      [{ method: "GET", path: "/v1/:topic/json", "query-params": [] }]],
+    deliver,
+  ]);
+  assert.deepEqual(handover(phone).map(inspect), [deliver]);
+  for (const [descriptor, capabilities, origins] of [[os, osCapabilities, []], [phone, phoneCapabilities, phoneOrigins]]) {
+    assert.deepEqual(clientRuntimeProblems(descriptor, capabilities.filter(capability => capability !== "awai-handover"), origins),
+      handover(descriptor).map(({ capability, service, operation }) => ({
+        field: "operations", error: "capability-not-requested", selector: JSON.stringify([capability, service, operation]),
+      })));
+  }
 });
 
 test("a non-32hex link topic fails before deliver-approval sends anything", async () => {
