@@ -55,6 +55,34 @@ Release boundary: no production key or production rotation/revocation operation 
 
 Build outputs, signed APKs, public fingerprint/digests and tool logs stay in `.agent-output/android`. The existing debug key stays in Android's credential directory and is never copied to source or reports. `build.py` never connects to or installs on a device.
 
+### Store scheduler QA (AWAI-3668)
+
+Build the test APK against the exact online QA Store classes, using `--target-classes` when the online build uses a separate class directory. The aligned output can be signed by the same approved QA identity as the target Store.
+
+```sh
+python3 android/build-tests.py --target-classes /path/to/store-classes-online \
+  --out /path/to/qa-output --unsigned
+```
+
+Install the matched QA Store and signed test APK on an approved disposable guest with its network disconnected. Verify the SDK version on that serial, then run the test with the matching API argument.
+
+```sh
+adb -s "$SERIAL" shell am instrument -w -e disposable true -e api 33 \
+  network.awai.tests/.StoreSchedulerInstrumentation
+```
+
+The test requires a debuggable online Store with no standing approval or pending job. It verifies that approval schedules job 3668 with the expected network constraint, changing the approval changes the constraint, and revocation removes the job. It restores the prior approval on exit. Capture the result and the target APK digest together. The test covers scheduler registration and revocation. Use the closed-feed QA to measure connection cancellation and PackageInstaller outcomes.
+
+For the AWAI-3653 closed-feed Store, build against its exact `classes-online` directory:
+
+```sh
+python3 android/build-tests.py --target-package network.awai.store.qa \
+  --target-classes "$QA_STORE_OUTPUT/store-v$QA_VERSION/classes-online" \
+  --out "$QA_TEST_OUTPUT" --unsigned
+```
+
+Sign the aligned test APK with the approved QA Store APK identity. Its separate instrumentation package is `network.awai.tests.store.qa`. Use `network.awai.tests.store.qa/network.awai.tests.StoreSchedulerInstrumentation` as the component in the disconnected-guest command above.
+
 The build generates tokens/CSS/resources from one shared palette, compiles shared domain functions once for both browser clients, and packages original Figma assets. Raw SVG dimensions are retained:24px controls,28px Store header source and64px featured calendar source. API-supplied installed app icons remain dynamic. Design-time Aozora/Murakumo/Itonami placeholders are not advertised as installable without actual release artifacts.
 
 The launcher remains an ordinary app. Before default-HOME selection, record the previous component/role. Use Android's role selection UI to opt in; keep the existing launcher installed as rollback. Never assume adb selects the right phone: all device commands require an explicit serial.
