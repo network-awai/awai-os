@@ -25,7 +25,6 @@ check('every series table app is named', all(i in ids for i in series), str([i f
 check('every local app is named', all(i in ids for i in local))
 check('the apps named in Catalog.java are named', all(i in ids for i in ['network.itonami.app', 'network.itonami.registry.assoc',
                                                                          'network.itonami.torihiki.bot', 'network.itonami.dougaka.preview']))
-check('the exact two-component Aozora package is visible without a launcher or pins', 'app.aozora' in ids)
 check('only whole package ids (no prefix such as network.itonami.)', 'network.itonami.' not in ids and all(re.fullmatch(r'[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)+', i) for i in ids))
 pins = {'apks': {'network.itonami.pinnedonly': {}}}
 check('a package only in the online pins is named too', 'network.itonami.pinnedonly' in build.store_query_packages(pins))
@@ -38,6 +37,8 @@ check('the Store keeps its launcher intent query', 'android.intent.category.LAUN
 check('the Store does not ask for QUERY_ALL_PACKAGES', 'QUERY_ALL_PACKAGES' not in store)
 home = build.manifest('network.awai.home', 'network.awai.home.HomeActivity', 1, 'home')
 check('other hosts are unchanged (no series packages)', 'network.itonami.isco2423' not in home)
+
+check('the exact two-component Aozora package is visible without a launcher or pins', 'app.aozora' in ids)
 
 failed = [r for r in results if not r['ok']]
 print(json.dumps({'checks': len(results), 'failed': len(failed), 'packages': len(ids), 'results': results}, indent=1))
