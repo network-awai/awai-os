@@ -142,7 +142,10 @@ rejects('no key list', input => ({...input, keysBytes: null}), 'keys-missing');
 // AWAI-3775: the root-signed key list. Synthetic pointer and catalog, read from memory.
 // AWAI-3882: publisher defaults to the single-definition value; pass publisher: null to omit it
 // (fail-closed test) or any string to use it verbatim.
-const keyListInput = ({signPointer, signCatalog, signList, listRoot, publisher = 'Awai Network LLC'} = {}) => {
+const keyListInput = ({
+  signPointer, signCatalog, signList, listRoot, publisher = 'Awai Network LLC',
+  appId = 'network.itonami.yotei', apkBytes = null,
+} = {}) => {
   const rsa = () => generateKeyPairSync('rsa', {modulusLength: 2048});
   const root = rsa(), cat = rsa(), ptr = rsa(), other = rsa();
   const k = {root, cat, ptr, other};
@@ -151,15 +154,25 @@ const keyListInput = ({signPointer, signCatalog, signList, listRoot, publisher =
   const list = `itonami.store.keys.v1\nsequence 2\nissued ${now - 60}\nexpires ${now + 90 * 86400}\nkey catalog ${spki(cat).toString('base64')}\nkey pointer ${spki(ptr).toString('base64')}\n`;
   const env = (raw, key) => Buffer.from(JSON.stringify({raw, signature: sign('sha256', Buffer.from(raw), key.privateKey).toString('base64')}));
   const rev = 'a'.repeat(40), base = `https://raw.githubusercontent.com/network-awai/awai-os/${rev}/store/distribution/dev-test/`;
-  const yotei = {id: 'network.itonami.yotei', name: 'Yotei', versionName: '1', versionCode: 1, artifacts: []};
-  if (publisher !== null) yotei.publisher = publisher;
+  const app = {id: appId, name: 'Fixture app', versionName: '1', versionCode: 1, artifacts: []};
+  if (publisher !== null) app.publisher = publisher;
+  const apkPath = 'store/distribution/dev-test/fixture.apk';
+  const apks = {};
+  if (apkBytes) {
+    const digest = sha256(apkBytes);
+    app.artifacts.push({platform: 'android', kind: 'apk', sha256: digest,
+      bytes: apkBytes.length, signerSha256: DEV_SIGNER});
+    apks[appId] = {url: base + 'fixture.apk', sha256: digest, maxBytes: apkBytes.length};
+  }
   const catalog = env(JSON.stringify({schema: 'itonami.store.bundled.v1', revision: 110, expiresAt: now + 86400,
-    apps: [yotei]}), k[signCatalog ?? 'cat']);
+    apps: [app]}), k[signCatalog ?? 'cat']);
   const pointer = env(JSON.stringify({schema: 'itonami.store.latest.v1', sequence: 4, issuedAt: now - 60, expiresAt: now + 86400,
-    pins: {revision: rev, catalog: {url: base + 'catalog-envelope.json', sha256: sha256(catalog), maxBytes: 131072}, apks: {}}}), k[signPointer ?? 'ptr']);
+    pins: {revision: rev, catalog: {url: base + 'catalog-envelope.json', sha256: sha256(catalog), maxBytes: 131072}, apks}}), k[signPointer ?? 'ptr']);
   const published = published0();
+  const files = new Map([['store/distribution/dev-test/catalog-envelope.json', catalog], [apkPath, apkBytes]]);
   return {...published, now, pointerBytes: pointer, rootDer: spki(k[listRoot ?? 'root']), keysBytes: env(list, k[signList ?? 'root']),
-    read: path => path === 'store/distribution/dev-test/catalog-envelope.json' ? catalog : null, keys: {cat: spki(cat), root: spki(root)}};
+    read: path => files.get(path) ?? null,
+    keys: {cat: spki(cat), root: spki(root)}};
 };
 const published0 = () => repositoryInput(root, 0);
 
@@ -187,6 +200,29 @@ for (const [name, change, code] of [
 });
 test('key list: a root without a list is refused', async () => {
   await assert.rejects(verifyStore({...keyListInput(), keysBytes: null}), {message: 'keys-missing'});
+});
+
+test('the signed Aozora package is rendered without a download when no APK is pinned', async () => {
+  const {store, files} = await buildSite(keyListInput({appId: 'app.aozora'}));
+  assert.equal(store.apps[0].id, 'app.aozora');
+  assert.equal(store.apps[0].download, null);
+  assert.match(files['index.html'].toString('utf8'), /id="app\.aozora"/);
+});
+
+test('a pinned Aozora download is rendered only with its signed digest', async () => {
+  const apk = Buffer.from('Aozora fixture');
+  const input = keyListInput({appId: 'app.aozora', apkBytes: apk});
+  const {store, files} = await buildSite(input);
+  const {download} = store.apps[0];
+  assert.equal(download.sha256, sha256(apk));
+  assert.equal(download.bytesChecked, true);
+  assert(files['index.html'].toString('utf8').includes(`href="${download.url}"`));
+  await assert.rejects(verifyStore(withFile(input, 'store/distribution/dev-test/fixture.apk', Buffer.from('changed'))),
+    {message: 'apk-digest'});
+});
+
+test('a similarly named package outside the supported namespaces is refused', async () => {
+  await assert.rejects(verifyStore(keyListInput({appId: 'app.aozora.awai.preview'})), {message: 'app-id'});
 });
 
 // AWAI-3882: fail closed — a catalog entry whose publisher does not resolve (missing or

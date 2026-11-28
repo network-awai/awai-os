@@ -93,7 +93,8 @@ export async function verifyStore({pointerBytes, rootDer, keysBytes, read, now, 
 
   const listed = new Set();
   const apps = catalog.apps.map(app => {
-    if (!/^network\.(itonami|awai)\.[a-z0-9.]+$/.test(app.id) || listed.has(app.id)) fail('app-id');
+    const knownPackage = app.id === 'app.aozora' || /^network\.(itonami|awai)\.[a-z0-9.]+$/.test(app.id);
+    if (!knownPackage || listed.has(app.id)) fail('app-id');
     listed.add(app.id);
     // AWAI-3882: fail closed — every catalog entry must resolve a publisher. A blank or
     // missing publisher aborts the build instead of rendering a blank 配布元.
