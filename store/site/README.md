@@ -83,7 +83,9 @@ approved APK signing certificate SHA-256:
 }
 ```
 
-The signed catalog and APK downloads must use the declared commit and release paths under
+The production build applies the Android Store’s online pin rules and checks each signed Android
+artifact’s asset path against the Android catalog. The signed catalog and APK downloads must use the
+declared commit and release paths under
 `store/distribution/rel-YYYYMMDD-rNNN/`. The build checks that every approved app has a signed
 catalog entry, a pin and a local APK with matching size and digest. Android build tools verify the
 APK signature, package, version code and non-debuggable manifest. The checked-in development root

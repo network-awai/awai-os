@@ -16,6 +16,7 @@ import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {dirname, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {verifyKeyList, authentic, CATALOG, POINTER} from '../../android/client/key-list.js';
+import {loadOnlineCatalogAssets, parseStrictJson, validateStrictPins} from '../../android/online-csp.mjs';
 import {releaseFiles, releaseSigners, requireReleasePath, verifyReleaseApk} from './release-input.mjs';
 
 export const DEV_SIGNER = '2507930b6c21b3c1cd0655527227dba75772096eff85e887bfcce2fb25b49b29';
@@ -85,16 +86,22 @@ export async function verifyStore({pointerBytes, rootDer, keysBytes, read, now, 
   if (now >= pointer.expiresAt) fail('pointer-expired');
   if (approved && pointer.issuedAt > now + 300) fail('pointer-time');
   const pins = pointer.pins;
+  if (approved) {
+    const raw = envelopeOf(pointerBytes, 'pointer').raw;
+    validateStrictPins(parseStrictJson(raw, {strictKey: 'pins'}).pins);
+  }
+  const catalogAsset = approved ? loadOnlineCatalogAssets() : null;
   if (!pins || !/^[0-9a-f]{40}$/.test(pins.revision) || !pins.apks || typeof pins.apks !== 'object') fail('pins-shape');
 
   const catalogPath = pinPath(pins.catalog, 'catalog-pin');
-  if (approved) requireReleasePath(pins.catalog.url, catalogPath, pins.revision);
+  if (approved) requireReleasePath(catalogPath);
   const catalogBytes = read(catalogPath);
   if (!catalogBytes) fail('catalog-missing');
   if (catalogBytes.length > pins.catalog.maxBytes || sha256(catalogBytes) !== pins.catalog.sha256) fail('catalog-digest');
   const catalog = await openEnvelope(catalogBytes, trust, CATALOG, 'catalog');
   if (catalog.schema !== 'itonami.store.bundled.v1') fail('catalog-schema');
   if (!Number.isSafeInteger(catalog.revision) || !Array.isArray(catalog.apps)) fail('catalog-shape');
+  if (approved && catalog.revision < 1) fail('catalog-shape');
   if (!Number.isSafeInteger(catalog.expiresAt) || now >= catalog.expiresAt) fail('catalog-expired');
 
   const listed = new Set();
@@ -105,12 +112,16 @@ export async function verifyStore({pointerBytes, rootDer, keysBytes, read, now, 
     // AWAI-3882: fail closed — every catalog entry must resolve a publisher. A blank or
     // missing publisher aborts the build instead of rendering a blank 配布元.
     if (typeof app.publisher !== 'string' || !app.publisher.trim()) fail('publisher');
-    const apk = (app.artifacts || []).find(a => a.platform === 'android' && a.kind === 'apk');
+    const artifacts = app.artifacts || [];
+    if (approved && artifacts.some(a => a.platform === 'android' && a.asset !== catalogAsset(app.id))) {
+      fail('catalog-artifact');
+    }
+    const apk = artifacts.find(a => a.platform === 'android' && a.kind === 'apk' && (!approved || a.runtime === 'android'));
     const pin = pins.apks[app.id];
     let download = null;
     if (apk && pin) {
       const path = pinPath(pin, 'apk-pin');
-      if (approved) requireReleasePath(pin.url, path, pins.revision);
+      if (approved) requireReleasePath(path);
       if (pin.sha256 !== apk.sha256 || apk.bytes > pin.maxBytes || !/^[0-9a-f]{64}$/.test(apk.signerSha256 || '')) fail('apk-pin-mismatch');
       const bytes = read(path);
       if (bytes && (bytes.length !== apk.bytes || sha256(bytes) !== apk.sha256)) fail('apk-digest');

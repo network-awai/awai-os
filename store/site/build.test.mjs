@@ -146,6 +146,7 @@ const keyListInput = ({
   signPointer, signCatalog, signList, listRoot, publisher = 'Awai Network LLC',
   appId = 'network.itonami.yotei', apkBytes = null,
   distribution = 'dev-test', apkSigner = DEV_SIGNER, apkRevision = 'a'.repeat(40),
+  apkAsset = 'packages/yotei.apk', maxBytes, mutatePins = raw => raw,
 } = {}) => {
   const rsa = () => generateKeyPairSync('rsa', {modulusLength: 2048});
   const root = rsa(), cat = rsa(), ptr = rsa(), other = rsa();
@@ -162,14 +163,14 @@ const keyListInput = ({
   const apks = {};
   if (apkBytes) {
     const digest = sha256(apkBytes);
-    app.artifacts.push({platform: 'android', runtime: 'android', kind: 'apk', sha256: digest,
+    app.artifacts.push({platform: 'android', runtime: 'android', kind: 'apk', asset: apkAsset, sha256: digest,
       bytes: apkBytes.length, signerSha256: apkSigner});
-    apks[appId] = {url: github + apkRevision + '/' + apkPath, sha256: digest, maxBytes: apkBytes.length};
+    apks[appId] = {url: github + apkRevision + '/' + apkPath, sha256: digest, maxBytes: maxBytes ?? apkBytes.length};
   }
   const catalog = env(JSON.stringify({schema: 'itonami.store.bundled.v1', revision: 110, expiresAt: now + 86400,
     apps: [app]}), k[signCatalog ?? 'cat']);
-  const pointer = env(JSON.stringify({schema: 'itonami.store.latest.v1', sequence: 4, issuedAt: now - 60, expiresAt: now + 86400,
-    pins: {revision: rev, catalog: {url: github + rev + '/' + path + 'catalog-envelope.json', sha256: sha256(catalog), maxBytes: 131072}, apks}}), k[signPointer ?? 'ptr']);
+  const pointer = env(mutatePins(JSON.stringify({schema: 'itonami.store.latest.v1', sequence: 4, issuedAt: now - 60, expiresAt: now + 86400,
+    pins: {revision: rev, catalog: {url: github + rev + '/' + path + 'catalog-envelope.json', sha256: sha256(catalog), maxBytes: 131072}, apks}})), k[signPointer ?? 'ptr']);
   const published = published0();
   const files = new Map([[path + 'catalog-envelope.json', catalog], [apkPath, apkBytes]]);
   return {...published, now, pointerBytes: pointer, rootDer: spki(k[listRoot ?? 'root']), keysBytes: env(list, k[signList ?? 'root']),
@@ -276,7 +277,7 @@ test('production refuses a different root fingerprint', async () => {
 
 test('production requires release artifact paths and the signed revision on every pin', async () => {
   await assert.rejects(buildSite(releaseFixture({distribution: 'dev-test'})), {message: 'release-pin-path'});
-  await assert.rejects(buildSite(releaseFixture({apkRevision: 'c'.repeat(40)})), {message: 'release-pin-path'});
+  await assert.rejects(buildSite(releaseFixture({apkRevision: 'c'.repeat(40)})), /pins-url/);
 });
 
 test('production requires every APK file and refuses changed bytes', async () => {
@@ -308,4 +309,21 @@ test('production compares verified archive identity, version, signer and debugga
     input.release.inspectApk = () => ({...good, ...mismatch});
     await assert.rejects(buildSite(input), {message: 'release-apk-identity'});
   }
+});
+
+test('production refuses a catalog artifact mapped to another APK', async () => {
+  await assert.rejects(buildSite(releaseFixture({apkAsset: 'packages/other.apk'})), {message: 'catalog-artifact'});
+});
+
+test('production shares the Android Store pin limits and exact app IDs', async () => {
+  await assert.rejects(buildSite(releaseFixture({maxBytes: 64 * 1024 * 1024 + 1})), /pins-budget/);
+  await assert.rejects(buildSite(releaseFixture({appId: 'network.awai.unimplemented'})), /unknown-app/);
+  await assert.rejects(buildSite(releaseFixture({mutatePins: raw =>
+    raw.replace('"maxBytes":131072', '"maxBytes":131072,"maxBytes":131072')})), /pins-duplicate-key/);
+});
+
+test('production accepts the exact Aozora package but refuses an unlisted similar ID', async () => {
+  const good = await buildSite(releaseFixture({appId: 'app.aozora', apkAsset: 'packages/aozora.apk'}));
+  assert.equal(good.store.apps[0].id, 'app.aozora');
+  await assert.rejects(buildSite(releaseFixture({appId: 'app.aozora.similar', apkAsset: 'packages/aozora.apk'})), /unknown-app/);
 });

@@ -21,8 +21,8 @@ export function releaseSigners({approvals, inspectApk}, rootSha256, devRootSha25
   return signers;
 }
 
-export function requireReleasePath(url, path, revision) {
-  if (!RELEASE_PATH.test(path) || !url.includes(`/${revision}/${path}`)) {
+export function requireReleasePath(path) {
+  if (!RELEASE_PATH.test(path)) {
     throw new Error('release-pin-path');
   }
 }

@@ -90,6 +90,13 @@ def main():
     unadmitted_doc['apks'] = {'network.other.evil': unadmitted_doc['apks']['network.itonami.app0']}
     rejects_bytes('unadmitted app id', json.dumps(unadmitted_doc, separators=(',', ':')).encode('utf-8'))
 
+    aozora = make_pins_dict(1)
+    aozora['apks']['app.aozora'] = aozora['apks'].pop('network.itonami.app0')
+    _, aozora_serialized = build.validate_online_pins_bytes(json.dumps(aozora).encode())
+    check('exact two-component Aozora is accepted', 'app.aozora' in json.loads(aozora_serialized)['apks'])
+    rejects_bytes('unlisted Aozora lookalike', aozora_serialized.replace(
+        '"app.aozora"', '"app.aozora.similar"').encode())
+
     for label, bad_url in [
         ('explicit :443 port', f'https://raw.githubusercontent.com:443/network-awai/awai-os/{REV}/store/distribution/dev/app0.apk'),
         ('traversal /../', f'{BASE}../evil.apk'),

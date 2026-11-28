@@ -38,7 +38,7 @@ def _catalog_online_app_ids(catalog_java=None):
     if not m:
         raise ValueError('online-pins: unable to read Catalog.onlineFileFor')
     body = m.group(0)
-    ids = set(re.findall(r'"((?:network|app)\.[a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*)+)"', body))
+    ids = set(re.findall(r'"((?:network|app)\.[a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*)*)"', body))
     if 'REGISTRY_ASSOC' in body:
         ids.add('network.itonami.registry.assoc')
     return ids
@@ -160,7 +160,7 @@ def store_query_packages(pins=None):
     activity (AWAI-3771): the ids written in Catalog.java, the local apps, the series table, and any online pins.
     Without this, a package with no MAIN/LAUNCHER activity looked not installed, and the Store's own downgrade and
     signer checks were skipped. QUERY_ALL_PACKAGES is not used."""
-    ids = set(re.findall(r'"((?:network|app)\.[a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*)+)"',
+    ids = set(re.findall(r'"((?:network|app)\.[a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*)*)"',
                          (ROOT/'android/shared/src/network/awai/platform/Catalog.java').read_text()))
     ids.update('network.itonami.'+a['suffix'] for a in json.loads((ROOT/'android/local-apps.json').read_text())['apps'])
     ids.update(a['id'] for a in json.loads((ROOT/'store/catalog-source/series-apps.json').read_text())['apps'])
