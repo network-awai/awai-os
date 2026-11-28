@@ -43,8 +43,13 @@ public final class AutoInstall {
     }
 
     public static Result attempt(Context c, String id) {
+        return attempt(c, id, () -> {});
+    }
+
+    static Result attempt(Context c, String id, Runnable checkStillAllowed) {
         File verified = null;
         try {
+            checkStillAllowed.run();
             Catalog catalog = new Catalog(c);
             JSONObject entry = catalog.app(id);
             verified = catalog.verifiedApkFile(c, id); // size, SHA-256, package, version, signer, no downgrade
@@ -77,7 +82,7 @@ public final class AutoInstall {
             if (!refusals.isEmpty()) return new Result(refusals, -1);
 
             Set<String> ops = k.operations;
-            int session = commit(c, id, verified);
+            int session = commit(c, id, verified, checkStillAllowed);
             prefs.edit().putLong("bytes-day", now / 86400).putLong("bytes-used", bytesToday(prefs, now) + verified.length())
                     .putString("pending-ops-" + session, encodeOps(ops)).putInt("auto-session", session).commit();
             return new Result(Collections.<String>emptyList(), session);
@@ -116,12 +121,13 @@ public final class AutoInstall {
         } catch (Exception ignored) { /* unknown stays unknown */ }
     }
 
-    private static int commit(Context c, String id, File verified) throws Exception {
+    private static int commit(Context c, String id, File verified, Runnable checkStillAllowed) throws Exception {
         PackageInstaller installer = c.getPackageManager().getPackageInstaller();
         PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
         params.setAppPackageName(id);
         params.setSize(verified.length());
         params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
+        checkStillAllowed.run();
         int sessionId = installer.createSession(params);
         try (PackageInstaller.Session session = installer.openSession(sessionId)) {
             try (InputStream in = new FileInputStream(verified); OutputStream out = session.openWrite("base.apk", 0, verified.length())) {
@@ -133,6 +139,7 @@ public final class AutoInstall {
             Intent callback = new Intent(c, InstallReceiver.class).setAction(c.getPackageName() + ".AUTO_INSTALL_RESULT")
                     .putExtra("auto", true).putExtra("package", id);
             PendingIntent status = PendingIntent.getBroadcast(c, sessionId, callback, PendingIntent.FLAG_MUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+            checkStillAllowed.run();
             session.commit(status.getIntentSender());
         } catch (Exception e) {
             installer.abandonSession(sessionId);
@@ -194,7 +201,7 @@ public final class AutoInstall {
     }
 
     /** Unknown (no network permission in an offline build, no active network) counts as metered. */
-    private static boolean unmetered(Context c) {
+    static boolean unmetered(Context c) {
         try {
             ConnectivityManager cm = c.getSystemService(ConnectivityManager.class);
             NetworkCapabilities caps = cm == null ? null : cm.getNetworkCapabilities(cm.getActiveNetwork());

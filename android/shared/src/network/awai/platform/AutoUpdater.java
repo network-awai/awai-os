@@ -33,6 +33,7 @@ public final class AutoUpdater {
     static final long PERIOD_MS = 24L * 60 * 60 * 1000;
     static final int MAX_LOG = 50;
     static final String CHANNEL = "auto-update";
+    private static final String CHECK_OPERATION = "network.awai.store.check";
 
     /** Keeps the scheduled job in line with the approval: scheduled while active, cancelled otherwise. */
     public static void sync(Context c) {
@@ -41,7 +42,7 @@ public final class AutoUpdater {
         UpdatePolicy.Approval a = approval(c);
         long now = System.currentTimeMillis() / 1000;
         boolean hasInternet = c.checkSelfPermission(Manifest.permission.INTERNET) == PackageManager.PERMISSION_GRANTED;
-        if (!hasInternet || !UpdatePolicy.approvalRefusals(a, "network.awai.store.check", now).isEmpty()) {
+        if (!hasInternet || !UpdatePolicy.approvalRefusals(a, CHECK_OPERATION, now).isEmpty()) {
             js.cancel(JOB_ID);
             return;
         }
@@ -56,27 +57,29 @@ public final class AutoUpdater {
 
     /** One full check. Never throws; every outcome is logged. */
     public static void run(Context c) {
+        run(c, new AutoUpdateRun());
+    }
+
+    static void run(Context c, AutoUpdateRun run) {
         long now = System.currentTimeMillis() / 1000;
-        UpdatePolicy.Approval a = approval(c);
-        if (!UpdatePolicy.approvalRefusals(a, "network.awai.store.check", now).isEmpty()) {
-            log(c, "skip", null, "approval-off");
-            sync(c);
-            return;
-        }
         SharedPreferences prefs = c.getSharedPreferences(AutoInstall.PREFS, 0);
         try {
+            requireApproval(c, run);
             KeyList key = StoreTrust.load(c);
             // A newer key list replaces or withdraws role keys. A refused or unreachable list keeps the one in use.
-            try { KeyList fetched = StoreTrust.admit(c, fetch(StoreTrust.URL, StoreTrust.MAX_ENVELOPE_BYTES));
+            try { KeyList fetched = StoreTrust.admit(c, fetch(c, run, StoreTrust.URL, StoreTrust.MAX_ENVELOPE_BYTES));
                 if (fetched.sequence > key.sequence) log(c, "keys", null, "sequence " + fetched.sequence);
                 key = fetched; }
+            catch (AutoUpdateRun.Stopped stopped) { throw stopped; }
             catch (Exception notAdopted) { log(c, notAdopted instanceof SecurityException ? "keys-refused" : "keys-unreachable", null, code(notAdopted)); }
             long floor = prefs.getLong("pointer-sequence", 0);
-            LatestPointer p = LatestPointer.verifyEnvelope(fetch(LatestPointer.URL, LatestPointer.MAX_ENVELOPE_BYTES), key, now, floor);
+            LatestPointer p = LatestPointer.verifyEnvelope(fetch(c, run, LatestPointer.URL, LatestPointer.MAX_ENVELOPE_BYTES), key, now, floor);
+            requireApproval(c, run);
             prefs.edit().putLong("pointer-sequence", p.sequence).commit();
 
-            byte[] envelope = fetch(p.catalog.url, (int) p.catalog.maxBytes);
+            byte[] envelope = fetch(c, run, p.catalog.url, (int) p.catalog.maxBytes);
             p.checkCatalog(envelope);
+            requireApproval(c, run);
             admitCatalog(c, envelope, key, now, p);
             log(c, "catalog", null, "sequence " + p.sequence);
 
@@ -90,17 +93,22 @@ public final class AutoUpdater {
                 try { current = c.getPackageManager().getPackageInfo(id, 0).getLongVersionCode(); }
                 catch (PackageManager.NameNotFoundException absent) { continue; }
                 if (current >= app.getLong("versionCode")) continue;
-                if (a.excludedApps.contains(id)) { log(c, "refused", id, "app-excluded"); refused++; continue; }
+                if (requireApproval(c, run).excludedApps.contains(id)) { log(c, "refused", id, "app-excluded"); refused++; continue; }
                 if (!p.apks.containsKey(id)) { log(c, "refused", id, "not-in-pointer"); refused++; continue; }
                 LatestPointer.Pin pin = p.apks.get(id);
                 if (bytesToday(prefs, now) + pin.maxBytes > AutoInstall.DAILY_BYTE_BUDGET) { log(c, "refused", id, "daily-budget"); refused++; continue; }
-                if (catalog.isOnlineDelivery(id)) stage(c, p, id, pin);
-                AutoInstall.Result r = AutoInstall.attempt(c, id);
+                if (catalog.isOnlineDelivery(id)) stage(c, run, p, id, pin);
+                AutoInstall.Result r = AutoInstall.attempt(c, id, () -> {
+                    if (requireApproval(c, run).excludedApps.contains(id)) throw new SecurityException("app-excluded");
+                });
                 if (r.refusals.isEmpty()) { log(c, "installing", id, app.getString("versionName")); installed++; }
                 else { log(c, "refused", id, join(r.refusals)); refused++; }
             }
             if (installed + refused == 0) log(c, "current", null, "no updates");
             if (refused > 0) notify(c, "更新の確認が必要です", refused + " 件の更新は自動では入れられません。Store の「更新」で確認してください。");
+        } catch (AutoUpdateRun.Stopped stopped) {
+            log(c, "skip", null, code(stopped));
+            if (!"job-stopped".equals(stopped.getMessage())) sync(c);
         } catch (Exception e) {
             log(c, "error", null, code(e));
         }
@@ -134,14 +142,15 @@ public final class AutoUpdater {
         if (!Catalog.saveOnline(c, raw, signature, revision)) throw new SecurityException("catalog-store");
     }
 
-    private static void stage(Context c, LatestPointer p, String id, LatestPointer.Pin pin) throws Exception {
+    private static void stage(Context c, AutoUpdateRun run, LatestPointer p, String id, LatestPointer.Pin pin) throws Exception {
         File target = new File(c.getFilesDir(), Catalog.onlineFileFor(id));
         if (target.isFile()) { // already staged and still the pinned bytes
             try { p.checkApk(id, Integrity.read(new java.io.FileInputStream(target), (int) pin.maxBytes)); return; }
             catch (Exception stale) { /* fetch again */ }
         }
-        byte[] bytes = fetch(pin.url, (int) pin.maxBytes);
+        byte[] bytes = fetch(c, run, pin.url, (int) pin.maxBytes);
         p.checkApk(id, bytes);
+        requireApproval(c, run);
         SharedPreferences prefs = c.getSharedPreferences(AutoInstall.PREFS, 0);
         long now = System.currentTimeMillis() / 1000;
         prefs.edit().putLong("download-day", now / 86400).putLong("download-bytes", bytesToday(prefs, now) + bytes.length).commit();
@@ -151,7 +160,8 @@ public final class AutoUpdater {
     }
 
     /** GET over HTTPS to raw.githubusercontent.com only, no redirects, bounded body. */
-    static byte[] fetch(String url, int limit) throws Exception {
+    private static byte[] fetch(Context c, AutoUpdateRun run, String url, int limit) throws Exception {
+        requireApproval(c, run);
         URL u = new URL(url);
         if (!"https".equals(u.getProtocol()) || !"raw.githubusercontent.com".equals(u.getHost()) || u.getPort() != -1)
             throw new SecurityException("fetch-origin");
@@ -162,14 +172,36 @@ public final class AutoUpdater {
         h.setUseCaches(false);
         h.setRequestProperty("Accept-Encoding", "identity");
         try {
+            run.attach(h);
+            requireApproval(c, run);
             if (h.getResponseCode() != 200) throw new SecurityException("fetch-status");
             if (!"raw.githubusercontent.com".equals(h.getURL().getHost())) throw new SecurityException("fetch-origin");
             long declared = h.getContentLengthLong();
             if (declared > limit) throw new SecurityException("fetch-size");
-            try (InputStream in = h.getInputStream()) { return Integrity.read(in, limit); }
+            try (InputStream in = h.getInputStream()) {
+                byte[] bytes = Integrity.read(in, limit);
+                requireApproval(c, run);
+                return bytes;
+            }
+        } catch (Exception e) {
+            requireApproval(c, run);
+            throw e;
         } finally {
+            run.detach(h);
             h.disconnect();
         }
+    }
+
+    private static UpdatePolicy.Approval requireApproval(Context c, AutoUpdateRun run) {
+        run.check();
+        if (c.checkSelfPermission(Manifest.permission.INTERNET) != PackageManager.PERMISSION_GRANTED)
+            throw new AutoUpdateRun.Stopped("internet-permission");
+        UpdatePolicy.Approval a = approval(c);
+        List<String> refusals = UpdatePolicy.approvalRefusals(a, CHECK_OPERATION, System.currentTimeMillis() / 1000);
+        if (!refusals.isEmpty()) throw new AutoUpdateRun.Stopped(refusals.get(0));
+        if (a.unmeteredOnly && !AutoInstall.unmetered(c)) throw new AutoUpdateRun.Stopped("network-metered");
+        run.check();
+        return a;
     }
 
     private static long bytesToday(SharedPreferences prefs, long now) {
